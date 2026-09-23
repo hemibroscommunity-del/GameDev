@@ -37,10 +37,59 @@ const COL = {
   goldBg: 'linear-gradient(180deg,#E2B765,#D2A14D)',
 };
 
+/* ═══ v2.3.2695: THE +/- STEPPER ═══
+ * Owner: "Instead of one button for 'spend point' make it so you can add
+ * points more quickly using +/- buttons then confirm spend button to the
+ * right of it."
+ * "More quickly" is the point, so a held button keeps stepping: one step on
+ * press (a tap is exactly one), then a repeat after a beat.  The timers stop
+ * on every way a finger can leave -- up, cancel, and sliding off -- because a
+ * repeat that outlives its press counts on by itself. */
+const StepBtn = ({ label, glyph, disabled, onStep }) => {
+  const timers = React.useRef({ hold: 0, rep: 0 });
+  const stop = () => {
+    clearTimeout(timers.current.hold); clearInterval(timers.current.rep);
+    timers.current = { hold: 0, rep: 0 };
+  };
+  React.useEffect(() => stop, []);
+  return (
+    <button type="button" aria-label={label}
+      data-infopopup-step={glyph === '+' ? 'up' : 'down'}
+      aria-disabled={disabled}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        if (disabled) return;
+        stop();
+        onStep();
+        timers.current.hold = setTimeout(() => {
+          timers.current.rep = setInterval(onStep, 70);
+        }, 380);
+      }}
+      onPointerUp={(e) => { e.stopPropagation(); stop(); }}
+      onPointerCancel={stop} onPointerLeave={stop}
+      onContextMenu={(e) => e.preventDefault()}
+      style={{
+        flex: 'none', width: 44, height: 40, padding: 0,
+        background: 'rgba(9,14,17,.42)',
+        color: disabled ? 'rgba(141,155,152,.45)' : COL.text,
+        border: `1px solid ${COL.border}`, borderRadius: 9,
+        fontSize: 20, fontWeight: 900, lineHeight: '38px',
+        cursor: disabled ? 'default' : 'pointer',
+        touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+      }}>{glyph}</button>
+  );
+};
+
 export const InfoPopup = () => {
   const [, bump] = React.useState(0);
   React.useEffect(() => infoPopupBus.subscribe(() => bump((v) => v + 1)), []);
   const cur = infoPopupBus.current();
+  /* v2.3.2695: the stepper's count belongs to the window it was set in -- a
+     new window (another stat, or a lane tab, which reopens) starts at 1. */
+  const [stepState, setStepState] = React.useState({ of: null, n: 1 });
+  /* v2.3.2696: which "tap to read more" chip is open, per window */
+  const [chipState, setChipState] = React.useState({ of: null, key: null });
 
   /* Escape closes.  Bound only while open, so this adds no always-on key
      listener to a game whose own controls are keyboard-driven on desktop. */
@@ -53,6 +102,123 @@ export const InfoPopup = () => {
 
   if (!cur) return null;
   const close = () => infoPopupBus.close();
+  const stepMax = (cur.action && !cur.action.blocked && cur.action.stepMax > 0) ? cur.action.stepMax : 0;
+  const stepN = stepMax ? Math.min(stepMax, Math.max(1, stepState.of === cur ? stepState.n : 1)) : 1;
+  const stepBy = (d) => setStepState((prev) => {
+    const base = prev.of === cur ? prev.n : 1;
+    return { of: cur, n: Math.min(stepMax, Math.max(1, base + d)) };
+  });
+  /* v2.3.2696: a window that carries a `hook` is a STAT window and takes
+     the short layout; every other caller keeps the one it had. */
+  const compact = !!cur.hook;
+  const openChip = chipState.of === cur ? chipState.key : null;
+  const meter = cur.meterFor ? (() => { try { return cur.meterFor(stepMax ? stepN : 1); } catch (_e) { return null; } })() : null;
+  /* the scene's "+1" becomes "+n" as the stepper moves */
+  const demoNode = React.isValidElement(cur.demo) ? React.cloneElement(cur.demo, { n: stepMax ? stepN : 1 }) : cur.demo;
+  /* the rows show what the WHOLE batch buys (rowsFor, HeroExpanded) */
+  let rows = cur.rows;
+  if (stepN > 1 && cur.rowsFor) { try { rows = cur.rowsFor(stepN) || rows; } catch (_e) {} }
+  const rowsEl = (<>
+  {rows && rows.length > 0 && (
+    <div data-infopopup-rows style={{
+      marginTop: compact ? 8 : 10, padding: '7px 10px',
+      background: 'rgba(9,14,17,.42)',
+      border: '1px solid rgba(255,255,255,.06)',
+      borderRadius: 9, fontVariantNumeric: 'tabular-nums',
+    }}>
+      {rows.map((r, i) => {
+        /* v2.3.2696: in a stat window the first row is the answer --
+           drawn big, first thing under the title */
+        const big = compact && i === 0;
+        return (
+        <div key={i} data-infopopup-row={i} style={{
+          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          /* wrap, never overflow: a value the label leaves no room for
+             drops under it instead of running off the card */
+          flexWrap: 'wrap',
+          gap: '0 10px', padding: big ? '1px 0 4px' : '3px 0', fontSize: big ? 21 : 12.5,
+        }}>
+          <span style={{ color: COL.muted, fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{r.label}</span>
+          <span style={{ color: COL.text, fontWeight: big ? 900 : 800, whiteSpace: 'nowrap', textAlign: 'right' }}>
+            {r.now}
+            {r.after != null && <> → <span style={{ color: '#59BF91' }}>{r.after}</span></>}
+            {r.delta && <span style={{ color: r.after != null ? '#59BF91' : COL.muted, fontWeight: 700 }}> ({r.delta})</span>}
+          </span>
+        </div>
+        );
+      })}
+      {cur.capped && (
+        <div style={{ marginTop: 4, fontSize: 11, color: COL.muted }}>At its cap — no more points can go here.</div>
+      )}
+    </div>
+  )}
+  </>);
+  const lanesEl = (<>
+  {/* ═══ v2.3.2684: WHICH WEAPON THIS POINT GOES INTO ═══
+      Owner, with a mockup: "The button to change which of the 3 combat
+      skills it's applied to ... It's a tab in the confirm window.  This
+      should be for every allocable stat."
+
+      It belongs here rather than on the grid for the reason the mockup
+      makes obvious: the choice and its CONSEQUENCE are the same glance.
+      Each tab carries that lane's spendable count, so picking Bow and
+      seeing "1" is one read, and the commit button below names the lane
+      it will charge -- the owner's stated reason the confirm exists at
+      all is "so the user doesn't accidentally spend the wrong weapon
+      point type".
+
+      A tab is a real 44px target and the row is scrollable sideways
+      rather than squeezing three of them into whatever is left: on a
+      320px card three tabs plus their gaps is tight, and a tab too
+      small to hit is worse than one you have to nudge to. */}
+  {cur.lanes && cur.lanes.options && cur.lanes.options.length > 0 && (
+    <div data-infopopup-lanes style={{
+      marginTop: compact ? 0 : 10, display: 'flex', gap: 6,
+      overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+    }}>
+      {cur.lanes.options.map((o) => {
+        const on = o.key === cur.lanes.active;
+        return (
+          <div key={o.key} role="button"
+            data-infopopup-lane={o.key}
+            aria-pressed={on}
+            aria-label={`${o.label}, ${o.pts} point${o.pts === 1 ? '' : 's'} to spend`}
+            onPointerUp={(e) => { e.stopPropagation(); if (!on && cur.lanes.onPick) cur.lanes.onPick(o.key); }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              flex: '1 1 0', minWidth: 92, minHeight: 44,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              padding: '6px 8px', boxSizing: 'border-box',
+              border: `${on ? 2 : 1}px solid ${on ? COL.accent : 'rgba(229,237,233,0.20)'}`,
+              borderRadius: 10,
+              background: on ? 'rgba(216,170,88,.12)' : 'rgba(9,14,17,.42)',
+              cursor: 'pointer', touchAction: 'manipulation',
+            }}>
+            {o.icon && <img src={o.icon} alt="" draggable={false} style={{
+              width: 22, height: 22, objectFit: 'contain', flex: 'none', pointerEvents: 'none',
+            }} />}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
+              <span style={{
+                fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase',
+                color: on ? COL.accent : COL.muted,
+              }}>{o.label}</span>
+              <span style={{
+                fontSize: 13, fontWeight: 900, fontVariantNumeric: 'tabular-nums',
+                color: on ? COL.text : COL.muted,
+              }}>{o.pts}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
+  </>);
+  const spend = () => {
+    if (!cur.action || cur.action.blocked) return;
+    const run = cur.action.run;
+    infoPopupBus.close();
+    try { if (run) run(stepN); } catch (_e) {}
+  };
 
   return (
     <div data-infopopup={cur.title || ''}
@@ -93,7 +259,7 @@ export const InfoPopup = () => {
           maxHeight: '100%',
           display: 'flex', flexDirection: 'column', minHeight: 0,
         }}>
-        <button type="button" aria-label="Close" onPointerUp={close}
+        <button type="button" aria-label="Close" onPointerUp={close} data-infopopup-x
           style={{
             position: 'absolute', top: 6, right: 6,
             width: 30, height: 30, lineHeight: '30px',
@@ -102,11 +268,40 @@ export const InfoPopup = () => {
             cursor: 'pointer', touchAction: 'manipulation',
           }}>×</button>
 
+        {/* ═══ v2.3.2685: THE TITLE CAN CARRY ITS OWN PICTURES ═══
+            Owner: "on the confirmation window where it names the stat and
+            combat type ('power - melee') also include its icon after each
+            label.  So power icon after power and the melee icon after
+            melee."
+            `titleParts` is optional and `title` stays the plain string --
+            it is what `data-infopopup` is keyed on and what a screen reader
+            reads, and three QA scenarios match the window by the words in
+            it.  So the icons are added BESIDE the text rather than in place
+            of any of it. */}
         <div data-infopopup-title style={{
           flex: 'none',
           fontSize: 15, fontWeight: 900, color: COL.accent,
           letterSpacing: '.01em', paddingRight: 28, marginBottom: 6,
-        }}>{cur.title}</div>
+          display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
+        }}>
+          {cur.titleParts && cur.titleParts.length
+            ? cur.titleParts.map((part, i) => (
+                <React.Fragment key={(part.label || '') + i}>
+                  {i > 0 && <span style={{ opacity: 0.5, fontWeight: 700 }}>·</span>}
+                  <span>{part.label}</span>
+                  {part.icon && (
+                    <img src={part.icon} alt="" draggable={false} style={{
+                      width: 19, height: 19, objectFit: 'contain', flex: 'none',
+                      /* the portrait is a photo-ish tile, the stat glyphs are
+                         flat art -- the radius only shows on the former */
+                      borderRadius: part.round ? 4 : 0,
+                      pointerEvents: 'none',
+                    }} />
+                  )}
+                </React.Fragment>
+              ))
+            : cur.title}
+        </div>
 
         {/* v2.3.2616: everything between the title and the buttons scrolls.
             The title stays because it names what you are reading; the action
@@ -119,6 +314,73 @@ export const InfoPopup = () => {
           margin: '0 -14px', padding: '0 14px',
           WebkitOverflowScrolling: 'touch',
         }}>
+        {compact ? (<>
+          {/* ═══ v2.3.2696: A STAT WINDOW YOU DO NOT HAVE TO READ ═══
+              Owner: "It's a lot of words but good information.  What's a
+              better solution to make the user understand without reading a
+              manual?"  So the window leads with what the stat DOES in about
+              six words, then the answer in numbers -- big, and moving as the
+              stepper moves, so pressing + is how you learn it -- then a bar
+              that fills by less with every point (the curve, drawn instead of
+              explained).  The explainer and the fade rule are still here, one
+              tap away behind two chips, for the player who wants them. */}
+          <div data-infopopup-hook style={{
+            fontSize: 13.5, lineHeight: 1.35, fontWeight: 700, color: COL.text,
+          }}>{cur.hook}</div>
+          {rowsEl}
+
+          {meter && (
+            <div data-infopopup-meter data-now={meter.now.toFixed(3)} data-after={meter.after.toFixed(3)}
+              style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 7 }}>
+              <div style={{
+                position: 'relative', flex: '1 1 auto', height: 8, borderRadius: 4,
+                background: 'rgba(9,14,17,.55)', border: '1px solid rgba(255,255,255,.08)', overflow: 'hidden',
+              }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: (meter.now * 100) + '%', background: COL.accent }} />
+                <div data-infopopup-meter-gain style={{
+                  position: 'absolute', top: 0, bottom: 0,
+                  left: (meter.now * 100) + '%', width: (Math.max(0, meter.after - meter.now) * 100) + '%',
+                  background: '#59BF91', transition: 'width .12s ease-out',
+                }} />
+              </div>
+              <span style={{ flex: 'none', fontSize: 10, fontWeight: 900, letterSpacing: '.08em', color: COL.muted }}>MAX</span>
+            </div>
+          )}
+          {cur.chips && cur.chips.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {cur.chips.map((c) => {
+                  const on = openChip === c.key;
+                  return (
+                    <button type="button" key={c.key} data-infopopup-chip={c.key} aria-expanded={on}
+                      onPointerUp={(e) => { e.stopPropagation(); setChipState({ of: cur, key: on ? null : c.key }); }}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        minHeight: 30, padding: '4px 9px', boxSizing: 'border-box',
+                        background: on ? 'rgba(216,170,88,.12)' : 'rgba(9,14,17,.42)',
+                        border: `1px solid ${on ? COL.accent : COL.border}`, borderRadius: 999,
+                        color: c.warn ? COL.accent : COL.muted,
+                        fontSize: 11, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
+                      }}>
+                      <span aria-hidden="true" style={{ fontSize: 12 }}>{c.icon}</span>{c.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {openChip && (() => {
+                const c = cur.chips.find((x) => x.key === openChip);
+                return c ? (
+                  <div data-infopopup-chip-text={c.key} style={{
+                    marginTop: 7, fontSize: 12, lineHeight: 1.4, color: COL.muted,
+                  }}>{c.text}</div>
+                ) : null;
+              })()}
+            </div>
+          )}
+          {cur.demo && (
+            <div data-infopopup-demo style={{ marginTop: 10 }}>{demoNode}</div>
+          )}
+        </>) : (<>
         <div data-infopopup-body style={{
           fontSize: 13, lineHeight: 1.42, color: COL.text,
         }}>{cur.body}</div>
@@ -138,37 +400,11 @@ export const InfoPopup = () => {
             letterSpacing: '.02em',
           }}>{cur.perText}</div>
         )}
+        {lanesEl}
         {cur.demo && (
-          <div data-infopopup-demo style={{ marginTop: 10 }}>{cur.demo}</div>
+          <div data-infopopup-demo style={{ marginTop: 10 }}>{demoNode}</div>
         )}
-        {cur.rows && cur.rows.length > 0 && (
-          <div data-infopopup-rows style={{
-            marginTop: 10, padding: '7px 10px',
-            background: 'rgba(9,14,17,.42)',
-            border: '1px solid rgba(255,255,255,.06)',
-            borderRadius: 9, fontVariantNumeric: 'tabular-nums',
-          }}>
-            {cur.rows.map((r, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-                /* wrap, never overflow: a value the label leaves no room for
-                   drops under it instead of running off the card */
-                flexWrap: 'wrap',
-                gap: '0 10px', padding: '3px 0', fontSize: 12.5,
-              }}>
-                <span style={{ color: COL.muted, fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{r.label}</span>
-                <span style={{ color: COL.text, fontWeight: 800, whiteSpace: 'nowrap', textAlign: 'right' }}>
-                  {r.now}
-                  {r.after != null && <> → <span style={{ color: '#59BF91' }}>{r.after}</span></>}
-                  {r.delta && <span style={{ color: r.after != null ? '#59BF91' : COL.muted, fontWeight: 700 }}> ({r.delta})</span>}
-                </span>
-              </div>
-            ))}
-            {cur.capped && (
-              <div style={{ marginTop: 4, fontSize: 11, color: COL.muted }}>At its cap — no more points can go here.</div>
-            )}
-          </div>
-        )}
+        {rowsEl}
 
         {cur.note && (
           <div data-infopopup-note style={{
@@ -190,6 +426,11 @@ export const InfoPopup = () => {
           }}>{cur.stat}</div>
         )}
 
+        </>)}
+
+        {/* v2.3.2695: the "Melee points available: 2" line is retired (owner:
+            "Remove the redundant 'shared points available'") -- the
+            highlighted lane tab carries the same number. */}
         {cur.action && cur.action.blocked && (
           <div data-infopopup-blocked style={{
             marginTop: 9, fontSize: 11.5, fontWeight: 700, color: COL.accent, lineHeight: 1.3,
@@ -198,6 +439,39 @@ export const InfoPopup = () => {
 
         </div>{/* data-infopopup-scroll */}
 
+        {/* v2.3.2696: in a stat window the pool tabs sit with the stepper --
+            which pool, how many, spend: the three controls in one place, and
+            pinned, so they never scroll away from the button they feed. */}
+        {compact && (
+          <div style={{ flex: 'none', marginTop: 10 }}>
+            {lanesEl}
+          </div>
+        )}
+        {stepMax > 0 ? (
+          /* v2.3.2695: [-] n [+] [Spend n points].  "Got it" steps aside for
+             the width -- the x, the scrim and Escape still close it, which
+             keeps three of v2.3.2131's four ways out on a spend window. */
+          <div data-infopopup-stepper style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
+            <StepBtn label="One fewer point" glyph="−" disabled={stepN <= 1} onStep={() => stepBy(-1)} />
+            <span data-infopopup-count={stepN} aria-live="polite"
+              style={{
+                flex: 'none', minWidth: 30, textAlign: 'center',
+                fontSize: 18, fontWeight: 900, color: COL.text,
+                fontVariantNumeric: 'tabular-nums',
+              }}>{stepN}</span>
+            <StepBtn label="One more point" glyph="+" disabled={stepN >= stepMax} onStep={() => stepBy(1)} />
+            <button type="button"
+              data-infopopup-action
+              onPointerUp={(e) => { e.stopPropagation(); spend(); }}
+              style={{
+                flex: '1 1 auto', minWidth: 0, height: 40, padding: '0 10px',
+                background: COL.goldBg, color: COL.goldText,
+                border: 0, borderRadius: 9,
+                fontSize: 12.5, fontWeight: 900, whiteSpace: 'nowrap',
+                cursor: 'pointer', touchAction: 'manipulation',
+              }}>{`Spend ${stepN} point${stepN === 1 ? '' : 's'}`}</button>
+          </div>
+        ) : (
         <div style={{ flex: 'none', display: 'flex', gap: 8, marginTop: 12 }}>
           {cur.action && (
             <button type="button"
@@ -212,13 +486,7 @@ export const InfoPopup = () => {
                  look right and be unreachable, which is the failure mode
                  TRAPS §67 is about. */
               aria-disabled={!!cur.action.blocked}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                if (cur.action.blocked) return;
-                const run = cur.action.run;
-                infoPopupBus.close();
-                try { if (run) run(); } catch (_e) {}
-              }}
+              onPointerUp={(e) => { e.stopPropagation(); spend(); }}
               style={{
                 flex: '1 1 auto', padding: '9px 10px',
                 background: cur.action.blocked ? 'transparent' : COL.goldBg,
@@ -241,6 +509,7 @@ export const InfoPopup = () => {
               touchAction: 'manipulation',
             }}>Got it</button>
         </div>
+        )}
       </div>
     </div>
   );

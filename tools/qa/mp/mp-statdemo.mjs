@@ -44,6 +44,38 @@ const tapSel = (P, sel) => P.page.evaluate((s) => {
   return true;
 }, sel);
 
+/* ═══ v2.3.2684: REACHING A LANE'S STAT, NOW THAT THE HEAD IS A LABEL ═══
+   v2.3.2683 reached one by cycling the weapons head until it read the lane it
+   wanted.  The owner has since taken the head OUT of the control set ("the
+   weapon icon row is not meant to be button") and put the lane choice in the
+   confirm window as a tab row, so that route no longer exists and this file's
+   four bow/staff assertions were failing on the route, not on the scene.
+
+   The new route is the player's: open the stat from whichever lane the grid is
+   showing, then aim the window with its own tabs.  The window re-opens on the
+   lane you pick -- same title, same scene, rebuilt for that weapon -- which is
+   exactly what these assertions are about, so they are untouched below.
+   A BODY stat has no lane to pick and is opened in one tap, as before. */
+const openStat = async (P, lane, key) => {
+  /* `$=":key"` rather than a full id: the lane row shows SOME weapon's six
+     cells and which one is not this helper's business -- the tab is. */
+  const ok = await tapSel(P, `[data-prog3-row$=":${key}"]`);
+  if (!ok) return false;
+  await P.page.waitForTimeout(300);
+  if (!lane || lane === 'shared') return true;
+  for (let i = 0; i < 3; i++) {
+    const now = await P.page.evaluate(() => {
+      const t = [...document.querySelectorAll('[data-infopopup-lanes] [data-infopopup-lane]')]
+        .find((e) => e.getAttribute('aria-pressed') === 'true');
+      return t ? t.getAttribute('data-infopopup-lane') : null;
+    });
+    if (now === lane) return true;
+    if (!(await tapSel(P, `[data-infopopup-lane="${lane}"]`))) return false;
+    await P.page.waitForTimeout(300);
+  }
+  return false;
+};
+
 /* The scene's own figure, as the compositor left it.  characterPortrait
    stamps the direction it actually drew onto the canvas (__btDir/__btMirror,
    v2.3.?  see its tail), which is the only honest read: `dir` names a view,
@@ -138,7 +170,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* v2.3.2592: crit is LUCK now, and four columns are on screen at once —
      the MELEE column's Luck ℹ️, named by column. */
-  const opened = await tapSel(P, '[data-prog3-card="sword"] [data-stat-info="luck"]');
+  const opened = await openStat(P, 'sword', 'luck');
   await P.page.waitForTimeout(700);
   const haveScene = await P.page.evaluate(() => !!document.querySelector('.bt-sd-stage'));
   rec.ok('the ℹ️ on a combat stat opens a window with a scene in it', opened && haveScene, { opened, haveScene });
@@ -206,15 +238,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (window._gameState.current.rpg.activeSlot || 'melee') === 'melee');
   await H.openPointCols(P, ['bow']);   /* v2.3.2594: one weapon at a time */
   await H.openPointCols(P, ['bow']);
-  const laneOpened = await tapSel(P, '[data-prog3-card="bow"] [data-stat-info="luck"]');
+  const laneOpened = await openStat(P, 'bow', 'luck');
   rec.ok('the Bow column\'s ℹ️ could be tapped while the sword is still equipped', laneOpened && stillHoldingSword,
     { laneOpened, stillHoldingSword });
   await P.page.waitForTimeout(900);
+  /* v2.3.2695: the drawn title is the stat alone now (owner) -- the lane is
+     named by the highlighted tab under it, so that is what is read here. */
   const bowTitle = await P.page.evaluate(() => {
-    const el = document.querySelector('[data-infopopup-title]');
+    const el = document.querySelector('[data-infopopup-lane][aria-pressed="true"]');
     return el ? (el.textContent || '').trim() : null;
   });
-  rec.ok('...and its ℹ️ window is captioned for the BOW (guard)',
+  rec.ok('...and its ℹ️ window is aimed at the BOW (guard)',
     !!(bowTitle && /bow/i.test(bowTitle)), bowTitle);
   const bowFace = await heroFacing(P, '.bt-sd-hero');
   /* THE REPORT.  Not "is it a bow" alone -- "is it NOT the sword", because
@@ -249,7 +283,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(350);
   await H.openPointCols(P, ['staff']);   /* v2.3.2594 */
   await H.openPointCols(P, ['staff']);
-  const staffLane = await tapSel(P, '[data-prog3-card="staff"] [data-stat-info="luck"]');
+  const staffLane = await openStat(P, 'staff', 'luck');
   await P.page.waitForTimeout(900);
   const staffFace = await heroFacing(P, '.bt-sd-hero');
   rec.ok('the Magic lane puts the STAFF in his hands',
@@ -267,7 +301,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(350);
   await H.openPointCols(P, ['shared']);
-  const bodyOpened = await tapSel(P, '[data-prog3-card="shared"] [data-stat-info="def"]');
+  const bodyOpened = await openStat(P, 'shared', 'def');
   await P.page.waitForTimeout(800);
   const bodyFace = await heroFacing(P, '.bt-sd-hero');
   if (!bodyOpened || !bodyFace) {
@@ -295,7 +329,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.keyboard.press('Escape');
     await P.page.waitForTimeout(350);
     await H.openPointCols(P, [lane]);
-    const opened = await tapSel(P, `[data-prog3-card="${lane}"] [data-stat-info="${key}"]`);
+    const opened = await openStat(P, lane, key);
     await P.page.waitForTimeout(500);
     if (!opened) { rec.skip(`${key} has a scene`, 'row not reachable'); continue; }
     /* Sample the live stage across a full loop — a single frame proves

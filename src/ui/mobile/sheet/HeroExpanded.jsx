@@ -20,7 +20,7 @@ import {
   PROG3, prog3ElemPower /* v2.3.2512: elem per weapon, elem resist, max mana */,
   prog3CharLevel, prog3PoolShared, prog3SharedSpendCat, isProg3SharedEnabled /* v2.3.2592: the shared pool */,
   prog3PowerMult, prog3RangeMult, prog3SpecialMult, prog3MoveMult, prog3EresPct, isProg3RelEnabled, PROG3_LINEAR,
-  PROG3_FADE_NOTE /* v2.3.2680: the curve readers + the fade line */ } from '../../../data/prog3.js';
+  PROG3_FADE_NOTE /* v2.3.2680: the curve readers + the fade line */, prog3StatFrac /* v2.3.2696: the confirm window's bar */ } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
@@ -1427,6 +1427,50 @@ export const HeroExpanded = () => {
                Merging in the owner's own direction keeps all of it: InfoPopup
                already had an `action` slot rendering a gold button beside "Got
                it", which is precisely "asks you to confirm at the bottom". */
+            /* ═══ v2.3.2684: ONE DEFINITION OF "SPEND THIS POINT" ═══
+               The confirm window can now CHANGE which weapon the point goes
+               to (the tab row the owner drew), which means the window has to
+               be able to rebuild its own spend for the lane you picked --
+               it can no longer just carry the one the cell handed it.  So the
+               spend moves here, beside the window that uses it, and the cells
+               call it too: one rule for what is blocked and what gets sent,
+               instead of a copy per caller that can drift. */
+            const spendFor = (st, cat) => {
+              const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
+              const cap = prog3StatCap(R, st.key);
+              const avail = st.atk ? laneAvail(cat) : sharedAvail;
+              return {
+                blocked: avail <= 0
+                  ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'unspent'} points to spend.`
+                  : pts >= cap ? `${st.label} is already at its cap.` : null,
+                /* ═══ v2.3.2695: SPEND SEVERAL AT ONCE ═══
+                   Owner: "Instead of one button for 'spend point' make it so
+                   you can add points more quickly using +/- buttons then
+                   confirm spend button to the right of it."
+                   The ceiling is whichever runs out first -- the points you
+                   have, or the room left under the stat's cap -- so the
+                   stepper can never offer a point the worker would refuse.
+                   The worker still spends ONE point per prog3_allocate
+                   (prog3.js _handleProg3Allocate) and still judges each one,
+                   so a batch is n ordinary spends sent back to back: no new
+                   wire type, nothing an older worker would not settle
+                   (rule 19), and a pool that drained mid-batch simply has
+                   its extra spends refused, exactly as a double tap was. */
+                max: Math.max(0, Math.min(avail, cap - pts)),
+                run: (n) => {
+                  const S2 = getState();
+                  const R2 = S2 && S2.rpg;
+                  if (!S2 || !S2.channel) return;
+                  const count = Math.max(1, Math.floor(Number(n) || 1));
+                  for (let i = 0; i < count; i++) {
+                    S2.channel.send({
+                      type: 'prog3_allocate',
+                      payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
+                    });
+                  }
+                },
+              };
+            };
             const openStatInfo = (st, cat, spend) => {
               try {
                 /* v2.3.2592: the row says WHICH lane it belongs to now (four are
@@ -1436,57 +1480,107 @@ export const HeroExpanded = () => {
                 /* v2.3.2597: infoKey first — a shortened label may collide with
                    another stat's glossary entry (see prog3.js). */
                 const info = statInfo(st.infoKey || st.label) || { title: st.label, body: st.perText + ' per point.' };
-                const pv = R ? previewStatPoint(R, st.key, laneCat) : null;
-                /* The row carries the NUMBER and, for a percentage, its sign
-                   ("0.8% -> 1.2%", "40.0 -> 48.0"): the row's full unit is
-                   prose ("% less damage", " power") and it ran the Defense
-                   and Elemental rows off the card's right edge (390px
-                   captures).  The label names the stat and the rate line
-                   above the scene says the words, so the row need not. */
-                const fmt = (v) => (st.pct ? n1(v * 100) + '%' : n1(v));
-                const rows = [];
-                if (pv) {
-                  rows.push({ label: st.key === 'luck' ? 'Crit chance' : info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
-                  /* v2.3.2592: LUCK buys two things per point; the second half
-                     gets its own row so "what will my crit damage BE" is
-                     answered beside "what will my crit chance BE". */
-                  if (typeof pv.statNow2 === 'number') {
-                    rows.push({ label: 'Crit damage', now: '+' + n1(pv.statNow2 * 100) + '%',
-                      after: pv.capped ? null : '+' + n1(pv.statAfter2 * 100) + '%' });
+                /* v2.3.2695: the numbers follow the stepper -- rowsFor(n) is
+                   what n points buy, and the window asks again each time the
+                   count changes.  One point is what it opens on. */
+                const rowsFor = (n) => {
+                  const pv = R ? previewStatPoint(R, st.key, laneCat, n) : null;
+                  /* The row carries the NUMBER and, for a percentage, its sign
+                     ("0.8% -> 1.2%", "40.0 -> 48.0"): the row's full unit is
+                     prose ("% less damage", " power") and it ran the Defense
+                     and Elemental rows off the card's right edge (390px
+                     captures).  The label names the stat and the rate line
+                     above the scene says the words, so the row need not. */
+                  const fmt = (v) => (st.pct ? n1(v * 100) + '%' : n1(v));
+                  const rows = [];
+                  if (pv) {
+                    rows.push({ label: st.key === 'luck' ? 'Crit chance' : info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
+                    /* v2.3.2592: LUCK buys two things per point; the second half
+                       gets its own row so "what will my crit damage BE" is
+                       answered beside "what will my crit chance BE". */
+                    if (typeof pv.statNow2 === 'number') {
+                      rows.push({ label: 'Crit damage', now: '+' + n1(pv.statNow2 * 100) + '%',
+                        after: pv.capped ? null : '+' + n1(pv.statAfter2 * 100) + '%' });
+                    }
+                    /* v2.3.2695: a SHARED stat drops the DPS line (owner: "Remove
+                       the line about DPS on this window for all shared
+                       points") -- its point is not bought for any one weapon,
+                       so a DPS figure read off whatever you happen to hold was
+                       answering a question the window is not asking.  The
+                       three weapon lanes keep it; there it is the point. */
+                    if (!st.atk) { /* no DPS row */ } else if (typeof pv.dpsDelta === 'number') {
+                      /* ═══ v2.3.2521: TEST THE REAL FIGURE, NOT THE SHRUNK ONE ═══
+                         This 0.049 asks "is the gain smaller than the +0.1 this
+                         row would print" — a question about the UNSCALED DPS.
+                         v2.3.2520 divided calcDisplayDps by DISPLAY_SCALE_K and
+                         left the cut-off where it was, so it silently became
+                         "smaller than +0.5 real DPS" and four measured gains
+                         (sword/bow/staff Crit, bow Attack Speed: +0.07..+0.15)
+                         started reading "does not change damage" — the sheet
+                         telling the player a stat is worthless when it is not,
+                         about points they cannot take back.  Multiply back out
+                         so the threshold keeps its meaning at any k; the printed
+                         numbers stay scaled. */
+                      /* v2.3.2592: a stat whose JOB is not sustained damage
+                         (Range, Special, Move Speed) says what it does instead
+                         of "does not change damage" — beside RANGE that line is
+                         a bug report, not an answer.  The note rides the row's
+                         own metadata (dpsNote). */
+                      rows.push(pv.dpsDelta * DISPLAY_SCALE_K > 0.049
+                        ? { label: 'DPS', now: n2(pv.dpsNow), after: n2(pv.dpsAfter), delta: '+' + n2(pv.dpsDelta) }
+                        : { label: 'DPS', now: n2(pv.dpsNow), after: null, delta: st.dpsNote || 'does not change damage' });
+                    } else {
+                      rows.push({ label: 'DPS', now: '—', after: null, delta: 'equip a weapon to see' });
+                    }
                   }
-                  if (typeof pv.dpsDelta === 'number') {
-                    /* ═══ v2.3.2521: TEST THE REAL FIGURE, NOT THE SHRUNK ONE ═══
-                       This 0.049 asks "is the gain smaller than the +0.1 this
-                       row would print" — a question about the UNSCALED DPS.
-                       v2.3.2520 divided calcDisplayDps by DISPLAY_SCALE_K and
-                       left the cut-off where it was, so it silently became
-                       "smaller than +0.5 real DPS" and four measured gains
-                       (sword/bow/staff Crit, bow Attack Speed: +0.07..+0.15)
-                       started reading "does not change damage" — the sheet
-                       telling the player a stat is worthless when it is not,
-                       about points they cannot take back.  Multiply back out
-                       so the threshold keeps its meaning at any k; the printed
-                       numbers stay scaled. */
-                    /* v2.3.2592: a stat whose JOB is not sustained damage
-                       (Range, Special, Move Speed) says what it does instead
-                       of "does not change damage" — beside RANGE that line is
-                       a bug report, not an answer.  The note rides the row's
-                       own metadata (dpsNote). */
-                    rows.push(pv.dpsDelta * DISPLAY_SCALE_K > 0.049
-                      ? { label: 'DPS', now: n2(pv.dpsNow), after: n2(pv.dpsAfter), delta: '+' + n2(pv.dpsDelta) }
-                      : { label: 'DPS', now: n2(pv.dpsNow), after: null, delta: st.dpsNote || 'does not change damage' });
-                  } else {
-                    rows.push({ label: 'DPS', now: '—', after: null, delta: 'equip a weapon to see' });
-                  }
-                }
+                  return { rows, capped: !!(pv && pv.capped) };
+                };
+                const first = rowsFor(1);
+                /* v2.3.2685: the same two words the title has always said, as
+                   parts, so each can be followed by its own icon (owner).
+                   v2.3.2695: ...and now only the FIRST of them.  Owner: "You
+                   can remove the 'shared' and profile picture after the name
+                   and icon of the stat" -- and the same for the three
+                   weapons.  The highlighted tab directly beneath already
+                   names the pool and draws its picture, so the title was
+                   saying it twice.  The plain `title` keeps the lane: it is
+                   the data-infopopup key three QA scenarios match on, and
+                   it is never drawn while titleParts is set. */
+                const laneMeta = st.atk ? (PROG3_SKILL_META.find((k) => k.key === laneCat) || {}) : null;
                 infoPopupBus.open({
                   title: info.title + (st.atk
-                    ? ' · ' + ((PROG3_SKILL_META.find((k) => k.key === laneCat) || {}).label || '')
+                    ? ' · ' + (laneMeta.label || '')
                     : ' · Shared'),
+                  titleParts: [{ label: info.title, icon: st.iconSrc }],
                   /* v2.3.2680: a stat that fades against stronger monsters says
                      so, once, under its explainer. */
                   body: info.body, note: st.fades ? (info.note ? info.note + ' ' : '') + PROG3_FADE_NOTE : info.note,
                   perText: 'Each point: ' + st.perText,
+                  /* ═══ v2.3.2696: LESS TO READ ═══
+                     Owner: "It's a lot of words but good information.  What's
+                     a better solution to make the user understand without
+                     reading a manual?"  A `hook` switches InfoPopup to the
+                     short layout: this six-word line where the paragraph was,
+                     the numbers big under it, a bar for the curve, and the
+                     paragraph + the fade rule folded into two chips.  Nothing
+                     is deleted -- body/note above are what the chips open. */
+                  hook: st.hook || info.body,
+                  chips: [
+                    ...(st.fades ? [{ key: 'fade', icon: '⚠\uFE0E', warn: true,
+                      label: 'Weaker vs. higher levels', text: PROG3_FADE_NOTE }] : []),
+                    { key: 'how', icon: 'ⓘ', label: 'Details',
+                      text: info.body + (info.note ? ' ' + info.note : '') },
+                  ],
+                  /* the curve, drawn: how far along its maximum the stat is now,
+                     and where n more points take it.  Each + fills a smaller
+                     slice than the last, which is "the first points count
+                     most" without the sentence.  Null (no bar) for a linear
+                     stat, which has no maximum to be a fraction of. */
+                  meterFor: (n) => {
+                    const p0 = st.atk ? prog3AtkPts(R, laneCat, st.key) : prog3Pts(R, st.key);
+                    const f0 = prog3StatFrac(st.key, p0);
+                    return f0 == null ? null : { now: f0, after: prog3StatFrac(st.key, p0 + Math.max(1, n || 1)) };
+                  },
                   /* ═══ v2.3.2231: THE FIGURE HOLDS THE LANE'S WEAPON ═══
                      Owner: "Maybe the combat primary skill they are viewing
                      the stat demo through?"
@@ -1519,17 +1613,58 @@ export const HeroExpanded = () => {
                         weapon={R ? (st.atk ? weaponForCat(R, laneCat) : getActiveWeapon(R)) : null}
                         shield={!!(R && R.shield)} />
                     : null,
-                  rows, capped: !!(pv && pv.capped),
+                  rows: first.rows, capped: first.capped,
+                  rowsFor: (n) => rowsFor(n).rows,
                   /* The spend lives at the bottom of the explainer now.  When
                      there is nothing to buy the button STAYS and refuses with
                      the reason — the owner's "grayed out with that
                      explanation" — because explaining is this window's first
                      job and it must open on a capped stat too. */
+                  /* v2.3.2695: `stepMax` turns the button into the owner's
+                     [-] n [+] [Spend] row (InfoPopup); run(n) sends n. */
                   action: spend ? {
                     label: 'Spend point',
                     blocked: spend.blocked,
+                    stepMax: spend.max,
                     run: spend.run,
                   } : undefined,
+                  /* ═══ v2.3.2684: THE LANE IS CHOSEN HERE NOW ═══
+                     Owner: "The button to change which of the 3 combat skills
+                     it's applied to ... is a tab in the confirm window.  This
+                     should be for every allocable stat."
+                     The grid's weapon cell stopped being a control in the same
+                     change, so this row is the ONLY way to aim a point at a
+                     weapon -- it has to appear whenever there is a point to
+                     aim, which is why it is built for a capped or broke stat
+                     too (you can tab off a lane with nothing left in it).
+                     Each tab carries that lane's spendable count, so the choice
+                     and the reason for it are the same glance.
+                     A BODY stat has no such choice -- its point comes out of
+                     the shared pool whatever you are holding -- so it gets the
+                     one Shared tab rather than three that would all do the
+                     same thing.  Keeping the row present for it is the "every
+                     allocable stat" half: the window always says which pool is
+                     paying. */
+                  lanes: {
+                    active: st.atk ? laneCat : 'shared',
+                    options: st.atk
+                      ? POINT_LANES.filter((c) => !c.shared).map((c) => ({
+                          key: c.key, label: c.label, icon: c.iconSrc, pts: laneAvail(c.key),
+                        }))
+                      /* v2.3.2695: owner -- "on the highlighted button instead
+                         of 'shared' just say 'Unspent Points'". */
+                      : [{ key: 'shared', label: 'Unspent Points', icon: sharedIcon, pts: sharedAvail }],
+                    onPick: st.atk ? ((k) => {
+                      /* the grid behind the window follows the tab, so closing
+                         it does not drop you back onto a different lane than
+                         the one you just spent into */
+                      try { setBuildCat(k); } catch (e) { /* never block a spend */ }
+                      openStatInfo(st, k, spend ? spendFor(st, k) : null);
+                    }) : null,
+                  },
+                  /* v2.3.2695: the "Melee points available: 2" line is gone
+                     (owner: "Remove the redundant 'shared points available'")
+                     -- the highlighted tab above carries the same number. */
                 });
               } catch (e) { /* an explainer must never block a spend */ }
             };
@@ -1933,6 +2068,505 @@ export const HeroExpanded = () => {
               </div>
             );
 
+            /* ═══════════════════════════════════════════════════════════
+               v2.3.2683: THE OWNER'S POINTS GRID
+               Owner, with a mockup: "I want the menu under the points tab to
+               look like this and use these color glyphs instead.  The points
+               remaining can just exist in the points confirmation window."
+
+               WHAT THIS REPLACES.  The two-step shape -- a 2x2 of MELEE /
+               MAGIC / BOW / SHARED, then a drilled-in card of that lane's stat
+               rows.  The mockup puts ALL THIRTEEN stats on one screen: six lane
+               stats in a row behind a weapons cell, seven body stats in a row
+               behind the portrait.  Two taps become one, and a player can see
+               the whole build at once, which is the thing the accordion and
+               then the card were both working around.
+
+               NO POINTS-REMAINING HERE, by instruction.  Every "N PTS" and
+               "N SPENT" line the tiles carried is gone; the confirm window is
+               where a count belongs, because that is the moment you are
+               deciding to spend one.  That is also what buys the room for
+               thirteen cells: the tiles were 52px tall to fit three lines of
+               type, and a cell that shows a glyph and a number needs far less.
+
+               THE HANDLES ARE KEPT.  `data-prog3-row`, `data-prog3-plus`,
+               `data-stat-info` and `data-prog3-lane` all survive on the new
+               cells, with the same key format, because nine QA files resolve
+               through them and a rename would be a silent loss of coverage
+               rather than a visible failure (TRAPS §29).  The CELL is the
+               button now -- there is no separate [+] to press -- so the row
+               handle and the plus handle land on the same element.  That is a
+               real change to what "the row" is, and mp-statcols measures it.
+
+               WHICH LANE THE TOP ROW MEANS.  The weapons cell at its head, and
+               it is the control: tapping it moves to the next lane, and the
+               confirm window carries the lane's own count once you are in it.
+               Defaults to the weapon you are holding (prog3ActiveCat), which
+               is the reading this file has used for buildCat since v2.3.1668.
+               ═══════════════════════════════════════════════════════════ */
+            /* ═══ v2.3.2684: BIGGER TYPE, SMALLER GLYPH, TALLER CELL ═══
+               Owner: "There is some room at the bottom of the screen to expand
+               a little bit.  The numbers and font need to be larger and the
+               icons can shrink a bit."
+               The glyph was the largest thing in the cell and the number the
+               smallest, which is backwards for a screen whose job is to show
+               you where your points went.  ~30px of it comes free from the DPS
+               strip that came out above; the rest is the glyph giving back
+               4-6px. */
+            /* ═══ DERIVED FROM THE CELL, NOT FROM A BREAKPOINT ═══
+               The first cut sized these off `twoCol`, which is a CARD-layout
+               flag (panelVw >= 360), so its "else" branch is the NARROWEST
+               phone -- and it therefore handed the 320 the BIGGEST caption.
+               mp-statcols caught it immediately (POWER, SPECIAL, DODGE and
+               RESIST all ellipsised at 320): four captions unreadable on the
+               small phone in the name of making type bigger on the large one.
+               So the sizes come off the cell's own width instead.  The lane
+               row is a 1.15fr head plus six 1fr cells with 4px gaps, and the
+               panel's chrome around it measured 56px at 320 -- the caption box
+               there is 37px, which is where the divisor comes from.  Every
+               width then gets the largest type that actually fits it, which is
+               what the owner asked for ("the numbers and font need to be
+               larger") without it costing the small screen its labels.
+               4.7 is the caption's own measured ratio: "SPECIAL", the longest
+               of the thirteen, wants 4.63px of width per px of font size at
+               weight 800, so a cell of width W holds it at W/4.63 and the
+               divisor keeps a hair of slack. */
+            /* 56 was the panel's chrome around the grid when a row WAS the
+               grid; v2.3.2686's tray adds its own 1px border and 4px padding
+               on each side, so a column lost 10/7.15 = 1.4px of width and the
+               caption -- which fits with under a pixel of slack by design --
+               tipped SPECIAL and DODGE into an ellipsis at 390.  Caught in a
+               capture, not by arithmetic: the number is measured against the
+               real screen either way, so the tray belongs IN it. */
+            const CELL_W = Math.max(22, (panelVw() - 66) / 7.15);
+            /* v2.3.2685: a quarter off every glyph (owner: "shrink each icon
+               25%.  Too large").  The cell keeps its height, so what the
+               glyph gives up goes to the caption and the number -- which is
+               the same direction as v2.3.2684's ask and this is the rest of
+               it.  Still derived from the cell's width, so the shrink holds
+               at every screen: 0.60 -> 0.45, and the clamp with it. */
+            const GLYPH = Math.round(Math.max(15, Math.min(22, CELL_W * 0.45)));
+            /* ═══ v2.3.2685: THE HEAD CELLS HAVE THEIR OWN SIZE ═══
+               They used to size off GLYPH, so shrinking the stat glyphs would
+               have shrunk the weapons and the portrait with them -- and the
+               weapons were the thing the owner called "super tiny and look
+               silly" at 0.62 OF the old glyph.  A head cell is 1.15x as wide
+               as a stat cell and carries no caption and no number, so it has
+               room the stat cells do not, and it should use its own. */
+            const HEAD_W = CELL_W * 1.15;
+            /* Height stays capped sideways: the landscape pane is short and a
+               tall cell there costs the second row its place on screen. */
+            /* v2.3.2686: the tray each row now sits in costs 10px a row (its
+               border and padding, top and bottom), so the cell gives that
+               back -- the grid has to keep ending at the bottom of the
+               screen, which is what v2.3.2684 was for.  Measured, not
+               guessed: 75 -> 65 at 390 puts the grid's foot back on 842 of
+               844, and 60 -> 52 at 320 on 562 of 568. */
+            const CELL_H = landPane ? 52 : Math.round(Math.max(52, Math.min(68, CELL_W * 1.40)));
+            /* One weapon icon: the full width of the head cell, a third of
+               its height, whichever binds first.  The portrait has no stack
+               to make room for, so it takes the cell short of its padding. */
+            const LANE_ICON = Math.round(Math.max(18, Math.min(34, Math.min(CELL_H * 0.42, HEAD_W * 0.60))));
+            /* v2.3.2689: HEAD_W - 14, not - 10.  The portrait now carries a
+               badge pinned 3px past its top-right corner, and in the narrow
+               landscape pane the portrait filled the head so exactly that
+               the badge poked a pixel past the header's edge -- mp-catgrid
+               measured it.  4px of slack each side holds the 3px overhang. */
+            const LANE_NUDGE = Math.round(LANE_ICON * 0.26);
+            const HEAD_ICON = Math.round(Math.max(22, Math.min(40, Math.min(CELL_H - 14, HEAD_W - 14))));
+            const CAP_FS = Math.max(7.5, Math.min(10.5, CELL_W / 4.7));
+            const NUM_FS = Math.max(12.5, Math.min(18, CELL_W * 0.38));
+            /* v2.3.2692: the owner's numeral art -- shared by the header
+               badges and the stat cells, so declared above both. */
+            const BADGE = '/icons/ui/badge/';
+            const BADGE_V = '?v=2.3.2670';
+            const statCell = (st, cat) => {
+              const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
+              const cap = prog3StatCap(R, st.key);
+              const lk = (st.atk ? cat + ':' : 'shared:') + st.key;
+              const avail = st.atk ? laneAvail(cat) : sharedAvail;
+              const canSpend = avail > 0 && pts < cap;
+              return (
+                <div key={lk}
+                  data-prog3-row={lk}
+                  data-prog3-plus={lk}
+                  data-stat-info={st.key}
+                  role="button"
+                  /* v2.3.2693: main's relative points (v2.3.2680) dropped "per point"
+                     from a CURVE stat -- its points count most first, so a fixed
+                     per-point rate is wrong -- on the card's [+].  The grid cell
+                     arrived in the same merge and follows it. */
+                  aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText}${st.curve ? '' : ' per point'}.`}
+                  aria-disabled={!canSpend}
+                  title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
+                  {...scrollTap(() => openStatInfo(st, cat, spendFor(st, cat)))}
+                  style={{
+                    height: CELL_H, minWidth: 0, boxSizing: 'border-box',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    /* v2.3.2686: caption to the top, number to the floor, glyph
+                       in the space between (owner: "numbers are good size but
+                       have room to move down a bit within the cells").  The
+                       cell used to centre the three as one block, which left
+                       the number floating mid-cell with dead space under it --
+                       the room the owner is pointing at.  Nothing resizes; the
+                       three just take the height they already had. */
+                    justifyContent: 'space-between', padding: '5px 0 4px', gap: 1,
+                    /* The stat's own colour on the border only.  v2.3.2598 put
+                       it on the whole fill, which was right for a 163px row
+                       carrying a label; on a 44px cell whose content is a
+                       COLOURED GLYPH, thirteen full-bleed fills fight the
+                       artwork they are framing. */
+                    /* ═══ v2.3.2687: THE OUTLINE IS THE GLYPH'S OWN COLOUR ═══
+                       Owner: "I'd rather have the cell outline be whatever the
+                       main icon color is."  `tint` is the v2.3.2598 palette,
+                       picked for the old pastel FILLS before these glyphs
+                       existed -- which is why RANGE wore a purple frame round a
+                       cyan arrow and LUCK a rust one round a white star.
+                       `edge` is measured off each shipped PNG
+                       (tools/glyph_edge_colors.mjs), so the frame and the
+                       picture it frames are the same colour by construction,
+                       and a re-exported glyph is re-measured rather than
+                       re-guessed.  `tint` itself is left alone: the card that
+                       still uses it as a fill was contrast-tuned for it. */
+                    border: `1px solid ${st.edge || st.tint || COL.tileBor}`,
+                    borderRadius: 9,
+                    background: COL.wellSoft,
+                    cursor: 'pointer', touchAction: 'manipulation', overflow: 'hidden',
+                  }}>
+                  {/* v2.3.2683: 8px and NO letter-spacing, measured against the
+                      longest caption.  "ELEMENT" is 7 characters into a cell
+                      that is (panel - head cell - 6 gaps) / 6 wide -- about
+                      44px on a 390pt phone -- and at 8.5px with .04em it
+                      overran by roughly a character.  Tracking is the cheaper
+                      of the two to give up: it is decoration here, where the
+                      caption is one short word in caps, and dropping a further
+                      half-pixel of size would start costing legibility on the
+                      stat NAME, which is the thing the cell is for. */}
+                  <span style={{
+                    fontSize: CAP_FS, fontWeight: 800, lineHeight: 1,
+                    textTransform: 'uppercase', color: COL.text2,
+                    maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{st.short || st.label}</span>
+                  <img src={st.iconSrc} alt="" draggable={false} style={{
+                    width: GLYPH, height: GLYPH, flex: 'none', objectFit: 'contain',
+                    pointerEvents: 'none',
+                  }} />
+                  {/* ═══ v2.3.2692: THE STAT COUNTS IN THE OWNER'S NUMERALS ═══
+                      Owner, off the mockups: "try making the outline of all
+                      the number stats (the stats you allocate points in)
+                      white".  The same numeral art as the header badges, with
+                      its gold rim baked to white (slice_badge_sheet.mjs) --
+                      white says "what you HAVE", the gold-on-blue badges say
+                      "what you can still spend", and the two never read as
+                      the same kind of number.
+                      Images, not text, so the count's size is the art's:
+                      NUM_FS x 1.15, the height the plain number's cap-height
+                      used to fill.  A 0 is dimmed, as the plain one was, so the
+                      stats you have invested in are the bright ones.
+                      data-pts carries the value for anything that needs the
+                      number rather than the picture of it. */}
+                  <span data-cell-num data-pts={pts} aria-hidden="true" style={{
+                    display: 'flex', alignItems: 'center', height: Math.round(NUM_FS * 1.15),
+                    opacity: pts > 0 ? 1 : 0.55, pointerEvents: 'none',
+                  }}>
+                    {String(Math.max(0, pts | 0)).split('').map((ch, i) => (
+                      <img key={i} alt="" draggable={false} src={`${BADGE}w${ch}.png${BADGE_V}`}
+                        style={{ height: Math.round(NUM_FS * 1.15), width: 'auto', marginLeft: i ? -1 : 0, display: 'block', pointerEvents: 'none' }} />
+                    ))}
+                  </span>
+                </div>
+              );
+            };
+
+            /* The head of each row: the weapons cell picks which lane the six
+               stats above belong to, the portrait just names the shared row. */
+            /* ═══ v2.3.2684: THE WEAPON ROW IS A LABEL, NOT A CONTROL ═══
+               Owner: "The weapon icon row is not meant to be button.  The
+               button to change which of the 3 combat skills it's applied to is
+               shown in the second attached image.  It's a tab in the confirm
+               window.  This should be for every allocable stat."
+               So the head cell stops being tappable and goes back to naming
+               the row, and the lane CHOICE moves into the confirm window where
+               the owner drew it -- next to the points it would spend, at the
+               moment you are deciding to spend one.  That is a better place
+               for it than a cell you had to know was a control. */
+            /* ═══ v2.3.2689: WHAT EACH POOL STILL HAS, ON ITS OWN HEADER ═══
+               Owner: "I want a badge on a fill background on each row header
+               showing how many allocable points there still are.  One number
+               on each combat type icon (melee, bow, staff) then just one for
+               the character on the second row header."
+               This partly reverses v2.3.2683's "no points-remaining anywhere
+               in the grid", by the same owner and deliberately: the STAT
+               cells still carry no remaining count (a cell shows what it has
+               bought), and the count moves to the one place a pool has a
+               picture -- its header.  Three weapons, three pools, three
+               badges; one shared pool, one badge.
+               Pinned to each icon's top-right corner.  The diagonal leaves
+               exactly those corners free -- each icon's next neighbour starts
+               below and right of it -- so no badge sits on another weapon.
+               A pool at 0 keeps its badge, muted, rather than vanishing: "0"
+               is an answer to "how many are left", and a badge that comes and
+               goes would make the three weapons look unlike each other for
+               no reason a player can see.  Past 99 it reads 99+, because a
+               44px cell cannot hold a three-digit pill beside an icon. */
+            /* COMPACT: the sideways pane squeezes a header to ~21px, narrower
+               than a normal "99+" pill (27px) -- mp-catgrid measured it
+               clipped there, and then clipped again at 7.5px (22px wide).  So
+               below 34px of header the badge is a 7px pill with its padding
+               and tracking pared to fit a three-character count, and the
+               character's badge pins to the HEADER's corner instead of the
+               portrait's, because in a 21px header the portrait is wider than
+               the room it has. */
+            const HEAD_COMPACT = HEAD_W < 34;
+            /* ═══ v2.3.2691: THE OWNER'S OWN BADGE ART ═══
+               Owner, with a sheet of a round badge, a pill badge and the
+               numerals 0-9 and "+": "Use this sprite sheet for the tiny
+               numbers.  I want to see if it looks good."
+               Sliced by tools/slice_badge_sheet.mjs into public/icons/ui/badge.
+               One character sits on the ROUND badge; two or three on the PILL,
+               which is drawn as a border-image so its rounded ends stay round
+               and only the middle stretches -- a "99+" and a "64" share one
+               piece of art instead of the pill being squashed to fit.
+               The numerals are images laid in a row, not text, so the count
+               has no font size of its own: it is as tall as the art makes it.
+               A pool at 0 keeps its badge and goes grey (grayscale + dim),
+               the same "0 still answers the question" rule as before, in the
+               art's own shapes rather than a second palette. */
+            const headBadge = (n, key, pin) => {
+              const live = n > 0;
+              const c = HEAD_COMPACT;
+              /* ═══ v2.3.2691: THE SIDEWAYS PANE KEEPS THE PLAIN PILL ═══
+                 A landscape header is ~18px wide inside, and the sprite pill
+                 for "64" is 22px at the smallest size its numerals still read
+                 at -- mp-catgrid measured it clipped off the header's left
+                 edge.  The art cannot shrink further without the numerals
+                 turning to mush, so there (and only there) the badge is the
+                 v2.3.2689 brass pill in 7px type, which fits.  Portrait, the
+                 layout the owner approved from a capture, is all sprite. */
+              if (c) {
+                return (
+                  <span data-prog3-head-badge={key} data-count={n} aria-hidden="true" style={{
+                    position: 'absolute', zIndex: 5, ...(pin || { top: -3, right: -3 }),
+                    minWidth: 12, height: 12, padding: '0 1px', boxSizing: 'border-box',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: 8,
+                    background: live ? COL.accent : COL.raised, color: live ? COL.onAccent : COL.muted,
+                    boxShadow: `0 0 0 1.5px ${COL.well}`,
+                    fontSize: 7, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.04em',
+                    fontVariantNumeric: 'tabular-nums', pointerEvents: 'none', whiteSpace: 'nowrap',
+                  }}>{n > 99 ? '99+' : n}</span>
+                );
+              }
+              const chars = (n > 99 ? '99+' : String(Math.max(0, n | 0))).split('');
+              const bh = c ? 12 : 16;                  /* badge height */
+              const gh = Math.round(bh * 0.66);        /* numeral height */
+              const round = chars.length === 1;
+              const cap = Math.round(bh * 0.42);       /* pill end drawn this wide */
+              return (
+                <span data-prog3-head-badge={key} data-count={n} aria-hidden="true" style={{
+                  position: 'absolute', zIndex: 5,
+                  /* Off the icon's corner rather than on it: the first cut
+                     sat 3px out and covered the TIP of every weapon -- the
+                     sword, staff and bow are all drawn pointing up-right, so
+                     the top-right corner is the part that says which weapon
+                     it is.  7px out, the badge clips the corner instead. */
+                  /* v2.3.2691: the owner chose this top-right placement off
+                     the capture ("this image nearly has it") -- the badges
+                     stay put and the WEAPONS move out from under them; see
+                     LANE_NUDGE on the icons below. */
+                  ...(pin || (c ? { top: -3, right: -3 } : { top: -5, right: -7 })),
+                  height: bh, minWidth: bh, boxSizing: 'border-box',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  ...(round
+                    /* v2.3.2692: the owner's pick off the mockups -- the
+                       normal blue, with the numerals left gold.  Baked
+                       (slice_badge_sheet.mjs) rather than a CSS filter, so the
+                       gold numerals on top are not dragged blue with it. */
+                    ? { background: `url(${BADGE}circle-blue.png${BADGE_V}) center / 100% 100% no-repeat` }
+                    : {
+                        /* the pill's ends are half its height in the art (32 of
+                           64px); drawn `cap` wide, the digits overlap them a
+                           little, which is how the art itself is spaced */
+                        borderStyle: 'solid', borderWidth: `0 ${cap}px`,
+                        borderImage: `url(${BADGE}pill-blue.png${BADGE_V}) 0 32 fill / 0 ${cap}px stretch`,
+                      }),
+                  filter: live ? 'none' : 'grayscale(1) brightness(0.62)',
+                  pointerEvents: 'none', whiteSpace: 'nowrap',
+                }}>
+                  {chars.map((ch, i) => (
+                    <img key={i} alt="" draggable={false}
+                      src={`${BADGE}${ch === '+' ? 'plus' : 'd' + ch}.png${BADGE_V}`}
+                      style={{
+                        height: ch === '+' ? Math.round(gh * 0.8) : gh, width: 'auto',
+                        /* the numerals carry their own dark outer ring; a
+                           pixel of overlap reads as one number, not three
+                           stickers side by side */
+                        marginLeft: i ? -1 : 0, display: 'block', pointerEvents: 'none',
+                      }} />
+                  ))}
+                </span>
+              );
+            };
+            const headCell = (kind) => {
+              const isLane = kind === 'lane';
+              return (
+                <div
+                  data-prog3-lane={isLane ? buildCat : 'shared'}
+                  aria-label={isLane
+                    ? `${(PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || buildCat}, level ${prog3SkillLevel(R, buildCat)}. `
+                      + POINT_LANES.filter((c) => !c.shared).map((c) => `${c.label} ${laneAvail(c.key)} to spend`).join(', ')
+                    : `Shared, level ${prog3CharLevel(R)}. ${sharedAvail} to spend`}
+                  title={isLane ? 'Weapon stats — pick the weapon when you spend' : 'Shared stats'}
+                  style={{
+                    height: CELL_H, minWidth: 0, boxSizing: 'border-box',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 3,
+                    /* ═══ v2.3.2686: THE HEAD BELONGS TO ITS ROW ═══
+                       Owner: "is there a way to visually connect the row
+                       headers to the rows?  Right now they're floating
+                       distinct cells."  They were: same border, same fill,
+                       same radius as the six stat cells beside them, so the
+                       weapons read as a seventh stat rather than as the
+                       heading of the six.
+                       So the head gives up its box entirely -- no border, no
+                       fill, no radius -- and the ROW gains one (the tray in
+                       statGrid below).  What is left between the head and the
+                       stats is a single hairline, which is a divider inside
+                       one surface instead of a gap between two.  That is the
+                       Lantern Slate reading of a table head, and it needs no
+                       new colour: COL.well is the tray role and COL.wellSoft
+                       the cell role, so the chips sit IN something. */
+                    borderRight: `1px solid ${isLane ? COL.edgeWarm : COL.divider}`,
+                    position: 'relative',
+                    cursor: 'default', overflow: 'hidden',
+                  }}>
+                  {isLane
+                    /* ═══ v2.3.2685: THREE WEAPONS DOWN THE DIAGONAL ═══
+                       Owner: "try making the first row (with all 3 combat
+                       icons) diagonally aligned so they fit better.  Right now
+                       those icons are super tiny and look silly."
+                       In a row they had to share the cell's WIDTH three ways
+                       -- about 17px each at 390, which is where "tiny" comes
+                       from -- while the cell's 75px of HEIGHT went unused.
+                       Down the diagonal each one gets the width of the whole
+                       cell and a third of its height, so they come out ~31px:
+                       nearly double, from the same box.  They overlap a little
+                       and that is the point -- a fanned stack of three cards,
+                       which reads as a SET rather than as three shrunken
+                       buttons, and the lit one sits on top of the other two.
+                       i/2 of the free space, so the first is flush top-left,
+                       the last flush bottom-right and the middle centred; the
+                       percentages are the cell's own box, so it re-fits at
+                       every width without a second breakpoint. */
+                    ? (
+                      /* v2.3.2689: the stack gives up 4px on the right and
+                         2px on top, so the LAST weapon's badge and the FIRST
+                         one's can overhang their icons by the same amount as
+                         the middle one's without being cut off by the
+                         header's edge. */
+                      <div style={{ position: 'relative', width: 'calc(100% - 4px)', height: 'calc(100% - 2px)', margin: '2px 4px 0 0' }}>
+                        {POINT_LANES.filter((c) => !c.shared).map((c, i, a) => {
+                          const on = c.key === buildCat;
+                          const t = a.length > 1 ? i / (a.length - 1) : 0;
+                          /* v2.3.2689: the icon and its badge move as one box,
+                             so the count stays pinned to ITS weapon's corner
+                             wherever the diagonal puts it. */
+                          return (
+                            <div key={c.key} style={{
+                              position: 'absolute',
+                              left: `calc(${t * 100}% - ${t * LANE_ICON}px)`,
+                              top: `calc(${t * 100}% - ${t * LANE_ICON}px)`,
+                              width: LANE_ICON, height: LANE_ICON,
+                              zIndex: on ? 2 : 1, pointerEvents: 'none',
+                            }}>
+                            <img src={c.iconSrc} alt="" draggable={false} style={{
+                              width: '100%', height: '100%', objectFit: 'contain', display: 'block',
+                              /* ═══ v2.3.2691: THE WEAPON STEPS OUT FROM UNDER ITS BADGE ═══
+                                 Owner, on the top-right capture: "you just need
+                                 to nudge all weapon icons diagonally
+                                 (southwest)".  The badge is pinned to the BOX
+                                 and the art moves inside it, so each count
+                                 stays exactly where the owner approved it
+                                 while the sword, staff and bow slide down-left
+                                 and their tips come out from under the pill.
+                                 A fraction of the icon, not a pixel count, so
+                                 the nudge scales with the icon at every width. */
+                              transform: `translate(${-LANE_NUDGE}px, ${LANE_NUDGE}px)`,
+                              /* v2.3.2688: all three at full strength (owner:
+                                 "have all of the icons in the first row not
+                                 dimmed").  The dimming was the head's way of
+                                 saying WHICH weapon's numbers the six cells
+                                 show, from when the head was the lane
+                                 switch; that choice lives in the confirm
+                                 window's tabs now, so the head is a label
+                                 for "the weapons" and reads as one.  The lane
+                                 in use still sits on top of the stack --
+                                 a quiet cue that costs the other two
+                                 nothing. */
+                              opacity: 1,
+                              pointerEvents: 'none',
+                            }} />
+                            {headBadge(laneAvail(c.key), c.key)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                    : (
+                      <div style={{ position: 'relative', width: HEAD_ICON, height: HEAD_ICON, pointerEvents: 'none' }}>
+                        <img src={sharedIcon} alt="" draggable={false}
+                          onError={(e) => { if (e.currentTarget.src.indexOf(SHARED_ICON_FALLBACK) < 0) e.currentTarget.src = SHARED_ICON_FALLBACK; }}
+                          style={{
+                            width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, display: 'block',
+                            imageRendering: 'pixelated', pointerEvents: 'none',
+                          }} />
+                        {/* 3px out, not 7: the portrait nearly fills its
+                            header, so the weapons' 7px overhang ran this
+                            badge into the divider (a clipped "99+" in the
+                            390 capture). */}
+                        {!HEAD_COMPACT && headBadge(sharedAvail, 'shared', { top: -5, right: -3 })}
+                      </div>
+                    )}
+                  {!isLane && HEAD_COMPACT && headBadge(sharedAvail, 'shared', { top: 1, right: 1 })}
+                </div>
+              );
+            };
+
+            /* ═══ v2.3.2686: A ROW IS A TRAY, NOT SEVEN LOOSE TILES ═══
+               The header connects to its row by being INSIDE the same
+               surface as it: one bordered, filled band per row, with the
+               cells as chips on it and the head as a label at its left, cut
+               off by a hairline.  COL.well is Lantern Slate's tray role and
+               COL.wellSoft its cell role (docs/LANTERN-SLATE-SPEC.md), so
+               the depth reads correctly without inventing a colour -- the
+               cells are LIGHTER than the tray they sit in, the way every
+               other well in the game works.
+               The weapon row's edge is the warm one, which also says which
+               of the two rows the lit weapon belongs to. */
+            const bandStyle = (isLane) => ({
+              display: 'grid', gap: 4, minWidth: 0,
+              padding: 4, boxSizing: 'border-box',
+              background: COL.well,
+              border: `1px solid ${isLane ? COL.edgeWarm : COL.border}`,
+              borderRadius: 12,
+            });
+
+            const statGrid = () => (
+              /* 2px of side padding so the outermost cell's border is not
+                 flush against the panel edge -- at 0 the Element and Resist
+                 cells lost their right border to the clip. */
+              <div data-prog3-grid style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0, padding: '0 2px' }}>
+                <div data-prog3-band="lane" style={{ ...bandStyle(true), gridTemplateColumns: '1.15fr repeat(6, 1fr)' }}>
+                  {headCell('lane')}
+                  {prog3AtkMeta().map((st) => statCell({ ...st, atk: true }, buildCat))}
+                </div>
+                <div data-prog3-band="shared" style={{ ...bandStyle(false), gridTemplateColumns: '1.15fr repeat(7, 1fr)' }}>
+                  {headCell('shared')}
+                  {prog3BodyMeta().map((st) => statCell({ ...st, atk: false }, null))}
+                </div>
+              </div>
+            );
+
             /* ═══ ONE STAT ROW ═══
                Label left, icon, live value, and the wide [+] down the right
                edge — the shot's arrangement.
@@ -2161,20 +2795,7 @@ export const HeroExpanded = () => {
                        bought ("31.0%", "1-2"), so the pair is back without
                        either of them costing the cell a pixel. */
                     title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
-                    {...scrollTap(() => openStatInfo(st, cat, {
-                      blocked: (st.atk ? laneAvail(cat) : sharedAvail) <= 0
-                        ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'shared'} points to spend.`
-                        : pts >= cap ? `${st.label} is already at its cap.` : null,
-                      run: () => {
-                        const S2 = getState();
-                        const R2 = S2 && S2.rpg;
-                        if (!S2 || !S2.channel) return;
-                        S2.channel.send({
-                          type: 'prog3_allocate',
-                          payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
-                        });
-                      },
-                    }), { inner: true })}
+                    {...scrollTap(() => openStatInfo(st, cat, spendFor(st, cat)), { inner: true })}
                     onClick={(e) => e.stopPropagation()}
                     style={{
                       flex: 'none', width: CARD_PLUS_W, height: CARD_PLUS_H,
@@ -2373,26 +2994,15 @@ export const HeroExpanded = () => {
                   cue that there is more, which this screen has instead of a
                   scroll-edge fade (the fade was removed at v2.3.2288 because
                   the owner said "the last row is faded at the bottom"). */}
-              <div aria-live="polite" className="bt-stat-peek" style={{
-                marginBottom: 4, height: 14, lineHeight: '14px', padding: '0 2px',
-                fontSize: 11, color: COL.text2,
-                fontVariantNumeric: 'tabular-nums',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>
-                {/* v2.3.2222: the strip is the RESTING readout only now (what a
-                    point buys moved into the ℹ️ window), and it sits ABOVE the
-                    lanes rather than below.  Measured: with Melee open, the two
-                    collapsed lanes plus this strip under the last stat row
-                    were more than a scroll-to-the-end could fit beneath the
-                    pinned tabs + header, so ELEM POWER slid under them at max
-                    scroll.  Up here it costs ~30px of rows at rest and buys
-                    the last row fully visible at the end on every phone -- and
-                    a new player reads the "tap the i" hint before the rows,
-                    which is where a hint belongs. */}
-                {restDps
-                  ? <>Overall <span style={{ color: COL.text, fontWeight: 700 }}>DPS {n2(restDps.dps)}</span> with your {restDps.weaponName}. Tap the <b style={{ fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>i</b> on a stat to see what a point buys.</>
-                  : 'Equip a weapon to see your DPS.'}
-              </div>
+              {/* ═══ v2.3.2684: THE DPS STRIP IS GONE ═══
+                  Owner: "remove the top row explainer about DPS."  It carried
+                  two things and both have somewhere better to be: the resting
+                  DPS is on the Equipment screen beside the weapon that earns
+                  it, and "tap the i to see what a point buys" described a
+                  control that no longer exists -- the whole CELL opens the
+                  window now, so there is nothing to point at.
+                  It also bought the grid ~30px, which is where the taller
+                  numbers below come from. */}
               {/* ═══ v2.3.2326: THREE COLUMNS, NOT THREE STACKED ROWS ═══
                   Owner: "I think 3 accordion columns rather than 3 accordion
                   rows per combat primary combat skill might work better."
@@ -2467,27 +3077,19 @@ export const HeroExpanded = () => {
                   both orientations render this.  That deletes the landscape
                   branch, statRow, and the lane-header accordion with it. */}
               <div data-prog3-points style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                {/* The reference's own instruction line.  A hint, not a control
-                    (the v2.3.2326 caption rule), and it says what the two-step
-                    shape needs a first-time player to know.
-                    ═══ v2.3.2611: GRID ONLY ═══
-                    Owner: "Remove 'tap + to spend a point' row on points menu."
-                    It was the SECOND instruction in two screens — the grid
-                    already says "Tap a category, then spend its points here",
-                    and by the time you are inside a card the [+] is the only
-                    control on the row and needs no caption.  Only the card's
-                    line goes; the grid's stays, because that one is telling a
-                    first-time player the two-step shape.
-                    It buys the card 19px (15 tall + 4 margin) of the ~191px
-                    scrolling window, which is where the card was overflowing. */}
-                {selLane ? null : (
-                  <div style={{
-                    height: 15, lineHeight: '15px', textAlign: 'center', marginBottom: 4,
-                    fontSize: 11, color: COL.text2, flex: 'none',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>Tap a category, then spend its points here.</div>
-                )}
-                {selLane ? catCard(selLane) : catGrid()}
+                {/* ═══ v2.3.2683: ONE SCREEN, NO CAPTION ═══
+                    The instruction line said "Tap a category, then spend its
+                    points here" -- it existed to explain the TWO-STEP shape,
+                    and there is no second step now.  A caption describing a
+                    flow the screen no longer has is worse than none.
+
+                    `selLane`/`catCard` are left in place and unreferenced from
+                    here on purpose: the drilled-in card is still the landscape
+                    T2 path's neighbour and deleting a 300-line render in the
+                    same change that restructures the grid would make one diff
+                    carry two risks.  It is dead on this screen and should come
+                    out in its own commit. */}
+                {statGrid()}
               </div>
               </>
             );

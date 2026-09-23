@@ -82,9 +82,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return el ? (el.innerText || '') : '';
   });
 
-  /* ── resting state: the overall DPS the owner asked for ── */
+  /* ═══ v2.3.2684: THE STRIP IS GONE BY INSTRUCTION ═══
+     Owner: "remove the top row explainer about DPS."  So "at rest the strip
+     carries the overall DPS" is now asserting a row the owner asked to have
+     taken out, and the honest form of it is the ABSENCE -- the kind of thing
+     that creeps back one line at a time unless a test objects.
+     Nothing is lost from this scenario's real subject: the DPS numbers it
+     exists to check are the ones inside the ℹ️ window, asserted below and
+     untouched. */
   const resting = await stripText();
-  rec.ok('at rest the strip carries the overall DPS', /DPS\s*[\d.]+/.test(resting), resting.slice(0, 200));
+  rec.ok('the DPS explainer strip is gone from the top of the Points screen (owner)',
+    resting === '', resting.slice(0, 200));
 
   /* ── tap CRIT's ℹ️: the stat total from baseline, and the DPS it buys ──
      v2.3.2222: the readout moved from a press-to-peek strip into the ℹ️
@@ -98,12 +106,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState && window._gameState.current;
     return S && S.rpg && S.rpg.prog3 && S.rpg.prog3.pool ? S.rpg.prog3.pool.unspent : null;
   });
+  /* ═══ v2.3.2683: SAY WHICH LANE, DO NOT ASSUME IT ═══
+     The old screen made this explicit for free: the scenario tapped the SWORD
+     card, so the Luck row it then pressed could only be sword's. The owner's
+     grid shows ONE lane's six stats at a time and defaults to the weapon in
+     hand, which this fixture sets client-side -- so the default can legitimately
+     be a different lane, and it was: the pill under test read "Luck for STAFF,
+     0 of 10", i.e. a lane with no weapon and no points. That is what produced
+     "1.0% -> 1.3%" and "DPS — (equip a weapon)", and it was the test asking the
+     wrong cell rather than the cell answering wrongly.
+     So the lane is now SELECTED, by tapping the weapons head until it reads
+     sword -- the grid's own control, the way a player would. */
+  /* ═══ v2.3.2684: THE LANE IS PICKED IN THE WINDOW NOW ═══
+     The head cell stopped being a control in the same change that moved the
+     lane choice into the confirm window's tab row, so cycling it selects
+     nothing.  The requirement above is unchanged and is the reason this block
+     exists -- this scenario must press SWORD's Luck, not whichever lane the
+     grid happens to open on -- so it is met the new way: open the cell, then
+     tab the window onto sword before reading its numbers.  Done after the
+     press, just below, because the tabs only exist once the window is up. */
+
   const pressed = await P.page.evaluate(() => {
-    /* v2.3.2597: the Luck row of the OPEN Melee card.  There is no column to
-       scope by any more — one category is on screen at a time — and the
-       handle rides the [+], so this asks the card for its spend controls and
-       picks the Luck one. */
-    const pills = [...document.querySelectorAll('[data-prog3-card="sword"] [role="button"][aria-label*=" of "]')]
+    /* v2.3.2683: the Luck CELL of the owner's grid.  There is no card to
+       scope by any more -- all thirteen stats are on one screen, and the
+       lane's six belong to whichever weapon the head cell is showing.  The
+       seed above puts the luck points on SWORD, and sword is the lane a fresh
+       character holds (prog3ActiveCat), so the Luck cell on screen is the one
+       this wants without switching anything.
+       Kept as an aria-label match rather than a `[data-prog3-row="sword:luck"]`
+       lookup on purpose: what this scenario is about is that the handle a
+       PLAYER can find opens a window, and the label is what names it. */
+    const pills = [...document.querySelectorAll('[data-prog3-grid] [role="button"][aria-label*=" of "]')]
       .filter((d) => /^luck/i.test(d.getAttribute('aria-label') || ''));
     const el = pills[0];
     /* v2.3.2597: and it moved again, onto the [+], because the owner then made
@@ -122,6 +155,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return true;
   });
   rec.ok('the Luck row\'s [+] is the explainer handle and it could be pressed', pressed);
+  await P.page.waitForTimeout(400);
+  /* ...and NOW aim it at sword, per the block above. */
+  const aimed = await P.page.evaluate(async () => {
+    const tap = (el) => { for (const t of ['pointerdown', 'pointerup'])
+      el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch' })); };
+    const act = () => {
+      const t = [...document.querySelectorAll('[data-infopopup-lanes] [data-infopopup-lane]')]
+        .find((e) => e.getAttribute('aria-pressed') === 'true');
+      return t ? t.getAttribute('data-infopopup-lane') : null;
+    };
+    for (let i = 0; i < 3; i++) {
+      if (act() === 'sword') return true;
+      const tab = document.querySelector('[data-infopopup-lane="sword"]');
+      if (!tab) return false;
+      tap(tab);
+      await new Promise((r) => setTimeout(r, 260));
+    }
+    return act() === 'sword';
+  });
+  rec.ok('...and the window\'s tabs could aim it at the SWORD lane (v2.3.2684 — the head no longer selects)', aimed);
   await P.page.waitForTimeout(400);
   const popup = await P.page.evaluate(() => {
     const card = document.querySelector('[data-infopopup-card]');
