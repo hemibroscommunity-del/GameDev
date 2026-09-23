@@ -1607,7 +1607,7 @@ export function processGameEvent(type, payload, S, deps) {
                 /* v2.3.1107: point the body the same way as the bow shot. */
                 _reconcileFacing(S.others[payload.id], payload.ang);
               }
-              /* v2.3.2697: a peer's basic staff bolt drives THEIR staff kick and
+              /* v2.3.2714: a peer's basic staff bolt drives THEIR staff kick and
                  release flash (entityRenderer + staffCastFx), mirroring the bow
                  stamp above.  The special keeps its own art and gets neither.
                  `ang` is a peer's number, so only a finite one is kept -- it
