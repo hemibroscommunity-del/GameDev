@@ -1,5 +1,5 @@
 /* relative-points-sim — the referee for RELATIVE POINT VALUE
- * (docs/specs/relative-points.md, v2.3.2659, shipped).
+ * (docs/specs/relative-points.md, v2.3.2670, shipped).
  *
  * Owner, 2026-09-22: "I want each point to matter during the early level up
  * phases of the game.  If a character is putting his first 5 points into
@@ -17,7 +17,7 @@
  *   node tools/relative-points-sim.mjs --root <checkout>  any other tree
  *
  * --root is how the note's "today" columns were measured: point it at a
- * checkout from before v2.3.2659 and §2-§4 print that tree's numbers (the
+ * checkout from before v2.3.2670 and §2-§4 print that tree's numbers (the
  * extra level arguments are simply ignored by the old code).  §1 and §5 need
  * the curve and skip themselves on a tree without it.
  *

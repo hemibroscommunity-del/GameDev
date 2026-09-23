@@ -36,13 +36,13 @@ import {
   prog3CritMult, /* v2.3.2199: percent critDmg */
   prog3RangeMult, prog3SpecialMult, /* v2.3.2592: reach + special, client-consumed */
   prog3DmgTerm,
-  prog3PowerMult, prog3AspdCut, /* v2.3.2659: Power is a multiplier; Speed reads the curve */
+  prog3PowerMult, prog3AspdCut, /* v2.3.2670: Power is a multiplier; Speed reads the curve */
   prog3ElemPower, isProg3ElemEnabled, /* v2.3.2512: elem per weapon; max mana as a stat */
+  legacyStaminaMult, /* v2.3.2662: the retired level-10 stamina rung, old workers only */
 } from './prog3.js';
-/* v2.3.1733: the char-10 milestone's max-stamina multiplier (mirror of the
-   server's staminaMilestoneMult) — recalcDerived's prog3 branch is the
-   client twin of _prog3Recompute, so the term has to appear in both. */
-import { staminaMilestoneMult, blocksAt } from './abilities.js';
+/* v2.3.2662: staminaMilestoneMult left this import with the milestone
+   ladder; the old-worker prediction is legacyStaminaMult (imported above). */
+import { blocksAt } from './abilities.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -3330,7 +3330,7 @@ export function swingCooldownMultFor(rpg, weaponType) {
      reads that type's block.  A stash bow's readout shows the Bow
      investment even while a sword is in hand, which is the same
      behaviour the legacy per-weapon Tempo channel had. */
-  if (prog3Live(rpg)) return Math.max(0.50, 1 - prog3AspdCut(rpg, prog3CatFor(weaponType)));  /* v2.3.2659: the curve on a relative worker */
+  if (prog3Live(rpg)) return Math.max(0.50, 1 - prog3AspdCut(rpg, prog3CatFor(weaponType)));  /* v2.3.2670: the curve on a relative worker */
   /* v2.3.1343 (kid-simple reprice): -0.5%/pt, floor 0.50 — swing twice
      as fast at the 100-pt cap.  SERVER LOCKSTEP: the worker's
      monster_damage hit-cadence floor is sized to THIS cap (600 × 0.50
@@ -4996,7 +4996,7 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
      callers keep legacy math (they are legacy-path readouts). */
   var _p3 = (statValOrRpg && typeof statValOrRpg === 'object' && prog3Live(statValOrRpg)) ? statValOrRpg : null;
   var statTerm = _p3 ? prog3DmgTerm(_p3, weaponType) : statVal * 0.1667;
-  /* v2.3.2659: × the Power multiplier, pre-tier — the server roll's order
+  /* v2.3.2670: × the Power multiplier, pre-tier — the server roll's order
      (prog3PowerMult is 1 against a linear worker, which adds flat Power in
      prog3DmgTerm instead). */
   var base = (weaponEffBase(w.base, wpn) + statTerm) * (_p3 ? prog3PowerMult(_p3, prog3CatFor(weaponType)) : 1) * tierMult; // baseline-10: 0.8 ÷ 4.8
@@ -5269,7 +5269,7 @@ export function calcCombatDmgRange(rpg, wpn) {
      the readout mirrors the server roll it predicts. */
   var base = (weaponEffBase(w.base, wpn)
     + (prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667))
-    * (prog3Live(rpg) ? prog3PowerMult(rpg, prog3CatFor(wpn.type)) : 1) /* v2.3.2659: Power multiplies, pre-tier */
+    * (prog3Live(rpg) ? prog3PowerMult(rpg, prog3CatFor(wpn.type)) : 1) /* v2.3.2670: Power multiplies, pre-tier */
     * (wpn.tierMult || 1);
   /* v2.3.1207: Tempo folds into the period (see header); the staff's
      +300ms cast penalty is added AFTER the mult, unscaled, matching
@@ -5427,7 +5427,7 @@ export function calcSpecialDmg(weaponType, rpg, tierMult, wpn) {
   var mind = (rpg && rpg.mind) || 0;
   var _p3s = (rpg && prog3Live(rpg)) ? rpg : null;
   var _term = _p3s ? prog3DmgTerm(_p3s, weaponType) : mind * 0.1667;
-  var base = (weaponEffBase(w.base, wpn) + _term) * (_p3s ? prog3PowerMult(_p3s, prog3CatFor(weaponType)) : 1) * (tierMult || 1); // baseline-10: 0.8 ÷ 4.8; v2.3.2659: × Power
+  var base = (weaponEffBase(w.base, wpn) + _term) * (_p3s ? prog3PowerMult(_p3s, prog3CatFor(weaponType)) : 1) * (tierMult || 1); // baseline-10: 0.8 ÷ 4.8; v2.3.2670: × Power
   if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.15);
   if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);
@@ -5611,9 +5611,12 @@ export function recalcDerived(rpg) {
     /* v2.3.1733: × the milestone multiplier (Second Wind, char 10, +25%) —
        exact mirror of the server's _prog3Recompute line.  Without it the
        bar would read 100 while the worker spent from 125 and every echo
-       would snap it, which is the drift the mirror rule exists to stop. */
+       would snap it, which is the drift the mirror rule exists to stop.
+       v2.3.2662: the ladder is gone; legacyStaminaMult is 1 against a worker
+       advertising caps.milestonesRetired and x1.25 at 10+ against an older
+       one, because that is what each of them actually settles. */
     rpg.maxStamina = Math.floor((100 + prog3Pts(rpg, 'stam') * PROG3.BODY.stam.per)
-      * staminaMilestoneMult(p3lvl));
+      * legacyStaminaMult(p3lvl));
     /* v2.3.2512: max mana is a stat now, ADDED to the Magic-level derivation
        (exact mirror of _prog3Recompute).  Gated on the caps flag so an old
        worker's pure-derivation pool is still what this predicts — its echo

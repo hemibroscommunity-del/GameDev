@@ -166,7 +166,7 @@ is **inert, not deleted**:
 ## The 3-points economy (v2.3.2199)
 
 - Mint: `PROG3.POINTS_PER_LEVEL = 3` per trained level-up, stamped to
-  the earning lane (`poolBy`).  The char-5 milestone bonus point is
+  the earning lane (`poolBy`).  (v2.3.2662: the milestone ladder is removed; this point is no longer minted.) The char-5 milestone bonus point is
   unchanged.
 - **Retro grant** (migration v14 / `prog3GrantRetroPoints`): every
   stored character receives `+2 × (level − 1)` per skill, stamped per
@@ -392,7 +392,7 @@ Points screen.
   persistence) opt their fixtures out of prog3 with a tagged comment —
   that coverage guards the fail-open path until the cleanup PR deletes
   it.
-- **Superseded for the curve stats (v2.3.2659, shipped):** relative point
+- **Superseded for the curve stats (v2.3.2670, shipped):** relative point
   value — the ten stats that change a hit or a stride read `max × q/(q+k)`
   instead of the linear per-point values above (no design caps; HP, Stamina
   and Mana keep theirs), the seven per-hit ones fade against a monster above
@@ -466,7 +466,7 @@ allocated to any in that shared pool)."*
   client still sends on a body spend and takes the point off `shared`.
   A shared point cannot buy offense. The unchannelled remainder
   (`pool − Σ poolBy`, points that predate v2.3.2176) stays spendable
-  anywhere, and the milestone bonus points keep minting into it.
+  anywhere, and the milestone bonus points keep minting into it (v2.3.2662: no longer -- the milestone ladder is removed).
 - `prog3.spl` stamps the rate the blob was granted at (the `ppl`
   pattern) so the retro grant is idempotent; the sanitizer preserves
   it, bounds `shared` at 999 (legitimate max 891), and runs the grant as

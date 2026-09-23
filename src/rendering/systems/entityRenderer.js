@@ -9,7 +9,7 @@ import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
-import { isProg3RelEnabled, prog3Live, prog3SkillLevel, prog3ActiveCat } from '@/data/prog3.js'; /* v2.3.2659: the plate's yardstick */
+import { isProg3RelEnabled, prog3Live, prog3SkillLevel, prog3ActiveCat } from '@/data/prog3.js'; /* v2.3.2670: the plate's yardstick */
 /* v2.3.1183: status-id -> element lookup, built once at import time.
    _updateMonsters used to run Object.values(ELEMENTS).find(...) per
    status per monster per FRAME -- an array + closure allocation and a
@@ -8823,7 +8823,7 @@ export class EntityRenderer {
         const _plateShow = !_bandBar;
         /* The band is the monster's level RELATIVE TO YOURS (D16), so it moves
            when either side levels.  plateBandFor owns the four thresholds.
-           v2.3.2659: "yours" is the trained skill of the weapon in your hand
+           v2.3.2670: "yours" is the trained skill of the weapon in your hand
            on a relative worker — the level your points' EDGE is measured
            against (prog3.js) — so the colour tells you how much of your
            points still count: near = all of them, high = most, danger = few

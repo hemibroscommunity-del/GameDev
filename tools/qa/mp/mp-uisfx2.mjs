@@ -103,9 +103,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ids = await P.page.$$eval('[data-nav]', (els) => els.map((e) => e.getAttribute('data-nav')));
     await P.page.click('[data-nav="' + ids[ids.length - 1] + '"]', { force: true }).catch(() => {});
     await P.page.waitForTimeout(250);
+    /* v2.3.2658: the tab tap is NAVIGATION, so it is the click sound now --
+       owner: "Use the click sound for navigating through the menus (tapping
+       the dashboard buttons ...)".  It played ui-close only because a close
+       sound was the only UI sound the game had. */
+    const clicks = await calls(P, 'ui-click');
     const closes = await calls(P, 'ui-close');
-    rec.ok('TAPPING A DASHBOARD TAB plays the ui-close sound',
-      closes >= 1, { calls: closes, tabs: ids });
+    rec.ok('TAPPING A DASHBOARD TAB plays the ui-click sound',
+      clicks >= 1, { clicks, closes, tabs: ids });
+    rec.ok('...and NOT the close sound, which now means a window shutting',
+      closes === 0, { clicks, closes });
   }
 
   /* ═══ v2.3.2640: A REAL TAP ON A REAL EQUIP CONTROL ═══

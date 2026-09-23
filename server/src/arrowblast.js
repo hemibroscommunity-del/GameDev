@@ -150,7 +150,7 @@ export const arrowBlastMethods = {
       const mdx = m.x - x, mdy = m.y - y;
       if (mdx * mdx + mdy * mdy > r2) continue;
 
-      const rolled = this._computeAttackDamage(ps, 'ranged', true, { targetLevel: m.level });  /* v2.3.2659: the edge */
+      const rolled = this._computeAttackDamage(ps, 'ranged', true, { targetLevel: m.level });  /* v2.3.2670: the edge */
       const cap = this._maxDmgForAttacker(ps, true);
       let dmg = Math.max(1, Math.min(cap, Math.round(rolled.dmg)));
       /* Monster-side, after the attacker ceiling: the ceiling bounds what the

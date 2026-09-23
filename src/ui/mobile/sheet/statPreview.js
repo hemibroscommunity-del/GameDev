@@ -25,7 +25,7 @@
  */
 import { calcDisplayDps, getActiveWeapon, weaponForCat } from '../../../data/gameSystems.js';
 import { PROG3, PROG3_LEGACY_ATK, PROG3_LINEAR, prog3Pts, prog3AtkPts, prog3IsAtkStat, isProg3XEnabled,
-  isProg3RelEnabled, prog3StatAmount, prog3Curve /* v2.3.2659: the curve */ } from '../../../data/prog3.js';
+  isProg3RelEnabled, prog3StatAmount, prog3Curve /* v2.3.2670: the curve */ } from '../../../data/prog3.js';
 
 /* The weapon a DPS readout should speak for.
  *
@@ -56,14 +56,14 @@ function statTotal(pts, cfg, stat) {
      (prog3CritPct), and a window that said 6.0% under a cell that said 7.0%
      was the two screens disagreeing about one number — mp-statpeek caught
      it against the character's real chance. */
-  /* v2.3.2659: every CURRENT stat totals through prog3StatAmount, which knows
+  /* v2.3.2670: every CURRENT stat totals through prog3StatAmount, which knows
      both the curve (a relative worker) and the linear worker — so the window's
      now → after pair shows what the next point is really worth, first points
      biggest.  Only the retired crit pair (PROG3_LEGACY_ATK) reads its own per. */
   if (PROG3.ATK[stat] || PROG3.BODY[stat]) return prog3StatAmount(stat, pts);
   return pts * (cfg ? cfg.per : 0) + ((cfg && cfg.base) || 0);
 }
-/* v2.3.2659: Luck's crit-DAMAGE half, the bonus on the ×1.5 multiplier. */
+/* v2.3.2670: Luck's crit-DAMAGE half, the bonus on the ×1.5 multiplier. */
 function luckDmgBonus(pts) {
   return isProg3RelEnabled()
     ? PROG3.ATK.luck.dmgMax * prog3Curve(pts, PROG3.ATK.luck.k)
@@ -80,7 +80,7 @@ export function previewStatPoint(R, stat, cat) {
   if (!cfg) return null;
 
   const pts = isAtk ? prog3AtkPts(R, cat, stat) : prog3Pts(R, stat);
-  /* v2.3.2659: a linear worker still caps at the retired numbers. */
+  /* v2.3.2670: a linear worker still caps at the retired numbers. */
   const capOf = (!isProg3RelEnabled() && PROG3_LINEAR[stat]) ? PROG3_LINEAR[stat].cap : cfg.cap;
   const capped = pts >= capOf;
 
@@ -128,7 +128,7 @@ export function previewStatPoint(R, stat, cat) {
        "what will my crit damage BE" any more than it could for the chance —
        so the second half rides along as its own now/after pair, and the ℹ️
        window prints two rows for it.  Absent for every single-rate stat. */
-    statNow2: stat === 'luck' ? luckDmgBonus(pts) : null,       /* v2.3.2659: the curve */
+    statNow2: stat === 'luck' ? luckDmgBonus(pts) : null,       /* v2.3.2670: the curve */
     statAfter2: stat === 'luck' ? luckDmgBonus(pts + 1) : null,
     dpsNow, dpsAfter,
     dpsDelta: (typeof dpsNow === 'number' && typeof dpsAfter === 'number') ? (dpsAfter - dpsNow) : null,

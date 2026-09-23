@@ -168,7 +168,7 @@ export const PROG3 = {
    * nobody's earned points get stranded behind a rule that did not exist
    * when they earned them.
    */
-  /* ═══ v2.3.2659: RELATIVE POINT VALUE — every point felt, early ═══
+  /* ═══ v2.3.2670: RELATIVE POINT VALUE — every point felt, early ═══
    * Owner, 2026-09-22: "I want each point to matter during the early level
    * up phases of the game.  If a character is putting his first 5 points
    * into dodge I want them to experience a high rate of dodging RELATIVE to
@@ -213,9 +213,9 @@ export const PROG3 = {
    * (src/data/prog3.js) all read these rows through prog3Curve/prog3Edge.
    * mirror-audit §12 pins the rows' values AND key sets. */
   BODY: {
-    def:     { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2659: damage-taken cut, 5 pts 37.5 % → 20 pts 67 %
+    def:     { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2670: damage-taken cut, 5 pts 37.5 % → 20 pts 67 %
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt → +800
-    dodge:   { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2659: 5 pts 37.5 % → 20 pts 67 % (owner's "first 5 points into dodge")
+    dodge:   { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2670: 5 pts 37.5 % → 20 pts 67 % (owner's "first 5 points into dodge")
     stam:    { cap: 100, per: 3 },      // +3 max stamina/pt → +300
     /* ═══ v2.3.2512: ELEMENTAL RESISTANCE (owner ask, backlog D12) ═══
        The defensive half of the elemental system, which until now had none:
@@ -236,7 +236,7 @@ export const PROG3 = {
        swing is NOT typed today, so it is not resisted; the day one is, its
        call site passes `{ elemental: true }` to _applyDamage and it joins
        the list with no change here. */
-    eres:    { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2659: elemental-damage cut, same curve as def/dodge
+    eres:    { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2670: elemental-damage cut, same curve as def/dodge
     /* ═══ v2.3.2512: MAX MANA becomes a stat (owner ask) ═══
        It was never allocatable: maxMana was `100 + magicLvl × 2.5`, derived
        wholly from the Magic SKILL, so the only way to grow the pool was to
@@ -267,10 +267,10 @@ export const PROG3 = {
        bound by the same 1.30 regardless, so the headroom the bound was sized
        with is preserved rather than spent.  Same shape as dodge/eres
        (+0.4%/pt, cap 75 → +30%): one scale to learn.
-       v2.3.2659: the curve, max +35 % (5 pts +11.7 %, 75 pts +31 %); the
+       v2.3.2670: the curve, max +35 % (5 pts +11.7 %, 75 pts +31 %); the
        bound math above holds at the asymptote (150 × 1.35 × … ≈ 372 < 500),
        and _prog3MoveMult widens the bound by the same number. */
-    move:    { cap: 999, max: 0.35, k: 10 },  // v2.3.2659: move speed, 5 pts +11.7 %
+    move:    { cap: 999, max: 0.35, k: 10 },  // v2.3.2670: move speed, 5 pts +11.7 %
   },
   ATK: {
     /* ═══ v2.3.2592: RANGE — "max distance attacks can be effective" ═══
@@ -285,11 +285,11 @@ export const PROG3 = {
        client's claim and 675 × 1.5 = 1012 > 950 is clamped, not rejected.
        It replaces the legacy per-weapon Longshot channel (+1%/pt to ×2.0),
        which prog3 characters never had. */
-    /* v2.3.2659: the curve, max +55 % (5 pts +18 %, 100 pts +50 % — today's
+    /* v2.3.2670: the curve, max +55 % (5 pts +18 %, 100 pts +50 % — today's
        cap).  At the asymptote 675 × 1.55 = 1046 is still CLAMPED by PvP's
        950, and melee's 108 × 1.55 = 167 px stays far inside the 400 px PvE
        proximity gate, so neither bound moves. */
-    range:   { cap: 999, max: 0.55, k: 10 },  // v2.3.2659: reach, 5 pts +18 %, PER TYPE
+    range:   { cap: 999, max: 0.55, k: 10 },  // v2.3.2670: reach, 5 pts +18 %, PER TYPE
     /* ═══ v2.3.2210: EVERY CHARACTER STARTS AT 1% ═══
        Owner: "I want crit chance to start at a flat 1% per damage type by
        default for each character."
@@ -322,16 +322,16 @@ export const PROG3 = {
        survives gear scaling, and compounding is bounded by the ×2.5
        ceiling.  Roll + anticheat ceiling (combat.js) + client display all
        move in this commit (the v2.3.1451 lockstep rule). */
-    /* v2.3.2659: both halves on the curve — chance 1 % + 60 % × curve,
+    /* v2.3.2670: both halves on the curve — chance 1 % + 60 % × curve,
        multiplier 1.5 + 2.0 × curve (5 pts: 26 % / ×2.33).  `dmgMax` replaces
        `dmgPer`; the anticheat ceiling takes the multiplier at edge 1. */
-    luck:    { cap: 999, max: 0.60, dmgMax: 2.0, base: 0.01, k: 7, rel: true, lvlBound: 2 },  // v2.3.2659: crit, PER TYPE
-    aspd:    { cap: 999, max: 0.39, k: 10 },  // v2.3.2659: swing period cut, 5 pts −13 %, PER TYPE
+    luck:    { cap: 999, max: 0.60, dmgMax: 2.0, base: 0.01, k: 7, rel: true, lvlBound: 2 },  // v2.3.2670: crit, PER TYPE
+    aspd:    { cap: 999, max: 0.39, k: 10 },  // v2.3.2670: swing period cut, 5 pts −13 %, PER TYPE
     // aspd note: 600ms base × 0.65 × the 0.7 lag headroom = 273ms >
     // the 210ms server cadence floor (combat.js), so the existing
     // floor already covers a maxed prog3 build.  If the per-point
     // value ever grows past −50%, the floor must move in lockstep.
-    // v2.3.2659: the curve's asymptote is −39 % (600 × 0.61 × 0.7 =
+    // v2.3.2670: the curve's asymptote is −39 % (600 × 0.61 × 0.7 =
     // 256ms > 210ms), so the floor still covers it.
     /* v2.3.2199: FLAT DAMAGE — the stat players asked for ("levels don't
        feel strong" has a spend-side answer now).  +0.5/pt INSIDE the
@@ -343,13 +343,13 @@ export const PROG3 = {
        level's HP/mana/milestone side benefits.  Cap 75 (not 100): +37.5
        max, ~¼ of a maxed skill term.  ANTICHEAT LOCKSTEP: _maxWeaponDmg
        carries the same term, same commit. */
-    /* v2.3.2659: POWER IS A MULTIPLIER on (weapon base + skill term), still
+    /* v2.3.2670: POWER IS A MULTIPLIER on (weapon base + skill term), still
        pre-tierMult so gear scales it: × (1 + 1.0 × curve).  +0.5 flat was
        invisible early (5 pts +2.5 on a 15-damage hit) and a rounding error
        late; the multiplier is +42 % at 5 points and keeps its worth as the
        skill term grows.  ANTICHEAT LOCKSTEP: _maxWeaponDmg multiplies by the
        same _prog3PowerMult at edge 1, same commit. */
-    dmg:     { cap: 999, max: 1.0, k: 7, rel: true, lvlBound: 2 },  // v2.3.2659: Power, 5 pts +42 %, PER TYPE
+    dmg:     { cap: 999, max: 1.0, k: 7, rel: true, lvlBound: 2 },  // v2.3.2670: Power, 5 pts +42 %, PER TYPE
     /* ═══ v2.3.2512: ELEMENTAL POWER MOVES BODY → ATK (owner ask) ═══
        Was a single GLOBAL channel (v2.3.2199).  The owner's own split says
        attack power belongs to the combat type that produces it, and a staff
@@ -369,7 +369,7 @@ export const PROG3 = {
        copying them into all three types (which would triple the investment)
        or picking one (which would be guessing) — the v11 precedent, for the
        identical reason. */
-    elem:    { cap: 999, max: 120, k: 10, rel: true, lvlBound: 2 },  // v2.3.2659: elemental power, 5 pts 40, PER TYPE
+    elem:    { cap: 999, max: 120, k: 10, rel: true, lvlBound: 2 },  // v2.3.2670: elemental power, 5 pts 40, PER TYPE
     /* ═══ v2.3.2592: SPECIAL — "special attack damage" ═══
        +1% special-attack damage per point, +75% at the 75-pt cap, PER TYPE.
        Multiplies the per-weapon special multiplier (melee/bow 3×, each
@@ -380,7 +380,7 @@ export const PROG3 = {
        specialMult carries the same term off the LARGEST lane (the candidate
        loop does not say which weapon won; loose rejects nothing, tight
        rejects legit maxed specials), in the same commit. */
-    special: { cap: 999, max: 1.5, k: 7, rel: true, lvlBound: 2 },  // v2.3.2659: special damage, 5 pts +62.5 %, PER TYPE
+    special: { cap: 999, max: 1.5, k: 7, rel: true, lvlBound: 2 },  // v2.3.2670: special damage, 5 pts +62.5 %, PER TYPE
   },
   /* ═══ v2.3.1727: THE RETUNE PROGRESSION-REDESIGN #13 DEFERRED ═══
    * Owner, after judging: "The players who are level 13 do not feel
@@ -475,16 +475,18 @@ export const PROG3 = {
   SPECIAL_MANA_COST: 25,     // flat, was floor(maxMana/5)
   /* ═══ v2.3.1734: ELEMENT BURST (COMBAT-OVERHAUL-PLAN PR 6) ═══
    * Short-range elemental nova off your weapon's own element.  Gated on
-   * character level AND on the weapon carrying element1, which makes it
-   * Enchant-gated by construction (only enchanted weapons have one).
-   * Server validates all four gates — level, element, mana, cooldown —
-   * from ITS copy of the weapon; the client's button is a display gate. */
-  BURST_MIN_CHAR_LEVEL: 6,
+   * the weapon carrying element1, which makes it Enchant-gated by
+   * construction (only enchanted weapons have one).
+   * Server validates the gates — element, mana, cooldown — from ITS copy
+   * of the weapon; the client's button is a display gate.
+   * v2.3.2662: the character-level gate (BURST_MIN_CHAR_LEVEL: 6, the
+   * milestone ladder's rung 6) is gone with the ladder -- the owner never
+   * made it.  Burst is open from level 1. */
   BURST_MANA_COST: 25,
   BURST_CD_MS: 3000,
   BURST_RADIUS: 70,
   BURST_DMG_MULT: 1.5,
-  /* ═══ v2.3.2659: the RELATIVE half of a point (see the BODY/ATK header) ═══
+  /* ═══ v2.3.2670: the RELATIVE half of a point (see the BODY/ATK header) ═══
      EDGE_FADE: the share of a point's count lost per level a monster stands
      above you — 100 % at or below your level, 0 at +5 (the owner's first
      ask: "benefit nearly gone after 5 combat levels").
@@ -497,7 +499,7 @@ export const PROG3 = {
   FLOOR: 0.10,
 };
 
-/* ═══ v2.3.2659: THE CURVE AND THE EDGE — one definition each ═══
+/* ═══ v2.3.2670: THE CURVE AND THE EDGE — one definition each ═══
    Pure and exported so the class methods below, elemental.js (which is not
    a GameRoom method) and tools/relative-points-sim.mjs all state the
    arithmetic ONCE; the client mirror (src/data/prog3.js) carries the same
@@ -543,12 +545,9 @@ export function prog3StatValue(ps, stat, cat, monsterLevel) {
   return prog3Curve(pts * edge, sd.def.k);
 }
 
-/* v2.3.1733: the milestone ladder's stamina rung.  The TABLE lives in
-   abilities.js (with the ability kits it unlocks); this import is here
-   because _prog3Recompute below is the one place max stamina is computed
-   for a prog3 player, and the client mirror (recalcDerived) carries the
-   same multiplier.  Move one, move both. */
-import { staminaMilestoneMult, MILESTONES, blocksAt, blockSize } from './abilities.js';
+/* v2.3.2662: the milestone ladder (staminaMilestoneMult, MILESTONES) that
+   used to be imported here is gone -- see the tombstone in abilities.js. */
+import { blocksAt, blockSize } from './abilities.js';
 
 /* XP to go from trained level L to L+1.  The legacy weaponXpRequired
  * curve (280 × 1.16^L, gameSystems.js) reused verbatim (§3-A), shifted
@@ -625,9 +624,9 @@ export function prog3FromLegacy(src) {
      bonus-points pick, spendable anywhere) — it is not per-level minting
      and does not triple. */
   pool += clampLvl(src && src.defenseSkill && src.defenseSkill.level);
-  /* v2.3.1733: `ms` starts at 0 so a respecced veteran is paid every
-     milestone bonus point they have already earned, once, on their next
-     level-up or join (see _prog3GrantMilestones). */
+  /* v2.3.1733: `ms` = the milestone high-water.  v2.3.2662: the ladder is
+     gone and nothing pays against this any more; it is still stamped 0 so a
+     worker ROLLED BACK past v2.3.2662 finds the shape it expects. */
   return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool, poolBy, ms: 0, ppl: PROG3.POINTS_PER_LEVEL,
     shared, spl: PROG3.SHARED_POINTS_PER_LEVEL /* v2.3.2592 */ };
 }
@@ -643,7 +642,7 @@ export function prog3FromLegacy(src) {
  * Idempotent via the `ppl` rate stamp; pure and blob-shaped, shared by
  * migration v14 (stored blobs) AND the _sanitizeProg3 boundary heal
  * (fail-open blobs), the prog3SplitAtk pattern.  Max legitimate unspent
- * pool is now ~992 (3×297 + defense carry ≤100 + the milestone point) —
+ * pool is now ~992 (3×297 + defense carry ≤100 + the old milestone point) —
  * still under the sanitizer's 999 clamp, barely; that clamp is load-
  * bearing headroom now, don't repurpose it. */
 export function prog3GrantRetroPoints(p3) {
@@ -878,10 +877,12 @@ export const prog3Methods = {
       }
     }
     /* v2.3.1733: `ms` = the highest character level whose MILESTONE rewards
-       have already been paid (abilities.js _prog3GrantMilestones).  It has
-       to survive this sanitizer or every join would re-pay the bonus point
-       — a sanitizer that drops a field is how a one-off grant becomes an
-       infinite one.  Bounded by the char-level cap. */
+       have already been paid.  It has to survive this sanitizer or every join
+       would re-pay the bonus point — a sanitizer that drops a field is how a
+       one-off grant becomes an infinite one.  Bounded by the char-level cap.
+       v2.3.2662: the ladder is gone and THIS worker never pays against `ms`,
+       but it is kept for ROLLBACK: a worker rolled back to v2.3.2661 reads it,
+       and without it would re-pay every player the level-5 point. */
     const ms = Number(src.ms);
     if (Number.isFinite(ms) && ms > 0) out.ms = Math.min(PROG3.CHAR_LEVEL_CAP, Math.floor(ms));
     /* v2.3.2199 BOUNDARY HEAL (the prog3SplitAtk pattern above).  `ppl` is
@@ -954,7 +955,7 @@ export const prog3Methods = {
      bound) and the client mirror (src/data/prog3.js) all state the same
      arithmetic; keeping the server's copy behind four names is what lets a
      retune of one constant land everywhere it must (the v2.3.1451 rule). */
-  /* v2.3.2659: every one of these reads the CURVE (prog3StatValue) instead
+  /* v2.3.2670: every one of these reads the CURVE (prog3StatValue) instead
      of `pts × per`, and the ones that change a hit take the monster's level
      (`mlvl`) for the edge.  Omit it — the readouts, and the anticheat
      ceilings on purpose — and the edge is 1: the largest value any monster
@@ -968,7 +969,7 @@ export const prog3Methods = {
   _prog3SpecialMult(ps, cat, mlvl) {
     return 1 + PROG3.ATK.special.max * prog3StatValue(ps, 'special', cat, mlvl);
   },
-  /* v2.3.2659: Power is a multiplier on (weapon base + skill term), applied
+  /* v2.3.2670: Power is a multiplier on (weapon base + skill term), applied
      pre-tierMult by _computeAttackDamage and, at edge 1, by _maxWeaponDmg. */
   _prog3PowerMult(ps, cat, mlvl) {
     return 1 + PROG3.ATK.dmg.max * prog3StatValue(ps, 'dmg', cat, mlvl);
@@ -1014,15 +1015,13 @@ export const prog3Methods = {
     ps.level = this._prog3CharLevel(ps);
     ps.maxHp = Math.floor(100 + ps.level * PROG3.HP_PER_LEVEL
       + this._prog3Pts(ps, 'hp') * PROG3.BODY.hp.per);
-    /* v2.3.1733: the char-10 "Second Wind" milestone multiplies the whole
-       pool (+25%), AFTER the allocated stam points — a milestone that only
-       scaled the flat 100 would shrink in value the more you invested,
-       which is the opposite of what a level-10 reward should feel like.
-       Mirrored by recalcDerived's prog3 branch (src/data/gameSystems.js);
-       both read staminaMilestoneMult so the number has one home. */
+    /* v2.3.2662: no level multiplier.  v2.3.1733's char-10 "Second Wind"
+       milestone (x1.25 on the whole pool) went with the ladder -- the owner
+       never made it.  Mirrored by recalcDerived's prog3 branch
+       (src/data/gameSystems.js), which keeps the x1.25 only against an older
+       worker that does not advertise caps.milestonesRetired (rule 19). */
     const stamPts = this._prog3Pts(ps, 'stam');
-    ps.maxStamina = Math.floor((100 + stamPts * PROG3.BODY.stam.per)
-      * staminaMilestoneMult(ps.level));
+    ps.maxStamina = Math.floor(100 + stamPts * PROG3.BODY.stam.per);
     /* v2.3.2302: clamped, which it was NOT before -- the client mirror has
        always clamped, and the block ladder turns that latent asymmetry into a
        visible one (an out-of-range level would buy a block the client never
@@ -1079,7 +1078,7 @@ export const prog3Methods = {
   // Per-hit dodge chance (§4: replaces agility×0.0008 + the evasion
   // accumulator; cap 30% at the 75-pt stat cap).
   _prog3DodgePct(ps, mlvl) {
-    return PROG3.BODY.dodge.max * prog3StatValue(ps, 'dodge', null, mlvl);  /* v2.3.2659: the curve + edge */
+    return PROG3.BODY.dodge.max * prog3StatValue(ps, 'dodge', null, mlvl);  /* v2.3.2670: the curve + edge */
   },
 
   /* v2.3.2512: the ELEMENTAL-damage multiplier — the defensive half of the
@@ -1089,14 +1088,14 @@ export const prog3Methods = {
      means the fire trail and the slime burst; the closed list and the
      reasoning live on PROG3.BODY.eres. */
   _prog3ElemResistMult(ps, mlvl) {
-    return 1 - PROG3.BODY.eres.max * prog3StatValue(ps, 'eres', null, mlvl);  /* v2.3.2659: the curve + edge */
+    return 1 - PROG3.BODY.eres.max * prog3StatValue(ps, 'eres', null, mlvl);  /* v2.3.2670: the curve + edge */
   },
 
   // Incoming-damage multiplier (§4 decision 9-B: % reduction, the
   // game's first real mitigation stat; cap −40%).  Consumed in
   // _applyDamage AFTER the resist buff, floor 1 preserved there.
   _prog3DefMult(ps, mlvl) {
-    return 1 - PROG3.BODY.def.max * prog3StatValue(ps, 'def', null, mlvl);  /* v2.3.2659: the curve + edge */
+    return 1 - PROG3.BODY.def.max * prog3StatValue(ps, 'def', null, mlvl);  /* v2.3.2670: the curve + edge */
   },
 
   // ═══ Trained XP accrual (§9-A: server-authoritative) ═══
@@ -1149,12 +1148,8 @@ export const prog3Methods = {
       // the celebration moves server-side (§8): recompute + full
       // resource restore (the v2.3.1414 rule), persist, notify.
       this._prog3Recompute(ps);
-      /* v2.3.1733: ...and a character level-up is the ONLY moment a
-         milestone rung can be crossed, so this is where the ladder pays
-         out (bonus points at 5, the +25% stamina at 10).  It runs BEFORE
-         the full-restore below on purpose: crossing 10 raises maxStamina,
-         and the restore should hand over the NEW, bigger bar. */
-      const _msPts = this._prog3GrantMilestones(playerId, ps);
+      /* v2.3.2662: the milestone payout that ran here (v2.3.1733) is gone
+         with the ladder -- see the tombstone in abilities.js. */
       if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
@@ -1182,13 +1177,11 @@ export const prog3Methods = {
                  A copy, not the live object: prog3_allocated already sends
                  `{ ...p3.poolBy }` for the same reason. */
               poolBy: { ...(p3.poolBy || {}) },
-              /* v2.3.1733: what THIS level unlocked, if anything, so the
-                 level-up celebration can name it ("Shield Bash unlocked!")
-                 instead of the player discovering a new button by accident.
-                 Extra fields on an existing PRIVILEGED event — an old
-                 client ignores them, so no caps flag is needed. */
-              milestone: (MILESTONES[ps.level] && MILESTONES[ps.level].label) || undefined,
-              bonusPoints: _msPts || undefined,
+              /* v2.3.1733: the ability list rides the level-up.
+                 v2.3.2662: `milestone` and `bonusPoints` no longer do -- the
+                 ladder that filled them is gone.  An older client reading a
+                 missing field sees `undefined`, which it already handled as
+                 "this level crossed no rung". */
               abilities: this._abilityUnlockList(ps),
             },
           }));
@@ -1247,7 +1240,7 @@ export const prog3Methods = {
     const sharedN = Math.max(0, Math.floor(Number(p3.shared) || 0));
 
     const levelCap = ps.level || this._prog3CharLevel(ps);
-    /* v2.3.2659: the §6-C bound is per stat now — 2 × character level on the
+    /* v2.3.2670: the §6-C bound is per stat now — 2 × character level on the
        four damage stats (`lvlBound`), 1 × on Defense, Dodge, Resist and the
        rest (owner, 2026-09-22: "keep per level limit on those 3"). */
     const cap = Math.min(sd.def.cap, levelCap * (sd.def.lvlBound || 1));

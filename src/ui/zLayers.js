@@ -58,6 +58,12 @@
    top-right player card (~10-125), a strip owned by nothing else.
       40      InfoPanel
       50-60   popups (ItemDetailPopup 50, SpendPointConfirm 60)
+      70-71   CELEBRATIONS (v2.3.2661: added to this table, which they
+              predate).  70 the level-up burst (LevelUpBurst), 71 the
+              QUEST ACCEPTED / COMPLETED banner (BroTown, deliberately one
+              above the burst so a turn-in that levels you keeps a fixed
+              order).  (72 was the milestone card, v2.3.2661; removed with
+              the milestone ladder at v2.3.2662 and free again.)
       90      XP fly overlay
       95      chat bubbles (ChatBubble)
      100      minigames (Fishing/Cooking/WoodChop/Mining)

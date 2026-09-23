@@ -309,7 +309,7 @@ const psA = room.playerState.pa;
   const forgedSum = forged.poolBy.sword + forged.poolBy.bow + forged.poolBy.staff;
   check('the channel breakdown can never exceed the pool it splits',
     forgedSum <= forged.pool, { pool: forged.pool, poolBy: forged.poolBy });
-  /* v2.3.2659: Dodge has NO design cap any more (the curve heads for 90 %
+  /* v2.3.2670: Dodge has NO design cap any more (the curve heads for 90 %
      and never reaches it); the only limit is the per-level bound, which stays
      1 × character level on Dodge (owner: "keep per level limit on those 3"). */
   psA.prog3.sk.sword.level = 100; psA.prog3.sk.bow.level = 100; psA.prog3.sk.staff.level = 100;
@@ -317,7 +317,7 @@ const psA = room.playerState.pa;
   check('char level caps at 300', psA.level === 300, psA.level);
   p3.shared = 200; p3.alloc.dodge = 75;
   room._handleProg3Allocate(sess, { stat: 'dodge' });
-  check('v2.3.2659: the old 75-point Dodge cap is gone', p3.alloc.dodge === 76 && p3.shared === 199, p3.alloc.dodge);
+  check('v2.3.2670: the old 75-point Dodge cap is gone', p3.alloc.dodge === 76 && p3.shared === 199, p3.alloc.dodge);
   p3.alloc.dodge = 300;
   room._handleProg3Allocate(sess, { stat: 'dodge' });
   check('...and the per-level bound (300 at character 300) is what binds', p3.alloc.dodge === 300 && p3.shared === 199, p3.alloc.dodge);
@@ -329,7 +329,7 @@ const psA = room.playerState.pa;
   const p3 = psA.prog3;
   psA._zoneEntryGraceUntil = 0; psA._buffs = {};
   psA.maxHp = 1000; psA.hp = 1000;
-  /* v2.3.2659: Defense and Dodge read the CURVE, 0.9 × p/(p + 7) at edge 1.
+  /* v2.3.2670: Defense and Dodge read the CURVE, 0.9 × p/(p + 7) at edge 1.
      Literals, not the constants — a fixture that imports what it checks
      agrees with production by construction. */
   p3.alloc.dodge = 0; p3.alloc.def = 50;
@@ -455,7 +455,7 @@ const psA = room.playerState.pa;
   {
     const skLvl = psA.prog3.sk.sword.level;
     const effBase = room._weaponEffBase('sword', psA.weapon);
-    /* v2.3.2659: Power is a MULTIPLIER on (base + skill) — × (1 + 75/82) at
+    /* v2.3.2670: Power is a MULTIPLIER on (base + skill) — × (1 + 75/82) at
        edge 1 (no target passed) — and Luck's crit multiplier is on the
        curve: 1.5 + 2.0 × 100/107.  Literals, for the reason above.  On this
        fixture the multiplied crit now beats the anchor. */
@@ -475,7 +475,7 @@ const psA = room.playerState.pa;
     const bare = room._computeAttackDamage(psA, 'melee', false);
     psA.prog3.atk.sword.dmg = pts;
     Math.random = origRandom;
-    /* v2.3.2659: Power MULTIPLIES the pre-tier sum now: 75 points at edge 1
+    /* v2.3.2670: Power MULTIPLIES the pre-tier sum now: 75 points at edge 1
        is × (1 + 75/82), so the ratio of the two rolls is that factor. */
     const ratio = invested.dmg / bare.dmg;
     const want = 1 + 75 / 82;
@@ -497,7 +497,7 @@ const psA = room.playerState.pa;
     const specOn = roll(75, true), specOff = roll(0, true);
     const normOn = roll(75, false), normOff = roll(0, false);
     psA.prog3.atk.sword.special = 75;
-    const want = 1 + 1.5 * 75 / 82;   /* v2.3.2659: the curve, max +150 %, k 7 */
+    const want = 1 + 1.5 * 75 / 82;   /* v2.3.2670: the curve, max +150 %, k 7 */
     check('the special stat multiplies the SPECIAL roll by (1 + 1.5 × p/(p+7))',
       !specOn.isCrit && !specOff.isCrit && Math.abs(specOn.dmg / specOff.dmg - want) < 0.02,
       { on: specOn.dmg, off: specOff.dmg, ratio: specOn.dmg / specOff.dmg, want });
@@ -517,7 +517,7 @@ const psA = room.playerState.pa;
   });
   check('sanitize clamps sk levels to [1,100]', dirty.sk.sword.level === 100 && dirty.sk.bow.level === 1, dirty.sk);
   check('sanitize floors xp at 0', dirty.sk.sword.xp === 0, dirty.sk.sword);
-  /* v2.3.2659: a curve stat's `cap` is the 999 STORAGE bound (the curve has
+  /* v2.3.2670: a curve stat's `cap` is the 999 STORAGE bound (the curve has
      no design cap; the per-level bound binds at spend time), and a pool
      keeps its real cap — so HP clamps to 100 and Dodge / Luck to 999. */
   check('sanitize clamps body alloc to caps, drops unknown keys',
@@ -797,7 +797,7 @@ const psA = room.playerState.pa;
      reader that names no category falls back to 'sword'. */
   const p3ps = { prog3: { atk: { sword: { elem: 75 }, bow: { elem: 0 }, staff: { elem: 0 } } }, power: 500 };
   const legacyPs = { power: 40, agility: 15 };
-  /* v2.3.2659: on the curve — 120 × 75/(75+10) at edge 1 (no monster). */
+  /* v2.3.2670: on the curve — 120 × 75/(75+10) at edge 1 (no monster). */
   check('elemAttackStat: prog3 reads the WEAPON\'s elem on the curve, never the fossil T1 stat',
     Math.abs(elemAttackStat(p3ps, 'power', 'sword') - 120 * 75 / 85) < 1e-9,
     elemAttackStat(p3ps, 'power', 'sword'));
@@ -835,7 +835,7 @@ const psA = room.playerState.pa;
   /* ── the grid ── */
   check('elem is an ATK stat now, and no longer a BODY one',
     !!PROG3.ATK.elem && !PROG3.BODY.elem, { atk: PROG3.ATK.elem, body: PROG3.BODY.elem });
-  /* v2.3.2659: elem moved onto the curve with every other hit-changing stat:
+  /* v2.3.2670: elem moved onto the curve with every other hit-changing stat:
      max 120 power, k 10, the edge, no design cap (999 is storage), and the
      loosened per-level bound of the damage stats. */
   check('...on the curve: max 120, k 10, relative, 999 storage, 2 × level bound',
@@ -1089,7 +1089,7 @@ const psA = room.playerState.pa;
    stats' server bounds. */
 {
   const { prog3FoldLuck, prog3GrantSharedPoints } = await import('../src/prog3.js');
-  const { setProg3Enabled, setProg3SharedEnabled, setProg3RelEnabled, prog3MoveMult } = await import('../../src/data/prog3.js'); /* v2.3.2659: + the relative flag */
+  const { setProg3Enabled, setProg3SharedEnabled, setProg3RelEnabled, prog3MoveMult } = await import('../../src/data/prog3.js'); /* v2.3.2670: + the relative flag */
   const { SPEED, calcMoveSpeed } = await import('../../src/data/gameSystems.js');
 
   /* ── the grid ── */
@@ -1097,7 +1097,7 @@ const psA = room.playerState.pa;
     Object.keys(PROG3.ATK).sort().join(',') === 'aspd,dmg,elem,luck,range,special', Object.keys(PROG3.ATK));
   check('the seven shared stats are exactly def/dodge/eres/hp/mana/move/stam',
     Object.keys(PROG3.BODY).sort().join(',') === 'def,dodge,eres,hp,mana,move,stam', Object.keys(PROG3.BODY));
-  /* v2.3.2659: both halves on the curve — chance 1 % + 60 % × p/(p+7),
+  /* v2.3.2670: both halves on the curve — chance 1 % + 60 % × p/(p+7),
      multiplier 1.5 + 2.0 × p/(p+7). */
   check('luck carries BOTH halves of a crit: a chance curve, a damage curve and the 1% base',
     PROG3.ATK.luck.max === 0.60 && PROG3.ATK.luck.dmgMax === 2.0 && PROG3.ATK.luck.base === 0.01
@@ -1198,7 +1198,7 @@ const psA = room.playerState.pa;
 
   /* ── MOVE SPEED: the anti-teleport bound widens by the server's OWN copy of the stat ── */
   {
-    /* v2.3.2659: the curve, max +35 %, k 10 — no edge (movement is not
+    /* v2.3.2670: the curve, max +35 %, k 10 — no edge (movement is not
        evaluated against a monster). */
     check('move mult reads the allocation on the curve (75 pts → +35 % × 75/85)',
       Math.abs(room._prog3MoveMult({ prog3: { alloc: { move: 75 } } }) - (1 + 0.35 * 75 / 85)) < 1e-9
@@ -1236,7 +1236,7 @@ const psA = room.playerState.pa;
   }
 }
 
-// ── v2.3.2659: RELATIVE POINT VALUE — the owner's case, the bound, the edge ──
+// ── v2.3.2670: RELATIVE POINT VALUE — the owner's case, the bound, the edge ──
 {
   /* Owner, 2026-09-22: "If a character is putting his first 5 points into
      dodge I want them to experience a high rate of dodging RELATIVE to the
