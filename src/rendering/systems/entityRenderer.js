@@ -10396,7 +10396,7 @@ export class EntityRenderer {
                wire, so a peer gets the kick without the charge-up dip. */
             oWeaponSprite.rotation = (oWpnType === 'staff')
               ? staffCastPose(now, other._staffCastAt, other._staffCastAng, 0, 0, weaponMirror, undefined,
-                !!other._staffCastBig && other._staffCastBig === other._staffCastAt)   /* v2.3.2741: their one-bolt special kicks harder */
+                !!other._staffCastBig && other._staffCastBig === other._staffCastAt)   /* v2.3.2772: their one-bolt special kicks harder */
               : 0;
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
             _oBladeUp = oWpnType !== 'staff';   /* v2.3.2771: a staff stands head-up -- see the local path */
@@ -12346,7 +12346,7 @@ export class EntityRenderer {
               const _sc = staffCharge(S, now);
               weaponSprite.rotation = staffCastPose(now, S._staffCastAt, S._staffCastAng,
                 _sc.charge, _sc.rhythm, weaponMirror, undefined,
-                !!S._staffCastBig && S._staffCastBig === S._staffCastAt);   /* v2.3.2741: the one-bolt special kicks harder */
+                !!S._staffCastBig && S._staffCastBig === S._staffCastAt);   /* v2.3.2772: the one-bolt special kicks harder */
             }
             /* v2.3.1786 (owner: "invert the sword held angle so instead of
                running around with it facing downward it points upward").

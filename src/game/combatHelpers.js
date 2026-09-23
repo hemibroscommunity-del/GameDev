@@ -739,7 +739,7 @@ export function propImpactSound(propId, vol) {
    `elem` (the element, for the crash's heat ramp; absent -> the default) and
    `vdx`/`vdy` -- the bolt is DRAWN easing off the staff's crystal for its first
    40 px, and a crash inside that stretch is drawn where the orb was SEEN, the
-   real point plus that leftover offset (v2.3.2771).  v2.3.2741: `big` -- the
+   real point plus that leftover offset (v2.3.2771).  v2.3.2772: `big` -- the
    one-bolt staff special's crash: its rings run 1.6x wider and its outer one
    a little longer, and staffCastFx draws its burst bigger. */
 export function orbCrashFx(S, x, y, color, opts) {
