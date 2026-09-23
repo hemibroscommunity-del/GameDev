@@ -1,4 +1,4 @@
-# Wind Dunes depth: smaller and slower going north (v2.3.2745, v2.3.2756)
+# Wind Dunes depth: smaller and slower going north (v2.3.2745, v2.3.2775)
 
 The owner asked: "can the player, monsters, etc follow a similar perspective pattern the more north on the map they get, and also slow the movement speed the further north they get to emulate travel distance. I'm thinking of desert winds zone."
 
@@ -28,7 +28,7 @@ The Wind Dunes art (`sky_v5`) is already painted with a horizon: the rocks at th
   - Or run `window.__btDepth = true` in the console (`false` forces it off).
   - Step 2 changes this: the curve is now on whenever the worker says it measures in it (see "Turning it on" below).
 
-## Step 2 — the server measures in the curve too (v2.3.2756)
+## Step 2 — the server measures in the curve too (v2.3.2775)
 
 The worker's monster AI now multiplies every flat distance by the same curve, read at the monster's own feet. The helper is `_depthK(zoneId, y)` in `server/src/depth.js`, and the curve is a copy of the client's row in `server/src/data.js` (`ZONES.sky.depth`).
 
@@ -80,7 +80,7 @@ The worker's monster AI now multiplies every flat distance by the same curve, re
   - your drawn scale at the south and north edges;
   - every monster's scale against the curve;
   - a far plate staying at least about 12 CSS px;
-  - walking speed in the north against the south, read from the speed the movement step computed rather than the distance covered (v2.3.2756). Distance readings were fooled by a walk that crossed the zone exit, and by monsters blocking the row;
+  - walking speed in the north against the south, read from the speed the movement step computed rather than the distance covered (v2.3.2775). Distance readings were fooled by a walk that crossed the zone exit, and by monsters blocking the row;
   - the World View still being the only zone with `playerScale`.
 
 The screenshots are `tools/qa/mp/out/dunedepth-{south-on,north-on,north-off}.png`.

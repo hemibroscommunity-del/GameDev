@@ -1230,7 +1230,7 @@ export const combatMethods = {
        _tickMonsters.  The player still gets their moment of space; the
        monster is no longer permanently exiled by landing in its face. */
     if (attackerPs && payload.noKb !== true) {
-      /* v2.3.2756: x the zone's depth at the monster's feet -- a mummy drawn
+      /* v2.3.2775: x the zone's depth at the monster's feet -- a mummy drawn
          at 0.42 on Wind Dunes' north edge is shoved 0.42 as far, so the hit
          reads as the same shove on screen (1 on every other zone).  The
          debt cap below takes the same factor so the repay (index.js, also

@@ -60,7 +60,7 @@ import { arenaMethods } from './gladiator.js';
 // dungeon.js header for why that makes the whole combat stack free).
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
-import { depthMethods } from './depth.js'; /* v2.3.2756: the dunes' north-south depth, on the monster AI */
+import { depthMethods } from './depth.js'; /* v2.3.2775: the dunes' north-south depth, on the monster AI */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
@@ -2132,7 +2132,7 @@ export class GameRoom {
            45px default; now that the default is 72 it would be a narrowing,
            so take whichever is larger.  His 1.5 Y-scale still does the work
            the note above describes (the tall collision body). */
-        /* ═══ v2.3.2756: ...TIMES THE ZONE'S DEPTH AT THIS MONSTER'S FEET ═══
+        /* ═══ v2.3.2775: ...TIMES THE ZONE'S DEPTH AT THIS MONSTER'S FEET ═══
            Wind Dunes draws a monster at 0.42 of its size on the north edge
            (zones.js `depth`), so a reach measured in flat pixels hit you from
            well outside the body on screen.  _dk is 1 on every other zone and
@@ -2157,7 +2157,7 @@ export class GameRoom {
         const _archAggro = Object.prototype.hasOwnProperty.call(this.MONSTER_AGGRO_BY_ARCH, m.arch)
           ? this.MONSTER_AGGRO_BY_ARCH[m.arch]
           : this.MONSTER_AGGRO_RANGE;
-        /* v2.3.2756: a far monster notices you as far off as it LOOKS (x _dk).
+        /* v2.3.2775: a far monster notices you as far off as it LOOKS (x _dk).
            The 1200 sticky bump is not scaled: it means "whoever shot me,
            from anywhere on screen", and anywhere on screen is still that. */
         const effAggroRange = stickyAggroActive ? 1200 : _archAggro * _dk;
@@ -2185,7 +2185,7 @@ export class GameRoom {
                  Repaid only while CHASING and only toward the target: a
                  monster that loses aggro or wanders keeps its ground rather
                  than gliding, and the debt is dropped on aggro loss below. */
-              let step = m.spd * ccMoveMult * _dk;   /* v2.3.2756: slower where it is drawn smaller */
+              let step = m.spd * ccMoveMult * _dk;   /* v2.3.2775: slower where it is drawn smaller */
               if (m._kbDebt > 0) {
                 const repay = Math.min(m._kbDebt, this.KB_RECOVER_PX_PER_TICK * _dk) * ccMoveMult;
                 step += repay;
@@ -2222,7 +2222,7 @@ export class GameRoom {
           const _rangedBase = Object.prototype.hasOwnProperty.call(this.MONSTER_RANGED_BY_ARCH, m.arch)
             ? this.MONSTER_RANGED_BY_ARCH[m.arch]
             : null;
-          /* v2.3.2756: the throw band shrinks with the thrower (x _dk) -- the
+          /* v2.3.2775: the throw band shrinks with the thrower (x _dk) -- the
              same rule as the melee ring, so a far snowman still throws only
              from outside its own reach and inside its own notice. */
           const _rangedCfg = _rangedBase && _dk !== 1
@@ -2338,7 +2338,7 @@ export class GameRoom {
              monster shoved and then abandoned doesn't bank it and glide on
              its next engagement. */
           m._kbDebt = 0;
-          /* v2.3.2756: a wandering far monster strolls as far as it looks
+          /* v2.3.2775: a wandering far monster strolls as far as it looks
              (the step lengths and its speed x _dk), and its leash is read at
              its SPAWN point so the circle it is held to does not breathe as
              it walks north and south inside it. */
@@ -2444,7 +2444,7 @@ export class GameRoom {
             const dx = b.x - a.x, dy = b.y - a.y;
             const d2 = dx * dx + dy * dy;
             if (d2 >= MIN_SEP * MIN_SEP || d2 < 0.0001) continue;
-            /* v2.3.2756: two far monsters drawn at 0.42 stand as close as
+            /* v2.3.2775: two far monsters drawn at 0.42 stand as close as
                their bodies allow, not 22 flat px apart (1 off the dunes).
                Read only for a pair already inside the flat ring -- the
                depth factor never exceeds 1, so nothing outside it can be
@@ -5608,7 +5608,7 @@ Object.assign(GameRoom.prototype, arenaMethods);
 Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
-Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2756 */
+Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2775 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.

@@ -1,4 +1,4 @@
-/* ═══ v2.3.2756: THE DUNES' DEPTH, ON THE SERVER ═══
+/* ═══ v2.3.2775: THE DUNES' DEPTH, ON THE SERVER ═══
  *
  * Owner: "can the objects in the game, player, monsters, etc follow a similar
  * perspective changing pattern the more north on the map they get and also

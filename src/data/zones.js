@@ -300,7 +300,7 @@ export const ZONES = {
        unless the page asks for it (?depth=1), because step 2 -- the server
        scaling monster speed and reach by the same curve -- is not built, and
        until it is a far-off monster moves and hits at full size.
-       v2.3.2756, STEP 2: the worker now measures the monster AI with this
+       v2.3.2775, STEP 2: the worker now measures the monster AI with this
        same curve (server/src/depth.js -- its ZONES.sky.depth is a MIRROR of
        this row minus `preview`, held in lockstep by zonedepth.test) and
        says so in caps.zoneDepth.  `preview` now means "on when the worker
@@ -372,7 +372,7 @@ export const ZONES = {
  */
 /* v2.3.2745: is a preview curve switched on for this page?  `?depth=1` in the
    URL, or window.__btDepth = true from the console.  Read from the URL once.
-   v2.3.2756: ...or the WORKER claims it (caps.zoneDepth, set by wsClient on
+   v2.3.2775: ...or the WORKER claims it (caps.zoneDepth, set by wsClient on
    every state_sync through setZoneDepthLive).  Order of precedence, most
    explicit first: the console override, then the URL (`?depth=1` forces it
    on against an old worker, `?depth=0` forces it off for a before/after
@@ -434,7 +434,7 @@ export function zonePlayerScale(zoneId, x, y, TILE) {
    dimensions went untested through two shape changes.  Defining it for real is
    the fix; the scenario no longer swallows the miss. */
 if (typeof window !== 'undefined') window.__btZones = ZONES;
-/* v2.3.2756 dev probe (mp-dunedepth): the depth answer the game is using
+/* v2.3.2775 dev probe (mp-dunedepth): the depth answer the game is using
    right now, so a scenario can tell "the curve is off" from "the walk was
    blocked" instead of guessing from a distance. */
 if (typeof window !== 'undefined') window.__btZoneDepth = (zoneId, y) => zoneDepthScale(zoneId, y, 32);

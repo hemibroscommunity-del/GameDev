@@ -6,7 +6,7 @@
  * more north on the map they get and also slow the movement speed the further
  * north they get to emulate travel distance. I'm thinking of desert winds
  * zone."  Step 1 of 3, client only, behind the `?depth=1` preview switch.
- * v2.3.2756, step 2: the worker measures its monsters in the same curve and
+ * v2.3.2775, step 2: the worker measures its monsters in the same curve and
  * advertises caps.zoneDepth, which turns the drawing on with no override
  * (section 1b); `window.__btDepth` still forces it either way.
  *
@@ -41,7 +41,7 @@ const expected = (P, y) => P.page.evaluate((yy) => {
 const clearRow = (P, ty) => P.page.evaluate((row) => {
   const solid = window.__btIsSolid;
   if (!solid) return null;
-  /* v2.3.2756: ...and nowhere within 3 tiles of the way home (tile 9).  A
+  /* v2.3.2775: ...and nowhere within 3 tiles of the way home (tile 9).  A
      walk that crosses it LEAVES the zone, and the first cut of this read the
      World View's own vista slowdown as the dunes' -- a pass for the wrong
      reason, caught only when the probe reported currentZone. */
@@ -72,7 +72,7 @@ const place = (P, x, y) => P.page.evaluate(({ px, py }) => {
 
 /* Hold D and read the SPEED the movement step computed (|P.vx|, px per
    60fps frame), plus how far the bro actually got.
-   v2.3.2756: the speed, not the distance, is the verdict.  The first cut
+   v2.3.2775: the speed, not the distance, is the verdict.  The first cut
    measured distance and it lied twice: a straight hop to the south row
    crossed the zone's way home (tile 9, [1..2, 28]) and the "dunes" walks
    were really World View walks under ITS vista slowdown; and the dunes'
@@ -139,7 +139,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + 'the south — shipping this changes nothing until it is switched on',
     !!offNorth && !!base && Math.abs(offNorth.scale - base) < 0.001, { offNorth, offSouth });
 
-  /* ═══ 1b. v2.3.2756: NO OVERRIDE -- THE WORKER DECIDES ═══
+  /* ═══ 1b. v2.3.2775: NO OVERRIDE -- THE WORKER DECIDES ═══
      This worker measures its monsters in the curve (server depth.js) and
      says so in caps.zoneDepth, so with no console override and no ?depth=
      in the URL the curve draws for everyone.  A worker without the cap
