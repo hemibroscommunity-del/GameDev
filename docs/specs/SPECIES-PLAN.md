@@ -1,4 +1,4 @@
-# Playable species — what it costs, what shipped (v2.3.2643)
+# Playable species — what it costs, what shipped (v2.3.2666)
 
 Owner ask: *"What's the feasibility of adding new species to play as? I'm
 wanting to add alien and monkey"*, with a reference sprite for each.
@@ -28,7 +28,7 @@ The third, head-attached sprites, is where the first draft of this document was
 wrong: it assumed a trait-category registry that turned out to have no
 consumers. The ears are the real work. See Stage 2.
 
-## Stage 1 — SHIPPED in v2.3.2642
+## Stage 1 — SHIPPED in v2.3.2665
 
 Two `SKIN_CATALOG` rows in `src/rendering/playerSkins.js`, measured off the
 owner's own reference art, plus a `species: true` flag that keeps them out of
@@ -69,12 +69,12 @@ is the cheap half.
 
 ## Stage 2 — the face and the ears
 
-**v2.3.2643: this section was materially wrong when first written and is
+**v2.3.2666: this section was materially wrong when first written and is
 rewritten from measurement.** It claimed "the machinery mostly exists". Three
 of the four things it leaned on do not work, each rejected with a measurement
 rather than an opinion. The ear ANATOMY is real work, not wiring.
 
-### The owner's second reference (v2.3.2643)
+### The owner's second reference (v2.3.2666)
 
 Two 32x32 head portraits, far better spec than the full-body pair. Measured:
 
@@ -133,9 +133,9 @@ eyes are not a layer" — and an ear is the same kind of thing.
    disk resolutions. None of the rejected anchors agree with themselves that
    closely.
 
-### Stage 2a — the review harness (SHIPPED v2.3.2644)
+### Stage 2a — the review harness (SHIPPED v2.3.2667)
 
-The blocker at v2.3.2643 was coverage: the reviewed-iris rule fired on only 297
+The blocker at v2.3.2666 was coverage: the reviewed-iris rule fired on only 297
 of 823 frames, with gaps *inside* cycles, so ears would have strobed as the
 player ran. Two things fixed most of that, and a third stopped a real bug from
 shipping.
@@ -166,7 +166,7 @@ None of those three were findable by measurement. They came from rendering the
 proposal onto the real frames and looking, which is the whole argument for the
 harness.
 
-### Stage 2b — the plateau anchor, and a bug in Stage 2a (v2.3.2645)
+### Stage 2b — the plateau anchor, and a bug in Stage 2a (v2.3.2668)
 
 **Stage 2a shipped a systematic error.** The ear line was taken as
 `max(ry + rh/2)` over the iris rects — which is the **bottom** of the iris, not
@@ -208,9 +208,9 @@ A third guard came from the review: the head-width ceiling. A loose 110 let
 `bow-east` through with a **100px "head"** — the plateau swallowing the bow. The
 measured range is 41–54, with the dodge roll at 73, so the cap is now 78.
 
-### Stage 2c — every sheet carries its own space (v2.3.2646)
+### Stage 2c — every sheet carries its own space (v2.3.2669)
 
-v2.3.2645 excluded the bow and sword strips because they are not 256-square.
+v2.3.2668 excluded the bow and sword strips because they are not 256-square.
 That was right *given the file format*: the anchor file emitted a bare array per
 sheet, so a consumer had to assume a coordinate space — and a file mixing
 256-space with `sword-east`'s 402×246 frame places ears correctly almost
@@ -274,7 +274,7 @@ art's own default; the monkey's pale eyes are close to the existing `white`
 option (v2.3.1929). What a species axis adds is *presetting* them, not new
 rendering.
 
-### Stage 2d — the monkey piece and its per-frame fixes (v2.3.2647–2652)
+### Stage 2d — the monkey piece and its per-frame fixes (v2.3.2670–2652)
 
 The ears and muzzle ended up as drawn ART, not the painter above: the owner
 had ChatGPT draw them on the mannequin, `tools/clean-generated-sheet.mjs` and
@@ -301,7 +301,7 @@ pose-dir:a-b` draws frames big with a coordinate grid, for writing fixes.
 muzzle moves onto the mouth, ROTATES clockwise with the head (34-44°, measured
 per frame from the eye-to-mouth line against stand-east's) and the gritted
 teeth are covered; hit-south — same, the head rolls the other way, so the
-muzzle turns counter-clockwise to lie along the teeth line (40-55°) (v2.3.2653:
+muzzle turns counter-clockwise to lie along the teeth line (40-55°) (v2.3.2676:
 `rot` in the fix format, rotated at 4x and brought back down by majority colour
 so the outline stays one clean pixel); hit-southwest 0-1 — the bowed head's
 human ear covered, 2-5 and every jog-southwest frame — ears set to stand's
@@ -316,7 +316,7 @@ the NE far ear), which is what hides the human ear; fish — a crown-relative
 fur patch for the right ear's last 2px; mine 0-3, 12-13 — the pickaxe is
 drawn in front of the piece; every mine frame — the head tilts ~18° clockwise
 (measured from the eye line, 15-25° across the strip), so the muzzle does too
-(v2.3.2654); pickup 16-27 and fish — EYES (v2.3.2654): the art draws them as
+(v2.3.2677); pickup 16-27 and fish — EYES (v2.3.2677): the art draws them as
 solid dark blobs there and `eyeMask.json` has no entry for those frames, so no
 eye colour is ever painted and on fur they read as black holes; the overlay
 paints the eye's white stripe (left half of the eye, below the lid, in
@@ -339,7 +339,7 @@ its own reviewed job.
    `spriteBody.x + (x - 128) * s * m`, `spriteBody.y + (y - 128) * s`, scale
    `(s * m, s)` where `s = |bodyScale|` and `m` the mirror sign. No anchor,
    nudge or pose scale: it is already in body space, and mirrors with the body.
-3. **The fur layer (v2.3.2655) — this is what makes the monkey recolourable.**
+3. **The fur layer (v2.3.2678) — this is what makes the monkey recolourable.**
    Every fur pixel the pipeline painted (the old-ear patches, the teeth
    covers) is SKIN. Each facing / strip that has any also ships a `.fur.png`
    twin — `<dir>.fur.png`, `frames/<pose>-<dir>.fur.png` — same size, same
@@ -349,8 +349,8 @@ its own reviewed job.
    `_retint`, keyed by the player's skin) and draw it directly over the piece;
    for the `default` skin draw it as stored. `meta.fur` lists the files. The
    muzzle and ears are never recoloured — they stay the art's exact tan on
-   every skin, by design (owner, v2.3.2655; reaffirmed v2.3.2657 after
-   v2.3.2656 tried lightening them with the fur and was reverted: "I want that
+   every skin, by design (owner, v2.3.2678; reaffirmed v2.3.2680 after
+   v2.3.2679 tried lightening them with the fur and was reverted: "I want that
    and the muzzle to stay"). If a fur file is missing the piece
    still carries the patches in Monkey Brown underneath, so the failure is a
    brown smudge, not a hole.
@@ -360,7 +360,7 @@ its own reviewed job.
    builds are per skin, like the hair colour builds).
 5. So the species does NOT pin a skin tone: any `SKIN_CATALOG` entry works
    (`python3 tools/species_contact_sheet.py --id monkey --skin ebony` shows
-   any of them). Monkey Brown is the preset, not a requirement. v2.3.2657
+   any of them). Monkey Brown is the preset, not a requirement. v2.3.2680
    added ten fur colours to `SKIN_CATALOG` for it — purple, yellow, red,
    orange, green, blue, pink, gray, charcoal, snow — all `species: true` (never
    rolled by the dice) and all under 0.4% highlight clip.

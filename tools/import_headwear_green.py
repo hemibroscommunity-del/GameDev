@@ -191,7 +191,7 @@ DARK = 90            # per-channel ceiling for "near-black"
 # v2.3.2643: eyestyle joins it -- an eye style IS the face, so it is placed by
 # the head for the same reason a pair of glasses is.
 FACE_WORN = ('eyewear', 'eyestyle', 'species')
-# v2.3.2648: of the face-worn categories, the ones whose LANDMARK IS THE EYES.
+# v2.3.2671: of the face-worn categories, the ones whose LANDMARK IS THE EYES.
 #
 # `species` is the anatomy of a playable species -- a monkey's ears and muzzle
 # (docs/specs/SPECIES-PLAN.md). It is placed by the head exactly like eyewear,
@@ -211,10 +211,10 @@ FACE_WORN = ('eyewear', 'eyestyle', 'species')
 # So the eye check runs INVERTED for species: it reports the same coverage, and
 # warns when it is HIGH. A muzzle or ear over the eyes is a misplacement -- and
 # it is also what a leftover eye white looks like, since a generator asked to
-# paint the person green tends to forget the eyes (v2.3.2648 did; the cleanup
+# paint the person green tends to forget the eyes (v2.3.2671 did; the cleanup
 # pass merges them, and this is the net under it).
-EYE_SEATED = ('eyewear', 'eyestyle')   # v2.3.2657: eyestyle (main, v2.3.2643) seats on the eyes like a lens
-SPECIES_EYE_MAX = 0.25   # v2.3.2648: above this share of an eye covered, a species piece is misplaced
+EYE_SEATED = ('eyewear', 'eyestyle')   # v2.3.2681: eyestyle (main, v2.3.2643) seats on the eyes like a lens
+SPECIES_EYE_MAX = 0.25   # v2.3.2671: above this share of an eye covered, a species piece is misplaced
 EYE_MASK = 'src/rendering/eyeMask.json'
 
 
@@ -736,7 +736,7 @@ def main():
     # on the same mannequin and share _placeTrait, so the only differences are
     # which folder they land in and the category recorded in meta -- and hair is
     # the thing that gets CLIPPED by a hat, so it never sets clipsHair.
-    ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear', 'eyestyle', 'species'])   # v2.3.2361: + eyewear; v2.3.2643: + eyestyle; v2.3.2648: + species
+    ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear', 'eyestyle', 'species'])   # v2.3.2361: + eyewear; v2.3.2643: + eyestyle; v2.3.2671: + species
     ap.add_argument('--clear-lens', action='store_true',
                     help='ERASE the lens over the eyes, leaving the frame (v2.3.2366): a '
                          'sheet whose lenses came back as a transparency checkerboard')
@@ -1004,7 +1004,7 @@ def main():
         # v2.3.2365: seat the piece on the eyes before anything downstream reads
         # the placement -- the lens flattening below and the coverage report
         # further down both have to describe the frame as it will SHIP.
-        if args.category in EYE_SEATED:   # v2.3.2648: not every face-worn piece is a lens
+        if args.category in EYE_SEATED:   # v2.3.2671: not every face-worn piece is a lens
             (_sx, _sy), _cov0, _cov1, _one = seat_eyes(out, d, crown, anchor, nudges[d],
                                                        one_eye=_item_one_eye)
             if _item_one_eye is None and _cov0 is not None and len(_cov0) >= 2:
@@ -1088,7 +1088,7 @@ def main():
                     cov.append(float(box.mean()) if box.size else 0.0)
                 _rows = ', '.join(f'{c * 100:.0f}%' for c in cov)
                 if args.category not in EYE_SEATED:
-                    # v2.3.2648: inverted -- a species piece must leave the eyes clear.
+                    # v2.3.2671: inverted -- a species piece must leave the eyes clear.
                     _over = max(cov) if cov else 0.0
                     print(f'{"":<10} eyes: the piece covers {_rows} of {"each eye" if len(cov) > 1 else "the eye"} '
                           f'(whole eye, black top edge to pupil)'
@@ -1169,7 +1169,7 @@ def main():
                          'semi-transparent piece must not carry a painted-on eye behind '
                          'the real one.')
     if args.category == 'species':
-        meta['note'] += (' v2.3.2648: species anatomy (ears, muzzle). Face-worn for PLACEMENT, but '
+        meta['note'] += (' v2.3.2671: species anatomy (ears, muzzle). Face-worn for PLACEMENT, but '
                          'deliberately NOT seated onto the eyes the way eyewear is: a muzzle sits '
                          'below them and ears beside them, so maximising eye coverage would drag '
                          'the piece onto the face. The import checks the opposite instead -- that '

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.2651: every animation frame of a species trait on the bro, one sheet
+"""v2.3.2674: every animation frame of a species trait on the bro, one sheet
 per animation.
 
 The stand preview only proves one frame per facing.  A species piece rides the
@@ -25,7 +25,7 @@ to the species tone.  West-side facings are mirrors of these and are not drawn.
 NOT drawn: the pickup/fish head overlays (same head, redrawn above gear), iris
 colour, gear.
 
-v2.3.2652: frames that carry a baked per-frame fix (meta.frameOverlays, made
+v2.3.2675: frames that carry a baked per-frame fix (meta.frameOverlays, made
 by tools/species_frames.py) are drawn FROM the baked strip, so the sheet shows
 the shipped data, and are labelled with a "*".  --zoom renders chosen frames big
 with a 10px coordinate grid, for writing the fixes.

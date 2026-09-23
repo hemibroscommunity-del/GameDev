@@ -1,4 +1,4 @@
-/* ═══ v2.3.2644: WHICH EARS ARE VISIBLE FROM A GIVEN FACING ═══
+/* ═══ v2.3.2667: WHICH EARS ARE VISIBLE FROM A GIVEN FACING ═══
  *
  * Found by review, not by reasoning. tools/ears/ear-contact-sheet.mjs drew the
  * proposed ear on both sides of the head in every frame, and the PROFILE views

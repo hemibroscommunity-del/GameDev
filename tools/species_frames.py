@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.2652: per-frame fixes for a species piece -- the shared compositor plus
+"""v2.3.2675: per-frame fixes for a species piece -- the shared compositor plus
 the baker.
 
 WHY.  A species piece (public/sprites/traits/species/<id>/) is ONE image per
@@ -28,7 +28,7 @@ A fix is expressed against the normal placement, per frame (or frame range
         northeast 3-5) is the raised fist, not the head -- the parts are then
         placed against the real head.
     "eyes": [[x0, x1, y0, y1], ...]
-        v2.3.2654: paint the eye's white stripe (EYE_WHITE) over the body's
+        v2.3.2677: paint the eye's white stripe (EYE_WHITE) over the body's
         DARK pixels inside the box.  Standing, an eye is a black block with a
         white stripe down its left side (the region eyeMask.json recolours);
         on pickup 16-27 and every fish frame the art draws the eye as a solid
@@ -51,7 +51,7 @@ top-left pixel sits on BODY pixel (x, y) of that frame (256-space).  It is
 drawn with the body's own scale and mirror and replaces the piece for that
 frame -- no anchor, nudge or pose scale applies, it is already in body space.
 
-FUR (v2.3.2655).  Every fur pixel this pipeline paints -- the old-ear patches
+FUR (v2.3.2678).  Every fur pixel this pipeline paints -- the old-ear patches
 in the SW/NE art (tools/species-cover-ears.mjs) and the "fur" covers here -- is
 the species tone scaled by the head's luminance, i.e. it is SKIN, baked in one
 skin colour.  So that the piece follows whatever skin the player picks (the
@@ -492,7 +492,7 @@ def bake(sid):
         elif os.path.exists(path):
             os.remove(path)
     meta['fur'] = {'base': fur_base, 'frames': fur_frames,
-                   'note': 'v2.3.2655: <dir>.fur.png / frames/<key>.fur.png = the fur as BARE SKIN '
+                   'note': 'v2.3.2678: <dir>.fur.png / frames/<key>.fur.png = the fur as BARE SKIN '
                            '(default tan). Recolour like the body (playerSkins _isSkin/_retint) and '
                            'draw over the piece; the muzzle and ears are never recoloured.'}
     print(f'fur layers: {len(fur_base)} facings, {len(fur_frames)} strips')

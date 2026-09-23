@@ -1,4 +1,4 @@
-/* qa-skin-tone.mjs — v2.3.2642. Shoot the real client wearing each skin tone.
+/* qa-skin-tone.mjs — v2.3.2665. Shoot the real client wearing each skin tone.
  *
  * WHY.  A SKIN_CATALOG row is four numbers, and the only thing that can say
  * whether those numbers look right is the renderer: _retint scales the target
@@ -62,7 +62,7 @@ for (const tone of TONES) {
 
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(9000);
-  /* v2.3.2642: the title screen stands in front of the creator (CONTINUE /
+  /* v2.3.2665: the title screen stands in front of the creator (CONTINUE /
      CREATE CHARACTER), so a run that only waits shoots the splash and reports
      "no name field".  Click through by NAME rather than by nth-button, so a
      re-ordered title screen fails loudly here instead of silently shooting

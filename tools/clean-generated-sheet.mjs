@@ -1,4 +1,4 @@
-/* ═══ v2.3.2647: PUT A GENERATOR'S RETURN BACK ON THE GRID ═══
+/* ═══ v2.3.2670: PUT A GENERATOR'S RETURN BACK ON THE GRID ═══
  *
  * An image model asked to DRAW ON a mannequin sheet does not edit pixels; it
  * re-renders the canvas. Measured across three returns of the monkey-ears
@@ -55,7 +55,7 @@
  * Reads PNGs through tools/png.mjs, never a 2D canvas: TRAPS §53, a canvas
  * backing store is premultiplied and cannot round-trip these edges.
  *
- * ── --merge, for green-silhouette sheets (v2.3.2648) ──
+ * ── --merge, for green-silhouette sheets (v2.3.2671) ──
  * A sheet for import_headwear_green.py paints the PERSON flat #00FF00 and leaves
  * the piece in colour. Generators do this imperfectly in one specific way: they
  * repaint the fur and forget the eyes, so the eye WHITES come back white inside
@@ -70,7 +70,7 @@
  *   ... [--merge "#ffffff>#00ff00"]   (both colours must be in the palette)
  *   ... [--key "#00ff00"]             (a person key: see below)
  *
- * ── --key: A BLEND OF TWO KEYS IS NOT PIECE (v2.3.2648) ──
+ * ── --key: A BLEND OF TWO KEYS IS NOT PIECE (v2.3.2671) ──
  * Where the green person meets the magenta backdrop, the re-render anti-aliases
  * the edge into blends around rgb(128,128,128) -- and the palette colour nearest
  * to that grey is not green or magenta but the muzzle TAN (#957459, 46 away,

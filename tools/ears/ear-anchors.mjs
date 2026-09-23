@@ -1,13 +1,13 @@
-/* ═══ v2.3.2644: EAR ATTACHMENT FOR EVERY BODY FRAME, IN THREE TIERS ═══
+/* ═══ v2.3.2667: EAR ATTACHMENT FOR EVERY BODY FRAME, IN THREE TIERS ═══
  *
- * Stage 2 of the species work (docs/specs/SPECIES-PLAN.md). v2.3.2643 proved
+ * Stage 2 of the species work (docs/specs/SPECIES-PLAN.md). v2.3.2666 proved
  * the attachment RULE -- scan outward from a human-reviewed iris to the
  * silhouette edge -- and then refused to ship ears on it, because that rule
  * only fires on 297 of 823 frames and the gaps fall INSIDE animation cycles
  * (jog-east: 12 of 28). Ears that strobe as the player runs are worse than no
  * ears. TRAPS §96 records that, and the four anchors that do not work at all.
  *
- * (This file supersedes tools/ears/derive-ear-anchors.mjs, the v2.3.2643 probe
+ * (This file supersedes tools/ears/derive-ear-anchors.mjs, the v2.3.2666 probe
  * that established the rule. The four anchors that do NOT work -- the unwired
  * TRAIT_CATEGORIES registry, body-anchors.json's shoulder-swallowing head box,
  * _headBoxInFrame's 1px heads, and the combination of the last two -- are
@@ -31,7 +31,7 @@
  *            the crown. Two guards reject a "crown" that is a raised weapon.
  *   'interp' lerped between two 'eye' frames on the same strip, or carried
  *            from the nearest one at a strip's ends.
- *   'walk'   REMOVED at v2.3.2644 after review. The silhouette walker was
+ *   'walk'   REMOVED at v2.3.2667 after review. The silhouette walker was
  *            allowed on strips with no iris (north / northeast, where you are
  *            looking at the back of the head). The contact sheet showed it
  *            putting the ears ON THE SHOULDERS -- its "widest row" is the
@@ -52,7 +52,7 @@
  * only ever applies a list someone has looked at".
  *
  * ── REVIEW RESULTS ──
- * v2.3.2644, first pass:
+ * v2.3.2667, first pass:
  *   'eye'    seated correctly on stand-south / stand-southwest.
  *   'interp' CORRECT, and the finding that matters: across jog-east's 28 frames
  *            the interpolated ears are indistinguishable from the measured ones
@@ -63,7 +63,7 @@
  *   profile  The ear RULE was wrong on every east frame, independently of
  *            placement: both-sides puts one ear on the nose. See earSides.js.
  *
- * v2.3.2645, second pass -- and the first pass had SHIPPED A BUG:
+ * v2.3.2668, second pass -- and the first pass had SHIPPED A BUG:
  *   The ear line was max(ry + rh/2) over the iris rects, i.e. the BOTTOM of the
  *   iris. 4px low, onto the jaw, and the outward scan from there reached the
  *   SHOULDER: stand-south measured a 51px head where the art says 43. The
@@ -106,8 +106,8 @@ const EYE_SPACE = 256;
    through and the review sheet is where it showed. */
 const MIN_HEAD = 20, MAX_HEAD = 78;
 
-/* ═══ v2.3.2646: EVERY SHEET CARRIES THE SPACE ITS NUMBERS ARE IN ═══
-   v2.3.2645 excluded the bow and sword strips because they are not 256-square,
+/* ═══ v2.3.2669: EVERY SHEET CARRIES THE SPACE ITS NUMBERS ARE IN ═══
+   v2.3.2668 excluded the bow and sword strips because they are not 256-square,
    and the exclusion was right at the time for a reason worth keeping: this file
    USED to emit a bare array per sheet, so a consumer had to assume a space.
    Most sheets are some scale of 256x256; sword-east's frame is 402x246. A file
@@ -170,7 +170,7 @@ function frameOf(file) {
 }
 
 /* ── the head's SIDES: the width plateau below the crown ── */
-/* v2.3.2645. A skull widens from the crown, HOLDS near-constant through the
+/* v2.3.2668. A skull widens from the crown, HOLDS near-constant through the
    ear line, then the shoulders add a second, separate widening. The longest
    near-constant run below the crown is therefore the head, and its extremes
    are where the ears attach.
@@ -183,7 +183,7 @@ function frameOf(file) {
    Receipt: matches a hand read of the art (ASCII, 256-space) EXACTLY on
    stand-north (107..147) and within 1px on stand-south (106..149 vs 106..148).
    Crucially it needs NO iris, so it reaches the back-facing sheets that
-   v2.3.2644 had to leave bare. */
+   v2.3.2667 had to leave bare. */
 const HEAD_SEARCH = 32, PLATEAU_TOL = 2;
 function headPlateau(sh, f, irisY) {
   const { w, h, data, frameW, S, SE } = sh;
@@ -196,7 +196,7 @@ function headPlateau(sh, f, irisY) {
   let crown = -1;
   for (let y = 0; y < h && crown < 0; y++) if (span(y)) crown = y;
   if (crown < 0) return null;
-  /* v2.3.2645: where to look. From the CROWN normally -- but when this frame
+  /* v2.3.2668: where to look. From the CROWN normally -- but when this frame
      has a reviewed iris, look around the IRIS instead. On the bow poses the
      topmost pixel is the bow held up across the head, so a crown-anchored
      window starts above the weapon and the crown guard then throws the frame
@@ -235,7 +235,7 @@ function headPlateau(sh, f, irisY) {
 }
 
 /* ── the ear LINE: the iris centre, or a calibrated drop from the crown ── */
-/* v2.3.2645 BUG FIX, shipped wrong in v2.3.2644. This was max(ry + rh/2) over
+/* v2.3.2668 BUG FIX, shipped wrong in v2.3.2667. This was max(ry + rh/2) over
    the iris rects, which is the BOTTOM of the iris and not its middle: the mask
    stores an iris as a stack of 1-row rects, so stand-south's rows 53..59 gave
    60 instead of 56. Four pixels low put the ear on the jaw, and the outward

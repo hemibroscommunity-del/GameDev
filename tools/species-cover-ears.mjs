@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* v2.3.2650: paint the bro's own (human) ear out of a species trait.
+/* v2.3.2673: paint the bro's own (human) ear out of a species trait.
 
    WHY.  The monkey ears (public/sprites/traits/species/monkey/) are drawn to
    sit where a monkey's ear goes, which on SOUTHWEST and NORTHEAST is BESIDE the
@@ -24,7 +24,7 @@
    species tone -- i.e. the colour the head already is around the ear.
 
    CONSEQUENCE.  The patch is baked in ONE skin colour (--tone, default Monkey
-   Brown 85,56,23).  v2.3.2655: tools/species_frames.py bake then lifts every
+   Brown 85,56,23).  v2.3.2678: tools/species_frames.py bake then lifts every
    such pixel into a separate <dir>.fur.png of bare skin that the renderer
    recolours with the player's skin, so the monkey is NOT tied to this tone --
    re-run the bake after this tool.

@@ -3941,7 +3941,7 @@ is not; a percentage small enough to dismiss as anti-aliasing deserves a look at
 assertions in `mp-eyestyle.mjs` point 8; the two pins removed from
 `MAIN_MATERIAL`, with the reason left in their place.
 
-## 95. A colour measured off the reference art is not the catalog target (v2.3.2642)
+## 95. A colour measured off the reference art is not the catalog target (v2.3.2665)
 
 **Tempting:** the owner supplies reference art for a new skin tone, you
 measure its lit skin — the alien reference reads (207,250,250) at its p90 —
@@ -4002,7 +4002,7 @@ that leaving it in moved Alabaster's aggregate from 1.4% to 35% and drowned
 every real sheet. Excluded because it is not recoloured — not because the
 number was inconvenient.
 
-## 96. Three head anchors that look load-bearing and are not (v2.3.2643)
+## 96. Three head anchors that look load-bearing and are not (v2.3.2666)
 
 **Tempting:** you need to place something on the player's head per frame — an
 ear, a marking, anything anatomical — and the repo appears to offer three ready
@@ -4091,7 +4091,7 @@ that closing the gap actually needs.
 measured from — which is why the tooling here reads PNGs through `tools/png.mjs`
 and never a 2D canvas).
 
-## 97. Coverage that came from the tier you were about to delete (v2.3.2644)
+## 97. Coverage that came from the tier you were about to delete (v2.3.2667)
 
 **Tempting:** you have a per-frame placement in confidence tiers — some
 measured, some guessed — and the headline number looks good. 703 of 823 frames.
@@ -4121,7 +4121,7 @@ couple of pixels per animation frame and does not teleport, so across
 `jog-east`'s 28 frames the interpolated ears are indistinguishable from the
 measured ones. It is what turns "297 sparse frames" into "every sheet with any
 iris data is 100% covered", which is what removed the strobing that blocked
-v2.3.2643.
+v2.3.2666.
 
 **So confidence tiers are not a ranking you can trust by name.** One guess was
 worthless and one was as good as a measurement; which was which came from the
@@ -4145,7 +4145,7 @@ at"* — and every one of the three findings here was invisible to measurement.
 `node tools/ears/ear-contact-sheet.mjs --cell 224 --only stand-east` for the
 profile bug. §96 has the four anchors that never worked at all.
 
-## 98. A review can be too lenient to catch a 4-pixel bug (v2.3.2645)
+## 98. A review can be too lenient to catch a 4-pixel bug (v2.3.2668)
 
 **Tempting:** you built the review harness (§97), rendered the proposal onto
 every frame, looked at the sheets, found three real bugs and fixed them. The
@@ -4199,7 +4199,7 @@ read exactly on `stand-north` and within 1px on `stand-south`.
 `node tools/ears/ear-anchors.mjs --report`; §97 has the harness, §96 the five
 anchors that never worked.
 
-## 99. The frame is not square, and the count is only half the problem (v2.3.2645)
+## 99. The frame is not square, and the count is only half the problem (v2.3.2668)
 
 **Tempting:** you are walking a sprite strip offline and need the frame width.
 The sheets are 256×256 logical frames, and every strip in
@@ -4246,7 +4246,7 @@ sheets by name (40 of them) and reaches 547/548 on the ones it can speak about.
 The exclusion list is written out rather than pattern-matched so it is
 auditable. §98 has the 4px bias in the same data; §97 the harness.
 
-## 100. body-tops is the topmost pixel, and on a flinch that is a fist (v2.3.2652)
+## 100. body-tops is the topmost pixel, and on a flinch that is a fist (v2.3.2675)
 
 **Tempting:** `body-tops.json` is "the crown" -- every hat, hair, beard and
 eyewear piece is pinned to it -- so when a trait lands wrong on one frame, the

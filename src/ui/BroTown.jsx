@@ -2423,7 +2423,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.1494: only roll what is still offered.  Rolling a disabled recolor
        would look like a broken button -- the swatch changes, the character
        does not -- and would still persist and broadcast the dead pick. */
-    /* v2.3.2642: SKIN_ROLL_CATALOG, not SKIN_CATALOG -- the species base tones
+    /* v2.3.2665: SKIN_ROLL_CATALOG, not SKIN_CATALOG -- the species base tones
        are out of the random pool (see the note on that export).  The picker
        below still lists all of SKIN_CATALOG. */
     if (recolorEnabled('skin')) { var sk = rpick(SKIN_ROLL_CATALOG); setSkin(sk); setSkinSel(sk); }

@@ -1,4 +1,4 @@
-/* ═══ v2.3.2644: LOOK AT EVERY PROPOSED EAR BEFORE ANY EAR SHIPS ═══
+/* ═══ v2.3.2667: LOOK AT EVERY PROPOSED EAR BEFORE ANY EAR SHIPS ═══
  *
  * tools/ears/ear-anchors.mjs emits an attachment point per body frame in three
  * tiers ('eye' measured, 'interp' bounded by two measurements, 'walk' a
@@ -81,7 +81,7 @@ for (const base of Object.keys(A).sort()) {
   const file = path.join(DIR, `${base}.png`);
   if (!fs.existsSync(file)) continue;
   const { width: w, height: h, data } = decode(fs.readFileSync(file));
-  /* v2.3.2646: the record carries its own frame size, so the cell sampler works
+  /* v2.3.2669: the record carries its own frame size, so the cell sampler works
      in the sheet's native space instead of assuming 256-square. That assumption
      is what put the sword-east ear alone in empty black (TRAPS §99). */
   const rec = A[base];

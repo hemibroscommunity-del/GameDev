@@ -57,7 +57,7 @@ import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/
    what near-white skin looks like -- and the rest stay at or under it so their
    shading keeps its hue.
 
-   v2.3.2642, MEASURED CORRECTION to the paragraph above -- read it before
+   v2.3.2665, MEASURED CORRECTION to the paragraph above -- read it before
    trusting 231.  k=1.10 is the STAND sheets only.  Across all 82 sheets the
    brightest skin pixel is k=1.552 (jog-south-head, and jog-south/-legs,
    attack-south, fish-south, pickup-south and dodge-south all run >1.50), so a
@@ -75,7 +75,7 @@ export const SKIN_CATALOG = [
   { id: 'alabaster', name: 'Alabaster', swatch: '#f9ece2', target: [249, 236, 226] },
   { id: 'porcelain', name: 'Porcelain', swatch: '#f5ddcd', target: [245, 221, 205] },
   { id: 'ivory',     name: 'Ivory',     swatch: '#f2dabc', target: [242, 218, 188] },
-  /* ═══ v2.3.2642: THE SPECIES BASE TONES (alien, monkey) ═══
+  /* ═══ v2.3.2665: THE SPECIES BASE TONES (alien, monkey) ═══
      Owner asked what it would take to play as an alien and a monkey, and
      supplied a reference for each.  These two rows are the COLOUR half of that
      answer and nothing more: measured off the owner's own art, not invented.
@@ -114,7 +114,7 @@ export const SKIN_CATALOG = [
   { id: 'brown',     name: 'Brown',     swatch: '#9b6941', target: [155, 105, 65] },
   { id: 'deep',      name: 'Deep',      swatch: '#6e4b32', target: [112, 76, 50] },
   { id: 'ebony',     name: 'Ebony',     swatch: '#50382a', target: [82, 56, 39] },
-  /* v2.3.2642: MONKEY BROWN -- the owner reference's lit fur, (85,56,23).  It
+  /* v2.3.2665: MONKEY BROWN -- the owner reference's lit fur, (85,56,23).  It
      lands at luminance 60.9, a hair under ebony's 61.8, which is why it sits
      here and not beside 'brown': measured, not placed by eye, the way the
      header note above says this list is ordered.  Nearly ebony's level but
@@ -126,13 +126,13 @@ export const SKIN_CATALOG = [
      not here: one skin target cannot paint two tones, and the muzzle is a face-
      region layer.  docs/specs/SPECIES-PLAN.md costs it. */
   { id: 'monkeybrown', name: 'Monkey Brown', swatch: '#553817', target: [85, 56, 23], species: true },
-  /* v2.3.2657: FUR COLOURS (owner: "add other colors like purple and yellow"
+  /* v2.3.2680: FUR COLOURS (owner: "add other colors like purple and yellow"
      for the monkey).  The one group here NOT ordered by luminance -- it is a
      palette, not a skin ramp, so it sits after the ramp as a block.  Flagged
      `species: true` like the two base tones above, so the creator's dice never
      roll a bro purple; the ids are colours, not species, for the same
      permanence reason.  The monkey's muzzle and ears stay their fixed tan on
-     every one of these (owner, v2.3.2657): only the fur recolours.
+     every one of these (owner, v2.3.2680): only the fur recolours.
      Clip share on the highlight rim, `node tools/skin_clip.mjs r,g,b`, against
      Alabaster's shipping 11.81%: snow 0.33%, yellow/pink 0.08%, orange 0.07%,
      blue 0.04%, purple 0.02%, red 0.01%, green/gray/charcoal 0. */
@@ -148,7 +148,7 @@ export const SKIN_CATALOG = [
   { id: 'snow',     name: 'Snow',     swatch: '#e1e1e6', target: [225, 225, 230], species: true },
 ];
 
-/* v2.3.2642: what the creator's dice may roll.  `species: true` tones are
+/* v2.3.2665: what the creator's dice may roll.  `species: true` tones are
    DELIBERATE picks, not variety -- a 1-in-16 roll turning a bro cyan reads as a
    broken button, which is the same objection the v2.3.1494 note raises about
    rolling a disabled recolor and the v2.3.1927 one about rolling a colour the
