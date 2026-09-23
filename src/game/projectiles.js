@@ -113,7 +113,7 @@ var PROJ_BODY = {
   arrowSpecial: { back: 28.9, front: 33.9, half: 12.8 },  /* v2.3.2511: 314x128 @ 0.20 (was 0.17), anchor .460 */
   magicSpecial: { back: 42.6, front: 24.0, half: 19.2 },  /* 222x128 @ 0.30,     anchor .639 */
 };
-/* v2.3.2772: the one-bolt staff special is the basic bolt's art drawn
+/* v2.3.2783: the one-bolt staff special is the basic bolt's art drawn
    STAFF_BIG_BOLT_SCALE bigger (effectsRenderer), so its hit body is that bolt's
    body scaled the same -- the drawn bolt and the tested bolt stay one shape. */
 PROJ_BODY.magicBig = {
@@ -227,7 +227,7 @@ export function monsterProjRadius(m, S, opts) {
      small circle loses its buff: the cap only bites above _hitR 15.5.
      Effective radii after this, the capsule's 12.8 included -- slime 69 (was
      92), fire goblin 70, snowman 76, mummy 84, skeleton 94 (was 161). */
-  /* v2.3.2772: ...but not the one-bolt staff special (`big`).  Its reach is
+  /* v2.3.2783: ...but not the one-bolt staff special (`big`).  Its reach is
      its own drawn body -- PROJ_BODY.magicBig, 1.7x a basic bolt's, which the
      capsule test adds on top of this radius -- so it connects when the bolt
      you can see touches the monster, the rule every other bolt follows.  With
@@ -244,7 +244,7 @@ export function monsterProjRadius(m, S, opts) {
    rides with staff because it is the legacy "draw as orb" toggle every staff
    special carries (v2.3.1396). */
 function _projBody(a) {
-  if (a.big) return PROJ_BODY.magicBig;   /* v2.3.2772: before the special row -- it is drawn as a bolt */
+  if (a.big) return PROJ_BODY.magicBig;   /* v2.3.2783: before the special row -- it is drawn as a bolt */
   var staff = !!(a.isStaff || a._isStaffProj || a.ice);
   if (a.isSpecial) return staff ? PROJ_BODY.magicSpecial : PROJ_BODY.arrowSpecial;
   return staff ? PROJ_BODY.magicBolt : PROJ_BODY.arrow;
@@ -453,7 +453,7 @@ import {
   monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   BOW_RANGE_PX, /* v2.3.2448: the arrow's plant cap, shared with the sight stream */
   toDisplayDamage, /* v2.3.2520: the display damage scale */
-  STAFF_BIG_BOLT_SCALE, /* v2.3.2772: the one-bolt special's drawn + hit size */
+  STAFF_BIG_BOLT_SCALE, /* v2.3.2783: the one-bolt special's drawn + hit size */
 } from '@/data/index.js';
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
@@ -1220,7 +1220,7 @@ export function updateArrows(S, deps) {
                        so no caps gate is needed; old clients keep
                        sending special:false and keep the old lane. */
                     slot: isStaffProj ? 'staff' : 'ranged', special: !!a.isSpecial,
-                    /* v2.3.2772: the one-bolt staff special carries the three
+                    /* v2.3.2783: the one-bolt staff special carries the three
                        orbs it replaced -- the worker rolls that many special
                        hits and sums them into ONE monster_hit (combat.js).
                        Only ever > 1 on a bolt born under caps.bigOrb; left
@@ -1398,7 +1398,7 @@ export function updateArrows(S, deps) {
                      bolts "explode even if they hit props").  v2.3.2782: and the
                      staff cast's restyle of that crash -- pixel rings, and the
                      hot-to-cool burst in place of the 22 flat dots -- lives there
-                     too, so props get it as well.  v2.3.2772: the one-bolt special's
+                     too, so props get it as well.  v2.3.2783: the one-bolt special's
                      crash runs bigger (`big`). */
                   orbCrashFx(S, _orbFxX, _orbFxY, _orbColor, { elem: projElem || null, vdx: _vdx, vdy: _vdy, big: !!a.big });
                   /* Burn marks removed per user request — the orb-crash

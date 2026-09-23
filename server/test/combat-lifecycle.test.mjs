@@ -737,7 +737,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   Math.random = origRandom;
 }
 
-// ── 6i. v2.3.2772: ONE BIG STAFF BOLT, THREE ORBS' WORTH ──
+// ── 6i. v2.3.2783: ONE BIG STAFF BOLT, THREE ORBS' WORTH ──
 // Owner: "Instead of the current special attack with 3 orbs I want to see what
 // just one moderately larger bolt attack would look like."  The client fires
 // one bolt (behind caps.bigOrb) whose monster_damage carries `orbs: 3`; the

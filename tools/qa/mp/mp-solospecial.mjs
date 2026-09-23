@@ -63,7 +63,7 @@ const watchArrows = (P) => P.page.evaluate(() => {
       seen.add(a._soloId);
       window.__solo.seen.push({
         special: !!a.isSpecial, staff: !!a.isStaff,
-        big: !!a.big, orbs: a.orbs || 0,   /* v2.3.2772: the one-bolt special */
+        big: !!a.big, orbs: a.orbs || 0,   /* v2.3.2783: the one-bolt special */
         delay: a.launchDelayMs || 0, spd: a.speedPx || null,
         at: Date.now() - window.__solo.t0,
       });
@@ -163,7 +163,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      run with autoAttack off would report a clean special and prove nothing --
      it would be measuring the one state in which the bug cannot happen.  This
      is the state a player is in for the whole of a fight: thumb down. */
-  /* ═══ v2.3.2772: THE MAGIC SPECIAL IS ONE BIG BOLT, THE VOLLEY IS LEGACY ═══
+  /* ═══ v2.3.2783: THE MAGIC SPECIAL IS ONE BIG BOLT, THE VOLLEY IS LEGACY ═══
      Owner: "Instead of the current special attack with 3 orbs I want to see
      what just one moderately larger bolt attack would look like."  Against a
      worker that advertises caps.bigOrb (this one) the staff special is ONE
@@ -271,7 +271,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       r.nearest == null || (r.cadence != null && r.nearest >= r.cadence * 0.8), r);
   }
 
-  /* v2.3.2772: the big bolt carries the volley it replaced. */
+  /* v2.3.2783: the big bolt carries the volley it replaced. */
   const big = rows.find((r) => r.key === 'magic');
   if (big) {
     rec.ok('the magic special is ONE big bolt carrying three orbs (caps.bigOrb)',
@@ -356,7 +356,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const pressRows = [];
   for (const w of [
     { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 1 },
-    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 1 },   /* v2.3.2772: one big bolt */
+    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 1 },   /* v2.3.2783: one big bolt */
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
     await P.page.waitForTimeout(900);
@@ -475,7 +475,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const btnRows = [];
   for (const w of [
     { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 1 },
-    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 1 },   /* v2.3.2772: one big bolt */
+    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 1 },   /* v2.3.2783: one big bolt */
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
     await P.page.waitForTimeout(900);
