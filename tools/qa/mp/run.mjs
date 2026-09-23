@@ -306,6 +306,7 @@ const SCENARIOS = {
   questclaim: () => import('./mp-questclaim.mjs'), /* v2.3.1884: the claim opens when it becomes claimable under your feet */
   freshquest: () => import('./mp-freshquest.mjs'),
   deathshield: () => import('./mp-deathshield.mjs'),
+  dunedepth: () => import('./mp-dunedepth.mjs'), /* v2.3.2745: Wind Dunes perspective depth preview — smaller and slower going north */
   wvscale: () => import('./mp-wvscale.mjs'), /* v2.3.2287: your own art shrinks on the vista, and nothing changes off it */
   tapswing: () => import('./mp-tapswing.mjs'), /* v2.3.2285: tap a monster, walk there -- does the swing ever start? */
   deathgold: () => import('./mp-deathgold.mjs'), /* v2.3.2343: dying charges no gold, and the HUD agrees with the worker */

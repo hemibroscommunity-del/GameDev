@@ -3,7 +3,7 @@ import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
-import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
+import { zonePlayerScale, zoneDepthScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve; v2.3.2745: + the dunes' depth */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
 import { InfoPanel } from './panels/InfoPanel.jsx';
@@ -4717,6 +4717,10 @@ export var BroTown = function BroTown(_ref0) {
           var _vsc = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
           vistaSpeedMult = VISTA_SPEED_BOOST * Math.max(0.2, _vsc / _vnear);
         }
+        /* v2.3.2745: the dunes' north-south depth (zones.js `depth`): you slow
+           by the same ratio you shrink, so the horizon takes walking to. */
+        var _dsc = zoneDepthScale(S.currentZone, S.player.y, TILE);
+        if (_dsc != null) vistaSpeedMult = Math.max(0.2, _dsc / ((_vz.depth && _vz.depth.near) || 1));
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
         /* v2.3.1405: per-zone loading gate — while a zone's assets warm
            behind the loading overlay (zoneTransitions.js), freeze the
