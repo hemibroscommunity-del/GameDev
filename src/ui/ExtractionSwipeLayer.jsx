@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, gestureTargetCycles } from '@/game/gesturePose.js'; /* v2.3.2702 */
+import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, GESTURE_TARGET_MS, gestureTargetCycles } from '@/game/gesturePose.js'; /* v2.3.2702; GESTURE_TARGET_MS v2.3.2703 (the grade scales with it) */
 
 /* v2.3.229 / v2.4 — ExtractionSwipeLayer
  *
@@ -168,16 +168,18 @@ function cyclesFromGesture(skill, g) {
 }
 
 /* The reward grade.  It used to be how early in a 3.5s window a 3-rep meter
-   filled; with the meter now ~3s of work by design, it is how QUICKLY and how
-   STEADILY the player kept the motion going:
-     perfect  a quick pace held through (<= 3.6s of motion, <= 4.5s overall)
-              by a hand that looks human (the v2.3.229 entropy floor);
-     good     a steady pace (<= 7s overall);
+   filled; with the meter now a set amount of work by design, it is how
+   QUICKLY and how STEADILY the player kept the motion going -- measured
+   against GESTURE_TARGET_MS, so a retune of the meter carries the grade with
+   it (v2.3.2703: the owner doubled the target and these moved with it):
+     perfect  a quick pace held through (<= 1.2x the target of motion, 1.5x
+              overall) by a hand that looks human (the v2.3.229 entropy floor);
+     good     a steady pace (<= 2.33x overall);
      ok       anything slower. */
 function gradeGesture(activeMs, wallMs, ent) {
   const human = ent >= 0.04;            /* near-zero entropy => suspiciously straight */
-  if (human && activeMs <= 3600 && wallMs <= 4500) return 'perfect';
-  if (wallMs <= 7000) return 'good';
+  if (human && activeMs <= GESTURE_TARGET_MS * 1.2 && wallMs <= GESTURE_TARGET_MS * 1.5) return 'perfect';
+  if (wallMs <= GESTURE_TARGET_MS * 2.33) return 'good';
   return 'ok';
 }
 

@@ -90,6 +90,7 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
+import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2703: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -2370,8 +2371,18 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        (natural), but the halo-cut section beyond the plate reappears. */
     if (origBody) {
       try {
+        /* v2.3.2703: the rod is PINE now (toolRecolor.js -- the owner asked
+           for the magenta key to become a real material), so it can no longer
+           be found by colour: its shape was recorded from the key as the
+           sheet loaded, and this asks that.  The magenta test stays as the
+           fallback for a sheet that loaded before the mask existed. */
+        const _rodF = (poseInfo && poseInfo.pose === 'fish' && hasFishRodMask()) ? (poseInfo.frameIdx | 0) : null;
         const isRod = (o) => {
           const r = origBody[o], g = origBody[o + 1], b = origBody[o + 2], a = origBody[o + 3];
+          if (_rodF != null) {
+            const p = o >> 2;
+            return a > 60 && fishRodAt(_rodF, (p % 256) / 256, Math.floor(p / 256) / 256) === true;
+          }
           return a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
         };
         const rimg = ctx.getImageData(0, 0, 256, 256);
@@ -3471,8 +3482,16 @@ function _fishTopFrame(bodyTex) {
        test would work for one skin tone and quietly fail for the rest. */
     const GRIP_R = Math.max(4, Math.round(H * 0.055));
     const rodXs = [], rodYs = [];
+    /* v2.3.2703: by the recorded shape, not the colour -- see the same note in
+       _maskedBodyFrameInner.  The frame index is where this frame sits in its
+       strip (every body sheet lays frames out at i * width). */
+    const _rodF = hasFishRodMask() ? Math.round(bf.x / Math.max(1, bf.width)) : null;
     const isRodAt = (o) => {
       const r = d[o], g = d[o + 1], b = d[o + 2], a = d[o + 3];
+      if (_rodF != null) {
+        const p = o >> 2;
+        return a > 60 && fishRodAt(_rodF, (p % W) / W, Math.floor(p / W) / H) === true;
+      }
       return a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
     };
     for (let y = headBot + 1; y < H; y++) {

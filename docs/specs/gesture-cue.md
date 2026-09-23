@@ -64,6 +64,30 @@ with screenshots of each stage). Regression: `mp-harvest`, `mp-chopyield`,
 
 ---
 
+## v2.3.2703 — the owner's second pass
+
+> "Double the amount of time it takes to complete the gesture. Play sound
+> effect while specific actions occur like pickaxe hitting rocks, axe hitting
+> tree bark ... Also recolor the tools in the animations (they're still
+> magenta from the creation phase) so maybe copper for the axe, pine wood for
+> the pole, might be more I'm forgetting."
+
+* **Twice as long:** `GESTURE_TARGET_MS` 3000 → 6000, `GESTURE_FLOOR_MS`
+  2400 → 4800. The grade thresholds are now multiples of the target, so a
+  future retune carries them along.
+* **Sounds:** the pick's `mine-strike` already played on every blow. The
+  chop played the SWORD's hit — the owner's `axe-chop` sample had been wired
+  to the floating axe marker that v2.3.2245 deleted — and now plays the
+  hatchet (alternating its two strikes) on every bite. Fishing gained the two
+  clips that sat unregistered in `public/sfx/fishing`: `lure-drop` when the
+  cast goes out, `fish-on-hook` when the wind-up ends and the reel window
+  opens.
+* **Tools:** copper axe head on a pine haft, a pine rod, a bark log —
+  `src/rendering/toolRecolor.js`, applied at load after the skin pass (the
+  magenta is the pipeline's key and code still reads it: TRAPS §105).
+
+---
+
 ## v2.3.2384 (superseded above — kept for the history)
 
 

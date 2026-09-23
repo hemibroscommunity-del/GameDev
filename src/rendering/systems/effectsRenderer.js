@@ -290,6 +290,7 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
+import { recolorToolKeyCanvas, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2703: the magenta tool key becomes copper / pine / bark */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -2062,13 +2063,46 @@ export class EffectsRenderer {
     /* v2.3.1469: ?v= added — the strip itself changed (transparent eye
        holes filled white, owner report) and it had no cache-bust, so
        returning players would have kept the stale copy forever. */
-    const _chopBody = _fxLoad('/sprites/skills/chop-strip.webp?v=2.3.1469').then((tex) => {
-      const FW = 240, FH = 220;  // per-frame size of chop-strip.png
+    /* ═══ v2.3.2703: THE AXE IS COPPER ON A PINE HAFT, NOT THE MAGENTA KEY ═══
+       Owner: "recolor the tools in the animations (they're still magenta from
+       the creation phase) so maybe copper for the axe."  See toolRecolor.js.
+       Two copies come out of each strip, both cropped to the TWELVE frames
+       anything draws (source 12..23 -- CHOP_BASE/CHOP_COUNT, the peer row's
+       from/count):
+         _chopSrc.*     the key INTACT, what the local skin bake reads -- the
+                        skin classifier would take copper or pine for skin,
+                        so the axe is recoloured after it (_bakeChopStrips);
+         _chop*Frames   the key recoloured, what a PEER's lumberjack draws.
+       The full 24-frame image is then released (Assets.unload): the crops
+       replace it, so this costs no more memory than holding the whole strip
+       did (two 2.5MB crops for one 5MB image), and the half nothing ever
+       drew is no longer resident at all.  The arrays keep all 24 slots,
+       0..11 aliased to the first played frame, so every index the peer row
+       and the local fallback use is still valid. */
+    const _cropChop = (tex, url, key, arr) => {
+      const FW = 240, FH = 220, FROM = 12, COUNT = 12;
+      const img = tex.source && tex.source.resource;
       const n = Math.max(1, Math.round(tex.width / FW));
+      const crop = document.createElement('canvas');
+      crop.width = FW * COUNT; crop.height = FH;
+      const cctx = crop.getContext('2d');
+      cctx.imageSmoothingEnabled = false;
+      cctx.drawImage(img, FROM * FW, 0, FW * COUNT, FH, 0, 0, FW * COUNT, FH);
+      this._chopSrc[key] = crop;
+      const peer = document.createElement('canvas');
+      peer.width = crop.width; peer.height = crop.height;
+      peer.getContext('2d').drawImage(crop, 0, 0);
+      recolorToolKeyCanvas(peer, TOOL_SPECS.axe);
+      const source = Texture.from(peer).source;
+      source.scaleMode = 'linear';
       for (let i = 0; i < n; i++) {
-        this._chopFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+        arr.push(new Texture({ source, frame: new Rectangle(Math.max(0, i - FROM) * FW, 0, FW, FH) }));
       }
-      this._chopSrc.body = tex.source && tex.source.resource;   /* v2.3.2500 */
+      try { Assets.unload(url); } catch (e) { /* the crops are what draw now */ }
+    };
+    const _CHOP_URL = '/sprites/skills/chop-strip.webp?v=2.3.1469';
+    const _chopBody = _fxLoad(_CHOP_URL).then((tex) => {
+      _cropChop(tex, _CHOP_URL, 'body', this._chopFrames);   /* v2.3.2500 / v2.3.2703 */
     }).catch((err) => console.warn('[chop-strip] load failed', err));
     /* v2.3.1468: legs-erased lumberjack, swapped in while leg armour is
        equipped — the cook-strip-legless pattern (v2.3.1114).  The
@@ -2077,13 +2111,9 @@ export class EffectsRenderer {
        (v2.3.1466) read as "duplicating another body beneath the legs"
        (owner).  With the legless body the armor legs ARE the legs. */
     this._chopLeglessFrames = [];
-    const _chopLegless = _fxLoad('/sprites/skills/chop-strip-legless.webp?v=2.3.1469').then((tex) => {
-      const FW = 240, FH = 220;
-      const n = Math.max(1, Math.round(tex.width / FW));
-      for (let i = 0; i < n; i++) {
-        this._chopLeglessFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
-      }
-      this._chopSrc.legless = tex.source && tex.source.resource;   /* v2.3.2500 */
+    const _CHOP_LL_URL = '/sprites/skills/chop-strip-legless.webp?v=2.3.1469';
+    const _chopLegless = _fxLoad(_CHOP_LL_URL).then((tex) => {
+      _cropChop(tex, _CHOP_LL_URL, 'legless', this._chopLeglessFrames);   /* v2.3.2500 / v2.3.2703 */
     }).catch((err) => console.warn('[chop-strip-legless] load failed', err));
     /* v2.3.2500: the two arrays above stay RAW on purpose -- they are what a
        PEER's lumberjack is drawn from (the SPEC table in
@@ -2973,17 +3003,23 @@ export class EffectsRenderer {
     /* skinTarget() returns null for the 'default' pick -- see the cook's bake
        for why that cannot stand for a painted stand-in. */
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
-    const FW = 240, FH = 220, FROM = 12, COUNT = 12;
+    const FW = 240, FH = 220, COUNT = 12;
     for (const [key, img] of [['_chopSkinFrames', bodyImg], ['_chopLeglessSkinFrames', leglessImg]]) {
       /* Crop to the played frames FIRST, then recolour: the classifier labels
          connected blobs, and the cut lands on a frame boundary, so cropping
          changes no blob and costs half the canvas. */
+      /* v2.3.2703: _chopSrc holds the played frames ALREADY cropped (see the
+         loader), so this copies it whole -- recolorStandInSkin must not write
+         into the source a later skin change rebakes from. */
       const src = document.createElement('canvas');
       src.width = FW * COUNT; src.height = FH;
       const sctx = src.getContext('2d');
       sctx.imageSmoothingEnabled = false;
-      sctx.drawImage(img, FROM * FW, 0, FW * COUNT, FH, 0, 0, FW * COUNT, FH);
+      sctx.drawImage(img, 0, 0, FW * COUNT, FH, 0, 0, FW * COUNT, FH);
       const cv = recolorStandInSkin(src, skinT, FH);
+      /* v2.3.2703: the axe's copper and pine, AFTER the skin (the key is what
+         keeps the skin classifier off the axe). */
+      recolorToolKeyCanvas(cv, TOOL_SPECS.axe);
       const source = Texture.from(cv).source;
       source.scaleMode = 'linear';
       const arr = [];
@@ -3134,6 +3170,9 @@ export class EffectsRenderer {
          point of the fix for anyone who never opened the skin picker. */
       const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
       const cv = recolorStandInSkin(img, skinT, FIRE_FH, FIRE_SKIN_OPTS);
+      /* v2.3.2703: the log is pine bark, not the pipeline's magenta key --
+         after the skin pass, which the key keeps off it.  See toolRecolor.js. */
+      recolorToolKeyCanvas(cv, TOOL_SPECS.log);
       const source = Texture.from(cv).source;
       source.scaleMode = 'linear';
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
@@ -10703,11 +10742,25 @@ export class EffectsRenderer {
       const _chopL = (this._chopLastStatus === ex.status) ? this._chopLastFrame : -2;
       this._chopLastStatus = ex.status;
       if (_crossedFrame(_chopL, k, CHOP_STRIKE_K)) {
+        /* ═══ v2.3.2703: THE AXE SOUNDS LIKE AN AXE IN BARK ═══
+           Owner: "Play sound effect while specific actions occur like ...
+           axe hitting tree bark."  The owner's own hatchet sample (axe-chop,
+           two strikes at ~0.08s / ~1.10s, v2.3.1427) was wired to the
+           floating axe MARKER, and when v2.3.2245 deleted the marker nobody
+           moved the sample -- so every chop since has played the SWORD's hit
+           (sword-hit3, the v2.3.848 stand-in from before the owner's pack).
+           Alternated like the pick's mine-strike.
+           The 200ms lead stays for the wind-up's clock loop, where it was tuned
+           to land with the visible bite; at `ready` the frame IS the blow (the
+           power stroke ends on it), so the sample and the chips go at once. */
+        const _chopLead = ex.status === 'ready' ? 0 : 200;
+        this._axeSndAlt = !this._axeSndAlt;
+        const _axeOff = this._axeSndAlt ? 0.08 : 1.10;
         try {
           setTimeout(function () {
             var _a = (typeof window !== 'undefined') && window.BT_AUDIO;
-            if (_a && _a.play) _a.play('sword-hit3', { vol: 0.55 });
-          }, 200);
+            if (_a && _a.play) _a.play('axe-chop', { offset: _axeOff, duration: 0.5, vol: 0.6 });
+          }, _chopLead);
         } catch (e) {}
         /* v2.3.1445 (owner: "make wood chip effects constant"): chips fly
            off the trunk on EVERY swing of the chopper loop, scheduled
@@ -10716,7 +10769,7 @@ export class EffectsRenderer {
            anchor). */
         if (!S._fxBursts) S._fxBursts = [];
         if (S._fxBursts.length < 6) {
-          S._fxBursts.push({ kind: 'woodchips', t0: now + 200, x: node.x - chopSign * 12, y: node.y - 64, flip: chopSign < 0 ? 1 : -1 });
+          S._fxBursts.push({ kind: 'woodchips', t0: now + _chopLead, x: node.x - chopSign * 12, y: node.y - 64, flip: chopSign < 0 ? 1 : -1 });
         }
       }
       this._chopLastFrame = k;

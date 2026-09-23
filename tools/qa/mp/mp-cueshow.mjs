@@ -149,7 +149,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }).catch(() => {});
   await dismissTips();
 
-  for (const type of ['oreVein', 'tree', 'fishSpot']) {
+  /* ONE HARVEST, measured.  `rec` here is a buffer the driver below flushes --
+     see there for why an attempt can be thrown away. */
+  const harvestOnce = async (type, rec) => {
     const skill = SKILL[type];
     const node = await P.page.evaluate((t) => {
       const S = window._gameState.current;
@@ -157,7 +159,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return n ? { id: n.id, x: n.x, y: n.y } : null;
     }, type);
     rec.ok(`${skill}: a live ${type} in the zone (guard)`, !!node, { node });
-    if (!node) continue;
+    if (!node) return {};
 
     /* Stand there, with the field cleared so a monster cannot eat the tap
        (the tap hit-tests monsters first, v2.3.1448). */
@@ -191,7 +193,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${skill}: tapping the node starts the harvest (guard)`, started === skill, { started });
     if (started !== skill) {
       await P.page.evaluate(() => { const S = window._gameState.current; if (S._monstersStash) { S.monsters = S._monstersStash; S._monstersStash = null; } });
-      continue;
+      return {};
     }
 
     /* ── 1. THE WIND-UP ── */
@@ -218,7 +220,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const opened = await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null), (v) => v === 'ready',
       { timeout: 20000, label: 'the window opens' }).catch(() => null);
     rec.ok(`${skill}: the gesture window opens (guard)`, opened === 'ready', { opened });
-    if (opened !== 'ready') continue;
+    if (opened !== 'ready') return {};
     await P.page.waitForTimeout(500);
     const r1 = await state(P);
     await P.page.waitForTimeout(700);
@@ -243,7 +245,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const t0 = performance.now();
       const poses = new Set(), fx = new Set();
       let step = 0, lastProg = 0;
-      while (performance.now() - t0 < 30000) {
+      while (performance.now() - t0 < 60000) {
         let x = cx, y = cy;
         if (sk === 'fishing') {
           const a = step * (Math.PI / 6);   /* 12 moves a turn, clockwise */
@@ -285,9 +287,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       return 0;
     })();
-    rec.ok(`${skill}: the worker put the ${RES[type]}* resource in the bag`, got > 0, { got });
+    /* The worker's own reason when it pays nothing (admin.js lastStrike). */
+    const lastStrike = got > 0 ? null : await H.adminPlayer(wsPort, myId).then((a) => (a && (a.lastStrike || (a.live && a.live.lastStrike))) || null).catch(() => null);
+    rec.ok(`${skill}: the worker put the ${RES[type]}* resource in the bag`, got > 0, { got, lastStrike });
     await P.page.evaluate(() => { const S = window._gameState.current; if (S._monstersStash) { S.monsters = S._monstersStash; S._monstersStash = null; } });
     await P.page.waitForTimeout(800);
+    return { cancelled: !!(g && g.cancelled) };
+  };
+  /* THE DRIVER.  A harvest is ~6s of gesture now (v2.3.2703), which in this
+     harness is ~25s of wall clock, and Frost Ridge's snowmen are the WORKER's:
+     the client-side stash above cannot stop one walking up and knocking the
+     player off the node, which is a walk-away cancel.  That is the game working
+     as designed and not what this file measures, so a CANCELLED attempt (the
+     meter was not full when the harvest ended) is thrown away and the skill is
+     run once more.  Anything else -- a guard, a real failure -- is recorded. */
+  for (const type of ['oreVein', 'tree', 'fishSpot']) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const buf = [];
+      const res = await harvestOnce(type, { ok: (...args) => buf.push(args), skip: (...args) => rec.skip(...args) });
+      if (res && res.cancelled && attempt === 0) {
+        console.log(`    ${SKILL[type]}: a monster cancelled the harvest -- running it again`);
+        await P.page.evaluate(() => { const S = window._gameState.current; if (S._monstersStash) { S.monsters = S._monstersStash; S._monstersStash = null; } });
+        await P.page.waitForTimeout(2500);
+        continue;
+      }
+      for (const args of buf) rec.ok(...args);
+      break;
+    }
   }
   await P.ctx.close().catch(() => {});
 }

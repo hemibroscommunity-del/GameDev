@@ -53,7 +53,8 @@
  *    work at a quick pace (GESTURE_QUICK_CYCLE_MS a cycle), so a quick hand
  *    finishes in ~3s and a slow one takes longer -- with a floor
  *    (GESTURE_FLOOR_MS of actual motion), so no amount of scribbling finishes
- *    in under ~2.4s.
+ *    in under ~2.4s.  (v2.3.2703: DOUBLED at the owner's word -- ~6s, floor
+ *    ~4.8s.  The numbers below are the live ones.)
  */
 
 /* ═══ THE STROKES ═══
@@ -84,10 +85,12 @@ export const STROKE_SPAN_PX = 38;
    back, a flip up and down, one turn of the reel).  The meter wants
    GESTURE_TARGET_MS of work at this pace, i.e. TARGET / QUICK cycles. */
 export const GESTURE_QUICK_CYCLE_MS = { mining: 420, woodcutting: 420, fishing: 480, cooking: 500 };
-export const GESTURE_TARGET_MS = 3000;
+/* v2.3.2703 (owner, after playing it: "Double the amount of time it takes to
+   complete the gesture"): 3000 -> 6000, and the floor with it, 2400 -> 4800. */
+export const GESTURE_TARGET_MS = 6000;
 /* The floor: the meter can never run ahead of GESTURE_FLOOR_MS of real motion,
-   so a frantic (or synthetic) scribble still takes ~2.4s. */
-export const GESTURE_FLOOR_MS = 2400;
+   so a frantic (or synthetic) scribble still takes ~4.8s. */
+export const GESTURE_FLOOR_MS = 4800;
 /* The display chase's cap -- a smoother, not a speed limit (see 3. above). */
 export const GESTURE_MAX_CYCLE_MS = { mining: 240, woodcutting: 240, fishing: 220, cooking: 260 };
 

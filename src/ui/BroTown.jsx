@@ -5756,6 +5756,9 @@ export var BroTown = function BroTown(_ref0) {
             } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
               _ex.status = 'ready';
               try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
+              /* v2.3.2703 (owner: sounds for the specific actions): for fishing
+                 the window opening IS the bite -- a fish on the hook, now reel. */
+              if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
             }
             /* v2.3.1416 (owner: "all resources NOT have a time out window
                — it'll just stay on the phase where the resource can be

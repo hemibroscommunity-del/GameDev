@@ -4382,3 +4382,22 @@ run against the old build), and the pose must follow the hand at a small
 hysteresis (12px) separate from the meter's anti-jitter one (28px), or the
 swing sits still for most of each stroke and then jumps. **Receipt:**
 mp-gcue (73 assertions), mp-cueshow (34, all three skills in a real zone).
+
+## 105. "Just repaint the pink axe in the PNG" (v2.3.2703)
+
+**Tempting:** the axe, the fishing rod and the fire-lighter's log are flat
+magenta in `chop-strip`, `fish-south` and `firemaking-strip`; open the files
+and paint them copper / pine.
+
+**Wrong twice over.** The magenta is the animation pipeline's KEY
+(docs/skill-animation-pipeline.md, "Recolor mask"), and code still reads it:
+the armour bakes FIND the rod by it (entityRenderer `_maskedBodyFrameInner`
+restores the rod the gear erase cut, `_fishTopFrame` lifts rod + hand over the
+plate). And the skin recolour would take a pine rod or a copper axe for SKIN
+(same hue family) and repaint it the player's skin colour -- the key is what
+keeps the classifier off it. So the art keeps its key and the materials are
+applied at load, AFTER the skin pass, by `src/rendering/toolRecolor.js`; the
+rod's shape is recorded from the key first (`recordFishRodMask`) and the
+armour bakes ask that (`fishRodAt`) instead of looking for a colour. A new
+magenta-keyed sheet gets a `TOOL_SPECS` entry and one call at the end of its
+bake -- not a repaint.

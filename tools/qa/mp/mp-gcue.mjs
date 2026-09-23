@@ -20,7 +20,8 @@
  *   LIVE  real PointerEvents through the real listeners on window: the phase
  *         runs FORWARD with the strokes, the tool rides it, a resting thumb
  *         holds the pose, a second finger lifting cannot end the stroke, and
- *         the meter wants ~3s of quick work -- never under the 2.4s floor.
+ *         the meter wants ~6s of quick work -- never under the 4.8s floor
+ *         (v2.3.2703: doubled from 3s / 2.4s at the owner's word).
  *
  * The fixture is a cook on a campfire at the player's own feet in town
  * (mp-cooktap's route): no zone travel, no tools, no monsters.  The per-skill
@@ -30,7 +31,7 @@
 import * as H from './harness.mjs';
 import {
   gestureCueFace, gestureIdle, gesturePose01, GESTURE_STROKE, CUE_TOOL_SIZE,
-  GESTURE_TARGET_MS, GESTURE_QUICK_CYCLE_MS, gestureTargetCycles, GESTURE_CUE_SPRITES,
+  GESTURE_TARGET_MS, GESTURE_FLOOR_MS, GESTURE_QUICK_CYCLE_MS, gestureTargetCycles, GESTURE_CUE_SPRITES,
 } from '../../../src/game/gesturePose.js';
 
 const PHONE = { width: 390, height: 844 };
@@ -101,6 +102,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(600);
   await H.clickText(P, 'Light fire').catch(() => {});
+  /* v2.3.2703: a look at the fire-lighter mid-animation -- the log was the
+     pipeline's magenta key and is pine bark now (toolRecolor.js). */
+  await P.page.waitForTimeout(1200);
+  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/gcue-firemaking.png` }).catch(() => {});
   await H.waitFor(P, (S) => !!S._campfire, (v) => v === true,
     { timeout: 20000, label: 'the campfire appears' }).catch(() => {});
   /* Put the bag away.  The item card that lit the fire is a full-screen
@@ -262,7 +267,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       backwards === 0, { phases });
     const mid = flips[flips.length - 1];
     rec.ok('...and they count toward the meter', !!mid && mid.cycles > 0, mid);
-    rec.ok('...which a few flips come nowhere near filling (it wants ~3s of work)',
+    rec.ok('...which a few flips come nowhere near filling (it wants ~6s of work)',
       !!mid && mid.progress < 0.6, mid);
     const liveFace = await face(P);
     rec.ok('while the thumb is down the cue stops teaching: no comet, the tool solid',
@@ -320,7 +325,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const ex = S._extraction;
         if (ex && ex._gesture) lastEx = { cycles: ex._gesture.cycles, activeMs: ex._gesture.activeMs, progress: ex.progress, target: ex.repsTarget };
         if (!ex || ex.status !== 'ready') break;
-        if (performance.now() - t0 > 30000) break;
+        if (performance.now() - t0 > 60000) break;
       }
       ev('pointerup', cx, cy);
       return { ms: Math.round(performance.now() - t0), halves, done: !S._extraction, last: lastEx, smokeMax, fx: [...kinds] };
@@ -335,7 +340,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and grease popping with the flicks', quick.fx.includes('grease'), quick);
     rec.ok(`...after about the target's worth of flips (${cyclesDone} cycles vs ${target.toFixed(2)}), not a handful`,
       cyclesDone >= target - 1.5 && cyclesDone <= target + 1.5, { quick, target });
-    rec.ok('...and never before the floor of real motion (2.4s)', quick.ms >= 2300, quick);
+    rec.ok(`...and never before the floor of real motion (${GESTURE_FLOOR_MS}ms)`, quick.ms >= GESTURE_FLOOR_MS - 100, quick);
   }
 
   /* ═══ THE RULES, AS ARITHMETIC ═══
