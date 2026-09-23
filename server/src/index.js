@@ -60,6 +60,7 @@ import { arenaMethods } from './gladiator.js';
 // dungeon.js header for why that makes the whole combat stack free).
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
+import { depthMethods } from './depth.js'; /* v2.3.2756: the dunes' north-south depth, on the monster AI */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
@@ -2131,7 +2132,17 @@ export class GameRoom {
            45px default; now that the default is 72 it would be a narrowing,
            so take whichever is larger.  His 1.5 Y-scale still does the work
            the note above describes (the tall collision body). */
-        const _atkRange = m.arch === 'snowman' ? Math.max(70, ATTACK_RANGE) : ATTACK_RANGE;
+        /* ═══ v2.3.2756: ...TIMES THE ZONE'S DEPTH AT THIS MONSTER'S FEET ═══
+           Wind Dunes draws a monster at 0.42 of its size on the north edge
+           (zones.js `depth`), so a reach measured in flat pixels hit you from
+           well outside the body on screen.  _dk is 1 on every other zone and
+           the multiply is exact there.  The SAME factor scales the aggro
+           ring, the chase / wander / leash steps and the knockback repay
+           below, and _basicAtkGeom (telegraph.js) re-measures with it, so
+           the tick's stop ring and the wind-up's whiff ring stay paired --
+           the v2.3.2482 "all three move together" rule, per monster. */
+        const _dk = this._depthK(zoneId, m.y);
+        const _atkRange = (m.arch === 'snowman' ? Math.max(70, ATTACK_RANGE) : ATTACK_RANGE) * _dk;
         const _yScale = m.arch === 'snowman' ? 1.5 : Y_SCALE;
         // Effective aggro range -- bumps to 1200 px when the sticky
         // override is active, so a bow-snipe from anywhere on screen
@@ -2146,7 +2157,10 @@ export class GameRoom {
         const _archAggro = Object.prototype.hasOwnProperty.call(this.MONSTER_AGGRO_BY_ARCH, m.arch)
           ? this.MONSTER_AGGRO_BY_ARCH[m.arch]
           : this.MONSTER_AGGRO_RANGE;
-        const effAggroRange = stickyAggroActive ? 1200 : _archAggro;
+        /* v2.3.2756: a far monster notices you as far off as it LOOKS (x _dk).
+           The 1200 sticky bump is not scaled: it means "whoever shot me,
+           from anywhere on screen", and anywhere on screen is still that. */
+        const effAggroRange = stickyAggroActive ? 1200 : _archAggro * _dk;
         if (nearest && nearestDist < effAggroRange) {
           m.targetId = nearest.id;
           const dxA = nearest.x - m.x;
@@ -2171,9 +2185,9 @@ export class GameRoom {
                  Repaid only while CHASING and only toward the target: a
                  monster that loses aggro or wanders keeps its ground rather
                  than gliding, and the debt is dropped on aggro loss below. */
-              let step = m.spd * ccMoveMult;
+              let step = m.spd * ccMoveMult * _dk;   /* v2.3.2756: slower where it is drawn smaller */
               if (m._kbDebt > 0) {
-                const repay = Math.min(m._kbDebt, this.KB_RECOVER_PX_PER_TICK) * ccMoveMult;
+                const repay = Math.min(m._kbDebt, this.KB_RECOVER_PX_PER_TICK * _dk) * ccMoveMult;
                 step += repay;
                 m._kbDebt -= repay;
                 if (m._kbDebt < 0.01) m._kbDebt = 0;
@@ -2205,9 +2219,15 @@ export class GameRoom {
              Fires only in the band BETWEEN melee reach and the aggro
              radius, so closing to melee still switches it back to
              swinging and the two never compete for the same tick. */
-          const _rangedCfg = Object.prototype.hasOwnProperty.call(this.MONSTER_RANGED_BY_ARCH, m.arch)
+          const _rangedBase = Object.prototype.hasOwnProperty.call(this.MONSTER_RANGED_BY_ARCH, m.arch)
             ? this.MONSTER_RANGED_BY_ARCH[m.arch]
             : null;
+          /* v2.3.2756: the throw band shrinks with the thrower (x _dk) -- the
+             same rule as the melee ring, so a far snowman still throws only
+             from outside its own reach and inside its own notice. */
+          const _rangedCfg = _rangedBase && _dk !== 1
+            ? { ..._rangedBase, range: _rangedBase.range * _dk, minRange: _rangedBase.minRange * _dk }
+            : _rangedBase;
           if (_rangedCfg
               && !m._projImpactAt                      /* one ball in the air at a time */
               && attackDist > Math.max(_atkRange, _rangedCfg.minRange)
@@ -2318,12 +2338,17 @@ export class GameRoom {
              monster shoved and then abandoned doesn't bank it and glide on
              its next engagement. */
           m._kbDebt = 0;
-          const WANDER_STEP_MIN = 30;
-          const WANDER_STEP_MAX = 80;
+          /* v2.3.2756: a wandering far monster strolls as far as it looks
+             (the step lengths and its speed x _dk), and its leash is read at
+             its SPAWN point so the circle it is held to does not breathe as
+             it walks north and south inside it. */
+          const _dkS = this._depthK(zoneId, m.spawnY);
+          const WANDER_STEP_MIN = 30 * _dkS;
+          const WANDER_STEP_MAX = 80 * _dkS;
           const WANDER_REACH = 6;
           const WANDER_PAUSE_MIN_MS = 500;
           const WANDER_PAUSE_MAX_MS = 1500;
-          const WANDER_LEASH = 180; // hard pull-back if monster drifts far
+          const WANDER_LEASH = 180 * _dkS; // hard pull-back if monster drifts far
           const distSpawn = Math.sqrt(
             (m.spawnX - m.x) * (m.spawnX - m.x) +
             (m.spawnY - m.y) * (m.spawnY - m.y)
@@ -2335,8 +2360,8 @@ export class GameRoom {
             const dyL = m.spawnY - m.y;
             /* v2.3.2653: the walk home respects props as well. */
             const _mvL = slideMove(zoneId, m.x, m.y,
-              m.x + (dxL / distSpawn) * m.spd * ccMoveMult,
-              m.y + (dyL / distSpawn) * m.spd * ccMoveMult);
+              m.x + (dxL / distSpawn) * m.spd * ccMoveMult * _dk,
+              m.y + (dyL / distSpawn) * m.spd * ccMoveMult * _dk);
             m.x = _mvL.x;
             m.y = _mvL.y;
             this._markMonsterDirty(zoneId, m.id);
@@ -2376,8 +2401,8 @@ export class GameRoom {
             } else {
               /* v2.3.2653: ...and so does the idle wander. */
               const _mvW = slideMove(zoneId, m.x, m.y,
-                m.x + (dxw / distw) * m.spd * ccMoveMult,
-                m.y + (dyw / distw) * m.spd * ccMoveMult);
+                m.x + (dxw / distw) * m.spd * ccMoveMult * _dk,
+                m.y + (dyw / distw) * m.spd * ccMoveMult * _dk);
               m.x = _mvW.x;
               m.y = _mvW.y;
               this._markMonsterDirty(zoneId, m.id);
@@ -2419,8 +2444,15 @@ export class GameRoom {
             const dx = b.x - a.x, dy = b.y - a.y;
             const d2 = dx * dx + dy * dy;
             if (d2 >= MIN_SEP * MIN_SEP || d2 < 0.0001) continue;
+            /* v2.3.2756: two far monsters drawn at 0.42 stand as close as
+               their bodies allow, not 22 flat px apart (1 off the dunes).
+               Read only for a pair already inside the flat ring -- the
+               depth factor never exceeds 1, so nothing outside it can be
+               inside the scaled one. */
+            const _sep = MIN_SEP * this._depthK(zoneId, (a.y + b.y) / 2);
+            if (d2 >= _sep * _sep) continue;
             const d = Math.sqrt(d2);
-            const push = (MIN_SEP - d) / 2;
+            const push = (_sep - d) / 2;
             const ux = dx / d, uy = dy / d;
             a.x -= ux * push; a.y -= uy * push;
             b.x += ux * push; b.y += uy * push;
@@ -5576,6 +5608,7 @@ Object.assign(GameRoom.prototype, arenaMethods);
 Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
+Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2756 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.

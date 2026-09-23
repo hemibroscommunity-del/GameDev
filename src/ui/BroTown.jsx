@@ -4919,8 +4919,19 @@ export var BroTown = function BroTown(_ref0) {
             : _arch === 'fodder' ? 8
             : MONSTER_VARIANTS[_arch] ? 14
             : 32;
-          return { by: _m.y - _off, r: _r };
+          /* v2.3.2756: ...times the zone's depth at the monster's feet.  On
+             Wind Dunes' north edge a mummy is drawn at 0.42 and the worker
+             now measures its reach at 0.42 (server depth.js); a full-size
+             disc there would hold you outside that shorter reach -- the
+             v2.3.1409 snowman bug, rebuilt by perspective.  Scaled with the
+             player's own half-size below (_hsK), every distance in this
+             contact is the one the flat zones have, just smaller. */
+          var _mk = zoneDepthScale(S.currentZone, _m.y, TILE);
+          if (_mk == null) _mk = 1;
+          return { by: _m.y - _off * _mk, r: _r * _mk };
         };
+        var _hsK = zoneDepthScale(S.currentZone, P.y, TILE);   /* v2.3.2756 */
+        var hsM = hs * (_hsK == null ? 1 : _hsK);
         var _monBlock = function (curX, curY, px, py) {
           var ms = S.monsters;
           if (!ms) return false;
@@ -4935,7 +4946,7 @@ export var BroTown = function BroTown(_ref0) {
                worker charges the touch. */
             if (isIntangible(_m)) continue;
             var _b = _monBody(_m);
-            var _rr = _b.r + hs;
+            var _rr = _b.r + hsM;
             var _ndx = px - _m.x, _ndy = py - _b.by;
             var _nd2 = _ndx * _ndx + _ndy * _ndy;
             if (_nd2 < _rr * _rr) {
@@ -4997,7 +5008,7 @@ export var BroTown = function BroTown(_ref0) {
             var _pb = _monBody(_pm);
             var _pdx = P.x - _pm.x, _pdy = P.y - _pb.by;
             var _pd2 = _pdx * _pdx + _pdy * _pdy;
-            var _prr = _pb.r + hs;
+            var _prr = _pb.r + hsM;
             if (_pd2 > 0.01 && _pd2 < _prr * _prr) {
               var _pd = Math.sqrt(_pd2);
               var _pushX = P.x + (_pdx / _pd) * 2;

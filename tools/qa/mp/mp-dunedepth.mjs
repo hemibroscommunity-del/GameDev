@@ -6,6 +6,9 @@
  * more north on the map they get and also slow the movement speed the further
  * north they get to emulate travel distance. I'm thinking of desert winds
  * zone."  Step 1 of 3, client only, behind the `?depth=1` preview switch.
+ * v2.3.2756, step 2: the worker measures its monsters in the same curve and
+ * advertises caps.zoneDepth, which turns the drawing on with no override
+ * (section 1b); `window.__btDepth` still forces it either way.
  *
  * WHAT THIS ASKS THE GAME:
  *   - with the switch OFF, nothing in the dunes changes (scale exactly 1), so
@@ -38,9 +41,20 @@ const expected = (P, y) => P.page.evaluate((yy) => {
 const clearRow = (P, ty) => P.page.evaluate((row) => {
   const solid = window.__btIsSolid;
   if (!solid) return null;
+  /* v2.3.2756: ...and nowhere within 3 tiles of the way home (tile 9).  A
+     walk that crosses it LEAVES the zone, and the first cut of this read the
+     World View's own vista slowdown as the dunes' -- a pass for the wrong
+     reason, caught only when the probe reported currentZone. */
+  const map = (window._gameState.current || {}).map || [];
+  const nearMarker = (tx, ty) => {
+    for (let y = ty - 3; y <= ty + 3; y++) for (let x = tx - 3; x <= tx + 3; x++) {
+      if (map[y] && map[y][x] === 9) return true;
+    }
+    return false;
+  };
   let best = null, start = null;
   for (let tx = 1; tx <= 31; tx++) {
-    const open = tx < 31 && !solid(tx * 32 + 16, row * 32 + 16)
+    const open = tx < 31 && !nearMarker(tx, row) && !solid(tx * 32 + 16, row * 32 + 16)
       && !solid(tx * 32 + 16, row * 32 + 4) && !solid(tx * 32 + 16, row * 32 + 28);
     if (open && start == null) start = tx;
     if (!open && start != null) {
@@ -56,17 +70,32 @@ const place = (P, x, y) => P.page.evaluate(({ px, py }) => {
   S.player.x = px; S.player.y = py; S.player.vx = 0; S.player.vy = 0;
 }, { px: x, py: y });
 
-/* Hold D for `ms` and report how far east the bro got. */
+/* Hold D and read the SPEED the movement step computed (|P.vx|, px per
+   60fps frame), plus how far the bro actually got.
+   v2.3.2756: the speed, not the distance, is the verdict.  The first cut
+   measured distance and it lied twice: a straight hop to the south row
+   crossed the zone's way home (tile 9, [1..2, 28]) and the "dunes" walks
+   were really World View walks under ITS vista slowdown; and the dunes'
+   monsters wander into the row, where a body blocks the walk.  P.vx is set
+   from finalSpd before collision runs, so a monster in the way cannot move
+   it, and the zone is recorded so a walk that left the dunes cannot pass. */
 const walkEast = async (P, x, y, ms) => {
-  await place(P, x, y);
+  await H.hopTo(P, 16 * TILE + 16, y < 16 * TILE ? 8 * TILE : 24 * TILE);   /* via the middle, clear of the marker */
+  await H.hopTo(P, x, y);
   await P.page.waitForTimeout(500);
   const x0 = await H.readState(P, (S) => S.player.x);
   await P.page.keyboard.down('d');
-  await P.page.waitForTimeout(ms);
+  await P.page.waitForTimeout(Math.round(ms / 2));
+  const mid = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { vx: Math.abs(S.player.vx || 0), y: S.player.y, zone: S.currentZone,
+      k: window.__btZoneDepth ? window.__btZoneDepth(S.currentZone, S.player.y) : null };
+  });
+  await P.page.waitForTimeout(ms - Math.round(ms / 2));
   await P.page.keyboard.up('d');
   await P.page.waitForTimeout(150);
-  const s = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-  return { dx: s.x - x0, y: s.y };
+  const x1 = await H.readState(P, (S) => S.player.x);
+  return Object.assign(mid, { dx: x1 - x0, clean: mid.zone === 'sky' && Math.abs(mid.y - y) < 24 });
 };
 
 /* The container scale the renderer drew, and the y it was drawn at (a spot
@@ -109,6 +138,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('with the preview OFF the bro is the same size at the north edge as '
     + 'the south — shipping this changes nothing until it is switched on',
     !!offNorth && !!base && Math.abs(offNorth.scale - base) < 0.001, { offNorth, offSouth });
+
+  /* ═══ 1b. v2.3.2756: NO OVERRIDE -- THE WORKER DECIDES ═══
+     This worker measures its monsters in the curve (server depth.js) and
+     says so in caps.zoneDepth, so with no console override and no ?depth=
+     in the URL the curve draws for everyone.  A worker without the cap
+     would leave it behind the preview -- that half is the unit of
+     _previewOn and is not re-driven here. */
+  const caps = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.zoneDepth));
+  rec.ok('the local worker advertises caps.zoneDepth (guard)', caps === true, { caps });
+  await P.page.evaluate(() => { delete window.__btDepth; });
+  await place(P, midX, NORTH_Y);
+  await P.page.waitForTimeout(600);
+  const liveNorth = await drawn(P);
+  const liveWant = liveNorth ? await expected(P, liveNorth.y) : null;
+  rec.ok('with no override, the curve draws because the WORKER claims it — '
+    + 'the north edge is small for every player, no ?depth=1 needed',
+    !!liveNorth && !!base && Math.abs(liveNorth.scale / base - liveWant) < 0.02,
+    { live: liveNorth && base ? liveNorth.scale / base : null, liveWant });
 
   /* ═══ 2. SWITCH ON: THE CURVE ═══ */
   await P.page.evaluate(() => { window.__btDepth = true; });
@@ -194,14 +241,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { window.__btDepth = true; });
     const s = await walkEast(P, rowS.from * TILE + 16, 29 * TILE + 16, 1200);
     const n = await walkEast(P, rowN.from * TILE + 16, 3 * TILE + 16, 1200);
-    const want = (await expected(P, 3 * TILE + 16)) / (await expected(P, 29 * TILE + 16));
-    const ratio = s.dx > 0 ? n.dx / s.dx : null;
-    rec.ok('the walk probes moved (guard)', s.dx > 20 && n.dx > 5 && flat.dx > 20, { s, n, flat });
-    rec.ok('in the north the bro covers far less ground per second than in the '
-      + 'south — about the same ratio as his size',
-      ratio != null && Math.abs(ratio - want) < 0.15, { ratio, want, south: s.dx, north: n.dx });
-    rec.ok('...and with the preview off the same northern walk is full speed',
-      flat.dx > n.dx * 1.6, { flat: flat.dx, north: n.dx });
+    const want = (await expected(P, n.y)) / (await expected(P, s.y));
+    const ratio = s.vx > 0 ? n.vx / s.vx : null;
+    rec.ok('the walk probes moved, inside the dunes, on the rows asked for (guard)',
+      s.clean && n.clean && flat.clean && s.dx > 20 && n.dx > 5 && flat.dx > 5, { s, n, flat });
+    rec.ok('in the north the bro walks far slower than in the south — the same '
+      + 'ratio as his size',
+      ratio != null && Math.abs(ratio - want) < 0.05, { ratio, want, south: s.vx, north: n.vx });
+    rec.ok('...and with the curve off the same northern walk is full speed',
+      flat.vx > 0 && Math.abs(flat.vx - s.vx / (s.k || 1)) < 0.05 * flat.vx, { flat: flat.vx, south: s.vx, sk: s.k });
   }
 
   await P.ctx.close().catch(() => {});
