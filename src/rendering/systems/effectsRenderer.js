@@ -9692,7 +9692,7 @@ export class EffectsRenderer {
          explicit {fw:256, fh:256} against 128px art until P7 item 5),
          so the branch above carries the identical term, derived the
          same way — off the texture, never off a literal. */
-      const _gn = 256 / ((gearFrame.orig && gearFrame.orig.width) || (gearFrame.frame && gearFrame.frame.width) || 256);   /* v2.3.2748: orig -- the frame may be cropped (gearSheets packTrimmed) */
+      const _gn = 256 / ((gearFrame.orig && gearFrame.orig.width) || (gearFrame.frame && gearFrame.frame.width) || 256);   /* v2.3.2750: orig -- the frame may be cropped (gearSheets packTrimmed) */
       /* v2.3.1772: ...and it keeps its METAL.  This layer draws real art (the
          jog sheets resolve their own variant inside getGearFrame), so unlike
          the strips above it was never invisible — it was hard-coded to white

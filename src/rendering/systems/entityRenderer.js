@@ -2091,7 +2091,7 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
          assuming 256 -- gearSheets now stores display-sized (exact-texel)
          sheets when the art ships at 128 on disk, and this factor is what
          keeps both generations rendering at the identical world size. */
-      /* v2.3.2748: ORIG, not frame -- a cropped gear frame's `frame` is just
+      /* v2.3.2750: ORIG, not frame -- a cropped gear frame's `frame` is just
          the crop; `orig` is the whole frame it was cut from (gearSheets
          packTrimmed).  For an uncropped texture the two are equal. */
       const _gnorm = 256 / ((tex.orig && tex.orig.width) || (tex.frame && tex.frame.width) || 256);
@@ -2375,7 +2375,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
     dilCtx.imageSmoothingEnabled = false;
     for (const w of worn) {
       const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
-      /* v2.3.2748: drawGearFrame places a cropped frame at its own offset. */
+      /* v2.3.2750: drawGearFrame places a cropped frame at its own offset. */
       for (let dx = -dilate; dx <= dilate; dx++)
         drawGearFrame(dilCtx, gt, dx, 0, 256, 256);
     }
@@ -2625,7 +2625,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
       let wornChest = false, wornLegs = false;
       for (const w of worn) {
         const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
-        drawGearFrame(sctx, gt, 0, 0, 256, 256);   /* v2.3.2748: cropped frames */
+        drawGearFrame(sctx, gt, 0, 0, 256, 256);   /* v2.3.2750: cropped frames */
         if (w.k && w.k.indexOf('chest:') === 0) wornChest = true;
         if (w.k && w.k.indexOf('legs:') === 0) wornLegs = true;
       }
@@ -2823,7 +2823,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
                  waist band below (d2[o] = bd[o]), so a bilinear belt sheet
                  painted bilinear chain straight into the finished frame. */
               bctx.imageSmoothingEnabled = false;
-              drawGearFrame(bctx, bt, 0, 0, 256, 256);   /* v2.3.2748: cropped frames */
+              drawGearFrame(bctx, bt, 0, 0, 256, 256);   /* v2.3.2750: cropped frames */
               const bd = bctx.getImageData(0, 0, 256, 256).data;
               const _score = (R, G, B, T) => { const nn = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / nn; };
               const { skinRef, pantsRef, shoesRef } = _bakeRefs;

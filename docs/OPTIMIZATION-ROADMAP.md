@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1, 3, 4, 5, 6, 9 and 10 SHIPPED (v2.3.2337-2355, v2.3.2748); the rest is the ranked backlog
+### Items 1, 3, 4, 5, 6, 9 and 10 SHIPPED (v2.3.2337-2355, v2.3.2750); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -443,7 +443,7 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    256 twin via `POPUP_ICON_SRC.heart` (the v2.3.2211 override map). Drawn at
    ≤ 44 world px.
 10. ~~**Walking-layer gear frames are 81-90% transparent — ~56 MB**~~
-   **SHIPPED, v2.3.2748** (measured, `mp-geartrim`, armoured in town: 394.9 →
+   **SHIPPED, v2.3.2750** (measured, `mp-geartrim`, armoured in town: 394.9 →
    334.9 MB, same 670 sources; mips on top of that). Owner: "would it be an
    improvement to the memory constraints ... equipping armor while running on
    mobile?" Every chest / legs / shirt / belt frame is the body's whole 128 or

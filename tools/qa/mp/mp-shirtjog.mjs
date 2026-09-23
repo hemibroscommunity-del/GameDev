@@ -61,7 +61,7 @@ const liveFrames = (P, ms) => P.page.evaluate((dur) => new Promise((res) => {
       if (!t.__qaId) t.__qaId = ++window.__qaTexN;
       seen.add(t.__qaId + '@' + t.frame.x + ',' + t.frame.y);
       const r = t.source.resource;
-      /* v2.3.2748: a cropped sheet's resource is a packed canvas; gearSheets
+      /* v2.3.2750: a cropped sheet's resource is a packed canvas; gearSheets
          keeps the decoded file's URL on the source's label */
       src = String((r && (r.currentSrc || r.src)) || t.source.label || '').split('/').slice(-2).join('/');
     }
@@ -81,7 +81,7 @@ const sheetOutline = (P) => P.page.evaluate(() => {
   const t = s && s.texture;
   const img = t && t.source && t.source.resource;
   if (!img || !(img.naturalWidth || img.width)) return null;
-  /* One cell per frame, each as fw x fh RGBA.  v2.3.2748: gear frames are
+  /* One cell per frame, each as fw x fh RGBA.  v2.3.2750: gear frames are
      CROPPED (gearSheets packTrimmed), so the source is no longer a grid of
      equal cells -- the sheet's frames come from __btGearSheetOf and each is
      drawn back into its whole frame at its trim, which is byte-identical to
