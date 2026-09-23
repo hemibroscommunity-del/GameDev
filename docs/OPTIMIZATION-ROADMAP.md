@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1, 3, 4, 5, 6, 9 and 10 SHIPPED (v2.3.2337-2355, v2.3.2750); the rest is the ranked backlog
+### Items 1, 3, 4, 5, 6, 9, 10 and 11 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -458,6 +458,18 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    the body sprite's texture) and the combat poses (sub-rects cut by frame
    offset). The same move would reach the gear swing/fire/cook sheets named
    below. Rule for consumers: TRAPS §106.
+11. ~~**Combat stand-in gear strips — 83-98% transparent, 81.4 MB**~~
+   **SHIPPED, v2.3.2774** (measured, `mp-geartrim`, armoured in town: 334.9 →
+   262.4 MB). The "gear swing/fire/cook sheets ... PADDING (7-17% opaque), a
+   crop-with-offset renderer change" named in the paragraph below. 33 strips
+   (shirt / chest / legs × swing 3, bowshot 5, chop, cook, fire) 81.4 → 14.1 MB,
+   all 279 frames byte-identical to their PNG. Two halves, and the second is
+   the one that could have saved nothing: `_gearStripFrame` crops with
+   `packTrimmed`, AND the strips stop going through `Assets.load` at all —
+   `preloadCombatGear` used to park every full sheet in the Assets cache,
+   where it would have sat beside the crop for the whole session. The
+   constructor's warm (v2.3.2303 / v2.3.2500) already covered every strip on
+   the loading screen, so nothing now loads on first use.
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
