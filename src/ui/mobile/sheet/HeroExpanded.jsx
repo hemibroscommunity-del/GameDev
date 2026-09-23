@@ -2112,6 +2112,10 @@ export const HeroExpanded = () => {
             const HEAD_ICON = Math.round(Math.max(22, Math.min(40, Math.min(CELL_H - 14, HEAD_W - 14))));
             const CAP_FS = Math.max(7.5, Math.min(10.5, CELL_W / 4.7));
             const NUM_FS = Math.max(12.5, Math.min(18, CELL_W * 0.38));
+            /* v2.3.2670: the owner's numeral art -- shared by the header
+               badges and the stat cells, so declared above both. */
+            const BADGE = '/icons/ui/badge/';
+            const BADGE_V = '?v=2.3.2670';
             const statCell = (st, cat) => {
               const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
@@ -2179,11 +2183,29 @@ export const HeroExpanded = () => {
                     width: GLYPH, height: GLYPH, flex: 'none', objectFit: 'contain',
                     pointerEvents: 'none',
                   }} />
-                  <span style={{
-                    fontSize: NUM_FS, fontWeight: 900, lineHeight: 1,
-                    fontVariantNumeric: 'tabular-nums',
-                    color: pts > 0 ? COL.text : COL.text2,
-                  }}>{pts}</span>
+                  {/* ═══ v2.3.2670: THE STAT COUNTS IN THE OWNER'S NUMERALS ═══
+                      Owner, off the mockups: "try making the outline of all
+                      the number stats (the stats you allocate points in)
+                      white".  The same numeral art as the header badges, with
+                      its gold rim baked to white (slice_badge_sheet.mjs) --
+                      white says "what you HAVE", the gold-on-blue badges say
+                      "what you can still spend", and the two never read as
+                      the same kind of number.
+                      Images, not text, so the count's size is the art's:
+                      NUM_FS x 1.15, the height the plain number's cap-height
+                      used to fill.  A 0 is dimmed, as the plain one was, so the
+                      stats you have invested in are the bright ones.
+                      data-pts carries the value for anything that needs the
+                      number rather than the picture of it. */}
+                  <span data-cell-num data-pts={pts} aria-hidden="true" style={{
+                    display: 'flex', alignItems: 'center', height: Math.round(NUM_FS * 1.15),
+                    opacity: pts > 0 ? 1 : 0.55, pointerEvents: 'none',
+                  }}>
+                    {String(Math.max(0, pts | 0)).split('').map((ch, i) => (
+                      <img key={i} alt="" draggable={false} src={`${BADGE}w${ch}.png${BADGE_V}`}
+                        style={{ height: Math.round(NUM_FS * 1.15), width: 'auto', marginLeft: i ? -1 : 0, display: 'block', pointerEvents: 'none' }} />
+                    ))}
+                  </span>
                 </div>
               );
             };
@@ -2242,8 +2264,6 @@ export const HeroExpanded = () => {
                A pool at 0 keeps its badge and goes grey (grayscale + dim),
                the same "0 still answers the question" rule as before, in the
                art's own shapes rather than a second palette. */
-            const BADGE = '/icons/ui/badge/';
-            const BADGE_V = '?v=2.3.2662';
             const headBadge = (n, key, pin) => {
               const live = n > 0;
               const c = HEAD_COMPACT;
@@ -2290,13 +2310,17 @@ export const HeroExpanded = () => {
                   height: bh, minWidth: bh, boxSizing: 'border-box',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   ...(round
-                    ? { background: `url(${BADGE}circle.png${BADGE_V}) center / 100% 100% no-repeat` }
+                    /* v2.3.2670: the owner's pick off the mockups -- the
+                       normal blue, with the numerals left gold.  Baked
+                       (slice_badge_sheet.mjs) rather than a CSS filter, so the
+                       gold numerals on top are not dragged blue with it. */
+                    ? { background: `url(${BADGE}circle-blue.png${BADGE_V}) center / 100% 100% no-repeat` }
                     : {
                         /* the pill's ends are half its height in the art (32 of
                            64px); drawn `cap` wide, the digits overlap them a
                            little, which is how the art itself is spaced */
                         borderStyle: 'solid', borderWidth: `0 ${cap}px`,
-                        borderImage: `url(${BADGE}pill.png${BADGE_V}) 0 32 fill / 0 ${cap}px stretch`,
+                        borderImage: `url(${BADGE}pill-blue.png${BADGE_V}) 0 32 fill / 0 ${cap}px stretch`,
                       }),
                   filter: live ? 'none' : 'grayscale(1) brightness(0.62)',
                   pointerEvents: 'none', whiteSpace: 'nowrap',

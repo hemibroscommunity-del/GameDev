@@ -94,3 +94,73 @@ put('pill', shapes[1], SHAPE_H);
    1 and the row keeps a common baseline instead of each glyph filling its box */
 const tall = Math.max(...glyphs.map((g) => g.h));
 glyphs.forEach((g, i) => put(i < 10 ? `d${i}` : 'plus', g, Math.max(1, Math.round(GLYPH_H * g.h / tall))));
+
+/* ═══ v2.3.2670: TWO BAKED VARIANTS, FROM THE SAME PIXELS ═══
+   Owner, off the mockups: "I like the normal blue with the yellow/gold
+   outline" (the badges) and "try making the outline of all the number stats
+   white" (the numerals in the thirteen stat cells).
+   Baked here rather than applied as a CSS filter at runtime: a filter on the
+   badge would recolour the gold numerals sitting on it too (the first blue
+   mockup did exactly that), and a filter per stat cell is thirteen
+   compositing layers on an iPhone for a colour that never changes.
+
+   BLUE SHAPES -- the exact CSS `hue-rotate(170deg) saturate(1.1)` the owner
+   picked from the capture, as the Filter Effects matrices, so the baked badge
+   is the approved colour and not an approximation of it.
+
+   WHITE-OUTLINE NUMERALS -- only the GOLD pixels move: each keeps its own
+   brightness as a grey, so the outline's bevel and highlight survive; the
+   dark fill and the dark outer ring are left exactly as drawn.  Edge pixels
+   that are half gold, half dark move by how gold they are, so the rim does
+   not grow a hard seam. */
+function hueSat(png, deg, sat) {
+  const a = deg * Math.PI / 180, c = Math.cos(a), si = Math.sin(a);
+  const H = [
+    [0.213 + c * 0.787 - si * 0.213, 0.715 - c * 0.715 - si * 0.715, 0.072 - c * 0.072 + si * 0.928],
+    [0.213 - c * 0.213 + si * 0.143, 0.715 + c * 0.285 + si * 0.140, 0.072 - c * 0.072 - si * 0.283],
+    [0.213 - c * 0.213 - si * 0.787, 0.715 - c * 0.715 + si * 0.715, 0.072 + c * 0.928 + si * 0.072],
+  ];
+  const S = [
+    [0.213 + 0.787 * sat, 0.715 - 0.715 * sat, 0.072 - 0.072 * sat],
+    [0.213 - 0.213 * sat, 0.715 + 0.285 * sat, 0.072 - 0.072 * sat],
+    [0.213 - 0.213 * sat, 0.715 - 0.715 * sat, 0.072 + 0.928 * sat],
+  ];
+  const d = new Uint8Array(png.data);
+  const mul = (M, v) => M.map((r) => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]);
+  for (let i = 0; i < d.length; i += 4) {
+    const v = mul(S, mul(H, [d[i], d[i + 1], d[i + 2]]));
+    for (let k = 0; k < 3; k++) d[i + k] = Math.max(0, Math.min(255, Math.round(v[k])));
+  }
+  return { width: png.width, height: png.height, data: d };
+}
+function goldToWhite(png) {
+  const d = new Uint8Array(png.data);
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (!mx) continue;
+    const sat = (mx - mn) / mx;
+    let h = 0;
+    if (mx !== mn) {
+      if (mx === r) h = ((g - b) / (mx - mn)) % 6; else if (mx === g) h = (b - r) / (mx - mn) + 2; else h = (r - g) / (mx - mn) + 4;
+      h *= 60; if (h < 0) h += 360;
+    }
+    if (h < 20 || h > 70) continue;                      /* not gold */
+    const t = Math.max(0, Math.min(1, (sat - 0.15) / 0.3)); /* how gold */
+    const grey = Math.min(255, mx * 1.04);
+    d[i] = Math.round(r + (grey - r) * t);
+    d[i + 1] = Math.round(g + (grey - g) * t);
+    d[i + 2] = Math.round(b + (grey - b) * t);
+  }
+  return { width: png.width, height: png.height, data: d };
+}
+const reread = (name) => decode(readFileSync(`${outDir}/${name}.png`));
+for (const n of ['circle', 'pill']) {
+  writeFileSync(`${outDir}/${n}-blue.png`, encode(hueSat(reread(n), 170, 1.1)));
+  console.log(`${n}-blue`);
+}
+for (const n of [...Array(10).keys()].map((i) => `d${i}`).concat(['plus'])) {
+  const w = n === 'plus' ? 'wplus' : 'w' + n.slice(1);
+  writeFileSync(`${outDir}/${w}.png`, encode(goldToWhite(reread(n))));
+}
+console.log('w0-w9, wplus');

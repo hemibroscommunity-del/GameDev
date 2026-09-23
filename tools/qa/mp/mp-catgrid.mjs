@@ -240,7 +240,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
             ? imgs.map((i) => { const m = /\/(d(\d)|plus)\.png/.exec(i.getAttribute('src') || ''); return !m ? '?' : m[2] != null ? m[2] : '+'; }).join('')
             : (b.textContent || '').trim(),
           decoded: imgs.every((i) => i.naturalWidth > 0),
-          bg: /circle\.png/.test(cs.backgroundImage) ? 'circle' : /pill\.png/.test(cs.borderImageSource) ? 'pill'
+          /* v2.3.2670: the owner's blue, baked into its own files */
+          bg: /circle-blue\.png/.test(cs.backgroundImage) ? 'circle' : /pill-blue\.png/.test(cs.borderImageSource) ? 'pill'
             : (cs.backgroundColor && !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor) ? 'plain' : null),
           inHead: !!hr && r.left >= hr.left - 0.5 && r.right <= hr.right + 0.5 && r.top >= hr.top - 0.5 && r.bottom <= hr.bottom + 0.5,
           box: [r.left, r.top, r.right, r.bottom].map((v) => +v.toFixed(1)),
@@ -262,6 +263,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     const b0 = await badges();
     const badgeText = (n) => (n > 99 ? '99+' : String(n || 0));
+    /* ═══ v2.3.2670: EVERY CELL'S DRAWN NUMBER IS ITS REAL COUNT ═══
+       The thirteen counts are the owner's white-outline numeral SPRITES now,
+       so the number on screen is a row of image files.  Read it back off
+       those files (w1.png w2.png -> "12") and compare it with the count the
+       cell's own aria-label states ("..., 12 of 40."), which comes from the
+       blob -- a wrong digit file, a missing one, or a count that stopped
+       updating would all be a picture that disagrees with the data. */
+    const cellNums = await P.page.evaluate(() => [...document.querySelectorAll('[data-prog3-grid] [data-prog3-row]')].map((c) => {
+      const imgs = [...c.querySelectorAll('[data-cell-num] img')];
+      const drawn = imgs.map((i) => { const m = /\/w(\d)\.png/.exec(i.getAttribute('src') || ''); return m ? m[1] : '?'; }).join('');
+      const m = /,\s*(\d+) of \d+/.exec(c.getAttribute('aria-label') || '');
+      return { k: c.getAttribute('data-prog3-row'), drawn, want: m ? m[1] : null, decoded: imgs.length > 0 && imgs.every((i) => i.naturalWidth > 0) };
+    }));
+    rec.ok(`${label}: every stat cell DRAWS its real count in the owner's numerals (v2.3.2670)`,
+      cellNums.length === 13 && cellNums.every((c) => c.want !== null && c.drawn === c.want && c.decoded),
+      cellNums.filter((c) => !(c.want !== null && c.drawn === c.want && c.decoded)));
+
     rec.ok(`${label}: FOUR badges — one on each weapon, one on the character (v2.3.2667)`,
       ['sword', 'bow', 'staff', 'shared'].every((k) => b0.out[k]) && Object.keys(b0.out).length === 4, Object.keys(b0.out));
     rec.ok(`${label}: ...each weapon's badge is what that weapon can spend, as the worker holds it`,
