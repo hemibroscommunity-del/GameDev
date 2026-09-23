@@ -144,19 +144,46 @@ async function sample(P, peerId, tag) {
   return { pink: px.count(isPink), green: px.count(isGreen), pose };
 }
 
-export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'Inked', wsPort, webPort, dpr: 2 });
-  const B = await H.newPlayer(browser, { name: 'Onlooker', wsPort, webPort, guest: true, dpr: 2 });
-  await H.enterWorld(A);
-  await H.enterWorld(B);
-  await H.waitMutualSight(A, B).catch(() => {});
-  await A.page.waitForTimeout(2500);
+/* ═══ v2.3.2746: DRESSED BEFORE THE CHARACTER EXISTS ═══
+   v2.3.2690 (#706) made a character's look its STORED RECORD, written once at
+   the creator's join; a drawing a returning client has in storage but the
+   record lacks is blank on the relay and on the client alike.  This scenario
+   used to measure a plain character, then seed his tattoos and patterns into
+   storage and reload -- which is now, correctly, an undressed character, and
+   every "the ink shows in this pose" check measured none.  So the look is in
+   storage before the page's first script runs, and the creator's join carries
+   it into the record; the control is a separate, plain character. */
+/* The coach's tip cards sit over the lower half of a phone screen, which is
+   where a figure is being photographed. */
+const COACH_OFF = `try {
+  const l = ['openDash', 'move', 'equip', 'dashAfterTurnIn', 'equipAll', 'cycle',
+    'blockRanged', 'attack', 'special', 'chatTap', 'passkey'];
+  const d = {}; for (const k of l) d[k] = true;
+  localStorage.setItem('bt_coach_v1', JSON.stringify(d));
+} catch (e) {}`;
+const SEED = COACH_OFF + `
+try {
+  localStorage.setItem('bt-facetattoo', ${JSON.stringify(ALL_PINK)});
+  localStorage.setItem('bt-armtattoo', ${JSON.stringify(ALL_PINK)});
+  localStorage.setItem('bt-shirtpat', ${JSON.stringify(SHIRT_PAT)});
+  localStorage.setItem('bt-pantspat', ${JSON.stringify(PANTS_PAT)});
+} catch (e) {}`;
 
-  const aId = await H.readState(A, (S) => S.myId);
+export async function run({ browser, wsPort, webPort, rec }) {
+  const B = await H.newPlayer(browser, { name: 'Onlooker', wsPort, webPort, guest: true, dpr: 2, init: COACH_OFF });
+  const C = await H.newPlayer(browser, { name: 'Plain', wsPort, webPort, dpr: 2, init: COACH_OFF });
+  await H.enterWorld(C);
+  await H.enterWorld(B);
+  await H.waitMutualSight(C, B).catch(() => {});
+  await C.page.waitForTimeout(2500);
+  const cId = await H.readState(C, (S) => S.myId);
+  const cAt = await H.readState(C, (S) => ({ x: S.player.x, y: S.player.y }));
+  await H.hopTo(B, cAt.x - 170, cAt.y + 30);
+  await B.page.waitForTimeout(2000);
 
   /* ── THE CONTROL ── */
-  const ctlSelf = await sample(A, null, 'control');
-  const ctlPeer = await sample(B, aId, 'control-peer');
+  const ctlSelf = await sample(C, null, 'control');
+  const ctlPeer = await sample(B, cId, 'control-peer');
   rec.ok('a plain character can be located on both screens (guard)',
     !!ctlSelf && !!ctlPeer, { ctlSelf, ctlPeer });
   rec.ok('with no art, neither ink colour appears on your own character — '
@@ -164,51 +191,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!ctlSelf && ctlSelf.pink < 12 && ctlSelf.green < 12, ctlSelf);
   rec.ok('...nor on the other player\'s view of him',
     !!ctlPeer && ctlPeer.pink < 12 && ctlPeer.green < 12, ctlPeer);
+  await C.ctx.close();
 
-  /* ── DRESS HIM ──
-     Through the store and a reload, the path a RETURNING player takes: the
-     art store is read once at module load, and the creator sends it in the
-     join frame. Driving the paint UI instead would make this a test of
+  /* ── DRESSED ──
+     Through storage and the creator's join, the way a player who drew in the
+     creator arrives. Driving the paint UI instead would make this a test of
      pointer events, which mp-bodyink and mp-skinink already are. */
-  await A.page.evaluate(([ink, sp, pp]) => {
-    localStorage.setItem('bt-facetattoo', ink);
-    localStorage.setItem('bt-armtattoo', ink);
-    localStorage.setItem('bt-shirtpat', sp);
-    localStorage.setItem('bt-pantspat', pp);
-  }, [ALL_PINK, SHIRT_PAT, PANTS_PAT]);
-  await A.page.reload({ waitUntil: 'domcontentloaded' });
+  const A = await H.newPlayer(browser, { name: 'Inked', wsPort, webPort, dpr: 2, init: SEED });
   await H.enterWorld(A);
   await A.page.waitForTimeout(3500);
-  const aId2 = await H.readState(A, (S) => S.myId);
-  rec.ok('the same character came back after the reload (guard)', aId2 === aId, { aId, aId2 });
+  const aId = await H.readState(A, (S) => S.myId);
   await H.waitMutualSight(A, B).catch(() => {});
+  /* Both arrive at the spawn, one on top of the other: the onlooker's body
+     and name plate sat over the inked character in every "stand" and
+     "combat" crop.  So the onlooker steps well aside, still in view. */
+  const aAt = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y }));
+  await H.hopTo(B, aAt.x - 170, aAt.y + 30);
   await B.page.waitForTimeout(3000);
 
-  const seeded = await A.page.evaluate(() => ({
-    face: (localStorage.getItem('bt-facetattoo') || '').length,
-    arm: (localStorage.getItem('bt-armtattoo') || '').length,
+  /* the exact strings: a blank canvas is 256 characters too */
+  const seeded = await A.page.evaluate((ink) => ({
+    face: localStorage.getItem('bt-facetattoo') === ink,
+    arm: localStorage.getItem('bt-armtattoo') === ink,
     shirt: localStorage.getItem('bt-shirtpat'),
     pants: localStorage.getItem('bt-pantspat'),
-  }));
-  rec.ok('the tattoos and both patterns survived the reload (guard)',
-    seeded.face === 256 && seeded.arm === 256
-    && seeded.shirt === SHIRT_PAT && seeded.pants === PANTS_PAT, seeded);
+  }), ALL_PINK);
+  rec.ok('the tattoos and both patterns are this character\'s own (guard)',
+    seeded.face && seeded.arm && seeded.shirt === SHIRT_PAT && seeded.pants === PANTS_PAT, seeded);
 
   /* Does the OTHER player even know about them? A relay that drops the
      patterns would make every pixel assertion below fail on B with no
      explanation of why. */
-  const relayed = await B.page.evaluate((id) => {
+  const relayed = await B.page.evaluate(([id, ink]) => {
     const o = ((window._gameState.current || {}).others || {})[id];
     if (!o) return null;
     return {
-      face: typeof o.faceTattooArt === 'string' ? o.faceTattooArt.length : null,
-      arm: typeof o.armTattooArt === 'string' ? o.armTattooArt.length : null,
+      face: o.faceTattooArt === ink,
+      arm: o.armTattooArt === ink,
       shirtPat: o.shirtPattern || o.shirtPat || null,
       pantsPat: o.pantsPattern || o.pantsPat || null,
     };
-  }, aId);
-  rec.ok('the other player receives the tattoos over the wire, at full length',
-    !!relayed && relayed.face === 256 && relayed.arm === 256, relayed);
+  }, [aId, ALL_PINK]);
+  rec.ok('the other player receives the tattoos over the wire, exactly',
+    !!relayed && relayed.face && relayed.arm, relayed);
   rec.ok('...and the clothing patterns with them',
     !!relayed && relayed.shirtPat === SHIRT_PAT && relayed.pantsPat === PANTS_PAT, relayed);
 
@@ -408,6 +433,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the character was drawn in more than one pose during the run (${poses.join(', ')})`,
     poses.length >= 2, seen);
 
+  /* v2.3.2746: "fish" FAILS THE TATTOO CHECK, AND THAT IS THE GAME, NOT THIS
+     TEST.  The fishing pose draws the RAW fishing sheet on purpose
+     (entityRenderer, "Fishing uses the RAW sheet"): no skin tone, no trouser or
+     shoe colour, so the region recolour cannot mis-paint the pink rod -- and
+     the drawings ride that same body bake, so they go too, on both screens.
+     The shirt's pattern still passes: the shirt is its own layer over the
+     body, and fishing keeps it.  Left as a live check rather than skipped:
+     whether tattoos should survive fishing is the owner's call. */
   for (const p of poses) {
     const e = seen[p];
     rec.ok(`the tattoos are on him while the game draws "${p}" `

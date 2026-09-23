@@ -54,35 +54,31 @@ const BLOCK_ART = Array.from({ length: 16 }, (_, y) =>
 const REGIONS = ['face', 'tattoo', 'arms', 'pants'];
 const REGION_NAME = { face: 'the face tattoo', tattoo: 'the chest tattoo', arms: 'the arm tattoo', pants: 'the trouser print' };
 
+/* ═══ v2.3.2746: INKED BEFORE THE CHARACTER EXISTS ═══
+   v2.3.2690 (#706) made a character's look its STORED RECORD, written once at
+   the creator's join.  This scenario used to create a character, write the
+   ink into storage and reload -- which now, correctly, reloads an un-inked
+   character.  So the ink is in storage before the page's first script runs
+   (with the bake's grid probe switched on the same way), and the creator's
+   join carries it into the record. */
+const SEED = `try {
+  localStorage.setItem('bt-facetattoo', ${JSON.stringify(FACE_ART)});
+  localStorage.setItem('bt-tattooart', ${JSON.stringify(BLOCK_ART)});
+  localStorage.setItem('bt-armtattoo', ${JSON.stringify(BLOCK_ART)});
+  localStorage.setItem('bt-pantsart', ${JSON.stringify(BLOCK_ART)});
+  localStorage.setItem('bt-hair', 'none');
+} catch (e) {}
+window.__btGridProbe = 1;   /* ask the bake to report its fitted grids */`;
+
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Inked', wsPort, webPort, viewport: { width: 390, height: 844 } });
+  const P = await H.newPlayer(browser, { name: 'Inked', wsPort, webPort, viewport: { width: 390, height: 844 }, init: SEED });
   await H.enterWorld(P);
-  await P.page.waitForTimeout(1800);
-
-  const set = await P.page.evaluate(([face, block]) => {
-    try {
-      localStorage.setItem('bt-facetattoo', face);
-      /* v2.3.1992: chest, arm and trousers too — one bake, four fits. */
-      localStorage.setItem('bt-tattooart', block);
-      localStorage.setItem('bt-armtattoo', block);
-      localStorage.setItem('bt-pantsart', block);
-    } catch (e) { return { ok: false }; }
-    window.__btGridProbe = 1;   /* ask the bake to report its fitted grids */
-    /* Nudge the art layer so the body sheet re-bakes with the new ink. */
-    try { if (window.__btSetHair) window.__btSetHair('none'); } catch (e) { /* bald is fine */ }
-    return { ok: true, len: face.length };
-  }, [FACE_ART, BLOCK_ART]);
-  rec.ok('a face tattoo (and chest/arm/trouser ink) is set (guard)', !!(set && set.ok), set);
-
-  /* The flag has to survive the reload, or the bake runs with the probe off —
-     which is how the first attempt read back a null grid report. */
-  await P.page.addInitScript(() => { window.__btGridProbe = 1; });
-  await P.page.reload({ waitUntil: 'domcontentloaded' });
-  await P.page.waitForTimeout(1200);
-  const created = await P.page.$('[data-tut="login-create"]');
-  if (created) await created.click();
-  await H.enterWorld(P).catch(() => {});
   await P.page.waitForTimeout(2500);
+  const set = await P.page.evaluate(([face, block]) => ({
+    ok: localStorage.getItem('bt-facetattoo') === face && localStorage.getItem('bt-tattooart') === block
+      && localStorage.getItem('bt-armtattoo') === block && localStorage.getItem('bt-pantsart') === block,
+  }), [FACE_ART, BLOCK_ART]);
+  rec.ok('a face tattoo (and chest/arm/trouser ink) is this character\'s own (guard)', !!(set && set.ok), set);
 
   const shot = async () => {
     const b = await P.page.evaluate(() => {

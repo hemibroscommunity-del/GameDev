@@ -11,7 +11,7 @@
 <div id="boards"></div>
 <script type="module">
 import { getBodyFrame, getPickupHeadFrame } from './rendering/playerSkins.js';
-import { getGearFrame, getGearFramePhased } from './rendering/gearSheets.js';
+import { getGearFrame, getGearFramePhased, drawGearFrame } from './rendering/gearSheets.js';
 import { frameCount, loadPlayerSprites } from './rendering/playerSprites.js';
 import { _maskedBodyFrame } from './rendering/systems/entityRenderer.js';
 
@@ -42,14 +42,15 @@ async function ready(fn, tries = 200) {
 function drawTex(ctx, tex, dx, dy, scale = 1, flip = false) {
   const src = tex && tex.source && tex.source.resource;
   if (!src) return;
-  const f = tex.frame;
+  /* v2.3.2750: drawGearFrame -- gear frames may be cropped (gearSheets
+     packTrimmed); for any other texture it is the same drawImage as before. */
   if (!flip) {
-    ctx.drawImage(src, f.x, f.y, f.width, f.height, dx, dy, 256 * scale, 256 * scale);
+    drawGearFrame(ctx, tex, dx, dy, 256 * scale, 256 * scale);
   } else {
     ctx.save();
     ctx.translate(dx + 256 * scale, dy);
     ctx.scale(-1, 1);
-    ctx.drawImage(src, f.x, f.y, f.width, f.height, 0, 0, 256 * scale, 256 * scale);
+    drawGearFrame(ctx, tex, 0, 0, 256 * scale, 256 * scale);
     ctx.restore();
   }
 }
