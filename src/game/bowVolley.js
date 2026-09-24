@@ -57,14 +57,14 @@ export const BOW_VOLLEY = {
   /* Tip to tip, world px: one white-hot arrow (hotArrowFx HOT_LEN, 62.8) and
      a gap of about a quarter of its length.  At the bow's 24 px a frame that
      is ~56 ms between arrows.
-     v2.3.2875: 80 -> 200.  Owner: "Arrow special is too fast can't discern 3
+     v2.3.2881: 80 -> 200.  Owner: "Arrow special is too fast can't discern 3
      arrows."  A 17 px gap between 63 px arrows read as one long streak.  Now
      each arrow has more than two of its own lengths of clear air behind it,
      ~200 ms apart at SPEED_K.  Ceiling 240: a peer's copy waits
      2 x GAP_PX / PEER_PX_PER_FRAME frames at the bow, and visualSystems caps
      that hold at 60. */
   GAP_PX: 200,
-  /* v2.3.2875: the volley flies at this fraction of the bow's own speed
+  /* v2.3.2881: the volley flies at this fraction of the bow's own speed
      (Longshot and depth still scale it) -- 24 -> ~17 px a frame, so the eye
      can follow three arrows instead of one blur.  Set on each arrow as
      `speedPx` (playerActions), the per-projectile override projectiles.js

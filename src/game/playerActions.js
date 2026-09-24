@@ -332,7 +332,7 @@ export function specialAttack(S) {
       var _bowVol = _bowVolley ? newVolley() : null;
       var _bowStat = bowRangeMult(R || {}) || 1;
       var _bowRange = _bowStat * depthK(S.currentZone, S.player.y);
-      /* v2.3.2875: a volley flies slower than a plain arrow (BOW_VOLLEY.SPEED_K)
+      /* v2.3.2881: a volley flies slower than a plain arrow (BOW_VOLLEY.SPEED_K)
          so its three arrows read as three; a lone arrow (old worker) keeps the
          bow's own speed */
       var _bowSpd = _bowVolley ? ARROW_SPEED_PX * _bowRange * BOW_VOLLEY.SPEED_K : null;
@@ -342,7 +342,7 @@ export function specialAttack(S) {
           dist: 14,
           /* v2.3.2848: sized from the arrow's own speed so the train is GAP_PX
              apart however fast Longshot makes it (projectiles.js catches the
-             frame it overstays back up).  v2.3.2875: from the speed it really
+             frame it overstays back up).  v2.3.2881: from the speed it really
              flies at, `speedPx` */
           launchDelayMs: volleyDelayMs(bvi, _bowSpd || ARROW_SPEED_PX * _bowStat),
           speedPx: _bowSpd,

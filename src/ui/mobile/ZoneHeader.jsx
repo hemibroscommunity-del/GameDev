@@ -3,9 +3,9 @@ import { COL, getState } from './dash/common.js';
 import { rosterCount } from '../../networking/charRoster.js'; /* v2.3.2421 */
 import { zoneTitle } from './zoneTitle.js'; /* v2.3.2596: shared with the zone-entry banner */
 import { calm as lifeCalm } from './dash/bagLife.js'; /* v2.3.2815: the purse's coin flip */
-import { dayPhase, lightingAt, zoneHasSky } from '../../game/timeOfDay.js'; /* v2.3.2876: the hour beside the zone name */
+import { dayPhase, lightingAt, zoneHasSky } from '../../game/timeOfDay.js'; /* v2.3.2882: the hour beside the zone name */
 
-/* ═══ v2.3.2876: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
+/* ═══ v2.3.2882: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
    Owner: "Add a time of day icon next to current map name."  The hour is
    the world's own (timeOfDay.js -- the same wall-clock phase the lighting
    draws, and the ?tod= / window.__btTod preview moves it too), read on the
