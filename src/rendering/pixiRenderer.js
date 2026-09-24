@@ -11,6 +11,7 @@ import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
+import { setSheen } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1 */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
 import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
 import { FpsOverlay } from './systems/fpsOverlay.js';
@@ -176,7 +177,12 @@ export async function initPixiRenderer(canvas) {
       probe: () => lightFx.probe(),
       set: (on) => setLightFx(on),
       /* pin every glint at one point of its sweep, for pictures; null frees it */
-      glint: (p) => { lightFx.glint.force = (p == null ? null : Math.max(0, Math.min(1, +p))); },
+      glint: (p) => { lightFx.glint.force = (p == null ? null : (+p < 0 ? -1 : Math.min(1, +p))); },   /* v2.3.2864: -1 = hold every sweep off */
+      /* v2.3.2864: the permanent sheen on/off, and a multiplier on its
+         strength so the pictures can show a softer and a stronger cut */
+      sheen: (on) => setSheen(on),
+      sheenScale: (k) => { lightFx.glint.sheenScale = (k == null ? null : Math.max(0, +k)); },
+      sheenSun: (v) => { lightFx.sheenSun = (Array.isArray(v) && v.length === 2) ? [+v[0], +v[1]] : null; },
       /* v2.3.2749: props and trees stop casting (figures still do) -- the
          look before they did, for before/after pictures of one frame */
       world: (on) => setWorldCasts(on),
