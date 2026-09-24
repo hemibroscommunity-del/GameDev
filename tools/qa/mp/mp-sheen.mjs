@@ -1,4 +1,4 @@
-/* ═══ v2.3.2825: A PERMANENT SOFT SHINE ON METAL (PREVIEW, ?sheen=1) ═══
+/* ═══ v2.3.2836: A PERMANENT SOFT SHINE ON METAL (PREVIEW, ?sheen=1) ═══
  *
  * Owner: "aside from the glint can you see what adding a permanent soft shine
  * to armor and sword (and other metals) would look like?"
@@ -152,7 +152,7 @@ async function measureSheen(P, box) {
   const off = await shot();
   await setSheen(P, true);
   const now = await shot();
-  /* ═══ v2.3.2825: THE SUN SHOTS ARE TAKEN WITH FORM SHADING OFF ═══
+  /* ═══ v2.3.2836: THE SUN SHOTS ARE TAKEN WITH FORM SHADING OFF ═══
      v2.3.2767 (form shading, #715) darkens every figure toward its feet in the
      vertex colours, BEFORE the sheen filter reads the pixels -- so on the lower
      body less of the steel passes the sheen's highlight test, both suns add
