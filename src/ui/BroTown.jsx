@@ -5827,7 +5827,7 @@ export var BroTown = function BroTown(_ref0) {
           var _cfKeepAlive = Date.now() + 15000;
           if (S._campfire.expiresAt < _cfKeepAlive) S._campfire.expiresAt = _cfKeepAlive;
         }
-        /* ═══ v2.3.2899: ...AND SO MUST A PEER'S, ON YOUR SCREEN ═══
+        /* ═══ v2.3.2917: ...AND SO MUST A PEER'S, ON YOUR SCREEN ═══
            Owner: "check all other broadcasted player animations to make sure
            they match what your character does client side."
            The rule above keeps the COOK's own fire lit while they cook, but it
