@@ -385,7 +385,7 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'gather_node':
             {
-              /* ═══ v2.3.2897: THE TREE A PEER IS CHOPPING ═══
+              /* ═══ v2.3.2906: THE TREE A PEER IS CHOPPING ═══
                  Sent by the chopper (BroTown.jsx, beside the move broadcast)
                  so this client can stand their lumberjack at the trunk, where
                  their own screen draws it, rather than at their position up in
