@@ -449,16 +449,26 @@ export function isFodderLike(arch) {
  * base (skeleton is bone even though its base brute would be stone).
  * Unknown anything falls through to goo — the least wrong default in a
  * game whose default monster is a slime. */
+/* ═══ v2.3.2843: `fx`, WHAT THE HIT LOOKS LIKE, APART FROM `kind` ═══
+ * Owner: "snow effects for snowman, slime for slime, little blood and char
+ * from fire goblin, ashy dust from mummy and bone fragments from skeleton".
+ * `kind` stays exactly what it was because it also picks the HIT SOUND
+ * (gameDisplay HIT_KEY_BY_MATERIAL, owner-chosen: "Bony is mummy", the goblin
+ * "fleshy"), and the owner's new look for those two disagrees with their
+ * sound on purpose -- a mummy SOUNDS dry and bony and LOOKS like dust.  So
+ * the look reads `fx` (rendering/hitMaterialFx.js) and falls back to `kind`:
+ * snow, goo, bone, stone, ember, plus the two new ones, 'ash' (mummy) and
+ * 'goblin' (a little blood, char and embers). */
 const HIT_MATERIALS = {
   snowman:       { kind: 'snow',  tint: 0xe8f4ff, decal: '#dbeafe' },
   skeleton:      { kind: 'bone',  tint: 0xe6ddc8, decal: '#c9bfa5' },
-  mummy:         { kind: 'bone',  tint: 0xd8cdb4, decal: '#b8ad90' },
-  fireGoblin:    { kind: 'ember', tint: 0xea580c, decal: '#7c2d12' },
+  mummy:         { kind: 'bone',  fx: 'ash', tint: 0xd8cdb4, decal: '#b8ad90' },
+  fireGoblin:    { kind: 'ember', fx: 'goblin', tint: 0xea580c, decal: '#7c2d12' },
   rockmonster:   { kind: 'stone', tint: 0x8a8a8a, decal: '#5b5b5b' },
   thornShambler: { kind: 'stone', tint: 0x6b8f4e, decal: '#3f5e2c' },
   brute:         { kind: 'stone', tint: 0x8a8a8a, decal: '#5b5b5b' },
   sentinel:      { kind: 'stone', tint: 0x9aa4b0, decal: '#565e68' },
-  fodder:        { kind: 'goo',   tint: 0x3dd497, decal: '#1f7a55' },
+  fodder:        { kind: 'goo',   tint: 0x3dd497, fxTint: 0x5ca84c /* v2.3.2843: the slime sheet's own green, sampled */, decal: '#1f7a55' },
   mossSlime:     { kind: 'goo',   tint: 0x4cbf6b, decal: '#2a6e3e' },
   blueSlime:     { kind: 'goo',   tint: 0x4c9fdc, decal: '#28567e' },
   mireWisp:      { kind: 'goo',   tint: 0x7fd0c9, decal: '#3d6f6a' },
@@ -474,6 +484,42 @@ export function hitMaterialOf(archOrVariant) {
   return HIT_MATERIALS[archOrVariant]
     || HIT_MATERIALS[baseArchetypeOf(archOrVariant)]
     || HIT_MATERIAL_DEFAULT;
+}
+
+/* ═══ v2.3.2844: A SLIME SHEDS THE COLOUR IT IS DRAWN IN ═══
+ * Owner: "I have the slimes recolored to blue in the actual game runtime.
+ * Will this apply to its remnants too?"  Roughly: a hit's goo took the table's
+ * `tint` above, a hand-picked value from v2.3.2200 that nobody measured against
+ * the sprite (fodder's was minty teal on a grass-green sheet until v2.3.2843
+ * sampled the real one).  blueSlime's 0x4c9fdc is a paler sky blue than the
+ * slime you actually see.
+ * Every slime variant draws the SAME sheets (useSlimeSheets) through one of
+ * two colour paths, so its goo is DERIVED from that path rather than written
+ * down a second time:
+ *   - `recolor` [r,g,b] (monsterRecolor.js, a brightness-ratio retint).
+ *     Measured on slime-idle-v5 (reference luminance 132.55), the retint lands
+ *     the goo's base green on the target within 2% (k = 1.017), so the
+ *     recolour IS the goo colour.
+ *   - `tint`, Pixi's multiplicative tint: the drawn pixel is sheet x tint, so
+ *     the goo is the sampled green times the same tint (moss 0x1f8614, the mire
+ *     wisp a murky 0x2c3f32 -- what those two really look like on screen).
+ * Recolour a slime in MONSTER_VARIANTS and what its hits throw follows, with no
+ * second number to forget.  Anything that is not a slime-sheet variant keeps
+ * its table entry: `fxTint` when one was sampled, else `tint`. */
+const SLIME_GOO_BASE = 0x5ca84c;   /* = HIT_MATERIALS.fodder.fxTint, sampled from slime-idle-v5 */
+function _mulRgb(a, b) {
+  const ch = (s) => Math.round((((a >> s) & 255) * ((b >> s) & 255)) / 255);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+export function hitFxTintOf(archOrVariant) {
+  const v = MONSTER_VARIANTS[archOrVariant];
+  if (v && v.useSlimeSheets) {
+    const rc = v.recolor;
+    if (Array.isArray(rc) && rc.length === 3) return ((rc[0] & 255) << 16) | ((rc[1] & 255) << 8) | (rc[2] & 255);
+    if (typeof v.tint === 'number') return _mulRgb(SLIME_GOO_BASE, v.tint);
+  }
+  const mat = hitMaterialOf(archOrVariant);
+  return mat.fxTint != null ? mat.fxTint : mat.tint;
 }
 
 /* v2.3.1535: every variant key a zone can put on screen.
