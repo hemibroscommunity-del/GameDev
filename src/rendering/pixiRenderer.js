@@ -769,7 +769,7 @@ export async function initPixiRenderer(canvas) {
       const set = pool && pool.get(id);
       return (set && set.body) || null;
     },
-    /* v2.3.2914: and YOUR OWN, its twin, for mp-animparity -- which measures
+    /* v2.3.2921: and YOUR OWN, its twin, for mp-animparity -- which measures
        the two against each other.  Read-only, same rule. */
     localAttackSpriteRaw: (kind) => (kind === 'bow' ? effectsRenderer.bowSprite : effectsRenderer.swordSprite) || null,
     /* v2.3.2863: the baked frames themselves for peer state `o` (kind 'sword' /

@@ -9918,7 +9918,7 @@ export class EntityRenderer {
   _updateOtherPlayers(S, now) {
     const others = S.others || {};
     const activeIds = new Set();
-    /* v2.3.2914: each drawn peer's standing-body geometry, for their attack
+    /* v2.3.2921: each drawn peer's standing-body geometry, for their attack
        stand-ins -- see the note where it is filled.  A Map on S rather than a
        field on the peer object, for two reasons.  Peer objects take relayed
        wire data verbatim (`Object.assign(S.others[id], msg.data)`, wsClient
@@ -10162,7 +10162,7 @@ export class EntityRenderer {
       const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
 
-      /* ═══ v2.3.2914: THIS PEER'S BODY, MEASURED, FOR THEIR STAND-INS ═══
+      /* ═══ v2.3.2921: THIS PEER'S BODY, MEASURED, FOR THEIR STAND-INS ═══
        *
        * Owner: "Other players get smaller and move when they do bow shooting",
        * and then: check every broadcast animation against what your own
