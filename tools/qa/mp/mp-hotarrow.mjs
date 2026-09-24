@@ -28,7 +28,7 @@
  * v2.3.2848 -- THE SPECIAL IS THREE ARROWS.  Owner: "3 white hot arrows that
  * follow each other closely.  One shot for all 3 arrows", "a third each",
  * "Burn, but no blast" (src/game/bowVolley.js).  So this also checks: one
- * press looses three, for one price; they fly as a train ~200 px apart (v2.3.2881; was 80) on one
+ * press looses three, for one price; they fly as a train ~200 px apart (v2.3.2891; was 80) on one
  * line, and one still on the string is not drawn; each lands a third of the
  * damage; the volley burns ONCE (one tick at a time, not three); the three
  * smoulder on one clock and burn out together; nothing asks for a blast; a
@@ -283,7 +283,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const v = { n: 3, path: null, burn: null, burnAt: 0, _lingerNext: null, kb: new Set() };
     for (let i = 0; i < 3; i++) {
       S.arrows.push({ ang: Math.PI / 2, dist: 14, dmg: 1, baseDmg: 7, life: 150, maxLife: 150, hitIds: new Set(),
-        launchDelayMs: i * 200 * (1000 / 60) / (24 * 0.7), speedPx: 24 * 0.7, part: 3, volley: v, volleyIx: i,   /* v2.3.2881: GAP_PX 200 at SPEED_K 0.7 */
+        launchDelayMs: i * 200 * (1000 / 60) / (24 * 0.7), speedPx: 24 * 0.7, part: 3, volley: v, volleyIx: i,   /* v2.3.2891: GAP_PX 200 at SPEED_K 0.7 */
         isSpecial: true, isStaff: false, pierce: true, _rangeMult: 1, element: null });
     }
   });

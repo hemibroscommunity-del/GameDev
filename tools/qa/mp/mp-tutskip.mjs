@@ -1,4 +1,4 @@
-/* SKIP TUTORIAL, AND THEN NOTHING  (v2.3.2880)
+/* SKIP TUTORIAL, AND THEN NOTHING  (v2.3.2890)
  *
  * Owner: "add just a 'skip tutorial' button on the very first dialog box when
  * you join the game.  No pop ups should be scheduled after that."
@@ -75,7 +75,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...big enough to hit with a thumb (>= 36 px tall)', !!cBtnRest && cBtnRest.h >= 36, cBtnRest);
   await C.page.waitForTimeout(WATCH_MS);
   const cPops = await popups(C);
-  /* v2.3.2880: the WELCOME is the first thing a new player sees -- the coach
+  /* v2.3.2890: the WELCOME is the first thing a new player sees -- the coach
      card used to go up ~1.2s before it */
   const firstC = cPops.find((p) => p.kind !== 'install');
   rec.ok(`control: the WELCOME plate is the first pop-up, before any coach card (first: ${firstC ? firstC.kind : 'none'})`,

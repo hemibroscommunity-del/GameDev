@@ -48,7 +48,7 @@ export const ZONE_PROPS = {
     { id: 'bank', x: 1495, y: 760, blockW: 357, blockD: 154 },
   ],
   frost: [
-    /* v2.3.2884: three snowbanks in a line, nothing else (owner: "the small
+    /* v2.3.2894: three snowbanks in a line, nothing else (owner: "the small
        zone needs space and not props") -- MIRROR of src/data/worldProps.js */
     { id: 'frost-snowbank-w', x: 140, y: 570, blockW: 202, blockD: 42 },
     { id: 'frost-rock-ridge', x: 430, y: 570, blockW: 202, blockD: 42 },

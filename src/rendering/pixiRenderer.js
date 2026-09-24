@@ -1072,7 +1072,7 @@ export async function initPixiRenderer(canvas) {
        that the ring drawn is the ring the worker hit. */
     arrowBlastProbe: () => effectsRenderer.arrowBlastProbe(),
     projScaleProbe: () => effectsRenderer.projScaleProbe(),   /* v2.3.2287 */
-    stuckScaleProbe: () => effectsRenderer.stuckScaleProbe(),   /* v2.3.2879: a shaft stuck in a monster, at its depth */
+    stuckScaleProbe: () => effectsRenderer.stuckScaleProbe(),   /* v2.3.2889: a shaft stuck in a monster, at its depth */
     remoteSkillProbe: (id) => {
       const e = effectsRenderer;
       const pool = e._remoteSkillSprites;

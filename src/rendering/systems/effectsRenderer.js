@@ -448,7 +448,7 @@ import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
-import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2883 + snow */
+import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
@@ -4925,7 +4925,7 @@ export class EffectsRenderer {
 
     /* Stuck arrows — embedded in monster bodies after a hit.  Drawn
        half-length per the Canvas 2D path (BroTown.jsx ~11756).
-       v2.3.2881: only in the living.  A dead monster stays in S.monsters
+       v2.3.2891: only in the living.  A dead monster stays in S.monsters
        (alive=false) until it respawns, and its shafts were cleared only
        then -- so they hung in the air over the death crumble and the empty
        spot.  Owner: "Arrows stuck in monsters persist even after death."
@@ -4934,7 +4934,7 @@ export class EffectsRenderer {
     for (const m of monsters) {
       if (!m || !m._stuckArrows || !m._stuckArrows.length) continue;
       if (m.alive === false || m.curHp <= 0) { m._stuckArrows.length = 0; continue; }
-      /* v2.3.2879: at the size the MONSTER is drawn.  Owner: "Arrows shot at
+      /* v2.3.2889: at the size the MONSTER is drawn.  Owner: "Arrows shot at
          far away mummies in desert winds at small perspective are still
          large."  The arrow in flight has shrunk with the depth curve since
          v2.3.2790 (_pk at its own position), and so does a snapped one --
@@ -4956,7 +4956,7 @@ export class EffectsRenderer {
           this._drawStuckArrow(gfx, sx, sy, sa.ang, color, _mk);
         }
       }
-      /* v2.3.2879: what the last shaft was DRAWN at, for mp-dunedepth */
+      /* v2.3.2889: what the last shaft was DRAWN at, for mp-dunedepth */
       const _lastSp = this.arrowSprites[this._arrowSpriteN - 1];
       this._stuckScaleProbe = { id: m.id, y: Math.round(m.y), k: +_mk.toFixed(4),
         spriteScale: _lastSp ? +Math.abs(_lastSp.scale.x).toFixed(4) : null };
@@ -5454,7 +5454,7 @@ export class EffectsRenderer {
   /* v2.3.2287: the arrow probe's reader. Armed lazily like the rest -- no cost
      unless something calls it, and nothing in the game does. */
   projScaleProbe() { return this._projScaleProbe || null; }
-  stuckScaleProbe() { return this._stuckScaleProbe || null; }   /* v2.3.2879 */
+  stuckScaleProbe() { return this._stuckScaleProbe || null; }   /* v2.3.2889 */
 
   _updateProjectileTrail(p, gfx, fadeA, isOrb, pk) {
     const TRAIL_LEN = 8;
@@ -5778,7 +5778,7 @@ export class EffectsRenderer {
 
   /** Stuck arrow on a monster — half-length, fletching at the air end,
    *  arrowhead buried in the body.  Center (cx, cy) is the impact point. */
-  _drawStuckArrow(gfx, cx, cy, ang, color, pk) {   /* v2.3.2879: + pk, the depth scale of the monster it is in */
+  _drawStuckArrow(gfx, cx, cy, ang, color, pk) {   /* v2.3.2889: + pk, the depth scale of the monster it is in */
     const _dk = (pk > 0 && isFinite(pk)) ? pk : 1;
     /* v2.3.1825: the same painted arrow as the one in flight, headless and
        pinned by its cut end.  Reusing the texture rather than recolouring
@@ -5819,7 +5819,7 @@ export class EffectsRenderer {
   }
 
   /** Embedded magic shard from a staff bolt. */
-  _drawStuckMagicShard(gfx, cx, cy, ang, color, pk) {   /* v2.3.2879: + pk, as the stuck arrow */
+  _drawStuckMagicShard(gfx, cx, cy, ang, color, pk) {   /* v2.3.2889: + pk, as the stuck arrow */
     const _dk = (pk > 0 && isFinite(pk)) ? pk : 1;
     const c = Math.cos(ang) * _dk, s = Math.sin(ang) * _dk;
     const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
@@ -8909,7 +8909,7 @@ export class EffectsRenderer {
           node._pixiSprite.anchor.set(0.5, NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5);
           /* v2.3.2767: formShade.js -- trees, rocks and ore stand lit from
              above; a fishing spot is water, not a form, and is left alone */
-          if (!/fish/i.test(String(node.nodeType))) node._pixiSprite._vShade = propShade(S.currentZone);   /* v2.3.2883: frost's snowy trees and rocks shade near-neutral, as its snowbanks do */
+          if (!/fish/i.test(String(node.nodeType))) node._pixiSprite._vShade = propShade(S.currentZone);   /* v2.3.2893: frost's snowy trees and rocks shade near-neutral, as its snowbanks do */
           /* Add at bottom of nodeLayer so the tier badge, emoji, and
              proximity tips (added with plain addChild elsewhere) stack
              above every sprite. */

@@ -479,7 +479,7 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
     + ` one full pass per ${SPAWN_SCALE.SCALE_MS} ms = ${(perFull / (SPAWN_SCALE.SCALE_MS / 22)).toFixed(5)} ms amortised per 22 ms tick)`);
 }
 
-// ── 9. v2.3.2884: nothing spawns on a zone's arrival point ──
+// ── 9. v2.3.2894: nothing spawns on a zone's arrival point ──
 {
   /* Owner: "move monsters away from the zone entrance so you don't get
      ambushed."  Frost carries `entryClear` (data.js); every authored spawn

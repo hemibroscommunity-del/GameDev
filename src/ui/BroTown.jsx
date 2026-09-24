@@ -153,7 +153,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    NOT the greeting video above — see welcomeBanner.js for why those are
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
-import { markWorldIn, skipTutorial } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2880 + the welcome plate's Skip tutorial */
+import { markWorldIn, skipTutorial } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
@@ -186,7 +186,7 @@ export var QUEST_MSG_MS = 2200;
    after a QUEST COMPLETED! is the accept of the following step, which needs a
    walk to the giver first. */
 export var QUEST_MSG_LONG_MS = 5200;
-/* v2.3.2880: the WELCOME plate carries a button now (Skip tutorial), and a
+/* v2.3.2890: the WELCOME plate carries a button now (Skip tutorial), and a
    button needs time to be read and reached -- 5.2s is a line of text, not a
    decision.  Its own hold, so the completions keep theirs. */
 export var QUEST_MSG_WELCOME_MS = 9000;
@@ -224,7 +224,7 @@ export function questMsgMs(kind) {
      asking them to find a name they have not met yet.  It also fires ONCE in
      a character's life, so the queue cost the note above worries about is
      paid at most once. */
-  if (kind === 'welcome') return QUEST_MSG_WELCOME_MS;   /* v2.3.2880 */
+  if (kind === 'welcome') return QUEST_MSG_WELCOME_MS;   /* v2.3.2890 */
   return (kind === 'completed' || kind === 'reward')
     ? QUEST_MSG_LONG_MS : QUEST_MSG_MS;
 }
@@ -11610,7 +11610,7 @@ export var BroTown = function BroTown(_ref0) {
       marginTop: 3
     }
   }, questMsg.sub),
-  /* ═══ v2.3.2880: SKIP TUTORIAL ═══
+  /* ═══ v2.3.2890: SKIP TUTORIAL ═══
      Owner: "add just a 'skip tutorial' button on the very first dialog box
      when you join the game.  No pop ups should be scheduled after that."
      The WELCOME plate is that first dialog, and it is the one plate with a

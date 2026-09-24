@@ -23,7 +23,7 @@
  *   2. A coach card never appears while a plate is up, and waits a breath
  *      (PLATE_GAP_MS) after it goes.
  *   3. Coach cards never replace each other back-to-back: one finishes,
- *      the screen is quiet for COACH_GAP_MS (20s since v2.3.2878), then the
+ *      the screen is quiet for COACH_GAP_MS (20s since v2.3.2888), then the
  *      next -- and the first card waits the same after the WELCOME plate.
  *   4. The install card is a "whenever you have a moment" message: only
  *      after INSTALL_AFTER_MS in the world, and only into a quiet screen.
@@ -31,9 +31,9 @@
  * -- that would be a flicker, which is worse than an overlap.
  */
 
-import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js';   /* v2.3.2880 */
+import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js';   /* v2.3.2890 */
 
-/* ═══ v2.3.2880: SKIP TUTORIAL ═══
+/* ═══ v2.3.2890: SKIP TUTORIAL ═══
  * Owner: "add just a 'skip tutorial' button on the very first dialog box when
  * you join the game.  No pop ups should be scheduled after that."
  * The first dialog is the WELCOME plate (welcomeBanner.js); its button calls
@@ -64,7 +64,7 @@ export function skipTutorial() {
 }
 
 const PLATE_GAP_MS = 900;
-/* v2.3.2878 (owner: "Put a minimum 20 second timer on the onboarding tutorial
+/* v2.3.2888 (owner: "Put a minimum 20 second timer on the onboarding tutorial
    between pop ups"): 2.6s -> 20s.  Measured from the moment the previous
    onboarding pop-up LEFT the screen -- a coach card, or the WELCOME plate
    (noteOnboardingPlate) -- to the next coach card.  An ordinary quest plate
@@ -84,13 +84,13 @@ const INSTALL_QUIET_MS = 6000;
 let _worldInAt = 0;
 let _coachUp = false;
 let _coachEndAt = 0;
-let _welcomeEndAt = 0;   /* v2.3.2878: when the WELCOME plate leaves */
+let _welcomeEndAt = 0;   /* v2.3.2888: when the WELCOME plate leaves */
 
 /** The WELCOME plate counts as a tutorial pop-up (welcomeBanner.js reports
  *  when it will be gone). */
 export function noteOnboardingPlate(untilTs) { _welcomeEndAt = Math.max(_welcomeEndAt, untilTs || 0); _welcomePending = false; }
 
-/* ═══ v2.3.2880: THE WELCOME REALLY GOES FIRST ═══
+/* ═══ v2.3.2890: THE WELCOME REALLY GOES FIRST ═══
    Rule 1 above said so, and it was not true: the welcome waits for the
    worker's copy of the character (welcomeBanner.js, up to 20s) and only then
    reported in, so the "YOUR DASHBOARD" coach card went up the moment the
@@ -121,7 +121,7 @@ export function noteCoach(showing, now = Date.now()) {
 
 /** May the coach put a NEW card up now?  (A card already up stays.) */
 export function coachMayShow(now = Date.now()) {
-  if (!_worldInAt || tutorialSkipped() || _welcomePending) return false;   /* v2.3.2880 */
+  if (!_worldInAt || tutorialSkipped() || _welcomePending) return false;   /* v2.3.2890 */
   const pu = plateUntil();
   if (now < pu + PLATE_GAP_MS) return false;
   const gap = coachGapMs();
@@ -141,7 +141,7 @@ function installAfterMs() {
 
 /** May the install card appear now? */
 export function installMayShow(now = Date.now()) {
-  if (tutorialSkipped()) return false;   /* v2.3.2880 */
+  if (tutorialSkipped()) return false;   /* v2.3.2890 */
   if (!_worldInAt || now - _worldInAt < installAfterMs()) return false;
   if (_coachUp || now < plateUntil() + INSTALL_QUIET_MS) return false;
   if (now < _coachEndAt + INSTALL_QUIET_MS) return false;
@@ -155,6 +155,6 @@ if (typeof window !== 'undefined') {
     coachEndAgoMs: _coachEndAt ? Date.now() - _coachEndAt : -1,
     coachGapMs: coachGapMs(),
     coachMayShow: coachMayShow(), installMayShow: installMayShow(),
-    skipped: tutorialSkipped(), welcomePending: _welcomePending,   /* v2.3.2880 */
+    skipped: tutorialSkipped(), welcomePending: _welcomePending,   /* v2.3.2890 */
   });
 }

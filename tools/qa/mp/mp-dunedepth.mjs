@@ -303,7 +303,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }
 
-  /* ═══ 6. v2.3.2879: AN ARROW STUCK IN A FAR MONSTER IS FAR TOO ═══
+  /* ═══ 6. v2.3.2889: AN ARROW STUCK IN A FAR MONSTER IS FAR TOO ═══
      Owner: "Arrows shot at far away mummies in desert winds at small
      perspective are still large."  The arrow in flight shrank with the curve
      (v2.3.2790); the shaft it left in the body did not.  One shaft is stuck

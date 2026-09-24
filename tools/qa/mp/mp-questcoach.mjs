@@ -76,7 +76,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
-  await H.pastWelcome(P);   /* v2.3.2880: the first card waits out the WELCOME plate now */
+  await H.pastWelcome(P);   /* v2.3.2890: the first card waits out the WELCOME plate now */
 
   /* ── 0. before the questline, ONE thing is being taught ──
      ═══ v2.3.2130 CHANGED WHAT THIS ASSERTS, DELIBERATELY ═══

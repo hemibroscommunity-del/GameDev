@@ -52,7 +52,7 @@ const shootAt = (P, arch, special, hp) => P.page.evaluate((a) => {
   const m = F.createMonster('stuck-1', 'fodder', 2, S.player.x + a.gap, S.player.y, null);
   m.archetype = a.arch; m.type = a.arch;
   m.alive = true; m.curHp = m.maxHp = 900000; m.spd = 0; m.vx = 0; m.vy = 0;
-  if (a.hp) m.curHp = a.hp;   /* v2.3.2881: a slime the arrow kills */
+  if (a.hp) m.curHp = a.hp;   /* v2.3.2891: a slime the arrow kills */
   m.dmg = 0;
   m.renderX = m.x; m.renderY = m.y;
   m._stuckArrows = [];
@@ -155,7 +155,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }
 
-  /* ── 4. v2.3.2881: the shafts go with the monster ──
+  /* ── 4. v2.3.2891: the shafts go with the monster ──
      Owner: "Arrows stuck in monsters persist even after death."  A dead
      monster stays in S.monsters (alive=false) until it respawns, and its
      shafts used to hang there over the empty spot the whole time. */

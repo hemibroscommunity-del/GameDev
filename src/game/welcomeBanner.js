@@ -31,7 +31,7 @@
  * who, the road says where.
  */
 import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js';
-import { noteOnboardingPlate, noteWelcomePending } from '@/ui/onboardingPace.js'; /* v2.3.2878; v2.3.2880 + pending */
+import { noteOnboardingPlate, noteWelcomePending } from '@/ui/onboardingPace.js'; /* v2.3.2888; v2.3.2890 + pending */
 
 const SEEN_KEY = 'bt_welcome_seen';
 
@@ -82,14 +82,14 @@ function looksBrandNew(rpg) {
 export function maybeShowWelcome(getS) {
   try {
     if (welcomeSeen()) return false;
-    /* v2.3.2880: hold the coach until this is decided -- the welcome, and its
+    /* v2.3.2890: hold the coach until this is decided -- the welcome, and its
        Skip tutorial button, come first (onboardingPace.js) */
     noteWelcomePending(true);
     const t0 = Date.now();
     const show = function () {
-      noteWelcomePending(false);   /* v2.3.2880: decided; noteOnboardingPlate below takes over the hold */
+      noteWelcomePending(false);   /* v2.3.2890: decided; noteOnboardingPlate below takes over the hold */
       try {
-        /* v2.3.2878: the WELCOME plate is the first tutorial pop-up; the coach
+        /* v2.3.2888: the WELCOME plate is the first tutorial pop-up; the coach
            waits its 20s gap after this one too (onboardingPace.js) */
         try {
           const ms = (typeof window !== 'undefined' && window.__questMsgMs) ? window.__questMsgMs('welcome') : 5200;
@@ -123,7 +123,7 @@ export function maybeShowWelcome(getS) {
         const synced = !getS || (S && S._rpgFromServer);
         if (!synced) {
           if (Date.now() - t0 < 20000) setTimeout(check, 250);
-          else noteWelcomePending(false);   /* v2.3.2880: no answer, no welcome -- release the coach */
+          else noteWelcomePending(false);   /* v2.3.2890: no answer, no welcome -- release the coach */
           return;
         }
         markSeen();   /* before the timer: a reload inside the delay must not re-arm it */

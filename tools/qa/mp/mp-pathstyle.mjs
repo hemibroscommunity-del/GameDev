@@ -107,7 +107,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const counts = { steps, arrows, beads: beads ? beads.motes : 0, ribbon: ribbon ? ribbon.motes : 0 };
   console.log('    marks per style: ' + JSON.stringify(counts));
   rec.ok('each style really draws a different road, not the same one renamed',
-    /* v2.3.2878: the footprint stride grew to 1.05 tiles, between the beads'
+    /* v2.3.2888: the footprint stride grew to 1.05 tiles, between the beads'
        0.9 and the arrows' 1.3 */
     counts.ribbon > counts.beads && counts.beads > counts.steps && counts.steps > counts.arrows, counts);
 

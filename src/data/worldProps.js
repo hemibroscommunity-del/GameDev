@@ -470,7 +470,7 @@ export const WORLD_PROPS = [
      solid (v2.3.2073, and stampPropFootprints stamps them onto frost's real
      mask exactly as it does town's).  Footprints were checked against each
      other and against the two portal points; none overlaps. */
-  /* ═══ v2.3.2884: THREE SNOWBANKS IN A LINE, AND OTHERWISE ROOM ═══
+  /* ═══ v2.3.2894: THREE SNOWBANKS IN A LINE, AND OTHERWISE ROOM ═══
      Owner: "The props are too much in the confined snow level.  Add maybe
      just 3 props of the snow bank in a line for some interesting strategy
      for cover.  Otherwise the small zone needs space and not props."
@@ -879,7 +879,7 @@ export function zoneBlockers(zoneId) {
    hence Object.create(null) (CLAUDE.md rule 4). */
 const PROP_MATERIALS = Object.assign(Object.create(null), {
   'frost-rock-ridge':  { kind: 'stone', tint: 0x8d97a3, sound: 'stone' },
-  'frost-snowbank-w':  { kind: 'stone', tint: 0x8d97a3, sound: 'stone' },   /* v2.3.2884: the same ridge art */
+  'frost-snowbank-w':  { kind: 'stone', tint: 0x8d97a3, sound: 'stone' },   /* v2.3.2894: the same ridge art */
   'frost-snowbank-e':  { kind: 'stone', tint: 0x8d97a3, sound: 'stone' },
   'mayor-house':       { kind: 'stone', tint: 0x948c80, sound: 'stone' },
   'forge':             { kind: 'stone', tint: 0x7a7670, sound: 'stone' },

@@ -52,7 +52,7 @@ import { DefaultBatcher } from 'pixi.js';
 export const SHADE = {
   figure: { top: [1.0, 0.99, 0.95], bot: [0.72, 0.75, 0.90] },
   prop:   { top: [1.0, 1.0, 0.97],  bot: [0.64, 0.67, 0.84] },
-  /* ═══ v2.3.2883: SNOW IS NOT SHADED BLUE-VIOLET IN DAYLIGHT ═══
+  /* ═══ v2.3.2893: SNOW IS NOT SHADED BLUE-VIOLET IN DAYLIGHT ═══
      Owner: "the prop has a very strong bluish tint that doesn't match the
      background during daytime -- in snow level."  `prop`'s base multiplies
      blue down least of the three channels, which on warm town stone reads as

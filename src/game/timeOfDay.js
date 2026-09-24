@@ -49,7 +49,7 @@ export function zoneHasSky(zoneId, S) {
    sunrise.  Night is deliberately NOT black: this is played on a phone, often
    outdoors, and a monster you cannot see is not atmosphere, it is a bug.  The
    lantern round each player does the rest.
-   v2.3.2882: night is a quarter of what it was.  Owner: "Make night last
+   v2.3.2892: night is a quarter of what it was.  Owner: "Make night last
    only 25% of the current time."  Named night ran 0.685-0.975 of the cycle
    (~11.6 of the 40 minutes); it now runs 0.9025-0.975 (2.9 min).  The four
    keys from day's end to night's start slid later by 0.2175 and the time
@@ -72,7 +72,7 @@ const KEYS = [
 ];
 
 /* Named phases for the preview override and QA -- the middle of each. */
-export const NAMED_PHASES = { dawn: 0.03, morning: 0.2, day: 0.35, golden: 0.8275, dusk: 0.8825, night: 0.94 };   /* v2.3.2882: moved with the keys */
+export const NAMED_PHASES = { dawn: 0.03, morning: 0.2, day: 0.35, golden: 0.8275, dusk: 0.8825, night: 0.94 };   /* v2.3.2892: moved with the keys */
 
 /* A manual phase for previews and QA: `?tod=night` (or dawn/day/golden/dusk,
    or a number 0..1) in the URL, or window.__btTod = 0.8 from the console.

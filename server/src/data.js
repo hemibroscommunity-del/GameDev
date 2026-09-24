@@ -327,7 +327,7 @@ export const ZONES = {
        * MIRROR of src/data/zones.js verdant.spawns -- zones.test.mjs compares
        * these two arrays with JSON equality, so they move together. */
       verdant: { w:32, h:32, level:[1,2], element:'flora',  secondary:'venom',    lawless:true, spawns:[{arch:'fodder',count:6,variant:'blueSlime'}] }, /* band: [22,40]; v2.3.1675: all blue (owner) -- mirror of src/data/zones.js */
-      /* v2.3.2884: `entryClear` -- where a player ARRIVES (the nw exit off
+      /* v2.3.2894: `entryClear` -- where a player ARRIVES (the nw exit off
        * the world view lands at (864, 768): zoneTransitions.js, nW - 5 tiles
        * by the bottom-row inset) and how far from it no monster may spawn.
        * Owner: "move monsters away from the zone entrance so you don't get

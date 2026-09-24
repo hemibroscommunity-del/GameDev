@@ -75,7 +75,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...it names the town', !!welcome && /Bro Town/i.test(welcome.text || ''), welcome);
   rec.ok('...and sends you to the Mayor',
     !!welcome && /Mayor Bro/i.test(welcome.text || ''), welcome);
-  /* v2.3.2880: its own, longer hold -- it carries the Skip tutorial button,
+  /* v2.3.2890: its own, longer hold -- it carries the Skip tutorial button,
      and a button needs time to be reached (mp-tutskip) */
   rec.ok('...and it holds at least as long as a completion',
     await P.page.evaluate(() => window.__questMsgMs && window.__QUEST_MSG_LONG_MS

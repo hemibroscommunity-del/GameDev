@@ -94,7 +94,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await onOff(P, 'verdant', rec, { props: false });
   }
 
-  /* ── v2.3.2883: A SNOWBANK IS NOT SHADED LILAC ──
+  /* ── v2.3.2893: A SNOWBANK IS NOT SHADED LILAC ──
      Owner: "the prop has a very strong bluish tint that doesn't match the
      background during daytime -- in snow level."  The `prop` shade pulled a
      snowbank's white base toward lilac; frost's props now take the

@@ -289,7 +289,7 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
    blocker, which is the shape of use the old tests never exercised. */
 {
   const boxes = cliBlockers('frost');
-  check('fixture: frost has blockers to fly through', boxes.length >= 3, { n: boxes.length });   /* v2.3.2884: three snowbanks (was six props) */
+  check('fixture: frost has blockers to fly through', boxes.length >= 3, { n: boxes.length });   /* v2.3.2894: three snowbanks (was six props) */
 
   /* Step from well outside a box, through its centre, to well past it. */
   function fly(fn, box, ang, step) {
@@ -426,7 +426,7 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
   /* out of reach.  Asked about the RIDGE, not about anything: 120px south of
      its middle was 10px off the pine pair's east face, and the fan found the
      pines there -- which was correct, and is what the first cut of this check
-     tripped over.  (v2.3.2884: the pines are gone; the check stays asked
+     tripped over.  (v2.3.2894: the pines are gone; the check stays asked
      about the ridge.) */
   const far = cliSwing('frost', mx, R.y1 + 120, -Math.PI / 2, 72, Math.PI / 2);
   check('...nor does one from beyond the blade\'s reach', !far || far.id !== 'frost-rock-ridge', far && far.id);
@@ -453,7 +453,7 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
     return !m || !['stone', 'snow'].includes(m.kind) || !(m.tint > 0) || !m.sound;
   }).map((p) => p.id);
   check(`every blocking prop has a material (${blocking.length})`, blocking.length > 0 && bad.length === 0, bad);
-  /* v2.3.2884: frost's pines are gone -- its three snowbanks are the rock
+  /* v2.3.2894: frost's pines are gone -- its three snowbanks are the rock
      ridge art, so all three are stone */
   check('frost\'s three snowbanks are stone', ['frost-rock-ridge', 'frost-snowbank-w', 'frost-snowbank-e']
     .every((id) => cliMaterial(id).kind === 'stone'), {});

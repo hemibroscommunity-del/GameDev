@@ -20,7 +20,7 @@
  *     blocked hit (covered by the gameEvents guard; asserted here via tiers).
  */
 import * as H from './harness.mjs';
-import { lightingAt } from '../../../src/game/timeOfDay.js';   /* v2.3.2882: the day's lengths */
+import { lightingAt } from '../../../src/game/timeOfDay.js';   /* v2.3.2892: the day's lengths */
 
 const SHOTS = process.env.WORLDFX_SHOTS || 'tools/qa/mp/out';
 
@@ -75,7 +75,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const dusk = await fx();
   rec.ok('dusk is its own hour, between the two', !!dusk && dusk.tod && dusk.tod.name === 'dusk', dusk && dusk.tod);
 
-  /* v2.3.2882: owner -- "Make night last only 25% of the current time" and
+  /* v2.3.2892: owner -- "Make night last only 25% of the current time" and
      "Add a time of day icon next to current map name". */
   /* timeOfDay.js imports nothing, so the keys are read here in node */
   const lens = {};
