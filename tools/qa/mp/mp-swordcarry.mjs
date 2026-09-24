@@ -115,7 +115,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the silhouette reads.  The plain sword and the staff have been behind at SW
      all along -- they are not `_heldInHand` and never reach heldWeaponInFront --
      so this makes the greatsword agree with them rather than inventing a rule. */
-  /* ═══ v2.3.2898: ...AND THE CARRIED SW COMES BACK IN FRONT ═══
+  /* ═══ v2.3.2911: ...AND THE CARRIED SW COMES BACK IN FRONT ═══
      Owner: "East, Southwest, northeast the characters hand should be over the
      handle."  Behind the body, the arm swallowed the SW handle and only the
      crossguard showed beside the hand.  The carried SW blade now sits in front

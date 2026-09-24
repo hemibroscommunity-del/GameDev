@@ -47,7 +47,7 @@ import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore d
 import { gearArt, gearMaterial } from './gearVariants.js';
 import { materialRgb, weaponMaterial } from './traits/materialTints.js'; /* v2.3.1842: weapons share the metals table */
 
-import { weaponArtUrl, weaponFitH } from './weaponSprites.js';        /* v2.3.1841; weaponFitH v2.3.2895 */
+import { weaponArtUrl, weaponFitH } from './weaponSprites.js';        /* v2.3.1841; weaponFitH v2.3.2910 */
 import { getShieldArt } from './shieldSprites.js';        /* v2.3.1841 */
 import { getCape } from './traits/capeCatalog.js';        /* v2.3.2516: the worn cape, in the preview */
 import { speciesCanvases, loadSpeciesArt } from './traits/speciesArt.js';   /* v2.3.2682: the monkey, fur on the portrait's own skin */
@@ -870,7 +870,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     if (th > 0 && tw > 0) {
       const key = weapon.gearBase ? `${_wpnType}:${weapon.gearBase}` : _wpnType;
       const worldH = WORLD_WEAPON_PX[key] || WORLD_WEAPON_PX[_wpnType] || 36;
-      /* v2.3.2895: weaponFitH -- the widened greatsword keeps its old length. */
+      /* v2.3.2910: weaponFitH -- the widened greatsword keeps its old length. */
       const k = (worldH * _w2f) / weaponFitH(_wpnType, weapon.gearBase, DIR, th);
       /* ═══ v2.3.1842: THE METAL, not the donor art ═══
          Owner: "it should show the copper sword in the character preview

@@ -4595,7 +4595,7 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
   return inFrontBase;   /* greatsword: point-up, clears the torso -- E/SE only */
 }
 
-/* ═══ v2.3.2898: THE FIST GOES OVER THE HANDLE ═══
+/* ═══ v2.3.2911: THE FIST GOES OVER THE HANDLE ═══
  * Owner: "East, Southwest, northeast the characters hand should be over the
  * handle."  Measured before changing anything (a red dot drawn at the grip
  * anchor): the anchor WAS on the hand at all three -- the fault was layering.
@@ -6194,7 +6194,7 @@ const SOUTH_BLOCK_OFFHAND_BY_TYPE = {
 const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.28;
 function _placeSouthBlockWeapon(display, wpn, bobY) {
   const spr = display && display._weaponSprite;
-  clearGripHole(spr);   /* v2.3.2898: the carried pose's fist hole is not this pose's */
+  clearGripHole(spr);   /* v2.3.2911: the carried pose's fist hole is not this pose's */
   if (!spr || !wpn || !wpn.type) return false;
   /* THE SAME OBJECT HE WAS JUST CARRYING.  A greatsword and a bow have
      per-facing held art, and their single-icon fallbacks are something else
@@ -6225,7 +6225,7 @@ function _placeSouthBlockWeapon(display, wpn, bobY) {
                 : wpn.type === 'bow' ? 34
                 : (wpn.type === 'sword' && wpn.gearBase === 'wood') ? 36
                 : 26;
-  /* v2.3.2895: size by weaponFitH, not th -- the widened greatsword's canvas
+  /* v2.3.2910: size by weaponFitH, not th -- the widened greatsword's canvas
      is taller than its blade is long (weaponSprites.js SHEETS). */
   const k = targetH / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, artDir, th));
   spr.scale.set(k, k);
@@ -12400,7 +12400,7 @@ export class EntityRenderer {
                          : wpn.type === 'bow'        ? (_gsDir ? 52 : 28)
                          : isWoodSword                ? 45
                          :                              26;
-          /* v2.3.2895: weaponFitH, not th -- the widened greatsword sheets keep
+          /* v2.3.2910: weaponFitH, not th -- the widened greatsword sheets keep
              their pre-widening height so the blade gets wider, not shorter. */
           const fitScale = targetH / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, _gsDir, th));
           /* v2.3.1786: set by the carried branch below.  Declared HERE, beside
@@ -12566,7 +12566,7 @@ export class EntityRenderer {
                whole probe — which read as "the weapon branch never ran" and
                sent me looking for a bug one layer too far up. */
             window.__btWeapon = {
-              gripHole: !!weaponSprite._gripHoleOn,   /* v2.3.2898 */
+              gripHole: !!weaponSprite._gripHoleOn,   /* v2.3.2911 */
               visible: weaponSprite.visible, bladeUp: _weaponBladeUp,
               x: +weaponSprite.x.toFixed(2), y: +weaponSprite.y.toFixed(2),
               anchorX: weaponSprite.anchor.x, anchorY: weaponSprite.anchor.y,
@@ -12686,7 +12686,7 @@ export class EntityRenderer {
              Skip it while the layered shirt is showing (same pattern as the
              SE/NE jog skips); the grip-wrap nicety returns when the shirt
              clone learns to ride along. */
-          /* v2.3.2898: the fist-over-handle hole (see gripHoleWanted) --
+          /* v2.3.2911: the fist-over-handle hole (see gripHoleWanted) --
              replaces the hand-cap wherever it applies. */
           const _gripHole = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat);
           if (_gripHole) {
@@ -13001,7 +13001,7 @@ export class EntityRenderer {
            heldWeaponInFront at the top of this file for the measurements and
            for why the v2.3.1787 exception does not transfer to it. */
         const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand)
-          /* v2.3.2898: SW carried comes in front, fist over the handle */
+          /* v2.3.2911: SW carried comes in front, fist over the handle */
           || gripHoleWanted(wpn && wpn.type, facingIdx, swingActive, sheathed);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
         /* v2.3.2841: the staff cast glows at the crystal from a layer above

@@ -19,7 +19,7 @@ import { Assets } from 'pixi.js';
    are WebP and there is no WebP encoder in this sandbox, so a regenerated file
    can only come out as PNG.  Version bumped or every CDN edge keeps serving
    the brown art. */
-const SPRITE_VERSION = '2.3.2895';   // 1073: re-added black outline to all bow art (recolor had stripped it); 2354: the two 1254px sword icons became 256px twins; 2895: greatsword-<dir> art widened 1.75x
+const SPRITE_VERSION = '2.3.2910';   // 1073: re-added black outline to all bow art (recolor had stripped it); 2354: the two 1254px sword icons became 256px twins; 2895: greatsword-<dir> art widened 1.75x
 
 /* v2.3.172: per-gearBase variants. Keys are `${type}:${gearBase}`;
    the bare type key is the fallback for any unmapped gearBase. wood-
@@ -44,7 +44,7 @@ const SPRITE_VERSION = '2.3.2895';   // 1073: re-added black outline to all bow 
    by the same 256/1254 and kept as floats so the ANCHOR FRACTION is
    identical to six decimal places; the tip is not stored anywhere (only the
    -45 degree axis in blockArm.js, which a proportional resize cannot move). */
-/* ═══ v2.3.2895: THE GREATSWORD IS WIDER, NOT SHORTER ═══
+/* ═══ v2.3.2910: THE GREATSWORD IS WIDER, NOT SHORTER ═══
    Owner: "make the great sword the player holds wider (maybe 1.5 to 2x as
    wide?)".  The five greatsword-<dir> sheets were re-drawn 1.75x thicker by
    tools/art/widen_greatsword.py -- stretched PERPENDICULAR to each blade's
@@ -155,7 +155,7 @@ export function weaponArtUrl(type, gearBase, dir) {
   return (SHEETS[k] && SHEETS[k].url) || null;
 }
 
-/** v2.3.2895: the height to SIZE this art by (fitScale = targetH / fitH).
+/** v2.3.2910: the height to SIZE this art by (fitScale = targetH / fitH).
  *  Normally the texture's own height; a sheet widened after the fact carries
  *  its pre-widening height so it keeps its length, divided by any `lenMul`
  *  so it can be drawn longer on purpose (see SHEETS).  `fallbackH`
