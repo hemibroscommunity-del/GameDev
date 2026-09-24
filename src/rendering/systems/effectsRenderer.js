@@ -4675,7 +4675,7 @@ export class EffectsRenderer {
 
   /* ── Projectiles (arrows, staff bolts, remote) ── */
   _updateProjectiles(S, now) {
-    /* v2.3.2893 QA probe: what each ordinary shot on screen was drawn WITH --
+    /* v2.3.2901 QA probe: what each ordinary shot on screen was drawn WITH --
        the arrowhead colour and the fade, or the element a bolt glows in --
        yours and every peer's.  Arrows are Graphics strokes, so no sprite holds
        these afterwards; mp-projlook compares them across two screens.  Gated
@@ -4877,7 +4877,7 @@ export class EffectsRenderer {
         /* v2.3.2842: the one-bolt special -- the basic bolt, bigger, leaving
            the crystal with the heavy release (staffCastFx reads a.big). */
         this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);
-        if (_shotLook) _shotLook.push({ who: 'self', kind: 'bigbolt', elem: a._fxElem || null, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2893 */
+        if (_shotLook) _shotLook.push({ who: 'self', kind: 'bigbolt', elem: a._fxElem || null, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2901 */
       } else if (a.isSpecial || a.ice) {
         /* Staff special / ice — bigger yellow glow ring so specials
            read as distinct from regular projectiles. Three concentric
@@ -4901,7 +4901,7 @@ export class EffectsRenderer {
            two-circle draw until the strip loads. */
         if (MAGIC_BOLT_FRAMES.length) {
           this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2841: + S, for the caster's crystal */
-          if (_shotLook) _shotLook.push({ who: 'self', kind: 'bolt', elem: a._fxElem || null, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2893 */
+          if (_shotLook) _shotLook.push({ who: 'self', kind: 'bolt', elem: a._fxElem || null, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2901 */
         } else {
           gfx.circle(a._renderX, a._renderY, 5 * _pk);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
@@ -4920,7 +4920,7 @@ export class EffectsRenderer {
         /* v2.3.1915: a PLANTED arrow draws under the player. `planting` is
            still falling — in the air, so it stays in front until it lands. */
         this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1 * _pk, _headless, !!a.planted);
-        if (_shotLook) _shotLook.push({ who: 'self', kind: 'arrow', color: elemColor, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2893 */
+        if (_shotLook) _shotLook.push({ who: 'self', kind: 'arrow', color: elemColor, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2901 */
         /* v2.3.2287 QA probe, house style (__btChopFigure, __btStandInCape).
            A screenshot cannot tell "the arrow shrank" from "the arrow was never
            drawn", and the difference between those two is the whole risk of
@@ -4961,7 +4961,7 @@ export class EffectsRenderer {
          v2.3.1574) this is a FIRST application, not a double one -- there is
          no zonePlayerScale anywhere in this loop today. */
       const _pk = zonePlayerScale(S.currentZone, rp._renderX, rp._renderY, TILE) || 1;
-      /* ═══ v2.3.2893: DRAWN THE WAY THE SHOOTER DRAWS IT ═══
+      /* ═══ v2.3.2901: DRAWN THE WAY THE SHOOTER DRAWS IT ═══
          Your own shot is tipped in your weapon's element colour and fades over
          its last 20 frames of flight (elemColor / fadeA above).  A peer's was
          always tan and never faded -- the element was not on the wire, and the
@@ -4979,13 +4979,13 @@ export class EffectsRenderer {
       const _remoteArrowSpec = !rp.isStaff && rp.isSpecial && ARROW_SPECIAL.frames.length;
       /* v2.3.2847: a peer's special is white-hot too, through the same code */
       const _remoteHot = !rp.isStaff && rp.isSpecial && HOT_SPECIAL_ARROW && hotArrowReady() && !!this._hotArrow;
-      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec && !_remoteHot) this._updateProjectileTrail(rp, gfx, _rFade, !!rp.isStaff, _pk);   /* v2.3.2893: + the fade */
+      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec && !_remoteHot) this._updateProjectileTrail(rp, gfx, _rFade, !!rp.isStaff, _pk);   /* v2.3.2901: + the fade */
       if (rp.isStaff) {
         if (_remoteMagicSpec) {
-          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, _rFade, now, _liveBolts, _pk);   /* v2.3.2893: was a flat 0.95 */
+          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, _rFade, now, _liveBolts, _pk);   /* v2.3.2901: was a flat 0.95 */
         } else if (_remoteBasicBolt) {
-          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, _rFade, now, _liveBolts, _pk, S);   /* v2.3.2841: + S; v2.3.2893: + the fade, was 0.95 */
-          if (_shotLook) _shotLook.push({ who: rp.ownerId != null ? String(rp.ownerId) : '?', kind: rp.big ? 'bigbolt' : 'bolt', elem: rp._fxElem || null, alpha: +_rFade.toFixed(3), life: rp.life });   /* v2.3.2893 */
+          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, _rFade, now, _liveBolts, _pk, S);   /* v2.3.2841: + S; v2.3.2901: + the fade, was 0.95 */
+          if (_shotLook) _shotLook.push({ who: rp.ownerId != null ? String(rp.ownerId) : '?', kind: rp.big ? 'bigbolt' : 'bolt', elem: rp._fxElem || null, alpha: +_rFade.toFixed(3), life: rp.life });   /* v2.3.2901 */
         } else {
           /* v2.3.840: special staff bolts read bigger + golden with a halo. */
           gfx.circle(rp._renderX, rp._renderY, (rp.isSpecial ? 7 : 4) * _pk);
@@ -4993,13 +4993,13 @@ export class EffectsRenderer {
           if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.6 }); }
         }
       } else if (_remoteHot) {
-        this._hotArrow.arrow(rp, rp._renderX, rp._renderY, rp.ang + bend, _rFade, _pk, now, false, 0);   /* v2.3.2893: + the fade */
+        this._hotArrow.arrow(rp, rp._renderX, rp._renderY, rp.ang + bend, _rFade, _pk, now, false, 0);   /* v2.3.2901: + the fade */
       } else if (_remoteArrowSpec) {
-        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, _rFade, now, _liveBolts, _pk);   /* v2.3.2893: + the fade */
+        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, _rFade, now, _liveBolts, _pk);   /* v2.3.2901: + the fade */
       } else {
-        /* v2.3.2893: the element's colour and the fade, as yours (was tan at 0.9). */
+        /* v2.3.2901: the element's colour and the fade, as yours (was tan at 0.9). */
         this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : _rElemColor, rp.isSpecial ? 1.0 : _rFade, _pk);   /* v2.3.2287: 7th arg is SCALE, not alpha -- this call omitted it and relied on the default */
-        if (_shotLook && !rp.isSpecial) _shotLook.push({ who: rp.ownerId != null ? String(rp.ownerId) : '?', kind: 'arrow', color: _rElemColor, alpha: +_rFade.toFixed(3), life: rp.life });   /* v2.3.2893 */
+        if (_shotLook && !rp.isSpecial) _shotLook.push({ who: rp.ownerId != null ? String(rp.ownerId) : '?', kind: 'arrow', color: _rElemColor, alpha: +_rFade.toFixed(3), life: rp.life });   /* v2.3.2901 */
         if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.55 }); }
       }
     }

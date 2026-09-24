@@ -239,7 +239,7 @@ export var doRetreatShot = function (S, R, ang) {
     if (!S.arrows) S.arrows = [];
     var _dk = depthK(S.currentZone, S.player.y);   /* v2.3.2790: the retreat shot reaches as far as you LOOK */
     var pushArrow = function (a) {
-      var _shotTs = Date.now();   /* v2.3.2893: one stamp for the arrow and its broadcast (the snap roll, data/arrowSnap.js) */
+      var _shotTs = Date.now();   /* v2.3.2901: one stamp for the arrow and its broadcast (the snap roll, data/arrowSnap.js) */
       S.arrows.push({
         /* v2.3.1335: range -25%.  v2.3.2387: the staff's 68 becomes STAFF_LIFE
            (675px, the arrow's cap) -- gameSystems.js has the derivation. */
@@ -249,7 +249,7 @@ export var doRetreatShot = function (S, R, ang) {
         element: activeWpn.element1 || null, retreatShot: true,
         _shotTs: _shotTs   /* v2.3.2731: the snap roll's timestamp (data/arrowSnap.js) */
       });
-      /* ═══ v2.3.2893: AND EVERYONE ELSE SEES IT ═══
+      /* ═══ v2.3.2901: AND EVERYONE ELSE SEES IT ═══
          Owner: "check all other broadcasted player animations to make sure
          they match what your character does client side."
          The retreat shot never told anybody it fired: the roll went out

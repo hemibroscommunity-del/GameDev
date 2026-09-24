@@ -1658,7 +1658,7 @@ export function processGameEvent(type, payload, S, deps) {
               S._remoteProjectiles.push({
                 x: payload.x, y: payload.y, ang: payload.ang,
                 isStaff: payload.isStaff, isSpecial: !!payload.isSpecial, dist: 14,
-                /* v2.3.2893: the shooter's element, read by the renderer exactly
+                /* v2.3.2901: the shooter's element, read by the renderer exactly
                    as it reads your own shot's (_projElem).  A real element key
                    or nothing -- the value is peer-supplied (rule 4 posture). */
                 _projElem: (typeof payload.el === 'string' && Object.prototype.hasOwnProperty.call(ELEMENTS, payload.el)) ? payload.el : null,
@@ -1711,7 +1711,7 @@ export function processGameEvent(type, payload, S, deps) {
               });
               /* v2.3.1011: a bow shot (non-staff) drives the remote bow-draw
                  stand-in (Phase 4 reads _bowShotAt/_bowShotAng). */
-              /* v2.3.2893: not for a retreat shot (dodge.js): the shooter's own
+              /* v2.3.2901: not for a retreat shot (dodge.js): the shooter's own
                  screen draws no bow for it and keeps them facing the way they
                  ROLL, so neither the draw nor the turn below belongs to it. */
               if (!payload.isStaff && !payload.retreat && payload.id && S.others[payload.id]) {

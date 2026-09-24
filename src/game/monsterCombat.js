@@ -1719,7 +1719,7 @@ export function updateMonsterCombat(S, deps) {
                 /* Broadcast projectile to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
                   id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: _shotTs,
-                  /* v2.3.2893: the shot's ELEMENT.  Your own arrow is tipped in
+                  /* v2.3.2901: the shot's ELEMENT.  Your own arrow is tipped in
                      your weapon's element colour and your bolt glows in it
                      (effectsRenderer elemColor, staffCastFx rampFor); a watcher
                      had no element to use, so they drew every peer's arrow tan
