@@ -1,5 +1,7 @@
 import { TILED_ZONE_MAPS, getWalkability, loadWalkabilityMaps, preloadAllTiledMaps, WALK_MASKS_ENABLED } from '@/rendering/tiledMaps.js';
-import { propsForZone, propFootprint } from '@/data/worldProps.js'; /* v2.3.1778: buildings block */
+import { propsForZone, propFootprint, TOWN_MAP_V } from '@/data/worldProps.js'; /* v2.3.1778: buildings block */
+import { TOWN_RIM_MAP_V, TOWN_RIM_WORLD, townRimGrid } from '@/data/townRim.js'; /* v2.3.2896: ...and so do the rocks round town */
+import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2896: the rim is where your BOOTS stop */
 import { ZONES, TILE } from '@/data/index.js';
 
 /* === spriteSheets — mount-time walkability loader ===
@@ -93,19 +95,45 @@ function installPropOnlyGrids(S) {
   Object.keys(ZONES).forEach(function (zid) {
     if (S._tiledWalkable[zid]) return;                 /* a real mask wins */
     var props = propsForZone(zid).filter(function (p) { return propFootprint(p); });
-    if (!props.length) return;
     var zone = ZONES[zid];
     var CELL = 16;
     var gw = Math.max(1, Math.round(zone.w * TILE / CELL));
     var gh = Math.max(1, Math.round(zone.h * TILE / CELL));
-    var open = [];
-    for (var gy = 0; gy < gh; gy++) {
-      var row = new Array(gw);
-      for (var gx = 0; gx < gw; gx++) row[gx] = true;
-      open.push(row);
+    /* v2.3.2896: town's rock ring is terrain too -- see townRimFor. */
+    var rim = townRimFor(zid, zone, gw, gh);
+    if (!props.length && !rim) return;
+    var open = rim;
+    if (!open) {
+      open = [];
+      for (var gy = 0; gy < gh; gy++) {
+        var row = new Array(gw);
+        for (var gx = 0; gx < gw; gx++) row[gx] = true;
+        open.push(row);
+      }
     }
     S._tiledWalkable[zid] = stampPropFootprints(zid, open);
   });
+}
+
+/* ═══ v2.3.2896: THE TOWN'S ROCK RING ═══
+   Owner: "can you make it so the player can't walk over the giant gray rocks
+   surrounding the town?"  The terrain half of town's grid: instead of starting
+   all-open, it starts as the ground inside the ring (src/data/townRim.js, which
+   explains what the outline is and why it is not the hue mask v2.3.1794
+   switched off), and the props are stamped onto THAT -- so a building still
+   blocks exactly as before, and the rocks now block as well.
+
+   The feet offset is baked in at build time (townRimGrid): isSolid reads the
+   grid at the body's centre, and the rim is where the BOOTS stop.
+
+   OFF, not approximated, when the outline was traced on another map: a rim
+   that does not match the art is a wall in the wrong place, which traps
+   players; no rim is merely today's walk-anywhere.  Null for every other zone. */
+function townRimFor(zid, zone, gw, gh) {
+  if (zid !== 'town') return null;
+  var mw = zone.w * TILE, mh = zone.h * TILE;
+  if (TOWN_RIM_MAP_V !== TOWN_MAP_V || TOWN_RIM_WORLD.w !== mw || TOWN_RIM_WORLD.h !== mh) return null;
+  return townRimGrid(gw, gh, mw, mh, playerGroundDy(zid, mw / 2, mh / 2));
 }
 
 /* ═══ v2.3.1778: BUILDINGS BLOCK ═══

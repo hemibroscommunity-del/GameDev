@@ -5,6 +5,8 @@ import { questSteps } from '../../../data/gameSystems.js';   /* v2.3.2820 */
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2172: the sheet's width, not the shell's */
+import { TRAIL_STYLES, isTrailOff, getShownTrailStyle, setTrailShown } from '@/game/questTrailStyle.js'; /* v2.3.2896 */
+import { useScrollTap } from '../sheet/scrollTap.js'; /* v2.3.2896: the switch sits in a scroller */
 
 /* v2.3.1265: Quests — read-only quest log (accepting/turning-in stays
    with the NPCs; server-authoritative flow untouched).
@@ -72,6 +74,73 @@ const openDetail = (qid) => {
   dashboardPanelBus.push('questDetail');
 };
 
+/* ═══ v2.3.2896: THE QUEST PATH SWITCH, WHERE THE QUESTS ARE ═══
+   Owner: "Allow an option to switch off the footprints from the quest
+   dashboard button too."  Settings -> Quest path already had Off as one of
+   its chips, but Settings is two taps deep behind More, and the Quests
+   button is where a player's head is when the road under their feet is the
+   thing in the way.  So the same setting is reachable here as a plain
+   on/off -- not a second copy of the style picker: Off writes the very 'off'
+   the Settings row stores, and On brings back whichever look was last showing
+   (questTrailStyle.setTrailShown), so the two places can never disagree.
+
+   The whole row is the target, not just the pill: a 44px row is the touch
+   floor, and a 46px pill at the edge of a skinny landscape column is not.
+   Through useScrollTap because the row lives inside the panel's scroller,
+   where a thumb that drifts ~15px has its tap confiscated (scrollTap.js). */
+const PathSwitch = () => {
+  const [, force] = useState(0);
+  const scrollTap = useScrollTap();
+  /* Read every render, not cached in state: it is a variable read, and the
+     Settings row can change it while this panel is unmounted. */
+  const on = !isTrailOff();
+  const look = TRAIL_STYLES.find((s) => s.id === getShownTrailStyle());
+  return (
+    <div
+      role="switch" aria-checked={on} aria-label="Quest path"
+      data-questpath-switch={on ? 'on' : 'off'}
+      /* role="switch" is not one the click-sound delegate recognises
+         (button / role="button"), so the row says so itself */
+      data-uisfx="click"
+      {...scrollTap(() => { setTrailShown(!on); force((v) => v + 1); })}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        minHeight: 44, padding: '4px 4px',
+        borderBottom: `1px solid ${COL.divider}`,
+        cursor: 'pointer', touchAction: 'manipulation',
+      }}>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: COL.text }}>Quest path</span>
+        <span style={{
+          display: 'block', fontSize: 11.5, color: COL.text2, marginTop: 1,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{on ? (look ? look.label : 'On') + ' on the ground' : 'Hidden'}</span>
+      </span>
+      {/* The Settings Toggle's pill, same sizes and states (brass-soft fill +
+          brass knob when on, raised + muted knob when off). */}
+      <span aria-hidden="true" style={{
+        display: 'block', flex: 'none',
+        width: 46, height: 26,
+        borderRadius: 999,
+        background: on ? COL.accentFill : COL.raised,
+        border: `1px solid ${on ? COL.accent : COL.borderStrong}`,
+        boxSizing: 'border-box',
+        position: 'relative',
+      }}>
+        <span style={{
+          position: 'absolute',
+          top: 2, left: on ? 22 : 2,
+          width: 20, height: 20,
+          borderRadius: '50%',
+          background: on ? COL.accent : COL.muted,
+          boxShadow: '0 1px 2px rgba(0,0,0,.35)',
+          transition: 'left .15s',
+        }} />
+      </span>
+    </div>
+  );
+};
+
 const EmptyLine = ({ text }) => (
   <div style={{ padding: '26px 16px', textAlign: 'center', color: COL.muted, fontSize: 13, lineHeight: 1.45 }}>{text}</div>
 );
@@ -130,6 +199,7 @@ export const QuestsPanel = () => {
       </div>
 
       <div style={{ paddingBottom: 26 }}>
+        <PathSwitch />
         {segment === 'Active' && (
           activeSorted.length === 0
             ? <EmptyLine text="No active quests. Choose one from Available or speak with someone in town." />

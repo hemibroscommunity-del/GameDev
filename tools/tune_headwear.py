@@ -119,8 +119,20 @@ def sheet_head(pose, d):
     return float(np.median(acc)) if acc else None
 
 
-def fit_pose(meta, pose, path):
+def fit_pose(meta, pose, path, dirs=None):
     """Make the hat sit on `pose`'s head the way it sits on the idle head.
+
+    v2.3.2896: `dirs` fits only those directions (--dirs east).  A PARTIAL fit
+    leaves `poseFit` as it found it, because poseFit is item-wide: setting it
+    would also switch off the renderer's blanket mine/fish multipliers for this
+    item, resizing it in poses nobody asked about.  So on an item without
+    poseFit, scaleByPose carries the measured ratio with the blanket divided
+    back out (the renderer multiplies it back in); on an item with poseFit it
+    is the ratio itself, exactly as a full fit writes it.  Either way the hat
+    renders at the measured size.  Owner, v2.3.2896: "some hats look squished
+    when running east to west ... Check each hat" -- jog east/west was the one
+    pose/direction whose blanket (0.67) was far off the head it sits on
+    (measured 0.889), so every hat was drawn ~25% small there.
 
     bodyDirScale drops out of this: it scales the hat and the body by the same
     factor, so the only thing that matters is how big the head is DRAWN in each
@@ -133,10 +145,30 @@ def fit_pose(meta, pose, path):
     the face.  X is left at 0 deliberately: nudge X is multiplied by the mirror
     sign, so a non-zero value needs opposite entries per screen side."""
     print(f'{pose} vs stand — head width drawn in each sheet (256-space)\n')
-    meta['poseFit'] = True
+    # v2.3.2897: `fitSkip` {pose: [dirs]} -- directions where the owner looked
+    # at the fit and kept the renderer's blanket size instead (sombrero and
+    # wizard hat, jog east: "were better before. Too large.").  Never fitted
+    # again by this tool; and a FULL fit is refused outright on such an item,
+    # because setting poseFit would switch that very blanket off.
+    skip = set((meta.get('fitSkip') or {}).get(pose, []))
+    if dirs is None and skip:
+        raise SystemExit(f'{pose} fit refused: fitSkip keeps the blanket size on {sorted(skip)} for '
+                         f'this item (an owner decision -- see its note), and a full fit would '
+                         f'switch that blanket off.  Fit the other directions with --dirs.')
+    want = [d for d in DIRS if dirs is None or d in dirs]
+    for d in want:
+        if d in skip:
+            print(f'  {d:<11} fitSkip — the owner kept the blanket size here; not fitted')
+    want = [d for d in want if d not in skip]
+    if not want:
+        print('\nnothing left to fit — wrote nothing')
+        return
+    if dirs is None:
+        meta['poseFit'] = True
+    fitted = bool(meta.get('poseFit'))
     sbp = meta.setdefault('scaleByPose', {}).setdefault(pose, {})
     pn = meta.setdefault('poseNudge', {}).setdefault(pose, {})
-    for d in DIRS:
+    for d in want:
         # v2.3.2361: an item ships only the directions its meta has anchors for
         # (the beard has no north; glasses have none either).  Nothing to fit.
         if d not in (meta.get('anchors') or {}):
@@ -155,20 +187,23 @@ def fit_pose(meta, pose, path):
         # poseTraitMul for this item, so scaleByPose is the measured head ratio
         # itself rather than that ratio with 1/0.67 baked in to cancel a
         # constant.  Same rendered size either way; this one is readable.
-        mul = 1.0
+        mul = 1.0 if fitted else pose_trait_mul(pose, d)   # v2.3.2896: see the docstring
         sbp[d] = round(r / mul, 3)
         cn = meta['crownNudge'][d]
         pn[d] = [0, int(round(cn[1] * (r - 1)))]
         print(f'  {d:<11} stand {ws:5.1f}  {pose} {wp:5.1f}   ratio {r:.3f}'
               f'   -> scaleByPose {sbp[d]:g}, poseNudge {pn[d]}')
     note = meta.get('note', '')
-    tag = (f' {pose} fitted by tools/tune_headwear.py --fit-pose {pose}: the '
+    what = pose if dirs is None else f'{pose} {"/".join(dirs)}'
+    tag = (f' {what} fitted by tools/tune_headwear.py --fit-pose {pose}'
+           f'{"" if dirs is None else " --dirs " + ",".join(dirs)}: the '
            f'{pose} sheets draw the head at a different size from the idle '
            f'sheets, so scaleByPose carries headWidth({pose})/headWidth(stand) '
            f'with the renderer\'s blanket poseTraitMul divided back out, and '
            f'poseNudge scales the placement about the crown so the band does '
            f'not slide down the face.')
-    if f'{pose} fitted by' not in note:
+    # a partial fit on an item already fitted whole says nothing new
+    if f'{what} fitted by' not in note and f' {pose} fitted by' not in note:
         meta['note'] = note + tag
     with open(path, 'w') as fh:
         json.dump(meta, fh, indent=2)
@@ -189,9 +224,18 @@ def main():
                     help='measure a pose\'s head against stand and write '
                          'scaleByPose + poseNudge so the hat fits it the same '
                          'way it fits the idle (e.g. --fit-pose jog)')
+    ap.add_argument('--dirs',
+                    help='with --fit-pose: fit only these directions, e.g. '
+                         '"east" (v2.3.2896; leaves poseFit alone -- see fit_pose)')
     args = ap.parse_args()
     if not args.scale and not args.fit_pose:
         raise SystemExit('give --scale or --fit-pose')
+    fit_dirs = None
+    if args.dirs:
+        fit_dirs = [d.strip() for d in args.dirs.split(',') if d.strip()]
+        bad = [d for d in fit_dirs if d not in DIRS]
+        if bad:
+            raise SystemExit(f'unknown direction(s) {bad}; expected some of {DIRS}')
 
     path = META.format(cat=args.category, id=args.id)
     if not os.path.exists(path):
@@ -199,7 +243,7 @@ def main():
     meta = json.load(open(path))
 
     if args.fit_pose:
-        fit_pose(meta, args.fit_pose, path)
+        fit_pose(meta, args.fit_pose, path, fit_dirs)
         return
 
     want = {}
