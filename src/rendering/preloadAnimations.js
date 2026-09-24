@@ -40,7 +40,7 @@ import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { mintWorldFxTextures } from './worldFxTextures.js';   /* v2.3.2712 */
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
-import { effectsAnimationsReady, ensureImpactTex, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit */
+import { effectsAnimationsReady, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit; v2.3.2844: minus the retired snowman plume */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
 import { preloadTraits, preloadBroBadge } from './systems/entityRenderer.js'; /* v2.3.2345: + the verified-Bro plate badge */
 import { preloadCapes } from './capeSprites.js'; /* v2.3.2023: cosmetic capes are GLOBAL, not per-zone */
@@ -128,11 +128,11 @@ export async function preloadZoneAssets(zoneId) {
      the FIRST step a player takes already has its texture; a lazy load here
      would mean the opening stride of every zone entry leaves nothing behind. */
   tasks.push(Promise.resolve(loadFootprints(zoneId)).catch(() => {}));
-  /* frost is the only snowman zone — its sprites + the ice-burst impact
-     sheet (both ~2MB) load here instead of globally. */
+  /* frost is the only snowman zone — its sprites load here instead of
+     globally.  v2.3.2844: the ice-burst impact sheet that used to ride along
+     (~2MB) is retired with the plume it drew (effectsRenderer tombstone). */
   if (zoneId === 'frost') {
     tasks.push(Promise.resolve(loadSnowmanSprites()).catch(() => {}));
-    try { ensureImpactTex(); } catch (e) { /* effectsAnimationsReady tracks it */ }
     /* v2.3.2217: the thrown ball's burst — AWAITED (pushed into tasks) rather
        than fire-and-forget, so it is ready before the zone overlay lifts
        instead of popping in on the first snowball that lands. */

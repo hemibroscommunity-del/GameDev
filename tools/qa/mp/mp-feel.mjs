@@ -15,10 +15,10 @@
  *    read through the __btMonsterHitReact probe because neither survives
  *    a single screenshot.
  *
- * 3. GROUND MARKS.  Hits leave material-tinted decals that expire on the
- *    8s TTL (owner: "stays for about 5-10 seconds").  Spawn chance is
- *    rolled per hit, so the spawn assertion pins Math.random while it
- *    dispatches — the wiring is under test, not the coin.
+ * 3. GROUND MARKS.  Hits leave marks that stay about 5-10 seconds (owner).
+ *    v2.3.2843: the marks are the material's own landed pieces
+ *    (hitMaterialFx) -- the soft decal that used to sit beside them is
+ *    retired.
  */
 import * as H from './harness.mjs';
 
@@ -113,32 +113,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the 120ms hit-flash tint fired on it (0xff8080)',
     !!(peer && peer.tint === 0xff8080), peer && { tint: peer.tint, flash: peer.flash });
 
-  /* ── 3. ground marks ── pin the coin so the wiring is what's tested. */
-  const decals = await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    S.groundSplatter = [];
-    const realRandom = Math.random;
-    Math.random = () => 0;   /* chance gates pass, spreads collapse to centre */
-    try {
-      window.__btDispatch({
-        type: 'monster_hit',
-        payload: { monsterId: 'qa-feel', attackerId: 'qa-someone-else', dmg: 5, hpPct: 0.8, isCrit: false },
-      });
-    } finally { Math.random = realRandom; }
-    return { count: (S.groundSplatter || []).length, first: (S.groundSplatter || [])[0] || null };
-  });
-  rec.ok('a hit leaves a ground mark (material decal spawned)',
-    decals.count >= 1 && !!decals.first, decals);
-
-  /* TTL: age the mark past 8s and the cleanup pass must reap it. */
+  /* ── 3. ground marks ──
+     v2.3.2843: the mark is the material's own pieces now.  A hit used to add a
+     soft tinted decal (S.groundSplatter) beside its debris; the material
+     reaction (rendering/hitMaterialFx.js) retired it, because the pieces that
+     come down and LIE there are the mark -- crisp slime puddles, snow lumps,
+     blood spots, bone shards -- for the burst's ~5 s (owner: "stays for about
+     5-10 seconds").  So this asserts the mark the player actually sees: a
+     peer's hit leaves pieces on the ground, and they are still there well
+     after they land.  The wait first: section 2's hit landed on this same
+     slime a moment ago, and the renderer (rightly) folds two bursts on one
+     monster inside 150 ms into one -- this hit must be its own. */
+  await P.page.waitForTimeout(400);
   await P.page.evaluate(() => {
     const S = window._gameState.current;
-    (S.groundSplatter || []).forEach((d) => { d.ts -= 9000; });
+    if (S._debrisBursts) S._debrisBursts.length = 0;
+    S.groundSplatter = [];
+    window.__btDispatch({
+      type: 'monster_hit',
+      payload: { monsterId: 'qa-feel', attackerId: 'qa-someone-else', dmg: 5, hpPct: 0.8, isCrit: false, slot: 'melee' },
+    });
   });
-  await P.page.waitForTimeout(250);
-  const afterTtl = await P.page.evaluate(() => (window._gameState.current.groundSplatter || []).length);
-  rec.ok('...and it expires on the 8s TTL (owner: 5-10 seconds)',
-    afterTtl === 0, { afterTtl });
+  await P.page.waitForTimeout(1400);
+  const marks = await P.page.evaluate(() => ({
+    db: window.__btDebris ? window.__btDebris() : null,
+    decals: (window._gameState.current.groundSplatter || []).length,
+  }));
+  const mark = marks.db && marks.db[marks.db.length - 1];
+  rec.ok('a hit leaves marks on the ground: its pieces land and lie there (v2.3.2843)',
+    !!(mark && mark.landed > 0 && mark.age > 1000), marks);
+  rec.ok('...lasting within the owner\'s 5-10 s', !!(mark && mark.ms >= 5000 && mark.ms <= 10000), mark);
+  rec.ok('...a peer\'s blade reads as a blade (the worker\'s slot names the weapon)', !!(mark && mark.weapon === 'sword'), mark);
+  rec.ok('...and no soft decal is laid beside them any more', marks.decals === 0, marks);
+  await P.page.waitForTimeout(4500);   /* let it expire before section 4 */
 
   /* ═══ 4. THE DEBRIS BURST IS A THING YOU CAN SEE (v2.3.2504) ═══
      Owner (§5.8): "Debris → use the fallback art for now.  Lane F1 makes the

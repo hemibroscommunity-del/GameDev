@@ -148,14 +148,14 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
-  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'blockScale', 'botfp', 'broVerify',
+  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'broVerify',
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3shared' /* v2.3.2592 */, 'prog3rel' /* v2.3.2680 */, 'gearq' /* v2.3.2664 */, 'prog3x', 'questTrack', 'sponsor', 'store',
   'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeChat' /* v2.3.2621 */, 'storeOffer' /* v2.3.2623 */,
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
-  'trade2Weapons', 'weaponDrops', 'whisper', 'zoneDepth' /* v2.3.2790 */, 'dailyChest' /* v2.3.2820 */, 'smelting' /* v2.3.2822 */, 'whirlWindup' /* v2.3.2824 */,
+  'trade2Weapons', 'weaponDrops', 'whisper', 'zoneDepth' /* v2.3.2790 */, 'bowvolley' /* v2.3.2848 */, 'dailyChest' /* v2.3.2820 */, 'smelting' /* v2.3.2822 */, 'whirlWindup' /* v2.3.2824 */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -177,8 +177,10 @@ const CAP_NOTES = {
   storeGearRef: 'naming a piece for sale by its receipt number instead of its description',
   storeOffer: 'making a gold offer on a listing, with the gold held until the seller answers',
   storeChat: 'messaging the seller about one listing, in a thread attached to it',
+  bigorb: 'the staff special as one big, swingy bolt that explodes (v2.3.2849; without it: the three-orb volley, no blast)',
   blockScale: 'the shield block count',
   zoneDepth: 'Wind Dunes perspective — things shrink and slow toward the north edge',
+  bowvolley: 'the bow special as three white-hot arrows, two-thirds of a special each, a 2.5 s burn, no blast (v2.3.2849; without it: one arrow, its 4 s burn and the blast)',
 };
 
 export const DevPanel = ({ onClose }) => {

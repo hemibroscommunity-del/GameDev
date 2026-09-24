@@ -65,6 +65,70 @@ const CRIT_ANCHOR_MULT = 2;
    by a second clamp, and it visibly reads as half the number beside it. */
 const STAFF_SPLASH = { RADIUS_PX: 60, FRAC: 0.5, MAX_TARGETS: 3 };
 
+/* ═══ v2.3.2849: THE SPECIALS, REBALANCED ═══
+   Owner, on the three specials: "the specials probably need rebalanced" --
+   asked which weapon should do the most damage to a single monster: "staff,
+   but with high variance (can have lowest damage hits)", and whether the
+   sword keeps its wide swing: "Yes".  The archetypes are the owner's own,
+   from the bow volley (v2.3.2848): "the archetype for bow will be speed and
+   DPS as opposed to staff which is area damage and high damage variance".
+
+   Measured through this handler for a fresh character on the starter kit
+   (skill 1, Copper Great Sword / Pine Bow / Pine Staff, no points) before
+   this change: the greatsword's special ~41 on every monster in its ring,
+   the bow volley ~30 from its arrows + ~71 from its burn (~101, the most
+   single-target damage, and the steadiest), the staff's big bolt ~99 on one
+   monster (spread 49-163) and nothing on anything else.  So the staff was
+   neither the hardest single hit nor an area weapon, and summing three
+   rolls had made it SWING LESS than one orb (+-18 % against +-32 %).
+
+   STAFF_BOLT -- the big bolt (orbs: 3, caps.bigorb) is ONE roll now, drawn
+   from its own BAND instead of three draws from the basic bolt's 0.5-1.65:
+   0.3-2.5 x the special's 2x x the three orbs it stands for.  Mean x1.4
+   against the old x1.075 (+30 %), and the widest spread of any hit in the
+   game: ~28 to ~231 for that fresh character, averaging ~129.  So the staff
+   is the hardest single hit ON AVERAGE and also the weakest special there
+   is on a bad roll -- below the greatsword's worst -- which is the owner's
+   "can have lowest damage hits".  Capped at the special ceiling x the orbs
+   it spent in the lane, the bound three separately-capped orbs always had,
+   x CAP_K: that ceiling was sized for a roll that reaches the staff's own
+   1.65 (VAR in _computeAttackDamage), so a draw that reaches 2.5 gets the
+   same headroom scaled up, never less.  Measured at the loosest legitimate
+   build (skill 100, luck/dmg/special maxed, top-tier volatile godly staff,
+   mythic flame amulet, under the Fury Tonic): the bolt peaks at 63 % of its
+   ceiling -- exactly the old orb's 63 % of one -- where without CAP_K it
+   would sit at 96 %.  Retune BAND and CAP_K together; combat-lifecycle 6i
+   rolls that build at the top of the band and fails if they drift.
+   BLAST: it then explodes where it landed.  Every other monster within 90
+   px (x Detonation, like the basic splash) takes a third of the bolt's
+   capped roll -- ~43 on that character, about what the greatsword's special
+   does to each monster in its ring, but rolled with the bolt: a lucky bolt
+   blasts the pack, an unlucky one fizzles.  A third rather than the basic
+   bolt's half so the greatsword keeps the reliable wide swing the owner kept
+   for it.  MAX_TARGETS bounds the loop, as the basic splash's 3 does.
+
+   BOW_VOLLEY_WORTH -- a volley arrow (`part: 3`) lands WORTH / part of the
+   special roll: two-thirds each, the volley twice the old arrow's hit, where
+   it was a third each.  The client halves the time the volley burns (4 s ->
+   2.5 s, 7 ticks -> 4), so the total is unchanged (~100) and most of it now
+   lands in the hit -- "speed and DPS", steady.  Still cheat-neutral: WORTH /
+   part is under 1 for every part the worker honours (2-3), so a volley arrow
+   is never worth more than a plain special, which is what an honest client
+   leaving `part` off would send.
+
+   TUNING KNOBS, one number each: BAND (the staff's spread and mean), BLAST
+   (its area), BOW_VOLLEY_WORTH and the client's BOW_VOLLEY.BURN_MS (the
+   bow's split).  The client mirrors BAND and WORTH for its own prediction
+   (gameSystems.js STAFF_BIG_BOLT_BAND, bowVolley.js BOW_VOLLEY.WORTH) --
+   display and duel dmgBase only; every monster number is rolled here.
+   docs/specs/specials-rebalance.md has the before/after table. */
+export const STAFF_BOLT = {
+  BAND: [0.3, 2.5],
+  CAP_K: 2.5 / 1.65,
+  BLAST: { RADIUS_PX: 90, FRAC: 1 / 3, MAX_TARGETS: 6 },
+};
+export const BOW_VOLLEY_WORTH = 2;
+
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
   elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
@@ -812,7 +876,13 @@ export const combatMethods = {
     const VAR = type === 'staff' ? [0.5, 1.65]
               : type === 'bow'   ? [0.6, 0.8]
               :                    [0.75, 1.25];
-    const v = VAR[0] + Math.random() * (VAR[1] - VAR[0]);
+    /* v2.3.2849: a caller may draw from a different band (the big staff
+       bolt's STAFF_BOLT.BAND, see the top of this file).  The DRAW only:
+       rangeTop below -- the crit anchor's "top of the displayed range" --
+       stays the weapon's own band, so a crit still pays what it always did.
+       Server-side callers only; nothing on the wire reaches it. */
+    const _band = (opts && Array.isArray(opts.band) && opts.band.length === 2) ? opts.band : VAR;
+    const v = _band[0] + Math.random() * (_band[1] - _band[0]);
     /* The top of the weapon's displayed damage range, built from the same
        pre-variance base the roll uses (mirrors calcDisplayDmgRange). */
     const rangeTop = base * VAR[1] + dmgFlat;
@@ -996,6 +1066,30 @@ export const combatMethods = {
        client/server position lag on iPhone Safari over cellular, and
        the 250 px PvP figure left only ~46 px of slack, which is ~105 ms
        of movement at the legit max speed. */
+    /* ═══ v2.3.2842: ONE BIG STAFF BOLT, THREE ORBS' WORTH ═══
+       Owner: "Instead of the current special attack with 3 orbs I want to see
+       what just one moderately larger bolt attack would look like."  So the
+       staff special is one bolt now (client playerActions.js, behind
+       caps.bigorb), and it declares how many of the old orbs it stands for:
+       `orbs`.  The worker rolls that many special hits -- each its own
+       variance, its own crit, its own cap -- and sums them into ONE
+       monster_hit, so the player sees one big number where there used to be
+       three.  Expected damage is exactly the three orbs'.
+       BOUNDED BY THE LANE THAT BOUNDED THE ORBS.  Honoured only on a staff
+       special, clamped to 1..3, and each orb spends a slot in the special
+       lane below (3 per 1200 ms per monster) -- so a forged `orbs` can buy
+       nothing that three separate special sends could not already buy.
+       Absent (every older client, and every other hit) -> 1, which is the
+       ordinary one-roll path, byte-identical.
+       v2.3.2849: no longer three rolls summed -- ONE roll from the bolt's own
+       wider band, worth the orbs, and then it explodes (STAFF_BOLT, top of
+       this file).  The lane, the clamp and the "absent -> 1" are unchanged. */
+    const _orbsWire = Math.floor(Number(payload.orbs));
+    /* v2.3.2849: a big bolt is ONE roll from its own band that then explodes
+       (STAFF_BOLT at the top of this file) -- `_bigBolt` is what the wire
+       said, `_orbs` below is what the lane lets it be worth. */
+    const _bigBolt = isSpecial && _effSlot === 'staff' && _orbsWire > 1;
+    let _orbs = _bigBolt ? Math.min(3, _orbsWire) : 1;
     if (_effSlot === 'melee'
         && typeof attackerPs.x === 'number' && typeof attackerPs.y === 'number'
         && typeof m.x === 'number' && typeof m.y === 'number') {
@@ -1032,7 +1126,10 @@ export const combatMethods = {
       if (isSpecial) {
         cad.s = cad.s.filter(t => nowTs - t < 1200);
         if (cad.s.length >= 3) return;
-        cad.s.push(nowTs);
+        /* v2.3.2842: a big bolt spends one slot per orb it carries, and never
+           more than the lane has left. */
+        _orbs = Math.min(_orbs, 3 - cad.s.length);
+        for (let k = 0; k < _orbs; k++) cad.s.push(nowTs);
       } else {
         if (nowTs - cad.n < 210) return; // v2.3.1343: 335 -> 210 (Tempo cap -50%)
         cad.n = nowTs;
@@ -1050,8 +1147,41 @@ export const combatMethods = {
     // weapon + the client's intent (slot/special).  _maxDmgForAttacker
     // stays as a cheap sanity clamp on our OWN roll (weapon-aware, slice
     // 16 / T1-T2): special hits get the 2x cap headroom.
-    const rolled = this._computeAttackDamage(attackerPs, slot, isSpecial, { targetLevel: m.level });  /* v2.3.2680: the edge */
-    const dmgCap = this._maxDmgForAttacker(attackerPs, isSpecial);
+    /* v2.3.2849: the big bolt draws from STAFF_BOLT.BAND and is worth the orbs
+       it spent in the lane, under that many special ceilings -- the most three
+       separately-capped orbs could ever sum to -- x CAP_K for its wider band. */
+    const rolled = this._computeAttackDamage(attackerPs, slot, isSpecial,
+      _bigBolt ? { targetLevel: m.level, band: STAFF_BOLT.BAND } : { targetLevel: m.level });  /* v2.3.2680: the edge */
+    const dmgCap = this._maxDmgForAttacker(attackerPs, isSpecial) * (_bigBolt ? _orbs * STAFF_BOLT.CAP_K : 1);
+    if (_bigBolt) rolled.dmg *= _orbs;
+    /* ═══ v2.3.2848: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ═══
+       Owner: "the bow special should be 3 white hot arrows that follow each
+       other closely.  One shot for all 3 arrows.  I think the archetype for
+       bow will be speed and DPS as opposed to staff which is area damage and
+       high damage variance" -- and, asked how hard each arrow should hit,
+       "a third each": the three together deal what the one arrow did.
+       So each arrow of the volley (playerActions.js, behind caps.bowvolley)
+       says `part: 3`, and this worker's own special roll, under this worker's
+       own ceiling, is divided by it.  Each arrow still rolls its own variance
+       and its own crit, so the volley's EXPECTED total is exactly the old
+       arrow's and its spread is narrower -- the steady-DPS weapon beside the
+       staff's big swings.
+       CAPPED FIRST, THEN SPLIT: three thirds of an over-cap roll must not sum
+       past what the one arrow could ever have landed.
+       CHEAT-NEUTRAL, so it needs no bound beyond its shape.  `part` can only
+       make a hit SMALLER; a client that leaves it off sends a full special,
+       and three of those per 1200 ms per monster is what the special lane
+       above has admitted since v2.3.1134.  Honoured on a ranged special
+       only, 2..3; anything else -- every older client, every other hit -- is
+       1, the untouched one-roll path.  `rolled` is this call's own object
+       (_computeAttackDamage returns a fresh one), so nothing else sees it. */
+    const _partWire = Math.floor(Number(payload.part));
+    const _part = (isSpecial && _effSlot === 'ranged' && _partWire >= 2) ? Math.min(3, _partWire) : 1;
+    /* v2.3.2849: WORTH / part of it, not a flat third -- two-thirds an arrow,
+       the volley twice the old hit (BOW_VOLLEY_WORTH at the top of this file).
+       Math.min(1, ...) keeps "never more than a plain special" true of any
+       part a future client might send. */
+    if (_part > 1) rolled.dmg = Math.min(dmgCap, rolled.dmg) * Math.min(1, BOW_VOLLEY_WORTH / _part);
     /* v2.3.1734: FRACTURE applies here, AFTER the attacker ceiling and
        before the overkill clamp.  The order is the point: dmgCap bounds
        what the ATTACKER's build may produce, and fracture is a property
@@ -1060,8 +1190,11 @@ export const combatMethods = {
        posture as collision damage, which has bypassed dmgCap since
        v2.3.1114 and carries COLLISION_BURST_CAP instead.  ×1.00 on every
        monster that is not fractured, which is every monster today. */
-    const rawDmg = Math.max(1, Math.round(
-      Math.max(1, Math.min(dmgCap, rolled.dmg)) * this._fractureDmgMult(m)));
+    /* v2.3.2842 summed a big bolt's orbs here, one roll each.  v2.3.2849: it is
+       ONE roll now (above), and summing three draws is exactly what had evened
+       the staff's swing out -- see STAFF_BOLT. */
+    const _cappedDmg = Math.max(1, Math.min(dmgCap, rolled.dmg));
+    const rawDmg = Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m)));
     const actualDmg = Math.min(rawDmg, Math.max(0, m.hp));
     // Subtract actualDmg (capped at remaining hp) so m.hp doesn't go
     // negative on overkill -- otherwise the broadcast hpPct goes < 0
@@ -1308,6 +1441,15 @@ export const combatMethods = {
     if (_effSlot === 'staff' && !isSpecial) {
       this._staffSplash(zone, m, _impactX, _impactY, session.id, attackerPs,
         Math.max(1, Math.min(dmgCap, rolled.dmg)));
+    } else if (_bigBolt) {
+      /* v2.3.2849: THE BIG BOLT EXPLODES -- the same scan, off the same impact
+         point, with the bolt's own radius and share (STAFF_BOLT.BLAST): a
+         third of the bolt's capped roll on every other monster in reach, so
+         the blast swings with the bolt.  The special's own cadence lane has
+         already admitted the bolt, and a neighbour caught in the blast spends
+         none of its own -- the basic splash's rule. */
+      this._staffSplash(zone, m, _impactX, _impactY, session.id, attackerPs,
+        _cappedDmg, STAFF_BOLT.BLAST);
     }
 
     // Kill check -- resolution moved VERBATIM to _resolveMonsterKill
@@ -1337,17 +1479,21 @@ export const combatMethods = {
    * the monster the bolt hit; spraying burns onto three neighbours would
    * multiply the DoT, not the hit, and that is a much larger balance change
    * than the owner asked for. */
-  _staffSplash(zone, primary, ox, oy, attackerId, attackerPs, primaryDmg) {
+  /* v2.3.2849: `spec` -- the big bolt's blast is this same scan with its own
+     radius, share and target bound (STAFF_BOLT.BLAST); omitted, the basic
+     bolt's STAFF_SPLASH, exactly as before. */
+  _staffSplash(zone, primary, ox, oy, attackerId, attackerPs, primaryDmg, spec) {
+    const sp = spec || STAFF_SPLASH;
     if (typeof ox !== 'number' || typeof oy !== 'number') return 0;
     const monsters = this.monsters[zone] || [];
     if (monsters.length < 2) return 0;
-    const r = STAFF_SPLASH.RADIUS_PX * this._staffSplashMult(attackerPs);
+    const r = sp.RADIUS_PX * this._staffSplashMult(attackerPs);
     const r2 = r * r;
-    const base = Math.max(1, Math.round(primaryDmg * STAFF_SPLASH.FRAC));
+    const base = Math.max(1, Math.round(primaryDmg * sp.FRAC));
     let hitCount = 0;
     let dealt = 0;
     for (const m of monsters) {
-      if (hitCount >= STAFF_SPLASH.MAX_TARGETS) break;
+      if (hitCount >= sp.MAX_TARGETS) break;
       if (!m || m === primary || m.id === primary.id) continue;
       if (!m.alive || m.hp <= 0) continue;
       if (typeof m.x !== 'number' || typeof m.y !== 'number') continue;

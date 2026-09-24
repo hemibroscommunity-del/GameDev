@@ -8,10 +8,12 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat */
+import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS, STAFF_BIG_BOLT_BAND } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2842: the one-bolt special; v2.3.2849: its band */
 import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
+import { ARROW_SPEED_PX } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it */
+import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2848 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
-import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockAimPoint } from '@/game/combatHelpers.js';
+import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 
 export function swingAttack(S) {
@@ -295,7 +297,8 @@ export function specialAttack(S) {
        hit-test uses and returns null (rather than the world origin) when the
        target has no usable position.  Both specials launch from the player at
        dist 14 -- no grip offset to correct for, unlike the auto-attack. */
-    var _sLock = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
+    /* v2.3.2845: at the torso, as every locked shot is (combatHelpers lockShotPoint) */
+    var _sLock = lockShotPoint(S.lockedTarget && S.lockedTarget.ref, S.currentZone);
     if (_sLock) aimAng = Math.atan2(_sLock.y - S.player.y, _sLock.x - S.player.x);
     if (activeWpn.type === 'bow') {
       /* BOW heavy — large elemental arrow in swipe direction.  Renders
@@ -311,26 +314,61 @@ export function specialAttack(S) {
          so the landed arrow's lingering ground-tick (projectiles.js) deals
          base damage, immune to a later weapon swap. */
       var _bowBase = Math.max(1, Math.round(calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult, activeWpn)));
-      S.arrows.push({
-        ang: aimAng,
-        dist: 14,
-        dmg: Math.round(wpnDmg * specialAtkMultFor('bow', R || {})), /* v2.3.1397: bow special 3x (owner); v2.3.2592: × the SPECIAL stat */
-        baseDmg: _bowBase, /* v2.3.1402: lingering ground-tick base damage */
-        life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
-        maxLife: 150,
-        hitIds: new Set(),
-        isSpecial: true,
-        isStaff: false,
-        pierce: true,
-        _rangeMult: bowRangeMult(R || {}) * depthK(S.currentZone, S.player.y), /* v2.3.2592: the special reaches as far as an ordinary arrow does; v2.3.2790 x depth */
-        element: hasElement || null
-      });
+      var _bowFull = Math.round(wpnDmg * specialAtkMultFor('bow', R || {})); /* v2.3.1397: bow special 3x (owner); v2.3.2592: × the SPECIAL stat */
+      /* ═══ v2.3.2848: THREE WHITE-HOT ARROWS, ONE SHOT ═══
+         Owner: "the bow special should be 3 white hot arrows that follow each
+         other closely.  One shot for all 3 arrows" -- a third of the damage
+         each, and "Burn, but no blast".  The rules the three share (one
+         train, one burn, one shove) are in bowVolley.js.
+         GATED ON THE WORKER, the whole volley and never a part of it: each
+         arrow tells the worker `part: 3` (projectiles.js) and only a worker
+         advertising caps.bowvolley divides by it.  Against an OLD worker this
+         is still the one arrow with its burn and its blast, because that
+         worker would roll all three at full strength.
+         ONE PRESS, ONE PRICE: the mana, the cooldown and the swing clock above
+         are spent once, for the volley. */
+      var _bowVolley = !!(S._serverCaps && S._serverCaps.bowvolley);
+      var _bowN = _bowVolley ? BOW_VOLLEY.N : 1;
+      var _bowVol = _bowVolley ? newVolley() : null;
+      var _bowStat = bowRangeMult(R || {}) || 1;
+      for (var bvi = 0; bvi < _bowN; bvi++) {
+        S.arrows.push({
+          ang: aimAng,
+          dist: 14,
+          /* v2.3.2848: sized from the arrow's own speed so the train is GAP_PX
+             apart however fast Longshot makes it (projectiles.js catches the
+             frame it overstays back up) */
+          launchDelayMs: volleyDelayMs(bvi, ARROW_SPEED_PX * _bowStat),
+          dmg: _bowVolley ? Math.max(1, Math.round(_bowFull * BOW_VOLLEY.WORTH / BOW_VOLLEY.N)) : _bowFull,   /* v2.3.2848: a third each; v2.3.2849: two-thirds (the volley is worth WORTH specials) */
+          part: _bowVolley ? BOW_VOLLEY.N : 0,   /* v2.3.2848: the worker gives each arrow WORTH / part of its own roll (v2.3.2849) */
+          volley: _bowVol, volleyIx: bvi,
+          baseDmg: _bowBase, /* v2.3.1402: lingering ground-tick base damage */
+          life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
+          maxLife: 150,
+          hitIds: new Set(),
+          isSpecial: true,
+          isStaff: false,
+          pierce: true,
+          _rangeMult: _bowStat * depthK(S.currentZone, S.player.y), /* v2.3.2592: the special reaches as far as an ordinary arrow does; v2.3.2790 x depth */
+          element: hasElement || null
+        });
+      }
       /* v2.3.840: broadcast the bow special so peers see the big golden
-         arrow fly (mirrors the regular-arrow player_projectile path). */
-      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-        id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now,
-        life: Math.round(90 * (bowRangeMult(R || {}) || 1) * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
-      }});
+         arrow fly (mirrors the regular-arrow player_projectile path).
+         v2.3.2848: one per arrow of the volley, staggered on the peer's own
+         arrow speed (BOW_VOLLEY.PEER_PX_PER_FRAME) so the gap they see is the
+         gap you see -- the staff volley's `delayMs` (v2.3.2259), which a peer
+         already honours for any projectile. */
+      if (S.channel) {
+        for (var bvj = 0; bvj < _bowN; bvj++) {
+          S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
+            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now,
+            delayMs: Math.round(volleyDelayMs(bvj, BOW_VOLLEY.PEER_PX_PER_FRAME)),
+            volley: _bowVolley ? 1 : undefined,   /* v2.3.2849: additive -- a peer burns it out on the volley's 2.5 s, not the lone arrow's 4 */
+            life: Math.round(90 * _bowStat * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
+          }});
+        }
+      }
       BT_AUDIO.beep(400, 0.12, 0.15, 'sine');
       setTimeout(function () {
         return BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
@@ -418,45 +456,98 @@ export function specialAttack(S) {
       var _ORB_RANGE_PX = STAFF_RANGE_PX * staffRangeMult(R || {}) * depthK(S.currentZone, S.player.y); /* v2.3.2592: × the Magic lane's RANGE stat; v2.3.2790: × your depth */
       var _ORB_SPEED = 5;              /* the staff's own bolt speed */
       var _ORB_SPEEDS = [_ORB_SPEED, _ORB_SPEED, _ORB_SPEED];
-      for (var si = 0; si < 3; si++) {
-        var _spd = _ORB_SPEEDS[si];
-        var _life = Math.round(_ORB_RANGE_PX / _spd);
+      /* ═══ v2.3.2842: ONE BIG BOLT (gameSystems STAFF_BIG_BOLT_*) ═══
+         Owner: "Instead of the current special attack with 3 orbs I want to
+         see what just one moderately larger bolt attack would look like."
+         The basic bolt's own art and flight, drawn STAFF_BIG_BOLT_SCALE
+         bigger, leaving the crystal with a heavier kick and release
+         (staffCastFx).  Same speed and reach as the orbs it replaces, so
+         nothing about where the special can land moves.
+         Its damage is the three orbs' damage: `dmg` here is the local number
+         (client-only zones and a duel's dmgBase), `orbs` tells the worker how
+         many special rolls to sum.  ONLY against a worker that says it can
+         (caps.bigorb): an older one would roll this as one orb, a third of the
+         special, so there the volley below still fires. */
+      if (S._serverCaps && S._serverCaps.bigorb) {
+        var _bigLife = Math.round(_ORB_RANGE_PX / _ORB_SPEED);
         S.arrows.push({
           ang: aimAng,
           dist: 14,
-          launchDelayMs: si * _ORB_GAP_MS,
-          speedPx: _spd,
-          dmg: Math.round(_wpnDmg * specialAtkMultFor('staff', R || {})), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner); v2.3.2592: × the SPECIAL stat */
-          life: _life,      /* v2.3.1335's 560px reach, solved per speed */
-          maxLife: _life,
+          speedPx: _ORB_SPEED,
+          /* v2.3.2849: one draw from the bolt's own band, the worker's shape */
+          dmg: Math.round(calcSpecialDmg('staff', R || {}, activeWpn.tierMult, activeWpn, STAFF_BIG_BOLT_BAND) * specialAtkMultFor('staff', R || {}) * STAFF_BIG_BOLT_ORBS),
+          life: _bigLife,
+          maxLife: _bigLife,
           hitIds: new Set(),
           isSpecial: true,
           isStaff: true,
-          element: hasElement || null,
-          ice: true
+          big: true,
+          orbs: STAFF_BIG_BOLT_ORBS,
+          element: hasElement || null
         });
-      }
-      /* v2.3.840: broadcast the staff special so peers see it.
-         v2.3.2259: same ray, same stagger — `delayMs` rides the payload so a
-         peer's three orbs arrive in the same order yours do.  Additive field:
-         an older client ignores it and draws all three at once, which is what
-         it drew before. */
-      if (S.channel) {
-        for (var _bcj = 0; _bcj < 3; _bcj++) {
+        /* The staff kicks and the crystal flashes (entityRenderer, staffCastFx),
+           the basic cast's stamps -- plus _staffCastBig, which makes it the
+           heavy version.  NOT S.swingTimer's job: that clock is the special's
+           own spend (v2.3.2464, above) and already stamped. */
+        S._staffCastAt = now;
+        S._staffCastAng = aimAng;
+        S._staffCastBig = now;
+        if (S.channel) {
           S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
             id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true,
-            delayMs: _bcj * _ORB_GAP_MS,
-            speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
-            life: Math.round(_ORB_RANGE_PX / _ORB_SPEEDS[_bcj]), /* v2.3.2592: ...and the same reach */
+            big: true,   /* additive: an older peer draws one charged orb, which is what one bolt is */
+            speedPx: _ORB_SPEED,
+            life: _bigLife,
             ts: now
           }});
         }
+        BT_AUDIO.beep(420, 0.18, 0.2, 'square');
+        setTimeout(function () {
+          return BT_AUDIO.beep(620, 0.12, 0.14, 'square');
+        }, 60);
+        S.screenShake = 4;
+      } else {
+        /* The three-orb volley: an older worker, which has no caps.bigorb. */
+        for (var si = 0; si < 3; si++) {
+          var _spd = _ORB_SPEEDS[si];
+          var _life = Math.round(_ORB_RANGE_PX / _spd);
+          S.arrows.push({
+            ang: aimAng,
+            dist: 14,
+            launchDelayMs: si * _ORB_GAP_MS,
+            speedPx: _spd,
+            dmg: Math.round(_wpnDmg * specialAtkMultFor('staff', R || {})), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner); v2.3.2592: × the SPECIAL stat */
+            life: _life,      /* v2.3.1335's 560px reach, solved per speed */
+            maxLife: _life,
+            hitIds: new Set(),
+            isSpecial: true,
+            isStaff: true,
+            element: hasElement || null,
+            ice: true
+          });
+        }
+        /* v2.3.840: broadcast the staff special so peers see it.
+           v2.3.2259: same ray, same stagger — `delayMs` rides the payload so a
+           peer's three orbs arrive in the same order yours do.  Additive field:
+           an older client ignores it and draws all three at once, which is what
+           it drew before. */
+        if (S.channel) {
+          for (var _bcj = 0; _bcj < 3; _bcj++) {
+            S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
+              id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true,
+              delayMs: _bcj * _ORB_GAP_MS,
+              speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
+              life: Math.round(_ORB_RANGE_PX / _ORB_SPEEDS[_bcj]), /* v2.3.2592: ...and the same reach */
+              ts: now
+            }});
+          }
+        }
+        BT_AUDIO.beep(500, 0.15, 0.18, 'square');
+        setTimeout(function () {
+          return BT_AUDIO.beep(700, 0.1, 0.12, 'square');
+        }, 50);
+        S.screenShake = 3;
       }
-      BT_AUDIO.beep(500, 0.15, 0.18, 'square');
-      setTimeout(function () {
-        return BT_AUDIO.beep(700, 0.1, 0.12, 'square');
-      }, 50);
-      S.screenShake = 3;
     } else {
       /* SWORD/GREATSWORD heavy — melee elemental swing */
       S.swingTimer = now;
