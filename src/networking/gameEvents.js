@@ -383,6 +383,28 @@ export function processGameEvent(type, payload, S, deps) {
               handleEmoteEvent(payload, S);
               break;
             }
+          case 'gather_node':
+            {
+              /* ═══ v2.3.2915: THE TREE A PEER IS CHOPPING ═══
+                 Sent by the chopper (BroTown.jsx, beside the move broadcast)
+                 so this client can stand their lumberjack at the trunk, where
+                 their own screen draws it, rather than at their position up in
+                 the canopy.  Read by effectsRenderer._peerChopTree, which
+                 prefers this client's OWN copy of the node (looked up by id)
+                 and bounds the result to the peer's reach.
+                 A Map keyed by the chopper's id (rule 4), one entry per peer;
+                 only a peer standing in this zone gets one, so a forged id
+                 cannot grow it past the room.  Cleared on a zone change
+                 (zoneTransitions), with the peers' campfires. */
+              if (!payload || payload.id === S.myId || !_peerInZone(S, payload.id)) break;
+              if ((payload.zone || 'town') !== S.currentZone) break;
+              var _gnX = Number(payload.x), _gnY = Number(payload.y);
+              if (!isFinite(_gnX) || !isFinite(_gnY)) break;
+              var _gnNode = (payload.node != null && String(payload.node).length <= 64) ? String(payload.node) : null;
+              if (!S._peerGatherNode) S._peerGatherNode = new Map();
+              S._peerGatherNode.set(String(payload.id), { node: _gnNode, x: _gnX, y: _gnY, at: Date.now() });
+              break;
+            }
           case 'campfire_lit':
             {
               /* ═══ v2.3.1753: THE OTHER PLAYER'S FIRE ═══
