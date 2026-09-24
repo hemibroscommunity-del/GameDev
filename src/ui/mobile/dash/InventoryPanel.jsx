@@ -27,6 +27,7 @@ import { playVw, panelVw } from '../playViewport.js';
 export { CATEGORIES } from './bagFilterBus.js';
 import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the shop */
 import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the trade */
+import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -393,8 +394,11 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
     && shopBus.sel.side === 'bag' && shopBus.sel.key === ikey;
   /* v2.3.2149: how many of this stack are staged, so the tile can say so. */
   const tradeStaged = tradeBagBus.open ? tradeBagBus.countFor(ikey) : 0;
+  /* v2.3.2815: how this item comes alive in the bag (bagLife.js) -- a potion
+     sloshes, a fish flops, metal glints, a log lies still (null). */
+  const life = lifeKindFor(ikey, classify(ikey));
   return (
-    <div onPointerUp={handleTap} data-inv-key={ikey} style={{
+    <div onPointerUp={handleTap} data-inv-key={ikey} data-bag-key={`i-${ikey}`} style={{
       width: '100%', aspectRatio: '1 / 1',
       background: (shopSel || tradeStaged) ? 'rgba(234,198,117,.16)' : COL.tile,
       border: (shopSel || tradeStaged) ? '1px solid #EAC675' : `1px solid ${color}`,
@@ -413,10 +417,12 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
       {(() => {
         const thumb = thumbFor(ikey);
         return thumb
-          ? <img src={thumb} alt={ikey} draggable={false}
+          ? <img src={thumb} alt={ikey} draggable={false} className="bt-bag-art" data-life={life || undefined}
               style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
-          : <span>{iconFor(ikey)}</span>;
+          : <span className="bt-bag-art" data-life={life || undefined} style={{ display: 'inline-block' }}>{iconFor(ikey)}</span>;
       })()}
+      {/* v2.3.2815: the glint and the arrival ring draw here (game.css) */}
+      <span className="bt-bag-fx" aria-hidden="true" />
       {/* v2.3.1249: owner-approved — the big uncontained 15px count becomes
           a compact contained badge (bottom-right, bare number, 2-digit max;
           recipe in game.css .bt-item-qty).  Shared by the quick Bag preview
@@ -1275,7 +1281,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
        "gear up" coach mark points at once the bag is open (QuestCoach.jsx
        takes the first match, and the mark retires the moment the sword
        and shield are on). */
-    <div onPointerUp={handleTap} className={rarityClass} data-tut="coach-gear" style={{
+    <div onPointerUp={handleTap} className={rarityClass} data-tut="coach-gear" data-bag-key={`${kind}-${index}`} style={{
       width: '100%', aspectRatio: '1 / 1',
       background: COL.tile,
       border: `${edgeWidth}px solid ${color}`,
@@ -1287,10 +1293,15 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
       /* v2.3.1350: row-fit override from the measured items grid. */
       ...(styleOverride || {}),
     }} title={(obj && obj.name) || (kind === 'stashShield' ? 'Shield' : kind === 'stashArmor' ? 'Armor' : kind === 'stashLegs' ? 'Greaves' : 'Weapon')}>
+      {/* v2.3.2815: gear catches the light now and then (bagLife.js); a
+          rare-or-better piece a little more often (data-life-q) */}
       {thumb
-        ? <img src={thumb} alt="" draggable={false}
+        ? <img src={thumb} alt="" draggable={false} className="bt-bag-art"
+            data-life={lifeKindForGear(kind, obj) || undefined} data-life-q={q && q !== 'normal' ? '1' : undefined}
             style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
-        : <span style={{ fontSize: 18 }}>{fallbackGlyph}</span>}
+        : <span className="bt-bag-art" data-life={lifeKindForGear(kind, obj) || undefined}
+            style={{ fontSize: 18, display: 'inline-block' }}>{fallbackGlyph}</span>}
+      <span className="bt-bag-fx" aria-hidden="true" />
       {locked && (
         <span style={{
           position: 'absolute', top: 1, right: 1,

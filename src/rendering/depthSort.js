@@ -139,6 +139,19 @@ export function applyGroundSort(layer) {
     if (!c) continue;
     const y = groundOf(c);
     const k = Number.isFinite(y) ? Math.round(y) : 0;
+    /* v2.3.2816: a RIDER -- a building's moving pieces (worldLife.js), which
+       stand on their host's ground line -- sorts a quarter step after the
+       host: over the building and anything else on its row, but UNDER a
+       figure raised over that building (+0.5, raiseOverProps) and under
+       anything a row further south.  At +1 (TRAPS §104's overlay rule) the
+       auction house's scales drew over a player standing at its left corner,
+       raised over the wall they hang on (TRAPS §115). */
+    const host = c._ridesOn;
+    if (host && !host.destroyed && host.parent === c.parent) {
+      const hy = groundOf(host);
+      c.zIndex = (Number.isFinite(hy) ? Math.round(hy) : k) + 0.25;
+      continue;
+    }
     /* v2.3.2748: a figure standing in front of a building's real base is
        lifted just over it (see raiseOverProps) */
     c.zIndex = c._raiseTo != null ? c._raiseTo : k;
