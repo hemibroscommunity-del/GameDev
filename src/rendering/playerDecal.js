@@ -283,6 +283,8 @@ function _largestPiece(mask, w, h, x0, x1) {
  *        the region rather than only the largest — see framePieces.  Omitted,
  *        the behaviour is exactly what it was: largest piece only, confined to
  *        the whole mask, which keeps the shipped chest/trouser bakes identical.
+ *        v2.3.2829: `pieceKeep` overrides how big a share of the largest piece
+ *        another must be to be stamped too (framePieces; PIECE_KEEP when absent).
  */
 /* ═══ v2.3.1962: WHERE THE 16x16 GRID LANDS, IN ONE PLACE ═══
  *
@@ -433,7 +435,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
        ink only the bigger one.  When each piece is stamped it is also its own
        confinement, so one arm's box can never bleed onto the other. */
     if (eachPiece && !seenBuf) seenBuf = new Uint8Array(w * h);
-    const pieceList = eachPiece ? framePieces(mask, w, h, x0, x1, seenBuf) : [null];
+    const pieceList = eachPiece ? framePieces(mask, w, h, x0, x1, seenBuf, opts && opts.pieceKeep) : [null];   /* v2.3.2829: pieceKeep */
     for (let pi = 0; pi < pieceList.length; pi++) {
     /* One scratch mask for the whole sheet, painted from this piece's cell
        list and wiped again by the same list — O(piece), not O(sheet). */
@@ -1048,7 +1050,7 @@ const PIECE_KEEP = 0.35;
  *  is two dropped frames the moment a tattooed player walks on screen.  The
  *  caller paints one reusable scratch mask from the list and clears just the
  *  cells it set. */
-export function framePieces(mask, w, h, x0, x1, seenBuf) {
+export function framePieces(mask, w, h, x0, x1, seenBuf, keepRatio) {
   /* `seenBuf` is the caller's reusable visited-map.  A fresh Uint8Array per
      FRAME is 458 KB on a jog strip and 6 MB across the sheet, for a buffer whose
      only job is to be zero at the start — so it is wiped by the cells that were
@@ -1077,7 +1079,10 @@ export function framePieces(mask, w, h, x0, x1, seenBuf) {
   if (!found.length) return [];
   let best = 0;
   for (const c of found) if (c.length > best) best = c.length;
-  const keep = Math.max(8, best * PIECE_KEEP);
+  /* v2.3.2829: a caller whose figure's limbs differ more than two arms do may
+     set its own share -- the cook's far arm is a quarter of his near one (see
+     standInInk.js).  Everything else keeps PIECE_KEEP. */
+  const keep = Math.max(8, best * (keepRatio != null ? keepRatio : PIECE_KEEP));
   return found.filter((c) => c.length >= keep);
 }
 

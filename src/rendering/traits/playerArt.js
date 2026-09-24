@@ -344,6 +344,12 @@ export function onArtChange(fn) {
   _listeners.add(fn);
   return () => _listeners.delete(fn);
 }
+/* v2.3.2829: QA hook, the same shape as gearCatalog's __btSetGear.  The
+   stand-ins rebake when a drawing changes (the cook's layer, the lumberjack),
+   and that has to be drivable from a test without the designer's touch
+   surface.  It is setArt itself, so it validates exactly as the designer's
+   strokes are validated. */
+if (typeof window !== 'undefined') window.__btSetArt = setArt;
 
 /* v2.3.1938 names, kept so the shirt call sites read as shirt code. */
 export function getShirtArt(side) { return getArt(side === 'back' ? 'shirtBack' : 'shirtFront'); }

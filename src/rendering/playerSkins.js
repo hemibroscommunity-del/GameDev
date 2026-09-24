@@ -1078,8 +1078,29 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
  * alpha floor, blob floor 1500 — so v2.3.1710 is bit-for-bit unchanged. */
 const STANDIN_MIN_BLOB = 1500;   /* px; body >= 9462, fish <= 523 (measured) */
 export function recolorStandInSkin(img, skinT, targetH, opts) {
+  return _standInBake(img, skinT, targetH, opts, false).cv;
+}
+/* ═══ v2.3.2829: THE SAME BAKE, WITH THE DRAWINGS ON A LAYER OF THEIR OWN ═══
+   Returns { cv, ink }: `cv` is the figure exactly as recolorStandInSkin would
+   bake it WITHOUT drawings, and `ink` is a canvas of the same size holding only
+   the pixels the drawings changed (null when none landed).  For a stand-in
+   whose skin bake is shared with other players -- the cook's is (see the SPEC
+   table in effectsRenderer) -- the drawings cannot go into it: everybody else
+   at a campfire would wear them.  Drawn over the shared figure, the layer gives
+   the pixels a full bake would (bar the blend on a half-transparent edge
+   pixel), for a fraction of its memory. */
+export function recolorStandInSkinSplit(img, skinT, targetH, opts) {
+  return _standInBake(img, skinT, targetH, opts, true);
+}
+function _standInBake(img, skinT, targetH, opts, apart) {
   const o = opts || {};
   const minBlob = o.minBlob != null ? o.minBlob : STANDIN_MIN_BLOB;
+  /* v2.3.2829: an island smaller than the floor is still the figure's when it
+     STARTS left of this column of its frame (frame-local x) -- the cook's
+     fingers, which the floor dropped along with the fish (standInInk.js,
+     COOK_KEEP_X).  Needs the frame width: `frameW`, else the regions table's. */
+  const keepX = o.keepX || 0;
+  const keepFW = o.frameW || (o.regions && o.regions.fw) || 0;
   const maxBR = o.maxBR != null ? o.maxBR : Infinity;      /* blue/red ceiling — rejects the fire's pale glow */
   const minGR = o.minGR != null ? o.minGR : 0;             /* green/red floor — rejects the flame's red edge */
   const maxGR = o.maxGR != null ? o.maxGR : Infinity;
@@ -1096,7 +1117,7 @@ export function recolorStandInSkin(img, skinT, targetH, opts) {
      have no garment of the player's to sit on. */
   const ink = (o.art && o.regions && (artHasInk(o.art.tattooFace) || artHasInk(o.art.tattoo)
     || artHasInk(o.art.tattooArm))) ? o.art : null;
-  if (!skinT && !ink) return cv;
+  if (!skinT && !ink) return { cv, ink: null };
   const w = cv.width, h = cv.height;
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
@@ -1115,35 +1136,59 @@ export function recolorStandInSkin(img, skinT, targetH, opts) {
   const label = new Int32Array(w * h);   /* 0 = unlabelled */
   const stack = new Int32Array(w * h);
   const size = [0];                      /* size[id]; id 0 unused */
+  const leftX = keepX && keepFW ? [0] : null;   /* v2.3.2829: leftX[id], frame-local */
   for (let start = 0; start < w * h; start++) {
     if (!skin[start] || label[start]) continue;
     const id = size.length;
-    let sp = 0, n = 0;
+    let sp = 0, n = 0, lx = Infinity;
     stack[sp++] = start; label[start] = id;
     while (sp > 0) {
       const q = stack[--sp];
       n++;
       const qx = q % w;
+      if (leftX && qx % keepFW < lx) lx = qx % keepFW;
       if (qx > 0 && skin[q - 1] && !label[q - 1]) { label[q - 1] = id; stack[sp++] = q - 1; }
       if (qx < w - 1 && skin[q + 1] && !label[q + 1]) { label[q + 1] = id; stack[sp++] = q + 1; }
       if (q >= w && skin[q - w] && !label[q - w]) { label[q - w] = id; stack[sp++] = q - w; }
       if (q + w < w * h && skin[q + w] && !label[q + w]) { label[q + w] = id; stack[sp++] = q + w; }
     }
     size.push(n);
+    if (leftX) leftX.push(lx);
   }
   /* pass 3: retint the CHARACTER's skin; leave the small islands (props) */
   const body = ink ? new Uint8Array(w * h) : null;   /* v2.3.2823: the same pixels, for the stamp */
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
-    if (!label[p] || size[label[p]] < minBlob) continue;
+    const id = label[p];
+    if (!id) continue;
+    if (size[id] < minBlob && !(leftX && leftX[id] < keepX)) continue;   /* v2.3.2829: keepX */
     if (skinT) _retint(d, i, skinT, SKIN_REF);
     if (body) body[p] = 1;
   }
   /* v2.3.2823: the drawings, AFTER the retint (so the ink is shaded by the skin
      it lands on, exactly as the body's stamp is) and confined to the pixels the
      retint just called the character's skin. */
-  if (ink) _stampStandInInk(d, w, h, body, ink, o.regions);
+  if (ink && !apart) _stampStandInInk(d, w, h, body, ink, o.regions);
   ctx.putImageData(imgData, 0, 0);
-  return cv;
+  if (!ink || !apart) return { cv, ink: null };
+  /* v2.3.2829: apart -- stamp a copy of the finished figure, then keep only the
+     pixels the stamp changed.  Everything else is cleared to transparent, so
+     the layer crops down to the drawings themselves (_sliceStandIn). */
+  const ic = document.createElement('canvas');
+  ic.width = w; ic.height = h;
+  const ictx = ic.getContext('2d');
+  const inkData = ictx.createImageData(w, h);
+  const e = inkData.data;
+  e.set(d);
+  _stampStandInInk(e, w, h, body, ink, o.regions);
+  let changed = 0;
+  for (let i = 0; i < e.length; i += 4) {
+    if (e[i] === d[i] && e[i + 1] === d[i + 1] && e[i + 2] === d[i + 2] && e[i + 3] === d[i + 3]) {
+      e[i] = 0; e[i + 1] = 0; e[i + 2] = 0; e[i + 3] = 0;
+    } else changed++;
+  }
+  if (!changed) { ic.width = 0; ic.height = 0; return { cv, ink: null }; }
+  ictx.putImageData(inkData, 0, 0);
+  return { cv, ink: ic };
 }
 
 /* v2.3.2823: face, torso and arm drawings on a stand-in, from its hand-fitted
@@ -1163,7 +1208,7 @@ function _stampStandInInk(d, w, h, body, art, R) {
     stampRegion(d, w, h, R.fw, reg.torso, art.tattoo, m, TATTOO_BOX, { underSkin: true, boxes: R.torso });
   }
   if (artHasInk(art.tattooArm)) {
-    stampRegion(d, w, h, R.fw, reg.arms, art.tattooArm, m, ARM_BOX, { eachPiece: true, underSkin: true });
+    stampRegion(d, w, h, R.fw, reg.arms, art.tattooArm, m, ARM_BOX, { eachPiece: true, underSkin: true, pieceKeep: R.pieceKeep });   /* v2.3.2829: pieceKeep */
   }
 }
 

@@ -1106,6 +1106,8 @@ export async function initPixiRenderer(canvas) {
         /* v2.3.2823: is this peer's lumberjack drawn from a bake that carries
            their drawings (true), or from the shared figure (false)? */
         chopInk: !!ent._chopInk,
+        /* v2.3.2829: is this peer's cook drawn with their drawings' layer? */
+        cookInk: !!ent._cookInk,
       };
     },
     /* v2.3.2823: the lumberjack SPRITES -- yours (no id) or a peer's -- for
@@ -1119,6 +1121,25 @@ export async function initPixiRenderer(canvas) {
     },
     /* v2.3.2823: how many drawn peers' lumberjacks are baked right now. */
     peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),
+    /* v2.3.2829: the cook's two SPRITES -- the figure and the drawings' layer
+       over it -- yours (no id) or a peer's, for mp-cookink to read the frame
+       the renderer actually draws. */
+    cookSpriteRaw: (id) => {
+      const e = effectsRenderer;
+      if (id == null) return e.cookSprite ? { body: e.cookSprite, ink: e.cookInkSprite || null } : null;
+      const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
+      return (ent && ent.cook) ? { body: ent.cook, ink: ent.cookInk || null } : null;
+    },
+    /* v2.3.2829: your cook's layers (how many frames, or 0 when there is no
+       layer), and how many drawn peers' layers are held right now. */
+    cookInkLayers: () => {
+      const e = effectsRenderer;
+      return {
+        body: e._cookFramesInk ? e._cookFramesInk.length : 0,
+        legless: e._cookLeglessFramesInk ? e._cookLeglessFramesInk.length : 0,
+        peers: e._peerCookInks ? e._peerCookInks.size : 0,
+      };
+    },
     /* v2.3.138: dispose a single loot pile by direct object reference.
        Local SP pickups don't always set lootId (legacy melee/bow/DoT
        push paths) so disposeLootById can't reach them. The pickup

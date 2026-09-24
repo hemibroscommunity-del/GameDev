@@ -80,3 +80,74 @@ export const CHOP_INK_REGIONS = Object.freeze({
    lumberjack -- the axe is the magenta tool key, which the skin test refuses --
    so the floor is 1: all of him. */
 export const CHOP_MIN_BLOB = 1;
+
+/* ═══ v2.3.2829: THE COOK ═══
+ *
+ * Owner: "Yea do woodcutting and missing ones."  Cooking is one of the missing
+ * ones: the campfire swaps your body for a pre-drawn cook
+ * (sprites/skills/cook-strip.webp, 24 frames of 213x220, all played), baked
+ * with your skin and nothing else, so every drawing vanished while you cooked.
+ *
+ * This figure is kinder than the lumberjack.  He squats facing the camera and
+ * only his arms and the pan move: the head and the torso sit on the same pixels
+ * in all 24 frames (measured -- the head's box moves by one pixel at the crown,
+ * and v2.3.1710 found the same of the torso when it pinned the cook's shirt to
+ * one frame).  So the face and torso boxes and most of the seeds are one entry for
+ * every frame, and only the forearm moves: it lies across the lap from the
+ * elbow to the hand, and its top edge is outlined with gaps, so without a seed
+ * of its own the torso's flood ran down through them and claimed the hand.
+ *
+ *   face   the head's whole box, ears included, as the lumberjack's is.
+ *   torso  neck to belly between the two arms' inner outlines.  The belly is
+ *          behind the forearm on every frame; the box includes it, so the
+ *          drawing holds still and the forearm crosses in front of it.
+ *
+ * `pieceKeep`: the arm drawing is fitted to each arm piece that is at least
+ * this share of the frame's biggest one (playerDecal PIECE_KEEP, 0.35 for the
+ * walking body).  Measured here: the far arm -- the one on the pan's handle --
+ * is 23-58% of the near arm, and every other arm-labelled piece (knuckles,
+ * specks of skin between outlines) is at most 11%.  At 0.35 that arm lost its
+ * drawing on 10 of the 24 frames, so it blinked at 17 fps; 0.17 sits between.
+ *
+ * The legless strip (cook-strip-legless.webp) was exported separately and
+ * differs from this one by a few hundred edge pixels per frame, so each strip
+ * is split on its OWN skin -- the seeds and boxes are measured to land inside
+ * the same parts of both.
+ *
+ * IF THE ART IS RE-CUT, THIS TABLE IS WRONG -- see the lumberjack's note. */
+const COOK_FOREARM = [
+  [30, 135, 75, 147], [28, 137, 62, 152], [25, 133, 62, 150], [20, 137, 60, 152],
+  [30, 133, 78, 145], [28, 132, 95, 145], [28, 135, 78, 150], [28, 136, 70, 152],
+  [28, 135, 68, 150], [22, 133, 68, 148], [12, 132, 58, 152], [14, 133, 62, 152],
+  [28, 132, 72, 148], [28, 133, 82, 145], [28, 133, 82, 146], [28, 135, 72, 152],
+  [18, 133, 62, 153], [18, 133, 66, 150], [28, 133, 74, 145], [28, 133, 80, 144],
+  [28, 133, 82, 145], [28, 137, 72, 152], [18, 133, 62, 155], [18, 133, 66, 152],
+];
+export const COOK_INK_REGIONS = Object.freeze({
+  fw: 213,
+  fh: 220,
+  pieceKeep: 0.17,
+  seeds: COOK_FOREARM.map((fore) => ({
+    /* the crown, a line through the eyes, a line above the mouth */
+    head: [[80, 18], [55, 40, 110, 40], [62, 65, 105, 65]],
+    /* chest, belly above the forearm, and both sides of the neck -- without the
+       last two the head's flood took a sliver of the right shoulder */
+    torso: [[55, 92, 85, 92], [70, 105], [50, 115, 85, 115], [60, 84], [100, 86]],
+    /* both upper arms from the shoulder down, and this frame's forearm */
+    arms: [[28, 85, 30, 118], [117, 88, 118, 125], fore],
+  })),
+  face: COOK_FOREARM.map(() => [44, 120, 4, 80]),
+  torso: COOK_FOREARM.map(() => [43, 100, 78, 140]),
+});
+
+/* The cook's fingers.  The hand on the pan's handle is drawn as small islands
+   of skin cut apart by the handle's outline, and recolorStandInSkin's size
+   floor (1500 px) -- set for the fish frying in the pan, which is painted in
+   the same orange -- dropped them with the fish.  So a player of any skin but
+   the painted one cooked with orange fingers: the lumberjack's head bug
+   (CHOP_MIN_BLOB), on the cook's hand.  Size cannot tell the two apart (both
+   run from a few pixels to a few hundred); position can.  Measured on every
+   frame of both strips, every finger or knuckle island starts left of x = 117
+   and every fish piece at x = 125 or further right, inside the pan.  An island
+   that starts left of this column is the cook's own skin, however small. */
+export const COOK_KEEP_X = 120;
