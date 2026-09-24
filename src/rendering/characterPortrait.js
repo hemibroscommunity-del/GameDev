@@ -904,7 +904,7 @@ export async function drawCharacterPortrait(canvas, opts) {
       /* v2.3.1786's blade-up flip, in the same terms: reflect about the grip
          so the crossguard lands just above the hand.  A rotation would mirror
          left-right too and point the tip back over the shoulder.
-         v2.3.2782: not for a staff -- its icon already stands head-up, and
+         v2.3.2801: not for a staff -- its icon already stands head-up, and
          the world now carries it that way (entityRenderer); flipping it here
          would show the Hero sheet a broom the world no longer draws. */
       if (_wpnType !== 'staff') ctx.scale(1, -1);

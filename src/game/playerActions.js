@@ -9,6 +9,7 @@
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
 import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2783: the one-bolt special */
+import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockAimPoint } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
@@ -321,14 +322,14 @@ export function specialAttack(S) {
         isSpecial: true,
         isStaff: false,
         pierce: true,
-        _rangeMult: bowRangeMult(R || {}), /* v2.3.2592: the special reaches as far as an ordinary arrow does */
+        _rangeMult: bowRangeMult(R || {}) * depthK(S.currentZone, S.player.y), /* v2.3.2592: the special reaches as far as an ordinary arrow does; v2.3.2790 x depth */
         element: hasElement || null
       });
       /* v2.3.840: broadcast the bow special so peers see the big golden
          arrow fly (mirrors the regular-arrow player_projectile path). */
       if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
         id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now,
-        life: Math.round(90 * (bowRangeMult(R || {}) || 1)), /* v2.3.2592: peers see the stat's reach too */
+        life: Math.round(90 * (bowRangeMult(R || {}) || 1) * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
       }});
       BT_AUDIO.beep(400, 0.12, 0.15, 'sine');
       setTimeout(function () {
@@ -414,7 +415,7 @@ export function specialAttack(S) {
          the swipe cooldown, by which time the first stamp has expired. */
       /* v2.3.2387: 560 -> STAFF_RANGE_PX (675), so the special reaches exactly
          as far as the basic orb and as far as an arrow. */
-      var _ORB_RANGE_PX = STAFF_RANGE_PX * staffRangeMult(R || {}); /* v2.3.2592: × the Magic lane's RANGE stat */
+      var _ORB_RANGE_PX = STAFF_RANGE_PX * staffRangeMult(R || {}) * depthK(S.currentZone, S.player.y); /* v2.3.2592: × the Magic lane's RANGE stat; v2.3.2790: × your depth */
       var _ORB_SPEED = 5;              /* the staff's own bolt speed */
       var _ORB_SPEEDS = [_ORB_SPEED, _ORB_SPEED, _ORB_SPEED];
       /* ═══ v2.3.2783: ONE BIG BOLT (gameSystems STAFF_BIG_BOLT_*) ═══
