@@ -1,15 +1,22 @@
-# Metal sheen, a preview (v2.3.2864)
+# Metal sheen (v2.3.2864; on for everyone since v2.3.2887)
 
 Owner: *"aside from the glint can you see what adding a permanent soft shine
 to armor and sword (and other metals) would look like?"*
 
-**This is a preview. It is OFF unless a device asks for it.** Nothing changes
-for anyone else:
+Then, after the previews: *"Push the metal shine to main and I'll revert it
+if I don't like it. The previews looked much better. But make sure the shine
+stays on through every armor animation and through different recolors (like
+copper recolored from the original steel)."*
+
+**It is ON for everyone** (v2.3.2887). A device can still turn it off:
 
 | | |
 |---|---|
-| `?sheen=1` | turn it on on this device (remembered) |
-| `?sheen=0` | turn it off again |
+| `?sheen=0` | turn it off on this device (remembered) |
+| `?sheen=1` | turn it back on |
+
+To turn it off for everyone, revert the v2.3.2887 change on `main`. That is
+one commit, so it is one button on GitHub.
 
 It rides on light and shine (`docs/specs/light-and-shine.md`), so it also
 needs that switch on, which it is by default.
@@ -49,9 +56,11 @@ that never switches off:
 - **The glint still sweeps over it** as before.
 
 **What it covers:** swords and greatswords in a metal, plate, greaves, and
-the full-set knight figure. **Not covered:** cloth, bows, staffs, bare
-hands, and the painted props. The props are painted art with their own
-highlights already in them.
+the full-set knight figure, on you and on every other player, in every
+animation (below). **Not covered:** cloth, bows, staffs, bare hands, and the
+painted props. The props are painted art with their own highlights already
+in them. The chain belt is not covered either: it is painted into the body
+picture itself (v2.3.1347), so there is no separate metal sprite to shine.
 
 ### The piece the glint never reached
 
@@ -63,12 +72,63 @@ never glinted. The sheen follows the figure onto the body sprite
 (`display._fullsetOn`), and the glint now reaches it too, since they share
 the filter.
 
-## What it costs, and why it is a preview
+## Every animation, every metal (v2.3.2887)
+
+The armour is not always drawn by the character's own sprites. When you
+swing, shoot, block, chop, cook or light a fire, the character is swapped for
+a stand-in figure with its own armour sprites. The greaves on the running
+legs under a moving swing or shot are another sprite again. Other players
+have their own copies of all of these.
+
+The preview covered your own stand-ins, and another player's walking figure
+and standing sword swing. On other players it missed four things, now fixed:
+
+- **Another player's bow shot**: their plate and greaves, and the greaves on
+  their running legs when they shoot on the move.
+- **Another player's sword swing on the move**: the greaves on their running
+  legs.
+- **Another player chopping, cooking or lighting a fire**: their plate and
+  greaves on those figures.
+- **A player who has just walked into your zone** had no shine for up to two
+  seconds. The shine read their armour from a field that only arrives with
+  their next position update. It now reads the armour the game actually
+  draws them in.
+
+On your own figure, one more was missing, found by the new test:
+
+- **The arm over your sword.** With a sword out, jogging east, the game
+  draws your arm a second time over the slung shield (and your hand over the
+  grip when you have no shirt on, v2.3.185 / v2.3.200). Each is a copy of the
+  body picture, cut down by a mask. In a full set the body picture is the
+  knight, so the copy is plate, and it had no shine: a dull arm on a shining
+  figure on every east jog. It now shines like the body.
+- **The copy has to match the body under it**, or the arm reads as a patch.
+  Pixi shrinks a masked sprite's effect area to the mask's box, and the
+  shine's sun side and sweep are laid out across that area. So the copy's
+  area is pinned to the whole frame, the same box the body's shine uses
+  (`glint.js unmaskedArea`). Measured on one frozen frame, counting the
+  pixels the arm copy visibly changes: 628 with the pin, 611 with no shine
+  anywhere (the copy's own soft edges, drawn twice, since v2.3.200), and 2,776
+  without the pin.
+
+The raised shield's arm also wears a sleeve cut from the plate, but only
+while the bow art that normally carries a block has not loaded. It is
+covered too.
+
+**Recolours.** Copper and iron are the steel picture drawn with a tint. The
+filter reads the tint off the sprite it is on, so wherever the shine is
+attached, copper stays copper and iron stays iron. A mixed set (copper plate
+over iron greaves) keeps both metals.
+
+## What it costs
 
 A filter is an extra render pass for the sprite it is on. The glint pays that
 for half a second every few seconds per piece. The sheen pays it **every
 frame, for every metal piece on screen**: three passes for a player in plate,
 greaves and a sword. A plaza of armoured players is dozens of passes a frame.
+
+The owner took this cost on to see the shine live (v2.3.2887). If phones
+feel it, the baked mask below is the cheaper form of the same look.
 
 **This machine cannot measure it.** The QA box renders in software at about
 five frames a second, so a few extra filter passes vanish in the noise
@@ -76,7 +136,7 @@ five frames a second, so a few extra filter passes vanish in the noise
 The honest number is the count: three passes per armoured player. It has to
 be judged on a phone, with the switch.
 
-If the look is wanted, the version to ship should not be a filter. Bake one
+The cheaper version would not be a filter. Bake one
 highlight mask per gear sheet at load (shared by all three metals, since they
 are one picture) and draw it as an additive sprite over the piece. That
 batches like any other sprite, so it costs close to nothing per frame. The
@@ -87,7 +147,10 @@ the gear sheets' budget first.
 
 `tools/qa/mp/mp-sheen.mjs`:
 
-- off on a fresh device;
+- on for a fresh device (v2.3.2887; off while it was a preview), and
+  `?sheen=0` turns it off and is remembered;
+- the arm drawn over the sword on an east jog carries the shine, and changes
+  the picture no more than it does with no shine at all (v2.3.2887);
 - on, the sword, plate and greaves carry it on every frame sampled, and a
   figure with no metal carries nothing;
 - every metal comes out brighter, and copper's added light stays warm
@@ -104,3 +167,35 @@ The pixel checks hold the game still for their pictures. A breathing
 figure's frames differ more than the sheen does, so the test holds back the
 game loop's next frame and redraws the scene itself at one pinned instant
 for each setting.
+
+`tools/qa/mp/mp-sheenall.mjs` (v2.3.2887) checks every animation:
+
+- **It finds the metal by its art file**, not by the shine's own list of
+  sprites. Every metal armour texture is cut from the steel plate, greaves
+  or knight art, and carries that file's name. The test walks everything on
+  screen, so a new stand-in that nobody adds to the shine is caught.
+- **Every metal piece, on every frame drawn,** must carry the shine, and the
+  filter must read that sprite's own tint. The tint must be the metal worn.
+- **The animations checked:**
+  - yours: standing, walking, hit, mining, dodge, pickup, fishing, sword
+    swing and bow shot (standing and on the move), shield block, chopping,
+    cooking, lighting a fire;
+  - another player's: walking (really walking, on their own client), hit,
+    dodge, mining, fishing, sword swing and bow shot (standing and on the
+    move), chopping, cooking, lighting a fire.
+- **The sets:** steel, iron, copper, and copper plate over iron greaves.
+- **Guards:** every animation must put its armour on screen. A control run
+  with the shine switched off must see every piece flagged.
+
+Its first run found the arm over the sword (above). The run this version
+shipped on: 108 animation runs, 903 frames and 3,570 metal pieces, every one
+shined in its own metal.
+
+Two things the first runs taught it, both in the file:
+
+- **The sun's shadows are not armour.** They are copies of the figure's own
+  sprites, drawn as one dark silhouette through the shadow layer's filter.
+  The sweep skips that layer.
+- **Each piece is credited to the figure it is nearest.** Both players are
+  put back on their marks after every walk, or the walker drifts on top of
+  the other player.
