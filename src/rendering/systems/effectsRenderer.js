@@ -268,7 +268,7 @@ import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from 
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, remoteBodyArt } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
@@ -276,7 +276,7 @@ import { CampfireFx } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfir
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings; v2.3.2856: + the split bake (the cook's drawings on a layer) */
+import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAULT_SKIN_TARGET, bodyArtSeg, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings; v2.3.2856: + the split bake (the cook's drawings on a layer) */
 import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame, packTrimmed, registerGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
@@ -1914,6 +1914,18 @@ function cssToHex(css) {
  * strangers can no longer accumulate. */
 const REMOTE_BAKE_CACHE_MAX = 24;
 
+/* Would the pre-flipped bake of this sheet differ from the plain one?  Asked
+   of the art AFTER artForFacing, because that is what actually gets stamped:
+   a north sheet stamps the BACK canvases, so the front ones' symmetry is not
+   the question.  (v2.3.2429 / v2.3.2431; module scope since v2.3.2863, when a
+   peer's stand-in bakes started asking it too.) */
+function _twinWouldDiffer(art, dir) {
+  if (!art) return false;
+  if (parsePattern(art.pantsPattern, 'pants') || parsePattern(art.shoesPattern, 'shoes')) return true;
+  const a = artForFacing(art, dir);
+  return ['pants', 'tattoo', 'tattooFace', 'tattooArm']
+    .some((k) => artHasInk(a[k]) && !artIsSymmetric(a[k]));
+}
 function _trimBakeCache(cache) {
   while (cache.size > REMOTE_BAKE_CACHE_MAX) {
     const k0 = cache.keys().next().value;
@@ -2779,13 +2791,8 @@ export class EffectsRenderer {
        of the art AFTER artForFacing, because that is what actually gets stamped:
        a north sheet stamps the BACK canvases, so the front ones' symmetry is not
        the question. */
-    const _twinWouldDiffer = (art, dir) => {
-      if (!art) return false;
-      if (parsePattern(art.pantsPattern, 'pants') || parsePattern(art.shoesPattern, 'shoes')) return true;
-      const a = artForFacing(art, dir);
-      return ['pants', 'tattoo', 'tattooFace', 'tattooArm']
-        .some((k) => artHasInk(a[k]) && !artIsSymmetric(a[k]));
-    };
+    /* (v2.3.2863: _twinWouldDiffer lives at module scope now -- a peer's
+       swing and bow bakes ask the same question.) */
     this._bakeBodyStrip = (rec) => {
       const img = this._bodyImgCache[rec.url];
       if (!img) return;
@@ -10529,13 +10536,45 @@ export class EffectsRenderer {
     }
   }
 
+  /* ═══ v2.3.2863: A PEER'S SWING AND BOW SHOT WEAR THEIR DRAWINGS ═══
+   * Owner: "Yea do woodcutting and missing ones."  v2.3.2429 gave YOUR swing,
+   * bow shot and raised shield your drawings ("make sure during shield block
+   * ... the custom designs show up"), in _bakeBodyStrip -- and these two, which
+   * bake the same sheets for everybody else, were left out: no drawings, no
+   * frame width, no pre-flipped copy, and no default-skin target.  So another
+   * player's tattoos, prints and patterns vanished the instant they swung or
+   * drew a bow, on your screen, which is when you are looking at them.
+   *
+   * Everything here is what _bakeBodyStrip already does for you, for them:
+   *   - their drawings (entityRenderer's sanitised remoteBodyArt), resolved for
+   *     the SHEET's direction (artForFacing: a north sheet takes the backs);
+   *   - the sheet's own frame width, so the stamp slices frames where the
+   *     sheet does (v2.3.2431 measured what 256 px windows do to these);
+   *   - the pre-flipped bake when the figure is drawn flipped AND a drawing
+   *     would read backwards (_twinWouldDiffer), baked when first needed;
+   *   - `|| DEFAULT_SKIN_TARGET`: the v2.3.1788 fix ("the attack stand-ins wear
+   *     the WALKING skin") was applied to your bake only, so a default-skin
+   *     peer still turned the painted orange of these sheets mid-swing.
+   * A peer with no drawings keeps exactly the bake they had, under a key that
+   * now names the SHEET: it used to be the facing alone, and the sword and the
+   * bow both have a south, an east and a north, so whichever baked first was
+   * handed to the other -- a peer's bow shot drawn with their sword frames. */
+  _peerStandInArt(o, dir, mirror) {
+    const base = remoteBodyArt(o, false);
+    if (!base) return { art: null, seg: '' };
+    const m = !!mirror && _twinWouldDiffer(base, dir);
+    const a = artForFacing({ ...base, mirror: m }, dir);
+    return { art: a, seg: bodyArtSeg(a) };
+  }
+
   /* v2.3.1011: recolor the sword swing BODY sheet to an arbitrary player's
      skin/pants/shoes (parallel to _bakeBodyStrip, which only does the LOCAL
      player) and cache it.  Returns the per-frame Texture[] or null while the
      base image is still loading. */
-  _remoteBodyFramesFor(o, cfgKey, cfg) {
+  _remoteBodyFramesFor(o, cfgKey, cfg, mirror) {
     if (!this._remoteBodyCache) this._remoteBodyCache = new Map();
-    const key = cfgKey + '|' + o.skin + '|' + o.pants + '|' + o.shoes;
+    const _pa = this._peerStandInArt(o, cfgKey, mirror);   /* v2.3.2863 */
+    const key = cfg.bodyUrl + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;   /* v2.3.2863: the SHEET, not the facing */
     let arr = this._remoteBodyCache.get(key);
     /* Re-insert on hit so the LRU order is "least recently SEEN", not
        "least recently baked" (entityRenderer.js:2043's idiom). */
@@ -10543,7 +10582,8 @@ export class EffectsRenderer {
     const img = this._bodyImgCache[cfg.bodyUrl];   // loaded by the local bake
     if (!img) return null;
     try {
-      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, cfg.fh);
+      const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
+        null, cfg.fh, null, null, _pa.art, cfg.fw);   /* v2.3.2863: see _peerStandInArt */
       const n = Math.max(1, Math.round(cv.width / cfg.fw));
       arr = _sliceStandIn(cv, cfg.fw, cfg.fh, n, null);   /* v2.3.2775: cropped, one per peer combo */
       this._remoteBodyCache.set(key, arr);
@@ -10557,9 +10597,10 @@ export class EffectsRenderer {
      _remoteBodyFramesFor but generic over url/fw/fh.  The source image must have
      been loaded into _bodyImgCache by the local bake (it is: bow torso strips +
      jog-<dir>-legs sheets are loaded at construction). */
-  _remoteSheetFramesFor(o, url, fw, fh) {
+  _remoteSheetFramesFor(o, url, fw, fh, dir, mirror) {
     if (!this._remoteSheetCache) this._remoteSheetCache = new Map();
-    const key = url + '|' + o.skin + '|' + o.pants + '|' + o.shoes;
+    const _pa = this._peerStandInArt(o, dir, mirror);   /* v2.3.2863: see _peerStandInArt */
+    const key = url + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;
     let arr = this._remoteSheetCache.get(key);
     if (arr) { this._remoteSheetCache.delete(key); this._remoteSheetCache.set(key, arr); return arr; }
     const img = this._bodyImgCache[url];
@@ -10572,7 +10613,8 @@ export class EffectsRenderer {
          did (P7 item 5). */
       const _sq = (fw == null || fh == null) ? (img.naturalHeight || img.height || 0) : 0;
       const _fw = _sq || fw, _fh = _sq || fh;
-      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, _fh);
+      const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
+        null, _fh, null, null, _pa.art, _fw);   /* v2.3.2863 */
       const n = Math.max(1, Math.round(cv.width / _fw));
       arr = _sliceStandIn(cv, _fw, _fh, n, null);   /* v2.3.2775: cropped, one per peer combo */
       this._remoteSheetCache.set(key, arr);
@@ -10819,7 +10861,7 @@ export class EffectsRenderer {
       const _legSizeAdj = _nakedSeam ? (({ south: 1.20, east: 1.10, north: 1.12 })[cfgKey] || 1) : 1;
       const _legShiftX = _nakedSeam ? (({ north: 0, south: 3 })[cfgKey] || 0) : 0;
       const _legShiftY = _nakedSeam ? (({ south: 2 })[cfgKey] || 0) : 0;
-      const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg);
+      const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg, mirror);   /* v2.3.2863: + the flip, for the drawings */
       if (!bodyFrames || !bodyFrames.length) continue;
       const n = bodyFrames.length;
       const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
@@ -10847,11 +10889,12 @@ export class EffectsRenderer {
       const _moving = !_stale && _vmag > 0.03;
       const _rd = resolveDirection(dir4);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
-      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh) : null;
-      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256 */
+      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror) : null;   /* v2.3.2863 */
+      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null, _jdir, _rd.mirror);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256; v2.3.2863: + direction and flip, for the drawings */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
+      sp._qaFi = fi;   /* v2.3.2863: the frame index, for mp-peerattackink -- a cropped frame no longer says which it is */
       /* v2.3.1100: naked east grows the torso (sT) with the legs re-anchoring via
          torsoScale; the torso also drops by _torsoDY while the legs keep the
          un-nudged foot row (_baseFootY). */
@@ -10991,7 +11034,7 @@ export class EffectsRenderer {
       const cfgKey = fmap[0], mirror = fmap[1];
       const cfg = this._bowCfg[cfgKey];
       if (!cfg || !cfg.bodyUrl) continue;
-      const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg);
+      const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg, mirror);   /* v2.3.2863: + the flip, for the drawings */
       if (!bodyFrames || !bodyFrames.length) continue;
       const n = bodyFrames.length;
       const fi = elapsed < BOW_RELEASE_MS
@@ -11028,11 +11071,12 @@ export class EffectsRenderer {
       const _moving = !_stale && _vmag > 0.03;
       const _rd = resolveDirection(dir8);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
-      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh) : null;
-      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256 */
+      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror) : null;   /* v2.3.2863 */
+      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null, _jdir, _rd.mirror);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256; v2.3.2863: + direction and flip, for the drawings */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
+      sp._qaFi = fi;   /* v2.3.2863: the frame index, for mp-peerattackink -- a cropped frame no longer says which it is */
       sp.scale.set(sgnX, sY);
       sp.x = (o.renderX != null) ? o.renderX : o.x;
       sp.y = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_BOW_FOOT_DY;

@@ -127,9 +127,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* THE ASSERTION. Both readings are taken in a hub with hub art on screen, so
      a difference is what ember left behind. Before v2.3.2328 this was the full
      bundle plus the map and it never came back at all. */
-  const stranded = tAfter.mb - tHub.mb;
+  /* v2.3.2859: town's NPCs and buildings now load with town and free on the
+     way out, so worldview no longer carries them and "town after a death"
+     does -- that ~20MB is town's own art, not ember's.  Compare against town
+     before the trip (t0), which is the same place with the same art up. */
+  const stranded = tAfter.mb - t0.mb;
   rec.ok('dying releases the zone you died in, like walking out of it does',
-    stranded < 8, { worldviewBaseline: tHub.mb, inEmber: tIn.mb, afterDeath: tAfter.mb,
+    stranded < 8, { townBaseline: t0.mb, worldview: tHub.mb, inEmber: tIn.mb, afterDeath: tAfter.mb,
       strandedMb: +stranded.toFixed(1), allowanceMb: 8 });
 
   if (stranded >= 8) {
