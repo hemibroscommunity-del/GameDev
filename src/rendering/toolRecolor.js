@@ -235,3 +235,6 @@ export function fishRodAt(i, u, v) {
   return _rod.mask[y * _rod.w + x] === 1;
 }
 export function hasFishRodMask() { return !!_rod; }
+/* v2.3.2874: the raw mask, for the masked-body bake worker (maskedBakeWorker.js),
+   which answers fishRodAt with the same arithmetic on a structured-clone copy. */
+export function fishRodMaskData() { return _rod; }
