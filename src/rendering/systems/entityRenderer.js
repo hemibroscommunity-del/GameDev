@@ -9909,12 +9909,12 @@ export class EntityRenderer {
           frameIdx = Math.floor((now / cycleMs(pose, 'south')) * fc) % fc;
         } else if (pose === 'dodge') {
           /* One-shot, clamped — mirrors the local branch.
-             v2.3.2886: across THEIR roll window when their client sent it
+             v2.3.2892: across THEIR roll window when their client sent it
              (player_dodge `dur`), exactly as the local branch plays across
              durMs; the cycleMs default only for an older client. */
           const fc = playerFrameCount('dodge', dir) || 9;
           if (_rDodge.kind === 'sworddash') {
-            /* v2.3.2886: a SWORD DASH loops the tumble, as yours does (the
+            /* v2.3.2892: a SWORD DASH loops the tumble, as yours does (the
                _dashRoll branch in _updatePlayer, v2.3.2463): anchored to the
                dash's start, the authored per-frame dwell, and never the last
                frame, which is the stand hand-off.  It ends when their strike
