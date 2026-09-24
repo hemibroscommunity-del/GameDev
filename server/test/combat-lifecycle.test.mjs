@@ -2601,5 +2601,99 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   psA.activeSlot = 'melee'; psA.staffWeapon = null;
 }
 
+// ── 12. v2.3.2808: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ──
+// Owner: "the bow special should be 3 white hot arrows that follow each other
+// closely.  One shot for all 3 arrows" -- a third of the damage each, so the
+// volley deals what the one arrow did.  Each arrow's monster_damage carries
+// `part: 3` and the worker divides its OWN capped roll by it.  Pins:
+//   (a) a part:3 bow special lands a third of a full one;
+//   (b) the special lane admits all three, and they sum to the one arrow;
+//   (c) it divides AFTER the ceiling, so an over-cap roll's thirds sum to the
+//       cap and never past it;
+//   (d) it is ignored off the bow (a staff special) and off specials (a
+//       basic arrow, a burn tick), and junk values read safely;
+//   (e) caps.bowvolley is advertised.
+{
+  psA.z = 'meadow'; psA.dead = false; psA.dying = false;
+  psA.weapon = null;
+  psA.staffWeapon = { type: 'staff', tierMult: 1 };
+  psA.rangedWeapon = { type: 'bow', tierMult: 1 };
+  psA.power = 0; psA.mind = 200; psA.agility = 0; psA.weaponSpecs = {};
+  const bv = meadowMonsters[7];
+  const reset = () => {
+    if (psA._monHitCad) psA._monHitCad.clear();
+    bv.alive = true; bv.hp = bv.maxHp = 1000000; bv.dmgByPlayer = {}; bv.statuses = undefined;
+    room.eventBuffer.length = 0;
+  };
+  const hitsOn = () => room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === bv.id && !e.payload.collision)
+    .map((e) => e.payload.dmg);
+  const send = (payload) => room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: bv.id, zone: 'meadow', ...payload } }));
+  const origRandom = Math.random;
+  Math.random = () => 0.5;   // fixed variance, no crit: every roll is the same number
+  try {
+    const full = room._computeAttackDamage(psA, 'ranged', true, { targetLevel: bv.level }).dmg;
+    const third = Math.round(full / 3);
+
+    // (a) one arrow of the volley.
+    reset();
+    await send({ slot: 'ranged', special: true, part: 3 });
+    check('bow volley: a part:3 bow special lands a third of a full one',
+      hitsOn().length === 1 && hitsOn()[0] === third && full >= 30, { got: hitsOn(), full, third });
+
+    // (b) the whole volley: three arrows, all admitted, summing to the one arrow.
+    reset();
+    for (let i = 0; i < 3; i++) await send({ slot: 'ranged', special: true, part: 3 });
+    const vol = hitsOn();
+    check('bow volley: all three arrows land (the special lane admits the volley)',
+      vol.length === 3, vol);
+    check('bow volley: ...and together they deal what the one arrow did (+-1 rounding)',
+      vol.length === 3 && Math.abs(vol.reduce((s, d) => s + d, 0) - full) <= 1, { vol, full });
+    await send({ slot: 'ranged', special: true, part: 3 });
+    check('bow volley: a 4th special inside 1200 ms is still dropped (the lane is unchanged)',
+      hitsOn().length === 3, hitsOn());
+
+    // (c) capped first, then split.
+    const realCap = room._maxDmgForAttacker;
+    room._maxDmgForAttacker = () => 30;   // a ceiling well under this roll
+    try {
+      reset();
+      await send({ slot: 'ranged', special: true });
+      const capped = hitsOn()[0];
+      reset();
+      await send({ slot: 'ranged', special: true, part: 3 });
+      check('bow volley: an over-cap roll is capped BEFORE it is split (30 -> 10, not a third of the raw roll)',
+        capped === 30 && hitsOn()[0] === 10, { capped, got: hitsOn(), full });
+    } finally {
+      room._maxDmgForAttacker = realCap;
+    }
+
+    // (d) only a bow special divides; junk reads safely.
+    reset();
+    const staffFull = room._computeAttackDamage(psA, 'staff', true, { targetLevel: bv.level }).dmg;
+    await send({ slot: 'staff', special: true, part: 3 });
+    check('bow volley: part is ignored on a staff special',
+      hitsOn().length === 1 && hitsOn()[0] === staffFull, { got: hitsOn(), staffFull });
+    reset();
+    const basic = room._computeAttackDamage(psA, 'ranged', false, { targetLevel: bv.level }).dmg;
+    await send({ slot: 'ranged', special: false, noKb: true, part: 3 });
+    check('bow volley: part is ignored on a basic hit (the burn ticks stay whole)',
+      hitsOn().length === 1 && hitsOn()[0] === basic, { got: hitsOn(), basic });
+    for (const junk of ['3', 'x', -5, null, 1, 2.9, 99, { n: 3 }]) {
+      reset();
+      await send({ slot: 'ranged', special: true, part: junk });
+      const want = (junk === '3' || junk === 99) ? third : (junk === 2.9 ? Math.round(full / 2) : full);
+      check('bow volley: junk part ' + JSON.stringify(junk) + ' is read safely',
+        hitsOn().length === 1 && hitsOn()[0] === want, { got: hitsOn(), want });
+    }
+
+    // (e) the flag the client gates the volley on.
+    const _joinSrc = await import('node:fs').then((fs) => fs.readFileSync(new URL('../src/join.js', import.meta.url), 'utf8'));
+    check('bow volley: caps.bowvolley is advertised', /bowvolley: true/.test(_joinSrc));
+  } finally {
+    Math.random = origRandom;
+    psA.mind = 0;
+  }
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

@@ -63,12 +63,40 @@ export const ARROW_BLAST = {
 };
 
 export const arrowBlastMethods = {
+  /* ═══ v2.3.2808: RETIRED WHILE THE BOW SPECIAL IS A VOLLEY ═══
+     Owner, making the special three white-hot arrows: "Burn, but no blast" --
+     the arrows stick and burn the monster you shot, and the area send-off is
+     gone, because "the archetype for bow will be speed and DPS as opposed to
+     staff which is area damage".  The volley is advertised as caps.bowvolley
+     (join.js), and a client that reads it never sends arrow_blast.
+     REFUSED HERE TOO, not only left unsent.  A blast is the one damage
+     message on this worker that names a coordinate; a feature the game no
+     longer has must not stay reachable by a modified client, and an old tab
+     still open across the deploy is refused the same way (it keeps its one
+     arrow and its burn; only the blast is gone).
+     THE KILL SWITCH BRINGS IT BACK WHOLE.  `bowvolley: false` in liveflags
+     un-advertises the volley (join.js spreads the flags over the caps), so a
+     client that joins after it fires the old single arrow and asks for the
+     old blast -- and this answers null and lets it through.  One flag, and
+     the special is exactly what it was, blast included.  Same read as
+     depth.js _depthK: only an explicit false turns it off.
+     LOWER CASE ON PURPOSE.  POST /api/admin/flags only takes names matching
+     liveops.js FLAG_NAME_RE (/^[a-z0-9_]{1,32}$/), so a camelCase cap cannot
+     be switched off through the route that exists for it -- `bowvolley` can,
+     and the test panel's Live flags section lists and clears it. */
+  _bowVolleyLive() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object'
+      && Object.prototype.hasOwnProperty.call(f, 'bowvolley') && !f.bowvolley);
+  },
+
   /* Every refusal in one place so the handler and the tests read the same
      list, the shape burst.js uses.  Returns a reason string, or null to
      proceed.  Refusals are SILENT: unlike a mana-gated ability there is
      nothing for the player to do differently, and a message would only tell a
      modified client which bound it hit. */
   _arrowBlastRefusal(ps, zone, x, y, now) {
+    if (this._bowVolleyLive()) return 'retired';   /* v2.3.2808: see _bowVolleyLive */
     if (!ps) return 'no-player';
     if (ps.dead || ps.dying || ps.disconnected) return 'not-alive';
     if (ps.z !== zone) return 'wrong-zone';

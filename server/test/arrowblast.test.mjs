@@ -52,6 +52,12 @@ async function newRoom() {
      what "owning a bow" means on this side. */
   ps.rangedWeapon = { name: 'Pine Bow', type: 'bow', gearBase: 'ww_pine', quality: 'normal', tierMult: 1 };
   ps.activeSlot = 'ranged';
+  /* v2.3.2808: the blast is retired while the three-arrow volley is live
+     (arrowblast.js _bowVolleyLive), so sections 1-5 run where it still
+     exists: behind the kill switch, `bowvolley: false` in liveflags, which
+     gives a joining client the old single arrow and its blast back.
+     Section 6 pins the default. */
+  room._liveFlags = { bowvolley: false };
   return { room, ws, session: room.sessions.get(ws), ps };
 }
 
@@ -188,6 +194,75 @@ function placeMonsters(room, zone, spots) {
     PRIVILEGED_EVENTS.has('arrow_boom'), [...PRIVILEGED_EVENTS].slice(0, 3));
   check('security: ...and the INBOUND half is NOT, or the feature would deny itself',
     !PRIVILEGED_EVENTS.has('arrow_blast'));
+}
+
+// ── 6. v2.3.2808: RETIRED WHILE THE BOW SPECIAL IS A VOLLEY ──
+// Owner, making the special three white-hot arrows: "Burn, but no blast" --
+// the area send-off belongs to the staff now.  The client that reads
+// caps.bowvolley never sends arrow_blast; the worker refuses it anyway, so a
+// modified client cannot keep a feature the game no longer has, and an old
+// tab open across the deploy loses only its send-off.
+{
+  const { room, session, ps } = await newRoom();
+  room._liveFlags = {};                         /* the default: no flags written */
+  const mons = placeMonsters(room, 'meadow', [{ x: ps.x + 100, y: ps.y }]);
+  room.eventBuffer.length = 0;
+  room._handleArrowBlast(session, { zone: 'meadow', x: ps.x + 100, y: ps.y });
+  check('retired: with the volley live, a blast deals nothing',
+    mons[0].hp === 5000, mons[0].hp);
+  check('retired: ...paints nothing on anyone\'s screen',
+    room.eventBuffer.filter((e) => e.type === 'arrow_boom').length === 0,
+    room.eventBuffer.map((e) => e.type));
+  check('retired: ...and says why, for the operator',
+    (room._arrowBlastRejectsFor('p1') || {}).last === 'retired', room._arrowBlastRejectsFor('p1'));
+  check('retired: ...without starting a cooldown it never earned',
+    !ps._arrowBlastCdUntil, ps._arrowBlastCdUntil);
+}
+{
+  const { room, session, ps } = await newRoom();
+  room._liveFlags = { bowvolley: true };        /* written explicitly on: the same */
+  const mons = placeMonsters(room, 'meadow', [{ x: ps.x + 100, y: ps.y }]);
+  room._handleArrowBlast(session, { zone: 'meadow', x: ps.x + 100, y: ps.y });
+  check('retired: an explicit bowvolley:true is the same as the default',
+    mons[0].hp === 5000 && (room._arrowBlastRejectsFor('p1') || {}).last === 'retired', mons[0].hp);
+}
+{
+  /* The kill switch, end to end: the flag un-advertises the volley in the
+     caps a joining client reads AND lets its blast through. */
+  const flagged = {
+    storage: { ...mockState.storage, get: async (k) => (k === 'liveflags' ? { bowvolley: false } : undefined) },
+    getWebSockets: () => [], acceptWebSocket: () => {},
+  };
+  const room = new GameRoom(flagged, env);
+  const ws = fakeWs('k');
+  room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+  await room.webSocketMessage(ws, JSON.stringify({
+    type: 'join', id: 'k1', name: 'Archer', protocolVersion: 2, data: { x: 500, y: 500, z: 'meadow' },
+  }));
+  const sync = ws.sent.find((m) => m.type === 'state_sync');
+  check('kill switch: bowvolley:false in liveflags un-advertises the volley',
+    !!sync && !!sync.caps && sync.caps.bowvolley === false, sync && sync.caps && sync.caps.bowvolley);
+  const ps = room.playerState.k1;
+  ps.rangedWeapon = { name: 'Pine Bow', type: 'bow', gearBase: 'ww_pine', quality: 'normal', tierMult: 1 };
+  const mons = placeMonsters(room, 'meadow', [{ x: ps.x + 100, y: ps.y }]);
+  room._handleArrowBlast(room.sessions.get(ws), { zone: 'meadow', x: ps.x + 100, y: ps.y });
+  check('kill switch: ...and the old blast lands again', mons[0].hp < 5000, mons[0].hp);
+}
+{
+  /* The switch has to be one an operator can actually throw: POST
+     /api/admin/flags refuses any name outside FLAG_NAME_RE, which is lower
+     case only -- a camelCase `bowVolley` would be a kill switch nobody could
+     set. */
+  const { LIVEOPS } = await import('../src/liveops.js');
+  check('kill switch: its name is one the admin flags route accepts',
+    LIVEOPS.FLAG_NAME_RE.test('bowvolley'), String(LIVEOPS.FLAG_NAME_RE));
+}
+{
+  /* And with no flags written, a joining client is told the volley is on. */
+  const { ws } = await newRoom();
+  const sync = ws.sent.find((m) => m.type === 'state_sync');
+  check('caps: a fresh room advertises bowvolley', !!sync && sync.caps && sync.caps.bowvolley === true,
+    sync && sync.caps && sync.caps.bowvolley);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : '\n' + failures + ' FAILURE(S)');

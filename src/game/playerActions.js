@@ -10,6 +10,8 @@
    setter). All other references are module imports below. */
 import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat */
 import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
+import { ARROW_SPEED_PX } from '@/game/projectiles.js';   /* v2.3.2808: the volley's stagger is sized from it */
+import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2808 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint } from '@/game/combatHelpers.js';   /* v2.3.2805: lockShotPoint, the torso */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
@@ -312,26 +314,60 @@ export function specialAttack(S) {
          so the landed arrow's lingering ground-tick (projectiles.js) deals
          base damage, immune to a later weapon swap. */
       var _bowBase = Math.max(1, Math.round(calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult, activeWpn)));
-      S.arrows.push({
-        ang: aimAng,
-        dist: 14,
-        dmg: Math.round(wpnDmg * specialAtkMultFor('bow', R || {})), /* v2.3.1397: bow special 3x (owner); v2.3.2592: × the SPECIAL stat */
-        baseDmg: _bowBase, /* v2.3.1402: lingering ground-tick base damage */
-        life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
-        maxLife: 150,
-        hitIds: new Set(),
-        isSpecial: true,
-        isStaff: false,
-        pierce: true,
-        _rangeMult: bowRangeMult(R || {}) * depthK(S.currentZone, S.player.y), /* v2.3.2592: the special reaches as far as an ordinary arrow does; v2.3.2790 x depth */
-        element: hasElement || null
-      });
+      var _bowFull = Math.round(wpnDmg * specialAtkMultFor('bow', R || {})); /* v2.3.1397: bow special 3x (owner); v2.3.2592: × the SPECIAL stat */
+      /* ═══ v2.3.2808: THREE WHITE-HOT ARROWS, ONE SHOT ═══
+         Owner: "the bow special should be 3 white hot arrows that follow each
+         other closely.  One shot for all 3 arrows" -- a third of the damage
+         each, and "Burn, but no blast".  The rules the three share (one
+         train, one burn, one shove) are in bowVolley.js.
+         GATED ON THE WORKER, the whole volley and never a part of it: each
+         arrow tells the worker `part: 3` (projectiles.js) and only a worker
+         advertising caps.bowvolley divides by it.  Against an OLD worker this
+         is still the one arrow with its burn and its blast, because that
+         worker would roll all three at full strength.
+         ONE PRESS, ONE PRICE: the mana, the cooldown and the swing clock above
+         are spent once, for the volley. */
+      var _bowVolley = !!(S._serverCaps && S._serverCaps.bowvolley);
+      var _bowN = _bowVolley ? BOW_VOLLEY.N : 1;
+      var _bowVol = _bowVolley ? newVolley() : null;
+      var _bowStat = bowRangeMult(R || {}) || 1;
+      for (var bvi = 0; bvi < _bowN; bvi++) {
+        S.arrows.push({
+          ang: aimAng,
+          dist: 14,
+          /* v2.3.2808: sized from the arrow's own speed so the train is GAP_PX
+             apart however fast Longshot makes it (projectiles.js catches the
+             frame it overstays back up) */
+          launchDelayMs: volleyDelayMs(bvi, ARROW_SPEED_PX * _bowStat),
+          dmg: _bowVolley ? Math.max(1, Math.round(_bowFull / BOW_VOLLEY.N)) : _bowFull,   /* v2.3.2808: a third each */
+          part: _bowVolley ? BOW_VOLLEY.N : 0,   /* v2.3.2808: the worker divides its own roll by this */
+          volley: _bowVol, volleyIx: bvi,
+          baseDmg: _bowBase, /* v2.3.1402: lingering ground-tick base damage */
+          life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
+          maxLife: 150,
+          hitIds: new Set(),
+          isSpecial: true,
+          isStaff: false,
+          pierce: true,
+          _rangeMult: _bowStat * depthK(S.currentZone, S.player.y), /* v2.3.2592: the special reaches as far as an ordinary arrow does; v2.3.2790 x depth */
+          element: hasElement || null
+        });
+      }
       /* v2.3.840: broadcast the bow special so peers see the big golden
-         arrow fly (mirrors the regular-arrow player_projectile path). */
-      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-        id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now,
-        life: Math.round(90 * (bowRangeMult(R || {}) || 1) * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
-      }});
+         arrow fly (mirrors the regular-arrow player_projectile path).
+         v2.3.2808: one per arrow of the volley, staggered on the peer's own
+         arrow speed (BOW_VOLLEY.PEER_PX_PER_FRAME) so the gap they see is the
+         gap you see -- the staff volley's `delayMs` (v2.3.2259), which a peer
+         already honours for any projectile. */
+      if (S.channel) {
+        for (var bvj = 0; bvj < _bowN; bvj++) {
+          S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
+            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now,
+            delayMs: Math.round(volleyDelayMs(bvj, BOW_VOLLEY.PEER_PX_PER_FRAME)),
+            life: Math.round(90 * _bowStat * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
+          }});
+        }
+      }
       BT_AUDIO.beep(400, 0.12, 0.15, 'sine');
       setTimeout(function () {
         return BT_AUDIO.beep(600, 0.08, 0.1, 'sine');

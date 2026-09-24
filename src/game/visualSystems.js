@@ -204,14 +204,22 @@ export function updateVisualSystems(S) {
                Neither distance NOR life advances while it waits -- the same
                rule the local orbs follow (projectiles.js), so what a peer
                sees covers the same ground as what the caster sees. */
-            if (rp.holdUntil && Date.now() < rp.holdUntil) {
+            /* v2.3.2808: ...or, for a bow volley's arrow, a count of frames (gameEvents.js) */
+            var _rpWait = false;
+            if (rp.holdFrames > 0) { rp.holdFrames--; _rpWait = true; }
+            else if (rp.holdUntil && Date.now() < rp.holdUntil) _rpWait = true;
+            if (_rpWait) {
               var _hOwner = S.others[rp.ownerId];
               var _hX = _hOwner ? (_hOwner.renderX || _hOwner.x) : rp.x;
               var _hY = _hOwner ? (_hOwner.renderY || _hOwner.y) : rp.y;
               rp._renderX = _hX + Math.cos(rp.ang) * rp.dist;
               rp._renderY = _hY + Math.sin(rp.ang) * rp.dist;
+              rp._held = true;   /* v2.3.2808: a bow-volley arrow is not drawn until it is loosed (effectsRenderer) */
               return true;
             }
+            rp._held = false;
+            /* v2.3.2808: MIRROR-PINNED -- the 8 below is bowVolley.js
+               PEER_PX_PER_FRAME; the bow volley staggers a peer's copies by it */
             var _rpStep = (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8));
             rp.dist += _rpStep;
             rp.life--;

@@ -1052,6 +1052,30 @@ export const combatMethods = {
     // 16 / T1-T2): special hits get the 2x cap headroom.
     const rolled = this._computeAttackDamage(attackerPs, slot, isSpecial, { targetLevel: m.level });  /* v2.3.2680: the edge */
     const dmgCap = this._maxDmgForAttacker(attackerPs, isSpecial);
+    /* ═══ v2.3.2808: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ═══
+       Owner: "the bow special should be 3 white hot arrows that follow each
+       other closely.  One shot for all 3 arrows.  I think the archetype for
+       bow will be speed and DPS as opposed to staff which is area damage and
+       high damage variance" -- and, asked how hard each arrow should hit,
+       "a third each": the three together deal what the one arrow did.
+       So each arrow of the volley (playerActions.js, behind caps.bowvolley)
+       says `part: 3`, and this worker's own special roll, under this worker's
+       own ceiling, is divided by it.  Each arrow still rolls its own variance
+       and its own crit, so the volley's EXPECTED total is exactly the old
+       arrow's and its spread is narrower -- the steady-DPS weapon beside the
+       staff's big swings.
+       CAPPED FIRST, THEN SPLIT: three thirds of an over-cap roll must not sum
+       past what the one arrow could ever have landed.
+       CHEAT-NEUTRAL, so it needs no bound beyond its shape.  `part` can only
+       make a hit SMALLER; a client that leaves it off sends a full special,
+       and three of those per 1200 ms per monster is what the special lane
+       above has admitted since v2.3.1134.  Honoured on a ranged special
+       only, 2..3; anything else -- every older client, every other hit -- is
+       1, the untouched one-roll path.  `rolled` is this call's own object
+       (_computeAttackDamage returns a fresh one), so nothing else sees it. */
+    const _partWire = Math.floor(Number(payload.part));
+    const _part = (isSpecial && _effSlot === 'ranged' && _partWire >= 2) ? Math.min(3, _partWire) : 1;
+    if (_part > 1) rolled.dmg = Math.min(dmgCap, rolled.dmg) / _part;
     /* v2.3.1734: FRACTURE applies here, AFTER the attacker ceiling and
        before the overkill clamp.  The order is the point: dmgCap bounds
        what the ATTACKER's build may produce, and fracture is a property

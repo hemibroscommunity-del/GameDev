@@ -42,6 +42,10 @@
  *            a few rising sparks, and builds back to white-hot in its last
  *            half second before the send-off blast (v2.3.2400's _arrowSendOff).
  *            The heat says what the arrow is doing: it is still burning him.
+ *            v2.3.2808: the special is a volley of three now, with no blast
+ *            (bowVolley.js), so its arrows BURN OUT instead: after the last
+ *            tick the embers darken and fade.  Only the lone arrow an old
+ *            worker still gets flares white before its blast (`blast`).
  *
  * THE HIT SHAPE DOES NOT MOVE.  The painted special was drawn 62.8 world px
  * long (a 314 px frame at scale 0.20) and projectiles.js's PROJ_BODY
@@ -114,8 +118,10 @@ function coolTint(h) {
 
 /** How hot a landed special is, 0..1.  `since` is when it was first drawn
  *  headless (it arrived); `tickBase` is its stuckAt / plantedAt, which is what
- *  the chip ticks and the send-off count from. */
-export function smoulderHeat(now, since, tickBase) {
+ *  the chip ticks and the send-off count from.  `blast`: it ends in the
+ *  send-off (v2.3.2808: only the lone arrow an old worker gets) -- it builds
+ *  back to white for it; otherwise it burns out. */
+export function smoulderHeat(now, since, tickBase, blast) {
   const a = now - (since || now);
   let h = a < 140 ? 1 : a < 900 ? 1 - 0.55 * easeOut((a - 140) / 760) : 0.45;
   if (tickBase) {
@@ -124,9 +130,25 @@ export function smoulderHeat(now, since, tickBase) {
       const ph = (t - TICK_MS) % TICK_MS;
       h = Math.max(h, 0.45 + 0.35 * Math.max(0, 1 - ph / 240));
     }
-    if (t > LIFE_MS - 600) h = Math.max(h, 0.45 + 0.55 * smoothstep(LIFE_MS - 600, LIFE_MS - 50, t));
+    if (blast) {
+      if (t > LIFE_MS - 600) h = Math.max(h, 0.45 + 0.55 * smoothstep(LIFE_MS - 600, LIFE_MS - 50, t));
+    } else {
+      h *= 1 - 0.8 * burnOut(t);   /* v2.3.2808: the embers darken after the last tick */
+    }
   }
   return clamp(h, 0, 1);
+}
+/* v2.3.2808: 0 -> 1 across the stretch after the burn's last tick (at
+   LIFE_MS - TICK_MS; its flare has faded by then) to the end of the arrow's
+   life -- how far a volley arrow has burnt out. */
+function burnOut(t) {
+  return smoothstep(LIFE_MS - 450, LIFE_MS - 30, t);
+}
+/** v2.3.2808: how much of a burnt-out arrow is left to see, 1 -> 0 at the
+ *  end of its life (1 while it still ends in a blast, which is its exit). */
+export function smoulderFade(now, tickBase, blast) {
+  if (blast || !tickBase) return 1;
+  return 1 - burnOut(now - tickBase);
 }
 /** The smoulder's tint (over the heated art) and its ember's alpha, for a
  *  heat -- shared with the prop marks, which draw their shaft inside a
@@ -557,9 +579,11 @@ export class HotArrowFx {
 
   /** Draw one white-hot special.  `headless`: it has arrived in something
    *  (the caller's v2.3.2381 / v2.3.2804 rule).  `tickBase`: its stuckAt/plantedAt,
-   *  0 in flight or for a peer's arrow.  Returns false when the art is not
-   *  built yet, so the caller can fall back. */
-  arrow(p, x, y, ang, alpha, pk, now, headless, tickBase) {
+   *  0 in flight or for a peer's arrow (v2.3.2808: a volley's shared clock,
+   *  bowVolley.js burnT0).  `blast`: it ends in the send-off (smoulderHeat).
+   *  Returns false when the art is not built yet, so the caller can fall
+   *  back. */
+  arrow(p, x, y, ang, alpha, pk, now, headless, tickBase, blast) {
     if (!ART.ready || !p || !Number.isFinite(x) || !Number.isFinite(y)) return false;
     const k = pk || 1;
     const a0 = clamp(Number.isFinite(alpha) ? alpha : 1, 0, 1);
@@ -622,26 +646,28 @@ export class HotArrowFx {
         rep.auraAlpha = au ? +au.alpha.toFixed(3) : 0; rep.auraNAlpha = an ? +an.alpha.toFixed(3) : 0;
         rep.auraFrame = step % AURA_N;
         rep.heat = 1;
+        rep.alpha = +a0.toFixed(3);
       }
     } else {
       if (!st.since) {
         st.since = now;
         this._strike(x, y, c, sn, k);
       }
-      const heat = smoulderHeat(now, st.since, tickBase || 0);
+      const heat = smoulderHeat(now, st.since, tickBase || 0, blast);
       const tint = coolTint(heat), ember = emberStep(heat);   /* not smoulderLook: nothing in the frame loop allocates */
+      const a1 = a0 * smoulderFade(now, tickBase || 0, blast);   /* v2.3.2808: a volley arrow burns out and is gone */
       const axN = ART.ax / ART.headFrac;
       /* the heated shaft, its head buried, drawn in the ember frame its heat
          has cooled to -- a palette step, not a tint (a multiply flattened the
          whole shaft to one orange) -- with a light of its own colour over it
          that swells on each tick */
       const b = this.base.take(ART.ember[ember] || ART.heatNoHead);
-      if (b) { this._pose(b, axN, x, y, r, s); b.alpha = a0; if (b.tint !== 0xffffff) b.tint = 0xffffff; }
+      if (b) { this._pose(b, axN, x, y, r, s); b.alpha = a1; if (b.tint !== 0xffffff) b.tint = 0xffffff; }
       const fl = this.hot.take(ART.flashNoHead);
       if (fl) {
         this._pose(fl, axN, x, y, r, s);
         if (fl.tint !== tint) fl.tint = tint;
-        fl.alpha = a0 * 0.4 * heat * heat;
+        fl.alpha = a1 * 0.4 * heat * heat;
       }
       /* the ember where the head went in */
       const cut = (ART.headFrac - ART.ax) * HOT_LEN * k;
@@ -652,7 +678,7 @@ export class HotArrowFx {
         g.scale.set(s * (0.8 + 0.5 * heat));
         g.x = ex; g.y = ey; g.rotation = 0;
         if (g.tint !== tint) g.tint = tint;
-        g.alpha = a0 * (0.25 + 0.7 * heat);
+        g.alpha = a1 * (0.25 + 0.7 * heat);
       }
       if (tickBase) {
         const n = Math.floor((now - tickBase) / TICK_MS);
@@ -661,7 +687,8 @@ export class HotArrowFx {
           this._stats.throbs++;
           this._rise(x, y, c, sn, k, 3);
         }
-        if (now - tickBase > LIFE_MS - 600 && Math.random() < 0.5) this._rise(x, y, c, sn, k, 1);
+        /* the heat building for the blast; a volley arrow has none to build */
+        if (blast && now - tickBase > LIFE_MS - 600 && Math.random() < 0.5) this._rise(x, y, c, sn, k, 1);
       }
       if (rep) {
         rep.state = tickBase ? 'smoulder' : 'landed'; rep.x = +x.toFixed(1); rep.y = +y.toFixed(1); rep.rot = +r.toFixed(3);
@@ -671,6 +698,7 @@ export class HotArrowFx {
         rep.flashAlpha = 0; rep.auraAlpha = 0; rep.auraNAlpha = 0; rep.auraFrame = -1;
         rep.emberAlpha = g ? +g.alpha.toFixed(3) : 0;
         rep.heat = +heat.toFixed(3);
+        rep.alpha = +a1.toFixed(3);   /* v2.3.2808: the burn-out's fade */
       }
     }
     st.lx = x; st.ly = y;

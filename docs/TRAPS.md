@@ -4622,3 +4622,29 @@ circle's centre: pointed at a skeleton's chest, the facing turns a player to
 face UP at one standing beside them. **Receipt:** mp-shotland (every flight
 line through the torso, the skeleton's landings in its ribcage, a skeleton
 that steps 40 px either way mid-flight still hit, 75 px missed).
+
+## 117. A camelCase live flag is a kill switch nobody can throw (v2.3.2808)
+
+**Tempting:** name a new capability in the house camelCase (`zoneDepth`,
+`storeGear`, `milestonesRetired`) and write in its comment that writing
+`<cap>: false` into the `liveflags` storage key turns it off -- join.js
+spreads the flags over the caps literal last, so the override really does
+work.
+
+**Wrong, for the part that matters.** The only operator route to that key is
+`POST /api/admin/flags`, and it refuses any name outside `liveops.js`
+`FLAG_NAME_RE` -- `/^[a-z0-9_]{1,32}$/`, lower case only -- with a 400. So a
+camelCase kill switch can be *read* and *cleared* (the test panel's Live
+flags section lists what is there) but never *set* short of a code change or
+a hand-written storage put. Found making the bow volley's switch
+(v2.3.2808): the first cut was `bowVolley` and could not be thrown; its
+scenario would have had to fake the flag instead of using the route an
+operator would. The existing `zoneDepth` and `storeGear` switches have the
+same problem today.
+
+**The rule:** a capability that is also meant to be a kill switch gets a name
+that passes `FLAG_NAME_RE` (`bowvolley`, like `prog3`, `gearq`, `t2bench`),
+and a test that says so (`server/test/arrowblast.test.mjs` tests the name
+against the regex). Or widen the regex -- a server change of its own, not
+something to do in passing. **Receipt:** mp-arrowblast throws `bowvolley`
+through the real route before anyone joins.

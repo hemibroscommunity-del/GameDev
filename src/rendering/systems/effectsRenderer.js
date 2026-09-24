@@ -219,6 +219,7 @@ import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 
 import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2801: the staff cast's charge, release, trail and crash */
 import { HotArrowFx, HOT_LEN, buildHotArrowArt, hotArrowReady, hotArrowArt, smoulderHeat, smoulderLook } from '../hotArrowFx.js';   /* v2.3.2807: the bow special, white-hot */
 import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2803: what a monster is made of, when it is hit */
+import { burnT0 } from '@/game/bowVolley.js';                       /* v2.3.2808: a volley's arrows smoulder on its clock */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -4286,6 +4287,10 @@ export class EffectsRenderer {
     this._pmTick = (this._pmTick || 0) + 1;   /* v2.3.2730: see _reapPropArrows */
     for (const a of arrows) {
       if (!a._renderX) continue;
+      /* v2.3.2808: a bow-volley arrow still waiting its turn is on the string,
+         not in the air -- drawn from the frame it is loosed (projectiles.js
+         `_held`; a staff orb keeps its old look at the hand) */
+      if (a._held && !a.isStaff) continue;
       /* v2.3.2287: the vista's perspective curve, at the arrow's OWN drawn
          position -- the same rule the peer stand-ins follow, and literally 1
          on every zone but worldview. See _placeMagicBolt for why the `|| 1`
@@ -4379,8 +4384,11 @@ export class EffectsRenderer {
            buried once it is IN something).  `tickBase` is the clock the stuck
            or planted arrow's 500 ms ticks and its send-off count from -- the
            smoulder throbs on those ticks and flares before the blast. */
-        const _tb = a.stuckIn ? (a.stuckAt || 0) : (a.planted ? (a.plantedAt || 0) : 0);
-        this._hotArrow.arrow(a, a._renderX, a._renderY, _angB, fadeA, _pk, now, !!_headless, _tb);
+        /* v2.3.2808: resting, it smoulders on its volley's clock (all three
+           throb on the burn's ticks and burn out together), and only the lone
+           arrow an old worker gets builds to white for a blast */
+        const _tb = (a.stuckIn || a.planted) ? burnT0(a) : 0;
+        this._hotArrow.arrow(a, a._renderX, a._renderY, _angB, fadeA, _pk, now, !!_headless, _tb, !a.volley);
         /* the v2.3.2381 tallies mp-arrowhead reads, kept exactly */
         this._specialArrowsDrawn = (this._specialArrowsDrawn || 0) + 1;
         if (!_headless) this._specialArrowHeads = (this._specialArrowHeads || 0) + 1;
@@ -4488,6 +4496,7 @@ export class EffectsRenderer {
     const remote = S._remoteProjectiles || [];
     for (const rp of remote) {
       if (!rp._renderX) continue;
+      if (rp._held && !rp.isStaff) continue;   /* v2.3.2808: a peer's volley arrow waiting its turn (visualSystems.js) */
       /* v2.3.2287: remote projectiles were never curved either. Unlike the
          remote STAND-IN figures (:6288 / :6768 / :6923, curved since
          v2.3.1574) this is a FIRST application, not a double one -- there is
@@ -8080,7 +8089,7 @@ export class EffectsRenderer {
     sp.y = rec.y - ov.y;
     ov.addChild(sp);
     /* v2.3.2807: a teammate's white-hot special smoulders in the rock too */
-    if (rec.kind === 'arrow' && rec.special && HOT_SPECIAL_ARROW) this._heatPropArrow(sp, now, now, rec.t0 || now);
+    if (rec.kind === 'arrow' && rec.special && HOT_SPECIAL_ARROW) this._heatPropArrow(sp, now, now, rec.t0 || now, !this._volleyWorld(S));
     this._pmFx.push({ kind: rec.kind, propId: rec.id, sprite: sp, t0: rec.t0 || now,
       ttl: rec.ttl > 0 ? rec.ttl : 3000, special: !!rec.special, hotSince: now });
   }
@@ -8141,9 +8150,10 @@ export class EffectsRenderer {
     spr.x = px - ov.x;
     spr.y = py - ov.y;
     spr.rotation = a.ang || 0;
-    /* the planted life in projectiles.js: 2 s, a bow special's 4 s */
+    /* the planted life in projectiles.js: 2 s, a bow special's 4 s
+       (v2.3.2808: a volley's, from its first arrow down) */
     const life = special ? 4000 : 2000;
-    const left = life - (now - (a.plantedAt || now));
+    const left = life - (now - (burnT0(a) || now));
     spr.alpha = Math.max(0, Math.min(1, left / 300));
     spr.visible = true;
     spr._pmSeen = this._pmTick;
@@ -8152,18 +8162,26 @@ export class EffectsRenderer {
        send-off -- through the ember frames of its heated shaft. */
     if (special && HOT_SPECIAL_ARROW) {
       if (!a._propHotSince) a._propHotSince = now;
-      this._heatPropArrow(spr, now, a._propHotSince, a.plantedAt || 0);
+      this._heatPropArrow(spr, now, a._propHotSince, burnT0(a), !a.volley);   /* v2.3.2808 */
     }
   }
 
   /** v2.3.2807: show a white-hot special's shaft standing in a prop in the
    *  ember frame its heat has cooled to.  `since` = when it went in,
    *  `tickBase` = the clock its ticks and send-off count from (hotArrowFx
-   *  smoulderHeat). */
-  _heatPropArrow(sp, now, since, tickBase) {
+   *  smoulderHeat).  v2.3.2808: `blast` -- it ends in the old send-off and
+   *  builds to white for it; a volley arrow burns out instead. */
+  _heatPropArrow(sp, now, since, tickBase, blast) {
     if (!sp || sp.destroyed) return;
-    const t = hotArrowArt().ember[smoulderLook(smoulderHeat(now, since, tickBase)).ember];
+    const t = hotArrowArt().ember[smoulderLook(smoulderHeat(now, since, tickBase, blast)).ember];
     if (t && sp.texture !== t) sp.texture = t;
+  }
+
+  /** v2.3.2808: is the bow special a volley on this worker (caps.bowvolley)?
+   *  A peer's arrow carries no word of it, but it was fired against the same
+   *  worker you were told this by. */
+  _volleyWorld(S) {
+    return !!(S && S._serverCaps && S._serverCaps.bowvolley);
   }
 
   /* After the arrow pass: an arrow that was not drawn this frame has left
@@ -8203,7 +8221,7 @@ export class EffectsRenderer {
       if (fx.kind === 'arrow' && fx.special) {
         const t = this._stuckArrowTex(true, now);
         if (t && fx.sprite.texture !== t) fx.sprite.texture = t;
-        if (HOT_SPECIAL_ARROW) this._heatPropArrow(fx.sprite, now, fx.hotSince || fx.t0, fx.t0);   /* v2.3.2807 */
+        if (HOT_SPECIAL_ARROW) this._heatPropArrow(fx.sprite, now, fx.hotSince || fx.t0, fx.t0, !this._volleyWorld(S));   /* v2.3.2807; v2.3.2808 */
       }
     }
     /* an overlay with nothing in it costs a sort slot and nothing else, but

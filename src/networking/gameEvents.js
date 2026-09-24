@@ -1608,7 +1608,17 @@ export function processGameEvent(type, payload, S, deps) {
                    are spaced in TIME (playerActions.js), so a peer needs the
                    same stagger or all three draw on top of each other and read
                    as one orb.  Absent/legacy payload -> 0 -> old behaviour. */
-                holdUntil: Date.now() + (Number(payload.delayMs) > 0 ? Math.min(1000, Number(payload.delayMs)) : 0),
+                holdUntil: payload.isStaff ? Date.now() + (Number(payload.delayMs) > 0 ? Math.min(1000, Number(payload.delayMs)) : 0) : 0,
+                /* ═══ v2.3.2808: A PEER'S ARROW WAITS IN FRAMES ═══
+                   The bow special is a volley of three now (bowVolley.js), and
+                   its stagger rides `delayMs` like the orbs'.  But a peer's
+                   arrow flies 8 px a FRAME (visualSystems.js), so a wait in
+                   milliseconds shrinks the train with the watcher's frame rate
+                   -- measured 14-22 px apart on a busy tab where the archer's
+                   screen shows 80.  Counted in the same frames it flies in,
+                   the gap is 80 at any rate.  Arrows only: the orbs keep their
+                   clock, and nothing else sends a delay. */
+                holdFrames: (!payload.isStaff && Number(payload.delayMs) > 0) ? Math.min(60, Math.round(Number(payload.delayMs) / (1000 / 60))) : 0,
                 /* v2.3.2262: the magic special's orbs fly fast / medium / slow,
                    so a peer needs the speed too or all three drift together and
                    the spread the caster sees is not the spread anyone else does.
