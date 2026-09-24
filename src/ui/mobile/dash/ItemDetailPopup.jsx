@@ -822,6 +822,13 @@ export const ItemDetailPopup = () => {
         name: sh.name || ((tierLabel(sh) || 'Wood') + ' Shield'),
         sub: ((tierLabel(sh) || 'Wood') + ' shield · raise to block').trim(), iconSrc: shieldThumb(sh), glyph: '🛡️', on,
         toggle: () => {
+          /* v2.3.2877: owner -- "the shield needs the same 'equip' sound as
+             when you equip things like sword and bow.  Right now it just makes
+             the generic click sound."  Weapons get it from the equip_request
+             send and the gear rows below call it themselves; the shield is
+             client-side state, so it has to ask here.  Any named sound
+             cancels the delegated ui-click (uiTick), so this replaces it. */
+          BT_AUDIO.uiEquip();
           if (on) { R2.shieldStash.push(sh); R2.shield = null; }
           else {
             const i = R2.shieldStash.indexOf(sh); if (i >= 0) R2.shieldStash.splice(i, 1);
@@ -1374,6 +1381,7 @@ export const ItemDetailPopup = () => {
     if (idx >= 0) R.shieldStash.splice(idx, 1);
     if (R.shield) R.shieldStash.push(R.shield);
     R.shield = target.shield;
+    BT_AUDIO.uiEquip();   /* v2.3.2877: the equip sample, not the generic click (see the SHIELD picker row) */
     persist(R);
     itemDetailBus.close();
   };
