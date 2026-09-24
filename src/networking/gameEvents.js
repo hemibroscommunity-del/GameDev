@@ -1425,9 +1425,12 @@ export function processGameEvent(type, payload, S, deps) {
                     var _dAmt = (_ep && _ep.amount) || 0;
                     /* v2.3.2820: the day now pays a CHEST (kind 'item'), so the
                        toast says where it went and what to do with it. */
-                    var _dTxt = (_e.kind === 'item')
-                      ? (_e.note || 'Daily chest') + ' · open it from your Bag'
-                      : (_e.note || 'Daily reward') + (_dAmt ? ' · +' + _dAmt + ' gold' : '');
+                    /* v2.3.2820: a CHEST day announces itself with its own claim
+                       window (ChestReveal.jsx opens once the intro lifts), so it
+                       needs no toast; the gold fallback (liveflags
+                       dailyChest:false) keeps the toast. */
+                    if (_e.kind === 'item') continue;
+                    var _dTxt = (_e.note || 'Daily reward') + (_dAmt ? ' · +' + _dAmt + ' gold' : '');
                     /* The worker pays this DURING the join, while the loading
                        screen is still up -- a 6s toast pushed now would time
                        out behind it and never be seen.  So it waits for the

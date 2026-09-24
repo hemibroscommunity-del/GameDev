@@ -28,6 +28,7 @@ export { CATEGORIES } from './bagFilterBus.js';
 import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the shop */
 import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the trade */
 import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
+import { DAILY_CHEST_ICON } from '@/rendering/chestPreload.js';   /* v2.3.2820 */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -160,6 +161,7 @@ export const thumbFor = (key) => {
   /* v2.3.2104: FIRST. It matches no rule below and would fall to `null`, which
      is what sent it to the emoji fallback. */
   if (isTicketKey(k)) return GOLDEN_TICKET_THUMB;
+  if (isChestKey(k)) return DAILY_CHEST_ICON;   /* v2.3.2820: the owner's chest art (chestPreload.js) */
   /* v2.3.2107: the owner's cape art, the same file the character sheet's cape
      slot uses -- one drawing of the garment, two places it appears. */
   if (isCapeItemKey(k)) return `/icons/items/${k.replace('cape_', 'cape-')}.webp${ITEMS_V}`;

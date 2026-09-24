@@ -15,6 +15,7 @@ import {
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { lifeKindFor } from './bagLife.js'; /* v2.3.2815: the portrait's small motion */
 import { firemakingBus } from '../firemakingBus.js';
+import { chestRevealBus } from '../ChestReveal.jsx';   /* v2.3.2820: the daily chest's claim window */
 import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the auction house; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
@@ -1287,13 +1288,11 @@ export const ItemDetailPopup = () => {
     try { S.channel.send({ type: 'potion_drink', payload: { invKey: target.key } }); } catch (e) {}
     close();
   };
-  /* v2.3.2820: SEND AND WAIT, the ticket's rule -- the worker takes the chest,
-     rolls and credits; the reveal comes back as chest_opened (wsClient). */
+  /* v2.3.2820: Claim opens the chest's claim window straight into the claim
+     (ChestReveal.jsx) -- it sends chest_open and plays the shake / open /
+     reveal; the worker takes the chest and rolls (the ticket's rule). */
   const onOpenChest = () => {
-    const S = getState();
-    if (!S || !S.channel) return;
-    const opId = 'chest:' + (S.myId || 'me') + ':' + Date.now();
-    try { S.channel.send({ type: 'chest_open', payload: { invKey: target.key, opId } }); } catch (e) { /* the chest is still in the bag */ }
+    chestRevealBus.open(true);
     itemDetailBus.close();
   };
   const onOpenTicket = () => {
@@ -1728,7 +1727,7 @@ export const ItemDetailPopup = () => {
           {actions.light    && <button onClick={onLight}   className={buttonClass('primary')} style={buttonStyle('primary')}>Light fire</button>}
           {actions.eat      && <button onClick={onEat}     className={buttonClass('primary')} style={buttonStyle('primary')}>Eat</button>}
           {actions.open     && <button onClick={onOpenTicket} className={buttonClass('primary')} style={buttonStyle('primary')}>Open Golden Ticket</button>}
-          {actions.openChest && <button onClick={onOpenChest} data-open-chest="" className={buttonClass('primary')} style={buttonStyle('primary')}>Open Chest</button>}
+          {actions.openChest && <button onClick={onOpenChest} data-open-chest="" className={buttonClass('primary')} style={buttonStyle('primary')}>Claim</button>}
           {actions.drink    && <button onClick={onDrink} className={buttonClass('primary')} style={buttonStyle('primary')}>Drink</button>}
           {actions.capeOn   && <button onClick={onCapeOn}  className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}

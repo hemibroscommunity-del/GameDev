@@ -1441,7 +1441,7 @@ export function setupWebSocket(ctx) {
                   if (_cp.kind === 'coins' && _cp.coins > 0) _applyLootCredit({ coins: _cp.coins }, S);
                   else if (_cp.kind === 'armor' && _cp.piece) _applyLootCredit({ armor: [_cp.piece] }, S);
                 } catch (_ce) { /* the reveal still shows */ }
-                try { chestRevealBus.show(_cp); } catch (_re) {}
+                try { chestRevealBus.prize(_cp); } catch (_re) {}
               }
               break;
             }

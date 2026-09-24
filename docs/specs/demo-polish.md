@@ -45,8 +45,19 @@ The owner asked: "I'd rather have a loot box that has a high chance of coins but
 
 - **The day pays a chest.** The daily login consumer (`cadence.js`) credits one `daily_chest` into the bag through `_creditPlayer`, instead of gold.
   - The opId (`daily:<pid>:<day>`) is unchanged, so a day still pays exactly once.
-  - The toast reads "Daily chest — day N · open it from your Bag".
-- **Opening it.** Tap the chest in the bag, then **Open Chest**. The client sends `chest_open`; the worker (`server/src/dailychest.js`):
+- **The claim window** (`src/ui/mobile/ChestReveal.jsx`). The owner, with the chest art: "you need to click the claim button to get it. You can stack them. It'll reveal whatever the reward is coming out of it."
+  - It opens by itself once per session after the intro lifts, whenever a chest is waiting. The bag's **Claim** button opens it too.
+  - **Offer:** the idle chest, how many are stacked ("×2"), and **Claim** / **Later**. Later keeps the chest.
+  - **Shake:** frames 0–2, while the worker rolls.
+  - **Open:** frames 3–8.
+  - **Reveal:** the prize icon rises out of the open chest, in its quality's colour, with **Claim next (n)** while more are stacked.
+  - If no answer comes within 8 seconds, it says so and offers the chest again; only the worker removes a chest.
+  - A chest day shows no toast, because the window is the announcement.
+- **Art:** the owner's 3×3 sheet is kept at `assets/ui/daily-chest-sheet.png` and cut by `tools/import_chest_sheet.py` into `public/ui/chest/daily-chest-strip.webp` (9 × 256) plus the bag icon `public/icons/items/daily-chest.webp`.
+  - Every cell is anchored on the chest's base, because the source's bottom row sits about 35px higher.
+  - The generator's red matte fringe on the glow is recoloured to gold.
+  - Both images are on the preload gate (`chestPreload.js`, group `dailyChest`), since animation preloading is law.
+- **Opening it.** Claim sends `chest_open`; the worker (`server/src/dailychest.js`):
   - takes the chest out of its own copy of the bag;
   - rolls the prize, credits it and saves;
   - answers with `chest_opened` (listed in `PRIVILEGED_EVENTS`) and a `player_state`.
@@ -63,7 +74,6 @@ The owner asked: "I'd rather have a loot box that has a high chance of coins but
 - **Safety:** an opId stops double opens, the key must match exactly, ownership is re-checked after the await, and the client only asks.
 - **Caps:** `caps.dailyChest` gates the Open button.
 - **Kill switch:** `dailyChest: false` in liveflags removes the cap and pays the day in gold again. A chest already in a bag waits; it is never destroyed.
-- **Art:** the chest uses a 🎁 glyph until an icon is made (UI-BIBLE icon prompts).
 
 ## The cooking quest, step by step
 
@@ -85,7 +95,7 @@ The owner said: "A lot of people get stuck on the quest for cooking 2 fish. It d
 
 ## QA
 
-- **Browser:** `node tools/qa/mp/run.mjs polish` runs 26 checks against a real worker with two players. It covers:
+- **Browser:** `node tools/qa/mp/run.mjs polish` runs 30 checks against a real worker with two players. It covers:
   - the report on the board;
   - Browse and up-vote;
   - the socket event never reaching the second player;
@@ -95,7 +105,7 @@ The owner said: "A lot of people get stuck on the quest for cooking 2 fish. It d
   - the About page;
   - the party lane;
   - the daily toast;
-  - the daily chest in the bag, opened with a reveal and taken by the worker;
+  - the daily chest: the window opening by itself, two chests stacking, Claim → shake → open → prize (the chest on its last frame, with an icon), the worker taking exactly one, Claim next, Done, and Later keeping the chest;
   - the cooking quest's first and next-step toasts, the Quests row and the ticked checklist.
 - **Server:** `server/test/feedback.test.mjs` runs 7 checks: 500 characters kept and 501 refused, category and topic still validated, the socket event dropped, and an ordinary relay as the control.
 - **Server:** `server/test/dailychest.test.mjs` runs 20 checks: one chest per day, each prize kind, the coin floor and ceiling, a gid on the armor, refusals (no chest, junk key, replayed opId), the caps flag and the kill switch.
