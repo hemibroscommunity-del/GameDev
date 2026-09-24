@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1, 3, 4, 5, 6, 9, 10, 11 and 12 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774, v2.3.2775); the rest is the ranked backlog
+### Items 1, 3, 4, 5, 6, 9, 10, 11, 12 and 13 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774, v2.3.2775, v2.3.2776); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -490,6 +490,21 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    `packTrimmed` declines them. The packer also learned to lay crops out on
    shelves when that is smaller than one row, which took another ~1.5 MB off
    the gear sheets of items 10 and 11.
+
+13. ~~**One-shot fx strips and trait frames — 2-35% painted, ~38 MB**~~
+   **SHIPPED, v2.3.2776** (measured, `mp-geartrim`, armoured in town: 221.6 →
+   193.9 MB). `gearSheets.loadCroppedStrip(url, n)` replaces `Assets.load` +
+   an n-way slice for the effect / debris bursts, the four tool gestures and
+   the stun / whirl / fire-trail strips (20.0 → 8.5 MB), and — with n = 1 —
+   every trait frame `_loadTraitDir` loads: hats, hair, beards, glasses, eye
+   styles (283 frames, 17.7 → 1.6 MB). All byte-identical to the served file.
+   As with item 11 the second half is the one that matters: `preloadTraits`
+   used to `Assets.load` every trait URL itself, which would have parked each
+   whole frame in the Assets cache beside its crop; it now awaits the trait
+   loads (`e.ready`). NOT done: the capes (three placement sites read
+   `frame.width`, ~2 MB), the recoloured trait variants (only the colour
+   picked is ever built), and the projectile strips (a no-head sub-crop is cut
+   out of the frame by position) -- each a small follow-up if wanted.
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by

@@ -4462,6 +4462,14 @@ which is exactly that old expression for an uncropped frame. And a packed
 crop can sit on any row of its canvas now (packTrimmed lays out shelves when
 that is smaller), so `frame.y` is not 0 either.
 
+**v2.3.2776: and the loader that would keep the whole frame anyway.** The fx
+strips and every trait frame now come from `gearSheets.loadCroppedStrip`,
+which decodes a plain Image. Anything that ALSO `Assets.load`s one of those
+URLs -- a preload, a warm, a "just to be sure" -- puts the full frame back in
+the Assets cache for the session and silently cancels the crop (__btTex will
+show it as a URL row). Preloads await the cropping loader's own promise
+(`preloadTraits` awaits `e.ready`; the fx loops push into `_fxPreload`).
+
 ## 107. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2760)
 
 **Tempting:** at `ready`, with no thumb down, loop a generated phase through

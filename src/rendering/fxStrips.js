@@ -25,6 +25,7 @@
  * sheets are normalised to 2048x256 by tools/import_fx_sheet.mjs.
  */
 import { Assets, Rectangle, Texture } from 'pixi.js';
+import { loadCroppedStrip } from './gearSheets.js';   /* v2.3.2776: the 8-cell fx strips are cropped */
 
 export const STUN_STARS = { frames: [], url: '/sprites/fx/stun-stars-v1.png?v=2.3.1735' };
 export const WHIRL_VORTEX = { frames: [], url: '/sprites/fx/whirl-vortex-v1.png?v=2.3.1735' };
@@ -110,15 +111,10 @@ _pending.push(Assets.load(PORTAL_BEAM.url).then((tex) => {
   if (tex && tex.source) PORTAL_BEAM.tex = tex;
 }).catch((err) => console.warn('[fx-strips] load failed', PORTAL_BEAM.url, err)));
 for (const cfg of [STUN_STARS, WHIRL_VORTEX, FIRE_TRAIL_FX]) {
-  const p = Assets.load(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * fw, 0, fw, tex.source.height),
-      }));
-    }
+  /* v2.3.2776: cropped (gearSheets.loadCroppedStrip); every reader places a
+     Sprite by anchor and a fixed scale, so the cell's box is unchanged. */
+  const p = loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
   }).catch((err) => console.warn('[fx-strips] load failed', cfg.url, err));
   _pending.push(p);
 }

@@ -206,7 +206,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
 import { onArtChange, artHasInk, artIsSymmetric } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
-import { getGearFrame, packTrimmed, registerGearSource, subTexture } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
+import { getGearFrame, packTrimmed, registerGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
@@ -1080,14 +1080,12 @@ const EFFECT_BURSTS = {
      crown (tools/import_rocks_burst.py) — same 8x256 strip contract. */
   splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1470' },
 };
+/* v2.3.2776: cropped (gearSheets.loadCroppedStrip) -- 2-4% of these strips
+   is painted.  Still on the loading-screen gate via _fxPreload. */
 for (const cfg of Object.values(EFFECT_BURSTS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
-    }
-  }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err));
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err)));
 }
 const FX_BURST_MS = 600;
 
@@ -1128,13 +1126,10 @@ const DEBRIS_BURSTS = {
   ember: { frames: [], h: 72, url: '/sprites/effects/debris-ember-burst-v1.webp?v=2.3.2200' },
 };
 for (const cfg of Object.values(DEBRIS_BURSTS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
-    }
-  }).catch(() => {}); /* art pending — placeholder branch covers it */
+  /* v2.3.2776: cropped, as EFFECT_BURSTS above */
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch(() => {})); /* art pending — placeholder branch covers it */
 }
 /* ═══ v2.3.2217: the thrown snowball's IMPACT ═══
    Owner-supplied art (a 4x2 grid, normalised to the repo's 8-frame strip
@@ -1478,16 +1473,11 @@ const GESTURE_TOOLS = {
     ] },
 };
 for (const cfg of Object.values(GESTURE_TOOLS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * fw, 0, fw, tex.source.height),
-      }));
-    }
-  }).catch((err) => console.warn('[gesture-tools] load failed', cfg.url, err));
+  /* v2.3.2776: cropped (gearSheets.loadCroppedStrip) -- the pickaxe and axe
+     strips are 4% painted.  Still on the loading-screen gate via _fxPreload. */
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch((err) => console.warn('[gesture-tools] load failed', cfg.url, err)));
 }
 
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is
