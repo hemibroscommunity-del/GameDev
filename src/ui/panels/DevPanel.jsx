@@ -445,8 +445,9 @@ export const DevPanel = ({ onClose }) => {
 
             <div style={label}>Character</div>
             <button type="button" style={btn(false)} disabled={busy}
-              onClick={async () => { const j = await call('/dev/kit', { playerId: myId }); if (j) { setMsg('Kit granted (' + j.weapons + ' weapons) — check your bag.'); refresh(); } }}>
-              Give weapons + levels
+              onClick={async () => { const j = await call('/dev/kit', { playerId: myId }); if (j) { setMsg('Kit granted (' + j.weapons + ' weapons' + (typeof j.armor === 'number' ? ', ' + j.armor + ' armour pieces' : '') + ') — check your bag.'); refresh(); } }}>
+              {/* v2.3.2875: the kit hands out the copper and iron armour sets too (devtools.js DEVKIT.ARMOR) */}
+              Give weapons + armor + levels
             </button>
             <button type="button" style={btn(false)} disabled={busy}
               onClick={async () => { const j = await call('/dev/vitals', { playerId: myId, heal: true }); if (j) { setMsg('Topped up.'); refresh(); } }}>
