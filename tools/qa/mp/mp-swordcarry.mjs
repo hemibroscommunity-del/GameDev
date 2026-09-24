@@ -115,13 +115,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the silhouette reads.  The plain sword and the staff have been behind at SW
      all along -- they are not `_heldInHand` and never reach heldWeaponInFront --
      so this makes the greatsword agree with them rather than inventing a rule. */
-  const FRONT = new Set(['E', 'SE', 'S', 'NE']);
+  /* ═══ v2.3.2898: ...AND THE CARRIED SW COMES BACK IN FRONT ═══
+     Owner: "East, Southwest, northeast the characters hand should be over the
+     handle."  Behind the body, the arm swallowed the SW handle and only the
+     crossguard showed beside the hand.  The carried SW blade now sits in front
+     with a hole at the grip, so the fist is drawn over the handle (see
+     gripHoleWanted).  The SWING keeps v2.3.2516's behind-the-body order. */
+  const FRONT = new Set(['E', 'SE', 'S', 'SW', 'NE']);
+  const GRIP_HOLE = new Set(['E', 'SW', 'NE']);
   for (let i = 0; i < 8; i++) {
     const m = await face(P, i);
     const want = FRONT.has(NAMES[i]);
     rec.ok(`${NAMES[i]}: the blade is ${want ? 'in front of' : 'behind'} the body`,
       !!m && (m.wcIdx > m.spriteBodyIdx) === want,
       { wcIdx: m && m.wcIdx, spriteBodyIdx: m && m.spriteBodyIdx, expectedInFront: want });
+    const hole = GRIP_HOLE.has(NAMES[i]);
+    rec.ok(`${NAMES[i]}: the fist is ${hole ? '' : 'not '}cut over the handle`,
+      !!m && !!m.gripHole === hole, { gripHole: m && m.gripHole });
   }
 
   /* THE SHIRT, WHICH IS WHAT THIS WAS ACTUALLY ABOUT.  "In front" used to be

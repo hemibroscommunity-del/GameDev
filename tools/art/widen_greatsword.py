@@ -24,12 +24,41 @@ Rewrites the five webps and their grips in handles.json in place.
 """
 import json, sys
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 K = float(sys.argv[1]) if len(sys.argv) > 1 else 1.75
 DIRS = ['south', 'southwest', 'east', 'northeast', 'north']
 HANDLES = 'public/sprites/weapons/handles.json'
 SS = 4  # supersample for the resample, then downsample
+
+def smooth(big):
+    """Straighten the art's 1px stair-steps BEFORE stretching them.
+
+    Owner, on the first cut: "Southwest and northeast sword look like there's
+    grouped pixel ridges on it."  A diagonal edge in the source is a staircase
+    of 1px steps; stretched 1.46x across the blade those became uneven 1-2px
+    steps -- visible ridges along both edges and the fuller.  So at the
+    supersampled size the alpha is blurred by ~0.6 SOURCE px and the colour by ~0.3
+    (premultiplied, so the edge does not darken), which turns each staircase
+    into a straight ramp, and the alpha is then pulled back to a crisp edge
+    with a contrast curve.  The colours keep a slight softening, below what
+    the in-game scale (~0.3x) can show."""
+    a = np.asarray(big).astype(np.float64) / 255.0
+    rgb, al = a[..., :3], a[..., 3:4]
+    pm = np.concatenate([rgb * al, al], axis=2)
+    pm_img = Image.fromarray((pm * 255).round().astype(np.uint8), 'RGBA')
+    def blur(sig):
+        return np.asarray(pm_img.filter(ImageFilter.GaussianBlur(SS * sig))).astype(np.float64) / 255.0
+    # the OUTLINE gets the stronger smoothing (that is where the steps
+    # were); the colours inside -- keyline, fuller, shading -- only enough
+    # to round a step off, or the detail washes out (the second cut did)
+    ba, bc = blur(0.6), blur(0.3)
+    al2 = ba[..., 3:4]
+    alc = bc[..., 3:4]
+    rgb2 = np.where(alc > 1e-4, bc[..., :3] / np.maximum(alc, 1e-4), 0)
+    al3 = np.clip((al2 - 0.5) * 2.6 + 0.5, 0, 1)   # re-sharpen the outline
+    out = np.concatenate([np.clip(rgb2, 0, 1), al3], axis=2)
+    return Image.fromarray((out * 255).round().astype(np.uint8), 'RGBA')
 
 handles = json.load(open(HANDLES))
 for d in DIRS:
@@ -62,7 +91,7 @@ for d in DIRS:
     # out pixel (X,Y) at SS -> new offset = (X/SS + x0, Y/SS + y0) -> old = Mi @ off + g
     A = Mi / SS
     c = Mi @ np.array([x0, y0]) + [gx, gy]
-    big = im.resize((W * SS, H * SS), Image.LANCZOS)
+    big = smooth(im.resize((W * SS, H * SS), Image.LANCZOS))
     A2 = A * SS
     c2 = c * SS
     out = big.transform((nW * SS, nH * SS), Image.AFFINE,
