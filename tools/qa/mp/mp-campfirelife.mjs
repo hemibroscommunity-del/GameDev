@@ -1,4 +1,4 @@
-/* ═══ v2.3.2888: A COOK'S FIRE STAYS LIT ON EVERY SCREEN WHILE THEY COOK ═══
+/* ═══ v2.3.2899: A COOK'S FIRE STAYS LIT ON EVERY SCREEN WHILE THEY COOK ═══
  *
  * Owner: "check all other broadcasted player animations to make sure they
  * match what your character does client side so there's no discrepancies."
