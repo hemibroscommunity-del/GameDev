@@ -1,4 +1,4 @@
-/* ═══ v2.3.2751-2754: THE WORLD'S SMALL MOTIONS ═══
+/* ═══ v2.3.2781-2784: THE WORLD'S SMALL MOTIONS ═══
  *
  * Owner: "I'm looking for a liveness pass.  Basically making things move a
  * little in a way that makes sense for whatever object it is.  Maybe a tree
@@ -270,7 +270,7 @@ const PEND_G = 770;   /* world px / s^2: a 60 px chain swings in ~1.75 s */
 
 /* ─── the buildings' live effects, in the ORIGINAL texture px ─── */
 const FALLS = Object.create(null);
-/* v2.3.2753: every fall on the mayor's house, measured off the art: a path
+/* v2.3.2783: every fall on the mayor's house, measured off the art: a path
    down the water and its width.  Light streaks slide down each; foam at the
    foot of each. */
 FALLS['mayor-house'] = [

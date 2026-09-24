@@ -1,4 +1,4 @@
-# Liveness: the world's small motions, and the bag's (v2.3.2751–2755)
+# Liveness: the world's small motions, and the bag's (v2.3.2781–2785)
 
 > Owner: "I'm looking for a liveness pass. Basically making things move a
 > little in a way that makes sense for whatever object it is. Maybe a tree
@@ -42,7 +42,7 @@ buildings (the originals stay untouched as its input) and writes:
 
 A piece is found by flood-filling from a seed inside it, kept inside a box and
 stopped by cut lines drawn where it meets the building. Along the edge it
-hangs from it OVERLAPS the building by two texels (TRAPS §109). Run with
+hangs from it OVERLAPS the building by two texels (TRAPS §111). Run with
 `--debug DIR` to get each building's outline picture; look at it after any
 change.
 

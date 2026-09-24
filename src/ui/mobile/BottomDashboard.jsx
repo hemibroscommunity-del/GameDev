@@ -32,7 +32,7 @@ import { friendsSrv } from './sheet/friendsSync.js';               /* v2.3.1324 
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
-import { bagLife, startBagLife } from './dash/bagLife.js'; /* v2.3.2755: the bag's small motions */
+import { bagLife, startBagLife } from './dash/bagLife.js'; /* v2.3.2785: the bag's small motions */
 import { COMBAT_SKILLS, unspentPointsTotal } from './sheet/heroModel.js'; /* v2.3.1311: hero toolbar badge; v2.3.1635: shared unspent total */
 /* v2.3.1635 -> v2.3.2320: IdentityStrip's band import is gone with the band
    purse (see the row below).  The component's other branch has no caller in
@@ -659,7 +659,7 @@ export const BottomDashboard = () => {
      seen.  Stack quantity increments reuse their key — no re-badge. */
   useEffect(() => {
     let prev = null;
-    /* v2.3.2755: stack sizes too, so a growing stack can bump its count */
+    /* v2.3.2785: stack sizes too, so a growing stack can bump its count */
     let prevCount = null;
     const tick = () => {
       const S = window._gameState && window._gameState.current;
@@ -670,7 +670,7 @@ export const BottomDashboard = () => {
          column shows all six parents and needs no such memory. */
       const entries = getBagEntries(S.rpg);
       const keys = entries.map(bagEntryKey);
-      /* v2.3.2755: the same "new key" that badges the pickup also pops it
+      /* v2.3.2785: the same "new key" that badges the pickup also pops it
          into its slot (bagLife.js) -- and a stack that grew bumps its count */
       if (prev) {
         const fresh = keys.filter((k) => !prev.has(k));

@@ -51,9 +51,10 @@ import { loadNpcSprites, loadZoneDecor, freeZoneDecor } from './npcSprites.js'; 
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
+import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
-import { preloadWorldLife } from './worldLife.js';        /* v2.3.2751: the buildings' swinging and waving pieces */
+import { preloadWorldLife } from './worldLife.js';        /* v2.3.2781: the buildings' swinging and waving pieces */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -274,7 +275,7 @@ export async function preloadWorldAnimations() {
        tint), and a slime can throw in more zones than not.  The mint yields
        between slices, so the loading bar keeps moving while it runs. */
     monsterShots: preloadMonsterShots(),
-    /* ═══ v2.3.2751: the world's small motions ═══
+    /* ═══ v2.3.2781: the world's small motions ═══
        The town buildings' cut-out pieces (the hanging signs and crates on one
        sheet, the flags on another -- tools/cut_prop_parts.py) and the smoke,
        spark, glint and water-streak textures minted in code.  GLOBAL: the
@@ -340,6 +341,11 @@ export async function preloadWorldAnimations() {
        See statDemoPreload.js — it names both. */
     statDemo: preloadStatDemo(),
     auctionInterior: preloadAuctionInterior(),
+    /* ═══ v2.3.2760: the harvest cue's mini tools ═══
+       DOM images on the right button (the bag's pickaxe / axe / rod icons and
+       the pan strip), GLOBAL: every gathering zone and the town campfire use
+       them.  See gestureCuePreload.js for why none of them was already warm. */
+    gestureCue: preloadGestureCue(),
   };
 
   const names = Object.keys(groups);
