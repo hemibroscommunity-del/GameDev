@@ -4553,3 +4553,61 @@ piece swings away, and a copied sliver of the neighbour would swing with it.
 **And the art tool is the source.** The cut pieces and the `-still` buildings
 are generated from the untouched originals; a repaint is a re-run of the
 tool, never a hand edit of either output.
+
+## 112. A rider at "+1" draws over a figure raised over its prop (v2.3.2786)
+
+**Tempting:** anything drawn ON a prop stands in an overlay at `y = p.y + 1`
+(§104), so it sorts just after the prop. That was true while every child of
+a sorted layer had one key, its own ground row.
+
+**Wrong since v2.3.2748.** The depth pass now RAISES a figure standing in
+front of a building's real base -- beside its side wall, north of its front
+step -- to `base + 0.5`, just over the building. An overlay at `base + 1`
+sorts over that figure. The auction house's scales hang on its left wall, so
+anyone standing at its left corner (a peer, an NPC, a monster) had the scales
+drawn across their body, in front of them, while the wall they hang on was
+correctly behind. No screenshot of the building alone shows it; it needs a
+figure raised over the wall.
+
+**The rule:** a container that belongs to a prop names it (`_ridesOn`, set by
+worldLife on its building riders) and depthSort.applyGroundSort gives it the
+host's key **+ 0.25**: after the building and anything else on its row, under
+a raised figure (+0.5) and under anything a row further south. It must also
+carry the host's `_propGround` (same object), so the bucket pass puts it on
+the same side of the player as its building. Keep the `+1` on its `y` as the
+fallback for a layer that is not sorted.
+
+**Not yet covered:** effectsRenderer's `_propOverlay` (the marks and stuck
+arrows of §104) still sorts at +1 and has the same fault for a raised figure;
+it is small and short-lived, and naming its prop the same way is the fix.
+
+## 113. A piece cut out of a building leaves everything that reads the building (v2.3.2786–2787)
+
+**Tempting:** once a sign is cut out of a building's picture and drawn back
+over it in exactly the place it came from (§111), the building looks the same
+at rest, so nothing else can have changed.
+
+**Wrong -- three other systems read the building, not the screen,** and each
+lost the piece silently:
+
+1. **Form shade** (formShade.js) shades the building's OWN quad from its top
+   to its base. The sign, a quad of its own, came out unshaded: a light patch
+   on a darker wall. The pieces now name the building's span, as a figure's
+   clothes name its body (worldLife `_buildRider`); the flags, meshes the patch
+   does not reach, take the shade at their middle as a tint.
+2. **The shadow** (lightfx/shadows.js placeDepth) is cast from the building's
+   texture -- now the cut one. The auction house's long sign shadow left the
+   cobble: mp-worldshadow's shaded-side darkening fell from 18.6 to 5. The
+   pieces now cast through the building's own shadow mesh (`_placePieces`,
+   `host._lifePieces`), so the shadow swings with the sign.
+3. **The ground profile** (propGround.readArtBottoms) is read off the texture
+   too, and the columns a sign or the scales hung in read EMPTY off the cut
+   one. That moved the base line beside the scales and bent the column model
+   the shadow uses. worldLife re-reads it with the pieces put back
+   (`readArtBottoms(texture, extras)`).
+
+**The rule:** anything that reads a sprite's pixels, its quad or its texture
+must be told about pieces cut from it. Before cutting, grep for every reader
+of that sprite (`propDisplays`, `_propGround`, `_vShade`); after, compare the
+game against main with the pieces at rest -- shade on/off, shadows on/off --
+and expect no difference.

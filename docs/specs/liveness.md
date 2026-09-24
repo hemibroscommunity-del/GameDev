@@ -1,4 +1,4 @@
-# Liveness: the world's small motions, and the bag's (v2.3.2781–2785)
+# Liveness: the world's small motions, and the bag's (v2.3.2781–2787)
 
 > Owner: "I'm looking for a liveness pass. Basically making things move a
 > little in a way that makes sense for whatever object it is. Maybe a tree
@@ -48,8 +48,29 @@ change.
 
 The pieces ride a container that stands on the building's own ground line
 (+1 px, the TRAPS §104 rule) and lives in its layer, so the depth pass puts a
-sign behind you exactly when it puts its building behind you. Off camera, a
-building's effects are not simulated.
+sign behind you exactly when it puts its building behind you. It names its
+building (`_ridesOn`), and the depth pass keys it a quarter step after it, so
+someone the pass raises over the building — a player standing at the auction
+house's left corner — is drawn over its scales too (TRAPS §112; pinned in
+`server/test/ridersort.test.mjs`). Off camera, a building's effects are not
+simulated.
+
+The buildings are form-shaded (`formShade.js`: the top as painted, the base a
+cool shade), so the pieces are too, at their own height: the swinging pieces
+name the building's span the way a character's clothes name its body, and the
+flags (meshes, which the shade patch does not reach) are tinted with the shade
+at their middle. Without it the forge's sign read as a light patch on a darker
+wall.
+
+The pieces cast the building's shadow with it (v2.3.2787): the shadow of a
+building is cast from its picture, which no longer has them, so each piece
+casts through the building's own shadow mesh (`lightfx/shadows.js`
+`_placePieces`, fed `host._lifePieces`) — at rest exactly where main's
+uncut picture put it, and swinging and waving with the piece. The building
+also reads its ground line off its WHOLE picture, pieces put back
+(`propGround.readArtBottoms(texture, extras)`): off the cut one, the auction
+house's sign and scales columns read empty. TRAPS §113 is the lesson: a piece
+cut out of a sprite leaves everything that reads the sprite.
 
 **To add a moving piece:** add its spec to `SPECS` in the tool, re-run it,
 give its swing an entry in `SWING` (worldLife.js) if the default does not
@@ -74,12 +95,21 @@ the at-rest and moving checks pick it up by themselves).
   slows the world's motion clock and `window.__btLifeFrames` steps it one
   fixed tick per frame (tools/qa/mp/shot-liveness.mjs).
 * Probes: `window.__btWorldLife()` (sway, parts, riders, effect counts,
-  breathing), `window.__btBagLife.stats()` / `.poke(key)`.
+  breathing), `window.__btWorldLifeRects(id)` / `__btWorldLifeHide(id, piece,
+  on)` (where a building's pieces are on the page, and hiding one — for a
+  pixel check), `window.__btBagLife.stats()` / `.poke(key)`.
+* The bag is in Recent order, so the stack you just added to jumps to the
+  front, and the move can give its tile a new node. A pop or a bump is played
+  on the ITEM: for a moment after playing, bagLife looks again and replays it
+  on the item's new tile if it moved (v2.3.2786).
 
 ## Verified
 
-`tools/qa/mp/mp-liveness.mjs` (51 checks): every piece present and at rest
-under calm, riding its building's layer; every piece moving when live; smoke,
+`tools/qa/mp/mp-liveness.mjs` (64 checks): every piece present and at rest
+under calm, riding its building's layer a quarter step after it, taking
+the building's form shade at its height (measured: the same frame with the
+shade on and off, over the piece's own pixels) and casting its shadow; every
+piece moving when live; smoke,
 sparks, flicker, water, glints, breathing; frost pines/shrubs/canopy sway,
 the canopy's hang point fixed, a tree's foot fixed, a chop shivering the trunk
 and dropping needles, the ore glinting; the bag's motion kinds, arrival pop,

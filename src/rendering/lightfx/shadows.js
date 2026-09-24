@@ -134,6 +134,34 @@ function usableTexture(t) {
   return !!(t && t !== Texture.EMPTY && !t.destroyed && t.source && !t.source.destroyed);
 }
 
+/* v2.3.2787: where the building's own shadow mesh (placeDepth: 17 column
+   edges, a top and a bottom vertex each, two triangles a column) puts the
+   point (tx, ty) of its picture, in the picture's px -- the same affine map
+   the GPU applies to that triangle, so a piece cut out of the building casts
+   exactly where its pixels did when they were part of it.  `V` is that
+   mesh's vertex array; a point off the picture's edge uses the edge column. */
+function castOnBuilding(V, fw, fh, tx, ty, out) {
+  const q = (tx / fw) * 16, vv = ty / fh;
+  const i = Math.max(0, Math.min(15, Math.floor(q)));
+  const sx = q - i;
+  const a = i * 4, b = a + 4;
+  const TLx = V[a], TLy = V[a + 1], BLx = V[a + 2], BLy = V[a + 3];
+  const TRx = V[b], TRy = V[b + 1], BRx = V[b + 2], BRy = V[b + 3];
+  if (sx + vv <= 1) {
+    out.x = TLx + sx * (TRx - TLx) + vv * (BLx - TLx);
+    out.y = TLy + sx * (TRy - TLy) + vv * (BLy - TLy);
+  } else {
+    out.x = BRx + (1 - sx) * (BLx - BRx) + (1 - vv) * (TRx - BRx);
+    out.y = BRy + (1 - sx) * (BLy - BRy) + (1 - vv) * (TRy - BRy);
+  }
+}
+/* One vertex of a piece: piece-local (px, py) -> its building's picture px
+   (the piece's local transform T) -> its shadow, into v[i]. */
+function castPiecePoint(T, px, py, V, fw, fh, P, v, i) {
+  castOnBuilding(V, fw, fh, T.a * px + T.c * py + T.tx, T.b * px + T.d * py + T.ty, P);
+  v[i * 2] = P.x; v[i * 2 + 1] = P.y;
+}
+
 export class ShadowSystem {
   constructor(layer, root) {
     this.layer = layer;
@@ -142,6 +170,10 @@ export class ShadowSystem {
     this.used = 0;
     this.meshPool = [];          /* v2.3.2749: the buildings' depth-aware shadows (placeDepth) */
     this.meshUsed = 0;
+    this._pieceMeshes = new Map();   /* v2.3.2787: a building's cut-out piece -> its shadow mesh */
+    this._pieceList = [];
+    this._frame = 0;
+    this._lastPieces = 0;
     this.filter = null;
     this._held = new Map();      /* caster key -> { t, items: [{tex, ax, ay, m}] } */
     this._m = new Matrix();
@@ -151,7 +183,7 @@ export class ShadowSystem {
        can ask "does each monster on screen cast" without the 16-entry cap on
        `list`.  One array, cleared and refilled in place: the keys are strings
        the casters already carry, so this allocates nothing per frame. */
-    this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [] };
+    this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [], lifePieces: 0 };
   }
 
   _piece() {
@@ -197,7 +229,7 @@ export class ShadowSystem {
      (it only moves when its zone does).  The pieces are MeshSimple sharing
      the building's own texture, in the same filtered layer as the figures,
      so a figure standing in a building's shadow darkens nothing twice. */
-  placeDepth(spr, g, back, lx, ly) {
+  placeDepth(spr, g, back, lx, ly, pieces) {
     const tex = spr.texture;
     if (!usableTexture(tex) || !g) return false;
     const COLS = 16;
@@ -240,7 +272,78 @@ export class ShadowSystem {
       v[i * 4 + 2] = x + lx * hB; v[i * 4 + 3] = zB + ly * hB;
     }
     if (!m.visible) m.visible = true;
+    if (pieces) this._lastPieces = this._placePieces(v, fw, fh, pieces);
     return true;
+  }
+
+  /* ═══ v2.3.2787: THE PIECES CUT OUT OF A BUILDING CAST TOO ═══
+     worldLife (v2.3.2781-2786) draws a building's signs, banner, scales,
+     crate and flags as pieces of their own, so they can swing and wave -- and
+     cut them out of the picture this shadow is cast from.  The auction
+     house's long sign shadow on the cobble went with them: mp-worldshadow
+     read 5 where the building's shaded side used to darken past 6.  So each
+     piece casts through the SAME column model as its building -- its pixels
+     stand on the grounds placeDepth gave that building's columns --
+     at where it hangs THIS frame: each of its vertices lands exactly where
+     the building's own mesh puts that point of the picture.  The shadow
+     joins the building's and swings and waves with the piece.
+
+     A piece is anything with a texture and a local transform that maps it
+     into its building's TEXTURE pixels (0..W across, 0..H down, which is how
+     worldLife's rider builds them): a Sprite casts a small grid, so a
+     rotated sign still follows the columns, and a Mesh (a flag) casts its
+     own vertices, wave and all.  `host._lifePieces` is the list. */
+  _placePieces(V, fw, fh, list) {
+    let n = 0;
+    const P = this._pp || (this._pp = { x: 0, y: 0 });
+    for (let k = 0; k < list.length; k++) {
+      const o = list[k];
+      if (!o || o.destroyed || o.visible === false || !usableTexture(o.texture)) continue;
+      const src = o.geometry && o.geometry.positions;
+      let m = this._pieceMeshes.get(o);
+      if (!m) {
+        let uvs, idx, count;
+        if (src) {
+          uvs = o.geometry.uvs; idx = o.geometry.indices; count = src.length / 2;
+        } else {
+          const GX = 8, GY = 4;
+          count = (GX + 1) * (GY + 1);
+          uvs = new Float32Array(count * 2);
+          idx = new Uint32Array(GX * GY * 6);
+          for (let j = 0; j <= GY; j++) for (let i = 0; i <= GX; i++) {
+            uvs[(j * (GX + 1) + i) * 2] = i / GX; uvs[(j * (GX + 1) + i) * 2 + 1] = j / GY;
+          }
+          for (let j = 0; j < GY; j++) for (let i = 0; i < GX; i++) {
+            const a = j * (GX + 1) + i, b = a + GX + 1;
+            idx.set([a, a + 1, b, a + 1, b + 1, b], (j * GX + i) * 6);
+          }
+        }
+        const mesh = new MeshSimple({ texture: o.texture, vertices: new Float32Array(count * 2), uvs, indices: idx });
+        this.layer.addChild(mesh);
+        m = { mesh, grid: src ? null : [8, 4] };
+        this._pieceMeshes.set(o, m);
+        this._pieceList.push(m);
+      }
+      const mesh = m.mesh;
+      if (mesh.texture !== o.texture) mesh.texture = o.texture;
+      o.updateLocalTransform();
+      const T = o.localTransform;
+      const v = mesh.vertices;
+      if (src) {
+        for (let i = 0; i < src.length / 2; i++) castPiecePoint(T, src[i * 2], src[i * 2 + 1], V, fw, fh, P, v, i);
+      } else {
+        const GX = m.grid[0], GY = m.grid[1];
+        const tw = o.texture.orig.width, th = o.texture.orig.height;
+        const ax = o.anchor ? o.anchor.x : 0, ay = o.anchor ? o.anchor.y : 0;
+        for (let j = 0; j <= GY; j++) for (let i = 0; i <= GX; i++) {
+          castPiecePoint(T, (i / GX - ax) * tw, (j / GY - ay) * th, V, fw, fh, P, v, j * (GX + 1) + i);
+        }
+      }
+      m.used = this._frame;
+      if (!mesh.visible) mesh.visible = true;
+      n++;
+    }
+    return n;
   }
 
   clear() {
@@ -261,9 +364,17 @@ export class ShadowSystem {
       if (m.texture !== Texture.EMPTY) m.texture = Texture.EMPTY;
     }
     this.meshUsed = 0;
+    /* v2.3.2787: the buildings' cut-out pieces too (their art is global, but
+       the rule above is "hidden is not enough", and it costs nothing) */
+    for (let i = 0; i < this._pieceList.length; i++) {
+      const m = this._pieceList[i].mesh;
+      m.visible = false;
+      if (m.texture !== Texture.EMPTY) m.texture = Texture.EMPTY;
+    }
     if (this.layer.filters) this.layer.filters = null;
     this._held.clear();
     this.stats.casters = 0; this.stats.pieces = 0; this.stats.held = 0; this.stats.self = null; this.stats.list.length = 0; this.stats.keys.length = 0;
+    this.stats.lifePieces = 0;
   }
 
   /**
@@ -275,8 +386,10 @@ export class ShadowSystem {
   update(casters, light, fade, now) {
     this.used = 0;
     this.meshUsed = 0;
+    this._frame++;
     const st = this.stats;
     st.casters = 0; st.pieces = 0; st.held = 0; st.self = null; st.list.length = 0; st.keys.length = 0;
+    st.lifePieces = 0;
     if (!light || !(fade > 0.02) || !casters || !casters.length) {
       this.clear();
       return;
@@ -286,10 +399,13 @@ export class ShadowSystem {
     for (let c = 0; c < casters.length; c++) {
       const cs = casters[c];
       if (cs.depth) {
-        /* v2.3.2749: a building -- see placeDepth */
-        if (this.placeDepth(cs.depth.spr, cs.depth.g, cs.depth.back, lx, ly)) {
-          st.casters++; st.pieces++; st.keys.push(cs.key);
-          if (st.list.length < 16) st.list.push({ key: cs.key, px: cs.depth.spr.x, py: cs.depth.back, pieces: 1 });
+        /* v2.3.2749: a building -- see placeDepth.  v2.3.2787: with the
+           pieces cut out of it (see _placePieces) */
+        this._lastPieces = 0;
+        if (this.placeDepth(cs.depth.spr, cs.depth.g, cs.depth.back, lx, ly, cs.depth.pieces)) {
+          const np = this._lastPieces;
+          st.casters++; st.pieces += 1 + np; st.lifePieces += np; st.keys.push(cs.key);
+          if (st.list.length < 16) st.list.push({ key: cs.key, px: cs.depth.spr.x, py: cs.depth.back, pieces: 1 + np });
         }
         continue;
       }
@@ -346,6 +462,10 @@ export class ShadowSystem {
     }
     for (let i = this.meshUsed; i < this.meshPool.length; i++) {
       if (this.meshPool[i].visible) this.meshPool[i].visible = false;
+    }
+    for (let i = 0; i < this._pieceList.length; i++) {
+      const m = this._pieceList[i];
+      if (m.used !== this._frame && m.mesh.visible) m.mesh.visible = false;
     }
     if (!this.used && !this.meshUsed) {
       if (this.layer.filters) this.layer.filters = null;

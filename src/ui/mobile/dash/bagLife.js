@@ -178,16 +178,36 @@ function whenTile(bagKey, fn, tries = 6) {
   if (tries > 0) setTimeout(() => whenTile(bagKey, fn, tries - 1), 120);
 }
 
+/* v2.3.2786: play it on the ITEM, not on whichever node held it.  The bag is
+   in Recent order, so the stack you just added to jumps to the front -- and
+   the move can give its tile a NEW node.  The watcher and the bag each run
+   on their own 400 ms timer, so when the watcher saw the new count first,
+   the bump went onto the old node and vanished with it: mp-liveness caught
+   it as "bump played, never seen on the tile".  So for a little longer than
+   one bag render, look again, and if the key now lives on another node play
+   it there, from the start -- the old node is gone, and one whole bump on
+   the tile where the item now sits is what should be seen. */
+function playOnItem(bagKey, el, attr, value, ms) {
+  play(el, attr, value, ms);
+  let at = el, left = 8;
+  const look = () => {
+    const now = tileFor(bagKey);
+    if (now && now !== at) { at = now; play(at, attr, value, ms); }
+    if (--left > 0) setTimeout(look, 90);
+  };
+  setTimeout(look, 90);
+}
+
 export const bagLife = {
   /** A key the bag did not hold a moment ago: pop it in. */
   arrive(bagKey) {
     if (qaCalm()) return;
-    whenTile(bagKey, (el) => { play(el, 'data-life-new', '1', 760); stats.arrive++; });
+    whenTile(bagKey, (el) => { playOnItem(bagKey, el, 'data-life-new', '1', 760); stats.arrive++; });
   },
   /** A stack that just grew: bump its count. */
   bump(bagKey) {
     if (qaCalm()) return;
-    whenTile(bagKey, (el) => { play(el, 'data-life-bump', '1', 420); stats.bump++; });
+    whenTile(bagKey, (el) => { playOnItem(bagKey, el, 'data-life-bump', '1', 420); stats.bump++; });
   },
   stats() { return { ...stats, running: !!_timer, calm: calm() }; },
   /** QA: play one idle motion now, on a given key. */

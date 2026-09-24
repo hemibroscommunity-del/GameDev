@@ -52,13 +52,19 @@
  *  - The pieces stuck onto a building ride a container that stands on the
  *    SAME ground line as the building (plus one pixel, so it always sorts just
  *    after it) and lives in the same layer, so the depth pass puts a sign
- *    behind you exactly when it puts its building behind you.
+ *    behind you exactly when it puts its building behind you.  v2.3.2786: it
+ *    names its host (`_ridesOn`) and the depth pass sorts it a quarter step
+ *    after it, under a figure the pass raises over that building (TRAPS §112).
+ *  - v2.3.2786: the pieces take the building's form shade (formShade.js) --
+ *    see _buildRider.
  */
 import { Container, Sprite, Texture, Rectangle, MeshPlane, Assets } from 'pixi.js';
 import { windAt, dayPhase, lightingAt } from '@/game/timeOfDay.js';
 import { PROP_PARTS, PROP_PART_SHEETS } from '@/data/propParts.js';
 import { propsForZone, foregroundForZone } from '@/data/worldProps.js';
 import { PROP_LIGHTS } from './worldFx.js';
+import { SHADE, formShadeOn } from './formShade.js';
+import { readArtBottoms } from './propGround.js';
 import { npcArtUrl } from './npcSprites.js';
 
 const TAU = Math.PI * 2;
@@ -76,6 +82,15 @@ function hashStr(s) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return (h >>> 0) / 4294967296;
+}
+
+/* v2.3.2786: formShade's prop gradient at height t of a building (0 its top,
+   1 its base), as a tint -- the colour its own quad takes at that row. */
+function shadeTintAt(t) {
+  const a = SHADE.prop.top, b = SHADE.prop.bot;
+  const k = Math.max(0, Math.min(1, t));
+  const ch = (i) => Math.max(0, Math.min(255, Math.round(255 * (a[i] + (b[i] - a[i]) * k))));
+  return (ch(0) << 16) | (ch(1) << 8) | ch(2);
 }
 
 /* ─────────────────────────── textures ─────────────────────────── */
@@ -312,6 +327,26 @@ export class WorldLife {
     if (typeof window !== 'undefined') {
       const self = this;
       window.__btWorldLife = () => self._probe;
+      /* v2.3.2786, QA (mp-liveness's shade check): where a building and each
+         of its pieces are on the page, in CSS px, and a way to hide one piece
+         so a test can find its pixels by what disappears.  Asked on demand,
+         never per frame. */
+      window.__btWorldLifeRects = (id) => {
+        const r = self._riders.get(id);
+        const host = r && r.c._ridesOn;
+        if (!r || !host || host.destroyed || !r.c.visible) return null;
+        const cv = typeof document !== 'undefined' && document.querySelector('canvas');
+        const off = cv ? cv.getBoundingClientRect() : { left: 0, top: 0 };
+        const box = (o) => { const b = o.getBounds(); return { x: b.x + off.left, y: b.y + off.top, w: b.width, h: b.height }; };
+        return { host: box(host), parts: r.parts.map((P) => ({ id: P.id, kind: P.kind, box: box(P.s || P.m), tint: (P.s || P.m).tint })) };
+      };
+      window.__btWorldLifeHide = (id, partId, hide) => {
+        const r = self._riders.get(id);
+        const P = r && r.parts.find((q) => q.id === partId);
+        if (!P) return false;
+        (P.s || P.m).visible = !hide;
+        return true;
+      };
     }
   }
 
@@ -358,6 +393,7 @@ export class WorldLife {
    */
   update(S, cam, now, er, fx) {
     if (!S) return;
+    this._frameNo = (this._frameNo || 0) + 1;
     const rate = typeof window !== 'undefined' && typeof window.__btLifeRate === 'number' ? window.__btLifeRate : 1;
     const raw = this._last ? (now - this._last) / 1000 : 0.016;
     this._last = now;
@@ -586,6 +622,7 @@ export class WorldLife {
           const [pvx, pvy] = p.pivot;
           s.anchor.set((pvx - ax) / pt.width, (pvy - ay) / pt.height);
           s.x = pvx; s.y = pvy;
+          s._noSharp = true;    /* painted art, sampled as the building is (sharpPixels.js is for figures) */
           const key = id + '/' + p.id;
           const sw = SWING[key] || { amp: 1.2, len: 80 };
           r.partsL.addChild(s);
@@ -599,9 +636,27 @@ export class WorldLife {
              from the piece's left edge (the piece overlaps the pole a little:
              see OVERLAP in tools/cut_prop_parts.py) */
           const pole = Math.max(0, (p.pole != null ? p.pole : p.at[0]) - p.at[0]);
-          r.parts.push({ kind: 'flag', id: p.id, m, base, w: pt.width, h: pt.height, pole, ph: hashStr(id + p.id) * TAU });
+          r.parts.push({ kind: 'flag', id: p.id, m, base, w: pt.width, h: pt.height, pole, ph: hashStr(id + p.id) * TAU,
+            shade: shadeTintAt((p.at[1] + pt.height / 2) / H) });
         }
+        /* v2.3.2787: where each piece was cut from, for the building's ground
+           profile (see _updateBuildings) */
+        (r.restPieces || (r.restPieces = [])).push({ texture: pt, x: p.at[0], y: p.at[1] });
       }
+      /* v2.3.2786: the building is form-shaded (formShade.js: its top as
+         painted, its base a cool shade), so a piece cut out of it must take
+         the SAME gradient at the same height, or the forge's sign reads as a
+         light patch pasted on a darker wall.  The swinging pieces take it the
+         way a figure's clothes take their body's: their layer names a span --
+         the building's own, 0..H in this layer's texture px -- and each
+         corner is shaded by where it sits in it, so a sign swung a few
+         degrees is still shaded right.  The flags are meshes, which the patch
+         does not reach, so they are tinted with the shade at their middle
+         (_stepParts); a flag is a few dozen texels tall, well under a step of
+         the gradient.  The smoke, sparks and glows are light and air, not
+         the building: their layers carry no mark. */
+      r.partsL._vShadeKids = SHADE.prop;
+      r.partsL._vShadeRef = { texture: { orig: { height: H } }, y: 0, anchor: { y: 0 }, scale: { y: 1 } };
     }
     /* flames and lamps: the lights worldFx already knows about, flickering by
        day (by night worldFx's halos take over, so these fade out as the lamps
@@ -668,6 +723,25 @@ export class WorldLife {
         if (own(PROP_PARTS, id) && !own(PART, id)) continue;
         this._buildRider(r, id, host);
       }
+      /* v2.3.2787: the pieces cast their building's shadow with it
+         (lightfx/shadows.js _placePieces reads this list; each piece's local
+         transform is in the building's texture px, which is how the rider
+         is built).  Set before the camera cull: a shadow can reach the
+         screen from a building that has not. */
+      if (!r.shadowList) r.shadowList = r.parts.map((P) => P.s || P.m);
+      if (host._lifePieces !== r.shadowList) host._lifePieces = r.shadowList;
+      /* v2.3.2787: ...and the building reads its base off its WHOLE picture,
+         pieces put back where they were cut from (propGround.readArtBottoms),
+         once the depth pass has read the cut one -- which its signs' and
+         scales' columns read as empty.  One building a frame, like the first
+         read. */
+      const g = host._propGround;
+      if (g && g.tried && !g._lifeWhole && r.restPieces && r.restPieces.length && this._wholeAt !== this._frameNo) {
+        this._wholeAt = this._frameNo;
+        g._lifeWhole = true;
+        const whole = readArtBottoms(host.texture, r.restPieces);
+        if (whole) g.bottoms = whole;
+      }
       /* off camera: nothing to draw, so nothing to simulate either (a
          building's smoke and water are not worth a phone's time unseen) */
       if (!this._onCamera(host, r.W, r.H, 80)) { r.c.visible = false; continue; }
@@ -677,9 +751,12 @@ export class WorldLife {
       r.c.y = host.y + 1;
       r.inner.scale.set(host.scale.x, host.scale.y);
       if (host._propGround !== undefined) r.c._propGround = host._propGround;
+      /* v2.3.2786: sort a quarter step after the host, not a whole row
+         (depthSort.applyGroundSort) -- see TRAPS §112 */
+      if (r.c._ridesOn !== host) r.c._ridesOn = host;
       r.c.visible = true;
       probe.riders.push({ id, layer: r.c.parent && r.c.parent.label || null, hostLayer: host.parent && host.parent.label || null,
-        dy: +(r.c.y - host.y).toFixed(2), parts: r.parts.length });
+        dy: +(r.c.y - host.y).toFixed(2), dz: +(r.c.zIndex - host.zIndex).toFixed(2), parts: r.parts.length });
       const kx = Math.abs(host.scale.x) || 1;
       this._stepParts(r, id, host, t, dt, wind, calm, probe);
       this._stepSmoke(r, t, dt, wind, calm, kx, probe);
@@ -701,6 +778,7 @@ export class WorldLife {
   }
 
   _stepParts(r, id, host, t, dt, wind, calm, probe) {
+    const shadeOn = formShadeOn() && !(typeof window !== 'undefined' && window.__btShadeOff);
     const gx = host.x, gy = host.y - (r.H || 0) * 0.6;
     const g = gustAt(gx, gy, t, wind);
     const strength = wind.speed / 14;
@@ -721,6 +799,9 @@ export class WorldLife {
         P.s.rotation = th;
         probe.parts.push({ prop: id, id: P.id, kind: 'swing', deg: +(th / DEG).toFixed(2) });
       } else if (P.kind === 'flag') {
+        /* v2.3.2786: the building's form shade at the flag's height (see _buildRider) */
+        const tint = shadeOn ? P.shade : 0xffffff;
+        if (P.m.tint !== tint) P.m.tint = tint;
         const pos = P.m.geometry.positions;
         const base = P.base;
         if (calm) {
