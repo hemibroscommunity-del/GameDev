@@ -1,4 +1,4 @@
-/* ═══ v2.3.2791-2794: THE WORLD'S SMALL MOTIONS ═══
+/* ═══ v2.3.2811-2814: THE WORLD'S SMALL MOTIONS ═══
  *
  * Owner: "I'm looking for a liveness pass.  Basically making things move a
  * little in a way that makes sense for whatever object it is.  Maybe a tree
@@ -52,10 +52,10 @@
  *  - The pieces stuck onto a building ride a container that stands on the
  *    SAME ground line as the building (plus one pixel, so it always sorts just
  *    after it) and lives in the same layer, so the depth pass puts a sign
- *    behind you exactly when it puts its building behind you.  v2.3.2796: it
+ *    behind you exactly when it puts its building behind you.  v2.3.2816: it
  *    names its host (`_ridesOn`) and the depth pass sorts it a quarter step
  *    after it, under a figure the pass raises over that building (TRAPS §115).
- *  - v2.3.2796: the pieces take the building's form shade (formShade.js) --
+ *  - v2.3.2816: the pieces take the building's form shade (formShade.js) --
  *    see _buildRider.
  */
 import { Container, Sprite, Texture, Rectangle, MeshPlane, Assets } from 'pixi.js';
@@ -84,7 +84,7 @@ function hashStr(s) {
   return (h >>> 0) / 4294967296;
 }
 
-/* v2.3.2796: formShade's prop gradient at height t of a building (0 its top,
+/* v2.3.2816: formShade's prop gradient at height t of a building (0 its top,
    1 its base), as a tint -- the colour its own quad takes at that row. */
 function shadeTintAt(t) {
   const a = SHADE.prop.top, b = SHADE.prop.bot;
@@ -285,7 +285,7 @@ const PEND_G = 770;   /* world px / s^2: a 60 px chain swings in ~1.75 s */
 
 /* ─── the buildings' live effects, in the ORIGINAL texture px ─── */
 const FALLS = Object.create(null);
-/* v2.3.2793: every fall on the mayor's house, measured off the art: a path
+/* v2.3.2813: every fall on the mayor's house, measured off the art: a path
    down the water and its width.  Light streaks slide down each; foam at the
    foot of each. */
 FALLS['mayor-house'] = [
@@ -327,7 +327,7 @@ export class WorldLife {
     if (typeof window !== 'undefined') {
       const self = this;
       window.__btWorldLife = () => self._probe;
-      /* v2.3.2796, QA (mp-liveness's shade check): where a building and each
+      /* v2.3.2816, QA (mp-liveness's shade check): where a building and each
          of its pieces are on the page, in CSS px, and a way to hide one piece
          so a test can find its pixels by what disappears.  Asked on demand,
          never per frame. */
@@ -639,11 +639,11 @@ export class WorldLife {
           r.parts.push({ kind: 'flag', id: p.id, m, base, w: pt.width, h: pt.height, pole, ph: hashStr(id + p.id) * TAU,
             shade: shadeTintAt((p.at[1] + pt.height / 2) / H) });
         }
-        /* v2.3.2797: where each piece was cut from, for the building's ground
+        /* v2.3.2817: where each piece was cut from, for the building's ground
            profile (see _updateBuildings) */
         (r.restPieces || (r.restPieces = [])).push({ texture: pt, x: p.at[0], y: p.at[1] });
       }
-      /* v2.3.2796: the building is form-shaded (formShade.js: its top as
+      /* v2.3.2816: the building is form-shaded (formShade.js: its top as
          painted, its base a cool shade), so a piece cut out of it must take
          the SAME gradient at the same height, or the forge's sign reads as a
          light patch pasted on a darker wall.  The swinging pieces take it the
@@ -723,14 +723,14 @@ export class WorldLife {
         if (own(PROP_PARTS, id) && !own(PART, id)) continue;
         this._buildRider(r, id, host);
       }
-      /* v2.3.2797: the pieces cast their building's shadow with it
+      /* v2.3.2817: the pieces cast their building's shadow with it
          (lightfx/shadows.js _placePieces reads this list; each piece's local
          transform is in the building's texture px, which is how the rider
          is built).  Set before the camera cull: a shadow can reach the
          screen from a building that has not. */
       if (!r.shadowList) r.shadowList = r.parts.map((P) => P.s || P.m);
       if (host._lifePieces !== r.shadowList) host._lifePieces = r.shadowList;
-      /* v2.3.2797: ...and the building reads its base off its WHOLE picture,
+      /* v2.3.2817: ...and the building reads its base off its WHOLE picture,
          pieces put back where they were cut from (propGround.readArtBottoms),
          once the depth pass has read the cut one -- which its signs' and
          scales' columns read as empty.  One building a frame, like the first
@@ -751,7 +751,7 @@ export class WorldLife {
       r.c.y = host.y + 1;
       r.inner.scale.set(host.scale.x, host.scale.y);
       if (host._propGround !== undefined) r.c._propGround = host._propGround;
-      /* v2.3.2796: sort a quarter step after the host, not a whole row
+      /* v2.3.2816: sort a quarter step after the host, not a whole row
          (depthSort.applyGroundSort) -- see TRAPS §115 */
       if (r.c._ridesOn !== host) r.c._ridesOn = host;
       r.c.visible = true;
@@ -799,7 +799,7 @@ export class WorldLife {
         P.s.rotation = th;
         probe.parts.push({ prop: id, id: P.id, kind: 'swing', deg: +(th / DEG).toFixed(2) });
       } else if (P.kind === 'flag') {
-        /* v2.3.2796: the building's form shade at the flag's height (see _buildRider) */
+        /* v2.3.2816: the building's form shade at the flag's height (see _buildRider) */
         const tint = shadeOn ? P.shade : 0xffffff;
         if (P.m.tint !== tint) P.m.tint = tint;
         const pos = P.m.geometry.positions;
@@ -1120,7 +1120,7 @@ export class WorldLife {
         const pulse = Math.sin(ph * Math.PI);
         s.scale.set(0.75 * (0.3 + 0.7 * pulse));
         s.rotation = ph * 0.6;
-        /* v2.3.2798: as bright as the coin itself -- a coin that is someone
+        /* v2.3.2818: as bright as the coin itself -- a coin that is someone
            else's is drawn grey at 0.4 (effectsRenderer), and a full glint on
            a grey coin reads as a stray spark */
         s.alpha = 0.9 * pulse * (1 - 0.6 * lamp) * (sp.alpha >= 0 ? Math.min(1, sp.alpha) : 1);

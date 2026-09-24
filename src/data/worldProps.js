@@ -182,7 +182,7 @@ export const WORLD_PROPS = [
        roof overhangs its walls, and blocking the roof's shadow leaves the
        player bumping into thin air a body-length from the door. */
     id: 'mayor-house', zone: 'town', mapV: 17,
-    /* v2.3.2791: the -still art -- its two flags cut out to wave on their
+    /* v2.3.2811: the -still art -- its two flags cut out to wave on their
        own (tools/cut_prop_parts.py; rendering/worldLife.js draws them back
        on).  Same canvas, same size, so worldH and the anchor are unchanged. */
     sprite: '/sprites/props/mayor-house-still.png',
@@ -211,7 +211,7 @@ export const WORLD_PROPS = [
        Moved from (350,850) to (480,900): the extra width has to come from
        somewhere, and taking it eastward keeps the building off the trees
        while leaving the plaza's middle clear. */
-    /* v2.3.2791: -still: the hanging sign cut out to swing, the painted
+    /* v2.3.2811: -still: the hanging sign cut out to swing, the painted
        smoke cut out for live smoke (tools/cut_prop_parts.py) */
     id: 'forge', zone: 'town', mapV: 17, sprite: '/sprites/props/forge-still.png',
     x: 522, y: 1198, worldH: 500, blockW: 470, blockD: 200,
@@ -278,7 +278,7 @@ export const WORLD_PROPS = [
        with adaptive row filters.  514x512, 462KB, which is the same
        shelf the rest of the family sits on. */
     id: 'auction-house', zone: 'town', mapV: 17,
-    /* v2.3.2791: -still: the sign, the banner, the scales and the flag cut
+    /* v2.3.2811: -still: the sign, the banner, the scales and the flag cut
        out to move (tools/cut_prop_parts.py) */
     sprite: '/sprites/props/auction-house-still.png',
     x: 1632, y: 1290, worldH: 550, blockW: 321, blockD: 220,
@@ -432,7 +432,7 @@ export const WORLD_PROPS = [
      spoken for -- the west half holds the forge (470 across) and the market
      stall, and the north is the mayor's terrace. */
   {
-    /* v2.3.2791: -still: the coin crate and both flags cut out to move
+    /* v2.3.2811: -still: the coin crate and both flags cut out to move
        (tools/cut_prop_parts.py) */
     id: 'bank', zone: 'town', mapV: 17, sprite: '/sprites/props/bank-still.png',
     x: 1495, y: 760, worldH: 520, blockW: 357, blockD: 154,

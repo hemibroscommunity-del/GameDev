@@ -139,7 +139,7 @@ export function applyGroundSort(layer) {
     if (!c) continue;
     const y = groundOf(c);
     const k = Number.isFinite(y) ? Math.round(y) : 0;
-    /* v2.3.2796: a RIDER -- a building's moving pieces (worldLife.js), which
+    /* v2.3.2816: a RIDER -- a building's moving pieces (worldLife.js), which
        stand on their host's ground line -- sorts a quarter step after the
        host: over the building and anything else on its row, but UNDER a
        figure raised over that building (+0.5, raiseOverProps) and under

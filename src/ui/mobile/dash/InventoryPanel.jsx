@@ -27,7 +27,7 @@ import { playVw, panelVw } from '../playViewport.js';
 export { CATEGORIES } from './bagFilterBus.js';
 import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the shop */
 import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the trade */
-import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2795: the bag's small motions */
+import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -394,7 +394,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
     && shopBus.sel.side === 'bag' && shopBus.sel.key === ikey;
   /* v2.3.2149: how many of this stack are staged, so the tile can say so. */
   const tradeStaged = tradeBagBus.open ? tradeBagBus.countFor(ikey) : 0;
-  /* v2.3.2795: how this item comes alive in the bag (bagLife.js) -- a potion
+  /* v2.3.2815: how this item comes alive in the bag (bagLife.js) -- a potion
      sloshes, a fish flops, metal glints, a log lies still (null). */
   const life = lifeKindFor(ikey, classify(ikey));
   return (
@@ -421,7 +421,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
               style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
           : <span className="bt-bag-art" data-life={life || undefined} style={{ display: 'inline-block' }}>{iconFor(ikey)}</span>;
       })()}
-      {/* v2.3.2795: the glint and the arrival ring draw here (game.css) */}
+      {/* v2.3.2815: the glint and the arrival ring draw here (game.css) */}
       <span className="bt-bag-fx" aria-hidden="true" />
       {/* v2.3.1249: owner-approved — the big uncontained 15px count becomes
           a compact contained badge (bottom-right, bare number, 2-digit max;
@@ -1293,7 +1293,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
       /* v2.3.1350: row-fit override from the measured items grid. */
       ...(styleOverride || {}),
     }} title={(obj && obj.name) || (kind === 'stashShield' ? 'Shield' : kind === 'stashArmor' ? 'Armor' : kind === 'stashLegs' ? 'Greaves' : 'Weapon')}>
-      {/* v2.3.2795: gear catches the light now and then (bagLife.js); a
+      {/* v2.3.2815: gear catches the light now and then (bagLife.js); a
           rare-or-better piece a little more often (data-life-q) */}
       {thumb
         ? <img src={thumb} alt="" draggable={false} className="bt-bag-art"

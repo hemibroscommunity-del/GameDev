@@ -1,4 +1,4 @@
-/* A building's moving pieces sort with the building (v2.3.2796).
+/* A building's moving pieces sort with the building (v2.3.2816).
  *
  * worldLife draws a building's swinging signs, flags and smoke in a RIDER: a
  * container in the building's own layer that names its host (`_ridesOn`) and

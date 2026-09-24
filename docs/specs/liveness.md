@@ -1,4 +1,4 @@
-# Liveness: the world's small motions, and the bag's (v2.3.2791–2797)
+# Liveness: the world's small motions, and the bag's (v2.3.2811–2817)
 
 > Owner: "I'm looking for a liveness pass. Basically making things move a
 > little in a way that makes sense for whatever object it is. Maybe a tree
@@ -62,7 +62,7 @@ flags (meshes, which the shade patch does not reach) are tinted with the shade
 at their middle. Without it the forge's sign read as a light patch on a darker
 wall.
 
-The pieces cast the building's shadow with it (v2.3.2797): the shadow of a
+The pieces cast the building's shadow with it (v2.3.2817): the shadow of a
 building is cast from its picture, which no longer has them, so each piece
 casts through the building's own shadow mesh (`lightfx/shadows.js`
 `_placePieces`, fed `host._lifePieces`) — at rest exactly where main's
@@ -101,7 +101,7 @@ the at-rest and moving checks pick it up by themselves).
 * The bag is in Recent order, so the stack you just added to jumps to the
   front, and the move can give its tile a new node. A pop or a bump is played
   on the ITEM: for a moment after playing, bagLife looks again and replays it
-  on the item's new tile if it moved (v2.3.2796).
+  on the item's new tile if it moved (v2.3.2816).
 
 ## Verified
 

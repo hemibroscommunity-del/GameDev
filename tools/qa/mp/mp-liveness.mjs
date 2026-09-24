@@ -1,4 +1,4 @@
-/* ═══ THE WORLD'S SMALL MOTIONS, AND THE BAG'S  (v2.3.2791-2796) ═══
+/* ═══ THE WORLD'S SMALL MOTIONS, AND THE BAG'S  (v2.3.2811-2816) ═══
  *
  * Owner: "I'm looking for a liveness pass.  Basically making things move a
  * little in a way that makes sense for whatever object it is.  Maybe a tree
@@ -14,7 +14,7 @@
  *                  was cut out of it -- sign, banner, scales, crate, flags --
  *                  exactly where it was cut from, and nothing moves; the
  *                  pieces sort a quarter step after their building and take
- *                  its form shade at their height (v2.3.2796);
+ *                  its form shade at their height (v2.3.2816);
  *   BUILDINGS      with it off, the signs swing, the flags wave, the forge
  *                  smokes, the flames flicker, the mayor's water runs and the
  *                  bank's gold glints -- each riding the depth layer of the
@@ -84,7 +84,7 @@ async function settle(P) {
   }
 }
 
-/* v2.3.2796: does each cut piece take its building's form shade?  formShade.js
+/* v2.3.2816: does each cut piece take its building's form shade?  formShade.js
    darkens every building toward its base; a piece drawn unshaded over it reads
    as a light patch on a darker wall.  Measured on the page, not assumed: the
    same calm frame with the shade on and off (window.__btShadeOff), the piece's
@@ -215,12 +215,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const rider = pr.riders.find((r) => r.id === id);
     rec.ok(`${id}: its pieces ride the building's own depth layer, one pixel south of its ground line`,
       !!rider && rider.layer === rider.hostLayer && rider.dy === 1, rider);
-    /* v2.3.2796: ...and sort a QUARTER step after it, so a figure the depth
+    /* v2.3.2816: ...and sort a QUARTER step after it, so a figure the depth
        pass raises over the building (+0.5) is drawn over its pieces too
        (TRAPS §115; the arithmetic is pinned in server/test/ridersort) */
     rec.ok(`${id}: its pieces sort a quarter step after the building (under a figure raised over it)`,
       !!rider && rider.dz === 0.25, rider);
-    /* v2.3.2796: ...and take the building's form shade at their height */
+    /* v2.3.2816: ...and take the building's form shade at their height */
     const home = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
     const shade = await shadeOfPieces(P, id, home);
     rec.ok(`${id}: every piece takes the building's form shade at its own height (shade on/off over its pixels)`,
@@ -231,7 +231,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         deep.every((q) => q.ratio < 0.95), deep);
     }
   }
-  /* v2.3.2797: the pieces were cut out of the picture the building's shadow
+  /* v2.3.2817: the pieces were cut out of the picture the building's shadow
      and its ground line are read from -- so they cast with it (lightfx
      shadows.js _placePieces), and the building reads its base off its WHOLE
      picture: the auction house's edge columns, where its sign and its scales
@@ -369,11 +369,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* the tile's own box never moves while its art does -- asked once the bump
      above has finished, or its hop is the animation on the art */
   const box = await P.page.evaluate(async () => {
-    const t = document.querySelector('[data-bag-key="i-fish_minnow"]');
-    if (!t) return null;
-    for (let i = 0; i < 40 && (t.getAttribute('data-life-bump') != null || t.getAttribute('data-life-now') != null); i++) {
+    /* v2.3.2816: the bump can REPLAY on the tile the item moved to (bagLife
+       playOnItem follows it for ~0.7 s), so let that window pass, and ask
+       the tile the item is on NOW each time, not the one it was on */
+    const q = () => document.querySelector('[data-bag-key="i-fish_minnow"]');
+    await new Promise((r) => setTimeout(r, 900));
+    for (let i = 0; i < 40; i++) {
+      const c = q();
+      if (c && c.getAttribute('data-life-bump') == null && c.getAttribute('data-life-now') == null) break;
       await new Promise((r) => setTimeout(r, 50));
     }
+    const t = q();
+    if (!t) return null;
     const r0 = t.getBoundingClientRect();
     window.__btBagLife.poke('i-fish_minnow', 'flop');
     await new Promise((r) => setTimeout(r, 180));

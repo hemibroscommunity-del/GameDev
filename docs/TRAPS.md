@@ -4561,7 +4561,7 @@ then `new GlProgram({ name, ...src })`. GlProgram's `isES300` check keeps the
 version and skips the ES1 defines. The templates are already ES3 syntax. Gate
 the feature on `webGLVersion === 2`.
 
-## 114. A piece cut out of a sprite must OVERLAP the place it was cut (v2.3.2792)
+## 114. A piece cut out of a sprite must OVERLAP the place it was cut (v2.3.2812)
 
 **Tempting:** to make a building's hanging sign swing, erase the sign from the
 building's art and draw it back as its own sprite in exactly the rectangle it
@@ -4588,7 +4588,7 @@ piece swings away, and a copied sliver of the neighbour would swing with it.
 are generated from the untouched originals; a repaint is a re-run of the
 tool, never a hand edit of either output.
 
-## 115. A rider at "+1" draws over a figure raised over its prop (v2.3.2796)
+## 115. A rider at "+1" draws over a figure raised over its prop (v2.3.2816)
 
 **Tempting:** anything drawn ON a prop stands in an overlay at `y = p.y + 1`
 (§104), so it sorts just after the prop. That was true while every child of
@@ -4615,7 +4615,7 @@ fallback for a layer that is not sorted.
 arrows of §104) still sorts at +1 and has the same fault for a raised figure;
 it is small and short-lived, and naming its prop the same way is the fix.
 
-## 116. A piece cut out of a building leaves everything that reads the building (v2.3.2796–2797)
+## 116. A piece cut out of a building leaves everything that reads the building (v2.3.2816–2817)
 
 **Tempting:** once a sign is cut out of a building's picture and drawn back
 over it in exactly the place it came from (§114), the building looks the same

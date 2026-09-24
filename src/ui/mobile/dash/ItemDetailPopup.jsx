@@ -13,7 +13,7 @@ import {
   subscribe as subscribeLocks,
 } from './inventoryLocks.js';
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
-import { lifeKindFor } from './bagLife.js'; /* v2.3.2795: the portrait's small motion */
+import { lifeKindFor } from './bagLife.js'; /* v2.3.2815: the portrait's small motion */
 import { firemakingBus } from '../firemakingBus.js';
 import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the auction house; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
 import { eatBus } from '../eatBus.js';
@@ -1239,7 +1239,7 @@ export const ItemDetailPopup = () => {
   if (!resolved) return null;
   const { lockKey, thumb, glyph, name, info, delta, desc, actions, sellWhy } = resolved;
   const locked = itemIsLocked(lockKey);
-  /* v2.3.2795: the portrait lives the way the item does in the bag -- a potion
+  /* v2.3.2815: the portrait lives the way the item does in the bag -- a potion
      sloshes, metal glints, a log lies still (bagLife.js) */
   const cardLife = target.kind === 'inventory'
     ? lifeKindFor(target.key, classify(target.key))
@@ -1593,7 +1593,7 @@ export const ItemDetailPopup = () => {
           fontFamily: 'Source Sans 3, sans-serif',
           boxShadow: '0 14px 30px rgba(4,7,9,.38)',
           opacity: pos ? 1 : 0,
-          /* v2.3.2795: a quick fade rather than a pop.  Opacity only: the
+          /* v2.3.2815: a quick fade rather than a pop.  Opacity only: the
              placement above measures this card, and a transform here would
              hand that measurement a scaled box. */
           transition: 'opacity 140ms ease-out',
@@ -1630,7 +1630,7 @@ export const ItemDetailPopup = () => {
 
         <div style={{ position: 'relative', width: 80, height: 80, alignSelf: 'center' }}>
           {/* v2.3.1232: portrait sits in a recessed well (#121B20, slot radius) */}
-          {/* v2.3.2795: the portrait PRESENTS the item when the card opens
+          {/* v2.3.2815: the portrait PRESENTS the item when the card opens
               (.bt-card-art, game.css) and then lives as it does in the bag --
               the scheduler in bagLife.js gives the open card half its turns.
               data-bag-key makes this well a "tile" for that CSS; 'card' is

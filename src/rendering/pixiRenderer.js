@@ -8,7 +8,7 @@ import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
-import { WorldLife } from './worldLife.js';           /* v2.3.2791: trees sway, signs swing, flags wave */
+import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
@@ -393,7 +393,7 @@ export async function initPixiRenderer(canvas) {
     update._lastStages.entityMs = _t2 - _t1;
     try { effectsRenderer.update(S, cssW, cssH, now); }
     catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
-    /* v2.3.2791: the world's small motions -- after both renderers have put
+    /* v2.3.2811: the world's small motions -- after both renderers have put
        down this frame's props, trees and people (it bends what they placed),
        and before the lights, the depth pass and the shadows, which then see
        a sign where it swung to and a tree where it leaned. */
