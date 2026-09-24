@@ -102,6 +102,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const frameCountOf = () => {
       const d = window._pixiRenderer.playerDisplayRaw();
       const t = d && d._spriteBody && d._spriteBody.texture;
+      /* v2.3.2791: a cropped body frame carries its sheet's frame count
+         (gearSheets.sliceCropped) -- its width no longer divides the packed
+         source's, so the division below would read the wrong count. */
+      if (t && t.__btN) return t.__btN;
       if (!t || !t.baseTexture || !t.frame || !t.frame.width) return 0;
       return Math.max(1, Math.round(t.baseTexture.width / t.frame.width));
     };

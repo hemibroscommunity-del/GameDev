@@ -32,6 +32,7 @@
  * A settle report lands on window.__btPreloadReport so rigs (and
  * anyone debugging a first-use hitch) can verify coverage. */
 
+import { preloadLootIcons } from './lootIcons.js'; /* v2.3.2771 */
 import { variantSpritesFor, unloadVariantSprites } from './monsterVariantSprites.js';
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
@@ -54,6 +55,7 @@ import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.26
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
+import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buildings' swinging and waving pieces */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -274,6 +276,15 @@ export async function preloadWorldAnimations() {
        tint), and a slime can throw in more zones than not.  The mint yields
        between slices, so the loading bar keeps moving while it runs. */
     monsterShots: preloadMonsterShots(),
+    /* ═══ v2.3.2811: the world's small motions ═══
+       The town buildings' cut-out pieces (the hanging signs and crates on one
+       sheet, the flags on another -- tools/cut_prop_parts.py) and the smoke,
+       spark, glint and water-streak textures minted in code.  GLOBAL: the
+       pieces belong to town, a resident hub, and the buildings are drawn
+       WITHOUT them now (the *-still art), so a building would stand there
+       missing its sign until this had loaded -- exactly the first-sight load
+       the law forbids.  ~1.1MB decoded. */
+    worldLife: preloadWorldLife(),
     /* v2.3.2279: the bow special's blast.  GLOBAL rather than per-zone -- a
        bow goes everywhere its owner does, so there is no zone to scope it to,
        and the ZONE-ASSET EXCEPTION only covers art a single zone uses.  2MB
@@ -336,6 +347,9 @@ export async function preloadWorldAnimations() {
        the pan strip), GLOBAL: every gathering zone and the town campfire use
        them.  See gestureCuePreload.js for why none of them was already warm. */
     gestureCue: preloadGestureCue(),
+    /* v2.3.2771: the rare-drop icons on a monster's loot pile (lootIcons.js)
+       -- a rare drop is the moment a blank first frame would be seen */
+    lootIcons: preloadLootIcons(),
   };
 
   const names = Object.keys(groups);

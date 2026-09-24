@@ -46,6 +46,82 @@ const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
 const BLOCK_POSE_FRAME = 1;
 const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
+/* v2.3.2774: QA probe -- what cropping the combat stand-in strips saved, per
+   sheet (decoded bytes, no mips).  See _gearStripFrame. */
+const _combatTrimStats = [];
+const _combatTrimFrames = new Map();   /* key -> the cropped frames, for the identity check */
+
+/* ═══ v2.3.2775: THE STAND-IN BODIES, CROPPED ═══
+ * Owner: "Is there any other memory savings that can be cropped?" -- then "Do
+ * all of it".  Measured (__btTex, armoured in town, after the gear crops): the
+ * recoloured stand-in bodies were the largest thing left -- the sword / bow
+ * bodies and torsos and the jog legs (_bakeBodyStrip, 36.4 MB, 5-29% of their
+ * texels painted) and the cook / chop / fire figures (19.4 MB, 11-49%) -- and
+ * every other player's skin combo bakes its own copy of the sword and bow ones
+ * (_remoteBodyFramesFor / _remoteSheetFramesFor).
+ *
+ * One slicer for all of them: the baked canvas is cut into n frames of fw x fh
+ * exactly as before, each frame cropped to its art by gearSheets.packTrimmed,
+ * and the canvas itself is then released -- it was the thing holding the
+ * memory.  Readers get Textures whose `orig` is the whole frame (TRAPS §106):
+ * a Sprite lands where it always did; the two places that cut a sub-rectangle
+ * out of one of these frames (the jog legs' torso trim, blockArm's shield arm)
+ * go through gearSheets.subTexture.  Callers that measure the canvas (the
+ * skin / ink probes) do so BEFORE calling this.
+ * Returns the frame array; `statKey` names it in __btStandInTrim. */
+const _standInTrimStats = [];
+const _standInTrimFrames = new Map();
+if (typeof window !== 'undefined') {
+  window.__btStandInTrim = () => _standInTrimStats.slice();
+  window.__btStandInFrames = (key) => _standInTrimFrames.get(key) || null;
+}
+function _sliceStandIn(cv, fw, fh, n, statKey, keepCanvas) {
+  /* QA only (mp-geartrim sets it before the game loads): keep the whole bake
+     next to its crops so the scenario can prove them byte-identical.  Never
+     set for a player -- it is exactly the memory this function gives back. */
+  let verifyCopy = null;
+  try {
+    if (statKey && typeof window !== 'undefined' && window.__btTrimVerify) {
+      verifyCopy = document.createElement('canvas');
+      verifyCopy.width = cv.width; verifyCopy.height = cv.height;
+      verifyCopy.getContext('2d').drawImage(cv, 0, 0);
+    }
+  } catch (e) { verifyCopy = null; }
+  const packed = packTrimmed(cv, fw, fh, n);
+  const src = Texture.from(packed ? packed.canvas : cv).source;
+  src.scaleMode = 'linear';
+  const arr = [];
+  for (let i = 0; i < n; i++) {
+    if (packed) {
+      const c = packed.cells[i];
+      arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+        orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+    } else {
+      arr.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
+    }
+  }
+  if (packed) {
+    if (statKey) {
+      /* one row per key: a rebake (skin change) replaces its row, it does not
+         add a second one for memory that has already been let go */
+      const row = { key: statKey, fullBytes: cv.width * cv.height * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 };
+      const at = _standInTrimStats.findIndex((r) => r.key === statKey);
+      if (at >= 0) _standInTrimStats[at] = row; else _standInTrimStats.push(row);
+      _standInTrimFrames.set(statKey, { frames: arr, full: verifyCopy, fw, fh });
+    }
+    /* the full-size bake is no longer referenced; hand its backing store back
+       now rather than whenever Safari's GC gets to it (see packTrimmed).  A
+       caller that still has to measure it passes keepCanvas and zeroes it
+       itself afterwards. */
+    if (!keepCanvas) { cv.width = 0; cv.height = 0; }
+  }
+  arr.cropped = !!packed;
+  return arr;
+}
+if (typeof window !== 'undefined') {
+  window.__btCombatGearTrim = () => _combatTrimStats.slice();
+  window.__btCombatGearFrames = (key) => _combatTrimFrames.get(key) || null;
+}
 
 /* ═══ v2.3.2500: THE SKIN-TONE PROBE, FOR THE STAND-INS THAT HAD NONE ═══
  *
@@ -95,7 +171,7 @@ function _probeStandInSkin(key, cv, opts) {
   } catch (e) { /* a probe never breaks a bake */ }
 }
 import { ELEMENTS } from '@/data/elements.js';
-import { ZONES, zonePlayerScale } from '@/data/zones.js';
+import { ZONES, zonePlayerScale, depthK /* v2.3.2790 */ } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
 import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn ON props -- slash marks, arrows standing in the rock */
@@ -130,7 +206,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
 import { onArtChange, artHasInk, artIsSymmetric } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
-import { getGearFrame } from '../gearSheets.js';
+import { getGearFrame, packTrimmed, registerGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
@@ -292,6 +368,7 @@ import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 import { recolorToolKeyCanvas, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark */
+import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { SHADE } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks */
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
@@ -1003,14 +1080,12 @@ const EFFECT_BURSTS = {
      crown (tools/import_rocks_burst.py) — same 8x256 strip contract. */
   splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1470' },
 };
+/* v2.3.2776: cropped (gearSheets.loadCroppedStrip) -- 2-4% of these strips
+   is painted.  Still on the loading-screen gate via _fxPreload. */
 for (const cfg of Object.values(EFFECT_BURSTS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
-    }
-  }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err));
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err)));
 }
 const FX_BURST_MS = 600;
 
@@ -1051,13 +1126,10 @@ const DEBRIS_BURSTS = {
   ember: { frames: [], h: 72, url: '/sprites/effects/debris-ember-burst-v1.webp?v=2.3.2200' },
 };
 for (const cfg of Object.values(DEBRIS_BURSTS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
-    }
-  }).catch(() => {}); /* art pending — placeholder branch covers it */
+  /* v2.3.2776: cropped, as EFFECT_BURSTS above */
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch(() => {})); /* art pending — placeholder branch covers it */
 }
 /* ═══ v2.3.2217: the thrown snowball's IMPACT ═══
    Owner-supplied art (a 4x2 grid, normalised to the repo's 8-frame strip
@@ -1401,16 +1473,11 @@ const GESTURE_TOOLS = {
     ] },
 };
 for (const cfg of Object.values(GESTURE_TOOLS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * fw, 0, fw, tex.source.height),
-      }));
-    }
-  }).catch((err) => console.warn('[gesture-tools] load failed', cfg.url, err));
+  /* v2.3.2776: cropped (gearSheets.loadCroppedStrip) -- the pickaxe and axe
+     strips are 4% painted.  Still on the loading-screen gate via _fxPreload. */
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch((err) => console.warn('[gesture-tools] load failed', cfg.url, err)));
 }
 
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is
@@ -1832,6 +1899,109 @@ function _trimBakeCache(cache) {
  * as the old size did. */
 const LOOT_SCALE = 2;
 
+/* ═══ v2.3.2771: A PILE LANDS, ITS RAREST THING ON TOP ═══
+ * Owner: "Make it so loot from monster drops kind of bounces when it first
+ * lands (each item independently).  Show rarer items in top in terms of drop
+ * rate if overlap.  Show 'RARE DROP!' message if there's a rare item in the
+ * pile and have it just give a faint white shine upward from its position."
+ *
+ * DRAW ORDER IS DROP RATE.  The loot layer sorts by zIndex, and each kind of
+ * thing on a pile takes the slot its rarity earns (server rates, index.js /
+ * data.js): the remains and the coins come with nearly every kill, a zone
+ * shard with 10%, a weapon with 0.05-3% (by monster level), the rare gem with
+ * 0.5%, an iron armour piece with 0.2%.  Rarer draws over commoner, on one
+ * pile or where two piles overlap; labels over all items, names over labels.
+ * The ground rings stay underneath everything, as the glow they are. */
+const LOOT_Z = {
+  ring: -10, remnant: 0, coin: 10, coinLabel: 11, shard: 20,
+  weapon: 30, gem: 40, armor: 50, beam: 55, label: 60, owner: 70, rareText: 80,
+};
+/* A rare item is anything rarer than 1 in 100 -- the weapon, gem and armour
+   lanes.  What earns the RARE DROP! call and the shine. */
+const RARE_KINDS = { weapon: true, gem: true, armor: true };
+
+/* ═══ THE LANDING ═══
+ * Each item falls from its own height, lands, and takes two shrinking hops --
+ * a decaying |cos|, so the first quarter-cycle IS the fall.  Every item on
+ * the pile gets its own height, delay and rhythm from a per-pile seed, so the
+ * coin, the shard and the gem land one after another rather than as one
+ * block.  Only in the pile's first LAND_S seconds, measured from the SERVER'S
+ * drop time (l.ts): a pile you walk up to, or one synced on zone entry, is
+ * already lying still.  Visual only -- the pickup test reads l.x / l.y. */
+const LAND_S = 1.0;
+const HOP_KEYS = { remnant: 0, coin: 1, shard: 2, weapon: 3, gem: 4, armor: 5 };
+const _NO_HOP = { dy: 0, sq: 0, rot: 0, out: 1 };
+const _hash = (x) => { const v = Math.sin(x) * 43758.5453; return v - Math.floor(v); };
+function lootHop(l, key, age, n = 0) {
+  if (!(age < LAND_S) || age < 0) return _NO_HOP;
+  if (l._landSeed == null) l._landSeed = Math.random();
+  const k = (HOP_KEYS[key] || 0) + n * 7 + 1;
+  const A = 14 + 10 * _hash(l._landSeed * 131 + k * 1.7);           /* drop height, world px */
+  const delay = 0.16 * _hash(l._landSeed * 71 + k * 3.1);           /* one after another */
+  const P = 0.15 * (0.85 + 0.3 * _hash(l._landSeed * 53 + k * 5.3)); /* fall time = first quarter */
+  const t = age - delay;
+  /* ═══ v2.3.2772: AND IT TUMBLES A LITTLE ═══
+     Owner: "When it bounces did you allow it to rotate a little bit so it
+     looks more realistic?"  It did not -- straight up and down.  Now each
+     item leans while it is in the air (its own side and amount from the
+     same seed) and comes back level at every contact: sin over the hop is
+     zero exactly when |cos| is, i.e. on the ground.  So it lands flat, is
+     knocked a little crooked by each hop, and is level again by the time it
+     settles -- where the resting pile has always been. */
+  const lean = (_hash(l._landSeed * 29 + k * 7.9) < 0.5 ? -1 : 1) * (0.22 + 0.28 * _hash(l._landSeed * 17 + k * 2.3));
+  if (t < 0) return { dy: A, sq: 0, rot: lean * 0.5, out: 0 };
+  const env = Math.exp(-3.2 * t);
+  const c = Math.abs(Math.cos((Math.PI * t) / (2 * P)));
+  /* a little squash at each contact, gone by the second hop */
+  const sq = 0.22 * env * Math.max(0, 1 - c / 0.25);
+  /* the fall eases from its starting lean to level at first contact; each
+     hop after tips it the same way and brings it back (sin*cos: zero on the
+     ground and at the top, most crooked in between) -- continuous throughout */
+  const rot = t < P ? lean * 0.5 * c : lean * 1.6 * env * Math.abs(Math.sin((Math.PI * t) / (2 * P))) * c;
+  /* v2.3.2773: how far out toward its spot in the circle (pileLayout) the
+     item has travelled -- thrown from the middle, there by its second hop */
+  const u = Math.min(1, t / (2.2 * P));
+  const out = 1 - (1 - u) * (1 - u);
+  return { dy: A * env * c, sq, rot, out };
+}
+/* v2.3.2771 squash; v2.3.2772 and tilt.  Rotation is WRITTEN every call
+   (0 once settled) so a pile never keeps a stale lean. */
+/* ═══ v2.3.2773: A PILE SPREADS OUT, IT DOES NOT STACK ═══
+   Owner: "Instead of a vertical line can you make the loot spread out a bit
+   within a proximal circle."  The coin, shard and rare items used to sit in a
+   column over the remains (coin 10 px up, shard 24, rare icons 30).  Each now
+   has its own spot in a small circle around the pile's middle -- a sunflower
+   (golden-angle) spiral from a per-pile starting angle, so two piles never
+   look stamped from one template and no two items land on the same spot.  The
+   rarest go nearest the middle (they are what you are walking over for); the
+   circle is squashed vertically (x 0.55) because the ground is seen at an
+   angle.  A lone item stays in the middle.  Keys are the items present, so
+   the layout is rebuilt only when the pile's contents change (a claim). */
+const PILE_R = 26;
+function pileLayout(l, keys) {
+  const sig = keys.join(',');
+  if (l._layoutSig === sig && l._layout) return l._layout;
+  if (l._landSeed == null) l._landSeed = Math.random();
+  const out = Object.create(null);
+  const n = keys.length;
+  const a0 = l._landSeed * Math.PI * 2;
+  for (let i = 0; i < n; i++) {
+    if (n === 1) { out[keys[i]] = { ox: 0, oy: 0 }; continue; }
+    const a = a0 + i * 2.39996;   /* the golden angle */
+    const r = PILE_R * (0.4 + 0.6 * Math.sqrt((i + 0.5) / n)) * (0.85 + 0.3 * _hash(l._landSeed * 37 + i * 4.1));
+    out[keys[i]] = { ox: Math.cos(a) * r, oy: Math.sin(a) * r * 0.55 };
+  }
+  l._layout = out; l._layoutSig = sig;
+  return out;
+}
+const _AT_MIDDLE = { ox: 0, oy: 0 };
+function applySquash(sp, sq, rot = 0) {
+  if (!sp) return;
+  sp.rotation = rot || 0;
+  if (!sq) return;
+  sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
+}
+
 export class EffectsRenderer {
   constructor(layers) {
     this.particleLayer = layers.particles;
@@ -2078,6 +2248,10 @@ export class EffectsRenderer {
     // Loot graphics
     this.lootGfx = new Graphics();
     this.lootLayer.addChild(this.lootGfx);
+    /* v2.3.2771: the loot layer draws by rarity (LOOT_Z); the rings are the
+       ground glow under everything */
+    this.lootGfx.zIndex = LOOT_Z.ring;
+    this.lootLayer.sortableChildren = true;
 
     // Splatter graphics
     this.splatGfx = new Graphics();
@@ -2188,11 +2362,11 @@ export class EffectsRenderer {
       peer.width = crop.width; peer.height = crop.height;
       peer.getContext('2d').drawImage(crop, 0, 0);
       recolorToolKeyCanvas(peer, TOOL_SPECS.axe);
-      const source = Texture.from(peer).source;
-      source.scaleMode = 'linear';
-      for (let i = 0; i < n; i++) {
-        arr.push(new Texture({ source, frame: new Rectangle(Math.max(0, i - FROM) * FW, 0, FW, FH) }));
-      }
+      /* v2.3.2775: the peer copy is cropped like every stand-in bake
+         (_sliceStandIn); the 24-slot aliasing below is unchanged.  _chopSrc
+         stays whole -- it is what a skin change re-bakes from. */
+      const played = _sliceStandIn(peer, FW, FH, COUNT, 'chopPeer|' + key);
+      for (let i = 0; i < n; i++) arr.push(played[Math.max(0, i - FROM)]);
       try { Assets.unload(url); } catch (e) { /* the crops are what draw now */ }
     };
     const _CHOP_URL = '/sprites/skills/chop-strip.webp?v=2.3.1469';
@@ -2463,11 +2637,14 @@ export class EffectsRenderer {
          not-yet-downscaled facings (e.g. sword-north) pass straight through. */
       _loadImg(url + '?v=' + SWORD_ART_VERSION).then((rawImg) => {
         const img = upscaleToFrameHeight(rawImg, cfg.fh);
-        const source = Texture.from(img).source;
-        source.scaleMode = 'linear';
         const w = img.naturalWidth || img.width;
         const n = Math.max(1, Math.round(w / cfg.fw));
-        for (let i = 0; i < n; i++) target[dir].push(new Texture({ source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+        /* v2.3.2775: cropped (_sliceStandIn).  Only the weapon layer still loads
+           through here (every cfg ships a bodyUrl -- P7 item 1), and the blade
+           is 3% of its strip: 9.6 MB of upscaled sword-south / sword-east that
+           was almost all empty.  Readers place a Sprite (`place`), so the frame
+           box is unchanged. */
+        for (const t of _sliceStandIn(img, cfg.fw, cfg.fh, n, 'sword-' + dir + '|' + url.split('/').pop())) target[dir].push(t);
       }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
     };
     /* v2.3.975: the attack stand-ins must show the PLAYER'S customized body
@@ -2591,11 +2768,11 @@ export class EffectsRenderer {
            bow facings, and the trouser print landed on every other jog-leg
            frame.  See the note on recolorBodyToCanvas. */
         const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a, _fw);
-        const src = Texture.from(cv2).source;
-        src.scaleMode = 'linear';
         const cnt = Math.max(1, Math.round(cv2.width / _fw));
-        const out = [];
-        for (let i = 0; i < cnt; i++) out.push(new Texture({ source: src, frame: new Rectangle(i * _fw, 0, _fw, _fh) }));
+        /* v2.3.2775: cropped (_sliceStandIn).  The plain bake keeps its canvas
+           until the skin / ink probes below have measured it; the twin has no
+           probe, so it lets go at once. */
+        const out = _sliceStandIn(cv2, _fw, _fh, cnt, rec.url + (mirror ? '|m' : ''), !mirror);
         return { arr: out, cv: cv2 };
       };
       const _plain = _bake(false);
@@ -2692,6 +2869,9 @@ export class EffectsRenderer {
           twin: !!rec.target[rec.dir + '|m'], ink: { blue: _bl, green: _gr },
           w: cv.width, fw: _fw, frames: _nf, perFrame: _perFrame };
       } catch (e) { /* never breaks a bake */ }
+      /* v2.3.2775: measured -- now the full-size bake can go (see _sliceStandIn).
+         Only when it WAS cropped: uncropped, this canvas is the texture. */
+      if (arr.cropped) { cv.width = 0; cv.height = 0; }
       /* v2.3.1785: hand the BOW body frames to blockArm.js, which cuts the
          outstretched arm out of them for the raised-shield pose.  Done here
          rather than in its own loader so the arm rides the same recolour bake
@@ -3115,14 +3295,12 @@ export class EffectsRenderer {
       /* v2.3.2761: the axe's copper and pine, AFTER the skin (the key is what
          keeps the skin classifier off the axe). */
       recolorToolKeyCanvas(cv, TOOL_SPECS.axe);
-      const source = Texture.from(cv).source;
-      source.scaleMode = 'linear';
-      const arr = [];
-      for (let i = 0; i < COUNT; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+      const arr = _sliceStandIn(cv, FW, FH, COUNT, key, true);   /* v2.3.2775: cropped; released after the probe below */
       this[key] = arr;
       /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
          bow bakes publish -- see _probeStandInSkin. */
       _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', cv);
+      if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
     }
   }
 
@@ -3190,13 +3368,11 @@ export class EffectsRenderer {
     const FW = 213, FH = 220;
     for (const [key, img] of [['_cookFrames', bodyImg], ['_cookLeglessFrames', leglessImg]]) {
       const cv = recolorStandInSkin(img, skinT, FH);
-      const source = Texture.from(cv).source;
-      source.scaleMode = 'linear';
       const n = Math.max(1, Math.round(cv.width / FW));
-      const arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+      const arr = _sliceStandIn(cv, FW, FH, n, key, true);   /* v2.3.2775: cropped; released after the probe */
       this[key] = arr;
       _probeStandInSkin('/sprites/skills/cook' + (key === '_cookFrames' ? '' : '-legless') + '-strip.webp', cv);   /* v2.3.2500 */
+      if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
     }
   }
 
@@ -3265,13 +3441,11 @@ export class EffectsRenderer {
          point of the fix for anyone who never opened the skin picker. */
       const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
       const cv = recolorStandInSkin(img, skinT, FIRE_FH, FIRE_SKIN_OPTS);
-      const source = Texture.from(cv).source;
-      source.scaleMode = 'linear';
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
-      const arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FIRE_FW, 0, FIRE_FW, FIRE_FH) }));
+      const arr = _sliceStandIn(cv, FIRE_FW, FIRE_FH, n, '_fireFrames', true);   /* v2.3.2775: cropped; released after the probe */
       this._fireFrames = arr;
       _probeStandInSkin('/sprites/skills/firemaking-strip.webp', cv, FIRE_SKIN_OPTS);   /* v2.3.2500: measured through the bake's own window -- see _probeStandInSkin */
+      if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
     }).catch((err) => console.warn('[firemaking-strip] load failed', err));
   }
 
@@ -5408,9 +5582,13 @@ export class EffectsRenderer {
              monsterCombat applies to its hit test.  `outer` below publishes
              the scaled figure so mp-engage's composition rule (r === outer +
              hitR) keeps meaning "what is drawn is what hits". */
-          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg);
-          const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24);
-          const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23);
+          /* v2.3.2790: your reach x YOUR depth, the body x ITS depth -- the
+             same two factors monsterCombat's hit test now applies, so the
+             ring keeps meaning "what is drawn is what hits" on Wind Dunes. */
+          const _rrMk = depthK(S.currentZone, _rrFy);
+          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);
+          const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24) * _rrMk;
+          const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23) * _rrMk;
           const _rrD = Math.hypot(_rrX - S.player.x, _rrY - S.player.y);
           const _rrIn = _rrD <= _rrR;
           /* The line weight is a SCREEN measurement, v2.3.2255's correction:
@@ -5441,7 +5619,7 @@ export class EffectsRenderer {
              one day fails the harness instead of quietly drawing a ring the
              swing does not honour. */
           this._reachRing = { id: _rrM.id, x: _rrX, y: _rrY, r: _rrR,
-            outer: _rrOuter, hitR: monsterMeleeHitRadius(_rrArch) || 24,
+            outer: _rrOuter, hitR: (monsterMeleeHitRadius(_rrArch) || 24) * _rrMk,   /* v2.3.2790: x its depth, so r === outer + hitR still holds */
             arch: _rrArch, inReach: _rrIn, dist: Math.round(_rrD),
             src: (S.lockedTarget && S.lockedTarget.ref === _rrM) ? 'lock' : 'aggro' };
         }
@@ -6123,7 +6301,7 @@ export class EffectsRenderer {
          Unclipped when the line is empty, deliberately: the stream is then
          doing its other job, which is showing the player where they are
          pointing so they can bring it onto something. */
-      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg);
+      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2790: x depth, as the arrow is */
       const _sightD = (isBow && S._bowSight && typeof S._bowSight.d === 'number')
         ? S._bowSight.d : null;
       const _beamLen = isRanged
@@ -6191,7 +6369,7 @@ export class EffectsRenderer {
              per the charge-pie drop-shadow incident).  Arrow stays below. */
           /* v2.3.2592: the preview and the direction chip sit at the reach
              the RANGE stat gives this swing (monsterCombat's _mRm). */
-          const _mRm = meleeRangeMult(S.rpg);
+          const _mRm = meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2790: x depth, as monsterCombat's _mRm is */
           if (meleeSwinging) {
             const p = Math.max(0, Math.min(1, (now - (S.swingTimer || now)) / SWORD_SWING_MS));
             const a = 0.07 * Math.sin(p * Math.PI);   // swell-in then fade-out -- very subtle (owner: almost unnoticeable)
@@ -6719,6 +6897,9 @@ export class EffectsRenderer {
     kill(l._pixiShardSprite);
     kill(l._pixiOwnerLabel);
     kill(l._pixiWpnLabel);
+    /* v2.3.2771: the rare icons, their shines, and the RARE DROP! call */
+    if (l._pixiRare) { for (const r of l._pixiRare) { kill(r.icon); kill(r.beam); } l._pixiRare = null; }
+    kill(l._pixiRareDrop); l._pixiRareDrop = null;
     kill(l._pixiRareLabel);   /* v2.3.1924: the iron/gem label — a Text left
                                  on lootLayer after its pile despawns is a
                                  leak AND a name floating over empty ground. */
@@ -6752,6 +6933,7 @@ export class EffectsRenderer {
         },
       });
       l._pixiOwnerLabel.anchor.set(0.5, 1);
+      l._pixiOwnerLabel.zIndex = LOOT_Z.owner;   /* v2.3.2771 */
       this.lootLayer.addChild(l._pixiOwnerLabel);
     }
     const txt = l.killerName + "'s loot";
@@ -6768,20 +6950,22 @@ export class EffectsRenderer {
    *  Uses _pixiShardSprite so it doesn't collide with the other pooled
    *  sprites.  Falls back silently while the PNG is still loading -- a
    *  missing icon is preferable to a glyph that pops in mid-frame. */
-  _renderShardOverlay(l, anchorY, alpha) {
+  _renderShardOverlay(l, anchorY, alpha, sq = 0, rot = 0, ox = 0) {
     const tex = SHARD_ICONS[l.shard];
     if (!tex) return;
     if (!l._pixiShardSprite || l._pixiShardSprite.destroyed) {
       const sp = new Sprite(tex);
       sp.anchor.set(0.5, 0.5);
+      sp.zIndex = LOOT_Z.shard;   /* v2.3.2771 */
       this.lootLayer.addChild(sp);
       l._pixiShardSprite = sp;
     }
     if (l._pixiShardSprite.texture !== tex) l._pixiShardSprite.texture = tex;
-    l._pixiShardSprite.x = l.x;
+    l._pixiShardSprite.x = l.x + ox;   /* v2.3.2773: its spot in the pile's circle */
     l._pixiShardSprite.y = anchorY;
     l._pixiShardSprite.alpha = alpha;
     l._pixiShardSprite.scale.set(16 / (l._pixiShardSprite.texture.width || 16));
+    applySquash(l._pixiShardSprite, sq, rot);   /* v2.3.2771; v2.3.2772 tilt */
     l._pixiShardSprite.visible = true;
   }
 
@@ -6789,7 +6973,7 @@ export class EffectsRenderer {
    *  layered ABOVE any remnants/wreck sprite already added for this loot
    *  entry.  Uses dedicated _pixiCoinSprite / _pixiCoinLabel slots so it
    *  doesn't collide with the remnants' _pixiSprite. */
-  _renderCoinOverlay(l, anchorY, alpha, ownsThis) {
+  _renderCoinOverlay(l, anchorY, alpha, ownsThis, sq = 0, rot = 0, ox = 0) {
     /* ownsThis === false signals MP loot the local player can't claim
        (someone else's contribution-weighted drop).  Render the icon in
        gray + lower alpha and skip the "+Xg" label since the watcher
@@ -6800,25 +6984,28 @@ export class EffectsRenderer {
       if (!l._pixiCoinSprite || l._pixiCoinSprite.destroyed) {
         const sp = new Sprite(goldTex);
         sp.anchor.set(0.5, 0.5);
+        sp.zIndex = LOOT_Z.coin;   /* v2.3.2771 */
         this.lootLayer.addChild(sp);
         l._pixiCoinSprite = sp;
       }
-      l._pixiCoinSprite.x = l.x;
+      l._pixiCoinSprite.x = l.x + ox;   /* v2.3.2773: its spot in the pile's circle */
       l._pixiCoinSprite.y = anchorY;
       l._pixiCoinSprite.alpha = (owned ? 1 : 0.4) * alpha;
       l._pixiCoinSprite.tint = owned ? 0xffffff : 0x555555;
       l._pixiCoinSprite.scale.set((12 * LOOT_SCALE) / (l._pixiCoinSprite.texture.width || 12));
+      applySquash(l._pixiCoinSprite, sq, rot);   /* v2.3.2771; v2.3.2772 tilt */
       l._pixiCoinSprite.visible = true;
     }
     if (owned) {
       if (!l._pixiCoinLabel || l._pixiCoinLabel.destroyed) {
         l._pixiCoinLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });
         l._pixiCoinLabel.anchor.set(0.5, 0);
+        l._pixiCoinLabel.zIndex = LOOT_Z.coinLabel;   /* v2.3.2771 */
         this.lootLayer.addChild(l._pixiCoinLabel);
       }
       const cStr = l.coins + 'G';
       if (l._pixiCoinLabel.text !== cStr) l._pixiCoinLabel.text = cStr;
-      l._pixiCoinLabel.x = l.x;
+      l._pixiCoinLabel.x = l.x + ox;
       l._pixiCoinLabel.y = anchorY + 7;
       l._pixiCoinLabel.alpha = alpha;
       l._pixiCoinLabel.visible = true;
@@ -6827,8 +7014,121 @@ export class EffectsRenderer {
     }
   }
 
+  /* ═══ v2.3.2771: THE RARE THINGS ON A PILE ═══
+     Until now a weapon, gem or armour drop was a ring on the ground and a
+     line of text; there was no item.  Each one now lies on the pile as its
+     bag icon (lootIcons.js), lands with its own bounce, draws above every
+     commoner thing (LOOT_Z), and sends up a faint white shine -- brighter for
+     the first moments after it lands, then a slow breath for as long as it is
+     there.  A pile that ARRIVES with one (a fresh kill, not a zone-entry sync
+     of an old pile) calls "RARE DROP!" above itself, once. */
+  _renderRareItems(l, age, bob, alpha, now) {
+    const items = [];
+    if (l.hasWeapon && !l.weaponClaimed) items.push({ kind: 'weapon', key: 'weapon', tex: LOOT_ICONS[weaponIconKey(l.weaponType, l.weaponName)] });
+    if (l.gem && !l.inventoryClaimed) items.push({ kind: 'gem', key: 'gem', tex: LOOT_ICONS.gem });
+    if (Array.isArray(l.armor) && !l.armorClaimed) {
+      l.armor.forEach((a, ai) => { if (a) items.push({ kind: 'armor', key: 'armor' + ai, tex: LOOT_ICONS[armorIconKey(a)] }); });
+    }
+    const n = items.length;
+    const pool = l._pixiRare || (n ? (l._pixiRare = []) : null);
+    if (pool) {
+      /* sized and placed on a real shot: at 14 the three rare icons read as
+         clutter sitting ON the coin; they are the reason to walk over, so
+         they are a little bigger than the coin and ride just above it */
+      const ICON = 17 * LOOT_SCALE;
+      for (let i = 0; i < Math.max(n, pool.length); i++) {
+        let r = pool[i];
+        if (i >= n) { if (r) { r.icon.visible = false; r.beam.visible = false; } continue; }
+        const it = items[i];
+        if (!r) {
+          const icon = new Sprite(it.tex || Texture.EMPTY);
+          icon.anchor.set(0.5, 0.5);
+          const beam = new Sprite(lootBeamTexture());
+          beam.anchor.set(0.5, 1);
+          beam.blendMode = 'add';
+          this.lootLayer.addChild(beam);
+          this.lootLayer.addChild(icon);
+          r = pool[i] = { icon, beam };
+        }
+        const h = lootHop(l, it.kind, age, i);
+        /* side by side when a pile carries more than one; they overlap a
+           little, and the rarer draws on top (zIndex) */
+        /* v2.3.2773: its spot in the pile's circle (the loop's pileLayout) */
+        const o = (l._layout && l._layout[it.key]) || _AT_MIDDLE;
+        const x = l.x + o.ox * h.out;
+        const y = l.y + bob - 16 + o.oy * h.out - h.dy;
+        if (it.tex && r.icon.texture !== it.tex) r.icon.texture = it.tex;
+        r.icon.visible = !!it.tex;
+        r.icon.zIndex = LOOT_Z[it.kind] + i * 0.01;
+        r.icon.x = x; r.icon.y = y;
+        r.icon.scale.set(ICON / ((r.icon.texture && r.icon.texture.width) || 64));
+        applySquash(r.icon, h.sq, h.rot);
+        r.icon.alpha = alpha;
+        /* the shine rises from the item, following it through its bounce */
+        const flash = Math.exp(-Math.max(0, age - 0.25) * 1.6);
+        const breath = 0.5 + 0.5 * Math.sin(age * 2.2 + i * 1.7);
+        r.beam.visible = true;
+        r.beam.zIndex = LOOT_Z.beam;
+        r.beam.x = x; r.beam.y = y + ICON * 0.3;
+        r.beam.alpha = Math.min(1, 0.22 + 0.1 * breath + 0.5 * flash) * alpha;
+        r.beam.scale.set((11 * LOOT_SCALE) / 24, ((40 + 24 * flash) * LOOT_SCALE) / 128);
+      }
+    }
+    /* RARE DROP!, once, and only for a pile that has just come down */
+    if (n && !l._rareShown) {
+      l._rareShown = true;
+      if (age < 2.5) l._rareT0 = now;
+    }
+    if (l._rareT0) {
+      const t = (now - l._rareT0) / 1000;
+      const DUR = 2.4;
+      if (t >= DUR) {
+        l._rareT0 = 0;
+        if (l._pixiRareDrop && !l._pixiRareDrop.destroyed) l._pixiRareDrop.visible = false;
+      } else {
+        if (!l._pixiRareDrop || l._pixiRareDrop.destroyed) {
+          l._pixiRareDrop = new Text({ text: 'RARE DROP!', style: {
+            fontFamily: 'Source Sans 3, sans-serif', fontSize: 13, fontWeight: '900',
+            fill: '#FFE27A', stroke: { color: '#1A1206', width: 3 }, letterSpacing: 1, align: 'center' } });
+          l._pixiRareDrop.anchor.set(0.5, 1);
+          l._pixiRareDrop.zIndex = LOOT_Z.rareText;
+          this.lootLayer.addChild(l._pixiRareDrop);
+        }
+        const pop = t < 0.18 ? 0.5 + 0.7 * (t / 0.18) : (t < 0.32 ? 1.2 - 0.2 * ((t - 0.18) / 0.14) : 1);
+        const rise = 24 * (1 - Math.exp(-t * 2.2));
+        l._pixiRareDrop.visible = true;
+        l._pixiRareDrop.x = l.x;
+        l._pixiRareDrop.y = l.y + bob - 58 - rise;
+        l._pixiRareDrop.scale.set(pop);
+        l._pixiRareDrop.alpha = t > DUR - 0.7 ? Math.max(0, (DUR - t) / 0.7) : 1;
+      }
+    }
+  }
+
   _updateGroundLoot(S, now) {
     const gfx = this.lootGfx;
+    /* v2.3.2771 QA probe: each pile's rare items, the draw order of everything
+       on it (lowest first), and where its landing is -- a bounce is a number
+       over time, which a screenshot cannot hold. */
+    if (typeof window !== 'undefined' && !window.__btLootRare) {
+      const _selfR = this;
+      window.__btLootRare = function () {
+        const out = [];
+        for (const e of (_selfR._knownLoot || [])) {
+          if (!e) continue;
+          const parts = [];
+          const add = (sp, kind) => { if (sp && !sp.destroyed && sp.visible) parts.push({ kind, z: sp.zIndex, x: +sp.x.toFixed(1), y: +sp.y.toFixed(1), rot: +(sp.rotation || 0).toFixed(3) }); };
+          add(e._pixiSprite, 'remnantOrCoin'); add(e._pixiCoinSprite, 'coin'); add(e._pixiShardSprite, 'shard');
+          for (const r of (e._pixiRare || [])) { add(r.icon, 'rareIcon'); add(r.beam, 'beam'); }
+          add(e._pixiRareDrop, 'rareText');
+          parts.sort((a, b) => a.z - b.z);
+          out.push({ lootId: e.lootId || null, ageS: +(((Date.now() - (e.ts || 0)) / 1000)).toFixed(2),
+            rareShown: !!e._rareShown, rareTextVisible: !!(e._pixiRareDrop && !e._pixiRareDrop.destroyed && e._pixiRareDrop.visible),
+            parts });
+        }
+        return out;
+      };
+    }
     gfx.clear();
 
     /* ═══ v2.3.2316: GROUND LOOT AT TWICE THE SIZE ═══
@@ -6922,6 +7222,21 @@ export class EffectsRenderer {
          this is purely a visual offset. */
       const PILE_Y_OFFSET = 38;
       const bob = Math.sin(age * 3) * 2.5 + PILE_Y_OFFSET;
+      /* v2.3.2771: each item's own landing (lootHop above) -- zero once the
+         pile has settled, so every line below reads as before */
+      const hR = lootHop(l, 'remnant', age), hC = lootHop(l, 'coin', age), hS = lootHop(l, 'shard', age);
+      /* v2.3.2773: each item's spot in the pile's circle (pileLayout), rarest
+         nearest the middle; the remains are the middle */
+      const _pk = [];
+      if (Array.isArray(l.armor) && !l.armorClaimed) l.armor.forEach((a, i) => { if (a) _pk.push('armor' + i); });
+      if (l.gem && !l.inventoryClaimed) _pk.push('gem');
+      if (l.hasWeapon && !l.weaponClaimed) _pk.push('weapon');
+      if (l.shard) _pk.push('shard');
+      if (l.coins || l.recipients) _pk.push('coin');
+      const lay = pileLayout(l, _pk);
+      const oC = lay.coin || _AT_MIDDLE, oS = lay.shard || _AT_MIDDLE;
+      /* the circle's middle, a little above the remains' centre */
+      const midY = l.y + bob - 10;
       /* ═══ v2.3.2318: A LAST CALL, NOT A QUIET FADE ═══
          Owner: "monster loot that's almost timing out and disappearing make it
          fade then show full opacity for about the last 10 seconds before it
@@ -7015,6 +7330,7 @@ export class EffectsRenderer {
         if (!l._pixiWpnLabel || l._pixiWpnLabel.destroyed) {
           l._pixiWpnLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700' } });
           l._pixiWpnLabel.anchor.set(0.5, 0);
+          l._pixiWpnLabel.zIndex = LOOT_Z.label;   /* v2.3.2771 */
           this.lootLayer.addChild(l._pixiWpnLabel);
         }
         /* v2.3.1925: the "?" is earned now.  It used to sit on EVERY weapon
@@ -7072,6 +7388,7 @@ export class EffectsRenderer {
         if (!l._pixiRareLabel || l._pixiRareLabel.destroyed) {
           l._pixiRareLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700' } });
           l._pixiRareLabel.anchor.set(0.5, 0);
+          l._pixiRareLabel.zIndex = LOOT_Z.label;   /* v2.3.2771 */
           this.lootLayer.addChild(l._pixiRareLabel);
         }
         if (l._pixiRareLabel.text !== _rareStr) l._pixiRareLabel.text = _rareStr;
@@ -7083,6 +7400,8 @@ export class EffectsRenderer {
       } else if (l._pixiRareLabel && !l._pixiRareLabel.destroyed) {
         l._pixiRareLabel.visible = false;
       }
+      /* v2.3.2771: the rare things themselves -- icon, shine, RARE DROP! */
+      this._renderRareItems(l, age, bob, alpha, now);
 
       if (l.isWeapon && l.weapon) {
         /* Tier-colored aura + ring + emoji + name label. */
@@ -7159,14 +7478,16 @@ export class EffectsRenderer {
             this.lootLayer.addChild(sp);
             l._pixiSprite = sp;
           }
+          l._pixiSprite.zIndex = LOOT_Z.remnant;   /* v2.3.2771 */
           if (l._pixiSprite.texture !== remnTex) l._pixiSprite.texture = remnTex;
           l._pixiSprite.x = l.x;
-          l._pixiSprite.y = l.y + bob;
+          l._pixiSprite.y = l.y + bob - hR.dy;
           l._pixiSprite.alpha = alpha;
           /* Slime splat renders at 48 px on-screen; variant remnants
              use their own remnantsScalePx (default 48). */
           const targetPx = (variantRemnTex ? (variant.remnantsScalePx || 48) : 48) * LOOT_SCALE;
           l._pixiSprite.scale.set(targetPx / (l._pixiSprite.texture.width || targetPx));
+          applySquash(l._pixiSprite, hR.sq, hR.rot * 0.5);   /* v2.3.2771; v2.3.2772: a puddle tilts less */
           l._pixiSprite.visible = true;
           /* Coin sits ON TOP of the remnants when gold rides on this drop.
              10 px above center so the player can see there's gold to grab
@@ -7174,11 +7495,11 @@ export class EffectsRenderer {
              grayed-out coin icon (no label) so they can see the pile
              exists but read it as "not yours". */
           const ownsThis = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-          if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 10 + bob, alpha, ownsThis);
+          if (l.coins || l.recipients) this._renderCoinOverlay(l, midY + oC.oy * hC.out - hC.dy, alpha, ownsThis, hC.sq, hC.rot, oC.ox * hC.out);
           /* Shard floats just above the coin (or above the remnants if
              there's no coin) so the player can read the zone-affiliation
              at a glance without picking up. */
-          if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 24 : 12) + bob, alpha);
+          if (l.shard) this._renderShardOverlay(l, midY + oS.oy * hS.out - hS.dy, alpha, hS.sq, hS.rot, oS.ox * hS.out);
           this._renderOwnerLabel(l, ownsThis, alpha);
           continue;
         }
@@ -7211,14 +7532,16 @@ export class EffectsRenderer {
           l._pixiSprite = sp;
         }
         l._pixiSprite.x = l.x;
-        l._pixiSprite.y = l.y + bob;   /* bob already carries PILE_Y_OFFSET */
+        l._pixiSprite.y = l.y + bob - hR.dy;   /* bob already carries PILE_Y_OFFSET; v2.3.2771: its landing */
+        l._pixiSprite.zIndex = LOOT_Z.remnant;
         l._pixiSprite.alpha = alpha;
         l._pixiSprite.scale.set((48 * LOOT_SCALE) / (l._pixiSprite.texture.width || 128));
+        applySquash(l._pixiSprite, hR.sq, hR.rot * 0.5);
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + bob, alpha, snOwn);
-        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + bob, alpha);
+        if (l.coins || l.recipients) this._renderCoinOverlay(l, midY - 4 + oC.oy * hC.out - hC.dy, alpha, snOwn, hC.sq, hC.rot, oC.ox * hC.out);
+        if (l.shard) this._renderShardOverlay(l, midY - 4 + oS.oy * hS.out - hS.dy, alpha, hS.sq, hS.rot, oS.ox * hS.out);
         this._renderOwnerLabel(l, snOwn, alpha);
         continue;
       }
@@ -7250,11 +7573,13 @@ export class EffectsRenderer {
             this.lootLayer.addChild(sp);
             l._pixiSprite = sp;
           }
-          l._pixiSprite.x = l.x;
-          l._pixiSprite.y = l.y + 3 + bob;
+          l._pixiSprite.x = l.x + oC.ox * hC.out;   /* v2.3.2773: its spot in the circle */
+          l._pixiSprite.y = l.y + 3 + bob + oC.oy * hC.out - hC.dy;   /* v2.3.2771: its landing */
+          l._pixiSprite.zIndex = LOOT_Z.coin;
           l._pixiSprite.alpha = (ownsThis ? 1 : 0.5) * alpha;
           l._pixiSprite.tint = ownsThis ? 0xffffff : 0x555555;
           l._pixiSprite.scale.set((14 * LOOT_SCALE) / (l._pixiSprite.texture.width || 14));
+          applySquash(l._pixiSprite, hC.sq, hC.rot);
           l._pixiSprite.visible = true;
         } else {
           gfx.circle(l.x - 3, l.y + 2 + bob, 4);
@@ -7274,8 +7599,9 @@ export class EffectsRenderer {
           }
           const cStr = l.coins + 'G';
           if (l._pixiLabel.text !== cStr) l._pixiLabel.text = cStr;
-          l._pixiLabel.x = l.x;
-          l._pixiLabel.y = l.y + 14 + bob;
+          l._pixiLabel.x = l.x + oC.ox * hC.out;
+          l._pixiLabel.y = l.y + 14 + bob + oC.oy * hC.out - hC.dy;
+          l._pixiLabel.zIndex = LOOT_Z.coinLabel;   /* v2.3.2771 */
           l._pixiLabel.alpha = alpha;
           l._pixiLabel.visible = true;
         } else if (l._pixiLabel && !l._pixiLabel.destroyed) {
@@ -7289,7 +7615,7 @@ export class EffectsRenderer {
          in the loot, but be invisible until pickup.  Sits above the
          coin sprite so the player can read both the gold count and
          the zone shard at a glance. */
-      if (l.shard) this._renderShardOverlay(l, l.y - 15 + bob, alpha);
+      if (l.shard) this._renderShardOverlay(l, l.y - 2 + bob + oS.oy * hS.out - hS.dy, alpha, hS.sq, hS.rot, oS.ox * hS.out);
       if (l.xp) {
         gfx.circle(l.x + 6, l.y + bob, 3);
         gfx.fill({ color: 0x5b52ff, alpha });
@@ -9587,13 +9913,57 @@ export class EffectsRenderer {
          caller's `fw` verbatim, so their slices are byte-identical. */
       const _twin = GEAR_STRIP_TWIN[pose];
       const _file = pose + '-' + dir + (_twin ? _twin.suffix : '');
-      _fxLoad('/sprites/gear/' + slot + '/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER).then((tex) => {
-        const n = _twin ? _twin.frames : Math.max(1, Math.round(tex.width / fw));
-        const w = _twin ? Math.round(tex.width / n) : fw;
+      /* ═══ v2.3.2774: CROPPED, AND NOT HELD TWICE ═══
+         Owner: "How much can cropping the combat poses save?" -- then "Begin
+         more cropping".  Measured (__btTex, armoured in town): these 33 sheets
+         (shirt / chest / legs x swing, bowshot, chop, cook, fire) were 81.4 MB
+         resident, and 83-98% of every frame is transparent.  The walking
+         layers got the same treatment in v2.3.2750 (gearSheets packTrimmed,
+         TRAPS §106); this is that cropper, applied here.
+         The sheet is decoded as a plain Image of the SAME .png Assets.load
+         fetched -- not loadWebpOrPng.  The .webp twins are fine (measured:
+         identical alpha, colour within 2/255 premultiplied, on faint edge
+         texels only -- browser decode rounding), but this loader has always
+         drawn the PNG, and keeping it means the cropped frames can be proven
+         byte-identical to what shipped before.  Not through Assets.load,
+         because Assets would keep
+         the FULL sheet in its cache for the whole session beside the cropped
+         copy -- the saving would be spent twice over.  The load promise still
+         joins _fxPreload, so effectsAnimationsReady() (the loading-screen
+         gate) waits for the crop exactly as it waited for the slice.
+         Every reader of these frames places a Sprite by anchor and scale and
+         sizes it from texture.width / .height, which a cropped Texture reports
+         from `orig` -- so the frame box, and where the armour lands, are the
+         ones the uncropped strip had.  mp-geartrim holds that. */
+      const _url = '/sprites/gear/' + slot + '/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER;
+      const _p = new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im); im.onerror = rej; im.src = _url;
+      }).then((img) => {
+        const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+        const n = _twin ? _twin.frames : Math.max(1, Math.round(W / fw));
+        const w = _twin ? Math.round(W / n) : fw;
+        const packed = packTrimmed(img, w, H, n);
+        const src = Texture.from(packed ? packed.canvas : img).source;
+        src.scaleMode = 'linear';
         const arr = [];
-        for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * w, 0, w, tex.height) }));
+        for (let i = 0; i < n; i++) {
+          if (packed) {
+            const c = packed.cells[i];
+            arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+              orig: new Rectangle(0, 0, w, H), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+          } else {
+            arr.push(new Texture({ source: src, frame: new Rectangle(i * w, 0, w, H) }));
+          }
+        }
+        if (packed) {
+          _combatTrimStats.push({ key, url: _url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 });
+          _combatTrimFrames.set(key, arr);
+        }
+        registerGearSource(src);
         this._gearStrips[key] = arr;
       }).catch(() => { this._gearStrips[key] = []; });
+      _fxPreload.push(_p);
       return null;
     }
     if (e === 'loading' || !e.length) return null;
@@ -9664,10 +10034,8 @@ export class EffectsRenderer {
     if (!img) return null;
     try {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, cfg.fh);
-      const source = Texture.from(cv).source; source.scaleMode = 'linear';
       const n = Math.max(1, Math.round(cv.width / cfg.fw));
-      arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      arr = _sliceStandIn(cv, cfg.fw, cfg.fh, n, null);   /* v2.3.2775: cropped, one per peer combo */
       this._remoteBodyCache.set(key, arr);
       _trimBakeCache(this._remoteBodyCache);
       return arr;
@@ -9695,10 +10063,8 @@ export class EffectsRenderer {
       const _sq = (fw == null || fh == null) ? (img.naturalHeight || img.height || 0) : 0;
       const _fw = _sq || fw, _fh = _sq || fh;
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, _fh);
-      const source = Texture.from(cv).source; source.scaleMode = 'linear';
       const n = Math.max(1, Math.round(cv.width / _fw));
-      arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * _fw, 0, _fw, _fh) }));
+      arr = _sliceStandIn(cv, _fw, _fh, n, null);   /* v2.3.2775: cropped, one per peer combo */
       this._remoteSheetCache.set(key, arr);
       _trimBakeCache(this._remoteSheetCache);
       return arr;
@@ -9752,7 +10118,9 @@ export class EffectsRenderer {
          `_ov`/`_waist` are 256-space, so both are scaled together; only the crop
          row is rounded, which moves the amount of leg HIDDEN under the torso by
          at most half a texel and leaves the waist pivot itself exact. */
-      const _legFrameH = (legTex.frame && legTex.frame.height) || 256;
+      /* v2.3.2775: ORIG -- the jog-leg frames are cropped now (_sliceStandIn);
+         `frame` would be the crop's height, not the frame's. */
+      const _legFrameH = (legTex.orig && legTex.orig.height) || (legTex.frame && legTex.frame.height) || 256;
       const _lf = _legFrameH / 256;             // 256-space row -> texture row
       const _ln = 256 / _legFrameH;             // texture px -> 256-space px (the v2.3.1453 _gn term)
       const _waistTex = _waist * _lf;
@@ -9760,7 +10128,10 @@ export class EffectsRenderer {
       let cache = this._legSubCache || (this._legSubCache = new WeakMap());
       let cropped = cache.get(legTex);
       if (!cropped) {
-        try { const f = legTex.frame; cropped = new Texture({ source: legTex.source, frame: new Rectangle(f.x, f.y + TOP, f.width, f.height - TOP) }); }
+        /* v2.3.2775: rows TOP.. of the WHOLE frame, whatever the crop is
+           (gearSheets.subTexture -- identical to the old expression when the
+           frame is not cropped) */
+        try { const ow = (legTex.orig && legTex.orig.width) || legTex.frame.width; cropped = subTexture(legTex, 0, TOP, ow, _legFrameH - TOP); }
         catch (e) { cropped = legTex; }
         cache.set(legTex, cropped);
       }
@@ -9777,7 +10148,7 @@ export class EffectsRenderer {
          texel the crop row rounds by.  Gated on __btProbe (v2.3.2272) so a real
          player never pays for it. */
       if (typeof window !== 'undefined' && window.__btProbe && s) {
-        const _dispH = Math.abs(_legScale * _ln) * ((cropped.frame && cropped.frame.height) || (_legFrameH - TOP));
+        const _dispH = Math.abs(_legScale * _ln) * ((cropped.orig && cropped.orig.height) || (_legFrameH - TOP));
         const _wy = _yMeet + legShiftY;
         _standInTints[weapon + 'JogBareLegs'] = {
           visible: true, jfr, waist: _waist, texH: _legFrameH, top: TOP,
@@ -11279,6 +11650,11 @@ export class EffectsRenderer {
         if (S._fxBursts.length < 6) {
           S._fxBursts.push({ kind: 'woodchips', t0: now + _chopLead, x: node.x - chopSign * 12, y: node.y - 64, flip: chopSign < 0 ? 1 : -1 });
         }
+        /* v2.3.2812: ...and the tree takes the blow -- worldLife kicks its
+           sway spring away from the axe and shakes needles loose, on the
+           same +200 ms as the bite and the chips. */
+        node._lifeChopAt = now + 200;
+        node._lifeChopDir = chopSign < 0 ? -1 : 1;
       }
       this._chopLastFrame = k;
       /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree
