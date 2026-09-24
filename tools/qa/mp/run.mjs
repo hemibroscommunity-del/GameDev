@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  townscenery: () => import('./mp-townscenery.mjs'), /* v2.3.2859: town's NPCs + buildings load and free with town, and town is never seen without them */
   harvestink: () => import('./mp-harvestink.mjs'), /* v2.3.2854: tattoos stay on while fishing -- on both screens, the rod untouched, and a pink chest tattoo never lifted over the shirt */
   chopink: () => import('./mp-chopink.mjs'), /* v2.3.2855: ...and while chopping -- your lumberjack and a watcher's view of it, both sides of the tree, the axe untouched, the whole figure in your skin */
   fireink: () => import('./mp-fireink.mjs'), /* v2.3.2858: ...and while lighting a fire -- the same layer over the shared fire-lighter, own screen and a watcher's, nothing on the flame, the fist cupped at it in your skin */

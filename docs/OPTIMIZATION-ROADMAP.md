@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1, 3, 4, 5, 6, 9, 10, 11, 12, 13 and 14 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2777); the rest is the ranked backlog
+### Items 1-6, 9-14 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2859); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -293,8 +293,27 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    `mp-deadstrips` scenario asserting the town total ≥ 24 MB under 423.3, and
    mp-peersword / mp-southsword / mp-swordcarry / mp-blockstance / mp-bowside
    unchanged.
-2. **Town NPC walk strips + town props, held in every field zone — 25.3 MB
-   in ember (0 in town), medium risk, medium.** `npcSprites.js
+2. ~~**Town NPC walk strips + town props, held in every field zone — 25.3 MB
+   in ember (0 in town), medium risk, medium.**~~ **SHIPPED, v2.3.2859**
+   (measured, tex-attrib: ember 219.9 → 175.5 MB, town 179.4 → 165.7 MB).
+   Bigger than predicted: by v2.3.2791 it was 24 walk strips (3 walkers × 8
+   facings), the fountain, four buildings, AND town's own 11.3 MB ground map,
+   all held in every field zone. `npcSprites.loadTownScenery` loads them (the
+   walk strips CROPPED, 24 → 10.3 MB, via `gearSheets.loadCroppedStrip`);
+   `freeTownScenery` + `freeZoneMap('town', {hub:'town'})` release them a beat
+   after you leave. The four entry paths the note below warned about are NOT
+   gated one by one: `zoneTransitions.syncTownScenery` runs every frame and
+   veils + freezes the player whenever they stand in town without its art,
+   whichever way they got there (respawn, return portal, farm, dev warp,
+   server flip); the worldview→town hub gate preloads it like any zone.
+   Worldview's map stays resident, so returning there is still unveiled.
+   Dialogue portraits and Ace's coin strips stay global (DOM, can open
+   anywhere). `formShade`'s own-quad gradient became trim-aware in the same
+   change, so a cropped figure (these NPCs, and the v2.3.2775 stand-ins) shades
+   exactly as it did whole. Pin: mp-townscenery (every rAF through a respawn
+   and a worldview re-entry: never in town without its art or the veil);
+   mp-deathtex now compares against town, not worldview.
+   ORIGINAL FINDING: `npcSprites.js
    loadNpcSprites()` is on the GLOBAL manifest under the v2.3.1672 note
    that predicted this exactly: "If NPC art ever grows past a handful of
    figures, move it to preloadZoneAssets and free it on exit." It has: 16
