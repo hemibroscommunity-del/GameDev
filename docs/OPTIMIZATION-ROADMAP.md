@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1, 3, 4, 5, 6, 9, 10, 11, 12 and 13 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774, v2.3.2775, v2.3.2776); the rest is the ranked backlog
+### Items 1, 3, 4, 5, 6, 9, 10, 11, 12, 13 and 14 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2777); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -505,6 +505,19 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    `frame.width`, ~2 MB), the recoloured trait variants (only the colour
    picked is ever built), and the projectile strips (a no-head sub-crop is cut
    out of the frame by position) -- each a small follow-up if wanted.
+
+14. ~~**The body sheets and the fullset knight figures — 10-16% painted,
+   ~22 MB**~~ **SHIPPED, v2.3.2777** (measured, `mp-geartrim`, armoured in
+   town: 193.9 → 183.5 MB). The riskiest of the set, because the body is the
+   texture the most code reads: `gearSheets.sliceCropped` crops the default
+   (playerSprites) and recoloured (playerSkins) body sheets, 16.2 → 8.9 MB
+   over 25, and 'fullset' joined gearSheets' TRIM_SLOTS. Every reader that
+   cut or copied body pixels by position moved to `orig` + `subTexture` /
+   `drawGearFrame`: the band textures (`_bodyRegionTex`, `_bandTex`), the
+   masked bake (both body draws), `_fishTopFrame`, the three pixiRenderer
+   figure probes and belt-harness. A cropped body frame carries `__btIx`, so
+   `bodyFigureProbe.frameIx` no longer has to be frame.x / frame.width.
+   All 259 frames byte-identical to the whole sheet.
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
