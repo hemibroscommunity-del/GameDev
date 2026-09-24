@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1-6, 9-14 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2859); the rest is the ranked backlog
+### Items 1-6, 9-16 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2873); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -537,6 +537,53 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    figure probes and belt-harness. A cropped body frame carries `__btIx`, so
    `bodyFigureProbe.frameIx` no longer has to be frame.x / frame.width.
    All 259 frames byte-identical to the whole sheet.
+
+15. ~~**Monster strips — 27-40% empty cells, ~8 MB in Ember, ~7 in Desert
+   Winds**~~ **SHIPPED, v2.3.2870** (measured, `mp-monstertrim`: the fire goblin
+   30 → 22.2 MB, Ember 176.6 → 168.8 MB; mummy + skeleton 22 → 15.1 MB; the
+   snowman's 128px cells are nearly full, so its strips are declined, 13 →
+   12.8). `zoneTextures.loadTrackedStrip` is the per-zone twin of the fx loader:
+   plain-Image decode (never Assets, item 11's lesson), `packTrimmed`, frames
+   with `orig` = the cell, and the canvas recorded in the bundle so
+   `unloadBundle` destroys it (and the Cache entry `Texture.from` made) on the
+   way out; a strip still decoding when its zone is left is dropped on arrival.
+   Every monster module's strips go through it (fire goblin, mummy, skeleton,
+   snowman, rock monster, fishman); the single-image remnants / fireball /
+   snowball stay whole (three readers size them by `frame.width`). The four
+   readers that sized something off a monster's box moved to
+   `gearSheets.frameBounds` (TRAPS §119), and so did the death crumble, which
+   had shrunk with the v2.3.2791 body crop. All frames byte-identical to the
+   served files; freed on exit and loadable again.
+
+16. ~~**The masked (armoured) body bakes — ~25% painted, 7.6-13.8 MB per worn
+   set, and the equip stutter they cost**~~ **SHIPPED, v2.3.2871-2873.**
+   Owner: "whenever I put on a piece of armor like legs or torso the game would
+   noticeably stutter". Measured (`tools/qa/qa-equip-stutter.mjs`, 4x CPU
+   throttle, equip then run): the frame rate halved for seconds, all of it the
+   ~120-220 `_maskedBodyFrame` bakes the new set needs -- unchanged by the
+   cropping series. Three steps, each measured:
+   (a) v2.3.2871, the bake 48 → 29 ms: histogram medians, a typed-array flood
+   fill, `willReadFrequently` on the read-back canvases.
+   (b) v2.3.2872, the bakes CROPPED (`_cropBakedFrame`): a worn set 7.6 → 2.8 MB
+   (full), 13.8 → 6.4 (one piece); cache cap 520 → 900 frames.
+   (c) v2.3.2872, the pieces you OWN baked before you put them on
+   (`_catalogWornSets` + `_noteOwnedGear`: each stash piece put on over what
+   you wear, at most two sets, in `prewarmAltWornSets`' idle trickle). Putting
+   an owned chest piece on: 117 → 171 frames in the 7 s run (normal running
+   ~175), frames over 100 ms 16 → 2. Every bake byte-identical throughout, 682
+   frames over four armour combinations (`tools/qa/qa-bake-ident.mjs`,
+   `window.__btMaskedHashes` fingerprints the whole frame drawn back from its
+   crop).
+   (d) v2.3.2873, a piece that has just ARRIVED (reward, craft, loot) bakes at
+   once, one frame every other rendered frame, instead of after the 5 s join
+   grace on an idle trickle that a busy game starves (measured: ~25 bakes in
+   4 s); and owning a new piece for EACH slot also bakes the full set, so two
+   equips back to back land warm. Arrive-then-equip-4s-later: frames over
+   100 ms 23 -> 13, the run after it clean.
+   Not covered: equipping a piece within a second or two of getting it, a
+   piece put on straight off the ground, and other players' equips (their
+   bakes run on YOUR phone) -- all still bake live, 40% cheaper. The real fix
+   for those is baking off the main thread (an OffscreenCanvas worker).
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by

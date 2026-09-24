@@ -79,13 +79,13 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
 import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js'; /* v2.3.1799 */
 import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789, ENABLED v2.3.1798 */
-import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
+import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js'; /* v2.3.1757: material recolor; v2.3.2872: + owned pieces -> art */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
@@ -2335,6 +2335,91 @@ function _placeSouthBlockLegs(display, sb, o) {
    and cached per (body-frame, loadout) -- cheap, recomputed only on a cache
    miss.  Falls back to the raw body texture if pixel access fails. */
 const _maskedBodyCache = new Map();
+/* ═══ v2.3.2871: THE BAKE, FASTER AND BYTE-FOR-BYTE THE SAME ═══
+   Owner: "whenever I put on a piece of armor like legs or torso the game
+   would noticeably stutter".  Measured (4x CPU throttle, equip then run): 99
+   masked-body bakes in 7s, 4.8s of main-thread work, the frame rate halved;
+   the profile put it all inside _maskedBodyFrameInner -- ~25% in the colour
+   medians (a comparator sort of up to ~20k samples, three times, per ref),
+   ~40% in the pixel loops, the hottest being the border flood fill, which ran
+   ~260k pushes through a growing JS array, and ~18% in getImageData readbacks.
+   Three changes, none of which can move a pixel -- qa-bake-ident fingerprints
+   every baked frame before and after (tools/qa/qa-bake-ident.mjs) and requires the SAME set:
+     - medians from a 256-bin histogram: the value at sorted index n>>1,
+       exactly what the sort returned, in one pass;
+     - the flood fill on a preallocated Int32Array stack, marking on push (the
+       reached set is the connected component either way);
+     - `willReadFrequently` on the two canvases the bake reads back, so the
+       browser keeps them in CPU memory instead of reading pixels back from
+       the GPU three times per bake. */
+/* v2.3.2872: crop a baked display frame to its art (gearSheets.packTrimmed,
+   n = 1).  Declined (art fills the frame) -> the canvas as it was. */
+function _cropBakedFrame(dc) {
+  const fw = dc.width, fh = dc.height;
+  let packed = null;
+  try { packed = packTrimmed(dc, fw, fh, 1); } catch (e) { packed = null; }
+  if (!packed) return Texture.from(dc);
+  const c = packed.cells[0];
+  const src = Texture.from(packed.canvas).source;   /* cached: __btTex counts it */
+  const t = new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+    orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) });
+  if (dc !== packed.canvas) { try { dc.width = 0; dc.height = 0; } catch (e) { /* not ours */ } }
+  return t;
+}
+function _histMedian(h, n) {
+  const want = n >> 1;
+  let cum = 0;
+  for (let v = 0; v < 256; v++) { cum += h[v]; if (cum > want) return v; }
+  return 255;
+}
+const _medR = new Uint32Array(256), _medG = new Uint32Array(256), _medB = new Uint32Array(256);
+const _fillStack = new Int32Array(256 * 256 + 1024);
+/* v2.3.2871: QA probe -- a fingerprint of every baked masked-body frame, so a
+   change that claims to make the bake FASTER can prove it did not make it
+   DIFFERENT (tools/qa/qa-bake-ident.mjs compares the set before and after). FNV-1a over the
+   pixels, keyed by nothing (texture uids are load-order dependent). */
+if (typeof window !== 'undefined') {
+  /* v2.3.2872: how much of each baked frame is painted (its bbox), and the
+     bytes the cache holds -- the numbers the crop and the owned-gear prebake
+     are judged by. */
+  window.__btMaskedStats = function () {
+    let n = 0, bytes = 0, bboxBytes = 0;
+    for (const t of _maskedBodyCache.values()) {
+      const src = t && t.source; if (!src || src.destroyed) continue;
+      n++; bytes += (src.pixelWidth || src.width) * (src.pixelHeight || src.height) * 4;
+      const tr = t.trim;
+      if (tr) { bboxBytes += tr.width * tr.height * 4; continue; }
+      const r = src.resource;
+      try {
+        const d = r.getContext('2d').getImageData(0, 0, r.width, r.height).data;
+        let x0 = r.width, y0 = r.height, x1 = -1, y1 = -1;
+        for (let y = 0; y < r.height; y++) for (let x = 0; x < r.width; x++) if (d[(y * r.width + x) * 4 + 3]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        if (x1 >= 0) bboxBytes += (x1 - x0 + 1) * (y1 - y0 + 1) * 4;
+      } catch (e) { /* unreadable */ }
+    }
+    return { frames: n, mb: +(bytes / 1048576).toFixed(2), bboxMb: +(bboxBytes / 1048576).toFixed(2) };
+  };
+  window.__btMaskedHashes = function () {
+    const out = [];
+    for (const t of _maskedBodyCache.values()) {
+      const r = t && t.source && t.source.resource;
+      if (!r || !r.getContext) continue;
+      try {
+        /* v2.3.2872: the WHOLE frame, drawn back from its crop, so a cropped
+           bake fingerprints the same as the uncropped one it replaced */
+        const o = t.orig || t.frame;
+        const cvh = document.createElement('canvas'); cvh.width = o.width; cvh.height = o.height;
+        const hx = cvh.getContext('2d'); hx.imageSmoothingEnabled = false;
+        drawGearFrame(hx, t, 0, 0, o.width, o.height);
+        const d = hx.getImageData(0, 0, o.width, o.height).data;
+        let h = 0x811c9dc5;
+        for (let i = 0; i < d.length; i++) { h ^= d[i]; h = Math.imul(h, 0x01000193); }
+        out.push(o.width + 'x' + o.height + ':' + (h >>> 0).toString(16));
+      } catch (e) { out.push('err'); }
+    }
+    return out.sort();
+  };
+}
 /* v2.3.1349: exported for tools/qa/belt-harness (headless ground-truth render
    of the REAL bake — the offline Python mirrors kept diverging).  Not used by
    any game path. */
@@ -2369,7 +2454,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
   let cv;
   try {
     cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
-    const ctx = cv.getContext('2d');
+    const ctx = cv.getContext('2d', { willReadFrequently: true });   /* v2.3.2871: read back 3x per bake */
     /* ═══ v2.3.2325: THE ARMOURED FIGURE WAS RESAMPLED TWICE FOR NOTHING ═══
        Owner: the character "looks soft like the textures are low resolution".
        This bake works at 256 but is FED DISPLAY textures.  At DISPLAY_DS=2 the
@@ -2546,12 +2631,13 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
            match against, so it is also the CORRECT sample source. */
         const spx = origBody || d;
         const medRGB = (y0, y1) => {            // per-channel median of opaque pixels in [y0,y1)
-          const rs = [], gs = [], bs = [];
+          /* v2.3.2871: histogram median -- same value as sorting, one pass */
+          _medR.fill(0); _medG.fill(0); _medB.fill(0);
+          let n = 0;
           for (let y = Math.max(0, y0); y < Math.min(256, y1); y++)
-            for (let x = 0; x < 256; x++) { const o = (y * 256 + x) * 4; if (spx[o + 3] > 40) { rs.push(spx[o]); gs.push(spx[o + 1]); bs.push(spx[o + 2]); } }
-          if (!rs.length) return null;
-          const mid = a => { a.sort((p, q) => p - q); return a[a.length >> 1]; };
-          return [mid(rs), mid(gs), mid(bs)];
+            for (let x = 0; x < 256; x++) { const o = (y * 256 + x) * 4; if (spx[o + 3] > 40) { _medR[spx[o]]++; _medG[spx[o + 1]]++; _medB[spx[o + 2]]++; n++; } }
+          if (!n) return null;
+          return [_histMedian(_medR, n), _histMedian(_medG, n), _histMedian(_medB, n)];
         };
         const shoeTop = figBot - Math.round(0.18 * fh);
         const skinRef = medRGB(figTop, neckY);
@@ -2564,16 +2650,18 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
         let pantsRef = null;
         if (skinRef) {
           const sn = Math.sqrt(skinRef[0] * skinRef[0] + skinRef[1] * skinRef[1] + skinRef[2] * skinRef[2]) || 1;
-          const rs = [], gs = [], bs = [], y1 = waistY + Math.round(0.40 * fh);
+          const y1 = waistY + Math.round(0.40 * fh);
+          _medR.fill(0); _medG.fill(0); _medB.fill(0);   /* v2.3.2871: histogram median */
+          let pn0 = 0;
           for (let y = waistY; y < Math.min(256, y1); y++)
             for (let x = 0; x < 256; x++) {
               const o = (y * 256 + x) * 4; if (spx[o + 3] <= 40) continue;
               const R = spx[o], G = spx[o + 1], B = spx[o + 2];
               const pn = Math.sqrt(R * R + G * G + B * B) || 1;
               const cos = (R * skinRef[0] + G * skinRef[1] + B * skinRef[2]) / (pn * sn);
-              if (cos < 0.985) { rs.push(R); gs.push(G); bs.push(B); }
+              if (cos < 0.985) { _medR[R]++; _medG[G]++; _medB[B]++; pn0++; }
             }
-          if (rs.length) { const mid = a => { a.sort((p, q) => p - q); return a[a.length >> 1]; }; pantsRef = [mid(rs), mid(gs), mid(bs)]; }
+          if (pn0) pantsRef = [_histMedian(_medR, pn0), _histMedian(_medG, pn0), _histMedian(_medB, pn0)];
           else pantsRef = medRGB(waistY, waistY + Math.round(0.40 * fh));
         }
         const score = (R, G, B, T) => { const n = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / n; };
@@ -2682,7 +2770,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        Mirrors preview_armor_frames.composite -- keep in sync. */
     try {
       const sc = document.createElement('canvas'); sc.width = 256; sc.height = 256;
-      const sctx = sc.getContext('2d');
+      const sctx = sc.getContext('2d', { willReadFrequently: true });   /* v2.3.2871: read back once per bake */
       /* v2.3.2325: exact 2x.  This canvas is immediately thresholded at
          alpha>30 into `gop`, so with smoothing on the silhouette's edge landed
          wherever the bilinear ramp happened to cross 30 rather than on the art
@@ -2709,18 +2797,20 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
       if (gHi >= gLo) {
         /* fill holes: flood the EMPTY space from the borders; anything empty
            and unreached is an interior hole -> part of the silhouette. */
-        const reach = new Uint8Array(256 * 256); const st = [];
-        for (let x = 0; x < 256; x++) { st.push(x, 255 * 256 + x); }
-        for (let y = 0; y < 256; y++) { st.push(y * 256, y * 256 + 255); }
-        while (st.length) {
-          const p = st.pop();
-          if (reach[p] || gop[p]) continue;
-          reach[p] = 1;
-          const x = p % 256, y = (p / 256) | 0;
-          if (x > 0) st.push(p - 1);
-          if (x < 255) st.push(p + 1);
-          if (y > 0) st.push(p - 256);
-          if (y < 255) st.push(p + 256);
+        /* v2.3.2871: a preallocated stack, each pixel marked as it is pushed,
+           so it is pushed at most once -- the same reached set as the old
+           push-everything array, without ~260k array pushes per bake. */
+        const reach = new Uint8Array(256 * 256); const st = _fillStack; let sp = 0;
+        const seed = (p) => { if (!reach[p] && !gop[p]) { reach[p] = 1; st[sp++] = p; } };
+        for (let x = 0; x < 256; x++) { seed(x); seed(255 * 256 + x); }
+        for (let y = 0; y < 256; y++) { seed(y * 256); seed(y * 256 + 255); }
+        while (sp > 0) {
+          const p = st[--sp];
+          const x = p & 255, y = p >> 8;
+          if (x > 0) seed(p - 1);
+          if (x < 255) seed(p + 1);
+          if (y > 0) seed(p - 256);
+          if (y < 255) seed(p + 256);
         }
         /* allowed = filled silhouette (gop | unreached) dilated by 2 */
         let fill = new Uint8Array(256 * 256);
@@ -3024,7 +3114,15 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
      DISPLAY_DS=1 it falls through to antialiasUpscaledCanvas with srcH >= h,
      a pass-through -- byte-identical to the old downscaleByFactor(cv, 1)
      no-op, so the documented rollback still behaves. */
-  const t = Texture.from(bakeDisplayCanvas(cv, Math.round(256 / DISPLAY_DS)));
+  /* v2.3.2872: CROPPED, like every other figure frame since v2.3.2750.  A
+     baked frame is ~25% painted (measured: a full steel set 7.6 MB of frames
+     holds 1.9 MB of art), and the empty rest is what made pre-baking the
+     pieces you OWN (below, _catalogWornSets) too expensive to hold.  orig is
+     the whole display frame, so every reader that is already crop-aware for
+     the body (v2.3.2791 -- the masked frame goes where the body frame goes)
+     draws it in the same place.  Its source stays a Cache entry, so
+     window.__btTex still counts it; eviction removes that entry by hand. */
+  const t = _cropBakedFrame(bakeDisplayCanvas(cv, Math.round(256 / DISPLAY_DS)));
   /* v2.3.1121: mipmaps on the masked (armoured) body too, so the shoe outline /
      bare-skin edges don't crawl while jogging in armour (same fix as the bare
      body sheets). Cheap on the downscaled texture. */
@@ -3051,7 +3149,12 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
      headroom for rare-pose lazy bakes and armored remotes (~130MB worst
      case, still under the 150MB ceiling).  Eviction takes the LRU front,
      which after the hit-refresh above is genuinely cold entries. */
-  while (_maskedBodyCache.size > 520) {
+  /* v2.3.2872: cap 520 -> 900.  The frames are cropped now (~a third of the
+     bytes each), so 900 holds less than 520 used to, and the owned-gear
+     prebake needs the room: the worn set plus up to two sets one equip away
+     is up to ~660 frames, and a cap below that would evict the start of its
+     own work -- the v2.3.704 lesson again. */
+  while (_maskedBodyCache.size > 900) {
     const k0 = _maskedBodyCache.keys().next().value;
     const old = _maskedBodyCache.get(k0); _maskedBodyCache.delete(k0);
     /* v2.3.780: destroy DEFERRED, not immediate.  destroy(true) nuked the
@@ -3064,7 +3167,13 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        other session joined').  After 30s an evicted frame is either
        genuinely cold (dies quietly) or has long since re-baked under a
        fresh texture and every sprite has re-pointed. */
-    setTimeout(() => { try { old.destroy(true); } catch (e) { /* ignore */ } }, 30000);
+    setTimeout(() => {
+      /* v2.3.2872: a cropped frame is a Texture over a Cache-held source, so
+         destroying it does not clear that Cache entry -- do it here, or every
+         eviction leaves its canvas reachable */
+      try { const r = old.source && old.source.resource; if (r && Assets.cache.has(r)) Assets.cache.remove(r); } catch (e) { /* ignore */ }
+      try { old.destroy(true); } catch (e) { /* ignore */ }
+    }, 30000);
   }
   return t;
 }
@@ -3190,12 +3299,75 @@ export function planPrewarmProgress() {
    a new combination in the equip menu's dead time and GPU-uploads it
    (v2.3.704) — so a first swap still lands warm, it just isn't paid for
    up front by every session that never swaps. */
+/* ═══ v2.3.2872: ...AND THE PIECES YOU OWN, ONE EQUIP AWAY ═══
+   Owner: "whenever I put on a piece of armor like legs or torso the game
+   would noticeably stutter".  The equip re-prewarm (v2.3.692) bakes the new
+   combination only once it is WORN -- ~120-220 frames, one per rendered frame
+   at best -- so the seconds after an equip were the bake.  The v2.3.1236 cure
+   (bake every catalog state at load) cost too much memory and was cut back in
+   v2.3.1407.  The narrow version is affordable now that bakes are cropped
+   (_cropBakedFrame): the states ONE EQUIP away -- each piece in your stash put
+   on over what you wear -- baked in idle time (prewarmAltWornSets' trickle),
+   so putting it on finds its frames already baked.  At most two such sets,
+   putting-on only (the report is about putting on).  The stash is read off the
+   state the renderer is handed each frame (_noteOwnedGear). */
+let _ownedRpg = null;
+function _ownedIds(slot) {
+  const R = _ownedRpg;
+  const list = R && (slot === 'chest' ? R.armorStash : R.legsStash);
+  const out = [];
+  if (!Array.isArray(list)) return out;
+  for (const piece of list) {
+    if (!piece) continue;
+    let id = null;
+    try { id = gearIdFor(slot, piece.mat); } catch (e) { id = null; }
+    if (id && id !== 'none' && out.indexOf(id) < 0) out.push(id);
+  }
+  return out;
+}
 function _catalogWornSets() {
   const wc = getEquip('chest'), wl = getEquip('legs');
-  const worn = [];
-  if (wc && wc !== 'none') worn.push(['chest', wc]);
-  if (wl && wl !== 'none') worn.push(['legs', wl]);
-  return worn.length ? [worn] : [];
+  const sets = [];
+  const add = (c, l) => {
+    const worn = [];
+    if (c && c !== 'none') worn.push(['chest', c]);
+    if (l && l !== 'none') worn.push(['legs', l]);
+    if (!worn.length) return false;
+    const k = worn.map((w) => w.join(':')).join(',');
+    if (sets.some((s) => s.map((w) => w.join(':')).join(',') === k)) return false;
+    sets.push(worn);
+    return true;
+  };
+  add(wc, wl);
+  let alt = 0;
+  const oc = _ownedIds('chest').filter((c) => c !== wc), ol = _ownedIds('legs').filter((l) => l !== wl);
+  for (const c of oc) if (alt < 2 && add(c, wl)) alt++;
+  for (const l of ol) if (alt < 2 && add(wc, l)) alt++;
+  /* v2.3.2873: ...and BOTH, when you own a new piece for each slot -- putting
+     them on back to back is the natural thing to do, and the second equip
+     used to land on a set nobody had baked.  A full set is the cheapest of
+     the three (~121 frames; the fullset figure covers most jog frames), and
+     the cap (900) holds worn + all three. */
+  if (oc.length && ol.length) add(oc[0], ol[0]);
+  return sets;
+}
+/* Called from EntityRenderer.update with the live state: when what you wear or
+   own changes, re-run the idle trickle so the next equip is warm.  Checked
+   every ~2s by a string compare, never per frame. */
+let _ownedSig = null, _ownedAt = 0;
+function _noteOwnedGear(S, now) {
+  if (!S || !S.rpg || now - _ownedAt < 2000) return;
+  _ownedAt = now;
+  _ownedRpg = S.rpg;
+  const sig = getEquip('chest') + '|' + getEquip('legs') + '|' + _ownedIds('chest').join(',') + '|' + _ownedIds('legs').join(',');
+  if (sig === _ownedSig) return;
+  const first = _ownedSig === null;
+  _ownedSig = sig;
+  if (_ownedIds('chest').length || _ownedIds('legs').length) {
+    /* v2.3.2873: the first look after joining keeps the join grace; a change
+       in play (a piece arrived, or one went on) bakes `soon` */
+    prewarmAltWornSets(first ? undefined : { soon: true }).catch(() => { /* best-effort */ });
+  }
 }
 
 /* v2.3.701: force-upload the baked masked-body textures to the GPU while the
@@ -3338,16 +3510,28 @@ const _idleYield = () => new Promise((r) => {
     setTimeout(r, 120);
   }
 });
+/* v2.3.2873: the `soon` pace -- the next idle moment, no added gap. */
+const _idleYieldSoon = () => new Promise((r) => {
+  if (typeof requestAnimationFrame !== 'function') { setTimeout(r, 32); return; }
+  requestAnimationFrame(() => requestAnimationFrame(() => r()));
+});
 export async function prewarmAltWornSets(opts) {
   /* v2.3.700: `fast` mode runs behind the intro loading bar at full speed
      (nothing competes for the main thread there) -- the player joins with
      EVERY gear state warm.  The slow idle-trickle path remains for the
      equip-change re-kick during live play. */
   const fast = !!(opts && opts.fast);
+  /* v2.3.2873: `soon` -- a piece has just come into your bag (a quest
+     reward, a craft, loot), and the obvious next move is to put it on.  The
+     5s join grace and the 2-per-90ms trickle meant it was rarely baked in
+     time.  Soon starts at once and bakes one frame per idle slice: the same
+     total work, done in the spare time of frames that have some, instead of
+     all at once in the frames right after the equip. */
+  const soon = !fast && !!(opts && opts.soon);
   const seq = ++_altPrewarmSeq;
   if (!fast) {
     /* grace period: let the join settle (zone load, first combat) first */
-    await new Promise((r) => setTimeout(r, 5000));
+    await new Promise((r) => setTimeout(r, soon ? 300 : 5000));
     if (seq !== _altPrewarmSeq) return;
   }
   /* v2.3.1118: prewarmed ONLY the actually-worn loadout -- the speculative
@@ -3393,10 +3577,12 @@ export async function prewarmAltWornSets(opts) {
              bakes here too (see _fullsetCoversBake). */
           if (_fullsetCoversBake(worn, pose, dir)) continue;
           try { _maskedBodyFrame(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
-          if (++sinceYield >= (fast ? 6 : 2)) {
+          if (++sinceYield >= (fast ? 6 : (soon ? 1 : 2))) {
             sinceYield = 0;
             if (fast) await new Promise((r) => setTimeout(r, 0));
+            else if (soon) await _idleYieldSoon();
             else await _idleYield();
+            if (seq !== _altPrewarmSeq) return;   /* v2.3.2873: superseded by a newer kick */
           }
         }
       }
@@ -7645,6 +7831,7 @@ export class EntityRenderer {
   }
 
   update(S, now) {
+    _noteOwnedGear(S, now);   /* v2.3.2872: bake the pieces you own before you put them on */
     this._updateMonsters(S, now);
     this._updateOtherPlayers(S, now);
     this._updatePlayer(S, now);
@@ -7788,7 +7975,8 @@ export class EntityRenderer {
             sx: +d._spriteBody.scale.x.toFixed(3),
             visible: !!d._spriteBody.visible,
             drewDeathAt: d._deathDrewAt || 0,
-            texW: _t ? (_t.frame ? _t.frame.width : _t.width) : 0,
+            texW: _t ? (_t.orig ? _t.orig.width : (_t.frame ? _t.frame.width : _t.width)) : 0,   /* v2.3.2870: the cell, cropped or not */
+            trimmed: !!(_t && _t.trim),   /* v2.3.2870: drawn from a cropped strip (zoneTextures.loadTrackedStrip) */
             srcW: _src ? (_src.width || 0) : 0,
             texAlive: !!(_src && !_src.destroyed && _src.width > 0),
             /* The procedural fallback body.  Drawn INSTEAD of the sprite when
@@ -7803,7 +7991,7 @@ export class EntityRenderer {
                answered from the table, only from the bounds. */
             bounds: (function () {
               try {
-                const b = d._spriteBody.getBounds();
+                const b = frameBounds(d._spriteBody);   /* v2.3.2870: whole cell, as uncropped */
                 return { top: Math.round(b.y), bottom: Math.round(b.y + b.height),
                   h: Math.round(b.height) };
               } catch (e) { return null; }
@@ -9563,7 +9751,7 @@ export class EntityRenderer {
           const _sb = display._spriteBody;
           if (_sb && _sb.visible && !_sb.destroyed) {
             try {
-              const gb = _sb.getBounds();
+              const gb = frameBounds(_sb);   /* v2.3.2870: the cell's top, as uncropped -- the +13 below was tuned to it */
               const lp = display.toLocal({ x: gb.x + gb.width / 2, y: gb.y });
               if (lp && Number.isFinite(lp.y)) _ringY = lp.y + 13;   /* the ring's top ~4px above the head */
             } catch (e) { /* keep the old anchor */ }

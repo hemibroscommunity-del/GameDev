@@ -24,9 +24,9 @@
  * procedural circle) while the load is in flight.
  */
 
-import { Rectangle, Texture } from 'pixi.js';
+import { Texture } from 'pixi.js';
 
-import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2272: zone art must be releasable */
+import { loadTracked, loadTrackedStrip, unloadBundle } from './zoneTextures.js'; /* v2.3.2272: zone art must be releasable */
 const FRAME_W = 256;
 const FRAME_H = 256;
 
@@ -105,16 +105,9 @@ let loadPromise = null;
 
 async function loadStrip(url, into, key) {
   try {
-    const tex = await loadTracked('fireGoblin', url);
-    if (!tex || !tex.source) return;
-    const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
-    const frames = [];
-    for (let i = 0; i < count; i++) {
-      frames.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
-      }));
-    }
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    const frames = await loadTrackedStrip('fireGoblin', url, FRAME_W, FRAME_H);
+    if (!frames.length) return;
     into[key] = { frames };
   } catch {
     /* missing strip — caller falls back to the next-best path */
@@ -149,15 +142,8 @@ async function loadFireball() {
 
 async function loadDeathStrip() {
   try {
-    const tex = await loadTracked('fireGoblin', `/sprites/monsters/fire-goblin/death.png?v=${SPRITE_VERSION}`);
-    if (!tex || !tex.source) return;
-    const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
-    for (let i = 0; i < count; i++) {
-      deathFrames.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
-      }));
-    }
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    deathFrames.push(...(await loadTrackedStrip('fireGoblin', `/sprites/monsters/fire-goblin/death.png?v=${SPRITE_VERSION}`, FRAME_W, FRAME_H)));
   } catch { /* missing — caller leaves death blank */ }
 }
 

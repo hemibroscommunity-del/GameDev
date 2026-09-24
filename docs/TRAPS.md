@@ -4435,7 +4435,8 @@ figure. `orig` is the whole frame and `trim` is where the crop sits in it.
 an uncropped texture, so it is always safe), and copy its PIXELS through
 `drawGearFrame(ctx, tex, dx, dy, dw, dh)` (gearSheets), which places the crop
 at its offset and is a plain `drawImage` for anything uncropped. A Sprite needs
-nothing -- Pixi builds the quad from `trim` and reports bounds from `orig`.
+nothing to DRAW -- Pixi builds the quad from `trim`. (v2.3.2870 correction: its
+BOUNDS are the trim, not `orig` -- see §119.)
 Cutting a sub-rectangle out of a cropped frame by `frame.x + offset` (the
 blockArm sleeve does this to bowshot frames) is not supported -- which is why
 gearSheets leaves the combat poses and the fullset figure uncropped. Add a pose
@@ -4793,3 +4794,26 @@ numbers look plausible and are simply of a different character.
 -- or reset `ps.prog3.sk` before each trial. `tools/specials-measure.mjs` does
 the former. (In a TEST that asserts damage, pin `Math.random` as the suites
 do; the drift is per hit, so even two sends in a row can differ.)
+
+## 119. A cropped sprite's getBounds() is its art, not its frame (v2.3.2870)
+
+**Tempting:** size an effect off a figure with `spr.getBounds()` -- the night
+glow on a monster, the stun ring over its head, the death crumble's flakes and
+skeleton. It was right while every figure was a whole 256 (or 128) cell.
+
+**Wrong** since the cropping series (v2.3.2750-2820): Pixi 8's
+`updateQuadBounds` bounds a trimmed sprite by its `trim`, so `getBounds()` is
+the painted art -- smaller, and shifted, differently on every frame. §106 said
+the opposite ("reports bounds from `orig`") and was wrong about bounds; it is
+right about drawing, which is why nothing LOOKED broken. The player body has
+been cropped since v2.3.2791, so the death crumble had quietly shrunk; the
+monster strips (v2.3.2870) would have moved the stun ring and shrunk the night
+glow.
+
+**The rule:** where a box sizes something else, use
+`gearSheets.frameBounds(spr)` -- `getBounds()` grown back out to the whole
+frame, flips honoured; identical to `getBounds()` for an uncropped texture.
+Keep `getBounds()` where you want the painted art (a probe asking where the
+figure actually is). The own-quad lighting gradient (formShade) had the same
+blind spot and reads the crop's rows inside `orig` since v2.3.2859.
+
