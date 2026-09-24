@@ -1,4 +1,4 @@
-# Tattoos stay on while you harvest (v2.3.2822, v2.3.2823)
+# Tattoos stay on while you harvest (v2.3.2834, v2.3.2835)
 
 Owner: *"yes make tattoos stay on while harvesting resources"*, then *"Yea do
 woodcutting"*.
@@ -9,7 +9,7 @@ The game has three gathering skills. Where each one stood:
 |---|---|---|---|
 | mining | the `mine` body sheet, baked like walking | on | on (unchanged) |
 | fishing | the **raw** `fish` sheet | **gone**, on every screen | **on**, on every screen |
-| woodcutting | a separate lumberjack figure (`chop-strip`) | **gone**, on every screen | **on**, on every screen (v2.3.2823) |
+| woodcutting | a separate lumberjack figure (`chop-strip`) | **gone**, on every screen | **on**, on every screen (v2.3.2835) |
 
 ## Fishing
 
@@ -71,7 +71,7 @@ still do:
 
 ![the overlay with and without the raw-frame rod](img/harvest-ink/overlay-guard.jpg)
 
-## Woodcutting (v2.3.2823)
+## Woodcutting (v2.3.2835)
 
 Woodcutting swaps your whole body for a pre-drawn lumberjack
 (`sprites/skills/chop-strip.webp`, twelve 240×220 swing frames). It was baked

@@ -1,4 +1,4 @@
-/* ═══ v2.3.2823: YOUR TATTOOS STAY ON WHILE YOU CHOP ═══
+/* ═══ v2.3.2835: YOUR TATTOOS STAY ON WHILE YOU CHOP ═══
  *
  * Owner: "yes make tattoos stay on while harvesting resources", then "Yea do
  * woodcutting".  Woodcutting swaps the body for a pre-drawn lumberjack
@@ -9,7 +9,7 @@
  * frame each renderer actually draws:
  *
  *   - YOUR SCREEN: ink on every swing frame, the pink too (the axe's recolour
- *     finds its key by a hue window the pink sits in -- v2.3.2822's rod);
+ *     finds its key by a hue window the pink sits in -- v2.3.2834's rod);
  *   - THE AXE: every key pixel of the art is still wood/copper on every frame;
  *   - THE HEAD: no skin pixel is left in the artist's paint.  On frames 6..11
  *     the head was an island under the recolour's blob floor and kept the

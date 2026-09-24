@@ -369,7 +369,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
      lands on the shape the pose actually holds.  Each frame is still painted
      confined to ITS OWN mask, so ink can never land off the body -- what it can
      no longer do is move between frames. */
-  /* ═══ v2.3.2823: A BOX THE CALLER ALREADY KNOWS ═══
+  /* ═══ v2.3.2835: A BOX THE CALLER ALREADY KNOWS ═══
      `boxes[f]` = [left, right, top, bottom] of frame f's region, left/right
      counted from the frame's own left edge, top/bottom in sheet rows (the
      shape `_fits` holds).  Everything below measures the box from the region's
@@ -442,7 +442,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
       const cs = pieceList[pi];
       for (let i = 0; i < cs.length; i++) scratch[cs[i]] = 1;
     }
-    /* v2.3.2823: with a fixed box the piece is only asked "is there any region
+    /* v2.3.2835: with a fixed box the piece is only asked "is there any region
        in this frame", which the mask answers without _largestPiece's full-sheet
        visited map -- a 633 KB allocation per frame per region on the chop strip. */
     const piece = eachPiece ? scratch : (fixedBoxes ? mask : _largestPiece(mask, w, h, x0, x1));
@@ -500,7 +500,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
     let cLo = Infinity, cHi = -1;
     for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) { if (x < cLo) cLo = x; if (x > cHi) cHi = x; }
     if (cHi < 0 || by < 0) { release(); continue; }
-    if (fixedBoxes) {   /* v2.3.2823: see `fixedBoxes` above */
+    if (fixedBoxes) {   /* v2.3.2835: see `fixedBoxes` above */
       const _fb = fixedBoxes[f];
       if (!_fb) { release(); continue; }
       cLo = _fb[0]; cHi = _fb[1]; ty = _fb[2]; by = _fb[3];
@@ -962,7 +962,7 @@ export function splitSkinRegions(skin, torso, w, h, frameW) {
   return { face, arms };
 }
 
-/* ═══ v2.3.2823: FACE / TORSO / ARMS FROM SEEDS PLACED BY HAND ═══
+/* ═══ v2.3.2835: FACE / TORSO / ARMS FROM SEEDS PLACED BY HAND ═══
  *
  * splitSkinRegions above is tuned to the WALKING body: a torso band, skin above
  * it is face, skin beside it is arm.  A pre-drawn stand-in that swings its arms
