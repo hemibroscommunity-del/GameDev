@@ -8272,7 +8272,7 @@ export class EntityRenderer {
            kicks in. */
         const IDLE_AFTER_MS = 600;
         const isIdle = (now - (display._lastDistGrowAt || 0)) > IDLE_AFTER_MS;
-        /* v2.3.2784: published for worldLife, which breathes a monster holding
+        /* v2.3.2794: published for worldLife, which breathes a monster holding
            its one idle frame (set false below whenever a strip plays). */
         display._idlePose = false;
 

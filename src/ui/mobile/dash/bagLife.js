@@ -1,4 +1,4 @@
-/* ═══ v2.3.2785: THE BAG'S SMALL MOTIONS ═══
+/* ═══ v2.3.2795: THE BAG'S SMALL MOTIONS ═══
  *
  * Owner: "I'm looking for a liveness pass.  Basically making things move a
  * little in a way that makes sense for whatever object it is ... this
@@ -178,7 +178,7 @@ function whenTile(bagKey, fn, tries = 6) {
   if (tries > 0) setTimeout(() => whenTile(bagKey, fn, tries - 1), 120);
 }
 
-/* v2.3.2786: play it on the ITEM, not on whichever node held it.  The bag is
+/* v2.3.2796: play it on the ITEM, not on whichever node held it.  The bag is
    in Recent order, so the stack you just added to jumps to the front -- and
    the move can give its tile a NEW node.  The watcher and the bag each run
    on their own 400 ms timer, so when the watcher saw the new count first,

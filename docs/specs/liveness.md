@@ -1,4 +1,4 @@
-# Liveness: the world's small motions, and the bag's (v2.3.2781–2787)
+# Liveness: the world's small motions, and the bag's (v2.3.2791–2797)
 
 > Owner: "I'm looking for a liveness pass. Basically making things move a
 > little in a way that makes sense for whatever object it is. Maybe a tree
@@ -42,7 +42,7 @@ buildings (the originals stay untouched as its input) and writes:
 
 A piece is found by flood-filling from a seed inside it, kept inside a box and
 stopped by cut lines drawn where it meets the building. Along the edge it
-hangs from it OVERLAPS the building by two texels (TRAPS §111). Run with
+hangs from it OVERLAPS the building by two texels (TRAPS §114). Run with
 `--debug DIR` to get each building's outline picture; look at it after any
 change.
 
@@ -51,7 +51,7 @@ The pieces ride a container that stands on the building's own ground line
 sign behind you exactly when it puts its building behind you. It names its
 building (`_ridesOn`), and the depth pass keys it a quarter step after it, so
 someone the pass raises over the building — a player standing at the auction
-house's left corner — is drawn over its scales too (TRAPS §112; pinned in
+house's left corner — is drawn over its scales too (TRAPS §115; pinned in
 `server/test/ridersort.test.mjs`). Off camera, a building's effects are not
 simulated.
 
@@ -62,14 +62,14 @@ flags (meshes, which the shade patch does not reach) are tinted with the shade
 at their middle. Without it the forge's sign read as a light patch on a darker
 wall.
 
-The pieces cast the building's shadow with it (v2.3.2787): the shadow of a
+The pieces cast the building's shadow with it (v2.3.2797): the shadow of a
 building is cast from its picture, which no longer has them, so each piece
 casts through the building's own shadow mesh (`lightfx/shadows.js`
 `_placePieces`, fed `host._lifePieces`) — at rest exactly where main's
 uncut picture put it, and swinging and waving with the piece. The building
 also reads its ground line off its WHOLE picture, pieces put back
 (`propGround.readArtBottoms(texture, extras)`): off the cut one, the auction
-house's sign and scales columns read empty. TRAPS §113 is the lesson: a piece
+house's sign and scales columns read empty. TRAPS §116 is the lesson: a piece
 cut out of a sprite leaves everything that reads the sprite.
 
 **To add a moving piece:** add its spec to `SPECS` in the tool, re-run it,
@@ -101,7 +101,7 @@ the at-rest and moving checks pick it up by themselves).
 * The bag is in Recent order, so the stack you just added to jumps to the
   front, and the move can give its tile a new node. A pop or a bump is played
   on the ITEM: for a moment after playing, bagLife looks again and replays it
-  on the item's new tile if it moved (v2.3.2786).
+  on the item's new tile if it moved (v2.3.2796).
 
 ## Verified
 

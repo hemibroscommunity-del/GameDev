@@ -1,4 +1,4 @@
-/* A building's moving pieces sort with the building (v2.3.2786).
+/* A building's moving pieces sort with the building (v2.3.2796).
  *
  * worldLife draws a building's swinging signs, flags and smoke in a RIDER: a
  * container in the building's own layer that names its host (`_ridesOn`) and
@@ -10,7 +10,7 @@
  *      building (+0.5) and under anything a row further south.
  * At +1 (the old overlay rule, TRAPS §104) a figure standing beside the
  * auction house's left wall -- raised over the building -- had the scales that
- * hang on that wall drawn across it (TRAPS §112).  A screenshot of the
+ * hang on that wall drawn across it (TRAPS §115).  A screenshot of the
  * building alone cannot show that; this pins the keys the sort uses.
  *
  * The pass is pure data on containers (children, parent, y, zIndex), so plain

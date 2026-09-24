@@ -1,4 +1,4 @@
-/* v2.3.2784: film the world's small motions, and the bag's, in the running game.
+/* v2.3.2794: film the world's small motions, and the bag's, in the running game.
  *
  * mp-liveness asserts what moves; this is for WATCHING it.  A headless page
  * draws a few irregular frames a second, so a film shot on the wall clock

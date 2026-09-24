@@ -79,7 +79,7 @@ function ctx2d() {
  * with no solid pixel at all.  Null when the picture cannot be read (no DOM,
  * a compressed or GPU-only source) -- callers then keep the flat line.
  *
- * v2.3.2787: `extras` -- pictures drawn over it before it is read, each
+ * v2.3.2797: `extras` -- pictures drawn over it before it is read, each
  * `{ texture, x, y }` at its top-left in `texture`'s frame px.  worldLife
  * cuts a building's signs, scales and flags out of its picture so they can
  * swing, and puts them back here, where they were cut from, so the building

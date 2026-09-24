@@ -134,7 +134,7 @@ function usableTexture(t) {
   return !!(t && t !== Texture.EMPTY && !t.destroyed && t.source && !t.source.destroyed);
 }
 
-/* v2.3.2787: where the building's own shadow mesh (placeDepth: 17 column
+/* v2.3.2797: where the building's own shadow mesh (placeDepth: 17 column
    edges, a top and a bottom vertex each, two triangles a column) puts the
    point (tx, ty) of its picture, in the picture's px -- the same affine map
    the GPU applies to that triangle, so a piece cut out of the building casts
@@ -170,7 +170,7 @@ export class ShadowSystem {
     this.used = 0;
     this.meshPool = [];          /* v2.3.2749: the buildings' depth-aware shadows (placeDepth) */
     this.meshUsed = 0;
-    this._pieceMeshes = new Map();   /* v2.3.2787: a building's cut-out piece -> its shadow mesh */
+    this._pieceMeshes = new Map();   /* v2.3.2797: a building's cut-out piece -> its shadow mesh */
     this._pieceList = [];
     this._frame = 0;
     this._lastPieces = 0;
@@ -276,8 +276,8 @@ export class ShadowSystem {
     return true;
   }
 
-  /* ═══ v2.3.2787: THE PIECES CUT OUT OF A BUILDING CAST TOO ═══
-     worldLife (v2.3.2781-2786) draws a building's signs, banner, scales,
+  /* ═══ v2.3.2797: THE PIECES CUT OUT OF A BUILDING CAST TOO ═══
+     worldLife (v2.3.2791-2796) draws a building's signs, banner, scales,
      crate and flags as pieces of their own, so they can swing and wave -- and
      cut them out of the picture this shadow is cast from.  The auction
      house's long sign shadow on the cobble went with them: mp-worldshadow
@@ -364,7 +364,7 @@ export class ShadowSystem {
       if (m.texture !== Texture.EMPTY) m.texture = Texture.EMPTY;
     }
     this.meshUsed = 0;
-    /* v2.3.2787: the buildings' cut-out pieces too (their art is global, but
+    /* v2.3.2797: the buildings' cut-out pieces too (their art is global, but
        the rule above is "hidden is not enough", and it costs nothing) */
     for (let i = 0; i < this._pieceList.length; i++) {
       const m = this._pieceList[i].mesh;
@@ -399,7 +399,7 @@ export class ShadowSystem {
     for (let c = 0; c < casters.length; c++) {
       const cs = casters[c];
       if (cs.depth) {
-        /* v2.3.2749: a building -- see placeDepth.  v2.3.2787: with the
+        /* v2.3.2749: a building -- see placeDepth.  v2.3.2797: with the
            pieces cut out of it (see _placePieces) */
         this._lastPieces = 0;
         if (this.placeDepth(cs.depth.spr, cs.depth.g, cs.depth.back, lx, ly, cs.depth.pieces)) {
