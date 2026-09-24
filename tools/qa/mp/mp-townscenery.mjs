@@ -1,4 +1,4 @@
-/* Town's NPCs and buildings load and free with town (v2.3.2828).
+/* Town's NPCs and buildings load and free with town (v2.3.2850).
  *
  * Owner: "Is there any other memory savings ... (Or removed from the mostly
  * costly memory?)" -- then "Yeah do that".
@@ -85,6 +85,9 @@ const armSampler = (P) => P.page.evaluate(() => {
   };
   requestAnimationFrame(tick);
 });
+/* v2.3.2850: the frame floor is a guard that the sampler RAN, not a rate --
+   under software GL a respawn draws a few frames a second, and a floor of 30
+   failed with zero bare frames seen.  bare === 0 is the check. */
 const readSampler = (P) => P.page.evaluate(() => { const s = window.__tsSample; if (s) s.stop = true; return s; });
 
 /* Each NPC display on the stage right now: drawn with real art means the
@@ -161,7 +164,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(4000);
   const d1 = await readSampler(P);
   rec.ok('after a respawn, town is never on screen without its art or the veil',
-    !!(d1 && d1.townFrames > 30 && d1.bare === 0), d1);
+    !!(d1 && d1.townFrames >= 10 && d1.bare === 0), d1);
   const s3 = await scenery(P);
   const a3 = await npcArt(P);
   rec.ok('...and the art is back, the townsfolk drawn with it', !!(s3 && s3.ready) && a3.drawn >= a3.npcs && a3.npcs > 0, { s3, a3 });
@@ -179,7 +182,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const d2 = await readSampler(P);
     rec.ok('walked back into town through the worldview exit (guard)', town2 === 'town', { town2 });
     rec.ok('through the worldview exit, town is never on screen without its art or the veil',
-      !!(d2 && d2.townFrames > 30 && d2.bare === 0), d2);
+      !!(d2 && d2.townFrames >= 10 && d2.bare === 0), d2);
     const a5 = await npcArt(P);
     const s5 = await scenery(P);
     rec.ok('...and the townsfolk are drawn with real art', !!(s5 && s5.ready) && a5.drawn >= a5.npcs && a5.npcs > 0, { s5, a5 });

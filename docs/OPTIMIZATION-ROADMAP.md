@@ -294,7 +294,7 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    mp-peersword / mp-southsword / mp-swordcarry / mp-blockstance / mp-bowside
    unchanged.
 2. ~~**Town NPC walk strips + town props, held in every field zone — 25.3 MB
-   in ember (0 in town), medium risk, medium.**~~ **SHIPPED, v2.3.2828**
+   in ember (0 in town), medium risk, medium.**~~ **SHIPPED, v2.3.2850**
    (measured, tex-attrib: ember 219.9 → 175.5 MB, town 179.4 → 165.7 MB).
    Bigger than predicted: by v2.3.2791 it was 24 walk strips (3 walkers × 8
    facings), the fountain, four buildings, AND town's own 11.3 MB ground map,

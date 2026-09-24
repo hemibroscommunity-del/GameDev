@@ -8,8 +8,8 @@
    globalThis assignments run. The defensive typeof guards in the code are kept
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
-import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
-import { hitMaterialOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard */
+import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY, monsterTorsoY, zonePlayerScale, TILE } from '@/data/index.js';   /* v2.3.2845: + the torso a shot is aimed at, and the size it is drawn */
+import { hitMaterialOf, hitFxTintOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard; v2.3.2844: goo in the drawn colour */
 import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3.2730: what a prop is made of, and where a swing meets one */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
@@ -120,7 +120,8 @@ export function bowGripPoint(S) {
 }
 
 export function rangedAimAngle(S, originX, originY) {
-  var lockPt = lockAimPoint(S && S.lockedTarget && S.lockedTarget.ref);
+  /* v2.3.2845: at the torso, not the hitbox centre -- see lockShotPoint */
+  var lockPt = lockShotPoint(S && S.lockedTarget && S.lockedTarget.ref, S && S.currentZone);
   if (lockPt) {
     return { ang: Math.atan2(lockPt.y - originY, lockPt.x - originX), src: 'lock' };
   }
@@ -157,6 +158,49 @@ export function lockAimPoint(t) {
   /* Same body-centre offset the projectile hit-test applies (0 for NPCs and
      anything without an archetype, i.e. aim at the feet as before). */
   return { x: x, y: y - (monsterBodyOffsetY(t.archetype || t.type) || 0) };
+}
+
+/* ═══ v2.3.2845: A RANGED SHOT IS AIMED AT THE TORSO ═══
+ * Owner: "The arrows are grouping around the skeleton's knee. Center it on the
+ * torso."  Shots land round where they are aimed (projectiles _pickLanding keeps
+ * a landing within a few degrees of the shot's own line), and a locked shot was
+ * aimed at lockAimPoint -- the centre of the HIT circle, which on the tall
+ * figures is their knees or thighs (monsterTorsoY has the measurements).  So
+ * the shot now flies at the drawn torso and lands round it, and the monster it
+ * was aimed at tests a circle of the same radius centred there
+ * (projectiles _projCentreLift): the room a shot has to hit is what it was,
+ * round the point it is aimed at.  Everything else still tests the circle
+ * where it always was.
+ *
+ * FOR RANGED SHOTS ONLY.  lockAimPoint keeps its other readers -- the body
+ * facing a lock drives (monsterCombat), the dodge and the shield arc -- on the
+ * hitbox centre: pointing those at a skeleton's chest would turn a player to
+ * face UP at one standing beside them.  The readers here are the three that
+ * must agree with each other: the bow's sight gate and drawn sight line
+ * (rangedAimAngle), the flight line of every locked arrow and bolt
+ * (projectiles), and the specials (playerActions).
+ *
+ * The torso is scaled by the size the figure is drawn at, zonePlayerScale at
+ * its feet: 1 everywhere except where a zone draws things smaller (the World
+ * View, and v2.3.2745's Wind Dunes depth preview, where a skeleton on the
+ * horizon is drawn at 0.42 and its chest is 42 px up, not 100). */
+export function monsterDrawScale(m, zoneId) {
+  if (!m || !zoneId) return 1;
+  var x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
+  var y = (typeof m.renderY === 'number' && isFinite(m.renderY)) ? m.renderY : m.y;
+  var k = zonePlayerScale(zoneId, x, y, TILE);
+  return (typeof k === 'number' && isFinite(k) && k > 0) ? k : 1;
+}
+export function torsoLift(m, zoneId) {
+  if (!m) return 0;
+  var lift = monsterTorsoY(m.archetype || m.type) || 0;
+  return lift ? lift * monsterDrawScale(m, zoneId) : 0;
+}
+export function lockShotPoint(t, zoneId) {
+  var p = lockAimPoint(t);   /* the same checks: a usable, rendered position */
+  if (!p) return null;
+  var feetY = p.y + (monsterBodyOffsetY(t.archetype || t.type) || 0);
+  return { x: p.x, y: feetY - torsoLift(t, zoneId) };
 }
 
 /* Use-trained Tier-1 stat progression (GDD §1.1, §1.2, §1.4).
@@ -658,17 +702,42 @@ export function hurtPlayerLocal(S, R, amount) {
  * Renderer-side dedup (per-monster 150ms gap) lives with the sprites,
  * but the queue is still hard-capped here so a hit storm can't grow an
  * unbounded array between frames (the hitParticles-400 posture). */
-export function spawnHitDebris(S, m, angle) {
+/* ═══ v2.3.2843: ...AND WHAT HIT IT, AND WHERE ═══
+ * Owner: the materials should react "upon getting hit by the impacts from
+ * different weapon type (arrow, bolt, sword)".  So the record now carries the
+ * WEAPON (`opts.weapon`: 'arrow' | 'bolt' | 'sword' | 'splash', absent when a
+ * peer's hit gives us nothing to go on), whether it was a crit, a heavy blade
+ * (greatsword) or a special (`big`), the element, and -- for a projectile --
+ * the contact point, so a shot's spray leaves from where the shot went in.
+ * `gy`/`h` are the monster's ground line and body height: the pieces fly in
+ * three dimensions and need to know where the ground is (hitMaterialFx).
+ * `kind` is now the LOOK (`fx`, falling back to the sound's `kind` -- see
+ * HIT_MATERIALS).  Additive: every existing field keeps its meaning. */
+export function spawnHitDebris(S, m, angle, opts) {
   if (!S || !m) return;
-  var mat = hitMaterialOf(m.archetype || m.type);
+  var o = opts || {};
+  /* v2.3.2844: `arch` -- what the monster WAS when the hit landed on it.  A shot
+     now flies on into the body before its burst (projectiles.js), and a mummy's
+     first hit turns it into a skeleton in between: the wrappings that hit tore
+     are ash and linen, not bone. */
+  var arch = o.arch || m.archetype || m.type;
+  var mat = hitMaterialOf(arch);
   if (!S._debrisBursts) S._debrisBursts = [];
   if (S._debrisBursts.length >= 24) return;
+  var gy = (typeof m.renderY === 'number') ? m.renderY : m.y;
+  var h = monsterBodyOffsetY(arch);
   S._debrisBursts.push({
-    monsterId: m.id, kind: mat.kind, tint: mat.tint,
+    /* v2.3.2844: the tint is the colour the monster is DRAWN in -- a blue
+       slime's goo is its recolour's blue (hitFxTintOf, monsterVariants.js). */
+    monsterId: m.id, kind: mat.fx || mat.kind, tint: hitFxTintOf(arch),
     x: (typeof m.renderX === 'number') ? m.renderX : m.x,
-    y: ((typeof m.renderY === 'number') ? m.renderY : m.y) - monsterBodyOffsetY(m.archetype || m.type),
+    y: gy - h,
+    gy: gy, h: h,
     ang: (typeof angle === 'number') ? angle : -Math.PI / 2,
     t0: Date.now(),
+    weapon: o.weapon || null, crit: !!o.crit, big: !!o.big, heavy: !!o.heavy, elem: o.elem || null,
+    hitX: (typeof o.hitX === 'number' && isFinite(o.hitX)) ? o.hitX : undefined,
+    hitY: (typeof o.hitY === 'number' && isFinite(o.hitY)) ? o.hitY : undefined,
   });
 }
 
@@ -729,17 +798,34 @@ export function propImpactSound(propId, vol) {
    owner's words -- and two copies of an effect drift the day one is restyled.
    The monster hit, a bolt stopped by a prop, and a peer's bolt stopped by a
    prop all call this.
-   WHEN MERGING the staff-cast work (#707, v2.3.2697): its restyle of this crash
-   -- `style: 'staff'` on both rings and an S._staffCrashes record in place of
-   the 22 dots -- belongs HERE, so that props get it too.
-   `color` is a CSS colour (the element's, or the default violet). */
-export function orbCrashFx(S, x, y, color) {
+   v2.3.2841 (the staff-cast work, #707): its restyle of this crash lives
+   HERE, as this note asked when it was lifted, so props get it too --
+   `style: 'staff'` on both rings hands them to the staff cast's pixel rings in
+   the element's heat ramp, and an S._staffCrashes record (the white flash,
+   sparks that cool white -> element -> dark, slow embers; staffCastFx) takes
+   the place of the 22 flat dots.
+   `color` is a CSS colour (the element's, or the default violet).  `opts`:
+   `elem` (the element, for the crash's heat ramp; absent -> the default) and
+   `vdx`/`vdy` -- the bolt is DRAWN easing off the staff's crystal for its first
+   40 px, and a crash inside that stretch is drawn where the orb was SEEN, the
+   real point plus that leftover offset (v2.3.2841).  v2.3.2842: `big` -- the
+   one-bolt staff special's crash: its rings run 1.6x wider and its outer one
+   a little longer, and staffCastFx draws its burst bigger. */
+export function orbCrashFx(S, x, y, color, opts) {
   if (!S || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  var o = opts || {};
+  var ringK = o.big ? 1.6 : 1;
+  var elem = o.elem || null;
+  var vdx = Number.isFinite(o.vdx) ? o.vdx : 0;
+  var vdy = Number.isFinite(o.vdy) ? o.vdy : 0;
   if (!S._impactRings) S._impactRings = [];
-  /* Outer expanding ring — the "crash" flash. */
+  /* Outer expanding ring — the "crash" flash.  The records keep their
+     positions and lifetimes: they are also the crash's record (mp-orbrange
+     asserts where they land). */
   S._impactRings.push({
     x: x, y: y, ts: Date.now(),
-    color: color, maxR: 26, duration: 320,
+    color: color, maxR: 26 * ringK, duration: o.big ? 420 : 320,
+    style: 'staff', elem: elem, vdx: vdx, vdy: vdy,
   });
   /* Inner brighter ring 40 ms later for double-pulse
      intensity. Use a startDelay field rather than
@@ -749,24 +835,27 @@ export function orbCrashFx(S, x, y, color) {
      as the swingTimer +300 player-flicker on cast). */
   S._impactRings.push({
     x: x, y: y, ts: Date.now(), startDelay: 40,
-    color: color, maxR: 14, duration: 220,
+    color: color, maxR: 14 * ringK, duration: 220,
+    style: 'staff', elem: elem, vdx: vdx, vdy: vdy,
   });
-  /* Dissipation — radial particle spray outward, with a
-     small upward bias so embers drift like sparks. */
-  if (!S.hitParticles) S.hitParticles = [];
-  for (var _op = 0; _op < 22; _op++) {
-    var _oa = (_op / 22) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-    var _osp = 2 + Math.random() * 4;
-    S.hitParticles.push({
-      x: x + Math.cos(_oa) * 4,
-      y: y + Math.sin(_oa) * 4,
-      vx: Math.cos(_oa) * _osp,
-      vy: Math.sin(_oa) * _osp - 0.7,
-      life: 0.45 + Math.random() * 0.4,
-      color: color,
-      size: 1 + Math.random() * 2.2,
+  /* v2.3.2849: the big bolt's EXPLOSION -- a third ring that opens out to the
+     blast's own reach (`blastR`, the radius the worker hits within), so the
+     area is on screen, not only in the numbers.  staffCastFx.ring grows a
+     ring to exactly its maxR. */
+  if (o.big && o.blastR > 0) {
+    S._impactRings.push({
+      x: x, y: y, ts: Date.now(), startDelay: 20,
+      color: color, maxR: o.blastR, duration: 460,
+      style: 'staff', elem: elem, vdx: vdx, vdy: vdy, blast: true,
     });
   }
+  /* ═══ v2.3.2841: THE CRASH BURNS HOT AND COOLS ═══
+     Queued as a FACT (where, which element) rather than as particles, so how
+     it looks lives in the renderer.  Bounded, because a hidden tab stops the
+     consumer. */
+  if (!S._staffCrashes) S._staffCrashes = [];
+  S._staffCrashes.push({ x: x, y: y, vdx: vdx, vdy: vdy, elem: elem, big: !!o.big });
+  if (S._staffCrashes.length > 24) S._staffCrashes.splice(0, S._staffCrashes.length - 24);
 }
 
 /* ═══ v2.3.2730: A MARK LEFT ON A PROP ═══
@@ -837,7 +926,11 @@ export function queueArrowSnap(S, x, y, gy, ang, vol) {
   try { BT_AUDIO.swordHit({ vol: vol != null ? vol : 0.26 }, 'bone'); } catch (e) { /* audio is best-effort */ }
 }
 
-/* spawnGroundDecal: one persistent mark at the monster's feet.  Rides
+/* v2.3.2843: no HIT site calls this any more -- the material reaction's
+   landed pieces are the on-hit mark (rendering/hitMaterialFx.js).  Kept, and
+   exported, for a mark that is not a hit (the groundSplatter pool it feeds
+   still carries the kill splatter).
+   spawnGroundDecal: one persistent mark at the monster's feet.  Rides
    the EXISTING S.groundSplatter array (cap 80, TTL/fade in
    effectsRenderer + stateCleanup) — on-hit marks are small and
    probabilistic (50%) so a fight doesn't flush the cap; kills keep
