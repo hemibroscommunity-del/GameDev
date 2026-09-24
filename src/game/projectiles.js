@@ -111,6 +111,11 @@ var PROJ_BODY = {
   arrow:        { back: 24.0, front: 28.5, half: 6.6 },   /* 128x32  @ 52.5/128, anchor .457 */
   magicBolt:    { back: 26.9, front: 12.2, half: 11.5 },  /* 217x128 @ 0.18,     anchor .688 */
   arrowSpecial: { back: 28.9, front: 33.9, half: 12.8 },  /* v2.3.2511: 314x128 @ 0.20 (was 0.17), anchor .460 */
+  /* v2.3.2787: the special is now DRAWN as the pine arrow at 62.8 px (hotArrowFx
+     HOT_LEN, the painted sheet's own length) -- pivot .457, so back 28.7 / front
+     34.1 -- inside a heat aura built to reach this 12.8 half.  The row is left
+     as it is on purpose: the picture was sized to the capsule, so the hit test
+     does not move.  If HOT_LEN or the aura changes, re-read this row. */
   magicSpecial: { back: 42.6, front: 24.0, half: 19.2 },  /* 222x128 @ 0.30,     anchor .639 */
 };
 /* ═══ v2.3.2473: THE HIT RADIUS, IN ONE PLACE ═══
@@ -129,7 +134,8 @@ export var SPECIAL_HIT_R_MULT = 3;   /* v2.3.222: special arrow has 3x damage ra
    length past the monster's own circle.  The special is drawn 62.8 world px
    long (PROJ_BODY.arrowSpecial: a 314px sheet at ARROW_SPECIAL.scale 0.20), so
    half of it is 31.4 -- see the cap at the bottom of monsterProjRadius.  If the
-   art is rescaled, this moves with it, exactly as the PROJ_BODY row does. */
+   art is rescaled, this moves with it, exactly as the PROJ_BODY row does.
+   v2.3.2787: the white-hot special (hotArrowFx) is drawn at the same 62.8. */
 export var SPECIAL_HIT_R_CAP_PX = 31;
 export function monsterProjRadius(m, S, opts) {
   var _archProj = hitShapeOf(m.archetype || m.type);

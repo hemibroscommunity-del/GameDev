@@ -149,6 +149,7 @@ import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
 import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2782: the staff cast's charge, release, trail and crash */
+import { HotArrowFx, HOT_LEN, buildHotArrowArt, hotArrowReady, hotArrowArt, smoulderHeat, smoulderLook } from '../hotArrowFx.js';   /* v2.3.2787: the bow special, white-hot */
 import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2784: what a monster is made of, when it is hit */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
@@ -761,6 +762,21 @@ const ARROW_SPECIAL = {
   anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.20,
   pulse: { ms: 260, alpha: 0.5, grow: 0.12 },
 };
+/* ═══ v2.3.2787: THE BOW SPECIAL IS THE PINE ARROW, WHITE-HOT ═══
+   Owner: "I want to see what the arrow special would look like with you
+   drawing the special instead of using my special arrow sprite ... something
+   glowing and a bit animated over the normal arrow like a white bit glowing
+   hot arrow."  src/rendering/hotArrowFx.js draws it: the pine arrow at the
+   special's 62.8 px recoloured white-hot inside its own outline, a flickering
+   pixel aura, a breath of light, a tip twinkle, a cooling spark tracer, and a
+   smoulder that flares on the stuck arrow's chip ticks.
+
+   A FLAG, NOT A DELETION (JET_STREAM_ENABLED's pattern).  Everything above --
+   ARROW_SPECIAL, _placeSpecialFx's headless swap and pulse -- stays as it was,
+   so false restores the painted sheet exactly.  While it is true the sheet is
+   not requested at all (the loader below skips it): 78 KB of download and
+   ~640 KB of decoded texture the game no longer draws. */
+const HOT_SPECIAL_ARROW = true;
 const MAGIC_SPECIAL = {
   frames: [], anchor: { x: 0.639, y: 0.536 }, frameMs: 90, scale: 0.30,
 };
@@ -877,6 +893,11 @@ _fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1881').then((tex) => {
     source: tex.source,
     frame: new Rectangle(0, 0, Math.max(1, Math.round(w * ARROW_PINE.headFrac)), h),
   });
+  /* v2.3.2787: the white-hot special's heat and aura frames are made from
+     these same pixels, here -- inside the load the preload gate awaits, so
+     they exist before the loading screen lifts (the animation-preloading law)
+     with no fetch of their own. */
+  if (HOT_SPECIAL_ARROW) buildHotArrowArt(ARROW_PINE.full, ARROW_PINE.noHead, ARROW_PINE.headFrac, ARROW_PINE.anchor.x);
 }).catch((err) => console.warn('[pine-arrow] load failed', err));
 /* ═══════════════════════════════════════════════════════════════════════════
  * v2.3.2398: THE BOW'S JET STREAM — the aim line an arrow leaves behind it
@@ -968,7 +989,8 @@ const JET_ALPHA = 0.55;
    a backlog cannot grow the list without limit. */
 const JET_MAX = 24;
 for (const [cfg, url] of [
-  [ARROW_SPECIAL, '/sprites/projectiles/arrow-special-v1.webp?v=2.3.1396'],
+  /* v2.3.2787: not requested while HOT_SPECIAL_ARROW draws the special */
+  ...(HOT_SPECIAL_ARROW ? [] : [[ARROW_SPECIAL, '/sprites/projectiles/arrow-special-v1.webp?v=2.3.1396']]),
   [MAGIC_SPECIAL, '/sprites/projectiles/magic-special-v1.webp?v=2.3.1396'],
   [SWORD_SLASH, '/sprites/projectiles/sword-slash-v1.webp?v=2.3.1396'],
 ]) {
@@ -1979,6 +2001,9 @@ export class EffectsRenderer {
        it = the telegraphs layer, under the entities, so a piece thrown behind
        a monster goes behind its body. */
     this._hitFx = new HitMaterialFx(this.particleLayer, layers.telegraphs || this.particleLayer);
+    /* v2.3.2787: the white-hot bow special -- its arrow, heat, aura and sparks
+       in one container on top of the projectile layer. */
+    this._hotArrow = new HotArrowFx(this.projectileLayer);
 
     this.telegraphGfx = new Graphics();
     this.telegraphLayer.addChild(this.telegraphGfx);
@@ -4166,6 +4191,8 @@ export class EffectsRenderer {
        that produced it is exactly what the v2.3.1825 note above guards. */
     this._specialArrowsDrawn = 0;
     this._specialArrowHeads = 0;
+    /* v2.3.2787: the white-hot special's pools refill from zero with them */
+    if (this._hotArrow) this._hotArrow.begin();
 
     /* Track aim rotation rate for the mid-flight arrow bend.  Arrows
        lean slightly in the direction the player is currently rotating
@@ -4260,7 +4287,10 @@ export class EffectsRenderer {
       const _isStaffSpecial = a._isStaffProj && a.isSpecial;
       /* v2.3.1396: painted special art carries its own flame/wisp tail —
          skip the line trail exactly like the basic bolt's art does. */
-      const _paintedSpecial = (isBowHeavy && ARROW_SPECIAL.frames.length)
+      /* v2.3.2787: the white-hot special carries its own spark tracer, so it
+         stands the brown line trail down exactly as the painted art did. */
+      const _hotSpecial = isBowHeavy && HOT_SPECIAL_ARROW && hotArrowReady() && !!this._hotArrow;
+      const _paintedSpecial = _hotSpecial || (isBowHeavy && ARROW_SPECIAL.frames.length)
         || (_isStaffSpecial && MAGIC_SPECIAL.frames.length);
       /* ═══ v2.3.2398: THE JET STREAM, AND WHY THE BROWN SMEAR STANDS DOWN ═══
          Fed here while the arrow flies, drawn once at the end of the pass —
@@ -4281,7 +4311,19 @@ export class EffectsRenderer {
         this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice, _pk);
       }
 
-      if (isBowHeavy && ARROW_SPECIAL.frames.length) {
+      if (_hotSpecial) {
+        /* ═══ v2.3.2787: THE WHITE-HOT SPECIAL ═══
+           Same states as the painted branch below, same `_headless` (v2.3.2381
+           / 2774: the head stays on through flight and the spent drop, and is
+           buried once it is IN something).  `tickBase` is the clock the stuck
+           or planted arrow's 500 ms ticks and its send-off count from -- the
+           smoulder throbs on those ticks and flares before the blast. */
+        const _tb = a.stuckIn ? (a.stuckAt || 0) : (a.planted ? (a.plantedAt || 0) : 0);
+        this._hotArrow.arrow(a, a._renderX, a._renderY, _angB, fadeA, _pk, now, !!_headless, _tb);
+        /* the v2.3.2381 tallies mp-arrowhead reads, kept exactly */
+        this._specialArrowsDrawn = (this._specialArrowsDrawn || 0) + 1;
+        if (!_headless) this._specialArrowHeads = (this._specialArrowHeads || 0) + 1;
+      } else if (isBowHeavy && ARROW_SPECIAL.frames.length) {
         /* v2.3.1396: painted charged arrow (owner sheet) — golden flame
            wrap baked into the art, so the halo circles retire. */
         /* v2.3.2381: ...and hand it the same `_headless` the plain-arrow
@@ -4396,7 +4438,9 @@ export class EffectsRenderer {
       const _remoteBasicBolt = rp.isStaff && !rp.isSpecial && MAGIC_BOLT_FRAMES.length;
       const _remoteMagicSpec = rp.isStaff && rp.isSpecial && MAGIC_SPECIAL.frames.length;
       const _remoteArrowSpec = !rp.isStaff && rp.isSpecial && ARROW_SPECIAL.frames.length;
-      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff, _pk);
+      /* v2.3.2787: a peer's special is white-hot too, through the same code */
+      const _remoteHot = !rp.isStaff && rp.isSpecial && HOT_SPECIAL_ARROW && hotArrowReady() && !!this._hotArrow;
+      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec && !_remoteHot) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff, _pk);
       if (rp.isStaff) {
         if (_remoteMagicSpec) {
           this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk);
@@ -4408,6 +4452,8 @@ export class EffectsRenderer {
           gfx.fill({ color: rp.isSpecial ? 0xf5c542 : 0xa855f7, alpha: rp.isSpecial ? 0.95 : 0.8 });
           if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.6 }); }
         }
+      } else if (_remoteHot) {
+        this._hotArrow.arrow(rp, rp._renderX, rp._renderY, rp.ang + bend, 1.0, _pk, now, false, 0);
       } else if (_remoteArrowSpec) {
         this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, 1.0, now, _liveBolts, _pk);
       } else {
@@ -4623,6 +4669,16 @@ export class EffectsRenderer {
        fade.  Outside the loop because it has to keep running with S.arrows
        empty — a guide that vanished with the last arrow would be no guide. */
     this._drawJetStreams(now, S.currentZone);
+    /* v2.3.2787: the white-hot special's sparks, after every arrow has shed
+       this frame's.  Cosmetic, so a throw must never take the frame down --
+       logged ONCE in the house format (takeRenderThrows listens for it). */
+    if (this._hotArrow) {
+      try { this._hotArrow.update(now); }
+      catch (e) {
+        if (!this._hotArrowErr) { this._hotArrowErr = true; console.error('[pixi-render] hotArrowFx threw', e && e.message, e && e.stack); }
+      }
+      this._hotArrow.end();
+    }
   }
 
   /** v2.3.1334: place (create/update) one painted magic-bolt sprite.
@@ -5026,7 +5082,8 @@ export class EffectsRenderer {
        and `ice` is the legacy "draw as orb" toggle every staff special still
        carries (v2.3.1396). */
     if (a.isStaff || a._isStaffProj || a.ice) return false;
-    /* The charged bow shot keeps its own golden flame wrap (ARROW_SPECIAL).  It
+    /* The charged bow shot keeps its own golden flame wrap (ARROW_SPECIAL; since
+       v2.3.2787 the white-hot pine arrow, whose spark tracer is its trail).  It
        is fired one at a time off a swipe, so it never forms the LINE this is
        for, and pale blue vapour over that art would only fight it. */
     if (a.isSpecial) return false;
@@ -7957,13 +8014,18 @@ export class EffectsRenderer {
     sp.x = rec.x - ov.x;
     sp.y = rec.y - ov.y;
     ov.addChild(sp);
+    /* v2.3.2787: a teammate's white-hot special smoulders in the rock too */
+    if (rec.kind === 'arrow' && rec.special && HOT_SPECIAL_ARROW) this._heatPropArrow(sp, now, now, rec.t0 || now);
     this._pmFx.push({ kind: rec.kind, propId: rec.id, sprite: sp, t0: rec.t0 || now,
-      ttl: rec.ttl > 0 ? rec.ttl : 3000, special: !!rec.special });
+      ttl: rec.ttl > 0 ? rec.ttl : 3000, special: !!rec.special, hotSince: now });
   }
 
   /* The headless texture an arrow stands in a prop with: the pine arrow's
      cropped shaft, or the charged special's current headless frame. */
   _stuckArrowTex(special, now) {
+    /* v2.3.2787: the white-hot special stands in the rock as its heated shaft,
+       head buried, in the ember frame its heat has cooled to (_heatPropArrow) */
+    if (special && HOT_SPECIAL_ARROW) return hotArrowArt().heatNoHead || ARROW_PINE.noHead || null;
     if (special && ARROW_SPECIAL.noHead.length && ARROW_SPECIAL.noHead.length === ARROW_SPECIAL.frames.length) {
       return ARROW_SPECIAL.noHead[Math.floor(now / ARROW_SPECIAL.frameMs) % ARROW_SPECIAL.noHead.length];
     }
@@ -7974,6 +8036,13 @@ export class EffectsRenderer {
      the anchor is the right edge of the headless texture, so the shaft runs
      back out of the face instead of the middle of the arrow sitting on it. */
   _poseStuckArrow(sp, special, pk) {
+    if (special && HOT_SPECIAL_ARROW) {
+      /* v2.3.2787: the heated shaft at the special's length (hotArrowFx HOT_LEN);
+         it is cut from the pine arrow's own frame, so the same width divides */
+      sp.anchor.set(1, 0.5);
+      sp.scale.set((HOT_LEN * pk) / ((ARROW_PINE.full && ARROW_PINE.full.width) || 1));
+      return;
+    }
     if (special && ARROW_SPECIAL.noHead.length) {
       sp.anchor.set(1, ARROW_SPECIAL.anchor.y);
       sp.scale.set(ARROW_SPECIAL.scale * pk);
@@ -8013,6 +8082,23 @@ export class EffectsRenderer {
     spr.alpha = Math.max(0, Math.min(1, left / 300));
     spr.visible = true;
     spr._pmSeen = this._pmTick;
+    /* v2.3.2787: a white-hot special smoulders in the rock as it does in a
+       monster -- cooling, throbbing on its ground ticks, flaring before the
+       send-off -- through the ember frames of its heated shaft. */
+    if (special && HOT_SPECIAL_ARROW) {
+      if (!a._propHotSince) a._propHotSince = now;
+      this._heatPropArrow(spr, now, a._propHotSince, a.plantedAt || 0);
+    }
+  }
+
+  /** v2.3.2787: show a white-hot special's shaft standing in a prop in the
+   *  ember frame its heat has cooled to.  `since` = when it went in,
+   *  `tickBase` = the clock its ticks and send-off count from (hotArrowFx
+   *  smoulderHeat). */
+  _heatPropArrow(sp, now, since, tickBase) {
+    if (!sp || sp.destroyed) return;
+    const t = hotArrowArt().ember[smoulderLook(smoulderHeat(now, since, tickBase)).ember];
+    if (t && sp.texture !== t) sp.texture = t;
   }
 
   /* After the arrow pass: an arrow that was not drawn this frame has left
@@ -8052,6 +8138,7 @@ export class EffectsRenderer {
       if (fx.kind === 'arrow' && fx.special) {
         const t = this._stuckArrowTex(true, now);
         if (t && fx.sprite.texture !== t) fx.sprite.texture = t;
+        if (HOT_SPECIAL_ARROW) this._heatPropArrow(fx.sprite, now, fx.hotSince || fx.t0, fx.t0);   /* v2.3.2787 */
       }
     }
     /* an overlay with nothing in it costs a sort slot and nothing else, but
@@ -8095,8 +8182,9 @@ export class EffectsRenderer {
       for (const [key, ov] of this._propOv) {
         if (!ov || ov.destroyed) continue;
         for (const c of ov.children) {
-          const isArrow = c.texture === ARROW_PINE.noHead || ARROW_SPECIAL.noHead.indexOf(c.texture) >= 0;
-          out.push({ key, kind: c.texture === _PROP_SLASH_TEX ? 'slash' : (isArrow ? 'arrow' : 'other'),
+          const _hotShaft = HOT_SPECIAL_ARROW && hotArrowArt().ember.indexOf(c.texture) >= 0;   /* v2.3.2787 */
+          const isArrow = c.texture === ARROW_PINE.noHead || _hotShaft || ARROW_SPECIAL.noHead.indexOf(c.texture) >= 0;
+          out.push({ key, kind: c.texture === _PROP_SLASH_TEX ? 'slash' : (isArrow ? 'arrow' : 'other'), hot: !!_hotShaft,
             x: +(ov.x + c.x).toFixed(1), y: +(ov.y + c.y).toFixed(1), ovY: ov.y,
             rot: +c.rotation.toFixed(3), alpha: +c.alpha.toFixed(2), visible: !!(c.visible && ov.visible),
             layer: layerName(ov), headless: isArrow });
@@ -11647,6 +11735,7 @@ export class EffectsRenderer {
   clear() {
     this.particleGfx.clear();
     if (this._staffFx) this._staffFx.clear();   /* v2.3.2782: no sparks carried across a zone change */
+    if (this._hotArrow) this._hotArrow.clear();   /* v2.3.2787: nor the hot arrow's */
     this.cueGfx.clear();   /* v2.3.1765 */
     this.projectileGfx.clear();
     this.telegraphGfx.clear();
