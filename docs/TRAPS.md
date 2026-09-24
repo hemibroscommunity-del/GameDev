@@ -4561,7 +4561,7 @@ then `new GlProgram({ name, ...src })`. GlProgram's `isES300` check keeps the
 version and skips the ES1 defines. The templates are already ES3 syntax. Gate
 the feature on `webGLVersion === 2`.
 
-## 113. A character's position is its hips, not its feet (v2.3.2826)
+## 113. A character's position is its hips, not its feet (v2.3.2846)
 
 **Tempting:** anything that has to stand where a character stands -- a
 stand-in animation, a prop dropped at their feet, a campfire -- is placed at

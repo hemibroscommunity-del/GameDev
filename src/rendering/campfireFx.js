@@ -1,4 +1,4 @@
-/* ═══ v2.3.2826: A CAMPFIRE THAT BURNS ═══
+/* ═══ v2.3.2846: A CAMPFIRE THAT BURNS ═══
  *
  * Owner: "I saw you can create good looking pixel flames.  Instead of the
  * current generated fire (after lighting logs for firewood) ... I want you
@@ -250,7 +250,7 @@ class Fire {
     /* ── placement ── */
     const R = this.root;
     /* the Container's origin sits one foot-drop above the fire's ground point
-       (the flame and logs are drawn that far below it).  v2.3.2826: since
+       (the flame and logs are drawn that far below it).  v2.3.2846: since
        #717 (v2.3.2748) the depth pass sorts everything by where it TOUCHES THE
        GROUND -- your feet, a peer's feet, a monster's -- as depthSort.groundOf
        = y + _groundDy, so the Container says its ground is `foot` below its
