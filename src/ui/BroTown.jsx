@@ -6838,6 +6838,34 @@ export var BroTown = function BroTown(_ref0) {
           : null;
         var _exChanged = _exCode !== (S._lastBroadcastEx || null);
         var _exHeartbeat = !!_exCode && (now - (S._lastExBroadcast || 0) > 500);
+        /* ═══ v2.3.2885: AND WHICH TREE ═══
+           Your screen draws the lumberjack at the tree you are chopping
+           (effectsRenderer chopStandInSpot), and you chop from wherever the
+           tree offered you the button -- up to a couple of hundred px from
+           its base.  `ex: 'chop'` says THAT you are chopping, not WHERE, and
+           the worker relays only the fields it knows (tick.js), so a watcher
+           drew your lumberjack at your position, up in the canopy.  This names
+           the tree on the relay that already carries campfire_lit, player_swing
+           and emote: no server change, deploy-order safe both ways (an old
+           watcher ignores the event, a new one without it keeps the old
+           placement).  Sent when the chop starts, then every 2 s so a watcher
+           who arrives mid-chop picks it up -- 0.5/s against the relay's 4/s. */
+        if (_exCode === 'chop' && S.channel && S._extraction && S._extraction.nodeRef) {
+          var _gnRef = S._extraction.nodeRef;
+          var _gnId = S._extraction.nodeId != null ? String(S._extraction.nodeId) : null;
+          if (_gnId !== S._lastGatherNodeId || now - (S._lastGatherNodeAt || 0) > 2000) {
+            S._lastGatherNodeId = _gnId;
+            S._lastGatherNodeAt = now;
+            try {
+              S.channel.send({ type: 'broadcast', event: 'gather_node', payload: {
+                id: S.myId, node: _gnId, x: _gnRef.x, y: _gnRef.y, zone: S.currentZone || 'town',
+              } });
+            } catch (e) {}
+          }
+        } else if (_exCode !== 'chop') {
+          S._lastGatherNodeId = null;
+          S._lastGatherNodeAt = 0;
+        }
         /* v2.3.1107: explicit REST packet on the moving->stopped edge.
            Stopping used to be signaled by SILENCE (the gate below only fires
            while moving), so peers never got a final vx=0/vy=0 + resting

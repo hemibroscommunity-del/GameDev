@@ -52,6 +52,16 @@ export const WORLD_ZOOM = 3.0;
    spot for the Mine action to be offered. Shared by the marker + the gate. */
 export const MINE_SPOT_R = 42;
 
+/* v2.3.2885: where starting a harvest SEATS you, as an offset from the node
+   (lifeSkillRewards.startExtraction): mining above the vein so the swing's
+   baked rock lands on the ore (v2.3.854), fishing up and right of the spot so
+   the rod's line falls into the pond (v2.3.844).  Named here, not left as two
+   literals, because a WATCHER reads them too: a peer who is mining or fishing
+   stands exactly there, so their vein or pond is found from where they stand
+   (effectsRenderer), and the two ends must agree on the offset. */
+export const MINE_SEAT_DX = -7, MINE_SEAT_DY = -86;
+export const FISH_SEAT_DX = 52, FISH_SEAT_DY = -43;
+
 /* v2.3.1470: fishing's gather cue anchors on the PLAYER (the rod's reel
    is at the hands), not on the fish spot — world-y offset from
    S.player.y.  It lives here because BOTH the render (effectsRenderer's

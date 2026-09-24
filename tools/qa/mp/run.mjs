@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  gatherspot: () => import('./mp-gatherspot.mjs'), /* v2.3.2885: a peer's lumberjack stands at the tree and their cook at the fire, where their own screen draws them */
   devarmor: () => import('./mp-devarmor.mjs'), /* v2.3.2875: the admin kit hands out the copper and iron armour sets, into the right bags, wearable */
   monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2870: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */
   sheen: () => import('./mp-sheen.mjs'), /* v2.3.2864: a permanent soft shine on metal behind ?sheen=1 -- off by default, on every frame when on, copper stays copper, the jogging full-set knight too; pictures and its cost */
