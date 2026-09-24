@@ -320,7 +320,7 @@ export function clearZoneLocalFx(S) {
      so a peer's fire would otherwise redraw on the next map exactly as your
      own used to. */
   if (S._peerCampfires && S._peerCampfires.clear) S._peerCampfires.clear();
-  /* v2.3.2885: ...and the trees they were chopping (gather_node), which name
+  /* v2.3.2891: ...and the trees they were chopping (gather_node), which name
      that map's nodes. */
   if (S._peerGatherNode && S._peerGatherNode.clear) S._peerGatherNode.clear();
   S._firemaking = null;

@@ -244,7 +244,7 @@ function _bakeCookSplit(img, skinT, art) {
 }
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale, depthK /* v2.3.2790 */ } from '@/data/zones.js';
-import { TILE, MINE_SPOT_R, FISH_CUE_DY, MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2885: + the harvest seats */
+import { TILE, MINE_SPOT_R, FISH_CUE_DY, MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2891: + the harvest seats */
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
 import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn ON props -- slash marks, arrows standing in the rock */
 
@@ -410,7 +410,7 @@ export const COOK_STANDIN_H = 65.1;
  * measured against the art it was tuned on. */
 export const COOK_PAN_DX = 11 / 62;
 
-/* ═══ v2.3.2885: WHERE THE LUMBERJACK AND THE COOK STAND -- ONE ANSWER ═══
+/* ═══ v2.3.2891: WHERE THE LUMBERJACK AND THE COOK STAND -- ONE ANSWER ═══
  *
  * Owner: "check all other broadcasted player animations to make sure they
  * match what your character does client side."
@@ -8836,7 +8836,7 @@ export class EffectsRenderer {
     node._pixiTier = node._pixiEmoji = node._pixiTip1 = node._pixiTip2 = node._pixiTip3 = node._pixiSprite = null;
   }
 
-  /* ═══ v2.3.2885: THE VEIN OR POND A PEER IS WORKING ═══
+  /* ═══ v2.3.2891: THE VEIN OR POND A PEER IS WORKING ═══
      Mining and fishing SEAT you (lifeSkillRewards.startExtraction): at
      MINE_SEAT / FISH_SEAT off the node, exactly.  So a peer whose relayed
      harvest code is 'mine' or 'fish' is standing at that offset from the node
@@ -8878,7 +8878,7 @@ export class EffectsRenderer {
   }
 
   _updateGatherNodes(S, now) {
-    this._peerWork = this._peerWorkNodes(S);   /* v2.3.2885: once a frame, for the vein here and the pond below */
+    this._peerWork = this._peerWorkNodes(S);   /* v2.3.2891: once a frame, for the vein here and the pond below */
     const gfx = this.nodeGfx;
     gfx.clear();
 
@@ -8988,7 +8988,7 @@ export class EffectsRenderer {
            'mine' swing sheet -- the pickaxe then reads as striking the real
            ore.  Restored below the player (nodeLayer) otherwise. */
         const _mineEx = S._extraction;
-        /* v2.3.2885: ...or a PEER's vein.  The ore went over your own miner
+        /* v2.3.2891: ...or a PEER's vein.  The ore went over your own miner
            only, so a peer mining stood in the rock baked into their swing
            sheet -- the "second, floating rock" v2.3.2304 half-hid with the
            8px lift.  Their vein is found from where they are seated
@@ -9840,12 +9840,12 @@ export class EffectsRenderer {
    * the rotating reel cue.  Drawn on nodeGfx (above the pond sprite, which
    * is inserted at index 0 of nodeLayer). */
   _updateFishingHole(S, now) {
-    /* v2.3.2885: every hole drawn this frame, yours and your peers', for
+    /* v2.3.2891: every hole drawn this frame, yours and your peers', for
        mp-gatherspot (house style: the rings are drawn into a Graphics that is
        cleared every frame, so nothing else can say where they went). */
     const drawn = [];
     if (typeof window !== 'undefined') window.__btFishHoles = () => drawn.slice();
-    /* v2.3.2885: a PEER's line in the water.  Your own screen draws the
+    /* v2.3.2891: a PEER's line in the water.  Your own screen draws the
        ripples and the bobber where your line lands; a peer fishing had the
        rod (baked into their pose) and nothing on the water.  Their pond comes
        from where they are seated (_peerWorkNodes).  Drawn as a hole that is
@@ -9867,7 +9867,7 @@ export class EffectsRenderer {
     drawn.push({ who: 'self', x: node.x, y: node.y });
   }
 
-  /* The pond surface under a line: ripples and the bobber.  v2.3.2885: one
+  /* The pond surface under a line: ripples and the bobber.  v2.3.2891: one
      drawer for your hole and a peer's, so the two cannot come apart. */
   _drawFishingHole(hx, hy, ready, now) {
     const gfx = this.nodeGfx;
@@ -10039,7 +10039,7 @@ export class EffectsRenderer {
     this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
   }
 
-  /* v2.3.2885: the tree a peer is chopping, from their gather_node relay
+  /* v2.3.2891: the tree a peer is chopping, from their gather_node relay
      (gameEvents), resolved by id against THIS client's own node list -- the
      watcher's copy of a worker-owned node is the one to trust, and the relayed
      x/y stand in only when it holds no node by that id.  Fresh relays only
@@ -10239,7 +10239,7 @@ export class EffectsRenderer {
       ent._base = _base;
       const ox = (o.renderX != null ? o.renderX : o.x) || 0;
       const oy = (o.renderY != null ? o.renderY : o.y) || 0;
-      /* ═══ v2.3.2885: AT THE TREE, AND AT THE FIRE ═══
+      /* ═══ v2.3.2891: AT THE TREE, AND AT THE FIRE ═══
          Where their own screen draws them (chopStandInSpot / cookStandInSpot,
          shared with the local placers -- see the note there), off the same
          node on this side: the tree they told us they are chopping
@@ -10266,7 +10266,7 @@ export class EffectsRenderer {
          vista zone that curve runs to 0.03, so their body shrank to a speck
          and this figure stayed full size — a giant cook standing over a dot.
          Same curve, same position, so the two now shrink together.
-         v2.3.2885: at the figure's own spot when it has one, as yours is. */
+         v2.3.2891: at the figure's own spot when it has one, as yours is. */
       const pscale = _spot ? _spot.pscale : zonePlayerScale(zone, ox, oy, TILE);
       const s = (spec.h / spec.fh) * pscale;   /* v2.3.1715: per-strip frame height, was a hardcoded 220 */
       /* v2.3.2500: and THEIR build, relayed as hg/fr (peerCosmetics) and read
@@ -10279,7 +10279,7 @@ export class EffectsRenderer {
          drawn chopping away from it. The watcher does have the same
          S.gatherNodes list, so the nearest live tree is the same answer.
          Falls back to +1, the sheet's native facing, which is what shipped.
-         v2.3.2885: the relayed tree decides it when there is one -- the
+         v2.3.2891: the relayed tree decides it when there is one -- the
          nearest-tree guess only looks 96 px out, and a chopper stands 120-240
          px from the trunk's base, so from the canopy it found nothing and
          faced away from the tree.  The guess is now only the fallback. */
@@ -10308,10 +10308,10 @@ export class EffectsRenderer {
       }
       const _sxR = s * _bR.sx, _syR = s * _bR.sy;   /* v2.3.2500 */
       sp.scale.set(_sign < 0 ? -_sxR : _sxR, _syR);
-      sp.x = _spot ? _spot.x : ox;   /* v2.3.2885 */
+      sp.x = _spot ? _spot.x : ox;   /* v2.3.2891 */
       /* v2.3.2846: the fire-lighter plants its boots on the peer's boots (see
          FIRE_FEET_ROW) -- the same fix as your own figure.
-         v2.3.2885: chop and cook stand where yours do (_spot, above); the old
+         v2.3.2891: chop and cook stand where yours do (_spot, above); the old
          +6 below their position is only the fallback now. */
       sp.y = _spot ? _spot.y
         : code === 'fire'
@@ -12288,7 +12288,7 @@ export class EffectsRenderer {
          peer twin. Sampled at the STAND-IN's own spot, not the player's --
          the lumberjack stands at the tree, which on a perspective zone is a
          different point on the curve.
-         v2.3.2885: the spot itself comes from chopStandInSpot, which the peer
+         v2.3.2891: the spot itself comes from chopStandInSpot, which the peer
          twin now reads too -- see its note (a peer was drawn at their own
          position, in the canopy, instead of here at the trunk). */
       const _spot = chopStandInSpot(S.currentZone, node, chopSign);
@@ -12513,7 +12513,7 @@ export class EffectsRenderer {
       const _legsOn = getEquip('legs') !== 'none' && this._cookLeglessFrames.length === this._cookFrames.length;
       sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
       /* v2.3.2287: the vista curve, as on the fire and chop figures.
-         v2.3.2885: sampled, and the spot placed, by cookStandInSpot -- the
+         v2.3.2891: sampled, and the spot placed, by cookStandInSpot -- the
          peer twin reads it too (it drew a peer's cook at their position, off
          to the side of the fire, instead of here with the pan over it). */
       const _spot = cookStandInSpot(S.currentZone, node);

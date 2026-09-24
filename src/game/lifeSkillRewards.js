@@ -21,7 +21,7 @@ import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2885 */
+import { MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2891 */
 /* v2.3.849: fly a harvested-resource icon from its world node into the
    bottom-left inventory.  DOM-only (appended to document.body, like the
    resume spinner) so it floats above the canvas/HUD and animates on the
@@ -98,7 +98,7 @@ export function startExtraction(S, node, skill, extra) {
        old "must stand one tile north" gate: tapping the vein from anywhere in
        range snaps you in, exactly like the fish-spot. */
     if (skill === 'mining' && S.player) {
-      /* v2.3.2885: the offsets are MINE_SEAT_DX/DY now (data/constants.js) --
+      /* v2.3.2891: the offsets are MINE_SEAT_DX/DY now (data/constants.js) --
          a watcher finds the vein you are mining from them. */
       S.player.x = node.x + MINE_SEAT_DX;   /* -7 */
       S.player.y = node.y + MINE_SEAT_DY;   /* -86: baked rock (~+40 below body) lands on the
@@ -112,7 +112,7 @@ export function startExtraction(S, node, skill, extra) {
        pond -- no separate hole needed.  67 px from the node keeps us inside
        EXTRACT_CANCEL_R (90).  Velocity zeroed so the snap holds. */
     if (skill === 'fishing' && S.player) {
-      S.player.x = node.x + FISH_SEAT_DX;   /* 52, v2.3.2885: named, as mining's */
+      S.player.x = node.x + FISH_SEAT_DX;   /* 52, v2.3.2891: named, as mining's */
       S.player.y = node.y + FISH_SEAT_DY;   /* -43 */
       S.player.vx = 0; S.player.vy = 0;
     }
