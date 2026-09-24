@@ -107,20 +107,28 @@ const sampleFrames = (P, peerId, ms) => P.page.evaluate(async ({ pid, dur }) => 
     const pose = pd._animPose;
     if (pose !== 'fish') return { pose };
     if (!sheet) return { pose, err: 'the shipped fish sheet did not load' };
-    const f = tex.frame;
-    const W = Math.round(f.width), Hh = Math.round(f.height);
-    const draw = (res, sx, sy, sw, sh) => {
+    /* The body frames are cropped to their art (v2.3.2791): `frame` is the crop,
+       `orig` the whole frame and `trim` where the crop sits in it.  So the
+       whole frame is rebuilt from the crop, and the frame's index comes from
+       the display (_animFrame) rather than from where the crop sits. */
+    const f = tex.frame, o = tex.orig || f, tr = tex.trim || null;
+    const W = Math.round(o.width), Hh = Math.round(o.height);
+    const draw = (res, sx, sy, sw, sh, dx, dy, dw, dh) => {
       const c = document.createElement('canvas'); c.width = W; c.height = Hh;
       const g = c.getContext('2d', { willReadFrequently: true });
       g.imageSmoothingEnabled = false;
-      g.drawImage(res, sx, sy, sw, sh, 0, 0, W, Hh);
+      g.drawImage(res, sx, sy, sw, sh, dx, dy, dw, dh);
       return g.getImageData(0, 0, W, Hh).data;
     };
     let got;
-    try { got = draw(tex.source.resource, f.x, f.y, f.width, f.height); } catch (e) { return { pose, err: 'unreadable: ' + e.message }; }
-    const idx = Math.round(f.x / f.width);
+    try {
+      got = draw(tex.source.resource, f.x, f.y, f.width, f.height,
+        tr ? tr.x : 0, tr ? tr.y : 0, tr ? f.width : W, tr ? f.height : Hh);
+    } catch (e) { return { pose, err: 'unreadable: ' + e.message }; }
+    const idx = pd._animFrame;
+    if (typeof idx !== 'number' || idx < 0) return { pose, err: 'no frame index' };
     const sfw = sheet.naturalHeight;   /* square frames, one row */
-    const raw = draw(sheet, idx * sfw, 0, sfw, sfw);
+    const raw = draw(sheet, idx * sfw, 0, sfw, sfw, 0, 0, W, Hh);
     let ink = 0, pink = 0, rodRaw = 0, rodKept = 0;
     for (let o = 0; o < got.length; o += 4) {
       if (isBlue(got, o) && !isBlue(raw, o)) ink++;

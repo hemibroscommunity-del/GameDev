@@ -3572,12 +3572,13 @@ function _fishTopFrame(bodyTex, rodTex) {
        rod's colour test), or this frame's own when there is no raw one. */
     let rd = d;
     if (_rod) {
-      const rres = _rod.source && _rod.source.resource, rf = _rod.frame;
-      if (rres && rf) {
+      if (_rod.source && _rod.source.resource) {
         const rc = document.createElement('canvas'); rc.width = W; rc.height = H;
         const rctx = rc.getContext('2d');
         rctx.imageSmoothingEnabled = false;
-        rctx.drawImage(rres, rf.x, rf.y, rf.width, rf.height, 0, 0, W, H);
+        /* the raw frame is cropped too (v2.3.2791): drawn whole, at its crop's
+           offset, like the body frame above */
+        drawGearFrame(rctx, _rod, 0, 0, W, H);
         rd = rctx.getImageData(0, 0, W, H).data;
       }
     }
