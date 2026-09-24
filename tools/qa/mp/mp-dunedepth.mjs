@@ -303,5 +303,51 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }
 
+  /* ═══ 6. v2.3.2879: AN ARROW STUCK IN A FAR MONSTER IS FAR TOO ═══
+     Owner: "Arrows shot at far away mummies in desert winds at small
+     perspective are still large."  The arrow in flight shrank with the curve
+     (v2.3.2790); the shaft it left in the body did not.  One shaft is stuck
+     in the northernmost monster and the size it is DRAWN at is read with
+     the curve off and on -- the ratio must be the curve at that monster's
+     feet, the size its body is drawn. */
+  const farM = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const ms = Object.values(S.monsters || {}).filter((m) => m && m.alive !== false && !(m.curHp <= 0));
+    ms.sort((a, b) => (a.renderY != null ? a.renderY : a.y) - (b.renderY != null ? b.renderY : b.y));
+    return ms[0] ? { id: ms[0].id, y: ms[0].renderY != null ? ms[0].renderY : ms[0].y } : null;
+  });
+  /* the northernmost live monster, wherever the worker happened to put it --
+     any y short of the south edge has a curve below 1 to measure */
+  if (!farM || farM.y > 28 * TILE) {
+    rec.skip('a shaft stuck in a far monster is drawn at its depth', 'no live monster north of the south edge', farM);
+  } else {
+    const stuckAt = (on) => P.page.evaluate(async ({ v, id }) => {
+      const S = window._gameState.current;
+      window.__btDepth = v;
+      const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+      let got = null;
+      for (let i = 0; i < 12 && !got; i++) {
+        const m = Object.values(S.monsters || {}).find((q) => q && q.id === id);
+        if (!m) return null;
+        m._stuckArrows = [{ ang: 0.3, ox: 0, oy: -20, isStaff: false, color: null }];
+        await frame(); await frame();
+        const pr = window._pixiRenderer && window._pixiRenderer.stuckScaleProbe ? window._pixiRenderer.stuckScaleProbe() : null;
+        if (pr && pr.id === id && pr.spriteScale) got = Object.assign({}, pr,
+          { curve: window.__btZoneDepth ? window.__btZoneDepth('sky', m.renderY != null ? m.renderY : m.y) : null });
+      }
+      const m = Object.values(S.monsters || {}).find((q) => q && q.id === id);
+      if (m) m._stuckArrows = [];
+      return got;
+    }, { v: on, id: farM.id });
+    const flatS = await stuckAt(false);
+    const deepS = await stuckAt(true);
+    rec.ok('a shaft stuck in the far monster was drawn, both ways (guard)', !!flatS && !!deepS, { flatS, deepS });
+    if (flatS && deepS) {
+      const ratio = deepS.spriteScale / flatS.spriteScale;
+      rec.ok(`a shaft stuck in a far monster (y ${deepS.y}) is drawn at the curve there: x${ratio.toFixed(3)}, curve ${deepS.curve}`,
+        deepS.curve < 0.95 && Math.abs(ratio - deepS.curve) < 0.03, { flatS, deepS, ratio });
+    }
+  }
+
   await P.ctx.close().catch(() => {});
 }
