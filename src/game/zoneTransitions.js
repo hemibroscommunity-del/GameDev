@@ -324,6 +324,7 @@ export function clearZoneLocalFx(S) {
   S._extraction = null;
   S._remoteProjectiles = [];
   S._whirlFx = null;
+  S._whirlWindup = null; S._peerWindups = null; S._peerWhirlFx = null;   /* v2.3.2824: a windup does not follow you through a door (the worker cancels it too) */
   S._bashPose = null;
   /* ═══ v2.3.2260: A LUNGE DOES NOT FOLLOW YOU THROUGH A DOOR ═══
      The dash record holds a REF to a monster in the zone you just left, and

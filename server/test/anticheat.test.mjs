@@ -541,7 +541,10 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     psN.endurance === 1020 && psN.power === 1020, { end: psN.endurance, pow: psN.power });
   check('bootstrap: ...which bounds the regen mult the tick reads at 1 + 1020*0.002 = 3.04x',
     1 + (psN.endurance || 0) * 0.002 <= 3.04, 1 + (psN.endurance || 0) * 0.002);
-  const invKeys = Object.keys(psN.inventory || {});
+  /* v2.3.2820: the day's DAILY CHEST (dailychest.js) is credited by the
+     cadence hook AFTER the bootstrap this section measures, so it is not part
+     of what the client claimed and is left out of the bootstrap's counts. */
+  const invKeys = Object.keys(psN.inventory || {}).filter((k) => k !== 'daily_chest');
   check('bootstrap: inventory truncated to 100 keys', invKeys.length === 100, invKeys.length);
   check('bootstrap: every inventory quantity clamped to 50 per item',
     invKeys.length > 0 && invKeys.every((k) => psN.inventory[k] === 50),
@@ -576,7 +579,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   check('bootstrap: string unspentT2 defaults to 0', psG.unspentT2 === 0, psG.unspentT2);
   check('bootstrap: negative buildPointsThisLvl floors to 0', psG.buildPointsThisLvl === 0, psG.buildPointsThisLvl);
   check('bootstrap: non-finite / non-positive inventory quantities dropped',
-    psG.inventory && Object.keys(psG.inventory).length === 0, psG.inventory);
+    psG.inventory && Object.keys(psG.inventory).filter((k) => k !== 'daily_chest').length === 0, psG.inventory);   /* v2.3.2820: minus the day's chest (see above) */
 }
 
 // ── 7. `track` is cosmetics-only (v2.3.1465) ──

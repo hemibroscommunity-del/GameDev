@@ -118,6 +118,10 @@ export const SHOP = {
        of every node: wood_pine_log, ore_copper, fish_trout and their
        successors. */
     ore_: 40, wood_: 24, fish_: 28,
+    /* v2.3.2822: smelted bars (smelting.js). Five ore go into one, so a bar
+       is priced above the five ore it cost (5 x 40 = 200) -- smelting before
+       selling is worth a little, never a loss. */
+    bar_: 240,
     /* Longer than 'fish_', so the longest-match rule below prefers it: a
        cooked fish is worth more than the raw one it came from. */
     cooked_fish: 45,

@@ -33,6 +33,7 @@
  * anyone debugging a first-use hitch) can verify coverage. */
 
 import { preloadLootIcons } from './lootIcons.js'; /* v2.3.2771 */
+import { preloadDailyChest } from './chestPreload.js'; /* v2.3.2820: the daily chest's claim window */
 import { variantSpritesFor, unloadVariantSprites } from './monsterVariantSprites.js';
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
@@ -361,6 +362,9 @@ export async function preloadWorldAnimations() {
     /* v2.3.2771: the rare-drop icons on a monster's loot pile (lootIcons.js)
        -- a rare drop is the moment a blank first frame would be seen */
     lootIcons: preloadLootIcons(),
+    /* v2.3.2820: the daily chest strip + bag icon -- the claim window opens at
+       login, right after the intro lifts (chestPreload.js). */
+    dailyChest: preloadDailyChest(),
   };
 
   const names = Object.keys(groups);

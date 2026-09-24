@@ -29,6 +29,8 @@ import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
    render whitelist — see the block at the bottom for why it reads text. */
 import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH, SLIME_BURST as SRV_SLIME_BURST } from '../src/telegraph.js'; /* v2.3.2221; v2.3.2224 */
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
+import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
+import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -1292,6 +1294,21 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     check('props: client and worker agree on every one of thousands of random lines', bad.length === 0, bad);
     check('props: ...and the sample holds both outcomes, so the agreement means something (guard)',
       blocked > 100 && clear > 100, { blocked, clear });
+  }
+}
+
+// ── SMELTING: the forge's rows must promise what the worker settles ──
+// v2.3.2822.  The Smelting rows draw cost and XP from the client copy; the
+// worker settles from its own.  A drift here is a row that says "5 ore, +400
+// XP" while the worker takes 6 and pays 300.
+{
+  const keys = (o) => Object.keys(o).sort().join(',');
+  check('smelting: same bars on both sides', keys(SRV_SMELT.RECIPES) === keys(CLIENT_SMELT),
+    { srv: keys(SRV_SMELT.RECIPES), cli: keys(CLIENT_SMELT) });
+  for (const k of Object.keys(SRV_SMELT.RECIPES)) {
+    const a = SRV_SMELT.RECIPES[k], b = CLIENT_SMELT[k] || {};
+    check('smelting: ' + k + ' ore / cost / level / xp match',
+      a.ore === b.ore && a.oreCost === b.oreCost && a.minLvl === b.minLvl && a.xp === b.xp, { srv: a, cli: b });
   }
 }
 
