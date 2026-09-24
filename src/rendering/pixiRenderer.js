@@ -765,6 +765,9 @@ export async function initPixiRenderer(canvas) {
       const cfg = ((kind === 'bow' ? e._bowCfg : e._swordCfg) || {})[cfgKey];
       return (o && cfg && cfg.bodyUrl) ? e._remoteBodyFramesFor(o, cfgKey, cfg, !!mirror) : null;
     },
+    /* v2.3.2854: the same, for ANOTHER player's figure -- mp-harvestink reads
+       which frame a peer is drawn from while they fish.  Read-only, same rule. */
+    peerDisplayRaw: (id) => (entityRenderer.otherPlayerDisplays && entityRenderer.otherPlayerDisplays.get(id)) || null,
     /* v2.3.2078: what the pet display is doing — the pet was invisible
        for its whole life and nothing could see that. */
     petDrawn: () => entityRenderer.petDrawn(),
@@ -1117,6 +1120,58 @@ export async function initPixiRenderer(canvas) {
         gearIx: typeof ent._gearIx === 'number' ? ent._gearIx : null,
         signX: (ent[ent._exCode] && ent[ent._exCode].scale)
           ? (ent[ent._exCode].scale.x < 0 ? -1 : 1) : null,
+        /* v2.3.2855: is this peer's lumberjack drawn from a bake that carries
+           their drawings (true), or from the shared figure (false)? */
+        chopInk: !!ent._chopInk,
+        /* v2.3.2856: is this peer's cook drawn with their drawings' layer? */
+        cookInk: !!ent._cookInk,
+        /* v2.3.2858: ...and their fire-lighter? */
+        fireInk: !!ent._fireInk,
+      };
+    },
+    /* v2.3.2855: the lumberjack SPRITES -- yours (no id) or a peer's -- for
+       mp-harvestink, which reads the frame the renderer actually draws, the same
+       way it reads the fishing body through peerDisplayRaw. */
+    chopSpriteRaw: (id) => {
+      const e = effectsRenderer;
+      if (id == null) return e.chopSprite || null;
+      const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
+      return (ent && ent.chop) || null;
+    },
+    /* v2.3.2855: how many drawn peers' lumberjacks are baked right now. */
+    peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),
+    /* v2.3.2856: the cook's two SPRITES -- the figure and the drawings' layer
+       over it -- yours (no id) or a peer's, for mp-cookink to read the frame
+       the renderer actually draws. */
+    cookSpriteRaw: (id) => {
+      const e = effectsRenderer;
+      if (id == null) return e.cookSprite ? { body: e.cookSprite, ink: e.cookInkSprite || null } : null;
+      const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
+      return (ent && ent.cook) ? { body: ent.cook, ink: ent.cookInk || null } : null;
+    },
+    /* v2.3.2856: your cook's layers (how many frames, or 0 when there is no
+       layer), and how many drawn peers' layers are held right now. */
+    cookInkLayers: () => {
+      const e = effectsRenderer;
+      return {
+        body: e._cookFramesInk ? e._cookFramesInk.length : 0,
+        legless: e._cookLeglessFramesInk ? e._cookLeglessFramesInk.length : 0,
+        peers: (e._peerInks && e._peerInks.cook) ? e._peerInks.cook.size : 0,
+      };
+    },
+    /* v2.3.2858: the fire-lighter's two SPRITES, yours (no id) or a peer's, and
+       its layers -- mp-fireink, the twins of cookSpriteRaw / cookInkLayers. */
+    fireSpriteRaw: (id) => {
+      const e = effectsRenderer;
+      if (id == null) return e.fireSprite ? { body: e.fireSprite, ink: e.fireInkSprite || null } : null;
+      const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
+      return (ent && ent.fire) ? { body: ent.fire, ink: ent.fireInk || null } : null;
+    },
+    fireInkLayers: () => {
+      const e = effectsRenderer;
+      return {
+        body: e._fireFramesInk ? e._fireFramesInk.length : 0,
+        peers: (e._peerInks && e._peerInks.fire) ? e._peerInks.fire.size : 0,
       };
     },
     /* v2.3.138: dispose a single loot pile by direct object reference.

@@ -32,9 +32,9 @@ import { getEyeStyle, onEyeStyleChange } from './traits/eyeStyleCatalog.js';   /
    sprite, stamped in gearSheets) these live INSIDE the body sheet, because
    that is where the pants pixels and the bare skin actually are. */
 import { getArt, artHasInk, artHash, onArtChange, sideForDir, emptyArt } from './traits/playerArt.js';   /* v2.3.2042: sideForDir/emptyArt -- a face tattoo does not revolve to the back of a head */
-import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
+import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, splitSkinBySeeds, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
-import { recolorToolKeyCanvas, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine */
+import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine; v2.3.2854: + the file's key mask */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -1093,8 +1093,34 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
  * alpha floor, blob floor 1500 — so v2.3.1710 is bit-for-bit unchanged. */
 const STANDIN_MIN_BLOB = 1500;   /* px; body >= 9462, fish <= 523 (measured) */
 export function recolorStandInSkin(img, skinT, targetH, opts) {
+  return _standInBake(img, skinT, targetH, opts, false).cv;
+}
+/* ═══ v2.3.2856: THE SAME BAKE, WITH THE DRAWINGS ON A LAYER OF THEIR OWN ═══
+   Returns { cv, ink }: `cv` is the figure exactly as recolorStandInSkin would
+   bake it WITHOUT drawings, and `ink` is a canvas of the same size holding only
+   the pixels the drawings changed (null when none landed).  For a stand-in
+   whose skin bake is shared with other players -- the cook's is (see the SPEC
+   table in effectsRenderer) -- the drawings cannot go into it: everybody else
+   at a campfire would wear them.  Drawn over the shared figure, the layer gives
+   the pixels a full bake would (bar the blend on a half-transparent edge
+   pixel), for a fraction of its memory. */
+export function recolorStandInSkinSplit(img, skinT, targetH, opts) {
+  return _standInBake(img, skinT, targetH, opts, true);
+}
+function _standInBake(img, skinT, targetH, opts, apart) {
   const o = opts || {};
   const minBlob = o.minBlob != null ? o.minBlob : STANDIN_MIN_BLOB;
+  /* v2.3.2856: an island smaller than the floor is still the figure's when it
+     STARTS left of this column of its frame (frame-local x) -- the cook's
+     fingers, which the floor dropped along with the fish (standInInk.js,
+     COOK_KEEP_X).  Needs the frame width: `frameW`, else the regions table's. */
+  const keepX = o.keepX || 0;
+  const keepFW = o.frameW || (o.regions && o.regions.fw) || 0;
+  /* v2.3.2858: ...or when it lies WHOLLY inside its frame's keep box,
+     [left, right, top, bottom] frame-local -- the fire-lighter's fist, cut into
+     islands beside a flame that burns on both sides of it, where a column
+     cannot tell hand from spark (standInInk.js, FIRE_KEEP_BOXES). */
+  const keepBoxes = o.keepBoxes && keepFW ? o.keepBoxes : null;
   const maxBR = o.maxBR != null ? o.maxBR : Infinity;      /* blue/red ceiling — rejects the fire's pale glow */
   const minGR = o.minGR != null ? o.minGR : 0;             /* green/red floor — rejects the flame's red edge */
   const maxGR = o.maxGR != null ? o.maxGR : Infinity;
@@ -1104,7 +1130,14 @@ export function recolorStandInSkin(img, skinT, targetH, opts) {
   cv.height = img.naturalHeight || img.height;
   const ctx = cv.getContext('2d');
   ctx.drawImage(img, 0, 0);
-  if (!skinT) return cv;
+  /* v2.3.2855: `opts.art` + `opts.regions` -- the player's drawings, on a
+     stand-in whose face/torso/arms were fitted by hand (standInInk.js).  Only
+     the three SKIN canvases: these figures keep their painted trousers (the
+     recolour here is skin-only for the reasons above), so a trouser print would
+     have no garment of the player's to sit on. */
+  const ink = (o.art && o.regions && (artHasInk(o.art.tattooFace) || artHasInk(o.art.tattoo)
+    || artHasInk(o.art.tattooArm))) ? o.art : null;
+  if (!skinT && !ink) return { cv, ink: null };
   const w = cv.width, h = cv.height;
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
@@ -1123,28 +1156,93 @@ export function recolorStandInSkin(img, skinT, targetH, opts) {
   const label = new Int32Array(w * h);   /* 0 = unlabelled */
   const stack = new Int32Array(w * h);
   const size = [0];                      /* size[id]; id 0 unused */
+  const leftX = keepX && keepFW ? [0] : null;   /* v2.3.2856: leftX[id], frame-local */
+  const inBox = keepBoxes ? [false] : null;       /* v2.3.2858: inBox[id] */
   for (let start = 0; start < w * h; start++) {
     if (!skin[start] || label[start]) continue;
     const id = size.length;
-    let sp = 0, n = 0;
+    let sp = 0, n = 0, lx = Infinity;
+    let bl = Infinity, br = -1, bt = Infinity, bb = -1;   /* v2.3.2858: the island's box, frame-local */
     stack[sp++] = start; label[start] = id;
     while (sp > 0) {
       const q = stack[--sp];
       n++;
       const qx = q % w;
+      if (leftX && qx % keepFW < lx) lx = qx % keepFW;
+      if (inBox) {
+        const fx = qx % keepFW, qy = (q - qx) / w;
+        if (fx < bl) bl = fx;
+        if (fx > br) br = fx;
+        if (qy < bt) bt = qy;
+        if (qy > bb) bb = qy;
+      }
       if (qx > 0 && skin[q - 1] && !label[q - 1]) { label[q - 1] = id; stack[sp++] = q - 1; }
       if (qx < w - 1 && skin[q + 1] && !label[q + 1]) { label[q + 1] = id; stack[sp++] = q + 1; }
       if (q >= w && skin[q - w] && !label[q - w]) { label[q - w] = id; stack[sp++] = q - w; }
       if (q + w < w * h && skin[q + w] && !label[q + w]) { label[q + w] = id; stack[sp++] = q + w; }
     }
     size.push(n);
+    if (leftX) leftX.push(lx);
+    if (inBox) {
+      const box = keepBoxes[Math.floor((start % w) / keepFW)];
+      inBox.push(!!box && bl >= box[0] && br <= box[1] && bt >= box[2] && bb <= box[3]);
+    }
   }
   /* pass 3: retint the CHARACTER's skin; leave the small islands (props) */
+  const body = ink ? new Uint8Array(w * h) : null;   /* v2.3.2855: the same pixels, for the stamp */
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
-    if (label[p] && size[label[p]] >= minBlob) _retint(d, i, skinT, SKIN_REF);
+    const id = label[p];
+    if (!id) continue;
+    if (size[id] < minBlob && !(leftX && leftX[id] < keepX) && !(inBox && inBox[id])) continue;   /* v2.3.2856: keepX; v2.3.2858: keepBoxes */
+    if (skinT) _retint(d, i, skinT, SKIN_REF);
+    if (body) body[p] = 1;
   }
+  /* v2.3.2855: the drawings, AFTER the retint (so the ink is shaded by the skin
+     it lands on, exactly as the body's stamp is) and confined to the pixels the
+     retint just called the character's skin. */
+  if (ink && !apart) _stampStandInInk(d, w, h, body, ink, o.regions);
   ctx.putImageData(imgData, 0, 0);
-  return cv;
+  if (!ink || !apart) return { cv, ink: null };
+  /* v2.3.2856: apart -- stamp a copy of the finished figure, then keep only the
+     pixels the stamp changed.  Everything else is cleared to transparent, so
+     the layer crops down to the drawings themselves (_sliceStandIn). */
+  const ic = document.createElement('canvas');
+  ic.width = w; ic.height = h;
+  const ictx = ic.getContext('2d');
+  const inkData = ictx.createImageData(w, h);
+  const e = inkData.data;
+  e.set(d);
+  _stampStandInInk(e, w, h, body, ink, o.regions);
+  let changed = 0;
+  for (let i = 0; i < e.length; i += 4) {
+    if (e[i] === d[i] && e[i + 1] === d[i + 1] && e[i + 2] === d[i + 2] && e[i + 3] === d[i + 3]) {
+      e[i] = 0; e[i + 1] = 0; e[i + 2] = 0; e[i + 3] = 0;
+    } else changed++;
+  }
+  if (!changed) { ic.width = 0; ic.height = 0; return { cv, ink: null }; }
+  ictx.putImageData(inkData, 0, 0);
+  return { cv, ink: ic };
+}
+
+/* v2.3.2855: face, torso and arm drawings on a stand-in, from its hand-fitted
+   regions -- see standInInk.js for the table and splitSkinBySeeds for the split.
+   `art.mirror` is honoured as the body honours it: the drawing is read flipped,
+   for a figure the renderer will flip back. */
+function _stampStandInInk(d, w, h, body, art, R) {
+  /* A table fitted to another size of art would put the ink somewhere else on
+     the figure; no ink is the better failure (see standInInk.js). */
+  if (!R || R.fh !== h || !R.fw || w % R.fw !== 0) return;
+  const reg = splitSkinBySeeds(body, w, h, R.fw, R.seeds);
+  const m = !!art.mirror;
+  if (artHasInk(art.tattooFace)) {
+    stampRegion(d, w, h, R.fw, reg.face, art.tattooFace, m, FACE_BOX, { underSkin: true, boxes: R.face });
+  }
+  if (artHasInk(art.tattoo)) {
+    stampRegion(d, w, h, R.fw, reg.torso, art.tattoo, m, TATTOO_BOX, { underSkin: true, boxes: R.torso });
+  }
+  if (artHasInk(art.tattooArm)) {
+    stampRegion(d, w, h, R.fw, reg.arms, art.tattooArm, m, ARM_BOX, { eachPiece: true, underSkin: true, pieceKeep: R.pieceKeep });   /* v2.3.2856: pieceKeep */
+  }
 }
 
 /* v2.3.1122: load through the WebP-preferring helper (PNG fallback).  Used by
@@ -1161,6 +1259,18 @@ function loadImg(url) { return loadWebpOrPng(url); }
    'loading' persists across the backoff so the base-sheet fallback
    keeps the player visible; &r=N bypasses a poisoned cache entry. */
 const _BODY_RETRY_MS = [2000, 6000];
+/* v2.3.2854: the tool key as the SHEET FILE has it, at the bake's own size --
+   read before anything is painted, so a drawing in the key's hue cannot pass
+   for the tool (see the fish recolour in buildBodySheet). */
+function _fileKeyMask(img, w, h) {
+  const src = upscaleToFrameHeight(img, FRAME_H);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.imageSmoothingEnabled = false;
+  g.drawImage(src, 0, 0);
+  return toolKeyMask(g.getImageData(0, 0, w, h).data, w, h);
+}
 function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt = 0) {
   art = artForFacing(art, dir);   /* v2.3.2042: the bake must match the key above */
   _bodySheets[sheetKey] = 'loading';
@@ -1189,8 +1299,13 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
       eyeBlank || null);   /* v2.3.2643 */
     /* v2.3.2761: the fishing rod's pine, AFTER the skin pass -- pine is the
        skin's hue family, so recolouring before it would hand the rod to the
-       skin retint.  See toolRecolor.js. */
-    if (pose === 'fish') recolorToolKeyCanvas(full, TOOL_SPECS.rod);
+       skin retint.  See toolRecolor.js.
+       v2.3.2854: ...and only where the FILE has the key.  Fishing bakes carry
+       the drawings now (getFishFrame), and the key test is a hue window a pink
+       tattoo sits inside (#d76ba8 is hue 326): recoloured by that test alone,
+       a player's pink ink turned to pine wood for as long as he fished --
+       caught by mp-cosmpose's pink "fish" check the moment the two met. */
+    if (pose === 'fish') recolorToolKeyCanvas(full, TOOL_SPECS.rod, 1, _fileKeyMask(img, full.width, full.height));
     /* v2.3.1120: count frames at full 256-space width, then downscale the DISPLAY
        texture to 256/DISPLAY_DS px (the figure shows ~100px on a phone).  Mipmaps
        off -- renders ~1:1 post-downscale, so the mip chain is wasted VRAM. */
@@ -1462,6 +1577,39 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
+/* ═══ v2.3.2854: FISHING KEEPS YOUR DRAWINGS ═══
+   Owner: "yes make tattoos stay on while harvesting resources."
+   Fishing draws the RAW fish sheet, on purpose (entityRenderer v2.3.2304):
+   the pink rod and line are baked into that art and the body-region RECOLOUR
+   mis-paints them, so no skin tone, trousers, shoes or eyes go on it.  The
+   drawings rode that same bake and were lost with it -- which nobody chose.
+   They do not need the recolour.  In the file the rod is the magenta tool key,
+   and _isSkin refuses it (skin wants g >= b; the key is b > g), so a bake with
+   NO retint targets and only `art` stamps the tattoos, prints and patterns into
+   the regions they always use and leaves every other pixel as drawn, the rod
+   included -- and buildBodySheet turns the key to pine AFTER the stamp
+   (v2.3.2761), so the rod is pine here as on the plain sheet.  A player with
+   no drawings gets the raw frame, exactly as before.
+   South only and never mirrored: the fish art is authored south and never
+   flips, so the drawing is always the unflipped one. */
+function _fishArt(art) {
+  return art && art.mirror ? { ...art, mirror: false } : art;
+}
+export function getFishFrame(art, frameIdx) {
+  return getBodyFrame(null, null, null, 'fish', 'south', frameIdx, null, 'none', undefined, _fishArt(art), undefined);
+}
+/** Bake the inked fish sheet NOW, so a cast shows the drawings from its first
+ *  frame instead of popping them in when a lazy bake lands (animation-preload
+ *  law, CLAUDE.md).  Resolves at once when there is nothing drawn to put on it
+ *  or it is already baked or baking.  Same key getFishFrame asks for. */
+export function prewarmFishInk(art) {
+  const a = artForFacing(_fishArt(art), 'south');
+  if (!a || !bodyArtSeg(a)) return Promise.resolve();
+  const key = bodySheetKey(null, null, null, null, 'none', null, 'fish', 'south', a, null);
+  if (_bodySheets[key] !== undefined) return Promise.resolve();
+  return buildBodySheet(key, 'fish', 'south', null, null, null, null, null, a, null);
+}
+
 /* v2.3.1116: loot-pickup HEAD overlay, RECOLORED.  pickup-<dir>-head.png holds
    the head pixels per frame (transparent elsewhere); entityRenderer draws it
    ABOVE the gear so an armoured player's deep-crouch head isn't clipped to a
@@ -1656,6 +1804,10 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
     const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, 'stand', dir, art, blank && blank.id);
     if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, art, blank && blank.rects);
   }
+  /* v2.3.2854: a drawing edit drops every inked sheet (_dropArtSheets) and
+     lands here; the inked fish sheet is rebuilt with the stand ones, so the
+     next cast is not the one that pays for it. */
+  if (art) prewarmFishInk(art);
 }
 /** Preload the recolored body for the current combo across all base dirs for
  *  stand + jog, so an UNARMOURED player (or any moment the body shows) never
@@ -1735,6 +1887,10 @@ export function preloadBodyAll() {
      moment the player starts a gather.  The sheet is 1792x128 on disk, so at
      DISPLAY_DS=2 this is a few hundred KB. */
   prewarm('mine', 'south');
+  /* v2.3.2854: and the FISH sheet with the drawings on it (getFishFrame) --
+     only a drawn player has one; everyone else fishes on the raw sheet, which
+     loadPlayerSprites already holds. */
+  if (art) tasks.push(prewarmFishInk(art));
   const headKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|pickup-south';
   if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT));
   return Promise.all(tasks);

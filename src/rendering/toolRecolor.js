@@ -131,9 +131,14 @@ export function toolKeyMask(data, w, h) {
  *                            is what lies deeper than that inside the key).
  * `scale` shrinks/grows the thickness threshold for art stored at another
  * resolution than it was measured on.  Returns how many pixels it recoloured.
+ * `onlyMask` (v2.3.2854), when given, limits it to pixels that are key in THAT
+ * mask too -- the key as the FILE has it, for a buffer something has painted
+ * on since: the key test is a hue window (315-350), and a player's pink or
+ * magenta tattoo sits inside it (#d76ba8 is hue 326).
  */
-export function recolorToolKey(data, w, h, spec, scale = 1) {
+export function recolorToolKey(data, w, h, spec, scale = 1, onlyMask = null) {
   const m = toolKeyMask(data, w, h);
+  if (onlyMask) for (let i = 0; i < m.length; i++) if (!onlyMask[i]) m[i] = 0;
   let head = null;
   if (spec.head) {
     const R = (spec.headPx || 4) * scale;
@@ -168,11 +173,11 @@ export function recolorToolKey(data, w, h, spec, scale = 1) {
 }
 
 /** Recolour the tool key of a canvas in place. */
-export function recolorToolKeyCanvas(cv, spec, scale = 1) {
+export function recolorToolKeyCanvas(cv, spec, scale = 1, onlyMask = null) {
   if (!cv || !cv.width || !cv.height) return 0;
   const ctx = cv.getContext('2d', { willReadFrequently: true });
   const img = ctx.getImageData(0, 0, cv.width, cv.height);
-  const n = recolorToolKey(img.data, cv.width, cv.height, spec, scale);
+  const n = recolorToolKey(img.data, cv.width, cv.height, spec, scale, onlyMask);   /* v2.3.2854: + onlyMask */
   if (n) ctx.putImageData(img, 0, 0);
   return n;
 }
