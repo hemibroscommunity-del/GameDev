@@ -30,7 +30,7 @@
  * players does not flash in unison -- which is also what keeps the number of
  * filtered sprites in any one frame small.
  *
- * ═══ v2.3.2836: A SOFT SHINE THAT STAYS (PREVIEW, OFF UNLESS ASKED FOR) ═══
+ * ═══ v2.3.2857: A SOFT SHINE THAT STAYS (PREVIEW, OFF UNLESS ASKED FOR) ═══
  *
  * Owner: "aside from the glint can you see what adding a permanent soft shine
  * to armor and sword (and other metals) would look like?"
@@ -88,7 +88,7 @@ void main()
     float band = exp(-(d * d) / 0.006);
     float lum = c.a > 0.0 ? dot(c.rgb / c.a, vec3(0.299, 0.587, 0.114)) : 0.0;
     float k = band * uStrength * (0.3 + 0.7 * lum);
-    /* v2.3.2836: the sheen.  How bright the ART was here, before the metal's
+    /* v2.3.2857: the sheen.  How bright the ART was here, before the metal's
        tint multiplied it down: the drawn colour divided by the tint. */
     vec3 art = c.a > 0.0 ? clamp(c.rgb / c.a / max(uTint, vec3(0.05)), 0.0, 1.0) : vec3(0.0);
     /* only the art's real highlights: a broad mask lifted the midtones too,
@@ -133,7 +133,7 @@ function makeGlintFilter() {
         uProgress: { value: 0, type: 'f32' },
         uStrength: { value: 0.6, type: 'f32' },
         uColor: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
-        uSheen: { value: 0, type: 'f32' },                                   /* v2.3.2836 */
+        uSheen: { value: 0, type: 'f32' },                                   /* v2.3.2857 */
         uSun: { value: new Float32Array([0, 0]), type: 'vec2<f32>' },
         uTint: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
       },
@@ -156,7 +156,7 @@ export const METAL_SHINE = Object.assign(Object.create(null), {
    high strength widens the part of the band that reaches white rather than
    blowing the whole blade out.  First cut had normal at 0.55 and in the
    pictures a normal copper blade's glint could not be seen at phone size. */
-/* v2.3.2836: `sheen` is the permanent shine's strength at its brightest
+/* v2.3.2857: `sheen` is the permanent shine's strength at its brightest
    (the art's highlights, on the sun side) -- it climbs with the grade too, so
    a better piece is shinier all the time, not only more often.
    THE STRONG CUT.  The preview's pictures showed three columns -- off, a soft
@@ -171,7 +171,7 @@ export const GRADE_SHINE = Object.assign(Object.create(null), {
   godly: { period: 1900, dur: 680, strength: 1.4, sheen: 1.2, color: [1.0, 0.92, 0.6] },
 });
 
-/* ═══ v2.3.2836: THE SHEEN'S SWITCH -- OFF UNLESS THIS DEVICE ASKED ═══ */
+/* ═══ v2.3.2857: THE SHEEN'S SWITCH -- OFF UNLESS THIS DEVICE ASKED ═══ */
 const SHEEN_KEY = 'bt-sheen';
 let _sheen = null;
 export function sheenOn() {
@@ -221,7 +221,7 @@ export class GlintSystem {
   constructor() {
     this._on = new Map();        /* sprite -> filter currently attached */
     this._pool = [];
-    this.force = null;           /* QA/pictures: a fixed sweep progress, 0-1; -1 = no sweep anywhere (v2.3.2836) */
+    this.force = null;           /* QA/pictures: a fixed sweep progress, 0-1; -1 = no sweep anywhere (v2.3.2857) */
     this.stats = { targets: 0, lit: 0, sheen: 0 };
     this._lastTargets = null;
     this.sheenScale = null;      /* QA/pictures: multiply the sheen, to show a softer or stronger cut */
@@ -271,7 +271,7 @@ export class GlintSystem {
       if (cm) {
         const s = [];
         if (pd.visible) pushVisible(s, pd._gearChest);
-        /* v2.3.2836: jogging in a full set, the armour IS the body sprite */
+        /* v2.3.2857: jogging in a full set, the armour IS the body sprite */
         if (pd.visible && pd._fullsetOn && pd._spriteBody && pd._spriteBody.visible) {
           pushVisible(s, pd._spriteBody);
           this._bodies.add(pd._spriteBody);
@@ -304,7 +304,7 @@ export class GlintSystem {
         if (cm) {
           const s = [];
           if (d.visible) pushVisible(s, d._gearChest);
-          if (d.visible && d._fullsetOn) pushVisible(s, d._spriteBody);   /* v2.3.2836 */
+          if (d.visible && d._fullsetOn) pushVisible(s, d._spriteBody);   /* v2.3.2857 */
           if (sw) pushVisible(s, sw.chest);
           this._slot(out, id + ':c', s, cm, 'normal');
         }
@@ -320,7 +320,7 @@ export class GlintSystem {
     return out;
   }
 
-  /* `sheen` (v2.3.2836): null when the permanent shine is off, else
+  /* `sheen` (v2.3.2857): null when the permanent shine is off, else
      { k, sx, sy } -- how much of it the light allows (0-1) and the direction
      of the sun on screen (a unit vector, or 0,0 in a zone with no sun). */
   update(S, now, er, fx, zone, sheen) {
@@ -372,7 +372,7 @@ export class GlintSystem {
     this._lastTargets = targets;
   }
 
-  /* QA probe (v2.3.2836): which slots are lit right now, and whether that
+  /* QA probe (v2.3.2857): which slots are lit right now, and whether that
      includes a full-set figure on a body sprite.  Worked out here, when asked,
      rather than every frame. */
   probeStats() {
