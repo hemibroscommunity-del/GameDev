@@ -22,6 +22,9 @@ var REMOTE_SHOT_H = 26;
    number and the two are asserted in lockstep there. */
 var PRINT_GAP = 46;
 var PRINT_MAX = 40;
+/* v2.3.2918: other players' prints get a pool of their own, so a crowd walking
+   past cannot shorten YOUR trail by pushing it out of the shared cap. */
+var PEER_PRINT_MAX = 60;
 
 export function updateVisualSystems(S) {
         /* ── Screen shake decay ── */
@@ -126,6 +129,58 @@ export function updateVisualSystems(S) {
           /* Standing still resets the anchor, so the first step after a pause
              is a fresh gap rather than a print dropped the instant you move. */
           S._printLast = null;
+        }
+        /* ═══ v2.3.2918: AND EVERYONE ELSE'S ═══
+           Owner: "check all other broadcasted player animations to make sure
+           they match what your character does client side."
+           Your walk leaves prints in the snow; every other player's walked on
+           it without leaving a mark, on your screen -- while on their own screen
+           it left the same trail yours does.  Same rule for a peer: a pair
+           every PRINT_GAP px of where they ARE (the position their last packet
+           reported, which their drawn figure follows a frame or two behind),
+           only while they WALK -- the same vx/vy test yours reads above.
+           Position and walking both come off the same packets, so the two can
+           never disagree about when a stretch was walked.
+           No separate roll rule, because yours has none: a roll with a
+           direction held still walks (the stick is not locked out mid-roll) and
+           lays prints, and one with nothing held lays none.  But mid-roll their
+           packets carry the ROLL's velocity, not the walk's, so for the length
+           of their roll the answer comes from the roll itself (dodge.js
+           walkingNow, sent with it); an older client that doesn't say falls
+           back to the velocity.
+           The anchors live in a Map owned here (peer ids are client-supplied:
+           rule 4), not on the peer object, which relays merge into verbatim. */
+        if (zoneLeavesPrints(S.currentZone) && S.others) {
+          if (!S._peerPrintLast) S._peerPrintLast = new Map();
+          for (var _qid in S.others) {
+            var _qo = S.others[_qid];
+            var _qx = _qo ? _qo.x : NaN, _qy = _qo ? _qo.y : NaN;
+            var _qRoll = _qo && _qo._dodgeRoll;
+            var _qStep = (_qRoll && typeof _qRoll.walk === 'boolean') ? _qRoll.walk
+              : !!_qo && (Math.abs(_qo._vx || 0) > 0.01 || Math.abs(_qo._vy || 0) > 0.01);
+            var _qWalk = !!_qo && !_qo._isDead && _qStep
+              && (_qo.zone || _qo.z || 'town') === S.currentZone
+              && isFinite(_qx) && isFinite(_qy);
+            if (!_qWalk) { S._peerPrintLast.delete(_qid); continue; }
+            var _qLast = S._peerPrintLast.get(_qid);
+            if (!_qLast) { S._peerPrintLast.set(_qid, { x: _qx, y: _qy }); continue; }
+            var _qdx = _qx - _qLast.x, _qdy = _qy - _qLast.y;
+            if (_qdx * _qdx + _qdy * _qdy >= PRINT_GAP * PRINT_GAP) {
+              if (!S.peerFootprints) S.peerFootprints = [];
+              S.peerFootprints.push({ x: _qLast.x, y: _qLast.y, ang: Math.atan2(_qdy, _qdx), ts: Date.now() });
+              if (S.peerFootprints.length > PEER_PRINT_MAX) {
+                S.peerFootprints.splice(0, S.peerFootprints.length - PEER_PRINT_MAX);
+              }
+              S._peerPrintLast.set(_qid, { x: _qx, y: _qy });
+            }
+          }
+          /* A peer who left mid-stride is no longer in S.others to be deleted
+             above: drop their anchor too, or the Map outlives them. */
+          S._peerPrintLast.forEach(function (_v, _id) { if (!S.others[_id]) S._peerPrintLast.delete(_id); });
+        } else if (S._peerPrintLast && S._peerPrintLast.size) {
+          /* Out of the snow: nothing is laid, so no anchor may carry over to
+             drop a print back where someone stood before you left. */
+          S._peerPrintLast.clear();
         }
 
         /* ── Other player interpolation ── */

@@ -38,6 +38,21 @@ export function dodgeWindowMs(R) {
     + Math.min(200, 2 * ((R && R.enduranceSpec && R.enduranceSpec.reflexes) || 0));
 }
 
+/* ═══ v2.3.2918: ...AND WHETHER YOU WERE WALKING WHEN IT STARTED ═══
+   Owner: "check all other broadcasted player animations to make sure they
+   match what your character does client side."
+   Your snow prints come from your WALK velocity (visualSystems), and the stick
+   is not locked out mid-roll, so a roll with a direction held leaves prints
+   and one with nothing held leaves none.  Nobody else could tell the two
+   apart: while you roll, your position packets report the ROLL's velocity
+   (BroTown's move send), whatever your stick is doing.  So each roll says
+   which it is, off the same vx/vy and the same 0.01 threshold the print rule
+   reads. */
+export function walkingNow(S) {
+  var P = S && S.player;
+  return !!P && (Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01);
+}
+
 export var triggerContextualDodge = function (S, R, ang) {
     if (S._dodgeRoll) return;
     /* ═══ v2.3.2242: A DODGE CANCELS THE BLOCK ═══
@@ -95,7 +110,7 @@ export var doStandardDodge = function (S, R, ang) {
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
     if (S.channel) {
-      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'dodge', angle: ang, ts: Date.now(), dur: dodgeWindowMs(R) } }); } catch (e) {}
+      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'dodge', angle: ang, ts: Date.now(), dur: dodgeWindowMs(R), walk: walkingNow(S) } }); } catch (e) {}
     }
     S._hasDodged = true;
     S._dodgeFlash = Date.now();
@@ -146,7 +161,7 @@ export var doLunge = function (S, R, ang) {
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
     if (S.channel) {
-      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'lunge', angle: dirAng, ts: Date.now(), dur: dodgeWindowMs(R) } }); } catch (e) {}
+      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'lunge', angle: dirAng, ts: Date.now(), dur: dodgeWindowMs(R), walk: walkingNow(S) } }); } catch (e) {}
     }
     S._lungeIFramesUntil = Date.now() + (LUNGE_IFRAMES_MS || 150);
     S._dodgeFlash = Date.now();
@@ -237,7 +252,7 @@ export var doRetreatShot = function (S, R, ang) {
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
     if (S.channel) {
-      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'retreat_shot', angle: ang, ts: Date.now(), dur: dodgeWindowMs(R) } }); } catch (e) {}
+      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'retreat_shot', angle: ang, ts: Date.now(), dur: dodgeWindowMs(R), walk: walkingNow(S) } }); } catch (e) {}
     }
     S._dodgeFlash = Date.now();
     S._hasDodged = true;
