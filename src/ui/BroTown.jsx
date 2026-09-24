@@ -153,7 +153,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    NOT the greeting video above — see welcomeBanner.js for why those are
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
-import { markWorldIn } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time */
+import { markWorldIn, skipTutorial } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
@@ -186,6 +186,10 @@ export var QUEST_MSG_MS = 2200;
    after a QUEST COMPLETED! is the accept of the following step, which needs a
    walk to the giver first. */
 export var QUEST_MSG_LONG_MS = 5200;
+/* v2.3.2890: the WELCOME plate carries a button now (Skip tutorial), and a
+   button needs time to be read and reached -- 5.2s is a line of text, not a
+   decision.  Its own hold, so the completions keep theirs. */
+export var QUEST_MSG_WELCOME_MS = 9000;
 /* ONE place decides, so the queue gate, the expiry sweep, the render gate and
    the CSS fade cannot drift apart — a banner that is drawn while considered
    expired (or held with no fade) is the failure that split constants cause. */
@@ -220,7 +224,8 @@ export function questMsgMs(kind) {
      asking them to find a name they have not met yet.  It also fires ONCE in
      a character's life, so the queue cost the note above worries about is
      paid at most once. */
-  return (kind === 'completed' || kind === 'reward' || kind === 'welcome')
+  if (kind === 'welcome') return QUEST_MSG_WELCOME_MS;   /* v2.3.2890 */
+  return (kind === 'completed' || kind === 'reward')
     ? QUEST_MSG_LONG_MS : QUEST_MSG_MS;
 }
 
@@ -11604,7 +11609,39 @@ export var BroTown = function BroTown(_ref0) {
       textShadow: '0 2px 8px rgba(0,0,0,.75)',
       marginTop: 3
     }
-  }, questMsg.sub))), rpgState && /*#__PURE__*/React.createElement("div", {
+  }, questMsg.sub),
+  /* ═══ v2.3.2890: SKIP TUTORIAL ═══
+     Owner: "add just a 'skip tutorial' button on the very first dialog box
+     when you join the game.  No pop ups should be scheduled after that."
+     The WELCOME plate is that first dialog, and it is the one plate with a
+     control on it.  The overlay above stays pointerEvents:'none' (the note
+     there is load-bearing for every other kind); only this button takes a
+     tap.  onboardingPace.skipTutorial() silences everything scheduled after
+     it -- the coach cards, the install card, the step toasts -- and the
+     plate goes at once. */
+  questMsg.kind === 'welcome' && /*#__PURE__*/React.createElement("button", {
+    type: 'button',
+    className: 'bt-quest-skip',
+    'data-skip-tutorial': '1',
+    onClick: function () {
+      skipTutorial();
+      setQuestMsg(null);
+    },
+    style: {
+      pointerEvents: 'auto',
+      marginTop: 10,
+      minHeight: 38,
+      padding: '8px 18px',
+      borderRadius: 999,
+      border: '1px solid rgba(216,169,77,.55)',
+      background: 'rgba(216,169,77,.12)',
+      color: '#F4F0E7',
+      font: '700 13px/1 Source Sans 3,sans-serif',
+      letterSpacing: '.04em',
+      cursor: 'pointer',
+      WebkitTapHighlightColor: 'transparent'
+    }
+  }, "Skip tutorial"))), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 44,

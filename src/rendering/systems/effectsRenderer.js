@@ -448,7 +448,7 @@ import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
-import { SHADE } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks */
+import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
@@ -2328,6 +2328,9 @@ export class EffectsRenderer {
 
     // Chat bubble texts
     this.chatTexts = new Map();
+    /* v2.3.2896: each speaker's last seen name-plate band, as an offset from
+       their position -- see _updateChatBubbles.  A Map: wire ids as keys. */
+    this._chatBandOff = new Map();
 
     // Screen flash overlay
     this.flashOverlay = new Graphics();
@@ -4924,20 +4927,42 @@ export class EffectsRenderer {
     }
 
     /* Stuck arrows — embedded in monster bodies after a hit.  Drawn
-       half-length per the Canvas 2D path (BroTown.jsx ~11756). */
+       half-length per the Canvas 2D path (BroTown.jsx ~11756).
+       v2.3.2891: only in the living.  A dead monster stays in S.monsters
+       (alive=false) until it respawns, and its shafts were cleared only
+       then -- so they hung in the air over the death crumble and the empty
+       spot.  Owner: "Arrows stuck in monsters persist even after death."
+       Dropped on death so a respawn starts clean too. */
     const monsters = S.monsters || [];
     for (const m of monsters) {
       if (!m || !m._stuckArrows || !m._stuckArrows.length) continue;
+      if (m.alive === false || m.curHp <= 0) { m._stuckArrows.length = 0; continue; }
+      /* v2.3.2889: at the size the MONSTER is drawn.  Owner: "Arrows shot at
+         far away mummies in desert winds at small perspective are still
+         large."  The arrow in flight has shrunk with the depth curve since
+         v2.3.2790 (_pk at its own position), and so does a snapped one --
+         but the shaft left sticking out of the body was drawn at full size,
+         so a mummy on the Wind Dunes horizon (0.42) grew an arrow 2.4x too
+         big the moment it was hit.  Scaled at the monster's feet, the size
+         its body is drawn (combatHelpers.monsterDrawScale); 1 in every zone
+         without a depth curve, so nothing else changes. */
+      const _mk = zonePlayerScale(S.currentZone,
+        (typeof m.renderX === 'number') ? m.renderX : m.x,
+        (typeof m.renderY === 'number') ? m.renderY : m.y, TILE) || 1;
       for (const sa of m._stuckArrows) {
         const sx = m.x + (sa.ox || 0);
         const sy = m.y + (sa.oy || 0);
         const color = (sa.color && cssToHex(sa.color)) || 0x8b6914;
         if (sa.isStaff) {
-          this._drawStuckMagicShard(gfx, sx, sy, sa.ang, color);
+          this._drawStuckMagicShard(gfx, sx, sy, sa.ang, color, _mk);
         } else {
-          this._drawStuckArrow(gfx, sx, sy, sa.ang, color);
+          this._drawStuckArrow(gfx, sx, sy, sa.ang, color, _mk);
         }
       }
+      /* v2.3.2889: what the last shaft was DRAWN at, for mp-dunedepth */
+      const _lastSp = this.arrowSprites[this._arrowSpriteN - 1];
+      this._stuckScaleProbe = { id: m.id, y: Math.round(m.y), k: +_mk.toFixed(4),
+        spriteScale: _lastSp ? +Math.abs(_lastSp.scale.x).toFixed(4) : null };
     }
 
     // Remote projectiles
@@ -5432,6 +5457,7 @@ export class EffectsRenderer {
   /* v2.3.2287: the arrow probe's reader. Armed lazily like the rest -- no cost
      unless something calls it, and nothing in the game does. */
   projScaleProbe() { return this._projScaleProbe || null; }
+  stuckScaleProbe() { return this._stuckScaleProbe || null; }   /* v2.3.2889 */
 
   _updateProjectileTrail(p, gfx, fadeA, isOrb, pk) {
     const TRAIL_LEN = 8;
@@ -5755,7 +5781,8 @@ export class EffectsRenderer {
 
   /** Stuck arrow on a monster — half-length, fletching at the air end,
    *  arrowhead buried in the body.  Center (cx, cy) is the impact point. */
-  _drawStuckArrow(gfx, cx, cy, ang, color) {
+  _drawStuckArrow(gfx, cx, cy, ang, color, pk) {   /* v2.3.2889: + pk, the depth scale of the monster it is in */
+    const _dk = (pk > 0 && isFinite(pk)) ? pk : 1;
     /* v2.3.1825: the same painted arrow as the one in flight, headless and
        pinned by its cut end.  Reusing the texture rather than recolouring
        the polygons is the only version of "they match" that survives the
@@ -5772,11 +5799,11 @@ export class EffectsRenderer {
          the RATIO is what keeps the two reading as one missile. */
       const STUB_FRAC = 11 / 17.5;
       const k = (ARROW_PINE.lenPx * STUB_FRAC) / (ARROW_PINE.lenPx * ARROW_PINE.headFrac);
-      this._placeArrowSprite(cx, cy, ang, 0.9, k, false, true);
+      this._placeArrowSprite(cx, cy, ang, 0.9, k * _dk, false, true);
       this._arrowsDrawn = (this._arrowsDrawn || 0) + 1;
       return;
     }
-    const c = Math.cos(ang), s = Math.sin(ang);
+    const c = Math.cos(ang) * _dk, s = Math.sin(ang) * _dk;
     const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
     /* Shaft 11 px out, 2.4 px wide — ending AT the impact point (v2.3.1765;
        it used to run to +2, i.e. 2px of shaft painted over the body). */
@@ -5795,11 +5822,12 @@ export class EffectsRenderer {
   }
 
   /** Embedded magic shard from a staff bolt. */
-  _drawStuckMagicShard(gfx, cx, cy, ang, color) {
-    const c = Math.cos(ang), s = Math.sin(ang);
+  _drawStuckMagicShard(gfx, cx, cy, ang, color, pk) {   /* v2.3.2889: + pk, as the stuck arrow */
+    const _dk = (pk > 0 && isFinite(pk)) ? pk : 1;
+    const c = Math.cos(ang) * _dk, s = Math.sin(ang) * _dk;
     const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
     this._fillPoly(gfx, [pt(4, 0), pt(-2, -2), pt(-2, 2)], color, 0.66);
-    gfx.circle(cx, cy, 3);
+    gfx.circle(cx, cy, 3 * _dk);
     gfx.fill({ color, alpha: 0.27 });
   }
 
@@ -7081,7 +7109,7 @@ export class EffectsRenderer {
    *  white rounded rectangle background + pointer tip + text.  Pooled
    *  per key as { container, bg (Graphics), text (Text), hasEmoji }
    *  in this.chatTexts.  Source can be either a player or an NPC. */
-  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000, worldScale = 0) {
+  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000, worldScale = 0, tipY = null) {
     const hasEmoji = !isAsciiOnly(text);
     let entry = this.chatTexts.get(key);
     if (entry && entry.text && entry.text.destroyed) {
@@ -7155,6 +7183,19 @@ export class EffectsRenderer {
              height.  320 world px is 213 screen px at the 0.667 scale,
              ~55% of a 390px phone. */
           wordWrapWidth: 320,
+          /* ═══ v2.3.2896: A WORD LONGER THAN THE LINE STILL WRAPS ═══
+             Owner: "for long messages the messages exceed the chatbar
+             horizontal length and spill into the background.  Make it so that
+             long text wraps into a second line."  wordWrap alone only breaks
+             at SPACES, so one word wider than the wrap -- "hahahahaha...", a
+             link, a name typed without spaces -- stayed on one line, and the
+             bubble behind it is capped at 336 (see bw below), so the text ran
+             out past both ends of the box and over the ground.  Reproduced on
+             the built client: sixty characters of "ha" were a single line
+             twice the bubble's width.  breakWords splits such a word at the
+             wrap width instead, and CanvasTextMetrics (which sizes the bubble)
+             reads the same style, so the box and the lines it holds agree. */
+          breakWords: true,
         },
       });
       txt.anchor.set(0.5, 0);
@@ -7192,6 +7233,7 @@ export class EffectsRenderer {
          wrap (320 + 2*8 = 336).  A cap below the wrap width silently
          re-creates the v2.3.1719 bug, so these two move together. */
       const bw = Math.min(336, tw + padX * 2);
+      entry._lineW = tw; entry._boxW = bw;   /* v2.3.2896: for the QA probe below */
       const bh = th + padY * 2;
       entry.bg.clear();
       /* ═══ v2.3.2823: THE BUBBLE POPS ═══
@@ -7230,7 +7272,10 @@ export class EffectsRenderer {
       entry.text.y = -bh - tipH + padY;
     }
     entry.container.x = sx;
-    entry.container.y = sy - 32;
+    /* v2.3.2896: `tipY`, when the caller knows it, is where the point of the
+       bubble goes -- see _updateChatBubbles.  sy - 32 is the old anchor, kept
+       for a speaker whose head has not been measured yet (a first frame). */
+    entry.container.y = (typeof tipY === 'number' && isFinite(tipY)) ? tipY : sy - 32;
     /* ═══ v2.3.2247: THE BUBBLE HOLDS ITS READING SIZE ═══
        The v2.3.1912 note above ends "Any future WORLD_ZOOM change moves this
        again" -- and this is that change.  The bubble lives in the WORLD layer,
@@ -7272,7 +7317,19 @@ export class EffectsRenderer {
         worldScale: _sc,
         effectivePx: entry.text.style.fontSize * _sc,
         wrapWidth: entry.text.style.wordWrapWidth,
+        /* v2.3.2896: where the point is, and how wide the laid-out text is
+           against the box, in world px (mp-chatbubble) */
+        tipX: entry.container.x,
+        tipY: entry.container.y,
+        breakWords: !!entry.text.style.breakWords,
+        lineW: entry._lineW,   /* the longest laid-out line, bubble-local px */
+        boxW: entry._boxW,     /* the box drawn round it, same units */
       };
+      /* ...and per bubble, because the single probe above is whichever
+         bubble drew LAST this frame -- an NPC's, as often as not.  A Map:
+         the keys are player ids off the wire (CLAUDE.md, '__proto__'). */
+      if (!window.__btChatBubbles) window.__btChatBubbles = new Map();
+      window.__btChatBubbles.set(key, window.__btChatBubble);
     }
     return entry;
   }
@@ -7299,7 +7356,38 @@ export class EffectsRenderer {
       if (pid !== S.myId && (source.zone || source.z || 'town') !== S.currentZone) continue;
       const sx = source.renderX || source.x || 0;
       const sy = source.renderY || source.y || 0;
-      this._renderChatBubble(pid, sx, sy, bubble.text, age, 5000, S._worldScaleX || 0);
+      /* ═══ v2.3.2896: THE POINT GOES ABOVE THE NAME, NOT ON THE FACE ═══
+         Owner: "make it so that the chat point (closest to the player) is
+         lined up above the player (not on their face like it is currently)."
+         The fixed sy - 32 was set when the name plate hung under the feet;
+         since v2.3.2571 the plate (or the HP bar in a fight) sits on the band
+         line over the head, and 32 world px up from the body's anchor landed
+         the point on the forehead with the bubble hiding the name.  Measured
+         on the built client in town: the point was ~50 screen px below the
+         top of the plate.
+         So the point sits just over that band, whose top the entity pass
+         publishes in world px -- S._selfBandTopY for you (the same line the
+         harvest bar clears), other._bandTopY for everyone else.  The gap is
+         in SCREEN px, divided out of the world scale the way the bubble's own
+         size is (v2.3.2247), so it is the same few pixels in every zone.
+         WHEN THERE IS NO BAND THIS FRAME -- the figure is hidden behind one
+         of its stand-ins (a swing, the lumberjack, the cook) and publishes
+         null -- the last band seen for that speaker is reused as an offset
+         from their position, so chatting while chopping does not drop the
+         bubble back onto the face for exactly as long as the axe is up.
+         Only a speaker never seen with a band falls back to the old anchor. */
+      const _band = pid === S.myId ? S._selfBandTopY : source._bandTopY;
+      let _top = null;
+      if (typeof _band === 'number' && isFinite(_band)) {
+        _top = _band;
+        if (this._chatBandOff.size > 256) this._chatBandOff.clear();   /* bounded: one number per speaker */
+        this._chatBandOff.set(pid, _band - sy);
+      } else if (this._chatBandOff.has(pid)) {
+        _top = sy + this._chatBandOff.get(pid);
+      }
+      const _ws = S._worldScaleY || S._worldScaleX || 0;
+      const tipY = _top != null ? _top - (_ws > 0.01 ? 4 / _ws : 4) : null;
+      this._renderChatBubble(pid, sx, sy, bubble.text, age, 5000, S._worldScaleX || 0, tipY);
       activeKeys.add(pid);
     }
 
@@ -7310,7 +7398,14 @@ export class EffectsRenderer {
       const age = now - npc.chatBubble.ts;
       if (age > 5000) continue;
       const key = 'npc:' + npc.id;
-      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age, 5000, S._worldScaleX || 0);
+      /* v2.3.2896: the same rule as a player's, above -- the point just over
+         the top of his head (entityRenderer npc._headTopY: the hat, or the
+         quest badge over it), where the old 32 px up from his feet put it at
+         his knees with the bubble over the rest of him. */
+      const _nt = npc._headTopY;
+      const _nws = S._worldScaleY || S._worldScaleX || 0;
+      const npcTip = (typeof _nt === 'number' && isFinite(_nt)) ? _nt - (_nws > 0.01 ? 4 / _nws : 4) : null;
+      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age, 5000, S._worldScaleX || 0, npcTip);
       activeKeys.add(key);
     }
 
@@ -8884,7 +8979,7 @@ export class EffectsRenderer {
           node._pixiSprite.anchor.set(0.5, NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5);
           /* v2.3.2767: formShade.js -- trees, rocks and ore stand lit from
              above; a fishing spot is water, not a form, and is left alone */
-          if (!/fish/i.test(String(node.nodeType))) node._pixiSprite._vShade = SHADE.prop;
+          if (!/fish/i.test(String(node.nodeType))) node._pixiSprite._vShade = propShade(S.currentZone);   /* v2.3.2893: frost's snowy trees and rocks shade near-neutral, as its snowbanks do */
           /* Add at bottom of nodeLayer so the tier badge, emoji, and
              proximity tips (added with plain addChild elsewhere) stack
              above every sprite. */
@@ -10463,6 +10558,10 @@ export class EffectsRenderer {
         const packed = packTrimmed(img, w, H, n);
         const src = Texture.from(packed ? packed.canvas : img).source;
         src.scaleMode = 'linear';
+        /* v2.3.2887: the file it was cut from, as gearSheets labels the
+           walking layers (v2.3.2750) -- the packed canvas has no URL of its
+           own.  mp-sheenall finds the metal on screen by it.  QA-only. */
+        try { src.label = _url; } catch (e) { /* label is QA-only */ }
         const arr = [];
         for (let i = 0; i < n; i++) {
           if (packed) {

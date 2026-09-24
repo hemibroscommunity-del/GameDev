@@ -48,12 +48,11 @@ export const ZONE_PROPS = {
     { id: 'bank', x: 1495, y: 760, blockW: 357, blockD: 154 },
   ],
   frost: [
-    { id: 'frost-pine-pair', x: 360, y: 700, blockW: 119, blockD: 56 },
-    { id: 'frost-pine-ridge', x: 270, y: 380, blockW: 118, blockD: 53 },
+    /* v2.3.2894: three snowbanks in a line, nothing else (owner: "the small
+       zone needs space and not props") -- MIRROR of src/data/worldProps.js */
+    { id: 'frost-snowbank-w', x: 140, y: 570, blockW: 202, blockD: 42 },
     { id: 'frost-rock-ridge', x: 430, y: 570, blockW: 202, blockD: 42 },
-    { id: 'frost-rock-mound', x: 800, y: 470, blockW: 119, blockD: 46 },
-    { id: 'frost-ice-mound', x: 600, y: 260, blockW: 114, blockD: 35 },
-    { id: 'frost-snow-shrubs', x: 700, y: 830, blockW: 75, blockD: 28 },
+    { id: 'frost-snowbank-e', x: 720, y: 570, blockW: 202, blockD: 42 },
   ],
 };
 

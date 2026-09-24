@@ -112,9 +112,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the worker advertises party chat', pchat);
   if (pchat) {
     /* __broLegacyUI.chat() TOGGLES, so opening it blind can close it — drive
-       it until the Send button is actually there. */
-    const chatOpen = () => A.page.evaluate(() =>
-      [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'));
+       it until the composer is actually there.  v2.3.2896: its box, not its
+       Send button, which is gone -- Enter is what the phone's key sends. */
+    const chatOpen = () => A.page.evaluate(() => {
+      const t = document.querySelector('[data-chat-input]');
+      return !!(t && t.offsetParent);
+    });
     for (let i = 0; i < 3 && !(await chatOpen()); i++) {
       await A.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.chat());
       await A.page.waitForTimeout(600);
@@ -124,7 +127,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        composer became a <textarea> on its own row at v2.3.2039 and that
        xpath has matched nothing since (TRAPS §29). */
     await A.page.locator('[data-chat-input]').first().fill('/p party line');
-    await H.clickText(A, 'Send');
+    await A.page.locator('[data-chat-input]').first().press('Enter');
     /* and close it again so it cannot sit over the party HUD checks below */
     await A.page.waitForTimeout(400);
     if (await chatOpen()) await A.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.chat());
