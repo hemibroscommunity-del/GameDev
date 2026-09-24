@@ -324,7 +324,10 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      day and turns the drifting air (cloud shadows, fog, motes) off: they are
      decoration, and a pixel test must not depend on where a cloud happened to
      be.  mp-worldfx, the scenario ABOUT the weather, sets both back itself. */
-  await page.addInitScript(() => { window.__btTod = 'day'; window.__btAmbienceOff = true; });
+  /* v2.3.2865: the tutorial's 20s gap between pop-ups (onboardingPace.js)
+     would make every coach scenario wait minutes; scenarios run at the old
+     2.6s, and mp-a2hs checks the real gap by clearing this. */
+  await page.addInitScript(() => { window.__btTod = 'day'; window.__btAmbienceOff = true; window.__btCoachGapMs = 2600; });
   if (init) await page.addInitScript(init);
   await page.goto(`http://localhost:${webPort}/${guest ? '?guest=1' : ''}`, { waitUntil: 'domcontentloaded' });
   return { ctx, page, logs, name, seeded: !!phrase };
