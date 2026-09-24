@@ -5,9 +5,15 @@
  * equipping steel chest + legs, once more in the armour, once after taking it
  * off -- with the masked-body bake count and time (__btBakeStats) for each.
  *   node tools/qa/qa-equip-stutter.mjs $PWD [rate]      (QA_DIST=... for another build)
- *   PROF=out.cpuprofile ... also writes a CPU profile of the equip run. */
+ *   PROF=out.cpuprofile ... also writes a CPU profile of the equip run.
+ * v2.3.2904: GEAR=chest|legs|both (default both).  One piece on its own is the
+ * case that still stuttered after v2.3.2874 -- no knight figure covers its run,
+ * so every jog frame is a masked bake -- and `local` reports what the render
+ * path did with its misses (_localMaskedFrame: plain = drawn unmasked while
+ * the worker baked, inline/late = baked in the frame). */
 const repo = process.argv[2];
 const RATE = +(process.argv[3] || 4);
+const GEAR = process.env.GEAR || 'both';
 const H = await import(repo + '/tools/qa/mp/harness.mjs');
 const WS = await H.freePort(), WEB = await H.freePort();
 const srv = await H.serveDist(WEB);
@@ -37,7 +43,8 @@ try {
     return { frames: n, p50: q(0.5), p95: q(0.95), p99: q(0.99), max: +f[n - 1].toFixed(1),
       over50: f.filter((x) => x > 50).length, over100: f.filter((x) => x > 100).length,
       longMs: Math.round(f.filter((x) => x > 50).reduce((a, b) => a + b, 0)),
-      bakes: bs.count - window.__bs0.count, bakeMs: Math.round(bs.ms - window.__bs0.ms) };
+      bakes: bs.count - window.__bs0.count, bakeMs: Math.round(bs.ms - window.__bs0.ms),
+      local: (window.__btBakeWorker && window.__btBakeWorker().local) || null };   /* v2.3.2904: cumulative */
   });
   const run = async () => { for (const k of ['w', 'd', 's', 'a', 'w', 'd']) await H.nudge(P, k, 1200); };
   /* control: the same run, nothing changed */
@@ -45,7 +52,10 @@ try {
   /* equip both pieces, then the same run straight away */
   await arm();
   if (process.env.PROF) { await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 500 }); await cdp.send('Profiler.start'); }
-  await P.page.evaluate(() => { window.__btSetGear('chest', 'steelplate'); window.__btSetGear('legs', 'steelgreaves'); });
+  await P.page.evaluate((g) => {
+    if (g === 'both' || g === 'chest') window.__btSetGear('chest', 'steelplate');
+    if (g === 'both' || g === 'legs') window.__btSetGear('legs', 'steelgreaves');
+  }, GEAR);
   await run(); out.equip = await read();
   if (process.env.PROF) {
     const { profile } = await cdp.send('Profiler.stop');
@@ -63,5 +73,5 @@ try {
   await H.stopWorker(worker).catch(() => {});
   try { srv.close(); } catch (e) {}
 }
-console.log(JSON.stringify({ repo: repo.split('/').pop(), rate: RATE, ...out }, null, 1));
+console.log(JSON.stringify({ repo: repo.split('/').pop(), rate: RATE, gear: GEAR, ...out }, null, 1));
 process.exit(0);

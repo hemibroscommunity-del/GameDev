@@ -134,7 +134,11 @@ const TRAIL_STEP_ARROW = 1.3;   /* tiles between chevrons */
 const TRAIL_STEP_RIBBON = 0.28; /* sampling step, not a gap */
 /* v2.3.2764: one footstep to the next -- a stride is two of these, left and
    right, so this is how far apart consecutive prints land along the road. */
-const TRAIL_STEP_FOOT = 0.62;
+/* v2.3.2888 (owner: "Make footprint quest leader more spaced out the
+   footprints are tiny"): 0.62 -> 1.05 tiles between steps, with the prints
+   themselves half again as big (_trailSteps LEN) -- a real stride for a
+   bigger foot, fewer and clearer marks along the same seven tiles. */
+const TRAIL_STEP_FOOT = 1.05;
 /* ═══ v2.3.2764: THE FOOTPRINT, PAINTED ONCE ═══
    A left bare foot pointing +x, big toe toward +y.  Drawn at 2x the size it
    lands on a phone so it stays crisp when the camera zooms.  Ink halo from
@@ -1469,6 +1473,15 @@ export class TileRenderer {
      Same ink / gold / core sandwich as every other style, for the same
      reason: gold on gold cobble is invisible without the dark backing. */
   _trailSteps(samples, now) {
+    /* v2.3.2895 (owner: "Right now there's 3 sets of footprints for the quest
+       trail. Use only the furthest set of footprints (of 2 feet)"): the
+       sampler still walks the whole lit road -- 1.4 to 7 tiles at a 1.05
+       stride is six steps, three left/right pairs -- and only the LAST pair
+       is drawn.  Sliced here rather than in the sampler so the probe's
+       `motes` count and the other styles are untouched.  The slice restarts
+       the left/right parity at 0, so the pair is always left foot then
+       right, and the walker (below) flares the two in turn. */
+    if (samples.length > 2) samples = samples.slice(-2);
     /* ═══ SPRITES OF ONE MINTED PRINT, NOT GRAPHICS PATHS ═══
        The first cut drew each print as two filled ovals on overlayGfx, and
        the shot of town's gold cobble showed a row of pebbles: at that size a
@@ -1480,8 +1493,10 @@ export class TileRenderer {
        canvas, so nothing downloads and there is nothing for the preload
        manifest to wait on. */
     const tex = footprintTexture();
-    const LEN = TILE * 0.78;             /* heel to toe tip, world px */
-    const SIDE = TILE * 0.2;             /* each foot's offset from the centre line */
+    /* v2.3.2888: 0.78 -> 1.2 tiles heel to toe and 0.2 -> 0.3 apart ("the
+       footprints are tiny"), in step with the longer stride above */
+    const LEN = TILE * 1.2;              /* heel to toe tip, world px */
+    const SIDE = TILE * 0.3;             /* each foot's offset from the centre line */
     const TOE_OUT = 0.14;                /* radians, outward */
     const sc = LEN / FOOT_TEX_LEN;
     const N = samples.length;

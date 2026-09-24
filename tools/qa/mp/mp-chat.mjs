@@ -12,14 +12,20 @@ import * as H from './harness.mjs';
 /* Sending does NOT close the chat bar (only the ✕ does), so toggle it open
    only when it is actually shut — a blind toggle would close it on the second
    message and every later assertion would fail for the wrong reason. */
+/* v2.3.2896: "open" is the composer's box being on screen -- the Send button
+   this used to look for is gone (the phone's own send key is the way out now),
+   and Enter below is what that key sends. */
 async function say(P, text) {
-  const isOpen = () => P.page.evaluate(() =>
-    [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'));
+  const isOpen = () => P.page.evaluate(() => {
+    const t = document.querySelector('[data-chat-input]');
+    return !!(t && t.offsetParent);
+  });
   if (!(await isOpen())) {
     await P.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.chat());
-    await P.page.waitForFunction(() =>
-      [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'),
-    null, { timeout: 8000 });
+    await P.page.waitForFunction(() => {
+      const t = document.querySelector('[data-chat-input]');
+      return !!(t && t.offsetParent);
+    }, null, { timeout: 8000 });
   }
   /* v2.3.2078: was the input immediately before the Send button.  At
      v2.3.2039 the composer became a <textarea> on its own row above the
@@ -28,7 +34,7 @@ async function say(P, text) {
      (TRAPS §29). */
   const input = P.page.locator('[data-chat-input]').first();
   await input.fill(text);
-  await H.clickText(P, 'Send');
+  await input.press('Enter');
   await P.page.waitForTimeout(1200);
 }
 
