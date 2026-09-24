@@ -41,6 +41,7 @@ const SCENARIOS = {
   shotland: () => import('./mp-shotland.mjs'), /* v2.3.2844: a bolt or an arrow is drawn landing IN the body -- round its centre, spread over its core -- not on the ring its hit test registers on; the hit itself still registers there */
   staffcast: () => import('./mp-staffcast.mjs'), /* v2.3.2841: the staff cast -- the crystal charges on the cooldown, the bolt leaves it and rejoins its real line, the staff stands head-up and kicks, a peer sees it */
   campfire: () => import('./mp-campfire.mjs'), /* v2.3.2846: the lit-log campfire in pixel art -- the strike stands on the ground, the fire is lit at your boots, burns (sparks, smoke, charring logs), sorts around you, still cooks on a tap, dies down to embers */
+  campfirelife: () => import('./mp-campfirelife.mjs'), /* v2.3.2917: a cooking peer's fire stays lit on the watcher's screen as long as it does on theirs, and goes out on the same schedule */
   geartrim: () => import('./mp-geartrim.mjs'), /* v2.3.2750 (+ v2.3.2774 combat strips): gear frames cropped to their art -- under a third of the bytes, and every layer still lands exactly on the body, own screen and peer's */
   liveness: () => import('./mp-liveness.mjs'), /* v2.3.2811-2815: trees sway, signs swing, flags wave, the forge smokes, people breathe, and the bag comes alive -- all still under the calm switch */
   shirtjog: () => import('./mp-shirtjog.mjs'), /* v2.3.2747: the tee's keyline holds on every frame the game draws while running, all eight directions -- the owner's "static" */
