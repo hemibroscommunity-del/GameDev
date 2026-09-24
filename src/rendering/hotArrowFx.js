@@ -547,7 +547,7 @@ export class HotArrowFx {
     sp.alpha = alpha;
   }
 
-  /* the arrow and its flash, posed alike */
+  /* the arrow, its flash and its aura, posed alike */
   _pose(sp, ax, x, y, ang, s) {
     sp.anchor.set(ax, 0.5);
     sp.scale.set(s);
@@ -576,14 +576,8 @@ export class HotArrowFx {
       const flick = 0.8 + 0.2 * hash(step);
       const aTex = ART.aura[step % AURA_N];
       const an = this.auraN.take(aTex), au = this.aura.take(aTex);
-      for (const g of [an, au]) {
-        if (!g) continue;
-        g.anchor.set(ART.auraAx, 0.5);
-        g.scale.set(s);
-        g.x = x; g.y = y; g.rotation = r;
-      }
-      if (an) an.alpha = a0 * 0.5 * flick;
-      if (au) au.alpha = a0 * 0.6 * flick;
+      if (an) { this._pose(an, ART.auraAx, x, y, r, s); an.alpha = a0 * 0.5 * flick; }
+      if (au) { this._pose(au, ART.auraAx, x, y, r, s); au.alpha = a0 * 0.6 * flick; }
       const b = this.base.take(ART.heat[step % HOT_N]);
       if (b) { this._pose(b, ART.ax, x, y, r, s); b.alpha = a0; if (b.tint !== 0xffffff) b.tint = 0xffffff; }
       /* the breath: white light over the heated body on v2.3.2511's 260 ms */
@@ -635,18 +629,18 @@ export class HotArrowFx {
         this._strike(x, y, c, sn, k);
       }
       const heat = smoulderHeat(now, st.since, tickBase || 0);
-      const look = smoulderLook(heat);
+      const tint = coolTint(heat), ember = emberStep(heat);   /* not smoulderLook: nothing in the frame loop allocates */
       const axN = ART.ax / ART.headFrac;
       /* the heated shaft, its head buried, drawn in the ember frame its heat
          has cooled to -- a palette step, not a tint (a multiply flattened the
          whole shaft to one orange) -- with a light of its own colour over it
          that swells on each tick */
-      const b = this.base.take(ART.ember[look.ember] || ART.heatNoHead);
+      const b = this.base.take(ART.ember[ember] || ART.heatNoHead);
       if (b) { this._pose(b, axN, x, y, r, s); b.alpha = a0; if (b.tint !== 0xffffff) b.tint = 0xffffff; }
       const fl = this.hot.take(ART.flashNoHead);
       if (fl) {
         this._pose(fl, axN, x, y, r, s);
-        if (fl.tint !== look.tint) fl.tint = look.tint;
+        if (fl.tint !== tint) fl.tint = tint;
         fl.alpha = a0 * 0.4 * heat * heat;
       }
       /* the ember where the head went in */
@@ -657,7 +651,7 @@ export class HotArrowFx {
         g.anchor.set(0.5, 0.5);
         g.scale.set(s * (0.8 + 0.5 * heat));
         g.x = ex; g.y = ey; g.rotation = 0;
-        if (g.tint !== look.tint) g.tint = look.tint;
+        if (g.tint !== tint) g.tint = tint;
         g.alpha = a0 * (0.25 + 0.7 * heat);
       }
       if (tickBase) {
@@ -672,8 +666,8 @@ export class HotArrowFx {
       if (rep) {
         rep.state = tickBase ? 'smoulder' : 'landed'; rep.x = +x.toFixed(1); rep.y = +y.toFixed(1); rep.rot = +r.toFixed(3);
         rep.len = +(HOT_LEN * k).toFixed(2); rep.drawnLen = b ? +(b.width / ART.headFrac).toFixed(2) : 0;
-        rep.headless = true; rep.tex = 'ember' + look.ember;
-        rep.baseTint = b ? b.tint : 0; rep.frame = look.ember;
+        rep.headless = true; rep.tex = 'ember' + ember;
+        rep.baseTint = b ? b.tint : 0; rep.frame = ember;
         rep.flashAlpha = 0; rep.auraAlpha = 0; rep.auraNAlpha = 0; rep.auraFrame = -1;
         rep.emberAlpha = g ? +g.alpha.toFixed(3) : 0;
         rep.heat = +heat.toFixed(3);
