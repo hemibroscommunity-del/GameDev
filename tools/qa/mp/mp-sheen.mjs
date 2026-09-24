@@ -3,10 +3,14 @@
  * Owner: "aside from the glint can you see what adding a permanent soft shine
  * to armor and sword (and other metals) would look like?"
  *
+ * v2.3.2887: shipped ON (owner: "Push the metal shine to main and I'll revert
+ * it if I don't like it").  Check 1 turned round with it; every animation and
+ * every metal is mp-sheenall's.
+ *
  * What is proven here, and the pictures taken for the owner (the verdict on
  * the LOOK is theirs):
- *   1. the switch: OFF on a fresh device, so nothing changes for anyone who
- *      has not asked for it;
+ *   1. the switch: ON on a fresh device (v2.3.2887; it was off while it was a
+ *      preview), and `?sheen=0` still turns it off -- and keeps it off;
  *   2. switched on, every metal piece on the figure carries the shine on EVERY
  *      frame -- not only while a glint sweep crosses it -- and a figure with no
  *      metal on it carries nothing;
@@ -228,7 +232,20 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   /* ── 1. the switch ── */
   const p0 = await probe(A);
   rec.ok('the light probe is present (guard)', !!(p0 && p0.glint), p0);
-  rec.ok('the shine is OFF on a fresh device', !!p0 && p0.glint.sheenOn === false && p0.glint.sheen === 0, p0 && p0.glint);
+  rec.ok('the shine is ON on a fresh device (v2.3.2887)', !!p0 && p0.glint.sheenOn === true, p0 && p0.glint);
+  /* ...and a device can still say no: `?sheen=0` turns it off and remembers
+     it, so the next visit without the flag stays off */
+  const N = await H.newPlayer(browser, { name: 'Matte', wsPort, webPort, init: COACH_OFF });
+  opened.push(N);
+  await N.page.goto(`http://localhost:${webPort}/?sheen=0`, { waitUntil: 'domcontentloaded' });
+  await H.enterWorld(N);
+  await N.page.waitForTimeout(1500);
+  const pN = await probe(N);
+  await N.page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+  const kept = await N.page.evaluate(() => { try { return localStorage.getItem('bt-sheen'); } catch (e) { return null; } });
+  rec.ok('?sheen=0 turns it off on that device, and the device remembers it',
+    !!pN && pN.glint.sheenOn === false && pN.glint.sheen === 0 && kept === '0', { glint: pN && pN.glint, kept });
+  await N.ctx.close().catch(() => {});
 
   /* dressed in plate and greaves, a sword in hand, every sweep held off so
      each picture is the shine alone */
@@ -244,8 +261,7 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   const box = fb ? { x: fb.x + Math.round(fb.width * 0.17), y: fb.y + Math.round(fb.height * 0.33), width: Math.round(fb.width * 0.44), height: Math.round(fb.height * 0.78) } : null;
   rec.ok('the figure is on screen to be pictured (guard)', !!box, box);
 
-  /* ── 2. on, every metal piece every frame ── */
-  await setSheen(A, true);
+  /* ── 2. on, every metal piece every frame ── (v2.3.2887: without asking) */
   const counts = [];
   for (let i = 0; i < 10; i++) {
     await A.page.waitForTimeout(200);
@@ -340,6 +356,76 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   rec.ok('jogging in a full copper set, the armour figure on the body sprite carries the shine',
     bodyLit >= Math.ceil(samples / 2), { bodyLit, samples });
   await A.page.waitForTimeout(600);
+
+  /* ── 4b. the arm drawn over the sword (v2.3.2887) ──
+     With a sword out on an east jog the arm is drawn a second time, over the
+     slung shield and under the blade (entityRenderer v2.3.200): a clone of
+     the body sprite under a mask.  In a full set the body IS the knight, so
+     the clone is a piece of plate and carries the shine as well -- and it has
+     to be the SAME shine as the body under it, or the arm reads as a patch.
+     A filter works over its mask's small box unless it is pinned to the whole
+     frame (glint.js unmaskedArea), so this counts the pixels the clone
+     changes on one frozen frame with the sweep pinned across the figure (it
+     lights every pixel it crosses, not only highlights), against the same
+     count with no shine anywhere: the clone's own soft edges are drawn twice
+     either way, and the shine must add nothing to that.  Measured when it was
+     written: 628 pinned, 611 with no shine, 2776 unpinned. */
+  await glintAt(A, 0.5);
+  await A.page.keyboard.down('d');
+  let capOn = false;
+  for (let i = 0; i < 50 && !capOn; i++) {
+    await A.page.waitForTimeout(60);
+    capOn = await A.page.evaluate(() => !!(window.__btArmCapsule && window.__btArmCapsule.on));
+  }
+  await freeze(A);
+  await A.page.waitForTimeout(120);
+  const armBox = await H.figureBox(A, { pad: 30 });
+  const armShot = async (alpha) => {
+    const st = await A.page.evaluate((a) => {
+      const pd = window._pixiRenderer.playerDisplayRaw();
+      /* the blade, the shields and the clone's shirt/cape copies are left out
+         of both pictures, so the clone over the body is all that changes */
+      for (const k of ['_weaponContainer', '_shieldSprite', '_handCapSprite', '_handArmShirt', '_handArmCape']) if (pd[k]) pd[k].renderable = false;
+      if (pd._handArmSprite) pd._handArmSprite.alpha = a;
+      return null;
+    }, alpha);
+    await drawFrozen(A);
+    const f = await A.page.evaluate(() => {
+      const h = window._pixiRenderer.playerDisplayRaw()._handArmSprite;
+      return { shown: !!(h && h.visible), shined: !!(h && Array.isArray(h.filters) && h.filters.some((x) => x && x.resources && x.resources.glintUniforms)) };
+    });
+    return { f, st, img: H.decodePng(await A.page.screenshot({ clip: armBox })) };
+  };
+  const changed = (a, b) => {
+    let n = 0;
+    for (let i = 0; i < a.data.length; i += a.channels) {
+      if (Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]) > 24) n++;
+    }
+    return n;
+  };
+  let armShined = null, withShine = null, noShine = null;
+  if (armBox) {
+    const s0 = await armShot(0), s1 = await armShot(1);
+    armShined = s1.f;
+    withShine = changed(s0.img, s1.img);
+    await setSheen(A, false); await glintAt(A, -1);
+    const n0 = await armShot(0), n1 = await armShot(1);
+    noShine = changed(n0.img, n1.img);
+    await setSheen(A, true); await glintAt(A, -1);
+  }
+  await A.page.evaluate(() => {
+    const pd = window._pixiRenderer.playerDisplayRaw();
+    for (const k of ['_weaponContainer', '_shieldSprite', '_handCapSprite', '_handArmShirt', '_handArmCape']) if (pd[k]) pd[k].renderable = true;
+    if (pd._handArmSprite) pd._handArmSprite.alpha = 1;
+  });
+  await thaw(A);
+  await A.page.keyboard.up('d');
+  console.log(`    the arm drawn over the sword changes ${withShine} pixels with the shine, ${noShine} with none`);
+  rec.ok('jogging east with a sword out, the arm drawn over it is drawn and shined (guard)',
+    capOn && !!armShined && armShined.shown && armShined.shined, { capOn, armShined });
+  rec.ok('...with the SAME shine as the body under it: it changes the picture no more than it does with no shine at all',
+    withShine != null && noShine != null && withShine <= noShine * 1.25 + 40, { withShine, noShine });
+  await A.page.waitForTimeout(400);
 
   /* ── 5. the cost ── */
   await H.hopTo(A, 1105, 1085).catch(() => {});

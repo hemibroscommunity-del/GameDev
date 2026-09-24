@@ -32,7 +32,12 @@ const WALK_MS = 2500;
    60fps is ~1140px, which fits inside it with room to spare — and BOTH
    samples now start at the west end, so the slow one is not measuring the
    distance the fast one left over. */
-const LANE = { x: 392, y: 1493 };   /* v2.3.2628: same fraction of the enlarged town */
+const LANE = { x: 440, y: 1493 };   /* v2.3.2628: same fraction of the enlarged town */
+/* v2.3.2896: x 392 -> 440.  Town's rock ring is a wall now (src/data/townRim.js)
+   and the old start put the boots in the shrubs at the west rim -- a blocked
+   cell, where isSolid's never-trap hatch lets every step through (TRAPS §35's
+   sprint lane).  440 is the first spot on this line with the whole body box on
+   open ground, plus margin; the lane still runs east across the plaza. */
 
 async function walkAndMeasure(P, cdp, throttleRate) {
   /* Back to the lane head BEFORE the throttle goes on: hopTo needs a

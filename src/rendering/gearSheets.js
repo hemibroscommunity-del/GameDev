@@ -524,7 +524,11 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
     /* v2.3.2750: a cropped sheet's resource is our packed canvas, which has no
        URL -- keep the one the art was decoded from, so a QA probe can still ask
        which file (and which ?v= bust) the phone is drawing. */
-    if (packed) { try { src.label = String(rawImg.currentSrc || rawImg.src || ''); } catch (e) { /* label is QA-only */ } }
+    /* v2.3.2887: ...and an uncropped one too -- its resource is an upscale
+       canvas, just as URL-less (the combat strips, which the raised shield's
+       sleeve is cut from).  mp-sheenall finds every metal piece on screen by
+       the file it came from. */
+    try { src.label = String(rawImg.currentSrc || rawImg.src || ''); } catch (e) { /* label is QA-only */ }
     const frames = packed ? packed.cells.length : Math.max(1, Math.floor(img.width / fw));
     const out = [];
     for (let i = 0; i < frames; i++) {

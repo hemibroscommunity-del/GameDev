@@ -10,8 +10,8 @@ import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/ef
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
-import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
-import { setSheen } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1 */
+import { LightFx, setLightFx, lightFxOn } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1; v2.3.2904: + lightFxOn for the loading-screen warm */
+import { setSheen, prewarmGlintPipe } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1; v2.3.2887: on for everyone, ?sheen=0 turns it off; v2.3.2904: its shader built behind the loading screen */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
 import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
 import { FpsOverlay } from './systems/fpsOverlay.js';
@@ -108,6 +108,11 @@ export function preloadPlayerAssets() {
          first-use render init left, paid on the first HIT of the session
          (iOS fire-goblin crash suspect). */
       .then(() => { try { prewarmDmgFontPipe(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
+      /* v2.3.2904: the metal shine's shader, compiled here instead of in the
+         first frame anyone wears metal (glint.js prewarmGlintPipe).  The
+         sweep runs whenever light-and-shine is on, sheen or not, so that
+         switch is the one that decides. */
+      .then(() => { try { if (lightFxOn()) prewarmGlintPipe(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
       .then(() => results)
   );
 }
@@ -1071,7 +1076,9 @@ export async function initPixiRenderer(canvas) {
        between arrowblast.js RADIUS and the client's TARGET_PERIMETER_PX is
        that the ring drawn is the ring the worker hit. */
     arrowBlastProbe: () => effectsRenderer.arrowBlastProbe(),
+    slimeShockwaveProbe: () => effectsRenderer.slimeShockwaveProbe(),   /* v2.3.2912 */
     projScaleProbe: () => effectsRenderer.projScaleProbe(),   /* v2.3.2287 */
+    stuckScaleProbe: () => effectsRenderer.stuckScaleProbe(),   /* v2.3.2889: a shaft stuck in a monster, at its depth */
     remoteSkillProbe: (id) => {
       const e = effectsRenderer;
       const pool = e._remoteSkillSprites;

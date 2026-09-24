@@ -1209,6 +1209,12 @@ input{font-family:inherit}
    passing touches to the world.  Accepted: the rail is DRAWN over that band
    anyway, __logout already does the same beside it, and a short tap here is
    asserted to do nothing -- only the 1.2s hold acts. */
+/* v2.3.2892: the title's column now holds the hour icon beside it.  The
+   pair centres together; the title keeps its own box (the zone banner's
+   dock target) and its ellipsis, and the icon never takes a touch. */
+.bt-zone-header__mid{min-width:0;display:flex;align-items:center;
+  justify-content:center;gap:6px}
+.bt-zone-header__tod{flex:none;display:block;pointer-events:none}
 .bt-zone-header__title{min-width:0;overflow:hidden;color:#F4F5F3;
   font:650 15px/1.1 'Source Sans 3',sans-serif;letter-spacing:.045em;
   text-align:center;text-overflow:ellipsis;white-space:nowrap;

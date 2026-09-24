@@ -327,7 +327,15 @@ export const ZONES = {
        * MIRROR of src/data/zones.js verdant.spawns -- zones.test.mjs compares
        * these two arrays with JSON equality, so they move together. */
       verdant: { w:32, h:32, level:[1,2], element:'flora',  secondary:'venom',    lawless:true, spawns:[{arch:'fodder',count:6,variant:'blueSlime'}] }, /* band: [22,40]; v2.3.1675: all blue (owner) -- mirror of src/data/zones.js */
-      frost:   { w:32, h:32, level:[1,2],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:6}] },        /* band: [8,25] */
+      /* v2.3.2894: `entryClear` -- where a player ARRIVES (the nw exit off
+       * the world view lands at (864, 768): zoneTransitions.js, nW - 5 tiles
+       * by the bottom-row inset) and how far from it no monster may spawn.
+       * Owner: "move monsters away from the zone entrance so you don't get
+       * ambushed."  450 = a snowman's 300 px aggro + the 144 px it wanders
+       * from its spawn (WANDER_LEASH x 0.8), so one idling at the edge of
+       * its range still does not see you step in.  Read by
+       * _pickSpreadSpawn (index.js); server-only, not mirrored. */
+      frost:   { w:32, h:32, level:[1,2],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:6}], entryClear:{ x:864, y:768, r:450 } },        /* band: [8,25] */
       thunder: { w:32, h:32, level:[1,2], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },          /* band: [55,80] */
       hollows: { w:32, h:32, level:[1,2], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:6}] },           /* band: [38,58] */
       sky:     { w:32, h:32, level:[1,2], element:'wind',  secondary:'frost', lawless:true, spawns:[{arch:'stalker',count:2},{arch:'hexer',count:2},{arch:'volatile',count:2}],

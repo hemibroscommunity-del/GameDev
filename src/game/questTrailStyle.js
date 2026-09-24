@@ -82,6 +82,25 @@ export function getTrailStyle() { return _style; }
  *  at each call site so `=== 'off'` exists in exactly one place. */
 export function isTrailOff() { return _style === 'off'; }
 
+/* ═══ v2.3.2896: THE LOOK TO COME BACK TO ═══
+ * Owner: "Allow an option to switch off the footprints from the quest
+ * dashboard button too."  That is an on/off switch, and a switch that turns
+ * the road back ON has to know which road to bring back: a player who picked
+ * Arrows in Settings, hid the road from the Quests panel and then showed it
+ * again should get their Arrows, not the default.  So the last style that was
+ * actually visible is remembered -- in its own key, because the main key reads
+ * 'off' for exactly as long as this one is needed, and across a reload too. */
+const LAST_KEY = 'brotown_quest_path_last';
+const _visible = (id) => _valid(id) && id !== 'off';
+
+let _lastShown = (() => {
+  if (_visible(_style)) return _style;
+  try {
+    const v = localStorage.getItem(LAST_KEY);
+    return _visible(v) ? v : DEFAULT_TRAIL_STYLE;
+  } catch (e) { return DEFAULT_TRAIL_STYLE; }
+})();
+
 /** Set the style.  An unknown id is ignored rather than stored: a bad value
  *  that reached storage would come back on every future load, and the renderer
  *  would then have to defend against it forever. */
@@ -89,7 +108,22 @@ export function setTrailStyle(id) {
   if (!_valid(id)) return _style;
   _style = id;
   try { localStorage.setItem(KEY, id); } catch (e) {}
+  if (_visible(id)) {
+    _lastShown = id;
+    try { localStorage.setItem(LAST_KEY, id); } catch (e) {}
+  }
   return _style;
+}
+
+/** The style the road comes back as when it is switched on -- the current one
+ *  while it is showing, the last one it showed while it is off. */
+export function getShownTrailStyle() { return _lastShown; }
+
+/** v2.3.2896: the Quests panel's on/off switch.  Off is the same 'off' the
+ *  Settings row stores (one setting, two places to reach it); on restores the
+ *  last visible style rather than the default. */
+export function setTrailShown(on) {
+  return setTrailStyle(on ? _lastShown : 'off');
 }
 
 /* v2.3.2141 QA handle, house style (__btCoach, __btQuestRoad).  A scenario

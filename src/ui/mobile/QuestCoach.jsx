@@ -1,5 +1,5 @@
 import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js'; /* v2.3.2765 */
-import { coachMayShow, noteCoach } from '@/ui/onboardingPace.js'; /* v2.3.2766 */
+import { coachMayShow, noteCoach, tutorialSkipped } from '@/ui/onboardingPace.js'; /* v2.3.2766; v2.3.2890 + the skip */
 import React from 'react';
 import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: how high the combat band reaches, from the same arithmetic the controls place themselves with */
 /* v2.3.1797: the special lesson has to know whether the ACTIVE slot holds a
@@ -1066,7 +1066,9 @@ export function QuestCoach(props) {
       if (!done.dashAfterTurnIn && dashArmed.current.nav && _dashShowing()) {
         done.dashAfterTurnIn = true; saveDone(done);
       }
-      if (!rpg || (!inTutorial(rpg) && !preTutorial(rpg))) {
+      /* v2.3.2890: skipping the tutorial retires the coach like finishing it
+         does -- a card already up goes, and no new one is armed */
+      if (!rpg || tutorialSkipped() || (!inTutorial(rpg) && !preTutorial(rpg))) {
         if (viewRef.current) { viewRef.current = null; setView(null); }
         /* v2.3.2246: the coach retired — let go of the discs. */
         if (discHoldRef.current.sides.length) {

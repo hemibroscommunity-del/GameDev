@@ -31,6 +31,7 @@
  * who, the road says where.
  */
 import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js';
+import { noteOnboardingPlate, noteWelcomePending } from '@/ui/onboardingPace.js'; /* v2.3.2888; v2.3.2890 + pending */
 
 const SEEN_KEY = 'bt_welcome_seen';
 
@@ -81,9 +82,19 @@ function looksBrandNew(rpg) {
 export function maybeShowWelcome(getS) {
   try {
     if (welcomeSeen()) return false;
+    /* v2.3.2890: hold the coach until this is decided -- the welcome, and its
+       Skip tutorial button, come first (onboardingPace.js) */
+    noteWelcomePending(true);
     const t0 = Date.now();
     const show = function () {
+      noteWelcomePending(false);   /* v2.3.2890: decided; noteOnboardingPlate below takes over the hold */
       try {
+        /* v2.3.2888: the WELCOME plate is the first tutorial pop-up; the coach
+           waits its 20s gap after this one too (onboardingPace.js) */
+        try {
+          const ms = (typeof window !== 'undefined' && window.__questMsgMs) ? window.__questMsgMs('welcome') : 5200;
+          noteOnboardingPlate(Date.now() + ms);
+        } catch (e) { /* pacing is a nicety */ }
         if (typeof window !== 'undefined' && window._setQuestMsg) {
           window._setQuestMsg({
             kind: 'welcome',
@@ -106,18 +117,19 @@ export function maybeShowWelcome(getS) {
     };
     const check = function () {
       try {
-        if (welcomeSeen()) return;
+        if (welcomeSeen()) { noteWelcomePending(false); return; }
         const S = typeof getS === 'function' ? getS() : null;
         /* no getter (an old caller): the pre-v2.3.2765 behaviour */
         const synced = !getS || (S && S._rpgFromServer);
         if (!synced) {
           if (Date.now() - t0 < 20000) setTimeout(check, 250);
+          else noteWelcomePending(false);   /* v2.3.2890: no answer, no welcome -- release the coach */
           return;
         }
         markSeen();   /* before the timer: a reload inside the delay must not re-arm it */
-        if (getS && !looksBrandNew(S && S.rpg)) return;
+        if (getS && !looksBrandNew(S && S.rpg)) { noteWelcomePending(false); return; }
         setTimeout(show, Math.max(0, 1200 - (Date.now() - t0)));
-      } catch (e) { /* never break the join */ }
+      } catch (e) { noteWelcomePending(false); /* never break the join -- nor hold the coach forever */ }
     };
     check();
     return true;
