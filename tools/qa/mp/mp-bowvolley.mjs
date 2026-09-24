@@ -78,7 +78,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!f || !f.TOWN_EXITS || !f.WORLDVIEW_EXITS) return null;
     return {
       townExit: f.TOWN_EXITS.find((e) => e.zoneId === 'worldview') || null,
-      spoke: f.WORLDVIEW_EXITS.find((e) => e.zoneId === 'frost') || f.WORLDVIEW_EXITS.find((e) => e.zoneId !== 'town') || null,
+      /* v2.3.2849: Desert Winds first -- its mummies and skeletons outlast
+         the rebalanced volley (~57 up front), where every Frost Ridge monster
+         has 69 HP and dies before the burn has ticked twice */
+      spoke: f.WORLDVIEW_EXITS.find((e) => e.zoneId === 'sky') || f.WORLDVIEW_EXITS.find((e) => e.zoneId === 'frost')
+        || f.WORLDVIEW_EXITS.find((e) => e.zoneId !== 'town') || null,
     };
   });
   if (!marks || !marks.townExit || !marks.spoke) {
@@ -117,18 +121,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     world.srv && world.slot === 'ranged' && world.bow && world.mons >= 1, { world, eq });
   if (!world.srv || !world.mons) { await A.ctx.close(); return; }
 
-  /* Close to the nearest monster and aimed at it (hop in: the worker drops a
-     long jump), then lock it, the way a tap does. */
+  /* Close to the TOUGHEST monster and aimed at it (hop in: the worker drops a
+     long jump), then lock it, the way a tap does.  v2.3.2849: the toughest,
+     not the nearest -- the rebalanced volley lands ~57 up front, and a 69 HP
+     frost monster died to the arrows and the first tick, which ended the burn
+     the checks below count (seen in a merged run). */
   const target = await A.page.evaluate(() => {
     const S = window._gameState.current;
-    let best = null, bd = Infinity;
+    let best = null, bh = -1;
     for (const m of S.monsters || []) {
       if (!m || !m.alive) continue;
-      const d = Math.hypot(m.x - S.player.x, m.y - S.player.y);
-      if (d < bd) { bd = d; best = m; }
+      const hp = Number(m.maxHp || m.hp || 0);
+      if (hp > bh) { bh = hp; best = m; }
     }
-    return best ? { id: best.id, x: best.x, y: best.y } : null;
+    return best ? { id: best.id, x: best.x, y: best.y, maxHp: bh } : null;
   });
+  console.log('    target: ' + JSON.stringify(target));
   await H.hopTo(A, target.x - 150, target.y);
   await A.page.evaluate((id) => {
     const S = window._gameState.current;
@@ -178,9 +186,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const specIds = new Set(specials.map((o) => o.payload.monsterId));
   const firstSpecAt = specials.length ? specials[0].at : t0;
+  /* The FIRST THREE answers, in arrival order: the worker handles one
+     socket's messages in order, and the three specials were sent before the
+     first burn tick (~500 ms), so their monster_hits come back first.  Timed
+     against 1500 ms, not 450: a loaded box's worker has been seen answering
+     400 ms after a send (merged batch run).  That the special lane ADMITS all
+     three is pinned exactly in combat-lifecycle section 12. */
   const volleyHits = hitsIn.filter((h) => h.attackerId === aId && specIds.has(h.monsterId) && !h.collision && !h.splash
-    && h.at >= firstSpecAt && h.at - firstSpecAt < 450);
-  console.log('    worker hits (first 450 ms): ' + JSON.stringify(volleyHits.map((h) => ({ dt: h.at - firstSpecAt, dmg: h.dmg, slot: h.slot }))));
+    && h.at >= firstSpecAt).slice(0, 3).filter((h) => h.at - firstSpecAt < 1500);
+  console.log('    worker hits (the first three answers): ' + JSON.stringify(volleyHits.map((h) => ({ dt: h.at - firstSpecAt, dmg: h.dmg, slot: h.slot }))));
   rec.ok(`the worker settles all three (${volleyHits.length} monster_hit, ${volleyHits.map((h) => h.dmg).join(' + ')})`,
     volleyHits.length === 3 && volleyHits.every((h) => h.dmg >= 1 && h.slot === 'ranged'), volleyHits);
 
@@ -189,9 +203,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
      drop two of them, and the sends would say so.  v2.3.2849: four of them,
      over the volley's 2.5 s (the lone arrow's 4 s sent seven). */
   const gaps = ticks.slice(1).map((o, i) => o.at - ticks[i].at);
-  rec.ok(`ONE burn: ${ticks.length} noKb ticks, ~500 ms apart (gaps ${gaps.join(', ')})`,
-    ticks.length >= 3 && ticks.length <= 5 && ticks.every((o) => o.payload.noKb === true) && gaps.every((g) => g >= 400),
-    { n: ticks.length, gaps });
+  /* A burn only runs while its monster lives.  Every monster on the spokes
+     this reaches has ~60-70 HP, and the rebalanced volley lands ~57 before the
+     first tick, so the target usually dies on the burn's first or second tick
+     -- then what is checked is that the burn STOPS with it (a burn ticking on
+     a corpse would be the bug).  The four-tick count itself is pinned on a
+     1e6 HP skeleton in mp-hotarrow. */
+  const deathAt = (hitsIn.find((h) => h.monsterId === target.id && h.hpPct === 0) || {}).at || null;
+  if (deathAt && ticks.length < 3) {
+    const afterDeath = ticks.filter((o) => o.at > deathAt + 150);
+    rec.ok(`the burn stops with its monster: ${ticks.length} tick(s) before the ${target.maxHp} HP target died, none after`,
+      afterDeath.length === 0 && ticks.every((o) => o.payload.noKb === true), { ticks: ticks.map((o) => o.at - deathAt), deathAt });
+  } else {
+    rec.ok(`ONE burn: ${ticks.length} noKb ticks, ~500 ms apart (gaps ${gaps.join(', ')})`,
+      ticks.length >= 3 && ticks.length <= 5 && ticks.every((o) => o.payload.noKb === true) && gaps.every((g) => g >= 400),
+      { n: ticks.length, gaps });
+  }
   const lastTick = ticks.length ? ticks[ticks.length - 1].at - firstSpecAt : null;
   rec.ok(`...and it is the volley's 2.5 s burn, not the old 4 s (last tick ${lastTick} ms after the first arrow)`,
     lastTick != null && lastTick < 2700, { lastTick });
