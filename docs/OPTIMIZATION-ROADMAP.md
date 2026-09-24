@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1-6, 9-14 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2828); the rest is the ranked backlog
+### Items 1-6, 9-14 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2859); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -294,7 +294,7 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    mp-peersword / mp-southsword / mp-swordcarry / mp-blockstance / mp-bowside
    unchanged.
 2. ~~**Town NPC walk strips + town props, held in every field zone — 25.3 MB
-   in ember (0 in town), medium risk, medium.**~~ **SHIPPED, v2.3.2856**
+   in ember (0 in town), medium risk, medium.**~~ **SHIPPED, v2.3.2859**
    (measured, tex-attrib: ember 219.9 → 175.5 MB, town 179.4 → 165.7 MB).
    Bigger than predicted: by v2.3.2791 it was 24 walk strips (3 walkers × 8
    facings), the fountain, four buildings, AND town's own 11.3 MB ground map,

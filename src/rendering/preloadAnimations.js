@@ -128,7 +128,7 @@ export async function preloadZoneAssets(zoneId) {
      the FIRST step a player takes already has its texture; a lazy load here
      would mean the opening stride of every zone entry leaves nothing behind. */
   tasks.push(Promise.resolve(loadFootprints(zoneId)).catch(() => {}));
-  /* v2.3.2856: town's NPCs and buildings, for the hub-exit gate walking INTO
+  /* v2.3.2859: town's NPCs and buildings, for the hub-exit gate walking INTO
      town (worldview -> town).  The other ways in -- a spoke's return portal,
      a respawn, the farm -- are held by zoneTransitions' syncTownScenery. */
   if (zoneId === 'town') tasks.push(Promise.resolve(loadTownScenery()).catch(() => {}));
@@ -313,7 +313,7 @@ export async function preloadWorldAnimations() {
        failure of the two.  If NPC art ever grows past a handful of figures,
        move it to preloadZoneAssets and free it on zone exit. */
     npcArt: loadNpcSprites(),
-    /* v2.3.2856: ...which it did (sixteen walk strips and the buildings,
+    /* v2.3.2859: ...which it did (sixteen walk strips and the buildings,
        35MB held in every field zone), so the figures and town's props are
        loadTownScenery now -- still on THIS gate, because town is where you
        start, and freed a beat after you leave (zoneTransitions

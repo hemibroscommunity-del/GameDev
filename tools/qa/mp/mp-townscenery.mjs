@@ -1,4 +1,4 @@
-/* Town's NPCs and buildings load and free with town (v2.3.2856).
+/* Town's NPCs and buildings load and free with town (v2.3.2859).
  *
  * Owner: "Is there any other memory savings ... (Or removed from the mostly
  * costly memory?)" -- then "Yeah do that".
@@ -85,7 +85,7 @@ const armSampler = (P) => P.page.evaluate(() => {
   };
   requestAnimationFrame(tick);
 });
-/* v2.3.2856: the frame floor is a guard that the sampler RAN, not a rate --
+/* v2.3.2859: the frame floor is a guard that the sampler RAN, not a rate --
    under software GL a respawn draws a few frames a second, and a floor of 30
    failed with zero bare frames seen.  bare === 0 is the check. */
 const readSampler = (P) => P.page.evaluate(() => { const s = window.__tsSample; if (s) s.stop = true; return s; });

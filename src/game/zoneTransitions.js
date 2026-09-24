@@ -27,8 +27,8 @@ import { _typeof } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
 import { preloadZoneAssets, freeZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate; v2.3.2272: and its exit half */
-import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2856: + town's own map */
-import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2856: town's NPCs + buildings load and free with town */
+import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
+import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2859: town's NPCs + buildings load and free with town */
 
 /* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
  *
@@ -220,7 +220,7 @@ function hideZoneLoadingOverlay() {
   try { if (_zoneLoadEl) { _zoneLoadEl.remove(); _zoneLoadEl = null; } } catch (e) {}
 }
 
-/* ═══ v2.3.2856: TOWN'S NPCs AND BUILDINGS, HELD AND FREED IN ONE PLACE ═══
+/* ═══ v2.3.2859: TOWN'S NPCs AND BUILDINGS, HELD AND FREED IN ONE PLACE ═══
  *
  * Town's art now loads and frees with town (npcSprites loadTownScenery -- it
  * was 35MB carried through every field zone).  There are many ways INTO town:
@@ -477,7 +477,7 @@ export function driveDevWarp(S) {
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
   driveDevWarp(S);   /* v2.3.2308: one leg of a pending test-panel warp */
-  syncTownScenery(S);   /* v2.3.2856: town's NPCs + buildings, whichever way you arrived */
+  syncTownScenery(S);   /* v2.3.2859: town's NPCs + buildings, whichever way you arrived */
         /* v2.3.1406: STUCK-GATE FAILSAFE.  S._zoneLoading is normally
            consumed by the hub-exit gate below, but that only runs while
            the player is in a hub AND still within the armed exit's
@@ -736,7 +736,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                    with which zones have monsters. */
                 _freeLeftZoneAssets(_zl.from, _tz);
                 /* fall through: run the entry body once, now that assets are warm */
-              } else if (!isZoneMapResident(_tz) || (_tz === 'town' && !townSceneryReady())) {   /* v2.3.2856: town's NPCs + buildings leave with town (its map too, which the first test already covers) */
+              } else if (!isZoneMapResident(_tz) || (_tz === 'town' && !townSceneryReady())) {   /* v2.3.2859: town's NPCs + buildings leave with town (its map too, which the first test already covers) */
                 var _zlObj = { toZone: _tz, from: S.currentZone, done: false, t: Date.now() }; /* v2.3.1406: t feeds the 20s failsafe */
                 S._zoneLoading = _zlObj;
                 var _tzName = (ZONES[_tz] && ZONES[_tz].name) || _tz;
