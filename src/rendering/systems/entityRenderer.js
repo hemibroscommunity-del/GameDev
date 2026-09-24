@@ -56,7 +56,7 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling corpse */
-import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
+import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones; v2.3.1934: beard over a drape */
@@ -5978,7 +5978,9 @@ function _placeSouthBlockWeapon(display, wpn, bobY) {
                 : wpn.type === 'bow' ? 34
                 : (wpn.type === 'sword' && wpn.gearBase === 'wood') ? 36
                 : 26;
-  const k = targetH / Math.max(8, th);
+  /* v2.3.2895: size by weaponFitH, not th -- the widened greatsword's canvas
+     is taller than its blade is long (weaponSprites.js SHEETS). */
+  const k = targetH / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, artDir, th));
   spr.scale.set(k, k);
   /* Every weapon icon runs grip-to-tip along the same diagonal (see
      BLOCK_OFFHAND_ART_ANG), so one constant turns "point it this way" into a
@@ -12134,7 +12136,9 @@ export class EntityRenderer {
                          : wpn.type === 'bow'        ? (_gsDir ? 52 : 28)
                          : isWoodSword                ? 45
                          :                              26;
-          const fitScale = targetH / Math.max(8, th);
+          /* v2.3.2895: weaponFitH, not th -- the widened greatsword sheets keep
+             their pre-widening height so the blade gets wider, not shorter. */
+          const fitScale = targetH / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, _gsDir, th));
           /* v2.3.1786: set by the carried branch below.  Declared HERE, beside
              fitScale in the same block as the scale.y assignment — the first
              cut of this put it beside the OTHER fitScale, forty lines up in
