@@ -19,7 +19,7 @@ import { Assets } from 'pixi.js';
    are WebP and there is no WebP encoder in this sandbox, so a regenerated file
    can only come out as PNG.  Version bumped or every CDN edge keeps serving
    the brown art. */
-const SPRITE_VERSION = '2.3.2354';   // 1073: re-added black outline to all bow art (recolor had stripped it); 2354: the two 1254px sword icons became 256px twins
+const SPRITE_VERSION = '2.3.2910';   // 1073: re-added black outline to all bow art (recolor had stripped it); 2354: the two 1254px sword icons became 256px twins; 2895: greatsword-<dir> art widened 1.75x
 
 /* v2.3.172: per-gearBase variants. Keys are `${type}:${gearBase}`;
    the bare type key is the fallback for any unmapped gearBase. wood-
@@ -44,15 +44,36 @@ const SPRITE_VERSION = '2.3.2354';   // 1073: re-added black outline to all bow 
    by the same 256/1254 and kept as floats so the ANCHOR FRACTION is
    identical to six decimal places; the tip is not stored anywhere (only the
    -45 degree axis in blockArm.js, which a proportional resize cannot move). */
+/* ═══ v2.3.2910: THE GREATSWORD IS WIDER, NOT SHORTER ═══
+   Owner: "make the great sword the player holds wider (maybe 1.5 to 2x as
+   wide?)".  The five greatsword-<dir> sheets were re-drawn 1.75x thicker by
+   tools/art/widen_greatsword.py -- stretched PERPENDICULAR to each blade's
+   own diagonal about its handles.json grip, so the hilt stays in the fist.
+
+   THE TRAP: every site sizes held art by texture HEIGHT (targetH / th).  A
+   fatter diagonal blade needs a taller canvas (200 -> ~207), so dividing by
+   the new height would quietly shrink the sword and give back part of the
+   width.  `fitH` is the sheet's ORIGINAL height; weaponFitH() hands it to
+   the sizing math (never to the grip anchor, which is in the new canvas's
+   pixels).  Result: same length on screen, 1.75x the width.
+
+   Then, same day: "Maybe a little longer too".  `lenMul` scales the drawn
+   size along with it (both axes -- the art is already the width asked for
+   relative to its length, so this keeps the new proportions).  Every site
+   that sizes per-facing greatsword art goes through weaponFitH, so this ONE
+   number reaches the carried blade, the swing, both block off-hand views and
+   the equip portrait together; the grip anchor is untouched, so the hilt
+   stays in the fist and the extra length goes out past the tip. */
+const GREATSWORD_LEN_MUL = 1.2;
 const SHEETS = {
   sword:        { url: `/sprites/weapons/swords/Sword1-256.webp?v=${SPRITE_VERSION}`,      tex: null },
   'sword:wood': { url: `/sprites/weapons/swords/Bamboo-256.webp?v=${SPRITE_VERSION}`,      tex: null },
   greatsword:   { url: `/sprites/weapons/swords/Sword1-256.webp?v=${SPRITE_VERSION}`,      tex: null },
-  'greatsword-south':     { url: `/sprites/weapons/swords/greatsword-south.webp?v=${SPRITE_VERSION}`,     tex: null },
-  'greatsword-southwest': { url: `/sprites/weapons/swords/greatsword-southwest.webp?v=${SPRITE_VERSION}`, tex: null },
-  'greatsword-east':      { url: `/sprites/weapons/swords/greatsword-east.webp?v=${SPRITE_VERSION}`,      tex: null },
-  'greatsword-northeast': { url: `/sprites/weapons/swords/greatsword-northeast.webp?v=${SPRITE_VERSION}`, tex: null },
-  'greatsword-north':     { url: `/sprites/weapons/swords/greatsword-north.webp?v=${SPRITE_VERSION}`,     tex: null },
+  'greatsword-south':     { url: `/sprites/weapons/swords/greatsword-south.webp?v=${SPRITE_VERSION}`,     tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL },
+  'greatsword-southwest': { url: `/sprites/weapons/swords/greatsword-southwest.webp?v=${SPRITE_VERSION}`, tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL },
+  'greatsword-east':      { url: `/sprites/weapons/swords/greatsword-east.webp?v=${SPRITE_VERSION}`,      tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL },
+  'greatsword-northeast': { url: `/sprites/weapons/swords/greatsword-northeast.webp?v=${SPRITE_VERSION}`, tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL },
+  'greatsword-north':     { url: `/sprites/weapons/swords/greatsword-north.webp?v=${SPRITE_VERSION}`,     tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL },
   bow:          { url: `/sprites/weapons/bows/Bow2.png?v=${SPRITE_VERSION}`,              tex: null },
   'bow-south':     { url: `/sprites/weapons/bows/bow-south.png?v=${SPRITE_VERSION}`,     tex: null },
   'bow-southwest': { url: `/sprites/weapons/bows/bow-southwest.png?v=${SPRITE_VERSION}`, tex: null },
@@ -132,6 +153,19 @@ export function weaponArtUrl(type, gearBase, dir) {
   if (dir && SHEETS[`${type}-${dir}`]) return SHEETS[`${type}-${dir}`].url;
   const k = keyFor(type, gearBase);
   return (SHEETS[k] && SHEETS[k].url) || null;
+}
+
+/** v2.3.2910: the height to SIZE this art by (fitScale = targetH / fitH).
+ *  Normally the texture's own height; a sheet widened after the fact carries
+ *  its pre-widening height so it keeps its length, divided by any `lenMul`
+ *  so it can be drawn longer on purpose (see SHEETS).  `fallbackH`
+ *  is the caller's measured height (texture or <img>). */
+export function weaponFitH(type, gearBase, dir, fallbackH) {
+  /* Same pick as getWeaponTexture: the per-facing sheet only once it has
+     loaded, else the bare/gearBase one -- so the height matches the art. */
+  const d = dir && SHEETS[`${type}-${dir}`];
+  const entry = (d && d.tex) ? d : SHEETS[keyFor(type, gearBase)];
+  return ((entry && entry.fitH) || fallbackH) / ((entry && entry.lenMul) || 1);
 }
 
 export function hasWeapon(type, gearBase, dir) {

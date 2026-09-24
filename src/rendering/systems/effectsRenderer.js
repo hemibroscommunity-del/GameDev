@@ -287,7 +287,7 @@ import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { rangedAimAngle, bowGripPoint } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
-import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
+import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js'; /* v2.3.1864; weaponFitH v2.3.2910 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
 import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2841: the staff cast's charge, release, trail and crash */
 import { STAFF_BIG_BOLT_SCALE } from '@/data/gameSystems.js';     /* v2.3.2842: the one-bolt special's drawn size */
@@ -1292,6 +1292,8 @@ function debrisDotTex() {
  * TARGET_PERIMETER_PX (220) on the server side; this is the client end of the
  * same pin. */
 const ARROW_BLAST = { frames: [], url: '/sprites/effects/arrow-blast-v1.webp?v=2.3.2279' };
+/* v2.3.2912: how long the slime burst's shockwave runs (_updateSlimeShockwaves). */
+const SLIME_WAVE_MS = 460;
 const ARROW_BLAST_MS = 620;        /* ~78ms a frame -- a bang, not a bloom */
 const ARROW_BLAST_D = 220 * 2;     /* drawn world px across, = 2 x the blast radius */
 let _arrowBlastLoad = null;
@@ -9180,6 +9182,71 @@ export class EffectsRenderer {
   _updateMonsterImpacts(S, now) {
     this._updateSnowballBursts(S, now);
     this._updateArrowBlasts(S, now);
+    this._updateSlimeShockwaves(S, now);
+  }
+
+  /* ═══ v2.3.2912: THE SLIME'S BLAST HAS A SHOCKWAVE ═══
+     Owner: "when the slime explodes make an explosion effect like a
+     shockwave in the damage area".  This is a deliberate reversal of
+     v2.3.2226 ("remove code drawn impact areas for slime death") by the same
+     owner: that removed a STATIC ring/splat that sat on the ground; this is a
+     moving wave that is over in under half a second.
+
+     Drawn from the worker's `execute` (gameEvents queues S.slimeShockwaves),
+     so every client in the zone sees the same blast at the same place.  The
+     wave eases OUT to exactly `r` -- the radius telegraph.js tested players
+     against -- and never past it, the same "never draw a lie about the
+     radius" rule the telegraph rings and the nova keep.  On the telegraphs
+     layer, i.e. on the ground, under every body standing in it. */
+  _updateSlimeShockwaves(S, now) {
+    const q = S && S.slimeShockwaves;
+    if (!this._slimeWaves) this._slimeWaves = [];
+    if (q && q.length) {
+      for (const w of q) if (this._slimeWaves.length < 8) this._slimeWaves.push(w);
+      q.length = 0;
+    }
+    const list = this._slimeWaves;
+    if (!list.length && !this._slimeWaveGfx) return;
+    if (!this._slimeWaveGfx) {
+      this._slimeWaveGfx = new Graphics();
+      (this.telegraphLayer || this.particleLayer).addChild(this._slimeWaveGfx);
+    }
+    const g = this._slimeWaveGfx;
+    g.clear();
+    /* QA can slow the wave down to photograph it (house style: __btSouthTilt). */
+    let dur = SLIME_WAVE_MS;
+    try { if (typeof window !== 'undefined' && window.__btSlimeWaveMs > 0) dur = window.__btSlimeWaveMs; } catch (e) { /* default */ }
+    for (let i = list.length - 1; i >= 0; i--) {
+      const w = list[i];
+      const t = (now - w.at) / dur;
+      if (t >= 1 || !(w.r > 0)) { list.splice(i, 1); continue; }
+      if (t < 0) continue;
+      const ease = 1 - Math.pow(1 - t, 3);   /* fast out, settling on r */
+      const fade = 1 - t;
+      /* the flash: a pale disc that fills the blast and dies fast */
+      g.circle(w.x, w.y, w.r * (0.25 + 0.75 * ease));
+      g.fill({ color: 0x9fe8ff, alpha: 0.45 * fade * fade });
+      /* the wave: a thick front that thins as it spends itself */
+      const rr = w.r * (0.12 + 0.88 * ease);
+      g.circle(w.x, w.y, rr);
+      g.stroke({ color: 0x5cc8ff, width: Math.max(1.5, 12 * fade), alpha: 0.85 * fade });
+      /* its hot leading edge */
+      g.circle(w.x, w.y, rr);
+      g.stroke({ color: 0xffffff, width: Math.max(1, 3 * fade), alpha: 0.9 * fade });
+      /* and a second, fainter ring a beat behind it */
+      const t2 = t - 0.18;
+      if (t2 > 0) {
+        const e2 = 1 - Math.pow(1 - t2 / 0.82, 3);
+        g.circle(w.x, w.y, w.r * (0.1 + 0.8 * e2));
+        g.stroke({ color: 0x5cc8ff, width: Math.max(1, 6 * (1 - t2)), alpha: 0.45 * (1 - t2) });
+      }
+    }
+  }
+
+  /* QA probe (house style, see arrowBlastProbe). */
+  slimeShockwaveProbe() {
+    const l = this._slimeWaves || [];
+    return { playing: l.length, drawn: l.map((w) => ({ x: w.x, y: w.y, r: w.r })) };
   }
 
   /* v2.3.2217: drain the queue projectiles.js fills when a thrown snowball's
@@ -11722,7 +11789,8 @@ export class EffectsRenderer {
        fixed size while the body changes per facing or per zone. */
     const px = (BLOCK_OFFHAND_PX[wpn.type] || BLOCK_OFFHAND_PX.sword)
              * ((bodyH || STANDIN_REF_BODY_H) / STANDIN_REF_BODY_H) * sizeMul;
-    const k = px / Math.max(8, th);
+    /* v2.3.2910: weaponFitH -- the widened greatsword keeps its old length. */
+    const k = px / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, artDir, th));
     const mir = sgn < 0;
     /* No vertical flip anywhere on this path: every one of these icons is
        already drawn tip-away-from-the-grip, and the carried pose's
