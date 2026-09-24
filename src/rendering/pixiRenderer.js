@@ -736,6 +736,23 @@ export async function initPixiRenderer(canvas) {
        its children.  Read-only use only — this hands out the live container,
        so a scenario that mutated it would be testing its own edit. */
     playerDisplayRaw: () => entityRenderer.playerDisplay || null,
+    /* v2.3.2821: a peer's SWING or BOW stand-in body sprite (kind 'sword' /
+       'bow'), for mp-peerattackink -- it reads the frame the renderer draws.
+       Read-only, same rule as above. */
+    remoteAttackSpriteRaw: (id, kind) => {
+      const pool = kind === 'bow' ? effectsRenderer._remoteBowSprites : effectsRenderer._remoteSwordSprites;
+      const set = pool && pool.get(id);
+      return (set && set.body) || null;
+    },
+    /* v2.3.2821: the baked frames themselves for peer state `o` (kind 'sword' /
+       'bow', the SHEET's facing key, plain or pre-flipped) -- the same call the
+       renderer makes, so a scenario can compare a frame with its mirror
+       directly instead of hoping to catch both on screen. */
+    remoteAttackBake: (o, kind, cfgKey, mirror) => {
+      const e = effectsRenderer;
+      const cfg = ((kind === 'bow' ? e._bowCfg : e._swordCfg) || {})[cfgKey];
+      return (o && cfg && cfg.bodyUrl) ? e._remoteBodyFramesFor(o, cfgKey, cfg, !!mirror) : null;
+    },
     /* v2.3.2078: what the pet display is doing — the pet was invisible
        for its whole life and nothing could see that. */
     petDrawn: () => entityRenderer.petDrawn(),
