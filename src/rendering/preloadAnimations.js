@@ -49,7 +49,7 @@ import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their h
 import { ZONE_VARIANT_MAP, MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
 import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js'; /* v2.3.1534: per-zone recolour; v2.3.2272: and its release */
 import { loadFootprints, freeFootprints } from './footprintSprites.js'; /* v2.3.2654: per-zone ground reaction */
-import { loadNpcSprites, loadZoneDecor, freeZoneDecor } from './npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2651: + per-zone decor props */
+import { loadNpcSprites, loadZoneDecor, freeZoneDecor, loadTownScenery } from './npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2651: + per-zone decor props */
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
@@ -128,6 +128,10 @@ export async function preloadZoneAssets(zoneId) {
      the FIRST step a player takes already has its texture; a lazy load here
      would mean the opening stride of every zone entry leaves nothing behind. */
   tasks.push(Promise.resolve(loadFootprints(zoneId)).catch(() => {}));
+  /* v2.3.2859: town's NPCs and buildings, for the hub-exit gate walking INTO
+     town (worldview -> town).  The other ways in -- a spoke's return portal,
+     a respawn, the farm -- are held by zoneTransitions' syncTownScenery. */
+  if (zoneId === 'town') tasks.push(Promise.resolve(loadTownScenery()).catch(() => {}));
   /* frost is the only snowman zone — its sprites load here instead of
      globally.  v2.3.2844: the ice-burst impact sheet that used to ride along
      (~2MB) is retired with the plume it drew (effectsRenderer tombstone). */
@@ -309,6 +313,13 @@ export async function preloadWorldAnimations() {
        failure of the two.  If NPC art ever grows past a handful of figures,
        move it to preloadZoneAssets and free it on zone exit. */
     npcArt: loadNpcSprites(),
+    /* v2.3.2859: ...which it did (sixteen walk strips and the buildings,
+       35MB held in every field zone), so the figures and town's props are
+       loadTownScenery now -- still on THIS gate, because town is where you
+       start, and freed a beat after you leave (zoneTransitions
+       syncTownScenery).  npcArt above keeps what can be seen away from
+       town: the dialogue portraits and Ace's coin strips. */
+    townScenery: loadTownScenery(),
     /* v2.3.2345: the verified-Bro badge on the name plate.  One 64px webp,
        GLOBAL: a badged player can stand in any zone, so there is no zone to
        scope it to.  Registered HERE because the renderer's lookup is
