@@ -1,4 +1,4 @@
-# Another player's swing and bow shot wear their drawings (v2.3.2821)
+# Another player's swing and bow shot wear their drawings (v2.3.2832)
 
 Owner: *"Yea do woodcutting and missing ones."* This is the second of the
 missing ones.
