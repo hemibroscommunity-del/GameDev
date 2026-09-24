@@ -216,6 +216,15 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
      fur's own pixels: the fur image says where they are in the strip. */
   await A.page.evaluate(() => { if (window.__btSetSpecies) window.__btSetSpecies('monkey'); });
   await A.page.waitForTimeout(1200);
+  /* The fur has its own frame only on hit frames 1-5 facing south (frame 0
+     draws the plain head piece), and HIT above holds the flash ahead of the
+     clock, which mostly shows frame 0.  So this sweeps the hit's 250 ms the way
+     the roll does: started the last frame's length early, so the next frame
+     sees an age of 0-240 ms. */
+  const HIT_SWEEP = `const now = performance.now();
+    const dt = window.__qaPoseskinLast ? Math.min(1000, now - window.__qaPoseskinLast) : 16;
+    window.__qaPoseskinLast = now;
+    S._hitFlash = Date.now() - ((now / 3) % 240) + dt;`;
   const fur = await A.page.evaluate(async ({ dur, poke }) => {
     const R = window._pixiRenderer;
     const pokeFn = new Function('S', poke);
@@ -262,7 +271,7 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
       out.push({ dir, n, gr: n ? +(sg / sr).toFixed(3) : null, painted: n ? +(ng / nr).toFixed(3) : null });
     }
     return out;
-  }, { dur: 1800, poke: HIT });
+  }, { dur: 2400, poke: HIT_SWEEP });
   await A.page.evaluate(() => { if (window.__btSetSpecies) window.__btSetSpecies('none'); });
   console.log(`    monkey hit fur, green/red: ${fur.map((f) => `${f.dir} ${f.gr} (painted ${f.painted})`).join(', ')}`);
   rec.ok('a monkey\'s hit draws the fur (guard)', fur.length >= 1 && fur.every((f) => f.n > 50), fur);
