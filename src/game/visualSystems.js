@@ -12,6 +12,7 @@ import { zoneLeavesPrints } from '@/rendering/footprintSprites.js'; /* v2.3.2654
 import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2730: a peer's shot stops at a prop on your screen too */
 import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap */
 import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2731 */
+import { BOW_VOLLEY, LONE_BURN_MS } from '@/game/bowVolley.js';   /* v2.3.2849: how long a peer's special stands burning */
 /* v2.3.2730: how far up a prop's face a PEER's shot marks it -- see the remote
    projectile sweep below. */
 var REMOTE_SHOT_H = 26;
@@ -204,14 +205,22 @@ export function updateVisualSystems(S) {
                Neither distance NOR life advances while it waits -- the same
                rule the local orbs follow (projectiles.js), so what a peer
                sees covers the same ground as what the caster sees. */
-            if (rp.holdUntil && Date.now() < rp.holdUntil) {
+            /* v2.3.2848: ...or, for a bow volley's arrow, a count of frames (gameEvents.js) */
+            var _rpWait = false;
+            if (rp.holdFrames > 0) { rp.holdFrames--; _rpWait = true; }
+            else if (rp.holdUntil && Date.now() < rp.holdUntil) _rpWait = true;
+            if (_rpWait) {
               var _hOwner = S.others[rp.ownerId];
               var _hX = _hOwner ? (_hOwner.renderX || _hOwner.x) : rp.x;
               var _hY = _hOwner ? (_hOwner.renderY || _hOwner.y) : rp.y;
               rp._renderX = _hX + Math.cos(rp.ang) * rp.dist;
               rp._renderY = _hY + Math.sin(rp.ang) * rp.dist;
+              rp._held = true;   /* v2.3.2848: a bow-volley arrow is not drawn until it is loosed (effectsRenderer) */
               return true;
             }
+            rp._held = false;
+            /* v2.3.2848: MIRROR-PINNED -- the 8 below is bowVolley.js
+               PEER_PX_PER_FRAME; the bow volley staggers a peer's copies by it */
             var _rpStep = (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8));
             rp.dist += _rpStep;
             rp.life--;
@@ -258,7 +267,7 @@ export function updateVisualSystems(S) {
                 } else {
                   markProp(S, { kind: 'arrow', id: _rpId, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
                     face: boxFace(_rpHit.box, _rpHit.x, _rpHit.y), ang: rp.ang,
-                    ttl: rp.isSpecial ? 4000 : 2000, special: !!rp.isSpecial });
+                    ttl: rp.isSpecial ? (rp.volley ? BOW_VOLLEY.BURN_MS : LONE_BURN_MS) : 2000, special: !!rp.isSpecial });   /* v2.3.2849: a volley's 2.5 s */
                 }
               }
               return false;

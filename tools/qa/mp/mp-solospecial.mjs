@@ -25,8 +25,9 @@
  *
  * ═══ WHAT IS COUNTED ═══
  * Projectiles, by `isSpecial`, over a window that starts before the press.
- * The special's own shots are known exactly -- one arrow for the bow, three
- * orbs for the staff -- so a NORMAL projectile appearing in that window is the
+ * The special's own shots are known exactly -- three arrows for the bow
+ * (v2.3.2848's volley; it was one), three orbs for the staff -- so a NORMAL
+ * projectile appearing in that window is the
  * bundled shot, with no inference required.  The count is read from S.arrows
  * as they are pushed rather than from anything the renderer draws, because the
  * question is what the game FIRED, not what it painted.
@@ -63,6 +64,7 @@ const watchArrows = (P) => P.page.evaluate(() => {
       seen.add(a._soloId);
       window.__solo.seen.push({
         special: !!a.isSpecial, staff: !!a.isStaff,
+        big: !!a.big, orbs: a.orbs || 0,   /* v2.3.2842: the one-bolt special */
         delay: a.launchDelayMs || 0, spd: a.speedPx || null,
         at: Date.now() - window.__solo.t0,
       });
@@ -162,13 +164,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
      run with autoAttack off would report a clean special and prove nothing --
      it would be measuring the one state in which the bug cannot happen.  This
      is the state a player is in for the whole of a fight: thumb down. */
+  /* ═══ v2.3.2842: THE MAGIC SPECIAL IS ONE BIG BOLT, THE VOLLEY IS LEGACY ═══
+     Owner: "Instead of the current special attack with 3 orbs I want to see
+     what just one moderately larger bolt attack would look like."  Against a
+     worker that advertises caps.bigorb (this one) the staff special is ONE
+     bolt carrying three orbs' damage; against an older worker it is still the
+     three-orb volley.  Both are real paths, so both rows run: `magic` is the
+     big bolt, and `volley` forces the flag off to keep the volley's spacing
+     pinned for the deploy window in which a new client meets an old worker. */
+  const setBigOrb = (on) => P.page.evaluate((v) => {
+    const S = window._gameState.current;
+    if (!S._serverCaps) S._serverCaps = {};
+    S._serverCaps.bigorb = v;
+  }, on);
   const rows = [];
   for (const w of [
-    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 1 },
-    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 3 },
+    { key: 'bow',    type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 3 },   /* v2.3.2848: the volley -- three arrows, one press */
+    { key: 'magic',  type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 1, big: true },
+    { key: 'volley', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 3, legacy: true },
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
     await P.page.waitForTimeout(1000);
+    await setBigOrb(!w.legacy);
     /* v2.3.2473: a target on the bow's line; nothing at all for the staff. */
     const _tgtBeat = await seedBowTarget(P, w.slot === 'ranged');
     console.log(`    ${w.key} beat target: ${JSON.stringify(_tgtBeat)}`);
@@ -216,7 +233,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await watchArrows(P);
     await P.page.evaluate(() => { (window._gameFns || {}).specialAttack(); });
     await P.page.waitForTimeout(SETTLE_MS);
-    const series = w.key === 'magic' ? await orbSeries(P, 4, 260) : null;
+    const series = w.key === 'volley' ? await orbSeries(P, 4, 260) : null;
     await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; });
     const seen = await readArrows(P);
     const special = seen.filter((a) => a.special);
@@ -226,8 +243,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       ? Math.min(...normal.map((a) => Math.abs(a.at - spAt))) : null;
     rows.push({ ...w, seen, special: special.length, normal: normal.length, series, spAt, nearest,
       cadence, beats,
-      delays: special.map((a) => a.delay), speeds: special.map((a) => a.spd) });
+      delays: special.map((a) => a.delay), speeds: special.map((a) => a.spd),
+      bigs: special.filter((a) => a.big).length, orbs: special.map((a) => a.orbs) });
   }
+  await setBigOrb(true);   /* the rest of this file runs against this worker as it is */
 
   console.log('\n    ── one press of the special, with the attack button held ──');
   for (const r of rows) {
@@ -253,7 +272,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       r.nearest == null || (r.cadence != null && r.nearest >= r.cadence * 0.8), r);
   }
 
-  const magic = rows.find((r) => r.key === 'magic');
+  /* v2.3.2842: the big bolt carries the volley it replaced. */
+  const big = rows.find((r) => r.key === 'magic');
+  if (big) {
+    rec.ok('the magic special is ONE big bolt carrying three orbs (caps.bigorb)',
+      big.special === 1 && big.bigs === 1 && big.orbs[0] === 3, { special: big.special, bigs: big.bigs, orbs: big.orbs });
+  }
+  const magic = rows.find((r) => r.key === 'volley');
   if (magic) {
     rec.ok('the three orbs leave one every 0.2s',
       JSON.stringify(magic.delays.slice().sort((a, b) => a - b)) === JSON.stringify([0, ORB_GAP_MS, ORB_GAP_MS * 2]),
@@ -331,8 +356,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the grace holds it until the gesture is legible. */
   const pressRows = [];
   for (const w of [
-    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 1 },
-    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 3 },
+    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 3 },   /* v2.3.2848: the volley -- three arrows, one press */
+    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 1 },   /* v2.3.2842: one big bolt */
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
     await P.page.waitForTimeout(900);
@@ -450,8 +475,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      trigger, so for once the real gesture is fully reproducible. */
   const btnRows = [];
   for (const w of [
-    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 1 },
-    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 3 },
+    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 3 },   /* v2.3.2848: the volley -- three arrows, one press */
+    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 1 },   /* v2.3.2842: one big bolt */
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
     await P.page.waitForTimeout(900);

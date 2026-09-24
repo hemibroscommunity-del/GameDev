@@ -23,6 +23,16 @@
  *     complaint is that peers miss animations his own screen shows, so the
  *     blast is drawn from the server's broadcast rather than predicted, and
  *     the observer is how that is proved rather than asserted.
+ *
+ * ═══ v2.3.2848: NOW THE KILL SWITCH'S TEST ═══
+ * The special is three white-hot arrows with no blast (owner: "Burn, but no
+ * blast"; src/game/bowVolley.js, mp-bowvolley).  The blast survives only
+ * behind the `bowvolley: false` live flag, which un-advertises the volley and
+ * lets arrow_blast through again (server/src/arrowblast.js) -- the one lever
+ * that brings the old special back without a deploy.  So this runs with that
+ * flag thrown, from before anyone joins (caps are read on join), proves the
+ * lever really gives back the one arrow and its blast, and clears the flag
+ * again however it ends: the worker is shared with the scenarios after it.
  */
 import * as H from './harness.mjs';
 
@@ -57,13 +67,32 @@ const flickRight = (P, dx, dy) => P.page.evaluate(async ({ ddx, ddy }) => {
   return true;
 }, { ddx: dx, ddy: dy });
 
-export async function run({ browser, wsPort, webPort, rec }) {
+const flag = (wsPort, method, body) => fetch(`http://127.0.0.1:${wsPort}/api/admin/flags` + (method === 'DELETE' ? '?name=bowvolley' : ''), {
+  method,
+  headers: { Authorization: 'Bearer ' + H.ADMIN_KEY, 'Content-Type': 'application/json' },
+  body: body ? JSON.stringify(body) : undefined,
+}).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }));
+
+export async function run(ctx) {
+  const set = await flag(ctx.wsPort, 'POST', { name: 'bowvolley', value: false });
+  ctx.rec.ok('the bowvolley kill switch is thrown through the admin flags route (guard)',
+    !!(set && set.ok && set.flags && set.flags.bowvolley === false), set);
+  try {
+    await blast(ctx);
+  } finally {
+    await flag(ctx.wsPort, 'DELETE');
+  }
+}
+
+async function blast({ browser, wsPort, webPort, rec }) {
   const A = await H.newPlayer(browser, { name: 'Archer', wsPort, webPort, viewport: PHONE, touch: true });
   const B = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, guest: true, viewport: PHONE, touch: true });
   await H.enterWorld(A);
   await H.enterWorld(B);
   await A.page.waitForTimeout(2000);
   const aId = await H.readState(A, (S) => S.myId);
+  const offCaps = await H.readState(A, (S) => (S._serverCaps || {}).bowvolley);
+  rec.ok('with the switch thrown, the worker does not advertise the volley', offCaps === false, offCaps);
   await H.instrumentWire(A);
 
   const bId = await H.readState(B, (S) => S.myId);
@@ -195,11 +224,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(240);
     if (done) break;
   }
-  await A.page.evaluate(({ tx, ty }) => {
+  await A.page.evaluate(({ tx, ty, id }) => {
     const S = window._gameState.current;
     S._aimAngle = Math.atan2(ty - S.player.y, tx - S.player.x);
     S._facing = 'right';
-  }, { tx: target.x, ty: target.y });
+    /* v2.3.2848: LOCKED, the way a tap does.  Since v2.3.2473 a bow special
+       fires only when its sight line is on a monster and otherwise waits in a
+       queue -- an aim angle alone left this scenario's special unfired
+       ("a special arrow is in play" red on main, not only here). */
+    const m = (S.monsters || []).find((q) => q && q.id === id);
+    if (m) S.lockedTarget = { ref: m, type: 'monster', src: 'tap', ts: Date.now() };
+  }, { tx: target.x, ty: target.y, id: target.id });
   /* A REAL bow, on the WORKER.  Setting S.rpg.rangedWeapon in the browser is
      not enough and the refusal counter said so ({no-bow: 1}): the worker owns
      the character sheet and rolls the blast off its own copy.  /dev/kit is the
@@ -269,6 +304,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    special arrows in play: ' + JSON.stringify(live));
   rec.ok('a special arrow is in play (guard: no arrow, no DoT, no blast)',
     live.length >= 1, { live, wire: await H.wireCounts(A) });
+  rec.ok('...and it is the ONE arrow of old, not the volley (v2.3.2848)', live.length === 1, live);
   if (!live.length) { await A.ctx.close(); await B.ctx.close(); return; }
 
   /* ── 1. IT FIRES WHEN THE DoT ENDS, NOT AT IMPACT ── */
@@ -345,6 +381,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      that never fired (the lesson the harvest handshake taught three times). */
   const why = (await H.adminPlayer(wsPort, aId).catch(() => ({}))).live || {};
   console.log('    worker refusals: ' + JSON.stringify(why.arrowBlast || null));
+  rec.ok('the kill switch let the blast past the retired gate (v2.3.2848: no "retired" refusal)',
+    !(why.arrowBlast && why.arrowBlast.retired), why.arrowBlast || null);
   if (workerHasBow) {
     rec.ok('at least one monster stood inside the blast radius (guard)', inRing.length >= 1, inRing);
     rec.ok('the worker did not refuse the blast at a gate',

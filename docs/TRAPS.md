@@ -4561,6 +4561,108 @@ then `new GlProgram({ name, ...src })`. GlProgram's `isES300` check keeps the
 version and skips the ES1 defines. The templates are already ES3 syntax. Gate
 the feature on `webGLVersion === 2`.
 
+## 111. A paused page clock trips the dark-screen watchdog (v2.3.2843)
+
+**Tempting:** to record an effect frame by frame, install Playwright's fake
+clock, `pauseAt`, and step it with `runFor` between screenshots -- the game only
+advances when you say so, so every frame is exact.
+
+**Wrong without one more line.** BroTown.jsx's dark-screen watchdog samples the
+canvas lit-percentage on its own schedule. With the page clock paused between
+steps it reads a black buffer, records `watchdog-dark ... strike N`, and on the
+second strike calls `window._rebuildRenderer` -- which drops per-zone art. Seen
+while capturing the v2.3.2843 hit reactions: the first snowman rendered, every
+later one fell back to the emoji circle, and one "resting" frame was the
+recovery overlay. It looks like a rendering bug in the feature under test.
+
+**The rule:** before `page.clock.install()`, switch the watchdog off for that
+page -- `S.__wdEverLit = true; S.__wdNext = 1e15; S.__wdDark = 0;` -- and use
+`page.clock.fastForward(ms)` (not `runFor`) to skip long idle stretches, since
+`runFor` renders every intermediate frame in software GL (minutes per clip).
+
+## 112. The hit circle is not the body: draw a hit where the shot lands (v2.3.2844)
+
+A projectile's hit test (`monsterProjRadius`, projectiles.js) is a capsule
+against a CIRCLE round the body -- slime 25, snowman 32, mummy 40, skeleton 50,
+plus the shot's own half-thickness -- deliberately generous, so a shot the
+player sees touch the sprite counts. Anything drawn at the shot's position on
+the frame that test fires is therefore drawn on that ring, not on the body: a
+staff bolt at a slime registered with its orb ~36-49 px out and burst in the
+air in front of a 27 px blob, on every monster alike. The owner's word for it
+was "the same invisible edge".
+
+**The plausible-but-wrong fix** is to shrink the circle so shots "go in
+deeper". That changes the GAME: more misses on moving targets, the damage
+claim sent frames later, and every hitreal / hitmatrix expectation moves.
+
+**The rule:** keep the hit where it registers, and move the PICTURE. Since
+v2.3.2844 the hit frame still sends and applies everything, then keeps the
+shot alive (`a._land`) to fly on at its own speed to a point in the body's
+core (`LAND_CORE` round `monsterBodyOffsetY`), and the flash, recoil, crash,
+material burst, sound and stuck shaft go off there (`_projImpactFx`). Two
+cases to keep: an arrow's 24 px step often carries it to or past its point on
+the frame it hits -- land it ON the point, not at the overshot tip (that pinned
+shafts on the far side) -- and a point-blank bolt already past its point
+bursts where the orb IS (v2.3.2505). The one-in-eight arrow snap (v2.3.2731)
+is rolled on the hit, where every screen rolls it, and drawn at the landing.
+**Receipt:** mp-shotland.
+
+**...and the circle's centre is not the torso (v2.3.2845).** The owner, on
+the shots above: "The arrows are grouping around the skeleton's knee."
+`monsterBodyOffsetY` -- the hit circle's centre -- was derived as
+`liveScalePx / 2`, which leaves out the monster container's MONSTER_SIZE_MULT
+1.5: the skeleton is drawn ~147 px tall and its 60 is its knees; the mummy's
+and the 96 px brutes' 48 is their thighs. The plausible-but-wrong fix is to
+correct `monsterBodyOffsetY` itself -- it is also the tap-to-lock circle and
+the melee reach, so that changes which shots and taps connect. The rule: a
+separate, measured `monsterTorsoY` is where a LOCKED ranged shot is aimed
+(`lockShotPoint`: `rangedAimAngle`'s sight gate and sight line, the flight
+line in projectiles, the specials) and the centre it lands round. **And the
+aimed-at monster's circle moves with the aim** (`_projCentreLift`, the gate's
+`opts.aimAt`): a shot aimed 40 px above a circle's centre has 40 px less room
+on that side, and mp-hitreal caught a mummy drifting 20 px across a torso shot
+that then passed through its chest without a hit. Same radius, centred where
+the shot was aimed: the room it had before. `lockAimPoint` keeps its other
+readers -- the facing a lock drives, the dodge, the shield arc -- on the
+circle's centre: pointed at a skeleton's chest, the facing turns a player to
+face UP at one standing beside them. **Receipt:** mp-shotland (every flight
+line through the torso, the skeleton's landings in its ribcage, a skeleton
+that steps 40 px either way mid-flight still hit, 75 px missed).
+
+## 113. A character's position is its hips, not its feet (v2.3.2846)
+
+**Tempting:** anything that has to stand where a character stands -- a
+stand-in animation, a prop dropped at their feet, a campfire -- is placed at
+`S.player.y` (or a peer's `y`), with an anchor at its bottom edge, because
+`__btPlayerDrawn()` calls `display.y` the `footY` and depthSort.js calls it the
+ground-contact line.
+
+**Wrong by 52 px.** The walking body is FRAME-CENTRED: its container sits at
+your position and the boots are drawn `(221 - 128) x 1.061 x 0.421875 x
+PLAYER_SIZE_MULT` = 52 world px lower on a flat zone (times the zone's
+perspective scale; the build lift keeps it independent of height). So a thing
+bottom-anchored at your `y` sits at your HIPS:
+- the fire-lighting figure floated ~77 px in the air for the whole strike
+  (planted at `y + 6`, with 104 px of log and shadow under its boots in the
+  frame) -- the sword and bow stand-ins had the same bug years earlier and were
+  fixed with the published `S._swordFootY`;
+- the campfire was lit at your hips, behind your own body, so you could not see
+  it until you walked off.
+
+**The rule.** For your boots use `S.player.y + standFootDy(zoneScale)`
+(entityRenderer exports it) or the per-frame `S._bodyFootY`. When a thing must
+SORT against characters, it sorts on its ground line: since v2.3.2748 (#717)
+the depth pass compares where things touch the ground (depthSort `groundOf` =
+`y + _groundDy`, your feet against theirs), so anything whose origin is not its
+ground point says how far below its origin that is in `_groundDy` -- the
+campfire's Container stands `standFootDy()` above the fire's base and carries
+`_groundDy` = that drop. (Before #717 the pass compared everything with your
+hips, and the campfire kept to that convention instead; merging #717 made the
+fire draw over you only once you stood a foot-drop behind it, which
+mp-campfire's "stand behind the fire" check caught.) **Receipt:** mp-campfire
+checks the fire-lighter's boots against `_bodyFootY` (within 3 px), that the
+fire is lit at the boots, and both sides of the fire's depth.
+
 ## 114. A piece cut out of a sprite must OVERLAP the place it was cut (v2.3.2812)
 
 **Tempting:** to make a building's hanging sign swing, erase the sign from the
@@ -4645,3 +4747,49 @@ must be told about pieces cut from it. Before cutting, grep for every reader
 of that sprite (`propDisplays`, `_propGround`, `_vShade`); after, compare the
 game against main with the pieces at rest -- shade on/off, shadows on/off --
 and expect no difference.
+
+## 117. A camelCase live flag is a kill switch nobody can throw (v2.3.2848)
+
+**Tempting:** name a new capability in the house camelCase (`zoneDepth`,
+`storeGear`, `milestonesRetired`) and write in its comment that writing
+`<cap>: false` into the `liveflags` storage key turns it off -- join.js
+spreads the flags over the caps literal last, so the override really does
+work.
+
+**Wrong, for the part that matters.** The only operator route to that key is
+`POST /api/admin/flags`, and it refuses any name outside `liveops.js`
+`FLAG_NAME_RE` -- `/^[a-z0-9_]{1,32}$/`, lower case only -- with a 400. So a
+camelCase kill switch can be *read* and *cleared* (the test panel's Live
+flags section lists what is there) but never *set* short of a code change or
+a hand-written storage put. Found making the bow volley's switch
+(v2.3.2848): the first cut was `bowVolley` and could not be thrown; its
+scenario would have had to fake the flag instead of using the route an
+operator would. The existing `zoneDepth` and `storeGear` switches have the
+same problem today.
+
+**The rule:** a capability that is also meant to be a kill switch gets a name
+that passes `FLAG_NAME_RE` (`bowvolley`, like `prog3`, `gearq`, `t2bench`),
+and a test that says so (`server/test/arrowblast.test.mjs` tests the name
+against the regex). Or widen the regex -- a server change of its own, not
+something to do in passing. **Receipt:** mp-arrowblast throws `bowvolley`
+through the real route before anyone joins. **v2.3.2849:** the one-bolt staff
+special's `bigOrb` was renamed `bigorb` for the same reason, before it ever
+shipped (combat-lifecycle §6i tests the name).
+
+## 118. Measuring damage through the handler trains the skill you are measuring (v2.3.2849)
+
+**Tempting:** to price a special, join a player on a mocked `GameRoom`, drive
+`monster_damage` through `webSocketMessage` a few thousand times and average
+the `monster_hit`s. The handler is the truth -- lanes, ceilings, `part`,
+`orbs`, the splash -- so measuring through it beats re-deriving the formula.
+
+**Wrong without one more line.** Every hit calls `_prog3AwardXp` for the skill
+that dealt it (§9-A), so the measurement levels the character up as it runs.
+Forty greatsword specials took a fresh character from skill 1 to 3; four
+thousand read the special at ~166 where a skill-1 character deals ~41. The
+numbers look plausible and are simply of a different character.
+
+**The rule:** stub it for the measurement -- `room._prog3AwardXp = () => {}`
+-- or reset `ps.prog3.sk` before each trial. `tools/specials-measure.mjs` does
+the former. (In a TEST that asserts damage, pin `Math.random` as the suites
+do; the drift is per hit, so even two sends in a row can differ.)
