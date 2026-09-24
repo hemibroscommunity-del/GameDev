@@ -3834,7 +3834,7 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
-        /* v2.3.2822: Smelt at the blacksmith (ForgePanel) -> smelting.js. */
+        /* v2.3.2822: Smelt at the blacksmith (SmithyPanel) -> smelting.js. */
         if (msg.type === 'smelt_bar') {
           ws.send(JSON.stringify(msg));
           return;

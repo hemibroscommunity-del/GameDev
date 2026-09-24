@@ -3,6 +3,8 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
+import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
+import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
 import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, FillGradient, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
@@ -3547,6 +3549,7 @@ export class EffectsRenderer {
     /* v2.3.1735: guards internally on the strip being loaded. */
     try { this._updateWhirlVortex(S, now); } catch (e) { if (typeof window !== 'undefined' && window.__btProbe) window.__btWhirlErr = String(e && e.message); }
     try { this._updateAbilityWindups(S, now); } catch (e) { /* v2.3.2824: ditto */ }
+    try { this._updateSmithing(S, now); } catch (e) { /* v2.3.2827: ditto */ }
     this._updateScreenFlash(S, viewW, viewH, now);
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
@@ -9280,6 +9283,89 @@ export class EffectsRenderer {
     for (let i = used; i < this._whirlSprites.length; i++) {
       const spr = this._whirlSprites[i];
       if (spr && !spr.destroyed) spr.visible = false;
+    }
+  }
+
+  /* ═══ v2.3.2827: THE SMITH AT WORK -- ANVIL, FIRE AND SPARKS ═══
+     Owner: "is there an existing animation that I can repurpose for the act
+     of smelting ore into armor?  Maybe you can add code effects for the flame
+     part too."  The body plays the mining swing (entityRenderer, `mining`);
+     this draws the rest, all in code:
+       - an iron anvil over the rock that is painted under the mine pose's
+         boots (mining hides that rock behind the ore node; here the anvil
+         takes its place), with a white-hot bar on it that glows and fades as
+         the work goes on,
+       - a small forge fire beside it (the campfire's tongues, bigger and
+         hotter) throwing embers,
+       - a burst of sparks and the pick-on-rock clink on every strike frame.
+     Drawn on the node-FRONT layer, above the body, exactly where an ore node
+     sits when you mine.  Clears the moment S._smithing ends. */
+  _updateSmithing(S, now) {
+    let g = this.smithGfx;
+    if (!g || g.destroyed) {
+      g = this.smithGfx = new Graphics();
+      this.nodeFrontLayer.addChild(g);
+    }
+    g.clear();
+    const w = S && S._smithing;
+    if (!w || now >= w.until || !S.player) { this._smithFrame = -1; return; }
+    const x = S.player.x + SMITH_ANVIL_DX, y = S.player.y + SMITH_ANVIL_DY;
+    const K = SMITH_SCALE;
+    /* drawn in local units around the anvil's foot, scaled once */
+    g.position.set(x, y);
+    g.scale.set(K);
+    const life = Math.max(0, Math.min(1, (w.until - now) / Math.max(1, w.until - w.t0)));
+    /* the anvil: horn to the left, a heavy face, a waisted foot on a block */
+    g.roundRect(-20, 8, 40, 9, 2); g.fill({ color: 0x3a2a1c });                   /* wooden block */
+    g.moveTo(-9, 8); g.lineTo(-6, -2); g.lineTo(6, -2); g.lineTo(9, 8); g.closePath();
+    g.fill({ color: 0x2c3136 });                                                  /* waist */
+    g.moveTo(-30, -9); g.quadraticCurveTo(-20, -4, -13, -3); g.lineTo(-13, -11); g.closePath();
+    g.fill({ color: 0x3b4147 });                                                  /* horn */
+    g.roundRect(-14, -12, 34, 10, 2); g.fill({ color: 0x40474e });                /* body */
+    g.roundRect(-14, -13, 34, 3, 1.5); g.fill({ color: 0x7d868e });               /* polished face */
+    g.roundRect(-20, 8, 40, 9, 2); g.stroke({ color: 0x1a120c, width: 1, alpha: 0.6 });
+    /* the hot bar on the face */
+    const pulse = 0.75 + 0.25 * Math.sin(now / 80);
+    g.ellipse(3, -14, 16, 6); g.fill({ color: 0xff8a2a, alpha: 0.3 * pulse * (0.4 + 0.6 * life) });
+    g.roundRect(-6, -17, 18, 5, 2); g.fill({ color: life > 0.35 ? 0xffe9a8 : 0xff9a3c, alpha: 0.95 });
+    g.roundRect(-5, -16.5, 16, 2, 1); g.fill({ color: 0xffffff, alpha: 0.55 * pulse * life });
+    /* the forge fire beside it: a bed of coals and four tongues of flame */
+    const fx = SMITH_FIRE_DX, fy = 12;
+    g.ellipse(fx, fy, 24, 9); g.fill({ color: 0xff8a3c, alpha: 0.25 });
+    g.roundRect(fx - 15, fy - 3, 30, 7, 3); g.fill({ color: 0x2a1d14 });
+    g.roundRect(fx - 12, fy - 3, 24, 3, 1.5); g.fill({ color: 0xff5a1a, alpha: 0.85 });   /* live coals */
+    const fl = Math.sin(now / 90) * 0.5 + Math.sin(now / 47) * 0.5;
+    for (let i = 0; i < 4; i++) {
+      const tx = fx + (i - 1.5) * 7;
+      /* a quadratic's peak is HALF its control height, so these are drawn
+         twice as tall as they read: 20-34px flames */
+      const h = (40 + (i === 1 || i === 2 ? 22 : 0)) * (0.8 + 0.2 * Math.sin(now / 65 + i * 1.7));
+      g.moveTo(tx - 6, fy - 1);
+      g.quadraticCurveTo(tx + fl * 5, fy - h, tx + 6, fy - 1);
+      g.fill({ color: i === 1 || i === 2 ? 0xffc23a : 0xff5e14, alpha: 0.92 });
+      g.moveTo(tx - 3, fy - 1);
+      g.quadraticCurveTo(tx + fl * 3, fy - h * 0.55, tx + 3, fy - 1);
+      g.fill({ color: 0xfff0b0, alpha: 0.85 });
+    }
+    if (S.hitParticles && Math.random() < 0.4) {
+      S.hitParticles.push({ x: x + (fx + (Math.random() - 0.5) * 18) * K, y: y + (fy - 18) * K, vx: (Math.random() - 0.5) * 1.2, vy: -1.3 - Math.random() * 1.8, life: 0.8, color: Math.random() < 0.5 ? '#ffb050' : '#ffe28a', size: 1.4 });
+    }
+    /* a strike on the mine swing's contact frame: sparks off the bar, and
+       the same clink mining makes */
+    const frame = Math.floor((now / SMITH_STRIKE_MS) * 14) % 14;
+    const prev = this._smithFrame == null ? -1 : this._smithFrame;
+    this._smithFrame = frame;
+    if (prev >= 0 && prev < SMITH_STRIKE_FRAME && frame >= SMITH_STRIKE_FRAME) {
+      if (S.hitParticles) {
+        for (let i = 0; i < 12; i++) {
+          const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
+          const sp = 2 + Math.random() * 3.5;
+          S.hitParticles.push({ x: x + 3 * K, y: y - 16 * K, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.5 + Math.random() * 0.3,
+            color: i % 3 === 0 ? '#ffffff' : (i % 3 === 1 ? '#ffd27a' : '#ff9a3c'), size: 1.4 });
+        }
+      }
+      try { BT_AUDIO.play('mine-strike', { offset: 0.08, duration: 0.4, vol: 0.45 }); } catch (e) { /* sound only */ }
+      if (typeof window !== 'undefined' && window.__btProbe) window.__btSmithStrikes = (window.__btSmithStrikes || 0) + 1;
     }
   }
 

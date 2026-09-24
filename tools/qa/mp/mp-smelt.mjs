@@ -66,11 +66,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('pressing E at the Blacksmith door shows the Smelting row', opened);
   if (!opened) { await shot(P, 'no-panel'); await P.ctx.close().catch(() => {}); return; }
   const row = await P.page.$eval('[data-smelt-row="bar_copper"]', (el) => el.innerText);
-  rec.ok('...which says 5 Copper Ore make one bar and what XP it pays', /12\/5/.test(row) && /Copper Ore/.test(row) && /\+400 Smithing XP/.test(row), row);
+  rec.ok('...which shows the ore it takes (12/5) and the XP it pays (+400)', /12\/5/.test(row) && /\+400/.test(row), row);
   const iconOk = await P.page.$eval('[data-smelt-row="bar_copper"] img', (im) => im.complete && im.naturalWidth > 0).catch(() => false);
   rec.ok('...with the copper bar picture', iconOk);
-  rec.ok('...and "Smelt all (2)" for 12 ore', !!(await P.page.$('[data-smelt-all="bar_copper"]'))
-    && /Smelt all \(2\)/.test(await P.page.$eval('[data-smelt-all="bar_copper"]', (b) => b.textContent)));
+  rec.ok('...and "All (2)" for 12 ore', !!(await P.page.$('[data-smelt-all="bar_copper"]'))
+    && /All \(2\)/.test(await P.page.$eval('[data-smelt-all="bar_copper"]', (b) => b.textContent)));
   await shot(P, 'panel');
 
   /* ── 2. One smelt ── */
@@ -86,7 +86,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 3. Smelt all ── */
   await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 10 });   /* 17 ore -> 3 bars */
   await waitBag(P, 'ore === 17');
-  await P.page.waitForFunction(() => /Smelt all \(3\)/.test((document.querySelector('[data-smelt-all="bar_copper"]') || {}).textContent || ''), null, { timeout: 4000 }).catch(() => {});
+  await P.page.waitForFunction(() => /All \(3\)/.test((document.querySelector('[data-smelt-all="bar_copper"]') || {}).textContent || ''), null, { timeout: 4000 }).catch(() => {});
   await P.page.click('[data-smelt-all="bar_copper"]');
   const all = await waitBag(P, 'ore === 2 && bar === 4');
   const b2 = await bag(P);
@@ -97,7 +97,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 5. Short of ore ── */
   const short = await P.page.$eval('[data-smelt-one="bar_copper"]', (b) => ({ t: b.textContent, d: b.disabled }));
-  rec.ok('with 2 ore the button says "Need 3 more ore" and is off', /Need 3 more ore/.test(short.t) && short.d, short);
+  const shortRow = await P.page.$eval('[data-smelt-row="bar_copper"]', (el) => el.innerText);
+  rec.ok('with 2 ore the Smelt button is off and the cost reads 2/5', short.d && /2\/5/.test(shortRow), { short, shortRow });
 
   /* ── 4. A double-tap is one smelt ── */
   await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 8 });    /* 10 ore -> room for 2 */

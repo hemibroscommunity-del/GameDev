@@ -146,6 +146,7 @@ const SCENARIOS = {
   plazaplate: () => import('./mp-plazaplate.mjs'), /* v2.3.2071: a plate on every townsperson, benches facing the water */
   polish: () => import('./mp-polish.mjs'), /* v2.3.2820: demo-audit polish -- feedback that arrives, volume sliders, live mute, party chip, daily toast, About page */
   smelt: () => import('./mp-smelt.mjs'), /* v2.3.2822: ore into bars at the blacksmith */
+  smithy: () => import('./mp-smithy.mjs'), /* v2.3.2826: the Blacksmith rebuilt + the smith at work */
   whirlwind: () => import('./mp-whirlwind.mjs'), /* v2.3.2824: the 2s aimable windup ring */
   portalbeam: () => import('./mp-portalbeam.mjs'), /* v2.3.2070: the light shaft over a zone exit */
   lilbro: () => import('./mp-lilbro.mjs'), /* v2.3.2064: the second walking NPC */
