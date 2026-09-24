@@ -33,7 +33,7 @@ export function updateStateCleanup(S) {
            line above asks for that lockstep in a comment and gets it by
            memory; this one gets it by construction. */
         if (S.footprints) S.footprints = S.footprints.filter(function(f) { return _now - f.ts < PRINT_TTL_MS; });
-        /* v2.3.2900: other players' prints, on the same number. */
+        /* v2.3.2918: other players' prints, on the same number. */
         if (S.peerFootprints) S.peerFootprints = S.peerFootprints.filter(function(f) { return _now - f.ts < PRINT_TTL_MS; });
         if (S._impactRings) S._impactRings = S._impactRings.filter(function(r) { return _now - r.ts < 400; });
         if (S.groundLoot) S.groundLoot.forEach(function(loot) { if (loot.expiry && _now > loot.expiry) loot._expired = true; });

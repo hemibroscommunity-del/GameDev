@@ -38,7 +38,7 @@ export function dodgeWindowMs(R) {
     + Math.min(200, 2 * ((R && R.enduranceSpec && R.enduranceSpec.reflexes) || 0));
 }
 
-/* ═══ v2.3.2900: ...AND WHETHER YOU WERE WALKING WHEN IT STARTED ═══
+/* ═══ v2.3.2918: ...AND WHETHER YOU WERE WALKING WHEN IT STARTED ═══
    Owner: "check all other broadcasted player animations to make sure they
    match what your character does client side."
    Your snow prints come from your WALK velocity (visualSystems), and the stick

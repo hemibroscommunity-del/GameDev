@@ -8200,7 +8200,7 @@ export class EffectsRenderer {
      Drawn on the splat layer, which sits UNDER the player: a print is in the
      ground, and one drawn over your boots would read as a sticker. */
   _updateFootprints(S, now) {
-    /* v2.3.2900: yours, then everyone else's (visualSystems keeps the two in
+    /* v2.3.2918: yours, then everyone else's (visualSystems keeps the two in
        separate capped lists), through one pool: same art, same fade, same
        layer -- a peer's trail in the snow is drawn exactly as yours is. */
     const own = S.footprints || [], theirs = S.peerFootprints || [];
