@@ -3,7 +3,9 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
-import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
+import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
+import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, FillGradient, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
    see CLAUDE.md "Animation preloading is LAW"): every Assets.load in
@@ -242,7 +244,7 @@ import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
-import { WHIRL_VORTEX, WHIRL_FX_MS, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
+import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
@@ -1829,6 +1831,21 @@ const LABEL_STYLE = new TextStyle({
   dropShadow: { color: '#000000', blur: 2, distance: 1 },
 });
 
+/* v2.3.2823: one gradient shared by every chat bubble -- local texture space,
+   so it stretches to each bubble's own height instead of being rebuilt per
+   message.  Built lazily: a FillGradient made at module load would run before
+   the renderer exists. */
+let _chatBubbleGrad = null;
+function chatBubbleGradient() {
+  if (!_chatBubbleGrad) {
+    _chatBubbleGrad = new FillGradient({
+      type: 'linear', start: { x: 0, y: 0 }, end: { x: 0, y: 1 }, textureSpace: 'local',
+      colorStops: [{ offset: 0, color: '#FFFFFF' }, { offset: 0.55, color: '#F6F7F8' }, { offset: 1, color: '#DCE2E5' }],
+    });
+  }
+  return _chatBubbleGrad;
+}
+
 /* Emoji-safe label style for chat bubbles, NPC names, etc. that may
    contain user-supplied or game-supplied emoji.  Same iOS WebGL
    crash class as DMG_STYLE_EMOJI — stripping the dropShadow (no stroke
@@ -2192,6 +2209,9 @@ export class EffectsRenderer {
        hazard must not depend on another system's clear order. */
     this.fireTrailGfx = new Graphics();
     this.telegraphLayer.addChild(this.fireTrailGfx);
+    /* v2.3.2824: the whirlwind's windup ring -- ground layer, under everyone. */
+    this.windupGfx = new Graphics();
+    this.telegraphLayer.addChild(this.windupGfx);
     this.fireTrailSprites = [];
 
     this.overlayGfx = new Graphics();
@@ -3694,7 +3714,9 @@ export class EffectsRenderer {
     this._updateFxBursts(S, now);   /* v2.3.1443 */
     this._updateCookSmoke(now);     /* v2.3.2760 */
     /* v2.3.1735: guards internally on the strip being loaded. */
-    try { this._updateWhirlVortex(S, now); } catch (e) { /* ditto */ }
+    try { this._updateWhirlVortex(S, now); } catch (e) { if (typeof window !== 'undefined' && window.__btProbe) window.__btWhirlErr = String(e && e.message); }
+    try { this._updateAbilityWindups(S, now); } catch (e) { /* v2.3.2824: ditto */ }
+    try { this._updateSmithing(S, now); } catch (e) { /* v2.3.2827: ditto */ }
     this._updateScreenFlash(S, viewW, viewH, now);
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
@@ -3865,7 +3887,13 @@ export class EffectsRenderer {
            pushes two more every cast.  Every other transient list in this
            file (dust, ambient, dodge trail) splices — this one now matches. */
         if (age >= 1) { S._impactRings.splice(i, 1); continue; }
-        const radius = (ring.maxR || 15) * (0.5 + age);
+        /* v2.3.2824: a `settle` ring sweeps in to EXACTLY maxR over the first
+           `settle` of its life and holds there while it fades -- the
+           whirlwind's edge, which must land on the radius that was tested
+           rather than grow past it. */
+        const radius = typeof ring.settle === 'number'
+          ? (ring.maxR || 15) * (0.55 + 0.45 * Math.min(1, age / ring.settle))
+          : (ring.maxR || 15) * (0.5 + age);
         /* v2.3.1735: an optional ARC, for rings that belong to a DIRECTIONAL
            ability (Shield Bash).  A full circle around a shove the worker
            only rolls against the nearest target in front of you draws a lie
@@ -3879,7 +3907,7 @@ export class EffectsRenderer {
         } else {
           gfx.circle(ring.x, ring.y, radius);
         }
-        gfx.stroke({ color: cssToHex(ring.color || '#ffffff'), width: (1 - age) * 3, alpha: (1 - age) * 0.6 });
+        gfx.stroke({ color: cssToHex(ring.color || '#ffffff'), width: (1 - age) * (ring.width || 3), alpha: (1 - age) * (typeof ring.settle === 'number' ? 0.9 : 0.6) });
       }
     }
 
@@ -6850,15 +6878,37 @@ export class EffectsRenderer {
       const bw = Math.min(336, tw + padX * 2);
       const bh = th + padY * 2;
       entry.bg.clear();
-      entry.bg.roundRect(-bw / 2, -bh - tipH, bw, bh, radius);
-      entry.bg.fill({ color: 0xffffff, alpha: 0.92 });
-      /* Pointer tip — small downward triangle from the bubble bottom
-         to a point at (0, 0) which is the source's top-of-head. */
-      entry.bg.moveTo(-5, -tipH);
-      entry.bg.lineTo(0, 0);
-      entry.bg.lineTo(5, -tipH);
-      entry.bg.lineTo(-5, -tipH);
-      entry.bg.fill({ color: 0xffffff, alpha: 0.92 });
+      /* ═══ v2.3.2823: THE BUBBLE POPS ═══
+         Owner: "add a gray outline to the chat bubble ... I just want it to
+         pop a little more.  Maybe add a tiny gradient shading to it to give
+         it a more premium feel."
+         The box and its tip are now ONE outline (so the stroke runs around
+         the tip instead of cutting across it where two shapes met), filled
+         with a soft top-to-bottom white -> cool-grey gradient, ringed in a
+         mid-grey 2px stroke, and lifted off the ground by a faint shadow
+         2px below.  Opaque now: the 0.92 alpha let busy terrain show through
+         the text, which is the opposite of popping. */
+      const _bubblePath = (g, dy) => {
+        const x0 = -bw / 2, x1 = bw / 2, y0 = -bh - tipH + dy, y1 = -tipH + dy, r = radius;
+        g.moveTo(x0 + r, y0);
+        g.lineTo(x1 - r, y0);
+        g.quadraticCurveTo(x1, y0, x1, y0 + r);
+        g.lineTo(x1, y1 - r);
+        g.quadraticCurveTo(x1, y1, x1 - r, y1);
+        g.lineTo(5, y1);
+        g.lineTo(0, dy);
+        g.lineTo(-5, y1);
+        g.lineTo(x0 + r, y1);
+        g.quadraticCurveTo(x0, y1, x0, y1 - r);
+        g.lineTo(x0, y0 + r);
+        g.quadraticCurveTo(x0, y0, x0 + r, y0);
+        g.closePath();
+      };
+      _bubblePath(entry.bg, 2);
+      entry.bg.fill({ color: 0x000000, alpha: 0.18 });
+      _bubblePath(entry.bg, 0);
+      entry.bg.fill({ fill: chatBubbleGradient() });
+      entry.bg.stroke({ width: 2, color: 0x8a949a, alignment: 1 });
       /* Center the text inside the bubble. */
       entry.text.x = 0;
       entry.text.y = -bh - tipH + padY;
@@ -9343,46 +9393,204 @@ export class EffectsRenderer {
 
   /* The whirlwind's vortex, played once under the caster while the gather
      lands.  Queued by S._whirlFx (game/abilities.js). */
+  /* ═══ v2.3.2824: THE VORTEX IS AS BIG AS THE HIT ═══
+     Owner: "make sure whirlwinds effects match the effective area."
+     v2.3.1738 capped this sprite at a 130px radius against a 240px hit, so
+     the thing you watched promised half the reach you had.  The cap existed
+     because a full-size vortex drawn OVER the caster washed the phone screen
+     out -- so instead of shrinking it, it now draws UNDER everyone
+     (telegraphLayer, the ground-hazard layer the fire trail uses), at the
+     radius the worker tested: the painted spiral's outer edge (106px of its
+     256px cell at the widest frame, measured off whirl-vortex-v1.png) lands
+     on the circle.  Monsters and the caster stand on top of it, so it reads
+     as the ground being pulled in, not as a curtain.
+     Drawn for PEERS too (S._peerWhirlFx, from their player_swing), so a
+     watcher sees the same size the caster does. */
   _updateWhirlVortex(S, now) {
-    const fx = S && S._whirlFx;
-    if (!fx || !WHIRL_VORTEX.frames.length) {
-      if (this._whirlSprite && !this._whirlSprite.destroyed) this._whirlSprite.visible = false;
-      return;
+    const list = [];
+    if (S && S._whirlFx) list.push(S._whirlFx);
+    if (S && S._peerWhirlFx && S._peerWhirlFx.length) {
+      for (let i = S._peerWhirlFx.length - 1; i >= 0; i--) {
+        if (now - S._peerWhirlFx[i].t0 >= WHIRL_FX_MS) S._peerWhirlFx.splice(i, 1);
+      }
+      for (const f of S._peerWhirlFx) list.push(f);
     }
-    const age = now - (fx.t0 || now);
-    if (age < 0 || age >= WHIRL_FX_MS) {
-      if (this._whirlSprite && !this._whirlSprite.destroyed) this._whirlSprite.visible = false;
-      if (age >= WHIRL_FX_MS) S._whirlFx = null;
-      return;
+    if (!this._whirlSprites) this._whirlSprites = [];
+    let used = 0;
+    if (WHIRL_VORTEX.frames.length) {
+      for (const fx of list) {
+        const age = now - (fx.t0 || now);
+        if (age < 0 || age >= WHIRL_FX_MS) {
+          if (fx === S._whirlFx && age >= WHIRL_FX_MS) S._whirlFx = null;
+          continue;
+        }
+        let spr = this._whirlSprites[used];
+        if (!spr || spr.destroyed) {
+          spr = new Sprite(WHIRL_VORTEX.frames[0]);
+          spr.anchor.set(0.5, 0.5);
+          this.telegraphLayer.addChild(spr);
+          this._whirlSprites[used] = spr;
+        }
+        used++;
+        const fi = Math.min(7, Math.floor((age / WHIRL_FX_MS) * 8));
+        spr.texture = WHIRL_VORTEX.frames[fi];
+        spr.scale.set((fx.radius || 60) / WHIRL_ART_R);
+        spr.x = fx.x; spr.y = fx.y;
+        spr.alpha = age > WHIRL_FX_MS - 160 ? 0.8 * ((WHIRL_FX_MS - age) / 160) : 0.8;
+        spr.visible = true;
+      }
     }
-    let spr = this._whirlSprite;
-    if (!spr || spr.destroyed) {
-      spr = new Sprite(WHIRL_VORTEX.frames[0]);
-      spr.anchor.set(0.5, 0.5);
-      this.overlayLayer.addChild(spr);
-      this._whirlSprite = spr;
+    /* House-style probe (armed by the harness only): what was drawn, at what
+       size -- mp-whirlwind checks the painted edge lands on the hit radius. */
+    if (used && typeof window !== 'undefined' && window.__btProbe) {
+      const s0 = this._whirlSprites[0];
+      window.__btWhirlDrawn = { n: used, scale: s0.scale.x, artR: WHIRL_ART_R, drawnR: s0.scale.x * WHIRL_ART_R,
+        parent: s0.parent ? s0.parent.label || 'layer' : null, alpha: s0.alpha, visible: s0.visible };
     }
-    const fi = Math.min(7, Math.floor((age / WHIRL_FX_MS) * 8));
-    spr.texture = WHIRL_VORTEX.frames[fi];
-    /* v2.3.1738: CAPPED at 130px radius.  Everywhere else in this file the
-       art is drawn at exactly the radius the worker tested (the element
-       nova's "never draw a lie about the reach" rule), and that held while
-       whirl was 60px.  At the new 240 it would draw a 480px sprite — wider
-       than a 390px phone screen — so the funnel would stop reading as a
-       funnel and just wash the view out.
-       The reach is not lost: the two impact rings pushed by pushAbilityRings
-       still sweep out to the true radius, so the honest indicator is the one
-       shaped like a radius, and the vortex is the eye of the storm at the
-       caster.  Below 130 nothing changes at all. */
-    const _vortexR = Math.min(fx.radius || 60, 130);
-    spr.scale.set((_vortexR * 2) / 256);
-    spr.x = fx.x; spr.y = fx.y;
-    /* 0.72, not the 0.95 the first cut used: this draws on the overlay, i.e.
-       OVER the caster, and at near-full opacity it hid the character
-       completely for the whole half-second — you could not see what you were
-       doing in the middle of your own ability. */
-    spr.alpha = age > WHIRL_FX_MS - 140 ? 0.72 * ((WHIRL_FX_MS - age) / 140) : 0.72;
-    spr.visible = true;
+    for (let i = used; i < this._whirlSprites.length; i++) {
+      const spr = this._whirlSprites[i];
+      if (spr && !spr.destroyed) spr.visible = false;
+    }
+  }
+
+  /* ═══ v2.3.2827: THE SMITH AT WORK -- ANVIL, FIRE AND SPARKS ═══
+     Owner: "is there an existing animation that I can repurpose for the act
+     of smelting ore into armor?  Maybe you can add code effects for the flame
+     part too."  The body plays the mining swing (entityRenderer, `mining`);
+     this draws the rest, all in code:
+       - an iron anvil over the rock that is painted under the mine pose's
+         boots (mining hides that rock behind the ore node; here the anvil
+         takes its place), with a white-hot bar on it that glows and fades as
+         the work goes on,
+       - a small forge fire beside it (the campfire's tongues, bigger and
+         hotter) throwing embers,
+       - a burst of sparks and the pick-on-rock clink on every strike frame.
+     Drawn on the node-FRONT layer, above the body, exactly where an ore node
+     sits when you mine.  Clears the moment S._smithing ends. */
+  _updateSmithing(S, now) {
+    let g = this.smithGfx;
+    if (!g || g.destroyed) {
+      g = this.smithGfx = new Graphics();
+      this.nodeFrontLayer.addChild(g);
+    }
+    g.clear();
+    const w = S && S._smithing;
+    if (!w || now >= w.until || !S.player) { this._smithFrame = -1; return; }
+    const x = S.player.x + SMITH_ANVIL_DX, y = S.player.y + SMITH_ANVIL_DY;
+    const K = SMITH_SCALE;
+    /* drawn in local units around the anvil's foot, scaled once */
+    g.position.set(x, y);
+    g.scale.set(K);
+    const life = Math.max(0, Math.min(1, (w.until - now) / Math.max(1, w.until - w.t0)));
+    /* the anvil: horn to the left, a heavy face, a waisted foot on a block */
+    g.roundRect(-20, 8, 40, 9, 2); g.fill({ color: 0x3a2a1c });                   /* wooden block */
+    g.moveTo(-9, 8); g.lineTo(-6, -2); g.lineTo(6, -2); g.lineTo(9, 8); g.closePath();
+    g.fill({ color: 0x2c3136 });                                                  /* waist */
+    g.moveTo(-30, -9); g.quadraticCurveTo(-20, -4, -13, -3); g.lineTo(-13, -11); g.closePath();
+    g.fill({ color: 0x3b4147 });                                                  /* horn */
+    g.roundRect(-14, -12, 34, 10, 2); g.fill({ color: 0x40474e });                /* body */
+    g.roundRect(-14, -13, 34, 3, 1.5); g.fill({ color: 0x7d868e });               /* polished face */
+    g.roundRect(-20, 8, 40, 9, 2); g.stroke({ color: 0x1a120c, width: 1, alpha: 0.6 });
+    /* the hot bar on the face */
+    const pulse = 0.75 + 0.25 * Math.sin(now / 80);
+    g.ellipse(3, -14, 16, 6); g.fill({ color: 0xff8a2a, alpha: 0.3 * pulse * (0.4 + 0.6 * life) });
+    g.roundRect(-6, -17, 18, 5, 2); g.fill({ color: life > 0.35 ? 0xffe9a8 : 0xff9a3c, alpha: 0.95 });
+    g.roundRect(-5, -16.5, 16, 2, 1); g.fill({ color: 0xffffff, alpha: 0.55 * pulse * life });
+    /* the forge fire beside it: a bed of coals and four tongues of flame */
+    const fx = SMITH_FIRE_DX, fy = 12;
+    g.ellipse(fx, fy, 24, 9); g.fill({ color: 0xff8a3c, alpha: 0.25 });
+    g.roundRect(fx - 15, fy - 3, 30, 7, 3); g.fill({ color: 0x2a1d14 });
+    g.roundRect(fx - 12, fy - 3, 24, 3, 1.5); g.fill({ color: 0xff5a1a, alpha: 0.85 });   /* live coals */
+    const fl = Math.sin(now / 90) * 0.5 + Math.sin(now / 47) * 0.5;
+    for (let i = 0; i < 4; i++) {
+      const tx = fx + (i - 1.5) * 7;
+      /* a quadratic's peak is HALF its control height, so these are drawn
+         twice as tall as they read: 20-34px flames */
+      const h = (40 + (i === 1 || i === 2 ? 22 : 0)) * (0.8 + 0.2 * Math.sin(now / 65 + i * 1.7));
+      g.moveTo(tx - 6, fy - 1);
+      g.quadraticCurveTo(tx + fl * 5, fy - h, tx + 6, fy - 1);
+      g.fill({ color: i === 1 || i === 2 ? 0xffc23a : 0xff5e14, alpha: 0.92 });
+      g.moveTo(tx - 3, fy - 1);
+      g.quadraticCurveTo(tx + fl * 3, fy - h * 0.55, tx + 3, fy - 1);
+      g.fill({ color: 0xfff0b0, alpha: 0.85 });
+    }
+    if (S.hitParticles && Math.random() < 0.4) {
+      S.hitParticles.push({ x: x + (fx + (Math.random() - 0.5) * 18) * K, y: y + (fy - 18) * K, vx: (Math.random() - 0.5) * 1.2, vy: -1.3 - Math.random() * 1.8, life: 0.8, color: Math.random() < 0.5 ? '#ffb050' : '#ffe28a', size: 1.4 });
+    }
+    /* a strike on the mine swing's contact frame: sparks off the bar, and
+       the same clink mining makes */
+    const frame = Math.floor((now / SMITH_STRIKE_MS) * 14) % 14;
+    const prev = this._smithFrame == null ? -1 : this._smithFrame;
+    this._smithFrame = frame;
+    if (prev >= 0 && prev < SMITH_STRIKE_FRAME && frame >= SMITH_STRIKE_FRAME) {
+      if (S.hitParticles) {
+        for (let i = 0; i < 12; i++) {
+          const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
+          const sp = 2 + Math.random() * 3.5;
+          S.hitParticles.push({ x: x + 3 * K, y: y - 16 * K, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.5 + Math.random() * 0.3,
+            color: i % 3 === 0 ? '#ffffff' : (i % 3 === 1 ? '#ffd27a' : '#ff9a3c'), size: 1.4 });
+        }
+      }
+      try { BT_AUDIO.play('mine-strike', { offset: 0.08, duration: 0.4, vol: 0.45 }); } catch (e) { /* sound only */ }
+      if (typeof window !== 'undefined' && window.__btProbe) window.__btSmithStrikes = (window.__btSmithStrikes || 0) + 1;
+    }
+  }
+
+  /* ═══ v2.3.2824: THE WINDUP RING ═══
+     Owner: "a ring around you will display (maybe orange or blue) so you can
+     tactically position yourself to put the ring around a cluster of enemies
+     (know exactly what effective range you'll have)."
+     The circle is EXACTLY the one the worker will test when the windup ends:
+     radius x depthK at the caster's y, centred on the caster's own x/y (the
+     worker's ps.x/ps.y), and it FOLLOWS you -- because the strike is measured
+     from where you are when it fires, not where you pressed.  Orange, on the
+     ground under everyone (telegraphLayer).  Three layers:
+       - a faint fill that thickens as it charges,
+       - the edge, steady, so the reach is readable at a glance,
+       - a bright arc sweeping round it as the countdown (full = strike),
+     plus a pulse running inward from the edge: it is a vacuum, and that is
+     the direction things are about to go.
+     Peers' rings come from the worker's ability_windup (S._peerWindups). */
+  _updateAbilityWindups(S, now) {
+    const g = this.windupGfx;
+    if (!g) return;
+    g.clear();
+    if (!S || !S.player) return;
+    const rk = 1 / (S._worldScaleX > 0.01 ? S._worldScaleX : 1);
+    const draw = (x, y, w) => {
+      const span = Math.max(1, w.until - w.t0);
+      const p = Math.max(0, Math.min(1, (now - w.t0) / span));
+      const R = (w.r || 240) * depthK(S.currentZone, y);
+      g.circle(x, y, R);
+      g.fill({ color: 0xff9a3c, alpha: 0.05 + 0.13 * p });
+      g.circle(x, y, R);
+      g.stroke({ color: 0xff9a3c, width: 2.5 * rk, alpha: 0.75 });
+      const pulse = ((now - w.t0) % 700) / 700;
+      g.circle(x, y, R * (1 - 0.8 * pulse));
+      g.stroke({ color: 0xffc27a, width: 2 * rk, alpha: 0.35 * (1 - pulse) });
+      if (p > 0) {
+        const a0 = -Math.PI / 2;
+        /* moveTo first: an arc CONTINUES the current path, and without it
+           Pixi joins the arc's start to the last point drawn -- a straight
+           line from the ring off across the screen. */
+        g.moveTo(x + Math.cos(a0) * R, y + Math.sin(a0) * R);
+        g.arc(x, y, R, a0, a0 + p * Math.PI * 2);
+        g.stroke({ color: 0xffe0a8, width: 5 * rk, alpha: 0.95 });
+      }
+    };
+    const w = S._whirlWindup;
+    if (w && now < w.until + 50) draw(S.player.x, S.player.y, w);
+    const pw = S._peerWindups;
+    if (pw) {
+      for (const id of Object.keys(pw)) {
+        const e = pw[id];
+        const o = S.others && S.others[id];
+        if (!o || now >= e.until) { delete pw[id]; continue; }
+        const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
+        const oy = typeof o.renderY === 'number' ? o.renderY : o.y;
+        if (typeof ox === 'number' && typeof oy === 'number') draw(ox, oy, e);
+      }
+    }
   }
 
   /* ── Catch flight (v2.3.845) ──

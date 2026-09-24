@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-equip tick */
-import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey } from './InventoryPanel.jsx';   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
+import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
+import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
@@ -15,6 +16,7 @@ import {
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { lifeKindFor } from './bagLife.js'; /* v2.3.2815: the portrait's small motion */
 import { firemakingBus } from '../firemakingBus.js';
+import { chestRevealBus } from '../ChestReveal.jsx';   /* v2.3.2820: the daily chest's claim window */
 import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the auction house; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
@@ -36,6 +38,9 @@ import {
      (equipModel) owns that lookup now. */
   recalcDerived,
 } from '../../../data/gameSystems.js';
+/* v2.3.2822: ore key -> the bar it smelts into, derived from the one table. */
+const SMELT_ORE_TO_BAR = Object.create(null);
+for (const _b of Object.keys(SMELT_RECIPES)) SMELT_ORE_TO_BAR[SMELT_RECIPES[_b].ore] = _b;
 
 /* ═══ v2.3.2664: THE CARD SAYS WHAT THE GATE WILL ASK ═══
    Owner: "Yeah I'll go with your defense requirements for next tiers" — 5
@@ -151,7 +156,9 @@ function resolveTarget(target) {
     const isTicket = isTicketKey(key);
     const isPotion = isPotionKey(key);            /* v2.3.2127 */
     const isCape = isCapeItemKey(key);
+    const isChest = isChestKey(key);              /* v2.3.2820 */
     if (isTicket) info = 'Open it to claim your cape';
+    else if (isChest) info = 'Open it for a prize — usually coins, sometimes fish, a rare gem or armour';
     /* v2.3.2109: it IS a control now (owner: "I wanted ability to equip and
        unequip the cape"). Ownership is still the ledger's answer -- the worker
        refuses a toggle from anyone who did not win one -- but whether it is on
@@ -164,6 +171,13 @@ function resolveTarget(target) {
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
     else if (isLog) info = 'Light a campfire to cook at';
+    /* v2.3.2822: say where the ore goes and where the bar came from -- the
+       smelt lives in the Blacksmith, which nothing in the bag pointed at. */
+    else if (SR && SR._serverCaps && SR._serverCaps.smelting && SMELT_ORE_TO_BAR[key]) {
+      const r = SMELT_RECIPES[SMELT_ORE_TO_BAR[key]];
+      info = 'Smelt ' + r.oreCost + ' into a ' + r.name + ' at the Blacksmith';
+    }
+    else if (SMELT_RECIPES[key]) info = 'Smelted from ' + SMELT_RECIPES[key].oreCost + ' ' + SMELT_RECIPES[key].oreName;
     else if (count > 0) info = 'Quantity: ' + count;
     return {
       lockKey: key,
@@ -197,6 +211,11 @@ function resolveTarget(target) {
            would have it relayed to the room as an unknown broadcast (TRAPS
            #18). Read directly off _serverCaps rather than through an alias so
            the caps-audit suite can see the gate. */
+        /* v2.3.2820: the daily chest.  Gated on caps.dailyChest, read directly
+           (caps-audit): the worker rolls and credits, so against a worker that
+           cannot, no button and nothing sent. */
+        openChest: isChest && count > 0
+          && !!(SR && SR._serverCaps && SR._serverCaps.dailyChest),
         drink: isPotion && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.potionBag),
         /* v2.3.2476: Sell -- put this up in the auction house at your own
@@ -1280,6 +1299,13 @@ export const ItemDetailPopup = () => {
     try { S.channel.send({ type: 'potion_drink', payload: { invKey: target.key } }); } catch (e) {}
     close();
   };
+  /* v2.3.2820: Claim opens the chest's claim window straight into the claim
+     (ChestReveal.jsx) -- it sends chest_open and plays the shake / open /
+     reveal; the worker takes the chest and rolls (the ticket's rule). */
+  const onOpenChest = () => {
+    chestRevealBus.open(true);
+    itemDetailBus.close();
+  };
   const onOpenTicket = () => {
     const S = getState();
     if (!S || !S.channel) return;
@@ -1712,6 +1738,7 @@ export const ItemDetailPopup = () => {
           {actions.light    && <button onClick={onLight}   className={buttonClass('primary')} style={buttonStyle('primary')}>Light fire</button>}
           {actions.eat      && <button onClick={onEat}     className={buttonClass('primary')} style={buttonStyle('primary')}>Eat</button>}
           {actions.open     && <button onClick={onOpenTicket} className={buttonClass('primary')} style={buttonStyle('primary')}>Open Golden Ticket</button>}
+          {actions.openChest && <button onClick={onOpenChest} data-open-chest="" className={buttonClass('primary')} style={buttonStyle('primary')}>Claim</button>}
           {actions.drink    && <button onClick={onDrink} className={buttonClass('primary')} style={buttonStyle('primary')}>Drink</button>}
           {actions.capeOn   && <button onClick={onCapeOn}  className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}
