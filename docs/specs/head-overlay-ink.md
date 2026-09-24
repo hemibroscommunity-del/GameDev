@@ -1,4 +1,4 @@
-# The face tattoo stays on under the head overlays (v2.3.2824)
+# The face tattoo stays on under the head overlays (v2.3.2824, v2.3.2830-2831)
 
 Owner: *"Yea do woodcutting and missing ones."* This is the first of the
 missing ones.
@@ -59,16 +59,67 @@ Two small fixes came with it, both in the same code:
   style, so a styled player's own heads were first in line for eviction. It now
   matches with or without one.
 
-## Seen while doing this, not changed
+## Hit, mining and rolls wear the walking skin (v2.3.2831)
 
-With the **default** skin, the hit and mining pictures are painted a more
-orange skin than walking: measured mean skin `[211,124,59]` and `[212,122,55]`,
-against `[187,121,70]` for walking and picking up. Nothing recolours the default
-skin, so an unarmoured default-skin player turns slightly orange while hit or
-mining, and so does the head overlay (visible in the picture above). This is in
-the art for those two poses, not from this change. The sword and bow stand-ins
-had the same thing and were evened out in v2.3.1788. It is a one-line choice if
-it is wanted.
+Owner: *"fix the orange head during hits/mining to be whatever color the
+character color should be."*
+
+With the **default** skin nothing is recoloured: `skinTarget('default')` is
+null, meaning "the art is already this colour". For walking that is true. For
+three poses it is not, because their pictures were painted a more orange skin.
+Mean skin measured on the shipped sheets, as green over red (lower is more
+orange):
+
+| pose | green / red |
+|---|---|
+| standing, jogging, picking up | 0.64-0.65 |
+| hit (by facing) | 0.57-0.62, one facing at 0.66 |
+| mining | 0.58 |
+| dodge roll | 0.56-0.57 |
+
+So a player who never opened the skin picker turned orange for every hit,
+every mining swing and every roll. The head drawn over armour for a hit or a
+mining swing (above) did the same, which is the orange head the owner saw.
+
+The sword and bow figures had exactly this and were given the walking skin for
+the default skin in v2.3.1788. This is that rule for the three body poses that
+still needed it: `poseSkinTarget` (playerSkins) hands the default skin the
+walking colour, `DEFAULT_SKIN_TARGET`, for `hit`, `mine` and `dodge`, in every
+place those pictures are made: your body, the head drawn over armour, other
+players' bodies on your screen, and the monkey's fur (its hit frames were
+painted in the same orange, 0.58). A chosen skin is untouched. It was already
+recoloured from these pictures to its own colour. Fishing stays as it is: it
+skips every recolour on purpose, to keep the rod.
+
+In the game, a player on the default skin, main above and this change below.
+The roll is measured by the test but not pictured: it carries the figure out of
+the picture's frame.
+
+![hit and mining, before and after](img/head-overlay-ink/poseskin.jpg)
+
+**Baked while loading.** The default skin used to bake nothing. Its hit, mining
+and roll pictures are now baked behind the loading screen with everything else,
+or the first hit would flash the old orange while it baked (the preloading law).
+
+**Memory.** The eight new pictures (five hit facings, mining, two roll facings)
+hold 2.3 MB. The default skin held none before. A player who has picked any
+skin already holds 7.4 MB of these for the same poses and more, so a
+default-skin player now carries about a third of that.
+
+**Other players.** Another default-skin player's hit is made on your screen
+the first time you see it in each facing (unless your look is the same as
+theirs, when your own is reused). For the moment that takes, you see the old
+orange. After that, every frame is the walking skin. This is how every other
+look already works for other players: it can't be known while loading.
+
+### The eyes (v2.3.2830)
+
+The recolour gives a pixel the skin colour at full strength, and the pale cream
+edging the white of each eye passes the skin test. Recoloured, it becomes an
+orange bar down every eye. #734 found this on the bow shot and stops it: a pixel
+with green at 0.8 of its red or more is left as drawn. This change recolours
+more pictures, so it carries the identical rule. The two copies are the same
+code, so the PRs merge in either order.
 
 ## How it is checked
 
@@ -88,3 +139,21 @@ the green of the back-of-head drawing. Nothing in the head art is either colour.
 
 Against main's code, 12 of the 23 fail: every drawing check, with zero ink on
 every head overlay. The guards all pass.
+
+`mp-poseskin` (new, 20 checks) is a player who never picked a skin, and a
+watcher on a skin of their own. It reads the pictures the game draws, frame by
+frame, and compares the mean skin colour with the standing body's:
+
+- the hit, mining and roll pictures are baked during loading, and what they
+  cost;
+- a hit, a mining swing and a roll wear the walking skin on every frame
+  (0.652-0.654 against 0.646 standing);
+- so do the heads drawn over armour for a hit and a mining swing;
+- so does the monkey's fur over a hit;
+- the watcher sees the walking skin too, in every facing, once it's made for
+  them;
+- no page errors on either client.
+
+With the change switched off, 10 of the 20 fail: every colour check (hits at
+0.58, mining at 0.575, rolls at 0.555, the monkey's fur at 0.584, the watcher's
+view at 0.58), and the loading checks, because nothing is baked.

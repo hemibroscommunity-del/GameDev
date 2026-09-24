@@ -212,6 +212,38 @@ export function skinTarget(id) { return recolorEnabled('skin') ? _target(SKIN_CA
 export function pantsTarget(id) { return recolorEnabled('pants') ? _target(PANTS_CATALOG, id) : null; }
 export function shoesTarget(id) { return recolorEnabled('shoes') ? _target(SHOES_CATALOG, id) : null; }
 
+/* ═══ v2.3.2831: HIT, MINING AND DODGE WEAR THE WALKING SKIN ═══
+   Owner: "fix the orange head during hits/mining to be whatever color the
+   character color should be."  The default skin is not recoloured at all --
+   skinTarget('default') is null, "the art is already this colour" -- and for
+   the walking sheets that is true.  It is not for these three: they were
+   painted a more orange skin.  Mean skin measured on the shipped sheets (green
+   over red, the ratio that reads as orange):
+       stand, jog, pickup       0.64-0.65   (the walking palette)
+       hit (by facing)          0.57-0.62, one at 0.66
+       mine                     0.58
+       dodge                    0.56-0.57
+   So a player who never opened the skin picker turned orange for every hit,
+   every mining swing and every roll, and the head overlays drawn over armour
+   for hit and mine did the same.  The sword and bow stand-ins had this exact
+   problem and were given DEFAULT_SKIN_TARGET for the default skin in
+   v2.3.1788 ("the attack stand-ins wear the WALKING skin"); this is that rule
+   for the three body poses that still needed it.  A chosen skin is untouched:
+   it is already recoloured from these sheets to its own target.
+   (Fishing is orange too and stays so: it skips every recolour on purpose, to
+   keep the rod -- see buildBodySheet.)
+   The price: the default combo baked nothing before, and now bakes these eight
+   sheets (five hit facings, mine, two dodge) behind the intro -- 2.3 MB,
+   measured by mp-poseskin, where a chosen skin already holds 7.4 MB. */
+const POSE_SKIN_FLOOR = Object.freeze({ hit: true, mine: true, dodge: true });
+/* Exported for the monkey's fur (speciesArt): its hit frames were painted in
+   the same orange, so they take the same target or the fur would stay orange
+   on a walking-skin face. */
+export function poseSkinTarget(skinT, pose) {
+  if (skinT || !POSE_SKIN_FLOOR[pose] || !recolorEnabled('skin')) return skinT;
+  return DEFAULT_SKIN_TARGET;
+}
+
 /* ── Selection stores (localStorage) ── */
 function makeStore(key, defId) {
   let active = defId;
@@ -289,6 +321,13 @@ if (typeof window !== 'undefined') {
 if (typeof window !== 'undefined') {
   window.__btBodySheetKeys = () => Object.keys(_bodySheets)
     .filter((k) => _bodySheets[k] && _bodySheets[k] !== 'loading');
+  /* v2.3.2831: the bytes one baked sheet holds (its packed canvas, before the
+     GPU's mip chain) -- mp-poseskin prices the default skin's new bakes. */
+  window.__btBodySheetBytes = (k) => {
+    const sh = _bodySheets[k];
+    const src = sh && sh !== 'loading' && sh[0] && sh[0].source;
+    return src ? src.width * src.height * 4 : 0;
+  };
 }
 
 function _retint(d, i, target, ref) {
@@ -302,6 +341,21 @@ function _retint(d, i, target, ref) {
    DEFAULT-colored source (always tan skin / green pants), so they're stable
    regardless of the chosen skin or shirt color. */
 function _isSkin(r, g, b, a) { return a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25; }
+
+/* ═══ v2.3.2830: THE WHITE OF THE EYE IS NOT SKIN ═══
+   Owner, on another player's south bow shot: "messed up the eyes".  The eye's
+   white is edged with a pale cream where the art blends it into the face --
+   (247,210,186) on that sheet -- and _isSkin accepts it (r-g 37, r-b 61).  The
+   retint keeps a pixel's brightness and gives it the target's colour at full
+   strength, so a near-white cream came out a saturated (255,197,110): an
+   orange bar down every eye.  Your own bow shot has done it since v2.3.1788
+   gave the stand-ins the default skin target; #734 gave it to everyone's
+   view of you.
+   Measured on every body sheet: skin, highlights included, keeps its green
+   under 0.77 of its red; the eye creams sit at 0.81-0.89, and the pixels at
+   0.8 and over are the eyes (and the odd knuckle glint).  So a pixel that
+   green is left as drawn -- white of the eye, not skin. */
+function _isEyeCream(r, g) { return g >= 0.8 * r; }
 
 /* v2.3.2682: the same recolour on pixels that are not a body sheet -- the
    monkey's fur layer (speciesArt.js), shipped as bare skin so it can follow the
@@ -862,7 +916,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
          pixels are never in shirtPx, so they stay and give the shirt its
          outline + arm definition. */
       d[i] = sf0; d[i + 1] = sf1; d[i + 2] = sf2;
-    } else if (_isSkin(r, g, b, a)) {
+    } else if (_isSkin(r, g, b, a) && !_isEyeCream(r, g)) {   /* v2.3.2830: not the white of the eye */
       if (tattooPx && torsoPx[i >> 2]) tattooPx[i >> 2] = 1;
       if (skinPx) skinPx[i >> 2] = 1;              /* v2.3.1949 */
       if (skinT) _retint(d, i, skinT, SKIN_REF);
@@ -1425,7 +1479,7 @@ function eyeBlankForSheet(sheet, eyeStyleId) {
    which is invisible, instead of putting your eyes on a stranger's face, which
    is a bug someone would have to reproduce to understand. */
 export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, shirtKey, eyeId, art, eyeStyleId) {
-  const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
+  const skinT = poseSkinTarget(skinTarget(skinId), pose), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);   /* v2.3.2831: poseSkinTarget */
   const eye = eyeFor(pose, dir, eyeId);
   /* v2.3.2643: LAST in the list, so the two dev harnesses that call this
      positionally with eight arguments are untouched, and PASSED IN for the
@@ -1640,7 +1694,7 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
      Drawing the head from its own sheet above the gear is the same cure the
      pickup crouch got in v2.3.1055. */
   if (pose !== 'pickup' && pose !== 'jog' && pose !== 'hit' && pose !== 'mine') return null;
-  const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
+  const skinT = poseSkinTarget(skinTarget(skinId), pose), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);   /* v2.3.2831: poseSkinTarget */
   const blank = eyeBlankForSheet(`${pose}-${dir}-head`, eyeStyleId);   /* v2.3.2643 */
   /* v2.3.2824: the drawings, resolved for this facing exactly as the body
      sheet resolves them -- a back-of-head sheet (hit-north) takes the back of
@@ -1706,13 +1760,19 @@ export function preloadBodyAll() {
   const styleId = getEyeStyle();   /* v2.3.2643: local player, as prewarmBody */
   const anyStyle = !!styleId && styleId !== 'none';
   const art = localBodyArt(false), artM = localBodyArt(true);   /* v2.3.1940 */
-  if (!skinT && !pantsT && !shoesT && !anyEye && !anyStyle && !art) return Promise.resolve(); /* default combo */
+  /* v2.3.2831: the default combo used to return here with nothing to bake.  It
+     still has the hit, mine and dodge sheets, recoloured to the walking skin
+     (poseSkinTarget) -- baked HERE, behind the intro, or the first hit taken would
+     flash the painted orange while it baked (animation-preload law). */
+  const plain = !skinT && !pantsT && !shoesT && !anyEye && !anyStyle && !art;
   const tasks = [];
   const bake = (pose, dir, a) => {
+    const sT = poseSkinTarget(skinT, pose);   /* v2.3.2831 */
+    if (plain && !sT) return;             /* v2.3.2831: the default combo bakes only those three */
     const eye = eyeFor(pose, dir, getEyeColor());   /* local player */
     const blank = eyeBlankFor(pose, dir, styleId);   /* v2.3.2643 */
     const key = bodySheetKey(skinId, pantsId, shoesId, null, null, eye && eye.id, pose, dir, a, blank && blank.id);
-    if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null, eye && eye.t, a, blank && blank.rects));
+    if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, sT, pantsT, shoesT, null, eye && eye.t, a, blank && blank.rects));
   };
   /* v2.3.1940: a drawn player needs the MIRRORED bake of the three flippable
      facings too (west/northwest/southeast are drawn by flipping east/northeast/
@@ -1774,7 +1834,7 @@ export function preloadBodyAll() {
   const _hBlank = eyeBlankForSheet('pickup-south-head', getEyeStyle());
   const _hArt = artForFacing(localBodyArt(false), 'south');
   const headKey = _headSheetKey(skinId, pantsId, shoesId, 'pickup', 'south', _hBlank, _hArt);
-  if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT, _hBlank && _hBlank.rects, _hArt));
+  if (!plain && _pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT, _hBlank && _hBlank.rects, _hArt));   /* v2.3.2831: !plain -- the default combo never reached here before */
   return Promise.all(tasks);
 }
 
@@ -1806,7 +1866,7 @@ export function preloadJogHeadOverlays() {
     for (const a0 of arts) {
       const a = artForFacing(a0, dir);
       const key = _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a);
-      if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects, a));
+      if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, pose, dir, poseSkinTarget(skinT, pose), pantsT, shoesT, blank && blank.rects, a));   /* v2.3.2831: poseSkinTarget */
     }
   }
   return Promise.all(tasks);
@@ -1832,7 +1892,7 @@ export function preloadBodyVariant(shirtT, shirtKey) {
       const blank = eyeBlankFor(pose, dir, styleId);   /* v2.3.2643 */
       for (const a of (artM && MIRRORED_SOURCE_DIRS.indexOf(dir) !== -1) ? [art, artM] : [art]) {
         const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, a, blank && blank.id);
-        if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, a, blank && blank.rects));
+        if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, poseSkinTarget(skinT, pose), pantsT, shoesT, shirtT, eye && eye.t, a, blank && blank.rects));   /* v2.3.2831: poseSkinTarget */
       }
     }
   }
