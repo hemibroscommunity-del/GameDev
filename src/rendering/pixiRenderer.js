@@ -23,7 +23,7 @@ import { loadWeaponSprites } from './weaponSprites.js';
 import { loadShieldSprites } from './shieldSprites.js';
 import { preloadStartZoneMap } from './tiledMaps.js';
 import { noteZoneEntered } from '../ui/zoneBannerOverlay.js'; /* v2.3.2596: the one place that sees EVERY zone change */
-import { preloadGear } from './gearSheets.js';
+import { preloadGear, drawGearFrame } from './gearSheets.js';
 import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
@@ -647,14 +647,14 @@ export async function initPixiRenderer(canvas) {
       const tex = sb.texture;
       const src = tex.source && tex.source.resource;
       if (!src) return { err: 'texture source is not readable' };
-      const fr = tex.frame || { x: 0, y: 0, width: tex.width, height: tex.height };
+      const fr = tex.orig || tex.frame || { x: 0, y: 0, width: tex.width, height: tex.height };   /* v2.3.2791: the WHOLE frame -- body frames are cropped */
       let painted;
       try {
         const cv = document.createElement('canvas');
         cv.width = Math.max(1, Math.round(fr.width));
         cv.height = Math.max(1, Math.round(fr.height));
         const c = cv.getContext('2d', { willReadFrequently: true });
-        c.drawImage(src, fr.x, fr.y, fr.width, fr.height, 0, 0, cv.width, cv.height);
+        drawGearFrame(c, tex, 0, 0, cv.width, cv.height);   /* v2.3.2791: places a cropped frame at its trim */
         const p = c.getImageData(0, 0, cv.width, cv.height).data;
         let top = -1, bot = -1, l = cv.width, r = -1;
         for (let y = 0; y < cv.height; y++) {
@@ -685,9 +685,13 @@ export async function initPixiRenderer(canvas) {
            sheet mirrored and therefore identical by construction, read 1%
            apart.  Reporting the frame lets a caller cover the cycle by index
            and take a converged median instead of hoping. */
-        frameIx: (sb.texture && sb.texture.frame && sb.texture.frame.width)
-          ? Math.round(sb.texture.frame.x / sb.texture.frame.width) : 0,
-        frameW: (sb.texture && sb.texture.frame) ? sb.texture.frame.width : 0,
+        /* v2.3.2791: a cropped frame carries its number (__btIx, gearSheets
+           sliceCropped); frame.x / frame.width only encodes it for a plain strip.
+           frameW stays the WHOLE frame's width, as it always meant. */
+        frameIx: (sb.texture && sb.texture.__btIx != null) ? sb.texture.__btIx
+          : ((sb.texture && sb.texture.frame && sb.texture.frame.width)
+            ? Math.round(sb.texture.frame.x / sb.texture.frame.width) : 0),
+        frameW: (sb.texture && (sb.texture.orig || sb.texture.frame)) ? (sb.texture.orig || sb.texture.frame).width : 0,
         unitPxY: +unitY.toFixed(5),
         figurePx: +(painted.h * unitY).toFixed(2),
         widthPx: +(painted.w * unitY).toFixed(2),
@@ -754,14 +758,14 @@ export async function initPixiRenderer(canvas) {
       const tex = sb.texture;
       const src = tex.source && tex.source.resource;
       if (!src) return { err: 'texture source is not readable' };
-      const fr = tex.frame || { x: 0, y: 0, width: tex.width, height: tex.height };
+      const fr = tex.orig || tex.frame || { x: 0, y: 0, width: tex.width, height: tex.height };   /* v2.3.2791: the WHOLE frame -- body frames are cropped */
       let painted = null;
       try {
         const cv = document.createElement('canvas');
         cv.width = Math.max(1, Math.round(fr.width));
         cv.height = Math.max(1, Math.round(fr.height));
         const c = cv.getContext('2d', { willReadFrequently: true });
-        c.drawImage(src, fr.x, fr.y, fr.width, fr.height, 0, 0, cv.width, cv.height);
+        drawGearFrame(c, tex, 0, 0, cv.width, cv.height);   /* v2.3.2791: places a cropped frame at its trim */
         const p = c.getImageData(0, 0, cv.width, cv.height).data;
         let top = -1, bot = -1, l = cv.width, r = -1;
         /* Widest painted row, which on these sheets is the shoulders — the
@@ -887,13 +891,13 @@ export async function initPixiRenderer(canvas) {
       let fig = null;
       if (sb && sb.texture && sb.texture.source && sb.texture.source.resource) {
         const tex = sb.texture;
-        const fr = tex.frame || { x: 0, y: 0, width: tex.width, height: tex.height };
+        const fr = tex.orig || tex.frame || { x: 0, y: 0, width: tex.width, height: tex.height };   /* v2.3.2791: the WHOLE frame -- body frames are cropped */
         try {
           const cv = document.createElement('canvas');
           cv.width = Math.max(1, Math.round(fr.width));
           cv.height = Math.max(1, Math.round(fr.height));
           const c = cv.getContext('2d', { willReadFrequently: true });
-          c.drawImage(tex.source.resource, fr.x, fr.y, fr.width, fr.height, 0, 0, cv.width, cv.height);
+          drawGearFrame(c, tex, 0, 0, cv.width, cv.height);   /* v2.3.2791: places a cropped frame at its trim */
           const px = c.getImageData(0, 0, cv.width, cv.height).data;
           let top = -1, bot = -1, l = cv.width, r = -1;
           for (let y = 0; y < cv.height; y++) {
