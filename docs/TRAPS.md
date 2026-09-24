@@ -4451,6 +4451,17 @@ And those strips must NOT be `Assets.load`ed anywhere (combatGear.js
 `preloadCombatGear` used to): Assets keeps the full sheet for the session
 beside the crop, and the saving is spent twice over.
 
+**v2.3.2775: and cutting a rectangle OUT of a cropped frame.** The recoloured
+stand-in bodies (sword / bow / jog legs / chop, effectsRenderer
+`_sliceStandIn`) are cropped too, and two readers cut sub-rectangles out of
+them by position -- the jog legs' torso trim and blockArm's raised arm. On a
+cropped frame `new Rectangle(f.x + x, f.y + y, w, h)` reads the wrong texels,
+because the crop starts wherever the art does. The rule: take the rectangle in
+the WHOLE frame's coordinates through `gearSheets.subTexture(tex, x, y, w, h)`,
+which is exactly that old expression for an uncropped frame. And a packed
+crop can sit on any row of its canvas now (packTrimmed lays out shelves when
+that is smaller), so `frame.y` is not 0 either.
+
 ## 107. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2760)
 
 **Tempting:** at `ready`, with no thumb down, loop a generated phase through

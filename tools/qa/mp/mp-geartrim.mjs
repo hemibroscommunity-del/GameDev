@@ -26,6 +26,12 @@
  *   all of them built cropped, under a third of their bytes, and every frame
  *   byte-identical to its frame in the served PNG.
  *
+ *   v2.3.2775, THE STAND-IN BODIES -- the recoloured sword / bow / jog-leg /
+ *   chop figures (effectsRenderer._sliceStandIn): built cropped, well under
+ *   their bytes, and every frame byte-identical to the whole bake, which the
+ *   slicer keeps beside the crops only because this scenario sets
+ *   __btTrimVerify before the game loads.
+ *
  * Pictures of the armoured figure (both screens, four facings) land in
  * GEARTRIM_SHOTS (default /tmp/qa-geartrim) for a by-eye comparison against
  * the previous build.
@@ -78,6 +84,7 @@ const displays = (P) => P.page.evaluate(() => {
       pose: d._animPose || null, dir: d._animDir || null,
       body: !!bodyBox,
       chest: layer('_gearChest'), legs: layer('_gearLegs'), shirt: layer('_gearShirt'),
+      head: layer('_bodyHead'),   /* v2.3.2775: the head overlay (cropped head sheets) */
     };
   });
 });
@@ -91,6 +98,46 @@ const trimStats = (P) => P.page.evaluate(() => (window.__btGearTrim ? window.__b
    (frame count and width from the cropped frames' own `orig`), and compare
    each against the cropped frame drawn back into its whole frame at its trim.
    Byte-for-byte, or it is reported. */
+/* v2.3.2775: the recoloured STAND-IN bodies (sword / bow bodies and torsos,
+   jog legs, cook / chop / fire figures, the peer chop copies), cropped by
+   effectsRenderer._sliceStandIn.  Each cropped frame is drawn back into its
+   whole frame at its trim and compared with the same frame of the whole bake,
+   which the slicer kept only because __btTrimVerify was set. */
+const standInIdentity = (P, which = 'standin') => P.page.evaluate((which) => {
+  /* v2.3.2775: the same comparison serves the head sheets (playerSkins), whose
+     probe returns a key -> stats map rather than a list */
+  let stats = null;
+  if (which === 'head') {
+    const m = window.__btHeadTrim ? window.__btHeadTrim() : null;
+    stats = m ? Object.keys(m).map((k) => ({ key: k, ...m[k] })) : null;
+  } else {
+    stats = window.__btStandInTrim ? window.__btStandInTrim() : null;
+  }
+  if (!stats) return null;
+  const framesOf = (k) => (which === 'head' ? window.__btHeadFrames(k) : window.__btStandInFrames(k));
+  const out = { sheets: stats.length, frames: 0, mismatched: [], fullBytes: 0, packedBytes: 0, keys: stats.map((s) => s.key) };
+  for (const st of stats) {
+    out.fullBytes += st.fullBytes; out.packedBytes += st.packedBytes;
+    const rec = framesOf(st.key);
+    if (!rec || !rec.full || !rec.frames) { out.mismatched.push(st.key + ' no verify copy'); continue; }
+    const { frames, full, fw, fh } = rec;
+    for (let i = 0; i < frames.length; i++) {
+      const a = document.createElement('canvas'); a.width = fw; a.height = fh;
+      const ag = a.getContext('2d', { willReadFrequently: true }); ag.imageSmoothingEnabled = false;
+      ag.drawImage(full, i * fw, 0, fw, fh, 0, 0, fw, fh);
+      const f = frames[i];
+      const b = document.createElement('canvas'); b.width = fw; b.height = fh;
+      const bg = b.getContext('2d', { willReadFrequently: true }); bg.imageSmoothingEnabled = false;
+      bg.drawImage(f.source.resource, f.frame.x, f.frame.y, f.frame.width, f.frame.height, f.trim.x, f.trim.y, f.frame.width, f.frame.height);
+      const da = ag.getImageData(0, 0, fw, fh).data, db = bg.getImageData(0, 0, fw, fh).data;
+      let d = 0; for (let k = 0; k < da.length; k++) if (da[k] !== db[k]) d++;
+      out.frames++;
+      if (d) out.mismatched.push(`${st.key}#${i} ${d} bytes`);
+    }
+  }
+  return out;
+}, which);
+
 const combatIdentity = (P) => P.page.evaluate(async () => {
   const stats = window.__btCombatGearTrim ? window.__btCombatGearTrim() : null;
   if (!stats) return null;
@@ -130,7 +177,11 @@ const aligned = (L) => !L || (L.off && L.off.every((v) => Math.abs(v) < 0.5));
 
 export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(DIR, { recursive: true });
-  const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Plated', nameB: 'Watcher' });
+  /* v2.3.2775: __btTrimVerify makes the stand-in slicer keep each whole bake
+     beside its crops, so the identity check below has something to compare
+     against.  QA only -- see _sliceStandIn. */
+  const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Plated', nameB: 'Watcher',
+    init: () => { window.__btTrimVerify = true; } });
 
   const stats = await trimStats(A);
   rec.ok('the gear sheets are built cropped (probe present, sheets counted)',
@@ -162,6 +213,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!cid && cid.sheets === 33, cid && { sheets: cid.sheets });
   rec.ok('...and holds under a third of its uncropped bytes',
     !!cid && cid.fullBytes > 0 && cid.packedBytes / cid.fullBytes < 1 / 3, cid && { packed: cid.packedBytes, full: cid.fullBytes });
+  const sid = await standInIdentity(A);
+  if (sid && sid.fullBytes) {
+    console.log(`INFO  geartrim :: stand-in bodies ${(sid.packedBytes / 1048576).toFixed(1)} MB vs ${(sid.fullBytes / 1048576).toFixed(1)} MB uncropped over ${sid.sheets} bakes, ${sid.frames} frames compared`);
+  }
+  /* The cook and fire figures are NOT expected here: their art fills its
+     frames (measured 99-101% when cropped), so packTrimmed declines them and
+     they keep the plain strip.  Everything else must come back cropped. */
+  rec.ok('the recoloured stand-in bodies (sword, bow, jog legs, chop, peer chop) are built cropped',
+    !!sid && ['_chopSkinFrames', '_chopLeglessSkinFrames', 'chopPeer|body', 'chopPeer|legless'].every((k) => sid.keys.includes(k))
+      && ['south', 'east', 'north'].every((d) => sid.keys.some((k) => k.includes('sword-' + d + '-body')))
+      && ['east', 'southwest', 'south', 'northwest', 'north'].every((d) => sid.keys.some((k) => k.includes('bow-' + d + '-body')))
+      && sid.keys.filter((k) => /jog-.*-legs/.test(k)).length >= 5, sid && sid.keys);
+  rec.ok('...and hold well under their uncropped bytes (< 60%)',
+    !!sid && sid.fullBytes > 0 && sid.packedBytes / sid.fullBytes < 0.6, sid && { packed: sid.packedBytes, full: sid.fullBytes });
+  rec.ok('...and every cropped stand-in frame is byte-identical to the same frame of the whole bake',
+    !!sid && sid.frames > 0 && sid.mismatched.length === 0, sid && sid.mismatched.slice(0, 8));
   rec.ok('...and every cropped combat frame is byte-identical to its frame in the served sheet',
     !!cid && cid.frames > 0 && cid.mismatched.length === 0, cid && [...new Set(cid.mismatched.map((m) => m.split("#")[0]))]);
 
@@ -192,6 +259,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!peer && peer.body && [peer.chest, peer.legs, peer.shirt].every(aligned), peer);
     pics.push(name);
   }
+
+  /* ── v2.3.2775: the HEAD overlay, cropped ──
+     The full steel set jogs as the fullset knight figure, which draws the
+     player's head from the head sheets (playerSkins) -- now cropped to the
+     head.  The overlay must still land exactly on the body's box. */
+  await setGear(A, 'legs', 'steelgreaves');
+  await A.page.waitForTimeout(1500);
+  for (const [key, name] of [['s', 'south'], ['d', 'east'], ['w', 'north']]) {
+    await A.page.keyboard.down(key);
+    await A.page.waitForTimeout(450);
+    const me = ((await displays(A)) || []).find((d) => d.own);
+    const hbox = await H.figureBox(A, { pad: 14 }).catch(() => null);
+    if (hbox) await A.page.screenshot({ path: `${DIR}/fullset-${name}-own.png`, clip: hbox }).catch(() => {});
+    await A.page.keyboard.up(key);
+    rec.ok(`full set, jog ${name}: the head overlay is drawn from a cropped head frame`,
+      !!me && !!me.head && me.head.cropped && me.head.frameW < me.head.origW, me && me.head);
+    rec.ok(`full set, jog ${name}: the head overlay's box is exactly the body's box`,
+      !!me && me.body && aligned(me.head), me && me.head);
+  }
+  const hid = await standInIdentity(A, 'head');
+  if (hid && hid.fullBytes) {
+    console.log(`INFO  geartrim :: head sheets ${(hid.packedBytes / 1048576).toFixed(2)} MB vs ${(hid.fullBytes / 1048576).toFixed(2)} MB uncropped over ${hid.sheets} sheets, ${hid.frames} frames compared`);
+  }
+  rec.ok('the head sheets are built cropped, and every cropped head frame is byte-identical to the whole bake',
+    !!hid && hid.sheets > 0 && hid.frames > 0 && hid.mismatched.length === 0 && hid.packedBytes < hid.fullBytes / 3,
+    hid && { sheets: hid.sheets, frames: hid.frames, mism: hid.mismatched.slice(0, 5), packed: hid.packedBytes, full: hid.fullBytes });
+  await setGear(A, 'legs', 'coppergreaves');
+  await A.page.waitForTimeout(800);
 
   /* standing still, after the last jog */
   await A.page.waitForTimeout(700);
