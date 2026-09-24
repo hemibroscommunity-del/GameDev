@@ -8,7 +8,7 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2802: the one-bolt special */
+import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2822: the one-bolt special */
 import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockAimPoint } from '@/game/combatHelpers.js';
@@ -418,7 +418,7 @@ export function specialAttack(S) {
       var _ORB_RANGE_PX = STAFF_RANGE_PX * staffRangeMult(R || {}) * depthK(S.currentZone, S.player.y); /* v2.3.2592: × the Magic lane's RANGE stat; v2.3.2790: × your depth */
       var _ORB_SPEED = 5;              /* the staff's own bolt speed */
       var _ORB_SPEEDS = [_ORB_SPEED, _ORB_SPEED, _ORB_SPEED];
-      /* ═══ v2.3.2802: ONE BIG BOLT (gameSystems STAFF_BIG_BOLT_*) ═══
+      /* ═══ v2.3.2822: ONE BIG BOLT (gameSystems STAFF_BIG_BOLT_*) ═══
          Owner: "Instead of the current special attack with 3 orbs I want to
          see what just one moderately larger bolt attack would look like."
          The basic bolt's own art and flight, drawn STAFF_BIG_BOLT_SCALE

@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ════════════════ 2. ONE RAY, THREE ORBS ════════════════
-     v2.3.2802: the three-orb volley is now the LEGACY special -- what a new
+     v2.3.2822: the three-orb volley is now the LEGACY special -- what a new
      client fires against a worker without caps.bigOrb (the one-bolt special
      is pinned by mp-solospecial and mp-staffcast).  This scenario keeps
      measuring the volley, so it switches the flag off for itself. */

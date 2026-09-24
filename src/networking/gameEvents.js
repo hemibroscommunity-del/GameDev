@@ -1615,7 +1615,7 @@ export function processGameEvent(type, payload, S, deps) {
                    Clamped, and absent on every other projectile -> the type's
                    own speed, exactly as before. */
                 speedPx: (Number(payload.speedPx) > 0 ? Math.min(20, Number(payload.speedPx)) : null),
-                /* v2.3.2802: the staff special as ONE big bolt (playerActions,
+                /* v2.3.2822: the staff special as ONE big bolt (playerActions,
                    caps.bigOrb) -- drawn as the basic bolt's art, bigger, from
                    the caster's crystal.  Absent (an older caster) -> their
                    charged orbs, exactly as before. */
@@ -1639,7 +1639,7 @@ export function processGameEvent(type, payload, S, deps) {
                  stamp above.  The special keeps its own art and gets neither.
                  `ang` is a peer's number, so only a finite one is kept -- it
                  aims a cosmetic kick and nothing else. */
-              /* v2.3.2802: ...and so does their one-bolt special, the heavy
+              /* v2.3.2822: ...and so does their one-bolt special, the heavy
                  version of both (_staffCastBig equal to the stamp). */
               var _bigCast = !!(payload.isStaff && payload.isSpecial && payload.big);
               if (payload.isStaff && (!payload.isSpecial || _bigCast) && payload.id && S.others[payload.id]) {

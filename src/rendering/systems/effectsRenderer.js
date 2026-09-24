@@ -216,8 +216,8 @@ import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShi
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
-import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2801: the staff cast's charge, release, trail and crash */
-import { STAFF_BIG_BOLT_SCALE } from '@/data/gameSystems.js';     /* v2.3.2802: the one-bolt special's drawn size */
+import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2821: the staff cast's charge, release, trail and crash */
+import { STAFF_BIG_BOLT_SCALE } from '@/data/gameSystems.js';     /* v2.3.2822: the one-bolt special's drawn size */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -4406,7 +4406,7 @@ export class EffectsRenderer {
          comment in playerActions.js), so it must NOT exclude the painted
          orb.  All staff specials share the charged-orb art regardless of
          element. */
-      /* v2.3.2802: ...except the one-bolt special (caps.bigOrb), which is
+      /* v2.3.2822: ...except the one-bolt special (caps.bigOrb), which is
          the basic bolt's art drawn bigger, not the charged orb. */
       const _isStaffSpecial = a._isStaffProj && a.isSpecial && !a.big;
       const _isBigBolt = !!a.big && MAGIC_BOLT_FRAMES.length > 0;
@@ -4463,7 +4463,7 @@ export class EffectsRenderer {
            pre-load fallback (and for non-staff ice projectiles). */
         this._placeSpecialFx(MAGIC_SPECIAL, a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk);
       } else if (_isBigBolt) {
-        /* v2.3.2802: the one-bolt special -- the basic bolt, bigger, leaving
+        /* v2.3.2822: the one-bolt special -- the basic bolt, bigger, leaving
            the crystal with the heavy release (staffCastFx reads a.big). */
         this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);
       } else if (a.isSpecial || a.ice) {
@@ -4549,7 +4549,7 @@ export class EffectsRenderer {
       /* v2.3.1334: basic remote staff bolts share the painted sprite
          (and skip the line trail — the art carries its own tail).
          v2.3.1396: remote SPECIALS share the painted special art too. */
-      /* v2.3.2802: a peer's one-bolt special (rp.big) draws as their bolt. */
+      /* v2.3.2822: a peer's one-bolt special (rp.big) draws as their bolt. */
       const _remoteBasicBolt = rp.isStaff && (!rp.isSpecial || rp.big) && MAGIC_BOLT_FRAMES.length;
       const _remoteMagicSpec = rp.isStaff && rp.isSpecial && !rp.big && MAGIC_SPECIAL.frames.length;
       const _remoteArrowSpec = !rp.isStaff && rp.isSpecial && ARROW_SPECIAL.frames.length;
@@ -4861,7 +4861,7 @@ export class EffectsRenderer {
        at ~18 px, matching the old 9 px-radius glow.
        v2.3.2287: set PER FRAME rather than once at construction, because the
        vista curve changes as the bolt travels. */
-    /* v2.3.2802: the one-bolt special is this art drawn bigger -- the same
+    /* v2.3.2822: the one-bolt special is this art drawn bigger -- the same
        factor its hit body takes (projectiles.js PROJ_BODY.magicBig). */
     const _bigK = p.big ? STAFF_BIG_BOLT_SCALE : 1;
     sprite.scale.set(0.18 * (pk || 1) * grow * _bigK);
@@ -4896,7 +4896,7 @@ export class EffectsRenderer {
       glow.y = dy;
       glow.rotation = rot;
       if (glow.tint !== fx.ramp[1]) glow.tint = fx.ramp[1];
-      /* v2.3.2802: softer on the big bolt -- at 1.7x the same additive copy
+      /* v2.3.2822: softer on the big bolt -- at 1.7x the same additive copy
          washed the painted bolt out to a white blob on light ground. */
       glow.alpha = alpha * (p.big ? 0.08 + 0.2 * _sw : 0.15 + 0.35 * _sw);
       glow.visible = true;

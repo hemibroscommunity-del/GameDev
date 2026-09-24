@@ -996,7 +996,7 @@ export const combatMethods = {
        client/server position lag on iPhone Safari over cellular, and
        the 250 px PvP figure left only ~46 px of slack, which is ~105 ms
        of movement at the legit max speed. */
-    /* ═══ v2.3.2802: ONE BIG STAFF BOLT, THREE ORBS' WORTH ═══
+    /* ═══ v2.3.2822: ONE BIG STAFF BOLT, THREE ORBS' WORTH ═══
        Owner: "Instead of the current special attack with 3 orbs I want to see
        what just one moderately larger bolt attack would look like."  So the
        staff special is one bolt now (client playerActions.js, behind
@@ -1050,7 +1050,7 @@ export const combatMethods = {
       if (isSpecial) {
         cad.s = cad.s.filter(t => nowTs - t < 1200);
         if (cad.s.length >= 3) return;
-        /* v2.3.2802: a big bolt spends one slot per orb it carries, and never
+        /* v2.3.2822: a big bolt spends one slot per orb it carries, and never
            more than the lane has left. */
         _orbs = Math.min(_orbs, 3 - cad.s.length);
         for (let k = 0; k < _orbs; k++) cad.s.push(nowTs);
@@ -1081,7 +1081,7 @@ export const combatMethods = {
        posture as collision damage, which has bypassed dmgCap since
        v2.3.1114 and carries COLLISION_BURST_CAP instead.  ×1.00 on every
        monster that is not fractured, which is every monster today. */
-    /* v2.3.2802: a big staff bolt's other orbs (see `_orbs` above) -- each its
+    /* v2.3.2822: a big staff bolt's other orbs (see `_orbs` above) -- each its
        own roll under its own cap, summed; any crit makes the hit a crit. */
     let _cappedDmg = Math.max(1, Math.min(dmgCap, rolled.dmg));
     for (let k = 1; k < _orbs; k++) {
