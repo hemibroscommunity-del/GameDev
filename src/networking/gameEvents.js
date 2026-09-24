@@ -1752,7 +1752,7 @@ export function processGameEvent(type, payload, S, deps) {
                 S.others[payload.id]._dodgeRoll = {
                   angle: payload.angle, kind: payload.kind || 'dodge', startTime: Date.now(),
                   durMs: (isFinite(_ddur) && _ddur > 0) ? Math.max(150, Math.min(1000, _ddur)) : undefined,
-                  /* v2.3.2889: whether they were walking when it started
+                  /* v2.3.2900: whether they were walking when it started
                      (dodge.js walkingNow) -- the one thing their position
                      packets cannot say mid-roll, and what decides whether the
                      roll leaves prints in the snow.  Only a real boolean is

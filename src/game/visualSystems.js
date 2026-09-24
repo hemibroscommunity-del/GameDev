@@ -22,7 +22,7 @@ var REMOTE_SHOT_H = 26;
    number and the two are asserted in lockstep there. */
 var PRINT_GAP = 46;
 var PRINT_MAX = 40;
-/* v2.3.2889: other players' prints get a pool of their own, so a crowd walking
+/* v2.3.2900: other players' prints get a pool of their own, so a crowd walking
    past cannot shorten YOUR trail by pushing it out of the shared cap. */
 var PEER_PRINT_MAX = 60;
 
@@ -130,7 +130,7 @@ export function updateVisualSystems(S) {
              is a fresh gap rather than a print dropped the instant you move. */
           S._printLast = null;
         }
-        /* ═══ v2.3.2889: AND EVERYONE ELSE'S ═══
+        /* ═══ v2.3.2900: AND EVERYONE ELSE'S ═══
            Owner: "check all other broadcasted player animations to make sure
            they match what your character does client side."
            Your walk leaves prints in the snow; every other player's walked on

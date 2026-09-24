@@ -23,7 +23,6 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  peerprints: () => import('./mp-peerprints.mjs'), /* v2.3.2889: another player's walk through the snow leaves the trail their own screen lays -- from where the walk began, along the same line, spaced by the same rule; a roll with a direction held lays prints on both screens, one with nothing held on neither */
   devarmor: () => import('./mp-devarmor.mjs'), /* v2.3.2875: the admin kit hands out the copper and iron armour sets, into the right bags, wearable */
   monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2870: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */
   sheen: () => import('./mp-sheen.mjs'), /* v2.3.2864: a permanent soft shine on metal behind ?sheen=1 -- off by default, on every frame when on, copper stays copper, the jogging full-set knight too; pictures and its cost */
@@ -65,6 +64,7 @@ const SCENARIOS = {
   sellsheet: () => import('./mp-sellsheet.mjs'), /* v2.3.2612: why tapping Sell reads as nothing happening -- disabled variant, covered button, or a price sheet below the fold */
   zonebanner: () => import('./mp-zonebanner.mjs'), /* v2.3.2596: the zone-entry banner plays its nine beats, docks into the top bar, frees its strip on the way out -- and stays silent in the ten zones with no art */
   worldfx: () => import('./mp-worldfx.mjs'), /* v2.3.2712: time of day, dust, blood, the crumbling corpse; v2.3.2713: the exploding one */
+  peerprints: () => import('./mp-peerprints.mjs'), /* v2.3.2900: another player's walk through the snow leaves the trail their own screen lays -- from where the walk began, along the same line, spaced by the same rule; a roll with a direction held lays prints on both screens, one with nothing held on neither */
   catgrid: () => import('./mp-catgrid.mjs'), /* v2.3.2597: the Points screen is four category buttons; drill into one at a time */
   zoneflip: () => import('./mp-zoneflip.mjs'), /* v2.3.2541: the front/back switch is in front of the zone frames AND keeps its own taps */
   bowgate: () => import('./mp-bowgate.mjs'), /* v2.3.2543: the bow's fire gate tests the ray the player is SHOWN -- measured after the player walks, which is when the two used to drift apart */

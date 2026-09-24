@@ -1,4 +1,4 @@
-/* ═══ v2.3.2889: ANOTHER PLAYER'S WALK LEAVES PRINTS IN THE SNOW TOO ═══
+/* ═══ v2.3.2900: ANOTHER PLAYER'S WALK LEAVES PRINTS IN THE SNOW TOO ═══
  *
  * Owner: "check all other broadcasted player animations to make sure they
  * match what your character does client side so there's no discrepancies."
