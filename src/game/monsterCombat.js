@@ -1719,6 +1719,13 @@ export function updateMonsterCombat(S, deps) {
                 /* Broadcast projectile to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
                   id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: _shotTs,
+                  /* v2.3.2893: the shot's ELEMENT.  Your own arrow is tipped in
+                     your weapon's element colour and your bolt glows in it
+                     (effectsRenderer elemColor, staffCastFx rampFor); a watcher
+                     had no element to use, so they drew every peer's arrow tan
+                     and every bolt the no-element lavender.  Additive: an older
+                     client ignores it. */
+                  el: ((getActiveWeapon(S.rpg) || {}).element1) || undefined,
                   /* v2.3.2592: the RANGE stat lengthens the flight, so the peer
                      mirror needs the life too or a remote orb dies at 675 px
                      while it flew 1012 on the caster's screen (the v2.3.2387
