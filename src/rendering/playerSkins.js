@@ -1101,6 +1101,11 @@ function _standInBake(img, skinT, targetH, opts, apart) {
      COOK_KEEP_X).  Needs the frame width: `frameW`, else the regions table's. */
   const keepX = o.keepX || 0;
   const keepFW = o.frameW || (o.regions && o.regions.fw) || 0;
+  /* v2.3.2858: ...or when it lies WHOLLY inside its frame's keep box,
+     [left, right, top, bottom] frame-local -- the fire-lighter's fist, cut into
+     islands beside a flame that burns on both sides of it, where a column
+     cannot tell hand from spark (standInInk.js, FIRE_KEEP_BOXES). */
+  const keepBoxes = o.keepBoxes && keepFW ? o.keepBoxes : null;
   const maxBR = o.maxBR != null ? o.maxBR : Infinity;      /* blue/red ceiling — rejects the fire's pale glow */
   const minGR = o.minGR != null ? o.minGR : 0;             /* green/red floor — rejects the flame's red edge */
   const maxGR = o.maxGR != null ? o.maxGR : Infinity;
@@ -1137,16 +1142,25 @@ function _standInBake(img, skinT, targetH, opts, apart) {
   const stack = new Int32Array(w * h);
   const size = [0];                      /* size[id]; id 0 unused */
   const leftX = keepX && keepFW ? [0] : null;   /* v2.3.2856: leftX[id], frame-local */
+  const inBox = keepBoxes ? [false] : null;       /* v2.3.2858: inBox[id] */
   for (let start = 0; start < w * h; start++) {
     if (!skin[start] || label[start]) continue;
     const id = size.length;
     let sp = 0, n = 0, lx = Infinity;
+    let bl = Infinity, br = -1, bt = Infinity, bb = -1;   /* v2.3.2858: the island's box, frame-local */
     stack[sp++] = start; label[start] = id;
     while (sp > 0) {
       const q = stack[--sp];
       n++;
       const qx = q % w;
       if (leftX && qx % keepFW < lx) lx = qx % keepFW;
+      if (inBox) {
+        const fx = qx % keepFW, qy = (q - qx) / w;
+        if (fx < bl) bl = fx;
+        if (fx > br) br = fx;
+        if (qy < bt) bt = qy;
+        if (qy > bb) bb = qy;
+      }
       if (qx > 0 && skin[q - 1] && !label[q - 1]) { label[q - 1] = id; stack[sp++] = q - 1; }
       if (qx < w - 1 && skin[q + 1] && !label[q + 1]) { label[q + 1] = id; stack[sp++] = q + 1; }
       if (q >= w && skin[q - w] && !label[q - w]) { label[q - w] = id; stack[sp++] = q - w; }
@@ -1154,13 +1168,17 @@ function _standInBake(img, skinT, targetH, opts, apart) {
     }
     size.push(n);
     if (leftX) leftX.push(lx);
+    if (inBox) {
+      const box = keepBoxes[Math.floor((start % w) / keepFW)];
+      inBox.push(!!box && bl >= box[0] && br <= box[1] && bt >= box[2] && bb <= box[3]);
+    }
   }
   /* pass 3: retint the CHARACTER's skin; leave the small islands (props) */
   const body = ink ? new Uint8Array(w * h) : null;   /* v2.3.2855: the same pixels, for the stamp */
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
     const id = label[p];
     if (!id) continue;
-    if (size[id] < minBlob && !(leftX && leftX[id] < keepX)) continue;   /* v2.3.2856: keepX */
+    if (size[id] < minBlob && !(leftX && leftX[id] < keepX) && !(inBox && inBox[id])) continue;   /* v2.3.2856: keepX; v2.3.2858: keepBoxes */
     if (skinT) _retint(d, i, skinT, SKIN_REF);
     if (body) body[p] = 1;
   }

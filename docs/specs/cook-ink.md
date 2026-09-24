@@ -1,4 +1,4 @@
-# Your tattoos stay on while you cook (v2.3.2856)
+# Your tattoos stay on while you cook and light a fire (v2.3.2856, v2.3.2858)
 
 Owner: *"Yea do woodcutting and missing ones."* Cooking is one of the missing
 ones. Built on #725 (fishing and woodcutting), whose region tables and stamp it
@@ -136,3 +136,95 @@ of the shipped strip:
 - **memory:** the most ink a player can draw costs about half a figure per strip;
 - **release:** the watcher lets the layers go 15 s after the player stops;
 - no page errors.
+
+## Lighting a fire (v2.3.2858)
+
+The last of the missing ones. Lighting a fire swaps you for the painted
+fire-lighter (`sprites/skills/firemaking-strip.webp`, 8 frames of 384x512)
+for the second it takes. He was baked in your skin and nothing else, and like
+the cook he is **shared**: every other player's fire-lighter on your screen is
+drawn from your bake (the SPEC table). So the drawings take the cook's route:
+`_fetchAndBakeFire` splits the bake (`recolorStandInSkinSplit`), and
+`fireInkSprite` draws your layer over the figure, under the clothes.
+
+In the game, with a test drawing: a blue face on the left half, pink arms and
+chest. The shirt covers most of the arms and chest, as it does when walking. On
+your screen, blowing on the flame, and on another player's, where he has just
+stood up from it:
+
+![lighting a fire, in the game](img/cook-ink/fire-ingame.jpg)
+
+The strip on a dark skin, main above and this change below, with the test
+drawings the cook's picture uses:
+
+![the fire-lighter, before and after](img/cook-ink/fire-before-after.jpg)
+
+**Where the drawings go.** `FIRE_INK_REGIONS` in `standInInk.js`, fitted with
+the cook's workbench. He stands, kneels to the log, strikes the flint, cups his
+hands to blow on the flame, sits back and stands up. On the strike and the two
+blowing frames his near arm crosses his chest, and its outlines cut the torso
+into the chest above it and the belly below. Both are seeded as torso and the
+torso box spans the arm, so the chest drawing holds still while the arm passes
+in front of it.
+
+![the fitted regions on all 8 frames](img/cook-ink/fire-regions.png)
+
+Blue face, green chest, yellow arms, red skin-coloured pixels that are not him.
+The cyan box is where the face drawing goes and the magenta one the chest
+drawing's. The orange box on the two blowing frames is the fist's (below), and
+the orange inside it is the fist: your skin, but no arm drawing, since its
+pieces are too small for one (`framePieces`).
+
+**The fist.** On the two blowing frames the hands cupped at the flame are drawn
+as small islands of skin, cut apart by their outlines. The bake's size floor
+(1800 px) exists to keep the flame and its sparks out, since they pass the skin
+test in the same orange. It dropped the fist along with them: 365 and 453 px of
+it kept the artist's orange whatever your skin. A column cannot separate them,
+as the cook's `COOK_KEEP_X` does, because the flame burns on both sides of the
+fist. So each of those frames has a box around the hands (`FIRE_KEEP_BOXES`),
+and an island lying wholly inside it is his. The boxes take every island of
+fist and knuckle and none of the flame, sparks or glow. The strike's knuckles
+are painted glowing red by the flint, which is not skin to begin with. The
+orange patches on the last two frames are trousers lit by the fire, which stay
+trousers. This part is for everybody, drawings or not.
+
+![the fist on a dark skin, before and after](img/cook-ink/fire-fist.jpg)
+
+A few pixels keep the flame's colours: firelight the artist painted on the
+knuckles in the flame's own orange and red, and a thin rim where the fist meets
+the flame. Nothing can tell those from the flame itself, so they stay as
+painted: a few dozen pixels at full size, a pixel or two on screen.
+
+**Other players.** A drawn player's fire-lighter gets their layer, by the cook's
+rules (`_peerStandInInk`, now shared by both figures, each with its own cache
+of two).
+
+**A frozen second fire.** While testing a watcher's view, a relit fire showed
+only its last frame. A watcher's copy of the one-shot light started its clock
+when the player's activity *changed*, and nothing changed between two fires lit
+in a row. So every light after the first was drawn frozen on the standing-up
+frame for its whole length. A figure that was not drawn last frame now starts
+over.
+
+**What it costs.** The most ink a player can draw costs 1.24 MB, against the
+figure's 6.29 MB. It only exists for a player with drawings.
+
+**How it is checked.** `mp-fireink` (new, 22 checks), the cook's test on this
+figure:
+
+- your screen: the layer on every frame with the figure's exact transform, the
+  face drawing on the half it was drawn on, the arm and chest drawings on every
+  frame;
+- lined up: every pixel of the layer sits on his skin, on the same frame, and
+  none on the flame, a spark or the lit cloth, all of which pass the skin test;
+- the fist: every pixel of its islands recoloured, on both frames, read from
+  every fire-lighter the test draws (a sweep on a loaded box can miss a frame);
+- a watcher: his drawings on from his first light, kept through relights;
+- no leak: a plain player lights a fire bare on the inked player's screen;
+- a drawing change rebuilds the layer and leaves the figure alone;
+- what the layer costs, and that the watcher lets it go 15 s after he stops;
+- no page errors.
+
+With the change switched off, 12 of the 22 fail: every drawing check, the fist
+(365 and 453 px in the artist's paint) and the watcher's relight, which showed
+only the last frame.

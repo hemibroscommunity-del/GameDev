@@ -1108,6 +1108,8 @@ export async function initPixiRenderer(canvas) {
         chopInk: !!ent._chopInk,
         /* v2.3.2856: is this peer's cook drawn with their drawings' layer? */
         cookInk: !!ent._cookInk,
+        /* v2.3.2858: ...and their fire-lighter? */
+        fireInk: !!ent._fireInk,
       };
     },
     /* v2.3.2855: the lumberjack SPRITES -- yours (no id) or a peer's -- for
@@ -1137,7 +1139,22 @@ export async function initPixiRenderer(canvas) {
       return {
         body: e._cookFramesInk ? e._cookFramesInk.length : 0,
         legless: e._cookLeglessFramesInk ? e._cookLeglessFramesInk.length : 0,
-        peers: e._peerCookInks ? e._peerCookInks.size : 0,
+        peers: (e._peerInks && e._peerInks.cook) ? e._peerInks.cook.size : 0,
+      };
+    },
+    /* v2.3.2858: the fire-lighter's two SPRITES, yours (no id) or a peer's, and
+       its layers -- mp-fireink, the twins of cookSpriteRaw / cookInkLayers. */
+    fireSpriteRaw: (id) => {
+      const e = effectsRenderer;
+      if (id == null) return e.fireSprite ? { body: e.fireSprite, ink: e.fireInkSprite || null } : null;
+      const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
+      return (ent && ent.fire) ? { body: ent.fire, ink: ent.fireInk || null } : null;
+    },
+    fireInkLayers: () => {
+      const e = effectsRenderer;
+      return {
+        body: e._fireFramesInk ? e._fireFramesInk.length : 0,
+        peers: (e._peerInks && e._peerInks.fire) ? e._peerInks.fire.size : 0,
       };
     },
     /* v2.3.138: dispose a single loot pile by direct object reference.
