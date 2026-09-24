@@ -1473,6 +1473,15 @@ export class TileRenderer {
      Same ink / gold / core sandwich as every other style, for the same
      reason: gold on gold cobble is invisible without the dark backing. */
   _trailSteps(samples, now) {
+    /* v2.3.2895 (owner: "Right now there's 3 sets of footprints for the quest
+       trail. Use only the furthest set of footprints (of 2 feet)"): the
+       sampler still walks the whole lit road -- 1.4 to 7 tiles at a 1.05
+       stride is six steps, three left/right pairs -- and only the LAST pair
+       is drawn.  Sliced here rather than in the sampler so the probe's
+       `motes` count and the other styles are untouched.  The slice restarts
+       the left/right parity at 0, so the pair is always left foot then
+       right, and the walker (below) flares the two in turn. */
+    if (samples.length > 2) samples = samples.slice(-2);
     /* ═══ SPRITES OF ONE MINTED PRINT, NOT GRAPHICS PATHS ═══
        The first cut drew each print as two filled ovals on overlayGfx, and
        the shot of town's gold cobble showed a row of pebbles: at that size a
