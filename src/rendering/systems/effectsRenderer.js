@@ -50,6 +50,74 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
    sheet (decoded bytes, no mips).  See _gearStripFrame. */
 const _combatTrimStats = [];
 const _combatTrimFrames = new Map();   /* key -> the cropped frames, for the identity check */
+
+/* ═══ v2.3.2775: THE STAND-IN BODIES, CROPPED ═══
+ * Owner: "Is there any other memory savings that can be cropped?" -- then "Do
+ * all of it".  Measured (__btTex, armoured in town, after the gear crops): the
+ * recoloured stand-in bodies were the largest thing left -- the sword / bow
+ * bodies and torsos and the jog legs (_bakeBodyStrip, 36.4 MB, 5-29% of their
+ * texels painted) and the cook / chop / fire figures (19.4 MB, 11-49%) -- and
+ * every other player's skin combo bakes its own copy of the sword and bow ones
+ * (_remoteBodyFramesFor / _remoteSheetFramesFor).
+ *
+ * One slicer for all of them: the baked canvas is cut into n frames of fw x fh
+ * exactly as before, each frame cropped to its art by gearSheets.packTrimmed,
+ * and the canvas itself is then released -- it was the thing holding the
+ * memory.  Readers get Textures whose `orig` is the whole frame (TRAPS §106):
+ * a Sprite lands where it always did; the two places that cut a sub-rectangle
+ * out of one of these frames (the jog legs' torso trim, blockArm's shield arm)
+ * go through gearSheets.subTexture.  Callers that measure the canvas (the
+ * skin / ink probes) do so BEFORE calling this.
+ * Returns the frame array; `statKey` names it in __btStandInTrim. */
+const _standInTrimStats = [];
+const _standInTrimFrames = new Map();
+if (typeof window !== 'undefined') {
+  window.__btStandInTrim = () => _standInTrimStats.slice();
+  window.__btStandInFrames = (key) => _standInTrimFrames.get(key) || null;
+}
+function _sliceStandIn(cv, fw, fh, n, statKey, keepCanvas) {
+  /* QA only (mp-geartrim sets it before the game loads): keep the whole bake
+     next to its crops so the scenario can prove them byte-identical.  Never
+     set for a player -- it is exactly the memory this function gives back. */
+  let verifyCopy = null;
+  try {
+    if (statKey && typeof window !== 'undefined' && window.__btTrimVerify) {
+      verifyCopy = document.createElement('canvas');
+      verifyCopy.width = cv.width; verifyCopy.height = cv.height;
+      verifyCopy.getContext('2d').drawImage(cv, 0, 0);
+    }
+  } catch (e) { verifyCopy = null; }
+  const packed = packTrimmed(cv, fw, fh, n);
+  const src = Texture.from(packed ? packed.canvas : cv).source;
+  src.scaleMode = 'linear';
+  const arr = [];
+  for (let i = 0; i < n; i++) {
+    if (packed) {
+      const c = packed.cells[i];
+      arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+        orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+    } else {
+      arr.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
+    }
+  }
+  if (packed) {
+    if (statKey) {
+      /* one row per key: a rebake (skin change) replaces its row, it does not
+         add a second one for memory that has already been let go */
+      const row = { key: statKey, fullBytes: cv.width * cv.height * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 };
+      const at = _standInTrimStats.findIndex((r) => r.key === statKey);
+      if (at >= 0) _standInTrimStats[at] = row; else _standInTrimStats.push(row);
+      _standInTrimFrames.set(statKey, { frames: arr, full: verifyCopy, fw, fh });
+    }
+    /* the full-size bake is no longer referenced; hand its backing store back
+       now rather than whenever Safari's GC gets to it (see packTrimmed).  A
+       caller that still has to measure it passes keepCanvas and zeroes it
+       itself afterwards. */
+    if (!keepCanvas) { cv.width = 0; cv.height = 0; }
+  }
+  arr.cropped = !!packed;
+  return arr;
+}
 if (typeof window !== 'undefined') {
   window.__btCombatGearTrim = () => _combatTrimStats.slice();
   window.__btCombatGearFrames = (key) => _combatTrimFrames.get(key) || null;
@@ -103,7 +171,7 @@ function _probeStandInSkin(key, cv, opts) {
   } catch (e) { /* a probe never breaks a bake */ }
 }
 import { ELEMENTS } from '@/data/elements.js';
-import { ZONES, zonePlayerScale } from '@/data/zones.js';
+import { ZONES, zonePlayerScale, depthK /* v2.3.2790 */ } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
 import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn ON props -- slash marks, arrows standing in the rock */
@@ -139,7 +207,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
 import { onArtChange, artHasInk, artIsSymmetric } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
-import { getGearFrame, packTrimmed, registerGearSource } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
+import { getGearFrame, packTrimmed, registerGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
@@ -1028,14 +1096,12 @@ const EFFECT_BURSTS = {
      crown (tools/import_rocks_burst.py) — same 8x256 strip contract. */
   splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1470' },
 };
+/* v2.3.2776: cropped (gearSheets.loadCroppedStrip) -- 2-4% of these strips
+   is painted.  Still on the loading-screen gate via _fxPreload. */
 for (const cfg of Object.values(EFFECT_BURSTS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
-    }
-  }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err));
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err)));
 }
 const FX_BURST_MS = 600;
 
@@ -1076,13 +1142,10 @@ const DEBRIS_BURSTS = {
   ember: { frames: [], h: 72, url: '/sprites/effects/debris-ember-burst-v1.webp?v=2.3.2200' },
 };
 for (const cfg of Object.values(DEBRIS_BURSTS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
-    }
-  }).catch(() => {}); /* art pending — placeholder branch covers it */
+  /* v2.3.2776: cropped, as EFFECT_BURSTS above */
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch(() => {})); /* art pending — placeholder branch covers it */
 }
 /* ═══ v2.3.2217: the thrown snowball's IMPACT ═══
    Owner-supplied art (a 4x2 grid, normalised to the repo's 8-frame strip
@@ -1426,16 +1489,11 @@ const GESTURE_TOOLS = {
     ] },
 };
 for (const cfg of Object.values(GESTURE_TOOLS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * fw, 0, fw, tex.source.height),
-      }));
-    }
-  }).catch((err) => console.warn('[gesture-tools] load failed', cfg.url, err));
+  /* v2.3.2776: cropped (gearSheets.loadCroppedStrip) -- the pickaxe and axe
+     strips are 4% painted.  Still on the loading-screen gate via _fxPreload. */
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch((err) => console.warn('[gesture-tools] load failed', cfg.url, err)));
 }
 
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is
@@ -2329,11 +2387,11 @@ export class EffectsRenderer {
       peer.width = crop.width; peer.height = crop.height;
       peer.getContext('2d').drawImage(crop, 0, 0);
       recolorToolKeyCanvas(peer, TOOL_SPECS.axe);
-      const source = Texture.from(peer).source;
-      source.scaleMode = 'linear';
-      for (let i = 0; i < n; i++) {
-        arr.push(new Texture({ source, frame: new Rectangle(Math.max(0, i - FROM) * FW, 0, FW, FH) }));
-      }
+      /* v2.3.2775: the peer copy is cropped like every stand-in bake
+         (_sliceStandIn); the 24-slot aliasing below is unchanged.  _chopSrc
+         stays whole -- it is what a skin change re-bakes from. */
+      const played = _sliceStandIn(peer, FW, FH, COUNT, 'chopPeer|' + key);
+      for (let i = 0; i < n; i++) arr.push(played[Math.max(0, i - FROM)]);
       try { Assets.unload(url); } catch (e) { /* the crops are what draw now */ }
     };
     const _CHOP_URL = '/sprites/skills/chop-strip.webp?v=2.3.1469';
@@ -2604,11 +2662,14 @@ export class EffectsRenderer {
          not-yet-downscaled facings (e.g. sword-north) pass straight through. */
       _loadImg(url + '?v=' + SWORD_ART_VERSION).then((rawImg) => {
         const img = upscaleToFrameHeight(rawImg, cfg.fh);
-        const source = Texture.from(img).source;
-        source.scaleMode = 'linear';
         const w = img.naturalWidth || img.width;
         const n = Math.max(1, Math.round(w / cfg.fw));
-        for (let i = 0; i < n; i++) target[dir].push(new Texture({ source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+        /* v2.3.2775: cropped (_sliceStandIn).  Only the weapon layer still loads
+           through here (every cfg ships a bodyUrl -- P7 item 1), and the blade
+           is 3% of its strip: 9.6 MB of upscaled sword-south / sword-east that
+           was almost all empty.  Readers place a Sprite (`place`), so the frame
+           box is unchanged. */
+        for (const t of _sliceStandIn(img, cfg.fw, cfg.fh, n, 'sword-' + dir + '|' + url.split('/').pop())) target[dir].push(t);
       }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
     };
     /* v2.3.975: the attack stand-ins must show the PLAYER'S customized body
@@ -2732,11 +2793,11 @@ export class EffectsRenderer {
            bow facings, and the trouser print landed on every other jog-leg
            frame.  See the note on recolorBodyToCanvas. */
         const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a, _fw);
-        const src = Texture.from(cv2).source;
-        src.scaleMode = 'linear';
         const cnt = Math.max(1, Math.round(cv2.width / _fw));
-        const out = [];
-        for (let i = 0; i < cnt; i++) out.push(new Texture({ source: src, frame: new Rectangle(i * _fw, 0, _fw, _fh) }));
+        /* v2.3.2775: cropped (_sliceStandIn).  The plain bake keeps its canvas
+           until the skin / ink probes below have measured it; the twin has no
+           probe, so it lets go at once. */
+        const out = _sliceStandIn(cv2, _fw, _fh, cnt, rec.url + (mirror ? '|m' : ''), !mirror);
         return { arr: out, cv: cv2 };
       };
       const _plain = _bake(false);
@@ -2833,6 +2894,9 @@ export class EffectsRenderer {
           twin: !!rec.target[rec.dir + '|m'], ink: { blue: _bl, green: _gr },
           w: cv.width, fw: _fw, frames: _nf, perFrame: _perFrame };
       } catch (e) { /* never breaks a bake */ }
+      /* v2.3.2775: measured -- now the full-size bake can go (see _sliceStandIn).
+         Only when it WAS cropped: uncropped, this canvas is the texture. */
+      if (arr.cropped) { cv.width = 0; cv.height = 0; }
       /* v2.3.1785: hand the BOW body frames to blockArm.js, which cuts the
          outstretched arm out of them for the raised-shield pose.  Done here
          rather than in its own loader so the arm rides the same recolour bake
@@ -3256,14 +3320,12 @@ export class EffectsRenderer {
       /* v2.3.2761: the axe's copper and pine, AFTER the skin (the key is what
          keeps the skin classifier off the axe). */
       recolorToolKeyCanvas(cv, TOOL_SPECS.axe);
-      const source = Texture.from(cv).source;
-      source.scaleMode = 'linear';
-      const arr = [];
-      for (let i = 0; i < COUNT; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+      const arr = _sliceStandIn(cv, FW, FH, COUNT, key, true);   /* v2.3.2775: cropped; released after the probe below */
       this[key] = arr;
       /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
          bow bakes publish -- see _probeStandInSkin. */
       _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', cv);
+      if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
     }
   }
 
@@ -3331,13 +3393,11 @@ export class EffectsRenderer {
     const FW = 213, FH = 220;
     for (const [key, img] of [['_cookFrames', bodyImg], ['_cookLeglessFrames', leglessImg]]) {
       const cv = recolorStandInSkin(img, skinT, FH);
-      const source = Texture.from(cv).source;
-      source.scaleMode = 'linear';
       const n = Math.max(1, Math.round(cv.width / FW));
-      const arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+      const arr = _sliceStandIn(cv, FW, FH, n, key, true);   /* v2.3.2775: cropped; released after the probe */
       this[key] = arr;
       _probeStandInSkin('/sprites/skills/cook' + (key === '_cookFrames' ? '' : '-legless') + '-strip.webp', cv);   /* v2.3.2500 */
+      if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
     }
   }
 
@@ -3406,13 +3466,11 @@ export class EffectsRenderer {
          point of the fix for anyone who never opened the skin picker. */
       const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
       const cv = recolorStandInSkin(img, skinT, FIRE_FH, FIRE_SKIN_OPTS);
-      const source = Texture.from(cv).source;
-      source.scaleMode = 'linear';
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
-      const arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FIRE_FW, 0, FIRE_FW, FIRE_FH) }));
+      const arr = _sliceStandIn(cv, FIRE_FW, FIRE_FH, n, '_fireFrames', true);   /* v2.3.2775: cropped; released after the probe */
       this._fireFrames = arr;
       _probeStandInSkin('/sprites/skills/firemaking-strip.webp', cv, FIRE_SKIN_OPTS);   /* v2.3.2500: measured through the bake's own window -- see _probeStandInSkin */
+      if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
     }).catch((err) => console.warn('[firemaking-strip] load failed', err));
   }
 
@@ -5549,9 +5607,13 @@ export class EffectsRenderer {
              monsterCombat applies to its hit test.  `outer` below publishes
              the scaled figure so mp-engage's composition rule (r === outer +
              hitR) keeps meaning "what is drawn is what hits". */
-          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg);
-          const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24);
-          const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23);
+          /* v2.3.2790: your reach x YOUR depth, the body x ITS depth -- the
+             same two factors monsterCombat's hit test now applies, so the
+             ring keeps meaning "what is drawn is what hits" on Wind Dunes. */
+          const _rrMk = depthK(S.currentZone, _rrFy);
+          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);
+          const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24) * _rrMk;
+          const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23) * _rrMk;
           const _rrD = Math.hypot(_rrX - S.player.x, _rrY - S.player.y);
           const _rrIn = _rrD <= _rrR;
           /* The line weight is a SCREEN measurement, v2.3.2255's correction:
@@ -5582,7 +5644,7 @@ export class EffectsRenderer {
              one day fails the harness instead of quietly drawing a ring the
              swing does not honour. */
           this._reachRing = { id: _rrM.id, x: _rrX, y: _rrY, r: _rrR,
-            outer: _rrOuter, hitR: monsterMeleeHitRadius(_rrArch) || 24,
+            outer: _rrOuter, hitR: (monsterMeleeHitRadius(_rrArch) || 24) * _rrMk,   /* v2.3.2790: x its depth, so r === outer + hitR still holds */
             arch: _rrArch, inReach: _rrIn, dist: Math.round(_rrD),
             src: (S.lockedTarget && S.lockedTarget.ref === _rrM) ? 'lock' : 'aggro' };
         }
@@ -6264,7 +6326,7 @@ export class EffectsRenderer {
          Unclipped when the line is empty, deliberately: the stream is then
          doing its other job, which is showing the player where they are
          pointing so they can bring it onto something. */
-      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg);
+      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2790: x depth, as the arrow is */
       const _sightD = (isBow && S._bowSight && typeof S._bowSight.d === 'number')
         ? S._bowSight.d : null;
       const _beamLen = isRanged
@@ -6332,7 +6394,7 @@ export class EffectsRenderer {
              per the charge-pie drop-shadow incident).  Arrow stays below. */
           /* v2.3.2592: the preview and the direction chip sit at the reach
              the RANGE stat gives this swing (monsterCombat's _mRm). */
-          const _mRm = meleeRangeMult(S.rpg);
+          const _mRm = meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2790: x depth, as monsterCombat's _mRm is */
           if (meleeSwinging) {
             const p = Math.max(0, Math.min(1, (now - (S.swingTimer || now)) / SWORD_SWING_MS));
             const a = 0.07 * Math.sin(p * Math.PI);   // swell-in then fade-out -- very subtle (owner: almost unnoticeable)
@@ -9877,7 +9939,7 @@ export class EffectsRenderer {
         for (let i = 0; i < n; i++) {
           if (packed) {
             const c = packed.cells[i];
-            arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, 0, c.w, c.h),
+            arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
               orig: new Rectangle(0, 0, w, H), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
           } else {
             arr.push(new Texture({ source: src, frame: new Rectangle(i * w, 0, w, H) }));
@@ -9961,10 +10023,8 @@ export class EffectsRenderer {
     if (!img) return null;
     try {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, cfg.fh);
-      const source = Texture.from(cv).source; source.scaleMode = 'linear';
       const n = Math.max(1, Math.round(cv.width / cfg.fw));
-      arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      arr = _sliceStandIn(cv, cfg.fw, cfg.fh, n, null);   /* v2.3.2775: cropped, one per peer combo */
       this._remoteBodyCache.set(key, arr);
       _trimBakeCache(this._remoteBodyCache);
       return arr;
@@ -9992,10 +10052,8 @@ export class EffectsRenderer {
       const _sq = (fw == null || fh == null) ? (img.naturalHeight || img.height || 0) : 0;
       const _fw = _sq || fw, _fh = _sq || fh;
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, _fh);
-      const source = Texture.from(cv).source; source.scaleMode = 'linear';
       const n = Math.max(1, Math.round(cv.width / _fw));
-      arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * _fw, 0, _fw, _fh) }));
+      arr = _sliceStandIn(cv, _fw, _fh, n, null);   /* v2.3.2775: cropped, one per peer combo */
       this._remoteSheetCache.set(key, arr);
       _trimBakeCache(this._remoteSheetCache);
       return arr;
@@ -10049,7 +10107,9 @@ export class EffectsRenderer {
          `_ov`/`_waist` are 256-space, so both are scaled together; only the crop
          row is rounded, which moves the amount of leg HIDDEN under the torso by
          at most half a texel and leaves the waist pivot itself exact. */
-      const _legFrameH = (legTex.frame && legTex.frame.height) || 256;
+      /* v2.3.2775: ORIG -- the jog-leg frames are cropped now (_sliceStandIn);
+         `frame` would be the crop's height, not the frame's. */
+      const _legFrameH = (legTex.orig && legTex.orig.height) || (legTex.frame && legTex.frame.height) || 256;
       const _lf = _legFrameH / 256;             // 256-space row -> texture row
       const _ln = 256 / _legFrameH;             // texture px -> 256-space px (the v2.3.1453 _gn term)
       const _waistTex = _waist * _lf;
@@ -10057,7 +10117,10 @@ export class EffectsRenderer {
       let cache = this._legSubCache || (this._legSubCache = new WeakMap());
       let cropped = cache.get(legTex);
       if (!cropped) {
-        try { const f = legTex.frame; cropped = new Texture({ source: legTex.source, frame: new Rectangle(f.x, f.y + TOP, f.width, f.height - TOP) }); }
+        /* v2.3.2775: rows TOP.. of the WHOLE frame, whatever the crop is
+           (gearSheets.subTexture -- identical to the old expression when the
+           frame is not cropped) */
+        try { const ow = (legTex.orig && legTex.orig.width) || legTex.frame.width; cropped = subTexture(legTex, 0, TOP, ow, _legFrameH - TOP); }
         catch (e) { cropped = legTex; }
         cache.set(legTex, cropped);
       }
@@ -10074,7 +10137,7 @@ export class EffectsRenderer {
          texel the crop row rounds by.  Gated on __btProbe (v2.3.2272) so a real
          player never pays for it. */
       if (typeof window !== 'undefined' && window.__btProbe && s) {
-        const _dispH = Math.abs(_legScale * _ln) * ((cropped.frame && cropped.frame.height) || (_legFrameH - TOP));
+        const _dispH = Math.abs(_legScale * _ln) * ((cropped.orig && cropped.orig.height) || (_legFrameH - TOP));
         const _wy = _yMeet + legShiftY;
         _standInTints[weapon + 'JogBareLegs'] = {
           visible: true, jfr, waist: _waist, texH: _legFrameH, top: TOP,
