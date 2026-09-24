@@ -2026,7 +2026,7 @@ export class EffectsRenderer {
 
     this.projectileGfx = new Graphics();
     this.projectileLayer.addChild(this.projectileGfx);
-    /* ═══ v2.3.2801: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
+    /* ═══ v2.3.2821: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
        See src/rendering/staffCastFx.js.  Created HERE for the reason the jet
        stream's container is (v2.3.2398): Pixi depth is child order, and a pool
        built lazily on whichever frame first needs it would stack differently
@@ -3440,7 +3440,7 @@ export class EffectsRenderer {
        mp-deathstrip, which asks the SCREEN what is on the corpse rather than
        checking a list. */
     this._selfCorpse = selfCorpseUp(S);
-    /* v2.3.2801: the staff cast's sprite pools refill from zero each frame;
+    /* v2.3.2821: the staff cast's sprite pools refill from zero each frame;
        open them before anything this frame draws into them (the crash rings
        in _updateParticles, the bolts in _updateProjectiles). */
     this._staffFx.begin();
@@ -3478,7 +3478,7 @@ export class EffectsRenderer {
        (chop/cook/fire). Guarded like the remote attack stand-ins. */
     try { this._updateRemoteExtraction(S, now); } catch (e) { /* skip remote skill stand-in */ }
     this._updateProjectiles(S, now);
-    /* v2.3.2801: after the projectiles, so a bolt fired this frame has
+    /* v2.3.2821: after the projectiles, so a bolt fired this frame has
        already been drawn leaving the crystal when its release flash lands. */
     /* Cosmetic, so it must never take the frame down -- but a throw is still
        logged ONCE in the house format, which is what the QA harness listens
@@ -3632,7 +3632,7 @@ export class EffectsRenderer {
            pushes two more every cast.  Every other transient list in this
            file (dust, ambient, dodge trail) splices — this one now matches. */
         if (age >= 1) { S._impactRings.splice(i, 1); continue; }
-        /* v2.3.2801: a staff bolt's crash ring is drawn by the staff cast
+        /* v2.3.2821: a staff bolt's crash ring is drawn by the staff cast
            system as a stepped pixel ring in the element's heat ramp.  Same
            record, same position, same lifetime (mp-orbrange reads all three);
            only the drawing differs. */
@@ -4393,7 +4393,7 @@ export class EffectsRenderer {
            travel angle, art noses right.  Falls back to the old
            two-circle draw until the strip loads. */
         if (MAGIC_BOLT_FRAMES.length) {
-          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2801: + S, for the caster's crystal */
+          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2821: + S, for the caster's crystal */
         } else {
           gfx.circle(a._renderX, a._renderY, 5 * _pk);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
@@ -4462,7 +4462,7 @@ export class EffectsRenderer {
         if (_remoteMagicSpec) {
           this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk);
         } else if (_remoteBasicBolt) {
-          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk, S);   /* v2.3.2801: + S */
+          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk, S);   /* v2.3.2821: + S */
         } else {
           /* v2.3.840: special staff bolts read bigger + golden with a halo. */
           gfx.circle(rp._renderX, rp._renderY, (rp.isSpecial ? 7 : 4) * _pk);
@@ -4481,7 +4481,7 @@ export class EffectsRenderer {
     /* v2.3.1334: reap magic-bolt sprites whose projectile is gone
        (expired, hit, or zone-reset) — same pattern as the slime-orb
        reaper below. */
-    /* v2.3.2801: the breathing overlay (_boltGlow) is pooled in this same
+    /* v2.3.2821: the breathing overlay (_boltGlow) is pooled in this same
        list, and clears its OWN back-reference -- the v2.3.2511 rule for the
        special's pulse, for the same reason. */
     for (let i = this.magicBoltSprites.length - 1; i >= 0; i--) {
@@ -4752,7 +4752,7 @@ export class EffectsRenderer {
       (Math.floor(now / MAGIC_BOLT_FRAME_MS) + (p._boltPhase || 0)) % MAGIC_BOLT_FRAMES.length
     ];
     if (sprite.texture !== frame) sprite.texture = frame;
-    /* ═══ v2.3.2801: WHERE IT IS DRAWN IS ASKED OF THE STAFF CAST ═══
+    /* ═══ v2.3.2821: WHERE IT IS DRAWN IS ASKED OF THE STAFF CAST ═══
        The bolt leaves the caster's crystal and eases onto its own line, grows
        in over 90 ms, and lays its halo and spark trail (staffCastFx.bolt).
        (x, y) stays the projectile's real position: the hit test never sees any
@@ -4770,7 +4770,7 @@ export class EffectsRenderer {
     sprite.y = dy;
     sprite.rotation = rot;
     sprite.alpha = alpha;
-    /* ═══ v2.3.2801: THE BOLT BREATHES ═══
+    /* ═══ v2.3.2821: THE BOLT BREATHES ═══
        The four painted frames are nearly identical, so on its own the bolt
        reads as a still ball.  A SECOND, ADDITIVE copy of the same frame swells
        and fades over it -- the v2.3.2511 special-arrow pulse, for the same two
@@ -11364,6 +11364,11 @@ export class EffectsRenderer {
         if (S._fxBursts.length < 6) {
           S._fxBursts.push({ kind: 'woodchips', t0: now + _chopLead, x: node.x - chopSign * 12, y: node.y - 64, flip: chopSign < 0 ? 1 : -1 });
         }
+        /* v2.3.2812: ...and the tree takes the blow -- worldLife kicks its
+           sway spring away from the axe and shakes needles loose, on the
+           same +200 ms as the bite and the chips. */
+        node._lifeChopAt = now + 200;
+        node._lifeChopDir = chopSign < 0 ? -1 : 1;
       }
       this._chopLastFrame = k;
       /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree
@@ -11712,7 +11717,7 @@ export class EffectsRenderer {
 
   clear() {
     this.particleGfx.clear();
-    if (this._staffFx) this._staffFx.clear();   /* v2.3.2801: no sparks carried across a zone change */
+    if (this._staffFx) this._staffFx.clear();   /* v2.3.2821: no sparks carried across a zone change */
     this.cueGfx.clear();   /* v2.3.1765 */
     this.projectileGfx.clear();
     this.telegraphGfx.clear();

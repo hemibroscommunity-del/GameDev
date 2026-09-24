@@ -1728,7 +1728,7 @@ export function updateMonsterCombat(S, deps) {
                 S.swingTimer = Date.now(); /* Staff cooldown penalty applied at the gate above, not here */
                 if (isStaff) {
                   BT_AUDIO.play('magic-cast', { vol: 0.55 });
-                  /* v2.3.2801: drive the staff cast (src/rendering/staffCastFx.js),
+                  /* v2.3.2821: drive the staff cast (src/rendering/staffCastFx.js),
                      the same way the two lines below drive the bow's stand-in:
                      the release flash and staff kick key off the stamp and the
                      angle, and the crystal's charge fills against the cooldown
