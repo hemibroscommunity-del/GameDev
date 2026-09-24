@@ -2790,7 +2790,7 @@ export const WEAPON_TYPES = {
  * on your screen while it flew 675 on theirs.  One constant, so the next
  * retune cannot half-land. */
 export const STAFF_RANGE_PX = 675;
-/* ═══ v2.3.2783: THE STAFF SPECIAL IS ONE BIG BOLT ═══
+/* ═══ v2.3.2802: THE STAFF SPECIAL IS ONE BIG BOLT ═══
    Owner: "Instead of the current special attack with 3 orbs I want to see what
    just one moderately larger bolt attack would look like."
 
