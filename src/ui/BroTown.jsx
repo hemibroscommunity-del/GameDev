@@ -6843,7 +6843,7 @@ export var BroTown = function BroTown(_ref0) {
           : null;
         var _exChanged = _exCode !== (S._lastBroadcastEx || null);
         var _exHeartbeat = !!_exCode && (now - (S._lastExBroadcast || 0) > 500);
-        /* ═══ v2.3.2906: AND WHICH TREE ═══
+        /* ═══ v2.3.2915: AND WHICH TREE ═══
            Your screen draws the lumberjack at the tree you are chopping
            (effectsRenderer chopStandInSpot), and you chop from wherever the
            tree offered you the button -- up to a couple of hundred px from

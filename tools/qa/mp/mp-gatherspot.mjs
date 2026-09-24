@@ -1,4 +1,4 @@
-/* ═══ v2.3.2906: A PEER CHOPS AT THE TREE, AND COOKS AT THE FIRE ═══
+/* ═══ v2.3.2915: A PEER CHOPS AT THE TREE, AND COOKS AT THE FIRE ═══
  *
  * Owner: "check all other broadcasted player animations to make sure they
  * match what your character does client side so there's no discrepancies."
