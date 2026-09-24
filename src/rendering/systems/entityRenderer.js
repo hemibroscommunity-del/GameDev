@@ -56,7 +56,7 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling corpse */
-import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
+import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones; v2.3.1934: beard over a drape */
@@ -4595,6 +4595,35 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
   return inFrontBase;   /* greatsword: point-up, clears the torso -- E/SE only */
 }
 
+/* ═══ v2.3.2911: THE FIST GOES OVER THE HANDLE ═══
+ * Owner: "East, Southwest, northeast the characters hand should be over the
+ * handle."  Measured before changing anything (a red dot drawn at the grip
+ * anchor): the anchor WAS on the hand at all three -- the fault was layering.
+ * At E and NE the carried greatsword is drawn above the body, so the handle
+ * covered the fist whole; at SW it was drawn behind (v2.3.2516), so the arm
+ * swallowed the handle and only the crossguard showed, beside the hand.
+ *
+ * The fix is a HOLE, not a stamp: the blade is inverse-masked by a small
+ * circle at the grip, so whatever the character has at the hand -- skin, a
+ * sleeve, a gauntlet, a recolour -- shows through on top of the handle, with
+ * the handle visible either side of the fist.  The v2.3.185 hand-cap did this
+ * by cloning BODY pixels, which is why it had to be switched off under a
+ * shirt (v2.3.749) and so never ran for most players.
+ *
+ * SW: the carried pose comes back in front for this -- the blade hangs away
+ * from the body there, so the fist is the only overlap.  The SWING keeps the
+ * v2.3.2516 behind-the-body order (swingActive is excluded; the swing's own
+ * z-order lives in effectsRenderer).  Greatsword only: its per-facing art is
+ * the one this was measured on. */
+const GRIP_HOLE_FACINGS = { 0: true, 3: true, 7: true };
+const GRIP_HOLE_R = 4.2;   /* display px -- about the fist; window.__btGripHoleR tunes it */
+function gripHoleWanted(wpnType, facingIdx, swingActive, sheathed) {
+  return wpnType === 'greatsword' && !swingActive && !sheathed && GRIP_HOLE_FACINGS[facingIdx] === true;
+}
+function clearGripHole(spr) {
+  if (spr && spr._gripHoleOn) { spr.mask = null; spr._gripHoleOn = false; }
+}
+
 /* Weapon swing animation — matches the Canvas 2D drawSpriteCharacter
  * timing (BroTown.jsx:3352).  250ms quadratic-ease-out rotation around
  * the hand pivot, sweeping ~107° from -53° to +53° relative to the
@@ -6165,6 +6194,7 @@ const SOUTH_BLOCK_OFFHAND_BY_TYPE = {
 const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.28;
 function _placeSouthBlockWeapon(display, wpn, bobY) {
   const spr = display && display._weaponSprite;
+  clearGripHole(spr);   /* v2.3.2911: the carried pose's fist hole is not this pose's */
   if (!spr || !wpn || !wpn.type) return false;
   /* THE SAME OBJECT HE WAS JUST CARRYING.  A greatsword and a bow have
      per-facing held art, and their single-icon fallbacks are something else
@@ -6195,7 +6225,9 @@ function _placeSouthBlockWeapon(display, wpn, bobY) {
                 : wpn.type === 'bow' ? 34
                 : (wpn.type === 'sword' && wpn.gearBase === 'wood') ? 36
                 : 26;
-  const k = targetH / Math.max(8, th);
+  /* v2.3.2910: size by weaponFitH, not th -- the widened greatsword's canvas
+     is taller than its blade is long (weaponSprites.js SHEETS). */
+  const k = targetH / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, artDir, th));
   spr.scale.set(k, k);
   /* Every weapon icon runs grip-to-tip along the same diagonal (see
      BLOCK_OFFHAND_ART_ANG), so one constant turns "point it this way" into a
@@ -12368,7 +12400,9 @@ export class EntityRenderer {
                          : wpn.type === 'bow'        ? (_gsDir ? 52 : 28)
                          : isWoodSword                ? 45
                          :                              26;
-          const fitScale = targetH / Math.max(8, th);
+          /* v2.3.2910: weaponFitH, not th -- the widened greatsword sheets keep
+             their pre-widening height so the blade gets wider, not shorter. */
+          const fitScale = targetH / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, _gsDir, th));
           /* v2.3.1786: set by the carried branch below.  Declared HERE, beside
              fitScale in the same block as the scale.y assignment — the first
              cut of this put it beside the OTHER fitScale, forty lines up in
@@ -12532,6 +12566,7 @@ export class EntityRenderer {
                whole probe — which read as "the weapon branch never ran" and
                sent me looking for a bug one layer too far up. */
             window.__btWeapon = {
+              gripHole: !!weaponSprite._gripHoleOn,   /* v2.3.2911 */
               visible: weaponSprite.visible, bladeUp: _weaponBladeUp,
               x: +weaponSprite.x.toFixed(2), y: +weaponSprite.y.toFixed(2),
               anchorX: weaponSprite.anchor.x, anchorY: weaponSprite.anchor.y,
@@ -12651,7 +12686,29 @@ export class EntityRenderer {
              Skip it while the layered shirt is showing (same pattern as the
              SE/NE jog skips); the grip-wrap nicety returns when the shirt
              clone learns to ride along. */
-          const handCapEligible = handCap && handMask && _bodyRef
+          /* v2.3.2911: the fist-over-handle hole (see gripHoleWanted) --
+             replaces the hand-cap wherever it applies. */
+          const _gripHole = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat);
+          if (_gripHole) {
+            const _wc = weaponSprite.parent;
+            let hole = display._gripHoleGfx;
+            if (!hole || hole.destroyed) {
+              hole = display._gripHoleGfx = new Graphics();
+              hole.label = 'grip-hole';
+            }
+            if (hole.parent !== _wc) _wc.addChild(hole);
+            let _r = GRIP_HOLE_R;
+            try { if (typeof window !== 'undefined' && window.__btGripHoleR > 0) _r = window.__btGripHoleR; } catch (e) { /* default */ }
+            hole.clear();
+            hole.circle(weaponSprite.x, weaponSprite.y, _r).fill({ color: 0xffffff });
+            if (!weaponSprite._gripHoleOn) {
+              weaponSprite.setMask({ mask: hole, inverse: true });
+              weaponSprite._gripHoleOn = true;
+            }
+          } else {
+            clearGripHole(weaponSprite);
+          }
+          const handCapEligible = !_gripHole && handCap && handMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
             && _weaponInFront
@@ -12943,7 +13000,9 @@ export class EntityRenderer {
         /* v2.3.2322: the bow parts company with the greatsword here — see
            heldWeaponInFront at the top of this file for the measurements and
            for why the v2.3.1787 exception does not transfer to it. */
-        const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand);
+        const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand)
+          /* v2.3.2911: SW carried comes in front, fist over the handle */
+          || gripHoleWanted(wpn && wpn.type, facingIdx, swingActive, sheathed);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
         /* v2.3.2841: the staff cast glows at the crystal from a layer above
            the body; when the staff is carried BEHIND him (SW/W/NW/N) it dims

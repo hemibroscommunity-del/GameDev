@@ -287,7 +287,7 @@ import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { rangedAimAngle, bowGripPoint } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
-import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
+import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js'; /* v2.3.1864; weaponFitH v2.3.2910 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
 import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2841: the staff cast's charge, release, trail and crash */
 import { STAFF_BIG_BOLT_SCALE } from '@/data/gameSystems.js';     /* v2.3.2842: the one-bolt special's drawn size */
@@ -11670,7 +11670,8 @@ export class EffectsRenderer {
        fixed size while the body changes per facing or per zone. */
     const px = (BLOCK_OFFHAND_PX[wpn.type] || BLOCK_OFFHAND_PX.sword)
              * ((bodyH || STANDIN_REF_BODY_H) / STANDIN_REF_BODY_H) * sizeMul;
-    const k = px / Math.max(8, th);
+    /* v2.3.2910: weaponFitH -- the widened greatsword keeps its old length. */
+    const k = px / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, artDir, th));
     const mir = sgn < 0;
     /* No vertical flip anywhere on this path: every one of these icons is
        already drawn tip-away-from-the-grip, and the carried pose's
