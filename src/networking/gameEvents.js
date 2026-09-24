@@ -717,7 +717,7 @@ export function processGameEvent(type, payload, S, deps) {
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */
+              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */ S.slimeShockwaves = []; /* v2.3.2896: and the slime burst's shockwave */
               S.player.x = _ddMX * TILE;
               S.player.y = (_ddH - 3) * TILE;
               S._zoneWipe = Date.now();
@@ -796,7 +796,7 @@ export function processGameEvent(type, payload, S, deps) {
                 S.hitParticles = [];
                 S.deathExplosions = [];
                 S.arrows = [];
-                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */
+                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */ S.slimeShockwaves = []; /* v2.3.2896: and the slime burst's shockwave */
                 S.player.x = Math.floor(_fz.w / 2) * TILE;
                 S.player.y = (_fz.h - 4) * TILE;
                 S._zoneWipe = Date.now();
@@ -1061,7 +1061,32 @@ export function processGameEvent(type, payload, S, deps) {
                      code-drawn impact area by another name.  What is left is
                      what does not look drawn: the camera kick and the sound.
                      A real goo-burst strip is the upgrade here. */
-                  S.screenShake = Math.max(S.screenShake || 0, 10);
+                  /* ═══ v2.3.2896: A SHOCKWAVE, AND THE SHAKE ONLY IF IT GOT YOU ═══
+                     Owner: "when the slime explodes make an explosion effect
+                     like a shockwave in the damage area.  Also if you're
+                     within damage radius when it explodes make the screen do
+                     a little shake".  The wave is drawn by effectsRenderer
+                     (_updateSlimeShockwaves) at the worker's own ax/ay/radius.
+                     The shake used to be 10 for EVERYONE who could see the
+                     slime; now it is a smaller 6, and only inside the radius
+                     -- measured from where we stand now against the same
+                     centre and radius telegraph.js resolved the hit with.  An
+                     older worker that sends no radius falls back to 110, its
+                     SLIME_BURST.RADIUS. */
+                  var _sbX = (typeof payload.ax === 'number') ? payload.ax : (_sbM ? _sbM.x : NaN);
+                  var _sbY = (typeof payload.ay === 'number') ? payload.ay : (_sbM ? _sbM.y : NaN);
+                  var _sbR = Math.max(10, Math.min(600, Number(payload.radius) || 110));
+                  if (isFinite(_sbX) && isFinite(_sbY)) {
+                    if (!S.slimeShockwaves) S.slimeShockwaves = [];
+                    if (S.slimeShockwaves.length < 8) S.slimeShockwaves.push({ x: _sbX, y: _sbY, r: _sbR, at: Date.now() });
+                    var _sbPl = S.player;
+                    if (_sbPl && !S._dying) {
+                      var _sbDx = _sbPl.x - _sbX, _sbDy = _sbPl.y - _sbY;
+                      if (_sbDx * _sbDx + _sbDy * _sbDy <= _sbR * _sbR) {
+                        S.screenShake = Math.max(S.screenShake || 0, 6);
+                      }
+                    }
+                  }
                   BT_AUDIO.beep(90, 0.16, 0.09, 'sawtooth');
                 }
                 break;
