@@ -203,6 +203,32 @@ async function newRoom(key) {
   }
 }
 
+/* ── 8a. v2.3.2875: THE KIT HANDS OUT ARMOUR ──
+   Owner: "add armor to the admin button (in the give weapons) so I can
+   actually test it."  Each piece must reach the bag the way a quest's armour
+   reward does (quest_reward_stashed, which the client files into
+   armorStash / legsStash by `slot`), carry a server-minted gid (without one
+   it can never be listed or equipped by reference), and leave nothing on the
+   quest scratch for a later turn-in to announce a second time. */
+{
+  const { room, ws, ps } = await newRoom(KEY);
+  ws.sent.length = 0;
+  const r = await room._adminFetch(authed('/dev/kit', { playerId: 'p1' }));
+  const body = await r.json();
+  const got = ws.sent.filter((m) => m && m.type === 'quest_reward_stashed').map((m) => m.payload && m.payload.item);
+  check('kit armour: the reply counts four pieces', body.armor === DEVKIT.ARMOR.length, body);
+  check('kit armour: four pieces are announced to the player', got.length === DEVKIT.ARMOR.length, got);
+  check('kit armour: a torso and greaves in copper and in iron, each in its own slot',
+    ['copper', 'iron'].every((m) => got.some((p) => p.mat === m && p.slot === 'armor')
+      && got.some((p) => p.mat === m && p.slot === 'legsArmor')), got);
+  check('kit armour: every piece carries a server-minted gid',
+    got.every((p) => typeof p.gid === 'string' && p.gid.length > 0), got.map((p) => p.gid));
+  check('kit armour: ...and nothing is left on the quest scratch', ps._questGrantOverflow == null, ps._questGrantOverflow);
+  const onlyArmor = await room._adminFetch(authed('/dev/kit', { playerId: 'p1', what: 'armor' }));
+  const ob = await onlyArmor.json();
+  check("kit armour: what:'armor' hands out armour and no weapons", ob.armor === DEVKIT.ARMOR.length && ob.weapons === 0, ob);
+}
+
 /* ── 8b. v2.3.2421: THE KIT MUST NOT LEAVE A LOADED GUN ON THE SCRATCH ──
    v2.3.2420 made _grantQuestItem park a weapon it cannot place on
    ps._questWeaponUnfit, for the QUEST handlers to drain through

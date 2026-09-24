@@ -21,7 +21,7 @@ A panel inside the game with four operations:
 |---|---|
 | **Unlock every gated zone** | sets each zone-gating quest to `active` |
 | **Warp** | stands you on a zone's trail-head on the World View |
-| **Give weapons + levels** | the tutorial's three starter weapons, plus levels |
+| **Give weapons + armor + levels** | the tutorial's three starter weapons, the copper and iron armour sets (torso + greaves each, into the bag through the quest-reward path, provenance-minted; v2.3.2875), plus levels |
 | **Heal / God mode** | refill the bars; stop taking damage, on a timer |
 
 **Opened by a 1.2-second press on the zone name** in the header. That target

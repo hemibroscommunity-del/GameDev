@@ -2596,7 +2596,99 @@ async function _prewarmBake(bodyTex, worn, dilate, poseInfo) {
   _bakeWorkerStats.worker++;
 }
 if (typeof window !== 'undefined') {
-  window.__btBakeWorker = () => ({ ..._bakeWorkerStats, alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size });
+  window.__btBakeWorker = () => ({ ..._bakeWorkerStats, alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size, peer: { ..._peerBakeStats, queued: _peerQueue.length } });
+}
+
+/* ═══ v2.3.2876: OTHER PLAYERS' ARMOUR, OFF YOUR MAIN THREAD TOO ═══
+   Owner: "make it so that other players don't slow down your game when they
+   put on armor".  A peer's masked frames are baked on YOUR phone -- inline,
+   in the render path, on the first frame their figure needs each one -- so a
+   player who puts on armour and runs past you was a burst of ~7 ms bakes in
+   your frames.  Two changes, both on the v2.3.2874 worker:
+     1. PREWARM.  When a peer's worn set (or body) changes while they are on
+        your screen, their stand + jog frames are queued to the worker, one
+        peer at a time (_peerQueue), so they are warm before they are needed.
+     2. HOLD, DON'T BAKE.  A frame the worker has not delivered yet is sent to
+        it, and the peer keeps the LAST frame drawn for the same pose and
+        facing until it arrives -- a one-or-two-frame hold on a running
+        stride, where the old path stalled your whole game instead.  With no
+        such frame to hold (first sight, a new facing) it bakes inline exactly
+        as before, so nothing is ever drawn that was not drawn before.
+   Without a worker (old Safari, a worker error) every branch below is the
+   old inline path, unchanged. */
+const _peerBakeStats = { held: 0, inline: 0, queuedSets: 0, prewarmed: 0 };
+const _peerPending = new Set();
+const _peerQueue = [];
+let _peerRunning = false;
+function _peerWorkerOk() { return !!_getBakeWorker(); }
+function _maskedKey(bodyTex, worn, dilate) {
+  return (bodyTex.uid != null ? bodyTex.uid : '') + '|' + worn.map(w => w.k).join(',') + '|' + dilate;
+}
+/* Send one frame to the worker unless it is already cached or on its way. */
+function _peerBakeSoon(bodyTex, worn, dilate, poseInfo) {
+  const key = _maskedKey(bodyTex, worn, dilate);
+  if (_maskedBodyCache.has(key) || _peerPending.has(key)) return;
+  _peerPending.add(key);
+  Promise.resolve(_prewarmBake(bodyTex, worn, dilate, poseInfo)).catch(() => {}).then(() => { _peerPending.delete(key); });
+}
+/* The masked frame for a peer, without baking on this thread when it can be
+   avoided.  `display` remembers the last frame drawn per pose+facing. */
+function _peerMaskedFrame(display, bodyTex, worn, dilate, poseInfo, mirror) {
+  const key = _maskedKey(bodyTex, worn, dilate);
+  if (_maskedBodyCache.has(key)) return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo);   /* a hit (refreshes LRU) */
+  const pd = poseInfo.pose + '|' + poseInfo.dir + '|' + (mirror ? 1 : 0) + '|' + worn.map(w => w.k).join(',');
+  const last = display._peerLastMasked;
+  if (_peerWorkerOk() && last && display._peerLastPD === pd && last.source && !last.source.destroyed) {
+    _peerBakeSoon(bodyTex, worn, dilate, poseInfo);
+    _peerBakeStats.held++;
+    return last;
+  }
+  _peerBakeStats.inline++;
+  return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo);
+}
+/* Queue a peer's stand + jog frames when what they wear (or their body)
+   changes.  `bodyFor(pose, dir, f, mirror)` is the render path's own body
+   lookup for THIS peer, so the keys match what it will ask for. */
+function _peerPrewarmIfChanged(display, sig, bodyFor, gearIds) {
+  if (display._peerPrewarmSig === sig) return;
+  display._peerPrewarmSig = sig;
+  if (!_peerWorkerOk() || !gearIds.length) return;
+  for (let i = _peerQueue.length - 1; i >= 0; i--) if (_peerQueue[i].display === display) _peerQueue.splice(i, 1);   /* newest set wins */
+  _peerQueue.push({ display, sig, bodyFor, gearIds });
+  _peerBakeStats.queuedSets++;
+  if (!_peerRunning) _runPeerQueue();
+}
+async function _runPeerQueue() {
+  _peerRunning = true;
+  try {
+    while (_peerQueue.length) {
+      const job = _peerQueue.shift();
+      const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+      for (const pose of ['stand', 'jog']) {
+        for (const dir of DIRS) {
+          for (const mirror of (dir === 'south' || dir === 'north') ? [false] : [false, true]) {
+            const fc = playerFrameCount(pose, dir) || 1;
+            for (let f = 0; f < fc; f++) {
+              if (job.display.destroyed || job.display._peerPrewarmSig !== job.sig) break;   /* gone, or changed again */
+              const tex = job.bodyFor(pose, dir, f, mirror);
+              if (!tex) continue;
+              const worn = [];
+              for (const [sl, it] of job.gearIds) {
+                const gt = getGearFrame(sl, it, pose, dir, f);
+                if (gt) worn.push({ k: sl + ':' + it, tex: gt });
+              }
+              if (!worn.length || _fullsetCoversBake(worn, pose, dir)) continue;
+              const key = _maskedKey(tex, worn, 6);
+              if (_maskedBodyCache.has(key) || _peerPending.has(key)) continue;
+              _peerPending.add(key);
+              try { await _prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }); _peerBakeStats.prewarmed++; } catch (e) { /* best-effort */ }
+              _peerPending.delete(key);
+            }
+          }
+        }
+      }
+    }
+  } finally { _peerRunning = false; }
 }
 
 /* v2.3.2874: the tail of a bake -- crop, mipmaps, cache, stats, eviction --
@@ -9944,8 +10036,18 @@ export class EntityRenderer {
                has all three slots (tools/build-dodge-gear.mjs).  The plate is
                sealed against the body, so the mask is what stops the bare
                figure showing through at its edges. */
-            const _mt = _fsR || ((pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx }));
+            /* v2.3.2876: a peer's armour bakes in the worker (prewarm on a
+               change, hold-don't-bake on a miss) -- _peerMaskedFrame. */
+            _peerPrewarmIfChanged(display,
+              [other.skin, other.pants, other.shoes, other.eyeColor, other.eyeStyle, _oBodyArt ? 'art' : '', other.equip && other.equip.chest, other.equip && other.equip.legs].join('|'),
+              (p, d, f, m) => getBodyFrame(other.skin, other.pants, other.shoes, p, d, f, _oShirtT, _oShirtKey, other.eyeColor, _remoteBodyArt(other, m), other.eyeStyle),
+              _rworn.map((w) => w.k.split(':')));
+            const _mt = _fsR || ((pose === 'pickup') ? tex : _peerMaskedFrame(display, tex, _rworn, 6, { pose, dir, frameIdx }, mirror));
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
+            if (!_fsR && pose !== 'pickup' && _mt !== tex) {
+              display._peerLastMasked = _mt;
+              display._peerLastPD = pose + '|' + dir + '|' + (mirror ? 1 : 0) + '|' + _rworn.map((w) => w.k).join(',');
+            }
             /* v2.3.1757: the fullset figure IS the armour, drawn on the body
                sprite — so the material colour goes here.  Cleared whenever the
                figure is not in play, because the same sprite is the naked body
