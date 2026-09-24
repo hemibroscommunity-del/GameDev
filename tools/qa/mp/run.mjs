@@ -25,9 +25,10 @@ const WS = await H.freePort(), WEB = await H.freePort();
 const SCENARIOS = {
   devarmor: () => import('./mp-devarmor.mjs'), /* v2.3.2875: the admin kit hands out the copper and iron armour sets, into the right bags, wearable */
   monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2870: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */
-  sheen: () => import('./mp-sheen.mjs'), /* v2.3.2864: a permanent soft shine on metal behind ?sheen=1 -- off by default, on every frame when on, copper stays copper, the jogging full-set knight too; pictures and its cost */
+  sheen: () => import('./mp-sheen.mjs'), /* v2.3.2864: a permanent soft shine on metal -- on every frame, copper stays copper, the jogging full-set knight too; pictures and its cost.  v2.3.2887: on by default, ?sheen=0 turns it off */
+  sheenall: () => import('./mp-sheenall.mjs'), /* v2.3.2887: the shine on EVERY armour animation, yours and another player's, in steel, iron, copper and a mixed set -- found by the art file each sprite draws, checked on every frame */
   peerattackink: () => import('./mp-peerattackink.mjs'), /* v2.3.2863: another player's swing and bow shot wear their drawings -- both sides, the back from behind, and the bow no longer borrows the sword's frames */
-  animparity: () => import('./mp-animparity.mjs'), /* v2.3.2896: a peer's sword swing and bow shot are drawn the size, and on the boots, its owner sees -- every facing, several frames */
+  animparity: () => import('./mp-animparity.mjs'), /* v2.3.2905: a peer's sword swing and bow shot are drawn the size, and on the boots, its owner sees -- every facing, several frames */
   poseskin: () => import('./mp-poseskin.mjs'), /* v2.3.2861: hit, mining and dodge wear the walking skin on a player who never picked one -- body and the head drawn over armour, baked before the first hit */
   headink: () => import('./mp-headink.mjs'), /* v2.3.2862: the face tattoo stays on under the head overlays -- pickup, a hit or mining in armour, the full-steel knight, both sides and the back of the head, and a watcher's view */
   townscenery: () => import('./mp-townscenery.mjs'), /* v2.3.2859: town's NPCs + buildings load and free with town, and town is never seen without them */
@@ -150,11 +151,14 @@ const SCENARIOS = {
   introfit: () => import('./mp-introfit.mjs'), /* v2.3.2199: the loading bar is painted into the film, so the clip must not be cropped */
   capeattack: () => import('./mp-capeattack.mjs'), /* v2.3.2190: the cape stays on while you attack, anchored on the head */
   a2hs: () => import('./mp-a2hs.mjs'), /* v2.3.2159: the install instruction finds the right player */
+  tutskip: () => import('./mp-tutskip.mjs'), /* v2.3.2890: Skip tutorial on the welcome, and no pop-ups after */
   standalone: () => import('./mp-standalone.mjs'), /* v2.3.2185: the installed web app -- the home-indicator inset every other scenario runs at zero */
   landdash: () => import('./mp-landscape-dash.mjs'), /* v2.3.2157: the 48px strip, the side sheet, and playing with menus open */
   landrotate: () => import('./mp-landscape-rotate.mjs'), /* v2.3.2157: rotation is a clean handoff both ways */
   landview: () => import('./mp-landscape-view.mjs'), /* v2.3.2156: the view rule switches axes; portrait is pinned */
-  pathstyle: () => import('./mp-pathstyle.mjs'), /* v2.3.2141: the quest path can be turned off, and it has a shape */
+  hatrun: () => import('./shot-hatrun.mjs'), /* v2.3.2896: every hat on the head standing and mid-jog, both sideways directions -- a contact sheet for the eye, asserts only that it could take the pictures */
+  townrim: () => import('./mp-townrim.mjs'), /* v2.3.2896: the rocks round town are a wall -- walked into from seven sides, boots stop on the ground at the edge; the stairs still lead out */
+  pathstyle: () => import('./mp-pathstyle.mjs'), /* v2.3.2141: the quest path can be turned off, and it has a shape; v2.3.2896: + the on/off switch in the Quests panel */
   wvglass: () => import('./mp-wvglass.mjs'), /* v2.3.2141: the World View figure is small again, and the glass is centred on him */
   inkreset: () => import('./mp-inkreset.mjs'), /* v2.3.2114: do Reset and Randomize clear the tattoos — all four of them? */
   rollbake: () => import('./mp-rollbake.mjs'), /* v2.3.2083: is the dodge roll baked before you roll? */
@@ -214,6 +218,7 @@ const SCENARIOS = {
   hpscale: () => import('./mp-hpscale.mjs'), /* v2.3.2572: every HP readout reads the same number */
   monsterplate: () => import('./mp-monsterplate.mjs'), /* v2.3.1918: monsters get the player's name plate */
   chatfont: () => import('./mp-chatfont.mjs'), /* v2.3.1912: the chat font, measured on the glass */
+  chatbubble: () => import('./mp-chatbubble.mjs'), /* v2.3.2896: no Send button (the phone's key sends), a long word wraps inside the bubble, and the point sits over the name plate -- both screens */
   afk: () => import('./mp-afk.mjs'), /* v2.3.1913: idle characters log out after 2 min */
   tutgrant: () => import('./mp-tutgrant.mjs'), /* v2.3.1901: the first quest's sword + shield */
   skillup: () => import('./mp-skillup.mjs'), /* v2.3.1915: life-skill level celebration; re-aimed v2.3.2591 at the owner art burst + the skill icon in the medallion */

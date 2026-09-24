@@ -75,9 +75,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...it names the town', !!welcome && /Bro Town/i.test(welcome.text || ''), welcome);
   rec.ok('...and sends you to the Mayor',
     !!welcome && /Mayor Bro/i.test(welcome.text || ''), welcome);
-  rec.ok('...and it holds for the LONG duration, like a completion',
+  /* v2.3.2890: its own, longer hold -- it carries the Skip tutorial button,
+     and a button needs time to be reached (mp-tutskip) */
+  rec.ok('...and it holds at least as long as a completion',
     await P.page.evaluate(() => window.__questMsgMs && window.__QUEST_MSG_LONG_MS
-      && window.__questMsgMs('welcome') === window.__QUEST_MSG_LONG_MS));
+      && window.__questMsgMs('welcome') >= window.__QUEST_MSG_LONG_MS));
   rec.ok('...and the once-per-browser flag is set',
     await P.page.evaluate(() => {
       try { return localStorage.getItem('bt_welcome_seen') === '1'; } catch (e) { return false; }

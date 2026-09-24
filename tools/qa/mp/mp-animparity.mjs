@@ -1,4 +1,4 @@
-/* ═══ v2.3.2896: DOES A PEER'S ATTACK LOOK LIKE THE ONE ITS OWNER SEES? ═══
+/* ═══ v2.3.2905: DOES A PEER'S ATTACK LOOK LIKE THE ONE ITS OWNER SEES? ═══
  *
  * Owner: "Other players get smaller and move when they do bow shooting", and
  * then: "check all other broadcasted player animations to make sure they match

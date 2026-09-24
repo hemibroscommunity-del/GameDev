@@ -418,7 +418,11 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
          by its cut end at the point it landed (effectsRenderer draws it at the
          monster's own x/y plus this offset, headless: the head is in the body) */
       if (!m._stuckArrows) m._stuckArrows = [];
-      if (m._stuckArrows.length < 12) {
+      /* v2.3.2891: not into a corpse.  Owner: "Arrows stuck in monsters
+         persist even after death."  The killing arrow's impact runs after the
+         monster is already down; its shaft would sit on the dead body until
+         the respawn cleared it (effectsRenderer also skips the dead). */
+      if (m.alive !== false && !(m.curHp <= 0) && m._stuckArrows.length < 12) {
         m._stuckArrows.push({ ang: a.ang, ox: tx - m.x, oy: ty - m.y, isStaff: false, color: fx.stubColor });
       }
     }
@@ -796,7 +800,7 @@ export function updateArrows(S, deps) {
                    counted from the hit (stuckAt), so none of that moves. */
                 var _sdx = _stX - a._renderX, _sdy = _stY - a._renderY;
                 var _sdd = Math.sqrt(_sdx * _sdx + _sdy * _sdy);
-                var _sStep = ARROW_SPEED_PX * (a._rangeMult || 1) * (S._dtScale || 1);
+                var _sStep = (a.speedPx != null ? a.speedPx : ARROW_SPEED_PX * (a._rangeMult || 1)) * (S._dtScale || 1);   /* v2.3.2891: a volley lands at its own (slower) speed */
                 if (_sdd > _sStep && _sAge < LAND_MAX_MS) {
                   a._renderX += _sdx / _sdd * _sStep;
                   a._renderY += _sdy / _sdd * _sStep;
@@ -990,7 +994,7 @@ export function updateArrows(S, deps) {
                  for.  Bow volleys only: the staff's orbs keep their queue. */
               if (a.volley) {
                 var _vOver = Math.min(50, (Date.now() - a._bornTs) - a.launchDelayMs);
-                if (_vOver > 0) a.dist += ARROW_SPEED_PX * (a._rangeMult || 1) * _vOver / (1000 / 60);
+                if (_vOver > 0) a.dist += (a.speedPx != null ? a.speedPx : ARROW_SPEED_PX * (a._rangeMult || 1)) * _vOver / (1000 / 60);   /* v2.3.2891: at the volley's speedPx */
               }
             }
             if (!a._released) a._released = !a.fromGrip || (Date.now() - a._bornTs) >= 110;

@@ -13,7 +13,8 @@ The rules the three arrows share live in one leaf module, `src/game/bowVolley.js
 | | Before | Now |
 |---|---|---|
 | One press of the special | one white-hot arrow at 3× | **three** white-hot arrows, one behind the other |
-| Spacing | — | 80 px tip to tip (one arrow is 62.8), on one line |
+| Spacing | — | 200 px tip to tip (one arrow is 62.8), on one line — v2.3.2891, was 80 |
+| Speed | — | 0.7 × the bow's own (`SPEED_K`, set as each arrow's `speedPx`) — v2.3.2891 |
 | Damage per arrow | 3× the bow's special roll | a third of that, so the same total — **v2.3.2849: two-thirds, the volley twice the old arrow** |
 | Shove | 60 px (worker) | 60 px, once: arrows 2–3 send `noKb` |
 | Burn | every 500 ms for 4 s from the arrow | the same burn, from **one** arrow of the three — **v2.3.2849: for 2.5 s (4 ticks, was 7)** |
@@ -24,7 +25,7 @@ The rules the three arrows share live in one leaf module, `src/game/bowVolley.js
 
 ## The rules (bowVolley.js)
 
-- **One train.** Arrow *i* waits `i × 80 px ÷ its own speed` at the bow — about 56 ms at the bow's 24 px a frame, less with Longshot, so the gap is 80 px whatever the stat has done to the speed. The wait ends on a whole frame, so an arrow is caught up by the time it overstayed (at most 50 ms, three frames) and every gap is the one asked for. Arrows 2–3 fly the **first** arrow's line — its launch point and its angle — so they follow it rather than each aiming afresh from wherever the player has walked in the 100 ms between them. Measured: 80.0 px apart, 0.0 px off the line (mp-hotarrow).
+- **One train.** Arrow *i* waits `i × 200 px ÷ its own speed` at the bow — about 200 ms at the volley's ~17 px a frame, less with Longshot, so the gap is 200 px whatever the stat has done to the speed. (v2.3.2891, owner: "Arrow special is too fast can't discern 3 arrows" — it was 80 px at the full 24 px a frame, a 17 px gap between 63 px arrows, which read as one streak.) The wait ends on a whole frame, so an arrow is caught up by the time it overstayed (at most 50 ms, three frames) and every gap is the one asked for. Arrows 2–3 fly the **first** arrow's line — its launch point and its angle — so they follow it rather than each aiming afresh from wherever the player has walked in the 100 ms between them. Measured: 200 px apart, 0.0 px off the line (mp-hotarrow).
 - **Not drawn on the string.** An arrow still waiting its turn (`_held`) is not drawn; it appears the frame it is loosed. Staff orbs keep their old look at the hand.
 - **One burn.** The first arrow to come to rest (stuck in a monster or planted) starts the volley's burn clock (`volleyRested`). Only one arrow ticks (`volleyBurns`): the first to ask. If its monster dies, a sibling still resting in something takes over for the time that is left. The 4 s life and the 500 ms cadence belong to the volley (`burnT0`, the volley's `_lingerNext`), so a hand-over never buys an extra tick, and all three burn out together. Three burning arrows would triple the burn — and the worker would drop two ticks in three anyway, since burn ticks are ordinary hits and its normal lane admits one per 210 ms per monster.
 - **One shove.** The first arrow of the volley to hit a monster shoves it; the rest send `noKb: true` and skip the local nudge (`volleyShoves`). Build credit (`addBuildUse`) likewise counts once per monster, as the one arrow did; weapon XP is paid by damage, so its total is unchanged.
@@ -38,7 +39,7 @@ The rules the three arrows share live in one leaf module, `src/game/bowVolley.js
 | `monster_damage.noKb` | client → worker | `true` on arrows 2–3 into a monster the volley already hit | The v2.3.1435 flag the burn ticks already use. Cheat-neutral: a shove only helps the player. |
 | `caps.bowvolley` | worker → client (`state_sync`) | `true` | The client fires the volley only when it is advertised. **Lower case on purpose** — see the kill switch. |
 | `arrow_blast` | client → worker | unchanged `{zone, x, y}` | Refused as `retired` (first gate, silent, counted in the operator view's `arrowBlast`) while the volley is live (`_bowVolleyLive`). |
-| `player_projectile.delayMs` | client ↔ client relay | 0 / 167 / 333 per arrow | The staff volley's field (v2.3.2259). A peer's arrow flies 8 px a frame, so the stagger is sized for that, and a peer holds a non-staff projectile that many **frames** (`holdFrames`), not milliseconds — in milliseconds the gap shrank with the watcher's frame rate (measured 14–22 px apart on a busy tab). |
+| `player_projectile.delayMs` | client ↔ client relay | 0 / 417 / 833 per arrow (v2.3.2891; was 0 / 167 / 333) | The staff volley's field (v2.3.2259). A peer's arrow flies 8 px a frame, so the stagger is sized for that, and a peer holds a non-staff projectile that many **frames** (`holdFrames`), not milliseconds — in milliseconds the gap shrank with the watcher's frame rate (measured 14–22 px apart on a busy tab). |
 
 No new message types, and nothing new in `PRIVILEGED_EVENTS`.
 
@@ -67,6 +68,6 @@ The name is lower case because the admin route only accepts `/^[a-z0-9_]{1,32}$/
 
 - `server/test/combat-lifecycle.test.mjs` §12 — a part:3 special lands a third; the lane admits all three and they sum to one arrow (±1 rounding); a fourth is still dropped; capped before it is split (30 → 10); ignored on staff specials and on basic hits (the burn ticks); junk values read safely; `caps.bowvolley` is advertised.
 - `server/test/arrowblast.test.mjs` §6 — retired by default and with `bowvolley: true`, with no damage, no `arrow_boom` and no cooldown started; the kill switch end to end through a real join (caps false, blast lands); the flag name passes `FLAG_NAME_RE`. §1–5 now run behind the kill switch, where the blast still exists.
-- `tools/qa/mp/mp-hotarrow.mjs` — town, page clock: three arrows per press for one `ability_use`, a third each, the 80 px train, nothing drawn on the string, all three stuck, 3 × a third before the first tick, **one** burn (7 ticks, one at a time), one smoulder clock, the burn-out, no `arrow_blast`, a missed volley as three arrows with one ground burn, and a peer seeing three arrows 72 px apart.
+- `tools/qa/mp/mp-hotarrow.mjs` — town, page clock: three arrows per press for one `ability_use`, a third each, the 200 px train, nothing drawn on the string, all three stuck, 3 × a third before the first tick, **one** burn (7 ticks, one at a time), one smoulder clock, the burn-out, no `arrow_blast`, a missed volley as three arrows with one ground burn, and a peer seeing three arrows about 200 px apart.
 - `tools/qa/mp/mp-bowvolley.mjs` — a real worker zone: three `part: 3` sends, `noKb` on arrows 2–3, all three settled as `monster_hit`, one burn of 7 ticks ~500 ms apart, no blast asked for or refused.
 - `tools/qa/mp/mp-arrowblast.mjs` — now the kill switch's test: the flag thrown before anyone joins, caps false, one arrow, its blast sent once after the burn and not refused as `retired`; the flag cleared however the run ends.

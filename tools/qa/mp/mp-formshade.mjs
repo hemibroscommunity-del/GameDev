@@ -93,5 +93,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; });
     await onOff(P, 'verdant', rec, { props: false });
   }
+
+  /* ── v2.3.2893: A SNOWBANK IS NOT SHADED LILAC ──
+     Owner: "the prop has a very strong bluish tint that doesn't match the
+     background during daytime -- in snow level."  The `prop` shade pulled a
+     snowbank's white base toward lilac; frost's props now take the
+     near-neutral `propSnow`.  Measured on the east bank's lower half (world x
+     640..800, y 520..566, above its ground line at 570) with the shade on and
+     off: the blue cast -- B minus the mean of R and G -- may barely move.
+     A fresh player, warped from town: a second warp out of verdant landed back
+     in town in the first cut, and that is a test of the warp, not of this. */
   await P.ctx.close().catch(() => {});
+  const F = await H.newPlayer(browser, { name: 'Snowy', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2 });
+  await H.enterWorld(F);
+  await F.page.waitForTimeout(1500);
+  await H.warpToZone(F, { wsPort, label: 'Frost Ridge', zoneId: 'frost' }).catch(() => null);
+  const zf = await H.readState(F, (S) => S.currentZone);
+  rec.ok('warped to frost (guard)', zf === 'frost', { zf });
+  if (zf === 'frost') {
+    await H.closeDest(F).catch(() => {});
+    await H.hopTo(F, 720, 700);
+    await F.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; });
+    await F.page.waitForTimeout(1500);
+    await F.page.evaluate(() => { try { window._setQuestMsg && window._setQuestMsg(null); } catch (e) {} });
+    const clip = await F.page.evaluate(() => {
+      const S = window._gameState.current;
+      const r = document.querySelector('canvas').getBoundingClientRect();
+      const k = S._worldScaleX || 1, ky = S._worldScaleY || 1;
+      const x0 = r.left + (640 - S.camera.x) * k, x1 = r.left + (800 - S.camera.x) * k;
+      const y0 = r.top + (520 - S.camera.y) * ky, y1 = r.top + (566 - S.camera.y) * ky;
+      return { x: Math.round(x0), y: Math.round(y0), width: Math.round(x1 - x0), height: Math.round(y1 - y0) };
+    });
+    const cast = async (off) => {
+      await F.page.evaluate((o) => { window.__btShadeOff = o; }, off);
+      await F.page.waitForTimeout(300);
+      const img = H.decodePng(await F.page.screenshot({ clip }));
+      let sum = 0, lum = 0, n = 0;
+      for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) {
+        const [r, g, b] = img.at(x, y);
+        sum += b - (r + g) / 2; lum += r * 0.299 + g * 0.587 + b * 0.114; n++;
+      }
+      return { cast: n ? sum / n : 0, lum: n ? lum / n : 0 };
+    };
+    const cOff = await cast(true), cOn = await cast(false);
+    await F.page.evaluate(() => { window.__btShadeOff = false; });
+    console.log(`    frost bank: blue cast ${cOff.cast.toFixed(1)} -> ${cOn.cast.toFixed(1)}, lum ${cOff.lum.toFixed(1)} -> ${cOn.lum.toFixed(1)}`);
+    rec.ok('frost: the bank is on screen and bright (guard: it is snow we are measuring)', clip.width > 40 && cOff.lum > 80, { clip, cOff });
+    rec.ok(`frost: shading adds no blue cast to the snowbank (${(cOn.cast - cOff.cast).toFixed(1)}, limit 3)`,
+      cOn.cast - cOff.cast < 3, { cOn, cOff });
+    rec.ok('frost: ...but still weights it toward the ground (a little darker)', cOn.lum < cOff.lum - 1, { cOn, cOff });
+  }
+  await F.ctx.close().catch(() => {});
 }
