@@ -448,7 +448,7 @@ import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
-import { SHADE } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks */
+import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2883 + snow */
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
@@ -8909,7 +8909,7 @@ export class EffectsRenderer {
           node._pixiSprite.anchor.set(0.5, NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5);
           /* v2.3.2767: formShade.js -- trees, rocks and ore stand lit from
              above; a fishing spot is water, not a form, and is left alone */
-          if (!/fish/i.test(String(node.nodeType))) node._pixiSprite._vShade = SHADE.prop;
+          if (!/fish/i.test(String(node.nodeType))) node._pixiSprite._vShade = propShade(S.currentZone);   /* v2.3.2883: frost's snowy trees and rocks shade near-neutral, as its snowbanks do */
           /* Add at bottom of nodeLayer so the tier badge, emoji, and
              proximity tips (added with plain addChild elsewhere) stack
              above every sprite. */
