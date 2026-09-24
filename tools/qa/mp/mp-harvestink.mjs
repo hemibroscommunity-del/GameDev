@@ -1,4 +1,4 @@
-/* ═══ v2.3.2834: YOUR TATTOOS STAY ON WHILE YOU FISH ═══
+/* ═══ v2.3.2854: YOUR TATTOOS STAY ON WHILE YOU FISH ═══
  *
  * Owner: "yes make tattoos stay on while harvesting resources."
  *

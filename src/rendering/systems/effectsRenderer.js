@@ -173,7 +173,7 @@ function _probeStandInSkin(key, cv, opts) {
   } catch (e) { /* a probe never breaks a bake */ }
 }
 
-/* ═══ v2.3.2835: THE LUMBERJACK'S BAKE, SHARED BY YOUR FIGURE AND A PEER'S ═══
+/* ═══ v2.3.2855: THE LUMBERJACK'S BAKE, SHARED BY YOUR FIGURE AND A PEER'S ═══
    See _bakeChopStrips and _peerChopFrames.  The three canvases this figure
    carries -- it keeps its painted trousers, so the trouser drawings have no
    garment of the player's to sit on. */
@@ -194,7 +194,7 @@ function _peerChopArt(o) {
 }
 /** The axe as the FILE has it, read before anything is painted: the recolour
  *  finds the key by hue and the drawing palette's pink (#d76ba8) sits inside
- *  that window -- the fishing rod's lesson (v2.3.2834), where a pink tattoo
+ *  that window -- the fishing rod's lesson (v2.3.2854), where a pink tattoo
  *  turned to pine.  Here it would have turned to copper. */
 function _chopKeyMask(img) {
   const w = img.width, h = img.height;
@@ -250,7 +250,7 @@ import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
-import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2835 a peer's drawings on the lumberjack */
+import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame, packTrimmed, registerGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
@@ -418,8 +418,8 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
-import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2835: + the file's key mask */
-import { CHOP_INK_REGIONS, CHOP_MIN_BLOB } from '../standInInk.js'; /* v2.3.2835: where the drawings go on the lumberjack */
+import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask */
+import { CHOP_INK_REGIONS, CHOP_MIN_BLOB } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { SHADE } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks */
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
@@ -2426,7 +2426,7 @@ export class EffectsRenderer {
        own chopper draws from the skin-baked pair below. */
     this._chopSkinFrames = [];
     this._chopLeglessSkinFrames = [];
-    this._chopSkinFramesFlip = null;          /* v2.3.2835: the pre-flipped twins -- see _bakeChopStrips */
+    this._chopSkinFramesFlip = null;          /* v2.3.2855: the pre-flipped twins -- see _bakeChopStrips */
     this._chopLeglessSkinFramesFlip = null;
     this._loadChopSkinStrips(_chopBody, _chopLegless);
 
@@ -3307,7 +3307,7 @@ export class EffectsRenderer {
        the cook and the fire-lighter do -- but from the images already in hand,
        so this one costs no network at all. */
     onSkinChange(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } });
-    /* v2.3.2835: and when one of the three drawings the lumberjack carries
+    /* v2.3.2855: and when one of the three drawings the lumberjack carries
        changes.  The designer commits every STROKE through setArt, so this waits
        for the strokes to stop rather than rebaking both strips per stroke; the
        figure is not on screen while you draw.  Other canvases (shirt, trousers)
@@ -3320,7 +3320,7 @@ export class EffectsRenderer {
     });
   }
 
-  /* ═══ v2.3.2835: THE LUMBERJACK CARRIES YOUR DRAWINGS ═══
+  /* ═══ v2.3.2855: THE LUMBERJACK CARRIES YOUR DRAWINGS ═══
    *
    * Owner: "yes make tattoos stay on while harvesting resources", then "Yea do
    * woodcutting".  This bake gave the figure your skin (v2.3.2500) and nothing
@@ -3353,12 +3353,12 @@ export class EffectsRenderer {
     /* skinTarget() returns null for the 'default' pick -- see the cook's bake
        for why that cannot stand for a painted stand-in. */
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
-    /* v2.3.2835: the figure faces east in its source (the trait crown is
+    /* v2.3.2855: the figure faces east in its source (the trait crown is
        composited 'east' too), so it takes the FRONT drawings. */
     const _base = localBodyArt(false);
     const _art = _base ? artForFacing(_base, 'east') : null;
     const _twin = _chopArtAsymmetric(_art);
-    /* v2.3.2835: the strips this replaces, released once nothing draws them.
+    /* v2.3.2855: the strips this replaces, released once nothing draws them.
        A rebake used to leave the old textures to Pixi's idle collector (about
        a minute); with drawings in the bake it runs every time you pause while
        drawing, which is up to four 2.5 MB strips per pause. */
@@ -3375,7 +3375,7 @@ export class EffectsRenderer {
       const _plain = _bakeChopStrip(img, _keyMask, skinT, _art ? { ..._art, mirror: false } : null, key, true);
       this[key] = _plain.arr;
       this[key + 'Flip'] = _twin
-        ? _bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false).arr : null;   /* v2.3.2835: see above */
+        ? _bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false).arr : null;   /* v2.3.2855: see above */
       /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
          bow bakes publish -- see _probeStandInSkin. */
       _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', _plain.cv);
@@ -3392,7 +3392,7 @@ export class EffectsRenderer {
     }
   }
 
-  /* ═══ v2.3.2835: ANOTHER PLAYER'S LUMBERJACK CARRIES THEIR DRAWINGS ═══
+  /* ═══ v2.3.2855: ANOTHER PLAYER'S LUMBERJACK CARRIES THEIR DRAWINGS ═══
    *
    * A peer's lumberjack is drawn from ONE shared figure, the raw art -- the
    * per-peer bake that would give each of them their own look was turned down
@@ -9886,7 +9886,7 @@ export class EffectsRenderer {
         }
         if (_best) _sign = _best.x >= ox ? 1 : -1;
       }
-      /* v2.3.2835: a peer with drawings chops in a figure baked with them (and
+      /* v2.3.2855: a peer with drawings chops in a figure baked with them (and
          the pre-flipped one when a drawing would read backwards flipped); the
          shared figure assigned above draws until it lands, or when they have
          none.  Indexed by the 0..11 swing frame, like the local bake. */
@@ -10048,7 +10048,7 @@ export class EffectsRenderer {
         pool.delete(id);
       }
     }
-    /* v2.3.2835: release the drawn peers' lumberjacks nobody has drawn for a
+    /* v2.3.2855: release the drawn peers' lumberjacks nobody has drawn for a
        while -- they left, stopped chopping, or changed zone (see _peerChopFrames). */
     if (this._peerChopBakes && this._peerChopBakes.size) {
       for (const [k, e] of this._peerChopBakes) if (now - e.used > PEER_CHOP_IDLE_MS) this._dropPeerChop(k);
@@ -11768,7 +11768,7 @@ export class EffectsRenderer {
          the gear strips.  Falls back to the raw art if the bake has not landed
          (or failed): a figure in the artist's complexion is the old behaviour,
          while no figure at all would be a new bug. */
-      /* v2.3.2835: facing LEFT the figure is drawn flipped (below), so it takes
+      /* v2.3.2855: facing LEFT the figure is drawn flipped (below), so it takes
          the pre-flipped bake when there is one -- a drawing that is not its own
          mirror image would otherwise read backwards.  See _bakeChopStrips. */
       const _chopFlip = chopSign < 0;
@@ -11777,7 +11777,7 @@ export class EffectsRenderer {
         : ((_chopFlip && this._chopSkinFramesFlip) || this._chopSkinFrames);
       const _chopRawArr = _chopLegsOn ? this._chopLeglessFrames : this._chopFrames;
       sp.texture = (_chopSkinArr.length === CHOP_COUNT) ? _chopSkinArr[k] : _chopRawArr[fi];
-      sp._chopK = k;   /* v2.3.2835: the swing frame, for mp-chopink -- a cropped frame (v2.3.2775) no longer says which one it is */
+      sp._chopK = k;   /* v2.3.2855: the swing frame, for mp-chopink -- a cropped frame (v2.3.2775) no longer says which one it is */
       /* v2.3.2287: the vista curve, as on the fire figure above and on the
          peer twin. Sampled at the STAND-IN's own spot, not the player's --
          the lumberjack stands at the tree, which on a perspective zone is a
