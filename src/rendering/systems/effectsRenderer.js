@@ -9842,9 +9842,11 @@ export class EffectsRenderer {
   _updateFishingHole(S, now) {
     /* v2.3.2891: every hole drawn this frame, yours and your peers', for
        mp-gatherspot (house style: the rings are drawn into a Graphics that is
-       cleared every frame, so nothing else can say where they went). */
-    const drawn = [];
-    if (typeof window !== 'undefined') window.__btFishHoles = () => drawn.slice();
+       cleared every frame, so nothing else can say where they went).  Gated on
+       __btProbe like the other per-frame probes here: a real player's frame
+       allocates nothing for it. */
+    const drawn = (typeof window !== 'undefined' && window.__btProbe) ? [] : null;
+    if (drawn) window.__btFishHoles = () => drawn.slice();
     /* v2.3.2891: a PEER's line in the water.  Your own screen draws the
        ripples and the bobber where your line lands; a peer fishing had the
        rod (baked into their pose) and nothing on the water.  Their pond comes
@@ -9855,7 +9857,7 @@ export class EffectsRenderer {
     for (let i = 0; i < peers.length; i++) {
       const pn = peers[i].node;
       this._drawFishingHole(pn.x, pn.y, false, now);
-      drawn.push({ who: peers[i].id, x: pn.x, y: pn.y });
+      if (drawn) drawn.push({ who: peers[i].id, x: pn.x, y: pn.y });
     }
     const ex = S && S._extraction;
     if (!ex || ex.skill !== 'fishing') return;
@@ -9864,7 +9866,7 @@ export class EffectsRenderer {
                : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(n => n.id === ex.nodeId) : null);
     if (!node) return;
     this._drawFishingHole(node.x, node.y, ex.status === 'ready', now);
-    drawn.push({ who: 'self', x: node.x, y: node.y });
+    if (drawn) drawn.push({ who: 'self', x: node.x, y: node.y });
   }
 
   /* The pond surface under a line: ripples and the bobber.  v2.3.2891: one
