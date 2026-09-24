@@ -38,7 +38,7 @@ import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifes
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
-import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
+import { pushAbilityRings, BASH_POSE_MS } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave; v2.3.2920 + its pose window */
 import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
@@ -1644,6 +1644,10 @@ export function processGameEvent(type, payload, S, deps) {
                    boolean — this payload is peer-supplied and only ever gates
                    which effect draws. */
                 S.others[payload.id]._swingBash = !!payload.bash;
+                /* v2.3.2920: ...and for how long, so the watcher holds THEIR
+                   shield out for the caster's own window (abilities.js
+                   BASH_POSE_MS), as the caster's screen does (entityRenderer). */
+                S.others[payload.id]._bashUntil = payload.bash ? Date.now() + BASH_POSE_MS : 0;
                 /* ...and give the watcher the same shockwave the caster
                    sees, through the caster's own helper so the two can
                    never drift.  Drawn at the PEER's position, which is why

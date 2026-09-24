@@ -286,7 +286,7 @@ import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore 
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { rangedAimAngle, bowGripPoint } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
-import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
+import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG, BLOCK_ARM_FACING, blockArmTextureFrom } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon; v2.3.2920 a peer's arm */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js'; /* v2.3.1864; weaponFitH v2.3.2910 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
 import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2841: the staff cast's charge, release, trail and crash */
@@ -3982,6 +3982,7 @@ export class EffectsRenderer {
        never white-screen the frame. */
     try { this._updateRemoteSwordSwings(S, now); } catch (e) { /* skip stand-in */ }
     try { this._updateRemoteBowShots(S, now); } catch (e) { /* skip stand-in */ }
+    try { this._publishPeerBlockArms(S); } catch (e) { /* no arm this frame: the shield still draws */ }   /* v2.3.2920 */
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
     /* v2.3.1092: full-character harvest stand-ins for OTHER players
@@ -11187,6 +11188,16 @@ export class EffectsRenderer {
          and a swing shirt hanging on it, on everybody else's screen. Your own
          screen is fixed in the same version, one file over. */
       if (!o || o._isDead) continue;
+      /* ═══ v2.3.2920: A BASH IS NOT A SWING, HERE EITHER ═══
+         v2.3.1735 took the sword stand-in off YOUR Shield Bash (owner: "just
+         display the shield being held during the course of the animation in
+         the direction it was triggered.  Right now it displays the sword
+         special attack.") and gave the bash a pose of its own.  A peer's bash
+         rides player_swing with bash:true, and this loop only ever dropped
+         the golden crescent for it -- so on everybody else's screen your
+         bash was still a sword swing.  It draws nothing here now; the held
+         shield is entityRenderer's, on the peer's own body, as yours is. */
+      if (o._swingBash) continue;
       const wpn = o._swingWpn;
       const isMelee = !wpn || wpn === 'sword' || wpn === 'greatsword';
       const elapsed = now - (o._swingTs || 0);
@@ -11416,7 +11427,19 @@ export class EffectsRenderer {
          v2.3.1710: `legs` before `shirt`, in step with the local bow stand-in
          and _ensureRemoteSwordSet — see the note there on why key order is
          z-order. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk(), hairMask: mk() } };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle; v2.3.2682: + species */ /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
+      /* v2.3.2920: + the block pose's three extra layers, on the structural
+         lo/hi pairs your own stand-in uses (bowShieldLo, blockOffHandLo/Hi):
+         `shieldLo` and `offLo` go in FIRST, under everything, and `offHi` goes
+         in LAST, over everything, so choosing a side is a visible flag and
+         never a child index.  Key order below IS creation order IS z-order.
+         `shieldHi` goes in after even that: the NEAR-side shield of a block
+         pose.  Yours is drawn by your display in the `player` layer, which is
+         above this one, so it covers your pose and your off-hand weapon; a
+         peer's display is in `entities`, BELOW this layer, so their shield
+         has to be drawn here, on top, or their own pose would hide it. */
+      set = { shieldLo: mk(), offLo: mk(), jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk(), hairMask: mk() }, offHi: mk(), shieldHi: mk() };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle; v2.3.2682: + species */ /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
+      set.shieldLo.anchor.set(0.5, 0.5);
+      set.shieldHi.anchor.set(0.5, 0.5);
       this._remoteBowSprites.set(id, set);
     }
     return set;
@@ -11431,13 +11454,39 @@ export class EffectsRenderer {
     if (!this._remoteBowSprites) this._remoteBowSprites = new Map();
     const others = (S && S.others) || {};
     const active = new Set();
+    /* v2.3.2920: which facings can draw a peer's block pose, for
+       entityRenderer's decision NEXT frame -- it hides a blocking peer's
+       walking body only for a pose this renderer can draw, the S._bowArtReady
+       rule your own block follows (v2.3.1800: a held pose that cannot draw
+       would leave the player invisible for as long as they hold the button).
+       The bake itself is synchronous once a sheet's image is in. */
+    if (!S._peerBowFacingsReady) S._peerBowFacingsReady = new Set();
+    if (S._peerBowFacingsReady.size < SECTORS8.length) {
+      for (const _d of SECTORS8) {
+        const _fm = this._bowFacing[_d], _c = _fm && this._bowCfg[_fm[0]];
+        if (_c && _c.bodyUrl && this._bodyImgCache && this._bodyImgCache[_c.bodyUrl]) S._peerBowFacingsReady.add(_d);
+      }
+    }
     for (const id in others) {
       const o = others[id];
-      if (!o || o._isDead || !o._bowShotAt) continue;   /* v2.3.2281: see the swing */
-      const elapsed = now - o._bowShotAt;
-      if (elapsed < 0 || elapsed >= BOW_SHOT_MS) continue;
-      const ang = (typeof o._bowShotAng === 'number') ? o._bowShotAng : 0;
-      const dir8 = SECTORS8[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8];
+      if (!o || o._isDead) continue;   /* v2.3.2281: see the swing */
+      /* ═══ v2.3.2920: ...AND THEIR BLOCK, DRAWN AS YOURS IS ═══
+         Owner: "check all other broadcasted player animations to make sure
+         they match what your character does client side."
+         Your block (v2.3.1800) is this same figure: the bow pose's held frame
+         with no bow, facing the way you guard, your shield and your weapon in
+         your two hands.  A peer's block drew nothing of the kind -- their
+         walking body carried on, weapon hidden, shield still on their back.
+         entityRenderer decides it (S._peerBlockPose, this frame) and hides the
+         walking body for it; a shot in flight wins, as it does on your screen. */
+      const _shotEl = o._bowShotAt ? now - o._bowShotAt : -1;
+      const _shot = _shotEl >= 0 && _shotEl < BOW_SHOT_MS;
+      const _blk = (!_shot && S._peerBlockPose) ? S._peerBlockPose.get(id) : null;
+      if (!_shot && !_blk) continue;
+      const elapsed = _shot ? _shotEl : 0;
+      const ang = _blk ? SECTORS8.indexOf(_blk.dir) * (Math.PI / 4)
+        : ((typeof o._bowShotAng === 'number') ? o._bowShotAng : 0);
+      const dir8 = _blk ? _blk.dir : SECTORS8[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8];
       const fmap = this._bowFacing[dir8];
       if (!fmap) continue;
       const cfgKey = fmap[0], mirror = fmap[1];
@@ -11446,10 +11495,13 @@ export class EffectsRenderer {
       const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg, mirror);   /* v2.3.2863: + the flip, for the drawings */
       if (!bodyFrames || !bodyFrames.length) continue;
       const n = bodyFrames.length;
-      const fi = elapsed < BOW_RELEASE_MS
-        ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
-        : n - 1;
+      /* v2.3.2920: a block HOLDS one frame, as yours does (BLOCK_POSE_FRAME). */
+      const fi = _blk ? Math.min(n - 1, BLOCK_POSE_FRAME)
+        : (elapsed < BOW_RELEASE_MS
+          ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
+          : n - 1);
       const set = this._ensureRemoteBowSet(id);
+      set.shieldLo.visible = false; set.offLo.visible = false; set.offHi.visible = false; set.shieldHi.visible = false;   /* v2.3.2920: parked, as yours are */
       const sp = set.body;
       const anchorY = cfg.feetY / cfg.fh;
       /* ═══ v2.3.1749: SCALE WITH THE BODY YOU ARE STANDING IN FOR ═══
@@ -11529,7 +11581,7 @@ export class EffectsRenderer {
       this._tintGearSprite(set.legs, eq.legs, 'remoteBowLegs');
       this._tintGearSprite(set.chest, eq.chest, 'remoteBowChest');
       const weaponFrames = this._bowWeaponFrames && this._bowWeaponFrames[cfgKey];
-      place(set.weapon, weaponFrames && weaponFrames[fi]);
+      place(set.weapon, _blk ? null : (weaponFrames && weaponFrames[fi]));   /* v2.3.2920: no bow in a block, as yours */
       const looks = {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
@@ -11555,19 +11607,115 @@ export class EffectsRenderer {
           feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), legsItem: eq.legs,
         });
       } else { set.jogLegs.visible = false; set.jogLegsGear.visible = false; }
+      if (_blk) this._placePeerBlockHands(S, id, o, set, _blk, dir8, fmap, cfg, sp, sgnX, sY, _pstOk ? _pst.bodyH : null);
       active.add(id);
     }
     for (const [id, set] of this._remoteBowSprites) {
       if (active.has(id)) continue;
       set.body.visible = set.shirt.visible = set.chest.visible = set.legs.visible = set.weapon.visible = false;
       set.jogLegs.visible = set.jogLegsGear.visible = false;
+      set.shieldLo.visible = set.offLo.visible = set.offHi.visible = set.shieldHi.visible = false;   /* v2.3.2920 */
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.species, set.traits.eyestyle, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361; v2.3.2643: + eyestyle; v2.3.2682: + species */
+        for (const s of [set.shieldLo, set.offLo, set.offHi, set.shieldHi, set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.species, set.traits.eyestyle, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361; v2.3.2643: + eyestyle; v2.3.2682: + species */
           try { s.destroy(); } catch (e) {}
         }
         this._remoteBowSprites.delete(id);
       }
+    }
+  }
+
+  /* ═══ v2.3.2920: A PEER'S SHIELD ARM, CUT FROM THEIR OWN BODY ═══
+     Your Shield Bash holds the shield out on an arm cut from YOUR baked bow
+     frames (blockArm.js, v2.3.1785) -- your skin, your drawings.  A peer's
+     needs theirs, so for every peer entityRenderer says is holding a shield
+     out (S._peerShieldHeld) on a facing that has an arm, the same cut is taken
+     from the frames this renderer bakes for them, and handed back to
+     entityRenderer (S._peerArmTex), which draws it on their display exactly
+     where yours goes.  One frame behind, which no eye can see. */
+  _publishPeerBlockArms(S) {
+    const held = S && S._peerShieldHeld;
+    if (!S._peerArmTex) S._peerArmTex = new Map();
+    const out = S._peerArmTex;
+    if (!held || !held.size) { if (out.size) out.clear(); return; }
+    for (const id of out.keys()) if (!held.has(id)) out.delete(id);
+    const others = S.others || {};
+    for (const [id, h] of held) {
+      const o = others[id];
+      const map = h && BLOCK_ARM_FACING[h.facing];
+      const cfg = map && this._bowCfg[map[0]];
+      if (!o || !map || !cfg || !cfg.bodyUrl) { out.delete(id); continue; }
+      const frames = this._remoteBodyFramesFor(o, map[0], cfg, map[1]);
+      const tex = blockArmTextureFrom(frames, map[0]);
+      if (tex) out.set(id, { facing: h.facing, tex });
+      else out.delete(id);
+    }
+  }
+
+  /* v2.3.2920: a blocking peer's two hands -- the shield on the far side of
+     the body when they guard away from the camera, and their weapon in the
+     other hand -- through the same numbers your own block pose uses
+     (_updateBowShot's away-facing shield, v2.3.1833; _placeOffHandWeapon,
+     v2.3.1864).  The near-side shield is entityRenderer's, on the peer's own
+     display, as yours is on your display. */
+  _placePeerBlockHands(S, id, o, set, blk, dir8, fmap, cfg, sp, sgn, s, bodyH) {
+    const b = blk.behind;
+    let shield = null;
+    if (b && b.tex && b.tex.source && !b.tex.source.destroyed) {
+      const scale = bodyH ? (bodyH / STANDIN_REF_BODY_H) : 1;
+      const sh = set.shieldLo;
+      if (sh.texture !== b.tex) sh.texture = b.tex;
+      sh.width = b.px * scale;
+      sh.height = b.px * scale;
+      sh.scale.x = Math.abs(sh.scale.x) * (b.mirror ? -1 : 1);
+      sh.rotation = 0;
+      sh.alpha = 0.95;
+      sh.tint = 0xffffff;
+      const hand = BLOCK_STANDIN_HAND[fmap[0]];
+      if (hand) {
+        sh.x = sp.x + (hand[0] - cfg.fw / 2) * sgn;
+        sh.y = sp.y + (hand[1] - cfg.feetY) * s;
+      } else {
+        const R = 16 * scale;
+        sh.x = sp.x + Math.cos(b.ang) * R;
+        sh.y = sp.y - (bodyH || STANDIN_REF_BODY_H) * 0.5 + Math.sin(b.ang) * R;
+      }
+      sh.visible = true;
+      shield = { x: +sh.x.toFixed(1), y: +sh.y.toFixed(1), w: +Math.abs(sh.width).toFixed(1), mirror: !!b.mirror, viaHand: !!hand };
+    }
+    /* The NEAR side, at the hand entityRenderer found on the peer's display
+       (the point your own shield sits on), carried over in world units. */
+    const nr = blk.near;
+    let front = null;
+    if (nr && nr.tex && nr.tex.source && !nr.tex.source.destroyed) {
+      const sh = set.shieldHi;
+      if (sh.texture !== nr.tex) sh.texture = nr.tex;
+      sh.width = nr.w;
+      sh.height = nr.h;
+      sh.scale.x = Math.abs(sh.scale.x) * (nr.mirror ? -1 : 1);
+      sh.rotation = 0;
+      sh.alpha = 0.95;
+      sh.tint = 0xffffff;
+      sh.x = nr.x;
+      sh.y = nr.y;
+      sh.visible = true;
+      front = { x: +sh.x.toFixed(1), y: +sh.y.toFixed(1), w: +Math.abs(sh.width).toFixed(1),
+        aboveBody: !!(sh.parent && sp.parent === sh.parent && sh.parent.getChildIndex(sh) > sh.parent.getChildIndex(sp)) };
+    }
+    const probe = typeof window !== 'undefined' && !!window.__btProbe;
+    const off = BLOCK_OFFHAND_ENABLED
+      ? this._placeOffHandWeapon(set.offLo, set.offHi, { type: o.wpnType, gearBase: o.wpnMat || undefined },
+          dir8, fmap, cfg, sp, sgn, s, bodyH || STANDIN_REF_BODY_H, probe)
+      : null;
+    /* QA probe (mp-peerblock), armed only and null-prototype as its siblings
+       (__btPeerShield): what the watcher drew for this peer's block. */
+    if (probe) {
+      if (!window.__btPeerBlockPose) window.__btPeerBlockPose = Object.create(null);
+      window.__btPeerBlockPose[id] = {
+        dir: dir8, sheet: fmap[0], mirror: !!fmap[1], fi: sp._qaFi, weaponShown: !!set.weapon.visible,
+        bodyX: sp.x, bodyFootY: sp.y, bodyH: bodyH || null,
+        shieldBehind: shield, shieldFront: front, offHand: (off && typeof off === 'object') ? off : null,
+      };
     }
   }
 
@@ -11931,16 +12079,30 @@ export class EffectsRenderer {
     /* Both were parked at the top of the frame, so every return below leaves
        the hand empty rather than stranding the last frame's weapon. */
     if (!lo || !hi || !BLOCK_OFFHAND_ENABLED || !S._blockPose) return;
-    const off = BLOCK_OFFHAND[fmap[0]];
     const R = S.rpg;
-    if (!off || !R) return;
+    if (!R) return;
     /* Same three-slot read entityRenderer's held branch does — melee, staff,
        ranged — so the off hand shows whatever the weapon toggle last chose. */
     const slot = R.activeSlot || 'melee';
     const wpn = slot === 'melee' ? R.weapon
               : slot === 'staff' ? (R.staffWeapon || R.rangedWeapon)
               :                    R.rangedWeapon;
-    if (!wpn || !wpn.type) return;
+    const info = this._placeOffHandWeapon(lo, hi, wpn, S._bowDir || 'east', fmap, cfg, sp, sgn, s, bodyH, typeof window !== 'undefined');
+    if (info && typeof info === 'object') { info.slot = slot; window.__btBlockOffHand = info; }
+  }
+
+  /* ═══ v2.3.2920: THE OFF-HAND WEAPON, FOR ANY BLOCKING FIGURE ═══
+     The body of _placeBlockOffHand above, lifted out unchanged so another
+     player's block pose (_updateRemoteBowShots) puts THEIR weapon in THEIR
+     other hand through the same table, grip, size and tilt -- the rule is
+     written once, not copied (the parallel-render lesson v2.3.1791 records).
+     `wpn` is { type, gearBase }, `bowDir` the 8-way facing the pose is drawn
+     for.  Returns the probe fields when `wantInfo`, else true; null when it
+     drew nothing. */
+  _placeOffHandWeapon(lo, hi, wpn, bowDir, fmap, cfg, sp, sgn, s, bodyH, wantInfo) {
+    const off = BLOCK_OFFHAND[fmap[0]];
+    if (!off) return null;
+    if (!wpn || !wpn.type) return null;
     /* ═══ THE SAME OBJECT HE WAS JUST CARRYING ═══
        A greatsword and a bow have per-FACING held art (v2.3.942/944) and their
        single-icon fallbacks are something else entirely — `greatsword` is keyed
@@ -11956,11 +12118,11 @@ export class EffectsRenderer {
        the southeast weapon art — and using either for both is a weapon on the
        wrong side of the body. */
     const perFacing = (wpn.type === 'greatsword' || wpn.type === 'bow');
-    const artRes = perFacing ? resolveDirection(S._bowDir || 'east') : null;
+    const artRes = perFacing ? resolveDirection(bowDir || 'east') : null;
     const artDir = (artRes && hasWeapon(wpn.type, wpn.gearBase, artRes.dir)) ? artRes.dir : null;
-    if (!hasWeapon(wpn.type, wpn.gearBase, artDir)) return;
+    if (!hasWeapon(wpn.type, wpn.gearBase, artDir)) return null;
     const tex = getWeaponTexture(wpn.type, wpn.gearBase, artDir);
-    if (!tex) return;
+    if (!tex) return null;
 
     /* Tunable from the page so a placement can be SWEPT in one build and
        picked by looking, the way the south blade tilt was (__btSouthTilt).
@@ -12058,10 +12220,11 @@ export class EffectsRenderer {
     /* QA probe (mp-blockweapon): a headless run cannot read the WebGL canvas,
        and "is the sword in the back hand" is a question about a point, a side
        and a size — all three readable here and none of them off a screenshot. */
-    if (typeof window !== 'undefined') {
-      window.__btBlockOffHand = {
+    if (!wantInfo) return true;
+    {
+      return {
         on: true, sheet: fmap[0], mirror: mir, behind: behind,
-        type: wpn.type, gearBase: wpn.gearBase || null, slot,
+        type: wpn.type, gearBase: wpn.gearBase || null,
         /* WHICH ART.  null here means the neutral icon, and for a greatsword
            that is the bamboo pole — a silent downgrade that a position check
            cannot see and a 110px screenshot barely can. */
