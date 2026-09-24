@@ -259,6 +259,7 @@ export var doRetreatShot = function (S, R, ang) {
     if (!S.arrows) S.arrows = [];
     var _dk = depthK(S.currentZone, S.player.y);   /* v2.3.2790: the retreat shot reaches as far as you LOOK */
     var pushArrow = function (a) {
+      var _shotTs = Date.now();   /* v2.3.2919: one stamp for the arrow and its broadcast (the snap roll, data/arrowSnap.js) */
       S.arrows.push({
         /* v2.3.1335: range -25%.  v2.3.2387: the staff's 68 becomes STAFF_LIFE
            (675px, the arrow's cap) -- gameSystems.js has the derivation. */
@@ -266,8 +267,28 @@ export var doRetreatShot = function (S, R, ang) {
         maxLife: isStaff ? Math.round(staffOrbLife(R) * _dk) : 90, hitIds: new Set(), isStaff: isStaff,
         _rangeMult: (isStaff ? 1 : bowRangeMult(R)) * _dk, /* v2.3.2592: the retreat shot reaches as far as an ordinary arrow; v2.3.2790 x depth */
         element: activeWpn.element1 || null, retreatShot: true,
-        _shotTs: Date.now()   /* v2.3.2731: the snap roll's timestamp (data/arrowSnap.js) */
+        _shotTs: _shotTs   /* v2.3.2731: the snap roll's timestamp (data/arrowSnap.js) */
       });
+      /* ═══ v2.3.2919: AND EVERYONE ELSE SEES IT ═══
+         Owner: "check all other broadcasted player animations to make sure
+         they match what your character does client side."
+         The retreat shot never told anybody it fired: the roll went out
+         (player_dodge) but its arrow -- or its three bolts -- flew on your
+         screen alone.  Now each goes out the way an ordinary shot does
+         (monsterCombat's player_projectile: where, which way, how far, its
+         element and its snap stamp), plus `retreat`, because your own screen
+         plays no draw or cast pose for it and keeps you facing the way you
+         roll, and the watcher must not add either (gameEvents). */
+      if (S.channel) {
+        try {
+          S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
+            id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: a, isStaff: isStaff, ts: _shotTs,
+            el: activeWpn.element1 || undefined,
+            life: Math.round((isStaff ? staffOrbLife(R) : 90 * (bowRangeMult(R) || 1)) * _dk),
+            retreat: 1,
+          } });
+        } catch (e) {}
+      }
     };
     if (isStaff) {
       var c = RETREAT_STAFF_CONE_RAD || (25 * Math.PI / 180);

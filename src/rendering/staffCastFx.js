@@ -470,9 +470,12 @@ export class StaffCastFx {
           p._fxSpan = CONVERGE_PX * k1;
         }
       }
+      /* v2.3.2919: a peer's bolt carries its caster's element now (relayed on
+         player_projectile as `el`, stored as _projElem), so it glows in it too
+         -- it was always the no-element lavender. */
       p._fxElem = owner === 'self'
         ? (p._projElem || (S.rpg && S.rpg.staffWeapon && S.rpg.staffWeapon.element1) || null)
-        : null;
+        : (p._projElem || null);
     }
     const k = p._fxSpan > 0 ? 1 - clamp(((p.dist || 0) - p._fxD0) / p._fxSpan, 0, 1) : 0;
     const dx = x + p._fxOx * k, dy = y + p._fxOy * k;
