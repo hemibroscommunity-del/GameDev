@@ -4561,7 +4561,7 @@ then `new GlProgram({ name, ...src })`. GlProgram's `isES300` check keeps the
 version and skips the ES1 defines. The templates are already ES3 syntax. Gate
 the feature on `webGLVersion === 2`.
 
-## 111. A paused page clock trips the dark-screen watchdog (v2.3.2803)
+## 111. A paused page clock trips the dark-screen watchdog (v2.3.2823)
 
 **Tempting:** to record an effect frame by frame, install Playwright's fake
 clock, `pauseAt`, and step it with `runFor` between screenshots -- the game only
@@ -4571,7 +4571,7 @@ advances when you say so, so every frame is exact.
 canvas lit-percentage on its own schedule. With the page clock paused between
 steps it reads a black buffer, records `watchdog-dark ... strike N`, and on the
 second strike calls `window._rebuildRenderer` -- which drops per-zone art. Seen
-while capturing the v2.3.2803 hit reactions: the first snowman rendered, every
+while capturing the v2.3.2823 hit reactions: the first snowman rendered, every
 later one fell back to the emoji circle, and one "resting" frame was the
 recovery overlay. It looks like a rendering bug in the feature under test.
 
@@ -4580,7 +4580,7 @@ page -- `S.__wdEverLit = true; S.__wdNext = 1e15; S.__wdDark = 0;` -- and use
 `page.clock.fastForward(ms)` (not `runFor`) to skip long idle stretches, since
 `runFor` renders every intermediate frame in software GL (minutes per clip).
 
-## 112. The hit circle is not the body: draw a hit where the shot lands (v2.3.2804)
+## 112. The hit circle is not the body: draw a hit where the shot lands (v2.3.2824)
 
 A projectile's hit test (`monsterProjRadius`, projectiles.js) is a capsule
 against a CIRCLE round the body -- slime 25, snowman 32, mummy 40, skeleton 50,
@@ -4596,7 +4596,7 @@ deeper". That changes the GAME: more misses on moving targets, the damage
 claim sent frames later, and every hitreal / hitmatrix expectation moves.
 
 **The rule:** keep the hit where it registers, and move the PICTURE. Since
-v2.3.2804 the hit frame still sends and applies everything, then keeps the
+v2.3.2824 the hit frame still sends and applies everything, then keeps the
 shot alive (`a._land`) to fly on at its own speed to a point in the body's
 core (`LAND_CORE` round `monsterBodyOffsetY`), and the flash, recoil, crash,
 material burst, sound and stuck shaft go off there (`_projImpactFx`). Two
@@ -4607,7 +4607,7 @@ bursts where the orb IS (v2.3.2505). The one-in-eight arrow snap (v2.3.2731)
 is rolled on the hit, where every screen rolls it, and drawn at the landing.
 **Receipt:** mp-shotland.
 
-**...and the circle's centre is not the torso (v2.3.2805).** The owner, on
+**...and the circle's centre is not the torso (v2.3.2825).** The owner, on
 the shots above: "The arrows are grouping around the skeleton's knee."
 `monsterBodyOffsetY` -- the hit circle's centre -- was derived as
 `liveScalePx / 2`, which leaves out the monster container's MONSTER_SIZE_MULT

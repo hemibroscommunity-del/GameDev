@@ -1,4 +1,4 @@
-/* A SHOT LANDS IN THE BODY, NOT ON AN INVISIBLE EDGE (v2.3.2804).
+/* A SHOT LANDS IN THE BODY, NOT ON AN INVISIBLE EDGE (v2.3.2824).
  *
  * Owner: "make sure the bolts land somewhere in the center of the target before
  * exploding (with some variation from center for variety) and same with arrows.
@@ -15,7 +15,7 @@
  * at a pinned slime, snowman, fire goblin and skeleton, N bolts and N arrows at
  * each.
  *
- * v2.3.2805 -- AT THE TORSO.  Owner: "The arrows are grouping around the
+ * v2.3.2825 -- AT THE TORSO.  Owner: "The arrows are grouping around the
  * skeleton's knee. Center it on the torso."  The centre they landed round was
  * the hit circle's (monsterBodyOffsetY), which on the tall figures is the
  * knees or thighs.  A locked shot is now AIMED at the drawn torso
@@ -36,7 +36,7 @@ const OUT = `${H.REPO}/tools/qa/mp/out/shotland`;
 const N = 5;
 const DIST = 150;
 /* LAND_CORE (projectiles.js): the half-width and half-height of the region a
-   shot lands in, round the torso (v2.3.2805; the body centre before).  `r` is
+   shot lands in, round the torso (v2.3.2825; the body centre before).  `r` is
    the hit circle's radius (monsterProjRadius, projectiles.js).  Both mirrored
    here so a change to one without the other shows up as a failure, not a
    silent drift.  `torso` is the drawn figure's torso height above its feet --
@@ -91,10 +91,10 @@ const shootOnce = (P, wpn) => P.page.evaluate((wpn) => new Promise((resolve) => 
   const db0 = window.__btDebris ? window.__btDebris().map((b) => b.id) : [];
   const flash0 = m._hitFlash || 0;
   const hp0 = m.curHp;
-  /* v2.3.2804: one arrow in eight SNAPS (v2.3.2731) instead of leaving a
+  /* v2.3.2824: one arrow in eight SNAPS (v2.3.2731) instead of leaving a
      shaft -- it lands just the same, and breaks where it lands */
   const t00 = performance.now();
-  /* v2.3.2805: the centre a shot lands round is the torso now */
+  /* v2.3.2825: the centre a shot lands round is the torso now */
   const bo = F.monsterTorsoY ? F.monsterTorsoY(m.archetype) : (F.monsterBodyOffsetY ? F.monsterBodyOffsetY(m.archetype) : 0);
   /* the damage send -- the frame the hit registered, unchanged by the landing */
   let sendT = null;
@@ -118,7 +118,7 @@ const shootOnce = (P, wpn) => P.page.evaluate((wpn) => new Promise((resolve) => 
     for (const a of arrows) {
       if (!shot) shot = a;
       if (a !== shot) continue;
-      /* v2.3.2805: the height its flight line crosses the monster's x at, read
+      /* v2.3.2825: the height its flight line crosses the monster's x at, read
          on its last frame in free flight -- an arrow often registers its hit
          and lands on one frame, so the contact frame is not always seen */
       if (!a._land && !a.stuckIn && !(a.hitIds && a.hitIds.has(m.id)) && typeof a._renderX === 'number' && Math.abs(Math.cos(a.ang)) > 0.2) {
@@ -245,7 +245,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const armed = await arm(P, mon, wpn);
       if (armed.err) { rec.ok(`${mon.key} ${wpn}: armed (guard)`, false, armed); continue; }
       if (wpn === WEAPONS[0]) {
-        /* v2.3.2805: the torso is where the owner asked for it, and inside the
+        /* v2.3.2825: the torso is where the owner asked for it, and inside the
            hit circle -- so a shot aimed at it still crosses the circle */
         rec.ok(`${mon.key}: shots are aimed at and land round its torso, ${armed.torso}px above its feet (measured on the art: ${mon.torso})`,
           armed.torso === mon.torso, armed);
@@ -277,7 +277,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const tag = `${mon.key} ${wpn}`;
       rec.ok(`${tag}: every shot hit and was drawn landing (${ok.length}/${N}) (guard)`, ok.length === N, shots.map((s) => ({ contact: !!s.contact, land: !!s.land, left: s.leftFlying })));
       if (!ok.length) continue;
-      /* v2.3.2805: the flight line goes through the torso, and the landings sit on it */
+      /* v2.3.2825: the flight line goes through the torso, and the landings sit on it */
       const lines = shots.filter((s) => s.lineAt != null).map((s) => r1(s.lineAt));
       rec.ok(`${tag}: each shot flew at the torso -- its line crosses the monster ${lines.join(', ')}px above the feet (torso ${mon.torso})`,
         lines.length === shots.length && lines.every((v) => Math.abs(v - mon.torso) <= 4), lines);
@@ -356,7 +356,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; S.arrows = []; S.lockedTarget = null; });
 
-  /* ── v2.3.2805: the room a torso shot has to hit is the room it always had ──
+  /* ── v2.3.2825: the room a torso shot has to hit is the room it always had ──
      The skeleton's hit circle (radius 50, plus the arrow's 6.6) used to be
      centred where a locked shot was aimed.  Aimed at the torso 40 px higher, a
      shot would have had 16.6 px of room above instead of 56.6.  So the monster a

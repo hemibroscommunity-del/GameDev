@@ -1,4 +1,4 @@
-/* A MONSTER REACTS LIKE WHAT IT IS MADE OF (v2.3.2803).
+/* A MONSTER REACTS LIKE WHAT IT IS MADE OF (v2.3.2823).
  *
  * Owner: "take a fresh look at monster hit reaction material effects.  Right
  * now they're low resolution and don't look great but I do like that they've
@@ -29,7 +29,7 @@
  * Plus one picture per material (out/hitmat-<key>.png) -- "reads clearly" is
  * the half no number can answer (TRAPS §21).
  *
- * v2.3.2804, the owner's follow-up: "remove the old blurry large hit effects"
+ * v2.3.2824, the owner's follow-up: "remove the old blurry large hit effects"
  * and "I have the slimes recolored to blue ... Will this apply to its remnants
  * too?"  So also:
  *   - a slime's goo is the colour the slime is DRAWN in: a blue slime's is its
@@ -55,7 +55,7 @@ const MATS = [
   { key: 'rock',     arch: 'brute',   variant: 'rockmonster', fx: 'stone',  zone: 'hollows' },
 ];
 const WEAPONS = ['sword', 'arrow', 'bolt'];
-/* v2.3.2804: the slime family, and the goo colour each must throw -- written
+/* v2.3.2824: the slime family, and the goo colour each must throw -- written
    out here rather than read from the game, so a wrong derivation fails.
    blueSlime is a brightness RETINT to [58,122,208] (monsterRecolor.js), whose
    goo is the recolour itself; mossSlime is Pixi's multiplicative tint 0x55cc44
@@ -121,7 +121,7 @@ async function hitOnce(P, mat, wpn, dx, dy) {
   await P.page.waitForTimeout(1250);
   const readLate = () => P.page.evaluate((id) => (window.__btDebris ? window.__btDebris() : []).find((b) => b.id === id) || null, early.id);
   let late = await readLate();
-  /* v2.3.2804: a bone shard bounces twice and skitters, so one thrown hard can
+  /* v2.3.2824: a bone shard bounces twice and skitters, so one thrown hard can
      still be moving at 1.4 s (7/9 landed on one run, 9/9 on the next).  The
      claim is that pieces come DOWN, not by when: give stragglers until 3.4 s,
      still well inside the 4.2 s before the burst starts to fade. */
@@ -136,7 +136,7 @@ async function hitOnce(P, mat, wpn, dx, dy) {
 export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const P = await H.newPlayer(browser, { name: 'Hitter', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2 });
-  /* v2.3.2804: every URL the page asks for, so the retired plume can be shown
+  /* v2.3.2824: every URL the page asks for, so the retired plume can be shown
      to be gone rather than merely unseen */
   const reqs = [];
   P.page.on('request', (r) => { try { reqs.push(r.url()); } catch (e) { /* closing */ } });
@@ -241,7 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(probe1 && probe1.pieceScale > 2.4 && probe1.pieceScale < 2.7), probe1);
   rec.ok('no soft ground decal is laid beside any hit any more', rows.every((r) => r.decals === 0), rows.map((r) => r.decals));
 
-  /* ── v2.3.2804: a slime sheds the colour it is drawn in ── */
+  /* ── v2.3.2824: a slime sheds the colour it is drawn in ── */
   const hex = (n) => (typeof n === 'number' ? '0x' + n.toString(16).padStart(6, '0') : String(n));
   for (const sl of SLIMES) {
     const r = await hitOnce(P, sl, 'sword', 46, 2);
@@ -264,7 +264,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(250);
   }
 
-  /* ── v2.3.2804: the snowman's painted plume is retired, not just hidden ── */
+  /* ── v2.3.2824: the snowman's painted plume is retired, not just hidden ── */
   const plumeReqs = reqs.filter((u) => /\/snowman\/impact\.png/.test(u));
   rec.ok(`the snowman's blurry ice-burst plume sheet is never requested (frost warmed, ${WEAPONS.length} snowman hits)`,
     plumeReqs.length === 0 && rows.filter((r) => r.mat.key === 'snowman' && !r.err).length === WEAPONS.length, plumeReqs);
