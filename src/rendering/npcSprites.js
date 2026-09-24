@@ -21,8 +21,8 @@
  */
 import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
 import { NPC_DATA } from '../data/gameDisplay.js';
-import { propSpriteSources, propSpriteSourcesIn, propAnimStrips, zoneDecorSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips; v2.3.2651: + per-zone decor; v2.3.2819: + per-hub split */
-import { loadCroppedStrip } from './gearSheets.js'; /* v2.3.2819: the NPC walk strips load cropped */
+import { propSpriteSources, propSpriteSourcesIn, propAnimStrips, zoneDecorSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips; v2.3.2651: + per-zone decor; v2.3.2828: + per-hub split */
+import { loadCroppedStrip } from './gearSheets.js'; /* v2.3.2828: the NPC walk strips load cropped */
 import { loadTracked, unloadBundle, bundleLoaded } from './zoneTextures.js'; /* v2.3.2651: zone decor is freed on exit like every other per-zone sheet */
 
 /* v2.3.2618: art an NPC's DIALOG needs warm, as opposed to art the world
@@ -36,7 +36,7 @@ export const NPC_DIALOG_FX = [
 /* Keys are asset paths that come from data, so Object.create(null): a plain {}
    silently no-ops on '__proto__' (CLAUDE.md — three incidents in one day). */
 const _tex = Object.create(null);
-/* v2.3.2819: the hub whose NPCs and props load and free with it (loadTownScenery) */
+/* v2.3.2828: the hub whose NPCs and props load and free with it (loadTownScenery) */
 const TOWN = 'town';
 let _done = null;
 
@@ -57,7 +57,7 @@ export const npcArtUrl = (src) => (src ? src + '?v=' + NPC_ART_VERSION : src);
  *  new NPC sprite is registered by adding the field and nothing else — a
  *  second hand-maintained list is how an asset gets forgotten. */
 export function npcSpriteSources() {
-  /* v2.3.2819: the world figures, the walk strips and town's props are NOT in
+  /* v2.3.2828: the world figures, the walk strips and town's props are NOT in
      this list any more -- they load and free with town (loadTownScenery,
      below).  What stays global is what can be seen away from town: the
      dialogue portraits and Ace's coin strips (DOM images, only warming the
@@ -75,7 +75,7 @@ export function npcSpriteSources() {
        the whole reason this function is driven off the data table rather than
        a hand-kept list is that a second list is how an asset gets forgotten,
        and a forgotten asset is a first-sighting load, which the preloading law
-       forbids.  (v2.3.2819: listed from the same table by townScenery()
+       forbids.  (v2.3.2828: listed from the same table by townScenery()
        now, for the same reason.) */
   }
   /* v2.3.2618: Ace's coin-flip strips.  They are DOM <img> in his dialog,
@@ -186,13 +186,13 @@ export function loadNpcSprites() {
     if (tex.source) { try { tex.source.scaleMode = 'nearest'; } catch (e) { /* older pixi */ } }
     _tex[src] = tex;
   }).catch(() => { /* a missing file leaves the emoji fallback in place */ })));
-  /* v2.3.2819: the walk strips and the animated props used to be sliced here,
+  /* v2.3.2828: the walk strips and the animated props used to be sliced here,
      after the same promise.  They are town's, so they moved to
      loadTownScenery with the rest of town. */
   return _done;
 }
 
-/* ═══ v2.3.2819: TOWN'S NPCs AND BUILDINGS LOAD AND FREE WITH TOWN ═══
+/* ═══ v2.3.2828: TOWN'S NPCs AND BUILDINGS LOAD AND FREE WITH TOWN ═══
  *
  * Owner: "Is there any other memory savings ... (Or removed from the mostly
  * costly memory?)" -- then "Yeah do that".  Measured (tex-attrib, v2.3.2791):

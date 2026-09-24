@@ -204,7 +204,7 @@ Two protocol versions coexist; both must keep working:
     zone entry (`src/game/zoneTransitions.js`, the `S._zoneLoading` gate),
     and the previous zone's ~4MB map is freed on exit (`freeZoneMap`,
     `tiledMaps.js`; worldview stays resident — town's map, NPCs and
-    buildings free too since v2.3.2819, veiled back in by
+    buildings free too since v2.3.2828, veiled back in by
     `zoneTransitions.syncTownScenery` however you arrive). This does NOT
     weaken the law's real intent — the per-zone loads are AWAITED behind
     an overlay (a deliberate loading SCREEN, not an unawaited lazy
