@@ -248,6 +248,7 @@ const SCENARIOS = {
   hairclip: () => import('./mp-hairclip.mjs'), /* v2.3.1776: the swing clips the hair too */
   minimap: () => import('./mp-minimap.mjs'), /* v2.3.1781: the corner minimap is pinned to the real world */
   backshield: () => import('./mp-backshield.mjs'), /* v2.3.1782: the slung shield, and the z-order that killed it */
+  deathcut: () => import('./mp-deathcut.mjs'), /* v2.3.2897: monsters die sliced, beheaded, legless or the normal way -- pieces fall and settle, then go */
   swordcarry: () => import('./mp-swordcarry.mjs'), /* v2.3.1786: the carried blade points up and forward */
   standinskin: () => import('./mp-standinskin.mjs'), /* v2.3.1788: attack stand-ins wear the walking skin */
   blockstance: () => import('./mp-blockstance.mjs'), /* v2.3.1798: shield size, planted stance, caret */
