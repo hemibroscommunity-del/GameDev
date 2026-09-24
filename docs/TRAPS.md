@@ -4629,6 +4629,40 @@ face UP at one standing beside them. **Receipt:** mp-shotland (every flight
 line through the torso, the skeleton's landings in its ribcage, a skeleton
 that steps 40 px either way mid-flight still hit, 75 px missed).
 
+## 113. A character's position is its hips, not its feet (v2.3.2846)
+
+**Tempting:** anything that has to stand where a character stands -- a
+stand-in animation, a prop dropped at their feet, a campfire -- is placed at
+`S.player.y` (or a peer's `y`), with an anchor at its bottom edge, because
+`__btPlayerDrawn()` calls `display.y` the `footY` and depthSort.js calls it the
+ground-contact line.
+
+**Wrong by 52 px.** The walking body is FRAME-CENTRED: its container sits at
+your position and the boots are drawn `(221 - 128) x 1.061 x 0.421875 x
+PLAYER_SIZE_MULT` = 52 world px lower on a flat zone (times the zone's
+perspective scale; the build lift keeps it independent of height). So a thing
+bottom-anchored at your `y` sits at your HIPS:
+- the fire-lighting figure floated ~77 px in the air for the whole strike
+  (planted at `y + 6`, with 104 px of log and shadow under its boots in the
+  frame) -- the sword and bow stand-ins had the same bug years earlier and were
+  fixed with the published `S._swordFootY`;
+- the campfire was lit at your hips, behind your own body, so you could not see
+  it until you walked off.
+
+**The rule.** For your boots use `S.player.y + standFootDy(zoneScale)`
+(entityRenderer exports it) or the per-frame `S._bodyFootY`. When a thing must
+SORT against characters, it sorts on its ground line: since v2.3.2748 (#717)
+the depth pass compares where things touch the ground (depthSort `groundOf` =
+`y + _groundDy`, your feet against theirs), so anything whose origin is not its
+ground point says how far below its origin that is in `_groundDy` -- the
+campfire's Container stands `standFootDy()` above the fire's base and carries
+`_groundDy` = that drop. (Before #717 the pass compared everything with your
+hips, and the campfire kept to that convention instead; merging #717 made the
+fire draw over you only once you stood a foot-drop behind it, which
+mp-campfire's "stand behind the fire" check caught.) **Receipt:** mp-campfire
+checks the fire-lighter's boots against `_bodyFootY` (within 3 px), that the
+fire is lit at the boots, and both sides of the fire's depth.
+
 ## 114. A piece cut out of a sprite must OVERLAP the place it was cut (v2.3.2812)
 
 **Tempting:** to make a building's hanging sign swing, erase the sign from the
