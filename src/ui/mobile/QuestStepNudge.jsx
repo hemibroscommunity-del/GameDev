@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { QUEST_CHAINS, QUEST_STATUS, questSteps } from '@/data/gameSystems.js';
 import { storeToastBus } from './storeToastBus.js';
+import { tutorialSkipped } from '@/ui/onboardingPace.js';   /* v2.3.2890 */
 
 /* ═══ v2.3.2820: SAY THE NEXT STEP OUT LOUD ═══
  * Owner: "a lot of people get stuck on the quest for cooking 2 fish."  The
@@ -24,6 +25,7 @@ export const QuestStepNudge = () => {
         const S = window._gameState && window._gameState.current;
         const R = S && S.rpg;
         if (!R || !S.__introLiftedAt || S._zoneLoading || S._netHold) return;
+        if (tutorialSkipped()) return;   /* v2.3.2890: skipped -- no hint toasts either */
         const qs = R._quests || {};
         for (const qid of Object.keys(QUEST_CHAINS)) {
           const q = QUEST_CHAINS[qid];

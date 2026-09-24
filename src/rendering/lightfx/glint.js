@@ -58,11 +58,37 @@
  * It also reaches the one piece the glint never did: jogging in a full set of
  * one metal, the armour is drawn as a single knight figure ON THE BODY sprite
  * (entityRenderer _fullsetFrame), and the chest and leg layers are empty.
+ *
+ * ═══ v2.3.2887: ON FOR EVERYONE, ON EVERY ANIMATION ═══
+ *
+ * Owner, after the previews: "Push the metal shine to main and I'll revert it
+ * if I don't like it ... make sure the shine stays on through every armor
+ * animation and through different recolors (like copper recolored from the
+ * original steel)".
+ *
+ * So the switch is ON unless a device turns it off (`?sheen=0`, remembered;
+ * `?sheen=1` puts it back).  The cost above is the price taken on with it --
+ * if phones feel it, the baked mask is the cheaper form of the same look.
+ *
+ * And it now reaches the three things on OTHER players it missed: their bow
+ * shot (its chest and greaves, and the greaves on the running legs under a
+ * moving shot), the running legs under their moving sword swing, and their
+ * chop / cook / fire figures.  On YOUR figure, the arm and hand re-drawn over
+ * a sword are clones of the body, so in a full set they are plate too (see
+ * unmaskedArea for why they need their filter pinned).  Every metal is one
+ * steel image under a tint,
+ * and the filter reads the tint off the sprite it is on, so wherever it is
+ * attached copper stays copper and iron stays iron.  mp-sheenall walks every
+ * armour animation, yours and another player's, in all three metals and
+ * fails on any metal piece drawn without it -- it finds the metal by the art
+ * file each sprite is drawing, not by this file's list, so a new stand-in
+ * that nobody adds here is caught rather than trusted.
  */
-import { Filter } from 'pixi.js';
+import { Filter, Rectangle } from 'pixi.js';
 import { weaponMaterial } from '../traits/materialTints.js';
 import { gearArt, gearMaterial } from '../gearVariants.js';
 import { getEquip } from '../gearCatalog.js';
+import { Sprite, Texture } from 'pixi.js';   /* v2.3.2904: the loading-screen warm-up (prewarmGlintPipe) */
 
 const FRAG = `
 in vec2 vTextureCoord;
@@ -145,6 +171,63 @@ function makeGlintFilter() {
   });
 }
 
+/* ═══ v2.3.2904: THE SHINE'S SHADER IS BUILT BEHIND THE LOADING SCREEN ═══
+ *
+ * Owner: "The game still drops in frame rate when you first wear a piece of
+ * armor when running the game on my phone (iPhone 14 pro max)."
+ *
+ * Part of that first-wear hitch was this file.  Since v2.3.2887 the sheen is
+ * on for everyone, so the first frame a player wears metal is also the first
+ * frame this filter is ever drawn -- and a WebGL program is compiled and
+ * linked the first time it is USED, on the main thread, inside that frame
+ * (Pixi's GlShaderSystem generateProgram: the link-status read waits for the
+ * compile).  Profiled in the sandbox's Chromium: generateProgram was 35 ms of
+ * the first sweep's frame at 4x CPU throttle; with this warm-up it is not in
+ * that frame at all.  (The sandbox draws WebGL in SOFTWARE, and its first
+ * sweep is still a slow frame with or without this -- the software
+ * rasteriser's own first-draw work, in another process, which says nothing
+ * about a phone's GPU either way.)  On an iPhone, WebKit draws WebGL through
+ * ANGLE's Metal backend, which has to turn the program into a Metal shader
+ * too, on that same first use -- the kind of first-use hitch the
+ * animation-preload law (CLAUDE.md) keeps out of play.
+ *
+ * So one filtered sprite is drawn here, behind the loading screen, the way
+ * prewarmDmgFontPipe warms the damage-number pipe.  Every glint filter is
+ * built from the SAME GlProgram (GlProgram.from caches it by its source), so
+ * compiling it once compiles it for all of them, and the filter used for the
+ * warm-up is kept for the first real shine to take (GlintSystem._filter).
+ * Nothing is left on screen: the canvas is under the loading overlay, and the
+ * next game frame redraws the whole of it. */
+const _warmFilters = [];
+const _warmStats = { runs: 0, ok: 0 };
+if (typeof window !== 'undefined') window.__btGlintWarm = () => ({ ..._warmStats, pooled: _warmFilters.length });   /* QA */
+export function prewarmGlintPipe(renderer) {
+  if (!renderer) return false;
+  _warmStats.runs++;
+  let spr = null, f = null, ok = false;
+  try {
+    f = makeGlintFilter();
+    spr = new Sprite(Texture.WHITE);
+    /* small on purpose: the program does not depend on the size, and the
+       texture the pass borrows stays in Pixi's pool for good -- 32 px is a
+       128x128 texture even at an iPhone's 3x, not a megabyte */
+    spr.width = 32; spr.height = 32;
+    spr.alpha = 0.001;   /* must actually draw -- alpha 0 is skipped (see prewarmDmgFontPipe) */
+    /* both terms on, the sweep and the sheen: one program either way, but a
+       pass that exercises the whole shader is the honest warm-up */
+    const u = f.resources.glintUniforms.uniforms;
+    u.uProgress = 0.5; u.uSheen = 1;
+    spr.filters = [f];
+    renderer.render({ container: spr });
+    ok = true;
+  } catch (e) { ok = false; }
+  try { if (spr) { spr.filters = null; spr.destroy(); } } catch (e) { /* best-effort */ }
+  if (ok) _warmStats.ok++;
+  if (ok && f && !_warmFilters.length) _warmFilters.push(f);   /* one is enough; a second loading screen does not stack them */
+  else if (f) { try { f.destroy(); } catch (e) { /* best-effort; the shared program is never destroyed with it */ } }
+  return ok;
+}
+
 /* The shine colour of each metal: steel white, iron cooler, copper warm. */
 export const METAL_SHINE = Object.assign(Object.create(null), {
   steel: [1.0, 1.0, 1.0],
@@ -172,6 +255,9 @@ export const GRADE_SHINE = Object.assign(Object.create(null), {
 });
 
 /* ═══ v2.3.2864: THE SHEEN'S SWITCH -- OFF UNLESS THIS DEVICE ASKED ═══ */
+/* v2.3.2887: ...and now ON unless this device turned it off, the way
+   lightFxOn reads -- so a storage that cannot be read (private mode) gets the
+   game as it ships.  A '1' stored by the preview reads as on, as before. */
 const SHEEN_KEY = 'bt-sheen';
 let _sheen = null;
 export function sheenOn() {
@@ -186,7 +272,7 @@ export function sheenOn() {
       v = localStorage.getItem(SHEEN_KEY);
     }
   } catch (e) { v = null; }
-  _sheen = v === '1';
+  _sheen = v !== '0';   /* v2.3.2887: was `v === '1'` */
   return _sheen;
 }
 export function setSheen(on) {
@@ -217,6 +303,35 @@ const SELF_LEGS_STAND_INS = ['swordLegsSprite', 'bowLegsSprite', 'chopLegsSprite
 
 function pushVisible(list, s) { if (s && s.visible && !s.destroyed) list.push(s); }
 
+/* ═══ v2.3.2887: A MASKED SPRITE IS LIT ACROSS ITS WHOLE PICTURE ═══
+   Pixi 8 shrinks an effect's working area to the mask's box
+   (getFastGlobalBounds: a mask's addBounds clips it), and this shader lays
+   the sun side and the sweep out across that area (`p`).  So a masked clone
+   of the body -- the arm and hand re-drawn over a sword -- was lit across a
+   hand-sized box while the body under it was lit across the whole figure:
+   the same pixels, two different shines, a seam.  `filterArea` pins the area
+   to the box the body's own filter gets instead -- Sprite.updateBounds: the
+   WHOLE frame (`orig`, even for a cropped texture; the crop is only the
+   drawn quad), placed by the anchor.  Measured on one frozen frame (a steel
+   knight jogging east, the sweep pinned across it), counting the pixels the
+   arm clone changes by more than 8 a channel: 628 with this, 611 with no
+   shine anywhere (the clone's own soft edges drawn twice, since v2.3.200),
+   2776 without the pin -- and the first cut, pinned to the crop instead of
+   the frame, drew a visibly darker arm.  The mask still clips what is drawn
+   -- it runs first (priority 0) and the filter inside it (priority 1). */
+function unmaskedArea(spr) {
+  const t = spr.texture;
+  const o = t && (t.orig || t.frame);
+  if (!o) return null;
+  const r = spr._btGlintArea || (spr._btGlintArea = new Rectangle());
+  const ax = spr.anchor ? spr.anchor.x : 0, ay = spr.anchor ? spr.anchor.y : 0;
+  r.x = -ax * o.width;
+  r.y = -ay * o.height;
+  r.width = o.width;
+  r.height = o.height;
+  return r;
+}
+
 export class GlintSystem {
   constructor() {
     this._on = new Map();        /* sprite -> filter currently attached */
@@ -228,11 +343,12 @@ export class GlintSystem {
     this._bodies = new Set();    /* this frame's full-set body sprites, for the probe */
   }
 
-  _filter() { return this._pool.pop() || makeGlintFilter(); }
+  _filter() { return this._pool.pop() || _warmFilters.pop() || makeGlintFilter(); }   /* v2.3.2904: the loading screen's filter first */
 
   _release(spr, f) {
     try {
       if (!spr.destroyed && spr.filters && spr.filters.length === 1 && spr.filters[0] === f) spr.filters = null;
+      if (!spr.destroyed && spr._btGlintArea && spr.filterArea === spr._btGlintArea) spr.filterArea = null;   /* v2.3.2887 */
     } catch (e) { /* a destroyed sprite has nothing to release */ }
     this._pool.push(f);
   }
@@ -275,8 +391,23 @@ export class GlintSystem {
         if (pd.visible && pd._fullsetOn && pd._spriteBody && pd._spriteBody.visible) {
           pushVisible(s, pd._spriteBody);
           this._bodies.add(pd._spriteBody);
+          /* v2.3.2887: ...and the body's two CLONES.  With a sword out, the
+             arm is re-drawn over the slung shield on an east jog and the hand
+             over the grip (entityRenderer, v2.3.200 / v2.3.185): each is the
+             body sprite's own texture, transform and tint under a mask -- so
+             in a full set they are pieces of the knight, and a dull plate arm
+             rode across a shining figure on every east jog (mp-sheenall found
+             it).  Same slot, same bounds, same tint: the same shine as the
+             body under them, pixel for pixel. */
+          pushVisible(s, pd._handArmSprite);
+          pushVisible(s, pd._handCapSprite);
         }
         if (fx) for (const k of SELF_CHEST_STAND_INS) pushVisible(s, fx[k]);
+        /* v2.3.2887: the raised shield's arm wears a sleeve cut from the
+           plate (entityRenderer _placeBlockArm) -- drawn only while the bow
+           art that normally carries a block has not loaded, but plate all the
+           same */
+        if (pd.visible && pd._blockArmGroup && pd._blockArmGroup.visible) pushVisible(s, pd._blockArmSleeve);
         this._slot(out, 'self:c', s, cm, rpg.armor && rpg.armor.quality);
       }
       const lm = armourMetal(getEquip('legs'));
@@ -293,6 +424,13 @@ export class GlintSystem {
         const o = others[id];
         if (!d || d.destroyed || !o || (o.zone || o.z || 'town') !== zone) continue;
         const sw = fx && fx._remoteSwordSprites && fx._remoteSwordSprites.get(id);
+        /* v2.3.2887: their bow shot and their chop / cook / fire figure draw
+           the armour on sprites of their own, as the swing does -- the shine
+           stopped at the edge of both.  (A bow is never metal, so the bow
+           set's weapon sprite stays out.) */
+        const bw = fx && fx._remoteBowSprites && fx._remoteBowSprites.get(id);
+        const skg = fx && fx._remoteSkillSprites && fx._remoteSkillSprites.get(id);
+        const gg = skg && skg.gear;
         const wm = weaponMaterial(o.wpnType, o.wpnMat);
         if (wm) {
           const s = [];
@@ -300,19 +438,29 @@ export class GlintSystem {
           if (sw) pushVisible(s, sw.weapon);
           this._slot(out, id + ':w', s, wm, 'normal');
         }
-        const cm = armourMetal(o.eqc);
+        /* v2.3.2887: the armour the renderer DRAWS them in -- `equip`, which
+           the join frame builds -- not the flat `eqc`/`eql` wire names, which
+           only land on the peer with their next track relay (Object.assign in
+           wsClient's player_update).  Until then a player who had just walked
+           in drew their plate with no shine for up to two seconds. */
+        const oe = o.equip || null;
+        const cm = armourMetal((oe && oe.chest) || o.eqc);
         if (cm) {
           const s = [];
           if (d.visible) pushVisible(s, d._gearChest);
           if (d.visible && d._fullsetOn) pushVisible(s, d._spriteBody);   /* v2.3.2864 */
           if (sw) pushVisible(s, sw.chest);
+          if (bw) pushVisible(s, bw.chest);   /* v2.3.2887 */
+          if (gg) pushVisible(s, gg.chest);
           this._slot(out, id + ':c', s, cm, 'normal');
         }
-        const lm = armourMetal(o.eql);
+        const lm = armourMetal((oe && oe.legs) || o.eql);
         if (lm) {
           const s = [];
           if (d.visible) pushVisible(s, d._gearLegs);
-          if (sw) pushVisible(s, sw.legs);
+          if (sw) { pushVisible(s, sw.legs); pushVisible(s, sw.jogLegsGear); }   /* v2.3.2887: + the running legs' greaves */
+          if (bw) { pushVisible(s, bw.legs); pushVisible(s, bw.jogLegsGear); }
+          if (gg) pushVisible(s, gg.legs);
           this._slot(out, id + ':l', s, lm, 'normal');
         }
       }
@@ -353,6 +501,8 @@ export class GlintSystem {
         spr.filters = [f];
         this._on.set(spr, f);
       }
+      /* v2.3.2887: every frame -- the frame (and so its trimmed box) moves */
+      if (spr.mask) { const a = unmaskedArea(spr); if (a && spr.filterArea !== a) spr.filterArea = a; }
       const u = f.resources.glintUniforms.uniforms;
       u.uProgress = w.p < 0 ? 0 : w.p;
       u.uStrength = w.strength;

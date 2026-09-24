@@ -42,7 +42,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     name: 'RealIphone', wsPort, webPort, touch: true, viewport: { width: 390, height: 844 },
     /* v2.3.2766: the card now waits for a quiet screen, 75s into play; the
        QA hook shortens only the 75s, not the quiet-screen rule */
-    init: SPOOF + ';window.__btInstallAfterMs=3000;',
+    init: SPOOF + ';window.__btInstallAfterMs=3000;delete window.__btCoachGapMs;',   /* v2.3.2888: the REAL 20s tutorial gap */
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(9500);
@@ -54,6 +54,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const early = await card(P);
   rec.ok('the install card waits while a coach card is on screen (one voice at a time)',
     !coachUp || early === null, { coachUp, early, pace: await P.page.evaluate(() => window.__btPace && window.__btPace()) });
+  /* ═══ v2.3.2888: 20 SECONDS BETWEEN TUTORIAL POP-UPS ═══
+     Owner: "Put a minimum 20 second timer on the onboarding tutorial between
+     pop ups."  Dismiss the card on screen and watch: the next must not come
+     for 20s, however many lessons are waiting. */
+  const gapPace = await P.page.evaluate(() => window.__btPace && window.__btPace());
+  rec.ok('the tutorial gap between pop-ups is 20 seconds', !!gapPace && gapPace.coachGapMs === 20000, gapPace);
+  const hadCard = await P.page.evaluate(() => {
+    const x = document.querySelector('[data-coach-dismiss]');
+    if (!x) return false;
+    x.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    return true;
+  });
+  if (hadCard) {
+    let reappearedAt = null;
+    const td = Date.now();
+    while (Date.now() - td < 12000) {
+      await P.page.waitForTimeout(1000);
+      if (await P.page.evaluate(() => !!document.querySelector('[data-coach-dismiss]'))) { reappearedAt = Date.now() - td; break; }
+    }
+    rec.ok('...no new tutorial card within 12s of dismissing one', reappearedAt === null, { reappearedAt });
+  }
   /* dismiss the coach until it is quiet, then give the screen its quiet gap */
   for (let i = 0; i < 12; i++) {
     const had = await P.page.evaluate(() => {

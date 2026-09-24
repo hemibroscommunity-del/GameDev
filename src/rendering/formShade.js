@@ -52,7 +52,24 @@ import { DefaultBatcher } from 'pixi.js';
 export const SHADE = {
   figure: { top: [1.0, 0.99, 0.95], bot: [0.72, 0.75, 0.90] },
   prop:   { top: [1.0, 1.0, 0.97],  bot: [0.64, 0.67, 0.84] },
+  /* ═══ v2.3.2893: SNOW IS NOT SHADED BLUE-VIOLET IN DAYLIGHT ═══
+     Owner: "the prop has a very strong bluish tint that doesn't match the
+     background during daytime -- in snow level."  `prop`'s base multiplies
+     blue down least of the three channels, which on warm town stone reads as
+     a cool shadow -- and on WHITE snow is a plain colour cast: the lower half
+     of every Frost Ridge snowbank came out lilac against the painted snow
+     round it, which is white with only a breath of blue in its shade.  A
+     snow prop keeps some weight toward the ground (the form shading's point)
+     but near-neutral, a touch of blue at most, the way the painting's own
+     snow shadows are. */
+  propSnow: { top: [1.0, 1.0, 1.0],  bot: [0.86, 0.87, 0.90] },
 };
+/* Which prop shade a zone's props take.  Frost is the snow map; every other
+   zone keeps `prop`. */
+const SNOW_ZONES = Object.assign(Object.create(null), { frost: true });
+export function propShade(zoneId) {
+  return (zoneId && SNOW_ZONES[zoneId]) ? SHADE.propSnow : SHADE.prop;
+}
 
 let _on = true;
 try {

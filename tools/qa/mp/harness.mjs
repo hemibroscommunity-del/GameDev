@@ -324,7 +324,10 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      day and turns the drifting air (cloud shadows, fog, motes) off: they are
      decoration, and a pixel test must not depend on where a cloud happened to
      be.  mp-worldfx, the scenario ABOUT the weather, sets both back itself. */
-  await page.addInitScript(() => { window.__btTod = 'day'; window.__btAmbienceOff = true; });
+  /* v2.3.2888: the tutorial's 20s gap between pop-ups (onboardingPace.js)
+     would make every coach scenario wait minutes; scenarios run at the old
+     2.6s, and mp-a2hs checks the real gap by clearing this. */
+  await page.addInitScript(() => { window.__btTod = 'day'; window.__btAmbienceOff = true; window.__btCoachGapMs = 2600; });
   if (init) await page.addInitScript(init);
   await page.goto(`http://localhost:${webPort}/${guest ? '?guest=1' : ''}`, { waitUntil: 'domcontentloaded' });
   return { ctx, page, logs, name, seeded: !!phrase };
@@ -359,6 +362,29 @@ export async function openPicker(page) {
   await b.click();
   await page.waitForTimeout(700);
   return !!(await page.$('[data-tut="char-picker"]'));
+}
+
+/* ═══ v2.3.2890: THE WELCOME GOES FIRST, SO WAIT IT OUT ═══
+   A brand-new character's first coach card now waits for the WELCOME plate
+   (and its Skip tutorial button) to come and go, plus the coach gap -- it used
+   to go up the instant the world did, under the welcome.  A scenario about
+   the coach calls this after enterWorld instead of a fixed short sleep.
+   Resolves once no welcome is pending or on screen and the referee would let
+   a card up, then gives the coach's 5-frame stride a beat to draw it. */
+export async function pastWelcome(P, timeout = 25000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    const ok = await P.page.evaluate(() => {
+      const p = window.__btPace ? window.__btPace() : null;
+      if (!p) return false;
+      if (p.welcomePending) return false;
+      if (document.querySelector('[data-quest-banner="welcome"]')) return false;
+      return p.coachMayShow || p.coachUp;
+    }).catch(() => false);
+    if (ok) { await P.page.waitForTimeout(600); return true; }
+    await P.page.waitForTimeout(250);
+  }
+  return false;
 }
 
 export async function enterWorld(P, timeout = 90000) {
