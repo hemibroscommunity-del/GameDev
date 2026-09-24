@@ -10488,6 +10488,10 @@ export class EffectsRenderer {
         const packed = packTrimmed(img, w, H, n);
         const src = Texture.from(packed ? packed.canvas : img).source;
         src.scaleMode = 'linear';
+        /* v2.3.2887: the file it was cut from, as gearSheets labels the
+           walking layers (v2.3.2750) -- the packed canvas has no URL of its
+           own.  mp-sheenall finds the metal on screen by it.  QA-only. */
+        try { src.label = _url; } catch (e) { /* label is QA-only */ }
         const arr = [];
         for (let i = 0; i < n; i++) {
           if (packed) {
