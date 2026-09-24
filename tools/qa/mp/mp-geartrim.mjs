@@ -173,6 +173,35 @@ const fxIdentity = (P) => P.page.evaluate(async () => {
   return out;
 });
 
+/* v2.3.2791: the BODY sheets (playerSprites default, playerSkins recoloured)
+   through gearSheets.sliceCropped: each cropped frame drawn back at its trim
+   against the same frame of the whole sheet the slicer kept for QA. */
+const bodyIdentity = (P) => P.page.evaluate(() => {
+  const st = window.__btBodyTrim ? window.__btBodyTrim() : null;
+  const list = window.__btBodyTrimFrames ? window.__btBodyTrimFrames() : null;
+  if (!st || !list) return null;
+  const out = { ...st, verified: list.length, frames: 0, mismatched: [], ixOk: true };
+  list.forEach((rec, si) => {
+    const { frames, full, fw, fh } = rec;
+    for (let i = 0; i < frames.length; i++) {
+      if (frames[i].__btIx !== i) out.ixOk = false;
+      const a = document.createElement('canvas'); a.width = fw; a.height = fh;
+      const ag = a.getContext('2d', { willReadFrequently: true }); ag.imageSmoothingEnabled = false;
+      ag.drawImage(full, i * fw, 0, fw, fh, 0, 0, fw, fh);
+      const f = frames[i];
+      const b = document.createElement('canvas'); b.width = fw; b.height = fh;
+      const bg = b.getContext('2d', { willReadFrequently: true }); bg.imageSmoothingEnabled = false;
+      if (f.trim) bg.drawImage(f.source.resource, f.frame.x, f.frame.y, f.frame.width, f.frame.height, f.trim.x, f.trim.y, f.frame.width, f.frame.height);
+      else bg.drawImage(f.source.resource, f.frame.x, f.frame.y, fw, fh, 0, 0, fw, fh);
+      const da = ag.getImageData(0, 0, fw, fh).data, db = bg.getImageData(0, 0, fw, fh).data;
+      let d = 0; for (let k = 0; k < da.length; k++) if (da[k] !== db[k]) d++;
+      out.frames++;
+      if (d) out.mismatched.push(`sheet${si}#${i} ${d} bytes`);
+    }
+  });
+  return out;
+});
+
 const combatIdentity = (P) => P.page.evaluate(async () => {
   const stats = window.__btCombatGearTrim ? window.__btCombatGearTrim() : null;
   if (!stats) return null;
@@ -291,6 +320,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok(`a worn hat (${hatId}) is drawn from a cropped trait frame`,
     !!hatId && !!hat && hat.visible && hat.cropped && hat.frameW < hat.origW, { hatId, hat });
+  const bid = await bodyIdentity(A);
+  if (bid && bid.fullBytes) {
+    console.log(`INFO  geartrim :: body sheets ${(bid.packedBytes / 1048576).toFixed(1)} MB vs ${(bid.fullBytes / 1048576).toFixed(1)} MB over ${bid.sheets} sheets, ${bid.frames} frames compared`);
+  }
+  rec.ok('the body sheets (default and recoloured) are built cropped, well under their bytes',
+    !!bid && bid.sheets >= 10 && bid.packedBytes < bid.fullBytes * 0.6, bid && { sheets: bid.sheets, packed: bid.packedBytes, full: bid.fullBytes });
+  rec.ok('...every cropped body frame is byte-identical to the whole sheet, and knows its frame number',
+    !!bid && bid.frames > 0 && bid.mismatched.length === 0 && bid.ixOk, bid && { frames: bid.frames, mism: bid.mismatched.slice(0, 6), ixOk: bid.ixOk });
   rec.ok('...and every cropped combat frame is byte-identical to its frame in the served sheet',
     !!cid && cid.frames > 0 && cid.mismatched.length === 0, cid && [...new Set(cid.mismatched.map((m) => m.split("#")[0]))]);
 

@@ -11639,6 +11639,11 @@ export class EffectsRenderer {
         if (S._fxBursts.length < 6) {
           S._fxBursts.push({ kind: 'woodchips', t0: now + _chopLead, x: node.x - chopSign * 12, y: node.y - 64, flip: chopSign < 0 ? 1 : -1 });
         }
+        /* v2.3.2812: ...and the tree takes the blow -- worldLife kicks its
+           sway spring away from the axe and shakes needles loose, on the
+           same +200 ms as the bite and the chips. */
+        node._lifeChopAt = now + 200;
+        node._lifeChopDir = chopSign < 0 ? -1 : 1;
       }
       this._chopLastFrame = k;
       /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree

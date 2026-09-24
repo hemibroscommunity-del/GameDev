@@ -32,6 +32,7 @@ import { friendsSrv } from './sheet/friendsSync.js';               /* v2.3.1324 
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
+import { bagLife, startBagLife } from './dash/bagLife.js'; /* v2.3.2815: the bag's small motions */
 import { COMBAT_SKILLS, unspentPointsTotal } from './sheet/heroModel.js'; /* v2.3.1311: hero toolbar badge; v2.3.1635: shared unspent total */
 /* v2.3.1635 -> v2.3.2320: IdentityStrip's band import is gone with the band
    purse (see the row below).  The component's other branch has no caller in
@@ -658,6 +659,8 @@ export const BottomDashboard = () => {
      seen.  Stack quantity increments reuse their key — no re-badge. */
   useEffect(() => {
     let prev = null;
+    /* v2.3.2815: stack sizes too, so a growing stack can bump its count */
+    let prevCount = null;
     const tick = () => {
       const S = window._gameState && window._gameState.current;
       if (!S || !S.rpg) return;
@@ -665,12 +668,29 @@ export const BottomDashboard = () => {
          to remember which life skill and which two combat skills you last
          trained, so nine cells could pick three to show; the COMBAT
          column shows all six parents and needs no such memory. */
-      const keys = getBagEntries(S.rpg).map(bagEntryKey);
-      if (prev) for (const k of keys) { if (!prev.has(k)) bagUnseen.add(k); }
+      const entries = getBagEntries(S.rpg);
+      const keys = entries.map(bagEntryKey);
+      /* v2.3.2815: the same "new key" that badges the pickup also pops it
+         into its slot (bagLife.js) -- and a stack that grew bumps its count */
+      if (prev) {
+        const fresh = keys.filter((k) => !prev.has(k));
+        /* a handful at once is loot; a bag's worth at once is the first sync
+           after joining, which should not pop every slot in the bag */
+        for (const k of fresh) { bagUnseen.add(k); if (fresh.length <= 3) bagLife.arrive(k); }
+      }
+      const counts = new Map();
+      for (let i = 0; i < entries.length; i++) {
+        const e = entries[i];
+        if (e.kind !== 'item') continue;
+        counts.set(keys[i], e.count || 0);
+        if (prevCount && prev && prev.has(keys[i]) && (e.count || 0) > (prevCount.get(keys[i]) || 0)) bagLife.bump(keys[i]);
+      }
       prev = new Set(keys);
+      prevCount = counts;
     };
     tick();
     const id = setInterval(tick, 400);
+    const stopLife = startBagLife();
     const unsubDetail = itemDetailBus.subscribe(() => {
       const t = itemDetailBus.state.open && itemDetailBus.state.target;
       if (!t) return;
@@ -678,7 +698,7 @@ export const BottomDashboard = () => {
       else if (typeof t.kind === 'string' && t.kind.startsWith('stash')) bagUnseen.markSeen(`${t.kind}-${t.index}`);
     });
     const unsubUnseen = bagUnseen.subscribe(() => force(v => v + 1));
-    return () => { clearInterval(id); unsubDetail(); unsubUnseen(); };
+    return () => { clearInterval(id); unsubDetail(); unsubUnseen(); stopLife(); };
   }, []);
   /* v2.3.1288: PR B — stamp the snap mode on <html> so pure CSS can dim
      the floating combat chrome (joystick discs + charge pie) while a
