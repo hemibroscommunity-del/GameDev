@@ -6278,7 +6278,7 @@ function _placeSouthBlockWeapon(display, wpn, bobY, quiet) {   /* v2.3.2920: + q
 /* ═══ v2.3.2920: WHERE THE SHIELD HAND IS, FOR ANY FIGURE ═══
    _placeBlockArm's hand, lifted out so another player's held shield sits in
    the same hand yours does: the shoulder point for the facing (display-local,
-   the space a peer's display shares with yours -- v2.3.2914's
+   the space a peer's display shares with yours -- v2.3.2921's
    S._peerStandGeom rests on the same fact), plus the cut arm's
    shoulder-to-hand run at the figure's height.  Null on a facing with no arm
    (south, and the three that face away), where your own shield floats. */
