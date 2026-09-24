@@ -120,7 +120,7 @@ Other players' grades are not on the wire: the relay carries the metal
 (`wpnMat`) but not the grade. So their gear glints at the normal rate until
 a grade key is relayed.
 
-**v2.3.2902: the sweep no longer runs on its own.** Owner: *"It also doesn't
+**v2.3.2914: the sweep no longer runs on its own.** Owner: *"It also doesn't
 need the occasionally 10 second flash animation (to show the shine)."* The
 permanent metal sheen (`metal-sheen.md`) is the shine now, and it still
 climbs with the grade. The band above only draws when a picture or a test

@@ -1,4 +1,4 @@
-# Metal sheen (v2.3.2864; on for everyone since v2.3.2887; softer, no flash since v2.3.2902)
+# Metal sheen (v2.3.2864; on for everyone since v2.3.2887; softer, no flash since v2.3.2914)
 
 Owner: *"aside from the glint can you see what adding a permanent soft shine
 to armor and sword (and other metals) would look like?"*
@@ -21,14 +21,14 @@ one commit, so it is one button on GitHub.
 It rides on light and shine (`docs/specs/light-and-shine.md`), so it also
 needs that switch on, which it is by default.
 
-## Softer, and no flash (v2.3.2902)
+## Softer, and no flash (v2.3.2914)
 
 Owner, with it live: *"I think the shine needs to be dialed back just a bit.
 It also doesn't need the occasionally 10 second flash animation (to show the
 shine). I just don't want it to look like white spots (rather than shine) on
 the armor and it's on the edge of looking like that right now."*
 
-![Before and after: the same frozen frame with no shine, the v2.3.2887 shine, and the v2.3.2902 shine, in steel, iron, copper and godly](img/metal-sheen/softer.jpg)
+![Before and after: the same frozen frame with no shine, the v2.3.2887 shine, and the v2.3.2914 shine, in steel, iron, copper and godly](img/metal-sheen/softer.jpg)
 
 - **No flash.** The band that swept across each metal piece every 1.9 to
   6.5 s (by grade, v2.3.2710) no longer runs on its own. The steady shine is
@@ -90,7 +90,7 @@ that never switches off:
   preview first showed a soft sheen (0.55 for a normal piece) beside one
   1.5x stronger, and the owner chose it: *"I do like the strong polish
   previews."*
-- **The glint no longer sweeps over it** (v2.3.2902, above).
+- **The glint no longer sweeps over it** (v2.3.2914, above).
 
 **What it covers:** swords and greatswords in a metal, plate, greaves, and
 the full-set knight figure, on you and on every other player, in every
@@ -195,11 +195,11 @@ the gear sheets' budget first.
 `tools/qa/mp/mp-sheen.mjs`:
 
 - no sweep crosses any piece on its own, over 7.5 s, longer than the old
-  6.5 s cadence (v2.3.2902). It watches with the sheen off, where a filter
+  6.5 s cadence (v2.3.2914). It watches with the sheen off, where a filter
   is on a piece only while a band crosses it, so the check fails against the
   v2.3.2887 code as well as passing this one;
 - the shine never pushes any metal, godly included, to flat white: at most
-  20 stray pixels, where the old clip made hundreds (v2.3.2902);
+  20 stray pixels, where the old clip made hundreds (v2.3.2914);
 - on for a fresh device (v2.3.2887; off while it was a preview), and
   `?sheen=0` turns it off and is remembered;
 - the arm drawn over the sword on an east jog carries the shine, and changes

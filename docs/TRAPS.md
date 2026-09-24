@@ -4818,7 +4818,7 @@ figure actually is). The own-quad lighting gradient (formShade) had the same
 blind spot and reads the crop's rows inside `orig` since v2.3.2859.
 
 
-## 120. A highlight added and clipped at white reads as white spots, and turning it down barely helps (v2.3.2902)
+## 120. A highlight added and clipped at white reads as white spots, and turning it down barely helps (v2.3.2914)
 
 **Tempting:** the owner says the metal shine is "on the edge of looking like
 white spots", so lower its strength.

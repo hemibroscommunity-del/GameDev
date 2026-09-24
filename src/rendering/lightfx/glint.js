@@ -84,7 +84,7 @@
  * file each sprite is drawing, not by this file's list, so a new stand-in
  * that nobody adds here is caught rather than trusted.
  *
- * ═══ v2.3.2902: SOFTER, AND THE SWEEP IS GONE ═══
+ * ═══ v2.3.2914: SOFTER, AND THE SWEEP IS GONE ═══
  *
  * Owner, with it live: "I think the shine needs to be dialed back just a bit.
  * It also doesn't need the occasionally 10 second flash animation (to show
@@ -130,7 +130,7 @@ uniform float uSheen;
 uniform vec2 uSun;
 uniform vec3 uTint;
 
-/* v2.3.2902: how far toward the metal's shine colour the sheen may take a
+/* v2.3.2914: how far toward the metal's shine colour the sheen may take a
    pixel -- 0.92 of it, so steel tops out at a light grey (235), never white */
 const float SHEEN_CEIL = 0.92;
 
@@ -153,7 +153,7 @@ void main()
        gradient is steep enough to swing across the metal itself */
     float side = clamp(0.5 + dot(p - 0.5, uSun) * 3.0, 0.0, 1.0);
     float s = uSheen * hi * (0.35 + 0.65 * side);
-    /* v2.3.2902: the sheen ROLLS OFF below white instead of being added and
+    /* v2.3.2914: the sheen ROLLS OFF below white instead of being added and
        clipped.  Per channel, head is the room left under the ceiling; the
        lift is that room x (1 - e^(-added/room)), which is the old added light
        while it is small against the room and approaches the ceiling as it
@@ -287,7 +287,7 @@ export const METAL_SHINE = Object.assign(Object.create(null), {
    owner's answer was "I do like the strong polish previews", so the strong
    cut is the sheen.  Above 1 is fine: the shader caps each pixel at white, so
    a higher number widens the highlight rather than blowing the piece out. */
-/* v2.3.2902: the numbers are unchanged; what they feed changed.  `sheen` is
+/* v2.3.2914: the numbers are unchanged; what they feed changed.  `sheen` is
    the light ADDED before the roll-off (see SHEEN_CEIL in the shader), so it
    no longer reaches white at any value -- a higher grade is still shinier,
    it approaches the ceiling sooner.  period / dur / strength are the sweep's,
@@ -299,7 +299,7 @@ export const GRADE_SHINE = Object.assign(Object.create(null), {
   godly: { period: 1900, dur: 680, strength: 1.4, sheen: 1.2, color: [1.0, 0.92, 0.6] },
 });
 
-/* ═══ v2.3.2902: NO SWEEP UNLESS ASKED FOR ═══
+/* ═══ v2.3.2914: NO SWEEP UNLESS ASKED FOR ═══
    Owner: "It also doesn't need the occasionally 10 second flash animation (to
    show the shine)."  The periodic band across every metal piece -- by grade,
    every 1.9-6.5 s, v2.3.2710 -- is off; the permanent sheen is the shine now.
@@ -390,7 +390,7 @@ export class GlintSystem {
     this._on = new Map();        /* sprite -> filter currently attached */
     this._pool = [];
     this.force = null;           /* QA/pictures: a fixed sweep progress, 0-1; -1 = no sweep anywhere (v2.3.2864) */
-    this.stats = { targets: 0, lit: 0, sheen: 0, sweeping: 0 };   /* v2.3.2902: + sweeping, the pieces a band is crossing this frame */
+    this.stats = { targets: 0, lit: 0, sheen: 0, sweeping: 0 };   /* v2.3.2914: + sweeping, the pieces a band is crossing this frame */
     this._lastTargets = null;
     this.sheenScale = null;      /* QA/pictures: multiply the sheen, to show a softer or stronger cut */
     this._bodies = new Set();    /* this frame's full-set body sprites, for the probe */
@@ -533,7 +533,7 @@ export class GlintSystem {
       const t = targets[i];
       let p = -1;                 /* no sweep crossing it: the band term is off */
       if (this.force != null) p = this.force;   /* QA: pinned; -1 pins "between sweeps" */
-      else if (AUTO_SWEEP) {      /* v2.3.2902: off -- see AUTO_SWEEP */
+      else if (AUTO_SWEEP) {      /* v2.3.2914: off -- see AUTO_SWEEP */
         const phase = hashPhase(t.key, t.g.period);
         const into = (now + phase) % t.g.period;
         if (into < t.g.dur) p = into / t.g.dur;
