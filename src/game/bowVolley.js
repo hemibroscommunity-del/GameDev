@@ -20,7 +20,8 @@
  * aiming afresh from wherever the player has walked to in the 100 ms since.
  *
  * WHAT THE VOLLEY SHARES, and why each lives on one object:
- *   - THE BURN.  The one arrow burned what it stuck in every 500 ms for 4 s.
+ *   - THE BURN.  The one arrow burned what it stuck in every 500 ms for 4 s
+ *     (v2.3.2849: a volley burns for BURN_MS, 2.5 s -- see below).
  *     Three burning would triple it -- and the worker would drop two ticks in
  *     three anyway: they are ordinary hits, and its normal lane admits one
  *     per 210 ms per monster.  So one arrow carries the volley's burn: the
@@ -38,6 +39,21 @@
 
 export const BOW_VOLLEY = {
   N: 3,
+  /* ═══ v2.3.2849: THE REBALANCE -- MORE OF IT IN THE HIT ═══
+     Owner: "the specials probably need rebalanced".  The burn was doing about
+     twice what the three arrows did (a fresh character: ~71 against ~30), so
+     the hit that looks like the special felt light.  Half the burn moved
+     into the arrows, the total unchanged (~100):
+       WORTH    the volley lands this many plain specials, WORTH / N an arrow
+                -- two-thirds each (was a third).  MIRROR of the worker's
+                BOW_VOLLEY_WORTH (server/src/combat.js), which is what the
+                damage is: this is only the local prediction (client-only
+                zones, a duel's dmgBase).
+       BURN_MS  how long a volley's arrows burn once they are in -- 2.5 s,
+                four 500 ms ticks (was 4 s, seven).  A lone arrow -- the one
+                an old worker gets -- keeps its 4 s (burnLifeMs). */
+  WORTH: 2,
+  BURN_MS: 2500,
   /* Tip to tip, world px: one white-hot arrow (hotArrowFx HOT_LEN, 62.8) and
      a gap of about a quarter of its length.  At the bow's 24 px a frame that
      is ~56 ms between arrows. */
@@ -65,6 +81,14 @@ export function volleyDelayMs(i, pxPerFrame) {
 /** The object the three arrows of one volley share. */
 export function newVolley() {
   return { n: BOW_VOLLEY.N, path: null, burn: null, burnAt: 0, _lingerNext: null, kb: new Set() };
+}
+
+/** v2.3.2849: how long a resting bow special lives and burns: a volley's
+ *  BURN_MS, or the lone arrow's 4 s it always had (an old worker's special,
+ *  which is also the one that still ends in the blast). */
+export const LONE_BURN_MS = 4000;
+export function burnLifeMs(a) {
+  return (a && a.volley) ? BOW_VOLLEY.BURN_MS : LONE_BURN_MS;
 }
 
 /** When a resting arrow's burn and life count from: the volley's first

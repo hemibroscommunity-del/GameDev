@@ -167,7 +167,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ v2.3.2842: THE MAGIC SPECIAL IS ONE BIG BOLT, THE VOLLEY IS LEGACY ═══
      Owner: "Instead of the current special attack with 3 orbs I want to see
      what just one moderately larger bolt attack would look like."  Against a
-     worker that advertises caps.bigOrb (this one) the staff special is ONE
+     worker that advertises caps.bigorb (this one) the staff special is ONE
      bolt carrying three orbs' damage; against an older worker it is still the
      three-orb volley.  Both are real paths, so both rows run: `magic` is the
      big bolt, and `volley` forces the flag off to keep the volley's spacing
@@ -175,7 +175,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const setBigOrb = (on) => P.page.evaluate((v) => {
     const S = window._gameState.current;
     if (!S._serverCaps) S._serverCaps = {};
-    S._serverCaps.bigOrb = v;
+    S._serverCaps.bigorb = v;
   }, on);
   const rows = [];
   for (const w of [
@@ -275,7 +275,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.2842: the big bolt carries the volley it replaced. */
   const big = rows.find((r) => r.key === 'magic');
   if (big) {
-    rec.ok('the magic special is ONE big bolt carrying three orbs (caps.bigOrb)',
+    rec.ok('the magic special is ONE big bolt carrying three orbs (caps.bigorb)',
       big.special === 1 && big.bigs === 1 && big.orbs[0] === 3, { special: big.special, bigs: big.bigs, orbs: big.orbs });
   }
   const magic = rows.find((r) => r.key === 'volley');

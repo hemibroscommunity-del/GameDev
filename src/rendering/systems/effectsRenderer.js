@@ -221,7 +221,7 @@ import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2841: 
 import { STAFF_BIG_BOLT_SCALE } from '@/data/gameSystems.js';     /* v2.3.2842: the one-bolt special's drawn size */
 import { HotArrowFx, HOT_LEN, buildHotArrowArt, hotArrowReady, hotArrowArt, smoulderHeat, smoulderLook } from '../hotArrowFx.js';   /* v2.3.2847: the bow special, white-hot */
 import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2843: what a monster is made of, when it is hit */
-import { burnT0 } from '@/game/bowVolley.js';                       /* v2.3.2848: a volley's arrows smoulder on its clock */
+import { burnT0, burnLifeMs } from '@/game/bowVolley.js';           /* v2.3.2848: a volley's arrows smoulder on its clock; v2.3.2849: for its own length */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -4376,7 +4376,7 @@ export class EffectsRenderer {
          comment in playerActions.js), so it must NOT exclude the painted
          orb.  All staff specials share the charged-orb art regardless of
          element. */
-      /* v2.3.2842: ...except the one-bolt special (caps.bigOrb), which is
+      /* v2.3.2842: ...except the one-bolt special (caps.bigorb), which is
          the basic bolt's art drawn bigger, not the charged orb. */
       const _isStaffSpecial = a._isStaffProj && a.isSpecial && !a.big;
       const _isBigBolt = !!a.big && MAGIC_BOLT_FRAMES.length > 0;
@@ -8190,8 +8190,9 @@ export class EffectsRenderer {
     spr.y = py - ov.y;
     spr.rotation = a.ang || 0;
     /* the planted life in projectiles.js: 2 s, a bow special's 4 s
-       (v2.3.2848: a volley's, from its first arrow down) */
-    const life = special ? 4000 : 2000;
+       (v2.3.2848: a volley's, from its first arrow down; v2.3.2849: a
+       volley burns 2.5 s -- burnLifeMs) */
+    const life = special ? burnLifeMs(a) : 2000;
     const left = life - (now - (burnT0(a) || now));
     spr.alpha = Math.max(0, Math.min(1, left / 300));
     spr.visible = true;

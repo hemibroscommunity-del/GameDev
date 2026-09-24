@@ -740,48 +740,77 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 // ── 6i. v2.3.2842: ONE BIG STAFF BOLT, THREE ORBS' WORTH ──
 // Owner: "Instead of the current special attack with 3 orbs I want to see what
 // just one moderately larger bolt attack would look like."  The client fires
-// one bolt (behind caps.bigOrb) whose monster_damage carries `orbs: 3`; the
-// worker rolls three special hits and sums them into ONE monster_hit.  Pins:
-//   (a) one send -> one monster_hit worth three special rolls;
+// one bolt (behind caps.bigorb) whose monster_damage carries `orbs: 3`.
+// v2.3.2849 (the specials rebalance -- owner: the staff does the most damage to
+// one monster "but with high variance (can have lowest damage hits)"): the
+// worker rolls that bolt ONCE, from its own band (STAFF_BOLT.BAND, 0.3-2.5),
+// worth the three orbs, and it EXPLODES -- every other monster within
+// STAFF_BOLT.BLAST's reach takes a third of it.  Pins:
+//   (a) one send -> one monster_hit, ONE draw from the band x the orbs;
 //   (b) it spends all three slots of the special lane, so a second special on
-//       the same monster inside 1200ms is dropped -- a big bolt can never be
-//       worth more than the three orbs it replaced;
+//       the same monster inside 1200ms is dropped;
 //   (c) `orbs` is clamped (99 -> 3) and needs lane room (one slot left -> one
 //       orb's worth);
 //   (d) it is ignored off the staff (a bow special) and off specials (a basic
 //       bolt), and junk values fall back to one roll;
-//   (e) caps.bigOrb is advertised, and the old client's three separate orbs
-//       still land exactly as 6h pins.
+//   (e) caps.bigorb is advertised (lower case, so the admin flags route can
+//       switch it off -- TRAPS §117), and the old client's three separate orbs
+//       still land exactly as 6h pins, with no blast;
+//   (f) THE BLAST: a third of the bolt on every other monster in reach, none
+//       past it, the target never twice;
+//   (g) THE SPREAD, by value: the band's floor and ceiling, from both ends;
+//   (h) THE CEILING: the loosest legitimate build's best possible bolt (top of
+//       the band, a crit, the Fury Tonic) still fits under its ceiling -- and
+//       CAP_K moves with BAND.
 {
+  const { STAFF_BOLT } = await import('../src/combat.js');
   psA.z = 'meadow'; psA.dead = false; psA.dying = false;
   psA.weapon = null;
   psA.staffWeapon = { type: 'staff', tierMult: 1 };
   psA.rangedWeapon = { type: 'bow', tierMult: 1 };
   psA.power = 0; psA.mind = 200; psA.agility = 0; psA.weaponSpecs = {};
   const bb = meadowMonsters[7];
+  /* Three bystanders for the blast: two inside its reach, one well outside.
+     Every meadow monster's state is put back at the end of this block, so the
+     sections after it find the room as they left it. */
+  const near1 = meadowMonsters[8], near2 = meadowMonsters[9], far = meadowMonsters[6];
+  const others = [near1, near2, far];
+  const _saved = meadowMonsters.map((m) => ({ m, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, alive: m.alive, dmgByPlayer: m.dmgByPlayer, statuses: m.statuses }));
+  const park = () => {
+    bb.x = 5000; bb.y = 5000;
+    near1.x = 5000 + 50; near1.y = 5000;
+    near2.x = 5000; near2.y = 5000 - 80;
+    far.x = 5000 + 400; far.y = 5000;
+    /* everything else out of the way, so only these three can be caught */
+    for (const m of meadowMonsters) if (m !== bb && !others.includes(m)) { m.x = -99999; m.y = -99999; }
+  };
   const reset = () => {
     if (psA._monHitCad) psA._monHitCad.clear();
-    bb.alive = true; bb.hp = bb.maxHp = 1000000; bb.dmgByPlayer = {}; bb.statuses = undefined;
+    for (const m of [bb, ...others]) { m.alive = true; m.hp = m.maxHp = 1000000; m.dmgByPlayer = {}; m.statuses = undefined; }
     room.eventBuffer.length = 0;
+    park();
   };
-  const hitsOn = () => room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === bb.id && !e.payload.collision);
+  const hitsOn = (mm = bb) => room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === mm.id && !e.payload.collision);
   const send = (payload) => room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: bb.id, zone: 'meadow', ...payload } }));
   const origRandom = Math.random;
   Math.random = () => 0.5;   // fixed variance, no crit: every roll is the same number
   try {
     const one = room._computeAttackDamage(psA, 'staff', true, { targetLevel: bb.level }).dmg;
+    const bandOne = room._computeAttackDamage(psA, 'staff', true, { targetLevel: bb.level, band: STAFF_BOLT.BAND }).dmg;
     const bow = room._computeAttackDamage(psA, 'ranged', true, { targetLevel: bb.level }).dmg;
 
-    // (a) one send, one number, three orbs' worth.
+    // (a) one send, one number, one draw worth three orbs.
     reset();
     await send({ slot: 'staff', special: true, orbs: 3 });
     const a = hitsOn();
     check('big bolt: one orbs:3 send lands as ONE monster_hit',
       a.length === 1, a.length);
-    check('big bolt: that hit is three special rolls summed',
-      a.length === 1 && a[0].payload.dmg === one * 3, { got: a[0] && a[0].payload.dmg, one });
+    check('big bolt: that hit is ONE draw from its own band, worth three orbs',
+      a.length === 1 && a[0].payload.dmg === bandOne * 3, { got: a[0] && a[0].payload.dmg, bandOne });
+    check('big bolt: ...which at mid-band is worth more than three basic-band orbs (the band sits higher)',
+      bandOne * 3 > one * 3, { bolt: bandOne * 3, orbs: one * 3 });
     check('big bolt: the credited contribution matches the hit',
-      bb.dmgByPlayer[psA.id || Object.keys(bb.dmgByPlayer)[0]] === one * 3, bb.dmgByPlayer);
+      bb.dmgByPlayer[psA.id || Object.keys(bb.dmgByPlayer)[0]] === bandOne * 3, bb.dmgByPlayer);
 
     // (b) it filled the special lane: the next special on this monster is dropped.
     await send({ slot: 'staff', special: true });
@@ -792,15 +821,15 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     reset();
     await send({ slot: 'staff', special: true, orbs: 99 });
     check('big bolt: orbs is clamped to 3',
-      hitsOn().length === 1 && hitsOn()[0].payload.dmg === one * 3, hitsOn().map((e) => e.payload.dmg));
+      hitsOn().length === 1 && hitsOn()[0].payload.dmg === bandOne * 3, hitsOn().map((e) => e.payload.dmg));
     // ...and with only one lane slot left it is worth one orb.
     reset();
     await send({ slot: 'staff', special: true });
     await send({ slot: 'staff', special: true });
     room.eventBuffer.length = 0;
     await send({ slot: 'staff', special: true, orbs: 3 });
-    check('big bolt: with one lane slot left it rolls one orb, not three',
-      hitsOn().length === 1 && hitsOn()[0].payload.dmg === one, { got: hitsOn().map((e) => e.payload.dmg), one });
+    check('big bolt: with one lane slot left it is worth one orb, not three',
+      hitsOn().length === 1 && hitsOn()[0].payload.dmg === bandOne, { got: hitsOn().map((e) => e.payload.dmg), bandOne });
 
     // (d) ignored off the staff and off specials; junk -> one roll.
     reset();
@@ -816,21 +845,97 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       reset();
       await send({ slot: 'staff', special: true, orbs: junk });
       const d = hitsOn().map((e) => e.payload.dmg);
-      const want = junk === '3' ? one * 3 : (junk === 2.9 ? one * 2 : one);
+      const want = junk === '3' ? bandOne * 3 : (junk === 2.9 ? bandOne * 2 : one);
       check('big bolt: junk orbs ' + JSON.stringify(junk) + ' is read safely',
         d.length === 1 && d[0] === want, { got: d, want });
     }
 
     // (e) the flag the client gates on, and the old three-orb shape.
     const _joinSrc = await import('node:fs').then((fs) => fs.readFileSync(new URL('../src/join.js', import.meta.url), 'utf8'));
-    check('big bolt: caps.bigOrb is advertised', /bigOrb: true/.test(_joinSrc));
+    check('big bolt: caps.bigorb is advertised', /bigorb: true/.test(_joinSrc));
+    check('big bolt: ...under a name the admin flags route accepts (TRAPS §117)',
+      /^[a-z0-9_]{1,32}$/.test('bigorb') && !/bigOrb: true/.test(_joinSrc));
     reset();
     for (let i = 0; i < 3; i++) await send({ slot: 'staff', special: true });
     check('big bolt: an old client\'s three separate orbs still land as three hits of one orb each',
       hitsOn().length === 3 && hitsOn().every((e) => e.payload.dmg === one), hitsOn().map((e) => e.payload.dmg));
+    check('big bolt: ...and an old orb does not explode',
+      others.every((m) => hitsOn(m).length === 0), others.map((m) => hitsOn(m).length));
+
+    // (f) the blast.
+    reset();
+    await send({ slot: 'staff', special: true, orbs: 3 });
+    const blastEach = Math.max(1, Math.round(bandOne * 3 * STAFF_BOLT.BLAST.FRAC));
+    const n1 = hitsOn(near1), n2 = hitsOn(near2), nf = hitsOn(far);
+    check('big bolt blast: a monster 50 px away takes a third of the bolt, as a splash',
+      n1.length === 1 && n1[0].payload.dmg === blastEach && n1[0].payload.splash === true, { got: n1.map((e) => e.payload), blastEach });
+    check('big bolt blast: ...and one 80 px away (inside its 90) does too',
+      n2.length === 1 && n2[0].payload.dmg === blastEach, { got: n2.map((e) => e.payload.dmg), blastEach });
+    check('big bolt blast: a monster 400 px away is untouched',
+      nf.length === 0, nf.map((e) => e.payload));
+    check('big bolt blast: the bolt\'s own target is hit once, not splashed as well',
+      hitsOn().length === 1, hitsOn().map((e) => e.payload));
+    check('big bolt blast: it reaches farther than the basic bolt\'s splash (90 vs 60) and takes a smaller share (a third vs half)',
+      STAFF_BOLT.BLAST.RADIUS_PX === 90 && STAFF_BOLT.BLAST.FRAC < 0.5 && STAFF_BOLT.BLAST.MAX_TARGETS >= 3, STAFF_BOLT.BLAST);
+    // a basic bolt still splashes its own way: half, 60 px -- the 80 px bystander is outside it.
+    reset();
+    await send({ slot: 'staff', special: false });
+    check('big bolt blast: a BASIC bolt still splashes half within 60 px only (v2.3.2481, unchanged)',
+      hitsOn(near1).length === 1 && hitsOn(near1)[0].payload.dmg === Math.max(1, Math.round(basic * 0.5)) && hitsOn(near2).length === 0,
+      { near1: hitsOn(near1).map((e) => e.payload.dmg), near2: hitsOn(near2).length, basic });
   } finally {
     Math.random = origRandom;
   }
+
+  // (g) the spread, by value, from both ends of the band (the v2.3.2383 shape).
+  {
+    const seqRoll = (seq, band) => {
+      let n = 0;
+      Math.random = () => seq[Math.min(n++, seq.length - 1)];
+      try { return room._computeAttackDamage(psA, 'staff', true, band ? { targetLevel: bb.level, band } : { targetLevel: bb.level }); }
+      finally { Math.random = origRandom; }
+    };
+    /* the draw is `lo + rand * (hi - lo)`, and the second draw (1) is above any
+       crit chance, so dividing by the mid-band hit recovers the multipliers */
+    const lo = seqRoll([0.0, 1], STAFF_BOLT.BAND), hi = seqRoll([0.999999, 1], STAFF_BOLT.BAND);
+    const oldLo = seqRoll([0.0, 1]), oldHi = seqRoll([0.999999, 1]);
+    check('staff bolt band: its FLOOR is 0.3 -- lower than any basic bolt (0.5): the owner\'s "lowest damage hits"',
+      !lo.isCrit && Math.abs(lo.dmg / oldLo.dmg - 0.3 / 0.5) < 0.05, { lo: lo.dmg, oldLo: oldLo.dmg });
+    check('staff bolt band: its CEILING is 2.5 -- far above a basic bolt\'s 1.65',
+      !hi.isCrit && Math.abs(hi.dmg / oldHi.dmg - 2.5 / 1.65) < 0.02, { hi: hi.dmg, oldHi: oldHi.dmg });
+  }
+
+  // (h) the ceiling, at the loosest legitimate build: skill 100, luck/dmg/
+  // special maxed, the top staff (volatile, godly, fire), a mythic flame
+  // amulet, under the Fury Tonic -- the best bolt it can roll (top of the band,
+  // and a crit) against the ceiling the handler measures it by.
+  {
+    const worst = {
+      prog3: { sk: { sword: { level: 100 }, bow: { level: 100 }, staff: { level: 100 } },
+        atk: { sword: { luck: 999, dmg: 999, special: 999 }, bow: { luck: 999, dmg: 999, special: 999 }, staff: { luck: 999, dmg: 999, special: 999 } },
+        alloc: {}, pool: 0 },
+      power: 0, mind: 0, agility: 0, weaponSpecs: {}, weapon: null, rangedWeapon: null,
+      staffWeapon: { type: 'staff', tierMult: 7.84, isVolatile: true, element1: 'fire', quality: 'godly' },
+      amulet: { gem: 'flame', tier: 'mythic' },
+      _buffs: { damage: Date.now() + 1e9, damageMul: 2.0 },
+    };
+    const seq = [0.999999, 0.0]; let n = 0;
+    Math.random = () => seq[Math.min(n++, seq.length - 1)];
+    let best;
+    try { best = room._computeAttackDamage(worst, 'staff', true, { band: STAFF_BOLT.BAND }); }
+    finally { Math.random = origRandom; }
+    const ceiling = room._maxDmgForAttacker(worst, true) * 3 * STAFF_BOLT.CAP_K;
+    check('staff bolt ceiling: the loosest legit build\'s best bolt crit (guard)', best.isCrit === true, best);
+    check('staff bolt ceiling: ...fits under its ceiling -- nothing a player earned is truncated',
+      best.dmg * 3 <= ceiling, { bolt: best.dmg * 3, ceiling: Math.round(ceiling), pct: +(best.dmg * 3 / ceiling * 100).toFixed(1) });
+    check('staff bolt ceiling: ...with the old orb\'s headroom, not less (<= 70 %)',
+      best.dmg * 3 <= ceiling * 0.7, { pct: +(best.dmg * 3 / ceiling * 100).toFixed(1) });
+    check('staff bolt ceiling: CAP_K moves with the band (BAND top / the staff\'s own 1.65)',
+      Math.abs(STAFF_BOLT.CAP_K * 1.65 - STAFF_BOLT.BAND[1]) < 1e-9, { CAP_K: STAFF_BOLT.CAP_K, BAND: STAFF_BOLT.BAND });
+  }
+  for (const o of _saved) Object.assign(o.m, { x: o.x, y: o.y, hp: o.hp, maxHp: o.maxHp, alive: o.alive, dmgByPlayer: o.dmgByPlayer, statuses: o.statuses });
+  if (psA._monHitCad) psA._monHitCad.clear();
+  room.eventBuffer.length = 0;
 }
 
 // ── 6d. v2.3.1133: crit-DMG channel reaches the authoritative crit roll ──
@@ -2697,18 +2802,23 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   psA.activeSlot = 'melee'; psA.staffWeapon = null;
 }
 
-// ── 12. v2.3.2848: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ──
+// ── 12. v2.3.2848: THE BOW SPECIAL IS THREE ARROWS ──
 // Owner: "the bow special should be 3 white hot arrows that follow each other
-// closely.  One shot for all 3 arrows" -- a third of the damage each, so the
-// volley deals what the one arrow did.  Each arrow's monster_damage carries
-// `part: 3` and the worker divides its OWN capped roll by it.  Pins:
-//   (a) a part:3 bow special lands a third of a full one;
-//   (b) the special lane admits all three, and they sum to the one arrow;
-//   (c) it divides AFTER the ceiling, so an over-cap roll's thirds sum to the
+// closely.  One shot for all 3 arrows".  Each arrow's monster_damage carries
+// `part: 3` and the worker lands WORTH / part of its OWN capped roll.
+// v2.3.2848 shipped it as a third each (the volley = the one arrow);
+// v2.3.2849's rebalance moved half the burn into the hit -- BOW_VOLLEY_WORTH
+// 2, two-thirds an arrow, the volley twice the old arrow (the client burns
+// for 2.5 s instead of 4, so the total is unchanged).  Pins:
+//   (a) a part:3 bow special lands two-thirds of a full one;
+//   (b) the special lane admits all three, and they sum to two full specials;
+//   (c) it shares AFTER the ceiling, so an over-cap roll's shares come off the
 //       cap and never past it;
 //   (d) it is ignored off the bow (a staff special) and off specials (a
 //       basic arrow, a burn tick), and junk values read safely;
-//   (e) caps.bowvolley is advertised.
+//   (e) caps.bowvolley is advertised;
+//   (f) a volley arrow is never worth more than a plain special, for any part
+//       the worker honours -- what keeps `part` cheat-neutral.
 {
   psA.z = 'meadow'; psA.dead = false; psA.dying = false;
   psA.weapon = null;
@@ -2727,23 +2837,24 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const origRandom = Math.random;
   Math.random = () => 0.5;   // fixed variance, no crit: every roll is the same number
   try {
+    const { BOW_VOLLEY_WORTH } = await import('../src/combat.js');
     const full = room._computeAttackDamage(psA, 'ranged', true, { targetLevel: bv.level }).dmg;
-    const third = Math.round(full / 3);
+    const share = Math.round(full * BOW_VOLLEY_WORTH / 3);
 
     // (a) one arrow of the volley.
     reset();
     await send({ slot: 'ranged', special: true, part: 3 });
-    check('bow volley: a part:3 bow special lands a third of a full one',
-      hitsOn().length === 1 && hitsOn()[0] === third && full >= 30, { got: hitsOn(), full, third });
+    check('bow volley: a part:3 bow special lands two-thirds of a full one (v2.3.2849: was a third)',
+      BOW_VOLLEY_WORTH === 2 && hitsOn().length === 1 && hitsOn()[0] === share && full >= 30, { got: hitsOn(), full, share });
 
-    // (b) the whole volley: three arrows, all admitted, summing to the one arrow.
+    // (b) the whole volley: three arrows, all admitted, summing to two full specials.
     reset();
     for (let i = 0; i < 3; i++) await send({ slot: 'ranged', special: true, part: 3 });
     const vol = hitsOn();
     check('bow volley: all three arrows land (the special lane admits the volley)',
       vol.length === 3, vol);
-    check('bow volley: ...and together they deal what the one arrow did (+-1 rounding)',
-      vol.length === 3 && Math.abs(vol.reduce((s, d) => s + d, 0) - full) <= 1, { vol, full });
+    check('bow volley: ...and together they deal twice the one arrow (+-1 rounding)',
+      vol.length === 3 && Math.abs(vol.reduce((s, d) => s + d, 0) - full * BOW_VOLLEY_WORTH) <= 1, { vol, full });
     await send({ slot: 'ranged', special: true, part: 3 });
     check('bow volley: a 4th special inside 1200 ms is still dropped (the lane is unchanged)',
       hitsOn().length === 3, hitsOn());
@@ -2757,8 +2868,8 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       const capped = hitsOn()[0];
       reset();
       await send({ slot: 'ranged', special: true, part: 3 });
-      check('bow volley: an over-cap roll is capped BEFORE it is split (30 -> 10, not a third of the raw roll)',
-        capped === 30 && hitsOn()[0] === 10, { capped, got: hitsOn(), full });
+      check('bow volley: an over-cap roll is capped BEFORE it is shared (30 -> 20, not two-thirds of the raw roll)',
+        capped === 30 && hitsOn()[0] === 20, { capped, got: hitsOn(), full });
     } finally {
       room._maxDmgForAttacker = realCap;
     }
@@ -2777,7 +2888,9 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     for (const junk of ['3', 'x', -5, null, 1, 2.9, 99, { n: 3 }]) {
       reset();
       await send({ slot: 'ranged', special: true, part: junk });
-      const want = (junk === '3' || junk === 99) ? third : (junk === 2.9 ? Math.round(full / 2) : full);
+      /* '3' and 99 read as a volley of three (two-thirds); 2.9 floors to 2,
+         whose share WORTH / 2 is a whole special -- never more */
+      const want = (junk === '3' || junk === 99) ? share : full;
       check('bow volley: junk part ' + JSON.stringify(junk) + ' is read safely',
         hitsOn().length === 1 && hitsOn()[0] === want, { got: hitsOn(), want });
     }
@@ -2785,6 +2898,11 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     // (e) the flag the client gates the volley on.
     const _joinSrc = await import('node:fs').then((fs) => fs.readFileSync(new URL('../src/join.js', import.meta.url), 'utf8'));
     check('bow volley: caps.bowvolley is advertised', /bowvolley: true/.test(_joinSrc));
+
+    // (f) cheat-neutral: no honoured part makes an arrow worth more than a plain special.
+    const worth = [2, 3].map((p) => Math.min(1, BOW_VOLLEY_WORTH / p));
+    check('bow volley: an arrow is never worth more than a plain special, for any part the worker honours',
+      worth.every((w) => w <= 1), { worth });
   } finally {
     Math.random = origRandom;
     psA.mind = 0;

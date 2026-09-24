@@ -8,7 +8,7 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2842: the one-bolt special */
+import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS, STAFF_BIG_BOLT_BAND } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2842: the one-bolt special; v2.3.2849: its band */
 import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
 import { ARROW_SPEED_PX } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it */
 import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2848 */
@@ -339,8 +339,8 @@ export function specialAttack(S) {
              apart however fast Longshot makes it (projectiles.js catches the
              frame it overstays back up) */
           launchDelayMs: volleyDelayMs(bvi, ARROW_SPEED_PX * _bowStat),
-          dmg: _bowVolley ? Math.max(1, Math.round(_bowFull / BOW_VOLLEY.N)) : _bowFull,   /* v2.3.2848: a third each */
-          part: _bowVolley ? BOW_VOLLEY.N : 0,   /* v2.3.2848: the worker divides its own roll by this */
+          dmg: _bowVolley ? Math.max(1, Math.round(_bowFull * BOW_VOLLEY.WORTH / BOW_VOLLEY.N)) : _bowFull,   /* v2.3.2848: a third each; v2.3.2849: two-thirds (the volley is worth WORTH specials) */
+          part: _bowVolley ? BOW_VOLLEY.N : 0,   /* v2.3.2848: the worker gives each arrow WORTH / part of its own roll (v2.3.2849) */
           volley: _bowVol, volleyIx: bvi,
           baseDmg: _bowBase, /* v2.3.1402: lingering ground-tick base damage */
           life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
@@ -364,6 +364,7 @@ export function specialAttack(S) {
           S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
             id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now,
             delayMs: Math.round(volleyDelayMs(bvj, BOW_VOLLEY.PEER_PX_PER_FRAME)),
+            volley: _bowVolley ? 1 : undefined,   /* v2.3.2849: additive -- a peer burns it out on the volley's 2.5 s, not the lone arrow's 4 */
             life: Math.round(90 * _bowStat * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
           }});
         }
@@ -465,15 +466,16 @@ export function specialAttack(S) {
          Its damage is the three orbs' damage: `dmg` here is the local number
          (client-only zones and a duel's dmgBase), `orbs` tells the worker how
          many special rolls to sum.  ONLY against a worker that says it can
-         (caps.bigOrb): an older one would roll this as one orb, a third of the
+         (caps.bigorb): an older one would roll this as one orb, a third of the
          special, so there the volley below still fires. */
-      if (S._serverCaps && S._serverCaps.bigOrb) {
+      if (S._serverCaps && S._serverCaps.bigorb) {
         var _bigLife = Math.round(_ORB_RANGE_PX / _ORB_SPEED);
         S.arrows.push({
           ang: aimAng,
           dist: 14,
           speedPx: _ORB_SPEED,
-          dmg: Math.round(_wpnDmg * specialAtkMultFor('staff', R || {})) * STAFF_BIG_BOLT_ORBS,
+          /* v2.3.2849: one draw from the bolt's own band, the worker's shape */
+          dmg: Math.round(calcSpecialDmg('staff', R || {}, activeWpn.tierMult, activeWpn, STAFF_BIG_BOLT_BAND) * specialAtkMultFor('staff', R || {}) * STAFF_BIG_BOLT_ORBS),
           life: _bigLife,
           maxLife: _bigLife,
           hitIds: new Set(),
@@ -505,7 +507,7 @@ export function specialAttack(S) {
         }, 60);
         S.screenShake = 4;
       } else {
-        /* The three-orb volley: an older worker, which has no caps.bigOrb. */
+        /* The three-orb volley: an older worker, which has no caps.bigorb. */
         for (var si = 0; si < 3; si++) {
           var _spd = _ORB_SPEEDS[si];
           var _life = Math.round(_ORB_RANGE_PX / _spd);

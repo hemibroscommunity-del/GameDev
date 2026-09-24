@@ -4772,4 +4772,24 @@ that passes `FLAG_NAME_RE` (`bowvolley`, like `prog3`, `gearq`, `t2bench`),
 and a test that says so (`server/test/arrowblast.test.mjs` tests the name
 against the regex). Or widen the regex -- a server change of its own, not
 something to do in passing. **Receipt:** mp-arrowblast throws `bowvolley`
-through the real route before anyone joins.
+through the real route before anyone joins. **v2.3.2849:** the one-bolt staff
+special's `bigOrb` was renamed `bigorb` for the same reason, before it ever
+shipped (combat-lifecycle §6i tests the name).
+
+## 118. Measuring damage through the handler trains the skill you are measuring (v2.3.2849)
+
+**Tempting:** to price a special, join a player on a mocked `GameRoom`, drive
+`monster_damage` through `webSocketMessage` a few thousand times and average
+the `monster_hit`s. The handler is the truth -- lanes, ceilings, `part`,
+`orbs`, the splash -- so measuring through it beats re-deriving the formula.
+
+**Wrong without one more line.** Every hit calls `_prog3AwardXp` for the skill
+that dealt it (§9-A), so the measurement levels the character up as it runs.
+Forty greatsword specials took a fresh character from skill 1 to 3; four
+thousand read the special at ~166 where a skill-1 character deals ~41. The
+numbers look plausible and are simply of a different character.
+
+**The rule:** stub it for the measurement -- `room._prog3AwardXp = () => {}`
+-- or reset `ps.prog3.sk` before each trial. `tools/specials-measure.mjs` does
+the former. (In a TEST that asserts damage, pin `Math.random` as the suites
+do; the drift is per hit, so even two sends in a row can differ.)

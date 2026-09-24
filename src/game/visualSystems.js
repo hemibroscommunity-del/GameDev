@@ -12,6 +12,7 @@ import { zoneLeavesPrints } from '@/rendering/footprintSprites.js'; /* v2.3.2654
 import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2730: a peer's shot stops at a prop on your screen too */
 import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap */
 import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2731 */
+import { BOW_VOLLEY, LONE_BURN_MS } from '@/game/bowVolley.js';   /* v2.3.2849: how long a peer's special stands burning */
 /* v2.3.2730: how far up a prop's face a PEER's shot marks it -- see the remote
    projectile sweep below. */
 var REMOTE_SHOT_H = 26;
@@ -266,7 +267,7 @@ export function updateVisualSystems(S) {
                 } else {
                   markProp(S, { kind: 'arrow', id: _rpId, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
                     face: boxFace(_rpHit.box, _rpHit.x, _rpHit.y), ang: rp.ang,
-                    ttl: rp.isSpecial ? 4000 : 2000, special: !!rp.isSpecial });
+                    ttl: rp.isSpecial ? (rp.volley ? BOW_VOLLEY.BURN_MS : LONE_BURN_MS) : 2000, special: !!rp.isSpecial });   /* v2.3.2849: a volley's 2.5 s */
                 }
               }
               return false;

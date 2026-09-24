@@ -152,7 +152,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `pong` | Heartbeat reply | ~3811 |
 | `track` | **Cosmetics/appearance only** (2 s cadence) — allowlisted, see below | ~3819 |
 | `player_attack` | Attack swing (also relayed to peers — see Quirks) | ~3828 |
-| `monster_damage` | Damage claim against a monster (server validates; truth returns as `monster_hit`). **v2.3.2481:** a BASIC staff bolt (`slot: 'staff'`, no `special`) additionally splashes 50% of its own capped roll to up to 3 other monsters within 60 px of the impact point (× Detonation, the server mirror of the client's `staffAoeMult`), each answered by its own `monster_hit` tagged `splash: true`. The scan is server-side ON PURPOSE: the worker rolls FULL damage for every `monster_damage` it receives, so a client sending a second event for the neighbour would deal 100%, not 50%. **v2.3.2842: `orbs`** — the staff special is ONE big bolt (behind `caps.bigOrb`) and says how many of the old volley's orbs it stands for (`orbs: 3`). Honoured only on a staff special (`slot: 'staff'`, `special: true`), clamped to 1..3, and each orb spends a slot in the special lane (3 per 1200 ms per monster); the worker rolls that many special hits, each under its own cap, and sums them into ONE `monster_hit`. Absent -> one roll, byte-identical. **v2.3.2848:** an arrow of the bow volley adds `part: 3` — the worker divides its OWN capped special roll by it (`slot: 'ranged'` specials only, integers 2–3, anything else is 1), so the three arrows land what one did; honoured unconditionally because it can only lower damage. Arrows 2–3 into a monster the volley already hit also send `noKb: true` (the v2.3.1435 flag), so the volley shoves once. See `docs/specs/bow-volley.md` | ~3834 |
+| `monster_damage` | Damage claim against a monster (server validates; truth returns as `monster_hit`). **v2.3.2481:** a BASIC staff bolt (`slot: 'staff'`, no `special`) additionally splashes 50% of its own capped roll to up to 3 other monsters within 60 px of the impact point (× Detonation, the server mirror of the client's `staffAoeMult`), each answered by its own `monster_hit` tagged `splash: true`. The scan is server-side ON PURPOSE: the worker rolls FULL damage for every `monster_damage` it receives, so a client sending a second event for the neighbour would deal 100%, not 50%. **v2.3.2842: `orbs`** — the staff special is ONE big bolt (behind `caps.bigorb`) and says how many of the old volley's orbs it stands for (`orbs: 3`). Honoured only on a staff special (`slot: 'staff'`, `special: true`), clamped to 1..3, and each orb spends a slot in the special lane (3 per 1200 ms per monster); the worker rolls that many special hits, each under its own cap, and sums them into ONE `monster_hit`. Absent -> one roll, byte-identical. **v2.3.2849 (specials-rebalance.md):** the big bolt is ONE roll from its own band (0.3–2.5, `STAFF_BOLT.BAND`) × the orbs the lane admitted, under that many special ceilings × `CAP_K`, and it EXPLODES: every other monster within 90 px of the impact (× Detonation) takes a third of it, each answered by its own `monster_hit` tagged `splash: true` — the basic bolt's splash scan with the bolt's own radius and share. The cap is `caps.bigorb` (lower case since v2.3.2849). **v2.3.2848:** an arrow of the bow volley adds `part: 3` — the worker gives it `WORTH / part` of its OWN capped special roll (`slot: 'ranged'` specials only, integers 2–3, anything else is 1). v2.3.2848 shipped it as a third (the three arrows landed what one did); **v2.3.2849** made `BOW_VOLLEY_WORTH` 2, so an arrow lands two-thirds and the volley twice the old arrow (the client burns 2.5 s instead of 4). Honoured unconditionally because the share is under 1 for every honoured part, so it can only lower damage against a plain special. Arrows 2–3 into a monster the volley already hit also send `noKb: true` (the v2.3.1435 flag), so the volley shoves once. See `docs/specs/bow-volley.md` | ~3834 |
 | `extraction_start` | Begin gather/extraction channel | ~3841 |
 | `node_strike` | Hit a gather node | ~3852 |
 | `loot_pickup` | Claim ground loot (server answers `loot_credit` or `loot_pickup_rejected`) | ~3863 |
@@ -347,7 +347,7 @@ join.js): it is the copy `getAllPlayerData()` publishes in every `state_sync`
 and the one `_reportToLeaderboard` prefers, and the client draws it into an
 unwrapped nameplate Text.
 | `player_swing` / `player_projectile` / `player_shield` | Remote attack/projectile/shield visuals | ~3134 / ~3142 / ~3155 |
-| `player_projectile` `delayMs` | v2.3.2259 the staff volley's stagger (a peer holds the orb that long at the caster's hand, in ms). **v2.3.2848:** the bow volley sends one `player_projectile` per arrow with `delayMs` 0 / 167 / 333 — sized for a peer's 8 px-a-frame arrow — and a peer holds a non-staff projectile that many FRAMES (`round(delayMs / 16.7)`, `holdFrames`), since that is what its flight is counted in; an older peer draws the three at once, which is what it drew before | gameEvents.js |
+| `player_projectile` `delayMs` | v2.3.2259 the staff volley's stagger (a peer holds the orb that long at the caster's hand, in ms). **v2.3.2848:** the bow volley sends one `player_projectile` per arrow with `delayMs` 0 / 167 / 333 — sized for a peer's 8 px-a-frame arrow — and a peer holds a non-staff projectile that many FRAMES (`round(delayMs / 16.7)`, `holdFrames`), since that is what its flight is counted in; an older peer draws the three at once, which is what it drew before. **v2.3.2849:** each also carries `volley: 1` (additive), so a peer's arrow that stands in a rock burns out on the volley's 2.5 s rather than the lone arrow's 4; absent -> 4 s, as before | gameEvents.js |
 | `player_hurt_by_monster` / `monster_dmg_at` / `player_died_to_monster` | Peer combat-feedback visuals (drive the peer damage-number smoothing queue) | ~3646 / ~3666 / ~3683 |
 | `player_respawned` | Peer corpse-clear (deliberately not privileged — see Security model) | ~3721 |
 | `stunned` | Stun visual/state relay | ~3836 |
@@ -384,11 +384,19 @@ Summary of the wire-visible changes:
   claimed the job. HTTP responses use `settled: true` for the same
   purpose. This is the deploy-order safety mechanism; preserve it.
 - v2.3.2848 (bow-volley.md): **`caps.bowvolley`** — the bow special is
-  three arrows of a third each (`monster_damage.part`) with no send-off
-  blast (`arrow_blast` refused as `retired`). The client gates the whole
-  volley on it; without it the special stays the one arrow with its blast.
+  three arrows (`monster_damage.part`; two-thirds of a special each since
+  v2.3.2849) with no send-off blast (`arrow_blast` refused as `retired`).
+  The client gates the whole volley on it; without it the special stays
+  the one arrow with its 4 s burn and its blast.
   Lower case on purpose: it doubles as a kill switch, and `POST
   /api/admin/flags` only accepts `/^[a-z0-9_]{1,32}$/`.
+- v2.3.2842 / v2.3.2849 (specials-rebalance.md): **`caps.bigorb`** — the
+  staff special is ONE big bolt (`monster_damage.orbs: 3`): one roll from
+  its own wide band, and it explodes on the monsters around its target.
+  Without it the client fires the three-orb volley, each orb rolled and
+  capped as before, no blast. Renamed from `bigOrb` before it ever
+  shipped, so that `bigorb: false` is a kill switch the admin route can
+  throw (TRAPS §117).
 - v2.3.1178 (http-auth.md): `join` gains an optional `httpAuth: true`
   declaration and `state_sync` gains `httpToken` (private per-session
   token, plus `caps.httpAuth`). The client sends the token as the

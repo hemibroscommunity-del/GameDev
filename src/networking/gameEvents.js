@@ -1626,10 +1626,14 @@ export function processGameEvent(type, payload, S, deps) {
                    own speed, exactly as before. */
                 speedPx: (Number(payload.speedPx) > 0 ? Math.min(20, Number(payload.speedPx)) : null),
                 /* v2.3.2842: the staff special as ONE big bolt (playerActions,
-                   caps.bigOrb) -- drawn as the basic bolt's art, bigger, from
+                   caps.bigorb) -- drawn as the basic bolt's art, bigger, from
                    the caster's crystal.  Absent (an older caster) -> their
                    charged orbs, exactly as before. */
                 big: !!(payload.big && payload.isStaff && payload.isSpecial),
+                /* v2.3.2849: an arrow of the bow volley -- it burns out on the
+                   volley's 2.5 s where it stands (visualSystems), not the lone
+                   arrow's 4.  Absent (an older shooter) -> the lone arrow's. */
+                volley: !!(payload.volley && payload.isSpecial && !payload.isStaff),
                 ts: Date.now(), ownerId: payload.id,
                 /* v2.3.2731: the SHOOTER's timestamp, which `ts` above is not (it
                    is when this screen heard about it) -- the snap roll hashes

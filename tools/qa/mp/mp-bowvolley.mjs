@@ -17,6 +17,11 @@
  *   and nothing at all asks for the retired blast.
  * The division itself is pinned exactly in server/test/combat-lifecycle
  * (section 12); a live roll varies, so this does not re-measure it.
+ *
+ * v2.3.2849 (docs/specs/specials-rebalance.md): each arrow is two-thirds of a
+ * special now (BOW_VOLLEY_WORTH), and a volley burns for 2.5 s -- FOUR ticks,
+ * where the lone arrow's 4 s gave seven.  So the burn here is 3-5 ticks, and
+ * the last one lands inside the 2.5 s.
  */
 import * as H from './harness.mjs';
 
@@ -148,7 +153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.evaluate(() => { try { window._gameFns.specialAttack(); } catch (e) { /* reported below */ } });
   const fired = await H.readState(A, (S) => (S.arrows || []).filter((a) => a.isSpecial && !a.isStaff)
     .map((a) => ({ part: a.part, dmg: a.dmg, delay: Math.round(a.launchDelayMs || 0) })));
-  rec.ok(`one press looses three arrows, each a third (${JSON.stringify(fired)})`,
+  rec.ok(`one press looses three arrows, each carrying part:3 (${JSON.stringify(fired)})`,
     fired.length === 3 && fired.every((a) => a.part === 3), fired);
 
   /* Let the volley land, burn its four seconds and burn out. */
@@ -181,11 +186,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* The burn: ordinary hits, 500 ms apart, from one arrow.  Three burning
      would send three per half second; the worker's normal lane would then
-     drop two of them, and the sends would say so. */
+     drop two of them, and the sends would say so.  v2.3.2849: four of them,
+     over the volley's 2.5 s (the lone arrow's 4 s sent seven). */
   const gaps = ticks.slice(1).map((o, i) => o.at - ticks[i].at);
   rec.ok(`ONE burn: ${ticks.length} noKb ticks, ~500 ms apart (gaps ${gaps.join(', ')})`,
-    ticks.length >= 5 && ticks.length <= 8 && ticks.every((o) => o.payload.noKb === true) && gaps.every((g) => g >= 400),
+    ticks.length >= 3 && ticks.length <= 5 && ticks.every((o) => o.payload.noKb === true) && gaps.every((g) => g >= 400),
     { n: ticks.length, gaps });
+  const lastTick = ticks.length ? ticks[ticks.length - 1].at - firstSpecAt : null;
+  rec.ok(`...and it is the volley's 2.5 s burn, not the old 4 s (last tick ${lastTick} ms after the first arrow)`,
+    lastTick != null && lastTick < 2700, { lastTick });
 
   const blasts = out.filter((o) => o.type === 'arrow_blast');
   const why = (await H.adminPlayer(wsPort, aId).catch(() => ({}))).live || {};

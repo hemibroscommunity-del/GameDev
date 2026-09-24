@@ -265,7 +265,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ════════════════ 1b. THE ONE-BOLT SPECIAL (v2.3.2842) ════════════════
      Owner: "Instead of the current special attack with 3 orbs I want to see
      what just one moderately larger bolt attack would look like."  Against
-     this worker (caps.bigOrb) the special is ONE bolt: the basic bolt's art
+     this worker (caps.bigorb) the special is ONE bolt: the basic bolt's art
      drawn 1.7x, carrying three orbs of damage, leaving the crystal with a
      heavier kick, and bursting where it touches the target -- not ~50 px short
      of it on the special's x3 reach. */
@@ -276,12 +276,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (S.rpg) S.rpg.mana = S.rpg.maxMana = 900;
     const m = (S.monsters || []).find((x) => x && x.id === 'staffcast-big');
     const hp0 = m ? m.curHp : null;
-    const caps = !!(S._serverCaps && S._serverCaps.bigOrb);
+    const caps = !!(S._serverCaps && S._serverCaps.bigorb);
     F.specialAttack();
     const fired = (S.arrows || []).filter((a) => a && a.isStaff && a.isSpecial);
     const b = fired[0] || null;
     const out = { caps, n: fired.length, big: !!(b && b.big), orbs: b ? b.orbs : null, dmg: b ? b.dmg : null,
-      hp0, kick: 0, scale: null, crash: null, mx: m ? m.x : null };
+      hp0, kick: 0, scale: null, crash: null, mx: m ? m.x : null, blastR: null };
     const t0 = Date.now();
     const tick = () => {
       const w = window.__btWeapon;
@@ -289,6 +289,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (b && b._boltSprite && !b._boltSprite.destroyed && Date.now() - (b._fxSeen || t0) > 150) out.scale = b._boltSprite.scale.x;
       const fx = window.__btStaffFx ? window.__btStaffFx() : null;
       if (fx && fx.lastCrash && fx.lastCrash.at >= t0) out.crash = fx.lastCrash;
+      /* v2.3.2849: the blast ring the crash opens out to the worker's reach */
+      const br = (S._impactRings || []).find((r) => r && r.blast && r.ts >= t0);
+      if (br) out.blastR = br.maxR;
       if (Date.now() - t0 < 1600) { requestAnimationFrame(tick); return; }
       out.hp1 = m ? m.curHp : null;
       resolve(out);
@@ -296,17 +299,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     requestAnimationFrame(tick);
   }));
   console.log('    big bolt: ' + JSON.stringify(big));
-  rec.ok('the worker advertises caps.bigOrb (guard)', big.caps, big);
+  rec.ok('the worker advertises caps.bigorb (guard)', big.caps, big);
   rec.ok('one press of the magic special fires ONE bolt, marked big, carrying three orbs',
     big.n === 1 && big.big && big.orbs === 3, big);
-  rec.ok(`...whose damage is the three orbs' (hp ${big.hp0} -> ${big.hp1}, bolt dmg ${big.dmg})`,
-    big.hp0 != null && big.hp1 != null && big.hp0 - big.hp1 === big.dmg && big.dmg % 3 === 0, big);
+  /* v2.3.2849: one draw from the bolt's own band x the three orbs (no longer
+     three orbs' rolls, so no longer a multiple of 3) */
+  rec.ok(`...whose damage lands as one number (hp ${big.hp0} -> ${big.hp1}, bolt dmg ${big.dmg})`,
+    big.hp0 != null && big.hp1 != null && big.dmg > 0 && big.hp0 - big.hp1 === big.dmg, big);
   rec.ok(`...drawn 1.7x the basic bolt (sprite scale ${big.scale})`,
     typeof big.scale === 'number' && Math.abs(big.scale / 0.18 - 1.7) < 0.12, big);
   rec.ok(`...off a heavier kick than the basic cast (peak ${r1(big.kick * 180 / Math.PI)} deg)`,
     big.kick * 180 / Math.PI > 18, big);
   rec.ok(`...and bursting big where it touches the slime (${big.crash ? r1(big.mx - big.crash.x) : '-'} px short of its centre)`,
     !!big.crash && big.crash.big === true && big.mx - big.crash.x < 80, big.crash);
+  /* v2.3.2849: it EXPLODES -- the worker hits every other monster within 90 px
+     (x Detonation; a fresh character has none), and the crash draws that reach */
+  rec.ok(`...and it explodes: a blast ring opens out to the 90 px the worker hits within (ring ${big.blastR})`,
+    typeof big.blastR === 'number' && Math.abs(big.blastR - 90) < 0.5, big);
   await P.ctx.close().catch(() => {});
 
   /* ════════════════ 2. A PEER SEES YOUR CAST ════════════════

@@ -838,6 +838,17 @@ export function orbCrashFx(S, x, y, color, opts) {
     color: color, maxR: 14 * ringK, duration: 220,
     style: 'staff', elem: elem, vdx: vdx, vdy: vdy,
   });
+  /* v2.3.2849: the big bolt's EXPLOSION -- a third ring that opens out to the
+     blast's own reach (`blastR`, the radius the worker hits within), so the
+     area is on screen, not only in the numbers.  staffCastFx.ring grows a
+     ring to exactly its maxR. */
+  if (o.big && o.blastR > 0) {
+    S._impactRings.push({
+      x: x, y: y, ts: Date.now(), startDelay: 20,
+      color: color, maxR: o.blastR, duration: 460,
+      style: 'staff', elem: elem, vdx: vdx, vdy: vdy, blast: true,
+    });
+  }
   /* ═══ v2.3.2841: THE CRASH BURNS HOT AND COOLS ═══
      Queued as a FACT (where, which element) rather than as particles, so how
      it looks lives in the renderer.  Bounded, because a hidden tab stops the

@@ -35,6 +35,10 @@
  * missed volley stands in the ground as three arrows with one ground burn;
  * and a peer sees three arrows, one behind the other.  Town's worker
  * advertises caps.bowvolley, which is what turns the volley on.
+ *
+ * v2.3.2849 (docs/specs/specials-rebalance.md): each arrow is two-thirds of
+ * a special now, and a volley burns 2.5 s -- four ticks where it was seven
+ * -- before it burns out.
  */
 import * as H from './harness.mjs';
 
@@ -160,7 +164,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   const wireFire = await H.wireCounts(P);
   const swipes = (wireFire.ability_use || 0) - (wire0.ability_use || 0);
-  rec.ok(`one press looses THREE arrows, one volley, each a third (part ${fired.parts.join('/')}, dmg ${fired.dmg.join('/')}, waits ${fired.delays.join('/')} ms)`,
+  rec.ok(`one press looses THREE arrows, one volley, each the same share (part ${fired.parts.join('/')}, dmg ${fired.dmg.join('/')}, waits ${fired.delays.join('/')} ms)`,
     fired.n === 3 && fired.oneVolley && fired.parts.every((q) => q === 3) && new Set(fired.dmg).size === 1
       && fired.delays[0] === 0 && fired.delays[1] > 30 && fired.delays[2] > fired.delays[1], fired);
   rec.ok(`...for one price: one special on the wire (${swipes} ability_use)`, swipes === 1, { wire0, wireFire });
@@ -223,7 +227,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const base = (S1.find((s) => s.vol.length) || { vol: [{}] }).vol[0].base || 0;
   const firstStuckT = (S1.find((s) => s.nStuck >= 1) || {}).t || 0;
   const hitLost = all3 >= 0 ? S1[all3].hpLost : null;
-  rec.ok(`each lands a third: three hits take ${hitLost} (= 3 x ${third}) before the first burn tick`,
+  rec.ok(`each lands its share: three hits take ${hitLost} (= 3 x ${third}) before the first burn tick`,
     all3 >= 0 && S1[all3].t - firstStuckT < 450 && hitLost === 3 * third, { hitLost, third, dt: all3 >= 0 ? S1[all3].t - firstStuckT : null });
   const afterHits = S1.slice(all3 >= 0 ? all3 : S1.length);
   const drops = [];
@@ -231,8 +235,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const d = (afterHits[i].hpLost || 0) - (afterHits[i - 1].hpLost || 0);
     if (d) drops.push(d);
   }
-  rec.ok(`the volley burns ONCE: ${drops.length} ticks of ${base}, one at a time (three burning arrows would be ~21, in 2s and 3s)`,
-    base > 0 && drops.length >= 6 && drops.length <= 8 && drops.every((d) => d === base), { drops, base });
+  rec.ok(`the volley burns ONCE, for 2.5 s: ${drops.length} ticks of ${base}, one at a time (three burning arrows would be ~12, in 2s and 3s; the old 4 s burn, 7)`,
+    base > 0 && drops.length >= 3 && drops.length <= 5 && drops.every((d) => d === base), { drops, base });
   const late = S1.filter((s) => s.nStuck === 3 && s.t - S1[all3].t >= 1100 && s.hots.length === 3);
   const spread = late.map((s) => Math.max(...s.hots.map((q) => q.heat)) - Math.min(...s.hots.map((q) => q.heat)));
   rec.ok(`the three smoulder on ONE clock: they throb together (heat spread <= ${spread.length ? Math.max(...spread).toFixed(3) : '-'})`,
@@ -320,7 +324,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (S3[i - 1].hpLost != null && d) gDrops.push(d);
   }
   rec.ok(`...with ONE ground burn: ${gDrops.length} ticks of 7, one at a time`,
-    gDrops.length >= 3 && gDrops.length <= 8 && gDrops.every((d) => d === 7), { gDrops, decoy });
+    gDrops.length >= 2 && gDrops.length <= 5 && gDrops.every((d) => d === 7), { gDrops, decoy });
   const planted = S3.filter((s) => s.planted && s.hot);
   const ph = planted.map((s) => s.hot.heat);
   rec.ok(`a miss plants in the ground and smoulders there, flaring on its ground ticks (${planted.length} samples, heat ${Math.min(...ph).toFixed(2)}..${Math.max(...ph).toFixed(2)})`,

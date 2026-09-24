@@ -4,6 +4,8 @@ The owner asked: "I'm thinking actually that the bow special should be 3 white h
 
 Asked how hard each arrow should hit: **"A third each"** — the three together deal what the one arrow did. Asked what happens after they hit: **"Burn, but no blast"** — they stick and burn the monster you shot, and the area send-off (v2.3.2279) is gone, because area damage belongs to the staff.
 
+> **v2.3.2849 — rebalanced ([specials-rebalance.md](specials-rebalance.md)).** The burn was doing about twice what the arrows did, so the hit that looks like the special felt light. Half of the burn moved into the hit: each arrow now lands **two-thirds** of the bow's special roll (`BOW_VOLLEY_WORTH` 2 — the volley is worth two of the old arrow), and a volley burns for **2.5 s** (four ticks) instead of 4 s (seven). The total is unchanged (~100 for a fresh character); the lone arrow an old worker gets keeps its 4 s burn. The tables below give the v2.3.2848 numbers with the new ones beside them.
+
 The rules the three arrows share live in one leaf module, `src/game/bowVolley.js`: `playerActions.js` fires the volley, `projectiles.js` flies and settles it, and `effectsRenderer.js` / `hotArrowFx.js` draw it.
 
 ## What the player sees
@@ -12,9 +14,9 @@ The rules the three arrows share live in one leaf module, `src/game/bowVolley.js
 |---|---|---|
 | One press of the special | one white-hot arrow at 3× | **three** white-hot arrows, one behind the other |
 | Spacing | — | 80 px tip to tip (one arrow is 62.8), on one line |
-| Damage per arrow | 3× the bow's special roll | a third of that, so the same total |
+| Damage per arrow | 3× the bow's special roll | a third of that, so the same total — **v2.3.2849: two-thirds, the volley twice the old arrow** |
 | Shove | 60 px (worker) | 60 px, once: arrows 2–3 send `noKb` |
-| Burn | every 500 ms for 4 s from the arrow | the same burn, from **one** arrow of the three |
+| Burn | every 500 ms for 4 s from the arrow | the same burn, from **one** arrow of the three — **v2.3.2849: for 2.5 s (4 ticks, was 7)** |
 | End | heats back to white, then a 220 px blast at 3× | the embers darken and fade; no blast |
 | A miss | plants, 100 px ground burn, then the blast | three arrows stand in the ground a little apart, one ground burn, no blast |
 | Mana, cooldown, swing clock | one special | one special |
@@ -32,7 +34,7 @@ The rules the three arrows share live in one leaf module, `src/game/bowVolley.js
 
 | Surface | Direction | Shape | Gate / notes |
 |---|---|---|---|
-| `monster_damage.part` | client → worker | `3` on each arrow of the volley | The worker divides its **own** capped special roll by it: `slot: 'ranged'` specials only, integers 2–3, anything else is 1. Honoured unconditionally — it can only lower damage, and three full specials per 1200 ms per monster is what the special lane has admitted since v2.3.1134. Capped first, then split, so three thirds of an over-cap roll never sum past the cap (`combat.js`). |
+| `monster_damage.part` | client → worker | `3` on each arrow of the volley | The worker gives the arrow `BOW_VOLLEY_WORTH / part` of its **own** capped special roll (a third in v2.3.2848, two-thirds since v2.3.2849): `slot: 'ranged'` specials only, integers 2–3, anything else is 1. Honoured unconditionally — it can only lower damage, and three full specials per 1200 ms per monster is what the special lane has admitted since v2.3.1134. Capped first, then split, so three thirds of an over-cap roll never sum past the cap (`combat.js`). |
 | `monster_damage.noKb` | client → worker | `true` on arrows 2–3 into a monster the volley already hit | The v2.3.1435 flag the burn ticks already use. Cheat-neutral: a shove only helps the player. |
 | `caps.bowvolley` | worker → client (`state_sync`) | `true` | The client fires the volley only when it is advertised. **Lower case on purpose** — see the kill switch. |
 | `arrow_blast` | client → worker | unchanged `{zone, x, y}` | Refused as `retired` (first gate, silent, counted in the operator view's `arrowBlast`) while the volley is live (`_bowVolleyLive`). |
@@ -55,6 +57,7 @@ The name is lower case because the admin route only accepts `/^[a-z0-9_]{1,32}$/
 
 ## Balance notes
 
+- **v2.3.2849:** the volley lands ~60 up front and burns ~40 more (a fresh character), where v2.3.2848 landed ~30 and burned ~71 — the same ~100, most of it now in the hit. Measured through the worker's handler; see specials-rebalance.md.
 - **Expected damage is unchanged**; the spread is narrower. Each arrow rolls its own variance and its own crit, so the volley's total averages the old arrow's with less swing — the steady-DPS weapon beside the staff's big hits. Live, on a worker: three hits of 10 + 11 + 9 where the client predicted 11 each (mp-bowvolley).
 - **Overkill waste drops.** If the first arrow kills, the other two fly on to what is behind it, where the old arrow's whole 3× landed on one target.
 - **PvP:** each arrow's `player_attack` carries a third as its `dmgBase` (the client's own number, clamped by the worker), so the total is the same; the PvP special lane also admits 3 per 1200 ms. One real difference: a **blocked** volley costs the blocker's stamina three times (once per arrow), where the one arrow cost it once.

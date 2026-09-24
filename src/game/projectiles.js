@@ -398,8 +398,12 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
        orbCrashFx, the one a bolt stopped by a prop uses too; v2.3.2841: which
        carries the staff cast's restyle -- pixel rings, and the hot-to-cool
        burst in place of the 22 flat dots.  v2.3.2842: the one-bolt special's
-       crash runs bigger (`big`). */
-    orbCrashFx(S, tx, ty, fx.orbColor, { elem: fx.elem, vdx: vdx, vdy: vdy, big: !!fx.bigBolt });
+       crash runs bigger (`big`).  v2.3.2849: and it EXPLODES -- the worker
+       hits every other monster within STAFF_BIG_BOLT_BLAST_PX (x Detonation,
+       the same staffAoeMult it scales by), so the crash draws that reach as a
+       ring: the area you see is the area that was hit. */
+    orbCrashFx(S, tx, ty, fx.orbColor, { elem: fx.elem, vdx: vdx, vdy: vdy, big: !!fx.bigBolt,
+      blastR: fx.bigBolt ? STAFF_BIG_BOLT_BLAST_PX * staffAoeMult(S.rpg || {}) : 0 });
   }
   if (fx.stub) {
     if (fx.snap) {
@@ -612,6 +616,7 @@ import {
   BOW_RANGE_PX, /* v2.3.2448: the arrow's plant cap, shared with the sight stream */
   toDisplayDamage, /* v2.3.2520: the display damage scale */
   STAFF_BIG_BOLT_SCALE, /* v2.3.2842: the one-bolt special's drawn + hit size */
+  STAFF_BIG_BOLT_BLAST_PX, /* v2.3.2849: how far its explosion reaches */
 } from '@/data/index.js';
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
@@ -619,7 +624,7 @@ import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2845: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */ } from '@/game/combatHelpers.js';
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
-import { BOW_VOLLEY, burnT0, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2848: the special's three arrows share one train, one burn and one shove */
+import { BOW_VOLLEY, burnT0, burnLifeMs, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2848: the special's three arrows share one train, one burn and one shove; v2.3.2849: + its burn length */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -764,7 +769,7 @@ export function updateArrows(S, deps) {
               /* v2.3.2848: a volley's arrows live on the VOLLEY's clock, from
                  its first arrival, and burn out together (bowVolley.js) */
               var _sLife = Date.now() - burnT0(a);
-              if (_sLife >= 4000 || !_sm || !_sm.alive || _sm.curHp <= 0) {
+              if (_sLife >= burnLifeMs(a) || !_sm || !_sm.alive || _sm.curHp <= 0) {   /* v2.3.2849: a volley burns 2.5 s, a lone arrow 4 */
                 /* v2.3.2844: a monster that died while the arrow was still
                    flying in still shows it landing, where the arrow is */
                 if (a._landFx && _sm) {
@@ -890,7 +895,7 @@ export function updateArrows(S, deps) {
                  damage was captured at fire time (a.baseDmg) so a weapon swap
                  can't change it; server mode sends a normal ranged hit and
                  lets the worker roll the authoritative number. */
-              var _pLife = (a.isSpecial && !a.isStaff) ? 4000 : 2000;
+              var _pLife = (a.isSpecial && !a.isStaff) ? burnLifeMs(a) : 2000;   /* v2.3.2849: a volley's 2.5 s, a lone arrow's 4 */
               if (a.isSpecial && !a.isStaff && S.monsters && _pAge < _pLife) {
                 /* v2.3.2848: one ground hazard per volley, on the volley's
                    cadence -- the stuck branch's rule, above */
@@ -1502,7 +1507,7 @@ export function updateArrows(S, deps) {
                     /* v2.3.2842: the one-bolt staff special carries the three
                        orbs it replaced -- the worker rolls that many special
                        hits and sums them into ONE monster_hit (combat.js).
-                       Only ever > 1 on a bolt born under caps.bigOrb; left
+                       Only ever > 1 on a bolt born under caps.bigorb; left
                        undefined otherwise, which JSON drops from the wire. */
                     orbs: a.orbs > 1 ? a.orbs : undefined
                   }});

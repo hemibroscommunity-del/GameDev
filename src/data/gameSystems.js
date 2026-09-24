@@ -2805,10 +2805,22 @@ export const STAFF_RANGE_PX = 675;
    would have been a third of the special.  The bolt says `orbs: 3` on its
    monster_damage and the worker rolls three and sums them into ONE hit and ONE
    number (combat.js), inside the same special lane that admitted the three
-   orbs.  Gated on caps.bigOrb: against an older worker the special stays the
+   orbs.  Gated on caps.bigorb: against an older worker the special stays the
    three-orb volley, because that worker would read one bolt as one orb. */
 export const STAFF_BIG_BOLT_SCALE = 1.7;
 export const STAFF_BIG_BOLT_ORBS = 3;
+/* ═══ v2.3.2849: ...AND IT IS ONE BIG ROLL, THEN IT EXPLODES ═══
+   Owner, on rebalancing the specials: the staff should do the most damage to
+   a single monster "but with high variance (can have lowest damage hits)".
+   The worker rolls the bolt ONCE from this band (x the special's 2x x the
+   three orbs) instead of summing three draws from the basic bolt's 0.5-1.65
+   -- summing had made it swing LESS than one orb -- and then blasts every
+   other monster within BLAST_PX (x Detonation) for a third of that roll.
+   MIRROR of server/src/combat.js STAFF_BOLT: the worker's copy is the damage;
+   this one is the local prediction (client-only zones, a duel's dmgBase) and
+   the size of the blast ring the crash draws. */
+export const STAFF_BIG_BOLT_BAND = [0.3, 2.5];
+export const STAFF_BIG_BOLT_BLAST_PX = 90;
 /* ═══ v2.3.2448: THE ARROW'S OWN CAP, NAMED ═══
    675 has been a literal in projectiles.js since v2.3.1335 ("bow range -25%,
    900 -> 675") and the paragraph above already leans on it ("675 IS THE
@@ -5542,13 +5554,16 @@ export function calcMoveSpeed(agility, swiftnessPts) {
    special's own damage follows the weapon — same prog3DmgTerm a normal hit
    uses, which is what keeps this prediction agreeing with the worker's
    _computeAttackDamage.  The legacy Mind branch stays for pre-prog3 saves. */
-export function calcSpecialDmg(weaponType, rpg, tierMult, wpn) {
+/* v2.3.2849: `band` -- draw from this [lo, hi] instead of the weapon's own
+   (the big staff bolt's STAFF_BIG_BOLT_BAND); omitted, exactly as before. */
+export function calcSpecialDmg(weaponType, rpg, tierMult, wpn, band) {
   var w = WEAPON_TYPES[weaponType];
   if (!w) return 0;
   var mind = (rpg && rpg.mind) || 0;
   var _p3s = (rpg && prog3Live(rpg)) ? rpg : null;
   var _term = _p3s ? prog3DmgTerm(_p3s, weaponType) : mind * 0.1667;
   var base = (weaponEffBase(w.base, wpn) + _term) * (_p3s ? prog3PowerMult(_p3s, prog3CatFor(weaponType)) : 1) * weaponTierFactor(tierMult || 1) * weaponQualityMult(wpn); // baseline-10: 0.8 ÷ 4.8; v2.3.2680: × Power; v2.3.2664: tier factor + grade
+  if (band && band.length === 2) return base * (band[0] + Math.random() * (band[1] - band[0]));
   if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.15);
   if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);

@@ -148,7 +148,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
-  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigOrb' /* v2.3.2842 */, 'blockScale', 'botfp', 'broVerify',
+  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'broVerify',
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
@@ -177,10 +177,10 @@ const CAP_NOTES = {
   storeGearRef: 'naming a piece for sale by its receipt number instead of its description',
   storeOffer: 'making a gold offer on a listing, with the gold held until the seller answers',
   storeChat: 'messaging the seller about one listing, in a thread attached to it',
-  bigOrb: 'the staff special as one big bolt (without it: the three-orb volley)',
+  bigorb: 'the staff special as one big, swingy bolt that explodes (v2.3.2849; without it: the three-orb volley, no blast)',
   blockScale: 'the shield block count',
   zoneDepth: 'Wind Dunes perspective — things shrink and slow toward the north edge',
-  bowvolley: 'the bow special as three white-hot arrows, a third of the damage each, no blast (without it: one arrow and the blast)',
+  bowvolley: 'the bow special as three white-hot arrows, two-thirds of a special each, a 2.5 s burn, no blast (v2.3.2849; without it: one arrow, its 4 s burn and the blast)',
 };
 
 export const DevPanel = ({ onClose }) => {

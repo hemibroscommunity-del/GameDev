@@ -71,6 +71,7 @@
  * nothing of the renderer's.
  */
 import { Container, Sprite, Texture, Rectangle } from 'pixi.js';
+import { BOW_VOLLEY } from '@/game/bowVolley.js';   /* v2.3.2849: a volley burns for its own BURN_MS */
 
 /* World px.  = the painted special's drawn length; see the header. */
 export const HOT_LEN = 62.8;
@@ -85,7 +86,7 @@ const PAD = 20;                     /* aura padding, texels, each side */
 const BLK = 2;                      /* aura block, texels -- ~1 world px at HOT_LEN */
 const MAX_SPARKS = 240;
 const EMBER_N = 4;                  /* smoulder frames: the still heat and three cooler steps */
-const LIFE_MS = 4000;               /* a stuck or planted special's life (projectiles.js) */
+const LIFE_MS = 4000;               /* a stuck or planted special's life (projectiles.js) -- the lone arrow's, which ends in the blast */
 const TICK_MS = 500;                /* its chip / ground ticks */
 
 /* The heated arrow's palette, coolest first: char, dark red, red-orange,
@@ -140,9 +141,11 @@ export function smoulderHeat(now, since, tickBase, blast) {
 }
 /* v2.3.2848: 0 -> 1 across the stretch after the burn's last tick (at
    LIFE_MS - TICK_MS; its flare has faded by then) to the end of the arrow's
-   life -- how far a volley arrow has burnt out. */
+   life -- how far a volley arrow has burnt out.  v2.3.2849: a volley's life
+   is its own BURN_MS (2.5 s) now, not the lone arrow's 4 s; only a volley
+   arrow burns out (the lone one ends in the blast), so this reads that. */
 function burnOut(t) {
-  return smoothstep(LIFE_MS - 450, LIFE_MS - 30, t);
+  return smoothstep(BOW_VOLLEY.BURN_MS - 450, BOW_VOLLEY.BURN_MS - 30, t);
 }
 /** v2.3.2848: how much of a burnt-out arrow is left to see, 1 -> 0 at the
  *  end of its life (1 while it still ends in a blast, which is its exit). */
