@@ -1742,7 +1742,7 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.1011: another player dodged/lunged/retreated -- mirror the
                  local _dodgeRoll shape so the remote render shows the move. */
               if (payload.id && _peerInZone(S, payload.id)) {
-                /* v2.3.2892: + how long THEIR roll lasts (game/dodge.js
+                /* v2.3.2898: + how long THEIR roll lasts (game/dodge.js
                    dodgeWindowMs), so their tumble plays over their window
                    rather than a flat 300 ms.  Clamped: the real range is 250-700,
                    and a forged or garbled value must not freeze a figure in a

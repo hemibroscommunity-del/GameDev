@@ -1,4 +1,4 @@
-/* ═══ v2.3.2892: A PEER'S ROLL LASTS AS LONG AS THEIRS DOES ═══
+/* ═══ v2.3.2898: A PEER'S ROLL LASTS AS LONG AS THEIRS DOES ═══
  *
  * Owner: "check all other broadcasted player animations to make sure they
  * match what your character does client side so there's no discrepancies."
