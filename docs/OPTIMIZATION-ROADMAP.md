@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1-6, 9-16 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2874); the rest is the ranked backlog
+### Items 1-6, 9-16 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2876); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -556,7 +556,7 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    served files; freed on exit and loadable again.
 
 16. ~~**The masked (armoured) body bakes — ~25% painted, 7.6-13.8 MB per worn
-   set, and the equip stutter they cost**~~ **SHIPPED, v2.3.2871-2874.**
+   set, and the equip stutter they cost**~~ **SHIPPED, v2.3.2871-2876.**
    Owner: "whenever I put on a piece of armor like legs or torso the game would
    noticeably stutter". Measured (`tools/qa/qa-equip-stutter.mjs`, 4x CPU
    throttle, equip then run): the frame rate halved for seconds, all of it the
@@ -592,9 +592,20 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    identical to the inline bake, four combinations (qa-bake-ident; the one
    extra frame some runs cache is the same image `main` caches on some of its
    own runs -- timing, not pixels).
-   Not covered: other players' equips (their bakes run inline on YOUR phone
-   the moment their figure needs a frame) and the handful of frames the
-   renderer asks for before the worker answers.
+   (f) v2.3.2876, OTHER PLAYERS' armour too (owner: "make it so that other
+   players don't slow down your game when they put on armor"). A peer's
+   masked frames were baked inline on YOUR main thread the first time their
+   figure needed each one. Now a change in what an on-screen peer wears
+   queues their stand + jog frames to the worker (one peer at a time), and a
+   frame not yet delivered is sent there while the peer keeps its last frame
+   of the same pose + facing (`_peerMaskedFrame`) -- a one-or-two-frame
+   stride hold instead of a stall of your whole game. First sight and a new
+   facing still bake inline, so nothing is drawn that was not before.
+   Measured (observer at 4x throttle, a peer puts on a chest piece and runs
+   alongside): peer bakes on the observer's main thread 53 -> 9 (104 done in
+   the worker, 15 frames held).
+   Not covered: the few frames the renderer needs before the worker answers
+   on a first sighting or a new facing.
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
