@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  peerattackink: () => import('./mp-peerattackink.mjs'), /* v2.3.2863: another player's swing and bow shot wear their drawings -- both sides, the back from behind, and the bow no longer borrows the sword's frames */
   poseskin: () => import('./mp-poseskin.mjs'), /* v2.3.2861: hit, mining and dodge wear the walking skin on a player who never picked one -- body and the head drawn over armour, baked before the first hit */
   headink: () => import('./mp-headink.mjs'), /* v2.3.2862: the face tattoo stays on under the head overlays -- pickup, a hit or mining in armour, the full-steel knight, both sides and the back of the head, and a watcher's view */
   townscenery: () => import('./mp-townscenery.mjs'), /* v2.3.2859: town's NPCs + buildings load and free with town, and town is never seen without them */
