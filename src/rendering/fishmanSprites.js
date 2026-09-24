@@ -7,9 +7,9 @@
  * facing in its source orientation.
  */
 
-import { Rectangle, Texture } from 'pixi.js';
 
-import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2272: zone art must be releasable */
+
+import { loadTracked, loadTrackedStrip, unloadBundle } from './zoneTextures.js'; /* v2.3.2272: zone art must be releasable */
 const FRAME_W = 256;
 const FRAME_H = 256;
 const SPRITE_VERSION = '2.3.135';
@@ -32,16 +32,9 @@ let loadPromise = null;
 
 async function loadStrip(url, key) {
   try {
-    const tex = await loadTracked('fishman', url);
-    if (!tex || !tex.source) return;
-    const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
-    const frames = [];
-    for (let i = 0; i < count; i++) {
-      frames.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
-      }));
-    }
+    /* v2.3.2860: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    const frames = await loadTrackedStrip('fishman', url, FRAME_W, FRAME_H);
+    if (!frames.length) return;
     walkSheets[key] = { frames };
   } catch {
     /* missing strip -- renderer falls back to fodder branch */

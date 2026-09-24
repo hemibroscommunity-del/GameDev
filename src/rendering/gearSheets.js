@@ -342,6 +342,29 @@ export function loadCroppedStrip(url, n) {
  * packed crop no longer encodes (pixiRenderer bodyFigureProbe's frameIx).
  * A sheet the packer declines comes back as plain slices, as before.  The
  * caller keeps setting scaleMode / mipmaps on the returned source. */
+/* ═══ v2.3.2860: THE BOX A CROPPED FRAME WOULD HAVE HAD ═══
+ * Pixi bounds a trimmed sprite by its TRIM (updateQuadBounds), not its orig:
+ * getBounds() on a cropped frame is the painted art, not the whole cell.
+ * Everything that DRAWS is unaffected -- that is the point of orig/trim -- but
+ * code that sizes something else off a figure's box (the death crumble's
+ * flakes and skeleton, the night glow on a monster, the stun ring over one)
+ * would shrink and shift with the crop.  frameBounds is getBounds() grown back
+ * out to the whole frame, so those read what they read uncropped.  Flips are
+ * honoured (a mirrored sprite's trim sits on the other side); rotation is not
+ * (no cropped figure rotates).  Returns {x, y, width, height, minX, minY,
+ * maxX, maxY} -- the Bounds fields its callers use. */
+export function frameBounds(spr) {
+  const b = spr.getBounds();
+  const t = spr.texture, tr = t && t.trim, o = t && t.orig;
+  if (!tr || !o || !tr.width || !tr.height || !b.width || !b.height) return b;
+  const sx = b.width / tr.width, sy = b.height / tr.height;
+  const wt = spr.worldTransform;
+  const left = wt && wt.a < 0 ? o.width - tr.x - tr.width : tr.x;
+  const top = wt && wt.d < 0 ? o.height - tr.y - tr.height : tr.y;
+  const x = b.x - left * sx, y = b.y - top * sy, w = o.width * sx, h = o.height * sy;
+  return { x, y, width: w, height: h, minX: x, minY: y, maxX: x + w, maxY: y + h };
+}
+
 export function sliceCropped(cv, fw, fh, n) {
   /* QA only (mp-geartrim sets __btTrimVerify before load): keep the whole
      sheet so the scenario can prove the crops byte-identical */
