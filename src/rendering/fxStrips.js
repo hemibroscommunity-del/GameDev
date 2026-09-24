@@ -105,6 +105,10 @@ export const BLOCK_BARS = {
 
 export const STUN_SPIN_MS = 700;
 export const WHIRL_FX_MS = 520;
+/* v2.3.2824: the painted spiral's outer radius in its 256px cell (frames 3-4,
+   the widest, measured off whirl-vortex-v1.png).  The renderer scales by
+   radius / this so the spiral's edge lands on the circle the worker tests. */
+export const WHIRL_ART_R = 106;
 
 const _pending = [];
 _pending.push(Assets.load(PORTAL_BEAM.url).then((tex) => {

@@ -22,6 +22,13 @@ export const GEM_DROP_RATES = {
 /* ═══ GOLD NUGGET + AMULET SYSTEM ═══ */
 export const GOLD_NUGGET_DROP = { lifeSkill: 0.001, monsterKill: 0.0001 };
 export const NUGGETS_PER_BAR = 5;
+/* v2.3.2822: smelting ore into bars at the blacksmith.  MIRROR of
+   server/src/smelting.js SMELT.RECIPES -- the worker settles every smelt from
+   its own copy; this one only draws the Smelting rows (cost, XP, level).
+   mirror-audit pins the two together. */
+export const SMELT_RECIPES = {
+  bar_copper: { ore: 'ore_copper_ore', oreCost: 5, minLvl: 1, xp: 400, name: 'Copper Bar', oreName: 'Copper Ore' },
+};
 
 export const AMULET_TIERS = {
   simple: { minLvl: 1,  label: 'Simple',  bars: 1,  goldCost: 50,   basePower: 1.0, statReq: 0,   desc: 'A thin gold chain' },

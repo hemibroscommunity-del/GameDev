@@ -104,7 +104,7 @@ function statusFor(id, S) {
       const g = R.guild || S?._guild;
       return g && g.name ? g.name : 'Not joined · profession guilds';
     }
-    case 'settings': return 'Audio · Controls · Login Key · Feedback';
+    case 'settings': return 'Sound · Controls · Login Key · Feedback · Privacy';   /* v2.3.2820: + volume sliders and the About page */
     /* v2.3.2038: real state, like every line above -- a guest tab genuinely
        has no key, and saying "save it somewhere safe" there would be a lie. */
     case 'account': {

@@ -220,6 +220,16 @@ export const STAM_ABILITIES = {
        dropped half a swarm inside the new reach, which is exactly the "it has
        virtually no effect" complaint in a new form. */
     maxTargets: 16,
+    /* ═══ v2.3.2824: A TWO-SECOND WINDUP YOU CAN AIM ═══
+       Owner: "I want whirlwind's ability to be delayed by about 2 seconds
+       after you press it so a ring around you will display ... so you can
+       tactically position yourself to put the ring around a cluster of
+       enemies (know exactly what effective range you'll have)."
+       The press pays (stamina + cooldown) and ARMS the cast; the circle is
+       measured from where the worker has you when the windup ends
+       (_tickAbilityWindups), so walking during the ring is the whole point.
+       Kill switch: `whirlWindup: false` in liveflags goes back to instant. */
+    windupMs: 2000,
   },
 };
 
@@ -604,6 +614,61 @@ export const abilityMethods = {
     ps.stamina = Math.max(0, have - cost);
     ps._abilCd[kind] = now + cfg.cooldownMs;
 
+    /* v2.3.2824: a windup ability ARMS here and strikes on the tick that
+       ends the windup (see STAM_ABILITIES.whirl.windupMs).  Everyone in the
+       zone is told, so the ring shows over the caster on every screen. */
+    if (cfg.windupMs > 0 && !this._abilWindupOff()) {
+      if (!this._abilPending) this._abilPending = new Map();
+      this._abilPending.set(session.id, { kind, fireAt: now + cfg.windupMs, zone: ps.z, cost });
+      this.eventBuffer.push({
+        type: 'ability_windup',
+        payload: { playerId: session.id, kind, zone: ps.z, ms: cfg.windupMs, radius: cfg.radius },
+      });
+      this._saveRpgPools(session.id, ps);
+      if (ws) this._sendPlayerState(ws, session.id);
+      return;
+    }
+    this._abilityResolve(session.id, ps, kind, cfg, payload, cost);
+  },
+
+  /* v2.3.2824: the kill switch, read the storeGear way. */
+  _abilWindupOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'whirlWindup') && !f.whirlWindup);
+  },
+
+  /* v2.3.2824: fire every windup whose time has come (tick.js).  Measured
+     from the caster's position NOW, not at the press.  A caster who died,
+     left, or changed zone during the windup loses the cast -- it was paid
+     for at the press, the same rule a whiff plays by. */
+  _tickAbilityWindups(now) {
+    if (!this._abilPending || this._abilPending.size === 0) return;
+    for (const [sid, pend] of this._abilPending) {
+      if (now < pend.fireAt) continue;
+      this._abilPending.delete(sid);
+      const ps = this.playerState[sid];
+      if (!ps || ps.dying || ps.disconnected || ps.z !== pend.zone) continue;
+      if (!Object.prototype.hasOwnProperty.call(STAM_ABILITIES, pend.kind)) continue;
+      this._abilityResolve(sid, ps, pend.kind, STAM_ABILITIES[pend.kind], null, pend.cost);
+    }
+  },
+
+  /* The strike half of a cast: find the targets from the caster's position
+     and hit them.  Split out of _handleAbility at v2.3.2824 so a windup
+     ability can run it later, from the tick. */
+  _abilityResolve(sid, ps, kind, cfg, payload, cost) {
+    const session = { id: sid };
+    const ws = this._wsBySessionId(sid);
+    const reject = (reason, extra) => {
+      if (!ws) return;
+      try {
+        ws.send(JSON.stringify({
+          type: 'ability_rejected',
+          payload: { kind, reason, ...(extra || {}) },
+        }));
+      } catch (e) {}
+    };
+    ps._abilFrom = { x: ps.x || 0, y: ps.y || 0, at: Date.now(), kind };
     const zone = ps.z;
     const monsters = (zone && this.monsters[zone]) || [];
     const inRange = [];
