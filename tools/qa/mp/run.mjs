@@ -215,6 +215,7 @@ const SCENARIOS = {
   hpscale: () => import('./mp-hpscale.mjs'), /* v2.3.2572: every HP readout reads the same number */
   monsterplate: () => import('./mp-monsterplate.mjs'), /* v2.3.1918: monsters get the player's name plate */
   chatfont: () => import('./mp-chatfont.mjs'), /* v2.3.1912: the chat font, measured on the glass */
+  chatbubble: () => import('./mp-chatbubble.mjs'), /* v2.3.2896: no Send button (the phone's key sends), a long word wraps inside the bubble, and the point sits over the name plate -- both screens */
   afk: () => import('./mp-afk.mjs'), /* v2.3.1913: idle characters log out after 2 min */
   tutgrant: () => import('./mp-tutgrant.mjs'), /* v2.3.1901: the first quest's sword + shield */
   skillup: () => import('./mp-skillup.mjs'), /* v2.3.1915: life-skill level celebration; re-aimed v2.3.2591 at the owner art burst + the skill icon in the medallion */
