@@ -1,4 +1,4 @@
-/* ═══ v2.3.2824: THE FACE TATTOO STAYS ON UNDER THE HEAD OVERLAYS ═══
+/* ═══ v2.3.2833: THE FACE TATTOO STAYS ON UNDER THE HEAD OVERLAYS ═══
  *
  * Owner: "Yea do woodcutting and missing ones."  The missing ones started
  * here: the game draws a separate HEAD over your own on every loot pickup,

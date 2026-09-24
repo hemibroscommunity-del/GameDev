@@ -1,4 +1,4 @@
-# The face tattoo stays on under the head overlays (v2.3.2824, v2.3.2830-2831)
+# The face tattoo stays on under the head overlays (v2.3.2830-2831, v2.3.2833)
 
 Owner: *"Yea do woodcutting and missing ones."* This is the first of the
 missing ones.

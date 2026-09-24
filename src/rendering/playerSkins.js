@@ -1545,7 +1545,7 @@ function _pickupHeadCap() {
      thrash cycle. */
   const _localPrefix = (_skinStore.get() || 'default') + '/' + (_pantsStore.get() || 'default') + '/' + (_shoesStore.get() || 'default');
   for (const k of keys) {
-    /* v2.3.2824: '|' OR '/es:' after the combo -- an eye style (v2.3.2643)
+    /* v2.3.2833: '|' OR '/es:' after the combo -- an eye style (v2.3.2643)
        puts its segment there, and the old '|'-only prefix left a styled
        player's own heads first in line for eviction. */
     if (k.startsWith(_localPrefix + '|') || k.startsWith(_localPrefix + '/es:')) continue;
@@ -1564,7 +1564,7 @@ if (typeof window !== 'undefined') {
   window.__btHeadTrim = () => ({ ..._headTrimStats });
   window.__btHeadFrames = (key) => _headTrimFrames[key] || null;
 }
-/* ═══ v2.3.2824: THE FACE TATTOO RIDES THE HEAD OVERLAYS ═══
+/* ═══ v2.3.2833: THE FACE TATTOO RIDES THE HEAD OVERLAYS ═══
  * These sheets are drawn OVER your head -- on every loot pickup, and while
  * mining, taking a hit or jogging in the full steel set -- and they were baked
  * with no drawings at all, so a face tattoo vanished for exactly as long as one
@@ -1619,7 +1619,7 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, 
        on a knight, which is the v2.3.1788 shape of omission exactly. */
     const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H,
       undefined, undefined, undefined, undefined, undefined, eyeBlank || null);
-    if (art && artHasInk(art.tattooFace)) _stampHeadInk(full, img, art);   /* v2.3.2824 */
+    if (art && artHasInk(art.tattooFace)) _stampHeadInk(full, img, art);   /* v2.3.2833 */
     const cv = document.createElement('canvas');
     cv.width = Math.max(1, Math.round(full.width / HEAD_DS));
     cv.height = Math.max(1, Math.round(full.height / HEAD_DS));
@@ -1696,7 +1696,7 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
   if (pose !== 'pickup' && pose !== 'jog' && pose !== 'hit' && pose !== 'mine') return null;
   const skinT = poseSkinTarget(skinTarget(skinId), pose), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);   /* v2.3.2831: poseSkinTarget */
   const blank = eyeBlankForSheet(`${pose}-${dir}-head`, eyeStyleId);   /* v2.3.2643 */
-  /* v2.3.2824: the drawings, resolved for this facing exactly as the body
+  /* v2.3.2833: the drawings, resolved for this facing exactly as the body
      sheet resolves them -- a back-of-head sheet (hit-north) takes the back of
      the head's canvas, not the face's. */
   const a = art ? artForFacing(art, dir) : null;
@@ -1827,7 +1827,7 @@ export function preloadBodyAll() {
      moment the player starts a gather.  The sheet is 1792x128 on disk, so at
      DISPLAY_DS=2 this is a few hundred KB. */
   prewarm('mine', 'south');
-  /* v2.3.2824: through _headSheetKey, so it is the key getPickupHeadFrame will
+  /* v2.3.2833: through _headSheetKey, so it is the key getPickupHeadFrame will
      ask for.  It built its own and left out the eye style (v2.3.2643), so a
      styled player's prewarm baked a sheet nothing ever read and the first
      pickup baked the real one mid-play; now it carries the drawings too. */
@@ -1855,7 +1855,7 @@ export function preloadJogHeadOverlays() {
      the first hit taken, which is exactly when it is being looked at. */
   for (const dir of ['south', 'southwest', 'east', 'northeast', 'north']) want.push(['hit', dir]);
   want.push(['mine', 'south']);
-  /* v2.3.2824: with the local drawings, and the mirrored bake as well for the
+  /* v2.3.2833: with the local drawings, and the mirrored bake as well for the
      directions that are also drawn flipped (west is east flipped, and so on)
      -- the same pair preloadBodyVariant bakes for the body.  A face drawing
      that is its own mirror image gives both the same key, so it bakes once. */
@@ -1937,7 +1937,7 @@ function _dropArtSheets() {
     }
     delete _bodySheets[key];
   }
-  /* v2.3.2824: and the head overlays that carried a face drawing.  Destroyed
+  /* v2.3.2833: and the head overlays that carried a face drawing.  Destroyed
      on the same 30 s delay _pickupHeadCap uses: one of them may be on screen
      this frame, over your head. */
   for (const key of Object.keys(_pickupHeadSheets)) {
@@ -1948,7 +1948,7 @@ function _dropArtSheets() {
     if (src) setTimeout(() => { try { src.destroy(); } catch (e) { /* already gone */ } }, 30000);
   }
 }
-/* v2.3.2824: the local player's head overlays again, after a drawing edit
+/* v2.3.2833: the local player's head overlays again, after a drawing edit
    dropped the ones that carried the old face (_dropArtSheets): the pickup head
    preloadBodyAll bakes, and the jog / hit / mine ones preloadJogHeadOverlays
    bakes.  Keys already baked are skipped, so an edit that did not touch the
@@ -1969,7 +1969,7 @@ function _onArtChanged() {
   if (_artPrewarmT) clearTimeout(_artPrewarmT);
   _artPrewarmT = setTimeout(() => {
     _artPrewarmT = null; _dropArtSheets(); _prewarmCurrent();
-    /* v2.3.2824: the head overlays too, so the next pickup shows the new
+    /* v2.3.2833: the head overlays too, so the next pickup shows the new
        drawing from its first frame rather than baking it then. */
     try { _prewarmHeadOverlays(); } catch (e) { /* never break a menu */ }
   }, 500);
