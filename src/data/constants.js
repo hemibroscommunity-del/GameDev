@@ -52,7 +52,7 @@ export const WORLD_ZOOM = 3.0;
    spot for the Mine action to be offered. Shared by the marker + the gate. */
 export const MINE_SPOT_R = 42;
 
-/* v2.3.2891: where starting a harvest SEATS you, as an offset from the node
+/* v2.3.2897: where starting a harvest SEATS you, as an offset from the node
    (lifeSkillRewards.startExtraction): mining above the vein so the swing's
    baked rock lands on the ore (v2.3.854), fishing up and right of the spot so
    the rod's line falls into the pond (v2.3.844).  Named here, not left as two

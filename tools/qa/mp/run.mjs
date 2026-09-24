@@ -23,7 +23,6 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  gatherspot: () => import('./mp-gatherspot.mjs'), /* v2.3.2891: a peer's lumberjack stands at the tree and their cook at the fire, where their own screen draws them */
   devarmor: () => import('./mp-devarmor.mjs'), /* v2.3.2875: the admin kit hands out the copper and iron armour sets, into the right bags, wearable */
   monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2870: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */
   sheen: () => import('./mp-sheen.mjs'), /* v2.3.2864: a permanent soft shine on metal behind ?sheen=1 -- off by default, on every frame when on, copper stays copper, the jogging full-set knight too; pictures and its cost */
@@ -366,6 +365,7 @@ const SCENARIOS = {
   zonefx: () => import('./mp-zonefx.mjs'), /* v2.3.1748: what follows you through an exit, and what leaks in */
   firepeer: () => import('./mp-firepeer.mjs'), /* v2.3.2146: is the peer DRAWN while lighting a fire? */
   cookpeer: () => import('./mp-cookpeer.mjs'), /* v2.3.2303: ...and do they wear their clothes while cooking and chopping? */
+  gatherspot: () => import('./mp-gatherspot.mjs'), /* v2.3.2897: a peer's lumberjack stands at the tree and their cook at the fire, where their own screen draws them */
   npctap: () => import('./mp-npctap.mjs'), /* v2.3.2305: tapping a character to talk -- and NOT hitting him */
   remoteanim: () => import('./mp-remoteanim.mjs'), /* v2.3.1749: what the other player sees you doing */
   gearown: () => import('./mp-gearown.mjs'), /* v2.3.1750: armour you have not earned is not offered */
