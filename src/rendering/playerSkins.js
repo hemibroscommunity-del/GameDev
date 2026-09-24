@@ -303,7 +303,7 @@ function _retint(d, i, target, ref) {
    regardless of the chosen skin or shirt color. */
 function _isSkin(r, g, b, a) { return a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25; }
 
-/* ═══ v2.3.2850: THE WHITE OF THE EYE IS NOT SKIN ═══
+/* ═══ v2.3.2859: THE WHITE OF THE EYE IS NOT SKIN ═══
    Owner, on another player's south bow shot: "messed up the eyes".  The eye's
    white is edged with a pale cream where the art blends it into the face --
    (247,210,186) on that sheet -- and _isSkin accepts it (r-g 37, r-b 61).  The
@@ -877,7 +877,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
          pixels are never in shirtPx, so they stay and give the shirt its
          outline + arm definition. */
       d[i] = sf0; d[i + 1] = sf1; d[i + 2] = sf2;
-    } else if (_isSkin(r, g, b, a) && !_isEyeCream(r, g)) {   /* v2.3.2850: not the white of the eye */
+    } else if (_isSkin(r, g, b, a) && !_isEyeCream(r, g)) {   /* v2.3.2859: not the white of the eye */
       if (tattooPx && torsoPx[i >> 2]) tattooPx[i >> 2] = 1;
       if (skinPx) skinPx[i >> 2] = 1;              /* v2.3.1949 */
       if (skinT) _retint(d, i, skinT, SKIN_REF);

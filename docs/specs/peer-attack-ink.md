@@ -1,4 +1,4 @@
-# Another player's swing and bow shot wear their drawings (v2.3.2851)
+# Another player's swing and bow shot wear their drawings (v2.3.2862)
 
 Owner: *"Yea do woodcutting and missing ones."* This is the second of the
 missing ones.
@@ -53,7 +53,7 @@ had before, under the new key. The cache keeps its existing limit of 24 bakes
 cropped (#728), so drawings add at most one bake per sheet per drawn player
 on screen.
 
-## The eyes (v2.3.2850)
+## The eyes (v2.3.2859)
 
 Owner, on the picture above: *"The bottom change on the south bow shot messed up
 the eyes."* It had. The white of each eye is edged with a pale cream where the
