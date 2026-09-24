@@ -23,7 +23,7 @@
  *   2. A coach card never appears while a plate is up, and waits a breath
  *      (PLATE_GAP_MS) after it goes.
  *   3. Coach cards never replace each other back-to-back: one finishes,
- *      the screen is quiet for COACH_GAP_MS (20s since v2.3.2874), then the
+ *      the screen is quiet for COACH_GAP_MS (20s since v2.3.2878), then the
  *      next -- and the first card waits the same after the WELCOME plate.
  *   4. The install card is a "whenever you have a moment" message: only
  *      after INSTALL_AFTER_MS in the world, and only into a quiet screen.
@@ -32,7 +32,7 @@
  */
 
 const PLATE_GAP_MS = 900;
-/* v2.3.2874 (owner: "Put a minimum 20 second timer on the onboarding tutorial
+/* v2.3.2878 (owner: "Put a minimum 20 second timer on the onboarding tutorial
    between pop ups"): 2.6s -> 20s.  Measured from the moment the previous
    onboarding pop-up LEFT the screen -- a coach card, or the WELCOME plate
    (noteOnboardingPlate) -- to the next coach card.  An ordinary quest plate
@@ -52,7 +52,7 @@ const INSTALL_QUIET_MS = 6000;
 let _worldInAt = 0;
 let _coachUp = false;
 let _coachEndAt = 0;
-let _welcomeEndAt = 0;   /* v2.3.2874: when the WELCOME plate leaves */
+let _welcomeEndAt = 0;   /* v2.3.2878: when the WELCOME plate leaves */
 
 /** The WELCOME plate counts as a tutorial pop-up (welcomeBanner.js reports
  *  when it will be gone). */

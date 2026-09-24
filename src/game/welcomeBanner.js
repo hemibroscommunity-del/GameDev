@@ -31,7 +31,7 @@
  * who, the road says where.
  */
 import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js';
-import { noteOnboardingPlate } from '@/ui/onboardingPace.js'; /* v2.3.2874 */
+import { noteOnboardingPlate } from '@/ui/onboardingPace.js'; /* v2.3.2878 */
 
 const SEEN_KEY = 'bt_welcome_seen';
 
@@ -85,7 +85,7 @@ export function maybeShowWelcome(getS) {
     const t0 = Date.now();
     const show = function () {
       try {
-        /* v2.3.2874: the WELCOME plate is the first tutorial pop-up; the coach
+        /* v2.3.2878: the WELCOME plate is the first tutorial pop-up; the coach
            waits its 20s gap after this one too (onboardingPace.js) */
         try {
           const ms = (typeof window !== 'undefined' && window.__questMsgMs) ? window.__questMsgMs('welcome') : 5200;

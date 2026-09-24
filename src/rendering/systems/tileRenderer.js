@@ -134,7 +134,7 @@ const TRAIL_STEP_ARROW = 1.3;   /* tiles between chevrons */
 const TRAIL_STEP_RIBBON = 0.28; /* sampling step, not a gap */
 /* v2.3.2764: one footstep to the next -- a stride is two of these, left and
    right, so this is how far apart consecutive prints land along the road. */
-/* v2.3.2874 (owner: "Make footprint quest leader more spaced out the
+/* v2.3.2878 (owner: "Make footprint quest leader more spaced out the
    footprints are tiny"): 0.62 -> 1.05 tiles between steps, with the prints
    themselves half again as big (_trailSteps LEN) -- a real stride for a
    bigger foot, fewer and clearer marks along the same seven tiles. */
@@ -1484,7 +1484,7 @@ export class TileRenderer {
        canvas, so nothing downloads and there is nothing for the preload
        manifest to wait on. */
     const tex = footprintTexture();
-    /* v2.3.2874: 0.78 -> 1.2 tiles heel to toe and 0.2 -> 0.3 apart ("the
+    /* v2.3.2878: 0.78 -> 1.2 tiles heel to toe and 0.2 -> 0.3 apart ("the
        footprints are tiny"), in step with the longer stride above */
     const LEN = TILE * 1.2;              /* heel to toe tip, world px */
     const SIDE = TILE * 0.3;             /* each foot's offset from the centre line */
