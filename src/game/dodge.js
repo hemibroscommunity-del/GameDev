@@ -10,7 +10,7 @@
    was `var X = function...` in the component; `export var` here keeps the
    bodies byte-identical and the cross-calls resolve within the module. */
 import { staffOrbLife, bowRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: × the RANGE stat */
-import { depthK } from '@/data/zones.js';   /* v2.3.2775 */
+import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
 import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon, rpgBlockSize } from '@/data/index.js';
 import { addBuildUse, pushDmgPopup, lockAimPoint } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -237,14 +237,14 @@ export var doRetreatShot = function (S, R, ang) {
     var slot = R.activeSlot || 'ranged';
     var isStaff = slot === 'staff';
     if (!S.arrows) S.arrows = [];
-    var _dk = depthK(S.currentZone, S.player.y);   /* v2.3.2775: the retreat shot reaches as far as you LOOK */
+    var _dk = depthK(S.currentZone, S.player.y);   /* v2.3.2790: the retreat shot reaches as far as you LOOK */
     var pushArrow = function (a) {
       S.arrows.push({
         /* v2.3.1335: range -25%.  v2.3.2387: the staff's 68 becomes STAFF_LIFE
            (675px, the arrow's cap) -- gameSystems.js has the derivation. */
         ang: a, dist: 14, dmg: shotDmg, life: isStaff ? Math.round(staffOrbLife(R) * _dk) : 90,
         maxLife: isStaff ? Math.round(staffOrbLife(R) * _dk) : 90, hitIds: new Set(), isStaff: isStaff,
-        _rangeMult: (isStaff ? 1 : bowRangeMult(R)) * _dk, /* v2.3.2592: the retreat shot reaches as far as an ordinary arrow; v2.3.2775 x depth */
+        _rangeMult: (isStaff ? 1 : bowRangeMult(R)) * _dk, /* v2.3.2592: the retreat shot reaches as far as an ordinary arrow; v2.3.2790 x depth */
         element: activeWpn.element1 || null, retreatShot: true,
         _shotTs: Date.now()   /* v2.3.2731: the snap roll's timestamp (data/arrowSnap.js) */
       });

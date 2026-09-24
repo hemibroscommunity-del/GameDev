@@ -340,7 +340,7 @@ export const telegraphMethods = {
         return true;
       }
       const targetId = m._tgTarget;
-      const _tgR = m._tgRadius || kit.radius;   /* v2.3.2775: the ring it drew */
+      const _tgR = m._tgRadius || kit.radius;   /* v2.3.2790: the ring it drew */
       m._tgRadius = 0;
       m._tgPhase = null;
       m._tgUntil = 0;
@@ -379,7 +379,7 @@ export const telegraphMethods = {
     if (!kit || m._tgPhase) return false;
     if (now < (m._tgNextAt || 0)) return false;
     if (now <= m.atkCd) return false;              /* respect the basic-swing cadence */
-    /* v2.3.2775: the cast range and the ring shrink with the caster on a
+    /* v2.3.2790: the cast range and the ring shrink with the caster on a
        depth zone (Wind Dunes' north); 1 everywhere else.  The ring is
        REMEMBERED (_tgRadius) so the execute measures the circle the
        telegraph drew, even if a shove moved the caster up or down the
@@ -395,7 +395,7 @@ export const telegraphMethods = {
     m._tgUntil = now + kit.windupMs;
     m._tgAim = { x: ps.x, y: ps.y };              /* proto-ok: fixed-field point */
     m._tgTarget = nearest.id;                     /* the cast owns its target */
-    m._tgRadius = kit.radius * _dk;               /* v2.3.2775 */
+    m._tgRadius = kit.radius * _dk;               /* v2.3.2790 */
     m._attackingUntil = Math.max(m._attackingUntil || 0, now + 100);
     this._monsterAbilityEvent(zoneId, m, kit.kind, 'telegraph', {
       radius: m._tgRadius, ms: kit.windupMs, ax: Math.round(ps.x), ay: Math.round(ps.y),
@@ -521,7 +521,7 @@ export const telegraphMethods = {
      resolve must measure with the same geometry or a swing could start
      from inside a ring it then whiffs against by construction (the
      snowman's relaxed 70/1.5 ring is exactly the case that would break). */
-  /* v2.3.2775: `zoneId` (optional) folds in the zone's depth at the
+  /* v2.3.2790: `zoneId` (optional) folds in the zone's depth at the
      monster's feet -- the tick loop's _atkRange carries the same factor, so
      the stop ring and the whiff ring stay one ring on Wind Dunes' north edge.
      Omitted (the tick.test pairing probe), it is the flat geometry. */
@@ -644,7 +644,7 @@ export const telegraphMethods = {
   _startSlimeBurst(zoneId, m, killerId, slot, now) {
     if (!this._burstsOnDeath(m) || m._burstUntil) return false;
     m._burstUntil = now + SLIME_BURST.SWELL_MS;
-    /* v2.3.2775: the blast is as wide as the swollen body LOOKS -- x the
+    /* v2.3.2790: the blast is as wide as the swollen body LOOKS -- x the
        zone's depth at the slime's feet (1 off Wind Dunes), remembered so the
        detonation measures the ring the swell drew. */
     m._burstR = SLIME_BURST.RADIUS * this._depthK(zoneId, m.y);
@@ -676,7 +676,7 @@ export const telegraphMethods = {
     if (now < m._burstUntil) return true;          /* still swelling */
 
     /* EVERY player in the radius, not just the killer: it is an explosion. */
-    const _bR = m._burstR || SLIME_BURST.RADIUS;   /* v2.3.2775 */
+    const _bR = m._burstR || SLIME_BURST.RADIUS;   /* v2.3.2790 */
     const r2 = _bR * _bR;
     const kit = { kind: 'burst', radius: _bR, dmgMult: 1, flat: SLIME_BURST.DMG };
     let anyHit = false;

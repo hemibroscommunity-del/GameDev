@@ -331,7 +331,7 @@ export const ZONES = {
       thunder: { w:32, h:32, level:[1,2], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },          /* band: [55,80] */
       hollows: { w:32, h:32, level:[1,2], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:6}] },           /* band: [38,58] */
       sky:     { w:32, h:32, level:[1,2], element:'wind',  secondary:'frost', lawless:true, spawns:[{arch:'stalker',count:2},{arch:'hexer',count:2},{arch:'volatile',count:2}],
-                 depth:{ axis:'y', near:1, far:0.42, curve:1 } /* v2.3.2775: the north-south perspective ramp -- MIRROR of src/data/zones.js sky.depth (minus its client-only `preview`), read by depth.js; zonedepth.test holds the two in lockstep */ }, /* band: [38,58] */
+                 depth:{ axis:'y', near:1, far:0.42, curve:1 } /* v2.3.2790: the north-south perspective ramp -- MIRROR of src/data/zones.js sky.depth (minus its client-only `preview`), read by depth.js; zonedepth.test holds the two in lockstep */ }, /* band: [38,58] */
       tidal:   { w:32, h:32, level:[1,2],  element:'water', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:6}] },          /* band: [8,25] */
     };
 

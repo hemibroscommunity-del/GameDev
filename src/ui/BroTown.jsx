@@ -4636,7 +4636,7 @@ export var BroTown = function BroTown(_ref0) {
                the angle is refreshed here rather than only stamped at cast. */
             var _bang = Math.atan2(_bdy, _bdx);
             if (isFinite(_bang)) _bd.angle = _bang;
-            /* v2.3.2775: on Wind Dunes' north edge the dash stops at the
+            /* v2.3.2790: on Wind Dunes' north edge the dash stops at the
                contact range of a body drawn at depthK and zooms at the same
                share of its speed -- the swing it ends in now reaches depthK
                too (monsterCombat _mRm), so a full-size stop would park you
@@ -4935,7 +4935,7 @@ export var BroTown = function BroTown(_ref0) {
             : _arch === 'fodder' ? 8
             : MONSTER_VARIANTS[_arch] ? 14
             : 32;
-          /* v2.3.2775: ...times the zone's depth at the monster's feet.  On
+          /* v2.3.2790: ...times the zone's depth at the monster's feet.  On
              Wind Dunes' north edge a mummy is drawn at 0.42 and the worker
              now measures its reach at 0.42 (server depth.js); a full-size
              disc there would hold you outside that shorter reach -- the
@@ -4946,7 +4946,7 @@ export var BroTown = function BroTown(_ref0) {
           if (_mk == null) _mk = 1;
           return { by: _m.y - _off * _mk, r: _r * _mk };
         };
-        var _hsK = zoneDepthScale(S.currentZone, P.y, TILE);   /* v2.3.2775 */
+        var _hsK = zoneDepthScale(S.currentZone, P.y, TILE);   /* v2.3.2790 */
         var hsM = hs * (_hsK == null ? 1 : _hsK);
         var _monBlock = function (curX, curY, px, py) {
           var ms = S.monsters;

@@ -1,4 +1,4 @@
-/* Wind Dunes depth on the monster AI -- v2.3.2775 (step 2 of 3).
+/* Wind Dunes depth on the monster AI -- v2.3.2790 (step 2 of 3).
  *
  * Owner: "can the objects in the game, player, monsters, etc follow a
  * similar perspective changing pattern the more north on the map they get
@@ -205,7 +205,7 @@ const SOUTH = 980;                              /* k ~ 0.97 */
     A.targetId === 'bp_depth_a', { targetId: A.targetId });
 }
 
-// ── 5b. v2.3.2775: YOUR reach -- the whirlwind circle and its gather ring ──
+// ── 5b. v2.3.2790: YOUR reach -- the whirlwind circle and its gather ring ──
 {
   const castWhirl = async (y, gap) => {
     park(y, 0);                                   /* player at (500, y), A reset */

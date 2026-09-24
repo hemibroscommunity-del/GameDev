@@ -607,7 +607,7 @@ export const abilityMethods = {
     const zone = ps.z;
     const monsters = (zone && this.monsters[zone]) || [];
     const inRange = [];
-    /* ═══ v2.3.2775: THE CIRCLE SHRINKS WITH THE CASTER ═══
+    /* ═══ v2.3.2790: THE CIRCLE SHRINKS WITH THE CASTER ═══
        Owner: "Yes fix my reach."  On Wind Dunes' north edge the caster is
        drawn at 0.42 (depth.js), so the whirlwind's 240px vacuum and the
        bash's 70px shove were circles two and a half times the size of the
@@ -775,7 +775,7 @@ export const abilityMethods = {
        from a shove that exiled it from its attack ring (v2.3.1639); a
        vortex leaves it closer than it started, so charging debt would make
        it drift outward afterwards and undo the gather. */
-    /* v2.3.2775: the gather ring and the shove are x the caster's depth, so
+    /* v2.3.2790: the gather ring and the shove are x the caster's depth, so
        on Wind Dunes' north edge the pack lands inside a sword that now
        reaches 0.42 (and a bash shoves as far as it looks).  1 elsewhere. */
     const _strK = this._depthK(zoneId, ps.y);

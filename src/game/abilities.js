@@ -26,7 +26,7 @@
 import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesEnabled,
   prog3CharLevel, getActiveWeapon,
   meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
-import { depthK } from '@/data/zones.js';   /* v2.3.2775 */
+import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
 import { isPlayerDead, pushDmgPopup } from '@/game/combatHelpers.js';
 import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
 import { monsterLock } from '@/game/targeting.js';  /* v2.3.2542: whirlwind wants a fight under way */
@@ -595,7 +595,7 @@ export function applyAbilityStrike(S, kind, targetId) {
      otherwise keep its sweep and bill the same press twice. */
   var aim = resolveCastAngle(S);
   S._abilitySwingUntil = now + 460;
-  var _abDk = depthK(S.currentZone, S.player ? S.player.y : 0);   /* v2.3.2775: the rings are as wide as the (depth-scaled) move */
+  var _abDk = depthK(S.currentZone, S.player ? S.player.y : 0);   /* v2.3.2790: the rings are as wide as the (depth-scaled) move */
   S._abilityFx = { kind: kind, at: now, ang: aim, radius: cfg.radius * _abDk };
   S.swingTimer = now;
   S._swingAng = aim;
