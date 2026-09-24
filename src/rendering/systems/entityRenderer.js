@@ -78,7 +78,7 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -648,9 +648,8 @@ function _ensureTraitLoaded(category, id) {
         .catch(() => { if (attempt < 2) setTimeout(() => _fetchMeta(attempt + 1), [2000, 6000][attempt]); });
     };
     _fetchMeta(0);
-    for (const dir of Object.keys(e.tex)) {
-      _loadTraitDir(e, category, id, dir, 0);
-    }
+    /* v2.3.2776: the per-dir loads are kept, so preloadTraits can await them */
+    e.ready = Promise.allSettled(Object.keys(e.tex).map((dir) => _loadTraitDir(e, category, id, dir, 0)));
   }
   return e;
 }
@@ -674,8 +673,23 @@ function _ensureTraitLoaded(category, id) {
 const _TRAIT_RETRY_MS = [2000, 6000];
 function _loadTraitDir(e, category, id, dir, attempt) {
   const bust = attempt > 0 ? `&r=${attempt}` : '';
-  Assets.load(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}${bust}`)
-    .then(t => {
+  /* ═══ v2.3.2776: CROPPED ═══
+     Owner: "Do all of it" (the memory list).  A trait frame is the whole
+     128/256 body frame with a hat, a beard or a pair of glasses in one corner:
+     measured 2-9% of the texels painted, 11.7 MB of headwear alone across the
+     catalog the loading screen warms.  loadCroppedStrip(url, 1) decodes the
+     file as a plain Image (NOT Assets.load, which would keep the whole frame
+     cached beside the crop), crops it to its art and returns one Texture whose
+     `orig` is the whole frame.  _placeTrait anchors by a fraction of the whole
+     frame and scales by `texture.width` -- both `orig` -- so every hat lands on
+     exactly the pixels it did (TRAPS §106).  Retries and telemetry below are
+     unchanged: a failed decode rejects exactly as the Assets promise did. */
+  /* ...and it RETURNS the load (retries chained in), so preloadTraits can hold
+     the loading screen on exactly this -- it used to Assets.load every trait
+     URL itself, which now would park the whole frames in the Assets cache. */
+  return loadCroppedStrip(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}${bust}`, 1)
+    .then(frames => {
+      const t = frames[0];
       e.tex[dir] = t;
       if (t && t.source) {
         /* match body's linear scaleMode + mipmaps so Lanczos
@@ -699,8 +713,8 @@ function _loadTraitDir(e, category, id, dir, attempt) {
       const designedMissing = e.meta && e.meta.anchors && !e.meta.anchors[dir];
       if (designedMissing) return;
       if (attempt < _TRAIT_RETRY_MS.length) {
-        setTimeout(() => _loadTraitDir(e, category, id, dir, attempt + 1), _TRAIT_RETRY_MS[attempt]);
-        return;
+        return new Promise((res) => setTimeout(res, _TRAIT_RETRY_MS[attempt]))
+          .then(() => _loadTraitDir(e, category, id, dir, attempt + 1));
       }
       try {
         if (window.__spriteLog) console.warn('[sprite] trait dir failed', category, id, dir);
@@ -2175,12 +2189,14 @@ function _bodyRegionTex(bodyTex, region) {
   let m = _regionTexCache.get(bodyTex);
   if (!m) { m = {}; _regionTexCache.set(bodyTex, m); }
   if (!m[region]) {
-    const f = bodyTex.frame; const [r0, r1] = REGION_ROWS[region];
+    /* v2.3.2791: the WHOLE frame's size (`orig`) and gearSheets.subTexture --
+       body frames are cropped now, so `frame` is the crop (TRAPS §106). */
+    const f = bodyTex.orig || bodyTex.frame; const [r0, r1] = REGION_ROWS[region];
     /* v2.3.1120: REGION_ROWS are 256-space; the DISPLAY frame may be downscaled,
        so map the band rows into the actual (possibly smaller) frame height. */
     const _rsc = f.height / 256;
     const rr0 = Math.round(r0 * _rsc), rr1 = Math.round(r1 * _rsc);
-    try { m[region] = new Texture({ source: bodyTex.source, frame: new Rectangle(f.x, f.y + rr0, f.width, rr1 - rr0) }); }
+    try { m[region] = subTexture(bodyTex, 0, rr0, f.width, rr1 - rr0); }
     catch (e) { m[region] = bodyTex; }
   }
   return m[region];
@@ -2202,12 +2218,12 @@ function _bandTex(tex, r0, r1) {
   if (!m) { m = {}; _bandTexCache.set(tex, m); }
   const key = r0 + ':' + r1;
   if (!m[key]) {
-    const f = tex.frame;
+    const f = tex.orig || tex.frame;   /* v2.3.2791: whole frame, see _bodyRegionTex */
     const _rsc = f.height / 256;
     const rr0 = Math.max(0, Math.round(r0 * _rsc));
     const rr1 = Math.min(f.height, Math.round(r1 * _rsc));
     if (rr1 <= rr0) return null;
-    try { m[key] = new Texture({ source: tex.source, frame: new Rectangle(f.x, f.y + rr0, f.width, rr1 - rr0) }); }
+    try { m[key] = subTexture(tex, 0, rr0, f.width, rr1 - rr0); }
     catch (e) { m[key] = null; }
   }
   return m[key];
@@ -2369,8 +2385,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        shades bilinear invents -- the exact hazard spriteScale's file header
        warns about for the recolour pipeline. */
     ctx.imageSmoothingEnabled = false;
-    const bf = bodyTex.frame;
-    ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
+    drawGearFrame(ctx, bodyTex, 0, 0, 256, 256);   /* v2.3.2791: the body frame may be cropped */
     /* head+neck must always stay visible -- the chest plate has a neckline
        opening the body's neck fills.  Find the body figure's neck line (top +
        BODY_NECK_FRAC*height) BEFORE punching so we can restore that band after;
@@ -2429,7 +2444,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
     if (neckY > 0) {                                     // restore the head+neck band
       ctx.save();
       ctx.beginPath(); ctx.rect(0, 0, 256, neckY); ctx.clip();
-      ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
+      drawGearFrame(ctx, bodyTex, 0, 0, 256, 256);   /* v2.3.2791: cropped-frame aware */
       ctx.restore();
     }
     /* v2.3.1123: the fishing rod is baked into the fish-pose body sprite, so the
@@ -3544,11 +3559,13 @@ function _fishTopFrame(bodyTex, rodTex) {
   const hit = _fishTopCache.get(key);
   if (hit) { _fishTopCache.delete(key); _fishTopCache.set(key, hit); return hit; }
   try {
-    const bf = bodyTex.frame;
+    /* v2.3.2791: the WHOLE frame (`orig`), drawn at its crop's offset -- the
+       body frames are cropped now (gearSheets.sliceCropped). */
+    const bf = bodyTex.orig || bodyTex.frame;
     const W = Math.max(1, Math.round(bf.width)), H = Math.max(1, Math.round(bf.height));
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
-    ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, W, H);
+    drawGearFrame(ctx, bodyTex, 0, 0, W, H);
     const img = ctx.getImageData(0, 0, W, H); const d = img.data;
     /* v2.3.2780: the pixels the rod is LOOKED FOR in -- the raw frame's, scaled
        onto this one's grid without smoothing (a blended edge would move the
@@ -4424,10 +4441,12 @@ export function preloadTraits() {
   for (const [category, catalog] of cats) {
     for (const entry of catalog) {
       if (!entry.id || entry.id === 'none') continue;
-      _ensureTraitLoaded(category, entry.id); /* kicks meta + all dirs (retry-guarded) */
-      for (const dir of ['east', 'north', 'northeast', 'south', 'southwest']) {
-        urls.push(`/sprites/traits/${category}/${entry.id}/${dir}.png?v=${TRAIT_VER}`);
-      }
+      /* kicks meta + all dirs (retry-guarded).  v2.3.2776: the gate waits on
+         THOSE loads (e.ready) -- they crop.  It used to Assets.load the same
+         URLs a second time, which would now hold every whole frame in the
+         Assets cache beside its crop. */
+      const e = _ensureTraitLoaded(category, entry.id);
+      if (e && e.ready) urls.push(e.ready);
     }
   }
   /* Local player's live selection: recolors + hair-clip mask + NFT face. */
@@ -4446,7 +4465,7 @@ export function preloadTraits() {
      them EVERY hat/hair/beard is hidden, so they belong on the gate. */
   return Promise.allSettled([
     _ensureBodyData(),
-    ...urls.map((u) => Assets.load(u).catch(() => {})),
+    ...urls,   /* v2.3.2776: the trait loads themselves (allSettled inside) */
     /* v2.3.2682: every species' art (piece, fur twins, per-frame strips) on
        the gate, and the local player's skin build made from it before the
        intro lifts -- the build is a canvas pass, not a load, but it is the
@@ -8287,6 +8306,9 @@ export class EntityRenderer {
            kicks in. */
         const IDLE_AFTER_MS = 600;
         const isIdle = (now - (display._lastDistGrowAt || 0)) > IDLE_AFTER_MS;
+        /* v2.3.2814: published for worldLife, which breathes a monster holding
+           its one idle frame (set false below whenever a strip plays). */
+        display._idlePose = false;
 
         /* Priority chain: transform > hit recoil > attack wind-up >
            idle pose > walk loop.  The transform branch plays a
@@ -8350,6 +8372,7 @@ export class EntityRenderer {
              0 is the first contact pose, which reads as standing
              still better than mid-stride frames. */
           frame = variantSprites.walk.get(facing, 0);
+          display._idlePose = true;
         } else {
           /* Walk loop frame index is driven by ACCUMULATED VISUAL
              displacement rather than wall-clock time.  This guarantees

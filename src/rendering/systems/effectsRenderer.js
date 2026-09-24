@@ -214,7 +214,7 @@ function _bakeChopStrip(img, keyMask, skinT, art, statKey, keepCanvas) {
   return { arr: _sliceStandIn(cv, FW, FH, COUNT, statKey, keepCanvas), cv };
 }
 import { ELEMENTS } from '@/data/elements.js';
-import { ZONES, zonePlayerScale } from '@/data/zones.js';
+import { ZONES, zonePlayerScale, depthK /* v2.3.2790 */ } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
 import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn ON props -- slash marks, arrows standing in the rock */
@@ -249,7 +249,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
 import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2783 a peer's drawings on the lumberjack */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
-import { getGearFrame, packTrimmed, registerGearSource, subTexture } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
+import { getGearFrame, packTrimmed, registerGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
@@ -1124,14 +1124,12 @@ const EFFECT_BURSTS = {
      crown (tools/import_rocks_burst.py) — same 8x256 strip contract. */
   splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1470' },
 };
+/* v2.3.2776: cropped (gearSheets.loadCroppedStrip) -- 2-4% of these strips
+   is painted.  Still on the loading-screen gate via _fxPreload. */
 for (const cfg of Object.values(EFFECT_BURSTS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
-    }
-  }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err));
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err)));
 }
 const FX_BURST_MS = 600;
 
@@ -1172,13 +1170,10 @@ const DEBRIS_BURSTS = {
   ember: { frames: [], h: 72, url: '/sprites/effects/debris-ember-burst-v1.webp?v=2.3.2200' },
 };
 for (const cfg of Object.values(DEBRIS_BURSTS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
-    }
-  }).catch(() => {}); /* art pending — placeholder branch covers it */
+  /* v2.3.2776: cropped, as EFFECT_BURSTS above */
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch(() => {})); /* art pending — placeholder branch covers it */
 }
 /* ═══ v2.3.2217: the thrown snowball's IMPACT ═══
    Owner-supplied art (a 4x2 grid, normalised to the repo's 8-frame strip
@@ -1522,16 +1517,11 @@ const GESTURE_TOOLS = {
     ] },
 };
 for (const cfg of Object.values(GESTURE_TOOLS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * fw, 0, fw, tex.source.height),
-      }));
-    }
-  }).catch((err) => console.warn('[gesture-tools] load failed', cfg.url, err));
+  /* v2.3.2776: cropped (gearSheets.loadCroppedStrip) -- the pickaxe and axe
+     strips are 4% painted.  Still on the loading-screen gate via _fxPreload. */
+  _fxPreload.push(loadCroppedStrip(cfg.url, 8).then((frames) => {
+    for (const t of frames) cfg.frames.push(t);
+  }).catch((err) => console.warn('[gesture-tools] load failed', cfg.url, err)));
 }
 
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is
@@ -5759,9 +5749,13 @@ export class EffectsRenderer {
              monsterCombat applies to its hit test.  `outer` below publishes
              the scaled figure so mp-engage's composition rule (r === outer +
              hitR) keeps meaning "what is drawn is what hits". */
-          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg);
-          const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24);
-          const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23);
+          /* v2.3.2790: your reach x YOUR depth, the body x ITS depth -- the
+             same two factors monsterCombat's hit test now applies, so the
+             ring keeps meaning "what is drawn is what hits" on Wind Dunes. */
+          const _rrMk = depthK(S.currentZone, _rrFy);
+          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);
+          const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24) * _rrMk;
+          const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23) * _rrMk;
           const _rrD = Math.hypot(_rrX - S.player.x, _rrY - S.player.y);
           const _rrIn = _rrD <= _rrR;
           /* The line weight is a SCREEN measurement, v2.3.2255's correction:
@@ -5792,7 +5786,7 @@ export class EffectsRenderer {
              one day fails the harness instead of quietly drawing a ring the
              swing does not honour. */
           this._reachRing = { id: _rrM.id, x: _rrX, y: _rrY, r: _rrR,
-            outer: _rrOuter, hitR: monsterMeleeHitRadius(_rrArch) || 24,
+            outer: _rrOuter, hitR: (monsterMeleeHitRadius(_rrArch) || 24) * _rrMk,   /* v2.3.2790: x its depth, so r === outer + hitR still holds */
             arch: _rrArch, inReach: _rrIn, dist: Math.round(_rrD),
             src: (S.lockedTarget && S.lockedTarget.ref === _rrM) ? 'lock' : 'aggro' };
         }
@@ -6474,7 +6468,7 @@ export class EffectsRenderer {
          Unclipped when the line is empty, deliberately: the stream is then
          doing its other job, which is showing the player where they are
          pointing so they can bring it onto something. */
-      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg);
+      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2790: x depth, as the arrow is */
       const _sightD = (isBow && S._bowSight && typeof S._bowSight.d === 'number')
         ? S._bowSight.d : null;
       const _beamLen = isRanged
@@ -6542,7 +6536,7 @@ export class EffectsRenderer {
              per the charge-pie drop-shadow incident).  Arrow stays below. */
           /* v2.3.2592: the preview and the direction chip sit at the reach
              the RANGE stat gives this swing (monsterCombat's _mRm). */
-          const _mRm = meleeRangeMult(S.rpg);
+          const _mRm = meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2790: x depth, as monsterCombat's _mRm is */
           if (meleeSwinging) {
             const p = Math.max(0, Math.min(1, (now - (S.swingTimer || now)) / SWORD_SWING_MS));
             const a = 0.07 * Math.sin(p * Math.PI);   // swell-in then fade-out -- very subtle (owner: almost unnoticeable)
@@ -11845,6 +11839,11 @@ export class EffectsRenderer {
         if (S._fxBursts.length < 6) {
           S._fxBursts.push({ kind: 'woodchips', t0: now + _chopLead, x: node.x - chopSign * 12, y: node.y - 64, flip: chopSign < 0 ? 1 : -1 });
         }
+        /* v2.3.2812: ...and the tree takes the blow -- worldLife kicks its
+           sway spring away from the axe and shakes needles loose, on the
+           same +200 ms as the bite and the chips. */
+        node._lifeChopAt = now + 200;
+        node._lifeChopDir = chopSign < 0 ? -1 : 1;
       }
       this._chopLastFrame = k;
       /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree

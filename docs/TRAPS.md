@@ -4462,6 +4462,20 @@ which is exactly that old expression for an uncropped frame. And a packed
 crop can sit on any row of its canvas now (packTrimmed lays out shelves when
 that is smaller), so `frame.y` is not 0 either.
 
+**v2.3.2776: and the loader that would keep the whole frame anyway.** The fx
+strips and every trait frame now come from `gearSheets.loadCroppedStrip`,
+which decodes a plain Image. Anything that ALSO `Assets.load`s one of those
+URLs -- a preload, a warm, a "just to be sure" -- puts the full frame back in
+the Assets cache for the session and silently cancels the crop (__btTex will
+show it as a URL row). Preloads await the cropping loader's own promise
+(`preloadTraits` awaits `e.ready`; the fx loops push into `_fxPreload`).
+
+**v2.3.2791: the BODY is cropped too.** `_spriteBody.texture` -- the walking
+body, a recoloured body, or the fullset knight -- is a cropped Texture now.
+Anything that reads it by position follows the same rule: size from `orig`,
+copy through `drawGearFrame`, cut through `subTexture`. And do not recover
+"which frame is this" as `frame.x / frame.width`: read `tex.__btIx`.
+
 ## 107. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2760)
 
 **Tempting:** at `ready`, with no thumb down, loop a generated phase through
@@ -4546,3 +4560,88 @@ es\n' + vertexGlTemplate, fragment: ... }, bits: [globalUniformsBitGl, ...] })`
 then `new GlProgram({ name, ...src })`. GlProgram's `isES300` check keeps the
 version and skips the ES1 defines. The templates are already ES3 syntax. Gate
 the feature on `webGLVersion === 2`.
+
+## 114. A piece cut out of a sprite must OVERLAP the place it was cut (v2.3.2812)
+
+**Tempting:** to make a building's hanging sign swing, erase the sign from the
+building's art and draw it back as its own sprite in exactly the rectangle it
+came from. At rest the two line up to the pixel, so the join cannot show.
+
+**Wrong, and only sometimes.** The renderer is created with `roundPixels`
+(every sprite's quad snapped to whole screen pixels) and it rounds EACH sprite
+on its own. The building and the piece land on fractional screen positions
+that round in different directions as the camera glides, so a one-pixel line
+of whatever is behind -- ground, foliage -- opens along the cut and flickers.
+It was a dark hairline across the top of the auction house's banner in some
+frames and not others, which is the shape that survives a single screenshot
+(§61) and a pixel test that reads one frame.
+
+**The rule:** along the edge a piece HANGS from, the piece also takes the
+building's own pixels for a couple of texels back across the cut, drawn twice
+at rest (tools/cut_prop_parts.py, OVERLAP).  At the hang point a swing moves
+almost nothing, so the doubled pixels never separate visibly. A cut that only
+PARTS a piece from something it touches (the forge sign from its brace, a
+flag's corner from a roof) is marked `'sep'` and gets no overlap -- there the
+piece swings away, and a copied sliver of the neighbour would swing with it.
+
+**And the art tool is the source.** The cut pieces and the `-still` buildings
+are generated from the untouched originals; a repaint is a re-run of the
+tool, never a hand edit of either output.
+
+## 115. A rider at "+1" draws over a figure raised over its prop (v2.3.2816)
+
+**Tempting:** anything drawn ON a prop stands in an overlay at `y = p.y + 1`
+(§104), so it sorts just after the prop. That was true while every child of
+a sorted layer had one key, its own ground row.
+
+**Wrong since v2.3.2748.** The depth pass now RAISES a figure standing in
+front of a building's real base -- beside its side wall, north of its front
+step -- to `base + 0.5`, just over the building. An overlay at `base + 1`
+sorts over that figure. The auction house's scales hang on its left wall, so
+anyone standing at its left corner (a peer, an NPC, a monster) had the scales
+drawn across their body, in front of them, while the wall they hang on was
+correctly behind. No screenshot of the building alone shows it; it needs a
+figure raised over the wall.
+
+**The rule:** a container that belongs to a prop names it (`_ridesOn`, set by
+worldLife on its building riders) and depthSort.applyGroundSort gives it the
+host's key **+ 0.25**: after the building and anything else on its row, under
+a raised figure (+0.5) and under anything a row further south. It must also
+carry the host's `_propGround` (same object), so the bucket pass puts it on
+the same side of the player as its building. Keep the `+1` on its `y` as the
+fallback for a layer that is not sorted.
+
+**Not yet covered:** effectsRenderer's `_propOverlay` (the marks and stuck
+arrows of §104) still sorts at +1 and has the same fault for a raised figure;
+it is small and short-lived, and naming its prop the same way is the fix.
+
+## 116. A piece cut out of a building leaves everything that reads the building (v2.3.2816–2817)
+
+**Tempting:** once a sign is cut out of a building's picture and drawn back
+over it in exactly the place it came from (§114), the building looks the same
+at rest, so nothing else can have changed.
+
+**Wrong -- three other systems read the building, not the screen,** and each
+lost the piece silently:
+
+1. **Form shade** (formShade.js) shades the building's OWN quad from its top
+   to its base. The sign, a quad of its own, came out unshaded: a light patch
+   on a darker wall. The pieces now name the building's span, as a figure's
+   clothes name its body (worldLife `_buildRider`); the flags, meshes the patch
+   does not reach, take the shade at their middle as a tint.
+2. **The shadow** (lightfx/shadows.js placeDepth) is cast from the building's
+   texture -- now the cut one. The auction house's long sign shadow left the
+   cobble: mp-worldshadow's shaded-side darkening fell from 18.6 to 5. The
+   pieces now cast through the building's own shadow mesh (`_placePieces`,
+   `host._lifePieces`), so the shadow swings with the sign.
+3. **The ground profile** (propGround.readArtBottoms) is read off the texture
+   too, and the columns a sign or the scales hung in read EMPTY off the cut
+   one. That moved the base line beside the scales and bent the column model
+   the shadow uses. worldLife re-reads it with the pieces put back
+   (`readArtBottoms(texture, extras)`).
+
+**The rule:** anything that reads a sprite's pixels, its quad or its texture
+must be told about pieces cut from it. Before cutting, grep for every reader
+of that sprite (`propDisplays`, `_propGround`, `_vShade`); after, compare the
+game against main with the pieces at rest -- shade on/off, shadows on/off --
+and expect no difference.

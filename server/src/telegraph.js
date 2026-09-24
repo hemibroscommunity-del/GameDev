@@ -340,6 +340,8 @@ export const telegraphMethods = {
         return true;
       }
       const targetId = m._tgTarget;
+      const _tgR = m._tgRadius || kit.radius;   /* v2.3.2790: the ring it drew */
+      m._tgRadius = 0;
       m._tgPhase = null;
       m._tgUntil = 0;
       m._tgAim = null;
@@ -362,10 +364,10 @@ export const telegraphMethods = {
       let hit = false;
       if (ps && !ps.dead && !ps.dying && ps.z === zoneId) {
         const ddx = ps.x - m.x, ddy = ps.y - m.y;
-        hit = (ddx * ddx + ddy * ddy) <= kit.radius * kit.radius;
+        hit = (ddx * ddx + ddy * ddy) <= _tgR * _tgR;
         if (hit) this._telegraphHitPlayer(zoneId, m, targetId, kit);
       }
-      this._monsterAbilityEvent(zoneId, m, kit.kind, 'execute', { radius: kit.radius, hit });
+      this._monsterAbilityEvent(zoneId, m, kit.kind, 'execute', { radius: _tgR, hit });
       return true;
     }
   },
@@ -377,7 +379,13 @@ export const telegraphMethods = {
     if (!kit || m._tgPhase) return false;
     if (now < (m._tgNextAt || 0)) return false;
     if (now <= m.atkCd) return false;              /* respect the basic-swing cadence */
-    if (attackDist > TELEGRAPH.CAST_RANGE) return false;
+    /* v2.3.2790: the cast range and the ring shrink with the caster on a
+       depth zone (Wind Dunes' north); 1 everywhere else.  The ring is
+       REMEMBERED (_tgRadius) so the execute measures the circle the
+       telegraph drew, even if a shove moved the caster up or down the
+       curve during the wind-up. */
+    const _dk = this._depthK(zoneId, m.y);
+    if (attackDist > TELEGRAPH.CAST_RANGE * _dk) return false;
     if (nearest.extracting) return false;          /* harvesters are left alone (v2.3.1690) */
 
     const ps = this.playerState[nearest.id];
@@ -387,9 +395,10 @@ export const telegraphMethods = {
     m._tgUntil = now + kit.windupMs;
     m._tgAim = { x: ps.x, y: ps.y };              /* proto-ok: fixed-field point */
     m._tgTarget = nearest.id;                     /* the cast owns its target */
+    m._tgRadius = kit.radius * _dk;               /* v2.3.2790 */
     m._attackingUntil = Math.max(m._attackingUntil || 0, now + 100);
     this._monsterAbilityEvent(zoneId, m, kit.kind, 'telegraph', {
-      radius: kit.radius, ms: kit.windupMs, ax: Math.round(ps.x), ay: Math.round(ps.y),
+      radius: m._tgRadius, ms: kit.windupMs, ax: Math.round(ps.x), ay: Math.round(ps.y),
     });
     return true;
   },
@@ -512,15 +521,20 @@ export const telegraphMethods = {
      resolve must measure with the same geometry or a swing could start
      from inside a ring it then whiffs against by construction (the
      snowman's relaxed 70/1.5 ring is exactly the case that would break). */
-  _basicAtkGeom(m) {
+  /* v2.3.2790: `zoneId` (optional) folds in the zone's depth at the
+     monster's feet -- the tick loop's _atkRange carries the same factor, so
+     the stop ring and the whiff ring stay one ring on Wind Dunes' north edge.
+     Omitted (the tick.test pairing probe), it is the flat geometry. */
+  _basicAtkGeom(m, zoneId) {
+    const _dk = zoneId ? this._depthK(zoneId, m.y) : 1;
     /* v2.3.2482: the snowman's 70 was a RELAXATION of the old 45px default;
        with the default now 72 (GS_OUTER_RADIUS) it would be a tightening, so
        take whichever is larger.  His 1.5 Y-scale still does its own job.
        This is the reach the wind-up re-measures against -- it MUST track
        MONSTER_ATTACK_RANGE or monsters stop outside their own swing. */
     return m.arch === 'snowman'
-      ? { range: Math.max(70, this.MONSTER_ATTACK_RANGE), yScale: 1.5 }
-      : { range: this.MONSTER_ATTACK_RANGE, yScale: 3.0 };
+      ? { range: Math.max(70, this.MONSTER_ATTACK_RANGE) * _dk, yScale: 1.5 }
+      : { range: this.MONSTER_ATTACK_RANGE * _dk, yScale: 3.0 };
   },
 
   /* Stamp a wind-up instead of swinging.  Called from the aggro branch
@@ -602,7 +616,7 @@ export const telegraphMethods = {
 
     /* THE WHIFF — re-measured against where they are NOW, through the
        grace ring, with the same ellipse the tick loop uses. */
-    const geom = this._basicAtkGeom(m);
+    const geom = this._basicAtkGeom(m, zoneId);
     const reach = geom.range * BASIC_WINDUP.WHIFF_GRACE;
     const dx = ps.x - m.x, dy = (ps.y - m.y) * geom.yScale;
     if (Math.sqrt(dx * dx + dy * dy) > reach) return true;   /* they left: no damage, no event */
@@ -630,6 +644,10 @@ export const telegraphMethods = {
   _startSlimeBurst(zoneId, m, killerId, slot, now) {
     if (!this._burstsOnDeath(m) || m._burstUntil) return false;
     m._burstUntil = now + SLIME_BURST.SWELL_MS;
+    /* v2.3.2790: the blast is as wide as the swollen body LOOKS -- x the
+       zone's depth at the slime's feet (1 off Wind Dunes), remembered so the
+       detonation measures the ring the swell drew. */
+    m._burstR = SLIME_BURST.RADIUS * this._depthK(zoneId, m.y);
     /* The killer is replayed into the real kill after the blast, so credit,
        loot and XP land exactly as they would have. */
     m._burstKiller = killerId || null;
@@ -640,7 +658,7 @@ export const telegraphMethods = {
       type: 'monster_ability',
       payload: {
         monsterId: m.id, zone: zoneId, ability: 'burst', phase: 'swell',
-        ms: SLIME_BURST.SWELL_MS, radius: SLIME_BURST.RADIUS,
+        ms: SLIME_BURST.SWELL_MS, radius: m._burstR,
         scale: SLIME_BURST.SCALE,
         ax: Math.round(m.x), ay: Math.round(m.y),
       },
@@ -658,8 +676,9 @@ export const telegraphMethods = {
     if (now < m._burstUntil) return true;          /* still swelling */
 
     /* EVERY player in the radius, not just the killer: it is an explosion. */
-    const r2 = SLIME_BURST.RADIUS * SLIME_BURST.RADIUS;
-    const kit = { kind: 'burst', radius: SLIME_BURST.RADIUS, dmgMult: 1, flat: SLIME_BURST.DMG };
+    const _bR = m._burstR || SLIME_BURST.RADIUS;   /* v2.3.2790 */
+    const r2 = _bR * _bR;
+    const kit = { kind: 'burst', radius: _bR, dmgMult: 1, flat: SLIME_BURST.DMG };
     let anyHit = false;
     for (const pid of Object.keys(this.playerState)) {
       const ps = this.playerState[pid];
@@ -673,7 +692,7 @@ export const telegraphMethods = {
       type: 'monster_ability',
       payload: {
         monsterId: m.id, zone: zoneId, ability: 'burst', phase: 'execute',
-        radius: SLIME_BURST.RADIUS, hit: anyHit,
+        radius: _bR, hit: anyHit,
         ax: Math.round(m.x), ay: Math.round(m.y),
       },
     });
@@ -681,7 +700,7 @@ export const telegraphMethods = {
     /* Now it actually dies -- with the credit it earned before it swelled. */
     const killerId = m._burstKiller;
     const slot = m._burstSlot;
-    m._burstUntil = 0; m._burstKiller = null; m._burstSlot = null;
+    m._burstUntil = 0; m._burstKiller = null; m._burstSlot = null; m._burstR = 0;
     m._burstDone = true;                     /* so the kill is not deferred twice */
     this._resolveMonsterKill(zoneId, m, killerId, killerId ? this.playerState[killerId] : null, slot);
     m._burstDone = false;
