@@ -1,5 +1,5 @@
 /**
- * mp-hotarrow -- v2.3.2787: the bow special is the pine arrow, white-hot.
+ * mp-hotarrow -- v2.3.2807: the bow special is the pine arrow, white-hot.
  *
  * Owner: "I want to see what the arrow special would look like with you
  * drawing the special instead of using my special arrow sprite.  I'd like

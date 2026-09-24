@@ -1,4 +1,4 @@
-/* ═══ v2.3.2787: THE BOW SPECIAL, WHITE-HOT ═══
+/* ═══ v2.3.2807: THE BOW SPECIAL, WHITE-HOT ═══
  *
  * Owner: "I want to see what the arrow special would look like with you
  * drawing the special instead of using my special arrow sprite.  I'd like
@@ -556,7 +556,7 @@ export class HotArrowFx {
   }
 
   /** Draw one white-hot special.  `headless`: it has arrived in something
-   *  (the caller's v2.3.2381/2774 rule).  `tickBase`: its stuckAt/plantedAt,
+   *  (the caller's v2.3.2381 / v2.3.2804 rule).  `tickBase`: its stuckAt/plantedAt,
    *  0 in flight or for a peer's arrow.  Returns false when the art is not
    *  built yet, so the caller can fall back. */
   arrow(p, x, y, ang, alpha, pk, now, headless, tickBase) {
