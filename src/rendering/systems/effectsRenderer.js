@@ -2328,6 +2328,9 @@ export class EffectsRenderer {
 
     // Chat bubble texts
     this.chatTexts = new Map();
+    /* v2.3.2896: each speaker's last seen name-plate band, as an offset from
+       their position -- see _updateChatBubbles.  A Map: wire ids as keys. */
+    this._chatBandOff = new Map();
 
     // Screen flash overlay
     this.flashOverlay = new Graphics();
@@ -7106,7 +7109,7 @@ export class EffectsRenderer {
    *  white rounded rectangle background + pointer tip + text.  Pooled
    *  per key as { container, bg (Graphics), text (Text), hasEmoji }
    *  in this.chatTexts.  Source can be either a player or an NPC. */
-  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000, worldScale = 0) {
+  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000, worldScale = 0, tipY = null) {
     const hasEmoji = !isAsciiOnly(text);
     let entry = this.chatTexts.get(key);
     if (entry && entry.text && entry.text.destroyed) {
@@ -7180,6 +7183,19 @@ export class EffectsRenderer {
              height.  320 world px is 213 screen px at the 0.667 scale,
              ~55% of a 390px phone. */
           wordWrapWidth: 320,
+          /* ═══ v2.3.2896: A WORD LONGER THAN THE LINE STILL WRAPS ═══
+             Owner: "for long messages the messages exceed the chatbar
+             horizontal length and spill into the background.  Make it so that
+             long text wraps into a second line."  wordWrap alone only breaks
+             at SPACES, so one word wider than the wrap -- "hahahahaha...", a
+             link, a name typed without spaces -- stayed on one line, and the
+             bubble behind it is capped at 336 (see bw below), so the text ran
+             out past both ends of the box and over the ground.  Reproduced on
+             the built client: sixty characters of "ha" were a single line
+             twice the bubble's width.  breakWords splits such a word at the
+             wrap width instead, and CanvasTextMetrics (which sizes the bubble)
+             reads the same style, so the box and the lines it holds agree. */
+          breakWords: true,
         },
       });
       txt.anchor.set(0.5, 0);
@@ -7217,6 +7233,7 @@ export class EffectsRenderer {
          wrap (320 + 2*8 = 336).  A cap below the wrap width silently
          re-creates the v2.3.1719 bug, so these two move together. */
       const bw = Math.min(336, tw + padX * 2);
+      entry._lineW = tw; entry._boxW = bw;   /* v2.3.2896: for the QA probe below */
       const bh = th + padY * 2;
       entry.bg.clear();
       /* ═══ v2.3.2823: THE BUBBLE POPS ═══
@@ -7255,7 +7272,10 @@ export class EffectsRenderer {
       entry.text.y = -bh - tipH + padY;
     }
     entry.container.x = sx;
-    entry.container.y = sy - 32;
+    /* v2.3.2896: `tipY`, when the caller knows it, is where the point of the
+       bubble goes -- see _updateChatBubbles.  sy - 32 is the old anchor, kept
+       for a speaker whose head has not been measured yet (a first frame). */
+    entry.container.y = (typeof tipY === 'number' && isFinite(tipY)) ? tipY : sy - 32;
     /* ═══ v2.3.2247: THE BUBBLE HOLDS ITS READING SIZE ═══
        The v2.3.1912 note above ends "Any future WORLD_ZOOM change moves this
        again" -- and this is that change.  The bubble lives in the WORLD layer,
@@ -7297,7 +7317,19 @@ export class EffectsRenderer {
         worldScale: _sc,
         effectivePx: entry.text.style.fontSize * _sc,
         wrapWidth: entry.text.style.wordWrapWidth,
+        /* v2.3.2896: where the point is, and how wide the laid-out text is
+           against the box, in world px (mp-chatbubble) */
+        tipX: entry.container.x,
+        tipY: entry.container.y,
+        breakWords: !!entry.text.style.breakWords,
+        lineW: entry._lineW,   /* the longest laid-out line, bubble-local px */
+        boxW: entry._boxW,     /* the box drawn round it, same units */
       };
+      /* ...and per bubble, because the single probe above is whichever
+         bubble drew LAST this frame -- an NPC's, as often as not.  A Map:
+         the keys are player ids off the wire (CLAUDE.md, '__proto__'). */
+      if (!window.__btChatBubbles) window.__btChatBubbles = new Map();
+      window.__btChatBubbles.set(key, window.__btChatBubble);
     }
     return entry;
   }
@@ -7324,7 +7356,38 @@ export class EffectsRenderer {
       if (pid !== S.myId && (source.zone || source.z || 'town') !== S.currentZone) continue;
       const sx = source.renderX || source.x || 0;
       const sy = source.renderY || source.y || 0;
-      this._renderChatBubble(pid, sx, sy, bubble.text, age, 5000, S._worldScaleX || 0);
+      /* ═══ v2.3.2896: THE POINT GOES ABOVE THE NAME, NOT ON THE FACE ═══
+         Owner: "make it so that the chat point (closest to the player) is
+         lined up above the player (not on their face like it is currently)."
+         The fixed sy - 32 was set when the name plate hung under the feet;
+         since v2.3.2571 the plate (or the HP bar in a fight) sits on the band
+         line over the head, and 32 world px up from the body's anchor landed
+         the point on the forehead with the bubble hiding the name.  Measured
+         on the built client in town: the point was ~50 screen px below the
+         top of the plate.
+         So the point sits just over that band, whose top the entity pass
+         publishes in world px -- S._selfBandTopY for you (the same line the
+         harvest bar clears), other._bandTopY for everyone else.  The gap is
+         in SCREEN px, divided out of the world scale the way the bubble's own
+         size is (v2.3.2247), so it is the same few pixels in every zone.
+         WHEN THERE IS NO BAND THIS FRAME -- the figure is hidden behind one
+         of its stand-ins (a swing, the lumberjack, the cook) and publishes
+         null -- the last band seen for that speaker is reused as an offset
+         from their position, so chatting while chopping does not drop the
+         bubble back onto the face for exactly as long as the axe is up.
+         Only a speaker never seen with a band falls back to the old anchor. */
+      const _band = pid === S.myId ? S._selfBandTopY : source._bandTopY;
+      let _top = null;
+      if (typeof _band === 'number' && isFinite(_band)) {
+        _top = _band;
+        if (this._chatBandOff.size > 256) this._chatBandOff.clear();   /* bounded: one number per speaker */
+        this._chatBandOff.set(pid, _band - sy);
+      } else if (this._chatBandOff.has(pid)) {
+        _top = sy + this._chatBandOff.get(pid);
+      }
+      const _ws = S._worldScaleY || S._worldScaleX || 0;
+      const tipY = _top != null ? _top - (_ws > 0.01 ? 4 / _ws : 4) : null;
+      this._renderChatBubble(pid, sx, sy, bubble.text, age, 5000, S._worldScaleX || 0, tipY);
       activeKeys.add(pid);
     }
 
@@ -7335,7 +7398,14 @@ export class EffectsRenderer {
       const age = now - npc.chatBubble.ts;
       if (age > 5000) continue;
       const key = 'npc:' + npc.id;
-      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age, 5000, S._worldScaleX || 0);
+      /* v2.3.2896: the same rule as a player's, above -- the point just over
+         the top of his head (entityRenderer npc._headTopY: the hat, or the
+         quest badge over it), where the old 32 px up from his feet put it at
+         his knees with the bubble over the rest of him. */
+      const _nt = npc._headTopY;
+      const _nws = S._worldScaleY || S._worldScaleX || 0;
+      const npcTip = (typeof _nt === 'number' && isFinite(_nt)) ? _nt - (_nws > 0.01 ? 4 / _nws : 4) : null;
+      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age, 5000, S._worldScaleX || 0, npcTip);
       activeKeys.add(key);
     }
 
