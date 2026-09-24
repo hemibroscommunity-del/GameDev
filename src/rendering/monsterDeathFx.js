@@ -1,4 +1,4 @@
-/* ═══ v2.3.2897: MONSTERS DIE IN MORE THAN ONE WAY ═══
+/* ═══ v2.3.2913: MONSTERS DIE IN MORE THAN ONE WAY ═══
  *
  * Owner: "I think it would be cool for monsters to have different death
  * animations.  Sliced in half upon death, head chopped off, leg falls off,

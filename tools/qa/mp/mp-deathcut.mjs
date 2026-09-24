@@ -1,4 +1,4 @@
-/* v2.3.2897: MONSTERS DIE IN MORE THAN ONE WAY (monsterDeathFx.js).
+/* v2.3.2913: MONSTERS DIE IN MORE THAN ONE WAY (monsterDeathFx.js).
  *
  * Owner: "different death animations.  Sliced in half upon death, head
  * chopped off, leg falls off, include the normal death too for variety."

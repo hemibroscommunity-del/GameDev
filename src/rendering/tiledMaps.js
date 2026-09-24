@@ -171,7 +171,10 @@ export const WALKABILITY_MAPS = {
      v2.3.1813 regenerates it alongside the new art so the two never drift,
      and because the builder needs the flood-fill to find unreachable islands
      either way — but the switch stays off.  Re-enabling it would re-ship
-     exactly what the owner rejected. */
+     exactly what the owner rejected.
+     v2.3.2896: town's EDGE is back, but not through this file -- the rock
+     ring is a single traced outline in src/data/townRim.js, stamped into the
+     prop grid by spriteSheets.js.  This per-pixel mask stays off. */
   town: '/maps/town_v17.walk.json',
   meadow: '/maps/meadow_v6.walk.json',
   frost: '/maps/frost_v5.walk.json',   /* note: north ice flat over-blocked by the mask; repaint to open it */
