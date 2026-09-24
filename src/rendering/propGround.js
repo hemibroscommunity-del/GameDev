@@ -78,8 +78,17 @@ function ctx2d() {
  * height, from the top) just below its lowest solid pixel; -1 for a column
  * with no solid pixel at all.  Null when the picture cannot be read (no DOM,
  * a compressed or GPU-only source) -- callers then keep the flat line.
+ *
+ * v2.3.2817: `extras` -- pictures drawn over it before it is read, each
+ * `{ texture, x, y }` at its top-left in `texture`'s frame px.  worldLife
+ * cuts a building's signs, scales and flags out of its picture so they can
+ * swing, and puts them back here, where they were cut from, so the building
+ * reads the same base off its art as it did whole.  Without them the auction
+ * house's edge columns (the sign's, the scales') read EMPTY, which moved its
+ * base line beside the scales and took the long shadow its sign throws
+ * (lightfx/shadows.js places a building's pixels on these columns).
  */
-export function readArtBottoms(texture) {
+export function readArtBottoms(texture, extras) {
   const c = ctx2d();
   const src = texture && texture.source;
   const res = src && src.resource;
@@ -93,6 +102,16 @@ export function readArtBottoms(texture) {
     _canvas.width = W; _canvas.height = H;
     c.clearRect(0, 0, W, H);
     c.drawImage(res, fr.x * k, fr.y * k, fr.width * k, fr.height * k, 0, 0, W, H);
+    if (extras) {
+      const sx = W / fr.width, sy = H / fr.height;
+      for (let i = 0; i < extras.length; i++) {
+        const e = extras[i];
+        const t2 = e && e.texture, s2 = t2 && t2.source, r2 = s2 && s2.resource, f2 = t2 && t2.frame;
+        if (!r2 || !f2) continue;
+        const k2 = (s2.pixelWidth && s2.width) ? s2.pixelWidth / s2.width : 1;
+        c.drawImage(r2, f2.x * k2, f2.y * k2, f2.width * k2, f2.height * k2, e.x * sx, e.y * sy, f2.width * sx, f2.height * sy);
+      }
+    }
     const px = c.getImageData(0, 0, W, H).data;
     const out = new Float32Array(W);
     for (let x = 0; x < W; x++) {

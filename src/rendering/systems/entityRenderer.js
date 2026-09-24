@@ -8275,6 +8275,9 @@ export class EntityRenderer {
            kicks in. */
         const IDLE_AFTER_MS = 600;
         const isIdle = (now - (display._lastDistGrowAt || 0)) > IDLE_AFTER_MS;
+        /* v2.3.2814: published for worldLife, which breathes a monster holding
+           its one idle frame (set false below whenever a strip plays). */
+        display._idlePose = false;
 
         /* Priority chain: transform > hit recoil > attack wind-up >
            idle pose > walk loop.  The transform branch plays a
@@ -8338,6 +8341,7 @@ export class EntityRenderer {
              0 is the first contact pose, which reads as standing
              still better than mid-stride frames. */
           frame = variantSprites.walk.get(facing, 0);
+          display._idlePose = true;
         } else {
           /* Walk loop frame index is driven by ACCUMULATED VISUAL
              displacement rather than wall-clock time.  This guarantees
