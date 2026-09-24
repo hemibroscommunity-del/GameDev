@@ -203,7 +203,9 @@ Two protocol versions coexist; both must keep working:
     (`preloadAnimations.js`) behind a brief per-zone loading overlay on
     zone entry (`src/game/zoneTransitions.js`, the `S._zoneLoading` gate),
     and the previous zone's ~4MB map is freed on exit (`freeZoneMap`,
-    `tiledMaps.js`; hubs town/worldview stay resident). This does NOT
+    `tiledMaps.js`; worldview stays resident — town's map, NPCs and
+    buildings free too since v2.3.2792, veiled back in by
+    `zoneTransitions.syncTownScenery` however you arrive). This does NOT
     weaken the law's real intent — the per-zone loads are AWAITED behind
     an overlay (a deliberate loading SCREEN, not an unawaited lazy
     `Assets.load` that hitches mid-play). Everything else — player, town

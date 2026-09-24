@@ -118,7 +118,20 @@ if (_on && DefaultBatcher && DefaultBatcher.prototype && DefaultBatcher.prototyp
     if (!span) {
       /* own quad: corners 0,1 are the top edge, 2,3 the bottom (see
          DefaultBatcher: h1 = bounds.minY, h0 = bounds.maxY) */
-      const top = mul(c, spec.top), bot = mul(c, spec.bot);
+      /* v2.3.2792: a CROPPED frame's quad is only the painted part of the
+         frame (Pixi bounds a trimmed sprite by `trim`), so the gradient would
+         run top-to-bottom of the art rather than of the frame, and a cropped
+         figure would shade differently from the same figure uncropped.  Give
+         the corners the values the whole frame has at the crop's rows -- the
+         gradient is linear, so this is exactly the uncropped shading. */
+      const tx = el.texture || r.texture;
+      const tr = tx && tx.trim, og = tx && tx.orig;
+      let kTop = spec.top, kBot = spec.bot;
+      if (tr && og && og.height > 0) {
+        kTop = mix(spec.top, spec.bot, tr.y / og.height);
+        kBot = mix(spec.top, spec.bot, (tr.y + tr.height) / og.height);
+      }
+      const top = mul(c, kTop), bot = mul(c, kBot);
       u32[idx + 4] = top; u32[idx + 10] = top;
       u32[idx + 16] = bot; u32[idx + 22] = bot;
     } else {
