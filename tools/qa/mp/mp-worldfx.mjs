@@ -20,6 +20,7 @@
  *     blocked hit (covered by the gameEvents guard; asserted here via tiers).
  */
 import * as H from './harness.mjs';
+import { lightingAt } from '../../../src/game/timeOfDay.js';   /* v2.3.2892: the day's lengths */
 
 const SHOTS = process.env.WORLDFX_SHOTS || 'tools/qa/mp/out';
 
@@ -73,6 +74,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const h of ['dawn', 'golden', 'dusk']) { await setTod(h); await P.page.waitForTimeout(600); await shot(h); }
   const dusk = await fx();
   rec.ok('dusk is its own hour, between the two', !!dusk && dusk.tod && dusk.tod.name === 'dusk', dusk && dusk.tod);
+
+  /* v2.3.2892: owner -- "Make night last only 25% of the current time" and
+     "Add a time of day icon next to current map name". */
+  /* timeOfDay.js imports nothing, so the keys are read here in node */
+  const lens = {};
+  for (let i = 0; i < 4000; i++) { const n = lightingAt(i / 4000).name; lens[n] = (lens[n] || 0) + 40 / 4000; }
+  for (const k in lens) lens[k] = +lens[k].toFixed(2);
+  rec.ok(`night is a quarter of what it was: ~2.9 of the 40 minutes, was ~11.6 (${JSON.stringify(lens)})`,
+    !!lens && lens.night >= 2.7 && lens.night <= 3.1 && lens.day >= 28, lens);
+  const icons = {};
+  for (const h of ['night', 'dawn', 'day']) {
+    await setTod(h); await P.page.waitForTimeout(700);
+    icons[h] = await P.page.evaluate(() => {
+      const i = document.querySelector('.bt-zone-header__tod');
+      const t = document.querySelector('[data-zone-title]');
+      if (!i || !t) return null;
+      const a = i.getBoundingClientRect(), b = t.getBoundingClientRect();
+      return { tod: i.getAttribute('data-tod'), sky: i.getAttribute('data-sky'), w: Math.round(a.width),
+        leftOfTitle: a.right <= b.left + 1, sameRow: Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) < 6,
+        inTitle: t.contains(i), titleText: t.textContent };
+    });
+  }
+  rec.ok(`the top bar shows the hour beside the zone name (${Object.keys(icons).map((h) => h + '=' + (icons[h] && icons[h].tod)).join(', ')})`,
+    Object.keys(icons).every((h) => icons[h] && icons[h].tod === h && icons[h].w >= 12 && icons[h].leftOfTitle && icons[h].sameRow && !icons[h].inTitle),
+    icons);
+  await P.page.screenshot({ path: `${SHOTS}/worldfx-topbar.png`, clip: { x: 0, y: 0, width: 390, height: 60 } }).catch(() => {});
   await setTod('day'); await P.page.waitForTimeout(400);
 
   /* ── 2. dust ── */

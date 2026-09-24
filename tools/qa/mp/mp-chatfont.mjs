@@ -134,9 +134,9 @@ function measureInk(img, { yTo }) {
    re-opens it for the next message, so it has to be closed explicitly. */
 async function say(P, text) {
   await P.page.evaluate(() => window.__broChatBubbleBus && window.__broChatBubbleBus.setOpen(true));
-  await P.page.waitForFunction(() =>
-    [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'),
-  null, { timeout: 8000 });
+  /* v2.3.2896: the composer's box, not its Send button -- there is none now;
+     Enter (what the phone's send key sends) is how a line leaves. */
+  await P.page.waitForSelector('[data-chat-input]', { timeout: 8000 });
   /* v2.3.2078: was `button:has-text("Send")` + preceding-sibling::input[1].
      That stopped matching anything on two counts at v2.3.2039: the composer
      became a <textarea> (so `input` is the wrong element name) and it moved
@@ -147,7 +147,7 @@ async function say(P, text) {
      UI by its shape has an expiry date. */
   const input = P.page.locator('[data-chat-input]').first();
   await input.fill(text);
-  await H.clickText(P, 'Send');
+  await input.press('Enter');
   await P.page.evaluate(() => window.__broChatBubbleBus && window.__broChatBubbleBus.setOpen(false));
   await P.page.waitForTimeout(900);
 }
@@ -157,6 +157,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     viewport: { width: 390, height: 844 } });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
+  /* v2.3.2896: wait out the WELCOME plate (QUEST_MSG_WELCOME_MS, 9 s) before
+     speaking.  It is a dark card over the top-middle of the screen, and since
+     the bubble moved up over the name plate (effectsRenderer
+     _updateChatBubbles) that is exactly where a bubble lands -- measured, the
+     slab search found the card's pale button text and reported a 9px
+     "bubble".  The plate is a new player's first nine seconds; this scene is
+     about the font, not about the tutorial. */
+  await P.page.waitForFunction(() => ![...document.querySelectorAll('button')]
+    .some((b) => b.offsetParent && /Skip tutorial/.test(b.textContent || '')), null, { timeout: 15000 })
+    .catch(() => {});
+  await P.page.waitForTimeout(600);
 
   await say(P, SAY);
 

@@ -95,7 +95,7 @@ import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is aut
 import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2841: the staff kick + where its crystal is */
 /* v2.3.2841: scratch for staffTipWorld, reused every frame (no allocation). */
 const _staffTipOut = { x: 0, y: 0 };
-import { SHADE } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop */
+import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop; v2.3.2893 + snow props */
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
@@ -10488,6 +10488,19 @@ export class EntityRenderer {
         const _pY = Math.round(PEER_HPBAR_Y - (_pH * _pS) / 2);
         if (display._namePill.y !== _pY) display._namePill.y = _pY;
       }
+      /* ═══ v2.3.2896: THIS PEER'S BAND TOP, FOR THEIR CHAT BUBBLE ═══
+         The peer half of S._selfBandTopY (v2.3.2760, the local HUD pass):
+         the top of the line their plate or HP bar sits on, in world px.  The
+         chat bubble hangs its point just above it (effectsRenderer
+         _updateChatBubbles) so it points at the head from above instead of
+         covering the face and the name.  Same formula as the local one, on
+         the peer's own band line (PEER_HPBAR_Y) and plate size. */
+      {
+        const _bandHalf = Math.max(8, display._namePill
+          ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+        other._bandTopY = display.visible
+          ? display.y + (PEER_HPBAR_Y - _bandHalf) * Math.abs(display.scale.y || 1) : null;
+      }
       /* v2.3.2345: QA probe (mp-brobadge) -- did the badge sprite actually get
          ART, not merely a `visible` flag.  Reads the texture off the sprite
          rather than the module cache: the bug this pins was a plate that
@@ -13461,7 +13474,7 @@ export class EntityRenderer {
            convention the NPC figures' feet use. */
         spr.anchor.set(0.5, 1);
         spr.label = `prop_${p.id}`;
-        spr._vShade = SHADE.prop;   /* v2.3.2767: formShade.js */
+        spr._vShade = propShade(p.zone);   /* v2.3.2767: formShade.js; v2.3.2893: snow props shade near-neutral */
         this.entityLayer.addChild(spr);
         this.propDisplays.set(p.id, spr);
       }
@@ -13901,6 +13914,7 @@ export class EntityRenderer {
         const GAP = 3;
 
         display._questMarker._baseY = -(top + GAP + MARK_PX / 2);
+        display._figTop = top;   /* v2.3.2896: for his chat bubble -- see npc._headTopY below */
         /* Name is anchored at its BOTTOM (0.5, 1), so this is where its
            underside sits: clear above the marker's top edge. */
         display._nameText.y = -(top + GAP + MARK_PX + GAP);
@@ -14031,6 +14045,17 @@ export class EntityRenderer {
         qm.visible = true;
       } else if (qm.visible) {
         qm.visible = false;
+      }
+      /* ═══ v2.3.2896: THE TOP OF HIS HEAD, FOR HIS CHAT BUBBLE ═══
+         The townsfolk's half of other._bandTopY (the peer loop): an NPC's
+         position is his FEET, so the chat bubble's old fixed "32 px up" put
+         its point at his knees with the box over the rest of him.  This is
+         the top of whatever stands on his head -- the hat, or the quest badge
+         over it while one is up -- in world px, from the same `top` the badge
+         itself is placed against.  effectsRenderer hangs the bubble from it. */
+      if (display._figTop != null) {
+        const _sy = Math.abs(display.scale.y || 1);
+        npc._headTopY = display.y - (display._figTop + (qm.visible ? 3 + QUEST_BADGE_R * 2 : 0)) * _sy;
       }
     }
 

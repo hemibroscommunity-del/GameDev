@@ -447,6 +447,11 @@ export const ChatBubble = () => {
           }}
           placeholder={lanePlaceholder('Say something…')}
           maxLength={120}
+          /* v2.3.2896: the phone's own key is the send button now (see the
+             control row below), so it should SAY send -- a textarea's return
+             key otherwise reads "return", which promises a new line.  Enter
+             is still what the key sends, so onKeyDown above is unchanged. */
+          enterKeyHint="send"
           /* v2.3.1233: spec input — #121B20 well, 44px tall, brass caret;
              fontSize stays 16 (iOS Safari zooms inputs below 16px). */
           /* v2.3.1235: batch-4 rollout — corrected tokens: well #111E23
@@ -526,8 +531,13 @@ export const ChatBubble = () => {
                  the phone is just working, which is the ordinary busy colour
                  this UI already uses for waiting. Reusing red would have said
                  the mic was still listening when it was not. */
+              /* v2.3.2896: Send is gone (see below), so the mic keeps its quiet
+                 styling and moves to the row's right edge, where the thumb
+                 already goes -- `marginLeft: auto` takes the space Send's
+                 flex:1 used to fill. */
               style={{
                 flex: '0 0 auto',
+                marginLeft: 'auto',
                 width: 44,
                 height: 44,
                 display: 'flex',
@@ -572,36 +582,16 @@ export const ChatBubble = () => {
               )}
             </button>
           ) : null}
-          <button
-            onClick={submit}
-            aria-label="Send"
-            /* v2.3.1233: primary-action brass when there's text to send
-               (#D8A85F bg + #20170D label); quiet raised surface when empty. */
-            /* v2.3.1235: batch-4 rollout — committed gold-gradient primary
-               (#EAC675 edge, #172126 ink, radius 10, button 13/700) when
-               armed; corrected secondary (#293B41 + strong hairline,
-               disabled #667875 label) when empty. ONE primary per surface. */
-            style={{
-              /* v2.3.2039: takes the rest of the control row now that the
-                 composer is above rather than beside it. A 62px button
-                 marooned against the card's right edge with empty space to
-                 its left reads as unfinished, and the bigger target is free. */
-              flex: 1,
-              minWidth: 0,
-              height: 44,
-              padding: '0 14px',
-              background: val.trim() ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#293B41',
-              border: val.trim() ? '1px solid #EAC675' : '1px solid rgba(229,237,233,.20)',
-              borderRadius: 10,
-              color: val.trim() ? '#172126' : '#667875',
-              fontFamily: 'inherit',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            Send
-          </button>
+          {/* ═══ v2.3.2896: NO SEND BUTTON ═══
+              Owner: "Instead of having a send button at all, just remove it.
+              Players can just use their own phones send button and it works."
+              It does: the keyboard's key is Enter, and onKeyDown on the
+              textarea sends on Enter -- and says "send" on the key since
+              enterKeyHint above.  (The report behind it: players looking for
+              a way to send pressed the checkmark on the iOS keyboard bar,
+              which only puts the keyboard away.)  The row keeps the online
+              count and the mic, and submit() still runs from Enter exactly as
+              it did. */}
         </div>
         {/* Tail pointing down toward the character. */}
         <div style={{

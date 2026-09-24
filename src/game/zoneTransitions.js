@@ -894,7 +894,12 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                   var _hdx = _hcx - _backMark.tx, _hdy = _hcy - _backMark.ty;
                   var _hlen = Math.max(0.001, Math.sqrt(_hdx * _hdx + _hdy * _hdy));
                   /* The World View keeps the arrival set above -- inside its
-                     walls.  Town has no wall and keeps the original rule. */
+                     walls.  Town has no wall and keeps the original rule.
+                     v2.3.2896: town HAS a wall now (its rock ring,
+                     src/data/townRim.js) and still keeps the rule: four
+                     tiles up from the stairs is open plaza, well inside the
+                     ring, and tools/dev/check-town-rim.mjs recomputes this
+                     exact point and fails if it ever is not. */
                   if (bestExit.zoneId !== 'worldview') {
                     P.x = (_backMark.tx + _hdx / _hlen * 4) * TILE;
                     P.y = (_backMark.ty + _hdy / _hlen * 4) * TILE;
