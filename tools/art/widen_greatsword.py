@@ -14,6 +14,10 @@ as the sheet's `fitH` in weaponSprites.js SHEETS and every sizing site divides
 by that (weaponFitH) instead of the new, taller canvas.  Length on screen is
 unchanged; only the width grows.
 
+Shipped at 1.4583 = 1.75 / 1.2: the renderer draws the sheets 1.2x larger
+(weaponSprites GREATSWORD_LEN_MUL, "a little longer too"), so the width on
+screen is still 1.75x the original.
+
 Run from the repo root ONCE against the original art (git show the pre-2895
 files if you need to re-run):  python3 tools/art/widen_greatsword.py [factor]
 Rewrites the five webps and their grips in handles.json in place.
