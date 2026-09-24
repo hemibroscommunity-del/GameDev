@@ -216,8 +216,8 @@ import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShi
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
-import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2782: the staff cast's charge, release, trail and crash */
-import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2784: what a monster is made of, when it is hit */
+import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2801: the staff cast's charge, release, trail and crash */
+import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2803: what a monster is made of, when it is hit */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -1109,7 +1109,7 @@ function _crossedFrame(last, cur, target) {
   return last < target || cur >= target;
 }
 
-/* v2.3.2200 -> v2.3.2784: the per-material hit debris (owner: "snow that
+/* v2.3.2200 -> v2.3.2803: the per-material hit debris (owner: "snow that
    flies off the monster") is drawn by rendering/hitMaterialFx.js now.  The
    five DEBRIS_BURSTS sheets this table loaded were never made, so all five
    requests 404ed on every page load and every hit drew the soft placeholder
@@ -1213,7 +1213,7 @@ export function ensureSnowballBurstTex() {
  * "the zone you are in", and two sheets that only frost uses are not that.
  * Frames are destroyed WITHOUT their source and the source once after, because
  * every frame here is a window onto the same TextureSource. */
-/* v2.3.2785: ONE sheet now -- the snowman's ice-burst plume is retired (see
+/* v2.3.2804: ONE sheet now -- the snowman's ice-burst plume is retired (see
    the tombstone where IMPACT_TEX was), so only the thrown ball's burst is left
    to hand back.  The name stays: it is the frost zone's exit hook. */
 export async function freeFrostImpactTex() {
@@ -1245,7 +1245,7 @@ function _mixHex(a, b, t) {
     | ((ab + (bb - ab) * k) | 0);
 }
 
-/* v2.3.2504 -> v2.3.2784: the placeholder debris (owner §5.8: "the fallback
+/* v2.3.2504 -> v2.3.2803: the placeholder debris (owner §5.8: "the fallback
    burst and decals last about 5 s and read clearly") is replaced by
    rendering/hitMaterialFx.js, which keeps both halves of that ask -- a ~5 s
    burst whose pieces LAND and lie there -- in crisp per-material pixel art
@@ -1541,12 +1541,12 @@ _fxLoad('/icons/ore/ore-copper.webp').then((tex) => {
   if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TEX = tex; }
 }).catch((err) => console.warn('[ore-icon] load failed', err));
 
-/* ═══ v2.3.2785: THE SNOWMAN'S ICE-BURST PLUME IS RETIRED ═══
+/* ═══ v2.3.2804: THE SNOWMAN'S ICE-BURST PLUME IS RETIRED ═══
    Owner: "remove the old blurry large hit effects ... These were created
    prior."  v2.3.1124-1130 played a painted eruption (snowman/impact.png, 8
    frames of 192x1024, ~2MB) at a snowman's torso on every hit, sampled LINEAR
    with mipmaps and drawn 96 px tall -- a soft white column half again the
-   snowman's height.  Since v2.3.2784 a hit on a snowman throws crisp packed-snow
+   snowman's height.  Since v2.3.2803 a hit on a snowman throws crisp packed-snow
    clumps, powder and glints from the hitMaterialFx atlas, so the plume was the
    one painted, blurred layer left on a monster hit, and it covered the pieces
    it now duplicated.  Gone with it: the frost-zone load (preloadZoneAssets),
@@ -2035,7 +2035,7 @@ export class EffectsRenderer {
        under whatever stands in front of him (v2.3.2633).  Back (particles,
        under the player since v2.3.2636): the crash, above the pooled dots. */
     this._staffFx = new StaffCastFx(layers.player || this.projectileLayer, this.particleLayer);
-    /* v2.3.2784: the material hit reaction.  In front of a monster = the
+    /* v2.3.2803: the material hit reaction.  In front of a monster = the
        particles layer (over the entities, under the player, v2.3.2636); behind
        it = the telegraphs layer, under the entities, so a piece thrown behind
        a monster goes behind its body. */
@@ -4295,7 +4295,7 @@ export class EffectsRenderer {
          (v2.3.1426) — both are things it is actually in.  A falling arrow
          keeps its head until it lands, which is what the owner is describing
          and also just what an arrow does. */
-      /* v2.3.2785: ...and a bow special is not in the body until it has flown
+      /* v2.3.2804: ...and a bow special is not in the body until it has flown
          the rest of the way in (projectiles.js keeps `_landFx` until it lands),
          so it keeps its head for those few frames, by the same rule. */
       const _headless = a.planted || (a.stuckIn && !a._landFx);
@@ -7779,7 +7779,7 @@ export class EffectsRenderer {
 
   /* ── v2.3.2200: material hit-debris bursts ──
    * Consumes S._debrisBursts (combatHelpers.spawnHitDebris).
-   * v2.3.2784: drawn by HitMaterialFx (rendering/hitMaterialFx.js) -- crisp
+   * v2.3.2803: drawn by HitMaterialFx (rendering/hitMaterialFx.js) -- crisp
    * per-material pieces with physics, shaped by the weapon that landed the
    * hit.  `window.__btDebris` keeps the report shape mp-feel reads (age, ms,
    * sheet, parts, landed, alpha), plus what each burst was made of. */
@@ -8171,7 +8171,7 @@ export class EffectsRenderer {
     return out;
   }
 
-  /* v2.3.2784: the material hit-debris bursts (the note at the top of this run
+  /* v2.3.2803: the material hit-debris bursts (the note at the top of this run
      of methods): HitMaterialFx draws them -- a monster's, and since v2.3.2730
      a prop's, which rides the same queue marked `prop`. */
   _updateDebrisBursts(S, now) {
@@ -8495,7 +8495,7 @@ export class EffectsRenderer {
     this._advanceItemPops(now);
   }
 
-  /* v2.3.2785: the snowman's per-hit plume is retired (tombstone near the old
+  /* v2.3.2804: the snowman's per-hit plume is retired (tombstone near the old
      IMPACT_TEX loader), so this is now just the two one-shot bursts that are
      not hit reactions -- a thrown snowball landing and an arrow's boom.  The
      name stays so the frame loop's call site does not move. */
@@ -11728,7 +11728,7 @@ export class EffectsRenderer {
       }
       this._splatPool = [];
     }
-    /* v2.3.2784: the material hit reaction's pieces (pooled; hidden, not destroyed) */
+    /* v2.3.2803: the material hit reaction's pieces (pooled; hidden, not destroyed) */
     if (this._hitFx) this._hitFx.clear();
     /* v2.3.2760: and the cook's smoke puffs. */
     if (this._cookSmoke) {
