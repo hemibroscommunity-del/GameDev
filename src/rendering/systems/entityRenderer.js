@@ -56,6 +56,7 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling corpse */
+import { drawMonsterDeath, clearMonsterDeath, monsterDeathState, DEATH_LIVE, DEATH_DONE } from '../monsterDeathFx.js';   /* v2.3.2913: sliced / beheaded / legless deaths */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
@@ -7781,6 +7782,12 @@ export class EntityRenderer {
          so for a corpse it reports a stale frame from when it was still
          alive -- which is exactly the window the death burst plays in.
          Reads on demand rather than writing per frame. */
+      /* v2.3.2913 QA probe: which death this corpse rolled and how far its
+         pieces have got (monsterDeathFx.monsterDeathState). */
+      if (typeof window !== 'undefined' && !window.__btMonsterDeath) {
+        const _mdRef2 = this.monsterDisplays;
+        window.__btMonsterDeath = (mid) => monsterDeathState(_mdRef2.get(mid));
+      }
       if (typeof window !== 'undefined' && !window.__btMonsterSprite) {
         const _mdRef = this.monsterDisplays;
         window.__btMonsterSprite = (mid) => {
@@ -7830,6 +7837,40 @@ export class EntityRenderer {
         };
       }
       if (!m.alive) {
+        /* ═══ v2.3.2913: SOMETIMES IT IS NOT THE NORMAL DEATH ═══
+           Owner: "different death animations.  Sliced in half upon death,
+           head chopped off, leg falls off, include the normal death too for
+           variety."  monsterDeathFx rolls one per death (the same roll on
+           every client) and, unless it rolled `normal`, cuts the body sprite
+           it died in into pieces and plays them INSTEAD of the branches
+           below.  Keyed on the death stamp above, so a respawn is a new roll.
+           Not for a blue slime going off (its swell-and-burst IS its death)
+           or a mummy being shredded into a skeleton (that has its own
+           animation and is still, as far as the player is concerned, alive). */
+        const _dfxKey = m._slimeDeathStart != null ? m._slimeDeathStart : m._snowmanDeathStart;
+        if (_dfxKey != null && !m._burstPeakFrom && !m._burstFrom
+            && !(m._transformStart && now - m._transformStart < 5000)) {
+          const _dfxD = this.monsterDisplays.get(m.id);
+          const _dfx = drawMonsterDeath(m, _dfxD, _dfxKey, isFodder, now);
+          if (_dfx === DEATH_LIVE) {
+            activeIds.add(m.id);
+            _dfxD.x = m.x; _dfxD.y = m.y;
+            _dfxD.visible = true;
+            if (_dfxD._spriteBody) _dfxD._spriteBody.visible = false;
+            if (_dfxD._body) _dfxD._body.visible = false;
+            /* the HP bar and status icons -- as every death branch below */
+            if (_dfxD._hpHeart && !_dfxD._hpHeart.destroyed) _dfxD._hpHeart.alpha = 0;
+            if (_dfxD._hpText && !_dfxD._hpText.destroyed) _dfxD._hpText.alpha = 0;
+            if (_dfxD._hpBarFill && !_dfxD._hpBarFill.destroyed) _dfxD._hpBarFill.alpha = 0;
+            if (_dfxD._hpBarFx && !_dfxD._hpBarFx.destroyed) _dfxD._hpBarFx.clear();
+            _dfxD._lastHpPct = 1;
+            if (_dfxD._dynGfx) { _dfxD._dynGfx.clear(); _dfxD._dynKey = ''; }
+            continue;
+          }
+          /* over: let the display go rather than falling through, which would
+             start the normal death AFTER the pieces had already faded */
+          if (_dfx === DEATH_DONE) continue;
+        }
         /* v2.3.2491: the burst clock, KEYED ON _slimeDeathStart.  That field
            is nulled by both respawn paths already (wsClient's monster delta
            and monsterCombat's local respawn), so keying on it gives a new
@@ -8021,6 +8062,8 @@ export class EntityRenderer {
       activeIds.add(m.id);
 
       let display = this.monsterDisplays.get(m.id);
+      /* v2.3.2913: alive again on the same display -- drop any leftover pieces */
+      if (display && display._deathFx) clearMonsterDeath(display);
       if (!display) {
         display = createMonsterDisplay(m);
         this.entityLayer.addChild(display);
