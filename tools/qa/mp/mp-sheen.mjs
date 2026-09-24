@@ -7,6 +7,14 @@
  * it if I don't like it").  Check 1 turned round with it; every animation and
  * every metal is mp-sheenall's.
  *
+ * v2.3.2914: softer, and the sweep is gone (owner: "dialed back just a bit ...
+ * doesn't need the occasionally 10 second flash animation ... I just don't
+ * want it to look like white spots").  Two checks hold that: no sweep fires
+ * on its own over longer than a normal piece's old 6.5 s cadence, and in no
+ * metal -- godly included -- does the shine push a pixel to flat white.  The
+ * shine that pushed ~1,000 pixels of a steel figure to white (dpr 3) fails
+ * the second by two orders of magnitude.
+ *
  * What is proven here, and the pictures taken for the owner (the verdict on
  * the LOOK is theirs):
  *   1. the switch: ON on a fresh device (v2.3.2887; it was off while it was a
@@ -135,15 +143,20 @@ function lumaOf(img) {
 function added(off, on) {
   const a = lumaOf(off), b = lumaOf(on);
   const ch = on.channels;
-  let sum = 0, lit = 0, left = 0, right = 0, r = 0, g = 0, bl = 0;
+  let sum = 0, lit = 0, left = 0, right = 0, r = 0, g = 0, bl = 0, white = 0;
   for (let i = 0; i < a.length; i++) {
+    /* v2.3.2914: flat white the shine made -- every channel 240+ with it and
+       not without (the "white spots" the owner saw) */
+    const o = i * ch;
+    if (Math.min(on.data[o], on.data[o + 1], on.data[o + 2]) >= 240
+        && Math.min(off.data[o], off.data[o + 1], off.data[o + 2]) < 240) white++;
     const d = b[i] - a[i];
     if (d <= 0) continue;
     sum += d;
     if ((i % off.width) < off.width / 2) left += d; else right += d;
     if (d >= 6) { lit++; r += on.data[i * ch]; g += on.data[i * ch + 1]; bl += on.data[i * ch + 2]; }
   }
-  return { sum: Math.round(sum), lit, left: Math.round(left), right: Math.round(right),
+  return { sum: Math.round(sum), lit, left: Math.round(left), right: Math.round(right), white,
     rgb: lit ? [Math.round(r / lit), Math.round(g / lit), Math.round(bl / lit)] : null };
 }
 
@@ -156,6 +169,12 @@ async function measureSheen(P, box) {
   const off = await shot();
   await setSheen(P, true);
   const now = await shot();
+  /* v2.3.2914: the flat-white count's baseline is the SAME filter at ~0
+     strength, not the filter off -- the filter's offscreen pass moves soft
+     edges, and those are not shine (TRAPS §120) */
+  await setScale(P, 0.0001);
+  const zero = await shot();
+  await setScale(P, null);
   /* ═══ v2.3.2864: THE SUN SHOTS ARE TAKEN WITH FORM SHADING OFF ═══
      v2.3.2767 (form shading, #715) darkens every figure toward its feet in the
      vertex colours, BEFORE the sheen filter reads the pixels -- so on the lower
@@ -178,7 +197,7 @@ async function measureSheen(P, box) {
   await setSun(P, null);
   await P.page.evaluate(() => { window.__btShadeOff = false; });
   await thaw(P);
-  return { now: added(off, now), fromLeft: added(flatOff, fromLeft), fromRight: added(flatOff, fromRight),
+  return { now: Object.assign(added(off, now), { white: added(zero, now).white }), fromLeft: added(flatOff, fromLeft), fromRight: added(flatOff, fromRight),
     swing: sunSwing(flatOff, fromLeft, fromRight) };
 }
 
@@ -237,10 +256,20 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
      it, so the next visit without the flag stays off */
   const N = await H.newPlayer(browser, { name: 'Matte', wsPort, webPort, init: COACH_OFF });
   opened.push(N);
-  await N.page.goto(`http://localhost:${webPort}/?sheen=0`, { waitUntil: 'domcontentloaded' });
-  await H.enterWorld(N);
-  await N.page.waitForTimeout(1500);
-  const pN = await probe(N);
+  /* v2.3.2914: entered until the light probe answers -- a cold room's first
+     join can drop the page back to the door after enterWorld returns
+     (CLAUDE.md "Deployment"), and a probe of the door reads null; the flag is
+     re-sent with each try, since the stored '0' is written by the first read
+     of it in a live game */
+  let pN = null;
+  for (let attempt = 0; attempt < 3 && !(pN && pN.glint); attempt++) {
+    await N.page.goto(`http://localhost:${webPort}/?sheen=0`, { waitUntil: 'domcontentloaded' });
+    await H.enterWorld(N).catch(() => {});
+    for (let i = 0; i < 20 && !(pN && pN.glint); i++) {
+      await N.page.waitForTimeout(500);
+      pN = await probe(N).catch(() => null);
+    }
+  }
   await N.page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
   const kept = await N.page.evaluate(() => { try { return localStorage.getItem('bt-sheen'); } catch (e) { return null; } });
   rec.ok('?sheen=0 turns it off on that device, and the device remembers it',
@@ -271,6 +300,30 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   rec.ok('on, the sword, the plate and the greaves all carry the shine on every frame sampled (2 s)',
     counts.every((c) => c === 'self:c,self:l,self:w'), counts);
 
+  /* ── 2b. no flash (v2.3.2914) ──
+     The sweep is off unless pinned: unpin it and watch for longer than a
+     normal piece's old cadence (6.5 s) -- a band crossing any piece at any
+     sample fails.  Watched with the SHEEN OFF, because then a filter is on a
+     piece only while a band crosses it (`lit`), which the old code shows as
+     plainly as the new -- the probe's own `sweeping` count is new with this
+     version, so on its own it could not fail against the code it replaces. */
+  await setSheen(A, false);
+  await glintAt(A, null);
+  const sweeps = [];
+  let sweepSamples = 0;
+  const tSweep = Date.now();
+  while (Date.now() - tSweep < 7500) {
+    await A.page.waitForTimeout(150);
+    const p = await probe(A);
+    sweepSamples++;
+    if (p && (p.glint.lit > 0 || p.glint.sweeping > 0)) sweeps.push({ t: Date.now() - tSweep, lit: p.glint.lit, keys: p.glint.keys });
+  }
+  await glintAt(A, -1);
+  await setSheen(A, true);
+  await A.page.waitForTimeout(300);
+  rec.ok('no sweep flashes across the metal on its own: none in 7.5 s, longer than the old 6.5 s cadence (v2.3.2914)',
+    sweepSamples >= 20 && sweeps.length === 0, { sweepSamples, sweeps: sweeps.slice(0, 4) });
+
   /* ── 3 + pictures: each metal, off / soft / stronger ── */
   const shots = {};
   for (const metal of ['copper', 'iron', 'steel']) {
@@ -296,6 +349,11 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
     + JSON.stringify(Object.fromEntries(Object.entries(shots).map(([k, v]) => [k, v && v.now]))));
   rec.ok('on, the metal on the figure is brighter than off, in every metal (one frame)',
     ['copper', 'iron', 'steel'].every((m) => shots[m] && shots[m].now.lit > 20 && shots[m].now.sum > 0), shots);
+  /* v2.3.2914: shine, not white spots.  <= 20 pixels allows a stray soft edge
+     (the filter's own pass moves them a little); the old clip made hundreds */
+  rec.ok('the shine never pushes the metal to flat white, in any metal (v2.3.2914)',
+    ['copper', 'iron', 'steel'].every((m) => shots[m] && shots[m].now.white <= 20),
+    Object.fromEntries(['copper', 'iron', 'steel'].map((m) => [m, shots[m] && shots[m].now.white])));
   const cu = shots.copper && shots.copper.now.rgb;
   rec.ok('...and copper stays copper: the pixels it brightens are warm (red over green over blue)',
     !!cu && cu[0] > cu[1] && cu[1] > cu[2], { rgb: cu });
@@ -317,10 +375,18 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   await freeze(A);
   await A.page.waitForTimeout(120);
   await setSheen(A, false); await drawFrozen(A);
-  await A.page.screenshot({ path: `${DIR}/godly-off.png`, clip: box });
+  const gOff = H.decodePng(await A.page.screenshot({ path: `${DIR}/godly-off.png`, clip: box }));
   await setSheen(A, true); await drawFrozen(A);
-  await A.page.screenshot({ path: `${DIR}/godly-soft.png`, clip: box });
+  const gOn = H.decodePng(await A.page.screenshot({ path: `${DIR}/godly-soft.png`, clip: box }));
+  await setScale(A, 0.0001); await drawFrozen(A);   /* v2.3.2914: the same-path baseline (TRAPS §120) */
+  const gZero = H.decodePng(await A.page.screenshot({ clip: box }));
+  await setScale(A, null);
   await thaw(A);
+  /* v2.3.2914: the strongest grade too -- its gold used to wash out to white
+     at exactly its brightest points */
+  const gAdded = Object.assign(added(gOff, gOn), { white: added(gZero, gOn).white });
+  rec.ok('...and not a godly piece either, the strongest shine there is: it gleams, it does not go white (v2.3.2914)',
+    gAdded.lit > 20 && gAdded.white <= 20, { lit: gAdded.lit, white: gAdded.white, rgb: gAdded.rgb });
   await setWeapon(A, 'steel', 'normal');
   await setArmourGrade(A, 'normal');
 
