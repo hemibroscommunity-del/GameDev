@@ -35,6 +35,7 @@
  * about which side of the body they are on.
  */
 import { Rectangle, Texture } from 'pixi.js';
+import { subTexture } from './gearSheets.js';   /* v2.3.2775: cuts taken in whole-frame coordinates */
 
 /* ═══ OFF BY DEFAULT, DELIBERATELY (v2.3.1785) ═══
  * The cut works — the arm comes off the shoulder, runs out, and the shield
@@ -160,11 +161,10 @@ export function blockArmTexture(sheet) {
   const base = frames[cut.frame];
   const hit = _cache.get(sheet);
   if (hit && hit.src === base.source) return hit.tex;
-  const f = base.frame;
-  const tex = new Texture({
-    source: base.source,
-    frame: new Rectangle(f.x + cut.rect[0], f.y + cut.rect[1], cut.rect[2], cut.rect[3]),
-  });
+  /* v2.3.2775: the bow body frames are cropped (effectsRenderer
+     _sliceStandIn), so the cut is taken in the WHOLE frame's coordinates by
+     gearSheets.subTexture -- the same rectangle, the same texels. */
+  const tex = subTexture(base, cut.rect[0], cut.rect[1], cut.rect[2], cut.rect[3]);
   _cache.set(sheet, { src: base.source, tex });
   return tex;
 }

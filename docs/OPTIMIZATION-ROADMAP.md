@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1, 3, 4, 5, 6, 9 and 10 SHIPPED (v2.3.2337-2355, v2.3.2750); the rest is the ranked backlog
+### Items 1, 3, 4, 5, 6, 9, 10, 11, 12 and 13 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774, v2.3.2775, v2.3.2776); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -458,6 +458,53 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    the body sprite's texture) and the combat poses (sub-rects cut by frame
    offset). The same move would reach the gear swing/fire/cook sheets named
    below. Rule for consumers: TRAPS §106.
+11. ~~**Combat stand-in gear strips — 83-98% transparent, 81.4 MB**~~
+   **SHIPPED, v2.3.2774** (measured, `mp-geartrim`, armoured in town: 334.9 →
+   262.4 MB). The "gear swing/fire/cook sheets ... PADDING (7-17% opaque), a
+   crop-with-offset renderer change" named in the paragraph below. 33 strips
+   (shirt / chest / legs × swing 3, bowshot 5, chop, cook, fire) 81.4 → 14.1 MB,
+   all 279 frames byte-identical to their PNG. Two halves, and the second is
+   the one that could have saved nothing: `_gearStripFrame` crops with
+   `packTrimmed`, AND the strips stop going through `Assets.load` at all —
+   `preloadCombatGear` used to park every full sheet in the Assets cache,
+   where it would have sat beside the crop for the whole session. The
+   constructor's warm (v2.3.2303 / v2.3.2500) already covered every strip on
+   the loading screen, so nothing now loads on first use.
+12. ~~**Recoloured stand-in bodies, the swung blade, the head overlays —
+   3-29% painted, ~64 MB, plus one set per peer skin combo**~~ **SHIPPED,
+   v2.3.2775** (measured, `mp-geartrim`, armoured in town: 262.6 → 221.6 MB).
+   Also through `_sliceStandIn`: the sword WEAPON layer (the only strip still
+   upscaled at load, 3% painted) -- so item 8 below is answered by the crop
+   rather than by un-upscaling. And the head overlay sheets (playerSkins
+   `_buildPickupHeadSheet`, whole-body frames with only a head drawn):
+   8.63 → 1.17 MB, `_placePickupHead` scaling by `orig`. The sword / bow bodies and torsos and
+   the jog legs (`_bakeBodyStrip`), the chop figures and their peer copies,
+   and every other player's sword / bow / jog-leg bakes
+   (`_remoteBodyFramesFor` / `_remoteSheetFramesFor`) go through one slicer,
+   `_sliceStandIn`, which crops each frame with `packTrimmed` and releases the
+   full-size bake: 55.7 → 23.9 MB locally with the blade, all 292 frames
+   byte-identical to the bake they came from. The two readers that cut a sub-rectangle out of
+   these frames by position — the jog legs' torso trim and blockArm's raised
+   arm — now go through `gearSheets.subTexture`. The cook and fire figures are
+   left whole: their art fills the frame (a crop comes back 99-101%), so
+   `packTrimmed` declines them. The packer also learned to lay crops out on
+   shelves when that is smaller than one row, which took another ~1.5 MB off
+   the gear sheets of items 10 and 11.
+
+13. ~~**One-shot fx strips and trait frames — 2-35% painted, ~38 MB**~~
+   **SHIPPED, v2.3.2776** (measured, `mp-geartrim`, armoured in town: 221.6 →
+   193.9 MB). `gearSheets.loadCroppedStrip(url, n)` replaces `Assets.load` +
+   an n-way slice for the effect / debris bursts, the four tool gestures and
+   the stun / whirl / fire-trail strips (20.0 → 8.5 MB), and — with n = 1 —
+   every trait frame `_loadTraitDir` loads: hats, hair, beards, glasses, eye
+   styles (283 frames, 17.7 → 1.6 MB). All byte-identical to the served file.
+   As with item 11 the second half is the one that matters: `preloadTraits`
+   used to `Assets.load` every trait URL itself, which would have parked each
+   whole frame in the Assets cache beside its crop; it now awaits the trait
+   loads (`e.ready`). NOT done: the capes (three placement sites read
+   `frame.width`, ~2 MB), the recoloured trait variants (only the colour
+   picked is ever built), and the projectile strips (a no-head sub-crop is cut
+   out of the frame by position) -- each a small follow-up if wanted.
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
