@@ -171,5 +171,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the road on the ground obeys it',
     !!backOn && backOn.style === 'ribbon' && backOn.motes > 0, backOn);
 
+  /* ═══ v2.3.2896: THE SAME SETTING, FROM THE QUESTS BUTTON ═══
+     Owner: "Allow an option to switch off the footprints from the quest
+     dashboard button too."  Driven through the rail's Quests button and a
+     real tap on the row -- the switch lives inside the panel's scroller,
+     which is exactly where a synthesised event proves the handler and not the
+     reachability (TRAPS §67).  The style is RIBBON going in (the Settings tap
+     above), which is what makes "on brings back the look you had" testable:
+     a switch that turned the road back on as the default Footprints would
+     pass every other check here. */
+  const qSwitch = () => P.page.evaluate(() => {
+    const el = document.querySelector('[data-questpath-switch]');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { state: el.getAttribute('data-questpath-switch'), checked: el.getAttribute('aria-checked'),
+      text: el.innerText.replace(/\s+/g, ' ').trim(), h: Math.round(r.height) };
+  });
+  await H.openDest(P, 'Quests');
+  await P.page.waitForTimeout(600);
+  const q0 = await qSwitch();
+  console.log('    quests switch: ' + JSON.stringify(q0));
+  rec.ok('the Quests panel has a quest path switch', !!q0, q0);
+  rec.ok('...showing ON, and naming the look that is set (Ribbon)',
+    !!q0 && q0.state === 'on' && q0.checked === 'true' && /Ribbon/.test(q0.text), q0);
+  rec.ok('...on a row that meets the 44pt touch floor', !!q0 && q0.h >= 44, q0);
+  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/pathstyle-quests-switch.png` });
+
+  await P.page.tap('[data-questpath-switch]').catch(() => {});
+  await P.page.waitForTimeout(500);
+  const q1 = await qSwitch();
+  rec.ok('a tap on it turns the path off -- the same Off the Settings row stores',
+    !!q1 && q1.state === 'off' && (await P.page.evaluate(() => window.__btTrailStyle())) === 'off', q1);
+  await H.closeDest(P);
+  await P.page.waitForTimeout(600);
+  const qOff = await road(P);
+  rec.ok('...and the ground shows no road', !!qOff && qOff.style === 'off' && qOff.motes === 0, qOff);
+
+  await H.openDest(P, 'Quests');
+  await P.page.waitForTimeout(600);
+  await P.page.tap('[data-questpath-switch]').catch(() => {});
+  await P.page.waitForTimeout(500);
+  const q2 = await qSwitch();
+  rec.ok('a second tap turns it back on as the look the player had picked (Ribbon), not the default',
+    !!q2 && q2.state === 'on' && (await P.page.evaluate(() => window.__btTrailStyle())) === 'ribbon', q2);
+  await H.closeDest(P);
+  await P.page.waitForTimeout(600);
+  const qOn = await road(P);
+  rec.ok('...and the road is back on the ground in it',
+    !!qOn && qOn.style === 'ribbon' && qOn.motes > 0, qOn);
+
   await P.ctx.close().catch(() => {});
 }
