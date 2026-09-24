@@ -5827,6 +5827,25 @@ export var BroTown = function BroTown(_ref0) {
           var _cfKeepAlive = Date.now() + 15000;
           if (S._campfire.expiresAt < _cfKeepAlive) S._campfire.expiresAt = _cfKeepAlive;
         }
+        /* ═══ v2.3.2888: ...AND SO MUST A PEER'S, ON YOUR SCREEN ═══
+           Owner: "check all other broadcasted player animations to make sure
+           they match what your character does client side."
+           The rule above keeps the COOK's own fire lit while they cook, but it
+           never reached anyone watching: their copy (S._peerCampfires, from
+           campfire_lit) kept the 45 s fuse it was lit with, and CampfireFx
+           deletes it when that runs out -- so a peer cooking past 45 s did it
+           over bare ground on everybody else's screen while their own fire
+           burned on.  Same rule, on the watcher's side: while a peer's relayed
+           harvest code says they are cooking, their fire's fuse is pushed the
+           same 15 s ahead.  They can only cook at their own fire (the tap list
+           holds S._campfire alone), so their entry is the one under the pan. */
+        if (S._peerCampfires && S._peerCampfires.size && S.others) {
+          var _pcfKeepAlive = Date.now() + 15000;
+          S._peerCampfires.forEach(function (_pcf, _pid) {
+            var _po = S.others[_pid];
+            if (_pcf && _po && _po._ex === 'cook' && _pcf.expiresAt < _pcfKeepAlive) _pcf.expiresAt = _pcfKeepAlive;
+          });
+        }
         if (S._campfire && Date.now() > S._campfire.expiresAt) {
           S._campfire.alive = false;   // so an in-progress cook cancels
           S._campfire = null;
