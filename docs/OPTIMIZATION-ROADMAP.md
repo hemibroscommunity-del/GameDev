@@ -556,7 +556,8 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    served files; freed on exit and loadable again.
 
 16. ~~**The masked (armoured) body bakes — ~25% painted, 7.6-13.8 MB per worn
-   set, and the equip stutter they cost**~~ **SHIPPED, v2.3.2871-2876.**
+   set, and the equip stutter they cost**~~ **SHIPPED, v2.3.2871-2876, and the
+   rest of it v2.3.2904 ((g)-(i) below).**
    Owner: "whenever I put on a piece of armor like legs or torso the game would
    noticeably stutter". Measured (`tools/qa/qa-equip-stutter.mjs`, 4x CPU
    throttle, equip then run): the frame rate halved for seconds, all of it the
@@ -606,6 +607,73 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    the worker, 15 frames held).
    Not covered: the few frames the renderer needs before the worker answers
    on a first sighting or a new facing.
+   (g) v2.3.2904, YOUR OWN misses go to the worker too (owner, on an iPhone 14
+   Pro Max: "The game still drops in frame rate when you first wear a piece of
+   armor"). What (e) left: a frame the renderer needed before the prewarm got
+   to it was still baked inline, in the frame -- and for ONE piece worn on its
+   own (chest or legs: no knight figure covers the run) that is most of a jog
+   cycle in every direction you run. Measured (4x throttle, a never-owned
+   steel chest piece put on, then running): ~30 inline bakes in the first two
+   seconds, 9-10 frames over 150 ms. Now `_localMaskedFrame` sends a miss to
+   the FRONT of the worker's queue and draws the plain body under the armour
+   for the frame or two the worker takes; every bake goes through one ranked
+   queue (`_prewarmBake` / `_pumpBakes`: one job at a time, the renderer's
+   newest miss first, then the background; a key never queued twice, a queued
+   prewarm job promoted when the renderer wants it).
+   Not the peer's hold (f): a held body frame is the wrong pose under armour
+   that has moved on to this frame, so the limbs slip against the plate; the
+   plain body is the right pose and lacks only the mask's trim of a few
+   pixels (measured on a frozen stand-south frame at dpr 3: ~600 of 227k
+   pixels differ from the masked frame, a one-pixel outline and a few at the
+   hands and boots). No worker, the old inline path; a worker STUCK on one
+   job for 1 s, inline too -- judged by the running job, never by how long a
+   frame has queued: a first cut timed each frame from when it was asked for
+   and, under load, sent 13-17 frames of a run back to inline bakes.
+   Also tried and NOT kept: a look-ahead (the next four frames of the pose
+   queued behind each miss, so the worker would lead the run cycle) -- twice
+   the worker jobs, no fewer plain frames, slightly more slow frames; under
+   load the jobs' main-thread share is the bottleneck, not the worker.
+   Measured, before -> after (7 s of running straight after the equip):
+   chest piece, `qa-equip-stutter GEAR=chest`: 76 -> 101 frames (control
+   103-109), 49 -> 20 over 100 ms, longest 333 -> 167 ms, 0 inline bakes;
+   chest and legs on their own (scratch timeline, two runs each): frames over
+   150 ms 9-10 -> 1 and 14-15 -> 0-1, long tasks over 150 ms 6-8 -> 1 and
+   10-11 -> 0; the full set (`GEAR=both`, whose run the figure already
+   covered): longest frame 350 -> 200 ms, 36 -> 32 over 100 ms (32 -> 20 on
+   an earlier pair) -- what is left there is mostly the sheen's per-frame
+   filter passes, which this box rasterises in software (sheen off: 14 over).
+   `window.__btBakeWorker().local` counts the render path's hits / plain /
+   inline / late.
+   (h) v2.3.2904, the worker's jobs cost this thread less, both ends: an input
+   is sent as the crop it already is (`createImageBitmap(sheet, frame rect)` +
+   its trim, placed in the worker with drawGearFrame's arithmetic) instead of
+   a whole-frame scratch canvas + 2D context per input, and the crop
+   (packTrimmed for one frame) runs in the worker, so the store is one canvas
+   the size of the art. The prewarm passes stopped waiting a frame after each
+   job (a worker job always overran the 5 ms budget, being mostly the worker's
+   time, so the worker idled most of each frame): two jobs out, the worker
+   fed; the owned-gear pass one job per frame instead of v2.3.699 / v2.3.2873's
+   gaps, which were set for a bake on the main thread. Both passes walk the
+   direction you face first. The upload after the equip pass runs at 2 ms a
+   frame instead of 24 per setTimeout(0), which ran several batches back to
+   back before the next frame. Every bake byte-identical: `qa-bake-ident`,
+   682 frames over the four combinations, 0 differences.
+   (i) v2.3.2904, the metal shine's shader is compiled behind the loading
+   screen (glint.js `prewarmGlintPipe`). With the sheen on for everyone
+   (v2.3.2887), the first frame anyone wore metal was also the first frame the
+   filter was drawn, and the program compiles on first USE: generateProgram
+   was 35 ms of that frame at 4x throttle here; with the warm-up it is not in
+   it. (The sandbox rasterises WebGL in software and its first sweep frame is
+   still slow either way -- that part is the software rasteriser, and says
+   nothing about a phone's GPU.)
+   Still on the table, none of them a first-wear cost: the sheen is a FILTER,
+   an extra render pass per metal piece every frame for as long as it is worn
+   (glint.js header: the baked highlight mask is the cheaper form); the equip
+   tap re-renders the whole of BroTown (`gearWornSync` -> `setGearWorn`, ~45 ms
+   of the equip frame at 4x throttle here, on every equip); and the dark-screen watchdog's canvas
+   read every 5 s (BroTown `_sampleLit`: a drawImage of the WebGL canvas, a GPU
+   readback) was the longest main-thread task in the equip window here --
+   worth timing on a phone.
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
