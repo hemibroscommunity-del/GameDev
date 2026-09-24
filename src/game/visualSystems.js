@@ -206,7 +206,7 @@ export function updateVisualSystems(S) {
                rule the local orbs follow (projectiles.js), so what a peer
                sees covers the same ground as what the caster sees. */
             /* v2.3.2848: ...or, for a bow volley's arrow, a count of frames (gameEvents.js) */
-            /* ═══ v2.3.2901: AND THE SAME FRAME-RATE TERM AS YOURS ═══
+            /* ═══ v2.3.2919: AND THE SAME FRAME-RATE TERM AS YOURS ═══
                Owner: "check all other broadcasted player animations to make
                sure they match what your character does client side."
                Your own shot flies and spends its life per 60 Hz TICK -- step x
@@ -234,7 +234,7 @@ export function updateVisualSystems(S) {
             rp._held = false;
             /* v2.3.2848: MIRROR-PINNED -- the 8 below is bowVolley.js
                PEER_PX_PER_FRAME; the bow volley staggers a peer's copies by it */
-            var _rpStep = (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8)) * _rpDt;   /* v2.3.2901: x the frame-rate term */
+            var _rpStep = (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8)) * _rpDt;   /* v2.3.2919: x the frame-rate term */
             rp.dist += _rpStep;
             rp.life -= _rpDt;
             if (rp.life <= 0) return false;

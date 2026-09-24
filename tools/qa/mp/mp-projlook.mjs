@@ -1,4 +1,4 @@
-/* ═══ v2.3.2901: A PEER'S ARROW AND BOLT LOOK LIKE THE ONES THEY SHOT ═══
+/* ═══ v2.3.2919: A PEER'S ARROW AND BOLT LOOK LIKE THE ONES THEY SHOT ═══
  *
  * Owner: "check all other broadcasted player animations to make sure they
  * match what your character does client side so there's no discrepancies."

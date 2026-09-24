@@ -470,7 +470,7 @@ export class StaffCastFx {
           p._fxSpan = CONVERGE_PX * k1;
         }
       }
-      /* v2.3.2901: a peer's bolt carries its caster's element now (relayed on
+      /* v2.3.2919: a peer's bolt carries its caster's element now (relayed on
          player_projectile as `el`, stored as _projElem), so it glows in it too
          -- it was always the no-element lavender. */
       p._fxElem = owner === 'self'
