@@ -222,7 +222,12 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
      one screen apart. The vendor label now matches this one. */
   manaShard: 'Mana Draught',
   staminaSalts: 'Stamina Salts',
+  daily_chest: 'Daily Chest',   /* v2.3.2820: the daily login reward (server dailychest.js) */
 });
+
+/* v2.3.2820: the daily chest -- opened from the bag, rolled by the worker. */
+export const DAILY_CHEST_KEY = 'daily_chest';
+export const isChestKey = (key) => key === DAILY_CHEST_KEY;
 
 /* ═══ v2.3.2103: THE GOLDEN TICKET WAS INVISIBLE IN THIS BAG ═══
  * Owner, mid-event, looking at his own inventory: "Hold on I think people
@@ -281,6 +286,9 @@ export const iconFor = (key) => {
      No art file exists for it, and a glyph that reads as a ticket is more
      honest than borrowing a coin's picture. */
   if (isTicketKey(key)) return '\uD83C\uDF9F';
+  /* v2.3.2820: the daily chest.  A glyph until chest art is generated
+     (UI-BIBLE icon prompts) -- the same honest placeholder the ticket had. */
+  if (isChestKey(key)) return '\uD83C\uDF81';
   const k = (key || '').toLowerCase();
   /* v2.3.2052: the three town-shop consumables, by EXACT key and above every
      pattern below. They had no entry at all, so a whetstone in your bag drew

@@ -16,6 +16,7 @@
    body is untouched. Returns the effect cleanup (or undefined when gated
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
+import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
@@ -1423,6 +1424,25 @@ export function setupWebSocket(ctx) {
                  despawn.  The actual coin/inventory mutation rides on
                  the player_state event that immediately follows. */
               if (msg.payload) _applyLootCredit(msg.payload, S);
+              break;
+            }
+          case 'chest_opened':
+            {
+              /* v2.3.2820: the worker's answer to Open Chest (dailychest.js).
+                 It has ALREADY taken the chest and paid the prize; the
+                 player_state that follows carries the totals.  Coins and
+                 armour go through the loot-credit path so they get the same
+                 gold popup / coin sound and the same stash adoption a
+                 picked-up drop does (the chest's armour carries its ledger
+                 gid exactly like a drop's); then the reveal card. */
+              var _cp = msg.payload && msg.payload.prize;
+              if (_cp) {
+                try {
+                  if (_cp.kind === 'coins' && _cp.coins > 0) _applyLootCredit({ coins: _cp.coins }, S);
+                  else if (_cp.kind === 'armor' && _cp.piece) _applyLootCredit({ armor: [_cp.piece] }, S);
+                } catch (_ce) { /* the reveal still shows */ }
+                try { chestRevealBus.show(_cp); } catch (_re) {}
+              }
               break;
             }
           case 'lifesteal_credit':
@@ -3777,6 +3797,13 @@ export function setupWebSocket(ctx) {
            nothing (TRAPS #18). This one would fail in the worst way: the
            bottle stays in the bag and nothing happens, which reads as a broken
            item rather than as a broken send. */
+        /* v2.3.2820: Open Chest (ItemDetailPopup) -> dailychest.js.  The shim
+           passes only the types it names, so without this the button sent
+           nothing at all -- caught by mp-polish opening a real chest. */
+        if (msg.type === 'chest_open') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'potion_drink') {
           ws.send(JSON.stringify(msg));
           return;

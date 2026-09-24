@@ -53,13 +53,66 @@ export async function run({ browser, wsPort, webPort, rec }) {
      and joinPair spends longer than that bringing the second player in, so
      "is it on screen right now" would be a race.  The bus keeps what it was
      given until dismissed OR expired -- so the probe records every push. */
-  const toast = await A.page.evaluate(() => (window.__btToastLog || []).some((t) => /Daily reward/.test(t)));
+  const toast = await A.page.evaluate(() => (window.__btToastLog || []).some((t) => /Daily (reward|chest)/.test(t)));
   const inChat = await A.page.evaluate(() => {
     const S = window._gameState.current;
-    return (S.chatLog || []).some((m) => /Daily reward/.test((m && (m.text || m.msg)) || ''));
+    return (S.chatLog || []).some((m) => /Daily (reward|chest)/.test((m && (m.text || m.msg)) || ''));
   });
   rec.ok('the daily reward shows as a toast', toast === true, { toast });
   rec.ok('...and still not as a chat line (v2.3.2037)', inChat === false, { inChat });
+
+  /* ═══ 5b. THE DAILY CHEST (owner: "a loot box ... instead of daily coin
+     reward") ═══  The day paid a chest into the bag; opening it asks the
+     worker, which rolls, pays, and answers with the reveal. */
+  const hasChest = await H.readState(A, (S) => (S.rpg && S.rpg.inventory && S.rpg.inventory.daily_chest) || 0);
+  rec.ok('DAILY CHEST: the day put a chest in the bag', hasChest === 1, { hasChest });
+  const chestToast = await A.page.evaluate(() => (window.__btToastLog || []).some((t) => /Daily chest.*open it from your Bag/.test(t)));
+  rec.ok('...and the toast says where it is and what to do with it', chestToast);
+  await A.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.channel.send({ type: 'chest_open', payload: { invKey: 'daily_chest', opId: 'qa-chest-1' } });
+  });
+  await A.page.waitForSelector('[data-chest-reveal]', { timeout: 8000 }).catch(() => {});
+  const reveal = await A.page.evaluate(() => {
+    const el = document.querySelector('[data-chest-reveal]');
+    return el ? { kind: el.getAttribute('data-chest-reveal'), text: el.textContent } : null;
+  });
+  rec.ok('opening it shows what came out', !!reveal && /coins|Fish|Gem|Torso|Greaves/.test(reveal.text), reveal);
+  await shot(A, 'chest-reveal');
+  await A.page.waitForTimeout(800);
+  const after = await H.readState(A, (S) => (S.rpg && S.rpg.inventory && S.rpg.inventory.daily_chest) || 0);
+  rec.ok('...and the chest is gone from the bag (the worker took it)', after === 0, { after });
+  await A.page.evaluate(() => { try { window.__btChestReveal = null; } catch (e) { /* */ } });
+
+  /* ═══ 7. THE COOKING QUEST'S STEPS (owner: "a lot of people get stuck on
+     the quest for cooking 2 fish") ═══
+     On the SECOND player: the first one just opened a chest, and a chest can
+     roll 10 cooked fish -- which completes this quest outright and ticks
+     every step, a pass/fail decided by the dice. */
+  await B.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.channel.send({ type: 'quest_accept', payload: { questId: 'life_1' } });
+  });
+  await H.waitFor(B, (S) => S.rpg && S.rpg._quests && S.rpg._quests.life_1, (v) => v === 'active',
+    { timeout: 10000, label: 'life_1 active' }).catch(() => {});
+  await B.page.waitForFunction(() => (window.__btToastLog || []).some((t) => /^Next: Catch a fish/.test(t)), null, { timeout: 6000 }).catch(() => {});
+  rec.ok('accepting the quest says the first step', await B.page.evaluate(() => (window.__btToastLog || []).some((t) => /^Next: Catch a fish/.test(t))));
+  const myId = await H.readState(B, (S) => S.myId);
+  await H.grant(wsPort, myId, 'item', { invKey: 'fish_minnow', count: 1 });
+  await H.grant(wsPort, myId, 'item', { invKey: 'wood_pine_log', count: 1 });
+  await B.page.waitForFunction(() => (window.__btToastLog || []).some((t) => /^Next: Open your Bag and tap the log/.test(t)), null, { timeout: 8000 }).catch(() => {});
+  rec.ok('...and with a fish and a log in the bag, it says the NEXT one: tap the log to light a fire',
+    await B.page.evaluate(() => (window.__btToastLog || []).some((t) => /^Next: Open your Bag and tap the log/.test(t))));
+  await H.openDest(B, 'Quests');
+  await B.page.waitForFunction(() => document.body.innerText.includes('Next: Open your Bag'), null, { timeout: 6000 }).catch(() => {});
+  rec.ok('the Quests list shows the next step on the quest row', await bodyHas(B, 'Next: Open your Bag'));
+  await H.clickText(B, 'Learn a Trade');
+  await B.page.waitForSelector('[data-quest-steps]', { timeout: 6000 }).catch(() => {});
+  const steps = await B.page.evaluate(() => Array.from(document.querySelectorAll('[data-step-state]')).map((e) => e.getAttribute('data-step-state')));
+  rec.ok('the quest page lists every step: fish and log ticked, lighting the fire next',
+    steps.length === 6 && steps[0] === 'done' && steps[1] === 'done' && steps[2] === 'current', steps);
+  await shot(B, 'quest-steps');
+  await H.closeDest(B).catch(() => {});
 
   /* ═══ 1. FEEDBACK ═══ */
   await H.openDest(A, 'Settings');

@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-equip tick */
-import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey } from './InventoryPanel.jsx';   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
+import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
@@ -150,7 +150,9 @@ function resolveTarget(target) {
     const isTicket = isTicketKey(key);
     const isPotion = isPotionKey(key);            /* v2.3.2127 */
     const isCape = isCapeItemKey(key);
+    const isChest = isChestKey(key);              /* v2.3.2820 */
     if (isTicket) info = 'Open it to claim your cape';
+    else if (isChest) info = 'Open it for a prize — usually coins, sometimes fish, a rare gem or armour';
     /* v2.3.2109: it IS a control now (owner: "I wanted ability to equip and
        unequip the cape"). Ownership is still the ledger's answer -- the worker
        refuses a toggle from anyone who did not win one -- but whether it is on
@@ -196,6 +198,11 @@ function resolveTarget(target) {
            would have it relayed to the room as an unknown broadcast (TRAPS
            #18). Read directly off _serverCaps rather than through an alias so
            the caps-audit suite can see the gate. */
+        /* v2.3.2820: the daily chest.  Gated on caps.dailyChest, read directly
+           (caps-audit): the worker rolls and credits, so against a worker that
+           cannot, no button and nothing sent. */
+        openChest: isChest && count > 0
+          && !!(SR && SR._serverCaps && SR._serverCaps.dailyChest),
         drink: isPotion && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.potionBag),
         /* v2.3.2476: Sell -- put this up in the auction house at your own
@@ -1274,6 +1281,15 @@ export const ItemDetailPopup = () => {
     try { S.channel.send({ type: 'potion_drink', payload: { invKey: target.key } }); } catch (e) {}
     close();
   };
+  /* v2.3.2820: SEND AND WAIT, the ticket's rule -- the worker takes the chest,
+     rolls and credits; the reveal comes back as chest_opened (wsClient). */
+  const onOpenChest = () => {
+    const S = getState();
+    if (!S || !S.channel) return;
+    const opId = 'chest:' + (S.myId || 'me') + ':' + Date.now();
+    try { S.channel.send({ type: 'chest_open', payload: { invKey: target.key, opId } }); } catch (e) { /* the chest is still in the bag */ }
+    itemDetailBus.close();
+  };
   const onOpenTicket = () => {
     const S = getState();
     if (!S || !S.channel) return;
@@ -1695,6 +1711,7 @@ export const ItemDetailPopup = () => {
           {actions.light    && <button onClick={onLight}   className={buttonClass('primary')} style={buttonStyle('primary')}>Light fire</button>}
           {actions.eat      && <button onClick={onEat}     className={buttonClass('primary')} style={buttonStyle('primary')}>Eat</button>}
           {actions.open     && <button onClick={onOpenTicket} className={buttonClass('primary')} style={buttonStyle('primary')}>Open Golden Ticket</button>}
+          {actions.openChest && <button onClick={onOpenChest} data-open-chest="" className={buttonClass('primary')} style={buttonStyle('primary')}>Open Chest</button>}
           {actions.drink    && <button onClick={onDrink} className={buttonClass('primary')} style={buttonStyle('primary')}>Drink</button>}
           {actions.capeOn   && <button onClick={onCapeOn}  className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}

@@ -61,6 +61,7 @@ import { arenaMethods } from './gladiator.js';
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
+import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
@@ -368,6 +369,9 @@ export const CHAT_RELAY = {
 // v2.3.1151: exported so test/wire-audit.test.mjs can verify every
 // server-emitted type is registered here (rule 13's mechanical check).
 export const PRIVILEGED_EVENTS = new Set([
+  /* v2.3.2820: the daily chest's result (dailychest.js) -- it names a prize,
+     so a forged one would put a fake jackpot on another player's screen. */
+  'chest_opened',
   /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
      both carry money -- `shop_result` names coins paid and `shop_state` is
      the public pile every client prices against. Forgeable, they would let
@@ -4900,6 +4904,15 @@ export class GameRoom {
         }
         break;
 
+      case 'chest_open':
+        /* v2.3.2820: open a daily chest from the bag (dailychest.js).  The
+           worker takes the chest, rolls and credits; the client only asks. */
+        if (session.id) {
+          const _cp = this._handleChestOpen(session, msg.payload || msg);
+          if (_cp && _cp.catch) _cp.catch(() => {});
+        }
+        break;
+
       case 'cape_redeem':
         /* v2.3.2026: the player tapped Open on a golden ticket in the bag.
            The client never consumes it or grants the cape -- see the
@@ -5619,6 +5632,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
+Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.

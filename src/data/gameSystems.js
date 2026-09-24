@@ -6139,6 +6139,47 @@ export const QUEST_STATUS = {
   complete: 'complete',
   turnedIn: 'turnedIn'
 };
+/* ═══ v2.3.2820: A QUEST'S STEPS, READ OFF LIVE STATE ═══
+   See life_1's `steps`.  Returns null for a quest without steps, otherwise
+   [{ label, done, current }] where `current` marks the first step not done --
+   the one thing to do next.  A quest whose check() already passes has every
+   step but the hand-in done. */
+export function questInvCount(inv, prefix) {
+  var n = 0;
+  for (var k in (inv || {})) if (k.indexOf(prefix) === 0) n += Number(inv[k]) || 0;
+  return n;
+}
+export function questFireLit(S) {
+  return !!(S && S._campfire && S._campfire.alive);
+}
+export function questSteps(quest, R, S) {
+  if (!quest || !Array.isArray(quest.steps) || !quest.steps.length) return null;
+  var inv = (R && R.inventory) || {};
+  var whole = false;
+  try { whole = typeof quest.check === 'function' && !!quest.check(R || {}, S); } catch (e) { whole = false; }
+  var last = quest.steps.length - 1;
+  var out = quest.steps.map(function (st, i) {
+    var d = false;
+    if (whole && i < last) d = true;
+    else { try { d = !!st.done(inv, S); } catch (e) { d = false; } }
+    return { label: st.label, done: d, current: false };
+  });
+  /* The first undone step is "current" -- but a later step being done means
+     every step before it is behind you, so the pointer never sits BEHIND
+     progress (a fish already cooked means you clearly had a fire). */
+  var lastDone = -1;
+  for (var i = 0; i < out.length; i++) if (out[i].done) lastDone = i;
+  for (var j = 0; j < lastDone; j++) {
+    /* ...except the two things you need AGAIN for the second fish.  Before
+       the second fish is cooked, the fish / log / fire steps stay honest
+       about what you are holding now. */
+    if (j <= 2 && lastDone < 4) continue;
+    out[j].done = true;
+  }
+  for (var c = 0; c < out.length; c++) if (!out[c].done) { out[c].current = true; break; }
+  return out;
+}
+
 export const QUEST_CHAINS = {
   /* ═══ v2.3.1665: THE TUTORIAL ARC — Mayor Bro walks you through it ═══
      Mirrors QUEST_REWARDS in server/src/data.js; the SERVER is what pays,
@@ -6345,6 +6386,34 @@ export const QUEST_CHAINS = {
       for (var k in inv) if (k.indexOf('cooked_fish_') === 0) n += inv[k] || 0;
       return n >= 2;
     },
+    /* ═══ v2.3.2820: THE STEPS, SPELLED OUT ═══
+       Owner: "a lot of people get stuck on the quest for cooking 2 fish.  It
+       doesn't specify that you need to cut a tree from a zone, tap on the log
+       to light fire, need to have a fish in your inventory, tap on the fire,
+       cook it, then bring mayor bro 2 of those."
+       One line of objective hid FIVE actions, two of them taps on things no
+       other quest teaches (a log in the bag lights a fire; a fire in the world
+       is what you cook at).  So the quest carries its own checklist, each step
+       read off live state (questSteps below) -- the Quests panel ticks them
+       off, and QuestStepNudge says the next one out loud as each is done.
+       A step counts as done while ITS OWN fact holds or the whole quest does,
+       so cooking the first fish, which spends the fire, does not un-tick the
+       log and the fish for the second: the first step not done is always the
+       honest next thing to do. */
+    steps: [
+      { label: 'Catch a fish at a fishing spot in any zone',
+        done: function (inv) { return questInvCount(inv, 'fish_') > 0; } },
+      { label: 'Chop a tree in any zone to get a log',
+        done: function (inv, S) { return questInvCount(inv, 'wood_') > 0 || questFireLit(S); } },
+      { label: 'Open your Bag and tap the log to light a campfire',
+        done: function (inv, S) { return questFireLit(S); } },
+      { label: 'Stand by the fire and tap it to cook your fish',
+        done: function (inv) { return questInvCount(inv, 'cooked_fish_') > 0; } },
+      { label: 'Cook 2 fish in total (fires burn out — light another if needed)',
+        done: function (inv) { return questInvCount(inv, 'cooked_fish_') >= 2; } },
+      { label: 'Bring the 2 cooked fish to Mayor Bro in town',
+        done: function () { return false; } },
+    ],
     reward: { gold: 60, xp: 55, item: 'Pickaxe' },
     next: 'life_2',
     /* No axe or pickaxe art exists in /icons/items, so those two go
@@ -6352,8 +6421,9 @@ export const QUEST_CHAINS = {
     gives: [{ when: 'accept', icon: '/icons/items/fishing-pole.webp', label: 'Fishing Pole' }],
     dialogue: {
       start: "Take the axe and the pole — nobody's cutting or casting without them.\n\n"
-        + '🪓 Trees and fishing spots only show up once you can work them.\n'
-        + '🔥 Catch two fish, chop wood, cook them, and bring them back.',
+        + '🎣 Catch a fish and 🪓 chop a tree — any zone has both.\n'
+        + '🔥 Tap the log in your Bag to light a fire, then tap the fire to cook.\n'
+        + 'Two cooked fish, back to me.',
       progress: 'Two cooked fish. Raw ones do not count — find a fire.',
       complete: "That's a trade. Here — a pickaxe. The rocks are yours now.",
     },

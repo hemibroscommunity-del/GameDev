@@ -11798,7 +11798,17 @@ export var BroTown = function BroTown(_ref0) {
            staying visibly secondary to the title above it. */
         color: 'rgba(255,255,255,.72)'
       }
-    }, q.desc));
+    }, function () {
+      /* v2.3.2820: a quest with STEPS (life_1, the cooking quest) shows the
+         next one here instead of the objective again -- this pinned card is
+         the one line a stuck player reads (owner: "a lot of people get stuck
+         on the quest for cooking 2 fish").  Done quests keep their desc. */
+      if (done) return q.desc;
+      var _st = null;
+      try { _st = DATA.questSteps(q, rpgState, stateRef.current); } catch (e) { _st = null; }
+      var _cur = _st && _st.find(function (x) { return x.current; });
+      return _cur ? 'Next: ' + _cur.label : q.desc;
+    }()));
   }(), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
     var dd = (_stateRef$current37 = stateRef.current) === null || _stateRef$current37 === void 0 ? void 0 : _stateRef$current37._deathDrops;
     if (!dd || dd.length === 0) return null;
