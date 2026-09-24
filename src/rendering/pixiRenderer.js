@@ -1106,6 +1106,10 @@ export async function initPixiRenderer(canvas) {
         /* v2.3.2855: is this peer's lumberjack drawn from a bake that carries
            their drawings (true), or from the shared figure (false)? */
         chopInk: !!ent._chopInk,
+        /* v2.3.2856: is this peer's cook drawn with their drawings' layer? */
+        cookInk: !!ent._cookInk,
+        /* v2.3.2858: ...and their fire-lighter? */
+        fireInk: !!ent._fireInk,
       };
     },
     /* v2.3.2855: the lumberjack SPRITES -- yours (no id) or a peer's -- for
@@ -1119,6 +1123,40 @@ export async function initPixiRenderer(canvas) {
     },
     /* v2.3.2855: how many drawn peers' lumberjacks are baked right now. */
     peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),
+    /* v2.3.2856: the cook's two SPRITES -- the figure and the drawings' layer
+       over it -- yours (no id) or a peer's, for mp-cookink to read the frame
+       the renderer actually draws. */
+    cookSpriteRaw: (id) => {
+      const e = effectsRenderer;
+      if (id == null) return e.cookSprite ? { body: e.cookSprite, ink: e.cookInkSprite || null } : null;
+      const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
+      return (ent && ent.cook) ? { body: ent.cook, ink: ent.cookInk || null } : null;
+    },
+    /* v2.3.2856: your cook's layers (how many frames, or 0 when there is no
+       layer), and how many drawn peers' layers are held right now. */
+    cookInkLayers: () => {
+      const e = effectsRenderer;
+      return {
+        body: e._cookFramesInk ? e._cookFramesInk.length : 0,
+        legless: e._cookLeglessFramesInk ? e._cookLeglessFramesInk.length : 0,
+        peers: (e._peerInks && e._peerInks.cook) ? e._peerInks.cook.size : 0,
+      };
+    },
+    /* v2.3.2858: the fire-lighter's two SPRITES, yours (no id) or a peer's, and
+       its layers -- mp-fireink, the twins of cookSpriteRaw / cookInkLayers. */
+    fireSpriteRaw: (id) => {
+      const e = effectsRenderer;
+      if (id == null) return e.fireSprite ? { body: e.fireSprite, ink: e.fireInkSprite || null } : null;
+      const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
+      return (ent && ent.fire) ? { body: ent.fire, ink: ent.fireInk || null } : null;
+    },
+    fireInkLayers: () => {
+      const e = effectsRenderer;
+      return {
+        body: e._fireFramesInk ? e._fireFramesInk.length : 0,
+        peers: (e._peerInks && e._peerInks.fire) ? e._peerInks.fire.size : 0,
+      };
+    },
     /* v2.3.138: dispose a single loot pile by direct object reference.
        Local SP pickups don't always set lootId (legacy melee/bow/DoT
        push paths) so disposeLootById can't reach them. The pickup
