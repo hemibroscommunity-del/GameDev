@@ -1,4 +1,4 @@
-/* ═══ v2.3.2852: HIT, MINING AND DODGE WEAR THE WALKING SKIN ═══
+/* ═══ v2.3.2860: HIT, MINING AND DODGE WEAR THE WALKING SKIN ═══
  *
  * Owner: "fix the orange head during hits/mining to be whatever color the
  * character color should be."  With the default skin nothing is recoloured,
@@ -55,7 +55,7 @@ const COACH_OFF = `try {
 const sampleSkin = (P, ms, poke) => P.page.evaluate(async ({ dur, poke }) => {
   const R = window._pixiRenderer;
   const pokeFn = poke ? new Function('S', poke) : null;
-  /* playerSkins' own skin test, and its v2.3.2850 eye-white rule when it has
+  /* playerSkins' own skin test, and its v2.3.2859 eye-white rule when it has
      it -- the mean is of the skin, not of the eyes */
   const isSkin = (r, g, b, a) => a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25 && g < 0.8 * r;
   const meanOf = (spr) => {
