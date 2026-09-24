@@ -95,7 +95,7 @@ import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is aut
 import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2841: the staff kick + where its crystal is */
 /* v2.3.2841: scratch for staffTipWorld, reused every frame (no allocation). */
 const _staffTipOut = { x: 0, y: 0 };
-import { SHADE } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop */
+import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop; v2.3.2893 + snow props */
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
@@ -13461,7 +13461,7 @@ export class EntityRenderer {
            convention the NPC figures' feet use. */
         spr.anchor.set(0.5, 1);
         spr.label = `prop_${p.id}`;
-        spr._vShade = SHADE.prop;   /* v2.3.2767: formShade.js */
+        spr._vShade = propShade(p.zone);   /* v2.3.2767: formShade.js; v2.3.2893: snow props shade near-neutral */
         this.entityLayer.addChild(spr);
         this.propDisplays.set(p.id, spr);
       }
