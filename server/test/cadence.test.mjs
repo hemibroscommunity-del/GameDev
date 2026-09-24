@@ -55,6 +55,12 @@ function check(name, cond, detail) {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
+/* v2.3.2820: the day now pays a DAILY CHEST (dailychest.js, pinned by
+   dailychest.test.mjs).  The gold arithmetic below -- base, streak steps,
+   cap, reset -- is still live code: it is what `dailyChest: false` in
+   liveflags falls back to, so this suite keeps pinning it with the switch
+   off rather than being deleted. */
+room._liveFlags = { dailyChest: false };
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id) {
   room.sessions.set(ws, baseSession());

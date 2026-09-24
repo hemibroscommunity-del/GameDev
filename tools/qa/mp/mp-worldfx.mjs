@@ -91,6 +91,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('walking leaves dust prints (one per stride) and kicks up puffs',
     !!walking && walking.prints >= Math.min(3, Math.floor(walked / 17) - 1) && walking.puffs >= 1,
     walking && { prints: walking.prints, puffs: walking.puffs, walked: +walked.toFixed(1) });
+  /* v2.3.2825 (owner: "It would need to match the color of the terrain"):
+     the step's dust is taken from the ground grid under it, not the zone's
+     one flat colour, and the puffs are now clearly there. */
+  rec.ok('...coloured by the ground under the foot (a baked ground colour, not the zone\'s flat tan)',
+    !!walking && !!walking.lastDust && typeof walking.lastDust.ground === 'number' && walking.lastDust.ground > 0
+      && walking.lastDust.puff !== 0xd8c7a0, walking && walking.lastDust);
+  rec.ok('...and a step throws two puffs now, so they are seen (>= 4 up while walking)',
+    !!walking && walking.puffs >= 4, walking && { puffs: walking.puffs });
   await P.page.waitForTimeout(2200);
   const after = await fx();
   rec.ok('...which the breeze has taken two seconds later', !!after && after.prints === 0, after && { prints: after.prints });

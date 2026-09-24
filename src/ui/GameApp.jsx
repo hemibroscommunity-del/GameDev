@@ -33,6 +33,8 @@ import { ControlsTutorial } from './mobile/ControlsTutorial.jsx';
 /* v2.3.2131: the "what is this?" explainer -- one overlay behind both the
    combat-card XP popup and the hero sheet's tappable stat labels. */
 import { InfoPopup } from './mobile/InfoPopup.jsx';
+import { ChestReveal } from './mobile/ChestReveal.jsx';   /* v2.3.2820 */
+import { QuestStepNudge } from './mobile/QuestStepNudge.jsx';   /* v2.3.2820 */
 /* v2.3.820: MasteryNotification removed from the render (owner request) --
    import dropped to avoid an unused symbol. */
 import { advanceMastery, earnCertification } from '../game/mastery.js';
@@ -126,6 +128,12 @@ export const GameApp = () => {
       if (localStorage.getItem('brotown_audio_off') === '1') {
         BT_AUDIO.muted = true;
       }
+    } catch (e) {}
+    /* v2.3.2820: ...and the two volume sliders (SettingsPanel), for the same
+       reason -- a level chosen last session must hold from the first note. */
+    try {
+      const _lv = (k) => { const v = localStorage.getItem(k); return v == null ? 1 : Number(v); };
+      if (BT_AUDIO.setLevels) BT_AUDIO.setLevels(_lv('brotown_vol_music'), _lv('brotown_vol_sfx'));
     } catch (e) {}
 
     let done = false;
@@ -696,6 +704,8 @@ export const GameApp = () => {
           is untouched; only the popup UI is gone. */}
       <ControlsTutorial />
       <InfoPopup />
+      <ChestReveal />{/* v2.3.2820: what came out of the daily chest */}
+      <QuestStepNudge />{/* v2.3.2820: says a stepped quest's next step as a toast */}
       {/* v2.3.221: dev-tooling overlays gated on ?dev=1 URL param so
           the player-facing build doesn't show the D button, version
           badge, or FPS counter. */}

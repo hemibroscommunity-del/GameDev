@@ -158,6 +158,10 @@ const cast = async (kind) => {
   wsA.sent.length = 0;
   room.eventBuffer.length = 0;
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'ability', payload: { kind } }));
+  /* v2.3.2824: whirlwind ARMS on the press and strikes when its windup ends
+     (tick.js).  The sections below test what the strike does, so they fire
+     it straight away; section 8 tests the windup itself. */
+  room._tickAbilityWindups(Date.now() + 60000);
 };
 const rejects = () => msgsOfType(wsA, 'ability_rejected').map((m) => m.payload);
 const hits = () => room.eventBuffer.filter((e) => e.type === 'monster_hit');
@@ -1117,6 +1121,59 @@ const setCharLevel = (lvl) => {
       m.hp < hp3 && hits().length === 1,
       { hp: m.hp, hp3, hits: hits().length, rejects: rejects() });
   }
+}
+
+// ── 8. v2.3.2824: the whirlwind windup ──
+// Owner: "delayed by about 2 seconds after you press it so a ring around you
+// will display ... so you can tactically position yourself."
+{
+  setCharLevel(12);
+  readyPlayer();
+  parkAll();
+  const r = STAM_ABILITIES.whirl.radius;
+  check('whirlwind has a 2 second windup', STAM_ABILITIES.whirl.windupMs === 2000, STAM_ABILITIES.whirl);
+  const m = arm(meadow[0], psA.x + r + 150, psA.y);        /* out of reach at the press */
+  const st0 = psA.stamina;
+  wsA.sent.length = 0; room.eventBuffer.length = 0;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'ability', payload: { kind: 'whirl' } }));
+  const wind = room.eventBuffer.find((e) => e.type === 'ability_windup');
+  check('the press ARMS it: nothing is hit yet', hits().length === 0 && m.hp === 5000, { hits: hits().length });
+  check('...but it is paid for (stamina + cooldown) on the press', psA.stamina < st0 && psA._abilCd.whirl > Date.now(),
+    { st0, st: psA.stamina });
+  check('...and the zone is told: caster, ms and the exact radius for the ring',
+    !!wind && wind.payload.playerId === 'pa' && wind.payload.ms === 2000 && wind.payload.radius === r && wind.payload.zone === psA.z,
+    wind && wind.payload);
+  room._tickAbilityWindups(Date.now() + 1000);
+  check('...one second in, still nothing', hits().length === 0 && m.hp === 5000);
+  /* Walk over to the monster during the ring -- the strike is measured from
+     where you are when it ends, which is the whole point of the windup. */
+  psA.x = m.x - 100;
+  room._tickAbilityWindups(Date.now() + 2100);
+  check('when the windup ends it strikes from where you are THEN (walked into range)', hits().length === 1 && m.hp < 5000,
+    { hits: hits().length, hp: m.hp });
+  room.eventBuffer.length = 0;
+  room._tickAbilityWindups(Date.now() + 9000);
+  check('...exactly once', hits().length === 0);
+
+  /* Dying or leaving the zone during the windup loses the cast. */
+  readyPlayer(); parkAll();
+  const m2 = arm(meadow[1], psA.x + 20, psA.y);
+  wsA.sent.length = 0; room.eventBuffer.length = 0;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'ability', payload: { kind: 'whirl' } }));
+  const z0 = psA.z; psA.z = 'town';
+  room._tickAbilityWindups(Date.now() + 2100);
+  psA.z = z0;
+  check('changing zone during the windup cancels the strike', hits().length === 0 && m2.hp === 5000);
+
+  /* The kill switch: instant, exactly as before. */
+  readyPlayer(); parkAll();
+  const m3 = arm(meadow[2], psA.x + 20, psA.y);
+  room._liveFlags = { ...(room._liveFlags || {}), whirlWindup: false };
+  wsA.sent.length = 0; room.eventBuffer.length = 0;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'ability', payload: { kind: 'whirl' } }));
+  check('switched off (whirlWindup:false): it strikes on the press again', hits().length === 1 && m3.hp < 5000
+    && !room.eventBuffer.some((e) => e.type === 'ability_windup'));
+  delete room._liveFlags.whirlWindup;
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

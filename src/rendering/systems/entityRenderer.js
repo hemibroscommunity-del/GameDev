@@ -2,6 +2,7 @@
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
+import { tickSmithing } from '@/game/smithing.js';   /* v2.3.2827: the smith borrows the mining swing */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
@@ -10982,7 +10983,12 @@ export class EntityRenderer {
        item beside them.  Mirrors how the pose locks facing south.
        v2.3.854: same for mining -- the pickaxe is baked into the 'mine'
        sheet, so the equipped weapon must not show. */
-    const _fishingPose = !!(S._extraction && (S._extraction.skill === 'fishing' || S._extraction.skill === 'mining'));
+    /* v2.3.2827: the smith at work borrows the mining swing (game/smithing.js)
+       -- so, like mining, the pickaxe in the sheet is the tool and the real
+       weapon and shield are put away.  tickSmithing also ends the work when
+       the player walks off or dies; called once, here, per frame. */
+    const _smithing = !S._extraction && tickSmithing(S, Date.now());
+    const _fishingPose = !!(S._extraction && (S._extraction.skill === 'fishing' || S._extraction.skill === 'mining')) || _smithing;
     /* v2.3.910: melee swing -> play the sword-swing stand-in (effectsRenderer)
        and hide the real body + weapon for the swing window.  Gated on the melee
        swing flag and no active gathering/firemaking.
@@ -11225,7 +11231,7 @@ export class EntityRenderer {
     /* Mining gather — face the camera (south) so the mining swing reads,
        same lock as the loot freeze.  Active for the whole extraction
        window (waiting + ready). */
-    const mining = !!(S._extraction && S._extraction.skill === 'mining');
+    const mining = !!(S._extraction && S._extraction.skill === 'mining') || _smithing;   /* v2.3.2827 */
     /* v2.3.843: fishing gather — same south-only facing lock as mining so
        the rod cast/sway reads and the dangling line lines up with the water
        hole drawn beneath the player (effectsRenderer._updateFishingHole). */
