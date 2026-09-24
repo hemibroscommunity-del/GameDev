@@ -3487,7 +3487,7 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
      is now 25 frames matching the armor, so head and armor bob as one.
      Dirs whose head count equals the body count resolve to the same
      frame either way; non-jog callers omit it. */
-  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId, art);   /* v2.3.2643; v2.3.2833: + the drawings (the face tattoo rides the overlay) */
+  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId, art);   /* v2.3.2643; v2.3.2853: + the drawings (the face tattoo rides the overlay) */
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -10242,9 +10242,9 @@ export class EntityRenderer {
           try {
             /* v2.3.1394: jog overlay only over the fullset figure (see local path). */
             /* v2.3.1479: same armour gate as the local path. */
-            if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase, other.eyeStyle, _oBodyArt);   /* v2.3.2643: THEIR style; v2.3.2833: THEIR drawings */
+            if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase, other.eyeStyle, _oBodyArt);   /* v2.3.2643: THEIR style; v2.3.2853: THEIR drawings */
             display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsR); /* v2.3.1553 */
-            spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, undefined, other.eyeStyle, _oBodyArt));   /* v2.3.2643; v2.3.2833: the same key the overlay reads */
+            spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, undefined, other.eyeStyle, _oBodyArt));   /* v2.3.2643; v2.3.2853: the same key the overlay reads */
             /* v2.3.1123: lift the angler's head above the fishing chest plate.
                v2.3.2278: above their LEG armour too.  This was chest-only, so
                a peer fishing in greaves lost the same hand the local player
@@ -11788,9 +11788,9 @@ export class EntityRenderer {
              time they took a hit, for no benefit -- with no gear there is
              nothing that could cover the head in the first place. */
           const _needHead = (pose !== 'hit' && pose !== 'mine') || _worn.length > 0;
-          if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase, getEyeStyle(), _bodyArt);   /* v2.3.2643; v2.3.2833: + your drawings */
+          if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase, getEyeStyle(), _bodyArt);   /* v2.3.2643; v2.3.2853: + your drawings */
           display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsT); /* v2.3.1553 */
-          spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, undefined, getEyeStyle(), _bodyArt));   /* v2.3.2643; v2.3.2833: the same key the overlay reads */
+          spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, undefined, getEyeStyle(), _bodyArt));   /* v2.3.2643; v2.3.2853: the same key the overlay reads */
           /* v2.3.1123: lift the angler's head above the fishing chest plate.
              v2.3.1914 (owner: "When fishing that hand needs to be over the
              shirt during the reel animation instead of under it"): ...and above
