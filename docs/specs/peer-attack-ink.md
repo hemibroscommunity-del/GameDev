@@ -20,8 +20,10 @@ sword and the bow both have a south, an east and a north sheet, so whichever of
 the two a player used first was reused for the other. Another player shooting a
 bow was drawn in their **sword** pose, with no bow in their hands.
 
-The frame your screen draws for another player (blue block drawn on their
-chest, green on their back), on main and on this change:
+The frame your screen draws for another player, on main and on this change.
+The test drawings are a blue block on the chest and a green one on the back,
+two colours on purpose, so a picture shows which drawing is on screen: facing
+you it is the chest (blue), facing away the back (green).
 
 ![before and after](img/peer-attack-ink/before-after.jpg)
 
@@ -51,6 +53,29 @@ had before, under the new key. The cache keeps its existing limit of 24 bakes
 cropped (#728), so drawings add at most one bake per sheet per drawn player
 on screen.
 
+## The eyes (v2.3.2830)
+
+Owner, on the picture above: *"The bottom change on the south bow shot messed up
+the eyes."* It had. The white of each eye is edged with a pale cream where the
+art blends it into the face, (247,210,186) on that sheet, and the skin test
+accepts it. The recolour keeps a pixel's brightness and gives it the skin
+colour at full strength, so that cream came out a saturated (255,197,110): an
+orange bar down every eye. Your **own** bow shot had done this since v2.3.1788
+gave the attack figures the walking skin; this change gave it to other players'
+view of you as well.
+
+Measured on every body sheet, skin (highlights included) keeps its green under
+0.77 of its red, and the eye creams sit at 0.81-0.89. So a pixel with green at
+0.8 of its red or more is now left as drawn, as the white of the eye. The
+pixels that rule catches, marked on the sheets, are the eyes, the white flash of
+a hit, the blur along a sword blade and the odd knuckle glint, none of them
+skin. It applies to every body the game recolours: your figure, other
+players', every pose and every skin.
+
+The frame the game draws for another player's south bow shot, before and after:
+
+![the eyes, before and after](img/peer-attack-ink/eyes.jpg)
+
 ## How it is checked
 
 `mp-peerattackink` (new, 25 checks) has three players: the tattooed one, a
@@ -69,6 +94,9 @@ difference between them.
   pre-flipped copy has the drawing mirrored, 11 to 41 px further right in the
   texture. Facing west, the frames on screen are drawn from that copy;
 - no page errors on any of the three clients.
+
+Re-run with the eye fix: `mp-peerattackink` 25/25, `mp-standinskin` 25/25 and
+`mp-facebow` 6/6.
 
 Against main's code, 15 of the 25 fail, every bow facing among them (drawn from
 the sword's sheet). Your own attack figures are unchanged: `mp-standinart`,

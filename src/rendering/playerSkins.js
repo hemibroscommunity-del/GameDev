@@ -303,6 +303,21 @@ function _retint(d, i, target, ref) {
    regardless of the chosen skin or shirt color. */
 function _isSkin(r, g, b, a) { return a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25; }
 
+/* ═══ v2.3.2830: THE WHITE OF THE EYE IS NOT SKIN ═══
+   Owner, on another player's south bow shot: "messed up the eyes".  The eye's
+   white is edged with a pale cream where the art blends it into the face --
+   (247,210,186) on that sheet -- and _isSkin accepts it (r-g 37, r-b 61).  The
+   retint keeps a pixel's brightness and gives it the target's colour at full
+   strength, so a near-white cream came out a saturated (255,197,110): an
+   orange bar down every eye.  Your own bow shot has done it since v2.3.1788
+   gave the stand-ins the default skin target; #734 gave it to everyone's
+   view of you.
+   Measured on every body sheet: skin, highlights included, keeps its green
+   under 0.77 of its red; the eye creams sit at 0.81-0.89, and the pixels at
+   0.8 and over are the eyes (and the odd knuckle glint).  So a pixel that
+   green is left as drawn -- white of the eye, not skin. */
+function _isEyeCream(r, g) { return g >= 0.8 * r; }
+
 /* v2.3.2682: the same recolour on pixels that are not a body sheet -- the
    monkey's fur layer (speciesArt.js), shipped as bare skin so it can follow the
    player's skin exactly as the body does.  Same test, same maths, same ref: a
@@ -862,7 +877,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
          pixels are never in shirtPx, so they stay and give the shirt its
          outline + arm definition. */
       d[i] = sf0; d[i + 1] = sf1; d[i + 2] = sf2;
-    } else if (_isSkin(r, g, b, a)) {
+    } else if (_isSkin(r, g, b, a) && !_isEyeCream(r, g)) {   /* v2.3.2830: not the white of the eye */
       if (tattooPx && torsoPx[i >> 2]) tattooPx[i >> 2] = 1;
       if (skinPx) skinPx[i >> 2] = 1;              /* v2.3.1949 */
       if (skinT) _retint(d, i, skinT, SKIN_REF);
