@@ -48,22 +48,31 @@ export function zoneHasSky(zoneId, S) {
    lanterns and fireflies show (0 by day).  Phase 0 is the first grey before
    sunrise.  Night is deliberately NOT black: this is played on a phone, often
    outdoors, and a monster you cannot see is not atmosphere, it is a bug.  The
-   lantern round each player does the rest. */
+   lantern round each player does the rest.
+   v2.3.2876: night is a quarter of what it was.  Owner: "Make night last
+   only 25% of the current time."  Named night ran 0.685-0.975 of the cycle
+   (~11.6 of the 40 minutes); it now runs 0.9025-0.975 (2.9 min).  The four
+   keys from day's end to night's start slid later by 0.2175 and the time
+   went to DAY (20 -> ~28.7 min); golden hour, dusk and dawn keep their
+   lengths and the ramps into and out of the dark keep their shape.  The
+   cycle itself stays 40 minutes.  Everything else (light map, fireflies,
+   sun shadows, lit windows) reads these keys through lightingAt, so it
+   follows. */
 const KEYS = [
   { p: 0.000, name: 'dawn',   mul: [0.62, 0.60, 0.76], lamp: 0.70 },
   { p: 0.050, name: 'dawn',   mul: [0.90, 0.80, 0.80], lamp: 0.25 },
   { p: 0.100, name: 'day',    mul: [1.00, 0.97, 0.93], lamp: 0.00 },
   { p: 0.160, name: 'day',    mul: [1.00, 1.00, 1.00], lamp: 0.00 },
-  { p: 0.540, name: 'day',    mul: [1.00, 1.00, 1.00], lamp: 0.00 },
-  { p: 0.610, name: 'golden', mul: [1.00, 0.90, 0.76], lamp: 0.00 },
-  { p: 0.660, name: 'dusk',   mul: [0.80, 0.64, 0.72], lamp: 0.35 },
-  { p: 0.710, name: 'night',  mul: [0.50, 0.54, 0.78], lamp: 1.00 },
+  { p: 0.7575, name: 'day',   mul: [1.00, 1.00, 1.00], lamp: 0.00 },
+  { p: 0.8275, name: 'golden', mul: [1.00, 0.90, 0.76], lamp: 0.00 },
+  { p: 0.8775, name: 'dusk',  mul: [0.80, 0.64, 0.72], lamp: 0.35 },
+  { p: 0.9275, name: 'night', mul: [0.50, 0.54, 0.78], lamp: 1.00 },
   { p: 0.950, name: 'night',  mul: [0.50, 0.54, 0.78], lamp: 1.00 },
   { p: 1.000, name: 'dawn',   mul: [0.62, 0.60, 0.76], lamp: 0.70 },
 ];
 
 /* Named phases for the preview override and QA -- the middle of each. */
-export const NAMED_PHASES = { dawn: 0.03, morning: 0.2, day: 0.35, golden: 0.61, dusk: 0.665, night: 0.82 };
+export const NAMED_PHASES = { dawn: 0.03, morning: 0.2, day: 0.35, golden: 0.8275, dusk: 0.8825, night: 0.94 };   /* v2.3.2876: moved with the keys */
 
 /* A manual phase for previews and QA: `?tod=night` (or dawn/day/golden/dusk,
    or a number 0..1) in the URL, or window.__btTod = 0.8 from the console.

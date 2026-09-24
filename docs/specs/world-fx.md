@@ -6,6 +6,8 @@ Everything here is display only. Nothing is sent to the server, and nothing in c
 
 - **Clock:** one 40-minute day (`DAY_CYCLE_MS`), computed from wall-clock time. Every player sees the same hour without the server being involved.
 - **Hours:** dawn, day, golden hour, dusk, night. Each hour is a keyframe with a colour multiplier (`mul`) and a light strength (`lamp`).
+- **Lengths (v2.3.2876):** day ~28.7 min, golden hour 2.4, dusk 2, night 2.9, dawn 4. Night was ~11.6 min; the owner asked for a quarter of that, and the time went to day.
+- **Top bar clock (v2.3.2876):** a small sun / low sun / horizon / moon icon sits left of the zone name (`TodIcon` in ZoneHeader.jsx, `data-tod` names the hour). Indoors and in dungeons it is dimmed, since the hour still passes but the world ignores it.
 - **Night:** worldFx renders a small light map (a quarter of screen size) with the ambient colour plus every light in view, then multiplies the world by it.
   - Lights are your lantern (radius 165), other players' lanterns (radius 125) and fireflies.
   - By day the light map is skipped completely.
