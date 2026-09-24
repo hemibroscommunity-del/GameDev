@@ -78,7 +78,7 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -91,8 +91,8 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
-import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2801: the staff kick + where its crystal is */
-/* v2.3.2801: scratch for staffTipWorld, reused every frame (no allocation). */
+import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2821: the staff kick + where its crystal is */
+/* v2.3.2821: scratch for staffTipWorld, reused every frame (no allocation). */
 const _staffTipOut = { x: 0, y: 0 };
 import { SHADE } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop */
 import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
@@ -2192,12 +2192,14 @@ function _bodyRegionTex(bodyTex, region) {
   let m = _regionTexCache.get(bodyTex);
   if (!m) { m = {}; _regionTexCache.set(bodyTex, m); }
   if (!m[region]) {
-    const f = bodyTex.frame; const [r0, r1] = REGION_ROWS[region];
+    /* v2.3.2791: the WHOLE frame's size (`orig`) and gearSheets.subTexture --
+       body frames are cropped now, so `frame` is the crop (TRAPS §106). */
+    const f = bodyTex.orig || bodyTex.frame; const [r0, r1] = REGION_ROWS[region];
     /* v2.3.1120: REGION_ROWS are 256-space; the DISPLAY frame may be downscaled,
        so map the band rows into the actual (possibly smaller) frame height. */
     const _rsc = f.height / 256;
     const rr0 = Math.round(r0 * _rsc), rr1 = Math.round(r1 * _rsc);
-    try { m[region] = new Texture({ source: bodyTex.source, frame: new Rectangle(f.x, f.y + rr0, f.width, rr1 - rr0) }); }
+    try { m[region] = subTexture(bodyTex, 0, rr0, f.width, rr1 - rr0); }
     catch (e) { m[region] = bodyTex; }
   }
   return m[region];
@@ -2219,12 +2221,12 @@ function _bandTex(tex, r0, r1) {
   if (!m) { m = {}; _bandTexCache.set(tex, m); }
   const key = r0 + ':' + r1;
   if (!m[key]) {
-    const f = tex.frame;
+    const f = tex.orig || tex.frame;   /* v2.3.2791: whole frame, see _bodyRegionTex */
     const _rsc = f.height / 256;
     const rr0 = Math.max(0, Math.round(r0 * _rsc));
     const rr1 = Math.min(f.height, Math.round(r1 * _rsc));
     if (rr1 <= rr0) return null;
-    try { m[key] = new Texture({ source: tex.source, frame: new Rectangle(f.x, f.y + rr0, f.width, rr1 - rr0) }); }
+    try { m[key] = subTexture(tex, 0, rr0, f.width, rr1 - rr0); }
     catch (e) { m[key] = null; }
   }
   return m[key];
@@ -2386,8 +2388,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        shades bilinear invents -- the exact hazard spriteScale's file header
        warns about for the recolour pipeline. */
     ctx.imageSmoothingEnabled = false;
-    const bf = bodyTex.frame;
-    ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
+    drawGearFrame(ctx, bodyTex, 0, 0, 256, 256);   /* v2.3.2791: the body frame may be cropped */
     /* head+neck must always stay visible -- the chest plate has a neckline
        opening the body's neck fills.  Find the body figure's neck line (top +
        BODY_NECK_FRAC*height) BEFORE punching so we can restore that band after;
@@ -2446,7 +2447,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
     if (neckY > 0) {                                     // restore the head+neck band
       ctx.save();
       ctx.beginPath(); ctx.rect(0, 0, 256, neckY); ctx.clip();
-      ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
+      drawGearFrame(ctx, bodyTex, 0, 0, 256, 256);   /* v2.3.2791: cropped-frame aware */
       ctx.restore();
     }
     /* v2.3.1123: the fishing rod is baked into the fish-pose body sprite, so the
@@ -3544,11 +3545,13 @@ function _fishTopFrame(bodyTex) {
   const hit = _fishTopCache.get(key);
   if (hit) { _fishTopCache.delete(key); _fishTopCache.set(key, hit); return hit; }
   try {
-    const bf = bodyTex.frame;
+    /* v2.3.2791: the WHOLE frame (`orig`), drawn at its crop's offset -- the
+       body frames are cropped now (gearSheets.sliceCropped). */
+    const bf = bodyTex.orig || bodyTex.frame;
     const W = Math.max(1, Math.round(bf.width)), H = Math.max(1, Math.round(bf.height));
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
-    ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, W, H);
+    drawGearFrame(ctx, bodyTex, 0, 0, W, H);
     const img = ctx.getImageData(0, 0, W, H); const d = img.data;
     const headBot = Math.round(H * 0.35);   // keep the whole head band as-is
     /* ═══ v2.3.1914: THE HAND COMES UP WITH THE ROD ═══
@@ -8275,6 +8278,9 @@ export class EntityRenderer {
            kicks in. */
         const IDLE_AFTER_MS = 600;
         const isIdle = (now - (display._lastDistGrowAt || 0)) > IDLE_AFTER_MS;
+        /* v2.3.2814: published for worldLife, which breathes a monster holding
+           its one idle frame (set false below whenever a strip plays). */
+        display._idlePose = false;
 
         /* Priority chain: transform > hit recoil > attack wind-up >
            idle pose > walk loop.  The transform branch plays a
@@ -8338,6 +8344,7 @@ export class EntityRenderer {
              0 is the first contact pose, which reads as standing
              still better than mid-stride frames. */
           frame = variantSprites.walk.get(facing, 0);
+          display._idlePose = true;
         } else {
           /* Walk loop frame index is driven by ACCUMULATED VISUAL
              displacement rather than wall-clock time.  This guarantees
@@ -10408,7 +10415,7 @@ export class EntityRenderer {
             oWeaponSprite.scale.x = fitScale;
           } else {
             const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
-            /* v2.3.2801: a peer's staff kicks on THEIR cast (gameEvents stamps
+            /* v2.3.2821: a peer's staff kicks on THEIR cast (gameEvents stamps
                _staffCastAt from their bolt).  Their cooldown is not on the
                wire, so a peer gets the kick without the charge-up dip. */
             oWeaponSprite.rotation = (oWpnType === 'staff')
@@ -10416,10 +10423,10 @@ export class EntityRenderer {
                 !!other._staffCastBig && other._staffCastBig === other._staffCastAt)   /* v2.3.2802: their one-bolt special kicks harder */
               : 0;
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
-            _oBladeUp = oWpnType !== 'staff';   /* v2.3.2801: a staff stands head-up -- see the local path */
+            _oBladeUp = oWpnType !== 'staff';   /* v2.3.2821: a staff stands head-up -- see the local path */
           }
           oWeaponSprite.scale.y = _oBladeUp ? -fitScale : fitScale;   /* v2.3.1786 — see the local path */
-          /* v2.3.2801: their crystal, for their release flash and bolts. */
+          /* v2.3.2821: their crystal, for their release flash and bolts. */
           if (oWpnType === 'staff' && display.parent
               && staffTipWorld(oWeaponSprite, display.parent, _staffTipOut)) {
             other._staffTipX = _staffTipOut.x;
@@ -10515,7 +10522,7 @@ export class EntityRenderer {
         const inFront = oIsShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
           : (_oHeldInHand ? heldWeaponInFront(oWpnType, facingIdx, _oInFrontBase) : _oInFrontBase);
-        if (oWpnType === 'staff') other._staffTipBehind = !inFront;   /* v2.3.2801: see the local path */
+        if (oWpnType === 'staff') other._staffTipBehind = !inFront;   /* v2.3.2821: see the local path */
         const bodyIdx = display.getChildIndex(oSpriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* "In front" is measured against the topmost VISIBLE worn layer, not
@@ -12352,7 +12359,7 @@ export class EntityRenderer {
               ? (mirror || _gsDir === 'south')
               : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
-            /* ═══ v2.3.2801: THE STAFF KICKS WHEN IT CASTS ═══
+            /* ═══ v2.3.2821: THE STAFF KICKS WHEN IT CASTS ═══
                The staff used to hang motionless through every cast.  Now it
                dips back while the cooldown refills and kicks its crystal
                toward the target on release, then settles (staffCastPose: 12
@@ -12382,7 +12389,7 @@ export class EntityRenderer {
                swingAng and the sheathed branch angles the blade across the
                back; neither wants this, and both are separate branches above
                so neither can pick it up by accident. */
-            /* ═══ v2.3.2801: BUT NOT THE STAFF ═══
+            /* ═══ v2.3.2821: BUT NOT THE STAFF ═══
                The flip was asked for about the SWORD, whose icon hangs its
                blade down.  The staff's icon already stands head-up, so the
                same flip turned it head-down: the crystal hung by the knee and
@@ -12415,7 +12422,7 @@ export class EntityRenderer {
              own branch above and the sheathed pose angles the blade across the
              back in another, so neither can pick this up. */
           weaponSprite.scale.y = _weaponBladeUp ? -fitScale : fitScale;
-          /* v2.3.2801: publish where the crystal is, in world px -- the staff
+          /* v2.3.2821: publish where the crystal is, in world px -- the staff
              cast's charge glows there and the bolt is drawn leaving it.  Same
              idea as the bow publishing its grip (S._bowGripX), but read back
              through Pixi's own transform chain, so the mirror, the kick and the
@@ -12853,7 +12860,7 @@ export class EntityRenderer {
            for why the v2.3.1787 exception does not transfer to it. */
         const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
-        /* v2.3.2801: the staff cast glows at the crystal from a layer above
+        /* v2.3.2821: the staff cast glows at the crystal from a layer above
            the body; when the staff is carried BEHIND him (SW/W/NW/N) it dims
            that light instead of painting it over his back. */
         if (wpn && wpn.type === 'staff') S._staffTipBehind = !inFront;

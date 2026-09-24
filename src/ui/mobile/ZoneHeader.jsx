@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { COL, getState } from './dash/common.js';
 import { rosterCount } from '../../networking/charRoster.js'; /* v2.3.2421 */
 import { zoneTitle } from './zoneTitle.js'; /* v2.3.2596: shared with the zone-entry banner */
+import { calm as lifeCalm } from './dash/bagLife.js'; /* v2.3.2815: the purse's coin flip */
 
 /* v2.3.1333: zone header rail (owner + ChatGPT spec).  The floating
    zone label kept getting lost against bright world art, and the
@@ -75,6 +76,9 @@ export const ZoneHeader = ({ onExit }) => {
      nothing, because every action it offers is an authenticated HTTP call
      (server/src/devtools.js). */
   const [showDev, setShowDev] = useState(false);
+  const goldSeen = useRef(null);   /* v2.3.2815: the purse's coin flip */
+  const goldFlips = useRef(0);
+  const mountedAt = useRef(Date.now());
   const [DevPanelC, setDevPanelC] = useState(null);
   const holdRef = useRef(null);
   const openDev = () => {
@@ -105,6 +109,14 @@ export const ZoneHeader = ({ onExit }) => {
      stale purse forever.  The 500ms force-render above already repaints this
      rail, so the number is at most half a second behind settlement. */
   const gold = (S.rpg && (S.rpg.coins || 0)) || 0;
+  /* v2.3.2815: gold landing spins the coin and bumps the number, once per
+     rise (the key change below remounts both, which replays the one-shot).
+     Transform only -- this rail is over the WebGL canvas (see below). */
+  /* (not in the first seconds: that rise is the purse loading, not a payday) */
+  if (goldSeen.current != null && gold > goldSeen.current && !lifeCalm()
+    && Date.now() - mountedAt.current > 2500) goldFlips.current++;
+  goldSeen.current = gold;
+  const flip = goldFlips.current;
 
   const doExit = () => {
     /* v2.3.785/786 lineage (moved from the retired bt-exit-fab):
@@ -200,8 +212,9 @@ export const ZoneHeader = ({ onExit }) => {
             steal it from the game underneath. */}
         <div className="bt-zone-header__balance" data-purse="1"
           aria-label={`${gold} gold`}>
-          <img src="/icons/popups/gold.webp" alt="" draggable={false} />
-          <span>{Number(gold).toLocaleString()}</span>
+          <img key={'c' + flip} className={flip ? 'bt-purse-flip' : undefined}
+            src="/icons/popups/gold.webp" alt="" draggable={false} />
+          <span key={'n' + flip} className={flip ? 'bt-purse-bump' : undefined}>{Number(gold).toLocaleString()}</span>
         </div>
       </header>
 

@@ -155,11 +155,13 @@ async function measure() {
   const read = (tex) => {
     const src = tex && tex.source && tex.source.resource;
     if (!src) return null;
-    const f = tex.frame;
+    /* v2.3.2791: body frames are cropped -- size by the WHOLE frame and draw
+       the crop at its trim (drawGearFrame), or this reads a stretched crop. */
+    const f = tex.orig || tex.frame;
     const n = Math.max(1, Math.round(f.height));
     const c = document.createElement('canvas'); c.width = n; c.height = n;
     const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
-    x.drawImage(src, f.x, f.y, f.width, f.height, 0, 0, n, n);
+    drawGearFrame(x, tex, 0, 0, n, n);
     return { d: x.getImageData(0, 0, n, n).data, n };
   };
   const bbox = (d, n) => {
