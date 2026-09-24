@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  peerattackink: () => import('./mp-peerattackink.mjs'), /* v2.3.2832: another player's swing and bow shot wear their drawings -- both sides, the back from behind, and the bow no longer borrows the sword's frames */
+  peerattackink: () => import('./mp-peerattackink.mjs'), /* v2.3.2851: another player's swing and bow shot wear their drawings -- both sides, the back from behind, and the bow no longer borrows the sword's frames */
   hotarrow: () => import('./mp-hotarrow.mjs'), /* v2.3.2847: the bow special is the pine arrow white-hot -- glowing, animated, sparking in flight; smouldering and flaring on its ticks once stuck; the painted sheet never downloaded; the hit capsule unchanged; a peer sees it too */
   bowvolley: () => import('./mp-bowvolley.mjs'), /* v2.3.2848: the bow special as three white-hot arrows on a real worker -- three part:3 sends, one shove, all three settled, one burn, no blast */
   hitmat: () => import('./mp-hitmat.mjs'), /* v2.3.2843: every monster throws its own material (snow, slime, blood + char, ashy dust, bone, stone), shaped by the weapon -- an arrow's jet, a bolt's blast, a blade's sheet -- and the pieces land */

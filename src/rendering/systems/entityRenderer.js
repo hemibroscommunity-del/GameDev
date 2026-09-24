@@ -1611,7 +1611,7 @@ function _shirtLook(front, back, patternStr, tint) {
    (pants print, chest tattoo) rather than on a gear sprite.  Peer strings are
    sanitised here, at the one place a remote's drawings enter the renderer;
    `mirror` rides along because it is part of the bake, not of the drawing. */
-/* v2.3.2832: the same answer for effectsRenderer, whose peer SWING and BOW
+/* v2.3.2851: the same answer for effectsRenderer, whose peer SWING and BOW
    stand-ins bake their own sheets and never asked for the drawings. */
 export function remoteBodyArt(other, mirror) { return _remoteBodyArt(other, mirror); }
 function _remoteBodyArt(other, mirror) {

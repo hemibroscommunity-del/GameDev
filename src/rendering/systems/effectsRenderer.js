@@ -1829,7 +1829,7 @@ const REMOTE_BAKE_CACHE_MAX = 24;
 /* Would the pre-flipped bake of this sheet differ from the plain one?  Asked
    of the art AFTER artForFacing, because that is what actually gets stamped:
    a north sheet stamps the BACK canvases, so the front ones' symmetry is not
-   the question.  (v2.3.2429 / v2.3.2431; module scope since v2.3.2832, when a
+   the question.  (v2.3.2429 / v2.3.2431; module scope since v2.3.2851, when a
    peer's stand-in bakes started asking it too.) */
 function _twinWouldDiffer(art, dir) {
   if (!art) return false;
@@ -2683,7 +2683,7 @@ export class EffectsRenderer {
        of the art AFTER artForFacing, because that is what actually gets stamped:
        a north sheet stamps the BACK canvases, so the front ones' symmetry is not
        the question. */
-    /* (v2.3.2832: _twinWouldDiffer lives at module scope now -- a peer's
+    /* (v2.3.2851: _twinWouldDiffer lives at module scope now -- a peer's
        swing and bow bakes ask the same question.) */
     this._bakeBodyStrip = (rec) => {
       const img = this._bodyImgCache[rec.url];
@@ -10058,7 +10058,7 @@ export class EffectsRenderer {
     }
   }
 
-  /* ═══ v2.3.2832: A PEER'S SWING AND BOW SHOT WEAR THEIR DRAWINGS ═══
+  /* ═══ v2.3.2851: A PEER'S SWING AND BOW SHOT WEAR THEIR DRAWINGS ═══
    * Owner: "Yea do woodcutting and missing ones."  v2.3.2429 gave YOUR swing,
    * bow shot and raised shield your drawings ("make sure during shield block
    * ... the custom designs show up"), in _bakeBodyStrip -- and these two, which
@@ -10095,8 +10095,8 @@ export class EffectsRenderer {
      base image is still loading. */
   _remoteBodyFramesFor(o, cfgKey, cfg, mirror) {
     if (!this._remoteBodyCache) this._remoteBodyCache = new Map();
-    const _pa = this._peerStandInArt(o, cfgKey, mirror);   /* v2.3.2832 */
-    const key = cfg.bodyUrl + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;   /* v2.3.2832: the SHEET, not the facing */
+    const _pa = this._peerStandInArt(o, cfgKey, mirror);   /* v2.3.2851 */
+    const key = cfg.bodyUrl + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;   /* v2.3.2851: the SHEET, not the facing */
     let arr = this._remoteBodyCache.get(key);
     /* Re-insert on hit so the LRU order is "least recently SEEN", not
        "least recently baked" (entityRenderer.js:2043's idiom). */
@@ -10105,7 +10105,7 @@ export class EffectsRenderer {
     if (!img) return null;
     try {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
-        null, cfg.fh, null, null, _pa.art, cfg.fw);   /* v2.3.2832: see _peerStandInArt */
+        null, cfg.fh, null, null, _pa.art, cfg.fw);   /* v2.3.2851: see _peerStandInArt */
       const n = Math.max(1, Math.round(cv.width / cfg.fw));
       arr = _sliceStandIn(cv, cfg.fw, cfg.fh, n, null);   /* v2.3.2775: cropped, one per peer combo */
       this._remoteBodyCache.set(key, arr);
@@ -10121,7 +10121,7 @@ export class EffectsRenderer {
      jog-<dir>-legs sheets are loaded at construction). */
   _remoteSheetFramesFor(o, url, fw, fh, dir, mirror) {
     if (!this._remoteSheetCache) this._remoteSheetCache = new Map();
-    const _pa = this._peerStandInArt(o, dir, mirror);   /* v2.3.2832: see _peerStandInArt */
+    const _pa = this._peerStandInArt(o, dir, mirror);   /* v2.3.2851: see _peerStandInArt */
     const key = url + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;
     let arr = this._remoteSheetCache.get(key);
     if (arr) { this._remoteSheetCache.delete(key); this._remoteSheetCache.set(key, arr); return arr; }
@@ -10136,7 +10136,7 @@ export class EffectsRenderer {
       const _sq = (fw == null || fh == null) ? (img.naturalHeight || img.height || 0) : 0;
       const _fw = _sq || fw, _fh = _sq || fh;
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
-        null, _fh, null, null, _pa.art, _fw);   /* v2.3.2832 */
+        null, _fh, null, null, _pa.art, _fw);   /* v2.3.2851 */
       const n = Math.max(1, Math.round(cv.width / _fw));
       arr = _sliceStandIn(cv, _fw, _fh, n, null);   /* v2.3.2775: cropped, one per peer combo */
       this._remoteSheetCache.set(key, arr);
@@ -10383,7 +10383,7 @@ export class EffectsRenderer {
       const _legSizeAdj = _nakedSeam ? (({ south: 1.20, east: 1.10, north: 1.12 })[cfgKey] || 1) : 1;
       const _legShiftX = _nakedSeam ? (({ north: 0, south: 3 })[cfgKey] || 0) : 0;
       const _legShiftY = _nakedSeam ? (({ south: 2 })[cfgKey] || 0) : 0;
-      const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg, mirror);   /* v2.3.2832: + the flip, for the drawings */
+      const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg, mirror);   /* v2.3.2851: + the flip, for the drawings */
       if (!bodyFrames || !bodyFrames.length) continue;
       const n = bodyFrames.length;
       const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
@@ -10411,12 +10411,12 @@ export class EffectsRenderer {
       const _moving = !_stale && _vmag > 0.03;
       const _rd = resolveDirection(dir4);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
-      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror) : null;   /* v2.3.2832 */
-      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null, _jdir, _rd.mirror);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256; v2.3.2832: + direction and flip, for the drawings */
+      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror) : null;   /* v2.3.2851 */
+      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null, _jdir, _rd.mirror);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256; v2.3.2851: + direction and flip, for the drawings */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
-      sp._qaFi = fi;   /* v2.3.2832: the frame index, for mp-peerattackink -- a cropped frame no longer says which it is */
+      sp._qaFi = fi;   /* v2.3.2851: the frame index, for mp-peerattackink -- a cropped frame no longer says which it is */
       /* v2.3.1100: naked east grows the torso (sT) with the legs re-anchoring via
          torsoScale; the torso also drops by _torsoDY while the legs keep the
          un-nudged foot row (_baseFootY). */
@@ -10556,7 +10556,7 @@ export class EffectsRenderer {
       const cfgKey = fmap[0], mirror = fmap[1];
       const cfg = this._bowCfg[cfgKey];
       if (!cfg || !cfg.bodyUrl) continue;
-      const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg, mirror);   /* v2.3.2832: + the flip, for the drawings */
+      const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg, mirror);   /* v2.3.2851: + the flip, for the drawings */
       if (!bodyFrames || !bodyFrames.length) continue;
       const n = bodyFrames.length;
       const fi = elapsed < BOW_RELEASE_MS
@@ -10593,12 +10593,12 @@ export class EffectsRenderer {
       const _moving = !_stale && _vmag > 0.03;
       const _rd = resolveDirection(dir8);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
-      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror) : null;   /* v2.3.2832 */
-      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null, _jdir, _rd.mirror);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256; v2.3.2832: + direction and flip, for the drawings */
+      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror) : null;   /* v2.3.2851 */
+      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null, _jdir, _rd.mirror);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256; v2.3.2851: + direction and flip, for the drawings */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
-      sp._qaFi = fi;   /* v2.3.2832: the frame index, for mp-peerattackink -- a cropped frame no longer says which it is */
+      sp._qaFi = fi;   /* v2.3.2851: the frame index, for mp-peerattackink -- a cropped frame no longer says which it is */
       sp.scale.set(sgnX, sY);
       sp.x = (o.renderX != null) ? o.renderX : o.x;
       sp.y = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_BOW_FOOT_DY;
