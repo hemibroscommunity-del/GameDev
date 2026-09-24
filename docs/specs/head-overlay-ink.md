@@ -1,4 +1,4 @@
-# The face tattoo stays on under the head overlays (v2.3.2859, v2.3.2860-2861)
+# The face tattoo stays on under the head overlays (v2.3.2860, v2.3.2861-2862)
 
 Owner: *"Yea do woodcutting and missing ones."* This is the first of the
 missing ones.
@@ -59,7 +59,7 @@ Two small fixes came with it, both in the same code:
   style, so a styled player's own heads were first in line for eviction. It now
   matches with or without one.
 
-## Hit, mining and rolls wear the walking skin (v2.3.2860)
+## Hit, mining and rolls wear the walking skin (v2.3.2861)
 
 Owner: *"fix the orange head during hits/mining to be whatever color the
 character color should be."*
@@ -112,7 +112,7 @@ theirs, when your own is reused). For the moment that takes, you see the old
 orange. After that, every frame is the walking skin. This is how every other
 look already works for other players: it can't be known while loading.
 
-### The eyes (v2.3.2859)
+### The eyes (v2.3.2860)
 
 The recolour gives a pixel the skin colour at full strength, and the pale cream
 edging the white of each eye passes the skin test. Recoloured, it becomes an
