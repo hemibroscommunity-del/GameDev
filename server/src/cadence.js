@@ -86,13 +86,29 @@ export const cadenceMethods = {
         + CADENCE.DAILY_STREAK_GOLD * (Math.min(streak, CADENCE.DAILY_STREAK_CAP) - 1);
       // The opId is the idempotency wall; the record write after it is
       // just the fast path (crash between them -> dup on retry).
-      await this._creditPlayer(playerId, {
-        opId: 'daily:' + playerId + ':' + today,
-        source: 'daily',
-        kind: 'gold',
-        payload: { amount: gold },
-        note: 'Daily reward — day ' + streak + (streak >= CADENCE.DAILY_STREAK_CAP ? ' (max streak!)' : ''),
-      });
+      /* v2.3.2820 (owner: "I'd rather have a loot box ... instead of daily
+         coin reward"): the day pays ONE daily chest into the bag, rolled
+         when it is opened (dailychest.js).  Same opId, same funnel, so the
+         once-a-day wall is unchanged.  `dailyChest: false` in liveflags is
+         the kill switch back to the plain gold above. */
+      const _streakNote = ' — day ' + streak + (streak >= CADENCE.DAILY_STREAK_CAP ? ' (max streak!)' : '');
+      if (this._chestOff && !this._chestOff()) {
+        await this._creditPlayer(playerId, {
+          opId: 'daily:' + playerId + ':' + today,
+          source: 'daily',
+          kind: 'item',
+          payload: { invKey: 'daily_chest', count: 1 },
+          note: 'Daily chest' + _streakNote,
+        });
+      } else {
+        await this._creditPlayer(playerId, {
+          opId: 'daily:' + playerId + ':' + today,
+          source: 'daily',
+          kind: 'gold',
+          payload: { amount: gold },
+          note: 'Daily reward' + _streakNote,
+        });
+      }
       await this._cadenceSet('login', playerId, { period: today, streak });
     } catch (e) { /* rewards must never block a join */ }
   },

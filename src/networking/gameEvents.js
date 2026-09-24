@@ -39,6 +39,7 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed bloc
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
+import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
@@ -943,6 +944,24 @@ export function processGameEvent(type, payload, S, deps) {
             }
             break;
 
+          case 'ability_windup':
+            {
+              /* v2.3.2824: a PEER's whirlwind is winding up (server
+                 abilities.js).  Our own ring is drawn from the press
+                 (S._whirlWindup), so only another player in this zone gets an
+                 entry; the renderer follows them and drops it when it ends.
+                 Numbers are coerced -- this is server-emitted (privileged),
+                 but it only ever gates a drawing. */
+              var _wp = payload || {};
+              if (_wp.playerId && _peerInZone(S, _wp.playerId) && (!_wp.zone || _wp.zone === S.currentZone)) {
+                if (!S._peerWindups) S._peerWindups = Object.create(null);
+                var _wn = Date.now();
+                S._peerWindups[_wp.playerId] = { t0: _wn, until: _wn + Math.max(0, Math.min(5000, Number(_wp.ms) || 0)),
+                  r: Math.max(0, Math.min(600, Number(_wp.radius) || 240)) };
+              }
+              break;
+            }
+
           case 'monster_ability':
             {
               /* ═══ v2.3.1730: STANDARD-ZONE TELEGRAPHS ═══
@@ -1412,7 +1431,41 @@ export function processGameEvent(type, payload, S, deps) {
                    or the amount: a real delivery of 25 gold from a trade is
                    still worth announcing, and a match on "25" would have
                    silenced that too. */
-                if (_e.source === 'daily') continue;
+                /* v2.3.2820 (2026-09-24 demo audit, owner: "Do the quick
+                   polish"): the reward was paid and NEVER mentioned, so a
+                   7-day streak nobody could see was not a reason to come
+                   back.  It stays OUT of chat -- v2.3.2037's complaint was
+                   the line sitting at the top of the feed every day -- and
+                   shows once as the same small self-dismissing toast a store
+                   sale uses (storeToastBus, 6s, tap to close).  The note is
+                   the server's own ("Daily reward — day 3"). */
+                if (_e.source === 'daily') {
+                  try {
+                    var _dAmt = (_ep && _ep.amount) || 0;
+                    /* v2.3.2820: the day now pays a CHEST (kind 'item'), so the
+                       toast says where it went and what to do with it. */
+                    /* v2.3.2820: a CHEST day announces itself with its own claim
+                       window (ChestReveal.jsx opens once the intro lifts), so it
+                       needs no toast; the gold fallback (liveflags
+                       dailyChest:false) keeps the toast. */
+                    if (_e.kind === 'item') continue;
+                    var _dTxt = (_e.note || 'Daily reward') + (_dAmt ? ' · +' + _dAmt + ' gold' : '');
+                    /* The worker pays this DURING the join, while the loading
+                       screen is still up -- a 6s toast pushed now would time
+                       out behind it and never be seen.  So it waits for the
+                       intro to lift (BroTown stamps __introLiftedAt) and for
+                       no zone-load / connect veil to be covering the game,
+                       then shows; it gives up quietly after 90s. */
+                    var _dT0 = Date.now();
+                    var _dTry = function () {
+                      var _S = window._gameState && window._gameState.current;
+                      if (_S && _S.__introLiftedAt && !_S._zoneLoading && !_S._netHold) { storeToastBus.push(_dTxt); return; }
+                      if (Date.now() - _dT0 < 90000) setTimeout(_dTry, 400);
+                    };
+                    _dTry();
+                  } catch (_de) { /* a toast must never stop the mail */ }
+                  continue;
+                }
                 /* ═══ v2.3.2533: A PIECE OF GEAR COMING HOME ═══
                    The comment above is right about gold, items and
                    weapons: the worker already applied them and the
@@ -1548,6 +1601,18 @@ export function processGameEvent(type, payload, S, deps) {
                    sees, through the caster's own helper so the two can
                    never drift.  Drawn at the PEER's position, which is why
                    this lives here and not in abilities.js. */
+                /* v2.3.2824: a peer's whirlwind strikes -- the same full-size
+                   vortex and edge ring the caster sees, at the peer. */
+                if (payload.whirl) {
+                  var _wo = S.others[payload.id];
+                  var _wx = (typeof _wo.renderX === 'number') ? _wo.renderX : (_wo.x || 0);
+                  var _wy = (typeof _wo.renderY === 'number') ? _wo.renderY : (_wo.y || 0);
+                  var _wr = Math.max(0, Math.min(600, Number(payload.r) || 240)) * depthK(S.currentZone, _wy);
+                  if (!S._peerWhirlFx) S._peerWhirlFx = [];
+                  if (S._peerWhirlFx.length < 8) S._peerWhirlFx.push({ t0: Date.now(), x: _wx, y: _wy, radius: _wr });
+                  pushAbilityRings(S, _wx, _wy, 'whirl', 0, _wr);
+                  if (S._peerWindups) delete S._peerWindups[payload.id];
+                }
                 if (payload.bash) {
                   var _bo = S.others[payload.id];
                   pushAbilityRings(S, _bo.x || 0, (_bo.y || 0) - 10, 'bash',

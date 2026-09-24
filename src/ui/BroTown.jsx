@@ -118,7 +118,7 @@ import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
 import { MenuBar } from './panels/MenuBar.jsx';
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
-import { ForgePanel } from './panels/buildings/ForgePanel.jsx';
+import { SmithyPanel } from './panels/buildings/SmithyPanel.jsx'; /* v2.3.2826: the Blacksmith, rebuilt (ForgePanel deleted) */
 import { WoodworkPanel } from './panels/buildings/WoodworkPanel.jsx';
 import { EnchantPanel } from './panels/buildings/EnchantPanel.jsx';
 import { GemcutPanel } from './panels/buildings/GemcutPanel.jsx';
@@ -348,7 +348,7 @@ import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.j
    combat overhaul.  The cast bodies live in @/game/abilities.js for the
    same reason the swing bodies do; this component keeps thin wrappers. */
 import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordDash,
-  applyAbilityStrike, DASH_STEP_PX, DASH_MAX_STEP_PX, DASH_STOP_PX, DASH_MAX_REACH_PX } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge; v2.3.2260: it strikes on arrival */
+  applyAbilityStrike, tickWhirlWindup /* v2.3.2824 */, DASH_STEP_PX, DASH_MAX_STEP_PX, DASH_STOP_PX, DASH_MAX_REACH_PX } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge; v2.3.2260: it strikes on arrival */
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult } from '@/game/lifeSkillRewards.js';
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
@@ -4568,6 +4568,17 @@ export var BroTown = function BroTown(_ref0) {
            gets swung at, or the press would cost stamina for nothing), but NOT
            when the target died or the player did -- there is nothing to hit,
            and the worker would refuse it anyway. */
+        /* v2.3.2824: the whirlwind's windup -- say where you are just before
+           it ends (the worker strikes from ITS copy of your position, and
+           moves are batched), then play the strike (abilities.js). */
+        if (S._whirlWindup) {
+          try {
+            tickWhirlWindup(S, Date.now(), function () {
+              if (S.channel) S.channel.send({ type: 'broadcast', event: 'move',
+                payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: S.player.vx || 0, vy: S.player.vy || 0 } });
+            });
+          } catch (e) { S._whirlWindup = null; }
+        }
         if (S._bashDash && !_playerDead) {
           var _bd = S._bashDash;
           /* ═══ v2.3.2261: THE DASH RE-BINDS ITS TARGET, LIKE THE LOCK DOES ═══
@@ -10990,6 +11001,10 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, collectMsg.text)), React.createElement(ActiveWarBanner, { stateRef: stateRef }), React.createElement(EndedWarBanner, { stateRef: stateRef }), /*#__PURE__*/React.createElement(StoreToast, null) /* v2.3.2476 */, null /* v2.3.1333: bt-exit-fab retired — logout lives in the ZoneHeader rail chip (GameApp), now with confirmation */, showGuildPanel && rpgState && /*#__PURE__*/React.createElement(GuildPanel, { rpgState: rpgState, guildSkill: guildSkill, setGuildSkill: setGuildSkill, setRpgState: setRpgState, setShowGuildPanel: setShowGuildPanel, stateRef: stateRef }), showFeedback && /*#__PURE__*/React.createElement(FeedbackPanel, { stateRef: stateRef, feedbackTab: feedbackTab, setFeedbackTab: setFeedbackTab, feedbackCategory: feedbackCategory, setFeedbackCategory: setFeedbackCategory, feedbackTopic: feedbackTopic, setFeedbackTopic: setFeedbackTopic, feedbackText: feedbackText, setFeedbackText: setFeedbackText, feedbackSort: feedbackSort, setFeedbackSort: setFeedbackSort, feedbackTickets: feedbackTickets, setFeedbackTickets: setFeedbackTickets, feedbackSubmitCategory: feedbackSubmitCategory, setFeedbackSubmitCategory: setFeedbackSubmitCategory, feedbackSubmitTopic: feedbackSubmitTopic, setFeedbackSubmitTopic: setFeedbackSubmitTopic, setShowFeedback: setShowFeedback }), showLeaderboard && /*#__PURE__*/React.createElement(LeaderboardPanel, { stateRef: stateRef, leaderboardTab: leaderboardTab, setLeaderboardTab: setLeaderboardTab, setRpgState: setRpgState, setShowLeaderboard: setShowLeaderboard }), showEncyclopedia && /*#__PURE__*/React.createElement(EncyclopediaPanel, { encyclopediaTab: encyclopediaTab, setEncyclopediaTab: setEncyclopediaTab, setShowEncyclopedia: setShowEncyclopedia }), showPetHouse && rpgState && /*#__PURE__*/React.createElement(PetHousePanel, { rpgState: rpgState, stateRef: stateRef, petHouseTab: petHouseTab, setPetHouseTab: setPetHouseTab, petEvolve1: petEvolve1, setPetEvolve1: setPetEvolve1, petEvolve2: petEvolve2, setPetEvolve2: setPetEvolve2, setRpgState: setRpgState, setShowPetHouse: setShowPetHouse }), showFurniture && rpgState && /*#__PURE__*/React.createElement(FurniturePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowFurniture: setShowFurniture }), showDungeonCreator && dungeonCreator && rpgState && /*#__PURE__*/React.createElement(DungeonCreatorPanel, { rpgState: rpgState, stateRef: stateRef, dungeonCreator: dungeonCreator, setDungeonCreator: setDungeonCreator, dungeonCreatorTab: dungeonCreatorTab, setDungeonCreatorTab: setDungeonCreatorTab, setRpgState: setRpgState, setShowDungeonCreator: setShowDungeonCreator }), showStatScreen && rpgState && /*#__PURE__*/React.createElement(StatScreenPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowStatScreen: setShowStatScreen }), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
+    /* v2.3.2826: the Blacksmith sits LOW with a light scrim, so the smith
+       is seen working above it (game/smithing.js) -- every other building
+       keeps the centred modal. */
+    style: buildingPanel === 'forge' ? { alignItems: 'flex-end', background: 'rgba(8,12,14,.18)' } : undefined,
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
@@ -11008,7 +11023,11 @@ export var BroTown = function BroTown(_ref0) {
          (padding-bottom) and the HUD chip strip (padding-top — the chip
          paints over in-wrap modals, see game.css). */
       width: 'min(360px, calc(100vw - 24px))',
-      maxHeight: '100%',
+      /* v2.3.2826: the Blacksmith card's TOP stays below the player's feet --
+         the camera centres the player, so the card ends at the band and is
+         (50vh - 72px - band) tall, i.e. its top sits at 50vh + 60px.  230px
+         floor so a short phone still gets the header, the tabs and a row. */
+      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : '100%',
       overflowY: 'auto',
       /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
          as the destination sheets/leaderboard): at 390 the Woodworker's
@@ -11023,7 +11042,7 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "\u2715"), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(ForgePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
+  }, "\u2715"), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 8,
@@ -11822,7 +11841,17 @@ export var BroTown = function BroTown(_ref0) {
            staying visibly secondary to the title above it. */
         color: 'rgba(255,255,255,.72)'
       }
-    }, q.desc));
+    }, function () {
+      /* v2.3.2820: a quest with STEPS (life_1, the cooking quest) shows the
+         next one here instead of the objective again -- this pinned card is
+         the one line a stuck player reads (owner: "a lot of people get stuck
+         on the quest for cooking 2 fish").  Done quests keep their desc. */
+      if (done) return q.desc;
+      var _st = null;
+      try { _st = DATA.questSteps(q, rpgState, stateRef.current); } catch (e) { _st = null; }
+      var _cur = _st && _st.find(function (x) { return x.current; });
+      return _cur ? 'Next: ' + _cur.label : q.desc;
+    }()));
   }(), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
     var dd = (_stateRef$current37 = stateRef.current) === null || _stateRef$current37 === void 0 ? void 0 : _stateRef$current37._deathDrops;
     if (!dd || dd.length === 0) return null;
