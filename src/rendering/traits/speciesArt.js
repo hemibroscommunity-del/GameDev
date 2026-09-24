@@ -23,7 +23,7 @@
  * a canvas pass over images already in memory, not a network load.
  */
 import { Texture, Rectangle } from 'pixi.js';
-import { skinTarget, retintSkinPixels } from '../playerSkins.js';
+import { skinTarget, retintSkinPixels, poseSkinTarget } from '../playerSkins.js';   /* v2.3.2861: + poseSkinTarget */
 import { SPECIES_CATALOG } from './speciesCatalog.js';
 
 /* This folder's own cache-buster -- bump it when the species art changes.
@@ -160,7 +160,11 @@ export function getSpeciesBuild(id, skinId) {
   b = { meta: art.meta, tex: {}, stripTex: {}, frames: {} };
   for (const d of Object.keys(art.base)) b.tex[d] = _texFrom(_compose(art.base[d], art.baseFur[d], target));
   for (const k of Object.keys(art.strips)) {
-    const cv = _compose(art.strips[k], art.stripFur[k], target);
+    /* v2.3.2861: the hit strips' fur was painted in the hit sheets' orange, and
+       the default skin's hit body now wears the walking skin (playerSkins
+       POSE_SKIN_FLOOR) -- the fur takes the same target, or it would stay
+       orange on a tan face.  The key is 'pose-dir'. */
+    const cv = _compose(art.strips[k], art.stripFur[k], poseSkinTarget(target, k.split('-')[0]));
     if (!cv) continue;
     const st = _texFrom(cv);
     b.stripTex[k] = st;
