@@ -1,4 +1,4 @@
-/* THE STAFF CAST: CHARGE, RELEASE, A LIVING BOLT, A HOT HIT (v2.3.2821)
+/* THE STAFF CAST: CHARGE, RELEASE, A LIVING BOLT, A HOT HIT (v2.3.2841)
  *
  * Owner, after a side-by-side demo of ideas from an X "pixel wizard" prompt:
  * "Looks good. I want to see what it would look like built as it looks like
@@ -256,7 +256,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }));
   rec.ok('stop casting and the crystal goes dark', !!quiet && quiet.rhythm === 0 && quiet.drawn.glowFront === 0, quiet);
 
-  /* ════════════════ 1b. THE ONE-BOLT SPECIAL (v2.3.2822) ════════════════
+  /* ════════════════ 1b. THE ONE-BOLT SPECIAL (v2.3.2842) ════════════════
      Owner: "Instead of the current special attack with 3 orbs I want to see
      what just one moderately larger bolt attack would look like."  Against
      this worker (caps.bigOrb) the special is ONE bolt: the basic bolt's art
@@ -347,7 +347,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...and draws each remote bolt leaving the caster's crystal (worst ${r1(Math.max(0, ...peer.remote.map((r) => r.gap)))}px)`,
     peer.remote.length >= 1 && peer.remote.every((r) => r.gap <= 6), peer.remote);
 
-  /* v2.3.2822: the watcher sees the caster's one-bolt special as their big
+  /* v2.3.2842: the watcher sees the caster's one-bolt special as their big
      bolt (the basic art, bigger) with the heavy release -- not a charged orb. */
   await A.page.evaluate(() => {
     const S = window._gameState.current;
