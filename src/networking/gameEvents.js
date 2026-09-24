@@ -1625,6 +1625,11 @@ export function processGameEvent(type, payload, S, deps) {
                    Clamped, and absent on every other projectile -> the type's
                    own speed, exactly as before. */
                 speedPx: (Number(payload.speedPx) > 0 ? Math.min(20, Number(payload.speedPx)) : null),
+                /* v2.3.2842: the staff special as ONE big bolt (playerActions,
+                   caps.bigOrb) -- drawn as the basic bolt's art, bigger, from
+                   the caster's crystal.  Absent (an older caster) -> their
+                   charged orbs, exactly as before. */
+                big: !!(payload.big && payload.isStaff && payload.isSpecial),
                 ts: Date.now(), ownerId: payload.id,
                 /* v2.3.2731: the SHOOTER's timestamp, which `ts` above is not (it
                    is when this screen heard about it) -- the snap roll hashes
@@ -1644,9 +1649,14 @@ export function processGameEvent(type, payload, S, deps) {
                  stamp above.  The special keeps its own art and gets neither.
                  `ang` is a peer's number, so only a finite one is kept -- it
                  aims a cosmetic kick and nothing else. */
-              if (payload.isStaff && !payload.isSpecial && payload.id && S.others[payload.id]) {
-                S.others[payload.id]._staffCastAt = Date.now();
+              /* v2.3.2842: ...and so does their one-bolt special, the heavy
+                 version of both (_staffCastBig equal to the stamp). */
+              var _bigCast = !!(payload.isStaff && payload.isSpecial && payload.big);
+              if (payload.isStaff && (!payload.isSpecial || _bigCast) && payload.id && S.others[payload.id]) {
+                var _castNow = Date.now();
+                S.others[payload.id]._staffCastAt = _castNow;
                 S.others[payload.id]._staffCastAng = Number.isFinite(payload.ang) ? payload.ang : 0;
+                S.others[payload.id]._staffCastBig = _bigCast ? _castNow : 0;
               }
               break;
             }

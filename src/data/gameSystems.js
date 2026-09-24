@@ -2790,6 +2790,25 @@ export const WEAPON_TYPES = {
  * on your screen while it flew 675 on theirs.  One constant, so the next
  * retune cannot half-land. */
 export const STAFF_RANGE_PX = 675;
+/* ═══ v2.3.2842: THE STAFF SPECIAL IS ONE BIG BOLT ═══
+   Owner: "Instead of the current special attack with 3 orbs I want to see what
+   just one moderately larger bolt attack would look like."
+
+   SCALE is how much bigger than the basic bolt it is drawn AND hit-tested: one
+   number, read by the drawing (effectsRenderer) and the hit body
+   (projectiles.js _projBody), so the bolt you see is the bolt that connects.
+   1.7 puts it at about the old charged orb's size (0.18 x 1.7 = 0.31 against
+   that art's 0.30): moderately larger than a basic bolt, not a boulder.
+
+   ORBS is the damage it carries, counted in the old special's orb-hits.  The
+   worker rolls every hit itself (2x per staff special hit), so a lone bolt
+   would have been a third of the special.  The bolt says `orbs: 3` on its
+   monster_damage and the worker rolls three and sums them into ONE hit and ONE
+   number (combat.js), inside the same special lane that admitted the three
+   orbs.  Gated on caps.bigOrb: against an older worker the special stays the
+   three-orb volley, because that worker would read one bolt as one orb. */
+export const STAFF_BIG_BOLT_SCALE = 1.7;
+export const STAFF_BIG_BOLT_ORBS = 3;
 /* ═══ v2.3.2448: THE ARROW'S OWN CAP, NAMED ═══
    675 has been a literal in projectiles.js since v2.3.1335 ("bow range -25%,
    900 -> 675") and the paragraph above already leans on it ("675 IS THE

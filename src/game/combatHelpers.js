@@ -808,10 +808,13 @@ export function propImpactSound(propId, vol) {
    `elem` (the element, for the crash's heat ramp; absent -> the default) and
    `vdx`/`vdy` -- the bolt is DRAWN easing off the staff's crystal for its first
    40 px, and a crash inside that stretch is drawn where the orb was SEEN, the
-   real point plus that leftover offset (v2.3.2841). */
+   real point plus that leftover offset (v2.3.2841).  v2.3.2842: `big` -- the
+   one-bolt staff special's crash: its rings run 1.6x wider and its outer one
+   a little longer, and staffCastFx draws its burst bigger. */
 export function orbCrashFx(S, x, y, color, opts) {
   if (!S || !Number.isFinite(x) || !Number.isFinite(y)) return;
   var o = opts || {};
+  var ringK = o.big ? 1.6 : 1;
   var elem = o.elem || null;
   var vdx = Number.isFinite(o.vdx) ? o.vdx : 0;
   var vdy = Number.isFinite(o.vdy) ? o.vdy : 0;
@@ -821,7 +824,7 @@ export function orbCrashFx(S, x, y, color, opts) {
      asserts where they land). */
   S._impactRings.push({
     x: x, y: y, ts: Date.now(),
-    color: color, maxR: 26, duration: 320,
+    color: color, maxR: 26 * ringK, duration: o.big ? 420 : 320,
     style: 'staff', elem: elem, vdx: vdx, vdy: vdy,
   });
   /* Inner brighter ring 40 ms later for double-pulse
@@ -832,7 +835,7 @@ export function orbCrashFx(S, x, y, color, opts) {
      as the swingTimer +300 player-flicker on cast). */
   S._impactRings.push({
     x: x, y: y, ts: Date.now(), startDelay: 40,
-    color: color, maxR: 14, duration: 220,
+    color: color, maxR: 14 * ringK, duration: 220,
     style: 'staff', elem: elem, vdx: vdx, vdy: vdy,
   });
   /* ═══ v2.3.2841: THE CRASH BURNS HOT AND COOLS ═══
@@ -840,7 +843,7 @@ export function orbCrashFx(S, x, y, color, opts) {
      it looks lives in the renderer.  Bounded, because a hidden tab stops the
      consumer. */
   if (!S._staffCrashes) S._staffCrashes = [];
-  S._staffCrashes.push({ x: x, y: y, vdx: vdx, vdy: vdy, elem: elem });
+  S._staffCrashes.push({ x: x, y: y, vdx: vdx, vdy: vdy, elem: elem, big: !!o.big });
   if (S._staffCrashes.length > 24) S._staffCrashes.splice(0, S._staffCrashes.length - 24);
 }
 

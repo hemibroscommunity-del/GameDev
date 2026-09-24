@@ -261,6 +261,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
     setTimeout(() => resolve(window.__btStaffFx ? window.__btStaffFx() : null), (S._staffCadenceMs || 900) + 700);
   }));
   rec.ok('stop casting and the crystal goes dark', !!quiet && quiet.rhythm === 0 && quiet.drawn.glowFront === 0, quiet);
+
+  /* ════════════════ 1b. THE ONE-BOLT SPECIAL (v2.3.2842) ════════════════
+     Owner: "Instead of the current special attack with 3 orbs I want to see
+     what just one moderately larger bolt attack would look like."  Against
+     this worker (caps.bigOrb) the special is ONE bolt: the basic bolt's art
+     drawn 1.7x, carrying three orbs of damage, leaving the crystal with a
+     heavier kick, and bursting where it touches the target -- not ~50 px short
+     of it on the special's x3 reach. */
+  await armTarget(P, 200, 0, 'staffcast-big');
+  const big = await P.page.evaluate(() => new Promise((resolve) => {
+    const S = window._gameState.current, F = window._gameFns || {};
+    S.autoAttack = false; S.arrows = []; S._lastSwipe = 0; S.swingTimer = 0;
+    if (S.rpg) S.rpg.mana = S.rpg.maxMana = 900;
+    const m = (S.monsters || []).find((x) => x && x.id === 'staffcast-big');
+    const hp0 = m ? m.curHp : null;
+    const caps = !!(S._serverCaps && S._serverCaps.bigOrb);
+    F.specialAttack();
+    const fired = (S.arrows || []).filter((a) => a && a.isStaff && a.isSpecial);
+    const b = fired[0] || null;
+    const out = { caps, n: fired.length, big: !!(b && b.big), orbs: b ? b.orbs : null, dmg: b ? b.dmg : null,
+      hp0, kick: 0, scale: null, crash: null, mx: m ? m.x : null };
+    const t0 = Date.now();
+    const tick = () => {
+      const w = window.__btWeapon;
+      if (w && Date.now() - t0 < 400) out.kick = Math.max(out.kick, Math.abs(w.rotation || 0));
+      if (b && b._boltSprite && !b._boltSprite.destroyed && Date.now() - (b._fxSeen || t0) > 150) out.scale = b._boltSprite.scale.x;
+      const fx = window.__btStaffFx ? window.__btStaffFx() : null;
+      if (fx && fx.lastCrash && fx.lastCrash.at >= t0) out.crash = fx.lastCrash;
+      if (Date.now() - t0 < 1600) { requestAnimationFrame(tick); return; }
+      out.hp1 = m ? m.curHp : null;
+      resolve(out);
+    };
+    requestAnimationFrame(tick);
+  }));
+  console.log('    big bolt: ' + JSON.stringify(big));
+  rec.ok('the worker advertises caps.bigOrb (guard)', big.caps, big);
+  rec.ok('one press of the magic special fires ONE bolt, marked big, carrying three orbs',
+    big.n === 1 && big.big && big.orbs === 3, big);
+  rec.ok(`...whose damage is the three orbs' (hp ${big.hp0} -> ${big.hp1}, bolt dmg ${big.dmg})`,
+    big.hp0 != null && big.hp1 != null && big.hp0 - big.hp1 === big.dmg && big.dmg % 3 === 0, big);
+  rec.ok(`...drawn 1.7x the basic bolt (sprite scale ${big.scale})`,
+    typeof big.scale === 'number' && Math.abs(big.scale / 0.18 - 1.7) < 0.12, big);
+  rec.ok(`...off a heavier kick than the basic cast (peak ${r1(big.kick * 180 / Math.PI)} deg)`,
+    big.kick * 180 / Math.PI > 18, big);
+  rec.ok(`...and bursting big where it touches the slime (${big.crash ? r1(big.mx - big.crash.x) : '-'} px short of its centre)`,
+    !!big.crash && big.crash.big === true && big.mx - big.crash.x < 80, big.crash);
   await P.ctx.close().catch(() => {});
 
   /* ════════════════ 2. A PEER SEES YOUR CAST ════════════════
@@ -306,6 +352,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!peer.probe && peer.probe.casts >= 1 && peer.probe.lastCast && peer.probe.lastCast.owner === 'peer', peer.probe);
   rec.ok(`...and draws each remote bolt leaving the caster's crystal (worst ${r1(Math.max(0, ...peer.remote.map((r) => r.gap)))}px)`,
     peer.remote.length >= 1 && peer.remote.every((r) => r.gap <= 6), peer.remote);
+
+  /* v2.3.2842: the watcher sees the caster's one-bolt special as their big
+     bolt (the basic art, bigger) with the heavy release -- not a charged orb. */
+  await A.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.autoAttack = false; S._lastSwipe = 0; S.swingTimer = 0;
+    if (S.rpg) S.rpg.mana = S.rpg.maxMana;
+  });
+  await A.page.waitForTimeout(1200);
+  const bigSeen = B.page.evaluate(({ aId }) => new Promise((resolve) => {
+    const out = { big: 0, scale: null, heavy: false };
+    const t0 = Date.now();
+    const tick = () => {
+      const S = window._gameState.current;
+      for (const rp of (S._remoteProjectiles || [])) {
+        if (!rp || rp.ownerId !== aId || !rp.isSpecial) continue;
+        if (rp.big) out.big = Math.max(out.big, 1);
+        /* past the 90 ms grow-in, so the scale read is the flying size */
+        if (rp.big && rp._boltSprite && !rp._boltSprite.destroyed && Date.now() - (rp._fxSeen || Date.now()) > 150) out.scale = rp._boltSprite.scale.x;
+      }
+      const fx = window.__btStaffFx ? window.__btStaffFx() : null;
+      if (fx && fx.lastCast && fx.lastCast.owner === 'peer' && fx.lastCast.big) out.heavy = true;
+      if (Date.now() - t0 < 2500 && !(out.scale && out.heavy)) { requestAnimationFrame(tick); return; }
+      resolve(out);
+    };
+    requestAnimationFrame(tick);
+  }), { aId });
+  await A.page.evaluate(() => { (window._gameFns || {}).specialAttack(); });
+  const pb = await bigSeen;
+  console.log('    peer big bolt: ' + JSON.stringify(pb));
+  rec.ok('the watcher draws the caster\'s special as their big bolt, with the heavy release',
+    pb.big === 1 && typeof pb.scale === 'number' && Math.abs(pb.scale / 0.18 - 1.7) < 0.12 && pb.heavy, pb);
   await A.ctx.close().catch(() => {});
   await B.ctx.close().catch(() => {});
 }
