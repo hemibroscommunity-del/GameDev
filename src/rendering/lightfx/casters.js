@@ -189,7 +189,10 @@ export function collectCasters(S, er, fx, zone) {
       const g = spr._propGround;
       const fp = g && g.fp;
       if (fp && fp.y1 - fp.y0 >= DEEP) {
-        if (g.bottoms) out.push({ key: 'prop:' + id, depth: { spr, g, back: fp.y0 }, alive: true });
+        /* v2.3.2817: with the pieces worldLife cut out of it (the signs, the
+           flags), which cast through the same columns -- shadows.js
+           _placePieces */
+        if (g.bottoms) out.push({ key: 'prop:' + id, depth: { spr, g, back: fp.y0, pieces: spr._lifePieces || null }, alive: true });
         continue;
       }
       out.push({ key: 'prop:' + id, px: spr.x, py: fp ? (fp.y0 + fp.y1) / 2 : spr.y, sprites: [spr], alive: true });
