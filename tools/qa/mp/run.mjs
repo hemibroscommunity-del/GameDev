@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  townscenery: () => import('./mp-townscenery.mjs'), /* v2.3.2792: town's NPCs + buildings load and free with town, and town is never seen without them */
+  townscenery: () => import('./mp-townscenery.mjs'), /* v2.3.2819: town's NPCs + buildings load and free with town, and town is never seen without them */
   geartrim: () => import('./mp-geartrim.mjs'), /* v2.3.2750 (+ v2.3.2774 combat strips): gear frames cropped to their art -- under a third of the bytes, and every layer still lands exactly on the body, own screen and peer's */
   liveness: () => import('./mp-liveness.mjs'), /* v2.3.2811-2815: trees sway, signs swing, flags wave, the forge smokes, people breathe, and the bag comes alive -- all still under the calm switch */
   shirtjog: () => import('./mp-shirtjog.mjs'), /* v2.3.2747: the tee's keyline holds on every frame the game draws while running, all eight directions -- the owner's "static" */

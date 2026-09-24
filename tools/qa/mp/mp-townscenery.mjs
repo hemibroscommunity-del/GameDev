@@ -1,4 +1,4 @@
-/* Town's NPCs and buildings load and free with town (v2.3.2792).
+/* Town's NPCs and buildings load and free with town (v2.3.2819).
  *
  * Owner: "Is there any other memory savings ... (Or removed from the mostly
  * costly memory?)" -- then "Yeah do that".

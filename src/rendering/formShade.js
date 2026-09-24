@@ -118,7 +118,7 @@ if (_on && DefaultBatcher && DefaultBatcher.prototype && DefaultBatcher.prototyp
     if (!span) {
       /* own quad: corners 0,1 are the top edge, 2,3 the bottom (see
          DefaultBatcher: h1 = bounds.minY, h0 = bounds.maxY) */
-      /* v2.3.2792: a CROPPED frame's quad is only the painted part of the
+      /* v2.3.2819: a CROPPED frame's quad is only the painted part of the
          frame (Pixi bounds a trimmed sprite by `trim`), so the gradient would
          run top-to-bottom of the art rather than of the frame, and a cropped
          figure would shade differently from the same figure uncropped.  Give
