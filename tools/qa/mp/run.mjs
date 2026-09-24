@@ -258,6 +258,7 @@ const SCENARIOS = {
   road2: () => import('./mp-road2.mjs'), /* v2.3.1866: just the Create->Continue pop-up road */
   contblack: () => import('./mp-contblack.mjs'), /* v2.3.1865: "continue my character" -> black screen; measures the SCREEN on all three roads back in */
   peershield: () => import('./mp-peershield.mjs'), /* v2.3.1790: other bros wear their shield on their back */
+  peerblock: () => import('./mp-peerblock.mjs'), /* v2.3.2903: another player's block and Shield Bash look as they do on their own screen -- the pose, the shield in the hand (or behind them facing away), the weapon in the other hand, nothing slung; no sword swing for a bash */
   peersword: () => import('./mp-peersword.mjs'), /* v2.3.1791: peers carry the sword the way you do */
   entitydt: () => import('./mp-entitydt.mjs'), /* v2.3.1771: monsters, NPCs + remotes move per second too */
   coppergear: () => import('./mp-coppergear.mjs'), /* v2.3.1772: every worn copper combo, in every pose */

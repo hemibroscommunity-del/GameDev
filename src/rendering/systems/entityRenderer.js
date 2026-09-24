@@ -5946,7 +5946,7 @@ const SOUTH_BLOCK_OFFHAND_BY_TYPE = {
  * down-LEFT from a grip that is now on the RIGHT would be pointing back
  * across his own chest — the one direction this constant exists to avoid. */
 const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.28;
-function _placeSouthBlockWeapon(display, wpn, bobY) {
+function _placeSouthBlockWeapon(display, wpn, bobY, quiet) {   /* v2.3.2903: + quiet, for a peer (no local probe) */
   const spr = display && display._weaponSprite;
   if (!spr || !wpn || !wpn.type) return false;
   /* THE SAME OBJECT HE WAS JUST CARRYING.  A greatsword and a bow have
@@ -6010,7 +6010,7 @@ function _placeSouthBlockWeapon(display, wpn, bobY) {
     const wi = display.getChildIndex(wc);
     if (wi !== shIdx - 1) display.setChildIndex(wc, wi < shIdx ? shIdx - 1 : shIdx);
   }
-  if (typeof window !== 'undefined') {
+  if (!quiet && typeof window !== 'undefined') {
     window.__btSouthBlockWeapon = {
       on: true, type: wpn.type, gearBase: wpn.gearBase || null,
       x: spr.x, y: spr.y, px: targetH, rotation: spr.rotation,
@@ -6025,7 +6025,49 @@ function _placeSouthBlockWeapon(display, wpn, bobY) {
   return true;
 }
 
-function _placeBlockArm(display, facing, bodyH, bobY) {
+/* ═══ v2.3.2903: WHERE THE SHIELD HAND IS, FOR ANY FIGURE ═══
+   _placeBlockArm's hand, lifted out so another player's held shield sits in
+   the same hand yours does: the shoulder point for the facing (display-local,
+   the space a peer's display shares with yours -- v2.3.2896's
+   S._peerStandGeom rests on the same fact), plus the cut arm's
+   shoulder-to-hand run at the figure's height.  Null on a facing with no arm
+   (south, and the three that face away), where your own shield floats. */
+function _blockHandPoint(facing, bodyH, bobY) {
+  const map = BLOCK_ARM_FACING[facing];
+  const anchor = BLOCK_ARM_SHOULDER[facing];
+  const cut = map && BLOCK_ARM_CUT[map[0]];
+  if (!map || !anchor || !cut) return null;
+  const sc = (bodyH || 84) / 188;
+  const sx = map[1] ? -sc : sc;
+  return {
+    x: anchor[0] + (cut.hand[0] - cut.shoulder[0]) * sx,
+    y: anchor[1] + (bobY || 0) + (cut.hand[1] - cut.shoulder[1]) * sc,
+  };
+}
+/* v2.3.2903: a peer's held shield in their child list, by your in-hand rule
+   (v2.3.190): behind the body for NW/N/NE; for E, just under the weapon, so
+   a carried blade crosses in front of it (v2.3.198); otherwise over the whole
+   figure, under only the nameplate layer.  setChildIndex removes then
+   re-inserts, so each target depends on which side the sprite starts from --
+   the same arithmetic the local rule uses. */
+function _orderPeerHeldShield(display, facingIdx) {
+  const sh = display && display._shieldSprite;
+  if (!sh || sh.parent !== display) return;
+  const shIdx = display.getChildIndex(sh);
+  let target;
+  if (facingIdx === 5 || facingIdx === 6 || facingIdx === 7) {
+    const bodyIdx = display._spriteBody ? display.getChildIndex(display._spriteBody) : 0;
+    target = shIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1);
+  } else if (facingIdx === 0 && display._weaponContainer && display._weaponContainer.visible) {
+    const wcIdx = display.getChildIndex(display._weaponContainer);
+    target = shIdx > wcIdx ? wcIdx : Math.max(0, wcIdx - 1);
+  } else {
+    const top = display._uiLayer ? display.getChildIndex(display._uiLayer) : display.children.length;
+    target = shIdx < top ? top - 1 : top;
+  }
+  if (shIdx !== target) display.setChildIndex(sh, target);
+}
+function _placeBlockArm(display, facing, bodyH, bobY, peer) {   /* v2.3.2903: + peer {tex, chest} -- their arm, their sleeve, no local probe */
   const spr = display._blockArmSprite;
   const sleeve = display._blockArmSleeve;
   const group = display._blockArmGroup;
@@ -6033,10 +6075,11 @@ function _placeBlockArm(display, facing, bodyH, bobY) {
   if (!spr) return null;
   const map = BLOCK_ARM_FACING[facing];
   const anchor = BLOCK_ARM_SHOULDER[facing];
-  const tex = map && blockArmTexture(map[0]);
+  const tex = map && (peer ? peer.tex : blockArmTexture(map[0]));
   const cut = map && BLOCK_ARM_CUT[map[0]];
   if (!map || !anchor || !tex || !cut) {
-    _hideBlockArm(display, { facing, hasSheet: !!map, hasArt: !!tex });
+    if (peer) { if (group) group.visible = false; }
+    else _hideBlockArm(display, { facing, hasSheet: !!map, hasArt: !!tex });
     return null;
   }
 
@@ -6063,7 +6106,7 @@ function _placeBlockArm(display, facing, bodyH, bobY) {
      reason every other gear draw site is (v2.3.1757): a recoloured set shares
      its donor's texture and the colour is applied here. */
   if (sleeve) {
-    const worn = getEquip('chest');
+    const worn = peer ? peer.chest : getEquip('chest');
     const sleeveTex = blockArmSleeveTexture(map[0], worn, getGearFrame);
     if (sleeveTex) {
       sleeve.texture = sleeveTex;
@@ -6096,12 +6139,10 @@ function _placeBlockArm(display, facing, bodyH, bobY) {
   }
 
   /* Where the hand ended up, for the shield to sit in. */
-  const handDX = (cut.hand[0] - cut.shoulder[0]) * sx;
-  const handDY = (cut.hand[1] - cut.shoulder[1]) * sc;
-  const hand = { x: anchor[0] + handDX, y: anchor[1] + (bobY || 0) + handDY };
+  const hand = _blockHandPoint(facing, bodyH, bobY);   /* v2.3.2903: one formula, shared with a peer's shield */
 
   /* QA probe (mp-blockarm) — a headless run cannot read the WebGL canvas. */
-  try {
+  if (!peer) try {
     window.__btBlockArm = {
       on: true, facing, sheet: map[0], mirror,
       armVisible: spr.visible,
@@ -6902,6 +6943,30 @@ function createOtherPlayerDisplay() {
   shieldBackHi.anchor.set(0.5, 0.5);
   shieldBackHi.visible = false;
   container.addChild(shieldBackHi);
+  /* ═══ v2.3.2903: THE SHIELD IN THEIR HAND, AND THE ARM THAT HOLDS IT ═══
+     Your display has had these since v2.3.1785 (arm) and v2.3.190 (shield);
+     a peer's never did, so a peer raising a shield raised nothing.  Same
+     structure as yours: the arm and its sleeve share one container so the
+     per-frame z-order step moves them together, and the shield goes in last
+     of the figure, over the arm, whose hand its boss covers. */
+  const blockArmGroup = new Container();
+  blockArmGroup.visible = false;
+  const blockArmSprite = new Sprite();
+  blockArmSprite.anchor.set(0, 0);
+  blockArmGroup.addChild(blockArmSprite);
+  const blockArmSleeve = new Sprite();
+  blockArmSleeve.anchor.set(0, 0);
+  blockArmSleeve.visible = false;
+  blockArmGroup.addChild(blockArmSleeve);
+  container.addChild(blockArmGroup);
+  const shieldSprite = new Sprite();
+  shieldSprite.anchor.set(0.5, 0.5);
+  shieldSprite.visible = false;
+  container.addChild(shieldSprite);
+  container._blockArmGroup = blockArmGroup;
+  container._blockArmSprite = blockArmSprite;
+  container._blockArmSleeve = blockArmSleeve;
+  container._shieldSprite = shieldSprite;
 
   const weaponGlowGfx = new Graphics();
   weaponContainer.addChild(weaponGlowGfx);
@@ -9573,6 +9638,14 @@ export class EntityRenderer {
        a client-supplied id, so a Map and not {} (CLAUDE.md rule 4). */
     if (!S._peerStandGeom) S._peerStandGeom = new Map();
     else S._peerStandGeom.clear();
+    /* v2.3.2903: which peers hold a shield out this frame, and which of those
+       are in the block pose -- read by effectsRenderer, which draws the pose's
+       figure and hands and cuts their shield arm (S._peerArmTex, back to the
+       pass below).  Same rules as _peerStandGeom: cleared every pass, a Map. */
+    if (!S._peerBlockPose) S._peerBlockPose = new Map();
+    else S._peerBlockPose.clear();
+    if (!S._peerShieldHeld) S._peerShieldHeld = new Map();
+    else S._peerShieldHeld.clear();
 
     for (const [id, other] of Object.entries(others)) {
       if (!other || (other.zone || other.z || 'town') !== S.currentZone) continue;
@@ -9845,6 +9918,43 @@ export class EntityRenderer {
         });
       }
 
+      /* ═══ v2.3.2903: THEIR SHIELD, HELD OUT -- AS YOURS IS ═══
+         Owner: "check all other broadcasted player animations to make sure
+         they match what your character does client side."
+         A block and a Shield Bash both reach this screen already (player_shield
+         -> _shieldUp; player_swing bash:true -> _bashUntil, gameEvents), and
+         neither drew anything: a blocking peer kept walking with the shield on
+         their back, and a bashing peer swung a sword (effectsRenderer, same
+         version).  Your own screen, for the same two things, holds the shield
+         out in the hand (v2.3.190 / v2.3.1785), plays the block pose facing the
+         way you guard (v2.3.1800, not south -- v2.3.1805), puts your weapon in
+         the other hand (v2.3.1864 / v2.3.1871) and slings nothing (v2.3.1782).
+         This decides the same four things for a peer, from the same rules:
+           held  -- a shield in rpgData and a block or a bash under way;
+           pose  -- a block (not a bash), not south, no shot in flight, and the
+                    pose's art ready (the S._bowArtReady rule yours follows);
+           far   -- guarding away from the camera (NW/N/NE), where the shield
+                    is drawn behind the pose's body by effectsRenderer. */
+      const _oHasShield = !!(other.rpgData && other.rpgData.shield);
+      const _oBlocking = _oHasShield && !!other._shieldUp;
+      const _oBashing = _oHasShield && !!(other._bashUntil && now < other._bashUntil);
+      const _oShieldHeld = (_oBlocking || _oBashing) && !other._dying && !other._ex && !other._dodgeRoll;
+      const _oShotNow = !!(other._bowShotAt && (now - other._bowShotAt) >= 0 && (now - other._bowShotAt) < BOW_SHOT_MS);
+      const _oBlockPose = _oShieldHeld && _oBlocking && !_oShotNow && facing !== 'south'
+        && !!(S._peerBowFacingsReady && S._peerBowFacingsReady.has(facing));
+      const _oShieldAng = facingIdx >= 0 ? facingIdx * Math.PI / 4 : Math.PI / 2;
+      const _oShieldFrame = _oShieldHeld ? getShieldFrame(_oShieldAng) : null;
+      const _oShieldFar = _oBlockPose && (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
+      if (_oShieldHeld) S._peerShieldHeld.set(id, { facing });
+      if (_oBlockPose) {
+        S._peerBlockPose.set(id, {
+          dir: facing,
+          behind: (_oShieldFar && _oShieldFrame)
+            ? { tex: _oShieldFrame.tex, mirror: !!_oShieldFrame.mirror, ang: _oShieldAng, px: HELD_SHIELD_PX }
+            : null,
+        });
+      }
+
       /* ═══ v2.3.1790: the peer's slung shield ═══
          Whether they own one comes from rpgData.shield, which the presence
          payload already carries for the inspect card — so this needs NO wire
@@ -9882,7 +9992,8 @@ export class EntityRenderer {
             return (_isMelee && other._swingTs && (now - other._swingTs) < SWORD_SWING_MS)
               || (other._bowShotAt && (now - other._bowShotAt) < BOW_SHOT_MS);
           })();
-          const _place = (_hasShield && !isHit && !other._dying && !other._ex && !_shSwing)
+          /* v2.3.2903: + held beats slung, as yours (v2.3.1782). */
+          const _place = (_hasShield && !isHit && !other._dying && !other._ex && !_shSwing && !_oShieldHeld)
             ? backShieldPlacement(facingIdx, isMoving, bobY)
             : null;
           if (!_place) {
@@ -10365,6 +10476,11 @@ export class EntityRenderer {
         } else {
           oWeaponSprite.visible = false;
         }
+      } else if (oWpnType && _oBlocking && _oShieldHeld && !_oBlockPose && SOUTH_BLOCK_OFFHAND_ENABLED
+                 && _placeSouthBlockWeapon(display, { type: oWpnType, gearBase: other.wpnMat || undefined }, bobY, true)) {
+        /* v2.3.2903: a peer's SOUTH block keeps their weapon too, in the off
+           hand under the shield -- your v2.3.1871, through the same helper.
+           Exactly one of this and the pose's off hand draws (!_oBlockPose). */
       } else {
         oWeaponSprite.visible = false;
       }
@@ -10469,9 +10585,12 @@ export class EntityRenderer {
       {
         const _sw = other._swingWpn;
         const _melee = !_sw || _sw === 'sword' || _sw === 'greatsword';
-        const _meleeSwing = _melee && other._swingTs && (now - other._swingTs) < SWORD_SWING_MS;
+        /* v2.3.2903: a bash draws no swing stand-in any more
+           (effectsRenderer), so it must not hide the body the stand-in no
+           longer replaces -- and the block pose does replace it. */
+        const _meleeSwing = _melee && !other._swingBash && other._swingTs && (now - other._swingTs) < SWORD_SWING_MS;
         const _bowDraw = other._bowShotAt && (now - other._bowShotAt) < BOW_SHOT_MS;
-        if (_meleeSwing || _bowDraw) {
+        if (_meleeSwing || _bowDraw || _oBlockPose) {
           if (display._spriteBody) display._spriteBody.visible = false;
           if (body) body.visible = false;
           _hideBodyRegions(display);
@@ -10487,6 +10606,82 @@ export class EntityRenderer {
           if (display._capeBackSprite) display._capeBackSprite.visible = false;
           if (display._capeHoodMask) display._capeHoodMask._btReady = false;
           if (display._weaponContainer) display._weaponContainer.visible = false;
+        }
+      }
+
+      /* ═══ v2.3.2903: ...AND IN THEIR HAND ═══
+         The held shield, placed as yours is (entityRenderer's shield block,
+         v2.3.1785-1805): the frame for the guarded direction, HELD_SHIELD_PX,
+         in the hand _blockHandPoint gives for the facing (else the old 16px
+         reach), behind the body for NW/N/NE and in front otherwise.  Guarding
+         away in the block pose it is drawn by effectsRenderer instead, behind
+         the pose's body (the reason is v2.3.1805's: this display cannot be
+         ordered against a stand-in).  The arm that holds it shows only on the
+         walking body -- a bash -- because the pose has an arm of its own
+         (v2.3.1800), and it is THEIR arm (effectsRenderer, S._peerArmTex). */
+      {
+        const _shS = display._shieldSprite;
+        let _hand = null, _armOn = false;
+        if (_shS && _oShieldHeld && _oShieldFrame && !_oShieldFar) {
+          if (_shS.texture !== _oShieldFrame.tex) _shS.texture = _oShieldFrame.tex;
+          /* Your figure's height for the facing, the same expression yours
+             uses -- and planted ('stand') while blocking, as yours is. */
+          const _hPose = _oBlocking ? 'stand' : (display._animPose || 'stand');
+          const _hBodyH = (221 - 33) * bodyDirScale(_hPose, resolveDirection(facing).dir) * LOCAL_BODY_SCALE * (display.scale.y || 1);
+          _hand = _blockHandPoint(facing, _hBodyH, bobY);
+          if (_hand) { _shS.x = _hand.x; _shS.y = _hand.y; }
+          else { _shS.x = Math.cos(_oShieldAng) * 16; _shS.y = Math.sin(_oShieldAng) * 16 + bobY; }
+          _shS.width = HELD_SHIELD_PX;
+          _shS.height = HELD_SHIELD_PX;
+          _shS.scale.x = Math.abs(_shS.scale.x) * (_oShieldFrame.mirror ? -1 : 1);
+          _shS.rotation = 0;
+          _shS.tint = 0xffffff;
+          _shS.alpha = 0.95;
+          _shS.visible = true;
+          _orderPeerHeldShield(display, facingIdx);
+          /* In the block pose this display is under the pose's own layer (see
+             effectsRenderer's shieldHi), so the same shield, at the same
+             point, is handed over in world units and drawn there instead. */
+          const _blkE = _oBlockPose ? S._peerBlockPose.get(id) : null;
+          if (_blkE) {
+            const _dsx = display.scale.x || 1, _dsy = display.scale.y || 1;
+            _blkE.near = {
+              tex: _oShieldFrame.tex, mirror: !!_oShieldFrame.mirror,
+              x: display.x + _shS.x * _dsx, y: display.y + _shS.y * _dsy,
+              w: HELD_SHIELD_PX * Math.abs(_dsx), h: HELD_SHIELD_PX * Math.abs(_dsy),
+            };
+            _shS.visible = false;
+          }
+          const _armT = (!_oBlockPose && S._peerArmTex) ? S._peerArmTex.get(id) : null;
+          if (_armT && _armT.facing === facing && _armT.tex && _armT.tex.source && !_armT.tex.source.destroyed) {
+            _armOn = !!_placeBlockArm(display, facing, _hBodyH, bobY,
+              { tex: _armT.tex, chest: (other.equip && other.equip.chest) || null });
+          }
+        } else if (_shS) {
+          _shS.visible = false;
+        }
+        if (!_armOn && display._blockArmGroup) display._blockArmGroup.visible = false;
+        /* QA probe (mp-peerblock), armed only and null-prototype as
+           __btPeerShield: what this screen drew in the peer's hands. */
+        if (window.__btProbe) {
+          const _nearHeld = !!(_shS && _oShieldHeld && _oShieldFrame && !_oShieldFar);
+          if (!window.__btPeerHeldShield) window.__btPeerHeldShield = Object.create(null);
+          const _g = display._blockArmGroup;
+          window.__btPeerHeldShield[id] = {
+            held: _oShieldHeld, blocking: _oBlocking, bashing: _oBashing, pose: _oBlockPose, far: _oShieldFar,
+            /* `on`: the near-side shield is drawn -- by this display, or (block
+               pose) handed over to the pose's layer; x/y are display-local
+               either way, the units yours are reported in. */
+            facing, on: _nearHeld, via: _nearHeld ? (_oBlockPose ? 'pose' : 'display') : null,
+            x: _nearHeld ? +_shS.x.toFixed(2) : null,
+            y: _nearHeld ? +_shS.y.toFixed(2) : null,
+            w: _nearHeld ? +Math.abs(_shS.width).toFixed(1) : null,
+            mirror: !!(_oShieldFrame && _oShieldFrame.mirror), viaHand: !!_hand,
+            shieldIdx: _shS ? display.getChildIndex(_shS) : -1,
+            bodyIdx: display._spriteBody ? display.getChildIndex(display._spriteBody) : -1,
+            arm: _armOn && _g ? { idx: display.getChildIndex(_g), sleeve: !!(display._blockArmSleeve && display._blockArmSleeve.visible) } : null,
+            weaponOffHand: !!(_oBlocking && !_oBlockPose && display._weaponSprite && display._weaponSprite.visible),
+          };
         }
       }
 

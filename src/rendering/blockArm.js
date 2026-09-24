@@ -169,6 +169,29 @@ export function blockArmTexture(sheet) {
   return tex;
 }
 
+/* ═══ v2.3.2903: THE SAME CUT FROM ANOTHER PLAYER'S BODY ═══
+   Owner: "check all other broadcasted player animations to make sure they
+   match what your character does client side."
+   blockArmTexture cuts YOUR arm out of YOUR baked bow frames (the skin you
+   picked, registered above).  Another player's Shield Bash needs THEIR arm, so
+   this takes the frames effectsRenderer baked for them (_remoteBodyFramesFor)
+   and makes the identical cut -- same frame, same rectangle, same numbers.
+   Cached per source frame (a WeakMap: when a peer's bake is evicted the cut
+   goes with it; callers still check the source is alive before drawing). */
+const _peerArmCache = new WeakMap();
+export function blockArmTextureFrom(frames, sheet) {
+  if (!BLOCK_ARM_ENABLED) return null;
+  const cut = BLOCK_ARM_CUT[sheet];
+  const base = cut && frames && frames[cut.frame];
+  if (!base || !base.source || base.source.destroyed) return null;
+  let tex = _peerArmCache.get(base);
+  if (!tex) {
+    tex = subTexture(base, cut.rect[0], cut.rect[1], cut.rect[2], cut.rect[3]);
+    _peerArmCache.set(base, tex);
+  }
+  return tex;
+}
+
 /** The SLEEVE for the same cut: the identical rectangle taken from the worn
  *  chest piece's `bowshot` strip, which is authored to overlay the bow body
  *  frame-for-frame — so the same rect lands on the same arm with no second
