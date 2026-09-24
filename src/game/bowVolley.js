@@ -1,4 +1,4 @@
-/* ═══ v2.3.2808: THE BOW SPECIAL IS A VOLLEY OF THREE ═══
+/* ═══ v2.3.2828: THE BOW SPECIAL IS A VOLLEY OF THREE ═══
  *
  * Owner: "the bow special should be 3 white hot arrows that follow each other
  * closely.  One shot for all 3 arrows.  I think the archetype for bow will be

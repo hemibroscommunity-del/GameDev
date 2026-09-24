@@ -111,7 +111,7 @@ var PROJ_BODY = {
   arrow:        { back: 24.0, front: 28.5, half: 6.6 },   /* 128x32  @ 52.5/128, anchor .457 */
   magicBolt:    { back: 26.9, front: 12.2, half: 11.5 },  /* 217x128 @ 0.18,     anchor .688 */
   arrowSpecial: { back: 28.9, front: 33.9, half: 12.8 },  /* v2.3.2511: 314x128 @ 0.20 (was 0.17), anchor .460 */
-  /* v2.3.2807: the special is now DRAWN as the pine arrow at 62.8 px (hotArrowFx
+  /* v2.3.2827: the special is now DRAWN as the pine arrow at 62.8 px (hotArrowFx
      HOT_LEN, the painted sheet's own length) -- pivot .457, so back 28.7 / front
      34.1 -- inside a heat aura built to reach this 12.8 half.  The row is left
      as it is on purpose: the picture was sized to the capsule, so the hit test
@@ -135,7 +135,7 @@ export var SPECIAL_HIT_R_MULT = 3;   /* v2.3.222: special arrow has 3x damage ra
    long (PROJ_BODY.arrowSpecial: a 314px sheet at ARROW_SPECIAL.scale 0.20), so
    half of it is 31.4 -- see the cap at the bottom of monsterProjRadius.  If the
    art is rescaled, this moves with it, exactly as the PROJ_BODY row does.
-   v2.3.2807: the white-hot special (hotArrowFx) is drawn at the same 62.8. */
+   v2.3.2827: the white-hot special (hotArrowFx) is drawn at the same 62.8. */
 export var SPECIAL_HIT_R_CAP_PX = 31;
 export function monsterProjRadius(m, S, opts) {
   var _archProj = hitShapeOf(m.archetype || m.type);
@@ -602,7 +602,7 @@ import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2825: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2823: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */ } from '@/game/combatHelpers.js';
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
-import { BOW_VOLLEY, burnT0, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2808: the special's three arrows share one train, one burn and one shove */
+import { BOW_VOLLEY, burnT0, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2828: the special's three arrows share one train, one burn and one shove */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -682,7 +682,7 @@ function queueSnowballBurst(S, proj) {
  * silently never happens there. */
 function _arrowSendOff(S, a, bx, by) {
   if (!S || !a || a._blasted || !a.isSpecial || a.isStaff) return;
-  /* v2.3.2808: the three-arrow volley has no send-off -- owner, "Burn, but no
+  /* v2.3.2828: the three-arrow volley has no send-off -- owner, "Burn, but no
      blast": area is the staff's.  Only an arrow fired against a worker that
      advertises caps.bowvolley is a volley, and that worker refuses the blast
      too (arrowblast.js), so the lone arrow an old worker gets keeps its
@@ -744,11 +744,11 @@ export function updateArrows(S, deps) {
             if (a.stuckIn) {
               var _sm = a.stuckIn;
               var _sAge = Date.now() - a.stuckAt;
-              /* v2.3.2808: a volley's arrows live on the VOLLEY's clock, from
+              /* v2.3.2828: a volley's arrows live on the VOLLEY's clock, from
                  its first arrival, and burn out together (bowVolley.js) */
               var _sLife = Date.now() - burnT0(a);
               if (_sLife >= 4000 || !_sm || !_sm.alive || _sm.curHp <= 0) {
-                /* v2.3.2804: a monster that died while the arrow was still
+                /* v2.3.2824: a monster that died while the arrow was still
                    flying in still shows it landing, where the arrow is */
                 if (a._landFx && _sm) {
                   var _sdF = _projBody(a).front * 0.45;
@@ -758,7 +758,7 @@ export function updateArrows(S, deps) {
                 _arrowSendOff(S, a,
                   (typeof a._renderX === 'number') ? a._renderX : (_sm ? _sm.x : null),
                   (typeof a._renderY === 'number') ? a._renderY : (_sm ? _sm.y : null));
-                a._spent = true;   /* v2.3.2808: a sibling still in something may take the volley's burn over */
+                a._spent = true;   /* v2.3.2828: a sibling still in something may take the volley's burn over */
                 return false;
               }
               var _smx = (typeof _sm.renderX === 'number') ? _sm.renderX : _sm.x;
@@ -789,7 +789,7 @@ export function updateArrows(S, deps) {
                 a._renderX = _stX;
                 a._renderY = _stY;
               }
-              /* v2.3.2808: ONE arrow of a volley carries its burn, on the
+              /* v2.3.2828: ONE arrow of a volley carries its burn, on the
                  volley's own cadence, so a hand-over (bowVolley.js) never buys
                  an extra tick.  A lone arrow is its own clock, as before. */
               var _cClk = a.volley || a;
@@ -865,7 +865,7 @@ export function updateArrows(S, deps) {
                range, arced down, and is stuck in the ground.  Hold its frozen
                world position, take no hits, and remove ~2 s after planting. */
             if (a.planted) {
-              var _pAge = Date.now() - burnT0(a);   /* v2.3.2808: plantedAt, or its volley's clock */
+              var _pAge = Date.now() - burnT0(a);   /* v2.3.2828: plantedAt, or its volley's clock */
               /* v2.3.1402 (owner): a landed BOW SPECIAL becomes a lingering
                  ground hazard — every 0.5 s it deals BASE bow damage to any
                  monster within 100 px of where it stuck, until it disappears
@@ -875,7 +875,7 @@ export function updateArrows(S, deps) {
                  lets the worker roll the authoritative number. */
               var _pLife = (a.isSpecial && !a.isStaff) ? 4000 : 2000;
               if (a.isSpecial && !a.isStaff && S.monsters && _pAge < _pLife) {
-                /* v2.3.2808: one ground hazard per volley, on the volley's
+                /* v2.3.2828: one ground hazard per volley, on the volley's
                    cadence -- the stuck branch's rule, above */
                 var _gClk = a.volley || a;
                 if (_gClk._lingerNext == null) _gClk._lingerNext = burnT0(a) + 500;
@@ -918,7 +918,7 @@ export function updateArrows(S, deps) {
                 _arrowSendOff(S, a,
                   (a._plantX != null) ? a._plantX : a._renderX,
                   (a._plantY != null) ? a._plantY : a._renderY);
-                a._spent = true;   /* v2.3.2808: see the stuck branch */
+                a._spent = true;   /* v2.3.2828: see the stuck branch */
               }
               return _pAge < _pLife;
             }
@@ -955,12 +955,12 @@ export function updateArrows(S, deps) {
             if (a.launchDelayMs > 0 && (Date.now() - a._bornTs) < a.launchDelayMs) {
               a._renderX = P.x + Math.cos(a.ang) * a.dist;
               a._renderY = P.y + Math.sin(a.ang) * a.dist;
-              a._held = true;   /* v2.3.2808: the renderer does not draw an ARROW still on the string (an orb keeps its old look) */
+              a._held = true;   /* v2.3.2828: the renderer does not draw an ARROW still on the string (an orb keeps its old look) */
               return true;
             }
             if (a._held) {
               a._held = false;
-              /* ═══ v2.3.2808: A VOLLEY ARROW LEAVES ON ITS MARK ═══
+              /* ═══ v2.3.2828: A VOLLEY ARROW LEAVES ON ITS MARK ═══
                  Its wait ends on a whole frame, up to one 24 px step after its
                  moment, so the gaps in the bow volley's train would jitter
                  between one step and two.  It is caught up, once, by the time
@@ -996,7 +996,7 @@ export function updateArrows(S, deps) {
               a.ang = a.ang + (Math.PI / 2 - a.ang) * 0.35;   // rotate to straight-down
               if (a._plantY - a._plantStartY >= 26) {
                 a.planted = true; a.plantedAt = Date.now(); a.ang = Math.PI / 2;
-                volleyRested(a, a.plantedAt);   /* v2.3.2808: the volley's burn clock starts with its first arrow down */
+                volleyRested(a, a.plantedAt);   /* v2.3.2828: the volley's burn clock starts with its first arrow down */
               }
               return true;
             }
@@ -1103,7 +1103,7 @@ export function updateArrows(S, deps) {
                  world coords, the grip offset included, and keep whatever angle
                  the aim resolved to on this frame -- that is the line the shot
                  was actually taken along. */
-              /* v2.3.2808: ...and the bow volley's second and third arrows take
+              /* v2.3.2828: ...and the bow volley's second and third arrows take
                  the FIRST one's line, origin and angle both, so the three
                  follow each other (owner) instead of each aiming afresh from
                  wherever the player has walked in the ~100 ms between them. */
@@ -1185,7 +1185,7 @@ export function updateArrows(S, deps) {
                 a.planting = true;
                 a._plantX = a._renderX;
                 a._plantStartY = a._renderY;
-                /* v2.3.2808: a volley that missed stands in the ground as three
+                /* v2.3.2828: a volley that missed stands in the ground as three
                    arrows, not one: each plants a little short of and beside the
                    one before (bowVolley.js PLANT_SPREAD).  Under one step of
                    flight, so it reads as where it came down, not as a jump. */
@@ -1395,7 +1395,7 @@ export function updateArrows(S, deps) {
                   return;
                 }
                 var _hpBefore = m.curHp;
-                /* v2.3.2808: the bow volley shoves a monster once -- its first
+                /* v2.3.2828: the bow volley shoves a monster once -- its first
                    arrow to hit it does, the rest send noKb (bowVolley.js) */
                 var _vShove = volleyShoves(a, m.id);
                 /* v2.3.109: variant incomingDmgScalar removed (WYSIWYG)
@@ -1431,7 +1431,7 @@ export function updateArrows(S, deps) {
                    train Agility and magic kills train Mind via
                    distributeKillXpToBuild's share split.  Power stays
                    reserved for melee swing damage. */
-                if (S.rpg && _vShove) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', 1);   /* v2.3.2808: a volley counts once per monster, as the one arrow did */
+                if (S.rpg && _vShove) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', 1);   /* v2.3.2828: a volley counts once per monster, as the one arrow did */
                 /* T2: damage-driven weapon-skill XP — the equipped slot
                    resolves to Bow or Staff at hit time. */
                 if (S.rpg) {
@@ -1476,7 +1476,7 @@ export function updateArrows(S, deps) {
                        so no caps gate is needed; old clients keep
                        sending special:false and keep the old lane. */
                     slot: isStaffProj ? 'staff' : 'ranged', special: !!a.isSpecial,
-                    /* v2.3.2808: an arrow of the bow volley is a third of the
+                    /* v2.3.2828: an arrow of the bow volley is a third of the
                        special (the worker divides its own roll -- combat.js,
                        caps.bowvolley), and only the volley's first arrow into
                        this monster shoves it.  Both absent on every other shot. */
@@ -1640,7 +1640,7 @@ export function updateArrows(S, deps) {
                    whole read), and staff bolts keep 1 — they are not
                    arrows, and nothing was said about magic. */
                 var _projKb = a.isSpecial ? 3 : (a.isStaff ? 1 : 0.25);
-                if (!_vShove) _projKb = 0;   /* v2.3.2808: the volley's first arrow already shoved it */
+                if (!_vShove) _projKb = 0;   /* v2.3.2828: the volley's first arrow already shoved it */
                 m.x += Math.cos(kba) * _projKb;
                 m.y += Math.sin(kba) * _projKb;
                 /* Knockback recovery -- see melee path; pauses
@@ -1918,7 +1918,7 @@ export function updateArrows(S, deps) {
                 if (!a.isStaff && a.isSpecial && !a.stuckIn && m.alive && m.curHp > 0) {
                   a.stuckIn = m;
                   a.stuckAt = Date.now();
-                  volleyRested(a, a.stuckAt);   /* v2.3.2808: the volley's burn clock starts with its first arrow in */
+                  volleyRested(a, a.stuckAt);   /* v2.3.2828: the volley's burn clock starts with its first arrow in */
                   a.life = 999;      /* stuckAt governs removal now, not life */
                   /* v2.3.2824: ...give or take the body's core, so two specials
                      do not stick in the same hole.  It used to JUMP here from
@@ -2146,8 +2146,8 @@ export function updateArrows(S, deps) {
               a._plantX = _impX;
               a._plantY = _impY;
               a._plantStartY = _impY;
-              volleyRested(a, a.plantedAt);   /* v2.3.2808 */
-              /* v2.3.2808: three arrows in one hole read as one -- a volley's
+              volleyRested(a, a.plantedAt);   /* v2.3.2828 */
+              /* v2.3.2828: three arrows in one hole read as one -- a volley's
                  later arrows stand beside the first, across the line of flight */
               var _vRs = a.volley ? BOW_VOLLEY.PLANT_SPREAD[a.volleyIx] : null;
               if (_vRs && _vRs.side) {

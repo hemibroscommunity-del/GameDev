@@ -63,7 +63,7 @@ export const ARROW_BLAST = {
 };
 
 export const arrowBlastMethods = {
-  /* ═══ v2.3.2808: RETIRED WHILE THE BOW SPECIAL IS A VOLLEY ═══
+  /* ═══ v2.3.2828: RETIRED WHILE THE BOW SPECIAL IS A VOLLEY ═══
      Owner, making the special three white-hot arrows: "Burn, but no blast" --
      the arrows stick and burn the monster you shot, and the area send-off is
      gone, because "the archetype for bow will be speed and DPS as opposed to
@@ -96,7 +96,7 @@ export const arrowBlastMethods = {
      nothing for the player to do differently, and a message would only tell a
      modified client which bound it hit. */
   _arrowBlastRefusal(ps, zone, x, y, now) {
-    if (this._bowVolleyLive()) return 'retired';   /* v2.3.2808: see _bowVolleyLive */
+    if (this._bowVolleyLive()) return 'retired';   /* v2.3.2828: see _bowVolleyLive */
     if (!ps) return 'no-player';
     if (ps.dead || ps.dying || ps.disconnected) return 'not-alive';
     if (ps.z !== zone) return 'wrong-zone';

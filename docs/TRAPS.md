@@ -4714,7 +4714,7 @@ of that sprite (`propDisplays`, `_propGround`, `_vShade`); after, compare the
 game against main with the pieces at rest -- shade on/off, shadows on/off --
 and expect no difference.
 
-## 117. A camelCase live flag is a kill switch nobody can throw (v2.3.2808)
+## 117. A camelCase live flag is a kill switch nobody can throw (v2.3.2828)
 
 **Tempting:** name a new capability in the house camelCase (`zoneDepth`,
 `storeGear`, `milestonesRetired`) and write in its comment that writing
@@ -4728,7 +4728,7 @@ work.
 camelCase kill switch can be *read* and *cleared* (the test panel's Live
 flags section lists what is there) but never *set* short of a code change or
 a hand-written storage put. Found making the bow volley's switch
-(v2.3.2808): the first cut was `bowVolley` and could not be thrown; its
+(v2.3.2828): the first cut was `bowVolley` and could not be thrown; its
 scenario would have had to fake the flag instead of using the route an
 operator would. The existing `zoneDepth` and `storeGear` switches have the
 same problem today.

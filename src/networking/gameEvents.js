@@ -1609,7 +1609,7 @@ export function processGameEvent(type, payload, S, deps) {
                    same stagger or all three draw on top of each other and read
                    as one orb.  Absent/legacy payload -> 0 -> old behaviour. */
                 holdUntil: payload.isStaff ? Date.now() + (Number(payload.delayMs) > 0 ? Math.min(1000, Number(payload.delayMs)) : 0) : 0,
-                /* ═══ v2.3.2808: A PEER'S ARROW WAITS IN FRAMES ═══
+                /* ═══ v2.3.2828: A PEER'S ARROW WAITS IN FRAMES ═══
                    The bow special is a volley of three now (bowVolley.js), and
                    its stagger rides `delayMs` like the orbs'.  But a peer's
                    arrow flies 8 px a FRAME (visualSystems.js), so a wait in

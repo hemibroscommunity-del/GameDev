@@ -23,11 +23,11 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  hotarrow: () => import('./mp-hotarrow.mjs'), /* v2.3.2807: the bow special is the pine arrow white-hot -- glowing, animated, sparking in flight; smouldering and flaring on its ticks once stuck; the painted sheet never downloaded; the hit capsule unchanged; a peer sees it too */
-  bowvolley: () => import('./mp-bowvolley.mjs'), /* v2.3.2808: the bow special as three white-hot arrows on a real worker -- three part:3 sends, one shove, all three settled, one burn, no blast */
-  hitmat: () => import('./mp-hitmat.mjs'), /* v2.3.2803: every monster throws its own material (snow, slime, blood + char, ashy dust, bone, stone), shaped by the weapon -- an arrow's jet, a bolt's blast, a blade's sheet -- and the pieces land */
-  shotland: () => import('./mp-shotland.mjs'), /* v2.3.2804: a bolt or an arrow is drawn landing IN the body -- round its centre, spread over its core -- not on the ring its hit test registers on; the hit itself still registers there */
-  staffcast: () => import('./mp-staffcast.mjs'), /* v2.3.2801: the staff cast -- the crystal charges on the cooldown, the bolt leaves it and rejoins its real line, the staff stands head-up and kicks, a peer sees it */
+  hotarrow: () => import('./mp-hotarrow.mjs'), /* v2.3.2827: the bow special is the pine arrow white-hot -- glowing, animated, sparking in flight; smouldering and flaring on its ticks once stuck; the painted sheet never downloaded; the hit capsule unchanged; a peer sees it too */
+  bowvolley: () => import('./mp-bowvolley.mjs'), /* v2.3.2828: the bow special as three white-hot arrows on a real worker -- three part:3 sends, one shove, all three settled, one burn, no blast */
+  hitmat: () => import('./mp-hitmat.mjs'), /* v2.3.2823: every monster throws its own material (snow, slime, blood + char, ashy dust, bone, stone), shaped by the weapon -- an arrow's jet, a bolt's blast, a blade's sheet -- and the pieces land */
+  shotland: () => import('./mp-shotland.mjs'), /* v2.3.2824: a bolt or an arrow is drawn landing IN the body -- round its centre, spread over its core -- not on the ring its hit test registers on; the hit itself still registers there */
+  staffcast: () => import('./mp-staffcast.mjs'), /* v2.3.2821: the staff cast -- the crystal charges on the cooldown, the bolt leaves it and rejoins its real line, the staff stands head-up and kicks, a peer sees it */
   geartrim: () => import('./mp-geartrim.mjs'), /* v2.3.2750 (+ v2.3.2774 combat strips): gear frames cropped to their art -- under a third of the bytes, and every layer still lands exactly on the body, own screen and peer's */
   liveness: () => import('./mp-liveness.mjs'), /* v2.3.2811-2815: trees sway, signs swing, flags wave, the forge smokes, people breathe, and the bag comes alive -- all still under the calm switch */
   shirtjog: () => import('./mp-shirtjog.mjs'), /* v2.3.2747: the tee's keyline holds on every frame the game draws while running, all eight directions -- the owner's "static" */
@@ -100,7 +100,7 @@ const SCENARIOS = {
   abilslot: () => import('./mp-abilslot.mjs'), /* v2.3.2327: bash moves down-left of the disc; whirl is the sword's */
   bowside: () => import('./mp-bowside.mjs'), /* v2.3.2325: the idle bow mirrors when the body does (SE is a mirrored SW) */
   goldrail: () => import('./mp-goldrail.mjs'), /* v2.3.2320: the purse moves to the zone rail and the nav buttons take its room */
-  arrowblast: () => import('./mp-arrowblast.mjs'), /* v2.3.2279: the bow special's blast finale, end to end; v2.3.2808: run behind the bowvolley kill switch, where it still exists */
+  arrowblast: () => import('./mp-arrowblast.mjs'), /* v2.3.2279: the bow special's blast finale, end to end; v2.3.2828: run behind the bowvolley kill switch, where it still exists */
   chatlayer: () => import('./mp-chatlayer.mjs'), /* v2.3.2276: chat paints under the menus, and its composer stands down for them */
   ambient: () => import('./mp-ambient.mjs'), /* v2.3.2762: the maps' ambient life -- the worldview's five features and the four spokes, counted and photographed */
   formshade: () => import('./mp-formshade.mjs'), /* v2.3.2767: light from above on figures and props -- on/off diff, darker not brighter, stills for a human */

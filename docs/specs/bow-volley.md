@@ -1,4 +1,4 @@
-# The bow special: three white-hot arrows, a third each, no blast (v2.3.2808)
+# The bow special: three white-hot arrows, a third each, no blast (v2.3.2828)
 
 The owner asked: "I'm thinking actually that the bow special should be 3 white hot arrows that follow each other closely. One shot for all 3 arrows. I think the archetype for bow will be speed and DPS as opposed to staff which is area damage and high damage variance."
 
