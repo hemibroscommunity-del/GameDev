@@ -34,7 +34,7 @@ import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown 
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
@@ -1673,13 +1673,32 @@ export function processGameEvent(type, payload, S, deps) {
                    are spaced in TIME (playerActions.js), so a peer needs the
                    same stagger or all three draw on top of each other and read
                    as one orb.  Absent/legacy payload -> 0 -> old behaviour. */
-                holdUntil: Date.now() + (Number(payload.delayMs) > 0 ? Math.min(1000, Number(payload.delayMs)) : 0),
+                holdUntil: payload.isStaff ? Date.now() + (Number(payload.delayMs) > 0 ? Math.min(1000, Number(payload.delayMs)) : 0) : 0,
+                /* ═══ v2.3.2848: A PEER'S ARROW WAITS IN FRAMES ═══
+                   The bow special is a volley of three now (bowVolley.js), and
+                   its stagger rides `delayMs` like the orbs'.  But a peer's
+                   arrow flies 8 px a FRAME (visualSystems.js), so a wait in
+                   milliseconds shrinks the train with the watcher's frame rate
+                   -- measured 14-22 px apart on a busy tab where the archer's
+                   screen shows 80.  Counted in the same frames it flies in,
+                   the gap is 80 at any rate.  Arrows only: the orbs keep their
+                   clock, and nothing else sends a delay. */
+                holdFrames: (!payload.isStaff && Number(payload.delayMs) > 0) ? Math.min(60, Math.round(Number(payload.delayMs) / (1000 / 60))) : 0,
                 /* v2.3.2262: the magic special's orbs fly fast / medium / slow,
                    so a peer needs the speed too or all three drift together and
                    the spread the caster sees is not the spread anyone else does.
                    Clamped, and absent on every other projectile -> the type's
                    own speed, exactly as before. */
                 speedPx: (Number(payload.speedPx) > 0 ? Math.min(20, Number(payload.speedPx)) : null),
+                /* v2.3.2842: the staff special as ONE big bolt (playerActions,
+                   caps.bigorb) -- drawn as the basic bolt's art, bigger, from
+                   the caster's crystal.  Absent (an older caster) -> their
+                   charged orbs, exactly as before. */
+                big: !!(payload.big && payload.isStaff && payload.isSpecial),
+                /* v2.3.2849: an arrow of the bow volley -- it burns out on the
+                   volley's 2.5 s where it stands (visualSystems), not the lone
+                   arrow's 4.  Absent (an older shooter) -> the lone arrow's. */
+                volley: !!(payload.volley && payload.isSpecial && !payload.isStaff),
                 ts: Date.now(), ownerId: payload.id,
                 /* v2.3.2731: the SHOOTER's timestamp, which `ts` above is not (it
                    is when this screen heard about it) -- the snap roll hashes
@@ -1693,6 +1712,20 @@ export function processGameEvent(type, payload, S, deps) {
                 S.others[payload.id]._bowShotAng = payload.ang;
                 /* v2.3.1107: point the body the same way as the bow shot. */
                 _reconcileFacing(S.others[payload.id], payload.ang);
+              }
+              /* v2.3.2841: a peer's basic staff bolt drives THEIR staff kick and
+                 release flash (entityRenderer + staffCastFx), mirroring the bow
+                 stamp above.  The special keeps its own art and gets neither.
+                 `ang` is a peer's number, so only a finite one is kept -- it
+                 aims a cosmetic kick and nothing else. */
+              /* v2.3.2842: ...and so does their one-bolt special, the heavy
+                 version of both (_staffCastBig equal to the stamp). */
+              var _bigCast = !!(payload.isStaff && payload.isSpecial && payload.big);
+              if (payload.isStaff && (!payload.isSpecial || _bigCast) && payload.id && S.others[payload.id]) {
+                var _castNow = Date.now();
+                S.others[payload.id]._staffCastAt = _castNow;
+                S.others[payload.id]._staffCastAng = Number.isFinite(payload.ang) ? payload.ang : 0;
+                S.others[payload.id]._staffCastBig = _bigCast ? _castNow : 0;
               }
               break;
             }
@@ -2035,30 +2068,32 @@ export function processGameEvent(type, payload, S, deps) {
                     /* Material debris + ground mark for hits with no local
                        spawn site.  Peer weapon/angle unknown: infer the
                        direction from the attacker's position when we can
-                       see them, else default "up" (the _impactAngle
-                       precedent below). */
+                       see them, else default "up" (what the retired snowman
+                       plume did too). */
                     var _dbAng = -Math.PI / 2;
                     var _dbAtk = payload.attackerId && S.others && S.others[payload.attackerId];
                     if (_dbAtk && typeof _dbAtk.x === 'number') {
                       _dbAng = Math.atan2((hitM.y || 0) - _dbAtk.y, (hitM.x || 0) - _dbAtk.x);
                     }
-                    spawnHitDebris(S, hitM, _dbAng);
-                    spawnGroundDecal(S, hitM.x || hitM.renderX || 0, hitM.y || hitM.renderY || 0,
-                      hitM.archetype || hitM.type, { chance: 0.35, size: 5 });
+                    /* v2.3.2843: the worker names the slot that dealt it
+                       (v2.3.2232), which is the weapon the reaction needs:
+                       a teammate's arrow punches, their bolt blasts, their
+                       blade slices (hitMaterialFx).  A splash is a bolt's
+                       lighter echo.  Abilities, bursts and thorns carry no
+                       weapon of their own and take the generic spray.  The
+                       soft decal is retired: the pieces that land are the
+                       mark now. */
+                    var _dbW = payload.splash ? 'splash'
+                      : (payload.ability || payload.burst || payload.thorns) ? null
+                      : payload.slot === 'melee' ? 'sword'
+                      : payload.slot === 'ranged' ? 'arrow'
+                      : payload.slot === 'staff' ? 'bolt' : null;
+                    spawnHitDebris(S, hitM, _dbAng, { weapon: _dbW, crit: !!payload.isCrit });
                   }
-                  /* v2.3.1124: ice-burst impact flash on snowmen for PEER hits
-                     only -- our own hits stamp _impactAt at the local melee/
-                     projectile site (with the real weapon size), so stamping
-                     here too would double-flash.  Peer weapon is unknown, so
-                     default to full size. */
-                  if (payload.attackerId !== S.myId && (hitM.archetype || hitM.type) === 'snowman') {
-                    hitM._impactAt = Date.now();
-                    hitM._impactScale = 1;
-                    /* v2.3.1127: peer weapon/facing unknown -> default the eruption
-                       plume to "up". Set explicitly so a stale angle from an earlier
-                       OWN hit on this snowman doesn't carry over. */
-                    hitM._impactAngle = -Math.PI / 2;
-                  }
+                  /* v2.3.2844: the peer half of the snowman's ice-burst plume
+                     (v2.3.1124) is retired with the plume -- a teammate's hit on
+                     a snowman throws snow through spawnHitDebris above, the same
+                     as yours. */
                   /* Show damage number (skip our own — we already show it
                      locally).  Peer numbers go through the smoothing queue so
                      a coalesced burst drips out at a live cadence instead of
@@ -2163,22 +2198,12 @@ export function processGameEvent(type, payload, S, deps) {
                        OTHER player in the zone saw the numbers. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + _popDmg, '#c084fc');   /* v2.3.2481 */
                   }
-                  /* Hit particles — v2.3.2200b: same gate as the flash
-                     above.  "For everyone" meant bystanders; for the
-                     ATTACKER it was a duplicate puff arriving a network
-                     round-trip after their contact-time debris, which
-                     contributed to the same "feedback trails the hit"
-                     read the double flash did. */
-                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst
-                      || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */) {
-                    for (var hp2 = 0; hp2 < 3; hp2++) {
-                      S.hitParticles.push({
-                        x: hitM.x || hitM.renderX, y: hitM.y || hitM.renderY,
-                        vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
-                        life: 0.5, color: hitM.color || '#ff5e6c', size: 2
-                      });
-                    }
-                  }
+                  /* v2.3.2844: the three flat dots that used to follow here
+                     (v2.3.2200b, same gate as the flash above) are gone.  Every
+                     hit that passed that gate already throws its material
+                     through spawnHitDebris, so they were a second, older puff
+                     on top of it, in the monster's flat body colour -- one of
+                     the "old ... hit effects" the owner asked to remove. */
                 }
               }
               break;

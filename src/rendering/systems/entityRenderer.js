@@ -68,7 +68,7 @@ import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the sp
 import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2834: + the inked fish frame */
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
@@ -92,6 +92,9 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
+import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2841: the staff kick + where its crystal is */
+/* v2.3.2841: scratch for staffTipWorld, reused every frame (no allocation). */
+const _staffTipOut = { x: 0, y: 0 };
 import { SHADE } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop */
 import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
@@ -3276,7 +3279,7 @@ export async function prewarmMaskedBodyFrames(opts) {
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
         /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
-           v2.3.2834: ...with the drawings on it (getFishFrame), the frame the
+           v2.3.2854: ...with the drawings on it (getFishFrame), the frame the
            renderer now asks for; baked by preloadBodyAll, which this runs after. */
         const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f)
           : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
@@ -3372,7 +3375,7 @@ export async function prewarmAltWornSets(opts) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
           /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
-             v2.3.2834: with the drawings on it, as the pass above. */
+             v2.3.2854: with the drawings on it, as the pass above. */
           const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f)
             : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
           if (!tex) continue;
@@ -3538,7 +3541,7 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
    rod's magenta pixels are kept -- the bare torso/arms stay erased so the plate shows
    through.  Cached per body frame (uid). */
 const _fishTopCache = new Map();
-/* ═══ v2.3.2834: THE ROD IS LOOKED FOR ON THE RAW FRAME ═══
+/* ═══ v2.3.2854: THE ROD IS LOOKED FOR ON THE RAW FRAME ═══
    `rodTex` is the undrawn fish frame at the same index.  Since fishing keeps the
    drawings (getFishFrame), `bodyTex` can carry a player's tattoo.  v2.3.2761
    finds the rod by its RECORDED SHAPE (fishRodAt), which no colour can pass --
@@ -3568,7 +3571,7 @@ function _fishTopFrame(bodyTex, rodTex) {
     const ctx = cv.getContext('2d');
     drawGearFrame(ctx, bodyTex, 0, 0, W, H);
     const img = ctx.getImageData(0, 0, W, H); const d = img.data;
-    /* v2.3.2834: the pixels the rod is LOOKED FOR in -- the raw frame's, scaled
+    /* v2.3.2854: the pixels the rod is LOOKED FOR in -- the raw frame's, scaled
        onto this one's grid without smoothing (a blended edge would move the
        rod's colour test), or this frame's own when there is no raw one. */
     let rd = d;
@@ -3577,7 +3580,7 @@ function _fishTopFrame(bodyTex, rodTex) {
         const rc = document.createElement('canvas'); rc.width = W; rc.height = H;
         const rctx = rc.getContext('2d');
         rctx.imageSmoothingEnabled = false;
-        /* v2.3.2835: the raw frame is cropped too since #730 -- drawn whole,
+        /* v2.3.2855: the raw frame is cropped too since #730 -- drawn whole,
            at its crop's offset, like the body frame above */
         drawGearFrame(rctx, _rod, 0, 0, W, H);
         rd = rctx.getImageData(0, 0, W, H).data;
@@ -3608,7 +3611,7 @@ function _fishTopFrame(bodyTex, rodTex) {
        strip (every body sheet lays frames out at i * width). */
     const _rodF = hasFishRodMask() ? Math.round(bf.x / Math.max(1, bf.width)) : null;
     const isRodAt = (o) => {
-      const r = rd[o], g = rd[o + 1], b = rd[o + 2], a = rd[o + 3];   /* v2.3.2834: the raw frame's -- see the note above this function */
+      const r = rd[o], g = rd[o + 1], b = rd[o + 2], a = rd[o + 3];   /* v2.3.2854: the raw frame's -- see the note above this function */
       if (_rodF != null) {
         const p = o >> 2;
         return a > 60 && fishRodAt(_rodF, (p % W) / W, Math.floor(p / W) / H) === true;
@@ -3666,7 +3669,7 @@ function _fishTopFrame(bodyTex, rodTex) {
 function _placeFishHead(display, sb, bodyTex, rodTex) {
   const hd = display._bodyHead;
   if (!hd || !sb || !bodyTex) return;
-  const t = _fishTopFrame(bodyTex, rodTex);   /* v2.3.2834: rod found on the raw frame */
+  const t = _fishTopFrame(bodyTex, rodTex);   /* v2.3.2854: rod found on the raw frame */
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -5003,6 +5006,22 @@ function _feetOffsetUnits(display) {
   const dir = (display && display._animDir) || 'south';
   const rows = bodyRows(pose, dir);
   return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
+}
+/* ═══ v2.3.2846: WHERE A CHARACTER'S BOOTS ARE, FOR THINGS THAT ARE NOT ONE ═══
+ * A character's position (S.player.y, a peer's y) is NOT its feet: the body is
+ * frame-centred, so the boots are drawn this far below it -- (221-128) x 1.061
+ * x 0.421875 x PLAYER_SIZE_MULT = 52 world px on a flat zone, times the zone's
+ * perspective scale.  The build lift above keeps it independent of height.
+ * Exported for what has to stand on the same ground as a character without
+ * being one: the campfire (which sorts against you by YOUR convention) and the
+ * fire-lighting figure (which must plant its boots where yours are).
+ * figureFeetY below (v2.3.2710) is the same offset read off a LIVE display;
+ * this one needs none -- the fire is placed, and the figure planted, from
+ * the zone's scale alone. */
+export function standFootDy(zoneScale) {
+  const rows = bodyRows('stand', 'south');
+  return (rows.feet - BODY_CELL_MID) * bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE
+    * PLAYER_SIZE_MULT * (zoneScale || 1);
 }
 /* v2.3.2710: where a player figure (yours or a peer's) actually touches the
    ground, in its layer's space.  The body is centred on its frame, so the
@@ -10164,7 +10183,7 @@ export class EntityRenderer {
            their skin tone, trousers, shoes, eye colour and any drawings. That
            is already what you see of YOURSELF today; this makes peers match.
            The durable fix is re-cut fish art with the rod on its own layer. */
-        /* ═══ v2.3.2834: ...BUT NOT THEIR DRAWINGS ═══
+        /* ═══ v2.3.2854: ...BUT NOT THEIR DRAWINGS ═══
            Owner: "yes make tattoos stay on while harvesting resources."  The
            drawings never needed the recolour this note is about: getFishFrame
            stamps them onto the raw sheet and leaves every other pixel as drawn,
@@ -10283,7 +10302,7 @@ export class EntityRenderer {
                while the LOCAL path, which tests chest OR shirt OR legs, kept
                it.  Matching the local test. */
             const _fishWorn = _rworn.length > 0 || (_oShirtEquip && _oShirtEquip !== 'none');
-            if (pose === 'fish' && _fishWorn) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2834: + the raw frame, for the rod */
+            if (pose === 'fish' && _fishWorn) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2854: + the raw frame, for the rod */
           } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
           /* v2.3.2304: the shirt is drawn by _placeGear as an equip layer, not
              baked into the body -- this sprite is the RETIRED baked-shirt node
@@ -10453,12 +10472,25 @@ export class EntityRenderer {
             oWeaponSprite.rotation = oSwingAng;
             oWeaponSprite.scale.x = fitScale;
           } else {
-            oWeaponSprite.rotation = 0;
             const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
+            /* v2.3.2841: a peer's staff kicks on THEIR cast (gameEvents stamps
+               _staffCastAt from their bolt).  Their cooldown is not on the
+               wire, so a peer gets the kick without the charge-up dip. */
+            oWeaponSprite.rotation = (oWpnType === 'staff')
+              ? staffCastPose(now, other._staffCastAt, other._staffCastAng, 0, 0, weaponMirror, undefined,
+                !!other._staffCastBig && other._staffCastBig === other._staffCastAt)   /* v2.3.2842: their one-bolt special kicks harder */
+              : 0;
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
-            _oBladeUp = true;
+            _oBladeUp = oWpnType !== 'staff';   /* v2.3.2841: a staff stands head-up -- see the local path */
           }
           oWeaponSprite.scale.y = _oBladeUp ? -fitScale : fitScale;   /* v2.3.1786 — see the local path */
+          /* v2.3.2841: their crystal, for their release flash and bolts. */
+          if (oWpnType === 'staff' && display.parent
+              && staffTipWorld(oWeaponSprite, display.parent, _staffTipOut)) {
+            other._staffTipX = _staffTipOut.x;
+            other._staffTipY = _staffTipOut.y;
+            other._staffTipAt = now;
+          }
           /* v2.3.1760: the gap v2.3.1757 recorded here is closed — the peer
              snapshot carries `wpnMat` beside `wpnType` now, so the other
              player's sword is the metal they are actually holding.  The value
@@ -10548,6 +10580,7 @@ export class EntityRenderer {
         const inFront = oIsShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
           : (_oHeldInHand ? heldWeaponInFront(oWpnType, facingIdx, _oInFrontBase) : _oInFrontBase);
+        if (oWpnType === 'staff') other._staffTipBehind = !inFront;   /* v2.3.2841: see the local path */
         const bodyIdx = display.getChildIndex(oSpriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* "In front" is measured against the topmost VISIBLE worn layer, not
@@ -10900,6 +10933,12 @@ export class EntityRenderer {
          right answer on every zone that has no curve at all. */
       S._figureScaleY = display.scale && typeof display.scale.y === 'number'
         ? display.scale.y : 1;
+      /* v2.3.2846: and where your boots are drawn this frame, measured off the
+         display itself (the drawn facing's own foot row, the live scale).  Read
+         by mp-campfire against the fire-lighting figure, which plants its boots
+         through standFootDy() -- two routes to the same line, so a test can
+         catch them drifting apart. */
+      S._bodyFootY = display.y + _feetOffsetUnits(display) * (display.scale ? display.scale.y : 1);
     }
 
     /* Self death visual — play the death sprite animation (player ->
@@ -11675,7 +11714,7 @@ export class EntityRenderer {
       /* v2.3.1940: my own drawn pants print / tattoo, pre-flipped for the three
          mirrored facings (the sheet is drawn with scale.x -1 there). */
       const _bodyArt = localBodyArt(mirror);
-      /* v2.3.2834: fishing keeps the drawings -- getFishFrame stamps them onto
+      /* v2.3.2854: fishing keeps the drawings -- getFishFrame stamps them onto
          the raw sheet without the recolour above (playerSkins), baked behind
          the loading screen by preloadBodyAll. */
       let tex = pose === 'fish'
@@ -11814,7 +11853,7 @@ export class EntityRenderer {
              greaves drew over the reeling fist and there was nothing to lift.
              Still gated on the three rather than made unconditional: a bare
              player needs no canvas bake to look right. */
-          if (pose === 'fish' && (_chestW || _shirtW || _legsW)) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2834: + the raw frame, for the rod */
+          if (pose === 'fish' && (_chestW || _shirtW || _legsW)) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2854: + the raw frame, for the rod */
         } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
         /* ═══ v2.3.1872: THE SOUTH BLOCK'S JOGGING LEGS ═══
            Placed HERE, after the masked/fullset body has been resolved, because
@@ -12392,6 +12431,19 @@ export class EntityRenderer {
               ? (mirror || _gsDir === 'south')
               : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
+            /* ═══ v2.3.2841: THE STAFF KICKS WHEN IT CASTS ═══
+               The staff used to hang motionless through every cast.  Now it
+               dips back while the cooldown refills and kicks its crystal
+               toward the target on release, then settles (staffCastPose: 12
+               fps steps, the direction worked out from the geometry rather
+               than per facing).  A rotation about the GRIP, like the south
+               tilt above, so the staff never leaves the hand. */
+            if (wpn.type === 'staff') {
+              const _sc = staffCharge(S, now);
+              weaponSprite.rotation = staffCastPose(now, S._staffCastAt, S._staffCastAng,
+                _sc.charge, _sc.rhythm, weaponMirror, undefined,
+                !!S._staffCastBig && S._staffCastBig === S._staffCastAt);   /* v2.3.2842: the one-bolt special kicks harder */
+            }
             /* v2.3.1786 (owner: "invert the sword held angle so instead of
                running around with it facing downward it points upward").
 
@@ -12409,7 +12461,15 @@ export class EntityRenderer {
                swingAng and the sheathed branch angles the blade across the
                back; neither wants this, and both are separate branches above
                so neither can pick it up by accident. */
-            _weaponBladeUp = true;
+            /* ═══ v2.3.2841: BUT NOT THE STAFF ═══
+               The flip was asked for about the SWORD, whose icon hangs its
+               blade down.  The staff's icon already stands head-up, so the
+               same flip turned it head-down: the crystal hung by the knee and
+               the bro carried a broom.  This file already says a staff "stands
+               head-up out of the fist ... head-down is a broom" (the south
+               block's off-hand), and the cast now lights that crystal, so it
+               has to be where a wizard holds it. */
+            _weaponBladeUp = wpn.type !== 'staff';
           }
           /* v2.3.1786 (owner: "invert the sword held angle so instead of
              running around with it facing downward it points upward" — then,
@@ -12434,6 +12494,18 @@ export class EntityRenderer {
              own branch above and the sheathed pose angles the blade across the
              back in another, so neither can pick this up. */
           weaponSprite.scale.y = _weaponBladeUp ? -fitScale : fitScale;
+          /* v2.3.2841: publish where the crystal is, in world px -- the staff
+             cast's charge glows there and the bolt is drawn leaving it.  Same
+             idea as the bow publishing its grip (S._bowGripX), but read back
+             through Pixi's own transform chain, so the mirror, the kick and the
+             bob above are already in it.  Stamped with `now` so a reader can
+             tell a live crystal from one left behind by a weapon swap. */
+          if (wpn.type === 'staff' && display.parent
+              && staffTipWorld(weaponSprite, display.parent, _staffTipOut)) {
+            S._staffTipX = _staffTipOut.x;
+            S._staffTipY = _staffTipOut.y;
+            S._staffTipAt = now;
+          }
           /* v2.3.1760: the weapon's METAL is its blacksmith tier (gearBase), so
              a copper sword is copper everywhere without a new field.  Melee
              only — owner: "only for metals though not staff or bow". */
@@ -12860,6 +12932,10 @@ export class EntityRenderer {
            for why the v2.3.1787 exception does not transfer to it. */
         const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
+        /* v2.3.2841: the staff cast glows at the crystal from a layer above
+           the body; when the staff is carried BEHIND him (SW/W/NW/N) it dims
+           that light instead of painting it over his back. */
+        if (wpn && wpn.type === 'staff') S._staffTipBehind = !inFront;
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* v2.3.1787 (owner: "SW SE and E need the sword layered in front of"
