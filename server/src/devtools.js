@@ -58,6 +58,20 @@ export const DEVKIT = {
     { kind: 'weapon', weaponType: 'bow', tierKey: 'pine', name: 'Test Bow' },
     { kind: 'weapon', weaponType: 'staff', tierKey: 'pine', name: 'Test Staff' },
   ],
+  /* ═══ v2.3.2875: AND ARMOUR ═══
+     Owner: "add armor to the admin button (in the give weapons) so I can
+     actually test it."  The two sets the game really mints -- the quest's
+     copper (data.js tut quests) and the drop table's iron (data.js
+     ARMOR_DROPS) -- with their own names, metals and tiers, for the same
+     reason as the weapons above: a made-up piece is a piece no player can
+     have.  Iron is tier 2, the last one ARMOR_FREE_TIERS lets anyone wear, so
+     every piece here can be put on straight away. */
+  ARMOR: [
+    { kind: 'armor', name: 'Copper Torso', mat: 'copper', tierMult: 1.0 },
+    { kind: 'legs', name: 'Copper Greaves', mat: 'copper', tierMult: 1.0 },
+    { kind: 'armor', name: 'Iron Torso', mat: 'iron', tierMult: 2.0 },
+    { kind: 'legs', name: 'Iron Greaves', mat: 'iron', tierMult: 2.0 },
+  ],
   /* Levels are awarded through _prog3AwardXp with {flat:true} -- the SAME
      path a real kill uses, so the level-ups mint allocation points, cross
      milestones, recompute maxes and notify the client exactly as earned ones
@@ -119,7 +133,7 @@ export const devToolsMethods = {
     if (!t) return { ok: false, error: 'player not online' };
     const ps = t.ps;
     const want = (opts && opts.what) || 'all';
-    const out = { weapons: 0, levels: {} };
+    const out = { weapons: 0, armor: 0, levels: {} };
 
     if (want === 'all' || want === 'weapons') {
       for (const w of DEVKIT.WEAPONS) {
@@ -140,6 +154,27 @@ export const devToolsMethods = {
          after freeing a slot, and a debug affordance has no business writing
          to the idempotency journal that real payouts converge on. */
       ps._questWeaponUnfit = null;
+    }
+    if (want === 'all' || want === 'armor') {
+      /* v2.3.2875: through _grantQuestItem, the path a quest's armour reward
+         takes -- minted into the provenance ledger (gear_prov:, src 'quest'),
+         parked on `_questGrantOverflow`, and announced to the client as
+         `quest_reward_stashed`, which puts each piece in the bag (armour
+         stashes are client-held; the server adopts them on the next join).
+         The scratch is DRAINED here and cleared, for the v2.3.2421 reason:
+         left on it, the player's next quest turn-in would announce these
+         pieces again as that quest's reward. */
+      ps._questGrantOverflow = null;
+      for (const a of DEVKIT.ARMOR) {
+        try { this._grantQuestItem(ps, a, playerId); } catch (e) { /* one bad piece must not stop the rest */ }
+      }
+      const over = Array.isArray(ps._questGrantOverflow) ? ps._questGrantOverflow : [];
+      ps._questGrantOverflow = null;
+      const ws = t.ws || this._wsBySessionId(playerId);
+      for (const piece of over) {
+        if (!ws) break;
+        try { ws.send(JSON.stringify({ type: 'quest_reward_stashed', payload: { questId: 'devkit', item: piece } })); out.armor++; } catch (e) { /* best effort */ }
+      }
     }
     if (want === 'all' || want === 'levels') {
       /* Only for a prog3 character; a legacy save has no trained skills to
