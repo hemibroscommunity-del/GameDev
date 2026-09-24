@@ -283,6 +283,8 @@ function _largestPiece(mask, w, h, x0, x1) {
  *        the region rather than only the largest — see framePieces.  Omitted,
  *        the behaviour is exactly what it was: largest piece only, confined to
  *        the whole mask, which keeps the shipped chest/trouser bakes identical.
+ *        v2.3.2856: `pieceKeep` overrides how big a share of the largest piece
+ *        another must be to be stamped too (framePieces; PIECE_KEEP when absent).
  */
 /* ═══ v2.3.1962: WHERE THE 16x16 GRID LANDS, IN ONE PLACE ═══
  *
@@ -369,7 +371,20 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
      lands on the shape the pose actually holds.  Each frame is still painted
      confined to ITS OWN mask, so ink can never land off the body -- what it can
      no longer do is move between frames. */
-  const steady = !!(opts && opts.steadyBox);
+  /* ═══ v2.3.2855: A BOX THE CALLER ALREADY KNOWS ═══
+     `boxes[f]` = [left, right, top, bottom] of frame f's region, left/right
+     counted from the frame's own left edge, top/bottom in sheet rows (the
+     shape `_fits` holds).  Everything below measures the box from the region's
+     visible skin, which is right for the walking body and wrong for a figure
+     whose arms cross IN FRONT of its chest: the lumberjack's arm hides a
+     different band of the torso on every frame of the swing, so a measured box
+     jumps up and down with it, and so would the drawing.  A caller that has
+     fitted the region by eye (standInInk.js) passes where the whole torso IS,
+     hidden parts included, and the drawing holds still while the arm passes
+     in front of it -- the mask still confines the paint to the skin you can
+     see.  Omitted, nothing below changes. */
+  const fixedBoxes = (opts && opts.boxes) || null;
+  const steady = !!(opts && opts.steadyBox) && !fixedBoxes;
   const underSkin = !!(opts && opts.underSkin);   /* v2.3.1950 */
   /* v2.3.1962: when the caller passes an array, every grid this stamp fits is
      pushed into it.  The designer reads them to turn a touch on the body back
@@ -420,7 +435,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
        ink only the bigger one.  When each piece is stamped it is also its own
        confinement, so one arm's box can never bleed onto the other. */
     if (eachPiece && !seenBuf) seenBuf = new Uint8Array(w * h);
-    const pieceList = eachPiece ? framePieces(mask, w, h, x0, x1, seenBuf) : [null];
+    const pieceList = eachPiece ? framePieces(mask, w, h, x0, x1, seenBuf, opts && opts.pieceKeep) : [null];   /* v2.3.2856: pieceKeep */
     for (let pi = 0; pi < pieceList.length; pi++) {
     /* One scratch mask for the whole sheet, painted from this piece's cell
        list and wiped again by the same list — O(piece), not O(sheet). */
@@ -429,7 +444,10 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
       const cs = pieceList[pi];
       for (let i = 0; i < cs.length; i++) scratch[cs[i]] = 1;
     }
-    const piece = eachPiece ? scratch : _largestPiece(mask, w, h, x0, x1);
+    /* v2.3.2855: with a fixed box the piece is only asked "is there any region
+       in this frame", which the mask answers without _largestPiece's full-sheet
+       visited map -- a 633 KB allocation per frame per region on the chop strip. */
+    const piece = eachPiece ? scratch : (fixedBoxes ? mask : _largestPiece(mask, w, h, x0, x1));
     const confine = eachPiece ? scratch : mask;
     const release = () => {
       if (!eachPiece) return;
@@ -484,6 +502,11 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
     let cLo = Infinity, cHi = -1;
     for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) { if (x < cLo) cLo = x; if (x > cHi) cHi = x; }
     if (cHi < 0 || by < 0) { release(); continue; }
+    if (fixedBoxes) {   /* v2.3.2855: see `fixedBoxes` above */
+      const _fb = fixedBoxes[f];
+      if (!_fb) { release(); continue; }
+      cLo = _fb[0]; cHi = _fb[1]; ty = _fb[2]; by = _fb[3];
+    }
     /* cLo/cHi are already local to the frame and ty/by are sheet rows needing
        no conversion, so the median is of the same shape in every frame. */
     if (pass === 0) { _fits.push([cLo, cHi, ty, by]); release(); continue; }
@@ -941,6 +964,76 @@ export function splitSkinRegions(skin, torso, w, h, frameW) {
   return { face, arms };
 }
 
+/* ═══ v2.3.2855: FACE / TORSO / ARMS FROM SEEDS PLACED BY HAND ═══
+ *
+ * splitSkinRegions above is tuned to the WALKING body: a torso band, skin above
+ * it is face, skin beside it is arm.  A pre-drawn stand-in that swings its arms
+ * across its own chest breaks all three assumptions, measured on the
+ * lumberjack (chop-strip): the raised hands count as face, the arm crossing
+ * the chest counts as chest, and the split moves from frame to frame
+ * (docs/specs/harvest-ink.md has the picture).
+ *
+ * So the caller says, per frame, roughly where each part is -- a few points or
+ * short lines ON the head, the torso and the arms (standInInk.js) -- and every
+ * seed starts a flood over the skin mask at once, one ring per step; a pixel
+ * belongs to whichever part reaches it first.  The art's own dark outlines are
+ * not skin, so they are walls: an arm drawn with an outline along both edges
+ * is claimed exactly up to that outline however roughly its seed was placed.
+ * Where the painter drew no outline -- a shoulder, a neck -- the floods meet
+ * halfway, which is where a person would draw the line too.
+ *
+ * Skin no seed can reach is ARM.  Measured on the lumberjack, every such island
+ * is a finger or the far arm, cut off from the body by its own outline.
+ *
+ * `seeds[f]` = { head, torso, arms }, each a list of polylines [x0,y0,x1,y1,...]
+ * (a lone [x,y] is a point) in the frame's own pixels.  A seed that lands off
+ * the skin is skipped, so a point on an outline costs nothing. */
+function _seedLine(pts, put) {
+  if (!pts || pts.length < 2) return;
+  if (pts.length === 2) { put(Math.round(pts[0]), Math.round(pts[1])); return; }
+  for (let i = 0; i + 3 < pts.length; i += 2) {
+    const ax = pts[i], ay = pts[i + 1], bx = pts[i + 2], by = pts[i + 3];
+    const n = Math.max(1, Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay))));
+    for (let k = 0; k <= n; k++) put(Math.round(ax + (bx - ax) * k / n), Math.round(ay + (by - ay) * k / n));
+  }
+}
+export function splitSkinBySeeds(skin, w, h, frameW, seeds) {
+  const frames = Math.max(1, Math.floor(w / frameW));
+  const lab = new Uint8Array(w * h);        /* 1 face, 2 torso, 3 arms */
+  const q = new Int32Array(frameW * h);     /* one frame's worth: each pixel is queued once */
+  for (let f = 0; f < frames; f++) {
+    const s = seeds && seeds[f];
+    if (!s) continue;                        /* an unfitted frame gets no regions, so no ink */
+    const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
+    let qh = 0, qt = 0;
+    const seedAs = (id) => (x, y) => {
+      if (x < 0 || x >= x1 - x0 || y < 0 || y >= h) return;
+      const p = y * w + x0 + x;
+      if (!skin[p] || lab[p]) return;
+      lab[p] = id; q[qt++] = p;
+    };
+    for (const pl of (s.head || [])) _seedLine(pl, seedAs(1));
+    for (const pl of (s.torso || [])) _seedLine(pl, seedAs(2));
+    for (const pl of (s.arms || [])) _seedLine(pl, seedAs(3));
+    while (qh < qt) {
+      const p = q[qh++], id = lab[p], x = p % w;
+      if (x > x0 && skin[p - 1] && !lab[p - 1]) { lab[p - 1] = id; q[qt++] = p - 1; }
+      if (x < x1 - 1 && skin[p + 1] && !lab[p + 1]) { lab[p + 1] = id; q[qt++] = p + 1; }
+      if (p >= w && skin[p - w] && !lab[p - w]) { lab[p - w] = id; q[qt++] = p - w; }
+      if (p + w < w * h && skin[p + w] && !lab[p + w]) { lab[p + w] = id; q[qt++] = p + w; }
+    }
+    for (let y = 0; y < h; y++) {
+      for (let x = x0; x < x1; x++) { const p = y * w + x; if (skin[p] && !lab[p]) lab[p] = 3; }
+    }
+  }
+  const face = new Uint8Array(w * h), torso = new Uint8Array(w * h), arms = new Uint8Array(w * h);
+  for (let p = 0; p < w * h; p++) {
+    const v = lab[p];
+    if (v === 1) face[p] = 1; else if (v === 2) torso[p] = 1; else if (v === 3) arms[p] = 1;
+  }
+  return { face, torso, arms };
+}
+
 /* How much of a frame's biggest piece a second piece must reach to count as a
    limb of its own rather than a speck.  Two arms are within a few pixels of
    each other; a stray run of classified skin is a fraction of one. */
@@ -957,7 +1050,7 @@ const PIECE_KEEP = 0.35;
  *  is two dropped frames the moment a tattooed player walks on screen.  The
  *  caller paints one reusable scratch mask from the list and clears just the
  *  cells it set. */
-export function framePieces(mask, w, h, x0, x1, seenBuf) {
+export function framePieces(mask, w, h, x0, x1, seenBuf, keepRatio) {
   /* `seenBuf` is the caller's reusable visited-map.  A fresh Uint8Array per
      FRAME is 458 KB on a jog strip and 6 MB across the sheet, for a buffer whose
      only job is to be zero at the start — so it is wiped by the cells that were
@@ -986,7 +1079,10 @@ export function framePieces(mask, w, h, x0, x1, seenBuf) {
   if (!found.length) return [];
   let best = 0;
   for (const c of found) if (c.length > best) best = c.length;
-  const keep = Math.max(8, best * PIECE_KEEP);
+  /* v2.3.2856: a caller whose figure's limbs differ more than two arms do may
+     set its own share -- the cook's far arm is a quarter of his near one (see
+     standInInk.js).  Everything else keeps PIECE_KEEP. */
+  const keep = Math.max(8, best * (keepRatio != null ? keepRatio : PIECE_KEEP));
   return found.filter((c) => c.length >= keep);
 }
 

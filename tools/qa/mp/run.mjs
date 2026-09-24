@@ -25,6 +25,10 @@ const WS = await H.freePort(), WEB = await H.freePort();
 const SCENARIOS = {
   poseskin: () => import('./mp-poseskin.mjs'), /* v2.3.2852: hit, mining and dodge wear the walking skin on a player who never picked one -- body and the head drawn over armour, baked before the first hit */
   headink: () => import('./mp-headink.mjs'), /* v2.3.2853: the face tattoo stays on under the head overlays -- pickup, a hit or mining in armour, the full-steel knight, both sides and the back of the head, and a watcher's view */
+  harvestink: () => import('./mp-harvestink.mjs'), /* v2.3.2854: tattoos stay on while fishing -- on both screens, the rod untouched, and a pink chest tattoo never lifted over the shirt */
+  chopink: () => import('./mp-chopink.mjs'), /* v2.3.2855: ...and while chopping -- your lumberjack and a watcher's view of it, both sides of the tree, the axe untouched, the whole figure in your skin */
+  fireink: () => import('./mp-fireink.mjs'), /* v2.3.2858: ...and while lighting a fire -- the same layer over the shared fire-lighter, own screen and a watcher's, nothing on the flame, the fist cupped at it in your skin */
+  cookink: () => import('./mp-cookink.mjs'), /* v2.3.2856: ...and while cooking -- on a layer of their own over the shared cook, on both screens, never on a plain player's cook, the fish and pan untouched, the fingers in your skin */
   hotarrow: () => import('./mp-hotarrow.mjs'), /* v2.3.2847: the bow special is the pine arrow white-hot -- glowing, animated, sparking in flight; smouldering and flaring on its ticks once stuck; the painted sheet never downloaded; the hit capsule unchanged; a peer sees it too */
   bowvolley: () => import('./mp-bowvolley.mjs'), /* v2.3.2848: the bow special as three white-hot arrows on a real worker -- three part:3 sends, one shove, all three settled, one burn, no blast */
   hitmat: () => import('./mp-hitmat.mjs'), /* v2.3.2843: every monster throws its own material (snow, slime, blood + char, ashy dust, bone, stone), shaped by the weapon -- an arrow's jet, a bolt's blast, a blade's sheet -- and the pieces land */
