@@ -4470,7 +4470,7 @@ the Assets cache for the session and silently cancels the crop (__btTex will
 show it as a URL row). Preloads await the cropping loader's own promise
 (`preloadTraits` awaits `e.ready`; the fx loops push into `_fxPreload`).
 
-**v2.3.2777: the BODY is cropped too.** `_spriteBody.texture` -- the walking
+**v2.3.2791: the BODY is cropped too.** `_spriteBody.texture` -- the walking
 body, a recoloured body, or the fullset knight -- is a cropped Texture now.
 Anything that reads it by position follows the same rule: size from `orig`,
 copy through `drawGearFrame`, cut through `subTexture`. And do not recover

@@ -49,7 +49,7 @@ const raw = (P) => P.page.evaluate(() => {
        longer its middle.  Comparing raw y would fail on a correct build — the
        same trap as comparing raw scale when the two sprites draw from
        differently-sized textures.  centre = pos + (0.5 - anchor) * drawn. */
-    /* v2.3.2777: sizes from `orig`, the WHOLE frame -- body frames are cropped
+    /* v2.3.2791: sizes from `orig`, the WHOLE frame -- body frames are cropped
        now, and a cropped frame's `frame` is only the crop (TRAPS §106). */
     cape: c ? { visible: !!c.visible, tex: !!(c.texture && c.texture.frame),
                 x: Math.round(c.x + (0.5 - c.anchor.x) * Math.abs(c.scale.x * ((c.texture && (c.texture.orig || c.texture.frame) && (c.texture.orig || c.texture.frame).width) || 0))),

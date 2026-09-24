@@ -507,7 +507,7 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    out of the frame by position) -- each a small follow-up if wanted.
 
 14. ~~**The body sheets and the fullset knight figures — 10-16% painted,
-   ~22 MB**~~ **SHIPPED, v2.3.2777** (measured, `mp-geartrim`, armoured in
+   ~22 MB**~~ **SHIPPED, v2.3.2791** (measured, `mp-geartrim`, armoured in
    town: 193.9 → 183.5 MB). The riskiest of the set, because the body is the
    texture the most code reads: `gearSheets.sliceCropped` crops the default
    (playerSprites) and recoloured (playerSkins) body sheets, 16.2 → 8.9 MB

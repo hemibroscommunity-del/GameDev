@@ -173,7 +173,7 @@ const fxIdentity = (P) => P.page.evaluate(async () => {
   return out;
 });
 
-/* v2.3.2777: the BODY sheets (playerSprites default, playerSkins recoloured)
+/* v2.3.2791: the BODY sheets (playerSprites default, playerSkins recoloured)
    through gearSheets.sliceCropped: each cropped frame drawn back at its trim
    against the same frame of the whole sheet the slicer kept for QA. */
 const bodyIdentity = (P) => P.page.evaluate(() => {

@@ -155,7 +155,7 @@ async function measure() {
   const read = (tex) => {
     const src = tex && tex.source && tex.source.resource;
     if (!src) return null;
-    /* v2.3.2777: body frames are cropped -- size by the WHOLE frame and draw
+    /* v2.3.2791: body frames are cropped -- size by the WHOLE frame and draw
        the crop at its trim (drawGearFrame), or this reads a stretched crop. */
     const f = tex.orig || tex.frame;
     const n = Math.max(1, Math.round(f.height));

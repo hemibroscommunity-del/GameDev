@@ -113,14 +113,14 @@ const _GEAR_RETRY_MS = [2000, 6000];
  *
  * NOT cropped HERE: the fullset knight figure (it becomes the BODY sprite's
  * texture, and a great deal of body code reads that frame's size -- ~4 MB is
- * not worth that risk; v2.3.2777: now cropped, see TRIM_SLOTS), and the combat
+ * not worth that risk; v2.3.2791: now cropped, see TRIM_SLOTS), and the combat
  * poses (bowshot/swing/chop/cook/fire)
  * when they come through THIS loader -- the only one that does is the blockArm
  * sleeve, which cuts a sub-rectangle out of a bowshot frame by frame offset.
  * v2.3.2774: the combat poses' real, resident copies are the stand-in strips
  * effectsRenderer._gearStripFrame loads, and those ARE cropped, with this
  * same packTrimmed.  Only the slots and poses below are cropped here. */
-/* v2.3.2777: + 'fullset'.  The knight figure becomes the BODY sprite's texture,
+/* v2.3.2791: + 'fullset'.  The knight figure becomes the BODY sprite's texture,
    and v2.3.2750 left it whole for exactly that reason -- the body readers had
    to learn `orig` first.  They have now (the body sheets are cropped too, see
    sliceCropped), so the figure joins them. */
@@ -330,7 +330,7 @@ export function loadCroppedStrip(url, n) {
   });
 }
 
-/* ═══ v2.3.2777: THE BODY SHEETS, CROPPED ═══
+/* ═══ v2.3.2791: THE BODY SHEETS, CROPPED ═══
  * Owner: "Do all of it" -- the last two rows of the memory list: the walking /
  * standing body sheets (playerSprites loadSheet, playerSkins buildBodySheet --
  * 16% of their texels painted) and the fullset knight figures (10%).
@@ -513,7 +513,7 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
           orig: new Rectangle(0, 0, fw, fh),
           trim: new Rectangle(c.tx, c.ty, c.w, c.h),
         });
-        t.__btIx = i;   /* v2.3.2777: the frame number the probes read (see sliceCropped) */
+        t.__btIx = i;   /* v2.3.2791: the frame number the probes read (see sliceCropped) */
         out.push(t);
         continue;
       }
