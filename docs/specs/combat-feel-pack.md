@@ -48,7 +48,7 @@ Style boilerplate to prepend to every prompt:
 Debris sheets are neutral-toned where possible — the renderer tints goo
 variants (moss/blue/mire) from the same sheet.
 
-> **v2.3.2823 — the five `debris-*-burst-v1.webp` sheets are RETIRED; do not
+> **v2.3.2843 — the five `debris-*-burst-v1.webp` sheets are RETIRED; do not
 > commission them.**  None was ever made, so every hit drew the soft-dot
 > placeholder (the owner's "low resolution").  The hit reaction is now drawn
 > in code by `src/rendering/hitMaterialFx.js`: crisp per-material pixel art

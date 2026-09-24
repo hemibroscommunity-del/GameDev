@@ -34,7 +34,7 @@ import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown 
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2823: its decal twin is retired here */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
@@ -1629,7 +1629,7 @@ export function processGameEvent(type, payload, S, deps) {
                 /* v2.3.1107: point the body the same way as the bow shot. */
                 _reconcileFacing(S.others[payload.id], payload.ang);
               }
-              /* v2.3.2821: a peer's basic staff bolt drives THEIR staff kick and
+              /* v2.3.2841: a peer's basic staff bolt drives THEIR staff kick and
                  release flash (entityRenderer + staffCastFx), mirroring the bow
                  stamp above.  The special keeps its own art and gets neither.
                  `ang` is a peer's number, so only a finite one is kept -- it
@@ -1986,7 +1986,7 @@ export function processGameEvent(type, payload, S, deps) {
                     if (_dbAtk && typeof _dbAtk.x === 'number') {
                       _dbAng = Math.atan2((hitM.y || 0) - _dbAtk.y, (hitM.x || 0) - _dbAtk.x);
                     }
-                    /* v2.3.2823: the worker names the slot that dealt it
+                    /* v2.3.2843: the worker names the slot that dealt it
                        (v2.3.2232), which is the weapon the reaction needs:
                        a teammate's arrow punches, their bolt blasts, their
                        blade slices (hitMaterialFx).  A splash is a bolt's
@@ -2001,7 +2001,7 @@ export function processGameEvent(type, payload, S, deps) {
                       : payload.slot === 'staff' ? 'bolt' : null;
                     spawnHitDebris(S, hitM, _dbAng, { weapon: _dbW, crit: !!payload.isCrit });
                   }
-                  /* v2.3.2824: the peer half of the snowman's ice-burst plume
+                  /* v2.3.2844: the peer half of the snowman's ice-burst plume
                      (v2.3.1124) is retired with the plume -- a teammate's hit on
                      a snowman throws snow through spawnHitDebris above, the same
                      as yours. */
@@ -2109,7 +2109,7 @@ export function processGameEvent(type, payload, S, deps) {
                        OTHER player in the zone saw the numbers. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + _popDmg, '#c084fc');   /* v2.3.2481 */
                   }
-                  /* v2.3.2824: the three flat dots that used to follow here
+                  /* v2.3.2844: the three flat dots that used to follow here
                      (v2.3.2200b, same gate as the flash above) are gone.  Every
                      hit that passed that gate already throws its material
                      through spawnHitDebris, so they were a second, older puff

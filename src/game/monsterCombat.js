@@ -42,7 +42,7 @@ import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult } from '@/d
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2823: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { firstSightHit } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
@@ -1482,7 +1482,7 @@ export function updateMonsterCombat(S, deps) {
             var _bsY = _bsG ? _bsG.y : P.y;
             var _bsAim = rangedAimAngle(S, _bsX, _bsY);
             var _bsA = _bsAim.ang;
-            /* v2.3.2825: a locked shot is aimed at the torso, and its target's hit
+            /* v2.3.2845: a locked shot is aimed at the torso, and its target's hit
                circle is centred there (projectiles _projCentreLift) -- so is the gate's */
             var _bsAimAt = (_bsAim.src === 'lock' && S.lockedTarget && S.lockedTarget.ref) ? S.lockedTarget.ref.id : null;
             var _bsHit = null;
@@ -1728,7 +1728,7 @@ export function updateMonsterCombat(S, deps) {
                 S.swingTimer = Date.now(); /* Staff cooldown penalty applied at the gate above, not here */
                 if (isStaff) {
                   BT_AUDIO.play('magic-cast', { vol: 0.55 });
-                  /* v2.3.2821: drive the staff cast (src/rendering/staffCastFx.js),
+                  /* v2.3.2841: drive the staff cast (src/rendering/staffCastFx.js),
                      the same way the two lines below drive the bow's stand-in:
                      the release flash and staff kick key off the stamp and the
                      angle, and the crystal's charge fills against the cooldown
@@ -2155,7 +2155,7 @@ export function updateMonsterCombat(S, deps) {
                   }
                   if (_hitArch === 'snowman' && m.curHp > 0) {
                     try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
-                    /* v2.3.2824: the ice-burst plume stamp (_impactAt, v2.3.1124)
+                    /* v2.3.2844: the ice-burst plume stamp (_impactAt, v2.3.1124)
                        is gone with the plume -- the snow the hit throws is the
                        reaction now (hitMaterialFx).  The sound stays. */
                   }
@@ -2184,7 +2184,7 @@ export function updateMonsterCombat(S, deps) {
                    code-drawn circles read as placeholder).  One queue,
                    rendered by effectsRenderer._updateDebrisBursts. */
                 if (!S.hitParticles) S.hitParticles = [];
-                /* v2.3.2823: ...and it knows it was a BLADE -- a flat sheet
+                /* v2.3.2843: ...and it knows it was a BLADE -- a flat sheet
                    flung off the edge of the swing (hitMaterialFx), heavier off
                    a greatsword, bigger on a crit or a special. */
                 spawnHitDebris(S, m, baseAngle, {
@@ -2362,7 +2362,7 @@ export function updateMonsterCombat(S, deps) {
                    Suspends AI movement for ~200 ms so the player sees
                    the hit register. */
                 m._kbUntil = Date.now() + 200;
-                /* ═══ v2.3.2823: THE MATERIAL IS THE HIT EFFECT ═══
+                /* ═══ v2.3.2843: THE MATERIAL IS THE HIT EFFECT ═══
                    Two things used to be drawn here beside the debris burst:
                    spawnWeaponHitFX's flat grey dots (the "slash"/"slice"
                    spray, at the monster's FEET) and a soft ground decal.  The

@@ -216,8 +216,8 @@ import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShi
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
-import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2821: the staff cast's charge, release, trail and crash */
-import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2823: what a monster is made of, when it is hit */
+import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2841: the staff cast's charge, release, trail and crash */
+import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2843: what a monster is made of, when it is hit */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -1109,7 +1109,7 @@ function _crossedFrame(last, cur, target) {
   return last < target || cur >= target;
 }
 
-/* v2.3.2200 -> v2.3.2823: the per-material hit debris (owner: "snow that
+/* v2.3.2200 -> v2.3.2843: the per-material hit debris (owner: "snow that
    flies off the monster") is drawn by rendering/hitMaterialFx.js now.  The
    five DEBRIS_BURSTS sheets this table loaded were never made, so all five
    requests 404ed on every page load and every hit drew the soft placeholder
@@ -1213,7 +1213,7 @@ export function ensureSnowballBurstTex() {
  * "the zone you are in", and two sheets that only frost uses are not that.
  * Frames are destroyed WITHOUT their source and the source once after, because
  * every frame here is a window onto the same TextureSource. */
-/* v2.3.2824: ONE sheet now -- the snowman's ice-burst plume is retired (see
+/* v2.3.2844: ONE sheet now -- the snowman's ice-burst plume is retired (see
    the tombstone where IMPACT_TEX was), so only the thrown ball's burst is left
    to hand back.  The name stays: it is the frost zone's exit hook. */
 export async function freeFrostImpactTex() {
@@ -1245,7 +1245,7 @@ function _mixHex(a, b, t) {
     | ((ab + (bb - ab) * k) | 0);
 }
 
-/* v2.3.2504 -> v2.3.2823: the placeholder debris (owner §5.8: "the fallback
+/* v2.3.2504 -> v2.3.2843: the placeholder debris (owner §5.8: "the fallback
    burst and decals last about 5 s and read clearly") is replaced by
    rendering/hitMaterialFx.js, which keeps both halves of that ask -- a ~5 s
    burst whose pieces LAND and lie there -- in crisp per-material pixel art
@@ -1541,12 +1541,12 @@ _fxLoad('/icons/ore/ore-copper.webp').then((tex) => {
   if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TEX = tex; }
 }).catch((err) => console.warn('[ore-icon] load failed', err));
 
-/* ═══ v2.3.2824: THE SNOWMAN'S ICE-BURST PLUME IS RETIRED ═══
+/* ═══ v2.3.2844: THE SNOWMAN'S ICE-BURST PLUME IS RETIRED ═══
    Owner: "remove the old blurry large hit effects ... These were created
    prior."  v2.3.1124-1130 played a painted eruption (snowman/impact.png, 8
    frames of 192x1024, ~2MB) at a snowman's torso on every hit, sampled LINEAR
    with mipmaps and drawn 96 px tall -- a soft white column half again the
-   snowman's height.  Since v2.3.2823 a hit on a snowman throws crisp packed-snow
+   snowman's height.  Since v2.3.2843 a hit on a snowman throws crisp packed-snow
    clumps, powder and glints from the hitMaterialFx atlas, so the plume was the
    one painted, blurred layer left on a monster hit, and it covered the pieces
    it now duplicated.  Gone with it: the frost-zone load (preloadZoneAssets),
@@ -2026,7 +2026,7 @@ export class EffectsRenderer {
 
     this.projectileGfx = new Graphics();
     this.projectileLayer.addChild(this.projectileGfx);
-    /* ═══ v2.3.2821: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
+    /* ═══ v2.3.2841: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
        See src/rendering/staffCastFx.js.  Created HERE for the reason the jet
        stream's container is (v2.3.2398): Pixi depth is child order, and a pool
        built lazily on whichever frame first needs it would stack differently
@@ -2035,7 +2035,7 @@ export class EffectsRenderer {
        under whatever stands in front of him (v2.3.2633).  Back (particles,
        under the player since v2.3.2636): the crash, above the pooled dots. */
     this._staffFx = new StaffCastFx(layers.player || this.projectileLayer, this.particleLayer);
-    /* v2.3.2823: the material hit reaction.  In front of a monster = the
+    /* v2.3.2843: the material hit reaction.  In front of a monster = the
        particles layer (over the entities, under the player, v2.3.2636); behind
        it = the telegraphs layer, under the entities, so a piece thrown behind
        a monster goes behind its body. */
@@ -3440,7 +3440,7 @@ export class EffectsRenderer {
        mp-deathstrip, which asks the SCREEN what is on the corpse rather than
        checking a list. */
     this._selfCorpse = selfCorpseUp(S);
-    /* v2.3.2821: the staff cast's sprite pools refill from zero each frame;
+    /* v2.3.2841: the staff cast's sprite pools refill from zero each frame;
        open them before anything this frame draws into them (the crash rings
        in _updateParticles, the bolts in _updateProjectiles). */
     this._staffFx.begin();
@@ -3478,7 +3478,7 @@ export class EffectsRenderer {
        (chop/cook/fire). Guarded like the remote attack stand-ins. */
     try { this._updateRemoteExtraction(S, now); } catch (e) { /* skip remote skill stand-in */ }
     this._updateProjectiles(S, now);
-    /* v2.3.2821: after the projectiles, so a bolt fired this frame has
+    /* v2.3.2841: after the projectiles, so a bolt fired this frame has
        already been drawn leaving the crystal when its release flash lands. */
     /* Cosmetic, so it must never take the frame down -- but a throw is still
        logged ONCE in the house format, which is what the QA harness listens
@@ -3632,7 +3632,7 @@ export class EffectsRenderer {
            pushes two more every cast.  Every other transient list in this
            file (dust, ambient, dodge trail) splices — this one now matches. */
         if (age >= 1) { S._impactRings.splice(i, 1); continue; }
-        /* v2.3.2821: a staff bolt's crash ring is drawn by the staff cast
+        /* v2.3.2841: a staff bolt's crash ring is drawn by the staff cast
            system as a stepped pixel ring in the element's heat ramp.  Same
            record, same position, same lifetime (mp-orbrange reads all three);
            only the drawing differs. */
@@ -4295,7 +4295,7 @@ export class EffectsRenderer {
          (v2.3.1426) — both are things it is actually in.  A falling arrow
          keeps its head until it lands, which is what the owner is describing
          and also just what an arrow does. */
-      /* v2.3.2824: ...and a bow special is not in the body until it has flown
+      /* v2.3.2844: ...and a bow special is not in the body until it has flown
          the rest of the way in (projectiles.js keeps `_landFx` until it lands),
          so it keeps its head for those few frames, by the same rule. */
       const _headless = a.planted || (a.stuckIn && !a._landFx);
@@ -4393,7 +4393,7 @@ export class EffectsRenderer {
            travel angle, art noses right.  Falls back to the old
            two-circle draw until the strip loads. */
         if (MAGIC_BOLT_FRAMES.length) {
-          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2821: + S, for the caster's crystal */
+          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2841: + S, for the caster's crystal */
         } else {
           gfx.circle(a._renderX, a._renderY, 5 * _pk);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
@@ -4462,7 +4462,7 @@ export class EffectsRenderer {
         if (_remoteMagicSpec) {
           this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk);
         } else if (_remoteBasicBolt) {
-          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk, S);   /* v2.3.2821: + S */
+          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk, S);   /* v2.3.2841: + S */
         } else {
           /* v2.3.840: special staff bolts read bigger + golden with a halo. */
           gfx.circle(rp._renderX, rp._renderY, (rp.isSpecial ? 7 : 4) * _pk);
@@ -4481,7 +4481,7 @@ export class EffectsRenderer {
     /* v2.3.1334: reap magic-bolt sprites whose projectile is gone
        (expired, hit, or zone-reset) — same pattern as the slime-orb
        reaper below. */
-    /* v2.3.2821: the breathing overlay (_boltGlow) is pooled in this same
+    /* v2.3.2841: the breathing overlay (_boltGlow) is pooled in this same
        list, and clears its OWN back-reference -- the v2.3.2511 rule for the
        special's pulse, for the same reason. */
     for (let i = this.magicBoltSprites.length - 1; i >= 0; i--) {
@@ -4752,7 +4752,7 @@ export class EffectsRenderer {
       (Math.floor(now / MAGIC_BOLT_FRAME_MS) + (p._boltPhase || 0)) % MAGIC_BOLT_FRAMES.length
     ];
     if (sprite.texture !== frame) sprite.texture = frame;
-    /* ═══ v2.3.2821: WHERE IT IS DRAWN IS ASKED OF THE STAFF CAST ═══
+    /* ═══ v2.3.2841: WHERE IT IS DRAWN IS ASKED OF THE STAFF CAST ═══
        The bolt leaves the caster's crystal and eases onto its own line, grows
        in over 90 ms, and lays its halo and spark trail (staffCastFx.bolt).
        (x, y) stays the projectile's real position: the hit test never sees any
@@ -4770,7 +4770,7 @@ export class EffectsRenderer {
     sprite.y = dy;
     sprite.rotation = rot;
     sprite.alpha = alpha;
-    /* ═══ v2.3.2821: THE BOLT BREATHES ═══
+    /* ═══ v2.3.2841: THE BOLT BREATHES ═══
        The four painted frames are nearly identical, so on its own the bolt
        reads as a still ball.  A SECOND, ADDITIVE copy of the same frame swells
        and fades over it -- the v2.3.2511 special-arrow pulse, for the same two
@@ -7779,7 +7779,7 @@ export class EffectsRenderer {
 
   /* ── v2.3.2200: material hit-debris bursts ──
    * Consumes S._debrisBursts (combatHelpers.spawnHitDebris).
-   * v2.3.2823: drawn by HitMaterialFx (rendering/hitMaterialFx.js) -- crisp
+   * v2.3.2843: drawn by HitMaterialFx (rendering/hitMaterialFx.js) -- crisp
    * per-material pieces with physics, shaped by the weapon that landed the
    * hit.  `window.__btDebris` keeps the report shape mp-feel reads (age, ms,
    * sheet, parts, landed, alpha), plus what each burst was made of. */
@@ -8171,7 +8171,7 @@ export class EffectsRenderer {
     return out;
   }
 
-  /* v2.3.2823: the material hit-debris bursts (the note at the top of this run
+  /* v2.3.2843: the material hit-debris bursts (the note at the top of this run
      of methods): HitMaterialFx draws them -- a monster's, and since v2.3.2730
      a prop's, which rides the same queue marked `prop`. */
   _updateDebrisBursts(S, now) {
@@ -8495,7 +8495,7 @@ export class EffectsRenderer {
     this._advanceItemPops(now);
   }
 
-  /* v2.3.2824: the snowman's per-hit plume is retired (tombstone near the old
+  /* v2.3.2844: the snowman's per-hit plume is retired (tombstone near the old
      IMPACT_TEX loader), so this is now just the two one-shot bursts that are
      not hit reactions -- a thrown snowball landing and an arrow's boom.  The
      name stays so the frame loop's call site does not move. */
@@ -11717,7 +11717,7 @@ export class EffectsRenderer {
 
   clear() {
     this.particleGfx.clear();
-    if (this._staffFx) this._staffFx.clear();   /* v2.3.2821: no sparks carried across a zone change */
+    if (this._staffFx) this._staffFx.clear();   /* v2.3.2841: no sparks carried across a zone change */
     this.cueGfx.clear();   /* v2.3.1765 */
     this.projectileGfx.clear();
     this.telegraphGfx.clear();
@@ -11733,7 +11733,7 @@ export class EffectsRenderer {
       }
       this._splatPool = [];
     }
-    /* v2.3.2823: the material hit reaction's pieces (pooled; hidden, not destroyed) */
+    /* v2.3.2843: the material hit reaction's pieces (pooled; hidden, not destroyed) */
     if (this._hitFx) this._hitFx.clear();
     /* v2.3.2760: and the cook's smoke puffs. */
     if (this._cookSmoke) {
