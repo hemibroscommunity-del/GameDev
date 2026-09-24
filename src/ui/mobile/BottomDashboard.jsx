@@ -55,6 +55,7 @@ import { GuildPanel }        from './dash/GuildPanel.jsx';
 import { LeaderboardPanel }  from './dash/LeaderboardPanel.jsx';
 import { ClanPanel }         from './dash/ClanPanel.jsx';
 import { FeedbackPanel }     from './dash/FeedbackPanel.jsx';
+import { AboutPanel }        from './dash/AboutPanel.jsx';   /* v2.3.2820 */
 import { SettingsPanel }     from './dash/SettingsPanel.jsx';
 /* v2.3.1143: account panel -- Login Key display + device transfer. */
 import { AccountPanel }      from './dash/AccountPanel.jsx';
@@ -445,6 +446,7 @@ const PANELS = {
   leaderboard:  { title: 'Leaderboard', Component: LeaderboardPanel },
   clan:         { title: 'Clan',        Component: ClanPanel },
   feedback:     { title: 'Feedback',    Component: FeedbackPanel },
+  about:        { title: 'About & privacy', Component: AboutPanel },   /* v2.3.2820: privacy, rules, credits (demo audit) */
   settings:     { title: 'Settings',    Component: SettingsPanel },
   /* v2.3.1143: Login Key display + device transfer. */
   /* v2.3.2038: titled 'Login Key' to match the More tile that now opens it

@@ -9,6 +9,9 @@
 //  Topics: arena, guild, combat, pets, crafting, marketplace, etc.
 // ═══════════════════════════════════════
 
+/* v2.3.2820: the longest report the board keeps (see submit). */
+const FEEDBACK_TEXT_MAX = 500;
+
 export class Feedback {
   constructor(state, env) { this.state = state; this.env = env; }
 
@@ -103,7 +106,12 @@ export class Feedback {
   async submit(data) {
     const { playerId, playerName, category, topic, text } = data;
     if (!playerId || !playerName || !category || !topic || !text) return { ok: false, error: 'Missing fields' };
-    if (text.length > 100) return { ok: false, error: 'Max 100 characters' };
+    /* v2.3.2820: 100 -> 500.  The mobile panel -- the only one a player can
+       reach -- has offered a 500-character box since v2.3.1232, and a real
+       bug report ("I was in the dunes, tapped X, and Y happened") does not
+       fit in 100.  The legacy panel's own 100 cap is a client limit and
+       stays; this is the ceiling, not a target. */
+    if (typeof text !== 'string' || text.length > FEEDBACK_TEXT_MAX) return { ok: false, error: 'Max ' + FEEDBACK_TEXT_MAX + ' characters' };
 
     const VALID_CATEGORIES = ['bug', 'balance', 'remove', 'add', 'qol', 'praise'];
     if (!VALID_CATEGORIES.includes(category)) return { ok: false, error: 'Invalid category' };
@@ -119,7 +127,7 @@ export class Feedback {
     const ticket = {
       id: crypto.randomUUID(),
       playerId, playerName, category, topic,
-      text: text.slice(0, 100),
+      text: text.slice(0, FEEDBACK_TEXT_MAX),
       up: 0, down: 0,
       voters: {}, // { playerId: 'up'|'down' }
       ts: Date.now(),

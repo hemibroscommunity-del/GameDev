@@ -1725,12 +1725,64 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
          ramps this gain on resume/unlock. */
       this._master = this.ctx.createGain();
       this._master.connect(this.ctx.destination);
+      /* ═══ v2.3.2820: TWO SLIDERS ═══
+         The 2026-09-24 demo audit: Settings had one Audio on/off and
+         nothing else, so a player who liked the effects and not the score
+         (or the reverse) could only turn both off.  Two sub-buses under
+         the master -- music (zone score, session track, zone ambience) and
+         effects (every sample and file SFX) -- each scaled by a 0..1 level
+         the Settings sliders write (setLevels).  The master stays the
+         unlock fade it always was; the constants below (GLOBAL_MUSIC_VOL
+         etc.) stay the CEILINGS they always were, and a slider only ever
+         scales under them. */
+      this._musicBus = this.ctx.createGain();
+      this._musicBus.gain.value = this.muted ? 0 : this.musicLevel;
+      this._musicBus.connect(this._master);
+      this._sfxBus = this.ctx.createGain();
+      this._sfxBus.gain.value = this.muted ? 0 : this.sfxLevel;
+      this._sfxBus.connect(this._master);
     } catch (e) {}
   },
   /* Output node for every voice — falls back to destination if the master
-     bus failed to build (behavior identical to pre-v2.3.786). */
-  _out: function _out() {
-    return this._master || this.ctx.destination;
+     bus failed to build (behavior identical to pre-v2.3.786).
+     v2.3.2820: `bus` 'music' routes to the music sub-bus; anything else is
+     an effect.  Missing buses (an older context) fall back to the master. */
+  _out: function _out(bus) {
+    var b = bus === 'music' ? this._musicBus : this._sfxBus;
+    return b || this._master || this.ctx.destination;
+  },
+  /* v2.3.2820: the two Settings sliders, 0..1.  Persisted by SettingsPanel
+     (localStorage brotown_vol_music / brotown_vol_sfx) and re-applied at
+     boot by GameApp, exactly as the mute already was. */
+  musicLevel: 1,
+  sfxLevel: 1,
+  setLevels: function setLevels(music, sfx) {
+    var clamp = function (v, d) { v = Number(v); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : d; };
+    this.musicLevel = clamp(music, this.musicLevel);
+    this.sfxLevel = clamp(sfx, this.sfxLevel);
+    this._applyBusLevels();
+  },
+  _applyBusLevels: function _applyBusLevels() {
+    try {
+      var now = this.ctx ? this.ctx.currentTime : 0;
+      if (this._musicBus) this._musicBus.gain.setTargetAtTime(this.muted ? 0 : this.musicLevel, now, 0.05);
+      if (this._sfxBus) this._sfxBus.gain.setTargetAtTime(this.muted ? 0 : this.sfxLevel, now, 0.05);
+    } catch (e) {}
+  },
+  /* v2.3.2820: the Settings Audio switch, live.  `muted` alone only stops
+     NEW sounds starting (every start path checks it), so a score already
+     playing kept playing after the switch went off.  The buses silence what
+     is running; unmuting re-opens them and re-starts the music the mute
+     kept from starting (both calls are idempotent). */
+  setMuted: function setMuted(m, zoneId) {
+    this.muted = !!m;
+    this._applyBusLevels();
+    if (!this.muted) {
+      try { this.startGlobalMusic && this.startGlobalMusic(); } catch (e) {}
+      try {
+        if (zoneId && this.startZoneAmbient) { this._currentZoneAmbient = null; this.startZoneAmbient(zoneId); }
+      } catch (e) {}
+    }
   },
   /* ═══ v2.3.1594: THE THIRD AUDIOCONTEXT STATE ═══════════════════════════
      iOS Safari has a WebKit-only state, 'interrupted', that a context enters
@@ -1981,6 +2033,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     var old = this.ctx;
     this.ctx = null;
     this._master = null;
+    this._musicBus = null;   /* v2.3.2820: rebuilt by init() with the master */
+    this._sfxBus = null;
     this._analyser = null;
     this._analyserBuf = null;
     this._fadeUntil = 0;
@@ -2128,7 +2182,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
         this._fileCache[url] = template;
       }
       var clone = template.cloneNode();
-      clone.volume = vol == null ? 0.7 : vol;
+      clone.volume = (vol == null ? 0.7 : vol) * this.sfxLevel;   /* v2.3.2820: the effects slider (an HTMLAudio clone never passes the buses) */
       var p = clone.play();
       if (p && p.catch) p.catch(function () {});
     } catch (e) {}
@@ -2438,13 +2492,13 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     this._zoneAmbientKey = _ambKey;
     var _self0 = this;
     if (this._samples[_ambKey]) {
-      this.startSfxLoop(_ambKey, this.ZONE_AMBIENT_VOL);
+      this.startSfxLoop(_ambKey, this.ZONE_AMBIENT_VOL, 'music');   /* v2.3.2820: ambience rides the music slider */
     } else {
       /* Fetch once, then start — but only if the player is STILL in this
          zone when it lands.  A long download plus a fast walk-through would
          otherwise strand a wind loop playing in the next zone. */
       Promise.resolve(this.loadSample(_ambKey, _ambUrl)).then(function () {
-        if (_self0._zoneAmbientKey === _ambKey) _self0.startSfxLoop(_ambKey, _self0.ZONE_AMBIENT_VOL);
+        if (_self0._zoneAmbientKey === _ambKey) _self0.startSfxLoop(_ambKey, _self0.ZONE_AMBIENT_VOL, 'music');
       }).catch(function () {});
     }
   }
@@ -2542,7 +2596,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
           } catch (e) { try { gain.gain.value = TARGET_VOL; } catch (_e) {} }
         });
         src.connect(gain);
-        gain.connect(self._out());
+        gain.connect(self._out('music'));   /* v2.3.2820: the music slider */
         /* v2.3.1602: resume at position — see the epoch note above. */
         var zOff = 0;
         try {
@@ -3292,7 +3346,7 @@ BT_AUDIO.loadCriticalSfx = function () {
    and stop it when their condition lapses, so lifecycle bugs can't
    leave a loop orphaned longer than one condition check.  Missing
    sample -> kicks loadSample and no-ops (the next ensure starts it). */
-BT_AUDIO.startSfxLoop = function (key, vol) {
+BT_AUDIO.startSfxLoop = function (key, vol, bus) {
   if (this.muted || !this.ctx) return;
   if (!this._sfxLoops) this._sfxLoops = {};
   if (this._sfxLoops[key]) return;             /* already running */
@@ -3305,7 +3359,7 @@ BT_AUDIO.startSfxLoop = function (key, vol) {
     var g = this.ctx.createGain();
     g.gain.value = vol != null ? vol : 0.4;
     src.connect(g);
-    g.connect(this._out());
+    g.connect(this._out(bus));   /* v2.3.2820: 'music' for the zone ambience, an effect otherwise */
     src.start(0);
     this._sfxLoops[key] = { src: src, gain: g };
   } catch (e) {}
@@ -3376,7 +3430,7 @@ BT_AUDIO.startGlobalMusic = function () {
         } catch (e) { try { gain.gain.value = startVol; } catch (_e) {} }
       });
       src.connect(gain);
-      gain.connect(self._out());
+      gain.connect(self._out('music'));   /* v2.3.2820: the music slider */
       /* If iOS kills the source while backgrounded, drop the ref so
          resumeFromBackground can start a fresh one. */
       src.onended = function () {
@@ -3463,6 +3517,13 @@ BT_AUDIO._holdZoneMusic = function (fn) {
  * would have been rather than restarting it from the top — which is the whole
  * property v2.3.1577 exists to provide.  600 ms to match the zone crossfade
  * ramp on both sides, so the handover reads as one gesture. */
+/* v2.3.2820 QA probe (mp-polish), house style: the Settings sliders and the
+   live mute are claims about this object's state, which no pixel shows. */
+if (typeof window !== 'undefined') {
+  window.__btAudioProbe = function () {
+    return { muted: !!BT_AUDIO.muted, musicLevel: BT_AUDIO.musicLevel, sfxLevel: BT_AUDIO.sfxLevel };
+  };
+}
 BT_AUDIO.duckGlobalMusic = function (down) {
   var g = this._globalMusicGain;
   if (!g || !this.ctx) return;

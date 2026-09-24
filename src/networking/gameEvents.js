@@ -1412,7 +1412,34 @@ export function processGameEvent(type, payload, S, deps) {
                    or the amount: a real delivery of 25 gold from a trade is
                    still worth announcing, and a match on "25" would have
                    silenced that too. */
-                if (_e.source === 'daily') continue;
+                /* v2.3.2820 (2026-09-24 demo audit, owner: "Do the quick
+                   polish"): the reward was paid and NEVER mentioned, so a
+                   7-day streak nobody could see was not a reason to come
+                   back.  It stays OUT of chat -- v2.3.2037's complaint was
+                   the line sitting at the top of the feed every day -- and
+                   shows once as the same small self-dismissing toast a store
+                   sale uses (storeToastBus, 6s, tap to close).  The note is
+                   the server's own ("Daily reward — day 3"). */
+                if (_e.source === 'daily') {
+                  try {
+                    var _dAmt = (_ep && _ep.amount) || 0;
+                    var _dTxt = (_e.note || 'Daily reward') + (_dAmt ? ' · +' + _dAmt + ' gold' : '');
+                    /* The worker pays this DURING the join, while the loading
+                       screen is still up -- a 6s toast pushed now would time
+                       out behind it and never be seen.  So it waits for the
+                       intro to lift (BroTown stamps __introLiftedAt) and for
+                       no zone-load / connect veil to be covering the game,
+                       then shows; it gives up quietly after 90s. */
+                    var _dT0 = Date.now();
+                    var _dTry = function () {
+                      var _S = window._gameState && window._gameState.current;
+                      if (_S && _S.__introLiftedAt && !_S._zoneLoading && !_S._netHold) { storeToastBus.push(_dTxt); return; }
+                      if (Date.now() - _dT0 < 90000) setTimeout(_dTry, 400);
+                    };
+                    _dTry();
+                  } catch (_de) { /* a toast must never stop the mail */ }
+                  continue;
+                }
                 /* ═══ v2.3.2533: A PIECE OF GEAR COMING HOME ═══
                    The comment above is right about gold, items and
                    weapons: the worker already applied them and the

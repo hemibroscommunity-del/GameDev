@@ -127,6 +127,12 @@ export const GameApp = () => {
         BT_AUDIO.muted = true;
       }
     } catch (e) {}
+    /* v2.3.2820: ...and the two volume sliders (SettingsPanel), for the same
+       reason -- a level chosen last session must hold from the first note. */
+    try {
+      const _lv = (k) => { const v = localStorage.getItem(k); return v == null ? 1 : Number(v); };
+      if (BT_AUDIO.setLevels) BT_AUDIO.setLevels(_lv('brotown_vol_music'), _lv('brotown_vol_sfx'));
+    } catch (e) {}
 
     let done = false;
     // Reusable silent WAV (44-byte header, 0 samples). Playing this as

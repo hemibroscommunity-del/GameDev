@@ -5325,6 +5325,16 @@ export class GameRoom {
         }
         break;
 
+      case 'feedback':
+        /* v2.3.2820: DROPPED, not relayed.  The mobile Feedback panel used to
+           send its reports as this socket event, which had no case, so the
+           default branch below rebroadcast every report to every connected
+           player and none of them reached the Feedback DO.  The panel now
+           POSTs /api/feedback/submit; a client still running the old bundle
+           until its next reload must not keep fanning reports out to the
+           room, so the type is swallowed here. */
+        break;
+
       case 'character_reset':
         // v2.3.1347: self-service full character restart -- snapshot,
         // delete rpg:<pid>, ack + close so the client reloads into a
