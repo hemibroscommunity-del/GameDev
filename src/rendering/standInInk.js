@@ -1,4 +1,4 @@
-/* ═══ v2.3.2783: WHERE THE DRAWINGS GO ON A PRE-DRAWN STAND-IN ═══
+/* ═══ v2.3.2823: WHERE THE DRAWINGS GO ON A PRE-DRAWN STAND-IN ═══
  *
  * Owner: "yes make tattoos stay on while harvesting resources" -- then "Yea do
  * woodcutting".  Woodcutting does not draw your body at all: it swaps in a
