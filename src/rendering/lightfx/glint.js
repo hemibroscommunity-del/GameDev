@@ -113,6 +113,7 @@ import { Filter, Rectangle } from 'pixi.js';
 import { weaponMaterial } from '../traits/materialTints.js';
 import { gearArt, gearMaterial } from '../gearVariants.js';
 import { getEquip } from '../gearCatalog.js';
+import { Sprite, Texture } from 'pixi.js';   /* v2.3.2904: the loading-screen warm-up (prewarmGlintPipe) */
 
 const FRAG = `
 in vec2 vTextureCoord;
@@ -208,6 +209,63 @@ function makeGlintFilter() {
        length of every sweep -- a glint that blurs the blade is a worse blade */
     resolution: 'inherit',
   });
+}
+
+/* ═══ v2.3.2904: THE SHINE'S SHADER IS BUILT BEHIND THE LOADING SCREEN ═══
+ *
+ * Owner: "The game still drops in frame rate when you first wear a piece of
+ * armor when running the game on my phone (iPhone 14 pro max)."
+ *
+ * Part of that first-wear hitch was this file.  Since v2.3.2887 the sheen is
+ * on for everyone, so the first frame a player wears metal is also the first
+ * frame this filter is ever drawn -- and a WebGL program is compiled and
+ * linked the first time it is USED, on the main thread, inside that frame
+ * (Pixi's GlShaderSystem generateProgram: the link-status read waits for the
+ * compile).  Profiled in the sandbox's Chromium: generateProgram was 35 ms of
+ * the first sweep's frame at 4x CPU throttle; with this warm-up it is not in
+ * that frame at all.  (The sandbox draws WebGL in SOFTWARE, and its first
+ * sweep is still a slow frame with or without this -- the software
+ * rasteriser's own first-draw work, in another process, which says nothing
+ * about a phone's GPU either way.)  On an iPhone, WebKit draws WebGL through
+ * ANGLE's Metal backend, which has to turn the program into a Metal shader
+ * too, on that same first use -- the kind of first-use hitch the
+ * animation-preload law (CLAUDE.md) keeps out of play.
+ *
+ * So one filtered sprite is drawn here, behind the loading screen, the way
+ * prewarmDmgFontPipe warms the damage-number pipe.  Every glint filter is
+ * built from the SAME GlProgram (GlProgram.from caches it by its source), so
+ * compiling it once compiles it for all of them, and the filter used for the
+ * warm-up is kept for the first real shine to take (GlintSystem._filter).
+ * Nothing is left on screen: the canvas is under the loading overlay, and the
+ * next game frame redraws the whole of it. */
+const _warmFilters = [];
+const _warmStats = { runs: 0, ok: 0 };
+if (typeof window !== 'undefined') window.__btGlintWarm = () => ({ ..._warmStats, pooled: _warmFilters.length });   /* QA */
+export function prewarmGlintPipe(renderer) {
+  if (!renderer) return false;
+  _warmStats.runs++;
+  let spr = null, f = null, ok = false;
+  try {
+    f = makeGlintFilter();
+    spr = new Sprite(Texture.WHITE);
+    /* small on purpose: the program does not depend on the size, and the
+       texture the pass borrows stays in Pixi's pool for good -- 32 px is a
+       128x128 texture even at an iPhone's 3x, not a megabyte */
+    spr.width = 32; spr.height = 32;
+    spr.alpha = 0.001;   /* must actually draw -- alpha 0 is skipped (see prewarmDmgFontPipe) */
+    /* both terms on, the sweep and the sheen: one program either way, but a
+       pass that exercises the whole shader is the honest warm-up */
+    const u = f.resources.glintUniforms.uniforms;
+    u.uProgress = 0.5; u.uSheen = 1;
+    spr.filters = [f];
+    renderer.render({ container: spr });
+    ok = true;
+  } catch (e) { ok = false; }
+  try { if (spr) { spr.filters = null; spr.destroy(); } } catch (e) { /* best-effort */ }
+  if (ok) _warmStats.ok++;
+  if (ok && f && !_warmFilters.length) _warmFilters.push(f);   /* one is enough; a second loading screen does not stack them */
+  else if (f) { try { f.destroy(); } catch (e) { /* best-effort; the shared program is never destroyed with it */ } }
+  return ok;
 }
 
 /* The shine colour of each metal: steel white, iron cooler, copper warm. */
@@ -338,7 +396,7 @@ export class GlintSystem {
     this._bodies = new Set();    /* this frame's full-set body sprites, for the probe */
   }
 
-  _filter() { return this._pool.pop() || makeGlintFilter(); }
+  _filter() { return this._pool.pop() || _warmFilters.pop() || makeGlintFilter(); }   /* v2.3.2904: the loading screen's filter first */
 
   _release(spr, f) {
     try {

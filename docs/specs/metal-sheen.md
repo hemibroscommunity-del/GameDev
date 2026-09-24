@@ -173,6 +173,16 @@ five frames a second, so a few extra filter passes vanish in the noise
 The honest number is the count: three passes per armoured player. It has to
 be judged on a phone, with the switch.
 
+**The first use is paid behind the loading screen (v2.3.2904).** A WebGL
+program compiles the first time it is drawn, so with the sheen on for
+everyone the first frame anyone wore metal also compiled this shader, inside
+that frame (35 ms of it at 4x CPU throttle here; an iPhone also has to build
+the Metal shader then). `glint.js prewarmGlintPipe` draws one filtered sprite
+on the loading gate, next to the damage-number warm-up, and the first real
+shine takes that filter. Owner's report: "The game still drops in frame rate
+when you first wear a piece of armor" -- the rest of that fix is the masked
+body bake (OPTIMIZATION-ROADMAP P7 item 16 (g)-(i)).
+
 The cheaper version would not be a filter. Bake one
 highlight mask per gear sheet at load (shared by all three metals, since they
 are one picture) and draw it as an additive sprite over the piece. That

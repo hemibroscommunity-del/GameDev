@@ -56,7 +56,7 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling corpse */
-import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
+import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones; v2.3.1934: beard over a drape */
@@ -2311,7 +2311,7 @@ function _placeSouthBlockLegs(display, sb, o) {
         if (gt) wornJog.push({ k: sl + ':' + it, tex: gt });
       }
     }
-    if (wornJog.length) jogTex = _maskedBodyFrame(jogRaw, wornJog, 6, { pose: 'jog', dir: o.dir, frameIdx: o.jogFrame });
+    if (wornJog.length) jogTex = _localMaskedFrame(jogRaw, wornJog, 6, { pose: 'jog', dir: o.dir, frameIdx: o.jogFrame });   /* v2.3.2904: never baked inside the frame (see _localMaskedFrame) */
   } catch (e) { jogTex = jogRaw; }
   if (!_placeBand(top, sb, o.standTex, 0, cut)) return park();
   if (!_placeBand(legs, sb, jogTex, cut, 256)) { top.visible = false; return park(); }
@@ -2367,6 +2367,14 @@ function _cropBakedFrame(dc) {
     orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) });
   if (dc !== packed.canvas) { try { dc.width = 0; dc.height = 0; } catch (e) { /* not ours */ } }
   return t;
+}
+/* v2.3.2904: the same Texture around a crop made elsewhere (the worker's
+   cropFrame): one cell at 0,0, so frame = the whole canvas, trim = where it
+   sat, orig = the whole display frame. */
+function _croppedTexture(cv, c) {
+  const src = Texture.from(cv).source;   /* cached: __btTex counts it, eviction removes it (see _storeBake) */
+  return new Texture({ source: src, frame: new Rectangle(0, 0, c.w, c.h),
+    orig: new Rectangle(0, 0, c.fw, c.fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) });
 }
 /* v2.3.2874: _histMedian and the bake's scratch buffers moved to maskedBake.js with the bake. */
 /* v2.3.2871: QA probe -- a fingerprint of every baked masked-body frame, so a
@@ -2550,23 +2558,101 @@ function _getBakeWorker() {
   } catch (e) { _bakeWorkerDead = true; _bakeWorker = null; }
   return _bakeWorker;
 }
-/* A texture as a whole-frame bitmap at its own size: an exact copy (1:1,
-   nearest), so the worker's 2x draw of it is the inline bake's 2x draw. */
-async function _frameBitmap(tex) {
-  const o = tex && (tex.orig || tex.frame);
-  if (!o || !tex.source || !tex.source.resource) return null;
-  const c = _mkBakeCanvas(o.width, o.height);
-  const x = c.getContext('2d');
-  x.imageSmoothingEnabled = false;
-  drawGearFrame(x, tex, 0, 0, o.width, o.height);
-  try { return await createImageBitmap(c); } finally { c.width = 0; c.height = 0; }
+/* v2.3.2904: an input as the crop it already is -- the pixels of the
+   texture's `frame` rectangle, cut straight from its sheet, plus where they
+   sit in the whole frame (trim) and the whole frame's size (orig).  The
+   worker places them exactly as drawGearFrame does (maskedBakeWorker.js).
+   Replaces _frameBitmap, which drew every input into a whole-frame scratch
+   canvas on this thread first: a canvas and a 2D context per input, per bake,
+   in the frames right after an equip. */
+function _frameInput(tex) {
+  const f = tex && tex.frame, o = tex && (tex.orig || tex.frame);
+  const res = tex && tex.source && tex.source.resource;
+  if (!f || !o || !res || !(f.width > 0) || !(f.height > 0)) return Promise.resolve(null);
+  const t = tex.trim;
+  let p;
+  try { p = createImageBitmap(res, f.x, f.y, f.width, f.height); } catch (e) { return Promise.resolve(null); }
+  return p.then((bm) => ({
+    bm, tx: t ? t.x : 0, ty: t ? t.y : 0, fw: f.width, fh: f.height, ow: o.width, oh: o.height,
+  }), () => null);
 }
-async function _prewarmBake(bodyTex, worn, dilate, poseInfo) {
-  if (!bodyTex || !worn.length) return;
-  const key = (bodyTex.uid != null ? bodyTex.uid : '') + '|' + worn.map(w => w.k).join(',') + '|' + dilate;
-  if (_maskedBodyCache.has(key)) { _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); _bakeWorkerStats.skipped++; return; }   /* a hit: refresh its LRU place, as before */
+
+/* ═══ v2.3.2904: ONE QUEUE TO THE WORKER, AND THE FRAME ON SCREEN GOES FIRST ═══
+   Owner: "The game still drops in frame rate when you first wear a piece of
+   armor when running the game on my phone (iPhone 14 pro max)."
+
+   v2.3.2874 moved the PREWARM's bakes to the worker, but a frame the renderer
+   needed before the prewarm got to it was still baked inline, in the frame --
+   and for one piece worn on its own (chest or legs: no knight figure covers
+   the run) that is most of a jog cycle per direction.  Measured at 4x CPU
+   throttle, putting a steel chest piece on and running: 29 inline bakes in
+   the first two seconds, and 9 frames of 150-300 ms.  The render path now sends
+   those misses here too (_localMaskedFrame), and they have to overtake the
+   prewarm, so every bake goes through one queue:
+     - one job at a time, so a frame asked for by the renderer waits for at
+       most the bake already running;
+     - the renderer's jobs go FIRST, by `rank`: the frame on screen now,
+       then what it asked for a moment ago -- which the prewarm gets to
+       anyway.  Rank 0 is the background (the prewarms, other players), first
+       come first served;
+     - a key is never queued twice: asking again for a queued frame returns
+       the same promise, and raises its rank if the renderer now wants it
+       sooner.
+   _prewarmBake keeps its old contract -- resolves once the frame is stored,
+   or the job fell back inline -- so its callers are unchanged. */
+const _bakeQueue = [];
+const _bakeByKey = new Map();   /* key -> job, queued or running */
+let _bakeBusy = 0;
+let _bakeStartedAt = 0;   /* when the running job was sent: a worker that sits on one is stuck (_localMaskedFrame) */
+const _BAKE_BUSY_MAX = 1;
+function _prewarmBake(bodyTex, worn, dilate, poseInfo, rank) {
+  if (!bodyTex || !worn.length) return Promise.resolve();
+  const key = _maskedKey(bodyTex, worn, dilate);
+  if (_maskedBodyCache.has(key)) { _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); _bakeWorkerStats.skipped++; return Promise.resolve(); }   /* a hit: refresh its LRU place, as before */
   const wk = poseInfo ? _getBakeWorker() : null;
-  if (!wk) { _bakeWorkerStats.inline++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return; }
+  if (!wk) { _bakeWorkerStats.inline++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return Promise.resolve(); }
+  const r = rank > 0 ? rank : 0;
+  let job = _bakeByKey.get(key);
+  if (job) {
+    if (r > job.rank) job.rank = r;   /* the queue is picked by rank (_pumpBakes), so this is the promotion */
+    return job.done;
+  }
+  job = { key, bodyTex, worn, dilate, poseInfo, rank: r, started: false, done: null, resolve: null };
+  job.done = new Promise((res) => { job.resolve = res; });
+  _bakeByKey.set(key, job);
+  _bakeQueue.push(job);
+  _pumpBakes();
+  return job.done;
+}
+function _pumpBakes() {
+  while (_bakeBusy < _BAKE_BUSY_MAX && _bakeQueue.length) {
+    /* the highest rank; among equals the oldest (a short list -- a scan) */
+    let bi = 0;
+    for (let i = 1; i < _bakeQueue.length; i++) if (_bakeQueue[i].rank > _bakeQueue[bi].rank) bi = i;
+    const job = _bakeQueue.splice(bi, 1)[0];
+    job.started = true;
+    _bakeBusy++;
+    _bakeStartedAt = performance.now();
+    _runBake(job).catch(() => { /* best-effort */ }).then(() => {
+      _bakeBusy--;
+      _bakeByKey.delete(job.key);
+      job.resolve();
+      _pumpBakes();
+    });
+  }
+}
+async function _runBake(job) {
+  const { key, bodyTex, worn, dilate, poseInfo } = job;
+  if (_maskedBodyCache.has(key)) { _bakeWorkerStats.skipped++; return; }   /* baked inline while it waited */
+  const wk = _getBakeWorker();
+  if (!wk) {
+    /* the worker died while this waited.  A prewarm job bakes inline as it
+       always did (its loop paces itself); a renderer job is dropped -- the
+       renderer asks again next frame and, with no worker, bakes it inline
+       there, one per frame, rather than a queue of them all at once here. */
+    if (!(job.rank > 0)) { _bakeWorkerStats.inline++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); }
+    return;
+  }
   if (poseInfo.pose === 'fish') _sendRod(wk);
   const _bt0 = (typeof performance !== 'undefined') ? performance.now() : 0;
   const _bs = (typeof window !== 'undefined') ? (window.__btBakeStats || (window.__btBakeStats = { count: 0, ms: 0 })) : null;
@@ -2576,15 +2662,16 @@ async function _prewarmBake(bodyTex, worn, dilate, poseInfo) {
     const bt = getGearFrame('belt', 'chainbelt', 'jog', poseInfo.dir, poseInfo.frameIdx | 0);
     if (bt && bt.source && bt.source.resource) beltTex = bt;
   }
-  const [body, belt, ...bms] = await Promise.all([_frameBitmap(bodyTex), beltTex ? _frameBitmap(beltTex) : null, ...worn.map(w => _frameBitmap(w.tex))]);
-  if (!body) { _bakeWorkerStats.inline++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return; }
+  const [body, belt, ...inps] = await Promise.all([_frameInput(bodyTex), beltTex ? _frameInput(beltTex) : null, ...worn.map(w => _frameInput(w.tex))]);
+  const _close = () => { for (const x of [body, belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
+  if (!body) { _close(); _bakeWorkerStats.inline++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return; }
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
     _bakeJobs.set(id, resolve);
-    const transfer = [body, belt, ...bms].filter(Boolean);
+    const transfer = [body, belt, ...inps].filter(Boolean).map((x) => x.bm);
     try {
-      wk.postMessage({ id, body, belt, worn: worn.map((w, i) => ({ k: w.k, bm: bms[i] })), dilate, poseInfo, ds: DISPLAY_DS }, transfer);
-    } catch (e) { _bakeJobs.delete(id); resolve({ err: String(e) }); }
+      wk.postMessage({ id, body, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate, poseInfo, ds: DISPLAY_DS, crop: true }, transfer);
+    } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
   });
   if (reply.err) { _bakeWorkerStats.failed++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return; }
   if (reply.raw || !reply.bitmap) { _bakeWorkerStats.raw++; return; }
@@ -2592,11 +2679,70 @@ async function _prewarmBake(bodyTex, worn, dilate, poseInfo) {
   const dc = _mkBakeCanvas(reply.bitmap.width, reply.bitmap.height);
   dc.getContext('2d').drawImage(reply.bitmap, 0, 0);
   try { reply.bitmap.close(); } catch (e) { /* gone */ }
-  _storeBake(key, dc, reply.beltPending, _bt0, _bs);
+  _storeBake(key, dc, reply.beltPending, _bt0, _bs, reply.cell || null);   /* v2.3.2904: cropped in the worker */
   _bakeWorkerStats.worker++;
+  if (job.rank > 0) _localBakeStats.delivered++;
 }
 if (typeof window !== 'undefined') {
-  window.__btBakeWorker = () => ({ ..._bakeWorkerStats, alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size, peer: { ..._peerBakeStats, queued: _peerQueue.length } });
+  window.__btBakeWorker = () => ({ ..._bakeWorkerStats, alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size,
+    queued: _bakeQueue.length, busy: _bakeBusy,
+    peer: { ..._peerBakeStats, queued: _peerQueue.length }, local: { ..._localBakeStats } });
+}
+
+/* ═══ v2.3.2904: YOUR OWN ARMOUR, NEVER BAKED INSIDE YOUR FRAME ═══
+   The local player's twin of _peerMaskedFrame (below), and the rest of the
+   owner's report above.  On a miss, with the worker alive, the frame goes to
+   the FRONT of the worker's queue and this frame draws the plain body under
+   the armour -- the gear layers are drawn over it exactly as always.  The
+   worker answers in a frame or two and the masked frame takes over.
+   Why the plain body and not the peer's "hold the last frame": a held body
+   frame is the WRONG POSE under armour that has already moved on to this
+   frame (_placeGear draws the gear for the frame asked for), so the body's
+   limbs slip against the plate and the gaps the mask cut for the old pose
+   open against the new one.  The plain body is the right pose; what it lacks
+   for that frame or two is the mask's trimming of the few pixels the art
+   pokes past a plate edge (v2.3.611), which is invisible at that length.
+   Measured, putting a steel chest piece on and running (4x CPU throttle):
+   see OPTIMIZATION-ROADMAP P7 item 16 (g).
+   No worker (old Safari, a worker error): the inline bake, exactly as before.
+   And if the worker has sat on ONE job for LOCAL_PATIENCE_MS -- stuck, not
+   busy -- frames are baked here after all: a hung worker must not leave the
+   mask off for good.  Stuck is judged by the job RUNNING, never by how long a
+   frame has waited in the queue: a busy worker still delivering is the case
+   this whole path exists for.  A first cut timed each frame from when it was
+   first asked for (and with the look-ahead below, that was often long before
+   it was needed): on a loaded machine (4x throttle) it sent 13-17 frames of a
+   run back to inline bakes -- the stutter again, from the fallback.
+   NOT A LOOK-AHEAD.  Queuing the next four frames of the pose behind each
+   miss (so the worker would lead the run cycle instead of trailing it) was
+   built and measured: twice the worker jobs (80 against 44-51 in a 7 s run),
+   no fewer plain frames (39-53 against 46-52), and slightly more slow frames
+   -- on a loaded machine the jobs' main-thread share is the bottleneck, not
+   the worker.  Measure on a phone before trying it again. */
+const _localBakeStats = { hits: 0, plain: 0, inline: 0, late: 0, delivered: 0 };
+const _LOCAL_PATIENCE_MS = 1000;
+let _localMissKey = null, _localEpoch = 0;
+function _localMaskedFrame(bodyTex, worn, dilate, poseInfo) {
+  if (!bodyTex || !worn.length || !poseInfo) return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo);
+  const key = _maskedKey(bodyTex, worn, dilate);
+  if (_maskedBodyCache.has(key)) { _localBakeStats.hits++; return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); }
+  if (!_getBakeWorker()) { _localBakeStats.inline++; return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); }
+  if (_bakeBusy > 0 && performance.now() - _bakeStartedAt > _LOCAL_PATIENCE_MS) {
+    _localBakeStats.late++;   /* the worker is stuck on a job: the old way */
+    return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo);
+  }
+  const job = _bakeByKey.get(key);
+  /* A NEW miss (the animation stepped onto an unbaked frame) opens a new
+     epoch, its rank: it outranks everything asked for before.  The same
+     frame asked again only needs asking if its job is gone (a bake that could
+     not be cached -- the belt sheet still loading -- is retried). */
+  const fresh = key !== _localMissKey;
+  if (fresh || !job) {
+    if (fresh) { _localMissKey = key; _localEpoch++; }
+    _prewarmBake(bodyTex, worn, dilate, poseInfo, _localEpoch).catch(() => { /* best-effort */ });
+  }
+  _localBakeStats.plain++;
+  return bodyTex;
 }
 
 /* ═══ v2.3.2876: OTHER PLAYERS' ARMOUR, OFF YOUR MAIN THREAD TOO ═══
@@ -2694,8 +2840,11 @@ async function _runPeerQueue() {
 /* v2.3.2874: the tail of a bake -- crop, mipmaps, cache, stats, eviction --
    shared by the inline bake above and the worker path (_prewarmBake), so a
    frame baked off the main thread is stored exactly as one baked on it. */
-function _storeBake(key, dc, _beltPending, _bt0, _bs) {
-  const t = _cropBakedFrame(dc);
+function _storeBake(key, dc, _beltPending, _bt0, _bs, cell) {
+  /* v2.3.2904: `cell` -- the worker has already cropped it (maskedBakeWorker
+     cropFrame, packTrimmed's one-frame case): dc IS the crop, and this is the
+     Texture _cropBakedFrame would have built around it. */
+  const t = cell ? _croppedTexture(dc, cell) : _cropBakedFrame(dc);
   /* v2.3.1121: mipmaps on the masked (armoured) body too, so the shoe outline /
      bare-skin edges don't crawl while jogging in armour (same fix as the bare
      body sheets). Cheap on the downscaled texture. */
@@ -2802,6 +2951,17 @@ const PREWARM_POSES = ['stand', 'jog', 'hit', 'mine', 'dodge', 'pickup', 'fish']
    Dodge is authored south + east for the same reason (see playerSprites). */
 const prewarmDirs = (pose, dirs) => ((pose === 'mine' || pose === 'pickup' || pose === 'fish') ? ['south']
   : pose === 'dodge' ? ['south', 'east'] : dirs);
+/* v2.3.2904: the base direction the local player was last drawn facing
+   (_updatePlayer), and the five walked in that order: the way you face first.
+   Right after an equip the frames you need next are the ones you are facing
+   -- stand, then the run you are about to start -- and the fixed order made
+   an east-facing player wait for all of south's jog cycle before east's. */
+let _localBakeDir = 'south';
+const _BASE_DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+function _dirsFacingFirst() {
+  const d = _localBakeDir;
+  return (_BASE_DIRS.indexOf(d) > 0) ? [d, ..._BASE_DIRS.filter((x) => x !== d)] : _BASE_DIRS;
+}
 
 /* ═══ v2.3.2500: WARM THE FRAME THE RENDERER WILL ACTUALLY ASK FOR ═══
  *
@@ -2953,11 +3113,22 @@ function _noteOwnedGear(S, now) {
    equip-change re-prewarm below re-runs this) only push the NEW bakes
    instead of re-uploading the whole ~100MB cache. */
 const _uploadedSources = new WeakSet();
-export async function uploadBakedTextures(renderer) {
+/* v2.3.2904: `opts.frameBudgetMs` -- in PLAY, upload for at most that long
+   per rendered frame.  The every-24 setTimeout(0) yield below was written for
+   the loading screen, where nothing else wants the thread; after an equip,
+   several of those 0 ms timers run back to back before the next frame, so the
+   ~150-200 new frames of a set went up in a few frames' worth of bursts
+   (texImage2D + mipmaps each), seconds after the equip. */
+export async function uploadBakedTextures(renderer, opts) {
   if (!renderer) return;
+  const budgetMs = (opts && opts.frameBudgetMs) || 0;
   let n = 0;
-  for (const t of _maskedBodyCache.values()) {
-    if (!t || !t.source || _uploadedSources.has(t.source)) continue;
+  let t0 = budgetMs ? performance.now() : 0;
+  /* a snapshot: the cache is a live LRU (a draw re-inserts), and a Map
+     iterator that keeps meeting re-inserted entries across the awaits
+     below would never finish */
+  for (const t of (budgetMs ? Array.from(_maskedBodyCache.values()) : _maskedBodyCache.values())) {
+    if (!t || !t.source || t.source.destroyed || _uploadedSources.has(t.source)) continue;
     try {
       if (renderer.texture && typeof renderer.texture.initSource === 'function') {
         renderer.texture.initSource(t.source);
@@ -2966,7 +3137,9 @@ export async function uploadBakedTextures(renderer) {
       } else return;
       _uploadedSources.add(t.source);
     } catch (e) { /* best-effort */ }
-    if (++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
+    if (budgetMs) {
+      if (performance.now() - t0 >= budgetMs) { await _nextFrameP(); t0 = performance.now(); }
+    } else if (++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
   }
 }
 
@@ -3017,13 +3190,14 @@ export async function prewarmMaskedBodyFrames(opts) {
      layered shirt is a separate sprite, no masked-body involvement). */
   const shirtT = null;
   const shirtKey = 'none';
-  const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  const DIRS = _dirsFacingFirst();   /* v2.3.2904: the way you face first */
   const _nextFrame = () => new Promise((r) => {
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => r());
     else setTimeout(r, 16);
   });
   let sinceYield = 0;
   let chunkT0 = (typeof performance !== 'undefined') ? performance.now() : 0;
+  const pending = [];   /* v2.3.2904: this pass's jobs out at the worker */
   for (const pose of PREWARM_POSES) {
     for (const dir of prewarmDirs(pose, DIRS)) {
       const fc = playerFrameCount(pose, dir) || 1;
@@ -3050,6 +3224,19 @@ export async function prewarmMaskedBodyFrames(opts) {
         /* v2.3.1399: the fullset figure replaces these frames at runtime —
            baking them only burns VRAM (see _fullsetCoversBake). */
         if (_fullsetCoversBake(worn, pose, dir)) continue;
+        /* v2.3.2904: with the worker, keep it FED -- two jobs out, the next
+           waiting behind the one it is baking -- and no frame pacing here.
+           The bake is not on this thread; what is (the inputs, the store) runs
+           as each reply lands, at the worker's own pace.  This pass used to
+           wait for the next frame after every job (a worker job always
+           overran the 5 ms budget, being mostly the worker's time), so the
+           worker sat idle for the rest of each frame.  The frame budget below
+           is for the inline path, which only a dead worker leaves. */
+        if (_getBakeWorker()) {
+          pending.push(_prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }).catch(() => { /* best-effort */ }));
+          if (pending.length >= 2) await pending.shift();
+          continue;
+        }
         try { await _prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }   /* v2.3.2874: off the main thread where it can be */
         if (budgetMs) {
           if (performance.now() - chunkT0 >= budgetMs) {
@@ -3063,6 +3250,7 @@ export async function prewarmMaskedBodyFrames(opts) {
       }
     }
   }
+  await Promise.all(pending);
 }
 
 /* v2.3.698: pre-bake the ALTERNATE worn states in the background so taking
@@ -3085,6 +3273,11 @@ const _idleYield = () => new Promise((r) => {
   } else {
     setTimeout(r, 120);
   }
+});
+/* v2.3.2904: the next rendered frame (see prewarmAltWornSets' worker pace). */
+const _nextFrameP = () => new Promise((r) => {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => r());
+  else setTimeout(r, 16);
 });
 /* v2.3.2873: the `soon` pace -- the next idle moment, no added gap. */
 const _idleYieldSoon = () => new Promise((r) => {
@@ -3127,8 +3320,9 @@ export async function prewarmAltWornSets(opts) {
   if (seq !== _altPrewarmSeq) return;            // superseded by a newer kick
   const SETS = _catalogWornSets().map((worn) => ({ worn }));
   if (!SETS.length) return;
-  const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  const DIRS = _dirsFacingFirst();   /* v2.3.2904: the way you face first */
   let sinceYield = 0;
+  const pending = [];   /* v2.3.2904: `fast` keeps the worker fed, as prewarmMaskedBodyFrames does */
   for (const set of SETS) {
     const sT = null, sK = 'none';   /* v2.3.756: shirtless always */
     for (const pose of PREWARM_POSES) {
@@ -3152,6 +3346,27 @@ export async function prewarmAltWornSets(opts) {
           /* v2.3.1399: skip the full-steel family's figure-covered jog
              bakes here too (see _fullsetCoversBake). */
           if (_fullsetCoversBake(worn, pose, dir)) continue;
+          /* ═══ v2.3.2904: THE PACES WERE SET FOR A BAKE ON THIS THREAD ═══
+             The trickle's gaps (v2.3.699: two bakes per idle slice, 90 ms
+             apart; v2.3.2873's `soon`: one per two frames) were measured
+             against a ~7-10 ms bake HERE.  With the worker, what lands on this
+             thread per job is its inputs and its store, and the renderer's own
+             jobs overtake these in the queue (_prewarmBake) -- so the gaps
+             only kept the piece you just picked up unbaked for longer.  Behind
+             the loading screen (`fast`) the worker is kept fed; in play, one
+             job per rendered frame, both paces.  A dead worker takes the old
+             paces below, unchanged. */
+          if (_getBakeWorker()) {
+            if (fast) {
+              pending.push(_prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }).catch(() => { /* best-effort */ }));
+              if (pending.length >= 2) await pending.shift();
+            } else {
+              try { await _prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
+              await _nextFrameP();
+            }
+            if (seq !== _altPrewarmSeq) return;
+            continue;
+          }
           try { await _prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }   /* v2.3.2874: off the main thread where it can be */
           if (++sinceYield >= (fast ? 6 : (soon ? 1 : 2))) {
             sinceYield = 0;
@@ -3164,6 +3379,7 @@ export async function prewarmAltWornSets(opts) {
       }
     }
   }
+  await Promise.all(pending);
 }
 /* Equip-change re-kick: handled by _schedulePrewarm below (v2.3.692/693,
    frame-budgeted).  The intro-time prewarmAltWornSets keeps all three
@@ -3192,8 +3408,9 @@ function _schedulePrewarm() {
     _equipPrewarmRunning = true;
     prewarmMaskedBodyFrames({ frameBudgetMs: 5 }).catch(() => { /* best-effort */ }).then(() => {
       /* v2.3.704: push any frames this pass actually had to bake (cache
-         misses) to the GPU now, instead of stalling on first draw. */
-      uploadBakedTextures(_prewarmRenderer).catch(() => { /* best-effort */ });
+         misses) to the GPU now, instead of stalling on first draw.
+         v2.3.2904: ~2 ms of it per frame, not bursts (see uploadBakedTextures). */
+      uploadBakedTextures(_prewarmRenderer, { frameBudgetMs: 2 }).catch(() => { /* best-effort */ });
       _equipPrewarmRunning = false;
       if (_equipPrewarmAgain) { _equipPrewarmAgain = false; _schedulePrewarm(); }
     });
@@ -4376,6 +4593,35 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
    * lives in effectsRenderer's _updateSwordSwing -- see the v2.3.2516 note on
    * _orderSwingWeapon's `behind` argument there. */
   return inFrontBase;   /* greatsword: point-up, clears the torso -- E/SE only */
+}
+
+/* ═══ v2.3.2911: THE FIST GOES OVER THE HANDLE ═══
+ * Owner: "East, Southwest, northeast the characters hand should be over the
+ * handle."  Measured before changing anything (a red dot drawn at the grip
+ * anchor): the anchor WAS on the hand at all three -- the fault was layering.
+ * At E and NE the carried greatsword is drawn above the body, so the handle
+ * covered the fist whole; at SW it was drawn behind (v2.3.2516), so the arm
+ * swallowed the handle and only the crossguard showed, beside the hand.
+ *
+ * The fix is a HOLE, not a stamp: the blade is inverse-masked by a small
+ * circle at the grip, so whatever the character has at the hand -- skin, a
+ * sleeve, a gauntlet, a recolour -- shows through on top of the handle, with
+ * the handle visible either side of the fist.  The v2.3.185 hand-cap did this
+ * by cloning BODY pixels, which is why it had to be switched off under a
+ * shirt (v2.3.749) and so never ran for most players.
+ *
+ * SW: the carried pose comes back in front for this -- the blade hangs away
+ * from the body there, so the fist is the only overlap.  The SWING keeps the
+ * v2.3.2516 behind-the-body order (swingActive is excluded; the swing's own
+ * z-order lives in effectsRenderer).  Greatsword only: its per-facing art is
+ * the one this was measured on. */
+const GRIP_HOLE_FACINGS = { 0: true, 3: true, 7: true };
+const GRIP_HOLE_R = 4.2;   /* display px -- about the fist; window.__btGripHoleR tunes it */
+function gripHoleWanted(wpnType, facingIdx, swingActive, sheathed) {
+  return wpnType === 'greatsword' && !swingActive && !sheathed && GRIP_HOLE_FACINGS[facingIdx] === true;
+}
+function clearGripHole(spr) {
+  if (spr && spr._gripHoleOn) { spr.mask = null; spr._gripHoleOn = false; }
 }
 
 /* Weapon swing animation — matches the Canvas 2D drawSpriteCharacter
@@ -5948,6 +6194,7 @@ const SOUTH_BLOCK_OFFHAND_BY_TYPE = {
 const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.28;
 function _placeSouthBlockWeapon(display, wpn, bobY) {
   const spr = display && display._weaponSprite;
+  clearGripHole(spr);   /* v2.3.2911: the carried pose's fist hole is not this pose's */
   if (!spr || !wpn || !wpn.type) return false;
   /* THE SAME OBJECT HE WAS JUST CARRYING.  A greatsword and a bow have
      per-facing held art, and their single-icon fallbacks are something else
@@ -5978,7 +6225,9 @@ function _placeSouthBlockWeapon(display, wpn, bobY) {
                 : wpn.type === 'bow' ? 34
                 : (wpn.type === 'sword' && wpn.gearBase === 'wood') ? 36
                 : 26;
-  const k = targetH / Math.max(8, th);
+  /* v2.3.2910: size by weaponFitH, not th -- the widened greatsword's canvas
+     is taller than its blade is long (weaponSprites.js SHEETS). */
+  const k = targetH / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, artDir, th));
   spr.scale.set(k, k);
   /* Every weapon icon runs grip-to-tip along the same diagonal (see
      BLOCK_OFFHAND_ART_ANG), so one constant turns "point it this way" into a
@@ -10488,6 +10737,19 @@ export class EntityRenderer {
         const _pY = Math.round(PEER_HPBAR_Y - (_pH * _pS) / 2);
         if (display._namePill.y !== _pY) display._namePill.y = _pY;
       }
+      /* ═══ v2.3.2896: THIS PEER'S BAND TOP, FOR THEIR CHAT BUBBLE ═══
+         The peer half of S._selfBandTopY (v2.3.2760, the local HUD pass):
+         the top of the line their plate or HP bar sits on, in world px.  The
+         chat bubble hangs its point just above it (effectsRenderer
+         _updateChatBubbles) so it points at the head from above instead of
+         covering the face and the name.  Same formula as the local one, on
+         the peer's own band line (PEER_HPBAR_Y) and plate size. */
+      {
+        const _bandHalf = Math.max(8, display._namePill
+          ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+        other._bandTopY = display.visible
+          ? display.y + (PEER_HPBAR_Y - _bandHalf) * Math.abs(display.scale.y || 1) : null;
+      }
       /* v2.3.2345: QA probe (mp-brobadge) -- did the badge sprite actually get
          ART, not merely a `visible` flag.  Reads the texture off the sprite
          rather than the module cache: the bug this pins was a plate that
@@ -11515,6 +11777,7 @@ export class EntityRenderer {
         display._animPose = pose;
         display._animDir = dir;
         display._animFrame = frameIdx;
+        _localBakeDir = dir;   /* v2.3.2904: the prewarm bakes the way you face first */
         /* v2.3.1072: publish the live jog frame so the bow stand-in can composite
            animated legs under its torso (jogging-legs-during-attack). */
         S._bodyAnimFrame = frameIdx; S._bodyAnimDir = dir; S._bodyMoving = (pose === 'jog'); S._bodyAnimMirror = mirror;
@@ -11585,7 +11848,10 @@ export class EntityRenderer {
           /* v2.3.1361: fullset figure replaces the bake when it ships for
              this (pose,dir); null -> classic masked path. */
           _fsT = _fullsetFrame(getEquip('chest'), getEquip('legs'), pose, dir, frameIdx, _jogPhase);
-          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx }));
+          /* v2.3.2904: _localMaskedFrame -- a frame the worker has not baked yet
+             goes to the front of its queue and this frame draws the plain body
+             under the armour, instead of a bake inside the frame. */
+          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _localMaskedFrame(tex, _worn, 6, { pose, dir, frameIdx }));
           /* v2.3.1757: material colour for the figure-on-body case (see the
              remote path above for why it is cleared rather than left set). */
           const _fsTint = _fsT ? _fullsetTint(getEquip('chest')) : 0xffffff;
@@ -12134,7 +12400,9 @@ export class EntityRenderer {
                          : wpn.type === 'bow'        ? (_gsDir ? 52 : 28)
                          : isWoodSword                ? 45
                          :                              26;
-          const fitScale = targetH / Math.max(8, th);
+          /* v2.3.2910: weaponFitH, not th -- the widened greatsword sheets keep
+             their pre-widening height so the blade gets wider, not shorter. */
+          const fitScale = targetH / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, _gsDir, th));
           /* v2.3.1786: set by the carried branch below.  Declared HERE, beside
              fitScale in the same block as the scale.y assignment — the first
              cut of this put it beside the OTHER fitScale, forty lines up in
@@ -12298,6 +12566,7 @@ export class EntityRenderer {
                whole probe — which read as "the weapon branch never ran" and
                sent me looking for a bug one layer too far up. */
             window.__btWeapon = {
+              gripHole: !!weaponSprite._gripHoleOn,   /* v2.3.2911 */
               visible: weaponSprite.visible, bladeUp: _weaponBladeUp,
               x: +weaponSprite.x.toFixed(2), y: +weaponSprite.y.toFixed(2),
               anchorX: weaponSprite.anchor.x, anchorY: weaponSprite.anchor.y,
@@ -12417,7 +12686,29 @@ export class EntityRenderer {
              Skip it while the layered shirt is showing (same pattern as the
              SE/NE jog skips); the grip-wrap nicety returns when the shirt
              clone learns to ride along. */
-          const handCapEligible = handCap && handMask && _bodyRef
+          /* v2.3.2911: the fist-over-handle hole (see gripHoleWanted) --
+             replaces the hand-cap wherever it applies. */
+          const _gripHole = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat);
+          if (_gripHole) {
+            const _wc = weaponSprite.parent;
+            let hole = display._gripHoleGfx;
+            if (!hole || hole.destroyed) {
+              hole = display._gripHoleGfx = new Graphics();
+              hole.label = 'grip-hole';
+            }
+            if (hole.parent !== _wc) _wc.addChild(hole);
+            let _r = GRIP_HOLE_R;
+            try { if (typeof window !== 'undefined' && window.__btGripHoleR > 0) _r = window.__btGripHoleR; } catch (e) { /* default */ }
+            hole.clear();
+            hole.circle(weaponSprite.x, weaponSprite.y, _r).fill({ color: 0xffffff });
+            if (!weaponSprite._gripHoleOn) {
+              weaponSprite.setMask({ mask: hole, inverse: true });
+              weaponSprite._gripHoleOn = true;
+            }
+          } else {
+            clearGripHole(weaponSprite);
+          }
+          const handCapEligible = !_gripHole && handCap && handMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
             && _weaponInFront
@@ -12709,7 +13000,9 @@ export class EntityRenderer {
         /* v2.3.2322: the bow parts company with the greatsword here — see
            heldWeaponInFront at the top of this file for the measurements and
            for why the v2.3.1787 exception does not transfer to it. */
-        const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand);
+        const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand)
+          /* v2.3.2911: SW carried comes in front, fist over the handle */
+          || gripHoleWanted(wpn && wpn.type, facingIdx, swingActive, sheathed);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
         /* v2.3.2841: the staff cast glows at the crystal from a layer above
            the body; when the staff is carried BEHIND him (SW/W/NW/N) it dims
@@ -13901,6 +14194,7 @@ export class EntityRenderer {
         const GAP = 3;
 
         display._questMarker._baseY = -(top + GAP + MARK_PX / 2);
+        display._figTop = top;   /* v2.3.2896: for his chat bubble -- see npc._headTopY below */
         /* Name is anchored at its BOTTOM (0.5, 1), so this is where its
            underside sits: clear above the marker's top edge. */
         display._nameText.y = -(top + GAP + MARK_PX + GAP);
@@ -14031,6 +14325,17 @@ export class EntityRenderer {
         qm.visible = true;
       } else if (qm.visible) {
         qm.visible = false;
+      }
+      /* ═══ v2.3.2896: THE TOP OF HIS HEAD, FOR HIS CHAT BUBBLE ═══
+         The townsfolk's half of other._bandTopY (the peer loop): an NPC's
+         position is his FEET, so the chat bubble's old fixed "32 px up" put
+         its point at his knees with the box over the rest of him.  This is
+         the top of whatever stands on his head -- the hat, or the quest badge
+         over it while one is up -- in world px, from the same `top` the badge
+         itself is placed against.  effectsRenderer hangs the bubble from it. */
+      if (display._figTop != null) {
+        const _sy = Math.abs(display.scale.y || 1);
+        npc._headTopY = display.y - (display._figTop + (qm.visible ? 3 + QUEST_BADGE_R * 2 : 0)) * _sy;
       }
     }
 

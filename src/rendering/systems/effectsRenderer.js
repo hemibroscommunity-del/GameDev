@@ -287,7 +287,7 @@ import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { rangedAimAngle, bowGripPoint } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
-import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
+import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js'; /* v2.3.1864; weaponFitH v2.3.2910 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
 import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2841: the staff cast's charge, release, trail and crash */
 import { STAFF_BIG_BOLT_SCALE } from '@/data/gameSystems.js';     /* v2.3.2842: the one-bolt special's drawn size */
@@ -1292,6 +1292,8 @@ function debrisDotTex() {
  * TARGET_PERIMETER_PX (220) on the server side; this is the client end of the
  * same pin. */
 const ARROW_BLAST = { frames: [], url: '/sprites/effects/arrow-blast-v1.webp?v=2.3.2279' };
+/* v2.3.2912: how long the slime burst's shockwave runs (_updateSlimeShockwaves). */
+const SLIME_WAVE_MS = 460;
 const ARROW_BLAST_MS = 620;        /* ~78ms a frame -- a bang, not a bloom */
 const ARROW_BLAST_D = 220 * 2;     /* drawn world px across, = 2 x the blast radius */
 let _arrowBlastLoad = null;
@@ -2328,6 +2330,9 @@ export class EffectsRenderer {
 
     // Chat bubble texts
     this.chatTexts = new Map();
+    /* v2.3.2896: each speaker's last seen name-plate band, as an offset from
+       their position -- see _updateChatBubbles.  A Map: wire ids as keys. */
+    this._chatBandOff = new Map();
 
     // Screen flash overlay
     this.flashOverlay = new Graphics();
@@ -7106,7 +7111,7 @@ export class EffectsRenderer {
    *  white rounded rectangle background + pointer tip + text.  Pooled
    *  per key as { container, bg (Graphics), text (Text), hasEmoji }
    *  in this.chatTexts.  Source can be either a player or an NPC. */
-  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000, worldScale = 0) {
+  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000, worldScale = 0, tipY = null) {
     const hasEmoji = !isAsciiOnly(text);
     let entry = this.chatTexts.get(key);
     if (entry && entry.text && entry.text.destroyed) {
@@ -7180,6 +7185,19 @@ export class EffectsRenderer {
              height.  320 world px is 213 screen px at the 0.667 scale,
              ~55% of a 390px phone. */
           wordWrapWidth: 320,
+          /* ═══ v2.3.2896: A WORD LONGER THAN THE LINE STILL WRAPS ═══
+             Owner: "for long messages the messages exceed the chatbar
+             horizontal length and spill into the background.  Make it so that
+             long text wraps into a second line."  wordWrap alone only breaks
+             at SPACES, so one word wider than the wrap -- "hahahahaha...", a
+             link, a name typed without spaces -- stayed on one line, and the
+             bubble behind it is capped at 336 (see bw below), so the text ran
+             out past both ends of the box and over the ground.  Reproduced on
+             the built client: sixty characters of "ha" were a single line
+             twice the bubble's width.  breakWords splits such a word at the
+             wrap width instead, and CanvasTextMetrics (which sizes the bubble)
+             reads the same style, so the box and the lines it holds agree. */
+          breakWords: true,
         },
       });
       txt.anchor.set(0.5, 0);
@@ -7217,6 +7235,7 @@ export class EffectsRenderer {
          wrap (320 + 2*8 = 336).  A cap below the wrap width silently
          re-creates the v2.3.1719 bug, so these two move together. */
       const bw = Math.min(336, tw + padX * 2);
+      entry._lineW = tw; entry._boxW = bw;   /* v2.3.2896: for the QA probe below */
       const bh = th + padY * 2;
       entry.bg.clear();
       /* ═══ v2.3.2823: THE BUBBLE POPS ═══
@@ -7255,7 +7274,10 @@ export class EffectsRenderer {
       entry.text.y = -bh - tipH + padY;
     }
     entry.container.x = sx;
-    entry.container.y = sy - 32;
+    /* v2.3.2896: `tipY`, when the caller knows it, is where the point of the
+       bubble goes -- see _updateChatBubbles.  sy - 32 is the old anchor, kept
+       for a speaker whose head has not been measured yet (a first frame). */
+    entry.container.y = (typeof tipY === 'number' && isFinite(tipY)) ? tipY : sy - 32;
     /* ═══ v2.3.2247: THE BUBBLE HOLDS ITS READING SIZE ═══
        The v2.3.1912 note above ends "Any future WORLD_ZOOM change moves this
        again" -- and this is that change.  The bubble lives in the WORLD layer,
@@ -7297,7 +7319,19 @@ export class EffectsRenderer {
         worldScale: _sc,
         effectivePx: entry.text.style.fontSize * _sc,
         wrapWidth: entry.text.style.wordWrapWidth,
+        /* v2.3.2896: where the point is, and how wide the laid-out text is
+           against the box, in world px (mp-chatbubble) */
+        tipX: entry.container.x,
+        tipY: entry.container.y,
+        breakWords: !!entry.text.style.breakWords,
+        lineW: entry._lineW,   /* the longest laid-out line, bubble-local px */
+        boxW: entry._boxW,     /* the box drawn round it, same units */
       };
+      /* ...and per bubble, because the single probe above is whichever
+         bubble drew LAST this frame -- an NPC's, as often as not.  A Map:
+         the keys are player ids off the wire (CLAUDE.md, '__proto__'). */
+      if (!window.__btChatBubbles) window.__btChatBubbles = new Map();
+      window.__btChatBubbles.set(key, window.__btChatBubble);
     }
     return entry;
   }
@@ -7324,7 +7358,38 @@ export class EffectsRenderer {
       if (pid !== S.myId && (source.zone || source.z || 'town') !== S.currentZone) continue;
       const sx = source.renderX || source.x || 0;
       const sy = source.renderY || source.y || 0;
-      this._renderChatBubble(pid, sx, sy, bubble.text, age, 5000, S._worldScaleX || 0);
+      /* ═══ v2.3.2896: THE POINT GOES ABOVE THE NAME, NOT ON THE FACE ═══
+         Owner: "make it so that the chat point (closest to the player) is
+         lined up above the player (not on their face like it is currently)."
+         The fixed sy - 32 was set when the name plate hung under the feet;
+         since v2.3.2571 the plate (or the HP bar in a fight) sits on the band
+         line over the head, and 32 world px up from the body's anchor landed
+         the point on the forehead with the bubble hiding the name.  Measured
+         on the built client in town: the point was ~50 screen px below the
+         top of the plate.
+         So the point sits just over that band, whose top the entity pass
+         publishes in world px -- S._selfBandTopY for you (the same line the
+         harvest bar clears), other._bandTopY for everyone else.  The gap is
+         in SCREEN px, divided out of the world scale the way the bubble's own
+         size is (v2.3.2247), so it is the same few pixels in every zone.
+         WHEN THERE IS NO BAND THIS FRAME -- the figure is hidden behind one
+         of its stand-ins (a swing, the lumberjack, the cook) and publishes
+         null -- the last band seen for that speaker is reused as an offset
+         from their position, so chatting while chopping does not drop the
+         bubble back onto the face for exactly as long as the axe is up.
+         Only a speaker never seen with a band falls back to the old anchor. */
+      const _band = pid === S.myId ? S._selfBandTopY : source._bandTopY;
+      let _top = null;
+      if (typeof _band === 'number' && isFinite(_band)) {
+        _top = _band;
+        if (this._chatBandOff.size > 256) this._chatBandOff.clear();   /* bounded: one number per speaker */
+        this._chatBandOff.set(pid, _band - sy);
+      } else if (this._chatBandOff.has(pid)) {
+        _top = sy + this._chatBandOff.get(pid);
+      }
+      const _ws = S._worldScaleY || S._worldScaleX || 0;
+      const tipY = _top != null ? _top - (_ws > 0.01 ? 4 / _ws : 4) : null;
+      this._renderChatBubble(pid, sx, sy, bubble.text, age, 5000, S._worldScaleX || 0, tipY);
       activeKeys.add(pid);
     }
 
@@ -7335,7 +7400,14 @@ export class EffectsRenderer {
       const age = now - npc.chatBubble.ts;
       if (age > 5000) continue;
       const key = 'npc:' + npc.id;
-      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age, 5000, S._worldScaleX || 0);
+      /* v2.3.2896: the same rule as a player's, above -- the point just over
+         the top of his head (entityRenderer npc._headTopY: the hat, or the
+         quest badge over it), where the old 32 px up from his feet put it at
+         his knees with the bubble over the rest of him. */
+      const _nt = npc._headTopY;
+      const _nws = S._worldScaleY || S._worldScaleX || 0;
+      const npcTip = (typeof _nt === 'number' && isFinite(_nt)) ? _nt - (_nws > 0.01 ? 4 / _nws : 4) : null;
+      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age, 5000, S._worldScaleX || 0, npcTip);
       activeKeys.add(key);
     }
 
@@ -9110,6 +9182,71 @@ export class EffectsRenderer {
   _updateMonsterImpacts(S, now) {
     this._updateSnowballBursts(S, now);
     this._updateArrowBlasts(S, now);
+    this._updateSlimeShockwaves(S, now);
+  }
+
+  /* ═══ v2.3.2912: THE SLIME'S BLAST HAS A SHOCKWAVE ═══
+     Owner: "when the slime explodes make an explosion effect like a
+     shockwave in the damage area".  This is a deliberate reversal of
+     v2.3.2226 ("remove code drawn impact areas for slime death") by the same
+     owner: that removed a STATIC ring/splat that sat on the ground; this is a
+     moving wave that is over in under half a second.
+
+     Drawn from the worker's `execute` (gameEvents queues S.slimeShockwaves),
+     so every client in the zone sees the same blast at the same place.  The
+     wave eases OUT to exactly `r` -- the radius telegraph.js tested players
+     against -- and never past it, the same "never draw a lie about the
+     radius" rule the telegraph rings and the nova keep.  On the telegraphs
+     layer, i.e. on the ground, under every body standing in it. */
+  _updateSlimeShockwaves(S, now) {
+    const q = S && S.slimeShockwaves;
+    if (!this._slimeWaves) this._slimeWaves = [];
+    if (q && q.length) {
+      for (const w of q) if (this._slimeWaves.length < 8) this._slimeWaves.push(w);
+      q.length = 0;
+    }
+    const list = this._slimeWaves;
+    if (!list.length && !this._slimeWaveGfx) return;
+    if (!this._slimeWaveGfx) {
+      this._slimeWaveGfx = new Graphics();
+      (this.telegraphLayer || this.particleLayer).addChild(this._slimeWaveGfx);
+    }
+    const g = this._slimeWaveGfx;
+    g.clear();
+    /* QA can slow the wave down to photograph it (house style: __btSouthTilt). */
+    let dur = SLIME_WAVE_MS;
+    try { if (typeof window !== 'undefined' && window.__btSlimeWaveMs > 0) dur = window.__btSlimeWaveMs; } catch (e) { /* default */ }
+    for (let i = list.length - 1; i >= 0; i--) {
+      const w = list[i];
+      const t = (now - w.at) / dur;
+      if (t >= 1 || !(w.r > 0)) { list.splice(i, 1); continue; }
+      if (t < 0) continue;
+      const ease = 1 - Math.pow(1 - t, 3);   /* fast out, settling on r */
+      const fade = 1 - t;
+      /* the flash: a pale disc that fills the blast and dies fast */
+      g.circle(w.x, w.y, w.r * (0.25 + 0.75 * ease));
+      g.fill({ color: 0x9fe8ff, alpha: 0.45 * fade * fade });
+      /* the wave: a thick front that thins as it spends itself */
+      const rr = w.r * (0.12 + 0.88 * ease);
+      g.circle(w.x, w.y, rr);
+      g.stroke({ color: 0x5cc8ff, width: Math.max(1.5, 12 * fade), alpha: 0.85 * fade });
+      /* its hot leading edge */
+      g.circle(w.x, w.y, rr);
+      g.stroke({ color: 0xffffff, width: Math.max(1, 3 * fade), alpha: 0.9 * fade });
+      /* and a second, fainter ring a beat behind it */
+      const t2 = t - 0.18;
+      if (t2 > 0) {
+        const e2 = 1 - Math.pow(1 - t2 / 0.82, 3);
+        g.circle(w.x, w.y, w.r * (0.1 + 0.8 * e2));
+        g.stroke({ color: 0x5cc8ff, width: Math.max(1, 6 * (1 - t2)), alpha: 0.45 * (1 - t2) });
+      }
+    }
+  }
+
+  /* QA probe (house style, see arrowBlastProbe). */
+  slimeShockwaveProbe() {
+    const l = this._slimeWaves || [];
+    return { playing: l.length, drawn: l.map((w) => ({ x: w.x, y: w.y, r: w.r })) };
   }
 
   /* v2.3.2217: drain the queue projectiles.js fills when a thrown snowball's
@@ -11600,7 +11737,8 @@ export class EffectsRenderer {
        fixed size while the body changes per facing or per zone. */
     const px = (BLOCK_OFFHAND_PX[wpn.type] || BLOCK_OFFHAND_PX.sword)
              * ((bodyH || STANDIN_REF_BODY_H) / STANDIN_REF_BODY_H) * sizeMul;
-    const k = px / Math.max(8, th);
+    /* v2.3.2910: weaponFitH -- the widened greatsword keeps its old length. */
+    const k = px / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, artDir, th));
     const mir = sgn < 0;
     /* No vertical flip anywhere on this path: every one of these icons is
        already drawn tip-away-from-the-grip, and the carried pose's
