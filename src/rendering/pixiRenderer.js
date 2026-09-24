@@ -769,6 +769,9 @@ export async function initPixiRenderer(canvas) {
       const set = pool && pool.get(id);
       return (set && set.body) || null;
     },
+    /* v2.3.2921: and YOUR OWN, its twin, for mp-animparity -- which measures
+       the two against each other.  Read-only, same rule. */
+    localAttackSpriteRaw: (kind) => (kind === 'bow' ? effectsRenderer.bowSprite : effectsRenderer.swordSprite) || null,
     /* v2.3.2863: the baked frames themselves for peer state `o` (kind 'sword' /
        'bow', the SHEET's facing key, plain or pre-flipped) -- the same call the
        renderer makes, so a scenario can compare a frame with its mirror

@@ -9853,6 +9853,18 @@ export class EntityRenderer {
   _updateOtherPlayers(S, now) {
     const others = S.others || {};
     const activeIds = new Set();
+    /* v2.3.2921: each drawn peer's standing-body geometry, for their attack
+       stand-ins -- see the note where it is filled.  A Map on S rather than a
+       field on the peer object, for two reasons.  Peer objects take relayed
+       wire data verbatim (`Object.assign(S.others[id], msg.data)`, wsClient
+       'player_update'), so a field there is one a modified client can set for
+       itself; nothing merges network data into this Map.  And it is CLEARED
+       every pass, so a peer this loop skips (wrong zone, not drawn) has no
+       entry rather than last frame's -- the consumers then fall back to their
+       old sizing instead of planting a stand-in on a stale position.  Keyed by
+       a client-supplied id, so a Map and not {} (CLAUDE.md rule 4). */
+    if (!S._peerStandGeom) S._peerStandGeom = new Map();
+    else S._peerStandGeom.clear();
 
     for (const [id, other] of Object.entries(others)) {
       if (!other || (other.zone || other.z || 'town') !== S.currentZone) continue;
@@ -10076,6 +10088,54 @@ export class EntityRenderer {
          Dropping it makes remote facing match local. */
       const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
+
+      /* ═══ v2.3.2921: THIS PEER'S BODY, MEASURED, FOR THEIR STAND-INS ═══
+       *
+       * Owner: "Other players get smaller and move when they do bow shooting",
+       * and then: check every broadcast animation against what your own
+       * character does.
+       *
+       * The attack stand-ins (sword swing, bow shot) REPLACE the body for the
+       * length of the animation, so they must be drawn at the size, and on the
+       * feet, of the body they replace.  Yours are: _updatePlayer publishes
+       * `S._swordBodyH` / `S._swordFootY` from this facing's own crown/feet
+       * rows (v2.3.1836), and the stand-in divides by 188 and plants its feet
+       * anchor on that foot line.  A peer's used neither:
+       *   - SIZE: a flat 0.45 times the zone curve and build, where yours is
+       *     measured -- and a constant cannot be right for every facing,
+       *     because bodyDirScale('stand', dir) differs per direction;
+       *   - FEET: the peer's position, `renderY` -- but a figure is drawn
+       *     CENTRED on that point (v2.3.2748), so the stand-in's boots landed on
+       *     the body's middle and the whole figure jumped up by the distance
+       *     from centre to boots.
+       * Smaller, and moved: the owner's two words are these two lines.
+       *
+       * A trap for whoever measures this next: `__btPeersDrawn(id).footY` is
+       * `display.y`, the CENTRE, which is exactly where the old stand-in was
+       * planted -- so a test comparing the two finds the feet "did not move"
+       * because it compares one number with itself.  Measure feet against
+       * feet, off the frames' own alpha (mp-animparity does).
+       *
+       * THE SAME ARITHMETIC AS THE LOCAL PUBLISH, line for line, so a peer's
+       * stand-in agrees with the one its owner sees by construction rather
+       * than by tuning.  `display.scale.y` already holds the zone curve,
+       * PLAYER_SIZE_MULT and this bro's build (applied above, before this --
+       * exactly as _updatePlayer applies its own before publishing), so the
+       * consumers must not multiply by any of those again.  LOCAL_BODY_SCALE
+       * is the module-scope twin of _updatePlayer's local LOCAL_SCALE, and is
+       * the scale a peer's walking body is drawn with too. */
+      {
+        const _pDir = resolveDirection(facing).dir;
+        const _pRows = bodyRows('stand', _pDir);
+        const _pStand = bodyDirScale('stand', _pDir) * LOCAL_BODY_SCALE;
+        const _pDsc = display.scale.y || 1;
+        S._peerStandGeom.set(id, {
+          bodyH: (_pRows.feet - _pRows.crown + 1) * _pStand * _pDsc,
+          footY: display.y + (_pRows.feet - 128) * _pStand * _pDsc,
+          dir: _pDir,   /* which facing's rows these are -- for QA, and the one
+                           thing that must equal the owner's own for parity */
+        });
+      }
 
       /* ═══ v2.3.1790: the peer's slung shield ═══
          Whether they own one comes from rpgData.shield, which the presence
