@@ -31,7 +31,7 @@ import { getEyeStyle, onEyeStyleChange } from './traits/eyeStyleCatalog.js';   /
 /* v2.3.1940: drawn pants prints + skin tattoos.  Unlike the shirt (its own
    sprite, stamped in gearSheets) these live INSIDE the body sheet, because
    that is where the pants pixels and the bare skin actually are. */
-import { getArt, artHasInk, artHash, onArtChange, sideForDir, emptyArt } from './traits/playerArt.js';   /* v2.3.2042: sideForDir/emptyArt -- a face tattoo does not revolve to the back of a head */
+import { getArt, artHasInk, artHash, artIsSymmetric, onArtChange, sideForDir, emptyArt } from './traits/playerArt.js';   /* v2.3.2042: sideForDir/emptyArt -- a face tattoo does not revolve to the back of a head */
 import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 import { recolorToolKeyCanvas, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine */
@@ -1490,9 +1490,12 @@ function _pickupHeadCap() {
      at the loading screen), so the old oldest-first rule destroyed exactly
      the sheets on screen; the head then vanished until a rebuild+re-evict
      thrash cycle. */
-  const _localPrefix = (_skinStore.get() || 'default') + '/' + (_pantsStore.get() || 'default') + '/' + (_shoesStore.get() || 'default') + '|';
+  const _localPrefix = (_skinStore.get() || 'default') + '/' + (_pantsStore.get() || 'default') + '/' + (_shoesStore.get() || 'default');
   for (const k of keys) {
-    if (k.startsWith(_localPrefix)) continue;
+    /* v2.3.2787: '|' OR '/es:' after the combo -- an eye style (v2.3.2643)
+       puts its segment there, and the old '|'-only prefix left a styled
+       player's own heads first in line for eviction. */
+    if (k.startsWith(_localPrefix + '|') || k.startsWith(_localPrefix + '/es:')) continue;
     const e = _pickupHeadSheets[k];
     if (!Array.isArray(e) || !e.length) continue;   // skip 'loading'/empty
     delete _pickupHeadSheets[k];
@@ -1508,7 +1511,47 @@ if (typeof window !== 'undefined') {
   window.__btHeadTrim = () => ({ ..._headTrimStats });
   window.__btHeadFrames = (key) => _headTrimFrames[key] || null;
 }
-function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, attempt = 0) {
+/* ═══ v2.3.2787: THE FACE TATTOO RIDES THE HEAD OVERLAYS ═══
+ * These sheets are drawn OVER your head -- on every loot pickup, and while
+ * mining, taking a hit or jogging in the full steel set -- and they were baked
+ * with no drawings at all, so a face tattoo vanished for exactly as long as one
+ * was up.  `art` is the facing-resolved drawings (artForFacing, as the body
+ * takes them); only the face canvas has anywhere to go on a head.  The key
+ * carries it (_headSheetKey), so a drawing edit is a different sheet. */
+function _headArtSeg(a) {
+  if (!a || !artHasInk(a.tattooFace)) return '';
+  /* '#' is _dropArtSheets' marker.  The mirror flag only where it changes the
+     stamp: a symmetric drawing shares one sheet between the two sides. */
+  return '#hf' + artHash(a.tattooFace) + ((a.mirror && !artIsSymmetric(a.tattooFace)) ? 'm' : '');
+}
+function _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a) {
+  return (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
+    + (blank ? '/es:' + blank.id : '') + '|' + pose + '-' + dir + _headArtSeg(a);
+}
+/* The face drawing on one head sheet, confined to the head's own skin as the
+   ORIGINAL art has it -- read before the retint, as recolorBodyToCanvas reads
+   its masks -- and fitted to that head frame by frame, as the body fits it.
+   splitSkinRegions cannot be used here: it places the face relative to the
+   TORSO band ("no torso in this frame: place nothing"), and these sheets have
+   no torso.  Every skin pixel on them is the head, down to wherever the
+   painter cut the neck -- which is the region the body's face fit covers too
+   (skin above the torso band's first row), so the drawing sits the same. */
+function _stampHeadInk(full, img, a) {
+  const w = full.width, h = full.height;
+  const src = upscaleToFrameHeight(img, FRAME_H);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.imageSmoothingEnabled = false;
+  g.drawImage(src, 0, 0);
+  const od = g.getImageData(0, 0, w, h).data;
+  const skin = new Uint8Array(w * h);
+  for (let p = 0, i = 0; p < w * h; p++, i += 4) if (_isSkin(od[i], od[i + 1], od[i + 2], od[i + 3])) skin[p] = 1;
+  const fctx = full.getContext('2d');
+  const id = fctx.getImageData(0, 0, w, h);
+  stampRegion(id.data, w, h, FRAME_W, skin, a.tattooFace, !!a.mirror, FACE_BOX, { underSkin: true });
+  fctx.putImageData(id, 0, 0);
+}
+function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art = null, attempt = 0) {
   _pickupHeadSheets[key] = 'loading';
   /* v2.3.1381: bounded retry (v2.3.1305 pattern) — a flaked head-sheet
      fetch used to cache [] permanently, leaving the fullset knight
@@ -1523,6 +1566,7 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, 
        on a knight, which is the v2.3.1788 shape of omission exactly. */
     const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H,
       undefined, undefined, undefined, undefined, undefined, eyeBlank || null);
+    if (art && artHasInk(art.tattooFace)) _stampHeadInk(full, img, art);   /* v2.3.2787 */
     const cv = document.createElement('canvas');
     cv.width = Math.max(1, Math.round(full.width / HEAD_DS));
     cv.height = Math.max(1, Math.round(full.height / HEAD_DS));
@@ -1575,7 +1619,7 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, 
          backoff instead of passing while a flaked sheet is still
          re-fetching (owner: assets missing right after a deploy). */
       return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
-        .then(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, attempt + 1));
+        .then(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art, attempt + 1));
     }
     _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */
   });
@@ -1584,7 +1628,7 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, 
  *  frameIdx).  Returns null outside the pickup pose, while the sheet bakes, or
  *  when no head sheet exists for that dir (only -south ships) -- the caller then
  *  leaves the body's own head showing. */
-export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId) {
+export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId, art) {
   /* v2.3.1368: + jog — the fullset armored figure (helmet erased from the
      sheet) gets the player's real head drawn above it, exactly like the
      pickup pose.  Only the fullset base dirs ship jog-<dir>-head.png;
@@ -1599,10 +1643,13 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
   if (pose !== 'pickup' && pose !== 'jog' && pose !== 'hit' && pose !== 'mine') return null;
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const blank = eyeBlankForSheet(`${pose}-${dir}-head`, eyeStyleId);   /* v2.3.2643 */
-  const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
-    + (blank ? '/es:' + blank.id : '') + '|' + pose + '-' + dir;
+  /* v2.3.2787: the drawings, resolved for this facing exactly as the body
+     sheet resolves them -- a back-of-head sheet (hit-north) takes the back of
+     the head's canvas, not the face's. */
+  const a = art ? artForFacing(art, dir) : null;
+  const key = _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a);
   const entry = _pickupHeadSheets[key];
-  if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects); return null; }
+  if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects, a); return null; }
   if (entry === 'loading' || !entry.length) return null;
   /* v2.3.1389: jog callers pass the cycle `phase` (0..1) — the SAME clock
      getGearFramePhased plays the fullset armor with, so a head sheet whose
@@ -1721,8 +1768,14 @@ export function preloadBodyAll() {
      moment the player starts a gather.  The sheet is 1792x128 on disk, so at
      DISPLAY_DS=2 this is a few hundred KB. */
   prewarm('mine', 'south');
-  const headKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|pickup-south';
-  if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT));
+  /* v2.3.2787: through _headSheetKey, so it is the key getPickupHeadFrame will
+     ask for.  It built its own and left out the eye style (v2.3.2643), so a
+     styled player's prewarm baked a sheet nothing ever read and the first
+     pickup baked the real one mid-play; now it carries the drawings too. */
+  const _hBlank = eyeBlankForSheet('pickup-south-head', getEyeStyle());
+  const _hArt = artForFacing(localBodyArt(false), 'south');
+  const headKey = _headSheetKey(skinId, pantsId, shoesId, 'pickup', 'south', _hBlank, _hArt);
+  if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT, _hBlank && _hBlank.rects, _hArt));
   return Promise.all(tasks);
 }
 
@@ -1743,11 +1796,19 @@ export function preloadJogHeadOverlays() {
      the first hit taken, which is exactly when it is being looked at. */
   for (const dir of ['south', 'southwest', 'east', 'northeast', 'north']) want.push(['hit', dir]);
   want.push(['mine', 'south']);
+  /* v2.3.2787: with the local drawings, and the mirrored bake as well for the
+     directions that are also drawn flipped (west is east flipped, and so on)
+     -- the same pair preloadBodyVariant bakes for the body.  A face drawing
+     that is its own mirror image gives both the same key, so it bakes once. */
+  const art = localBodyArt(false), artM = localBodyArt(true);
   for (const [pose, dir] of want) {
     const blank = eyeBlankForSheet(`${pose}-${dir}-head`, styleId);   /* v2.3.2643 */
-    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
-      + (blank ? '/es:' + blank.id : '') + '|' + pose + '-' + dir;
-    if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects));
+    const arts = (artM && MIRRORED_SOURCE_DIRS.indexOf(dir) !== -1) ? [art, artM] : [art];
+    for (const a0 of arts) {
+      const a = artForFacing(a0, dir);
+      const key = _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a);
+      if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects, a));
+    }
   }
   return Promise.all(tasks);
 }
@@ -1817,11 +1878,42 @@ function _dropArtSheets() {
     }
     delete _bodySheets[key];
   }
+  /* v2.3.2787: and the head overlays that carried a face drawing.  Destroyed
+     on the same 30 s delay _pickupHeadCap uses: one of them may be on screen
+     this frame, over your head. */
+  for (const key of Object.keys(_pickupHeadSheets)) {
+    if (key.indexOf('#hf') === -1) continue;
+    const entry = _pickupHeadSheets[key];
+    delete _pickupHeadSheets[key];
+    const src = Array.isArray(entry) && entry[0] && entry[0].source;
+    if (src) setTimeout(() => { try { src.destroy(); } catch (e) { /* already gone */ } }, 30000);
+  }
+}
+/* v2.3.2787: the local player's head overlays again, after a drawing edit
+   dropped the ones that carried the old face (_dropArtSheets): the pickup head
+   preloadBodyAll bakes, and the jog / hit / mine ones preloadJogHeadOverlays
+   bakes.  Keys already baked are skipped, so an edit that did not touch the
+   face costs a lookup per sheet. */
+function _prewarmHeadOverlays() {
+  const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
+  const blank = eyeBlankForSheet('pickup-south-head', getEyeStyle());
+  const a = artForFacing(localBodyArt(false), 'south');
+  const key = _headSheetKey(skinId, pantsId, shoesId, 'pickup', 'south', blank, a);
+  if (_pickupHeadSheets[key] === undefined) {
+    _buildPickupHeadSheet(key, 'pickup', 'south', skinTarget(skinId), pantsTarget(pantsId), shoesTarget(shoesId),
+      blank && blank.rects, a);
+  }
+  preloadJogHeadOverlays();
 }
 let _artPrewarmT = null;
 function _onArtChanged() {
   if (_artPrewarmT) clearTimeout(_artPrewarmT);
-  _artPrewarmT = setTimeout(() => { _artPrewarmT = null; _dropArtSheets(); _prewarmCurrent(); }, 500);
+  _artPrewarmT = setTimeout(() => {
+    _artPrewarmT = null; _dropArtSheets(); _prewarmCurrent();
+    /* v2.3.2787: the head overlays too, so the next pickup shows the new
+       drawing from its first frame rather than baking it then. */
+    try { _prewarmHeadOverlays(); } catch (e) { /* never break a menu */ }
+  }, 500);
 }
 onArtChange(_onArtChanged);
 onPatternChange(_onArtChanged);   /* v2.3.1941: a trouser pattern is part of the same bake */
