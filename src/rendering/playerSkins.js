@@ -22,7 +22,7 @@ import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION, stripDetachedComponents } from './playerSprites.js';
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
-import { packTrimmed } from './gearSheets.js';   /* v2.3.2775: the head sheets are cropped */
+import { packTrimmed, sliceCropped } from './gearSheets.js';   /* v2.3.2775: the head sheets are cropped; v2.3.2791: + the body sheets */
 import { recolorEnabled } from './traits/recolorOptions.js';
 import EYE_MASK from './eyeMask.json';                      /* v2.3.1928 */
 import EYE_BLANK from './eyeBlankMask.json';                /* v2.3.2643 */
@@ -1215,18 +1215,17 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
        NE/NW has no trailing outline either.  Topology-only (keep the largest
        opaque blob per frame) -> the recolored body + outline are untouched. */
     if (pose === 'jog' && dir === 'northeast') cv = stripDetachedComponents(cv, frames);
-    const src = Texture.from(cv).source;
+    const fw = Math.max(1, Math.round(FRAME_W / DISPLAY_DS));
+    const fh = Math.max(1, Math.round(FRAME_H / DISPLAY_DS));
+    /* v2.3.2791: cropped (gearSheets.sliceCropped), like the default sheets in
+       playerSprites.loadSheet -- see the note there. */
+    const out = sliceCropped(cv, fw, fh, frames);
+    const src = out[0].source;
     src.scaleMode = 'linear';
     /* v2.3.1121: mipmaps ON -- the downscaled body still renders ~1.2x minified;
        without a mip chain the thin shoe outline crawled while JOGGING.  Cheap on
        the 4x-smaller texture. */
     src.autoGenerateMipmaps = true;
-    const fw = Math.max(1, Math.round(FRAME_W / DISPLAY_DS));
-    const fh = Math.max(1, Math.round(FRAME_H / DISPLAY_DS));
-    const out = [];
-    for (let i = 0; i < frames; i++) {
-      out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
-    }
     _bodySheets[sheetKey] = out;
   }).catch(() => {
     if (attempt < _BODY_RETRY_MS.length) {
