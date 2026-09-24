@@ -18,6 +18,26 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { hitMaterialOf } from '@/data/monsterVariants.js'; /* v2.3.2452 */
 
+/* ═══ v2.3.2886: HOW LONG A ROLL LASTS -- ONE ANSWER, SENT WITH IT ═══
+   Owner: "check all other broadcasted player animations to make sure they
+   match what your character does client side."
+
+   The roll window is elastic: 250 ms, +1 ms per Endurance point up to +250
+   (v2.3.232), +2 ms per Reflexes point up to +200 (v2.3.1314/1343) -- so 250 to
+   700 ms.  Your own tumble plays its frames across exactly that (entityRenderer,
+   off S._dodgeRoll.durMs, which the game loop publishes from this), and your
+   i-frames and movement last exactly that.  The player_dodge broadcast carried
+   no duration, so everybody else played your roll over a flat 300 ms
+   (DODGE_DURATION_MS) and dropped it at 400: a high-Endurance roll finished its
+   tumble early on their screen and then slid, standing, the rest of the way.
+
+   So the formula lives here, where the game loop and the three broadcasts below
+   can all read it, and each broadcast now says how long its roll lasts. */
+export function dodgeWindowMs(R) {
+  return 250 + Math.min((R && R.endurance) || 0, 250)
+    + Math.min(200, 2 * ((R && R.enduranceSpec && R.enduranceSpec.reflexes) || 0));
+}
+
 export var triggerContextualDodge = function (S, R, ang) {
     if (S._dodgeRoll) return;
     /* ═══ v2.3.2242: A DODGE CANCELS THE BLOCK ═══
@@ -75,7 +95,7 @@ export var doStandardDodge = function (S, R, ang) {
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
     if (S.channel) {
-      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'dodge', angle: ang, ts: Date.now() } }); } catch (e) {}
+      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'dodge', angle: ang, ts: Date.now(), dur: dodgeWindowMs(R) } }); } catch (e) {}
     }
     S._hasDodged = true;
     S._dodgeFlash = Date.now();
@@ -126,7 +146,7 @@ export var doLunge = function (S, R, ang) {
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
     if (S.channel) {
-      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'lunge', angle: dirAng, ts: Date.now() } }); } catch (e) {}
+      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'lunge', angle: dirAng, ts: Date.now(), dur: dodgeWindowMs(R) } }); } catch (e) {}
     }
     S._lungeIFramesUntil = Date.now() + (LUNGE_IFRAMES_MS || 150);
     S._dodgeFlash = Date.now();
@@ -217,7 +237,7 @@ export var doRetreatShot = function (S, R, ang) {
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
     if (S.channel) {
-      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'retreat_shot', angle: ang, ts: Date.now() } }); } catch (e) {}
+      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'retreat_shot', angle: ang, ts: Date.now(), dur: dodgeWindowMs(R) } }); } catch (e) {}
     }
     S._dodgeFlash = Date.now();
     S._hasDodged = true;

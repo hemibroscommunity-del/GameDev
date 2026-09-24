@@ -517,6 +517,25 @@ export function castAbility(S, kind) {
     S._bashDash = { targetId: _bashId, ref: _bashLt, startTime: now, until: now + _dashWin,
       travelled: 0, maxTravel: DASH_MAX_REACH_PX,
       kind: kind, angle: isFinite(_dashAng) ? _dashAng : 0 };
+    /* ═══ v2.3.2886: ...ON EVERYBODY ELSE'S SCREEN TOO ═══
+       The tumble above was built for your own screen only.  Nothing told a
+       watcher a dash had started -- the strike's player_swing goes out on
+       ARRIVAL (v2.3.2260) -- so they saw exactly what the owner asked to be
+       rid of: a standing figure gliding to the monster.  The dash now goes out
+       as the roll it is drawn as, on the event that already carries rolls:
+       kind 'sworddash', the travel angle, and this dash's window as `dur`.  A
+       watcher loops the tumble until the strike's player_swing lands or that
+       window runs out (gameEvents / entityRenderer / effectsRenderer), and
+       draws no afterimages, as yours has none.  An older watcher shows it as
+       a plain roll, which is still closer than a glide.  Sword only: bash keeps
+       its own shield pose. */
+    if (kind === 'sworddash' && S.channel) {
+      try {
+        S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: {
+          id: S.myId, kind: 'sworddash', angle: S._bashDash.angle, ts: now, dur: _dashWin,
+        } });
+      } catch (e) {}
+    }
   } else {
     S._bashDash = null;
   }
