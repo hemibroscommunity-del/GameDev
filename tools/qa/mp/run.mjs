@@ -27,6 +27,7 @@ const SCENARIOS = {
   monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2870: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */
   sheen: () => import('./mp-sheen.mjs'), /* v2.3.2864: a permanent soft shine on metal -- on every frame, copper stays copper, the jogging full-set knight too; pictures and its cost.  v2.3.2887: on by default, ?sheen=0 turns it off */
   sheenall: () => import('./mp-sheenall.mjs'), /* v2.3.2887: the shine on EVERY armour animation, yours and another player's, in steel, iron, copper and a mixed set -- found by the art file each sprite draws, checked on every frame */
+  figureseam: () => import('./mp-figureseam.mjs'), /* v2.3.2922: the armour's collar holds its place on the neck while the camera slides -- a figure's stacked sprites are no longer snapped to the pixel one by one (the NE/NW jog flicker); ?figround=1 shows the old jump */
   peerattackink: () => import('./mp-peerattackink.mjs'), /* v2.3.2863: another player's swing and bow shot wear their drawings -- both sides, the back from behind, and the bow no longer borrows the sword's frames */
   animparity: () => import('./mp-animparity.mjs'), /* v2.3.2921: a peer's sword swing and bow shot are drawn the size, and on the boots, its owner sees -- every facing, several frames */
   poseskin: () => import('./mp-poseskin.mjs'), /* v2.3.2861: hit, mining and dodge wear the walking skin on a player who never picked one -- body and the head drawn over armour, baked before the first hit */
