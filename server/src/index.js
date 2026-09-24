@@ -1404,7 +1404,7 @@ export class GameRoom {
     const others = placed || [];
     const keepClear = avoid || [];
     const clear = avoidClearPx || 0;
-    /* v2.3.2877: a zone's arrival point (data.js `entryClear`) outranks
+    /* v2.3.2884: a zone's arrival point (data.js `entryClear`) outranks
        everything else -- a candidate inside it loses to every candidate
        outside, so a monster lands there only if sixteen draws all did.
        Frost only for now: its 1024 px map had snowmen spawning on the

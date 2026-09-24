@@ -1236,8 +1236,8 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       ['frost', 430, 480, 430, 660, true],    /* straight through the rock ridge */
       ['frost', 430, 480, 430, 520, false],   /* stops short of it */
       ['frost', 100, 100, 200, 200, false],   /* open ice */
-      ['frost', 720, 480, 720, 660, true],    /* through the east snowbank (v2.3.2877: the ice mound is gone) */
-      ['frost', 575, 480, 575, 660, false],   /* v2.3.2877: through the gap between the banks */
+      ['frost', 720, 480, 720, 660, true],    /* through the east snowbank (v2.3.2884: the ice mound is gone) */
+      ['frost', 575, 480, 575, 660, false],   /* v2.3.2884: through the gap between the banks */
       ['frost', 430, 550, 430, 700, false],   /* starts INSIDE the ridge: never blocks */
       /* Clean through the mayor's house: its box is x 774..1228, y 416..622,
          so both endpoints must sit OUTSIDE it or the inside-endpoint rule

@@ -103,7 +103,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        sit well out of that target's melee reach (>=160), and be as far from
        the NEAREST snowman as the map allows.  Best spot wins; a guard below
        still fails the run if the target is touched. */
-    /* v2.3.2877: never on the return portal (the bottom-right corner, whose
+    /* v2.3.2884: never on the return portal (the bottom-right corner, whose
        trigger reaches up past (960, 832) -- standing there walks you out of
        frost) nor inside a snowbank.
        With the snowmen now spawning clear of the arrival point, that empty

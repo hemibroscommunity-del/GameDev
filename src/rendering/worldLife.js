@@ -250,7 +250,7 @@ const SWAY = {
 };
 /* Which props sway, and how (the rocks and the ice do not). */
 const PROP_SWAY = Object.create(null);
-/* v2.3.2877: frost's pines and shrubs are gone (three snowbanks, which do not sway) */
+/* v2.3.2884: frost's pines and shrubs are gone (three snowbanks, which do not sway) */
 /* The near-camera pieces that sway, and the point on each they hang from,
    in the art's own (unflipped) texture fractions -- the edge that is cut and
    runs off the map (ZONE_FOREGROUND in worldProps.js).  The mountain crag

@@ -462,7 +462,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
   }
-  for (const want of ['canopy:fg-canopy-sw']) {   /* v2.3.2877: frost's pines and shrubs are gone (three snowbanks) */
+  for (const want of ['canopy:fg-canopy-sw']) {   /* v2.3.2884: frost's pines and shrubs are gone (three snowbanks) */
     const v = (sway[want] || []).map((q) => q.deg);
     rec.ok(`frost: ${want} sways, gently`, v.length > 3 && spread(v) > 0.05 && Math.max(...v.map(Math.abs)) < 5,
       { n: v.length, spread: +spread(v).toFixed(3), max: v.length ? Math.max(...v.map(Math.abs)) : null });

@@ -34,10 +34,10 @@
  * new props joined it rather than landing in some static layer of their own.
  */
 import * as H from './harness.mjs';
-import { propsForZone, foregroundForZone } from '../../../src/data/worldProps.js';   /* v2.3.2877: imports nothing, so node reads the tables */
+import { propsForZone, foregroundForZone } from '../../../src/data/worldProps.js';   /* v2.3.2884: imports nothing, so node reads the tables */
 
 const PHONE = { width: 390, height: 844 };
-/* v2.3.2877: three snowbanks in a line, nothing else (owner: "the small zone
+/* v2.3.2884: three snowbanks in a line, nothing else (owner: "the small zone
    needs space and not props") -- was six mixed props */
 const DECOR = [
   { id: 'frost-snowbank-w',  worldH: 120 },
@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const wantBundles = await P.page.evaluate(() =>
     ((window.__btBlockers && window.__btBlockers('frost')) || []).length
     + ((window.__btForeground && window.__btForeground()) || []).length);
-  /* v2.3.2877: counted by SPRITE, not by piece -- the three snowbanks share
+  /* v2.3.2884: counted by SPRITE, not by piece -- the three snowbanks share
      one texture, and the per-zone bundle list holds each sprite once */
   const wantSprites = new Set(propsForZone('frost').concat(foregroundForZone('frost')).map((p) => p.sprite)).size;
   rec.ok('in frost, every per-zone sprite is resident (props + foreground)',
@@ -205,7 +205,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const ridge = await P.page.evaluate(() =>
     ((window.__btBlockers && window.__btBlockers('frost')) || []).length);
   rec.ok('the client exposes frost\'s blocker boxes', ridge === 3, { ridge });
-  /* v2.3.2877: and they stand as one LINE with gaps in it -- cover, not a wall */
+  /* v2.3.2884: and they stand as one LINE with gaps in it -- cover, not a wall */
   const line = await P.page.evaluate(() => ((window.__btBlockers && window.__btBlockers('frost')) || [])
     .map((b) => ({ x0: Math.round(b.x0), x1: Math.round(b.x1), y1: Math.round(b.y1) })).sort((a, b) => a.x0 - b.x0));
   const gaps = line.slice(1).map((b, i) => b.x0 - line[i].x1);
@@ -310,7 +310,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     .catch(() => { /* evidence, not an assertion */ });
 
   /* ── 4. LEAVING RELEASES IT ── */
-  /* v2.3.2877: through the game's own doors, back out of frost and home.
+  /* v2.3.2884: through the game's own doors, back out of frost and home.
      This used to tap a 'Town' button the test panel does not have (it lists
      only the spokes) -- the tap did nothing, and the scenario got home only
      because frost's snowmen spawned on the arrival point and killed the bro,
