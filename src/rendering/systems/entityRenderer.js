@@ -7788,8 +7788,8 @@ export class EntityRenderer {
             sx: +d._spriteBody.scale.x.toFixed(3),
             visible: !!d._spriteBody.visible,
             drewDeathAt: d._deathDrewAt || 0,
-            texW: _t ? (_t.orig ? _t.orig.width : (_t.frame ? _t.frame.width : _t.width)) : 0,   /* v2.3.2864: the cell, cropped or not */
-            trimmed: !!(_t && _t.trim),   /* v2.3.2864: drawn from a cropped strip (zoneTextures.loadTrackedStrip) */
+            texW: _t ? (_t.orig ? _t.orig.width : (_t.frame ? _t.frame.width : _t.width)) : 0,   /* v2.3.2870: the cell, cropped or not */
+            trimmed: !!(_t && _t.trim),   /* v2.3.2870: drawn from a cropped strip (zoneTextures.loadTrackedStrip) */
             srcW: _src ? (_src.width || 0) : 0,
             texAlive: !!(_src && !_src.destroyed && _src.width > 0),
             /* The procedural fallback body.  Drawn INSTEAD of the sprite when
@@ -7804,7 +7804,7 @@ export class EntityRenderer {
                answered from the table, only from the bounds. */
             bounds: (function () {
               try {
-                const b = frameBounds(d._spriteBody);   /* v2.3.2864: whole cell, as uncropped */
+                const b = frameBounds(d._spriteBody);   /* v2.3.2870: whole cell, as uncropped */
                 return { top: Math.round(b.y), bottom: Math.round(b.y + b.height),
                   h: Math.round(b.height) };
               } catch (e) { return null; }
@@ -9564,7 +9564,7 @@ export class EntityRenderer {
           const _sb = display._spriteBody;
           if (_sb && _sb.visible && !_sb.destroyed) {
             try {
-              const gb = frameBounds(_sb);   /* v2.3.2864: the cell's top, as uncropped -- the +13 below was tuned to it */
+              const gb = frameBounds(_sb);   /* v2.3.2870: the cell's top, as uncropped -- the +13 below was tuned to it */
               const lp = display.toLocal({ x: gb.x + gb.width / 2, y: gb.y });
               if (lp && Number.isFinite(lp.y)) _ringY = lp.y + 13;   /* the ring's top ~4px above the head */
             } catch (e) { /* keep the old anchor */ }
@@ -10282,6 +10282,7 @@ export class EntityRenderer {
             const _fsTintR = _fsR ? _fullsetTint(other.equip && other.equip.chest) : 0xffffff;
             if (spriteBody.tint !== _fsTintR) spriteBody.tint = _fsTintR;
           }
+          display._fullsetOn = !!_fsR;   /* v2.3.2864: see the local path */
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
           try {
@@ -11816,7 +11817,8 @@ export class EntityRenderer {
              remote path above for why it is cleared rather than left set). */
           const _fsTint = _fsT ? _fullsetTint(getEquip('chest')) : 0xffffff;
           if (spriteBody.tint !== _fsTint) spriteBody.tint = _fsTint;
-        } catch (e) { _bodyTex = tex; }
+          display._fullsetOn = !!_fsT;   /* v2.3.2864: the metal shine finds the armour on the body sprite */
+        } catch (e) { _bodyTex = tex; display._fullsetOn = false; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
            v2.3.1116: guarded -- the loot freeze runs every frame, so a throw here

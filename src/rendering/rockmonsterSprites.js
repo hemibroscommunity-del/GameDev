@@ -32,7 +32,7 @@ let loadPromise = null;
 
 async function loadStrip(url, key) {
   try {
-    /* v2.3.2864: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
     const frames = await loadTrackedStrip('rockmonster', url, FRAME_W, FRAME_H);
     if (!frames.length) return;
     walkSheets[key] = { frames };

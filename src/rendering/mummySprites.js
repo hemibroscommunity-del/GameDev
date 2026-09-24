@@ -54,7 +54,7 @@ let loadPromise = null;
 
 async function loadStrip(url, into, key) {
   try {
-    /* v2.3.2864: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
     const frames = await loadTrackedStrip('mummy', url, FRAME_W, FRAME_H);
     if (!frames.length) return;
     into[key] = { frames };
@@ -65,7 +65,7 @@ async function loadStrip(url, into, key) {
 
 async function loadTransformStrip() {
   try {
-    /* v2.3.2864: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
     transformFrames.push(...(await loadTrackedStrip('mummy', `/sprites/monsters/mummy/transform.png?v=${SPRITE_VERSION}`, FRAME_W, FRAME_H)));
   } catch { /* missing — renderer skips the transform anim */ }
 }

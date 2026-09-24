@@ -105,7 +105,7 @@ let loadPromise = null;
 
 async function loadStrip(url, into, key) {
   try {
-    /* v2.3.2864: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
     const frames = await loadTrackedStrip('fireGoblin', url, FRAME_W, FRAME_H);
     if (!frames.length) return;
     into[key] = { frames };
@@ -142,7 +142,7 @@ async function loadFireball() {
 
 async function loadDeathStrip() {
   try {
-    /* v2.3.2864: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
     deathFrames.push(...(await loadTrackedStrip('fireGoblin', `/sprites/monsters/fire-goblin/death.png?v=${SPRITE_VERSION}`, FRAME_W, FRAME_H)));
   } catch { /* missing — caller leaves death blank */ }
 }

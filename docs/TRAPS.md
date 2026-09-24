@@ -4435,7 +4435,7 @@ figure. `orig` is the whole frame and `trim` is where the crop sits in it.
 an uncropped texture, so it is always safe), and copy its PIXELS through
 `drawGearFrame(ctx, tex, dx, dy, dw, dh)` (gearSheets), which places the crop
 at its offset and is a plain `drawImage` for anything uncropped. A Sprite needs
-nothing to DRAW -- Pixi builds the quad from `trim`. (v2.3.2864 correction: its
+nothing to DRAW -- Pixi builds the quad from `trim`. (v2.3.2870 correction: its
 BOUNDS are the trim, not `orig` -- see §119.)
 Cutting a sub-rectangle out of a cropped frame by `frame.x + offset` (the
 blockArm sleeve does this to bowshot frames) is not supported -- which is why
@@ -4795,7 +4795,7 @@ numbers look plausible and are simply of a different character.
 the former. (In a TEST that asserts damage, pin `Math.random` as the suites
 do; the drift is per hit, so even two sends in a row can differ.)
 
-## 119. A cropped sprite's getBounds() is its art, not its frame (v2.3.2864)
+## 119. A cropped sprite's getBounds() is its art, not its frame (v2.3.2870)
 
 **Tempting:** size an effect off a figure with `spr.getBounds()` -- the night
 glow on a monster, the stun ring over its head, the death crumble's flakes and
@@ -4807,7 +4807,7 @@ the painted art -- smaller, and shifted, differently on every frame. §106 said
 the opposite ("reports bounds from `orig`") and was wrong about bounds; it is
 right about drawing, which is why nothing LOOKED broken. The player body has
 been cropped since v2.3.2791, so the death crumble had quietly shrunk; the
-monster strips (v2.3.2864) would have moved the stun ring and shrunk the night
+monster strips (v2.3.2870) would have moved the stun ring and shrunk the night
 glow.
 
 **The rule:** where a box sizes something else, use

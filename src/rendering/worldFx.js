@@ -44,7 +44,7 @@ import { fxTex, SOFTBOX_EDGE } from './worldFxTextures.js';
 import { zonePlayerScale, ZONES } from '@/data/zones.js';
 import { GROUND_GRID, GROUND_COLORS } from '@/data/groundColors.js';   /* v2.3.2825: the ground's own colour, baked */
 import { deathCrumble } from './deathCrumble.js';
-import { frameBounds } from './gearSheets.js';   /* v2.3.2864: a cropped monster's whole-cell box */
+import { frameBounds } from './gearSheets.js';   /* v2.3.2870: a cropped monster's whole-cell box */
 
 const rgbHex = (r, g, b) => ((Math.max(0, Math.min(255, Math.round(r * 255))) << 16)
   | (Math.max(0, Math.min(255, Math.round(g * 255))) << 8)
@@ -494,7 +494,7 @@ export class WorldFx {
     }
     this._drawHalos(halos);
     for (let i = 0; i < bodies.length; i++) {
-      /* v2.3.2864: frameBounds, not getBounds -- a cropped monster frame is
+      /* v2.3.2870: frameBounds, not getBounds -- a cropped monster frame is
          bounded by its art, and the glow was sized to the whole cell */
       let b; try { b = frameBounds(bodies[i]); } catch (e) { continue; }
       if (!b || b.width < 2) continue;

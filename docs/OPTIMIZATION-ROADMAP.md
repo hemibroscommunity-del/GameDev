@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1-6, 9-15 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2864); the rest is the ranked backlog
+### Items 1-6, 9-15 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2870); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -539,7 +539,7 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    All 259 frames byte-identical to the whole sheet.
 
 15. ~~**Monster strips — 27-40% empty cells, ~8 MB in Ember, ~7 in Desert
-   Winds**~~ **SHIPPED, v2.3.2864** (measured, `mp-monstertrim`: the fire goblin
+   Winds**~~ **SHIPPED, v2.3.2870** (measured, `mp-monstertrim`: the fire goblin
    30 → 22.2 MB, Ember 176.6 → 168.8 MB; mummy + skeleton 22 → 15.1 MB; the
    snowman's 128px cells are nearly full, so its strips are declined, 13 →
    12.8). `zoneTextures.loadTrackedStrip` is the per-zone twin of the fx loader:

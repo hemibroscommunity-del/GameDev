@@ -1,4 +1,4 @@
-/* Monster strips, cropped (v2.3.2864).
+/* Monster strips, cropped (v2.3.2870).
  *
  * Owner: "find out how to reduce memory in ember too".
  *

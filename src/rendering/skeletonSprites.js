@@ -40,7 +40,7 @@ let loadPromise = null;
 
 async function loadStrip(url, into, key) {
   try {
-    /* v2.3.2864: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
     const frames = await loadTrackedStrip('skeleton', url, FRAME_W, FRAME_H);
     if (!frames.length) return;
     into[key] = { frames };
@@ -56,7 +56,7 @@ async function loadRemnants() {
 
 async function loadDeathStrip() {
   try {
-    /* v2.3.2864: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
     deathFrames.push(...(await loadTrackedStrip('skeleton', `/sprites/monsters/skeleton/death.png?v=${SPRITE_VERSION}`, FRAME_W, FRAME_H)));
   } catch { /* missing -- renderer falls back to no death anim */ }
 }
