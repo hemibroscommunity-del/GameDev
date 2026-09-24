@@ -168,6 +168,18 @@ export function pushAbilityRings(S, x, y, kind, ang, radius) {
   const a = isBash ? ang : null;
   const span = isBash ? BASH_ARC_SPAN : null;
   const r = radius || 70;
+  /* ═══ v2.3.2824: THE WHIRLWIND'S RING STOPS WHERE ITS HIT STOPS ═══
+     Owner: "make sure whirlwind's effects match the effective area."  The
+     generic pair below grows to 1.5 x maxR and is fully transparent by the
+     time it gets anywhere near the radius, so nothing visible ever marked the
+     240px edge.  A whirl gets an edge ring that sweeps IN to exactly r and
+     holds there while it fades (renderer: `settle`), plus a small white pop
+     at the caster. */
+  if (kind === 'whirl') {
+    S._impactRings.push({ x: x, y: y, ts: Date.now(), color: '#FFB347', maxR: r, settle: 0.35, duration: 560, width: 5 });
+    S._impactRings.push({ x: x, y: y, ts: Date.now(), color: '#FFFFFF', maxR: r * 0.25, duration: 240 });
+    return;
+  }
   S._impactRings.push({
     x: x, y: y, ts: Date.now(), color: isBash ? '#D8A94D' : '#F2C14E',
     maxR: r / 1.5, duration: 380, ang: a, span: span,
@@ -550,8 +562,47 @@ export function castAbility(S, kind) {
     return true;
   }
   S._dashStrike = null;
+  /* ═══ v2.3.2824: WHIRLWIND WINDS UP FOR TWO SECONDS ═══
+     Owner: "delayed by about 2 seconds after you press it so a ring around
+     you will display ... so you can tactically position yourself to put the
+     ring around a cluster of enemies (know exactly what effective range
+     you'll have)."
+     The press sends the cast NOW -- the worker arms it and strikes from
+     wherever it has you when the windup ends (abilities.js windupMs) -- and
+     this side draws the ring (effectsRenderer._updateAbilityWindups) and
+     plays the strike's look when the ring runs out (tickWhirlWindup).  The
+     wind sample starts on the press: it is 2.6s long and swells until ~2.4s,
+     so its peak lands on the strike.
+     Gated on caps.whirlWindup (rule 19): an older worker strikes on the
+     press, so against it the old instant path below is the truth. */
+  if (kind === 'whirl' && cfg.windupMs > 0 && S._serverCaps && S._serverCaps.whirlWindup) {
+    try { S.channel && S.channel.send({ type: 'ability', payload: { kind: kind } }); } catch (e) {}
+    S._whirlWindup = { t0: now, until: now + cfg.windupMs, r: cfg.radius, flushed: false };
+    S.swingTimer = now;
+    var _wsfx = null;
+    try { _wsfx = BT_AUDIO.play('whirlwind', { vol: 0.9 }); } catch (e) { _wsfx = null; }
+    S._whirlWindup.sfx = !!_wsfx;
+    return true;
+  }
   applyAbilityStrike(S, kind, _bashId);
   return true;
+}
+
+/* v2.3.2824: run every frame (BroTown's game tick).  Just before the ring
+   runs out, push the latest position to the worker (the strike is measured
+   from where IT has you, and moves are batched); when it runs out, play the
+   strike.  Dying cancels it on this side exactly as it does on the worker. */
+export function tickWhirlWindup(S, now, flushMove) {
+  var w = S && S._whirlWindup;
+  if (!w) return;
+  if (isPlayerDead(S)) { S._whirlWindup = null; return; }
+  if (!w.flushed && now >= w.until - 160) {
+    w.flushed = true;
+    try { if (typeof flushMove === 'function') flushMove(); } catch (e) {}
+  }
+  if (now < w.until) return;
+  S._whirlWindup = null;
+  applyAbilityStrike(S, 'whirl', null, { armed: true, sfx: w.sfx });
 }
 
 /* ═══ v2.3.2260: THE HALF OF A CAST THAT CAN BE MADE TO WAIT ═══
@@ -565,7 +616,7 @@ export function castAbility(S, kind) {
  * Called with the target id the cast committed to so the worker's declared-
  * target fallback still names the same monster it named before.
  */
-export function applyAbilityStrike(S, kind, targetId) {
+export function applyAbilityStrike(S, kind, targetId, opts) {
   var R = S && S.rpg;
   var cfg = abilityCfg(kind);
   if (!R || !cfg) return false;
@@ -581,11 +632,16 @@ export function applyAbilityStrike(S, kind, targetId) {
      worker answered 'cooldown' and nothing was hit.  Re-stamping here costs
      the player nothing (the press stamp was never earlier than this one) and
      makes the client's idea of ready never earlier than the worker's. */
-  cdMap(S)[kind] = now + cfg.cooldownMs;
-  try {
-    S.channel && S.channel.send({ type: 'ability',
-      payload: targetId != null ? { kind: kind, targetId: targetId } : { kind: kind } });
-  } catch (e) {}
+  /* v2.3.2824: an ARMED whirlwind was sent and its cooldown stamped on the
+     press (castAbility); this is only its strike landing. */
+  var _armed = !!(opts && opts.armed);
+  if (!_armed) {
+    cdMap(S)[kind] = now + cfg.cooldownMs;
+    try {
+      S.channel && S.channel.send({ type: 'ability',
+        payload: targetId != null ? { kind: kind, targetId: targetId } : { kind: kind } });
+    } catch (e) {}
+  }
 
   /* ═══ THE ANIMATION, WITHOUT THE HIT ═══
      The damage sweep that normally rides along with a swing is suppressed
@@ -642,6 +698,9 @@ export function applyAbilityStrike(S, kind, targetId) {
       S.channel.send({ type: 'broadcast', event: 'player_swing', payload: {
         id: S.myId, ts: now, special: true, wpn: (w && w.type) || 'sword', ang: aim,
         bash: kind === 'bash',
+        /* v2.3.2824: a whirlwind shows its vortex and edge ring on the
+           watcher's screen too, at the size the worker tested. */
+        whirl: kind === 'whirl', r: kind === 'whirl' ? cfg.radius : undefined,
       } });
     } catch (e) {}
   }
@@ -652,14 +711,18 @@ export function applyAbilityStrike(S, kind, targetId) {
      as an ARC for bash because the ability itself is directional (the worker
      picks the nearest monster within cfg.radius), so a full ring would
      promise a 360° hit the server never rolls. */
-  pushAbilityRings(S, S.player.x, S.player.y - 10, kind, aim, cfg.radius * _abDk);
+  /* v2.3.2824: a whirlwind is centred where the worker measures it -- the
+     player's own x/y -- not 10px up at the chest, or its edge ring sits 10px
+     off the circle that actually hits. */
+  var _ringY = kind === 'whirl' ? S.player.y : S.player.y - 10;
+  pushAbilityRings(S, S.player.x, _ringY, kind, aim, cfg.radius * _abDk);
 
   /* v2.3.1735: the whirlwind's vortex (owner art), centred on the caster
      because that is where the gather pulls everything TO.  Read by
      effectsRenderer._updateWhirlVortex, which no-ops until the sheet is
      committed. */
   if (kind === 'whirl') {
-    S._whirlFx = { t0: now, x: S.player.x, y: S.player.y - 10, radius: cfg.radius * _abDk };
+    S._whirlFx = { t0: now, x: S.player.x, y: S.player.y, radius: cfg.radius * _abDk };   /* v2.3.2824: centred on the tested circle */
   }
 
   if (kind === 'bash') {
@@ -704,7 +767,9 @@ export function applyAbilityStrike(S, kind, targetId) {
        fired on the cast, with the synth stand-in kept as the fallback for the
        window before the sample decodes. */
     var _whirlSfx = null;
-    try { _whirlSfx = BT_AUDIO.play('whirlwind', { vol: 0.9 }); } catch (e) { _whirlSfx = null; }
+    /* v2.3.2824: an armed whirlwind started its sample on the press. */
+    if (_armed && opts.sfx) _whirlSfx = true;
+    else { try { _whirlSfx = BT_AUDIO.play('whirlwind', { vol: 0.9 }); } catch (e) { _whirlSfx = null; } }
     if (!_whirlSfx) {
       BT_AUDIO.beep(320, 0.12, 0.18, 'sawtooth');
       setTimeout(function () { return BT_AUDIO.beep(420, 0.12, 0.16, 'sawtooth'); }, 80);

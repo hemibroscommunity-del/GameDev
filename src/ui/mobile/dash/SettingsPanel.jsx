@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { notificationsMuted, setNotificationsMuted } from '../modalGuardBus.js'; /* v2.3.2147 */
 import { COL, panelStyle } from './common.js';
+import { BT_AUDIO } from '@/data/index.js';   /* v2.3.2820: see toggleAudio */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
 import { installHintBus } from '../installHintBus.js'; /* v2.3.2159 */
@@ -68,8 +69,57 @@ const Toggle = ({ label, value, onChange }) => (
   </div>
 );
 
+/* ═══ v2.3.2820: A VOLUME ROW ═══
+   The demo audit's first Settings gap: one Audio on/off, no levels.  A
+   native range input -- the phone draws its own thumb, which is the one
+   control iOS users already know how to drag -- in a 44px row, brass track
+   via accent-color (LANTERN-SLATE-SPEC: brass is the active state).  0..100
+   on screen, 0..1 in storage and on BT_AUDIO.setLevels. */
+const VolumeRow = ({ label, value, onChange, disabled, hook }) => (
+  <div style={{
+    display: 'flex', alignItems: 'center', gap: 10,
+    minHeight: 44, padding: '0 8px',
+    borderBottom: `1px solid ${COL.divider}`,
+    opacity: disabled ? 0.45 : 1,
+  }}>
+    <span style={{ fontSize: 13.5, color: COL.text, flex: '0 0 92px' }}>{label}</span>
+    <input type="range" min={0} max={100} step={5}
+      value={Math.round(value * 100)}
+      disabled={disabled}
+      data-vol={hook}
+      onChange={(e) => onChange(Number(e.target.value) / 100)}
+      style={{ flex: 1, minWidth: 0, height: 44, accentColor: COL.accent, touchAction: 'manipulation' }} />
+    <span style={{ fontSize: 12, fontWeight: 700, color: COL.text2, flex: '0 0 34px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+      {Math.round(value * 100)}%
+    </span>
+  </div>
+);
+const readLevel = (key) => {
+  try {
+    const v = localStorage.getItem(key);
+    if (v == null) return 1;
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+  } catch { return 1; }
+};
+/* v2.3.2820: the Debug switch only means something with ?dev=1 in the URL
+   (GameApp mounts the overlay behind the same test), so a normal player was
+   shown a switch that did nothing -- and a line about a "floating D button"
+   that is not there. */
+const DEV_MODE = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
+
 export const SettingsPanel = () => {
   const [, force] = useState(0);
+  const [musicVol, setMusicVol] = useState(() => readLevel('brotown_vol_music'));
+  const [sfxVol, setSfxVol] = useState(() => readLevel('brotown_vol_sfx'));
+  const setVol = (which, v) => {
+    if (which === 'music') setMusicVol(v); else setSfxVol(v);
+    try { localStorage.setItem(which === 'music' ? 'brotown_vol_music' : 'brotown_vol_sfx', String(v)); } catch {}
+    try {
+      const A = BT_AUDIO;
+      if (A && A.setLevels) A.setLevels(which === 'music' ? v : A.musicLevel, which === 'music' ? A.sfxLevel : v);
+    } catch {}
+  };
   const [audio, setAudio] = useState(() => {
     try { return localStorage.getItem('brotown_audio_off') !== '1'; } catch { return true; }
   });
@@ -100,7 +150,14 @@ export const SettingsPanel = () => {
     const next = !audio;
     setAudio(next);
     try { localStorage.setItem('brotown_audio_off', next ? '0' : '1'); } catch {}
-    try { window.BT_AUDIO && (window.BT_AUDIO.muted = !next); } catch {}
+    /* v2.3.2820: BT_AUDIO directly.  This read `window.BT_AUDIO`, which
+       nothing ever assigns, so the switch only saved the choice and the
+       sound kept playing until the next reload (GameApp applies the saved
+       mute at boot).  Found while wiring the volume sliders beside it. */
+    try {
+      const S = window._gameState && window._gameState.current;
+      BT_AUDIO.setMuted(!next, S && S.currentZone);
+    } catch {}
   };
   const toggleDebug = () => {
     const next = !debug;
@@ -205,7 +262,9 @@ export const SettingsPanel = () => {
   return (
     <div style={panelStyle}>
       <Toggle label="Audio" value={audio} onChange={toggleAudio} />
-      <Toggle label="Debug overlay (D)" value={debug} onChange={toggleDebug} />
+      <VolumeRow label="Music" hook="music" value={musicVol} disabled={!audio} onChange={(v) => setVol('music', v)} />
+      <VolumeRow label="Effects" hook="sfx" value={sfxVol} disabled={!audio} onChange={(v) => setVol('sfx', v)} />
+      {DEV_MODE && <Toggle label="Debug overlay (D)" value={debug} onChange={toggleDebug} />}
       {/* ═══ v2.3.2141: THE QUEST PATH ═══
           Owner: "Add an option to turn off the path guide for the quest.
           Also explore different options than the bead snake."
@@ -295,14 +354,19 @@ export const SettingsPanel = () => {
       })()}
       <LinkRow label="Feedback — message the developers"
         onTap={() => dashboardPanelBus.push('feedback')} />
+      {/* v2.3.2820: privacy, rules and credits, one tap from Settings. */}
+      <LinkRow label="About — privacy, rules and credits"
+        onTap={() => dashboardPanelBus.push('about')} />
       {/* v2.3.1347: destructive row — red label, drills into the
           in-panel confirmation screen above (owner playtest request). */}
       <LinkRow label="Restart character — start over at Level 1"
         danger
         onTap={() => setResetStage('confirm')} />
-      <div style={{ marginTop: 10, padding: '0 8px', fontSize: 13, color: COL.muted, lineHeight: 1.4 }}>
-        Tap the floating <b>D</b> button for the full devtools console.
-      </div>
+      {DEV_MODE && (
+        <div style={{ marginTop: 10, padding: '0 8px', fontSize: 13, color: COL.muted, lineHeight: 1.4 }}>
+          Tap the floating <b>D</b> button for the full devtools console.
+        </div>
+      )}
     </div>
   );
 };

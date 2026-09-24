@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
-import { QUEST_CHAINS } from '../../../data/gameSystems.js';
+import { QUEST_CHAINS, questSteps } from '../../../data/gameSystems.js';   /* v2.3.2820: + questSteps */
 import { deriveQuestLog, trackedQuestId, setTrackedQuest } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { NPC_DATA } from '../../../data/gameDisplay.js';
@@ -155,6 +155,33 @@ export const QuestDetailPanel = () => {
       <div style={{ fontSize: 13.5, lineHeight: 1.45, color: COL.text, padding: '0 2px 6px' }}>
         {quest.desc}
       </div>
+      {/* ═══ v2.3.2820: THE STEPS ═══ (life_1's checklist, gameSystems
+          questSteps).  Owner: players "get stuck on the quest for cooking 2
+          fish" -- one objective line hid five actions.  Each step ticks off
+          from live state; the arrow is the next thing to do.  Shown only
+          while the quest is in hand -- before that it is the dialogue's job. */}
+      {status === 'Active' && (() => {
+        const steps = questSteps(quest, S && S.rpg, S);
+        if (!steps) return null;
+        return (
+          <div data-quest-steps={quest.id} style={{ padding: '0 2px 8px' }}>
+            {steps.map((st, i) => (
+              <div key={i} data-step-state={st.done ? 'done' : st.current ? 'current' : 'todo'} style={{
+                display: 'flex', gap: 8, alignItems: 'flex-start', padding: '5px 8px', marginBottom: 3,
+                borderRadius: 8,
+                background: st.current ? COL.accentFill : 'transparent',
+                border: `1px solid ${st.current ? COL.accent : 'transparent'}`,
+              }}>
+                <span style={{ flex: '0 0 16px', fontWeight: 800, fontSize: 13, color: st.done ? '#59BF91' : st.current ? COL.accent : COL.muted }}>
+                  {st.done ? '✓' : st.current ? '▶' : '•'}
+                </span>
+                <span style={{ fontSize: 13, lineHeight: 1.4, color: st.done ? COL.muted : st.current ? COL.text : COL.text2,
+                  textDecoration: st.done ? 'line-through' : 'none' }}>{st.label}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Quest giver. */}
       <div style={{ padding: '6px 2px 2px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.muted }}>

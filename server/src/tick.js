@@ -155,6 +155,9 @@ export const tickMethods = {
       // Monster AI tick
       guard('monsters', () => this._tickMonsters());
 
+      /* v2.3.2824: windup abilities (whirlwind) strike when their ring ends. */
+      guard('abilWindups', () => this._tickAbilityWindups(Date.now()));
+
       // Gather-node respawn tick (cheap; iterates Object.keys(this.nodes))
       guard('nodes', () => this._tickNodes());
 

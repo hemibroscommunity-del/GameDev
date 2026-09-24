@@ -41,7 +41,8 @@
 import { Container, Sprite, Texture, RenderTexture, NineSliceSprite } from 'pixi.js';
 import { dayPhase, lightingAt, windAt, zoneHasSky } from '@/game/timeOfDay.js';
 import { fxTex, SOFTBOX_EDGE } from './worldFxTextures.js';
-import { zonePlayerScale } from '@/data/zones.js';
+import { zonePlayerScale, ZONES } from '@/data/zones.js';
+import { GROUND_GRID, GROUND_COLORS } from '@/data/groundColors.js';   /* v2.3.2825: the ground's own colour, baked */
 import { deathCrumble } from './deathCrumble.js';
 
 const rgbHex = (r, g, b) => ((Math.max(0, Math.min(255, Math.round(r * 255))) << 16)
@@ -65,6 +66,7 @@ ZONE_AIR.frost     = { dust: null,     motes: 'snow' };
 ZONE_AIR.thunder   = { dust: 0xaea89e };
 ZONE_AIR.hollows   = { dust: 0xb6ab9c };
 ZONE_AIR.shadow    = { dust: 0x8a8196 };
+ZONE_AIR.worldview = { dust: 0xcdb98a };   /* v2.3.2825: the overworld had no dust at all */
 const airOf = (z) => (z && Object.prototype.hasOwnProperty.call(ZONE_AIR, z) ? ZONE_AIR[z] : null);
 
 /* ═══ v2.3.2717: THE PROPS' OWN LIGHTS ═══
@@ -119,8 +121,9 @@ const MOTE_STYLE = {
 const STEP = 17;
 const PRINT_MS = 1300;
 const PUFF_MS = 700;
+const PUFF_ALPHA = 0.7;   /* v2.3.2825: 0.32 -> 0.55 -- visible, still dust */
 const PRINT_POOL = 56;
-const PUFF_POOL = 28;
+const PUFF_POOL = 56;   /* v2.3.2825: 28 -> 56, two puffs a step now */
 
 /* Blood.  Tiers by the share of max HP one hit took (owner: "tiny ... 10%
    hp or less, moderate between 11% and 32%, and high if 33% or more"). */
@@ -154,6 +157,47 @@ const feetDy = (S, x, y) => FEET_DY * (zonePlayerScale(S.currentZone, x, y, 32) 
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const shade = (hex, k) => (Math.round(((hex >> 16) & 255) * k) << 16) | (Math.round(((hex >> 8) & 255) * k) << 8) | Math.round((hex & 255) * k);
+
+/* ═══ v2.3.2825: DUST THE COLOUR OF THE GROUND ═══
+   Owner: "are there any footstep dust or dirt effect while moving? ... It
+   would need to match the color of the terrain though."
+   There was dust (v2.3.2703) -- one colour per zone, and faint enough that
+   the owner had never noticed it.  The colour now comes from the painted map
+   under the feet, baked offline to a grid (tools/maps/build_ground_colors.py
+   -> src/data/groundColors.js; the client still never reads map pixels), so
+   the sand path kicks up sand and the grass beside it kicks up a greener
+   earth.  Decoded once per zone, on first use.
+   Returns the raw ground RGB, -1 for water (no dust), or null (no grid). */
+const _groundCache = Object.create(null);
+function groundColorAt(zone, x, y) {
+  if (!zone || !Object.prototype.hasOwnProperty.call(GROUND_COLORS, zone)) return null;
+  let g = _groundCache[zone];
+  if (!g) {
+    try {
+      const bin = atob(GROUND_COLORS[zone]);
+      g = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) g[i] = bin.charCodeAt(i);
+    } catch (e) { g = new Uint8Array(0); }
+    _groundCache[zone] = g;
+  }
+  const Z = ZONES[zone];
+  if (!Z || !g.length) return null;
+  const gx = Math.max(0, Math.min(GROUND_GRID - 1, Math.floor((x / (Z.w * 32)) * GROUND_GRID)));
+  const gy = Math.max(0, Math.min(GROUND_GRID - 1, Math.floor((y / (Z.h * 32)) * GROUND_GRID)));
+  const i = (gy * GROUND_GRID + gx) * 3;
+  const r = g[i], gg = g[i + 1], b = g[i + 2];
+  if (r === 0 && gg === 0 && b === 0) return -1;
+  return (r << 16) | (gg << 8) | b;
+}
+/* What a foot kicks UP off that ground: the ground's own hue, lifted toward a
+   pale dust and a little desaturated -- green smoke off grass reads as magic,
+   a light green-brown reads as earth. */
+const DUST_PALE = [0xd8, 0xcb, 0xb0];
+function dustOf(hex) {
+  const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+  const m = (a, p) => Math.min(255, Math.round((a * 0.5 + p * 0.5) * 1.16));
+  return (m(r, DUST_PALE[0]) << 16) | (m(g, DUST_PALE[1]) << 8) | m(b, DUST_PALE[2]);
+}
 
 export class WorldFx {
   constructor(layers, app) {
@@ -217,6 +261,7 @@ export class WorldFx {
         tod: this._probeTod || null,
         prints: this._prints.filter((p) => p.visible).length,
         puffs: this._puffs.filter((p) => p.visible).length,
+        lastDust: this._lastDust || null,   /* v2.3.2825: {ground, puff} of the last step */
         drops: this._drops.filter((p) => p.visible).length,
         splats: this._splats.filter((p) => p.visible).length,
         lastBlood: this._lastBlood || null,
@@ -619,7 +664,7 @@ export class WorldFx {
       const seen = this._seenWalkers || (this._seenWalkers = new Set());
       seen.clear();
       if (S.player && !(S.rpg && S.rpg.hp <= 0)) {
-        this._walk('me', S.player.x, S.player.y + feetDy(S, S.player.x, S.player.y), color, now);
+        this._walk('me', S.player.x, S.player.y + feetDy(S, S.player.x, S.player.y), color, now, S.currentZone);
         seen.add('me');
       }
       if (S.others) {
@@ -627,7 +672,7 @@ export class WorldFx {
           const o = S.others[id];
           if (!o || o._isDead) continue;
           const ox = o.renderX != null ? o.renderX : o.x, oy = o.renderY != null ? o.renderY : o.y;
-          this._walk(id, ox, oy + feetDy(S, ox, oy), color, now);
+          this._walk(id, ox, oy + feetDy(S, ox, oy), color, now, S.currentZone);
           seen.add(id);
         }
       }
@@ -654,14 +699,14 @@ export class WorldFx {
       if (!p.visible) continue;
       const t = (now - p._ts) / PUFF_MS;
       if (t >= 1) { p.visible = false; continue; }
-      p.x += wind.x * 1.3 * dt;
-      p.y += (wind.y * 1.3 - 10) * dt;
-      p.scale.set(p._s * (0.55 + t * 0.7));
-      p.alpha = 0.32 * (1 - t);
+      p.x += (wind.x * 1.3 + (p._bx || 0) * (1 - t)) * dt;
+      p.y += (wind.y * 1.3 - 10 + (p._by || 0) * (1 - t)) * dt;
+      p.scale.set(p._s * (0.55 + t * 0.8));
+      p.alpha = PUFF_ALPHA * (1 - t) * (1 - t * 0.3);
     }
   }
 
-  _walk(key, x, y, color, now) {
+  _walk(key, x, y, color, now, zone) {
     let w = this._walkers.get(key);
     if (!w) { this._walkers.set(key, { x, y, side: 1 }); return; }
     const dx = x - w.x, dy = y - w.y;
@@ -676,8 +721,19 @@ export class WorldFx {
        dust pushes it aside and shows the ground under it, and what it kicks
        up is the dust itself.  The first cut tinted both with the dust colour
        and on town's warm cobble the prints simply were not there. */
-    this._spawnPrint(px, py, Math.atan2(dy, dx) + Math.PI / 2, shade(color, 0.58), now);
-    if (w.side > 0) this._spawnPuff(w.x, w.y, color, now);
+    /* v2.3.2825: the colour of THIS spot of ground (the zone's colour where
+       no grid exists); water kicks up nothing. */
+    const ground = groundColorAt(zone, w.x, w.y);
+    if (ground === -1) { w.x = x; w.y = y; return; }
+    const printC = ground != null ? shade(ground, 0.62) : shade(color, 0.58);
+    const puffC = ground != null ? dustOf(ground) : color;
+    if (key === 'me') this._lastDust = { ground, puff: puffC, x: Math.round(w.x), y: Math.round(w.y) };
+    this._spawnPrint(px, py, Math.atan2(dy, dx) + Math.PI / 2, printC, now);
+    /* v2.3.2825: a puff off EVERY step (was every other) and two of them,
+       thrown back against the direction of travel -- the owner had never
+       noticed the old single faint one. */
+    this._spawnPuff(w.x - ux * 4 + uy * 3, w.y - uy * 4 - ux * 3, puffC, now, -ux, -uy);
+    this._spawnPuff(w.x - ux * 2 - uy * 3, w.y - uy * 2 + ux * 3, puffC, now, -ux, -uy);
     w.x = x; w.y = y;
   }
 
@@ -695,7 +751,7 @@ export class WorldFx {
     p._ts = now; p.alpha = 0; p.visible = true;
   }
 
-  _spawnPuff(x, y, color, now) {
+  _spawnPuff(x, y, color, now, bx, by) {
     if (!this.partLayer || !fxTex('puff')) return;
     let p = this._puffs[this._puffI];
     if (!p) {
@@ -706,8 +762,10 @@ export class WorldFx {
     }
     this._puffI = (this._puffI + 1) % PUFF_POOL;
     p.x = x; p.y = y - 2; p.tint = color;
-    p._s = 0.7; p.scale.set(p._s * 0.55);
-    p._ts = now; p.alpha = 0.32; p.visible = true;
+    /* v2.3.2825: bigger, stronger, and drifting back off the heel */
+    p._s = rand(1.0, 1.35); p.scale.set(p._s * 0.55);
+    p._bx = (bx || 0) * rand(14, 26); p._by = (by || 0) * rand(8, 16);
+    p._ts = now; p.alpha = PUFF_ALPHA; p.visible = true;
   }
 
   /* ─────────────────────────── blood ─────────────────────────── */

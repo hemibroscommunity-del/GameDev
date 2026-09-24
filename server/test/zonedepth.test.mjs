@@ -217,6 +217,7 @@ const SOUTH = 980;                              /* k ~ 0.97 */
     ws.sent.length = 0;
     room.eventBuffer.length = 0;
     await room.webSocketMessage(ws, JSON.stringify({ type: 'ability', payload: { kind: 'whirl' } }));
+    room._tickAbilityWindups(Date.now() + 60000);   /* v2.3.2824: fire the windup */
     const rej = ws.sent.filter((m) => m.type === 'ability_rejected').map((m) => m.payload.reason);
     return { rej, dist: Math.hypot(A.x - ps.x, A.y - ps.y) };
   };

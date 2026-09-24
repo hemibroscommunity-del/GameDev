@@ -102,6 +102,7 @@ export function lanePlaceholder(fallback) {
   if (lanes.length < 2) return fallback;
   const m = chatChannelBus.mode();
   if (m === 'area') return 'Say it to this zone…';
+  if (m === 'party') return 'Say it to your party…';   /* v2.3.2820 */
   if (m === 'whisper') {
     const to = chatChannelBus.to().trim();
     return to ? ('Whisper to ' + to + '…') : 'Whisper — pick a name first…';

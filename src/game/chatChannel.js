@@ -43,7 +43,20 @@ export const CHAT_LANES_UI = [
   { id: 'all',     label: 'All',     cap: null,       color: '#F4F0E7', hint: 'Everyone in the world' },
   { id: 'area',    label: 'Area',    cap: 'areaChat', color: '#7FB2FF', hint: 'Everyone in this zone' },
   { id: 'whisper', label: 'Whisper', cap: 'whisper',  color: '#C79BFF', hint: 'One player, by name' },
+  /* v2.3.2820 (demo audit: "no party chat chip -- /p must be typed"): the
+     same /p line chat.js has routed to the party since v2.3.1212, offered
+     as a chip -- and ONLY while you are in a party (inParty below), so the
+     chip cannot exist when the lane has nobody in it. */
+  { id: 'party',   label: 'Party',   cap: 'partyChat', color: '#6FD49A', hint: 'Only your party', needsParty: true },
 ];
+
+/* v2.3.2820: the same test chat.js applies before it will send a /p line. */
+const inParty = () => {
+  try {
+    const S = window._gameState && window._gameState.current;
+    return !!(S && S._party && Array.isArray(S._party.members) && S._party.members.length > 0);
+  } catch (e) { return false; }
+};
 
 const load = () => {
   try {
@@ -62,7 +75,7 @@ export const chatChannelBus = {
   mode() { return _mode; },
   to() { return _to; },
   setMode(m) {
-    _mode = (m === 'area' || m === 'whisper') ? m : 'all';
+    _mode = (m === 'area' || m === 'whisper' || m === 'party') ? m : 'all';
     if (_mode !== 'whisper') _to = '';
     try { localStorage.setItem(LS_KEY, _mode === 'area' ? 'area' : 'all'); } catch (e) {}
     emit();
@@ -82,7 +95,7 @@ export const chatChannelBus = {
       const S = window._gameState && window._gameState.current;
       caps = (S && S._serverCaps) || null;
     } catch (e) { caps = null; }
-    return CHAT_LANES_UI.filter((l) => !l.cap || !!(caps && caps[l.cap]));
+    return CHAT_LANES_UI.filter((l) => (!l.cap || !!(caps && caps[l.cap])) && (!l.needsParty || inParty()));
   },
 
   /** Turn what the player typed into the line to send, or null to refuse.
@@ -97,7 +110,18 @@ export const chatChannelBus = {
        should not have it doubled up by the picker's state. */
     if (/^\/(p|a|w)\s/i.test(t)) return { text: t };
     const ok = this.available().some((l) => l.id === _mode);
+    /* v2.3.2820: a PARTY line whose party has gone is refused, not sent to
+       the room -- the header's rule: a private lane that silently isn't
+       private is worse than not having one.  (Area falling back to the room
+       is the old, deliberate behaviour: an area line is public anyway.) */
+    if (!ok && _mode === 'party') {
+      /* ...and drop back to All, so the chips (which no longer draw a Party
+         chip) and the next send agree about where a line goes. */
+      this.setMode('all');
+      return { refuse: 'You are no longer in a party — not sent. Switched to All.' };
+    }
     if (!ok) return { text: t };                /* lane vanished: room is the honest fallback */
+    if (_mode === 'party') return { text: '/p ' + t };
     if (_mode === 'area') return { text: '/a ' + t };
     if (_mode === 'whisper') {
       const to = _to.trim();

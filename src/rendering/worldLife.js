@@ -398,6 +398,9 @@ export class WorldLife {
     const raw = this._last ? (now - this._last) / 1000 : 0.016;
     this._last = now;
     let dt = Math.min(0.1, Math.max(0, raw)) * Math.max(0, rate);
+    /* v2.3.2827: while the smith works (game/smithing.js) the forge roars --
+       its chimney and furnace throw sparks several times as fast. */
+    this._forgeBoost = (S._smithing && now < S._smithing.until) ? 7 : 1;
     /* QA filming (tools/qa/mp/shot-liveness.mjs): a headless page draws at a
        few irregular frames a second, so a film shot on the wall clock jerks.
        With __btLifeFrames set, this clock advances one fixed step
@@ -764,7 +767,7 @@ export class WorldLife {
       this._stepGlows(r, t, calm, lamp);
       this._stepFalls(r, t, dt, calm, probe);
       this._stepBuildingGlints(r, t, dt, calm, lamp, probe);
-      this._emitSparks(r, host, dt, calm);
+      this._emitSparks(r, host, dt, calm, id === 'forge' ? (this._forgeBoost || 1) : 1);
     }
   }
 
@@ -1013,13 +1016,13 @@ export class WorldLife {
     }
   }
 
-  _emitSparks(r, host, dt, calm) {
+  _emitSparks(r, host, dt, calm, boost) {
     if (calm) return;
     const sx = host.scale.x, sy = host.scale.y;
     for (const key in r.spawn) {
       if (key.slice(0, 5) !== 'spark') continue;
       const E = r.spawn[key];
-      E.acc += dt * E.rate;
+      E.acc += dt * E.rate * (boost || 1);
       while (E.acc >= 1) {
         E.acc -= 1;
         const s = this._take(this._sparks);

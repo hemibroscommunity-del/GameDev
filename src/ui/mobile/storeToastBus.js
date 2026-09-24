@@ -34,6 +34,9 @@ export const storeToastBus = {
        join can carry several sales at once, and a stack taller than that
        covers the game. */
     items = items.concat([{ id: 'st-' + seq, text: String(text).slice(0, 120), at: Date.now() }]).slice(-3);
+    /* v2.3.2820 QA probe (mp-polish): every toast text, so a scenario can
+       tell "shown and already dismissed" from "never shown". Capped. */
+    try { if (typeof window !== 'undefined') { (window.__btToastLog = window.__btToastLog || []).push(String(text)); if (window.__btToastLog.length > 30) window.__btToastLog.shift(); } } catch (e) { /* probe only */ }
     for (const fn of listeners) { try { fn(items); } catch (e) { /* a dead listener must not eat the mail */ } }
   },
   dismiss(id) {

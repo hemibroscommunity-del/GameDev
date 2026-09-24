@@ -261,7 +261,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false }) {
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
@@ -291,6 +291,11 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      changes, and nothing here stubs game code: the probes report what the
      renderer actually wrote either way. */
   await page.addInitScript(() => { window.__btProbe = true; });
+  /* v2.3.2823: the daily chest's login window (ChestReveal.jsx) opens over the
+     middle of the screen on every first join of the day -- i.e. on every
+     headless player.  Held back for every scenario but the ones that test it,
+     or anything that reads pixels or clicks mid-screen is looking at a chest. */
+  if (!chestOffer) await page.addInitScript(() => { window.__btNoChestOffer = true; });
   /* v2.3.1814: `phrase` seeds this context's Login Key BEFORE first paint, so
      a scenario can arrive as an EXISTING character.  It has to be an init
      script rather than a post-load write: the boot check that decides which
@@ -503,10 +508,10 @@ export async function waitFor(P, fn, pred, { timeout = 20000, label = 'condition
  *  distinct identities and a connected socket, so the difference is in the join
  *  handshake, not in identity — but the working order is cheap and this harness
  *  does not need to characterise the losing one to be useful. */
-export async function joinPair(browser, { wsPort, webPort, nameA = 'Alpha', nameB = 'Bravo', init = null }) {
+export async function joinPair(browser, { wsPort, webPort, nameA = 'Alpha', nameB = 'Bravo', init = null, chestOffer = false }) {
   /* v2.3.2775: `init` rides through to both players (newPlayer's init script),
      for a scenario that has to set a flag before the game's first line runs. */
-  const A = await newPlayer(browser, { name: nameA, wsPort, webPort, init });
+  const A = await newPlayer(browser, { name: nameA, wsPort, webPort, init, chestOffer });
   await enterWorld(A);
   /* NOT ?guest=1.  The guest escape hatch exists because two TABS share one
      localStorage and therefore one passphrase; two browser CONTEXTS do not, so
@@ -514,7 +519,7 @@ export async function joinPair(browser, { wsPort, webPort, nameA = 'Alpha', name
      a guest id is re-minted at random on every page load (BroTown.jsx:561),
      which would quietly make any test of reconnecting, friendship or offline
      mail meaningless. */
-  const B = await newPlayer(browser, { name: nameB, wsPort, webPort, init });
+  const B = await newPlayer(browser, { name: nameB, wsPort, webPort, init, chestOffer });
   await enterWorld(B);
   await waitMutualSight(A, B);
   /* Focus each canvas so keyboard input reaches the game loop. */
