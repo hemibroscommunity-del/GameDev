@@ -470,14 +470,26 @@ export const WORLD_PROPS = [
      solid (v2.3.2073, and stampPropFootprints stamps them onto frost's real
      mask exactly as it does town's).  Footprints were checked against each
      other and against the two portal points; none overlaps. */
+  /* ═══ v2.3.2877: THREE SNOWBANKS IN A LINE, AND OTHERWISE ROOM ═══
+     Owner: "The props are too much in the confined snow level.  Add maybe
+     just 3 props of the snow bank in a line for some interesting strategy
+     for cover.  Otherwise the small zone needs space and not props."
+     The pine pair, pine ridge, rock mound, ice mound and snow shrubs are
+     gone; the snow-capped rock ridge -- the one piece wide and low enough to
+     hide a figure -- is now three, on one line across the field at y 570,
+     200 px north of the arrival point.  Tip to tip they leave two 88 px gaps
+     to slip through and ~200 px of open ground past the east end, so the
+     line is cover (a bank stops a shot, v2.3.2652) and never a wall.  The
+     snowmen spawn north of it (data.js frost.entryClear), so you step in,
+     see the line, and choose which bank to fight from.
+     The middle bank is the original ridge, unmoved, so every probe pinned to
+     its box (props.test, mirror-audit, mp-propfx) still holds; the west one
+     is mirrored so the line does not read as one stamp repeated.  The west
+     bank's outer end runs onto the mask's own cliff edge, which closes that
+     end off -- the way round is east. */
   {
-    id: 'frost-pine-pair', zone: 'frost', sprite: '/sprites/props/frost-pine-pair.png',
-    x: 360, y: 700, worldH: 160, blockW: 119, blockD: 56,
-  },
-  {
-    /* The west snow/grass edge, mirroring the pine pair across the field. */
-    id: 'frost-pine-ridge', zone: 'frost', sprite: '/sprites/props/frost-pine-ridge.png',
-    x: 270, y: 380, worldH: 150, blockW: 118, blockD: 53,
+    id: 'frost-snowbank-w', zone: 'frost', sprite: '/sprites/props/frost-rock-ridge.png',
+    x: 140, y: 570, worldH: 120, blockW: 202, blockD: 42, flipX: true,
   },
   {
     /* Wide and low, laid across the snow/grass transition. 253 across, so it
@@ -488,20 +500,8 @@ export const WORLD_PROPS = [
     x: 430, y: 570, worldH: 120, blockW: 202, blockD: 42,
   },
   {
-    id: 'frost-rock-mound', zone: 'frost', sprite: '/sprites/props/frost-rock-mound.png',
-    x: 800, y: 470, worldH: 130, blockW: 119, blockD: 46,
-  },
-  {
-    /* Up on the ice flat, where the ice crystals in the art belong. */
-    id: 'frost-ice-mound', zone: 'frost', sprite: '/sprites/props/frost-ice-mound.png',
-    x: 600, y: 260, worldH: 100, blockW: 114, blockD: 35,
-  },
-  {
-    /* Small, on the south grass the player crosses on arrival -- near enough
-       to read on the first screen, far enough (170px) not to crowd the
-       arrival point. */
-    id: 'frost-snow-shrubs', zone: 'frost', sprite: '/sprites/props/frost-snow-shrubs.png',
-    x: 700, y: 830, worldH: 80, blockW: 75, blockD: 28,
+    id: 'frost-snowbank-e', zone: 'frost', sprite: '/sprites/props/frost-rock-ridge.png',
+    x: 720, y: 570, worldH: 120, blockW: 202, blockD: 42,
   },
 
 ];
@@ -879,11 +879,8 @@ export function zoneBlockers(zoneId) {
    hence Object.create(null) (CLAUDE.md rule 4). */
 const PROP_MATERIALS = Object.assign(Object.create(null), {
   'frost-rock-ridge':  { kind: 'stone', tint: 0x8d97a3, sound: 'stone' },
-  'frost-rock-mound':  { kind: 'stone', tint: 0x8d97a3, sound: 'stone' },
-  'frost-ice-mound':   { kind: 'stone', tint: 0xa9c6da, sound: 'stone' },
-  'frost-pine-pair':   { kind: 'snow',  tint: 0xeef6ff, sound: 'snow' },
-  'frost-pine-ridge':  { kind: 'snow',  tint: 0xeef6ff, sound: 'snow' },
-  'frost-snow-shrubs': { kind: 'snow',  tint: 0xeef6ff, sound: 'snow' },
+  'frost-snowbank-w':  { kind: 'stone', tint: 0x8d97a3, sound: 'stone' },   /* v2.3.2877: the same ridge art */
+  'frost-snowbank-e':  { kind: 'stone', tint: 0x8d97a3, sound: 'stone' },
   'mayor-house':       { kind: 'stone', tint: 0x948c80, sound: 'stone' },
   'forge':             { kind: 'stone', tint: 0x7a7670, sound: 'stone' },
   'auction-house':     { kind: 'stone', tint: 0x8f8a82, sound: 'stone' },

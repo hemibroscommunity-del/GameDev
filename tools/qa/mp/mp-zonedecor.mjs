@@ -34,15 +34,15 @@
  * new props joined it rather than landing in some static layer of their own.
  */
 import * as H from './harness.mjs';
+import { propsForZone, foregroundForZone } from '../../../src/data/worldProps.js';   /* v2.3.2877: imports nothing, so node reads the tables */
 
 const PHONE = { width: 390, height: 844 };
+/* v2.3.2877: three snowbanks in a line, nothing else (owner: "the small zone
+   needs space and not props") -- was six mixed props */
 const DECOR = [
-  { id: 'frost-pine-pair',   worldH: 160 },
-  { id: 'frost-pine-ridge',  worldH: 150 },
+  { id: 'frost-snowbank-w',  worldH: 120 },
   { id: 'frost-rock-ridge',  worldH: 120 },
-  { id: 'frost-rock-mound',  worldH: 130 },
-  { id: 'frost-ice-mound',   worldH: 100 },
-  { id: 'frost-snow-shrubs', worldH: 80 },
+  { id: 'frost-snowbank-e',  worldH: 120 },
 ];
 
 const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
@@ -130,7 +130,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      load a beat to settle before reading what is drawn. */
   await P.page.waitForTimeout(3500);
 
-  /* ── 2. ALL SIX ARE DRAWN, AT THE RIGHT SIZE ── */
+  /* ── 2. ALL OF THEM ARE DRAWN, AT THE RIGHT SIZE ── */
   const frostBundles = await decorBundles(P);
   /* v2.3.2655: the count is DERIVED from the two tables the game reads rather
      than written as a number here. The first cut said `=== DECOR.length` and
@@ -140,9 +140,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const wantBundles = await P.page.evaluate(() =>
     ((window.__btBlockers && window.__btBlockers('frost')) || []).length
     + ((window.__btForeground && window.__btForeground()) || []).length);
+  /* v2.3.2877: counted by SPRITE, not by piece -- the three snowbanks share
+     one texture, and the per-zone bundle list holds each sprite once */
+  const wantSprites = new Set(propsForZone('frost').concat(foregroundForZone('frost')).map((p) => p.sprite)).size;
   rec.ok('in frost, every per-zone sprite is resident (props + foreground)',
-    frostBundles.length === wantBundles && frostBundles.length >= DECOR.length,
-    { got: frostBundles.length, want: wantBundles, frostBundles });
+    frostBundles.length === wantSprites && wantBundles >= DECOR.length,
+    { got: frostBundles.length, want: wantSprites, pieces: wantBundles, frostBundles });
 
   const drawn = await propsDrawn(P);
   const byId = Object.create(null);
@@ -201,7 +204,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
      imported the module would be testing the source rather than the build. */
   const ridge = await P.page.evaluate(() =>
     ((window.__btBlockers && window.__btBlockers('frost')) || []).length);
-  rec.ok('the client exposes frost\'s blocker boxes', ridge === 6, { ridge });
+  rec.ok('the client exposes frost\'s blocker boxes', ridge === 3, { ridge });
+  /* v2.3.2877: and they stand as one LINE with gaps in it -- cover, not a wall */
+  const line = await P.page.evaluate(() => ((window.__btBlockers && window.__btBlockers('frost')) || [])
+    .map((b) => ({ x0: Math.round(b.x0), x1: Math.round(b.x1), y1: Math.round(b.y1) })).sort((a, b) => a.x0 - b.x0));
+  const gaps = line.slice(1).map((b, i) => b.x0 - line[i].x1);
+  rec.ok(`frost's three snowbanks stand on one line with gaps to slip through (${gaps.join(', ')} px)`,
+    line.length === 3 && line.every((b) => b.y1 === line[0].y1) && gaps.every((g) => g >= 60)
+    , { line, gaps });
 
   /* frost-rock-ridge: x 430, y 570, blockW 202, blockD 42 -> box 329..531 x
      528..570. Both endpoints outside it, the line straight through. */
@@ -300,8 +310,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     .catch(() => { /* evidence, not an assertion */ });
 
   /* ── 4. LEAVING RELEASES IT ── */
-  await openPanel(P);
-  await tap(P, 'Town');
+  /* v2.3.2877: through the game's own doors, back out of frost and home.
+     This used to tap a 'Town' button the test panel does not have (it lists
+     only the spokes) -- the tap did nothing, and the scenario got home only
+     because frost's snowmen spawned on the arrival point and killed the bro,
+     and death respawns you in town.  They no longer spawn there (data.js
+     frost.entryClear), so the scenario now asks for town the way the panel's
+     own warp does: a destination for driveDevWarp (zoneTransitions.js). */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S._devWarp = { to: 'town', legs: 0, t: Date.now(), nextAt: 0 };
+  });
   await H.waitFor(P, (S) => S.currentZone, (z) => z === 'town',
     { timeout: 90000, label: 'back to town' });
   await P.page.waitForTimeout(3500);

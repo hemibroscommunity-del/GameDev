@@ -103,9 +103,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
        sit well out of that target's melee reach (>=160), and be as far from
        the NEAREST snowman as the map allows.  Best spot wins; a guard below
        still fails the run if the target is touched. */
+    /* v2.3.2877: never on the return portal (the bottom-right corner, whose
+       trigger reaches up past (960, 832) -- standing there walks you out of
+       frost) nor inside a snowbank.
+       With the snowmen now spawning clear of the arrival point, that empty
+       south-east corner became "the calmest spot on the map". */
+    const banks = (window.__btBlockers && window.__btBlockers('frost')) || [];
+    const inBank = (x, y) => banks.some((b) => x > b.x0 - 30 && x < b.x1 + 30 && y > b.y0 - 30 && y < b.y1 + 30);
     let best = null;
-    for (let x = 64; x <= Z.w - 64; x += 32) {
-      for (let y = 64; y <= Z.h - 64; y += 32) {
+    for (let x = 64; x <= 864; x += 32) {       /* the portal's trigger reaches (960, 832) */
+      for (let y = 64; y <= 800; y += 32) {
+        if (inBank(x, y)) continue;
         let nearest = Infinity;
         for (const o of snows) nearest = Math.min(nearest, Math.hypot(o.x - x, o.y - y));
         for (const m of snows) {

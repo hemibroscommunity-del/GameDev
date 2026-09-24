@@ -479,5 +479,39 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
     + ` one full pass per ${SPAWN_SCALE.SCALE_MS} ms = ${(perFull / (SPAWN_SCALE.SCALE_MS / 22)).toFixed(5)} ms amortised per 22 ms tick)`);
 }
 
+// ── 9. v2.3.2877: nothing spawns on a zone's arrival point ──
+{
+  /* Owner: "move monsters away from the zone entrance so you don't get
+     ambushed."  Frost carries `entryClear` (data.js); every authored spawn
+     and every scaled add must land outside it.  200 fresh rooms' worth of
+     authored spawns, plus scaled adds with a player standing ON the entry. */
+  const ec = ZONES.frost.entryClear;
+  check('entry: frost names its arrival point and a clearance of at least aggro + wander (444)',
+    !!ec && ec.x === 864 && ec.y === 768 && ec.r >= 444, ec);
+  let worst = Infinity, n = 0;
+  for (let k = 0; k < 200; k++) {
+    for (const m of room._spawnZoneMonsters('frost')) {
+      n++;
+      worst = Math.min(worst, Math.hypot(m.x - ec.x, m.y - ec.y));
+    }
+  }
+  check(`entry: ${n} authored frost spawns, the nearest ${worst.toFixed(0)} px from the arrival (>= ${ec.r})`,
+    n === 1200 && worst >= ec.r, { n, worst });
+  let worstAdd = Infinity;
+  const zone = room._getZoneConfig('frost');
+  for (let k = 0; k < 400; k++) {
+    const pt = room._pickSpreadSpawn(zone, [], [{ x: ec.x, y: ec.y }], SPAWN_SCALE.SPAWN_CLEAR_PX);
+    worstAdd = Math.min(worstAdd, Math.hypot(pt.x - ec.x, pt.y - ec.y));
+  }
+  check(`entry: scaled adds stay clear too (nearest ${worstAdd.toFixed(0)} px)`, worstAdd >= ec.r, worstAdd);
+  /* and a zone without one is untouched: verdant still uses its whole map */
+  let nearCorner = 0;
+  for (let k = 0; k < 400; k++) {
+    const pt = room._pickSpreadSpawn(room._getZoneConfig('verdant'), [], null);
+    if (Math.hypot(pt.x - 864, pt.y - 768) < 450) nearCorner++;
+  }
+  check(`entry: a zone with no entryClear is unchanged (${nearCorner}/400 verdant spawns in that corner)`, nearCorner > 40, nearCorner);
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

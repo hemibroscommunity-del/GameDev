@@ -1404,7 +1404,14 @@ export class GameRoom {
     const others = placed || [];
     const keepClear = avoid || [];
     const clear = avoidClearPx || 0;
-    if (others.length === 0 && keepClear.length === 0) return { x: bx, y: by };
+    /* v2.3.2877: a zone's arrival point (data.js `entryClear`) outranks
+       everything else -- a candidate inside it loses to every candidate
+       outside, so a monster lands there only if sixteen draws all did.
+       Frost only for now: its 1024 px map had snowmen spawning on the
+       arrival point and players entering into a fight. */
+    const ec = zone.entryClear || null;
+    const inEntry = (x, y) => !!ec && Math.hypot(ec.x - x, ec.y - y) < ec.r;
+    if (others.length === 0 && keepClear.length === 0 && !inEntry(bx, by)) return { x: bx, y: by };
     /* Two ranks: candidates that respect the `avoid` clearance (a player's
        face, for the scaler) beat every candidate that does not, and within a
        rank the farthest-from-the-nearest-neighbour wins.  So the clearance
@@ -1427,7 +1434,7 @@ export class GameRoom {
       }
       if (dAvoid < dMin) dMin = dAvoid;
       const ok = dAvoid >= clear;
-      const score = (ok ? 1e6 : 0) + (dMin === Infinity ? 0 : dMin);
+      const score = (inEntry(cx, cy) ? 0 : 2e6) + (ok ? 1e6 : 0) + (dMin === Infinity ? 0 : dMin);
       if (score > bestScore) { bestScore = score; bx = cx; by = cy; }
     }
     return { x: bx, y: by };
