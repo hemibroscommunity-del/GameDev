@@ -748,7 +748,7 @@ export async function initPixiRenderer(canvas) {
        its children.  Read-only use only — this hands out the live container,
        so a scenario that mutated it would be testing its own edit. */
     playerDisplayRaw: () => entityRenderer.playerDisplay || null,
-    /* v2.3.2862: a peer's SWING or BOW stand-in body sprite (kind 'sword' /
+    /* v2.3.2863: a peer's SWING or BOW stand-in body sprite (kind 'sword' /
        'bow'), for mp-peerattackink -- it reads the frame the renderer draws.
        Read-only, same rule as above. */
     remoteAttackSpriteRaw: (id, kind) => {
@@ -756,7 +756,7 @@ export async function initPixiRenderer(canvas) {
       const set = pool && pool.get(id);
       return (set && set.body) || null;
     },
-    /* v2.3.2862: the baked frames themselves for peer state `o` (kind 'sword' /
+    /* v2.3.2863: the baked frames themselves for peer state `o` (kind 'sword' /
        'bow', the SHEET's facing key, plain or pre-flipped) -- the same call the
        renderer makes, so a scenario can compare a frame with its mirror
        directly instead of hoping to catch both on screen. */

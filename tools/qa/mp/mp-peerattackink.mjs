@@ -1,4 +1,4 @@
-/* ═══ v2.3.2862: ANOTHER PLAYER'S SWING AND BOW SHOT WEAR THEIR DRAWINGS ═══
+/* ═══ v2.3.2863: ANOTHER PLAYER'S SWING AND BOW SHOT WEAR THEIR DRAWINGS ═══
  *
  * Owner: "Yea do woodcutting and missing ones."  v2.3.2429 put YOUR drawings on
  * your sword swing, bow shot and raised shield (mp-standinart).  A peer's swing
