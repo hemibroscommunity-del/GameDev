@@ -80,3 +80,144 @@ export const CHOP_INK_REGIONS = Object.freeze({
    lumberjack -- the axe is the magenta tool key, which the skin test refuses --
    so the floor is 1: all of him. */
 export const CHOP_MIN_BLOB = 1;
+
+/* ═══ v2.3.2856: THE COOK ═══
+ *
+ * Owner: "Yea do woodcutting and missing ones."  Cooking is one of the missing
+ * ones: the campfire swaps your body for a pre-drawn cook
+ * (sprites/skills/cook-strip.webp, 24 frames of 213x220, all played), baked
+ * with your skin and nothing else, so every drawing vanished while you cooked.
+ *
+ * This figure is kinder than the lumberjack.  He squats facing the camera and
+ * only his arms and the pan move: the head and the torso sit on the same pixels
+ * in all 24 frames (measured -- the head's box moves by one pixel at the crown,
+ * and v2.3.1710 found the same of the torso when it pinned the cook's shirt to
+ * one frame).  So the face and torso boxes and most of the seeds are one entry for
+ * every frame, and only the forearm moves: it lies across the lap from the
+ * elbow to the hand, and its top edge is outlined with gaps, so without a seed
+ * of its own the torso's flood ran down through them and claimed the hand.
+ *
+ *   face   the head's whole box, ears included, as the lumberjack's is.
+ *   torso  neck to belly between the two arms' inner outlines.  The belly is
+ *          behind the forearm on every frame; the box includes it, so the
+ *          drawing holds still and the forearm crosses in front of it.
+ *
+ * `pieceKeep`: the arm drawing is fitted to each arm piece that is at least
+ * this share of the frame's biggest one (playerDecal PIECE_KEEP, 0.35 for the
+ * walking body).  Measured here: the far arm -- the one on the pan's handle --
+ * is 23-58% of the near arm, and every other arm-labelled piece (knuckles,
+ * specks of skin between outlines) is at most 11%.  At 0.35 that arm lost its
+ * drawing on 10 of the 24 frames, so it blinked at 17 fps; 0.17 sits between.
+ *
+ * The legless strip (cook-strip-legless.webp) was exported separately and
+ * differs from this one by a few hundred edge pixels per frame, so each strip
+ * is split on its OWN skin -- the seeds and boxes are measured to land inside
+ * the same parts of both.
+ *
+ * IF THE ART IS RE-CUT, THIS TABLE IS WRONG -- see the lumberjack's note. */
+const COOK_FOREARM = [
+  [30, 135, 75, 147], [28, 137, 62, 152], [25, 133, 62, 150], [20, 137, 60, 152],
+  [30, 133, 78, 145], [28, 132, 95, 145], [28, 135, 78, 150], [28, 136, 70, 152],
+  [28, 135, 68, 150], [22, 133, 68, 148], [12, 132, 58, 152], [14, 133, 62, 152],
+  [28, 132, 72, 148], [28, 133, 82, 145], [28, 133, 82, 146], [28, 135, 72, 152],
+  [18, 133, 62, 153], [18, 133, 66, 150], [28, 133, 74, 145], [28, 133, 80, 144],
+  [28, 133, 82, 145], [28, 137, 72, 152], [18, 133, 62, 155], [18, 133, 66, 152],
+];
+export const COOK_INK_REGIONS = Object.freeze({
+  fw: 213,
+  fh: 220,
+  pieceKeep: 0.17,
+  seeds: COOK_FOREARM.map((fore) => ({
+    /* the crown, a line through the eyes, a line above the mouth */
+    head: [[80, 18], [55, 40, 110, 40], [62, 65, 105, 65]],
+    /* chest, belly above the forearm, and both sides of the neck -- without the
+       last two the head's flood took a sliver of the right shoulder */
+    torso: [[55, 92, 85, 92], [70, 105], [50, 115, 85, 115], [60, 84], [100, 86]],
+    /* both upper arms from the shoulder down, and this frame's forearm */
+    arms: [[28, 85, 30, 118], [117, 88, 118, 125], fore],
+  })),
+  face: COOK_FOREARM.map(() => [44, 120, 4, 80]),
+  torso: COOK_FOREARM.map(() => [43, 100, 78, 140]),
+});
+
+/* The cook's fingers.  The hand on the pan's handle is drawn as small islands
+   of skin cut apart by the handle's outline, and recolorStandInSkin's size
+   floor (1500 px) -- set for the fish frying in the pan, which is painted in
+   the same orange -- dropped them with the fish.  So a player of any skin but
+   the painted one cooked with orange fingers: the lumberjack's head bug
+   (CHOP_MIN_BLOB), on the cook's hand.  Size cannot tell the two apart (both
+   run from a few pixels to a few hundred); position can.  Measured on every
+   frame of both strips, every finger or knuckle island starts left of x = 117
+   and every fish piece at x = 125 or further right, inside the pan.  An island
+   that starts left of this column is the cook's own skin, however small. */
+export const COOK_KEEP_X = 120;
+
+/* ═══ v2.3.2858: THE FIRE-LIGHTER ═══
+   Owner: "Yea do woodcutting and missing ones" -- the last of them.  Lighting a
+   fire swaps you for the painted fire-lighter (sprites/skills/firemaking-strip
+   .webp, 8 frames of 384x512), baked in your skin by recolorStandInSkin with
+   FIRE_SKIN_OPTS and SHARED with every other player's fire-lighter on your
+   screen, exactly like the cook -- so the drawings go on a layer over it the
+   same way (effectsRenderer, _fetchAndBakeFire).
+
+   He stands (0), kneels to the log (1, 2), strikes the flint (3), cups his
+   hands to blow on the flame (4, 5), sits back (6) and stands up (7).  On 3-5
+   the near arm crosses his chest, and its outlines cut the torso into the
+   chest above it and the belly below: both are seeded as torso, and the torso
+   box spans the arm, so the chest drawing holds still and the arm passes in
+   front of it -- the rule the lumberjack table above states.  4 and 5 are the
+   same pose and share their boxes, so the drawings do not jump between them.
+   Wherever both arms show, the smaller is at least 58% of the bigger, so the
+   body's own 35% rule (pieceKeep unset) puts the arm drawing on both; the
+   fist's islands on 4-5 (FIRE_KEEP_BOXES, at most 10%) do not take it.
+   Fitted with the cook's workbench; picture in docs/specs/cook-ink.md. */
+export const FIRE_INK_REGIONS = Object.freeze({
+  fw: 384,
+  fh: 512,
+  seeds: [
+    /* 0: standing, arms at his sides */
+    { head: [[245, 45], [215, 78, 275, 78], [222, 100, 270, 100]], torso: [[243, 140], [243, 200], [215, 180, 275, 180], [243, 235]], arms: [[190, 185, 190, 255], [295, 185, 295, 255]] },
+    /* 1-2: kneeling, the near hand down on the log */
+    { head: [[222, 190], [190, 230, 250, 230], [195, 252, 245, 252]], torso: [[228, 290], [228, 340], [205, 320, 255, 320]], arms: [[180, 300, 150, 340, 128, 372], [278, 305, 280, 380]] },
+    { head: [[205, 212], [180, 262, 235, 262], [185, 282, 230, 282]], torso: [[228, 310], [230, 350], [210, 330, 250, 330]], arms: [[175, 310, 155, 345, 140, 372], [280, 320, 290, 370]] },
+    /* 3: the strike -- chest above the crossing arm, belly below it */
+    { head: [[278, 195], [250, 237, 305, 237], [252, 262, 302, 262]], torso: [[270, 295], [285, 362], [260, 370, 310, 370]], arms: [[330, 305], [260, 332], [215, 336]] },
+    /* 4-5: blowing on the flame, hands cupped at it */
+    { head: [[278, 160], [248, 205, 305, 205], [252, 232, 300, 232]], torso: [[270, 265], [285, 330], [255, 345, 315, 345]], arms: [[322, 272], [262, 300], [218, 300]] },
+    { head: [[278, 160], [248, 205, 305, 205], [252, 232, 300, 232]], torso: [[270, 265], [285, 330], [255, 345, 315, 345]], arms: [[322, 272], [262, 300], [218, 300]] },
+    /* 6: sitting back, one hand on the knee */
+    { head: [[258, 140], [228, 180, 285, 180], [232, 205, 282, 205]], torso: [[265, 240], [265, 290], [245, 270, 290, 270]], arms: [[220, 280, 212, 320], [318, 260, 322, 320]] },
+    /* 7: standing again */
+    { head: [[250, 22], [222, 52, 280, 52], [226, 78, 276, 78]], torso: [[250, 115], [250, 170], [222, 150, 280, 150], [250, 205]], arms: [[199, 160, 199, 232], [301, 160, 301, 232]] },
+  ],
+  face: [
+    [198, 288, 32, 119], [179, 269, 177, 269], [164, 252, 200, 294], [234, 321, 184, 272],
+    [234, 320, 153, 243], [234, 320, 153, 243], [214, 302, 128, 222], [206, 295, 11, 101],
+  ],
+  torso: [
+    [199, 287, 125, 242], [194, 260, 269, 371], [190, 267, 291, 377], [221, 326, 279, 382],
+    [222, 325, 249, 354], [222, 325, 249, 354], [223, 301, 224, 326], [206, 295, 102, 216],
+  ],
+});
+
+/* The fire-lighter's fist.  On frames 4 and 5 the hands cupped at the flame
+   are drawn as small islands of skin cut apart by their outlines, and
+   FIRE_SKIN_OPTS' size floor (1800 px) -- set to keep the flame and its sparks
+   out, which pass the skin test in the same orange -- dropped them with the
+   sparks: up to 452 px of fist per frame kept the artist's orange whatever
+   your skin.  The cook's fingers again (COOK_KEEP_X), but a column cannot
+   separate these: the flame burns on BOTH sides of the fist.  So each frame
+   gets a box around the hands, [left, right, top, bottom], frame-local, and an
+   island lying wholly inside it is the fire-lighter's own skin.  Measured on
+   both frames: the boxes take 44 and 19 islands (366 and 452 px), every one of
+   them fist, knuckle or its lit edge, and leave out every flame, spark and
+   glow piece, the nearest of which start at x 162-180, left of the boxes.
+   Frame 3's knuckles are painted glowing red by the flint and are not skin to
+   begin with; 6 and 7 have no islands of hand, only trousers the fire lights
+   orange, which stay trousers. */
+export const FIRE_KEEP_BOXES = Object.freeze([
+  null, null, null, null,
+  [168, 245, 260, 325],
+  [195, 245, 262, 325],
+  null, null,
+]);
