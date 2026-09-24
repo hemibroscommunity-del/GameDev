@@ -1,4 +1,4 @@
-/* ═══ v2.3.2829: YOUR TATTOOS STAY ON WHILE YOU COOK ═══
+/* ═══ v2.3.2856: YOUR TATTOOS STAY ON WHILE YOU COOK ═══
  *
  * Owner: "Yea do woodcutting and missing ones."  Cooking swaps the body for a
  * pre-drawn cook (cook-strip.webp, 24 frames) baked with your skin and nothing

@@ -1080,7 +1080,7 @@ const STANDIN_MIN_BLOB = 1500;   /* px; body >= 9462, fish <= 523 (measured) */
 export function recolorStandInSkin(img, skinT, targetH, opts) {
   return _standInBake(img, skinT, targetH, opts, false).cv;
 }
-/* ═══ v2.3.2829: THE SAME BAKE, WITH THE DRAWINGS ON A LAYER OF THEIR OWN ═══
+/* ═══ v2.3.2856: THE SAME BAKE, WITH THE DRAWINGS ON A LAYER OF THEIR OWN ═══
    Returns { cv, ink }: `cv` is the figure exactly as recolorStandInSkin would
    bake it WITHOUT drawings, and `ink` is a canvas of the same size holding only
    the pixels the drawings changed (null when none landed).  For a stand-in
@@ -1095,7 +1095,7 @@ export function recolorStandInSkinSplit(img, skinT, targetH, opts) {
 function _standInBake(img, skinT, targetH, opts, apart) {
   const o = opts || {};
   const minBlob = o.minBlob != null ? o.minBlob : STANDIN_MIN_BLOB;
-  /* v2.3.2829: an island smaller than the floor is still the figure's when it
+  /* v2.3.2856: an island smaller than the floor is still the figure's when it
      STARTS left of this column of its frame (frame-local x) -- the cook's
      fingers, which the floor dropped along with the fish (standInInk.js,
      COOK_KEEP_X).  Needs the frame width: `frameW`, else the regions table's. */
@@ -1136,7 +1136,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
   const label = new Int32Array(w * h);   /* 0 = unlabelled */
   const stack = new Int32Array(w * h);
   const size = [0];                      /* size[id]; id 0 unused */
-  const leftX = keepX && keepFW ? [0] : null;   /* v2.3.2829: leftX[id], frame-local */
+  const leftX = keepX && keepFW ? [0] : null;   /* v2.3.2856: leftX[id], frame-local */
   for (let start = 0; start < w * h; start++) {
     if (!skin[start] || label[start]) continue;
     const id = size.length;
@@ -1160,7 +1160,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
     const id = label[p];
     if (!id) continue;
-    if (size[id] < minBlob && !(leftX && leftX[id] < keepX)) continue;   /* v2.3.2829: keepX */
+    if (size[id] < minBlob && !(leftX && leftX[id] < keepX)) continue;   /* v2.3.2856: keepX */
     if (skinT) _retint(d, i, skinT, SKIN_REF);
     if (body) body[p] = 1;
   }
@@ -1170,7 +1170,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
   if (ink && !apart) _stampStandInInk(d, w, h, body, ink, o.regions);
   ctx.putImageData(imgData, 0, 0);
   if (!ink || !apart) return { cv, ink: null };
-  /* v2.3.2829: apart -- stamp a copy of the finished figure, then keep only the
+  /* v2.3.2856: apart -- stamp a copy of the finished figure, then keep only the
      pixels the stamp changed.  Everything else is cleared to transparent, so
      the layer crops down to the drawings themselves (_sliceStandIn). */
   const ic = document.createElement('canvas');
@@ -1208,7 +1208,7 @@ function _stampStandInInk(d, w, h, body, art, R) {
     stampRegion(d, w, h, R.fw, reg.torso, art.tattoo, m, TATTOO_BOX, { underSkin: true, boxes: R.torso });
   }
   if (artHasInk(art.tattooArm)) {
-    stampRegion(d, w, h, R.fw, reg.arms, art.tattooArm, m, ARM_BOX, { eachPiece: true, underSkin: true, pieceKeep: R.pieceKeep });   /* v2.3.2829: pieceKeep */
+    stampRegion(d, w, h, R.fw, reg.arms, art.tattooArm, m, ARM_BOX, { eachPiece: true, underSkin: true, pieceKeep: R.pieceKeep });   /* v2.3.2856: pieceKeep */
   }
 }
 

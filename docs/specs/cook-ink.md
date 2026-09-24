@@ -1,4 +1,4 @@
-# Your tattoos stay on while you cook (v2.3.2829)
+# Your tattoos stay on while you cook (v2.3.2856)
 
 Owner: *"Yea do woodcutting and missing ones."* Cooking is one of the missing
 ones. Built on #725 (fishing and woodcutting), whose region tables and stamp it

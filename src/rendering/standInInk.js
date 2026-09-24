@@ -81,7 +81,7 @@ export const CHOP_INK_REGIONS = Object.freeze({
    so the floor is 1: all of him. */
 export const CHOP_MIN_BLOB = 1;
 
-/* ═══ v2.3.2829: THE COOK ═══
+/* ═══ v2.3.2856: THE COOK ═══
  *
  * Owner: "Yea do woodcutting and missing ones."  Cooking is one of the missing
  * ones: the campfire swaps your body for a pre-drawn cook

@@ -344,7 +344,7 @@ export function onArtChange(fn) {
   _listeners.add(fn);
   return () => _listeners.delete(fn);
 }
-/* v2.3.2829: QA hook, the same shape as gearCatalog's __btSetGear.  The
+/* v2.3.2856: QA hook, the same shape as gearCatalog's __btSetGear.  The
    stand-ins rebake when a drawing changes (the cook's layer, the lumberjack),
    and that has to be drivable from a test without the designer's touch
    surface.  It is setArt itself, so it validates exactly as the designer's

@@ -1106,7 +1106,7 @@ export async function initPixiRenderer(canvas) {
         /* v2.3.2855: is this peer's lumberjack drawn from a bake that carries
            their drawings (true), or from the shared figure (false)? */
         chopInk: !!ent._chopInk,
-        /* v2.3.2829: is this peer's cook drawn with their drawings' layer? */
+        /* v2.3.2856: is this peer's cook drawn with their drawings' layer? */
         cookInk: !!ent._cookInk,
       };
     },
@@ -1121,7 +1121,7 @@ export async function initPixiRenderer(canvas) {
     },
     /* v2.3.2855: how many drawn peers' lumberjacks are baked right now. */
     peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),
-    /* v2.3.2829: the cook's two SPRITES -- the figure and the drawings' layer
+    /* v2.3.2856: the cook's two SPRITES -- the figure and the drawings' layer
        over it -- yours (no id) or a peer's, for mp-cookink to read the frame
        the renderer actually draws. */
     cookSpriteRaw: (id) => {
@@ -1130,7 +1130,7 @@ export async function initPixiRenderer(canvas) {
       const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
       return (ent && ent.cook) ? { body: ent.cook, ink: ent.cookInk || null } : null;
     },
-    /* v2.3.2829: your cook's layers (how many frames, or 0 when there is no
+    /* v2.3.2856: your cook's layers (how many frames, or 0 when there is no
        layer), and how many drawn peers' layers are held right now. */
     cookInkLayers: () => {
       const e = effectsRenderer;
