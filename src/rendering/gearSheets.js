@@ -275,6 +275,56 @@ export function drawGearFrame(ctx, tex, dx, dy, dw, dh) {
  *  for, and only the part of it that overlaps the art is sampled -- the rest
  *  was transparent in the whole frame and stays transparent here.  For an
  *  uncropped frame it is exactly the old expression. */
+/* ═══ v2.3.2776: ONE-SHOT EFFECT STRIPS, CROPPED ═══
+ * Owner: "Do all of it" (the memory list).  The splash / rocks / wood-chip /
+ * grease bursts, the debris puffs, the four tool gestures (pickaxe, axe, reel,
+ * pan) and the stun stars / whirl / fire trail were each an 8-frame strip of
+ * 256px cells drawn by a Sprite at a fixed anchor and scale -- and 2-35% of
+ * their texels are painted (__btTex measured, 2 MB decoded apiece).
+ *
+ * loadCroppedStrip(url, n) replaces `Assets.load(url)` + an n-way slice for
+ * them: it decodes the file as a plain Image (Assets would keep the full sheet
+ * in its cache for the session, beside the crop), cuts n equal frames exactly
+ * as the old loops did (width floor(W / n), full height), crops each with
+ * packTrimmed and resolves to the frame Textures -- `orig` the whole cell, so
+ * a Sprite lands where it always did.  A strip the packer declines comes back
+ * as plain slices of the image, i.e. the old behaviour.  Callers push the
+ * returned promise wherever they registered the Assets one (the loading-screen
+ * gate), so nothing loads on first use.  QA: window.__btFxTrim(). */
+const _fxTrimStats = [];
+const _fxTrimFrames = new Map();
+if (typeof window !== 'undefined') {
+  window.__btFxTrim = () => _fxTrimStats.slice();
+  window.__btFxTrimFrames = (url) => _fxTrimFrames.get(url) || null;
+}
+export function loadCroppedStrip(url, n) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im); im.onerror = rej; im.src = url;
+  }).then((img) => {
+    const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+    const fw = Math.floor(W / n);
+    const packed = fw > 0 ? packTrimmed(img, fw, H, n) : null;
+    const src = Texture.from(packed ? packed.canvas : img).source;
+    src.scaleMode = 'linear';
+    const frames = [];
+    for (let i = 0; i < n; i++) {
+      if (packed) {
+        const c = packed.cells[i];
+        frames.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+          orig: new Rectangle(0, 0, fw, H), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+      } else {
+        frames.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, H) }));
+      }
+    }
+    if (packed) {
+      _fxTrimStats.push({ url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 });
+      _fxTrimFrames.set(url, { frames, fw, fh: H });
+    }
+    return frames;
+  });
+}
+
 export function subTexture(tex, x, y, w, h) {
   const f = tex.frame, t = tex.trim;
   if (!t) return new Texture({ source: tex.source, frame: new Rectangle(f.x + x, f.y + y, w, h) });
