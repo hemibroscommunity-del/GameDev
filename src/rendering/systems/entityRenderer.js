@@ -79,7 +79,7 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -7788,7 +7788,8 @@ export class EntityRenderer {
             sx: +d._spriteBody.scale.x.toFixed(3),
             visible: !!d._spriteBody.visible,
             drewDeathAt: d._deathDrewAt || 0,
-            texW: _t ? (_t.frame ? _t.frame.width : _t.width) : 0,
+            texW: _t ? (_t.orig ? _t.orig.width : (_t.frame ? _t.frame.width : _t.width)) : 0,   /* v2.3.2870: the cell, cropped or not */
+            trimmed: !!(_t && _t.trim),   /* v2.3.2870: drawn from a cropped strip (zoneTextures.loadTrackedStrip) */
             srcW: _src ? (_src.width || 0) : 0,
             texAlive: !!(_src && !_src.destroyed && _src.width > 0),
             /* The procedural fallback body.  Drawn INSTEAD of the sprite when
@@ -7803,7 +7804,7 @@ export class EntityRenderer {
                answered from the table, only from the bounds. */
             bounds: (function () {
               try {
-                const b = d._spriteBody.getBounds();
+                const b = frameBounds(d._spriteBody);   /* v2.3.2870: whole cell, as uncropped */
                 return { top: Math.round(b.y), bottom: Math.round(b.y + b.height),
                   h: Math.round(b.height) };
               } catch (e) { return null; }
@@ -9563,7 +9564,7 @@ export class EntityRenderer {
           const _sb = display._spriteBody;
           if (_sb && _sb.visible && !_sb.destroyed) {
             try {
-              const gb = _sb.getBounds();
+              const gb = frameBounds(_sb);   /* v2.3.2870: the cell's top, as uncropped -- the +13 below was tuned to it */
               const lp = display.toLocal({ x: gb.x + gb.width / 2, y: gb.y });
               if (lp && Number.isFinite(lp.y)) _ringY = lp.y + 13;   /* the ring's top ~4px above the head */
             } catch (e) { /* keep the old anchor */ }

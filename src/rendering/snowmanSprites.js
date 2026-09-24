@@ -13,8 +13,8 @@
  * the procedural archetype circle while the load is in flight.
  */
 
-import { Rectangle, Texture } from 'pixi.js';
-import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2272: zone art must be releasable */
+import { Texture } from 'pixi.js';
+import { loadTracked, loadTrackedStrip, unloadBundle } from './zoneTextures.js'; /* v2.3.2272: zone art must be releasable */
 
 const FRAME_W = 128;
 const FRAME_H = 128;
@@ -67,16 +67,9 @@ function dirShort(dir) {
 
 async function loadOne(dir) {
   try {
-    const tex = await loadTracked('snowman', `/sprites/monsters/snowman/snowman-${dirShort(dir)}.png?v=${SPRITE_VERSION}`);
-    if (!tex || !tex.source) return;
-    const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
-    const frames = [];
-    for (let i = 0; i < count; i++) {
-      frames.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
-      }));
-    }
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    const frames = await loadTrackedStrip('snowman', `/sprites/monsters/snowman/snowman-${dirShort(dir)}.png?v=${SPRITE_VERSION}`, FRAME_W, FRAME_H);
+    if (!frames.length) return;
     SHEETS[dir] = { frames };
   } catch {
     /* missing strip — caller falls back to procedural circle */
@@ -88,16 +81,9 @@ async function loadOne(dir) {
    is how this shipped before the art existed. */
 async function loadAttack(dir) {
   try {
-    const tex = await loadTracked('snowman', `/sprites/monsters/snowman/snowman-attack-${dirShort(dir)}.png?v=${SPRITE_VERSION}`);
-    if (!tex || !tex.source) return;
-    const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
-    const frames = [];
-    for (let i = 0; i < count; i++) {
-      frames.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
-      }));
-    }
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    const frames = await loadTrackedStrip('snowman', `/sprites/monsters/snowman/snowman-attack-${dirShort(dir)}.png?v=${SPRITE_VERSION}`, FRAME_W, FRAME_H);
+    if (!frames.length) return;
     ATTACK_SHEETS[dir] = { frames };
   } catch {
     /* missing strip — renderer holds the idle pose */
@@ -169,16 +155,9 @@ async function loadRemnants() {
 
 async function loadStrip(url, into) {
   try {
-    const tex = await loadTracked('snowman', url);
-    if (!tex || !tex.source) return;
-    const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
-    const list = [];
-    for (let i = 0; i < count; i++) {
-      list.push(new Texture({
-        source: tex.source,
-        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
-      }));
-    }
+    /* v2.3.2870: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    const list = await loadTrackedStrip('snowman', url, FRAME_W, FRAME_H);
+    if (!list.length) return;
     /* v2.3.2309: REPLACE, don't append.  The reset above is the fix for the
        reported bug; this is the fix for its CLASS.  A strip that is loaded
        twice without its array being cleared in between stacks two generations

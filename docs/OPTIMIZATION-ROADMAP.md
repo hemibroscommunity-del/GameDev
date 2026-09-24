@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1-6, 9-14 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2859); the rest is the ranked backlog
+### Items 1-6, 9-15 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2870); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -537,6 +537,23 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    figure probes and belt-harness. A cropped body frame carries `__btIx`, so
    `bodyFigureProbe.frameIx` no longer has to be frame.x / frame.width.
    All 259 frames byte-identical to the whole sheet.
+
+15. ~~**Monster strips — 27-40% empty cells, ~8 MB in Ember, ~7 in Desert
+   Winds**~~ **SHIPPED, v2.3.2870** (measured, `mp-monstertrim`: the fire goblin
+   30 → 22.2 MB, Ember 176.6 → 168.8 MB; mummy + skeleton 22 → 15.1 MB; the
+   snowman's 128px cells are nearly full, so its strips are declined, 13 →
+   12.8). `zoneTextures.loadTrackedStrip` is the per-zone twin of the fx loader:
+   plain-Image decode (never Assets, item 11's lesson), `packTrimmed`, frames
+   with `orig` = the cell, and the canvas recorded in the bundle so
+   `unloadBundle` destroys it (and the Cache entry `Texture.from` made) on the
+   way out; a strip still decoding when its zone is left is dropped on arrival.
+   Every monster module's strips go through it (fire goblin, mummy, skeleton,
+   snowman, rock monster, fishman); the single-image remnants / fireball /
+   snowball stay whole (three readers size them by `frame.width`). The four
+   readers that sized something off a monster's box moved to
+   `gearSheets.frameBounds` (TRAPS §119), and so did the death crumble, which
+   had shrunk with the v2.3.2791 body crop. All frames byte-identical to the
+   served files; freed on exit and loadable again.
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
