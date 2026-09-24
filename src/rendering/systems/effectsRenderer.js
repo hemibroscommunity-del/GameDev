@@ -10904,10 +10904,40 @@ export class EffectsRenderer {
          is computed from the display scale the build is already on); this one
          computes its own scale from the zone curve, so it needs the term. */
       const _bS = _peerBuild(o);
-      const sT = sY * _torsoOnlyAdj * _bS.sy;
-      const sgnT = (mirror ? -(sY * _torsoOnlyAdj) : (sY * _torsoOnlyAdj)) * _bS.sx;
+      /* ═══ v2.3.2884: SIZED AND PLANTED LIKE YOUR OWN SWING ═══
+         The remote twin of _updateSwordSwing, line for line, off the peer's
+         own measured standing body (S._peerStandGeom -- see entityRenderer's
+         v2.3.2884 note for why the flat REMOTE_SWING_SCALE made a peer shrink
+         and jump up on every swing).  Three things the old path missed, all
+         of which yours does:
+           - the size is the measured body height / 188, per facing;
+           - the feet are the body's feet, not its centre;
+           - the per-facing trim `cfg.bodyScale` / `cfg.bodyScaleX` -- south
+             carries 0.92 / 0.95 because "south's figure read a touch large
+             once its full legs were restored" (v2.3.1067/1068).  A south-facing
+             peer skipped it and swung 8% taller than the same bro on his own
+             screen.
+         The naked-seam nudges (_torsoOnlyAdj, _torsoDY, the leg shifts above)
+         were already mirrored and are applied exactly as before.  The flat
+         constant and the build term survive as the fallback for a peer the
+         entity pass did not draw this frame. */
+      const _pst = S._peerStandGeom && S._peerStandGeom.get(id);
+      const _pstOk = !!(_pst && Number.isFinite(_pst.bodyH) && _pst.bodyH > 0 && Number.isFinite(_pst.footY));
+      let sT, sgnT, _legS, _baseFootY;
+      if (_pstOk) {
+        const _s = _pst.bodyH / 188 * (cfg.bodyScale || 1);
+        const _sx = _s * (cfg.bodyScaleX || 1);
+        sT = _s * _torsoOnlyAdj;
+        sgnT = mirror ? -(_sx * _torsoOnlyAdj) : (_sx * _torsoOnlyAdj);
+        _legS = _s;
+        _baseFootY = _pst.footY;
+      } else {
+        sT = sY * _torsoOnlyAdj * _bS.sy;
+        sgnT = (mirror ? -(sY * _torsoOnlyAdj) : (sY * _torsoOnlyAdj)) * _bS.sx;
+        _legS = sY * _bS.sy;
+        _baseFootY = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_SWING_FOOT_DY;
+      }
       sp.scale.set(sgnT, sT);
-      const _baseFootY = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_SWING_FOOT_DY;
       sp.x = (o.renderX != null) ? o.renderX : o.x;
       sp.y = _baseFootY + _torsoDY;
       sp.visible = true;
@@ -10966,7 +10996,7 @@ export class EffectsRenderer {
              an average pair of legs under him.  _placeJogLegs takes ONE scalar
              for both axes, so it gets the height term -- the frame axis is
              locked at 1.00 (buildCatalog, v2.3.1996) and has nothing to add. */
-          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY * _bS.sy, x: sp.x, footY: _baseFootY,
+          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: _legS, x: sp.x, footY: _baseFootY,   /* v2.3.2884: _legS -- the local passes its own `s` */
           feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), legsItem: eq.legs, weapon: 'sword',
           seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX, legShiftY: _legShiftY,
         });
@@ -11051,15 +11081,36 @@ export class EffectsRenderer {
          were a flat 0.45, so on a vista zone — where the curve runs to ~0.03 —
          a peer attacking drew a full-size figure over a speck.  Same curve,
          same inputs, so the stand-in and the body shrink together. */
-      const _sYraw = REMOTE_BOW_SCALE * zonePlayerScale(
-        S.currentZone || 'town',
-        (o.renderX != null) ? o.renderX : o.x,
-        (o.renderY != null) ? o.renderY : o.y, TILE);
-      /* v2.3.2500: their build, as on the remote swing above and on their
-         walking body.  Height on y, frame on x. */
-      const _bB = _peerBuild(o);
-      const sY = _sYraw * _bB.sy;
-      const sgnX = (mirror ? -_sYraw : _sYraw) * _bB.sx;
+      /* ═══ v2.3.2884: SIZED AND PLANTED LIKE YOUR OWN BOW SHOT ═══
+         _updateBowShot sizes your stand-in `S._swordBodyH / 188` and plants
+         it on `S._swordFootY` -- your standing body, measured, per facing.
+         This one used a flat REMOTE_BOW_SCALE and the peer's centre point, so
+         a peer shrank and jumped up for every shot (the owner's report, and
+         entityRenderer's v2.3.2884 note on S._peerStandGeom has the mechanism).
+         The peer's own measured body is now published in S._peerStandGeom by the
+         pass that draws them, with the same arithmetic as yours, so this reads
+         it and does exactly what your client does: height / 188 on BOTH axes
+         (yours uses one `s` for x and y -- matched here rather than improved,
+         because the ask is that a peer look like what their owner sees).
+         The flat constant survives only as the fallback for a peer the entity
+         pass did not draw this frame, which is what it did before. */
+      const _pst = S._peerStandGeom && S._peerStandGeom.get(id);
+      const _pstOk = !!(_pst && Number.isFinite(_pst.bodyH) && _pst.bodyH > 0 && Number.isFinite(_pst.footY));
+      let sY, sgnX;
+      if (_pstOk) {
+        sY = _pst.bodyH / 188;
+        sgnX = mirror ? -sY : sY;
+      } else {
+        const _sYraw = REMOTE_BOW_SCALE * zonePlayerScale(
+          S.currentZone || 'town',
+          (o.renderX != null) ? o.renderX : o.x,
+          (o.renderY != null) ? o.renderY : o.y, TILE);
+        /* v2.3.2500: their build, as on the remote swing above and on their
+           walking body.  Height on y, frame on x. */
+        const _bB = _peerBuild(o);
+        sY = _sYraw * _bB.sy;
+        sgnX = (mirror ? -_sYraw : _sYraw) * _bB.sx;
+      }
       /* v2.3.1087: jogging legs while this remote is MOVING -- swap the body to the
          leg-erased torso strip and composite recolored jog legs under it (same
          _placeJogLegs helper + tuning as the local player).  Gate on the remote's
@@ -11079,7 +11130,8 @@ export class EffectsRenderer {
       sp._qaFi = fi;   /* v2.3.2863: the frame index, for mp-peerattackink -- a cropped frame no longer says which it is */
       sp.scale.set(sgnX, sY);
       sp.x = (o.renderX != null) ? o.renderX : o.x;
-      sp.y = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_BOW_FOOT_DY;
+      /* v2.3.2884: on the peer's measured feet, as yours sits on S._swordFootY. */
+      sp.y = _pstOk ? _pst.footY : (((o.renderY != null) ? o.renderY : o.y) + REMOTE_BOW_FOOT_DY);
       sp.visible = true;
       const place = (spr, tex) => {
         if (!spr) return;
