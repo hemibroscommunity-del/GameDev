@@ -727,10 +727,10 @@ export function propSpriteSources() {
    means slicing it in the per-zone loader, not relaxing this filter. */
 export function propAnimStrips() {
   return WORLD_PROPS.filter((p) => propIsPlaced(p) && propIsResident(p) && p.anim && p.anim.frames > 1)
-    .map((p) => ({ id: p.id, sprite: p.sprite, frames: p.anim.frames, zone: p.zone }));   /* v2.3.2850: + zone, so town's strips free with town */
+    .map((p) => ({ id: p.id, sprite: p.sprite, frames: p.anim.frames, zone: p.zone }));   /* v2.3.2856: + zone, so town's strips free with town */
 }
 
-/* v2.3.2850: the resident props of ONE hub.  Town's load and free with town
+/* v2.3.2856: the resident props of ONE hub.  Town's load and free with town
    (npcSprites loadTownScenery -- the 25-35MB of NPCs and buildings every field
    zone used to carry); a prop some day placed in worldview stays global. */
 export function propSpriteSourcesIn(zoneId) {

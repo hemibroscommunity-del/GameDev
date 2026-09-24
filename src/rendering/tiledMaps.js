@@ -269,7 +269,7 @@ export async function preloadStartZoneMap(zoneId = 'town') {
  *  ground sprite before this runs (v2.3.1405) — no live Sprite references
  *  the source when it's unloaded. */
 export async function freeZoneMap(zoneId, opts) {
-  /* v2.3.2850: town's map is freed too now, but only by the one caller that
+  /* v2.3.2856: town's map is freed too now, but only by the one caller that
      also holds the way back in (zoneTransitions syncTownScenery, which veils
      every re-entry until the map and the NPCs are loaded).  Every other caller
      still skips the hubs, so nothing that returns to a hub without a veil can

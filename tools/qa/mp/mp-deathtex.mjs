@@ -127,7 +127,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* THE ASSERTION. Both readings are taken in a hub with hub art on screen, so
      a difference is what ember left behind. Before v2.3.2328 this was the full
      bundle plus the map and it never came back at all. */
-  /* v2.3.2850: town's NPCs and buildings now load with town and free on the
+  /* v2.3.2856: town's NPCs and buildings now load with town and free on the
      way out, so worldview no longer carries them and "town after a death"
      does -- that ~20MB is town's own art, not ember's.  Compare against town
      before the trip (t0), which is the same place with the same art up. */

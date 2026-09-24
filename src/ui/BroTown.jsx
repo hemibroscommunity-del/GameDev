@@ -4810,7 +4810,7 @@ export var BroTown = function BroTown(_ref0) {
            behind the loading overlay (zoneTransitions.js), freeze the
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
-        if (S._zoneLoading || S._netHold || S._townArtHold) finalSpd = 0;   /* v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2850: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
+        if (S._zoneLoading || S._netHold || S._townArtHold) finalSpd = 0;   /* v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2856: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
 
         /* Auto-attack movement: 50% speed across the board while
            S.autoAttack is on. Backpedal flag still tracks "moving
