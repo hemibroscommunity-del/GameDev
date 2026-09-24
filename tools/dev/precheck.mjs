@@ -73,6 +73,12 @@
  *                      mask in both. No shipped hat combination reaches
  *                      the mismatch, so the probe manufactures the case
  *                      (v2.3.1959).
+ *   9c. town-rim      — FAIL: if town's rock ring (src/data/townRim.js) or
+ *                      anything standing inside it changed (props, NPCs,
+ *                      spawn, exits, zone size), runs
+ *                      tools/dev/check-town-rim.mjs: spawn, World View
+ *                      arrival, exit, every NPC and door still reachable,
+ *                      and the rocks all round still a wall (v2.3.2896).
  *  10. hairmask-rule  — FAIL: if the headwear art, a hair-clip mask or
  *                      tools/make_hairmask.py changed, every committed
  *                      hairmask/<dir>.png must still be the v2.3.1957
@@ -870,6 +876,35 @@ if (changedServer.length) {
       add('FAIL', 'foreground-crops', `check-foreground-crops.mjs exited ${r.status ?? 'timeout'}:\n    ${tail}`);
     }
   } else add('PASS', 'foreground-crops', 'no foreground art or placement changes — check skipped');
+}
+
+/* ---- 9c. town-rim ----------------------------------------------------
+   v2.3.2896.  Town's rock ring is a wall now (src/data/townRim.js), and every
+   walkability incident this repo has had was a wall where a player needed to
+   be -- rock on the stairs, an arrival on the line, a trail-head that sent you
+   home.  So any change to the ring OR to anything that stands inside it (props,
+   townsfolk, the spawn, the exits, the zone's size) re-walks it: spawn,
+   World View arrival, exit trigger, every NPC and every door reachable on the
+   same grid the game builds, and the rocks all round still rock.  ~1s. */
+{
+  const touched = changed.filter((f) => f === 'src/data/townRim.js'
+    || f === 'src/data/worldProps.js'
+    || f === 'src/data/gameDisplay.js'
+    || f === 'src/data/constants.js'
+    || f === 'src/data/effects.js'
+    || f === 'src/data/zones.js'
+    || f === 'src/game/spriteSheets.js'
+    || f === 'tools/dev/check-town-rim.mjs'
+    || f === 'tools/maps/build_town_rim.py');
+  if (touched.length) {
+    const r = spawnSync('node', ['tools/dev/check-town-rim.mjs'],
+      { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
+    if (r.status === 0) add('PASS', 'town-rim', ((r.stdout || '').trim().split('\n').pop() || 'town rim holds'));
+    else {
+      const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-10).join('\n    ');
+      add('FAIL', 'town-rim', `check-town-rim.mjs exited ${r.status ?? 'timeout'}:\n    ${tail}`);
+    }
+  } else add('PASS', 'town-rim', 'no town rim / prop / NPC / spawn / exit changes — check skipped');
 }
 
 /* ---- 10. hairmask rule ----------------------------------------------
