@@ -1230,14 +1230,20 @@ export const combatMethods = {
        _tickMonsters.  The player still gets their moment of space; the
        monster is no longer permanently exiled by landing in its face. */
     if (attackerPs && payload.noKb !== true) {
-      const kbForce = payload.special ? 60 : (rolled.isCrit ? 45 : 30);
+      /* v2.3.2790: x the zone's depth at the monster's feet -- a mummy drawn
+         at 0.42 on Wind Dunes' north edge is shoved 0.42 as far, so the hit
+         reads as the same shove on screen (1 on every other zone).  The
+         debt cap below takes the same factor so the repay (index.js, also
+         depth-scaled) still undoes exactly one swing. */
+      const _kbK = this._depthK(zone, m.y);
+      const kbForce = (payload.special ? 60 : (rolled.isCrit ? 45 : 30)) * _kbK;
       const kbAng = Math.atan2(m.y - attackerPs.y, m.x - attackerPs.x);
       m.x += Math.cos(kbAng) * kbForce;
       m.y += Math.sin(kbAng) * kbForce;
       /* Capped so a special (60) or a crit chain can't bank a debt the
          monster then sprints off — one swing's worth of catch-up is the
          most it can ever be owed. */
-      m._kbDebt = Math.min((m._kbDebt || 0) + kbForce, 60);
+      m._kbDebt = Math.min((m._kbDebt || 0) + kbForce, 60 * _kbK);
       const zoneCfg = this._getZoneConfig(zone);
       if (zoneCfg) {
         const W = zoneCfg.w * this.TILE;
