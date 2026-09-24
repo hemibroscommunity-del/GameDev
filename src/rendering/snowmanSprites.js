@@ -67,7 +67,7 @@ function dirShort(dir) {
 
 async function loadOne(dir) {
   try {
-    /* v2.3.2860: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    /* v2.3.2864: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
     const frames = await loadTrackedStrip('snowman', `/sprites/monsters/snowman/snowman-${dirShort(dir)}.png?v=${SPRITE_VERSION}`, FRAME_W, FRAME_H);
     if (!frames.length) return;
     SHEETS[dir] = { frames };
@@ -81,7 +81,7 @@ async function loadOne(dir) {
    is how this shipped before the art existed. */
 async function loadAttack(dir) {
   try {
-    /* v2.3.2860: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    /* v2.3.2864: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
     const frames = await loadTrackedStrip('snowman', `/sprites/monsters/snowman/snowman-attack-${dirShort(dir)}.png?v=${SPRITE_VERSION}`, FRAME_W, FRAME_H);
     if (!frames.length) return;
     ATTACK_SHEETS[dir] = { frames };
@@ -155,7 +155,7 @@ async function loadRemnants() {
 
 async function loadStrip(url, into) {
   try {
-    /* v2.3.2860: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
+    /* v2.3.2864: cropped to the art, orig = the whole cell (zoneTextures.loadTrackedStrip) */
     const list = await loadTrackedStrip('snowman', url, FRAME_W, FRAME_H);
     if (!list.length) return;
     /* v2.3.2309: REPLACE, don't append.  The reset above is the fix for the

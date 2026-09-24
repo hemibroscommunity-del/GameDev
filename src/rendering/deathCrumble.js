@@ -37,7 +37,7 @@
 import { Container, Sprite, Rectangle, Texture, Point } from 'pixi.js';
 import { fxTex, BONE_ART } from './worldFxTextures.js';
 import { windAt } from '@/game/timeOfDay.js';
-import { frameBounds } from './gearSheets.js';   /* v2.3.2860: a cropped body's whole-frame box */
+import { frameBounds } from './gearSheets.js';   /* v2.3.2864: a cropped body's whole-frame box */
 
 /* The standing skeleton, in art pixels, feet at (0,0), +y down.  52 art px
    tall; scaled to the body it replaces. */
@@ -140,7 +140,7 @@ class DeathCrumble {
     const sb = display._spriteBody;
     try {
       if (sb && sb.texture && sb.texture !== Texture.EMPTY) {
-        /* v2.3.2860: frameBounds -- the body has been a CROPPED frame since
+        /* v2.3.2864: frameBounds -- the body has been a CROPPED frame since
            v2.3.2791, and getBounds() on one is the painted art only, which
            shrank the flakes and the skeleton that stands in this box */
         const b = frameBounds(sb);

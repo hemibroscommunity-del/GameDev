@@ -23,7 +23,10 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2860: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */
+  monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2864: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */
+  peerattackink: () => import('./mp-peerattackink.mjs'), /* v2.3.2863: another player's swing and bow shot wear their drawings -- both sides, the back from behind, and the bow no longer borrows the sword's frames */
+  poseskin: () => import('./mp-poseskin.mjs'), /* v2.3.2861: hit, mining and dodge wear the walking skin on a player who never picked one -- body and the head drawn over armour, baked before the first hit */
+  headink: () => import('./mp-headink.mjs'), /* v2.3.2862: the face tattoo stays on under the head overlays -- pickup, a hit or mining in armour, the full-steel knight, both sides and the back of the head, and a watcher's view */
   townscenery: () => import('./mp-townscenery.mjs'), /* v2.3.2859: town's NPCs + buildings load and free with town, and town is never seen without them */
   harvestink: () => import('./mp-harvestink.mjs'), /* v2.3.2854: tattoos stay on while fishing -- on both screens, the rod untouched, and a pink chest tattoo never lifted over the shirt */
   chopink: () => import('./mp-chopink.mjs'), /* v2.3.2855: ...and while chopping -- your lumberjack and a watcher's view of it, both sides of the tree, the axe untouched, the whole figure in your skin */

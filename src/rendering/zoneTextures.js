@@ -45,15 +45,15 @@
  * "everywhere you have been".
  */
 import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
-import { packTrimmed } from './gearSheets.js';   /* v2.3.2860: monster strips load cropped */
+import { packTrimmed } from './gearSheets.js';   /* v2.3.2864: monster strips load cropped */
 
 /* bundle name -> the set of URLs loaded under it.  A Set, so a re-entered zone
    re-registering the same sheet costs one entry rather than a growing list. */
 const _bundles = new Map();
-/* v2.3.2860: bundle name -> the cropped canvas sources loadTrackedStrip made.
+/* v2.3.2864: bundle name -> the cropped canvas sources loadTrackedStrip made.
    Not Assets-owned, so Assets.unload cannot free them; unloadBundle does. */
 const _crops = new Map();
-/* v2.3.2860: bumped by every unload, so a strip still decoding when its zone
+/* v2.3.2864: bumped by every unload, so a strip still decoding when its zone
    is left is dropped on arrival instead of published into a freed bundle. */
 const _gen = new Map();
 
@@ -67,7 +67,7 @@ export function loadTracked(bundle, url) {
   return Assets.load(url);
 }
 
-/* ═══ v2.3.2860: MONSTER STRIPS, CROPPED ═══
+/* ═══ v2.3.2864: MONSTER STRIPS, CROPPED ═══
  *
  * Owner: "find out how to reduce memory in ember too".  Measured (tex-attrib,
  * v2.3.2859): the fire goblin is Ember's largest cost at 35MB decoded, and
@@ -153,8 +153,8 @@ function _releaseCrops(bundle) {
  *  Each unload is guarded on its own: one URL that is still referenced must not
  *  abandon the rest of the bundle. */
 export async function unloadBundle(bundle) {
-  _gen.set(bundle, (_gen.get(bundle) || 0) + 1);   /* v2.3.2860: strips in flight are dropped on arrival */
-  let n = _releaseCrops(bundle);                    /* v2.3.2860: the cropped strips */
+  _gen.set(bundle, (_gen.get(bundle) || 0) + 1);   /* v2.3.2864: strips in flight are dropped on arrival */
+  let n = _releaseCrops(bundle);                    /* v2.3.2864: the cropped strips */
   const set = _bundles.get(bundle);
   if (!set || set.size === 0) return n;
   _bundles.delete(bundle);
@@ -179,7 +179,7 @@ if (typeof window !== 'undefined') {
   window.__btBundles = function () {
     const out = {};
     _bundles.forEach((set, k) => { out[k] = set.size; });
-    _crops.forEach((set, k) => { out[k] = (out[k] || 0) + set.size; });   /* v2.3.2860 */
+    _crops.forEach((set, k) => { out[k] = (out[k] || 0) + set.size; });   /* v2.3.2864 */
     return out;
   };
 }

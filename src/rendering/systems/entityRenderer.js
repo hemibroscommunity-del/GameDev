@@ -1611,6 +1611,9 @@ function _shirtLook(front, back, patternStr, tint) {
    (pants print, chest tattoo) rather than on a gear sprite.  Peer strings are
    sanitised here, at the one place a remote's drawings enter the renderer;
    `mirror` rides along because it is part of the bake, not of the drawing. */
+/* v2.3.2863: the same answer for effectsRenderer, whose peer SWING and BOW
+   stand-ins bake their own sheets and never asked for the drawings. */
+export function remoteBodyArt(other, mirror) { return _remoteBodyArt(other, mirror); }
 function _remoteBodyArt(other, mirror) {
   const p = sanitizeShirtArt(other.pantsArt), t = sanitizeShirtArt(other.tattooArt);
   /* v2.3.1949: face and arm tattoos ride the same sanitiser -- a peer string
@@ -3482,7 +3485,7 @@ function _hideBodyRegions(display) {
 /* Place the pickup head overlay on the (reused) _bodyHead sprite at the body
    sprite's exact transform.  No-op (leaves _bodyHead as the caller left it --
    hidden) outside the pickup pose or before the sheet loads. */
-function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId) {
+function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId, art) {
   const hd = display._bodyHead;
   if (!hd || !sb) return;
   /* v2.3.1389: `phase` (jog cycle 0..1) picks the head frame on the SAME
@@ -3490,7 +3493,7 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
      is now 25 frames matching the armor, so head and armor bob as one.
      Dirs whose head count equals the body count resolve to the same
      frame either way; non-jog callers omit it. */
-  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId);   /* v2.3.2643 */
+  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId, art);   /* v2.3.2643; v2.3.2862: + the drawings (the face tattoo rides the overlay) */
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -7785,8 +7788,8 @@ export class EntityRenderer {
             sx: +d._spriteBody.scale.x.toFixed(3),
             visible: !!d._spriteBody.visible,
             drewDeathAt: d._deathDrewAt || 0,
-            texW: _t ? (_t.orig ? _t.orig.width : (_t.frame ? _t.frame.width : _t.width)) : 0,   /* v2.3.2860: the cell, cropped or not */
-            trimmed: !!(_t && _t.trim),   /* v2.3.2860: drawn from a cropped strip (zoneTextures.loadTrackedStrip) */
+            texW: _t ? (_t.orig ? _t.orig.width : (_t.frame ? _t.frame.width : _t.width)) : 0,   /* v2.3.2864: the cell, cropped or not */
+            trimmed: !!(_t && _t.trim),   /* v2.3.2864: drawn from a cropped strip (zoneTextures.loadTrackedStrip) */
             srcW: _src ? (_src.width || 0) : 0,
             texAlive: !!(_src && !_src.destroyed && _src.width > 0),
             /* The procedural fallback body.  Drawn INSTEAD of the sprite when
@@ -7801,7 +7804,7 @@ export class EntityRenderer {
                answered from the table, only from the bounds. */
             bounds: (function () {
               try {
-                const b = frameBounds(d._spriteBody);   /* v2.3.2860: whole cell, as uncropped */
+                const b = frameBounds(d._spriteBody);   /* v2.3.2864: whole cell, as uncropped */
                 return { top: Math.round(b.y), bottom: Math.round(b.y + b.height),
                   h: Math.round(b.height) };
               } catch (e) { return null; }
@@ -9561,7 +9564,7 @@ export class EntityRenderer {
           const _sb = display._spriteBody;
           if (_sb && _sb.visible && !_sb.destroyed) {
             try {
-              const gb = frameBounds(_sb);   /* v2.3.2860: the cell's top, as uncropped -- the +13 below was tuned to it */
+              const gb = frameBounds(_sb);   /* v2.3.2864: the cell's top, as uncropped -- the +13 below was tuned to it */
               const lp = display.toLocal({ x: gb.x + gb.width / 2, y: gb.y });
               if (lp && Number.isFinite(lp.y)) _ringY = lp.y + 13;   /* the ring's top ~4px above the head */
             } catch (e) { /* keep the old anchor */ }
@@ -10284,9 +10287,9 @@ export class EntityRenderer {
           try {
             /* v2.3.1394: jog overlay only over the fullset figure (see local path). */
             /* v2.3.1479: same armour gate as the local path. */
-            if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase, other.eyeStyle);   /* v2.3.2643: THEIR style */
+            if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase, other.eyeStyle, _oBodyArt);   /* v2.3.2643: THEIR style; v2.3.2862: THEIR drawings */
             display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsR); /* v2.3.1553 */
-            spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, undefined, other.eyeStyle));   /* v2.3.2643 */
+            spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, undefined, other.eyeStyle, _oBodyArt));   /* v2.3.2643; v2.3.2862: the same key the overlay reads */
             /* v2.3.1123: lift the angler's head above the fishing chest plate.
                v2.3.2278: above their LEG armour too.  This was chest-only, so
                a peer fishing in greaves lost the same hand the local player
@@ -11833,9 +11836,9 @@ export class EntityRenderer {
              time they took a hit, for no benefit -- with no gear there is
              nothing that could cover the head in the first place. */
           const _needHead = (pose !== 'hit' && pose !== 'mine') || _worn.length > 0;
-          if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase, getEyeStyle());   /* v2.3.2643 */
+          if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase, getEyeStyle(), _bodyArt);   /* v2.3.2643; v2.3.2862: + your drawings */
           display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsT); /* v2.3.1553 */
-          spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, undefined, getEyeStyle()));   /* v2.3.2643 */
+          spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, undefined, getEyeStyle(), _bodyArt));   /* v2.3.2643; v2.3.2862: the same key the overlay reads */
           /* v2.3.1123: lift the angler's head above the fishing chest plate.
              v2.3.1914 (owner: "When fishing that hand needs to be over the
              shirt during the reel animation instead of under it"): ...and above

@@ -342,7 +342,7 @@ export function loadCroppedStrip(url, n) {
  * packed crop no longer encodes (pixiRenderer bodyFigureProbe's frameIx).
  * A sheet the packer declines comes back as plain slices, as before.  The
  * caller keeps setting scaleMode / mipmaps on the returned source. */
-/* ═══ v2.3.2860: THE BOX A CROPPED FRAME WOULD HAVE HAD ═══
+/* ═══ v2.3.2864: THE BOX A CROPPED FRAME WOULD HAVE HAD ═══
  * Pixi bounds a trimmed sprite by its TRIM (updateQuadBounds), not its orig:
  * getBounds() on a cropped frame is the painted art, not the whole cell.
  * Everything that DRAWS is unaffected -- that is the point of orig/trim -- but

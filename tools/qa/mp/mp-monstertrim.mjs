@@ -1,4 +1,4 @@
-/* Monster strips, cropped (v2.3.2860).
+/* Monster strips, cropped (v2.3.2864).
  *
  * Owner: "find out how to reduce memory in ember too".
  *
@@ -115,7 +115,14 @@ async function leaveSpoke(P) {
 }
 
 async function zoneRound(P, rec, zone, bundle, label, expectCrop = true) {
-  const at = await goto(P, 'worldview', zone);
+  let at = await goto(P, 'worldview', zone);
+  /* The worldview exits sit close together and a teleport onto one can land
+     the player on a neighbour's trigger -- seen as arriving in town.  Walk
+     back to worldview and try once more: the scenario tests the art, not the
+     travel. */
+  if (at !== zone && at === 'town') {
+    if (await goto(P, 'town', 'worldview') === 'worldview') at = await goto(P, 'worldview', zone);
+  }
   rec.ok(`${label}: reached ${zone} (guard)`, at === zone, { at });
   if (at !== zone) return false;
   const t = await tex(P);
