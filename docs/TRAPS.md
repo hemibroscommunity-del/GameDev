@@ -4817,3 +4817,23 @@ Keep `getBounds()` where you want the painted art (a probe asking where the
 figure actually is). The own-quad lighting gradient (formShade) had the same
 blind spot and reads the crop's rows inside `orig` since v2.3.2859.
 
+
+## 120. A highlight added and clipped at white reads as white spots, and turning it down barely helps (v2.3.2902)
+
+**Tempting:** the owner says the metal shine is "on the edge of looking like
+white spots", so lower its strength.
+
+**Wrong:** the spots were the clip, not the strength. The sheen was added to
+each pixel and capped at white, and the pixels it adds most to are the art's
+own highlights -- the ones with the least room left -- so they reach white at
+almost any strength. Measured on one frozen standing steel figure (dpr 3):
+~1,036 flat-white pixels at full strength, still ~674 at 55%. The cut mostly
+dims the mid-tones, which were never the problem.
+
+**The rule:** roll the added light off below white instead of clipping it
+(glint.js `SHEEN_CEIL`: lift = room x (1 - e^(-added/room)), per channel).
+Small lifts are unchanged, big ones stop short. When you measure a filter's
+effect on pixels, compare against the SAME filter at ~0 strength
+(`sheenScale(0.0001)`), not the filter off: attaching a filter re-renders the
+sprite through an offscreen pass, which moves its soft edges, and the first
+measurement here counted those edges as lift.
