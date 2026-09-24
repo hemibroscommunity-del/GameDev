@@ -331,14 +331,21 @@ export function specialAttack(S) {
       var _bowN = _bowVolley ? BOW_VOLLEY.N : 1;
       var _bowVol = _bowVolley ? newVolley() : null;
       var _bowStat = bowRangeMult(R || {}) || 1;
+      var _bowRange = _bowStat * depthK(S.currentZone, S.player.y);
+      /* v2.3.2875: a volley flies slower than a plain arrow (BOW_VOLLEY.SPEED_K)
+         so its three arrows read as three; a lone arrow (old worker) keeps the
+         bow's own speed */
+      var _bowSpd = _bowVolley ? ARROW_SPEED_PX * _bowRange * BOW_VOLLEY.SPEED_K : null;
       for (var bvi = 0; bvi < _bowN; bvi++) {
         S.arrows.push({
           ang: aimAng,
           dist: 14,
           /* v2.3.2848: sized from the arrow's own speed so the train is GAP_PX
              apart however fast Longshot makes it (projectiles.js catches the
-             frame it overstays back up) */
-          launchDelayMs: volleyDelayMs(bvi, ARROW_SPEED_PX * _bowStat),
+             frame it overstays back up).  v2.3.2875: from the speed it really
+             flies at, `speedPx` */
+          launchDelayMs: volleyDelayMs(bvi, _bowSpd || ARROW_SPEED_PX * _bowStat),
+          speedPx: _bowSpd,
           dmg: _bowVolley ? Math.max(1, Math.round(_bowFull * BOW_VOLLEY.WORTH / BOW_VOLLEY.N)) : _bowFull,   /* v2.3.2848: a third each; v2.3.2849: two-thirds (the volley is worth WORTH specials) */
           part: _bowVolley ? BOW_VOLLEY.N : 0,   /* v2.3.2848: the worker gives each arrow WORTH / part of its own roll (v2.3.2849) */
           volley: _bowVol, volleyIx: bvi,
@@ -349,7 +356,7 @@ export function specialAttack(S) {
           isSpecial: true,
           isStaff: false,
           pierce: true,
-          _rangeMult: _bowStat * depthK(S.currentZone, S.player.y), /* v2.3.2592: the special reaches as far as an ordinary arrow does; v2.3.2790 x depth */
+          _rangeMult: _bowRange, /* v2.3.2592: the special reaches as far as an ordinary arrow does; v2.3.2790 x depth */
           element: hasElement || null
         });
       }

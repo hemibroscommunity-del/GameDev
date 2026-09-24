@@ -39,7 +39,7 @@ const GAP = 160;
    at its body centre.  `dist` starts short of the gap so the tick integrates a
    real step into it and the segment sweep is the thing that registers -- an
    arrow spawned already inside the circle would test the point test instead. */
-const shootAt = (P, arch, special) => P.page.evaluate((a) => {
+const shootAt = (P, arch, special, hp) => P.page.evaluate((a) => {
   const S = window._gameState.current, F = window._gameFns || {};
   S._serverMonsters = false;
   /* Built as a base ARCHETYPE and then re-keyed, which is what the game itself
@@ -52,6 +52,7 @@ const shootAt = (P, arch, special) => P.page.evaluate((a) => {
   const m = F.createMonster('stuck-1', 'fodder', 2, S.player.x + a.gap, S.player.y, null);
   m.archetype = a.arch; m.type = a.arch;
   m.alive = true; m.curHp = m.maxHp = 900000; m.spd = 0; m.vx = 0; m.vy = 0;
+  if (a.hp) m.curHp = a.hp;   /* v2.3.2875: a slime the arrow kills */
   m.dmg = 0;
   m.renderX = m.x; m.renderY = m.y;
   m._stuckArrows = [];
@@ -75,7 +76,7 @@ const shootAt = (P, arch, special) => P.page.evaluate((a) => {
   }];
   return { mx: Math.round(m.x), my: Math.round(m.y), px: Math.round(x0), py: Math.round(y0),
     bodyOffset: off, arch: m.archetype || m.type };
-}, { arch, gap: GAP, special: !!special });
+}, { arch, gap: GAP, special: !!special, hp: hp || 0 });
 
 /* Poll until the arrow has resolved, then report both halves of the drawing:
    the plain stubs hanging off the monster and the special's own ride. */
@@ -153,6 +154,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
         got.stubOy < -(want - 8) && got.stubOy > -(want + 22), got);
     }
   }
+
+  /* ── 4. v2.3.2875: the shafts go with the monster ──
+     Owner: "Arrows stuck in monsters persist even after death."  A dead
+     monster stays in S.monsters (alive=false) until it respawns, and its
+     shafts used to hang there over the empty spot the whole time. */
+  const seedD = await shootAt(P, 'fodder', false);
+  rec.ok('a slime is standing in the shot (guard)', seedD.mx > seedD.px, seedD);
+  const live = await settle(P);
+  rec.ok('the shot leaves a shaft in the living slime (guard)', live.stubs === 1, live);
+  const dead = await P.page.evaluate(() => new Promise((resolve) => {
+    const S = window._gameState.current;
+    const m = (S.monsters || [])[0];
+    m.alive = false; m.curHp = 0; m.respawnAt = Date.now() + 1e9;   /* a corpse waiting on its respawn */
+    const t0 = Date.now(), iv = setInterval(() => {
+      const n = (m._stuckArrows || []).length;
+      if (n === 0 || Date.now() - t0 > 250) {
+        clearInterval(iv);
+        resolve({ stubs: n, inList: (S.monsters || []).includes(m), ms: Date.now() - t0 });
+      }
+    }, 16);
+  }));
+  rec.ok(`...and none are left once it dies (${dead.stubs} left, corpse still listed: ${dead.inList})`, dead.stubs === 0, dead);
+  /* and the arrow that KILLS leaves none either (its impact lands on the
+     frame the slime goes down) */
+  await shootAt(P, 'fodder', false, 1);
+  const corpse = await P.page.evaluate(() => new Promise((resolve) => {
+    const S = window._gameState.current;
+    const m = (S.monsters || [])[0];
+    setTimeout(() => resolve({ stubs: (m._stuckArrows || []).length, alive: m.alive, hp: m.curHp }), 600);
+  }));
+  rec.ok(`the killing arrow leaves no shaft in the body (${corpse.stubs}; alive ${corpse.alive}, hp ${corpse.hp})`, corpse.alive === false && corpse.stubs === 0, corpse);
 
   await P.page.evaluate(() => {
     const S = window._gameState.current;

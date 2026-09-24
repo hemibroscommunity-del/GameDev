@@ -28,7 +28,7 @@
  * v2.3.2848 -- THE SPECIAL IS THREE ARROWS.  Owner: "3 white hot arrows that
  * follow each other closely.  One shot for all 3 arrows", "a third each",
  * "Burn, but no blast" (src/game/bowVolley.js).  So this also checks: one
- * press looses three, for one price; they fly as a train ~80 px apart on one
+ * press looses three, for one price; they fly as a train ~200 px apart (v2.3.2875; was 80) on one
  * line, and one still on the string is not drawn; each lands a third of the
  * damage; the volley burns ONCE (one tick at a time, not three); the three
  * smoulder on one clock and burn out together; nothing asks for a blast; a
@@ -283,7 +283,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const v = { n: 3, path: null, burn: null, burnAt: 0, _lingerNext: null, kb: new Set() };
     for (let i = 0; i < 3; i++) {
       S.arrows.push({ ang: Math.PI / 2, dist: 14, dmg: 1, baseDmg: 7, life: 150, maxLife: 150, hitIds: new Set(),
-        launchDelayMs: i * 80 * (1000 / 60) / 24, part: 3, volley: v, volleyIx: i,
+        launchDelayMs: i * 200 * (1000 / 60) / (24 * 0.7), speedPx: 24 * 0.7, part: 3, volley: v, volleyIx: i,   /* v2.3.2875: GAP_PX 200 at SPEED_K 0.7 */
         isSpecial: true, isStaff: false, pierce: true, _rangeMult: 1, element: null });
     }
   });
@@ -310,8 +310,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   const trains = S3.map((s) => trainGaps(s)).filter((g) => g.n >= 2);
   const allGaps = trains.flatMap((g) => g.gaps), allOff = trains.flatMap((g) => g.off);
-  rec.ok(`the volley flies as a train on ONE line, ~80 px apart (gaps ${[...new Set(allGaps.map((g) => g.toFixed(0)))].join(', ')}; off the line <= ${allOff.length ? Math.max(...allOff).toFixed(1) : '-'} px)`,
-    allGaps.length >= 2 && trains.some((g) => g.n === 3) && allGaps.every((g) => g >= 72 && g <= 88) && allOff.every((o) => o <= 1.5), { trains: trains.slice(0, 8) });
+  rec.ok(`the volley flies as a train on ONE line, ~200 px apart (gaps ${[...new Set(allGaps.map((g) => g.toFixed(0)))].join(', ')}; off the line <= ${allOff.length ? Math.max(...allOff).toFixed(1) : '-'} px)`,
+    allGaps.length >= 2 && trains.some((g) => g.n === 3) && allGaps.every((g) => g >= 184 && g <= 216) && allOff.every((o) => o <= 1.5), { trains: trains.slice(0, 8) });
   const three = S3.find((s) => s.nPlanted === 3);
   const spots = three ? three.vol.map((v) => [v.px, v.py]) : [];
   const apart = [];
@@ -374,7 +374,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the watcher is sent the archer's special (guard: seen on ${peer.remoteSpecial} frames)`, peer.remoteSpecial > 0, peer);
   rec.ok('...and draws it white-hot, through the same code', peer.drawnFlight > 0 && peer.tex === 'heat', peer);
   rec.ok(`...as THREE arrows, one behind the other (${peer.maxRemote} sent, up to ${peer.maxDrawn} in the air, gaps ${[...new Set(peer.gaps)].slice(0, 6).join(', ')} px)`,
-    peer.maxRemote === 3 && peer.maxDrawn >= 2 && peer.gaps.length > 0 && peer.gaps.every((g) => g >= 56 && g <= 104) && peer.overDrawn === 0,
+    peer.maxRemote === 3 && peer.maxDrawn >= 2 && peer.gaps.length > 0 && peer.gaps.every((g) => g >= 140 && g <= 260) && peer.overDrawn === 0,
     { maxRemote: peer.maxRemote, maxDrawn: peer.maxDrawn, gaps: peer.gaps.slice(0, 20), overDrawn: peer.overDrawn });
   await A.ctx.close().catch(() => {});
   await B.ctx.close().catch(() => {});

@@ -4924,10 +4924,16 @@ export class EffectsRenderer {
     }
 
     /* Stuck arrows — embedded in monster bodies after a hit.  Drawn
-       half-length per the Canvas 2D path (BroTown.jsx ~11756). */
+       half-length per the Canvas 2D path (BroTown.jsx ~11756).
+       v2.3.2875: only in the living.  A dead monster stays in S.monsters
+       (alive=false) until it respawns, and its shafts were cleared only
+       then -- so they hung in the air over the death crumble and the empty
+       spot.  Owner: "Arrows stuck in monsters persist even after death."
+       Dropped on death so a respawn starts clean too. */
     const monsters = S.monsters || [];
     for (const m of monsters) {
       if (!m || !m._stuckArrows || !m._stuckArrows.length) continue;
+      if (m.alive === false || m.curHp <= 0) { m._stuckArrows.length = 0; continue; }
       for (const sa of m._stuckArrows) {
         const sx = m.x + (sa.ox || 0);
         const sy = m.y + (sa.oy || 0);
