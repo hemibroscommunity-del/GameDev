@@ -23,8 +23,8 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  harvestink: () => import('./mp-harvestink.mjs'), /* v2.3.2822: tattoos stay on while fishing -- on both screens, the rod untouched, and a pink chest tattoo never lifted over the shirt */
-  chopink: () => import('./mp-chopink.mjs'), /* v2.3.2823: ...and while chopping -- your lumberjack and a watcher's view of it, both sides of the tree, the axe untouched, the whole figure in your skin */
+  harvestink: () => import('./mp-harvestink.mjs'), /* v2.3.2834: tattoos stay on while fishing -- on both screens, the rod untouched, and a pink chest tattoo never lifted over the shirt */
+  chopink: () => import('./mp-chopink.mjs'), /* v2.3.2835: ...and while chopping -- your lumberjack and a watcher's view of it, both sides of the tree, the axe untouched, the whole figure in your skin */
   cookink: () => import('./mp-cookink.mjs'), /* v2.3.2829: ...and while cooking -- on a layer of their own over the shared cook, on both screens, never on a plain player's cook, the fish and pan untouched, the fingers in your skin */
   geartrim: () => import('./mp-geartrim.mjs'), /* v2.3.2750 (+ v2.3.2774 combat strips): gear frames cropped to their art -- under a third of the bytes, and every layer still lands exactly on the body, own screen and peer's */
   liveness: () => import('./mp-liveness.mjs'), /* v2.3.2811-2815: trees sway, signs swing, flags wave, the forge smokes, people breathe, and the bag comes alive -- all still under the calm switch */
@@ -147,6 +147,10 @@ const SCENARIOS = {
   townforge: () => import('./mp-townforge.mjs'), /* v2.3.2077: forging in town reaches the worker */
   townmeal: () => import('./mp-townmeal.mjs'), /* v2.3.2077: eating + cooking in town reach the worker */
   plazaplate: () => import('./mp-plazaplate.mjs'), /* v2.3.2071: a plate on every townsperson, benches facing the water */
+  polish: () => import('./mp-polish.mjs'), /* v2.3.2820: demo-audit polish -- feedback that arrives, volume sliders, live mute, party chip, daily toast, About page */
+  smelt: () => import('./mp-smelt.mjs'), /* v2.3.2822: ore into bars at the blacksmith */
+  smithy: () => import('./mp-smithy.mjs'), /* v2.3.2826: the Blacksmith rebuilt + the smith at work */
+  whirlwind: () => import('./mp-whirlwind.mjs'), /* v2.3.2824: the 2s aimable windup ring */
   portalbeam: () => import('./mp-portalbeam.mjs'), /* v2.3.2070: the light shaft over a zone exit */
   lilbro: () => import('./mp-lilbro.mjs'), /* v2.3.2064: the second walking NPC */
   potions: () => import('./mp-potions.mjs'), /* v2.3.2062: the mana + speed draughts */

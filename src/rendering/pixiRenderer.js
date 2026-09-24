@@ -748,7 +748,7 @@ export async function initPixiRenderer(canvas) {
        its children.  Read-only use only — this hands out the live container,
        so a scenario that mutated it would be testing its own edit. */
     playerDisplayRaw: () => entityRenderer.playerDisplay || null,
-    /* v2.3.2822: the same, for ANOTHER player's figure -- mp-harvestink reads
+    /* v2.3.2834: the same, for ANOTHER player's figure -- mp-harvestink reads
        which frame a peer is drawn from while they fish.  Read-only, same rule. */
     peerDisplayRaw: (id) => (entityRenderer.otherPlayerDisplays && entityRenderer.otherPlayerDisplays.get(id)) || null,
     /* v2.3.2078: what the pet display is doing — the pet was invisible
@@ -1103,14 +1103,14 @@ export async function initPixiRenderer(canvas) {
         gearIx: typeof ent._gearIx === 'number' ? ent._gearIx : null,
         signX: (ent[ent._exCode] && ent[ent._exCode].scale)
           ? (ent[ent._exCode].scale.x < 0 ? -1 : 1) : null,
-        /* v2.3.2823: is this peer's lumberjack drawn from a bake that carries
+        /* v2.3.2835: is this peer's lumberjack drawn from a bake that carries
            their drawings (true), or from the shared figure (false)? */
         chopInk: !!ent._chopInk,
         /* v2.3.2829: is this peer's cook drawn with their drawings' layer? */
         cookInk: !!ent._cookInk,
       };
     },
-    /* v2.3.2823: the lumberjack SPRITES -- yours (no id) or a peer's -- for
+    /* v2.3.2835: the lumberjack SPRITES -- yours (no id) or a peer's -- for
        mp-harvestink, which reads the frame the renderer actually draws, the same
        way it reads the fishing body through peerDisplayRaw. */
     chopSpriteRaw: (id) => {
@@ -1119,7 +1119,7 @@ export async function initPixiRenderer(canvas) {
       const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
       return (ent && ent.chop) || null;
     },
-    /* v2.3.2823: how many drawn peers' lumberjacks are baked right now. */
+    /* v2.3.2835: how many drawn peers' lumberjacks are baked right now. */
     peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),
     /* v2.3.2829: the cook's two SPRITES -- the figure and the drawings' layer
        over it -- yours (no id) or a peer's, for mp-cookink to read the frame

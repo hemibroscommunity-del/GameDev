@@ -16,6 +16,9 @@
    body is untouched. Returns the effect cleanup (or undefined when gated
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
+import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
+import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
+import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
@@ -1425,6 +1428,47 @@ export function setupWebSocket(ctx) {
               if (msg.payload) _applyLootCredit(msg.payload, S);
               break;
             }
+          case 'chest_opened':
+            {
+              /* v2.3.2820: the worker's answer to Open Chest (dailychest.js).
+                 It has ALREADY taken the chest and paid the prize; the
+                 player_state that follows carries the totals.  Coins and
+                 armour go through the loot-credit path so they get the same
+                 gold popup / coin sound and the same stash adoption a
+                 picked-up drop does (the chest's armour carries its ledger
+                 gid exactly like a drop's); then the reveal card. */
+              var _cp = msg.payload && msg.payload.prize;
+              if (_cp) {
+                try {
+                  if (_cp.kind === 'coins' && _cp.coins > 0) _applyLootCredit({ coins: _cp.coins }, S);
+                  else if (_cp.kind === 'armor' && _cp.piece) _applyLootCredit({ armor: [_cp.piece] }, S);
+                } catch (_ce) { /* the reveal still shows */ }
+                try { chestRevealBus.prize(_cp); } catch (_re) {}
+              }
+              break;
+            }
+          case 'smelt_result':
+            {
+              /* v2.3.2822: the worker's receipt for a smelt (smelting.js).  It
+                 has ALREADY taken the ore and paid the bars and the Smithing
+                 XP; the player_state that follows carries the bag.  This is
+                 only the moment: the words over the player, the chime, and the
+                 level celebration a crafting level gets (v2.3.2591). */
+              var _sr = msg.payload;
+              if (_sr && _sr.count > 0 && S.player) {
+                try {
+                  var _rec = SMELT_RECIPES[_sr.barKey];
+                  var _bn = (_rec && _rec.name) || 'Bar';
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + _sr.count + ' ' + _bn + (_sr.count > 1 ? 's' : ''), '#E0935A');
+                  pushDmgPopup(S, S.player.x, S.player.y - 44, '+' + _sr.xp + ' Smithing XP', '#D8A94D');
+                  BT_AUDIO.collect();
+                } catch (_se) { /* the bag still updates */ }
+                if (_sr.leveled && _sr.newLevel > _sr.fromLevel) {
+                  try { celebrateLifeSkillLevel(S, 'blacksmithing', _sr.newLevel, _sr.fromLevel); } catch (_ce) {}
+                }
+              }
+              break;
+            }
           case 'lifesteal_credit':
             {
               /* Worker tells us a melee-kill heal landed -- render the +N HP
@@ -2586,6 +2630,12 @@ export function setupWebSocket(ctx) {
                  Display only — the authoritative pools ride player_state,
                  so this never writes game state. */
               if (!msg.payload || !S.player) break;
+              /* v2.3.2824: a whirlwind the worker refused at the PRESS never
+                 armed, so its ring must not run out into a strike that
+                 cannot land.  A 'whiff' is the strike itself coming back
+                 empty (the windup already ended), so it leaves nothing to
+                 cancel. */
+              if (msg.payload.kind === 'whirl' && msg.payload.reason !== 'whiff') S._whirlWindup = null;
               /* v2.3.2263: stamp the last refusal, house-style probe.  The
                  popup is the only trace a reject leaves, and a floating
                  "Missed!" is not something a headless scenario can read -- so
@@ -3777,6 +3827,18 @@ export function setupWebSocket(ctx) {
            nothing (TRAPS #18). This one would fail in the worst way: the
            bottle stays in the bag and nothing happens, which reads as a broken
            item rather than as a broken send. */
+        /* v2.3.2820: Open Chest (ItemDetailPopup) -> dailychest.js.  The shim
+           passes only the types it names, so without this the button sent
+           nothing at all -- caught by mp-polish opening a real chest. */
+        if (msg.type === 'chest_open') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.2822: Smelt at the blacksmith (SmithyPanel) -> smelting.js. */
+        if (msg.type === 'smelt_bar') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'potion_drink') {
           ws.send(JSON.stringify(msg));
           return;

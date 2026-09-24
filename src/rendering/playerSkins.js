@@ -34,7 +34,7 @@ import { getEyeStyle, onEyeStyleChange } from './traits/eyeStyleCatalog.js';   /
 import { getArt, artHasInk, artHash, onArtChange, sideForDir, emptyArt } from './traits/playerArt.js';   /* v2.3.2042: sideForDir/emptyArt -- a face tattoo does not revolve to the back of a head */
 import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, splitSkinBySeeds, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
-import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine; v2.3.2822: + the file's key mask */
+import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine; v2.3.2834: + the file's key mask */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -1110,7 +1110,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
   cv.height = img.naturalHeight || img.height;
   const ctx = cv.getContext('2d');
   ctx.drawImage(img, 0, 0);
-  /* v2.3.2823: `opts.art` + `opts.regions` -- the player's drawings, on a
+  /* v2.3.2835: `opts.art` + `opts.regions` -- the player's drawings, on a
      stand-in whose face/torso/arms were fitted by hand (standInInk.js).  Only
      the three SKIN canvases: these figures keep their painted trousers (the
      recolour here is skin-only for the reasons above), so a trouser print would
@@ -1156,7 +1156,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
     if (leftX) leftX.push(lx);
   }
   /* pass 3: retint the CHARACTER's skin; leave the small islands (props) */
-  const body = ink ? new Uint8Array(w * h) : null;   /* v2.3.2823: the same pixels, for the stamp */
+  const body = ink ? new Uint8Array(w * h) : null;   /* v2.3.2835: the same pixels, for the stamp */
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
     const id = label[p];
     if (!id) continue;
@@ -1164,7 +1164,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
     if (skinT) _retint(d, i, skinT, SKIN_REF);
     if (body) body[p] = 1;
   }
-  /* v2.3.2823: the drawings, AFTER the retint (so the ink is shaded by the skin
+  /* v2.3.2835: the drawings, AFTER the retint (so the ink is shaded by the skin
      it lands on, exactly as the body's stamp is) and confined to the pixels the
      retint just called the character's skin. */
   if (ink && !apart) _stampStandInInk(d, w, h, body, ink, o.regions);
@@ -1191,7 +1191,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
   return { cv, ink: ic };
 }
 
-/* v2.3.2823: face, torso and arm drawings on a stand-in, from its hand-fitted
+/* v2.3.2835: face, torso and arm drawings on a stand-in, from its hand-fitted
    regions -- see standInInk.js for the table and splitSkinBySeeds for the split.
    `art.mirror` is honoured as the body honours it: the drawing is read flipped,
    for a figure the renderer will flip back. */
@@ -1226,7 +1226,7 @@ function loadImg(url) { return loadWebpOrPng(url); }
    'loading' persists across the backoff so the base-sheet fallback
    keeps the player visible; &r=N bypasses a poisoned cache entry. */
 const _BODY_RETRY_MS = [2000, 6000];
-/* v2.3.2822: the tool key as the SHEET FILE has it, at the bake's own size --
+/* v2.3.2834: the tool key as the SHEET FILE has it, at the bake's own size --
    read before anything is painted, so a drawing in the key's hue cannot pass
    for the tool (see the fish recolour in buildBodySheet). */
 function _fileKeyMask(img, w, h) {
@@ -1267,7 +1267,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
     /* v2.3.2761: the fishing rod's pine, AFTER the skin pass -- pine is the
        skin's hue family, so recolouring before it would hand the rod to the
        skin retint.  See toolRecolor.js.
-       v2.3.2822: ...and only where the FILE has the key.  Fishing bakes carry
+       v2.3.2834: ...and only where the FILE has the key.  Fishing bakes carry
        the drawings now (getFishFrame), and the key test is a hue window a pink
        tattoo sits inside (#d76ba8 is hue 326): recoloured by that test alone,
        a player's pink ink turned to pine wood for as long as he fished --
@@ -1544,7 +1544,7 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
-/* ═══ v2.3.2822: FISHING KEEPS YOUR DRAWINGS ═══
+/* ═══ v2.3.2834: FISHING KEEPS YOUR DRAWINGS ═══
    Owner: "yes make tattoos stay on while harvesting resources."
    Fishing draws the RAW fish sheet, on purpose (entityRenderer v2.3.2304):
    the pink rod and line are baked into that art and the body-region RECOLOUR
@@ -1771,7 +1771,7 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
     const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, 'stand', dir, art, blank && blank.id);
     if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, art, blank && blank.rects);
   }
-  /* v2.3.2822: a drawing edit drops every inked sheet (_dropArtSheets) and
+  /* v2.3.2834: a drawing edit drops every inked sheet (_dropArtSheets) and
      lands here; the inked fish sheet is rebuilt with the stand ones, so the
      next cast is not the one that pays for it. */
   if (art) prewarmFishInk(art);
@@ -1854,7 +1854,7 @@ export function preloadBodyAll() {
      moment the player starts a gather.  The sheet is 1792x128 on disk, so at
      DISPLAY_DS=2 this is a few hundred KB. */
   prewarm('mine', 'south');
-  /* v2.3.2822: and the FISH sheet with the drawings on it (getFishFrame) --
+  /* v2.3.2834: and the FISH sheet with the drawings on it (getFishFrame) --
      only a drawn player has one; everyone else fishes on the raw sheet, which
      loadPlayerSprites already holds. */
   if (art) tasks.push(prewarmFishInk(art));

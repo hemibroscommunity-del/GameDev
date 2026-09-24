@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { deriveQuestLog, trackedQuestId, rewardText } from '../sheet/questModel.js';
+import { questSteps } from '../../../data/gameSystems.js';   /* v2.3.2820 */
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2172: the sheet's width, not the shell's */
@@ -142,7 +143,15 @@ export const QuestsPanel = () => {
                   }}>{quest.id === tracked && !ready ? '★ ' : ''}{quest.title}</span>
                   {/* round-5: objective + giver, raised contrast (text2,
                       was muted). */}
-                  <span style={{ display: 'block', fontSize: 12, color: COL.text2, marginTop: 1 }}>{quest.desc}</span>
+                  {/* v2.3.2820: a quest with steps says the NEXT one here, not
+                      the whole objective again -- this row is what a stuck
+                      player glances at. */}
+                  <span style={{ display: 'block', fontSize: 12, color: COL.text2, marginTop: 1 }}>{(() => {
+                    if (ready) return quest.desc;
+                    const st = questSteps(quest, getState() && getState().rpg, getState());
+                    const cur = st && st.find((x) => x.current);
+                    return cur ? ('Next: ' + cur.label) : quest.desc;
+                  })()}</span>
                   {/* v2.3.1704 (owner: "The quest UI is a little confusing
                       what's rewards for the next quests vs what's rewarded for
                       the current quest").  This read "Mayor Bro · 25g · 40 XP"

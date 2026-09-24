@@ -437,7 +437,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      this test: fishing drew the RAW fishing sheet (no recolour, so the pink rod
      survives) and the drawings rode that same bake.  Left live on purpose, as
      the owner's call -- and the owner's answer was "yes make tattoos stay on
-     while harvesting resources".  v2.3.2822: getFishFrame stamps the drawings
+     while harvesting resources".  v2.3.2834: getFishFrame stamps the drawings
      onto the raw sheet (playerSkins), so "fish" passes here now;
      mp-harvestink checks it frame by frame on both screens. */
   for (const p of poses) {
