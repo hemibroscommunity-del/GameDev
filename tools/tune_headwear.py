@@ -145,14 +145,30 @@ def fit_pose(meta, pose, path, dirs=None):
     the face.  X is left at 0 deliberately: nudge X is multiplied by the mirror
     sign, so a non-zero value needs opposite entries per screen side."""
     print(f'{pose} vs stand — head width drawn in each sheet (256-space)\n')
+    # v2.3.2897: `fitSkip` {pose: [dirs]} -- directions where the owner looked
+    # at the fit and kept the renderer's blanket size instead (sombrero and
+    # wizard hat, jog east: "were better before. Too large.").  Never fitted
+    # again by this tool; and a FULL fit is refused outright on such an item,
+    # because setting poseFit would switch that very blanket off.
+    skip = set((meta.get('fitSkip') or {}).get(pose, []))
+    if dirs is None and skip:
+        raise SystemExit(f'{pose} fit refused: fitSkip keeps the blanket size on {sorted(skip)} for '
+                         f'this item (an owner decision -- see its note), and a full fit would '
+                         f'switch that blanket off.  Fit the other directions with --dirs.')
+    want = [d for d in DIRS if dirs is None or d in dirs]
+    for d in want:
+        if d in skip:
+            print(f'  {d:<11} fitSkip — the owner kept the blanket size here; not fitted')
+    want = [d for d in want if d not in skip]
+    if not want:
+        print('\nnothing left to fit — wrote nothing')
+        return
     if dirs is None:
         meta['poseFit'] = True
     fitted = bool(meta.get('poseFit'))
     sbp = meta.setdefault('scaleByPose', {}).setdefault(pose, {})
     pn = meta.setdefault('poseNudge', {}).setdefault(pose, {})
-    for d in DIRS:
-        if dirs is not None and d not in dirs:
-            continue
+    for d in want:
         # v2.3.2361: an item ships only the directions its meta has anchors for
         # (the beard has no north; glasses have none either).  Nothing to fit.
         if d not in (meta.get('anchors') or {}):
