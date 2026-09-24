@@ -8200,7 +8200,11 @@ export class EffectsRenderer {
      Drawn on the splat layer, which sits UNDER the player: a print is in the
      ground, and one drawn over your boots would read as a sticker. */
   _updateFootprints(S, now) {
-    const prints = S.footprints || [];
+    /* v2.3.2889: yours, then everyone else's (visualSystems keeps the two in
+       separate capped lists), through one pool: same art, same fade, same
+       layer -- a peer's trail in the snow is drawn exactly as yours is. */
+    const own = S.footprints || [], theirs = S.peerFootprints || [];
+    const nPrints = own.length + theirs.length;
     const frames = footprintFrames(S.currentZone);
     if (!this._printPool) this._printPool = [];
     const pool = this._printPool;
@@ -8211,8 +8215,8 @@ export class EffectsRenderer {
       for (let i = 0; i < pool.length; i++) if (pool[i]) pool[i].visible = false;
       return;
     }
-    for (let i = 0; i < prints.length; i++) {
-      const d = prints[i];
+    for (let i = 0; i < nPrints; i++) {
+      const d = i < own.length ? own[i] : theirs[i - own.length];
       const age = now - (d.ts || 0);
       let sp = pool[i];
       if (!sp || sp.destroyed) {
@@ -8244,7 +8248,7 @@ export class EffectsRenderer {
       sp.alpha = PRINT_ALPHA * (t < 0.66 ? 1 : 1 - (t - 0.66) / 0.34);
       sp.visible = true;
     }
-    for (let i = prints.length; i < pool.length; i++) if (pool[i]) pool[i].visible = false;
+    for (let i = nPrints; i < pool.length; i++) if (pool[i]) pool[i].visible = false;
   }
 
   /* ── Ground Splatter ── */

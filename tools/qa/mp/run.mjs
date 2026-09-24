@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  peerprints: () => import('./mp-peerprints.mjs'), /* v2.3.2889: another player's walk through the snow leaves the trail their own screen lays -- from where the walk began, along the same line, spaced by the same rule; a roll with a direction held lays prints on both screens, one with nothing held on neither */
   dodgetime: () => import('./mp-dodgetime.mjs'), /* v2.3.2892: a peer's roll plays over THEIR window (250-700 ms), frame for frame with their own screen, and ends when theirs does */
   devarmor: () => import('./mp-devarmor.mjs'), /* v2.3.2875: the admin kit hands out the copper and iron armour sets, into the right bags, wearable */
   monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2870: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */
