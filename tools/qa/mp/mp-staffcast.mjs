@@ -1,4 +1,4 @@
-/* THE STAFF CAST: CHARGE, RELEASE, A LIVING BOLT, A HOT HIT (v2.3.2782)
+/* THE STAFF CAST: CHARGE, RELEASE, A LIVING BOLT, A HOT HIT (v2.3.2801)
  *
  * Owner, after a side-by-side demo of ideas from an X "pixel wizard" prompt:
  * "Looks good. I want to see what it would look like built as it looks like
