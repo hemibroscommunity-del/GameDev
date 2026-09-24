@@ -20,6 +20,7 @@
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
+import { sliceCropped } from './gearSheets.js';   /* v2.3.2791: the body sheets are cropped */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { recolorToolKeyCanvas, recordFishRodMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine */
 
@@ -318,18 +319,16 @@ async function loadSheet(pose, dir, attempt = 0) {
       }
       recolorToolKeyCanvas(small, TOOL_SPECS.rod);
     }
-    const source = Texture.from(small).source;
-    source.scaleMode = 'linear';
-    source.autoGenerateMipmaps = true;
     const fw = Math.max(1, Math.round(FRAME_W / DISPLAY_DS));
     const fh = Math.max(1, Math.round(FRAME_H / DISPLAY_DS));
-    const out = [];
-    for (let i = 0; i < frames; i++) {
-      out.push(new Texture({
-        source,
-        frame: new Rectangle(i * fw, 0, fw, fh),
-      }));
-    }
+    /* v2.3.2791: cropped (gearSheets.sliceCropped) -- 16% of a body frame is
+       the body.  `orig` is the whole frame, so every Sprite lands where it did;
+       the readers that cut or copy body pixels by position go through
+       subTexture / drawGearFrame (entityRenderer, TRAPS §106). */
+    const out = sliceCropped(small, fw, fh, frames);
+    const source = out[0].source;
+    source.scaleMode = 'linear';
+    source.autoGenerateMipmaps = true;
     manifest[pose][dir] = out;
   } catch {
     /* Sheet missing — retry on a backoff, then leave undefined (caller

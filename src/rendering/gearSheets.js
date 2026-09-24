@@ -113,13 +113,18 @@ const _GEAR_RETRY_MS = [2000, 6000];
  *
  * NOT cropped HERE: the fullset knight figure (it becomes the BODY sprite's
  * texture, and a great deal of body code reads that frame's size -- ~4 MB is
- * not worth that risk), and the combat poses (bowshot/swing/chop/cook/fire)
+ * not worth that risk; v2.3.2791: now cropped, see TRIM_SLOTS), and the combat
+ * poses (bowshot/swing/chop/cook/fire)
  * when they come through THIS loader -- the only one that does is the blockArm
  * sleeve, which cuts a sub-rectangle out of a bowshot frame by frame offset.
  * v2.3.2774: the combat poses' real, resident copies are the stand-in strips
  * effectsRenderer._gearStripFrame loads, and those ARE cropped, with this
  * same packTrimmed.  Only the slots and poses below are cropped here. */
-const TRIM_SLOTS = new Set(['chest', 'legs', 'shirt', 'belt']);
+/* v2.3.2791: + 'fullset'.  The knight figure becomes the BODY sprite's texture,
+   and v2.3.2750 left it whole for exactly that reason -- the body readers had
+   to learn `orig` first.  They have now (the body sheets are cropped too, see
+   sliceCropped), so the figure joins them. */
+const TRIM_SLOTS = new Set(['chest', 'legs', 'shirt', 'belt', 'fullset']);
 const TRIM_POSES = new Set(['stand', 'jog', 'hit', 'mine', 'dodge', 'pickup', 'fish']);
 const TRIM_PAD = 4;
 const TRIM_ALIGN = 8;
@@ -325,6 +330,60 @@ export function loadCroppedStrip(url, n) {
   });
 }
 
+/* ═══ v2.3.2791: THE BODY SHEETS, CROPPED ═══
+ * Owner: "Do all of it" -- the last two rows of the memory list: the walking /
+ * standing body sheets (playerSprites loadSheet, playerSkins buildBodySheet --
+ * 16% of their texels painted) and the fullset knight figures (10%).
+ *
+ * sliceCropped(cv, fw, fh, n) is the one slicer they share: n frames of fw x fh
+ * cut from the canvas exactly as before, each cropped by packTrimmed, `orig`
+ * the whole frame.  Every Texture also carries `__btIx`, its frame number --
+ * the debug probes used to recover that as frame.x / frame.width, which a
+ * packed crop no longer encodes (pixiRenderer bodyFigureProbe's frameIx).
+ * A sheet the packer declines comes back as plain slices, as before.  The
+ * caller keeps setting scaleMode / mipmaps on the returned source. */
+export function sliceCropped(cv, fw, fh, n) {
+  /* QA only (mp-geartrim sets __btTrimVerify before load): keep the whole
+     sheet so the scenario can prove the crops byte-identical */
+  let verify = null;
+  try {
+    if (typeof window !== 'undefined' && window.__btTrimVerify) {
+      verify = document.createElement('canvas');
+      verify.width = cv.width; verify.height = cv.height;
+      verify.getContext('2d').drawImage(cv, 0, 0);
+    }
+  } catch (e) { verify = null; }
+  const packed = packTrimmed(cv, fw, fh, n);
+  const src = Texture.from(packed ? packed.canvas : cv).source;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    let t;
+    if (packed) {
+      const c = packed.cells[i];
+      t = new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+        orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) });
+    } else {
+      t = new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) });
+    }
+    t.__btIx = i;
+    t.__btN = n;   /* ...and how many the sheet has (a probe used to divide widths for it) */
+    out.push(t);
+  }
+  if (packed) {
+    _bodyTrimStats.sheets++;
+    _bodyTrimStats.fullBytes += cv.width * cv.height * 4;
+    _bodyTrimStats.packedBytes += packed.canvas.width * packed.canvas.height * 4;
+    if (verify) _bodyTrimFrames.push({ frames: out, full: verify, fw, fh });
+  }
+  return out;
+}
+const _bodyTrimStats = { sheets: 0, fullBytes: 0, packedBytes: 0 };
+const _bodyTrimFrames = [];
+if (typeof window !== 'undefined') {
+  window.__btBodyTrim = () => ({ ..._bodyTrimStats });
+  window.__btBodyTrimFrames = () => _bodyTrimFrames;
+}
+
 export function subTexture(tex, x, y, w, h) {
   const f = tex.frame, t = tex.trim;
   if (!t) return new Texture({ source: tex.source, frame: new Rectangle(f.x + x, f.y + y, w, h) });
@@ -448,12 +507,14 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
     for (let i = 0; i < frames; i++) {
       if (packed) {
         const c = packed.cells[i];
-        out.push(new Texture({
+        const t = new Texture({
           source: src,
           frame: new Rectangle(c.ax, c.ay, c.w, c.h),
           orig: new Rectangle(0, 0, fw, fh),
           trim: new Rectangle(c.tx, c.ty, c.w, c.h),
-        }));
+        });
+        t.__btIx = i;   /* v2.3.2791: the frame number the probes read (see sliceCropped) */
+        out.push(t);
         continue;
       }
       out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
