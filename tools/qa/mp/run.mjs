@@ -23,11 +23,11 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  animparity: () => import('./mp-animparity.mjs'), /* v2.3.2890: a peer's sword swing and bow shot are drawn the size, and on the boots, its owner sees -- every facing, several frames */
   devarmor: () => import('./mp-devarmor.mjs'), /* v2.3.2875: the admin kit hands out the copper and iron armour sets, into the right bags, wearable */
   monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2870: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */
   sheen: () => import('./mp-sheen.mjs'), /* v2.3.2864: a permanent soft shine on metal behind ?sheen=1 -- off by default, on every frame when on, copper stays copper, the jogging full-set knight too; pictures and its cost */
   peerattackink: () => import('./mp-peerattackink.mjs'), /* v2.3.2863: another player's swing and bow shot wear their drawings -- both sides, the back from behind, and the bow no longer borrows the sword's frames */
+  animparity: () => import('./mp-animparity.mjs'), /* v2.3.2896: a peer's sword swing and bow shot are drawn the size, and on the boots, its owner sees -- every facing, several frames */
   poseskin: () => import('./mp-poseskin.mjs'), /* v2.3.2861: hit, mining and dodge wear the walking skin on a player who never picked one -- body and the head drawn over armour, baked before the first hit */
   headink: () => import('./mp-headink.mjs'), /* v2.3.2862: the face tattoo stays on under the head overlays -- pickup, a hit or mining in armour, the full-steel knight, both sides and the back of the head, and a watcher's view */
   townscenery: () => import('./mp-townscenery.mjs'), /* v2.3.2859: town's NPCs + buildings load and free with town, and town is never seen without them */

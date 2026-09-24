@@ -10904,10 +10904,10 @@ export class EffectsRenderer {
          is computed from the display scale the build is already on); this one
          computes its own scale from the zone curve, so it needs the term. */
       const _bS = _peerBuild(o);
-      /* ═══ v2.3.2890: SIZED AND PLANTED LIKE YOUR OWN SWING ═══
+      /* ═══ v2.3.2896: SIZED AND PLANTED LIKE YOUR OWN SWING ═══
          The remote twin of _updateSwordSwing, line for line, off the peer's
          own measured standing body (S._peerStandGeom -- see entityRenderer's
-         v2.3.2890 note for why the flat REMOTE_SWING_SCALE made a peer shrink
+         v2.3.2896 note for why the flat REMOTE_SWING_SCALE made a peer shrink
          and jump up on every swing).  Three things the old path missed, all
          of which yours does:
            - the size is the measured body height / 188, per facing;
@@ -10996,7 +10996,7 @@ export class EffectsRenderer {
              an average pair of legs under him.  _placeJogLegs takes ONE scalar
              for both axes, so it gets the height term -- the frame axis is
              locked at 1.00 (buildCatalog, v2.3.1996) and has nothing to add. */
-          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: _legS, x: sp.x, footY: _baseFootY,   /* v2.3.2890: _legS -- the local passes its own `s` */
+          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: _legS, x: sp.x, footY: _baseFootY,   /* v2.3.2896: _legS -- the local passes its own `s` */
           feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), legsItem: eq.legs, weapon: 'sword',
           seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX, legShiftY: _legShiftY,
         });
@@ -11081,12 +11081,12 @@ export class EffectsRenderer {
          were a flat 0.45, so on a vista zone — where the curve runs to ~0.03 —
          a peer attacking drew a full-size figure over a speck.  Same curve,
          same inputs, so the stand-in and the body shrink together. */
-      /* ═══ v2.3.2890: SIZED AND PLANTED LIKE YOUR OWN BOW SHOT ═══
+      /* ═══ v2.3.2896: SIZED AND PLANTED LIKE YOUR OWN BOW SHOT ═══
          _updateBowShot sizes your stand-in `S._swordBodyH / 188` and plants
          it on `S._swordFootY` -- your standing body, measured, per facing.
          This one used a flat REMOTE_BOW_SCALE and the peer's centre point, so
          a peer shrank and jumped up for every shot (the owner's report, and
-         entityRenderer's v2.3.2890 note on S._peerStandGeom has the mechanism).
+         entityRenderer's v2.3.2896 note on S._peerStandGeom has the mechanism).
          The peer's own measured body is now published in S._peerStandGeom by the
          pass that draws them, with the same arithmetic as yours, so this reads
          it and does exactly what your client does: height / 188 on BOTH axes
@@ -11130,7 +11130,7 @@ export class EffectsRenderer {
       sp._qaFi = fi;   /* v2.3.2863: the frame index, for mp-peerattackink -- a cropped frame no longer says which it is */
       sp.scale.set(sgnX, sY);
       sp.x = (o.renderX != null) ? o.renderX : o.x;
-      /* v2.3.2890: on the peer's measured feet, as yours sits on S._swordFootY. */
+      /* v2.3.2896: on the peer's measured feet, as yours sits on S._swordFootY. */
       sp.y = _pstOk ? _pst.footY : (((o.renderY != null) ? o.renderY : o.y) + REMOTE_BOW_FOOT_DY);
       sp.visible = true;
       const place = (spr, tex) => {
