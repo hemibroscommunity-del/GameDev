@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1-6, 9-16 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2873); the rest is the ranked backlog
+### Items 1-6, 9-16 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774-2874); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -556,7 +556,7 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    served files; freed on exit and loadable again.
 
 16. ~~**The masked (armoured) body bakes — ~25% painted, 7.6-13.8 MB per worn
-   set, and the equip stutter they cost**~~ **SHIPPED, v2.3.2871-2873.**
+   set, and the equip stutter they cost**~~ **SHIPPED, v2.3.2871-2874.**
    Owner: "whenever I put on a piece of armor like legs or torso the game would
    noticeably stutter". Measured (`tools/qa/qa-equip-stutter.mjs`, 4x CPU
    throttle, equip then run): the frame rate halved for seconds, all of it the
@@ -580,10 +580,21 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    4 s); and owning a new piece for EACH slot also bakes the full set, so two
    equips back to back land warm. Arrive-then-equip-4s-later: frames over
    100 ms 23 -> 13, the run after it clean.
-   Not covered: equipping a piece within a second or two of getting it, a
-   piece put on straight off the ground, and other players' equips (their
-   bakes run on YOUR phone) -- all still bake live, 40% cheaper. The real fix
-   for those is baking off the main thread (an OffscreenCanvas worker).
+   (e) v2.3.2874, the prewarm bakes OFF THE MAIN THREAD: the pixel work
+   moved verbatim into `maskedBake.js` (canvas factory + draw-function
+   inputs), which `maskedBakeWorker.js` runs on an OffscreenCanvas; the main
+   thread only copies inputs to bitmaps and crops + stores the result
+   (`_storeBake`). Every prewarm bake goes there (fish too -- the rod mask is
+   sent over); a frame the renderer needs this instant still bakes inline,
+   so nothing drawn changes. Putting on a never-owned full set: frames over
+   100 ms 26 -> 9 (sandbox, 4 vCPU shared with software GL -- a phone's GPU
+   is separate hardware, so the worker competes for less there). Byte-
+   identical to the inline bake, four combinations (qa-bake-ident; the one
+   extra frame some runs cache is the same image `main` caches on some of its
+   own runs -- timing, not pixels).
+   Not covered: other players' equips (their bakes run inline on YOUR phone
+   the moment their figure needs a frame) and the handful of frames the
+   renderer asks for before the worker answers.
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
