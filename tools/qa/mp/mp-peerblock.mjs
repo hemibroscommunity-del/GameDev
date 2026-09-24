@@ -1,4 +1,4 @@
-/* ═══ v2.3.2903: ANOTHER PLAYER'S BLOCK AND SHIELD BASH, AS THEY SEE THEM ═══
+/* ═══ v2.3.2920: ANOTHER PLAYER'S BLOCK AND SHIELD BASH, AS THEY SEE THEM ═══
  *
  * Owner: "check all other broadcasted player animations to make sure they
  * match what your character does client side so there's no discrepancies."

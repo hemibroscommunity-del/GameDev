@@ -169,7 +169,7 @@ export function blockArmTexture(sheet) {
   return tex;
 }
 
-/* ═══ v2.3.2903: THE SAME CUT FROM ANOTHER PLAYER'S BODY ═══
+/* ═══ v2.3.2920: THE SAME CUT FROM ANOTHER PLAYER'S BODY ═══
    Owner: "check all other broadcasted player animations to make sure they
    match what your character does client side."
    blockArmTexture cuts YOUR arm out of YOUR baked bow frames (the skin you

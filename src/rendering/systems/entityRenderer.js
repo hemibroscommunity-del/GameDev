@@ -5946,7 +5946,7 @@ const SOUTH_BLOCK_OFFHAND_BY_TYPE = {
  * down-LEFT from a grip that is now on the RIGHT would be pointing back
  * across his own chest — the one direction this constant exists to avoid. */
 const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.28;
-function _placeSouthBlockWeapon(display, wpn, bobY, quiet) {   /* v2.3.2903: + quiet, for a peer (no local probe) */
+function _placeSouthBlockWeapon(display, wpn, bobY, quiet) {   /* v2.3.2920: + quiet, for a peer (no local probe) */
   const spr = display && display._weaponSprite;
   if (!spr || !wpn || !wpn.type) return false;
   /* THE SAME OBJECT HE WAS JUST CARRYING.  A greatsword and a bow have
@@ -6025,7 +6025,7 @@ function _placeSouthBlockWeapon(display, wpn, bobY, quiet) {   /* v2.3.2903: + q
   return true;
 }
 
-/* ═══ v2.3.2903: WHERE THE SHIELD HAND IS, FOR ANY FIGURE ═══
+/* ═══ v2.3.2920: WHERE THE SHIELD HAND IS, FOR ANY FIGURE ═══
    _placeBlockArm's hand, lifted out so another player's held shield sits in
    the same hand yours does: the shoulder point for the facing (display-local,
    the space a peer's display shares with yours -- v2.3.2905's
@@ -6044,7 +6044,7 @@ function _blockHandPoint(facing, bodyH, bobY) {
     y: anchor[1] + (bobY || 0) + (cut.hand[1] - cut.shoulder[1]) * sc,
   };
 }
-/* v2.3.2903: a peer's held shield in their child list, by your in-hand rule
+/* v2.3.2920: a peer's held shield in their child list, by your in-hand rule
    (v2.3.190): behind the body for NW/N/NE; for E, just under the weapon, so
    a carried blade crosses in front of it (v2.3.198); otherwise over the whole
    figure, under only the nameplate layer.  setChildIndex removes then
@@ -6067,7 +6067,7 @@ function _orderPeerHeldShield(display, facingIdx) {
   }
   if (shIdx !== target) display.setChildIndex(sh, target);
 }
-function _placeBlockArm(display, facing, bodyH, bobY, peer) {   /* v2.3.2903: + peer {tex, chest} -- their arm, their sleeve, no local probe */
+function _placeBlockArm(display, facing, bodyH, bobY, peer) {   /* v2.3.2920: + peer {tex, chest} -- their arm, their sleeve, no local probe */
   const spr = display._blockArmSprite;
   const sleeve = display._blockArmSleeve;
   const group = display._blockArmGroup;
@@ -6139,7 +6139,7 @@ function _placeBlockArm(display, facing, bodyH, bobY, peer) {   /* v2.3.2903: + 
   }
 
   /* Where the hand ended up, for the shield to sit in. */
-  const hand = _blockHandPoint(facing, bodyH, bobY);   /* v2.3.2903: one formula, shared with a peer's shield */
+  const hand = _blockHandPoint(facing, bodyH, bobY);   /* v2.3.2920: one formula, shared with a peer's shield */
 
   /* QA probe (mp-blockarm) — a headless run cannot read the WebGL canvas. */
   if (!peer) try {
@@ -6943,7 +6943,7 @@ function createOtherPlayerDisplay() {
   shieldBackHi.anchor.set(0.5, 0.5);
   shieldBackHi.visible = false;
   container.addChild(shieldBackHi);
-  /* ═══ v2.3.2903: THE SHIELD IN THEIR HAND, AND THE ARM THAT HOLDS IT ═══
+  /* ═══ v2.3.2920: THE SHIELD IN THEIR HAND, AND THE ARM THAT HOLDS IT ═══
      Your display has had these since v2.3.1785 (arm) and v2.3.190 (shield);
      a peer's never did, so a peer raising a shield raised nothing.  Same
      structure as yours: the arm and its sleeve share one container so the
@@ -9638,7 +9638,7 @@ export class EntityRenderer {
        a client-supplied id, so a Map and not {} (CLAUDE.md rule 4). */
     if (!S._peerStandGeom) S._peerStandGeom = new Map();
     else S._peerStandGeom.clear();
-    /* v2.3.2903: which peers hold a shield out this frame, and which of those
+    /* v2.3.2920: which peers hold a shield out this frame, and which of those
        are in the block pose -- read by effectsRenderer, which draws the pose's
        figure and hands and cuts their shield arm (S._peerArmTex, back to the
        pass below).  Same rules as _peerStandGeom: cleared every pass, a Map. */
@@ -9918,7 +9918,7 @@ export class EntityRenderer {
         });
       }
 
-      /* ═══ v2.3.2903: THEIR SHIELD, HELD OUT -- AS YOURS IS ═══
+      /* ═══ v2.3.2920: THEIR SHIELD, HELD OUT -- AS YOURS IS ═══
          Owner: "check all other broadcasted player animations to make sure
          they match what your character does client side."
          A block and a Shield Bash both reach this screen already (player_shield
@@ -9992,7 +9992,7 @@ export class EntityRenderer {
             return (_isMelee && other._swingTs && (now - other._swingTs) < SWORD_SWING_MS)
               || (other._bowShotAt && (now - other._bowShotAt) < BOW_SHOT_MS);
           })();
-          /* v2.3.2903: + held beats slung, as yours (v2.3.1782). */
+          /* v2.3.2920: + held beats slung, as yours (v2.3.1782). */
           const _place = (_hasShield && !isHit && !other._dying && !other._ex && !_shSwing && !_oShieldHeld)
             ? backShieldPlacement(facingIdx, isMoving, bobY)
             : null;
@@ -10478,7 +10478,7 @@ export class EntityRenderer {
         }
       } else if (oWpnType && _oBlocking && _oShieldHeld && !_oBlockPose && SOUTH_BLOCK_OFFHAND_ENABLED
                  && _placeSouthBlockWeapon(display, { type: oWpnType, gearBase: other.wpnMat || undefined }, bobY, true)) {
-        /* v2.3.2903: a peer's SOUTH block keeps their weapon too, in the off
+        /* v2.3.2920: a peer's SOUTH block keeps their weapon too, in the off
            hand under the shield -- your v2.3.1871, through the same helper.
            Exactly one of this and the pose's off hand draws (!_oBlockPose). */
       } else {
@@ -10585,7 +10585,7 @@ export class EntityRenderer {
       {
         const _sw = other._swingWpn;
         const _melee = !_sw || _sw === 'sword' || _sw === 'greatsword';
-        /* v2.3.2903: a bash draws no swing stand-in any more
+        /* v2.3.2920: a bash draws no swing stand-in any more
            (effectsRenderer), so it must not hide the body the stand-in no
            longer replaces -- and the block pose does replace it. */
         const _meleeSwing = _melee && !other._swingBash && other._swingTs && (now - other._swingTs) < SWORD_SWING_MS;
@@ -10609,7 +10609,7 @@ export class EntityRenderer {
         }
       }
 
-      /* ═══ v2.3.2903: ...AND IN THEIR HAND ═══
+      /* ═══ v2.3.2920: ...AND IN THEIR HAND ═══
          The held shield, placed as yours is (entityRenderer's shield block,
          v2.3.1785-1805): the frame for the guarded direction, HELD_SHIELD_PX,
          in the hand _blockHandPoint gives for the facing (else the old 16px
