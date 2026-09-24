@@ -1052,7 +1052,7 @@ export const combatMethods = {
     // 16 / T1-T2): special hits get the 2x cap headroom.
     const rolled = this._computeAttackDamage(attackerPs, slot, isSpecial, { targetLevel: m.level });  /* v2.3.2680: the edge */
     const dmgCap = this._maxDmgForAttacker(attackerPs, isSpecial);
-    /* ═══ v2.3.2828: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ═══
+    /* ═══ v2.3.2848: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ═══
        Owner: "the bow special should be 3 white hot arrows that follow each
        other closely.  One shot for all 3 arrows.  I think the archetype for
        bow will be speed and DPS as opposed to staff which is area damage and

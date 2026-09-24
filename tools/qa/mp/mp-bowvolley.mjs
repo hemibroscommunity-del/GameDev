@@ -1,4 +1,4 @@
-/* ═══ THE BOW SPECIAL AS A VOLLEY, ON A REAL WORKER (v2.3.2828) ═══
+/* ═══ THE BOW SPECIAL AS A VOLLEY, ON A REAL WORKER (v2.3.2848) ═══
  *
  * Owner: "the bow special should be 3 white hot arrows that follow each other
  * closely.  One shot for all 3 arrows" -- "a third each" -- "Burn, but no

@@ -52,7 +52,7 @@ async function newRoom() {
      what "owning a bow" means on this side. */
   ps.rangedWeapon = { name: 'Pine Bow', type: 'bow', gearBase: 'ww_pine', quality: 'normal', tierMult: 1 };
   ps.activeSlot = 'ranged';
-  /* v2.3.2828: the blast is retired while the three-arrow volley is live
+  /* v2.3.2848: the blast is retired while the three-arrow volley is live
      (arrowblast.js _bowVolleyLive), so sections 1-5 run where it still
      exists: behind the kill switch, `bowvolley: false` in liveflags, which
      gives a joining client the old single arrow and its blast back.
@@ -196,7 +196,7 @@ function placeMonsters(room, zone, spots) {
     !PRIVILEGED_EVENTS.has('arrow_blast'));
 }
 
-// ── 6. v2.3.2828: RETIRED WHILE THE BOW SPECIAL IS A VOLLEY ──
+// ── 6. v2.3.2848: RETIRED WHILE THE BOW SPECIAL IS A VOLLEY ──
 // Owner, making the special three white-hot arrows: "Burn, but no blast" --
 // the area send-off belongs to the staff now.  The client that reads
 // caps.bowvolley never sends arrow_blast; the worker refuses it anyway, so a

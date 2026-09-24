@@ -26,7 +26,7 @@
  * ═══ WHAT IS COUNTED ═══
  * Projectiles, by `isSpecial`, over a window that starts before the press.
  * The special's own shots are known exactly -- three arrows for the bow
- * (v2.3.2828's volley; it was one), three orbs for the staff -- so a NORMAL
+ * (v2.3.2848's volley; it was one), three orbs for the staff -- so a NORMAL
  * projectile appearing in that window is the
  * bundled shot, with no inference required.  The count is read from S.arrows
  * as they are pushed rather than from anything the renderer draws, because the
@@ -165,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is the state a player is in for the whole of a fight: thumb down. */
   const rows = [];
   for (const w of [
-    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 3 },   /* v2.3.2828: the volley -- three arrows, one press */
+    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 3 },   /* v2.3.2848: the volley -- three arrows, one press */
     { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 3 },
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
@@ -332,7 +332,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the grace holds it until the gesture is legible. */
   const pressRows = [];
   for (const w of [
-    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 3 },   /* v2.3.2828: the volley -- three arrows, one press */
+    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 3 },   /* v2.3.2848: the volley -- three arrows, one press */
     { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 3 },
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
@@ -451,7 +451,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      trigger, so for once the real gesture is fully reproducible. */
   const btnRows = [];
   for (const w of [
-    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 3 },   /* v2.3.2828: the volley -- three arrows, one press */
+    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 3 },   /* v2.3.2848: the volley -- three arrows, one press */
     { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 3 },
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);

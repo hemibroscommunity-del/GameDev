@@ -152,7 +152,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `pong` | Heartbeat reply | ~3811 |
 | `track` | **Cosmetics/appearance only** (2 s cadence) — allowlisted, see below | ~3819 |
 | `player_attack` | Attack swing (also relayed to peers — see Quirks) | ~3828 |
-| `monster_damage` | Damage claim against a monster (server validates; truth returns as `monster_hit`). **v2.3.2481:** a BASIC staff bolt (`slot: 'staff'`, no `special`) additionally splashes 50% of its own capped roll to up to 3 other monsters within 60 px of the impact point (× Detonation, the server mirror of the client's `staffAoeMult`), each answered by its own `monster_hit` tagged `splash: true`. The scan is server-side ON PURPOSE: the worker rolls FULL damage for every `monster_damage` it receives, so a client sending a second event for the neighbour would deal 100%, not 50% **v2.3.2828:** an arrow of the bow volley adds `part: 3` — the worker divides its OWN capped special roll by it (`slot: 'ranged'` specials only, integers 2–3, anything else is 1), so the three arrows land what one did; honoured unconditionally because it can only lower damage. Arrows 2–3 into a monster the volley already hit also send `noKb: true` (the v2.3.1435 flag), so the volley shoves once. See `docs/specs/bow-volley.md` | ~3834 |
+| `monster_damage` | Damage claim against a monster (server validates; truth returns as `monster_hit`). **v2.3.2481:** a BASIC staff bolt (`slot: 'staff'`, no `special`) additionally splashes 50% of its own capped roll to up to 3 other monsters within 60 px of the impact point (× Detonation, the server mirror of the client's `staffAoeMult`), each answered by its own `monster_hit` tagged `splash: true`. The scan is server-side ON PURPOSE: the worker rolls FULL damage for every `monster_damage` it receives, so a client sending a second event for the neighbour would deal 100%, not 50% **v2.3.2848:** an arrow of the bow volley adds `part: 3` — the worker divides its OWN capped special roll by it (`slot: 'ranged'` specials only, integers 2–3, anything else is 1), so the three arrows land what one did; honoured unconditionally because it can only lower damage. Arrows 2–3 into a monster the volley already hit also send `noKb: true` (the v2.3.1435 flag), so the volley shoves once. See `docs/specs/bow-volley.md` | ~3834 |
 | `extraction_start` | Begin gather/extraction channel | ~3841 |
 | `node_strike` | Hit a gather node | ~3852 |
 | `loot_pickup` | Claim ground loot (server answers `loot_credit` or `loot_pickup_rejected`) | ~3863 |
@@ -162,7 +162,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `ability_use` | Special moves — `payload.type` ∈ `dodge`, `lunge`, `retreat`, `swipe` (+ tier); server may answer `ability_rejected` | ~3900 |
 | `ability` | v2.3.1733 stamina abilities — `{kind}` ∈ `bash`, `whirl`, under `caps.abil`. Server-resolved end to end (targets, damage, stun, knockback, kill credit); may answer `ability_rejected`. See abilities.js | abilities.js |
 | `element_burst` | v2.3.1734 Element Burst, under `caps.elemBurst`. **Payload is EMPTY** — the server reads the weapon, its `element1`, the position, the pools and the cooldown from its own state and picks the targets itself. Answers a broadcast `element_nova` + `monster_hit` per target (tagged `burst:true`), or `ability_rejected` with `{type:'burst', reason}`. Its own type rather than an `ability` kind: that table prices costs as a % of STAMINA, and this spends flat MANA behind an element gate | burst.js |
-| `arrow_blast` | v2.3.2279 the bow special's send-off: `{zone, x, y}` — a position and nothing else; the worker picks the targets (220 px) and rolls a bow special on each, answering a broadcast `arrow_boom`. **v2.3.2828: RETIRED while the volley is live** — refused silently as `retired` (counted in the operator view) whenever the worker advertises `caps.bowvolley`; the `bowvolley: false` live flag un-advertises the volley and lets the blast through again. See `docs/specs/bow-volley.md` | arrowblast.js |
+| `arrow_blast` | v2.3.2279 the bow special's send-off: `{zone, x, y}` — a position and nothing else; the worker picks the targets (220 px) and rolls a bow special on each, answering a broadcast `arrow_boom`. **v2.3.2848: RETIRED while the volley is live** — refused silently as `retired` (counted in the operator view) whenever the worker advertises `caps.bowvolley`; the `bowvolley: false` live flag un-advertises the volley and lets the blast through again. See `docs/specs/bow-volley.md` | arrowblast.js |
 | `eat_request` | Consume food (server-authoritative heal) | ~3909 |
 | `shop_purchase` | Buy from vendor | ~3918 |
 | `equip_request` / `unequip_request` | Equip/unequip gear | ~3935 / ~3953 |
@@ -347,7 +347,7 @@ join.js): it is the copy `getAllPlayerData()` publishes in every `state_sync`
 and the one `_reportToLeaderboard` prefers, and the client draws it into an
 unwrapped nameplate Text.
 | `player_swing` / `player_projectile` / `player_shield` | Remote attack/projectile/shield visuals | ~3134 / ~3142 / ~3155 |
-| `player_projectile` `delayMs` | v2.3.2259 the staff volley's stagger (a peer holds the orb that long at the caster's hand, in ms). **v2.3.2828:** the bow volley sends one `player_projectile` per arrow with `delayMs` 0 / 167 / 333 — sized for a peer's 8 px-a-frame arrow — and a peer holds a non-staff projectile that many FRAMES (`round(delayMs / 16.7)`, `holdFrames`), since that is what its flight is counted in; an older peer draws the three at once, which is what it drew before | gameEvents.js |
+| `player_projectile` `delayMs` | v2.3.2259 the staff volley's stagger (a peer holds the orb that long at the caster's hand, in ms). **v2.3.2848:** the bow volley sends one `player_projectile` per arrow with `delayMs` 0 / 167 / 333 — sized for a peer's 8 px-a-frame arrow — and a peer holds a non-staff projectile that many FRAMES (`round(delayMs / 16.7)`, `holdFrames`), since that is what its flight is counted in; an older peer draws the three at once, which is what it drew before | gameEvents.js |
 | `player_hurt_by_monster` / `monster_dmg_at` / `player_died_to_monster` | Peer combat-feedback visuals (drive the peer damage-number smoothing queue) | ~3646 / ~3666 / ~3683 |
 | `player_respawned` | Peer corpse-clear (deliberately not privileged — see Security model) | ~3721 |
 | `stunned` | Stun visual/state relay | ~3836 |
@@ -383,7 +383,7 @@ Summary of the wire-visible changes:
   and run legacy client-side credit paths ONLY when the server hasn't
   claimed the job. HTTP responses use `settled: true` for the same
   purpose. This is the deploy-order safety mechanism; preserve it.
-- v2.3.2828 (bow-volley.md): **`caps.bowvolley`** — the bow special is
+- v2.3.2848 (bow-volley.md): **`caps.bowvolley`** — the bow special is
   three arrows of a third each (`monster_damage.part`) with no send-off
   blast (`arrow_blast` refused as `retired`). The client gates the whole
   volley on it; without it the special stays the one arrow with its blast.

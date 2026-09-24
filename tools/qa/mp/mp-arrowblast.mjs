@@ -24,7 +24,7 @@
  *     blast is drawn from the server's broadcast rather than predicted, and
  *     the observer is how that is proved rather than asserted.
  *
- * ═══ v2.3.2828: NOW THE KILL SWITCH'S TEST ═══
+ * ═══ v2.3.2848: NOW THE KILL SWITCH'S TEST ═══
  * The special is three white-hot arrows with no blast (owner: "Burn, but no
  * blast"; src/game/bowVolley.js, mp-bowvolley).  The blast survives only
  * behind the `bowvolley: false` live flag, which un-advertises the volley and
@@ -228,7 +228,7 @@ async function blast({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     S._aimAngle = Math.atan2(ty - S.player.y, tx - S.player.x);
     S._facing = 'right';
-    /* v2.3.2828: LOCKED, the way a tap does.  Since v2.3.2473 a bow special
+    /* v2.3.2848: LOCKED, the way a tap does.  Since v2.3.2473 a bow special
        fires only when its sight line is on a monster and otherwise waits in a
        queue -- an aim angle alone left this scenario's special unfired
        ("a special arrow is in play" red on main, not only here). */
@@ -304,7 +304,7 @@ async function blast({ browser, wsPort, webPort, rec }) {
   console.log('    special arrows in play: ' + JSON.stringify(live));
   rec.ok('a special arrow is in play (guard: no arrow, no DoT, no blast)',
     live.length >= 1, { live, wire: await H.wireCounts(A) });
-  rec.ok('...and it is the ONE arrow of old, not the volley (v2.3.2828)', live.length === 1, live);
+  rec.ok('...and it is the ONE arrow of old, not the volley (v2.3.2848)', live.length === 1, live);
   if (!live.length) { await A.ctx.close(); await B.ctx.close(); return; }
 
   /* ── 1. IT FIRES WHEN THE DoT ENDS, NOT AT IMPACT ── */
@@ -381,7 +381,7 @@ async function blast({ browser, wsPort, webPort, rec }) {
      that never fired (the lesson the harvest handshake taught three times). */
   const why = (await H.adminPlayer(wsPort, aId).catch(() => ({}))).live || {};
   console.log('    worker refusals: ' + JSON.stringify(why.arrowBlast || null));
-  rec.ok('the kill switch let the blast past the retired gate (v2.3.2828: no "retired" refusal)',
+  rec.ok('the kill switch let the blast past the retired gate (v2.3.2848: no "retired" refusal)',
     !(why.arrowBlast && why.arrowBlast.retired), why.arrowBlast || null);
   if (workerHasBow) {
     rec.ok('at least one monster stood inside the blast radius (guard)', inRing.length >= 1, inRing);

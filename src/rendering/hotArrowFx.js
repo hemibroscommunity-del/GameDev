@@ -1,4 +1,4 @@
-/* ═══ v2.3.2827: THE BOW SPECIAL, WHITE-HOT ═══
+/* ═══ v2.3.2847: THE BOW SPECIAL, WHITE-HOT ═══
  *
  * Owner: "I want to see what the arrow special would look like with you
  * drawing the special instead of using my special arrow sprite.  I'd like
@@ -42,7 +42,7 @@
  *            a few rising sparks, and builds back to white-hot in its last
  *            half second before the send-off blast (v2.3.2400's _arrowSendOff).
  *            The heat says what the arrow is doing: it is still burning him.
- *            v2.3.2828: the special is a volley of three now, with no blast
+ *            v2.3.2848: the special is a volley of three now, with no blast
  *            (bowVolley.js), so its arrows BURN OUT instead: after the last
  *            tick the embers darken and fade.  Only the lone arrow an old
  *            worker still gets flares white before its blast (`blast`).
@@ -119,7 +119,7 @@ function coolTint(h) {
 /** How hot a landed special is, 0..1.  `since` is when it was first drawn
  *  headless (it arrived); `tickBase` is its stuckAt / plantedAt, which is what
  *  the chip ticks and the send-off count from.  `blast`: it ends in the
- *  send-off (v2.3.2828: only the lone arrow an old worker gets) -- it builds
+ *  send-off (v2.3.2848: only the lone arrow an old worker gets) -- it builds
  *  back to white for it; otherwise it burns out. */
 export function smoulderHeat(now, since, tickBase, blast) {
   const a = now - (since || now);
@@ -133,18 +133,18 @@ export function smoulderHeat(now, since, tickBase, blast) {
     if (blast) {
       if (t > LIFE_MS - 600) h = Math.max(h, 0.45 + 0.55 * smoothstep(LIFE_MS - 600, LIFE_MS - 50, t));
     } else {
-      h *= 1 - 0.8 * burnOut(t);   /* v2.3.2828: the embers darken after the last tick */
+      h *= 1 - 0.8 * burnOut(t);   /* v2.3.2848: the embers darken after the last tick */
     }
   }
   return clamp(h, 0, 1);
 }
-/* v2.3.2828: 0 -> 1 across the stretch after the burn's last tick (at
+/* v2.3.2848: 0 -> 1 across the stretch after the burn's last tick (at
    LIFE_MS - TICK_MS; its flare has faded by then) to the end of the arrow's
    life -- how far a volley arrow has burnt out. */
 function burnOut(t) {
   return smoothstep(LIFE_MS - 450, LIFE_MS - 30, t);
 }
-/** v2.3.2828: how much of a burnt-out arrow is left to see, 1 -> 0 at the
+/** v2.3.2848: how much of a burnt-out arrow is left to see, 1 -> 0 at the
  *  end of its life (1 while it still ends in a blast, which is its exit). */
 export function smoulderFade(now, tickBase, blast) {
   if (blast || !tickBase) return 1;
@@ -578,8 +578,8 @@ export class HotArrowFx {
   }
 
   /** Draw one white-hot special.  `headless`: it has arrived in something
-   *  (the caller's v2.3.2381 / v2.3.2824 rule).  `tickBase`: its stuckAt/plantedAt,
-   *  0 in flight or for a peer's arrow (v2.3.2828: a volley's shared clock,
+   *  (the caller's v2.3.2381 / v2.3.2844 rule).  `tickBase`: its stuckAt/plantedAt,
+   *  0 in flight or for a peer's arrow (v2.3.2848: a volley's shared clock,
    *  bowVolley.js burnT0).  `blast`: it ends in the send-off (smoulderHeat).
    *  Returns false when the art is not built yet, so the caller can fall
    *  back. */
@@ -655,7 +655,7 @@ export class HotArrowFx {
       }
       const heat = smoulderHeat(now, st.since, tickBase || 0, blast);
       const tint = coolTint(heat), ember = emberStep(heat);   /* not smoulderLook: nothing in the frame loop allocates */
-      const a1 = a0 * smoulderFade(now, tickBase || 0, blast);   /* v2.3.2828: a volley arrow burns out and is gone */
+      const a1 = a0 * smoulderFade(now, tickBase || 0, blast);   /* v2.3.2848: a volley arrow burns out and is gone */
       const axN = ART.ax / ART.headFrac;
       /* the heated shaft, its head buried, drawn in the ember frame its heat
          has cooled to -- a palette step, not a tint (a multiply flattened the
@@ -698,7 +698,7 @@ export class HotArrowFx {
         rep.flashAlpha = 0; rep.auraAlpha = 0; rep.auraNAlpha = 0; rep.auraFrame = -1;
         rep.emberAlpha = g ? +g.alpha.toFixed(3) : 0;
         rep.heat = +heat.toFixed(3);
-        rep.alpha = +a1.toFixed(3);   /* v2.3.2828: the burn-out's fade */
+        rep.alpha = +a1.toFixed(3);   /* v2.3.2848: the burn-out's fade */
       }
     }
     st.lx = x; st.ly = y;

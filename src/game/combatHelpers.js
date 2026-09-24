@@ -8,8 +8,8 @@
    globalThis assignments run. The defensive typeof guards in the code are kept
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
-import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY, monsterTorsoY, zonePlayerScale, TILE } from '@/data/index.js';   /* v2.3.2825: + the torso a shot is aimed at, and the size it is drawn */
-import { hitMaterialOf, hitFxTintOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard; v2.3.2824: goo in the drawn colour */
+import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY, monsterTorsoY, zonePlayerScale, TILE } from '@/data/index.js';   /* v2.3.2845: + the torso a shot is aimed at, and the size it is drawn */
+import { hitMaterialOf, hitFxTintOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard; v2.3.2844: goo in the drawn colour */
 import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3.2730: what a prop is made of, and where a swing meets one */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
@@ -120,7 +120,7 @@ export function bowGripPoint(S) {
 }
 
 export function rangedAimAngle(S, originX, originY) {
-  /* v2.3.2825: at the torso, not the hitbox centre -- see lockShotPoint */
+  /* v2.3.2845: at the torso, not the hitbox centre -- see lockShotPoint */
   var lockPt = lockShotPoint(S && S.lockedTarget && S.lockedTarget.ref, S && S.currentZone);
   if (lockPt) {
     return { ang: Math.atan2(lockPt.y - originY, lockPt.x - originX), src: 'lock' };
@@ -160,7 +160,7 @@ export function lockAimPoint(t) {
   return { x: x, y: y - (monsterBodyOffsetY(t.archetype || t.type) || 0) };
 }
 
-/* ═══ v2.3.2825: A RANGED SHOT IS AIMED AT THE TORSO ═══
+/* ═══ v2.3.2845: A RANGED SHOT IS AIMED AT THE TORSO ═══
  * Owner: "The arrows are grouping around the skeleton's knee. Center it on the
  * torso."  Shots land round where they are aimed (projectiles _pickLanding keeps
  * a landing within a few degrees of the shot's own line), and a locked shot was
@@ -702,7 +702,7 @@ export function hurtPlayerLocal(S, R, amount) {
  * Renderer-side dedup (per-monster 150ms gap) lives with the sprites,
  * but the queue is still hard-capped here so a hit storm can't grow an
  * unbounded array between frames (the hitParticles-400 posture). */
-/* ═══ v2.3.2823: ...AND WHAT HIT IT, AND WHERE ═══
+/* ═══ v2.3.2843: ...AND WHAT HIT IT, AND WHERE ═══
  * Owner: the materials should react "upon getting hit by the impacts from
  * different weapon type (arrow, bolt, sword)".  So the record now carries the
  * WEAPON (`opts.weapon`: 'arrow' | 'bolt' | 'sword' | 'splash', absent when a
@@ -716,7 +716,7 @@ export function hurtPlayerLocal(S, R, amount) {
 export function spawnHitDebris(S, m, angle, opts) {
   if (!S || !m) return;
   var o = opts || {};
-  /* v2.3.2824: `arch` -- what the monster WAS when the hit landed on it.  A shot
+  /* v2.3.2844: `arch` -- what the monster WAS when the hit landed on it.  A shot
      now flies on into the body before its burst (projectiles.js), and a mummy's
      first hit turns it into a skeleton in between: the wrappings that hit tore
      are ash and linen, not bone. */
@@ -727,7 +727,7 @@ export function spawnHitDebris(S, m, angle, opts) {
   var gy = (typeof m.renderY === 'number') ? m.renderY : m.y;
   var h = monsterBodyOffsetY(arch);
   S._debrisBursts.push({
-    /* v2.3.2824: the tint is the colour the monster is DRAWN in -- a blue
+    /* v2.3.2844: the tint is the colour the monster is DRAWN in -- a blue
        slime's goo is its recolour's blue (hitFxTintOf, monsterVariants.js). */
     monsterId: m.id, kind: mat.fx || mat.kind, tint: hitFxTintOf(arch),
     x: (typeof m.renderX === 'number') ? m.renderX : m.x,
@@ -798,7 +798,7 @@ export function propImpactSound(propId, vol) {
    owner's words -- and two copies of an effect drift the day one is restyled.
    The monster hit, a bolt stopped by a prop, and a peer's bolt stopped by a
    prop all call this.
-   v2.3.2821 (the staff-cast work, #707): its restyle of this crash lives
+   v2.3.2841 (the staff-cast work, #707): its restyle of this crash lives
    HERE, as this note asked when it was lifted, so props get it too --
    `style: 'staff'` on both rings hands them to the staff cast's pixel rings in
    the element's heat ramp, and an S._staffCrashes record (the white flash,
@@ -808,7 +808,7 @@ export function propImpactSound(propId, vol) {
    `elem` (the element, for the crash's heat ramp; absent -> the default) and
    `vdx`/`vdy` -- the bolt is DRAWN easing off the staff's crystal for its first
    40 px, and a crash inside that stretch is drawn where the orb was SEEN, the
-   real point plus that leftover offset (v2.3.2821). */
+   real point plus that leftover offset (v2.3.2841). */
 export function orbCrashFx(S, x, y, color, opts) {
   if (!S || !Number.isFinite(x) || !Number.isFinite(y)) return;
   var o = opts || {};
@@ -835,7 +835,7 @@ export function orbCrashFx(S, x, y, color, opts) {
     color: color, maxR: 14, duration: 220,
     style: 'staff', elem: elem, vdx: vdx, vdy: vdy,
   });
-  /* ═══ v2.3.2821: THE CRASH BURNS HOT AND COOLS ═══
+  /* ═══ v2.3.2841: THE CRASH BURNS HOT AND COOLS ═══
      Queued as a FACT (where, which element) rather than as particles, so how
      it looks lives in the renderer.  Bounded, because a hidden tab stops the
      consumer. */
@@ -912,7 +912,7 @@ export function queueArrowSnap(S, x, y, gy, ang, vol) {
   try { BT_AUDIO.swordHit({ vol: vol != null ? vol : 0.26 }, 'bone'); } catch (e) { /* audio is best-effort */ }
 }
 
-/* v2.3.2823: no HIT site calls this any more -- the material reaction's
+/* v2.3.2843: no HIT site calls this any more -- the material reaction's
    landed pieces are the on-hit mark (rendering/hitMaterialFx.js).  Kept, and
    exported, for a mark that is not a hit (the groundSplatter pool it feeds
    still carries the kill splatter).

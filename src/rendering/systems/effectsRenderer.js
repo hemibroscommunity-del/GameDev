@@ -216,10 +216,10 @@ import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShi
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
-import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2821: the staff cast's charge, release, trail and crash */
-import { HotArrowFx, HOT_LEN, buildHotArrowArt, hotArrowReady, hotArrowArt, smoulderHeat, smoulderLook } from '../hotArrowFx.js';   /* v2.3.2827: the bow special, white-hot */
-import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2823: what a monster is made of, when it is hit */
-import { burnT0 } from '@/game/bowVolley.js';                       /* v2.3.2828: a volley's arrows smoulder on its clock */
+import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2841: the staff cast's charge, release, trail and crash */
+import { HotArrowFx, HOT_LEN, buildHotArrowArt, hotArrowReady, hotArrowArt, smoulderHeat, smoulderLook } from '../hotArrowFx.js';   /* v2.3.2847: the bow special, white-hot */
+import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2843: what a monster is made of, when it is hit */
+import { burnT0 } from '@/game/bowVolley.js';                       /* v2.3.2848: a volley's arrows smoulder on its clock */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -831,7 +831,7 @@ const ARROW_SPECIAL = {
   anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.20,
   pulse: { ms: 260, alpha: 0.5, grow: 0.12 },
 };
-/* ═══ v2.3.2827: THE BOW SPECIAL IS THE PINE ARROW, WHITE-HOT ═══
+/* ═══ v2.3.2847: THE BOW SPECIAL IS THE PINE ARROW, WHITE-HOT ═══
    Owner: "I want to see what the arrow special would look like with you
    drawing the special instead of using my special arrow sprite ... something
    glowing and a bit animated over the normal arrow like a white bit glowing
@@ -962,7 +962,7 @@ _fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1881').then((tex) => {
     source: tex.source,
     frame: new Rectangle(0, 0, Math.max(1, Math.round(w * ARROW_PINE.headFrac)), h),
   });
-  /* v2.3.2827: the white-hot special's heat and aura frames are made from
+  /* v2.3.2847: the white-hot special's heat and aura frames are made from
      these same pixels, here -- inside the load the preload gate awaits, so
      they exist before the loading screen lifts (the animation-preloading law)
      with no fetch of their own. */
@@ -1058,7 +1058,7 @@ const JET_ALPHA = 0.55;
    a backlog cannot grow the list without limit. */
 const JET_MAX = 24;
 for (const [cfg, url] of [
-  /* v2.3.2827: not requested while HOT_SPECIAL_ARROW draws the special */
+  /* v2.3.2847: not requested while HOT_SPECIAL_ARROW draws the special */
   ...(HOT_SPECIAL_ARROW ? [] : [[ARROW_SPECIAL, '/sprites/projectiles/arrow-special-v1.webp?v=2.3.1396']]),
   [MAGIC_SPECIAL, '/sprites/projectiles/magic-special-v1.webp?v=2.3.1396'],
   [SWORD_SLASH, '/sprites/projectiles/sword-slash-v1.webp?v=2.3.1396'],
@@ -1132,7 +1132,7 @@ function _crossedFrame(last, cur, target) {
   return last < target || cur >= target;
 }
 
-/* v2.3.2200 -> v2.3.2823: the per-material hit debris (owner: "snow that
+/* v2.3.2200 -> v2.3.2843: the per-material hit debris (owner: "snow that
    flies off the monster") is drawn by rendering/hitMaterialFx.js now.  The
    five DEBRIS_BURSTS sheets this table loaded were never made, so all five
    requests 404ed on every page load and every hit drew the soft placeholder
@@ -1236,7 +1236,7 @@ export function ensureSnowballBurstTex() {
  * "the zone you are in", and two sheets that only frost uses are not that.
  * Frames are destroyed WITHOUT their source and the source once after, because
  * every frame here is a window onto the same TextureSource. */
-/* v2.3.2824: ONE sheet now -- the snowman's ice-burst plume is retired (see
+/* v2.3.2844: ONE sheet now -- the snowman's ice-burst plume is retired (see
    the tombstone where IMPACT_TEX was), so only the thrown ball's burst is left
    to hand back.  The name stays: it is the frost zone's exit hook. */
 export async function freeFrostImpactTex() {
@@ -1268,7 +1268,7 @@ function _mixHex(a, b, t) {
     | ((ab + (bb - ab) * k) | 0);
 }
 
-/* v2.3.2504 -> v2.3.2823: the placeholder debris (owner §5.8: "the fallback
+/* v2.3.2504 -> v2.3.2843: the placeholder debris (owner §5.8: "the fallback
    burst and decals last about 5 s and read clearly") is replaced by
    rendering/hitMaterialFx.js, which keeps both halves of that ask -- a ~5 s
    burst whose pieces LAND and lie there -- in crisp per-material pixel art
@@ -1564,12 +1564,12 @@ _fxLoad('/icons/ore/ore-copper.webp').then((tex) => {
   if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TEX = tex; }
 }).catch((err) => console.warn('[ore-icon] load failed', err));
 
-/* ═══ v2.3.2824: THE SNOWMAN'S ICE-BURST PLUME IS RETIRED ═══
+/* ═══ v2.3.2844: THE SNOWMAN'S ICE-BURST PLUME IS RETIRED ═══
    Owner: "remove the old blurry large hit effects ... These were created
    prior."  v2.3.1124-1130 played a painted eruption (snowman/impact.png, 8
    frames of 192x1024, ~2MB) at a snowman's torso on every hit, sampled LINEAR
    with mipmaps and drawn 96 px tall -- a soft white column half again the
-   snowman's height.  Since v2.3.2823 a hit on a snowman throws crisp packed-snow
+   snowman's height.  Since v2.3.2843 a hit on a snowman throws crisp packed-snow
    clumps, powder and glints from the hitMaterialFx atlas, so the plume was the
    one painted, blurred layer left on a monster hit, and it covered the pieces
    it now duplicated.  Gone with it: the frost-zone load (preloadZoneAssets),
@@ -2049,7 +2049,7 @@ export class EffectsRenderer {
 
     this.projectileGfx = new Graphics();
     this.projectileLayer.addChild(this.projectileGfx);
-    /* ═══ v2.3.2821: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
+    /* ═══ v2.3.2841: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
        See src/rendering/staffCastFx.js.  Created HERE for the reason the jet
        stream's container is (v2.3.2398): Pixi depth is child order, and a pool
        built lazily on whichever frame first needs it would stack differently
@@ -2058,12 +2058,12 @@ export class EffectsRenderer {
        under whatever stands in front of him (v2.3.2633).  Back (particles,
        under the player since v2.3.2636): the crash, above the pooled dots. */
     this._staffFx = new StaffCastFx(layers.player || this.projectileLayer, this.particleLayer);
-    /* v2.3.2823: the material hit reaction.  In front of a monster = the
+    /* v2.3.2843: the material hit reaction.  In front of a monster = the
        particles layer (over the entities, under the player, v2.3.2636); behind
        it = the telegraphs layer, under the entities, so a piece thrown behind
        a monster goes behind its body. */
     this._hitFx = new HitMaterialFx(this.particleLayer, layers.telegraphs || this.particleLayer);
-    /* v2.3.2827: the white-hot bow special -- its arrow, heat, aura and sparks
+    /* v2.3.2847: the white-hot bow special -- its arrow, heat, aura and sparks
        in one container on top of the projectile layer. */
     this._hotArrow = new HotArrowFx(this.projectileLayer);
 
@@ -3466,7 +3466,7 @@ export class EffectsRenderer {
        mp-deathstrip, which asks the SCREEN what is on the corpse rather than
        checking a list. */
     this._selfCorpse = selfCorpseUp(S);
-    /* v2.3.2821: the staff cast's sprite pools refill from zero each frame;
+    /* v2.3.2841: the staff cast's sprite pools refill from zero each frame;
        open them before anything this frame draws into them (the crash rings
        in _updateParticles, the bolts in _updateProjectiles). */
     this._staffFx.begin();
@@ -3504,7 +3504,7 @@ export class EffectsRenderer {
        (chop/cook/fire). Guarded like the remote attack stand-ins. */
     try { this._updateRemoteExtraction(S, now); } catch (e) { /* skip remote skill stand-in */ }
     this._updateProjectiles(S, now);
-    /* v2.3.2821: after the projectiles, so a bolt fired this frame has
+    /* v2.3.2841: after the projectiles, so a bolt fired this frame has
        already been drawn leaving the crystal when its release flash lands. */
     /* Cosmetic, so it must never take the frame down -- but a throw is still
        logged ONCE in the house format, which is what the QA harness listens
@@ -3658,7 +3658,7 @@ export class EffectsRenderer {
            pushes two more every cast.  Every other transient list in this
            file (dust, ambient, dodge trail) splices — this one now matches. */
         if (age >= 1) { S._impactRings.splice(i, 1); continue; }
-        /* v2.3.2821: a staff bolt's crash ring is drawn by the staff cast
+        /* v2.3.2841: a staff bolt's crash ring is drawn by the staff cast
            system as a stepped pixel ring in the element's heat ramp.  Same
            record, same position, same lifetime (mp-orbrange reads all three);
            only the drawing differs. */
@@ -4253,7 +4253,7 @@ export class EffectsRenderer {
        that produced it is exactly what the v2.3.1825 note above guards. */
     this._specialArrowsDrawn = 0;
     this._specialArrowHeads = 0;
-    /* v2.3.2827: the white-hot special's pools refill from zero with them */
+    /* v2.3.2847: the white-hot special's pools refill from zero with them */
     if (this._hotArrow) this._hotArrow.begin();
 
     /* Track aim rotation rate for the mid-flight arrow bend.  Arrows
@@ -4287,7 +4287,7 @@ export class EffectsRenderer {
     this._pmTick = (this._pmTick || 0) + 1;   /* v2.3.2730: see _reapPropArrows */
     for (const a of arrows) {
       if (!a._renderX) continue;
-      /* v2.3.2828: a bow-volley arrow still waiting its turn is on the string,
+      /* v2.3.2848: a bow-volley arrow still waiting its turn is on the string,
          not in the air -- drawn from the frame it is loosed (projectiles.js
          `_held`; a staff orb keeps its old look at the hand) */
       if (a._held && !a.isStaff) continue;
@@ -4327,7 +4327,7 @@ export class EffectsRenderer {
          (v2.3.1426) — both are things it is actually in.  A falling arrow
          keeps its head until it lands, which is what the owner is describing
          and also just what an arrow does. */
-      /* v2.3.2824: ...and a bow special is not in the body until it has flown
+      /* v2.3.2844: ...and a bow special is not in the body until it has flown
          the rest of the way in (projectiles.js keeps `_landFx` until it lands),
          so it keeps its head for those few frames, by the same rule. */
       const _headless = a.planted || (a.stuckIn && !a._landFx);
@@ -4353,7 +4353,7 @@ export class EffectsRenderer {
       const _isStaffSpecial = a._isStaffProj && a.isSpecial;
       /* v2.3.1396: painted special art carries its own flame/wisp tail —
          skip the line trail exactly like the basic bolt's art does. */
-      /* v2.3.2827: the white-hot special carries its own spark tracer, so it
+      /* v2.3.2847: the white-hot special carries its own spark tracer, so it
          stands the brown line trail down exactly as the painted art did. */
       const _hotSpecial = isBowHeavy && HOT_SPECIAL_ARROW && hotArrowReady() && !!this._hotArrow;
       const _paintedSpecial = _hotSpecial || (isBowHeavy && ARROW_SPECIAL.frames.length)
@@ -4378,13 +4378,13 @@ export class EffectsRenderer {
       }
 
       if (_hotSpecial) {
-        /* ═══ v2.3.2827: THE WHITE-HOT SPECIAL ═══
+        /* ═══ v2.3.2847: THE WHITE-HOT SPECIAL ═══
            Same states as the painted branch below, same `_headless` (v2.3.2381
-           / v2.3.2824: the head stays on through flight and the spent drop, and is
+           / v2.3.2844: the head stays on through flight and the spent drop, and is
            buried once it is IN something).  `tickBase` is the clock the stuck
            or planted arrow's 500 ms ticks and its send-off count from -- the
            smoulder throbs on those ticks and flares before the blast. */
-        /* v2.3.2828: resting, it smoulders on its volley's clock (all three
+        /* v2.3.2848: resting, it smoulders on its volley's clock (all three
            throb on the burn's ticks and burn out together), and only the lone
            arrow an old worker gets builds to white for a blast */
         const _tb = (a.stuckIn || a.planted) ? burnT0(a) : 0;
@@ -4443,7 +4443,7 @@ export class EffectsRenderer {
            travel angle, art noses right.  Falls back to the old
            two-circle draw until the strip loads. */
         if (MAGIC_BOLT_FRAMES.length) {
-          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2821: + S, for the caster's crystal */
+          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2841: + S, for the caster's crystal */
         } else {
           gfx.circle(a._renderX, a._renderY, 5 * _pk);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
@@ -4496,7 +4496,7 @@ export class EffectsRenderer {
     const remote = S._remoteProjectiles || [];
     for (const rp of remote) {
       if (!rp._renderX) continue;
-      if (rp._held && !rp.isStaff) continue;   /* v2.3.2828: a peer's volley arrow waiting its turn (visualSystems.js) */
+      if (rp._held && !rp.isStaff) continue;   /* v2.3.2848: a peer's volley arrow waiting its turn (visualSystems.js) */
       /* v2.3.2287: remote projectiles were never curved either. Unlike the
          remote STAND-IN figures (:6288 / :6768 / :6923, curved since
          v2.3.1574) this is a FIRST application, not a double one -- there is
@@ -4508,14 +4508,14 @@ export class EffectsRenderer {
       const _remoteBasicBolt = rp.isStaff && !rp.isSpecial && MAGIC_BOLT_FRAMES.length;
       const _remoteMagicSpec = rp.isStaff && rp.isSpecial && MAGIC_SPECIAL.frames.length;
       const _remoteArrowSpec = !rp.isStaff && rp.isSpecial && ARROW_SPECIAL.frames.length;
-      /* v2.3.2827: a peer's special is white-hot too, through the same code */
+      /* v2.3.2847: a peer's special is white-hot too, through the same code */
       const _remoteHot = !rp.isStaff && rp.isSpecial && HOT_SPECIAL_ARROW && hotArrowReady() && !!this._hotArrow;
       if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec && !_remoteHot) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff, _pk);
       if (rp.isStaff) {
         if (_remoteMagicSpec) {
           this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk);
         } else if (_remoteBasicBolt) {
-          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk, S);   /* v2.3.2821: + S */
+          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk, S);   /* v2.3.2841: + S */
         } else {
           /* v2.3.840: special staff bolts read bigger + golden with a halo. */
           gfx.circle(rp._renderX, rp._renderY, (rp.isSpecial ? 7 : 4) * _pk);
@@ -4536,7 +4536,7 @@ export class EffectsRenderer {
     /* v2.3.1334: reap magic-bolt sprites whose projectile is gone
        (expired, hit, or zone-reset) — same pattern as the slime-orb
        reaper below. */
-    /* v2.3.2821: the breathing overlay (_boltGlow) is pooled in this same
+    /* v2.3.2841: the breathing overlay (_boltGlow) is pooled in this same
        list, and clears its OWN back-reference -- the v2.3.2511 rule for the
        special's pulse, for the same reason. */
     for (let i = this.magicBoltSprites.length - 1; i >= 0; i--) {
@@ -4739,7 +4739,7 @@ export class EffectsRenderer {
        fade.  Outside the loop because it has to keep running with S.arrows
        empty — a guide that vanished with the last arrow would be no guide. */
     this._drawJetStreams(now, S.currentZone);
-    /* v2.3.2827: the white-hot special's sparks, after every arrow has shed
+    /* v2.3.2847: the white-hot special's sparks, after every arrow has shed
        this frame's.  Cosmetic, so a throw must never take the frame down --
        logged ONCE in the house format (takeRenderThrows listens for it). */
     if (this._hotArrow) {
@@ -4817,7 +4817,7 @@ export class EffectsRenderer {
       (Math.floor(now / MAGIC_BOLT_FRAME_MS) + (p._boltPhase || 0)) % MAGIC_BOLT_FRAMES.length
     ];
     if (sprite.texture !== frame) sprite.texture = frame;
-    /* ═══ v2.3.2821: WHERE IT IS DRAWN IS ASKED OF THE STAFF CAST ═══
+    /* ═══ v2.3.2841: WHERE IT IS DRAWN IS ASKED OF THE STAFF CAST ═══
        The bolt leaves the caster's crystal and eases onto its own line, grows
        in over 90 ms, and lays its halo and spark trail (staffCastFx.bolt).
        (x, y) stays the projectile's real position: the hit test never sees any
@@ -4835,7 +4835,7 @@ export class EffectsRenderer {
     sprite.y = dy;
     sprite.rotation = rot;
     sprite.alpha = alpha;
-    /* ═══ v2.3.2821: THE BOLT BREATHES ═══
+    /* ═══ v2.3.2841: THE BOLT BREATHES ═══
        The four painted frames are nearly identical, so on its own the bolt
        reads as a still ball.  A SECOND, ADDITIVE copy of the same frame swells
        and fades over it -- the v2.3.2511 special-arrow pulse, for the same two
@@ -5153,7 +5153,7 @@ export class EffectsRenderer {
        carries (v2.3.1396). */
     if (a.isStaff || a._isStaffProj || a.ice) return false;
     /* The charged bow shot keeps its own golden flame wrap (ARROW_SPECIAL; since
-       v2.3.2827 the white-hot pine arrow, whose spark tracer is its trail).  It
+       v2.3.2847 the white-hot pine arrow, whose spark tracer is its trail).  It
        is fired one at a time off a swipe, so it never forms the LINE this is
        for, and pale blue vapour over that art would only fight it. */
     if (a.isSpecial) return false;
@@ -7845,7 +7845,7 @@ export class EffectsRenderer {
 
   /* ── v2.3.2200: material hit-debris bursts ──
    * Consumes S._debrisBursts (combatHelpers.spawnHitDebris).
-   * v2.3.2823: drawn by HitMaterialFx (rendering/hitMaterialFx.js) -- crisp
+   * v2.3.2843: drawn by HitMaterialFx (rendering/hitMaterialFx.js) -- crisp
    * per-material pieces with physics, shaped by the weapon that landed the
    * hit.  `window.__btDebris` keeps the report shape mp-feel reads (age, ms,
    * sheet, parts, landed, alpha), plus what each burst was made of. */
@@ -8088,7 +8088,7 @@ export class EffectsRenderer {
     sp.x = rec.x - ov.x;
     sp.y = rec.y - ov.y;
     ov.addChild(sp);
-    /* v2.3.2827: a teammate's white-hot special smoulders in the rock too */
+    /* v2.3.2847: a teammate's white-hot special smoulders in the rock too */
     if (rec.kind === 'arrow' && rec.special && HOT_SPECIAL_ARROW) this._heatPropArrow(sp, now, now, rec.t0 || now, !this._volleyWorld(S));
     this._pmFx.push({ kind: rec.kind, propId: rec.id, sprite: sp, t0: rec.t0 || now,
       ttl: rec.ttl > 0 ? rec.ttl : 3000, special: !!rec.special, hotSince: now });
@@ -8097,7 +8097,7 @@ export class EffectsRenderer {
   /* The headless texture an arrow stands in a prop with: the pine arrow's
      cropped shaft, or the charged special's current headless frame. */
   _stuckArrowTex(special, now) {
-    /* v2.3.2827: the white-hot special stands in the rock as its heated shaft,
+    /* v2.3.2847: the white-hot special stands in the rock as its heated shaft,
        head buried, in the ember frame its heat has cooled to (_heatPropArrow) */
     if (special && HOT_SPECIAL_ARROW) return hotArrowArt().heatNoHead || ARROW_PINE.noHead || null;
     if (special && ARROW_SPECIAL.noHead.length && ARROW_SPECIAL.noHead.length === ARROW_SPECIAL.frames.length) {
@@ -8111,7 +8111,7 @@ export class EffectsRenderer {
      back out of the face instead of the middle of the arrow sitting on it. */
   _poseStuckArrow(sp, special, pk) {
     if (special && HOT_SPECIAL_ARROW) {
-      /* v2.3.2827: the heated shaft at the special's length (hotArrowFx HOT_LEN);
+      /* v2.3.2847: the heated shaft at the special's length (hotArrowFx HOT_LEN);
          it is cut from the pine arrow's own frame, so the same width divides */
       sp.anchor.set(1, 0.5);
       sp.scale.set((HOT_LEN * pk) / ((ARROW_PINE.full && ARROW_PINE.full.width) || 1));
@@ -8151,25 +8151,25 @@ export class EffectsRenderer {
     spr.y = py - ov.y;
     spr.rotation = a.ang || 0;
     /* the planted life in projectiles.js: 2 s, a bow special's 4 s
-       (v2.3.2828: a volley's, from its first arrow down) */
+       (v2.3.2848: a volley's, from its first arrow down) */
     const life = special ? 4000 : 2000;
     const left = life - (now - (burnT0(a) || now));
     spr.alpha = Math.max(0, Math.min(1, left / 300));
     spr.visible = true;
     spr._pmSeen = this._pmTick;
-    /* v2.3.2827: a white-hot special smoulders in the rock as it does in a
+    /* v2.3.2847: a white-hot special smoulders in the rock as it does in a
        monster -- cooling, throbbing on its ground ticks, flaring before the
        send-off -- through the ember frames of its heated shaft. */
     if (special && HOT_SPECIAL_ARROW) {
       if (!a._propHotSince) a._propHotSince = now;
-      this._heatPropArrow(spr, now, a._propHotSince, burnT0(a), !a.volley);   /* v2.3.2828 */
+      this._heatPropArrow(spr, now, a._propHotSince, burnT0(a), !a.volley);   /* v2.3.2848 */
     }
   }
 
-  /** v2.3.2827: show a white-hot special's shaft standing in a prop in the
+  /** v2.3.2847: show a white-hot special's shaft standing in a prop in the
    *  ember frame its heat has cooled to.  `since` = when it went in,
    *  `tickBase` = the clock its ticks and send-off count from (hotArrowFx
-   *  smoulderHeat).  v2.3.2828: `blast` -- it ends in the old send-off and
+   *  smoulderHeat).  v2.3.2848: `blast` -- it ends in the old send-off and
    *  builds to white for it; a volley arrow burns out instead. */
   _heatPropArrow(sp, now, since, tickBase, blast) {
     if (!sp || sp.destroyed) return;
@@ -8177,7 +8177,7 @@ export class EffectsRenderer {
     if (t && sp.texture !== t) sp.texture = t;
   }
 
-  /** v2.3.2828: is the bow special a volley on this worker (caps.bowvolley)?
+  /** v2.3.2848: is the bow special a volley on this worker (caps.bowvolley)?
    *  A peer's arrow carries no word of it, but it was fired against the same
    *  worker you were told this by. */
   _volleyWorld(S) {
@@ -8221,7 +8221,7 @@ export class EffectsRenderer {
       if (fx.kind === 'arrow' && fx.special) {
         const t = this._stuckArrowTex(true, now);
         if (t && fx.sprite.texture !== t) fx.sprite.texture = t;
-        if (HOT_SPECIAL_ARROW) this._heatPropArrow(fx.sprite, now, fx.hotSince || fx.t0, fx.t0, !this._volleyWorld(S));   /* v2.3.2827; v2.3.2828 */
+        if (HOT_SPECIAL_ARROW) this._heatPropArrow(fx.sprite, now, fx.hotSince || fx.t0, fx.t0, !this._volleyWorld(S));   /* v2.3.2847; v2.3.2848 */
       }
     }
     /* an overlay with nothing in it costs a sort slot and nothing else, but
@@ -8265,7 +8265,7 @@ export class EffectsRenderer {
       for (const [key, ov] of this._propOv) {
         if (!ov || ov.destroyed) continue;
         for (const c of ov.children) {
-          const _hotShaft = HOT_SPECIAL_ARROW && hotArrowArt().ember.indexOf(c.texture) >= 0;   /* v2.3.2827 */
+          const _hotShaft = HOT_SPECIAL_ARROW && hotArrowArt().ember.indexOf(c.texture) >= 0;   /* v2.3.2847 */
           const isArrow = c.texture === ARROW_PINE.noHead || _hotShaft || ARROW_SPECIAL.noHead.indexOf(c.texture) >= 0;
           out.push({ key, kind: c.texture === _PROP_SLASH_TEX ? 'slash' : (isArrow ? 'arrow' : 'other'), hot: !!_hotShaft,
             x: +(ov.x + c.x).toFixed(1), y: +(ov.y + c.y).toFixed(1), ovY: ov.y,
@@ -8277,7 +8277,7 @@ export class EffectsRenderer {
     return out;
   }
 
-  /* v2.3.2823: the material hit-debris bursts (the note at the top of this run
+  /* v2.3.2843: the material hit-debris bursts (the note at the top of this run
      of methods): HitMaterialFx draws them -- a monster's, and since v2.3.2730
      a prop's, which rides the same queue marked `prop`. */
   _updateDebrisBursts(S, now) {
@@ -8601,7 +8601,7 @@ export class EffectsRenderer {
     this._advanceItemPops(now);
   }
 
-  /* v2.3.2824: the snowman's per-hit plume is retired (tombstone near the old
+  /* v2.3.2844: the snowman's per-hit plume is retired (tombstone near the old
      IMPACT_TEX loader), so this is now just the two one-shot bursts that are
      not hit reactions -- a thrown snowball landing and an arrow's boom.  The
      name stays so the frame loop's call site does not move. */
@@ -11823,8 +11823,8 @@ export class EffectsRenderer {
 
   clear() {
     this.particleGfx.clear();
-    if (this._staffFx) this._staffFx.clear();   /* v2.3.2821: no sparks carried across a zone change */
-    if (this._hotArrow) this._hotArrow.clear();   /* v2.3.2827: nor the hot arrow's */
+    if (this._staffFx) this._staffFx.clear();   /* v2.3.2841: no sparks carried across a zone change */
+    if (this._hotArrow) this._hotArrow.clear();   /* v2.3.2847: nor the hot arrow's */
     this.cueGfx.clear();   /* v2.3.1765 */
     this.projectileGfx.clear();
     this.telegraphGfx.clear();
@@ -11840,7 +11840,7 @@ export class EffectsRenderer {
       }
       this._splatPool = [];
     }
-    /* v2.3.2823: the material hit reaction's pieces (pooled; hidden, not destroyed) */
+    /* v2.3.2843: the material hit reaction's pieces (pooled; hidden, not destroyed) */
     if (this._hitFx) this._hitFx.clear();
     /* v2.3.2760: and the cook's smoke puffs. */
     if (this._cookSmoke) {

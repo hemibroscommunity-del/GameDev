@@ -10,10 +10,10 @@
    setter). All other references are module imports below. */
 import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat */
 import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
-import { ARROW_SPEED_PX } from '@/game/projectiles.js';   /* v2.3.2828: the volley's stagger is sized from it */
-import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2828 */
+import { ARROW_SPEED_PX } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it */
+import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2848 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
-import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint } from '@/game/combatHelpers.js';   /* v2.3.2825: lockShotPoint, the torso */
+import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 
 export function swingAttack(S) {
@@ -297,7 +297,7 @@ export function specialAttack(S) {
        hit-test uses and returns null (rather than the world origin) when the
        target has no usable position.  Both specials launch from the player at
        dist 14 -- no grip offset to correct for, unlike the auto-attack. */
-    /* v2.3.2825: at the torso, as every locked shot is (combatHelpers lockShotPoint) */
+    /* v2.3.2845: at the torso, as every locked shot is (combatHelpers lockShotPoint) */
     var _sLock = lockShotPoint(S.lockedTarget && S.lockedTarget.ref, S.currentZone);
     if (_sLock) aimAng = Math.atan2(_sLock.y - S.player.y, _sLock.x - S.player.x);
     if (activeWpn.type === 'bow') {
@@ -315,7 +315,7 @@ export function specialAttack(S) {
          base damage, immune to a later weapon swap. */
       var _bowBase = Math.max(1, Math.round(calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult, activeWpn)));
       var _bowFull = Math.round(wpnDmg * specialAtkMultFor('bow', R || {})); /* v2.3.1397: bow special 3x (owner); v2.3.2592: × the SPECIAL stat */
-      /* ═══ v2.3.2828: THREE WHITE-HOT ARROWS, ONE SHOT ═══
+      /* ═══ v2.3.2848: THREE WHITE-HOT ARROWS, ONE SHOT ═══
          Owner: "the bow special should be 3 white hot arrows that follow each
          other closely.  One shot for all 3 arrows" -- a third of the damage
          each, and "Burn, but no blast".  The rules the three share (one
@@ -335,12 +335,12 @@ export function specialAttack(S) {
         S.arrows.push({
           ang: aimAng,
           dist: 14,
-          /* v2.3.2828: sized from the arrow's own speed so the train is GAP_PX
+          /* v2.3.2848: sized from the arrow's own speed so the train is GAP_PX
              apart however fast Longshot makes it (projectiles.js catches the
              frame it overstays back up) */
           launchDelayMs: volleyDelayMs(bvi, ARROW_SPEED_PX * _bowStat),
-          dmg: _bowVolley ? Math.max(1, Math.round(_bowFull / BOW_VOLLEY.N)) : _bowFull,   /* v2.3.2828: a third each */
-          part: _bowVolley ? BOW_VOLLEY.N : 0,   /* v2.3.2828: the worker divides its own roll by this */
+          dmg: _bowVolley ? Math.max(1, Math.round(_bowFull / BOW_VOLLEY.N)) : _bowFull,   /* v2.3.2848: a third each */
+          part: _bowVolley ? BOW_VOLLEY.N : 0,   /* v2.3.2848: the worker divides its own roll by this */
           volley: _bowVol, volleyIx: bvi,
           baseDmg: _bowBase, /* v2.3.1402: lingering ground-tick base damage */
           life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
@@ -355,7 +355,7 @@ export function specialAttack(S) {
       }
       /* v2.3.840: broadcast the bow special so peers see the big golden
          arrow fly (mirrors the regular-arrow player_projectile path).
-         v2.3.2828: one per arrow of the volley, staggered on the peer's own
+         v2.3.2848: one per arrow of the volley, staggered on the peer's own
          arrow speed (BOW_VOLLEY.PEER_PX_PER_FRAME) so the gap they see is the
          gap you see -- the staff volley's `delayMs` (v2.3.2259), which a peer
          already honours for any projectile. */

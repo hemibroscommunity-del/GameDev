@@ -2601,7 +2601,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   psA.activeSlot = 'melee'; psA.staffWeapon = null;
 }
 
-// ── 12. v2.3.2828: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ──
+// ── 12. v2.3.2848: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ──
 // Owner: "the bow special should be 3 white hot arrows that follow each other
 // closely.  One shot for all 3 arrows" -- a third of the damage each, so the
 // volley deals what the one arrow did.  Each arrow's monster_damage carries

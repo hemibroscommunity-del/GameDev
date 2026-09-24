@@ -111,7 +111,7 @@ var PROJ_BODY = {
   arrow:        { back: 24.0, front: 28.5, half: 6.6 },   /* 128x32  @ 52.5/128, anchor .457 */
   magicBolt:    { back: 26.9, front: 12.2, half: 11.5 },  /* 217x128 @ 0.18,     anchor .688 */
   arrowSpecial: { back: 28.9, front: 33.9, half: 12.8 },  /* v2.3.2511: 314x128 @ 0.20 (was 0.17), anchor .460 */
-  /* v2.3.2827: the special is now DRAWN as the pine arrow at 62.8 px (hotArrowFx
+  /* v2.3.2847: the special is now DRAWN as the pine arrow at 62.8 px (hotArrowFx
      HOT_LEN, the painted sheet's own length) -- pivot .457, so back 28.7 / front
      34.1 -- inside a heat aura built to reach this 12.8 half.  The row is left
      as it is on purpose: the picture was sized to the capsule, so the hit test
@@ -135,7 +135,7 @@ export var SPECIAL_HIT_R_MULT = 3;   /* v2.3.222: special arrow has 3x damage ra
    long (PROJ_BODY.arrowSpecial: a 314px sheet at ARROW_SPECIAL.scale 0.20), so
    half of it is 31.4 -- see the cap at the bottom of monsterProjRadius.  If the
    art is rescaled, this moves with it, exactly as the PROJ_BODY row does.
-   v2.3.2827: the white-hot special (hotArrowFx) is drawn at the same 62.8. */
+   v2.3.2847: the white-hot special (hotArrowFx) is drawn at the same 62.8. */
 export var SPECIAL_HIT_R_CAP_PX = 31;
 export function monsterProjRadius(m, S, opts) {
   var _archProj = hitShapeOf(m.archetype || m.type);
@@ -254,14 +254,14 @@ function _projCapsule(a) {
   _capBx = a._renderX + c * bd.front;  _capBy = a._renderY + s2 * bd.front;
   return bd.half;
 }
-/* ═══ v2.3.2824: WHERE A SHOT LANDS IN THE BODY IT HIT ═══
+/* ═══ v2.3.2844: WHERE A SHOT LANDS IN THE BODY IT HIT ═══
    The hit test is a circle round the body (monsterProjRadius); the landing is
    a point IN it.  LAND_CORE is the half-width and half-height of the region a
    shot lands in, round the body centre monsterBodyOffsetY publishes (world px,
    read off the same sprite measurements as the stuck-arrow table this replaced:
    the slime's blob is 27 x 23 half-axes, the mummy and skeleton are tall and
    thin).
-   v2.3.2825: ...round the TORSO (gameSystems monsterTorsoY), which is where a
+   v2.3.2845: ...round the TORSO (gameSystems monsterTorsoY), which is where a
    locked shot is aimed now too.  On the tall figures the body centre is the
    skeleton's knees (owner: "The arrows are grouping around the skeleton's
    knee.  Center it on the torso"); the slime, snowman and fire goblin were
@@ -277,7 +277,7 @@ function _projCapsule(a) {
    than visibly steering: a few degrees for a bolt, fewer for an arrow, whose
    shaft is drawn at its flight angle when it sticks. */
 var LAND_CORE = { fodder: [10, 7], fireGoblin: [8, 12], snowman: [10, 9], mummy: [8, 11], skeleton: [8, 11],
-  fishman: [8, 12], bogLurker: [8, 12], rockmonster: [12, 14], thornShambler: [12, 14] };   /* v2.3.2825: + the tall figures' torsos */
+  fishman: [8, 12], bogLurker: [8, 12], rockmonster: [12, 14], thornShambler: [12, 14] };   /* v2.3.2845: + the tall figures' torsos */
 var LAND_TURN_BOLT = 0.25;    /* tan(14 deg) */
 var LAND_TURN_ARROW = 0.14;   /* tan(8 deg) */
 var LAND_MAX_MS = 700;        /* a safety cap, not a pace: at 60 fps the longest landing (a skeleton, ~60 px) takes ~200 ms */
@@ -285,7 +285,7 @@ function _tri() { return Math.random() + Math.random() - 1; }
 function _landCore(m, S) {
   var core = LAND_CORE[hitShapeOf(m.archetype || m.type)];
   if (core) {
-    var k = monsterDrawScale(m, S && S.currentZone);   /* v2.3.2825 */
+    var k = monsterDrawScale(m, S && S.currentZone);   /* v2.3.2845 */
     return k === 1 ? core : [core[0] * k, core[1] * k];
   }
   /* sprite-less dungeon shapes and the other sprite variants: a share of the
@@ -312,7 +312,7 @@ function _pickLanding(S, a, m, tipX, tipY) {
   var my = (typeof m.renderY === 'number') ? m.renderY : m.y;
   var core = _landCore(m, S);
   var lx = mx + _tri() * core[0];
-  var ly = my - torsoLift(m, S && S.currentZone) + _tri() * core[1];   /* v2.3.2825: round the torso */
+  var ly = my - torsoLift(m, S && S.currentZone) + _tri() * core[1];   /* v2.3.2845: round the torso */
   var ux = Math.cos(a.ang), uy = Math.sin(a.ang);
   var s = (lx - tipX) * ux + (ly - tipY) * uy;     /* ahead, along the line */
   var l = (ly - tipY) * ux - (lx - tipX) * uy;     /* across it */
@@ -322,7 +322,7 @@ function _pickLanding(S, a, m, tipX, tipY) {
   if (l > lim) l = lim; else if (l < -lim) l = -lim;
   return { x: tipX + ux * s - uy * l, y: tipY + uy * s + ux * l, mx: mx, my: my, ahead: s > 2 };
 }
-/* ═══ v2.3.2825: THE CIRCLE A SHOT MUST TOUCH SITS WHERE IT WAS AIMED ═══
+/* ═══ v2.3.2845: THE CIRCLE A SHOT MUST TOUCH SITS WHERE IT WAS AIMED ═══
    A locked shot is aimed at the torso now (combatHelpers lockShotPoint), and
    the hit circle was centred on the hitbox centre below it -- 40 px lower on
    a skeleton.  A shot aimed 40 px above a circle's centre has 40 px less room
@@ -339,8 +339,8 @@ function _projCentreLift(S, a, m) {
   return monsterBodyOffsetY(hitShapeOf(m.archetype || m.type)) || 0;
 }
 /* A hit, on screen, at the point (tx, ty) where the shot landed: the monster's
-   recoil and flash (v2.3.2200), its material (v2.3.2823), the sound of what was
-   hit (v2.3.2511), a bolt's crash (v2.3.2505 / v2.3.2821) and a plain arrow's
+   recoil and flash (v2.3.2200), its material (v2.3.2843), the sound of what was
+   hit (v2.3.2511), a bolt's crash (v2.3.2505 / v2.3.2841) and a plain arrow's
    stuck shaft (v2.3.2511).  Every one of these used to run inline on the frame
    the hit registered, at the hit circle; `fx` carries what that frame knew.
    Called once per hit: from the landing flight, from the stuckIn branch for a
@@ -355,12 +355,12 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
     m._hitAnimEnd = now + (arch === 'snowman' ? 600 : 400);
   }
   m._hitFlash = now;
-  /* v2.3.2821: the staff cast draws a bolt eased off the crystal over its first
+  /* v2.3.2841: the staff cast draws a bolt eased off the crystal over its first
      40 px; a crash inside that stretch is drawn where the orb was SEEN, which
      is the real point plus the drawing offset still left */
   var vdx = (fx.staff && Number.isFinite(a._fxResX)) ? a._fxResX : 0;
   var vdy = (fx.staff && Number.isFinite(a._fxResY)) ? a._fxResY : 0;
-  /* v2.3.2823: AN ARROW PUNCHES, A BOLT BLASTS -- the material leaves from
+  /* v2.3.2843: AN ARROW PUNCHES, A BOLT BLASTS -- the material leaves from
      where the shot landed; the pieces that come down are the ground mark */
   spawnHitDebris(S, m, a.ang, {
     weapon: fx.bolt ? 'bolt' : 'arrow', big: fx.big, elem: fx.elem, arch: arch,
@@ -380,7 +380,7 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
   }
   if (fx.staff) {
     /* v2.3.2505: the crash where the orb is.  v2.3.2730: through combatHelpers'
-       orbCrashFx, the one a bolt stopped by a prop uses too; v2.3.2821: which
+       orbCrashFx, the one a bolt stopped by a prop uses too; v2.3.2841: which
        carries the staff cast's restyle -- pixel rings, and the hot-to-cool
        burst in place of the 22 flat dots. */
     orbCrashFx(S, tx, ty, fx.orbColor, { elem: fx.elem, vdx: vdx, vdy: vdy });
@@ -436,7 +436,7 @@ function _quarryInBox(S, a, b) {
     var fy = (typeof m.renderY === 'number') ? m.renderY : m.y;
     if (!(fx >= b.x0 && fx <= b.x1 && fy >= b.y0 && fy <= b.y1)) continue;
     var r = monsterProjRadius(m, S, a) + half;
-    var vx = fx - px, vy = (fy - _projCentreLift(S, a, m)) - py;   /* v2.3.2825: the hit test's own centre */
+    var vx = fx - px, vy = (fy - _projCentreLift(S, a, m)) - py;   /* v2.3.2845: the hit test's own centre */
     if (vx * c + vy * s2 < -r) continue;              /* behind the arrow */
     if (Math.abs(vx * s2 - vy * c) < r) return true;  /* the line crosses its circle */
   }
@@ -526,7 +526,7 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
       var mx = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
       var my = (typeof m.renderY === 'number' && isFinite(m.renderY)) ? m.renderY : m.y;
       var mArch = hitShapeOf(m.archetype || m.type);
-      /* v2.3.2825: the monster the shot is aimed at, round its torso -- as the hit test will */
+      /* v2.3.2845: the monster the shot is aimed at, round its torso -- as the hit test will */
       consider(mx, my - ((opts && opts.aimAt != null && opts.aimAt === m.id) ? torsoLift(m, S.currentZone) : monsterBodyOffsetY(mArch)),
         monsterProjRadius(m, S, opts) + half, m.id, m);
     }
@@ -600,9 +600,9 @@ import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound l
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2825: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2823: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2845: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */ } from '@/game/combatHelpers.js';
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
-import { BOW_VOLLEY, burnT0, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2828: the special's three arrows share one train, one burn and one shove */
+import { BOW_VOLLEY, burnT0, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2848: the special's three arrows share one train, one burn and one shove */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -682,7 +682,7 @@ function queueSnowballBurst(S, proj) {
  * silently never happens there. */
 function _arrowSendOff(S, a, bx, by) {
   if (!S || !a || a._blasted || !a.isSpecial || a.isStaff) return;
-  /* v2.3.2828: the three-arrow volley has no send-off -- owner, "Burn, but no
+  /* v2.3.2848: the three-arrow volley has no send-off -- owner, "Burn, but no
      blast": area is the staff's.  Only an arrow fired against a worker that
      advertises caps.bowvolley is a volley, and that worker refuses the blast
      too (arrowblast.js), so the lone arrow an old worker gets keeps its
@@ -724,9 +724,9 @@ export function updateArrows(S, deps) {
              share of the grip offset, measured at 9-32px against a 27px
              slime.  The angle is therefore per-ARROW now, resolved once the
              arrow's own origin is known.  See lockAimPoint in combatHelpers. */
-          /* v2.3.2825: ...at the TORSO (lockShotPoint), and the target's hit circle is centred there for this shot (_projCentreLift) */
+          /* v2.3.2845: ...at the TORSO (lockShotPoint), and the target's hit circle is centred there for this shot (_projCentreLift) */
           var lockPt = lockShotPoint(S.lockedTarget && S.lockedTarget.ref, S.currentZone);
-          var lockId = (lockPt && S.lockedTarget.ref.id != null) ? S.lockedTarget.ref.id : null;   /* v2.3.2825: see _projCentreLift */
+          var lockId = (lockPt && S.lockedTarget.ref.id != null) ? S.lockedTarget.ref.id : null;   /* v2.3.2845: see _projCentreLift */
           var freeAim = S._aiming ? (S._aimAngle || 0) : null;
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
@@ -744,11 +744,11 @@ export function updateArrows(S, deps) {
             if (a.stuckIn) {
               var _sm = a.stuckIn;
               var _sAge = Date.now() - a.stuckAt;
-              /* v2.3.2828: a volley's arrows live on the VOLLEY's clock, from
+              /* v2.3.2848: a volley's arrows live on the VOLLEY's clock, from
                  its first arrival, and burn out together (bowVolley.js) */
               var _sLife = Date.now() - burnT0(a);
               if (_sLife >= 4000 || !_sm || !_sm.alive || _sm.curHp <= 0) {
-                /* v2.3.2824: a monster that died while the arrow was still
+                /* v2.3.2844: a monster that died while the arrow was still
                    flying in still shows it landing, where the arrow is */
                 if (a._landFx && _sm) {
                   var _sdF = _projBody(a).front * 0.45;
@@ -758,19 +758,19 @@ export function updateArrows(S, deps) {
                 _arrowSendOff(S, a,
                   (typeof a._renderX === 'number') ? a._renderX : (_sm ? _sm.x : null),
                   (typeof a._renderY === 'number') ? a._renderY : (_sm ? _sm.y : null));
-                a._spent = true;   /* v2.3.2828: a sibling still in something may take the volley's burn over */
+                a._spent = true;   /* v2.3.2848: a sibling still in something may take the volley's burn over */
                 return false;
               }
               var _smx = (typeof _sm.renderX === 'number') ? _sm.renderX : _sm.x;
-              var _smy = ((typeof _sm.renderY === 'number') ? _sm.renderY : _sm.y) - torsoLift(_sm, S.currentZone);   /* v2.3.2825: the torso */
+              var _smy = ((typeof _sm.renderY === 'number') ? _sm.renderY : _sm.y) - torsoLift(_sm, S.currentZone);   /* v2.3.2845: the torso */
               var _stX = _smx + (a._stickOx || 0), _stY = _smy + (a._stickOy || 0);
               if (a._landFx) {
-                /* ═══ v2.3.2824: THE SPECIAL FLIES IN, THEN LANDS ═══
+                /* ═══ v2.3.2844: THE SPECIAL FLIES IN, THEN LANDS ═══
                    It used to take its stuck pose on the frame it touched the
                    hit circle -- a jump of ~95 px into the body.  It now covers
                    the rest of the way at its own speed and lands on arrival:
                    the burst leaves from partway up its head, as a plain
-                   arrow's did (v2.3.2823).  Its chip ticks were already
+                   arrow's did (v2.3.2843).  Its chip ticks were already
                    counted from the hit (stuckAt), so none of that moves. */
                 var _sdx = _stX - a._renderX, _sdy = _stY - a._renderY;
                 var _sdd = Math.sqrt(_sdx * _sdx + _sdy * _sdy);
@@ -789,7 +789,7 @@ export function updateArrows(S, deps) {
                 a._renderX = _stX;
                 a._renderY = _stY;
               }
-              /* v2.3.2828: ONE arrow of a volley carries its burn, on the
+              /* v2.3.2848: ONE arrow of a volley carries its burn, on the
                  volley's own cadence, so a hand-over (bowVolley.js) never buys
                  an extra tick.  A lone arrow is its own clock, as before. */
               var _cClk = a.volley || a;
@@ -826,7 +826,7 @@ export function updateArrows(S, deps) {
               }
               return true;
             }
-            /* ═══ v2.3.2824: LANDING -- the shot has hit, and flies on in ═══
+            /* ═══ v2.3.2844: LANDING -- the shot has hit, and flies on in ═══
                Set by the hit block (see "THE SHOT FLIES ON INTO THE BODY"): the
                hit is already decided and sent, so this only carries the drawn
                shot, at its own speed, to its landing point in the body -- which
@@ -865,7 +865,7 @@ export function updateArrows(S, deps) {
                range, arced down, and is stuck in the ground.  Hold its frozen
                world position, take no hits, and remove ~2 s after planting. */
             if (a.planted) {
-              var _pAge = Date.now() - burnT0(a);   /* v2.3.2828: plantedAt, or its volley's clock */
+              var _pAge = Date.now() - burnT0(a);   /* v2.3.2848: plantedAt, or its volley's clock */
               /* v2.3.1402 (owner): a landed BOW SPECIAL becomes a lingering
                  ground hazard — every 0.5 s it deals BASE bow damage to any
                  monster within 100 px of where it stuck, until it disappears
@@ -875,7 +875,7 @@ export function updateArrows(S, deps) {
                  lets the worker roll the authoritative number. */
               var _pLife = (a.isSpecial && !a.isStaff) ? 4000 : 2000;
               if (a.isSpecial && !a.isStaff && S.monsters && _pAge < _pLife) {
-                /* v2.3.2828: one ground hazard per volley, on the volley's
+                /* v2.3.2848: one ground hazard per volley, on the volley's
                    cadence -- the stuck branch's rule, above */
                 var _gClk = a.volley || a;
                 if (_gClk._lingerNext == null) _gClk._lingerNext = burnT0(a) + 500;
@@ -918,7 +918,7 @@ export function updateArrows(S, deps) {
                 _arrowSendOff(S, a,
                   (a._plantX != null) ? a._plantX : a._renderX,
                   (a._plantY != null) ? a._plantY : a._renderY);
-                a._spent = true;   /* v2.3.2828: see the stuck branch */
+                a._spent = true;   /* v2.3.2848: see the stuck branch */
               }
               return _pAge < _pLife;
             }
@@ -955,12 +955,12 @@ export function updateArrows(S, deps) {
             if (a.launchDelayMs > 0 && (Date.now() - a._bornTs) < a.launchDelayMs) {
               a._renderX = P.x + Math.cos(a.ang) * a.dist;
               a._renderY = P.y + Math.sin(a.ang) * a.dist;
-              a._held = true;   /* v2.3.2828: the renderer does not draw an ARROW still on the string (an orb keeps its old look) */
+              a._held = true;   /* v2.3.2848: the renderer does not draw an ARROW still on the string (an orb keeps its old look) */
               return true;
             }
             if (a._held) {
               a._held = false;
-              /* ═══ v2.3.2828: A VOLLEY ARROW LEAVES ON ITS MARK ═══
+              /* ═══ v2.3.2848: A VOLLEY ARROW LEAVES ON ITS MARK ═══
                  Its wait ends on a whole frame, up to one 24 px step after its
                  moment, so the gaps in the bow volley's train would jitter
                  between one step and two.  It is caught up, once, by the time
@@ -996,7 +996,7 @@ export function updateArrows(S, deps) {
               a.ang = a.ang + (Math.PI / 2 - a.ang) * 0.35;   // rotate to straight-down
               if (a._plantY - a._plantStartY >= 26) {
                 a.planted = true; a.plantedAt = Date.now(); a.ang = Math.PI / 2;
-                volleyRested(a, a.plantedAt);   /* v2.3.2828: the volley's burn clock starts with its first arrow down */
+                volleyRested(a, a.plantedAt);   /* v2.3.2848: the volley's burn clock starts with its first arrow down */
               }
               return true;
             }
@@ -1103,7 +1103,7 @@ export function updateArrows(S, deps) {
                  world coords, the grip offset included, and keep whatever angle
                  the aim resolved to on this frame -- that is the line the shot
                  was actually taken along. */
-              /* v2.3.2828: ...and the bow volley's second and third arrows take
+              /* v2.3.2848: ...and the bow volley's second and third arrows take
                  the FIRST one's line, origin and angle both, so the three
                  follow each other (owner) instead of each aiming afresh from
                  wherever the player has walked in the ~100 ms between them. */
@@ -1185,7 +1185,7 @@ export function updateArrows(S, deps) {
                 a.planting = true;
                 a._plantX = a._renderX;
                 a._plantStartY = a._renderY;
-                /* v2.3.2828: a volley that missed stands in the ground as three
+                /* v2.3.2848: a volley that missed stands in the ground as three
                    arrows, not one: each plants a little short of and beside the
                    one before (bowVolley.js PLANT_SPREAD).  Under one step of
                    flight, so it reads as where it came down, not as a jump. */
@@ -1343,7 +1343,7 @@ export function updateArrows(S, deps) {
                  in the travel direction because the hitbox led the sprite. */
               var _hitX = (typeof m.renderX === 'number') ? m.renderX : m.x;
               var _hitBaseY = (typeof m.renderY === 'number') ? m.renderY : m.y;
-              var _mProjY = _hitBaseY - _projCentreLift(S, a, m);   /* v2.3.2825: round the torso, for the monster it was aimed at */
+              var _mProjY = _hitBaseY - _projCentreLift(S, a, m);   /* v2.3.2845: round the torso, for the monster it was aimed at */
               /* v2.3.2426: the SEGMENT this frame, not the endpoint — see the
                  header.  a._prevX is undefined on the first flight frame and
                  _segGap falls back to the point test there.
@@ -1395,7 +1395,7 @@ export function updateArrows(S, deps) {
                   return;
                 }
                 var _hpBefore = m.curHp;
-                /* v2.3.2828: the bow volley shoves a monster once -- its first
+                /* v2.3.2848: the bow volley shoves a monster once -- its first
                    arrow to hit it does, the rest send noKb (bowVolley.js) */
                 var _vShove = volleyShoves(a, m.id);
                 /* v2.3.109: variant incomingDmgScalar removed (WYSIWYG)
@@ -1405,8 +1405,8 @@ export function updateArrows(S, deps) {
                 /* Client-local zones only -- server zones use monster_hit (Fix B). */
                 if (!S._serverMonsters && S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
-                   ═══ v2.3.2824: THE PICTURE WAITS FOR THE SHOT TO LAND ═══
-                   The recoil, the white flash, the material burst (v2.3.2823)
+                   ═══ v2.3.2844: THE PICTURE WAITS FOR THE SHOT TO LAND ═══
+                   The recoil, the white flash, the material burst (v2.3.2843)
                    and the snowman's grunt used to fire HERE, on the frame the
                    shot's capsule first touched the monster's hit CIRCLE -- a
                    ring round the body, 18-50 px out from its centre, so every
@@ -1431,7 +1431,7 @@ export function updateArrows(S, deps) {
                    train Agility and magic kills train Mind via
                    distributeKillXpToBuild's share split.  Power stays
                    reserved for melee swing damage. */
-                if (S.rpg && _vShove) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', 1);   /* v2.3.2828: a volley counts once per monster, as the one arrow did */
+                if (S.rpg && _vShove) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', 1);   /* v2.3.2848: a volley counts once per monster, as the one arrow did */
                 /* T2: damage-driven weapon-skill XP — the equipped slot
                    resolves to Bow or Staff at hit time. */
                 if (S.rpg) {
@@ -1476,7 +1476,7 @@ export function updateArrows(S, deps) {
                        so no caps gate is needed; old clients keep
                        sending special:false and keep the old lane. */
                     slot: isStaffProj ? 'staff' : 'ranged', special: !!a.isSpecial,
-                    /* v2.3.2828: an arrow of the bow volley is a third of the
+                    /* v2.3.2848: an arrow of the bow volley is a third of the
                        special (the worker divides its own roll -- combat.js,
                        caps.bowvolley), and only the volley's first arrow into
                        this monster shoves it.  Both absent on every other shot. */
@@ -1565,19 +1565,19 @@ export function updateArrows(S, deps) {
                    so the material sound is layered UNDER it at a lower level
                    rather than replacing it: the player still hears magic, and
                    still hears what the magic hit.
-                   v2.3.2824: played by _projImpactFx now, when the shot LANDS in
+                   v2.3.2844: played by _projImpactFx now, when the shot LANDS in
                    the body, so the sound and the burst are one event. */
                 var _hitMat = hitMaterialOf(m.archetype || m.type);
-                /* v2.3.2824: the "blood spray on bow hits" is retired -- seven flat
+                /* v2.3.2844: the "blood spray on bow hits" is retired -- seven flat
                    red dots at the monster's FEET on every arrow hit, the same for
                    a slime, a snowman and a skeleton.  It was the last of the flat
-                   generic sprays (v2.3.2823 retired the splinters, v2.3.2821 the
+                   generic sprays (v2.3.2843 retired the splinters, v2.3.2841 the
                    staff's purple ones): the material burst is the arrow's hit,
                    and it already brings blood where there is blood (the fire
                    goblin, hitMaterialFx). */
                 /* Magic orb crash & dissipate — element-tinted impact ring
                    plus radial particle burst when a staff bolt collides.
-                   v2.3.2824: drawn by _projImpactFx where the orb LANDS; the
+                   v2.3.2844: drawn by _projImpactFx where the orb LANDS; the
                    notes below are the history of where it is drawn. */
                 if (a.isStaff) {
                   /* ═══ v2.3.2505: THE CRASH HAPPENS WHERE THE ORB DID ═══
@@ -1619,8 +1619,8 @@ export function updateArrows(S, deps) {
                    * The knockback angle three lines below already reads
                    * a._renderX/_renderY for the same reason; this block was the
                    * one that did not. */
-                  /* ═══ v2.3.2824: ...AND NOW THE ORB IS IN THE BODY WHEN IT DOES ═══
-                     The two rings and the staff cast's burst (v2.3.2821) are
+                  /* ═══ v2.3.2844: ...AND NOW THE ORB IS IN THE BODY WHEN IT DOES ═══
+                     The two rings and the staff cast's burst (v2.3.2841) are
                      spawned by _projImpactFx, at the orb, once the landing flight
                      has carried it into the body.  v2.3.2505's rule is unchanged
                      -- the crash continues the flight, where the eye has the orb
@@ -1640,25 +1640,25 @@ export function updateArrows(S, deps) {
                    whole read), and staff bolts keep 1 — they are not
                    arrows, and nothing was said about magic. */
                 var _projKb = a.isSpecial ? 3 : (a.isStaff ? 1 : 0.25);
-                if (!_vShove) _projKb = 0;   /* v2.3.2828: the volley's first arrow already shoved it */
+                if (!_vShove) _projKb = 0;   /* v2.3.2848: the volley's first arrow already shoved it */
                 m.x += Math.cos(kba) * _projKb;
                 m.y += Math.sin(kba) * _projKb;
                 /* Knockback recovery -- see melee path; pauses
                    client-side AI so the bump is visible. */
                 m._kbUntil = Date.now() + 200;
-                /* v2.3.2821: a staff bolt's hit is drawn once, by its crash above --
+                /* v2.3.2841: a staff bolt's hit is drawn once, by its crash above --
                    at the orb, which is v2.3.2505's whole point.  The generic
                    'staff' burst this used to add was a second spray of flat
                    purple dots at the monster's FEET, the exact spot that fix
                    moved the crash away from.
-                   v2.3.2823: and the arrow's generic splinter-and-dust spray
+                   v2.3.2843: and the arrow's generic splinter-and-dust spray
                    goes the same way -- brown dots and tan dust at the feet of
                    every monster alike.  The material reaction above (a jet of
                    the monster's own snow / slime / blood / dust / bone from the
                    contact point) is the arrow's hit now. */
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Their visual residue is the
-                   crash above (v2.3.2821), and the material reaction (v2.3.2823). */
+                   crash above (v2.3.2841), and the material reaction (v2.3.2843). */
                 /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the
@@ -1671,7 +1671,7 @@ export function updateArrows(S, deps) {
                    The special's own art is the one to keep: it is the shot
                    that was fired, it carries the chip tick, and it is what
                    tells the player their heavy shot landed. */
-                /* ═══ v2.3.2824: THE SHOT FLIES ON INTO THE BODY, AND LANDS THERE ═══
+                /* ═══ v2.3.2844: THE SHOT FLIES ON INTO THE BODY, AND LANDS THERE ═══
                    Owner: "make sure the bolts land somewhere in the center of the
                    target before exploding (with some variation from center for
                    variety) and same with arrows.  Right now it looks like it hits
@@ -1706,7 +1706,7 @@ export function updateArrows(S, deps) {
                    body, or the arrow breaking on it (data/arrowSnap.js decides,
                    on a roll the other screens make the same way).  Not a
                    piercing arrow: it carries on to its next target, and a
-                   broken one could not.  v2.3.2824: rolled here, on the hit,
+                   broken one could not.  v2.3.2844: rolled here, on the hit,
                    and shown where the arrow LANDS (_projImpactFx). */
                 var _snapHere = !a.isStaff && !a.isSpecial && !a.pierce && arrowSnaps(S.myId, a._shotTs);
                 var _lfx = {
@@ -1918,9 +1918,9 @@ export function updateArrows(S, deps) {
                 if (!a.isStaff && a.isSpecial && !a.stuckIn && m.alive && m.curHp > 0) {
                   a.stuckIn = m;
                   a.stuckAt = Date.now();
-                  volleyRested(a, a.stuckAt);   /* v2.3.2828: the volley's burn clock starts with its first arrow in */
+                  volleyRested(a, a.stuckAt);   /* v2.3.2848: the volley's burn clock starts with its first arrow in */
                   a.life = 999;      /* stuckAt governs removal now, not life */
-                  /* v2.3.2824: ...give or take the body's core, so two specials
+                  /* v2.3.2844: ...give or take the body's core, so two specials
                      do not stick in the same hole.  It used to JUMP here from
                      the hit circle -- ~95 px in one frame on a slime; the
                      stuckIn branch now flies it the rest of the way in and
@@ -2084,13 +2084,13 @@ export function updateArrows(S, deps) {
                along the line. */
             /* v2.3.1425: a freshly-stuck orb survives its hit -- the
                stuckIn branch at the top owns its lifetime from here. */
-            /* v2.3.2824: ...and a shot flying on into the body it hit survives
+            /* v2.3.2844: ...and a shot flying on into the body it hit survives
                too, until it lands (the `_land` branch at the top). */
             if (hit && !a.pierce && !a.stuckIn && !a._land) return false;
             /* Store render-ready element info */
             a._projElem = projElem;
             a._isStaffProj = isStaffProj;
-            if (a._land) return true;   /* v2.3.2824: no prop stop for a shot that has already hit */
+            if (a._land) return true;   /* v2.3.2844: no prop stop for a shot that has already hit */
             /* v2.3.2701: the prop stop decided above the loop.  Not for a
                special that has just embedded in a survivor -- the stuckIn
                branch at the top owns that arrow now. */
@@ -2121,7 +2121,7 @@ export function updateArrows(S, deps) {
                    there, through the same orbCrashFx a monster hit uses, in the
                    element's colour, with the spell-landing voice on top. */
                 orbCrashFx(S, _impX, _impY, projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa',
-                  { elem: projElem || null, vdx: a._fxResX, vdy: a._fxResY });   /* v2.3.2821: the staff cast's crash, where the orb was seen */
+                  { elem: projElem || null, vdx: a._fxResX, vdy: a._fxResY });   /* v2.3.2841: the staff cast's crash, where the orb was seen */
                 try { BT_AUDIO.magicHit({ vol: 0.3 }); } catch (e) { /* audio is best-effort */ }
                 return false;
               }
@@ -2146,8 +2146,8 @@ export function updateArrows(S, deps) {
               a._plantX = _impX;
               a._plantY = _impY;
               a._plantStartY = _impY;
-              volleyRested(a, a.plantedAt);   /* v2.3.2828 */
-              /* v2.3.2828: three arrows in one hole read as one -- a volley's
+              volleyRested(a, a.plantedAt);   /* v2.3.2848 */
+              /* v2.3.2848: three arrows in one hole read as one -- a volley's
                  later arrows stand beside the first, across the line of flight */
               var _vRs = a.volley ? BOW_VOLLEY.PLANT_SPREAD[a.volleyIx] : null;
               if (_vRs && _vRs.side) {

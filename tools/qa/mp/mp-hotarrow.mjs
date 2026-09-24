@@ -1,5 +1,5 @@
 /**
- * mp-hotarrow -- v2.3.2827: the bow special is the pine arrow, white-hot.
+ * mp-hotarrow -- v2.3.2847: the bow special is the pine arrow, white-hot.
  *
  * Owner: "I want to see what the arrow special would look like with you
  * drawing the special instead of using my special arrow sprite.  I'd like
@@ -15,7 +15,7 @@
  *   - that it is ANIMATED in flight -- the heat frame steps, the breath swells;
  *   - that it sheds sparks that cool white -> orange -> red;
  *   - the stuck arrow's heat over its four seconds: white on landing, down to
- *     an ember, a flare on each 500 ms tick -- and (v2.3.2828) a burn-out at
+ *     an ember, a flare on each 500 ms tick -- and (v2.3.2848) a burn-out at
  *     the end, not the white build-up the retired send-off blast had;
  *   - that the head still shows in flight and is buried once it lands (the
  *     v2.3.2381 tallies mp-arrowhead reads);
@@ -25,7 +25,7 @@
  * skeleton in town (mp-shotland's fixture), on the page clock (TRAPS §111:
  * the dark-screen watchdog is told the screen is lit first).
  *
- * v2.3.2828 -- THE SPECIAL IS THREE ARROWS.  Owner: "3 white hot arrows that
+ * v2.3.2848 -- THE SPECIAL IS THREE ARROWS.  Owner: "3 white hot arrows that
  * follow each other closely.  One shot for all 3 arrows", "a third each",
  * "Burn, but no blast" (src/game/bowVolley.js).  So this also checks: one
  * press looses three, for one price; they fly as a train ~80 px apart on one
@@ -80,7 +80,7 @@ const sample = (P, mid) => P.page.evaluate((mid) => {
   return {
     t: Date.now(),
     live: !!a, stuck: !!(a && a.stuckIn), planted: !!(a && a.planted), landing: !!(a && a._landFx),
-    /* v2.3.2828: the whole volley, arrow by arrow, and what the probe drew */
+    /* v2.3.2848: the whole volley, arrow by arrow, and what the probe drew */
     n: sp.length, nStuck: sp.filter((x) => x.stuckIn).length, nPlanted: sp.filter((x) => x.planted).length,
     vol: sp.map((x) => ({ ix: x.volleyIx, x: x._renderX, y: x._renderY, ang: x.ang, held: !!x._held, stuck: !!x.stuckIn, planted: !!x.planted, falling: !!x.planting,
       px: x._plantX, py: x._plantY, part: x.part, dmg: x.dmg, base: x.baseDmg })),
@@ -103,7 +103,7 @@ async function steps(P, n, ms, out, mid) {
   return out;
 }
 
-/* v2.3.2828: the gaps between consecutive arrows of the volley that are
+/* v2.3.2848: the gaps between consecutive arrows of the volley that are
    flying (loosed, not yet in anything), measured ALONG the lead's heading,
    and how far each strays off that line. */
 function trainGaps(s) {
@@ -196,7 +196,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('nothing is a filter, and the art is sampled nearest (crisp pixels)', S1.every((s) => s.filters === 0 || s.filters == null) && !!(b0 && b0.nearest),
     { filters: [...new Set(S1.map((s) => s.filters))], nearest: b0 && b0.nearest });
   rec.ok('the head shows in flight (mp-arrowhead\'s tallies)', fly.some((s) => s.specials > 0 && s.specialHeads > 0), fly.map((s) => [s.specials, s.specialHeads]));
-  /* v2.3.2828: read once the whole volley is in -- until then a follower is
+  /* v2.3.2848: read once the whole volley is in -- until then a follower is
      still flying with its head showing, which is correct */
   const allIn = stuck.filter((s) => s.hots.length === 3 && s.hots.every((q) => q.state !== 'flight'));
   rec.ok('...and is buried once it has landed', allIn.length >= 10 && allIn.every((s) => s.specials > 0 && s.specialHeads === 0 && /^ember/.test(s.hot.tex)),
@@ -211,7 +211,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const reflare = coolIdx >= 0 && h.slice(coolIdx).some((v) => v >= 0.7);
   const throbs = (S1[S1.length - 1].stats || {}).throbs || 0;
   rec.ok(`it flares again on the stuck arrow's ticks (${throbs} throbs)`, reflare && throbs >= 3, { throbs, after: h.slice(coolIdx, coolIdx + 30) });
-  /* ── v2.3.2828: THE VOLLEY (its train is measured on the long miss in 3:
+  /* ── v2.3.2848: THE VOLLEY (its train is measured on the long miss in 3:
      at 200 px the lead is already in the skeleton when the second is loosed) ── */
   const early = S1.filter((s) => s.vol.some((v) => v.held));
   rec.ok(`an arrow still on the string is not drawn (${early.length} frames with one waiting)`,
@@ -268,7 +268,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ════════ 3. A MISS SMOULDERS IN THE GROUND ════════
      A special with no target waits for the bow's sight (v2.3.2473's queue),
      so the miss is the records the special pushes, injected flying east --
-     v2.3.2828: all three, sharing one volley, as playerActions builds them --
+     v2.3.2848: all three, sharing one volley, as playerActions builds them --
      flying SOUTH, the phone's long axis, so the whole train is in the air
      together for a dozen frames before the screen edge plants it. */
   await arm(P, false);
@@ -324,7 +324,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const planted = S3.filter((s) => s.planted && s.hot);
   const ph = planted.map((s) => s.hot.heat);
   rec.ok(`a miss plants in the ground and smoulders there, flaring on its ground ticks (${planted.length} samples, heat ${Math.min(...ph).toFixed(2)}..${Math.max(...ph).toFixed(2)})`,
-    /* v2.3.2828: re-flare after it FIRST cools -- its coolest is now the burn-out at the very end */
+    /* v2.3.2848: re-flare after it FIRST cools -- its coolest is now the burn-out at the very end */
     planted.length >= 10 && planted.every((s) => s.hot.headless && /^ember/.test(s.hot.tex)) && Math.min(...ph) <= 0.55
       && ph.findIndex((v) => v <= 0.55) >= 0 && ph.slice(ph.findIndex((v) => v <= 0.55)).some((v) => v >= 0.7),
     { n: planted.length, ph: ph.slice(0, 40) });
@@ -352,7 +352,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const fl = hp && hp.arrows ? hp.arrows.filter((r) => r.state === 'flight') : [];
       const f = fl[0];
       if (f) { out.drawnFlight++; out.tex = f.tex; }
-      /* v2.3.2828: three, one behind the other -- and none drawn while it waits */
+      /* v2.3.2848: three, one behind the other -- and none drawn while it waits */
       out.maxDrawn = Math.max(out.maxDrawn, fl.length);
       if (fl.length > rs.filter((rp) => !rp._held).length) out.overDrawn++;
       if (fl.length >= 2) {
