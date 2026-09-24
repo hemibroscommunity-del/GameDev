@@ -4217,13 +4217,13 @@ export class EffectsRenderer {
         if (!o || (!o._dodgeRoll && !(o._dodgeTrail && o._dodgeTrail.length))) continue;
         if (o._dodgeRoll) {
           const dage = now - (o._dodgeRoll.startTime || 0);
-          /* v2.3.2892: the roll ends when THEIR window does (player_dodge
+          /* v2.3.2898: the roll ends when THEIR window does (player_dodge
              `dur`), as yours ends at S._dodgeRoll.durMs -- a flat 400 cut a
              700 ms roll short and let a 250 ms one run on.  400 stays for an
              older client.  And ending it stops FEEDING the smear rather than
              deleting it: your own ghosts fade out over their 200 ms after the
              roll (the age-out below), where a peer's used to vanish at once. */
-          /* v2.3.2892: a sword dash ends on ARRIVAL, which a watcher learns
+          /* v2.3.2898: a sword dash ends on ARRIVAL, which a watcher learns
              from the strike: its player_swing goes out when the dash lands
              (v2.3.2260).  `dur` is only its backstop.  And it sheds no ghosts --
              your own dash draws none (it is not an S._dodgeRoll). */

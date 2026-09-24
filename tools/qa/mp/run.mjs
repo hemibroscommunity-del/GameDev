@@ -23,7 +23,6 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  dodgetime: () => import('./mp-dodgetime.mjs'), /* v2.3.2892: a peer's roll plays over THEIR window (250-700 ms), frame for frame with their own screen, and ends when theirs does */
   devarmor: () => import('./mp-devarmor.mjs'), /* v2.3.2875: the admin kit hands out the copper and iron armour sets, into the right bags, wearable */
   monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2870: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */
   sheen: () => import('./mp-sheen.mjs'), /* v2.3.2864: a permanent soft shine on metal behind ?sheen=1 -- off by default, on every frame when on, copper stays copper, the jogging full-set knight too; pictures and its cost */
@@ -322,6 +321,7 @@ const SCENARIOS = {
   lifeskill: () => import('./mp-lifeskill.mjs'), /* v2.3.1680: tool-gated gathering */
   petdraw: () => import('./mp-petdraw.mjs'), /* v2.3.2078: an active pet is actually drawn */
   dodgetrail: () => import('./mp-dodgetrail.mjs'), /* v2.3.2078: your own dodge leaves a trail too */
+  dodgetime: () => import('./mp-dodgetime.mjs'), /* v2.3.2898: a peer's roll plays over THEIR window (250-700 ms), frame for frame with their own screen, and ends when theirs does */
   worldwalk: () => import('./mp-worldwalk.mjs'), /* v2.3.2078: the world map's pink lines are walls */
   townexit: () => import('./mp-townexit.mjs'), /* v2.3.2078: you spawn clear of the fountain and can leave town */
   cardreach: () => import('./mp-cardreach.mjs'), /* v2.3.2078: the inspect card's buttons on a phone */

@@ -517,7 +517,7 @@ export function castAbility(S, kind) {
     S._bashDash = { targetId: _bashId, ref: _bashLt, startTime: now, until: now + _dashWin,
       travelled: 0, maxTravel: DASH_MAX_REACH_PX,
       kind: kind, angle: isFinite(_dashAng) ? _dashAng : 0 };
-    /* ═══ v2.3.2892: ...ON EVERYBODY ELSE'S SCREEN TOO ═══
+    /* ═══ v2.3.2898: ...ON EVERYBODY ELSE'S SCREEN TOO ═══
        The tumble above was built for your own screen only.  Nothing told a
        watcher a dash had started -- the strike's player_swing goes out on
        ARRIVAL (v2.3.2260) -- so they saw exactly what the owner asked to be
