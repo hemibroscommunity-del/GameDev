@@ -2630,6 +2630,12 @@ export function setupWebSocket(ctx) {
                  Display only — the authoritative pools ride player_state,
                  so this never writes game state. */
               if (!msg.payload || !S.player) break;
+              /* v2.3.2824: a whirlwind the worker refused at the PRESS never
+                 armed, so its ring must not run out into a strike that
+                 cannot land.  A 'whiff' is the strike itself coming back
+                 empty (the windup already ended), so it leaves nothing to
+                 cancel. */
+              if (msg.payload.kind === 'whirl' && msg.payload.reason !== 'whiff') S._whirlWindup = null;
               /* v2.3.2263: stamp the last refusal, house-style probe.  The
                  popup is the only trace a reject leaves, and a floating
                  "Missed!" is not something a headless scenario can read -- so

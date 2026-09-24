@@ -347,7 +347,7 @@ import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.j
    combat overhaul.  The cast bodies live in @/game/abilities.js for the
    same reason the swing bodies do; this component keeps thin wrappers. */
 import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordDash,
-  applyAbilityStrike, DASH_STEP_PX, DASH_MAX_STEP_PX, DASH_STOP_PX, DASH_MAX_REACH_PX } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge; v2.3.2260: it strikes on arrival */
+  applyAbilityStrike, tickWhirlWindup /* v2.3.2824 */, DASH_STEP_PX, DASH_MAX_STEP_PX, DASH_STOP_PX, DASH_MAX_REACH_PX } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge; v2.3.2260: it strikes on arrival */
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult } from '@/game/lifeSkillRewards.js';
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
@@ -4556,6 +4556,17 @@ export var BroTown = function BroTown(_ref0) {
            gets swung at, or the press would cost stamina for nothing), but NOT
            when the target died or the player did -- there is nothing to hit,
            and the worker would refuse it anyway. */
+        /* v2.3.2824: the whirlwind's windup -- say where you are just before
+           it ends (the worker strikes from ITS copy of your position, and
+           moves are batched), then play the strike (abilities.js). */
+        if (S._whirlWindup) {
+          try {
+            tickWhirlWindup(S, Date.now(), function () {
+              if (S.channel) S.channel.send({ type: 'broadcast', event: 'move',
+                payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: S.player.vx || 0, vy: S.player.vy || 0 } });
+            });
+          } catch (e) { S._whirlWindup = null; }
+        }
         if (S._bashDash && !_playerDead) {
           var _bd = S._bashDash;
           /* ═══ v2.3.2261: THE DASH RE-BINDS ITS TARGET, LIKE THE LOCK DOES ═══

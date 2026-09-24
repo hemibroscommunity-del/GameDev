@@ -39,6 +39,7 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed bloc
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
+import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
@@ -943,6 +944,24 @@ export function processGameEvent(type, payload, S, deps) {
             }
             break;
 
+          case 'ability_windup':
+            {
+              /* v2.3.2824: a PEER's whirlwind is winding up (server
+                 abilities.js).  Our own ring is drawn from the press
+                 (S._whirlWindup), so only another player in this zone gets an
+                 entry; the renderer follows them and drops it when it ends.
+                 Numbers are coerced -- this is server-emitted (privileged),
+                 but it only ever gates a drawing. */
+              var _wp = payload || {};
+              if (_wp.playerId && _peerInZone(S, _wp.playerId) && (!_wp.zone || _wp.zone === S.currentZone)) {
+                if (!S._peerWindups) S._peerWindups = Object.create(null);
+                var _wn = Date.now();
+                S._peerWindups[_wp.playerId] = { t0: _wn, until: _wn + Math.max(0, Math.min(5000, Number(_wp.ms) || 0)),
+                  r: Math.max(0, Math.min(600, Number(_wp.radius) || 240)) };
+              }
+              break;
+            }
+
           case 'monster_ability':
             {
               /* ═══ v2.3.1730: STANDARD-ZONE TELEGRAPHS ═══
@@ -1582,6 +1601,18 @@ export function processGameEvent(type, payload, S, deps) {
                    sees, through the caster's own helper so the two can
                    never drift.  Drawn at the PEER's position, which is why
                    this lives here and not in abilities.js. */
+                /* v2.3.2824: a peer's whirlwind strikes -- the same full-size
+                   vortex and edge ring the caster sees, at the peer. */
+                if (payload.whirl) {
+                  var _wo = S.others[payload.id];
+                  var _wx = (typeof _wo.renderX === 'number') ? _wo.renderX : (_wo.x || 0);
+                  var _wy = (typeof _wo.renderY === 'number') ? _wo.renderY : (_wo.y || 0);
+                  var _wr = Math.max(0, Math.min(600, Number(payload.r) || 240)) * depthK(S.currentZone, _wy);
+                  if (!S._peerWhirlFx) S._peerWhirlFx = [];
+                  if (S._peerWhirlFx.length < 8) S._peerWhirlFx.push({ t0: Date.now(), x: _wx, y: _wy, radius: _wr });
+                  pushAbilityRings(S, _wx, _wy, 'whirl', 0, _wr);
+                  if (S._peerWindups) delete S._peerWindups[payload.id];
+                }
                 if (payload.bash) {
                   var _bo = S.others[payload.id];
                   pushAbilityRings(S, _bo.x || 0, (_bo.y || 0) - 10, 'bash',

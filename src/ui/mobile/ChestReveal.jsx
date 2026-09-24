@@ -121,6 +121,12 @@ export const ChestReveal = () => {
       if (offeredRef.current) return;
       const S = getState();
       if (!S || !S.__introLiftedAt || S._zoneLoading || S._netHold) return;
+      /* v2.3.2823: the headless harness sets this so the ~150 scenarios that
+         read the screen are not looking at a chest window every login (it hid
+         the chat bubble mp-chatfont measures).  Scenarios that test the offer
+         opt back in (harness newPlayer({ chestOffer: true })).  Never set by
+         the game. */
+      if (typeof window !== 'undefined' && window.__btNoChestOffer) return;
       if (chestCount() > 0 && chestLive()) { offeredRef.current = true; chestRevealBus.open(false); }
     }, 1000);
     return () => clearInterval(id);

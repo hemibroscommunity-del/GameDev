@@ -46,7 +46,7 @@ const recordInbound = () => {
 const bodyHas = (P, t) => P.page.evaluate((x) => document.body.innerText.includes(x), t);
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Scribe', nameB: 'Reader', init: recordInbound });
+  const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Scribe', nameB: 'Reader', init: recordInbound, chestOffer: true });
 
   /* ═══ 5. THE DAILY CHEST (owner: "a loot box ... instead of daily coin
      reward"; then, with the chest art: "you need to click the claim button to

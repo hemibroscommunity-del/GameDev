@@ -373,6 +373,9 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.2820: the daily chest's result (dailychest.js) -- it names a prize,
      so a forged one would put a fake jackpot on another player's screen. */
   'chest_opened',
+  /* v2.3.2824: a windup ability's ring (abilities.js) -- names a caster and a
+     circle, so a forged one would draw a fake whirlwind over another player. */
+  'ability_windup',
   /* v2.3.2822: the smelt's receipt (smelting.js) -- bars made and XP paid. */
   'smelt_result',
   /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
