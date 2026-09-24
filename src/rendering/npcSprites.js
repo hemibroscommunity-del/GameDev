@@ -19,10 +19,11 @@
  * path: if art is missing the NPC falls back to its emoji, which is a visible
  * bug rather than a mid-play hitch.
  */
-import { Assets, Rectangle, Texture } from 'pixi.js';
+import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
 import { NPC_DATA } from '../data/gameDisplay.js';
-import { propSpriteSources, propAnimStrips, zoneDecorSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips; v2.3.2651: + per-zone decor */
-import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2651: zone decor is freed on exit like every other per-zone sheet */
+import { propSpriteSources, propSpriteSourcesIn, propAnimStrips, zoneDecorSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips; v2.3.2651: + per-zone decor; v2.3.2792: + per-hub split */
+import { loadCroppedStrip } from './gearSheets.js'; /* v2.3.2792: the NPC walk strips load cropped */
+import { loadTracked, unloadBundle, bundleLoaded } from './zoneTextures.js'; /* v2.3.2651: zone decor is freed on exit like every other per-zone sheet */
 
 /* v2.3.2618: art an NPC's DIALOG needs warm, as opposed to art the world
    draws.  Ace's coin lands on one of these two strips the instant the server
@@ -35,6 +36,8 @@ export const NPC_DIALOG_FX = [
 /* Keys are asset paths that come from data, so Object.create(null): a plain {}
    silently no-ops on '__proto__' (CLAUDE.md — three incidents in one day). */
 const _tex = Object.create(null);
+/* v2.3.2792: the hub whose NPCs and props load and free with it (loadTownScenery) */
+const TOWN = 'town';
 let _done = null;
 
 /* ═══ v2.3.1829: CACHE-BUST THE NPC ART ═══
@@ -54,6 +57,11 @@ export const npcArtUrl = (src) => (src ? src + '?v=' + NPC_ART_VERSION : src);
  *  new NPC sprite is registered by adding the field and nothing else — a
  *  second hand-maintained list is how an asset gets forgotten. */
 export function npcSpriteSources() {
+  /* v2.3.2792: the world figures, the walk strips and town's props are NOT in
+     this list any more -- they load and free with town (loadTownScenery,
+     below).  What stays global is what can be seen away from town: the
+     dialogue portraits and Ace's coin strips (DOM images, only warming the
+     HTTP cache) and any resident prop that is not town's (none today). */
   /* Both the world figure AND the dialogue portrait (v2.3.1673).  The portrait
      is a DOM <img>, not a Pixi texture, so Assets.load only warms the HTTP
      cache for it — which is the point: the quest panel must not pop a blank
@@ -61,15 +69,14 @@ export function npcSpriteSources() {
   const out = [];
   for (const n of NPC_DATA || []) {
     if (!n) continue;
-    if (n.sprite) out.push(n.sprite);
     if (n.portrait) out.push(n.portrait);
     /* v2.3.2045: a WALKING NPC's per-direction strips. Listed from NPC_DATA
        like everything else here, so they ride the intro gate automatically --
        the whole reason this function is driven off the data table rather than
        a hand-kept list is that a second list is how an asset gets forgotten,
        and a forgotten asset is a first-sighting load, which the preloading law
-       forbids. */
-    for (const src of walkStripSources(n)) out.push(src);
+       forbids.  (v2.3.2792: listed from the same table by townScenery()
+       now, for the same reason.) */
   }
   /* v2.3.2618: Ace's coin-flip strips.  They are DOM <img> in his dialog,
      not Pixi textures, so like the portraits above this only warms the HTTP
@@ -82,7 +89,8 @@ export function npcSpriteSources() {
      same intro gate.  They are static scenery, so a lazy first-sighting load
      would be exactly the hitch CLAUDE.md's preloading law forbids — and the
      alternative (a second loader) is how one of the two gets forgotten. */
-  out.push(...propSpriteSources());
+  const town = new Set(propSpriteSourcesIn(TOWN));
+  out.push(...propSpriteSources().filter((src) => !town.has(src)));
   return [...new Set(out)];
 }
 
@@ -178,30 +186,181 @@ export function loadNpcSprites() {
     if (tex.source) { try { tex.source.scaleMode = 'nearest'; } catch (e) { /* older pixi */ } }
     _tex[src] = tex;
   }).catch(() => { /* a missing file leaves the emoji fallback in place */ })));
-  /* Slice the walk strips once every source has settled. Deliberately AFTER
-     the same promise the intro gate awaits, so a walking NPC's frames exist by
-     the time the overlay lifts rather than on his first step. */
-  _done = _done.then(async (r) => {
+  /* v2.3.2792: the walk strips and the animated props used to be sliced here,
+     after the same promise.  They are town's, so they moved to
+     loadTownScenery with the rest of town. */
+  return _done;
+}
+
+/* ═══ v2.3.2792: TOWN'S NPCs AND BUILDINGS LOAD AND FREE WITH TOWN ═══
+ *
+ * Owner: "Is there any other memory savings ... (Or removed from the mostly
+ * costly memory?)" -- then "Yeah do that".  Measured (tex-attrib, v2.3.2791):
+ * Ember held 35.4MB of town art -- sixteen NPC walk strips at 1MB each, the
+ * fountain's 3.4MB strip, four 1MB buildings -- none of which any zone but
+ * town can draw (S.npcs is only ever set by _spawnTownNpcs; every resident
+ * prop is zone 'town').  The v2.3.1672 note on the manifest predicted it: "If
+ * NPC art ever grows past a handful of figures, move it to preloadZoneAssets
+ * and free it on zone exit."
+ *
+ * So it follows the ZONE-ASSET EXCEPTION like every per-zone sheet: loaded
+ * AWAITED behind a loading overlay, freed a beat after you leave.  It is not a
+ * lazy load -- the game never draws town without it (zoneTransitions'
+ * syncTownScenery holds the player under the overlay until townSceneryReady()),
+ * and the intro gate still loads it, because town is where you start.
+ *
+ * And the walk strips load CROPPED (gearSheets.loadCroppedStrip, the same
+ * packer as the armour): a 1024x256 strip of four figures is 57-58% empty
+ * frame, and a Texture with `orig` = the whole frame draws in the same place.
+ * That part is a saving IN town too.  The fountain and the buildings fill
+ * their frames, so they load whole, through loadTracked, as before.
+ *
+ * Freeing is three kinds of thing, all listed here as they load so nothing is
+ * re-derived at free time: registry keys (_townKeys), the cropped canvases
+ * (_townCrops -- not Assets-owned, so released by hand, including the Cache
+ * entry Texture.from made for the canvas), and the Assets bundle. */
+const TOWN_BUNDLE = 'town-scenery';
+let _town = null;          /* the load in flight or done, else null */
+let _townReady = false;    /* synchronous "town can be drawn": the gate reads this every frame */
+let _townUnload = null;    /* a free's Assets.unload still running; a reload waits for it */
+const _townKeys = [];
+const _townCrops = [];
+const _townAnimIds = [];
+
+/** What town draws: every NPC's walk strips (cropped), every NPC figure that
+ *  is not itself a walk strip, and town's props.  Driven off the data tables
+ *  so a new NPC or prop is scoped by adding the row and nothing else. */
+function townScenery() {
+  const strips = [];
+  const stills = [];
+  const stripSrc = new Set();
+  for (const n of NPC_DATA || []) {
+    const w = n && n.walk;
+    if (!w || !w.base || !Array.isArray(w.dirs)) continue;
+    for (const d of w.dirs) {
+      const src = w.base + d + '.webp';
+      strips.push({ id: n.id, dir: d, src, frames: w.frames || 4 });
+      stripSrc.add(src);
+    }
+  }
+  for (const n of NPC_DATA || []) {
+    if (n && n.sprite && !stripSrc.has(n.sprite)) stills.push(n.sprite);
+  }
+  stills.push(...propSpriteSourcesIn(TOWN));
+  return { strips, stills: [...new Set(stills)] };
+}
+
+/** Load town's NPCs and props.  Idempotent; resolves when every file has
+ *  settled (a missing one leaves that NPC on its emoji, as before). */
+export function loadTownScenery() {
+  if (_town) return _town;
+  const { strips, stills } = townScenery();
+  const keys = [], crops = [], animIds = [];
+  const walk = Object.create(null);
+  const run = Promise.resolve(_townUnload).catch(() => {}).then(() => Promise.allSettled([
+    ...strips.map((s) => loadCroppedStrip(npcArtUrl(s.src), s.frames).then((frames) => {
+      const src = frames && frames[0] && frames[0].source;
+      if (!src) return;
+      /* NEAREST, as every NPC texture (see loadNpcSprites); the cropper hands
+         back a linear source because its other callers are smooth fx. */
+      try { src.scaleMode = 'nearest'; } catch (e) { /* older pixi */ }
+      crops.push({ src, frames });
+      (walk[s.id] || (walk[s.id] = Object.create(null)))[s.dir] = frames;
+    })),
+    ...stills.map((src) => Promise.resolve(loadTracked(TOWN_BUNDLE, npcArtUrl(src))).then((tex) => {
+      if (!tex) return;
+      if (tex.source) { try { tex.source.scaleMode = 'nearest'; } catch (e) { /* older pixi */ } }
+      _tex[src] = tex;
+      keys.push(src);
+    })),
+  ])).then((r) => {
+    if (_town !== run) {
+      /* Freed (or superseded) while loading: nothing of this load may be
+         published, and its crops go back now rather than never. */
+      _releaseCrops(crops);
+      return r;
+    }
+    for (const id in walk) _walk[id] = walk[id];
+    /* A walking NPC's `sprite` is his south strip.  Point it at the first
+       CROPPED south frame, so the one lookup that asks for it (entityRenderer's
+       figure fallback) gets a single figure rather than nothing. */
     for (const n of NPC_DATA || []) {
-      const w = n && n.walk;
-      if (!w || !w.base || !Array.isArray(w.dirs)) continue;
-      const byDir = Object.create(null);
-      for (const d of w.dirs) {
-        const tex = _tex[w.base + d + '.webp'];
-        if (tex) byDir[d] = _sliceStrip(tex, w.frames || 4);
-      }
-      if (Object.keys(byDir).length) _walk[n.id] = byDir;
+      const f = n && n.sprite && _walk[n.id] && _walk[n.id].south && _walk[n.id].south[0];
+      if (f && !_tex[n.sprite]) { _tex[n.sprite] = f; keys.push(n.sprite); }
     }
-    /* v2.3.2061: animated props, cut in the same pass and for the same reason
-       -- AFTER the promise the intro gate awaits, so a fountain has its eight
-       frames before the overlay lifts rather than on first sighting. */
+    /* v2.3.2061: the animated props, cut from their loaded strip as before. */
     for (const a of propAnimStrips()) {
+      if (a.zone !== TOWN) continue;
       const tex = _tex[a.sprite];
-      if (tex) _propAnim[a.id] = _sliceStrip(tex, a.frames);
+      if (tex) { _propAnim[a.id] = _sliceStrip(tex, a.frames); animIds.push(a.id); }
     }
+    _townKeys.push(...keys);
+    _townCrops.push(...crops);
+    _townAnimIds.push(...animIds);
+    _townReady = true;
     return r;
   });
-  return _done;
+  _town = run;
+  return run;
+}
+
+/** True once town can be drawn with its real art.  Synchronous, for the
+ *  per-frame gate in zoneTransitions. */
+export function townSceneryReady() { return _townReady; }
+
+/** Is a load in flight?  The free waits for it rather than racing it. */
+export function townSceneryLoading() { return !!_town && !_townReady; }
+
+function _releaseCrops(list) {
+  for (const c of list) {
+    for (const t of c.frames || []) { try { t.destroy(false); } catch (e) { /* gone */ } }
+    const src = c.src;
+    const cv = src && src.resource;
+    try { if (src && !src.destroyed) src.destroy(); } catch (e) { /* gone */ }
+    /* Texture.from(canvas) parked a Texture under the canvas in Cache, and it
+       is only removed when THAT texture is destroyed -- which nothing holds.
+       Left, the canvas's pixels stay reachable for the life of the page. */
+    try { if (cv && Cache.has(cv)) Cache.remove(cv); } catch (e) { /* older pixi */ }
+    try { if (cv && 'width' in cv) { cv.width = 0; cv.height = 0; } } catch (e) { /* not a canvas */ }
+  }
+}
+
+/** Release town's art.  Returns false (and does nothing) while a load is in
+ *  flight, so the caller simply tries again a frame later.  The renderer must
+ *  already have let go: entityRenderer destroys NPC displays that left S.npcs
+ *  and resets props of another zone to Texture.EMPTY (v2.3.2651), which is why
+ *  the caller runs this a beat after the zone change, not on it. */
+export function freeTownScenery() {
+  if (!_town) return true;
+  if (!_townReady) return false;
+  _town = null;
+  _townReady = false;
+  /* Registry first: a lookup that misses waits at Texture.EMPTY; one that
+     returns a destroyed source throws inside Pixi (v2.3.2651's alphaMode). */
+  for (const k of _townKeys.splice(0)) delete _tex[k];
+  for (const id of Object.keys(_walk)) delete _walk[id];
+  for (const id of _townAnimIds.splice(0)) {
+    for (const t of _propAnim[id] || []) { try { t.destroy(false); } catch (e) { /* gone */ } }
+    delete _propAnim[id];
+  }
+  _releaseCrops(_townCrops.splice(0));
+  _townUnload = unloadBundle(TOWN_BUNDLE).catch(() => 0);
+  return true;
+}
+
+/* QA probe, house style: is town's art resident, and how much of it. */
+if (typeof window !== 'undefined') {
+  window.__btTownScenery = function () {
+    let bytes = 0, whole = 0;
+    for (const c of _townCrops) {
+      bytes += (c.src.pixelWidth || c.src.width || 0) * (c.src.pixelHeight || c.src.height || 0) * 4;
+      const o = c.frames[0] && c.frames[0].orig;
+      if (o) whole += o.width * o.height * c.frames.length * 4;
+    }
+    return { ready: _townReady, loading: townSceneryLoading(), keys: _townKeys.length,
+      walkers: Object.keys(_walk).length, crops: _townCrops.length, cropMb: +(bytes / 1048576).toFixed(2), wholeMb: +(whole / 1048576).toFixed(2),
+      bundle: bundleLoaded(TOWN_BUNDLE) };
+  };
 }
 
 /** The loaded Texture for a sprite path, or null if it never resolved. */

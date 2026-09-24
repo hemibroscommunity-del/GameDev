@@ -27,7 +27,8 @@ import { _typeof } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
 import { preloadZoneAssets, freeZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate; v2.3.2272: and its exit half */
-import { freeZoneMap, isZoneMapResident } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check */
+import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2792: + town's own map */
+import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2792: town's NPCs + buildings load and free with town */
 
 /* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
  *
@@ -219,6 +220,72 @@ function hideZoneLoadingOverlay() {
   try { if (_zoneLoadEl) { _zoneLoadEl.remove(); _zoneLoadEl = null; } } catch (e) {}
 }
 
+/* ═══ v2.3.2792: TOWN'S NPCs AND BUILDINGS, HELD AND FREED IN ONE PLACE ═══
+ *
+ * Town's art now loads and frees with town (npcSprites loadTownScenery -- it
+ * was 35MB carried through every field zone).  There are many ways INTO town:
+ * the worldview exit (the hub gate below, which preloads it like any zone),
+ * a spoke's return portal, a respawn, the farm, a dev warp, a server-forced
+ * flip.  Gating each of those by hand is how one gets missed, and a missed
+ * one draws the NPCs as emoji stand-ins for the first second back -- which
+ * v2.3.1672 chose as "the louder failure" precisely so it would be noticed.
+ *
+ * So this runs every frame and asks only where the player IS:
+ *   - in town without the art: veil (the zone overlay), hold still
+ *     (S._townArtHold -- BroTown zeroes speed on it), load, lift.  The veil
+ *     goes up in the same tick the zone flipped, before anything is painted.
+ *   - out of town with the art: free it a beat later (the renderer drops its
+ *     NPC displays and resets town's props to EMPTY on its next pass -- the
+ *     same 400ms the variant sheets take, _freeLeftZoneAssets above), unless
+ *     a hub gate is loading it to walk in, or you are back by then.
+ * Every path in or out passes through here because every path ends with the
+ * player standing somewhere.
+ *
+ * TOWN'S MAP rides the same hold (11.3MB, the largest single texture in the
+ * game, held in every zone because a hub was "returned to constantly and
+ * cheap to hold" -- v2.3.1405).  Once the veil is up for the NPCs anyway, the
+ * map costs the return nothing more, so it frees with them.  Worldview's map
+ * stays resident: returning to worldview is still unveiled. */
+var _townFreeTimer = null;
+function _townArtReady() { return townSceneryReady() && isZoneMapResident('town'); }
+function syncTownScenery(S) {
+  var hold = S._townArtHold;
+  if (S.currentZone === 'town') {
+    if (_townArtReady()) {
+      if (hold) { S._townArtHold = null; hideZoneLoadingOverlay(); }
+      return;
+    }
+    if (!hold) {
+      var h = { t: Date.now(), done: false };
+      S._townArtHold = h;
+      showZoneLoadingOverlay((ZONES.town && ZONES.town.name) || 'Town');
+      /* The same 15s cap the hub gate races: a hung fetch costs the player
+         emoji NPCs, never a frozen screen. */
+      Promise.race([
+        Promise.all([
+          Promise.resolve(loadTownScenery()).catch(function () {}),
+          Promise.resolve(preloadStartZoneMap('town')).catch(function () {}),
+        ]),
+        new Promise(function (r) { setTimeout(r, 15000); }),
+      ]).then(function () { h.done = true; });
+      return;
+    }
+    if (hold.done || Date.now() - hold.t > 20000) { S._townArtHold = null; hideZoneLoadingOverlay(); }
+    return;
+  }
+  if (hold) { S._townArtHold = null; hideZoneLoadingOverlay(); }
+  if (_townFreeTimer || townSceneryLoading()) return;
+  if (!townSceneryReady() && !isZoneMapResident('town')) return;
+  if (S._zoneLoading && S._zoneLoading.toZone === 'town') return;
+  _townFreeTimer = setTimeout(function () {
+    _townFreeTimer = null;
+    if (S.currentZone === 'town') return;
+    if (S._zoneLoading && S._zoneLoading.toZone === 'town') return;
+    freeTownScenery();
+    Promise.resolve(freeZoneMap('town', { hub: 'town' })).catch(function () {});
+  }, 400);
+}
+
 /* ═══ v2.3.1748: EVERYTHING ZONE-LOCAL THAT OUTLIVED THE ZONE ═══
  * Owner: "we made a fire in the frost zone level and it appeared in worldview
  * too even when we didn't make one there."
@@ -403,6 +470,7 @@ export function driveDevWarp(S) {
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
   driveDevWarp(S);   /* v2.3.2308: one leg of a pending test-panel warp */
+  syncTownScenery(S);   /* v2.3.2792: town's NPCs + buildings, whichever way you arrived */
         /* v2.3.1406: STUCK-GATE FAILSAFE.  S._zoneLoading is normally
            consumed by the hub-exit gate below, but that only runs while
            the player is in a hub AND still within the armed exit's
@@ -661,7 +729,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                    with which zones have monsters. */
                 _freeLeftZoneAssets(_zl.from, _tz);
                 /* fall through: run the entry body once, now that assets are warm */
-              } else if (!isZoneMapResident(_tz)) {
+              } else if (!isZoneMapResident(_tz) || (_tz === 'town' && !townSceneryReady())) {   /* v2.3.2792: town's NPCs + buildings leave with town (its map too, which the first test already covers) */
                 var _zlObj = { toZone: _tz, from: S.currentZone, done: false, t: Date.now() }; /* v2.3.1406: t feeds the 20s failsafe */
                 S._zoneLoading = _zlObj;
                 var _tzName = (ZONES[_tz] && ZONES[_tz].name) || _tz;

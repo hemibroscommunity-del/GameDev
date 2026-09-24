@@ -268,8 +268,14 @@ export async function preloadStartZoneMap(zoneId = 'town') {
  *  re-download).  Safe because tileRenderer destroys the previous zone's
  *  ground sprite before this runs (v2.3.1405) — no live Sprite references
  *  the source when it's unloaded. */
-export async function freeZoneMap(zoneId) {
-  if (!zoneId || zoneId === 'town' || zoneId === 'worldview') return;
+export async function freeZoneMap(zoneId, opts) {
+  /* v2.3.2792: town's map is freed too now, but only by the one caller that
+     also holds the way back in (zoneTransitions syncTownScenery, which veils
+     every re-entry until the map and the NPCs are loaded).  Every other caller
+     still skips the hubs, so nothing that returns to a hub without a veil can
+     find its ground missing. */
+  const hubOk = !!(opts && opts.hub === zoneId);
+  if (!zoneId || ((zoneId === 'town' || zoneId === 'worldview') && !hubOk)) return;
   const url = IMAGE_ZONE_MAPS[zoneId];
   if (!url) return;
   _residentZoneMaps.delete(zoneId); /* v2.3.1405: drop from the sync mirror before the async unload */
