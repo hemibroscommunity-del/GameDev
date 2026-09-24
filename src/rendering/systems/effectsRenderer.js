@@ -4263,14 +4263,31 @@ export class EffectsRenderer {
     if (S.others) {
       for (const oid in S.others) {
         const o = S.others[oid];
-        if (!o || !o._dodgeRoll) continue;
-        const dage = now - (o._dodgeRoll.startTime || 0);
-        if (dage > 400) { o._dodgeRoll = null; o._dodgeTrail = null; continue; }
-        if (!o._dodgeTrail) o._dodgeTrail = [];
-        const ox = (o.renderX != null) ? o.renderX : o.x;
-        const oy = (o.renderY != null) ? o.renderY : o.y;
-        o._dodgeTrail.push({ x: ox, y: oy, ts: now });
+        if (!o || (!o._dodgeRoll && !(o._dodgeTrail && o._dodgeTrail.length))) continue;
+        if (o._dodgeRoll) {
+          const dage = now - (o._dodgeRoll.startTime || 0);
+          /* v2.3.2916: the roll ends when THEIR window does (player_dodge
+             `dur`), as yours ends at S._dodgeRoll.durMs -- a flat 400 cut a
+             700 ms roll short and let a 250 ms one run on.  400 stays for an
+             older client.  And ending it stops FEEDING the smear rather than
+             deleting it: your own ghosts fade out over their 200 ms after the
+             roll (the age-out below), where a peer's used to vanish at once. */
+          /* v2.3.2916: a sword dash ends on ARRIVAL, which a watcher learns
+             from the strike: its player_swing goes out when the dash lands
+             (v2.3.2260).  `dur` is only its backstop.  And it sheds no ghosts --
+             your own dash draws none (it is not an S._dodgeRoll). */
+          const _dash = o._dodgeRoll.kind === 'sworddash';
+          if (dage > (o._dodgeRoll.durMs || 400)
+              || (_dash && o._swingTs && o._swingTs >= (o._dodgeRoll.startTime || 0))) o._dodgeRoll = null;
+          else if (!_dash) {
+            if (!o._dodgeTrail) o._dodgeTrail = [];
+            const ox = (o.renderX != null) ? o.renderX : o.x;
+            const oy = (o.renderY != null) ? o.renderY : o.y;
+            o._dodgeTrail.push({ x: ox, y: oy, ts: now });
+          }
+        }
         const ot = o._dodgeTrail;
+        if (!ot) continue;
         for (let i = ot.length - 1; i >= 0; i--) {
           const g = ot[i];
           const age = (now - g.ts) / 200;
@@ -4284,6 +4301,7 @@ export class EffectsRenderer {
           gfx.circle(g.x, g.y, 8 * gk);
           gfx.fill({ color: 0x3498db, alpha: (1 - age) * 0.3 });
         }
+        if (!o._dodgeRoll && !ot.length) o._dodgeTrail = null;
       }
     }
 

@@ -346,7 +346,7 @@ import { updateStateCleanup } from '@/game/stateCleanup.js';
 import { renderFrame } from '@/game/renderFrame.js';
 import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
-import { triggerContextualDodge } from '@/game/dodge.js';
+import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
@@ -4521,8 +4521,10 @@ export var BroTown = function BroTown(_ref0) {
              Endurance stretch — the roll window IS the i-frame, so
              this directly buys survival frames.
              v2.3.1343 (kid-simple reprice): +2ms/pt, cap +200ms. */
-          var _dodgeMs = 250 + Math.min(((S.rpg && S.rpg.endurance) || 0), 250)
-            + Math.min(200, 2 * ((S.rpg && S.rpg.enduranceSpec && S.rpg.enduranceSpec.reflexes) || 0));
+          /* v2.3.2916: the formula moved to game/dodge.js dodgeWindowMs so the
+             player_dodge broadcast can send the same number -- a watcher used
+             to play every roll over a flat 300 ms. */
+          var _dodgeMs = dodgeWindowMs(S.rpg);
           /* v2.3.1534: publish the window the roll ACTUALLY got so the dodge
              sprite plays its 9 frames across exactly it (entityRenderer).
              Written here rather than at the three _dodgeRoll creation sites

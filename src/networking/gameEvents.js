@@ -1789,8 +1789,16 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.1011: another player dodged/lunged/retreated -- mirror the
                  local _dodgeRoll shape so the remote render shows the move. */
               if (payload.id && _peerInZone(S, payload.id)) {
+                /* v2.3.2916: + how long THEIR roll lasts (game/dodge.js
+                   dodgeWindowMs), so their tumble plays over their window
+                   rather than a flat 300 ms.  Clamped: the real range is 250-700,
+                   and a forged or garbled value must not freeze a figure in a
+                   roll.  Absent (an older client) = undefined, which keeps the
+                   old defaults downstream. */
+                var _ddur = Number(payload.dur);
                 S.others[payload.id]._dodgeRoll = {
-                  angle: payload.angle, kind: payload.kind || 'dodge', startTime: Date.now()
+                  angle: payload.angle, kind: payload.kind || 'dodge', startTime: Date.now(),
+                  durMs: (isFinite(_ddur) && _ddur > 0) ? Math.max(150, Math.min(1000, _ddur)) : undefined,
                 };
                 /* v2.3.1107: dodge/lunge re-point the body along the dash.
                    retreat_shot is EXCLUDED: it dashes away while firing AT
