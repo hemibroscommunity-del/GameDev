@@ -97,10 +97,16 @@ const COOKED_FISH_THUMBS = {
 };
 const FISH_THUMB_DEFAULT = `/icons/items/fish-minnow.webp${ITEMS_V}`;
 const COOKED_FISH_THUMB_DEFAULT = `/icons/items/cooked-minnow.webp${ITEMS_V}`;
-const ORE_THUMBS = {
+export const ORE_THUMBS = {  /* v2.3.2822: exported for the Smelting rows */
   ore_copper_ore: `/icons/items/ore-copper.webp${ITEMS_V}`,
 };
 const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
+/* v2.3.2822: smelted bars (server smelting.js).  One painted grey ingot, the
+   owner's, gradient-mapped per metal by tools/make_bar_icons.py -- a new metal
+   is a line there and a line here. */
+export const BAR_THUMBS = {
+  bar_copper: `/icons/items/bar-copper.webp${ITEMS_V}`,
+};
 /* v2.3.1696 (owner: "the fishing pole sprite has some of the background that
    failed to get keyed out in the holes between the fishing line and the
    fishing pole").  Confirmed by counting: of 256x256, 51,876 px were already
@@ -178,6 +184,7 @@ export const thumbFor = (key) => {
   if (k.startsWith('wood_'))        return WOOD_THUMB;
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
+  if (BAR_THUMBS[k])                return BAR_THUMBS[k];   /* v2.3.2822 */
   if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
   /* v2.3.1924: the rare gem monsters drop at 1-in-200 (server/src/data.js
      RARE_GEM_KEY).  It borrows the gem icon this panel ALREADY uses for its
@@ -226,6 +233,7 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   manaShard: 'Mana Draught',
   staminaSalts: 'Stamina Salts',
   daily_chest: 'Daily Chest',   /* v2.3.2820: the daily login reward (server dailychest.js) */
+  bar_copper: 'Copper Bar',     /* v2.3.2822: prettyName would say "Bar Copper" (server smelting.js) */
 });
 
 /* v2.3.2820: the daily chest -- opened from the bag, rolled by the worker. */
@@ -321,6 +329,7 @@ export const iconFor = (key) => {
   if (/potion|elixir|tonic|salve/.test(k))    return '🧪';
   if (/wood|log|plank/.test(k))               return '🪵';
   if (/fish|salmon|cod|trout/.test(k))        return '🐟';
+  if (k.startsWith('bar_'))                   return '\uD83E\uDDF1';   /* v2.3.2822: above the ore rule, which 'bar_copper' would match */
   if (/ore|iron|copper|stone|gem/.test(k))    return '⛏';
   if (/herb|leaf|flower/.test(k))             return '🌿';
   if (/bone|skull|tooth/.test(k))             return '🦴';

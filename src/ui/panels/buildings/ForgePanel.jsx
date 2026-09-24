@@ -3,6 +3,7 @@ import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, EQUIP_STAT_MAP, NUGGETS_PER_B
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { SmeltSection } from './SmeltSection.jsx'; /* v2.3.2822: ore into bars */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === ForgePanel — blacksmith forge (weapon/armor craft, reforge, harden, salvage) === */
 /* v2.3.872: first buildingPanel sub-panel extracted (REBUILD-PLAN UI
@@ -197,7 +198,7 @@ export function ForgePanel(props) {
       color: '#8D9B98',
       marginBottom: 12
     }
-  }, "Blacksmithing Lv", ((_rpgState$lifeSkills21 = rpgState.lifeSkills) === null || _rpgState$lifeSkills21 === void 0 || (_rpgState$lifeSkills21 = _rpgState$lifeSkills21.blacksmithing) === null || _rpgState$lifeSkills21 === void 0 ? void 0 : _rpgState$lifeSkills21.level) || 1, " \xB7 Forge melee weapons from ore. Higher levels unlock gem slots."), /*#__PURE__*/React.createElement("div", {
+  }, "Blacksmithing Lv", ((_rpgState$lifeSkills21 = rpgState.lifeSkills) === null || _rpgState$lifeSkills21 === void 0 || (_rpgState$lifeSkills21 = _rpgState$lifeSkills21.blacksmithing) === null || _rpgState$lifeSkills21 === void 0 ? void 0 : _rpgState$lifeSkills21.level) || 1, " \xB7 Smelt ore into bars and forge melee weapons. Higher levels unlock gem slots."), /* v2.3.2822: ore -> bars (SmeltSection.jsx) */ /*#__PURE__*/React.createElement(SmeltSection, { rpgState: rpgState, stateRef: stateRef }), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1235: batch-3 rollout — well token + shared .ui-well recipe;
        tab-label emoji dropped (no emoji in tab chrome). */
     style: {

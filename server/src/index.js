@@ -62,6 +62,7 @@ import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
+import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
@@ -372,6 +373,8 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.2820: the daily chest's result (dailychest.js) -- it names a prize,
      so a forged one would put a fake jackpot on another player's screen. */
   'chest_opened',
+  /* v2.3.2822: the smelt's receipt (smelting.js) -- bars made and XP paid. */
+  'smelt_result',
   /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
      both carry money -- `shop_result` names coins paid and `shop_state` is
      the public pile every client prices against. Forgeable, they would let
@@ -4913,6 +4916,13 @@ export class GameRoom {
         }
         break;
 
+      case 'smelt_bar':
+        /* v2.3.2822: smelt ore into bars at the blacksmith (smelting.js).  The
+           worker takes the ore and pays the bars and the Smithing XP; the
+           client only asks. */
+        if (session.id) this._handleSmeltBar(session, msg.payload || msg);
+        break;
+
       case 'cape_redeem':
         /* v2.3.2026: the player tapped Open on a golden ticket in the bag.
            The client never consumes it or grants the cape -- see the
@@ -5633,6 +5643,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
+Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.

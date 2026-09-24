@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-equip tick */
+import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -37,6 +38,9 @@ import {
      (equipModel) owns that lookup now. */
   recalcDerived,
 } from '../../../data/gameSystems.js';
+/* v2.3.2822: ore key -> the bar it smelts into, derived from the one table. */
+const SMELT_ORE_TO_BAR = Object.create(null);
+for (const _b of Object.keys(SMELT_RECIPES)) SMELT_ORE_TO_BAR[SMELT_RECIPES[_b].ore] = _b;
 
 /* ═══ v2.3.2664: THE CARD SAYS WHAT THE GATE WILL ASK ═══
    Owner: "Yeah I'll go with your defense requirements for next tiers" — 5
@@ -167,6 +171,13 @@ function resolveTarget(target) {
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
     else if (isLog) info = 'Light a campfire to cook at';
+    /* v2.3.2822: say where the ore goes and where the bar came from -- the
+       smelt lives in the Blacksmith, which nothing in the bag pointed at. */
+    else if (SR && SR._serverCaps && SR._serverCaps.smelting && SMELT_ORE_TO_BAR[key]) {
+      const r = SMELT_RECIPES[SMELT_ORE_TO_BAR[key]];
+      info = 'Smelt ' + r.oreCost + ' into a ' + r.name + ' at the Blacksmith';
+    }
+    else if (SMELT_RECIPES[key]) info = 'Smelted from ' + SMELT_RECIPES[key].oreCost + ' ' + SMELT_RECIPES[key].oreName;
     else if (count > 0) info = 'Quantity: ' + count;
     return {
       lockKey: key,

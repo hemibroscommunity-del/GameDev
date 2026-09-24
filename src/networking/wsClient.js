@@ -17,6 +17,8 @@
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
+import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
+import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
@@ -1442,6 +1444,28 @@ export function setupWebSocket(ctx) {
                   else if (_cp.kind === 'armor' && _cp.piece) _applyLootCredit({ armor: [_cp.piece] }, S);
                 } catch (_ce) { /* the reveal still shows */ }
                 try { chestRevealBus.prize(_cp); } catch (_re) {}
+              }
+              break;
+            }
+          case 'smelt_result':
+            {
+              /* v2.3.2822: the worker's receipt for a smelt (smelting.js).  It
+                 has ALREADY taken the ore and paid the bars and the Smithing
+                 XP; the player_state that follows carries the bag.  This is
+                 only the moment: the words over the player, the chime, and the
+                 level celebration a crafting level gets (v2.3.2591). */
+              var _sr = msg.payload;
+              if (_sr && _sr.count > 0 && S.player) {
+                try {
+                  var _rec = SMELT_RECIPES[_sr.barKey];
+                  var _bn = (_rec && _rec.name) || 'Bar';
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + _sr.count + ' ' + _bn + (_sr.count > 1 ? 's' : ''), '#E0935A');
+                  pushDmgPopup(S, S.player.x, S.player.y - 44, '+' + _sr.xp + ' Smithing XP', '#D8A94D');
+                  BT_AUDIO.collect();
+                } catch (_se) { /* the bag still updates */ }
+                if (_sr.leveled && _sr.newLevel > _sr.fromLevel) {
+                  try { celebrateLifeSkillLevel(S, 'blacksmithing', _sr.newLevel, _sr.fromLevel); } catch (_ce) {}
+                }
               }
               break;
             }
@@ -3801,6 +3825,11 @@ export function setupWebSocket(ctx) {
            passes only the types it names, so without this the button sent
            nothing at all -- caught by mp-polish opening a real chest. */
         if (msg.type === 'chest_open') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.2822: Smelt at the blacksmith (ForgePanel) -> smelting.js. */
+        if (msg.type === 'smelt_bar') {
           ws.send(JSON.stringify(msg));
           return;
         }
