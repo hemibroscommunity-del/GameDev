@@ -366,6 +366,7 @@ export function sliceCropped(cv, fw, fh, n) {
       t = new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) });
     }
     t.__btIx = i;
+    t.__btN = n;   /* ...and how many the sheet has (a probe used to divide widths for it) */
     out.push(t);
   }
   if (packed) {
