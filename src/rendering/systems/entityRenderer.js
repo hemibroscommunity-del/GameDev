@@ -2591,11 +2591,10 @@ function _frameInput(tex) {
    prewarm, so every bake goes through one queue:
      - one job at a time, so a frame asked for by the renderer waits for at
        most the bake already running;
-     - the renderer's jobs go FIRST, by `rank`: the frame on screen now, then
-       the few it will ask for next (_localMaskedFrame's look-ahead), then
-       what it asked for a moment ago -- which the prewarm gets to anyway.
-       Rank 0 is the background (the prewarms, other players), first come
-       first served;
+     - the renderer's jobs go FIRST, by `rank`: the frame on screen now,
+       then what it asked for a moment ago -- which the prewarm gets to
+       anyway.  Rank 0 is the background (the prewarms, other players), first
+       come first served;
      - a key is never queued twice: asking again for a queued frame returns
        the same promise, and raises its rank if the renderer now wants it
        sooner.
@@ -2604,6 +2603,7 @@ function _frameInput(tex) {
 const _bakeQueue = [];
 const _bakeByKey = new Map();   /* key -> job, queued or running */
 let _bakeBusy = 0;
+let _bakeStartedAt = 0;   /* when the running job was sent: a worker that sits on one is stuck (_localMaskedFrame) */
 const _BAKE_BUSY_MAX = 1;
 function _prewarmBake(bodyTex, worn, dilate, poseInfo, rank) {
   if (!bodyTex || !worn.length) return Promise.resolve();
@@ -2615,10 +2615,9 @@ function _prewarmBake(bodyTex, worn, dilate, poseInfo, rank) {
   let job = _bakeByKey.get(key);
   if (job) {
     if (r > job.rank) job.rank = r;   /* the queue is picked by rank (_pumpBakes), so this is the promotion */
-    if (r > 0 && !job.askedAt) job.askedAt = performance.now();
     return job.done;
   }
-  job = { key, bodyTex, worn, dilate, poseInfo, rank: r, askedAt: r > 0 ? performance.now() : 0, started: false, done: null, resolve: null };
+  job = { key, bodyTex, worn, dilate, poseInfo, rank: r, started: false, done: null, resolve: null };
   job.done = new Promise((res) => { job.resolve = res; });
   _bakeByKey.set(key, job);
   _bakeQueue.push(job);
@@ -2633,6 +2632,7 @@ function _pumpBakes() {
     const job = _bakeQueue.splice(bi, 1)[0];
     job.started = true;
     _bakeBusy++;
+    _bakeStartedAt = performance.now();
     _runBake(job).catch(() => { /* best-effort */ }).then(() => {
       _bakeBusy--;
       _bakeByKey.delete(job.key);
@@ -2705,77 +2705,44 @@ if (typeof window !== 'undefined') {
    Measured, putting a steel chest piece on and running (4x CPU throttle):
    see OPTIMIZATION-ROADMAP P7 item 16 (g).
    No worker (old Safari, a worker error): the inline bake, exactly as before.
-   And if the worker has sat on a frame for LOCAL_PATIENCE_MS, the frame is
-   baked here after all -- a hung worker must not leave the mask off for good.
-   LOOK-AHEAD (`ahead`, from _updatePlayer: which way the animation is
-   stepping, and your drawings): asked only for the frame on screen, the
-   worker would always be one frame behind a run cycle -- each frame baked
-   just after it was needed, the whole first cycle drawn plain.  So a miss
-   also queues the next LOCAL_AHEAD frames of the same pose and facing, ranked
-   just under it; a bake is quicker than a jog frame is long, so the worker
-   is ahead of the animation within a frame or two and the rest of the cycle
-   lands masked. */
-const _localBakeStats = { hits: 0, plain: 0, inline: 0, late: 0, delivered: 0, ahead: 0 };
-const _LOCAL_PATIENCE_MS = 600;
-const _LOCAL_AHEAD = 4;
+   And if the worker has sat on ONE job for LOCAL_PATIENCE_MS -- stuck, not
+   busy -- frames are baked here after all: a hung worker must not leave the
+   mask off for good.  Stuck is judged by the job RUNNING, never by how long a
+   frame has waited in the queue: a busy worker still delivering is the case
+   this whole path exists for.  A first cut timed each frame from when it was
+   first asked for (and with the look-ahead below, that was often long before
+   it was needed): on a loaded machine (4x throttle) it sent 13-17 frames of a
+   run back to inline bakes -- the stutter again, from the fallback.
+   NOT A LOOK-AHEAD.  Queuing the next four frames of the pose behind each
+   miss (so the worker would lead the run cycle instead of trailing it) was
+   built and measured: twice the worker jobs (80 against 44-51 in a 7 s run),
+   no fewer plain frames (39-53 against 46-52), and slightly more slow frames
+   -- on a loaded machine the jobs' main-thread share is the bottleneck, not
+   the worker.  Measure on a phone before trying it again. */
+const _localBakeStats = { hits: 0, plain: 0, inline: 0, late: 0, delivered: 0 };
+const _LOCAL_PATIENCE_MS = 1000;
 let _localMissKey = null, _localEpoch = 0;
-const _localAheadArg = { step: 1, art: null };   /* _updatePlayer fills it in place */
-function _localMaskedFrame(bodyTex, worn, dilate, poseInfo, ahead) {
+function _localMaskedFrame(bodyTex, worn, dilate, poseInfo) {
   if (!bodyTex || !worn.length || !poseInfo) return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo);
   const key = _maskedKey(bodyTex, worn, dilate);
   if (_maskedBodyCache.has(key)) { _localBakeStats.hits++; return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); }
   if (!_getBakeWorker()) { _localBakeStats.inline++; return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); }
-  const job = _bakeByKey.get(key);
-  if (job && job.askedAt && performance.now() - job.askedAt > _LOCAL_PATIENCE_MS) {
-    _localBakeStats.late++;
+  if (_bakeBusy > 0 && performance.now() - _bakeStartedAt > _LOCAL_PATIENCE_MS) {
+    _localBakeStats.late++;   /* the worker is stuck on a job: the old way */
     return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo);
   }
+  const job = _bakeByKey.get(key);
   /* A NEW miss (the animation stepped onto an unbaked frame) opens a new
-     epoch: it and its look-ahead outrank everything asked for before.  The
-     same frame asked again only needs asking if its job is gone (a bake
-     that could not be cached -- the belt sheet still loading -- is retried). */
+     epoch, its rank: it outranks everything asked for before.  The same
+     frame asked again only needs asking if its job is gone (a bake that could
+     not be cached -- the belt sheet still loading -- is retried). */
   const fresh = key !== _localMissKey;
   if (fresh || !job) {
     if (fresh) { _localMissKey = key; _localEpoch++; }
-    const top = _localEpoch * 8 + 7;
-    _prewarmBake(bodyTex, worn, dilate, poseInfo, top).catch(() => { /* best-effort */ });
-    if (fresh && ahead) {
-      for (let k = 1; k <= _LOCAL_AHEAD; k++) {
-        let a = null;
-        try { a = _localAheadFrame(poseInfo, k, ahead); } catch (e) { a = null; }
-        if (!a) continue;
-        _prewarmBake(a.tex, a.worn, dilate, a.poseInfo, top - k).catch(() => { /* best-effort */ });
-        _localBakeStats.ahead++;
-      }
-    }
+    _prewarmBake(bodyTex, worn, dilate, poseInfo, _localEpoch).catch(() => { /* best-effort */ });
   }
   _localBakeStats.plain++;
   return bodyTex;
-}
-/* Frame k steps on from poseInfo's, in the direction the animation plays
-   (ahead.step), with the body and gear textures the render path will ask for
-   there -- the same lookups _updatePlayer makes (and prewarmMaskedBodyFrames:
-   shirtless body, `ahead.art` your drawings for this facing, fish off its own
-   sheet).  null where no masked frame will be needed. */
-function _localAheadFrame(pi, k, ahead) {
-  const fc = playerFrameCount(pi.pose, pi.dir) || 1;
-  if (fc < 2) return null;
-  const f0 = pi.frameIdx | 0;
-  const f = (((f0 + (ahead.step < 0 ? -k : k)) % fc) + fc) % fc;
-  if (f === f0) return null;
-  const tex = (pi.pose === 'fish') ? getFishFrame(ahead.art, f)
-    : getBodyFrame(getSkin(), getPants(), getShoes(), pi.pose, pi.dir, f, null, 'none', getEyeColor(), ahead.art, getEyeStyle());
-  if (!tex) return null;
-  const worn = [];
-  for (const sl of ['chest', 'legs']) {
-    const it = getEquip(sl);
-    if (it && it !== 'none') {
-      const gt = getGearFrame(sl, it, pi.pose, pi.dir, f);
-      if (gt) worn.push({ k: sl + ':' + it, tex: gt });
-    }
-  }
-  if (!worn.length || _fullsetCoversBake(worn, pi.pose, pi.dir)) return null;
-  return { tex, worn, poseInfo: { pose: pi.pose, dir: pi.dir, frameIdx: f } };
 }
 
 /* ═══ v2.3.2876: OTHER PLAYERS' ARMOUR, OFF YOUR MAIN THREAD TOO ═══
@@ -11839,9 +11806,7 @@ export class EntityRenderer {
           /* v2.3.2904: _localMaskedFrame -- a frame the worker has not baked yet
              goes to the front of its queue and this frame draws the plain body
              under the armour, instead of a bake inside the frame. */
-          _localAheadArg.step = (pose === 'jog' && isMovingBackward) ? -1 : 1;   /* one object, every frame */
-          _localAheadArg.art = _bodyArt;
-          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _localMaskedFrame(tex, _worn, 6, { pose, dir, frameIdx }, _localAheadArg));
+          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _localMaskedFrame(tex, _worn, 6, { pose, dir, frameIdx }));
           /* v2.3.1757: material colour for the figure-on-body case (see the
              remote path above for why it is cleared rather than left set). */
           const _fsTint = _fsT ? _fullsetTint(getEquip('chest')) : 0xffffff;

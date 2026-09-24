@@ -613,26 +613,37 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    to it was still baked inline, in the frame -- and for ONE piece worn on its
    own (chest or legs: no knight figure covers the run) that is most of a jog
    cycle in every direction you run. Measured (4x throttle, a never-owned
-   steel chest piece put on, then running): 29 inline bakes in the first two
-   seconds, 9 frames over 150 ms. Now `_localMaskedFrame` sends a miss to the
-   FRONT of the worker's queue and draws the plain body under the armour for
-   the frame or two the worker takes; every bake goes through one queue
-   (`_prewarmBake`: one job at a time, the renderer's newest first, a key never
-   queued twice, a queued prewarm job promoted when the renderer wants it).
+   steel chest piece put on, then running): ~30 inline bakes in the first two
+   seconds, 9-10 frames over 150 ms. Now `_localMaskedFrame` sends a miss to
+   the FRONT of the worker's queue and draws the plain body under the armour
+   for the frame or two the worker takes; every bake goes through one ranked
+   queue (`_prewarmBake` / `_pumpBakes`: one job at a time, the renderer's
+   newest miss first, then the background; a key never queued twice, a queued
+   prewarm job promoted when the renderer wants it).
    Not the peer's hold (f): a held body frame is the wrong pose under armour
    that has moved on to this frame, so the limbs slip against the plate; the
    plain body is the right pose and lacks only the mask's trim of a few
    pixels (measured on a frozen stand-south frame at dpr 3: ~600 of 227k
    pixels differ from the masked frame, a one-pixel outline and a few at the
-   hands and boots). A worker that sits on a frame for 600 ms gets it baked
-   inline after all; no worker, the old inline path. Chest piece: frames over
-   150 ms 9 -> 1 (the equip frame itself), long tasks over 150 ms 6 -> 1,
-   inline bakes 29 -> 0; legs 15 -> 1 frames, 10 -> 1 tasks; the full set
-   (`qa-equip-stutter`, both pieces, where the figure already covered the run):
-   the 7 s run after the equip 93 -> 101 frames and 32 -> 20 over 100 ms, the
-   run after that 91 -> 102 and 27 -> 15 (control: 103-109 frames, 5-9 over).
-   `GEAR=chest|legs` runs the tool on one piece; `window.__btBakeWorker().local`
-   counts the render path's hits / plain / inline / late.
+   hands and boots). No worker, the old inline path; a worker STUCK on one
+   job for 1 s, inline too -- judged by the running job, never by how long a
+   frame has queued: a first cut timed each frame from when it was asked for
+   and, under load, sent 13-17 frames of a run back to inline bakes.
+   Also tried and NOT kept: a look-ahead (the next four frames of the pose
+   queued behind each miss, so the worker would lead the run cycle) -- twice
+   the worker jobs, no fewer plain frames, slightly more slow frames; under
+   load the jobs' main-thread share is the bottleneck, not the worker.
+   Measured, before -> after (7 s of running straight after the equip):
+   chest piece, `qa-equip-stutter GEAR=chest`: 76 -> 101 frames (control
+   103-109), 49 -> 20 over 100 ms, longest 333 -> 167 ms, 0 inline bakes;
+   chest and legs on their own (scratch timeline, two runs each): frames over
+   150 ms 9-10 -> 1 and 14-15 -> 0-1, long tasks over 150 ms 6-8 -> 1 and
+   10-11 -> 0; the full set (`GEAR=both`, whose run the figure already
+   covered): longest frame 350 -> 200 ms, 36 -> 32 over 100 ms (32 -> 20 on
+   an earlier pair) -- what is left there is mostly the sheen's per-frame
+   filter passes, which this box rasterises in software (sheen off: 14 over).
+   `window.__btBakeWorker().local` counts the render path's hits / plain /
+   inline / late.
    (h) v2.3.2904, the worker's jobs cost this thread less, both ends: an input
    is sent as the crop it already is (`createImageBitmap(sheet, frame rect)` +
    its trim, placed in the worker with drawGearFrame's arithmetic) instead of
