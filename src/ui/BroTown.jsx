@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2213: the crit preview hook uses the real crit colour */
-import { standFootDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2776: the campfire is lit at your boots */
+import { standFootDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2806: the campfire is lit at your boots */
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
@@ -551,7 +551,7 @@ function nodeWorldBox(S, n) {
     wx = typeof spr.x === 'number' ? spr.x : n.x;
     wy = typeof spr.y === 'number' ? spr.y : n.y;
   } else if (n.nodeType === 'campfire') {
-    /* v2.3.2776: the pixel campfire (rendering/campfireFx.js) on a flat zone:
+    /* v2.3.2806: the pixel campfire (rendering/campfireFx.js) on a flat zone:
        logs ~56 wide, the front ends ~12 below the ground point, the flame's tip
        ~55 above it.  Was 56x40 for the vector fire's glow and 21 px flames. */
     w = 64; h = 70; ax = 0.5; ay = 0.82; wx = n.x; wy = n.y;
@@ -5744,7 +5744,7 @@ export var BroTown = function BroTown(_ref0) {
         if (S._firemaking && Date.now() >= S._firemaking.doneAt) {
           var _fm = S._firemaking;
           S._firemaking = null;
-          /* ═══ v2.3.2776: THE FIRE IS LIT AT YOUR BOOTS, BESIDE YOU ═══
+          /* ═══ v2.3.2806: THE FIRE IS LIT AT YOUR BOOTS, BESIDE YOU ═══
              A campfire's (x, y) is its GROUND point: the vector fire drew its
              base there and the cook figure plants its feet beside it.  It used
              to be your position +6 -- your HIPS (the body is frame-centred; its
@@ -5791,7 +5791,7 @@ export var BroTown = function BroTown(_ref0) {
              same rule v2.3.1748 had to add for four other effects. */
           try {
             if (S.channel) S.channel.send({ type: 'broadcast', event: 'campfire_lit', payload: {
-              id: S.myId, x: _cfX, y: _cfY, zone: S.currentZone, expiresAt: S._campfire.expiresAt,   /* v2.3.2776: the fire's own ground point */
+              id: S.myId, x: _cfX, y: _cfY, zone: S.currentZone, expiresAt: S._campfire.expiresAt,   /* v2.3.2806: the fire's own ground point */
             } });
           } catch (e) {}
         }
