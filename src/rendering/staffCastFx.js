@@ -1,4 +1,4 @@
-/* ═══ v2.3.2801: THE STAFF CAST — CHARGE, RELEASE, A LIVING BOLT, A HOT HIT ═══
+/* ═══ v2.3.2821: THE STAFF CAST — CHARGE, RELEASE, A LIVING BOLT, A HOT HIT ═══
  *
  * Owner: asked whether an X "pixel-art wizard casting a spell" prompt could
  * improve the basic staff cast ("no animation and a simple ball-like shape"),

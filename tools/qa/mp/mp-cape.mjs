@@ -49,18 +49,20 @@ const raw = (P) => P.page.evaluate(() => {
        longer its middle.  Comparing raw y would fail on a correct build — the
        same trap as comparing raw scale when the two sprites draw from
        differently-sized textures.  centre = pos + (0.5 - anchor) * drawn. */
+    /* v2.3.2791: sizes from `orig`, the WHOLE frame -- body frames are cropped
+       now, and a cropped frame's `frame` is only the crop (TRAPS §106). */
     cape: c ? { visible: !!c.visible, tex: !!(c.texture && c.texture.frame),
-                x: Math.round(c.x + (0.5 - c.anchor.x) * Math.abs(c.scale.x * ((c.texture && c.texture.frame && c.texture.frame.width) || 0))),
-                y: Math.round(c.y + (0.5 - c.anchor.y) * Math.abs(c.scale.y * ((c.texture && c.texture.frame && c.texture.frame.height) || 0))),
+                x: Math.round(c.x + (0.5 - c.anchor.x) * Math.abs(c.scale.x * ((c.texture && (c.texture.orig || c.texture.frame) && (c.texture.orig || c.texture.frame).width) || 0))),
+                y: Math.round(c.y + (0.5 - c.anchor.y) * Math.abs(c.scale.y * ((c.texture && (c.texture.orig || c.texture.frame) && (c.texture.orig || c.texture.frame).height) || 0))),
                 rot: +Number(c.rotation || 0).toFixed(3),
-                w: +Math.abs(Number(c.scale.x) * ((c.texture && c.texture.frame && c.texture.frame.width) || 0)).toFixed(2),
-                h: +Math.abs(Number(c.scale.y) * ((c.texture && c.texture.frame && c.texture.frame.height) || 0)).toFixed(2),
+                w: +Math.abs(Number(c.scale.x) * ((c.texture && (c.texture.orig || c.texture.frame) && (c.texture.orig || c.texture.frame).width) || 0)).toFixed(2),
+                h: +Math.abs(Number(c.scale.y) * ((c.texture && (c.texture.orig || c.texture.frame) && (c.texture.orig || c.texture.frame).height) || 0)).toFixed(2),
                 mirror: Number(c.scale.x) < 0 } : null,
     body: b ? { visible: !!b.visible,
-                x: Math.round(b.x + (0.5 - b.anchor.x) * Math.abs(b.scale.x * ((b.texture && b.texture.frame && b.texture.frame.width) || 0))),
-                y: Math.round(b.y + (0.5 - b.anchor.y) * Math.abs(b.scale.y * ((b.texture && b.texture.frame && b.texture.frame.height) || 0))),
-                w: +Math.abs(Number(b.scale.x) * ((b.texture && b.texture.frame && b.texture.frame.width) || 0)).toFixed(2),
-                h: +Math.abs(Number(b.scale.y) * ((b.texture && b.texture.frame && b.texture.frame.height) || 0)).toFixed(2),
+                x: Math.round(b.x + (0.5 - b.anchor.x) * Math.abs(b.scale.x * ((b.texture && (b.texture.orig || b.texture.frame) && (b.texture.orig || b.texture.frame).width) || 0))),
+                y: Math.round(b.y + (0.5 - b.anchor.y) * Math.abs(b.scale.y * ((b.texture && (b.texture.orig || b.texture.frame) && (b.texture.orig || b.texture.frame).height) || 0))),
+                w: +Math.abs(Number(b.scale.x) * ((b.texture && (b.texture.orig || b.texture.frame) && (b.texture.orig || b.texture.frame).width) || 0)).toFixed(2),
+                h: +Math.abs(Number(b.scale.y) * ((b.texture && (b.texture.orig || b.texture.frame) && (b.texture.orig || b.texture.frame).height) || 0)).toFixed(2),
                 mirror: Number(b.scale.x) < 0 } : null,
   };
 });

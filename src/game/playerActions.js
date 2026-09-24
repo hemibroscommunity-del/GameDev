@@ -13,7 +13,7 @@ import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
 import { ARROW_SPEED_PX } from '@/game/projectiles.js';   /* v2.3.2808: the volley's stagger is sized from it */
 import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2808 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
-import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint } from '@/game/combatHelpers.js';   /* v2.3.2805: lockShotPoint, the torso */
+import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint } from '@/game/combatHelpers.js';   /* v2.3.2825: lockShotPoint, the torso */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 
 export function swingAttack(S) {
@@ -297,7 +297,7 @@ export function specialAttack(S) {
        hit-test uses and returns null (rather than the world origin) when the
        target has no usable position.  Both specials launch from the player at
        dist 14 -- no grip offset to correct for, unlike the auto-attack. */
-    /* v2.3.2805: at the torso, as every locked shot is (combatHelpers lockShotPoint) */
+    /* v2.3.2825: at the torso, as every locked shot is (combatHelpers lockShotPoint) */
     var _sLock = lockShotPoint(S.lockedTarget && S.lockedTarget.ref, S.currentZone);
     if (_sLock) aimAng = Math.atan2(_sLock.y - S.player.y, _sLock.x - S.player.x);
     if (activeWpn.type === 'bow') {

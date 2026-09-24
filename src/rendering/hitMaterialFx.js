@@ -1,4 +1,4 @@
-/* ═══ v2.3.2803: A MONSTER REACTS LIKE WHAT IT IS MADE OF ═══
+/* ═══ v2.3.2823: A MONSTER REACTS LIKE WHAT IT IS MADE OF ═══
  *
  * Owner: "take a fresh look at monster hit reaction material effects.  Right
  * now they're low resolution and don't look great but I do like that they've
@@ -161,7 +161,7 @@ const ART = {
    shaded underside, and a checkerboard edge -- the pixel-art way to draw
    something soft without drawing something blurred.  The shading is what
    keeps a pale cloud readable on pale ground (grey ash on desert sand read
-   as nothing when the disc was flat -- measured on the v2.3.2803 captures). */
+   as nothing when the disc was flat -- measured on the v2.3.2823 captures). */
 const PUFF = { L: 0xffffff, M: 0xd6d6d6, D: 0xa2a2a2 };
 function puffRows(r) {
   const n = r * 2 + 1, out = [];
@@ -657,7 +657,7 @@ export class HitMaterialFx {
     }
     rec.u = PIX * ((S && zonePlayerScale(S.currentZone, rec.ex, gy, TILE)) || 1);
     const P = profileFor(rec);
-    /* v2.3.2803: a PROP's burst (combatHelpers.spawnPropDebris, v2.3.2730) is
+    /* v2.3.2823: a PROP's burst (combatHelpers.spawnPropDebris, v2.3.2730) is
        the same material thrown SUBTLY -- a rock is hit far more often than it
        is news: under half the pieces, flung lower and slower.  It rides this
        queue marked `prop` (its `scale`/`parts` were written for the renderer
@@ -682,11 +682,11 @@ export class HitMaterialFx {
         p.x += px * k; p.y += py * k; p.z += gauss() * h * 0.25;
       }
     }
-    /* ═══ v2.3.2804: A BOLT BLASTS ALL ROUND -- IN EVERY BURST ═══
+    /* ═══ v2.3.2824: A BOLT BLASTS ALL ROUND -- IN EVERY BURST ═══
        sprayAng throws 45% of a bolt's pieces all round, each at random, so
        about one piece in six lands back toward the caster ON AVERAGE -- and a
        burst of 9-20 pieces now and then sent none that way at all (3 bursts
-       in 20 on slime and rock, measured on the merged v2.3.2803 build).  A
+       in 20 on slime and rock, measured on the merged v2.3.2823 build).  A
        one-sided bolt reads as an arrow's jet, the difference this system
        exists to show, and it failed mp-hitmat's "a bolt blasts both ways"
        about one run in three.  So when the dice came up short, turn one or two
@@ -961,7 +961,7 @@ export class HitMaterialFx {
         if (p.y >= b.gy) front++; else back++;
       }
       out.push({
-        /* v2.3.2804: + tint, the colour the burst was handed (a blue slime's
+        /* v2.3.2824: + tint, the colour the burst was handed (a blue slime's
            goo must be the blue the slime is drawn in -- mp-hitmat); + atX/atY,
            where on screen the blow landed (ey is its GROUND line and ez its
            height above it) -- inside the body now (mp-shotland) */
