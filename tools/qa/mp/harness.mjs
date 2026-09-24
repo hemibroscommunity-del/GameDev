@@ -364,6 +364,29 @@ export async function openPicker(page) {
   return !!(await page.$('[data-tut="char-picker"]'));
 }
 
+/* ═══ v2.3.2880: THE WELCOME GOES FIRST, SO WAIT IT OUT ═══
+   A brand-new character's first coach card now waits for the WELCOME plate
+   (and its Skip tutorial button) to come and go, plus the coach gap -- it used
+   to go up the instant the world did, under the welcome.  A scenario about
+   the coach calls this after enterWorld instead of a fixed short sleep.
+   Resolves once no welcome is pending or on screen and the referee would let
+   a card up, then gives the coach's 5-frame stride a beat to draw it. */
+export async function pastWelcome(P, timeout = 25000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    const ok = await P.page.evaluate(() => {
+      const p = window.__btPace ? window.__btPace() : null;
+      if (!p) return false;
+      if (p.welcomePending) return false;
+      if (document.querySelector('[data-quest-banner="welcome"]')) return false;
+      return p.coachMayShow || p.coachUp;
+    }).catch(() => false);
+    if (ok) { await P.page.waitForTimeout(600); return true; }
+    await P.page.waitForTimeout(250);
+  }
+  return false;
+}
+
 export async function enterWorld(P, timeout = 90000) {
   const { page, name } = P;
   /* ═══ v2.3.1814: THE LOGIN DOOR COMES FIRST NOW ═══

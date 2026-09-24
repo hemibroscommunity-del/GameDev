@@ -84,6 +84,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2600);
+  await H.pastWelcome(P);   /* v2.3.2880: the first card waits out the WELCOME plate now */
 
   /* ── 0. this really is a brand-new bro ──
      The guard that gives every assertion below its meaning.  If the harness
