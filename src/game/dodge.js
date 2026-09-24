@@ -18,7 +18,7 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { hitMaterialOf } from '@/data/monsterVariants.js'; /* v2.3.2452 */
 
-/* ═══ v2.3.2898: HOW LONG A ROLL LASTS -- ONE ANSWER, SENT WITH IT ═══
+/* ═══ v2.3.2916: HOW LONG A ROLL LASTS -- ONE ANSWER, SENT WITH IT ═══
    Owner: "check all other broadcasted player animations to make sure they
    match what your character does client side."
 
