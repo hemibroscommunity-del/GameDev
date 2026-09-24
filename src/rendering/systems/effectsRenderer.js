@@ -244,7 +244,7 @@ function _bakeCookSplit(img, skinT, art) {
 }
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale, depthK /* v2.3.2790 */ } from '@/data/zones.js';
-import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
+import { TILE, MINE_SPOT_R, FISH_CUE_DY, MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915: + the harvest seats */
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
 import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn ON props -- slash marks, arrows standing in the rock */
 
@@ -409,6 +409,50 @@ export const COOK_STANDIN_H = 65.1;
  * constant is the same shape as the drift above.  11/62 is that literal
  * measured against the art it was tuned on. */
 export const COOK_PAN_DX = 11 / 62;
+
+/* ═══ v2.3.2915: WHERE THE LUMBERJACK AND THE COOK STAND -- ONE ANSWER ═══
+ *
+ * Owner: "check all other broadcasted player animations to make sure they
+ * match what your character does client side."
+ *
+ * Neither skill moves you: you chop from wherever the tree offered you the
+ * button (routinely 120-240 px from its base -- see mp-chopyield) and cook from
+ * wherever you stand by your fire.  Your own screen draws the figure where the
+ * WORK is -- the lumberjack 30 px off the trunk on its ground line, the cook
+ * with the pan over the flames -- while a peer's copy was drawn at their
+ * POSITION, 6 px below their middle: a lumberjack swinging at air up in the
+ * canopy, a cook frying beside the fire.
+ *
+ * So the spot is computed here, once, and both figures read it: the local
+ * placers with their own node, _updateRemoteExtraction with the same node on
+ * the watcher's side (the tree from the chopper's gather_node relay, the fire
+ * from their campfire_lit).  The zone curve is sampled at the spot, as the
+ * local placers always did (v2.3.2287) -- the figure stands at the tree, which
+ * on a perspective zone is a different point on the curve from the player. */
+export const CHOP_OFFSET = 30;   /* px from the trunk to the figure's centre */
+export function chopStandInSpot(zone, node, sign) {
+  const x = node.x - sign * CHOP_OFFSET;
+  const pscale = zonePlayerScale(zone, x, node.y, TILE);
+  return { x, y: node.y + 6 * pscale, pscale };
+}
+export function cookStandInSpot(zone, fire) {
+  const pscale = zonePlayerScale(zone, fire.x, fire.y, TILE);
+  return { x: fire.x - COOK_STANDIN_H * COOK_PAN_DX * pscale, y: fire.y + 8 * pscale, pscale };
+}
+/* The watcher's bounds on those nodes (_updateRemoteExtraction).  Generous on
+   purpose -- they exist to throw out a stale or forged relay, not to second-
+   guess a real one.  A chop can run from anywhere in the tree's reach box plus
+   the walk-away slack (BroTown nodeReachDist + EXTRACT_CANCEL_R), and a
+   top-tier canopy is ~400 px tall; a cook from within ~80 px of the fire plus
+   the same slack. */
+const PEER_CHOP_REACH = 600;
+const PEER_COOK_REACH = 320;
+const PEER_GATHER_NODE_TTL_MS = 5000;   /* the chopper repeats it every 2 s */
+/* How far a peer may stand from their exact harvest seat and still be read as
+   seated there (_peerWorkNodes): their relayed position is the seat itself,
+   rounded to 0.1 px, so this is slack for a collision nudge, well under the
+   gap between two veins or two ponds. */
+const PEER_SEAT_MATCH_PX = 32;
 
 /* ═══ v2.3.2356: THE CHOP LAYERS SHIP AT THE SIZE THEY ARE DRAWN ═══
  *
@@ -4698,6 +4742,14 @@ export class EffectsRenderer {
 
   /* ── Projectiles (arrows, staff bolts, remote) ── */
   _updateProjectiles(S, now) {
+    /* v2.3.2919 QA probe: what each ordinary shot on screen was drawn WITH --
+       the arrowhead colour and the fade, or the element a bolt glows in --
+       yours and every peer's.  Arrows are Graphics strokes, so no sprite holds
+       these afterwards; mp-projlook compares them across two screens.  Gated
+       on __btProbe like the other per-frame probes here: a real player's frame
+       allocates nothing for it. */
+    const _shotLook = (typeof window !== 'undefined' && window.__btProbe) ? [] : null;
+    if (_shotLook) window.__btShotLook = () => _shotLook.slice();
     const gfx = this.projectileGfx;
     gfx.clear();
     /* v2.3.1765: per-frame tallies behind arrowProbe (pixiRenderer).  "Does a
@@ -4892,6 +4944,7 @@ export class EffectsRenderer {
         /* v2.3.2842: the one-bolt special -- the basic bolt, bigger, leaving
            the crystal with the heavy release (staffCastFx reads a.big). */
         this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);
+        if (_shotLook) _shotLook.push({ who: 'self', kind: 'bigbolt', elem: a._fxElem || null, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2919 */
       } else if (a.isSpecial || a.ice) {
         /* Staff special / ice — bigger yellow glow ring so specials
            read as distinct from regular projectiles. Three concentric
@@ -4915,6 +4968,7 @@ export class EffectsRenderer {
            two-circle draw until the strip loads. */
         if (MAGIC_BOLT_FRAMES.length) {
           this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2841: + S, for the caster's crystal */
+          if (_shotLook) _shotLook.push({ who: 'self', kind: 'bolt', elem: a._fxElem || null, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2919 */
         } else {
           gfx.circle(a._renderX, a._renderY, 5 * _pk);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
@@ -4933,6 +4987,7 @@ export class EffectsRenderer {
         /* v2.3.1915: a PLANTED arrow draws under the player. `planting` is
            still falling — in the air, so it stays in front until it lands. */
         this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1 * _pk, _headless, !!a.planted);
+        if (_shotLook) _shotLook.push({ who: 'self', kind: 'arrow', color: elemColor, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2919 */
         /* v2.3.2287 QA probe, house style (__btChopFigure, __btStandInCape).
            A screenshot cannot tell "the arrow shrank" from "the arrow was never
            drawn", and the difference between those two is the whole risk of
@@ -4995,6 +5050,15 @@ export class EffectsRenderer {
          v2.3.1574) this is a FIRST application, not a double one -- there is
          no zonePlayerScale anywhere in this loop today. */
       const _pk = zonePlayerScale(S.currentZone, rp._renderX, rp._renderY, TILE) || 1;
+      /* ═══ v2.3.2919: DRAWN THE WAY THE SHOOTER DRAWS IT ═══
+         Your own shot is tipped in your weapon's element colour and fades over
+         its last 20 frames of flight (elemColor / fadeA above).  A peer's was
+         always tan and never faded -- the element was not on the wire, and the
+         fade was left at a flat 0.9-1.0.  Both now come from the same terms:
+         the element the shooter now sends (rp._projElem, gameEvents) and the
+         life the relay already counts down (visualSystems). */
+      const _rElemColor = rp._projElem && ELEMENTS[rp._projElem] ? cssToHex(ELEMENTS[rp._projElem].color) : 0xc8c8d0;
+      const _rFade = Math.min(1, (rp.life || 0) / 20);
       /* v2.3.1334: basic remote staff bolts share the painted sprite
          (and skip the line trail — the art carries its own tail).
          v2.3.1396: remote SPECIALS share the painted special art too. */
@@ -5004,12 +5068,13 @@ export class EffectsRenderer {
       const _remoteArrowSpec = !rp.isStaff && rp.isSpecial && ARROW_SPECIAL.frames.length;
       /* v2.3.2847: a peer's special is white-hot too, through the same code */
       const _remoteHot = !rp.isStaff && rp.isSpecial && HOT_SPECIAL_ARROW && hotArrowReady() && !!this._hotArrow;
-      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec && !_remoteHot) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff, _pk);
+      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec && !_remoteHot) this._updateProjectileTrail(rp, gfx, _rFade, !!rp.isStaff, _pk);   /* v2.3.2919: + the fade */
       if (rp.isStaff) {
         if (_remoteMagicSpec) {
-          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk);
+          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, _rFade, now, _liveBolts, _pk);   /* v2.3.2919: was a flat 0.95 */
         } else if (_remoteBasicBolt) {
-          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk, S);   /* v2.3.2841: + S */
+          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, _rFade, now, _liveBolts, _pk, S);   /* v2.3.2841: + S; v2.3.2919: + the fade, was 0.95 */
+          if (_shotLook) _shotLook.push({ who: rp.ownerId != null ? String(rp.ownerId) : '?', kind: rp.big ? 'bigbolt' : 'bolt', elem: rp._fxElem || null, alpha: +_rFade.toFixed(3), life: rp.life });   /* v2.3.2919 */
         } else {
           /* v2.3.840: special staff bolts read bigger + golden with a halo. */
           gfx.circle(rp._renderX, rp._renderY, (rp.isSpecial ? 7 : 4) * _pk);
@@ -5017,11 +5082,13 @@ export class EffectsRenderer {
           if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.6 }); }
         }
       } else if (_remoteHot) {
-        this._hotArrow.arrow(rp, rp._renderX, rp._renderY, rp.ang + bend, 1.0, _pk, now, false, 0);
+        this._hotArrow.arrow(rp, rp._renderX, rp._renderY, rp.ang + bend, _rFade, _pk, now, false, 0);   /* v2.3.2919: + the fade */
       } else if (_remoteArrowSpec) {
-        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, 1.0, now, _liveBolts, _pk);
+        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, _rFade, now, _liveBolts, _pk);   /* v2.3.2919: + the fade */
       } else {
-        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : 0xd4a574, rp.isSpecial ? 1.0 : 0.9, _pk);   /* v2.3.2287: 7th arg is SCALE, not alpha -- this call omitted it and relied on the default */
+        /* v2.3.2919: the element's colour and the fade, as yours (was tan at 0.9). */
+        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : _rElemColor, rp.isSpecial ? 1.0 : _rFade, _pk);   /* v2.3.2287: 7th arg is SCALE, not alpha -- this call omitted it and relied on the default */
+        if (_shotLook && !rp.isSpecial) _shotLook.push({ who: rp.ownerId != null ? String(rp.ownerId) : '?', kind: 'arrow', color: _rElemColor, alpha: +_rFade.toFixed(3), life: rp.life });   /* v2.3.2919 */
         if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.55 }); }
       }
     }
@@ -8911,7 +8978,49 @@ export class EffectsRenderer {
     node._pixiTier = node._pixiEmoji = node._pixiTip1 = node._pixiTip2 = node._pixiTip3 = node._pixiSprite = null;
   }
 
+  /* ═══ v2.3.2915: THE VEIN OR POND A PEER IS WORKING ═══
+     Mining and fishing SEAT you (lifeSkillRewards.startExtraction): at
+     MINE_SEAT / FISH_SEAT off the node, exactly.  So a peer whose relayed
+     harvest code is 'mine' or 'fish' is standing at that offset from the node
+     they are working, and this client -- which holds the same worker-owned
+     nodes -- finds it from where they stand, with no wire change.  Read by the
+     two things your own screen does for YOUR vein and pond and a peer's
+     never got: the ore drawn over the miner (_updateGatherNodes) and the
+     ripples and bobber on the water (_updateFishingHole).  Their SERVER
+     position, which is the seat itself; the interpolated one lags it. */
+  _peerWorkNodes(S) {
+    const out = { mine: new Set(), fish: [] };
+    const others = S && S.others;
+    const nodes = (S && S.gatherNodes) || [];
+    if (!others || !nodes.length) return out;
+    const zone = (S && S.currentZone) || 'town';
+    for (const id in others) {
+      const o = others[id];
+      if (!o || o._isDead || (o._ex !== 'mine' && o._ex !== 'fish')) continue;
+      if ((o.zone || o.z || 'town') !== zone) continue;
+      const px = Number.isFinite(o.x) ? o.x : o.renderX;
+      const py = Number.isFinite(o.y) ? o.y : o.renderY;
+      if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
+      const mine = o._ex === 'mine';
+      const tx = px - (mine ? MINE_SEAT_DX : FISH_SEAT_DX);
+      const ty = py - (mine ? MINE_SEAT_DY : FISH_SEAT_DY);
+      const want = mine ? 'oreVein' : 'fishSpot';
+      let best = null, bestD = PEER_SEAT_MATCH_PX * PEER_SEAT_MATCH_PX;
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (!n || n.nodeType !== want || n.alive === false) continue;
+        const dx = n.x - tx, dy = n.y - ty, d2 = dx * dx + dy * dy;
+        if (d2 < bestD) { bestD = d2; best = n; }
+      }
+      if (!best) continue;
+      if (mine) out.mine.add(best);
+      else out.fish.push({ id, node: best });
+    }
+    return out;
+  }
+
   _updateGatherNodes(S, now) {
+    this._peerWork = this._peerWorkNodes(S);   /* v2.3.2915: once a frame, for the vein here and the pond below */
     const gfx = this.nodeGfx;
     gfx.clear();
 
@@ -9021,8 +9130,14 @@ export class EffectsRenderer {
            'mine' swing sheet -- the pickaxe then reads as striking the real
            ore.  Restored below the player (nodeLayer) otherwise. */
         const _mineEx = S._extraction;
+        /* v2.3.2915: ...or a PEER's vein.  The ore went over your own miner
+           only, so a peer mining stood in the rock baked into their swing
+           sheet -- the "second, floating rock" v2.3.2304 half-hid with the
+           8px lift.  Their vein is found from where they are seated
+           (_peerWorkNodes). */
         const _isMineTarget = !!(_mineEx && _mineEx.skill === 'mining'
-          && (_mineEx.nodeRef === node || (_mineEx.nodeId != null && _mineEx.nodeId === node.id)));
+          && (_mineEx.nodeRef === node || (_mineEx.nodeId != null && _mineEx.nodeId === node.id)))
+          || !!(this._peerWork && this._peerWork.mine.has(node));
         /* v2.3.1464 (owner): fishing holes go BEHIND monsters — a pond
            lies flat on the ground, so a monster walking over it should
            cover it (unlike trees/rocks, which stay in front since
@@ -9932,15 +10047,39 @@ export class EffectsRenderer {
    * the rotating reel cue.  Drawn on nodeGfx (above the pond sprite, which
    * is inserted at index 0 of nodeLayer). */
   _updateFishingHole(S, now) {
+    /* v2.3.2915: every hole drawn this frame, yours and your peers', for
+       mp-gatherspot (house style: the rings are drawn into a Graphics that is
+       cleared every frame, so nothing else can say where they went).  Gated on
+       __btProbe like the other per-frame probes here: a real player's frame
+       allocates nothing for it. */
+    const drawn = (typeof window !== 'undefined' && window.__btProbe) ? [] : null;
+    if (drawn) window.__btFishHoles = () => drawn.slice();
+    /* v2.3.2915: a PEER's line in the water.  Your own screen draws the
+       ripples and the bobber where your line lands; a peer fishing had the
+       rod (baked into their pose) and nothing on the water.  Their pond comes
+       from where they are seated (_peerWorkNodes).  Drawn as a hole that is
+       still waiting for a bite: whether a fish is ON is not on the wire, so a
+       watcher does not see the bobber dip -- that one beat stays yours. */
+    const peers = (this._peerWork && this._peerWork.fish) || [];
+    for (let i = 0; i < peers.length; i++) {
+      const pn = peers[i].node;
+      this._drawFishingHole(pn.x, pn.y, false, now);
+      if (drawn) drawn.push({ who: peers[i].id, x: pn.x, y: pn.y });
+    }
     const ex = S && S._extraction;
     if (!ex || ex.skill !== 'fishing') return;
     if (this._selfCorpse) return;   /* v2.3.2281 */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
                : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(n => n.id === ex.nodeId) : null);
     if (!node) return;
+    this._drawFishingHole(node.x, node.y, ex.status === 'ready', now);
+    if (drawn) drawn.push({ who: 'self', x: node.x, y: node.y });
+  }
+
+  /* The pond surface under a line: ripples and the bobber.  v2.3.2915: one
+     drawer for your hole and a peer's, so the two cannot come apart. */
+  _drawFishingHole(hx, hy, ready, now) {
     const gfx = this.nodeGfx;
-    const hx = node.x, hy = node.y;
-    const ready = ex.status === 'ready';
     /* Expanding ripple rings on the pond surface (perspective 2:1). */
     const rx = 12, ry = 6;
     for (let k = 0; k < 2; k++) {
@@ -10107,6 +10246,32 @@ export class EffectsRenderer {
     this._tintGearSprite(this.fireLegsSprite, getEquip('legs'), 'fireLegs');   /* v2.3.1764 */
     this._tintGearSprite(this.fireChestSprite, getEquip('chest'), 'fireChest');
     this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
+  }
+
+  /* v2.3.2915: the tree a peer is chopping, from their gather_node relay
+     (gameEvents), resolved by id against THIS client's own node list -- the
+     watcher's copy of a worker-owned node is the one to trust, and the relayed
+     x/y stand in only when it holds no node by that id.  Fresh relays only
+     (the chopper repeats it every 2 s), and only within reach of the peer, so
+     a stale or forged one cannot stand their figure across the map. */
+  _peerChopTree(S, id, ox, oy, now) {
+    const m = S && S._peerGatherNode;
+    const rec = m && m.get(String(id));
+    if (!rec || !(now - rec.at <= PEER_GATHER_NODE_TTL_MS)) return null;
+    let x = rec.x, y = rec.y;
+    if (rec.node != null) {
+      const nodes = S.gatherNodes || [];
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (!n || String(n.id) !== rec.node) continue;
+        if (n.nodeType !== 'tree' || n.alive === false || n.depleted) return null;
+        x = n.x; y = n.y;
+        break;
+      }
+    }
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    if (Math.hypot(x - ox, y - oy) > PEER_CHOP_REACH) return null;
+    return { x, y };
   }
 
   /* v2.3.1092: harvest stand-ins for OTHER players.  When a peer broadcasts a
@@ -10283,14 +10448,35 @@ export class EffectsRenderer {
       ent._base = _base;
       const ox = (o.renderX != null ? o.renderX : o.x) || 0;
       const oy = (o.renderY != null ? o.renderY : o.y) || 0;
+      /* ═══ v2.3.2915: AT THE TREE, AND AT THE FIRE ═══
+         Where their own screen draws them (chopStandInSpot / cookStandInSpot,
+         shared with the local placers -- see the note there), off the same
+         node on this side: the tree they told us they are chopping
+         (_peerChopTree, from their gather_node relay) and their own campfire
+         (campfire_lit, which is the only fire a player can cook at: the tap
+         list holds S._campfire alone).  Without one -- a relay not yet in, an
+         older client that does not send it -- the figure stays where it was
+         always drawn, at their position, so nothing can vanish. */
+      let _spot = null, _tree = null;
+      if (code === 'chop') {
+        _tree = this._peerChopTree(S, id, ox, oy, now);
+        if (_tree) _spot = chopStandInSpot(zone, _tree, _tree.x >= ox ? 1 : -1);
+      } else if (code === 'cook') {
+        const _cf = S._peerCampfires && S._peerCampfires.get(String(id));
+        if (_cf && (_cf.zone || 'town') === zone && Number.isFinite(_cf.x) && Number.isFinite(_cf.y)
+            && Math.hypot(_cf.x - ox, _cf.y - oy) <= PEER_COOK_REACH) {
+          _spot = cookStandInSpot(zone, _cf);
+        }
+      }
       /* v2.3.1574 (owner: "the scale looks off for other players cooking and
          starting fires - way too big").  The stand-in was sized in absolute
          pixels while the peer's BODY is scaled by the zone's perspective
          curve (entityRenderer applies _zonePscale to their container).  On a
          vista zone that curve runs to 0.03, so their body shrank to a speck
          and this figure stayed full size — a giant cook standing over a dot.
-         Same curve, same position, so the two now shrink together. */
-      const pscale = zonePlayerScale(zone, ox, oy, TILE);
+         Same curve, same position, so the two now shrink together.
+         v2.3.2915: at the figure's own spot when it has one, as yours is. */
+      const pscale = _spot ? _spot.pscale : zonePlayerScale(zone, ox, oy, TILE);
       const s = (spec.h / spec.fh) * pscale;   /* v2.3.1715: per-strip frame height, was a hardcoded 220 */
       /* v2.3.2500: and THEIR build, relayed as hg/fr (peerCosmetics) and read
          here exactly as entityRenderer reads it for their walking body. */
@@ -10301,9 +10487,13 @@ export class EffectsRenderer {
          path never flipped, and a peer chopping a tree on their LEFT has been
          drawn chopping away from it. The watcher does have the same
          S.gatherNodes list, so the nearest live tree is the same answer.
-         Falls back to +1, the sheet's native facing, which is what shipped. */
-      let _sign = 1;
-      if (code === 'chop') {
+         Falls back to +1, the sheet's native facing, which is what shipped.
+         v2.3.2915: the relayed tree decides it when there is one -- the
+         nearest-tree guess only looks 96 px out, and a chopper stands 120-240
+         px from the trunk's base, so from the canopy it found nothing and
+         faced away from the tree.  The guess is now only the fallback. */
+      let _sign = _tree ? (_tree.x >= ox ? 1 : -1) : 1;
+      if (code === 'chop' && !_tree) {
         let _best = null, _bestD = 96 * 96;
         const _nodes = (S && S.gatherNodes) || [];
         for (let _i = 0; _i < _nodes.length; _i++) {
@@ -10327,14 +10517,15 @@ export class EffectsRenderer {
       }
       const _sxR = s * _bR.sx, _syR = s * _bR.sy;   /* v2.3.2500 */
       sp.scale.set(_sign < 0 ? -_sxR : _sxR, _syR);
-      sp.x = ox;
+      sp.x = _spot ? _spot.x : ox;   /* v2.3.2915 */
       /* v2.3.2846: the fire-lighter plants its boots on the peer's boots (see
-         FIRE_FEET_ROW) -- the same fix as your own figure.  chop and cook keep
-         the old +6: their strips are not measured here and nothing about them
-         was asked. */
-      sp.y = code === 'fire'
-        ? oy + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * _syR
-        : oy + 6 * pscale;                    /* foot offset shrinks with the figure */
+         FIRE_FEET_ROW) -- the same fix as your own figure.
+         v2.3.2915: chop and cook stand where yours do (_spot, above); the old
+         +6 below their position is only the fallback now. */
+      sp.y = _spot ? _spot.y
+        : code === 'fire'
+          ? oy + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * _syR
+          : oy + 6 * pscale;                    /* foot offset shrinks with the figure */
       sp.visible = true;
       /* v2.3.2856: a drawn peer's cook gets their drawings' layer over the
          shared figure, on the same frame of the matching strip (_peerCookInk).
@@ -12265,7 +12456,6 @@ export class EffectsRenderer {
        tree is on the player's LEFT). */
     if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
       const CHOP_H = CHOP_STANDIN_H;   // v2.3.2273: see the constant -- shared with the peer figure's SPEC row so the two can no longer drift.
-      const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
       /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --
          the owner's armour gear layers only cover those poses, so the base loop
@@ -12311,9 +12501,12 @@ export class EffectsRenderer {
       /* v2.3.2287: the vista curve, as on the fire figure above and on the
          peer twin. Sampled at the STAND-IN's own spot, not the player's --
          the lumberjack stands at the tree, which on a perspective zone is a
-         different point on the curve. */
-      const _cx = node.x - chopSign * CHOP_OFFSET, _cy = node.y;
-      const pscale = zonePlayerScale(S.currentZone, _cx, _cy, TILE);
+         different point on the curve.
+         v2.3.2915: the spot itself comes from chopStandInSpot, which the peer
+         twin now reads too -- see its note (a peer was drawn at their own
+         position, in the canopy, instead of here at the trunk). */
+      const _spot = chopStandInSpot(S.currentZone, node, chopSign);
+      const pscale = _spot.pscale;
       const s = (CHOP_H / 220) * pscale;
       /* v2.3.2500: your build, as on the walking body (see _localBuild) -- the
          answer to "the chopper is ~10% small", instead of a fourth bump of
@@ -12321,8 +12514,8 @@ export class EffectsRenderer {
       const _bW = _localBuild();
       const _sx = s * _bW.sx, _sy = s * _bW.sy;
       sp.scale.set(chopSign < 0 ? -_sx : _sx, _sy);  // flip to face the trunk
-      sp.x = _cx;
-      sp.y = _cy + 6 * pscale;
+      sp.x = _spot.x;
+      sp.y = _spot.y;
       sp.visible = true;
       /* v2.3.1131: gear layers over the lumberjack (mirror of the cook stand-in),
          gated on equipped gear and copying the body transform, with the SAME
@@ -12533,8 +12726,12 @@ export class EffectsRenderer {
          bare legs don't peek out behind the greaves; otherwise the normal body. */
       const _legsOn = getEquip('legs') !== 'none' && this._cookLeglessFrames.length === this._cookFrames.length;
       sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
-      /* v2.3.2287: the vista curve, as on the fire and chop figures. */
-      const pscale = zonePlayerScale(S.currentZone, node.x, node.y, TILE);
+      /* v2.3.2287: the vista curve, as on the fire and chop figures.
+         v2.3.2915: sampled, and the spot placed, by cookStandInSpot -- the
+         peer twin reads it too (it drew a peer's cook at their position, off
+         to the side of the fire, instead of here with the pan over it). */
+      const _spot = cookStandInSpot(S.currentZone, node);
+      const pscale = _spot.pscale;
       const s = (COOK_H / 220) * pscale;
       const _bC = _localBuild();   /* v2.3.2500: your build, as on the body */
       sp.scale.set(s * _bC.sx, s * _bC.sy);
@@ -12544,8 +12741,8 @@ export class EffectsRenderer {
          the same ratio (14 * 62/82 = 10.6).
          v2.3.2287: ...and it takes the curve for the same reason -- an offset
          in flat pixels slides the pan off a shrunken fire. */
-      sp.x = node.x - COOK_STANDIN_H * COOK_PAN_DX * pscale;   /* v2.3.2607 */
-      sp.y = node.y + 8 * pscale;
+      sp.x = _spot.x;   /* v2.3.2607: COOK_STANDIN_H * COOK_PAN_DX left of the fire */
+      sp.y = _spot.y;
       sp.visible = true;
       /* v2.3.2856: your drawings' layer, on the same frame of the matching strip
          with the figure's exact transform (see _bakeCookStrips). */

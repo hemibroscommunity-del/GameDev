@@ -83,6 +83,31 @@
  * fails on any metal piece drawn without it -- it finds the metal by the art
  * file each sprite is drawing, not by this file's list, so a new stand-in
  * that nobody adds here is caught rather than trusted.
+ *
+ * ═══ v2.3.2914: SOFTER, AND THE SWEEP IS GONE ═══
+ *
+ * Owner, with it live: "I think the shine needs to be dialed back just a bit.
+ * It also doesn't need the occasionally 10 second flash animation (to show
+ * the shine).  I just don't want it to look like white spots (rather than
+ * shine) on the armor and it's on the edge of looking like that right now."
+ *
+ * THE WHITE SPOTS WERE THE CLIP, NOT THE STRENGTH.  The sheen was ADDED to
+ * the pixel and capped at white, and on the sun side every steel pixel from
+ * about 0.72 up reached the cap -- a flat white patch wherever the art's
+ * highlights sit.  Measured on one frozen standing figure (phone, dpr 3):
+ * ~1,000 pixels of a steel set pushed to flat white.  Turning the strength
+ * down barely moved it -- 55% of the strength still left ~670 -- because the
+ * brightest highlights clip at almost any strength.  So the added light now
+ * ROLLS OFF toward a ceiling below white (SHEEN_CEIL x the metal's shine
+ * colour) instead of clipping: a small lift behaves as before, a big one
+ * approaches the ceiling and stops.  Flat-white pixels: 0 in every metal.
+ * The mid-tones keep about 60-75% of their old lift, and the would-be-white
+ * highlights come out a light metal colour -- bright
+ * copper for copper, gold for a godly piece (whose gold used to wash out to
+ * white at exactly its brightest points).
+ *
+ * The periodic sweep (the "flash") is off: AUTO_SWEEP.  The band is still in
+ * the shader and `force` still pins it, for pictures and QA.
  */
 import { Filter, Rectangle } from 'pixi.js';
 import { weaponMaterial } from '../traits/materialTints.js';
@@ -105,6 +130,10 @@ uniform float uSheen;
 uniform vec2 uSun;
 uniform vec3 uTint;
 
+/* v2.3.2914: how far toward the metal's shine colour the sheen may take a
+   pixel -- 0.92 of it, so steel tops out at a light grey (235), never white */
+const float SHEEN_CEIL = 0.92;
+
 void main()
 {
     vec4 c = texture(uTexture, vTextureCoord);
@@ -124,8 +153,19 @@ void main()
        gradient is steep enough to swing across the metal itself */
     float side = clamp(0.5 + dot(p - 0.5, uSun) * 3.0, 0.0, 1.0);
     float s = uSheen * hi * (0.35 + 0.65 * side);
-    vec3 rgb = min(c.rgb + uColor * ((k + s) * c.a), vec3(c.a));
-    finalColor = vec4(rgb, c.a);
+    /* v2.3.2914: the sheen ROLLS OFF below white instead of being added and
+       clipped.  Per channel, head is the room left under the ceiling; the
+       lift is that room x (1 - e^(-added/room)), which is the old added light
+       while it is small against the room and approaches the ceiling as it
+       grows.  A pixel already above the ceiling (the art's own brightest
+       paint) is left exactly as drawn.  Worked in straight colour, not
+       premultiplied, so a soft edge pixel rolls off the same way. */
+    vec3 col = c.a > 0.0 ? c.rgb / c.a : vec3(0.0);
+    vec3 head = max(uColor * SHEEN_CEIL - col, vec3(0.0));
+    col += head * (vec3(1.0) - exp(-(uColor * s) / max(head, vec3(0.001))));
+    /* the sweep's band (only when pinned now -- see AUTO_SWEEP) still adds */
+    col = min(col + uColor * k, vec3(1.0));
+    finalColor = vec4(col * c.a, c.a);
 }
 `;
 const VERT = `
@@ -247,12 +287,25 @@ export const METAL_SHINE = Object.assign(Object.create(null), {
    owner's answer was "I do like the strong polish previews", so the strong
    cut is the sheen.  Above 1 is fine: the shader caps each pixel at white, so
    a higher number widens the highlight rather than blowing the piece out. */
+/* v2.3.2914: the numbers are unchanged; what they feed changed.  `sheen` is
+   the light ADDED before the roll-off (see SHEEN_CEIL in the shader), so it
+   no longer reaches white at any value -- a higher grade is still shinier,
+   it approaches the ceiling sooner.  period / dur / strength are the sweep's,
+   which only runs when pinned (AUTO_SWEEP). */
 export const GRADE_SHINE = Object.assign(Object.create(null), {
   normal: { period: 6500, dur: 560, strength: 0.85, sheen: 0.83 },
   rare: { period: 4600, dur: 560, strength: 1.0, sheen: 0.93 },
   elite: { period: 3300, dur: 600, strength: 1.15, sheen: 1.05 },
   godly: { period: 1900, dur: 680, strength: 1.4, sheen: 1.2, color: [1.0, 0.92, 0.6] },
 });
+
+/* ═══ v2.3.2914: NO SWEEP UNLESS ASKED FOR ═══
+   Owner: "It also doesn't need the occasionally 10 second flash animation (to
+   show the shine)."  The periodic band across every metal piece -- by grade,
+   every 1.9-6.5 s, v2.3.2710 -- is off; the permanent sheen is the shine now.
+   A pinned sweep (`force`, window.__btLightFx.glint) still draws the band, for
+   pictures and QA.  true brings the cadence back exactly as it was. */
+const AUTO_SWEEP = false;
 
 /* ═══ v2.3.2864: THE SHEEN'S SWITCH -- OFF UNLESS THIS DEVICE ASKED ═══ */
 /* v2.3.2887: ...and now ON unless this device turned it off, the way
@@ -337,7 +390,7 @@ export class GlintSystem {
     this._on = new Map();        /* sprite -> filter currently attached */
     this._pool = [];
     this.force = null;           /* QA/pictures: a fixed sweep progress, 0-1; -1 = no sweep anywhere (v2.3.2864) */
-    this.stats = { targets: 0, lit: 0, sheen: 0 };
+    this.stats = { targets: 0, lit: 0, sheen: 0, sweeping: 0 };   /* v2.3.2914: + sweeping, the pieces a band is crossing this frame */
     this._lastTargets = null;
     this.sheenScale = null;      /* QA/pictures: multiply the sheen, to show a softer or stronger cut */
     this._bodies = new Set();    /* this frame's full-set body sprites, for the probe */
@@ -356,7 +409,7 @@ export class GlintSystem {
   clear() {
     for (const [spr, f] of this._on) this._release(spr, f);
     this._on.clear();
-    this.stats.targets = 0; this.stats.lit = 0; this.stats.sheen = 0;
+    this.stats.targets = 0; this.stats.lit = 0; this.stats.sheen = 0; this.stats.sweeping = 0;
     this._lastTargets = null;
     this._bodies.clear();
   }
@@ -475,15 +528,17 @@ export class GlintSystem {
     const targets = this._targets(S, er, fx, zone);
     const want = new Map();       /* sprite -> { p, strength, color, sheen } */
     const sk = sheen ? (this.sheenScale == null ? 1 : this.sheenScale) * sheen.k : 0;
+    let sweeping = 0;
     for (let i = 0; i < targets.length; i++) {
       const t = targets[i];
       let p = -1;                 /* no sweep crossing it: the band term is off */
       if (this.force != null) p = this.force;   /* QA: pinned; -1 pins "between sweeps" */
-      else {
+      else if (AUTO_SWEEP) {      /* v2.3.2914: off -- see AUTO_SWEEP */
         const phase = hashPhase(t.key, t.g.period);
         const into = (now + phase) % t.g.period;
         if (into < t.g.dur) p = into / t.g.dur;
       }
+      if (p >= 0) sweeping++;
       if (p < 0 && !(sk > 0)) continue;
       const w = { p, strength: p >= 0 ? t.g.strength : 0, color: t.color, sheen: sk * (t.g.sheen || 0) };
       for (let j = 0; j < t.sprites.length; j++) want.set(t.sprites[j], w);
@@ -501,7 +556,7 @@ export class GlintSystem {
         spr.filters = [f];
         this._on.set(spr, f);
       }
-      /* v2.3.2887: every frame -- the frame (and so its trimmed box) moves */
+      /* v2.3.2887: every frame -- the texture, and so the frame's box, changes */
       if (spr.mask) { const a = unmaskedArea(spr); if (a && spr.filterArea !== a) spr.filterArea = a; }
       const u = f.resources.glintUniforms.uniforms;
       u.uProgress = w.p < 0 ? 0 : w.p;
@@ -519,6 +574,7 @@ export class GlintSystem {
     this.stats.targets = targets.length;
     this.stats.lit = this._on.size;
     this.stats.sheen = sk > 0 ? this._on.size : 0;
+    this.stats.sweeping = sweeping;
     this._lastTargets = targets;
   }
 

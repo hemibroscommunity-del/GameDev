@@ -383,6 +383,28 @@ export function processGameEvent(type, payload, S, deps) {
               handleEmoteEvent(payload, S);
               break;
             }
+          case 'gather_node':
+            {
+              /* ═══ v2.3.2915: THE TREE A PEER IS CHOPPING ═══
+                 Sent by the chopper (BroTown.jsx, beside the move broadcast)
+                 so this client can stand their lumberjack at the trunk, where
+                 their own screen draws it, rather than at their position up in
+                 the canopy.  Read by effectsRenderer._peerChopTree, which
+                 prefers this client's OWN copy of the node (looked up by id)
+                 and bounds the result to the peer's reach.
+                 A Map keyed by the chopper's id (rule 4), one entry per peer;
+                 only a peer standing in this zone gets one, so a forged id
+                 cannot grow it past the room.  Cleared on a zone change
+                 (zoneTransitions), with the peers' campfires. */
+              if (!payload || payload.id === S.myId || !_peerInZone(S, payload.id)) break;
+              if ((payload.zone || 'town') !== S.currentZone) break;
+              var _gnX = Number(payload.x), _gnY = Number(payload.y);
+              if (!isFinite(_gnX) || !isFinite(_gnY)) break;
+              var _gnNode = (payload.node != null && String(payload.node).length <= 64) ? String(payload.node) : null;
+              if (!S._peerGatherNode) S._peerGatherNode = new Map();
+              S._peerGatherNode.set(String(payload.id), { node: _gnNode, x: _gnX, y: _gnY, at: Date.now() });
+              break;
+            }
           case 'campfire_lit':
             {
               /* ═══ v2.3.1753: THE OTHER PLAYER'S FIRE ═══
@@ -1683,6 +1705,10 @@ export function processGameEvent(type, payload, S, deps) {
               S._remoteProjectiles.push({
                 x: payload.x, y: payload.y, ang: payload.ang,
                 isStaff: payload.isStaff, isSpecial: !!payload.isSpecial, dist: 14,
+                /* v2.3.2919: the shooter's element, read by the renderer exactly
+                   as it reads your own shot's (_projElem).  A real element key
+                   or nothing -- the value is peer-supplied (rule 4 posture). */
+                _projElem: (typeof payload.el === 'string' && Object.prototype.hasOwnProperty.call(ELEMENTS, payload.el)) ? payload.el : null,
                 /* v2.3.1335: mirror the -25% range.  v2.3.2387: and mirror the
                    staff's extension too -- this is what YOU see of someone
                    ELSE's orb, so a stale 68 here would kill a remote caster's
@@ -1732,7 +1758,10 @@ export function processGameEvent(type, payload, S, deps) {
               });
               /* v2.3.1011: a bow shot (non-staff) drives the remote bow-draw
                  stand-in (Phase 4 reads _bowShotAt/_bowShotAng). */
-              if (!payload.isStaff && payload.id && S.others[payload.id]) {
+              /* v2.3.2919: not for a retreat shot (dodge.js): the shooter's own
+                 screen draws no bow for it and keeps them facing the way they
+                 ROLL, so neither the draw nor the turn below belongs to it. */
+              if (!payload.isStaff && !payload.retreat && payload.id && S.others[payload.id]) {
                 S.others[payload.id]._bowShotAt = Date.now();
                 S.others[payload.id]._bowShotAng = payload.ang;
                 /* v2.3.1107: point the body the same way as the bow shot. */
@@ -1746,7 +1775,7 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.2842: ...and so does their one-bolt special, the heavy
                  version of both (_staffCastBig equal to the stamp). */
               var _bigCast = !!(payload.isStaff && payload.isSpecial && payload.big);
-              if (payload.isStaff && (!payload.isSpecial || _bigCast) && payload.id && S.others[payload.id]) {
+              if (payload.isStaff && (!payload.isSpecial || _bigCast) && !payload.retreat && payload.id && S.others[payload.id]) {
                 var _castNow = Date.now();
                 S.others[payload.id]._staffCastAt = _castNow;
                 S.others[payload.id]._staffCastAng = Number.isFinite(payload.ang) ? payload.ang : 0;
