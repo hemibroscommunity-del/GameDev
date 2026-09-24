@@ -3,7 +3,7 @@ import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
-import { zonePlayerScale, zoneDepthScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve; v2.3.2745: + the dunes' depth */
+import { zonePlayerScale, zoneDepthScale, depthK } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve; v2.3.2745: + the dunes' depth */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
 import { InfoPanel } from './panels/InfoPanel.jsx';
@@ -1017,7 +1017,7 @@ export var BroTown = function BroTown(_ref0) {
     addLifeSkillXp: addLifeSkillXp,
     awardSkillXp: awardSkillXp,
     createMonster: createMonster,
-    /* v2.3.2784: warm a zone's monster art from wherever the player stands,
+    /* v2.3.2803: warm a zone's monster art from wherever the player stands,
        so a scenario can put a snowman, a fire goblin or a mummy beside a
        client-local test target in town and look at how it takes a hit
        (mp-hitmat).  The same loader zone entry awaits (preloadZoneAssets); a
@@ -1054,7 +1054,7 @@ export var BroTown = function BroTown(_ref0) {
        screenshot -- arrows pass through a body they visibly hit. */
     MONSTER_VARIANTS: MONSTER_VARIANTS,
     monsterBodyOffsetY: DATA.monsterBodyOffsetY,
-    monsterTorsoY: DATA.monsterTorsoY,   /* v2.3.2786: where a locked shot is aimed and lands (mp-shotland) */
+    monsterTorsoY: DATA.monsterTorsoY,   /* v2.3.2805: where a locked shot is aimed and lands (mp-shotland) */
     DEPTH_CONFIG: DEPTH_CONFIG,
     ZONE_RESOURCES: ZONE_RESOURCES,
     COOKING_RECIPES: COOKING_RECIPES,
@@ -4645,12 +4645,18 @@ export var BroTown = function BroTown(_ref0) {
                the angle is refreshed here rather than only stamped at cast. */
             var _bang = Math.atan2(_bdy, _bdx);
             if (isFinite(_bang)) _bd.angle = _bang;
-            var _bstop = DASH_STOP_PX;
+            /* v2.3.2790: on Wind Dunes' north edge the dash stops at the
+               contact range of a body drawn at depthK and zooms at the same
+               share of its speed -- the swing it ends in now reaches depthK
+               too (monsterCombat _mRm), so a full-size stop would park you
+               outside it. */
+            var _bdk = depthK(S.currentZone, S.player.y);
+            var _bstop = DASH_STOP_PX * _bdk;
             if (_bdist <= _bstop) {
               _endDash(true);
             } else {
               var _bstep = Math.min(_bdist - _bstop,
-                Math.min(DASH_MAX_STEP_PX, DASH_STEP_PX * (S._dtScale || 1)));
+                Math.min(DASH_MAX_STEP_PX, DASH_STEP_PX * _bdk * (S._dtScale || 1)));
               _bd.travelled = (_bd.travelled || 0) + _bstep;
               var _bnx = S.player.x + (_bdx / _bdist) * _bstep;
               var _bny = S.player.y + (_bdy / _bdist) * _bstep;
@@ -4938,8 +4944,19 @@ export var BroTown = function BroTown(_ref0) {
             : _arch === 'fodder' ? 8
             : MONSTER_VARIANTS[_arch] ? 14
             : 32;
-          return { by: _m.y - _off, r: _r };
+          /* v2.3.2790: ...times the zone's depth at the monster's feet.  On
+             Wind Dunes' north edge a mummy is drawn at 0.42 and the worker
+             now measures its reach at 0.42 (server depth.js); a full-size
+             disc there would hold you outside that shorter reach -- the
+             v2.3.1409 snowman bug, rebuilt by perspective.  Scaled with the
+             player's own half-size below (_hsK), every distance in this
+             contact is the one the flat zones have, just smaller. */
+          var _mk = zoneDepthScale(S.currentZone, _m.y, TILE);
+          if (_mk == null) _mk = 1;
+          return { by: _m.y - _off * _mk, r: _r * _mk };
         };
+        var _hsK = zoneDepthScale(S.currentZone, P.y, TILE);   /* v2.3.2790 */
+        var hsM = hs * (_hsK == null ? 1 : _hsK);
         var _monBlock = function (curX, curY, px, py) {
           var ms = S.monsters;
           if (!ms) return false;
@@ -4954,7 +4971,7 @@ export var BroTown = function BroTown(_ref0) {
                worker charges the touch. */
             if (isIntangible(_m)) continue;
             var _b = _monBody(_m);
-            var _rr = _b.r + hs;
+            var _rr = _b.r + hsM;
             var _ndx = px - _m.x, _ndy = py - _b.by;
             var _nd2 = _ndx * _ndx + _ndy * _ndy;
             if (_nd2 < _rr * _rr) {
@@ -5016,7 +5033,7 @@ export var BroTown = function BroTown(_ref0) {
             var _pb = _monBody(_pm);
             var _pdx = P.x - _pm.x, _pdy = P.y - _pb.by;
             var _pd2 = _pdx * _pdx + _pdy * _pdy;
-            var _prr = _pb.r + hs;
+            var _prr = _pb.r + hsM;
             if (_pd2 > 0.01 && _pd2 < _prr * _prr) {
               var _pd = Math.sqrt(_pd2);
               var _pushX = P.x + (_pdx / _pd) * 2;

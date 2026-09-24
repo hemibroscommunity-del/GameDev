@@ -256,10 +256,10 @@ export function clearZoneLocalFx(S) {
   S._firemaking = null;
   S._extraction = null;
   S._remoteProjectiles = [];
-  /* v2.3.2782: a staff crash queued on the frame you left would flash at the
+  /* v2.3.2801: a staff crash queued on the frame you left would flash at the
      old zone's coordinates on the new map. */
   S._staffCrashes = [];
-  /* v2.3.2784: ...and so would a material hit reaction (the renderer's own
+  /* v2.3.2803: ...and so would a material hit reaction (the renderer's own
      pieces are cleared with the zone; this is the queue feeding it). */
   S._debrisBursts = [];
   S._whirlFx = null;

@@ -78,7 +78,7 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -91,8 +91,8 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
-import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2782: the staff kick + where its crystal is */
-/* v2.3.2782: scratch for staffTipWorld, reused every frame (no allocation). */
+import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2801: the staff kick + where its crystal is */
+/* v2.3.2801: scratch for staffTipWorld, reused every frame (no allocation). */
 const _staffTipOut = { x: 0, y: 0 };
 import { SHADE } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop */
 import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
@@ -651,9 +651,8 @@ function _ensureTraitLoaded(category, id) {
         .catch(() => { if (attempt < 2) setTimeout(() => _fetchMeta(attempt + 1), [2000, 6000][attempt]); });
     };
     _fetchMeta(0);
-    for (const dir of Object.keys(e.tex)) {
-      _loadTraitDir(e, category, id, dir, 0);
-    }
+    /* v2.3.2776: the per-dir loads are kept, so preloadTraits can await them */
+    e.ready = Promise.allSettled(Object.keys(e.tex).map((dir) => _loadTraitDir(e, category, id, dir, 0)));
   }
   return e;
 }
@@ -677,8 +676,23 @@ function _ensureTraitLoaded(category, id) {
 const _TRAIT_RETRY_MS = [2000, 6000];
 function _loadTraitDir(e, category, id, dir, attempt) {
   const bust = attempt > 0 ? `&r=${attempt}` : '';
-  Assets.load(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}${bust}`)
-    .then(t => {
+  /* ═══ v2.3.2776: CROPPED ═══
+     Owner: "Do all of it" (the memory list).  A trait frame is the whole
+     128/256 body frame with a hat, a beard or a pair of glasses in one corner:
+     measured 2-9% of the texels painted, 11.7 MB of headwear alone across the
+     catalog the loading screen warms.  loadCroppedStrip(url, 1) decodes the
+     file as a plain Image (NOT Assets.load, which would keep the whole frame
+     cached beside the crop), crops it to its art and returns one Texture whose
+     `orig` is the whole frame.  _placeTrait anchors by a fraction of the whole
+     frame and scales by `texture.width` -- both `orig` -- so every hat lands on
+     exactly the pixels it did (TRAPS §106).  Retries and telemetry below are
+     unchanged: a failed decode rejects exactly as the Assets promise did. */
+  /* ...and it RETURNS the load (retries chained in), so preloadTraits can hold
+     the loading screen on exactly this -- it used to Assets.load every trait
+     URL itself, which now would park the whole frames in the Assets cache. */
+  return loadCroppedStrip(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}${bust}`, 1)
+    .then(frames => {
+      const t = frames[0];
       e.tex[dir] = t;
       if (t && t.source) {
         /* match body's linear scaleMode + mipmaps so Lanczos
@@ -702,8 +716,8 @@ function _loadTraitDir(e, category, id, dir, attempt) {
       const designedMissing = e.meta && e.meta.anchors && !e.meta.anchors[dir];
       if (designedMissing) return;
       if (attempt < _TRAIT_RETRY_MS.length) {
-        setTimeout(() => _loadTraitDir(e, category, id, dir, attempt + 1), _TRAIT_RETRY_MS[attempt]);
-        return;
+        return new Promise((res) => setTimeout(res, _TRAIT_RETRY_MS[attempt]))
+          .then(() => _loadTraitDir(e, category, id, dir, attempt + 1));
       }
       try {
         if (window.__spriteLog) console.warn('[sprite] trait dir failed', category, id, dir);
@@ -3503,8 +3517,10 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
      smaller than the body's 256px frame.  Scale up by 256/frame so the overlay
      still lands exactly on the body (both anchored 0.5/0.5); reads the size off
      the texture so it tracks whatever downscale playerSkins uses. */
-  const _fw = (t.frame && t.frame.width) || 256;
-  const _fh = (t.frame && t.frame.height) || 256;
+  /* v2.3.2775: ORIG -- the head sheets are cropped to the head now
+     (playerSkins._buildPickupHeadSheet), so `frame` is the crop, not the frame. */
+  const _fw = (t.orig && t.orig.width) || (t.frame && t.frame.width) || 256;
+  const _fh = (t.orig && t.orig.height) || (t.frame && t.frame.height) || 256;
   /* v2.3.1120: head sheet is HEAD_DS-downscaled; the 256/_fw ratio brings it up
      to a 256-space figure, then /DISPLAY_DS undoes the DISPLAY_DS factor sb.scale
      now carries (so head matches the body whatever the two downscales are). */
@@ -4394,10 +4410,12 @@ export function preloadTraits() {
   for (const [category, catalog] of cats) {
     for (const entry of catalog) {
       if (!entry.id || entry.id === 'none') continue;
-      _ensureTraitLoaded(category, entry.id); /* kicks meta + all dirs (retry-guarded) */
-      for (const dir of ['east', 'north', 'northeast', 'south', 'southwest']) {
-        urls.push(`/sprites/traits/${category}/${entry.id}/${dir}.png?v=${TRAIT_VER}`);
-      }
+      /* kicks meta + all dirs (retry-guarded).  v2.3.2776: the gate waits on
+         THOSE loads (e.ready) -- they crop.  It used to Assets.load the same
+         URLs a second time, which would now hold every whole frame in the
+         Assets cache beside its crop. */
+      const e = _ensureTraitLoaded(category, entry.id);
+      if (e && e.ready) urls.push(e.ready);
     }
   }
   /* Local player's live selection: recolors + hair-clip mask + NFT face. */
@@ -4416,7 +4434,7 @@ export function preloadTraits() {
      them EVERY hat/hair/beard is hidden, so they belong on the gate. */
   return Promise.allSettled([
     _ensureBodyData(),
-    ...urls.map((u) => Assets.load(u).catch(() => {})),
+    ...urls,   /* v2.3.2776: the trait loads themselves (allSettled inside) */
     /* v2.3.2682: every species' art (piece, fur twins, per-frame strips) on
        the gate, and the local player's skin build made from it before the
        intro lifts -- the build is a canvas pass, not a load, but it is the
@@ -10390,17 +10408,17 @@ export class EntityRenderer {
             oWeaponSprite.scale.x = fitScale;
           } else {
             const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
-            /* v2.3.2782: a peer's staff kicks on THEIR cast (gameEvents stamps
+            /* v2.3.2801: a peer's staff kicks on THEIR cast (gameEvents stamps
                _staffCastAt from their bolt).  Their cooldown is not on the
                wire, so a peer gets the kick without the charge-up dip. */
             oWeaponSprite.rotation = (oWpnType === 'staff')
               ? staffCastPose(now, other._staffCastAt, other._staffCastAng, 0, 0, weaponMirror)
               : 0;
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
-            _oBladeUp = oWpnType !== 'staff';   /* v2.3.2782: a staff stands head-up -- see the local path */
+            _oBladeUp = oWpnType !== 'staff';   /* v2.3.2801: a staff stands head-up -- see the local path */
           }
           oWeaponSprite.scale.y = _oBladeUp ? -fitScale : fitScale;   /* v2.3.1786 — see the local path */
-          /* v2.3.2782: their crystal, for their release flash and bolts. */
+          /* v2.3.2801: their crystal, for their release flash and bolts. */
           if (oWpnType === 'staff' && display.parent
               && staffTipWorld(oWeaponSprite, display.parent, _staffTipOut)) {
             other._staffTipX = _staffTipOut.x;
@@ -10496,7 +10514,7 @@ export class EntityRenderer {
         const inFront = oIsShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
           : (_oHeldInHand ? heldWeaponInFront(oWpnType, facingIdx, _oInFrontBase) : _oInFrontBase);
-        if (oWpnType === 'staff') other._staffTipBehind = !inFront;   /* v2.3.2782: see the local path */
+        if (oWpnType === 'staff') other._staffTipBehind = !inFront;   /* v2.3.2801: see the local path */
         const bodyIdx = display.getChildIndex(oSpriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* "In front" is measured against the topmost VISIBLE worn layer, not
@@ -12333,7 +12351,7 @@ export class EntityRenderer {
               ? (mirror || _gsDir === 'south')
               : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
-            /* ═══ v2.3.2782: THE STAFF KICKS WHEN IT CASTS ═══
+            /* ═══ v2.3.2801: THE STAFF KICKS WHEN IT CASTS ═══
                The staff used to hang motionless through every cast.  Now it
                dips back while the cooldown refills and kicks its crystal
                toward the target on release, then settles (staffCastPose: 12
@@ -12362,7 +12380,7 @@ export class EntityRenderer {
                swingAng and the sheathed branch angles the blade across the
                back; neither wants this, and both are separate branches above
                so neither can pick it up by accident. */
-            /* ═══ v2.3.2782: BUT NOT THE STAFF ═══
+            /* ═══ v2.3.2801: BUT NOT THE STAFF ═══
                The flip was asked for about the SWORD, whose icon hangs its
                blade down.  The staff's icon already stands head-up, so the
                same flip turned it head-down: the crystal hung by the knee and
@@ -12395,7 +12413,7 @@ export class EntityRenderer {
              own branch above and the sheathed pose angles the blade across the
              back in another, so neither can pick this up. */
           weaponSprite.scale.y = _weaponBladeUp ? -fitScale : fitScale;
-          /* v2.3.2782: publish where the crystal is, in world px -- the staff
+          /* v2.3.2801: publish where the crystal is, in world px -- the staff
              cast's charge glows there and the bolt is drawn leaving it.  Same
              idea as the bow publishing its grip (S._bowGripX), but read back
              through Pixi's own transform chain, so the mirror, the kick and the
@@ -12833,7 +12851,7 @@ export class EntityRenderer {
            for why the v2.3.1787 exception does not transfer to it. */
         const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
-        /* v2.3.2782: the staff cast glows at the crystal from a layer above
+        /* v2.3.2801: the staff cast glows at the crystal from a layer above
            the body; when the staff is carried BEHIND him (SW/W/NW/N) it dims
            that light instead of painting it over his back. */
         if (wpn && wpn.type === 'staff') S._staffTipBehind = !inFront;

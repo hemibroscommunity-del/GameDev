@@ -25,7 +25,7 @@ import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } fr
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setGearQEnabled /* v2.3.2664 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setGearQEnabled /* v2.3.2664 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META, setZoneDepthLive /* v2.3.2790 */ } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1172,6 +1172,10 @@ export function setupWebSocket(ctx) {
                    otherwise the worker's stat-sum level echo would
                    fight the local formula every player_state flush. */
                 setT2SimpleEnabled(!!(S._serverCaps && S._serverCaps.t2simple));
+                /* v2.3.2790: Wind Dunes' depth curve draws only while THIS
+                   worker measures its monsters with it (server depth.js) --
+                   see _previewOn in zones.js for the ?depth= overrides. */
+                setZoneDepthLive(!!(S._serverCaps && S._serverCaps.zoneDepth));
                 /* v2.3.1451: bench-locked T2 deploy-order gate — the
                    10 flat channels read the server-priced ps.t2Flat
                    accumulator only while THIS worker claims

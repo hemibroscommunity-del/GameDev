@@ -1,4 +1,4 @@
-/* THE STAFF CAST: CHARGE, RELEASE, A LIVING BOLT, A HOT HIT (v2.3.2782)
+/* THE STAFF CAST: CHARGE, RELEASE, A LIVING BOLT, A HOT HIT (v2.3.2801)
  *
  * Owner, after a side-by-side demo of ideas from an X "pixel wizard" prompt:
  * "Looks good. I want to see what it would look like built as it looks like
@@ -211,7 +211,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the DRAWN orb, not on the line under it (review, F2).  Not closer: at
      70px the capsule reaches it on the first sim tick, before the bolt has
      ever been drawn -- there is no seen position then, and the line is right.
-     v2.3.2785: the bolt now flies on into the slime before it bursts, which
+     v2.3.2804: the bolt now flies on into the slime before it bursts, which
      from 90px carries it past the end of the easing -- nothing left of the
      offset to test.  So the slime stands at 50px: the hit registers on the
      first tick as the note above says, but the bolt is DRAWN from the next

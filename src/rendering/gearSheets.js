@@ -83,7 +83,8 @@ const _GEAR_RETRY_MS = [2000, 6000];
  * the armour cost.
  *
  * So each frame is cropped to its own art and the crops are packed side by
- * side into one smaller strip.  The Texture keeps the FULL frame as `orig` and
+ * side into one smaller strip (v2.3.2775: or onto shelves, whichever is
+ * smaller -- see packTrimmed).  The Texture keeps the FULL frame as `orig` and
  * where the crop sat inside it as `trim` -- Pixi's own spritesheet contract,
  * which Sprite honours when it builds the quad (updateQuadBounds), so a
  * cropped frame lands on exactly the pixels the uncropped one did and
@@ -144,7 +145,7 @@ if (typeof window !== 'undefined') {
 
 /* Crop each fw x fh frame of `img` to its non-transparent box (plus PAD,
    snapped out to ALIGN) and pack the crops left to right.  Returns
-   { canvas, cells: [{ ax, tx, ty, w, h }] } or null if the pixels could not
+   { canvas, cells: [{ ax, ay, tx, ty, w, h }] } or null if the pixels could not
    be read, in which case the caller uploads the plain strip as before.
    v2.3.2774: exported for the COMBAT stand-in strips (effectsRenderer
    _gearStripFrame), whose frames are 130-402px wide rather than 128/256.
@@ -169,7 +170,6 @@ export function packTrimmed(img, fw, fh, n) {
   }
   const snapDn = (v) => Math.max(0, Math.floor(v / TRIM_ALIGN) * TRIM_ALIGN);
   const cells = [];
-  let ax = 0, maxH = TRIM_ALIGN;
   for (let i = 0; i < n; i++) {
     const ox = i * fw;
     let x0 = fw, y0 = fh, x1 = -1, y1 = -1;
@@ -191,17 +191,55 @@ export function packTrimmed(img, fw, fh, n) {
       w = Math.min(fw, Math.ceil((x1 + 1 + TRIM_PAD) / TRIM_ALIGN) * TRIM_ALIGN) - tx;
       h = Math.min(fh, Math.ceil((y1 + 1 + TRIM_PAD) / TRIM_ALIGN) * TRIM_ALIGN) - ty;
     }
-    cells.push({ ax, tx, ty, w, h, blank: x1 < 0 });
-    ax += w + TRIM_GAP;
-    if (h > maxH) maxH = h;
+    cells.push({ ax: 0, ay: 0, tx, ty, w, h, blank: x1 < 0 });
   }
+  /* v2.3.2775: ONE ROW OR SHELVES, whichever is smaller.  A single row is as
+     tall as the tallest crop, so a strip whose crops differ a lot in height
+     wastes the band above every short one; shelves (tallest-first rows about
+     as wide as the packed area is square, each as tall as its own tallest
+     crop) waste the ragged ends of their rows instead.  Measured on the gear
+     and stand-in sheets neither wins everywhere, so both are laid out and the
+     smaller canvas is kept.  Positions stay multiples of ALIGN (every w and h
+     is, for the mipmapped 128/256 sheets) with GAP between crops and between
+     rows, so the mip-alignment argument above still holds.  Shelves are capped
+     at 4096 wide; a single row is never wider than the strip it came from. */
+  const layRow = () => {
+    let x = 0, hh = TRIM_ALIGN;
+    const pos = cells.map((c) => { const p = [x, 0]; x += c.w + TRIM_GAP; if (c.h > hh) hh = c.h; return p; });
+    return { pos, W: Math.max(TRIM_ALIGN, x - TRIM_GAP), H: hh };
+  };
+  const layShelves = () => {
+    let area = 0, widest = TRIM_ALIGN;
+    for (const c of cells) { area += (c.w + TRIM_GAP) * (c.h + TRIM_GAP); if (c.w > widest) widest = c.w; }
+    const rowW = Math.min(4096, Math.max(widest, Math.ceil(Math.sqrt(area) / TRIM_ALIGN) * TRIM_ALIGN));
+    const order = cells.map((c, i) => i).sort((a, b) => cells[b].h - cells[a].h || a - b);
+    const pos = new Array(cells.length);
+    let cx = 0, cy = 0, shelfH = 0, usedW = TRIM_ALIGN;
+    for (const i of order) {
+      const c = cells[i];
+      if (cx > 0 && cx + c.w > rowW) { cy += shelfH + TRIM_GAP; cx = 0; shelfH = 0; }
+      pos[i] = [cx, cy];
+      cx += c.w + TRIM_GAP;
+      if (c.h > shelfH) shelfH = c.h;
+      if (pos[i][0] + c.w > usedW) usedW = pos[i][0] + c.w;
+    }
+    return { pos, W: usedW, H: Math.max(TRIM_ALIGN, cy + shelfH) };
+  };
+  const rowL = layRow(), shelfL = layShelves();
+  const L = (shelfL.W * shelfL.H < rowL.W * rowL.H) ? shelfL : rowL;
+  cells.forEach((c, i) => { c.ax = L.pos[i][0]; c.ay = L.pos[i][1]; });
+  const usedW = L.W, packedH = L.H;
+  /* Not worth it: a sheet whose art genuinely fills its frames (the cook and
+     fire stand-ins, measured 99-101%) would come back no smaller, plus the
+     cost of the scan.  The caller keeps the plain strip. */
+  if (usedW * packedH > 0.9 * n * fw * fh) { rd.width = 0; rd.height = 0; return null; }
   const cv = document.createElement('canvas');
-  cv.width = Math.max(TRIM_ALIGN, ax - TRIM_GAP); cv.height = maxH;
+  cv.width = usedW; cv.height = packedH;
   const ctx = cv.getContext('2d');
   ctx.imageSmoothingEnabled = false;   /* 1:1 copies; never resample */
   for (let i = 0; i < n; i++) {
     const c = cells[i];
-    if (!c.blank) ctx.drawImage(rd, i * fw + c.tx, c.ty, c.w, c.h, c.ax, 0, c.w, c.h);
+    if (!c.blank) ctx.drawImage(rd, i * fw + c.tx, c.ty, c.w, c.h, c.ax, c.ay, c.w, c.h);
   }
   /* Safari holds canvas backing stores against a hard total until GC gets to
      them; zeroing hands the full-size scratch copy back now. */
@@ -225,6 +263,89 @@ export function drawGearFrame(ctx, tex, dx, dy, dw, dh) {
   const sx = dw / o.width, sy = dh / o.height;
   ctx.drawImage(res, f.x, f.y, f.width, f.height, dx + t.x * sx, dy + t.y * sy, f.width * sx, f.height * sy);
   return true;
+}
+
+/** A rectangle cut out of a frame, given in the WHOLE frame's coordinates
+ *  (0..orig.width, 0..orig.height) -- what `new Texture({ frame: new
+ *  Rectangle(f.x + x, f.y + y, w, h) })` meant while every frame was whole.
+ *  v2.3.2775: on a cropped frame that arithmetic reads the wrong texels (the
+ *  crop starts wherever the art does, not at the frame's corner), so the jog
+ *  legs' torso trim and the raised shield's arm cut go through this instead.
+ *  The result is itself a cropped Texture: `orig` is the w x h rectangle asked
+ *  for, and only the part of it that overlaps the art is sampled -- the rest
+ *  was transparent in the whole frame and stays transparent here.  For an
+ *  uncropped frame it is exactly the old expression. */
+/* ═══ v2.3.2776: ONE-SHOT EFFECT STRIPS, CROPPED ═══
+ * Owner: "Do all of it" (the memory list).  The splash / rocks / wood-chip /
+ * grease bursts, the debris puffs, the four tool gestures (pickaxe, axe, reel,
+ * pan) and the stun stars / whirl / fire trail were each an 8-frame strip of
+ * 256px cells drawn by a Sprite at a fixed anchor and scale -- and 2-35% of
+ * their texels are painted (__btTex measured, 2 MB decoded apiece).
+ *
+ * loadCroppedStrip(url, n) replaces `Assets.load(url)` + an n-way slice for
+ * them: it decodes the file as a plain Image (Assets would keep the full sheet
+ * in its cache for the session, beside the crop), cuts n equal frames exactly
+ * as the old loops did (width floor(W / n), full height), crops each with
+ * packTrimmed and resolves to the frame Textures -- `orig` the whole cell, so
+ * a Sprite lands where it always did.  A strip the packer declines comes back
+ * as plain slices of the image, i.e. the old behaviour.  Callers push the
+ * returned promise wherever they registered the Assets one (the loading-screen
+ * gate), so nothing loads on first use.  QA: window.__btFxTrim(). */
+const _fxTrimStats = [];
+const _fxTrimFrames = new Map();
+if (typeof window !== 'undefined') {
+  window.__btFxTrim = () => _fxTrimStats.slice();
+  window.__btFxTrimFrames = (url) => _fxTrimFrames.get(url) || null;
+}
+export function loadCroppedStrip(url, n) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im); im.onerror = rej; im.src = url;
+  }).then((img) => {
+    const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+    const fw = Math.floor(W / n);
+    const packed = fw > 0 ? packTrimmed(img, fw, H, n) : null;
+    const src = Texture.from(packed ? packed.canvas : img).source;
+    src.scaleMode = 'linear';
+    const frames = [];
+    for (let i = 0; i < n; i++) {
+      if (packed) {
+        const c = packed.cells[i];
+        frames.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+          orig: new Rectangle(0, 0, fw, H), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+      } else {
+        frames.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, H) }));
+      }
+    }
+    if (packed) {
+      _fxTrimStats.push({ url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 });
+      _fxTrimFrames.set(url, { frames, fw, fh: H });
+    }
+    return frames;
+  });
+}
+
+export function subTexture(tex, x, y, w, h) {
+  const f = tex.frame, t = tex.trim;
+  if (!t) return new Texture({ source: tex.source, frame: new Rectangle(f.x + x, f.y + y, w, h) });
+  const ix0 = Math.max(x, t.x), iy0 = Math.max(y, t.y);
+  const ix1 = Math.min(x + w, t.x + t.width), iy1 = Math.min(y + h, t.y + t.height);
+  if (ix1 <= ix0 || iy1 <= iy0) {
+    /* nothing of the art falls inside: sample one texel of the GAP packTrimmed
+       leaves around every crop, which nothing is ever drawn into -- the row
+       above it, else the column left of it.  (The top-left crop of a one-frame
+       strip has neither; its corner is the best there is.) */
+    const gx = f.y >= 1 ? f.x : (f.x >= 1 ? f.x - 1 : f.x);
+    const gy = f.y >= 1 ? f.y - 1 : f.y;
+    return new Texture({ source: tex.source, frame: new Rectangle(gx, gy, 1, 1),
+      orig: new Rectangle(0, 0, w, h), trim: new Rectangle(0, 0, 1, 1) });
+  }
+  return new Texture({
+    source: tex.source,
+    frame: new Rectangle(f.x + (ix0 - t.x), f.y + (iy0 - t.y), ix1 - ix0, iy1 - iy0),
+    orig: new Rectangle(0, 0, w, h),
+    trim: new Rectangle(ix0 - x, iy0 - y, ix1 - ix0, iy1 - iy0),
+  });
 }
 function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
   _sheets[key] = 'loading';
@@ -329,7 +450,7 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
         const c = packed.cells[i];
         out.push(new Texture({
           source: src,
-          frame: new Rectangle(c.ax, 0, c.w, c.h),
+          frame: new Rectangle(c.ax, c.ay, c.w, c.h),
           orig: new Rectangle(0, 0, fw, fh),
           trim: new Rectangle(c.tx, c.ty, c.w, c.h),
         }));
