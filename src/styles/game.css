@@ -4115,6 +4115,101 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
   .ls-slot--godly::after { animation: none; }
 }
 
+/* ═══ v2.3.2815: THE BAG'S SMALL MOTIONS ════════════════════════════
+   Owner: "making things move a little in a way that makes sense for
+   whatever object it is ... this includes items in the player inventory
+   and the inventory itself."  The WHAT and the WHY are in
+   src/ui/mobile/dash/bagLife.js; this is only the motion itself.
+
+   Every rule animates transform/opacity on a tile's CHILDREN -- the art
+   (.bt-bag-art) and an empty overlay (.bt-bag-fx) -- never the tile's own
+   box: nothing reflows, and a test that reads a tile's rect sees it
+   exactly where it always was.  No filter, no drop-shadow, no
+   background-clip anywhere below (TRAPS §42, the iOS grain trap over the
+   WebGL canvas).  Nothing loops: each is a one-shot that bagLife.js plays
+   on ONE tile at a time and takes off again.
+═══════════════════════════════════════════════════════════════════ */
+.bt-bag-art{transform-origin:50% 78%;
+  transition:transform 180ms cubic-bezier(.3,1.55,.5,1)}
+/* press: the item gives under the finger and springs back (spec: press
+   feedback starts on pointerdown, 90ms) */
+html:not(.bt-calm) [data-bag-key]:active .bt-bag-art{transform:scale(.88);
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1)}
+.bt-bag-fx{position:absolute;inset:0;border-radius:inherit;pointer-events:none;overflow:visible}
+/* the glint: a four-point star crossing the upper-right corner */
+.bt-bag-fx::before{content:"";position:absolute;right:10%;top:9%;width:44%;height:44%;
+  max-width:26px;max-height:26px;opacity:0;transform:scale(.2);
+  background:
+    linear-gradient(90deg,transparent 0,rgba(255,249,222,.95) 50%,transparent 100%) center/100% 2px no-repeat,
+    linear-gradient(0deg,transparent 0,rgba(255,249,222,.95) 50%,transparent 100%) center/2px 100% no-repeat,
+    radial-gradient(circle,rgba(255,255,244,1) 0,rgba(255,236,176,.55) 18%,transparent 34%)}
+/* the arrival ring: brass (--slot-new), expanding off the slot's edge */
+.bt-bag-fx::after{content:"";position:absolute;inset:0;border-radius:inherit;
+  border:2px solid #D8A85F;opacity:0}
+
+[data-life-now="glint"] .bt-bag-fx::before{animation:bt-life-glint 760ms cubic-bezier(.2,.8,.2,1) 1}
+[data-life-now="slosh"] .bt-bag-art{transform-origin:50% 92%;animation:bt-life-slosh 960ms ease-out 1}
+[data-life-now="flop"]  .bt-bag-art{transform-origin:50% 70%;animation:bt-life-flop 680ms ease-out 1}
+[data-life-now="sway"]  .bt-bag-art{transform-origin:50% 100%;animation:bt-life-sway 1450ms ease-in-out 1}
+[data-life-now="hop"]   .bt-bag-art{transform-origin:50% 100%;animation:bt-life-hop 560ms cubic-bezier(.2,.8,.2,1) 1}
+[data-life-new] .bt-bag-art{animation:bt-life-arrive 520ms cubic-bezier(.16,1,.3,1) 1}
+[data-life-new] .bt-bag-fx::after{animation:bt-life-ring 760ms cubic-bezier(.2,.8,.2,1) 1}
+[data-life-new] .bt-bag-fx::before{animation:bt-life-glint 760ms cubic-bezier(.2,.8,.2,1) 160ms 1}
+[data-life-bump] .bt-item-qty{animation:bt-life-count 380ms cubic-bezier(.2,.8,.2,1) 1}
+[data-life-bump] .bt-bag-art{animation:bt-life-hop 420ms cubic-bezier(.2,.8,.2,1) 1}
+/* the item card's portrait presents itself when the card opens */
+.bt-card-art{animation:bt-life-present 360ms cubic-bezier(.16,1,.3,1) 1}
+
+@keyframes bt-life-glint{
+  0%{opacity:0;transform:scale(.2) rotate(-24deg)}
+  38%{opacity:1;transform:scale(1) rotate(0deg)}
+  100%{opacity:0;transform:scale(.45) rotate(28deg)}}
+@keyframes bt-life-slosh{
+  0%{transform:rotate(0)} 14%{transform:rotate(-7deg)} 34%{transform:rotate(5deg)}
+  54%{transform:rotate(-3deg)} 74%{transform:rotate(1.4deg)} 100%{transform:rotate(0)}}
+@keyframes bt-life-flop{
+  0%{transform:none} 18%{transform:translateY(-5px) rotate(-11deg) scaleY(1.05)}
+  38%{transform:translateY(0) rotate(7deg) scaleY(.95)} 58%{transform:translateY(-2px) rotate(-4deg)}
+  78%{transform:rotate(2deg)} 100%{transform:none}}
+@keyframes bt-life-sway{
+  0%{transform:rotate(0)} 30%{transform:rotate(4.5deg)} 68%{transform:rotate(-3deg)} 100%{transform:rotate(0)}}
+@keyframes bt-life-hop{
+  0%{transform:none} 32%{transform:translateY(-4px) scale(.96,1.05)}
+  62%{transform:translateY(0) scale(1.05,.95)} 100%{transform:none}}
+@keyframes bt-life-arrive{
+  0%{opacity:0;transform:scale(.4)} 55%{opacity:1;transform:scale(1.14)}
+  80%{transform:scale(.96)} 100%{transform:none}}
+@keyframes bt-life-ring{
+  0%{opacity:.95;transform:scale(1)} 100%{opacity:0;transform:scale(1.14)}}
+@keyframes bt-life-count{
+  0%{transform:none} 40%{transform:scale(1.4)} 100%{transform:none}}
+@keyframes bt-life-present{
+  0%{opacity:.3;transform:scale(.7) rotate(-6deg)} 60%{opacity:1;transform:scale(1.06) rotate(1deg)}
+  100%{transform:none}}
+/* the purse: a coin spins when gold lands, and the number bumps */
+.bt-purse-flip{animation:bt-life-coin 620ms cubic-bezier(.2,.8,.2,1) 1}
+.bt-purse-bump{display:inline-block;animation:bt-life-count 380ms cubic-bezier(.2,.8,.2,1) 1}
+@keyframes bt-life-coin{
+  0%{transform:perspective(60px) rotateY(0)} 100%{transform:perspective(60px) rotateY(720deg)}}
+
+/* reduced motion: the tiles hold still; a new item fades in rather than
+   popping, and a press is a plain dip with no spring (spec: reduced motion
+   removes shimmer, overshoot and nudge) */
+@media (prefers-reduced-motion: reduce){
+  .bt-bag-art{transition:none}
+  html:not(.bt-calm) [data-bag-key]:active .bt-bag-art{transform:scale(.95);transition:none}
+  [data-life-now] .bt-bag-art,[data-life-now] .bt-bag-fx::before,
+  [data-life-new] .bt-bag-fx::after,[data-life-new] .bt-bag-fx::before,
+  [data-life-bump] .bt-item-qty,[data-life-bump] .bt-bag-art,
+  .bt-purse-flip,.bt-purse-bump{animation:none}
+  [data-life-new] .bt-bag-art{animation:bt-life-fade 300ms ease-out 1}
+  .bt-card-art{animation:bt-life-fade 200ms ease-out 1}
+}
+@keyframes bt-life-fade{0%{opacity:0} 100%{opacity:1}}
+/* the QA harness's calm switch: every one of these off (bagLife.js stamps
+   html.bt-calm from window.__btAmbienceOff) */
+html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bump{animation:none}
+
 /* ═══ v2.3.1715: DESKTOP PLAYS IN A CENTRED WINDOW ═══════════════════
    Owner, watching judges on desktop: "the layout is super stretched.
    Maybe force the main game area 50% of the size if they're a desktop
