@@ -346,7 +346,7 @@ import { updateStateCleanup } from '@/game/stateCleanup.js';
 import { renderFrame } from '@/game/renderFrame.js';
 import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
-import { triggerContextualDodge } from '@/game/dodge.js';
+import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
@@ -4521,8 +4521,10 @@ export var BroTown = function BroTown(_ref0) {
              Endurance stretch — the roll window IS the i-frame, so
              this directly buys survival frames.
              v2.3.1343 (kid-simple reprice): +2ms/pt, cap +200ms. */
-          var _dodgeMs = 250 + Math.min(((S.rpg && S.rpg.endurance) || 0), 250)
-            + Math.min(200, 2 * ((S.rpg && S.rpg.enduranceSpec && S.rpg.enduranceSpec.reflexes) || 0));
+          /* v2.3.2916: the formula moved to game/dodge.js dodgeWindowMs so the
+             player_dodge broadcast can send the same number -- a watcher used
+             to play every roll over a flat 300 ms. */
+          var _dodgeMs = dodgeWindowMs(S.rpg);
           /* v2.3.1534: publish the window the roll ACTUALLY got so the dodge
              sprite plays its 9 frames across exactly it (entityRenderer).
              Written here rather than at the three _dodgeRoll creation sites
@@ -5832,6 +5834,25 @@ export var BroTown = function BroTown(_ref0) {
           var _cfKeepAlive = Date.now() + 15000;
           if (S._campfire.expiresAt < _cfKeepAlive) S._campfire.expiresAt = _cfKeepAlive;
         }
+        /* ═══ v2.3.2917: ...AND SO MUST A PEER'S, ON YOUR SCREEN ═══
+           Owner: "check all other broadcasted player animations to make sure
+           they match what your character does client side."
+           The rule above keeps the COOK's own fire lit while they cook, but it
+           never reached anyone watching: their copy (S._peerCampfires, from
+           campfire_lit) kept the 45 s fuse it was lit with, and CampfireFx
+           deletes it when that runs out -- so a peer cooking past 45 s did it
+           over bare ground on everybody else's screen while their own fire
+           burned on.  Same rule, on the watcher's side: while a peer's relayed
+           harvest code says they are cooking, their fire's fuse is pushed the
+           same 15 s ahead.  They can only cook at their own fire (the tap list
+           holds S._campfire alone), so their entry is the one under the pan. */
+        if (S._peerCampfires && S._peerCampfires.size && S.others) {
+          var _pcfKeepAlive = Date.now() + 15000;
+          S._peerCampfires.forEach(function (_pcf, _pid) {
+            var _po = S.others[_pid];
+            if (_pcf && _po && _po._ex === 'cook' && _pcf.expiresAt < _pcfKeepAlive) _pcf.expiresAt = _pcfKeepAlive;
+          });
+        }
         if (S._campfire && Date.now() > S._campfire.expiresAt) {
           S._campfire.alive = false;   // so an in-progress cook cancels
           S._campfire = null;
@@ -6843,6 +6864,34 @@ export var BroTown = function BroTown(_ref0) {
           : null;
         var _exChanged = _exCode !== (S._lastBroadcastEx || null);
         var _exHeartbeat = !!_exCode && (now - (S._lastExBroadcast || 0) > 500);
+        /* ═══ v2.3.2915: AND WHICH TREE ═══
+           Your screen draws the lumberjack at the tree you are chopping
+           (effectsRenderer chopStandInSpot), and you chop from wherever the
+           tree offered you the button -- up to a couple of hundred px from
+           its base.  `ex: 'chop'` says THAT you are chopping, not WHERE, and
+           the worker relays only the fields it knows (tick.js), so a watcher
+           drew your lumberjack at your position, up in the canopy.  This names
+           the tree on the relay that already carries campfire_lit, player_swing
+           and emote: no server change, deploy-order safe both ways (an old
+           watcher ignores the event, a new one without it keeps the old
+           placement).  Sent when the chop starts, then every 2 s so a watcher
+           who arrives mid-chop picks it up -- 0.5/s against the relay's 4/s. */
+        if (_exCode === 'chop' && S.channel && S._extraction && S._extraction.nodeRef) {
+          var _gnRef = S._extraction.nodeRef;
+          var _gnId = S._extraction.nodeId != null ? String(S._extraction.nodeId) : null;
+          if (_gnId !== S._lastGatherNodeId || now - (S._lastGatherNodeAt || 0) > 2000) {
+            S._lastGatherNodeId = _gnId;
+            S._lastGatherNodeAt = now;
+            try {
+              S.channel.send({ type: 'broadcast', event: 'gather_node', payload: {
+                id: S.myId, node: _gnId, x: _gnRef.x, y: _gnRef.y, zone: S.currentZone || 'town',
+              } });
+            } catch (e) {}
+          }
+        } else if (_exCode !== 'chop') {
+          S._lastGatherNodeId = null;
+          S._lastGatherNodeAt = 0;
+        }
         /* v2.3.1107: explicit REST packet on the moving->stopped edge.
            Stopping used to be signaled by SILENCE (the gate below only fires
            while moving), so peers never got a final vx=0/vy=0 + resting

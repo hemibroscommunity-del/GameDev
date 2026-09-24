@@ -369,7 +369,7 @@ export function specialAttack(S) {
       if (S.channel) {
         for (var bvj = 0; bvj < _bowN; bvj++) {
           S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now,
+            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now, el: hasElement || undefined,   /* v2.3.2919: the element these shots are drawn in (hasElement above: the second element first); see monsterCombat's player_projectile */
             delayMs: Math.round(volleyDelayMs(bvj, BOW_VOLLEY.PEER_PX_PER_FRAME)),
             volley: _bowVolley ? 1 : undefined,   /* v2.3.2849: additive -- a peer burns it out on the volley's 2.5 s, not the lone arrow's 4 */
             life: Math.round(90 * _bowStat * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
@@ -501,7 +501,7 @@ export function specialAttack(S) {
         S._staffCastBig = now;
         if (S.channel) {
           S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true,
+            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true, el: hasElement || undefined,   /* v2.3.2919: the element these shots are drawn in (hasElement above: the second element first); see monsterCombat's player_projectile */
             big: true,   /* additive: an older peer draws one charged orb, which is what one bolt is */
             speedPx: _ORB_SPEED,
             life: _bigLife,
@@ -541,7 +541,7 @@ export function specialAttack(S) {
         if (S.channel) {
           for (var _bcj = 0; _bcj < 3; _bcj++) {
             S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-              id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true,
+              id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true, el: hasElement || undefined,   /* v2.3.2919: the element these shots are drawn in (hasElement above: the second element first); see monsterCombat's player_projectile */
               delayMs: _bcj * _ORB_GAP_MS,
               speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
               life: Math.round(_ORB_RANGE_PX / _ORB_SPEEDS[_bcj]), /* v2.3.2592: ...and the same reach */

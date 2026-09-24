@@ -206,8 +206,21 @@ export function updateVisualSystems(S) {
                rule the local orbs follow (projectiles.js), so what a peer
                sees covers the same ground as what the caster sees. */
             /* v2.3.2848: ...or, for a bow volley's arrow, a count of frames (gameEvents.js) */
+            /* ═══ v2.3.2919: AND THE SAME FRAME-RATE TERM AS YOURS ═══
+               Owner: "check all other broadcasted player animations to make
+               sure they match what your character does client side."
+               Your own shot flies and spends its life per 60 Hz TICK -- step x
+               _dtScale, life - _dtScale (projectiles.js) -- so it covers the
+               same ground in the same time at any frame rate.  A peer's copy
+               stepped once per FRAME: on a 30 fps screen (a phone in Low
+               Power Mode, typically) every other player's arrow flew at half speed and
+               hung in the air twice as long as it did on theirs, and its fade
+               came late.  Same term now, clamp included.  The volley's wait
+               below is counted in the same scaled frames it flies in, so the
+               80 px train v2.3.2848 measured still holds at any rate. */
+            var _rpDt = S._dtScale || 1;
             var _rpWait = false;
-            if (rp.holdFrames > 0) { rp.holdFrames--; _rpWait = true; }
+            if (rp.holdFrames > 0) { rp.holdFrames -= _rpDt; _rpWait = true; }
             else if (rp.holdUntil && Date.now() < rp.holdUntil) _rpWait = true;
             if (_rpWait) {
               var _hOwner = S.others[rp.ownerId];
@@ -221,9 +234,9 @@ export function updateVisualSystems(S) {
             rp._held = false;
             /* v2.3.2848: MIRROR-PINNED -- the 8 below is bowVolley.js
                PEER_PX_PER_FRAME; the bow volley staggers a peer's copies by it */
-            var _rpStep = (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8));
+            var _rpStep = (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8)) * _rpDt;   /* v2.3.2919: x the frame-rate term */
             rp.dist += _rpStep;
-            rp.life--;
+            rp.life -= _rpDt;
             if (rp.life <= 0) return false;
             var owner = S.others[rp.ownerId];
             var originX = owner ? (owner.renderX || owner.x) : rp.x;
