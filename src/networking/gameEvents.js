@@ -717,7 +717,7 @@ export function processGameEvent(type, payload, S, deps) {
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */ S.slimeShockwaves = []; /* v2.3.2896: and the slime burst's shockwave */
+              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */ S.slimeShockwaves = []; /* v2.3.2912: and the slime burst's shockwave */
               S.player.x = _ddMX * TILE;
               S.player.y = (_ddH - 3) * TILE;
               S._zoneWipe = Date.now();
@@ -796,7 +796,7 @@ export function processGameEvent(type, payload, S, deps) {
                 S.hitParticles = [];
                 S.deathExplosions = [];
                 S.arrows = [];
-                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */ S.slimeShockwaves = []; /* v2.3.2896: and the slime burst's shockwave */
+                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */ S.slimeShockwaves = []; /* v2.3.2912: and the slime burst's shockwave */
                 S.player.x = Math.floor(_fz.w / 2) * TILE;
                 S.player.y = (_fz.h - 4) * TILE;
                 S._zoneWipe = Date.now();
@@ -1061,7 +1061,7 @@ export function processGameEvent(type, payload, S, deps) {
                      code-drawn impact area by another name.  What is left is
                      what does not look drawn: the camera kick and the sound.
                      A real goo-burst strip is the upgrade here. */
-                  /* ═══ v2.3.2896: A SHOCKWAVE, AND THE SHAKE ONLY IF IT GOT YOU ═══
+                  /* ═══ v2.3.2912: A SHOCKWAVE, AND THE SHAKE ONLY IF IT GOT YOU ═══
                      Owner: "when the slime explodes make an explosion effect
                      like a shockwave in the damage area.  Also if you're
                      within damage radius when it explodes make the screen do

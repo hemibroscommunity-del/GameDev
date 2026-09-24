@@ -1,4 +1,4 @@
-/* v2.3.2896: THE SLIME BURST'S SHOCKWAVE, AND WHO GETS SHAKEN.
+/* v2.3.2912: THE SLIME BURST'S SHOCKWAVE, AND WHO GETS SHAKEN.
  *
  * Owner: "when the slime explodes make an explosion effect like a shockwave
  * in the damage area.  Also if you're within damage radius when it explodes

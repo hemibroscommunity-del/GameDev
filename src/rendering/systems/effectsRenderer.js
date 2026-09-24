@@ -1292,7 +1292,7 @@ function debrisDotTex() {
  * TARGET_PERIMETER_PX (220) on the server side; this is the client end of the
  * same pin. */
 const ARROW_BLAST = { frames: [], url: '/sprites/effects/arrow-blast-v1.webp?v=2.3.2279' };
-/* v2.3.2896: how long the slime burst's shockwave runs (_updateSlimeShockwaves). */
+/* v2.3.2912: how long the slime burst's shockwave runs (_updateSlimeShockwaves). */
 const SLIME_WAVE_MS = 460;
 const ARROW_BLAST_MS = 620;        /* ~78ms a frame -- a bang, not a bloom */
 const ARROW_BLAST_D = 220 * 2;     /* drawn world px across, = 2 x the blast radius */
@@ -9185,7 +9185,7 @@ export class EffectsRenderer {
     this._updateSlimeShockwaves(S, now);
   }
 
-  /* ═══ v2.3.2896: THE SLIME'S BLAST HAS A SHOCKWAVE ═══
+  /* ═══ v2.3.2912: THE SLIME'S BLAST HAS A SHOCKWAVE ═══
      Owner: "when the slime explodes make an explosion effect like a
      shockwave in the damage area".  This is a deliberate reversal of
      v2.3.2226 ("remove code drawn impact areas for slime death") by the same
