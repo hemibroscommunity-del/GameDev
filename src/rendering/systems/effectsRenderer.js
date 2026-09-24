@@ -172,6 +172,76 @@ function _probeStandInSkin(key, cv, opts) {
       : { n: 0 };
   } catch (e) { /* a probe never breaks a bake */ }
 }
+
+/* ═══ v2.3.2855: THE LUMBERJACK'S BAKE, SHARED BY YOUR FIGURE AND A PEER'S ═══
+   See _bakeChopStrips and _peerChopFrames.  The three canvases this figure
+   carries -- it keeps its painted trousers, so the trouser drawings have no
+   garment of the player's to sit on. */
+const CHOP_INK_KEYS = ['tattooFace', 'tattoo', 'tattooArm'];
+const PEER_CHOP_CAP = 2;            /* drawn peers' figures held at once */
+const PEER_CHOP_IDLE_MS = 15000;    /* released this long after the last frame that drew one */
+/** Would the pre-flipped bake differ from the plain one?  Only when a drawing
+ *  that gets stamped is not its own mirror image -- see _bakeChopStrips. */
+function _chopArtAsymmetric(art) {
+  return !!art && CHOP_INK_KEYS.some((k) => artHasInk(art[k]) && !artIsSymmetric(art[k]));
+}
+/** A peer's three skin drawings, through the same sanitiser every peer drawing
+ *  passes (entityRenderer's _remoteBodyArt), or null when they have none. */
+function _peerChopArt(o) {
+  const t = sanitizeShirtArt(o && o.tattooArt), ft = sanitizeShirtArt(o && o.faceTattooArt);
+  const at = sanitizeShirtArt(o && o.armTattooArt);
+  return (t || ft || at) ? { tattoo: t || '', tattooFace: ft || '', tattooArm: at || '' } : null;
+}
+/** The axe as the FILE has it, read before anything is painted: the recolour
+ *  finds the key by hue and the drawing palette's pink (#d76ba8) sits inside
+ *  that window -- the fishing rod's lesson (v2.3.2854), where a pink tattoo
+ *  turned to pine.  Here it would have turned to copper. */
+function _chopKeyMask(img) {
+  const w = img.width, h = img.height;
+  const g = img.getContext('2d', { willReadFrequently: true });
+  return toolKeyMask(g.getImageData(0, 0, w, h).data, w, h);
+}
+/** One lumberjack strip (the twelve played frames, 240x220): the skin, the
+ *  drawings, then the axe's copper and pine -- AFTER the skin, because the key
+ *  is what keeps the skin classifier off the axe (v2.3.2761).  `img` is one of
+ *  the key-intact crops in _chopSrc; recolorStandInSkin draws it into a canvas
+ *  of its own, so a later rebake always starts from the untouched art. */
+function _bakeChopStrip(img, keyMask, skinT, art, statKey, keepCanvas) {
+  const FW = 240, FH = 220, COUNT = 12;
+  const cv = recolorStandInSkin(img, skinT, FH, { minBlob: CHOP_MIN_BLOB, art, regions: CHOP_INK_REGIONS });
+  recolorToolKeyCanvas(cv, TOOL_SPECS.axe, 1, keyMask);
+  /* v2.3.2775: every stand-in bake is cropped to its art and the full canvas
+     released -- see _sliceStandIn.  `keepCanvas` for a caller that still has
+     to measure it (the skin probe); it zeroes the canvas itself afterwards. */
+  return { arr: _sliceStandIn(cv, FW, FH, COUNT, statKey, keepCanvas), cv };
+}
+
+/* ═══ v2.3.2856: THE COOK'S DRAWINGS RIDE A LAYER OF THEIR OWN ═══
+   See _bakeCookStrips.  The cook's skin bake is shared: other players' cooks
+   are drawn from it (the SPEC table's v2.3.1713 note), so your drawings cannot
+   be baked into it or every cook at every campfire would wear them.  They go
+   on a layer drawn over it instead -- only the pixels they change, cropped: at
+   most about half the figure's 4.5 MB per strip (every cell of the face, both
+   arms and the chest drawn), and a small drawing a sliver of it. */
+const COOK_FW = 213, COOK_FH = 220;
+/* v2.3.2858: per figure -- the cook's and the fire-lighter's caches each hold
+   this many (_peerStandInInk). */
+const PEER_INK_CAP = 2;             /* drawn peers' layers held at once */
+const PEER_INK_IDLE_MS = 15000;     /* released this long after the last frame that drew one */
+const COOK_URL = { body: '/sprites/skills/cook-strip.webp', legless: '/sprites/skills/cook-strip-legless.webp' };
+function _loadStandInImg(url) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = rej;
+    im.src = url;
+  });
+}
+/** One cook strip, split: the skin bake (`cv`, the shared figure) and the
+ *  drawings' layer (`ink`, a canvas, or null when there are none). */
+function _bakeCookSplit(img, skinT, art) {
+  return recolorStandInSkinSplit(img, skinT, COOK_FH, { keepX: COOK_KEEP_X, art, regions: COOK_INK_REGIONS });
+}
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale, depthK /* v2.3.2790 */ } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
@@ -206,8 +276,8 @@ import { CampfireFx } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfir
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
-import { onArtChange, artHasInk, artIsSymmetric } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
+import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings; v2.3.2856: + the split bake (the cook's drawings on a layer) */
+import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame, packTrimmed, registerGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
@@ -375,7 +445,8 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
-import { recolorToolKeyCanvas, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark */
+import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask */
+import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { SHADE } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks */
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
@@ -431,6 +502,23 @@ export const FIRE_FRAME_MS = 67;
    1800 sits in it.  Keeping 200 would have retinted that rim, i.e. drawn the
    flame's outline in the player's skin colour on the last three frames. */
 const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
+/* ═══ v2.3.2858: THE FIRE-LIGHTER'S DRAWINGS RIDE A LAYER OF THEIR OWN ═══
+   The cook's arrangement (_bakeCookStrips), for the cook's reason: this bake is
+   shared with every other player's fire-lighter on your screen (the SPEC
+   table).  One strip, no legless twin.  FIRE_KEEP_BOXES puts the fist's
+   islands back into the figure for everybody, drawings or not. */
+const FIRE_URL = '/sprites/skills/firemaking-strip.webp?v=2.3.1715';
+function _bakeFireSplit(img, skinT, art) {
+  return recolorStandInSkinSplit(img, skinT, FIRE_FH, { ...FIRE_SKIN_OPTS, frameW: FIRE_FW,
+    keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS });
+}
+/* The drawn-peer layers, per figure (_peerStandInInk): the strip a variant
+   loads, its frame size and the split bake.  The cook's variant is its legless
+   strip; the fire-lighter has none. */
+const STANDIN_INK = Object.freeze({
+  cook: { fw: COOK_FW, fh: COOK_FH, url: (v) => (v ? COOK_URL.legless : COOK_URL.body), bake: _bakeCookSplit },
+  fire: { fw: FIRE_FW, fh: FIRE_FH, url: () => FIRE_URL, bake: _bakeFireSplit },
+});
 
 /* ═══ v2.3.1723: PER-FRAME GEAR REGISTRATION for the firemaking pose ═══
    Owner playtest, on being shown the composited figure: the shirt and the
@@ -2382,6 +2470,8 @@ export class EffectsRenderer {
        own chopper draws from the skin-baked pair below. */
     this._chopSkinFrames = [];
     this._chopLeglessSkinFrames = [];
+    this._chopSkinFramesFlip = null;          /* v2.3.2855: the pre-flipped twins -- see _bakeChopStrips */
+    this._chopLeglessSkinFramesFlip = null;
     this._loadChopSkinStrips(_chopBody, _chopLegless);
 
     /* v2.3.1131: gear layers for the woodcutting chopper (mirror of the cook
@@ -2417,6 +2507,14 @@ export class EffectsRenderer {
     this.cookSprite.anchor.set(0.5, 1);
     this.cookSprite.visible = false;
     this.gestureLayer.addChild(this.cookSprite);   /* v2.3.1713: above trees */
+    /* v2.3.2856: your drawings, on a layer of their own over the cook (see
+       _bakeCookStrips).  Created straight after the body so everything the
+       cook wears -- greaves, shirt, plate, then the head traits -- is created
+       after it and covers the drawings the way clothes cover the body's. */
+    this.cookInkSprite = new Sprite();
+    this.cookInkSprite.anchor.set(0.5, 1);
+    this.cookInkSprite.visible = false;
+    this.gestureLayer.addChild(this.cookInkSprite);
     /* v2.3.1114: leg-armour layer for the cook stand-in -- the equipped greaves
        drawn over the cook's legs, untinted (armour keeps its own metal colour),
        shown only when leg armour is equipped. Same 24-frame 213x220 cook strip
@@ -2455,12 +2553,22 @@ export class EffectsRenderer {
        stay pixel-identical apart from the erased legs. */
     this._cookFrames = [];
     this._cookLeglessFrames = [];
+    this._cookFramesInk = null;            /* v2.3.2856: your drawings' layers -- null when you have none */
+    this._cookLeglessFramesInk = null;
     this._loadCookStrips();
 
     this.fireSprite = new Sprite();
     this.fireSprite.anchor.set(0.5, 1);
     this.fireSprite.visible = false;
     this.gestureLayer.addChild(this.fireSprite);   /* v2.3.1713: above trees */
+    /* v2.3.2858: your drawings' layer over the fire-lighter -- the cook's
+       cookInkSprite, created straight after the body for the same reason:
+       greaves, shirt and plate, created after it, cover it. */
+    this.fireInkSprite = new Sprite();
+    this.fireInkSprite.anchor.set(0.5, 1);
+    this.fireInkSprite.visible = false;
+    this.gestureLayer.addChild(this.fireInkSprite);
+    this._fireFramesInk = null;
     /* v2.3.1715: the fire-lighter's LEG ARMOUR, the cook's cookLegsSprite for
        this pose (v2.3.1114).  Added BEFORE the shirt so the shirt draws in
        front of it — the owner's woodcutting note ("the shirt should be layered
@@ -3261,8 +3369,45 @@ export class EffectsRenderer {
        the cook and the fire-lighter do -- but from the images already in hand,
        so this one costs no network at all. */
     onSkinChange(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } });
+    /* v2.3.2855: and when one of the three drawings the lumberjack carries
+       changes.  The designer commits every STROKE through setArt, so this waits
+       for the strokes to stop rather than rebaking both strips per stroke; the
+       figure is not on screen while you draw.  Other canvases (shirt, trousers)
+       are not stamped on this figure and are ignored. */
+    let _chopArtT = 0;
+    onArtChange((id) => {
+      if (id !== 'tattoo' && id !== 'tattooFace' && id !== 'tattooArm') return;
+      clearTimeout(_chopArtT);
+      _chopArtT = setTimeout(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } }, 400);
+    });
   }
 
+  /* ═══ v2.3.2855: THE LUMBERJACK CARRIES YOUR DRAWINGS ═══
+   *
+   * Owner: "yes make tattoos stay on while harvesting resources", then "Yea do
+   * woodcutting".  This bake gave the figure your skin (v2.3.2500) and nothing
+   * else, so a face, chest or arm tattoo vanished the moment you started
+   * chopping and came back when you stopped.  The body's own stamp cannot be
+   * pointed at this art -- its face/chest/arm split is tuned to the walking
+   * body, and on this figure it inked the raised hands as face and the arm
+   * across the chest as chest -- so the regions are fitted by hand, per frame,
+   * in standInInk.js, and recolorStandInSkin stamps into them.
+   *
+   * Two more things came with it:
+   *
+   * THE HEAD WAS NEVER RECOLOURED ON HALF THE SWING.  recolorStandInSkin skips
+   * skin islands under a floor meant for the COOK's frying fish (1500 px), and
+   * on frames 6..11 this figure's head is its own island of ~1240 px.  So with
+   * any skin but the default the lumberjack's head flashed back to the artist's
+   * orange for half of every swing, and his fingers and far arm never changed
+   * at all.  CHOP_MIN_BLOB (standInInk.js) has the measurement.
+   *
+   * THE FLIPPED FIGURE GETS ITS OWN BAKE.  The art faces right and is drawn
+   * flipped when the tree is on your left, which reads a drawing backwards --
+   * the swing and bow stand-ins' problem, solved the same way (v2.3.2429 /
+   * v2.3.2431): a second, pre-flipped bake, made only when a drawing is not its
+   * own mirror image.  2.5 MB per strip, so a player whose drawings are
+   * symmetric (the designer's Mirror tool) or blank pays nothing. */
   _bakeChopStrips() {
     const bodyImg = this._chopSrc && this._chopSrc.body;
     const leglessImg = this._chopSrc && this._chopSrc.legless;
@@ -3270,30 +3415,114 @@ export class EffectsRenderer {
     /* skinTarget() returns null for the 'default' pick -- see the cook's bake
        for why that cannot stand for a painted stand-in. */
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
-    const FW = 240, FH = 220, COUNT = 12;
+    /* v2.3.2855: the figure faces east in its source (the trait crown is
+       composited 'east' too), so it takes the FRONT drawings. */
+    const _base = localBodyArt(false);
+    const _art = _base ? artForFacing(_base, 'east') : null;
+    const _twin = _chopArtAsymmetric(_art);
+    /* v2.3.2855: the strips this replaces, released once nothing draws them.
+       A rebake used to leave the old textures to Pixi's idle collector (about
+       a minute); with drawings in the bake it runs every time you pause while
+       drawing, which is up to four 2.5 MB strips per pause. */
+    const _old = [this._chopSkinFrames, this._chopLeglessSkinFrames,
+      this._chopSkinFramesFlip, this._chopLeglessSkinFramesFlip];
     for (const [key, img] of [['_chopSkinFrames', bodyImg], ['_chopLeglessSkinFrames', leglessImg]]) {
       /* Crop to the played frames FIRST, then recolour: the classifier labels
          connected blobs, and the cut lands on a frame boundary, so cropping
-         changes no blob and costs half the canvas. */
-      /* v2.3.2761: _chopSrc holds the played frames ALREADY cropped (see the
-         loader), so this copies it whole -- recolorStandInSkin must not write
-         into the source a later skin change rebakes from. */
-      const src = document.createElement('canvas');
-      src.width = FW * COUNT; src.height = FH;
-      const sctx = src.getContext('2d');
-      sctx.imageSmoothingEnabled = false;
-      sctx.drawImage(img, 0, 0, FW * COUNT, FH, 0, 0, FW * COUNT, FH);
-      const cv = recolorStandInSkin(src, skinT, FH);
-      /* v2.3.2761: the axe's copper and pine, AFTER the skin (the key is what
-         keeps the skin classifier off the axe). */
-      recolorToolKeyCanvas(cv, TOOL_SPECS.axe);
-      const arr = _sliceStandIn(cv, FW, FH, COUNT, key, true);   /* v2.3.2775: cropped; released after the probe below */
-      this[key] = arr;
+         changes no blob and costs half the canvas.  (v2.3.2761: _chopSrc holds
+         the played frames already cropped -- see the loader.) */
+      const _keyMask = _chopKeyMask(img);
+      /* v2.3.2775: cropped (_sliceStandIn), the full bake kept only until the
+         probe below has read it. */
+      const _plain = _bakeChopStrip(img, _keyMask, skinT, _art ? { ..._art, mirror: false } : null, key, true);
+      this[key] = _plain.arr;
+      this[key + 'Flip'] = _twin
+        ? _bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false).arr : null;   /* v2.3.2855: see above */
       /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
          bow bakes publish -- see _probeStandInSkin. */
-      _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', cv);
-      if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
+      _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', _plain.cv);
+      if (_plain.arr.cropped) { _plain.cv.width = 0; _plain.cv.height = 0; }   /* v2.3.2775 */
     }
+    const sp = this.chopSprite;
+    for (const arr of _old) {
+      const src = arr && arr[0] && arr[0].source;
+      if (!src) continue;
+      /* Nothing may keep holding it: a hidden sprite with a destroyed source
+         crashes the frame it is next shown (CLAUDE.md, v2.3.2651). */
+      if (sp && sp.texture && sp.texture.source === src) sp.texture = Texture.EMPTY;
+      try { src.destroy(); } catch (e) { /* already gone */ }
+    }
+  }
+
+  /* ═══ v2.3.2855: ANOTHER PLAYER'S LUMBERJACK CARRIES THEIR DRAWINGS ═══
+   *
+   * A peer's lumberjack is drawn from ONE shared figure, the raw art -- the
+   * per-peer bake that would give each of them their own look was turned down
+   * for phone memory (v2.3.1713 / v2.3.2303, see the SPEC table).  So a peer's
+   * tattoos vanished the moment they started chopping, on every screen but
+   * their own.
+   *
+   * This bakes a figure per LOOK only for a peer who has something to show --
+   * a face, chest or arm drawing -- only while they are chopping, and no more
+   * than PEER_CHOP_CAP of them at once; each is released PEER_CHOP_IDLE_MS
+   * after nobody has drawn it.  A peer with no drawings, or one past the cap,
+   * keeps the shared figure exactly as before.  One strip is 2.5 MB, so the
+   * most this can hold is two of those, and only while two drawn peers chop
+   * in view.  The same bake carries their skin tone -- the ink is shaded by
+   * the skin under it, so it is made against theirs.
+   *
+   * Their drawings cannot be known at load, which is the exception CLAUDE.md's
+   * preload law names (a remote player's arbitrary look), and it is how the
+   * walking body treats them too: the shared figure draws until the bake lands,
+   * one bake per turn of the event loop. */
+  _peerChopFrames(o, legless, flip, now) {
+    const art = _peerChopArt(o);
+    if (!art) return null;
+    const img = this._chopSrc && this._chopSrc[legless ? 'legless' : 'body'];
+    if (!img) return null;
+    /* A symmetric drawing reads the same flipped, so both sides share a bake. */
+    const m = !!flip && _chopArtAsymmetric(art);
+    const key = (legless ? 'L' : 'B') + (m ? 'm' : 'n') + '|' + String(o.skin || '') + '|'
+      + CHOP_INK_KEYS.map((k) => (artHasInk(art[k]) ? artHash(art[k]) : '')).join('.');
+    const cache = this._peerChopBakes || (this._peerChopBakes = new Map());
+    const hit = cache.get(key);
+    if (hit) { hit.used = now; return hit.arr; }
+    if (this._peerChopPending) return null;
+    if (cache.size >= PEER_CHOP_CAP) {
+      /* Full: make room only from a figure nobody drew in the last second, so
+         a third drawn peer waits in the shared figure rather than two of them
+         taking turns being rebaked. */
+      let lruKey = null, lruUsed = Infinity;
+      for (const [k2, e] of cache) if (e.used < lruUsed) { lruUsed = e.used; lruKey = k2; }
+      if (lruKey == null || now - lruUsed < 1000) return null;
+      this._dropPeerChop(lruKey);
+    }
+    this._peerChopPending = true;
+    const skinT = skinTarget(o.skin) || DEFAULT_SKIN_TARGET;
+    setTimeout(() => {
+      this._peerChopPending = false;
+      try {
+        const baked = _bakeChopStrip(img, _chopKeyMask(img), skinT, { ...art, mirror: m }, null, false);
+        cache.set(key, { arr: baked.arr, used: now });
+      } catch (e) { /* the shared figure keeps drawing */ }
+    }, 0);
+    return null;
+  }
+
+  _dropPeerChop(key) {
+    const cache = this._peerChopBakes;
+    const e = cache && cache.get(key);
+    if (!e) return;
+    cache.delete(key);
+    const src = e.arr && e.arr[0] && e.arr[0].source;
+    if (!src) return;
+    /* See _bakeChopStrips: nothing may hold a destroyed source. */
+    if (this._remoteSkillSprites) {
+      for (const ent of this._remoteSkillSprites.values()) {
+        if (ent.chop && ent.chop.texture && ent.chop.texture.source === src) ent.chop.texture = Texture.EMPTY;
+      }
+    }
+    try { src.destroy(); } catch (err) { /* already gone */ }
   }
 
   /* ═══ v2.3.1710: THE COOK WEARS THE PLAYER'S SKIN ═══
@@ -3324,6 +3553,16 @@ export class EffectsRenderer {
     /* The character menu can change the skin mid-session, so rebake on it the
        way the sword/bow stand-ins do (_rebakeBodies, v2.3.975). */
     onSkinChange(() => { this._fetchAndBakeCook(); });
+    /* v2.3.2856: and the drawings' layer when one of the three drawings the
+       cook carries changes -- once the strokes stop, as the lumberjack does
+       (the designer commits every stroke; the cook is not on screen while you
+       draw).  Only the layer is rebuilt: the figure under it has not changed. */
+    let _cookArtT = 0;
+    onArtChange((id) => {
+      if (id !== 'tattoo' && id !== 'tattooFace' && id !== 'tattooArm') return;
+      clearTimeout(_cookArtT);
+      _cookArtT = setTimeout(() => { this._fetchAndBakeCook(true); }, 400);
+    });
   }
 
   /* Fetch both cook sheets, bake the player's skin in, and let the decoded
@@ -3336,36 +3575,149 @@ export class EffectsRenderer {
      under GPU+canvas pressure).  A rebake instead re-fetches, which the HTTP
      cache serves from disk, and it happens behind the character menu — never
      mid-play, so the preloading LAW is not in tension with it. */
-  _fetchAndBakeCook() {
-    const load = (url) => new Promise((res, rej) => {
-      const im = new Image();
-      im.onload = () => res(im);
-      im.onerror = rej;
-      im.src = url;
-    });
+  _fetchAndBakeCook(inkOnly) {
     return Promise.all([
-      load('/sprites/skills/cook-strip.webp'),
-      load('/sprites/skills/cook-strip-legless.webp'),
+      _loadStandInImg(COOK_URL.body),
+      _loadStandInImg(COOK_URL.legless),
     ]).then(([body, legless]) => {
-      this._bakeCookStrips(body, legless);
+      this._bakeCookStrips(body, legless, !!inkOnly);
     }).catch((err) => console.warn('[cook-strip] load failed', err));
   }
 
-  _bakeCookStrips(bodyImg, leglessImg) {
+  /* ═══ v2.3.2856: THE COOK CARRIES YOUR DRAWINGS ═══
+   *
+   * Owner: "Yea do woodcutting and missing ones."  This bake gave the cook your
+   * skin (v2.3.1710) and nothing else, so a face, chest or arm tattoo vanished
+   * while you cooked.  The regions are fitted by hand, as the lumberjack's are
+   * (standInInk.js, COOK_INK_REGIONS), and the same stamp puts them there.
+   *
+   * THE DRAWINGS ARE A SEPARATE LAYER, NOT PART OF THIS BAKE.  The arrays below
+   * are what every OTHER player's cook is drawn from too (the SPEC table in
+   * _updateRemoteExtraction), so a drawing baked in here would appear on every
+   * cook at every campfire on your screen.  Keeping a second, private copy of
+   * the figure would cost 9 MB for the two strips (the cook fills his frames,
+   * so cropping saves nothing on him); the layer holds only the pixels the
+   * drawings change (recolorStandInSkinSplit), cropped per frame -- 2.2 and
+   * 2.3 MB for the most ink a player can draw, measured by mp-cookink -- and it
+   * exists only for a player who has drawn something.  cookInkSprite
+   * draws it over the figure, under the clothes.
+   *
+   * THE FINGERS.  The same bake now recolours the fingers on the pan's handle,
+   * which the fish's size floor had left in the artist's orange (COOK_KEEP_X).
+   *
+   * `inkOnly` rebuilds the layer and leaves the figure's textures alone -- a
+   * drawing change does not change the figure, and the bake has to run in full
+   * anyway (the drawings are shaded by the skin under them). */
+  _bakeCookStrips(bodyImg, leglessImg, inkOnly) {
     /* skinTarget() returns null for the 'default' pick, which for the PLAYER
        sheets means "the art is already this colour".  It is not true of this
        painting, so default falls back to the explicit tan — that is the whole
        point of the fix for anyone who never opened the skin picker. */
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
-    const FW = 213, FH = 220;
+    const FW = COOK_FW, FH = COOK_FH;
+    /* v2.3.2856: the cook faces the camera and is never drawn flipped, so his
+       drawings are the FRONT ones, as painted -- no mirrored twin. */
+    const _base = localBodyArt(false);
+    const _art = _base ? artForFacing(_base, 'south') : null;
+    const _old = [];
     for (const [key, img] of [['_cookFrames', bodyImg], ['_cookLeglessFrames', leglessImg]]) {
-      const cv = recolorStandInSkin(img, skinT, FH);
+      const { cv, ink } = _bakeCookSplit(img, skinT, _art ? { ..._art, mirror: false } : null);
       const n = Math.max(1, Math.round(cv.width / FW));
-      const arr = _sliceStandIn(cv, FW, FH, n, key, true);   /* v2.3.2775: cropped; released after the probe */
-      this[key] = arr;
-      _probeStandInSkin('/sprites/skills/cook' + (key === '_cookFrames' ? '' : '-legless') + '-strip.webp', cv);   /* v2.3.2500 */
-      if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
+      if (!inkOnly) {
+        _old.push(this[key]);
+        const arr = _sliceStandIn(cv, FW, FH, n, key, true);   /* v2.3.2775: cropped; released after the probe */
+        this[key] = arr;
+        _probeStandInSkin('/sprites/skills/cook' + (key === '_cookFrames' ? '' : '-legless') + '-strip.webp', cv);   /* v2.3.2500 */
+        if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
+      } else {
+        cv.width = 0; cv.height = 0;
+      }
+      _old.push(this[key + 'Ink']);
+      this[key + 'Ink'] = ink ? _sliceStandIn(ink, FW, FH, n, key + 'Ink', false) : null;
     }
+    /* v2.3.2856: the textures these replace, released once nothing draws them
+       -- a rebake follows every pause while you draw, so leaving each old pair
+       to Pixi's idle collector would stack them up.  Other players' cooks draw
+       from the figure too, so their sprites are let go of it as well (a hidden
+       sprite with a destroyed source crashes the frame it is next shown,
+       CLAUDE.md v2.3.2651); the next frame gives every one the new strip. */
+    const _sprites = [this.cookSprite, this.cookInkSprite];
+    if (this._remoteSkillSprites) for (const ent of this._remoteSkillSprites.values()) if (ent.cook) _sprites.push(ent.cook);
+    for (const arr of _old) {
+      const src = arr && arr[0] && arr[0].source;
+      if (!src) continue;
+      for (const sp of _sprites) if (sp && sp.texture && sp.texture.source === src) sp.texture = Texture.EMPTY;
+      try { src.destroy(); } catch (e) { /* already gone */ }
+    }
+  }
+
+  /* ═══ v2.3.2856: ANOTHER PLAYER'S COOK CARRIES THEIR DRAWINGS ═══
+   *
+   * A peer's cook is the shared figure above -- your skin, as the SPEC table's
+   * note says, and no drawings at all.  This makes the drawings' layer for a
+   * peer who has something to show, only while they cook, no more than
+   * PEER_INK_CAP at once, each released PEER_INK_IDLE_MS after nobody drew
+   * it: the lumberjack's rules (_peerChopFrames), for a layer of at most about
+   * half a figure instead of a whole one.  Their skin is still yours underneath
+   * -- that trade is the SPEC note's, unchanged -- but the drawings are shaded
+   * by THEIR skin, as they see them.
+   *
+   * Their drawings cannot be known at load (CLAUDE.md's named exception), and
+   * the cook keeps no source image resident (see _fetchAndBakeCook's note), so
+   * the first time a drawn peer cooks the strip is fetched again -- from the
+   * HTTP cache -- and they cook bare until the layer lands.
+   *
+   * v2.3.2858: the same for another player's FIRE-LIGHTER, whose figure is
+   * shared the same way: `kind` picks the figure (STANDIN_INK), each with a
+   * cache of its own, so a campfire of cooks cannot starve the fire-lighters.
+   * `variant` is the cook's legless strip; the fire-lighter has one strip. */
+  _peerStandInInk(kind, o, variant, now) {
+    const art = _peerChopArt(o);
+    if (!art) return null;
+    const spec = STANDIN_INK[kind];
+    const key = (variant ? 'L' : 'B') + '|' + String(o.skin || '') + '|'
+      + CHOP_INK_KEYS.map((k) => (artHasInk(art[k]) ? artHash(art[k]) : '')).join('.');
+    const caches = this._peerInks || (this._peerInks = Object.create(null));
+    const cache = caches[kind] || (caches[kind] = new Map());
+    const hit = cache.get(key);
+    if (hit) { hit.used = now; return hit.arr; }
+    const pending = this._peerInkPending || (this._peerInkPending = Object.create(null));
+    if (pending[kind]) return null;
+    if (cache.size >= PEER_INK_CAP) {
+      /* Full: make room only from a layer nobody drew in the last second, so
+         a third drawn peer waits bare rather than two taking turns rebaking. */
+      let lruKey = null, lruUsed = Infinity;
+      for (const [k2, e] of cache) if (e.used < lruUsed) { lruUsed = e.used; lruKey = k2; }
+      if (lruKey == null || now - lruUsed < 1000) return null;
+      this._dropPeerStandInInk(kind, lruKey);
+    }
+    pending[kind] = true;
+    const skinT = skinTarget(o.skin) || DEFAULT_SKIN_TARGET;
+    _loadStandInImg(spec.url(variant)).then((img) => {
+      const { cv, ink } = spec.bake(img, skinT, { ...art, mirror: false });
+      const n = Math.max(1, Math.round(cv.width / spec.fw));
+      cv.width = 0; cv.height = 0;   /* the figure is the shared one; only the layer is kept */
+      cache.set(key, { arr: ink ? _sliceStandIn(ink, spec.fw, spec.fh, n, null, false) : [], used: now });
+    }).catch(() => { /* the shared figure keeps drawing, bare */ })
+      .then(() => { pending[kind] = false; });
+    return null;
+  }
+
+  _dropPeerStandInInk(kind, key) {
+    const cache = this._peerInks && this._peerInks[kind];
+    const e = cache && cache.get(key);
+    if (!e) return;
+    cache.delete(key);
+    const src = e.arr && e.arr[0] && e.arr[0].source;
+    if (!src) return;
+    /* See _bakeCookStrips: nothing may hold a destroyed source. */
+    const slot = kind + 'Ink';   /* ent.cookInk / ent.fireInk */
+    if (this._remoteSkillSprites) {
+      for (const ent of this._remoteSkillSprites.values()) {
+        if (ent[slot] && ent[slot].texture && ent[slot].texture.source === src) ent[slot].texture = Texture.EMPTY;
+      }
+    }
+    try { src.destroy(); } catch (err) { /* already gone */ }
   }
 
   /* ═══ v2.3.1713: THE FIRE-LIGHTER WEARS THE PLAYER'S SKIN ═══
@@ -3408,6 +3760,14 @@ export class EffectsRenderer {
     /* The character menu can change the skin mid-session; rebake exactly as the
        cook does (_loadCookStrips, v2.3.1710). */
     onSkinChange(() => { this._fetchAndBakeFire(); });
+    /* v2.3.2858: and the drawings' layer, once the strokes stop -- the cook's
+       rule (_loadCookStrips); only the layer is rebuilt. */
+    let _fireArtT = 0;
+    onArtChange((id) => {
+      if (id !== 'tattoo' && id !== 'tattooFace' && id !== 'tattooArm') return;
+      clearTimeout(_fireArtT);
+      _fireArtT = setTimeout(() => { this._fetchAndBakeFire(true); }, 400);
+    });
   }
 
   /* Fetch the fire body strip, bake the player's skin in, and let the decoded
@@ -3415,29 +3775,49 @@ export class EffectsRenderer {
      to ~4.1MB of RGBA, and iPhone Safari's OOM history is written up in
      spriteScale.js).  A rebake re-fetches from the HTTP cache and only ever
      happens behind the character menu, never mid-play. */
-  _fetchAndBakeFire() {
-    return new Promise((res, rej) => {
-      const im = new Image();
-      im.onload = () => res(im);
-      im.onerror = rej;
-      /* v2.3.1715: cache-bust.  The file KEPT its name through the 29-frame ->
-         8-frame replacement (so every reference and the preload registration
-         stay put), which means a browser holding the old 4669x220 image would
-         slice it at the new 384 width into 12 nonsense frames.  The query is
-         what makes the swap safe. */
-      im.src = '/sprites/skills/firemaking-strip.webp?v=2.3.1715';
-    }).then((img) => {
+  _fetchAndBakeFire(inkOnly) {
+    /* v2.3.1715: cache-bust.  The file KEPT its name through the 29-frame ->
+       8-frame replacement (so every reference and the preload registration
+       stay put), which means a browser holding the old 4669x220 image would
+       slice it at the new 384 width into 12 nonsense frames.  The query (in
+       FIRE_URL) is what makes the swap safe. */
+    return _loadStandInImg(FIRE_URL).then((img) => {
       /* skinTarget() returns null for the 'default' pick, which means "the art
          is already this colour" — true of the PLAYER sheets, not of this
          painting, so default falls back to the explicit tan.  That is the whole
          point of the fix for anyone who never opened the skin picker. */
       const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
-      const cv = recolorStandInSkin(img, skinT, FIRE_FH, FIRE_SKIN_OPTS);
+      /* v2.3.2858: split, as the cook's is -- the figure every fire-lighter on
+         your screen is drawn from, and your drawings' layer over it.  He faces
+         the camera and is never flipped: the FRONT drawings, as painted. */
+      const _base = localBodyArt(false);
+      const _art = _base ? artForFacing(_base, 'south') : null;
+      const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null);
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
-      const arr = _sliceStandIn(cv, FIRE_FW, FIRE_FH, n, '_fireFrames', true);   /* v2.3.2775: cropped; released after the probe */
-      this._fireFrames = arr;
-      _probeStandInSkin('/sprites/skills/firemaking-strip.webp', cv, FIRE_SKIN_OPTS);   /* v2.3.2500: measured through the bake's own window -- see _probeStandInSkin */
-      if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
+      const _old = [];
+      if (!inkOnly) {
+        _old.push(this._fireFrames);
+        const arr = _sliceStandIn(cv, FIRE_FW, FIRE_FH, n, '_fireFrames', true);   /* v2.3.2775: cropped; released after the probe */
+        this._fireFrames = arr;
+        _probeStandInSkin('/sprites/skills/firemaking-strip.webp', cv, FIRE_SKIN_OPTS);   /* v2.3.2500: measured through the bake's own window -- see _probeStandInSkin */
+        if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
+      } else {
+        cv.width = 0; cv.height = 0;
+      }
+      _old.push(this._fireFramesInk);
+      this._fireFramesInk = ink ? _sliceStandIn(ink, FIRE_FW, FIRE_FH, n, '_fireFramesInk', false) : null;
+      /* v2.3.2858: the replaced textures, released as the cook's are (see
+         _bakeCookStrips) -- a skin change used to leave the old strip to
+         Pixi's idle collector, and a drawing change now rebakes too.  Other
+         players' fire-lighters draw from the figure, so they let go first. */
+      const _sprites = [this.fireSprite, this.fireInkSprite];
+      if (this._remoteSkillSprites) for (const ent of this._remoteSkillSprites.values()) if (ent.fire) _sprites.push(ent.fire);
+      for (const arr of _old) {
+        const src = arr && arr[0] && arr[0].source;
+        if (!src) continue;
+        for (const sp of _sprites) if (sp && sp.texture && sp.texture.source === src) sp.texture = Texture.EMPTY;
+        try { src.destroy(); } catch (e) { /* already gone */ }
+      }
     }).catch((err) => console.warn('[firemaking-strip] load failed', err));
   }
 
@@ -9404,6 +9784,7 @@ export class EffectsRenderer {
 
   _updateFiremaking(S, now) {
     if (this.fireSprite) this.fireSprite.visible = false;
+    if (this.fireInkSprite) this.fireInkSprite.visible = false;   /* v2.3.2858 */
     /* v2.3.1713: the shirt hides with the body — it is a separate sprite on the
        same layer, so an early return below would otherwise leave a floating
        shirt behind when the light finishes or the player dies mid-light. */
@@ -9465,6 +9846,19 @@ export class EffectsRenderer {
       });
     }
     sp.visible = true;
+    /* v2.3.2858: your drawings' layer, on the same frame with the figure's
+       exact transform (see _fetchAndBakeFire). */
+    const _fInk = this._fireFramesInk && this._fireFramesInk[fi];
+    const fsp = this.fireInkSprite;
+    if (fsp) {
+      if (_fInk) {
+        fsp.texture = _fInk;
+        fsp.scale.set(sp.scale.x, sp.scale.y);
+        fsp.x = sp.x; fsp.y = sp.y;
+        fsp.visible = true;
+      }
+      sp._fireK = fi;   /* for mp-fireink: which frame both sprites are on */
+    }
     /* ═══ v2.3.1713: THE SHIRT ═══
        Owner: "when lighting a fire the skin color and SHIRT go back to defaults."
        The shirt half was never a tint bug — this pose simply had no shirt.
@@ -9542,9 +9936,14 @@ export class EffectsRenderer {
     const zone = (S && S.currentZone) || 'town';
     /* hide every pooled sprite up front; the active ones re-show below. */
     for (const ent of pool.values()) {
+      /* v2.3.2858: was this peer's figure drawn last frame?  (The clock below.) */
+      ent._wasOn = !!ent._onNow;
+      ent._onNow = false;
       if (ent.chop) ent.chop.visible = false;
       if (ent.cook) ent.cook.visible = false;
+      if (ent.cookInk) ent.cookInk.visible = false;   /* v2.3.2856 */
       if (ent.fire) ent.fire.visible = false;
+      if (ent.fireInk) ent.fireInk.visible = false;   /* v2.3.2858 */
       /* v2.3.2146: the gear rides the same pool entry, so it hides with it --
          otherwise a peer who stops making fire leaves their shirt standing
          there. */
@@ -9645,7 +10044,13 @@ export class EffectsRenderer {
          is the same number for everybody and never begins at frame 0 — so a
          watcher joined the animation part-way through and, for the one-shot
          fire, saw it wrap. */
-      if (ent._exCode !== code) { ent._exCode = code; ent._exStart = now; }
+      /* v2.3.2858: ...and when they START AGAIN.  The code alone never changed
+         between two fires lit in a row -- the pooled entry kept 'fire' while
+         they walked -- so the second light was drawn frozen on the last frame
+         for its whole length.  A figure that was not drawn last frame starts
+         over (mp-fireink relights and watches for it). */
+      if (ent._exCode !== code || !ent._wasOn) { ent._exCode = code; ent._exStart = now; }
+      ent._onNow = true;
       const _base = spec.from || 0;
       const _count = spec.count || (spec.frames.length - _base);
       let fi;
@@ -9719,6 +10124,16 @@ export class EffectsRenderer {
         }
         if (_best) _sign = _best.x >= ox ? 1 : -1;
       }
+      /* v2.3.2855: a peer with drawings chops in a figure baked with them (and
+         the pre-flipped one when a drawing would read backwards flipped); the
+         shared figure assigned above draws until it lands, or when they have
+         none.  Indexed by the 0..11 swing frame, like the local bake. */
+      if (code === 'chop') {
+        const _pa = this._peerChopFrames(o, _leglessOn, _sign < 0, now);
+        if (_pa && _pa[_gearIx]) sp.texture = _pa[_gearIx];
+        ent._chopInk = !!_pa;   /* for remoteSkillProbe */
+        sp._chopK = _gearIx;   /* for mp-chopink, as on the local figure */
+      }
       const _sxR = s * _bR.sx, _syR = s * _bR.sy;   /* v2.3.2500 */
       sp.scale.set(_sign < 0 ? -_sxR : _sxR, _syR);
       sp.x = ox;
@@ -9730,6 +10145,53 @@ export class EffectsRenderer {
         ? oy + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * _syR
         : oy + 6 * pscale;                    /* foot offset shrinks with the figure */
       sp.visible = true;
+      /* v2.3.2856: a drawn peer's cook gets their drawings' layer over the
+         shared figure, on the same frame of the matching strip (_peerCookInk).
+         Its sprite goes straight above the body in the layer -- their clothes
+         and hat, drawn after, cover it as they cover the body. */
+      if (code === 'cook') {
+        const _ci = this._peerStandInInk('cook', o, _leglessOn, now);
+        const _cit = _ci && _ci[_fiClamped];
+        if (_cit) {
+          if (!ent.cookInk) {
+            const ik = new Sprite();
+            ik.anchor.set(0.5, 1);
+            const L = sp.parent || this.gestureLayer;
+            L.addChildAt(ik, L.getChildIndex(sp) + 1);
+            ent.cookInk = ik;
+          }
+          const ik = ent.cookInk;
+          ik.texture = _cit;
+          ik.scale.set(sp.scale.x, sp.scale.y);
+          ik.x = sp.x; ik.y = sp.y;
+          ik.visible = true;
+        }
+        ent._cookInk = !!_ci;    /* for remoteSkillProbe */
+        sp._cookK = _fiClamped;  /* for mp-cookink, as on the local figure */
+      }
+      /* v2.3.2858: and a drawn peer's fire-lighter, the same way -- their layer
+         over the shared figure, on its frame, straight above it in the layer so
+         their clothes cover it (_peerStandInInk). */
+      if (code === 'fire') {
+        const _fk = this._peerStandInInk('fire', o, false, now);
+        const _fkt = _fk && _fk[_fiClamped];
+        if (_fkt) {
+          if (!ent.fireInk) {
+            const ik = new Sprite();
+            ik.anchor.set(0.5, 1);
+            const L = sp.parent || this.gestureLayer;
+            L.addChildAt(ik, L.getChildIndex(sp) + 1);
+            ent.fireInk = ik;
+          }
+          const ik = ent.fireInk;
+          ik.texture = _fkt;
+          ik.scale.set(sp.scale.x, sp.scale.y);
+          ik.x = sp.x; ik.y = sp.y;
+          ik.visible = true;
+        }
+        ent._fireInk = !!_fk;    /* for remoteSkillProbe */
+        sp._fireK = _fiClamped;  /* for mp-fireink, as on the local figure */
+      }
       /* ═══ v2.3.2146: AND THEIR CLOTHES ═══
          Owner: "the remote player fire starting needs to be fixed."
 
@@ -9864,11 +10326,27 @@ export class EffectsRenderer {
       if (!others[id]) {
         if (ent.chop) ent.chop.destroy();
         if (ent.cook) ent.cook.destroy();
+        if (ent.cookInk) ent.cookInk.destroy();   /* v2.3.2856 */
         if (ent.fire) ent.fire.destroy();
+        if (ent.fireInk) ent.fireInk.destroy();   /* v2.3.2858 */
         /* v2.3.1574: reap the trait sprites too — they are added to the same
            layer, so leaking them on every peer who leaves is a slow leak. */
         if (ent.traits) for (const k in ent.traits) { if (ent.traits[k]) ent.traits[k].destroy(); }
         pool.delete(id);
+      }
+    }
+    /* v2.3.2855: release the drawn peers' lumberjacks nobody has drawn for a
+       while -- they left, stopped chopping, or changed zone (see _peerChopFrames). */
+    if (this._peerChopBakes && this._peerChopBakes.size) {
+      for (const [k, e] of this._peerChopBakes) if (now - e.used > PEER_CHOP_IDLE_MS) this._dropPeerChop(k);
+    }
+    /* v2.3.2856: the same for drawn peers' cooks -- v2.3.2858: and their
+       fire-lighters (see _peerStandInInk). */
+    if (this._peerInks) {
+      for (const kind in this._peerInks) {
+        const cache = this._peerInks[kind];
+        if (!cache.size) continue;
+        for (const [k, e] of cache) if (now - e.used > PEER_INK_IDLE_MS) this._dropPeerStandInInk(kind, k);
       }
     }
   }
@@ -11403,6 +11881,7 @@ export class EffectsRenderer {
     if (this.chopLegsSprite) this.chopLegsSprite.visible = false;
     if (this.chopChestSprite) this.chopChestSprite.visible = false;
     if (this.cookSprite) this.cookSprite.visible = false;
+    if (this.cookInkSprite) this.cookInkSprite.visible = false;   /* v2.3.2856 */
     if (this.cookShirtSprite) this.cookShirtSprite.visible = false;
     if (this.cookLegsSprite) this.cookLegsSprite.visible = false;
     if (this.cookChestSprite) this.cookChestSprite.visible = false;
@@ -11586,9 +12065,16 @@ export class EffectsRenderer {
          the gear strips.  Falls back to the raw art if the bake has not landed
          (or failed): a figure in the artist's complexion is the old behaviour,
          while no figure at all would be a new bug. */
-      const _chopSkinArr = _chopLegsOn ? this._chopLeglessSkinFrames : this._chopSkinFrames;
+      /* v2.3.2855: facing LEFT the figure is drawn flipped (below), so it takes
+         the pre-flipped bake when there is one -- a drawing that is not its own
+         mirror image would otherwise read backwards.  See _bakeChopStrips. */
+      const _chopFlip = chopSign < 0;
+      const _chopSkinArr = _chopLegsOn
+        ? ((_chopFlip && this._chopLeglessSkinFramesFlip) || this._chopLeglessSkinFrames)
+        : ((_chopFlip && this._chopSkinFramesFlip) || this._chopSkinFrames);
       const _chopRawArr = _chopLegsOn ? this._chopLeglessFrames : this._chopFrames;
       sp.texture = (_chopSkinArr.length === CHOP_COUNT) ? _chopSkinArr[k] : _chopRawArr[fi];
+      sp._chopK = k;   /* v2.3.2855: the swing frame, for mp-chopink -- a cropped frame (v2.3.2775) no longer says which one it is */
       /* v2.3.2287: the vista curve, as on the fire figure above and on the
          peer twin. Sampled at the STAND-IN's own spot, not the player's --
          the lumberjack stands at the tree, which on a perspective zone is a
@@ -11828,6 +12314,20 @@ export class EffectsRenderer {
       sp.x = node.x - COOK_STANDIN_H * COOK_PAN_DX * pscale;   /* v2.3.2607 */
       sp.y = node.y + 8 * pscale;
       sp.visible = true;
+      /* v2.3.2856: your drawings' layer, on the same frame of the matching strip
+         with the figure's exact transform (see _bakeCookStrips). */
+      const _cInk = (_legsOn ? this._cookLeglessFramesInk : this._cookFramesInk);
+      const _cInkT = _cInk && _cInk[cookFi];
+      const isp = this.cookInkSprite;
+      if (isp) {
+        if (_cInkT) {
+          isp.texture = _cInkT;
+          isp.scale.set(sp.scale.x, sp.scale.y);
+          isp.x = sp.x; isp.y = sp.y;
+          isp.visible = true;
+        } else isp.visible = false;
+        sp._cookK = cookFi;   /* for mp-cookink: which frame both sprites are on */
+      }
       /* v2.3.2607 QA probe, house style and the exact twin of __btChopFigure
          above.  It exists for the reason that probe's note gives: the thing
          that actually breaks on these figures is the LOCAL and PEER copies
