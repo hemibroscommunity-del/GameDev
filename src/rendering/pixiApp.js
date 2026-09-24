@@ -408,7 +408,11 @@ export async function createPixiApp(canvas) {
        within those snapped frames — that mismatch reads as walking
        stutter even at a steady 60 fps.  roundPixels keeps the data
        layer fractional (so lerps / physics stay smooth) but aligns
-       render positions, so player and world step together. */
+       render positions, so player and world step together.
+       v2.3.2922: except the character sprites.  The sharp batcher
+       (sharpPixels.js) draws them unsnapped, because snapping each
+       stacked layer of a figure on its own made them snap apart (the
+       NE/NW collar flicker, TRAPS §121). */
     roundPixels: true,
   };
 

@@ -4837,3 +4837,36 @@ effect on pixels, compare against the SAME filter at ~0 strength
 (`sheenScale(0.0001)`), not the filter off: attaching a filter re-renders the
 sprite through an offscreen pass, which moves its soft edges, and the first
 measurement here counted those edges as lift.
+
+## 121. Snapping each sprite of a stacked figure on its own tears it apart by a pixel (v2.3.2922)
+
+**Tempting:** leave `roundPixels` on for every sprite, figures included.
+Snapped sprites look crisp and step with the world, and a figure drawn as one
+whole frame per layer never showed a problem.
+
+**Wrong** once the layers are cropped (v2.3.2750–2872). Pixi rounds each
+sprite's corners separately, and cropped layers start on different fractions
+of a pixel (the body's crop at the crown, the plate's at the collar, ~2.74
+screen pixels per texel on a phone). As the camera slides in sub-pixel steps
+they snap at different moments, and the plate slid a pixel against the neck
+for 1 camera position in 10: the owner's "subtle flicker near the neckline",
+jogging NE/NW in armour (v2.3.2922). Whole-frame layers had identical quads,
+which is why it never showed before the crops.
+
+**The rule:** a figure's layers are snapped together or not at all. Character
+sprites go through the sharp batcher, which does not round
+(`sharpPixels.js`); its sampling draws a texel grid cleanly at any sub-pixel
+offset. A new layer of a figure must route through that batcher (a child of
+the display, under `_vShadeKids`), or it will drift against the rest by up to
+a pixel. `?figround=1` (per load) or `window.__btFigRound = true` (live)
+brings the old snap back for an A/B.
+
+**And measuring it:** do not find sub-pixel motion with a brightness
+threshold, or a window, on the composite. The first two versions of
+`mp-figureseam` were fooled that way:
+- the head's keyline is a mid brown that sits on any threshold, so the
+  detector flipped between the keyline's two edges;
+- the plate's shading slid in and out of a window drawn round the collar.
+
+Draw each layer ALONE on a flat ground and take the centre of its brightness.
+With one-pixel blended seams, that centre moves exactly with the layer.

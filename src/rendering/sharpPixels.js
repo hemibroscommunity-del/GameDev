@@ -23,7 +23,8 @@
  *
  * HOW.  Pixi 8 routes each sprite to a named Batcher, and a batcher owns its
  * shader.  This registers a 'sharp' batcher: the default sprite batcher with
- * one change, the texture-sampling bit of its fragment shader.  Sprites that
+ * one change, the texture-sampling bit of its fragment shader (and, since
+ * v2.3.2922, its sprites are not snapped to whole pixels: below).  Sprites that
  * belong to a character (the same marks formShade.js reads: a container's
  * `_vShadeKids`, and the stand-ins' `_vShade`, plus `_sharp` for anything
  * else) are sent to it; everything else -- painted maps, props, UI, text --
@@ -47,6 +48,54 @@ let _maxTex = 0;
 let _routed = 0;
 let _urlOff = false;
 try { if (typeof location !== 'undefined' && /[?&]sharp=0\b/.test(location.search)) _urlOff = true; } catch (e) { /* on */ }
+
+/* ═══ v2.3.2922: A FIGURE'S LAYERS ARE NOT SNAPPED ONE BY ONE ═══
+ *
+ * Owner: "While wearing torso armor though jogging northeast / northwest
+ * there's a subtle flicker that occurs near the neckline where it meets the
+ * armor."
+ *
+ * An armoured figure is not one picture.  It is the masked body, the chest
+ * plate, the greaves and the head traits: separate sprites stacked on the
+ * same origin, on ONE texel grid (same scale, crops in whole texels).
+ * pixiApp's roundPixels snaps every VERTEX to a whole screen pixel, sprite by
+ * sprite.  At ~2.74 device pixels per texel (a 3x phone), each layer's
+ * cropped quad starts on a different fraction of a pixel (the body's crop
+ * starts at the crown, the plate's at the collar), so as the camera slides in
+ * sub-pixel steps the layers snap at DIFFERENT moments.  Measured frozen
+ * mid-jog NE, stepping the camera through one device pixel in tenths: the
+ * body's top sat at 1066.56 px and snapped on the first tenth, the plate's at
+ * 1110.48 and snapped on the last, so for 1 camera position in 10 the plate
+ * sat a whole pixel higher on the neck than for the other 9.  A jog sweeps
+ * the camera through those positions constantly, and the collar line toggles
+ * a pixel against the skin above it: that is the flicker.  The same
+ * toggle happens with the shine off; it is not the shine.  It came with the
+ * cropping series (v2.3.2750-2872): while every layer was a whole frame, the
+ * quads were identical and snapped together.
+ * Why NE/NW: in the other six facings a matched set (plate + greaves) is
+ * drawn as ONE knight sprite with no seam to open (fullset jog sheets).
+ * NE/NW have no knight art, so they are the stacked path.  A chest plate
+ * alone is stacked in every facing and had the same seam wherever the jog
+ * moves the camera vertically.
+ *
+ * So the sprites routed here are not snapped.  Pixi decides per batch
+ * element: the vertex shader rounds only where the element's `roundPixels`
+ * is 1, and every sprite gets `renderer._roundPixels | sprite._roundPixels`
+ * -- always 1 with pixiApp's option on.  The routing hook below sets it to 0
+ * for the sprites it sends to this batcher (and puts Pixi's own value back
+ * on any it sends to the default one).  This batcher draws a texel grid at
+ * ANY sub-pixel offset without stair-step shimmer (sharp bilinear: flat
+ * texels, a 1-screen-pixel blend at each seam; the file header), which is the
+ * job the per-sprite snap was doing.  Unsnapped, every layer of a figure
+ * lands on the same fraction of a pixel and the plate stays exactly where the
+ * art puts it on the body.  Everything else (maps, props, text, UI, and every
+ * sprite when this batcher is off) keeps roundPixels.
+ * The old per-sprite snap comes back with `?figround=1` (per load) or
+ * `window.__btFigRound = true` (live, from the next rebuild of the draw
+ * list) -- an A/B on one build (mp-figureseam, mp-sharppixels). */
+let _figRound = false;
+try { if (typeof location !== 'undefined' && /[?&]figround=1\b/.test(location.search)) _figRound = true; } catch (e) { /* off */ }
+const figRoundOn = () => _figRound || (typeof window !== 'undefined' && !!window.__btFigRound);
 
 /* The texture bit, GL flavour: identical to Pixi's generateTextureBatchBitGl
    except that each texture is read through sharpSample(). */
@@ -175,6 +224,11 @@ export function installSharpPixels(app, figureSpec) {
         const on = !(typeof window !== 'undefined' && window.__btSharpOff) && wantsSharp(obj.renderable);
         obj.batcherName = on ? 'sharp' : 'default';
         if (on) _routed++;
+        /* v2.3.2922: a figure's pieces are drawn where they are, not snapped
+           one by one (above); Pixi's own value for everything else */
+        const r = obj.renderable;
+        obj.roundPixels = (on && !figRoundOn()) ? 0
+          : (((this.renderer && this.renderer._roundPixels) || (r && r._roundPixels)) ? 1 : 0);
       }
       return orig.call(this, obj, instructionSet);
     };
@@ -187,5 +241,5 @@ export function installSharpPixels(app, figureSpec) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btSharp = () => ({ enabled: _enabled, off: !!window.__btSharpOff, urlOff: _urlOff, routedTotal: _routed, maxTextures: _maxTex });
+  window.__btSharp = () => ({ enabled: _enabled, off: !!window.__btSharpOff, urlOff: _urlOff, routedTotal: _routed, maxTextures: _maxTex, figRound: figRoundOn() });
 }

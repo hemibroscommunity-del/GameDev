@@ -49,14 +49,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (!box) { await P.ctx.close().catch(() => {}); return; }
   /* body only: the name plate above is UI text and is not sharpened */
   const clip = { x: box.x, y: box.y + box.height * 0.1, width: box.width, height: box.height * 0.9 };
+  /* ═══ v2.3.2922: ONE FROZEN FRAME, SO THE SWITCH IS THE ONLY DIFFERENCE ═══
+     The two pictures used to be taken live, 300 ms apart, so they were two
+     moments of the idle animation as well as on and off.  And since
+     v2.3.2922 the switch also moves the figure by a fraction of a pixel: the
+     character batcher draws it where it is (sharpPixels.js), the default one
+     snaps each sprite to a whole pixel.  Live, those two differences swamped
+     the one being measured (on 23.4 vs off 25.2 over 20,728 px, while the
+     same comparison on a frozen jog frame is +25%).  So the loop is held and
+     one instant is drawn twice, a rebuild of the draw list forced so the
+     switch reroutes the sprites (mp-sheen's frozen frame). */
+  await P.page.evaluate(() => new Promise((res) => {
+    const R = window._pixiRenderer; const orig = R.update;
+    R.update = function (...args) { window.__spArgs = args; return orig.apply(this, args); };
+    window.__spArgs = null;
+    const wait = () => (window.__spArgs ? res() : setTimeout(wait, 16)); wait();
+  }));
+  await P.page.evaluate(() => {
+    window.__spReal = window.requestAnimationFrame.bind(window);
+    window.__spHeld = [];
+    window.requestAnimationFrame = (cb) => { window.__spHeld.push(cb); return 0; };
+    window.__spT = Date.now(); window.__spPT = performance.now();
+  });
+  await P.page.waitForTimeout(150);
   const shot = async (off, name) => {
-    await P.page.evaluate((o) => { window.__btSharpOff = o; }, off);
-    await P.page.waitForTimeout(300);
+    await P.page.evaluate((o) => {
+      window.__btSharpOff = o;
+      const R = window._pixiRenderer;
+      R.app.stage.renderGroup.structureDidChange = true;
+      const dn = Date.now, pn = performance.now.bind(performance);
+      Date.now = () => window.__spT; performance.now = () => window.__spPT;
+      try { R.update(...window.__spArgs); } finally { Date.now = dn; performance.now = pn; }
+    }, off);
     return H.decodePng(await P.page.screenshot({ clip, path: `${H.REPO}/tools/qa/mp/out/sharppixels-${name}.png` }));
   };
   const off = await shot(true, 'off');
   const on = await shot(false, 'on');
-  await P.page.evaluate(() => { window.__btSharpOff = false; });
+  await P.page.evaluate(() => {
+    window.__btSharpOff = false;
+    const held = window.__spHeld || [];
+    window.requestAnimationFrame = window.__spReal; window.__spHeld = null;
+    for (const cb of held) window.requestAnimationFrame(cb);
+  });
   const e = figureEdges(on, off);
   console.log(`    figure edge contrast over ${e.n} px: off ${e.eOff.toFixed(1)} -> on ${e.eOn.toFixed(1)}`);
   rec.ok('the switch changes the figure (guard)', e.n > 200, e);
