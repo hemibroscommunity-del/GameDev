@@ -26,10 +26,179 @@
  * Every irregular piece (crack angles, rim chips, drip lengths) is seeded per
  * arrow, so a wound holds its shape frame to frame and no two look the same.
  *
- * NOTHING TO PRELOAD: Graphics calls only -- the animation-preloading law has
- * nothing to register.  LEAF MODULE: draws into a Graphics it is handed. */
+ * NOTHING TO PRELOAD: Graphics calls and a render texture minted at runtime --
+ * the animation-preloading law has nothing to register.  LEAF MODULE: imports
+ * no renderer system; effectsRenderer owns the baker. */
+import { Container, Graphics, Matrix, RenderTexture, Sprite } from 'pixi.js';
 
 const WOUND_SCALE = 1.45;
+
+/* ═══ v2.3.2923b: AT THE MONSTER'S RESOLUTION, NOT THE ARROW'S ═══
+ * Owner, on the first cut of this: "the enemy is at a lower resolution so it
+ * looks very artificial having higher resolution art and injury site tacked
+ * on top."  Measured: the slime is drawn at 0.75 world px per texel with a
+ * one-texel keyline and soft shading; the pine shaft at 0.41 with a three-texel
+ * keyline; and the wound was vector ellipses with no pixel grid at all.
+ *
+ * So the shaft, its wound and its lip are no longer drawn straight to the
+ * screen.  Each monster carrying arrows gets a small offscreen texture laid on
+ * ITS texel grid (one texture pixel = one pixel of the monster's own sheet,
+ * aligned to the sheet's pixel edges); the injury is drawn into that and the
+ * texture is scaled up exactly as the body is, with the body's own filtering.
+ * Whatever is in it -- crisp shaft, vector wound -- lands on screen at the
+ * monster's resolution and softness, so it reads as part of the same drawing.
+ * (Not clipped to the body's silhouette: a sprite mask inside the offscreen
+ * render landed in the wrong place and ate the wounds -- measured, not
+ * guessed -- and shots land inside the body since v2.3.2844 anyway.)
+ *
+ * One small texture render per monster with arrows in it, per frame (a slime's
+ * is ~60 x 60 px).  Falls back to the direct draw when there is no renderer or
+ * no body sprite (the procedural stand-in body). */
+let _renderer = null;
+export function setArrowWoundRenderer(r) { _renderer = r; }
+export function arrowWoundBakeReady() { return !!(_renderer && _renderer.render); }
+
+const MAX_TEX = 384;
+const _M = new Matrix(), _A = new Matrix(), _B = new Matrix();
+
+/* `node`'s transform up to (not including) `stop`, from each level's FRESH
+   local transform.  worldTransform is the last render's: the entity pass has
+   already moved a walking monster this frame, and a clip taken from it would
+   trail the arrows (which read m.x) by a frame. */
+function chainTo(node, stop, out) {
+  out.identity();
+  const list = [];
+  for (let n = node; n && n !== stop; n = n.parent) list.push(n);
+  for (let i = list.length - 1; i >= 0; i--) { list[i].updateLocalTransform(); out.append(list[i].localTransform); }
+  return out;
+}
+/* body-local -> layer-local, through their nearest shared ancestor */
+function relMatrix(body, layer, out) {
+  const up = new Set();
+  for (let n = layer; n; n = n.parent) up.add(n);
+  let anc = body;
+  while (anc && !up.has(anc)) anc = anc.parent;
+  if (!anc) return null;
+  chainTo(layer, anc, _A).invert();
+  chainTo(body, anc, _B);
+  return out.copyFrom(_A).append(_B);
+}
+
+export class StuckArrowBaker {
+  constructor(layer) {
+    this.layer = layer;
+    this.entries = new Map();   /* monster id -> entry (Map: ids are server strings) */
+    this.stats = { baked: 0, texel: 0, w: 0, h: 0 };
+  }
+
+  _entry(key) {
+    let e = this.entries.get(key);
+    if (e) return e;
+    const root = new Container();
+    const woundG = new Graphics();
+    const shafts = new Container();
+    const lipG = new Graphics();
+    root.addChild(woundG, shafts, lipG);
+    const show = new Sprite();
+    show.label = 'stuck-arrow-bake';
+    this.layer.addChild(show);
+    e = { root, woundG, shafts, lipG, show, rt: null, w: 0, h: 0, seen: 0 };
+    this.entries.set(key, e);
+    return e;
+  }
+
+  /** Bake one monster's arrows.  `body` is its drawn sprite; every arrow is
+   *  { x, y, ang, k, mat, tint, age, seed } in this layer's (world) space, plus
+   *  the shaft's texture and world scale.  Returns false to ask for the direct
+   *  draw instead. */
+  bake(key, body, arrows, shaftTex, now) {
+    if (!_renderer || !body || !body.texture || !shaftTex || !arrows.length) return false;
+    const tex = body.texture;
+    /* body-local -> this layer: the same numbers the body is drawn with */
+    if (!relMatrix(body, this.layer, _M)) return false;
+    const T = Math.hypot(_M.a, _M.b) / ((tex.source && tex.source.resolution) || 1);
+    if (!(T > 0.08 && T < 4) || !isFinite(_M.tx)) return false;
+    const ow = (tex.orig && tex.orig.width) || tex.width, oh = (tex.orig && tex.orig.height) || tex.height;
+    const ax = body.anchor ? body.anchor.x : 0, ay = body.anchor ? body.anchor.y : 0;
+    const L = -ax * ow, Tp = -ay * oh;
+    /* the extent: each wound and each shaft out to its tail (not the body's
+       whole frame -- mostly air, and a 256-px goblin frame at 0.375 would
+       overflow the cap) */
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const add = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+    for (const a of arrows) {
+      const len = a.shaftLen + 4;
+      add(a.x - Math.cos(a.ang) * len - 4, a.y - Math.sin(a.ang) * len - 4);
+      add(a.x - Math.cos(a.ang) * len + 4, a.y - Math.sin(a.ang) * len + 4);
+      add(a.x - 14 * a.k, a.y - 14 * a.k); add(a.x + 14 * a.k, a.y + 20 * a.k);   /* wound + drips, at WOUND_SCALE */
+    }
+    /* snapped to the body's own pixel edges, so texture pixel == sheet pixel
+       (the corner of texel (0,0) is where local (L, Tp) lands) */
+    const gx = _M.a * L + _M.c * Tp + _M.tx, gy = _M.b * L + _M.d * Tp + _M.ty;
+    x0 = gx + Math.floor((x0 - gx) / T - 1) * T; y0 = gy + Math.floor((y0 - gy) / T - 1) * T;
+    const W = Math.min(MAX_TEX, Math.ceil((x1 - x0) / T) + 2), H = Math.min(MAX_TEX, Math.ceil((y1 - y0) / T) + 2);
+    if (W < 2 || H < 2 || (x1 - x0) / T + 2 > MAX_TEX || (y1 - y0) / T + 2 > MAX_TEX) return false;   /* too big to bake: draw directly */
+    const e = this._entry(key);
+    e.seen = now;
+    if (!e.rt || e.w !== W || e.h !== H) {
+      if (e.rt) { try { e.rt.destroy(true); } catch (err) { /* gone */ } }
+      e.rt = RenderTexture.create({ width: W, height: H, resolution: 1, antialias: false });
+      e.w = W; e.h = H;
+      e.show.texture = e.rt;
+    }
+    /* the body's filtering: a nearest-sampled sheet stays blocky, a linear one soft */
+    try {
+      const sm = (tex.source && (tex.source.scaleMode || (tex.source.style && tex.source.style.scaleMode))) || 'linear';
+      if (e.rt.source.scaleMode !== sm) e.rt.source.scaleMode = sm;
+    } catch (err) { /* older pixi shape */ }
+    const g = e.woundG, lg = e.lipG;
+    g.clear(); lg.clear();
+    let n = 0;
+    for (const a of arrows) {
+      drawArrowWound(g, a.x, a.y, a.ang, a.k, a.mat, a.tint, a.age, a.seed);
+      let sp = e.shafts.children[n];
+      if (!sp) { sp = new Sprite(shaftTex); sp.anchor.set(1, 0.5); e.shafts.addChild(sp); }
+      if (sp.texture !== shaftTex) sp.texture = shaftTex;
+      sp.visible = true;
+      sp.position.set(a.x, a.y);
+      sp.rotation = a.ang;
+      sp.scale.set(a.shaftScale);
+      sp.alpha = 0.95;
+      drawArrowWoundLip(lg, a.x, a.y, a.ang, a.k, a.mat, a.tint, a.age);
+      n++;
+    }
+    for (let i = n; i < e.shafts.children.length; i++) e.shafts.children[i].visible = false;
+    /* world units in, texture pixels out */
+    e.root.scale.set(1 / T);
+    e.root.position.set(-x0 / T, -y0 / T);
+    _renderer.render({ container: e.root, target: e.rt, clear: true });
+    e.show.position.set(x0, y0);
+    e.show.scale.set(T);
+    e.show.visible = true;
+    this.stats.baked++; this.stats.texel = +T.toFixed(4); this.stats.w = W; this.stats.h = H;
+    return true;
+  }
+
+  /** After the frame's bakes: hide the unused, free the long-gone. */
+  end(now) {
+    for (const [key, e] of this.entries) {
+      if (e.seen === now) continue;
+      e.show.visible = false;
+      if (now - e.seen > 3000) {
+        try { e.show.destroy(); } catch (err) { /* gone */ }
+        try { e.root.destroy({ children: true }); } catch (err) { /* gone */ }
+        if (e.rt) { try { e.rt.destroy(true); } catch (err) { /* gone */ } }
+        this.entries.delete(key);
+      }
+    }
+  }
+
+  probe() {
+    let live = 0;
+    for (const e of this.entries.values()) if (e.show.visible) live++;
+    return { live, entries: this.entries.size, ...this.stats };
+  }
+}
 
 function mix(a, b, t) {
   const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;

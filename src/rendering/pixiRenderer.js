@@ -11,6 +11,7 @@ import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
+import { setArrowWoundRenderer } from './arrowWound.js';   /* v2.3.2923 */
 import { LightFx, setLightFx, lightFxOn } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1; v2.3.2904: + lightFxOn for the loading-screen warm */
 import { setSheen, prewarmGlintPipe } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1; v2.3.2887: on for everyone, ?sheen=0 turns it off; v2.3.2904: its shader built behind the loading screen */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
@@ -176,6 +177,7 @@ export async function initPixiRenderer(canvas) {
   worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
   setMonsterDeathRenderer(app.renderer);   /* v2.3.2913: measures each body once for the cuts */
+  setArrowWoundRenderer(app.renderer);     /* v2.3.2923: bakes a stuck shaft at its monster's resolution */
   /* v2.3.2710: shadows cast by each map's own sun, and metal that catches the
      light (rendering/lightfx).  Off unless the switch is on -- see lightFx.js. */
   const lightFx = new LightFx(layers, worldContainer);

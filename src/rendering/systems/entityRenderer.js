@@ -4100,6 +4100,19 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
   _rec();
 }
 
+/* ═══ v2.3.2923: THE BODY A STUCK ARROW IS IN ═══
+   effectsRenderer bakes a stuck shaft and its wound at the monster's OWN
+   texel size (arrowWound.js) -- so it needs the
+   sprite the monster is drawn with.  Read-only: nothing outside this file
+   may move or restyle it. */
+let _monsterDisplaysRef = null;
+export function monsterBodySprite(mid) {
+  const d = _monsterDisplaysRef && _monsterDisplaysRef.get(mid);
+  const sb = d && d._spriteBody;
+  if (!sb || sb.destroyed || !sb.visible || !d.visible || !sb.texture || !sb.texture.source) return null;
+  return sb;
+}
+
 /* v2.3.2923: a trait entry wearing its recoloured textures when there are
    any -- the base meta (a retint moves no pixel) and the native art as the
    fallback while the bake is in flight, exactly as _placeEyewear builds it. */
@@ -7752,6 +7765,7 @@ export class EntityRenderer {
        hasn't been updated, which just restores the old behaviour. */
     this.monsterUiLayer = monsterUiLayer || entityLayer;
     this.monsterDisplays = new Map();
+    _monsterDisplaysRef = this.monsterDisplays;   /* v2.3.2923: for monsterBodySprite */
     this.otherPlayerDisplays = new Map();
     this.playerDisplay = null;
     this.npcDisplays = new Map();
