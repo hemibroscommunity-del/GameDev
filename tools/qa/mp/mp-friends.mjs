@@ -33,7 +33,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── A sends the request from the inspect card ── */
   await H.openInspect(A, bId);
-  await H.clickText(A, 'Add Friend');
+  await H.clickAct(A, 'friend');   /* v2.3.2926: by id (harness clickAct) */
   await A.page.waitForTimeout(1500);
 
   /* ── B sees it under Requests ── */

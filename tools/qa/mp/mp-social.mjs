@@ -32,9 +32,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── the card itself ── */
   await H.openInspect(A, bId);
   const btns = await H.buttonTexts(A);
-  for (const [label, pat] of [['Add Friend', /Add Friend/], ['Mute', /Mute/], ['Block', /Block/],
-    ['Trade', /^Trade$/], ['Duel', /^Duel$/]]) {
-    rec.ok(`the inspect card offers "${label}"`, btns.some((t) => pat.test(t)), btns);
+  /* v2.3.2926: the card's controls by id (harness.mjs cardActs) -- the
+     rearrangement rewrote their copy, and a label is display (TRAPS §29).
+     The Threat / TP absences below stay on the labels: a restored button
+     would bring its old label back with it. */
+  const acts = await H.cardActs(A);
+  for (const [label, act] of [['Add Friend', 'friend'], ['Mute', 'mute'], ['Block', 'block'],
+    ['Trade', 'trade'], ['Duel', 'duel']]) {
+    rec.ok(`the inspect card offers "${label}"`, acts.some((a) => a.act === act && !a.on), acts);
   }
   /* v2.3.1970: and Threat is GONE (v2.3.1917) — see the header. */
   rec.ok('the inspect card no longer offers "Threat"', !btns.some((t) => /^Threat$/.test(t)), btns);
@@ -45,33 +50,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const shownName = await H.seesText(A, 'Peer');
   rec.ok("the card names the player being inspected", shownName);
 
+  /* ── v2.3.2926: the portrait is the door to the stats & equipment menu ──
+     Owner: "Tapping the character profile picture will bring up a new menu
+     that shows stats and equipment.  Don't build it out completely but leave
+     a placeholder."  So: the tap opens it, it names the player, and Back
+     returns to the card with every action still there. */
+  await H.clickAct(A, 'profile');
+  await A.page.waitForTimeout(400);
+  const prof = await A.page.evaluate(() => {
+    const el = document.querySelector('[data-profile]');
+    return el ? { text: (el.innerText || '').replace(/\s+/g, ' ').slice(0, 160) } : null;
+  });
+  rec.ok('tapping the portrait opens the stats & equipment menu',
+    !!prof && /Stats & Equipment/.test(prof.text) && /Peer/.test(prof.text), prof);
+  await H.clickAct(A, 'profile-back');
+  await A.page.waitForTimeout(400);
+  rec.ok('...and Back returns to the card',
+    (await H.cardActs(A)).some((a) => a.act === 'trade') && !(await A.page.$('[data-profile]')));
+
   /* ── friend ── */
-  await H.clickText(A, 'Add Friend');
+  await H.clickAct(A, 'friend');
   await A.page.waitForTimeout(600);
   await H.openInspect(A, bId);
-  const afterFriend = await H.buttonTexts(A);
+  const afterFriend = await H.cardActs(A);
   rec.ok('adding a friend flips the button to "Friend"',
-    afterFriend.some((t) => /💚 Friend/.test(t)), afterFriend);
+    afterFriend.some((a) => a.act === 'friend' && a.on && /^Friend/.test(a.text)), afterFriend);
+  /* v2.3.2926: and the card says so where the eye lands first -- the
+     mockup's "🙂 Friend" badge beside the level */
+  rec.ok('...and the header shows the Friend badge',
+    !!(await A.page.$('.bt-inspect-card [data-rel="friend"]')));
   const friends = await ls(A, 'bt_friends');
   rec.ok('the friend is persisted to storage',
     Array.isArray(friends) && friends.some((f) => f && f.id === bId), friends);
 
   /* ── mute ── */
-  await H.clickText(A, 'Mute');
+  await H.clickAct(A, 'mute');
   await A.page.waitForTimeout(600);
   await H.openInspect(A, bId);
   rec.ok('muting flips the button to "Muted"',
-    (await H.buttonTexts(A)).some((t) => /Muted/.test(t)));
+    (await H.cardActs(A)).some((a) => a.act === 'mute' && a.on && /Muted/.test(a.text)));
   const muted = await ls(A, 'bt_muted');
   rec.ok('the mute is persisted to storage',
     Array.isArray(muted) && muted.some((m) => (m && m.id) === bId || m === bId), muted);
 
   /* ── block ── */
-  await H.clickText(A, 'Block');
+  await H.clickAct(A, 'block');
   await A.page.waitForTimeout(600);
   await H.openInspect(A, bId);
   rec.ok('blocking flips the button to "Blocked"',
-    (await H.buttonTexts(A)).some((t) => /Blocked/.test(t)));
+    (await H.cardActs(A)).some((a) => a.act === 'block' && a.on && /Blocked/.test(a.text)));
 
   /* ── v2.3.1970: blocking has to SUPPRESS, not just re-label ──
      The block list was only ever checked for its label here, while mute got

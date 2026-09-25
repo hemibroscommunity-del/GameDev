@@ -430,3 +430,16 @@ lane, around the whole list, never per row. The per-row frames of v2.3.2290
 were exactly the "ornamental or nested cards" this line forbids and the owner
 rejected them in those words ("too many boxes within boxes"). Do not reintroduce
 a third level.
+
+**Fifth documented exception (v2.3.2926): the player card's brackets and
+dividers.** The card you get by tapping another player
+(`InspectPlayerPanel.jsx`, styled by `.bt-pcard` in game.css) has corner
+brackets and ◆-centred dividers, which the "no decorative corners" hard lock
+and the do-not-drift list above would both reject. They are there because the
+owner drew them: the card was rebuilt from the owner's own mockup ("Change of
+plans. like this better."), along with the owner's icon sheet
+(`assets/icons-source/sheet-social.png` → `public/icons/ui/soc-*.webp`, cut by
+`tools/ui/slice-social-icons.mjs`). It stays licensed only while it stays
+bounded: CSS only (no baked frame art), one card, the mockup's colours. Do not
+"clean it up" back to the plain sheet, and do not spread the brackets to other
+panels without the same ask from the owner.

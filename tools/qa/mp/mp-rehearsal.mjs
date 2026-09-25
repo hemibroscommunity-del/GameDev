@@ -197,7 +197,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      which cannot distinguish "the button is not there" from "it is there and
      the dashboard is over it" — two different bugs with the same symptom, and
      mp-harvest v2.3.1706 records the second one biting before. */
-  const addedFriend = await H.clickText(A, 'Add Friend', { timeout: 8000 })
+  const addedFriend = await H.clickAct(A, 'friend', { timeout: 8000 })   /* v2.3.2926: by id */
     .then(() => ({ ok: true }))
     .catch((e) => ({ ok: false, err: String(e && e.message || e).slice(0, 160) }));
   rec.ok('a friend request can be sent from the inspect card', addedFriend.ok,
@@ -206,7 +206,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── PARTY ── */
   await H.openInspect(A, ids.Cat);
-  const invited = await H.clickText(A, 'Invite to Party', { timeout: 8000 })
+  const invited = await H.clickAct(A, 'party', { timeout: 8000 })   /* v2.3.2926: a "Party" tile now */
     .then(() => ({ ok: true }))
     .catch((e) => ({ ok: false, err: String(e && e.message || e).slice(0, 160) }));
   rec.ok('a party invite can be sent', invited.ok,

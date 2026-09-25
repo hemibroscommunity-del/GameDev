@@ -24,55 +24,69 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── invite ── */
   await H.openInspect(A, bId);
-  const btns = await H.buttonTexts(A);
-  rec.ok('the inspect card offers a party invite', btns.some((t) => /Invite to Party/.test(t)), btns);
+  /* v2.3.2926: by the card's control ids, not its copy -- "Invite to Party"
+     is a "Party" tile now (harness.mjs clickAct / cardActs, TRAPS §29). */
+  const acts = await H.cardActs(A);
+  rec.ok('the inspect card offers a party invite',
+    acts.some((a) => a.act === 'party' && !a.on && !a.disabled), acts);
 
-  /* ── v2.3.1743: the party action is at the TOP, and the body still scrolls ──
+  /* ── v2.3.1743: the party action is at the TOP ──
      Owner: "party should be moved to the top part of the modal".  It used to
      sit inside the scroll body under Equipment / Stats / Record — below the
      fold on a phone.
      Measured on the PHONE viewport because that is the platform where being
-     below the fold actually costs you the button.  The second assertion is
-     the one that earns its keep: the card is a CSS grid whose rows are
-     assigned by child ORDER, so inserting a row mis-assigns `minmax(0, 1fr)`
-     and the body silently stops being the scrolling part — which is exactly
-     what the first cut of this change did (the button drew itself on top of
-     the Equipment section).  A "is it near the top" check alone passes
-     happily through that bug. */
+     below the fold actually costs you the button.
+     v2.3.2926: the card was rebuilt to the owner's mockup and NOTHING is
+     below the fold on this viewport: the party invite is the top-left tile
+     of a 2x2 grid directly under the name, Mute / Block / Report under
+     that, and the stats moved off the card to a menu behind the portrait.
+     There is no scroll body any more, so the old second assertion -- "the
+     body still scrolls", which guarded the v2.3.1743 grid rows assigned by
+     child ORDER -- now asserts what replaced it: every control on the card
+     is inside the card, 44px or taller, and the topmost element at its own
+     centre, with no scrolling.  That still catches the original bug (a row
+     drawn over another is covered at its centre) and the new failure it
+     could have (a tile or the safety row clipped under the card's
+     max-height). */
   await A.page.setViewportSize({ width: 390, height: 844 });
   await A.page.waitForTimeout(900);
   const geom = await A.page.evaluate(() => {
     const card = document.querySelector('.bt-inspect-card');
-    const body = document.querySelector('.ls-scrollbody');
-    const btn = [...document.querySelectorAll('.bt-inspect-card button')]
-      .find((b) => /Invite to Party/.test(b.textContent || ''));
-    const row = [...document.querySelectorAll('.bt-inspect-card .bt-inspect-tp')]
-      .map((b) => b.getBoundingClientRect()).pop();
-    if (!card || !body || !btn) return null;
-    const c = card.getBoundingClientRect(), bo = body.getBoundingClientRect(), bt = btn.getBoundingClientRect();
+    const sheet = document.querySelector('.bt-inspect-card .bt-pcard-prof');
+    const btn = document.querySelector('.bt-inspect-card [data-act="party"]');
+    if (!card || !btn) return null;
+    const c = card.getBoundingClientRect(), bt = btn.getBoundingClientRect();
+    const topmost = (el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+      return !!hit && (hit === el || el.contains(hit));
+    };
+    const controls = [...card.querySelectorAll('[data-act]')].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { act: el.getAttribute('data-act'),
+        inside: r.top >= c.top - 1 && r.bottom <= c.bottom + 1 && r.height >= 44,
+        topmost: topmost(el) };
+    });
     return {
-      aboveBody: bt.bottom <= bo.top + 2,
+      /* v2.3.2926: no stat sheet on the card any more (it is behind the
+         portrait); kept so a sheet that comes back must sit under the party
+         tile, as v2.3.1743 asked */
+      aboveSheet: !sheet || bt.bottom <= sheet.getBoundingClientRect().top + 2,
       insideCard: bt.top >= c.top - 1 && bt.bottom <= c.bottom + 1,
-      bodyScrolls: body.scrollHeight > body.clientHeight + 4,
-      /* the pinned TP/Trade/Duel row must still be fully inside the card */
-      rowPinned: !!row && row.bottom <= c.bottom + 1,
-      /* and nothing may overlap the button (the grid bug drew it over the
-         Equipment block, where Playwright could see it but not click it) */
-      topmostAtCentre: (() => {
-        const el = document.elementFromPoint((bt.left + bt.right) / 2, (bt.top + bt.bottom) / 2);
-        return !!el && (el === btn || btn.contains(el));
-      })(),
+      topmostAtCentre: topmost(btn),
+      controls,
+      cardPctOfScreen: Math.round(100 * c.height / innerHeight),
     };
   });
-  rec.ok('the party action sits above the scrolling stats (no hunting for it)',
-    !!geom && geom.aboveBody && geom.insideCard, geom);
-  rec.ok('...and the body is still the part that scrolls (the new row did not steal 1fr)',
-    !!geom && geom.bodyScrolls && geom.rowPinned, geom);
+  rec.ok('the party action sits at the top of the card (no hunting for it)',
+    !!geom && geom.aboveSheet && geom.insideCard, geom);
+  rec.ok('...and every control on the card is on screen with no scrolling',
+    !!geom && geom.controls.length >= 5 && geom.controls.every((x) => x.inside && x.topmost), geom);
   rec.ok('...and nothing is drawn on top of it', !!geom && geom.topmostAtCentre, geom);
   await A.page.setViewportSize({ width: 1000, height: 780 });
   await A.page.waitForTimeout(600);
 
-  await H.clickText(A, 'Invite to Party');
+  await H.clickAct(A, 'party');
 
   /* ── B sees the invite card and joins ── */
   const invited = await H.waitUi(B, () => /Party Invite/.test(document.body.innerText)
@@ -97,10 +111,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
      from the worker. */
   await H.openInspect(A, bId);
   await A.page.waitForTimeout(500);
-  const mateCard = await H.bodyText(A);
-  const mateBtns = await H.buttonTexts(A);
-  rec.ok('an existing party member reads "In your party", with no invite offered',
-    /In your party/.test(mateCard) && !mateBtns.some((t) => /Invite to Party/.test(t)), mateBtns);
+  /* v2.3.2926: the member state is the party tile itself -- "In party",
+     dimmed, takes no tap -- plus an "In party" badge beside the level, rather
+     than a greyed full-width row reading "In your party". */
+  const mateActs = await H.cardActs(A);
+  const mateTile = mateActs.find((a) => a.act === 'party');
+  rec.ok('an existing party member reads "In party", with no invite offered',
+    !!mateTile && mateTile.on && mateTile.disabled && /In party/.test(mateTile.text)
+      && !(await A.page.$('.bt-inspect-card button[data-act="party"]')), mateActs);
   await A.page.keyboard.press('Escape').catch(() => {});
   await A.page.waitForTimeout(400);
 

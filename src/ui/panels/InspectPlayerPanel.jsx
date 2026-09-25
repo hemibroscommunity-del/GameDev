@@ -1,7 +1,7 @@
 import React from 'react';
 import { useModalGuard } from '../mobile/modalGuardBus.js'; /* v2.3.2276 */
 import { BT_AUDIO, PVP_THREAT_BASE_COUNTDOWN, PVP_THREAT_COOLDOWN, REPUTATION, ZONES } from '@/data/index.js';
-import { _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
+import { _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* v2.3.1981: server-backed mute + the report send (server/src/chatmod.js).
@@ -16,6 +16,7 @@ import { hairColorTarget } from '../../rendering/traits/hairColorCatalog.js';
 import { hatColorTarget } from '../../rendering/traits/hatColorCatalog.js';
 import { facialHairColorTarget } from '../../rendering/traits/facialHairColorCatalog.js';
 import { shirtColorTarget } from '../../rendering/traits/shirtColorCatalog.js';
+import { PlayerProfilePanel } from './PlayerProfilePanel.jsx'; /* v2.3.2926 */
 
 /* v2.3.1917: mirrors GameRoom.OPEN_PVP (server/src/index.js).  While it is
    false the worker refuses pvp_threat and every non-consensual hit, so the
@@ -35,40 +36,70 @@ var PVP_OPEN = false;
    optional-chaining temp set declared locally. */
 /* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) —
    presentation only: every social/trade/duel/threat handler and every
-   caps gate is unchanged. Equipment/stats/record become header+well
-   groups instead of outlined boxes; Trade is the region's single brass
-   primary; Threat/Block speak the destructive language; the old indigo
-   (#a78bfa) and amber (#fbbf24) accents map to the spec magic/stamina
-   colors. Player/clan/reputation colors stay — they are content color. */
+   caps gate is unchanged. */
 /* v2.3.1235: owner-approved design correction (§7) — presentation only,
-   every handler/state read/send byte-identical. Real pixel portrait at
-   56px (letter tile only as fallback), compressed header row, Trade is
-   the single gold primary, TP/Duel secondaries, Threat becomes a danger
-   OUTLINE (never a filled red block), sections keep label+divider
-   grouping with quieter cells. Committed tokens: sheet #1E2E34, raised
-   #293B41, lines rgba(229,237,233,.11/.20), brass #D8AA58. */
+   every handler/state read/send byte-identical. Real pixel portrait
+   (letter tile only as fallback), Trade the single gold primary, Threat a
+   danger OUTLINE. */
+/* ═══ v2.3.2926: REBUILT FROM THE OWNER'S MOCKUP ═══
+   Owner, first: "Assess the structure of the menu ... a layout and
+   representation that would take the least amount of time to make the other
+   player understand pertinent information and in the smallest arrangement
+   that is still clear and legible."  Then, with a mockup and an icon sheet:
+   "Change of plans. like this better."  And for the stats the mockup leaves
+   out: "Tapping the character profile picture will bring up a new menu that
+   shows stats and equipment.  Don't build it out completely but leave a
+   placeholder."
+   What the assessment measured, on a real worker with two clients at 390x844
+   (the owner's phone) -- the owner's own screenshots showed the SHORT card,
+   a peer whose 2s track relay had not landed:
+   - with the relay landed (an active player) the old card was 584px, 69% of
+     the screen, and hid 88px more under its own fold: Add Friend, Mute, Block
+     and Report were all off screen until you scrolled a body with no
+     scrollbar; a clan leader lost the clan invite too.  In landscape it was
+     257px of card with 415px hidden.
+   - actions lived in three places (party top, friend/mute/block and report
+     mid-scroll, trade/duel bottom), and "are we friends" existed only as a
+     button's wording.
+   The mockup, top to bottom:
+     head    72px portrait (now the door to the stats menu), name, an LV pill,
+             and the relationship as a badge beside it (🙂 Friend / In party)
+     ─ ◆ ─
+     tiles   2x2: Invite to Party · Trade / Friend · Duel, the owner's icons
+             (public/icons/ui/soc-*.webp, cut by tools/ui/slice-social-icons.mjs)
+             -- all four the same weight: the mockup has no gold primary
+     ─ ◆ ─
+     safety  Mute · Block · Report, outlined, icon + word
+   The card no longer carries Equipment / Tier 1 Stats / Record at all; they
+   belong to PlayerProfilePanel (a placeholder for now -- its header note maps
+   the rpgData fields for whoever builds it).  With the sheet gone there is no
+   scroll body, so the v2.3.1235 fade and the v2.3.1743 four-row grid it
+   needed are gone with it.
+   Corner brackets and the ◆ dividers are the mockup's, drawn in CSS; they are
+   the owner's deliberate exception to Lantern Slate's "no decorative
+   corners" (recorded in docs/LANTERN-SLATE-SPEC.md, do-not-drift list).
+   Presentation only: every click handler below is the code it replaces,
+   verbatim; every caps gate is the same gate; every wire send is the same
+   send.  Every control carries a stable data-act (TRAPS §29): the mp
+   scenarios select by that id, not by the display copy. */
 
-/* v2.3.1232: Lantern Slate style tokens — local, no shared module. */
-var LS_HEADER = {
-  fontSize: 11,
-  fontWeight: 600,
-  textTransform: 'uppercase',
-  letterSpacing: '.12em',
-  color: '#8D9B98' /* v2.3.1235: muted token */
-};
-var LS_DIVIDER = '1px solid rgba(229,237,233,0.11)'; /* v2.3.1235: hairline token */
-/* full-width secondary action button */
-var LS_SECONDARY = {
-  minHeight: 44,
-  padding: '0 12px',
-  borderRadius: 10, /* v2.3.1235: card radius */
-  border: '1px solid rgba(229,237,233,0.20)', /* v2.3.1235: strong hairline */
-  background: '#293B41', /* v2.3.1235: raised */
-  color: '#F4F0E7',
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: 'pointer'
-};
+/* v2.3.2926: one of the owner's icons, with the emoji the card used before
+   as the fallback if the webp fails (the pattern PartyHUD / TradePanel use).
+   A SPAN, not a bare text node, so the fallback keeps the icon's box. */
+function socIcon(name, glyph) {
+  return /*#__PURE__*/React.createElement("img", {
+    className: "bt-pcard-ic",
+    src: '/icons/ui/soc-' + name + '.webp',
+    alt: "",
+    draggable: false,
+    onError: function onError(e) {
+      var s = document.createElement('span');
+      s.className = 'bt-pcard-ic bt-pcard-glyph';
+      s.textContent = glyph;
+      e.currentTarget.replaceWith(s);
+    }
+  });
+}
 
 export function InspectPlayerPanel(props) {
   /* v2.3.2276: stand the transient world chrome down while this is up.  The
@@ -90,18 +121,16 @@ export function InspectPlayerPanel(props) {
     setTradeOffer = props.setTradeOffer,
     setTradeTarget = props.setTradeTarget;
   /* v2.3.1235: Checkpoint B — generate the game's REAL pixel portrait of
-     the inspected player.  NOTE: inspectPlayer.bro is NFT metadata
-     (ID/diScore/rank), NOT appearance — the inspected player's live
-     cosmetics are the flat fields on stateRef.current.others[id]
+     the inspected player.  NOTE: inspectPlayer.bro is a verified Hemi Bro
+     token id, NOT appearance — the inspected player's live cosmetics are
+     the flat fields on stateRef.current.others[id]
      (skin/hair/hairColor/facialhair/facialHairColor/headwear/hatColor/
      shirt/shirtColor/pants/shoes, filled at player_join/state_sync from
      the wire's sk/hr/hc/fh/fhc/hw/htc/st/stc/pt/sh).  These are the SAME
      fields entityRenderer draws, so the portrait matches the in-game
-     figure.  portraitDataUrl is ASYNC (Promise of a data URL); color ids
-     go through the *Target() transforms exactly like the BottomDashboard
-     player-card portrait (~line 537).  Fallback chain when the others
-     entry is gone (player left / placeholder peer) or generation fails:
-     inspectPlayer.avatar img → 56px letter tile. */
+     figure.  portraitDataUrl is ASYNC (Promise of a data URL).  Fallback
+     chain when the others entry is gone (player left / placeholder peer)
+     or generation fails: inspectPlayer.avatar img → letter tile. */
   var _pp = React.useState(null);
   var genPortrait = _pp[0],
     setGenPortrait = _pp[1];
@@ -115,6 +144,13 @@ export function InspectPlayerPanel(props) {
   var _rs = React.useState(false);
   var reportSent = _rs[0],
     setReportSent = _rs[1];
+  /* v2.3.2926: the stats-and-equipment menu the portrait opens.  Panel
+     state for the same reason as the report row: it resets when the card
+     closes, so the next player you tap opens on their card, not on a menu
+     left over from the last one. */
+  var _pv = React.useState(false);
+  var showProfile = _pv[0],
+    setShowProfile = _pv[1];
   React.useEffect(function () {
     var alive = true;
     setGenPortrait(null);
@@ -140,23 +176,7 @@ export function InspectPlayerPanel(props) {
       alive = false;
     };
   }, [inspectPlayer]);
-  /* v2.3.1235: rollout micro-fix §1 — the scrollable body hides its
-     scrollbar (no permanent scrollbar on the modal) and shows a 24px
-     bottom fade above the sticky action row ONLY while more content
-     exists below the fold, so short-phone users know Add Friend / Mute /
-     Block are reachable by scrolling. */
-  var _sf = React.useState(false);
-  var showFade = _sf[0],
-    setShowFade = _sf[1];
-  var scrollBodyRef = React.useRef(null);
-  var measureFade = React.useCallback(function () {
-    var el = scrollBodyRef.current;
-    if (el) setShowFade(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
-  }, []);
-  React.useEffect(function () {
-    measureFade();
-  }, [inspectPlayer, genPortrait, measureFade]);
-  var _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _S$rpg26, _ZONES$stateRef$curre, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current39;
+  var _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _S$rpg26, _ZONES$stateRef$curre, _inspectPlayer$rpgDat, _stateRef$current39;
   /* v2.3.1743: is this person already on my roster?  The party action at
      the top of the card reads as an invite otherwise, and inviting someone
      you are already partied with just earns an 'already partied' error from
@@ -171,693 +191,185 @@ export function InspectPlayerPanel(props) {
       }
     }
   } catch (e) { _partyMate = false; }
+  /* v2.3.2926: the four relationship reads, hoisted out of the IIFEs each
+     button used to compute its own in -- same expressions, same names, so
+     the handlers below that read them are the old handlers verbatim.  They
+     are up here because the header now shows them too (the mockup's
+     "🙂 Friend" badge beside the level). */
+  var isFriend = friendsList.some(function (f) {
+    return f.id === inspectPlayer.id;
+  });
+  var isMuted = mutedList.includes(inspectPlayer.id);
+  var isBlocked = blockedList.includes(inspectPlayer.id);
+  var isLawless = (_ZONES$stateRef$curre = ZONES[(_stateRef$current39 = stateRef.current) === null || _stateRef$current39 === void 0 ? void 0 : _stateRef$current39.currentZone]) === null || _ZONES$stateRef$curre === void 0 ? void 0 : _ZONES$stateRef$curre.lawless;
+  /* v2.3.1743: caps-gated exactly as before (v2.3.1185: an old worker would
+     rebroadcast party_invite as an unknown type instead of validating it),
+     so a worker without parties shows no party tile at all. */
+  var hasPartyCap = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.party);
+  /* v2.3.1981: hidden entirely against a worker that cannot store a report --
+     a report button that quietly does nothing is worse than no button. */
+  var canReport = chatMuteSettled(stateRef.current);
+  /* v2.3.1743: the CLAN invite only appears when you lead a clan the target
+     isn't in.  v2.3.2926: and not while the report reasons are up, which
+     would otherwise stack a fifth row onto a landscape phone's 257px card. */
+  var showClanInvite = clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && !reportOpen;
+  var closeCard = function onClick() {
+    return setInspectPlayer(null);
+  };
+  /* v2.3.1235: Checkpoint B — portrait chain: generated pixel portrait →
+     inspectPlayer.avatar img → letter tile.  v2.3.2926: built once and
+     shown by both the card and the stats menu. */
+  var face = genPortrait ? /*#__PURE__*/React.createElement("img", {
+    src: genPortrait,
+    alt: "",
+    draggable: false
+  }) : inspectPlayer.avatar ? /*#__PURE__*/React.createElement("img", {
+    src: inspectPlayer.avatar,
+    alt: "",
+    draggable: false,
+    onError: function onError(e) {
+      /* v2.3.1235: broken avatar URL → swap in the letter tile */
+      var el = document.createElement('div');
+      el.className = 'bt-pcard-letter';
+      el.style.background = inspectPlayer.color || '#293B41';
+      el.textContent = inspectPlayer.name.charAt(0).toUpperCase();
+      e.currentTarget.replaceWith(el);
+    }
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "bt-pcard-letter",
+    style: {
+      background: inspectPlayer.color
+    }
+  }, inspectPlayer.name.charAt(0).toUpperCase());
   return React.createElement("div", {
     className: "bt-inspect",
     style: {
       background: 'rgba(4,9,12,0.38)' /* v2.3.1235: ordinary modal scrim */
     },
-    onClick: function onClick() {
-      return setInspectPlayer(null);
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-card",
+    onClick: closeCard
+  }, showProfile ? /*#__PURE__*/React.createElement(PlayerProfilePanel, {
+    inspectPlayer: inspectPlayer,
+    face: face,
+    onBack: function onBack() {
+      setShowProfile(false);
+    },
+    onClose: closeCard
+  }) : /*#__PURE__*/React.createElement("div", {
+    /* v2.3.2926: the whole look is game.css `.bt-pcard` -- the mockup's
+       gradient, brackets and dividers, the pressed states, and the landscape
+       phone's one-row tiles, none of which an inline style can say.
+       ls-scrollbody: the card only scrolls as a last resort, on a screen too
+       short for it, and then without a bar (TRAPS §64 -- a clipped card is
+       still a scroll container, just one a finger cannot move). */
+    className: "bt-inspect-card bt-pcard ls-scrollbody",
     onClick: function onClick(e) {
       return e.stopPropagation();
-    },
-    style: {
-      /* v2.3.1235: Checkpoint B — ONE responsive layout at every width.
-         Grid rows: header (auto) / scrollable body (minmax(0,1fr)) /
-         PINNED TP-Trade-Duel-Threat row (auto, never scrolled away).
-         The card itself no longer scrolls (overflowY hidden overrides
-         the .bt-inspect-card CSS auto); the body row does.  QA saw
-         "different content at different widths" because lower rows
-         clipped under the old card-level maxHeight+scroll. */
-      width: 'calc(100% - 24px)',
-      maxWidth: 408,
-      /* v2.3.1235: Checkpoint B round 3 — ALSO cap at 100% of the
-         .bt-inspect content box (which reserves the HUD chip strip and
-         the dashboard band): at 390×844 the 72dvh cap exceeded the box
-         and the flex-centered card overflowed BOTH ends — ✕ under the
-         chip, action row flush against the band. */
-      maxHeight: 'min(calc(72dvh - 24px), 100%)',
-      overflowY: 'hidden',
-      display: 'grid',
-      /* v2.3.1743: FOUR rows now — header / party action / scrollable body /
-         pinned action row.  The party row is a wrapper that ALWAYS renders
-         (it collapses to 0 height when there is nothing to show), because
-         this template assigns rows by child ORDER: a conditionally-absent
-         child would hand `minmax(0, 1fr)` to the wrong element and the body
-         would stop being the part that scrolls.  That is exactly what the
-         first cut of this change did — the invite button took the flexible
-         row and drew itself on top of the Equipment section. */
-      gridTemplateRows: 'auto auto minmax(0, 1fr) auto',
-      background: '#1E2E34', /* v2.3.1235: sheet surface */
-      border: '1px solid rgba(229,237,233,0.20)',
-      borderRadius: 14,
-      boxShadow: '0 14px 30px rgba(4,7,9,.38)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
+    "aria-label": "Close",
     onClick: function onClick() {
       return setInspectPlayer(null);
     }
-  }, "✕"), /* v2.3.1235: compressed header — real 56px pixel portrait
-    (inspectPlayer.avatar, same field the plist rows / dashboard card
-    render) with the letter tile demoted to fallback; name + Lv stack to
-    its right; the old centered 64px circle + oversized padding is gone.
-    The divider below comes from the first section's borderTop. */
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/icons/ui/soc-close.webp",
+    alt: "",
+    draggable: false
+  })),
+  /* ═══ HEAD ═══
+     The portrait is a BUTTON now -- the owner's door to the stats menu. */
   /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 10,
-      textAlign: 'left',
-      paddingRight: 24,
-      marginBottom: 10
+    className: "bt-pcard-head"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "bt-pcard-face",
+    "data-act": "profile",
+    "aria-label": "Stats and equipment",
+    title: "Stats & equipment",
+    onClick: function onClick() {
+      setShowProfile(true);
     }
-  }, /* v2.3.1235: Checkpoint B — portrait chain: generated pixel
-    portrait → inspectPlayer.avatar img → 56px letter tile. */
-  genPortrait ? /*#__PURE__*/React.createElement("img", {
-    src: genPortrait,
-    alt: "",
-    draggable: false,
-    style: {
-      width: 56,
-      height: 56,
-      borderRadius: 10,
-      objectFit: 'cover',
-      flexShrink: 0,
-      border: '1px solid rgba(229,237,233,0.20)',
-      background: '#111E23'
-    }
-  }) : inspectPlayer.avatar ? /*#__PURE__*/React.createElement("img", {
-    src: inspectPlayer.avatar,
-    alt: "",
-    draggable: false,
-    style: {
-      width: 56,
-      height: 56,
-      borderRadius: 10,
-      objectFit: 'cover',
-      flexShrink: 0,
-      border: '1px solid rgba(229,237,233,0.20)',
-      background: '#111E23'
-    },
-    onError: function onError(e) {
-      /* v2.3.1235: broken avatar URL → swap in the letter tile */
-      var el = document.createElement('div');
-      el.style.cssText = 'width:56px;height:56px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#F4F0E7;background:' + (inspectPlayer.color || '#293B41');
-      el.textContent = inspectPlayer.name.charAt(0).toUpperCase();
-      e.currentTarget.replaceWith(el);
-    }
-  }) : /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 56,
-      height: 56,
-      borderRadius: 10,
-      background: inspectPlayer.color,
-      flexShrink: 0,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: 22,
-      fontWeight: 700,
-      color: '#F4F0E7'
-    }
-  }, inspectPlayer.name.charAt(0).toUpperCase()), /*#__PURE__*/React.createElement("div", {
-    style: {
-      minWidth: 0
-    }
+  }, face), /*#__PURE__*/React.createElement("div", {
+    className: "bt-pcard-who"
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 15,
-      fontWeight: 700,
-      color: '#F4F0E7', /* v2.3.1235: Checkpoint B — text token always, never a per-player tint */
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap'
-    }
+    className: "bt-pcard-name" /* v2.3.1235: Checkpoint B — text token always, never a per-player tint */
   }, inspectPlayer.clanTag && /*#__PURE__*/React.createElement("span", {
     style: {
       color: inspectPlayer.clanColor1 || '#9A76D3'
     }
   }, "[", inspectPlayer.clanTag, "] "), inspectPlayer.name), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 2,
-      fontSize: 12,
-      color: '#8D9B98'
-    }
+    className: "bt-pcard-meta"
   }, inspectPlayer.rpgLv && /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-lv"
+  }, "LV ", inspectPlayer.rpgLv),
+  /* v2.3.2926: the relationship, where the eye lands first -- the mockup's
+     "🙂 Friend" beside the level, and the party membership the same way. */
+  _partyMate && /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-rel",
+    "data-rel": "party"
+  }, socIcon('party', '🎟️'), "In party"), isFriend && /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-rel",
+    "data-rel": "friend"
+  }, socIcon('friend', '🙂'), "Friend"), inspectPlayer.rep && inspectPlayer.rep !== 'neutral' && /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-rep",
     style: {
-      fontWeight: 700,
-      fontVariantNumeric: 'tabular-nums'
-    }
-  }, "Lv ", inspectPlayer.rpgLv), inspectPlayer.rep && inspectPlayer.rep !== 'neutral' && /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontWeight: 700,
       color: ((_REPUTATION$inspectPl = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl === void 0 ? void 0 : _REPUTATION$inspectPl.color) || '#8D9B98'
     }
   }, ((_REPUTATION$inspectPl2 = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl2 === void 0 ? void 0 : _REPUTATION$inspectPl2.label) || inspectPlayer.rep), inspectPlayer.pet && /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 14
-    }
-  }, inspectPlayer.pet)))),
-  /* ═══ v2.3.1743: THE PARTY ACTION LIVES AT THE TOP ═══
-     Owner: "party should be moved to the top part of the modal".  It used
-     to sit INSIDE the scroll body, below Equipment, Tier 1 Stats and the
-     whole Record block — on a phone that is below the fold, so the single
-     most useful thing you can do with another player was the one thing you
-     had to go looking for, while TP (which the owner does not even use)
-     was pinned in plain sight.
-     Pinned OUTSIDE the scroll body for the same reason the TP/Trade/Duel
-     row is: a top-of-card action that scrolls away is not a top-of-card
-     action.  Caps-gated exactly as before (v2.3.1185: an old worker would
-     rebroadcast party_invite as an unknown type instead of validating it),
-     so a worker without parties still shows nothing here. */
+    className: "bt-pcard-pet"
+  }, inspectPlayer.pet)))), /*#__PURE__*/React.createElement("div", {
+    className: "bt-pcard-rule",
+    "aria-hidden": true
+  }),
+  /* ═══ TILES ═══
+     v2.3.1743: THE PARTY ACTION LIVES AT THE TOP.  Owner: "party should be
+     moved to the top part of the modal" -- it used to sit below the whole
+     stat block, off the bottom of a phone.  v2.3.2926: it is the first tile,
+     top left, as the mockup draws it.  A worker without parties draws three
+     tiles; game.css stretches an odd last tile across both columns. */
   /*#__PURE__*/React.createElement("div", {
-    style: { minWidth: 0 }
-  }, stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.party && (_partyMate
-    ? /*#__PURE__*/React.createElement("div", {
-      style: Object.assign({}, LS_SECONDARY, {
-        width: '100%',
-        marginTop: 8,
-        marginBottom: 2,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#8D9B98',
-        opacity: 0.85
-      })
-    }, "🎟️ In your party")
-    : /*#__PURE__*/React.createElement("button", {
-      style: Object.assign({}, LS_SECONDARY, {
-        width: '100%',
-        marginTop: 8,
-        marginBottom: 2,
-        color: '#D8A94D'
-      }),
-      onClick: function onClick() {
-        var S = stateRef.current;
-        if (S.channel) S.channel.send({
-          type: 'broadcast',
-          event: 'party_invite',
-          payload: {
-            target: inspectPlayer.id
-          }
-        });
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
-        setInspectPlayer(null);
-      }
-    }, "🎟️ Invite to Party"))),
-  /* v2.3.1235: Checkpoint B — row 2: the ONE
-    scrollable body (sections + social rows).  Row 3 (the TP/Trade/Duel/
-    Threat action row) is pinned OUTSIDE this wrapper so it can never be
-    scrolled away. */
-  /*#__PURE__*/React.createElement("div", {
-    ref: scrollBodyRef,
-    onScroll: measureFade,
-    className: "ls-scrollbody" /* v2.3.1235: hides the scrollbar (game.css) */,
-    style: {
-      overflowY: 'auto',
-      paddingBottom: 16,
-      touchAction: 'pan-y',
-      minHeight: 0
-    }
-  }, inspectPlayer.rpgData && function () {
-    var d = inspectPlayer.rpgData;
-    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-      style: {
-        textAlign: 'left',
-        borderTop: LS_DIVIDER,
-        paddingTop: 10,
-        marginBottom: 10
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: Object.assign({}, LS_HEADER, {
-        marginBottom: 6
-      })
-    }, "Equipment"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '5px 10px',
-        fontSize: 12,
-        color: '#96A2A0'
-      }
-    }, /*#__PURE__*/React.createElement("span", null, "⚔️ Weapon"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#F7F2E7',
-        fontWeight: 600,
-        textAlign: 'right'
-      }
-    }, d.weapon), /*#__PURE__*/React.createElement("span", null, "🛡️ Armor"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#F7F2E7',
-        fontWeight: 600,
-        textAlign: 'right'
-      }
-    }, d.armor), d.shield && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", null, "🛡️ Shield"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#F7F2E7',
-        fontWeight: 600,
-        textAlign: 'right'
-      }
-    }, d.shield)), d.amulet && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", null, "📿 Amulet"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#F7F2E7',
-        fontWeight: 600,
-        textAlign: 'right'
-      }
-    }, d.amulet)))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        textAlign: 'left',
-        borderTop: LS_DIVIDER,
-        paddingTop: 10,
-        marginBottom: 10
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: Object.assign({}, LS_HEADER, {
-        marginBottom: 6
-      })
-    }, "Tier 1 Stats"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        gap: 4,
-        justifyContent: 'center',
-        flexWrap: 'wrap'
-      }
-    }, /* v2.3.1232: stat accents mapped onto the semantic set (info
-         replaces the old sky, magic replaces indigo) */
-    [['POW', d.power, '#D95C54'], ['VIT', d.vitality, '#59BF91'], ['END', d.endurance, '#D8A94D'], ['AGI', d.agility, '#5D93D2'], ['MND', d.mind, '#9A76D3']].map(function (_ref194) {
-      var _ref195 = _slicedToArray(_ref194, 3),
-        l = _ref195[0],
-        v = _ref195[1],
-        c = _ref195[2];
-      return /*#__PURE__*/React.createElement("div", {
-        key: l,
-        style: {
-          padding: '5px 6px',
-          borderRadius: 8,
-          background: '#293B41', /* v2.3.1235: quiet raised cell */
-          border: '1px solid rgba(229,237,233,0.11)',
-          textAlign: 'center',
-          minWidth: 44
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 11,
-          color: c,
-          fontWeight: 600,
-          letterSpacing: '.08em'
-        }
-      }, l), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 14,
-          fontWeight: 700,
-          fontVariantNumeric: 'tabular-nums',
-          color: '#F7F2E7'
-        }
-      }, v));
-    }))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        textAlign: 'left',
-        borderTop: LS_DIVIDER,
-        paddingTop: 10,
-        marginBottom: 10
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: Object.assign({}, LS_HEADER, {
-        marginBottom: 6
-      })
-    }, "Record"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr 1fr',
-        gap: 4,
-        textAlign: 'center'
-      }
-    }, [['💀', d.kills, 'Kills'], ['⚔️', d.pvpKills, 'PvP Kills'], ['☠️', d.deaths, 'Deaths'], ['🏆', d.quests, 'Quests'], ['⭐', d.ap, 'AP'], ['⏱️', d.playtime + 'm', 'Played']].map(function (_ref196) {
-      var _ref197 = _slicedToArray(_ref196, 3),
-        icon = _ref197[0],
-        val = _ref197[1],
-        label = _ref197[2];
-      return /*#__PURE__*/React.createElement("div", {
-        key: label,
-        style: {
-          padding: '6px 0' /* v2.3.1235: unboxed — plain cells under the
-            section label instead of nested filled tiles */
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 13
-        }
-      }, icon), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 14,
-          fontWeight: 700,
-          fontVariantNumeric: 'tabular-nums',
-          color: '#F7F2E7'
-        }
-      }, val), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 11,
-          fontWeight: 600,
-          color: '#96A2A0'
-        }
-      }, label));
-    }))), d.clanName && /*#__PURE__*/React.createElement("div", {
-      style: {
-        minHeight: 32,
-        boxSizing: 'border-box',
-        padding: '6px 10px',
-        borderRadius: 999,
-        background: '#293B41', /* v2.3.1235: raised chip */
-        border: '1px solid rgba(229,237,233,0.11)',
-        marginBottom: 10,
-        textAlign: 'center'
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 11,
-        fontWeight: 700,
-        color: '#9A76D3'
-      }
-    }, "🏰 [", d.clanTag, "] ", d.clanName)));
-  }(), inspectPlayer.bro && /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-stat"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-pill"
-  }, "Bro #", inspectPlayer.bro.ID), /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-pill",
-    style: {
-      color: 'var(--teal)'
-    }
-  }, "DI ", (_inspectPlayer$bro$di = inspectPlayer.bro.diScore) !== null && _inspectPlayer$bro$di !== void 0 && _inspectPlayer$bro$di.toFixed ? inspectPlayer.bro.diScore.toFixed(1) : inspectPlayer.bro.diScore), /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-pill",
-    style: {
-      color: 'var(--pop)'
-    }
-  }, "Rank #", inspectPlayer.bro.rank)), /* v2.3.1235: Checkpoint B — the
-     TP/Trade/Duel/Threat action row moved OUT of the scroll body to the
-     pinned grid row 3 (end of the card).  Everything below stays in the
-     scrollable body. */
-  /* v2.3.1743: the party invite that used to sit here moved to the pinned
-     top of the card (owner: "party should be moved to the top part of the
-     modal").  The CLAN invite stays in the scroll body — it is the rarer
-     action and only appears when you lead a clan the target isn't in. */
-  clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && /*#__PURE__*/React.createElement("button", {
-    style: Object.assign({}, LS_SECONDARY, {
-      width: '100%',
-      marginTop: 6,
-      color: '#9A76D3'
-    }),
+    className: "bt-pcard-tiles"
+  }, hasPartyCap && (_partyMate
+  /* v2.3.1743: someone already on your roster is not invitable -- the tile
+     says so and takes no tap. */
+  ? /*#__PURE__*/React.createElement("div", {
+    className: "bt-pcard-tile is-static",
+    "data-act": "party",
+    "data-state": "member",
+    "aria-disabled": "true"
+  }, socIcon('party', '🎟️'), /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-lb"
+  }, "In party"))
+  : /*#__PURE__*/React.createElement("button", {
+    className: "bt-pcard-tile",
+    "data-act": "party",
+    "data-state": "invite",
     onClick: function onClick() {
       var S = stateRef.current;
       if (S.channel) S.channel.send({
         type: 'broadcast',
-        event: 'clan_invite',
+        event: 'party_invite',
         payload: {
-          target: inspectPlayer.id,
-          from: S.myId,
-          fromName: S.myName,
-          clanName: clanData.name,
-          clanTag: clanData.tag
+          target: inspectPlayer.id
         }
       });
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Clan invite sent', '#a78bfa');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
       setInspectPlayer(null);
     }
-  }, "🏰 Invite to [", clanData.tag, "]"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 6,
-      marginTop: 6
-    }
-  }, function () {
-    var isFriend = friendsList.some(function (f) {
-      return f.id === inspectPlayer.id;
-    });
-    return /*#__PURE__*/React.createElement("button", {
-      style: {
-        flex: 1,
-        minHeight: 44,
-        padding: '0 4px',
-        borderRadius: 10, /* v2.3.1235: secondary tokens */
-        fontSize: 11,
-        fontWeight: 700,
-        cursor: 'pointer',
-        border: '1px solid rgba(229,237,233,0.20)',
-        background: '#293B41',
-        color: isFriend ? '#59BF91' : '#B6C1BE'
-      },
-      onClick: function onClick() {
-        if (isFriend) {
-          var updated = friendsList.filter(function (f) {
-            return f.id !== inspectPlayer.id;
-          });
-          setFriendsList(updated);
-          try {
-            localStorage.setItem('bt_friends', JSON.stringify(updated));
-          } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Removed friend', '#D95C54');
-        } else {
-          var _updated = [].concat(_toConsumableArray(friendsList), [{
-            id: inspectPlayer.id,
-            name: inspectPlayer.name,
-            color: inspectPlayer.color,
-            addedAt: Date.now()
-          }]);
-          setFriendsList(_updated);
-          try {
-            localStorage.setItem('bt_friends', JSON.stringify(_updated));
-          } catch (e) {}
-          /* v2.3.1324: with a friends-capable server this ALSO sends a
-             real friend_request — accepted requests become mutual
-             server friendships (requests + DMs).  The local write above
-             stays as the legacy-path fallback (rule 19). */
-          try {
-            var _S9 = stateRef.current;
-            if (_S9 && _S9._serverCaps && _S9._serverCaps.friends && _S9.channel) {
-              _S9.channel.send({ type: 'broadcast', event: 'friend_request', payload: { target: inspectPlayer.id, name: inspectPlayer.name } });
-            }
-          } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Friend request sent!', '#59BF91');
-          BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
-        }
-      }
-    }, isFriend ? '💚 Friend' : '➕ Add Friend');
-  }(), function () {
-    var isMuted = mutedList.includes(inspectPlayer.id);
-    return /*#__PURE__*/React.createElement("button", {
-      style: {
-        flex: 0.7,
-        minHeight: 44,
-        padding: '0 4px',
-        borderRadius: 10, /* v2.3.1235: secondary tokens */
-        fontSize: 11,
-        fontWeight: 700,
-        cursor: 'pointer',
-        border: '1px solid rgba(229,237,233,0.20)',
-        background: '#293B41',
-        color: isMuted ? '#D8AA58' : '#B6C1BE'
-      },
-      onClick: function onClick() {
-        /* v2.3.1981: the mute goes to the WORKER now (chatMute.js
-           setMuted), which writes it to Durable Object storage against
-           this player's `bp_` identity and stops fanning the muted
-           player's chat out to this socket at all.  setMuted still
-           writes the localStorage list first — that is the prediction,
-           the legacy fallback against a worker without caps.chatMute,
-           and what this panel's `mutedList` prop is built from — so the
-           button behaves identically either way, it just no longer
-           forgets on the next device. */
-        var _mS = stateRef.current;
-        var _mNext = setMuted(_mS, inspectPlayer.id, !isMuted, inspectPlayer.name);
-        setMutedList(_mNext);
-        var _mDurable = chatMuteSettled(_mS);
-        pushDmgPopup(_mS, _mS.player.x, _mS.player.y - 30,
-          isMuted ? 'Unmuted' : (_mDurable ? 'Muted — their chat stops here' : 'Muted'), '#D8A94D');
-      }
-    }, isMuted ? '🔇 Muted' : '🔇 Mute');
-  }(), function (_ZONES$stateRef$curre, _stateRef$current39) {
-    var isBlocked = blockedList.includes(inspectPlayer.id);
-    var isLawless = (_ZONES$stateRef$curre = ZONES[(_stateRef$current39 = stateRef.current) === null || _stateRef$current39 === void 0 ? void 0 : _stateRef$current39.currentZone]) === null || _ZONES$stateRef$curre === void 0 ? void 0 : _ZONES$stateRef$curre.lawless;
-    return /*#__PURE__*/React.createElement("button", {
-      style: {
-        flex: 0.7,
-        minHeight: 44,
-        padding: '0 4px',
-        borderRadius: 10, /* v2.3.1235: danger is an OUTLINE, never a fill */
-        fontSize: 11,
-        fontWeight: 700,
-        cursor: 'pointer',
-        border: '1px solid ' + (isBlocked ? '#D8635D' : 'rgba(229,237,233,0.20)'),
-        background: isBlocked ? 'transparent' : '#293B41',
-        color: isBlocked ? '#D8635D' : '#B6C1BE',
-        opacity: !isBlocked && isLawless ? 0.3 : 1
-      },
-      onClick: function onClick() {
-        if (isBlocked) {
-          var updated = blockedList.filter(function (b) {
-            return b !== inspectPlayer.id;
-          });
-          setBlockedList(updated);
-          try {
-            localStorage.setItem('bt_blocked', JSON.stringify(updated));
-          } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unblocked', '#59BF91');
-        } else {
-          if (isLawless) {
-            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Can\'t block in lawless zone!', '#D95C54');
-            return;
-          }
-          var _updated3 = [].concat(_toConsumableArray(blockedList), [inspectPlayer.id]);
-          setBlockedList(_updated3);
-          try {
-            localStorage.setItem('bt_blocked', JSON.stringify(_updated3));
-          } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Blocked - no interactions', '#D95C54');
-        }
-      }
-    }, isBlocked ? '🚫 Blocked' : '🚫 Block');
-  }()), /* ═══ v2.3.1981: REPORT ═══
-    Until now a player being harassed on a public server had exactly one
-    tool — hide it from themselves — and no way to tell the operator
-    anything at all.  This sends a report the WORKER writes to storage
-    with its own copy of what the reported player said (chatmod.js): the
-    payload carries only who and why, so nothing typed here can end up
-    as evidence against somebody else.
-    Two taps by design (row opens -> reason chip commits): a one-tap
-    report next to Mute would be mis-fired constantly on a 390px phone,
-    and the reason is what makes the record actionable.  Hidden entirely
-    against a worker that cannot store it, for the reason in
-    chatMute.js — a report button that quietly does nothing is worse
-    than no button. */
-  chatMuteSettled(stateRef.current) && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 6
-    }
-  }, !reportOpen && /*#__PURE__*/React.createElement("button", {
-    style: Object.assign({}, LS_SECONDARY, {
-      width: '100%',
-      color: reportSent ? '#8D9B98' : '#B6C1BE',
-      fontSize: 11
-    }),
-    disabled: reportSent,
-    onClick: function onClick() {
-      if (!reportSent) setReportOpen(true);
-    }
-  }, reportSent ? '⚑ Reported' : '⚑ Report to moderators'), reportOpen && /*#__PURE__*/React.createElement("div", {
-    /* The row lives in the card's SCROLL body, and on a 390x844 phone it
-       opens below the fold — measured: only the first two chips were on
-       screen, with no cue that two more and a Cancel existed.  A callback
-       ref scrolls it into view once, on mount. */
-    ref: function (el) {
-      if (el && el.scrollIntoView) {
-        try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {}
-      }
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: '#8D9B98',
-      marginBottom: 6
-    }
-  }, "Why are you reporting ", inspectPlayer.name, "?"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 6,
-      flexWrap: 'wrap'
-    }
-  }, [['spam', 'Spam'], ['abuse', 'Abuse'], ['harassment', 'Harassment'], ['cheating', 'Cheating']].map(function (r) {
-    return /*#__PURE__*/React.createElement("button", {
-      key: r[0],
-      style: {
-        flex: '1 1 45%',
-        minHeight: 44,
-        padding: '0 8px',
-        borderRadius: 10,
-        fontSize: 11,
-        fontWeight: 700,
-        cursor: 'pointer',
-        border: '1px solid rgba(229,237,233,0.20)',
-        background: '#293B41',
-        color: '#B6C1BE'
-      },
-      onClick: function onClick() {
-        var _rS = stateRef.current;
-        /* The ack (chat_report_ack -> gameEvents.js) is the real
-           confirmation; this only closes the row so the card can't be
-           used to fire a second one on the same tap-through. */
-        reportPlayer(_rS, inspectPlayer.id, r[0]);
-        setReportOpen(false);
-        setReportSent(true);
-      }
-    }, r[1]);
-  })), /*#__PURE__*/React.createElement("button", {
-    style: Object.assign({}, LS_SECONDARY, {
-      width: '100%',
-      marginTop: 6,
-      fontSize: 11,
-      color: '#8D9B98'
-    }),
-    onClick: function onClick() {
-      setReportOpen(false);
-    }
-  }, "Cancel"))), /* v2.3.1235: rollout micro-fix §1 — sticky 24px fade pinned to the
-    visible bottom of the scroll body; visible only while content remains
-    below (showFade), so reachability is signalled without a scrollbar.
-    pointerEvents none — purely a visual cue. */
-  /*#__PURE__*/React.createElement("div", {
-    "aria-hidden": true,
-    style: {
-      position: 'sticky',
-      bottom: 0,
-      height: 24,
-      marginTop: -24,
-      flexShrink: 0,
-      background: 'linear-gradient(180deg, rgba(30,46,52,0), #1E2E34)',
-      opacity: showFade ? 1 : 0,
-      transition: 'opacity 160ms ease',
-      pointerEvents: 'none'
-    }
-  })), /* v2.3.1235: Checkpoint B — row 3 (auto, PINNED): the Trade/Duel/
-    Threat action row sits outside the scroll body so it is always
-    visible.
-    v2.3.1744: TP is GONE (owner: "remove it", after asking what it did).
-    It wrote your own x/y to the inspected player's + 40 and closed the
-    card — no cost, no cooldown, no gate, and no server call at all.  The
-    worker's anti-teleport speed cap (movement.js, 500 px/s + 80 px burst)
-    then refused any jump long enough to be worth taking, so it worked over
-    a few tiles and rubber-banded over a screen.  A convenience button whose
-    behaviour depends on distance is worse than no button. */
-  /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 6,
-      marginTop: 10
-    }
-  }, /* v2.3.1235: action row correction — Trade is the surface's single
-    gold primary (flex 1.4); Duel is a secondary; Threat is a danger
-    OUTLINE, not a filled red block. Labels drop emoji per the design
-    correction; the handlers are byte-identical. */
+  }, socIcon('party', '🎟️'), /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-lb"
+  }, "Invite to Party"))),
+  /* v2.3.1744: TP is GONE (owner: "remove it", after asking what it did).
+     It wrote your own x/y to the inspected player's + 40 and closed the
+     card — no cost, no cooldown, no gate, and no server call at all.  The
+     worker's anti-teleport speed cap (movement.js, 500 px/s + 80 px burst)
+     then refused any jump long enough to be worth taking, so it worked over
+     a few tiles and rubber-banded over a screen.  A convenience button whose
+     behaviour depends on distance is worse than no button.
+     v2.3.2926: Trade is no longer the gold primary -- the mockup draws the
+     four actions at one weight. */
   /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-tp",
-    style: {
-      flex: 1.4,
-      marginTop: 0,
-      minHeight: 44,
-      padding: '0 4px',
-      borderRadius: 10,
-      fontSize: 12,
-      fontWeight: 700,
-      border: '1px solid #EAC675',
-      background: 'linear-gradient(180deg, #E2B765, #D2A14D)',
-      color: '#172126'
-    },
+    className: "bt-pcard-tile",
+    "data-act": "trade",
     onClick: function onClick() {
       /* v2.3.1132: two-sided trade window when the worker supports it
          (trade2_open handshake; both stage, both confirm, server swaps
@@ -879,20 +391,58 @@ export function InspectPlayerPanel(props) {
       setShowTrade(true);
       setInspectPlayer(null);
     }
-  }, "Trade"), /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-tp",
-    style: {
-      flex: 1,
-      marginTop: 0,
-      minHeight: 44,
-      padding: '0 4px',
-      borderRadius: 10,
-      fontSize: 12,
-      fontWeight: 700,
-      border: '1px solid rgba(229,237,233,0.20)',
-      background: '#293B41',
-      color: '#F4F0E7'
-    },
+  }, socIcon('trade', '🤝'), /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-lb"
+  }, "Trade")),
+  /* v2.3.2926: Friend is a tile now (it was the most-hidden control -- the
+     old card's social row sat below the fold).  Tapping it when you are
+     already friends still removes the friend, as the old "💚 Friend" button
+     did; the header badge is what says you are friends. */
+  /*#__PURE__*/React.createElement("button", {
+    className: "bt-pcard-tile",
+    "data-act": "friend",
+    "aria-pressed": isFriend ? "true" : "false",
+    title: isFriend ? "Friends — tap to remove" : "Add friend",
+    onClick: function onClick() {
+      if (isFriend) {
+        var updated = friendsList.filter(function (f) {
+          return f.id !== inspectPlayer.id;
+        });
+        setFriendsList(updated);
+        try {
+          localStorage.setItem('bt_friends', JSON.stringify(updated));
+        } catch (e) {}
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Removed friend', '#D95C54');
+      } else {
+        var _updated = [].concat(_toConsumableArray(friendsList), [{
+          id: inspectPlayer.id,
+          name: inspectPlayer.name,
+          color: inspectPlayer.color,
+          addedAt: Date.now()
+        }]);
+        setFriendsList(_updated);
+        try {
+          localStorage.setItem('bt_friends', JSON.stringify(_updated));
+        } catch (e) {}
+        /* v2.3.1324: with a friends-capable server this ALSO sends a
+           real friend_request — accepted requests become mutual
+           server friendships (requests + DMs).  The local write above
+           stays as the legacy-path fallback (rule 19). */
+        try {
+          var _S9 = stateRef.current;
+          if (_S9 && _S9._serverCaps && _S9._serverCaps.friends && _S9.channel) {
+            _S9.channel.send({ type: 'broadcast', event: 'friend_request', payload: { target: inspectPlayer.id, name: inspectPlayer.name } });
+          }
+        } catch (e) {}
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Friend request sent!', '#59BF91');
+        BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+      }
+    }
+  }, socIcon('friend', isFriend ? '💚' : '🙂'), /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-lb"
+  }, isFriend ? 'Friend' : 'Add Friend')), /*#__PURE__*/React.createElement("button", {
+    className: "bt-pcard-tile",
+    "data-act": "duel",
     onClick: function onClick() {
       var S = stateRef.current;
       if (S.channel) S.channel.send({
@@ -908,7 +458,10 @@ export function InspectPlayerPanel(props) {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
       setInspectPlayer(null);
     }
-  }, "Duel"), /* ═══ v2.3.1917: THREAT IS GONE FROM THE CARD ═══
+  }, socIcon('duel', '⚔️'), /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-lb"
+  }, "Duel")),
+  /* ═══ v2.3.1917: THREAT IS GONE FROM THE CARD ═══
     Owner: "Also remove the option to kill other players for now."  Threat
     was the button that started a non-consensual fight: ignore it (or let
     the countdown run out) and the pair could damage each other anywhere.
@@ -917,21 +470,11 @@ export function InspectPlayerPanel(props) {
     a void and light a red skull over a head nobody can act on.  Duel is
     the remaining way to fight someone, which is the point — it needs their
     yes.  The handler is kept below the flag rather than deleted so turning
-    the system back on is one constant. */
+    the system back on is one constant.  v2.3.2926: it would come back as a
+    tile in the danger outline. */
   false && /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-tp",
-    style: {
-      flex: 1,
-      marginTop: 0,
-      minHeight: 44,
-      padding: '0 4px',
-      borderRadius: 10,
-      fontSize: 12,
-      fontWeight: 700,
-      border: '1px solid #D8635D', /* v2.3.1235: danger outline */
-      background: 'transparent',
-      color: '#D8635D'
-    },
+    className: "bt-pcard-tile is-danger",
+    "data-act": "threat",
     onClick: function onClick() {
       var _S$rpg26;
       var S = stateRef.current;
@@ -963,5 +506,158 @@ export function InspectPlayerPanel(props) {
       BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
       setInspectPlayer(null);
     }
-  }, "Threat"))));
+  }, /*#__PURE__*/React.createElement("img", {
+    className: "bt-pcard-ic",
+    src: "/icons/ui/evt-threat.webp",
+    alt: "",
+    draggable: false
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-lb"
+  }, "Threat")),
+  /* v2.3.1743: the CLAN invite -- the rarer action, only when you lead a
+     clan the target isn't in.  v2.3.2926: a fifth tile after the mockup's
+     four (full width under them on a phone held upright, one more in the row
+     sideways).  The owner's sheet has no clan icon, so it keeps the painted
+     clan shield from the older set. */
+  showClanInvite && /*#__PURE__*/React.createElement("button", {
+    className: "bt-pcard-tile is-clan",
+    "data-act": "clan",
+    onClick: function onClick() {
+      var S = stateRef.current;
+      if (S.channel) S.channel.send({
+        type: 'broadcast',
+        event: 'clan_invite',
+        payload: {
+          target: inspectPlayer.id,
+          from: S.myId,
+          fromName: S.myName,
+          clanName: clanData.name,
+          clanTag: clanData.tag
+        }
+      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Clan invite sent', '#a78bfa');
+      setInspectPlayer(null);
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    className: "bt-pcard-ic",
+    src: "/icons/ui/panel-clan.webp",
+    alt: "",
+    draggable: false
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "bt-pcard-lb"
+  }, "Invite to [", clanData.tag, "]"))), /*#__PURE__*/React.createElement("div", {
+    className: "bt-pcard-rule",
+    "aria-hidden": true
+  }),
+  /* ═══ SAFETY ═══
+     Mute · Block · Report, outlined, under their own divider -- apart from
+     the tiles, so a thumb aimed at Duel does not land on Block.  The
+     on-states keep the colours the old buttons used: Muted amber, Blocked
+     the red danger outline. */
+  /*#__PURE__*/React.createElement("div", {
+    className: "bt-pcard-safe" + (reportOpen ? " is-report" : "")
+  }, !reportOpen && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    className: "bt-pcard-q" + (isMuted ? " is-warn" : ""),
+    "data-act": "mute",
+    "aria-pressed": isMuted ? "true" : "false",
+    onClick: function onClick() {
+      /* v2.3.1981: the mute goes to the WORKER now (chatMute.js
+         setMuted), which writes it to Durable Object storage against
+         this player's `bp_` identity and stops fanning the muted
+         player's chat out to this socket at all.  setMuted still
+         writes the localStorage list first — that is the prediction,
+         the legacy fallback against a worker without caps.chatMute,
+         and what this panel's `mutedList` prop is built from — so the
+         button behaves identically either way, it just no longer
+         forgets on the next device. */
+      var _mS = stateRef.current;
+      var _mNext = setMuted(_mS, inspectPlayer.id, !isMuted, inspectPlayer.name);
+      setMutedList(_mNext);
+      var _mDurable = chatMuteSettled(_mS);
+      pushDmgPopup(_mS, _mS.player.x, _mS.player.y - 30,
+        isMuted ? 'Unmuted' : (_mDurable ? 'Muted — their chat stops here' : 'Muted'), '#D8A94D');
+    }
+  }, socIcon('mute', '🔇'), isMuted ? 'Muted' : 'Mute'), /*#__PURE__*/React.createElement("button", {
+    className: "bt-pcard-q" + (isBlocked ? " is-danger" : ""),
+    "data-act": "block",
+    "aria-pressed": isBlocked ? "true" : "false",
+    style: {
+      opacity: !isBlocked && isLawless ? 0.3 : 1
+    },
+    onClick: function onClick() {
+      if (isBlocked) {
+        var updated = blockedList.filter(function (b) {
+          return b !== inspectPlayer.id;
+        });
+        setBlockedList(updated);
+        try {
+          localStorage.setItem('bt_blocked', JSON.stringify(updated));
+        } catch (e) {}
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unblocked', '#59BF91');
+      } else {
+        if (isLawless) {
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Can\'t block in lawless zone!', '#D95C54');
+          return;
+        }
+        var _updated3 = [].concat(_toConsumableArray(blockedList), [inspectPlayer.id]);
+        setBlockedList(_updated3);
+        try {
+          localStorage.setItem('bt_blocked', JSON.stringify(_updated3));
+        } catch (e) {}
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Blocked - no interactions', '#D95C54');
+      }
+    }
+  }, socIcon('block', '🚫'), isBlocked ? 'Blocked' : 'Block'),
+  /* ═══ v2.3.1981: REPORT ═══
+    Until now a player being harassed on a public server had exactly one
+    tool — hide it from themselves — and no way to tell the operator
+    anything at all.  This sends a report the WORKER writes to storage
+    with its own copy of what the reported player said (chatmod.js): the
+    payload carries only who and why, so nothing typed here can end up
+    as evidence against somebody else.
+    Two taps by design (row opens -> reason chip commits): a one-tap
+    report next to Mute would be mis-fired constantly on a 390px phone,
+    and the reason is what makes the record actionable.  Hidden entirely
+    against a worker that cannot store it, for the reason in
+    chatMute.js — a report button that quietly does nothing is worse
+    than no button.  v2.3.2926: "Report", the mockup's word. */
+  canReport && /*#__PURE__*/React.createElement("button", {
+    className: "bt-pcard-q",
+    "data-act": "report",
+    disabled: reportSent,
+    onClick: function onClick() {
+      if (!reportSent) setReportOpen(true);
+    }
+  }, socIcon('report', '⚑'), reportSent ? 'Reported' : 'Report')), reportOpen && /*#__PURE__*/React.createElement(React.Fragment, null,
+  /* v2.3.2926: the reasons replace the safety row in place.  That row is
+     never scrolled away now, so the v2.3.1981 scrollIntoView that fetched
+     the old in-body report row from below the fold has nothing to fetch.
+     On a phone held sideways game.css lays the question, the four reasons
+     and Cancel out as ONE row, so the card does not grow. */
+  /*#__PURE__*/React.createElement("div", {
+    className: "bt-pcard-rq"
+  }, /*#__PURE__*/React.createElement("span", null, "Why are you reporting ", inspectPlayer.name, "?"), /*#__PURE__*/React.createElement("button", {
+    className: "bt-pcard-cancel",
+    "data-act": "report-cancel",
+    onClick: function onClick() {
+      setReportOpen(false);
+    }
+  }, "Cancel")), /*#__PURE__*/React.createElement("div", {
+    className: "bt-pcard-reasons"
+  }, [['spam', 'Spam'], ['abuse', 'Abuse'], ['harassment', 'Harassment'], ['cheating', 'Cheating']].map(function (r) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: r[0],
+      className: "bt-pcard-q bt-pcard-reason",
+      "data-act": "report-" + r[0],
+      onClick: function onClick() {
+        var _rS = stateRef.current;
+        /* The ack (chat_report_ack -> gameEvents.js) is the real
+           confirmation; this only closes the row so the card can't be
+           used to fire a second one on the same tap-through. */
+        reportPlayer(_rS, inspectPlayer.id, r[0]);
+        setReportOpen(false);
+        setReportSent(true);
+      }
+    }, r[1]);
+  }))))));
 }
