@@ -59,6 +59,7 @@ import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling
 import { drawMonsterDeath, clearMonsterDeath, monsterDeathState, DEATH_LIVE, DEATH_DONE } from '../monsterDeathFx.js';   /* v2.3.2913: sliced / beheaded / legless deaths */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
+import { FIST_MASKS } from '../fistMasks.js';   /* v2.3.2925: the grip hole drawn as the fist itself */
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones; v2.3.1934: beard over a drape */
 import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
@@ -13093,7 +13094,30 @@ export class EntityRenderer {
             let _r = GRIP_HOLE_R_BY_FACING[facingIdx] || GRIP_HOLE_R;   /* v2.3.2925 */
             try { if (typeof window !== 'undefined' && window.__btGripHoleR > 0) _r = window.__btGripHoleR; } catch (e) { /* default */ }
             hole.clear();
-            hole.circle(weaponSprite.x, weaponSprite.y, _r).fill({ color: 0xffffff });
+            /* ═══ v2.3.2925: THE HOLE IS THE FIST ═══
+               Owner: "The hand is actually supposed to rest over the grip, not
+               beneath it."  A circle cannot: small, it shows the fist's middle
+               and the handle covers the rest; big, it shows the ground round
+               the fist.  Where the fist's own pixels are measured for this
+               frame (fistMasks.js, tools/art/fit-fist-anchors.mjs), the hole IS
+               them -- skin and keyline, one sheet pixel per rect, placed from
+               the anchor the blade is snapped to -- so the whole fist rests on
+               the grip and nothing else is cut.  Anything unmeasured keeps the
+               v2.3.2911 circle. */
+            const _fm = FIST_MASKS[(display._animPose || '') + '-' + dir];
+            const _fr = _fm && _fm.frames[Math.min(display._animFrame || 0, _fm.frames.length - 1)];
+            if (_fr && _fr.length && !(typeof window !== 'undefined' && window.__btGripHoleR > 0)) {
+              const _c = _fm.cell * bodyScale;
+              for (let i = 0; i < _fr.length; i += 2) {
+                /* a mirrored facing flips the offset about the anchor (the
+                   pixel's left edge becomes its right) */
+                const _dx = mirror ? -(_fr[i] + _fm.cell) : _fr[i];
+                hole.rect(weaponSprite.x + _dx * bodyScale, weaponSprite.y + _fr[i + 1] * bodyScale, _c, _c);
+              }
+              hole.fill({ color: 0xffffff });
+            } else {
+              hole.circle(weaponSprite.x, weaponSprite.y, _r).fill({ color: 0xffffff });
+            }
             if (!weaponSprite._gripHoleOn) {
               weaponSprite.setMask({ mask: hole, inverse: true });
               weaponSprite._gripHoleOn = true;
