@@ -558,6 +558,11 @@ export class GlintSystem {
       }
       /* v2.3.2887: every frame -- the texture, and so the frame's box, changes */
       if (spr.mask) { const a = unmaskedArea(spr); if (a && spr.filterArea !== a) spr.filterArea = a; }
+      /* v2.3.2923: and dropped the frame the mask comes off.  It was only ever
+         cleared on release, and a held weapon's shine is never released -- so
+         the box a greatsword's E/SW/NE grip hole pinned kept clipping the south
+         art long after the hole was gone (the tip cut off flat). */
+      else if (spr._btGlintArea && spr.filterArea === spr._btGlintArea) spr.filterArea = null;
       const u = f.resources.glintUniforms.uniforms;
       u.uProgress = w.p < 0 ? 0 : w.p;
       u.uStrength = w.strength;

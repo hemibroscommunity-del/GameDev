@@ -219,6 +219,64 @@ function solidRuns(cov, sx, sy, a, b) {
   return runs;
 }
 
+/* ═══ v2.3.2923: A CUT IS NOT A RULER LINE ═══
+   Owner: "they look a little too artificial just doing a straight slice.
+   Vary the cuts a little bit so it looks better."  A cut is now a POLYLINE
+   across the body: bowed (a swing that followed through in an arc), ragged
+   (a blade that tore more than it sliced), stepped (it caught on something
+   and jumped), or near-clean with a little jitter -- the style and every
+   offset from the death's seeded roll, so every client still sees the same
+   cut.  The two halves are the path closed off above and below it, clipped
+   to the body's box; bodies, wound lines and the spray all read off the same
+   path, so nothing else had to learn it was no longer straight. */
+function cutPath(cx, cy, dx, dy, W, H, rand, calm) {
+  const far = W + H;
+  const nx = -dy, ny = dx;
+  const r = rand();
+  const style = calm ? (r < 0.5 ? 'clean' : 'ragged') : (r < 0.25 ? 'clean' : r < 0.55 ? 'arc' : r < 0.8 ? 'ragged' : 'step');
+  const N = style === 'ragged' ? 15 : 11;
+  const amp = calm ? 0.55 : 1;
+  const bow = (rand() < 0.5 ? -1 : 1) * H * amp * (style === 'arc' ? 0.08 + rand() * 0.07 : 0.01 + rand() * 0.03);
+  const jag = H * amp * (style === 'ragged' ? 0.045 + rand() * 0.035 : 0.012 + rand() * 0.018);
+  const stepAt = (rand() - 0.5) * 0.6;   /* where across the body a step jumps, in half-widths */
+  const stepH = (rand() < 0.5 ? -1 : 1) * H * amp * (0.06 + rand() * 0.05);
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const f = -1 + (2 * i) / (N - 1);
+    const u = (f * far) / Math.max(1, W / 2);      /* -1..1 across the body */
+    const inside = Math.max(0, 1 - u * u);
+    let o = bow * inside;
+    if (i > 0 && i < N - 1 && Math.abs(u) < 1.3) o += (rand() - 0.5) * 2 * jag;
+    if (style === 'step') o += (u > stepAt ? 0.5 : -0.5) * stepH * Math.min(1, inside * 4);
+    pts.push([cx + dx * f * far + nx * o, cy + dy * f * far + ny * o]);
+  }
+  if (style === 'step') {
+    /* the jump itself: a steep little segment where the halves meet */
+    let k = 1;
+    while (k < pts.length - 1 && ((pts[k][0] - cx) * dx + (pts[k][1] - cy) * dy) / Math.max(1, W / 2) <= stepAt) k++;
+    const a = pts[k - 1], b = pts[k];
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    pts.splice(k, 0, [mx - nx * stepH * 0.5 - dx * 0.5, my - ny * stepH * 0.5 - dy * 0.5], [mx + nx * stepH * 0.5 + dx * 0.5, my + ny * stepH * 0.5 + dy * 0.5]);
+  }
+  return { pts, style, nx, ny };
+}
+/* clip any polygon to the (convex) box */
+function clipRect(poly, xl, yt, xr, yb) {
+  let p = clipHalf(poly, xl, 0, -1, 0);
+  if (p.length) p = clipHalf(p, xr, 0, 1, 0);
+  if (p.length) p = clipHalf(p, 0, yt, 0, -1);
+  if (p.length) p = clipHalf(p, 0, yb, 0, 1);
+  return p;
+}
+/* the y of a (monotonic-in-x) path at x */
+function pathYAt(pts, x) {
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    if ((x - a[0]) * (x - b[0]) <= 0 && a[0] !== b[0]) return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]);
+  }
+  return pts[Math.floor(pts.length / 2)][1];
+}
+
 /* ── the pieces ── */
 function makePiece(root, sb, mask, body, wounds, woundCol) {
   const c = new Container();
@@ -235,7 +293,11 @@ function makePiece(root, sb, mask, body, wounds, woundCol) {
   if (wounds && wounds.length) {
     const w = new Graphics();
     for (const [a, b] of wounds) w.moveTo(a[0], a[1]).lineTo(b[0], b[1]);
-    w.stroke({ color: woundCol, width: 3, alpha: 0.95 });
+    /* v2.3.2923: a wet dark edge under a brighter core, so a ragged cut reads
+       as torn flesh / goo rather than a drawn line */
+    w.stroke({ color: shade(woundCol, 0.55), width: 4.5, alpha: 0.9, join: 'round', cap: 'round' });
+    for (const [a, b] of wounds) w.moveTo(a[0], a[1]).lineTo(b[0], b[1]);
+    w.stroke({ color: woundCol, width: 2.2, alpha: 0.95, join: 'round', cap: 'round' });
     c.addChild(w);
   }
   c.pivot.set(body.com[0], body.com[1]);
@@ -344,29 +406,36 @@ function build(kind, display, m, blob, now) {
 
   /* cut the box by the line through (cx,cy) along (dx,dy): masks, bodies,
      and the wound runs where the line crosses body */
-  const cutBy = (cx, cy, dx, dy) => {
-    const nx = -dy, ny = dx;
-    const A = clipHalf(rect, cx, cy, nx, ny);     /* the side the normal points away from */
-    const B = clipHalf(rect, cx, cy, -nx, -ny);
-    const far = (W + H) * 2;
-    const runs = solidRuns(cov, sx, sy, [cx - dx * far, cy - dy * far], [cx + dx * far, cy + dy * far]);
-    return { A, B, runs };
+  /* v2.3.2923: along a polyline (cutPath), not a straight line */
+  const cutBy = (cx, cy, dx, dy, calm) => {
+    const cp = cutPath(cx, cy, dx, dy, W, H, rand, calm);
+    const pts = cp.pts, BIG = (W + H) * 3;
+    const p0 = pts[0], pN = pts[pts.length - 1];
+    /* the normal (nx, ny) points DOWN (dx > 0 for every cut rolled here) */
+    const upPoly = pts.concat([[pN[0] - cp.nx * BIG, pN[1] - cp.ny * BIG], [p0[0] - cp.nx * BIG, p0[1] - cp.ny * BIG]]);
+    const dnPoly = pts.concat([[pN[0] + cp.nx * BIG, pN[1] + cp.ny * BIG], [p0[0] + cp.nx * BIG, p0[1] + cp.ny * BIG]]);
+    const A = clipRect(upPoly, x0 - pad, y0 - pad, x1 + pad, y1 + pad);
+    const B = clipRect(dnPoly, x0 - pad, y0 - pad, x1 + pad, y1 + pad);
+    let runs = [];
+    for (let i = 1; i < pts.length; i++) runs = runs.concat(solidRuns(cov, sx, sy, pts[i - 1], pts[i]));
+    return { A, B, runs, pts, style: cp.style };
   };
 
   let spec = null;
   if (kind === 'slice') {
-    const cx = x0 + W * (0.45 + rand() * 0.1);
-    const cy = y0 + H * (0.42 + rand() * 0.14);
-    const ang = side * (0.3 + rand() * 0.35);          /* 17-37 degrees */
+    const cx = x0 + W * (0.4 + rand() * 0.2);
+    const cy = y0 + H * (0.36 + rand() * 0.26);
+    const ang = side * (0.12 + rand() * 0.55);         /* v2.3.2923: 7-38 degrees, was 17-37 */
     const dx = Math.cos(ang), dy = Math.sin(ang);
-    const k = cutBy(cx, cy, dx, dy);
-    /* normal (-dy, dx) points DOWN, so A (n.(p-c) <= 0) is the top */
-    spec = { top: k.A, bot: k.B, runs: k.runs, dx, dy };
+    const k = cutBy(cx, cy, dx, dy, false);
+    /* normal (-dy, dx) points DOWN, so A is the top */
+    spec = { top: k.A, bot: k.B, runs: k.runs, dx, dy, pts: k.pts, style: k.style };
   } else if (kind === 'decap') {
-    const neckY = y0 + H * (blob ? 0.42 : 0.3);
-    const tilt = (rand() - 0.5) * 0.25;
-    const k = cutBy(x0 + W / 2, neckY, Math.cos(tilt), Math.sin(tilt));
-    spec = { top: k.A, bot: k.B, runs: k.runs };
+    const neckY = y0 + H * ((blob ? 0.4 : 0.28) + rand() * 0.05);
+    const tilt = (rand() - 0.5) * 0.45;                /* v2.3.2923: was +/-0.125 */
+    const dx = Math.cos(tilt), dy = Math.sin(tilt);
+    const k = cutBy(x0 + W / 2, neckY, dx, dy, true);  /* a neck is narrow: a calmer path */
+    spec = { top: k.A, bot: k.B, runs: k.runs, dx, dy, pts: k.pts, style: k.style };
   } else if (kind === 'leg') {
     /* the leg: the lower third, on one side of the body's own middle */
     const hipY = y0 + H * 0.68;
@@ -379,7 +448,7 @@ function build(kind, display, m, blob, now) {
       ? [[x0 - pad, y0 - pad], [x1 + pad, y0 - pad], [x1 + pad, hipY], [mid, hipY], [mid, y1 + pad], [x0 - pad, y1 + pad]]
       : [[x0 - pad, y0 - pad], [x1 + pad, y0 - pad], [x1 + pad, y1 + pad], [mid, y1 + pad], [mid, hipY], [x0 - pad, hipY]];
     const runs = solidRuns(cov, sx, sy, side > 0 ? [mid, hipY] : [x0 - pad, hipY], side > 0 ? [x1 + pad, hipY] : [mid, hipY]);
-    spec = { top: R, bot: L, runs, mid, hipY };
+    spec = { top: R, bot: L, runs, mid, hipY, dx: side, dy: 0 };
   } else {
     return null;
   }
@@ -402,35 +471,66 @@ function build(kind, display, m, blob, now) {
     const B = makePiece(root, sb, spec.bot, botBody, spec.runs, col);
     const down = spec.dy >= 0 ? 1 : -1;
     /* the top slides DOWN the cut before it clears the lower half */
-    T.slide = { dx: spec.dx * down, dy: spec.dy * down, until: 240, speed: 0 };
-    T.spin = down * (4 + rand() * 3);
+    T.slide = { dx: spec.dx * down, dy: spec.dy * down, until: 170 + rand() * 90, speed: 0,
+      /* v2.3.2923: and then it is THROWN off -- owner: "increase the
+         explosiveness of the limb/head fling" */
+      popX: spec.dx * down * H * (1.3 + rand() * 1.1), popY: -H * (1.6 + rand() * 1.4) };
+    T.spin = down * (6 + rand() * 5);
     if (blob) B.slump = { from: 380, px: botBody.com[0], py: y1 };
     else setHinge(B, -down, 420, Math.PI / 2 * (0.8 + rand() * 0.2));
     pieces.push(B, T);
-    const r0 = spec.runs[0];
-    spurt = { piece: B, x: (r0[0][0] + r0[1][0]) / 2, y: (r0[0][1] + r0[1][1]) / 2, up: true, dur: 260 };
+    const r0 = spec.runs[Math.floor(spec.runs.length / 2)];
+    spurt = { piece: B, x: (r0[0][0] + r0[1][0]) / 2, y: (r0[0][1] + r0[1][1]) / 2, up: true, dur: 420 };
   } else if (kind === 'decap') {
     const Hd = makePiece(root, sb, spec.top, topBody, spec.runs, col);
     const Bd = makePiece(root, sb, spec.bot, botBody, spec.runs, col);
     Hd.free = true;
-    Hd.vx = side * H * (1.1 + rand() * 0.8);
-    Hd.vy = -H * (3.6 + rand() * 1.0);
-    Hd.spin = side * (7 + rand() * 5);
+    /* v2.3.2923: harder, and mostly OUTWARD -- was vx 1.1-1.9 H, vy 3.6-4.6 H,
+       spin 7-12.  The extra goes sideways and into the spin rather than up: a
+       head thrown much higher is still in the air when the corpse fades. */
+    Hd.vx = side * H * (2.2 + rand() * 1.5);
+    Hd.vy = -H * (4.0 + rand() * 1.2);
+    Hd.spin = side * (11 + rand() * 8);
     if (blob) Bd.slump = { from: 200, px: botBody.com[0], py: y1 };
     else setHinge(Bd, -side, 520, Math.PI / 2);
     pieces.push(Bd, Hd);
-    spurt = { piece: Bd, x: topBody.com[0], y: spec.runs[0][0][1], up: true, dur: 520 };
+    spurt = { piece: Bd, x: topBody.com[0], y: pathYAt(spec.pts, topBody.com[0]), up: true, dur: 700 };
   } else {
     const Bd = makePiece(root, sb, spec.top, topBody, spec.runs, col);
     const L = makePiece(root, sb, spec.bot, botBody, spec.runs, col);
     L.free = true;
-    L.vx = side * H * (0.9 + rand() * 0.6);
-    L.vy = -H * (1.2 + rand() * 0.6);
-    L.spin = side * (4 + rand() * 3);
+    /* v2.3.2923: harder -- was vx 0.9-1.5 H, vy 1.2-1.8 H, spin 4-7 */
+    L.vx = side * H * (1.7 + rand() * 1.1);
+    L.vy = -H * (2.6 + rand() * 1.2);
+    L.spin = side * (8 + rand() * 6);
     /* the body lost that support: it goes down on the side the leg left from */
     setHinge(Bd, side, 140, Math.PI / 2);
     pieces.push(Bd, L);
-    spurt = { piece: Bd, x: botBody.com[0], y: spec.hipY, up: false, dur: 380 };
+    spurt = { piece: Bd, x: botBody.com[0], y: spec.hipY, up: false, dur: 520 };
+  }
+
+  /* ═══ v2.3.2923: THE CUT THROWS WHAT THE MONSTER IS MADE OF ═══
+     Owner: "at the cut site add some of the hit material (the stuff that
+     comes out during a hit) from the cut side to help hide the simple slice
+     effect and to increase the spectacle in general."  The same crisp,
+     physical material a hit throws (hitMaterialFx -- goo, snow, bone, ash,
+     blood and char), as sword bursts along the cut the moment it happens and
+     a second, smaller one from the wound as the pieces part.  Queued here in
+     the root's local space; drawMonsterDeath hands them to S._debrisBursts in
+     world space (this module never sees S). */
+  const matBursts = [];
+  {
+    const runsN = spec.runs.length;
+    const pick = [spec.runs[0], spec.runs[Math.floor(runsN / 2)], spec.runs[runsN - 1]];
+    const seen = new Set();
+    for (const r of pick) {
+      if (!r || seen.has(r)) continue;
+      seen.add(r);
+      matBursts.push({ at: 0, x: (r[0][0] + r[1][0]) / 2, y: (r[0][1] + r[1][1]) / 2,
+        dx: spec.dx || 1, dy: spec.dy || 0, weapon: 'sword', big: true });
+    }
+    matBursts.push({ at: kind === 'slice' ? 200 : 90, piece: spurt.piece, x: spurt.x, y: spurt.y,
+      dx: spec.dx || 1, dy: spec.dy || 0, weapon: 'splash', big: true });
   }
 
   const fx = new Graphics();
@@ -438,6 +538,7 @@ function build(kind, display, m, blob, now) {
   const st = {
     kind, root, pieces, fx, runs: spec.runs, spurt, col, colD, H, W, groundY: y1, rand,
     parts: [], born: now, last: now, sprayAcc: 0, slow: qaSlow(), burst: false,
+    matBursts, matKind, style: spec.style || null,
   };
   return st;
 }
@@ -482,8 +583,8 @@ function physics(st, t, dt) {
         continue;
       }
       pc.free = true;
-      pc.vx = pc.slide.dx * pc.slide.speed * 1.4;
-      pc.vy = pc.slide.dy * pc.slide.speed;
+      pc.vx = pc.slide.dx * pc.slide.speed * 1.4 + (pc.slide.popX || 0);
+      pc.vy = pc.slide.dy * pc.slide.speed + (pc.slide.popY || 0);
       pc.slide = null;
     }
     if (pc.free) {
@@ -544,11 +645,11 @@ function physics(st, t, dt) {
   if (!st.burst) {
     st.burst = true;
     for (const [a, b] of st.runs) {
-      const n = Math.max(3, Math.round(16 * Math.hypot(b[0] - a[0], b[1] - a[1]) / Math.max(1, st.W)));
+      const n = Math.max(2, Math.round(26 * Math.hypot(b[0] - a[0], b[1] - a[1]) / Math.max(1, st.W)));   /* v2.3.2923: was 16 */
       for (let i = 0; i < n; i++) {
         const f = st.rand();
-        const ang = -Math.PI / 2 + (st.rand() - 0.5) * 1.6;
-        const v = H * (1.0 + st.rand() * 2.0);
+        const ang = -Math.PI / 2 + (st.rand() - 0.5) * 2.0;
+        const v = H * (1.2 + st.rand() * 2.6);
         drop(st, a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.cos(ang) * v, Math.sin(ang) * v,
           st.rand() < 0.3 ? 3 : 2, st.rand() < 0.65 ? st.col : st.colD);
       }
@@ -566,8 +667,8 @@ function physics(st, t, dt) {
       st.sprayAcc -= 1;
       const r = st.rand;
       const base = (sp.up ? -Math.PI / 2 : Math.PI / 2) + c.rotation;
-      const a = base + (r() - 0.5) * 1.0;
-      const v = H * (1.4 + r() * 1.8);
+      const a = base + (r() - 0.5) * 1.2;
+      const v = H * (1.6 + r() * 2.4);
       drop(st, wx, wy, Math.cos(a) * v, Math.sin(a) * v, r() < 0.3 ? 3 : 2, r() < 0.7 ? st.col : st.colD);
     }
   }
@@ -586,11 +687,16 @@ function draw(st, t) {
   const fx = st.fx;
   fx.clear();
   if (t < 150 && st.kind !== 'leg' && st.runs.length) {
+    /* v2.3.2923: along the cut as it really runs (a polyline now), trailing
+       a little past the body at both ends */
     const k = 1 - t / 150;
-    const a = st.runs[0][0], b = st.runs[st.runs.length - 1][1];
-    const ex = (b[0] - a[0]) * 0.25, ey = (b[1] - a[1]) * 0.25;
-    fx.moveTo(a[0] - ex, a[1] - ey).lineTo(b[0] + ex, b[1] + ey)
-      .stroke({ color: 0xffffff, width: 2 + 4 * k, alpha: 0.9 * k });
+    const R = st.runs, a = R[0][0], a1 = R[0][1], b = R[R.length - 1][1], b0 = R[R.length - 1][0];
+    const la = Math.hypot(a1[0] - a[0], a1[1] - a[1]) || 1, lb = Math.hypot(b[0] - b0[0], b[1] - b0[1]) || 1;
+    const ext = st.W * 0.18;
+    fx.moveTo(a[0] - (a1[0] - a[0]) / la * ext, a[1] - (a1[1] - a[1]) / la * ext);
+    for (const r of R) fx.lineTo(r[0][0], r[0][1]).lineTo(r[1][0], r[1][1]);
+    fx.lineTo(b[0] + (b[0] - b0[0]) / lb * ext, b[1] + (b[1] - b0[1]) / lb * ext);
+    fx.stroke({ color: 0xffffff, width: 2 + 4 * k, alpha: 0.9 * k, join: 'round', cap: 'round' });
   }
   for (const p of st.parts) {
     fx.rect(p.x - p.s / 2, p.y - p.s / 2, p.land ? p.s * 1.6 : p.s, p.land ? p.s * 0.7 : p.s)
@@ -613,7 +719,7 @@ function puff(st, x, y, n) {
  * new life), `blob` is true for anything on the slime sheets.
  * Returns DEATH_NONE (draw the normal death), DEATH_LIVE or DEATH_DONE.
  */
-export function drawMonsterDeath(m, display, deathKey, blob, now) {
+export function drawMonsterDeath(m, display, deathKey, blob, now, S) {   /* v2.3.2923: + S, for the cut's material bursts */
   if (!display || deathKey == null) return DEATH_NONE;
   let st = display._deathFx;
   if (st && st.key !== deathKey) { disposeFx(display); st = null; }
@@ -634,7 +740,52 @@ export function drawMonsterDeath(m, display, deathKey, blob, now) {
     return DEATH_DONE;
   }
   step(st, now);
+  if (S && st.matBursts && st.matBursts.length) { try { flushMatBursts(st, m, display, S, now); } catch (e) { st.matBursts.length = 0; } }
   return DEATH_LIVE;
+}
+
+/* v2.3.2923: root-local point -> world (the display sits at the monster's
+   world x/y; the root copies the body sprite's transform) */
+function toWorld(st, display, x, y) {
+  const r = st.root;
+  const cos = Math.cos(r.rotation || 0), sin = Math.sin(r.rotation || 0);
+  const lx = x * r.scale.x, ly = y * r.scale.y;
+  const dx = r.position.x + cos * lx - sin * ly, dy = r.position.y + sin * lx + cos * ly;
+  return [display.x + dx * display.scale.x, display.y + dy * display.scale.y];
+}
+
+function flushMatBursts(st, m, display, S, now) {
+  const t = (now - st.born) / st.slow;
+  if (!S._debrisBursts) S._debrisBursts = [];
+  const gy = toWorld(st, display, 0, st.groundY)[1];
+  const keep = [];
+  for (let i = 0; i < st.matBursts.length; i++) {
+    const b = st.matBursts[i];
+    if (t < b.at) { keep.push(b); continue; }
+    if (S._debrisBursts.length >= 24) continue;
+    let x = b.x, y = b.y;
+    if (b.piece) {
+      /* from wherever that piece has got to */
+      const c = b.piece.c;
+      const cos = Math.cos(c.rotation), sin = Math.sin(c.rotation);
+      const lx = (b.x - c.pivot.x) * c.scale.x, ly = (b.y - c.pivot.y) * c.scale.y;
+      x = c.position.x + cos * lx - sin * ly; y = c.position.y + sin * lx + cos * ly;
+    }
+    const w = toWorld(st, display, x, y);
+    /* the root's mirror (a monster facing left) turns the cut's direction too */
+    const mir = st.root.scale.x < 0 ? -1 : 1;
+    const ang = Math.atan2(b.dy, b.dx * mir) + (i % 2 ? Math.PI : 0);
+    S._debrisBursts.push({
+      /* a key of its own per burst, so the renderer's per-monster 150 ms gap
+         (which the killing hit has just used) does not swallow it */
+      monsterId: `${m.id}:cut:${i}:${st.born}`, kind: st.matKind,
+      tint: hitFxTintOf(display._variantKey || (m && (m.arch || m.type))),
+      x: w[0], y: w[1], gy, h: Math.max(8, gy - w[1]),
+      ang, t0: now, weapon: b.weapon, crit: true, big: !!b.big, heavy: false, elem: null,
+      hitX: w[0], hitY: w[1],
+    });
+  }
+  st.matBursts = keep;
 }
 
 function disposeFx(display) {

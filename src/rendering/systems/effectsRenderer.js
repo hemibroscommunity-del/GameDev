@@ -266,9 +266,10 @@ import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSp
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
-import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
+import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */ } from '../../data/monsterVariants.js';
+import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, remoteBodyArt } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, remoteBodyArt, monsterBodySprite /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
@@ -1119,6 +1120,14 @@ _fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1881').then((tex) => {
      with no fetch of their own. */
   if (HOT_SPECIAL_ARROW) buildHotArrowArt(ARROW_PINE.full, ARROW_PINE.noHead, ARROW_PINE.headFrac, ARROW_PINE.anchor.x);
 }).catch((err) => console.warn('[pine-arrow] load failed', err));
+/* v2.3.2923b: the world scale _drawStuckArrow gives the headless stub
+   (11/17.5 of the arrow, see there), for the baked path to draw it the same
+   size.  `pk` is the monster's depth scale. */
+function stuckShaftScale(pk) {
+  const _dk = (pk > 0 && isFinite(pk)) ? pk : 1;
+  const k = (ARROW_PINE.lenPx * (11 / 17.5)) / (ARROW_PINE.lenPx * ARROW_PINE.headFrac);
+  return (ARROW_PINE.lenPx * k * _dk) / ((ARROW_PINE.full && ARROW_PINE.full.width) || 1);
+}
 /* ═══════════════════════════════════════════════════════════════════════════
  * v2.3.2398: THE BOW'S JET STREAM — the aim line an arrow leaves behind it
  * ═══════════════════════════════════════════════════════════════════════════
@@ -2238,6 +2247,19 @@ export class EffectsRenderer {
 
     this.projectileGfx = new Graphics();
     this.projectileLayer.addChild(this.projectileGfx);
+    /* v2.3.2923: the material lip OVER a stuck shaft (arrowWound.js).  The
+       wound itself goes on projectileGfx, under the pooled arrow sprites; the
+       lip has to sit on top of them, so _placeArrowSprite lifts this back to
+       the top whenever it adds a sprite. */
+    this.woundLipGfx = new Graphics();
+    this.projectileLayer.addChild(this.woundLipGfx);
+    /* v2.3.2923b: ...and, whenever a renderer and the body sprite are there,
+       the whole injury baked at the monster's own resolution instead. */
+    this._arrowBaker = new StuckArrowBaker(this.projectileLayer);
+    if (typeof window !== 'undefined') {
+      const _bk = this._arrowBaker;
+      window.__btArrowBake = () => (_bk ? _bk.probe() : null);
+    }
     /* ═══ v2.3.2841: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
        See src/rendering/staffCastFx.js.  Created HERE for the reason the jet
        stream's container is (v2.3.2398): Pixi depth is child order, and a pool
@@ -5010,6 +5032,8 @@ export class EffectsRenderer {
        spot.  Owner: "Arrows stuck in monsters persist even after death."
        Dropped on death so a respawn starts clean too. */
     const monsters = S.monsters || [];
+    const lipGfx = this.woundLipGfx;
+    if (lipGfx) lipGfx.clear();
     for (const m of monsters) {
       if (!m || !m._stuckArrows || !m._stuckArrows.length) continue;
       if (m.alive === false || m.curHp <= 0) { m._stuckArrows.length = 0; continue; }
@@ -5025,14 +5049,58 @@ export class EffectsRenderer {
       const _mk = zonePlayerScale(S.currentZone,
         (typeof m.renderX === 'number') ? m.renderX : m.x,
         (typeof m.renderY === 'number') ? m.renderY : m.y, TILE) || 1;
+      /* ═══ v2.3.2923b: BAKED AT THE MONSTER'S RESOLUTION ═══
+         Owner: "the enemy is at a lower resolution so it looks very artificial
+         having higher resolution art and injury site tacked on top."  The
+         shafts, wounds and lips of one monster are drawn into a texture on the
+         monster's own texel grid and scaled up as the
+         body is (arrowWound.js, StuckArrowBaker).  The direct draw below is
+         the fallback: no renderer yet, or no body sprite to match. */
+      const _body = (this._arrowBaker && ARROW_PINE.noHead) ? monsterBodySprite(m.id) : null;
+      const _bakeList = _body ? [] : null;
+      let _shaftScale = null;
       for (const sa of m._stuckArrows) {
         const sx = m.x + (sa.ox || 0);
         const sy = m.y + (sa.oy || 0);
         const color = (sa.color && cssToHex(sa.color)) || 0x8b6914;
         if (sa.isStaff) {
           this._drawStuckMagicShard(gfx, sx, sy, sa.ang, color, _mk);
-        } else {
-          this._drawStuckArrow(gfx, sx, sy, sa.ang, color, _mk);
+          continue;
+        }
+        /* ═══ v2.3.2923: THE SHAFT GOES INTO SOMETHING ═══
+           Owner: "it looks like a headless arrow was just stickered on top
+           of the slime. I want it to look like the arrows are actually
+           puncturing the enemy."  The wound (under the shaft) and the lip
+           (over it) in the monster's own material -- see arrowWound.js. */
+        const _arch = sa.arch || m.archetype || m.type;
+        const _mat = hitMaterialOf(_arch);
+        const _tint = hitFxTintOf(_arch);
+        const _age = sa.born ? Math.max(0, now - sa.born) : 5000;
+        if (_bakeList) {
+          const sc = stuckShaftScale(_mk);
+          _shaftScale = sc;
+          _bakeList.push({ x: sx, y: sy, ang: sa.ang, k: _mk, mat: _mat, tint: _tint, age: _age, seed: sa.seed,
+            shaftScale: sc, shaftLen: sc * ((ARROW_PINE.noHead && ARROW_PINE.noHead.width) || 0) });
+          continue;
+        }
+        try { drawArrowWound(gfx, sx, sy, sa.ang, _mk, _mat, _tint, _age, sa.seed); } catch (e) { /* drawing only */ }
+        this._drawStuckArrow(gfx, sx, sy, sa.ang, color, _mk);
+        if (lipGfx) { try { drawArrowWoundLip(lipGfx, sx, sy, sa.ang, _mk, _mat, _tint, _age); } catch (e) { /* drawing only */ } }
+      }
+      if (_bakeList && _bakeList.length) {
+        let ok = false;
+        try { ok = this._arrowBaker.bake(m.id, _body, _bakeList, ARROW_PINE.noHead, now); } catch (e) { ok = false; }
+        if (ok) {
+          this._arrowsDrawn = (this._arrowsDrawn || 0) + _bakeList.length;
+          this._stuckScaleProbe = { id: m.id, y: Math.round(m.y), k: +_mk.toFixed(4),
+            spriteScale: _shaftScale != null ? +Math.abs(_shaftScale).toFixed(4) : null, baked: true };
+          continue;
+        }
+        /* the bake refused: draw them directly after all */
+        for (const a of _bakeList) {
+          try { drawArrowWound(gfx, a.x, a.y, a.ang, a.k, a.mat, a.tint, a.age, a.seed); } catch (e) { /* drawing only */ }
+          this._drawStuckArrow(gfx, a.x, a.y, a.ang, 0x8b6914, a.k);
+          if (lipGfx) { try { drawArrowWoundLip(lipGfx, a.x, a.y, a.ang, a.k, a.mat, a.tint, a.age); } catch (e) { /* drawing only */ } }
         }
       }
       /* v2.3.2889: what the last shaft was DRAWN at, for mp-dunedepth */
@@ -5040,6 +5108,8 @@ export class EffectsRenderer {
       this._stuckScaleProbe = { id: m.id, y: Math.round(m.y), k: +_mk.toFixed(4),
         spriteScale: _lastSp ? +Math.abs(_lastSp.scale.x).toFixed(4) : null };
     }
+
+    if (this._arrowBaker) this._arrowBaker.end(now);   /* v2.3.2923b: hide what no monster carried this frame */
 
     // Remote projectiles
     const remote = S._remoteProjectiles || [];
@@ -5667,6 +5737,8 @@ export class EffectsRenderer {
       sprite = new Sprite(tex);
       (ground ? this.groundArrowLayer : this.projectileLayer).addChild(sprite);
       pool.push(sprite);
+      /* v2.3.2923: keep the wound lip above the shafts */
+      if (!ground && this.woundLipGfx) this.projectileLayer.addChild(this.woundLipGfx);
     }
     if (ground) this._groundArrowSpriteN++; else this._arrowSpriteN++;
     if (sprite.texture !== tex) sprite.texture = tex;
@@ -10697,7 +10769,9 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
+        eyewearColor: o.eyewearColor,                        /* v2.3.2923: the colour their walking figure wears */
         eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        eyeColor: o.eyeColor,                                /* v2.3.2923: ditto, the eye colour */
         species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
@@ -11365,7 +11439,9 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
+        eyewearColor: o.eyewearColor,                        /* v2.3.2923: the colour their walking figure wears */
         eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        eyeColor: o.eyeColor,                                /* v2.3.2923: ditto, the eye colour */
         species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
@@ -11586,7 +11662,9 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
+        eyewearColor: o.eyewearColor,                        /* v2.3.2923: the colour their walking figure wears */
         eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        eyeColor: o.eyeColor,                                /* v2.3.2923: ditto, the eye colour */
         species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
