@@ -334,6 +334,7 @@ const SCENARIOS = {
   lifeskill: () => import('./mp-lifeskill.mjs'), /* v2.3.1680: tool-gated gathering */
   petdraw: () => import('./mp-petdraw.mjs'), /* v2.3.2078: an active pet is actually drawn */
   dodgetrail: () => import('./mp-dodgetrail.mjs'), /* v2.3.2078: your own dodge leaves a trail too */
+  rollweapon: () => import('./mp-rollweapon.mjs'), /* v2.3.2925: no weapon in a roll -- hidden while the tumble plays, yours and a watcher's view, back after */
   dodgetime: () => import('./mp-dodgetime.mjs'), /* v2.3.2916: a peer's roll plays over THEIR window (250-700 ms), frame for frame with their own screen, and ends when theirs does */
   worldwalk: () => import('./mp-worldwalk.mjs'), /* v2.3.2078: the world map's pink lines are walls */
   townexit: () => import('./mp-townexit.mjs'), /* v2.3.2078: you spawn clear of the fountain and can leave town */

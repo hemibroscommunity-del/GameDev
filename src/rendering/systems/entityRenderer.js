@@ -4648,7 +4648,10 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
  * v2.3.2516 behind-the-body order (swingActive is excluded; the swing's own
  * z-order lives in effectsRenderer).  Greatsword only: its per-facing art is
  * the one this was measured on. */
-const GRIP_HOLE_FACINGS = { 0: true, 3: true, 7: true };
+/* v2.3.2925: + south (2).  Owner: "you can make it look like the players hand
+   is over the sword handle jogging south.  Right now it just shows the
+   floating handle with the hand behind it." */
+const GRIP_HOLE_FACINGS = { 0: true, 2: true, 3: true, 7: true };
 const GRIP_HOLE_R = 4.2;   /* display px -- about the fist; window.__btGripHoleR tunes it */
 function gripHoleWanted(wpnType, facingIdx, swingActive, sheathed) {
   return wpnType === 'greatsword' && !swingActive && !sheathed && GRIP_HOLE_FACINGS[facingIdx] === true;
@@ -10717,7 +10720,7 @@ export class EntityRenderer {
       }
       const oSpriteBody = display._spriteBody;
       const oWeaponSprite = display._weaponSprite;
-      if (oWpnType && !oIsShielding) {
+      if (oWpnType && !oIsShielding && !_rDodge) {   /* v2.3.2925: not in a roll -- see the local twin */
         const wpnIconTex = hasWeapon(oWpnType) ? getWeaponTexture(oWpnType) : null;
         if (wpnIconTex) {
           if (oWeaponSprite.texture !== wpnIconTex) oWeaponSprite.texture = wpnIconTex;
@@ -12599,7 +12602,15 @@ export class EntityRenderer {
           && window.__btSouthBlockWeapon.on) {
         window.__btSouthBlockWeapon = { on: false };
       }
-      if (wpn && !isShielding) {
+      /* ═══ v2.3.2925: NO WEAPON IN A ROLL ═══
+         Owner: "When dodge rolling hide the great sword."  The roll sheet is a
+         tumble -- there is no hand for the carried pose to sit in, so the
+         blade hung in the air beside a body curled into a ball.  Hidden for
+         the roll's whole length (and for the sword dash, which borrows the
+         roll's pose, `dodging` covers both); back on the first frame after.
+         Every weapon, not only the greatsword: a bow or a staff floats in the
+         same air for the same reason.  The peer branch does the same. */
+      if (wpn && !isShielding && !dodging) {
         /* Weapon is fully hidden while shielding — gameplay rule: you
            can attack OR block, never both, so no point drawing the
            weapon sprite or its glow when the shield is up. */

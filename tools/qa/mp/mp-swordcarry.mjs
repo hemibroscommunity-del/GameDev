@@ -53,7 +53,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
 
-  const first = await face(P, 2);
+  /* v2.3.2925: poll the first read -- on a cold join the weapon art can still
+     be resolving for a frame or two, and a single sample then failed this guard
+     at random (it passed on the next run, and on every other facing). */
+  let first = await face(P, 2);
+  for (let i = 0; i < 6 && !(first && first.visible); i++) first = await face(P, 2);
   rec.ok('the carried sword is drawn at all', !!(first && first.visible), { probe: first });
   if (!first) { await P.ctx.close().catch(() => {}); return; }
   /* GUARD: the per-facing art actually resolved.  Without this every sign
@@ -122,7 +126,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      with a hole at the grip, so the fist is drawn over the handle (see
      gripHoleWanted).  The SWING keeps v2.3.2516's behind-the-body order. */
   const FRONT = new Set(['E', 'SE', 'S', 'SW', 'NE']);
-  const GRIP_HOLE = new Set(['E', 'SW', 'NE']);
+  const GRIP_HOLE = new Set(['E', 'S', 'SW', 'NE']);   /* v2.3.2925: + S */
   for (let i = 0; i < 8; i++) {
     const m = await face(P, i);
     const want = FRONT.has(NAMES[i]);
@@ -140,7 +144,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      were the hole's leftovers: the mask Graphics drew as a white dot once it
      stopped being a mask, and the shine kept the masked frame's clip box.
      Every facing, arriving from each of the three hole facings. */
-  for (const from of [0, 3, 7]) {
+  for (const from of [0, 2, 3, 7]) {
     for (let i = 0; i < 8; i++) {
       if (GRIP_HOLE.has(NAMES[i])) continue;
       await face(P, from);
