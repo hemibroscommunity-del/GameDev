@@ -4100,6 +4100,13 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
   _rec();
 }
 
+/* v2.3.2923: a trait entry wearing its recoloured textures when there are
+   any -- the base meta (a retint moves no pixel) and the native art as the
+   fallback while the bake is in flight, exactly as _placeEyewear builds it. */
+function _colouredEntry(base, colored) {
+  return (colored && base) ? { tex: colored, meta: base.meta, fallbackTex: base.tex } : base;
+}
+
 /** Place hat + beard + eyewear + eye style + hair (the player's current
  *  selection) on a stand-in skill sprite.  sprites = { hat, beard, eyewear,
  *  eyestyle, hair } owned by the caller (v2.3.2361: + eyewear;
@@ -4126,14 +4133,23 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
      the stand-in poses have no baked frames. */
   { const _sb = getSpeciesBuild(getSpecies(), getSkin());
     _placeStandaloneTrait(sprites.species, _sb ? { tex: _sb.tex, meta: _sb.meta } : null, dir, mirror, cwx, cwy, scaleVal); }
-  _placeStandaloneTrait(sprites.eyestyle, _ensureEyeStyleLoaded(getEyeStyle()), dir, mirror, cwx, cwy, scaleVal);
+  _placeStandaloneTrait(sprites.eyestyle, _colouredEntry(_ensureEyeStyleLoaded(getEyeStyle()),
+    getColoredEyeStyleTextures(getEyeStyle(), getEyeColor())), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2923: + the eye colour */
 
   /* v2.3.2361: eyewear, between the beard and the hat in the caller's child
      order.  Through the same standalone path as the other three, so a pair of
      glasses stays on the face for the quarter-second of every swing, shot,
      chop and cook instead of vanishing with the real body (TRAPS #15 is the
      record of what a trait missed by this path looks like). */
-  _placeStandaloneTrait(sprites.eyewear, _ensureEyewearLoaded(getEyewear()), dir, mirror, cwx, cwy, scaleVal);
+  /* ═══ v2.3.2923: ...IN THE COLOUR YOU PICKED ═══
+     Owner: "The eyewear changed type when swinging."  Hair, beard and hat each
+     took their recolour here; the eyewear never did (v2.3.2424 added the
+     colour to _placeEyewear only).  And a colour swatch on eyewear repaints the
+     frame or the lens -- gold glasses recoloured black read as a different
+     PAIR, which snapped back to the base art for every swing, shot, chop and
+     cook.  The same swap _placeEyewear makes. */
+  _placeStandaloneTrait(sprites.eyewear, _colouredEntry(_ensureEyewearLoaded(getEyewear()),
+    getColoredEyewearTextures(getEyewear(), getEyewearColor())), dir, mirror, cwx, cwy, scaleVal);
 
   let hwEntry = _ensureHeadwearLoaded(getHeadwear());
   const hwCol = getColoredHatTextures(getHeadwear(), getHatColor());
@@ -4165,8 +4181,11 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
 
   { const _sb = getSpeciesBuild(looks.species, looks.skin);   /* v2.3.2682: THEIR species, on THEIR skin */
     _placeStandaloneTrait(sprites.species, _sb ? { tex: _sb.tex, meta: _sb.meta } : null, dir, mirror, cwx, cwy, scaleVal); }
-  _placeStandaloneTrait(sprites.eyestyle, _ensureEyeStyleLoaded(looks.eyeStyle), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2643 */
-  _placeStandaloneTrait(sprites.eyewear, _ensureEyewearLoaded(looks.eyewear), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2361 */
+  /* v2.3.2923: in THEIR colours, as their walking figure wears them (see placeSkillTraits) */
+  _placeStandaloneTrait(sprites.eyestyle, _colouredEntry(_ensureEyeStyleLoaded(looks.eyeStyle),
+    getColoredEyeStyleTextures(looks.eyeStyle, looks.eyeColor)), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2643 */
+  _placeStandaloneTrait(sprites.eyewear, _colouredEntry(_ensureEyewearLoaded(looks.eyewear),
+    getColoredEyewearTextures(looks.eyewear, looks.eyewearColor)), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2361 */
 
   let hwEntry2 = _ensureHeadwearLoaded(looks.headwear);
   const hwCol2 = getColoredHatTextures(looks.headwear, looks.hatColor);
@@ -4622,7 +4641,25 @@ function gripHoleWanted(wpnType, facingIdx, swingActive, sheathed) {
   return wpnType === 'greatsword' && !swingActive && !sheathed && GRIP_HOLE_FACINGS[facingIdx] === true;
 }
 function clearGripHole(spr) {
-  if (spr && spr._gripHoleOn) { spr.mask = null; spr._gripHoleOn = false; }
+  if (spr && spr._gripHoleOn) {
+    spr.mask = null; spr._gripHoleOn = false;
+    /* ═══ v2.3.2923: TAKING THE MASK OFF MUST TAKE THE CIRCLE AWAY TOO ═══
+       Owner: "There's a marker that I'm seeing on the character near the hand
+       that looks like a circle."  Pixi draws a Graphics that is a stencil mask
+       only while it IS one: `spr.mask = null` hands it back to the pool, whose
+       reset() sets includeInBuild = true (StencilMask.mjs) -- and the hole
+       stayed a child of the weapon container, so the moment he turned off
+       E/SW/NE (or sheathed, swung, blocked) it drew as a solid white 4.2px dot
+       at the grip, over the torso, until he faced E/SW/NE again. */
+    const hole = spr._gripHoleGfx;
+    if (hole && !hole.destroyed) { hole.clear(); hole.visible = false; }
+    /* ...and the shine's clip box (lightfx/glint.js) was pinned to the frame
+       the MASKED texture had.  It only refreshes while a mask is on, so it
+       outlived the hole: an E/SW/NE box laid over the south art cut the tip
+       of the carried blade off flat -- owner: "The sword is clipped at the
+       top." */
+    if (spr._btGlintArea && spr.filterArea === spr._btGlintArea) spr.filterArea = null;
+  }
 }
 
 /* Weapon swing animation — matches the Canvas 2D drawSpriteCharacter
@@ -7916,7 +7953,7 @@ export class EntityRenderer {
         if (_dfxKey != null && !m._burstPeakFrom && !m._burstFrom
             && !(m._transformStart && now - m._transformStart < 5000)) {
           const _dfxD = this.monsterDisplays.get(m.id);
-          const _dfx = drawMonsterDeath(m, _dfxD, _dfxKey, isFodder, now);
+          const _dfx = drawMonsterDeath(m, _dfxD, _dfxKey, isFodder, now, S);   /* v2.3.2923: + S */
           if (_dfx === DEATH_LIVE) {
             activeIds.add(m.id);
             _dfxD.x = m.x; _dfxD.y = m.y;
@@ -12880,6 +12917,12 @@ export class EntityRenderer {
                sent me looking for a bug one layer too far up. */
             window.__btWeapon = {
               gripHole: !!weaponSprite._gripHoleOn,   /* v2.3.2911 */
+              /* v2.3.2923: the hole drawn as a plain white dot (it is on the
+                 screen and no longer anybody's mask), and a clip box the shine
+                 left on the blade with no mask to justify it */
+              gripHoleDot: !!(display._gripHoleGfx && !display._gripHoleGfx.destroyed && display._gripHoleGfx.visible
+                && display._gripHoleGfx.parent && !weaponSprite._gripHoleOn),
+              staleClip: !!(weaponSprite.filterArea && !weaponSprite.mask),
               visible: weaponSprite.visible, bladeUp: _weaponBladeUp,
               x: +weaponSprite.x.toFixed(2), y: +weaponSprite.y.toFixed(2),
               anchorX: weaponSprite.anchor.x, anchorY: weaponSprite.anchor.y,
@@ -13010,6 +13053,8 @@ export class EntityRenderer {
               hole.label = 'grip-hole';
             }
             if (hole.parent !== _wc) _wc.addChild(hole);
+            weaponSprite._gripHoleGfx = hole;   /* v2.3.2923: so clearGripHole can hide it */
+            hole.visible = true;
             let _r = GRIP_HOLE_R;
             try { if (typeof window !== 'undefined' && window.__btGripHoleR > 0) _r = window.__btGripHoleR; } catch (e) { /* default */ }
             hole.clear();

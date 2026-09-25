@@ -423,7 +423,12 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
          monster is already down; its shaft would sit on the dead body until
          the respawn cleared it (effectsRenderer also skips the dead). */
       if (m.alive !== false && !(m.curHp <= 0) && m._stuckArrows.length < 12) {
-        m._stuckArrows.push({ ang: a.ang, ox: tx - m.x, oy: ty - m.y, isStaff: false, color: fx.stubColor });
+        /* v2.3.2923: + arch and born, so effectsRenderer can open a wound of the
+           monster's own material round the shaft (and wobble it on arrival) --
+           owner: "it looks like a headless arrow was just stickered on top of
+           the slime". */
+        m._stuckArrows.push({ ang: a.ang, ox: tx - m.x, oy: ty - m.y, isStaff: false, color: fx.stubColor,
+          arch: arch, born: now, seed: Math.random() });
       }
     }
   }

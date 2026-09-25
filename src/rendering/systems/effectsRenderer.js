@@ -266,7 +266,8 @@ import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSp
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
-import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
+import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */ } from '../../data/monsterVariants.js';
+import { drawArrowWound, drawArrowWoundLip } from '../arrowWound.js';   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, remoteBodyArt } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
@@ -2238,6 +2239,12 @@ export class EffectsRenderer {
 
     this.projectileGfx = new Graphics();
     this.projectileLayer.addChild(this.projectileGfx);
+    /* v2.3.2923: the material lip OVER a stuck shaft (arrowWound.js).  The
+       wound itself goes on projectileGfx, under the pooled arrow sprites; the
+       lip has to sit on top of them, so _placeArrowSprite lifts this back to
+       the top whenever it adds a sprite. */
+    this.woundLipGfx = new Graphics();
+    this.projectileLayer.addChild(this.woundLipGfx);
     /* ═══ v2.3.2841: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
        See src/rendering/staffCastFx.js.  Created HERE for the reason the jet
        stream's container is (v2.3.2398): Pixi depth is child order, and a pool
@@ -5010,6 +5017,8 @@ export class EffectsRenderer {
        spot.  Owner: "Arrows stuck in monsters persist even after death."
        Dropped on death so a respawn starts clean too. */
     const monsters = S.monsters || [];
+    const lipGfx = this.woundLipGfx;
+    if (lipGfx) lipGfx.clear();
     for (const m of monsters) {
       if (!m || !m._stuckArrows || !m._stuckArrows.length) continue;
       if (m.alive === false || m.curHp <= 0) { m._stuckArrows.length = 0; continue; }
@@ -5032,7 +5041,18 @@ export class EffectsRenderer {
         if (sa.isStaff) {
           this._drawStuckMagicShard(gfx, sx, sy, sa.ang, color, _mk);
         } else {
+          /* ═══ v2.3.2923: THE SHAFT GOES INTO SOMETHING ═══
+             Owner: "it looks like a headless arrow was just stickered on top
+             of the slime. I want it to look like the arrows are actually
+             puncturing the enemy."  The wound (under the shaft) and the lip
+             (over it) in the monster's own material -- see arrowWound.js. */
+          const _arch = sa.arch || m.archetype || m.type;
+          const _mat = hitMaterialOf(_arch);
+          const _tint = hitFxTintOf(_arch);
+          const _age = sa.born ? Math.max(0, now - sa.born) : 5000;
+          try { drawArrowWound(gfx, sx, sy, sa.ang, _mk, _mat, _tint, _age, sa.seed); } catch (e) { /* drawing only */ }
           this._drawStuckArrow(gfx, sx, sy, sa.ang, color, _mk);
+          if (lipGfx) { try { drawArrowWoundLip(lipGfx, sx, sy, sa.ang, _mk, _mat, _tint, _age); } catch (e) { /* drawing only */ } }
         }
       }
       /* v2.3.2889: what the last shaft was DRAWN at, for mp-dunedepth */
@@ -5667,6 +5687,8 @@ export class EffectsRenderer {
       sprite = new Sprite(tex);
       (ground ? this.groundArrowLayer : this.projectileLayer).addChild(sprite);
       pool.push(sprite);
+      /* v2.3.2923: keep the wound lip above the shafts */
+      if (!ground && this.woundLipGfx) this.projectileLayer.addChild(this.woundLipGfx);
     }
     if (ground) this._groundArrowSpriteN++; else this._arrowSpriteN++;
     if (sprite.texture !== tex) sprite.texture = tex;
@@ -10697,7 +10719,9 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
+        eyewearColor: o.eyewearColor,                        /* v2.3.2923: the colour their walking figure wears */
         eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        eyeColor: o.eyeColor,                                /* v2.3.2923: ditto, the eye colour */
         species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
@@ -11365,7 +11389,9 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
+        eyewearColor: o.eyewearColor,                        /* v2.3.2923: the colour their walking figure wears */
         eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        eyeColor: o.eyeColor,                                /* v2.3.2923: ditto, the eye colour */
         species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
@@ -11586,7 +11612,9 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
+        eyewearColor: o.eyewearColor,                        /* v2.3.2923: the colour their walking figure wears */
         eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        eyeColor: o.eyeColor,                                /* v2.3.2923: ditto, the eye colour */
         species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */

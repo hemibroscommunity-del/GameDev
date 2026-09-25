@@ -134,6 +134,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!m && !!m.gripHole === hole, { gripHole: m && m.gripHole });
   }
 
+  /* ═══ v2.3.2923: TURNING AWAY FROM A GRIP-HOLE FACING LEAVES NOTHING BEHIND ═══
+     Owner: "There's a marker that I'm seeing on the character near the hand
+     that looks like a circle" and "The sword is clipped at the top."  Both
+     were the hole's leftovers: the mask Graphics drew as a white dot once it
+     stopped being a mask, and the shine kept the masked frame's clip box.
+     Every facing, arriving from each of the three hole facings. */
+  for (const from of [0, 3, 7]) {
+    for (let i = 0; i < 8; i++) {
+      if (GRIP_HOLE.has(NAMES[i])) continue;
+      await face(P, from);
+      const m = await face(P, i);
+      rec.ok(`${NAMES[from]} -> ${NAMES[i]}: no white dot left at the hand`, !!m && m.gripHoleDot === false,
+        { gripHoleDot: m && m.gripHoleDot });
+      rec.ok(`${NAMES[from]} -> ${NAMES[i]}: the blade is not clipped by a stale box`, !!m && m.staleClip === false,
+        { staleClip: m && m.staleClip });
+    }
+  }
+
   /* THE SHIRT, WHICH IS WHAT THIS WAS ACTUALLY ABOUT.  "In front" used to be
      measured against _spriteBody — which is NOT DRAWN (v2.3.608 made it the
      invisible transform reference the gear copies), so the blade landed under
