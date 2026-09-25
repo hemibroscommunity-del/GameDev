@@ -4653,6 +4653,15 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
    floating handle with the hand behind it." */
 const GRIP_HOLE_FACINGS = { 0: true, 2: true, 3: true, 7: true };
 const GRIP_HOLE_R = 4.2;   /* display px -- about the fist; window.__btGripHoleR tunes it */
+/* ═══ v2.3.2925: SOUTH GETS A FIST-SIZED HOLE ═══
+   Owner: "The fist during jog south actually punches through the handle."
+   4.2 display px is ~5 sheet px of radius at the south jog's 0.42 body scale
+   -- a hole ~10 px across round a fist ~5-6 px across -- so the cut showed a
+   ring of gap round the fist, a fist punched THROUGH the handle rather than
+   wrapped round it.  2.6 is the fist's own radius (~3 sheet px), still wider
+   than the handle, so the fist reads across it.  The other three facings keep
+   the size the owner signed off on at v2.3.2911. */
+const GRIP_HOLE_R_BY_FACING = { 2: 2.6 };
 function gripHoleWanted(wpnType, facingIdx, swingActive, sheathed) {
   return wpnType === 'greatsword' && !swingActive && !sheathed && GRIP_HOLE_FACINGS[facingIdx] === true;
 }
@@ -12729,7 +12738,17 @@ export class EntityRenderer {
                slides across the body. */
             const _txW = wpnX + wpnNudgeX, _tyW = wpnY;
             const _smKey = facing + '|' + pose + '|' + (wpn.type || '');
-            if (display._wpnSmKey !== _smKey || display._wpnSmX == null) {
+            /* ═══ v2.3.2925: ...EXCEPT WHERE THE FIST SHOWS THROUGH IT ═══
+               The ease is there to hide tap noise, and it trails a fast arm by
+               a frame.  Harmless while the blade simply covered the hand; with
+               the grip hole cut where the BLADE is, a trailing blade put its
+               hole beside the fist, which read as the fist punching through the
+               handle.  So where the hole is on, the blade sits exactly on the
+               hand anchor -- which for jog-south is now fitted to the middle of
+               the fist (tools/art/fit-fist-anchors.mjs), so there is no tap
+               noise left to hide. */
+            const _snapToFist = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat);
+            if (_snapToFist || display._wpnSmKey !== _smKey || display._wpnSmX == null) {
               display._wpnSmX = _txW; display._wpnSmY = _tyW;
             } else {
               const _k = 0.7;   // v2.3.950: 0.5 -> 0.7, tighter follow (less float) while still easing out the per-frame hand-anchor jitter
@@ -13071,7 +13090,7 @@ export class EntityRenderer {
             if (hole.parent !== _wc) _wc.addChild(hole);
             weaponSprite._gripHoleGfx = hole;   /* v2.3.2923: so clearGripHole can hide it */
             hole.visible = true;
-            let _r = GRIP_HOLE_R;
+            let _r = GRIP_HOLE_R_BY_FACING[facingIdx] || GRIP_HOLE_R;   /* v2.3.2925 */
             try { if (typeof window !== 'undefined' && window.__btGripHoleR > 0) _r = window.__btGripHoleR; } catch (e) { /* default */ }
             hole.clear();
             hole.circle(weaponSprite.x, weaponSprite.y, _r).fill({ color: 0xffffff });

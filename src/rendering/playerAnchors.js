@@ -36,7 +36,7 @@
  *   express this directly as anchor.set(hx/srcW, hy/srcH).
  */
 
-const ANCHORS_URL = '/sprites/player/anchors.json?v=16'; /* v16: hands re-tapped after the animation re-cut (idle + jog); jog frame counts corrected */
+const ANCHORS_URL = '/sprites/player/anchors.json?v=17'; /* v17 (v2.3.2925): jog-south right hand pulled from the tap onto the middle of the fist (tools/art/fit-fist-anchors.mjs), so the greatsword's grip hole shows the fist round the handle; v16: hands re-tapped after the animation re-cut (idle + jog); jog frame counts corrected */
 const HANDLES_URL = '/sprites/weapons/handles.json?v=10'; /* v10 (v2.3.2910): greatsword-<dir> grips re-pinned for the widened art; v8: metal greatsword art re-grip (re-pinned for new sprites); v9 (v2.3.2354): sword + sword:wood grips rescaled into the 256px twins' space -- a cached v8 against the new art would fling the blade off the hand */
 
 /* v2.3.174: session-2 sprite pipeline shipped 256-px frames and the
