@@ -21,7 +21,7 @@
  *    right: small, it shows the middle of the fist and the handle covers the
  *    rest ("beneath the grip"); large, it shows the ground round the fist ("punches
  *    through").  So the hole is the fist itself: every bare-skin pixel of the
- *    fist (within MASK_R of its centre) plus the body's dark keyline touching
+ *    hand (connected to the fist, within HAND_R of its centre) plus the body's dark keyline touching
  *    it, as offsets from the anchor in 256-space.  entityRenderer draws them as
  *    the stencil, so the whole fist -- outline included -- sits on the grip and
  *    nothing else is cut.
@@ -47,7 +47,7 @@ import { decode } from '../gear/lib/png.mjs';
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const WRITE = process.argv.includes('--write');
 const KEYS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
-const FIST_R = 3, STEPS = 2, MASK_R = 3.6;   /* in 128-px sheet units; scaled per sheet */
+const FIST_R = 3, STEPS = 2, HAND_R = 6;   /* in 128-px sheet units; scaled per sheet */
 const ANCHORS = `${REPO}/public/sprites/player/anchors.json`;
 const MASKS = `${REPO}/src/rendering/fistMasks.js`;
 const isSkin = (r, g, b, a) => a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25;
@@ -106,12 +106,32 @@ for (const key of (KEYS.length ? KEYS : ['jog-south', 'stand-south'])) {
       if (legacy) list[f] = [nx, ny]; else e.r = [nx, ny];
       changed++;
     }
-    /* the fist: its skin, and the body's ink that touches it */
-    const R = MASK_R * u, skin = new Set(), out = [];
-    for (let y = Math.floor(cy - R); y <= Math.ceil(cy + R); y++) {
-      for (let x = Math.floor(cx - R); x <= Math.ceil(cx + R); x++) {
-        if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 > R * R) continue;
-        if (arm(f, x, y)) skin.add(x + ',' + y);
+    /* ═══ v2.3.2925b: THE WHOLE HAND, FINGERS INCLUDED ═══
+       Owner: "The characters hand should occlude the handle with his entire
+       hand ... his hand and fingers are over the handle grip."  A 3.6 px disc
+       round the fist's centre left the fingers and knuckle edges under the
+       handle.  So: the bare skin CONNECTED to the fist (8-way flood from its
+       centre) out to HAND_R -- the whole hand and the wrist, not the forearm
+       up to the elbow, and never the other hand or the face, which are not
+       connected to it inside that reach. */
+    const R = HAND_R * u, skin = new Set(), out = [];
+    {
+      let seed = null, sd = 1e9;
+      for (let y = Math.floor(cy - 3 * u); y <= Math.ceil(cy + 3 * u); y++) {
+        for (let x = Math.floor(cx - 3 * u); x <= Math.ceil(cx + 3 * u); x++) {
+          const d = (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2;
+          if (d < sd && arm(f, x, y)) { sd = d; seed = [x, y]; }
+        }
+      }
+      const q = seed ? [seed] : [];
+      if (seed) skin.add(seed.join(','));
+      while (q.length) {
+        const [x, y] = q.pop();
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx, yy = y + dy, k = xx + ',' + yy;
+          if (skin.has(k) || (xx + 0.5 - cx) ** 2 + (yy + 0.5 - cy) ** 2 > R * R || !arm(f, xx, yy)) continue;
+          skin.add(k); q.push([xx, yy]);
+        }
       }
     }
     const ink = new Set();
