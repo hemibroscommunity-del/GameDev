@@ -9490,7 +9490,16 @@ export class EntityRenderer {
          v2.3.2295 wired the worker's `tg` through, nothing set _aggroTs in a
          server zone at all, so this had never actually been seen in play. */
       const aggroFlash = m._aggroTs && now - m._aggroTs < NOTICE_MS;
-      const threatArrow = m._aggroed && S.player;
+      /* ═══ v2.3.2923: THE AMBER THREAT POINTER IS GONE ═══
+         Owner: "There's like an orange chip indicator on monsters sometimes
+         ... what's that about" -- then "Yes remove the pointer marker."  It
+         was a 70% amber triangle pointing at you while a monster was aggroed,
+         hung `-size - 12` above the feet: over the head of the tiny procedural
+         bodies it was written for, over the CHEST of every sprite monster --
+         the same flaw v2.3.2295 fixed for the old notice dot.  "It is after
+         you" is already said, above the head, by the red notice "!" and the
+         caret that turns red while you fight.  (wsClient still clears
+         `_aggroed`, which nothing draws from now.) */
       const stunActive = m._stunUntil && now < m._stunUntil;
       /* Stun countdown text -- pooled Text on the monster container;
          shown only while stunActive.  Cleared (hidden) the frame the
@@ -9515,7 +9524,7 @@ export class EntityRenderer {
          draw below — nothing on dynGfx depends on them any more, so keeping
          them here would rebuild this Graphics every frame for art drawn by
          another renderer entirely. */
-      const dynActive = numStatuses > 0 || aggroFlash || threatArrow || stunActive;
+      const dynActive = numStatuses > 0 || aggroFlash || stunActive;
       if (dynActive || display._dynKey !== '') {
         const dynGfx = display._dynGfx;
         dynGfx.clear();
@@ -9666,24 +9675,6 @@ export class EntityRenderer {
              failed, because a mark drawn underneath another one is still
              drawn. This is what lets a scenario ask. */
           display._noticeWorldY = m.y + (_dotY - _gap - _bh) * (display.scale && display.scale.y ? display.scale.y : 1);
-        }
-
-        if (threatArrow) {
-          const tx = S.player.x - m.x;
-          const ty = S.player.y - m.y;
-          const tlen = Math.sqrt(tx * tx + ty * ty);
-          if (tlen > 0.001) {
-            const ang = Math.atan2(ty, tx);
-            const baseY = -size - 12;
-            const cx = Math.cos(ang), cy = Math.sin(ang);
-            const tipL = 10, halfW = 3;
-            dynGfx.poly([
-              cx * tipL,        baseY + cy * tipL,
-              -cy * halfW,      baseY + cx * halfW,
-              cy * halfW,       baseY - cx * halfW,
-            ]);
-            dynGfx.fill({ color: 0xD68A3C, alpha: 0.7 });
-          }
         }
 
         /* v2.3.1735: the owner's painted star ring REPLACES the procedural
