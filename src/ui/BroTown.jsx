@@ -41,6 +41,7 @@ import { IncomingTradePanel } from './panels/IncomingTradePanel.jsx';
 import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
+import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
 import { NameModal } from './panels/NameModal.jsx';
 /* v2.3.1814: the login door that now sits in front of the creator.
    getBtPassphrase is already imported further down with the other
@@ -7097,8 +7098,14 @@ export var BroTown = function BroTown(_ref0) {
                 cape: _rpg !== null && _rpg !== void 0 && (_rpg$_anniversaryItem = _rpg._anniversaryItems) !== null && _rpg$_anniversaryItem !== void 0 && _rpg$_anniversaryItem.find(function (a) {
                   return a.type === 'cape';
                 }) ? true : false,
-                /* Extended RPG data for inspect card */
-                rpgData: {
+                /* Extended RPG data for inspect card.
+                   v2.3.2926: wrapped in Object.assign so the Inspect card's
+                   four additions (combat levels, active pet, farm plots ready,
+                   the server's kill count -- profileRelayFields in
+                   ui/panels/playerProfile.js, which says why each) ride the
+                   same blob.  No worker change: the track gate admits rpgData
+                   as one bounded nested object, whatever its keys. */
+                rpgData: Object.assign({
                   weapon: (_aw === null || _aw === void 0 ? void 0 : _aw.name) || 'Fists',
                   armor: (_rpg === null || _rpg === void 0 || (_rpg$armor = _rpg.armor) === null || _rpg$armor === void 0 ? void 0 : _rpg$armor.name) || 'Rags',
                   shield: (_rpg === null || _rpg === void 0 || (_rpg$shield = _rpg.shield) === null || _rpg$shield === void 0 ? void 0 : _rpg$shield.name) || null,
@@ -7128,7 +7135,7 @@ export var BroTown = function BroTown(_ref0) {
                   clanTag: ((_S$_clanData2 = S._clanData) === null || _S$_clanData2 === void 0 ? void 0 : _S$_clanData2.tag) || null,
                   clanName: ((_S$_clanData3 = S._clanData) === null || _S$_clanData3 === void 0 ? void 0 : _S$_clanData3.name) || null,
                   clanColor1: ((_S$_clanData4 = S._clanData) === null || _S$_clanData4 === void 0 ? void 0 : _S$_clanData4.color1) || null
-                }
+                }, profileRelayFields(_rpg))
               });
             }
           }
@@ -8993,6 +9000,20 @@ export var BroTown = function BroTown(_ref0) {
         x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
         rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1,
       });
+      return true;
+    };
+    /* ═══ v2.3.2926: YOUR OWN INSPECT CARD ═══
+       Owner: "I plan to add somewhere you can view this screen for your
+       character too."  WHERE is the owner's call, so nothing in the game calls
+       this yet -- it is the one line any future button needs.  The same
+       InspectPlayerPanel mount serves it: `self: true` makes it draw the
+       Inspect card alone, read from your own state (playerProfile.js
+       profileFromSelf), with no player card behind it and no Party / Trade /
+       Duel dock.  Returns false before you have joined. */
+    window.__broInspectSelf = function () {
+      var S2 = stateRef.current;
+      if (!S2 || !S2.myId) return false;
+      setInspectPlayer({ self: true, id: S2.myId, name: S2.myName || 'You', color: S2.myColor });
       return true;
     };
     /* Left joystick double-tap = cycle weapon (melee -> ranged -> staff).

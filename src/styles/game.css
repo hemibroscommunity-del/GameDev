@@ -1195,7 +1195,7 @@ input{font-family:inherit}
    the full width (two badges wrapped to a second line when the whole head
    kept the clearance) */
 .bt-pcard-head{display:flex;align-items:center;gap:14px;min-width:0}
-.bt-pcard-face{flex:none;width:68px;height:68px;padding:0;box-sizing:border-box;overflow:hidden;border-radius:12px;
+.bt-pcard-face{position:relative;flex:none;width:68px;height:68px;padding:0;box-sizing:border-box;overflow:visible;border-radius:12px;
   border:1px solid #435E71;background:#121F28;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;
   transition:transform 90ms cubic-bezier(.2,.8,.2,1)}
 button.bt-pcard-face:active{transform:scale(.96)}
@@ -1277,16 +1277,140 @@ div.bt-pcard-face{cursor:default}
    every .bt-inspect panel.  Lessons finish on game state, never on time on
    screen, so a lesson hidden here is shown again when the card closes. */
 body:has(.bt-pcard) [data-coach]{display:none}
-/* THE STATS & EQUIPMENT PLACEHOLDER (PlayerProfilePanel) */
-.bt-pprof-back{align-self:flex-start;min-height:44px;margin:-10px 0 4px -8px;padding:0 10px;border:0;background:transparent;
-  display:inline-flex;align-items:center;gap:6px;color:#A0BACE;font:inherit;font-size:14px;font-weight:700;cursor:pointer;
-  -webkit-tap-highlight-color:transparent}
-.bt-pprof-back span{font-size:22px;line-height:1}
-.bt-pprof-back:active{opacity:.7}
-.bt-pprof-empty{display:grid;gap:6px;justify-items:center;text-align:center;padding:18px 10px;
-  border:1px dashed #3B5366;border-radius:10px}
-.bt-pprof-title{font-size:15px;font-weight:700;color:#FFFFFF}
-.bt-pprof-empty p{margin:0;font-size:13px;color:#A0BACE}
+/* ═══ THE INSPECT CARD (PlayerProfilePanel -- the owner's second mockup) ═══
+   Opened from the player card's portrait (the magnifier), or for yourself by
+   window.__broInspectSelf.  A fixed FRAME -- the ✕ and the corner brackets --
+   around ONE scrolling body (.bt-pin-body) whose last child is the command
+   dock, stuck to the body's bottom edge.  At 390x844 upright nothing scrolls;
+   on a shorter screen the body scrolls UNDER the dock, so Party / Trade /
+   Duel never go below a fold.  The frame must not scroll itself
+   (overflow:hidden overrides the player card's overflow-y:auto): the ::before
+   brackets are placed on it and would scroll away with the content.
+   Same palette as the player card above; the gold title, red drop card and
+   the dock's gold / red command borders are the mockup's own.
+   Specificity: .bt-inspect .bt-inspect-card.bt-pcard.bt-pin (0,4,0) beats
+   the player card's (0,3,0). */
+.bt-inspect .bt-inspect-card.bt-pcard.bt-pin{padding:0;overflow:hidden}
+.bt-pin::before{z-index:3}   /* the bottom brackets draw over the dock */
+.bt-pin-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px 16px 0}
+.bt-pin.is-self .bt-pin-body{padding-bottom:16px}
+.bt-pin .bt-pcard-rule{margin:12px 0}
+/* the portrait (both cards): the lens hangs off its corner, so the frame no
+   longer clips -- the picture rounds its own corners instead */
+.bt-pcard-face>img,.bt-pcard-face>.bt-pcard-letter{border-radius:11px}
+.bt-pin-lens{position:absolute;right:-7px;bottom:-7px;width:26px;height:26px;padding:3px;box-sizing:border-box;
+  border-radius:50%;background:#0F1A21;border:1px solid #5A7D95;box-shadow:0 1px 3px rgba(0,0,0,.5);pointer-events:none}
+/* HEAD */
+.bt-pin-head{display:flex;align-items:flex-start;gap:14px;min-width:0}
+.bt-pin-face{width:74px;height:74px}
+.bt-pin-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.bt-pin-name{display:flex;align-items:center;gap:6px;min-width:0;min-height:24px;padding-right:34px}
+.bt-pin-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:19px;font-weight:700;line-height:1.2;color:#FFFFFF}
+.bt-pin-bro{flex:none;display:block;width:20px;height:20px}
+.bt-pin-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+/* the mockup's "|" between the relationship and the points */
+.bt-pin-ap{display:inline-flex;align-items:center;gap:4px;color:#F2C45A;font-size:14px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.bt-pin-ap::before{content:'';align-self:stretch;width:1px;margin:2px 4px 2px 0;background:#436279}
+.bt-pin-star{flex:none;width:15px;height:15px}
+.bt-pin-row{display:flex;align-items:center;gap:8px;min-width:0}
+.bt-pin-quests{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px 0 4px;box-sizing:border-box;
+  border:1px solid #3B5366;border-radius:8px;background:#1C2F3C;color:#A0BACE;font-size:13px;font-weight:700;white-space:nowrap}
+.bt-pin-quests b{color:#FFFFFF;font-variant-numeric:tabular-nums}
+.bt-pin-qi{flex:none;width:24px;height:24px}
+/* icon-only buttons (leaderboard, codex): a small face, a 44px hit area */
+.bt-pin-iconbtn{position:relative;flex:none;width:38px;height:30px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;
+  border:1px solid #4B6880;border-radius:8px;background:linear-gradient(180deg,#284050,#213745);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:transform 90ms cubic-bezier(.2,.8,.2,1)}
+.bt-pin-iconbtn::after{content:'';position:absolute;inset:-7px -3px}
+.bt-pin-iconbtn:active{transform:scale(.94)}
+.bt-pin-iconbtn img{display:block;width:30px;height:30px;pointer-events:none}
+.bt-pin-iconbtn .bt-pcard-glyph{font-size:16px}
+.bt-pin-iconbtn.is-small{width:32px;height:28px}
+.bt-pin-iconbtn.is-small::after{inset:-8px -6px}
+.bt-pin-iconbtn.is-small img{width:26px;height:26px}
+/* the equipped title (gold, as drawn) and the clan with its emblem */
+.bt-pin-tags{display:flex;align-items:center;gap:8px;min-width:0;margin-top:10px}
+.bt-pin-title{flex:0 1 auto;min-width:0;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 10px 0 4px;box-sizing:border-box;
+  border:1px solid #C9973F;border-radius:8px;background:linear-gradient(180deg,#3B301D,#2A2417);color:#F2D08A;
+  font-size:12.5px;font-weight:700;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(255,214,128,.08)}
+.bt-pin-title img{flex:none;width:24px;height:24px}
+.bt-pin-title>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.bt-pin-clan{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:5px;height:30px;padding:0 4px;box-sizing:border-box;
+  border:1px solid #3B5366;border-radius:8px;background:#1C2F3C;color:#EDF6FA;font-size:13px;font-weight:700}
+.bt-pin-clanic{flex:none;width:24px;height:24px}
+.bt-pin-clannm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-pin-clan.is-none{color:#8D9B98;font-weight:600}
+.bt-pin-clan.is-none .bt-pin-clanic{opacity:.45;filter:grayscale(1)}
+/* until clans have their own emblem: the clan's real tag on its real colour */
+.bt-pin-emblem{flex:none;width:24px;height:27px;display:flex;align-items:center;justify-content:center;
+  background:var(--clan,#9A76D3);clip-path:polygon(50% 0,100% 15%,100% 60%,50% 100%,0 60%,0 15%)}
+.bt-pin-emblem span{margin-top:-3px;color:#FFFFFF;font-size:8px;font-weight:900;line-height:1;letter-spacing:-.02em;text-shadow:0 1px 1px rgba(0,0,0,.65)}
+/* COMBAT: the three trained levels, one strip */
+.bt-pin-combat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #36526A;border-radius:10px;background:#152430}
+.bt-pin-cb{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:38px;padding:0 4px}
+.bt-pin-cb+.bt-pin-cb{border-left:1px solid #2C4454}
+.bt-pin-cb img{flex:none;width:26px;height:26px;margin:0 -2px}
+.bt-pin-cbl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#A0BACE;font-size:12.5px;font-weight:600}
+.bt-pin-cb b{color:#FFFFFF;font-size:16px;font-variant-numeric:tabular-nums}
+/* EQUIPMENT: six sprites, no words (the owner's direction); an empty slot
+   shows the bag's own painted silhouette, as the player's own sheet does */
+.bt-pin-equip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:8px}
+.bt-pin-slot{position:relative;min-width:0;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;
+  border:1px solid #3B5366;border-radius:9px;background:radial-gradient(circle at 50% 38%,#24394A 0%,#172530 75%)}
+.bt-pin-slot img{display:block;width:86%;height:86%;object-fit:contain;pointer-events:none}
+.bt-pin-slot.is-empty{border-style:dashed;border-color:#324A5C;background:#142129}
+.bt-pin-slot.is-empty img{opacity:.3}
+/* SHOWCASE: kills + rarest drop | the Homestead */
+.bt-pin-show{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:8px;align-items:stretch}
+.bt-pin-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.bt-pin-kills{display:flex;align-items:center;gap:7px;min-width:0;padding:7px 8px;border:1px solid #3B5366;border-radius:10px;background:#1C2F3C}
+.bt-pin-kills img{flex:none;width:38px;height:38px;margin:-3px -2px}
+.bt-pin-kills>div{min-width:0}
+.bt-pin-kills b{display:block;font-size:20px;line-height:1.1;color:#FFFFFF;font-variant-numeric:tabular-nums}
+.bt-pin-kills span{display:block;font-size:11px;font-weight:600;color:#A0BACE;white-space:nowrap}
+.bt-pin-drop{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:0;
+  padding:6px 6px 8px;text-align:center;border:1px solid #A3412F;border-radius:10px;
+  background:radial-gradient(circle at 50% 32%,#6E2519 0%,#3B1712 72%)}
+.bt-pin-drop-art svg{display:block;width:50px;height:50px}
+.bt-pin-drop-r{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#FF9C6B}
+.bt-pin-drop-n{font-size:12.5px;line-height:1.2;color:#FFE6CF}
+.bt-pin-home{display:flex;flex-direction:column;min-width:0;border:1px solid #3B5366;border-radius:10px;background:#1C2F3C;overflow:hidden}
+.bt-pin-scene{position:relative;flex:none;height:84px;background:#1B2A20}
+.bt-pin-scene>img{display:block;width:100%;height:100%;object-fit:cover}
+.bt-pin-home-t{position:absolute;left:6px;top:6px;padding:2px 6px;border-radius:5px;background:rgba(9,16,21,.74);
+  font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#EAD9A9}
+.bt-pin-petsprite{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);font-size:30px;line-height:1;
+  filter:drop-shadow(0 3px 2px rgba(0,0,0,.55))}
+.bt-pin-pet{min-width:0;padding:6px 8px 0}
+.bt-pin-petname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-weight:800;line-height:1.2}
+.bt-pin-petname.is-godly{background:linear-gradient(90deg,#FF6B6B,#FFD166,#6BFF95,#5CB8FF,#C77DFF);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.bt-pin-species{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:30px;font-size:12px;color:#A0BACE}
+.bt-pin-species>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-pin-plots{display:flex;align-items:center;gap:5px;margin-top:auto;padding:2px 8px 8px;font-size:12px;font-weight:700;color:#8ED67A;white-space:nowrap}
+.bt-pin-plots img{flex:none;width:20px;height:20px}
+.bt-pin-plots b{font-variant-numeric:tabular-nums}
+/* THE COMMAND DOCK -- "visually distinct: darker footer, stronger divider,
+   brighter borders, bigger icons".  Full-bleed (the negative margins undo the
+   body's padding) and sticky, so it holds the bottom edge while the body
+   scrolls under it. */
+.bt-pin-dock{position:sticky;bottom:0;z-index:2;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;
+  margin:12px -16px 0;padding:13px 14px 14px;background:linear-gradient(180deg,#0F1B23 0%,#0B151B 100%);
+  border-top:1px solid #56788F;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 -8px 16px rgba(8,14,18,.35)}
+.bt-pin-dock::before{content:'';position:absolute;left:50%;top:-5px;width:8px;height:8px;margin-left:-4px;background:#56788F;transform:rotate(45deg)}
+.bt-pin-cmd{min-width:0;min-height:58px;padding:5px 3px 6px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  border-radius:10px;border:1.5px solid #D8A94D;background:linear-gradient(180deg,#263641 0%,#1B2830 100%);color:#FFF1D2;
+  font:inherit;font-size:12.5px;font-weight:800;line-height:1.15;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  box-shadow:0 0 10px rgba(216,169,77,.16),inset 0 1px 0 rgba(255,255,255,.06);
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1),filter 90ms}
+.bt-pin-cmd:active{transform:scale(.97);filter:brightness(.88)}
+.bt-pin-cmd .bt-pcard-ic{width:38px;height:38px;margin:-4px 0 -3px}
+.bt-pin-cmd .bt-pcard-glyph{font-size:24px;line-height:32px;margin:0}
+.bt-pin-cmd>span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-pin-cmd.is-duel{border-color:#E4665C;color:#FFDCD8;box-shadow:0 0 10px rgba(228,102,92,.18),inset 0 1px 0 rgba(255,255,255,.06)}
+.bt-pin-cmd .is-short{display:none}   /* "Invite" sideways, where "Invite to Party" cannot fit */
+.bt-pin-cmd.is-static{opacity:.6;cursor:default;box-shadow:none}
+.bt-pin-cmd.is-static:active{transform:none;filter:none}
 /* A phone held sideways (wide AND short: the card's cap is ~257px there).
    The 2x2 grid becomes one row -- four tiles, or five with the clan invite
    -- and the report form becomes one row too (question, reasons, Cancel),
@@ -1307,6 +1431,64 @@ body:has(.bt-pcard) [data-coach]{display:none}
   .bt-pcard-reasons{display:flex;flex:none;gap:6px;order:1}
   .bt-pcard-reason{flex:none;padding:0 10px}
   .bt-pcard-cancel{order:2}
+}
+/* ...and the Inspect card on a SHORT upright screen (an iPhone SE, or any
+   iPhone in Safari with its toolbar showing -- ~664px of a 844px phone): the
+   card is capped near 455px there, so tighten the spacing and shrink the two
+   pictures.  What still does not fit scrolls under the dock, which stays. */
+@media (max-width:599px) and (max-height:720px){
+  .bt-pin-body{padding:12px 14px 0}
+  .bt-pin.is-self .bt-pin-body{padding-bottom:12px}
+  .bt-pin-dock{margin:10px -14px 0;padding:10px 12px 12px}
+  .bt-pin-id{gap:4px}
+  .bt-pin-tags{margin-top:8px}
+  .bt-pin .bt-pcard-rule{margin:9px 0}
+  .bt-pin-cb{min-height:34px}
+  .bt-pin-equip{margin-top:6px}
+  .bt-pin-kills{padding:5px 8px}
+  .bt-pin-drop-art svg{width:40px;height:40px}
+  .bt-pin-scene{height:64px}
+  .bt-pin-species{min-height:28px}
+  .bt-pin-plots{padding:0 8px 6px}
+  .bt-pin-cmd{min-height:50px}
+  .bt-pin-cmd .bt-pcard-ic{width:32px;height:32px}
+}
+/* ...and the Inspect card sideways: two columns, because ~257px of height
+   cannot take the upright stack.  Who (head, title/clan, combat, equipment)
+   on the left; the showcase and the dock on the right, where the dock stops
+   being a footer and becomes a plain row under the showcase.  The right
+   column starts 28px down so the ✕ in the frame's corner has its own strip
+   instead of sitting on the Homestead picture. */
+@media (min-width:600px) and (max-height:520px){
+  .bt-inspect .bt-inspect-card.bt-pcard.bt-pin{max-width:680px}
+  .bt-pin-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:"head show" "tags show" "combat show" "equip dock";grid-template-rows:auto auto auto 1fr;
+    column-gap:16px;row-gap:6px;align-items:start;padding:12px 14px}
+  .bt-pin.is-self .bt-pin-body{padding-bottom:12px;grid-template-areas:"head show" "tags show" "combat show" "equip show"}
+  .bt-pin .bt-pcard-rule{display:none}
+  .bt-pin-head{grid-area:head}
+  .bt-pin-tags{grid-area:tags;margin-top:2px}
+  .bt-pin-combat{grid-area:combat}
+  .bt-pin-equip{grid-area:equip;margin-top:0}
+  .bt-pin-show{grid-area:show;margin-top:22px}
+  .bt-pin .bt-inspect-close{top:8px;right:8px;width:30px;height:30px}
+  .bt-pin .bt-inspect-close img{width:30px;height:30px}
+  .bt-pin-face{width:56px;height:56px}
+  .bt-pin-id{gap:4px}
+  .bt-pin-nm{font-size:17px}
+  .bt-pin-cb{min-height:34px}
+  .bt-pin-kills{padding:5px 8px}
+  .bt-pin-drop{padding:4px 6px 6px}
+  .bt-pin-drop-art svg{width:40px;height:40px}
+  .bt-pin-scene{height:56px}
+  .bt-pin-species{min-height:28px}
+  .bt-pin-plots{padding:0 8px 6px}
+  .bt-pin-dock{grid-area:dock;position:static;align-self:end;margin:0;padding:0;background:none;border:0;box-shadow:none;gap:6px}
+  .bt-pin-dock::before{display:none}
+  .bt-pin-cmd{min-height:44px;flex-direction:row;gap:4px;padding:0 4px;font-size:12px}
+  .bt-pin-cmd .bt-pcard-ic{width:30px;height:30px;margin:0 -3px}
+  .bt-pin-cmd .is-long{display:none}
+  .bt-pin-cmd .is-short{display:inline}
 }
 /* v2.3.1333: zone header rail — replaces the bt-exit-fab back arrow
    AND the floating zone label (both retired; see ZoneHeader.jsx).

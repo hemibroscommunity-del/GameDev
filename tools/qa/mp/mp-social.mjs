@@ -50,22 +50,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const shownName = await H.seesText(A, 'Peer');
   rec.ok("the card names the player being inspected", shownName);
 
-  /* ── v2.3.2926: the portrait is the door to the stats & equipment menu ──
+  /* ── v2.3.2926: the portrait is the door to the Inspect card ──
      Owner: "Tapping the character profile picture will bring up a new menu
-     that shows stats and equipment.  Don't build it out completely but leave
-     a placeholder."  So: the tap opens it, it names the player, and Back
-     returns to the card with every action still there. */
+     that shows stats and equipment", then the second mockup for what that
+     menu is.  So: the tap opens it, it names the player, it shows their
+     numbers once their relay has landed (a dash means "not heard yet", so
+     the trained levels must be DIGITS here -- joinPair waits for the relay),
+     it draws all six equipment slots, it carries the same three actions as
+     the card's tiles, and its portrait returns to the card. */
+  /* the relay is every 2s and mutual sight does not wait for it */
+  await A.page.waitForFunction((id) => {
+    const o = window._gameState && window._gameState.current.others[id];
+    return !!(o && o.rpgData);
+  }, bId, { timeout: 10000 }).catch(() => {});
   await H.clickAct(A, 'profile');
-  await A.page.waitForTimeout(400);
+  await A.page.waitForTimeout(1300);   /* the card re-reads its profile each second */
   const prof = await A.page.evaluate(() => {
-    const el = document.querySelector('[data-profile]');
-    return el ? { text: (el.innerText || '').replace(/\s+/g, ' ').slice(0, 160) } : null;
+    const el = document.querySelector('[data-profile="player"]');
+    if (!el) return null;
+    const txt = (s) => { const e = el.querySelector(s); return e ? (e.innerText || '').replace(/\s+/g, ' ').trim() : null; };
+    return {
+      text: (el.innerText || '').replace(/\s+/g, ' ').slice(0, 240),
+      loaded: el.getAttribute('data-loaded'),
+      combat: [...el.querySelectorAll('.bt-pin-cb b')].map((b) => b.textContent),
+      slots: el.querySelectorAll('[data-slot]').length,
+      kills: txt('[data-stat="kills"] b'),
+      clan: txt('[data-stat="clan"]'),
+      dock: [...el.querySelectorAll('.bt-pin-dock [data-act]')].map((b) => b.getAttribute('data-act')),
+    };
   });
-  rec.ok('tapping the portrait opens the stats & equipment menu',
-    !!prof && /Stats & Equipment/.test(prof.text) && /Peer/.test(prof.text), prof);
+  rec.ok('tapping the portrait opens the Inspect card, naming the player',
+    !!prof && /Peer/.test(prof.text) && /Lifetime Kills/.test(prof.text) && /Homestead/i.test(prof.text), prof);
+  rec.ok("...with the player's relayed numbers, not dashes",
+    !!prof && prof.loaded === '1' && prof.combat.length === 3 && prof.combat.every((c) => /^\d+$/.test(c))
+      && /^\d/.test(prof.kills || ''), prof);
+  rec.ok('...all six equipment slots', !!prof && prof.slots === 6, prof);
+  rec.ok('..."No Clan" for a player in none (never a made-up clan)', !!prof && prof.clan === 'No Clan', prof);
+  rec.ok('...and the same Party / Trade / Duel as the card',
+    !!prof && ['trade', 'duel'].every((a) => prof.dock.includes(a)), prof);
   await H.clickAct(A, 'profile-back');
   await A.page.waitForTimeout(400);
-  rec.ok('...and Back returns to the card',
+  rec.ok('...and its portrait returns to the card',
     (await H.cardActs(A)).some((a) => a.act === 'trade') && !(await A.page.$('[data-profile]')));
 
   /* ── friend ── */

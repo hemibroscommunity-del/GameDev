@@ -16,7 +16,10 @@ import { hairColorTarget } from '../../rendering/traits/hairColorCatalog.js';
 import { hatColorTarget } from '../../rendering/traits/hatColorCatalog.js';
 import { facialHairColorTarget } from '../../rendering/traits/facialHairColorCatalog.js';
 import { shirtColorTarget } from '../../rendering/traits/shirtColorCatalog.js';
-import { PlayerProfilePanel } from './PlayerProfilePanel.jsx'; /* v2.3.2926 */
+import { PlayerProfilePanel, Lens } from './PlayerProfilePanel.jsx'; /* v2.3.2926 */
+import { profileFromPeer, profileFromSelf } from './playerProfile.js'; /* v2.3.2926: the Inspect card's data */
+import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js'; /* v2.3.2926: its leaderboard / codex buttons */
+import { portraitSrc } from '../mobile/sheet/portraitStore.js'; /* v2.3.2926: your own portrait, for your own card */
 
 /* v2.3.1917: mirrors GameRoom.OPEN_PVP (server/src/index.js).  While it is
    false the worker refuses pvp_threat and every non-consensual hit, so the
@@ -62,7 +65,7 @@ var PVP_OPEN = false;
      mid-scroll, trade/duel bottom), and "are we friends" existed only as a
      button's wording.
    The mockup, top to bottom:
-     head    72px portrait (now the door to the stats menu), name, an LV pill,
+     head    68px portrait (now the door to the Inspect card), name, an LV pill,
              and the relationship as a badge beside it (🙂 Friend / In party)
      ─ ◆ ─
      tiles   2x2: Invite to Party · Trade / Friend · Duel, the owner's icons
@@ -70,11 +73,11 @@ var PVP_OPEN = false;
              -- all four the same weight: the mockup has no gold primary
      ─ ◆ ─
      safety  Mute · Block · Report, outlined, icon + word
-   The card no longer carries Equipment / Tier 1 Stats / Record at all; they
-   belong to PlayerProfilePanel (a placeholder for now -- its header note maps
-   the rpgData fields for whoever builds it).  With the sheet gone there is no
-   scroll body, so the v2.3.1235 fade and the v2.3.1743 four-row grid it
-   needed are gone with it.
+   The card no longer carries Equipment / Tier 1 Stats / Record at all; a
+   player's gear and record belong to the Inspect card behind the portrait
+   (PlayerProfilePanel, built to the owner's second mockup -- a placeholder
+   stood there first).  With the sheet gone there is no scroll body, so the
+   v2.3.1235 fade and the v2.3.1743 four-row grid it needed are gone with it.
    Corner brackets and the ◆ dividers are the mockup's, drawn in CSS; they are
    the owner's deliberate exception to Lantern Slate's "no decorative
    corners" (recorded in docs/LANTERN-SLATE-SPEC.md, do-not-drift list).
@@ -144,7 +147,7 @@ export function InspectPlayerPanel(props) {
   var _rs = React.useState(false);
   var reportSent = _rs[0],
     setReportSent = _rs[1];
-  /* v2.3.2926: the stats-and-equipment menu the portrait opens.  Panel
+  /* v2.3.2926: the Inspect card the portrait opens.  Panel
      state for the same reason as the report row: it resets when the card
      closes, so the next player you tap opens on their card, not on a menu
      left over from the last one. */
@@ -216,9 +219,62 @@ export function InspectPlayerPanel(props) {
   var closeCard = function onClick() {
     return setInspectPlayer(null);
   };
+  /* v2.3.2926: Party, Trade and Duel are on the Inspect card too (its
+     command dock), so their handlers are hoisted out of the tiles into these
+     three names and BOTH run the same function -- a dock Trade and a tile
+     Trade cannot drift.  The bodies are the tiles' own handlers, moved
+     verbatim, not rewritten. */
+  var sendPartyInvite = function onClick() {
+    var S = stateRef.current;
+    if (S.channel) S.channel.send({
+      type: 'broadcast',
+      event: 'party_invite',
+      payload: {
+        target: inspectPlayer.id
+      }
+    });
+    pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
+    setInspectPlayer(null);
+  };
+  var openTrade = function onClick() {
+    /* v2.3.1132: two-sided trade window when the worker supports it
+       (trade2_open handshake; both stage, both confirm, server swaps
+       atomically).  The one-directional gift panel stays for old
+       workers. */
+    var _St2 = stateRef.current;
+    if (_St2._serverCaps && _St2._serverCaps.trade2 && _St2.channel) {
+      try {
+        _St2.channel.send({ type: 'broadcast', event: 'trade2_open', payload: { target: inspectPlayer.id } });
+      } catch (e) {}
+      setInspectPlayer(null);
+      return;
+    }
+    setTradeTarget({
+      id: inspectPlayer.id,
+      name: inspectPlayer.name
+    });
+    setTradeOffer({});
+    setShowTrade(true);
+    setInspectPlayer(null);
+  };
+  var sendDuel = function onClick() {
+    var S = stateRef.current;
+    if (S.channel) S.channel.send({
+      type: 'broadcast',
+      event: 'duel_wager_request',
+      payload: {
+        target: inspectPlayer.id,
+        from: S.myId,
+        fromName: S.myName,
+        wager: 0
+      }
+    });
+    pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
+    setInspectPlayer(null);
+  };
   /* v2.3.1235: Checkpoint B — portrait chain: generated pixel portrait →
      inspectPlayer.avatar img → letter tile.  v2.3.2926: built once and
-     shown by both the card and the stats menu. */
+     shown by both the card and the Inspect card. */
   var face = genPortrait ? /*#__PURE__*/React.createElement("img", {
     src: genPortrait,
     alt: "",
@@ -247,13 +303,50 @@ export function InspectPlayerPanel(props) {
       background: 'rgba(4,9,12,0.38)' /* v2.3.1235: ordinary modal scrim */
     },
     onClick: closeCard
-  }, showProfile ? /*#__PURE__*/React.createElement(PlayerProfilePanel, {
-    inspectPlayer: inspectPlayer,
+  },
+  /* ═══ v2.3.2926: THE INSPECT CARD (owner's mockup 2) ═══
+     The portrait opens it; its own portrait comes back.  Your OWN card
+     (inspectPlayer.self, opened by window.__broInspectSelf -- the owner: "I
+     plan to add somewhere you can view this screen for your character too")
+     is the Inspect card alone: no player card behind it, no dock. */
+  inspectPlayer.self ? /*#__PURE__*/React.createElement(PlayerProfilePanel, {
+    getProfile: function getProfile() {
+      return profileFromSelf(stateRef.current);
+    },
+    face: /*#__PURE__*/React.createElement("img", {
+      src: portraitSrc(stateRef.current),
+      alt: "",
+      draggable: false
+    }),
+    onClose: closeCard,
+    onOpen: function onOpen(id) {
+      dashboardPanelBus.open(id);
+      setInspectPlayer(null);
+    },
+    dock: null
+  }) : showProfile ? /*#__PURE__*/React.createElement(PlayerProfilePanel, {
+    getProfile: function getProfile() {
+      var _live = null;
+      try {
+        _live = stateRef.current && stateRef.current.others ? stateRef.current.others[inspectPlayer.id] || null : null;
+      } catch (e) {}
+      return profileFromPeer(inspectPlayer, _live, { friend: isFriend, party: _partyMate });
+    },
     face: face,
-    onBack: function onBack() {
+    onPortrait: function onPortrait() {
       setShowProfile(false);
     },
-    onClose: closeCard
+    onClose: closeCard,
+    onOpen: function onOpen(id) {
+      dashboardPanelBus.open(id);
+      setInspectPlayer(null);
+    },
+    /* the same caps gates as the tiles: no party tile, no party command */
+    dock: {
+      party: hasPartyCap ? { state: _partyMate ? 'member' : 'invite', onClick: sendPartyInvite } : null,
+      trade: openTrade,
+      duel: sendDuel
+    }
   }) : /*#__PURE__*/React.createElement("div", {
     /* v2.3.2926: the whole look is game.css `.bt-pcard` -- the mockup's
        gradient, brackets and dividers, the pressed states, and the landscape
@@ -277,18 +370,18 @@ export function InspectPlayerPanel(props) {
     draggable: false
   })),
   /* ═══ HEAD ═══
-     The portrait is a BUTTON now -- the owner's door to the stats menu. */
+     The portrait is a BUTTON now -- the owner's door to the Inspect card. */
   /*#__PURE__*/React.createElement("div", {
     className: "bt-pcard-head"
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-pcard-face",
     "data-act": "profile",
-    "aria-label": "Stats and equipment",
-    title: "Stats & equipment",
+    "aria-label": "Inspect " + inspectPlayer.name,
+    title: "Inspect",
     onClick: function onClick() {
       setShowProfile(true);
     }
-  }, face), /*#__PURE__*/React.createElement("div", {
+  }, face, /*#__PURE__*/React.createElement(Lens, null) /* v2.3.2926: the mockup's magnifier -- this picture is a door */), /*#__PURE__*/React.createElement("div", {
     className: "bt-pcard-who"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-pcard-name" /* v2.3.1235: Checkpoint B — text token always, never a per-player tint */
@@ -343,18 +436,7 @@ export function InspectPlayerPanel(props) {
     className: "bt-pcard-tile",
     "data-act": "party",
     "data-state": "invite",
-    onClick: function onClick() {
-      var S = stateRef.current;
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'party_invite',
-        payload: {
-          target: inspectPlayer.id
-        }
-      });
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
-      setInspectPlayer(null);
-    }
+    onClick: sendPartyInvite
   }, socIcon('party', '🎟️'), /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lb"
   }, "Invite to Party"))),
@@ -370,27 +452,7 @@ export function InspectPlayerPanel(props) {
   /*#__PURE__*/React.createElement("button", {
     className: "bt-pcard-tile",
     "data-act": "trade",
-    onClick: function onClick() {
-      /* v2.3.1132: two-sided trade window when the worker supports it
-         (trade2_open handshake; both stage, both confirm, server swaps
-         atomically).  The one-directional gift panel stays for old
-         workers. */
-      var _St2 = stateRef.current;
-      if (_St2._serverCaps && _St2._serverCaps.trade2 && _St2.channel) {
-        try {
-          _St2.channel.send({ type: 'broadcast', event: 'trade2_open', payload: { target: inspectPlayer.id } });
-        } catch (e) {}
-        setInspectPlayer(null);
-        return;
-      }
-      setTradeTarget({
-        id: inspectPlayer.id,
-        name: inspectPlayer.name
-      });
-      setTradeOffer({});
-      setShowTrade(true);
-      setInspectPlayer(null);
-    }
+    onClick: openTrade
   }, socIcon('trade', '🤝'), /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lb"
   }, "Trade")),
@@ -443,21 +505,7 @@ export function InspectPlayerPanel(props) {
   }, isFriend ? 'Friend' : 'Add Friend')), /*#__PURE__*/React.createElement("button", {
     className: "bt-pcard-tile",
     "data-act": "duel",
-    onClick: function onClick() {
-      var S = stateRef.current;
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'duel_wager_request',
-        payload: {
-          target: inspectPlayer.id,
-          from: S.myId,
-          fromName: S.myName,
-          wager: 0
-        }
-      });
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
-      setInspectPlayer(null);
-    }
+    onClick: sendDuel
   }, socIcon('duel', '⚔️'), /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lb"
   }, "Duel")),

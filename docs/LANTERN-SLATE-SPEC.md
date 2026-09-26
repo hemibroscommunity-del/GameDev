@@ -443,3 +443,13 @@ plans. like this better."), along with the owner's icon sheet
 bounded: CSS only (no baked frame art), one card, the mockup's colours. Do not
 "clean it up" back to the plain sheet, and do not spread the brackets to other
 panels without the same ask from the owner.
+
+The same licence covers the **Inspect card** behind that card's portrait
+(`PlayerProfilePanel.jsx`, `.bt-pin` in game.css), built to the owner's second
+mockup ("This is the direction I'm going"): it shares the frame, and adds the
+mockup's gold equipped-title chip, the red rarest-drop card, and a command
+dock whose Party / Trade buttons carry a gold border and Duel a red one
+(the direction asked for the dock to be "visually distinct: darker footer,
+stronger divider, brighter borders, bigger icons"). Brass stays an accent
+there, as everywhere: a border and a glow, never a filled slab. It is the same
+card family, so it is the same exception, not a sixth.

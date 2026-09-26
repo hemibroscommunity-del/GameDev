@@ -776,7 +776,9 @@ export async function openWorldChat(P, { timeout = 8000 } = {}) {
  * InspectPlayerPanel's controls carry a stable `data-act`: party, trade,
  * duel, friend, clan, mute, block, report, report-cancel, and
  * report-<reason> for the four reason chips, profile (the portrait, which
- * opens the stats & equipment menu) and profile-back.  v2.3.2926 rebuilt the
+ * opens the Inspect card) and, on the Inspect card, profile-back (its own
+ * portrait), leaderboard and codex -- its dock reuses party / trade / duel,
+ * since only one of the two cards is ever on screen.  v2.3.2926 rebuilt the
  * card to the owner's mockup and rewrote some of its copy -- "Report to
  * moderators" is "Report", "💚 Friend" is "Friend" with the relationship as
  * a header badge, "In your party" is an "In party" tile -- which is the
