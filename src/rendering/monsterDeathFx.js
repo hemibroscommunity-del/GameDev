@@ -367,7 +367,7 @@ function pathYAt(pts, x) {
 }
 
 /* ── the pieces ── */
-function makePiece(root, sb, mask, body, wounds, woundCol) {
+function makePiece(root, sb, mask, body, wounds, woundCol, fine) {
   const c = new Container();
   const spr = new Sprite(sb.texture);
   spr.anchor.set(sb.anchor.x, sb.anchor.y);
@@ -379,7 +379,36 @@ function makePiece(root, sb, mask, body, wounds, woundCol) {
   spr.mask = mg;
   /* the cut face: a line of the monster's own insides, only where the cut
      went through body */
-  if (wounds && wounds.length) {
+  if (wounds && wounds.length && fine) {
+    /* ═══ v2.3.2928c: BONE -- ITS OWN ART, AND A FINE KEYLINE ═══
+       Owner: "You should use the existing art with a very fine outline
+       though."  The wound stripe below is 4.5 texels of drawn-on colour -- it
+       covered the splintered edge with a smooth painted band.  A broken bone
+       shows the bone: the sprite's own pixels right up to the break, closed
+       off by one texel of dark keyline like the rest of its outline. */
+    const w = new Graphics();
+    for (const [a, b] of wounds) w.moveTo(a[0], a[1]).lineTo(b[0], b[1]);
+    w.stroke({ color: 0x1e1812, width: 1.4, alpha: 0.85, join: 'miter', cap: 'butt' });
+    /* ...ON THE BONE ONLY.  `wounds` are read off a coarse coverage grid, and a
+       skeleton's grid cells span the gaps between its ribs and limbs -- drawn
+       bare, the keyline was a straight dark rule across open ground.  So it is
+       clipped twice: to the monster's own ALPHA (a sprite of the same art as
+       the mask, so it exists only where there is bone) and to this piece's cut
+       polygon (so it sits on the inside of the break, half its width).  */
+    const alphaMask = new Sprite(sb.texture);
+    alphaMask.anchor.set(sb.anchor.x, sb.anchor.y);
+    const onBone = new Container();
+    onBone.addChild(w);
+    onBone.mask = alphaMask;
+    const polyMask = new Graphics();
+    polyMask.poly(mask.flat()).fill({ color: 0xffffff });
+    const inPiece = new Container();
+    inPiece.addChild(onBone);
+    inPiece.mask = polyMask;
+    c.addChild(alphaMask);
+    c.addChild(polyMask);
+    c.addChild(inPiece);
+  } else if (wounds && wounds.length) {
     const w = new Graphics();
     for (const [a, b] of wounds) w.moveTo(a[0], a[1]).lineTo(b[0], b[1]);
     /* v2.3.2923: a wet dark edge under a brighter core, so a ragged cut reads
@@ -543,7 +572,10 @@ function build(kind, display, m, blob, now) {
       : [[x0 - pad, y0 - pad], [x1 + pad, y0 - pad], [x1 + pad, y1 + pad]].concat(inner.slice().reverse(), hip.slice(1));
     let runs = [];
     for (let i = 1; i < hip.length; i++) runs = runs.concat(solidRuns(cov, sx, sy, hip[i - 1], hip[i]));
-    spec = { top: R, bot: L, runs, mid, hipY, dx: side, dy: 0 };
+    /* the inner edge too, for the fine keyline (the gore reads `runs` only) */
+    let edge = runs.slice();
+    for (let i = 1; i < inner.length; i++) edge = edge.concat(solidRuns(cov, sx, sy, inner[i - 1], inner[i]));
+    spec = { top: R, bot: L, runs, edge, mid, hipY, dx: side, dy: 0 };
   } else {
     return null;
   }
@@ -562,8 +594,8 @@ function build(kind, display, m, blob, now) {
   const pieces = [];
   let spurt = null;
   if (kind === 'slice') {
-    const T = makePiece(root, sb, spec.top, topBody, spec.runs, col);
-    const B = makePiece(root, sb, spec.bot, botBody, spec.runs, col);
+    const T = makePiece(root, sb, spec.top, topBody, splinter && spec.edge ? spec.edge : spec.runs, col, splinter);
+    const B = makePiece(root, sb, spec.bot, botBody, splinter && spec.edge ? spec.edge : spec.runs, col, splinter);
     const down = spec.dy >= 0 ? 1 : -1;
     /* the top slides DOWN the cut before it clears the lower half */
     T.slide = { dx: spec.dx * down, dy: spec.dy * down, until: 170 + rand() * 90, speed: 0,
@@ -577,8 +609,8 @@ function build(kind, display, m, blob, now) {
     const r0 = spec.runs[Math.floor(spec.runs.length / 2)];
     spurt = { piece: B, x: (r0[0][0] + r0[1][0]) / 2, y: (r0[0][1] + r0[1][1]) / 2, up: true, dur: 420 };
   } else if (kind === 'decap') {
-    const Hd = makePiece(root, sb, spec.top, topBody, spec.runs, col);
-    const Bd = makePiece(root, sb, spec.bot, botBody, spec.runs, col);
+    const Hd = makePiece(root, sb, spec.top, topBody, splinter && spec.edge ? spec.edge : spec.runs, col, splinter);
+    const Bd = makePiece(root, sb, spec.bot, botBody, splinter && spec.edge ? spec.edge : spec.runs, col, splinter);
     Hd.free = true;
     /* v2.3.2923: harder, and mostly OUTWARD -- was vx 1.1-1.9 H, vy 3.6-4.6 H,
        spin 7-12.  The extra goes sideways and into the spin rather than up: a
@@ -591,8 +623,8 @@ function build(kind, display, m, blob, now) {
     pieces.push(Bd, Hd);
     spurt = { piece: Bd, x: topBody.com[0], y: pathYAt(spec.pts, topBody.com[0]), up: true, dur: 700 };
   } else {
-    const Bd = makePiece(root, sb, spec.top, topBody, spec.runs, col);
-    const L = makePiece(root, sb, spec.bot, botBody, spec.runs, col);
+    const Bd = makePiece(root, sb, spec.top, topBody, splinter && spec.edge ? spec.edge : spec.runs, col, splinter);
+    const L = makePiece(root, sb, spec.bot, botBody, splinter && spec.edge ? spec.edge : spec.runs, col, splinter);
     L.free = true;
     /* v2.3.2923: harder -- was vx 0.9-1.5 H, vy 1.2-1.8 H, spin 4-7 */
     L.vx = side * H * (1.7 + rand() * 1.1);
