@@ -5085,7 +5085,7 @@ export class EffectsRenderer {
         }
         try { drawArrowWound(gfx, sx, sy, sa.ang, _mk, _mat, _tint, _age, sa.seed); } catch (e) { /* drawing only */ }
         this._drawStuckArrow(gfx, sx, sy, sa.ang, color, _mk);
-        if (lipGfx) { try { drawArrowWoundLip(lipGfx, sx, sy, sa.ang, _mk, _mat, _tint, _age); } catch (e) { /* drawing only */ } }
+        if (lipGfx) { try { drawArrowWoundLip(lipGfx, sx, sy, sa.ang, _mk, _mat, _tint, _age, 0, sa.seed); } catch (e) { /* drawing only */ } }
       }
       if (_bakeList && _bakeList.length) {
         let ok = false;
@@ -5100,7 +5100,7 @@ export class EffectsRenderer {
         for (const a of _bakeList) {
           try { drawArrowWound(gfx, a.x, a.y, a.ang, a.k, a.mat, a.tint, a.age, a.seed); } catch (e) { /* drawing only */ }
           this._drawStuckArrow(gfx, a.x, a.y, a.ang, 0x8b6914, a.k);
-          if (lipGfx) { try { drawArrowWoundLip(lipGfx, a.x, a.y, a.ang, a.k, a.mat, a.tint, a.age); } catch (e) { /* drawing only */ } }
+          if (lipGfx) { try { drawArrowWoundLip(lipGfx, a.x, a.y, a.ang, a.k, a.mat, a.tint, a.age, 0, a.seed); } catch (e) { /* drawing only */ } }
         }
       }
       /* v2.3.2889: what the last shaft was DRAWN at, for mp-dunedepth */

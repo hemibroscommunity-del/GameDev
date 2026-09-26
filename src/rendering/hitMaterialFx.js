@@ -346,10 +346,13 @@ function bakeChips(tex, fx) {
     return Math.hypot(px[i] - mr, px[i + 1] - mg, px[i + 2] - mb) < 70;
   };
   const out = [];
+  /* bone is thin: a splinter the size of a slime blob was a third of a leg */
+  const sizeK = fx === 'bone' ? 0.5 : 1;
   for (let si = 0; si < CHIP_SIZES.length; si++) {
-    const r = Math.max(2, fh * CHIP_SIZES[si]);
+    const r = Math.max(2, fh * CHIP_SIZES[si] * sizeK);
     const row = [];
     for (let v = 0; v < CHIP_VARIANTS; v++) {
+     for (let attempt = 0; attempt < 6; attempt++) {
       /* an opaque spot: the centre and a ring round it all solid */
       let cx = -1, cy = -1, fbx = -1, fby = -1;
       for (let t = 0; t < 160; t++) {
@@ -375,6 +378,18 @@ function bakeChips(tex, fx) {
       cg.save(); cg.clip();
       cg.drawImage(cv, pad - cx, pad - cy);
       cg.restore();
+      /* ...and it must BE the body: most of what it kept is the main colour
+         (a skeleton's chip was catching its red eyes) */
+      let tot = 0, near = 0;
+      try {
+        const d = cg.getImageData(0, 0, S, S).data;
+        for (let q = 0; q < d.length; q += 4) {
+          if (d[q + 3] < 160) continue;
+          tot++;
+          if (Math.hypot(d[q] - mr, d[q + 1] - mg, d[q + 2] - mb) < 95) near++;
+        }
+      } catch (e) { tot = 1; near = 1; }
+      if (tot < 4 || near / tot < (attempt === 5 ? 0.5 : 0.78)) continue;   /* the last try settles for half, so a material never falls back to pixels */
       /* keep only the art's own pixels inside the cut (a thin body's chip can
          cross a gap) -- then a hairline of its own shadow round the edge, so a
          chip still reads against ground its own colour */
@@ -386,6 +401,8 @@ function bakeChips(tex, fx) {
       const t = Texture.from(c);
       t.label = 'hit-chip';
       row.push(t);
+      break;
+     }
     }
     if (!row.length) return null;
     out.push(row);

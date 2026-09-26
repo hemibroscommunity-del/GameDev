@@ -80,6 +80,7 @@ const SCENARIOS = {
   arules: () => import('./mp-arules.mjs'), /* v2.3.2516: the sprite-art RULE fixes -- cape on the roll and the loot bend, and the cape the south block used to lose */
   store: () => import('./mp-store.mjs'), /* v2.3.2476: the auction house -- list from the bag, walk to the door, see it on the shelf */
   stuckarrow: () => import('./mp-stuckarrow.mjs'), /* v2.3.2511: one arrow sticks, and it sticks in the body */
+  arrowwound: () => import('./mp-arrowwound.mjs'), /* v2.3.2929b: arrow hit sites -- the monster's own art, a torn hole and a fine keyline; a close picture per material */
   inkframes: () => import('./mp-inkframes.mjs'), /* v2.3.2470: a drawing must not pulse or spill as he runs */
   backprev: () => import('./mp-backprev.mjs'), /* v2.3.2467: the pedestal preview turns round and so do the drawings */
   solospecial: () => import('./mp-solospecial.mjs'), /* v2.3.2465: the swipe fires the special alone -- no ordinary shot leading or trailing it -- and the three magic orbs are evenly spaced */
