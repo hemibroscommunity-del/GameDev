@@ -4663,7 +4663,14 @@ const GRIP_HOLE_R = 4.2;   /* display px -- about the fist; window.__btGripHoleR
    than the handle, so the fist reads across it.  The other three facings keep
    the size the owner signed off on at v2.3.2911. */
 const GRIP_HOLE_R_BY_FACING = { 2: 2.6 };
-function gripHoleWanted(wpnType, facingIdx, swingActive, sheathed) {
+/* ═══ v2.3.2925: ...BUT NOT JOGGING SOUTHWEST ═══
+   Owner: "Southwest jog the sword needs to be occluded by the players body."
+   The hole is what pulls the carried SW blade in front (v2.3.2911, via
+   inFrontHeld below), so jogging SW it simply does not apply: the blade goes
+   back to v2.3.2516's behind-the-body order and the running arm sits over the
+   handle on its own.  Standing SW keeps the hole the owner asked for there. */
+function gripHoleWanted(wpnType, facingIdx, swingActive, sheathed, pose) {
+  if (facingIdx === 3 && pose === 'jog') return false;
   return wpnType === 'greatsword' && !swingActive && !sheathed && GRIP_HOLE_FACINGS[facingIdx] === true;
 }
 function clearGripHole(spr) {
@@ -12748,7 +12755,7 @@ export class EntityRenderer {
                hand anchor -- which for jog-south is now fitted to the middle of
                the fist (tools/art/fit-fist-anchors.mjs), so there is no tap
                noise left to hide. */
-            const _snapToFist = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat);
+            const _snapToFist = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat, pose);
             if (_snapToFist || display._wpnSmKey !== _smKey || display._wpnSmX == null) {
               display._wpnSmX = _txW; display._wpnSmY = _tyW;
             } else {
@@ -12860,8 +12867,14 @@ export class EntityRenderer {
                handles.json, so the hilt stays exactly where the hand is and
                only the blade swings to the other side.  Nothing else moves,
                which is why this is one condition rather than a new anchor. */
+            /* ═══ v2.3.2925: ...AND THE NORTH BLADE POINTS NORTHWEST ═══
+               Owner: "north jog the weapon should point northwest instead of
+               its current northeast."  Same move as south: the north sheet is
+               drawn leaning to the viewer's right, and a flip about the grip
+               anchor swings it to the left with the hilt left in the hand.
+               Greatsword only -- the bow's north art is not a lean. */
             const weaponMirror = _gsDir
-              ? (mirror || _gsDir === 'south')
+              ? (mirror || _gsDir === 'south' || (_gsDir === 'north' && wpn.type === 'greatsword'))
               : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
             /* ═══ v2.3.2841: THE STAFF KICKS WHEN IT CASTS ═══
@@ -12953,6 +12966,7 @@ export class EntityRenderer {
                sent me looking for a bug one layer too far up. */
             window.__btWeapon = {
               gripHole: !!weaponSprite._gripHoleOn,   /* v2.3.2911 */
+              pose,   /* v2.3.2925: the SW-jog rule is per pose */
               /* v2.3.2923: the hole drawn as a plain white dot (it is on the
                  screen and no longer anybody's mask), and a clip box the shine
                  left on the blade with no mask to justify it */
@@ -13080,7 +13094,7 @@ export class EntityRenderer {
              clone learns to ride along. */
           /* v2.3.2911: the fist-over-handle hole (see gripHoleWanted) --
              replaces the hand-cap wherever it applies. */
-          const _gripHole = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat);
+          const _gripHole = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat, pose);
           if (_gripHole) {
             const _wc = weaponSprite.parent;
             let hole = display._gripHoleGfx;
@@ -13419,7 +13433,7 @@ export class EntityRenderer {
            for why the v2.3.1787 exception does not transfer to it. */
         const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand)
           /* v2.3.2911: SW carried comes in front, fist over the handle */
-          || gripHoleWanted(wpn && wpn.type, facingIdx, swingActive, sheathed);
+          || gripHoleWanted(wpn && wpn.type, facingIdx, swingActive, sheathed, pose);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
         /* v2.3.2841: the staff cast glows at the crystal from a layer above
            the body; when the staff is carried BEHIND him (SW/W/NW/N) it dims

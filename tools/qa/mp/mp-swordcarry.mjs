@@ -26,6 +26,8 @@
  * texture corruption.
  */
 import * as H from './harness.mjs';
+import { mkdirSync } from 'node:fs';
+const OUT = `${H.REPO}/tools/qa/mp/out/swordcarry`;
 
 const NAMES = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
 
@@ -195,6 +197,56 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('a swing is not flipped — it keeps its own rotation path',
       sw.bladeUp === false && sw.scaleY > 0, { bladeUp: sw.bladeUp, scaleY: sw.scaleY });
   }
+
+  /* ═══ v2.3.2925: JOGGING SOUTHWEST THE BODY COVERS THE BLADE; NORTH LEANS WEST ═══
+     Owner: "Southwest jog the sword needs to be occluded by the players body.
+     Also north jog the weapon should point northwest instead of its current
+     northeast."  Real key input (the game loop owns vx/vy), with the player
+     pinned in place at the start of every frame so a long hold cannot walk
+     him into a wall.  Pictures in tools/qa/mp/out/swordcarry/ for eyes. */
+  mkdirSync(OUT, { recursive: true });
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    window.__scPin = { x: S.player.x, y: S.player.y, on: true };
+    const _raf = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (cb) => _raf((ts) => {
+      try { const p = window.__scPin, Q = window._gameState.current; if (p.on) { Q.player.x = p.x; Q.player.y = p.y; } } catch (e) { /* the frame first */ }
+      cb(ts);
+    });
+  });
+  const jog = async (keys, name) => {
+    await P.page.evaluate(() => { const S = window._gameState.current; S.lockedTarget = null; S.autoAttack = false; S._aimAngle = null; });
+    for (const k of keys) await P.page.keyboard.down(k);
+    let m = null;
+    for (let t = 0; t < 8; t++) {
+      await P.page.evaluate(() => {
+        const S = window._gameState.current;
+        S.rpg.activeSlot = 'melee';
+        S.rpg.weapon = { name: 'Copper Great Sword', type: 'greatsword', gearBase: 'copper' };
+      });
+      await P.page.waitForTimeout(150);
+      m = await P.page.evaluate(() => window.__btWeapon || null);
+      if (m && m.pose === 'jog' && m.facing === name) break;
+    }
+    const box = await P.page.evaluate(() => {
+      const S = window._gameState.current, c = document.querySelector('canvas').getBoundingClientRect();
+      const x = c.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), y = c.top + (S.player.y - 30 - S.camera.y) * (S._worldScaleY || 1);
+      return { x: Math.max(0, Math.round(x - 70)), y: Math.max(0, Math.round(y - 75)), width: 140, height: 130 };
+    });
+    await P.page.screenshot({ path: `${OUT}/jog-${name}.png`, clip: box }).catch(() => {});
+    for (const k of keys) await P.page.keyboard.up(k);
+    await P.page.waitForTimeout(250);
+    return m;
+  };
+  await P.page.click('canvas', { position: { x: 5, y: 5 } }).catch(() => {});
+  const swj = await jog(['a', 's'], 'southwest');
+  rec.ok('SW jog: the body is jogging southwest (guard)', !!(swj && swj.pose === 'jog' && swj.facing === 'southwest'), { pose: swj && swj.pose, facing: swj && swj.facing });
+  rec.ok('SW jog: the blade is behind the body', !!swj && swj.wcIdx < swj.spriteBodyIdx, { wcIdx: swj && swj.wcIdx, spriteBodyIdx: swj && swj.spriteBodyIdx });
+  rec.ok('SW jog: no grip hole (the body covers the handle)', !!swj && !swj.gripHole, { gripHole: swj && swj.gripHole });
+  const n = await jog(['w'], 'north');
+  rec.ok('N jog: the body is jogging north (guard)', !!(n && n.pose === 'jog' && n.facing === 'north'), { pose: n && n.pose, facing: n && n.facing });
+  rec.ok('N jog: the blade is mirrored about the grip, leaning northwest', !!n && n.scaleX < 0, { scaleX: n && n.scaleX });
+  await P.page.evaluate(() => { window.__scPin.on = false; });
 
   await P.ctx.close().catch(() => {});
 }
