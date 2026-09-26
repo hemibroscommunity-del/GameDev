@@ -17,7 +17,7 @@ import { GHOST_SRC } from '../mobile/sheet/equipModel.js';
  *   tags      the equipped title (gold) and the clan with its emblem --
  *             "No Clan" when there is none
  *   ─ ◆ ─
- *   combat    Melee · Bow · Staff, the three trained levels and nothing more
+ *   combat    Melee · Bow · Magic, the three trained levels and nothing more
  *             ("not the full Points menu")
  *   equip     the six equipment slots as sprites, no words
  *   ─ ◆ ─
@@ -48,9 +48,10 @@ const BRO_BADGE = '/icons/ui/verified-bro-small.webp';
 const COMBAT = [
   ['melee', 'Melee', '/icons/ui/hero/melee.webp?v=2.3.1311'],
   ['bow', 'Bow', '/icons/ui/hero/bow.webp?v=2.3.1311'],
-  /* the game files this skill as Magic; the owner's mockup says Staff, and
-     the icon is a staff */
-  ['staff', 'Staff', '/icons/ui/hero/magic.webp?v=2.3.1311'],
+  /* MAGIC, as the rest of the game names it (PROG3_SKILL_META, the
+     leaderboard).  The owner's mockup said Staff; asked, the owner chose
+     "You can do magic."  The key stays 'staff' -- prog3's own category id. */
+  ['staff', 'Magic', '/icons/ui/hero/magic.webp?v=2.3.1311'],
 ];
 
 /* An icon with a text fallback, like the card's socIcon: a SPAN replaces a
