@@ -2273,7 +2273,7 @@ export class EffectsRenderer {
        particles layer (over the entities, under the player, v2.3.2636); behind
        it = the telegraphs layer, under the entities, so a piece thrown behind
        a monster goes behind its body. */
-    this._hitFx = new HitMaterialFx(this.particleLayer, layers.telegraphs || this.particleLayer);
+    this._hitFx = new HitMaterialFx(this.particleLayer, layers.telegraphs || this.particleLayer, { artOf: (id) => monsterBodySprite(id) });   /* v2.3.2929: + the monster's own art, for its remnants */
     /* v2.3.2847: the white-hot bow special -- its arrow, heat, aura and sparks
        in one container on top of the projectile layer. */
     this._hotArrow = new HotArrowFx(this.projectileLayer);
