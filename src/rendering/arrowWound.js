@@ -73,7 +73,7 @@ function chainTo(node, stop, out) {
   return out;
 }
 /* body-local -> layer-local, through their nearest shared ancestor */
-function relMatrix(body, layer, out) {
+export function relMatrix(body, layer, out) {   /* v2.3.2930: exported for arrowPin.js */
   const up = new Set();
   for (let n = layer; n; n = n.parent) up.add(n);
   let anc = body;

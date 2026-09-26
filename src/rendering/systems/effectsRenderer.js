@@ -267,7 +267,8 @@ import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* 
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */ } from '../../data/monsterVariants.js';
-import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';   /* v2.3.2923: the puncture round a stuck shaft */
+import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
+import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, remoteBodyArt, monsterBodySprite /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
@@ -2259,6 +2260,13 @@ export class EffectsRenderer {
     if (typeof window !== 'undefined') {
       const _bk = this._arrowBaker;
       window.__btArrowBake = () => (_bk ? _bk.probe() : null);
+      window.__btArrowPin = () => arrowPinStats();   /* v2.3.2930 */
+      /* v2.3.2930: every stuck arrow's pin -- its texel, and whether that texel is art */
+      window.__btArrowPins = (S) => {
+        const out = [];
+        for (const m of ((S && S.monsters) || [])) for (const sa of (m._stuckArrows || [])) out.push({ id: m.id, ...(arrowPinOnArt(sa) || { pinned: false }) });
+        return out;
+      };
     }
     /* ═══ v2.3.2841: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
        See src/rendering/staffCastFx.js.  Created HERE for the reason the jet
@@ -5059,12 +5067,20 @@ export class EffectsRenderer {
       const _body = (this._arrowBaker && ARROW_PINE.noHead) ? monsterBodySprite(m.id) : null;
       const _bakeList = _body ? [] : null;
       let _shaftScale = null;
+      /* v2.3.2930: pinned to the art and carried with the animation (arrowPin.js) */
+      const _pinBody = monsterBodySprite(m.id);
       for (const sa of m._stuckArrows) {
-        const sx = m.x + (sa.ox || 0);
-        const sy = m.y + (sa.oy || 0);
+        let sx = m.x + (sa.ox || 0);
+        let sy = m.y + (sa.oy || 0);
+        let ang = sa.ang;
+        if (_pinBody && this.projectileLayer) {
+          let pp = null;
+          try { pp = pinnedArrow(sa, _pinBody, this.projectileLayer, sx, sy); } catch (e) { pp = null; }
+          if (pp) { sx = pp.x; sy = pp.y; ang = pp.ang; }
+        }
         const color = (sa.color && cssToHex(sa.color)) || 0x8b6914;
         if (sa.isStaff) {
-          this._drawStuckMagicShard(gfx, sx, sy, sa.ang, color, _mk);
+          this._drawStuckMagicShard(gfx, sx, sy, ang, color, _mk);
           continue;
         }
         /* ═══ v2.3.2923: THE SHAFT GOES INTO SOMETHING ═══
@@ -5079,13 +5095,13 @@ export class EffectsRenderer {
         if (_bakeList) {
           const sc = stuckShaftScale(_mk);
           _shaftScale = sc;
-          _bakeList.push({ x: sx, y: sy, ang: sa.ang, k: _mk, mat: _mat, tint: _tint, age: _age, seed: sa.seed,
+          _bakeList.push({ x: sx, y: sy, ang, k: _mk, mat: _mat, tint: _tint, age: _age, seed: sa.seed,
             shaftScale: sc, shaftLen: sc * ((ARROW_PINE.noHead && ARROW_PINE.noHead.width) || 0) });
           continue;
         }
-        try { drawArrowWound(gfx, sx, sy, sa.ang, _mk, _mat, _tint, _age, sa.seed); } catch (e) { /* drawing only */ }
-        this._drawStuckArrow(gfx, sx, sy, sa.ang, color, _mk);
-        if (lipGfx) { try { drawArrowWoundLip(lipGfx, sx, sy, sa.ang, _mk, _mat, _tint, _age, 0, sa.seed); } catch (e) { /* drawing only */ } }
+        try { drawArrowWound(gfx, sx, sy, ang, _mk, _mat, _tint, _age, sa.seed); } catch (e) { /* drawing only */ }
+        this._drawStuckArrow(gfx, sx, sy, ang, color, _mk);
+        if (lipGfx) { try { drawArrowWoundLip(lipGfx, sx, sy, ang, _mk, _mat, _tint, _age, 0, sa.seed); } catch (e) { /* drawing only */ } }
       }
       if (_bakeList && _bakeList.length) {
         let ok = false;
