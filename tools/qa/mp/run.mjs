@@ -259,6 +259,7 @@ const SCENARIOS = {
   slimewave: () => import('./mp-slimewave.mjs'), /* v2.3.2912: the slime burst draws a shockwave at its real radius, and shakes only the players inside it */
   deathcut: () => import('./mp-deathcut.mjs'), /* v2.3.2913: monsters die sliced, beheaded, legless or the normal way -- pieces fall and settle, then go */
   swordcarry: () => import('./mp-swordcarry.mjs'), /* v2.3.1786: the carried blade points up and forward */
+  bladesoft: () => import('./mp-bladesoft.mjs'), /* v2.3.2927: the held blade at the body's resolution -- soft bake by default, ?bladesoft=0 sharp; pictures of both */
   standinskin: () => import('./mp-standinskin.mjs'), /* v2.3.1788: attack stand-ins wear the walking skin */
   blockstance: () => import('./mp-blockstance.mjs'), /* v2.3.1798: shield size, planted stance, caret */
   blockarm: () => import('./mp-blockarm.mjs'), /* v2.3.1789: the raised shield is held by an arm */
