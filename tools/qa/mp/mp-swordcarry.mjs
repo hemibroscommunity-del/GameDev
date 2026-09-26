@@ -234,8 +234,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { x: Math.max(0, Math.round(x - 70)), y: Math.max(0, Math.round(y - 75)), width: 140, height: 130 };
     });
     await P.page.screenshot({ path: `${OUT}/jog-${name}.png`, clip: box }).catch(() => {});
+    /* v2.3.2925: the run wobble -- the blade's angle over a few frames */
+    const rots = [];
+    for (let t = 0; t < 8; t++) { await P.page.waitForTimeout(70); const r = await P.page.evaluate(() => window.__btWeapon && window.__btWeapon.rotation); rots.push(r); }
     for (const k of keys) await P.page.keyboard.up(k);
     await P.page.waitForTimeout(250);
+    if (m) m.rots = rots;
     return m;
   };
   await P.page.click('canvas', { position: { x: 5, y: 5 } }).catch(() => {});
@@ -246,6 +250,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const n = await jog(['w'], 'north');
   rec.ok('N jog: the body is jogging north (guard)', !!(n && n.pose === 'jog' && n.facing === 'north'), { pose: n && n.pose, facing: n && n.facing });
   rec.ok('N jog: the blade is mirrored about the grip, leaning northwest', !!n && n.scaleX < 0, { scaleX: n && n.scaleX });
+  {
+    const r = (n && n.rots || []).filter((v) => typeof v === 'number');
+    const span = r.length ? Math.max(...r) - Math.min(...r) : 0;
+    rec.ok('N jog: the blade wobbles with the run, a few degrees about the grip', span > 0.02 && span < 0.2, { rots: r.map((v) => +v.toFixed(3)), span: +span.toFixed(3) });
+  }
   /* v2.3.2925: south, a strip of frames for eyes -- the back of the hand over the grip */
   for (let k = 0; k < 6; k++) {
     const sj = await jog(['s'], 'south');

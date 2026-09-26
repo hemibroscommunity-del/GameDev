@@ -225,6 +225,22 @@ const SOUTH_IDLE_TILT = -0.60;
    grip hole is on while jogging, so the grip runs under the middle of the fist (see the
    snap block in _updatePlayer).  window.__btGripNudgeX sweeps it. */
 const SOUTH_GRIP_NUDGE_X = 2;
+/* ═══ v2.3.2925: THE CARRIED BLADE WOBBLES WITH THE RUN ═══
+   Owner: "I wonder if a slight wobble of the sword while running would
+   actually make it look more realistic."  A carried blade pinned rigid in a
+   bobbing hand reads as pasted on.  So while jogging it rocks a few degrees
+   about the GRIP (the sprite's anchor -- the hilt never leaves the hand, and
+   the south grip hole stays on the fist), on the body's own bob clock
+   (bobY = sin(now / 120)) but a beat behind it, so it trails the hand like a
+   weight rather than moving in lockstep.  Sword and greatsword only: the
+   staff has its own cast pose, the bow is held by its middle.
+   window.__btSwordWobble sets the amplitude (radians; 0 turns it off). */
+const CARRY_WOBBLE = 0.06;   /* ~3.4 degrees each way */
+function carryWobble(now, moving, wpnType) {
+  if (!moving || (wpnType !== 'sword' && wpnType !== 'greatsword')) return 0;
+  const amp = (typeof window !== 'undefined' && typeof window.__btSwordWobble === 'number') ? window.__btSwordWobble : CARRY_WOBBLE;
+  return amp * Math.sin(now / 120 - 0.9);
+}
 /* v2.3.1765: how long a monster spends arriving (see the spawn-in note in the
    monster loop).  Short on purpose — this is a flourish on a respawn, and a
    monster you cannot fight yet is a monster in your way. */
@@ -10801,7 +10817,7 @@ export class EntityRenderer {
             oWeaponSprite.rotation = (oWpnType === 'staff')
               ? staffCastPose(now, other._staffCastAt, other._staffCastAng, 0, 0, weaponMirror, undefined,
                 !!other._staffCastBig && other._staffCastBig === other._staffCastAt)   /* v2.3.2842: their one-bolt special kicks harder */
-              : 0;
+              : carryWobble(now, isMoving, oWpnType);   /* v2.3.2925: their blade wobbles with their run, as yours does */
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
             _oBladeUp = oWpnType !== 'staff';   /* v2.3.2841: a staff stands head-up -- see the local path */
           }
@@ -12865,7 +12881,8 @@ export class EntityRenderer {
             const _southTilt = (typeof window !== 'undefined'
               && typeof window.__btSouthTilt === 'number')
               ? window.__btSouthTilt : SOUTH_IDLE_TILT;
-            weaponSprite.rotation = (_gsDir === 'south') ? _southTilt : 0;
+            weaponSprite.rotation = ((_gsDir === 'south') ? _southTilt : 0)
+              + carryWobble(now, pose === 'jog', wpn.type);   /* v2.3.2925 */
             /* v2.3.942: per-facing greatsword art is already drawn for its
                canonical facing, so flip it only for the truly-mirrored facings
                (resolveDirection's `mirror`: west/northwest/southeast).  Other
