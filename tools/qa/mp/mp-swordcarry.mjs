@@ -128,13 +128,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
      with a hole at the grip, so the fist is drawn over the handle (see
      gripHoleWanted).  The SWING keeps v2.3.2516's behind-the-body order. */
   const FRONT = new Set(['E', 'SE', 'S', 'SW', 'NE']);
-  const GRIP_HOLE = new Set(['E', 'S', 'SW', 'NE']);   /* v2.3.2925: + S */
+  const GRIP_HOLE = new Set(['E', 'SE', 'S', 'SW', 'NE']);   /* v2.3.2925: + S, + SE (standing) */
   for (let i = 0; i < 8; i++) {
     const m = await face(P, i);
     const want = FRONT.has(NAMES[i]);
     rec.ok(`${NAMES[i]}: the blade is ${want ? 'in front of' : 'behind'} the body`,
       !!m && (m.wcIdx > m.spriteBodyIdx) === want,
       { wcIdx: m && m.wcIdx, spriteBodyIdx: m && m.spriteBodyIdx, expectedInFront: want });
+    if (i <= 2) {   /* v2.3.2925: idle E / SE / S close-ups for eyes -- the hand on the grip */
+      mkdirSync(OUT, { recursive: true });
+      const box = await P.page.evaluate(() => {
+        const S = window._gameState.current, c = document.querySelector('canvas').getBoundingClientRect();
+        const x = c.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), y = c.top + (S.player.y - 30 - S.camera.y) * (S._worldScaleY || 1);
+        return { x: Math.max(0, Math.round(x - 70)), y: Math.max(0, Math.round(y - 75)), width: 140, height: 130 };
+      });
+      await P.page.screenshot({ path: `${OUT}/idle-${NAMES[i]}.png`, clip: box }).catch(() => {});
+    }
     const hole = GRIP_HOLE.has(NAMES[i]);
     rec.ok(`${NAMES[i]}: the fist is ${hole ? '' : 'not '}cut over the handle`,
       !!m && !!m.gripHole === hole, { gripHole: m && m.gripHole });
@@ -146,7 +155,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      were the hole's leftovers: the mask Graphics drew as a white dot once it
      stopped being a mask, and the shine kept the masked frame's clip box.
      Every facing, arriving from each of the three hole facings. */
-  for (const from of [0, 2, 3, 7]) {
+  for (const from of [0, 1, 2, 3, 7]) {
     for (let i = 0; i < 8; i++) {
       if (GRIP_HOLE.has(NAMES[i])) continue;
       await face(P, from);

@@ -221,10 +221,21 @@ const PLAYER_SIZE_MULT = 1.25;
    only grazed clear; -0.60 clears the head box with the whole segment below
    it, and still reads as a carried sword rather than a held-out one. */
 const SOUTH_IDLE_TILT = -0.60;
-/* v2.3.2925: display px the carried south greatsword shifts right while its
-   grip hole is on while jogging, so the grip runs under the middle of the fist (see the
-   snap block in _updatePlayer).  window.__btGripNudgeX sweeps it. */
-const SOUTH_GRIP_NUDGE_X = 2;
+/* v2.3.2925: display px the carried greatsword shifts right while its grip
+   hole is on, so the grip runs under the middle of the hand (see the snap block
+   in _updatePlayer).  Keyed pose-facingIdx; each one picked by sweeping it
+   in-game.  jog S: the grip slanted out of the fist.  idle S / SE (owner:
+   "fingers around the grip"): the grip hung mostly left of the fingers.
+   window.__btGripNudge = { 'stand-2': 3, ... } overrides per key. */
+const GRIP_NUDGE_X = { 'jog-2': 2, 'stand-2': 4, 'stand-1': 2 };
+function gripNudgeX(pose, facingIdx) {
+  const k = pose + '-' + facingIdx;
+  try {
+    const o = typeof window !== 'undefined' && window.__btGripNudge;
+    if (o && typeof o[k] === 'number') return o[k];
+  } catch (e) { /* default */ }
+  return GRIP_NUDGE_X[k] || 0;
+}
 /* ═══ v2.3.2925: THE CARRIED BLADE WOBBLES WITH THE RUN ═══
    Owner: "I wonder if a slight wobble of the sword while running would
    actually make it look more realistic."  A carried blade pinned rigid in a
@@ -4672,7 +4683,9 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
 /* v2.3.2925: + south (2).  Owner: "you can make it look like the players hand
    is over the sword handle jogging south.  Right now it just shows the
    floating handle with the hand behind it." */
-const GRIP_HOLE_FACINGS = { 0: true, 2: true, 3: true, 7: true };
+/* v2.3.2925: + southeast (1), standing only (see gripHoleWanted).  Owner:
+   "Southeast fingers around the grip (slight strip showing between fingers." */
+const GRIP_HOLE_FACINGS = { 0: true, 1: true, 2: true, 3: true, 7: true };
 const GRIP_HOLE_R = 4.2;   /* display px -- about the fist; window.__btGripHoleR tunes it */
 /* ═══ v2.3.2925: SOUTH GETS A FIST-SIZED HOLE ═══
    Owner: "The fist during jog south actually punches through the handle."
@@ -4691,6 +4704,9 @@ const GRIP_HOLE_R_BY_FACING = { 2: 2.6 };
    handle on its own.  Standing SW keeps the hole the owner asked for there. */
 function gripHoleWanted(wpnType, facingIdx, swingActive, sheathed, pose) {
   if (facingIdx === 3 && pose === 'jog') return false;
+  /* SE is measured for the idle hand only (fistMasks 'stand-southwest-l'); its
+     jog has no mask and was never asked for, so it keeps the plain blade. */
+  if (facingIdx === 1 && pose !== 'stand') return false;
   return wpnType === 'greatsword' && !swingActive && !sheathed && GRIP_HOLE_FACINGS[facingIdx] === true;
 }
 function clearGripHole(spr) {
@@ -12773,9 +12789,8 @@ export class EntityRenderer {
                the ground.  A small shift right, measured by sweeping it
                in-game, centres the grip under the fist.  The hole stays on the
                HAND (see _gripX below), so only the blade moves. */
-            const _gripNudge = (gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat, pose) && facingIdx === 2 && pose === 'jog')
-              ? ((typeof window !== 'undefined' && typeof window.__btGripNudgeX === 'number') ? window.__btGripNudgeX : SOUTH_GRIP_NUDGE_X)
-              : 0;
+            const _gripNudge = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat, pose)
+              ? gripNudgeX(pose, facingIdx) : 0;
             display._gripHandX = wpnX + wpnNudgeX; display._gripHandY = wpnY;
             const _txW = wpnX + wpnNudgeX + _gripNudge, _tyW = wpnY;
             const _smKey = facing + '|' + pose + '|' + (wpn.type || '');
@@ -13156,7 +13171,9 @@ export class EntityRenderer {
                nudged off the hand anchor to centre its grip under the fist */
             const _gripX = display._gripHandX != null ? display._gripHandX : weaponSprite.x;
             const _gripY = display._gripHandY != null ? display._gripHandY : weaponSprite.y;
-            const _fm = FIST_MASKS[(display._animPose || '') + '-' + dir];
+            /* v2.3.2925: a mirrored facing holds the weapon in the sheet's LEFT
+               hand (getAnchor with mirror), so it has its own '-l' mask */
+            const _fm = FIST_MASKS[(display._animPose || '') + '-' + dir + (mirror ? '-l' : '')];
             const _fr = _fm && _fm.frames[Math.min(display._animFrame || 0, _fm.frames.length - 1)];
             if (_fr && _fr.length && !(typeof window !== 'undefined' && window.__btGripHoleR > 0)) {
               const _c = _fm.cell * bodyScale;

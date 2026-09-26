@@ -62,10 +62,36 @@ const TAP_REV = 'e7fc906';
 const TAPS = JSON.parse(execSync(`git -C "${REPO}" show ${TAP_REV}:public/sprites/player/anchors.json`, { encoding: 'utf8', maxBuffer: 1 << 26 }));
 const masks = {};
 let changed = 0;
-for (const key of (KEYS.length ? KEYS : ['jog-south', 'stand-south'])) {
-  const B = decode(readFileSync(`${REPO}/public/sprites/player/${key}.png`));
-  const T = decode(readFileSync(`${REPO}/public/sprites/gear/shirt/tshirt/${key}.png`));
-  const list = A[key], taps = TAPS[key];
+/* ═══ v2.3.2925d: WHICH HAND, WHICH SHEET, AND HOW MUCH OF IT COVERS THE GRIP ═══
+   Owner: "Check idle south, southeast, and east hand position on the handle.
+   East should see no strip at all.  Southeast fingers around the grip (slight
+   strip showing between fingers.  South fingers around the grip (slight strip
+   showing between fingers."
+     mask 'hand'    -- the back of the hand covers the grip whole: every hand
+                       pixel, shading and creases included (jog south, E idle).
+     mask 'fingers' -- the fingers wrap the grip: the skin and the hand's outer
+                       keyline, but NOT the dark creases between the fingers,
+                       so a sliver of grip shows between them (S and SE idle).
+     fit            -- pull the anchor from the owner's tap onto the fist's
+                       middle (and write it).  Off for E and SE: their anchors
+                       are the ones the owner signed off on at v2.3.2911, and
+                       the mask is measured round them as they stand.
+   SE is the southwest sheet MIRRORED, and a mirrored facing holds the weapon in
+   the sheet's LEFT hand (getAnchor with mirror) -- so its mask is measured on
+   stand-southwest's 'l' anchor and stored as 'stand-southwest-l', the key
+   entityRenderer asks for on a mirrored facing. */
+const SPECS = {
+  'jog-south':         { sheet: 'jog-south',       hand: 'r', fit: true,  mask: 'hand' },
+  'stand-south':       { sheet: 'stand-south',     hand: 'r', fit: true,  mask: 'fingers' },
+  'stand-east':        { sheet: 'stand-east',      hand: 'r', fit: false, mask: 'hand', floor: true },
+  'stand-southwest-l': { sheet: 'stand-southwest', hand: 'l', fit: false, mask: 'fingers' },
+};
+for (const key of (KEYS.length ? KEYS : Object.keys(SPECS))) {
+  const spec = SPECS[key];
+  if (!spec) throw new Error(`${key}: not in SPECS`);
+  const B = decode(readFileSync(`${REPO}/public/sprites/player/${spec.sheet}.png`));
+  const T = decode(readFileSync(`${REPO}/public/sprites/gear/shirt/tshirt/${spec.sheet}.png`));
+  const list = A[spec.sheet], taps = TAPS[spec.sheet];
   if (!Array.isArray(list) || !Array.isArray(taps)) throw new Error(`${key}: no anchors`);
   const FW = B.height, TW = T.height;          /* square frames */
   const N = Math.round(B.width / FW);
@@ -82,7 +108,9 @@ for (const key of (KEYS.length ? KEYS : ['jog-south', 'stand-south'])) {
     const e = list[Math.min(f, list.length - 1)];
     const legacy = Array.isArray(e);
     const t = taps[Math.min(f, taps.length - 1)];
-    const r = Array.isArray(t) ? t : t && t.r;   /* the owner's tap */
+    /* where to start: the owner's tap (fit), or the anchor as it stands */
+    const src = spec.fit ? t : e;
+    const r = Array.isArray(src) ? (spec.hand === 'r' ? src : null) : src && src[spec.hand];
     if (!r) { frames.push(null); continue; }
     let cx = r[0] * s, cy = r[1] * s;
     let ok = true;
@@ -100,8 +128,8 @@ for (const key of (KEYS.length ? KEYS : ['jog-south', 'stand-south'])) {
       cx = sx / n; cy = sy / n;
     }
     if (!ok) { console.log(`  ${String(f).padStart(2)}: no bare skin at the tap, left alone`); frames.push(null); continue; }
-    const nx = Math.round((cx / s) * 4) / 4, ny = Math.round((cy / s) * 4) / 4;
-    if (f < list.length) {
+    const nx = spec.fit ? Math.round((cx / s) * 4) / 4 : r[0], ny = spec.fit ? Math.round((cy / s) * 4) / 4 : r[1];
+    if (spec.fit && f < list.length) {
       const moved = Math.hypot(nx - r[0], ny - r[1]) * s;
       console.log(`  ${String(f).padStart(2)}: [${r[0]}, ${r[1]}] -> [${nx}, ${ny}]  (${moved.toFixed(1)} sheet px)`);
       if (legacy) list[f] = [nx, ny]; else e.r = [nx, ny];
@@ -131,12 +159,13 @@ for (const key of (KEYS.length ? KEYS : ['jog-south', 'stand-south'])) {
        off the face and the other hand. */
     /* the fist's own top row: the bare skin reached from its centre within
        FIST_R * 2 (what v2.3.2925b cut), measured before the wider flood */
-    let top = Math.floor(cy);
+    let top = Math.floor(cy), bot = Math.floor(cy);
+    const seen = new Set();
     {
-      const R0 = 2 * FIST_R * u, seen = new Set(), q = [];
+      const R0 = 2 * FIST_R * u, q = [];
       for (let y = Math.floor(cy - 1); y <= Math.ceil(cy + 1) && !q.length; y++) for (let x = Math.floor(cx - 1); x <= Math.ceil(cx + 1) && !q.length; x++) if (arm(f, x, y)) { q.push([x, y]); seen.add(x + ',' + y); }
       while (q.length) {
-        const [x, y] = q.pop(); if (y < top) top = y;
+        const [x, y] = q.pop(); if (y < top) top = y; if (y > bot) bot = y;
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
           const xx = x + dx, yy = y + dy, k = xx + ',' + yy;
           if (seen.has(k) || (xx + 0.5 - cx) ** 2 + (yy + 0.5 - cy) ** 2 > R0 * R0 || !arm(f, xx, yy)) continue;
@@ -144,12 +173,16 @@ for (const key of (KEYS.length ? KEYS : ['jog-south', 'stand-south'])) {
         }
       }
     }
-    const handPx = (f, x, y) => y >= top && inside(x, y) && !teeOver(f, x, y) && (() => {
+    /* ...nor below its bottom row (plus its keyline): the E idle fist hangs
+       over the pants, and their shading is not a hand */
+    const handPx = (f, x, y) => y >= top && (!spec.floor || y <= bot + Math.ceil(u)) && inside(x, y) && !teeOver(f, x, y) && (() => {
       const p = px4(B, FW, f, x, y);
       return p[3] > 128 && !isPants(...p);
     })();
-    const R = ARM_R * u, skin = new Set(), out = [];
-    {
+    const R = ARM_R * u, out = [];
+    let skin = new Set();
+    if (spec.mask === 'fingers') skin = seen;   /* the bare skin of the fist, no shading */
+    else {
       let seed = null, sd = 1e9;
       for (let y = Math.floor(cy - 3 * u); y <= Math.ceil(cy + 3 * u); y++) {
         for (let x = Math.floor(cx - 3 * u); x <= Math.ceil(cx + 3 * u); x++) {
@@ -168,13 +201,31 @@ for (const key of (KEYS.length ? KEYS : ['jog-south', 'stand-south'])) {
         }
       }
     }
+    /* v2.3.2925d: the keyline is as thick as a sheet's scale -- two pixels on
+       the 256 px idle sheets -- so the ring grows that many steps; one step
+       left the outer half of the outline under the grip, a strip beside the
+       hand. */
     const ink = new Set();
-    for (const k of skin) {
-      const [x, y] = k.split(',').map(Number);
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        const xx = x + dx, yy = y + dy, kk = xx + ',' + yy;
-        if (skin.has(kk) || ink.has(kk) || !inside(xx, yy)) continue;
-        if (isInk(...px4(B, FW, f, xx, yy)) && !teeOver(f, xx, yy)) ink.add(kk);
+    for (let step = 0; step < Math.max(1, Math.round(u)); step++) {
+      for (const k of [...skin, ...ink]) {
+        const [x, y] = k.split(',').map(Number);
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx, yy = y + dy, kk = xx + ',' + yy;
+          if (skin.has(kk) || ink.has(kk) || !inside(xx, yy)) continue;
+          if (isInk(...px4(B, FW, f, xx, yy)) && !teeOver(f, xx, yy)) ink.add(kk);
+        }
+      }
+    }
+    /* 'fingers': a keyline pixel with the hand's skin on BOTH sides of it
+       (within a crease's width) is a crease between two fingers, not the
+       hand's outline -- leave it out, so the grip shows through there. */
+    if (spec.mask === 'fingers') {
+      const W2 = Math.max(1, Math.round(u));
+      const side = (x, y, dx, dy) => { for (let d = 1; d <= W2 + 1; d++) if (skin.has((x + dx * d) + ',' + (y + dy * d))) return true; return false; };
+      for (const k of [...ink]) {
+        const [x, y] = k.split(',').map(Number);
+        if ((side(x, y, -1, 0) && side(x, y, 1, 0)) || (side(x, y, 0, -1) && side(x, y, 0, 1))
+            || (side(x, y, -1, -1) && side(x, y, 1, 1)) || (side(x, y, -1, 1) && side(x, y, 1, -1))) ink.delete(k);
       }
     }
     for (const k of [...skin, ...ink]) {
