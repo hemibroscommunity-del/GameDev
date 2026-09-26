@@ -59,6 +59,7 @@ import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling
 import { drawMonsterDeath, clearMonsterDeath, monsterDeathState, DEATH_LIVE, DEATH_DONE } from '../monsterDeathFx.js';   /* v2.3.2913: sliced / beheaded / legless deaths */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
+import { FIST_MASKS } from '../fistMasks.js';   /* v2.3.2925: the grip hole drawn as the fist itself */
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones; v2.3.1934: beard over a drape */
 import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
@@ -220,6 +221,37 @@ const PLAYER_SIZE_MULT = 1.25;
    only grazed clear; -0.60 clears the head box with the whole segment below
    it, and still reads as a carried sword rather than a held-out one. */
 const SOUTH_IDLE_TILT = -0.60;
+/* v2.3.2925: display px the carried greatsword shifts right while its grip
+   hole is on, so the grip runs under the middle of the hand (see the snap block
+   in _updatePlayer).  Keyed pose-facingIdx; each one picked by sweeping it
+   in-game.  jog S: the grip slanted out of the fist.  idle S / SE (owner:
+   "fingers around the grip"): the grip hung mostly left of the fingers.
+   window.__btGripNudge = { 'stand-2': 3, ... } overrides per key. */
+const GRIP_NUDGE_X = { 'jog-2': 2, 'stand-2': 4, 'stand-1': 2 };
+function gripNudgeX(pose, facingIdx) {
+  const k = pose + '-' + facingIdx;
+  try {
+    const o = typeof window !== 'undefined' && window.__btGripNudge;
+    if (o && typeof o[k] === 'number') return o[k];
+  } catch (e) { /* default */ }
+  return GRIP_NUDGE_X[k] || 0;
+}
+/* ═══ v2.3.2925: THE CARRIED BLADE WOBBLES WITH THE RUN ═══
+   Owner: "I wonder if a slight wobble of the sword while running would
+   actually make it look more realistic."  A carried blade pinned rigid in a
+   bobbing hand reads as pasted on.  So while jogging it rocks a few degrees
+   about the GRIP (the sprite's anchor -- the hilt never leaves the hand, and
+   the south grip hole stays on the fist), on the body's own bob clock
+   (bobY = sin(now / 120)) but a beat behind it, so it trails the hand like a
+   weight rather than moving in lockstep.  Sword and greatsword only: the
+   staff has its own cast pose, the bow is held by its middle.
+   window.__btSwordWobble sets the amplitude (radians; 0 turns it off). */
+const CARRY_WOBBLE = 0.06;   /* ~3.4 degrees each way */
+function carryWobble(now, moving, wpnType) {
+  if (!moving || (wpnType !== 'sword' && wpnType !== 'greatsword')) return 0;
+  const amp = (typeof window !== 'undefined' && typeof window.__btSwordWobble === 'number') ? window.__btSwordWobble : CARRY_WOBBLE;
+  return amp * Math.sin(now / 120 - 0.9);
+}
 /* v2.3.1765: how long a monster spends arriving (see the spawn-in note in the
    monster loop).  Short on purpose — this is a flourish on a respawn, and a
    monster you cannot fight yet is a monster in your way. */
@@ -4648,9 +4680,33 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
  * v2.3.2516 behind-the-body order (swingActive is excluded; the swing's own
  * z-order lives in effectsRenderer).  Greatsword only: its per-facing art is
  * the one this was measured on. */
-const GRIP_HOLE_FACINGS = { 0: true, 3: true, 7: true };
+/* v2.3.2925: + south (2).  Owner: "you can make it look like the players hand
+   is over the sword handle jogging south.  Right now it just shows the
+   floating handle with the hand behind it." */
+/* v2.3.2925: + southeast (1), standing only (see gripHoleWanted).  Owner:
+   "Southeast fingers around the grip (slight strip showing between fingers." */
+const GRIP_HOLE_FACINGS = { 0: true, 1: true, 2: true, 3: true, 7: true };
 const GRIP_HOLE_R = 4.2;   /* display px -- about the fist; window.__btGripHoleR tunes it */
-function gripHoleWanted(wpnType, facingIdx, swingActive, sheathed) {
+/* ═══ v2.3.2925: SOUTH GETS A FIST-SIZED HOLE ═══
+   Owner: "The fist during jog south actually punches through the handle."
+   4.2 display px is ~5 sheet px of radius at the south jog's 0.42 body scale
+   -- a hole ~10 px across round a fist ~5-6 px across -- so the cut showed a
+   ring of gap round the fist, a fist punched THROUGH the handle rather than
+   wrapped round it.  2.6 is the fist's own radius (~3 sheet px), still wider
+   than the handle, so the fist reads across it.  The other three facings keep
+   the size the owner signed off on at v2.3.2911. */
+const GRIP_HOLE_R_BY_FACING = { 2: 2.6 };
+/* ═══ v2.3.2925: ...BUT NOT JOGGING SOUTHWEST ═══
+   Owner: "Southwest jog the sword needs to be occluded by the players body."
+   The hole is what pulls the carried SW blade in front (v2.3.2911, via
+   inFrontHeld below), so jogging SW it simply does not apply: the blade goes
+   back to v2.3.2516's behind-the-body order and the running arm sits over the
+   handle on its own.  Standing SW keeps the hole the owner asked for there. */
+function gripHoleWanted(wpnType, facingIdx, swingActive, sheathed, pose) {
+  if (facingIdx === 3 && pose === 'jog') return false;
+  /* SE is measured for the idle hand only (fistMasks 'stand-southwest-l'); its
+     jog has no mask and was never asked for, so it keeps the plain blade. */
+  if (facingIdx === 1 && pose !== 'stand') return false;
   return wpnType === 'greatsword' && !swingActive && !sheathed && GRIP_HOLE_FACINGS[facingIdx] === true;
 }
 function clearGripHole(spr) {
@@ -10717,7 +10773,7 @@ export class EntityRenderer {
       }
       const oSpriteBody = display._spriteBody;
       const oWeaponSprite = display._weaponSprite;
-      if (oWpnType && !oIsShielding) {
+      if (oWpnType && !oIsShielding && !_rDodge) {   /* v2.3.2925: not in a roll -- see the local twin */
         const wpnIconTex = hasWeapon(oWpnType) ? getWeaponTexture(oWpnType) : null;
         if (wpnIconTex) {
           if (oWeaponSprite.texture !== wpnIconTex) oWeaponSprite.texture = wpnIconTex;
@@ -10777,7 +10833,7 @@ export class EntityRenderer {
             oWeaponSprite.rotation = (oWpnType === 'staff')
               ? staffCastPose(now, other._staffCastAt, other._staffCastAng, 0, 0, weaponMirror, undefined,
                 !!other._staffCastBig && other._staffCastBig === other._staffCastAt)   /* v2.3.2842: their one-bolt special kicks harder */
-              : 0;
+              : carryWobble(now, isMoving, oWpnType);   /* v2.3.2925: their blade wobbles with their run, as yours does */
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
             _oBladeUp = oWpnType !== 'staff';   /* v2.3.2841: a staff stands head-up -- see the local path */
           }
@@ -12599,7 +12655,15 @@ export class EntityRenderer {
           && window.__btSouthBlockWeapon.on) {
         window.__btSouthBlockWeapon = { on: false };
       }
-      if (wpn && !isShielding) {
+      /* ═══ v2.3.2925: NO WEAPON IN A ROLL ═══
+         Owner: "When dodge rolling hide the great sword."  The roll sheet is a
+         tumble -- there is no hand for the carried pose to sit in, so the
+         blade hung in the air beside a body curled into a ball.  Hidden for
+         the roll's whole length (and for the sword dash, which borrows the
+         roll's pose, `dodging` covers both); back on the first frame after.
+         Every weapon, not only the greatsword: a bow or a staff floats in the
+         same air for the same reason.  The peer branch does the same. */
+      if (wpn && !isShielding && !dodging) {
         /* Weapon is fully hidden while shielding — gameplay rule: you
            can attack OR block, never both, so no point drawing the
            weapon sprite or its glow when the shield is up. */
@@ -12716,9 +12780,31 @@ export class EntityRenderer {
                Exponentially ease the weapon toward the hand instead of snapping;
                reset (snap) when the facing / pose / weapon changes so it never
                slides across the body. */
-            const _txW = wpnX + wpnNudgeX, _tyW = wpnY;
+            /* ═══ v2.3.2925: JOGGING SOUTH, THE GRIP RUNS UNDER THE MIDDLE OF THE FIST ═══
+               Owner: "The back of the hand would be occluding the handle."  The
+               handle point is at the TOP of the grip, under the crossguard,
+               and the south blade carries its idle tilt -- so the grip slants
+               down-left out of the fist, and on the hip frames (where there is
+               no wrist beside the fist to cover it) its left edge showed over
+               the ground.  A small shift right, measured by sweeping it
+               in-game, centres the grip under the fist.  The hole stays on the
+               HAND (see _gripX below), so only the blade moves. */
+            const _gripNudge = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat, pose)
+              ? gripNudgeX(pose, facingIdx) : 0;
+            display._gripHandX = wpnX + wpnNudgeX; display._gripHandY = wpnY;
+            const _txW = wpnX + wpnNudgeX + _gripNudge, _tyW = wpnY;
             const _smKey = facing + '|' + pose + '|' + (wpn.type || '');
-            if (display._wpnSmKey !== _smKey || display._wpnSmX == null) {
+            /* ═══ v2.3.2925: ...EXCEPT WHERE THE FIST SHOWS THROUGH IT ═══
+               The ease is there to hide tap noise, and it trails a fast arm by
+               a frame.  Harmless while the blade simply covered the hand; with
+               the grip hole cut where the BLADE is, a trailing blade put its
+               hole beside the fist, which read as the fist punching through the
+               handle.  So where the hole is on, the blade sits exactly on the
+               hand anchor -- which for jog-south is now fitted to the middle of
+               the fist (tools/art/fit-fist-anchors.mjs), so there is no tap
+               noise left to hide. */
+            const _snapToFist = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat, pose);
+            if (_snapToFist || display._wpnSmKey !== _smKey || display._wpnSmX == null) {
               display._wpnSmX = _txW; display._wpnSmY = _tyW;
             } else {
               const _k = 0.7;   // v2.3.950: 0.5 -> 0.7, tighter follow (less float) while still easing out the per-frame hand-anchor jitter
@@ -12810,7 +12896,8 @@ export class EntityRenderer {
             const _southTilt = (typeof window !== 'undefined'
               && typeof window.__btSouthTilt === 'number')
               ? window.__btSouthTilt : SOUTH_IDLE_TILT;
-            weaponSprite.rotation = (_gsDir === 'south') ? _southTilt : 0;
+            weaponSprite.rotation = ((_gsDir === 'south') ? _southTilt : 0)
+              + carryWobble(now, pose === 'jog', wpn.type);   /* v2.3.2925 */
             /* v2.3.942: per-facing greatsword art is already drawn for its
                canonical facing, so flip it only for the truly-mirrored facings
                (resolveDirection's `mirror`: west/northwest/southeast).  Other
@@ -12829,8 +12916,14 @@ export class EntityRenderer {
                handles.json, so the hilt stays exactly where the hand is and
                only the blade swings to the other side.  Nothing else moves,
                which is why this is one condition rather than a new anchor. */
+            /* ═══ v2.3.2925: ...AND THE NORTH BLADE POINTS NORTHWEST ═══
+               Owner: "north jog the weapon should point northwest instead of
+               its current northeast."  Same move as south: the north sheet is
+               drawn leaning to the viewer's right, and a flip about the grip
+               anchor swings it to the left with the hilt left in the hand.
+               Greatsword only -- the bow's north art is not a lean. */
             const weaponMirror = _gsDir
-              ? (mirror || _gsDir === 'south')
+              ? (mirror || _gsDir === 'south' || (_gsDir === 'north' && wpn.type === 'greatsword'))
               : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
             /* ═══ v2.3.2841: THE STAFF KICKS WHEN IT CASTS ═══
@@ -12922,6 +13015,7 @@ export class EntityRenderer {
                sent me looking for a bug one layer too far up. */
             window.__btWeapon = {
               gripHole: !!weaponSprite._gripHoleOn,   /* v2.3.2911 */
+              pose,   /* v2.3.2925: the SW-jog rule is per pose */
               /* v2.3.2923: the hole drawn as a plain white dot (it is on the
                  screen and no longer anybody's mask), and a clip box the shine
                  left on the blade with no mask to justify it */
@@ -13049,7 +13143,7 @@ export class EntityRenderer {
              clone learns to ride along. */
           /* v2.3.2911: the fist-over-handle hole (see gripHoleWanted) --
              replaces the hand-cap wherever it applies. */
-          const _gripHole = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat);
+          const _gripHole = gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat, pose);
           if (_gripHole) {
             const _wc = weaponSprite.parent;
             let hole = display._gripHoleGfx;
@@ -13060,10 +13154,39 @@ export class EntityRenderer {
             if (hole.parent !== _wc) _wc.addChild(hole);
             weaponSprite._gripHoleGfx = hole;   /* v2.3.2923: so clearGripHole can hide it */
             hole.visible = true;
-            let _r = GRIP_HOLE_R;
+            let _r = GRIP_HOLE_R_BY_FACING[facingIdx] || GRIP_HOLE_R;   /* v2.3.2925 */
             try { if (typeof window !== 'undefined' && window.__btGripHoleR > 0) _r = window.__btGripHoleR; } catch (e) { /* default */ }
             hole.clear();
-            hole.circle(weaponSprite.x, weaponSprite.y, _r).fill({ color: 0xffffff });
+            /* ═══ v2.3.2925: THE HOLE IS THE FIST ═══
+               Owner: "The hand is actually supposed to rest over the grip, not
+               beneath it."  A circle cannot: small, it shows the fist's middle
+               and the handle covers the rest; big, it shows the ground round
+               the fist.  Where the fist's own pixels are measured for this
+               frame (fistMasks.js, tools/art/fit-fist-anchors.mjs), the hole IS
+               them -- skin and keyline, one sheet pixel per rect, placed from
+               the anchor the blade is snapped to -- so the whole fist rests on
+               the grip and nothing else is cut.  Anything unmeasured keeps the
+               v2.3.2911 circle. */
+            /* v2.3.2925: on the hand, not on the blade -- the south blade is
+               nudged off the hand anchor to centre its grip under the fist */
+            const _gripX = display._gripHandX != null ? display._gripHandX : weaponSprite.x;
+            const _gripY = display._gripHandY != null ? display._gripHandY : weaponSprite.y;
+            /* v2.3.2925: a mirrored facing holds the weapon in the sheet's LEFT
+               hand (getAnchor with mirror), so it has its own '-l' mask */
+            const _fm = FIST_MASKS[(display._animPose || '') + '-' + dir + (mirror ? '-l' : '')];
+            const _fr = _fm && _fm.frames[Math.min(display._animFrame || 0, _fm.frames.length - 1)];
+            if (_fr && _fr.length && !(typeof window !== 'undefined' && window.__btGripHoleR > 0)) {
+              const _c = _fm.cell * bodyScale;
+              for (let i = 0; i < _fr.length; i += 2) {
+                /* a mirrored facing flips the offset about the anchor (the
+                   pixel's left edge becomes its right) */
+                const _dx = mirror ? -(_fr[i] + _fm.cell) : _fr[i];
+                hole.rect(_gripX + _dx * bodyScale, _gripY + _fr[i + 1] * bodyScale, _c, _c);
+              }
+              hole.fill({ color: 0xffffff });
+            } else {
+              hole.circle(_gripX, _gripY, _r).fill({ color: 0xffffff });
+            }
             if (!weaponSprite._gripHoleOn) {
               weaponSprite.setMask({ mask: hole, inverse: true });
               weaponSprite._gripHoleOn = true;
@@ -13365,7 +13488,7 @@ export class EntityRenderer {
            for why the v2.3.1787 exception does not transfer to it. */
         const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand)
           /* v2.3.2911: SW carried comes in front, fist over the handle */
-          || gripHoleWanted(wpn && wpn.type, facingIdx, swingActive, sheathed);
+          || gripHoleWanted(wpn && wpn.type, facingIdx, swingActive, sheathed, pose);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
         /* v2.3.2841: the staff cast glows at the crystal from a layer above
            the body; when the staff is carried BEHIND him (SW/W/NW/N) it dims

@@ -26,6 +26,8 @@
  * texture corruption.
  */
 import * as H from './harness.mjs';
+import { mkdirSync } from 'node:fs';
+const OUT = `${H.REPO}/tools/qa/mp/out/swordcarry`;
 
 const NAMES = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
 
@@ -49,11 +51,15 @@ async function face(P, idx) {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Carry', wsPort, webPort, viewport: { width: 390, height: 844 } });
+  const P = await H.newPlayer(browser, { name: 'Carry', wsPort, webPort, viewport: { width: 390, height: 844 }, dpr: 3 });   /* v2.3.2925: iPhone density, so the pictures show the fist */
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
 
-  const first = await face(P, 2);
+  /* v2.3.2925: poll the first read -- on a cold join the weapon art can still
+     be resolving for a frame or two, and a single sample then failed this guard
+     at random (it passed on the next run, and on every other facing). */
+  let first = await face(P, 2);
+  for (let i = 0; i < 6 && !(first && first.visible); i++) first = await face(P, 2);
   rec.ok('the carried sword is drawn at all', !!(first && first.visible), { probe: first });
   if (!first) { await P.ctx.close().catch(() => {}); return; }
   /* GUARD: the per-facing art actually resolved.  Without this every sign
@@ -122,13 +128,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
      with a hole at the grip, so the fist is drawn over the handle (see
      gripHoleWanted).  The SWING keeps v2.3.2516's behind-the-body order. */
   const FRONT = new Set(['E', 'SE', 'S', 'SW', 'NE']);
-  const GRIP_HOLE = new Set(['E', 'SW', 'NE']);
+  const GRIP_HOLE = new Set(['E', 'SE', 'S', 'SW', 'NE']);   /* v2.3.2925: + S, + SE (standing) */
   for (let i = 0; i < 8; i++) {
     const m = await face(P, i);
     const want = FRONT.has(NAMES[i]);
     rec.ok(`${NAMES[i]}: the blade is ${want ? 'in front of' : 'behind'} the body`,
       !!m && (m.wcIdx > m.spriteBodyIdx) === want,
       { wcIdx: m && m.wcIdx, spriteBodyIdx: m && m.spriteBodyIdx, expectedInFront: want });
+    if (i <= 2) {   /* v2.3.2925: idle E / SE / S close-ups for eyes -- the hand on the grip */
+      mkdirSync(OUT, { recursive: true });
+      const box = await P.page.evaluate(() => {
+        const S = window._gameState.current, c = document.querySelector('canvas').getBoundingClientRect();
+        const x = c.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), y = c.top + (S.player.y - 30 - S.camera.y) * (S._worldScaleY || 1);
+        return { x: Math.max(0, Math.round(x - 70)), y: Math.max(0, Math.round(y - 75)), width: 140, height: 130 };
+      });
+      await P.page.screenshot({ path: `${OUT}/idle-${NAMES[i]}.png`, clip: box }).catch(() => {});
+    }
     const hole = GRIP_HOLE.has(NAMES[i]);
     rec.ok(`${NAMES[i]}: the fist is ${hole ? '' : 'not '}cut over the handle`,
       !!m && !!m.gripHole === hole, { gripHole: m && m.gripHole });
@@ -140,7 +155,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      were the hole's leftovers: the mask Graphics drew as a white dot once it
      stopped being a mask, and the shine kept the masked frame's clip box.
      Every facing, arriving from each of the three hole facings. */
-  for (const from of [0, 3, 7]) {
+  for (const from of [0, 1, 2, 3, 7]) {
     for (let i = 0; i < 8; i++) {
       if (GRIP_HOLE.has(NAMES[i])) continue;
       await face(P, from);
@@ -191,6 +206,71 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('a swing is not flipped — it keeps its own rotation path',
       sw.bladeUp === false && sw.scaleY > 0, { bladeUp: sw.bladeUp, scaleY: sw.scaleY });
   }
+
+  /* ═══ v2.3.2925: JOGGING SOUTHWEST THE BODY COVERS THE BLADE; NORTH LEANS WEST ═══
+     Owner: "Southwest jog the sword needs to be occluded by the players body.
+     Also north jog the weapon should point northwest instead of its current
+     northeast."  Real key input (the game loop owns vx/vy), with the player
+     pinned in place at the start of every frame so a long hold cannot walk
+     him into a wall.  Pictures in tools/qa/mp/out/swordcarry/ for eyes. */
+  mkdirSync(OUT, { recursive: true });
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    window.__scPin = { x: S.player.x, y: S.player.y, on: true };
+    const _raf = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (cb) => _raf((ts) => {
+      try { const p = window.__scPin, Q = window._gameState.current; if (p.on) { Q.player.x = p.x; Q.player.y = p.y; } } catch (e) { /* the frame first */ }
+      cb(ts);
+    });
+  });
+  const jog = async (keys, name) => {
+    await P.page.evaluate(() => { const S = window._gameState.current; S.lockedTarget = null; S.autoAttack = false; S._aimAngle = null; });
+    for (const k of keys) await P.page.keyboard.down(k);
+    let m = null;
+    for (let t = 0; t < 8; t++) {
+      await P.page.evaluate(() => {
+        const S = window._gameState.current;
+        S.rpg.activeSlot = 'melee';
+        S.rpg.weapon = { name: 'Copper Great Sword', type: 'greatsword', gearBase: 'copper' };
+      });
+      await P.page.waitForTimeout(150);
+      m = await P.page.evaluate(() => window.__btWeapon || null);
+      if (m && m.pose === 'jog' && m.facing === name) break;
+    }
+    const box = await P.page.evaluate(() => {
+      const S = window._gameState.current, c = document.querySelector('canvas').getBoundingClientRect();
+      const x = c.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), y = c.top + (S.player.y - 30 - S.camera.y) * (S._worldScaleY || 1);
+      return { x: Math.max(0, Math.round(x - 70)), y: Math.max(0, Math.round(y - 75)), width: 140, height: 130 };
+    });
+    await P.page.screenshot({ path: `${OUT}/jog-${name}.png`, clip: box }).catch(() => {});
+    /* v2.3.2925: the run wobble -- the blade's angle over a few frames */
+    const rots = [];
+    for (let t = 0; t < 8; t++) { await P.page.waitForTimeout(70); const r = await P.page.evaluate(() => window.__btWeapon && window.__btWeapon.rotation); rots.push(r); }
+    for (const k of keys) await P.page.keyboard.up(k);
+    await P.page.waitForTimeout(250);
+    if (m) m.rots = rots;
+    return m;
+  };
+  await P.page.click('canvas', { position: { x: 5, y: 5 } }).catch(() => {});
+  const swj = await jog(['a', 's'], 'southwest');
+  rec.ok('SW jog: the body is jogging southwest (guard)', !!(swj && swj.pose === 'jog' && swj.facing === 'southwest'), { pose: swj && swj.pose, facing: swj && swj.facing });
+  rec.ok('SW jog: the blade is behind the body', !!swj && swj.wcIdx < swj.spriteBodyIdx, { wcIdx: swj && swj.wcIdx, spriteBodyIdx: swj && swj.spriteBodyIdx });
+  rec.ok('SW jog: no grip hole (the body covers the handle)', !!swj && !swj.gripHole, { gripHole: swj && swj.gripHole });
+  const n = await jog(['w'], 'north');
+  rec.ok('N jog: the body is jogging north (guard)', !!(n && n.pose === 'jog' && n.facing === 'north'), { pose: n && n.pose, facing: n && n.facing });
+  rec.ok('N jog: the blade is mirrored about the grip, leaning northwest', !!n && n.scaleX < 0, { scaleX: n && n.scaleX });
+  {
+    const r = (n && n.rots || []).filter((v) => typeof v === 'number');
+    const span = r.length ? Math.max(...r) - Math.min(...r) : 0;
+    rec.ok('N jog: the blade wobbles with the run, a few degrees about the grip', span > 0.02 && span < 0.2, { rots: r.map((v) => +v.toFixed(3)), span: +span.toFixed(3) });
+  }
+  /* v2.3.2925: south, a strip of frames for eyes -- the back of the hand over the grip */
+  for (let k = 0; k < 6; k++) {
+    const sj = await jog(['s'], 'south');
+    if (k === 0) rec.ok('S jog: the fist is cut over the handle', !!sj && sj.pose === 'jog' && !!sj.gripHole, { pose: sj && sj.pose, gripHole: sj && sj.gripHole });
+    try { (await import('node:fs')).renameSync(`${OUT}/jog-south.png`, `${OUT}/jog-south-${k}.png`); } catch (e) { /* picture only */ }
+  }
+  await P.page.evaluate(() => { window.__scPin.on = false; });
 
   await P.ctx.close().catch(() => {});
 }
