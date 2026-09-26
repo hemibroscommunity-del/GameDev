@@ -21,7 +21,7 @@
  *    right: small, it shows the middle of the fist and the handle covers the
  *    rest ("beneath the grip"); large, it shows the ground round the fist ("punches
  *    through").  So the hole is the fist itself: every bare-skin pixel of the
- *    hand (connected to the fist, within HAND_R of its centre) plus the body's dark keyline touching
+ *    hand (connected to the fist, out to ARM_R, not above the fist) plus the body's dark keyline touching
  *    it, as offsets from the anchor in 256-space.  entityRenderer draws them as
  *    the stencil, so the whole fist -- outline included -- sits on the grip and
  *    nothing else is cut.
@@ -47,11 +47,12 @@ import { decode } from '../gear/lib/png.mjs';
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const WRITE = process.argv.includes('--write');
 const KEYS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
-const FIST_R = 3, STEPS = 2, HAND_R = 6;   /* in 128-px sheet units; scaled per sheet */
+const FIST_R = 3, STEPS = 2, ARM_R = 10;   /* in 128-px sheet units; scaled per sheet */
 const ANCHORS = `${REPO}/public/sprites/player/anchors.json`;
 const MASKS = `${REPO}/src/rendering/fistMasks.js`;
 const isSkin = (r, g, b, a) => a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25;
 const isInk = (r, g, b, a) => a > 128 && (r + g + b) / 3 < 60;
+const isPants = (r, g, b, a) => a > 180 && g >= r - 10 && g > b + 8 && r < 150;
 
 const A = JSON.parse(readFileSync(ANCHORS, 'utf8'));
 /* IDEMPOTENT: every fit starts from the owner's TAPS as they stood before any
@@ -111,10 +112,43 @@ for (const key of (KEYS.length ? KEYS : ['jog-south', 'stand-south'])) {
        hand ... his hand and fingers are over the handle grip."  A 3.6 px disc
        round the fist's centre left the fingers and knuckle edges under the
        handle.  So: the bare skin CONNECTED to the fist (8-way flood from its
-       centre) out to HAND_R -- the whole hand and the wrist, not the forearm
+       centre) out to 6 px -- the whole hand and the wrist, not the forearm
        up to the elbow, and never the other hand or the face, which are not
        connected to it inside that reach. */
-    const R = HAND_R * u, skin = new Set(), out = [];
+    /* ═══ v2.3.2925c: THE BACK OF THE HAND COVERS THE WHOLE GRIP ═══
+       Owner: "for south jog the player hand still needs to cover the whole
+       handle.  There's a strip of the handle still coming through ... Think of
+       it like looking at someone gripping something side profile with their
+       right hand ... The back of the hand would be occluding the handle."
+       Drawn in red in-game, the fist-only hole sat on the TOP of the grip: the
+       anchor is just under the crossguard, and the grip slants down-left from
+       there across the thumb and the wrist, so a strip of it showed over the
+       hand.  The hand in front of the grip is every opaque body pixel reached
+       from the fist -- skin and its shading and keyline alike -- that the tee
+       does not cover and that is not the pants, out to ARM_R, but never above
+       the fist's top row: that is where the crossguard sits, and it stays
+       whole.  The tee is the sleeve and the torso; the reach keeps the flood
+       off the face and the other hand. */
+    /* the fist's own top row: the bare skin reached from its centre within
+       FIST_R * 2 (what v2.3.2925b cut), measured before the wider flood */
+    let top = Math.floor(cy);
+    {
+      const R0 = 2 * FIST_R * u, seen = new Set(), q = [];
+      for (let y = Math.floor(cy - 1); y <= Math.ceil(cy + 1) && !q.length; y++) for (let x = Math.floor(cx - 1); x <= Math.ceil(cx + 1) && !q.length; x++) if (arm(f, x, y)) { q.push([x, y]); seen.add(x + ',' + y); }
+      while (q.length) {
+        const [x, y] = q.pop(); if (y < top) top = y;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx, yy = y + dy, k = xx + ',' + yy;
+          if (seen.has(k) || (xx + 0.5 - cx) ** 2 + (yy + 0.5 - cy) ** 2 > R0 * R0 || !arm(f, xx, yy)) continue;
+          seen.add(k); q.push([xx, yy]);
+        }
+      }
+    }
+    const handPx = (f, x, y) => y >= top && inside(x, y) && !teeOver(f, x, y) && (() => {
+      const p = px4(B, FW, f, x, y);
+      return p[3] > 128 && !isPants(...p);
+    })();
+    const R = ARM_R * u, skin = new Set(), out = [];
     {
       let seed = null, sd = 1e9;
       for (let y = Math.floor(cy - 3 * u); y <= Math.ceil(cy + 3 * u); y++) {
@@ -129,7 +163,7 @@ for (const key of (KEYS.length ? KEYS : ['jog-south', 'stand-south'])) {
         const [x, y] = q.pop();
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
           const xx = x + dx, yy = y + dy, k = xx + ',' + yy;
-          if (skin.has(k) || (xx + 0.5 - cx) ** 2 + (yy + 0.5 - cy) ** 2 > R * R || !arm(f, xx, yy)) continue;
+          if (skin.has(k) || (xx + 0.5 - cx) ** 2 + (yy + 0.5 - cy) ** 2 > R * R || !handPx(f, xx, yy)) continue;
           skin.add(k); q.push([xx, yy]);
         }
       }

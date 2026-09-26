@@ -51,7 +51,7 @@ async function face(P, idx) {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Carry', wsPort, webPort, viewport: { width: 390, height: 844 } });
+  const P = await H.newPlayer(browser, { name: 'Carry', wsPort, webPort, viewport: { width: 390, height: 844 }, dpr: 3 });   /* v2.3.2925: iPhone density, so the pictures show the fist */
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
 
@@ -246,6 +246,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const n = await jog(['w'], 'north');
   rec.ok('N jog: the body is jogging north (guard)', !!(n && n.pose === 'jog' && n.facing === 'north'), { pose: n && n.pose, facing: n && n.facing });
   rec.ok('N jog: the blade is mirrored about the grip, leaning northwest', !!n && n.scaleX < 0, { scaleX: n && n.scaleX });
+  /* v2.3.2925: south, a strip of frames for eyes -- the back of the hand over the grip */
+  for (let k = 0; k < 6; k++) {
+    const sj = await jog(['s'], 'south');
+    if (k === 0) rec.ok('S jog: the fist is cut over the handle', !!sj && sj.pose === 'jog' && !!sj.gripHole, { pose: sj && sj.pose, gripHole: sj && sj.gripHole });
+    try { (await import('node:fs')).renameSync(`${OUT}/jog-south.png`, `${OUT}/jog-south-${k}.png`); } catch (e) { /* picture only */ }
+  }
   await P.page.evaluate(() => { window.__scPin.on = false; });
 
   await P.ctx.close().catch(() => {});

@@ -221,6 +221,10 @@ const PLAYER_SIZE_MULT = 1.25;
    only grazed clear; -0.60 clears the head box with the whole segment below
    it, and still reads as a carried sword rather than a held-out one. */
 const SOUTH_IDLE_TILT = -0.60;
+/* v2.3.2925: display px the carried south greatsword shifts right while its
+   grip hole is on while jogging, so the grip runs under the middle of the fist (see the
+   snap block in _updatePlayer).  window.__btGripNudgeX sweeps it. */
+const SOUTH_GRIP_NUDGE_X = 2;
 /* v2.3.1765: how long a monster spends arriving (see the spawn-in note in the
    monster loop).  Short on purpose — this is a flourish on a respawn, and a
    monster you cannot fight yet is a monster in your way. */
@@ -12744,7 +12748,20 @@ export class EntityRenderer {
                Exponentially ease the weapon toward the hand instead of snapping;
                reset (snap) when the facing / pose / weapon changes so it never
                slides across the body. */
-            const _txW = wpnX + wpnNudgeX, _tyW = wpnY;
+            /* ═══ v2.3.2925: JOGGING SOUTH, THE GRIP RUNS UNDER THE MIDDLE OF THE FIST ═══
+               Owner: "The back of the hand would be occluding the handle."  The
+               handle point is at the TOP of the grip, under the crossguard,
+               and the south blade carries its idle tilt -- so the grip slants
+               down-left out of the fist, and on the hip frames (where there is
+               no wrist beside the fist to cover it) its left edge showed over
+               the ground.  A small shift right, measured by sweeping it
+               in-game, centres the grip under the fist.  The hole stays on the
+               HAND (see _gripX below), so only the blade moves. */
+            const _gripNudge = (gripHoleWanted(wpn.type, facingIdx, swingActive, !isInCombat, pose) && facingIdx === 2 && pose === 'jog')
+              ? ((typeof window !== 'undefined' && typeof window.__btGripNudgeX === 'number') ? window.__btGripNudgeX : SOUTH_GRIP_NUDGE_X)
+              : 0;
+            display._gripHandX = wpnX + wpnNudgeX; display._gripHandY = wpnY;
+            const _txW = wpnX + wpnNudgeX + _gripNudge, _tyW = wpnY;
             const _smKey = facing + '|' + pose + '|' + (wpn.type || '');
             /* ═══ v2.3.2925: ...EXCEPT WHERE THE FIST SHOWS THROUGH IT ═══
                The ease is there to hide tap noise, and it trails a fast arm by
@@ -13118,6 +13135,10 @@ export class EntityRenderer {
                the anchor the blade is snapped to -- so the whole fist rests on
                the grip and nothing else is cut.  Anything unmeasured keeps the
                v2.3.2911 circle. */
+            /* v2.3.2925: on the hand, not on the blade -- the south blade is
+               nudged off the hand anchor to centre its grip under the fist */
+            const _gripX = display._gripHandX != null ? display._gripHandX : weaponSprite.x;
+            const _gripY = display._gripHandY != null ? display._gripHandY : weaponSprite.y;
             const _fm = FIST_MASKS[(display._animPose || '') + '-' + dir];
             const _fr = _fm && _fm.frames[Math.min(display._animFrame || 0, _fm.frames.length - 1)];
             if (_fr && _fr.length && !(typeof window !== 'undefined' && window.__btGripHoleR > 0)) {
@@ -13126,11 +13147,11 @@ export class EntityRenderer {
                 /* a mirrored facing flips the offset about the anchor (the
                    pixel's left edge becomes its right) */
                 const _dx = mirror ? -(_fr[i] + _fm.cell) : _fr[i];
-                hole.rect(weaponSprite.x + _dx * bodyScale, weaponSprite.y + _fr[i + 1] * bodyScale, _c, _c);
+                hole.rect(_gripX + _dx * bodyScale, _gripY + _fr[i + 1] * bodyScale, _c, _c);
               }
               hole.fill({ color: 0xffffff });
             } else {
-              hole.circle(weaponSprite.x, weaponSprite.y, _r).fill({ color: 0xffffff });
+              hole.circle(_gripX, _gripY, _r).fill({ color: 0xffffff });
             }
             if (!weaponSprite._gripHoleOn) {
               weaponSprite.setMask({ mask: hole, inverse: true });
