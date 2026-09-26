@@ -106,9 +106,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is what puts the popup below on screen. */
   if (serverMute) {
     await H.openInspect(B, aId);
-    await H.clickText(B, 'Report to moderators');
+    /* v2.3.2926: by id -- the button reads "Report" now (harness clickAct) */
+    await H.clickAct(B, 'report');
     await B.page.waitForTimeout(400);
-    await H.clickText(B, 'Spam');
+    await H.clickAct(B, 'report-spam');
     const acked = await H.waitFor(B, (S) => S._lastReportAck || null,
       (a) => !!(a && a.ok), { timeout: 12000, label: 'report ack' })
       .then(() => true).catch(() => false);

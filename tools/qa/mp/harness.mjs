@@ -771,6 +771,35 @@ export async function openWorldChat(P, { timeout = 8000 } = {}) {
   return false;
 }
 
+/* ═══ v2.3.2926: THE PLAYER CARD, BY ITS CONTROLS' IDS ═══
+ *
+ * InspectPlayerPanel's controls carry a stable `data-act`: party, trade,
+ * duel, friend, clan, mute, block, report, report-cancel, and
+ * report-<reason> for the four reason chips, profile (the portrait, which
+ * opens the Inspect card) and, on the Inspect card, profile-back (its own
+ * portrait), leaderboard and codex -- its dock reuses party / trade / duel,
+ * since only one of the two cards is ever on screen.  v2.3.2926 rebuilt the
+ * card to the owner's mockup and rewrote some of its copy -- "Report to
+ * moderators" is "Report", "💚 Friend" is "Friend" with the relationship as
+ * a header badge, "In your party" is an "In party" tile -- which is the
+ * expiry TRAPS §29 records for a scenario that clicks by label.  So the
+ * scenarios that drive the card select by id, through this and cardActs()
+ * below.  Same covered-button diagnostic as clickText. */
+export async function clickAct(P, act, { timeout = 6000 } = {}) {
+  const btn = P.page.locator(`.bt-inspect-card [data-act="${act}"]:visible`).first();
+  await btn.waitFor({ state: 'visible', timeout });
+  const over = await coveringElement(P, btn).catch(() => null);
+  try {
+    await btn.click();
+  } catch (e) {
+    const err = new Error(`COVERED BY: ${over || '(unreadable)'} — `
+      + String((e && e.message) || e));
+    err.stack = (e && e.stack) || err.stack;
+    throw err;
+  }
+  return true;
+}
+
 export async function clickText(P, text, { timeout = 6000 } = {}) {
   const btn = P.page.locator(`button:visible`, { hasText: text }).first();
   await btn.waitFor({ state: 'visible', timeout });
@@ -1305,6 +1334,22 @@ export function buttonTexts(P) {
   return P.page.evaluate(() => [...document.querySelectorAll('button')]
     .filter((b) => b.offsetParent !== null)
     .map((b) => (b.textContent || '').trim().slice(0, 40)));
+}
+
+/** v2.3.2926: every control on the open player card, by id (see clickAct):
+ *  [{ act, text, on, disabled }].  `on` is the relationship the control
+ *  shows as already holding -- aria-pressed on the friend / mute / block
+ *  toggles, data-state="member" on the party tile of someone already in
+ *  your party.  `disabled` is a control that takes no tap (that same party
+ *  tile, a report already sent). */
+export function cardActs(P) {
+  return P.page.evaluate(() => [...document.querySelectorAll('.bt-inspect-card [data-act]')]
+    .map((el) => ({
+      act: el.getAttribute('data-act'),
+      text: (el.textContent || '').trim().slice(0, 40),
+      on: el.getAttribute('aria-pressed') === 'true' || el.getAttribute('data-state') === 'member',
+      disabled: !!el.disabled || el.getAttribute('aria-disabled') === 'true',
+    })));
 }
 
 /** Is this text on screen?

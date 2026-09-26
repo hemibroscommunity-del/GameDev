@@ -18,7 +18,12 @@
  */
 import * as H from './harness.mjs';
 
-const ACTIONS = ['Trade', 'Duel', 'Add Friend', 'Invite to Party'];
+/* v2.3.2926: [what the report calls it, the control's data-act].  Found by
+   id -- the card was rebuilt and its copy changed, and a label is display
+   copy (TRAPS §29).  Mute and Block joined the list: they were the controls
+   most often below the fold before it. */
+const ACTIONS = [['Trade', 'trade'], ['Duel', 'duel'], ['Add Friend', 'friend'],
+  ['Invite to Party', 'party'], ['Mute', 'mute'], ['Block', 'block']];
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const A = await H.newPlayer(browser, { name: 'Phone', wsPort, webPort,
@@ -35,17 +40,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const probe = await A.page.evaluate(async (names) => {
     const out = [];
-    const btns = [...document.querySelectorAll('button')];
-    for (const want of names) {
-      const b = btns.find((x) => (x.textContent || '').includes(want));
+    for (const [want, act] of names) {
+      const b = document.querySelector(`.bt-inspect-card [data-act="${act}"]`);
       if (!b) { out.push({ want, found: false }); continue; }
       /* v2.3.2078: SCROLL IT INTO VIEW FIRST, then ask what is on top.
-         Add Friend and Mute live below the fold on a short phone ON PURPOSE
-         (InspectPlayerPanel says so), so a raw elementFromPoint at their
-         rect finds the pinned Trade/Duel row painted at the same screen
-         coordinates and reports a covered button that is merely scrolled
-         away. The bug worth catching is a control that CANNOT be reached
-         after scrolling to it, which is what the shop drawer did. */
+         Add Friend and Mute lived below the fold on a short phone ON PURPOSE
+         then, so a raw elementFromPoint at their rect found the pinned
+         Trade/Duel row painted at the same screen coordinates and reported a
+         covered button that was merely scrolled away. The bug worth catching
+         is a control that CANNOT be reached after scrolling to it, which is
+         what the shop drawer did.
+         v2.3.2926: nothing on the card is below the fold any more (the
+         owner's mockup: a 2x2 grid of actions, Mute/Block/Report under it,
+         the stats moved behind the portrait), so the scroll is a no-op on
+         this viewport -- kept, because the card still scrolls as a last
+         resort on a screen too short for it. */
       b.scrollIntoView({ block: 'center' });
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const r = b.getBoundingClientRect();
@@ -120,10 +129,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(500);
     const after = await A.page.evaluate((names) => {
       const drawer = !!document.querySelector('[data-shop-panel]');
-      const btns = [...document.querySelectorAll('button')];
       const blocked = [];
-      for (const want of names) {
-        const b = btns.find((x) => (x.textContent || '').includes(want));
+      for (const [want, act] of names) {
+        const b = document.querySelector(`.bt-inspect-card [data-act="${act}"]`);
         if (!b) continue;
         b.scrollIntoView({ block: 'center' });
         const r = b.getBoundingClientRect();

@@ -229,6 +229,63 @@ export function getEquippedSlots(R) {
   ];
 }
 
+/* ═══ v2.3.2926: THE SAME SIX CELLS, FOR SOMEBODY ELSE ═══
+   The Inspect card (PlayerProfilePanel) shows another player's equipment as
+   the owner's mockup draws it -- a strip of sprites, no words -- and the
+   answer has to come from what their 2s relay actually carries, because none
+   of the stores getEquippedSlots reads (getEquip, getCape, R) are theirs.
+   What the relay carries, and how each cell reads it:
+     weapon  wpnType + wpnMat (the relay always sends a type -- 'greatsword'
+             when the hand is empty -- and names an empty hand 'Fists' in
+             rpgData.weapon, so that is the empty test, and no rpgData yet
+             means an empty cell, not a guess)
+     shield  rpgData.shield, a name or null
+     chest   equip.chest / equip.shirt, the gear ids the renderer dresses them
+             in; else a stat torso (rpgData.armor, 'Rags' when none)
+     legs    equip.legs
+     cape    cape, the id the WORKER stamps (eventcapes.js _capeStamp -- a
+             client cannot grant itself one); an old worker's boolean is not
+             an id and reads as no cape
+     amulet  rpgData.amulet, a name or null
+   Same order, same art rules (wpnIconSrc / gearIconSrc / armorIconFor) and
+   same ghost silhouettes as the player's own sheet, so one item can never
+   look different on the two.  `name` is the item's own name where the relay
+   has one, for the tooltip the owner has asked for later. */
+export function peerEquippedSlots(o) {
+  const c = o || {};
+  const rd = (c.rpgData && typeof c.rpgData === 'object') ? c.rpgData : null;
+  const eq = (c.equip && typeof c.equip === 'object') ? c.equip : {};
+  const worn = (id) => (typeof id === 'string' && id && id !== 'none') ? id : null;
+  /* needs the blob: wpnType alone cannot tell a greatsword from an empty hand,
+     so until rpgData lands the cell stays an empty slot rather than guessing */
+  const wpn = (rd && typeof c.wpnType === 'string' && c.wpnType && rd.weapon !== 'Fists')
+    ? { type: c.wpnType, gearBase: c.wpnMat } : null;
+  const chestId = worn(eq.chest);
+  const shirtId = worn(eq.shirt);
+  const legsId = worn(eq.legs);
+  const legsIcon = legsId ? gearIconSrc(legsId) : null;
+  const statTorso = !!(rd && rd.armor && rd.armor !== 'Rags');
+  const capeId = worn(c.cape);
+  const shield = rd && typeof rd.shield === 'string' && rd.shield ? rd.shield : null;
+  const amulet = rd && typeof rd.amulet === 'string' && rd.amulet ? rd.amulet : null;
+  const chestIcon = chestId ? gearIconSrc(chestId)
+    : shirtId ? gearIconSrc(shirtId)
+    : statTorso ? `${armorIconFor('chest')}${ITEMS_V}` : null;
+  return [
+    { slot: 'weapon', label: 'Weapon', iconSrc: wpnIconSrc(null, wpn), ghost: !wpn,
+      name: wpn && rd && typeof rd.weapon === 'string' ? rd.weapon : null },
+    { slot: 'shield', label: 'Shield', iconSrc: shield ? `/icons/items/shield.webp${ITEMS_V}` : null,
+      ghost: !shield, name: shield },
+    { slot: 'chest', label: 'Chest', iconSrc: chestIcon, ghost: !chestIcon,
+      name: statTorso ? rd.armor : null },
+    { slot: 'legs', label: 'Legs', iconSrc: legsIcon, ghost: !legsIcon, name: null },
+    { slot: 'cape', label: 'Cape', iconSrc: capeId ? `/icons/items/cape-${capeId}.webp${ITEMS_V}` : null,
+      ghost: !capeId, name: null },
+    { slot: 'amulet', label: 'Amulet', iconSrc: amulet ? `/icons/items/amulet.webp${ITEMS_V}` : null,
+      ghost: !amulet, name: amulet },
+  ];
+}
+
 /* v2.3.1328 (owner mockup: Equipped redesign): per-item stat
    CONTRIBUTIONS + loadout totals for the Equipped tab's cards and the
    EQUIPPED TOTAL panel.  Every value is real item data — the mockup's
