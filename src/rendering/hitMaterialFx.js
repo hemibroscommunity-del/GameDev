@@ -224,6 +224,210 @@ function atlas() {
   return tex;
 }
 
+/* ═══ v2.3.2929: THE REMNANTS ARE CUT FROM THE MONSTER ITSELF ═══
+ * Owner: "Can you make the monster hit reaction remnants match the monsters'
+ * aesthetics better?  Some of them look artificial like the slimes almost
+ * looks like it belongs to a different art style or different monster."
+ * It did: the pieces above are hand-lettered pixel art on a 2.5-world-px grid
+ * with nearest filtering and dark keylines -- a chunky retro chip thrown off a
+ * smooth, painted, high-resolution monster.  (The same mismatch the stuck
+ * arrows and the death cuts had, fixed the same way: arrowWound.js,
+ * monsterDeathFx.js.)
+ * So when the struck monster's sprite is on screen, each piece is a CHIP OF
+ * ITS OWN ART: a little irregular shape cut from an opaque part of the frame
+ * it is drawn with -- round, soft blobs of a slime's own jelly (its own
+ * highlights, its own recolour); angular flakes of a rock's own stone; long
+ * splinters of a skeleton's own bone; lumps of a snowman's own snow -- drawn
+ * at the monster's own scale, linear-filtered like the monster, so they have
+ * its resolution and its palette.  The physics above (flight, splat, bounce,
+ * crumble, skid) is untouched; only what is drawn changed.  Dust and shadows
+ * in those bursts are soft round puffs instead of dithered pixel discs.
+ * No sprite (a prop, a monster already gone): the pixel pieces, as before.
+ * Chips are baked once per SHEET (texture source), from the frame on screen at
+ * the first hit, and kept for the last 24 sheets. */
+const CHIP_SIZES = [0.034, 0.052, 0.078];    /* chip radius, x the frame's height */
+const CHIP_VARIANTS = 4;
+const _chipCache = new Map();               /* source uid -> { fx -> [size][variant] Texture } */
+let _softPuff = null, _softShadow = null;
+function softPuff() {
+  if (_softPuff) return _softPuff;
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(13, 13, 1, 16, 16, 15.5);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.55, 'rgba(235,235,235,0.75)'); gr.addColorStop(1, 'rgba(210,210,210,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
+  _softPuff = Texture.from(c);
+  return _softPuff;
+}
+function softShadow() {
+  if (_softShadow) return _softShadow;
+  const c = document.createElement('canvas'); c.width = 32; c.height = 16;
+  const g = c.getContext('2d');
+  g.save(); g.scale(1, 0.5);
+  const gr = g.createRadialGradient(16, 16, 1, 16, 16, 16);
+  gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 32, 32); g.restore();
+  _softShadow = Texture.from(c);
+  return _softShadow;
+}
+/* the outline a chip is cut to, around (0,0), radius r */
+function chipShape(fx, r) {
+  const pts = [];
+  if (fx === 'goo' || fx === 'snow') {
+    /* a blob: an ellipse with a soft wobble in its radius */
+    const ax = 1 + (Math.random() - 0.5) * 0.35, ay = 1 + (Math.random() - 0.5) * 0.35;
+    const N = 14;
+    const ph = Math.random() * 6.28, amp = fx === 'goo' ? 0.08 : 0.16;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const k = 1 + amp * Math.sin(a * 3 + ph) + (Math.random() - 0.5) * amp;
+      pts.push([Math.cos(a) * r * ax * k, Math.sin(a) * r * ay * k]);
+    }
+  } else if (fx === 'bone') {
+    /* a splinter: long and thin, pointed at one end, snapped at the other */
+    const L = r * (1.5 + Math.random() * 0.6), Wd = r * (0.38 + Math.random() * 0.2);
+    pts.push([-L, -Wd * 0.7], [-L * 0.35, -Wd], [L * 0.55, -Wd * 0.8], [L, (Math.random() - 0.5) * Wd * 0.6],
+      [L * 0.5, Wd * 0.9], [-L * 0.3, Wd], [-L * 0.9, Wd * 0.4], [-L * 0.75, 0]);
+    const rot = Math.random() * Math.PI;
+    return pts.map(([x, y]) => [x * Math.cos(rot) - y * Math.sin(rot), x * Math.sin(rot) + y * Math.cos(rot)]);
+  } else {
+    /* stone: an angular flake, 5-7 facets */
+    const N = 5 + ((Math.random() * 3) | 0);
+    const ph = Math.random() * 6.28;
+    for (let i = 0; i < N; i++) {
+      const a = ph + (i / N) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+      const k = 0.62 + Math.random() * 0.38;
+      pts.push([Math.cos(a) * r * k, Math.sin(a) * r * k]);
+    }
+  }
+  return pts;
+}
+/* Cut a set of chips for `fx` from the frame `tex` is showing. */
+function bakeChips(tex, fx) {
+  const src = tex && tex.source && tex.source.resource;
+  const fr = tex && tex.frame;
+  if (!src || !fr || fr.width < 8 || fr.height < 8 || typeof document === 'undefined') return null;
+  const fw = Math.round(fr.width), fh = Math.round(fr.height);
+  const cv = document.createElement('canvas'); cv.width = fw; cv.height = fh;
+  const g = cv.getContext('2d', { willReadFrequently: true });
+  try { g.drawImage(src, Math.round(fr.x), Math.round(fr.y), fw, fh, 0, 0, fw, fh); } catch (e) { return null; }
+  let px;
+  try { px = g.getImageData(0, 0, fw, fh).data; } catch (e) { return null; }
+  const A = (x, y) => (x < 0 || y < 0 || x >= fw || y >= fh) ? 0 : px[((y | 0) * fw + (x | 0)) * 4 + 3];
+  /* THE BODY'S COLOUR.  Random opaque spots cut a slime's painted ground
+     shadow (black puddles), a snowman's scarf and a skeleton's red eyes
+     (measured, mp-hitmat).  So chips come only from where the art is its
+     MAIN colour: the most common colour among its lit, opaque pixels
+     (quantised 32 steps a channel; outline and shadow -- the dark end --
+     left out). */
+  const bins = new Map();
+  for (let i = 0; i < px.length; i += 16) {
+    if (px[i + 3] < 230) continue;
+    const r = px[i], gg = px[i + 1], bb = px[i + 2];
+    if (r + gg + bb < 150) continue;
+    const k = ((r >> 5) << 6) | ((gg >> 5) << 3) | (bb >> 5);
+    bins.set(k, (bins.get(k) || 0) + 1);
+  }
+  let bestK = -1, bestN = 0;
+  for (const [k, n] of bins) if (n > bestN) { bestN = n; bestK = k; }
+  if (bestK < 0) return null;
+  /* the mean of that bin, as the reference colour */
+  let mr = 0, mg = 0, mb = 0, mn = 0;
+  for (let i = 0; i < px.length; i += 16) {
+    if (px[i + 3] < 230) continue;
+    const k = ((px[i] >> 5) << 6) | ((px[i + 1] >> 5) << 3) | (px[i + 2] >> 5);
+    if (k !== bestK) continue;
+    mr += px[i]; mg += px[i + 1]; mb += px[i + 2]; mn++;
+  }
+  mr /= mn; mg /= mn; mb /= mn;
+  const nearBody = (x, y) => {
+    const i = ((y | 0) * fw + (x | 0)) * 4;
+    if (px[i + 3] < 200) return false;
+    return Math.hypot(px[i] - mr, px[i + 1] - mg, px[i + 2] - mb) < 70;
+  };
+  const out = [];
+  /* bone is thin: a splinter the size of a slime blob was a third of a leg */
+  const sizeK = fx === 'bone' ? 0.5 : 1;
+  for (let si = 0; si < CHIP_SIZES.length; si++) {
+    const r = Math.max(2, fh * CHIP_SIZES[si] * sizeK);
+    const row = [];
+    for (let v = 0; v < CHIP_VARIANTS; v++) {
+     for (let attempt = 0; attempt < 6; attempt++) {
+      /* an opaque spot: the centre and a ring round it all solid */
+      let cx = -1, cy = -1, fbx = -1, fby = -1;
+      for (let t = 0; t < 160; t++) {
+        const x = r + Math.random() * (fw - 2 * r), y = r + Math.random() * (fh - 2 * r);
+        if (!nearBody(x, y)) continue;
+        let good = 0;
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2;
+          if (nearBody(x + Math.cos(a) * r * 0.75, y + Math.sin(a) * r * 0.75)) good++;
+        }
+        if (good >= 7) { cx = x; cy = y; break; }
+        if (good >= 4 && fbx < 0) { fbx = x; fby = y; }   /* a thin body: the best of the rest */
+      }
+      if (cx < 0 && fbx >= 0) { cx = fbx; cy = fby; }
+      if (cx < 0) continue;
+      const pad = Math.ceil(r * 2.2) + 2, S = pad * 2;
+      const c = document.createElement('canvas'); c.width = S; c.height = S;
+      const cg = c.getContext('2d');
+      const shape = chipShape(fx, r);
+      cg.beginPath();
+      shape.forEach(([x, y], i) => (i ? cg.lineTo(pad + x, pad + y) : cg.moveTo(pad + x, pad + y)));
+      cg.closePath();
+      cg.save(); cg.clip();
+      cg.drawImage(cv, pad - cx, pad - cy);
+      cg.restore();
+      /* ...and it must BE the body: most of what it kept is the main colour
+         (a skeleton's chip was catching its red eyes) */
+      let tot = 0, near = 0;
+      try {
+        const d = cg.getImageData(0, 0, S, S).data;
+        for (let q = 0; q < d.length; q += 4) {
+          if (d[q + 3] < 160) continue;
+          tot++;
+          if (Math.hypot(d[q] - mr, d[q + 1] - mg, d[q + 2] - mb) < 95) near++;
+        }
+      } catch (e) { tot = 1; near = 1; }
+      if (tot < 4 || near / tot < (attempt === 5 ? 0.5 : 0.78)) continue;   /* the last try settles for half, so a material never falls back to pixels */
+      /* keep only the art's own pixels inside the cut (a thin body's chip can
+         cross a gap) -- then a hairline of its own shadow round the edge, so a
+         chip still reads against ground its own colour */
+      cg.globalCompositeOperation = 'source-atop';
+      cg.lineWidth = fx === 'goo' ? 0.8 : 1;
+      cg.strokeStyle = fx === 'goo' ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.38)';
+      cg.stroke();
+      cg.globalCompositeOperation = 'source-over';
+      const t = Texture.from(c);
+      t.label = 'hit-chip';
+      row.push(t);
+      break;
+     }
+    }
+    if (!row.length) return null;
+    out.push(row);
+  }
+  return out;
+}
+function chipsFor(sb, fx) {
+  const tex = sb && sb.texture, src = tex && tex.source;
+  if (!src) return null;
+  const key = src.uid;
+  let ent = _chipCache.get(key);
+  if (!ent) {
+    ent = Object.create(null);
+    _chipCache.set(key, ent);
+    if (_chipCache.size > 24) {
+      const old = _chipCache.keys().next().value;
+      const e = _chipCache.get(old);
+      _chipCache.delete(old);
+      if (e) for (const k in e) for (const row of (e[k] || [])) for (const t of row) { try { t.destroy(true); } catch (err) { /* already gone */ } }
+    }
+  }
+  if (!(fx in ent)) ent[fx] = bakeChips(tex, fx);
+  return ent[fx];
+}
+
 const rnd = Math.random;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 /* roughly normal, sd ~0.5 -- sprays cluster on their line instead of fanning flat */
@@ -328,8 +532,12 @@ class Side {
 export class HitMaterialFx {
   /** frontLayer: `particles` (over the monsters, under the player).
    *  backLayer: `telegraphs` (under the monsters). */
-  constructor(frontLayer, backLayer) {
+  constructor(frontLayer, backLayer, opts) {
     this.T = atlas();
+    /* v2.3.2929: monster id -> the sprite it is drawn with (entityRenderer's
+       monsterBodySprite), for the own-art chips */
+    this._artOf = (opts && typeof opts.artOf === 'function') ? opts.artOf : null;
+    this._layer = frontLayer;
     this.front = new Side(frontLayer);
     this.back = new Side(backLayer);
     this.P = new Array(MAX_P);
@@ -566,6 +774,7 @@ export class HitMaterialFx {
       const p = this._take(b, now);
       const big = ((b.crit || b.big || P.w === 'sword') && i === 0) || rnd() < 0.35;
       p.frames = big ? this._frames.boneL : this._frames.boneS;
+      p.size = big ? 2 : 1;   /* v2.3.2929: for the own-art chip */
       p.spin = 10 + rnd() * 10;
       p.tint = scorch && rnd() < 0.35 ? 0xb9a98a : 0xffffff;
       this._launch(p, P.w === 'arrow' && i === 0 ? backAng(P) : sprayAng(P),
@@ -599,6 +808,7 @@ export class HitMaterialFx {
       const p = this._take(b, now);
       const r = rnd() + ((b.crit || b.big) ? 0.25 : 0);
       p.tex = r < 0.5 ? T.stoneS : r < 0.85 ? T.stoneM : T.stoneL;
+      p.size = r < 0.5 ? 0 : r < 0.85 ? 1 : 2;   /* v2.3.2929: for the own-art chip */
       p.tint = tint;
       this._launch(p, sprayAng(P), (1.3 + rnd() * 2.6) * P.spd, (1.2 + rnd() * 2.2) * P.lift);
       p.g = 0.36; p.drag = 0.995; p.e = 0.42; p.bnc = 2; p.fr = 0.8; p.land = L_BOUNCE; p.shadow = true;
@@ -656,6 +866,29 @@ export class HitMaterialFx {
       rec.ez = h;
     }
     rec.u = PIX * ((S && zonePlayerScale(S.currentZone, rec.ex, gy, TILE)) || 1);
+    /* v2.3.2929: the monster's own art, when it is on screen */
+    rec.chips = null; rec.cs = 1; rec.chipTint = 0xffffff; rec.soft = false;
+    if (this._artOf && b.monsterId != null && !b.prop && !String(b.monsterId).startsWith('prop:')) {
+      let sb = null;
+      try { sb = this._artOf(b.monsterId); } catch (e) { sb = null; }
+      if (sb) {
+        rec.soft = true;
+        if (rec.fx === 'goo' || rec.fx === 'stone' || rec.fx === 'bone' || rec.fx === 'snow') {
+          let ch = null;
+          try { ch = chipsFor(sb, rec.fx); } catch (e) { ch = null; }
+          if (ch) {
+            rec.chips = ch;
+            /* world px per texel of the monster, measured through both transforms */
+            const la = this._layer && this._layer.worldTransform ? Math.hypot(this._layer.worldTransform.a, this._layer.worldTransform.b) : 1;
+            const sa = sb.worldTransform ? Math.hypot(sb.worldTransform.a, sb.worldTransform.b) : Math.abs(sb.scale.x);
+            rec.cs = (sa / (la || 1)) || 1;
+            /* the monster's own tint -- NOT sb.tint, which is the 120 ms pink
+               hit flash (0xff8080) at exactly the moment a hit spawns this */
+            rec.chipTint = sb._btBaseTint != null ? sb._btBaseTint : (sb.tint === 0xff8080 ? 0xffffff : sb.tint);
+          }
+        }
+      }
+    }
     const P = profileFor(rec);
     /* v2.3.2843: a PROP's burst (combatHelpers.spawnPropDebris, v2.3.2730) is
        the same material thrown SUBTLY -- a rock is hit far more often than it
@@ -804,6 +1037,17 @@ export class HitMaterialFx {
       const sx = Math.round(p.x / u) * u;
       const sy = Math.round((p.y - p.z) / u) * u;
       const fade = bAge > BURST_MS - FADE_MS ? clamp((BURST_MS - bAge) / FADE_MS, 0, 1) : 1;
+      if (p.kind === K_DUST && b.soft) {
+        /* v2.3.2929: a soft round puff beside a painted monster, not a dithered disc */
+        const t = clamp(age / p.life, 0, 1);
+        const rr = p.r0 + (p.r1 - p.r0) * Math.sqrt(t);
+        const sp = side.dust.take(softPuff());
+        sp.x = p.x; sp.y = p.y - p.z; sp.rotation = 0;
+        sp.scale.set(((rr * 2 + 1) * u) / 32);
+        if (sp.tint !== p.tint) sp.tint = p.tint;
+        sp.alpha = p.alpha * 0.8 * (1 - t) * fade;
+        continue;
+      }
       if (p.kind === K_DUST) {
         const t = clamp(age / p.life, 0, 1);
         const r = Math.max(1, Math.min(7, Math.round(p.r0 + (p.r1 - p.r0) * Math.sqrt(t))));
@@ -843,12 +1087,55 @@ export class HitMaterialFx {
         continue;
       }
       /* pieces: a shadow under anything in the air, then the piece */
-      if (p.shadow && !p.landed && p.z > 1) {
+      if (p.shadow && !p.landed && p.z > 1 && b.soft) {
+        const sh = side.shadow.take(softShadow());
+        sh.x = p.x; sh.y = p.y; sh.rotation = 0;
+        sh.scale.set((u * (p.size >= 1 ? 3 : 2)) / 32);
+        if (sh.tint !== 0x000000) sh.tint = 0x000000;
+        sh.alpha = 0.35 * clamp(1 - p.z / 60, 0.25, 1) * fade;
+      } else if (p.shadow && !p.landed && p.z > 1) {
         const sh = side.shadow.take(T.sq);
         sh.x = sx; sh.y = Math.round(p.y / u) * u; sh.rotation = 0;
         sh.scale.set((u * (p.size >= 1 ? 2 : 1)) / 8);
         if (sh.tint !== 0x000000) sh.tint = 0x000000;
         sh.alpha = 0.3 * clamp(1 - p.z / 60, 0.25, 1) * fade;
+      }
+      /* ═══ v2.3.2929: a chip of the monster's own art ═══ */
+      if (b.chips && (p.kind === K_CHUNK || p.kind === K_DROP)) {
+        const row = b.chips[Math.min(b.chips.length - 1, p.size | 0)];
+        const chip = row[((p.ph * 1000) | 0) % row.length];
+        const cs = b.cs;
+        const sp = side.body.take(chip);
+        sp.x = p.x; sp.y = p.y - p.z;
+        if (b.fx === 'goo') {
+          if (p.landed) {
+            /* a drop lands as a puddle of the slime itself, and wobbles once */
+            const w = p.wob ? clamp((now - p.wob) / 170, 0, 1) : 1;
+            const k = 1 + 0.3 * (1 - w) * Math.cos(w * Math.PI * 1.5);
+            sp.rotation = 0;
+            sp.scale.set(cs * 1.35 * k, cs * 0.5 / k);
+          } else {
+            /* in flight it stretches along its screen-space motion */
+            const mvx = p.vx, mvy = p.vy - p.vz, m2 = mvx * mvx + mvy * mvy;
+            if (m2 > 5) {
+              sp.rotation = Math.atan2(mvy, mvx) + Math.PI / 2;
+              sp.scale.set(cs * 0.82, cs * 1.3);
+            } else { sp.rotation = 0; sp.scale.set(cs); }
+          }
+        } else {
+          /* stone, bone, snow: tumble in the air, lie still where they land */
+          const spin = p.spin || 7;
+          sp.rotation = p.landed ? p.ph * 1.7 : p.ph * 1.7 + (age / 1000) * spin;
+          const squat = (b.fx === 'snow' && p.landed) ? 0.7 : 1;
+          sp.scale.set(cs, cs * squat);
+        }
+        /* the chip is the monster's own colour already: only its sprite tint
+           (a recolour) -- and a bolt's scorch on bone / snow's own tint -- apply */
+        const tint = b.chipTint !== 0xffffff ? b.chipTint
+          : (b.fx === 'bone' ? p.tint : 0xffffff);
+        if (sp.tint !== tint) sp.tint = tint;
+        sp.alpha = fade;
+        continue;
       }
       let tex = p.tex, sc = u;
       if (p.kind === K_DROP) {

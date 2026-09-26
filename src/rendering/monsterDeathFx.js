@@ -229,35 +229,124 @@ function solidRuns(cov, sx, sy, a, b) {
    cut.  The two halves are the path closed off above and below it, clipped
    to the body's box; bodies, wound lines and the spray all read off the same
    path, so nothing else had to learn it was no longer straight. */
-function cutPath(cx, cy, dx, dy, W, H, rand, calm) {
+/* ═══ v2.3.2928: ...AND NOT A RULER LINE WITH THREE KINKS IN IT EITHER ═══
+   Owner: "the biggest problem is an artificial razor straight line that the
+   enemy gets cut into.  It really doesn't need to be precise in any way
+   because the monster is already dead at this point.  So make the lines look
+   naturally a little jagged for each cut point."
+   The v2.3.2923 path spread its 11-15 points across W+H either side of the
+   cut -- most of them far outside the monster -- so only three to five bends
+   ever crossed the body, and its jitter was a fraction of a pixel at a
+   slime's size: between the bends, a ruler.  Now the path is DENSE across the
+   body only (a point every ~2 texels, the far ends kept just to close the
+   halves off), and every point carries three things summed: the swing's bow,
+   a slow WANDER (value noise, a few knots across the body) and sharp TEETH
+   sized in the monster's own texels (at least a texel, so they survive its
+   resolution), with the odd deeper notch where the blade tore.  Styles and
+   every offset still come from the death's seeded roll, so every client sees
+   the same cut; the two halves share the one path, so they still fit. */
+function jagOffsets(n, H, rand, amp, ragged) {
+  /* the wander: cosine-interpolated knots, ~1 per 8 points */
+  const knots = [];
+  const K = Math.max(2, Math.ceil(n / 8) + 1);
+  const wAmp = H * amp * (ragged ? 0.05 : 0.032);
+  for (let k = 0; k <= K; k++) knots.push((rand() - 0.5) * 2 * wAmp);
+  const tooth = Math.max(1.1, H * amp * (ragged ? 0.05 : 0.034));
+  const out = [];
+  let prev = 0;
+  for (let i = 0; i < n; i++) {
+    const kf = (i / Math.max(1, n - 1)) * K, k0 = Math.floor(kf), t = kf - k0;
+    const e = (1 - Math.cos(Math.PI * t)) / 2;
+    const wander = knots[k0] * (1 - e) + knots[Math.min(K, k0 + 1)] * e;
+    /* teeth lean away from the last one, so the edge zigzags instead of
+       wobbling; now and then a notch two or three times as deep */
+    let tt = (rand() - 0.5) * 2 * tooth;
+    if (Math.sign(tt) === Math.sign(prev) && rand() < 0.6) tt = -tt;
+    if (rand() < 0.09) tt *= 2 + rand();
+    prev = tt;
+    out.push(wander + tt);
+  }
+  return out;
+}
+/* ═══ v2.3.2928b: BONE SPLINTERS, IT DOES NOT ZIGZAG ═══
+   Owner: "On the skeleton the jagged lines look too artificial since bones
+   naturally splinter not have a cake like zig zag."  Right -- the teeth above
+   alternate by construction, which is torn flesh, not a fracture.  A bone
+   break is a run of SHARDS: each one a long slope that snaps back at its end
+   (asymmetric, not a triangle), of very different lengths and heights, with
+   stretches of clean fracture plane between them and the odd long thin sliver
+   standing proud.  No forced alternation -- neighbouring shards often lean the
+   same way, the way a green stick breaks.  (skeleton, mummy and hexer: every
+   `kind: 'bone'` material in monsterVariants.) */
+function splinterOffsets(n, H, rand, amp) {
+  const out = new Array(n).fill(0);
+  const hMax = H * amp;
+  let lean = rand() < 0.5 ? -1 : 1;
+  let i = 0;
+  while (i < n) {
+    const r = rand();
+    if (r < 0.28) {
+      /* a clean fracture plane: flat, barely a texel of grain */
+      const L = 3 + Math.floor(rand() * 6);
+      const base = (rand() - 0.5) * hMax * 0.03;
+      for (let k = 0; k < L && i < n; k++, i++) out[i] = base + (rand() - 0.5) * 0.5;
+    } else if (r < 0.4) {
+      /* a sliver: a long thin spike, one or two points */
+      const h = (rand() < 0.7 ? lean : -lean) * hMax * (0.12 + rand() * 0.12);
+      out[i++] = h * (0.55 + rand() * 0.2);
+      if (i < n) out[i++] = h;
+    } else {
+      /* a shard: a slope that snaps back -- rising or falling along the cut */
+      const L = 3 + Math.floor(rand() * 8);
+      const h = (rand() < 0.65 ? lean : -lean) * hMax * (0.025 + rand() * 0.08);
+      const up = rand() < 0.5;
+      for (let k = 0; k < L && i < n; k++, i++) {
+        const f = (k + 1) / L;
+        out[i] = h * (up ? f : 1 - f + 1 / L) + (rand() - 0.5) * 0.6;
+      }
+      if (rand() < 0.35) lean = -lean;
+    }
+  }
+  return out;
+}
+/* a jagged line from a to b (end points kept exactly), for the leg cut */
+function jagLine(a, b, H, rand, amp, splinter) {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const n = Math.max(3, Math.round(len / Math.max(1.6, H / 28)) + 1);
+  const ux = (b[0] - a[0]) / (len || 1), uy = (b[1] - a[1]) / (len || 1);
+  const off = splinter ? splinterOffsets(n, H, rand, amp) : jagOffsets(n, H, rand, amp, false);
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const f = i / (n - 1);
+    const o = (i === 0 || i === n - 1) ? 0 : off[i];
+    pts.push([a[0] + (b[0] - a[0]) * f - uy * o, a[1] + (b[1] - a[1]) * f + ux * o]);
+  }
+  return pts;
+}
+function cutPath(cx, cy, dx, dy, W, H, rand, calm, splinter) {
   const far = W + H;
   const nx = -dy, ny = dx;
   const r = rand();
   const style = calm ? (r < 0.5 ? 'clean' : 'ragged') : (r < 0.25 ? 'clean' : r < 0.55 ? 'arc' : r < 0.8 ? 'ragged' : 'step');
-  const N = style === 'ragged' ? 15 : 11;
-  const amp = calm ? 0.55 : 1;
+  const amp = calm ? 0.6 : 1;
   const bow = (rand() < 0.5 ? -1 : 1) * H * amp * (style === 'arc' ? 0.08 + rand() * 0.07 : 0.01 + rand() * 0.03);
-  const jag = H * amp * (style === 'ragged' ? 0.045 + rand() * 0.035 : 0.012 + rand() * 0.018);
   const stepAt = (rand() - 0.5) * 0.6;   /* where across the body a step jumps, in half-widths */
   const stepH = (rand() < 0.5 ? -1 : 1) * H * amp * (0.06 + rand() * 0.05);
-  const pts = [];
-  for (let i = 0; i < N; i++) {
-    const f = -1 + (2 * i) / (N - 1);
-    const u = (f * far) / Math.max(1, W / 2);      /* -1..1 across the body */
+  /* dense across the body (and a margin past it), in texels along the cut */
+  const half = W / 2 * 1.35;
+  const ds = Math.max(1.4, H / 34);
+  const n = Math.max(12, Math.min(160, Math.round((2 * half) / ds) + 1));
+  const off = splinter ? splinterOffsets(n, H, rand, amp) : jagOffsets(n, H, rand, amp, style === 'ragged');
+  const pts = [[cx - dx * far, cy - dy * far]];
+  for (let i = 0; i < n; i++) {
+    const along = -half + (2 * half * i) / (n - 1);
+    const u = along / Math.max(1, W / 2);          /* -1..1 across the body */
     const inside = Math.max(0, 1 - u * u);
-    let o = bow * inside;
-    if (i > 0 && i < N - 1 && Math.abs(u) < 1.3) o += (rand() - 0.5) * 2 * jag;
+    let o = bow * inside + off[i];
     if (style === 'step') o += (u > stepAt ? 0.5 : -0.5) * stepH * Math.min(1, inside * 4);
-    pts.push([cx + dx * f * far + nx * o, cy + dy * f * far + ny * o]);
+    pts.push([cx + dx * along + nx * o, cy + dy * along + ny * o]);
   }
-  if (style === 'step') {
-    /* the jump itself: a steep little segment where the halves meet */
-    let k = 1;
-    while (k < pts.length - 1 && ((pts[k][0] - cx) * dx + (pts[k][1] - cy) * dy) / Math.max(1, W / 2) <= stepAt) k++;
-    const a = pts[k - 1], b = pts[k];
-    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-    pts.splice(k, 0, [mx - nx * stepH * 0.5 - dx * 0.5, my - ny * stepH * 0.5 - dy * 0.5], [mx + nx * stepH * 0.5 + dx * 0.5, my + ny * stepH * 0.5 + dy * 0.5]);
-  }
+  pts.push([cx + dx * far, cy + dy * far]);
   return { pts, style, nx, ny };
 }
 /* clip any polygon to the (convex) box */
@@ -278,7 +367,7 @@ function pathYAt(pts, x) {
 }
 
 /* ── the pieces ── */
-function makePiece(root, sb, mask, body, wounds, woundCol) {
+function makePiece(root, sb, mask, body, wounds) {
   const c = new Container();
   const spr = new Sprite(sb.texture);
   spr.anchor.set(sb.anchor.x, sb.anchor.y);
@@ -288,17 +377,40 @@ function makePiece(root, sb, mask, body, wounds, woundCol) {
   c.addChild(spr);
   c.addChild(mg);
   spr.mask = mg;
-  /* the cut face: a line of the monster's own insides, only where the cut
-     went through body */
+  /* the cut face: a fine keyline, only where the cut went through body */
   if (wounds && wounds.length) {
+    /* ═══ v2.3.2928c: ITS OWN ART, AND A FINE KEYLINE ═══
+       Owner, of the skeleton: "You should use the existing art with a very
+       fine outline though."  Then: "Do the same treatment for all other cuts
+       too ... For other monsters too."  The cut used to carry a 4.5-texel
+       stripe of the monster's insides over a 2.2-texel core (v2.3.2923) --
+       a smooth painted band laid over the jagged edge.  Now every cut shows
+       the sprite's own pixels right up to the break, closed off by about a
+       texel of dark keyline like the rest of its outline.  (The material still
+       comes out of the cut as the burst and spray -- the owner's v2.3.2923
+       "hit material at the cut site" -- just not as a drawn line.) */
     const w = new Graphics();
     for (const [a, b] of wounds) w.moveTo(a[0], a[1]).lineTo(b[0], b[1]);
-    /* v2.3.2923: a wet dark edge under a brighter core, so a ragged cut reads
-       as torn flesh / goo rather than a drawn line */
-    w.stroke({ color: shade(woundCol, 0.55), width: 4.5, alpha: 0.9, join: 'round', cap: 'round' });
-    for (const [a, b] of wounds) w.moveTo(a[0], a[1]).lineTo(b[0], b[1]);
-    w.stroke({ color: woundCol, width: 2.2, alpha: 0.95, join: 'round', cap: 'round' });
-    c.addChild(w);
+    w.stroke({ color: 0x1e1812, width: 1.4, alpha: 0.85, join: 'miter', cap: 'butt' });
+    /* ...ON THE BODY ONLY.  `wounds` are read off a coarse coverage grid, and a
+       skeleton's grid cells span the gaps between its ribs and limbs -- drawn
+       bare, the keyline was a straight dark rule across open ground.  So it is
+       clipped twice: to the monster's own ALPHA (a sprite of the same art as
+       the mask, so it exists only where the monster has pixels) and to this
+       piece's cut polygon (so it sits on the inside of the break).  */
+    const alphaMask = new Sprite(sb.texture);
+    alphaMask.anchor.set(sb.anchor.x, sb.anchor.y);
+    const onBody = new Container();
+    onBody.addChild(w);
+    onBody.mask = alphaMask;
+    const polyMask = new Graphics();
+    polyMask.poly(mask.flat()).fill({ color: 0xffffff });
+    const inPiece = new Container();
+    inPiece.addChild(onBody);
+    inPiece.mask = polyMask;
+    c.addChild(alphaMask);
+    c.addChild(polyMask);
+    c.addChild(inPiece);
   }
   c.pivot.set(body.com[0], body.com[1]);
   c.position.set(body.com[0], body.com[1]);
@@ -395,6 +507,7 @@ function build(kind, display, m, blob, now) {
   const matKey = display._variantKey || (m && (m.arch || m.type));
   const mat = hitMaterialOf(matKey) || {};
   const matKind = mat.fx || mat.kind || 'goo';
+  const splinter = mat.kind === 'bone';   /* v2.3.2928b: bone breaks in shards (splinterOffsets) */
   const bloody = matKind === 'goblin' || matKind === 'ember';
   /* hitFxTintOf follows a slime's recolour, so a blue slime bleeds blue */
   const col = bloody ? BLOOD : (hitFxTintOf(matKey) || 0x5ca84c);
@@ -408,7 +521,7 @@ function build(kind, display, m, blob, now) {
      and the wound runs where the line crosses body */
   /* v2.3.2923: along a polyline (cutPath), not a straight line */
   const cutBy = (cx, cy, dx, dy, calm) => {
-    const cp = cutPath(cx, cy, dx, dy, W, H, rand, calm);
+    const cp = cutPath(cx, cy, dx, dy, W, H, rand, calm, splinter);
     const pts = cp.pts, BIG = (W + H) * 3;
     const p0 = pts[0], pN = pts[pts.length - 1];
     /* the normal (nx, ny) points DOWN (dx > 0 for every cut rolled here) */
@@ -441,14 +554,22 @@ function build(kind, display, m, blob, now) {
     const hipY = y0 + H * 0.68;
     const b = bodyOf(cov, sx, sy, [[x0 - pad, hipY], [x1 + pad, hipY], [x1 + pad, y1 + pad], [x0 - pad, y1 + pad]]);
     const mid = b ? b.com[0] : x0 + W / 2;
-    const L = side > 0
-      ? [[mid, hipY], [x1 + pad, hipY], [x1 + pad, y1 + pad], [mid, y1 + pad]]
-      : [[x0 - pad, hipY], [mid, hipY], [mid, y1 + pad], [x0 - pad, y1 + pad]];
+    /* v2.3.2928: both edges of the leg's cut are jagged too (they were two
+       ruler lines); the hip and the inner edge each get their own teeth, and
+       the two pieces share them so they still fit */
+    const outX = side > 0 ? x1 + pad : x0 - pad;
+    const hip = jagLine([mid, hipY], [outX, hipY], H, rand, 0.8, splinter);        /* mid -> outer edge */
+    const inner = jagLine([mid, hipY], [mid, y1 + pad], H, rand, 0.8, splinter);   /* hip -> ground */
+    const L = hip.concat([[outX, y1 + pad]], inner.slice().reverse().slice(0, -1));
     const R = side > 0
-      ? [[x0 - pad, y0 - pad], [x1 + pad, y0 - pad], [x1 + pad, hipY], [mid, hipY], [mid, y1 + pad], [x0 - pad, y1 + pad]]
-      : [[x0 - pad, y0 - pad], [x1 + pad, y0 - pad], [x1 + pad, y1 + pad], [mid, y1 + pad], [mid, hipY], [x0 - pad, hipY]];
-    const runs = solidRuns(cov, sx, sy, side > 0 ? [mid, hipY] : [x0 - pad, hipY], side > 0 ? [x1 + pad, hipY] : [mid, hipY]);
-    spec = { top: R, bot: L, runs, mid, hipY, dx: side, dy: 0 };
+      ? [[x0 - pad, y0 - pad], [x1 + pad, y0 - pad]].concat(hip.slice().reverse(), inner.slice(1), [[x0 - pad, y1 + pad]])
+      : [[x0 - pad, y0 - pad], [x1 + pad, y0 - pad], [x1 + pad, y1 + pad]].concat(inner.slice().reverse(), hip.slice(1));
+    let runs = [];
+    for (let i = 1; i < hip.length; i++) runs = runs.concat(solidRuns(cov, sx, sy, hip[i - 1], hip[i]));
+    /* the inner edge too, for the fine keyline (the gore reads `runs` only) */
+    let edge = runs.slice();
+    for (let i = 1; i < inner.length; i++) edge = edge.concat(solidRuns(cov, sx, sy, inner[i - 1], inner[i]));
+    spec = { top: R, bot: L, runs, edge, mid, hipY, dx: side, dy: 0 };
   } else {
     return null;
   }
@@ -467,8 +588,8 @@ function build(kind, display, m, blob, now) {
   const pieces = [];
   let spurt = null;
   if (kind === 'slice') {
-    const T = makePiece(root, sb, spec.top, topBody, spec.runs, col);
-    const B = makePiece(root, sb, spec.bot, botBody, spec.runs, col);
+    const T = makePiece(root, sb, spec.top, topBody, spec.edge || spec.runs);
+    const B = makePiece(root, sb, spec.bot, botBody, spec.edge || spec.runs);
     const down = spec.dy >= 0 ? 1 : -1;
     /* the top slides DOWN the cut before it clears the lower half */
     T.slide = { dx: spec.dx * down, dy: spec.dy * down, until: 170 + rand() * 90, speed: 0,
@@ -482,8 +603,8 @@ function build(kind, display, m, blob, now) {
     const r0 = spec.runs[Math.floor(spec.runs.length / 2)];
     spurt = { piece: B, x: (r0[0][0] + r0[1][0]) / 2, y: (r0[0][1] + r0[1][1]) / 2, up: true, dur: 420 };
   } else if (kind === 'decap') {
-    const Hd = makePiece(root, sb, spec.top, topBody, spec.runs, col);
-    const Bd = makePiece(root, sb, spec.bot, botBody, spec.runs, col);
+    const Hd = makePiece(root, sb, spec.top, topBody, spec.edge || spec.runs);
+    const Bd = makePiece(root, sb, spec.bot, botBody, spec.edge || spec.runs);
     Hd.free = true;
     /* v2.3.2923: harder, and mostly OUTWARD -- was vx 1.1-1.9 H, vy 3.6-4.6 H,
        spin 7-12.  The extra goes sideways and into the spin rather than up: a
@@ -496,8 +617,8 @@ function build(kind, display, m, blob, now) {
     pieces.push(Bd, Hd);
     spurt = { piece: Bd, x: topBody.com[0], y: pathYAt(spec.pts, topBody.com[0]), up: true, dur: 700 };
   } else {
-    const Bd = makePiece(root, sb, spec.top, topBody, spec.runs, col);
-    const L = makePiece(root, sb, spec.bot, botBody, spec.runs, col);
+    const Bd = makePiece(root, sb, spec.top, topBody, spec.edge || spec.runs);
+    const L = makePiece(root, sb, spec.bot, botBody, spec.edge || spec.runs);
     L.free = true;
     /* v2.3.2923: harder -- was vx 0.9-1.5 H, vy 1.2-1.8 H, spin 4-7 */
     L.vx = side * H * (1.7 + rand() * 1.1);
@@ -644,8 +765,13 @@ function physics(st, t, dt) {
   /* at the moment of the cut, a burst along it -- only where it cut body */
   if (!st.burst) {
     st.burst = true;
+    /* v2.3.2928: a jagged cut is dozens of short runs, so the count is
+       carried across them (it was at least 2 per run -- a jagged cut would
+       have sprayed several times the drops of a straight one) */
+    let acc = 0;
     for (const [a, b] of st.runs) {
-      const n = Math.max(2, Math.round(26 * Math.hypot(b[0] - a[0], b[1] - a[1]) / Math.max(1, st.W)));   /* v2.3.2923: was 16 */
+      acc += 26 * Math.hypot(b[0] - a[0], b[1] - a[1]) / Math.max(1, st.W);   /* v2.3.2923: was 16 */
+      const n = Math.floor(acc); acc -= n;
       for (let i = 0; i < n; i++) {
         const f = st.rand();
         const ang = -Math.PI / 2 + (st.rand() - 0.5) * 2.0;
@@ -690,12 +816,14 @@ function draw(st, t) {
     /* v2.3.2923: along the cut as it really runs (a polyline now), trailing
        a little past the body at both ends */
     const k = 1 - t / 150;
-    const R = st.runs, a = R[0][0], a1 = R[0][1], b = R[R.length - 1][1], b0 = R[R.length - 1][0];
-    const la = Math.hypot(a1[0] - a[0], a1[1] - a[1]) || 1, lb = Math.hypot(b[0] - b0[0], b[1] - b0[1]) || 1;
+    /* v2.3.2928: the overshoot runs along the cut's CHORD -- the first and
+       last runs are single teeth now and would point it anywhere */
+    const R = st.runs, a = R[0][0], b = R[R.length - 1][1];
+    const lc = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, ux = (b[0] - a[0]) / lc, uy = (b[1] - a[1]) / lc;
     const ext = st.W * 0.18;
-    fx.moveTo(a[0] - (a1[0] - a[0]) / la * ext, a[1] - (a1[1] - a[1]) / la * ext);
+    fx.moveTo(a[0] - ux * ext, a[1] - uy * ext);
     for (const r of R) fx.lineTo(r[0][0], r[0][1]).lineTo(r[1][0], r[1][1]);
-    fx.lineTo(b[0] + (b[0] - b0[0]) / lb * ext, b[1] + (b[1] - b0[1]) / lb * ext);
+    fx.lineTo(b[0] + ux * ext, b[1] + uy * ext);
     fx.stroke({ color: 0xffffff, width: 2 + 4 * k, alpha: 0.9 * k, join: 'round', cap: 'round' });
   }
   for (const p of st.parts) {

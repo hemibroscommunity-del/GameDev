@@ -1131,7 +1131,7 @@ const setCharLevel = (lvl) => {
   readyPlayer();
   parkAll();
   const r = STAM_ABILITIES.whirl.radius;
-  check('whirlwind has a 2 second windup', STAM_ABILITIES.whirl.windupMs === 2000, STAM_ABILITIES.whirl);
+  check('whirlwind has a 1 second windup (v2.3.2928: was 2)', STAM_ABILITIES.whirl.windupMs === 1000, STAM_ABILITIES.whirl);
   const m = arm(meadow[0], psA.x + r + 150, psA.y);        /* out of reach at the press */
   const st0 = psA.stamina;
   wsA.sent.length = 0; room.eventBuffer.length = 0;
@@ -1141,10 +1141,10 @@ const setCharLevel = (lvl) => {
   check('...but it is paid for (stamina + cooldown) on the press', psA.stamina < st0 && psA._abilCd.whirl > Date.now(),
     { st0, st: psA.stamina });
   check('...and the zone is told: caster, ms and the exact radius for the ring',
-    !!wind && wind.payload.playerId === 'pa' && wind.payload.ms === 2000 && wind.payload.radius === r && wind.payload.zone === psA.z,
+    !!wind && wind.payload.playerId === 'pa' && wind.payload.ms === 1000 && wind.payload.radius === r && wind.payload.zone === psA.z,
     wind && wind.payload);
-  room._tickAbilityWindups(Date.now() + 1000);
-  check('...one second in, still nothing', hits().length === 0 && m.hp === 5000);
+  room._tickAbilityWindups(Date.now() + 500);
+  check('...half a second in, still nothing', hits().length === 0 && m.hp === 5000);
   /* Walk over to the monster during the ring -- the strike is measured from
      where you are when it ends, which is the whole point of the windup. */
   psA.x = m.x - 100;

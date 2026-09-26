@@ -8675,6 +8675,7 @@ export class EntityRenderer {
           const _hfV = m._hitFlash && (now - m._hitFlash) < 120;
           const wantTintV = _hfV ? 0xff8080 : ((variant && variant.tint) || 0xffffff);
           if (spriteBody.tint !== wantTintV) spriteBody.tint = wantTintV;
+          spriteBody._btBaseTint = (variant && variant.tint) || 0xffffff;   /* v2.3.2929: the tint WITHOUT the hit flash, for hitMaterialFx's own-art chips */
           if (!spriteBody.visible) spriteBody.visible = true;
           if (display._body.visible) display._body.visible = false;
         } else {
@@ -8753,6 +8754,7 @@ export class EntityRenderer {
           const _hfS = m._hitFlash && (now - m._hitFlash) < 120; /* v2.3.2200: see variant branch */
           const wantTintS = _hfS ? 0xff8080 : slimeTintFor(variant, state);
           if (spriteBody.tint !== wantTintS) spriteBody.tint = wantTintS;
+          spriteBody._btBaseTint = slimeTintFor(variant, state);   /* v2.3.2929: see the variant branch */
           if (!spriteBody.visible) spriteBody.visible = true;
           if (display._body.visible) display._body.visible = false;
         } else {
@@ -8944,6 +8946,7 @@ export class EntityRenderer {
             const _hfN = m._hitFlash && (now - m._hitFlash) < 120; /* v2.3.2200: see variant branch */
             const wantTintN = _hfN ? 0xff8080 : 0xffffff;
             if (spriteBody.tint !== wantTintN) spriteBody.tint = wantTintN;
+            spriteBody._btBaseTint = 0xffffff;   /* v2.3.2929: see the variant branch */
             if (!spriteBody.visible) spriteBody.visible = true;
             if (display._body.visible) display._body.visible = false;
           } else {

@@ -85,11 +85,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ok = window._gameFns.castAbility('whirl');
     return { ok, at: Date.now(), w: S._whirlWindup ? { r: S._whirlWindup.r, ms: S._whirlWindup.until - S._whirlWindup.t0 } : null };
   });
-  rec.ok('pressing Whirlwind starts a 2 second ring at the full 240 radius', press.ok && !!press.w && press.w.r === 240 && press.w.ms === 2000, press);
-  await A.page.waitForTimeout(900);
-  await shot(A, 'ring');
+  rec.ok('pressing Whirlwind starts a 1 second ring at the full 240 radius (v2.3.2928: was 2)', press.ok && !!press.w && press.w.r === 240 && press.w.ms === 1000, press);
+  await A.page.waitForTimeout(300);
+  /* v2.3.2928: read BEFORE the picture -- with a 1s ring, a screenshot's
+     latency alone can carry the check past the strike */
   const mid = await A.page.evaluate(() => ({ hits: window.__whirlHits.length, armed: !!window._gameState.current._whirlWindup }));
-  rec.ok('...one second in the ring is still up and nothing has been hit', mid.armed && mid.hits === 0, mid);
+  await shot(A, 'ring');
+  rec.ok('...half a second in the ring is still up and nothing has been hit', mid.armed && mid.hits === 0, mid);
 
   /* ── 2. The watcher ── */
   const peer = await B.page.evaluate((id) => {
@@ -97,7 +99,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const e = S._peerWindups && S._peerWindups[id];
     return e ? { r: e.r, ms: e.until - e.t0 } : null;
   }, idA);
-  rec.ok('the other player sees the ring over the caster, same radius', !!peer && peer.r === 240 && peer.ms === 2000, peer);
+  rec.ok('the other player sees the ring over the caster, same radius', !!peer && peer.r === 240 && peer.ms === 1000, peer);
   await shot(B, 'ring-peer');
 
   /* ── 3 + 4. The strike ── */
@@ -135,6 +137,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(1500);
   const hitsAt = await A.page.evaluate(() => window.__whirlHits.slice());
   const first = hitsAt.length ? hitsAt[0] - press.at : null;
-  rec.ok('the worker\'s whirlwind hit landed ~2s after the press, not on it', first != null && first >= 1800 && first <= 3200,
+  rec.ok('the worker\'s whirlwind hit landed ~1s after the press, not on it', first != null && first >= 800 && first <= 2200,
     { firstHitMs: first, hits: hitsAt.length });
 }

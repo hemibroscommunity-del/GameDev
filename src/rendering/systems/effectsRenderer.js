@@ -2273,7 +2273,7 @@ export class EffectsRenderer {
        particles layer (over the entities, under the player, v2.3.2636); behind
        it = the telegraphs layer, under the entities, so a piece thrown behind
        a monster goes behind its body. */
-    this._hitFx = new HitMaterialFx(this.particleLayer, layers.telegraphs || this.particleLayer);
+    this._hitFx = new HitMaterialFx(this.particleLayer, layers.telegraphs || this.particleLayer, { artOf: (id) => monsterBodySprite(id) });   /* v2.3.2929: + the monster's own art, for its remnants */
     /* v2.3.2847: the white-hot bow special -- its arrow, heat, aura and sparks
        in one container on top of the projectile layer. */
     this._hotArrow = new HotArrowFx(this.projectileLayer);
@@ -5085,7 +5085,7 @@ export class EffectsRenderer {
         }
         try { drawArrowWound(gfx, sx, sy, sa.ang, _mk, _mat, _tint, _age, sa.seed); } catch (e) { /* drawing only */ }
         this._drawStuckArrow(gfx, sx, sy, sa.ang, color, _mk);
-        if (lipGfx) { try { drawArrowWoundLip(lipGfx, sx, sy, sa.ang, _mk, _mat, _tint, _age); } catch (e) { /* drawing only */ } }
+        if (lipGfx) { try { drawArrowWoundLip(lipGfx, sx, sy, sa.ang, _mk, _mat, _tint, _age, 0, sa.seed); } catch (e) { /* drawing only */ } }
       }
       if (_bakeList && _bakeList.length) {
         let ok = false;
@@ -5100,7 +5100,7 @@ export class EffectsRenderer {
         for (const a of _bakeList) {
           try { drawArrowWound(gfx, a.x, a.y, a.ang, a.k, a.mat, a.tint, a.age, a.seed); } catch (e) { /* drawing only */ }
           this._drawStuckArrow(gfx, a.x, a.y, a.ang, 0x8b6914, a.k);
-          if (lipGfx) { try { drawArrowWoundLip(lipGfx, a.x, a.y, a.ang, a.k, a.mat, a.tint, a.age); } catch (e) { /* drawing only */ } }
+          if (lipGfx) { try { drawArrowWoundLip(lipGfx, a.x, a.y, a.ang, a.k, a.mat, a.tint, a.age, 0, a.seed); } catch (e) { /* drawing only */ } }
         }
       }
       /* v2.3.2889: what the last shaft was DRAWN at, for mp-dunedepth */
