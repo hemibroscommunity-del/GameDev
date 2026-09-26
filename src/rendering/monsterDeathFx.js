@@ -268,12 +268,53 @@ function jagOffsets(n, H, rand, amp, ragged) {
   }
   return out;
 }
+/* ═══ v2.3.2928b: BONE SPLINTERS, IT DOES NOT ZIGZAG ═══
+   Owner: "On the skeleton the jagged lines look too artificial since bones
+   naturally splinter not have a cake like zig zag."  Right -- the teeth above
+   alternate by construction, which is torn flesh, not a fracture.  A bone
+   break is a run of SHARDS: each one a long slope that snaps back at its end
+   (asymmetric, not a triangle), of very different lengths and heights, with
+   stretches of clean fracture plane between them and the odd long thin sliver
+   standing proud.  No forced alternation -- neighbouring shards often lean the
+   same way, the way a green stick breaks.  (skeleton, mummy and hexer: every
+   `kind: 'bone'` material in monsterVariants.) */
+function splinterOffsets(n, H, rand, amp) {
+  const out = new Array(n).fill(0);
+  const hMax = H * amp;
+  let lean = rand() < 0.5 ? -1 : 1;
+  let i = 0;
+  while (i < n) {
+    const r = rand();
+    if (r < 0.28) {
+      /* a clean fracture plane: flat, barely a texel of grain */
+      const L = 3 + Math.floor(rand() * 6);
+      const base = (rand() - 0.5) * hMax * 0.03;
+      for (let k = 0; k < L && i < n; k++, i++) out[i] = base + (rand() - 0.5) * 0.5;
+    } else if (r < 0.4) {
+      /* a sliver: a long thin spike, one or two points */
+      const h = (rand() < 0.7 ? lean : -lean) * hMax * (0.12 + rand() * 0.12);
+      out[i++] = h * (0.55 + rand() * 0.2);
+      if (i < n) out[i++] = h;
+    } else {
+      /* a shard: a slope that snaps back -- rising or falling along the cut */
+      const L = 3 + Math.floor(rand() * 8);
+      const h = (rand() < 0.65 ? lean : -lean) * hMax * (0.025 + rand() * 0.08);
+      const up = rand() < 0.5;
+      for (let k = 0; k < L && i < n; k++, i++) {
+        const f = (k + 1) / L;
+        out[i] = h * (up ? f : 1 - f + 1 / L) + (rand() - 0.5) * 0.6;
+      }
+      if (rand() < 0.35) lean = -lean;
+    }
+  }
+  return out;
+}
 /* a jagged line from a to b (end points kept exactly), for the leg cut */
-function jagLine(a, b, H, rand, amp) {
+function jagLine(a, b, H, rand, amp, splinter) {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const n = Math.max(3, Math.round(len / Math.max(1.6, H / 28)) + 1);
   const ux = (b[0] - a[0]) / (len || 1), uy = (b[1] - a[1]) / (len || 1);
-  const off = jagOffsets(n, H, rand, amp, false);
+  const off = splinter ? splinterOffsets(n, H, rand, amp) : jagOffsets(n, H, rand, amp, false);
   const pts = [];
   for (let i = 0; i < n; i++) {
     const f = i / (n - 1);
@@ -282,7 +323,7 @@ function jagLine(a, b, H, rand, amp) {
   }
   return pts;
 }
-function cutPath(cx, cy, dx, dy, W, H, rand, calm) {
+function cutPath(cx, cy, dx, dy, W, H, rand, calm, splinter) {
   const far = W + H;
   const nx = -dy, ny = dx;
   const r = rand();
@@ -295,7 +336,7 @@ function cutPath(cx, cy, dx, dy, W, H, rand, calm) {
   const half = W / 2 * 1.35;
   const ds = Math.max(1.4, H / 34);
   const n = Math.max(12, Math.min(160, Math.round((2 * half) / ds) + 1));
-  const off = jagOffsets(n, H, rand, amp, style === 'ragged');
+  const off = splinter ? splinterOffsets(n, H, rand, amp) : jagOffsets(n, H, rand, amp, style === 'ragged');
   const pts = [[cx - dx * far, cy - dy * far]];
   for (let i = 0; i < n; i++) {
     const along = -half + (2 * half * i) / (n - 1);
@@ -443,6 +484,7 @@ function build(kind, display, m, blob, now) {
   const matKey = display._variantKey || (m && (m.arch || m.type));
   const mat = hitMaterialOf(matKey) || {};
   const matKind = mat.fx || mat.kind || 'goo';
+  const splinter = mat.kind === 'bone';   /* v2.3.2928b: bone breaks in shards (splinterOffsets) */
   const bloody = matKind === 'goblin' || matKind === 'ember';
   /* hitFxTintOf follows a slime's recolour, so a blue slime bleeds blue */
   const col = bloody ? BLOOD : (hitFxTintOf(matKey) || 0x5ca84c);
@@ -456,7 +498,7 @@ function build(kind, display, m, blob, now) {
      and the wound runs where the line crosses body */
   /* v2.3.2923: along a polyline (cutPath), not a straight line */
   const cutBy = (cx, cy, dx, dy, calm) => {
-    const cp = cutPath(cx, cy, dx, dy, W, H, rand, calm);
+    const cp = cutPath(cx, cy, dx, dy, W, H, rand, calm, splinter);
     const pts = cp.pts, BIG = (W + H) * 3;
     const p0 = pts[0], pN = pts[pts.length - 1];
     /* the normal (nx, ny) points DOWN (dx > 0 for every cut rolled here) */
@@ -493,8 +535,8 @@ function build(kind, display, m, blob, now) {
        ruler lines); the hip and the inner edge each get their own teeth, and
        the two pieces share them so they still fit */
     const outX = side > 0 ? x1 + pad : x0 - pad;
-    const hip = jagLine([mid, hipY], [outX, hipY], H, rand, 0.8);        /* mid -> outer edge */
-    const inner = jagLine([mid, hipY], [mid, y1 + pad], H, rand, 0.8);   /* hip -> ground */
+    const hip = jagLine([mid, hipY], [outX, hipY], H, rand, 0.8, splinter);        /* mid -> outer edge */
+    const inner = jagLine([mid, hipY], [mid, y1 + pad], H, rand, 0.8, splinter);   /* hip -> ground */
     const L = hip.concat([[outX, y1 + pad]], inner.slice().reverse().slice(0, -1));
     const R = side > 0
       ? [[x0 - pad, y0 - pad], [x1 + pad, y0 - pad]].concat(hip.slice().reverse(), inner.slice(1), [[x0 - pad, y1 + pad]])
