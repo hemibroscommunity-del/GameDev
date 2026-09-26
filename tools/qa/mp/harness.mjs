@@ -261,7 +261,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '' }) {
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
@@ -329,7 +329,9 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      2.6s, and mp-a2hs checks the real gap by clearing this. */
   await page.addInitScript(() => { window.__btTod = 'day'; window.__btAmbienceOff = true; window.__btCoachGapMs = 2600; });
   if (init) await page.addInitScript(init);
-  await page.goto(`http://localhost:${webPort}/${guest ? '?guest=1' : ''}`, { waitUntil: 'domcontentloaded' });
+  /* v2.3.2927: `query` -- extra URL params (e.g. 'bladesoft=0') for scenarios that compare a URL switch */
+  const _q = [guest ? 'guest=1' : '', query].filter(Boolean).join('&');
+  await page.goto(`http://localhost:${webPort}/${_q ? '?' + _q : ''}`, { waitUntil: 'domcontentloaded' });
   return { ctx, page, logs, name, seeded: !!phrase };
 }
 
@@ -771,14 +773,14 @@ export async function openWorldChat(P, { timeout = 8000 } = {}) {
   return false;
 }
 
-/* ═══ v2.3.2926: THE PLAYER CARD, BY ITS CONTROLS' IDS ═══
+/* ═══ v2.3.2927: THE PLAYER CARD, BY ITS CONTROLS' IDS ═══
  *
  * InspectPlayerPanel's controls carry a stable `data-act`: party, trade,
  * duel, friend, clan, mute, block, report, report-cancel, and
  * report-<reason> for the four reason chips, profile (the portrait, which
  * opens the Inspect card) and, on the Inspect card, profile-back (its own
  * portrait), leaderboard and codex -- its dock reuses party / trade / duel,
- * since only one of the two cards is ever on screen.  v2.3.2926 rebuilt the
+ * since only one of the two cards is ever on screen.  v2.3.2927 rebuilt the
  * card to the owner's mockup and rewrote some of its copy -- "Report to
  * moderators" is "Report", "💚 Friend" is "Friend" with the relationship as
  * a header badge, "In your party" is an "In party" tile -- which is the
@@ -1336,7 +1338,7 @@ export function buttonTexts(P) {
     .map((b) => (b.textContent || '').trim().slice(0, 40)));
 }
 
-/** v2.3.2926: every control on the open player card, by id (see clickAct):
+/** v2.3.2927: every control on the open player card, by id (see clickAct):
  *  [{ act, text, on, disabled }].  `on` is the relationship the control
  *  shows as already holding -- aria-pressed on the friend / mute / block
  *  toggles, data-state="member" on the party tile of someone already in

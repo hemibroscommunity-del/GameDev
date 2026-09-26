@@ -9,7 +9,7 @@
  * Texture and reused by all weapon sprites in the renderer.
  */
 
-import { Assets } from 'pixi.js';
+import { Assets, Texture } from 'pixi.js';
 
 /* Bump on every weapon-art change so URL-keyed browser/CDN caches
    refetch instead of serving the previous PNG. */
@@ -65,15 +65,19 @@ const SPRITE_VERSION = '2.3.2910';   // 1073: re-added black outline to all bow 
    the equip portrait together; the grip anchor is untouched, so the hilt
    stays in the fist and the extra length goes out past the tip. */
 const GREATSWORD_LEN_MUL = 1.2;
+/* v2.3.2927: `carryH` -- the world-px height a blade is drawn at in the hand
+   (entityRenderer's targetH for it), for the soft bake below.  The bare
+   greatsword icon is only ever the sheathed / other-player carry (36); the
+   per-facing sheets are the held one (48). */
 const SHEETS = {
-  sword:        { url: `/sprites/weapons/swords/Sword1-256.webp?v=${SPRITE_VERSION}`,      tex: null },
-  'sword:wood': { url: `/sprites/weapons/swords/Bamboo-256.webp?v=${SPRITE_VERSION}`,      tex: null },
-  greatsword:   { url: `/sprites/weapons/swords/Sword1-256.webp?v=${SPRITE_VERSION}`,      tex: null },
-  'greatsword-south':     { url: `/sprites/weapons/swords/greatsword-south.webp?v=${SPRITE_VERSION}`,     tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL },
-  'greatsword-southwest': { url: `/sprites/weapons/swords/greatsword-southwest.webp?v=${SPRITE_VERSION}`, tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL },
-  'greatsword-east':      { url: `/sprites/weapons/swords/greatsword-east.webp?v=${SPRITE_VERSION}`,      tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL },
-  'greatsword-northeast': { url: `/sprites/weapons/swords/greatsword-northeast.webp?v=${SPRITE_VERSION}`, tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL },
-  'greatsword-north':     { url: `/sprites/weapons/swords/greatsword-north.webp?v=${SPRITE_VERSION}`,     tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL },
+  sword:        { url: `/sprites/weapons/swords/Sword1-256.webp?v=${SPRITE_VERSION}`,      tex: null, carryH: 26 },
+  'sword:wood': { url: `/sprites/weapons/swords/Bamboo-256.webp?v=${SPRITE_VERSION}`,      tex: null, carryH: 45 },
+  greatsword:   { url: `/sprites/weapons/swords/Sword1-256.webp?v=${SPRITE_VERSION}`,      tex: null, carryH: 36 },
+  'greatsword-south':     { url: `/sprites/weapons/swords/greatsword-south.webp?v=${SPRITE_VERSION}`,     tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL, carryH: 48 },
+  'greatsword-southwest': { url: `/sprites/weapons/swords/greatsword-southwest.webp?v=${SPRITE_VERSION}`, tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL, carryH: 48 },
+  'greatsword-east':      { url: `/sprites/weapons/swords/greatsword-east.webp?v=${SPRITE_VERSION}`,      tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL, carryH: 48 },
+  'greatsword-northeast': { url: `/sprites/weapons/swords/greatsword-northeast.webp?v=${SPRITE_VERSION}`, tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL, carryH: 48 },
+  'greatsword-north':     { url: `/sprites/weapons/swords/greatsword-north.webp?v=${SPRITE_VERSION}`,     tex: null, fitH: 200, lenMul: GREATSWORD_LEN_MUL, carryH: 48 },
   bow:          { url: `/sprites/weapons/bows/Bow2.png?v=${SPRITE_VERSION}`,              tex: null },
   'bow-south':     { url: `/sprites/weapons/bows/bow-south.png?v=${SPRITE_VERSION}`,     tex: null },
   'bow-southwest': { url: `/sprites/weapons/bows/bow-southwest.png?v=${SPRITE_VERSION}`, tex: null },
@@ -86,6 +90,83 @@ const SHEETS = {
 function keyFor(type, gearBase) {
   if (gearBase && SHEETS[`${type}:${gearBase}`]) return `${type}:${gearBase}`;
   return type;
+}
+
+/* ═══ v2.3.2927: THE BLADE AT THE BODY'S RESOLUTION ═══
+ * Owner: "The character body is also slightly softer lower res art so I'm
+ * wondering if softening all the blade frames would look more natural or
+ * just sharpening the character."  Then: "Try softening blade work now."
+ *
+ * MEASURED: the body's display textures are baked at 128 texels per 256-space
+ * frame (spriteScale DISPLAY_DS = 2, stand AND jog alike), drawn at
+ * bodyScale = BODY_DIR_SCALE (0.93-1.25, ~1.06 typical) x 0.421875 -- so one
+ * body texel covers ~0.9 world px.  A held blade is drawn at
+ * carryH / sheet height: the greatsword sheets at 48 / 166.7 = 0.29 world px
+ * per texel, the 256 px sword icon at 26 / 256 = 0.10.  So the blade carried
+ * three to nine times the detail of the hand holding it, and read as a sharp
+ * cut-out pasted onto a soft figure.  (Sharpening the body instead cannot add
+ * detail its 128 px art does not have; it only rings the edges.)
+ *
+ * THE BAKE: each blade is resampled DOWN to the body's texel size and smoothly
+ * back UP to its own canvas size ('high' both ways -- the same resample the
+ * body's own anti-alias bake uses, spriteScale antialiasUpscaledCanvas).  The
+ * result has the body's level of detail but the SAME pixel dimensions, so the
+ * grip anchors (handles.json, in each sheet's own pixels), weaponFitH, the
+ * fist masks and every sizing site are untouched.  Once, behind the loading
+ * screen (the preload law: loadWeaponSprites is on the gate), ~10 small
+ * canvases.  Swords and greatswords only -- the ask was the blades.
+ *
+ * HOW SOFT, picked by looking (mp-bladesoft, idle S and E side by side at
+ * dpr 3): at the body's exact texel size (1x) the blade went out of focus and
+ * lost the dark keyline the body's own art keeps; stepping back up in blocks
+ * instead gave the tilted blade saw-teeth.  TWICE the body's detail (2x) takes
+ * the cut-out crispness off and keeps the outline and the fuller readable;
+ * 3x is barely distinguishable from the sharp art.  So BLADE_DETAIL = 2.
+ *
+ * ?bladesoft=0 turns it off (compare on the phone); ?bladesoft=<n> sets the
+ * detail instead (1 = the body's exact texel size, 3 = crisper). */
+const BLADE_DETAIL = 2;
+const BODY_TEXEL_WORLD = 2 * 0.421875 * 1.06;   /* ~0.9 world px per body display texel */
+function bladeSoftMul() {
+  try {
+    const m = /[?&]bladesoft=([0-9.]+|off|on)\b/.exec(window.location.search);
+    if (!m || m[1] === 'on') return BLADE_DETAIL;
+    if (m[1] === 'off') return 0;
+    return parseFloat(m[1]) || 0;
+  } catch (e) { return BLADE_DETAIL; }
+}
+function softBake(tex, k) {
+  const src = tex && tex.source && tex.source.resource;
+  const w = tex && tex.source ? tex.source.width : 0, h = tex && tex.source ? tex.source.height : 0;
+  if (!src || !w || !h || !(k > 0 && k < 1) || typeof document === 'undefined') return null;
+  const sm = document.createElement('canvas');
+  sm.width = Math.max(1, Math.round(w * k)); sm.height = Math.max(1, Math.round(h * k));
+  const sctx = sm.getContext('2d');
+  sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = 'high';
+  sctx.drawImage(src, 0, 0, sm.width, sm.height);
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const octx = out.getContext('2d');
+  octx.imageSmoothingEnabled = true; octx.imageSmoothingQuality = 'high';
+  octx.drawImage(sm, 0, 0, w, h);
+  const soft = Texture.from(out);
+  soft.label = 'blade-soft';
+  return soft;
+}
+function softenBlades() {
+  const mul = bladeSoftMul();
+  if (!(mul > 0)) return;
+  const cache = new Map();   /* sword and the bare greatsword share one sheet; bake per (url, k) */
+  for (const key of Object.keys(SHEETS)) {
+    const e = SHEETS[key];
+    if (!e.tex || !e.carryH || e.sharp) continue;
+    const sheetH = (e.fitH || e.tex.height) / (e.lenMul || 1);
+    const k = Math.min(1, (e.carryH / sheetH) / BODY_TEXEL_WORLD * mul);
+    const ck = e.url + '|' + k.toFixed(3);
+    let soft = cache.get(ck);
+    if (soft === undefined) { try { soft = softBake(e.tex, k); } catch (err) { soft = null; } cache.set(ck, soft); }
+    if (soft) { e.sharp = e.tex; e.tex = soft; e.softK = k; }
+  }
 }
 
 let loadPromise = null;
@@ -119,11 +200,12 @@ export function loadWeaponSprites() {
       if (SHEETS[type].tex) continue;
       for (const other of Object.keys(SHEETS)) {
         if (SHEETS[other].url === SHEETS[type].url && SHEETS[other].tex) {
-          SHEETS[type].tex = SHEETS[other].tex;
+          SHEETS[type].tex = SHEETS[other].sharp || SHEETS[other].tex;
           break;
         }
       }
     }
+    softenBlades();   /* v2.3.2927 */
   });
   return loadPromise;
 }
