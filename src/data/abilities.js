@@ -142,7 +142,7 @@ export const STAM_ABILITIES = {
        is client-supplied and a server gate on it would be forgeable. */
     needsMeleeActive: true,
     maxTargets: 16,
-    windupMs: 2000, /* v2.3.2824 (owner): a 2s ring you aim, then the strike */
+    windupMs: 1000, /* v2.3.2824 (owner): a ring you aim, then the strike.  v2.3.2928: 2s -> 1s (owner: "Reduce whirlwind cast time by 50%") */
   },
 };
 

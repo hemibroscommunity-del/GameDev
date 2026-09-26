@@ -229,7 +229,10 @@ export const STAM_ABILITIES = {
        measured from where the worker has you when the windup ends
        (_tickAbilityWindups), so walking during the ring is the whole point.
        Kill switch: `whirlWindup: false` in liveflags goes back to instant. */
-    windupMs: 2000,
+    /* v2.3.2928: 2000 -> 1000.  Owner: "Reduce whirlwind cast time by 50%."
+       The ring still shows the exact reach; it just resolves in one second.
+       Mirrored in src/data/abilities.js (mirror-audit is a strict deep-equal). */
+    windupMs: 1000,
   },
 };
 
