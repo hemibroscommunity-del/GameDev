@@ -9,7 +9,8 @@
   the map's layout.
 - **v2.3.2933: two decisions come before phase 2**, both in the World Bible:
   - whether the new world is **pixel art** to match the player (who is kept),
-    or painted (§6);
+    or painted (§6). v2.3.2934: settled by the style test,
+    [STYLE-TEST.md](STYLE-TEST.md), run in the Style Lab at `/tools/style/`;
   - whether the ground is **painted square by square or baked from
     swatches**, now that everything standing up is an object (§11, §13).
 

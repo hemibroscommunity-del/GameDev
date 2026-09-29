@@ -1,4 +1,4 @@
-# The World Bible: Brotown and its island (v2.3.2931–2933, DRAFT)
+# The World Bible: Brotown and its island (v2.3.2931–2934, DRAFT)
 
 **Status:** a draft for the owner to react to. Nothing in the game uses it
 yet. It is the *story and look* of the one seamless world the
@@ -396,6 +396,20 @@ mismatch this section exists to remove. **The style key prompt waits for
 this decision**: today's prompt asks for painted tiles, and it is rewritten
 for whichever look is chosen.
 
+**How it gets decided: a test, not an argument (v2.3.2934).**
+
+> Owner: *"Yeah I don't know what aesthetic style is best. Maybe it should
+> all be pixel art. Maybe only map should be painterly for a unique look. …
+> Maybe I'll test which aesthetic style looks best."*
+
+- Six looks are tried side by side, the owner's painted-map idea among them:
+  simple pixel art, HD pixel art, painterly, painterly snapped to pixels, flat
+  cartoon, and painted ground with pixel objects.
+- Each is shown round the real bro at game size in the **Style Lab**
+  (`/tools/style/`) and scored.
+- The plan: [STYLE-TEST.md](STYLE-TEST.md). The recommendation above stands
+  until the test says otherwise.
+
 ### One scale: the town's (measured, v2.3.2933)
 
 > Owner: *"I prefer the scale of when the character is in town, the zones
@@ -664,8 +678,8 @@ or to *everyone* lives outside the rooms and is shared.
 3. **Mail moves into the vault**, so it reaches you whichever room you are
    in.
 
-**When.** It is not needed until one room fills up, and today there are no
-live players. It is much easier before launch than after, because moving
+**When.** It is not needed until one room fills up. It is much easier
+before launch, while few people play, than after, because moving
 live characters out of a room is a migration with real players' items at
 stake. It is the largest server change on the list, larger than streaming
 the map.
@@ -777,6 +791,7 @@ there so the owner can take it.
 
 - **Pixel art or painted** (§6). It decides the style key prompt, and
   whether the bro stays as he is. Recommended: pixel art, matched to him.
+  Decided by the style test ([STYLE-TEST.md](STYLE-TEST.md), v2.3.2934).
 - **How the ground is made** (§13). Recommended: baked from swatches, with
   special places painted.
 

@@ -52,6 +52,15 @@ remnant to migrate server-side, not a mode to preserve.
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
   `public/tools/world/plan.js` wins where they differ, v2.3.2931),
+  `docs/STYLE-TEST.md` (the art-style test the owner runs in the Style Lab
+  at `public/tools/style/` — six looks round the real bro, scored; the
+  player is pixel art and every map is painted, so the look is chosen
+  there, not argued, v2.3.2934),
+  `docs/WORLD-ARCHITECTURE.md` (the long-run TARGET for the seamless,
+  many-room world: one home per piece of state, maps not zones, cells and
+  interest, a character vault per player, one market settling by mail, the
+  art pipeline, build order; ARCHITECTURE-HANDOFF still governs today's
+  code, v2.3.2934),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
