@@ -1,4 +1,4 @@
-# The World Bible: Brotown and its island (v2.3.2931–2934, DRAFT)
+# The World Bible: Brotown and its island (v2.3.2931–2936, DRAFT)
 
 **Status:** a draft for the owner to react to. Nothing in the game uses it
 yet. It is the *story and look* of the one seamless world the
@@ -18,8 +18,8 @@ The region, border and plot tables below were generated from it.
 
 1. [The premise](#1-the-premise-a-shard-rush)
 2. [The through-lines](#2-the-through-lines)
-3. [The regions](#3-the-regions)
-4. [The borders](#4-the-borders)
+3. [The Wheel: a spoke of land for every element](#3-the-wheel-a-spoke-of-land-for-every-element)
+4. [Borders and passes](#4-borders-and-passes)
 5. [Brotown](#5-brotown)
 6. [One look for everything: BroTown HD pixel art](#6-one-look-for-everything-brotown-hd-pixel-art)
 7. [Redrawing the characters](#7-redrawing-the-characters)
@@ -45,11 +45,14 @@ belong:
 And one question it raises that comes before all of them: **the player is
 pixel art and every map is painted** (§6).
 
-**v2.3.2935, the owner's third round:**
+**v2.3.2935–2936, the owner's third round:**
 
 - **The look: HD pixel art on a 1.5 px grid** (§6), with the rules every
   picture follows.
 - **The ground is made from swatches** (§13).
+- **The island is the Wheel** (§3): a spoke of land for every element, each
+  with its own levels 1–80, and the Dark and Light realms (80–100) behind
+  gates at the tips.
 
 ---
 
@@ -59,7 +62,7 @@ pixel art and every map is painted** (§6).
 
 - Every region of the island already drops its own elemental shard
   (`src/data/shards.js`: Frost, Ember, Wind, Stone, Thunder, Tidal, Mist and
-  Flora, plus the meadow's).
+  Flora; today's Starting Meadow drops one too).
 - Word got out. Prospectors came, a town grew where the trails crossed, and a
   railway was laid to haul ore out of the Great Cave.
 - That is why the town looks the way it does: a Main Street of wooden
@@ -67,14 +70,16 @@ pixel art and every map is painted** (§6).
 
 **Nobody in town knows what the shards are for. The ruins do.**
 
-- Every region's landmark hides a **keystone**: a round stone disc carved
-  with an eight-spoked wheel.
-- The wheel is a map of the island: eight spokes for eight regions around one
-  hub.
-- In the Starting Meadow, **Prospector's Circle** has eight standing stones,
-  one for each spoke.
+- At the tip of every spoke stands a **keystone gate**: a round stone gate
+  carved with an eight-spoked wheel.
+- The wheel is a map of the island: eight spokes for eight elements around
+  one hub. Since v2.3.2936 the island really is that shape (§3).
+- In the commons, **Prospector's Circle** has eight standing stones, one for
+  each spoke.
 - The hub of the wheel is where the Town Hall stands. The prospectors built
   on top of it without knowing.
+- **The gates open on the endgame**: the Dark Sanctum and the Light Summit,
+  levels 80–100 (§3).
 
 **The Convergence is a hook, not a commitment.**
 
@@ -82,8 +87,8 @@ pixel art and every map is painted** (§6).
   are woken.
 - It could become a late-game dungeon or a server-wide event. Nothing
   depends on it.
-- The map paints the keystones either way, so the story has somewhere to
-  live when it is wanted.
+- The map has the keystones either way, so the story has somewhere to live
+  when it is wanted.
 
 **Why a premise at all.** "Frost, fire, desert, cave …" is a list. A reason
 for the town to exist, and one mystery that every region shares, turns it
@@ -94,168 +99,331 @@ makes people explore.
 
 ## 2. The through-lines
 
-These are what make one map instead of eight zones stitched together. Each
-one crosses several regions, so walking anywhere you meet one of them.
+These are what make one world instead of eight zones stitched together. Each
+one crosses several spokes, so walking anywhere you meet one of them.
 
-![The whole island in the blueprint, with every square's name](world/island-plan.png)
+![The whole Wheel in the blueprint, with every land square's name](world/island-plan.png)
 
-*The blueprint the World Builder paints from, the same colours ChatGPT sees
-in each square's template:*
+*The blueprint the World Builder draws, in the colours it uses:*
 
 - **Tan:** roads.
 - **Royal blue:** the Sweetwater River.
 - **White:** the railway.
-- **Yellow:** the Mill Bridge.
-- **Cream:** empty building plots.
-- **Blobs:** each region's woods, ponds, cliffs and lava.
-- **Coloured discs:** landmarks.
+- **Yellow:** bridges.
+- **Cream:** empty building plots, and the camps.
+- **Blobs:** each spoke's woods, ponds, cliffs and lava.
+- **Coloured discs:** landmarks, and the gates at the tips.
 
-*Regenerate the picture with `node tools/world/render-plan-images.mjs`.*
+*Regenerate the pictures with `node tools/world/render-plan-images.mjs`.*
 
 | Through-line | What you see | Why it matters in play |
 |---|---|---|
-| **The Old Roads** | Four wagon roads leave the four town gates. Each runs to the heart of the region on its compass point and forks once, turning left, to the diagonal region (North Road → Flame Fields, fork: Frost Trail; East Road → Stone Hollows, fork: Dune Trail; South Road → Water Caves, fork: Foundry Road; West Road → Verdant Wilds, fork: Bog Trail). A waystation (a roadhouse plot) sits at each fork. | Every region is one road and at most one fork from town. New players can never be lost: follow a road back. |
-| **The Sweetwater River** | Born as meltwater under the frost glacier. It drops over **Sweetwater Falls** where the frost plateau meets the Wilds, and passes the west gate, where the **Mill Bridge** carries the West Road over it beside the **Old Mill**. On its lower run it divides the Poison Forest from the beaches, then spreads into a delta on the south coast. | A second way home: downstream is always town or the sea. It is also the natural spot for fishing. |
-| **The mine railway** | From the **Rail Depot** outside the east gate to the **Great Cave**, with a branch to the **Foundry Dome**. An **abandoned spur** heads for the Buried City and was never finished: its rails are rusted and half-buried in sand. Telegraph poles follow the line, and they lead back to the Post Office & Telegraph in town. | It explains the east side of the map, which is industry, and makes the Hollows and the Foundry feel connected. |
-| **The keystones** | The same eight-spoked wheel in every landmark: frozen into the Ice Spires, set in the Buried City's brow, caged in copper at the Foundry Dome, sinking in the Toadstool Ring's mud. | One mystery across all eight regions. |
-| **Danger rises outward** | Every region has three bands. The **fringe** is where the frontier reached (a burnt-out fence line, a blighted farm, a quarry). The **heart** is the region itself. The **rim** toward the sea is the wildest part (glacier, volcano flanks, mesas, sea cliffs). | Players read how dangerous a place is from how it looks. Level ranges can follow the bands later. |
-| **Designed borders** | Where two regions meet there is a named in-between landscape: steam fields between frost and fire, ash dunes between fire and sand, alpine meadows between frost and jungle (§4). | No hard line where one painting stops and another starts, which was the worst look of the old zone joins. It also gives monster art a buffer (§9). |
+| **The Wheel itself** | Eight spokes round one hub, exactly like the eight-spoked wheel carved on every keystone (§1). | You always know where you are: which spoke is your element, and how far out is how dangerous. |
+| **The roads** | A road runs down every spoke from town to the gate at its tip. The four compass roads leave the four town gates; the four diagonal roads fork off them in the commons, turning left (North Road → Frost Trail, East Road → Dune Trail, South Road → Foundry Road, West Road → Bog Trail). A **camp** stands by the road at levels 20, 40, 60 and 80, and the **passes** cross between spokes at 20 and 60. | Every spoke is one road from town. New players can never be lost: follow the road back. |
+| **The Sweetwater River** | Born as meltwater under the glacier on Frost Ridge (level ~50), it drops over **Sweetwater Falls** where the glacier ends and runs down the spoke. It passes the town's west gate, where the **Mill Bridge** carries the West Road over it beside the **Old Mill**, crosses the Bog Trail under the **Snake Bridge**, and spreads into a delta in the brackish lagoon between the Poison Forest and the Water Caves. | A second way home: downstream is always town. It is also the natural spot for fishing. |
+| **The mine railway** | From the **Rail Depot** outside the east gate down Stone Hollows to the **Great Cave**. At **Railhead Junction** (level 20) two branches leave through the passes: to the **Foundry Dome** through Ore Cut, and an **abandoned spur** through Redrock Gap toward the Buried City that was never finished, its rails rusted and half-buried in sand. Telegraph poles follow the line back to the Post Office & Telegraph in town. | It explains the industrial east, and ties the Hollows, the Foundry and the Dunes together. |
+| **The keystones** | The same eight-spoked wheel on Prospector's Circle's slab in the commons, and on the **keystone gate** at the tip of every spoke. | One mystery across all eight spokes, and it ends at the gates to the endgame. |
+| **Levels by distance** | Four stages per spoke, each a new look: the frontier the prospectors reached (1–20), the element's heartland (21–40), its wilds (41–60) and its extreme (61–80). | Players read how dangerous a place is from how it looks, and from how far they are from town. |
+| **Designed borders** | Where two spokes meet, at their bases and on the passes, there is a named in-between landscape: steam fields between frost and fire, ash dunes between fire and sand, alpine meadows between frost and jungle (§4). | No hard line where one look stops and another starts, which was the worst look of the old zone joins. And the passes give two-element monsters a home. |
 | **One sun, one scale, one style** | Daylight from the upper left everywhere, a person the same size everywhere, one style key for every picture (§6). | Consistency, which is the thing the owner asked for. |
 
 ---
 
-## 3. The regions
+## 3. The Wheel: a spoke of land for every element
 
-The eight themed zones keep the compass positions they have on the World
-View painting, with the town in the middle and the Starting Meadow round it.
+> Owner, 2026-09-29: *"I want each 8 regions to have its own monster tiers
+> though (im thinking 1-80 with a zone sized space separating each 5 levels)
+> so The game is all about elements. Each monster should have an elemental
+> type … except for light and dark which are endgame elements (im thinking
+> lvl 80-100)."* Then, choosing: *"1-80 plus dark and light."*
 
-**The Wind Dunes will be painted in the same top-down view as everywhere
+![The Wheel: eight element spokes round Brotown, their levels, passes and gates](world/wheel-plan.png)
+
+**The shape (v2.3.2936):**
+
+- **The hub is Brotown and its commons.** It is safe: no monsters, and
+  everyone meets here.
+- **Eight spokes run out from it, one per element**, each on the compass
+  point its zone has on the World View painting.
+- **Every spoke is its own ladder, levels 1 to 80.** One **tier** is one
+  zone of walking (1,024 game px, about a phone screen tall) and five
+  levels, so a spoke is 16 tiers long from the commons to its tip. Every
+  spoke is three zones wide.
+- **Four stages per spoke**, one per 20 levels. The ground changes look with
+  each stage, and each stage ends at a **camp**, a waystation for resting
+  and fast travel, at level 20, 40, 60 and 80.
+- **Between the spokes is sea**, which the code draws. A round island this
+  size would be about 1,000 zones, most of it empty high-level land.
+- **Passes join neighbouring spokes** across the sea at levels 20 and 60,
+  level for level. Their land is the two elements' border landscape (§4):
+  the home for monsters of both elements, and the natural place for fusion.
+- **A keystone gate stands at every tip** and opens on an endgame realm,
+  levels 80 to 100: the Dark Sanctum from the four compass-point spokes,
+  the Light Summit from the four diagonals (below).
+
+**The numbers:**
+
+- About **490 zones of land**, 3.6 times the round island it replaces.
+- From the Town Hall to a gate is about 19 zones: **about two minutes at a
+  run**. A tier takes about 7 seconds to cross.
+- **128 monster tiers** (8 elements × 16), but not 128 drawings. For
+  example: four families per element, one per stage, with the tiers in
+  between as colour, size and gear variants of the same drawing.
+
+**The neutral meadow is gone.** Every monster has an element, so the
+Starting Meadow became the safe commons, and every spoke's level 1 starts
+right outside it. Mayor Bro's first quest could have a new player pick their
+first element.
+
+**Where the level lives.** The blueprint stores every cell's tier, so "how
+dangerous is it here?" is read from where you stand, like the spoke you are
+on ([WORLD-ARCHITECTURE.md §2](WORLD-ARCHITECTURE.md#2-the-world-maps-not-zones)).
+The World Builder's **Levels** view shows it.
+
+**Everything is made in daylight.** The Foundry was painted at night and the
+Hollows inside a cave. In one seamless map a hard day/night line at a border
+would be the worst seam of all. A spoke's mood comes from its materials
+instead (black iron, glowing crystal), and the game can still darken a
+place as you walk in.
+
+**The Wind Dunes will be made in the same top-down view as everywhere
 else.** Its old painting's side-on perspective was an accident. The style
-bible now forbids perspective outright, and the mesas are described "seen
-from above like everything else".
+bible forbids perspective outright, and the mesas are described "seen from
+above like everything else".
 
-**Every region is painted in daylight.** The Foundry was painted at night and
-the Hollows inside a cave. In one seamless map a hard day/night line at a
-border would be the worst seam of all. A region's mood comes from its
-materials instead (black iron, glowing crystal), and the game can still
-darken a region as you walk in.
+### Brotown Commons (the hub)
 
-### Starting Meadow (the ring round town)
+*safe: no monsters*
 
-*levels 1–10 today · drops the Verdant Shard*
-
-- **Fringe — the outskirts.** Neat fenced fields of crops and hay just outside town, haystacks, a scarecrow, split-rail fences and cart tracks through short green grass.
-- **Heart — the rolling meadow.** Rolling green meadow with wildflowers (white, yellow and purple), lone oak trees and clumps of bushes.
-- **Rim — the wild edge.** Taller, wilder meadow grass with thickets, brambles, fallen logs and mossy boulders.
-- **Landmark — Prospector's Circle.** A ring of eight weathered standing stones on a grassy knoll, around a round, flat stone slab carved with an eight-spoked wheel.
+- **The commons.** Neat fenced fields of crops and hay, a few orchard trees,
+  split-rail fences, haystacks and cart tracks through short green grass.
+  - Ground: short green grass with a few small wildflowers.
+- **Landmark: Prospector's Circle.** A ring of eight weathered standing
+  stones on a grassy knoll, around a round, flat stone slab carved with an
+  eight-spoked wheel: one stone for each spoke.
+- **The Rail Depot, the Old Mill and the Arena** stand here (§5).
 
 ### Frost Ridge (north-west)
 
-*levels 8–25 today · drops the Frost Shard · reached by the Frost Trail*
+*Frost · reached by the Frost Trail · its gate opens on the Light Summit*
 
-- **Fringe — the thaw line.** Patchy snow melting over wet brown grass, bare birches, trickling meltwater and an abandoned trapper's sled.
-- **Heart — the snowbound taiga.** Deep snow with wind-carved drifts, boot and hoof tracks, and snow-laden pines.
-- **Rim — the glacier.** A blue-white glacier of cracked ice and wind-scoured snow crust, split by deep blue crevasses.
-- **Landmark — The Ice Spires.** A cluster of tall, jagged, glowing blue ice crystal spires around a round stone slab carved with an eight-spoked wheel, frozen into the ice.
-- **Where the meadow meets it:** the meadow grass stiffens with frost and the first snow lies in the hollows.
+- **Levels 1–20: the thaw line.** Patchy snow melting over wet brown grass, bare birches, trickling meltwater and an abandoned trapper's sled.
+  - Ground: patchy snow melting over wet brown grass and mud.
+  - Camp at level 20: **Trapper's Rest**, a log cabin with furs drying on racks and a woodpile by the door.
+- **Levels 21–40: the snowbound taiga.** Deep snow with wind-carved drifts, boot and hoof tracks, and snow-laden pines.
+  - Ground: deep, soft snow with wind-carved drifts and a few boot tracks.
+  - Camp at level 40: **the Snowshoe Lodge**, a snowed-in hunting lodge with a smoking chimney and snowshoes by the door.
+- **Levels 41–60: the glacier.** A blue-white glacier of cracked ice and wind-scoured snow crust, split by deep blue crevasses.
+  - Ground: blue-white glacier ice with fine cracks under a crust of wind-scoured snow.
+  - Camp at level 60: **Crevasse Camp**, an expedition camp of canvas tents, sledges and ice picks roped together on the ice.
+- **Levels 61–80: the frozen crown.** A high white plateau of rime ice and frozen spires glittering under a hard blue sky.
+  - Ground: hard rime ice and packed snow glittering with frost crystals.
+  - Camp at level 80: **the Last Fire**, a squat stone hut with a lantern always burning, the last shelter before the Ice Spires.
+- **The gate: the Ice Spires.** A cluster of tall, jagged, glowing blue ice crystal spires around a round stone gate carved with an eight-spoked wheel, frozen into the ice. It opens on the Light Summit.
+- **Where the commons meets it:** the commons grass stiffens with frost and the first snow lies in the hollows.
 - **The Sweetwater here:** a fast, icy meltwater river with shelves of ice along its banks.
 
 ### Flame Fields (north)
 
-*levels 55–80 today · drops the Ember Shard · reached by the North Road*
+*Flame · reached by the North Road · its gate opens on the Dark Sanctum*
 
-- **Fringe — the burn line.** Scorched yellow grass giving way to grey ash, charred fence posts and blackened tree stumps, thin smoke rising from smouldering patches.
-- **Heart — the ash plains.** Black volcanic ash and cracked basalt ground with glowing embers in the cracks, sulphur-yellow vents puffing steam, and small rivers of lava.
-- **Rim — the volcano flanks.** Steep black basalt slopes and cooled lava flows, bright lava running in channels, heat shimmer and drifting ash.
-- **Landmark — The Heart of the Volcano.** The foot of a great volcano: a steep black cone with glowing lava running down its sides and smoke rising from vents, and at its base a sealed round stone gate carved with an eight-spoked wheel.
-- **Where the meadow meets it:** the meadow grass browns and scorches, with drifts of grey ash.
+- **Levels 1–20: the burn line.** Scorched yellow grass giving way to grey ash, charred fence posts and blackened tree stumps, thin smoke rising from smouldering patches.
+  - Ground: scorched yellow grass with patches of grey ash.
+  - Camp at level 20: **Firewatch Post**, a wooden fire lookout tower with water barrels and a hand bell.
+- **Levels 21–40: the ash plains.** Black volcanic ash and cracked basalt ground with glowing embers in the cracks, and sulphur-yellow vents puffing steam.
+  - Ground: black volcanic ash over cracked basalt, with a few faint glowing embers.
+  - Camp at level 40: **Cinder Camp**, soot-stained tents behind a windbreak of stacked basalt.
+- **Levels 41–60: the lava fields.** Cracked black basalt crossed by channels of bright lava, with sulphur vents and heat shimmer.
+  - Ground: cracked black basalt with thin glowing orange seams.
+  - Camp at level 60: **Sulphur Springs**, a wooden bathhouse over a steaming yellow sulphur spring.
+- **Levels 61–80: the volcano flanks.** Steep black basalt slopes and cooled lava flows, bright lava running in channels, drifting ash.
+  - Ground: rough black cooled lava with drifts of grey ash.
+  - Camp at level 80: **the Obsidian Stair**, a camp cut into glassy black obsidian at the foot of the last climb.
+- **The gate: the Heart of the Volcano.** The foot of a great volcano: a steep black cone with glowing lava running down its sides and smoke rising from vents, and at its base a sealed round stone gate carved with an eight-spoked wheel. It opens on the Dark Sanctum.
+- **Where the commons meets it:** the commons grass browns and scorches, with drifts of grey ash.
 
 ### Wind Dunes (north-east)
 
-*levels 38–58 today · drops the Wind Shard · reached by the Dune Trail*
+*Wind · reached by the Dune Trail · its gate opens on the Light Summit*
 
-- **Fringe — the sage flats.** Dry sage scrub and tough grass on cracked earth, bleached cattle skulls, tumbleweeds and a broken wagon wheel.
-- **Heart — the dunes.** Golden sand dunes with wind ripples, red hoodoo rock stacks, cacti and a half-buried wagon wreck.
-- **Rim — the red mesas.** Flat-topped red sandstone mesas seen from above like everything else: sunlit tops, layered sides in shadow, sand drifting between them.
-- **Landmark — The Buried City.** Half-buried sandstone ruins: broken columns and a giant carved stone face, with a round stone disc carved with an eight-spoked wheel set in its brow.
-- **Where the meadow meets it:** the meadow grass dries to straw and sand blows across it.
+- **Levels 1–20: the sage flats.** Dry sage scrub and tough grass on cracked earth, bleached cattle skulls, tumbleweeds and a broken wagon wheel.
+  - Ground: cracked dry earth with tufts of sage and tough grass.
+  - Camp at level 20: **Tumbleweed Station**, a stagecoach relay station with a wooden water tower and a corral.
+- **Levels 21–40: the dunes.** Golden sand dunes with wind ripples, red hoodoo rock stacks, cacti and a half-buried wagon wreck.
+  - Ground: golden sand with fine wind ripples.
+  - Camp at level 40: **Oasis Camp**, striped tents round a small palm-shaded oasis pool.
+- **Levels 41–60: the red mesas.** Flat-topped red sandstone mesas seen from above like everything else: sunlit tops, layered sides in shadow, sand drifting between them.
+  - Ground: red sandstone rock with drifts of red sand.
+  - Camp at level 60: **Mesa Top**, a camp on a mesa top with a rope lift and a wind vane.
+- **Levels 61–80: the storm heights.** Wind-scoured bare rock high above the desert, sand streaming across it, and arches carved by the wind.
+  - Ground: wind-polished pale rock streaked with blown sand.
+  - Camp at level 80: **Windbreak Keep**, a squat stone watchtower with ragged banners streaming in the wind.
+- **The Buried City** (levels 41–45): half-buried sandstone ruins: broken columns, toppled statues and a giant carved stone face half sunk in the sand.
+- **The gate: the Sky Arch.** A great natural stone arch on the highest rock, the wind howling through it, and beneath it a round stone gate carved with an eight-spoked wheel. It opens on the Light Summit.
+- **Where the commons meets it:** the commons grass dries to straw and sand blows across it.
 
 ### Stone Hollows (east)
 
-*levels 38–58 today · drops the Stone Shard · reached by the East Road*
+*Stone · reached by the East Road · its gate opens on the Dark Sanctum*
 
-- **Fringe — the quarry.** Stepped quarry terraces of cut grey stone, rubble heaps, abandoned mine carts and scattered picks and shovels.
-- **Heart — the badlands.** Grey stone badlands of cracked flagstone ground, loose rubble and pale moss, with clusters of glowing blue and violet crystals.
-- **Rim — the granite walls.** Towering grey granite walls and narrow canyons dropping into shadow, with crystal veins glowing in the rock.
-- **Landmark — The Great Cave.** The mouth of a huge cave in a grey rock mountainside, framed by glowing crystals, with the mine railway and the road running into it past a round stone disc carved with an eight-spoked wheel.
-- **Where the meadow meets it:** the meadow thins over stony ground and grey boulders.
+- **Levels 1–20: the quarry.** Stepped quarry terraces of cut grey stone, rubble heaps, abandoned mine carts and scattered picks and shovels.
+  - Ground: packed grey gravel and stone dust with chips of cut stone.
+  - Camp at level 20: **Railhead Junction**, the mine railway's junction: a wooden water tower, a coal bunker and a signal box.
+- **Levels 21–40: the badlands.** Grey stone badlands of cracked flagstone ground, loose rubble and pale moss, with clusters of glowing blue and violet crystals.
+  - Ground: cracked grey flagstone rock with loose rubble and pale moss.
+  - Camp at level 40: **Crystal Camp**, a prospectors' camp of tents and sluice boxes among crystal outcrops.
+- **Levels 41–60: the granite canyons.** Towering grey granite walls and narrow canyons dropping into shadow, with crystal veins glowing in the rock.
+  - Ground: smooth grey granite with thin glowing crystal veins.
+  - Camp at level 60: **Canyon Bottom**, a camp at the bottom of a canyon, strung with rope bridges.
+- **Levels 61–80: the deep roots.** Dark stone galleries of the mountain's roots, with giant crystal pillars and still, dark pools.
+  - Ground: dark slate-grey cave stone, smooth and cold.
+  - Camp at level 80: **the Deep Lamp**, a miners' lamp-house with a cage lift and a rack of lanterns.
+- **The Great Cave** (levels 26–30): the mouth of a huge cave in a grey rock mountainside, framed by glowing crystals, with the mine railway running into it.
+- **The gate: the Titan's Door.** A colossal door carved into the mountainside at the end of the deepest canyon, sealed by a round stone gate carved with an eight-spoked wheel. It opens on the Dark Sanctum.
+- **Where the commons meets it:** the commons thins over stony ground and grey boulders.
 
 ### Electric Foundry (south-east)
 
-*levels 55–80 today · drops the Thunder Shard · reached by the Foundry Road*
+*Storm · reached by the Foundry Road · its gate opens on the Light Summit*
 
-- **Fringe — the smelter yards.** Trampled dirt yards scattered with slag heaps, coal piles and iron scrap.
-- **Heart — the foundry works.** Dark slate and iron floor plates joined by brass seams, thick iron pipes along the ground and crackling blue electric light in the cracks.
-- **Rim — the foundry docks.** Riveted iron docks and piers at the water's edge, with mooring chains, bollards and cargo crates.
-- **Landmark — The Foundry Dome.** A great iron dome with glowing blue windows, ringed by crackling electric pylons, with a round stone disc carved with an eight-spoked wheel caged in copper coils before its doors.
-- **Where the meadow meets it:** the meadow is trampled to dirt, with coal dust and scattered scrap.
+- **Levels 1–20: the smelter yards.** Trampled dirt yards scattered with slag heaps, coal piles and iron scrap.
+  - Ground: trampled dark dirt with coal dust and flecks of slag.
+  - Camp at level 20: **Coaling Station**, a coaling station with a crane over a heap of coal.
+- **Levels 21–40: the foundry works.** Dark slate and iron floor plates joined by brass seams, thick iron pipes along the ground and crackling blue electric light in the cracks.
+  - Ground: dark iron floor plates joined by brass seams.
+  - Camp at level 40: **Shift House**, a brick workers' canteen with a steam whistle on the roof.
+- **Levels 41–60: the coil fields.** Fields of copper coils and lightning rods on scorched iron ground, arcs of blue electricity jumping between them.
+  - Ground: scorched iron plating and cracked slate threaded with copper wire.
+  - Camp at level 60: **Relay Nine**, a telegraph relay hut with a humming antenna mast.
+- **Levels 61–80: the storm plateau.** A high plateau of black iron under endless lightning, with twisted metal towers.
+  - Ground: black iron plate spattered with fused glass where lightning struck.
+  - Camp at level 80: **the Grounding Post**, a lightning-proof bunker under a tall copper rod.
+- **The Foundry Dome** (levels 26–30): a great iron dome with glowing blue windows, ringed by crackling electric pylons.
+- **The gate: the Lightning Gate.** A ring of iron pylons crackling with blue lightning round a round stone gate carved with an eight-spoked wheel, caged in copper coils. It opens on the Light Summit.
+- **Where the commons meets it:** the commons is trampled to dirt, with coal dust and scattered scrap.
 
 ### Water Caves (south)
 
-*levels 8–25 today · drops the Tidal Shard · reached by the South Road*
+*Water · reached by the South Road · its gate opens on the Dark Sanctum*
 
-- **Fringe — the dune grass.** Low sandy dunes held together by dune grass, driftwood, fishing nets drying on poles and a beached rowing boat.
-- **Heart — the lagoons.** Pale sand bars and dark mossy rocks between shallow lagoons, with the wreck of a small ship lying on its side.
-- **Rim — the harbour cliffs.** Dark mossy sea cliffs with glowing teal caves at their foot and a wooden landing jetty.
-- **Landmark — The Drowned Keystone.** A rocky headland pierced by sea caves glowing teal from inside, and in the shallows before it a round stone disc carved with an eight-spoked wheel, half under the water.
-- **Where the meadow meets it:** the meadow grass turns to sandy dune grass.
+- **Levels 1–20: the dune grass.** Low sandy dunes held together by dune grass, driftwood, fishing nets drying on poles and a beached rowing boat.
+  - Ground: pale sand with tufts of dune grass.
+  - Camp at level 20: **Netmender's Wharf**, a fishing shack on stilts with nets drying on poles.
+- **Levels 21–40: the lagoons.** Pale sand bars and dark mossy rocks between shallow lagoons, with the wreck of a small ship lying on its side.
+  - Ground: wet pale sand with small tide pools.
+  - Camp at level 40: **Wreck Cove**, a camp built from the planks of a wrecked ship.
+- **Levels 41–60: the sea caves.** Dark mossy sea cliffs and rock shelves with glowing teal caves at their foot.
+  - Ground: dark wet rock with barnacles and faintly glowing teal algae.
+  - Camp at level 60: **Lighthouse Point**, a small striped lighthouse on a rock.
+- **Levels 61–80: the drowned reef.** A shallow reef of coral and giant shells, half under the water.
+  - Ground: pale coral rubble and wet sand.
+  - Camp at level 80: **Coral Watch**, a hut of driftwood and giant shells on the reef.
+- **The gate: the Drowned Keystone.** A rocky headland pierced by sea caves glowing teal from inside, and in the shallows before it a round stone gate carved with an eight-spoked wheel, half under the water. It opens on the Dark Sanctum.
+- **Where the commons meets it:** the commons grass turns to sandy dune grass.
 - **The Sweetwater here:** a wide, slow river mouth splitting into sandy channels as it meets the sea.
 
 ### Poison Forest (south-west)
 
-*levels 22–40 today · drops the Mist Shard · reached by the Bog Trail*
+*Venom · reached by the Bog Trail · its gate opens on the Light Summit*
 
-- **Fringe — the blighted farm.** A blighted field of withered crops and sickly yellow grass, a toppled scarecrow and a broken snake-oil wagon spilling green bottles.
-- **Heart — the slime woods.** Murky moss and bog ground with low drifting mist, among twisted dead trees dripping green slime and giant purple and yellow toadstools.
-- **Rim — the mangrove marsh.** A mangrove marsh of tangled roots over dark water and green scum, hung with grey moss.
-- **Landmark — The Toadstool Ring.** A ring of giant purple toadstools around a glowing poison pool, with a round stone disc carved with an eight-spoked wheel sinking into the mud at its centre.
-- **Where the meadow meets it:** the meadow grass yellows and sickens, with the first mushrooms and a sour green haze.
-- **The Sweetwater here:** a slow, murky green-brown river edged with reeds and slime.
+- **Levels 1–20: the blighted farm.** A blighted field of withered crops and sickly yellow grass, a toppled scarecrow and a broken snake-oil wagon spilling green bottles.
+  - Ground: sickly yellow grass and withered crop rows on grey soil.
+  - Camp at level 20: **Snake-Oil Stop**, a travelling quack doctor's painted wagon and awning.
+- **Levels 21–40: the slime woods.** Murky moss and bog ground among twisted dead trees dripping green slime and giant purple and yellow toadstools.
+  - Ground: murky green moss over black bog mud.
+  - Camp at level 40: **the Stilt House**, a house on tall stilts above the bog, with a ladder.
+- **Levels 41–60: the mangrove marsh.** A mangrove marsh of tangled roots over dark water and green scum, hung with grey moss.
+  - Ground: dark mud laced with tangled roots and green scum.
+  - Camp at level 60: **Gator Landing**, a plank landing over the marsh with a flat-bottomed boat tied up.
+- **Levels 61–80: the spore depths.** A deep fungal forest floor carpeted in glowing spores, with toadstools taller than trees.
+  - Ground: a spongy purple fungal mat dusted with glowing spores.
+  - Camp at level 80: **the Mask Hut**, a hut hung with gas masks and bundles of drying herbs.
+- **The gate: the Toadstool Ring.** A ring of giant purple toadstools round a glowing poison pool, with a round stone gate carved with an eight-spoked wheel sinking into the mud at its centre. It opens on the Light Summit.
+- **Where the commons meets it:** the commons grass yellows and sickens, with the first mushrooms and a sour green haze.
+- **The Sweetwater here:** a slow, murky green-brown river edged with reeds and slime, spreading into a delta of muddy channels.
 
 ### Verdant Wilds (west)
 
-*levels 22–40 today · drops the Flora Shard · reached by the West Road*
+*Flora · reached by the West Road · its gate opens on the Dark Sanctum*
 
-- **Fringe — the overgrown orchards.** An old orchard of fruit trees gone wild, a tumbledown stone wall, tall grass and the first giant flowers.
-- **Heart — the vine jungle.** Lush jungle floor of ferns and giant colourful flowers (red, purple, teal and yellow) under giant mossy trees hung with vines.
-- **Rim — the waterfall cliffs.** Mossy cliff terraces with small waterfalls tumbling between ferns into jade pools.
-- **Landmark — The Vine Arch.** A great archway of living vines hung with giant flowers, framing a round stone disc carved with an eight-spoked wheel wrapped in roots.
-- **Where the meadow meets it:** the meadow grass grows lush and tall, with giant flowers and the first vines.
+- **Levels 1–20: the overgrown orchards.** An old orchard of fruit trees gone wild, a tumbledown stone wall, tall grass and the first giant flowers.
+  - Ground: tall green grass with fallen leaves and small wildflowers.
+  - Camp at level 20: **the Orchard House**, an old farmhouse turned travellers' inn, with cider barrels on the porch.
+- **Levels 21–40: the vine jungle.** Lush jungle floor of ferns and giant colourful flowers (red, purple, teal and yellow) under giant mossy trees hung with vines.
+  - Ground: dark green jungle floor of ferns and moss with fallen petals.
+  - Camp at level 40: **Vine Bridge Camp**, platforms and rope bridges slung between giant tree trunks.
+- **Levels 41–60: the waterfall cliffs.** Mossy cliff terraces with small waterfalls tumbling between ferns into jade pools.
+  - Ground: wet mossy stone and fern-covered earth.
+  - Camp at level 60: **Mistfall Terrace**, a terraced camp beside a waterfall, with a water wheel.
+- **Levels 61–80: the elder grove.** A primeval grove of colossal ancient trees with roots like walls and glowing flowers in the gloom.
+  - Ground: deep moss and root-laced earth scattered with glowing petals.
+  - Camp at level 80: **the Rootwarden's Hollow**, a round-doored hut built inside a hollow root.
+- **The gate: the Vine Arch.** A great archway of living vines hung with giant flowers, framing a round stone gate carved with an eight-spoked wheel wrapped in roots. It opens on the Dark Sanctum.
+- **Where the commons meets it:** the commons grass grows lush and tall, with giant flowers and the first vines.
 - **The Sweetwater here:** a clear, fast river over mossy stones, edged with ferns and giant flowers.
 
+### The realms (levels 80–100)
+
+The endgame belongs to the two endgame elements, Dark and Light
+(`src/data/elements.js`). Each realm is a map of its own behind four of the
+keystone gates, so neither takes room on the island. Their ids and names are
+today's endgame zones (`src/data/zones.js`).
+
+- **The Dark Sanctum** (Dark): a realm of endless dusk where every element
+  lives on corrupted: black frost, cold violet fire, still poisoned water,
+  dead stone that whispers.
+  - Its gates: the Heart of the Volcano, the Titan's Door, the Drowned
+    Keystone and the Vine Arch.
+- **The Light Summit** (Light): a realm of blinding dawn above the clouds
+  where every element is found purified: singing ice, white flame, water
+  like glass, stone that glows.
+  - Its gates: the Ice Spires, the Sky Arch, the Lightning Gate and the
+    Toadstool Ring.
+
+**Each realm has eight corners, one per element**, so the element a player
+chose still matters at the top. A gate opens onto its own element's corner:
+the gate from the Flame Fields onto the Dark Sanctum's flame corner. The
+other four corners are reached from inside. Designing the realms is later
+work: the island only needs their gates.
+
+**Which realm each gate opens on is easy to change** (`realm` on each spoke
+in `plan.js`). Dark on the compass points and Light on the diagonals is only
+the first arrangement.
 
 ---
 
-## 4. The borders
+## 4. Borders and passes
 
-A square that straddles two regions gets the line below in its prompt, so
-the change of landscape is designed rather than left to chance. Where the
-meadow meets a region, that region's "where the meadow meets it" line (§3) is
+Neighbouring spokes meet in two kinds of place, and both get the same
+designed in-between landscape:
+
+- **At their bases**, where the spokes leave the commons side by side
+  (levels 1–10).
+- **On the passes** that join them across the sea: a **neck of land at
+  level 20**, about two zones across, where the spokes are close; and a
+  **long causeway at level 60**, about eight zones across open sea.
+
+A square that straddles two spokes gets the landscape line below in its
+prompt, so the change is designed rather than left to chance. Where the
+commons meets a spoke, the spoke's "where the commons meets it" line (§3) is
 used instead.
 
-| Between | and | The land in between |
-|---|---|---|
-| Flame Fields | Frost Ridge | Steam fields: snow melting into hot springs and wet black rock, with geysers and drifting steam |
-| Flame Fields | Wind Dunes | Ash dunes: grey volcanic ash blowing over golden sand, and charred cacti |
-| Stone Hollows | Wind Dunes | The sand gives way to stone: red sandstone breaking up into grey granite boulders |
-| Stone Hollows | Electric Foundry | The mine works: spoil heaps, ore piles, abandoned mine carts and the first iron pipes |
-| Electric Foundry | Water Caves | The foundry meets the shore: slag running down to the sand, rusted chains and cargo crates |
-| Poison Forest | Water Caves | Brackish marsh: lagoons gone murky, mangrove roots and sickly dune grass |
-| Poison Forest | Verdant Wilds | The rot line: the jungle's giant flowers wilting grey-green and its vines turning into slimy dead branches |
-| Frost Ridge | Verdant Wilds | Alpine meadows: snowmelt streams through short green grass and alpine flowers, with the first pines |
+**The passes are where two elements meet**, level for level on both sides:
+the home for monsters of both elements, and the natural place for fusion.
+There are sixteen, each named:
 
-Only neighbouring regions have a border line. The eight spokes form a ring,
-so there are exactly eight borders.
+| Neighbours | The land between | Passes: level 20 · level 60 |
+|---|---|---|
+| Flame Fields and Wind Dunes | Ash dunes: grey volcanic ash blowing over golden sand, and charred cacti | Cinder Crossing · the Ashen Reach |
+| Wind Dunes and Stone Hollows | The sand gives way to stone: red sandstone breaking up into grey granite boulders | Redrock Gap · the Sandstone Stair |
+| Stone Hollows and Electric Foundry | The mine works: spoil heaps, ore piles, abandoned mine carts and the first iron pipes | Ore Cut · the Slag Causeway |
+| Electric Foundry and Water Caves | The foundry meets the shore: slag running down to the sand, rusted chains and cargo crates | Chain Ford · the Iron Pier |
+| Water Caves and Poison Forest | Brackish marsh: lagoons gone murky, mangrove roots and sickly dune grass | Brackwater Crossing · the Rotting Causeway |
+| Poison Forest and Verdant Wilds | The rot line: the jungle's giant flowers wilting grey-green and its vines turning into slimy dead branches | Wilt Gap · the Blight Bridge |
+| Verdant Wilds and Frost Ridge | Alpine meadows: snowmelt streams through short green grass and alpine flowers, with the first pines | Meltwater Gap · the High Meadow Pass |
+| Frost Ridge and Flame Fields | Steam fields: snow melting into hot springs and wet black rock, with geysers and drifting steam | Geyser Gap · the Steam Stair |
+
+Only neighbours meet, so there are exactly eight borders.
 
 ---
 
@@ -296,48 +464,52 @@ them.** This is the one structural decision here, for three reasons:
 The same rule covers anything tall you walk under or behind: town gates,
 the mill wheel, pylons and arches. These are sprites, not ground paint.
 
-### Sizes (art px; × 1.3 for game px)
+### Sizes (art px; × 1.5 for game px)
+
+v2.3.2936: one art px is now one pixel of the HD pixel art (§6), 1.5 game
+px. Every number was scaled from the old 1.3, so the town keeps its size in
+the game.
 
 | Part | Size |
 |---|---|
-| Main Street | 144 wide (Market Row 120) |
-| Boardwalk | 26 deep |
-| Building plot | 230 × 230 |
-| Town square | 500 × 500, with the Town Hall plot 240 × 240 in its middle |
-| Gate to gate | 2,000 = 2,600 game px, about **17 s** to walk; about **9 s** from the square to any gate |
-| The whole town | squares L12–N14. **M13, the middle square, holds the whole town square.** |
+| Main Street | 124 wide (Market Row 104) |
+| Boardwalk | 22 deep |
+| Building plot | 200 × 200 |
+| Town square | 434 × 434, with the Town Hall plot 208 × 208 in its middle |
+| Gate to gate | 1,734 = 2,600 game px, about **17 s** to walk; about **9 s** from the square to any gate |
+| The whole town | squares X24–Z26. **Y25, the middle square, holds the whole town square.** |
 
 ### Who goes where (a proposal)
 
 The ends of town have characters:
 
 - **North** (toward the Flame Fields): the workshops.
-- **South**: the saloon end.
-- **West** (toward the river and fields): farming.
-- **East** (toward the depot and mines): money.
+- **South** (toward the Water Caves): the saloon end.
+- **West** (toward the river and the Verdant Wilds): farming.
+- **East** (toward the depot and the mines of Stone Hollows): money.
 
 Every building the game has today has a plot, and four plots are spare for
 systems that exist without a building (duels, mail, clans) or might (an inn).
 
 | Arm | Side | Plot | Takes today's | Plot (art px from the centre) |
 |---|---|---|---|---|
-| square | — | Town Hall | mayor (NPC) | -120,-120 → 120,120 |
-| north | west | Blacksmith | blacksmith | -328,-570 → -98,-340 |
-| north | west | Woodworker | woodworker | -328,-840 → -98,-610 |
-| north | east | Gem Cutter | gemcutter | 98,-570 → 328,-340 |
-| north | east | Sheriff's Office | (new: duels, arena sign-up, bounties) | 98,-840 → 328,-610 |
-| south | west | Saloon | party | -328,340 → -98,570 |
-| south | west | Gambling Den | gambler | -328,610 → -98,840 |
-| south | east | Hotel | (new: rest, respawn) | 98,340 → 328,570 |
-| south | east | Post Office & Telegraph | (new: mail and offline inbox) | 98,610 → 328,840 |
-| west | north | Cookhouse | cooking | -570,-316 → -340,-86 |
-| west | north | Feed & Seed | farm | -840,-316 → -610,-86 |
-| west | south | Land Office | farmhome | -570,86 → -340,316 |
-| west | south | Guild Hall | (new: clans and guilds) | -840,86 → -610,316 |
-| east | north | Bank | bank | 340,-316 → 570,-86 |
-| east | north | Assay Office | enchanting | 610,-316 → 840,-86 |
-| east | south | General Store | marketplace | 340,86 → 570,316 |
-| east | south | Auction House | auctionhouse | 610,86 → 840,316 |
+| square | — | Town Hall | mayor (NPC) | -104,-104 → 104,104 |
+| north | west | Blacksmith | blacksmith | -284,-495 → -84,-295 |
+| north | west | Woodworker | woodworker | -284,-730 → -84,-530 |
+| north | east | Gem Cutter | gemcutter | 84,-495 → 284,-295 |
+| north | east | Sheriff's Office | (new: duels, arena sign-up, bounties) | 84,-730 → 284,-530 |
+| south | west | Saloon | party | -284,295 → -84,495 |
+| south | west | Gambling Den | gambler | -284,530 → -84,730 |
+| south | east | Hotel | (new: rest, respawn) | 84,295 → 284,495 |
+| south | east | Post Office & Telegraph | (new: mail and offline inbox) | 84,530 → 284,730 |
+| west | north | Cookhouse | cooking | -495,-274 → -295,-74 |
+| west | north | Feed & Seed | farm | -730,-274 → -530,-74 |
+| west | south | Land Office | farmhome | -495,74 → -295,274 |
+| west | south | Guild Hall | (new: clans and guilds) | -730,74 → -530,274 |
+| east | north | Bank | bank | 295,-274 → 495,-74 |
+| east | north | Assay Office | enchanting | 530,-274 → 730,-74 |
+| east | south | General Store | marketplace | 295,74 → 495,274 |
+| east | south | Auction House | auctionhouse | 530,74 → 730,274 |
 
 **The NPCs:**
 
@@ -347,15 +519,15 @@ systems that exist without a building (duels, mail, clans) or might (an inn).
 - **Diego** keeps the General Store.
 - **Blacksmith Bro** works at the Blacksmith.
 
-### Just outside town
+### Just outside town: the commons
 
 | Place | Where | What it is |
 |---|---|---|
 | **Rail Depot** | outside the east gate, south of the East Road | where the mine railway begins |
 | **Old Mill** and **Mill Bridge** | the river, just past the west gate | the West Road's crossing; the mill's wheel turns in the river |
-| **Arena** | north-east of town, on a path off the East Road | a round rodeo ring for duels and the arena |
-| **Four waystations** | at the four road forks | roadhouses, where later systems (travel, rest, quests) can live |
-| **Prospector's Circle** | north-west of town, on a path off the North Road | the meadow's landmark and the first keystone clue |
+| **Arena** | north-east of town, on a path off the Dune Trail | a round rodeo ring for duels and the arena |
+| **Prospector's Circle** | north-west of town, on a path off the Frost Trail | the commons' landmark and the first keystone clue |
+| **The camps** | not here: four down every spoke, at levels 20, 40, 60 and 80 (§3) | waystations, where travel, rest and quests can live |
 
 ---
 
@@ -465,9 +637,12 @@ direction and animation) in the painted style.
   bro looks big beside them.
 - **The town painting is drawn at 1.3 game px per picture px.** Its
   buildings are painted big.
-- **The whole island is planned at the town's 1.3** (`plan.js`,
-  `worldPxPerArtPx`). Everything will stand beside the bro the way the town
-  does today.
+- **The whole world is planned at the town's scale.** v2.3.2933 set the plan
+  to the town painting's 1.3 game px per picture px. Since v2.3.2936 one art
+  px is one pixel of the HD pixel art, 1.5 game px (`plan.js`,
+  `worldPxPerArtPx`), and the town's plan was scaled to keep its size in
+  the game. Everything will stand beside the bro the way the town does
+  today.
 - **The dashboard zoom stays.** Closing it zooms in, which the owner asked to
   keep (v2.3.2262).
 - The world trial's regions are copied from the zone paintings at their own
@@ -615,32 +790,33 @@ only what is behind the door you walked through is loaded.
 
 That is exactly how it is built.
 
-- **The frame and the active area.** The grid is a fixed **25 × 25 frame**
-  of names and positions (A1 to Y25). Today's island uses the middle
-  **13 × 13** of it (G7 to S19, with M13 at the centre).
+- **The frame and the active area.** The grid is a fixed **49 × 49 frame**
+  of names and positions (A1 to AW49). The Wheel uses the middle **37 × 37**
+  of it (G7 to AQ43, with Y25 at the centre). v2.3.2936 widened it from
+  25 × 25 round M13: a spoke reaches 17 squares from the centre, and M13 had
+  only 12 to its north and west. Nothing had been painted, so the renaming
+  cost nothing.
 - **Growing** means widening the active area in `plan.js`, in any direction.
-  Every square already painted keeps its name and its place. Everything in
-  the plan is measured from the world centre and scattered by position, so
-  the new squares simply appear around the old ones.
+  Every square keeps its name and its place. Everything in the plan is
+  measured from the world centre and scattered by position, so the new
+  squares simply appear around the old ones.
 - **The guarantee is tested.** The core test suite grows the world and
   checks that the plan under every existing square is unchanged. If a later
-  plan change does touch painted squares, the builder names exactly which
-  ones.
+  plan change does touch squares already built on, the builder names exactly
+  which ones.
 
 There are three ways to use the new room:
 
-1. **New islands in the sea ring**, reached by boat from the Water Caves'
-   landing jetty. Nothing painted changes.
-2. **Push the coast outward.** Only the coast squares change: their beaches
-   become inland. The builder names them for repainting.
+1. **Longer spokes.** Levels 81–100 for the eight elements, if they are ever
+   wanted, are four more tiers on every spoke: the frame has room.
+2. **Islands in the sea**, reached by boat. Nothing already made changes.
 3. **Underground**, for example the inside of the Great Cave, as its own
    map behind its mouth.
 
-The frame holds 625 squares, 4.5 times today's island. Past that the frame
-itself can grow toward the south and east (columns after Y, rows after 25).
-The world centre is pinned to square M13, so that moves nothing either.
-Adding anything before column A or row 1 would rename every square, so that
-is the one direction that is closed.
+Past that the frame itself can grow toward the south and east (columns after
+AW, rows after 49). The world centre is pinned to square Y25, so that moves
+nothing either. Adding anything before column A or row 1 would rename every
+square, so that is the one direction that is closed.
 
 ### More players: rooms, characters that travel, and one auction house
 
@@ -712,31 +888,39 @@ live characters out of a room is a migration with real players' items at
 stake. It is the largest server change on the list, larger than streaming
 the map.
 
-### What it costs to run (rough)
+### What it costs to run, and how many one world holds
 
-- **An empty room costs nothing.** Its 45-a-second tick stops when the last
-  player leaves (`webSocketClose` in `server/src/index.js`), and the room can
-  sleep.
-- **A busy room is billed for the time it is awake:** about 10,800 GB-s a
-  day (`server/src/tick.js`). On Cloudflare's paid plan that is a few dollars
-  a month per room busy round the clock.
-- **Messages and saves add to that as players grow.** A moving player's phone
-  sends its position 15–30 times a second. A rough estimate for a full room
-  of 60, round the clock, is tens of dollars a month, not hundreds.
-  Cloudflare's dashboard has the real numbers.
+> Owner, 2026-09-29: *"From a cost perspective is 200 per room or more
+> feasible? I'm just thinking there could be thousands of rooms if this
+> becomes popular and I'm not sure that's the best option."*
+
+The full working, with Cloudflare's prices, is in
+[WORLD-ARCHITECTURE.md §11](WORLD-ARCHITECTURE.md#11-what-it-costs-and-how-many-one-world-holds).
+In short:
+
+- **Cost follows players, not rooms.** About **0.1 cent per player-hour**,
+  whatever the rooms are. A player who plays an hour a day costs about 3–4
+  cents a month. An empty room costs nothing, and Cloudflare allows any
+  number of them.
+- **The limit is messages, not money.** One room can handle about 500–1,000
+  incoming messages a second, and today each moving phone sends 15–30. So
+  one room tops out around **30–60 busy players** as the game stands, and
+  200 in one room would not work.
+- **The fix suits the Wheel:**
+  - phones send their position about 5 times a second with direction and
+    speed, and the server fills in between: about 5 × fewer messages, and
+    about half the bill;
+  - **each world is split into area servers**: Brotown, each spoke and each
+    realm get their own, 11 per world, joined at the town gates and the
+    passes. About **1,000 players per world**;
+  - a handful of big worlds rather than thousands of small rooms, filled
+    before a new one opens. The market, chat and guilds span all of them.
 - **The size of the world is free.** Map pieces are plain files served by
   Cloudflare Pages. The server never touches them.
-- **The server's processor is not the limit.** Sixty players cost 0.16 ms of
-  each 22 ms tick (`docs/specs/room-full.md`).
-- **Each phone's download is the limit.**
-  - Every moving player near you costs about 4 KB/s. About 20 near you is
-    comfortable on cellular.
-  - One seamless world keeps that only if the server sends each player what
-    is *near* them (phase 5), as it sends only your zone today.
 - **Monsters only run near players.** Today a zone with nobody in it does not
-  tick its monsters (`_activeZones`). The island does the same, area by area.
+  tick its monsters (`_activeZones`). The Wheel does the same, area by area.
 
-### How walking the island will feel
+### How walking the Wheel will feel
 
 - **You never see the grid.** The squares are how the map is made, not how
   it is walked.
@@ -744,52 +928,50 @@ the map.
   swiftness and potions.
   - A phone screen shows about 500 × 1024 game px with the dashboard closed.
     Crossing it takes about 3 s side to side and 7 s top to bottom.
-  - The town square to a region's heart is about 20–30 s. Coast to coast is
-    about 80–90 s.
-  - The waystations at the road forks are the natural place for fast travel.
+  - **One tier is one screen's height**: about 7 s of walking and five
+    levels. From the commons to a spoke's tip is 16 tiers, about 2 minutes.
+  - The four camps down every spoke are the natural places for fast travel.
 - **No loading screens outdoors.** The ground streams in around you. The
   trial showed no gaps at a brisk walk against a local server; a phone over
   the internet is the real test.
-- **Loading screens stay at doors:** the first join, dungeons, farms,
-  interiors, switching rooms, and fast travel.
-- **A region's monsters load as you approach it.** Border land (§4) is where
-  neither region's monsters live, so there is time to load the next set
-  before you meet them. The phone never holds more than two regions'
-  monsters.
+- **Loading screens stay at doors:** the first join, the realm gates,
+  dungeons, farms, interiors, switching worlds, and fast travel.
+- **A spoke's monsters load as you walk out.** Only the next stage's
+  monsters are needed ahead of you, so the phone never holds more than a
+  couple of families at once. The passes need both elements' monsters: they
+  are their own small sets.
 - **Monsters on screen.** This is a density chosen per area.
-  - Today's is 6 per 1024 × 1024 zone, about 3 per screen.
-  - Wild areas might carry 4–8 per screen; roads and town none.
+  - Today's is 6 per 1024 × 1024 zone, about 3 per screen: 6 per tier.
+  - Wild areas might carry 4–8 per screen; roads, camps and the commons
+    none.
   - Nobody has measured the most an iPhone can draw. A crowd test with bots
     is the way to find out.
-- **Players on screen:** up to 60 in a room. About 20 moving near you is
-  comfortable on cellular; more works on wifi.
+- **Players on screen:** about 20 moving near you is comfortable on
+  cellular; more works on wifi.
 
 ### "What would the load handling be like?"
 
 **On the phone:**
 
-- The painted world is cut into small chunks. The game keeps only the
-  chunks around the camera in memory, loads the next ones as you walk
-  toward them, and frees the ones behind.
+- The ground is built from swatches in small chunks round the camera. The
+  game keeps only the chunks around you in memory, makes the next ones as
+  you walk toward them, and frees the ones behind.
 - Ground art in memory stays around **10–25 MB whatever the size of the
-  world**, so a world twice as big costs no more memory to walk around in.
-- The per-zone loading screens go away outdoors. They stay only at doors
-  (dungeons, farms, interiors).
+  world**, so a world three times as big costs no more memory to walk
+  around in.
+- The per-zone loading screens go away outdoors. They stay only at doors.
 - The memory to watch is monster art, not the map. iPhone Safari kills a
-  tab at about 250 MB, and the game sits at 165–185 MB. Where two regions
-  meet, both regions' monsters are needed.
-  - The designed border landscapes (§4) double as a buffer: neutral ground
-    where neither region's monsters live.
-  - Four regions never meet at one point.
+  tab at about 250 MB, and the game sits at 165–185 MB. On the Wheel a
+  player is on one spoke at a time, so only that element's monsters, and
+  on a pass its neighbour's, are needed.
 
 **On the server:**
 
-- One room already simulates the whole world at 45 ticks a second, and 60
+- One room already simulates a whole world at 45 ticks a second, and 60
   players use 0.16 ms of each 22 ms tick (`docs/specs/room-full.md`).
 - What changes is *who hears what*: updates go to players near each other
-  instead of to players in the same zone.
-- 60 players spread over 137 squares is far less crowded than 60 players in
-  one town painting.
+  instead of to players in the same zone, and each area server runs only
+  its own part of the Wheel.
 
 ---
 
@@ -797,8 +979,9 @@ the map.
 
 The streaming above is not only a design. `?trial=world` builds it today (see
 [WORLD-MAP-PIPELINE.md, "The world trial"](WORLD-MAP-PIPELINE.md#the-world-trial-walking-a-seamless-island-today-v232932)).
-It is this island at full size, baked from copies of today's zone art and
-walked in the real game.
+It is the round island the Wheel replaced, at full size, baked from copies
+of today's zone art and walked in the real game. It measures how streaming
+loads and feels, which the Wheel's shape does not change.
 
 The first measurements, headless against a local worker:
 
@@ -814,6 +997,20 @@ there so the owner can take it.
 ---
 
 ## 10. Decisions for the owner
+
+**Decided in v2.3.2936: the Wheel** (§3). Owner: *"1-80 plus dark and
+light."* Eight element spokes, levels 1–80 at one zone per five levels,
+the Dark and Light realms (80–100) behind gates at the tips.
+
+**Open, and easy to change in `plan.js` at any time** (they only change
+names, looks and prompts):
+
+1. **Which realm each gate opens on.** Dark from the compass points and
+   Light from the diagonals is the first arrangement.
+2. **The names**: the stages, the 32 camps, the 16 passes and the three new
+   gates (the Sky Arch, the Titan's Door, the Lightning Gate).
+3. **The four stages of each spoke** (§3): are these the looks you want at
+   levels 1–20, 21–40, 41–60 and 61–80?
 
 **Decided in v2.3.2935:**
 
@@ -831,14 +1028,12 @@ launch is easier.
 **From the first draft:**
 
 1. **The premise.** Shard rush and keystones: keep it, change it, or drop
-   it. The map paints keystones either way; they can mean anything later.
+   it. The map has keystones either way; they can mean anything later.
 2. **The plot table** (§5). Is each building where it should be? Are the
    four new ones (Sheriff's Office, Hotel, Post Office & Telegraph, Guild
    Hall) wanted?
-3. **Island size.** 137 land squares, about 80 s coast to coast. Decide
-   before the first square is kept.
-4. **The style key.** Make it and approve it before any square, building or
-   character.
+3. ~~**Island size.**~~ Decided: the Wheel (v2.3.2936).
+4. **The style key.** Make it and approve it before any other picture.
 5. **The character order** (§7). Mayor Bro as the first test.
 6. **Farms as personal homesteads** (§8). A server change, separate from the
    map.
@@ -1036,10 +1231,10 @@ phone.
 ground:** grass, dirt, sand, snow, ash, stone, cobbles, roads, and the banks
 round the water. That opens a second way to make it.
 
-| | Paint every square (the World Builder today) | Bake from swatches (how the trial was made) |
+| | Paint every square (the World Builder's first plan) | Bake from swatches (how the trial was made) |
 |---|---|---|
-| What ChatGPT makes | 137 squares, each from its own template | ~30 seamless ground swatches (grass, dry grass, dirt, cobbles, sand, snow, ash, stone, mud …), plus small ground details (flowers, cracks, puddles) as objects |
-| Keeping one style | 137 separate pictures | ~30 pictures |
+| What ChatGPT makes | 137 squares for the old round island, 536 for the Wheel, each from its own template | ~45 seamless ground swatches (grass, dry grass, dirt, cobbles, sand, snow, ash, stone, mud …), plus small ground details (flowers, cracks, puddles) as objects |
+| Keeping one style | hundreds of separate pictures | ~45 pictures, two versions each |
 | Roads, shores and collision | roughly where ChatGPT put them | exactly where the plan says |
 | Changing the plan later | repaint every square it touches | re-bake in minutes |
 | The owner's time | hundreds of chats | a few evenings |
@@ -1077,18 +1272,20 @@ much they hurt:
 1. **The server does not know where the walls are.** It checks only how fast
    you move (`server/src/movement.js`), not where. On one big map with a real
    economy, a tampered client could walk through water or walls to reach
-   things. The island's walk map is small (about 21 KB), so the server can
-   check it too.
+   things. The Wheel's walk map is small (about 400 KB at one bit a cell,
+   far less compressed, since most of it is sea), so the server can check it
+   too.
 2. **"Zone" is everywhere in the code.** Quests ("go to the Flame Fields"),
    unlocks, level bands, music, banners, gather nodes, the minimap. On one map
-   the zone becomes *the region you are standing in*, worked out from your
-   position. That is the biggest code change of the move, done one system at
-   a time.
+   the zone becomes *the spoke and tier you are standing in*, worked out
+   from your position (the blueprint already stores both). That is the
+   biggest code change of the move, done one system at a time.
 3. **Empty space.** A big map needs something to find every 20–30 seconds
-   of walking: a camp, a chest, a gather spot, a view, an NPC, a shortcut.
-   Plan the points of interest per region before painting.
+   of walking, about every three or four tiers: a camp, a chest, a gather
+   spot, a view, an NPC, a shortcut. Plan the points of interest per stage
+   before filling a spoke.
 4. **Phone memory is the hard ceiling.** Safari kills the tab at about 250 MB
-   of pictures, and the game uses 165–185 MB today. Give each region a budget
+   of pictures, and the game uses 165–185 MB today. Give each stage a budget
    for its objects and monsters.
 5. **Saved positions after a map change.** When the map changes after launch,
    a saved position can end up inside a new wall. The game moves such a
@@ -1096,4 +1293,6 @@ much they hurt:
 6. **Characters out of the room before launch** (§9). Easy with no players;
    a careful migration with them.
 7. **Test with crowds.** A way to fill a room with bots shows how 60 players
-   feel on the owner's phone before real players find out.
+   feel on the owner's phone before real players find out, and whether one
+   room can take in their messages at all
+   ([WORLD-ARCHITECTURE.md §11](WORLD-ARCHITECTURE.md#11-what-it-costs-and-how-many-one-world-holds)).

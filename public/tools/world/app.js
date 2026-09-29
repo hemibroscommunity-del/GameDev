@@ -214,7 +214,9 @@ function computeInfo() {
     const regs = new Map();
     for (const k of land) regs.set(k.region, (regs.get(k.region) || 0) + k.n);
     const names = [...regs.entries()].sort((a, b) => b[1] - a[1]).filter(([, n]) => n / cov.total > 0.05).map(([r]) => S.plan.regions[r].name);
-    S.info[cell.id] = { ...cell, rect, sea, covered, touchesAnchor, names, optional: sea > 0.9, skip: covered > 0.97, planKey: planKey(S.bp, rect) };
+    /* v2.3.2936: the levels a square spans, from its tiers */
+    const levels = cov.tiers ? [S.bp.wheel.levels(cov.tiers[0])[0], S.bp.wheel.levels(cov.tiers[1])[1]] : null;
+    S.info[cell.id] = { ...cell, rect, sea, covered, touchesAnchor, names, levels, optional: sea > 0.9, skip: covered > 0.97, planKey: planKey(S.bp, rect) };
   }
 }
 
@@ -248,10 +250,39 @@ function suggestions(limit = 6) {
 
 /* ── the map ── */
 
+/* v2.3.2936: the Levels view -- every land cell coloured by its tier,
+   green at level 1 to red at 80, with the roads, the river, the railway,
+   the plots and the gates drawn over it in their plan colours. */
+const LEVEL_KEEP = new Set(['path', 'river', 'rail', 'bridge', 'lot', 'landmark', 'gate', 'street', 'plaza', 'boardwalk']);
+function levelsImage(bp, plan, px) {
+  const out = new Uint8ClampedArray(px);
+  const keep = new Uint8Array(bp.classIds.length);
+  bp.classIds.forEach((k, i) => { keep[i] = LEVEL_KEEP.has(k) ? 1 : 0; });
+  const ocean = bp.classIds.indexOf('ocean');
+  const tiers = plan.wheel.tiers, ramp = [];
+  for (let t = 1; t <= tiers; t++) {
+    /* hue 120 (green) to 0 (red); every other tier a shade darker, so the
+       one-zone steps can be counted */
+    const h = 120 * (1 - (t - 1) / (tiers - 1)), l = t % 2 ? 0.46 : 0.54, c = (1 - Math.abs(2 * l - 1)) * 0.7;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2;
+    const [r, g, b] = h < 60 ? [c, x, 0] : [x, c, 0];
+    ramp.push([(r + m) * 255, (g + m) * 255, (b + m) * 255]);
+  }
+  for (let i = 0; i < bp.w * bp.h; i++) {
+    const k = bp.cls[i];
+    if (keep[k]) continue;
+    const o = i * 4, t = bp.tier[i];
+    const c = k === ocean ? [22, 44, 70] : t ? ramp[t - 1] : [214, 222, 200];
+    out[o] = c[0]; out[o + 1] = c[1]; out[o + 2] = c[2];
+  }
+  return out;
+}
+
 function buildOverviewLayers() {
   const bp = S.bp;
   const px = renderOverview(S.plan, bp, S.table);
   S.bpCanvas = imgToCanvas({ w: bp.w, h: bp.h, data: px });
+  S.levelsCanvas = imgToCanvas({ w: bp.w, h: bp.h, data: levelsImage(bp, S.plan, px) });
   S.artCanvas = newCanvas(bp.w, bp.h);
   /* anchors at 1/scale with their feathered edge */
   S.anchorThumb = newCanvas(bp.w, bp.h);
@@ -279,7 +310,7 @@ function drawMap() {
   const ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, cv.width, cv.height);
   ctx.globalAlpha = 1;
-  ctx.drawImage(S.bpCanvas, 0, 0);
+  ctx.drawImage(S.view === 'levels' ? S.levelsCanvas : S.bpCanvas, 0, 0);
   if (S.view === 'art') {
     ctx.fillStyle = 'rgba(12,18,22,0.35)';
     ctx.fillRect(0, 0, cv.width, cv.height);
@@ -290,6 +321,9 @@ function drawMap() {
      picks the square whose middle is nearest (grid.cellAt) and the overlap
      bands split evenly across the lines. */
   const step = g.P / s;
+  /* v2.3.2936: labels and marks sized to the square (48 canvas px since the
+     blueprint went to 16 art px a cell; 96 before) */
+  const k = step / 96;
   const cx0 = (c) => (c * g.P + g.O / 2 - bp.x0) / s, cy0 = (r) => (r * g.P + g.O / 2 - bp.y0) / s;
   /* sea squares: faint hatch */
   ctx.save();
@@ -300,7 +334,7 @@ function drawMap() {
     const x = cx0(f.c), y = cy0(f.r);
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, step, step); ctx.clip();
     ctx.beginPath();
-    for (let k = -step; k < step; k += 12) { ctx.moveTo(x + k, y + step); ctx.lineTo(x + k + step, y); }
+    for (let q = -step; q < step; q += 12 * k) { ctx.moveTo(x + q, y + step); ctx.lineTo(x + q + step, y); }
     ctx.stroke(); ctx.restore();
   }
   ctx.restore();
@@ -311,21 +345,22 @@ function drawMap() {
   for (let r = g.r0; r <= g.r1 + 1; r++) { const y = Math.round(cy0(r)) + 0.5; ctx.moveTo(0, y); ctx.lineTo(bp.w, y); }
   ctx.stroke();
   const next = new Set(suggestions());
-  ctx.font = '700 19px system-ui,-apple-system,sans-serif';
+  ctx.font = `700 ${Math.round(19 * k)}px system-ui,-apple-system,sans-serif`;
   ctx.textBaseline = 'top';
   for (const id in S.info) {
     const f = S.info[id];
     const x = cx0(f.c), y = cy0(f.r);
-    if (next.has(id)) { ctx.strokeStyle = '#D8A85F'; ctx.lineWidth = 4; ctx.strokeRect(x + 3, y + 3, step - 6, step - 6); }
+    if (next.has(id)) { ctx.strokeStyle = '#D8A85F'; ctx.lineWidth = 4 * k; ctx.strokeRect(x + 3 * k, y + 3 * k, step - 6 * k, step - 6 * k); }
     if (isDone(id)) {
       ctx.fillStyle = 'rgba(89,191,145,0.95)';
-      ctx.beginPath(); ctx.arc(x + step - 16, y + 16, 9, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#10261c'; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.moveTo(x + step - 21, y + 16); ctx.lineTo(x + step - 17, y + 20); ctx.lineTo(x + step - 11, y + 12); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + step - 16 * k, y + 16 * k, 9 * k, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#10261c'; ctx.lineWidth = 2.5 * k;
+      ctx.beginPath(); ctx.moveTo(x + step - 21 * k, y + 16 * k); ctx.lineTo(x + step - 17 * k, y + 20 * k); ctx.lineTo(x + step - 11 * k, y + 12 * k); ctx.stroke();
     }
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x + 4, y + 4, ctx.measureText(id).width + 10, 24);
-    ctx.fillStyle = f.optional ? 'rgba(255,255,255,0.55)' : '#F7F2E7';
-    ctx.fillText(id, x + 9, y + 7);
+    if (f.optional && !isDone(id)) continue;   /* open sea: no label -- 900 of them would bury the wheel */
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x + 4 * k, y + 4 * k, ctx.measureText(id).width + 10 * k, 24 * k);
+    ctx.fillStyle = '#F7F2E7';
+    ctx.fillText(id, x + 9 * k, y + 7 * k);
   }
   if (S.selected) {
     const f = S.info[S.selected];
@@ -358,7 +393,7 @@ function refreshHeader() {
     nag.textContent = `${since} painted squares are only in this browser. Download a backup so they cannot be lost.`;
   } else nag.hidden = true;
   const f = S.plan, g = S.g;
-  $('proj-info').textContent = `Painting ${cellName(g.c0, g.r0)}–${cellName(g.c1, g.r1)} (${g.ac} × ${g.ar} squares) of a ${g.cols} × ${g.rows} frame, so the world can grow without renaming anything · ${g.N} px squares with ${g.O} px overlap · ${Math.round(g.AW * f.worldPxPerArtPx).toLocaleString()} game px across today · plan ${S.project.planHash}`;
+  $('proj-info').textContent = `The plan covers ${cellName(g.c0, g.r0)}–${cellName(g.c1, g.r1)} (${g.ac} × ${g.ar} squares) of a ${g.cols} × ${g.rows} frame, so the world can grow without renaming anything · ${g.N} px squares with ${g.O} px overlap · ${Math.round(g.AW * f.worldPxPerArtPx).toLocaleString()} game px across today · plan ${S.project.planHash}`;
 }
 
 /* ── the square panel ── */
@@ -416,7 +451,7 @@ async function select(id) {
   drawMap();
   const f = S.info[id];
   show('square', true);
-  $('sq-title').textContent = `${id}${f.names.length ? ' · ' + f.names.join(' → ') : ''}`;
+  $('sq-title').textContent = `${id}${f.names.length ? ' · ' + f.names.join(' → ') : ''}${f.levels ? ` · levels ${f.levels[0]}–${f.levels[1]}` : f.optional ? '' : ' · safe'}`;
   $('sq-sub').textContent = f.skip ? 'Covered by a finished painting.'
     : isDone(id) ? `Painted (square ${S.project.squares[id].order} of the build).`
       : f.optional ? 'Almost all open sea. Optional — the game will never let you walk far enough out to see it up close.'

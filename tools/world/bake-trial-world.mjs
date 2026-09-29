@@ -32,6 +32,15 @@
  * repo has no image library):
  *
  *   node tools/world/bake-trial-world.mjs [--quality 0.8]
+ *
+ * v2.3.2936: FROZEN AT PLAN v2.  The committed trial (world-trial-v1) is the
+ * round island of plan v2, drawn at the old 1.3 game px per art px round
+ * today's town painting.  The plan is now the Wheel (v3: a spoke per
+ * element, the 1.5 px pixel-art grid, no town painting), which this bake
+ * was never written for -- so it refuses to run on it rather than bake
+ * something half right.  The trial has done its job (how streaming loads
+ * and feels); the Wheel's ground will be baked from the new swatches
+ * instead (docs/WORLD-BIBLE.md §13).
  */
 import http from 'http';
 import fs from 'fs';
@@ -63,6 +72,7 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 /* Everything below runs IN THE PAGE. */
 async function setup(quality) {
   const { PLAN } = await import('/tools/world/plan.js');
+  if (PLAN.version !== 2) throw new Error(`This bake is for plan v2 (the round island); the plan is v${PLAN.version}. See the note at the top of tools/world/bake-trial-world.mjs.`);
   const { buildBlueprint, C } = await import('/tools/world/core/layout.js');
   const { gridInfo } = await import('/tools/world/core/grid.js');
   const bp = buildBlueprint(PLAN);

@@ -1,4 +1,4 @@
-# One Seamless World — the grid, the prompts and the fuser (v2.3.2931)
+# One Seamless World — the grid, the prompts and the fuser (v2.3.2931–2936)
 
 **Status:** Phase 1 is shipped: the **World Builder** page
 (`public/tools/world/`, live at `/tools/world/` on the site).
@@ -16,6 +16,11 @@
     squares are no longer painted one picture each. This page stays the
     plan, the blueprint (where every swatch, road, shore and wall goes) and
     the home of the style key.
+- **v2.3.2936: the plan is the Wheel** (World Bible §3): the commons round
+  the town, a spoke of land for each of the eight elements with its own
+  levels 1–80, sea between them, passes at levels 20 and 60, and a gate to
+  the Dark or the Light realm (80–100) at every tip. The geometry is
+  `core/wheel.js`; the blueprint stores every cell's level.
 - The world's story and look (through-lines, regions, Brotown's Main
   Street, the style key, the character refresh) are written up for people
   in **[WORLD-BIBLE.md](WORLD-BIBLE.md)**.
@@ -50,7 +55,7 @@ follows is at the end.
 | 6 | **Walls, climbing, jumping** from the blueprint's terrain classes | sessions | — |
 
 Phase 2 exists so the style key, the prompts and the fuser can be tuned on
-real ChatGPT output before anyone paints 137 squares with them.
+real ChatGPT output before hundreds of pictures are made with them.
 
 ---
 
@@ -70,7 +75,7 @@ real ChatGPT output before anyone paints 137 squares with them.
    - The map shows the plan with the grid over it.
    - Squares outlined in gold are **ready**: their neighbours are finished,
      so ChatGPT will see real edges.
-   - **Next square →** picks the best one. The first is always M13, the town
+   - **Next square →** picks the best one. The first is always Y25, the town
      square.
 2. **Save the template picture.** It shows the square's piece of the plan in
    flat colours, with the finished art of its neighbours already painted
@@ -102,11 +107,12 @@ real ChatGPT output before anyone paints 137 squares with them.
 ### The grid, and growing it later
 
 **Names.** Squares are named like a spreadsheet, fixed by a **frame of
-25 × 25** (A1 is the north-west corner, Y25 the south-east).
+49 × 49** (A1 is the north-west corner, AW49 the south-east).
 
-**What is painted today.** The **active area** in the middle of the frame:
-**G7 to S19, 13 × 13 squares**. **M13** sits exactly on the world centre,
-and holds the town square.
+**What is planned today.** The **active area** in the middle of the frame:
+**G7 to AQ43, 37 × 37 squares**. **Y25** sits exactly on the world centre,
+and holds the town square. (v2.3.2936: the frame was 25 × 25 round M13
+until the Wheel needed room for its spokes; nothing had been painted.)
 
 **Size of a square.**
 
@@ -119,19 +125,20 @@ and holds the town square.
 
 **Size of the world.**
 
-- The active area is 13 × 768 + 256 = **10,240 art px**. At **1.3 game px
-  per art px** (how `town_v17` is drawn today), that is **13,312 game px**.
-- The island inside it is about 12 squares across: about **80 s** to walk
-  coast to coast. Every current zone put together is about 25 s.
-- **137 squares have land** and need painting. 32 are open sea past the
-  coast, and are optional.
+- The active area is 37 × 768 + 256 = **28,672 art px**. At **1.5 game px
+  per art px** (one pixel of the HD pixel art, v2.3.2936; it was the old
+  town painting's 1.3), that is **43,008 game px**.
+- The Wheel inside it is about **490 zones of land** (a zone is today's
+  1,024 × 1,024 game px). From the Town Hall to a spoke's gate is about
+  **2 minutes** at a run.
+- **536 squares have land.** 833 are open sea between and round the spokes.
 
 **Growing.** Owner: *"how would I expand the game later?"*
 
 - Widen `plan.active`, in any direction. Nothing already painted moves or is
   renamed.
 - The frame can grow too (south and east), because the world centre is
-  pinned to square M13 rather than to the frame's middle.
+  pinned to square Y25 rather than to the frame's middle.
 - This works because every value in the blueprint is a function of absolute
   position:
   - plan positions are measured in squares from the centre;
@@ -141,8 +148,8 @@ and holds the town square.
     whose every draw would shift when the area grew.
 - The core suite proves it: it grows the active area and the frame, and
   checks that the plan under every existing square is bit-for-bit unchanged.
-- The ways to use new room (new islands, a pushed-out coast, underground)
-  and why more players need more realms rather than more squares:
+- The ways to use new room (longer spokes, islands, underground) and why
+  more players need more worlds rather than more squares:
   [WORLD-BIBLE.md §9](WORLD-BIBLE.md#9-growing-the-world-and-the-load-it-can-carry).
 
 **When the plan changes under painted squares.**
@@ -176,37 +183,56 @@ a player standing behind it.
 
 ### The blueprint (`core/layout.js`)
 
-**What it is.** A colour-coded plan of the active area: one cell per 8 art px
-(1280 × 1280 cells). Each cell holds three things:
+**What it is.** A colour-coded plan of the active area: one cell per 16 art
+px (1,792 × 1,792 cells; 8 before v2.3.2936). Each cell holds four things:
 
 - a terrain **class**: ground, road, thick trees/rocks, water, sea, cliff,
-  lava, landmark, street, boardwalk, plaza, building plot, river, railway or
-  bridge;
-- a **region**;
-- a **band**: the region's fringe, heart or rim, by how far out between the
-  meadow and the coast.
+  lava, landmark, street, boardwalk, plaza, building plot, river, railway,
+  bridge or gate;
+- a **region**: the town, the commons or one of the eight spokes;
+- a **stage**: which of its spoke's four looks, one per 20 levels (stored as
+  `band`);
+- a **tier**: the level, five levels a tier, 1 to 16 along every spoke, and
+  0 where no monster goes. It is the level map a game system asks "how
+  dangerous is it here?"
 
 **It is deterministic.** It is built from the plan's seed, so every device
 builds the same world. It avoids `Math.sin/cos/pow`, which may differ in the
-last bits between Chrome and Safari. It builds in about 0.4 s on a desktop.
+last bits between Chrome and Safari: the spokes point along the eight
+compass directions, made with square roots alone (`core/wheel.js`). It
+builds in about 1 s on a desktop.
 
-**What the layout contains:**
+**What the layout contains (the Wheel, v2.3.2936):**
 
-- An island with sea all round.
-- The eight regions where the World View painting has them: frost NW,
-  ember N, dunes NE, hollows E, foundry SE, sea caves S, poison forest SW,
-  wilds W. The Starting Meadow is a ring round the town.
+- **The commons** round the town, safe, and **eight spokes** of land, one
+  per element, where the World View painting has the zones: frost NW,
+  flame N, wind NE, stone E, storm SE, water S, venom SW, flora W. Sea
+  between them. Each spoke is a capsule from the centre, three zones wide,
+  with a ragged coast.
+- **Passes** joining neighbouring spokes across the sea at levels 20 and 60.
 - **Brotown**: Main Street and Market Row, the square, the boardwalks and
   plots.
-- **The Old Roads**: four trunk roads from the gates, each forking once, and
-  footpaths to the Arena and to Prospector's Circle.
-- **The Sweetwater River**: a smooth meandering curve from the glacier to
-  the sea. Its falls are cut through a cliff, and a bridge is stamped
-  wherever a road crosses it.
-- **The mine railway**, with its branch and its abandoned spur.
-- Plots for the Rail Depot, the Old Mill, the Arena and four waystations.
-- Each region's woods, ponds, cliffs and lava. One landmark per region, where
-  its road ends.
+- **The roads**: a trunk down every spoke from the town gates to the tip,
+  the passes, and footpaths to the Arena, to Prospector's Circle and to the
+  landmarks beside the roads.
+- **The Sweetwater River**: a smooth meandering curve from the glacier on
+  Frost Ridge to the lagoon between the Poison Forest and the Water Caves.
+  Its falls are cut through a cliff, and a bridge is stamped wherever a road
+  crosses it.
+- **The mine railway**, with its branch and its abandoned spur through the
+  passes.
+- Plots for the Rail Depot, the Old Mill, the Arena and 32 camps (levels
+  20, 40, 60 and 80 on every spoke).
+- Each spoke's woods, ponds, cliffs and lava, by stage. The Buried City,
+  the Great Cave and the Foundry Dome partway out, and a **keystone gate**
+  at every tip.
+
+**The roads, camps, passes, river and railway are laid out from the wheel's
+geometry** at the end of `plan.js`, so they always run where the spokes are.
+
+**The builder's Levels view** colours every land square by its tier, green
+at level 1 to red at 80, and each square's title says which levels it
+holds.
 
 **Job 1, today: the sketch in every template.**
 
@@ -335,27 +361,36 @@ match it.
 
 ## Tests
 
-**`node tools/world/test-world-core.mjs`: 62 zero-dependency checks.**
+**`node tools/world/test-world-core.mjs`: 72 zero-dependency checks.**
 
-- **Grid:** maths, the frame and the active area, and M13 on the centre.
+- **Grid:** maths, the frame and the active area, Y25 on the centre, and one
+  art px equal to one pixel of the HD pixel art (`style/bible.js`).
 - **Growth:** widening the active area, and even the frame, changes the plan
-  under no painted square. Moving one path changes only the three squares it
-  crosses.
+  under no square. Moving one path changes only the few squares it crosses.
 - **Blueprint:**
   - determinism;
   - sea at the corners;
   - the Town Hall in the middle of the square, both streets to their gates,
-    17 plots each fronting a boardwalk, and the 7 places;
-  - every region on land, and a road into every landmark;
-  - the railway into the Great Cave and the Foundry Dome;
-  - the river from Frost Ridge to the sea, the Mill Bridge, the falls;
-  - the 137/32 count.
+    17 plots each fronting a boardwalk, the depot, the mill and the arena;
+  - **the Wheel**: eight spokes, one per element; down every spoke the tier
+    climbs 1 to 16, one per zone, in four stages; the commons has no tier;
+    sea between the spokes; 16 passes joining neighbours at levels 20 and 60;
+    32 camps; 8 gates, four to each realm; a road to every gate and landmark;
+    the town to a gate about 19 zones;
+  - the railway into the Great Cave and the Foundry Dome, and the spur
+    stopping short of the Buried City;
+  - the river from Frost Ridge to the sea, the Mill Bridge and the Snake
+    Bridge, the falls;
+  - about 490 zones of land.
 - **Prompts:**
   - the town square and streets, and a gate becoming a road;
-  - the river's flow edges, the bridge, the fork and the mill;
-  - the river's source, bands, a road ending at a landmark, a border
-    landscape, and the abandoned spur;
-  - the style key line appearing only when a key is saved.
+  - the river's flow edges, the bridge, the fork, the mill and the commons'
+    edge;
+  - the river's source, the stage a square is in and the next one, a road
+    ending at its gate, a pass with its border landscape, a pass joining the
+    next spoke's road, and the abandoned spur;
+  - the HD pixel style bible, and the style key line appearing only when a
+    key is saved.
 - **Max-flow** against brute force on 600 random grids.
 - **Fusing** 9 damaged squares on a procedural painting:
   - shift and zoom undone to under 1 px;
@@ -363,15 +398,16 @@ match it.
   - the "ignored template" case and the border constraint.
 - **The zip round trip.**
 
-**`node tools/qa/world-page.mjs`: 36 checks in real Chromium**, against a
+**`node tools/qa/world-page.mjs`: 38 checks in real Chromium**, against a
 local server over `public/`.
 
-- The plan, and M13 offered first with a prompt that sets the look.
+- The plan, and Y25 offered first with a prompt that sets the look; the
+  Levels view, and a spoke square saying which levels it holds.
 - The style key saved, shown, and written into every prompt.
 - Three squares fused through the real upload button:
   - The fake ChatGPT pictures are cut from a known "true" world (the meadow
     painting, tiled) and damaged with zoom, shift, colour cast and noise.
-  - M13 is damaged in colour only, because the first square defines the
+  - Y25 is damaged in colour only, because the first square defines the
     world's geometry.
   - They match the truth at about 31 dB after a colour fit.
   - The second square's template carries the first square's pixels.
@@ -383,8 +419,10 @@ local server over `public/`.
   pixels and the style key.
 - Screenshots with `WORLD_SHOTS=<dir>`.
 
-**`node tools/world/render-plan-images.mjs`** regenerates the two plan
-pictures in `docs/world/` from the live plan.
+**`node tools/world/render-plan-images.mjs`** regenerates the plan pictures
+in `docs/world/` from the live plan: the Wheel with its levels, names and
+gates (`wheel-plan.png`), the builder's map with every land square's name,
+and Brotown close up.
 
 None of these is on the CI path, following the owner's 2026-07-16 directive.
 Run them when touching `public/tools/world/`.
@@ -396,6 +434,12 @@ Run them when touching `public/tools/world/`.
 > Owner, 2026-09-29: *"Can we do one trial run where you just replicate the
 > entire worldview map using copies of existing art so I can test loading times
 > and game feel?"*
+
+**v2.3.2936: the trial is the round island the Wheel replaced.** It was baked
+from plan v2, and it stays as it is: it measures how streaming loads and
+feels, which the Wheel's shape does not change. `bake-trial-world.mjs` now
+refuses to run on the new plan rather than bake something half right; the
+Wheel's ground will be baked from the new swatches instead.
 
 **How to try it.** Open the game with **`?trial=world`** on the end of the
 address (the pull request's preview link, or the site once merged). Then walk
@@ -499,12 +543,15 @@ From the feasibility study, in order.
 **Monster art is the memory risk, not the map.**
 - iPhone Safari kills the tab at about 250 MB of textures, and the game sits
   at about 165–185 MB.
-- Where two regions meet, both regions' monsters must be loaded. Keep
-  neutral land between themed regions, and never let four regions meet.
+- Where two elements meet, both sets of monsters must be loaded. On the
+  Wheel that is only at the spokes' bases and on the passes, which have
+  their own small two-element sets.
 
 **Server.**
 - The whole world already runs in one room with about 20× CPU headroom.
-- Updates would be scoped by region and its neighbours instead of by zone.
+- Updates would be scoped by distance instead of by zone, and each world
+  split into area servers along the Wheel's spokes
+  ([WORLD-ARCHITECTURE.md §11](WORLD-ARCHITECTURE.md#11-what-it-costs-and-how-many-one-world-holds)).
 - About 370 zone-keyed sites become region-plus-distance checks.
 - There would be a one-time "please refresh" cutover.
 
@@ -520,16 +567,18 @@ Dungeons, the farm and building interiors keep their doors and loading screens
 
 ## Decisions for the owner
 
-1. **Island size.** 137 land squares, about 80 s coast to coast. Decide
-   before the test strip is kept. Growing later is safe, and shrinking is
+1. ~~**Island size.**~~ Decided in v2.3.2936: **the Wheel**, about 490 zones
+   of land. Growing later is safe (longer spokes, islands), and shrinking is
    not.
-2. **Scale.** 1.3 game px per art px matches the town and the characters.
-   Matching the sharper spokes (0.82) would need 2.5× the squares.
-3. **One daylight.** Every region is painted in day, with mood from the
-   game's atmosphere layer. This is the plan's assumption.
-4. **The style key.** Make it and approve it before the first square.
-5. **Brotown's plot table and the premise.** See
+2. ~~**Scale.**~~ Decided in v2.3.2935–2936: one art px is one pixel of the
+   HD pixel art, **1.5 game px**, and the town keeps the size the owner
+   likes.
+3. **One daylight.** Everything is made in day, with mood from the game's
+   atmosphere layer. This is the plan's assumption.
+4. **The style key.** Make it and approve it before any other picture.
+5. **Brotown's plot table, the premise, and the Wheel's names.** See
    [WORLD-BIBLE.md §10](WORLD-BIBLE.md#10-decisions-for-the-owner).
-6. **Where backups live.** Today that is the owner's device plus downloaded
-   zips. Committing the pictures to the repo (about 0.4–1 MB each) is the
-   obvious next step once the test strip is approved.
+6. **Where the pictures live.** Today that is the owner's device plus
+   downloaded zips. With swatches there are only about 45 of them, so
+   committing them to the repo (uploaded on GitHub's website) is the obvious
+   home.

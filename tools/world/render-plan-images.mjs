@@ -1,10 +1,13 @@
 /* ═══ v2.3.2931: THE PLAN, AS PICTURES FOR PEOPLE ═══
  *
- * Renders the two pictures docs/WORLD-BIBLE.md shows, from the live plan, so
+ * Renders the pictures docs/WORLD-BIBLE.md shows, from the live plan, so
  * they cannot drift from it:
  *
+ *   docs/world/wheel-plan.png    (v2.3.2936) the Wheel: every spoke by its
+ *                                element's colour, its tiers banded, the
+ *                                levels at its camps, and the gate at its tip
  *   docs/world/island-plan.png   the World Builder's map in Plan view -- the
- *                                whole island with every square's name
+ *                                whole island with every land square's name
  *   docs/world/brotown-plan.png  Brotown close up, every plot labelled with
  *                                the building it is kept for
  *
@@ -85,9 +88,12 @@ try {
     }
     label('Main Street', X(g.cx), Y(g.cy - 420 - 200), 14, '#fff', 'rgba(0,0,0,0.45)');
     label('Market Row', X(g.cx + 420 + 250), Y(g.cy), 14, '#fff', 'rgba(0,0,0,0.45)');
-    for (const r of [[12, 12], [11, 11], [13, 13], [11, 12], [12, 11], [13, 12], [12, 13], [11, 13], [13, 11]]) {
-      const x = X(r[0] * g.P + g.O / 2) + 30, y = Y(r[1] * g.P + g.O / 2) + 16;
-      if (x > 0 && y > 0 && x < OUTPX && y < OUTPX) label(String.fromCharCode(65 + r[0]) + (r[1] + 1), x, y, 15, '#fff', 'rgba(0,0,0,0.55)');
+    const { cellName, parseCell } = await import('/tools/world/core/grid.js');
+    const mid = parseCell(S.plan.centre);
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      const c = mid.c + dc, r = mid.r + dr;
+      const x = X(c * g.P + g.O / 2) + 30, y = Y(r * g.P + g.O / 2) + 16;
+      if (x > 0 && y > 0 && x < OUTPX && y < OUTPX) label(cellName(c, r), x, y, 15, '#fff', 'rgba(0,0,0,0.55)');
     }
     const blob = await c.convertToBlob({ type: 'image/png' });
     const u = new Uint8Array(await blob.arrayBuffer());
@@ -95,8 +101,74 @@ try {
     return 'data:image/png;base64,' + btoa(s);
   });
 
+  const wheel = await page.evaluate(async () => {
+    const { renderOverview } = await import('/tools/world/core/layout.js');
+    const { spokePoint } = await import('/tools/world/core/wheel.js');
+    const { S } = window.__world;
+    const bp = S.bp, W = bp.wheel, g = S.g, plan = S.plan;
+    /* the plan's colours, every other tier a shade darker so the one-zone
+       steps can be counted */
+    const px = renderOverview(plan, bp, S.table);
+    const ground = bp.classIds.indexOf('ground'), obstacle = bp.classIds.indexOf('obstacle');
+    for (let i = 0; i < bp.w * bp.h; i++) {
+      const t = bp.tier[i];
+      if (!t || (bp.cls[i] !== ground && bp.cls[i] !== obstacle) || t % 2) continue;
+      px[i * 4] *= 0.86; px[i * 4 + 1] *= 0.86; px[i * 4 + 2] *= 0.86;
+    }
+    const OUTPX = 1500, TOP = 70, FOOT = 190;
+    const c = new OffscreenCanvas(OUTPX, OUTPX + TOP + FOOT), ctx = c.getContext('2d');
+    ctx.fillStyle = '#10263f'; ctx.fillRect(0, 0, c.width, c.height);
+    const base = new OffscreenCanvas(bp.w, bp.h);
+    base.getContext('2d').putImageData(new ImageData(px, bp.w, bp.h), 0, 0);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(base, 0, TOP, OUTPX, OUTPX);
+    const k = OUTPX / (bp.w * bp.scale);
+    const P = (p) => [(g.cx + p[0] * g.P - bp.x0) * k, TOP + (g.cy + p[1] * g.P - bp.y0) * k];
+    const text = (t, x, y, size, color = '#fff', align = 'center', weight = 700) => {
+      ctx.font = `${weight} ${size}px system-ui,-apple-system,sans-serif`;
+      ctx.textAlign = align; ctx.textBaseline = 'middle';
+      ctx.lineWidth = Math.max(3, size / 4); ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineJoin = 'round';
+      ctx.strokeText(t, x, y); ctx.fillStyle = color; ctx.fillText(t, x, y);
+    };
+    const realm = { shadow: ['Dark Sanctum', '#c9b6ff'], radiant: ['Light Summit', '#ffe98a'] };
+    for (const s of W.spokes) {
+      const rd = plan.regions[s.id];
+      /* the levels at the camps */
+      for (const t of plan.wheel.camps) {
+        const [x, y] = P(spokePoint(s, W.tierMid(t), -0.62));
+        text(String(W.levels(t)[1]), x, y, 19);
+      }
+      /* the gate and where it leads: past the tip, or under it for the two
+         spokes that run to the picture's edges */
+      const flat = s.uy === 0;
+      const [gx0, gy0] = P(spokePoint(s, flat ? W.gateR - 0.35 : W.gateR + 1.05));
+      const gx = Math.min(OUTPX - 105, Math.max(105, gx0)), gy = gy0 + (flat ? 70 : 0);
+      const [nm, col] = realm[rd.realm];
+      text(`→ ${nm}`, gx, gy + 13, 16, col);
+      text(rd.gate.name.replace(/^the /, ''), gx, gy - 9, 15, '#fff', 'center', 600);
+      /* the spoke's name and element, halfway out */
+      const [nx, ny] = P(spokePoint(s, W.tierMid(9.5), 1.85));
+      text(`${rd.name}`, nx, ny - 11, 22, '#fff');
+      text(`${rd.element[0].toUpperCase() + rd.element.slice(1)}`, nx, ny + 12, 17, '#f3d9a2', 'center', 600);
+    }
+    const [bx, by] = P([0, -2.95]);
+    text('Brotown', bx, by, 20);
+    text('the Wheel: a spoke of land for every element', 30, 36, 30, '#fff', 'left');
+    const lines = [
+      'Each band along a spoke is one tier: one zone of walking (1,024 game px) and five levels, 16 tiers from level 1 at the commons to 80 at the tip.',
+      'Numbers mark the camps (waystations) at levels 20, 40, 60 and 80. The rings are the passes that join neighbouring spokes at levels 20 and 60.',
+      'Every tip holds a keystone gate to an endgame realm, levels 80–100: the Dark Sanctum from the compass points, the Light Summit from the diagonals.',
+      'Between the spokes is sea. Brotown and its commons at the hub are safe. About 490 zones of land; the town to a gate is about two minutes at a run.',
+    ];
+    lines.forEach((t, i) => text(t, 30, TOP + OUTPX + 36 + i * 36, 17, '#dfe7ef', 'left', 500));
+    const blob = await c.convertToBlob({ type: 'image/png' });
+    const u = new Uint8Array(await blob.arrayBuffer());
+    let bin = ''; for (let i = 0; i < u.length; i += 32768) bin += String.fromCharCode.apply(null, u.subarray(i, i + 32768));
+    return 'data:image/png;base64,' + btoa(bin);
+  });
+
   fs.mkdirSync(OUT, { recursive: true });
-  for (const [name, url] of [['island-plan.png', island], ['brotown-plan.png', town]]) {
+  for (const [name, url] of [['wheel-plan.png', wheel], ['island-plan.png', island], ['brotown-plan.png', town]]) {
     const buf = Buffer.from(url.split(',')[1], 'base64');
     fs.writeFileSync(path.join(OUT, name), buf);
     console.log(`wrote docs/world/${name} (${Math.round(buf.length / 1024)} KB)`);

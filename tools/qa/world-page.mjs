@@ -5,8 +5,9 @@
  * they download a backup.  So the properties worth proving are the ones a
  * slip in would silently cost them days:
  *
- *   1. THE PLAN BUILDS and the page offers the right first square -- M13,
- *      the town square -- with a prompt that says it sets the look.
+ *   1. THE PLAN BUILDS and the page offers the right first square -- Y25,
+ *      the town square -- with a prompt that says it sets the look; the
+ *      Levels view draws, and a spoke square says which levels it holds.
  *   2. THE STYLE KEY is kept, shown, and every prompt then asks ChatGPT to
  *      match it.
  *   3. FUSING WORKS on pictures damaged the way ChatGPT damages them: each
@@ -195,18 +196,43 @@ try {
     const S = window.__world.S;
     return { bw: S.bp.w, anchors: S.anchors.length, sug: window.__world.api.suggestions(), squares: Object.keys(S.project.squares).length, progress: document.querySelector('#progress').textContent };
   });
-  ok('blueprint built over the active area (1280 cells across)', info.bw === 1280, info.bw);
+  ok('blueprint built over the active area (1792 cells across)', info.bw === 1792, info.bw);
   ok('no anchor painting (Brotown is redrawn as a Main Street town)', info.anchors === 0, info.anchors);
   ok('fresh project starts empty', info.squares === 0, info.squares);
-  ok('the first square offered is M13, the town square', info.sug.length === 1 && info.sug[0] === 'M13', info.sug);
-  ok('progress counts 137 land squares', /of 137 land squares/.test(info.progress), info.progress);
+  ok('the first square offered is Y25, the town square', info.sug.length === 1 && info.sug[0] === 'Y25', info.sug);
+  const landSq = Number((/of (\d+) land squares/.exec(info.progress) || [])[1]);
+  ok(`progress counts the Wheel's land squares (${landSq})`, landSq > 350 && landSq < 700, info.progress);
 
-  await page.evaluate(() => window.__world.api.select('M13'));
+  /* v2.3.2936: the Levels view and the levels a square spans */
+  const lv = await page.evaluate(async () => {
+    const cv = document.getElementById('map');
+    const px = () => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let h = 0; for (let i = 0; i < d.length; i += 4099) h = (h * 31 + d[i] + d[i + 1] * 7 + d[i + 2] * 13) >>> 0; return h; };
+    const before = px();
+    document.querySelector('[data-view="levels"]').click();
+    const after = px();
+    document.querySelector('[data-view="art"]').click();
+    const W = window.__world.S.bp.wheel;
+    return { changed: before !== after, tier: W.tierMid(3) };
+  });
+  ok('the Levels view draws the level map', lv.changed);
+  /* the square on the North Road in tier 3 (levels 11-15) */
+  const spokeSq = await page.evaluate(async ({ r }) => {
+    const { cellAt, cellName } = await import('/tools/world/core/grid.js');
+    const { S } = window.__world;
+    const c = cellAt(S.g, S.g.cx, S.g.cy - r * S.g.P);
+    return cellName(c.c, c.r);
+  }, { r: lv.tier });
+  await page.evaluate((id) => window.__world.api.select(id), spokeSq);
+  await page.waitForFunction(() => document.querySelector('#tpl-img').naturalWidth > 0, null, { timeout: 30000 });
+  const title = await page.evaluate(() => document.querySelector('#sq-title').textContent);
+  ok(`a spoke square says which levels it holds (${title})`, /Flame Fields/.test(title) && /levels \d+–\d+/.test(title), title);
+
+  await page.evaluate(() => window.__world.api.select('Y25'));
   await page.waitForFunction(() => document.querySelector('#tpl-img').naturalWidth > 0, null, { timeout: 30000 });
   let prompt = await page.inputValue('#prompt');
-  ok('M13 prompt names the square and says it sets the look', prompt.startsWith('Paint square M13') && /sets the look for the whole map/.test(prompt), prompt.slice(0, 60));
-  ok('M13 prompt describes the town square and its empty plots', /The town square \(pale grey\)/.test(prompt) && /Every plot stays EMPTY/.test(prompt));
-  ok('M13 prompt carries the style bible', /No horizon, no sky/.test(prompt) && /Never add:/.test(prompt));
+  ok('Y25 prompt names the square and says it sets the look', prompt.startsWith('Paint square Y25') && /sets the look for the whole map/.test(prompt), prompt.slice(0, 60));
+  ok('Y25 prompt describes the town square and its empty plots', /The town square \(pale grey\)/.test(prompt) && /Every plot stays EMPTY/.test(prompt));
+  ok('Y25 prompt carries the style bible', /No horizon, no sky/.test(prompt) && /Never add:/.test(prompt));
   ok('the style key card asks for a key before the first square', await page.evaluate(() => !document.querySelector('#key-none').hidden && document.querySelector('#key-how').open && /Make it|Make this/.test(document.querySelector('#key-none').textContent) && document.querySelector('#key-prompt').value.includes('STYLE KEY sheet')));
 
   /* ── 2. the style key ── */
@@ -228,48 +254,48 @@ try {
 
   /* ── 3. fuse three neighbouring squares ── */
   console.log('3. fusing damaged pictures through the upload button');
-  const first = await uploadAndGrade(page, 'M13', 'colour');
-  ok(`M13 is the first square (${first.grade})`, first.grade === 'first', first.text);
+  const first = await uploadAndGrade(page, 'Y25', 'colour');
+  ok(`Y25 is the first square (${first.grade})`, first.grade === 'first', first.text);
   await page.click('#keep');
-  await page.waitForFunction(() => window.__world.S.project.squares.M13 && document.querySelector('#busy').hidden, null, { timeout: 30000 });
-  ok('the next squares offered are M13\'s neighbours', await page.evaluate(() => ['L13', 'N13', 'M12', 'M14'].every((s) => window.__world.api.suggestions().includes(s))));
-  await page.evaluate(() => window.__world.api.select('N13'));
-  await page.waitForFunction(() => /Paint square N13/.test(document.querySelector('#prompt').value), null, { timeout: 30000 });
-  ok('N13 prompt says its left edge is finished', /along the left edge is finished neighbouring squares/.test(await page.inputValue('#prompt')));
+  await page.waitForFunction(() => window.__world.S.project.squares.Y25 && document.querySelector('#busy').hidden, null, { timeout: 30000 });
+  ok('the next squares offered are Y25\'s neighbours', await page.evaluate(() => ['X25', 'Z25', 'Y24', 'Y26'].every((s) => window.__world.api.suggestions().includes(s))));
+  await page.evaluate(() => window.__world.api.select('Z25'));
+  await page.waitForFunction(() => /Paint square Z25/.test(document.querySelector('#prompt').value), null, { timeout: 30000 });
+  ok('Z25 prompt says its left edge is finished', /along the left edge is finished neighbouring squares/.test(await page.inputValue('#prompt')));
   const tplPainted = await page.evaluate(async () => {
-    const S = window.__world.S, r = S.info.N13.rect;
+    const S = window.__world.S, r = S.info.Z25.rect;
     const img = await window.__world.api.worldRect(r.x, r.y, S.g.N, S.g.N);
     let k = 0;
     for (let i = 3; i < img.data.length; i += 4) if (img.data[i] > 250) k++;
     return k / (S.g.N * S.g.N);
   });
-  ok('N13 template carries M13\'s pixels along its left edge', tplPainted > 0.15 && tplPainted < 0.35, tplPainted.toFixed(3));
-  for (const id of ['N13', 'M14']) {
+  ok('Z25 template carries Y25\'s pixels along its left edge', tplPainted > 0.15 && tplPainted < 0.35, tplPainted.toFixed(3));
+  for (const id of ['Z25', 'Y26']) {
     const t0 = Date.now();
     const r = await uploadAndGrade(page, id, 'damaged');
     ok(`${id} grades great/ok (${r.grade}, ${Date.now() - t0} ms)`, r.grade === 'great' || r.grade === 'ok', r.text);
     await page.click('#keep');
     await page.waitForFunction((id) => window.__world.S.project.squares[id] && document.querySelector('#busy').hidden, id, { timeout: 30000 });
   }
-  for (const id of ['M13', 'N13', 'M14']) {
+  for (const id of ['Y25', 'Z25', 'Y26']) {
     const p = await psnrVsTruth(page, id);
     ok(`${id} fused structure matches the true world (PSNR ${p.toFixed(1)} dB after a colour fit)`, p > PSNR_MIN, p);
   }
   if (SHOTS) {
-    await page.evaluate(() => window.__world.api.select('M14'));
+    await page.evaluate(() => window.__world.api.select('Y26'));
     await page.waitForTimeout(800);
     await page.screenshot({ path: path.join(SHOTS, 'world-builder-done.png'), fullPage: true });
   }
 
   /* ── 4. a picture that ignores its template ── */
   console.log('4. a picture that ignores its template');
-  const bad = await uploadAndGrade(page, 'N14', 'unrelated');
+  const bad = await uploadAndGrade(page, 'Z26', 'unrelated');
   ok('an unrelated picture grades bad', bad.grade === 'bad', bad);
   await page.click('#retry');
-  ok('Try again keeps nothing', await page.evaluate(() => !window.__world.S.project.squares.N14));
+  ok('Try again keeps nothing', await page.evaluate(() => !window.__world.S.project.squares.Z26));
 
   /* a wide picture (ChatGPT sometimes answers 1254 x 1024): centre square used, still fuses */
-  const wide = await uploadAndGrade(page, 'N14', 'wide');
+  const wide = await uploadAndGrade(page, 'Z26', 'wide');
   ok('a non-square picture is centre-cropped and still joins', wide.grade !== 'bad' && /not square/.test(wide.text), wide);
   await page.click('#retry');
 
@@ -281,32 +307,32 @@ try {
   await page.waitForFunction(() => window.__world && window.__world.S.project, null, { timeout: 60000 });
   await page.evaluate(() => window.__world.ready.then(() => true));
   const after = await page.evaluate(() => Object.keys(window.__world.S.project.squares).sort());
-  ok('three squares survive a reload', JSON.stringify(after) === '["M13","M14","N13"]', after);
+  ok('three squares survive a reload', JSON.stringify(after) === '["Y25","Y26","Z25"]', after);
   /* iPhone Safari reloads a background tab while you are in the ChatGPT app */
-  const reopened = await page.waitForFunction(() => window.__world.S.selected === 'N14', null, { timeout: 15000 }).then(() => true, () => false);
-  ok('the square you were on (N14) is reopened after a reload', reopened);
+  const reopened = await page.waitForFunction(() => window.__world.S.selected === 'Z26', null, { timeout: 15000 }).then(() => true, () => false);
+  ok('the square you were on (Z26) is reopened after a reload', reopened);
   ok('fused pixels survive a reload', (await regionHash(page, ...HR)) === before);
   ok('the style key survives a reload', await page.evaluate(() => !!window.__world.S.styleKey && !document.querySelector('#key-has').hidden));
   ok('every kept square records the plan it was painted against, and none has changed', await page.evaluate(() => {
     const S = window.__world.S;
     return Object.values(S.project.squares).every((r) => r.planKey && r.planKey === S.info[r.id].planKey) && window.__world.api.changedSquares().length === 0;
   }));
-  await page.evaluate(() => window.__world.api.redo('N13', { confirmFirst: false }));
+  await page.evaluate(() => window.__world.api.redo('Z25', { confirmFirst: false }));
   const afterRedo = await page.evaluate(() => Object.keys(window.__world.S.project.squares).sort());
-  ok('redo removes the square and keeps the rest', JSON.stringify(afterRedo) === '["M13","M14"]', afterRedo);
+  ok('redo removes the square and keeps the rest', JSON.stringify(afterRedo) === '["Y25","Y26"]', afterRedo);
   const redoneEmpty = await page.evaluate(async () => {
-    const S = window.__world.S, r = S.info.N13.rect;
+    const S = window.__world.S, r = S.info.Z25.rect;
     const img = await window.__world.api.squaresRect(r.x + 400, r.y + 400, 200, 200);
     for (let i = 3; i < img.data.length; i += 4) if (img.data[i]) return false;
     return true;
   });
   ok('the redone square is empty again in the middle', redoneEmpty);
 
-  /* re-keep N13 so the backup has three squares */
-  const again = await uploadAndGrade(page, 'N13', 'damaged');
-  ok(`N13 re-painted grades great/ok (${again.grade})`, again.grade === 'great' || again.grade === 'ok', again.text);
+  /* re-keep Z25 so the backup has three squares */
+  const again = await uploadAndGrade(page, 'Z25', 'damaged');
+  ok(`Z25 re-painted grades great/ok (${again.grade})`, again.grade === 'great' || again.grade === 'ok', again.text);
   await page.click('#keep');
-  await page.waitForFunction(() => window.__world.S.project.squares.N13 && document.querySelector('#busy').hidden, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__world.S.project.squares.Z25 && document.querySelector('#busy').hidden, null, { timeout: 30000 });
 
   /* ── 6. backup -> fresh profile -> restore ── */
   console.log('6. backup and restore into a fresh browser profile');
@@ -319,7 +345,7 @@ try {
   });
   const zipBytes = Buffer.from(b64, 'base64');
   ok('backup is a zip with the record, three pictures and the style key', zipBytes.readUInt32LE(0) === 0x04034b50 && zipBytes.includes(Buffer.from('backup.json')) &&
-    ['M13', 'N13', 'M14'].every((s) => zipBytes.includes(Buffer.from(`squares/${s}.png`))) && zipBytes.includes(Buffer.from('style-key.png')));
+    ['Y25', 'Z25', 'Y26'].every((s) => zipBytes.includes(Buffer.from(`squares/${s}.png`))) && zipBytes.includes(Buffer.from('style-key.png')));
   const orig = await regionHash(page, ...HR);
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const pageB = await open(ctxB);
@@ -331,7 +357,7 @@ try {
   ok('restore rebuilds the same fused pixels', (await regionHash(pageB, ...HR)) === orig);
   ok('restore brings back the style key', await pageB.evaluate(() => !!window.__world.S.styleKey && !document.querySelector('#key-has').hidden));
   if (SHOTS) {
-    await pageB.evaluate(() => window.__world.api.select('N13'));
+    await pageB.evaluate(() => window.__world.api.select('Z25'));
     await pageB.waitForTimeout(800);
     await pageB.screenshot({ path: path.join(SHOTS, 'world-builder-phone.png'), fullPage: false });
   }

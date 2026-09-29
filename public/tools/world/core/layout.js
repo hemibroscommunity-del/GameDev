@@ -1,9 +1,16 @@
 /* ═══ v2.3.2931: THE BLUEPRINT — the whole world as a colour-coded plan ═══
  *
- * One cell per `plan.blueprintScale` art px (8), each holding a terrain CLASS
- * (ground, road, water, cliff, street, ...), a REGION (frost, ember, ...) and
- * a BAND (the region's fringe, heart or rim).  Built deterministically from
- * the plan: same seed, same world, on every device.
+ * One cell per `plan.blueprintScale` art px (16), each holding a terrain
+ * CLASS (ground, road, water, cliff, street, ...), a REGION (frost, ember,
+ * ...), a STAGE (which of its region's four looks, `band`) and a TIER (the
+ * level: tier t is levels 5t-4 to 5t; 0 where no monster goes).  Built
+ * deterministically from the plan: same seed, same world, on every device.
+ *
+ * v2.3.2936: the island is the WHEEL (core/wheel.js) -- the commons round
+ * the town, a spoke of land per element, sea between them, passes across
+ * it.  The tier map is the level map a game system asks "how dangerous is
+ * it here?" (docs/WORLD-ARCHITECTURE.md §2: region and level come from
+ * position, not from a zone).
  *
  * It has two jobs, and the second is why it exists at all:
  *
@@ -25,18 +32,21 @@
  * leaves every painted square's plan bit-for-bit unchanged -- which the core
  * suite proves (tools/world/test-world-core.mjs, "growth").
  *
- * Built in well under a second on a desktop: the low-frequency fields (coast
- * wobble, region-border warp, meadow wobble) are evaluated on a coarse
+ * Built in about a second on a desktop: the low-frequency fields (coast
+ * wobble, region-border warp, commons and tier wobble) are evaluated on a coarse
  * lattice and interpolated, because they vary over hundreds of cells.
  */
 import { fbm, valueNoise, hash2, fnv1a } from './rng.js';
 import { gridInfo } from './grid.js';
+import { wheelInfo, axisDist, between, tierAt, stageOf, spokePoint } from './wheel.js';
 
 /* APPEND ONLY: a class's index is stored in every blueprint cell. */
 export const CLASS_IDS = ['ground', 'path', 'obstacle', 'water', 'ocean', 'cliff', 'lava', 'landmark', 'anchor',
-  'street', 'boardwalk', 'plaza', 'lot', 'river', 'rail', 'bridge'];
+  'street', 'boardwalk', 'plaza', 'lot', 'river', 'rail', 'bridge', 'gate'];
 export const C = Object.freeze(Object.fromEntries(CLASS_IDS.map((k, i) => [k, i])));
-export const BANDS = ['fringe', 'heart', 'rim'];
+/* A region's stages (its looks, one per twenty levels), as `band` stores
+   them: 0-based. */
+export const STAGES = 4;
 const TOWN_CLASSES = new Set([C.street, C.boardwalk, C.plaza]);
 
 export function hexToRgb(hex) {
@@ -208,7 +218,7 @@ export function buildBlueprint(plan) {
   const R = Object.create(null);
   regionIds.forEach((k, i) => { R[k] = i; });
   const seed = plan.seed | 0;
-  const townId = R.town, meadowId = R.meadow;
+  const townId = R.town;
 
   /* coordinates: a cell's centre in art px, an art position in (float) cells
      where cell b's centre is b + 0.5, and plan squares -> art px */
@@ -222,59 +232,69 @@ export function buildBlueprint(plan) {
   };
 
   const anchors = placeAnchors(plan);
-  const coast = plan.coast, meadow = plan.meadow, warp = plan.regionWarp;
-  const [b1, b2] = plan.bands || [0.33, 0.72];
-  const bandOf = (t) => (t < b1 ? 0 : t < b2 ? 1 : 2);
+  const W = wheelInfo(plan);
+  const coast = plan.coast, cmn = plan.commons, warp = plan.regionWarp, tw = plan.tierWarp;
+  const passWob = plan.wheel.passWobble || 0;
+  const tier = new Uint8Array(n);
 
   const STEP = 8;
   const field = (f) => coarseField(gx0, gy0, bw, bh, STEP, f);
   const coastN = field((gx, gy) => fbm(sqx(gx) * coast.freq, sqy(gy) * coast.freq, seed + 11, 4));
   const warpX = field((gx, gy) => fbm(sqx(gx) * warp.freq, sqy(gy) * warp.freq, seed + 23, 3));
   const warpY = field((gx, gy) => fbm(sqx(gx) * warp.freq + 17.3, sqy(gy) * warp.freq + 5.1, seed + 37, 3));
-  const ringN = field((gx, gy) => fbm(sqx(gx) * meadow.freq, sqy(gy) * meadow.freq, seed + 41, 3));
+  const ringN = field((gx, gy) => fbm(sqx(gx) * cmn.freq, sqy(gy) * cmn.freq, seed + 41, 3));
   const townN = field((gx, gy) => fbm(sqx(gx) * 1.6, sqy(gy) * 1.6, seed + 53, 2));
+  const tierN = field((gx, gy) => fbm(sqx(gx) * tw.freq, sqy(gy) * tw.freq, seed + 61, 2));
 
-  const hearts = regionIds.filter((k) => plan.regions[k].heart)
-    .map((k) => ({ id: R[k], x: plan.regions[k].heart[0], y: plan.regions[k].heart[1] }));
+  const spokes = W.spokes.map((sp) => ({ ...sp, rid: R[sp.id] }));
+  const passes = [];
+  for (const [pa, pb] of W.pairs) for (const t of plan.wheel.passes) passes.push({ a: pa, b: pb, r: W.tierMid(t), half: (plan.wheel.passZones * W.Z) / 2 });
   const T = plan.town || null;
   const TS = T ? townShape(T) : null;
-  const townR = T ? T.gate / P : 0;
+  const commonsId = R.commons;
 
-  /* ── pass 1: sea, anchors, the town, the meadow ring, regions and bands ── */
+  /* ── pass 1: sea, anchors, the town, the commons, the spokes and passes,
+     each cell's stage and tier ──
+     Land is the commons, the union of the spoke capsules, and the pass
+     arcs.  A land cell belongs to the spoke whose axis is nearest a
+     slightly warped copy of it -- so the border between two neighbours
+     wanders round the line halfway between them, at their bases and across
+     their passes alike.  Its tier comes from its distance from the town. */
   for (let by = 0; by < bh; by++) {
     const gy = gy0 + by, y = sqy(gy), ay = artY(by);
     for (let bx = 0; bx < bw; bx++) {
       const gx = gx0 + bx, x = sqx(gx), ax = artX(bx);
       const i = by * bw + bx;
-      const wx = x + warp.amount * warpX(gx, gy), wy = y + warp.amount * warpY(gx, gy);
-      let best = hearts.length ? hearts[0].id : 0, bd = Infinity;
-      for (let h = 0; h < hearts.length; h++) {
-        const dx = wx - hearts[h].x, dy = wy - hearts[h].y;
-        const d = dx * dx + dy * dy;
-        if (d < bd) { bd = d; best = hearts[h].id; }
+      const r = Math.sqrt(x * x + y * y);
+      let k1 = 0, k2 = 0, d1 = Infinity, d2 = Infinity;
+      for (let k = 0; k < spokes.length; k++) {
+        const d = axisDist(W, spokes[k], x, y);
+        if (d < d1) { d2 = d1; k2 = k1; d1 = d; k1 = k; } else if (d < d2) { d2 = d; k2 = k; }
       }
-      const e = Math.sqrt(x * x + y * y), chb = Math.max(Math.abs(x), Math.abs(y));
-      const dist = e + (chb - e) * coast.square;
-      if (dist > coast.radius + coast.wobble * coastN(gx, gy)) { cls[i] = C.ocean; reg[i] = best; band[i] = 2; continue; }
+      const cn = coastN(gx, gy);
+      const inCommons = r < W.hub + cmn.wobble * ringN(gx, gy);
+      let land = inCommons || d1 < W.half + coast.wobble * cn;
+      if (!land) {
+        for (const p of passes) {
+          if (Math.abs(r - p.r) < p.half + passWob * cn && between(p.a, p.b, x, y)) { land = true; break; }
+        }
+      }
+      /* the region: of the two nearest axes, the one nearer the warped point */
+      const wx = x + warp.amount * warpX(gx, gy), wy = y + warp.amount * warpY(gx, gy);
+      const best = spokes.length > 1 && axisDist(W, spokes[k2], wx, wy) < axisDist(W, spokes[k1], wx, wy) ? spokes[k2].rid : spokes.length ? spokes[k1].rid : 0;
+      if (!land) { cls[i] = C.ocean; reg[i] = best; continue; }
       cls[i] = C.ground;
       let inAnchor = false;
-      for (const a of anchors) {
-        if (ax >= a.core.x0 && ax < a.core.x1 && ay >= a.core.y0 && ay < a.core.y1) { inAnchor = true; break; }
+      for (const an of anchors) {
+        if (ax >= an.core.x0 && ax < an.core.x1 && ay >= an.core.y0 && ay < an.core.y1) { inAnchor = true; break; }
       }
       if (inAnchor) { cls[i] = C.anchor; reg[i] = townId != null ? townId : best; continue; }
       if (T && townId != null && inTown(ax - g.cx, ay - g.cy, T, TS, T.wobble * townN(gx, gy))) { reg[i] = townId; continue; }
-      const mr = meadow.radius + meadow.wobble * ringN(gx, gy);
-      if (meadowId != null && e < mr) {
-        reg[i] = meadowId;
-        band[i] = bandOf((e - townR) / Math.max(1e-6, mr - townR));
-        continue;
-      }
+      if (inCommons && commonsId != null) { reg[i] = commonsId; continue; }
       reg[i] = best;
-      /* how far out between the meadow and the coast, measured along this
-         direction so a diagonal region's rim is as far out as an axial one's */
-      const m = e > 0 ? chb / e : 1;
-      const eCoast = coast.radius / (1 + (m - 1) * coast.square);
-      band[i] = bandOf((e - meadow.radius) / Math.max(1e-6, eCoast - meadow.radius));
+      const t = Math.max(1, tierAt(W, r + tw.amount * tierN(gx, gy)));
+      tier[i] = t;
+      band[i] = stageOf(W, t);
     }
   }
 
@@ -347,7 +367,7 @@ export function buildBlueprint(plan) {
       const k = C[f.class];
       const L = Math.sqrt(1e6 / f.density);
       const fs = (strSeed(rk) ^ seed) + Math.imul(fi + 1, 7919);
-      const bandOk = f.in ? new Set(f.in.map((b) => BANDS.indexOf(b))) : null;
+      const bandOk = f.in ? new Set(f.in.map((k) => k - 1)) : null;   /* stages 1-4 in the plan, 0-3 in `band` */
       const i0 = Math.floor((x0 - g.cx) / L) - 1, i1 = Math.floor((x0 + bw * S - g.cx) / L) + 1;
       const j0 = Math.floor((y0 - g.cy) / L) - 1, j1 = Math.floor((y0 + bh * S - g.cy) / L) + 1;
       const can = (c, i) => reg[i] === rid && (c === C.ground || c === C.obstacle);
@@ -475,7 +495,7 @@ export function buildBlueprint(plan) {
   for (const rl of plan.rails || []) {
     const pts = smoothCurve(rl.pts.map(toArt), 4);
     const can = (c) => landAt(c) && c !== C.river && !TOWN_CLASSES.has(c) && c !== C.lot && c !== C.bridge;
-    for (const p of pts) stampDisc(cellX(p[0]), cellY(p[1]), 14 / S, C.rail, can, null);
+    for (const p of pts) stampDisc(cellX(p[0]), cellY(p[1]), (plan.classes.rail.half || 14) / S, C.rail, can, null);
     routes.push({ kind: 'rail', id: rl.id, name: rl.name, abandoned: !!rl.abandoned, paint: rl.paint || null, pts: thin(pts, 4) });
   }
 
@@ -496,25 +516,47 @@ export function buildBlueprint(plan) {
     pois.push({ kind: 'place', id: pl.id, name: pl.name, paint: pl.paint || '', x: px, y: py, r: pl.r || Math.max(pl.size[0], pl.size[1]) / 2 });
   }
 
-  /* ── pass 8: one landmark per region, where its road ends ── */
-  for (const rk of regionIds) {
-    const rd = plan.regions[rk];
-    const lm = rd.landmark;
-    const at = lm && (lm.at || rd.heart);
-    if (!lm || !at) continue;
-    const [lx, ly] = toArt(at);
-    const cx = cellX(lx), cy = cellY(ly), r = lm.r / S;
+  /* ── pass 8: the landmarks, and a keystone gate at every spoke's tip ──
+     A landmark sits at `at` (squares), or at the middle of `tier` on its
+     spoke, `side` squares right of the road; a gate at the spoke's tip,
+     where its road ends. */
+  const stampMark = (rk, px, py, rad, k, nseed) => {
+    const cx = cellX(px), cy = cellY(py), r = rad / S;
     const xa = Math.max(0, Math.floor(cx - r * 1.45)), xb = Math.min(bw - 1, Math.ceil(cx + r * 1.45));
     const ya = Math.max(0, Math.floor(cy - r * 1.45)), yb = Math.min(bh - 1, Math.ceil(cy + r * 1.45));
     for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
       const i = y * bw + x;
       if (!landAt(cls[i]) || TOWN_CLASSES.has(cls[i]) || cls[i] === C.lot || cls[i] === C.river) continue;
       const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
-      if (Math.sqrt(dx * dx + dy * dy) / r + 0.22 * valueNoise((gx0 + x) * 0.09, (gy0 + y) * 0.09, seed + 500 + strSeed(rk)) < 1) {
-        cls[i] = C.landmark; reg[i] = R[rk];
+      if (Math.sqrt(dx * dx + dy * dy) / r + 0.22 * valueNoise((gx0 + x) * 0.09, (gy0 + y) * 0.09, nseed) < 1) {
+        cls[i] = k; reg[i] = R[rk];
       }
     }
-    pois.push({ kind: 'landmark', id: rk, region: rk, name: lm.name, x: lx, y: ly, r: lm.r });
+  };
+  for (const rk of regionIds) {
+    const rd = plan.regions[rk];
+    const sp = W.byId[rk];
+    const lm = rd.landmark;
+    const at = lm && (lm.at || (sp && lm.tier ? spokePoint(sp, W.tierMid(lm.tier), lm.side || 0) : null));
+    if (lm && at) {
+      const [lx, ly] = toArt(at);
+      stampMark(rk, lx, ly, lm.r, C.landmark, seed + 500 + strSeed(rk));
+      pois.push({ kind: 'landmark', id: rk, region: rk, name: lm.name, x: lx, y: ly, r: lm.r });
+    }
+    if (rd.gate && sp) {
+      const [gx, gy] = toArt(spokePoint(sp, W.gateR));
+      stampMark(rk, gx, gy, rd.gate.r, C.gate, seed + 700 + strSeed(rk));
+      pois.push({ kind: 'gate', id: rk + '-gate', region: rk, realm: rd.realm, name: rd.gate.name, x: gx, y: gy, r: rd.gate.r });
+    }
+  }
+
+  /* the passes, for the prompt: where each one's middle is */
+  for (const rd of plan.roads || []) {
+    if (!rd.pass) continue;
+    const m = rd.pts[rd.pts.length >> 1];
+    const [mx, my] = toArt(m);
+    pois.push({ kind: 'pass', id: rd.id, name: rd.name, a: rd.pass.a, b: rd.pass.b, tier: rd.pass.tier, level: rd.pass.level,
+      x: mx, y: my, r: (plan.wheel.passZones * W.Z * P) / 2 });
   }
 
   const counts = { classes: new Array(CLASS_IDS.length).fill(0), regions: new Array(regionIds.length).fill(0) };
@@ -522,10 +564,11 @@ export function buildBlueprint(plan) {
 
   return {
     w: bw, h: bh, scale: S, x0, y0, W: g.W, H: g.H,
-    cls, reg, band, regionIds, classIds: CLASS_IDS,
+    cls, reg, band, tier, regionIds, classIds: CLASS_IDS, wheel: W,
     anchors, pois, lots, routes, counts,
     landmarks: pois.filter((p) => p.kind === 'landmark'),
-    hash: fnv1a(cls, reg, band),
+    gates: pois.filter((p) => p.kind === 'gate'),
+    hash: fnv1a(cls, reg, band, tier),
   };
 
 }
@@ -562,6 +605,7 @@ export function colorTable(plan, bp) {
     else if (cid === 'obstacle') hex = rd.obstacle || '#3c6b2c';
     else if (cid === 'water') hex = rd.water || K.water.color;
     else if (cid === 'landmark') hex = (rd.landmark && rd.landmark.color) || '#999999';
+    else if (cid === 'gate') hex = (rd.gate && rd.gate.color) || '#999999';
     /* The anchor's CORE is fully opaque painting, so no template ever shows
        this colour -- only the overview does, where "the painting is here" is
        the point. */
@@ -580,6 +624,7 @@ export function colorNameOf(plan, cid, rid) {
   if (cid === 'obstacle') return rd.obstacleName;
   if (cid === 'water') return rd.waterName || K.water.colorName;
   if (cid === 'landmark') return rd.landmark && rd.landmark.colorName;
+  if (cid === 'gate') return rd.gate && rd.gate.colorName;
   return K[cid] && K[cid].colorName;
 }
 
@@ -745,9 +790,10 @@ export function renderOverview(plan, bp, table) {
 }
 
 /* ── what a square contains ──
-   Region and class shares (with centroids in 0..1 square coordinates), each
-   region's bands, which classes touch each edge, and the points of interest
-   inside.  This is what the prompt is written from. */
+   Region and class shares (with centroids in 0..1 square coordinates), how
+   much of each region is in each of its stages (`bands`), the tiers present,
+   which classes touch each edge, and the points of interest inside.  This
+   is what the prompt is written from. */
 export function coverage(plan, bp, rect) {
   const S = bp.scale;
   const bx0 = Math.max(0, Math.floor((rect.x - bp.x0) / S)), by0 = Math.max(0, Math.floor((rect.y - bp.y0) / S));
@@ -756,6 +802,7 @@ export function coverage(plan, bp, rect) {
   const regs = new Map(), kinds = new Map(), bands = new Map();
   const edges = { top: new Set(), right: new Set(), bottom: new Set(), left: new Set() };
   const E = 3;
+  let tmin = Infinity, tmax = 0;
   for (let y = by0; y < by1; y++) for (let x = bx0; x < bx1; x++) {
     const i = y * bp.w + x;
     const rid = bp.regionIds[bp.reg[i]], cid = CLASS_IDS[bp.cls[i]];
@@ -767,9 +814,11 @@ export function coverage(plan, bp, rect) {
     f.n++; f.su += u; f.sv += v;
     if (cid !== 'ocean') {
       let b = bands.get(rid);
-      if (!b) bands.set(rid, (b = BANDS.map((name) => ({ band: name, n: 0, su: 0, sv: 0 }))));
+      if (!b) bands.set(rid, (b = Array.from({ length: STAGES }, (_, k) => ({ stage: k, n: 0, su: 0, sv: 0 }))));
       const bb = b[bp.band[i]];
       bb.n++; bb.su += u; bb.sv += v;
+      const t = bp.tier[i];
+      if (t) { if (t < tmin) tmin = t; if (t > tmax) tmax = t; }
     }
     if (y < by0 + E) edges.top.add(cid);
     if (y >= by1 - E) edges.bottom.add(cid);
@@ -781,14 +830,14 @@ export function coverage(plan, bp, rect) {
   const bandsOut = Object.create(null);
   for (const [rid, b] of bands) {
     const sum = b.reduce((s, e) => s + e.n, 0) || 1;
-    bandsOut[rid] = b.map((e) => ({ band: e.band, n: e.n, frac: e.n / sum, cx: e.n ? e.su / e.n : 0.5, cy: e.n ? e.sv / e.n : 0.5 }));
+    bandsOut[rid] = b.map((e) => ({ stage: e.stage, n: e.n, frac: e.n / sum, cx: e.n ? e.su / e.n : 0.5, cy: e.n ? e.sv / e.n : 0.5 }));
   }
   const hit = (p) => p.x + p.r > rect.x && p.x - p.r < rect.x + rect.w && p.y + p.r > rect.y && p.y - p.r < rect.y + rect.h;
   const pois = bp.pois.filter(hit).map((p) => ({ ...p, cx: (p.x - rect.x) / rect.w, cy: (p.y - rect.y) / rect.h }));
   const landmarks = pois.filter((p) => p.kind === 'landmark');
   const anchors = bp.anchors.filter((a) => a.keep.x1 > rect.x && a.keep.x0 < rect.x + rect.w && a.keep.y1 > rect.y && a.keep.y0 < rect.y + rect.h);
   const lots = bp.lots.filter((l) => l.x1 > rect.x && l.x0 < rect.x + rect.w && l.y1 > rect.y && l.y0 < rect.y + rect.h);
-  return { total, regions: fin(regs), classes: fin(kinds), bands: bandsOut, edges, pois, landmarks, anchors, lots };
+  return { total, regions: fin(regs), classes: fin(kinds), bands: bandsOut, tiers: tmax ? [tmin, tmax] : null, edges, pois, landmarks, anchors, lots };
 }
 
 /* How a route (road, river, railway) passes through a rectangle: one entry

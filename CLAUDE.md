@@ -46,8 +46,13 @@ remnant to migrate server-side, not a mode to preserve.
   Builder at `public/tools/world/` — grid, blueprint, per-square ChatGPT
   prompts, fuser — and the engine phases after it, v2.3.2931; its
   "world trial" section is the `?trial=world` switch that streams the
-  whole island, baked from today's zone art, in place of the World View,
-  v2.3.2932),
+  old round island, baked from today's zone art, in place of the World
+  View, v2.3.2932; since v2.3.2936 the plan is **the Wheel**: the safe
+  commons round Brotown, one spoke of land per element with its own levels
+  1–80 at one zone per five levels, sea between, passes at 20 and 60, and a
+  keystone gate to the Dark or Light realm (80–100) at every tip — geometry
+  in `public/tools/world/core/wheel.js`, and the blueprint stores every
+  cell's tier, the level map),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
@@ -65,7 +70,11 @@ remnant to migrate server-side, not a mode to preserve.
   many-room world: one home per piece of state, maps not zones, cells and
   interest, a character vault per player, one market settling by mail, the
   art pipeline, build order; ARCHITECTURE-HANDOFF still governs today's
-  code, v2.3.2934),
+  code, v2.3.2934; §11 is the cost and capacity plan, v2.3.2936: about
+  0.1¢ per player-hour, a room is limited by INCOMING MESSAGES (~500–1,000
+  a second per Durable Object, today's phones send 15–30 each), so the fix
+  is a ~5 Hz message diet plus each world split into 11 area servers along
+  the Wheel's spokes, not more small rooms),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates

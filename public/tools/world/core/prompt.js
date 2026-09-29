@@ -4,16 +4,17 @@
  *   - the STYLE BIBLE (plan.style / plan.never) -- identical for all squares;
  *   - the STYLE KEY picture, when the owner has made one -- attached to every
  *     square's chat, so the look is matched to a picture, not to words;
- *   - what the BLUEPRINT puts in this square -- its region and which band of
- *     it (fringe, heart, rim), the border landscape where two regions meet,
- *     the town's streets and plots, and exactly which edges each road, the
- *     river and the railway cross (and which way the river flows);
+ *   - what the BLUEPRINT puts in this square -- its region and which stage
+ *     of it (each spoke has four looks, one per twenty levels), the border
+ *     landscape where two regions meet, the passes and gates, the town's
+ *     streets and plots, and exactly which edges each road, the river and
+ *     the railway cross (and which way the river flows);
  *   - which parts of the square are already PAINTED (finished neighbours) --
  *     shown to ChatGPT in the template image.
  *
  * Owner, 2026-09-29: "I made the zone maps as a lazy 'make me a volcanic map'
  * in early demo stages.  Obviously I should include much more specificity."
- * The specificity lives in plan.js (zones, borders, landmarks) and is
+ * The specificity lives in plan.js (stages, borders, landmarks) and is
  * assembled here per square, so each prompt carries its own complete
  * instructions plus real pixels of its neighbours.  Consistency never
  * depends on ChatGPT remembering earlier squares, which it cannot be trusted
@@ -57,19 +58,19 @@ function list(items) {
   return items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
 }
 
-/* "Frost Ridge -- the snowbound taiga: deep snow ..." for the band of a
-   region that holds most of it in this square, plus the next band when it
+/* "Frost Ridge -- the snowbound taiga: deep snow ..." for the stage of a
+   region that holds most of it in this square, plus the next stage when it
    holds enough to show. */
 function regionDescription(plan, cov, id) {
   const rd = plan.regions[id];
   const bands = (cov.bands[id] || []).filter((b) => b.n > 0).sort((a, b) => b.n - a.n);
-  const z = rd.zones && bands[0] ? rd.zones[bands[0].band] : null;
+  const z = rd.stages && bands[0] ? rd.stages[bands[0].stage] : null;
   const look = z ? `${z.name}: ${z.paint}` : rd.paint;
-  const text = z ? `${rd.name} — ${look}` : `${rd.name}: ${look}`;
+  const text = z && rd.stages.length > 1 ? `${rd.name} — ${look}` : `${rd.name}: ${z ? z.paint : rd.paint}`;
   let more = '';
   const b2 = bands[1];
-  if (z && b2 && b2.frac >= BAND_MIN && rd.zones[b2.band]) {
-    const z2 = rd.zones[b2.band];
+  if (z && b2 && b2.frac >= BAND_MIN && rd.stages[b2.stage]) {
+    const z2 = rd.stages[b2.stage];
     more = ` Toward ${toward(b2.cx, b2.cy)} it becomes ${z2.name}: ${z2.paint}.`;
   }
   return { text, look, more };
@@ -79,12 +80,12 @@ function regionDescription(plan, cov, id) {
 function borderLine(plan, a, b) {
   if (a === 'town' || b === 'town') return null;
   const ra = plan.regions[a], rb = plan.regions[b];
-  if (a === 'meadow' || b === 'meadow') {
-    const other = a === 'meadow' ? rb : ra;
-    return other.meadowEdge ? `Where ${plan.regions.meadow.name} meets ${other.name}, ${other.meadowEdge}.` : null;
+  if (a === 'commons' || b === 'commons') {
+    const other = a === 'commons' ? rb : ra;
+    return other.commonsEdge ? `Where ${plan.regions.commons.name} meets ${other.name}, ${other.commonsEdge}.` : null;
   }
   const brief = (plan.borders || {})[[a, b].sort().join('|')];
-  return brief ? `Between ${ra.name} and ${rb.name} the land blends through ${brief}.` : null;
+  return brief ? `Between ${ra.name} and ${rb.name} the land blends through ${brief.land}.` : null;
 }
 
 /* Brotown's streets, square and plots in this square, from the plan's
@@ -143,10 +144,19 @@ function routeLines(plan, bp, rect) {
   for (const r of plan.roads || []) planRoad[r.id] = r;
   for (const r of plan.rivers || []) planRiver[r.id] = r;
   for (const r of plan.rails || []) planRail[r.id] = r;
-  /* what a route begins or ends at: a landmark or a place */
+  /* what a route begins or ends at: a landmark, a gate or a place */
   const endsAt = (pt) => {
-    const at = bp.pois.find((p) => (p.kind === 'landmark' || p.kind === 'place') && near(pt, [p.x, p.y], p.r * 1.3 + 40));
+    const at = bp.pois.find((p) => (p.kind === 'landmark' || p.kind === 'gate' || p.kind === 'place') && near(pt, [p.x, p.y], p.r * 1.3 + 40));
     return at ? at.name : null;
+  };
+  /* the road a road ends ON, when it ends on one of its points (a pass
+     reaching the next spoke's trunk) */
+  const joins = (route) => {
+    const me = planRoad[route.id];
+    if (!me) return null;
+    const pe = me.pts[me.pts.length - 1];
+    const other = (plan.roads || []).find((o) => o.id !== me.id && o.pts.some((q) => q[0] === pe[0] && q[1] === pe[1]));
+    return other ? other.name : null;
   };
   const branchOf = (route) => {
     const src = (route.kind === 'road' ? plan.roads : plan.rails) || [];
@@ -179,8 +189,9 @@ function routeLines(plan, bp, rect) {
             : route.kind === 'road' && Math.hypot(first[0] - g.cx, first[1] - g.cy) < 1.5 * g.P ? `${name} begins at the town gate here and heads out by the ${s.to} edge.`
               : `${name} begins here and heads out by the ${s.to} edge.`);
       } else if (s.from && !s.to) {
-        const at = endsAt(last);
-        out.push(at ? `${name} comes in from the ${s.from} edge and ends at ${at}.` : `${name} comes in from the ${s.from} edge and ends here${route.abandoned ? ', unfinished' : ''}.`);
+        const at = endsAt(last), joined = route.kind === 'road' ? joins(route) : null;
+        out.push(joined ? `${name} comes in from the ${s.from} edge and joins ${joined} here.`
+          : at ? `${name} comes in from the ${s.from} edge and ends at ${at}.` : `${name} comes in from the ${s.from} edge and ends here${route.abandoned ? ', unfinished' : ''}.`);
       } else {
         out.push(`${name} runs across the square.`);
       }
@@ -213,6 +224,7 @@ function legendLines(plan, bp, cov, rect) {
       case 'water': add(color, k.region, rd.waterPaint || 'water'); break;
       case 'cliff': add(color, k.region, rd.cliffPaint || 'a sheer rock cliff'); break;
       case 'landmark': add(color, k.region, rd.landmark ? `${rd.landmark.name}: ${rd.landmark.paint}` : 'a landmark'); break;
+      case 'gate': add(color, k.region, rd.gate ? `${rd.gate.name}: ${rd.gate.paint}` : 'an ancient stone gate'); break;
       case 'river': {
         const rv = crossing('river')[0];
         add(color, k.region, rd.riverPaint || 'a clear river', rv ? rv.name : null);
@@ -297,10 +309,13 @@ export function buildPrompt(plan, bp, c, r, finished = {}, anchorsIn = [], opts 
   bits.push(...routeLines(plan, bp, rect));
   const K = plan.classes;
   for (const p of cov.pois) {
-    if (p.kind === 'landmark') {
-      const lm = plan.regions[p.region].landmark;
+    if (p.kind === 'landmark' || p.kind === 'gate') {
+      const lm = p.kind === 'gate' ? plan.regions[p.region].gate : plan.regions[p.region].landmark;
       const many = /s$/.test(lm.name);
       bits.push(`${cap(lm.name)} (${lm.colorName} in the plan) ${many ? 'stand' : 'stands'} ${where(p.cx, p.cy)}.`);
+    } else if (p.kind === 'pass') {
+      const pa = plan.regions[p.a], pb = plan.regions[p.b], look = (plan.passPaint || {})[p.tier];
+      bits.push(`${cap(p.name)}, the pass joining ${pa.name} and ${pb.name}, crosses ${where(p.cx, p.cy)}${look ? `: ${look}` : ''}.`);
     } else if (p.kind === 'place') {
       bits.push(`The empty plot ${where(p.cx, p.cy)} (${K.lot.colorName}) is kept for ${p.name}${p.paint ? `, ${p.paint}` : ''}. Leave it empty: the building is added separately.`);
     } else if (p.kind === 'bridge') {
