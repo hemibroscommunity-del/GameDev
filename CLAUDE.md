@@ -60,8 +60,12 @@ remnant to migrate server-side, not a mode to preserve.
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
   `public/tools/world/plan.js` wins where they differ, v2.3.2931; its §6
-  is the ART LAW since v2.3.2935: the owner chose **HD pixel art on a 1.5
-  game px grid**, one frozen 128-colour palette (64 until v2.3.2940), no gradients or baked
+  is the ART LAW since v2.3.2935: the owner chose **HD pixel art**, kept
+  since v2.3.2942 at **2 px per game px** (the phone's own sharpness; the
+  old 1.5 game px grid shrank ChatGPT's pictures and stretched them back —
+  "soft and gritty" — and ground swatches now cover 512 game px, laid by
+  `composeGround` at `opts.scale` 3 while the plan's unit stays 1.5 game px),
+  one frozen 128-colour palette (64 until v2.3.2940), no gradients or baked
   shadows/glow, quiet ground, ground baked from swatches — the numbers and
   prompt words live in `public/tools/style/bible.js`, and every picture
   goes through `public/tools/style/process.js`; since v2.3.2939 every

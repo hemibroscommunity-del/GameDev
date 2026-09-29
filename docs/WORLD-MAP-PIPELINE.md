@@ -9,8 +9,9 @@
   the map's layout.
 - **v2.3.2933 asked two questions before phase 2; v2.3.2935 has both
   answers** (World Bible §6 and §13):
-  - the new world is **HD pixel art on a 1.5 game px grid**, matched to the
-    player (who is kept). Every prompt here now asks for it;
+  - the new world is **HD pixel art** (on a 1.5 game px grid until
+    v2.3.2942; since then every picture is kept at 2 px per game px, the
+    phone's own sharpness). Every prompt here now asks for it;
   - the ground is **baked from swatches**, not painted square by square.
     ChatGPT's pixel art holds about half a square's width per picture, so
     squares are no longer painted one picture each. This page stays the
@@ -446,7 +447,9 @@ ground swatches the Wheel needs (World Bible §13):
   the key: the bro is simpler pixel art than the world, so since v2.3.2939 his
   size is given in words instead (World Bible §6).
 - **Each picture brought back** is squared, made seamless, shrunk to one
-  512 art px tile (768 game px), and moved onto the one shared palette with
+  1,024 px tile covering 512 game px (2 px per game px since v2.3.2942: the
+  1.5 game px grid blew ChatGPT's picture up, soft and gritty), and moved
+  onto the one shared palette with
   stray pixels cleaned up (`public/tools/style/process.js`).
 - **The palette** is made from the style key (weighted) and every swatch so
   far, taken in name order so the same pictures always make the same colours,
@@ -635,9 +638,9 @@ Dungeons, the farm and building interiors keep their doors and loading screens
 1. ~~**Island size.**~~ Decided in v2.3.2936: **the Wheel**, about 490 zones
    of land. Growing later is safe (longer spokes, islands), and shrinking is
    not.
-2. ~~**Scale.**~~ Decided in v2.3.2935–2936: one art px is one pixel of the
-   HD pixel art, **1.5 game px**, and the town keeps the size the owner
-   likes.
+2. ~~**Scale.**~~ Decided in v2.3.2935–2936: one art px is **1.5 game px**,
+   and the town keeps the size the owner likes. (Since v2.3.2942 the art
+   itself is finer: 2 px per game px.)
 3. **One daylight.** Everything is made in day, with mood from the game's
    atmosphere layer. This is the plan's assumption.
 4. **The style key.** Make it and approve it before any other picture.

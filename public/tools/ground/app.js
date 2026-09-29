@@ -4,27 +4,29 @@
  *   1. copy its prompt (prompts.js) into a new ChatGPT chat, with the style
  *      key attached (only the key since v2.3.2939: the bro is simpler pixel
  *      art than the world, so he is the size check here, not the reference);
- *   2. bring the picture back: it is made seamless, shrunk to one 512 art px
- *      tile on the 1.5 game px grid (style/bible.js), and moved onto the one
- *      palette the whole ground shares (style/process.js) -- the same steps
- *      the game's pipeline takes;
+ *   2. bring the picture back: it is made seamless, kept as one 1024 px tile
+ *      covering 512 game px -- 2 px per game px, about the phone's own
+ *      sharpness (style/bible.js, v2.3.2942: it used to be shrunk onto a
+ *      1.5 game px grid and stretched back, which the owner saw as "soft and
+ *      gritty at the same time") -- and moved onto the one palette the whole
+ *      ground shares (style/process.js), the same steps the game's pipeline
+ *      takes;
  *   3. look at it laid on the Wheel at game size next to the bro
  *      (world/core/ground.js composes it, exactly as the game will);
  *   4. download everything as one zip for GitHub.
  *
  * Everything stays in this browser: the pictures as uploaded in IndexedDB
- * ('raw', the real asset), the seamless 512 px tiles before the palette
- * ('prep', so a reload does not redo them), and the palette ('misc').  The
- * style key is read from the World Builder's own storage on this site.
+ * ('raw', the real asset), the seamless tiles before the palette ('prep', so
+ * a reload does not redo them), and the palette ('misc').  The style key is
+ * read from the World Builder's own storage on this site.
  *
- * MEMORY, FOR THE PHONE.  A full set is 48 swatches in two versions: held
- * as full-size canvases, the seamless tiles and the finished ones would come
- * to nearly 200 MB of canvas, near what iPhone Safari allows a page.  So
- * the only full-size things kept are the finished tiles' pixels (plain
- * arrays, which the compositor reads); the seamless tile before the palette
- * stays a PNG in memory and in storage, decoded only while the colours are
- * redone; a 128 px sample of it is what the palette is made from; and every
- * canvas that draws a thumbnail or packs the zip is let go at once.
+ * MEMORY, FOR THE PHONE.  A full set is 48 swatches in two versions, and at
+ * 1024 px a swatch unpacked is 4 MB: all of them would be 400 MB, far more
+ * than iPhone Safari allows a page.  So a finished swatch is kept as its PNG
+ * and a 96 px copy for its card; only the few the preview has on screen are
+ * unpacked (pixelsOf, the last DECODED_KEEP); the seamless tile before the
+ * palette stays a PNG too, decoded only while the colours are redone; a
+ * 128 px sample of it is what the palette is made from.
  *
  * window.__ground is the handle tools/qa/ground-studio.mjs drives.
  */
@@ -40,12 +42,15 @@ import { blobToCanvas, seamless, resize, buildPalette, hardenAndMap, mk } from '
 import { loadSprites, EFFECT_PALETTE } from '../style/scene.js';
 import { promptFor } from './prompts.js';
 
-const TILE = PIXEL.groundTile, GPA = PIXEL.gamePxPerArtPx;
+const TILE = PIXEL.groundTile, GPA = PIXEL.gamePxPerArtPx;   /* 1024 px a swatch, 0.5 game px a px */
+const K = Math.round(PLAN.worldPxPerArtPx / GPA);               /* ground px per plan art px: 3 */
 const DB = 'brotown-ground-studio', STORES = ['raw', 'prep', 'misc'];
 const VERS = ['A', 'B'];
 const VIEW_H = 1024;          /* game px of height on the phone, as the game shows (worldViewport.js) */
 const FOOT = 0.56;            /* where the bro stands, as a share of the screen's height */
-const MARGIN = 96;            /* art px composed beyond the view, so a short drag needs no new ground */
+const MARGIN = 48;            /* plan art px composed beyond the view, so a short drag needs no new ground */
+const THUMB = 96;             /* the card's copy of a finished swatch, drawn 2 x 2 */
+const DECODED_KEEP = 12;      /* finished swatches kept unpacked for the preview, 4 MB each */
 const KEY_WEIGHT = 8;         /* the style key counts this many times when the colours are made */
 const SAMPLE = 128;           /* the size of the copy of each tile the palette is made from */
 const KEY_SAMPLE = 256;       /* ... and of the style key */
@@ -60,10 +65,10 @@ const S = {
   plan: PLAN, g: null, bp: null, mm: null, cat: [], byId: Object.create(null),
   store: null, key: null,
   raw: new Map(), prep: new Map(),
-  tiles: Object.create(null), means: Object.create(null),
+  tiles: Object.create(null), means: Object.create(null), decoded: new Map(),
   palette: null, frozen: false,
   sprites: null,
-  view: { x: 0, y: 0, name: '' }, pv: null, drag: null,
+  view: { x: 0, y: 0, name: '' }, pv: null, pvDirty: false, drag: null,
   stats: { previewDraws: 0 },
   ready: null,
 };
@@ -135,25 +140,26 @@ function rebuildPalette() {
 }
 
 /* The swatch as the game will use it: on the palette, stray pixels gone.
-   The compositor takes A (and B when both exist); `byVer` keeps each
-   version as the owner made it, for the thumbnails and the zip. */
+   Kept as its PNG and a small copy for its card (see MEMORY above); the
+   preview unpacks the ones it needs with pixelsOf. */
 async function finalize(id) {
   const byVer = Object.create(null);
+  let mean = null;
   for (const ver of VERS) {
+    S.decoded.delete(kv(id, ver));
     const p = S.prep.get(kv(id, ver));
     if (!p) continue;
     const c = await blobToCanvas(p.png, TILE);
     hardenAndMap(c, S.palette);
-    byVer[ver] = { w: TILE, h: TILE, data: c.getContext('2d').getImageData(0, 0, TILE, TILE).data };
+    const thumb = resize(c, THUMB, THUMB, true);
+    if (!mean) mean = meanOf(thumb);
+    const png = await canvasToBlob(c);
     release(c);
+    byVer[ver] = { w: TILE, h: TILE, png, thumb };
   }
   if (byVer.A || byVer.B) {
-    const t = { A: byVer.A || byVer.B, B: byVer.A && byVer.B ? byVer.B : null, byVer };
-    S.tiles[id] = t;
-    const d = t.A.data;
-    let r = 0, g = 0, b = 0, n = 0;
-    for (let i = 0; i < d.length; i += 4 * 17) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
-    S.means[id] = [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+    S.tiles[id] = { byVer };
+    S.means[id] = mean;
   } else {
     delete S.tiles[id];
     delete S.means[id];
@@ -161,11 +167,27 @@ async function finalize(id) {
 }
 async function finalizeAll() { for (const e of S.cat) await finalize(e.id); }
 
-/* A finished tile back on a canvas, for a moment (the caller lets it go). */
-function tileCanvas(tile) {
-  const c = mk(tile.w, tile.h);
-  c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(tile.data), tile.w, tile.h), 0, 0);
-  return c;
+function meanOf(c) {
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+  return [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+}
+
+/* A finished swatch's pixels, unpacked, for the preview (and the test).
+   Only the last DECODED_KEEP stay: a full set unpacked would be 400 MB. */
+async function pixelsOf(id, ver) {
+  const k = kv(id, ver);
+  const hit = S.decoded.get(k);
+  if (hit) { S.decoded.delete(k); S.decoded.set(k, hit); return hit; }
+  const t = S.tiles[id] && S.tiles[id].byVer[ver];
+  if (!t) return null;
+  const c = await blobToCanvas(t.png, TILE);
+  const px = { w: c.width, h: c.height, data: c.getContext('2d').getImageData(0, 0, c.width, c.height).data };
+  release(c);
+  S.decoded.set(k, px);
+  while (S.decoded.size > DECODED_KEEP) S.decoded.delete(S.decoded.keys().next().value);
+  return px;
 }
 
 /* ── storage ── */
@@ -274,35 +296,85 @@ function pvMetrics() {
   const W = Math.max(1, Math.round(box.width * dpr)), H = Math.max(1, Math.round(box.height * dpr));
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
   const s = H / VIEW_H;                  /* device px per game px */
-  const a = s * GPA;                     /* device px per art px */
-  return { cv, W, H, s, a, wArt: W / a, hArt: H / a, dpr };
+  const ap = s * PLAN.worldPxPerArtPx;   /* device px per plan art px (the view's unit) */
+  return { cv, W, H, s, ap, wArt: W / ap, hArt: H / ap, dpr };
 }
 
 function viewRect(m) {
   return { x: S.view.x - m.wArt / 2, y: S.view.y - m.hArt * FOOT, w: m.wArt, h: m.hArt };
 }
 
-function composeView(m) {
-  const v = viewRect(m);
-  const rect = { x: Math.floor(v.x - MARGIN), y: Math.floor(v.y - MARGIN), w: Math.ceil(v.w + 2 * MARGIN), h: Math.ceil(v.h + 2 * MARGIN) };
-  const out = composeGround(S.plan, S.bp, S.mm, rect, S.tiles);
-  const c = mk(out.w, out.h);
-  c.getContext('2d').putImageData(new ImageData(out.data, out.w, out.h), 0, 0);
-  S.pv = { rect, canvas: c, mat: out.mat };
+/* The swatches whose ground can reach into `rect` (plan art px): what the
+   compositor will ask for, so only those are unpacked. */
+function swatchesIn(rect) {
+  const bp = S.bp, sc = bp.scale, M = 6;
+  const x0 = Math.max(0, Math.floor((rect.x - bp.x0) / sc) - M), y0 = Math.max(0, Math.floor((rect.y - bp.y0) / sc) - M);
+  const x1 = Math.min(bp.w - 1, Math.ceil((rect.x + rect.w - bp.x0) / sc) + M), y1 = Math.min(bp.h - 1, Math.ceil((rect.y + rect.h - bp.y0) / sc) + M);
+  const ids = new Set();
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) ids.add(S.mm.ids[S.mm.mat[y * bp.w + x]]);
+  return ids;
 }
 
-function drawPreview(recompose) {
-  if (!S.bp) return;
-  const m = pvMetrics();
+/* The ground round the view, at the swatches' own sharpness (K ground px
+   per plan art px, 2 per game px). */
+async function composeView(m) {
   const v = viewRect(m);
+  const rect = { x: Math.floor(v.x - MARGIN), y: Math.floor(v.y - MARGIN), w: Math.ceil(v.w + 2 * MARGIN), h: Math.ceil(v.h + 2 * MARGIN) };
+  const tiles = Object.create(null);
+  for (const id of swatchesIn(rect)) {
+    const t = S.tiles[id];
+    if (!t) continue;
+    const A = t.byVer.A ? await pixelsOf(id, 'A') : null, B = t.byVer.B ? await pixelsOf(id, 'B') : null;
+    if (A || B) tiles[id] = { A: A || B, B: A && B ? B : null };
+  }
+  const out = composeGround(S.plan, S.bp, S.mm, rect, tiles, { scale: K });
+  const c = mk(out.w, out.h);
+  c.getContext('2d').putImageData(new ImageData(out.data, out.w, out.h), 0, 0);
+  const old = S.pv;
+  S.pv = { rect, canvas: c, mat: out.mat };
+  if (old && old.canvas) release(old.canvas);
+}
+
+function needsCompose(m) {
+  const v = viewRect(m), P = S.pv;
+  return !P || v.x < P.rect.x || v.y < P.rect.y || v.x + v.w > P.rect.x + P.rect.w || v.y + v.h > P.rect.y + P.rect.h;
+}
+
+/* Draw the preview; lay new ground first when the view has left what was
+   laid, or when asked (a swatch changed).  Laying is async (swatches are
+   unpacked on the way), so a drag keeps showing the last ground, moved,
+   until the new one is ready. */
+let composing = null;
+async function drawPreview(recompose) {
+  if (!S.bp) return;
+  if (recompose) S.pvDirty = true;
+  if (S.pvDirty || needsCompose(pvMetrics())) {
+    if (!composing) {
+      composing = (async () => {
+        try {
+          do { S.pvDirty = false; await composeView(pvMetrics()); } while (S.pvDirty || needsCompose(pvMetrics()));
+        } finally { composing = null; }
+      })();
+    }
+    if (S.pv) paint(pvMetrics());
+    await composing;
+  }
+  paint(pvMetrics());
+}
+
+function paint(m) {
   const P = S.pv;
-  if (recompose || !P || v.x < P.rect.x || v.y < P.rect.y || v.x + v.w > P.rect.x + P.rect.w || v.y + v.h > P.rect.y + P.rect.h) composeView(m);
+  if (!P) return;
+  const v = viewRect(m), R = P.rect;
   const g = m.cv.getContext('2d');
-  g.imageSmoothingEnabled = false;
   g.fillStyle = '#0c1216';
   g.fillRect(0, 0, m.W, m.H);
-  const R = S.pv.rect;
-  g.drawImage(S.pv.canvas, Math.round((R.x - v.x) * m.a), Math.round((R.y - v.y) * m.a), Math.round(R.w * m.a), Math.round(R.h * m.a));
+  /* the ground is about the phone's own sharpness (2 px per game px against
+     ~2.5 device px): drawn smooth, as the game will, not doubled pixels */
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(P.canvas, Math.round((R.x - v.x) * m.ap), Math.round((R.y - v.y) * m.ap), Math.round(R.w * m.ap), Math.round(R.h * m.ap));
+  g.imageSmoothingEnabled = false;
   /* the bro, standing, at the game's own size */
   const sp = S.sprites;
   if (sp) {
@@ -313,12 +385,12 @@ function drawPreview(recompose) {
     g.beginPath(); g.ellipse(x, y, 22 * m.s, 7 * m.s, 0, 0, Math.PI * 2); g.fill();
     g.drawImage(St.c, 0, 0, St.fw, St.c.height, x - Math.round(w / 2), y - fy, w, h);
   }
-  /* what is on screen */
-  const seen = new Map();
-  const x0 = Math.max(0, Math.floor(v.x - R.x)), y0 = Math.max(0, Math.floor(v.y - R.y));
-  const x1 = Math.min(R.w, Math.ceil(v.x + v.w - R.x)), y1 = Math.min(R.h, Math.ceil(v.y + v.h - R.y));
-  for (let y = y0; y < y1; y += 4) for (let x = x0; x < x1; x += 4) {
-    const q = S.pv.mat[y * R.w + x];
+  /* what is on screen (the laid ground has K pixels to the art px) */
+  const seen = new Map(), OW = R.w * K, OH = R.h * K;
+  const x0 = Math.max(0, Math.floor((v.x - R.x) * K)), y0 = Math.max(0, Math.floor((v.y - R.y) * K));
+  const x1 = Math.min(OW, Math.ceil((v.x + v.w - R.x) * K)), y1 = Math.min(OH, Math.ceil((v.y + v.h - R.y) * K));
+  for (let y = y0; y < y1; y += 12) for (let x = x0; x < x1; x += 12) {
+    const q = P.mat[y * OW + x];
     seen.set(q, (seen.get(q) || 0) + 1);
   }
   const parts = [...seen.entries()].sort((a, b) => b[1] - a[1]).map(([q]) => S.mm.ids[q]).filter((id) => id !== 'water');
@@ -337,7 +409,7 @@ function drawPreview(recompose) {
 
 function setSpot(x, y, name) {
   S.view = { x, y, name: name || '' };
-  drawPreview(true);
+  return drawPreview(true);
 }
 
 function wirePreview() {
@@ -349,7 +421,7 @@ function wirePreview() {
   phone.addEventListener('pointermove', (e) => {
     if (!S.drag) return;
     const m = pvMetrics();
-    const dx = (e.clientX - S.drag.x) * m.dpr / m.a, dy = (e.clientY - S.drag.y) * m.dpr / m.a;
+    const dx = (e.clientX - S.drag.x) * m.dpr / m.ap, dy = (e.clientY - S.drag.y) * m.dpr / m.ap;
     S.drag = { x: e.clientX, y: e.clientY };
     S.view.x -= dx; S.view.y -= dy; S.view.name = '';
     drawPreview(false);
@@ -395,18 +467,16 @@ const GROUPS = () => {
   return out;
 };
 
-/* a 2 x 2 repeat of the tile, so a seam would show (an empty slot stays a
-   one-pixel canvas: fifty swatches' thumbnails add up on a phone) */
-function drawThumb(cv, tile) {
-  const n = tile ? 192 : 1;
+/* a 2 x 2 repeat of the swatch, so a seam would show (an empty slot stays
+   a one-pixel canvas: fifty swatches' thumbnails add up on a phone) */
+function drawThumb(cv, entry) {
+  const n = entry ? 2 * THUMB : 1;
   cv.width = n; cv.height = n;
   const g = cv.getContext('2d');
   g.imageSmoothingEnabled = false;
   g.fillStyle = '#0c1216'; g.fillRect(0, 0, n, n);
-  if (!tile) return;
-  const c = tileCanvas(tile);
-  for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) g.drawImage(c, x * 96, y * 96, 96, 96);
-  release(c);
+  if (!entry) return;
+  for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) g.drawImage(entry.thumb, x * THUMB, y * THUMB, THUMB, THUMB);
 }
 
 function renderSwatch(e) {
@@ -551,9 +621,7 @@ async function exportZip() {
       const tile = t.byVer[ver];
       if (!tile) continue;
       vers.push(ver);
-      const tc = tileCanvas(tile);
-      files.push({ name: `ground/${e.id}-${ver}.png`, data: new Uint8Array(await (await canvasToBlob(tc)).arrayBuffer()) });
-      release(tc);
+      files.push({ name: `ground/${e.id}-${ver}.png`, data: new Uint8Array(await tile.png.arrayBuffer()) });
       const ext = extOf(raw.name, raw.blob.type);
       files.push({ name: `originals/${e.id}-${ver}.${ext}`, data: new Uint8Array(await raw.blob.arrayBuffer()) });
     }
@@ -562,7 +630,7 @@ async function exportZip() {
   const manifest = {
     tool: 'brotown-ground-studio', version: 1, made: new Date().toISOString(),
     plan: { id: S.plan.id, version: S.plan.version },
-    tile: TILE, gamePxPerArtPx: GPA, palette: S.palette, frozen: S.frozen,
+    tile: TILE, gamePxPerArtPx: GPA, tileGamePx: TILE * GPA, palette: S.palette, frozen: S.frozen,
     swatches: made,
   };
   files.unshift({ name: 'manifest.json', data: enc.encode(JSON.stringify(manifest, null, 1)) });
@@ -655,12 +723,12 @@ async function start() {
   wireSave();
   const first = S.spots[1];
   sel.value = '1';
-  setSpot(first.x, first.y, first.name);
+  await setSpot(first.x, first.y, first.name);
 }
 
 S.ready = start().catch((e) => { $('status').textContent = `Something went wrong: ${e.message || e}`; throw e; });
 
 window.__ground = {
   S,
-  api: { addPicture, removePicture, exportZip, restoreZip, setSpot, spotFor, drawPreview, promptFor },
+  api: { addPicture, removePicture, exportZip, restoreZip, setSpot, spotFor, drawPreview, promptFor, pixelsOf },
 };

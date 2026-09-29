@@ -71,7 +71,10 @@ const rel = (dc, dr) => cellName(C0.c + dc, C0.r + dr);
   ok('a tap means the square whose middle is nearest (bands split evenly)', cellName(a.c, a.r) === 'Y25' && b.c === C0.c - 1 && c.c === C0.c, [a, b, c]);
   const nb = neighbours(g, g.c0, g.r0);
   ok('a corner square of the active area has two side neighbours', Object.keys(nb.sides).sort().join() === 'bottom,right', nb.sides);
-  ok('one art px is one pixel of the HD pixel art (1.5 game px, style/bible.js)', PLAN.worldPxPerArtPx === PIXEL.gamePxPerArtPx && PIXEL.gamePxPerArtPx === 1.5);
+  /* v2.3.2942: pictures are kept at 2 px per game px, finer than the plan's
+     art px (1.5 game px) -- three picture px to an art px, a whole number so
+     the fine ground lays on a clean grid */
+  ok('the plan\'s art px is 1.5 game px, three picture px (style/bible.js)', PLAN.worldPxPerArtPx === 1.5 && PIXEL.gamePxPerArtPx === 0.5 && PLAN.worldPxPerArtPx / PIXEL.gamePxPerArtPx === 3);
 }
 
 /* ── layout: the Wheel ── */
@@ -325,6 +328,38 @@ console.log('ground');
   let planColour = 0;
   for (let i = 0; i < 64; i++) if (mm.ids[bare.mat[i]] === 'ember-2' && Math.abs(bare.data[i * 4] - want[0]) <= 40) planColour++;
   ok('a made swatch is laid tile-true; one not made yet shows in its plan colour', tileTrue > 40 && planColour > 40, { tileTrue, planColour });
+
+  /* v2.3.2942: the finer ground -- 3 output px per art px, a swatch kept at
+     2 px per game px so ChatGPT's picture is never blown up (owner: "soft
+     and gritty at the same time").  The same guarantees as the coarse one. */
+  const R3 = rect(-2.02, 0, 128, 128);
+  const t3 = Date.now();
+  const f1 = composeGround(PLAN, bp, mm, R3, {}, { scale: 3 });
+  const fMs = Date.now() - t3;
+  const f2 = composeGround(PLAN, bp, mm, R3, {}, { scale: 3 });
+  ok(`the finer ground is 3 pixels to the art px, the same every time (${fMs} ms for 384 x 384)`, f1.w === 384 && f1.h === 384 && f1.scale === 3 && same(f1.data, f2.data), [f1.w, f1.h, f1.scale]);
+  const fL = composeGround(PLAN, bp, mm, { ...R3, w: 64 }, {}, { scale: 3 }), fR = composeGround(PLAN, bp, mm, { ...R3, x: R3.x + 64, w: 64 }, {}, { scale: 3 });
+  let fseam = 0;
+  for (let y = 0; y < 384; y++) for (let x = 0; x < 384; x++) for (let c = 0; c < 4; c++) {
+    const v = x < 192 ? fL.data[(y * 192 + x) * 4 + c] : fR.data[(y * 192 + x - 192) * 4 + c];
+    if (v !== f1.data[(y * 384 + x) * 4 + c]) fseam++;
+  }
+  ok('...two halves composed apart still match the whole', fseam === 0, fseam);
+  const c1 = composeGround(PLAN, bp, mm, R3, {});
+  let agree = 0;
+  for (let y = 0; y < 384; y++) for (let x = 0; x < 384; x++) if (f1.mat[y * 384 + x] === c1.mat[Math.floor(y / 3) * 128 + Math.floor(x / 3)]) agree++;
+  const setOf = (m) => [...new Set(Array.from(m, (q) => mm.ids[q]))].sort().join();
+  ok(`...it lays the same swatches in the same places, with finer edges (${(100 * agree / (384 * 384)).toFixed(1)}% the same as the coarse ground)`,
+    agree / (384 * 384) > 0.95 && setOf(f1.mat) === setOf(c1.mat) && /water/.test(setOf(f1.mat)) && /boardwalk/.test(setOf(f1.mat)), { agree, fine: setOf(f1.mat), coarse: setOf(c1.mat) });
+  const withT3 = composeGround(PLAN, bp, mm, Re, { 'ember-2': { A: tile } }, { scale: 3 });
+  let tileTrue3 = 0, n3 = 0;
+  for (let y = 0; y < 24; y++) for (let x = 0; x < 24; x++) {
+    if (mm.ids[withT3.mat[y * 24 + x]] !== 'ember-2') continue;
+    n3++;
+    const u = (((Re.x * 3 + x) % T) + T) % T, v = (((Re.y * 3 + y) % T) + T) % T, q = (v * T + u) * 4, o = (y * 24 + x) * 4;
+    if (withT3.data[o] === tile.data[q] && withT3.data[o + 1] === tile.data[q + 1]) tileTrue3++;
+  }
+  ok('...and a made swatch is laid tile-true at its own resolution', n3 > 300 && tileTrue3 === n3, { tileTrue3, n3 });
 }
 
 /* ── maxflow ── */

@@ -26,8 +26,9 @@ build it. Two other documents still govern:
 - many worlds, with characters that move between them and one shared
   auction house;
 - iPhone Safari first, on Cloudflare Workers and Durable Objects;
-- art made with ChatGPT in **HD pixel art on a 1.5 game px grid**
-  (v2.3.2935, [WORLD-BIBLE.md §6](WORLD-BIBLE.md#6-one-look-for-everything-brotown-hd-pixel-art)),
+- art made with ChatGPT in **HD pixel art**, kept at 2 px per game px, the
+  phone's own sharpness (v2.3.2935; a 1.5 game px grid until v2.3.2942,
+  [WORLD-BIBLE.md §6](WORLD-BIBLE.md#6-one-look-for-everything-brotown-hd-pixel-art)),
   with effects done in code.
 
 ---
@@ -227,7 +228,8 @@ two realms, §11). Either way the diagram is the same:
 - item ids;
 - the piece, catalog and pipeline formats;
 - the look, and for pixel art the pixel size. Every picture is made for it.
-  (Decided: HD pixel art, 1.5 game px, v2.3.2935.)
+  (Decided: HD pixel art, v2.3.2935; kept at 2 px per game px since
+  v2.3.2942.)
 - the Wheel's shape and its levels per tier: quests, monsters and drops are
   all placed against it. (Decided v2.3.2936.)
 

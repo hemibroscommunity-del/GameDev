@@ -48,7 +48,7 @@ pixel art and every map is painted** (§6).
 **v2.3.2935–2936, the owner's third round:**
 
 - **The look: HD pixel art on a 1.5 px grid** (§6), with the rules every
-  picture follows.
+  picture follows. (Since v2.3.2942: kept at 2 px per game px instead.)
 - **The ground is made from swatches** (§13).
 - **The island is the Wheel** (§3): a spoke of land for every element, each
   with its own levels 1–80, and the Dark and Light realms (80–100) behind
@@ -564,6 +564,33 @@ redone.
   this ground.
 - **Material-aware texturing** is rule 11.
 
+**Pictures are kept at the phone's own sharpness, not on a 1.5 grid
+(v2.3.2942).**
+
+> Owner, 2026-09-29, on the first ground at game size: *"It's too gritty and
+> low resolution compared to the character"*, then: *"Like it's soft and
+> gritty at the same time. That's the look I don't like. But I know the
+> image is being blown up. Maybe if you just made the tiles scale smaller
+> before you apply them in the world?"*
+
+- **Why it looked that way.** A ChatGPT picture (1,254 px) was shrunk onto
+  the 1.5 game px grid (512 px for a 768 game px swatch) and the phone then
+  stretched it back up: each of its pixels became about 3.7 phone pixels.
+  The shrink blurred it, the stretch made it blocky, and fitting the
+  blurred colours to the palette speckled it.
+- **The fix is the owner's.** A swatch now covers **512 game px**, and is
+  kept at **1,024 px: 2 px per game px**, about a phone's own sharpness (an
+  iPhone 13–15 shows 2.47). ChatGPT's picture shrinks a little instead of a
+  lot, and is shown at about its own size. The palette is applied at that
+  resolution, where it adds no speckle.
+- **Tested side by side** at an iPhone's density with the owner's key: the
+  old way came out soft and blocky, the new one crisp, and finer than the
+  bro's own pixels.
+- The world plan's own unit (`worldPxPerArtPx`, 1.5 game px) does not change:
+  it places things, it is no longer the size of a pixel of the art. The
+  ground is laid at three picture pixels to one plan art px
+  (`composeGround`, `opts.scale`).
+
 **Why this was the first question.** The bro is pixel art, and every map and
 building was painted. That mix was a large part of why the game looked
 inconsistent, and no style key could fix it: whatever the key showed, either
@@ -595,7 +622,7 @@ table says which. The numbers and the prompt words live in one file,
 
 | # | Rule | Held by |
 |---|---|---|
-| 1 | **One pixel grid.** One art pixel is **1.5 game px**. The bro's own pixels are about 2, so the world is a little finer-grained than he is. A tree comes out about 127 art pixels tall, and a ground tile is 512 × 512 art pixels (768 game px). | the pipeline: every picture is snapped to the grid |
+| 1 | **The phone's own sharpness** (v2.3.2942; one 1.5 game px grid until then). Every picture is kept at **2 px per game px**, about what a phone shows, so nothing is ever blown up. The bro's own pixels are about 2 game px, so the world is finer-grained than he is. A tree comes out about 380 px tall, and a ground swatch is 1,024 × 1,024 px covering 512 game px. | the pipeline: every picture is resized to it |
 | 2 | **One frozen palette** of **128 colours** (64 until v2.3.2940, when the owner chose 128 for material-aware texturing across eight lands and the town), in ramps of 4–6 shades per material. Shadows lean cool (blue-purple) and highlights warm (yellow). It is made once from the style key, then frozen, and every picture is moved onto it. This is the biggest consistency lever. | the pipeline |
 | 3 | **Readability ranking.** Ground is calm: middle tones, low contrast. Objects are medium contrast. Characters, monsters and loot are the brightest and punchiest. The test: squint at a screenshot, and the bro and the goblin still jump out. | the prompt, and the owner's eye |
 | 4 | **Light.** Soft daylight from the upper left, with 3–5 shading steps per surface. Slightly darker pixels where things touch the ground are fine. **No shadows cast on the ground, and no glow, fog or night drawn in.** The game's code adds those, so they can change with the time of day. | the prompt |
@@ -668,9 +695,9 @@ direction and animation) in the painted style.
   buildings are painted big.
 - **The whole world is planned at the town's scale.** v2.3.2933 set the plan
   to the town painting's 1.3 game px per picture px. Since v2.3.2936 one art
-  px is one pixel of the HD pixel art, 1.5 game px (`plan.js`,
-  `worldPxPerArtPx`), and the town's plan was scaled to keep its size in
-  the game. Everything will stand beside the bro the way the town does
+  px is 1.5 game px (`plan.js`, `worldPxPerArtPx`), and the town's plan was
+  scaled to keep its size in the game. (Since v2.3.2942 that is only the
+  plan's unit: pictures are kept finer, at 2 px per game px.) Everything will stand beside the bro the way the town does
   today.
 - **The dashboard zoom stays.** Closing it zooms in, which the owner asked to
   keep (v2.3.2262).
@@ -1051,7 +1078,8 @@ names, looks and prompts):
 **Decided in v2.3.2935:**
 
 - **The look: HD pixel art, on a 1.5 game px grid** (§6). The bro stays as
-  he is. Next: the style key.
+  he is. Next: the style key. (v2.3.2942: kept at 2 px per game px instead,
+  the owner's fix for a soft, gritty ground.)
 - **The ground: made from swatches** (§13). Owner: *"Yes definitely do the
   swatches."*
 
@@ -1281,10 +1309,9 @@ definitely do the swatches."*
 
 - **HD pixel art (§6) settles it.** That is how pixel-art ground is built,
   and ChatGPT's pixel density rules out painting squares anyway: one of its
-  pictures holds about 512 art pixels across, which at the 1.5 grid is
-  768 game px: about half a World Builder square across. A square painted in
-  one picture would come out with pixels about twice the size of everything
-  else.
+  pictures covers only about 512 game px at the phone's own sharpness
+  (v2.3.2942), a third of a World Builder square across. A square painted in
+  one picture would come out blown up three times over.
 - **Special places are swatches plus objects**, not paintings: the town
   square is paving and lamp posts, a landmark is an object (§11), the falls
   are code-drawn water over a cliff object.
@@ -1297,15 +1324,17 @@ definitely do the swatches."*
 - **The phone composes the ground** from the swatches as you walk, so the
   download does not grow with the map. `public/tools/world/core/ground.js`
   already does it: it decides which swatch covers each spot of the plan and
-  lays them down on the 1.5 px grid, with ragged pixel-art edges between two
-  swatches and never a soft blend. Two pieces of ground composed apart meet
+  lays them down at the swatches' own sharpness (2 px per game px since
+  v2.3.2942), with ragged pixel-art edges between two swatches and never a
+  soft blend. Two pieces of ground composed apart meet
   with no seam, which is what lets the game build it in chunks.
 - **The Ground Studio** (`/tools/ground/`, v2.3.2937) is where the owner
   makes them:
   - every swatch's prompt, ready to copy (attach the style key, and only
     the key);
-  - each picture brought back is made seamless, shrunk to one 512 art px
-    tile and moved onto the shared palette, exactly as the game will use it;
+  - each picture brought back is made seamless, kept as one 1,024 px tile
+    covering 512 game px, and moved onto the shared palette, exactly as the
+    game will use it;
   - a preview at game size, with the bro standing on the real plan: the
     roads, rivers, shores and borders round the swatch;
   - a map of the Wheel that fills in as the swatches come in;

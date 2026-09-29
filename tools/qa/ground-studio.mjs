@@ -9,7 +9,8 @@
  *      quiet-ground rule and the scale line;
  *   2. THE STYLE KEY is read from the World Builder's storage on the site;
  *   3. A PICTURE IN, through the real file input, comes out as the game will
- *      use it: 512 art px, seamless, hard-edged, on one palette of at most
+ *      use it: 1024 px for 512 game px (v2.3.2942: 2 px per game px, never
+ *      blown up), seamless, hard-edged, on one palette of at most
  *      PIXEL.palette colours (128 since v2.3.2940); the progress map and the preview pick it up;
  *   4. THE PREVIEW draws the ground at game size round the bro, and says
  *      which swatches are on screen and which are not made yet;
@@ -24,7 +25,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
-import { PIXEL } from '../../public/tools/style/bible.js';
+import { PIXEL, personScale } from '../../public/tools/style/bible.js';
 import { fileURLToPath } from 'url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -94,8 +95,8 @@ const put = async (page, id, ver, b64) => {
 
 /* facts about a finished tile: size, colours, hard alpha, and how well its
    wrap-round edge matches compared with two columns inside it */
-const tileFacts = (page, id, ver) => page.evaluate(([i, v]) => {
-  const t = window.__ground.S.tiles[i].byVer[v];
+const tileFacts = (page, id, ver) => page.evaluate(async ([i, v]) => {
+  const t = await window.__ground.api.pixelsOf(i, v);
   const d = t.data, w = t.w, h = t.h;
   const cols = new Set(); let semi = 0;
   for (let k = 0; k < d.length; k += 4) { cols.add((d[k] << 16) | (d[k + 1] << 8) | d[k + 2]); if (d[k + 3] !== 255) semi++; }
@@ -133,7 +134,7 @@ try {
   });
   ok(`every swatch is listed, in groups (${first.n}: ${first.groups.length} groups)`, first.n === 48 && first.prompts === 48 && first.groups.length === 11 && first.count === '0 of 48', { n: first.n, groups: first.groups, count: first.count });
   ok('a prompt carries the HD pixel art paragraph, its brief, the quiet-ground rule and the scale', /BroTown HD pixel art/.test(first.commons) &&
-    /short green grass/.test(first.commons) && /The texture is quiet/.test(first.commons) && /one seventh as tall as this picture/.test(first.commons) &&
+    /short green grass/.test(first.commons) && /The texture is quiet/.test(first.commons) && first.commons.includes(personScale(PIXEL.groundTile * PIXEL.gamePxPerArtPx)) && /one fifth as tall as this picture/.test(first.commons) &&
     /style key/.test(first.commons) && /seamlessly into the opposite edge/.test(first.commons), first.commons.slice(0, 200));
   /* v2.3.2939, owner: the bro is simple pixel art and the world HD, so only
      the style key is attached, and every material is drawn as itself. */
@@ -173,7 +174,7 @@ try {
   };
   for (const id of Object.keys(pics)) await put(page, id, 'A', pics[id]);
   const f = await tileFacts(page, 'commons', 'A');
-  ok('a picture comes out as one 512 art px tile on the 1.5 px grid', f.w === 512 && f.h === 512, f);
+  ok('a picture comes out as one 1024 px tile: 512 game px at 2 px per game px, never blown up', f.w === PIXEL.groundTile && f.h === PIXEL.groundTile && PIXEL.groundTile * PIXEL.gamePxPerArtPx === 512, f);
   ok(`...hard-edged, on the one palette, at most ${PIXEL.palette} colours`, f.semi === 0 && f.offPalette === 0 && f.colours <= PIXEL.palette && f.colours > 4, f);
   ok('...and seamless: its wrap-round edge is no worse than two columns inside it', f.wrap <= f.inside * 1.6 + 6, f);
   const after = await page.evaluate(() => {
@@ -193,7 +194,7 @@ try {
 
   /* ── 4. the preview ── */
   console.log('4. the preview at game size');
-  await page.evaluate(() => { const S = window.__ground.S; const sp = window.__ground.api.spotFor('commons'); window.__ground.api.setSpot(sp.x, sp.y, 'test'); });
+  await page.evaluate(() => { const sp = window.__ground.api.spotFor('commons'); return window.__ground.api.setSpot(sp.x, sp.y, 'test'); });
   const pv = await page.evaluate(() => {
     const cv = document.getElementById('pv'), g = cv.getContext('2d');
     const d = g.getImageData(0, 0, cv.width, cv.height).data;
@@ -209,10 +210,10 @@ try {
   ok('the preview draws the ground on a phone-shaped screen', pv.w > 900 && pv.h > 2000 && pv.sd > 4, pv);
   ok('...with the bro standing in the middle', pv.dark > 20, pv.dark);
   ok('...and says which swatches are on screen', /Brotown Commons/.test(pv.inview), pv.inview);
-  await page.evaluate(() => { const sp = window.__ground.api.spotFor('frost-2'); window.__ground.api.setSpot(sp.x, sp.y, 'test'); });
+  await page.evaluate(() => { const sp = window.__ground.api.spotFor('frost-2'); return window.__ground.api.setSpot(sp.x, sp.y, 'test'); });
   const missing = await page.evaluate(() => document.getElementById('inview').textContent);
   ok('...and which are not made yet', /not made yet/.test(missing), missing);
-  await page.evaluate(() => { const sp = window.__ground.api.spotFor('road'); window.__ground.api.setSpot(sp.x, sp.y, 'The Mill Bridge'); });
+  await page.evaluate(() => { const sp = window.__ground.api.spotFor('road'); return window.__ground.api.setSpot(sp.x, sp.y, 'The Mill Bridge'); });
   await page.evaluate(() => document.getElementById('toast').setAttribute('hidden', ''));
   await shot(page, 'preview', '#phone');
   await shot(page, 'map', '.mapwrap');
@@ -239,10 +240,11 @@ try {
 
   /* ── 6. reload, and a zip into a fresh browser ── */
   console.log('6. reload, download and restore');
-  const hashOf = (p) => p.evaluate(() => {
+  const hashOf = (p) => p.evaluate(async () => {
     const S = window.__ground.S; let h = 0;
     for (const id of Object.keys(S.tiles).sort()) for (const v of ['A', 'B']) {
-      const t = S.tiles[id].byVer[v]; if (!t) continue;
+      if (!S.tiles[id].byVer[v]) continue;
+      const t = await window.__ground.api.pixelsOf(id, v);
       for (let i = 0; i < t.data.length; i += 61) h = (Math.imul(h, 31) + t.data[i]) | 0;
     }
     return { h, n: Object.keys(S.tiles).length, frozen: S.frozen };

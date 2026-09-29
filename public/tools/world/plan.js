@@ -33,13 +33,16 @@
  * The wheel's own numbers are in ZONES, the owner's unit: one of today's
  * 1,024 game px zones, about one phone screen tall.
  *
- * ── THE UNIT: ONE ART PX IS ONE PIXEL OF THE ART ──
- * v2.3.2936: the art is HD pixel art on a 1.5 game px grid (v2.3.2935,
- * docs/WORLD-BIBLE.md §6), so one art px here is one pixel of the finished
- * art and 1.5 game px -- `worldPxPerArtPx` below, which must equal
- * PIXEL.gamePxPerArtPx in ../style/bible.js (the core suite checks).  The
- * town's numbers were scaled from the old 1.3 so it keeps its size in the
- * game.
+ * ── THE UNIT: ONE ART PX IS 1.5 GAME PX ──
+ * v2.3.2936: the art was HD pixel art on a 1.5 game px grid (v2.3.2935,
+ * docs/WORLD-BIBLE.md §6), so one art px here was one pixel of the finished
+ * art: 1.5 game px, `worldPxPerArtPx` below.  The town's numbers were scaled
+ * from the old 1.3 so it keeps its size in the game.  v2.3.2942: the art is
+ * now kept finer, at 2 px per game px (PIXEL.gamePxPerArtPx 0.5 in
+ * ../style/bible.js -- the owner found the 1.5 grid "soft and gritty"), so
+ * the art px is only the plan's unit: three picture px to one.  It must
+ * stay a whole number of them, so the ground lays on a clean grid (the core
+ * suite checks).
  *
  * ── THE NUMBERS, IN ONE PLACE ──
  *   square   1024 art px (1,536 game px); the grid's unit for names and
@@ -680,14 +683,15 @@ export const PLAN = {
 
   /* ── THE STYLE BIBLE: BroTown HD pixel art (v2.3.2935) ──
      Owner, 2026-09-29, choosing between the looks: "I think HD pixel art is
-     the direction I want to go", and "Yes 1.5 grid" -- one art pixel is 1.5
-     game px (the bro's own pixels are about 2).
+     the direction I want to go", and "Yes 1.5 grid" -- one art pixel was 1.5
+     game px (the bro's own pixels are about 2), until v2.3.2942 kept every
+     picture at 2 px per game px instead.
 
      The part of every prompt that never changes.  Consistency across a
      hundred separate generations comes from here, from the STYLE KEY below
      and from the finished edges in each template -- never from ChatGPT
      remembering earlier squares.  What words cannot hold, the art pipeline
-     does to every picture afterwards: the 1.5 px grid, one frozen palette,
+     does to every picture afterwards: its sharpness (2 px per game px), one frozen palette,
      no stray single pixels (public/tools/style/process.js).  The rules and
      the reasons are in docs/WORLD-BIBLE.md §6.  `{person}` and `{across}`
      are filled in from the scale above. */

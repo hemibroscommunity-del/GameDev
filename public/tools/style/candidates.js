@@ -22,7 +22,9 @@
  *   smooth   draw with smoothing (painted) or as hard pixels (pixel art)
  *   snap     game px per art pixel: the picture is reduced to that grid.
  *            The bro's own pixels are ~2.1 game px, so 2 is "his size".
- *            0 = leave the picture's own resolution alone.
+ *            0 = leave the picture's own resolution alone.  0.5 (the chosen
+ *            look since v2.3.2942) keeps 2 px per game px, about a phone's
+ *            own sharpness, and still puts it on the shared palette.
  *   palette  colours shared by the whole look (0 = keep every colour)
  *   ground   the ground tile's size in game px (640 when not given)
  * `things` overrides `render` for everything that stands on the ground.
@@ -96,13 +98,13 @@ export const STYLES = [
   },
   {
     id: 'hdpixel', name: 'HD pixel art (chosen)',
-    why: "The owner's choice (v2.3.2935): finer pixels than the bro and richer shading, all on one 1.5 game px grid in one 128-colour palette (64 until v2.3.2940). The bro reads a little chunkier than the world, which makes him stand out like a figure on a stage. Since v2.3.2939 its prompts attach the style key, never the bro, and ask for every material drawn as itself.",
+    why: "The owner's choice (v2.3.2935): finer pixels than the bro and richer shading, in one 128-colour palette (64 until v2.3.2940). Since v2.3.2939 its prompts attach the style key, never the bro, and ask for every material drawn as itself. Since v2.3.2942 pictures are kept at 2 px per game px, about the phone's own sharpness, and ground swatches cover 512 game px: shrunk to a 1.5 game px grid and stretched back, they came out soft and gritty.",
     risks: "Fine pixels shimmer more when the camera moves. ChatGPT's pixels are only pixel-ish, so every picture must go through the snap.",
     like: 'Eastward, Sea of Stars, CrossCode',
     style: 'Style: ' + HD_STYLE,
     extra: { ground: QUIET_GROUND },
     ref: 'key',
-    render: { smooth: false, snap: PIXEL.gamePxPerArtPx, palette: PIXEL.palette, ground: PIXEL.groundTile * PIXEL.gamePxPerArtPx },
+    render: { smooth: true, snap: PIXEL.gamePxPerArtPx, palette: PIXEL.palette, ground: PIXEL.groundTile * PIXEL.gamePxPerArtPx },
   },
   {
     id: 'painted', name: 'Painterly',

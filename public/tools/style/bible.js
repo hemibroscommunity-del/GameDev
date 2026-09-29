@@ -26,10 +26,19 @@
  */
 
 export const PIXEL = {
-  /* One art pixel is this many game px.  The bro's own pixels are about 2,
-     so the world is a little finer-grained than he is -- on purpose: it
-     makes characters read as figures on a stage. */
-  gamePxPerArtPx: 1.5,
+  /* Game px per pixel of a picture ("art pixel").  v2.3.2942: 0.5 -- every
+     picture is kept at 2 px per game px, about a phone's own sharpness (an
+     iPhone 13-15 shows 2.47 device px per game px), so it is never blown up.
+     Owner, on the ground at the old 1.5: "soft and gritty at the same time
+     … I know the image is being blown up.  Maybe if you just made the tiles
+     scale smaller before you apply them in the world?"  Shrinking a ChatGPT
+     picture onto a 1.5 game px grid and stretching it back made each of its
+     pixels ~3.7 phone pixels: blurred by the shrink, blocky from the
+     stretch, speckled by the palette.  The bro's own pixels are about 2
+     game px, so the world is now much finer than he is.  (1.5, "Yes 1.5
+     grid", v2.3.2935 until v2.3.2942.)  NOT the world plan's unit: plan.js
+     `worldPxPerArtPx` stays 1.5 -- three picture px to a plan px. */
+  gamePxPerArtPx: 0.5,
   /* Colours in the one palette the whole world shares, the reserved effect
      colours (night, water, fire) included.  Made once from the style key,
      then frozen: every picture is moved onto it.
@@ -39,9 +48,12 @@ export const PIXEL = {
      the Verdant Wilds', metal would lose its shine steps).  Still ONE shared
      palette, so the look stays one world. */
   palette: 128,
-  /* A ground swatch, in art px: 768 game px on a side, most of a phone
-     screen's width and three quarters of its height. */
-  groundTile: 512,
+  /* A ground swatch, in picture px: 1024, covering 512 game px -- about a
+     phone screen's width and half its height.  v2.3.2942 (the owner's idea
+     above): 768 game px until then, which is what blew ChatGPT's picture
+     up; at 512 its 1254 px shrink a little to 1024 and are shown at about
+     their own size. */
+  groundTile: 1024,
   /* v2.3.2939: a person, crown to foot, in game px -- the bro is 105.7
      (worldViewport.js).  Sizes are said in words from this, never shown by
      attaching his picture. */

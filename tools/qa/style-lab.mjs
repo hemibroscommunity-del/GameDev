@@ -13,7 +13,7 @@
  *   2. pictures go in through the real file inputs, the sheet is cut into
  *      its four objects, the magenta is gone from their edges;
  *   3. a pixel look really is on one grid in one palette, with no stray
- *      single pixels; the chosen HD look on its 1.5 px grid; the ground
+ *      single pixels; the chosen HD look kept at 2 px per game px; the ground
  *      tiles without a seam; the borrowed looks use the borrowed pictures;
  *   4. the stand-in game screen draws, the bro walks where he is sent, night
  *      darkens it, rain falls, the open dashboard zooms out;
@@ -252,10 +252,11 @@ try {
     { palette: P.palette, tree: P.tree.colours, ground: P.ground.colours });
   ok('...the ground on the same grid (640 game px tile -> 320 art pixels)', P.ground.w === 320 && P.ground.h === 320, P.ground);
   const H = look.hdpixel;
-  ok('HD pixel art (chosen): the tree is on the 1.5 game px grid (190 game px tall -> 127 art pixels)',
-    H.snap === 1.5 && Math.abs(H.tree.h - 127) <= 1 && Math.abs(H.treeWorld[1] - 190) <= 1 && H.missing.length === 0, { tree: H.tree, world: H.treeWorld });
-  ok(`...hard edges, one palette of at most ${PIXEL.palette} colours, and 768 px ground tiles (512 art pixels)`,
-    H.tree.semi === 0 && H.ground.semi === 0 && H.palette > 4 && H.palette <= PIXEL.palette && H.tree.colours <= PIXEL.palette && H.ground.colours <= PIXEL.palette && H.ground.w === 512 && H.ground.h === 512,
+  /* v2.3.2942: kept at 2 px per game px (0.5 game px a pixel), never blown up */
+  ok('HD pixel art (chosen): the tree kept at 2 px per game px (190 game px tall -> 380 px)',
+    H.snap === PIXEL.gamePxPerArtPx && H.snap === 0.5 && Math.abs(H.tree.h - 380) <= 1 && Math.abs(H.treeWorld[1] - 190) <= 1 && H.missing.length === 0, { tree: H.tree, world: H.treeWorld });
+  ok(`...hard edges, one palette of at most ${PIXEL.palette} colours, and 512 game px ground tiles (1024 px)`,
+    H.tree.semi === 0 && H.ground.semi === 0 && H.palette > 4 && H.palette <= PIXEL.palette && H.tree.colours <= PIXEL.palette && H.ground.colours <= PIXEL.palette && H.ground.w === PIXEL.groundTile && H.ground.h === PIXEL.groundTile,
     { palette: H.palette, tree: H.tree, ground: H.ground });
   /* rule 5: detail in clusters -- a lone pixel goes, a 1-px line stays */
   const speck = await page.evaluate(async () => {

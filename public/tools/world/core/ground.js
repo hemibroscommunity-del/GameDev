@@ -13,8 +13,9 @@
  *                         brief for its prompt and where it is used;
  *   materialMap(plan, bp) which swatch covers each blueprint cell, or the
  *                         sea -- water is drawn by the game, not a swatch;
- *   composeGround(...)    the ground of any rectangle, one output pixel per
- *                         art px (1.5 game px), from the swatch pictures;
+ *   composeGround(...)    the ground of any rectangle from the swatch
+ *                         pictures, at one output pixel per art px (1.5 game
+ *                         px) or, since v2.3.2942, finer (opts.scale);
  *   groundOverview(...)   the whole map at one pixel a cell, each swatch in
  *                         its own colour -- the Ground Studio's progress map.
  *
@@ -173,12 +174,24 @@ function blur1(f, w, h, r) {
   }
 }
 
-/* The ground of `rect` (art px, frame coordinates), one pixel per art px.
+/* The ground of `rect` (art px, frame coordinates).
    `tiles[id]` = { A: {w, h, data}, B?: {w, h, data} }: the swatch pictures,
    square, seamless and already on the palette; a swatch not made yet is
    drawn in its plan colour, chequered, so the gap shows.  Returns
-   { w, h, data (RGBA), mat (the swatch index of every pixel) }. */
+   { w, h, data (RGBA), mat (the swatch index of every pixel), scale }.
+
+   `opts.scale` (v2.3.2942): output pixels per art px, a whole number.  1 (the
+   default) is one pixel per art px (1.5 game px).  The Ground Studio uses 3:
+   since v2.3.2942 a swatch is kept at 2 px per game px (style/bible.js,
+   PIXEL) so ChatGPT's picture is never blown up, and the ground is laid at
+   that sharpness.  Tiles are then in output px, anchored to the frame the
+   same way, so chunks still meet with no seam.  Where one swatch fills a
+   pixel's whole neighbourhood the answer is the plain one; only where two
+   meet is each output pixel worked out on its own, which keeps the finer
+   ground about as quick to lay as the coarse one. */
 export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
+  const K = Math.max(1, Math.round(opts.scale || 1));
+  if (K > 1) return composeFine(plan, bp, mm, rect, tiles, opts, K);
   const S = bp.scale, seed = (plan.seed | 0) + 900;
   const RW = Math.round(rect.w), RH = Math.round(rect.h), X0 = Math.round(rect.x), Y0 = Math.round(rect.y);
   /* the cells under the rectangle, and a margin for the blur */
@@ -262,8 +275,132 @@ export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
       data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
     }
   }
-  if (opts.withMaterials === false) return { w: RW, h: RH, data };
-  return { w: RW, h: RH, data, mat };
+  if (opts.withMaterials === false) return { w: RW, h: RH, data, scale: 1 };
+  return { w: RW, h: RH, data, mat, scale: 1 };
+}
+
+/* composeGround at K output pixels per art px (see there). */
+function composeFine(plan, bp, mm, rect, tiles, opts, K) {
+  const S = bp.scale, seed = (plan.seed | 0) + 900;
+  const RW = Math.round(rect.w), RH = Math.round(rect.h), X0 = Math.round(rect.x), Y0 = Math.round(rect.y);
+  const M = 4, E2 = 2;
+  const cx0 = Math.floor((X0 - E2 - bp.x0) / S) - M, cy0 = Math.floor((Y0 - E2 - bp.y0) / S) - M;
+  const cw = Math.ceil((RW + 2 * E2) / S) + 2 * M + 2, ch = Math.ceil((RH + 2 * E2) / S) + 2 * M + 2;
+  const cellAt = (x, y) => {
+    const bx = Math.min(bp.w - 1, Math.max(0, cx0 + x)), by = Math.min(bp.h - 1, Math.max(0, cy0 + y));
+    return mm.mat[by * bp.w + bx];
+  };
+  const seen = new Uint8Array(mm.ids.length);
+  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) seen[cellAt(x, y)] = 1;
+  const present = [], memb = [];
+  for (let q = 0; q < mm.ids.length; q++) {
+    if (!seen[q]) continue;
+    const f = new Float32Array(cw * ch);
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) f[y * cw + x] = cellAt(x, y) === q ? 1 : 0;
+    blur1(f, cw, ch, 1);
+    blur1(f, cw, ch, 1);
+    present.push(q); memb.push(f);
+  }
+  const water = mm.water, wIdx = present.indexOf(water);
+  /* the swatch at a point (art px, continuous), as composeGround decides it
+     for a whole art px; `nx, ny` place its noise.  Leaves the water's share
+     in `lastWater` for the sea's shading. */
+  let lastWater = 0;
+  const vs = new Float32Array(present.length);
+  const pickAt = (axc, ayc, nx, ny) => {
+    const gyf = (ayc - bp.y0) / S - 0.5 - cy0, gxf = (axc - bp.x0) / S - 0.5 - cx0;
+    const gj = Math.min(ch - 2, Math.max(0, Math.floor(gyf))), uy = Math.min(1, Math.max(0, gyf - gj));
+    const gi = Math.min(cw - 2, Math.max(0, Math.floor(gxf))), ux = Math.min(1, Math.max(0, gxf - gi));
+    const p00 = gj * cw + gi, p10 = p00 + 1, p01 = p00 + cw, p11 = p01 + 1;
+    const w00 = (1 - ux) * (1 - uy), w10 = ux * (1 - uy), w01 = (1 - ux) * uy, w11 = ux * uy;
+    let best = present[0], bv = -Infinity, alive = 0, only = best;
+    for (let q = 0; q < present.length; q++) {
+      const f = memb[q];
+      const v = f[p00] * w00 + f[p10] * w10 + f[p01] * w01 + f[p11] * w11;
+      vs[q] = v;
+      if (q === wIdx) lastWater = v;
+      if (v > 0) { alive++; only = present[q]; }
+    }
+    if (alive === 1) return only;
+    for (let q = 0; q < present.length; q++) {
+      const v = vs[q];
+      if (v <= 0) continue;
+      const id = present[q];
+      const n = valueNoise(nx * 0.09 + id * 7.31, ny * 0.09 - id * 3.17, seed) * 0.62 + valueNoise(nx * 0.31 + id * 1.9, ny * 0.31, seed + 7) * 0.38;
+      const sc = v + JIT * n;
+      if (sc > bv) { bv = sc; best = id; }
+    }
+    return best;
+  };
+  /* 1. whole art px, two more all round, so every output pixel below can
+     see its art px's neighbours whichever rectangle it is in */
+  const PW = RW + 2 * E2, PH = RH + 2 * E2;
+  const pmat = new Uint8Array(PW * PH), pdep = new Float32Array(PW * PH);
+  for (let py = 0; py < PH; py++) {
+    const ay = Y0 - E2 + py;
+    for (let px = 0; px < PW; px++) {
+      const ax = X0 - E2 + px, p = py * PW + px;
+      lastWater = 0;
+      pmat[p] = pickAt(ax + 0.5, ay + 0.5, ax, ay);
+      pdep[p] = lastWater;
+    }
+  }
+  /* which art px have one swatch all round them (their eight neighbours too) */
+  const puni = new Uint8Array(PW * PH);
+  for (let py = 1; py < PH - 1; py++) for (let px = 1; px < PW - 1; px++) {
+    const p = py * PW + px, m0 = pmat[p];
+    puni[p] = pmat[p - PW - 1] === m0 && pmat[p - PW] === m0 && pmat[p - PW + 1] === m0 && pmat[p - 1] === m0 &&
+      pmat[p + 1] === m0 && pmat[p + PW - 1] === m0 && pmat[p + PW] === m0 && pmat[p + PW + 1] === m0 ? 1 : 0;
+  }
+  /* 2. output pixels: the art px's answer where its neighbourhood is one
+     swatch, each pixel's own where two meet.  FW more all round for the foam. */
+  const FW = Math.max(1, Math.round(K / 1.5));
+  const OW = RW * K, OH = RH * K, OX0 = X0 * K, OY0 = Y0 * K, OEW = OW + 2 * FW, OEH = OH + 2 * FW;
+  const omat = new Uint8Array(OEW * OEH), odep = new Float32Array(OEW * OEH);
+  for (let oy = 0; oy < OEH; oy++) {
+    const aoy = OY0 - FW + oy, pyi = Math.floor(aoy / K) - (Y0 - E2);
+    for (let ox = 0; ox < OEW; ox++) {
+      const aox = OX0 - FW + ox, pxi = Math.floor(aox / K) - (X0 - E2);
+      const p = pyi * PW + pxi, o = oy * OEW + ox;
+      if (puni[p]) { omat[o] = pmat[p]; odep[o] = pdep[p]; continue; }
+      lastWater = 0;
+      const axc = (aox + 0.5) / K, ayc = (aoy + 0.5) / K;
+      omat[o] = pickAt(axc, ayc, axc - 0.5, ayc - 0.5);
+      odep[o] = lastWater;
+    }
+  }
+  /* 3. colour */
+  const data = new Uint8ClampedArray(OW * OH * 4), mat = new Uint8Array(OW * OH), cat = mm.catalog;
+  for (let oy = 0; oy < OH; oy++) {
+    const aoy = OY0 + oy, ay = Math.floor(aoy / K);
+    let lastAx = null, bsel = 0;
+    for (let ox = 0; ox < OW; ox++) {
+      const aox = OX0 + ox, ax = Math.floor(aox / K), i = oy * OW + ox, o = i * 4;
+      const e0 = (oy + FW) * OEW + ox + FW, m = omat[e0];
+      mat[i] = m;
+      let c;
+      if (m === water) {
+        let land = false;
+        for (let d = 1; d <= FW && !land; d++) land = omat[e0 - d] !== water || omat[e0 + d] !== water || omat[e0 - d * OEW] !== water || omat[e0 + d * OEW] !== water;
+        const dd = odep[e0];
+        c = land ? WATER_RGB.foam : dd < 0.72 ? WATER_RGB.shallow : dd < 0.93 ? WATER_RGB.mid : WATER_RGB.deep;
+      } else {
+        const e = cat[m], t = tiles && tiles[e.id];
+        if (t && t.A) {
+          if (t.B && ax !== lastAx) { lastAx = ax; bsel = fbm(ax / 1100, ay / 1100, seed + 11, 2) + 0.18 * (hash2(ax >> 2, ay >> 2, seed + 13) - 0.5); }
+          const tile = t.B && bsel > 0 ? t.B : t.A, T = tile.w;
+          const u = ((aox % T) + T) % T, v = ((aoy % T) + T) % T, q = (v * T + u) * 4;
+          data[o] = tile.data[q]; data[o + 1] = tile.data[q + 1]; data[o + 2] = tile.data[q + 2]; data[o + 3] = 255;
+          continue;
+        }
+        /* not made yet: the plan's colour, chequered every 16 art px */
+        c = ((ax >> 4) + (ay >> 4)) & 1 ? e.color : shade(e.color, 0.86);
+      }
+      data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
+    }
+  }
+  if (opts.withMaterials === false) return { w: OW, h: OH, data, scale: K };
+  return { w: OW, h: OH, data, mat, scale: K };
 }
 
 /* The whole map, one pixel per cell: each swatch in `means[id]` (its

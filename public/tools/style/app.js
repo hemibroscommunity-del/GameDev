@@ -13,7 +13,7 @@ import { Scene, loadSprites, EFFECT_PALETTE } from './scene.js';
 const $ = (id) => document.getElementById(id);
 const LS_KEY = 'bt-style-lab-v1';
 const ROUND = { ground: 1, objects: 1, building: 2, npc: 2 };
-const SNAPS = [[0, 'Off (smooth)'], [1, '1 game px'], [1.5, '1.5 game px'], [2, "2 game px (the bro's)"], [3, '3 game px'], [4, '4 game px']];
+const SNAPS = [[0, 'Off (smooth)'], [0.5, "0.5 game px (the phone's own sharpness)"], [1, '1 game px'], [1.5, '1.5 game px'], [2, "2 game px (the bro's)"], [3, '3 game px'], [4, '4 game px']];
 const PALETTES = [[0, 'All colours'], [16, '16'], [24, '24'], [32, '32'], [48, '48'], [64, '64']];
 
 /* ── storage ── */
@@ -86,7 +86,10 @@ function tuneOf(style) {
 }
 function rendersOf(style) {
   const t = tuneOf(style);
-  const things = { smooth: !(t.snap > 0), snap: t.snap, palette: t.palette };
+  /* v2.3.2942: pixels finer than a game px (0.5, the chosen look) are drawn
+     smooth -- they are about the phone's own size, and hard edges at 1.2x
+     would double every fourth pixel */
+  const things = { smooth: !(t.snap >= 1), snap: t.snap, palette: t.palette };
   /* a look with separate rules for what stands (the mix) keeps its ground as
      the look says; otherwise the ground follows the same grid and palette */
   const ground = style.things ? style.render : things;
