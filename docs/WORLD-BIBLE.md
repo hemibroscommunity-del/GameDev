@@ -545,6 +545,25 @@ systems that exist without a building (duels, mail, clans) or might (an inn).
 in one palette: ground, objects, buildings, NPCs, and monsters as they are
 redone.
 
+**The bro is the size check, not the style reference (v2.3.2939).**
+
+> Owner, 2026-09-29: *"I don't really want my character to be the reference
+> image because I'm wanting the world to be high definition pixel art
+> (especially material-aware texturing) and my character is simple pixel
+> art."*
+
+- **Nothing of the bro is attached to any chat.** ChatGPT copies what it
+  sees, and an attached bro pulled every picture toward his chunkier, flatter
+  pixels. The style key is the one picture everything is matched to (rule
+  10), and it is made from words alone.
+- **Sizes are given in words** ("a person standing here would be about one
+  seventh as tall as this picture"), and the pipeline scales every object to
+  its size anyway (rule 8).
+- **He is still what everything is judged beside,** at game size, in the
+  Ground Studio's and the Style Lab's previews: the game will show him on
+  this ground.
+- **Material-aware texturing** is rule 11.
+
 **Why this was the first question.** The bro is pixel art, and every map and
 building was painted. That mix was a large part of why the game looked
 inconsistent, and no style key could fix it: whatever the key showed, either
@@ -579,13 +598,14 @@ table says which. The numbers and the prompt words live in one file,
 | 1 | **One pixel grid.** One art pixel is **1.5 game px**. The bro's own pixels are about 2, so the world is a little finer-grained than he is. A tree comes out about 127 art pixels tall, and a ground tile is 512 × 512 art pixels (768 game px). | the pipeline: every picture is snapped to the grid |
 | 2 | **One frozen palette** of about **64 colours**, in ramps of 4–6 shades per material. Shadows lean cool (blue-purple) and highlights warm (yellow). It is made once from the style key, then frozen, and every picture is moved onto it. This is the biggest consistency lever. | the pipeline |
 | 3 | **Readability ranking.** Ground is calm: middle tones, low contrast. Objects are medium contrast. Characters, monsters and loot are the brightest and punchiest. The test: squint at a screenshot, and the bro and the goblin still jump out. | the prompt, and the owner's eye |
-| 4 | **Light.** Soft daylight from the upper left, with 3–4 shading steps per surface. Slightly darker pixels where things touch the ground are fine. **No shadows cast on the ground, and no glow, fog or night drawn in.** The game's code adds those, so they can change with the time of day. | the prompt |
+| 4 | **Light.** Soft daylight from the upper left, with 3–5 shading steps per surface. Slightly darker pixels where things touch the ground are fine. **No shadows cast on the ground, and no glow, fog or night drawn in.** The game's code adds those, so they can change with the time of day. | the prompt |
 | 5 | **Edges.** Hard pixels only: no blur, no soft brushes, no smooth gradients, and dithering rarely. Detail comes in clusters of two or more pixels. | the pipeline: hard alpha, and stray single pixels are cleaned up |
 | 6 | **Outlines.** Ground has none. Objects get a 1-pixel outline in a darker shade of their own colour, never black, lighter on the sunny side. Characters keep their dark outlines, which helps them pop. | the prompt |
 | 7 | **Quiet ground.** Small accents cover at most about a tenth of a ground tile, and nothing is bigger than a pebble or a flower. Variety comes from two versions of each ground mixed by the game, and from flower, crack and pebble details scattered on top. Anything that stands up is a separate object (§11), never painted into the ground. | the prompt, and the ground tool |
 | 8 | **Objects.** Drawn whole on magenta, from the bro's steep three-quarter top-down angle, and recognisable at half size. Sizes come from one table: a tree about 1.8 × the bro, a door about 1.2 ×, a bush about 0.55 ×, a boulder about 0.5 ×. | the prompt; the pipeline scales each object to its size |
 | 9 | **Characters against the world.** The world is a bit finer-grained than the bro on purpose: it makes characters read as figures on a stage. | the grid (rule 1) |
-| 10 | **Process.** The style key first. Then a small **golden set** of approved pictures, attached alongside it. One fixed style paragraph in every prompt. Every picture judged next to the bro at game size, never on its own. | the owner |
+| 10 | **Process.** The style key first. Then a small **golden set** of approved pictures, attached alongside it. One fixed style paragraph in every prompt. Every picture judged next to the bro at game size, never on its own, but **the bro is never attached to a chat** (v2.3.2939): the key and the golden set are the only pictures anything is matched to. | the owner |
+| 11 | **Materials** (v2.3.2939). Every material is drawn as itself, recognisable from its own texture and the shape of its highlights: grass in clustered blades, earth with grit and small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, sand in fine wind ripples. Highlights are clusters of two or more pixels (rule 5). | the prompt (`MATERIALS` in `bible.js`), the style key's ninth tile, and the owner's eye |
 
 **What changed from ChatGPT's suggested style bible:** no gradients at all.
 Shading comes from the colour ramps, and soft light comes from the code.
@@ -595,10 +615,16 @@ Shading comes from the colour ramps, and soft light comes from the code.
 > BroTown HD pixel art: crisp, modern high-definition pixel art on one clean
 > square pixel grid, like Eastward or Sea of Stars. Every pixel is a
 > hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth
-> gradients. Each colour is shaded with 3 to 4 flat tones, in clusters of
+> gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of
 > pixels rather than single stray ones, with shadows shifted toward cool
-> blue-purple and highlights toward warm yellow. Soft, even daylight from the
-> upper left. No shadows cast on the ground, and no glow, fog or lighting
+> blue-purple and highlights toward warm yellow. Every material is drawn as
+> itself, so it can be told apart at a glance by its own texture and the
+> shape of its highlights: grass in clustered blades, earth with grit and
+> small stones, stone with hard-edged facets, chips and cracks, wood with
+> grain lines and knots, metal with small, sharp, bright highlights, snow and
+> ice in cool blues with crisp edges, and sand in fine wind ripples.
+> Highlights are small clusters of pixels, never single stray ones. Soft,
+> even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting
 > effects: the game adds those. The ground has no outlines. Anything that
 > stands up has a one-pixel outline in a darker shade of its own colour, never
 > black, lighter on the sunlit side. Moderate saturation, with the ground calm
@@ -669,21 +695,26 @@ of characters, the drift is what you saw.
   2. the dirt Main Street meeting a boardwalk;
   3. beach sand meeting shallow water;
   4. snow meeting a frozen pond;
-  5. volcanic ash and basalt with a lava crack;
+  5. volcanic ash and basalt with a lava crack (bright colour, no glow);
   6. desert sand;
-  7. cave stone with crystals;
-  8. bog mud with roots.
+  7. cave stone with sharp-faceted crystals;
+  8. bog mud with roots and a puddle of green ooze.
 
-  **The ninth is the bro** beside an oak and a boulder. It anchors every
-  object's outline, shading and size against him.
+  **The ninth is for size and materials** (v2.3.2939): a plain dark
+  silhouette of a man, as a size marker only, beside an oak, a mossy boulder
+  and an iron-hooped barrel. Foliage, bark, stone, wood and metal in one
+  tile, so every later object has an outline, shading, materials and a size
+  to match. Until v2.3.2939 it was the bro, from an attached screenshot,
+  which pulled the whole key toward his simpler pixels.
 - The prompt is in `plan.js` (`styleKey`), and the World Builder shows it in
   its **Style key** card.
 
 **How it is used:**
 
 1. **Make it first, before any other picture.** Start a new ChatGPT chat with
-   the style key prompt and **a screenshot of the bro attached**: he is the
-   one piece of art everything must match. Ask again until you love it. It is
+   the style key prompt and **nothing attached**, not even the bro
+   (v2.3.2939): the key itself becomes the one picture everything matches.
+   Ask again until you love it. It is
    the most important picture in the project.
 2. **Check it at game size.** Put it through the Style Lab's HD pixel look,
    next to the bro. It is judged the way it will be seen.
@@ -708,7 +739,8 @@ of characters, the drift is what you saw.
 **Decided (v2.3.2933):**
 
 - Every map, building, prop and NPC is replaced.
-- **The player is kept.** Everything new is drawn to match him (§6).
+- **The player is kept.** Everything new is drawn at his size (§6), in the
+  world's finer HD pixel art rather than his simpler style (v2.3.2939).
 - Monsters are kept for now and redone region by region wherever they clash
   with the style key.
 
@@ -722,15 +754,16 @@ of characters, the drift is what you saw.
 
 **The order, cheapest and most visible first:**
 
-1. **The look, then the style key** (§6), made from a screenshot of the bro.
+1. **The look, then the style key** (§6), made from words alone.
 2. **Buildings and props**, in the Bros brief (§12). Each is a single still
    picture, made with the key attached. They are objects standing on the
    ground (§11), so they prove the key works for everything that is not
    ground.
 3. **NPCs, with Mayor Bro first as the test.** Every one is redrawn: they
    are few and seen by everyone. The method:
-   - Make a front/side/back reference sheet with the key and the bro
-     screenshot attached, at the bro's size.
+   - Make a front/side/back reference sheet with the key attached, at the
+     bro's size given in words (not his picture: v2.3.2939). The pipeline
+     scales every figure to its size anyway.
    - Make the walk strips from that sheet.
    - Keep the existing sprite machinery. Only the pictures change.
 4. **Monsters, region by region**, alongside that region's ground, so each
@@ -1266,7 +1299,8 @@ definitely do the swatches."*
   with no seam, which is what lets the game build it in chunks.
 - **The Ground Studio** (`/tools/ground/`, v2.3.2937) is where the owner
   makes them:
-  - every swatch's prompt, ready to copy (attach the style key and the bro);
+  - every swatch's prompt, ready to copy (attach the style key, and only
+    the key);
   - each picture brought back is made seamless, shrunk to one 512 art px
     tile and moved onto the shared palette, exactly as the game will use it;
   - a preview at game size, with the bro standing on the real plan: the

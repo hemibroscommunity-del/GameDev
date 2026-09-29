@@ -30,7 +30,7 @@
  * ChatGPT pictures of their own.
  */
 
-import { PIXEL, HD_STYLE, QUIET_GROUND } from './bible.js';
+import { PIXEL, HD_STYLE, QUIET_GROUND, KEY_MATCH, personScale } from './bible.js';
 
 export const SLOTS = [
   { id: 'ground', name: 'Ground', what: 'a seamless ground tile' },
@@ -64,6 +64,27 @@ const MATCH = {
   npc: 'The attached picture is our hero. Match him exactly in style, line weight, colour saturation and size.',
 };
 
+/* v2.3.2939: the chosen look is matched to the STYLE KEY, not the bro
+   (bible.js, KEY_MATCH).  Owner: "I don't really want my character to be the
+   reference image because I'm wanting the world to be high definition pixel
+   art (especially material-aware texturing) and my character is simple pixel
+   art."  Sizes are said in words; the pipeline scales every picture to its
+   size anyway.  Mayor Bro too: NPCs are HD pixel art like the rest of the
+   world (docs/WORLD-BIBLE.md §6), at an ordinary person's size. */
+const KEY_REF = {
+  ground: `${KEY_MATCH} Scale: ${personScale(PIXEL.groundTile * PIXEL.gamePxPerArtPx)}.`,
+  objects: `${KEY_MATCH} Sizes: the tree about twice a person's height, the boulder about half, the bush about half and the signpost about a person's height.`,
+  building: `${KEY_MATCH} The building is about three times a person's height.`,
+  npc: `${KEY_MATCH} Mayor Bro is drawn in that style, at an ordinary person's height and proportions.`,
+};
+/* The subject, told what the attached picture is. */
+function contentFor(style, slot) {
+  if (style.ref !== 'key') return CONTENT[slot];
+  return CONTENT[slot]
+    .replace('at the same size, proportions and camera angle as the attached character', 'seen from the same steep three-quarter angle as the attached style key')
+    .replace('as the attached character', 'as the attached style key');
+}
+
 export const STYLES = [
   {
     id: 'pixel', name: 'Simple pixel art',
@@ -75,11 +96,12 @@ export const STYLES = [
   },
   {
     id: 'hdpixel', name: 'HD pixel art (chosen)',
-    why: "The owner's choice (v2.3.2935): finer pixels than the bro and richer shading, all on one 1.5 game px grid in one 64-colour palette. The bro reads a little chunkier than the world, which makes him stand out like a figure on a stage.",
+    why: "The owner's choice (v2.3.2935): finer pixels than the bro and richer shading, all on one 1.5 game px grid in one 64-colour palette. The bro reads a little chunkier than the world, which makes him stand out like a figure on a stage. Since v2.3.2939 its prompts attach the style key, never the bro, and ask for every material drawn as itself.",
     risks: "Fine pixels shimmer more when the camera moves. ChatGPT's pixels are only pixel-ish, so every picture must go through the snap.",
     like: 'Eastward, Sea of Stars, CrossCode',
     style: 'Style: ' + HD_STYLE,
     extra: { ground: QUIET_GROUND },
+    ref: 'key',
     render: { smooth: false, snap: PIXEL.gamePxPerArtPx, palette: PIXEL.palette, ground: PIXEL.groundTile * PIXEL.gamePxPerArtPx },
   },
   {
@@ -132,7 +154,7 @@ export const CRITERIA = [
 
 export function promptFor(style, slot) {
   if (!style.style) return '';
-  return [CONTENT[slot], style.style, style.extra && style.extra[slot], MATCH[slot]].filter(Boolean).join('\n\n');
+  return [contentFor(style, slot), style.style, style.extra && style.extra[slot], (style.ref === 'key' ? KEY_REF : MATCH)[slot]].filter(Boolean).join('\n\n');
 }
 
 export function sourceStyle(style, slot) {

@@ -442,8 +442,9 @@ ground swatches the Wheel needs (World Bible §13):
   ground-only brief.
 - **The prompts** (`public/tools/ground/prompts.js`) are the brief, the HD
   pixel art paragraph and the quiet-ground rule (`public/tools/style/
-  bible.js`), and the scale line. The owner attaches the style key and the
-  bro.
+  bible.js`), and the scale line. The owner attaches the style key, and only
+  the key: the bro is simpler pixel art than the world, so since v2.3.2939 his
+  size is given in words instead (World Bible §6).
 - **Each picture brought back** is squared, made seamless, shrunk to one
   512 art px tile (768 game px), and moved onto the one shared palette with
   stray pixels cleaned up (`public/tools/style/process.js`).
@@ -484,8 +485,9 @@ ground swatches the Wheel needs (World Bible §13):
 **Tests.** `node tools/world/test-world-core.mjs` checks the catalog, each
 spoke's stages and its passes' border land, determinism, seamless chunks,
 tile-true laying and the not-made-yet colour. `node tools/qa/ground-studio.mjs`
-(22 checks in real Chromium, at a phone's size) checks the prompts, the style
-key from the World Builder, a picture in through the real file input coming
+(23 checks in real Chromium, at a phone's size) checks the prompts (only the
+style key attached, never the bro, and every material drawn as itself: v2.3.2939),
+the style key from the World Builder, a picture in through the real file input coming
 out 512 px, seamless, hard-edged and on the palette, the map and the preview,
 frozen colours, a reload, and a zip restored into a fresh browser with the
 same pixels.

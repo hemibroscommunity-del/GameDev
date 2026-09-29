@@ -154,13 +154,22 @@ try {
   });
   ok('six looks, each with its card', cards.length === 6 && cards.every((c) => c.card), cards.map((c) => c.id));
   const gen = cards.filter((c) => c.style);
-  ok('the four looks ChatGPT makes each offer four prompts in their own style, all asking to match the bro',
-    gen.length === 4 && gen.every((c) => c.prompts.length === 4 && c.prompts.every((p) => p.includes(c.style) && /attached picture is our hero/.test(p))),
+  /* v2.3.2939, owner: the bro is simple pixel art and the world HD, so the
+     chosen look is matched to the style key; the test's other looks still
+     match the bro, as they were tested. */
+  ok('the four looks ChatGPT makes each offer four prompts in their own style: the chosen one matched to the style key, the others to the bro',
+    gen.length === 4 && gen.every((c) => c.prompts.length === 4 && c.prompts.every((p) => p.includes(c.style) && (c.id === 'hdpixel'
+      ? /Attached is the game's style key/.test(p) && !/our hero|attached character/.test(p)
+      : /attached picture is our hero/.test(p)))),
     gen.map((c) => [c.id, c.prompts.length]));
   /* the chosen look adds its own rules (v2.3.2935: quiet ground) after its
-     style paragraph -- deliberate, and the only other difference allowed */
-  ok('...with the same content in every look (only the style paragraph differs)',
-    [0, 1, 2, 3].every((k) => new Set(gen.map((c) => c.extra.reduce((p, x) => p.replace('\n\n' + x, ''), c.prompts[k].replace(c.style, '')))).size === 1));
+     style paragraph, and (v2.3.2939) names the style key where the others
+     name the bro -- deliberate, and the only other differences allowed: the
+     subject of every prompt is the same in every look */
+  const subject = (p) => p.split('\n\n')[0]
+    .replace(/(at the same size, proportions and camera angle|seen from the same steep three-quarter angle) as the attached (character|style key)/g, 'ANGLE');
+  ok('...with the same content in every look (only the style and the picture it matches differ)',
+    [0, 1, 2, 3].every((k) => new Set(gen.map((c) => subject(c.prompts[k]))).size === 1));
   ok('the two borrowing looks ask for no pictures of their own',
     cards.filter((c) => !c.style).every((c) => c.prompts.length === 0) && cards.filter((c) => !c.style).length === 2);
   await page.waitForFunction(() => { const i = document.getElementById('bro-img'); return i && !i.hidden && i.complete && i.naturalWidth > 0; }, null, { timeout: 30000 });

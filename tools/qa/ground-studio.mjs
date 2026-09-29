@@ -134,6 +134,10 @@ try {
   ok('a prompt carries the HD pixel art paragraph, its brief, the quiet-ground rule and the scale', /BroTown HD pixel art/.test(first.commons) &&
     /short green grass/.test(first.commons) && /The texture is quiet/.test(first.commons) && /one seventh as tall as this picture/.test(first.commons) &&
     /style key/.test(first.commons) && /seamlessly into the opposite edge/.test(first.commons), first.commons.slice(0, 200));
+  /* v2.3.2939, owner: the bro is simple pixel art and the world HD, so only
+     the style key is attached, and every material is drawn as itself. */
+  ok('...attaching only the style key (never the bro) and asking for every material drawn as itself',
+    /Attached is the game's style key/.test(first.commons) && !/hero|\bbro\b/i.test(first.commons) && /Every material is drawn as itself/.test(first.commons));
   ok("a stage's prompt is that stage's ground, and a road's allows the road", /patchy snow melting over wet brown grass/.test(first.frost1) && /whole square is this one surface/.test(first.road) && !/no objects, paths or water/.test(first.road));
   ok('the progress map is the whole Wheel, a pixel a cell', first.map[0] === 1792 && first.map[1] === 1792, first.map);
   const noKey = await page.evaluate(() => !document.getElementById('key-none').hidden);

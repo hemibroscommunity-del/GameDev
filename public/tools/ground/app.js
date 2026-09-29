@@ -2,7 +2,8 @@
  *
  * Owner: "Yes definitely do the swatches."  The loop, per swatch:
  *   1. copy its prompt (prompts.js) into a new ChatGPT chat, with the style
- *      key and the bro attached;
+ *      key attached (only the key since v2.3.2939: the bro is simpler pixel
+ *      art than the world, so he is the size check here, not the reference);
  *   2. bring the picture back: it is made seamless, shrunk to one 512 art px
  *      tile on the 1.5 game px grid (style/bible.js), and moved onto the one
  *      palette the whole ground shares (style/process.js) -- the same steps
@@ -428,7 +429,7 @@ function renderSwatch(e) {
   det.appendChild(ta);
   const copyBtn = el('button', null, 'Copy prompt');
   copyBtn.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(ta.value); toast('Prompt copied. Attach the style key and your bro in the chat.'); }
+    try { await navigator.clipboard.writeText(ta.value); toast('Prompt copied. Attach the style key in the chat.'); }
     catch (err) { ta.select(); toast('Select the prompt and copy it.'); }
   });
   const r0 = el('div', 'row'); r0.appendChild(copyBtn); det.appendChild(r0);

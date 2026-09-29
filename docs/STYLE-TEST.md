@@ -11,6 +11,13 @@
 > picture in it to see it at game size next to the bro before you keep it.
 > The "After the decision" steps at the end are under way. The rest of this
 > page is the test as it was planned, kept for the record.
+>
+> **v2.3.2939: the bro is no longer attached to world pictures.** Owner: *"I
+> don't really want my character to be the reference image because I'm
+> wanting the world to be high definition pixel art (especially
+> material-aware texturing) and my character is simple pixel art."* The
+> chosen look's prompts attach the style key instead and give sizes in words;
+> the test's other looks, below, still attach the bro as they did.
 
 > Owner, 2026-09-29: *"Yeah I don't know what aesthetic style is best. Maybe it
 > should all be pixel art. Maybe only map should be painterly for a unique
@@ -163,8 +170,8 @@ Each look gets 1–5 on seven questions:
 ## After the decision
 
 1. **The style key prompt is rewritten for the winner** (World Bible §6),
-   and the owner makes the style key from it. *Done in v2.3.2935; the key is
-   the owner's next step.*
+   and the owner makes the style key from it. *Done in v2.3.2935, and made
+   without the bro in v2.3.2939; the key is the owner's next step.*
 2. **The lab's settings become the pipeline's.** The pixel size, palette size
    and ground tile that won become the settings every picture is processed
    with ([WORLD-ARCHITECTURE.md, "The art pipeline"](WORLD-ARCHITECTURE.md#6-the-art-pipeline-consistency-by-machine)).

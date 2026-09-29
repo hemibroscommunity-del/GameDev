@@ -226,6 +226,13 @@ console.log('prompt');
   ok('plots stay empty', /Every plot stays EMPTY/.test(centre.text) && /buildings or houses \(building plots stay empty\)/.test(centre.text));
   ok('carries the HD pixel style bible and the never-list', /BroTown HD pixel art/.test(centre.text) && /No horizon, no sky/.test(centre.text) && /Never add: text/.test(centre.text) && /blur or soft gradients/.test(centre.text));
   ok('scale sentence filled in (a person 80 pixels tall at 1.5 game px a pixel)', /about 80 pixels tall/.test(centre.text) && !/\{person\}/.test(centre.text));
+  /* v2.3.2939, owner: the bro is simple pixel art and the world HD, so he is
+     never the reference picture; every material is drawn as itself. */
+  ok('every material is drawn as itself (the owner\'s material-aware texturing)', /Every material is drawn as itself/.test(centre.text) && /wood with grain lines/.test(centre.text));
+  const keyText = PLAN.styleKey.prompt.join('\n');
+  ok('the style key is made from words alone: no bro, no hero, no attached screenshot, and a plain figure for size',
+    !/hero|screenshot|attached/i.test(keyText) && /plain dark-grey silhouette of a standing man/.test(keyText) && /iron hoops/.test(keyText) && /Every material is drawn as itself/.test(keyText), keyText.slice(0, 160));
+  ok('the style key asks for bright lava, crystals and ooze, never glow', !/glowing/i.test(keyText) && /no glow round it/.test(keyText));
   const north = P(rel(0, -1));
   ok('Main Street ends at the north gate and becomes the North Road', /ends at the town's north gate, where it becomes the North Road/.test(north.text) && /The North Road begins at the town gate here/.test(north.text), north.summary);
   const millSq = sqAt([-2.02, 0]), mill = P(millSq, { right: true });

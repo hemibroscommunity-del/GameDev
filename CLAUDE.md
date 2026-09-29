@@ -64,7 +64,12 @@ remnant to migrate server-side, not a mode to preserve.
   game px grid**, one frozen ~64-colour palette, no gradients or baked
   shadows/glow, quiet ground, ground baked from swatches — the numbers and
   prompt words live in `public/tools/style/bible.js`, and every picture
-  goes through `public/tools/style/process.js`),
+  goes through `public/tools/style/process.js`; since v2.3.2939 every
+  material is drawn as itself (`MATERIALS`, the owner's "material-aware
+  texturing"), and the STYLE KEY is the only picture any chat is matched to —
+  NEVER attach the bro: he is simpler pixel art than the world and ChatGPT
+  copies what it sees, so sizes are given in words (`personScale`) and he is
+  only the size check in previews),
   `docs/STYLE-TEST.md` (the art-style test the owner ran in the Style Lab
   at `public/tools/style/` — six looks round the real bro, scored, v2.3.2934;
   decided v2.3.2935, and the lab's "HD pixel art (chosen)" look is now the

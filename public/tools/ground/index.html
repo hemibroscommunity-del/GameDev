@@ -99,7 +99,7 @@
     <h2>How it works</h2>
     <ol class="plan">
       <li><b>Make the style key first</b>, in <a href="../world/" style="color:#F3D9A2">the World Builder</a>. Every swatch is matched to it.</li>
-      <li>For each swatch below: <b>copy its prompt</b> into a new ChatGPT chat, and attach <b>the style key</b> and <b>your bro's picture</b> (from <a href="../style/" style="color:#F3D9A2">the Style Lab</a>).</li>
+      <li>For each swatch below: <b>copy its prompt</b> into a new ChatGPT chat, and attach <b>the style key</b>, and only the key. Not your bro: the world is finer, more detailed pixel art than he is, and ChatGPT copies what it sees.</li>
       <li><b>Bring the picture back</b> as version A. The page makes it seamless, puts it on the 1.5 px grid and the shared colours, and shows it laid on the map at game size next to your bro.</li>
       <li>Later, a <b>second version (B)</b> of the same prompt in a fresh chat. The game mixes A and B so the ground does not repeat.</li>
       <li><b>Download all</b> and upload the zip to GitHub (below). A session puts it in the game.</li>
@@ -113,7 +113,7 @@
       <img id="key-img" class="keyimg" alt="The style key" hidden>
       <div>
         <p id="key-none">No style key in this browser yet. Make it in <a href="../world/" style="color:#F3D9A2">the World Builder</a> first, then come back: this page reads it from there, and builds the shared colours from it.</p>
-        <p id="key-has" hidden>Found in the World Builder. Attach it, with your bro's picture, to every swatch chat.</p>
+        <p id="key-has" hidden>Found in the World Builder. Attach it, and only it, to every swatch chat.</p>
         <div class="row"><a id="key-save" class="btn" download="brotown-style-key.png" hidden>Save style key</a><button id="key-share" hidden>Share…</button></div>
       </div>
     </div>

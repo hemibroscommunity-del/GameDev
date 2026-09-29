@@ -69,6 +69,7 @@
  * suite proves nothing moves (tools/world/test-world-core.mjs, "growth").
  */
 import { wheelInfo, spokePoint, arcPoint, arcPoints, stageOf } from './core/wheel.js';
+import { MATERIALS } from '../style/bible.js';
 
 export const PLAN = {
   id: 'brotown-world',
@@ -692,7 +693,8 @@ export const PLAN = {
      are filled in from the scale above. */
   style: [
     'BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients.',
-    'Each colour is shaded with 3 to 4 flat tones, in clusters of pixels rather than single stray ones. Shadows shift toward cool blue-purple and highlights toward warm yellow. Moderate saturation.',
+    'Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones. Shadows shift toward cool blue-purple and highlights toward warm yellow. Moderate saturation.',
+    MATERIALS,
     'Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog, night or lighting effects: the game adds those.',
     'The ground is calm, mid-toned and low in contrast, so characters and monsters stand out, and it has no outlines. Anything that stands up (a cliff, a rock) has a one-pixel outline in a darker shade of its own colour, never black.',
     'Seen from straight above at a steep three-quarter angle, like a classic 2D action-RPG map. No horizon, no sky and no perspective: the top of the square is exactly as close to the camera as the bottom, and everything is drawn at the same size wherever it is.',
@@ -713,26 +715,35 @@ export const PLAN = {
      generations; a picture to match does not drift as far.
 
      Eight of its tiles are GROUND, because the ground swatches are made
-     first and must match each other exactly (docs/WORLD-BIBLE.md §13);
-     the ninth stands the bro beside a tree and a boulder, which anchors
-     every object's outline, shading and size against him.  Attach a
-     screenshot of the bro to the chat: he is the art everything matches. */
+     first and must match each other exactly (docs/WORLD-BIBLE.md §13).
+
+     v2.3.2939, owner: "I don't really want my character to be the reference
+     image because I'm wanting the world to be high definition pixel art
+     (especially material-aware texturing) and my character is simple pixel
+     art."  Until then the ninth tile was the bro, from a screenshot attached
+     to the chat -- which pulled the whole key toward his chunkier, flatter
+     pixels.  Now nothing is attached: the ninth tile is a plain figure for
+     SIZE beside an oak, a boulder and an iron-hooped barrel -- foliage, bark,
+     stone, wood and metal in one tile, so every later object has its
+     outline, shading, materials and size to match.  The lava, crystal and
+     ooze tiles ask for bright colour, not glow (rule 4). */
   styleKey: {
     prompt: [
       'Make a STYLE KEY sheet for BroTown, a 2D action RPG drawn in HD pixel art: one square picture divided into a 3 x 3 grid of nine equal square tiles, separated by thin plain dark-grey gaps.',
-      'Every tile is drawn in the same crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars: hard-edged pixels only, with no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 4 flat tones, shadows shifted toward cool blue-purple and highlights toward warm yellow, in soft daylight from the upper left, with no cast shadows, no glow and no fog.',
-      'Every tile is seen from the same steep three-quarter top-down angle, with no horizon, no sky and no perspective, and drawn at the same scale: the hero in tile 9 is about a quarter of a tile tall.',
-      'The ground is calm and mid-toned, with no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black. The hero keeps his own dark outline, exactly as in the attached screenshot.',
+      'Every tile is drawn in the same crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars: hard-edged pixels only, with no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, shadows shifted toward cool blue-purple and highlights toward warm yellow, in soft daylight from the upper left, with no cast shadows, no glow and no fog.',
+      MATERIALS,
+      'Every tile is seen from the same steep three-quarter top-down angle, with no horizon, no sky and no perspective, and drawn at the same scale: the figure in tile 9 is about a quarter of a tile tall.',
+      'The ground is calm and mid-toned, with no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black.',
       'The nine tiles, left to right, top to bottom:',
       '1. green meadow grass with a few small wildflowers, crossed by a dirt path with two wheel ruts;',
       "2. the dirt Main Street of a frontier town, with wheel ruts, meeting the edge of a raised wooden boardwalk;",
       '3. pale beach sand meeting clear, shallow turquoise water;',
       '4. deep snow with wind-carved drifts, meeting the edge of a frozen pond;',
-      '5. black volcanic ash and cracked basalt, with a thin glowing crack of lava;',
+      '5. black volcanic ash and cracked basalt, with a thin crack of bright molten lava (bright colour only, with no glow round it);',
       '6. golden desert sand with wind ripples and a few loose red stones;',
-      '7. grey cave-stone floor with a small cluster of glowing blue crystals;',
-      '8. dark bog mud with twisted roots and a small glowing green puddle;',
-      '9. the hero from the attached screenshot, standing on grass beside a leafy oak tree nearly twice his height and a mossy boulder half his height: the scale reference for everything.',
+      '7. grey cave-stone floor with a small cluster of sharp-faceted blue crystals;',
+      '8. dark bog mud with twisted roots and a small puddle of bright green ooze;',
+      '9. the size and materials tile: on grass, a plain dark-grey silhouette of a standing man with no face or clothing (a size marker only), beside a leafy oak tree nearly twice his height, a mossy boulder half his height and a wooden barrel with iron hoops about waist-high.',
       'No text, letters or labels anywhere. No border round the whole picture.',
     ],
   },

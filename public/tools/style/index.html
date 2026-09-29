@@ -106,13 +106,14 @@
   <section class="card" id="decided">
     <h2>Decided: HD pixel art</h2>
     <p>You chose <b>HD pixel art</b> on a pixel grid of <b>1.5 game px</b> (v2.3.2935). The <b>HD pixel art (chosen)</b> look below now uses exactly the settings every picture in the game will get: that grid, one 64-colour palette and 768 px ground tiles. Put any picture in it to see it at game size next to your bro before you keep it.</p>
+    <p><b>The world is matched to the style key, not to your bro</b> (v2.3.2939). He is simpler pixel art than the world, and ChatGPT copies what it sees, so the chosen look's prompts attach the style key from <a href="../world/" style="color:#F3D9A2">the World Builder</a>, ask for every material drawn as itself, and give sizes in words. He stays the size check in every preview.</p>
     <p class="mut">The rules: <code>docs/WORLD-BIBLE.md</code> §6. The other looks stay here for the record.</p>
   </section>
 
   <section class="card">
     <h2>How the test works</h2>
     <ol class="plan">
-      <li><b>Save your bro's picture</b> below. Attach it to every ChatGPT chat, so every look is drawn to match him.</li>
+      <li><b>Save your bro's picture</b> below. Attach it to every ChatGPT chat for the test's looks, so each is drawn to match him. (The chosen look attaches the style key instead.)</li>
       <li><b>Round 1 (one evening):</b> for each look, copy the <b>Ground</b> and <b>Objects</b> prompts into two new chats and bring the pictures back as version A. The two looks that borrow pictures need none of their own.</li>
       <li><b>Preview</b> each look and walk around. Try night, rain and the open dashboard. Score it. Keep the best two or three.</li>
       <li><b>Round 2:</b> for those, make version B of the ground and objects (a fresh chat each, same prompt), plus the Building and the NPC. Score again. The A-and-B line says whether ChatGPT can keep the look up for hundreds of pictures.</li>
@@ -122,8 +123,8 @@
   </section>
 
   <section class="card" id="bro">
-    <h2>1. Your bro, for every chat</h2>
-    <p>ChatGPT matches what it can see. Attach this picture with every prompt below.</p>
+    <h2>1. Your bro</h2>
+    <p>ChatGPT matches what it can see. The test's other looks attach this picture to every prompt below. The chosen HD pixel art attaches the style key instead.</p>
     <img id="bro-img" class="broimg" alt="The bro, front, side and back" hidden>
     <p class="mut" id="bro-hint">Preparing…</p>
     <div class="row"><a id="bro-save" class="btn brass" download="bro-reference.png" hidden>Save bro picture</a><button id="bro-share" hidden>Share…</button></div>
