@@ -16,7 +16,7 @@ import { PIXEL, HD_STYLE, QUIET_GROUND, KEY_MATCH, personScale } from '../style/
 /* Swatches that ARE a surface -- a street, planks, gravel -- rather than
    ground things sit on.  The quiet rule still holds; "no paths" would not. */
 const SURFACES = new Set(['street', 'boardwalk', 'plaza', 'road', 'gravel', 'lava']);
-const QUIET_SURFACE = 'The texture is quiet: mostly the base tones, with small details covering no more than about a tenth of the area. The whole square is this one surface, edge to edge: no grass verge, no objects and no water.';
+const QUIET_SURFACE = 'The texture is quiet and clean: broad, smooth areas of the base tones, with small details covering no more than about a tenth of the area, and no noise, speckle or grain. The whole square is this one surface, edge to edge: no grass verge, no objects and no water.';
 
 /* A person against one tile: 106 game px against 512 art px x 1.5. */
 export function scaleLine() {

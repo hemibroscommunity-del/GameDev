@@ -605,7 +605,7 @@ table says which. The numbers and the prompt words live in one file,
 | 8 | **Objects.** Drawn whole on magenta, from the bro's steep three-quarter top-down angle, and recognisable at half size. Sizes come from one table: a tree about 1.8 × the bro, a door about 1.2 ×, a bush about 0.55 ×, a boulder about 0.5 ×. | the prompt; the pipeline scales each object to its size |
 | 9 | **Characters against the world.** The world is a bit finer-grained than the bro on purpose: it makes characters read as figures on a stage. | the grid (rule 1) |
 | 10 | **Process.** The style key first. Then a small **golden set** of approved pictures, attached alongside it. One fixed style paragraph in every prompt. Every picture judged next to the bro at game size, never on its own, but **the bro is never attached to a chat** (v2.3.2939): the key and the golden set are the only pictures anything is matched to. | the owner |
-| 11 | **Materials** (v2.3.2939). Every material is drawn as itself, recognisable from its own texture and the shape of its highlights: grass in clustered blades, earth with grit and small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, sand in fine wind ripples. Highlights are clusters of two or more pixels (rule 5). | the prompt (`MATERIALS` in `bible.js`), the style key's ninth tile, and the owner's eye |
+| 11 | **Materials** (v2.3.2939). Every material is drawn as itself, recognisable from its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, sand in fine wind ripples. Texture comes from clear shapes and soft shading, never noise, speckle or grain (v2.3.2941: the first ground came back "too gritty"). Highlights are clusters of two or more pixels (rule 5). | the prompt (`MATERIALS` in `bible.js`), the style key's ninth tile, and the owner's eye |
 
 **What changed from ChatGPT's suggested style bible:** no gradients at all.
 Shading comes from the colour ramps, and soft light comes from the code.
@@ -619,11 +619,13 @@ Shading comes from the colour ramps, and soft light comes from the code.
 > pixels rather than single stray ones, with shadows shifted toward cool
 > blue-purple and highlights toward warm yellow. Every material is drawn as
 > itself, so it can be told apart at a glance by its own texture and the
-> shape of its highlights: grass in clustered blades, earth with grit and
-> small stones, stone with hard-edged facets, chips and cracks, wood with
-> grain lines and knots, metal with small, sharp, bright highlights, snow and
-> ice in cool blues with crisp edges, and sand in fine wind ripples.
-> Highlights are small clusters of pixels, never single stray ones. Soft,
+> shape of its highlights: grass in soft clumps of blades, packed earth with
+> a few small stones, stone with hard-edged facets, chips and cracks, wood
+> with grain lines and knots, metal with small, sharp, bright highlights, snow
+> and ice in cool blues with crisp edges, and sand in fine wind ripples.
+> Texture comes from a few clear shapes and soft shading, never from noise,
+> speckle or grain. Highlights are small clusters of pixels, never single
+> stray ones. Soft,
 > even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting
 > effects: the game adds those. The ground has no outlines. Anything that
 > stands up has a one-pixel outline in a darker shade of its own colour, never
@@ -631,9 +633,10 @@ Shading comes from the colour ramps, and soft light comes from the code.
 > and mid-toned so characters stand out. Seen from a steep three-quarter
 > top-down angle, with no perspective.
 
-Ground prompts add: *"The texture is quiet: mostly the base tones, with small
-accents covering no more than about a tenth of the area. Nothing bigger than a
-pebble or a flower, and no objects, paths or water."*
+Ground prompts add: *"The texture is quiet and clean: broad, smooth areas of
+the base tones, with small accents covering no more than about a tenth of the
+area, and no noise, speckle or grain. Nothing bigger than a pebble or a
+flower, and no objects, paths or water."*
 
 **The earlier question, for the record.** v2.3.2933 asked "pixel art or
 painted?" and recommended pixel art matched to the bro; v2.3.2934 set up the

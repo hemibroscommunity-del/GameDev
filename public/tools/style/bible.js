@@ -52,8 +52,11 @@ export const PIXEL = {
    material is recognisable from its own texture and the SHAPE of its
    highlights, not from colour alone.  Highlights stay clusters of two or
    more pixels: the pipeline's despeckle (process.js) removes single ones.
-   Water is not listed: the game draws it (docs/WORLD-BIBLE.md §11). */
-export const MATERIALS = 'Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in clustered blades, earth with grit and small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in fine wind ripples. Highlights are small clusters of pixels, never single stray ones.';
+   Water is not listed: the game draws it (docs/WORLD-BIBLE.md §11).
+   v2.3.2941, owner, on the first ground at game size: "too gritty and low
+   resolution compared to the character."  This line asked for "earth with
+   grit", and got it; texture now comes from clear shapes, never noise. */
+export const MATERIALS = 'Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in fine wind ripples. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones.';
 
 /* The style paragraph every picture's prompt carries. */
 export const HD_STYLE = [
@@ -70,7 +73,7 @@ export const HD_STYLE = [
 /* Added to every GROUND picture: ground is a stage, not a scene.  Variety
    comes from two versions of each ground mixed by the game and from small
    details scattered on top, never from busy tiles. */
-export const QUIET_GROUND = 'The texture is quiet: mostly the base tones, with small accents covering no more than about a tenth of the area. Nothing bigger than a pebble or a flower, and no objects, paths or water.';
+export const QUIET_GROUND = 'The texture is quiet and clean: broad, smooth areas of the base tones, with small accents covering no more than about a tenth of the area, and no noise, speckle or grain. Nothing bigger than a pebble or a flower, and no objects, paths or water.';
 
 /* v2.3.2939: what every chat is told about the one picture attached to it --
    the style key, never the bro (see the header).  "Do not copy its tiles":
