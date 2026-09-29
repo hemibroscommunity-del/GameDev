@@ -1,5 +1,17 @@
 # The art style test (v2.3.2934)
 
+> **Decided, v2.3.2935: HD pixel art, on a 1.5 game px grid.** Owner,
+> 2026-09-29, after comparing the looks: *"I think HD pixel art is the
+> direction I want to go"*, and *"Yes 1.5 grid."* The rules every picture now
+> follows are in [WORLD-BIBLE.md §6](WORLD-BIBLE.md#6-one-look-for-everything-brotown-hd-pixel-art).
+>
+> **What the lab is for now:** its **HD pixel art (chosen)** look uses exactly
+> the settings every picture in the game will get (the 1.5 grid, one
+> 64-colour palette, 768 game px ground tiles, stray pixels cleaned up). Put a
+> picture in it to see it at game size next to the bro before you keep it.
+> The "After the decision" steps at the end are under way. The rest of this
+> page is the test as it was planned, kept for the record.
+
 > Owner, 2026-09-29: *"Yeah I don't know what aesthetic style is best. Maybe it
 > should all be pixel art. Maybe only map should be painterly for a unique
 > look. Don't know. The one advantage for making everything pixel art is that
@@ -151,16 +163,20 @@ Each look gets 1–5 on seven questions:
 ## After the decision
 
 1. **The style key prompt is rewritten for the winner** (World Bible §6),
-   and the owner makes the style key from it.
+   and the owner makes the style key from it. *Done in v2.3.2935; the key is
+   the owner's next step.*
 2. **The lab's settings become the pipeline's.** The pixel size, palette size
    and ground tile that won become the settings every picture is processed
    with ([WORLD-ARCHITECTURE.md, "The art pipeline"](WORLD-ARCHITECTURE.md#6-the-art-pipeline-consistency-by-machine)).
    `public/tools/style/process.js` is the first version of that pipeline.
+   *Done in v2.3.2935: they live in `public/tools/style/bible.js`.*
 3. **The art order starts** (World Bible §7): buildings and props, then NPCs,
    then monsters where they clash.
 4. **The ground approach is re-checked** against the winner (World Bible
-   §13). Pixel looks favour ground baked from swatches.
+   §13). Pixel looks favour ground baked from swatches. *Decided in
+   v2.3.2935: swatches.*
 
-**Proven in a real browser** by `node tools/qa/style-lab.mjs` (32 checks, at
-a phone's size and density, with ChatGPT-shaped pictures). It is not on the CI
+**Proven in a real browser** by `node tools/qa/style-lab.mjs` (34 checks, at
+a phone's size and density, with ChatGPT-shaped pictures, including the chosen
+look's grid and palette and the stray-pixel clean-up). It is not on the CI
 path.

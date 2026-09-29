@@ -80,7 +80,7 @@ function tuneOf(style) {
   return {
     snap: t.snap != null ? t.snap : base.snap,
     palette: t.palette != null ? t.palette : base.palette,
-    ground: t.ground != null ? t.ground : 640,
+    ground: t.ground != null ? t.ground : (style.render.ground || 640),
     objects: t.objects != null ? t.objects : 1,
   };
 }
@@ -407,7 +407,7 @@ function tuneBlock(st) {
     r.onchange = () => on(Number(r.value));
     grid.appendChild(r);
   };
-  range('Ground tile', 320, 1280, 40, t.ground, (v) => v + ' px', (v) => set({ ground: v }));
+  range('Ground tile', 320, 1280, 32, t.ground, (v) => v + ' px', (v) => set({ ground: v }));
   range('Objects', 0.6, 1.6, 0.05, t.objects, (v) => '×' + v.toFixed(2), (v) => set({ objects: v }));
   det.appendChild(grid);
   det.appendChild(el('p', 'mut', "Pixel size is in game px per art pixel: the bro's pixels are about 2. Colours is one palette shared by the whole look."));

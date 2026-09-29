@@ -324,14 +324,14 @@ export function buildPrompt(plan, bp, c, r, finished = {}, anchorsIn = [], opts 
   const style = plan.style.map((s) => s.replace('{person}', String(person)).replace('{across}', String(across)));
 
   const L = [];
-  L.push(`Paint square ${id} of a large hand-painted game map. I have attached its template image${opts.styleKey ? ' and the map\'s style key' : ''}.`);
+  L.push(`Paint square ${id} of a large pixel-art game map. I have attached its template image${opts.styleKey ? ' and the map\'s style key' : ''}.`);
   L.push('');
   L.push('HOW TO READ THE TEMPLATE');
   if (opts.styleKey) {
-    L.push('• There are two pictures: the TEMPLATE for this square (flat colours, with any finished parts painted in) and the STYLE KEY (a sheet of nine small sample tiles). Paint in exactly the style of the style key — its brushwork, colours, light and level of detail — but do not copy its tiles, its grid or anything in it.');
+    L.push('• There are two pictures: the TEMPLATE for this square (flat colours, with any finished parts painted in) and the STYLE KEY (a sheet of nine small sample tiles). Paint in exactly the style of the style key — its pixel size, colours, shading, light and level of detail — but do not copy its tiles, its grid or anything in it.');
   }
   if (paintedBits.length) {
-    L.push(`• Everything fully painted is finished: ${paintedBits.join(', and ')}. Keep every painted part exactly as it is, in exactly the same place, and continue it seamlessly into the rest of the square — the same roads, water, cliffs, trees, colours and brushwork, with no line or change of style where it meets your painting.`);
+    L.push(`• Everything fully painted is finished: ${paintedBits.join(', and ')}. Keep every painted part exactly as it is, in exactly the same place, and continue it seamlessly into the rest of the square — the same roads, water, cliffs, colours, pixel size and shading, with no line or change of style where it meets your painting.`);
   } else if (opts.first) {
     L.push('• Nothing is painted yet anywhere: this square sets the look for the whole map.');
   } else {

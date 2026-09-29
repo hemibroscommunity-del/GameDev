@@ -7,14 +7,15 @@
   (v2.3.2932, below).
 - The world plan in `public/tools/world/plan.js` is the source of truth for
   the map's layout.
-- **v2.3.2933: two decisions come before phase 2**, both in the World Bible:
-  - whether the new world is **pixel art** to match the player (who is kept),
-    or painted (§6). v2.3.2934: settled by the style test,
-    [STYLE-TEST.md](STYLE-TEST.md), run in the Style Lab at `/tools/style/`;
-  - whether the ground is **painted square by square or baked from
-    swatches**, now that everything standing up is an object (§11, §13).
-
-  Either answer changes the prompts.
+- **v2.3.2933 asked two questions before phase 2; v2.3.2935 has both
+  answers** (World Bible §6 and §13):
+  - the new world is **HD pixel art on a 1.5 game px grid**, matched to the
+    player (who is kept). Every prompt here now asks for it;
+  - the ground is **baked from swatches**, not painted square by square.
+    ChatGPT's pixel art holds about half a square's width per picture, so
+    squares are no longer painted one picture each. This page stays the
+    plan, the blueprint (where every swatch, road, shore and wall goes) and
+    the home of the style key.
 - The world's story and look (through-lines, regions, Brotown's Main
   Street, the style key, the character refresh) are written up for people
   in **[WORLD-BIBLE.md](WORLD-BIBLE.md)**.
@@ -42,8 +43,8 @@ follows is at the end.
 | # | Phase | Who | State |
 |---|---|---|---|
 | 1 | **Tooling**: plan, blueprint, prompts, fuser, World Builder page | sessions | **shipped v2.3.2931** |
-| 2 | **Test strip**: make the **style key**, then paint M13 (the town square) and a few squares round it (N13, M14, L13 …). Judge the joins on a phone and tune the prompts. | owner | next, after the two v2.3.2933 decisions above |
-| 3 | **Paint the world**: work outward from the town until every land square is done | owner | — |
+| 2 | **The style key**, then the first **ground swatches** (a Ground Studio page, next), judged on a phone next to the bro. *(Before v2.3.2935: paint a test strip of squares round the town square.)* | owner | **next: the style key** |
+| 3 | **Make the ground**: every swatch, baked onto the plan. *(Before v2.3.2935: paint every land square.)* | owner + sessions | — |
 | 4 | **Export for the game**: cut the fused world into streaming chunks under `public/maps/world/` | sessions | — |
 | 5 | **Engine**: chunk streaming, region from position, server interest by region (see "What the game needs") | sessions | — |
 | 6 | **Walls, climbing, jumping** from the blueprint's terrain classes | sessions | — |
@@ -61,7 +62,7 @@ real ChatGPT output before anyone paints 137 squares with them.
   you love the look, then save the picture in the card.
 - From then on every prompt asks ChatGPT to match it, and you attach it next
   to every template. On a phone, **Share…** sends both.
-- Why this matters: [WORLD-BIBLE.md §6](WORLD-BIBLE.md#6-one-look-for-everything-the-style-key).
+- Why this matters, and the HD pixel art rules it carries: [WORLD-BIBLE.md §6](WORLD-BIBLE.md#6-one-look-for-everything-brotown-hd-pixel-art).
 
 **Then, per square:**
 

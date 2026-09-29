@@ -51,11 +51,16 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
-  `public/tools/world/plan.js` wins where they differ, v2.3.2931),
-  `docs/STYLE-TEST.md` (the art-style test the owner runs in the Style Lab
-  at `public/tools/style/` — six looks round the real bro, scored; the
-  player is pixel art and every map is painted, so the look is chosen
-  there, not argued, v2.3.2934),
+  `public/tools/world/plan.js` wins where they differ, v2.3.2931; its §6
+  is the ART LAW since v2.3.2935: the owner chose **HD pixel art on a 1.5
+  game px grid**, one frozen ~64-colour palette, no gradients or baked
+  shadows/glow, quiet ground, ground baked from swatches — the numbers and
+  prompt words live in `public/tools/style/bible.js`, and every picture
+  goes through `public/tools/style/process.js`),
+  `docs/STYLE-TEST.md` (the art-style test the owner ran in the Style Lab
+  at `public/tools/style/` — six looks round the real bro, scored, v2.3.2934;
+  decided v2.3.2935, and the lab's "HD pixel art (chosen)" look is now the
+  place to check a picture at game size),
   `docs/WORLD-ARCHITECTURE.md` (the long-run TARGET for the seamless,
   many-room world: one home per piece of state, maps not zones, cells and
   interest, a character vault per player, one market settling by mail, the

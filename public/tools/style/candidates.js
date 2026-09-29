@@ -12,6 +12,11 @@
  * and only the STYLE paragraph changes, so what the owner compares is the
  * style and nothing else.  The plan the owner follows is docs/STYLE-TEST.md.
  *
+ * v2.3.2935: the owner chose HD pixel art on a 1.5 game px grid.  That look
+ * now carries the settings and words every later picture uses (bible.js), so
+ * the lab shows a picture exactly as the game will; the other looks stay for
+ * the record and for comparing.
+ *
  * `render` is what the lab (and later the asset pipeline) does to ChatGPT's
  * pictures before they are drawn:
  *   smooth   draw with smoothing (painted) or as hard pixels (pixel art)
@@ -19,10 +24,13 @@
  *            The bro's own pixels are ~2.1 game px, so 2 is "his size".
  *            0 = leave the picture's own resolution alone.
  *   palette  colours shared by the whole look (0 = keep every colour)
+ *   ground   the ground tile's size in game px (640 when not given)
  * `things` overrides `render` for everything that stands on the ground.
  * `from` borrows another look's pictures, so the two derived looks need no
  * ChatGPT pictures of their own.
  */
+
+import { PIXEL, HD_STYLE, QUIET_GROUND } from './bible.js';
 
 export const SLOTS = [
   { id: 'ground', name: 'Ground', what: 'a seamless ground tile' },
@@ -66,12 +74,13 @@ export const STYLES = [
     render: { smooth: false, snap: 2, palette: 32 },
   },
   {
-    id: 'hdpixel', name: 'HD pixel art',
-    why: 'Pixel art with much finer pixels and soft shading, like the monsters and NPCs today. The bro reads chunkier than the world, and that contrast can make him stand out.',
-    risks: 'Two pixel sizes on one screen. Fine pixels shimmer more when the camera moves.',
+    id: 'hdpixel', name: 'HD pixel art (chosen)',
+    why: "The owner's choice (v2.3.2935): finer pixels than the bro and richer shading, all on one 1.5 game px grid in one 64-colour palette. The bro reads a little chunkier than the world, which makes him stand out like a figure on a stage.",
+    risks: "Fine pixels shimmer more when the camera moves. ChatGPT's pixels are only pixel-ish, so every picture must go through the snap.",
     like: 'Eastward, Sea of Stars, CrossCode',
-    style: 'Style: modern high-definition pixel art, like Eastward or Sea of Stars: small crisp pixels, rich detail, soft shading with many shades per colour, and coloured rather than black outlines. Still no blur and no anti-aliasing.',
-    render: { smooth: false, snap: 1, palette: 0 },
+    style: 'Style: ' + HD_STYLE,
+    extra: { ground: QUIET_GROUND },
+    render: { smooth: false, snap: PIXEL.gamePxPerArtPx, palette: PIXEL.palette, ground: PIXEL.groundTile * PIXEL.gamePxPerArtPx },
   },
   {
     id: 'painted', name: 'Painterly',
@@ -123,7 +132,7 @@ export const CRITERIA = [
 
 export function promptFor(style, slot) {
   if (!style.style) return '';
-  return [CONTENT[slot], style.style, MATCH[slot]].join('\n\n');
+  return [CONTENT[slot], style.style, style.extra && style.extra[slot], MATCH[slot]].filter(Boolean).join('\n\n');
 }
 
 export function sourceStyle(style, slot) {

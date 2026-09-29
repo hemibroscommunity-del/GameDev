@@ -537,45 +537,62 @@ export const PLAN = {
     'frost|verdant': 'alpine meadows: snowmelt streams through short green grass and alpine flowers, with the first pines',
   },
 
-  /* ── THE STYLE BIBLE ──
+  /* ── THE STYLE BIBLE: BroTown HD pixel art (v2.3.2935) ──
+     Owner, 2026-09-29, choosing between the looks: "I think HD pixel art is
+     the direction I want to go", and "Yes 1.5 grid" -- one art pixel is 1.5
+     game px (the bro's own pixels are about 2).
+
      The part of every prompt that never changes.  Consistency across a
      hundred separate generations comes from here, from the STYLE KEY below
      and from the finished edges in each template -- never from ChatGPT
-     remembering earlier squares.  `{person}` and `{across}` are filled in
-     from the scale above. */
+     remembering earlier squares.  What words cannot hold, the art pipeline
+     does to every picture afterwards: the 1.5 px grid, one frozen palette,
+     no stray single pixels (public/tools/style/process.js).  The rules and
+     the reasons are in docs/WORLD-BIBLE.md §6.  `{person}` and `{across}`
+     are filled in from the scale above. */
   style: [
+    'BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients.',
+    'Each colour is shaded with 3 to 4 flat tones, in clusters of pixels rather than single stray ones. Shadows shift toward cool blue-purple and highlights toward warm yellow. Moderate saturation.',
+    'Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog, night or lighting effects: the game adds those.',
+    'The ground is calm, mid-toned and low in contrast, so characters and monsters stand out, and it has no outlines. Anything that stands up (a cliff, a rock) has a one-pixel outline in a darker shade of its own colour, never black.',
     'Seen from straight above at a steep three-quarter angle, like a classic 2D action-RPG map. No horizon, no sky and no perspective: the top of the square is exactly as close to the camera as the bottom, and everything is drawn at the same size wherever it is.',
-    'Daylight from the upper left. Every tree, rock and cliff casts a soft shadow toward the lower right.',
-    'Rich, painterly, hand-painted detail with soft natural colours, matching the finished painted parts exactly in brushwork, colour and level of detail.',
-    'Scale: a person would be about {person} pixels tall here, so the square is about {across} people across. A tree is about as tall as a person; a boulder about half that.',
+    'Scale: a person would be about {person} pixels tall here, so the square is about {across} people across. A tree is nearly twice as tall as a person; a boulder about half.',
     'The ground runs off all four edges of the square. It is one piece of a bigger map, not a picture of its own.',
   ],
   never: [
     'text', 'letters', 'numbers', 'labels', 'signs with writing', 'grid lines', 'a border or frame', 'a vignette or darkened edges',
     'sky', 'clouds', 'a horizon', 'people', 'animals', 'monsters',
     'buildings or houses (building plots stay empty)', 'UI', 'a compass', 'a watermark',
+    'blur or soft gradients', 'glow or light effects', 'cast shadows', 'black outlines',
   ],
 
   /* ── THE STYLE KEY ──
-     One picture, made once, before the first square, and attached to EVERY
-     square's chat after that (the builder keeps it).  Words alone drift over
-     a hundred generations; a picture to match does not drift as far.  It
-     also carries a building and a person, so the same key can anchor the
-     buildings and characters that are redrawn later (docs/WORLD-BIBLE.md). */
+     One picture, made once, before anything else, and attached to EVERY
+     picture's chat after that: ground, objects, buildings, characters (the
+     builder keeps it for squares).  Words alone drift over a hundred
+     generations; a picture to match does not drift as far.
+
+     Eight of its tiles are GROUND, because the ground swatches are made
+     first and must match each other exactly (docs/WORLD-BIBLE.md §13);
+     the ninth stands the bro beside a tree and a boulder, which anchors
+     every object's outline, shading and size against him.  Attach a
+     screenshot of the bro to the chat: he is the art everything matches. */
   styleKey: {
     prompt: [
-      'Make a STYLE KEY sheet for a hand-painted 2D action-RPG world: one square picture divided into a 3 x 3 grid of nine equal square tiles, separated by thin plain dark-grey gaps.',
-      'Every tile is a small piece of the same world, seen from the same steep three-quarter top-down angle with no horizon and no sky, lit by the same daylight from the upper left (soft shadows to the lower right), and painted in the same rich, painterly, hand-painted style with soft natural colours. Every tile is drawn at the same scale: a person is about a quarter of a tile tall.',
+      'Make a STYLE KEY sheet for BroTown, a 2D action RPG drawn in HD pixel art: one square picture divided into a 3 x 3 grid of nine equal square tiles, separated by thin plain dark-grey gaps.',
+      'Every tile is drawn in the same crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars: hard-edged pixels only, with no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 4 flat tones, shadows shifted toward cool blue-purple and highlights toward warm yellow, in soft daylight from the upper left, with no cast shadows, no glow and no fog.',
+      'Every tile is seen from the same steep three-quarter top-down angle, with no horizon, no sky and no perspective, and drawn at the same scale: the hero in tile 9 is about a quarter of a tile tall.',
+      'The ground is calm and mid-toned, with no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black. The hero keeps his own dark outline, exactly as in the attached screenshot.',
       'The nine tiles, left to right, top to bottom:',
-      '1. green meadow grass with wildflowers, a leafy oak, a mossy boulder, and a dirt wagon road with two wheel ruts crossing the tile;',
-      '2. a stretch of a frontier town\'s Main Street: packed dirt with wheel ruts, a raised wooden boardwalk, and the front of one two-storey wooden false-front shop with a porch and hitching post;',
-      '3. a riverbank with clear blue water, reeds, pebbles and a wooden plank bridge;',
-      '4. deep snow with snow-laden pines, a frozen pond edge and a granite boulder;',
-      '5. black volcanic ash with a glowing lava stream and black basalt columns;',
-      '6. golden desert sand with wind ripples, a red sandstone rock stack and a cactus;',
-      '7. grey stone ground with glowing blue crystals and a short stretch of mine railway;',
-      '8. a dark bog with a twisted dead tree, a glowing green pool and giant purple toadstools;',
-      '9. one adventurer standing on grass, full body, in simple frontier clothes -- the scale reference for characters.',
+      '1. green meadow grass with a few small wildflowers, crossed by a dirt path with two wheel ruts;',
+      "2. the dirt Main Street of a frontier town, with wheel ruts, meeting the edge of a raised wooden boardwalk;",
+      '3. pale beach sand meeting clear, shallow turquoise water;',
+      '4. deep snow with wind-carved drifts, meeting the edge of a frozen pond;',
+      '5. black volcanic ash and cracked basalt, with a thin glowing crack of lava;',
+      '6. golden desert sand with wind ripples and a few loose red stones;',
+      '7. grey cave-stone floor with a small cluster of glowing blue crystals;',
+      '8. dark bog mud with twisted roots and a small glowing green puddle;',
+      '9. the hero from the attached screenshot, standing on grass beside a leafy oak tree nearly twice his height and a mossy boulder half his height: the scale reference for everything.',
       'No text, letters or labels anywhere. No border round the whole picture.',
     ],
   },

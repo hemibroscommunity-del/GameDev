@@ -10,7 +10,8 @@
  *   seamless      a ground tile is made to repeat without a visible edge
  *                 (the same per-axis cross-fade as tools/world/bake-trial-world.mjs)
  *   snap          reduced to a pixel grid (game px per art pixel) with hard
- *                 edges, then mapped onto ONE palette shared by the whole look
+ *                 edges, then mapped onto ONE palette shared by the whole look,
+ *                 with stray single pixels cleaned up (v2.3.2935, despeckle)
  *
  * The snap is the point of the exercise.  ChatGPT's "pixel art" has no fixed
  * grid and a few hundred colours; snapped, every picture of a look sits on the
@@ -331,7 +332,8 @@ export function nearestIn(pal) {
 }
 
 /* Hard alpha (pixel art has no half-transparent pixels) and, given a
-   palette, every colour moved onto it.  In place. */
+   palette, every colour moved onto it and the stray pixels cleaned up.
+   In place. */
 export function hardenAndMap(c, pal) {
   const g = ctx2d(c);
   const img = g.getImageData(0, 0, c.width, c.height), d = img.data;
@@ -341,8 +343,32 @@ export function hardenAndMap(c, pal) {
     d[i + 3] = 255;
     if (near) { const p = near(d[i], d[i + 1], d[i + 2]); d[i] = p[0]; d[i + 1] = p[1]; d[i + 2] = p[2]; }
   }
+  if (near) despeckle(d, c.width, c.height);
   g.putImageData(img, 0, 0);
   return c;
+}
+
+/* v2.3.2935: HD pixel rule 5 (docs/WORLD-BIBLE.md §6) -- detail comes in
+   clusters of two or more pixels.  Snapping a ChatGPT picture leaves single
+   pixels of noise that shimmer when the camera moves.  A pixel that shares
+   its colour (or its transparency) with none of its four neighbours, while
+   three of them agree, takes theirs.  A 1-px line or outline always shares
+   with a neighbour along it, so it stays.  The picture's own border is left
+   alone.  In place, on hard-alpha RGBA. */
+export function despeckle(d, w, h) {
+  const src = new Uint8ClampedArray(d);
+  const key = (i) => (src[i + 3] ? ((src[i] << 16) | (src[i + 1] << 8) | src[i + 2]) : -1);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = (y * w + x) * 4, me = key(i);
+    const a = i - 4, b = i + 4, c = i - w * 4, e = i + w * 4;
+    const ka = key(a), kb = key(b), kc = key(c), ke = key(e);
+    if (ka === me || kb === me || kc === me || ke === me) continue;
+    let from = -1;
+    if ((ka === kb) + (ka === kc) + (ka === ke) >= 2) from = a;
+    else if (kb === kc && kb === ke) from = b;
+    if (from < 0) continue;
+    d[i] = src[from]; d[i + 1] = src[from + 1]; d[i + 2] = src[from + 2]; d[i + 3] = src[from + 3];
+  }
 }
 
 /* The picture as it will sit in the world: `worldW` x `worldH` game px.

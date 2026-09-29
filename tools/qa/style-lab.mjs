@@ -12,8 +12,9 @@
  *      and the bro's picture for the chats is made;
  *   2. pictures go in through the real file inputs, the sheet is cut into
  *      its four objects, the magenta is gone from their edges;
- *   3. a pixel look really is on one grid in one palette; the ground tiles
- *      without a seam; the borrowed looks use the borrowed pictures;
+ *   3. a pixel look really is on one grid in one palette, with no stray
+ *      single pixels; the chosen HD look on its 1.5 px grid; the ground
+ *      tiles without a seam; the borrowed looks use the borrowed pictures;
  *   4. the stand-in game screen draws, the bro walks where he is sent, night
  *      darkens it, rain falls, the open dashboard zooms out;
  *   5. scores and pictures survive a reload; a removed picture is gone;
@@ -148,6 +149,7 @@ try {
       id: st.id, card: !!document.getElementById('style-' + st.id),
       prompts: [...document.querySelectorAll('textarea[data-prompt^="' + st.id + '|"]')].map((t) => t.value),
       style: st.style || null,
+      extra: st.extra ? Object.values(st.extra) : [],
     }));
   });
   ok('six looks, each with its card', cards.length === 6 && cards.every((c) => c.card), cards.map((c) => c.id));
@@ -155,8 +157,10 @@ try {
   ok('the four looks ChatGPT makes each offer four prompts in their own style, all asking to match the bro',
     gen.length === 4 && gen.every((c) => c.prompts.length === 4 && c.prompts.every((p) => p.includes(c.style) && /attached picture is our hero/.test(p))),
     gen.map((c) => [c.id, c.prompts.length]));
+  /* the chosen look adds its own rules (v2.3.2935: quiet ground) after its
+     style paragraph -- deliberate, and the only other difference allowed */
   ok('...with the same content in every look (only the style paragraph differs)',
-    [0, 1, 2, 3].every((k) => new Set(gen.map((c) => c.prompts[k].replace(c.style, ''))).size === 1));
+    [0, 1, 2, 3].every((k) => new Set(gen.map((c) => c.extra.reduce((p, x) => p.replace('\n\n' + x, ''), c.prompts[k].replace(c.style, '')))).size === 1));
   ok('the two borrowing looks ask for no pictures of their own',
     cards.filter((c) => !c.style).every((c) => c.prompts.length === 0) && cards.filter((c) => !c.style).length === 2);
   await page.waitForFunction(() => { const i = document.getElementById('bro-img'); return i && !i.hidden && i.complete && i.naturalWidth > 0; }, null, { timeout: 30000 });
@@ -176,6 +180,8 @@ try {
   const pics = await makePictures(page);
   for (const slot of ['ground', 'objects', 'building', 'npc']) await put(page, pics, 'pixel', slot, 'A');
   for (const slot of ['ground', 'objects', 'building', 'npc']) await put(page, pics, 'painted', slot, 'A');
+  /* v2.3.2935: the chosen look gets pictures too, to prove its settings */
+  for (const slot of ['ground', 'objects', 'building', 'npc']) await put(page, pics, 'hdpixel', slot, 'A');
   await page.evaluate(() => document.getElementById('style-pixel').scrollIntoView());
   await shot(page, 'page-card');
   const after = await page.evaluate(() => ({
@@ -183,9 +189,9 @@ try {
     chips: Object.fromEntries([...document.querySelectorAll('[data-chip]')].map((c) => [c.dataset.chip, c.textContent])),
     thumbs: [...document.querySelectorAll('img[data-thumb]')].filter((i) => !i.hidden).length,
   }));
-  ok('pictures go in through the file inputs and show as thumbnails', after.thumbs === 8, after);
+  ok('pictures go in through the file inputs and show as thumbnails', after.thumbs === 12, after);
   ok('...and every look counts what it has, the borrowing ones included',
-    after.chips.pixel === '4 of 4 pictures' && after.chips.painted === '4 of 4 pictures' && after.chips['painted-snap'] === '4 of 4 pictures' && after.chips.mix === '4 of 4 pictures' && after.chips.flat === '0 of 4 pictures', after.chips);
+    after.chips.pixel === '4 of 4 pictures' && after.chips.painted === '4 of 4 pictures' && after.chips['painted-snap'] === '4 of 4 pictures' && after.chips.mix === '4 of 4 pictures' && after.chips.hdpixel === '4 of 4 pictures' && after.chips.flat === '0 of 4 pictures', after.chips);
 
   const look = await page.evaluate(async () => {
     const L = window.__styleLab;
@@ -235,7 +241,23 @@ try {
   ok('...and the whole look shares one palette of at most 32 colours', P.palette > 4 && P.palette <= 32 && P.tree.colours <= 32 && P.building.colours <= 32 && P.ground.colours <= 32,
     { palette: P.palette, tree: P.tree.colours, ground: P.ground.colours });
   ok('...the ground on the same grid (640 game px tile -> 320 art pixels)', P.ground.w === 320 && P.ground.h === 320, P.ground);
-  ok('HD pixel art keeps every colour (no palette) on a 1 game px grid', look.hdpixel.palette === 0 && look.hdpixel.snap === 1 && look.hdpixel.missing.length === 4, look.hdpixel);
+  const H = look.hdpixel;
+  ok('HD pixel art (chosen): the tree is on the 1.5 game px grid (190 game px tall -> 127 art pixels)',
+    H.snap === 1.5 && Math.abs(H.tree.h - 127) <= 1 && Math.abs(H.treeWorld[1] - 190) <= 1 && H.missing.length === 0, { tree: H.tree, world: H.treeWorld });
+  ok('...hard edges, one palette of at most 64 colours, and 768 px ground tiles (512 art pixels)',
+    H.tree.semi === 0 && H.ground.semi === 0 && H.palette > 4 && H.palette <= 64 && H.tree.colours <= 64 && H.ground.colours <= 64 && H.ground.w === 512 && H.ground.h === 512,
+    { palette: H.palette, tree: H.tree, ground: H.ground });
+  /* rule 5: detail in clusters -- a lone pixel goes, a 1-px line stays */
+  const speck = await page.evaluate(async () => {
+    const P = await import('/tools/style/process.js');
+    const c = P.mk(12, 12), g = c.getContext('2d');
+    g.fillStyle = '#3c6b2c'; g.fillRect(0, 0, 12, 12);
+    g.fillStyle = '#d8c070'; g.fillRect(5, 4, 1, 1); g.fillRect(2, 9, 8, 1);
+    P.hardenAndMap(c, [[60, 107, 44], [216, 192, 112]]);
+    const d = g.getImageData(0, 0, 12, 12).data, at = (x, y) => d[(y * 12 + x) * 4];
+    return { speck: at(5, 4), line: [2, 5, 9].map((x) => at(x, 9)) };
+  });
+  ok('stray single pixels are cleaned up, 1-px lines are kept', speck.speck === 60 && speck.line.every((v) => v === 216), speck);
   ok('Painterly stays smooth: soft edges, many colours, no palette',
     look.painted.palette === 0 && look.painted.groundSmooth && look.painted.tree.semi > 0 && look.painted.ground.colours > 200, { tree: look.painted.tree, ground: look.painted.ground.colours });
   ok('the ground tiles without a seam: its wrap-round edge is no worse than two columns inside it',
@@ -302,7 +324,7 @@ try {
   /* the other looks draw too; pictures for the page's own record */
   await page.click('#pv-next');
   await page.waitForTimeout(700);
-  ok('▶ moves to the next look', (await page.evaluate(() => document.getElementById('pv-name').textContent)) === 'HD pixel art');
+  ok('▶ moves to the next look', (await page.evaluate(() => document.getElementById('pv-name').textContent)) === 'HD pixel art (chosen)');
   for (const id of ['painted', 'painted-snap', 'mix']) {
     await page.evaluate((i) => { const L = window.__styleLab; L.S.cur = L.STYLES.findIndex((s) => s.id === i); document.getElementById('pv-ver').click(); document.getElementById('pv-ver').click(); }, id);
     await page.waitForTimeout(900);
@@ -325,7 +347,7 @@ try {
     text: window.__styleLab.resultsText(),
   }));
   ok('scores and notes survive a reload', kept.stars === 5 && kept.notes === 'The bro fits.', kept);
-  ok('pictures survive a reload', kept.thumbs === 8, kept.thumbs);
+  ok('pictures survive a reload', kept.thumbs === 12, kept.thumbs);
   ok('the results to send are in order, best first, with the settings', /^BroTown style test: results\n\nSimple pixel art: 4\.7/.test(kept.text) && /pixel size 2, colours 32, ground 640 px/.test(kept.text) && /notes: The bro fits\./.test(kept.text), kept.text.slice(0, 300));
   await page.click('button[data-remove="pixel|npc|A"]');
   await page.waitForTimeout(300);

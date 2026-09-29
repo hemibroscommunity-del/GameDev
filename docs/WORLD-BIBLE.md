@@ -21,14 +21,14 @@ The region, border and plot tables below were generated from it.
 3. [The regions](#3-the-regions)
 4. [The borders](#4-the-borders)
 5. [Brotown](#5-brotown)
-6. [One look for everything: the style key](#6-one-look-for-everything-the-style-key)
+6. [One look for everything: BroTown HD pixel art](#6-one-look-for-everything-brotown-hd-pixel-art)
 7. [Redrawing the characters](#7-redrawing-the-characters)
 8. [Farms, dungeons and interiors](#8-farms-dungeons-and-interiors)
 9. [Growing the world, and the load it can carry](#9-growing-the-world-and-the-load-it-can-carry)
 10. [Decisions for the owner](#10-decisions-for-the-owner)
 11. [Trees, rocks, water and props: objects, not paint](#11-trees-rocks-water-and-props-objects-not-paint)
 12. [Built by Bros: buildings, props and people](#12-built-by-bros-buildings-props-and-people)
-13. [The ground: paint every square, or bake it from swatches](#13-the-ground-paint-every-square-or-bake-it-from-swatches)
+13. [The ground: baked from swatches](#13-the-ground-baked-from-swatches)
 14. [Easy to miss](#14-easy-to-miss)
 
 **v2.3.2933, the owner's second round of decisions,** recorded where they
@@ -44,6 +44,12 @@ belong:
 
 And one question it raises that comes before all of them: **the player is
 pixel art and every map is painted** (§6).
+
+**v2.3.2935, the owner's third round:**
+
+- **The look: HD pixel art on a 1.5 px grid** (§6), with the rules every
+  picture follows.
+- **The ground is made from swatches** (§13).
 
 ---
 
@@ -353,62 +359,89 @@ systems that exist without a building (duels, mail, clans) or might (an inn).
 
 ---
 
-## 6. One look for everything: the style key
+## 6. One look for everything: BroTown HD pixel art
 
 > *"I'm needing a consistent style across everything, and right now it's not."*
 
-### First: pixel art or painted? (v2.3.2933)
+### Decided: HD pixel art, on a 1.5 px grid (v2.3.2935)
 
-> Owner, 2026-09-29: *"The biggest keepable art is the player itself. Then
-> monsters (though these can be deeply rehauled too)."*
+> Owner, 2026-09-29, after comparing the looks side by side: *"I think HD
+> pixel art is the direction I want to go. What should the rules be around
+> generating art like that?"* And, choosing the pixel size: *"Yes 1.5 grid."*
 
-**The player is pixel art. Every map and building is painted.** Look at any
-screenshot:
+**Everything except the bro is modern HD pixel art**, on one pixel grid and
+in one palette: ground, objects, buildings, NPCs, and monsters as they are
+redone.
 
-- the bro is drawn in chunky pixels with a dark outline and flat shading;
-- the ground under him, the town and the buildings are soft painted
-  illustrations;
-- monsters and NPCs sit in between: pixel art, but with much more detail
-  and shading than the bro.
+**Why this was the first question.** The bro is pixel art, and every map and
+building was painted. That mix was a large part of why the game looked
+inconsistent, and no style key could fix it: whatever the key showed, either
+the bro or the world would not match it. Pixel art won because:
 
-That mix is a large part of why the game looks inconsistent. A style key
-cannot fix it on its own: whatever the key shows, either the bro or the
-world will not match it. So the look is chosen **before** the key is made.
+- **it keeps the bro**, the art being kept and the most expensive in the game
+  to redraw (§7);
+- **consistency is enforced by machine instead of hoped for.** Every picture
+  ChatGPT makes is snapped to one grid and one palette before it goes in the
+  game, so a hundred pictures from a hundred chats come out as one world;
+- **the effects the code draws** (night, lights, weather, water, sway, hits)
+  are drawn on the same grid in the same colours, so they look like part of
+  the art;
+- **it is cheaper on the phone**: a picture stored at its true pixel size
+  takes a fraction of the memory of a painting of the same ground.
 
-1. **Pixel art everywhere, matched to the bro (recommended).**
-   - He is the art being kept, and the most expensive art in the game to
-     redraw (§7).
-   - **Consistency can be enforced by the pipeline instead of hoped for.**
-     Every picture ChatGPT makes (ground, buildings, props, NPCs) is snapped
-     to one pixel size and one shared colour palette before it goes in the
-     game. A hundred pictures from a hundred chats come out on one grid, in
-     one palette.
-   - **It is cheaper on the phone.** A picture stored at its true pixel size
-     takes a fraction of the memory of a painting of the same ground.
-   - The cost: ChatGPT's "pixel art" is only pixel-ish, so the snap step is
-     required, and the prompts are rewritten for it.
-2. **Painted everywhere.** The bro is redrawn in the painted style. That is
-   the paper doll: every body, gear piece and weapon, in every direction and
-   animation. It is weeks of work and the riskiest art job in the game.
+**How it was chosen:** in the Style Lab, round the real bro at game size
+([STYLE-TEST.md](STYLE-TEST.md)). The lab's "HD pixel art (chosen)" look now
+uses exactly the settings below, so any picture can be checked there before
+it is kept.
 
-Pixel characters on painted ground can look good, but it is the kind of
-mismatch this section exists to remove. **The style key prompt waits for
-this decision**: today's prompt asks for painted tiles, and it is rewritten
-for whichever look is chosen.
+### The rules
 
-**How it gets decided: a test, not an argument (v2.3.2934).**
+ChatGPT never draws exact pixel art: its "pixel art" is only pixel-ish. So
+each rule is held by the prompt, by the pipeline that processes every picture
+afterwards (`public/tools/style/process.js`), or by the owner's eye, and the
+table says which. The numbers and the prompt words live in one file,
+`public/tools/style/bible.js`.
 
-> Owner: *"Yeah I don't know what aesthetic style is best. Maybe it should
-> all be pixel art. Maybe only map should be painterly for a unique look. …
-> Maybe I'll test which aesthetic style looks best."*
+| # | Rule | Held by |
+|---|---|---|
+| 1 | **One pixel grid.** One art pixel is **1.5 game px**. The bro's own pixels are about 2, so the world is a little finer-grained than he is. A tree comes out about 127 art pixels tall, and a ground tile is 512 × 512 art pixels (768 game px). | the pipeline: every picture is snapped to the grid |
+| 2 | **One frozen palette** of about **64 colours**, in ramps of 4–6 shades per material. Shadows lean cool (blue-purple) and highlights warm (yellow). It is made once from the style key, then frozen, and every picture is moved onto it. This is the biggest consistency lever. | the pipeline |
+| 3 | **Readability ranking.** Ground is calm: middle tones, low contrast. Objects are medium contrast. Characters, monsters and loot are the brightest and punchiest. The test: squint at a screenshot, and the bro and the goblin still jump out. | the prompt, and the owner's eye |
+| 4 | **Light.** Soft daylight from the upper left, with 3–4 shading steps per surface. Slightly darker pixels where things touch the ground are fine. **No shadows cast on the ground, and no glow, fog or night drawn in.** The game's code adds those, so they can change with the time of day. | the prompt |
+| 5 | **Edges.** Hard pixels only: no blur, no soft brushes, no smooth gradients, and dithering rarely. Detail comes in clusters of two or more pixels. | the pipeline: hard alpha, and stray single pixels are cleaned up |
+| 6 | **Outlines.** Ground has none. Objects get a 1-pixel outline in a darker shade of their own colour, never black, lighter on the sunny side. Characters keep their dark outlines, which helps them pop. | the prompt |
+| 7 | **Quiet ground.** Small accents cover at most about a tenth of a ground tile, and nothing is bigger than a pebble or a flower. Variety comes from two versions of each ground mixed by the game, and from flower, crack and pebble details scattered on top. Anything that stands up is a separate object (§11), never painted into the ground. | the prompt, and the ground tool |
+| 8 | **Objects.** Drawn whole on magenta, from the bro's steep three-quarter top-down angle, and recognisable at half size. Sizes come from one table: a tree about 1.8 × the bro, a door about 1.2 ×, a bush about 0.55 ×, a boulder about 0.5 ×. | the prompt; the pipeline scales each object to its size |
+| 9 | **Characters against the world.** The world is a bit finer-grained than the bro on purpose: it makes characters read as figures on a stage. | the grid (rule 1) |
+| 10 | **Process.** The style key first. Then a small **golden set** of approved pictures, attached alongside it. One fixed style paragraph in every prompt. Every picture judged next to the bro at game size, never on its own. | the owner |
 
-- Six looks are tried side by side, the owner's painted-map idea among them:
-  simple pixel art, HD pixel art, painterly, painterly snapped to pixels, flat
-  cartoon, and painted ground with pixel objects.
-- Each is shown round the real bro at game size in the **Style Lab**
-  (`/tools/style/`) and scored.
-- The plan: [STYLE-TEST.md](STYLE-TEST.md). The recommendation above stands
-  until the test says otherwise.
+**What changed from ChatGPT's suggested style bible:** no gradients at all.
+Shading comes from the colour ramps, and soft light comes from the code.
+
+**The style paragraph every prompt carries** (`bible.js`, `HD_STYLE`):
+
+> BroTown HD pixel art: crisp, modern high-definition pixel art on one clean
+> square pixel grid, like Eastward or Sea of Stars. Every pixel is a
+> hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth
+> gradients. Each colour is shaded with 3 to 4 flat tones, in clusters of
+> pixels rather than single stray ones, with shadows shifted toward cool
+> blue-purple and highlights toward warm yellow. Soft, even daylight from the
+> upper left. No shadows cast on the ground, and no glow, fog or lighting
+> effects: the game adds those. The ground has no outlines. Anything that
+> stands up has a one-pixel outline in a darker shade of its own colour, never
+> black, lighter on the sunlit side. Moderate saturation, with the ground calm
+> and mid-toned so characters stand out. Seen from a steep three-quarter
+> top-down angle, with no perspective.
+
+Ground prompts add: *"The texture is quiet: mostly the base tones, with small
+accents covering no more than about a tenth of the area. Nothing bigger than a
+pebble or a flower, and no objects, paths or water."*
+
+**The earlier question, for the record.** v2.3.2933 asked "pixel art or
+painted?" and recommended pixel art matched to the bro; v2.3.2934 set up the
+style test to decide it. The painted alternative would have meant redrawing
+the bro's whole paper doll (every body, gear piece and weapon, in every
+direction and animation) in the painted style.
 
 ### One scale: the town's (measured, v2.3.2933)
 
@@ -447,49 +480,44 @@ painting's sharpness), and keeps ChatGPT's original in the backup.
 
 ### The style key
 
-**Why it is inconsistent today.** Every picture was made on its own, from
-words alone. Words drift: "painterly, hand-painted" means something slightly
-different every time. Over a hundred map squares, twenty buildings and a
-cast of characters, the drift is what you see.
+**Why it was inconsistent.** Every picture was made on its own, from words
+alone. Words drift: "painterly, hand-painted" meant something slightly
+different every time. Over a hundred map pieces, twenty buildings and a cast
+of characters, the drift is what you saw.
 
 **The fix is one picture that everything is matched to: the style key.**
 
-- It is one square sheet of nine small sample tiles, all from the same
-  camera and under the same light:
-  - meadow and a road;
-  - Main Street with one false-front shop;
-  - a riverbank and bridge;
-  - snow;
-  - lava;
-  - sand;
-  - stone with crystals and railway;
-  - bog;
-  - one adventurer for scale.
+- One square sheet of nine small tiles, all from the same camera, under the
+  same light, in the same pixel art. **Eight are ground**, because the ground
+  swatches are made first and must match each other exactly (§13):
+  1. meadow grass crossed by a dirt path;
+  2. the dirt Main Street meeting a boardwalk;
+  3. beach sand meeting shallow water;
+  4. snow meeting a frozen pond;
+  5. volcanic ash and basalt with a lava crack;
+  6. desert sand;
+  7. cave stone with crystals;
+  8. bog mud with roots.
+
+  **The ninth is the bro** beside an oak and a boulder. It anchors every
+  object's outline, shading and size against him.
 - The prompt is in `plan.js` (`styleKey`), and the World Builder shows it in
   its **Style key** card.
 
 **How it is used:**
 
-1. **Make it first, once the look is chosen** (above). Ask ChatGPT with the
-   style key prompt and a screenshot of the bro attached. Ask again until you
-   love the look. This is the most important picture in the project: every
-   later picture is matched to it.
-2. **Save it in the World Builder.** From then on every square's prompt says
-   *"paint in exactly the style of the style key … but do not copy its
-   tiles"*. Attach it next to each square's template. On a phone,
-   **Share…** sends both at once.
-3. **Attach it to every building and character picture too.** The key
-   includes a building and a person so that it can.
-
-**Rules shared by every picture**, map, building or character:
-
-- A steep three-quarter top-down camera, with no horizon and no perspective.
-- Daylight from the upper left, with shadows to the lower right.
-- One scale: a person is about 90 art px tall on the map (117 game px).
-- The palette and outline weight are taken from the key. Brushwork or pixels
-  follow the decision above.
-- **Make the key from a screenshot of the bro.** Attach it to the style key
-  chat: he is the one piece of existing art everything must match.
+1. **Make it first, before any other picture.** Start a new ChatGPT chat with
+   the style key prompt and **a screenshot of the bro attached**: he is the
+   one piece of art everything must match. Ask again until you love it. It is
+   the most important picture in the project.
+2. **Check it at game size.** Put it through the Style Lab's HD pixel look,
+   next to the bro. It is judged the way it will be seen.
+3. **Save it in the World Builder**, and attach it to **every** later chat:
+   ground swatches, objects, buildings, characters.
+4. **Start the golden set.** The first few pictures you approve (a ground
+   swatch, a tree, a building) are attached next to the key from then on. A
+   picture to match beats a paragraph to follow.
+5. **The palette is made from it** (rule 2) and then frozen.
 
 ---
 
@@ -787,13 +815,12 @@ there so the owner can take it.
 
 ## 10. Decisions for the owner
 
-**Asked in v2.3.2933, and needed first:**
+**Decided in v2.3.2935:**
 
-- **Pixel art or painted** (§6). It decides the style key prompt, and
-  whether the bro stays as he is. Recommended: pixel art, matched to him.
-  Decided by the style test ([STYLE-TEST.md](STYLE-TEST.md), v2.3.2934).
-- **How the ground is made** (§13). Recommended: baked from swatches, with
-  special places painted.
+- **The look: HD pixel art, on a 1.5 game px grid** (§6). The bro stays as
+  he is. Next: the style key.
+- **The ground: made from swatches** (§13). Owner: *"Yes definitely do the
+  swatches."*
 
 **Decided in v2.3.2933:** everything but the player is replaced (§7); what
 stands up is an object (§11); buildings and NPCs are made more bro (§12);
@@ -1003,7 +1030,7 @@ phone.
 
 ---
 
-## 13. The ground: paint every square, or bake it from swatches
+## 13. The ground: baked from swatches
 
 **Once everything that stands up is an object (§11), ChatGPT only paints
 ground:** grass, dirt, sand, snow, ash, stone, cobbles, roads, and the banks
@@ -1018,17 +1045,27 @@ round the water. That opens a second way to make it.
 | The owner's time | hundreds of chats | a few evenings |
 | The look | the most hand-made: every square unique | more even; variety comes from the details and objects on top |
 
-**Recommended: bake the ground from swatches, and paint only the special
-places** as World Builder squares fused into the bake: the town square, the
-landmarks, the falls, the border set-pieces.
+**Decided (v2.3.2935): the ground is baked from swatches.** Owner: *"Yes
+definitely do the swatches."*
 
-- With pixel art (§6) the case is stronger still: that is how pixel-art
-  ground is normally built.
-- The World Builder is not wasted. Its plan and blueprint drive the bake, and
-  it paints the special places.
-- **The next step is cheap:** about ten swatches for the meadow and the town,
-  then the trial re-baked from them, so the owner judges it on a phone before
-  any square is painted.
+- **HD pixel art (§6) settles it.** That is how pixel-art ground is built,
+  and ChatGPT's pixel density rules out painting squares anyway: one of its
+  pictures holds about 512 art pixels across, which at the 1.5 grid is
+  768 game px: about half a World Builder square across. A square painted in
+  one picture would come out with pixels about twice the size of everything
+  else.
+- **Special places are swatches plus objects**, not paintings: the town
+  square is paving and lamp posts, a landmark is an object (§11), the falls
+  are code-drawn water over a cliff object.
+- **The World Builder is not wasted.** Its plan and blueprint say where every
+  swatch, road, shore and wall goes, and they are the collision map.
+- **About 45 swatches:** four stages for each of the eight elements, plus the
+  town, the commons, roads and the border lands. Each has two versions, mixed
+  by the game.
+- **The phone composes the ground** from the swatches as you walk, so the
+  download does not grow with the map.
+- **The next step:** a Ground Studio page with every swatch's prompt, the
+  pipeline's processing, and a preview of the swatches laid out on the plan.
 
 ---
 
