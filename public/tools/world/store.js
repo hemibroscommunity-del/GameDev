@@ -2,12 +2,12 @@
  *
  * IndexedDB, in this browser, on this device.  Four stores:
  *   meta    the project record: which squares are done, in what order, how
- *           each was fused (planHash says which plan it was built against)
+ *           each was fused, and the key of the plan each was painted against
  *   raw     the picture ChatGPT made for each square, exactly as uploaded
  *           -- the real asset; everything else can be rebuilt from these
  *   chunks  the fused world, cut into 512 px PNG tiles (the squares layer;
- *           the town painting is laid on top at display time)
- *   misc    the overview picture shown on the map
+ *           any anchor painting is laid on top at display time)
+ *   misc    the overview picture shown on the map, and the style key picture
  *
  * Browser storage can be cleared by the browser, by "clear website data", or
  * by a private window, so the page nags for a backup (Download backup) after

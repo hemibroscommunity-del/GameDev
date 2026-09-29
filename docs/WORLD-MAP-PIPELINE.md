@@ -1,20 +1,30 @@
 # One Seamless World — the grid, the prompts and the fuser (v2.3.2931)
 
-**Status:** Phase 1 shipped: the **World Builder** page
-(`public/tools/world/`, live at `/tools/world/` on the site). No game code
-changes yet. The world plan in `public/tools/world/plan.js` is the source of
-truth for the map's layout.
+**Status:** Phase 1 is shipped: the **World Builder** page
+(`public/tools/world/`, live at `/tools/world/` on the site).
+
+- No game code has changed yet.
+- The world plan in `public/tools/world/plan.js` is the source of truth for
+  the map's layout.
+- The world's story and look (through-lines, regions, Brotown's Main
+  Street, the style key, the character refresh) are written up for people
+  in **[WORLD-BIBLE.md](WORLD-BIBLE.md)**.
 
 > Owner, 2026-09-28: *"I'm wanting one seamless map and to have chatGPT draw it
 > into squares. I'll need to fuse them together but have some type of grid and
 > prompt system to construct the entire thing."*
 
-This follows a feasibility study done the same day. It found the zones cannot be joined as they are.
-Every zone is a self-contained painting with its own framing and its own sun:
-frost is a peninsula, tidal an island, town a cliff-ringed plateau, ember and the
-dunes fade to horizons. A seamless world therefore needs **new continuous art**,
-and art is the long pole. This document covers how that art gets made. The
-engine work that follows is at the end.
+This follows a feasibility study done the same day. It found that the zones
+cannot be joined as they are:
+
+- Every zone is a self-contained painting with its own framing and its own
+  sun.
+- Frost is a peninsula, tidal an island, town a cliff-ringed plateau, and
+  ember and the dunes fade to horizons.
+
+A seamless world therefore needs **new continuous art**, and art is the long
+pole. This document covers how that art gets made; the engine work that
+follows is at the end.
 
 ---
 
@@ -23,111 +33,185 @@ engine work that follows is at the end.
 | # | Phase | Who | State |
 |---|---|---|---|
 | 1 | **Tooling**: plan, blueprint, prompts, fuser, World Builder page | sessions | **shipped v2.3.2931** |
-| 2 | **Test strip**: paint ~5 squares below the town (F8, G8, F9, …), judge the joins on a phone, tune prompts | owner | next |
+| 2 | **Test strip**: make the **style key**, then paint M13 (the town square) and a few squares round it (N13, M14, L13 …). Judge the joins on a phone and tune the prompts. | owner | next |
 | 3 | **Paint the world**: work outward from the town until every land square is done | owner | — |
 | 4 | **Export for the game**: cut the fused world into streaming chunks under `public/maps/world/` | sessions | — |
 | 5 | **Engine**: chunk streaming, region from position, server interest by region (see "What the game needs") | sessions | — |
 | 6 | **Walls, climbing, jumping** from the blueprint's terrain classes | sessions | — |
 
-Phase 2 exists so the prompt and the fuser can be tuned on real ChatGPT output
-before anyone paints 126 squares with them.
+Phase 2 exists so the style key, the prompts and the fuser can be tuned on
+real ChatGPT output before anyone paints 137 squares with them.
 
 ---
 
-## The owner's loop (per square)
+## The owner's loop
 
-1. Open **`/tools/world/`** on the site. The map shows the plan with the grid
-   over it. Squares outlined in gold are **ready**: their neighbours (or the
-   town) are finished, so ChatGPT will see real edges. **Next square →**
-   picks the best one.
+**Once, first: the style key.**
+
+- The page's **Style key** card shows a prompt. Ask ChatGPT with it until
+  you love the look, then save the picture in the card.
+- From then on every prompt asks ChatGPT to match it, and you attach it next
+  to every template. On a phone, **Share…** sends both.
+- Why this matters: [WORLD-BIBLE.md §6](WORLD-BIBLE.md#6-one-look-for-everything-the-style-key).
+
+**Then, per square:**
+
+1. Open **`/tools/world/`** on the site.
+   - The map shows the plan with the grid over it.
+   - Squares outlined in gold are **ready**: their neighbours are finished,
+     so ChatGPT will see real edges.
+   - **Next square →** picks the best one. The first is always M13, the town
+     square.
 2. **Save the template picture.** It shows the square's piece of the plan in
-   flat colours, with the finished art of its neighbours already painted along
-   its edges.
+   flat colours, with the finished art of its neighbours already painted
+   along its edges.
 3. **Copy the prompt.**
-4. In ChatGPT, start a **new chat**, attach the template, paste the prompt and
-   send. Save the picture it makes. If it added a border, text or a horizon,
-   ask again. That is cheaper than fixing a seam.
-5. **Bring the picture back** (choose it, drop it, or paste it). The page lines
-   it up, matches its colour and cuts the seam. It then shows the join with a
-   grade: *Seamless*, *Joins well*, *May show* or *Try again*.
+4. In ChatGPT, start a **new chat**. Attach the template and the style key,
+   paste the prompt and send. Save the picture it makes.
+   - If it added a border, text, a building on a plot or a horizon, ask
+     again. That is cheaper than fixing a seam.
+5. **Bring the picture back** (choose it, drop it, or paste it).
+   - The page lines it up, matches its colour and cuts the seam.
+   - It then shows the join with a grade: *Seamless*, *Joins well*, *May
+     show* or *Try again*.
 6. **Keep it** or **Try again**.
 
-Work is kept in the browser on that device. **Download backup** gives a `.zip`
-of every ChatGPT picture. **Restore backup** rebuilds the whole world from it
-on any device. The page asks for a backup every 5 squares. iPhone Safari may
-reload the tab while you are in the ChatGPT app; the page reopens the square
-you were on.
+**Keeping the work safe:**
+
+- Work is kept in the browser on that device.
+- **Download backup** gives a `.zip` of every ChatGPT picture and the style
+  key. **Restore backup** rebuilds the whole world from it on any device.
+- The page asks for a backup every 5 squares.
+- iPhone Safari may reload the tab while you are in the ChatGPT app; the
+  page reopens the square you were on.
 
 ---
 
 ## How it works
 
-### The grid
+### The grid, and growing it later
 
-- The map is **12 × 12 squares**, named like a spreadsheet. A1 is the
-  north-west corner, L12 the south-east.
+**Names.** Squares are named like a spreadsheet, fixed by a **frame of
+25 × 25** (A1 is the north-west corner, Y25 the south-east).
+
+**What is painted today.** The **active area** in the middle of the frame:
+**G7 to S19, 13 × 13 squares**. **M13** sits exactly on the world centre,
+and holds the town square.
+
+**Size of a square.**
+
 - Each square is **1024 px** of art, and each ChatGPT picture is resampled to
   that. ChatGPT returns 1024 or 1254 px squares depending on the day.
 - Squares **overlap by 256 px (25%)** on every side, so origins sit 768 px
-  apart. The overlap is where the seam goes. It is also all the model ever sees
-  of a neighbour, which is why it is generous.
-- World size: 12 × 768 + 256 = **9472 art px**. At **1.3 game px per art px**
-  (exactly how `town_v17` is drawn today), that is **12,314 game px**, about
-  **82 s** to walk across. Every current zone put together is about 25 s.
+  apart.
+- The overlap is where the seam goes. It is also all the model ever sees of
+  a neighbour, which is why it is generous.
 
-| Grid | Squares to paint | Walk across |
-|---|---|---|
-| 8 × 8 | 60 | ~55 s |
-| 10 × 10 | 90 | ~69 s |
-| **12 × 12** (the plan) | **126** (+18 optional open-sea) | **~82 s** |
-| 14 × 14 | 168 | ~95 s |
+**Size of the world.**
 
-**The grid size, the scale, the seed and the region layout must be decided
-before painting starts.** They fix where every square sits. Changing them
-afterwards moves squares out from under the art already painted for them. The
-builder detects a changed plan (`planHash`) and says so, but it cannot repaint
-anything. The descriptive text (region descriptions, the style bible) is safe
-to change at any time.
+- The active area is 13 × 768 + 256 = **10,240 art px**. At **1.3 game px
+  per art px** (how `town_v17` is drawn today), that is **13,312 game px**.
+- The island inside it is about 12 squares across: about **80 s** to walk
+  coast to coast. Every current zone put together is about 25 s.
+- **137 squares have land** and need painting. 32 are open sea past the
+  coast, and are optional.
 
-### The town is an anchor
+**Growing.** Owner: *"how would I expand the game later?"*
 
-- `town_v17` is not regenerated. It sits in the middle of the world at its
-  current size, and every square grows outward from it.
-- Its top ~140 px are trimmed off because they contain painted sky.
-- It fades into the squares around it over 56 px.
-- Squares next to it see its edges in their template and are asked to continue
-  them. The fuser writes those squares *under* the painting, and the painting's
-  own soft edge makes that join.
-- Every trail starts at the foot of its stairs, the town's only way down.
+- Widen `plan.active`, in any direction. Nothing already painted moves or is
+  renamed.
+- The frame can grow too (south and east), because the world centre is
+  pinned to square M13 rather than to the frame's middle.
+- This works because every value in the blueprint is a function of absolute
+  position:
+  - plan positions are measured in squares from the centre;
+  - noise is sampled at those positions, on a lattice aligned to absolute
+    cells;
+  - scattered features sit on a **hashed lattice**, not a random sequence
+    whose every draw would shift when the area grew.
+- The core suite proves it: it grows the active area and the frame, and
+  checks that the plan under every existing square is bit-for-bit unchanged.
+- The ways to use new room (new islands, a pushed-out coast, underground)
+  and why more players need more realms rather than more squares:
+  [WORLD-BIBLE.md §9](WORLD-BIBLE.md#9-growing-the-world-and-the-load-it-can-carry).
+
+**When the plan changes under painted squares.**
+
+- Every kept square records a **plan key**: a fingerprint of its piece of
+  the blueprint.
+- If a later change touches it (a road moved, the coast pushed out), the page
+  names exactly those squares for repainting, and no others.
+- The positions, the scale and the seed still decide where everything sits;
+  descriptive text (paint, zones, borders, style) is safe to change at any
+  time.
+
+### Brotown is part of the plan
+
+**The town is drawn as a Main Street town, from the plan, like everything
+else** ([WORLD-BIBLE.md §5](WORLD-BIBLE.md#5-brotown)):
+
+- streets, a town square, boardwalks and 17 EMPTY building plots;
+- four gates, with the Old Roads leaving from them.
+
+**Buildings become separate sprites standing on their plots.** The game
+depth-sorts sprites by their ground line (`depthSort.js`), so a player can
+walk behind a building. A building painted into the ground can never cover
+a player standing behind it.
+
+**The old town painting is no longer the centrepiece.**
+
+- `town_v17` was the anchor of the first plan.
+- The anchor machinery stays (`plan.anchors`) for any painting that must be
+  kept exactly as it is, but none is used by default.
 
 ### The blueprint (`core/layout.js`)
 
-- A colour-coded plan of the whole world: one cell per 8 art px
-  (1184 × 1184 cells). Each cell holds a terrain **class** (ground, trail,
-  thick trees/rocks, water, sea, cliff, lava, landmark) and a **region**.
-- Built deterministically from the plan's seed, so every device builds the
-  same world. It avoids `Math.sin/cos/pow`, which may differ in the last bits
-  between Chrome and Safari.
-- **Layout:**
-  - An island with sea all round.
-  - The eight regions where the World View painting has them: frost NW, ember
-    N, dunes NE, hollows E, foundry SE, sea caves S, poison forest SW, wilds W.
-  - The Starting Meadow as a ring round the town, and a belt of forest hugging
-    the town's cliffs.
-  - Trails from the stairs to a landmark in each region, merged into one
-    network so shared stretches are drawn once.
-  - Each region's ponds, tree clumps, cliffs and lava.
-- **Job 1, today: the sketch in every template.**
-  - It keeps trails, rivers and coasts continuous across squares before
-    anything is painted. The main source of seams in tiled AI art is two
-    squares disagreeing about *where* things are.
-  - Outlines are smoothed, so the model is not shown 8 px stair-steps to copy.
-- **Job 2, later: the game's collision map.**
-  - The `walk` flag on each class says whether you can stand there, and cliffs
-    are where climbing goes.
-  - Walls are drawn *first* and painted to. That is the reverse of the two
-    failed attempts to trace walls off finished paintings (`tiledMaps.js`
-    v2.3.1693 and v2.3.1794).
+**What it is.** A colour-coded plan of the active area: one cell per 8 art px
+(1280 × 1280 cells). Each cell holds three things:
+
+- a terrain **class**: ground, road, thick trees/rocks, water, sea, cliff,
+  lava, landmark, street, boardwalk, plaza, building plot, river, railway or
+  bridge;
+- a **region**;
+- a **band**: the region's fringe, heart or rim, by how far out between the
+  meadow and the coast.
+
+**It is deterministic.** It is built from the plan's seed, so every device
+builds the same world. It avoids `Math.sin/cos/pow`, which may differ in the
+last bits between Chrome and Safari. It builds in about 0.4 s on a desktop.
+
+**What the layout contains:**
+
+- An island with sea all round.
+- The eight regions where the World View painting has them: frost NW,
+  ember N, dunes NE, hollows E, foundry SE, sea caves S, poison forest SW,
+  wilds W. The Starting Meadow is a ring round the town.
+- **Brotown**: Main Street and Market Row, the square, the boardwalks and
+  plots.
+- **The Old Roads**: four trunk roads from the gates, each forking once, and
+  footpaths to the Arena and to Prospector's Circle.
+- **The Sweetwater River**: a smooth meandering curve from the glacier to
+  the sea. Its falls are cut through a cliff, and a bridge is stamped
+  wherever a road crosses it.
+- **The mine railway**, with its branch and its abandoned spur.
+- Plots for the Rail Depot, the Old Mill, the Arena and four waystations.
+- Each region's woods, ponds, cliffs and lava. One landmark per region, where
+  its road ends.
+
+**Job 1, today: the sketch in every template.**
+
+- It keeps roads, rivers and coasts continuous across squares before
+  anything is painted. The main source of seams in tiled AI art is two
+  squares disagreeing about *where* things are.
+- Outlines are smoothed, so the model is not shown 8 px stair-steps to copy.
+
+**Job 2, later: the game's collision map.**
+
+- The `walk` flag on each class says whether you can stand there, and cliffs
+  are where climbing goes.
+- Walls are drawn *first* and painted to. That is the reverse of the two
+  failed attempts to trace walls off finished paintings (`tiledMaps.js`
+  v2.3.1693 and v2.3.1794).
 
 ### One light for the whole world
 
@@ -141,27 +225,45 @@ to change at any time.
 
 ### The prompt (`core/prompt.js`)
 
-Each prompt is built from three things only:
+Each prompt is built from four things only.
 
-1. **The style bible** (`plan.style`, `plan.never`), identical for every
-   square:
-   - a steep three-quarter top-down view with no horizon and no perspective;
-   - daylight from the upper left, with shadows to the lower right;
-   - painterly detail matching the finished edges;
-   - the scale: a person ≈ 90 px, a tree ≈ a person;
-   - never text, borders, vignettes, sky, people or monsters.
-2. **What the blueprint puts in the square:**
-   - its regions and where they sit;
-   - a legend of only the colours this sketch shows, each described in that
-     region's terms (frost water is "a frozen lake …", poison-forest water is
-     "a glowing acid-green poison pool …");
-   - landmarks, and which edges the trail leaves by.
-3. **What is already painted:** which edges are finished neighbours, and
-   whether the town is in the square.
+**1. The style bible** (`plan.style`, `plan.never`), identical for every
+square:
 
-Consistency across a hundred generations comes from the style bible and the real
-neighbour pixels in each template. It never relies on ChatGPT remembering earlier
-squares, which it cannot be trusted to do. A new chat per square is fine.
+- a steep three-quarter top-down view with no horizon and no perspective;
+- daylight from the upper left, with shadows to the lower right;
+- painterly detail matching the finished edges;
+- the scale: a person ≈ 90 px, a tree ≈ a person;
+- never text, borders, vignettes, sky, people, monsters, or buildings
+  (plots stay empty).
+
+**2. The style key**, when saved: *"paint in exactly the style of the style
+key … but do not copy its tiles"*.
+
+**3. What the blueprint puts in the square:**
+
+- **Its region and band.** For example *"Frost Ridge — the snowbound taiga:
+  deep snow with wind-carved drifts …"*, plus the next band when the square
+  crosses into it.
+- **Any other region coming in**, and the **border landscape** between them
+  (steam fields, ash dunes …).
+- **Brotown's streets and plots**, including which gate a street ends at.
+- **Every road, the river and the railway, with the edges they cross.**
+  *"The Sweetwater River flows in from the top edge and out by the bottom
+  edge"*; *"The Frost Trail comes in from the right edge and ends at the Ice
+  Spires"*.
+- **The places**: landmarks, the plots outside town, the bridge and the
+  falls.
+- **A legend of only the colours this sketch shows**, each described in that
+  region's terms. Frost water is "a frozen lake …", and the river gets one
+  description per region it crosses.
+
+**4. What is already painted:** which edges are finished neighbours.
+
+Consistency across a hundred generations comes from the style key, the style
+bible and the real neighbour pixels in each template. It never relies on
+ChatGPT remembering earlier squares, which it cannot be trusted to do. A new
+chat per square is fine.
 
 ### The fuser (`core/fuse.js`, `core/maxflow.js`)
 
@@ -206,42 +308,76 @@ iPhone.
 
 IndexedDB in the owner's browser:
 
-- **the project record:** squares, order, grades;
+- **the project record:** squares, order, grades, and each square's plan key;
 - **every ChatGPT picture as uploaded:** these are the real asset;
 - **the fused world** in 512 px PNG chunks;
-- **the overview picture.**
+- **the overview picture and the style key.**
 
-A backup `.zip` holds the pictures and the order. Restoring re-fuses them in
-order and gives byte-identical results, which the browser test checks. **Redo**
-removes a square and re-fuses the world without it. It then lists the squares
-painted after it that touched it, because they were painted to match it.
+**Backups.** A backup `.zip` holds the pictures, the style key, the order and
+the plan keys. Restoring re-fuses the pictures in order and gives
+byte-identical results, which the browser test checks.
+
+**Redo.** Removes a square and re-fuses the world without it. It then lists
+the squares painted after it that touched it, because they were painted to
+match it.
 
 ---
 
 ## Tests
 
-- `node tools/world/test-world-core.mjs`: 31 zero-dependency checks.
-  - Grid maths; blueprint determinism and shape (sea corners, the town in the
-    middle, every region on land, a trail into every landmark, the 126/18
-    count); prompt contents.
-  - Max-flow against brute force on 600 random grids.
-  - Fusing 9 damaged squares on a procedural painting (shift and zoom undone
-    to under 1 px, every join great or ok); the "ignored template" case; the
-    border constraint; the zip round trip.
-- `node tools/qa/world-page.mjs`: 28 checks in real Chromium against a local
-  server over `public/`.
-  - The plan, the suggestions and the first template (with the town in it).
-  - Three squares fused through the real upload button, from fake ChatGPT
-    pictures cut from a known "true" world (the meadow painting tiled round
-    the town) and damaged with zoom, shift, colour cast and noise. They match
-    the truth at 30–32 dB after a colour fit.
-  - An unrelated picture graded "bad"; a non-square picture centre-cropped.
-  - Reload persistence; the square you were on reopening; Redo.
-  - A backup restored into a fresh browser profile with byte-identical pixels.
-  - Screenshots with `WORLD_SHOTS=<dir>`.
+**`node tools/world/test-world-core.mjs`: 62 zero-dependency checks.**
 
-Neither is on the CI path, following the owner's 2026-07-16 directive. Run them
-when touching `public/tools/world/`.
+- **Grid:** maths, the frame and the active area, and M13 on the centre.
+- **Growth:** widening the active area, and even the frame, changes the plan
+  under no painted square. Moving one path changes only the three squares it
+  crosses.
+- **Blueprint:**
+  - determinism;
+  - sea at the corners;
+  - the Town Hall in the middle of the square, both streets to their gates,
+    17 plots each fronting a boardwalk, and the 7 places;
+  - every region on land, and a road into every landmark;
+  - the railway into the Great Cave and the Foundry Dome;
+  - the river from Frost Ridge to the sea, the Mill Bridge, the falls;
+  - the 137/32 count.
+- **Prompts:**
+  - the town square and streets, and a gate becoming a road;
+  - the river's flow edges, the bridge, the fork and the mill;
+  - the river's source, bands, a road ending at a landmark, a border
+    landscape, and the abandoned spur;
+  - the style key line appearing only when a key is saved.
+- **Max-flow** against brute force on 600 random grids.
+- **Fusing** 9 damaged squares on a procedural painting:
+  - shift and zoom undone to under 1 px;
+  - every join great or ok;
+  - the "ignored template" case and the border constraint.
+- **The zip round trip.**
+
+**`node tools/qa/world-page.mjs`: 36 checks in real Chromium**, against a
+local server over `public/`.
+
+- The plan, and M13 offered first with a prompt that sets the look.
+- The style key saved, shown, and written into every prompt.
+- Three squares fused through the real upload button:
+  - The fake ChatGPT pictures are cut from a known "true" world (the meadow
+    painting, tiled) and damaged with zoom, shift, colour cast and noise.
+  - M13 is damaged in colour only, because the first square defines the
+    world's geometry.
+  - They match the truth at about 31 dB after a colour fit.
+  - The second square's template carries the first square's pixels.
+- An unrelated picture graded "bad"; a non-square picture centre-cropped.
+- Surviving a reload: the squares, the square you were on, and the style
+  key.
+- Plan keys recorded; Redo.
+- A backup restored into a fresh browser profile, with byte-identical
+  pixels and the style key.
+- Screenshots with `WORLD_SHOTS=<dir>`.
+
+**`node tools/world/render-plan-images.mjs`** regenerates the two plan
+pictures in `docs/world/` from the live plan.
+
+None of these is on the CI path, following the owner's 2026-07-16 directive.
+Run them when touching `public/tools/world/`.
 
 ---
 
@@ -279,19 +415,23 @@ From the feasibility study, in order.
   and jumpable ledges come after.
 - Monsters walk through everything today.
 
-Dungeons, the farm and building interiors keep their doors and loading screens.
+Dungeons, the farm and building interiors keep their doors and loading screens
+([WORLD-BIBLE.md §8](WORLD-BIBLE.md#8-farms-dungeons-and-interiors)).
 
 ---
 
 ## Decisions for the owner
 
-1. **Grid size**: 12 × 12 (126 squares) is the default. Use the table above.
-   Decide before the test strip is kept.
-2. **Scale**: 1.3 game px per art px matches the town. Matching the sharper
-   spokes (0.82) would need 2.5× the squares.
-3. **One daylight**: every region painted in day, with mood from the game's
-   atmosphere layer. This is the plan's assumption.
-4. **Keeping the town painting** as the anchor, as the plan assumes.
-5. **Where backups live**: the owner's device plus downloaded zips today.
-   Committing the pictures to the repo (about 0.4–1 MB each) is the obvious
-   next step once the test strip is approved.
+1. **Island size.** 137 land squares, about 80 s coast to coast. Decide
+   before the test strip is kept. Growing later is safe, and shrinking is
+   not.
+2. **Scale.** 1.3 game px per art px matches the town and the characters.
+   Matching the sharper spokes (0.82) would need 2.5× the squares.
+3. **One daylight.** Every region is painted in day, with mood from the
+   game's atmosphere layer. This is the plan's assumption.
+4. **The style key.** Make it and approve it before the first square.
+5. **Brotown's plot table and the premise.** See
+   [WORLD-BIBLE.md §10](WORLD-BIBLE.md#10-decisions-for-the-owner).
+6. **Where backups live.** Today that is the owner's device plus downloaded
+   zips. Committing the pictures to the repo (about 0.4–1 MB each) is the
+   obvious next step once the test strip is approved.

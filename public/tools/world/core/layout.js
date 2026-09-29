@@ -1,42 +1,69 @@
 /* ═══ v2.3.2931: THE BLUEPRINT — the whole world as a colour-coded plan ═══
  *
  * One cell per `plan.blueprintScale` art px (8), each holding a terrain CLASS
- * (ground, path, water, cliff, ...) and a REGION (frost, ember, ...).  Built
- * deterministically from the plan: same seed, same world, on every device.
+ * (ground, road, water, cliff, street, ...), a REGION (frost, ember, ...) and
+ * a BAND (the region's fringe, heart or rim).  Built deterministically from
+ * the plan: same seed, same world, on every device.
  *
  * It has two jobs, and the second is why it exists at all:
  *
  *  1. It is the layout sketch every square's template shows ChatGPT, so a
- *     trail or a river crossing a square border is already continuous before
+ *     road or a river crossing a square border is already continuous before
  *     a single pixel is painted -- the biggest source of seams in tiled AI art
  *     is two squares disagreeing about WHERE things are, not how they look.
  *  2. It becomes the game's collision map.  Walls drawn first and painted to
  *     are the reverse of what failed twice (walls traced off finished art by
  *     hue, tiledMaps.js v2.3.1693 / v2.3.1794).
  *
- * Built in ~0.2 s on a desktop: the low-frequency fields (coast wobble,
- * region-border warp, meadow wobble) are evaluated on a coarse lattice and
- * interpolated, because they vary over hundreds of cells, not one.
+ * ── GROWTH: NOTHING HERE MAY DEPEND ON HOW BIG THE PAINTED AREA IS ──
+ * The blueprint covers only the ACTIVE area (grid.js), but every value in it
+ * is a function of ABSOLUTE position: noise is sampled at plan coordinates,
+ * the coarse noise lattice is aligned to absolute cells, and scattered
+ * features (tree clumps, ponds, cliffs) sit on a hashed lattice anchored at
+ * the world centre instead of being drawn from one random sequence whose
+ * every draw would shift when the area grew.  So widening `plan.active`
+ * leaves every painted square's plan bit-for-bit unchanged -- which the core
+ * suite proves (tools/world/test-world-core.mjs, "growth").
+ *
+ * Built in well under a second on a desktop: the low-frequency fields (coast
+ * wobble, region-border warp, meadow wobble) are evaluated on a coarse
+ * lattice and interpolated, because they vary over hundreds of cells.
  */
-import { mulberry32, fbm, valueNoise, fnv1a } from './rng.js';
+import { fbm, valueNoise, hash2, fnv1a } from './rng.js';
 import { gridInfo } from './grid.js';
 
-export const CLASS_IDS = ['ground', 'path', 'obstacle', 'water', 'ocean', 'cliff', 'lava', 'landmark', 'anchor'];
+/* APPEND ONLY: a class's index is stored in every blueprint cell. */
+export const CLASS_IDS = ['ground', 'path', 'obstacle', 'water', 'ocean', 'cliff', 'lava', 'landmark', 'anchor',
+  'street', 'boardwalk', 'plaza', 'lot', 'river', 'rail', 'bridge'];
 export const C = Object.freeze(Object.fromEntries(CLASS_IDS.map((k, i) => [k, i])));
+export const BANDS = ['fringe', 'heart', 'rim'];
+const TOWN_CLASSES = new Set([C.street, C.boardwalk, C.plaza]);
 
 export function hexToRgb(hex) {
   const n = parseInt(String(hex).replace('#', ''), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-/* Evaluate f(bx, by) on a lattice every `step` cells; return a bilinear
-   sampler.  The fields it is used for are smooth at that scale. */
-function coarseField(bw, bh, step, f) {
-  const cw = Math.ceil(bw / step) + 2, ch = Math.ceil(bh / step) + 2;
+/* A stable 32-bit seed from a string (FNV-1a), so a road's or a region's
+   randomness belongs to its NAME, not to its place in a list. */
+export function strSeed(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h | 0;
+}
+
+/* Evaluate f(gx, gy) -- ABSOLUTE cell coordinates -- on a lattice every
+   `step` cells, the lattice aligned to multiples of `step` in absolute cells,
+   and return a bilinear sampler over absolute cells.  Aligning to absolute
+   cells (not to wherever the blueprint starts) is what keeps a place's value
+   the same when the active area grows. */
+function coarseField(gx0, gy0, bw, bh, step, f) {
+  const lx0 = Math.floor(gx0 / step), ly0 = Math.floor(gy0 / step);
+  const cw = Math.floor((gx0 + bw) / step) - lx0 + 2, ch = Math.floor((gy0 + bh) / step) - ly0 + 2;
   const data = new Float32Array(cw * ch);
-  for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) data[j * cw + i] = f(i * step, j * step);
-  return function sample(bx, by) {
-    const x = bx / step, y = by / step;
+  for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) data[j * cw + i] = f((lx0 + i) * step, (ly0 + j) * step);
+  return function sample(gx, gy) {
+    const x = gx / step - lx0, y = gy / step - ly0;
     const i = Math.floor(x), j = Math.floor(y);
     const fx = x - i, fy = y - j;
     const i1 = Math.min(i + 1, cw - 1), j1 = Math.min(j + 1, ch - 1);
@@ -48,21 +75,19 @@ function coarseField(bw, bh, step, f) {
 
 /* Where each anchor painting sits, in art px.  `keep` is the part that stays
    (the painting minus its inset), `core` is keep minus the feather: fully
-   opaque painting.  Between core and the painting's outer edge the squares
-   paint forest that the painting fades into. */
+   opaque painting.  `at` is in squares from the world centre. */
 export function placeAnchors(plan) {
   const g = gridInfo(plan);
   return (plan.anchors || []).map((a) => {
     const w = a.size[0], h = a.size[1];
-    const x0 = Math.round(a.at[0] * g.W - w / 2), y0 = Math.round(a.at[1] * g.H - h / 2);
+    const x0 = Math.round(g.cx + a.at[0] * g.P - w / 2), y0 = Math.round(g.cy + a.at[1] * g.P - h / 2);
     const keep = { x0: x0 + a.inset.left, y0: y0 + a.inset.top, x1: x0 + w - a.inset.right, y1: y0 + h - a.inset.bottom };
     const core = { x0: keep.x0 + a.feather, y0: keep.y0 + a.feather, x1: keep.x1 - a.feather, y1: keep.y1 - a.feather };
-    const gate = a.gate ? { x: x0 + a.gate[0] * w, y: y0 + a.gate[1] * h } : null;
-    return { id: a.id, name: a.name, src: a.src, x0, y0, w, h, keep, core, gate, feather: a.feather };
+    return { id: a.id, name: a.name, src: a.src, x0, y0, w, h, keep, core, feather: a.feather };
   });
 }
 
-/* Distance from point p to segment ab (all [x, y]). */
+/* Distance from point p to segment ab. */
 function segDist(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay;
   const L2 = dx * dx + dy * dy;
@@ -72,223 +97,454 @@ function segDist(px, py, ax, ay, bx, by) {
   return Math.sqrt(qx * qx + qy * qy);
 }
 
+/* A smooth curve through `pts` (uniform Catmull-Rom), sampled about every
+   `spacing` px.  Only + - * /, so every engine draws the same curve. */
+function smoothCurve(pts, spacing) {
+  const out = [];
+  const P = (i) => pts[Math.max(0, Math.min(pts.length - 1, i))];
+  for (let s = 0; s < pts.length - 1; s++) {
+    const p0 = P(s - 1), p1 = P(s), p2 = P(s + 1), p3 = P(s + 2);
+    const dx = p2[0] - p1[0], dy = p2[1] - p1[1];
+    const steps = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy) / spacing));
+    for (let k = s ? 1 : 0; k <= steps; k++) {
+      const t = k / steps, t2 = t * t, t3 = t2 * t;
+      const f = (a, b, c, d) => 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (3 * b - a - 3 * c + d) * t3);
+      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  return out;
+}
+
+/* Offset a dense curve sideways by a noise wobble of `amp` px that fades in
+   over the first and last `fade` px -- rivers meander, roads wander. */
+function wobbleCurve(pts, amp, seed, wavelength, fade) {
+  if (!amp) return pts;
+  const L = [0];
+  for (let k = 1; k < pts.length; k++) {
+    const dx = pts[k][0] - pts[k - 1][0], dy = pts[k][1] - pts[k - 1][1];
+    L.push(L[k - 1] + Math.sqrt(dx * dx + dy * dy));
+  }
+  const total = L[L.length - 1] || 1;
+  return pts.map((p, k) => {
+    const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)];
+    let tx = b[0] - a[0], ty = b[1] - a[1];
+    const tl = Math.sqrt(tx * tx + ty * ty) || 1; tx /= tl; ty /= tl;
+    const f = Math.min(1, L[k] / fade, (total - L[k]) / fade);
+    const w = amp * f * fbm(L[k] / wavelength, 0.5, seed, 3);
+    return [p[0] - ty * w, p[1] + tx * w];
+  });
+}
+
+/* Every `k`th point of a dense curve, always keeping the last -- what a
+   route keeps for the prompt's "comes in by the top edge" arithmetic. */
+function thin(pts, k) {
+  const out = [];
+  for (let i = 0; i < pts.length; i += k) out.push(pts[i]);
+  if (pts.length && out[out.length - 1] !== pts[pts.length - 1]) out.push(pts[pts.length - 1]);
+  return out;
+}
+
+/* Is (dx, dy) -- art px from the world centre -- inside Brotown?  A plus
+   shape: each street arm is as wide as its plots plus a yard, narrowing to
+   the street and its verges past the last plot, out to the gate. */
+export function townShape(T) {
+  const L = T.lot;
+  const lotsEnd = L.first + L.perSide * L.front + (L.perSide - 1) * L.gap;
+  return {
+    lotsEnd,
+    mainOuter: T.main + T.boardwalk + L.deep + T.yard,
+    rowOuter: T.row + T.boardwalk + L.deep + T.yard,
+    mainEnd: T.main + T.yard + 40,
+    rowEnd: T.row + T.yard + 40,
+  };
+}
+function inTown(dx, dy, T, sh, wob) {
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  if (ay <= T.gate + wob * 0.5 && ax <= (ay <= sh.lotsEnd + T.yard ? sh.mainOuter : sh.mainEnd) + wob) return true;
+  if (ax <= T.gate + wob * 0.5 && ay <= (ax <= sh.lotsEnd + T.yard ? sh.rowOuter : sh.rowEnd) + wob) return true;
+  return false;
+}
+
+/* The town's plots, in art px from the world centre, square-outward along
+   each arm.  Also used by the World Bible's lot table. */
+export function townLots(T) {
+  const L = T.lot, out = [];
+  const bwk = T.boardwalk;
+  out.push({ ...T.hallLot, x0: -T.hall, y0: -T.hall, x1: T.hall, y1: T.hall, arm: 'square' });
+  const along = (k) => [L.first + k * (L.front + L.gap), L.first + k * (L.front + L.gap) + L.front];
+  const put = (arm, side, k, lot) => {
+    const [a0, a1] = along(k);
+    let r;
+    if (arm === 'north' || arm === 'south') {
+      const [y0, y1] = arm === 'north' ? [-a1, -a0] : [a0, a1];
+      const near = T.main + bwk;
+      r = side === 'west'
+        ? { x0: -(near + L.deep), x1: -near, y0, y1, walk: { x0: -near, x1: -T.main, y0, y1 } }
+        : { x0: near, x1: near + L.deep, y0, y1, walk: { x0: T.main, x1: near, y0, y1 } };
+    } else {
+      const [x0, x1] = arm === 'west' ? [-a1, -a0] : [a0, a1];
+      const near = T.row + bwk;
+      r = side === 'north'
+        ? { x0, x1, y0: -(near + L.deep), y1: -near, walk: { x0, x1, y0: -near, y1: -T.row } }
+        : { x0, x1, y0: near, y1: near + L.deep, walk: { x0, x1, y0: T.row, y1: near } };
+    }
+    out.push({ ...lot, arm, side, ...r });
+  };
+  for (const arm of Object.keys(T.lots || {})) {
+    for (const side of Object.keys(T.lots[arm])) T.lots[arm][side].slice(0, L.perSide).forEach((lot, k) => put(arm, side, k, lot));
+  }
+  return out;
+}
+
 export function buildBlueprint(plan) {
   const g = gridInfo(plan);
-  const S = plan.blueprintScale;
-  const bw = Math.ceil(g.W / S), bh = Math.ceil(g.H / S);
+  const S = plan.blueprintScale, P = g.P;
+  const gx0 = Math.floor(g.ax / S), gy0 = Math.floor(g.ay / S);
+  const x0 = gx0 * S, y0 = gy0 * S;
+  const bw = Math.ceil((g.ax + g.AW - x0) / S), bh = Math.ceil((g.ay + g.AH - y0) / S);
   const n = bw * bh;
-  const cls = new Uint8Array(n), reg = new Uint8Array(n);
+  const cls = new Uint8Array(n), reg = new Uint8Array(n), band = new Uint8Array(n);
   const regionIds = Object.keys(plan.regions);
   const R = Object.create(null);
   regionIds.forEach((k, i) => { R[k] = i; });
   const seed = plan.seed | 0;
-  const toU = (bx) => ((bx + 0.5) * S) / g.W;
-  const toV = (by) => ((by + 0.5) * S) / g.H;
+  const townId = R.town, meadowId = R.meadow;
+
+  /* coordinates: a cell's centre in art px, an art position in (float) cells
+     where cell b's centre is b + 0.5, and plan squares -> art px */
+  const artX = (bx) => x0 + (bx + 0.5) * S, artY = (by) => y0 + (by + 0.5) * S;
+  const cellX = (ax) => (ax - x0) / S, cellY = (ay) => (ay - y0) / S;
+  const toArt = (p) => [g.cx + p[0] * P, g.cy + p[1] * P];
+  const sqx = (gx) => ((gx + 0.5) * S - g.cx) / P, sqy = (gy) => ((gy + 0.5) * S - g.cy) / P;
+  const cellIndex = (ax, ay) => {
+    const bx = Math.floor(cellX(ax)), by = Math.floor(cellY(ay));
+    return bx >= 0 && by >= 0 && bx < bw && by < bh ? by * bw + bx : -1;
+  };
 
   const anchors = placeAnchors(plan);
+  const coast = plan.coast, meadow = plan.meadow, warp = plan.regionWarp;
+  const [b1, b2] = plan.bands || [0.33, 0.72];
+  const bandOf = (t) => (t < b1 ? 0 : t < b2 ? 1 : 2);
 
   const STEP = 8;
-  const coastN = coarseField(bw, bh, STEP, (bx, by) => fbm(toU(bx) * 3.1, toV(by) * 3.1, seed + 11, 4));
-  const warpX = coarseField(bw, bh, STEP, (bx, by) => fbm(toU(bx) * 4.3, toV(by) * 4.3, seed + 23, 3));
-  const warpY = coarseField(bw, bh, STEP, (bx, by) => fbm(toU(bx) * 4.3 + 17.3, toV(by) * 4.3 + 5.1, seed + 37, 3));
-  const ringN = coarseField(bw, bh, STEP, (bx, by) => fbm(toU(bx) * 5.7, toV(by) * 5.7, seed + 41, 3));
+  const field = (f) => coarseField(gx0, gy0, bw, bh, STEP, f);
+  const coastN = field((gx, gy) => fbm(sqx(gx) * coast.freq, sqy(gy) * coast.freq, seed + 11, 4));
+  const warpX = field((gx, gy) => fbm(sqx(gx) * warp.freq, sqy(gy) * warp.freq, seed + 23, 3));
+  const warpY = field((gx, gy) => fbm(sqx(gx) * warp.freq + 17.3, sqy(gy) * warp.freq + 5.1, seed + 37, 3));
+  const ringN = field((gx, gy) => fbm(sqx(gx) * meadow.freq, sqy(gy) * meadow.freq, seed + 41, 3));
+  const townN = field((gx, gy) => fbm(sqx(gx) * 1.6, sqy(gy) * 1.6, seed + 53, 2));
 
   const hearts = regionIds.filter((k) => plan.regions[k].heart)
     .map((k) => ({ id: R[k], x: plan.regions[k].heart[0], y: plan.regions[k].heart[1] }));
-  const coast = plan.coast, meadow = plan.meadow;
-  const forestW = (plan.townForest && plan.townForest.width) || 0;
-  const meadowId = R.meadow, townId = R.town;
+  const T = plan.town || null;
+  const TS = T ? townShape(T) : null;
+  const townR = T ? T.gate / P : 0;
 
-  /* ── pass 1: sea, anchors + their forest, meadow ring, regions ── */
+  /* ── pass 1: sea, anchors, the town, the meadow ring, regions and bands ── */
   for (let by = 0; by < bh; by++) {
-    const v = toV(by);
+    const gy = gy0 + by, y = sqy(gy), ay = artY(by);
     for (let bx = 0; bx < bw; bx++) {
-      const u = toU(bx);
+      const gx = gx0 + bx, x = sqx(gx), ax = artX(bx);
       const i = by * bw + bx;
-      const ax = (bx + 0.5) * S, ay = (by + 0.5) * S;
-      const wu = u + plan.regionWarp * warpX(bx, by), wv = v + plan.regionWarp * warpY(bx, by);
+      const wx = x + warp.amount * warpX(gx, gy), wy = y + warp.amount * warpY(gx, gy);
       let best = hearts.length ? hearts[0].id : 0, bd = Infinity;
       for (let h = 0; h < hearts.length; h++) {
-        const dx = wu - hearts[h].x, dy = wv - hearts[h].y;
+        const dx = wx - hearts[h].x, dy = wy - hearts[h].y;
         const d = dx * dx + dy * dy;
         if (d < bd) { bd = d; best = hearts[h].id; }
       }
-      const dx = u - 0.5, dy = v - 0.5;
-      const e = Math.sqrt(dx * dx + dy * dy), chb = Math.max(Math.abs(dx), Math.abs(dy));
-      const dist = e + (chb - e) * (coast.square || 0);
-      if (dist > coast.radius + coast.wobble * coastN(bx, by)) { cls[i] = C.ocean; reg[i] = best; continue; }
-
-      let placed = false;
+      const e = Math.sqrt(x * x + y * y), chb = Math.max(Math.abs(x), Math.abs(y));
+      const dist = e + (chb - e) * coast.square;
+      if (dist > coast.radius + coast.wobble * coastN(gx, gy)) { cls[i] = C.ocean; reg[i] = best; band[i] = 2; continue; }
+      cls[i] = C.ground;
+      let inAnchor = false;
       for (const a of anchors) {
-        if (ax >= a.core.x0 && ax < a.core.x1 && ay >= a.core.y0 && ay < a.core.y1) {
-          cls[i] = C.anchor; reg[i] = townId != null ? townId : best; placed = true; break;
-        }
-        const ddx = Math.max(a.x0 - ax, 0, ax - (a.x0 + a.w)), ddy = Math.max(a.y0 - ay, 0, ay - (a.y0 + a.h));
-        const out = Math.sqrt(ddx * ddx + ddy * ddy);
-        if (out < forestW * (0.8 + 0.35 * ringN(bx, by))) {
-          cls[i] = C.obstacle; reg[i] = meadowId != null ? meadowId : best; placed = true; break;
-        }
+        if (ax >= a.core.x0 && ax < a.core.x1 && ay >= a.core.y0 && ay < a.core.y1) { inAnchor = true; break; }
       }
-      if (placed) continue;
-      if (meadowId != null && e < meadow.radius + meadow.wobble * ringN(bx, by)) { cls[i] = C.ground; reg[i] = meadowId; continue; }
-      cls[i] = C.ground; reg[i] = best;
+      if (inAnchor) { cls[i] = C.anchor; reg[i] = townId != null ? townId : best; continue; }
+      if (T && townId != null && inTown(ax - g.cx, ay - g.cy, T, TS, T.wobble * townN(gx, gy))) { reg[i] = townId; continue; }
+      const mr = meadow.radius + meadow.wobble * ringN(gx, gy);
+      if (meadowId != null && e < mr) {
+        reg[i] = meadowId;
+        band[i] = bandOf((e - townR) / Math.max(1e-6, mr - townR));
+        continue;
+      }
+      reg[i] = best;
+      /* how far out between the meadow and the coast, measured along this
+         direction so a diagonal region's rim is as far out as an axial one's */
+      const m = e > 0 ? chb / e : 1;
+      const eCoast = coast.radius / (1 + (m - 1) * coast.square);
+      band[i] = bandOf((e - meadow.radius) / Math.max(1e-6, eCoast - meadow.radius));
     }
   }
 
-  /* ── pass 2: scatter each region's features ── */
-  const rng = mulberry32(seed ^ 0x5bd1e995);
-  const area = new Float64Array(regionIds.length);
-  for (let i = 0; i < n; i++) if (cls[i] === C.ground) area[reg[i]]++;
-
-  const canTake = (k) => k === C.ground || k === C.obstacle;
-  function stampBlob(cx, cy, r, k, rid, nseed) {
-    const x0 = Math.max(0, Math.floor(cx - r * 1.45)), x1 = Math.min(bw - 1, Math.ceil(cx + r * 1.45));
-    const y0 = Math.max(0, Math.floor(cy - r * 1.45)), y1 = Math.min(bh - 1, Math.ceil(cy + r * 1.45));
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+  /* ── stamping helpers (positions in float cells) ── */
+  const any = () => true;
+  function stampDisc(fx, fy, r, k, can, rid) {
+    const xa = Math.max(0, Math.floor(fx - r - 1)), xb = Math.min(bw - 1, Math.ceil(fx + r + 1));
+    const ya = Math.max(0, Math.floor(fy - r - 1)), yb = Math.min(bh - 1, Math.ceil(fy + r + 1));
+    const r2 = r * r;
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      const dx = x + 0.5 - fx, dy = y + 0.5 - fy;
+      if (dx * dx + dy * dy > r2) continue;
       const i = y * bw + x;
-      if (reg[i] !== rid || !canTake(cls[i])) continue;
-      const dx = x - cx, dy = y - cy;
+      if (!can(cls[i], i)) continue;
+      cls[i] = k;
+      if (rid != null) reg[i] = rid;
+    }
+  }
+  function stampBlob(fx, fy, r, k, can, nseed) {
+    const xa = Math.max(0, Math.floor(fx - r * 1.45)), xb = Math.min(bw - 1, Math.ceil(fx + r * 1.45));
+    const ya = Math.max(0, Math.floor(fy - r * 1.45)), yb = Math.min(bh - 1, Math.ceil(fy + r * 1.45));
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      const i = y * bw + x;
+      if (!can(cls[i], i)) continue;
+      const dx = x + 0.5 - fx, dy = y + 0.5 - fy;
       const d = Math.sqrt(dx * dx + dy * dy) / r;
-      if (d + 0.32 * valueNoise(x * 0.12, y * 0.12, nseed) < 1) cls[i] = k;
+      if (d + 0.32 * valueNoise((gx0 + x) * 0.12, (gy0 + y) * 0.12, nseed) < 1) cls[i] = k;
     }
   }
-  function stampRidge(pts, r, k, rid, nseed) {
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const p of pts) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
-    x0 = Math.max(0, Math.floor(x0 - r * 1.5)); y0 = Math.max(0, Math.floor(y0 - r * 1.5));
-    x1 = Math.min(bw - 1, Math.ceil(x1 + r * 1.5)); y1 = Math.min(bh - 1, Math.ceil(y1 + r * 1.5));
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+  function stampRidge(pts, r, k, can, nseed) {
+    let xa = Infinity, ya = Infinity, xb = -Infinity, yb = -Infinity;
+    for (const p of pts) { xa = Math.min(xa, p[0]); ya = Math.min(ya, p[1]); xb = Math.max(xb, p[0]); yb = Math.max(yb, p[1]); }
+    xa = Math.max(0, Math.floor(xa - r * 1.5)); ya = Math.max(0, Math.floor(ya - r * 1.5));
+    xb = Math.min(bw - 1, Math.ceil(xb + r * 1.5)); yb = Math.min(bh - 1, Math.ceil(yb + r * 1.5));
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
       const i = y * bw + x;
-      if (reg[i] !== rid || !canTake(cls[i])) continue;
+      if (!can(cls[i], i)) continue;
       let d = Infinity;
-      for (let s = 0; s < pts.length - 1; s++) d = Math.min(d, segDist(x, y, pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1]));
-      if (d / r + 0.3 * valueNoise(x * 0.14, y * 0.14, nseed) < 1) cls[i] = k;
+      for (let s = 0; s < pts.length - 1; s++) d = Math.min(d, segDist(x + 0.5, y + 0.5, pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1]));
+      if (d / r + 0.3 * valueNoise((gx0 + x) * 0.14, (gy0 + y) * 0.14, nseed) < 1) cls[i] = k;
+    }
+  }
+  /* art-px rectangle relative to the world centre, by cell centres */
+  function stampRect(rx0, ry0, rx1, ry1, k, can, rid) {
+    const xa = Math.max(0, Math.floor(cellX(g.cx + rx0) - 1)), xb = Math.min(bw - 1, Math.ceil(cellX(g.cx + rx1) + 1));
+    const ya = Math.max(0, Math.floor(cellY(g.cy + ry0) - 1)), yb = Math.min(bh - 1, Math.ceil(cellY(g.cy + ry1) + 1));
+    for (let y = ya; y <= yb; y++) {
+      const ay = artY(y) - g.cy;
+      if (ay < ry0 || ay >= ry1) continue;
+      for (let x = xa; x <= xb; x++) {
+        const ax = artX(x) - g.cx;
+        if (ax < rx0 || ax >= rx1) continue;
+        const i = y * bw + x;
+        if (!can(cls[i], i)) continue;
+        cls[i] = k;
+        if (rid != null) reg[i] = rid;
+      }
     }
   }
 
-  let blobSeed = seed + 1000;
+  /* ── pass 2: scatter each region's features on a hashed lattice ──
+     One candidate per L x L lattice cell (L from the density), jittered
+     inside it by a hash of the cell -- so a feature's place, size and shape
+     depend only on WHERE it is, never on how many came before it. */
   for (const rk of regionIds) {
     const rd = plan.regions[rk];
     if (!rd.features) continue;
     const rid = R[rk];
-    const areaM = (area[rid] * S * S) / 1e6;
-    for (const f of rd.features) {
+    rd.features.forEach((f, fi) => {
       const k = C[f.class];
-      const count = Math.round(f.density * areaM);
-      for (let q = 0; q < count; q++) {
-        let px = -1, py = -1;
-        for (let t = 0; t < 40; t++) {
-          const qx = Math.floor(rng() * bw), qy = Math.floor(rng() * bh);
-          const qi = qy * bw + qx;
-          if (reg[qi] === rid && cls[qi] === C.ground) { px = qx; py = qy; break; }
-        }
-        const r = (f.r[0] + rng() * (f.r[1] - f.r[0])) / S;
-        blobSeed++;
+      const L = Math.sqrt(1e6 / f.density);
+      const fs = (strSeed(rk) ^ seed) + Math.imul(fi + 1, 7919);
+      const bandOk = f.in ? new Set(f.in.map((b) => BANDS.indexOf(b))) : null;
+      const i0 = Math.floor((x0 - g.cx) / L) - 1, i1 = Math.floor((x0 + bw * S - g.cx) / L) + 1;
+      const j0 = Math.floor((y0 - g.cy) / L) - 1, j1 = Math.floor((y0 + bh * S - g.cy) / L) + 1;
+      const can = (c, i) => reg[i] === rid && (c === C.ground || c === C.obstacle);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const px = g.cx + (i + hash2(i, j, fs)) * L, py = g.cy + (j + hash2(i, j, fs + 1)) * L;
+        const ci = cellIndex(px, py);
+        if (ci < 0 || reg[ci] !== rid || cls[ci] !== C.ground) continue;
+        if (bandOk && !bandOk.has(band[ci])) continue;
+        const r = (f.r[0] + hash2(i, j, fs + 2) * (f.r[1] - f.r[0])) / S;
+        const fx = cellX(px), fy = cellY(py), ns = fs + Math.imul(i, 31) + Math.imul(j, 17);
         if (f.shape === 'ridge') {
-          let ux = rng() * 2 - 1, uy = rng() * 2 - 1;
+          let ux = hash2(i, j, fs + 3) * 2 - 1, uy = hash2(i, j, fs + 4) * 2 - 1;
           const ul = Math.sqrt(ux * ux + uy * uy) || 1; ux /= ul; uy /= ul;
-          const L = (f.len[0] + rng() * (f.len[1] - f.len[0])) / S;
-          const b1 = (rng() - 0.5) * L * 0.35, b2 = (rng() - 0.5) * L * 0.35;
-          if (px < 0) continue;
-          const pts = [
-            [px - ux * L / 2, py - uy * L / 2],
-            [px - ux * L / 6 - uy * b1, py - uy * L / 6 + ux * b1],
-            [px + ux * L / 6 - uy * b2, py + uy * L / 6 + ux * b2],
-            [px + ux * L / 2, py + uy * L / 2],
-          ];
-          stampRidge(pts, r, k, rid, blobSeed);
+          const len = (f.len[0] + hash2(i, j, fs + 5) * (f.len[1] - f.len[0])) / S;
+          const q1 = (hash2(i, j, fs + 6) - 0.5) * len * 0.35, q2 = (hash2(i, j, fs + 7) - 0.5) * len * 0.35;
+          stampRidge([
+            [fx - ux * len / 2, fy - uy * len / 2],
+            [fx - ux * len / 6 - uy * q1, fy - uy * len / 6 + ux * q1],
+            [fx + ux * len / 6 - uy * q2, fy + uy * len / 6 + ux * q2],
+            [fx + ux * len / 2, fy + uy * len / 2],
+          ], r, k, can, ns);
         } else {
-          if (px < 0) continue;
-          stampBlob(px, py, r, k, rid, blobSeed);
+          stampBlob(fx, fy, r, k, can, ns);
         }
       }
-    }
+    });
   }
 
-  /* ── pass 3: trails from the town's stairs to every region ──
-     Routes share their first stretches (every trail leaves by the one
-     stairway, and the northern ones share a flank), so the routes are merged
-     into a NETWORK of unique edges and each edge is drawn once.  Drawn per
-     route instead, two routes over the same stretch wobble independently and
-     come out as a doubled trail.  Wobble fades to zero at both ends of every
-     edge, so edges meet exactly at their fork points. */
-  const town = anchors.find((a) => a.id === 'town') || anchors[0];
-  const trails = [];
-  if (town && town.gate) {
-    const half = 36 / S;
-    const stamp = (cx, cy) => {
-      const x0 = Math.max(0, Math.floor(cx - half - 1)), x1 = Math.min(bw - 1, Math.ceil(cx + half + 1));
-      const y0 = Math.max(0, Math.floor(cy - half - 1)), y1 = Math.min(bh - 1, Math.ceil(cy + half + 1));
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-        const i = y * bw + x;
-        if (cls[i] === C.ocean || cls[i] === C.anchor) continue;
-        const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
-        if (dx * dx + dy * dy <= half * half) cls[i] = C.path;
-      }
-    };
-    const start = [town.gate.x, town.gate.y - 90];
-    const stairs = [town.gate.x, town.gate.y + 60];
-    const fork = [town.gate.x, Math.max(town.gate.y + forestW + 220, 0.645 * g.H)];
-    const edges = new Map();
-    for (const rk of regionIds) {
-      const rd = plan.regions[rk];
-      const target = rd.heart || (rd.landmark && rd.landmark.at);
-      if (!target || !rd.trail) continue;
-      const pts = [start, stairs, fork]
-        .concat(rd.trail.map((p) => [p[0] * g.W, p[1] * g.H]))
-        .concat([[target[0] * g.W, target[1] * g.H]]);
-      for (let s = 0; s < pts.length - 1; s++) {
-        const a = pts[s], b = pts[s + 1];
-        const key = [a[0], a[1], b[0], b[1]].map((v) => Math.round(v)).join(',');
-        if (!edges.has(key)) edges.set(key, { a, b, straight: s < 2 });
-      }
-      trails.push({ region: rk, points: pts });
+  const pois = [], routes = [], lots = [];
+  const landAt = (c) => c !== C.ocean && c !== C.anchor;
+
+  /* ── pass 3: the rivers, and the falls they cut through ── */
+  for (const rv of plan.rivers || []) {
+    const rs = seed + strSeed(rv.id);
+    let pts = wobbleCurve(smoothCurve(rv.pts.map(toArt), 4), rv.wobble || 0, rs, 520, 300);
+    /* the falls: a rock ledge across the river, stamped first so the river cuts it */
+    for (const fl of rv.falls || []) {
+      const [fx, fy] = toArt(fl.at);
+      let bestK = 0, bestD = Infinity;
+      pts.forEach((p, k) => { const d = (p[0] - fx) * (p[0] - fx) + (p[1] - fy) * (p[1] - fy); if (d < bestD) { bestD = d; bestK = k; } });
+      const a = pts[Math.max(0, bestK - 8)], b = pts[Math.min(pts.length - 1, bestK + 8)];
+      let tx = b[0] - a[0], ty = b[1] - a[1];
+      const tl = Math.sqrt(tx * tx + ty * ty) || 1; tx /= tl; ty /= tl;
+      const half = (fl.len * P) / 2, cfx = cellX(pts[bestK][0]), cfy = cellY(pts[bestK][1]);
+      stampRidge([[cfx + ty * half / S, cfy - tx * half / S], [cfx - ty * half / S, cfy + tx * half / S]], 34 / S, C.cliff,
+        (c) => c === C.ground || c === C.obstacle || c === C.water, rs + 5);
+      pois.push({ kind: 'falls', id: rv.id + '-falls', name: fl.name, paint: fl.paint, x: pts[bestK][0], y: pts[bestK][1], r: 120 });
     }
-    let edgeSeed = seed + 77;
-    for (const e of edges.values()) {
-      edgeSeed++;
-      const ax = e.a[0] / S, ay = e.a[1] / S, bx = e.b[0] / S, by = e.b[1] / S;
-      const dx = bx - ax, dy = by - ay;
+    /* the river ends where it reaches the sea */
+    let end = pts.length;
+    for (let k = 0; k < pts.length; k++) {
+      const ci = cellIndex(pts[k][0], pts[k][1]);
+      if (ci >= 0 && cls[ci] === C.ocean) { end = k; break; }
+    }
+    const total = pts.length - 1 || 1;
+    pts.forEach((p, k) => {
+      const t = k / total;
+      const half = (rv.width[0] + (rv.width[1] - rv.width[0]) * t) / 2;
+      stampDisc(cellX(p[0]), cellY(p[1]), half / S, C.river, landAt, null);
+    });
+    routes.push({ kind: 'river', id: rv.id, name: rv.name, pts: thin(pts.slice(0, end), 4) });
+  }
+
+  /* ── pass 4: the roads, and a bridge wherever one meets a river ── */
+  const roadDense = [];
+  for (const rd of plan.roads || []) {
+    const ctrl = rd.pts.map(toArt);
+    const rs = seed + strSeed(rd.id);
+    const samples = [];
+    for (let s = 0; s < ctrl.length - 1; s++) {
+      const a = ctrl[s], b = ctrl[s + 1];
+      const dx = b[0] - a[0], dy = b[1] - a[1];
       const L = Math.sqrt(dx * dx + dy * dy) || 1;
       const tx = dx / L, ty = dy / L;
-      const steps = Math.max(1, Math.ceil(L / 0.5));
-      for (let s = 0; s <= steps; s++) {
-        const t = s / steps;
+      const steps = Math.max(1, Math.ceil(L / 4));
+      /* wobble fades to zero at both ends of every segment, so forks that
+         start ON a trunk point meet the trunk exactly */
+      const amp = (rd.wobble != null ? rd.wobble : 80) * Math.min(1, L / 700);
+      for (let k = s ? 1 : 0; k <= steps; k++) {
+        const t = k / steps;
         const bump = Math.min(1, 6 * t * (1 - t));
-        const wob = e.straight ? 0 : bump * (80 / S) * fbm(t * L * 0.03, 0.5, edgeSeed, 3);
-        stamp(ax + dx * t - ty * wob, ay + dy * t + tx * wob);
+        const w = amp * bump * fbm((t * L) / 270, 0.5, rs + s * 101, 3);
+        samples.push([a[0] + dx * t - ty * w, a[1] + dy * t + tx * w]);
       }
+    }
+    const half = rd.half / S;
+    for (const p of samples) stampDisc(cellX(p[0]), cellY(p[1]), half, C.path, (c) => landAt(c) && c !== C.river, null);
+    roadDense.push({ rd, samples });
+    routes.push({ kind: 'road', id: rd.id, name: rd.name, to: rd.to || null, pts: thin(samples, 4) });
+  }
+  for (const { rd, samples } of roadDense) {
+    let run = null;
+    const runs = [];
+    samples.forEach((p, k) => {
+      const ci = cellIndex(p[0], p[1]);
+      if (ci >= 0 && cls[ci] === C.river) { if (!run) run = { a: k, b: k }; else run.b = k; } else if (run) { runs.push(run); run = null; }
+    });
+    if (run) runs.push(run);
+    const named = (plan.bridges || {})[rd.id] || {};
+    for (const rr of runs) {
+      const pad = 8;
+      for (let k = Math.max(0, rr.a - pad); k <= Math.min(samples.length - 1, rr.b + pad); k++) {
+        stampDisc(cellX(samples[k][0]), cellY(samples[k][1]), (rd.half + 6) / S, C.bridge, landAt, null);
+      }
+      const mid = samples[(rr.a + rr.b) >> 1];
+      pois.push({ kind: 'bridge', id: rd.id + '-bridge-' + rr.a, name: named.name || 'a bridge', road: rd.name,
+        paint: named.paint || null, x: mid[0], y: mid[1], r: 60 });
     }
   }
 
-  /* ── pass 4: one landmark per region, where its trail ends ── */
-  const landmarks = [];
+  /* ── pass 5: Brotown -- streets, the square, boardwalks and empty plots ── */
+  if (T && townId != null) {
+    stampRect(-T.main, -T.gate, T.main, T.gate, C.street, landAt, townId);
+    stampRect(-T.gate, -T.row, T.gate, T.row, C.street, landAt, townId);
+    stampRect(-T.square, -T.square, T.square, T.square, C.plaza, landAt, townId);
+    for (const lot of townLots(T)) {
+      stampRect(lot.x0, lot.y0, lot.x1, lot.y1, C.lot, landAt, townId);
+      if (lot.walk) stampRect(lot.walk.x0, lot.walk.y0, lot.walk.x1, lot.walk.y1, C.boardwalk, landAt, townId);
+      lots.push({ id: lot.id, name: lot.name, today: lot.today || null, arm: lot.arm, side: lot.side || null,
+        x0: g.cx + lot.x0, y0: g.cy + lot.y0, x1: g.cx + lot.x1, y1: g.cy + lot.y1, town: true });
+    }
+  }
+
+  /* ── pass 6: the railway -- after the roads, so it crosses them ── */
+  for (const rl of plan.rails || []) {
+    const pts = smoothCurve(rl.pts.map(toArt), 4);
+    const can = (c) => landAt(c) && c !== C.river && !TOWN_CLASSES.has(c) && c !== C.lot && c !== C.bridge;
+    for (const p of pts) stampDisc(cellX(p[0]), cellY(p[1]), 14 / S, C.rail, can, null);
+    routes.push({ kind: 'rail', id: rl.id, name: rl.name, abandoned: !!rl.abandoned, paint: rl.paint || null, pts: thin(pts, 4) });
+  }
+
+  /* ── pass 7: empty plots outside town, for sprites added later ── */
+  for (const pl of plan.places || []) {
+    const [px, py] = toArt(pl.at);
+    const can = (c) => landAt(c) && c !== C.river && c !== C.path && c !== C.rail && c !== C.bridge && !TOWN_CLASSES.has(c);
+    let box;
+    if (pl.r) {
+      stampDisc(cellX(px), cellY(py), pl.r / S, C.lot, can, null);
+      box = { x0: px - pl.r, y0: py - pl.r, x1: px + pl.r, y1: py + pl.r };
+    } else {
+      const w = pl.size[0], h = pl.size[1];
+      stampRect(px - g.cx - w / 2, py - g.cy - h / 2, px - g.cx + w / 2, py - g.cy + h / 2, C.lot, can, null);
+      box = { x0: px - w / 2, y0: py - h / 2, x1: px + w / 2, y1: py + h / 2 };
+    }
+    lots.push({ id: pl.id, name: pl.name, round: !!pl.r, ...box, town: false });
+    pois.push({ kind: 'place', id: pl.id, name: pl.name, paint: pl.paint || '', x: px, y: py, r: pl.r || Math.max(pl.size[0], pl.size[1]) / 2 });
+  }
+
+  /* ── pass 8: one landmark per region, where its road ends ── */
   for (const rk of regionIds) {
     const rd = plan.regions[rk];
     const lm = rd.landmark;
-    const at = rd.heart || (lm && lm.at);
+    const at = lm && (lm.at || rd.heart);
     if (!lm || !at) continue;
-    const cx = (at[0] * g.W) / S, cy = (at[1] * g.H) / S, r = lm.r / S;
-    const x0 = Math.max(0, Math.floor(cx - r * 1.45)), x1 = Math.min(bw - 1, Math.ceil(cx + r * 1.45));
-    const y0 = Math.max(0, Math.floor(cy - r * 1.45)), y1 = Math.min(bh - 1, Math.ceil(cy + r * 1.45));
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const [lx, ly] = toArt(at);
+    const cx = cellX(lx), cy = cellY(ly), r = lm.r / S;
+    const xa = Math.max(0, Math.floor(cx - r * 1.45)), xb = Math.min(bw - 1, Math.ceil(cx + r * 1.45));
+    const ya = Math.max(0, Math.floor(cy - r * 1.45)), yb = Math.min(bh - 1, Math.ceil(cy + r * 1.45));
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
       const i = y * bw + x;
-      if (cls[i] === C.ocean || cls[i] === C.anchor) continue;
-      const dx = x - cx, dy = y - cy;
-      if (Math.sqrt(dx * dx + dy * dy) / r + 0.22 * valueNoise(x * 0.09, y * 0.09, seed + 500 + R[rk]) < 1) { cls[i] = C.landmark; reg[i] = R[rk]; }
+      if (!landAt(cls[i]) || TOWN_CLASSES.has(cls[i]) || cls[i] === C.lot || cls[i] === C.river) continue;
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+      if (Math.sqrt(dx * dx + dy * dy) / r + 0.22 * valueNoise((gx0 + x) * 0.09, (gy0 + y) * 0.09, seed + 500 + strSeed(rk)) < 1) {
+        cls[i] = C.landmark; reg[i] = R[rk];
+      }
     }
-    landmarks.push({ region: rk, name: lm.name, x: at[0] * g.W, y: at[1] * g.H, r: lm.r });
+    pois.push({ kind: 'landmark', id: rk, region: rk, name: lm.name, x: lx, y: ly, r: lm.r });
   }
 
   const counts = { classes: new Array(CLASS_IDS.length).fill(0), regions: new Array(regionIds.length).fill(0) };
   for (let i = 0; i < n; i++) { counts.classes[cls[i]]++; counts.regions[reg[i]]++; }
 
   return {
-    w: bw, h: bh, scale: S, W: g.W, H: g.H,
-    cls, reg, regionIds, classIds: CLASS_IDS,
-    anchors, landmarks, trails, counts,
-    hash: fnv1a(cls, reg),
+    w: bw, h: bh, scale: S, x0, y0, W: g.W, H: g.H,
+    cls, reg, band, regionIds, classIds: CLASS_IDS,
+    anchors, pois, lots, routes, counts,
+    landmarks: pois.filter((p) => p.kind === 'landmark'),
+    hash: fnv1a(cls, reg, band),
   };
+
+}
+
+/* The fingerprint of the plan under one rectangle (a square): what a
+   painted square is checked against, so a later change to the plan -- or a
+   growth that should have changed nothing -- names exactly the squares it
+   touched. */
+export function planKey(bp, rect) {
+  const S = bp.scale;
+  const bx0 = Math.max(0, Math.floor((rect.x - bp.x0) / S)), by0 = Math.max(0, Math.floor((rect.y - bp.y0) / S));
+  const bx1 = Math.min(bp.w, Math.ceil((rect.x + rect.w - bp.x0) / S)), by1 = Math.min(bp.h, Math.ceil((rect.y + rect.h - bp.y0) / S));
+  const w = Math.max(0, bx1 - bx0), h = Math.max(0, by1 - by0);
+  const a = new Uint8Array(w * h * 3);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (by0 + y) * bp.w + bx0 + x, o = (y * w + x) * 3;
+    a[o] = bp.cls[i]; a[o + 1] = bp.reg[i]; a[o + 2] = bp.band[i];
+  }
+  return fnv1a(a, `${rect.x},${rect.y},${rect.w},${rect.h}`);
 }
 
 /* ── colours ── */
@@ -307,9 +563,8 @@ export function colorTable(plan, bp) {
     else if (cid === 'water') hex = rd.water || K.water.color;
     else if (cid === 'landmark') hex = (rd.landmark && rd.landmark.color) || '#999999';
     /* The anchor's CORE is fully opaque painting, so no template ever shows
-       this colour -- only the overview does, where "the town is here" is the
-       point.  (The painting's feathered rim is forest-belt obstacle, not
-       anchor, so the sketch under the fade is the canopy it fades into.) */
+       this colour -- only the overview does, where "the painting is here" is
+       the point. */
     else if (cid === 'anchor') hex = (plan.regions.town && plan.regions.town.ground) || '#b98f55';
     else hex = (K[cid] && K[cid].color) || '#ff00ff';
     table[k * nr + r] = hexToRgb(hex || '#808080');
@@ -329,7 +584,8 @@ export function colorNameOf(plan, cid, rid) {
 }
 
 /* ── the sketch ──
-   Renders the blueprint over `rect` (art px) into an outW x outH RGBA buffer.
+   Renders the blueprint over `rect` (art px, frame coordinates) into an
+   outW x outH RGBA buffer.
 
    Taking the nearest cell would draw every outline as 8 px stairs, and the
    model copies what it is shown -- a stair-stepped lake comes back as a
@@ -346,7 +602,7 @@ export function renderSketch(plan, bp, rect, outW, outH, table) {
 
   /* the rect plus a margin, in cells */
   const M = 8;
-  const gx0 = Math.floor(rect.x / S) - M, gy0 = Math.floor(rect.y / S) - M;
+  const gx0 = Math.floor((rect.x - bp.x0) / S) - M, gy0 = Math.floor((rect.y - bp.y0) / S) - M;
   const gw = Math.ceil(rect.w / S) + 2 * M + 2, gh = Math.ceil(rect.h / S) + 2 * M + 2;
   const cellAt = (x, y) => {
     const bx = Math.min(bp.w - 1, Math.max(0, gx0 + x)), by = Math.min(bp.h - 1, Math.max(0, gy0 + y));
@@ -381,11 +637,11 @@ export function renderSketch(plan, bp, rect, outW, outH, table) {
 
   const sx = rect.w / outW, sy = rect.h / outH;
   for (let oy = 0; oy < outH; oy++) {
-    const gyf = (rect.y + (oy + 0.5) * sy) / S - 0.5 - gy0;
+    const gyf = (rect.y + (oy + 0.5) * sy - bp.y0) / S - 0.5 - gy0;
     const gj = Math.min(gh - 2, Math.max(0, Math.floor(gyf)));
     const uy = Math.min(1, Math.max(0, gyf - gj));
     for (let ox = 0; ox < outW; ox++) {
-      const gxf = (rect.x + (ox + 0.5) * sx) / S - 0.5 - gx0;
+      const gxf = (rect.x + (ox + 0.5) * sx - bp.x0) / S - 0.5 - gx0;
       const gi = Math.min(gw - 2, Math.max(0, Math.floor(gxf)));
       const ux = Math.min(1, Math.max(0, gxf - gi));
       const p00 = gj * gw + gi, p10 = p00 + 1, p01 = p00 + gw, p11 = p01 + 1;
@@ -476,7 +732,7 @@ function boxBlur3(f, w, h, r) {
 }
 
 /* The whole blueprint as one image, one pixel per cell (1/8 scale) -- the
-   builder's overview background.  No interpolation needed at 1:1. */
+   builder's overview background.  Pixel (0, 0) is art (bp.x0, bp.y0). */
 export function renderOverview(plan, bp, table) {
   table = table || colorTable(plan, bp);
   const nr = bp.regionIds.length;
@@ -489,26 +745,32 @@ export function renderOverview(plan, bp, table) {
 }
 
 /* ── what a square contains ──
-   Region and class shares (with centroids in 0..1 square coordinates), which
-   classes cross each edge, and which landmarks fall inside.  This is what the
-   prompt is written from. */
+   Region and class shares (with centroids in 0..1 square coordinates), each
+   region's bands, which classes touch each edge, and the points of interest
+   inside.  This is what the prompt is written from. */
 export function coverage(plan, bp, rect) {
   const S = bp.scale;
-  const bx0 = Math.max(0, Math.floor(rect.x / S)), by0 = Math.max(0, Math.floor(rect.y / S));
-  const bx1 = Math.min(bp.w, Math.ceil((rect.x + rect.w) / S)), by1 = Math.min(bp.h, Math.ceil((rect.y + rect.h) / S));
+  const bx0 = Math.max(0, Math.floor((rect.x - bp.x0) / S)), by0 = Math.max(0, Math.floor((rect.y - bp.y0) / S));
+  const bx1 = Math.min(bp.w, Math.ceil((rect.x + rect.w - bp.x0) / S)), by1 = Math.min(bp.h, Math.ceil((rect.y + rect.h - bp.y0) / S));
   const total = Math.max(1, (bx1 - bx0) * (by1 - by0));
-  const regs = new Map(), kinds = new Map();
+  const regs = new Map(), kinds = new Map(), bands = new Map();
   const edges = { top: new Set(), right: new Set(), bottom: new Set(), left: new Set() };
   const E = 3;
   for (let y = by0; y < by1; y++) for (let x = bx0; x < bx1; x++) {
     const i = y * bp.w + x;
     const rid = bp.regionIds[bp.reg[i]], cid = CLASS_IDS[bp.cls[i]];
-    const u = ((x + 0.5) * S - rect.x) / rect.w, v = ((y + 0.5) * S - rect.y) / rect.h;
+    const u = ((x + 0.5) * S + bp.x0 - rect.x) / rect.w, v = ((y + 0.5) * S + bp.y0 - rect.y) / rect.h;
     let e = regs.get(rid); if (!e) regs.set(rid, (e = { id: rid, n: 0, su: 0, sv: 0 }));
     e.n++; e.su += u; e.sv += v;
     const key = cid + ':' + rid;
     let f = kinds.get(key); if (!f) kinds.set(key, (f = { cls: cid, region: rid, n: 0, su: 0, sv: 0 }));
     f.n++; f.su += u; f.sv += v;
+    if (cid !== 'ocean') {
+      let b = bands.get(rid);
+      if (!b) bands.set(rid, (b = BANDS.map((name) => ({ band: name, n: 0, su: 0, sv: 0 }))));
+      const bb = b[bp.band[i]];
+      bb.n++; bb.su += u; bb.sv += v;
+    }
     if (y < by0 + E) edges.top.add(cid);
     if (y >= by1 - E) edges.bottom.add(cid);
     if (x < bx0 + E) edges.left.add(cid);
@@ -516,8 +778,40 @@ export function coverage(plan, bp, rect) {
   }
   const fin = (m) => [...m.values()].map((e) => ({ ...e, frac: e.n / total, cx: e.su / e.n, cy: e.sv / e.n }))
     .sort((a, b) => b.n - a.n);
-  const landmarks = bp.landmarks.filter((l) => l.x + l.r > rect.x && l.x - l.r < rect.x + rect.w && l.y + l.r > rect.y && l.y - l.r < rect.y + rect.h)
-    .map((l) => ({ ...l, cx: (l.x - rect.x) / rect.w, cy: (l.y - rect.y) / rect.h }));
+  const bandsOut = Object.create(null);
+  for (const [rid, b] of bands) {
+    const sum = b.reduce((s, e) => s + e.n, 0) || 1;
+    bandsOut[rid] = b.map((e) => ({ band: e.band, n: e.n, frac: e.n / sum, cx: e.n ? e.su / e.n : 0.5, cy: e.n ? e.sv / e.n : 0.5 }));
+  }
+  const hit = (p) => p.x + p.r > rect.x && p.x - p.r < rect.x + rect.w && p.y + p.r > rect.y && p.y - p.r < rect.y + rect.h;
+  const pois = bp.pois.filter(hit).map((p) => ({ ...p, cx: (p.x - rect.x) / rect.w, cy: (p.y - rect.y) / rect.h }));
+  const landmarks = pois.filter((p) => p.kind === 'landmark');
   const anchors = bp.anchors.filter((a) => a.keep.x1 > rect.x && a.keep.x0 < rect.x + rect.w && a.keep.y1 > rect.y && a.keep.y0 < rect.y + rect.h);
-  return { total, regions: fin(regs), classes: fin(kinds), edges, landmarks, anchors };
+  const lots = bp.lots.filter((l) => l.x1 > rect.x && l.x0 < rect.x + rect.w && l.y1 > rect.y && l.y0 < rect.y + rect.h);
+  return { total, regions: fin(regs), classes: fin(kinds), bands: bandsOut, edges, pois, landmarks, anchors, lots };
+}
+
+/* How a route (road, river, railway) passes through a rectangle: one entry
+   per stretch inside it, with the edge it comes in by and the edge it
+   leaves by -- null where it starts or ends inside.  Stretches shorter than
+   `minPts` points (a road clipping a corner by a few pixels) are skipped. */
+export function routeCrossings(route, rect, minPts = 2) {
+  const inside = (p) => p[0] >= rect.x && p[0] < rect.x + rect.w && p[1] >= rect.y && p[1] < rect.y + rect.h;
+  const edgeTo = (q) => {
+    const over = { top: rect.y - q[1], bottom: q[1] - (rect.y + rect.h), left: rect.x - q[0], right: q[0] - (rect.x + rect.w) };
+    let best = 'top', bv = -Infinity;
+    for (const k in over) if (over[k] > bv) { bv = over[k]; best = k; }
+    return best;
+  };
+  const out = [];
+  let cur = null;
+  const pts = route.pts;
+  for (let k = 0; k < pts.length; k++) {
+    const inn = inside(pts[k]);
+    if (inn && !cur) cur = { from: k === 0 ? null : edgeTo(pts[k - 1]), to: null, n: 0, first: k, last: k };
+    if (inn) { cur.n++; cur.last = k; }
+    if (!inn && cur) { cur.to = edgeTo(pts[k]); out.push(cur); cur = null; }
+  }
+  if (cur) out.push(cur);
+  return out.filter((s) => s.n >= minPts);
 }

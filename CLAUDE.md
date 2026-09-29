@@ -45,6 +45,10 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/WORLD-MAP-PIPELINE.md` (the ONE-SEAMLESS-WORLD plan: the World
   Builder at `public/tools/world/` — grid, blueprint, per-square ChatGPT
   prompts, fuser — and the engine phases after it, v2.3.2931),
+  `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
+  region/border briefs, the Main Street Brotown plot table, the style key,
+  the character-refresh order; a DRAFT the owner is reacting to, and
+  `public/tools/world/plan.js` wins where they differ, v2.3.2931),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates

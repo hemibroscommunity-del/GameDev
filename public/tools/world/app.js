@@ -20,9 +20,9 @@
  * window.__world is the handle tools/qa/world-page.mjs drives.
  */
 import { PLAN } from './plan.js';
-import { gridInfo, cellName, parseCell, cellRect, allCells, neighbours, SIDES } from './core/grid.js';
-import { buildBlueprint, colorTable, renderSketch, renderOverview, coverage, placeAnchors } from './core/layout.js';
-import { buildPrompt } from './core/prompt.js';
+import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours, inActive, SIDES } from './core/grid.js';
+import { buildBlueprint, colorTable, renderSketch, renderOverview, coverage, placeAnchors, planKey } from './core/layout.js';
+import { buildPrompt, styleKeyPrompt } from './core/prompt.js';
 import { makeImg, resample, centreSquare } from './core/image.js';
 import { fuseSquare } from './core/fuse.js';
 import { zipStore, unzip } from './core/zip.js';
@@ -149,19 +149,23 @@ const S = {
   view: 'art', zoom: 1,
   bpCanvas: null, artCanvas: null, anchorThumb: null,
   templateUrl: null,
+  styleKey: null,           /* { blob, ext, url } -- the style key picture, when the owner has made one */
 };
 
+/* The whole plan's fingerprint -- recorded in backups.  What decides whether
+   a painted square still matches is its OWN key (computeInfo, planKey), so
+   growing the world, which changes this hash, flags nothing. */
 function planHash() {
   const p = S.plan;
   return fnv1a(S.bp.hash, JSON.stringify({
-    grid: p.grid, square: p.square, scale: p.worldPxPerArtPx, bs: p.blueprintScale,
+    grid: p.grid, active: p.active, square: p.square, scale: p.worldPxPerArtPx, bs: p.blueprintScale,
     anchors: (p.anchors || []).map((a) => [a.src, a.size, a.at, a.inset, a.feather]),
   }));
 }
 const doneList = () => Object.values(S.project.squares).sort((a, b) => a.order - b.order);
 const isDone = (id) => !!S.project.squares[id];
 
-/* ── anchors (the town painting) ── */
+/* ── anchors (finished paintings the plan keeps as they are; none by default) ── */
 
 function anchorAlpha(a, x, y) {
   const k = a.keep;
@@ -210,13 +214,20 @@ function computeInfo() {
     const regs = new Map();
     for (const k of land) regs.set(k.region, (regs.get(k.region) || 0) + k.n);
     const names = [...regs.entries()].sort((a, b) => b[1] - a[1]).filter(([, n]) => n / cov.total > 0.05).map(([r]) => S.plan.regions[r].name);
-    S.info[cell.id] = { ...cell, rect, sea, covered, touchesAnchor, names, optional: sea > 0.9, skip: covered > 0.97 };
+    S.info[cell.id] = { ...cell, rect, sea, covered, touchesAnchor, names, optional: sea > 0.9, skip: covered > 0.97, planKey: planKey(S.bp, rect) };
   }
+}
+
+/* Painted squares whose piece of the plan is not what they were painted
+   against.  Growing the world changes none; moving a road changes the few
+   squares it crosses, and exactly those are named. */
+function changedSquares() {
+  return doneList().filter((rec) => rec.planKey && S.info[rec.id] && S.info[rec.id].planKey !== rec.planKey).map((rec) => rec.id);
 }
 
 function suggestions(limit = 6) {
   const out = [];
-  const c0 = S.g.cols / 2, r0 = S.g.rows / 2;
+  const mid = cellAt(S.g, S.g.cx, S.g.cy), c0 = mid.c, r0 = mid.r;
   for (const id in S.info) {
     const f = S.info[id];
     if (isDone(id) || f.skip || f.optional) continue;
@@ -224,12 +235,12 @@ function suggestions(limit = 6) {
     const sides = SIDES.filter((s) => nb.sides[s] && isDone(nb.sides[s])).length;
     const corners = Object.values(nb.corners).filter(isDone).length;
     if (!sides && !corners && !f.touchesAnchor) continue;
-    const dist = Math.hypot(f.c + 0.5 - c0, f.r + 0.5 - r0);
+    const dist = Math.hypot(f.c - c0, f.r - r0);
     out.push({ id, score: sides * 10 + corners * 2 + (f.touchesAnchor ? 6 : 0) - dist });
   }
   if (!out.length && !doneList().length) {
-    /* nothing painted and no anchor: start in the middle */
-    const id = cellName(Math.floor(c0), Math.floor(r0));
+    /* nothing painted and no anchor: start with the town square, in the middle */
+    const id = cellName(c0, r0);
     if (S.info[id] && !S.info[id].skip) out.push({ id, score: 0 });
   }
   return out.sort((a, b) => b.score - a.score).slice(0, limit).map((s) => s.id);
@@ -251,14 +262,14 @@ function buildOverviewLayers() {
     const w = Math.ceil(a.w / s), h = Math.ceil(a.h / s);
     const small = resample(a.img, w, h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) small.data[(y * w + x) * 4 + 3] = 255 * anchorAlpha(a, a.x0 + (x + 0.5) * s, a.y0 + (y + 0.5) * s);
-    g.drawImage(imgToCanvas(small), Math.round(a.x0 / s), Math.round(a.y0 / s));
+    g.drawImage(imgToCanvas(small), Math.round((a.x0 - S.bp.x0) / s), Math.round((a.y0 - S.bp.y0) / s));
   }
 }
 
 async function paintArtThumb(rect, img) {
   const s = S.plan.blueprintScale;
   const small = resample(img, Math.round(img.w / s), Math.round(img.h / s));
-  S.artCanvas.getContext('2d').drawImage(imgToCanvas(small), Math.round(rect.x / s), Math.round(rect.y / s));
+  S.artCanvas.getContext('2d').drawImage(imgToCanvas(small), Math.round((rect.x - S.bp.x0) / s), Math.round((rect.y - S.bp.y0) / s));
 }
 async function saveArtThumb() { await S.store.put('misc', 'overview', await canvasToBlob(S.artCanvas)); }
 
@@ -275,14 +286,18 @@ function drawMap() {
     ctx.drawImage(S.artCanvas, 0, 0);
     ctx.drawImage(S.anchorThumb, 0, 0);
   }
+  /* Each square is drawn as the step-sized block centred on it, so a tap
+     picks the square whose middle is nearest (grid.cellAt) and the overlap
+     bands split evenly across the lines. */
   const step = g.P / s;
+  const cx0 = (c) => (c * g.P + g.O / 2 - bp.x0) / s, cy0 = (r) => (r * g.P + g.O / 2 - bp.y0) / s;
   /* sea squares: faint hatch */
   ctx.save();
   ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1;
   for (const id in S.info) {
     const f = S.info[id];
     if (!f.optional || isDone(id)) continue;
-    const x = f.c * step, y = f.r * step;
+    const x = cx0(f.c), y = cy0(f.r);
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, step, step); ctx.clip();
     ctx.beginPath();
     for (let k = -step; k < step; k += 12) { ctx.moveTo(x + k, y + step); ctx.lineTo(x + k + step, y); }
@@ -292,15 +307,15 @@ function drawMap() {
   /* grid + labels */
   ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let c = 0; c <= g.cols; c++) { const x = Math.round(c * step) + 0.5; ctx.moveTo(x, 0); ctx.lineTo(x, g.rows * step); }
-  for (let r = 0; r <= g.rows; r++) { const y = Math.round(r * step) + 0.5; ctx.moveTo(0, y); ctx.lineTo(g.cols * step, y); }
+  for (let c = g.c0; c <= g.c1 + 1; c++) { const x = Math.round(cx0(c)) + 0.5; ctx.moveTo(x, 0); ctx.lineTo(x, bp.h); }
+  for (let r = g.r0; r <= g.r1 + 1; r++) { const y = Math.round(cy0(r)) + 0.5; ctx.moveTo(0, y); ctx.lineTo(bp.w, y); }
   ctx.stroke();
   const next = new Set(suggestions());
   ctx.font = '700 19px system-ui,-apple-system,sans-serif';
   ctx.textBaseline = 'top';
   for (const id in S.info) {
     const f = S.info[id];
-    const x = f.c * step, y = f.r * step;
+    const x = cx0(f.c), y = cy0(f.r);
     if (next.has(id)) { ctx.strokeStyle = '#D8A85F'; ctx.lineWidth = 4; ctx.strokeRect(x + 3, y + 3, step - 6, step - 6); }
     if (isDone(id)) {
       ctx.fillStyle = 'rgba(89,191,145,0.95)';
@@ -316,7 +331,7 @@ function drawMap() {
     const f = S.info[S.selected];
     const r = f.rect;
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.setLineDash([10, 6]);
-    ctx.strokeRect(r.x / s + 1.5, r.y / s + 1.5, r.w / s - 3, r.h / s - 3);
+    ctx.strokeRect((r.x - bp.x0) / s + 1.5, (r.y - bp.y0) / s + 1.5, r.w / s - 3, r.h / s - 3);
     ctx.setLineDash([]);
   }
   cv.style.width = (100 * S.zoom) + '%';
@@ -326,7 +341,7 @@ function progressText() {
   const total = Object.values(S.info).filter((f) => !f.optional && !f.skip).length;
   const done = Object.values(S.info).filter((f) => !f.optional && !f.skip && isDone(f.id)).length;
   const sea = Object.values(S.info).filter((f) => f.optional).length;
-  const extra = doneList().length - done;
+  const extra = Object.values(S.info).filter((f) => f.optional && isDone(f.id)).length;
   return `${done} of ${total} land squares painted${extra ? ` (+${extra} sea)` : ''} · ${sea} open-sea squares are optional`;
 }
 
@@ -334,12 +349,16 @@ function refreshHeader() {
   $('progress').textContent = progressText();
   const since = doneList().filter((r) => r.keptAt > (S.project.lastBackupAt || 0)).length;
   const nag = $('nag');
-  if (since >= BACKUP_NAG_EVERY) {
+  const changed = changedSquares();
+  if (changed.length) {
+    nag.hidden = false;
+    nag.textContent = `The plan under ${changed.length > 1 ? 'these painted squares has' : 'this painted square has'} changed since ${changed.length > 1 ? 'they were' : 'it was'} painted, so ${changed.length > 1 ? 'they' : 'it'} may not match the roads, rivers and borders around ${changed.length > 1 ? 'them' : 'it'}: ${changed.join(', ')}. Redo ${changed.length > 1 ? 'them' : 'it'} to match.`;
+  } else if (since >= BACKUP_NAG_EVERY) {
     nag.hidden = false;
     nag.textContent = `${since} painted squares are only in this browser. Download a backup so they cannot be lost.`;
   } else nag.hidden = true;
-  const f = S.plan;
-  $('proj-info').textContent = `${S.g.cols} × ${S.g.rows} squares · ${S.g.N} px each with ${S.g.O} px overlap · world ${Math.round(S.g.W * f.worldPxPerArtPx).toLocaleString()} game px across · plan ${S.project.planHash}`;
+  const f = S.plan, g = S.g;
+  $('proj-info').textContent = `Painting ${cellName(g.c0, g.r0)}–${cellName(g.c1, g.r1)} (${g.ac} × ${g.ar} squares) of a ${g.cols} × ${g.rows} frame, so the world can grow without renaming anything · ${g.N} px squares with ${g.O} px overlap · ${Math.round(g.AW * f.worldPxPerArtPx).toLocaleString()} game px across today · plan ${S.project.planHash}`;
 }
 
 /* ── the square panel ── */
@@ -372,7 +391,7 @@ async function templateFor(id) {
     out.data[i * 4 + 3] = 255;
   }
   const anchorsIn = S.anchors.filter((a) => a.keep.x1 > rect.x && a.keep.x0 < rect.x + N && a.keep.y1 > rect.y && a.keep.y0 < rect.y + N).map((a) => a.name);
-  const prompt = buildPrompt(S.plan, S.bp, f.c, f.r, finishedSides(sq), anchorsIn, { first: !doneList().length && !S.anchors.length });
+  const prompt = buildPrompt(S.plan, S.bp, f.c, f.r, finishedSides(sq), anchorsIn, { first: !doneList().length && !S.anchors.length, styleKey: !!S.styleKey });
   return { img: out, prompt };
 }
 
@@ -398,7 +417,7 @@ async function select(id) {
   const f = S.info[id];
   show('square', true);
   $('sq-title').textContent = `${id}${f.names.length ? ' · ' + f.names.join(' → ') : ''}`;
-  $('sq-sub').textContent = f.skip ? 'Covered by the town painting.'
+  $('sq-sub').textContent = f.skip ? 'Covered by a finished painting.'
     : isDone(id) ? `Painted (square ${S.project.squares[id].order} of the build).`
       : f.optional ? 'Almost all open sea. Optional — the game will never let you walk far enough out to see it up close.'
         : suggestions().includes(id) ? 'Ready to paint: its neighbours are finished, so ChatGPT will see their edges.'
@@ -424,6 +443,7 @@ async function select(id) {
   const file = new File([blob], `brotown-${id}-template.png`, { type: 'image/png' });
   $('tpl-share').hidden = !(navigator.canShare && navigator.canShare({ files: [file] }));
   S.templateFile = file;
+  $('tpl-key').hidden = !S.styleKey;
   if (window.matchMedia('(max-width: 900px)').matches) $('square').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -548,7 +568,7 @@ async function keep() {
     const ext = (p.blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
     await S.store.put('raw', p.id, { blob: p.blob, ext, name: p.name });
     S.project.squares[p.id] = {
-      id: p.id, order: S.project.nextOrder++, keptAt: Date.now(),
+      id: p.id, order: S.project.nextOrder++, keptAt: Date.now(), planKey: S.info[p.id].planKey,
       transform: p.res.transform, colour: p.res.colour, rating: p.res.rating,
       seamCost: p.res.seamCost, bandDiff: p.res.bandDiff,
     };
@@ -563,6 +583,41 @@ async function keep() {
 
 async function saveProject() { await S.store.put('meta', 'project', S.project); }
 
+function mimeOf(name) {
+  const ext = String(name).split('.').pop().toLowerCase();
+  return ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'webp' ? 'image/webp' : 'image/png';
+}
+
+/* ── the style key ──
+   One picture of the map's look, made once in ChatGPT before the first
+   square (plan.styleKey has the prompt) and attached to every square's chat
+   after that.  Words alone drift over a hundred generations; a picture to
+   match drifts far less.  Kept in this browser and in backups. */
+async function setStyleKey(blob, { quiet = false } = {}) {
+  if (blob) await blobToImg(blob);          /* throws a readable error if it is not a picture */
+  if (S.styleKey && S.styleKey.url) URL.revokeObjectURL(S.styleKey.url);
+  if (!blob) {
+    S.styleKey = null;
+    await S.store.del('misc', 'styleKey');
+  } else {
+    const ext = ((blob.type || 'image/png').split('/')[1] || 'png').replace('jpeg', 'jpg');
+    S.styleKey = { blob, ext, url: URL.createObjectURL(blob) };
+    await S.store.put('misc', 'styleKey', { blob, ext });
+  }
+  showStyleKey();
+  if (quiet) return;
+  toast(blob ? 'Style key saved. Every prompt now asks ChatGPT to match it.' : 'Style key removed.');
+  if (S.selected && !isDone(S.selected)) await select(S.selected);
+}
+function showStyleKey() {
+  const k = S.styleKey;
+  $('key-has').hidden = !k;
+  $('key-none').hidden = !!k;
+  $('key-state').textContent = k ? 'Saved — attached to every prompt.' : 'Not made yet — make it before the first square.';
+  $('key-how').open = !k;
+  if (k) { $('key-img').src = k.url; $('key-save').href = k.url; $('key-save').download = `brotown-style-key.${k.ext}`; }
+}
+
 /* Rebuild the fused world from the stored pictures, in build order.  Used by
    Redo (a square's removal changes every later square that touched it) and
    by Restore (a backup carries pictures, not fused pixels). */
@@ -574,6 +629,10 @@ async function rebuild(progress = () => {}) {
   for (const rec of recs) {
     progress(i++, recs.length, rec.id);
     await nextFrame();
+    /* a square from an older plan whose name is outside today's area:
+       keep its picture (a backup still carries it), but there is nowhere
+       to fuse it */
+    if (!S.info[rec.id]) continue;
     const raw = await S.store.get('raw', rec.id);
     if (!raw) { delete S.project.squares[rec.id]; continue; }
     const prep = await prepareGen(raw.blob);
@@ -615,13 +674,15 @@ async function backupBlob() {
     data: enc.encode(JSON.stringify({
       kind: 'brotown-world-backup', version: 1, planId: S.plan.id, planHash: S.project.planHash,
       createdAt: new Date().toISOString(),
-      squares: recs.map((r) => ({ id: r.id, order: r.order, keptAt: r.keptAt })),
+      squares: recs.map((r) => ({ id: r.id, order: r.order, keptAt: r.keptAt, planKey: r.planKey || null })),
+      styleKey: S.styleKey ? `style-key.${S.styleKey.ext}` : null,
     }, null, 2)),
   }];
   for (const r of recs) {
     const raw = await S.store.get('raw', r.id);
     if (raw) files.push({ name: `squares/${r.id}.${raw.ext || 'png'}`, data: new Uint8Array(await raw.blob.arrayBuffer()) });
   }
+  if (S.styleKey) files.push({ name: `style-key.${S.styleKey.ext}`, data: new Uint8Array(await S.styleKey.blob.arrayBuffer()) });
   return new Blob([zipStore(files)], { type: 'application/zip' });
 }
 
@@ -652,10 +713,15 @@ async function restoreBlob(blob, { confirmFirst = true } = {}) {
       const e = [...byName.keys()].find((n) => n.startsWith(`squares/${sq.id}.`));
       if (!e || !S.info[sq.id]) continue;
       const ext = e.split('.').pop();
-      const type = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'webp' ? 'image/webp' : 'image/png';
+      const type = mimeOf(e);
       await S.store.put('raw', sq.id, { blob: new Blob([byName.get(e).data], { type }), ext, name: e.slice(8) });
-      S.project.squares[sq.id] = { id: sq.id, order: S.project.nextOrder++, keptAt: sq.keptAt || Date.now() };
+      /* the key it was PAINTED against, so a backup from an older plan still
+         names the squares that no longer match */
+      S.project.squares[sq.id] = { id: sq.id, order: S.project.nextOrder++, keptAt: sq.keptAt || Date.now(), planKey: sq.planKey || S.info[sq.id].planKey };
     }
+    const keyEntry = meta.styleKey && byName.get(meta.styleKey);
+    if (keyEntry) await setStyleKey(new Blob([keyEntry.data], { type: mimeOf(meta.styleKey) }), { quiet: true });
+    else await setStyleKey(null, { quiet: true });
     await rebuild((i, n) => { $('busy-text').textContent = `Restoring… fusing ${i + 1}/${n}`; });
   });
   refreshHeader();
@@ -675,16 +741,16 @@ async function exportPreview() {
 /* ── wiring ── */
 
 function cellAtEvent(ev) {
-  const cv = $('map'), rect = cv.getBoundingClientRect();
-  const x = ((ev.clientX - rect.left) / rect.width) * cv.width * S.plan.blueprintScale;
-  const y = ((ev.clientY - rect.top) / rect.height) * cv.height * S.plan.blueprintScale;
-  const c = Math.min(S.g.cols - 1, Math.max(0, Math.floor(x / S.g.P)));
-  const r = Math.min(S.g.rows - 1, Math.max(0, Math.floor(y / S.g.P)));
-  return cellName(c, r);
+  const cv = $('map'), rect = cv.getBoundingClientRect(), s = S.plan.blueprintScale;
+  const x = S.bp.x0 + ((ev.clientX - rect.left) / rect.width) * cv.width * s;
+  const y = S.bp.y0 + ((ev.clientY - rect.top) / rect.height) * cv.height * s;
+  const at = cellAt(S.g, x, y);
+  const c = Math.min(S.g.c1, Math.max(S.g.c0, at.c)), r = Math.min(S.g.r1, Math.max(S.g.r0, at.r));
+  return inActive(S.g, c, r) ? cellName(c, r) : null;
 }
 
 function wire() {
-  $('map').addEventListener('click', (ev) => { if (!S.busy) select(cellAtEvent(ev)); });
+  $('map').addEventListener('click', (ev) => { const id = cellAtEvent(ev); if (!S.busy && id) select(id); });
   document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
     S.view = b.dataset.view;
     document.querySelectorAll('[data-view]').forEach((o) => o.classList.toggle('on', o === b));
@@ -702,7 +768,26 @@ function wire() {
     }
   });
   $('tpl-share').addEventListener('click', async () => {
-    try { await navigator.share({ files: [S.templateFile], text: $('prompt').value }); } catch (e) { /* cancelled */ }
+    const files = [S.templateFile];
+    if (S.styleKey) {
+      const kf = new File([S.styleKey.blob], `brotown-style-key.${S.styleKey.ext}`, { type: S.styleKey.blob.type || mimeOf(S.styleKey.ext) });
+      if (navigator.canShare && navigator.canShare({ files: [S.templateFile, kf] })) files.push(kf);
+    }
+    try { await navigator.share({ files, text: $('prompt').value }); } catch (e) { /* cancelled */ }
+  });
+  $('key-prompt-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('key-prompt').value); toast('Style key prompt copied.'); } catch (e) {
+      $('key-prompt').select(); document.execCommand('copy'); toast('Style key prompt copied.');
+    }
+  });
+  document.querySelectorAll('input.key-file').forEach((inp) => inp.addEventListener('change', async (ev) => {
+    const f = ev.target.files[0]; ev.target.value = '';
+    if (!f) return;
+    try { await setStyleKey(f); } catch (e) { toast(String(e.message || e), true); }
+  }));
+  $('key-remove').addEventListener('click', async () => {
+    if (!window.confirm('Remove the style key? Prompts stop asking ChatGPT to match it.')) return;
+    await setStyleKey(null);
   });
   $('file').addEventListener('change', (ev) => { const f = ev.target.files[0]; ev.target.value = ''; if (f) acceptPicture(f, f.name); });
   const drop = $('drop');
@@ -766,10 +851,10 @@ async function start() {
   S.layer = new Layer(S.store, S.g.W, S.g.H);
   const hash = planHash();
   S.project = (await S.store.get('meta', 'project')) || { planId: S.plan.id, planHash: hash, squares: {}, nextOrder: 1, lastBackupAt: 0, createdAt: Date.now() };
-  if (S.project.planHash !== hash) {
-    $('nag').hidden = false;
-    $('nag').textContent = 'The world plan changed since these squares were painted. They may not line up with the new blueprint — see Project below.';
-  }
+  const key = await S.store.get('misc', 'styleKey');
+  if (key && key.blob) S.styleKey = { blob: key.blob, ext: key.ext || 'png', url: URL.createObjectURL(key.blob) };
+  $('key-prompt').value = styleKeyPrompt(S.plan);
+  showStyleKey();
   buildOverviewLayers();
   const art = await S.store.get('misc', 'overview');
   if (art) S.artCanvas.getContext('2d').drawImage(await createImageBitmap(art), 0, 0);
@@ -777,6 +862,12 @@ async function start() {
   wire();
   drawMap();
   refreshHeader();
+  /* squares kept before plan keys existed can only be checked against the
+     whole plan's hash */
+  if (S.project.planHash !== hash && doneList().some((r) => !r.planKey)) {
+    $('nag').hidden = false;
+    $('nag').textContent = 'The world plan changed since some of these squares were painted. They may not line up with the new blueprint — see Project below.';
+  }
   const last = recalled();
   if (last && S.info[last]) await select(last);
 }
@@ -790,7 +881,7 @@ const ready = start().catch((e) => {
 window.__world = {
   ready, S,
   api: {
-    select, templateFor, acceptPicture, keep, redo, rebuild, backupBlob, restoreBlob, suggestions,
+    select, templateFor, acceptPicture, keep, redo, rebuild, backupBlob, restoreBlob, suggestions, setStyleKey, changedSquares,
     worldRect, squaresRect: (x, y, w, h) => S.layer.read(x, y, w, h), applyAnchors, parseCell, cellRect: (id) => S.info[id] && S.info[id].rect,
   },
 };

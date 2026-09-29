@@ -2,12 +2,20 @@
  *
  * The pure modules under public/tools/world/core, without a browser:
  *
- *   grid      names, rectangles, the overlap arithmetic
+ *   grid      names, rectangles, the overlap arithmetic, the frame and the
+ *             active area, which square a tap means
+ *   growth    widening the active area changes NOTHING under a square that
+ *             is already in it -- the owner's "how would I expand later?"
  *   layout    the blueprint is DETERMINISTIC (the owner paints on a phone and
  *             a desktop; both must build the same world) and has the shape
- *             the plan promises: sea at the corners, the town in the middle,
- *             every region on land, a trail into every landmark
- *   prompt    each square's prompt says what the template shows
+ *             the plan promises: sea round the island, Brotown's square and
+ *             plots in the middle, every region on land, a road into every
+ *             landmark, the river from the glacier to the sea with a bridge
+ *             where the West Road crosses it, the railway into the Great
+ *             Cave and the Foundry Dome
+ *   prompt    each square's prompt says what the template shows: its
+ *             region's band, the border between regions, the streets, which
+ *             edges roads and the river cross, the style key
  *   maxflow   the min cut is optimal -- checked against brute force
  *   fuse      squares damaged the way a regenerated picture is (zoom, shift,
  *             colour cast, re-invented texture) are put back where they
@@ -22,8 +30,8 @@
  *   node tools/world/test-world-core.mjs
  */
 import { PLAN, SPOKES } from '../../public/tools/world/plan.js';
-import { gridInfo, cellName, parseCell, cellRect, allCells, neighbours } from '../../public/tools/world/core/grid.js';
-import { buildBlueprint, renderSketch, colorTable, coverage, C } from '../../public/tools/world/core/layout.js';
+import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours } from '../../public/tools/world/core/grid.js';
+import { buildBlueprint, renderSketch, colorTable, coverage, planKey, C } from '../../public/tools/world/core/layout.js';
 import { buildPrompt } from '../../public/tools/world/core/prompt.js';
 import { gridMinCut, INF } from '../../public/tools/world/core/maxflow.js';
 import { fuseSquare } from '../../public/tools/world/core/fuse.js';
@@ -36,73 +44,148 @@ const ok = (n, c, d = '') => {
   if (c) { pass++; console.log('  PASS ' + n); }
   else { fail++; console.log('  FAIL ' + n + (d !== '' ? '  ' + JSON.stringify(d) : '')); }
 };
+const sq = (id) => parseCell(id);
 
 /* ── grid ── */
 console.log('grid');
+const g = gridInfo(PLAN);
 {
-  const g = gridInfo(PLAN);
   ok('step = square - overlap', g.P === g.N - g.O && g.P === 768, g.P);
-  ok('world = cols x step + overlap', g.W === g.cols * g.P + g.O && g.W === 9472, g.W);
-  ok('A1 is the north-west corner', cellName(0, 0) === 'A1' && cellName(11, 11) === 'L12');
+  ok('frame = cols x step + overlap', g.W === g.cols * g.P + g.O && g.W === 19456, g.W);
+  ok('A1 is the north-west corner of the frame', cellName(0, 0) === 'A1' && cellName(24, 24) === 'Y25');
+  ok('the active area is G7..S19, 13 x 13', cellName(g.c0, g.r0) === 'G7' && cellName(g.c1, g.r1) === 'S19' && allCells(g).length === 169, [g.c0, g.r0, g.c1, g.r1]);
+  const m = cellRect(g, 12, 12);
+  ok('M13 sits exactly on the world centre', m.x + m.w / 2 === g.cx && m.y + m.h / 2 === g.cy, [m.x, g.cx]);
   ok('names round-trip', allCells(g).every((c) => { const p = parseCell(c.id); return p.c === c.c && p.r === c.r; }));
   ok('AA is column 27', cellName(26, 0) === 'AA1' && parseCell('AA1').c === 26);
-  const r = cellRect(g, 5, 6);
-  ok('F7 covers [3840, 4864) x [4608, 5632)', r.x === 3840 && r.y === 4608 && r.w === 1024, r);
-  const nb = neighbours(g, 0, 0);
-  ok('a corner square has two side neighbours', Object.keys(nb.sides).sort().join() === 'bottom,right', nb.sides);
+  const a = cellAt(g, g.cx, g.cy), b = cellAt(g, 12 * g.P + g.O / 2 - 1, g.cy), c = cellAt(g, 12 * g.P + g.O / 2, g.cy);
+  ok('a tap means the square whose middle is nearest (bands split evenly)', cellName(a.c, a.r) === 'M13' && b.c === 11 && c.c === 12, [a, b, c]);
+  const nb = neighbours(g, g.c0, g.r0);
+  ok('a corner square of the active area has two side neighbours', Object.keys(nb.sides).sort().join() === 'bottom,right', nb.sides);
 }
 
 /* ── layout ── */
 console.log('layout');
+const t0 = Date.now();
 const bp = buildBlueprint(PLAN);
+const buildMs = Date.now() - t0;
+const at = (x, y) => bp.cls[Math.floor((y - bp.y0) / bp.scale) * bp.w + Math.floor((x - bp.x0) / bp.scale)];
+const regAt = (x, y) => bp.regionIds[bp.reg[Math.floor((y - bp.y0) / bp.scale) * bp.w + Math.floor((x - bp.x0) / bp.scale)]];
+const near = (x, y, r, cls) => {
+  const S = bp.scale, cx = Math.floor((x - bp.x0) / S), cy = Math.floor((y - bp.y0) / S), R = Math.ceil(r / S) + 4;
+  for (let yy = cy - R; yy <= cy + R; yy++) for (let xx = cx - R; xx <= cx + R; xx++) {
+    if (xx < 0 || yy < 0 || xx >= bp.w || yy >= bp.h) continue;
+    if (bp.cls[yy * bp.w + xx] === cls) return true;
+  }
+  return false;
+};
 {
+  ok(`the blueprint covers only the active area (${bp.w} x ${bp.h} cells, built in ${buildMs} ms)`, bp.w === 1280 && bp.h === 1280 && bp.x0 === g.ax && bp.y0 === g.ay, [bp.w, bp.x0]);
   const again = buildBlueprint(PLAN);
   ok('the blueprint is deterministic', bp.hash === again.hash, [bp.hash, again.hash]);
-  const at = (x, y) => bp.cls[Math.floor(y / bp.scale) * bp.w + Math.floor(x / bp.scale)];
-  ok('the four corners are open sea', [[10, 10], [bp.W - 10, 10], [10, bp.H - 10], [bp.W - 10, bp.H - 10]].every(([x, y]) => at(x, y) === C.ocean));
-  ok('the middle is the town painting', at(bp.W / 2, bp.H / 2) === C.anchor);
+  const X0 = bp.x0, Y0 = bp.y0, X1 = bp.x0 + bp.w * bp.scale, Y1 = bp.y0 + bp.h * bp.scale;
+  ok('the four corners of the active area are open sea', [[X0 + 10, Y0 + 10], [X1 - 10, Y0 + 10], [X0 + 10, Y1 - 10], [X1 - 10, Y1 - 10]].every(([x, y]) => at(x, y) === C.ocean));
+  ok('the Town Hall plot is in the middle of the town square', at(g.cx, g.cy) === C.lot && at(g.cx + 200, g.cy + 200) === C.plaza && regAt(g.cx, g.cy) === 'town');
+  ok('Main Street runs north-south through town to its gates', [-900, -500, 500, 900].every((dy) => at(g.cx, g.cy + dy) === C.street));
+  ok('Market Row runs east-west through town to its gates', [-900, -500, 500, 900].every((dx) => at(g.cx + dx, g.cy) === C.street));
+  ok('past the gates the streets become roads', at(g.cx, g.cy - 1100) === C.path && at(g.cx + 1100, g.cy) === C.path, [at(g.cx, g.cy - 1100), at(g.cx + 1100, g.cy)]);
+  const townLots = bp.lots.filter((l) => l.town), places = bp.lots.filter((l) => !l.town);
+  ok('Brotown has the Town Hall plus 16 plots along its streets', townLots.length === 17 && townLots.every((l) => at((l.x0 + l.x1) / 2, (l.y0 + l.y1) / 2) === C.lot), townLots.length);
+  ok('every plot fronts a boardwalk', townLots.filter((l) => l.id !== 'townhall').every((l) => {
+    const mx = (l.x0 + l.x1) / 2, my = (l.y0 + l.y1) / 2;
+    return [[l.x0 - 12, my], [l.x1 + 12, my], [mx, l.y0 - 12], [mx, l.y1 + 12]].some(([x, y]) => at(x, y) === C.boardwalk);
+  }));
+  ok('the depot, the mill, the arena and four waystations have plots', places.length === 7 && places.every((l) => at((l.x0 + l.x1) / 2, (l.y0 + l.y1) / 2) === C.lot), places.map((l) => l.id));
   const landBy = new Map();
   for (let i = 0; i < bp.cls.length; i++) if (bp.cls[i] !== C.ocean) landBy.set(bp.regionIds[bp.reg[i]], (landBy.get(bp.regionIds[bp.reg[i]]) || 0) + 1);
-  ok('every region has land', ['meadow', ...SPOKES].every((k) => (landBy.get(k) || 0) > 1000), Object.fromEntries(landBy));
-  ok('one landmark per region (8 spokes + the meadow stones)', bp.landmarks.length === 9, bp.landmarks.map((l) => l.name));
-  /* a trail reaches every landmark: a path cell within 3 cells of its disc */
-  const reached = bp.landmarks.filter((l) => {
-    const cx = Math.floor(l.x / bp.scale), cy = Math.floor(l.y / bp.scale), r = Math.ceil(l.r / bp.scale) + 4;
-    for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
-      if (x < 0 || y < 0 || x >= bp.w || y >= bp.h) continue;
-      if (bp.cls[y * bp.w + x] === C.path) return true;
-    }
-    return false;
-  });
-  ok('a trail reaches every landmark', reached.length === bp.landmarks.length, bp.landmarks.filter((l) => !reached.includes(l)).map((l) => l.name));
-  const g = gridInfo(PLAN);
+  ok('every region has land', ['meadow', 'town', ...SPOKES].every((k) => (landBy.get(k) || 0) > 1000), Object.fromEntries(landBy));
+  ok('one landmark per region (8 spokes + the meadow)', bp.landmarks.length === 9, bp.landmarks.map((l) => l.name));
+  const unreached = bp.landmarks.filter((l) => !near(l.x, l.y, l.r, C.path)).map((l) => l.name);
+  ok('a road reaches every landmark', unreached.length === 0, unreached);
+  const railTo = ['hollows', 'thunder'].map((k) => bp.landmarks.find((l) => l.region === k));
+  ok('the railway runs into the Great Cave and the Foundry Dome', railTo.every((l) => near(l.x, l.y, l.r, C.rail)), railTo.map((l) => l.name));
+  const trunks = new Set(PLAN.roads.flatMap((r) => r.pts.map((p) => p.join(','))));
+  ok('every road starts at a town gate or ON another road (so forks join cleanly)', PLAN.roads.every((r) => Math.hypot(r.pts[0][0], r.pts[0][1]) < 1.35 ||
+    PLAN.roads.some((o) => o !== r && o.pts.some((p) => p[0] === r.pts[0][0] && p[1] === r.pts[0][1]))) && trunks.size > 0);
+  /* the river: born in Frost Ridge, reaches the sea, crossed by the Mill Bridge */
+  let riverFrost = 0, mouth = false;
+  for (let y = 1; y < bp.h - 1; y++) for (let x = 1; x < bp.w - 1; x++) {
+    const i = y * bp.w + x;
+    if (bp.cls[i] !== C.river) continue;
+    if (bp.regionIds[bp.reg[i]] === 'frost') riverFrost++;
+    if ([i - 1, i + 1, i - bp.w, i + bp.w].some((j) => bp.cls[j] === C.ocean)) mouth = true;
+  }
+  ok('the Sweetwater River rises in Frost Ridge and reaches the sea', riverFrost > 200 && mouth, { riverFrost, mouth });
+  const bridge = bp.pois.find((p) => p.kind === 'bridge');
+  ok('the West Road crosses the river on the Mill Bridge', !!bridge && bridge.name === 'the Mill Bridge' && bridge.road === 'the West Road' && at(bridge.x, bridge.y) === C.bridge, bridge);
+  ok('the falls cut a cliff across the river', !!bp.pois.find((p) => p.kind === 'falls') && near(bp.pois.find((p) => p.kind === 'falls').x, bp.pois.find((p) => p.kind === 'falls').y, 40, C.cliff));
   let sea = 0, land = 0;
   for (const cell of allCells(g)) {
     const cov = coverage(PLAN, bp, cellRect(g, cell.c, cell.r));
     const s = cov.classes.filter((k) => k.cls === 'ocean').reduce((a, k) => a + k.frac, 0);
     if (s > 0.9) sea++; else land++;
   }
-  ok('126 land squares + 18 optional sea (the numbers plan.js quotes)', land === 126 && sea === 18, { land, sea });
-  const sk = renderSketch(PLAN, bp, cellRect(g, 2, 2), 256, 256, colorTable(PLAN, bp));
+  ok('137 land squares + 32 optional sea (the numbers plan.js quotes)', land === 137 && sea === 32, { land, sea });
+  const sk = renderSketch(PLAN, bp, cellRect(g, 7, 8), 256, 256, colorTable(PLAN, bp));
   let opaque = true;
   for (let i = 3; i < sk.length; i += 4) if (sk[i] !== 255) { opaque = false; break; }
   ok('a sketch is opaque and the requested size', sk.length === 256 * 256 * 4 && opaque);
 }
 
+/* ── growth ── */
+console.log('growth');
+{
+  /* the owner's question: "how would I expand the game later?"  Widen the
+     active area and rebuild: every square that was already in it must keep
+     exactly the same plan, or its painting would stop matching */
+  const grown = { ...PLAN, active: { from: 'E5', to: 'U21' } };
+  const g2 = gridInfo(grown), bp2 = buildBlueprint(grown);
+  ok('the grown world keeps every square\'s name and place', g2.cx === g.cx && cellRect(g2, 12, 12).x === cellRect(g, 12, 12).x && allCells(g2).length === 289);
+  const moved = allCells(g).filter((c) => planKey(bp, cellRect(g, c.c, c.r)) !== planKey(bp2, cellRect(g2, c.c, c.r))).map((c) => c.id);
+  ok('widening the active area changes the plan under NO painted square', moved.length === 0, moved.slice(0, 12));
+  const bigFrame = { ...PLAN, grid: { cols: 31, rows: 31 }, active: { from: 'G7', to: 'Y25' } };
+  const g4 = gridInfo(bigFrame), bp4 = buildBlueprint(bigFrame);
+  const moved4 = allCells(g).filter((c) => planKey(bp, cellRect(g, c.c, c.r)) !== planKey(bp4, cellRect(g4, c.c, c.r))).map((c) => c.id);
+  ok('even the frame can grow (south and east) without moving anything', g4.cx === g.cx && g4.cy === g.cy && moved4.length === 0, moved4.slice(0, 12));
+  const nudged = { ...PLAN, roads: PLAN.roads.map((r) => (r.id === 'arena-path' ? { ...r, pts: r.pts.map((p) => [p[0] + 0.15, p[1]]) } : r)) };
+  const bp3 = buildBlueprint(nudged);
+  const changed = allCells(g).filter((c) => planKey(bp, cellRect(g, c.c, c.r)) !== planKey(bp3, cellRect(g, c.c, c.r))).map((c) => c.id);
+  ok(`moving one path changes only the squares it crosses (${changed.join(' ')})`, changed.length > 0 && changed.length <= 6 && changed.includes('O12'), changed);
+}
+
 /* ── prompt ── */
 console.log('prompt');
 {
-  const c3 = buildPrompt(PLAN, bp, 2, 2, { right: true, bottom: true }, []);
-  ok('names the square', c3.text.startsWith('Paint square C3 of'));
-  ok('says which edges are finished', /along the right and bottom edges are finished neighbouring squares/.test(c3.text));
-  ok('frost square describes frost ground', /snow white = open ground of Frost Ridge/.test(c3.text));
-  ok('carries the style bible and the never-list', /No horizon, no sky/.test(c3.text) && /Never add: text/.test(c3.text));
-  ok('scale sentence filled in', /about 90 pixels tall/.test(c3.text) && !/\{person\}/.test(c3.text));
-  const f7 = buildPrompt(PLAN, bp, 5, 6, {}, ['the town on its clifftop plateau']);
-  ok('a square under the town says so', /Most of this square is the town on its clifftop plateau/.test(f7.text), f7.summary);
-  const sea = buildPrompt(PLAN, bp, 0, 0, {}, []);
+  const P = (id, fin = {}, opts = {}) => buildPrompt(PLAN, bp, sq(id).c, sq(id).r, fin, [], opts);
+  const m13 = P('M13', {}, { first: true, styleKey: true });
+  ok('names the square', m13.text.startsWith('Paint square M13 of'));
+  ok('the first square sets the look', /this square sets the look for the whole map/.test(m13.text));
+  ok('the style key is attached and must be matched, not copied', /STYLE KEY/.test(m13.text) && /do not copy its tiles/.test(m13.text) && /and the map's style key/.test(m13.text));
+  ok('no style key line without a style key', !/STYLE KEY/.test(P('M13').text));
+  ok('the town square and the Town Hall plot', /The town square \(pale grey\) is in the middle, with the empty plot for the Town Hall/.test(m13.text), m13.summary);
+  ok('both streets and their edges', /Main Street \(chestnut brown\) runs straight through it from the top edge to the bottom edge/.test(m13.text) && /Market Row/.test(m13.text));
+  ok('plots stay empty', /Every plot stays EMPTY/.test(m13.text) && /buildings or houses \(building plots stay empty\)/.test(m13.text));
+  ok('carries the style bible and the never-list', /No horizon, no sky/.test(m13.text) && /Never add: text/.test(m13.text));
+  ok('scale sentence filled in', /about 90 pixels tall/.test(m13.text) && !/\{person\}/.test(m13.text));
+  const m12 = P('M12');
+  ok('Main Street ends at the north gate and becomes the North Road', /ends at the town's north gate, where it becomes the North Road/.test(m12.text) && /The North Road begins at the town gate here and heads out by the top edge/.test(m12.text), m12.summary);
+  const k13 = P('K13', { right: true });
+  ok('says which edges are finished', /along the right edge is finished neighbouring squares/.test(k13.text));
+  ok('the river flows in by one edge and out by another', /The Sweetwater River flows in from the top edge and out by the bottom edge/.test(k13.text), k13.summary);
+  ok('the bridge, the mill plot and the fork', /The Mill Bridge \(bright yellow\) carries the West Road over the river/.test(k13.text) && /kept for the Old Mill/.test(k13.text) && /The Bog Trail branches off the West Road here/.test(k13.text));
+  const i9 = P('I9');
+  ok('the river rises under the glacier', /rises here, pouring as meltwater from under the glacier/.test(i9.text), i9.summary);
+  ok('a frost square describes its band', /Frost Ridge — the glacier/.test(i9.text) && /the snowbound taiga/.test(i9.text));
+  ok('the road ends at the landmark', /The Frost Trail comes in from the right edge and ends at the Ice Spires/.test(i9.text));
+  const h11 = P('H11');
+  ok('a border square gets its border landscape', /Between Frost Ridge and Verdant Wilds the land blends through alpine meadows/.test(h11.text), h11.summary);
+  const q13 = P('Q13');
+  ok('the abandoned spur says what it looks like', /abandoned dunes spur .* branches off the mine railway/.test(q13.text) && /rails rusted and half-buried/.test(q13.text));
+  const j11 = P('J11');
+  ok('the falls, and a river legend per region', /Sweetwater Falls is in the/.test(j11.text) && /royal blue = the Sweetwater River: in Frost Ridge, .*; in Verdant Wilds/.test(j11.text));
+  ok('the legend lists only what the sketch shows', !/lava/.test(j11.text) && /frozen lake/.test(j11.text));
+  const sea = P('G7');
   ok('a corner square is sea', /almost all open sea/.test(sea.text), sea.summary);
-  ok('the legend lists only what the sketch shows', !/lava/.test(c3.text) && /frozen lake/.test(c3.text));
 }
 
 /* ── maxflow ── */

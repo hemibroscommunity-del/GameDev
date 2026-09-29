@@ -10,11 +10,12 @@
   overlap and shows the join before anything is kept.
 
   SELF-CONTAINED, like the other pages in public/tools: no external scripts,
-  styles or fonts, and no network requests except its own modules and the
-  town painting (/maps/town_v17.webp).  Nothing is uploaded anywhere; work is
-  kept in this browser and in backup files.
+  styles or fonts, and no network requests except its own modules (and any
+  anchor painting the plan names -- none by default).  Nothing is uploaded
+  anywhere; work is kept in this browser and in backup files.
 
-  Design and workflow: docs/WORLD-MAP-PIPELINE.md.
+  The world itself: docs/WORLD-BIBLE.md.  Design and workflow:
+  docs/WORLD-MAP-PIPELINE.md.
   Driven in a real browser by tools/qa/world-page.mjs (window.__world).
 -->
 <html lang="en">
@@ -84,6 +85,11 @@
   .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); max-width:min(92vw,560px); z-index:60;
            background:#2A3940; border:1px solid var(--line); border-radius:10px; padding:12px 16px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
   .toast[data-bad="1"] { border-color:rgba(224,106,94,.7); color:#FFD6D0; }
+  .keyrow { display:grid; grid-template-columns:minmax(0,180px) minmax(0,1fr); gap:14px; align-items:start; }
+  @media (max-width: 560px) { .keyrow { grid-template-columns:88px minmax(0,1fr); gap:12px; } }
+  .keyimg { display:block; width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; border:1px solid var(--line); background:#0c1216; }
+  .state { color:var(--mut); font-size:13px; text-transform:none; letter-spacing:0; font-weight:500; margin-left:8px; }
+  details summary { cursor:pointer; color:#F3D9A2; font-weight:600; margin:8px 0; }
   [hidden] { display:none !important; }
 </style>
 </head>
@@ -95,6 +101,25 @@
     <div id="progress" class="progress">Loading…</div>
     <div id="nag" class="nag" hidden></div>
   </header>
+
+  <section class="card span" id="key">
+    <h2>Style key <span id="key-state" class="state"></span></h2>
+    <div id="key-none">
+      <p>Make this <b>once, before the first square</b>: one picture of the map's look — nine small sample tiles of ground, water, a street, a building and a person — that you attach to every square's chat after that. Words drift over a hundred separate pictures; a picture to match drifts far less. Copy the prompt into a new ChatGPT chat, ask again until you love the look, then save the picture here.</p>
+    </div>
+    <div id="key-has" class="keyrow" hidden>
+      <img id="key-img" class="keyimg" alt="The style key">
+      <div>
+        <p>Attach this picture <b>together with</b> each square's template — every prompt now tells ChatGPT to match it. On a phone, <b>Share…</b> on a square sends both pictures at once.</p>
+        <div class="row"><a id="key-save" class="btn" download>Save picture</a><label class="btn">Replace…<input type="file" class="key-file" accept="image/*" hidden></label><button id="key-remove" class="btn danger">Remove</button></div>
+      </div>
+    </div>
+    <details id="key-how">
+      <summary>The style key prompt</summary>
+      <textarea id="key-prompt" readonly></textarea>
+      <div class="row"><button id="key-prompt-copy" class="btn">Copy style key prompt</button><label class="btn brass">Save the style key picture<input type="file" id="key-file" class="key-file" accept="image/*" hidden></label></div>
+    </details>
+  </section>
 
   <section class="card">
     <div class="maptools">
@@ -113,12 +138,13 @@
   <section class="card" id="square" hidden>
     <h2 id="sq-title"></h2>
     <p id="sq-sub" class="sub"></p>
-    <div id="sq-covered" hidden><p>The town painting already covers this square — there is nothing to make here.</p></div>
+    <div id="sq-covered" hidden><p>A finished painting already covers this square — there is nothing to make here.</p></div>
 
     <div id="sq-steps">
       <div class="step"><div class="n">1</div><div>
         <h3>Save the template picture</h3>
         <p class="sub">The flat colours are the plan; the painted parts are finished neighbours ChatGPT must continue.</p>
+        <p id="tpl-key" class="sub" hidden>Attach the <b>style key</b> too (saved above) — ChatGPT needs both pictures.</p>
         <img id="tpl-img" class="tpl" alt="Template for this square">
         <div class="row"><a id="tpl-save" class="btn" download>Save picture</a><button id="tpl-share" class="btn" hidden>Share…</button></div>
       </div></div>
@@ -129,8 +155,8 @@
       </div></div>
       <div class="step"><div class="n">3</div><div>
         <h3>Ask ChatGPT</h3>
-        <p>Start a <b>new chat</b>, attach the template picture, paste the prompt and send. When the picture comes back, save it.
-           If it added a border, text or a horizon, just ask again — that is cheaper than fixing a seam.</p>
+        <p>Start a <b>new chat</b>, attach the template picture (and the style key), paste the prompt and send. When the picture comes back, save it.
+           If it added a border, text, a building on a plot or a horizon, just ask again — that is cheaper than fixing a seam.</p>
       </div></div>
       <div class="step"><div class="n">4</div><div>
         <h3>Bring ChatGPT's picture back</h3>
@@ -168,11 +194,12 @@
   <section class="card span help">
     <h2>How this works</h2>
     <ol>
-      <li><b>The grid.</b> The world is a 12 × 12 grid of squares named like a spreadsheet — A1 is the north-west corner. Each square is one ChatGPT picture, and each overlaps its neighbours by a quarter so there is room to hide the join.</li>
-      <li><b>The plan.</b> The flat colours are the blueprint: the eight regions round the town where the World View painting has them, the meadow ring, trails from the town's stairs, ponds, cliffs and landmarks. It keeps rivers and trails continuous across squares — and later it becomes the game's walls.</li>
-      <li><b>The template.</b> Each square's template shows its piece of the plan with the finished art of its neighbours (and the town) already in place along the edges, so ChatGPT continues real pixels instead of guessing.</li>
+      <li><b>The grid.</b> Squares are named like a spreadsheet. Today's world is the 13 × 13 block from G7 to S19, with M13 — the town square — in the middle. It sits inside a bigger 25 × 25 frame so the world can grow later without renaming or moving a single square. Each square is one ChatGPT picture, and each overlaps its neighbours by a quarter so there is room to hide the join.</li>
+      <li><b>The plan.</b> The flat colours are the blueprint: Brotown's Main Street and its empty building plots, the Old Roads to every region, the Sweetwater River and its bridge, the mine railway, the eight regions round the Starting Meadow, ponds, cliffs and landmarks. It keeps roads and rivers continuous across squares — and later it becomes the game's walls.</li>
+      <li><b>The style key.</b> One picture of the map's look, made before the first square and attached to every chat, so every square matches it.</li>
+      <li><b>The template.</b> Each square's template shows its piece of the plan with the finished art of its neighbours already in place along the edges, so ChatGPT continues real pixels instead of guessing.</li>
       <li><b>The fuse.</b> ChatGPT never copies the edges exactly. The page lines its picture up, matches the colour, and cuts the seam where the old and new pictures agree most — round a tree rather than through it.</li>
-      <li><b>Order.</b> Paint outward from the town: the gold-outlined squares are ready because their neighbours are finished.</li>
+      <li><b>Order.</b> Style key first, then M13, then outward: the gold-outlined squares are ready because their neighbours are finished. If the plan ever changes under a painted square, the page names it.</li>
     </ol>
   </section>
 </div>
