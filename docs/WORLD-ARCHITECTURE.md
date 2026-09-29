@@ -346,6 +346,11 @@ requests a second**. Their own example is a game with 50,000 players sending
    second, with direction and speed**, and the server and the other phones
    fill in between. That is about 5 × fewer messages in, and roughly halves
    the bill, because messages are its biggest line.
+   - **The server must fill in, not wait.** v2.3.1635 tried a plain 5 Hz
+     while alone, and chasing monsters rubber-banded: they chase the
+     server's copy of you, which then moved in 40 px jumps. v2.3.1767 put
+     the floor back to 15 Hz. With direction and speed, the server moves
+     your copy between messages, and monsters chase that.
 2. **Area servers.** Each world is split along the Wheel: **Brotown and its
    commons, each of the eight spokes, and the two realms: 11 servers per
    world.**
@@ -364,3 +369,91 @@ requests a second**. Their own example is a game with 50,000 players sending
 **The order:** distance-based updates and the message diet first (needed
 anyway, and they cut the bill); the Wheel's area borders at the gates and
 passes; one world until it fills, then a second.
+
+### What it costs at 100 to 100,000 players, and the supporter pass (v2.3.2938)
+
+> Owner, 2026-09-29: *"Let's say the game scales to 100, 500, 1000, 10,000,
+> 20,000 or 100,000 players … I understand the most likely outcome is barely
+> any players (less than 20). But I'd like to know. My cost model would be
+> free players capped at let's say 2 hours a day then usage goes to a $2 a
+> month supporter pass where they can play as long as they want."*
+
+**The business model (the owner's intent; not built yet):** free play up to
+2 hours a day, and a $2-a-month supporter pass for unlimited play. The server
+counts the hours, per character (§1): the phone cannot be trusted with it.
+
+**The assumptions.**
+
+- **"Players"** means people who play at least once in a month.
+- **How long each plays** is the big unknown, so the table gives a range:
+  - **typical:** 15 hours a month each (about 30 minutes a day, averaged over
+    everyone: many play a little, a few a lot). Most mobile games see less,
+    nearer 5;
+  - **keen:** 40 hours a month each (about 80 minutes a day);
+  - the free cap stops a free player at 60 hours a month.
+- **The busiest hour** has about 2.5 times the day's average online, for
+  players mostly in one part of the world.
+- **The game as planned**, with the message diet and area servers above. Per
+  player-hour that is about $0.00016 of messages in (about 6 a second) and
+  $0.0004 of saves (about 400 rows), plus the time rooms run. Today's game
+  costs about $0.001 (its messages alone are $0.0006).
+- **Cloudflare's included usage** is counted (the $5 a month buys 1 million
+  requests, 400,000 GB-s and 50 million rows written), and so is its
+  rounding: usage past it is billed in whole millions.
+
+| Players a month | Online at the busiest hour | Monthly bill (typical – keen) |
+|---|---|---|
+| 20 | 1–3 | $5 |
+| 100 | 5–15 | $5–20 |
+| 500 | 25–70 | $20–35 |
+| 1,000 | 50–140 | $30–50 |
+| 10,000 | 500–1,400 | $90–270 |
+| 20,000 | 1,000–2,800 | $210–540 |
+| 100,000 | 5,000–14,000 | $1,100–2,800 |
+
+- **If every player used the full free 2 hours every day,** the bill would be
+  about 1.5 times the keen figure: $4,300 at 100,000 players.
+- **Per player per month:** about 1 cent typical, 3 cents keen, and 4 cents
+  at the cap. A supporter playing 4 hours a day costs about 8 cents.
+- **Today's game holds 60 at once** (one room): enough for about 500–1,000
+  monthly players. Past that, the area servers and more worlds are not
+  optional.
+- **Under about 1,000 players,** the $5 minimum and room time are most of the
+  bill. A quiet world can run as one server instead of 11, splitting into
+  areas only as it fills, which keeps it near $5–10.
+
+**The supporter pass pays for itself easily.**
+
+- After card fees (Stripe: 2.9% + 30¢), about **$1.64** of each $2 reaches
+  the owner.
+- One supporter pays for about **40 free players who use the full 2 hours
+  every day**, or **around 150 typical ones**.
+- **Break-even from 10,000 players up:** about 1 player in 150 buying the
+  pass (0.7%) at typical play, and 1 in 60 (1.7%) at keen play. Below 1,000
+  players, what needs covering is mostly the $5 minimum: 4 supporters cover
+  it.
+- For comparison, free-to-play games commonly see about 1–5% of their
+  monthly players pay anything.
+
+**Things to know:**
+
+- **The cap is not needed to control costs.** Free play is cheap. The cap's
+  only job is to be a reason to buy the pass.
+- **Card fees are the biggest cost of a $2 pass.** The fixed 30¢ takes 15% of
+  it. A yearly option (say $20) loses about 4% instead.
+- **Sales tax and VAT** apply to digital subscriptions in many places. A
+  "merchant of record" (Paddle, Lemon Squeezy) collects and files them, for a
+  bigger cut: about 5% + 50¢, which is 30% of $2. Decide before launch.
+- **Selling on the web** (iPhone Safari) avoids Apple's App Store cut.
+- **Keep Cloudflare's per-request logging off for the game room.**
+  - Workers Logs is not enabled in `server/wrangler.toml` today.
+  - Every message the room takes in is its own `webSocketMessage`
+    invocation, so logging each one could add an invocation log per message.
+  - At about 30 billion messages a month (100,000 typical players), that is
+    $0.60 a million past the first 20 million: many times the rest of the
+    bill.
+  - Use sampling (`head_sampling_rate`) if logs are ever needed.
+- **After the diet, saves are the biggest line:** about two-thirds of a
+  player-hour.
+  Making the 10-second pool save (`REGEN_SAVE_MS`) cheaper is the next
+  saving, when it matters.

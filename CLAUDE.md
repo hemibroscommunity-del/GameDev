@@ -77,7 +77,11 @@ remnant to migrate server-side, not a mode to preserve.
   0.1¢ per player-hour, a room is limited by INCOMING MESSAGES (~500–1,000
   a second per Durable Object, today's phones send 15–30 each), so the fix
   is a ~5 Hz message diet plus each world split into 11 area servers along
-  the Wheel's spokes, not more small rooms),
+  the Wheel's spokes, not more small rooms; v2.3.2938 adds the bill at 100
+  to 100,000 monthly players, about $5 to $1,100–2,800 a month, and the
+  owner's business model: free play capped at 2 h a day, a $2-a-month
+  supporter pass for unlimited — the server counts the hours, and logging
+  every room message would cost more than the game),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
