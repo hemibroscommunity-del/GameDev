@@ -1,4 +1,4 @@
-# The World Bible: Brotown and its island (v2.3.2931, DRAFT)
+# The World Bible: Brotown and its island (v2.3.2931–2933, DRAFT)
 
 **Status:** a draft for the owner to react to. Nothing in the game uses it
 yet. It is the *story and look* of the one seamless world the
@@ -26,7 +26,24 @@ The region, border and plot tables below were generated from it.
 8. [Farms, dungeons and interiors](#8-farms-dungeons-and-interiors)
 9. [Growing the world, and the load it can carry](#9-growing-the-world-and-the-load-it-can-carry)
 10. [Decisions for the owner](#10-decisions-for-the-owner)
-11. [Trees: objects you can chop, not paint](#11-trees-objects-you-can-chop-not-paint)
+11. [Trees, rocks, water and props: objects, not paint](#11-trees-rocks-water-and-props-objects-not-paint)
+12. [Built by Bros: buildings, props and people](#12-built-by-bros-buildings-props-and-people)
+13. [The ground: paint every square, or bake it from swatches](#13-the-ground-paint-every-square-or-bake-it-from-swatches)
+14. [Easy to miss](#14-easy-to-miss)
+
+**v2.3.2933, the owner's second round of decisions,** recorded where they
+belong:
+
+- All of today's environment art and every NPC is replaced; the player is
+  kept, and monsters may be redone (§7).
+- Everything that stands up is a separate object, water included (§11).
+- Buildings and NPCs are made "more bro" (§12).
+- One scale everywhere: the town's (§6).
+- Many rooms, with characters that move between them and one shared
+  auction house (§9).
+
+And one question it raises that comes before all of them: **the player is
+pixel art and every map is painted** (§6).
 
 ---
 
@@ -340,6 +357,82 @@ systems that exist without a building (duels, mail, clans) or might (an inn).
 
 > *"I'm needing a consistent style across everything, and right now it's not."*
 
+### First: pixel art or painted? (v2.3.2933)
+
+> Owner, 2026-09-29: *"The biggest keepable art is the player itself. Then
+> monsters (though these can be deeply rehauled too)."*
+
+**The player is pixel art. Every map and building is painted.** Look at any
+screenshot:
+
+- the bro is drawn in chunky pixels with a dark outline and flat shading;
+- the ground under him, the town and the buildings are soft painted
+  illustrations;
+- monsters and NPCs sit in between: pixel art, but with much more detail
+  and shading than the bro.
+
+That mix is a large part of why the game looks inconsistent. A style key
+cannot fix it on its own: whatever the key shows, either the bro or the
+world will not match it. So the look is chosen **before** the key is made.
+
+1. **Pixel art everywhere, matched to the bro (recommended).**
+   - He is the art being kept, and the most expensive art in the game to
+     redraw (§7).
+   - **Consistency can be enforced by the pipeline instead of hoped for.**
+     Every picture ChatGPT makes (ground, buildings, props, NPCs) is snapped
+     to one pixel size and one shared colour palette before it goes in the
+     game. A hundred pictures from a hundred chats come out on one grid, in
+     one palette.
+   - **It is cheaper on the phone.** A picture stored at its true pixel size
+     takes a fraction of the memory of a painting of the same ground.
+   - The cost: ChatGPT's "pixel art" is only pixel-ish, so the snap step is
+     required, and the prompts are rewritten for it.
+2. **Painted everywhere.** The bro is redrawn in the painted style. That is
+   the paper doll: every body, gear piece and weapon, in every direction and
+   animation. It is weeks of work and the riskiest art job in the game.
+
+Pixel characters on painted ground can look good, but it is the kind of
+mismatch this section exists to remove. **The style key prompt waits for
+this decision**: today's prompt asks for painted tiles, and it is rewritten
+for whichever look is chosen.
+
+### One scale: the town's (measured, v2.3.2933)
+
+> Owner: *"I prefer the scale of when the character is in town, the zones
+> currently make the character too large when the dashboard is closed."*
+
+**The camera is the same everywhere.** Measured in the real client
+(`window.__btWorldView`), town and every 32 × 32 zone zoom identically:
+
+| Phone | Dashboard | The bro on screen | World in view (game px) |
+|---|---|---|---|
+| iPhone 13/14/15 (390 × 844) | closed | 83 px tall | 495 × 1024 |
+| | open | 64 px | 649 × 1024 |
+| Pro Max (430 × 932) | closed | 92 px | 493 × 1024 |
+| | open | 71 px | 639 × 1024 |
+
+**What differs is how big the pictures are painted.**
+
+- **Each zone is one 1254 px ChatGPT picture stretched over the whole zone**,
+  at 0.82 game px per picture px. Its trees and rocks came out small, so the
+  bro looks big beside them.
+- **The town painting is drawn at 1.3 game px per picture px.** Its
+  buildings are painted big.
+- **The whole island is planned at the town's 1.3** (`plan.js`,
+  `worldPxPerArtPx`). Everything will stand beside the bro the way the town
+  does today.
+- **The dashboard zoom stays.** Closing it zooms in, which the owner asked to
+  keep (v2.3.2262).
+- The world trial's regions are copied from the zone paintings at their own
+  scale, so away from the town they still look like the zones. The town in
+  the middle shows the target.
+
+**ChatGPT's 1254 × 1254 pictures change nothing.** They are square. The
+World Builder lines each one up, resamples it to its 1024 px square (the town
+painting's sharpness), and keeps ChatGPT's original in the backup.
+
+### The style key
+
 **Why it is inconsistent today.** Every picture was made on its own, from
 words alone. Words drift: "painterly, hand-painted" means something slightly
 different every time. Over a hundred map squares, twenty buildings and a
@@ -363,9 +456,10 @@ cast of characters, the drift is what you see.
 
 **How it is used:**
 
-1. **Make it first.** Ask ChatGPT with the style key prompt. Ask again until
-   you love the look. This is the most important picture in the project:
-   every later picture is matched to it.
+1. **Make it first, once the look is chosen** (above). Ask ChatGPT with the
+   style key prompt and a screenshot of the bro attached. Ask again until you
+   love the look. This is the most important picture in the project: every
+   later picture is matched to it.
 2. **Save it in the World Builder.** From then on every square's prompt says
    *"paint in exactly the style of the style key … but do not copy its
    tiles"*. Attach it next to each square's template. On a phone,
@@ -378,12 +472,28 @@ cast of characters, the drift is what you see.
 - A steep three-quarter top-down camera, with no horizon and no perspective.
 - Daylight from the upper left, with shadows to the lower right.
 - One scale: a person is about 90 art px tall on the map (117 game px).
-- Painterly brushwork, with the palette and outline weight taken from the
-  key.
+- The palette and outline weight are taken from the key. Brushwork or pixels
+  follow the decision above.
+- **Make the key from a screenshot of the bro.** Attach it to the style key
+  chat: he is the one piece of existing art everything must match.
 
 ---
 
 ## 7. Redrawing the characters
+
+> Owner, 2026-09-29: *"Just to be clear I'm 100% ready to scrap all of the
+> environmental art that currently exists (along with NPCS etc) it can all be
+> improved. The biggest keepable art is the player itself. Then monsters
+> (though these can be deeply rehauled too). Nothing about the current maps I
+> really care about and can all be swapped (and should) same with the NPCs
+> because they have inconsistent art style."*
+
+**Decided (v2.3.2933):**
+
+- Every map, building, prop and NPC is replaced.
+- **The player is kept.** Everything new is drawn to match him (§6).
+- Monsters are kept for now and redone region by region wherever they clash
+  with the style key.
 
 **What exists today:**
 
@@ -395,26 +505,26 @@ cast of characters, the drift is what you see.
 
 **The order, cheapest and most visible first:**
 
-1. **The style key**, before anything else (§6).
-2. **Buildings.** There are 24 plots, and each building is a single still
-   picture, made with the key attached. This proves the key works for
-   non-ground art.
-3. **NPCs, with Mayor Bro first as the test.** They are few and seen by
-   everyone. The method:
-   - Make a front/side/back reference sheet with the key attached.
+1. **The look, then the style key** (§6), made from a screenshot of the bro.
+2. **Buildings and props**, in the Bros brief (§12). Each is a single still
+   picture, made with the key attached. They are objects standing on the
+   ground (§11), so they prove the key works for everything that is not
+   ground.
+3. **NPCs, with Mayor Bro first as the test.** Every one is redrawn: they
+   are few and seen by everyone. The method:
+   - Make a front/side/back reference sheet with the key and the bro
+     screenshot attached, at the bro's size.
    - Make the walk strips from that sheet.
    - Keep the existing sprite machinery. Only the pictures change.
-4. **Monsters, region by region**, alongside that region's map squares, so
-   each region's new ground and new monsters are judged together.
-5. **The player, last.** It is by far the biggest job: every layer and gear
-   piece must be redrawn to line up in every direction and every animation.
-   It is also the riskiest, since a slip shows on every screen.
-   - Doing it last lets the owner judge, once the world and NPCs are redone,
-     whether the current player art actually clashes.
-   - If it does, the redraw can be one set of gear at a time.
+4. **Monsters, region by region**, alongside that region's ground, so each
+   region's new ground and its monsters are judged together. A monster that
+   already sits well next to the key stays.
+5. **The player is kept.** He is by far the biggest art job: every layer and
+   gear piece in every direction and animation. Choosing pixel art (§6) is
+   what lets him stay as he is.
 
-**Honest cost.** Buildings and NPCs are days of prompting. Monsters are a
-few days per region. The paper doll is the only part measured in weeks.
+**Honest cost.** Buildings, props and NPCs are days of prompting. Monsters
+are a few days per region where they need it.
 
 ---
 
@@ -490,21 +600,127 @@ The world centre is pinned to square M13, so that moves nothing either.
 Adding anything before column A or row 1 would rename every square, so that
 is the one direction that is closed.
 
-### More room is not the same as more players
+### More players: rooms, characters that travel, and one auction house
 
-**More squares help content, not crowding.**
+> Owner, 2026-09-29: *"I would want it so that players can join different
+> game room servers. I don't want their character limited to only one server
+> forever. I also don't see how isolated game servers would work with the
+> auction house where I intended all of the shared server items to be
+> available."*
 
-- One room holds **60 players** today (`MAX_PLAYERS`). Everyone is in one
-  shared room, `brotown-1`.
-- More players than that means **more copies of the world**: realms, such as
-  "Brotown 1" and "Brotown 2", each its own server room with the whole
-  island.
-- **The real work for scale is not the map.** Today a character's saved
-  progress lives *inside* the room (per-room storage). A character therefore
-  cannot move between realms until accounts are moved into their own store.
-- The server's own notes already say to prefer *explicit* realm assignment
-  over counting players when that day comes (`server/src/index.js`,
-  v2.3.1112).
+**More squares help content, not crowding.** More players than one room
+holds means more copies of the world.
+
+**How it is today:**
+
+- One room, `brotown-1`, holds everyone: up to **60 players**
+  (`MAX_PLAYERS`).
+- The room also holds every character's save (`rpg:<id>`, `auth:<id>`,
+  `inbox:<id>`), the market's order book and the auction house
+  (`server/src/market.js`, `store.js`). There is no store outside it (the
+  storage-key registry in `docs/ARCHITECTURE-HANDOFF.md`).
+- An earlier lobby spread players over `brotown-1` to `brotown-10`
+  automatically. It was removed (v2.3.1112) because it silently put two
+  friends who joined seconds apart into different rooms, invisible to each
+  other.
+
+**How big games do it: channels.** Several copies of the same world run side
+by side. The *live* world belongs to a room; everything that belongs to *you*
+or to *everyone* lives outside the rooms and is shared.
+
+| Shared by every room | Belongs to one room |
+|---|---|
+| your character, bag and coins | the players walking around you |
+| mail and the offline inbox | monsters, loot on the ground, fights |
+| the auction house and the market | duels and face-to-face trades |
+| friends, clans, chat between rooms; leaderboards (already shared) | dungeon and farm copies |
+
+**What that takes on the server:**
+
+1. **A character vault**: one small store per player, outside every room
+   (one Durable Object per player id).
+   - Joining a room *borrows* your character from the vault; leaving hands
+     it back.
+   - Only one room can borrow a character at a time, so nobody can log into
+     two rooms and spend the same coins twice. If a room crashes, its loan
+     runs out after a short timeout.
+   - Switching rooms is a leave and a join: a short loading screen.
+   - **Players choose their room, and "join a friend" puts you in theirs.**
+     Never split people silently: that is what the v2.3.1112 lobby did.
+2. **One shared auction house and market**, as a service of their own that
+   every room talks to.
+   - **Listing:** your room takes the item out of your bag first, then hands
+     it to the market.
+   - **Buying:** your room takes your coins first. The market decides who got
+     the item and **delivers it to your mailbox**, and the coins to the
+     seller's. If someone beat you to it, your coins come back by mail. World
+     of Warcraft's auction house delivers by mail for the same reason.
+   - **The rule this respects:** the server never waits on another service
+     between checking something and committing it (ARCHITECTURE-HANDOFF,
+     rule 9). That rule is why the market was moved *into* the room. Handing
+     things over by mail keeps it.
+   - The pieces already exist: the mailbox, escrow, and ids that make every
+     order count exactly once (`opId`, `oplog:`).
+3. **Mail moves into the vault**, so it reaches you whichever room you are
+   in.
+
+**When.** It is not needed until one room fills up, and today there are no
+live players. It is much easier before launch than after, because moving
+live characters out of a room is a migration with real players' items at
+stake. It is the largest server change on the list, larger than streaming
+the map.
+
+### What it costs to run (rough)
+
+- **An empty room costs nothing.** Its 45-a-second tick stops when the last
+  player leaves (`webSocketClose` in `server/src/index.js`), and the room can
+  sleep.
+- **A busy room is billed for the time it is awake:** about 10,800 GB-s a
+  day (`server/src/tick.js`). On Cloudflare's paid plan that is a few dollars
+  a month per room busy round the clock.
+- **Messages and saves add to that as players grow.** A moving player's phone
+  sends its position 15–30 times a second. A rough estimate for a full room
+  of 60, round the clock, is tens of dollars a month, not hundreds.
+  Cloudflare's dashboard has the real numbers.
+- **The size of the world is free.** Map pieces are plain files served by
+  Cloudflare Pages. The server never touches them.
+- **The server's processor is not the limit.** Sixty players cost 0.16 ms of
+  each 22 ms tick (`docs/specs/room-full.md`).
+- **Each phone's download is the limit.**
+  - Every moving player near you costs about 4 KB/s. About 20 near you is
+    comfortable on cellular.
+  - One seamless world keeps that only if the server sends each player what
+    is *near* them (phase 5), as it sends only your zone today.
+- **Monsters only run near players.** Today a zone with nobody in it does not
+  tick its monsters (`_activeZones`). The island does the same, area by area.
+
+### How walking the island will feel
+
+- **You never see the grid.** The squares are how the map is made, not how
+  it is walked.
+- **Speed.** The bro walks 150 game px a second, faster with agility,
+  swiftness and potions.
+  - A phone screen shows about 500 × 1024 game px with the dashboard closed.
+    Crossing it takes about 3 s side to side and 7 s top to bottom.
+  - The town square to a region's heart is about 20–30 s. Coast to coast is
+    about 80–90 s.
+  - The waystations at the road forks are the natural place for fast travel.
+- **No loading screens outdoors.** The ground streams in around you. The
+  trial showed no gaps at a brisk walk against a local server; a phone over
+  the internet is the real test.
+- **Loading screens stay at doors:** the first join, dungeons, farms,
+  interiors, switching rooms, and fast travel.
+- **A region's monsters load as you approach it.** Border land (§4) is where
+  neither region's monsters live, so there is time to load the next set
+  before you meet them. The phone never holds more than two regions'
+  monsters.
+- **Monsters on screen.** This is a density chosen per area.
+  - Today's is 6 per 1024 × 1024 zone, about 3 per screen.
+  - Wild areas might carry 4–8 per screen; roads and town none.
+  - Nobody has measured the most an iPhone can draw. A crowd test with bots
+    is the way to find out.
+- **Players on screen:** up to 60 in a room. About 20 moving near you is
+  comfortable on cellular; more works on wifi.
 
 ### "What would the load handling be like?"
 
@@ -526,8 +742,8 @@ is the one direction that is closed.
 
 **On the server:**
 
-- One room already simulates the whole world at 45 ticks a second. The
-  feasibility study measured about 20× CPU headroom.
+- One room already simulates the whole world at 45 ticks a second, and 60
+  players use 0.16 ms of each 22 ms tick (`docs/specs/room-full.md`).
 - What changes is *who hears what*: updates go to players near each other
   instead of to players in the same zone.
 - 60 players spread over 137 squares is far less crowded than 60 players in
@@ -557,6 +773,21 @@ there so the owner can take it.
 
 ## 10. Decisions for the owner
 
+**Asked in v2.3.2933, and needed first:**
+
+- **Pixel art or painted** (§6). It decides the style key prompt, and
+  whether the bro stays as he is. Recommended: pixel art, matched to him.
+- **How the ground is made** (§13). Recommended: baked from swatches, with
+  special places painted.
+
+**Decided in v2.3.2933:** everything but the player is replaced (§7); what
+stands up is an object (§11); buildings and NPCs are made more bro (§12);
+one scale, the town's (§6); characters that travel between rooms, and one
+shared auction house (§9). The last one's timing is still open: before
+launch is easier.
+
+**From the first draft:**
+
 1. **The premise.** Shard rush and keystones: keep it, change it, or drop
    it. The map paints keystones either way; they can mean anything later.
 2. **The plot table** (§5). Is each building where it should be? Are the
@@ -570,11 +801,65 @@ there so the owner can take it.
 6. **Farms as personal homesteads** (§8). A server change, separate from the
    map.
 7. **Trees as objects** (§11). Which trees you can chop, and how fast they
-   come back.
+   come back. (Objects in general: decided in v2.3.2933.)
 
 ---
 
-## 11. Trees: objects you can chop, not paint
+## 11. Trees, rocks, water and props: objects, not paint
+
+> Owner, 2026-09-29: *"I'm inclined to make all of the water, trees, rocks,
+> and other props as separate objects. I figure if would work better with
+> layering and manipulating it for different purposes."*
+
+**Agreed (v2.3.2933): everything that stands up is an object**: trees,
+rocks, bushes, fences, lamp posts, signs, crates, bridges, gates and every
+building. What that buys:
+
+- **Layering.** The game sorts objects by where they touch the ground, so
+  you pass behind a tree or a building and in front of it (`depthSort.js`,
+  v2.3.2633). Paint can never do that.
+- **What stops you is what you see.** Each object carries its own footprint,
+  so collision cannot drift away from the picture. On a painted map the wall
+  and its collision line are drawn separately and disagree.
+- **They can change.** Chop, mine, break, move; lit at night, snowed on in
+  winter, swapped for a festival. None of it means repainting a square.
+- **One drawing, a thousand copies.** A pine is drawn once and placed
+  everywhere, and one picture in memory serves every copy on screen.
+- **Consistency.** A few hundred object pictures, each checked against the
+  style key, drift far less than a hundred painted squares.
+
+**Two refinements:**
+
+1. **Water is a surface the game draws, not a pile of sprites.**
+   - The plan already knows exactly where every river, pond and sea is.
+   - The game draws moving water over those areas (ripples, shore foam), and
+     collision comes from the same outline, so the shore stops you exactly
+     where it is drawn.
+   - The ground paint supplies the bed and the banks (mud, pebbles, sand).
+   - Water can then freeze, flood or drain.
+2. **A thick forest is a few big canopy pieces, not four hundred trees.**
+   - The trees along its edge and in the open are separate, choppable
+     objects. The middle is canopy you cannot enter.
+   - Walking *under* a canopy needs a foreground layer the renderer does not
+     have yet (DEPTH-ROADMAP item 5).
+
+**What it costs:**
+
+- **On the phone:** a screen might hold 50–150 objects. That is fine when a
+  region's objects share a few packed picture sheets instead of hundreds of
+  separate files.
+- **On the server:** nothing for decoration. Only the objects you can use
+  (chop, mine, open) are known to the server, and only near players.
+- **In placing them:** the plan scatters most objects by rule: trees along
+  woodland edges, rocks on slopes, crates by the depot. Hand-placed spots
+  need a small placement tool, which the World Builder can grow.
+
+**The consequence: ChatGPT paints ground only.** The ground prompts stop
+asking for trees, rocks, buildings and water surfaces, and the blueprint
+writes out where the objects stand. That rewrite waits on the look (§6). How
+the ground itself is made is §13.
+
+### Trees in particular
 
 > Owner, 2026-09-29: *"Don't you think all the trees in the game should be
 > replaced with objects that the character can cut down like the pine
@@ -628,7 +913,135 @@ chop it.
 
 **What changes in the World Builder when this is decided:**
 
-- The prompts stop painting lone trees on open ground.
-- The plan's woods (the dark blobs) stay painted forest.
+- The prompts stop painting trees at all (v2.3.2933: everything that stands
+  up is an object).
+- The plan's woods (the dark blobs) become canopy pieces over a painted
+  forest floor.
 - The blueprint writes out a list of tree positions along the edges of the
   woods and scattered in the open, for the game to stand objects on.
+
+---
+
+## 12. Built by Bros: buildings, props and people
+
+> Owner, 2026-09-29: *"For regenerating buildings and NPCs I want something
+> more 'bro.'"* — quoting ChatGPT's description of it:
+>
+> *"A place should feel like it was actually built, modified, and lived in by
+> Bros—not like a generic polished fantasy building. The personality was
+> bold, friendly, slightly ridiculous, loyal, competitive, adventurous, and
+> not overly serious. Bros tend to turn normal things into a challenge,
+> hangout, joke, trophy, or opportunity for friendly one-upmanship.
+> Visually, that meant details like trophies, weapon racks, weights,
+> mugs/barrels, oversized signs, dumb slogans, improvised repairs, adventure
+> dents, bragging boards, goofy mascots, ridiculous statues, training
+> equipment, or little environmental jokes. I called some of that 'bro
+> clutter.' The idea was that the architecture itself could still be
+> attractive and handcrafted, but the small details should quietly
+> communicate: 'A bunch of optimistic idiots who love adventure, competition,
+> and each other live here.'"*
+
+**The brief, for every building, prop and NPC prompt:**
+
+- **Handsome underneath, bro on top.** Solid, well-made frontier
+  architecture. The personality is in what was added later: things bolted
+  on, bragged about, or patched after an adventure went wrong.
+- **Every place is a competition or a hangout.** A scoreboard, a trophy, a
+  challenge, somewhere to sit and argue.
+- **Proud repairs and adventure dents.** Nothing is new; everything has a
+  story.
+- **Big, dumb, friendly signs**, with one or two words each. ChatGPT's
+  lettering is unreliable past that. Ground squares never carry text.
+
+**Readable at phone size.** A building is seen a few hundred pixels tall on a
+phone.
+
+- The bank already has the spirit: lions in sunglasses, "BRO SAVINGS".
+- The next versions keep the humour with **fewer, bigger jokes**:
+  - one strong silhouette per building, recognisable at a glance;
+  - one or two hero jokes per building, big enough to read;
+  - clutter at the edges (porch, roof, side yard), never on the ground in
+    front of the door where people walk.
+
+**Starting ideas per building,** for the prompts:
+
+| Building | Bro details |
+|---|---|
+| Town Hall | Mayor Bro's statue mid-flex; a trophy case on the steps; bunting |
+| Blacksmith | a rack of hammers ranked by weight; a dented anvil on a plinth; a dumbbell made of two anvils |
+| Saloon | a wall of named mugs; an arm-wrestling table on the porch; a moose head in sunglasses |
+| Sheriff's Office | wanted posters of monsters (a slime in a cowboy hat); a "days since slime incident" board stuck at 0 |
+| Bank | a vault door with a friendly padlock; gold bars stacked like weights |
+| General Store | crates stacked into a leaning tower; one huge "DEALS" sign |
+| Auction House | an auctioneer's podium with a gong; a bidding paddle as big as a door |
+| Hotel | hammocks on the balcony; a "no dragons" sign |
+| Gambling Den | a giant die as a doorstop; a wheel of fortune by the door |
+| Waystations | joke signposts; a campfire ring; a bench press made of a log |
+
+**NPCs** follow the same brief.
+
+- Each has one bro trait you can see from across the street. The blacksmith
+  is always mid-flex, the shopkeeper wears sunglasses at night, and Lil Bro
+  carries a stick like a sword.
+- They are drawn in the player's style (§6), at his size, so they stand
+  beside him as equals.
+
+---
+
+## 13. The ground: paint every square, or bake it from swatches
+
+**Once everything that stands up is an object (§11), ChatGPT only paints
+ground:** grass, dirt, sand, snow, ash, stone, cobbles, roads, and the banks
+round the water. That opens a second way to make it.
+
+| | Paint every square (the World Builder today) | Bake from swatches (how the trial was made) |
+|---|---|---|
+| What ChatGPT makes | 137 squares, each from its own template | ~30 seamless ground swatches (grass, dry grass, dirt, cobbles, sand, snow, ash, stone, mud …), plus small ground details (flowers, cracks, puddles) as objects |
+| Keeping one style | 137 separate pictures | ~30 pictures |
+| Roads, shores and collision | roughly where ChatGPT put them | exactly where the plan says |
+| Changing the plan later | repaint every square it touches | re-bake in minutes |
+| The owner's time | hundreds of chats | a few evenings |
+| The look | the most hand-made: every square unique | more even; variety comes from the details and objects on top |
+
+**Recommended: bake the ground from swatches, and paint only the special
+places** as World Builder squares fused into the bake: the town square, the
+landmarks, the falls, the border set-pieces.
+
+- With pixel art (§6) the case is stronger still: that is how pixel-art
+  ground is normally built.
+- The World Builder is not wasted. Its plan and blueprint drive the bake, and
+  it paints the special places.
+- **The next step is cheap:** about ten swatches for the meadow and the town,
+  then the trial re-baked from them, so the owner judges it on a phone before
+  any square is painted.
+
+---
+
+## 14. Easy to miss
+
+Things a first big online world tends to trip on, roughly in order of how
+much they hurt:
+
+1. **The server does not know where the walls are.** It checks only how fast
+   you move (`server/src/movement.js`), not where. On one big map with a real
+   economy, a tampered client could walk through water or walls to reach
+   things. The island's walk map is small (about 21 KB), so the server can
+   check it too.
+2. **"Zone" is everywhere in the code.** Quests ("go to the Flame Fields"),
+   unlocks, level bands, music, banners, gather nodes, the minimap. On one map
+   the zone becomes *the region you are standing in*, worked out from your
+   position. That is the biggest code change of the move, done one system at
+   a time.
+3. **Empty space.** A big map needs something to find every 20–30 seconds
+   of walking: a camp, a chest, a gather spot, a view, an NPC, a shortcut.
+   Plan the points of interest per region before painting.
+4. **Phone memory is the hard ceiling.** Safari kills the tab at about 250 MB
+   of pictures, and the game uses 165–185 MB today. Give each region a budget
+   for its objects and monsters.
+5. **Saved positions after a map change.** When the map changes after launch,
+   a saved position can end up inside a new wall. The game moves such a
+   player to the nearest safe spot on join.
+6. **Characters out of the room before launch** (§9). Easy with no players;
+   a careful migration with them.
+7. **Test with crowds.** A way to fill a room with bots shows how 60 players
+   feel on the owner's phone before real players find out.

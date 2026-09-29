@@ -3,9 +3,17 @@
 **Status:** Phase 1 is shipped: the **World Builder** page
 (`public/tools/world/`, live at `/tools/world/` on the site).
 
-- No game code has changed yet.
+- No game code has changed yet, apart from the `?trial=world` switch
+  (v2.3.2932, below).
 - The world plan in `public/tools/world/plan.js` is the source of truth for
   the map's layout.
+- **v2.3.2933: two decisions come before phase 2**, both in the World Bible:
+  - whether the new world is **pixel art** to match the player (who is kept),
+    or painted (§6);
+  - whether the ground is **painted square by square or baked from
+    swatches**, now that everything standing up is an object (§11, §13).
+
+  Either answer changes the prompts.
 - The world's story and look (through-lines, regions, Brotown's Main
   Street, the style key, the character refresh) are written up for people
   in **[WORLD-BIBLE.md](WORLD-BIBLE.md)**.
@@ -33,7 +41,7 @@ follows is at the end.
 | # | Phase | Who | State |
 |---|---|---|---|
 | 1 | **Tooling**: plan, blueprint, prompts, fuser, World Builder page | sessions | **shipped v2.3.2931** |
-| 2 | **Test strip**: make the **style key**, then paint M13 (the town square) and a few squares round it (N13, M14, L13 …). Judge the joins on a phone and tune the prompts. | owner | next |
+| 2 | **Test strip**: make the **style key**, then paint M13 (the town square) and a few squares round it (N13, M14, L13 …). Judge the joins on a phone and tune the prompts. | owner | next, after the two v2.3.2933 decisions above |
 | 3 | **Paint the world**: work outward from the town until every land square is done | owner | — |
 | 4 | **Export for the game**: cut the fused world into streaming chunks under `public/maps/world/` | sessions | — |
 | 5 | **Engine**: chunk streaming, region from position, server interest by region (see "What the game needs") | sessions | — |
