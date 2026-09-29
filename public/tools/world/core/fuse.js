@@ -66,10 +66,14 @@ function nccAt(smp, b, w, h, s, dx, dy) {
   return sab / Math.sqrt(smp.va * vb);
 }
 
-/* A shift or zoom has to EARN its keep: in a band of plain grass many
-   offsets correlate about equally, and without a small preference for "no
-   change" the search wanders off on noise. */
-const penal = (s, dx, dy, lvl) => 0.0006 * (Math.abs(dx) + Math.abs(dy)) * (1 << lvl) + 0.8 * Math.abs(s - 1);
+/* A shift or zoom has to EARN its keep in the COARSE search: in a band of
+   plain grass many offsets correlate about equally, and without a small
+   preference for "no change" the global search wanders off on noise.  The
+   finer levels only refine inside the basin the coarse level chose, and get
+   NO such preference: there it biased the answer -- with one known edge,
+   zoom and shift look alike, and a pull toward zoom 1 was paid for with a
+   wrong shift (F9 in tools/qa/world-page.mjs, 0.9909 against a true 0.9881). */
+const penal = (s, dx, dy, lvl) => (lvl < 2 ? 0 : 0.0006 * (Math.abs(dx) + Math.abs(dy)) * (1 << lvl) + 0.8 * Math.abs(s - 1));
 
 export function align(world, known, gen, opts = {}) {
   const w = world.w, h = world.h;
@@ -94,32 +98,45 @@ export function align(world, known, gen, opts = {}) {
     const score = c - penal(s, dx, dy, 2);
     if (score > best.score) best = { s, dx, dy, score, ncc: c };
   }
-  /* level 1: refine */
+  /* level 1: refine zoom and shift together.  They have to move together:
+     when only one edge of the square is known, a little zoom and a little
+     shift look alike along that edge, and a zoom left 0.3% off is silently
+     "fixed" by the shift -- the known edge lines up and the far side of the
+     square drifts 3 px (measured, tools/qa/world-page.mjs). */
   const sm1 = levelSamples(l1.f, l1.wt, l1.w, l1.h, 2);
   let b1best = { ...best, dx: best.dx * 2, dy: best.dy * 2, score: -Infinity };
-  for (const s of [best.s - 0.0075, best.s, best.s + 0.0075]) for (let dy = best.dy * 2 - 2; dy <= best.dy * 2 + 2; dy++) for (let dx = best.dx * 2 - 2; dx <= best.dx * 2 + 2; dx++) {
-    const c = nccAt(sm1, b1.f, l1.w, l1.h, s, dx, dy);
-    const score = c - penal(s, dx, dy, 1);
-    if (score > b1best.score) b1best = { s, dx, dy, score, ncc: c };
+  for (let k = -3; k <= 3; k++) {
+    const s = best.s + k * 0.0025;
+    for (let dy = best.dy * 2 - 2; dy <= best.dy * 2 + 2; dy++) for (let dx = best.dx * 2 - 2; dx <= best.dx * 2 + 2; dx++) {
+      const c = nccAt(sm1, b1.f, l1.w, l1.h, s, dx, dy);
+      const score = c - penal(s, dx, dy, 1);
+      if (score > b1best.score) b1best = { s, dx, dy, score, ncc: c };
+    }
   }
-  /* level 0: refine the shift at full resolution, then a sub-pixel parabola */
+  /* level 0: the same at full resolution with a finer zoom step, then a
+     sub-pixel parabola through the neighbouring scores on every axis */
   const kn0 = new Float32Array(known.length);
   for (let i = 0; i < known.length; i++) kn0[i] = known[i];
   const sm0 = levelSamples(la0, kn0, w, h, 3);
-  let b0 = { ...b1best, dx: b1best.dx * 2, dy: b1best.dy * 2, score: -Infinity };
+  const SS = 0.0008;
+  let b0 = { ...b1best, dx: b1best.dx * 2, dy: b1best.dy * 2, score: -Infinity, k: 0 };
   const grid = new Map();
-  for (let dy = b1best.dy * 2 - 2; dy <= b1best.dy * 2 + 2; dy++) for (let dx = b1best.dx * 2 - 2; dx <= b1best.dx * 2 + 2; dx++) {
-    const c = nccAt(sm0, lb0, w, h, b1best.s, dx, dy);
-    grid.set(dx + ',' + dy, c);
-    const score = c - penal(b1best.s, dx, dy, 0);
-    if (score > b0.score) b0 = { s: b1best.s, dx, dy, score, ncc: c };
+  for (let k = -2; k <= 2; k++) {
+    const s = b1best.s + k * SS;
+    for (let dy = b1best.dy * 2 - 2; dy <= b1best.dy * 2 + 2; dy++) for (let dx = b1best.dx * 2 - 2; dx <= b1best.dx * 2 + 2; dx++) {
+      const c = nccAt(sm0, lb0, w, h, s, dx, dy);
+      grid.set(k + ',' + dx + ',' + dy, c);
+      const score = c - penal(s, dx, dy, 0);
+      if (score > b0.score) b0 = { s, dx, dy, score, ncc: c, k };
+    }
   }
   const para = (m, c0, p) => { const d = m - 2 * c0 + p; return d < 0 ? Math.max(-0.5, Math.min(0.5, 0.5 * (m - p) / d)) : 0; };
-  const g = (x, y) => grid.get(x + ',' + y);
-  let sdx = 0, sdy = 0;
-  if (g(b0.dx - 1, b0.dy) != null && g(b0.dx + 1, b0.dy) != null) sdx = para(g(b0.dx - 1, b0.dy), b0.ncc, g(b0.dx + 1, b0.dy));
-  if (g(b0.dx, b0.dy - 1) != null && g(b0.dx, b0.dy + 1) != null) sdy = para(g(b0.dx, b0.dy - 1), b0.ncc, g(b0.dx, b0.dy + 1));
-  return { s: b0.s, dx: b0.dx + sdx, dy: b0.dy + sdy, ncc: b0.ncc, used: sm0.n };
+  const g = (k, x, y) => grid.get(k + ',' + x + ',' + y);
+  const around = (a, b) => (a != null && b != null ? para(a, b0.ncc, b) : 0);
+  const sdx = around(g(b0.k, b0.dx - 1, b0.dy), g(b0.k, b0.dx + 1, b0.dy));
+  const sdy = around(g(b0.k, b0.dx, b0.dy - 1), g(b0.k, b0.dx, b0.dy + 1));
+  const sk = around(g(b0.k - 1, b0.dx, b0.dy), g(b0.k + 1, b0.dx, b0.dy));
+  return { s: b0.s + sk * SS, dx: b0.dx + sdx, dy: b0.dy + sdy, ncc: b0.ncc, used: sm0.n };
 }
 
 /* ── 2. COLOUR ── */
@@ -241,9 +258,12 @@ export function seamGraphCut(oldImg, newImg, hasOld, valid, ring, N, R = 2) {
    world   : N x N RGBA, squares + anchors over this square (alpha 0 = nothing)
    squares : N x N RGBA, the squares layer only (alpha 0 = never painted)
    gen     : N x N RGBA, ChatGPT's picture already resampled to N x N
+   ring    : { top, right, bottom, left } Uint8Array(N) -- 1 where the pixel
+             just OUTSIDE the square is painted (those edges must stay
+             continuous); the overlap's shape comes from `squares` itself
    Returns the new squares-layer pixels for the square and everything the
    builder shows about how it went. */
-export function fuseSquare({ world, squares, gen, overlap, ring, feather = 12, alignRange, seamScale = 2 }) {
+export function fuseSquare({ world, squares, gen, ring, feather = 12, alignRange, seamScale = 2 }) {
   const N = world.w, n = N * N;
   const known = new Float32Array(n);
   for (let i = 0; i < n; i++) known[i] = world.data[i * 4 + 3] / 255;

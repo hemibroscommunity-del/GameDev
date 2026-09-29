@@ -1,0 +1,183 @@
+<!doctype html>
+<!-- ═══ v2.3.2931: THE WORLD BUILDER ═══
+
+  One seamless BroTown map, painted by ChatGPT one square at a time.
+
+  The owner picks a square, saves its template (the blueprint sketch with the
+  finished edges of its neighbours pasted in), copies its prompt, asks
+  ChatGPT, and brings the picture back.  The page lines the picture up with
+  its neighbours, matches its colour, cuts the least visible seam through the
+  overlap and shows the join before anything is kept.
+
+  SELF-CONTAINED, like the other pages in public/tools: no external scripts,
+  styles or fonts, and no network requests except its own modules and the
+  town painting (/maps/town_v17.webp).  Nothing is uploaded anywhere; work is
+  kept in this browser and in backup files.
+
+  Design and workflow: docs/WORLD-MAP-PIPELINE.md.
+  Driven in a real browser by tools/qa/world-page.mjs (window.__world).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>BroTown — World Builder</title>
+<style>
+  :root { --bg:#121B20; --card:#202C32; --line:rgba(238,242,235,.14); --ink:#F7F2E7;
+          --mut:#96A2A0; --brass:#D8A85F; --ok:#59BF91; --warn:#E3B04B; --bad:#E06A5E;
+          --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); padding:20px 16px 80px;
+         font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1280px; margin:0 auto; display:grid; gap:16px;
+          grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr); align-items:start; }
+  header, .span { grid-column:1 / -1; }
+  @media (max-width: 900px) { .wrap { grid-template-columns:minmax(0, 1fr); } }
+  h1 { font-size:24px; margin:0 0 2px; letter-spacing:.2px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.9px; color:var(--brass); margin:0 0 10px; font-weight:600; }
+  h3 { font-size:15px; margin:0 0 6px; }
+  .sub { color:var(--mut); margin:0 0 10px; }
+  .progress { font-weight:600; }
+  .nag { margin-top:10px; padding:10px 12px; border-radius:8px; background:rgba(227,176,75,.14);
+         border:1px solid rgba(227,176,75,.45); color:#F3D9A2; cursor:pointer; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .btn, button { appearance:none; border:1px solid var(--line); background:#2A3940; color:var(--ink);
+         border-radius:8px; padding:10px 14px; min-height:44px; font-family:inherit; font-size:14px; font-weight:600; line-height:1.2;
+         cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+  .btn:hover, button:hover { border-color:rgba(238,242,235,.35); }
+  .brass { background:var(--brass); color:#1b1206; border-color:var(--brass); }
+  .danger { color:#FFC7C0; border-color:rgba(224,106,94,.5); }
+  .maptools { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; background:transparent; }
+  .seg button.on { background:#34474F; }
+  .mapwrap { overflow:auto; border-radius:8px; border:1px solid var(--line); background:#0c1216;
+             max-height:78vh; -webkit-overflow-scrolling:touch; }
+  #map { display:block; width:100%; height:auto; cursor:pointer; image-rendering:auto; }
+  .key { display:flex; gap:14px; flex-wrap:wrap; color:var(--mut); font-size:13px; margin-top:8px; align-items:center; }
+  .k { display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-2px; margin-right:4px; }
+  .k.done { background:var(--ok); } .k.next { border:3px solid var(--brass); }
+  .k.sea { background:repeating-linear-gradient(135deg,#2a4f7a 0 3px,#1f5a9e 3px 7px); }
+  .step { display:grid; grid-template-columns:32px minmax(0,1fr); gap:10px; padding:12px 0; border-top:1px solid var(--line); }
+  .step:first-child { border-top:0; }
+  .n { width:28px; height:28px; border-radius:50%; background:#34474F; display:grid; place-items:center; font-weight:700; }
+  .tpl { display:block; width:100%; max-width:420px; aspect-ratio:1; border-radius:6px; border:1px solid var(--line); background:#0c1216; }
+  textarea { width:100%; min-height:150px; max-height:320px; background:#18242A; color:var(--ink); border:1px solid var(--line);
+             border-radius:6px; padding:9px 10px; font:12.5px/1.45 var(--mono); resize:vertical; }
+  .drop { display:block; border:2px dashed rgba(216,168,95,.55); border-radius:10px; padding:22px 14px; text-align:center;
+          color:#F3D9A2; cursor:pointer; }
+  .drop.over { background:rgba(216,168,95,.12); }
+  .drop input { display:none; }
+  canvas.pv { display:block; width:100%; max-width:640px; border-radius:6px; border:1px solid var(--line); }
+  .rating { font-weight:600; margin:10px 0 0; }
+  .rating[data-grade="great"] { color:var(--ok); } .rating[data-grade="ok"] { color:#9FD9B8; }
+  .rating[data-grade="visible"] { color:var(--warn); } .rating[data-grade="bad"] { color:var(--bad); }
+  .help p, .help li { color:#C9D1CC; } .help ol { padding-left:20px; margin:6px 0; }
+  .busy { position:fixed; inset:0; background:rgba(8,12,14,.66); display:grid; place-items:center; z-index:50;
+          font-weight:600; text-align:center; padding:20px; }
+  .busy[hidden] { display:none; }
+  .spinner { width:42px; height:42px; border-radius:50%; border:4px solid rgba(255,255,255,.2); border-top-color:var(--brass);
+             margin:0 auto 12px; animation:spin 0.9s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); max-width:min(92vw,560px); z-index:60;
+           background:#2A3940; border:1px solid var(--line); border-radius:10px; padding:12px 16px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
+  .toast[data-bad="1"] { border-color:rgba(224,106,94,.7); color:#FFD6D0; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>World Builder</h1>
+    <p class="sub">One seamless BroTown map, painted by ChatGPT one square at a time.</p>
+    <div id="progress" class="progress">Loading…</div>
+    <div id="nag" class="nag" hidden></div>
+  </header>
+
+  <section class="card">
+    <div class="maptools">
+      <div class="seg"><button data-view="art" class="on">Painted</button><button data-view="plan">Plan</button></div>
+      <div class="seg"><button data-zoom="-" aria-label="Zoom out">−</button><button data-zoom="+" aria-label="Zoom in">+</button></div>
+      <button id="next-btn" class="brass">Next square →</button>
+    </div>
+    <div class="mapwrap"><canvas id="map" aria-label="The world grid. Tap a square."></canvas></div>
+    <div class="key">
+      <span><span class="k done"></span>painted</span>
+      <span><span class="k next"></span>ready to paint next</span>
+      <span><span class="k sea"></span>open sea — optional</span>
+    </div>
+  </section>
+
+  <section class="card" id="square" hidden>
+    <h2 id="sq-title"></h2>
+    <p id="sq-sub" class="sub"></p>
+    <div id="sq-covered" hidden><p>The town painting already covers this square — there is nothing to make here.</p></div>
+
+    <div id="sq-steps">
+      <div class="step"><div class="n">1</div><div>
+        <h3>Save the template picture</h3>
+        <p class="sub">The flat colours are the plan; the painted parts are finished neighbours ChatGPT must continue.</p>
+        <img id="tpl-img" class="tpl" alt="Template for this square">
+        <div class="row"><a id="tpl-save" class="btn" download>Save picture</a><button id="tpl-share" class="btn" hidden>Share…</button></div>
+      </div></div>
+      <div class="step"><div class="n">2</div><div>
+        <h3>Copy the prompt</h3>
+        <textarea id="prompt" readonly></textarea>
+        <div class="row"><button id="prompt-copy" class="btn">Copy prompt</button></div>
+      </div></div>
+      <div class="step"><div class="n">3</div><div>
+        <h3>Ask ChatGPT</h3>
+        <p>Start a <b>new chat</b>, attach the template picture, paste the prompt and send. When the picture comes back, save it.
+           If it added a border, text or a horizon, just ask again — that is cheaper than fixing a seam.</p>
+      </div></div>
+      <div class="step"><div class="n">4</div><div>
+        <h3>Bring ChatGPT's picture back</h3>
+        <label class="drop" id="drop"><input type="file" id="file" accept="image/*">Tap to choose the picture ChatGPT made<br><span class="sub">or drop it here, or paste it</span></label>
+      </div></div>
+    </div>
+
+    <div id="sq-result" hidden>
+      <h3>How it joins</h3>
+      <canvas id="preview" class="pv"></canvas>
+      <p id="rating" class="rating"></p>
+      <div class="row"><label><input type="checkbox" id="show-seam"> Show where it joins</label></div>
+      <div class="row"><button id="keep" class="btn brass">Keep it</button><button id="retry" class="btn">Try again</button></div>
+    </div>
+
+    <div id="sq-done" hidden>
+      <canvas id="done-preview" class="pv"></canvas>
+      <p id="done-rating" class="rating"></p>
+      <div class="row"><a id="raw-save" class="btn" download>Download ChatGPT's picture</a><button id="redo" class="btn danger">Redo this square</button></div>
+    </div>
+  </section>
+
+  <section class="card span">
+    <h2>Project</h2>
+    <p class="sub" id="proj-info"></p>
+    <p class="sub">Your work lives in this browser on this device. Download a backup now and then — it holds every picture and rebuilds the whole world on any device.</p>
+    <div class="row">
+      <button id="backup" class="btn">Download backup</button>
+      <label class="btn">Restore backup<input type="file" id="restore" accept=".zip,application/zip" hidden></label>
+      <button id="export-preview" class="btn">Download world preview</button>
+      <button id="rebuild" class="btn">Re-fuse everything</button>
+    </div>
+  </section>
+
+  <section class="card span help">
+    <h2>How this works</h2>
+    <ol>
+      <li><b>The grid.</b> The world is a 12 × 12 grid of squares named like a spreadsheet — A1 is the north-west corner. Each square is one ChatGPT picture, and each overlaps its neighbours by a quarter so there is room to hide the join.</li>
+      <li><b>The plan.</b> The flat colours are the blueprint: the eight regions round the town where the World View painting has them, the meadow ring, trails from the town's stairs, ponds, cliffs and landmarks. It keeps rivers and trails continuous across squares — and later it becomes the game's walls.</li>
+      <li><b>The template.</b> Each square's template shows its piece of the plan with the finished art of its neighbours (and the town) already in place along the edges, so ChatGPT continues real pixels instead of guessing.</li>
+      <li><b>The fuse.</b> ChatGPT never copies the edges exactly. The page lines its picture up, matches the colour, and cuts the seam where the old and new pictures agree most — round a tree rather than through it.</li>
+      <li><b>Order.</b> Paint outward from the town: the gold-outlined squares are ready because their neighbours are finished.</li>
+    </ol>
+  </section>
+</div>
+<div id="busy" class="busy" hidden><div><div class="spinner"></div><div id="busy-text">Working…</div></div></div>
+<div id="toast" class="toast" hidden></div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

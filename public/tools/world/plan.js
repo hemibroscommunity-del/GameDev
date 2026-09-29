@@ -27,8 +27,15 @@
  *            today, so the town painting drops in unchanged)
  *   walk     ~82 s edge to edge at the ~150 px/s base run speed; every
  *            current zone put together is ~25 s
- *   squares  144 on the grid; ~50 are open sea past the coast and the town
- *            painting covers the middle, so roughly 90 need painting
+ *   squares  144 on the grid: 18 are open sea past the coast (optional) and
+ *            126 need painting -- the four under the town only need the
+ *            forest round its cliffs
+ *
+ * ── HOW BIG, IN SQUARES (measured with this plan, only `grid` changed) ──
+ *    8 x  8    60 to paint    ~55 s to walk across
+ *   10 x 10    90 to paint    ~69 s
+ *   12 x 12   126 to paint    ~82 s     <- this plan
+ *   14 x 14   168 to paint    ~95 s
  */
 
 export const PLAN = {

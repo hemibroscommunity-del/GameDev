@@ -76,10 +76,17 @@ export function buildPrompt(plan, bp, c, r, finished = {}, anchorsIn = [], opts 
 
   /* ── what's in it ── */
   const bits = [];
+  const anchorFrac = cov.classes.filter((k) => k.cls === 'anchor').reduce((s, k) => s + k.frac, 0);
+  if (anchorsIn.length && anchorFrac > 0.25) {
+    bits.push(`Most of this square is ${list(anchorsIn)}, already painted — only the ground around it is left to paint.`);
+  } else if (anchorsIn.length) {
+    bits.push(`${list(anchorsIn).replace(/^./, (m) => m.toUpperCase())} reaches into this square, already painted.`);
+  }
   if (regions.length) {
     const main = plan.regions[regions[0].id];
-    if (regions.length === 1 || regions[0].frac > 0.8) bits.push(`${main.name} fills this square.`);
-    else bits.push(`Mostly ${main.name}.`);
+    const rest = anchorsIn.length ? 'The rest is' : 'This square is';
+    if (regions.length === 1 || regions[0].frac > 0.8) bits.push(`${rest} ${main.name}.`);
+    else bits.push(`${rest} mostly ${main.name}.`);
     for (const e of regions.slice(1)) bits.push(`${plan.regions[e.id].name} comes in ${where(e.cx, e.cy)}.`);
   }
   if (sea > 0.9) bits.unshift('This square is almost all open sea.');
