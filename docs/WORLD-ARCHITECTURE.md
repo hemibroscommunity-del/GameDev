@@ -147,6 +147,10 @@ two realms, §11). Either way the diagram is the same:
 - **Pieces stream by distance.** Ground pieces and object sheets load as you
   approach and are freed behind you. `chunkGround.js` is the first piece. The
   ZONE-ASSET rule in CLAUDE.md applies per area instead of per zone.
+- **The ground is composed on the phone from swatches** (v2.3.2937): the
+  download is the ~48 swatch tiles, whatever the size of the map.
+  `public/tools/world/core/ground.js` already composes it, deterministic and
+  seamless between chunks composed apart; the Ground Studio previews with it.
 - **Layers, bottom to top:**
   1. ground;
   2. ground details;

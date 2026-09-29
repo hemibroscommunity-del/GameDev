@@ -16,6 +16,9 @@
  *   prompt    each square's prompt says what the template shows: its
  *             region's band, the border between regions, the streets, which
  *             edges roads and the river cross, the style key
+ *   ground    (v2.3.2937) the swatch catalog, which swatch covers each cell,
+ *             and the compositor: deterministic, tile-true, and seamless
+ *             between chunks composed apart
  *   maxflow   the min cut is optimal -- checked against brute force
  *   fuse      squares damaged the way a regenerated picture is (zoom, shift,
  *             colour cast, re-invented texture) are put back where they
@@ -34,6 +37,7 @@ import { PIXEL } from '../../public/tools/style/bible.js';
 import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours } from '../../public/tools/world/core/grid.js';
 import { buildBlueprint, renderSketch, colorTable, planKey, C, CLASS_IDS } from '../../public/tools/world/core/layout.js';
 import { spokePoint, arcPoint } from '../../public/tools/world/core/wheel.js';
+import { groundCatalog, materialMap, composeGround } from '../../public/tools/world/core/ground.js';
 import { buildPrompt } from '../../public/tools/world/core/prompt.js';
 import { gridMinCut, INF } from '../../public/tools/world/core/maxflow.js';
 import { fuseSquare } from '../../public/tools/world/core/fuse.js';
@@ -244,6 +248,76 @@ console.log('prompt');
   ok('the abandoned spur ends unfinished, and says what it looks like', /ends here, unfinished/.test(spurEnd.text) && /rails rusted and half-buried/.test(spurEnd.text), spurEnd.summary);
   const sea = P('G7');
   ok('a corner square is sea', /almost all open sea/.test(sea.text), sea.summary);
+}
+
+/* ── ground: the swatches laid on the plan (v2.3.2937) ── */
+console.log('ground');
+{
+  const cat = groundCatalog(PLAN);
+  const ids = new Set(cat.map((e) => e.id));
+  ok(`the catalog lists every swatch the world needs (${cat.length})`, cat.length === 48 && ids.size === 48 &&
+    SPOKES.every((k) => [1, 2, 3, 4].every((n) => ids.has(`${k}-${n}`))) &&
+    ['commons', 'town-yard', 'street', 'boardwalk', 'plaza', 'road', 'gravel', 'lava'].every((id) => ids.has(id)) &&
+    cat.filter((e) => e.group === 'borders').length === 8 && cat.every((e) => e.brief && e.brief.length > 10 && e.color.length === 3), cat.length);
+  const t0 = Date.now();
+  const mm = materialMap(PLAN, bp);
+  const mmMs = Date.now() - t0;
+  const matAt = (x, y) => mm.ids[mm.mat[cell(x, y)]];
+  /* the commonest swatch round a spot, leaving out what runs over the
+     ground (roads, the railway, ponds): a spot can land on any of them */
+  const groundAt = (x, y) => {
+    const n = new Map(), S = bp.scale;
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+      const m = matAt(x + dx * S, y + dy * S);
+      if (m === 'water' || m === 'road' || m === 'gravel' || m === 'town-yard') continue;
+      n.set(m, (n.get(m) || 0) + 1);
+    }
+    return [...n.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  };
+  const wrong = [];
+  for (const s of W.spokes) for (const t of [2, 7, 10, 15]) {
+    const [x, y] = art(spokePoint(s, W.tierMid(t), 0.6));
+    const want = `${s.id}-${Math.floor((t - 1) / 4) + 1}`;
+    if (groundAt(x, y) !== want) wrong.push(`${s.id}@${t}:${groundAt(x, y)}`);
+  }
+  ok(`each spoke's ground follows its stages (the map sorted in ${mmMs} ms)`, wrong.length === 0, wrong.slice(0, 8));
+  const passMid = W.pairs.map(([a, b]) => { const [x, y] = art(arcPoint(a, b, W.tierMid(12), 0.5)); return [groundAt(x, y), `border-${[a.id, b.id].sort().join('-')}`]; });
+  ok('a pass is its two elements\' border land', passMid.every(([m, want]) => m === want), passMid.filter(([m, w]) => m !== w));
+  const [cx1, cy1] = art([1.9, 0.9]);
+  ok('the sea is water, the commons is the commons, the Town Hall stands on the town yard, roads are road',
+    matAt(bp.x0 + 10, bp.y0 + 10) === 'water' && matAt(cx1, cy1) === 'commons' && matAt(g.cx, g.cy) === 'town-yard' && matAt(g.cx, g.cy - 1000) === 'road');
+  const rect = (sx, sy, w, h) => { const [x, y] = art([sx, sy]); return { x: Math.round(x - w / 2), y: Math.round(y - h / 2), w, h }; };
+  const R0 = rect(-2.02, 0, 512, 512);
+  const one = composeGround(PLAN, bp, mm, R0, {}), two = composeGround(PLAN, bp, mm, R0, {});
+  const same = (a, b) => { if (a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; };
+  ok('the ground comes out the same every time', same(one.data, two.data));
+  const L = composeGround(PLAN, bp, mm, { ...R0, w: 256 }, {}), Rr = composeGround(PLAN, bp, mm, { ...R0, x: R0.x + 256, w: 256 }, {});
+  let seam = 0;
+  for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) for (let c = 0; c < 4; c++) {
+    const v = x < 256 ? L.data[(y * 256 + x) * 4 + c] : Rr.data[(y * 256 + x - 256) * 4 + c];
+    if (v !== one.data[(y * 512 + x) * 4 + c]) seam++;
+  }
+  ok('two halves composed apart match the whole, so the ground can be built in chunks', seam === 0, seam);
+  const at1 = new Set(); for (let i = 0; i < one.mat.length; i++) at1.add(mm.ids[one.mat[i]]);
+  ok('at the Mill Bridge: the river, the bridge planks, the road and the commons', ['water', 'boardwalk', 'road', 'commons'].every((k) => at1.has(k)), [...at1]);
+  /* a swatch that exists is laid tile-true, anchored to the frame; one that
+     does not is drawn in its plan colour, chequered */
+  const T = 64, tile = { w: T, h: T, data: new Uint8ClampedArray(T * T * 4) };
+  for (let i = 0; i < T * T; i++) { tile.data[i * 4] = i % 251; tile.data[i * 4 + 1] = (i * 7) % 253; tile.data[i * 4 + 2] = 90; tile.data[i * 4 + 3] = 255; }
+  const [ex, ey] = art(spokePoint(W.byId.ember, W.tierMid(6), 0.7));
+  const Re = { x: Math.round(ex), y: Math.round(ey), w: 8, h: 8 };
+  const withT = composeGround(PLAN, bp, mm, Re, { 'ember-2': { A: tile } });
+  let tileTrue = 0;
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+    if (mm.ids[withT.mat[y * 8 + x]] !== 'ember-2') continue;
+    const u = (((Re.x + x) % T) + T) % T, v = (((Re.y + y) % T) + T) % T, q = (v * T + u) * 4, o = (y * 8 + x) * 4;
+    if (withT.data[o] === tile.data[q] && withT.data[o + 1] === tile.data[q + 1]) tileTrue++;
+  }
+  const bare = composeGround(PLAN, bp, mm, Re, {});
+  const want = mm.catalog.find((e) => e.id === 'ember-2').color;
+  let planColour = 0;
+  for (let i = 0; i < 64; i++) if (mm.ids[bare.mat[i]] === 'ember-2' && Math.abs(bare.data[i * 4] - want[0]) <= 40) planColour++;
+  ok('a made swatch is laid tile-true; one not made yet shows in its plan colour', tileTrue > 40 && planColour > 40, { tileTrue, planColour });
 }
 
 /* ── maxflow ── */

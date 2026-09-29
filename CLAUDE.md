@@ -52,7 +52,10 @@ remnant to migrate server-side, not a mode to preserve.
   1–80 at one zone per five levels, sea between, passes at 20 and 60, and a
   keystone gate to the Dark or Light realm (80–100) at every tip — geometry
   in `public/tools/world/core/wheel.js`, and the blueprint stores every
-  cell's tier, the level map),
+  cell's tier, the level map; since v2.3.2937 the ground is 48 swatches made
+  in the **Ground Studio** at `public/tools/ground/` and laid onto the plan
+  by `public/tools/world/core/ground.js`, deterministic and seamless between
+  chunks — the phone's future ground builder),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

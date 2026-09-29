@@ -274,14 +274,17 @@ export function resize(src, w, h, smooth = true) {
 }
 
 /* ── the palette ── median cut over sampled opaque pixels of every picture
-   in the look, so ground and objects end up sharing one set of colours. */
-export function buildPalette(canvases, n) {
+   in the look, so ground and objects end up sharing one set of colours.
+   v2.3.2937: `perPicture` caps the pixels read from each picture (the
+   Ground Studio lowers it when it has a hundred pictures, so the samples
+   stay a few MB on a phone rather than a hundred). */
+export function buildPalette(canvases, n, perPicture = 24000) {
   const samples = [];
   for (const c of canvases) {
     if (!c) continue;
     const d = ctx2d(c).getImageData(0, 0, c.width, c.height).data;
     const px = c.width * c.height;
-    const step = Math.max(1, Math.floor(px / 24000));
+    const step = Math.max(1, Math.floor(px / perPicture));
     for (let p = 0; p < px; p += step) {
       const i = p * 4;
       if (d[i + 3] >= 128) samples.push([d[i], d[i + 1], d[i + 2]]);

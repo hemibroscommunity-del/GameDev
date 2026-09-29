@@ -1,0 +1,165 @@
+<!doctype html>
+<!-- ═══ v2.3.2937: THE GROUND STUDIO ═══
+
+  Owner, 2026-09-29: "Yes definitely do the swatches."  The ground of the
+  whole world is made from about fifty seamless ground swatches in HD pixel
+  art, and the game lays them onto the plan (docs/WORLD-BIBLE.md §13).  This
+  page is where the owner makes them:
+
+    - every swatch's ChatGPT prompt, ready to copy;
+    - bring each picture back (and a second version): it is made seamless,
+      shrunk to 512 art pixels on the 1.5 game px grid, and moved onto the one
+      shared palette, as the game will use it;
+    - see it laid on the Wheel at game size, next to the bro, with the real
+      roads, rivers, shores and borders round it;
+    - download everything as one zip, to upload to GitHub.
+
+  SELF-CONTAINED, like the other pages in public/tools: no external scripts,
+  styles or fonts, and nothing is uploaded anywhere.  Pictures stay in this
+  browser (IndexedDB).  The style key is read from the World Builder's own
+  storage on this site.  Driven in a real browser by
+  tools/qa/ground-studio.mjs (window.__ground).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>BroTown — Ground Studio</title>
+<style>
+  :root { --bg:#121B20; --card:#202C32; --line:rgba(238,242,235,.14); --ink:#F7F2E7;
+          --mut:#96A2A0; --brass:#D8A85F; --ok:#59BF91; --bad:#E06A5E;
+          --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--bg); color:var(--ink); padding:20px 16px 80px;
+         font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; display:grid; gap:16px; }
+  h1 { font-size:24px; margin:0 0 2px; }
+  h2 { font-size:17px; margin:0 0 4px; }
+  h3 { font-size:13px; text-transform:uppercase; letter-spacing:.9px; color:var(--brass); margin:18px 0 4px; font-weight:600; }
+  p { margin:6px 0; }
+  .sub, .mut { color:var(--mut); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .btn, button { appearance:none; border:1px solid var(--line); background:#2A3940; color:var(--ink);
+         border-radius:8px; padding:10px 14px; min-height:44px; font-family:inherit; font-size:14px; font-weight:600; line-height:1.2;
+         cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+  button:disabled { opacity:.45; cursor:default; }
+  .brass { background:var(--brass); color:#1b1206; border-color:var(--brass); }
+  .danger { color:#FFC7C0; border-color:rgba(224,106,94,.5); }
+  .chip { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:99px; background:#34474F; color:#DDE6E1; margin-left:6px; vertical-align:2px; }
+  .chip.ok { background:rgba(89,191,145,.22); color:#A9E6C8; }
+  label.btn input { display:none; }
+  textarea { width:100%; min-height:150px; background:#18242A; color:var(--ink); border:1px solid var(--line);
+             border-radius:6px; padding:9px 10px; font:12.5px/1.45 var(--mono); resize:vertical; }
+  details summary { cursor:pointer; color:#F3D9A2; font-weight:600; margin:8px 0 4px; }
+  select { width:100%; background:#18242A; color:var(--ink); border:1px solid var(--line); border-radius:6px; min-height:44px; padding:6px; font:inherit; }
+  ol.plan { padding-left:20px; margin:6px 0; } ol.plan li { margin:4px 0; color:#C9D1CC; }
+  .keyrow { display:grid; grid-template-columns:120px 1fr; gap:12px; align-items:start; margin-top:8px; }
+  .keyimg { width:120px; aspect-ratio:1; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:#0c1216; }
+  .mapwrap { margin-top:10px; border-radius:8px; overflow:hidden; border:1px solid var(--line); background:#16263a; }
+  .mapwrap canvas { display:block; width:100%; height:auto; image-rendering:pixelated; touch-action:manipulation; }
+  .phone { position:relative; margin:10px auto 0; width:100%; max-width:390px; aspect-ratio:390/844; border-radius:14px; overflow:hidden;
+           border:1px solid var(--line); background:#0c1216; touch-action:none; }
+  .phone canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .phone .inview { position:absolute; left:0; right:0; bottom:0; padding:8px 10px; font-size:12.5px; line-height:1.4;
+                   background:rgba(12,18,22,.82); border-top:1px solid rgba(216,168,95,.45); }
+  .inview b { color:#F3D9A2; }
+  .inview .missing { color:#FFC7C0; }
+  .pal { display:grid; grid-template-columns:repeat(16, 1fr); gap:2px; margin-top:8px; }
+  .pal span { aspect-ratio:1; border-radius:2px; }
+  .sw { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; }
+  .sw-head { display:flex; gap:8px; align-items:baseline; justify-content:space-between; flex-wrap:wrap; }
+  .sw-name { font-weight:700; }
+  .sw-where { font-size:13px; color:var(--mut); }
+  .vers { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+  .ver { border:1px dashed rgba(216,168,95,.45); border-radius:8px; padding:8px; min-width:0; }
+  .ver .lbl { font-size:12px; color:var(--mut); margin-bottom:6px; }
+  .ver canvas { display:block; width:100%; aspect-ratio:1; image-rendering:pixelated; background:#0c1216; border-radius:6px; }
+  .ver .row { margin-top:6px; gap:6px; }
+  .ver .btn, .ver button { padding:8px 10px; min-height:40px; font-size:13px; flex:1 1 auto; }
+  .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); max-width:min(92vw,560px); z-index:80;
+           background:#2A3940; border:1px solid var(--line); border-radius:10px; padding:12px 16px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
+  .toast[data-bad="1"] { border-color:rgba(224,106,94,.7); color:#FFD6D0; }
+  .busy { position:fixed; inset:0; z-index:70; background:rgba(8,12,15,.6); display:flex; align-items:center; justify-content:center;
+          font-weight:700; color:#F3D9A2; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Ground Studio</h1>
+    <p class="sub">BroTown's ground, made from about fifty seamless swatches in HD pixel art and laid onto the Wheel by the game.</p>
+    <p class="mut" id="status">Building the plan…</p>
+  </header>
+
+  <section class="card">
+    <h2>How it works</h2>
+    <ol class="plan">
+      <li><b>Make the style key first</b>, in <a href="../world/" style="color:#F3D9A2">the World Builder</a>. Every swatch is matched to it.</li>
+      <li>For each swatch below: <b>copy its prompt</b> into a new ChatGPT chat, and attach <b>the style key</b> and <b>your bro's picture</b> (from <a href="../style/" style="color:#F3D9A2">the Style Lab</a>).</li>
+      <li><b>Bring the picture back</b> as version A. The page makes it seamless, puts it on the 1.5 px grid and the shared colours, and shows it laid on the map at game size next to your bro.</li>
+      <li>Later, a <b>second version (B)</b> of the same prompt in a fresh chat. The game mixes A and B so the ground does not repeat.</li>
+      <li><b>Download all</b> and upload the zip to GitHub (below). A session puts it in the game.</li>
+    </ol>
+    <p class="mut">Start with the commons, a road and the first stage of one spoke: that is enough to judge the look round town. Pictures stay in this browser; nothing is uploaded.</p>
+  </section>
+
+  <section class="card" id="key">
+    <h2>The style key <span id="key-chip" class="chip">not found</span></h2>
+    <div class="keyrow">
+      <img id="key-img" class="keyimg" alt="The style key" hidden>
+      <div>
+        <p id="key-none">No style key in this browser yet. Make it in <a href="../world/" style="color:#F3D9A2">the World Builder</a> first, then come back: this page reads it from there, and builds the shared colours from it.</p>
+        <p id="key-has" hidden>Found in the World Builder. Attach it, with your bro's picture, to every swatch chat.</p>
+        <div class="row"><a id="key-save" class="btn" download="brotown-style-key.png" hidden>Save style key</a><button id="key-share" hidden>Share…</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Progress <span id="count" class="chip">0 of 0</span></h2>
+    <p class="mut">The Wheel, each swatch in its own colour once it is made (dim until then). Tap the map to preview that spot.</p>
+    <div class="mapwrap"><canvas id="map" aria-label="The Wheel, coloured by swatch. Tap to preview a spot."></canvas></div>
+  </section>
+
+  <section class="card" id="preview">
+    <h2>Preview at game size</h2>
+    <p class="mut">Your bro stands in the middle, at the game's own scale. Drag to look around; pick a place to jump there.</p>
+    <select id="spot" aria-label="Place to preview"></select>
+    <div class="phone" id="phone"><canvas id="pv"></canvas><div class="inview" id="inview"></div></div>
+  </section>
+
+  <section class="card" id="swatches">
+    <h2>The swatches</h2>
+    <div id="list"></div>
+  </section>
+
+  <section class="card" id="palette">
+    <h2>The shared colours <span id="pal-chip" class="chip">automatic</span></h2>
+    <p class="mut">Every swatch is moved onto one palette of <span id="pal-n">64</span> colours, made from the style key and the swatches so far (the water, night and light colours the game draws are always kept). Freeze it once you are happy with the first few: after that, every new swatch is moved onto exactly these colours.</p>
+    <div class="pal" id="pal"></div>
+    <div class="row"><button id="freeze">Freeze these colours</button></div>
+  </section>
+
+  <section class="card" id="save">
+    <h2>Save and send</h2>
+    <p><b>Download all</b> gives one zip with every picture as ChatGPT made it, every swatch as the game will use it, and the colours. It is also your backup: <b>Restore</b> brings everything back on any device.</p>
+    <div class="row"><button id="export" class="brass">Download all</button><label class="btn">Restore…<input type="file" id="restore" accept=".zip,application/zip"></label></div>
+    <details>
+      <summary>Putting the swatches in the game</summary>
+      <ol class="plan">
+        <li>Tap <b>Download all</b>.</li>
+        <li>On GitHub, open the repository, tap <b>Add file → Upload files</b>, choose the zip, and commit it (any folder is fine, for example <code>art</code>).</li>
+        <li>Tell Claude the swatches are uploaded. A session unpacks them into the game and checks them.</li>
+      </ol>
+    </details>
+  </section>
+</div>
+<div id="busy" class="busy" hidden>Working…</div>
+<div id="toast" class="toast" hidden></div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1233,8 +1233,8 @@ round the water. That opens a second way to make it.
 
 | | Paint every square (the World Builder's first plan) | Bake from swatches (how the trial was made) |
 |---|---|---|
-| What ChatGPT makes | 137 squares for the old round island, 536 for the Wheel, each from its own template | ~45 seamless ground swatches (grass, dry grass, dirt, cobbles, sand, snow, ash, stone, mud …), plus small ground details (flowers, cracks, puddles) as objects |
-| Keeping one style | hundreds of separate pictures | ~45 pictures, two versions each |
+| What ChatGPT makes | 137 squares for the old round island, 536 for the Wheel, each from its own template | 48 seamless ground swatches (grass, dry grass, dirt, cobbles, sand, snow, ash, stone, mud …), plus small ground details (flowers, cracks, puddles) as objects |
+| Keeping one style | hundreds of separate pictures | 48 pictures, two versions each |
 | Roads, shores and collision | roughly where ChatGPT put them | exactly where the plan says |
 | Changing the plan later | repaint every square it touches | re-bake in minutes |
 | The owner's time | hundreds of chats | a few evenings |
@@ -1254,13 +1254,26 @@ definitely do the swatches."*
   are code-drawn water over a cliff object.
 - **The World Builder is not wasted.** Its plan and blueprint say where every
   swatch, road, shore and wall goes, and they are the collision map.
-- **About 45 swatches:** four stages for each of the eight elements, plus the
-  town, the commons, roads and the border lands. Each has two versions, mixed
-  by the game.
+- **48 swatches:** four stages for each of the eight elements (32), the
+  commons, the town's yards, street, boardwalk and square, roads, the railway
+  bed, lava, and the eight border lands. Each has two versions, mixed by the
+  game so the ground does not repeat.
 - **The phone composes the ground** from the swatches as you walk, so the
-  download does not grow with the map.
-- **The next step:** a Ground Studio page with every swatch's prompt, the
-  pipeline's processing, and a preview of the swatches laid out on the plan.
+  download does not grow with the map. `public/tools/world/core/ground.js`
+  already does it: it decides which swatch covers each spot of the plan and
+  lays them down on the 1.5 px grid, with ragged pixel-art edges between two
+  swatches and never a soft blend. Two pieces of ground composed apart meet
+  with no seam, which is what lets the game build it in chunks.
+- **The Ground Studio** (`/tools/ground/`, v2.3.2937) is where the owner
+  makes them:
+  - every swatch's prompt, ready to copy (attach the style key and the bro);
+  - each picture brought back is made seamless, shrunk to one 512 art px
+    tile and moved onto the shared palette, exactly as the game will use it;
+  - a preview at game size, with the bro standing on the real plan: the
+    roads, rivers, shores and borders round the swatch;
+  - a map of the Wheel that fills in as the swatches come in;
+  - **Download all** gives one zip to upload to GitHub, and it doubles as the
+    backup.
 
 ---
 

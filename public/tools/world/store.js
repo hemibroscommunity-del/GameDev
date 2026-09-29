@@ -21,10 +21,12 @@ function req(r) {
   return new Promise((resolve, reject) => { r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
 }
 
-export async function openStore(name = DB_NAME) {
+/* v2.3.2937: `stores` lets another tool keep its own database the same way
+   (the Ground Studio); the World Builder's four are the default. */
+export async function openStore(name = DB_NAME, stores = STORES) {
   const db = await new Promise((resolve, reject) => {
     const r = indexedDB.open(name, 1);
-    r.onupgradeneeded = () => { for (const s of STORES) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s); };
+    r.onupgradeneeded = () => { for (const s of stores) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s); };
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
   });
@@ -35,7 +37,7 @@ export async function openStore(name = DB_NAME) {
     del: (store, key) => req(tx(store, 'readwrite').delete(key)),
     keys: (store) => req(tx(store, 'readonly').getAllKeys()),
     clear: (store) => req(tx(store, 'readwrite').clear()),
-    async clearAll() { for (const s of STORES) await req(tx(s, 'readwrite').clear()); },
+    async clearAll() { for (const s of stores) await req(tx(s, 'readwrite').clear()); },
     close: () => db.close(),
   };
 }

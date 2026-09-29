@@ -639,25 +639,35 @@ export const PLAN = {
      Keyed by the two region ids in alphabetical order.  `land` is the
      landscape in between, used wherever the two meet: at their bases next
      to the commons, and on the PASSES that join them across the sea.
+     `ground` is its ground swatch's brief (v2.3.2937, the Ground Studio):
+     ground only, since whatever stands up is an object.
      `passes` names the pass in each tier of `wheel.passes` (levels 20 and
      60): the home for monsters of both elements, and the natural place for
      fusion.  Only neighbours meet, so there are exactly eight. */
   borders: {
     'ember|frost': { land: 'steam fields: snow melting into hot springs and wet black rock, with geysers and drifting steam',
+                     ground: 'wet black rock and slushy melting snow, with small steaming puddles',
                      passes: ['Geyser Gap', 'the Steam Stair'] },
     'ember|sky': { land: 'ash dunes: grey volcanic ash blowing over golden sand, and charred cacti',
+                   ground: 'grey volcanic ash drifted over golden sand',
                    passes: ['Cinder Crossing', 'the Ashen Reach'] },
     'hollows|sky': { land: 'the sand gives way to stone: red sandstone breaking up into grey granite boulders',
+                     ground: 'red sand scattered over grey granite gravel',
                      passes: ['Redrock Gap', 'the Sandstone Stair'] },
     'hollows|thunder': { land: 'the mine works: spoil heaps, ore piles, abandoned mine carts and the first iron pipes',
+                         ground: 'trampled grey spoil and ore dust with flakes of rusty iron',
                          passes: ['Ore Cut', 'the Slag Causeway'] },
     'thunder|tidal': { land: 'the foundry meets the shore: slag running down to the sand, rusted chains and cargo crates',
+                       ground: 'dark sand streaked with grey slag and rust',
                        passes: ['Chain Ford', 'the Iron Pier'] },
     'mist|tidal': { land: 'brackish marsh: lagoons gone murky, mangrove roots and sickly dune grass',
+                    ground: 'wet grey-green mud with patches of sickly dune grass',
                     passes: ['Brackwater Crossing', 'the Rotting Causeway'] },
     'mist|verdant': { land: 'the rot line: the jungle\'s giant flowers wilting grey-green and its vines turning into slimy dead branches',
+                      ground: 'wilting grey-green grass and fallen grey petals over dark soil',
                       passes: ['Wilt Gap', 'the Blight Bridge'] },
     'frost|verdant': { land: 'alpine meadows: snowmelt streams through short green grass and alpine flowers, with the first pines',
+                       ground: 'short alpine grass with small white and purple flowers and patches of old snow',
                        passes: ['Meltwater Gap', 'the High Meadow Pass'] },
   },
   /* How a pass looks, by the tier it is in: short at level 20, where the

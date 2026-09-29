@@ -48,7 +48,7 @@ follows is at the end.
 | # | Phase | Who | State |
 |---|---|---|---|
 | 1 | **Tooling**: plan, blueprint, prompts, fuser, World Builder page | sessions | **shipped v2.3.2931** |
-| 2 | **The style key**, then the first **ground swatches** (a Ground Studio page, next), judged on a phone next to the bro. *(Before v2.3.2935: paint a test strip of squares round the town square.)* | owner | **next: the style key** |
+| 2 | **The style key**, then the first **ground swatches** in the **Ground Studio** (`/tools/ground/`, v2.3.2937), judged on a phone next to the bro. *(Before v2.3.2935: paint a test strip of squares round the town square.)* | owner | **next: the style key** |
 | 3 | **Make the ground**: every swatch, baked onto the plan. *(Before v2.3.2935: paint every land square.)* | owner + sessions | — |
 | 4 | **Export for the game**: cut the fused world into streaming chunks under `public/maps/world/` | sessions | — |
 | 5 | **Engine**: chunk streaming, region from position, server interest by region (see "What the game needs") | sessions | — |
@@ -429,6 +429,69 @@ Run them when touching `public/tools/world/`.
 
 ---
 
+## The Ground Studio: making the ground from swatches (v2.3.2937)
+
+> Owner, 2026-09-29: *"Yes definitely do the swatches."*
+
+**What it is.** A page at **`/tools/ground/`** where the owner makes the 48
+ground swatches the Wheel needs (World Bible §13):
+
+- **The catalog** comes from the plan (`core/ground.js`, `groundCatalog`):
+  four stages per spoke, the commons, the town's yards, street, boardwalk and
+  square, roads, the railway bed, lava, and the eight border lands. Each has a
+  ground-only brief.
+- **The prompts** (`public/tools/ground/prompts.js`) are the brief, the HD
+  pixel art paragraph and the quiet-ground rule (`public/tools/style/
+  bible.js`), and the scale line. The owner attaches the style key and the
+  bro.
+- **Each picture brought back** is squared, made seamless, shrunk to one
+  512 art px tile (768 game px), and moved onto the one shared palette with
+  stray pixels cleaned up (`public/tools/style/process.js`).
+- **The palette** is made from the style key (weighted) and every swatch so
+  far, taken in name order so the same pictures always make the same colours,
+  with the game's effect colours kept. **Freeze** fixes it; after that every
+  new swatch is moved onto exactly those colours.
+- **Phone memory.** A full set is 96 pictures. The page keeps only the
+  finished tiles' pixels at full size; each seamless tile before the palette
+  stays a PNG, decoded only while the colours are redone, and the colours are
+  made from small copies (about 200,000 pixels in all).
+- **The preview** composes the real plan round a chosen spot at game size
+  (1,024 game px of height on a phone-shaped screen) with the bro standing in
+  the middle, and says which swatches are on screen and which are not made
+  yet. The progress map shows the whole Wheel, each swatch in its own
+  colour once made.
+- **Download all** gives one zip: `manifest.json` (the palette, the swatch
+  list), `ground/<id>-<A|B>.png` (the tiles as the game will use them) and
+  `originals/` (ChatGPT's pictures as uploaded). It restores into any
+  browser. The owner uploads it to GitHub; a session unpacks it into the game.
+- **The style key** is read from the World Builder's own storage on the
+  same site, so it is made once.
+
+**How the ground is laid** (`core/ground.js`):
+
+- `materialMap` gives every blueprint cell a swatch: water for the sea, the
+  river and ponds (drawn by the game, not a swatch); the town's own
+  surfaces; roads, the railway bed and lava; the commons; and on a spoke its
+  stage's swatch, or its border land's where it meets a neighbour (on a pass,
+  or near the line halfway between two spokes at their bases).
+- `composeGround` gives every pixel of a rectangle the swatch whose share of
+  the ground round it (a blurred field over the cells), plus a little noise of
+  its own, is highest: the edges come out ragged, in clusters, like a pixel
+  artist's, and never blended. Two versions of a swatch share the ground in
+  large noisy patches. Tiles are anchored to the frame, so rectangles
+  composed apart meet with no seam.
+
+**Tests.** `node tools/world/test-world-core.mjs` checks the catalog, each
+spoke's stages and its passes' border land, determinism, seamless chunks,
+tile-true laying and the not-made-yet colour. `node tools/qa/ground-studio.mjs`
+(22 checks in real Chromium, at a phone's size) checks the prompts, the style
+key from the World Builder, a picture in through the real file input coming
+out 512 px, seamless, hard-edged and on the palette, the map and the preview,
+frozen colours, a reload, and a zip restored into a fresh browser with the
+same pixels.
+
+---
+
 ## The world trial: walking a seamless island today (v2.3.2932)
 
 > Owner, 2026-09-29: *"Can we do one trial run where you just replicate the
@@ -579,6 +642,6 @@ Dungeons, the farm and building interiors keep their doors and loading screens
 5. **Brotown's plot table, the premise, and the Wheel's names.** See
    [WORLD-BIBLE.md §10](WORLD-BIBLE.md#10-decisions-for-the-owner).
 6. **Where the pictures live.** Today that is the owner's device plus
-   downloaded zips. With swatches there are only about 45 of them, so
+   downloaded zips. With swatches there are only 48 of them, so
    committing them to the repo (uploaded on GitHub's website) is the obvious
    home.
