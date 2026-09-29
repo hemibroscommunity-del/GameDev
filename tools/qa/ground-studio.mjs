@@ -10,7 +10,7 @@
  *   2. THE STYLE KEY is read from the World Builder's storage on the site;
  *   3. A PICTURE IN, through the real file input, comes out as the game will
  *      use it: 512 art px, seamless, hard-edged, on one palette of at most
- *      64 colours; the progress map and the preview pick it up;
+ *      PIXEL.palette colours (128 since v2.3.2940); the progress map and the preview pick it up;
  *   4. THE PREVIEW draws the ground at game size round the bro, and says
  *      which swatches are on screen and which are not made yet;
  *   5. FROZEN COLOURS stay frozen when another swatch comes in;
@@ -24,6 +24,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
+import { PIXEL } from '../../public/tools/style/bible.js';
 import { fileURLToPath } from 'url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -159,7 +160,9 @@ try {
   await page.close();
   page = await open(ctxA);
   const key = await page.evaluate(() => ({ chip: document.getElementById('key-chip').textContent, img: !document.getElementById('key-img').hidden, pal: (window.__ground.S.palette || []).length }));
-  ok('the style key is found in the World Builder and the colours start from it', key.chip === 'found' && key.img && key.pal === 64, key);
+  ok('the style key is found in the World Builder and the colours start from it', key.chip === 'found' && key.img && key.pal > 16 && key.pal <= PIXEL.palette, key);
+  /* (not exactly PIXEL.palette: the median cut stops early when the test's
+     made-up key has too few distinct colours -- 127 of 128 in v2.3.2940) */
 
   /* ── 3. pictures in ── */
   console.log('3. pictures in, through the file inputs');
@@ -171,7 +174,7 @@ try {
   for (const id of Object.keys(pics)) await put(page, id, 'A', pics[id]);
   const f = await tileFacts(page, 'commons', 'A');
   ok('a picture comes out as one 512 art px tile on the 1.5 px grid', f.w === 512 && f.h === 512, f);
-  ok('...hard-edged, on the one palette, at most 64 colours', f.semi === 0 && f.offPalette === 0 && f.colours <= 64 && f.colours > 4, f);
+  ok(`...hard-edged, on the one palette, at most ${PIXEL.palette} colours`, f.semi === 0 && f.offPalette === 0 && f.colours <= PIXEL.palette && f.colours > 4, f);
   ok('...and seamless: its wrap-round edge is no worse than two columns inside it', f.wrap <= f.inside * 1.6 + 6, f);
   const after = await page.evaluate(() => {
     const S = window.__ground.S;

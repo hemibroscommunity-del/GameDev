@@ -32,8 +32,13 @@ export const PIXEL = {
   gamePxPerArtPx: 1.5,
   /* Colours in the one palette the whole world shares, the reserved effect
      colours (night, water, fire) included.  Made once from the style key,
-     then frozen: every picture is moved onto it. */
-  palette: 64,
+     then frozen: every picture is moved onto it.
+     v2.3.2940: 64 -> 128.  Owner: "Yes do 128."  With 8 kept for the
+     effects, 64 left 56 colours for eight lands and the town: too few for
+     material-aware texturing (the Poison Forest's greens would merge with
+     the Verdant Wilds', metal would lose its shine steps).  Still ONE shared
+     palette, so the look stays one world. */
+  palette: 128,
   /* A ground swatch, in art px: 768 game px on a side, most of a phone
      screen's width and three quarters of its height. */
   groundTile: 512,

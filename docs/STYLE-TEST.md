@@ -7,7 +7,7 @@
 >
 > **What the lab is for now:** its **HD pixel art (chosen)** look uses exactly
 > the settings every picture in the game will get (the 1.5 grid, one
-> 64-colour palette, 768 game px ground tiles, stray pixels cleaned up). Put a
+> 128-colour palette since v2.3.2940, 768 game px ground tiles, stray pixels cleaned up). Put a
 > picture in it to see it at game size next to the bro before you keep it.
 > The "After the decision" steps at the end are under way. The rest of this
 > page is the test as it was planned, kept for the record.

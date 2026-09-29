@@ -24,6 +24,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
+import { PIXEL } from '../../public/tools/style/bible.js';
 import { fileURLToPath } from 'url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -253,8 +254,8 @@ try {
   const H = look.hdpixel;
   ok('HD pixel art (chosen): the tree is on the 1.5 game px grid (190 game px tall -> 127 art pixels)',
     H.snap === 1.5 && Math.abs(H.tree.h - 127) <= 1 && Math.abs(H.treeWorld[1] - 190) <= 1 && H.missing.length === 0, { tree: H.tree, world: H.treeWorld });
-  ok('...hard edges, one palette of at most 64 colours, and 768 px ground tiles (512 art pixels)',
-    H.tree.semi === 0 && H.ground.semi === 0 && H.palette > 4 && H.palette <= 64 && H.tree.colours <= 64 && H.ground.colours <= 64 && H.ground.w === 512 && H.ground.h === 512,
+  ok(`...hard edges, one palette of at most ${PIXEL.palette} colours, and 768 px ground tiles (512 art pixels)`,
+    H.tree.semi === 0 && H.ground.semi === 0 && H.palette > 4 && H.palette <= PIXEL.palette && H.tree.colours <= PIXEL.palette && H.ground.colours <= PIXEL.palette && H.ground.w === 512 && H.ground.h === 512,
     { palette: H.palette, tree: H.tree, ground: H.ground });
   /* rule 5: detail in clusters -- a lone pixel goes, a 1-px line stays */
   const speck = await page.evaluate(async () => {

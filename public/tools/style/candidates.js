@@ -96,7 +96,7 @@ export const STYLES = [
   },
   {
     id: 'hdpixel', name: 'HD pixel art (chosen)',
-    why: "The owner's choice (v2.3.2935): finer pixels than the bro and richer shading, all on one 1.5 game px grid in one 64-colour palette. The bro reads a little chunkier than the world, which makes him stand out like a figure on a stage. Since v2.3.2939 its prompts attach the style key, never the bro, and ask for every material drawn as itself.",
+    why: "The owner's choice (v2.3.2935): finer pixels than the bro and richer shading, all on one 1.5 game px grid in one 128-colour palette (64 until v2.3.2940). The bro reads a little chunkier than the world, which makes him stand out like a figure on a stage. Since v2.3.2939 its prompts attach the style key, never the bro, and ask for every material drawn as itself.",
     risks: "Fine pixels shimmer more when the camera moves. ChatGPT's pixels are only pixel-ish, so every picture must go through the snap.",
     like: 'Eastward, Sea of Stars, CrossCode',
     style: 'Style: ' + HD_STYLE,
