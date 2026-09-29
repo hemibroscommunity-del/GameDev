@@ -26,6 +26,7 @@ The region, border and plot tables below were generated from it.
 8. [Farms, dungeons and interiors](#8-farms-dungeons-and-interiors)
 9. [Growing the world, and the load it can carry](#9-growing-the-world-and-the-load-it-can-carry)
 10. [Decisions for the owner](#10-decisions-for-the-owner)
+11. [Trees: objects you can chop, not paint](#11-trees-objects-you-can-chop-not-paint)
 
 ---
 
@@ -534,6 +535,26 @@ is the one direction that is closed.
 
 ---
 
+### Measured: the world trial
+
+The streaming above is not only a design. `?trial=world` builds it today (see
+[WORLD-MAP-PIPELINE.md, "The world trial"](WORLD-MAP-PIPELINE.md#the-world-trial-walking-a-seamless-island-today-v232932)).
+It is this island at full size, baked from copies of today's zone art and
+walked in the real game.
+
+The first measurements, headless against a local worker:
+
+- **0.8 s** to walk in.
+- **14–15 pieces (~15 MB)** in memory however far you go.
+- **Zero** pieces seen before their picture arrived, at a brisk walk.
+- The worker followed the player across the whole island with no server
+  change.
+
+The phone over the internet is the test that matters. The trial's readout is
+there so the owner can take it.
+
+---
+
 ## 10. Decisions for the owner
 
 1. **The premise.** Shard rush and keystones: keep it, change it, or drop
@@ -548,3 +569,66 @@ is the one direction that is closed.
 5. **The character order** (§7). Mayor Bro as the first test.
 6. **Farms as personal homesteads** (§8). A server change, separate from the
    map.
+7. **Trees as objects** (§11). Which trees you can chop, and how fast they
+   come back.
+
+---
+
+## 11. Trees: objects you can chop, not paint
+
+> Owner, 2026-09-29: *"Don't you think all the trees in the game should be
+> replaced with objects that the character can cut down like the pine
+> tree?"*
+
+**Mostly yes.**
+
+**How it is today.** Each zone has exactly one choppable tree: a server
+gather node that respawns quickly, by the owner's own rule (v2.3.1592, "one
+resource per zone but with quick respawn"). Every other tree is paint. You
+walk straight through its trunk, its canopy never hides you, and you cannot
+chop it.
+
+**Why trees should be objects:**
+
+1. **They would behave the way they look.**
+   - A tree object stands on its footprint, so you walk round it.
+   - The depth sort (`depthSort.js`, v2.3.2633) draws you behind it when you
+     are behind it.
+   - Neither is possible for paint.
+2. **Woodcutting would be everywhere,** instead of one tree per zone.
+3. **The seamless map gets easier.**
+   - ChatGPT paints ground, not trees, and a tree straddling a square's
+     edge is one of the hardest seams to hide.
+   - Trees can be redrawn in the new style without repainting a single
+     square, the same argument as the empty building plots (§5).
+4. **One set of tree art per biome,** drawn once with the style key (§6):
+   pine, oak, palm, dead tree, giant jungle tree, the Foundry's iron pylons.
+
+**But not literally all of them:**
+
+1. **Dense forest stays painted.**
+   - A forest mass is a wall you walk round, not four hundred trees.
+   - Every choppable tree is server state (where it is, whether it is
+     standing, when it comes back). The worker has to keep it and send it to
+     the players near it.
+   - Hundreds per region is easy; tens of thousands is not.
+   - So: the trees on the edges of woods and the ones standing alone in the
+     open are objects. The inside of a wood is painted canopy you cannot
+     enter.
+2. **The economy moves.**
+   - Making every tree choppable multiplies the wood supply, and with it
+     log prices and woodworking progress.
+   - The one-tree rule was chosen on purpose. So pick one: trees come back
+     more slowly, a chop yields less, or only some kinds of tree can be cut.
+3. **It belongs with the engine work.**
+   - Trees placed by the plan (not at random), and sent to the players near
+     them, need the same by-distance updates the seamless world needs anyway
+     (§9).
+   - So it lands in phase 5–6, not before.
+
+**What changes in the World Builder when this is decided:**
+
+- The prompts stop painting lone trees on open ground.
+- The plan's woods (the dark blobs) stay painted forest.
+- The blueprint writes out a list of tree positions along the edges of the
+  woods and scattered in the open, for the game to stand objects on.

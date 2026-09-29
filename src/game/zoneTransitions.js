@@ -27,6 +27,7 @@ import { _typeof } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
 import { preloadZoneAssets, freeZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate; v2.3.2272: and its exit half */
+import { syncWorldTrial } from '@/game/worldTrial.js'; /* v2.3.2932: the world trial */
 import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
 import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2859: town's NPCs + buildings load and free with town */
 
@@ -479,6 +480,7 @@ export function driveDevWarp(S) {
 
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
+  syncWorldTrial(S);   /* v2.3.2932: the world trial's walk grid + readout (one falsy check when off) */
   driveDevWarp(S);   /* v2.3.2308: one leg of a pending test-panel warp */
   syncTownScenery(S);   /* v2.3.2859: town's NPCs + buildings, whichever way you arrived */
         /* v2.3.1406: STUCK-GATE FAILSAFE.  S._zoneLoading is normally

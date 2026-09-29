@@ -6815,8 +6815,22 @@ export var BroTown = function BroTown(_ref0) {
            Maps narrower/shorter than the viewport (only possible on a very
            wide desktop window) center instead, since some void is then
            unavoidable. */
-        var _maxCamX = ZONE_W - W;
-        var _maxCamY = ZONE_H - H;
+        /* ═══ v2.3.2932: CLAMP TO THE ZONE YOU ARE IN NOW ═══
+           ZONE_W/ZONE_H were read at the top of the frame, BEFORE
+           handleZoneTransitions -- deliberately, for the water check.  But
+           on the frame a zone change lands, the transition has just snapped
+           the camera onto the player in the NEW zone, and clamping that to
+           the OLD zone's size pinned it in the old map's far corner; the
+           camera then slid in from there over the next ~15 frames.  On a
+           1024 px spoke that is a flick nobody noticed.  On the world trial's
+           13,312 px island it was a sweep across the whole map, and the
+           streamed ground dutifully loaded every piece along the way
+           (mp-worldtrial caught 17 wasted loads on arrival). */
+        var _camZone = ZONES[S.currentZone];
+        var _camZW = _camZone ? _camZone.w * TILE : ZONE_W,
+          _camZH = _camZone ? _camZone.h * TILE : ZONE_H;
+        var _maxCamX = _camZW - W;
+        var _maxCamY = _camZH - H;
         S.camera.x = _maxCamX <= 0 ? _maxCamX / 2 : Math.max(0, Math.min(_maxCamX, S.camera.x));
         S.camera.y = _maxCamY <= 0 ? _maxCamY / 2 : Math.max(0, Math.min(_maxCamY, S.camera.y));
 

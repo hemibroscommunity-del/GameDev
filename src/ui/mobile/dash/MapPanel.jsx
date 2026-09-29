@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
+import { worldTrialMapImage } from '@/game/worldTrial.js';
 import { Assets } from 'pixi.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
@@ -54,7 +55,8 @@ export const MapPanel = () => {
     const S = getState();
     const zoneId = S && S.currentZone;
     const zone = zoneId && ZONES[zoneId];
-    const url = zoneId && IMAGE_ZONE_MAPS[zoneId];
+    /* v2.3.2932: the world trial's island, not the vista it replaces */
+    const url = zoneId && (worldTrialMapImage(zoneId) || IMAGE_ZONE_MAPS[zoneId]);
 
     ctx.clearRect(0, 0, MINI_W, MINI_H);
     ctx.fillStyle = '#111E23';

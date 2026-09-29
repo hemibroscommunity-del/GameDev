@@ -40,6 +40,7 @@ import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { mintWorldFxTextures } from './worldFxTextures.js';   /* v2.3.2712 */
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
+import { isWorldTrialZone, preloadWorldTrial } from '../game/worldTrial.js'; /* v2.3.2932 */
 import { effectsAnimationsReady, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit; v2.3.2844: minus the retired snowman plume */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
 import { preloadTraits, preloadBroBadge } from './systems/entityRenderer.js'; /* v2.3.2345: + the verified-Bro plate badge */
@@ -75,7 +76,11 @@ export async function preloadZoneAssets(zoneId) {
   const tasks = [];
   /* map texture (self-heals via tileRenderer if missing, but we await it
      so the overlay holds until the ground is ready = no black flash) */
-  tasks.push(Promise.resolve(preloadStartZoneMap(zoneId)).catch(() => {}));
+  /* v2.3.2932: in the world trial the World View's ground is the streamed
+     island, not its vista picture -- warm the trial's first screen instead
+     (and time it: that is the trial's "way in" number). */
+  if (isWorldTrialZone(zoneId)) tasks.push(Promise.resolve(preloadWorldTrial()).catch(() => {}));
+  else tasks.push(Promise.resolve(preloadStartZoneMap(zoneId)).catch(() => {}));
   /* the monster VARIANT sheets this zone uses (server sends the monsters;
      we need their art warm before they render). */
   {

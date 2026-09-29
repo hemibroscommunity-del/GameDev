@@ -12,6 +12,8 @@ import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from 
 import { isZoneUnlocked, zoneUnlockQuest, questRoutePoint } from "@/game/questRoute.js"; /* v2.3.1822: a shut door looks shut; v2.3.2121: and the way there is lit */
 import { getTrailStyle } from '@/game/questTrailStyle.js'; /* v2.3.2141: ...in the shape the player chose, or not at all */
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
+import { ChunkGround } from '../chunkGround.js';            /* v2.3.2932: the world trial's streamed ground */
+import { isWorldTrialZone } from '@/game/worldTrial.js';
 import { PORTAL_BEAM } from '../fxStrips.js'; /* v2.3.2070: the light shaft over a zone exit */
 
 const ZONE_LABEL_STYLE = new TextStyle({
@@ -369,6 +371,9 @@ export class TileRenderer {
        free.  removeChildren() only detaches; the sprite object (and its
        texture ref) would linger until GC otherwise. */
     if (this._imageSprite) { try { this._imageSprite.destroy(); } catch (e) { /* ignore */ } this._imageSprite = null; }
+    /* v2.3.2932: and the world trial's streamed ground, which frees every
+       piece it holds -- the same "drop the reference on the way out" rule. */
+    if (this._chunkGround) { try { this._chunkGround.destroy(); } catch (e) { /* ignore */ } this._chunkGround = null; }
     // Remove old tile sprites
     this.tileContainer.removeChildren();
     this.buildingContainer.removeChildren();
@@ -656,6 +661,19 @@ export class TileRenderer {
        /weather effects play continuously.  Also lays down the still
        image as an underlay so the player sees art immediately while
        the video is decoding (or if autoplay is blocked). */
+    /* ═══ v2.3.2932: THE WORLD TRIAL — a ground streamed in pieces ═══
+       `?trial=world` turns the World View into the whole island at full size
+       (src/game/worldTrial.js), far too big to be the one picture every other
+       zone is.  ChunkGround keeps only the pieces round the camera; update()
+       below drives it.  Ahead of the image path on purpose: the World View
+       still HAS an image (the vista), and it must not be drawn under this. */
+    if (isWorldTrialZone(zoneId)) {
+      this._renderedTiled = true;
+      this._isImageZone = true;
+      this._chunkGround = new ChunkGround(this.tileContainer);
+      return;
+    }
+
     const videoUrl = VIDEO_ZONE_MAPS[zoneId];
     const imageUrl = IMAGE_ZONE_MAPS[zoneId];
     if (videoUrl) {
@@ -1024,6 +1042,8 @@ export class TileRenderer {
   }
 
   update(cx, cy, viewW, viewH, S) {
+    /* v2.3.2932: stream the trial's ground round the camera (null otherwise) */
+    if (this._chunkGround) this._chunkGround.update(cx, cy, viewW, viewH);
     /* Auto-refresh when a Tiled map finishes loading AFTER the
        initial rebuild for this zone — the user briefly sees the
        procedural fallback, then snaps to the Tiled visuals once

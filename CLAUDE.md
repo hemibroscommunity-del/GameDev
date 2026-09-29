@@ -44,7 +44,10 @@ remnant to migrate server-side, not a mode to preserve.
   vs edge-cropped test live here, v2.3.2650),
   `docs/WORLD-MAP-PIPELINE.md` (the ONE-SEAMLESS-WORLD plan: the World
   Builder at `public/tools/world/` — grid, blueprint, per-square ChatGPT
-  prompts, fuser — and the engine phases after it, v2.3.2931),
+  prompts, fuser — and the engine phases after it, v2.3.2931; its
+  "world trial" section is the `?trial=world` switch that streams the
+  whole island, baked from today's zone art, in place of the World View,
+  v2.3.2932),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

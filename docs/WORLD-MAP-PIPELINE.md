@@ -381,6 +381,94 @@ Run them when touching `public/tools/world/`.
 
 ---
 
+## The world trial: walking a seamless island today (v2.3.2932)
+
+> Owner, 2026-09-29: *"Can we do one trial run where you just replicate the
+> entire worldview map using copies of existing art so I can test loading times
+> and game feel?"*
+
+**How to try it.** Open the game with **`?trial=world`** on the end of the
+address (the pull request's preview link, or the site once merged). Then walk
+down the town's stairs as usual.
+
+- The World View is replaced by the **whole island at full size**: 13,312 ×
+  13,312 game px, about 80 s coast to coast.
+- You arrive at the foot of the town painting. The marker there takes you
+  back to town.
+- The switch sticks for that browser tab. `?trial=off` turns it off.
+- Add `&perf=1` for the frame-time readout at the top of the screen.
+
+**What it is:**
+
+- **The layout is this plan's island.** The regions, roads, river and
+  bridge, railway, beaches and sea are all where the blueprint puts them.
+- **The pictures are copies of today's art.** Each region is its own zone
+  painting cropped, resampled to the plan's density and tiled seamlessly,
+  blended into its neighbours. Today's town painting sits in the middle at its
+  real size.
+- **It is baked by `tools/world/bake-trial-world.mjs`** into 400 pieces of
+  512 × 512 art px under `public/maps/world-trial-v1/`: 16 MB in all, about
+  42 KB a piece. That is the same chunking the World Builder stores, and the
+  export in phase 4 will produce the same.
+- It looks like a patchwork. The point is how the real thing will **load and
+  feel**.
+
+**How it runs** (`src/game/worldTrial.js`, `src/rendering/chunkGround.js`):
+
+- **It rides on the World View.** It is a zone every worker already accepts,
+  safe and without monsters, and the worker never clamps a position to a
+  zone's size. So the trial needs **no server change**, and a player without
+  the switch never meets it.
+- **Only the pieces round the camera are in memory.** Those are the pieces
+  the view touches plus 360 px, loaded nearest-first, four at a time, and
+  freed a piece further out.
+- **Pieces not yet arrived show a blurry copy.** A 1/13-scale picture of the
+  whole island sits underneath, so they are never a black hole.
+- **The way in waits for the first pieces.** The ordinary zone-loading
+  overlay holds until the first screen has arrived, and that time is shown.
+- **The sea and the river stop you; the bridge does not.**
+- **It does not include** monsters, trees or props, buildings, or other
+  regions' collision. It is ground only.
+
+**The readout** (bottom-left, in the trial):
+
+- the way in time;
+- pieces in memory, and their MB;
+- how many have loaded, with the average, last and worst load times;
+- **pop-ins**: a piece that was on screen before its picture arrived. This is
+  the number that says whether streaming is keeping up.
+
+**Measured** (`node tools/qa/mp/run.mjs worldtrial`, 16 checks). This ran in
+headless Chromium with software graphics against a local worker, so a phone
+over the internet will be slower to fetch and faster to draw:
+
+| | |
+|---|---|
+| way in | **0.8 s** |
+| pieces in memory | **14–15 (~15 MB)**, however far you walk |
+| a walk from town to the Mill Bridge to Frost Ridge | 42 pieces loaded, ~2.5 MB fetched |
+| one piece | 230–390 ms to fetch and decode |
+| pop-ins | **0**, at a brisk walk |
+| the worker | followed the player across the whole island |
+
+**One bug it found, fixed for every zone.** On the frame a zone change lands,
+the camera was clamped to the *previous* zone's size. That pinned it in the
+old map's far corner, and it slid in over ~15 frames.
+
+- On a 1024 px spoke that is a flick nobody noticed.
+- On the island it swept across the map and loaded 17 pieces for nothing.
+- `BroTown.jsx` now clamps to the zone you are in.
+
+**Removing the trial** once it has served:
+
+- delete `public/maps/world-trial-v1/`, `src/game/worldTrial.js`,
+  `src/rendering/chunkGround.js` and the lines tagged v2.3.2932 that call
+  them;
+- keep `chunkGround.js` if the real world is going to stream the same way,
+  which is the plan.
+
+---
+
 ## What the game needs afterwards (phases 4–6)
 
 From the feasibility study, in order.
