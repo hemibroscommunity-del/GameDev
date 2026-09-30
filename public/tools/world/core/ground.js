@@ -29,13 +29,23 @@
  *   overviewPixels(...)   the whole map, small, in the plan's colours.
  *
  * ── HOW TWO SWATCHES MEET ──
- * Never on a straight line, and never with a soft blend: pixel art has no
- * half-colours.  Each swatch's share of the ground is a smooth field over
- * the cells (the same blurred membership the World Builder's sketch uses);
- * every pixel takes the swatch whose share, plus a little noise of its own,
- * is highest.  The edge comes out ragged, in clusters of pixels, like a
- * pixel artist's.  Two versions of a swatch (A and B) share the ground in
- * large noisy patches, so the repeat is harder to spot.
+ * Never with a soft blend: pixel art has no half-colours.  NATURAL ground --
+ * grass, dirt, sand, snow, the roads, the water -- meets on a ragged line:
+ * each swatch's share of the ground is a smooth field over the cells (the
+ * same blurred membership the World Builder's sketch uses), and every pixel
+ * takes the swatch whose share, plus a little noise of its own, is highest.
+ * The edge comes out in clusters of pixels, like a pixel artist's.  Two
+ * versions of a swatch (A and B) share the ground in large noisy patches,
+ * so the repeat is harder to spot.
+ *
+ * BUILT surfaces -- the town's street, boardwalks and square (BUILT below)
+ * -- are laid exactly on their cells, with straight edges, over the natural
+ * ground.  v2.3.2945, owner, on Main Street in the Ground Studio: "I think
+ * wooden plank bits are on the edges."  They were the boardwalks: one cell
+ * wide, and a blurred field cannot hold a strip that thin -- between the
+ * street and a yard all three shares come out near a third, the noise
+ * decides every pixel, and the planks crumbled into specks along both
+ * edges of the street.  A surveyed town has straight edges anyway.
  *
  * ── DETERMINISM ──
  * Everything is a function of absolute position (the frame's art px): the
@@ -55,6 +65,8 @@ export const WATER = 'water';
 const BORDER_BAND = 0.45;
 /* how much each swatch's own noise pushes its edge about */
 const JIT = 0.32;
+/* v2.3.2945: the surfaces laid exactly on their cells (see the header) */
+const BUILT = ['street', 'boardwalk', 'plaza'];
 /* the water the preview draws: deep, mid, shallow and foam -- the game's own
    reserved effect colours (public/tools/style/scene.js, EFFECT_PALETTE) */
 const WATER_RGB = { deep: [28, 70, 126], mid: [53, 113, 161], shallow: [78, 156, 196], foam: [226, 238, 240] };
@@ -158,7 +170,10 @@ export function materialMap(plan, bp) {
       mat[i] = m;
     }
   }
-  return { mat, ids, index, water, catalog: cat };
+  /* v2.3.2945: which swatches are built (laid on their cells, straight-edged) */
+  const built = new Uint8Array(ids.length);
+  for (const id of BUILT) if (index[id] != null) built[index[id]] = 1;
+  return { mat, ids, index, water, catalog: cat, built };
 }
 
 /* ── laying the swatches ── */
@@ -182,6 +197,42 @@ function blur1(f, w, h, r) {
     }
     for (let y = 0; y < h; y++) f[y * w + x] = tmp[y];
   }
+}
+
+/* v2.3.2945: the NATURAL swatches' shares of the ground round a rectangle
+   (`cw` x `ch` cells from `cellAt`): each one's cells blurred twice.  Built
+   surfaces take no part -- they are laid on their cells (builtLookup) -- so
+   the natural ground runs on under them, and a one-cell boardwalk can no
+   longer split a street from a yard three ways. */
+function naturalFields(mm, cellAt, cw, ch) {
+  const seen = new Uint8Array(mm.ids.length);
+  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) seen[cellAt(x, y)] = 1;
+  const present = [], memb = [];
+  for (let q = 0; q < mm.ids.length; q++) {
+    if (!seen[q] || (mm.built && mm.built[q])) continue;
+    const f = new Float32Array(cw * ch);
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) f[y * cw + x] = cellAt(x, y) === q ? 1 : 0;
+    blur1(f, cw, ch, 1);
+    blur1(f, cw, ch, 1);
+    present.push(q); memb.push(f);
+  }
+  /* nothing natural in reach (deep inside the square): the commons, which
+     is never drawn there because every pixel is built */
+  if (!present.length) { present.push(mm.index.commons != null ? mm.index.commons : 0); memb.push(new Float32Array(cw * ch).fill(1)); }
+  return { present, memb };
+}
+
+/* v2.3.2945: the built swatch under a point (art px, continuous), or -1. */
+function builtLookup(bp, mm) {
+  const built = mm.built;
+  if (!built) return () => -1;
+  const S = bp.scale;
+  return (ax, ay) => {
+    const bx = Math.floor((ax - bp.x0) / S), by = Math.floor((ay - bp.y0) / S);
+    if (bx < 0 || by < 0 || bx >= bp.w || by >= bp.h) return -1;
+    const q = mm.mat[by * bp.w + bx];
+    return built[q] ? q : -1;
+  };
 }
 
 /* The ground of `rect` (art px, frame coordinates).
@@ -215,19 +266,10 @@ export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
     const bx = Math.min(bp.w - 1, Math.max(0, cx0 + x)), by = Math.min(bp.h - 1, Math.max(0, cy0 + y));
     return mm.mat[by * bp.w + bx];
   };
-  const seen = new Uint8Array(mm.ids.length);
-  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) seen[cellAt(x, y)] = 1;
-  const present = [], memb = [];
-  for (let q = 0; q < mm.ids.length; q++) {
-    if (!seen[q]) continue;
-    const f = new Float32Array(cw * ch);
-    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) f[y * cw + x] = cellAt(x, y) === q ? 1 : 0;
-    blur1(f, cw, ch, 1);
-    blur1(f, cw, ch, 1);
-    present.push(q); memb.push(f);
-  }
+  const { present, memb } = naturalFields(mm, cellAt, cw, ch);
   const water = mm.water;
   const wIdx = present.indexOf(water);
+  const builtAt = builtLookup(bp, mm);
   /* the swatch of every pixel, with one pixel more all round, so a shore on
      the rectangle's edge is found the same way whichever rectangle it is in */
   const EW = RW + 2, EH = RH + 2;
@@ -239,6 +281,9 @@ export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
     const gj = Math.min(ch - 2, Math.max(0, Math.floor(gyf))), uy = Math.min(1, Math.max(0, gyf - gj));
     for (let ex = 0; ex < EW; ex++) {
       const ax = X0 - 1 + ex;
+      /* a built surface is its cells, exactly (v2.3.2945) */
+      const bq = builtAt(ax + 0.5, ay + 0.5);
+      if (bq >= 0) { emat[ey * EW + ex] = bq; wdepth[ey * EW + ex] = 0; continue; }
       const gxf = (ax + 0.5 - bp.x0) / S - 0.5 - cx0;
       const gi = Math.min(cw - 2, Math.max(0, Math.floor(gxf))), ux = Math.min(1, Math.max(0, gxf - gi));
       const p00 = gj * cw + gi, p10 = p00 + 1, p01 = p00 + cw, p11 = p01 + 1;
@@ -315,24 +360,18 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     const bx = Math.min(bp.w - 1, Math.max(0, cx0 + x)), by = Math.min(bp.h - 1, Math.max(0, cy0 + y));
     return mm.mat[by * bp.w + bx];
   };
-  const seen = new Uint8Array(mm.ids.length);
-  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) seen[cellAt(x, y)] = 1;
-  const present = [], memb = [];
-  for (let q = 0; q < mm.ids.length; q++) {
-    if (!seen[q]) continue;
-    const f = new Float32Array(cw * ch);
-    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) f[y * cw + x] = cellAt(x, y) === q ? 1 : 0;
-    blur1(f, cw, ch, 1);
-    blur1(f, cw, ch, 1);
-    present.push(q); memb.push(f);
-  }
+  const { present, memb } = naturalFields(mm, cellAt, cw, ch);
   const water = mm.water, wIdx = present.indexOf(water);
+  const builtAt = builtLookup(bp, mm);
   /* the swatch at a point (art px, continuous), as composeGround decides it
      for a whole art px; `nx, ny` place its noise.  Leaves the water's share
      in `lastWater` for the sea's shading. */
   let lastWater = 0;
   const vs = new Float32Array(present.length);
   const pickAt = (axc, ayc, nx, ny) => {
+    /* a built surface is its cells, exactly (v2.3.2945) */
+    const bq = builtAt(axc, ayc);
+    if (bq >= 0) return bq;
     const gyf = (ayc - bp.y0) / S - 0.5 - cy0, gxf = (axc - bp.x0) / S - 0.5 - cx0;
     const gj = Math.min(ch - 2, Math.max(0, Math.floor(gyf))), uy = Math.min(1, Math.max(0, gyf - gj));
     const gi = Math.min(cw - 2, Math.max(0, Math.floor(gxf))), ux = Math.min(1, Math.max(0, gxf - gi));
@@ -473,7 +512,10 @@ export function walkBits(bp, mm) {
   blur1(f, w, h, 1);
   blur1(f, w, h, 1);
   const bits = new Uint8Array((n + 7) >> 3);
-  for (let i = 0; i < n; i++) if (f[i] >= 0.5) bits[i >> 3] |= 1 << (i & 7);
+  /* v2.3.2945: a built cell -- a bridge, a boardwalk -- is always open: it is
+     laid over the water, and a one-cell bridge across a wide river sat in a
+     share of water well over half */
+  for (let i = 0; i < n; i++) if (f[i] >= 0.5 && !(mm.built && mm.built[mm.mat[i]])) bits[i >> 3] |= 1 << (i & 7);
   return bits;
 }
 

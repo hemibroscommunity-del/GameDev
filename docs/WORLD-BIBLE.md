@@ -1336,6 +1336,14 @@ definitely do the swatches."*
   v2.3.2942), with ragged pixel-art edges between two swatches and never a
   soft blend. Two pieces of ground composed apart meet
   with no seam, which is what lets the game build it in chunks.
+- **Built surfaces have straight edges** (v2.3.2945). The town's street,
+  boardwalks and square are laid exactly on their squares of the plan, over
+  the natural ground; only natural ground (grass, dirt, sand, snow, the
+  roads, the water) meets on a ragged line. Owner, on Main Street: *"I think
+  wooden plank bits are on the edges."* They were the boardwalks, one plan
+  square wide: the ragged method cannot hold a strip that thin, and broke
+  them into specks along the street. Bridges are built surfaces too, and
+  always walkable.
 - **The Ground Studio** (`/tools/ground/`, v2.3.2937) is where the owner
   makes them:
   - every swatch's prompt, ready to copy (attach the style key, and only

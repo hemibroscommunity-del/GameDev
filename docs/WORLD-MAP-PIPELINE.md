@@ -497,6 +497,14 @@ ground swatches the Wheel needs (World Bible §13):
   artist's, and never blended. Two versions of a swatch share the ground in
   large noisy patches. Tiles are anchored to the frame, so rectangles
   composed apart meet with no seam.
+- **Built surfaces are the exception** (v2.3.2945): the street, the
+  boardwalks and the square (`BUILT` in `ground.js`) are laid exactly on
+  their cells, straight-edged, over the natural ground, which takes no
+  account of them. The owner saw "wooden plank bits" along Main Street:
+  the boardwalks are one cell wide, and between a street and a yard a
+  blurred field gives all three about a third, so the noise decided every
+  pixel. The walk grid never blocks a built cell, so a one-cell bridge over
+  a wide river is walkable.
 
 **Tests.** `node tools/world/test-world-core.mjs` checks the catalog, each
 spoke's stages and its passes' border land, determinism, seamless chunks,

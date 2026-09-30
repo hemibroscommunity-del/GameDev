@@ -408,6 +408,41 @@ console.log('ground');
     nW++; if (drawnWater === blocked(gx, gy)) agreeW++;
   }
   ok(`...at the Mill Bridge the walk grid matches the water drawn (${agreeW}/${nW} cells)`, agreeW / nW > 0.85, { agreeW, nW });
+  /* v2.3.2945, owner, on Main Street in the Ground Studio: "I think wooden
+     plank bits are on the edges."  The one-cell boardwalks crumbled into
+     specks along the street; built surfaces are now laid on their cells. */
+  /* up the north street from the square, where its boardwalks run */
+  const RT = { x: Math.round(g.cx - 200), y: Math.round(g.cy - 600), w: 400, h: 320 };
+  const town = composeGround(PLAN, bp, mm, RT, {}, { scale: 3 });
+  const TW = town.w;
+  let offCell = 0, bwPx = 0;
+  for (let y = 0; y < town.h; y++) for (let x = 0; x < TW; x++) {
+    const ax = RT.x + (x + 0.5) / 3, ay = RT.y + (y + 0.5) / 3;
+    const cq = mm.mat[Math.floor((ay - bp.y0) / bp.scale) * bp.w + Math.floor((ax - bp.x0) / bp.scale)];
+    const q = town.mat[y * TW + x];
+    if (mm.built[cq] ? q !== cq : mm.built[q]) offCell++;
+    if (mm.ids[q] === 'boardwalk') bwPx++;
+  }
+  ok('the street, the boardwalks and the square are laid exactly on their cells, with straight edges', offCell === 0 && bwPx > 1000 && ['street', 'boardwalk', 'plaza'].every((id) => mm.built[mm.index[id]]), { offCell, bwPx });
+  const seenPx = new Uint8Array(town.mat.length);
+  let pieces = 0, specks = 0;
+  for (let i = 0; i < town.mat.length; i++) {
+    if (seenPx[i] || mm.ids[town.mat[i]] !== 'boardwalk') continue;
+    let n = 0; const st = [i]; seenPx[i] = 1;
+    while (st.length) {
+      const j = st.pop(); n++;
+      const x = j % TW, y = (j / TW) | 0;
+      for (const k of [x > 0 ? j - 1 : -1, x < TW - 1 ? j + 1 : -1, y > 0 ? j - TW : -1, y < town.h - 1 ? j + TW : -1]) {
+        if (k >= 0 && !seenPx[k] && mm.ids[town.mat[k]] === 'boardwalk') { seenPx[k] = 1; st.push(k); }
+      }
+    }
+    pieces++; if (n < 400) specks++;
+  }
+  ok(`...so the one-cell boardwalks along the streets stay whole: ${pieces} strips, no specks`, pieces > 0 && specks === 0, { pieces, specks });
+  const bridgeCells = [];
+  for (let i = 0; i < bp.w * bp.h; i++) if (mm.ids[mm.mat[i]] === 'boardwalk' && bp.regionIds[bp.reg[i]] !== 'town') bridgeCells.push(i);
+  const shut = bridgeCells.filter((i) => bits[i >> 3] & (1 << (i & 7))).length;
+  ok(`...and a bridge is always walkable, however wide the river under it (${bridgeCells.length} bridge cells)`, bridgeCells.length > 0 && shut === 0, { shut });
   const ov = overviewPixels(bp, mm, 4);
   const ovAt = (x, y) => { const [bx, by] = cellOf(x, y), o = (Math.floor(by / 4) * ov.w + Math.floor(bx / 4)) * 4; return [ov.data[o], ov.data[o + 1], ov.data[o + 2]]; };
   const commonsCol = mm.catalog.find((e) => e.id === 'commons').color;
