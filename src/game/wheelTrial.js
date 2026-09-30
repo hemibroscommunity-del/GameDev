@@ -93,7 +93,8 @@ export function wheelStart() {
       _pending.clear();
     };
     /* v2.3.2948: the address, so `?trial=wheel&edgepieces` can bring back
-       the edge pieces, put away (public/tools/world/core/ground.js) */
+       the edge pieces, put away (public/tools/world/core/ground.js) --
+       v2.3.2955: and `?trial=wheel&blends` the blends, put away too */
     let search = '';
     try { search = window.location.search || ''; } catch (e) { /* no page */ }
     w.postMessage({ type: 'init', search });

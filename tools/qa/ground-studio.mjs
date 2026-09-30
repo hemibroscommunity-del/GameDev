@@ -488,6 +488,19 @@ try {
   /* Owner: "have chatGPT make a blend of the two surfaces that are mapped
      together" ... "Bottom right looks the best by a moderate margin" ...
      "Yes build it". */
+  /* v2.3.2955: then, once two pictures a pair were enough: "Yeah hide it".
+     Put away like the edge pieces: no card, step or mention without ?blends */
+  const blOff = await page.evaluate(() => ({
+    on: window.__ground.blends, card: !!document.getElementById('blends') && document.getElementById('blends').offsetParent !== null,
+    blocks: document.querySelectorAll('[data-blend]').length,
+    step: [...document.querySelectorAll('ol.plan li')].some((li) => /Blends/.test(li.textContent) && li.offsetParent !== null),
+    mention: [...document.querySelectorAll('[data-blends]')].some((n) => n.offsetParent !== null),
+  }));
+  ok('blends are put away: no Blends card, no step, no mention, unless the address says ?blends (v2.3.2955)',
+    blOff.on === false && !blOff.card && blOff.blocks === 0 && !blOff.step && !blOff.mention, blOff);
+  const offErrs = page.errs;
+  await page.close();
+  page = await open(ctxA, '?blends');
   const bl0 = await page.evaluate(() => {
     const S = window.__ground.S;
     const blocks = [...document.querySelectorAll('#blend-list [data-blend]')];
@@ -583,6 +596,13 @@ try {
   const bh2 = await blendHash(pageD);
   ok('the zip carries the blend (ground/plaza__town-yard-M.png, the original, and the manifest), and it restores pixel for pixel',
     zip3.includes(Buffer.from('ground/plaza__town-yard-M.png')) && zip3.includes(Buffer.from('originals/plaza__town-yard-M.png')) && zip3.includes(Buffer.from('"key": "plaza__town-yard"')) && bh1 !== null && bh1 === bh2, { bh1, bh2 });
+  /* v2.3.2955: ...into a browser without ?blends too, which keeps it and
+     shows none of it: not in the card, the counts or the preview */
+  const dOff = await pageD.evaluate(() => ({
+    card: document.getElementById('blends').offsetParent !== null, status: document.getElementById('status').textContent,
+    saved: document.getElementById('saved-list').textContent, laid: (window.__ground.S.pv && window.__ground.S.pv.blendsLaid || []).length,
+  }));
+  ok('...and a browser without ?blends keeps it but shows none of it: no card, not counted, not laid in the preview', !dOff.card && !/blend/.test(dOff.status) && !/blend/.test(dOff.saved) && dOff.laid === 0, dOff);
   /* one of its grounds made again after it: marked to redo */
   await put(page, 'plaza', 'A', await makePicture(page, '#ccc0a4', 24));
   const redo = await page.evaluate(() => ((document.querySelector('[data-blend="plaza__town-yard"] .sw-stale') || {}).textContent || ''));
@@ -592,7 +612,7 @@ try {
   const gone = await page.evaluate(() => ({ chip: document.getElementById('blend-chip').textContent, card: (document.querySelector('[data-blend-chip="plaza__town-yard"]') || {}).textContent }));
   ok('...and it can be removed: the pair mixes without one again', gone.chip === 'optional' && gone.card === 'not made', gone);
 
-  ok('no page errors', page.errs.length === 0 && pageB.errs.length === 0 && pageC.errs.length === 0 && pageP.errs.length === 0 && pageD.errs.length === 0, [...page.errs, ...pageB.errs, ...pageC.errs, ...pageP.errs, ...pageD.errs].slice(0, 3));
+  ok('no page errors', offErrs.length === 0 && page.errs.length === 0 && pageB.errs.length === 0 && pageC.errs.length === 0 && pageP.errs.length === 0 && pageD.errs.length === 0, [...offErrs, ...page.errs, ...pageB.errs, ...pageC.errs, ...pageP.errs, ...pageD.errs].slice(0, 3));
 } finally {
   await browser.close();
   server.close();

@@ -10,7 +10,8 @@
  *   0. a swatch is made in the Ground Studio on this site -- planted in its
  *      storage exactly as the studio keeps it (the picture before the
  *      palette, and the palette) -- and never uploaded anywhere; (v2.3.2951)
- *      with the yards and the BLEND between the square and the yards;
+ *      with the yards and the BLEND between the square and the yards
+ *      (v2.3.2955: put away, so not laid unless the address says `blends`);
  *   1. town's stairs lead into the Wheel behind the ordinary loading
  *      overlay, which waits for the plan and the first screen of ground;
  *   2. you arrive in the town square, the worker agrees, and the pieces round
@@ -195,8 +196,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    HUD ->\n      ' + hud.split('\n').join('\n      '));
   rec.ok('the readout finds the swatches made in the Ground Studio', /2 yours/.test(hud), { hud });
   /* v2.3.2951, owner: "Bottom right looks the best by a moderate margin" --
-     "Yes build it": the blend between the square and the yards */
-  rec.ok('...and the blend between the square and the yards made there', /blends\s+1 made/.test(hud), { hud });
+     "Yes build it": the blend between the square and the yards.
+     v2.3.2955: put away, the owner choosing two pictures a pair ("Yeah hide
+     it"): the game's worker leaves it unread unless told `blends` */
+  rec.ok('...but not the blend between the square and the yards made there: blends are put away (v2.3.2955)', !/blends\s+\d+ made/.test(hud), { hud });
   /* v2.3.2948: the edge pieces are put away -- the game's worker leaves the
      commons' planted ones unread -- but a worker told `edgepieces` (the
      game's ?trial=wheel&edgepieces) still finds them (v2.3.2947) */
@@ -208,10 +211,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     w.onmessage = (ev) => { const m = ev.data || {}; if (m.type === 'ready') done({ edges: m.edges, made: Object.keys(m.made || {}), blends: m.blends }); else if (m.type === 'error') done({ error: m.message }); };
     w.onerror = (ev) => done({ error: (ev && ev.message) || 'the worker failed' });
     t = setTimeout(() => done({ error: 'no answer in 60 s' }), 60000);
-    w.postMessage({ type: 'init', search: '?trial=wheel&edgepieces' });
+    w.postMessage({ type: 'init', search: '?trial=wheel&edgepieces&blends' });
   }));
   rec.ok('...which a worker told ?edgepieces still finds: put away, not gone', Array.isArray(told.edges) && told.edges.join() === 'commons', told);
-  rec.ok('...(and the blend is found either way, under its pair\'s key)', Array.isArray(told.blends) && told.blends.join() === 'plaza__town-yard', told);
+  rec.ok('...and one told ?blends the blend, under its pair\'s key: put away, not gone (v2.3.2955)', Array.isArray(told.blends) && told.blends.join() === 'plaza__town-yard', told);
   rec.ok('...and says it is under your feet', /here\s+Town square ✓/.test(hud), { hud });
   await shot(P, '01-arrival');
   const px = await H.screenshotPixels(P);
@@ -221,8 +224,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...and it is on screen, laid in its own colours (${(100 * (nMag + nCyan) / all).toFixed(0)}% of the screen)`,
     nMag > all * 0.03 && nCyan > all * 0.03, { nMag, nCyan, all });
   const nYard = px.count(near(ORANGE)) + px.count(near(PURPLE)), nBlend = px.count(near(YELLOW)) + px.count(near(GREEN));
-  rec.ok(`...with the yards beyond it, and the blend laid where the square meets them (${(100 * nBlend / all).toFixed(1)}% of the screen)`,
-    nYard > all * 0.03 && nBlend > all * 0.01, { nYard, nBlend, all });
+  rec.ok(`...with the yards beyond it, and no blend laid where the square meets them, the pair mixing on its two pictures (${(100 * nBlend / all).toFixed(2)}% of the screen in the blend's colours)`,
+    nYard > all * 0.03 && nBlend < all * 0.002, { nYard, nBlend, all });
 
   /* ── 3. walk ── */
   const legs = [

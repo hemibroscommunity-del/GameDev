@@ -35,7 +35,9 @@
  *                                   v2.3.2951: `blends`, the pairs with a blend;
  *                                   v2.3.2948: `search`, the page's address query:
  *                                   edge pieces are put away and loaded only when
- *                                   it says `edgepieces` -- ground.js, EDGE_PIECES)
+ *                                   it says `edgepieces` -- ground.js, EDGE_PIECES;
+ *                                   v2.3.2955: and blends only when it says
+ *                                   `blends` -- ground.js, BLENDS)
  *   { type: 'chunk', id, i, j }  -> { type: 'chunk', id, i, j, w, h, data, ms }
  *   { type: 'where', id, x, y }  -> { type: 'where', id, q }  (answered at once)
  *   anything that fails          -> { type: 'error', id, message }
@@ -43,7 +45,7 @@
 import { PLAN } from '../plan.js';
 import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
-import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendPair, blendsUnder } from './ground.js';
+import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn } from '../../style/process.js';
 
@@ -90,7 +92,7 @@ async function init(m) {
   const ov = overviewPixels(bp, mm, OVERVIEW_CELLS);
   W = { bp, mm };
   const t1 = performance.now();
-  await findSwatches(mm, edgePiecesOn(m && m.search));
+  await findSwatches(mm, edgePiecesOn(m && m.search), blendsOn(m && m.search));
   const swatchMs = Math.round(performance.now() - t1);
   /* you arrive in the town square, as the Ground Studio's first spot */
   const ax = g.cx, ay = g.cy + 0.25 * g.P;
@@ -130,8 +132,9 @@ function whereIs(x, y) {
 
 /* v2.3.2948: `pieces` false (the default) leaves every edge-pieces picture
    (version E) where it is, unread, so no piece is laid and no margin is
-   widened for one. */
-async function findSwatches(mm, pieces) {
+   widened for one.  v2.3.2955: `withBlends` false (the default) does the
+   same for every blend (version M): each pair mixes as if it had none. */
+async function findSwatches(mm, pieces, withBlends) {
   const known = new Set(mm.ids);
   const out = Object.create(null);
   /* the game's copy */
@@ -148,7 +151,7 @@ async function findSwatches(mm, pieces) {
         if (vers.A || vers.B || vers.E) out[s.id] = { from: 'game', vers, pal, mapped: true };
       }
       /* v2.3.2951: and the blends, each under its pair's key */
-      for (const b of man.blends || []) {
+      for (const b of withBlends ? man.blends || [] : []) {
         const pr = b && typeof b.key === 'string' ? blendPair(b.key) : null;
         if (!pr || !known.has(pr[0]) || !known.has(pr[1])) continue;
         out[b.key] = { from: 'game', vers: { M: { url: `${GAME_BASE}${b.key}-M.png` } }, pal, mapped: true };
@@ -165,7 +168,7 @@ async function findSwatches(mm, pieces) {
       const mine = Object.create(null);
       for (const k of keys || []) {
         const mk = /^(.+)\|([ABEM])$/.exec(String(k));
-        if (!mk || (mk[2] === 'E' && !pieces)) continue;
+        if (!mk || (mk[2] === 'E' && !pieces) || (mk[2] === 'M' && !withBlends)) continue;
         /* a swatch's A, B or E -- or (v2.3.2951) a pair's blend, M */
         const pr = mk[2] === 'M' ? blendPair(mk[1]) : null;
         if (mk[2] === 'M' ? !pr || !known.has(pr[0]) || !known.has(pr[1]) : !known.has(mk[1])) continue;

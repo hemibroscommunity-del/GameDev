@@ -40,7 +40,7 @@ import { promptFor } from '../../public/tools/ground/prompts.js';
 import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours } from '../../public/tools/world/core/grid.js';
 import { buildBlueprint, renderSketch, colorTable, planKey, C, CLASS_IDS } from '../../public/tools/world/core/layout.js';
 import { spokePoint, arcPoint } from '../../public/tools/world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, edgeRecipe, groundContacts, EDGE_CLEAR, EDGE_PIECES, edgePiecesOn, planksOf, blendKey, blendPair, blendsUnder } from '../../public/tools/world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, edgeRecipe, groundContacts, EDGE_CLEAR, EDGE_PIECES, edgePiecesOn, BLENDS, blendsOn, planksOf, blendKey, blendPair, blendsUnder } from '../../public/tools/world/core/ground.js';
 import { buildPrompt } from '../../public/tools/world/core/prompt.js';
 import { gridMinCut, INF } from '../../public/tools/world/core/maxflow.js';
 import { fuseSquare } from '../../public/tools/world/core/fuse.js';
@@ -846,6 +846,11 @@ console.log('ground');
   ok("edge pieces are put away: off unless the address says ?edgepieces (the studio's, or the game's with ?trial=wheel)",
     EDGE_PIECES === false && !edgePiecesOn('') && !edgePiecesOn(undefined) && !edgePiecesOn('?trial=wheel') && !edgePiecesOn('?noedgepieces=1') &&
     edgePiecesOn('?edgepieces') && edgePiecesOn('?trial=wheel&edgepieces'), { EDGE_PIECES });
+  /* v2.3.2955: the blends too -- the owner chose two pictures a pair ("Yeah
+     hide it") -- kept, and the tests below still lay them */
+  ok("blends are put away: off unless the address says ?blends (the studio's, or the game's with ?trial=wheel)",
+    BLENDS === false && !blendsOn('') && !blendsOn(undefined) && !blendsOn('?trial=wheel') && !blendsOn('?edgepieces') && !blendsOn('?noblends=1') &&
+    blendsOn('?blends') && blendsOn('?trial=wheel&blends') && blendsOn('?trial=wheel&edgepieces&blends'), { BLENDS });
 }
 
 /* ── maxflow ── */

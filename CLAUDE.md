@@ -100,7 +100,12 @@ remnant to migrate server-side, not a mode to preserve.
   halfway between two, the owner's "V" at the street corners (TRAPS §122)
   -- and a MIX zone reaches `MIX_LIM` 1.15; blends stay optional, the owner
   choosing two pictures a pair: WORLD-MAP-PIPELINE "Where three grounds
-  meet"),
+  meet"; and since v2.3.2955 the blends are PUT AWAY like the edge pieces
+  (owner: "Yeah hide it"): `BLENDS`/`blendsOn` in ground.js, the studio's
+  card and the game's worker only with `?blends` in the address, kept and
+  tested; still open when the owner stopped that round: a short
+  checkmark-shaped edge beside the street corner, and rocky ground lying ON
+  TOP of plain dirt where they mix -- WORLD-MAP-PIPELINE "Still open"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

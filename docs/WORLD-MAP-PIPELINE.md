@@ -809,6 +809,10 @@ wheeltrial` (28) as before.
 
 ## Blend pictures (v2.3.2951)
 
+**Put away since v2.3.2955** (the owner choosing two pictures a pair; see
+"Blend pictures, put away" below): everything here still works, but only
+with `?blends` in the address.
+
 > Owner, 2026-09-30, shown the four ways at their spot: *"Bottom right looks
 > the best by a moderate margin than the bottom left. What's the performance
 > tradeoff though?"* Told it: *"Yes build it"*.
@@ -1051,6 +1055,43 @@ them (desktop Chromium):
 **Tests.** `node tools/world/test-world-core.mjs`: nowhere in the town does
 an edge run straight for more than 18 game px, where three grounds meet
 included (a flat colour per swatch; the old code fails on the diagonals).
+
+**Still open** (the owner stopped the round here, "Save what you have so
+far and call it good"): a short checkmark-shaped edge where the square's
+patch pokes into the yards beside the street corner (shown in
+`world/corner-lines-fix.png`, top right) -- its two sides run straight for
+about 10 game px; and the owner's wish that a rocky ground lie ON TOP of
+plain dirt where the two mix ("blanket rocks on top of dirt"), where today
+a MIX pair has no upper and cuts through stones either way.
+
+---
+
+## Blend pictures, put away (v2.3.2955)
+
+> Owner, 2026-09-30: *"If I can get good results faster with just the 2
+> pictures instead of a 'blend' custom picture I'd rather do that"*; offered
+> the Blends card hidden: *"Yeah hide it"*.
+
+Once the plain mixes lost their straight lines (v2.3.2954), two pictures a
+pair were enough. So the blends are put away exactly as the edge pieces were
+(v2.3.2948): `BLENDS` in `public/tools/world/core/ground.js` is `false`, and
+`blendsOn(search)` is true only when the address says `blends`.
+
+- **Ground Studio:** no Blends card, no step for it, no mention of it; a
+  blend already made is not counted, listed as saved or laid in the preview.
+  It is still saved, goes in the zip and restores. `?blends` on the studio's
+  address brings every part of it back.
+- **The game:** the ground worker reads no blend unless the address says
+  `blends` (`?trial=wheel&blends`), so every pair mixes on its two pictures.
+- **Nothing is deleted:** `composeGround` still lays any blend it is given
+  (`opts.blends`), and every blend test still runs. Bringing them back is
+  the one line `BLENDS = true`.
+
+**Tests.** `test-world-core.mjs` checks the switch; `ground-studio.mjs`
+checks the card is hidden without `?blends`, still works with it, and that a
+zip restored into a browser without it keeps the blend but shows none of it;
+the Wheel walk (`wheeltrial`) checks the game's worker leaves the planted
+blend unread, and that a worker told `blends` still finds it.
 
 ---
 

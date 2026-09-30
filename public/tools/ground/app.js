@@ -47,7 +47,7 @@ import { PLAN } from '../world/plan.js';
 import { buildBlueprint } from '../world/core/layout.js';
 import { gridInfo } from '../world/core/grid.js';
 import { spokePoint, arcPoint } from '../world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround, groundOverview, swatchesUnder, groundContacts, pieceMap, edgePiecesOn, blendKey, blendPair, blendsUnder } from '../world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, groundOverview, swatchesUnder, groundContacts, pieceMap, edgePiecesOn, blendsOn, blendKey, blendPair, blendsUnder } from '../world/core/ground.js';
 import { openStore } from '../world/store.js';
 import { zipStore, unzip } from '../world/core/zip.js';
 import { PIXEL } from '../style/bible.js';
@@ -70,6 +70,11 @@ const PIECES = edgePiecesOn(location.search);
 /* v2.3.2951: a pair of alike grounds' BLEND picture, kept under the pair's
    key (blendKey) as this version */
 const BLEND = 'M';
+/* v2.3.2955: put away too, the owner choosing two pictures a pair (world/
+   core/ground.js, BLENDS): the Blends card, its step and the blends' place
+   in the preview and the counts show only with ?blends in the address.
+   Blends already made stay saved, go in the zip and restore. */
+const BLENDS_ON = blendsOn(location.search);
 /* v2.3.2953: how the saved seamless tiles ('prep') were made -- saved in
    'misc'; tiles made any other way are made again from the uploads */
 const PREP_MADE = 'overlap-cut v2.3.2953';
@@ -446,7 +451,7 @@ async function composeView(m) {
   /* v2.3.2951: and the blends between them, the ones the game's worker would
      give it (blendsUnder) */
   const blends = Object.create(null);
-  for (const k of blendsUnder(ids, (k) => !!S.blends[k])) { const px = await pixelsOf(k, BLEND); if (px) blends[k] = px; }
+  for (const k of blendsUnder(ids, (k) => BLENDS_ON && !!S.blends[k])) { const px = await pixelsOf(k, BLEND); if (px) blends[k] = px; }
   const out = composeGround(S.plan, S.bp, S.mm, rect, tiles, { scale: K, blends });
   const c = mk(out.w, out.h);
   c.getContext('2d').putImageData(new ImageData(out.data, out.w, out.h), 0, 0);
@@ -815,6 +820,7 @@ function pairButton(A, B) {
   return b;
 }
 function renderBlends() {
+  if (!BLENDS_ON) return;
   const list = $('blend-list');
   const wasOpen = !!($('blend-rest') && $('blend-rest').open);
   list.textContent = '';
@@ -944,7 +950,7 @@ function renderCount() {
   const both = S.cat.filter((e) => S.prep.has(kv(e.id, 'A')) && S.prep.has(kv(e.id, 'B'))).length;
   $('count').textContent = `${made} of ${S.cat.length}`;
   $('count').className = made ? 'chip ok' : 'chip';
-  const nb = S.blendPairs.filter((p) => S.blends[p.key]).length;
+  const nb = BLENDS_ON ? S.blendPairs.filter((p) => S.blends[p.key]).length : 0;
   $('status').textContent = made ? `${made} of ${S.cat.length} swatches made${both ? `, ${both} with a second version` : ''}${nb ? `, and ${nb} blend${nb > 1 ? 's' : ''}` : ''}.` : `${S.cat.length} swatches to make. Start with the commons, a road and one spoke's first stage.`;
   renderSaved();
 }
@@ -960,7 +966,7 @@ function renderSaved() {
     if (vers.length > 1) parts.push('A and B');
     if (pieces(e.id)) parts.push(vers.length ? 'edge pieces' : 'edge pieces only');
     return parts.length ? `${e.name} (${parts.join(', ')})` : e.name;
-  }).concat(S.blendPairs.filter((p) => S.blends[p.key]).map((p) => `${blendName(p.key)} (blend)`));
+  }).concat(S.blendPairs.filter((p) => BLENDS_ON && S.blends[p.key]).map((p) => `${blendName(p.key)} (blend)`));
   let last = 0;
   for (const r of S.raw.values()) if (r && r.at > last) last = r.at;
   const chip = $('saved-chip'), line = $('saved-line'), list = $('saved-list'), when = $('saved-when');
@@ -1154,6 +1160,8 @@ function wireSave() {
 async function start() {
   /* v2.3.2948: the edge pieces' step and paragraphs, only if they are on */
   for (const n of document.querySelectorAll('[data-pieces]')) n.hidden = !PIECES;
+  /* v2.3.2955: and the blends' */
+  for (const n of document.querySelectorAll('[data-blends]')) n.hidden = !BLENDS_ON;
   await nextFrame();
   S.g = gridInfo(S.plan);
   S.bp = buildBlueprint(S.plan);
@@ -1199,6 +1207,6 @@ async function start() {
 S.ready = start().catch((e) => { $('status').textContent = `Something went wrong: ${e.message || e}`; throw e; });
 
 window.__ground = {
-  S, pieces: PIECES,
+  S, pieces: PIECES, blends: BLENDS_ON,
   api: { addPicture, removePicture, exportZip, restoreZip, setSpot, spotFor, drawPreview, promptFor, edgePromptFor, pixelsOf, showEdge, blendPromptFor, showBlend, blendKey },
 };

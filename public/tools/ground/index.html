@@ -109,7 +109,7 @@
     <p class="sub">BroTown's ground, made from about fifty seamless swatches in HD pixel art and laid onto the Wheel by the game.</p>
     <!-- v2.3.2942: the version on the page, so the owner can tell a stale
          copy (a phone's cached page) from the latest without asking -->
-    <p class="mut" id="ver">Version v2.3.2954: no straight lines where three grounds meet; two pictures a pair are enough (blends are optional).</p>
+    <p class="mut" id="ver">Version v2.3.2955: blends put away -- two pictures a pair are enough (?blends in the address brings them back).</p>
     <p class="mut" id="status">Building the plan…</p>
   </header>
 
@@ -133,7 +133,7 @@
       <li><b>Bring the picture back</b> as version A. The page makes it seamless (by cutting where its two ends already look alike, so nothing in it is see-through), keeps it at your phone's own sharpness, puts it on the shared colours, and shows it laid on the map at game size next to your bro.</li>
       <li>Later, a <b>second version (B)</b> of the same prompt in a fresh chat. The game mixes A and B so the ground does not repeat.</li>
       <li data-pieces hidden><b>Edge pieces</b> (optional, under each swatch): in the same chat, ask for that ground's loose pieces on magenta. The game scatters them where it lies over another ground.</li>
-      <li><b>Blends</b> (optional, below the swatches): where two alike grounds mix, a third picture made from the two, laid through the middle. Start with the town square.</li>
+      <li data-blends hidden><b>Blends</b> (optional, below the swatches): where two alike grounds mix, a third picture made from the two, laid through the middle. Start with the town square.</li>
       <li><b>Walk on them</b> in the game whenever you like (below): it lays them straight from this page, nothing to send.</li>
       <li>When you are happy, <b>Download all</b> and upload the zip to GitHub (below), so every player gets them. A session puts it in the game.</li>
     </ol>
@@ -151,7 +151,7 @@
       <li><b>The higher ground lies over the lower.</b> From the bottom up: lava; roads and the railway bed; bare rock; metal floor plates; earth and mud; sand and ash; moss; grass; ice; snow. So grass reaches over dirt, sand drifts onto rock, and snow lies on everything.</li>
       <li><b>Each pair has its own edge.</b> A road's edge is narrow; sand drifting onto rock is wide. Inside it, the two pictures interlock along their own tufts and lumps, so the edge looks drawn, not cut.</li>
       <li><b>A land's stages change over a wide area</b>, in patches, not along a line.</li>
-      <li><b>Grounds that are much alike mix over a wide zone</b>, in big patches, instead of meeting at an edge: the town square into the yards and the street, one meadow into the next, sand into dry earth (v2.3.2950). Through a <b>blend</b> picture, if you make one (below).</li>
+      <li><b>Grounds that are much alike mix over a wide zone</b>, in big patches, instead of meeting at an edge: the town square into the yards and the street, one meadow into the next, sand into dry earth (v2.3.2950). <span data-blends hidden>Through a <b>blend</b> picture, if you make one (below).</span></li>
       <li>The boardwalks and bridges keep straight edges, and the water its shore.</li>
     </ul>
     <!-- v2.3.2948: the edge pieces are put away (owner: "I don't see any
@@ -204,7 +204,9 @@
        the two surfaces that are mapped together" … "Bottom right looks the
        best by a moderate margin" … "Yes build it".  One slot per pair of
        alike grounds that meet on the Wheel, the town's first. -->
-  <section class="card" id="blends">
+  <!-- v2.3.2955: put away, the owner choosing two pictures a pair ("Yeah
+       hide it"): the card and its step show only with ?blends in the address -->
+  <section class="card" id="blends" data-blends hidden>
     <h2>Blends between alike grounds <span id="blend-chip" class="chip">optional</span></h2>
     <p>Where two alike grounds meet, the game mixes them over a wide strip. A <b>blend</b> is a third picture, made in ChatGPT from the two, that the game lays through the middle of that strip, so one ground turns into the other.</p>
     <ol class="plan">

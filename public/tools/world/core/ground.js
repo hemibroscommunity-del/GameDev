@@ -326,6 +326,22 @@ export function edgePiecesOn(search) {
   if (EDGE_PIECES) return true;
   try { return new URLSearchParams(search || '').has('edgepieces'); } catch (e) { return false; }
 }
+/* ═══ v2.3.2955: BLENDS, PUT AWAY ═══
+   Owner, 2026-09-30, once the plain mixes had lost their straight lines
+   (v2.3.2954): "If I can get good results faster with just the 2 pictures
+   instead of a 'blend' custom picture I'd rather do that", and, offered the
+   Blends card hidden: "Yeah hide it".  So, as the edge pieces: no tool shows
+   or uses a pair's blend unless this is true -- not the Ground Studio's
+   Blends card, its preview or its counts, not the game's worker -- or the
+   address says `blends` (the studio's `?blends`, the game's
+   `?trial=wheel&blends`).  Nothing is deleted: composeGround still lays any
+   blend a caller passes (opts.blends), and pictures already made stay
+   saved, in the zip and restorable.  Bringing them back is this one line. */
+export const BLENDS = false;
+export function blendsOn(search) {
+  if (BLENDS) return true;
+  try { return new URLSearchParams(search || '').has('blends'); } catch (e) { return false; }
+}
 /* the most any edge reaches, in game px, for the margins below */
 const EDGE_MAX_GAME = 2 + Math.max(
   ...Object.values(EDGE_SPREAD).map(([r, w]) => 1.5 * r + 1.35 * w),
