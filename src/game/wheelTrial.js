@@ -65,6 +65,9 @@ export function wheelOverview() { return _overview; }
 export function wheelRunning() { return !!_w; }
 /* which swatches were found, and where: { id: 'studio' | 'game' } */
 export function wheelMade() { return _info ? _info.made : null; }
+/* v2.3.2947: which grounds have edge pieces (their loose tufts, scattered
+   where they lie over another ground) */
+export function wheelEdges() { return _info && _info.edges ? _info.edges : []; }
 
 /* Start the worker (once) and build the plan.  Resolves with its 'ready'
    message; rejects, and leaves the trial on flat sea, if this browser cannot

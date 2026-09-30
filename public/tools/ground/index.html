@@ -83,6 +83,13 @@
   .ver canvas { display:block; width:100%; aspect-ratio:1; image-rendering:pixelated; background:#0c1216; border-radius:6px; }
   .ver .row { margin-top:6px; gap:6px; }
   .ver .btn, .ver button { padding:8px 10px; min-height:40px; font-size:13px; flex:1 1 auto; }
+  .edge { border:1px dashed rgba(216,168,95,.45); border-radius:8px; padding:8px; margin-top:10px; }
+  .edge .lbl { font-size:12px; color:var(--mut); margin-bottom:6px; }
+  .edge-row { display:grid; grid-template-columns:96px 1fr; gap:10px; align-items:start; margin-top:6px; }
+  .edge canvas { display:block; width:96px; aspect-ratio:1; image-rendering:pixelated; border-radius:6px; background:#0c1216; }
+  .edge .row { margin-top:6px; gap:6px; }
+  .edge .btn, .edge button { padding:8px 10px; min-height:40px; font-size:13px; flex:1 1 auto; }
+  .edge-bad { font-size:13px; color:#FFC7C0; margin-top:6px; }
   .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); max-width:min(92vw,560px); z-index:80;
            background:#2A3940; border:1px solid var(--line); border-radius:10px; padding:12px 16px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
   .toast[data-bad="1"] { border-color:rgba(224,106,94,.7); color:#FFD6D0; }
@@ -98,7 +105,7 @@
     <p class="sub">BroTown's ground, made from about fifty seamless swatches in HD pixel art and laid onto the Wheel by the game.</p>
     <!-- v2.3.2942: the version on the page, so the owner can tell a stale
          copy (a phone's cached page) from the latest without asking -->
-    <p class="mut" id="ver">Version v2.3.2946: the page says what is saved on this phone.</p>
+    <p class="mut" id="ver">Version v2.3.2947: where two grounds meet.</p>
     <p class="mut" id="status">Building the plan…</p>
   </header>
 
@@ -121,10 +128,28 @@
       <li>For each swatch below: <b>copy its prompt</b> into a new ChatGPT chat, and attach <b>the style key</b>, and only the key. Not your bro: the world is finer, more detailed pixel art than he is, and ChatGPT copies what it sees.</li>
       <li><b>Bring the picture back</b> as version A. The page makes it seamless, keeps it at your phone's own sharpness, puts it on the shared colours, and shows it laid on the map at game size next to your bro.</li>
       <li>Later, a <b>second version (B)</b> of the same prompt in a fresh chat. The game mixes A and B so the ground does not repeat.</li>
+      <li><b>Edge pieces</b> (optional, under each swatch): in the same chat, ask for that ground's loose pieces on magenta. The game scatters them where it lies over another ground.</li>
       <li><b>Walk on them</b> in the game whenever you like (below): it lays them straight from this page, nothing to send.</li>
       <li>When you are happy, <b>Download all</b> and upload the zip to GitHub (below), so every player gets them. A session puts it in the game.</li>
     </ol>
     <p class="mut">Start with the commons, a road and the first stage of one spoke: that is enough to judge the look round town. Pictures stay in this browser; nothing is uploaded.</p>
+  </section>
+
+  <!-- v2.3.2947, owner: "There needs to be specific and additional prompts
+       for when two swatches have a contact area … layers need to be correct
+       (grass slightly overlapping dirt areas) … that border area will need
+       to vary in size depending on what two swatches are coming together." -->
+  <section class="card" id="edges">
+    <h2>Where two grounds meet</h2>
+    <p>The game draws every edge between two grounds itself, from the two swatches:</p>
+    <ul class="plan">
+      <li><b>The higher ground lies over the lower.</b> From the bottom up: lava; roads and the railway bed; bare rock; metal floor plates; earth and mud; sand and ash; moss; grass; ice; snow. So grass reaches over dirt, sand drifts onto rock, and snow lies on everything.</li>
+      <li><b>Each pair has its own edge.</b> A road's edge is narrow; sand drifting onto rock is wide. Inside it, the two pictures interlock along their own tufts and lumps, so the edge looks drawn, not cut.</li>
+      <li><b>A land's stages change over a wide area</b>, in patches, not along a line.</li>
+      <li>The town's street, boardwalks and square keep straight edges, and the water its shore.</li>
+    </ul>
+    <p><b>Edge pieces (optional).</b> Every ground that lies over others has one more prompt, under its swatch: its own loose tufts, lumps or drifts on a plain magenta background. The game scatters them along that ground's edges. <span id="edge-count"></span></p>
+    <p class="mut">Why one per ground and not one per pair: <span id="pair-count">about 200</span> pairs of grounds touch on the Wheel (the road alone meets <span id="road-count">45</span>), and one set of pieces works against every neighbour. Make a ground's edge pieces in the same chat as its swatch.</p>
   </section>
 
   <section class="card" id="key">

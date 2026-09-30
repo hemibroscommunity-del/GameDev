@@ -30,13 +30,25 @@
  *
  * ── HOW TWO SWATCHES MEET ──
  * Never with a soft blend: pixel art has no half-colours.  NATURAL ground --
- * grass, dirt, sand, snow, the roads, the water -- meets on a ragged line:
- * each swatch's share of the ground is a smooth field over the cells (the
- * same blurred membership the World Builder's sketch uses), and every pixel
- * takes the swatch whose share, plus a little noise of its own, is highest.
- * The edge comes out in clusters of pixels, like a pixel artist's.  Two
- * versions of a swatch (A and B) share the ground in large noisy patches,
- * so the repeat is harder to spot.
+ * grass, dirt, sand, snow, the roads, the water -- first meets on a ragged
+ * line: each swatch's share of the ground is a smooth field over the cells
+ * (the same blurred membership the World Builder's sketch uses), and every
+ * pixel takes the swatch whose share, plus a little noise of its own, is
+ * highest.  Two versions of a swatch (A and B) share the ground in large
+ * noisy patches, so the repeat is harder to spot.
+ *
+ * v2.3.2947 (see WHERE TWO GROUNDS MEET below, and docs/WORLD-MAP-PIPELINE.md)
+ * builds on that line, at three sizes:
+ *   - a land's stages, and the commons and each first stage, give way over a
+ *     wide band in patches (materialMap, landStage);
+ *   - every edge between two grounds is a band whose width is the pair's,
+ *     where the upper ground (a layer order of materials) reaches over the
+ *     lower and the two pictures interlock along their own tufts and lumps,
+ *     with no crumbs left (composeFine, edgeRecipe);
+ *   - a ground's optional EDGE PIECES -- its loose tufts on magenta, its
+ *     third picture -- are scattered whole along its edges (pieceMap).
+ * The water keeps its shore, and the town's built surfaces their straight
+ * edges (below).
  *
  * BUILT surfaces -- the town's street, boardwalks and square (BUILT below)
  * -- are laid exactly on their cells, with straight edges, over the natural
@@ -67,6 +79,93 @@ const BORDER_BAND = 0.45;
 const JIT = 0.32;
 /* v2.3.2945: the surfaces laid exactly on their cells (see the header) */
 const BUILT = ['street', 'boardwalk', 'plaza'];
+
+/* ═══ v2.3.2947: WHERE TWO GROUNDS MEET ═══
+   Owner, 2026-09-30: "the change between two swatches is still too jarring
+   and obvious.  Also layers need to be correct (grass slightly overlapping
+   dirt areas).  I'm thinking of an irregular border area … that border
+   area will need to vary in size depending on what two swatches are coming
+   together."
+
+   Every ground is one KIND of material, and the kinds lie in one order,
+   bottom to top: what is liquid, then the worn roads, bare rock, metal
+   plates, earth, sand and ash, moss, grass, ice, and snow on everything.
+   Where two grounds meet, the one higher in the order is the UPPER: it
+   reaches over the lower by a little, and its edge is ragged over a band
+   whose width is the pair's (EDGE_SPREAD) -- a road's edge is narrow, sand
+   drifting onto rock wide.  Two grounds of the same kind (one grass giving
+   way to another) interlock evenly, with no upper.  The boardwalks, the
+   town square and the water keep their crisp edges.
+
+   The ragged edge is drawn from the two pictures themselves, not from
+   noise: within the band each pixel goes to whichever ground stands higher
+   there -- its HEIGHT, the pixel's brightness ranked within its own picture
+   (a grass blade's lit tip, a pebble, a snow lump stand high; the shadow
+   between blades lies low).  So grass reaches over dirt in its own tufts,
+   the dirt shows through the gaps between them, and every colour is still
+   a pixel of one of the two pictures: nothing is blended, and the palette
+   holds.  */
+export const KINDS = ['liquid', 'road', 'rock', 'metal', 'earth', 'sand', 'ash', 'moss', 'grass', 'ice', 'snow', 'built'];
+const LAYER = { liquid: 0, road: 1, rock: 2, metal: 3, earth: 4, sand: 5, ash: 5, moss: 6, grass: 7, ice: 8, snow: 9, built: 10 };
+/* The kind of every swatch, from its brief (plan.js).  A swatch not listed
+   is taken as earth. */
+const KIND_OF = {
+  commons: 'grass', 'town-yard': 'earth', street: 'road', boardwalk: 'built', plaza: 'built', road: 'road', gravel: 'road', lava: 'liquid',
+  'frost-1': 'snow', 'frost-2': 'snow', 'frost-3': 'ice', 'frost-4': 'snow',
+  'ember-1': 'grass', 'ember-2': 'ash', 'ember-3': 'rock', 'ember-4': 'rock',
+  'sky-1': 'earth', 'sky-2': 'sand', 'sky-3': 'rock', 'sky-4': 'rock',
+  'hollows-1': 'earth', 'hollows-2': 'rock', 'hollows-3': 'rock', 'hollows-4': 'rock',
+  'thunder-1': 'earth', 'thunder-2': 'metal', 'thunder-3': 'metal', 'thunder-4': 'metal',
+  'tidal-1': 'sand', 'tidal-2': 'sand', 'tidal-3': 'rock', 'tidal-4': 'sand',
+  'mist-1': 'grass', 'mist-2': 'moss', 'mist-3': 'earth', 'mist-4': 'moss',
+  'verdant-1': 'grass', 'verdant-2': 'moss', 'verdant-3': 'moss', 'verdant-4': 'moss',
+  'border-ember-frost': 'earth', 'border-ember-sky': 'ash', 'border-hollows-sky': 'sand', 'border-hollows-thunder': 'earth',
+  'border-thunder-tidal': 'sand', 'border-mist-tidal': 'earth', 'border-mist-verdant': 'grass', 'border-frost-verdant': 'grass',
+};
+export function kindOf(id) { return KIND_OF[id] || 'earth'; }
+/* How an upper ground lies over a lower one, in game px: [reach, ragged].
+   REACH is how far its edge comes over the lower ground (then varies along
+   the edge, by half again either way); RAGGED is the half-width of the band
+   either side of that line where the two pictures interlock. */
+const EDGE_SPREAD = {
+  road: [1, 6], rock: [2, 7], metal: [0, 2], earth: [3, 9], sand: [5, 14], ash: [5, 14],
+  moss: [4, 10], grass: [5, 12], ice: [2, 6], snow: [5, 13],
+};
+/* Two grounds of one kind: no reach, just the band. */
+const EDGE_SAME = { road: 8, rock: 10, metal: 2, earth: 12, sand: 15, ash: 15, moss: 14, grass: 15, ice: 6, snow: 15, liquid: 0 };
+/* the smallest bit of ground an edge may leave, in picture px (a tuft) */
+const EDGE_BIT = 20;
+/* how far beyond an upper ground's ragged edge its edge pieces lie, game px */
+const EDGE_PIECE_REACH = 14;
+/* the biggest edge piece laid, in picture px across (a person's head is ~40) */
+const EDGE_PIECE_MAX = 96;
+/* the palette index an indexed edge-pieces picture uses for see-through */
+export const EDGE_CLEAR = 255;
+/* the most any edge reaches, in game px, for the margins below */
+const EDGE_MAX_GAME = 2 + Math.max(
+  ...Object.values(EDGE_SPREAD).map(([r, w]) => 1.5 * r + 1.35 * w),
+  ...Object.values(EDGE_SAME).map((w) => 1.35 * w));
+
+/* The edge where swatches `a` and `b` (catalog entries) meet: null where it
+   stays crisp (the water, the boardwalks, the square); otherwise
+   { up, lo } -- which is the upper (the same when neither is) -- and
+   `reach`, `ragged` in game px. */
+export function edgeRecipe(a, b) {
+  if (!a || !b || a.id === b.id) return null;
+  /* the town's street, boardwalks and square keep their straight, surveyed
+     edges (v2.3.2945) */
+  if (BUILT.includes(a.id) || BUILT.includes(b.id)) return null;
+  const ka = kindOf(a.id), kb = kindOf(b.id);
+  if (ka === 'built' || kb === 'built') return null;
+  if (ka === kb) {
+    const w = EDGE_SAME[ka] || 0;
+    return w ? { up: a.id < b.id ? a.id : b.id, lo: a.id < b.id ? b.id : a.id, even: true, reach: 0, ragged: w } : null;
+  }
+  const [U, L, ku] = LAYER[ka] > LAYER[kb] ? [a, b, ka] : [b, a, kb];
+  const sp = EDGE_SPREAD[ku];
+  if (!sp) return null;
+  return { up: U.id, lo: L.id, even: false, reach: sp[0], ragged: sp[1] };
+}
 /* the water the preview draws: deep, mid, shallow and foam -- the game's own
    reserved effect colours (public/tools/style/scene.js, EFFECT_PALETTE) */
 const WATER_RGB = { deep: [28, 70, 126], mid: [53, 113, 161], shallow: [78, 156, 196], foam: [226, 238, 240] };
@@ -86,7 +185,8 @@ const mix = (a, b) => a.map((v, i) => Math.round((v + b[i]) / 2));
 export function groundCatalog(plan) {
   const R = plan.regions, K = plan.classes;
   const out = [];
-  const add = (e) => out.push({ levels: null, revised: null, ...e });
+  /* v2.3.2947: `kind`, the material it is (KIND_OF), for where it meets others */
+  const add = (e) => out.push({ levels: null, revised: null, ...e, kind: kindOf(e.id) });
   add({ id: 'commons', group: 'hub', name: R.commons.name, brief: R.commons.stages[0].ground,
     where: 'the safe common land round the town', color: hexToRgb(R.commons.ground) });
   add({ id: 'town-yard', group: 'hub', name: 'Brotown yards', brief: 'packed earth with patchy short grass and a few pebbles',
@@ -134,11 +234,26 @@ export function materialMap(plan, bp) {
   const water = index[WATER];
   const isWater = new Uint8Array(bp.classIds.length);
   for (const k of ['ocean', 'river', 'water']) isWater[C[k]] = 1;
-  const mat = new Uint8Array(bp.w * bp.h);
+  const n = bp.w * bp.h;
+  const mat = new Uint8Array(n);
   const reg = bp.regionIds;
   const stageId = Object.create(null), borderId = Object.create(null);
   for (const id of reg) if (plan.regions[id].dir) stageId[id] = [1, 2, 3, 4].map((k) => index[`${id}-${k}`]);
   for (const key of Object.keys(plan.borders || {})) borderId[key] = index[`border-${key.replace('|', '-')}`];
+  const seed = (plan.seed | 0) + 700;
+  /* the border land between any two spokes, by their order */
+  const NS = spokes.length, borderOf = new Int16Array(NS * NS).fill(-1);
+  for (let k = 0; k < NS; k++) for (let l = 0; l < NS; l++) {
+    const b = borderId[[spokes[k].id, spokes[l].id].sort().join('|')];
+    if (b != null) borderOf[k * NS + l] = b;
+  }
+  /* v2.3.2947: a spoke's stages give way to each other -- and the commons
+     to each first stage -- over a wide band, in patches, not along a line
+     (the owner: "that border area will need to vary in size depending on
+     what two swatches are coming together").  Each land cell's stage (the
+     commons -1, then 0..3), averaged over a wide neighbourhood, is the
+     smooth coordinate the patches are cut from (landStage below). */
+  const stageAt = landStage(bp, isWater, reg);
   for (let by = 0; by < bp.h; by++) {
     const y = (bp.y0 + (by + 0.5) * S - g.cy) / P;
     for (let bx = 0; bx < bp.w; bx++) {
@@ -151,20 +266,34 @@ export function materialMap(plan, bp) {
       else if (c === C.bridge) m = index.boardwalk;
       else if (c === C.rail) m = index.gravel;
       else if (c === C.lot) m = index['town-yard'];
-      else if (rid === 'commons' || !stageId[rid]) m = index.commons;
       else {
-        m = stageId[rid][bp.band[i]];
-        /* border land: on a pass (outside every spoke), or near the line
-           halfway between two spokes at their bases */
         const x = (bp.x0 + (bx + 0.5) * S - g.cx) / P;
         let d1 = Infinity, d2 = Infinity, k1 = 0, k2 = 0;
         for (let k = 0; k < spokes.length; k++) {
           const d = axisDist(W, spokes[k], x, y);
           if (d < d1) { d2 = d1; k2 = k1; d1 = d; k1 = k; } else if (d < d2) { d2 = d; k2 = k; }
         }
-        if (d1 > W.half || d2 - d1 < BORDER_BAND) {
-          const b = borderId[[spokes[k1].id, spokes[k2].id].sort().join('|')];
-          if (b != null) m = b;
+        /* the stage, patched: the averaged stage plus noise that is strong
+           halfway between two stages and nothing where only one is near */
+        const v = stageAt(bx, by);
+        let st = Math.floor(v);
+        const f = v - st;
+        if (f > 0.001) {
+          const nz = fbm(bx / 10, by / 10, seed, 2);
+          if (f + 2.2 * (1 - Math.abs(2 * f - 1)) * nz > 0.5) st++;
+        }
+        const own = stageId[rid] ? rid : spokes[k1] && stageId[spokes[k1].id] ? spokes[k1].id : null;
+        if (st < 0 || !own) m = index.commons;
+        else {
+          m = stageId[own][Math.min(3, st)];
+          /* border land: on a pass (outside every spoke), or near the line
+             halfway between two spokes at their bases -- that line's band
+             wobbles, so the border land comes and goes in patches too */
+          const dd = d2 - d1;
+          if (d1 > W.half || dd < BORDER_BAND - 0.2 || (dd < BORDER_BAND + 0.2 && dd < BORDER_BAND + 0.2 * fbm(bx / 5 + 31.7, by / 5 - 17.3, seed + 5, 3))) {
+            const b = borderOf[k1 * NS + k2];
+            if (b >= 0) m = b;
+          }
         }
       }
       mat[i] = m;
@@ -174,6 +303,37 @@ export function materialMap(plan, bp) {
   const built = new Uint8Array(ids.length);
   for (const id of BUILT) if (index[id] != null) built[index[id]] = 1;
   return { mat, ids, index, water, catalog: cat, built };
+}
+
+/* v2.3.2947: every land cell's stage, averaged over about a dozen cells
+   (~300 game px) each way -- the commons and the town count as -1, a
+   spoke's stages 0 to 3, the water not at all -- as a sampler (bx, by) ->
+   a number whose whole part is the nearest stage and whose fraction says
+   how far toward the next one the cell sits.  Worked out on cells four at
+   a time, so the whole Wheel costs a few MB for a moment, not 26. */
+const STAGE_COARSE = 4, STAGE_BLUR = 3;
+function landStage(bp, isWater, reg) {
+  const F = STAGE_COARSE, cw = Math.ceil(bp.w / F), ch = Math.ceil(bp.h / F);
+  const sv = new Float32Array(cw * ch), sw = new Float32Array(cw * ch);
+  const spoke = reg.map((id) => id !== 'commons' && id !== 'town');
+  for (let by = 0; by < bp.h; by++) for (let bx = 0; bx < bp.w; bx++) {
+    const i = by * bp.w + bx;
+    if (isWater[bp.cls[i]]) continue;
+    const c = ((by / F) | 0) * cw + ((bx / F) | 0);
+    sv[c] += spoke[bp.reg[i]] ? bp.band[i] : -1;
+    sw[c] += 1;
+  }
+  for (let k = 0; k < 2; k++) { blur1(sv, cw, ch, STAGE_BLUR); blur1(sw, cw, ch, STAGE_BLUR); }
+  const v = new Float32Array(cw * ch);
+  for (let c = 0; c < cw * ch; c++) v[c] = sw[c] > 1e-6 ? sv[c] / sw[c] : 0;
+  return (bx, by) => {
+    const fx = Math.min(cw - 1.001, Math.max(0, (bx + 0.5) / F - 0.5)), fy = Math.min(ch - 1.001, Math.max(0, (by + 0.5) / F - 0.5));
+    const i0 = Math.floor(fx), j0 = Math.floor(fy), ux = fx - i0, uy = fy - j0, q = j0 * cw + i0;
+    const a = v[q] * (1 - ux) + v[q + 1] * ux, b = v[q + cw] * (1 - ux) + v[q + cw + 1] * ux;
+    /* a cell whose own stage the average has not moved keeps it exactly */
+    const val = a * (1 - uy) + b * uy;
+    return Math.abs(val - Math.round(val)) < 0.02 ? Math.round(val) : val;
+  };
 }
 
 /* ── laying the swatches ── */
@@ -353,9 +513,21 @@ function putTexel(data, o, tile, k) {
 function composeFine(plan, bp, mm, rect, tiles, opts, K) {
   const S = bp.scale, seed = (plan.seed | 0) + 900;
   const RW = Math.round(rect.w), RH = Math.round(rect.h), X0 = Math.round(rect.x), Y0 = Math.round(rect.y);
+  const GPA = plan.worldPxPerArtPx || 1.5;
+  /* v2.3.2947: the ground is worked out EA art px beyond the rectangle as
+     well, so an edge just outside it is found the same way whichever
+     rectangle it is in -- chunks laid apart still meet with no seam */
   const M = 4, E2 = 2;
-  const cx0 = Math.floor((X0 - E2 - bp.x0) / S) - M, cy0 = Math.floor((Y0 - E2 - bp.y0) / S) - M;
-  const cw = Math.ceil((RW + 2 * E2) / S) + 2 * M + 2, ch = Math.ceil((RH + 2 * E2) / S) + 2 * M + 2;
+  /* (wider still when there are edge pieces: the middle of any piece that
+     can reach the worked-out area must lie in it) */
+  const anyPieces = !!tiles && Object.values(tiles).some((t) => t && t.E);
+  let EA = Math.max(Math.ceil(EDGE_MAX_GAME / GPA), anyPieces ? Math.ceil((EDGE_BIT + 1 + EDGE_PIECE_MAX / 2) / K) : 0) + 2;
+  /* ...but only where an edge can be: most rectangles lie inside one ground
+     or along crisp edges only, and need no more than the old margin */
+  if (!edgesNear(bp, mm, X0 - E2 - EA, Y0 - E2 - EA, RW + 2 * (E2 + EA), RH + 2 * (E2 + EA), M)) EA = 0;
+  const PM = E2 + EA;
+  const cx0 = Math.floor((X0 - PM - bp.x0) / S) - M, cy0 = Math.floor((Y0 - PM - bp.y0) / S) - M;
+  const cw = Math.ceil((RW + 2 * PM) / S) + 2 * M + 2, ch = Math.ceil((RH + 2 * PM) / S) + 2 * M + 2;
   const cellAt = (x, y) => {
     const bx = Math.min(bp.w - 1, Math.max(0, cx0 + x)), by = Math.min(bp.h - 1, Math.max(0, cy0 + y));
     return mm.mat[by * bp.w + bx];
@@ -363,11 +535,24 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
   const { present, memb } = naturalFields(mm, cellAt, cw, ch);
   const water = mm.water, wIdx = present.indexOf(water);
   const builtAt = builtLookup(bp, mm);
+  const cat = mm.catalog;
   /* the swatch at a point (art px, continuous), as composeGround decides it
      for a whole art px; `nx, ny` place its noise.  Leaves the water's share
      in `lastWater` for the sea's shading. */
   let lastWater = 0;
   const vs = new Float32Array(present.length);
+  /* v2.3.2947: a cell whose field is one swatch's alone, all round, needs
+     no working out -- most of any rectangle, and all of its wide margin */
+  const solo = new Int16Array(cw * ch).fill(-1);
+  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+    let only = -1;
+    for (let q = 0; q < present.length && only !== -2; q++) {
+      const v = memb[q][y * cw + x];
+      if (v >= 0.999) only = only === -1 ? present[q] : -2;
+      else if (v > 0) only = -2;
+    }
+    if (only >= 0) solo[y * cw + x] = only;
+  }
   const pickAt = (axc, ayc, nx, ny) => {
     /* a built surface is its cells, exactly (v2.3.2945) */
     const bq = builtAt(axc, ayc);
@@ -376,6 +561,8 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     const gj = Math.min(ch - 2, Math.max(0, Math.floor(gyf))), uy = Math.min(1, Math.max(0, gyf - gj));
     const gi = Math.min(cw - 2, Math.max(0, Math.floor(gxf))), ux = Math.min(1, Math.max(0, gxf - gi));
     const p00 = gj * cw + gi, p10 = p00 + 1, p01 = p00 + cw, p11 = p01 + 1;
+    const s0 = solo[p00];
+    if (s0 >= 0 && s0 === solo[p10] && s0 === solo[p01] && s0 === solo[p11]) { if (s0 === water) lastWater = 1; return s0; }
     const w00 = (1 - ux) * (1 - uy), w10 = ux * (1 - uy), w01 = (1 - ux) * uy, w11 = ux * uy;
     let best = present[0], bv = -Infinity, alive = 0, only = best;
     for (let q = 0; q < present.length; q++) {
@@ -396,14 +583,13 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     }
     return best;
   };
-  /* 1. whole art px, two more all round, so every output pixel below can
-     see its art px's neighbours whichever rectangle it is in */
-  const PW = RW + 2 * E2, PH = RH + 2 * E2;
+  /* 1. whole art px, PM more all round */
+  const PW = RW + 2 * PM, PH = RH + 2 * PM, PX0 = X0 - PM, PY0 = Y0 - PM;
   const pmat = new Uint8Array(PW * PH), pdep = new Float32Array(PW * PH);
   for (let py = 0; py < PH; py++) {
-    const ay = Y0 - E2 + py;
+    const ay = PY0 + py;
     for (let px = 0; px < PW; px++) {
-      const ax = X0 - E2 + px, p = py * PW + px;
+      const ax = PX0 + px, p = py * PW + px;
       lastWater = 0;
       pmat[p] = pickAt(ax + 0.5, ay + 0.5, ax, ay);
       pdep[p] = lastWater;
@@ -416,16 +602,143 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     puni[p] = pmat[p - PW - 1] === m0 && pmat[p - PW] === m0 && pmat[p - PW + 1] === m0 && pmat[p - 1] === m0 &&
       pmat[p + 1] === m0 && pmat[p + PW - 1] === m0 && pmat[p + PW] === m0 && pmat[p + PW + 1] === m0 ? 1 : 0;
   }
-  /* 2. output pixels: the art px's answer where its neighbourhood is one
-     swatch, each pixel's own where two meet.  FW more all round for the foam. */
-  const FW = Math.max(1, Math.round(K / 1.5));
+  /* 2. v2.3.2947: the edges.  Which swatches here meet with an edge
+     (edgeRecipe), and for each one that is another's edge partner, how far
+     every art px is from it (a chamfer distance, in thirds of an art px) */
+  const hereSeen = new Uint8Array(256);
+  for (let p = 0; p < pmat.length; p++) hereSeen[pmat[p]] = 1;
+  const here = [];
+  for (let q = 0; q < 256; q++) if (hereSeen[q]) here.push(q);
+  /* (flat arrays, not maps: these are read for every pixel near an edge) */
+  const recipes = new Map(), partners = new Map(), dts = new Map();
+  const recOf = new Array(65536), partOf = new Array(256), dtOf = new Array(256);
+  for (const a of here) {
+    const list = [];
+    for (const b of here) {
+      if (a === b || a === water || b === water) continue;
+      const r = edgeRecipe(cat[a], cat[b]);
+      if (!r) continue;
+      /* how far from `b` (thirds of an art px) this edge can still reach */
+      const reachT = Math.ceil(((1.5 * r.reach + 1.35 * r.ragged) / GPA + 1.5) * 3);
+      const rr = { ...r, upQ: cat[a].id === r.up ? a : b, loQ: cat[a].id === r.up ? b : a, reachT };
+      recipes.set(a * 256 + b, rr);
+      recOf[a * 256 + b] = rr;
+      list.push(b);
+    }
+    if (list.length) { partners.set(a, list); partOf[a] = list; }
+  }
+  for (const list of partners.values()) for (const b of list) if (!dts.has(b)) { const D = chamfer34(pmat, PW, PH, b); dts.set(b, D); dtOf[b] = D; }
+  /* an art px is in reach of an edge when a partner is within the widest
+     edge it could have (in thirds of an art px) */
+  const inReach = new Uint8Array(PW * PH);
+  if (partners.size) {
+    for (let p = 0; p < PW * PH; p++) {
+      const a = pmat[p], list = partOf[a];
+      if (!list) continue;
+      for (let k = 0; k < list.length; k++) if (dtOf[list[k]][p] <= recOf[a * 256 + list[k]].reachT) { inReach[p] = 1; break; }
+    }
+  }
+  const bSel = (ax, ay) => fbm(ax / 1100, ay / 1100, seed + 11, 2) + 0.18 * (hash2(ax >> 2, ay >> 2, seed + 13) - 0.5) > 0;
+  const tA = new Array(256).fill(null), tB = new Array(256).fill(null);
+  for (const q of here) {
+    const t = q !== water && cat[q] && tiles && tiles[cat[q].id];
+    if (t && t.A) { tA[q] = t.A; tB[q] = t.B || t.A; }
+  }
+  const tileFor = (q, useB) => (useB ? tB[q] : tA[q]);
+  /* per art px, worked out once for its K x K pixels: how far the edge
+     reaches and how wide its band is there (both wander along it), and
+     which version of the swatches (A or B) it shows */
+  const pVar = new Float32Array(PW * PH * 2), pB = new Int8Array(PW * PH).fill(-1);
+  /* the patches' noise at art px middles (NaN until wanted), read between them */
+  const pPatch = new Float32Array(PW * PH).fill(NaN);
+  const patchAt = (q) => {
+    let v = pPatch[q];
+    if (v !== v) { const ax = PX0 + (q % PW), ay = PY0 + ((q / PW) | 0); v = pPatch[q] = valueNoise((ax * K + K / 2) / 16, (ay * K + K / 2) / 16, seed + 43); }
+    return v;
+  };
+  /* A whole art px settled at once, where one edge is near and its band
+     coordinate, at the art px's middle, is plainly past either side of the
+     ragged band (by more than the art px's half-diagonal can change it):
+     the upper's or the lower's label, or -1 to work each pixel out. */
+  const pSet = new Int16Array(PW * PH).fill(-2);
+  const settle = (a, p) => {
+    const list = partOf[a];
+    if (!list || list.length !== 1) return -1;
+    const b = list[0], r = recOf[a * 256 + b], d0 = dtOf[b][p];
+    if (d0 > r.reachT) return a;
+    if (pB[p] < 0) {
+      const ax = PX0 + (p % PW), ay = PY0 + ((p / PW) | 0);
+      pVar[2 * p] = 1 + 0.5 * valueNoise(ax / 40, ay / 40, seed + 31);
+      pVar[2 * p + 1] = 1 + 0.35 * valueNoise(ax / 40 + 17.3, ay / 40 - 9.1, seed + 37);
+      pB[p] = bSel(ax, ay) ? 1 : 0;
+    }
+    const dist = Math.max(0, d0 / 3 - 0.5) * GPA, s = a === r.loQ ? dist : -dist;
+    const E = r.ragged * pVar[2 * p + 1], t = (s - r.reach * pVar[2 * p]) / E;
+    const slack = (0.75 * GPA + 0.1) / E;
+    if (t - slack >= 1) return r.loQ;
+    if (t + slack <= -1) return r.upQ;
+    return -1;
+  };
+  /* the edge's answer for one output pixel, or -1 where there is no edge */
+  const edgeAt = (a, p, aox, aoy) => {
+    const list = partOf[a];
+    if (!list) return -1;
+    const axc = (aox + 0.5) / K, ayc = (aoy + 0.5) / K;
+    /* the art px centres round the point, and where it sits between them */
+    const fx = Math.min(PW - 1.001, Math.max(0, axc - PX0 - 0.5)), fy = Math.min(PH - 1.001, Math.max(0, ayc - PY0 - 0.5));
+    const i0 = Math.floor(fx), j0 = Math.floor(fy), ux = fx - i0, uy = fy - j0;
+    const q00 = j0 * PW + i0;
+    let b = -1, bd = Infinity;
+    for (let k = 0; k < list.length; k++) {
+      const l = list[k], D = dtOf[l];
+      const d = (D[q00] * (1 - ux) + D[q00 + 1] * ux) * (1 - uy) + (D[q00 + PW] * (1 - ux) + D[q00 + PW + 1] * ux) * uy;
+      if (d < bd) { bd = d; b = l; }
+    }
+    if (b < 0) return -1;
+    const r = recOf[a * 256 + b];
+    /* game px from the line between the two, + into the lower ground */
+    const dist = Math.max(0, bd / 3 - 0.5) * GPA;
+    const up = r.upQ, lo = r.loQ;
+    const s = a === lo ? dist : -dist;
+    /* the reach and the band vary along the edge, so it wanders */
+    if (pB[p] < 0) {
+      const ax = Math.floor(axc), ay = Math.floor(ayc);
+      pVar[2 * p] = 1 + 0.5 * valueNoise(ax / 40, ay / 40, seed + 31);
+      pVar[2 * p + 1] = 1 + 0.35 * valueNoise(ax / 40 + 17.3, ay / 40 - 9.1, seed + 37);
+      pB[p] = bSel(ax, ay) ? 1 : 0;
+    }
+    const t = (s - r.reach * pVar[2 * p]) / (r.ragged * pVar[2 * p + 1]);
+    if (t <= -1) return up;
+    if (t >= 1) return lo;
+    const useB = pB[p] === 1;
+    const hu = heightAt(tileFor(up, useB), up, aox, aoy, seed), hl = heightAt(tileFor(lo, useB), lo, aox, aoy, seed);
+    /* patches a few game px across, so the upper ground comes in islands
+       and the lower shows through in bays, thinning out across the band */
+    const patch = 0.6 * ((patchAt(q00) * (1 - ux) + patchAt(q00 + 1) * ux) * (1 - uy) + (patchAt(q00 + PW) * (1 - ux) + patchAt(q00 + PW + 1) * ux) * uy);
+    return 0.7 * (hu - hl) + patch > t ? up : lo;
+  };
+  /* 3. output pixels: an edge's answer where one is in reach; else the art
+     px's answer where its neighbourhood is one swatch, each pixel's own
+     where two meet.  FW more all round, for the foam and the tidy-up (which
+     must see the whole of any bit it takes away, whichever rectangle). */
+  const FOAM = Math.max(1, Math.round(K / 1.5)), FW = Math.max(FOAM, EDGE_BIT + 1);
   const OW = RW * K, OH = RH * K, OX0 = X0 * K, OY0 = Y0 * K, OEW = OW + 2 * FW, OEH = OH + 2 * FW;
-  const omat = new Uint8Array(OEW * OEH), odep = new Float32Array(OEW * OEH);
+  const omat = new Uint8Array(OEW * OEH), odep = new Float32Array(OEW * OEH), oedge = new Uint8Array(OEW * OEH);
   for (let oy = 0; oy < OEH; oy++) {
-    const aoy = OY0 - FW + oy, pyi = Math.floor(aoy / K) - (Y0 - E2);
-    for (let ox = 0; ox < OEW; ox++) {
-      const aox = OX0 - FW + ox, pxi = Math.floor(aox / K) - (X0 - E2);
+    const aoy = OY0 - FW + oy, pyi = Math.floor(aoy / K) - PY0;
+    const ox0 = OX0 - FW;
+    let pxi = Math.floor(ox0 / K), sub = ox0 - pxi * K;
+    pxi -= PX0;
+    for (let ox = 0; ox < OEW; ox++, sub++) {
+      if (sub === K) { sub = 0; pxi++; }
+      const aox = ox0 + ox;
       const p = pyi * PW + pxi, o = oy * OEW + ox;
+      if (inReach[p]) {
+        let e = pSet[p];
+        if (e === -2) e = pSet[p] = settle(pmat[p], p);
+        if (e < 0) e = edgeAt(pmat[p], p, aox, aoy);
+        if (e >= 0) { omat[o] = e; odep[o] = pdep[p]; oedge[o] = 1; continue; }
+      }
       if (puni[p]) { omat[o] = pmat[p]; odep[o] = pdep[p]; continue; }
       lastWater = 0;
       const axc = (aox + 0.5) / K, ayc = (aoy + 0.5) / K;
@@ -433,39 +746,298 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       odep[o] = lastWater;
     }
   }
-  /* 3. colour */
-  const data = new Uint8ClampedArray(OW * OH * 4), cat = mm.catalog;
+  /* v2.3.2947: EDGE PIECES -- a ground's own loose tufts, lumps and drifts
+     (its optional third picture, tiles[id].E), scattered WHOLE on the
+     ground below it near their edge, thicker close in.  Each piece has a
+     fixed place in the world (the picture repeats like a swatch, three
+     times over at offsets, for enough of them along an edge -- never turned:
+     they are lit from the upper left, like all art); it is laid or not by
+     what lies under its middle, so a piece is never cut in half.  Laid into
+     the label map before the tidy-up (a pocket of road left between a tuft
+     and the grass is a crumb too), and over the worked-out margin, whose
+     width (PM) is what makes every chunk lay the same pieces. */
+  const opk = new Int32Array(OEW * OEH).fill(-1);
+  const uppers = new Set();
+  for (const r of recipes.values()) if (!r.even) { const t = tiles && tiles[cat[r.upQ].id]; if (t && t.E) uppers.add(r.upQ); }
+  const EX0 = OX0 - FW, EY0 = OY0 - FW;
+  for (const U of uppers) {
+    const E = tiles[cat[U].id].E, pm = pieceMap(E), T = E.w, DU = dtOf[U];
+    if (!DU || !pm.pieces.length) continue;
+    for (let L = 0; L < 3; L++) {
+      const offx = Math.round(T * [0, 0.37, 0.71][L]), offy = Math.round(T * [0, 0.61, 0.29][L]);
+      for (let ry = Math.floor((EY0 - offy - pm.max) / T); ry * T + offy < EY0 + OEH + pm.max; ry++) {
+        for (let rx = Math.floor((EX0 - offx - pm.max) / T); rx * T + offx < EX0 + OEW + pm.max; rx++) {
+          const bx = rx * T + offx, by = ry * T + offy;
+          for (const pc of pm.pieces) {
+            /* does the piece touch the worked-out area? */
+            if (bx + pc.x1 < EX0 || bx + pc.x0 >= EX0 + OEW || by + pc.y1 < EY0 || by + pc.y0 >= EY0 + OEH) continue;
+            const cxo = bx + pc.cx, cyo = by + pc.cy;
+            const fx = cxo / K - PX0 - 0.5, fy = cyo / K - PY0 - 0.5;
+            if (fx < 0 || fy < 0 || fx >= PW - 1 || fy >= PH - 1) continue;
+            const i0 = Math.floor(fx), j0 = Math.floor(fy), ux = fx - i0, uy = fy - j0, q00 = j0 * PW + i0;
+            const lc = pmat[Math.round(fy) * PW + Math.round(fx)];
+            if (lc === U) continue;
+            const r = recOf[lc * 256 + U];
+            if (!r || r.even || r.upQ !== U) continue;
+            const d = Math.max(0, ((DU[q00] * (1 - ux) + DU[q00 + 1] * ux) * (1 - uy) + (DU[q00 + PW] * (1 - ux) + DU[q00 + PW + 1] * ux) * uy) / 3 - 0.5) * GPA;
+            /* from a little inside the upper ground's ragged edge (nearer, it
+               covers them) to EDGE_PIECE_REACH beyond it, thinning out */
+            const d0 = r.reach + 0.3 * r.ragged, Z = r.reach + r.ragged + EDGE_PIECE_REACH;
+            if (d < d0 || d > Z) continue;
+            if (hash2(Math.floor(cxo), Math.floor(cyo), seed + 61 + L) >= 0.9 * (1 - (d - d0) / (Z - d0)) ** 0.7) continue;
+            for (let v = pc.y0; v <= pc.y1; v++) {
+              const oy = by + v - EY0;
+              if (oy < 0 || oy >= OEH) continue;
+              for (let u = pc.x0; u <= pc.x1; u++) {
+                if (pm.id[v * T + u] !== pc.n) continue;
+                const ox = bx + u - EX0;
+                if (ox < 0 || ox >= OEW) continue;
+                const o = oy * OEW + ox, m = omat[o];
+                if (m === water || (mm.built && mm.built[m])) continue;
+                omat[o] = U; opk[o] = v * T + u; oedge[o] = 1;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  /* the tidy-up: pixel art has no crumbs.  Where an edge left a bit of one
+     ground smaller than EDGE_BIT pixels -- an island of grass out on the
+     dirt, a hole in it -- it goes to the ground round it.  A bit touching
+     the worked-out area's border is kept: it may run on outside, and the
+     margin (FW) is wide enough that any bit this small that reaches into
+     the rectangle is seen whole, so chunks still agree. */
+  const seen = new Int32Array(OEW * OEH), keep = new Uint8Array(OEW * OEH);
+  const bit = [];
+  let stamp = 0;
+  for (let o0 = OEW; o0 < OEW * (OEH - 1); o0++) {
+    if (!oedge[o0] || keep[o0]) continue;
+    const lab = omat[o0];
+    /* a bit's every pixel is reached from its rim, so start only there */
+    if (omat[o0 - 1] === lab && omat[o0 + 1] === lab && omat[o0 - OEW] === lab && omat[o0 + OEW] === lab) continue;
+    stamp++;
+    bit.length = 0;
+    bit.push(o0); seen[o0] = stamp;
+    let big = false;
+    for (let k = 0; k < bit.length && !big; k++) {
+      const o = bit[k], ox = o % OEW;
+      for (let d = 0; d < 4; d++) {
+        let n;
+        if (d === 0) { if (ox === OEW - 1) { big = true; break; } n = o + 1; }
+        else if (d === 1) { if (ox === 0) { big = true; break; } n = o - 1; }
+        else if (d === 2) { n = o + OEW; if (n >= OEW * OEH) { big = true; break; } }
+        else { n = o - OEW; if (n < 0) { big = true; break; } }
+        if (omat[n] !== lab) continue;
+        if (keep[n]) { big = true; break; }
+        if (seen[n] === stamp) continue;
+        seen[n] = stamp;
+        bit.push(n);
+        if (bit.length >= EDGE_BIT) { big = true; break; }
+      }
+    }
+    if (big) { for (const o of bit) keep[o] = 1; continue; }
+    /* a crumb: it goes to the commonest ground round it */
+    let to = -1, tn = 0;
+    const cnt = new Map();
+    for (const o of bit) for (const n of [o - 1, o + 1, o - OEW, o + OEW]) {
+      const m = omat[n];
+      if (m === lab) continue;
+      const c = (cnt.get(m) || 0) + 1;
+      cnt.set(m, c);
+      if (c > tn || (c === tn && m < to)) { tn = c; to = m; }
+    }
+    if (to < 0) continue;
+    for (const o of bit) { omat[o] = to; opk[o] = -1; keep[o] = 1; }
+  }
+  /* 4. colour -- each swatch's pictures and plan colours looked up once,
+     not for every pixel */
+  const data = new Uint8ClampedArray(OW * OH * 4);
   const mat = opts.withMaterials === false ? null : new Uint8Array(OW * OH);
+  const look = new Array(256);
+  const lookOf = (q) => {
+    const e = cat[q], t = tiles && e && tiles[e.id];
+    return (look[q] = { A: t && t.A ? t.A : null, B: t && t.A && t.B ? t.B : null, E: t && t.E ? t.E : null, c1: e ? e.color : [0, 0, 0], c2: e ? shade(e.color, 0.86) : [0, 0, 0] });
+  };
   for (let oy = 0; oy < OH; oy++) {
     const aoy = OY0 + oy, ay = Math.floor(aoy / K);
     let lastAx = null, bsel = 0;
-    for (let ox = 0; ox < OW; ox++) {
-      const aox = OX0 + ox, ax = Math.floor(aox / K), i = oy * OW + ox, o = i * 4;
+    let ax = Math.floor(OX0 / K), sub = OX0 - ax * K;
+    for (let ox = 0; ox < OW; ox++, sub++) {
+      if (sub === K) { sub = 0; ax++; }
+      const aox = OX0 + ox, i = oy * OW + ox, o = i * 4;
       const e0 = (oy + FW) * OEW + ox + FW, m = omat[e0];
       if (mat) mat[i] = m;
       let c;
       if (m === water) {
         let land = false;
-        for (let d = 1; d <= FW && !land; d++) land = omat[e0 - d] !== water || omat[e0 + d] !== water || omat[e0 - d * OEW] !== water || omat[e0 + d * OEW] !== water;
+        for (let d = 1; d <= FOAM && !land; d++) land = omat[e0 - d] !== water || omat[e0 + d] !== water || omat[e0 - d * OEW] !== water || omat[e0 + d * OEW] !== water;
         const dd = odep[e0];
         c = land ? WATER_RGB.foam : dd < 0.72 ? WATER_RGB.shallow : dd < 0.93 ? WATER_RGB.mid : WATER_RGB.deep;
       } else {
-        const e = cat[m], t = tiles && tiles[e.id];
-        if (t && t.A) {
-          if (t.B && ax !== lastAx) { lastAx = ax; bsel = fbm(ax / 1100, ay / 1100, seed + 11, 2) + 0.18 * (hash2(ax >> 2, ay >> 2, seed + 13) - 0.5); }
-          const tile = t.B && bsel > 0 ? t.B : t.A, T = tile.w;
-          const u = ((aox % T) + T) % T, v = ((aoy % T) + T) % T;
+        const L = look[m] || lookOf(m);
+        if (opk[e0] >= 0) { putTexel(data, o, L.E, opk[e0]); continue; }
+        if (L.A) {
+          if (L.B && ax !== lastAx) { lastAx = ax; bsel = fbm(ax / 1100, ay / 1100, seed + 11, 2) + 0.18 * (hash2(ax >> 2, ay >> 2, seed + 13) - 0.5); }
+          const tile = L.B && bsel > 0 ? L.B : L.A, T = tile.w;
+          let u = aox % T, v = aoy % T;
+          if (u < 0) u += T;
+          if (v < 0) v += T;
           putTexel(data, o, tile, v * T + u);
           continue;
         }
         /* not made yet: the plan's colour, chequered every 16 art px */
-        c = ((ax >> 4) + (ay >> 4)) & 1 ? e.color : shade(e.color, 0.86);
+        c = ((ax >> 4) + (ay >> 4)) & 1 ? L.c1 : L.c2;
       }
       data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
     }
   }
   if (opts.withMaterials === false) return { w: OW, h: OH, data, scale: K };
   return { w: OW, h: OH, data, mat, scale: K };
+}
+
+/* v2.3.2947: can any two swatches that meet with an edge (edgeRecipe) lie
+   within this art px rectangle, `M` cells more all round (the blur's reach)?
+   A pure function of the cells, so every rectangle over a place answers the
+   same, and the answer is cached a pair at a time. */
+function edgesNear(bp, mm, x, y, w, h, M) {
+  const S = bp.scale;
+  const bx0 = Math.max(0, Math.floor((x - bp.x0) / S) - M), by0 = Math.max(0, Math.floor((y - bp.y0) / S) - M);
+  const bx1 = Math.min(bp.w - 1, Math.floor((x + w - bp.x0) / S) + M), by1 = Math.min(bp.h - 1, Math.floor((y + h - bp.y0) / S) + M);
+  const seen = [];
+  for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
+    const q = mm.mat[by * bp.w + bx];
+    if (seen.includes(q)) continue;
+    for (const o of seen) if (edgeBetween(mm, q, o)) return true;
+    seen.push(q);
+  }
+  return false;
+}
+function edgeBetween(mm, a, b) {
+  const memo = mm.__edge || (mm.__edge = new Int8Array(65536).fill(-1));
+  const k = a * 256 + b;
+  if (memo[k] < 0) memo[k] = memo[b * 256 + a] = a !== mm.water && b !== mm.water && edgeRecipe(mm.catalog[a], mm.catalog[b]) ? 1 : 0;
+  return memo[k] === 1;
+}
+
+/* v2.3.2947: an edge-pieces picture's pieces: every clump of solid pixels
+   (4-connected) wholly inside the picture and not a crumb, with its box,
+   its centre and its number in `id` (one byte a pixel, 0 = none).  Worked
+   out once a picture. */
+export function pieceMap(tile) {
+  if (tile.__pieces) return tile.__pieces;
+  const T = tile.w, H = tile.h, N = T * H;
+  const solid = (k) => (tile.idx ? tile.idx[k] !== EDGE_CLEAR : tile.data[k * 4 + 3] >= 128);
+  const id = new Uint8Array(N), seen = new Uint8Array(N), stack = new Int32Array(N);
+  const pieces = [];
+  let max = 0;
+  for (let k0 = 0; k0 < N; k0++) {
+    if (seen[k0] || !solid(k0)) continue;
+    let sp = 0, cnt = 0, sx = 0, sy = 0, x0 = T, y0 = H, x1 = -1, y1 = -1, edge = false;
+    stack[sp++] = k0; seen[k0] = 1;
+    const members = [];
+    while (sp) {
+      const k = stack[--sp], x = k % T, y = (k - x) / T;
+      members.push(k); cnt++; sx += x; sy += y;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (x === 0 || y === 0 || x === T - 1 || y === H - 1) edge = true;
+      if (x > 0 && !seen[k - 1] && solid(k - 1)) { seen[k - 1] = 1; stack[sp++] = k - 1; }
+      if (x < T - 1 && !seen[k + 1] && solid(k + 1)) { seen[k + 1] = 1; stack[sp++] = k + 1; }
+      if (y > 0 && !seen[k - T] && solid(k - T)) { seen[k - T] = 1; stack[sp++] = k - T; }
+      if (y < H - 1 && !seen[k + T] && solid(k + T)) { seen[k + T] = 1; stack[sp++] = k + T; }
+    }
+    /* cut by the picture's edge, a crumb, or not a piece at all (a sheet) */
+    if (edge || cnt < EDGE_BIT || x1 - x0 >= EDGE_PIECE_MAX || y1 - y0 >= EDGE_PIECE_MAX || pieces.length >= 254) continue;
+    const n = pieces.length + 1;
+    for (const k of members) id[k] = n;
+    pieces.push({ n, x0, y0, x1, y1, cx: sx / cnt, cy: sy / cnt, size: cnt });
+    max = Math.max(max, x1 - x0 + 1, y1 - y0 + 1);
+  }
+  tile.__pieces = { id, pieces, max };
+  return tile.__pieces;
+}
+
+/* v2.3.2947: how far every cell of a `w` x `h` label map is from the
+   nearest cell labelled `l` -- 3 a step across, 4 a step corner to corner
+   (a chamfer distance: within 8% of the true one, in whole numbers, so it
+   comes out the same to the last bit whichever rectangle it is worked out
+   in).  Two passes, as Borgefors (1986). */
+function chamfer34(lab, w, h, l) {
+  const n = w * h, BIG = 60000;
+  const D = new Uint16Array(n);
+  for (let i = 0; i < n; i++) D[i] = lab[i] === l ? 0 : BIG;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    let v = D[i];
+    if (!v) continue;
+    if (x > 0 && D[i - 1] + 3 < v) v = D[i - 1] + 3;
+    if (y > 0) {
+      if (D[i - w] + 3 < v) v = D[i - w] + 3;
+      if (x > 0 && D[i - w - 1] + 4 < v) v = D[i - w - 1] + 4;
+      if (x < w - 1 && D[i - w + 1] + 4 < v) v = D[i - w + 1] + 4;
+    }
+    D[i] = v;
+  }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) {
+    const i = y * w + x;
+    let v = D[i];
+    if (!v) continue;
+    if (x < w - 1 && D[i + 1] + 3 < v) v = D[i + 1] + 3;
+    if (y < h - 1) {
+      if (D[i + w] + 3 < v) v = D[i + w] + 3;
+      if (x < w - 1 && D[i + w + 1] + 4 < v) v = D[i + w + 1] + 4;
+      if (x > 0 && D[i + w - 1] + 4 < v) v = D[i + w - 1] + 4;
+    }
+    D[i] = v;
+  }
+  return D;
+}
+
+/* v2.3.2947: how high a swatch's pixel stands, 0 (lowest) to 1: its
+   brightness, ranked within its own picture, so every picture's highest
+   pixels are 1 whatever its colours -- the lit tips of grass blades, a
+   pebble's top, a snow lump -- and averaged a little with the pixels two
+   either side, so whole tufts stand rather than single pixels.  A swatch
+   not made yet stands on noise, so its edge is ragged all the same. */
+function heightLut(tile) {
+  if (tile.__heights) return tile.__heights;
+  const n = tile.w * tile.h, step = n > 65536 ? 7 : 1;
+  let lut;
+  if (tile.idx) {
+    const P = tile.pal.length / 3, cnt = new Float64Array(P);
+    for (let k = 0; k < n; k += step) cnt[tile.idx[k]]++;
+    const lum = (q) => tile.pal[q * 3] * 2 + tile.pal[q * 3 + 1] * 5 + tile.pal[q * 3 + 2];
+    const order = [...Array(P).keys()].sort((a, b) => lum(a) - lum(b) || a - b);
+    let tot = 0;
+    for (let q = 0; q < P; q++) tot += cnt[q];
+    lut = new Float32Array(P);
+    let run = 0;
+    for (const q of order) { lut[q] = (run + cnt[q] / 2) / Math.max(1, tot); run += cnt[q]; }
+  } else {
+    const d = tile.data, cnt = new Float64Array(256);
+    let tot = 0;
+    for (let k = 0; k < n; k += step) { const o = k * 4; cnt[(d[o] * 2 + d[o + 1] * 5 + d[o + 2]) >> 3]++; tot++; }
+    lut = new Float32Array(256);
+    let run = 0;
+    for (let v = 0; v < 256; v++) { lut[v] = (run + cnt[v] / 2) / Math.max(1, tot); run += cnt[v]; }
+  }
+  tile.__heights = lut;
+  return lut;
+}
+function heightAt(tile, q, aox, aoy, seed) {
+  if (!tile) return 0.5 + 0.5 * valueNoise(aox / 5 + q * 3.7, aoy / 5 - q * 1.3, seed + 53);
+  const lut = heightLut(tile), T = tile.w;
+  const u = ((aox % T) + T) % T, v = ((aoy % T) + T) % T;
+  const at = (uu, vv) => {
+    const k = vv * T + uu;
+    if (tile.idx) return lut[tile.idx[k]];
+    const o = k * 4, d = tile.data;
+    return lut[(d[o] * 2 + d[o + 1] * 5 + d[o + 2]) >> 3];
+  };
+  const u1 = u + 2 < T ? u + 2 : u + 2 - T, u0 = u >= 2 ? u - 2 : u - 2 + T;
+  const v1 = v + 2 < T ? v + 2 : v + 2 - T, v0 = v >= 2 ? v - 2 : v - 2 + T;
+  const h = (2 * at(u, v) + at(u1, v) + at(u0, v) + at(u, v1) + at(u, v0)) / 6;
+  return Math.min(1, Math.max(0, 0.5 + (h - 0.5) * 1.5));
 }
 
 /* The whole map, one pixel per cell: each swatch in `means[id]` (its
@@ -483,6 +1055,38 @@ export function groundOverview(plan, bp, mm, means = {}) {
     out[o] = c[0]; out[o + 1] = c[1]; out[o + 2] = c[2]; out[o + 3] = 255;
   }
   return out;
+}
+
+/* ── where grounds meet (v2.3.2947) ── */
+
+/* Every pair of swatches that touch on the map, with how much edge they
+   share (in cell sides, a cell being 24 game px), which lies over which
+   (edgeRecipe, null where the edge is crisp) and the place along it nearest
+   the middle of the Wheel -- for the Ground Studio to say which edges
+   matter most and to show one. */
+export function groundContacts(plan, bp, mm) {
+  const g = gridInfo(plan);
+  const W = bp.w, H = bp.h, pairs = new Map();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x, a = mm.mat[i];
+    for (let d = 0; d < 2; d++) {
+      const j = d ? i + W : i + 1;
+      if (d ? y + 1 >= H : x + 1 >= W) continue;
+      const b = mm.mat[j];
+      if (a === b) continue;
+      const lo = Math.min(a, b), hi = Math.max(a, b), key = lo * 256 + hi;
+      let e = pairs.get(key);
+      if (!e) { e = { a: mm.ids[lo], b: mm.ids[hi], n: 0, at: null, best: Infinity }; pairs.set(key, e); }
+      e.n++;
+      const ax = bp.x0 + (x + (d ? 0.5 : 1)) * bp.scale, ay = bp.y0 + (y + (d ? 1 : 0.5)) * bp.scale;
+      const r = (ax - g.cx) * (ax - g.cx) + (ay - g.cy) * (ay - g.cy);
+      if (r < e.best) { e.best = r; e.at = { x: ax, y: ay }; }
+    }
+  }
+  const byId = Object.create(null);
+  for (const e of mm.catalog) byId[e.id] = e;
+  return [...pairs.values()].map((e) => ({ a: e.a, b: e.b, n: e.n, at: e.at, recipe: edgeRecipe(byId[e.a], byId[e.b]) }))
+    .sort((p, q) => q.n - p.n || (p.a + p.b < q.a + q.b ? -1 : 1));
 }
 
 /* ── for the game (v2.3.2943) ── */

@@ -38,7 +38,7 @@ import { promptFor } from '../../public/tools/ground/prompts.js';
 import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours } from '../../public/tools/world/core/grid.js';
 import { buildBlueprint, renderSketch, colorTable, planKey, C, CLASS_IDS } from '../../public/tools/world/core/layout.js';
 import { spokePoint, arcPoint } from '../../public/tools/world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels } from '../../public/tools/world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, edgeRecipe, groundContacts, EDGE_CLEAR } from '../../public/tools/world/core/ground.js';
 import { buildPrompt } from '../../public/tools/world/core/prompt.js';
 import { gridMinCut, INF } from '../../public/tools/world/core/maxflow.js';
 import { fuseSquare } from '../../public/tools/world/core/fuse.js';
@@ -449,6 +449,130 @@ console.log('ground');
   ok('the overview is the whole Wheel at a pixel per 4 x 4 cells, in the plan\'s colours',
     ov.w === Math.ceil(bp.w / 4) && ov.h === Math.ceil(bp.h / 4) && ovAt(cx1, cy1).join() === commonsCol.join() && ovAt(bp.x0 + 10, bp.y0 + 10).join() !== commonsCol.join(),
     { w: ov.w, h: ov.h, commons: ovAt(cx1, cy1), want: commonsCol });
+
+  /* v2.3.2947, owner: "the change between two swatches is still too jarring
+     and obvious.  Also layers need to be correct (grass slightly overlapping
+     dirt areas) … that border area will need to vary in size depending on
+     what two swatches are coming together." */
+  const byId = Object.fromEntries(mm.catalog.map((e) => [e.id, e]));
+  const rc = (a, b) => edgeRecipe(byId[a], byId[b]);
+  const over = (a, b) => { const r = rc(a, b); return !!r && !r.even && r.up === a && r.lo === b; };
+  ok('grounds lie in one order: grass over the road, snow over grass, sand over rock, rock over lava; the town and two of a kind stay as they were',
+    over('commons', 'road') && over('frost-2', 'commons') && over('sky-2', 'sky-3') && over('ember-3', 'lava') && over('commons', 'town-yard') &&
+    rc('street', 'town-yard') === null && rc('boardwalk', 'commons') === null && rc('plaza', 'town-yard') === null && rc('commons', 'commons') === null);
+  ok("...each pair with its own edge: a road's narrow, sand drifting wider than grass; two of a kind interlock evenly",
+    rc('ember-3', 'road').ragged < rc('commons', 'road').ragged && rc('commons', 'road').ragged < rc('sky-2', 'road').ragged &&
+    rc('commons', 'road').reach > 0 && rc('verdant-1', 'commons').even && rc('verdant-1', 'commons').reach === 0);
+  const contacts = groundContacts(PLAN, bp, mm);
+  const landC = contacts.filter((c) => c.a !== 'water' && c.b !== 'water');
+  const roadMeets = landC.filter((c) => c.a === 'road' || c.b === 'road').length;
+  ok(`${landC.length} pairs of grounds touch on the Wheel, the road alone meeting ${roadMeets}: so the extra prompts are one a ground, not one a pair`,
+    landC.length > 150 && roadMeets > 30 && landC.every((c) => c.at && c.n > 0) && contacts[0].n >= contacts[contacts.length - 1].n);
+  /* a spoke's stages give way over a wide band, in patches: near the line
+     between stages 1 and 2 both are found either side of it, far from it
+     only its own */
+  const mixed = { near: 0, nearWrong: 0, far: 0, farWrong: 0 };
+  const feature = new Set(['road', 'gravel', 'town-yard', 'lava', 'water', 'boardwalk']);
+  for (const s of W.spokes) for (let k = -16; k <= 16; k++) for (const side of [-0.6, -0.3, 0, 0.3, 0.6]) {
+    const d = k / 10, r = W.tierMid(4.5) + d * W.tierLen;
+    const [x, y] = art(spokePoint(s, r, side));
+    const m = matAt(x, y);
+    if (feature.has(m) || m.startsWith('border')) continue;
+    const want = `${s.id}-${d < 0 ? 1 : 2}`, wrong = m !== want;
+    if (Math.abs(d) <= 0.35) { mixed.near++; if (wrong) mixed.nearWrong++; }
+    if (Math.abs(d) >= 1.2) { mixed.far++; if (wrong) mixed.farWrong++; }
+  }
+  ok(`a land's stages give way in patches over a wide band (${mixed.nearWrong} of ${mixed.near} samples near the line are the other stage), and not at all far from it`,
+    mixed.nearWrong > mixed.near * 0.08 && mixed.farWrong === 0 && mixed.far > 50, mixed);
+  const mm2 = materialMap(PLAN, bp);
+  ok('...the same every time', same(mm.mat, mm2.mat));
+  /* the edge itself, where the commons meets a road away from the town and
+     the water: two made swatches, indexed, and the commons' edge pieces */
+  const cr = contacts.find((c) => c.a === 'commons' && c.b === 'road');
+  /* a square with plenty of both in it, and nothing else near */
+  let RC = null;
+  for (let tries = 0; tries < 2000 && !RC; tries++) {
+    const ang = tries * 0.37, rad = 700 + (tries % 40) * 30;
+    const cx = g.cx + Math.cos(ang) * rad, cy = g.cy + Math.sin(ang) * rad;
+    const R = { x: Math.round(cx - 48), y: Math.round(cy - 48), w: 96, h: 96 };
+    const ids = new Set();
+    let nRoad = 0, nAll = 0;
+    for (let yy = R.y - 40; yy < R.y + R.h + 40; yy += 8) for (let xx = R.x - 40; xx < R.x + R.w + 40; xx += 8) {
+      const m = matAt(xx, yy);
+      ids.add(m);
+      if (xx >= R.x && xx < R.x + R.w && yy >= R.y && yy < R.y + R.h) { nAll++; if (m === 'road') nRoad++; }
+    }
+    if (ids.size === 2 && ids.has('commons') && ids.has('road') && nRoad > nAll * 0.3 && nRoad < nAll * 0.7) RC = R;
+  }
+  const mkIdx = (seed, P) => {
+    const T2 = 256, t = { w: T2, h: T2, idx: new Uint8Array(T2 * T2), pal: new Uint8Array(P * 3) };
+    const rr = mulberry32(seed);
+    for (let i = 0; i < P * 3; i++) t.pal[i] = Math.floor(rr() * 256);
+    for (let y = 0; y < T2; y++) for (let x = 0; x < T2; x++) t.idx[y * T2 + x] = (Math.floor(x / 5) * 3 + Math.floor(y / 7) * 5 + Math.floor(rr() * 2)) % P;
+    return t;
+  };
+  const grassT = mkIdx(11, 12), roadT = mkIdx(12, 9);
+  /* the pieces: 30 round blobs in one colour no swatch has */
+  const PT = 256, piecesT = { w: PT, h: PT, idx: new Uint8Array(PT * PT).fill(EDGE_CLEAR), pal: new Uint8Array([7, 251, 99]) };
+  const blob = [];
+  for (let y = -6; y <= 6; y++) for (let x = -6; x <= 6; x++) if (x * x + y * y <= 36) blob.push([x, y]);
+  for (let k = 0; k < 30; k++) { const bx = 20 + (k % 6) * 40, by = 20 + Math.floor(k / 6) * 48; for (const [x, y] of blob) piecesT.idx[(by + y) * PT + bx + x] = 0; }
+  const eTiles = { commons: { A: grassT, E: piecesT }, road: { A: roadT } };
+  const E1 = RC && composeGround(PLAN, bp, mm, RC, eTiles, { scale: 3 });
+  const EL = RC && composeGround(PLAN, bp, mm, { ...RC, w: 48 }, eTiles, { scale: 3 }), ER = RC && composeGround(PLAN, bp, mm, { ...RC, x: RC.x + 48, w: 48 }, eTiles, { scale: 3 });
+  let eseam = 0;
+  if (RC) for (let y = 0; y < 288; y++) for (let x = 0; x < 288; x++) for (let c = 0; c < 4; c++) {
+    const v = x < 144 ? EL.data[(y * 144 + x) * 4 + c] : ER.data[(y * 144 + x - 144) * 4 + c];
+    if (v !== E1.data[(y * 288 + x) * 4 + c]) eseam++;
+  }
+  ok('with edges and edge pieces, two halves composed apart still match the whole', !!RC && eseam === 0, { RC, eseam });
+  const palOf = (t) => { const out = new Set(); for (let i = 0; i < t.pal.length; i += 3) out.add((t.pal[i] << 16) | (t.pal[i + 1] << 8) | t.pal[i + 2]); return out; };
+  const allowed = new Set([...palOf(grassT), ...palOf(roadT), ...palOf(piecesT)]);
+  let offPal = 0, grassOnRoad = 0, roadOnGrass = 0, pieceColour = 0;
+  const OWp = RC ? E1.w : 0;
+  if (RC) for (let y = 0; y < E1.h; y++) for (let x = 0; x < OWp; x++) {
+    const i = y * OWp + x, o = i * 4, col = (E1.data[o] << 16) | (E1.data[o + 1] << 8) | E1.data[o + 2];
+    if (!allowed.has(col)) offPal++;
+    if (col === ((7 << 16) | (251 << 8) | 99)) pieceColour++;
+    const cellId = matAt(RC.x + (x + 0.5) / 3, RC.y + (y + 0.5) / 3), laid = mm.ids[E1.mat[i]];
+    if (cellId === 'road' && laid === 'commons') grassOnRoad++;
+    if (cellId === 'commons' && laid === 'road') roadOnGrass++;
+  }
+  ok('every pixel of the edge is a pixel of one of the pictures: nothing blended, so the palette holds', !!RC && offPal === 0, { offPal });
+  ok(`the grass lies over the road: it reaches onto the road (${grassOnRoad} px) far more than the road shows through it (${roadOnGrass} px), and both happen`,
+    grassOnRoad > 2 * roadOnGrass && roadOnGrass > 0, { grassOnRoad, roadOnGrass });
+  /* no crumbs: every bit of one ground wholly inside the rectangle is at
+     least a tuft (EDGE_BIT, 20 px), and every edge piece is laid whole */
+  const seenC = new Uint8Array(OWp * (RC ? E1.h : 0));
+  let crumbs = 0, cut = 0, whole = 0, merged = 0;
+  const col0 = (i) => (E1.data[i * 4] << 16) | (E1.data[i * 4 + 1] << 8) | E1.data[i * 4 + 2];
+  const PIECE = (7 << 16) | (251 << 8) | 99;
+  const comps = (key) => {
+    seenC.fill(0);
+    const out = [];
+    for (let i0 = 0; i0 < seenC.length; i0++) {
+      if (seenC[i0]) continue;
+      const k0 = key(i0);
+      let n = 0, edge = false;
+      const st = [i0]; seenC[i0] = 1;
+      while (st.length) {
+        const j = st.pop(); n++;
+        const x = j % OWp, y = (j / OWp) | 0;
+        if (x === 0 || y === 0 || x === OWp - 1 || y === E1.h - 1) edge = true;
+        for (const k of [x > 0 ? j - 1 : -1, x < OWp - 1 ? j + 1 : -1, y > 0 ? j - OWp : -1, y < E1.h - 1 ? j + OWp : -1]) if (k >= 0 && !seenC[k] && key(k) === k0) { seenC[k] = 1; st.push(k); }
+      }
+      out.push({ k: k0, n, edge });
+    }
+    return out;
+  };
+  if (RC) {
+    for (const c of comps((i) => E1.mat[i])) if (!c.edge && c.n < 20) { crumbs++; console.log('      ground crumb', mm.ids[c.k], c.n); }
+    /* (pieces from the picture's three layers may overlap: a merged pair is
+       two whole pieces, bigger than one) */
+    for (const c of comps((i) => (col0(i) === PIECE ? 1 : 0))) if (c.k === 1) { if (c.edge) cut++; else if (c.n === blob.length) whole++; else if (c.n > blob.length) merged++; else crumbs++; }
+  }
+  ok(`no crumbs: every bit of ground an edge leaves is at least a tuft, and the edge pieces are laid whole (${whole} here, each ${blob.length} px)`,
+    !!RC && crumbs === 0 && whole >= 1 && pieceColour > 0, { crumbs, whole, merged, cut, pieceColour });
 }
 
 /* ── maxflow ── */

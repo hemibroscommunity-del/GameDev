@@ -634,6 +634,7 @@ table says which. The numbers and the prompt words live in one file,
 | 10 | **Process.** The style key first. Then a small **golden set** of approved pictures, attached alongside it. One fixed style paragraph in every prompt. Every picture judged next to the bro at game size, never on its own, but **the bro is never attached to a chat** (v2.3.2939): the key and the golden set are the only pictures anything is matched to. | the owner |
 | 11 | **Materials** (v2.3.2939). Every material is drawn as itself, recognisable from its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, sand in soft, fine drifts (v2.3.2944: not wind ripples, which run one way, rule 12). Texture comes from clear shapes and soft shading, never noise, speckle or grain (v2.3.2941: the first ground came back "too gritty"). Highlights are clusters of two or more pixels (rule 5). | the prompt (`MATERIALS` in `bible.js`), the style key's ninth tile, and the owner's eye |
 | 12 | **Ground has no direction** (v2.3.2944). Owner, on the first Main Street swatch in the game: *"It's tiling wagon trails sideways and it doesn't look good. Any specific detail that would look bad when placed in the wrong direction tiled is probably not a good prompt."* A swatch is laid the same way up everywhere, whichever way the street, road or shore runs, so nothing in it may run one way: no ruts, tracks, footprints, rows, long planks, stripes, streaks or ripples. Every detail must look right from any side (a basket weave, not long planks; soft drifts, not ripples; square plates, not long ones). Whatever really does follow a road, such as ruts or rails, is an object laid along it (§11). | the prompt (`NO_DIRECTION` in `bible.js`, in every swatch prompt), and a test that no swatch brief asks for a direction |
+| 13 | **Where two grounds meet** (v2.3.2947). Owner: *"the change between two swatches is still too jarring and obvious. Also layers need to be correct (grass slightly overlapping dirt areas)."* The ground lies in **one layer order**, bottom to top: lava; roads and the railway bed; bare rock; metal floor plates; earth and mud; sand and ash; moss; grass; ice; snow. Where two meet, the higher reaches over the lower, in a band whose width is the pair's (a road's edge narrow, sand drifting wide), and the two pictures interlock along their own tufts and lumps: nothing is blended, and no crumbs are left. A land's stages change over a wide band, in patches. The water's shore and the town's built surfaces keep their edges. **Edge pieces** are each ground's optional third picture: its own loose pieces on one flat magenta, scattered whole along its edges. They are the one chat shown more than the style key: the ground's own swatch too (or the chat it was made in), because the pieces must be that ground exactly. | the game (`public/tools/world/core/ground.js`), the edge-pieces prompt (`edgePromptFor`), and the owner's eye |
 
 **What changed from ChatGPT's suggested style bible:** no gradients at all.
 Shading comes from the colour ramps, and soft light comes from the code.
@@ -1344,6 +1345,14 @@ definitely do the swatches."*
   square wide: the ragged method cannot hold a strip that thin, and broke
   them into specks along the street. Bridges are built surfaces too, and
   always walkable.
+- **Where two grounds meet** (v2.3.2947, rule 13 in §6). The grounds lie
+  in one layer order (lava at the bottom, snow on top); the higher one reaches
+  over the lower in a band as wide as the pair calls for, interlocking along
+  the two pictures' own tufts and lumps; a land's stages change in patches
+  over about a screen; and each ground can have **edge pieces**, its loose
+  tufts, lumps or drifts on magenta, which the game scatters whole along its
+  edges. One prompt per ground, not per pair: 208 pairs touch on the Wheel.
+  Details: `docs/WORLD-MAP-PIPELINE.md`, "Where two grounds meet".
 - **The Ground Studio** (`/tools/ground/`, v2.3.2937) is where the owner
   makes them:
   - every swatch's prompt, ready to copy (attach the style key, and only

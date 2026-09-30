@@ -11,7 +11,7 @@
  * So two chats about the same swatch ask exactly the same question, and a
  * change to the style bible changes every prompt at once.
  */
-import { PIXEL, HD_STYLE, QUIET_GROUND, NO_DIRECTION, KEY_MATCH, personScale } from '../style/bible.js';
+import { PIXEL, HD_STYLE, QUIET_GROUND, NO_DIRECTION, KEY_MATCH, EDGE_MATCH, EDGE_BACKGROUND, personScale } from '../style/bible.js';
 
 /* Swatches that ARE a surface -- a street, planks, gravel -- rather than
    ground things sit on.  The quiet rule still holds; "no paths" would not. */
@@ -31,5 +31,36 @@ export function promptFor(entry) {
     `A seamless, tileable square texture of ground for BroTown, a top-down 2D action RPG, seen from directly above: ${entry.brief}. ${quiet} ${NO_DIRECTION} Every edge must continue seamlessly into the opposite edge. No border, no text and no shadows cast on it.`,
     `Style: ${HD_STYLE}`,
     `${KEY_MATCH} Scale: ${scaleLine()}.`,
+  ].join('\n\n');
+}
+
+/* ═══ v2.3.2947: EDGE PIECES ═══
+   Owner: "There needs to be specific and additional prompts for when two
+   swatches have a contact area to make a smoother transition."  207 pairs
+   of grounds touch on the Wheel -- the road alone meets 45 -- so the extra
+   prompt is one per GROUND, not per pair: its own loose pieces, which the
+   game scatters wherever it lies over another ground (world/core/ground.js,
+   edgeRecipe), so one picture serves every neighbour it has.  Pieces, not a
+   picture of an edge: an edge in a picture runs one way, and every picture
+   is laid the same way up (NO_DIRECTION); the game draws the edge's shape. */
+const PIECES = {
+  grass: ['tufts and small clumps of its grass, with a few loose blades, and the odd small flower if it has them', 'grass'],
+  moss: ['small cushions and clumps of its moss', 'moss'],
+  snow: ['small lumps, crumbs and thin patches of its snow', 'snow'],
+  ice: ['small shards and thin broken patches of its ice', 'ice'],
+  sand: ['small drifts and scattered patches of its sand', 'sand'],
+  ash: ['small drifts and scattered patches of its ash', 'ash'],
+  earth: ['small clods and patches of its earth, with a few small stones', 'earth'],
+  rock: ['small stones, chips and flakes of its rock', 'rock'],
+};
+/* Which swatches have edge pieces: those that ever lie over another. */
+export function hasEdgePieces(entry) { return !!(entry && PIECES[entry.kind]); }
+export function edgePromptFor(entry) {
+  const [what, noun] = PIECES[entry.kind] || ['small loose pieces of it', 'ground'];
+  return [
+    `Loose EDGE PIECES of one ground for BroTown, a top-down 2D action RPG, seen from directly above. The ground: ${entry.brief}. Draw ${what}: about forty to sixty separate small pieces, each about the size of a person's hand or head, scattered evenly over the whole picture with plain background between them. No piece touches another or the edge of the picture. The game lays these where this ground ends and another begins, so they must look exactly like this ground's own ${noun}.`,
+    `${EDGE_BACKGROUND} ${NO_DIRECTION} No text and no border.`,
+    `Style: ${HD_STYLE}`,
+    `${EDGE_MATCH} Scale: ${scaleLine()}.`,
   ].join('\n\n');
 }

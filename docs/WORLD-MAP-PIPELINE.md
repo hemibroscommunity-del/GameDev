@@ -506,7 +506,8 @@ ground swatches the Wheel needs (World Bible §13):
   its own, is highest: the edges come out ragged, in clusters, like a pixel
   artist's, and never blended. Two versions of a swatch share the ground in
   large noisy patches. Tiles are anchored to the frame, so rectangles
-  composed apart meet with no seam.
+  composed apart meet with no seam. Since v2.3.2947 that line is only where
+  an edge starts: see **Where two grounds meet** below.
 - **Built surfaces are the exception** (v2.3.2945): the street, the
   boardwalks and the square (`BUILT` in `ground.js`) are laid exactly on
   their cells, straight-edged, over the natural ground, which takes no
@@ -519,14 +520,124 @@ ground swatches the Wheel needs (World Bible §13):
 **Tests.** `node tools/world/test-world-core.mjs` checks the catalog, each
 spoke's stages and its passes' border land, determinism, seamless chunks,
 tile-true laying and the not-made-yet colour. `node tools/qa/ground-studio.mjs`
-(28 checks in real Chromium, at a phone's size) checks the prompts (only the
+(38 checks in real Chromium, at a phone's size) checks the prompts (only the
 style key attached, never the bro, every material drawn as itself: v2.3.2939,
 and nothing running one way: v2.3.2944), a picture made from an older
 prompt marked to make again,
 the style key from the World Builder, a picture in through the real file input coming
 out 512 px, seamless, hard-edged and on the palette, the map and the preview,
 frozen colours, a reload, and a zip restored into a fresh browser with the
-same pixels.
+same pixels, and (v2.3.2947) the edge-pieces prompts and pictures below.
+
+## Where two grounds meet (v2.3.2947)
+
+> Owner, 2026-09-30: *"There needs to be specific and additional prompts for
+> when two swatches have a contact area to make a smoother transition.
+> Otherwise the change between two swatches is still too jarring and
+> obvious. Also layers need to be correct (grass slightly overlapping dirt
+> areas). I'm thinking of an irregular border area for when things like
+> grass and dirt come together but likely that border area will need to vary
+> in size depending on what two swatches are coming together. I'll let you
+> think about what other considerations there are and how you can think of
+> the best solution."*
+
+**Why it looked jarring.** Two unrelated pictures met on a ragged line cut by
+noise. Nothing of either crossed it, nothing lay on top of anything, and the
+contrast was sharpest exactly at the line. Every pair looked the same, whether
+a road's edge or meadow turning to snowfield.
+
+**What the game does now, at three sizes** (`public/tools/world/core/ground.js`):
+
+1. **Stages change over a wide band, in patches** (`materialMap`,
+   `landStage`). Each land cell's stage (the commons as −1, a spoke's stages
+   0–3) is averaged over about a dozen cells (~300 game px) either way; the
+   patches are cut from that average plus noise that is strongest halfway
+   between two stages. So the next stage arrives as islands that grow and
+   join over about a screen either side of the old line, and the commons
+   meets each first stage the same way. Border lands wobble in and out too.
+   The levels (tiers) do not move: only the ground's look.
+2. **Every edge is a band whose width is the pair's** (`edgeRecipe`,
+   `composeFine`).
+   - **One layer order** of materials, bottom to top: liquid (lava); roads and
+     the railway bed; bare rock; metal floor plates; earth and mud; sand and
+     ash; moss; grass; ice; snow (`KIND_OF` gives each swatch its kind). The
+     higher one is the **upper**: it reaches over the lower by `reach` game
+     px, and the band round that line is `ragged` game px either way.
+   - **Widths by kind** (`EDGE_SPREAD`, game px): a road's edge is narrow
+     (reach 1, ragged 6), rock 2/7, earth 3/9, grass 5/12, snow 5/13, sand and
+     ash 5/14, metal plates 0/2 (almost crisp). Both vary along the edge by
+     up to half again, so it wanders. Two grounds of the **same kind** (one
+     grass giving way to another) interlock evenly with no upper
+     (`EDGE_SAME`).
+   - **The edge is drawn from the pictures themselves.** In the band each
+     pixel goes to whichever ground stands higher there: its brightness,
+     ranked within its own picture and averaged with the pixels two either
+     side (the lit tips of grass blades, a pebble's top, a snow lump stand
+     high; the shadows between them lie low), plus patches a few game px
+     across, against a ramp across the band. So grass reaches over the road
+     in its own tufts and the road shows through the gaps; every pixel is a
+     pixel of one of the two pictures, so nothing is blended and the palette
+     holds.
+   - **No crumbs.** Any bit of one ground an edge leaves that is smaller
+     than a tuft (`EDGE_BIT`, 20 picture px) goes to the ground round it.
+   - **What keeps its crisp edge:** the water's shore (drawn by the game) and
+     the town's street, boardwalks and square (v2.3.2945's straight,
+     surveyed edges). That is a choice, easy to change for the street.
+3. **Edge pieces, one prompt per ground** (`pieceMap`; the Ground Studio's
+   third slot under each swatch, `edgePromptFor` in
+   `public/tools/ground/prompts.js`). The owner's "additional prompts".
+   - **Per ground, not per pair.** 208 pairs of grounds touch on the Wheel;
+     the road alone meets 46. One picture of a ground's own loose pieces
+     works against every ground it lies over. 39 of the 48 swatches have one:
+     every kind that is ever the upper (not the town's surfaces, the road,
+     the railway bed, lava or the metal floors).
+   - **Pieces, not a picture of an edge.** Every picture is laid the same way
+     up (World Bible §6 rule 12), and an edge drawn in a picture runs one
+     way. So the prompt asks for 40–60 separate pieces (tufts, clumps, lumps,
+     drifts, stones: `PIECES` by kind) on one flat magenta, none touching
+     another or the picture's edge; the game draws the edge's shape.
+   - **Matched to the ground.** It is sent in the chat the swatch was made
+     in, or with the style key and the swatch attached (`EDGE_MATCH`): the
+     one chat shown more than the key, because the pieces must be that
+     ground exactly.
+   - **In the studio** the magenta is cut away (`keyOut`, only when the
+     background really is magenta), the picture is kept at 1,024 px and put
+     on the palette, and only whole pieces are kept: none the picture's edge
+     cuts, no crumbs, none over 96 px across. The card says how many were
+     found (or why none), what the ground lies over, and "See an edge on the
+     map" jumps the preview there.
+   - **In the game** each piece has a fixed place in the world (the picture
+     repeats like a swatch, three times over at offsets, never turned, since
+     everything is lit from the upper left). It is laid whole, or not, by
+     what lies under its middle: a ground it lies over, within 14 game px
+     beyond the upper's ragged edge, thinning out with distance. Pieces go
+     into the label map before the tidy-up, so a pocket of road left between
+     a tuft and the grass is tidied too.
+
+**Chunks still meet with no seam.** Everything is a function of position: the
+ground is worked out far enough beyond each rectangle (27 art px when there
+are edge pieces, 23 without, only 2 where no edge is near) that any edge, any
+crumb and the middle of any piece that can reach it are seen whole. The
+distances are whole-number chamfer distances (3 a step across, 4 corner to
+corner), so they come out the same to the last bit in any rectangle.
+
+**Cost.** Measured in the Wheel trial (desktop Chromium, local server): a
+piece of ground took 32 ms on average (about 30 ms before), with no pop-ins.
+Building the plan takes about 0.1 s longer (the stage patches). A phone is
+slower: the box in the bottom left shows the real numbers, and a new line,
+**edges N with edge pieces**, says which edge pieces the game found.
+
+**Tests.** `node tools/world/test-world-core.mjs` (108): the layer order and
+widths, the pairs that touch, stage patches near the line and none far from
+it, the same map every time, halves composed apart matching the whole with
+edges and edge pieces, every pixel a pixel of a picture, the grass reaching
+onto the road far more than the road shows through, no crumbs, and pieces
+laid whole. `node tools/qa/ground-studio.mjs` (38): the explanation, the 39
+prompts, a ChatGPT-shaped pieces picture cut out whole (none cut by the
+picture's edge), no magenta left, the preview showing them on the road, the
+zip carrying them, and a picture with no magenta background giving no pieces
+and saying why. `node tools/qa/mp/run.mjs wheeltrial` (27): the game finds a
+ground's edge pieces made in the studio.
 
 ---
 
@@ -695,7 +806,7 @@ town's stairs as usual.
 - **failed**: only if a piece could not be laid, with the reason, so a
   screenshot of the phone says what went wrong.
 
-**Measured** (`node tools/qa/mp/run.mjs wheeltrial`, 26 checks), on a
+**Measured** (`node tools/qa/mp/run.mjs wheeltrial`, 26 checks then; 27 since v2.3.2947), on a
 phone-sized screen in headless Chromium against a local worker, with a swatch
 planted in the Ground Studio's storage exactly as the studio keeps it. A
 desktop processor lays pieces perhaps two or three times faster than a phone:

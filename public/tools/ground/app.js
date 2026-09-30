@@ -34,23 +34,25 @@ import { PLAN } from '../world/plan.js';
 import { buildBlueprint } from '../world/core/layout.js';
 import { gridInfo } from '../world/core/grid.js';
 import { spokePoint, arcPoint } from '../world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround, groundOverview, swatchesUnder } from '../world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, groundOverview, swatchesUnder, groundContacts, pieceMap } from '../world/core/ground.js';
 import { openStore } from '../world/store.js';
 import { zipStore, unzip } from '../world/core/zip.js';
 import { PIXEL } from '../style/bible.js';
-import { blobToCanvas, seamless, resize, buildPalette, hardenAndMap, mk } from '../style/process.js';
+import { blobToCanvas, seamless, resize, buildPalette, hardenAndMap, mk, keyOut } from '../style/process.js';
 import { loadSprites, EFFECT_PALETTE } from '../style/scene.js';
-import { promptFor } from './prompts.js';
+import { promptFor, edgePromptFor, hasEdgePieces } from './prompts.js';
 
 const TILE = PIXEL.groundTile, GPA = PIXEL.gamePxPerArtPx;   /* 1024 px a swatch, 0.5 game px a px */
 const K = Math.round(PLAN.worldPxPerArtPx / GPA);               /* ground px per plan art px: 3 */
 const DB = 'brotown-ground-studio', STORES = ['raw', 'prep', 'misc'];
 const VERS = ['A', 'B'];
+/* v2.3.2947: a swatch's third picture, its loose EDGE PIECES on magenta */
+const EDGE = 'E';
 const VIEW_H = 1024;          /* game px of height on the phone, as the game shows (worldViewport.js) */
 const FOOT = 0.56;            /* where the bro stands, as a share of the screen's height */
 const MARGIN = 48;            /* plan art px composed beyond the view, so a short drag needs no new ground */
 const THUMB = 96;             /* the card's copy of a finished swatch, drawn 2 x 2 */
-const DECODED_KEEP = 12;      /* finished swatches kept unpacked for the preview, 4 MB each */
+const DECODED_KEEP = 16;      /* finished swatches (and edge pieces) kept unpacked for the preview, 4 MB each */
 const KEY_WEIGHT = 8;         /* the style key counts this many times when the colours are made */
 const SAMPLE = 128;           /* the size of the copy of each tile the palette is made from */
 const KEY_SAMPLE = 256;       /* ... and of the style key */
@@ -66,6 +68,9 @@ const S = {
   store: null, key: null,
   raw: new Map(), prep: new Map(),
   tiles: Object.create(null), means: Object.create(null), decoded: new Map(),
+  /* v2.3.2947: id -> { w, h, png, thumb, pieces } for each swatch's edge pieces;
+     every pair of swatches that touch (groundContacts); id -> the grounds it lies over */
+  edges: Object.create(null), contacts: [], over: Object.create(null),
   palette: null, frozen: false,
   sprites: null,
   view: { x: 0, y: 0, name: '' }, pv: null, pvDirty: false, drag: null,
@@ -110,6 +115,30 @@ async function prepare(blob) {
   sq.getContext('2d').drawImage(src, (src.width - n) / 2, (src.height - n) / 2, n, n, 0, 0, n, n);
   return resize(seamless(sq), TILE, TILE, true);
 }
+/* v2.3.2947: an edge-pieces picture -> its tile before the palette: squared,
+   the flat magenta background cut away (keyOut, which also takes the
+   magenta back out of the pieces' edge pixels), shrunk to one 1024 px tile.
+   Never made seamless: the pieces stand apart on nothing, and a piece the
+   picture's edge cuts in half is left out by the game (pieceMap). */
+async function prepareEdge(blob) {
+  const src = await blobToCanvas(blob, 1600);
+  const n = Math.min(src.width, src.height);
+  const sq = mk(n, n);
+  sq.getContext('2d').drawImage(src, (src.width - n) / 2, (src.height - n) / 2, n, n, 0, 0, n, n);
+  release(src);
+  const k = keyOut(sq);
+  /* only a magenta background is cut away: anything else (a swatch put in
+     here by mistake) stays whole, so no pieces are found and the card says
+     why, rather than a texture being cut into hundreds of crumbs */
+  const bg = k.background;
+  const magenta = k.keyed && bg && bg[0] > 170 && bg[2] > 170 && bg[1] < 110;
+  const out = resize(magenta ? k.canvas : sq, TILE, TILE, true);
+  release(sq);
+  if (k.canvas !== sq) release(k.canvas);
+  return out;
+}
+const prepareFor = (ver, blob) => (ver === EDGE ? prepareEdge(blob) : prepare(blob));
+
 /* What is kept of a seamless tile: its PNG, and a small copy for the palette.
    The copy takes every fourth pixel as it is (no smoothing): averaging would
    pull the brightest and darkest pixels toward the middle, and the colours
@@ -164,6 +193,23 @@ async function finalize(id) {
     delete S.tiles[id];
     delete S.means[id];
   }
+  /* v2.3.2947: the edge pieces, on the palette, keeping only what the game
+     lays -- whole pieces, not crumbs and not ones the picture's edge cuts */
+  S.decoded.delete(kv(id, EDGE));
+  const pe = S.prep.get(kv(id, EDGE));
+  if (pe) {
+    const c = await blobToCanvas(pe.png, TILE);
+    hardenAndMap(c, S.palette);
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const img = g.getImageData(0, 0, c.width, c.height);
+    const pm = pieceMap({ w: c.width, h: c.height, data: img.data });
+    for (let k = 0; k < c.width * c.height; k++) if (!pm.id[k]) img.data[k * 4 + 3] = 0;
+    g.putImageData(img, 0, 0);
+    const thumb = resize(c, THUMB, THUMB, true);
+    const png = await canvasToBlob(c);
+    release(c);
+    S.edges[id] = { w: TILE, h: TILE, png, thumb, pieces: pm.pieces.length };
+  } else delete S.edges[id];
 }
 async function finalizeAll() { for (const e of S.cat) await finalize(e.id); }
 
@@ -180,7 +226,7 @@ async function pixelsOf(id, ver) {
   const k = kv(id, ver);
   const hit = S.decoded.get(k);
   if (hit) { S.decoded.delete(k); S.decoded.set(k, hit); return hit; }
-  const t = S.tiles[id] && S.tiles[id].byVer[ver];
+  const t = ver === EDGE ? S.edges[id] : S.tiles[id] && S.tiles[id].byVer[ver];
   if (!t) return null;
   const c = await blobToCanvas(t.png, TILE);
   const px = { w: c.width, h: c.height, data: c.getContext('2d').getImageData(0, 0, c.width, c.height).data };
@@ -197,7 +243,7 @@ async function savePalette() {
 }
 
 async function addPicture(id, ver, blob, name) {
-  const kept = await keepPrep(await prepare(blob));
+  const kept = await keepPrep(await prepareFor(ver, blob));
   const k = kv(id, ver);
   /* v2.3.2944: the brief it was made from, so a later rewrite of that brief
      can say "make this one again" (renderSwatch) */
@@ -229,7 +275,7 @@ async function loadAll() {
       try { const c = await blobToImg(pb); if (c.width === TILE) kept = await keepPrep(c, pb); else release(c); } catch (e) { kept = null; }
     }
     if (!kept) {
-      kept = await keepPrep(await prepare(rec.blob));
+      kept = await keepPrep(await prepareFor(String(k).split('|')[1], rec.blob));
       await S.store.put('prep', k, kept.png);
     }
     S.prep.set(k, kept);
@@ -270,6 +316,14 @@ function spots() {
   for (const [a, b] of W.pairs) {
     const br = S.plan.borders[[a.id, b.id].sort().join('|')];
     S.plan.wheel.passes.forEach((t, k) => add('The passes', (br && br.passes[k]) || 'a pass', arcPoint(a, b, W.tierMid(t) + 0.2, 0.5)));
+  }
+  /* v2.3.2947: the longest edges, one a ground on top, nearest the town */
+  const tops = new Set();
+  for (const c of S.contacts) {
+    if (!c.recipe || tops.has(c.recipe.up) || tops.size >= 12) continue;
+    tops.add(c.recipe.up);
+    const r = c.recipe;
+    out.push({ group: 'Where grounds meet', name: r.even ? `${S.byId[r.up].name} and ${S.byId[r.lo].name}` : `${S.byId[r.up].name} over ${S.byId[r.lo].name}`, x: c.at.x, y: c.at.y });
   }
   return out;
 }
@@ -320,10 +374,11 @@ async function composeView(m) {
   const rect = { x: Math.floor(v.x - MARGIN), y: Math.floor(v.y - MARGIN), w: Math.ceil(v.w + 2 * MARGIN), h: Math.ceil(v.h + 2 * MARGIN) };
   const tiles = Object.create(null);
   for (const id of swatchesIn(rect)) {
-    const t = S.tiles[id];
-    if (!t) continue;
-    const A = t.byVer.A ? await pixelsOf(id, 'A') : null, B = t.byVer.B ? await pixelsOf(id, 'B') : null;
-    if (A || B) tiles[id] = { A: A || B, B: A && B ? B : null };
+    const t = S.tiles[id], ed = S.edges[id];
+    if (!t && !ed) continue;
+    const A = t && t.byVer.A ? await pixelsOf(id, 'A') : null, B = t && t.byVer.B ? await pixelsOf(id, 'B') : null;
+    const E = ed && ed.pieces ? await pixelsOf(id, EDGE) : null;
+    if (A || B || E) tiles[id] = { A: A || B, B: A && B ? B : null, E };
   }
   const out = composeGround(S.plan, S.bp, S.mm, rect, tiles, { scale: K });
   const c = mk(out.w, out.h);
@@ -551,6 +606,92 @@ function renderSwatch(e) {
   const see = el('button', null, 'See it on the map');
   see.addEventListener('click', () => { const sp = spotFor(e.id); setSpot(sp.x, sp.y, `${e.name}, on the map`); $('preview').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   const r1 = el('div', 'row'); r1.appendChild(see); box.appendChild(r1);
+  if (hasEdgePieces(e)) box.appendChild(edgeBlock(e));
+}
+
+/* v2.3.2947: a swatch's EDGE PIECES -- its third, optional picture: the
+   prompt, the picture, and where on the Wheel this ground lies over others */
+function edgeBlock(e) {
+  const k = kv(e.id, EDGE), ed = S.edges[e.id], over = S.over[e.id] || [];
+  const wrap = el('div', 'edge');
+  wrap.dataset.edge = e.id;
+  wrap.appendChild(el('div', 'lbl', 'Edge pieces (optional)'));
+  const names = over.slice(0, 3).map((o) => S.byId[o.lo].name);
+  wrap.appendChild(el('div', 'sw-where', over.length
+    ? `It lies over ${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]}${over.length > 3 ? ` (and ${over.length - 3} more)` : ''}. The game scatters its loose pieces along those edges.`
+    : 'The game scatters its loose pieces where it lies over another ground.'));
+  const raw = S.raw.get(k);
+  if (raw && raw.brief && raw.brief !== e.brief) {
+    const note = el('div', 'sw-stale', 'Made for an older version of this ground. Make them again with the prompt below.');
+    note.dataset.stale = k;
+    wrap.appendChild(note);
+  }
+  const det = el('details');
+  det.appendChild(el('summary', null, 'The edge pieces prompt'));
+  const ta = el('textarea');
+  ta.readOnly = true; ta.value = edgePromptFor(e); ta.dataset.edgePrompt = e.id;
+  det.appendChild(ta);
+  const copyBtn = el('button', null, 'Copy prompt');
+  copyBtn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(ta.value); toast("Copied. Send it in this swatch's own chat, or attach the style key and the swatch."); }
+    catch (err) { ta.select(); toast('Select the prompt and copy it.'); }
+  });
+  const r0 = el('div', 'row'); r0.appendChild(copyBtn); det.appendChild(r0);
+  wrap.appendChild(det);
+  const row = el('div', 'edge-row');
+  const cv = el('canvas'); cv.dataset.thumb = k;
+  drawEdgeThumb(cv, ed);
+  row.appendChild(cv);
+  const right = el('div');
+  right.appendChild(el('div', 'sw-where', ed ? `${ed.pieces} piece${ed.pieces === 1 ? '' : 's'} found.` : 'Not made yet.'));
+  if (ed && !ed.pieces) right.appendChild(el('div', 'edge-bad', 'No separate pieces found. The background must be one flat magenta, and the pieces must not touch each other or the picture\'s edge.'));
+  const btns = el('div', 'row');
+  const lab = el('label', 'btn', S.prep.has(k) ? 'Replace…' : 'Add picture');
+  const inp = el('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.dataset.file = k;
+  inp.addEventListener('change', async () => {
+    const f = inp.files && inp.files[0];
+    inp.value = '';
+    if (!f) return;
+    try {
+      await busy('Cutting out the pieces and moving them onto the colours…', () => addPicture(e.id, EDGE, f, f.name));
+      refreshAll();
+      showEdge(e.id);
+      const n = S.edges[e.id] ? S.edges[e.id].pieces : 0;
+      toast(n ? `${e.name}: ${n} edge pieces are in. The preview shows an edge.` : `${e.name}: no separate pieces found in that picture.`, !n);
+    } catch (err) { toast(`That picture could not be read: ${err.message || err}`, true); }
+  });
+  lab.appendChild(inp);
+  btns.appendChild(lab);
+  if (S.prep.has(k)) {
+    const rm = el('button', 'danger', 'Remove');
+    rm.dataset.remove = k;
+    rm.addEventListener('click', async () => { await busy('Removing…', () => removePicture(e.id, EDGE)); refreshAll(); });
+    btns.appendChild(rm);
+  }
+  right.appendChild(btns);
+  if (over.length) {
+    const see = el('button', null, 'See an edge on the map');
+    see.addEventListener('click', () => { showEdge(e.id); $('preview').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    const r2 = el('div', 'row'); r2.appendChild(see); right.appendChild(r2);
+  }
+  row.appendChild(right);
+  wrap.appendChild(row);
+  return wrap;
+}
+/* the pieces on a dark ground, one copy (an empty slot stays one pixel) */
+function drawEdgeThumb(cv, ed) {
+  const n = ed ? THUMB : 1;
+  cv.width = n; cv.height = n;
+  const g = cv.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = '#0c1216'; g.fillRect(0, 0, n, n);
+  if (ed) g.drawImage(ed.thumb, 0, 0, THUMB, THUMB);
+}
+/* the preview on the longest edge where this ground lies over another */
+function showEdge(id) {
+  const o = (S.over[id] || [])[0];
+  if (!o) { const sp = spotFor(id); return setSpot(sp.x, sp.y, `${S.byId[id].name}, on the map`); }
+  return setSpot(o.at.x, o.at.y, `${S.byId[id].name} over ${S.byId[o.lo].name}`);
 }
 
 function renderList() {
@@ -571,6 +712,15 @@ function renderList() {
   }
 }
 
+/* v2.3.2947: the numbers the "Where two grounds meet" card quotes */
+function renderEdgeCounts() {
+  const land = S.contacts.filter((c) => c.a !== 'water' && c.b !== 'water');
+  $('pair-count').textContent = String(land.length);
+  $('road-count').textContent = String(land.filter((c) => c.a === 'road' || c.b === 'road').length);
+  const can = S.cat.filter(hasEdgePieces), made = can.filter((e) => S.edges[e.id]).length;
+  $('edge-count').textContent = `${made} of ${can.length} made.`;
+}
+
 function renderCount() {
   const made = S.cat.filter((e) => S.tiles[e.id]).length;
   const both = S.cat.filter((e) => S.prep.has(kv(e.id, 'A')) && S.prep.has(kv(e.id, 'B'))).length;
@@ -584,9 +734,12 @@ function renderCount() {
    in earlier."  The answer, at the top of the page: what this browser has,
    by name, and when the last picture went in. */
 function renderSaved() {
-  const names = S.cat.filter((e) => S.tiles[e.id]).map((e) => {
+  const names = S.cat.filter((e) => S.tiles[e.id] || S.edges[e.id]).map((e) => {
     const vers = VERS.filter((v) => S.prep.has(kv(e.id, v)));
-    return vers.length > 1 ? `${e.name} (A and B)` : e.name;
+    const parts = [];
+    if (vers.length > 1) parts.push('A and B');
+    if (S.edges[e.id]) parts.push(vers.length ? 'edge pieces' : 'edge pieces only');
+    return parts.length ? `${e.name} (${parts.join(', ')})` : e.name;
   });
   let last = 0;
   for (const r of S.raw.values()) if (r && r.at > last) last = r.at;
@@ -655,6 +808,7 @@ function renderKey() {
 function refreshAll() {
   for (const e of S.cat) renderSwatch(e);
   renderCount();
+  renderEdgeCounts();
   renderMap();
   renderPalette();
   drawPreview(true);
@@ -667,14 +821,15 @@ async function exportZip() {
   const enc = new TextEncoder();
   const made = [];
   for (const e of S.cat) {
-    const t = S.tiles[e.id];
-    if (!t) continue;
+    const t = S.tiles[e.id], ed = S.edges[e.id];
+    if (!t && !ed) continue;
     const vers = [];
-    for (const ver of VERS) {
+    /* v2.3.2947: and its edge pieces, as version E */
+    for (const ver of [...VERS, EDGE]) {
       const k = kv(e.id, ver);
       const raw = S.raw.get(k);
       if (!raw || !S.prep.has(k)) continue;
-      const tile = t.byVer[ver];
+      const tile = ver === EDGE ? ed : t && t.byVer[ver];
       if (!tile) continue;
       vers.push(ver);
       files.push({ name: `ground/${e.id}-${ver}.png`, data: new Uint8Array(await tile.png.arrayBuffer()) });
@@ -712,11 +867,11 @@ async function restoreZip(bytes) {
     if (typeof from === 'string') briefOf[sw.id] = from;
   }
   for (const f of entries) {
-    const m = /^originals\/(.+)-([AB])\.([a-z0-9]+)$/i.exec(f.name);
+    const m = /^originals\/(.+)-([ABE])\.([a-z0-9]+)$/i.exec(f.name);
     if (!m || !S.byId[m[1]]) continue;
     const blob = new Blob([f.data], { type: mimeOf(m[3].toLowerCase()) });
-    const k = kv(m[1], m[2]);
-    const kept = await keepPrep(await prepare(blob));
+    const k = kv(m[1], m[2].toUpperCase());
+    const kept = await keepPrep(await prepareFor(m[2].toUpperCase(), blob));
     const brief = briefOf[m[1]] || null, at = Date.now();
     S.raw.set(k, { blob, name: f.name.split('/').pop(), brief, at });
     S.prep.set(k, kept);
@@ -770,6 +925,12 @@ async function start() {
   S.mm = materialMap(S.plan, S.bp);
   S.cat = groundCatalog(S.plan);
   for (const e of S.cat) S.byId[e.id] = e;
+  /* v2.3.2947: every pair of grounds that touch, and what each lies over */
+  S.contacts = groundContacts(S.plan, S.bp, S.mm);
+  for (const c of S.contacts) {
+    if (!c.recipe || c.recipe.even) continue;
+    (S.over[c.recipe.up] = S.over[c.recipe.up] || []).push({ lo: c.recipe.lo, n: c.n, at: c.at });
+  }
   S.store = await openStore(DB, STORES);
   keepStorage();
   await loadStyleKey();
@@ -777,6 +938,7 @@ async function start() {
   await loadAll();
   try { S.sprites = await loadSprites(); } catch (e) { S.sprites = null; }
   S.spots = spots();
+  renderEdgeCounts();
   const sel = $('spot');
   let group = null, og = null;
   S.spots.forEach((sp, i) => {
@@ -800,5 +962,5 @@ S.ready = start().catch((e) => { $('status').textContent = `Something went wrong
 
 window.__ground = {
   S,
-  api: { addPicture, removePicture, exportZip, restoreZip, setSpot, spotFor, drawPreview, promptFor, pixelsOf },
+  api: { addPicture, removePicture, exportZip, restoreZip, setSpot, spotFor, drawPreview, promptFor, edgePromptFor, pixelsOf, showEdge },
 };

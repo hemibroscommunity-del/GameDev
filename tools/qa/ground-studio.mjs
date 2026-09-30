@@ -17,7 +17,11 @@
  *   5. FROZEN COLOURS stay frozen when another swatch comes in;
  *   6. WORK SURVIVES A RELOAD, and a downloaded zip restores into a fresh
  *      browser with the same pixels;
- *   7. no page errors.
+ *   7. no page errors;
+ *   8. (v2.3.2947) WHERE TWO GROUNDS MEET: the page explains the edges, every
+ *      ground that lies over another has an edge-pieces prompt, and such a
+ *      picture comes out as whole pieces on see-through that the preview
+ *      scatters along its edges and the zip carries.
  *
  *   node tools/qa/ground-studio.mjs          (GROUND_SHOTS=dir to keep pictures)
  */
@@ -311,7 +315,101 @@ try {
     stale.street && !stale.road && !stale.commons && /Make this one again/.test(stale.text), stale);
   await shot(page, 'stale', '#sw-street');
 
-  ok('no page errors', page.errs.length === 0 && pageB.errs.length === 0, [...page.errs, ...pageB.errs].slice(0, 3));
+  /* ── 8. v2.3.2947: where two grounds meet ── */
+  console.log('8. where two grounds meet: layers, edges and edge pieces');
+  const meet = await page.evaluate(() => ({
+    pairs: +document.getElementById('pair-count').textContent, road: +document.getElementById('road-count').textContent,
+    made: document.getElementById('edge-count').textContent,
+    prompts: [...document.querySelectorAll('textarea[data-edge-prompt]')].map((t) => t.dataset.edgePrompt),
+    commons: (document.querySelector('textarea[data-edge-prompt="commons"]') || {}).value || '',
+    over: (document.querySelector('[data-edge="commons"] .sw-where') || {}).textContent || '',
+    spots: [...document.querySelectorAll('#spot optgroup')].filter((g) => g.label === 'Where grounds meet').map((g) => g.children.length)[0] || 0,
+  }));
+  ok(`the page explains how grounds meet: ${meet.pairs} pairs touch on the Wheel, ${meet.road} of them with the road`, meet.pairs > 150 && meet.road > 30 && /of 39 made/.test(meet.made), meet);
+  ok('every ground that lies over another has an edge-pieces prompt, and only those (39: not the road, the boardwalk, the square or the metal floors)',
+    meet.prompts.length === 39 && meet.prompts.includes('commons') && !meet.prompts.includes('road') && !meet.prompts.includes('boardwalk') && !meet.prompts.includes('plaza') && !meet.prompts.includes('thunder-2'), meet.prompts.length);
+  ok("...asking for the ground's own loose pieces on one flat magenta, matched to its swatch, never the bro, nothing running one way",
+    /Loose EDGE PIECES/.test(meet.commons) && /short green grass/.test(meet.commons) && /#FF00FF/.test(meet.commons) && /this ground's own swatch/.test(meet.commons) &&
+    /style key/.test(meet.commons) && /Nothing in it runs one way/.test(meet.commons) && !/hero|\bbro\b/i.test(meet.commons) && /BroTown HD pixel art/.test(meet.commons), meet.commons.slice(0, 240));
+  ok('...says what that ground lies over, and the preview can jump to the longest edges', /lies over Road/.test(meet.over) && meet.spots >= 8, { over: meet.over, spots: meet.spots });
+  /* a ChatGPT-shaped edge-pieces picture: 1254 px of flat magenta, fifty
+     soft-edged clumps in three greens, and two cut by the picture's edge */
+  const piecesPic = await page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = 1254; c.height = 1254;
+    const g = c.getContext('2d');
+    g.fillStyle = '#FF00FF'; g.fillRect(0, 0, 1254, 1254);
+    let s = 99;
+    const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    const clump = (x, y, r) => {
+      for (const [col, k] of [['#3f7a2c', 1], ['#5f9a3a', 0.72], ['#8cc454', 0.4]]) {
+        g.fillStyle = col; g.beginPath(); g.arc(x - r * 0.1 * (1 - k), y - r * 0.15 * (1 - k), r * k, 0, 7); g.fill();
+      }
+    };
+    for (let i = 0; i < 50; i++) { const col = i % 10, row = Math.floor(i / 10); clump(90 + col * 118 + rnd() * 30, 110 + row * 235 + rnd() * 60, 18 + rnd() * 12); }
+    clump(0, 600, 30); clump(700, 1254, 30);
+    const b = await new Promise((r) => c.toBlob(r, 'image/png'));
+    const buf = new Uint8Array(await b.arrayBuffer());
+    let str = '';
+    for (let i = 0; i < buf.length; i += 0x8000) str += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    return btoa(str);
+  });
+  await page.setInputFiles('input[data-file="commons|E"]', { name: 'commons-E.png', mimeType: 'image/png', buffer: Buffer.from(piecesPic, 'base64') });
+  await page.waitForFunction(() => window.__ground.S.edges.commons && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const ef = await page.evaluate(async () => {
+    const S = window.__ground.S, t = await window.__ground.api.pixelsOf('commons', 'E'), d = t.data;
+    const pal = new Set((S.palette || []).map((c) => (c[0] << 16) | (c[1] << 8) | c[2]));
+    let clear = 0, magenta = 0, off = 0, semi = 0;
+    for (let k = 0; k < d.length; k += 4) {
+      if (d[k + 3] === 0) { clear++; continue; }
+      if (d[k + 3] !== 255) semi++;
+      if (d[k] > 190 && d[k + 1] < 90 && d[k + 2] > 190) magenta++;
+      if (!pal.has((d[k] << 16) | (d[k + 1] << 8) | d[k + 2])) off++;
+    }
+    return { w: t.w, pieces: S.edges.commons.pieces, clear: clear / (d.length / 4), magenta, off, semi,
+      card: (document.querySelector('[data-edge="commons"]') || {}).textContent || '', made: document.getElementById('edge-count').textContent,
+      saved: [...document.querySelectorAll('#saved-list li')].map((li) => li.textContent) };
+  });
+  ok(`an edge-pieces picture comes out as its pieces, cut out whole (${ef.pieces} of the 50; the two the picture's edge cuts are left out)`, ef.pieces >= 45 && ef.pieces <= 50 && ef.w === PIXEL.groundTile, ef);
+  ok('...on see-through, with no magenta left on them, hard-edged and on the one palette', ef.clear > 0.8 && ef.magenta === 0 && ef.semi === 0 && ef.off === 0, ef);
+  ok('...and the page says so: its card, the count, and what is saved here', new RegExp(`${ef.pieces} pieces found`).test(ef.card) && /1 of 39 made/.test(ef.made) && ef.saved.includes('Brotown Commons (A and B, edge pieces)'), { made: ef.made, saved: ef.saved });
+  await page.evaluate(() => window.__ground.api.showEdge('commons'));
+  const laid = await page.evaluate(async () => {
+    const { composeGround } = await import('/tools/world/core/ground.js');
+    const S = window.__ground.S, api = window.__ground.api, rect = S.pv.rect;
+    const tiles = { commons: { A: await api.pixelsOf('commons', 'A'), B: await api.pixelsOf('commons', 'B'), E: await api.pixelsOf('commons', 'E') }, road: { A: await api.pixelsOf('road', 'A') } };
+    const withE = composeGround(S.plan, S.bp, S.mm, rect, tiles, { scale: 3 });
+    const noE = composeGround(S.plan, S.bp, S.mm, rect, { ...tiles, commons: { ...tiles.commons, E: null } }, { scale: 3 });
+    let changed = 0, onRoad = 0;
+    for (let i = 0; i < withE.mat.length; i++) if (withE.data[i * 4] !== noE.data[i * 4] || withE.data[i * 4 + 1] !== noE.data[i * 4 + 1]) { changed++; if (S.mm.ids[noE.mat[i]] === 'road') onRoad++; }
+    return { name: S.view.name, changed, onRoad, inview: document.getElementById('inview').textContent };
+  });
+  ok(`"See an edge on the map" shows where the commons lies over the road, and its pieces are scattered on the road there (${laid.onRoad} px)`,
+    /Brotown Commons over Road/.test(laid.name) && laid.changed > 200 && laid.onRoad > 100, laid);
+  await page.evaluate(() => document.getElementById('toast').setAttribute('hidden', ''));
+  await shot(page, 'edge', '#phone');
+  await shot(page, 'edge-card', '[data-edge="commons"]');
+  const [dl2] = await Promise.all([page.waitForEvent('download'), page.click('#export')]);
+  const zip2 = fs.readFileSync(await dl2.path());
+  const edgeHash = (p) => p.evaluate(async () => {
+    const t = await window.__ground.api.pixelsOf('commons', 'E');
+    let h = 0; for (let i = 0; i < t.data.length; i += 7) h = (Math.imul(h, 31) + t.data[i]) | 0;
+    return { h, pieces: window.__ground.S.edges.commons && window.__ground.S.edges.commons.pieces };
+  });
+  const e1 = await edgeHash(page);
+  const ctxC = await browser.newContext(phone);
+  const pageC = await open(ctxC);
+  await pageC.setInputFiles('#restore', { name: 'backup.zip', mimeType: 'application/zip', buffer: zip2 });
+  await pageC.waitForFunction(() => window.__ground.S.edges.commons && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const e2 = await edgeHash(pageC);
+  ok('the zip carries the edge pieces (ground/commons-E.png and the original), and they restore pixel for pixel',
+    zip2.includes(Buffer.from('ground/commons-E.png')) && zip2.includes(Buffer.from('originals/commons-E.png')) && e1.h === e2.h && e1.pieces === e2.pieces, { e1, e2 });
+  /* a swatch picture put in as edge pieces by mistake: nothing to cut out */
+  await page.setInputFiles('input[data-file="ember-1|E"]', { name: 'ember-1-E.png', mimeType: 'image/png', buffer: Buffer.from(pics['ember-1'], 'base64') });
+  await page.waitForFunction(() => window.__ground.S.edges['ember-1'] && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const wrong = await page.evaluate(() => ({ pieces: window.__ground.S.edges['ember-1'].pieces, bad: !!document.querySelector('[data-edge="ember-1"] .edge-bad') }));
+  ok('a picture with no magenta background gives no pieces, and the card says why', wrong.pieces === 0 && wrong.bad, wrong);
+
+  ok('no page errors', page.errs.length === 0 && pageB.errs.length === 0 && pageC.errs.length === 0, [...page.errs, ...pageB.errs, ...pageC.errs].slice(0, 3));
 } finally {
   await browser.close();
   server.close();

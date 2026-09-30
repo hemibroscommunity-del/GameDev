@@ -59,7 +59,11 @@ remnant to migrate server-side, not a mode to preserve.
   cell's tier, the level map; since v2.3.2937 the ground is 48 swatches made
   in the **Ground Studio** at `public/tools/ground/` and laid onto the plan
   by `public/tools/world/core/ground.js`, deterministic and seamless between
-  chunks — the phone's future ground builder),
+  chunks — the phone's future ground builder; since v2.3.2947 two grounds
+  meet in a layered, pair-sized edge drawn from the two pictures, a land's
+  stages change in patches, and each ground has an optional EDGE PIECES
+  prompt, its loose tufts on magenta: `edgeRecipe`, `pieceMap`,
+  `edgePromptFor`, WORLD-MAP-PIPELINE "Where two grounds meet"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

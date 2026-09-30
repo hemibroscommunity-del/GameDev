@@ -26,7 +26,8 @@
  * not kept here.
  *
  * MESSAGES (all answered in order, one at a time):
- *   { type: 'init' }             -> { type: 'ready', ... } (see init below)
+ *   { type: 'init' }             -> { type: 'ready', ... } (see init below;
+ *                                   v2.3.2947: `edges`, the grounds with edge pieces)
  *   { type: 'chunk', id, i, j }  -> { type: 'chunk', id, i, j, w, h, data, ms }
  *   { type: 'where', id, x, y }  -> { type: 'where', id, q }  (answered at once)
  *   anything that fails          -> { type: 'error', id, message }
@@ -34,7 +35,7 @@
 import { PLAN } from '../plan.js';
 import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
-import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels } from './ground.js';
+import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn } from '../../style/process.js';
 
@@ -44,12 +45,12 @@ const WPA = PLAN.worldPxPerArtPx;                                 /* 1.5 game px
 const CHUNK = 128;          /* plan art px a piece: 192 game px, 384 ground px */
 const APRON = 1;            /* art px laid past each edge, so smooth scaling reads the true neighbour at a join */
 const OVERVIEW_CELLS = 4;   /* blueprint cells an overview pixel */
-const DECODED_KEEP = 12;    /* swatch pictures kept unpacked, 1 MB each */
+const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too) */
 const GAME_BASE = '/world/ground/';
 const STUDIO_DB = 'brotown-ground-studio';
 
 let W = null;               /* { bp, mm } once ready: bp is the light copy (no per-cell layers) */
-let swatches = Object.create(null);   /* id -> { from: 'studio'|'game', vers: { A?, B? }, pal, mapped } */
+let swatches = Object.create(null);   /* id -> { from: 'studio'|'game', vers: { A?, B?, E? }, pal, mapped } */
 const decoded = new Map();            /* 'id|ver' -> tile ({w, h, idx, pal} or {w, h, data}) */
 const failed = new Set();             /* 'id|ver' that could not be unpacked: drawn in plan colour */
 
@@ -85,8 +86,13 @@ async function init() {
   const swatchMs = Math.round(performance.now() - t1);
   /* you arrive in the town square, as the Ground Studio's first spot */
   const ax = g.cx, ay = g.cy + 0.25 * g.P;
-  const made = Object.create(null);
-  for (const id of Object.keys(swatches)) made[id] = swatches[id].from;
+  const made = Object.create(null), edges = [];
+  for (const id of Object.keys(swatches)) {
+    const v = swatches[id].vers;
+    if (v.A || v.B) made[id] = swatches[id].from;
+    /* v2.3.2947: which grounds have their edge pieces */
+    if (v.E) edges.push(id);
+  }
   post({
     type: 'ready',
     worldW: bp.w * bp.scale * WPA, worldH: bp.h * bp.scale * WPA,
@@ -96,7 +102,7 @@ async function init() {
     arrival: { x: Math.round((ax - bp.x0) * WPA), y: Math.round((ay - bp.y0) * WPA) },
     catalog: mm.ids.map((id, q) => ({ id, name: q === mm.water ? 'Water' : mm.catalog[q].name })),
     water: mm.water,
-    made,
+    made, edges,
     planMs, swatchMs,
   }, [bits.buffer, ov.data.buffer]);
 }
@@ -124,8 +130,9 @@ async function findSwatches(mm) {
       for (const s of man.swatches || []) {
         if (!known.has(s.id)) continue;
         const vers = Object.create(null);
-        for (const v of s.versions || []) if (v === 'A' || v === 'B') vers[v] = { url: `${GAME_BASE}${s.id}-${v}.png` };
-        if (vers.A || vers.B) out[s.id] = { from: 'game', vers, pal, mapped: true };
+        /* v2.3.2947: E, the swatch's edge pieces (see-through round them) */
+        for (const v of s.versions || []) if (v === 'A' || v === 'B' || v === 'E') vers[v] = { url: `${GAME_BASE}${s.id}-${v}.png` };
+        if (vers.A || vers.B || vers.E) out[s.id] = { from: 'game', vers, pal, mapped: true };
       }
     }
   } catch (e) { /* no copy in the game yet */ }
@@ -138,7 +145,7 @@ async function findSwatches(mm) {
       const pal = (palRec && palRec.colours) || null;
       const mine = Object.create(null);
       for (const k of keys || []) {
-        const mk = /^(.+)\|([AB])$/.exec(String(k));
+        const mk = /^(.+)\|([ABE])$/.exec(String(k));
         if (!mk || !known.has(mk[1])) continue;
         const blob = await ask(db, 'prep', (s) => s.get(k));
         if (!blob || !blob.size) continue;
@@ -211,7 +218,8 @@ function trim(keep) {
 }
 
 /* RGBA already on `pal` -> one index a pixel.  A colour not on it (a picture
-   made before its palette froze) takes the nearest. */
+   made before its palette froze) takes the nearest.  v2.3.2947: a see-through
+   pixel (the space round edge pieces) is EDGE_CLEAR. */
 function indexed(d, T, pal) {
   if (!pal || !pal.length || pal.length > 256) return { w: T, h: T, data: d };
   const P = new Uint8Array(pal.length * 3);
@@ -225,6 +233,7 @@ function indexed(d, T, pal) {
   const idx = new Uint8Array(T * T);
   let lastKey = -1, last = 0;
   for (let i = 0, p = 0; p < idx.length; i += 4, p++) {
+    if (d[i + 3] < 128) { idx[p] = EDGE_CLEAR; continue; }
     const key = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
     if (key !== lastKey) {
       let v = at.get(key);
@@ -253,8 +262,9 @@ async function chunk(m) {
     if (!s) continue;
     const A = s.vers.A ? await tileOf(id, 'A') : null;
     const B = s.vers.B ? await tileOf(id, 'B') : null;
-    keep.add(`${id}|A`); keep.add(`${id}|B`);
-    if (A || B) tiles[id] = { A: A || B, B: A && B ? B : null };
+    const E = s.vers.E ? await tileOf(id, 'E') : null;
+    keep.add(`${id}|A`); keep.add(`${id}|B`); keep.add(`${id}|E`);
+    if (A || B || E) tiles[id] = { A: A || B, B: A && B ? B : null, E };
   }
   const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, withMaterials: false });
   trim(keep);

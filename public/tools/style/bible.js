@@ -108,6 +108,17 @@ export const NO_DIRECTION = 'Nothing in it runs one way: no ruts, tracks, footpr
    must not come back as a collage of the key. */
 export const KEY_MATCH = "Attached is the game's style key. Match its pixel size, colours, shading and the way it draws each material exactly, but do not copy its tiles.";
 
+/* v2.3.2947: EDGE PIECES -- a ground's own loose tufts, lumps and drifts,
+   which the game scatters where it lies over another ground (world/core/
+   ground.js).  The one chat that is shown more than the style key: the
+   pieces must be THAT ground exactly, and the ground's swatch is world art
+   in this style, so it is attached too -- or the prompt is sent in the
+   chat the swatch was made in.  (Never the bro: see the header.) */
+export const EDGE_MATCH = "Attached are the game's style key and this ground's own swatch (or send this in the chat where you made the swatch). Match the swatch exactly: its colours, pixel size, shading and the way it draws its material. Do not copy its layout.";
+/* The one flat colour an edge-pieces picture is drawn on, cut away by the
+   Ground Studio (style/process.js, keyOut). */
+export const EDGE_BACKGROUND = 'The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the pieces is magenta.';
+
 /* v2.3.2939: a size in words -- "a person standing here would be about one
    seventh as tall as this picture" -- for a picture `pictureGamePx` game px
    on a side. */

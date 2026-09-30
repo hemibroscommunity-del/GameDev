@@ -74,6 +74,20 @@ const plant = (P) => P.page.evaluate(async ({ A, B }) => {
   });
   await put('raw', 'plaza|A', { blob, name: 'checks.png', type: 'image/png' });
   await put('prep', 'plaza|A', blob);
+  /* v2.3.2947: and the commons' EDGE PIECES, as the studio keeps them: its
+     tile before the palette, the magenta already cut away -- sixty round
+     clumps on see-through, laid where the commons lies over the road */
+  const e = document.createElement('canvas');
+  e.width = e.height = T;
+  const eg = e.getContext('2d');
+  for (let k = 0; k < 60; k++) {
+    const x = 60 + (k % 8) * 120 + (k * 37) % 40, y = 60 + Math.floor(k / 8) * 120 + (k * 53) % 40;
+    eg.fillStyle = k % 2 ? 'rgb(255,255,255)' : 'rgb(0,0,0)';
+    eg.beginPath(); eg.arc(x, y, 14, 0, 7); eg.fill();
+  }
+  const eblob = await new Promise((r) => e.toBlob(r, 'image/png'));
+  await put('raw', 'commons|E', { blob: eblob, name: 'commons-pieces.png', type: 'image/png' });
+  await put('prep', 'commons|E', eblob);
   await put('misc', 'palette', { colours: [A, B, [0, 0, 0], [255, 255, 255]], frozen: true });
   db.close();
   return blob.size;
@@ -166,6 +180,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   console.log('    HUD ->\n      ' + hud.split('\n').join('\n      '));
   rec.ok('the readout finds the swatch made in the Ground Studio', /1 yours/.test(hud), { hud });
+  rec.ok('...and the commons\' edge pieces made there (v2.3.2947)', /edges\s+1 with edge pieces/.test(hud), { hud });
   rec.ok('...and says it is under your feet', /here\s+Town square ✓/.test(hud), { hud });
   await shot(P, '01-arrival');
   const px = await H.screenshotPixels(P);
