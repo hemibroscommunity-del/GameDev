@@ -669,7 +669,13 @@ export function generateZoneMap(zoneId) {
   var zone = ZONES[zoneId];
   var W = zone.w,
     H = zone.h;
-  var map = Array.from({
+  /* v2.3.2943: `?trial=wheel` makes the World View 1344 x 1344 tiles
+     (src/game/worldTrial.js), every one 0 but the two-by-two way home: one
+     row shared by all the rest instead of 1.8 million cells, ~14 MB on
+     iPhone.  Only the World View's branch below writes into it, and it
+     gives a row its own copy before it does (unshare). */
+  var _sharedRow = zone.sharedRows ? Array(W).fill(0) : null;
+  var map = _sharedRow ? Array(H).fill(_sharedRow) : Array.from({
     length: H
   }, function () {
     return Array(W).fill(0);
@@ -754,7 +760,10 @@ export function generateZoneMap(zoneId) {
     WORLDVIEW_EXITS.forEach(function (ex) {
       for (var _wy = -1; _wy <= 0; _wy++) for (var _wx = -1; _wx <= 0; _wx++) {
         var _wry = ex.ty + _wy, _wrx = ex.tx + _wx;
-        if (_wry >= 0 && _wry < H && _wrx >= 0 && _wrx < W) map[_wry][_wrx] = 8;
+        if (_wry >= 0 && _wry < H && _wrx >= 0 && _wrx < W) {
+          if (_sharedRow && map[_wry] === _sharedRow) map[_wry] = _sharedRow.slice();   /* v2.3.2943: unshare */
+          map[_wry][_wrx] = 8;
+        }
       }
     });
   } else if (zoneId === 'farm_home') {

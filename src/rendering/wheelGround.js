@@ -1,0 +1,200 @@
+/* ═══ v2.3.2943: THE WHEEL'S GROUND — laid on the phone, a piece at a time ═══
+ *
+ * The `?trial=wheel` twin of chunkGround.js.  The world trial streams pieces
+ * a bake already made; here nothing was made ahead: every piece is laid from
+ * the owner's swatches, on this device, by the ground worker
+ * (src/game/wheelTrial.js asks, public/tools/world/core/ground-worker.js
+ * lays), exactly as the Ground Studio's preview lays them.  The same rule
+ * for what is kept:
+ *
+ *   NEEDED   every piece the view touches, plus MARGIN game px beyond it --
+ *            asked for nearest-first, at most MAX_IN_FLIGHT at a time (the
+ *            worker lays one at a time; two keeps it busy)
+ *   KEPT     anything within KEEP_PX more game px of that (half a piece:
+ *            a step back across a line does not lay the piece again)
+ *   FREED    everything else: sprite and texture destroyed (the ZONE-ASSET
+ *            rule in CLAUDE.md: drop the reference, don't hide it)
+ *
+ * A piece is 192 game px square at the swatches' own sharpness -- 2 px a
+ * game px, 384 px, ~0.6 MB of colours, and as much again on the GPU -- so a
+ * portrait phone (about 585 x 1270 game px of view) holds 28 of them standing
+ * and up to ~48 on the move (mp-wheeltrial): 16-30 MB of colours.  That is
+ * the price of the sharpness, and the readout shows it;
+ * the way to a quarter of it is pieces kept as palette numbers and coloured
+ * on the GPU (docs/WORLD-MAP-PIPELINE.md, the Wheel trial).  Under them lies
+ * the whole Wheel, small, in the plan's colours, so a piece still being laid
+ * shows as its colour, not a hole.
+ *
+ * SMOOTH (linear) scaling, NOT the nearest sampling every painted zone uses:
+ * 2 ground px a game px against a phone's ~2.5 device px is a small,
+ * uneven blow-up, and nearest would draw some ground pixels one device pixel
+ * wide and some two -- the "soft and gritty" look's other half.  The owner
+ * judged the swatches in the Ground Studio drawn smooth ("looks good",
+ * v2.3.2942), and this draws them the same way.  Each piece is laid one art
+ * px (3 ground px) past its edges and shows half a game px of that, so the
+ * smoothing at a join reads the true neighbour and pieces overlap by a hair
+ * instead of leaving one.
+ */
+import { Container, Sprite, Texture, Rectangle, BufferImageSource, CanvasSource } from 'pixi.js';
+import { wheelInfo, wheelStart, wheelChunk, wheelIsWarm, wheelDropWarm, wheelOverview, wheelStats } from '../game/wheelTrial.js';
+import { worldTrialLeft } from '../game/worldTrial.js';
+
+const MAX_IN_FLIGHT = 3;
+const MARGIN = 96;
+const KEEP_PX = 96;
+/* Ahead of a moving camera: lay the ground where it will be AHEAD_MS from
+   now (never more than AHEAD_MAX game px on), as well as round where it is.
+   A fast run crosses a 192 px piece in half a second; a margin the same all
+   round would have to be a whole screen wide to keep up, and cost that much
+   memory on every side instead of one. */
+const AHEAD_MS = 700;
+const AHEAD_MAX = 480;
+/* Pieces the zone gate laid round the arrival and this view never took (a
+   wide desktop view is shaped differently from the phone's) are let go this
+   long after arriving, rather than held until the worker stops. */
+const WARM_KEEP_MS = 3000;
+
+export class WheelGround {
+  constructor(parent) {
+    this.root = new Container();
+    this.root.label = 'wheelGround';
+    parent.addChild(this.root);
+    this.under = null;
+    this.pieces = new Map();   /* "i,j" -> { i, j, sprite, ready, popped } */
+    this.inFlight = 0;
+    this.dead = false;
+    this._vx = 0; this._vy = 0;   /* the camera's speed, game px a ms, smoothed */
+    this._lastT = null;
+    this._born = performance.now();
+    this._warmDropped = false;
+  }
+
+  _placeUnder(info) {
+    if (this.under) return;
+    const c = wheelOverview();
+    if (!c || !c.width) return;
+    /* a fresh source, never Texture.from(canvas): that one is cached by the
+       canvas, and a second WheelGround (a same-zone rebuild) would be handed
+       the texture this one destroyed */
+    /* size and resolution given, or CanvasSource divides the canvas's width
+       by an undefined resolution and resizes the canvas to NaN -- blank */
+    const tex = new Texture({ source: new CanvasSource({ resource: c, width: c.width, height: c.height, resolution: 1, scaleMode: 'linear' }) });
+    const s = new Sprite(tex);
+    s.x = 0; s.y = 0; s.width = info.worldW; s.height = info.worldH;
+    this.root.addChildAt(s, 0);
+    this.under = s;
+  }
+
+  update(cx, cy, viewW, viewH) {
+    if (this.dead) return;
+    const info = wheelInfo();
+    if (!info) { wheelStart().catch(() => {}); return; }
+    /* a camera that jumped more than a screen is still settling: ask for
+       nothing until it lands (chunkGround.js) */
+    const now = performance.now();
+    if (!this._warmDropped && now - this._born > WARM_KEEP_MS) { wheelDropWarm(); this._warmDropped = true; }
+    const jumped = this._lastCx != null && Math.abs(cx - this._lastCx) + Math.abs(cy - this._lastCy) > 400;
+    if (this._lastT != null && !jumped) {
+      const dt = Math.max(1, now - this._lastT), k = Math.min(1, dt / 250);
+      this._vx += ((cx - this._lastCx) / dt - this._vx) * k;
+      this._vy += ((cy - this._lastCy) / dt - this._vy) * k;
+    }
+    this._lastCx = cx; this._lastCy = cy; this._lastT = now;
+    this._placeUnder(info);
+    const cs = info.chunk.gamePx, C = info.chunk.cols, R = info.chunk.rows;
+    const clampI = (v) => Math.max(0, Math.min(C - 1, v));
+    const clampJ = (v) => Math.max(0, Math.min(R - 1, v));
+    const ax = Math.max(-AHEAD_MAX, Math.min(AHEAD_MAX, this._vx * AHEAD_MS));
+    const ay = Math.max(-AHEAD_MAX, Math.min(AHEAD_MAX, this._vy * AHEAD_MS));
+    /* the view and its margin, stretched the way the camera is going */
+    const nx0 = cx - MARGIN + Math.min(0, ax), nx1 = cx + viewW + MARGIN + Math.max(0, ax);
+    const ny0 = cy - MARGIN + Math.min(0, ay), ny1 = cy + viewH + MARGIN + Math.max(0, ay);
+    const i0 = clampI(Math.floor(nx0 / cs)), i1 = clampI(Math.floor(nx1 / cs));
+    const j0 = clampJ(Math.floor(ny0 / cs)), j1 = clampJ(Math.floor(ny1 / cs));
+    const vi0 = clampI(Math.floor(cx / cs)), vi1 = clampI(Math.floor((cx + viewW) / cs));
+    const vj0 = clampJ(Math.floor(cy / cs)), vj1 = clampJ(Math.floor((cy + viewH) / cs));
+    const mx = cx + viewW / 2 + ax / 2, my = cy + viewH / 2 + ay / 2;
+
+    const want = [];
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const rec = this.pieces.get(i + ',' + j);
+      const onScreen = i >= vi0 && i <= vi1 && j >= vj0 && j <= vj1;
+      if (!rec) {
+        const dx = (i + 0.5) * cs - mx, dy = (j + 0.5) * cs - my;
+        want.push({ i, j, on: onScreen ? 0 : 1, d: dx * dx + dy * dy });
+      } else if (!jumped && !rec.ready && !rec.popped && onScreen) {
+        rec.popped = true;
+        wheelStats.popIns++;
+      }
+    }
+    /* what is on screen first, then nearest where the camera is heading */
+    want.sort((a, b) => a.on - b.on || a.d - b.d);
+    if (jumped) want.length = 0;
+    for (const w of want) {
+      /* a piece laid ahead by the zone gate costs nothing to take */
+      if (this.inFlight >= MAX_IN_FLIGHT && !wheelIsWarm(w.i, w.j)) continue;
+      this._load(w.i, w.j, info, w.on === 0);
+    }
+
+    const k0 = Math.floor((nx0 - KEEP_PX) / cs), k1 = Math.floor((nx1 + KEEP_PX) / cs);
+    const l0 = Math.floor((ny0 - KEEP_PX) / cs), l1 = Math.floor((ny1 + KEEP_PX) / cs);
+    let resident = 0;
+    for (const [key, rec] of this.pieces) {
+      if (rec.i < k0 || rec.i > k1 || rec.j < l0 || rec.j > l1) this._free(key, rec);
+      else if (rec.ready) resident++;
+    }
+    wheelStats.resident = resident;
+    wheelStats.loading = this.inFlight;
+  }
+
+  _load(i, j, info, onScreen) {
+    const key = i + ',' + j;
+    const warm = wheelIsWarm(i, j);
+    const rec = { i, j, sprite: null, ready: false, popped: false };
+    if (onScreen && !warm) { rec.popped = true; wheelStats.popIns++; }
+    this.pieces.set(key, rec);
+    if (!warm) this.inFlight++;
+    wheelChunk(i, j).then((m) => {
+      if (!warm) this.inFlight--;
+      /* freed, or the whole ground torn down, while it was being laid */
+      if (this.dead || this.pieces.get(key) !== rec) return;
+      const src = new BufferImageSource({
+        resource: m.data, width: m.w, height: m.h,
+        format: 'rgba8unorm', scaleMode: 'linear', alphaMode: 'no-premultiply-alpha',
+      });
+      /* show one ground px of the apron each side: half a game px */
+      const a = info.chunk.apronPx - 1, cs = info.chunk.gamePx, half = cs / info.chunk.px;
+      const tex = new Texture({ source: src, frame: new Rectangle(a, a, m.w - 2 * a, m.h - 2 * a) });
+      const s = new Sprite(tex);
+      s.x = i * cs - half; s.y = j * cs - half;
+      s.width = cs + 2 * half; s.height = cs + 2 * half;
+      this.root.addChild(s);
+      rec.sprite = s;
+      rec.ready = true;
+    }).catch(() => {
+      if (!warm) this.inFlight--;
+      if (this.pieces.get(key) === rec) this.pieces.delete(key);
+    });
+  }
+
+  _free(key, rec) {
+    this.pieces.delete(key);
+    if (rec.sprite) {
+      /* the texture is this piece's alone: destroy it with its source, which
+         lets go of the GPU copy and the colours */
+      try { rec.sprite.destroy({ texture: true, textureSource: true }); } catch (e) { /* already gone */ }
+      rec.sprite = null;
+    }
+  }
+
+  destroy() {
+    if (this.dead) return;
+    this.dead = true;
+    for (const [key, rec] of [...this.pieces]) this._free(key, rec);
+    if (this.under) { try { this.under.destroy({ texture: true, textureSource: true }); } catch (e) { /* ignore */ } this.under = null; }
+    try { this.root.destroy(); } catch (e) { /* ignore */ }
+    wheelStats.resident = 0;
+    wheelStats.loading = 0;
+    worldTrialLeft();
+  }
+}

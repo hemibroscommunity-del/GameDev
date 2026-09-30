@@ -13,7 +13,8 @@ import { isZoneUnlocked, zoneUnlockQuest, questRoutePoint } from "@/game/questRo
 import { getTrailStyle } from '@/game/questTrailStyle.js'; /* v2.3.2141: ...in the shape the player chose, or not at all */
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
 import { ChunkGround } from '../chunkGround.js';            /* v2.3.2932: the world trial's streamed ground */
-import { isWorldTrialZone } from '@/game/worldTrial.js';
+import { WheelGround } from '../wheelGround.js';            /* v2.3.2943: ...and the Wheel's, laid on the phone */
+import { isWorldTrialZone, worldTrialMode } from '@/game/worldTrial.js';
 import { PORTAL_BEAM } from '../fxStrips.js'; /* v2.3.2070: the light shaft over a zone exit */
 
 const ZONE_LABEL_STYLE = new TextStyle({
@@ -670,7 +671,10 @@ export class TileRenderer {
     if (isWorldTrialZone(zoneId)) {
       this._renderedTiled = true;
       this._isImageZone = true;
-      this._chunkGround = new ChunkGround(this.tileContainer);
+      /* v2.3.2943: `?trial=wheel` lays its ground from the swatches instead */
+      this._chunkGround = worldTrialMode() === 'wheel'
+        ? new WheelGround(this.tileContainer)
+        : new ChunkGround(this.tileContainer);
       return;
     }
 

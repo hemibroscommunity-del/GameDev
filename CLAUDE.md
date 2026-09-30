@@ -47,7 +47,11 @@ remnant to migrate server-side, not a mode to preserve.
   prompts, fuser — and the engine phases after it, v2.3.2931; its
   "world trial" section is the `?trial=world` switch that streams the
   old round island, baked from today's zone art, in place of the World
-  View, v2.3.2932; since v2.3.2936 the plan is **the Wheel**: the safe
+  View, v2.3.2932; `?trial=wheel` (v2.3.2943) puts the World View on the
+  Wheel itself at full size, its ground laid on the phone from the Ground
+  Studio's own swatches (read from its IndexedDB on the same site, then
+  `public/world/ground/`) by a worker, `public/tools/world/core/ground-worker.js`
+  via `src/game/wheelTrial.js` and `src/rendering/wheelGround.js`; since v2.3.2936 the plan is **the Wheel**: the safe
   commons round Brotown, one spoke of land per element with its own levels
   1–80 at one zone per five levels, sea between, passes at 20 and 60, and a
   keystone gate to the Dark or Light realm (80–100) at every tip — geometry

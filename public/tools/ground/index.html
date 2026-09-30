@@ -95,7 +95,7 @@
     <p class="sub">BroTown's ground, made from about fifty seamless swatches in HD pixel art and laid onto the Wheel by the game.</p>
     <!-- v2.3.2942: the version on the page, so the owner can tell a stale
          copy (a phone's cached page) from the latest without asking -->
-    <p class="mut" id="ver">Version v2.3.2942: swatches at your phone's own sharpness.</p>
+    <p class="mut" id="ver">Version v2.3.2943: walk on your swatches in the game.</p>
     <p class="mut" id="status">Building the plan…</p>
   </header>
 
@@ -106,7 +106,8 @@
       <li>For each swatch below: <b>copy its prompt</b> into a new ChatGPT chat, and attach <b>the style key</b>, and only the key. Not your bro: the world is finer, more detailed pixel art than he is, and ChatGPT copies what it sees.</li>
       <li><b>Bring the picture back</b> as version A. The page makes it seamless, keeps it at your phone's own sharpness, puts it on the shared colours, and shows it laid on the map at game size next to your bro.</li>
       <li>Later, a <b>second version (B)</b> of the same prompt in a fresh chat. The game mixes A and B so the ground does not repeat.</li>
-      <li><b>Download all</b> and upload the zip to GitHub (below). A session puts it in the game.</li>
+      <li><b>Walk on them</b> in the game whenever you like (below): it lays them straight from this page, nothing to send.</li>
+      <li>When you are happy, <b>Download all</b> and upload the zip to GitHub (below), so every player gets them. A session puts it in the game.</li>
     </ol>
     <p class="mut">Start with the commons, a road and the first stage of one spoke: that is enough to judge the look round town. Pictures stay in this browser; nothing is uploaded.</p>
   </section>
@@ -134,6 +135,15 @@
     <p class="mut">Your bro stands in the middle, at the game's own scale. Drag to look around; pick a place to jump there.</p>
     <select id="spot" aria-label="Place to preview"></select>
     <div class="phone" id="phone"><canvas id="pv"></canvas><div class="inview" id="inview"></div></div>
+  </section>
+
+  <!-- v2.3.2943: the game lays its ground from this page's own swatches
+       (public/tools/world/core/ground-worker.js reads this browser's storage) -->
+  <section class="card" id="walk">
+    <h2>Walk on them in the game</h2>
+    <p>The game can lay this ground itself, from the swatches on this page, the moment you make them. Open it with the test switch, walk down the town's stairs, and you arrive in the Wheel's town square. Nothing to download or upload.</p>
+    <div class="row"><a class="btn brass" id="walk-link" href="/?trial=wheel">Open the game on the Wheel</a></div>
+    <p class="mut">It works on this same site only: this browser keeps your swatches for this address. Swatches not made yet show as chequered colour. To go back to the normal game, open it with <code>?trial=off</code> on the end.</p>
   </section>
 
   <section class="card" id="swatches">

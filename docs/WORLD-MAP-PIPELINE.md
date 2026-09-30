@@ -4,7 +4,8 @@
 (`public/tools/world/`, live at `/tools/world/` on the site).
 
 - No game code has changed yet, apart from the `?trial=world` switch
-  (v2.3.2932, below).
+  (v2.3.2932, below) and the `?trial=wheel` switch (v2.3.2943, below: the
+  Wheel at full size, its ground laid on the phone from your swatches).
 - The world plan in `public/tools/world/plan.js` is the source of truth for
   the map's layout.
 - **v2.3.2933 asked two questions before phase 2; v2.3.2935 has both
@@ -588,6 +589,116 @@ old map's far corner, and it slid in over ~15 frames.
   them;
 - keep `chunkGround.js` if the real world is going to stream the same way,
   which is the plan.
+
+## The Wheel trial: your own swatches under your feet (v2.3.2943)
+
+> Owner, 2026-09-29, after the swatches came out sharp: *"I want to continue
+> on. What are the next steps?"*
+
+**How to try it.** Open the game with **`?trial=wheel`** on the end of the
+address — on the **same site** as the Ground Studio you made your swatches
+in (the pull request's preview link, or the site once merged). Walk down the
+town's stairs as usual.
+
+- The World View becomes **the Wheel at full size**: 43,008 × 43,008 game px,
+  the plan in `public/tools/world/plan.js`, sea between the spokes.
+- You arrive in **Brotown's town square**, in the middle of the Wheel. The
+  glowing **Town** marker just west of where you land takes you back to
+  town (beside you rather than ahead: the roads out of the square run north
+  and south).
+- **Your swatches are the ground.** Every swatch you have made in the Ground
+  Studio on this site is laid where the plan puts it, the moment you walk
+  in: nothing to download, upload or wait for. A swatch you have not made yet
+  shows in its plan colour, chequered, as the studio shows it.
+- **The sea and the rivers stop you**; the town, the commons and the roads do
+  not.
+- There is nothing else yet: no buildings, trees, monsters or other people's
+  objects. It is ground only, like the island trial.
+- The switch sticks for that browser tab. `?trial=off` turns it off, and
+  `?trial=world` goes back to the island.
+
+**How it runs** (`src/game/worldTrial.js`, `src/game/wheelTrial.js`,
+`src/rendering/wheelGround.js`, `public/tools/world/core/ground-worker.js`):
+
+- **It rides on the World View**, exactly as the island trial does, so it
+  needs no server change.
+- **A worker builds the Wheel on the phone.** On the way in, a background
+  worker (another core, so walking never waits for it) builds the same
+  blueprint and swatch map the World Builder and the Ground Studio build,
+  about a second's work. The zone-loading overlay holds until that and the
+  first screen of ground are done.
+- **It lays the ground a piece at a time** — 192 × 192 game px, at the
+  swatches' own sharpness (2 px a game px) — with the same
+  `composeGround` the Ground Studio's preview uses, so what the studio shows
+  is what the game draws. Pieces round the camera are laid nearest-first,
+  and freed once you are more than about a piece away.
+- **Where the swatches come from, newest first:** the Ground Studio's own
+  storage on this site (IndexedDB — the pictures before the palette and the
+  palette, put on the palette exactly as the studio does), then the game's
+  copy in `public/world/ground/` (the studio's **Download all** zip,
+  unpacked into the repo), which is what everyone else will see.
+- **Drawn smooth, not blocky.** 2 px a game px against a phone's ~2.5 device
+  px is a small, uneven blow-up; smooth scaling is how the Ground Studio drew
+  the swatches you approved. Each piece is laid a little past its edges, so
+  the smoothing never shows a join.
+- **Where you cannot walk** is worked out from the same blurred share of
+  water the shore is drawn from, so you stop where the water starts, give or
+  take the shore's ragged edge (about 12 game px).
+- **It is careful with memory.** The worker keeps a dozen swatches unpacked,
+  as palette numbers (1 MB each rather than 4). The walk grid is kept as bits
+  (400 KB, where plain rows would be ~26 MB on an iPhone), and the World
+  View's tile map shares one row (it would be ~14 MB). Leaving the Wheel frees
+  every piece at once, and stops the worker five seconds later, which frees
+  the plan and the swatches.
+
+**The readout** (bottom-left, in the trial):
+
+- **way in**, and how long the plan itself took;
+- **ground**: pieces in memory and their MB;
+- **laid**: how many, with the average and worst time a piece took;
+- **pop-ins**: pieces that came on screen before they were laid;
+- **swatches**: how many are yours (from the Ground Studio) and how many came
+  with the game;
+- **here**: the swatch under your feet, ✓ if it is made.
+
+**Measured** (`node tools/qa/mp/run.mjs wheeltrial`, 25 checks), on a
+phone-sized screen in headless Chromium against a local worker, with a swatch
+planted in the Ground Studio's storage exactly as the studio keeps it. A
+desktop processor lays pieces perhaps two or three times faster than a phone:
+
+| | |
+|---|---|
+| way in (the plan, then the first screen) | **3.3 s**, of which the plan is 1.4–1.7 s |
+| pieces in memory | **28** on arrival, **40–48** while walking (~24–29 MB of colours), however far you go |
+| one piece | **about 30 ms** in the worker; the first, which unpacks its swatch, ~250 ms |
+| a walk east, north and back | 321 pieces laid |
+| pop-ins | **0**, at a fast run (385 game px/s; a plain walk is 150) |
+| the planted swatch | found, under your feet in the readout, and 24% of the screen at the arrival |
+| the worker | followed the player; stopped five seconds after leaving |
+
+**Two things the test found, both fixed before shipping:**
+
+- **Pieces came on screen late at a run** (44 pop-ins). A margin the same
+  all round cannot keep up with a camera moving a piece every half second.
+  The ground is now laid **ahead of you**, where the camera will be 0.7 s
+  from now, on the side you are heading; pop-ins went to 0.
+- **The way home was on the road north out of the square**, two tiles'
+  reach from it, so the first walk north sent the player back to town. It is
+  now **beside** the arrival, off the roads.
+
+**The price of the sharpness.** A piece is about 0.6 MB of colours, and as
+much again on the graphics chip. A portrait phone shows about 585 × 1,270 game
+px, so it holds 28 pieces standing and up to about 48 on the move: **16–30 MB
+of colours**, one to two times the island trial's 15 MB, and as much again on
+the graphics chip. That is fine on a recent iPhone. If it is ever too much, the fix is
+known: keep each piece as **palette numbers** (one byte a pixel, as the worker
+already keeps the swatches) and colour it on the graphics chip. That cuts the
+ground's memory to a quarter.
+
+**Removing the trial** once it has served: delete `src/game/wheelTrial.js`,
+`src/rendering/wheelGround.js`, `public/tools/world/core/ground-worker.js`
+and the lines tagged v2.3.2943 that call them. The real world will lay its
+ground the same way, so expect to keep most of it.
 
 ---
 

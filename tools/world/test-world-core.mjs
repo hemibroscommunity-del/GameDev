@@ -37,7 +37,7 @@ import { PIXEL } from '../../public/tools/style/bible.js';
 import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours } from '../../public/tools/world/core/grid.js';
 import { buildBlueprint, renderSketch, colorTable, planKey, C, CLASS_IDS } from '../../public/tools/world/core/layout.js';
 import { spokePoint, arcPoint } from '../../public/tools/world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround } from '../../public/tools/world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels } from '../../public/tools/world/core/ground.js';
 import { buildPrompt } from '../../public/tools/world/core/prompt.js';
 import { gridMinCut, INF } from '../../public/tools/world/core/maxflow.js';
 import { fuseSquare } from '../../public/tools/world/core/fuse.js';
@@ -360,6 +360,50 @@ console.log('ground');
     if (withT3.data[o] === tile.data[q] && withT3.data[o + 1] === tile.data[q + 1]) tileTrue3++;
   }
   ok('...and a made swatch is laid tile-true at its own resolution', n3 > 300 && tileTrue3 === n3, { tileTrue3, n3 });
+
+  /* v2.3.2943: what the game's ground worker (ground-worker.js) needs */
+  const pal = [[10, 20, 30], [200, 100, 50], [0, 0, 0], [255, 255, 255]];
+  const itile = { w: T, h: T, idx: new Uint8Array(T * T), pal: new Uint8Array(pal.flat()) };
+  const rgba = { w: T, h: T, data: new Uint8ClampedArray(T * T * 4) };
+  for (let i = 0; i < T * T; i++) {
+    const k = (i * 13 + (i >> 6)) % 4;
+    itile.idx[i] = k;
+    rgba.data.set([...pal[k], 255], i * 4);
+  }
+  const byIdx = composeGround(PLAN, bp, mm, Re, { 'ember-2': { A: itile } }, { scale: 3 });
+  const byRgba = composeGround(PLAN, bp, mm, Re, { 'ember-2': { A: rgba } }, { scale: 3 });
+  ok('a swatch kept as palette indices (a quarter of the memory) lays exactly as the same colours do', same(byIdx.data, byRgba.data));
+  const lean = composeGround(PLAN, bp, mm, Re, { 'ember-2': { A: itile } }, { scale: 3, withMaterials: false });
+  ok('...and without the per-pixel swatch map when the game does not want it', same(lean.data, byIdx.data) && !lean.mat);
+  const under = swatchesUnder(bp, mm, R0);
+  ok('swatchesUnder lists every swatch the composer lays there', [...at1].every((id) => under.has(id)), { under: [...under], laid: [...at1] });
+  const tw = Date.now();
+  const bits = walkBits(bp, mm);
+  const wMs = Date.now() - tw;
+  const blocked = (bx, by) => !!(bits[(by * bp.w + bx) >> 3] & (1 << ((by * bp.w + bx) & 7)));
+  const cellOf = (x, y) => [Math.floor((x - bp.x0) / bp.scale), Math.floor((y - bp.y0) / bp.scale)];
+  let nBlocked = 0, nWater = 0;
+  for (let i = 0; i < bp.w * bp.h; i++) { if (bits[i >> 3] & (1 << (i & 7))) nBlocked++; if (mm.mat[i] === mm.water) nWater++; }
+  const [sx0, sy0] = cellOf(bp.x0 + 10, bp.y0 + 10), [tx0, ty0] = cellOf(g.cx, g.cy), [kx0, ky0] = cellOf(cx1, cy1);
+  ok(`the walk grid: the sea stops you, the town and the commons do not (${wMs} ms, ${bits.length} bytes)`,
+    blocked(sx0, sy0) && !blocked(tx0, ty0) && !blocked(kx0, ky0) && bits.length === Math.ceil(bp.w * bp.h / 8), [blocked(sx0, sy0), blocked(tx0, ty0), blocked(kx0, ky0)]);
+  ok('...and blocks within a hair of where the water is drawn', Math.abs(nBlocked - nWater) / nWater < 0.01, { nBlocked, nWater });
+  /* the drawn ground and the walk grid agree away from the shore's noise */
+  const fb = composeGround(PLAN, bp, mm, R3, {}, { scale: 3 });
+  let agreeW = 0, nW = 0;
+  for (let by = 0; by < 128 / bp.scale; by++) for (let bx = 0; bx < 128 / bp.scale; bx++) {
+    const [gx, gy] = cellOf(R3.x + bx * bp.scale + 8, R3.y + by * bp.scale + 8);
+    const px = (bx * bp.scale + 8) * 3, py = (by * bp.scale + 8) * 3;
+    const drawnWater = fb.mat[py * 384 + px] === mm.water;
+    nW++; if (drawnWater === blocked(gx, gy)) agreeW++;
+  }
+  ok(`...at the Mill Bridge the walk grid matches the water drawn (${agreeW}/${nW} cells)`, agreeW / nW > 0.85, { agreeW, nW });
+  const ov = overviewPixels(bp, mm, 4);
+  const ovAt = (x, y) => { const [bx, by] = cellOf(x, y), o = (Math.floor(by / 4) * ov.w + Math.floor(bx / 4)) * 4; return [ov.data[o], ov.data[o + 1], ov.data[o + 2]]; };
+  const commonsCol = mm.catalog.find((e) => e.id === 'commons').color;
+  ok('the overview is the whole Wheel at a pixel per 4 x 4 cells, in the plan\'s colours',
+    ov.w === Math.ceil(bp.w / 4) && ov.h === Math.ceil(bp.h / 4) && ovAt(cx1, cy1).join() === commonsCol.join() && ovAt(bp.x0 + 10, bp.y0 + 10).join() !== commonsCol.join(),
+    { w: ov.w, h: ov.h, commons: ovAt(cx1, cy1), want: commonsCol });
 }
 
 /* ── maxflow ── */

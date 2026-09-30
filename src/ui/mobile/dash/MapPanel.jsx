@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
-import { worldTrialMapImage } from '@/game/worldTrial.js';
+import { worldTrialMapImage, worldTrialMapPicture, isWheelTrialZone } from '@/game/worldTrial.js';
 import { Assets } from 'pixi.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
@@ -56,12 +56,15 @@ export const MapPanel = () => {
     const zoneId = S && S.currentZone;
     const zone = zoneId && ZONES[zoneId];
     /* v2.3.2932: the world trial's island, not the vista it replaces */
-    const url = zoneId && (worldTrialMapImage(zoneId) || IMAGE_ZONE_MAPS[zoneId]);
+    /* v2.3.2943: and the Wheel's, which the phone drew itself (a canvas) --
+       never the vista, even while that picture is still being made */
+    const pic = zoneId && worldTrialMapPicture(zoneId);
+    const url = zoneId && !isWheelTrialZone(zoneId) && (worldTrialMapImage(zoneId) || IMAGE_ZONE_MAPS[zoneId]);
 
     ctx.clearRect(0, 0, MINI_W, MINI_H);
     ctx.fillStyle = '#111E23';
     ctx.fillRect(0, 0, MINI_W, MINI_H);
-    if (!zone || !url) return;
+    if (!zone || !(url || pic)) return;
 
     const zoneW = zone.w * TILE, zoneH = zone.h * TILE;
     const k = Math.min(MINI_W / zoneW, MINI_H / zoneH);   /* contain */
@@ -91,6 +94,7 @@ export const MapPanel = () => {
        triggers NO load of any kind, it reads what the zone gate already put
        there.  If the zone image somehow is not resident, the panel stays an
        empty well rather than kicking off a fetch. */
+    if (pic) { draw(pic); return; }
     let img = null;
     try {
       const tex = Assets.cache.get(url);

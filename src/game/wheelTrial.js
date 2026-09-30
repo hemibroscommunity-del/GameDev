@@ -1,0 +1,226 @@
+/* ═══ v2.3.2943: THE WHEEL TRIAL — the game's side of the ground worker ═══
+ *
+ * `?trial=wheel` (src/game/worldTrial.js) turns the World View into the whole
+ * Wheel at full size, its ground laid on the phone from the owner's swatches
+ * by public/tools/world/core/ground-worker.js.  This module is the one place
+ * that talks to that worker: it starts it, asks it for pieces of ground, and
+ * keeps what the rest of the game needs from it --
+ *
+ *   the walk grid   where the sea and the rivers stop you, as the rows of
+ *                   booleans isSolid() reads (false = blocked) -- but made a
+ *                   row at a time as they are read: the Wheel is 1792 x 1792
+ *                   cells, and as plain rows that is 3.2 million booleans,
+ *                   ~26 MB on iPhone Safari.  Held as bits it is 400 KB.
+ *   the overview    the whole Wheel, small, in the plan's colours: the
+ *                   underlay for ground still being laid, and the Map panel.
+ *   the numbers     for the trial's readout.
+ *
+ * The worker lives only while you are in (or walking into) the Wheel:
+ * worldTrial.syncWorldTrial stops it a few seconds after you leave, which
+ * frees the plan and every unpacked swatch with it (the ZONE-ASSET rule in
+ * CLAUDE.md: what a zone loads, it frees on the way out).
+ *
+ * No pixi here: tiledMaps.js reaches this module through worldTrial.js, and
+ * tools/qa/qa-mapfree-race.mjs loads that straight into Node.
+ */
+
+/* Served as-is from public/, never bundled: it imports the World Builder's
+   own modules, which live there too. */
+const WORKER_URL = '/tools/world/core/ground-worker.js';
+const ROW_KEEP = 160;          /* walk-grid rows kept made, ~14 KB each on iPhone */
+
+let _w = null;
+let _initP = null;
+let _info = null;
+let _grid = null;
+let _overview = null;
+let _seq = 0;
+const _pending = new Map();    /* request id -> { resolve, reject } */
+const _warm = new Map();       /* "i,j" -> a piece laid ahead by the zone gate, not yet shown */
+let _here = null;              /* the swatch under your feet: { q, x, y } */
+let _hereAsked = null;
+
+export const wheelStats = {
+  entryMs: null,       /* the way in: the plan, then the first screen of ground */
+  planMs: null,        /* the worker's plan build */
+  swatchMs: null,      /* finding the swatches */
+  resident: 0,         /* pieces in memory now */
+  loading: 0,          /* pieces asked for and not back yet */
+  loads: 0,            /* pieces laid since entering */
+  lastMs: 0,           /* the last piece's time in the worker */
+  maxMs: 0,
+  sumMs: 0,
+  popIns: 0,           /* came on screen before its ground was laid */
+  pieceBytes: 0,       /* the colours of one piece */
+  unpacked: 0,         /* swatch pictures unpacked in the worker now */
+  error: null,
+};
+
+export function wheelInfo() { return _info; }
+export function wheelWalkGrid() { return _grid; }
+export function wheelOverview() { return _overview; }
+export function wheelRunning() { return !!_w; }
+/* which swatches were found, and where: { id: 'studio' | 'game' } */
+export function wheelMade() { return _info ? _info.made : null; }
+
+/* Start the worker (once) and build the plan.  Resolves with its 'ready'
+   message; rejects, and leaves the trial on flat sea, if this browser cannot
+   run it. */
+export function wheelStart() {
+  if (_initP) return _initP;
+  if (typeof Worker === 'undefined') return Promise.reject(new Error('no workers'));
+  wheelStats.error = null;
+  _initP = new Promise((resolve, reject) => {
+    let w;
+    try { w = new Worker(WORKER_URL, { type: 'module' }); } catch (e) { reject(e); return; }
+    _w = w;
+    w.onmessage = (ev) => onMessage(ev.data, resolve, reject);
+    w.onerror = (ev) => {
+      const msg = (ev && ev.message) || 'the ground worker failed to start';
+      wheelStats.error = msg;
+      reject(new Error(msg));
+      for (const p of _pending.values()) p.reject(new Error(msg));
+      _pending.clear();
+    };
+    w.postMessage({ type: 'init' });
+  });
+  _initP.catch((e) => { wheelStats.error = String((e && e.message) || e); });
+  return _initP;
+}
+
+function onMessage(m, resolveInit, rejectInit) {
+  if (!m) return;
+  /* a failure with no request of its own is the plan build's */
+  if (m.type === 'error' && m.id == null) { wheelStats.error = m.message; rejectInit(new Error(m.message)); return; }
+  if (m.type === 'ready') {
+    _info = m;
+    _grid = lazyGrid(m.walk.bits, m.walk.cols, m.walk.rows);
+    _overview = overviewCanvas(m.overview);
+    wheelStats.planMs = m.planMs;
+    wheelStats.swatchMs = m.swatchMs;
+    wheelStats.pieceBytes = (m.chunk.px + 2 * m.chunk.apronPx) ** 2 * 4;
+    resolveInit(m);
+    return;
+  }
+  if (m.type === 'where') {
+    _hereAsked = null;
+    if (m.q != null) _here = { q: m.q, x: m.id.x, y: m.id.y };
+    return;
+  }
+  const p = _pending.get(m.id);
+  if (!p) return;
+  _pending.delete(m.id);
+  if (m.type === 'error') { p.reject(new Error(m.message)); return; }
+  p.resolve(m);
+}
+
+/* One piece of ground: { i, j, w, h, data (RGBA), ms }. */
+export function wheelChunk(i, j) {
+  const warm = _warm.get(i + ',' + j);
+  if (warm) { _warm.delete(i + ',' + j); return Promise.resolve(warm); }
+  if (!_w || !_info) return Promise.reject(new Error('not ready'));
+  const id = ++_seq;
+  return new Promise((resolve, reject) => {
+    _pending.set(id, { resolve, reject });
+    _w.postMessage({ type: 'chunk', id, i, j });
+  }).then((m) => {
+    wheelStats.loads++;
+    wheelStats.lastMs = m.ms;
+    wheelStats.maxMs = Math.max(wheelStats.maxMs, m.ms);
+    wheelStats.sumMs += m.ms;
+    wheelStats.unpacked = m.unpacked;
+    return m;
+  });
+}
+
+/* The zone gate's half: lay every piece a phone screen round (x, y) needs
+   -- `rx`, `ry` game px either way -- before the loading overlay lifts. */
+export async function wheelWarm(x, y, rx, ry) {
+  const info = _info;
+  if (!info) return;
+  const cs = info.chunk.gamePx;
+  const i0 = Math.max(0, Math.floor((x - rx) / cs)), i1 = Math.min(info.chunk.cols - 1, Math.floor((x + rx) / cs));
+  const j0 = Math.max(0, Math.floor((y - ry) / cs)), j1 = Math.min(info.chunk.rows - 1, Math.floor((y + ry) / cs));
+  const jobs = [];
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    if (_warm.has(i + ',' + j)) continue;
+    jobs.push(wheelChunk(i, j).then((m) => { _warm.set(i + ',' + j, m); }).catch(() => {}));
+  }
+  await Promise.all(jobs);
+}
+export function wheelIsWarm(i, j) { return _warm.has(i + ',' + j); }
+/* The readout's counts start again on each way in: they describe this visit. */
+export function wheelResetCounts() {
+  Object.assign(wheelStats, { loads: 0, lastMs: 0, maxMs: 0, sumMs: 0, popIns: 0 });
+}
+/* Pieces laid ahead that were never shown (you walked in somewhere else). */
+export function wheelDropWarm() { _warm.clear(); }
+
+/* The swatch under your feet, for the readout: asks the worker when you have
+   moved a cell, answers with the last reply. */
+export function wheelHere(x, y) {
+  const info = _info;
+  if (!_w || !info) return null;
+  const cell = info.worldW / info.walk.cols;
+  const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
+  if (!_hereAsked && (!_here || _here.x !== cx || _here.y !== cy)) {
+    _hereAsked = { x: cx, y: cy };
+    _w.postMessage({ type: 'where', id: _hereAsked, x, y });
+  }
+  if (!_here) return null;
+  const c = info.catalog[_here.q];
+  return c ? { id: c.id, name: c.name, water: _here.q === info.water, made: info.made[c.id] || null } : null;
+}
+
+/* Stop the worker and let go of everything it gave. */
+export function wheelStop() {
+  if (_w) { try { _w.terminate(); } catch (e) { /* gone */ } }
+  _w = null;
+  _initP = null;
+  _info = null;
+  _grid = null;
+  if (_overview) { _overview.width = _overview.height = 0; _overview = null; }
+  for (const p of _pending.values()) p.reject(new Error('stopped'));
+  _pending.clear();
+  _warm.clear();
+  _here = null;
+  _hereAsked = null;
+}
+
+/* ── the walk grid, a row at a time ── */
+
+/* What isSolid(), nudgeSpawnToWalkable() and the trail's route finder read:
+   `grid.length` rows, `grid[y][x]` false where you cannot walk.  A row is
+   made from the bits when first read and the last ROW_KEEP kept -- every
+   reader only ever looks at the rows round the player. */
+function lazyGrid(bits, cols, rows) {
+  const made = new Map();
+  const rowAt = (y) => {
+    let r = made.get(y);
+    if (r) return r;
+    r = new Array(cols);
+    for (let x = 0, k = y * cols; x < cols; x++, k++) r[x] = !(bits[k >> 3] & (1 << (k & 7)));
+    made.set(y, r);
+    if (made.size > ROW_KEEP) made.delete(made.keys().next().value);
+    return r;
+  };
+  return new Proxy([], {
+    get(t, key) {
+      if (key === 'length') return rows;
+      if (typeof key === 'string' && key !== '') {
+        const y = +key;
+        if (y >= 0 && y < rows && y === Math.floor(y)) return rowAt(y);
+      }
+      return undefined;
+    },
+  });
+}
+
+function overviewCanvas(ov) {
+  if (typeof document === 'undefined' || !ov) return null;
+  const c = document.createElement('canvas');
+  c.width = ov.w; c.height = ov.h;
+  const g = c.getContext('2d');
+  g.putImageData(new ImageData(new Uint8ClampedArray(ov.data.buffer), ov.w, ov.h), 0, 0);
+  return c;
+}

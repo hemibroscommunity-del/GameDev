@@ -34,7 +34,7 @@ import { PLAN } from '../world/plan.js';
 import { buildBlueprint } from '../world/core/layout.js';
 import { gridInfo } from '../world/core/grid.js';
 import { spokePoint, arcPoint } from '../world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround, groundOverview } from '../world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, groundOverview, swatchesUnder } from '../world/core/ground.js';
 import { openStore } from '../world/store.js';
 import { zipStore, unzip } from '../world/core/zip.js';
 import { PIXEL } from '../style/bible.js';
@@ -306,14 +306,8 @@ function viewRect(m) {
 
 /* The swatches whose ground can reach into `rect` (plan art px): what the
    compositor will ask for, so only those are unpacked. */
-function swatchesIn(rect) {
-  const bp = S.bp, sc = bp.scale, M = 6;
-  const x0 = Math.max(0, Math.floor((rect.x - bp.x0) / sc) - M), y0 = Math.max(0, Math.floor((rect.y - bp.y0) / sc) - M);
-  const x1 = Math.min(bp.w - 1, Math.ceil((rect.x + rect.w - bp.x0) / sc) + M), y1 = Math.min(bp.h - 1, Math.ceil((rect.y + rect.h - bp.y0) / sc) + M);
-  const ids = new Set();
-  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) ids.add(S.mm.ids[S.mm.mat[y * bp.w + x]]);
-  return ids;
-}
+/* v2.3.2943: the same list the game's ground worker unpacks (ground.js) */
+const swatchesIn = (rect) => swatchesUnder(S.bp, S.mm, rect);
 
 /* The ground round the view, at the swatches' own sharpness (K ground px
    per plan art px, 2 per game px). */

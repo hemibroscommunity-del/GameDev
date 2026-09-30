@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  wheeltrial: () => import('./mp-wheeltrial.mjs'), /* v2.3.2943: ?trial=wheel -- the World View as the Wheel at full size, its ground laid on the device from the Ground Studio's own swatches by a worker; a swatch planted in the studio's storage is under your feet, the sea stops you, pieces laid ahead and freed behind, the worker stopped after you leave */
   worldtrial: () => import('./mp-worldtrial.mjs'), /* v2.3.2932: ?trial=world -- the World View as the whole island at full size, streamed in pieces; the way in timed, memory bounded across a walk, the worker following, sea and river solid, every piece freed on the way out */
   devarmor: () => import('./mp-devarmor.mjs'), /* v2.3.2875: the admin kit hands out the copper and iron armour sets, into the right bags, wearable */
   monstertrim: () => import('./mp-monstertrim.mjs'), /* v2.3.2870: monster strips load cropped -- byte-identical, drawn, freed on the way out, loadable again */

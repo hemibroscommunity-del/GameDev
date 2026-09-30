@@ -339,16 +339,23 @@ export function nearestIn(pal) {
    In place. */
 export function hardenAndMap(c, pal) {
   const g = ctx2d(c);
-  const img = g.getImageData(0, 0, c.width, c.height), d = img.data;
+  const img = g.getImageData(0, 0, c.width, c.height);
+  mapPixels(img.data, c.width, c.height, pal);
+  g.putImageData(img, 0, 0);
+  return c;
+}
+/* v2.3.2943: hardenAndMap's pixel half, on raw RGBA -- the game's ground
+   worker (world/core/ground-worker.js) runs it on the Ground Studio's own
+   tiles, where there is no page canvas, and gets the studio's pixels. */
+export function mapPixels(d, w, h, pal) {
   const near = pal && pal.length ? nearestIn(pal) : null;
   for (let i = 0; i < d.length; i += 4) {
     if (d[i + 3] < 128) { d[i + 3] = 0; continue; }
     d[i + 3] = 255;
     if (near) { const p = near(d[i], d[i + 1], d[i + 2]); d[i] = p[0]; d[i + 1] = p[1]; d[i + 2] = p[2]; }
   }
-  if (near) despeckle(d, c.width, c.height);
-  g.putImageData(img, 0, 0);
-  return c;
+  if (near) despeckle(d, w, h);
+  return d;
 }
 
 /* v2.3.2935: HD pixel rule 5 (docs/WORLD-BIBLE.md §6) -- detail comes in

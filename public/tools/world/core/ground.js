@@ -19,9 +19,14 @@
  *   groundOverview(...)   the whole map at one pixel a cell, each swatch in
  *                         its own colour -- the Ground Studio's progress map.
  *
- * It is what the Ground Studio (public/tools/ground/) previews with, and it
- * is written so the game can compose its ground on the phone the same way
- * later: the download stays the swatches, however big the map grows.
+ * It is what the Ground Studio (public/tools/ground/) previews with, and --
+ * since v2.3.2943 -- what the game itself lays its ground with, on the phone,
+ * in a worker (ground-worker.js, the `?trial=wheel` switch): the download
+ * stays the swatches, however big the map grows.  For that it also gives
+ *
+ *   swatchesUnder(...)    which swatches a rectangle's ground can use;
+ *   walkBits(...)         where you cannot walk (the sea, rivers, lakes);
+ *   overviewPixels(...)   the whole map, small, in the plan's colours.
  *
  * ── HOW TWO SWATCHES MEET ──
  * Never on a straight line, and never with a soft blend: pixel art has no
@@ -175,9 +180,12 @@ function blur1(f, w, h, r) {
 }
 
 /* The ground of `rect` (art px, frame coordinates).
-   `tiles[id]` = { A: {w, h, data}, B?: {w, h, data} }: the swatch pictures,
-   square, seamless and already on the palette; a swatch not made yet is
-   drawn in its plan colour, chequered, so the gap shows.  Returns
+   `tiles[id]` = { A: tile, B?: tile }: the swatch pictures, square, seamless
+   and already on the palette; a swatch not made yet is drawn in its plan
+   colour, chequered, so the gap shows.  A tile is {w, h, data} (RGBA) or,
+   since v2.3.2943, {w, h, idx, pal}: one palette index a pixel and the
+   palette as r,g,b triples -- a quarter of the memory, which is what lets
+   the phone keep a dozen swatches unpacked (ground-worker.js).  Returns
    { w, h, data (RGBA), mat (the swatch index of every pixel), scale }.
 
    `opts.scale` (v2.3.2942): output pixels per art px, a whole number.  1 (the
@@ -265,8 +273,8 @@ export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
         if (t && t.A) {
           const useB = t.B && fbm(ax / 1100, ay / 1100, seed + 11, 2) + 0.18 * (hash2(ax >> 2, ay >> 2, seed + 13) - 0.5) > 0;
           const tile = useB ? t.B : t.A, T = tile.w;
-          const u = ((ax % T) + T) % T, v = ((ay % T) + T) % T, q = (v * T + u) * 4;
-          data[o] = tile.data[q]; data[o + 1] = tile.data[q + 1]; data[o + 2] = tile.data[q + 2]; data[o + 3] = 255;
+          const u = ((ax % T) + T) % T, v = ((ay % T) + T) % T;
+          putTexel(data, o, tile, v * T + u);
           continue;
         }
         /* not made yet: the plan's colour, chequered every 16 art px */
@@ -277,6 +285,18 @@ export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
   }
   if (opts.withMaterials === false) return { w: RW, h: RH, data, scale: 1 };
   return { w: RW, h: RH, data, mat, scale: 1 };
+}
+
+/* One swatch pixel into the output: from an RGBA tile, or an indexed one. */
+function putTexel(data, o, tile, k) {
+  if (tile.idx) {
+    const q = tile.idx[k] * 3, p = tile.pal;
+    data[o] = p[q]; data[o + 1] = p[q + 1]; data[o + 2] = p[q + 2];
+  } else {
+    const q = k * 4, d = tile.data;
+    data[o] = d[q]; data[o + 1] = d[q + 1]; data[o + 2] = d[q + 2];
+  }
+  data[o + 3] = 255;
 }
 
 /* composeGround at K output pixels per art px (see there). */
@@ -370,14 +390,15 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     }
   }
   /* 3. colour */
-  const data = new Uint8ClampedArray(OW * OH * 4), mat = new Uint8Array(OW * OH), cat = mm.catalog;
+  const data = new Uint8ClampedArray(OW * OH * 4), cat = mm.catalog;
+  const mat = opts.withMaterials === false ? null : new Uint8Array(OW * OH);
   for (let oy = 0; oy < OH; oy++) {
     const aoy = OY0 + oy, ay = Math.floor(aoy / K);
     let lastAx = null, bsel = 0;
     for (let ox = 0; ox < OW; ox++) {
       const aox = OX0 + ox, ax = Math.floor(aox / K), i = oy * OW + ox, o = i * 4;
       const e0 = (oy + FW) * OEW + ox + FW, m = omat[e0];
-      mat[i] = m;
+      if (mat) mat[i] = m;
       let c;
       if (m === water) {
         let land = false;
@@ -389,8 +410,8 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
         if (t && t.A) {
           if (t.B && ax !== lastAx) { lastAx = ax; bsel = fbm(ax / 1100, ay / 1100, seed + 11, 2) + 0.18 * (hash2(ax >> 2, ay >> 2, seed + 13) - 0.5); }
           const tile = t.B && bsel > 0 ? t.B : t.A, T = tile.w;
-          const u = ((aox % T) + T) % T, v = ((aoy % T) + T) % T, q = (v * T + u) * 4;
-          data[o] = tile.data[q]; data[o + 1] = tile.data[q + 1]; data[o + 2] = tile.data[q + 2]; data[o + 3] = 255;
+          const u = ((aox % T) + T) % T, v = ((aoy % T) + T) % T;
+          putTexel(data, o, tile, v * T + u);
           continue;
         }
         /* not made yet: the plan's colour, chequered every 16 art px */
@@ -418,4 +439,53 @@ export function groundOverview(plan, bp, mm, means = {}) {
     out[o] = c[0]; out[o + 1] = c[1]; out[o + 2] = c[2]; out[o + 3] = 255;
   }
   return out;
+}
+
+/* ── for the game (v2.3.2943) ── */
+
+/* Every swatch the ground of `rect` (art px) can use: the cells under it and
+   six more all round, more than composeGround's blur and noise reach, so a
+   caller that unpacks exactly these has every picture the composer asks for. */
+export function swatchesUnder(bp, mm, rect) {
+  const sc = bp.scale, M = 6;
+  const x0 = Math.max(0, Math.floor((rect.x - bp.x0) / sc) - M), y0 = Math.max(0, Math.floor((rect.y - bp.y0) / sc) - M);
+  const x1 = Math.min(bp.w - 1, Math.ceil((rect.x + rect.w - bp.x0) / sc) + M), y1 = Math.min(bp.h - 1, Math.ceil((rect.y + rect.h - bp.y0) / sc) + M);
+  const ids = new Set();
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) ids.add(mm.ids[mm.mat[y * bp.w + x]]);
+  return ids;
+}
+
+/* Where you cannot walk: one bit a blueprint cell (row by row, bit k of byte
+   k >> 3), set where the water's share of the ground is at least half -- the
+   same blurred share composeGround draws the shore from, so the line you are
+   stopped at is the line you see, give or take its noise (about half a cell,
+   12 game px).  A river one cell wide is never drawn (the land's share wins
+   everywhere along it), and so is not a wall either. */
+export function walkBits(bp, mm) {
+  const w = bp.w, h = bp.h, n = w * h;
+  const f = new Float32Array(n);
+  for (let i = 0; i < n; i++) f[i] = mm.mat[i] === mm.water ? 1 : 0;
+  blur1(f, w, h, 1);
+  blur1(f, w, h, 1);
+  const bits = new Uint8Array((n + 7) >> 3);
+  for (let i = 0; i < n; i++) if (f[i] >= 0.5) bits[i >> 3] |= 1 << (i & 7);
+  return bits;
+}
+
+/* The whole map, one pixel per `k` x `k` cells, in the plan's own colours
+   and the deep sea: the game's blurry underlay for ground still being laid,
+   and its Map panel.  RGBA. */
+export function overviewPixels(bp, mm, k = 4) {
+  const w = Math.ceil(bp.w / k), h = Math.ceil(bp.h / k);
+  const cols = mm.ids.map((id, q) => (q === mm.water ? WATER_RGB.deep : mm.catalog[q].color));
+  const data = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const by = Math.min(bp.h - 1, y * k + (k >> 1));
+    for (let x = 0; x < w; x++) {
+      const bx = Math.min(bp.w - 1, x * k + (k >> 1));
+      const c = cols[mm.mat[by * bp.w + bx]], o = (y * w + x) * 4;
+      data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
+    }
+  }
+  return { w, h, data };
 }
