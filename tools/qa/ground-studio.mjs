@@ -301,6 +301,11 @@ try {
     /* as the studio saved a picture before v2.3.2944: no brief recorded */
     await st.put('raw', 'street|A', { blob, name: 'street-A.png', type: 'image/png' });
     await st.put('prep', 'street|A', blob);
+    /* v2.3.2949: the owner's planks, made while the boardwalk's prompt still
+       asked for the basket weave -- so recorded with that brief */
+    await st.put('raw', 'boardwalk|A', { blob, name: 'boardwalk-A.png', type: 'image/png', at: Date.now(),
+      brief: 'weathered wooden decking of short boards in a basket weave: small square blocks of three or four boards, each block turned a quarter turn from its neighbours' });
+    await st.put('prep', 'boardwalk|A', blob);
     st.close();
   }, oldPic);
   await page.close();
@@ -309,10 +314,16 @@ try {
     street: !!document.querySelector('[data-stale="street"]'),
     road: !!document.querySelector('[data-stale="road"]'),
     commons: !!document.querySelector('[data-stale="commons"]'),
+    boardwalk: !!document.querySelector('[data-stale="boardwalk"]'),
     text: (document.querySelector('[data-stale="street"]') || {}).textContent || '',
+    walkCard: (document.getElementById('sw-boardwalk') || {}).textContent || '',
+    walkPrompt: (document.querySelector('textarea[data-prompt="boardwalk"]') || {}).value || '',
   }));
   ok("a swatch made from an older prompt (the Main Street ruts) is marked to make again; ones made from today's prompts are not",
     stale.street && !stale.road && !stale.commons && /Make this one again/.test(stale.text), stale);
+  ok("the boardwalk asks for plain boards that run one way, says the game lays them, and the owner's planks (made under the old prompt) are not marked to redo (v2.3.2949)",
+    !stale.boardwalk && /The game lays these boards itself/.test(stale.walkCard) && /The boards all run the same way/.test(stale.walkPrompt) &&
+    !/Nothing in it runs one way/.test(stale.walkPrompt) && !/basket weave/.test(stale.walkPrompt), { boardwalk: stale.boardwalk, prompt: stale.walkPrompt.slice(0, 160) });
   await shot(page, 'stale', '#sw-street');
 
   /* ── 8. v2.3.2947: where two grounds meet ── */

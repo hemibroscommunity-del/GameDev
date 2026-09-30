@@ -61,6 +61,21 @@
  * decides every pixel, and the planks crumbled into specks along both
  * edges of the street.  A surveyed town has straight edges anyway.
  *
+ * PLANK DECKS (v2.3.2949) -- the boardwalks and the bridges -- are the one
+ * ground laid by the way you walk.  Owner, on the Mill Bridge: "The bridge
+ * needs to take shrink the tiles and maybe make them line up using your
+ * coding I had to change the checker pattern wood the original prompt made
+ * it didn't look right."  The boardwalk swatch is now boards running one
+ * way (the basket weave's "checker" looked wrong), and the game lays them
+ * itself (planksOf): it finds which way the picture's boards run and where
+ * their seams are, makes the picture smaller so a board is half a cell
+ * (12 game px) wide, and lays the boards ACROSS every deck -- the blueprint
+ * records each one and the way along it (layout.js, `decks`) -- one board
+ * per half cell of the whole world, so every seam lines up with the deck's
+ * ends and with the next deck along the street.  Each board is one of the
+ * picture's boards, picked and slid along its length by its place, so a
+ * long boardwalk does not repeat.
+ *
  * ── DETERMINISM ──
  * Everything is a function of absolute position (the frame's art px): the
  * tiles are anchored to the frame's origin, so two neighbouring rectangles
@@ -212,8 +227,14 @@ export function groundCatalog(plan) {
     where: "the town's yards, and the ground under every building plot and camp", color: hexToRgb(R.town.ground) });
   add({ id: 'street', group: 'hub', name: 'Main Street', brief: 'hard-packed dirt street, trodden smooth and a little darker in soft patches, with a few scattered pebbles and wisps of straw lying every which way',
     where: "Brotown's streets", color: hexToRgb(K.street.color), revised: 'v2.3.2944' });
-  add({ id: 'boardwalk', group: 'hub', name: 'Boardwalk', brief: 'weathered wooden decking of short boards in a basket weave: small square blocks of three or four boards, each block turned a quarter turn from its neighbours',
-    where: "the town's boardwalks, and the bridges", color: hexToRgb(K.boardwalk.color), revised: 'v2.3.2944' });
+  /* v2.3.2949: boards that run one way -- the one swatch that may, because
+     the game lays it (`laid`, PLANK DECKS above).  The owner found the
+     v2.3.2944 basket weave looked wrong ("the checker pattern wood") and
+     made planks; a picture made while the prompt still asked for the weave
+     is theirs, so it is not marked to make again (`accepts`). */
+  add({ id: 'boardwalk', group: 'hub', name: 'Boardwalk', brief: 'weathered wooden decking: straight boards of about equal width laid side by side, with thin dark gaps between them, a few knots and nail heads, and here and there two boards butted end to end',
+    where: "the town's boardwalks, and the bridges", color: hexToRgb(K.boardwalk.color), revised: 'v2.3.2949', laid: 'planks',
+    accepts: ['weathered wooden decking of short boards in a basket weave: small square blocks of three or four boards, each block turned a quarter turn from its neighbours'] });
   add({ id: 'plaza', group: 'hub', name: 'Town square', brief: 'packed pale gravel with a few flat flagstones',
     where: 'the town square round the Town Hall', color: hexToRgb(K.plaza.color) });
   add({ id: 'road', group: 'routes', name: 'Road', brief: 'the surface of a worn dirt road: packed earth worn evenly all over, with scattered pebbles and a few tiny tufts of grass',
@@ -321,7 +342,17 @@ export function materialMap(plan, bp) {
   /* v2.3.2945: which swatches are built (laid on their cells, straight-edged) */
   const built = new Uint8Array(ids.length);
   for (const id of BUILT) if (index[id] != null) built[index[id]] = 1;
-  return { mat, ids, index, water, catalog: cat, built };
+  /* v2.3.2949: the plank decks (layout.js), and which deck each of their
+     cells is -- a few hundred cells, so a Map, not a layer over the Wheel */
+  const decks = (bp.decks || []).map((d) => ({ ...d }));
+  const deckAt = new Map();
+  decks.forEach((d, k) => {
+    for (let y = d.y0; y < d.y1; y++) for (let x = d.x0; x < d.x1; x++) {
+      const i = y * bp.w + x;
+      if (x >= 0 && y >= 0 && x < bp.w && y < bp.h && !deckAt.has(i) && cat[mat[i]] && cat[mat[i]].laid === 'planks') deckAt.set(i, k);
+    }
+  });
+  return { mat, ids, index, water, catalog: cat, built, decks, deckAt };
 }
 
 /* v2.3.2947: every land cell's stage, averaged over about a dozen cells
@@ -526,6 +557,144 @@ function putTexel(data, o, tile, k) {
     data[o] = d[q]; data[o + 1] = d[q + 1]; data[o + 2] = d[q + 2];
   }
   data[o + 3] = 255;
+}
+
+/* ═══ v2.3.2949: a plank swatch, made ready to lay (PLANK DECKS above) ═══
+   `planksOf(tile, BW)` -> { tile, boards: [{ y0, h }], n, turned, scale }:
+   the picture turned (if need be) so its boards run left to right, made
+   smaller so its middle board is BW px wide, and snapped back onto the
+   picture's own colours; and where each of its boards lies (y0 .. y0 + h,
+   seam to seam, round the wrap).  Worked out once a picture and kept with
+   it (a WeakMap), so the game's worker and the studio pay it once. */
+const BOARDS_PER_CELL = 2;
+const PLANKS = new WeakMap();
+export function planksOf(tile, BW) {
+  let byW = PLANKS.get(tile);
+  if (!byW) PLANKS.set(tile, (byW = new Map()));
+  let p = byW.get(BW);
+  if (!p) byW.set(BW, (p = makePlanks(tile, BW)));
+  return p;
+}
+function makePlanks(tile, BW) {
+  const T = tile.w, H = tile.h, N = T * H, idx = tile.idx, pal = tile.pal, d = tile.data;
+  /* each pixel's colour, as whole numbers, so the sums below come out the
+     same whichever way round the picture is */
+  const R8 = new Uint8Array(N), G8 = new Uint8Array(N), B8 = new Uint8Array(N);
+  for (let k = 0; k < N; k++) {
+    if (idx) { const q = idx[k] * 3; R8[k] = pal[q]; G8[k] = pal[q + 1]; B8[k] = pal[q + 2]; }
+    else { R8[k] = d[k * 4]; G8[k] = d[k * 4 + 1]; B8[k] = d[k * 4 + 2]; }
+  }
+  /* which way the boards run: a line along a board stays on one board, so
+     lines that way differ board to board; lines across all look alike */
+  const rows = new Float64Array(H), cols = new Float64Array(T);
+  for (let y = 0, k = 0; y < H; y++) {
+    let rs = 0;
+    for (let x = 0; x < T; x++, k++) { const v = 30 * R8[k] + 59 * G8[k] + 11 * B8[k]; rs += v; cols[x] += v; }
+    rows[y] = rs;
+  }
+  for (let y = 0; y < H; y++) rows[y] /= 100 * T;
+  for (let x = 0; x < T; x++) cols[x] /= 100 * H;
+  const spread = (a) => { let m = 0; for (const v of a) m += v; m /= a.length; let s = 0; for (const v of a) s += (v - m) * (v - m); return s / a.length; };
+  const turned = spread(cols) > spread(rows);
+  const prof = turned ? cols : rows, L = prof.length, along = turned ? H : T;
+  const seams = findSeams(prof);
+  const boards = seams.map((a, k) => ({ y0: a, h: (k + 1 < seams.length ? seams[k + 1] : seams[0] + L) - a }));
+  const hs = boards.map((b) => b.h).sort((a, b) => a - b);
+  const scale = Math.max(1, hs[hs.length >> 1] / BW);
+  /* smaller: each new pixel the average of the old ones in its square */
+  const w2 = Math.max(1, Math.round(along / scale)), h2 = Math.max(1, Math.round(L / scale));
+  const fx = along / w2, fy = L / h2;
+  const toX = new Int32Array(along), toY = new Int32Array(L);
+  for (let u = 0; u < along; u++) toX[u] = Math.min(w2 - 1, Math.floor(u / fx));
+  for (let v = 0; v < L; v++) toY[v] = Math.min(h2 - 1, Math.floor(v / fy)) * w2;
+  const n2 = w2 * h2, ar = new Uint32Array(n2), ag = new Uint32Array(n2), ab = new Uint32Array(n2), cnt = new Uint32Array(n2);
+  for (let y = 0, k = 0; y < H; y++) for (let x = 0; x < T; x++, k++) {
+    const o = turned ? toY[x] + toX[y] : toY[y] + toX[x];
+    ar[o] += R8[k]; ag[o] += G8[k]; ab[o] += B8[k]; cnt[o]++;
+  }
+  /* ...back onto the picture's own colours (on the palette already) */
+  const own = [];
+  if (idx) {
+    const used = new Uint8Array(256);
+    for (let k = 0; k < N; k++) used[idx[k]] = 1;
+    for (let q = 0; q < 256; q++) if (used[q]) own.push([pal[q * 3], pal[q * 3 + 1], pal[q * 3 + 2], q]);
+  } else {
+    const seen = new Set();
+    for (let k = 0; k < N && own.length <= 256; k++) {
+      const key = (R8[k] << 16) | (G8[k] << 8) | B8[k];
+      if (!seen.has(key)) { seen.add(key); own.push([R8[k], G8[k], B8[k], -1]); }
+    }
+  }
+  own.sort((a, b) => a[3] - b[3] || ((a[0] << 16) | (a[1] << 8) | a[2]) - ((b[0] << 16) | (b[1] << 8) | b[2]));
+  const snap = own.length <= 256;
+  const memo = new Map();
+  const nearest = (r, g, b) => {
+    const key = (r << 16) | (g << 8) | b;
+    let c = memo.get(key);
+    if (c) return c;
+    let bd = Infinity;
+    for (const e of own) { const dd = (e[0] - r) * (e[0] - r) + (e[1] - g) * (e[1] - g) + (e[2] - b) * (e[2] - b); if (dd < bd) { bd = dd; c = e; } }
+    memo.set(key, c);
+    return c;
+  };
+  const out = idx ? { w: w2, h: h2, idx: new Uint8Array(n2), pal } : { w: w2, h: h2, data: new Uint8ClampedArray(n2 * 4) };
+  for (let o = 0; o < n2; o++) {
+    const c = cnt[o] || 1, h = c >> 1;
+    const r = Math.floor((ar[o] + h) / c), g = Math.floor((ag[o] + h) / c), b = Math.floor((ab[o] + h) / c);
+    const e = snap ? nearest(r, g, b) : [r, g, b, -1];
+    if (idx) out.idx[o] = e[3];
+    else { out.data[o * 4] = e[0]; out.data[o * 4 + 1] = e[1]; out.data[o * 4 + 2] = e[2]; out.data[o * 4 + 3] = 255; }
+  }
+  return { tile: out, boards: boards.map((b) => ({ y0: b.y0 / fy, h: b.h / fy })), n: boards.length, turned, scale };
+}
+/* The seams in a profile across the boards (each line's average
+   brightness).  The boards' spacing first: where the profile, blurred past
+   the wood's grain, best repeats (16 px or more: grain lines repeat too).
+   Then the seams: the lines darkest within about a third of a board, the
+   most clearly dark first (how far each dips below the board on either
+   side), no two closer than half a board -- so a dark board's grain, or a
+   light board's knot, is not a seam.  With no clear boards, even ones. */
+function findSeams(prof) {
+  const L = prof.length, p = new Float64Array(L), q = new Float64Array(L);
+  for (let i = 0; i < L; i++) p[i] = (prof[(i - 1 + L) % L] + 2 * prof[i] + prof[(i + 1) % L]) / 4;
+  for (let i = 0; i < L; i++) { let s = 0; for (let k = -4; k <= 4; k++) s += prof[(i + k + L) % L]; q[i] = s / 9; }
+  let m = 0;
+  for (const v of q) m += v;
+  m /= L;
+  let v0 = 0;
+  for (const v of q) v0 += (v - m) * (v - m);
+  v0 = v0 || 1;
+  let per = 0, best = 0.1;
+  for (let lag = 16; lag <= L / 3; lag++) {
+    let s = 0;
+    for (let i = 0; i < L; i++) s += (q[i] - m) * (q[(i + lag) % L] - m);
+    if (s / v0 > best) { best = s / v0; per = lag; }
+  }
+  const even = (n) => {
+    let i0 = 0;
+    for (let i = 1; i < L; i++) if (p[i] < p[i0]) i0 = i;
+    return Array.from({ length: n }, (_, k) => (i0 + Math.round((k * L) / n)) % L).sort((a, b) => a - b);
+  };
+  if (!per) return even(12);
+  const R = Math.max(3, Math.round(per * 0.3)), cand = [];
+  for (let i = 0; i < L; i++) {
+    let lo = true, left = -Infinity, right = -Infinity;
+    for (let k = 1; k <= R && lo; k++) {
+      const a = p[(i - k + L) % L], b = p[(i + k) % L];
+      if (a <= p[i] || b < p[i]) lo = false;
+      if (a > left) left = a;
+      if (b > right) right = b;
+    }
+    if (lo) cand.push({ i, prom: Math.min(left, right) - p[i] });
+  }
+  cand.sort((a, b) => b.prom - a.prom || a.i - b.i);
+  const seams = [], most = Math.round((1.4 * L) / per), sep = 0.55 * per;
+  const top = cand.length ? cand[0].prom : 0;
+  for (const c of cand) {
+    if (seams.length >= most || c.prom < 0.25 * top) break;
+    if (seams.every((s) => { const d = Math.abs(s - c.i); return Math.min(d, L - d) >= sep; })) seams.push(c.i);
+  }
+  return seams.length >= 3 ? seams.sort((a, b) => a - b) : even(Math.max(3, Math.round(L / per)));
 }
 
 /* composeGround at K output pixels per art px (see there). */
@@ -876,7 +1045,35 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
   const look = new Array(256);
   const lookOf = (q) => {
     const e = cat[q], t = tiles && e && tiles[e.id];
-    return (look[q] = { A: t && t.A ? t.A : null, B: t && t.A && t.B ? t.B : null, E: t && t.E ? t.E : null, c1: e ? e.color : [0, 0, 0], c2: e ? shade(e.color, 0.86) : [0, 0, 0] });
+    return (look[q] = { A: t && t.A ? t.A : null, B: t && t.A && t.B ? t.B : null, E: t && t.E ? t.E : null, c1: e ? e.color : [0, 0, 0], c2: e ? shade(e.color, 0.86) : [0, 0, 0],
+      planks: !!(e && e.laid === 'planks') });
+  };
+  /* v2.3.2949: a plank deck's boards (PLANK DECKS above): BW output px a
+     board, one board per half cell of the whole world, counted along the
+     deck; `board` is worked out once a board, not once a pixel */
+  const BW = (S * K) / BOARDS_PER_CELL;
+  let pkCell = -2, pkDeck = null, pkJ = null, pk = null, pkR = 0, pkT = 0;
+  const board = (L, ax, ay, aox, aoy) => {
+    const bx = Math.floor((ax - bp.x0) / S), by = Math.floor((ay - bp.y0) / S), ci = by * bp.w + bx;
+    if (ci !== pkCell) {
+      pkCell = ci;
+      const k = mm.deckAt ? mm.deckAt.get(ci) : undefined;
+      pkDeck = k != null ? mm.decks[k] : null;
+      pkJ = null;
+    }
+    const alongX = !pkDeck || pkDeck.along === 'x';
+    const key = pkDeck ? (alongX ? pkDeck.y0 : pkDeck.x0) : 0;
+    const s = alongX ? aox : aoy, t = alongX ? aoy : aox;
+    const j = Math.floor(s / BW);
+    if (j !== pkJ) {
+      pkJ = j;
+      const tile = L.B && hash2(j, key, seed + 43) < 0.5 ? L.B : L.A;
+      const P = L.A ? planksOf(tile, BW) : null;
+      pk = { P, b: P ? P.boards[Math.floor(hash2(j, key, seed + 41) * P.n) % P.n] : null, shift: P ? Math.floor(hash2(j, key, seed + 47) * P.tile.w) : 0, odd: j & 1 };
+    }
+    /* where in the board: pkR along the deck (0 .. BW), pkT across it */
+    pkR = s - j * BW;
+    pkT = t;
   };
   for (let oy = 0; oy < OH; oy++) {
     const aoy = OY0 + oy, ay = Math.floor(aoy / K);
@@ -896,6 +1093,20 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       } else {
         const L = look[m] || lookOf(m);
         if (opk[e0] >= 0) { putTexel(data, o, L.E, opk[e0]); continue; }
+        if (L.planks) {
+          board(L, ax, ay, aox, aoy);
+          if (pk.P) {
+            const pt = pk.P.tile, W2 = pt.w, H2 = pt.h;
+            const ty = (Math.floor(pk.b.y0 + ((pkR + 0.5) * pk.b.h) / BW) % H2 + H2) % H2;
+            const tx = ((pkT + pk.shift) % W2 + W2) % W2;
+            putTexel(data, o, pt, ty * W2 + tx);
+            continue;
+          }
+          /* not made yet: the plan's colours, a board each */
+          c = pk.odd ? L.c1 : L.c2;
+          data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
+          continue;
+        }
         if (L.A) {
           if (L.B && ax !== lastAx) { lastAx = ax; bsel = fbm(ax / 1100, ay / 1100, seed + 11, 2) + 0.18 * (hash2(ax >> 2, ay >> 2, seed + 13) - 0.5); }
           const tile = L.B && bsel > 0 ? L.B : L.A, T = tile.w;

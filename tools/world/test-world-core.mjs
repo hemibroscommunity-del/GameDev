@@ -33,12 +33,12 @@
  *   node tools/world/test-world-core.mjs
  */
 import { PLAN, SPOKES } from '../../public/tools/world/plan.js';
-import { PIXEL, NO_DIRECTION } from '../../public/tools/style/bible.js';
+import { PIXEL, NO_DIRECTION, PLANK_BOARDS } from '../../public/tools/style/bible.js';
 import { promptFor } from '../../public/tools/ground/prompts.js';
 import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours } from '../../public/tools/world/core/grid.js';
 import { buildBlueprint, renderSketch, colorTable, planKey, C, CLASS_IDS } from '../../public/tools/world/core/layout.js';
 import { spokePoint, arcPoint } from '../../public/tools/world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, edgeRecipe, groundContacts, EDGE_CLEAR, EDGE_PIECES, edgePiecesOn } from '../../public/tools/world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, edgeRecipe, groundContacts, EDGE_CLEAR, EDGE_PIECES, edgePiecesOn, planksOf } from '../../public/tools/world/core/ground.js';
 import { buildPrompt } from '../../public/tools/world/core/prompt.js';
 import { gridMinCut, INF } from '../../public/tools/world/core/maxflow.js';
 import { fuseSquare } from '../../public/tools/world/core/fuse.js';
@@ -273,12 +273,17 @@ console.log('ground');
   /* v2.3.2944, the owner's rule: a swatch is laid the same way up everywhere,
      so nothing in it may run one way (the Main Street ruts tiled sideways) */
   const DIRECTIONAL = /\b(ruts?|wheel|tracks?|footprints?|prints|hoof|rows?|furrows?|planks?|stripes?|striped|streak(s|ed)?|ripples?|running|lines?|wind-carved|wind-scoured)\b/i;
-  const pointing = cat.filter((e) => DIRECTIONAL.test(e.brief)).map((e) => `${e.id}: ${e.brief}`);
+  /* (v2.3.2949: all but the boardwalk, whose boards the game lays itself) */
+  const pointing = cat.filter((e) => !e.laid && DIRECTIONAL.test(e.brief)).map((e) => `${e.id}: ${e.brief}`);
   ok('no swatch brief asks for anything that runs one way (ruts, tracks, rows, planks, ripples, streaks)', pointing.length === 0, pointing);
-  const noDir = cat.filter((e) => !promptFor(e).includes(NO_DIRECTION)).map((e) => e.id);
+  const noDir = cat.filter((e) => !e.laid && !promptFor(e).includes(NO_DIRECTION)).map((e) => e.id);
   ok('...every swatch prompt says so, and the rewritten ones are marked for the Ground Studio',
-    noDir.length === 0 && ['street', 'road', 'boardwalk', 'frost-2', 'sky-2', 'mist-1', 'border-thunder-tidal'].every((id) => cat.find((e) => e.id === id).revised === 'v2.3.2944'),
+    noDir.length === 0 && ['street', 'road', 'frost-2', 'sky-2', 'mist-1', 'border-thunder-tidal'].every((id) => cat.find((e) => e.id === id).revised === 'v2.3.2944'),
     { noDir, revised: cat.filter((e) => e.revised).map((e) => e.id) });
+  const bw0 = cat.find((e) => e.id === 'boardwalk'), laid = cat.filter((e) => e.laid).map((e) => e.id);
+  ok('...but the boardwalk: plain boards running one way, which the game turns (v2.3.2949), and its old basket-weave picture is not marked to redo',
+    laid.join() === 'boardwalk' && bw0.laid === 'planks' && bw0.revised === 'v2.3.2949' && promptFor(bw0).includes(PLANK_BOARDS) && !promptFor(bw0).includes(NO_DIRECTION) &&
+    /straight boards/.test(bw0.brief) && !/basket weave/.test(bw0.brief) && bw0.accepts.some((b) => /basket weave/.test(b)), { laid });
   const t0 = Date.now();
   const mm = materialMap(PLAN, bp);
   const mmMs = Date.now() - t0;
@@ -443,6 +448,86 @@ console.log('ground');
   for (let i = 0; i < bp.w * bp.h; i++) if (mm.ids[mm.mat[i]] === 'boardwalk' && bp.regionIds[bp.reg[i]] !== 'town') bridgeCells.push(i);
   const shut = bridgeCells.filter((i) => bits[i >> 3] & (1 << (i & 7))).length;
   ok(`...and a bridge is always walkable, however wide the river under it (${bridgeCells.length} bridge cells)`, bridgeCells.length > 0 && shut === 0, { shut });
+
+  /* ── v2.3.2949: plank decks -- every bridge a straight deck, every
+     boardwalk and bridge laid with boards across it, lined up ── */
+  const decks = bp.decks || [], bDecks = decks.filter((d) => d.kind === 'bridge'), wDecks = decks.filter((d) => d.kind === 'boardwalk');
+  let holes = 0, nBridge = 0, area = 0;
+  for (const d of bDecks) { area += (d.x1 - d.x0) * (d.y1 - d.y0); for (let y = d.y0; y < d.y1; y++) for (let x = d.x0; x < d.x1; x++) if (bp.cls[y * bp.w + x] !== C.bridge) holes++; }
+  for (let i = 0; i < bp.w * bp.h; i++) if (bp.cls[i] === C.bridge) nBridge++;
+  ok(`every bridge is a straight deck, square at both ends (${bDecks.map((d) => `${d.x1 - d.x0} x ${d.y1 - d.y0}`).join(', ')} cells)`,
+    bDecks.length === 3 && holes === 0 && nBridge === area && bDecks.every((d) => (d.along === 'x' ? d.x1 - d.x0 : d.y1 - d.y0) >= 6), { holes, nBridge, area });
+  const meets = (d) => {
+    const road = (x, y) => bp.cls[y * bp.w + x] === C.path;
+    let a = false, b = false;
+    if (d.along === 'x') for (let y = d.y0 - 1; y <= d.y1; y++) { a = a || road(d.x0 - 1, y); b = b || road(d.x1, y); }
+    else for (let x = d.x0 - 1; x <= d.x1; x++) { a = a || road(x, d.y0 - 1); b = b || road(x, d.y1); }
+    return a && b;
+  };
+  ok('...with the road meeting both ends, the diagonal crossings too', bDecks.every(meets), bDecks.filter((d) => !meets(d)).map((d) => d.road));
+  let loose = 0, nPlank = 0;
+  for (let i = 0; i < bp.w * bp.h; i++) { const e = mm.catalog[mm.mat[i]]; if (e && e.laid === 'planks') { nPlank++; if (!mm.deckAt.has(i)) loose++; } }
+  ok(`every boardwalk and bridge cell is on a deck that knows the way along it (${wDecks.length} boardwalks, ${nPlank} cells)`,
+    nPlank > 0 && loose === 0 && wDecks.length >= 8 && wDecks.every((d) => (d.along === 'y') === (d.y1 - d.y0 > d.x1 - d.x0)), { loose });
+  /* not made yet: the plan's colours, a board each -- which shows the
+     boards' way and width exactly: 24 output px (12 game px, half a cell)
+     along the deck, the same all the way across it, starting at its ends */
+  const deckRect = (d) => ({ x: bp.x0 + d.x0 * bp.scale, y: bp.y0 + d.y0 * bp.scale, w: (d.x1 - d.x0) * bp.scale, h: (d.y1 - d.y0) * bp.scale });
+  const bwe = mm.catalog.find((e) => e.id === 'boardwalk');
+  const stripes = (d) => {
+    const r = deckRect(d), o = composeGround(PLAN, bp, mm, r, {}, { scale: 3 });
+    let bad = 0;
+    for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) {
+      const s2 = d.along === 'x' ? r.x * 3 + x : r.y * 3 + y, want = Math.floor(s2 / 24) & 1 ? bwe.color : null;
+      const i = (y * o.w + x) * 4, isC1 = o.data[i] === bwe.color[0] && o.data[i + 1] === bwe.color[1] && o.data[i + 2] === bwe.color[2];
+      if (!!want !== isC1) bad++;
+    }
+    return { bad, boards: (d.along === 'x' ? o.w : o.h) / 24, startsOnSeam: ((d.along === 'x' ? r.x : r.y) * 3) % 24 === 0 };
+  };
+  const mill = bDecks.find((d) => d.road === 'west'), mainSt = wDecks.find((d) => d.along === 'y');
+  const sm = stripes(mill), sw = stripes(mainSt);
+  ok(`boards lie across the deck, 12 game px each, lined up with its ends: the Mill Bridge ${sm.boards} boards, a Main Street boardwalk ${sw.boards}`,
+    mill.along === 'x' && sm.bad === 0 && sw.bad === 0 && sm.startsOnSeam && sw.startsOnSeam && Number.isInteger(sm.boards) && Number.isInteger(sw.boards), { sm, sw });
+  /* a plank picture: boards of uneven widths (80-110 px, as ChatGPT draws
+     them), each one flat colour, dark seams between -- so every board laid
+     must be one colour right across the deck, 24 px wide */
+  const PKT = 1024, pk = { w: PKT, h: PKT, data: new Uint8ClampedArray(PKT * PKT * 4) };
+  const bcols = [], edges0 = [];
+  { let y = 0, k = 0; while (y < PKT) { const hgt = Math.min(PKT - y, 80 + ((k * 37) % 31)); edges0.push([y, hgt]); bcols.push([90 + k * 9, 60 + (k * 5) % 40, 40 + (k * 13) % 30]); y += hgt; k++; } }
+  edges0.forEach(([y0, hgt], k) => { for (let y = y0; y < y0 + hgt; y++) for (let x = 0; x < PKT; x++) { const o = (y * PKT + x) * 4, dark = y - y0 < 2 || y0 + hgt - y <= 2; const c = dark ? [30, 20, 14] : bcols[k]; pk.data[o] = c[0]; pk.data[o + 1] = c[1]; pk.data[o + 2] = c[2]; pk.data[o + 3] = 255; } });
+  const turnPic = (t) => { const u = { w: t.h, h: t.w, data: new Uint8ClampedArray(t.data.length) }; for (let y = 0; y < t.h; y++) for (let x = 0; x < t.w; x++) for (let c = 0; c < 4; c++) u.data[(x * t.h + y) * 4 + c] = t.data[(y * t.w + x) * 4 + c]; return u; };
+  const P1 = planksOf(pk, 24), P2 = planksOf(turnPic(pk), 24);
+  ok(`the game finds a plank picture's boards (${P1.n} of ${edges0.length}) and makes it ${P1.scale.toFixed(1)} times smaller, boards run either way in the picture`,
+    P1.n === edges0.length && !P1.turned && P2.turned && P1.scale > 3 && P1.scale < 5 && P2.n === P1.n && same(P1.tile.data, P2.tile.data), { n1: P1.n, n2: P2.n, s: P1.scale });
+  const oneBoard = (d, tiles) => {
+    const r = deckRect(d), o = composeGround(PLAN, bp, mm, r, tiles, { scale: 3 });
+    const cols = new Set(bcols.map((c) => c.join())).add('30,20,14');
+    let off = 0, mixed = 0;
+    const per = new Map();
+    for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) {
+      const i = (y * o.w + x) * 4, key = `${o.data[i]},${o.data[i + 1]},${o.data[i + 2]}`;
+      if (!cols.has(key)) { off++; continue; }
+      const s2 = d.along === 'x' ? r.x * 3 + x : r.y * 3 + y, rr = s2 % 24;
+      if (rr < 3 || rr > 20 || key === '30,20,14') continue;   /* the seam's half either side */
+      const j = Math.floor(s2 / 24);
+      if (!per.has(j)) per.set(j, key); else if (per.get(j) !== key) mixed++;
+    }
+    return { off, mixed, boards: per.size, data: o.data };
+  };
+  const pm = oneBoard(mill, { boardwalk: { A: pk } }), pw = oneBoard(mainSt, { boardwalk: { A: pk } });
+  const pmT = oneBoard(mill, { boardwalk: { A: turnPic(pk) } });
+  ok(`...and lays each board whole, one of the picture's, across the Mill Bridge (${pm.boards}) and along Main Street (${pw.boards}), every pixel the picture's own colour`,
+    pm.off === 0 && pm.mixed === 0 && pw.off === 0 && pw.mixed === 0 && pm.boards === sm.boards && pw.boards === sw.boards && same(pm.data, pmT.data), { pm: [pm.off, pm.mixed], pw: [pw.off, pw.mixed] });
+  const mr = deckRect(mill), dHalf = Math.round(mr.w / 2);
+  const dWhole = composeGround(PLAN, bp, mm, mr, { boardwalk: { A: pk } }, { scale: 3 });
+  const dLh = composeGround(PLAN, bp, mm, { ...mr, w: dHalf }, { boardwalk: { A: pk } }, { scale: 3 });
+  const dRh = composeGround(PLAN, bp, mm, { ...mr, x: mr.x + dHalf, w: mr.w - dHalf }, { boardwalk: { A: pk } }, { scale: 3 });
+  let pseam = 0;
+  for (let y = 0; y < dWhole.h; y++) for (let x = 0; x < dWhole.w; x++) {
+    const v = x < dHalf * 3 ? dLh.data[(y * dLh.w + x) * 4] : dRh.data[(y * dRh.w + x - dHalf * 3) * 4];
+    if (v !== dWhole.data[(y * dWhole.w + x) * 4]) pseam++;
+  }
+  ok('...and a deck laid in two halves matches it laid whole', pseam === 0, pseam);
   const ov = overviewPixels(bp, mm, 4);
   const ovAt = (x, y) => { const [bx, by] = cellOf(x, y), o = (Math.floor(by / 4) * ov.w + Math.floor(bx / 4)) * 4; return [ov.data[o], ov.data[o + 1], ov.data[o + 2]]; };
   const commonsCol = mm.catalog.find((e) => e.id === 'commons').color;

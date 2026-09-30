@@ -455,7 +455,8 @@ ground swatches the Wheel needs (World Bible §13):
   (`NO_DIRECTION`), and eleven briefs that asked for ruts, planks, tracks,
   ripples, rows or streaks, or long plates and wires, were rewritten (the
   street, the road, the boardwalk as a basket weave, and eight stages and
-  borders). A test fails
+  borders; v2.3.2949 made the boardwalk plain boards again, laid by the
+  game: see "Bridges and boardwalks" below). A test fails
   if a brief ever asks for one again. Each picture now records the brief it
   was made from, and a swatch made from an older one says **"Made from an
   older prompt … make this one again"** on its card.
@@ -663,6 +664,78 @@ none, and a picture with no magenta background giving no pieces and saying
 why. `node tools/qa/mp/run.mjs wheeltrial` (28): the game leaves a ground's
 edge pieces made in the studio unread, and a worker told `?edgepieces` finds
 them.
+
+## Bridges and boardwalks: plank decks (v2.3.2949)
+
+> Owner, 2026-09-30, on the Mill Bridge in the Ground Studio: *"The bridge
+> needs to take shrink the tiles and maybe make them line up using your
+> coding I had to change the checker pattern wood the original prompt made
+> it didn't look right. For the mill bridge by the west gate (and probably
+> used elsewhere too)."*
+
+![Before (left) and after (right), laid from a stand-in plank picture: the Mill Bridge, Main Street's boardwalks, and the Snake Bridge on its diagonal crossing](world/plank-decks.png)
+
+**Why it looked wrong.** The boardwalk swatch, which the town's boardwalks and
+every bridge use, was laid like any other ground: the same way up
+everywhere, at the picture's own size. A plank picture's boards came out
+about 48 game px wide, half the bro's height, running along the Mill Bridge
+instead of across it. A bridge was also the road's own discs stamped wider
+over the water, so its ends were rounded and ragged, and on a diagonal
+crossing (the Snake Bridge, the Verdant–Frost pass) it was a staircase. The
+basket weave that v2.3.2944 asked for, so that nothing ran one way, came
+back as a checker pattern.
+
+**What the game does now:**
+
+1. **Every boardwalk and bridge is a deck** (`public/tools/world/core/layout.js`,
+   `bp.decks`): a rectangle of cells, and the way you walk along it
+   (`along`, `x` or `y`). The town's boardwalks are each plot's strip along
+   its street. A bridge is now a straight deck, square at both ends, laid
+   across the river the short way (along `x` or `y`, whichever crosses less
+   water at the road's crossing). It reaches `BRIDGE_PAD` (2) cells onto
+   both banks, bank to bank on every row even where the river runs aslant,
+   and is as wide as the road's old bridge. Where the road reached the bank
+   off the deck's end (a diagonal crossing), a short stretch of road joins
+   it on (`joinRoad`). The Mill Bridge is 9 × 5 cells; the other two are
+   10 × 4 and 11 × 4. Bridges stay walkable, and the river under them
+   stays water.
+2. **The game lays the boards itself** (`public/tools/world/core/ground.js`,
+   `planksOf`, and the plank branch of `composeFine`):
+   - it finds which way the picture's boards run (lines along a board stay
+     on one board, so their brightness differs board to board) and where
+     the seams are (the darkest line within about a third of a board, most
+     clearly dark first, spacing found past the wood's grain);
+   - it makes the picture smaller, area-averaged and snapped back onto the
+     picture's own colours, so its middle board is **12 game px** wide, half
+     a cell (`BOARDS_PER_CELL`);
+   - it lays the boards **across** every deck, one board per half cell of
+     the whole world, so every seam lines up with the deck's ends and with
+     the next deck along the street;
+   - each board is one of the picture's boards, picked and slid along its
+     length by its place (A and B mixed board by board), so a long boardwalk
+     does not repeat.
+   With no picture yet, a deck shows its boards in the plan's two colours.
+3. **The prompt asks for plain boards** (`PLANK_BOARDS` in
+   `public/tools/style/bible.js`, the catalog's `laid: 'planks'`): boards
+   that all run one way, about twelve to sixteen of them, big and clear,
+   with a dark gap along both sides. It is the one swatch that may run one
+   way, because the game turns it. A picture made while the prompt still
+   asked for the basket weave is not marked to make again (`accepts`): the
+   owner made planks with it.
+
+**Cost.** A plank picture is got ready once (about 30–100 ms, kept with the
+picture). A piece of town ground with a plank picture took about 10 ms here
+against 8 before; the Wheel trial's pieces averaged 33 ms, as before.
+
+**Tests.** `node tools/world/test-world-core.mjs` (117): every bridge a
+straight deck with the road at both ends; every boardwalk and bridge cell on
+a deck; the boards 12 game px, across the deck and starting at its ends (the
+plan-colour boards checked pixel by pixel); a plank picture's boards found
+(uneven widths, either way round, the same result); each board laid whole,
+every pixel the picture's own colour; a deck laid in two halves matching it
+laid whole. `node tools/qa/ground-studio.mjs` (42): the boardwalk's prompt and
+card, and the owner's planks not marked to redo. `node tools/qa/mp/run.mjs
+wheeltrial` (28).
 
 ---
 

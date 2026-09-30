@@ -433,6 +433,74 @@ export function buildBlueprint(plan) {
 
   /* ── pass 4: the roads, and a bridge wherever one meets a river ── */
   const roadDense = [];
+  /* ═══ v2.3.2949: PLANK DECKS ═══
+     Owner, on the Mill Bridge in the Ground Studio: "The bridge needs to
+     take shrink the tiles and maybe make them line up using your coding I
+     had to change the checker pattern wood the original prompt made it
+     didn't look right."  Every boardwalk and bridge is now a DECK: a
+     rectangle of cells with the way you walk along it (`along`, 'x' or
+     'y'), so the ground can lay the boards across it, a set width, lined up
+     with its ends (ground.js, planksOf).  A bridge used to be the road's
+     own discs stamped wider over the water: rounded, ragged ends, and a
+     staircase on a diagonal crossing, which no row of boards can line up
+     with.  Now it is a straight deck laid the short way across the river
+     (along x or y, whichever crosses less water at the road's crossing),
+     reaching BRIDGE_PAD cells onto both banks, as wide as the road's old
+     bridge; and where the road reached the bank off the deck's end (a
+     diagonal crossing), a short stretch of road joins it on (joinRoad). */
+  const decks = [];
+  const BRIDGE_PAD = 2;
+  const wetAt = (x, y) => x >= 0 && y >= 0 && x < bw && y < bh && cls[y * bw + x] === C.river;
+  const bridgeDeck = (mid, half) => {
+    const fx = cellX(mid[0]), fy = cellY(mid[1]);
+    const mx = Math.min(bw - 1, Math.max(0, Math.floor(fx))), my = Math.min(bh - 1, Math.max(0, Math.floor(fy)));
+    const run = (dx, dy) => { let k = 0; while (k < 96 && wetAt(mx + dx * (k + 1), my + dy * (k + 1))) k++; return k; };
+    const alongX = run(1, 0) + run(-1, 0) <= run(0, 1) + run(0, -1);
+    const W = Math.max(3, Math.round((2 * (half + 6)) / S));
+    /* the river's reach across every row (or column) of the deck, so a
+       river running aslant is crossed bank to bank on all of them */
+    let lo = Infinity, hi = -Infinity;
+    const c0 = Math.round((alongX ? fy : fx) - W / 2);
+    for (let c = c0; c < c0 + W; c++) {
+      const at = (a) => (alongX ? wetAt(a, c) : wetAt(c, a));
+      const m = alongX ? mx : my;
+      /* from the middle out, over the few land cells a slanting bank puts
+         there, to the water's far side in each direction */
+      for (const dir of [-1, 1]) {
+        let a = m, dry = 0, last = null;
+        for (let k = 0; k < 96 && dry <= W; k++, a += dir) {
+          if (at(a)) { last = a; dry = 0; } else if (last != null || k > W) dry++;
+        }
+        if (last != null) { lo = Math.min(lo, last); hi = Math.max(hi, last); }
+      }
+    }
+    if (!(lo <= hi)) { lo = alongX ? mx : my; hi = lo; }
+    const n = alongX ? bw : bh, m2 = alongX ? bh : bw;
+    const a0 = Math.max(0, lo - BRIDGE_PAD), a1 = Math.min(n, hi + 1 + BRIDGE_PAD);
+    const b0 = Math.max(0, c0), b1 = Math.min(m2, c0 + W);
+    return alongX ? { along: 'x', x0: a0, x1: a1, y0: b0, y1: b1 } : { along: 'y', x0: b0, x1: b1, y0: a0, y1: a1 };
+  };
+  /* the road to each end of a deck: from the middle of the end to the
+     nearest point of the road on that bank, only over land */
+  const joinRoad = (deck, samples, rr, half) => {
+    const ax = (x) => x0 + x * S, ay = (y) => y0 + y * S;
+    const ends = deck.along === 'x'
+      ? [[ax(deck.x0) + S / 2, (ay(deck.y0) + ay(deck.y1)) / 2], [ax(deck.x1) - S / 2, (ay(deck.y0) + ay(deck.y1)) / 2]]
+      : [[(ax(deck.x0) + ax(deck.x1)) / 2, ay(deck.y0) + S / 2], [(ax(deck.x0) + ax(deck.x1)) / 2, ay(deck.y1) - S / 2]];
+    const before = samples.slice(0, rr.a), after = samples.slice(rr.b + 1);
+    const d2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+    const nearest = (list, p) => { let best = null, bd = Infinity; for (const q of list) { const d = d2(p, q); if (d < bd) { bd = d; best = q; } } return best; };
+    /* which bank's road goes to which end: the pairing with less road to lay */
+    const pair = (e, list) => { const q = list.length ? nearest(list, e) : null; return { e, q, d: q ? d2(e, q) : Infinity }; };
+    const A = [pair(ends[0], before), pair(ends[1], after)], B = [pair(ends[0], after), pair(ends[1], before)];
+    const cost = (P) => P.reduce((s, p) => s + Math.sqrt(p.d), 0);
+    const can = (c) => landAt(c) && c !== C.river && c !== C.bridge;
+    for (const { e, q } of cost(A) <= cost(B) ? A : B) {
+      if (!q) continue;
+      const L = Math.sqrt(d2(e, q)), steps = Math.max(1, Math.ceil(L / 4));
+      for (let k = 0; k <= steps; k++) stampDisc(cellX(e[0] + (q[0] - e[0]) * k / steps), cellY(e[1] + (q[1] - e[1]) * k / steps), half / S, C.path, can, null);
+    }
+  };
   for (const rd of plan.roads || []) {
     const ctrl = rd.pts.map(toArt);
     const rs = seed + strSeed(rd.id);
@@ -468,11 +536,13 @@ export function buildBlueprint(plan) {
     if (run) runs.push(run);
     const named = (plan.bridges || {})[rd.id] || {};
     for (const rr of runs) {
-      const pad = 8;
-      for (let k = Math.max(0, rr.a - pad); k <= Math.min(samples.length - 1, rr.b + pad); k++) {
-        stampDisc(cellX(samples[k][0]), cellY(samples[k][1]), (rd.half + 6) / S, C.bridge, landAt, null);
-      }
       const mid = samples[(rr.a + rr.b) >> 1];
+      /* v2.3.2949: a straight deck, square at both ends, with the road
+         joined to each end (bridgeDeck, joinRoad below) */
+      const deck = bridgeDeck(mid, rd.half);
+      for (let y = deck.y0; y < deck.y1; y++) for (let x = deck.x0; x < deck.x1; x++) if (landAt(cls[y * bw + x])) cls[y * bw + x] = C.bridge;
+      decks.push({ kind: 'bridge', road: rd.id, ...deck });
+      joinRoad(deck, samples, rr, rd.half);
       pois.push({ kind: 'bridge', id: rd.id + '-bridge-' + rr.a, name: named.name || 'a bridge', road: rd.name,
         paint: named.paint || null, x: mid[0], y: mid[1], r: 60 });
     }
@@ -485,7 +555,13 @@ export function buildBlueprint(plan) {
     stampRect(-T.square, -T.square, T.square, T.square, C.plaza, landAt, townId);
     for (const lot of townLots(T)) {
       stampRect(lot.x0, lot.y0, lot.x1, lot.y1, C.lot, landAt, townId);
-      if (lot.walk) stampRect(lot.walk.x0, lot.walk.y0, lot.walk.x1, lot.walk.y1, C.boardwalk, landAt, townId);
+      if (lot.walk) {
+        stampRect(lot.walk.x0, lot.walk.y0, lot.walk.x1, lot.walk.y1, C.boardwalk, landAt, townId);
+        /* v2.3.2949: a deck along its street -- the cells stampRect took */
+        const cx = (rx) => Math.ceil((g.cx + rx - x0) / S - 0.5), cy = (ry) => Math.ceil((g.cy + ry - y0) / S - 0.5);
+        decks.push({ kind: 'boardwalk', lot: lot.id, along: lot.arm === 'north' || lot.arm === 'south' ? 'y' : 'x',
+          x0: cx(lot.walk.x0), x1: cx(lot.walk.x1), y0: cy(lot.walk.y0), y1: cy(lot.walk.y1) });
+      }
       lots.push({ id: lot.id, name: lot.name, today: lot.today || null, arm: lot.arm, side: lot.side || null,
         x0: g.cx + lot.x0, y0: g.cy + lot.y0, x1: g.cx + lot.x1, y1: g.cy + lot.y1, town: true });
     }
@@ -566,6 +642,8 @@ export function buildBlueprint(plan) {
     w: bw, h: bh, scale: S, x0, y0, W: g.W, H: g.H,
     cls, reg, band, tier, regionIds, classIds: CLASS_IDS, wheel: W,
     anchors, pois, lots, routes, counts,
+    /* v2.3.2949: every boardwalk and bridge, in cells, with the way along it */
+    decks,
     landmarks: pois.filter((p) => p.kind === 'landmark'),
     gates: pois.filter((p) => p.kind === 'gate'),
     hash: fnv1a(cls, reg, band, tier),

@@ -11,7 +11,7 @@
  * So two chats about the same swatch ask exactly the same question, and a
  * change to the style bible changes every prompt at once.
  */
-import { PIXEL, HD_STYLE, QUIET_GROUND, NO_DIRECTION, KEY_MATCH, EDGE_MATCH, EDGE_BACKGROUND, personScale } from '../style/bible.js';
+import { PIXEL, HD_STYLE, QUIET_GROUND, NO_DIRECTION, PLANK_BOARDS, KEY_MATCH, EDGE_MATCH, EDGE_BACKGROUND, personScale } from '../style/bible.js';
 
 /* Swatches that ARE a surface -- a street, planks, gravel -- rather than
    ground things sit on.  The quiet rule still holds; "no paths" would not. */
@@ -24,13 +24,18 @@ export function scaleLine() {
 }
 
 /* v2.3.2944: every swatch says NO_DIRECTION (style/bible.js) -- the owner's
-   rule, after wagon ruts tiled sideways down a north-south Main Street. */
+   rule, after wagon ruts tiled sideways down a north-south Main Street.
+   v2.3.2949: all but the boardwalk, whose boards the game lays itself
+   (`laid`), and which says PLANK_BOARDS instead. */
 export function promptFor(entry) {
   const quiet = SURFACES.has(entry.id) ? QUIET_SURFACE : QUIET_GROUND;
+  const way = entry.laid === 'planks' ? PLANK_BOARDS : NO_DIRECTION;
   return [
-    `A seamless, tileable square texture of ground for BroTown, a top-down 2D action RPG, seen from directly above: ${entry.brief}. ${quiet} ${NO_DIRECTION} Every edge must continue seamlessly into the opposite edge. No border, no text and no shadows cast on it.`,
+    `A seamless, tileable square texture of ground for BroTown, a top-down 2D action RPG, seen from directly above: ${entry.brief}. ${quiet} ${way} Every edge must continue seamlessly into the opposite edge. No border, no text and no shadows cast on it.`,
     `Style: ${HD_STYLE}`,
-    `${KEY_MATCH} Scale: ${scaleLine()}.`,
+    entry.laid === 'planks'
+      ? `${KEY_MATCH} Scale: about twelve to sixteen boards from top to bottom, drawn big and clear; the game makes each one about an eighth as wide as a person is tall.`
+      : `${KEY_MATCH} Scale: ${scaleLine()}.`,
   ].join('\n\n');
 }
 

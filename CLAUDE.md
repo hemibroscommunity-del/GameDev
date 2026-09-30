@@ -66,7 +66,12 @@ remnant to migrate server-side, not a mode to preserve.
   `edgePromptFor`, WORLD-MAP-PIPELINE "Where two grounds meet"; since
   v2.3.2948 the edge pieces are PUT AWAY, the owner seeing no difference:
   kept and tested, but shown and loaded only with `?edgepieces` in the
-  address, and `EDGE_PIECES` in ground.js brings them back),
+  address, and `EDGE_PIECES` in ground.js brings them back; since v2.3.2949
+  every boardwalk and bridge is a PLANK DECK -- `bp.decks` from layout.js,
+  bridges straight and square-ended -- whose boards the game lays itself,
+  12 game px each, across the deck and lined up with its ends: `planksOf`,
+  the boardwalk's `laid: 'planks'`, the one swatch that may run one way,
+  WORLD-MAP-PIPELINE "Bridges and boardwalks"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

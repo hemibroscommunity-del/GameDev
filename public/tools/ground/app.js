@@ -551,15 +551,23 @@ function renderSwatch(e) {
   head.appendChild(name);
   box.appendChild(head);
   box.appendChild(el('div', 'sw-where', `Used for ${e.where}.`));
+  /* v2.3.2949: the boardwalk's boards are laid by the game (world/core/
+     ground.js, PLANK DECKS) -- say so, so big boards in the picture are
+     not a worry */
+  if (e.laid === 'planks') box.appendChild(el('div', 'sw-where', 'The game lays these boards itself: across every boardwalk and bridge, each about 12 game px wide (half a map square), lined up with the ends. Big, clear boards in the picture are best.'));
   /* v2.3.2944: a picture made from an older brief than today's.  A picture
      from before briefs were recorded counts as older when the brief has been
-     rewritten since (e.revised) -- the Main Street ruts that tiled sideways. */
+     rewritten since (e.revised) -- the Main Street ruts that tiled sideways.
+     v2.3.2949: unless that brief is one the entry still `accepts` -- the
+     owner made the boardwalk's planks while its prompt still asked for the
+     basket weave. */
   const stale = vers.filter((v) => {
     const r = S.raw.get(kv(e.id, v));
-    return r && (r.brief ? r.brief !== e.brief : !!e.revised);
+    return r && (r.brief ? r.brief !== e.brief && !(e.accepts || []).includes(r.brief) : !!e.revised);
   });
   if (stale.length) {
-    const note = el('div', 'sw-stale', `Made from an older prompt. It was rewritten${e.revised ? ` in ${e.revised}` : ''} so that nothing in it runs one way (ruts, long planks, ripples look wrong wherever the road turns). Make ${stale.length > 1 ? 'these' : 'this one'} again with the prompt below.`);
+    const why = e.laid === 'planks' ? 'to plain boards that run one way, which the game turns to lie across every boardwalk and bridge' : 'so that nothing in it runs one way (ruts, long planks, ripples look wrong wherever the road turns)';
+    const note = el('div', 'sw-stale', `Made from an older prompt. It was rewritten${e.revised ? ` in ${e.revised}` : ''} ${why}. Make ${stale.length > 1 ? 'these' : 'this one'} again with the prompt below.`);
     note.dataset.stale = e.id;
     box.appendChild(note);
   }

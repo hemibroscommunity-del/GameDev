@@ -102,6 +102,16 @@ export const QUIET_GROUND = 'The texture is quiet and clean: broad, smooth areas
    are objects laid along it later, never ground. */
 export const NO_DIRECTION = 'Nothing in it runs one way: no ruts, tracks, footprints, rows, long planks, stripes, streaks or ripples that point in a direction. This square is laid the same way up everywhere, whichever way a road or a shore runs, so every detail must look right from any side.';
 
+/* ═══ v2.3.2949: THE ONE GROUND THAT RUNS ONE WAY ═══
+   The boardwalk -- the town's boardwalks and every bridge -- is laid by the
+   game (world/core/ground.js, PLANK DECKS): it turns the boards to lie
+   across each deck, and makes them half a cell wide.  Owner: "I had to
+   change the checker pattern wood the original prompt made it didn't look
+   right."  So its prompt asks for plain boards that DO run one way, big
+   and clear (they are made about four times smaller), in place of
+   NO_DIRECTION. */
+export const PLANK_BOARDS = 'The boards all run the same way, left to right across the picture, about twelve to sixteen of them from top to bottom, each with a clear dark gap along both sides. The game turns them to lie across every boardwalk and bridge and makes them smaller, so draw them big and clear: no pattern of blocks, no border and no railings.';
+
 /* v2.3.2939: what every chat is told about the one picture attached to it --
    the style key, never the bro (see the header).  "Do not copy its tiles":
    the key shows a meadow, a street, a shore; a swatch asked for one ground
