@@ -197,7 +197,7 @@ async function tileOf(id, ver) {
     if (!s.mapped) mapPixels(d, TILE, TILE, s.pal);   /* the studio's finalize, verbatim */
     tile = indexed(d, TILE, s.pal);
   } catch (e) {
-    failed.add(k);               /* this browser cannot unpack it: plan colour */
+    failed.add(k);               /* this browser cannot unpack it: plan colour, and the readout says so */
     return null;
   }
   decoded.set(k, tile);
@@ -259,5 +259,5 @@ async function chunk(m) {
   const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, withMaterials: false });
   trim(keep);
   post({ type: 'chunk', id: m.id, i: m.i, j: m.j, w: out.w, h: out.h, data: out.data,
-    ms: Math.round(performance.now() - t0), unpacked: decoded.size }, [out.data.buffer]);
+    ms: Math.round(performance.now() - t0), unpacked: decoded.size, unreadable: failed.size }, [out.data.buffer]);
 }

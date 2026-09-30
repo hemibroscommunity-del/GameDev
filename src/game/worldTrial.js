@@ -355,6 +355,8 @@ function wheelHud(S) {
     'ground  ' + s.resident + ' pieces ~' + mb + ' MB' + (s.loading ? ' +' + s.loading : '') + '\n' +
     'laid    ' + s.loads + ' · avg ' + avg + ' ms · worst ' + s.maxMs + '\n' +
     'pop-ins ' + s.popIns + '\n' +
-    'swatches ' + mine + ' yours · ' + game + ' in game\n' +
-    'here    ' + (here ? here.name.slice(0, 34) + (here.water ? '' : here.made ? ' ✓' : ' (not made)') : '…');
+    'swatches ' + mine + ' yours · ' + game + ' in game' + (s.unreadable ? ' · ' + s.unreadable + ' unreadable' : '') + '\n' +
+    'here    ' + (here ? here.name.slice(0, 34) + (here.water ? '' : here.made ? ' ✓' : ' (not made)') : '…') +
+    /* only when something went wrong: what, so a phone screenshot says it */
+    (s.failures ? '\nfailed  ' + s.failures + ': ' + String(s.lastFailure || '').slice(0, 40) : '');
 }

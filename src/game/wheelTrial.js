@@ -53,6 +53,9 @@ export const wheelStats = {
   popIns: 0,           /* came on screen before its ground was laid */
   pieceBytes: 0,       /* the colours of one piece */
   unpacked: 0,         /* swatch pictures unpacked in the worker now */
+  unreadable: 0,       /* swatch pictures this browser could not unpack (drawn in plan colour) */
+  failures: 0,         /* pieces the worker could not lay */
+  lastFailure: null,
   error: null,
 };
 
@@ -129,7 +132,13 @@ export function wheelChunk(i, j) {
     wheelStats.maxMs = Math.max(wheelStats.maxMs, m.ms);
     wheelStats.sumMs += m.ms;
     wheelStats.unpacked = m.unpacked;
+    wheelStats.unreadable = m.unreadable || 0;
     return m;
+  }, (e) => {
+    /* 'stopped' is the worker being let go on the way out, not a failure */
+    const msg = String((e && e.message) || e);
+    if (msg !== 'stopped' && msg !== 'not ready') { wheelStats.failures++; wheelStats.lastFailure = msg; }
+    throw e;
   });
 }
 
@@ -151,7 +160,7 @@ export async function wheelWarm(x, y, rx, ry) {
 export function wheelIsWarm(i, j) { return _warm.has(i + ',' + j); }
 /* The readout's counts start again on each way in: they describe this visit. */
 export function wheelResetCounts() {
-  Object.assign(wheelStats, { loads: 0, lastMs: 0, maxMs: 0, sumMs: 0, popIns: 0 });
+  Object.assign(wheelStats, { loads: 0, lastMs: 0, maxMs: 0, sumMs: 0, popIns: 0, failures: 0, lastFailure: null });
 }
 /* Pieces laid ahead that were never shown (you walked in somewhere else). */
 export function wheelDropWarm() { _warm.clear(); }

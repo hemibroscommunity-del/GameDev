@@ -658,10 +658,12 @@ town's stairs as usual.
 - **laid**: how many, with the average and worst time a piece took;
 - **pop-ins**: pieces that came on screen before they were laid;
 - **swatches**: how many are yours (from the Ground Studio) and how many came
-  with the game;
-- **here**: the swatch under your feet, ✓ if it is made.
+  with the game, and how many this phone could not read (if any);
+- **here**: the swatch under your feet, ✓ if it is made;
+- **failed**: only if a piece could not be laid, with the reason, so a
+  screenshot of the phone says what went wrong.
 
-**Measured** (`node tools/qa/mp/run.mjs wheeltrial`, 25 checks), on a
+**Measured** (`node tools/qa/mp/run.mjs wheeltrial`, 26 checks), on a
 phone-sized screen in headless Chromium against a local worker, with a swatch
 planted in the Ground Studio's storage exactly as the studio keeps it. A
 desktop processor lays pieces perhaps two or three times faster than a phone:

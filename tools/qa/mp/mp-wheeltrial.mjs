@@ -195,6 +195,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('walking lays new pieces', walked.loads > 30, walked);
   rec.ok('...ahead of you: at a brisk walk few pieces are on screen before they are laid', walked.popIns <= 6, walked);
   rec.ok('...and frees them behind: memory stays bounded however far you go', maxResident <= 70 && walked.resident <= 70, { maxResident, now: walked.resident });
+  rec.ok('...every piece laid, and every swatch picture unpacked', walked.failures === 0 && walked.unreadable === 0, walked);
   rec.ok(`...each piece laid in the worker in ${Math.round(walked.sumMs / Math.max(1, walked.loads))} ms on average`, walked.loads > 0 && walked.maxMs < 2000, walked);
   const me = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
   let live = await H.serverPlayer(wsPort, myId);
