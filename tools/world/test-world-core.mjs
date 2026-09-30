@@ -38,7 +38,7 @@ import { promptFor } from '../../public/tools/ground/prompts.js';
 import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours } from '../../public/tools/world/core/grid.js';
 import { buildBlueprint, renderSketch, colorTable, planKey, C, CLASS_IDS } from '../../public/tools/world/core/layout.js';
 import { spokePoint, arcPoint } from '../../public/tools/world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, edgeRecipe, groundContacts, EDGE_CLEAR } from '../../public/tools/world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, edgeRecipe, groundContacts, EDGE_CLEAR, EDGE_PIECES, edgePiecesOn } from '../../public/tools/world/core/ground.js';
 import { buildPrompt } from '../../public/tools/world/core/prompt.js';
 import { gridMinCut, INF } from '../../public/tools/world/core/maxflow.js';
 import { fuseSquare } from '../../public/tools/world/core/fuse.js';
@@ -573,6 +573,11 @@ console.log('ground');
   }
   ok(`no crumbs: every bit of ground an edge leaves is at least a tuft, and the edge pieces are laid whole (${whole} here, each ${blob.length} px)`,
     !!RC && crumbs === 0 && whole >= 1 && pieceColour > 0, { crumbs, whole, merged, cut, pieceColour });
+  /* v2.3.2948: put away -- the owner saw no difference -- but kept, and the
+     tests above still lay them: off unless the address asks for them */
+  ok("edge pieces are put away: off unless the address says ?edgepieces (the studio's, or the game's with ?trial=wheel)",
+    EDGE_PIECES === false && !edgePiecesOn('') && !edgePiecesOn(undefined) && !edgePiecesOn('?trial=wheel') && !edgePiecesOn('?noedgepieces=1') &&
+    edgePiecesOn('?edgepieces') && edgePiecesOn('?trial=wheel&edgepieces'), { EDGE_PIECES });
 }
 
 /* ── maxflow ── */

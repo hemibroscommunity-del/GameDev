@@ -26,8 +26,11 @@
  * not kept here.
  *
  * MESSAGES (all answered in order, one at a time):
- *   { type: 'init' }             -> { type: 'ready', ... } (see init below;
- *                                   v2.3.2947: `edges`, the grounds with edge pieces)
+ *   { type: 'init', search }     -> { type: 'ready', ... } (see init below;
+ *                                   v2.3.2947: `edges`, the grounds with edge pieces;
+ *                                   v2.3.2948: `search`, the page's address query:
+ *                                   edge pieces are put away and loaded only when
+ *                                   it says `edgepieces` -- ground.js, EDGE_PIECES)
  *   { type: 'chunk', id, i, j }  -> { type: 'chunk', id, i, j, w, h, data, ms }
  *   { type: 'where', id, x, y }  -> { type: 'where', id, q }  (answered at once)
  *   anything that fails          -> { type: 'error', id, message }
@@ -35,7 +38,7 @@
 import { PLAN } from '../plan.js';
 import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
-import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR } from './ground.js';
+import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR, edgePiecesOn } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn } from '../../style/process.js';
 
@@ -64,14 +67,14 @@ self.onmessage = (ev) => {
 };
 
 async function handle(m) {
-  if (m.type === 'init') return init();
+  if (m.type === 'init') return init(m);
   if (m.type === 'chunk') return chunk(m);
   return null;
 }
 
 /* ── init: the plan, where you cannot walk, the overview, the swatches ── */
 
-async function init() {
+async function init(m) {
   const t0 = performance.now();
   const g = gridInfo(PLAN);
   const full = buildBlueprint(PLAN);
@@ -82,7 +85,7 @@ async function init() {
   const ov = overviewPixels(bp, mm, OVERVIEW_CELLS);
   W = { bp, mm };
   const t1 = performance.now();
-  await findSwatches(mm);
+  await findSwatches(mm, edgePiecesOn(m && m.search));
   const swatchMs = Math.round(performance.now() - t1);
   /* you arrive in the town square, as the Ground Studio's first spot */
   const ax = g.cx, ay = g.cy + 0.25 * g.P;
@@ -118,7 +121,10 @@ function whereIs(x, y) {
 
 /* ── the swatches ── */
 
-async function findSwatches(mm) {
+/* v2.3.2948: `pieces` false (the default) leaves every edge-pieces picture
+   (version E) where it is, unread, so no piece is laid and no margin is
+   widened for one. */
+async function findSwatches(mm, pieces) {
   const known = new Set(mm.ids);
   const out = Object.create(null);
   /* the game's copy */
@@ -131,7 +137,7 @@ async function findSwatches(mm) {
         if (!known.has(s.id)) continue;
         const vers = Object.create(null);
         /* v2.3.2947: E, the swatch's edge pieces (see-through round them) */
-        for (const v of s.versions || []) if (v === 'A' || v === 'B' || v === 'E') vers[v] = { url: `${GAME_BASE}${s.id}-${v}.png` };
+        for (const v of s.versions || []) if (v === 'A' || v === 'B' || (v === 'E' && pieces)) vers[v] = { url: `${GAME_BASE}${s.id}-${v}.png` };
         if (vers.A || vers.B || vers.E) out[s.id] = { from: 'game', vers, pal, mapped: true };
       }
     }
@@ -146,7 +152,7 @@ async function findSwatches(mm) {
       const mine = Object.create(null);
       for (const k of keys || []) {
         const mk = /^(.+)\|([ABE])$/.exec(String(k));
-        if (!mk || !known.has(mk[1])) continue;
+        if (!mk || !known.has(mk[1]) || (mk[2] === 'E' && !pieces)) continue;
         const blob = await ask(db, 'prep', (s) => s.get(k));
         if (!blob || !blob.size) continue;
         (mine[mk[1]] = mine[mk[1]] || Object.create(null))[mk[2]] = { blob };

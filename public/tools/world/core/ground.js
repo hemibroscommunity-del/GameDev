@@ -47,6 +47,8 @@
  *     with no crumbs left (composeFine, edgeRecipe);
  *   - a ground's optional EDGE PIECES -- its loose tufts on magenta, its
  *     third picture -- are scattered whole along its edges (pieceMap).
+ *     v2.3.2948: put away, since the owner saw no difference: kept and
+ *     tested, but no tool shows or loads them (EDGE_PIECES below).
  * The water keeps its shore, and the town's built surfaces their straight
  * edges (below).
  *
@@ -141,6 +143,23 @@ const EDGE_PIECE_REACH = 14;
 const EDGE_PIECE_MAX = 96;
 /* the palette index an indexed edge-pieces picture uses for see-through */
 export const EDGE_CLEAR = 255;
+/* ═══ v2.3.2948: EDGE PIECES, PUT AWAY ═══
+   Owner, 2026-09-30, shown three edges before, with the new edges alone, and
+   with stand-in pieces added: "I don't see any difference I'll put away the
+   edge piece stuff.  You can hide it or whatever in case we want to bring
+   back later."  The edges themselves did the work; the loose pieces past
+   them went unseen.  So no tool shows or loads a ground's pieces unless this
+   is true -- not the Ground Studio's slot under each swatch, not the game's
+   worker -- or the address says `edgepieces` (the studio's `?edgepieces`,
+   the game's `?trial=wheel&edgepieces`), which is also how the tests keep
+   every part of them working.  Nothing is deleted: composeFine still lays
+   pieces whenever a caller passes a tile's E, and pictures already made stay
+   saved, in the zip and restorable.  Bringing them back is this one line. */
+export const EDGE_PIECES = false;
+export function edgePiecesOn(search) {
+  if (EDGE_PIECES) return true;
+  try { return new URLSearchParams(search || '').has('edgepieces'); } catch (e) { return false; }
+}
 /* the most any edge reaches, in game px, for the margins below */
 const EDGE_MAX_GAME = 2 + Math.max(
   ...Object.values(EDGE_SPREAD).map(([r, w]) => 1.5 * r + 1.35 * w),

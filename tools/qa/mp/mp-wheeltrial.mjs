@@ -180,7 +180,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   console.log('    HUD ->\n      ' + hud.split('\n').join('\n      '));
   rec.ok('the readout finds the swatch made in the Ground Studio', /1 yours/.test(hud), { hud });
-  rec.ok('...and the commons\' edge pieces made there (v2.3.2947)', /edges\s+1 with edge pieces/.test(hud), { hud });
+  /* v2.3.2948: the edge pieces are put away -- the game's worker leaves the
+     commons' planted ones unread -- but a worker told `edgepieces` (the
+     game's ?trial=wheel&edgepieces) still finds them (v2.3.2947) */
+  rec.ok('...but not the commons\' edge pieces made there: they are put away (v2.3.2948)', !/with edge pieces/.test(hud), { hud });
+  const told = await P.page.evaluate(() => new Promise((resolve) => {
+    const w = new Worker('/tools/world/core/ground-worker.js', { type: 'module' });
+    let t = null;
+    const done = (v) => { clearTimeout(t); w.terminate(); resolve(v); };
+    w.onmessage = (ev) => { const m = ev.data || {}; if (m.type === 'ready') done({ edges: m.edges, made: Object.keys(m.made || {}) }); else if (m.type === 'error') done({ error: m.message }); };
+    w.onerror = (ev) => done({ error: (ev && ev.message) || 'the worker failed' });
+    t = setTimeout(() => done({ error: 'no answer in 60 s' }), 60000);
+    w.postMessage({ type: 'init', search: '?trial=wheel&edgepieces' });
+  }));
+  rec.ok('...which a worker told ?edgepieces still finds: put away, not gone', Array.isArray(told.edges) && told.edges.join() === 'commons', told);
   rec.ok('...and says it is under your feet', /here\s+Town square ✓/.test(hud), { hud });
   await shot(P, '01-arrival');
   const px = await H.screenshotPixels(P);

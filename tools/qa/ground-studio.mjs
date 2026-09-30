@@ -60,11 +60,11 @@ const URL_ = `${ORIGIN}/tools/ground/`;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const phone = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, acceptDownloads: true };
 
-async function open(ctx) {
+async function open(ctx, query = '') {
   const page = await ctx.newPage();
   page.errs = [];
   page.on('pageerror', (e) => page.errs.push(String(e)));
-  await page.goto(URL_);
+  await page.goto(URL_ + query);
   await page.waitForFunction(() => window.__ground && window.__ground.S.ready, null, { timeout: 60000 });
   await page.evaluate(() => window.__ground.S.ready.then(() => true));
   return page;
@@ -316,8 +316,27 @@ try {
   await shot(page, 'stale', '#sw-street');
 
   /* ── 8. v2.3.2947: where two grounds meet ── */
-  console.log('8. where two grounds meet: layers, edges and edge pieces');
-  const meet = await page.evaluate(() => ({
+  console.log('8. where two grounds meet: layers and edges; the edge pieces put away (v2.3.2948)');
+  /* v2.3.2948, owner: "I don't see any difference I'll put away the edge
+     piece stuff."  The plain page shows none of them... */
+  const away = await page.evaluate(() => ({
+    on: window.__ground.pieces,
+    prompts: document.querySelectorAll('textarea[data-edge-prompt]').length,
+    blocks: document.querySelectorAll('[data-edge]').length,
+    hidden: [...document.querySelectorAll('[data-pieces]')].map((n) => n.hidden),
+    steps: [...document.querySelectorAll('ol.plan li')].filter((li) => li.offsetParent !== null).map((li) => li.textContent.slice(0, 40)),
+    card: document.getElementById('edges').innerText,
+    bullets: document.querySelectorAll('#edges > ul.plan li').length,
+    spots: [...document.querySelectorAll('#spot optgroup')].filter((g) => g.label === 'Where grounds meet').map((g) => g.children.length)[0] || 0,
+  }));
+  ok('edge pieces are put away: no slot or prompt under any swatch, and no step or paragraph about them',
+    away.on === false && away.prompts === 0 && away.blocks === 0 && away.hidden.length === 3 && away.hidden.every(Boolean) &&
+    !away.steps.some((t) => /Edge pieces/i.test(t)) && !/edge pieces/i.test(away.card), away);
+  ok('...while the page still says how grounds meet, and the preview can jump to the longest edges',
+    away.bullets === 4 && /The higher ground lies over the lower/.test(away.card) && away.spots >= 8, { bullets: away.bullets, spots: away.spots });
+  /* ...and ?edgepieces brings every part of them back, as before */
+  const pageP = await open(ctxA, '?edgepieces');
+  const meet = await pageP.evaluate(() => ({
     pairs: +document.getElementById('pair-count').textContent, road: +document.getElementById('road-count').textContent,
     made: document.getElementById('edge-count').textContent,
     prompts: [...document.querySelectorAll('textarea[data-edge-prompt]')].map((t) => t.dataset.edgePrompt),
@@ -334,7 +353,7 @@ try {
   ok('...says what that ground lies over, and the preview can jump to the longest edges', /lies over Road/.test(meet.over) && meet.spots >= 8, { over: meet.over, spots: meet.spots });
   /* a ChatGPT-shaped edge-pieces picture: 1254 px of flat magenta, fifty
      soft-edged clumps in three greens, and two cut by the picture's edge */
-  const piecesPic = await page.evaluate(async () => {
+  const piecesPic = await pageP.evaluate(async () => {
     const c = document.createElement('canvas'); c.width = 1254; c.height = 1254;
     const g = c.getContext('2d');
     g.fillStyle = '#FF00FF'; g.fillRect(0, 0, 1254, 1254);
@@ -353,9 +372,9 @@ try {
     for (let i = 0; i < buf.length; i += 0x8000) str += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
     return btoa(str);
   });
-  await page.setInputFiles('input[data-file="commons|E"]', { name: 'commons-E.png', mimeType: 'image/png', buffer: Buffer.from(piecesPic, 'base64') });
-  await page.waitForFunction(() => window.__ground.S.edges.commons && document.getElementById('busy').hidden, null, { timeout: 60000 });
-  const ef = await page.evaluate(async () => {
+  await pageP.setInputFiles('input[data-file="commons|E"]', { name: 'commons-E.png', mimeType: 'image/png', buffer: Buffer.from(piecesPic, 'base64') });
+  await pageP.waitForFunction(() => window.__ground.S.edges.commons && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const ef = await pageP.evaluate(async () => {
     const S = window.__ground.S, t = await window.__ground.api.pixelsOf('commons', 'E'), d = t.data;
     const pal = new Set((S.palette || []).map((c) => (c[0] << 16) | (c[1] << 8) | c[2]));
     let clear = 0, magenta = 0, off = 0, semi = 0;
@@ -372,8 +391,8 @@ try {
   ok(`an edge-pieces picture comes out as its pieces, cut out whole (${ef.pieces} of the 50; the two the picture's edge cuts are left out)`, ef.pieces >= 45 && ef.pieces <= 50 && ef.w === PIXEL.groundTile, ef);
   ok('...on see-through, with no magenta left on them, hard-edged and on the one palette', ef.clear > 0.8 && ef.magenta === 0 && ef.semi === 0 && ef.off === 0, ef);
   ok('...and the page says so: its card, the count, and what is saved here', new RegExp(`${ef.pieces} pieces found`).test(ef.card) && /1 of 39 made/.test(ef.made) && ef.saved.includes('Brotown Commons (A and B, edge pieces)'), { made: ef.made, saved: ef.saved });
-  await page.evaluate(() => window.__ground.api.showEdge('commons'));
-  const laid = await page.evaluate(async () => {
+  await pageP.evaluate(() => window.__ground.api.showEdge('commons'));
+  const laid = await pageP.evaluate(async () => {
     const { composeGround } = await import('/tools/world/core/ground.js');
     const S = window.__ground.S, api = window.__ground.api, rect = S.pv.rect;
     const tiles = { commons: { A: await api.pixelsOf('commons', 'A'), B: await api.pixelsOf('commons', 'B'), E: await api.pixelsOf('commons', 'E') }, road: { A: await api.pixelsOf('road', 'A') } };
@@ -385,17 +404,17 @@ try {
   });
   ok(`"See an edge on the map" shows where the commons lies over the road, and its pieces are scattered on the road there (${laid.onRoad} px)`,
     /Brotown Commons over Road/.test(laid.name) && laid.changed > 200 && laid.onRoad > 100, laid);
-  await page.evaluate(() => document.getElementById('toast').setAttribute('hidden', ''));
-  await shot(page, 'edge', '#phone');
-  await shot(page, 'edge-card', '[data-edge="commons"]');
-  const [dl2] = await Promise.all([page.waitForEvent('download'), page.click('#export')]);
+  await pageP.evaluate(() => document.getElementById('toast').setAttribute('hidden', ''));
+  await shot(pageP, 'edge', '#phone');
+  await shot(pageP, 'edge-card', '[data-edge="commons"]');
+  const [dl2] = await Promise.all([pageP.waitForEvent('download'), pageP.click('#export')]);
   const zip2 = fs.readFileSync(await dl2.path());
   const edgeHash = (p) => p.evaluate(async () => {
     const t = await window.__ground.api.pixelsOf('commons', 'E');
     let h = 0; for (let i = 0; i < t.data.length; i += 7) h = (Math.imul(h, 31) + t.data[i]) | 0;
     return { h, pieces: window.__ground.S.edges.commons && window.__ground.S.edges.commons.pieces };
   });
-  const e1 = await edgeHash(page);
+  const e1 = await edgeHash(pageP);
   const ctxC = await browser.newContext(phone);
   const pageC = await open(ctxC);
   await pageC.setInputFiles('#restore', { name: 'backup.zip', mimeType: 'application/zip', buffer: zip2 });
@@ -403,13 +422,36 @@ try {
   const e2 = await edgeHash(pageC);
   ok('the zip carries the edge pieces (ground/commons-E.png and the original), and they restore pixel for pixel',
     zip2.includes(Buffer.from('ground/commons-E.png')) && zip2.includes(Buffer.from('originals/commons-E.png')) && e1.h === e2.h && e1.pieces === e2.pieces, { e1, e2 });
+  /* v2.3.2948: that browser has no ?edgepieces -- it kept them (above), and
+     shows none: the preview is the ground with no pieces, to the pixel */
+  const quiet = await pageC.evaluate(async () => {
+    const { composeGround, swatchesUnder } = await import('/tools/world/core/ground.js');
+    const S = window.__ground.S, api = window.__ground.api;
+    await api.showEdge('commons');
+    const rect = S.pv.rect, tiles = Object.create(null);
+    for (const id of swatchesUnder(S.bp, S.mm, rect)) {
+      const t = S.tiles[id];
+      if (!t) continue;
+      const A = t.byVer.A ? await api.pixelsOf(id, 'A') : null, B = t.byVer.B ? await api.pixelsOf(id, 'B') : null;
+      tiles[id] = { A: A || B, B: A && B ? B : null, E: null };
+    }
+    const noE = composeGround(S.plan, S.bp, S.mm, rect, tiles, { scale: 3 });
+    const c = S.pv.canvas, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let diff = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] !== noE.data[i] || d[i + 1] !== noE.data[i + 1] || d[i + 2] !== noE.data[i + 2]) diff++;
+    return { name: S.view.name, diff, same: c.width === noE.w && c.height === noE.h, pieces: window.__ground.pieces,
+      blocks: document.querySelectorAll('[data-edge]').length, saved: [...document.querySelectorAll('#saved-list li')].map((li) => li.textContent) };
+  });
+  ok('...and a browser without ?edgepieces keeps them but shows none: not on the map, not under the swatch, not in the saved list',
+    quiet.pieces === false && /Brotown Commons over Road/.test(quiet.name) && quiet.same && quiet.diff === 0 && quiet.blocks === 0 &&
+    quiet.saved.includes('Brotown Commons (A and B)') && !quiet.saved.some((t) => /edge pieces/.test(t)), quiet);
   /* a swatch picture put in as edge pieces by mistake: nothing to cut out */
-  await page.setInputFiles('input[data-file="ember-1|E"]', { name: 'ember-1-E.png', mimeType: 'image/png', buffer: Buffer.from(pics['ember-1'], 'base64') });
-  await page.waitForFunction(() => window.__ground.S.edges['ember-1'] && document.getElementById('busy').hidden, null, { timeout: 60000 });
-  const wrong = await page.evaluate(() => ({ pieces: window.__ground.S.edges['ember-1'].pieces, bad: !!document.querySelector('[data-edge="ember-1"] .edge-bad') }));
+  await pageP.setInputFiles('input[data-file="ember-1|E"]', { name: 'ember-1-E.png', mimeType: 'image/png', buffer: Buffer.from(pics['ember-1'], 'base64') });
+  await pageP.waitForFunction(() => window.__ground.S.edges['ember-1'] && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const wrong = await pageP.evaluate(() => ({ pieces: window.__ground.S.edges['ember-1'].pieces, bad: !!document.querySelector('[data-edge="ember-1"] .edge-bad') }));
   ok('a picture with no magenta background gives no pieces, and the card says why', wrong.pieces === 0 && wrong.bad, wrong);
 
-  ok('no page errors', page.errs.length === 0 && pageB.errs.length === 0 && pageC.errs.length === 0, [...page.errs, ...pageB.errs, ...pageC.errs].slice(0, 3));
+  ok('no page errors', page.errs.length === 0 && pageB.errs.length === 0 && pageC.errs.length === 0 && pageP.errs.length === 0, [...page.errs, ...pageB.errs, ...pageC.errs, ...pageP.errs].slice(0, 3));
 } finally {
   await browser.close();
   server.close();

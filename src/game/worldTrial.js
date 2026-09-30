@@ -359,7 +359,8 @@ function wheelHud(S) {
        other browser -- the Claude app's own and Safari keep separate copies */
     (mine + game ? 'swatches ' + mine + ' yours · ' + game + ' in game' : 'swatches none in this browser') +
     (s.unreadable ? ' · ' + s.unreadable + ' unreadable' : '') + '\n' +
-    /* v2.3.2947: the grounds whose edge pieces were found */
+    /* v2.3.2947: the grounds whose edge pieces were found (v2.3.2948: none
+       unless the address says `edgepieces` -- they are put away) */
     (wheelEdges().length ? 'edges   ' + wheelEdges().length + ' with edge pieces\n' : '') +
     'here    ' + (here ? here.name.slice(0, 34) + (here.water ? '' : here.made ? ' ✓' : ' (not made)') : '…') +
     /* only when something went wrong: what, so a phone screenshot says it */

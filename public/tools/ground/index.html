@@ -105,7 +105,7 @@
     <p class="sub">BroTown's ground, made from about fifty seamless swatches in HD pixel art and laid onto the Wheel by the game.</p>
     <!-- v2.3.2942: the version on the page, so the owner can tell a stale
          copy (a phone's cached page) from the latest without asking -->
-    <p class="mut" id="ver">Version v2.3.2947: where two grounds meet.</p>
+    <p class="mut" id="ver">Version v2.3.2948: where two grounds meet (edge pieces put away).</p>
     <p class="mut" id="status">Building the plan…</p>
   </header>
 
@@ -128,7 +128,7 @@
       <li>For each swatch below: <b>copy its prompt</b> into a new ChatGPT chat, and attach <b>the style key</b>, and only the key. Not your bro: the world is finer, more detailed pixel art than he is, and ChatGPT copies what it sees.</li>
       <li><b>Bring the picture back</b> as version A. The page makes it seamless, keeps it at your phone's own sharpness, puts it on the shared colours, and shows it laid on the map at game size next to your bro.</li>
       <li>Later, a <b>second version (B)</b> of the same prompt in a fresh chat. The game mixes A and B so the ground does not repeat.</li>
-      <li><b>Edge pieces</b> (optional, under each swatch): in the same chat, ask for that ground's loose pieces on magenta. The game scatters them where it lies over another ground.</li>
+      <li data-pieces hidden><b>Edge pieces</b> (optional, under each swatch): in the same chat, ask for that ground's loose pieces on magenta. The game scatters them where it lies over another ground.</li>
       <li><b>Walk on them</b> in the game whenever you like (below): it lays them straight from this page, nothing to send.</li>
       <li>When you are happy, <b>Download all</b> and upload the zip to GitHub (below), so every player gets them. A session puts it in the game.</li>
     </ol>
@@ -148,8 +148,11 @@
       <li><b>A land's stages change over a wide area</b>, in patches, not along a line.</li>
       <li>The town's street, boardwalks and square keep straight edges, and the water its shore.</li>
     </ul>
-    <p><b>Edge pieces (optional).</b> Every ground that lies over others has one more prompt, under its swatch: its own loose tufts, lumps or drifts on a plain magenta background. The game scatters them along that ground's edges. <span id="edge-count"></span></p>
-    <p class="mut">Why one per ground and not one per pair: <span id="pair-count">about 200</span> pairs of grounds touch on the Wheel (the road alone meets <span id="road-count">45</span>), and one set of pieces works against every neighbour. Make a ground's edge pieces in the same chat as its swatch.</p>
+    <!-- v2.3.2948: the edge pieces are put away (owner: "I don't see any
+         difference"): these two paragraphs, the step above and the slot
+         under each swatch show only with ?edgepieces in the address -->
+    <p data-pieces hidden><b>Edge pieces (optional).</b> Every ground that lies over others has one more prompt, under its swatch: its own loose tufts, lumps or drifts on a plain magenta background. The game scatters them along that ground's edges. <span id="edge-count"></span></p>
+    <p class="mut" data-pieces hidden>Why one per ground and not one per pair: <span id="pair-count">about 200</span> pairs of grounds touch on the Wheel (the road alone meets <span id="road-count">45</span>), and one set of pieces works against every neighbour. Make a ground's edge pieces in the same chat as its swatch.</p>
   </section>
 
   <section class="card" id="key">

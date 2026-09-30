@@ -66,7 +66,8 @@ export function wheelRunning() { return !!_w; }
 /* which swatches were found, and where: { id: 'studio' | 'game' } */
 export function wheelMade() { return _info ? _info.made : null; }
 /* v2.3.2947: which grounds have edge pieces (their loose tufts, scattered
-   where they lie over another ground) */
+   where they lie over another ground).  v2.3.2948: none unless the address
+   says `edgepieces` -- they are put away */
 export function wheelEdges() { return _info && _info.edges ? _info.edges : []; }
 
 /* Start the worker (once) and build the plan.  Resolves with its 'ready'
@@ -88,7 +89,11 @@ export function wheelStart() {
       for (const p of _pending.values()) p.reject(new Error(msg));
       _pending.clear();
     };
-    w.postMessage({ type: 'init' });
+    /* v2.3.2948: the address, so `?trial=wheel&edgepieces` can bring back
+       the edge pieces, put away (public/tools/world/core/ground.js) */
+    let search = '';
+    try { search = window.location.search || ''; } catch (e) { /* no page */ }
+    w.postMessage({ type: 'init', search });
   });
   _initP.catch((e) => { wheelStats.error = String((e && e.message) || e); });
   return _initP;

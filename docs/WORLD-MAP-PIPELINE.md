@@ -527,7 +527,9 @@ prompt marked to make again,
 the style key from the World Builder, a picture in through the real file input coming
 out 512 px, seamless, hard-edged and on the palette, the map and the preview,
 frozen colours, a reload, and a zip restored into a fresh browser with the
-same pixels, and (v2.3.2947) the edge-pieces prompts and pictures below.
+same pixels, and (v2.3.2947) the edge-pieces prompts and pictures below
+(v2.3.2948: put away, so the test first checks the page shows none of them,
+then opens it with `?edgepieces`).
 
 ## Where two grounds meet (v2.3.2947)
 
@@ -541,7 +543,7 @@ same pixels, and (v2.3.2947) the edge-pieces prompts and pictures below.
 > think about what other considerations there are and how you can think of
 > the best solution."*
 
-![Before (left) and after (right): grass over a road, snow over a road, sand over a road, laid from crops of the style key](world/edges-before-after.png)
+![Before (left), the new edges alone (middle), and the new edges with stand-in edge pieces (right): grass, snow and sand over a road, laid from crops of the style key](world/edges-before-after.png)
 
 ![The stages of a spoke, one colour each: before (left) a line, after (right) patches](world/stage-patches.png)
 
@@ -590,6 +592,20 @@ a road's edge or meadow turning to snowfield.
 3. **Edge pieces, one prompt per ground** (`pieceMap`; the Ground Studio's
    third slot under each swatch, `edgePromptFor` in
    `public/tools/ground/prompts.js`). The owner's "additional prompts".
+   - **Put away (v2.3.2948).** Shown the picture above, the owner: *"I don't
+     see any difference I'll put away the edge piece stuff. You can hide it
+     or whatever in case we want to bring back later."* The middle column is
+     the right one without its loose pieces: the edge did the work. So no
+     tool shows or loads them now (`EDGE_PIECES = false` in
+     `public/tools/world/core/ground.js`): the Ground Studio has no slot,
+     prompt, step or paragraph for them, its preview lays none, the saved
+     list and the colours leave them out, and the game's worker leaves them
+     unread (so no chunk pays the wider margin). Nothing is deleted:
+     pictures already made stay saved, go in the zip and restore, and
+     everything below still works and is tested. **To try them again, add
+     `?edgepieces` to the address** (the studio's, or the game's:
+     `?trial=wheel&edgepieces`); to bring them back for good, set
+     `EDGE_PIECES` to `true`.
    - **Per ground, not per pair.** 208 pairs of grounds touch on the Wheel;
      the road alone meets 46. One picture of a ground's own loose pieces
      works against every ground it lies over. 39 of the 48 swatches have one:
@@ -626,22 +642,27 @@ distances are whole-number chamfer distances (3 a step across, 4 corner to
 corner), so they come out the same to the last bit in any rectangle.
 
 **Cost.** Measured in the Wheel trial (desktop Chromium, local server): a
-piece of ground took 32 ms on average (about 30 ms before), with no pop-ins.
-Building the plan takes about 0.1 s longer (the stage patches). A phone is
-slower: the box in the bottom left shows the real numbers, and a new line,
-**edges N with edge pieces**, says which edge pieces the game found.
+piece of ground took 32 ms on average (about 30 ms before), with no pop-ins;
+28 to 30 ms with the edge pieces put away (v2.3.2948). Building the plan takes
+about 0.1 s longer (the stage patches). A phone is slower: the box in the
+bottom left shows the real numbers, and, only with `?edgepieces`, a line
+**edges N with edge pieces** says which edge pieces the game found.
 
-**Tests.** `node tools/world/test-world-core.mjs` (108): the layer order and
+**Tests.** `node tools/world/test-world-core.mjs` (109): the layer order and
 widths, the pairs that touch, stage patches near the line and none far from
 it, the same map every time, halves composed apart matching the whole with
 edges and edge pieces, every pixel a pixel of a picture, the grass reaching
-onto the road far more than the road shows through, no crumbs, and pieces
-laid whole. `node tools/qa/ground-studio.mjs` (38): the explanation, the 39
+onto the road far more than the road shows through, no crumbs, pieces
+laid whole, and the pieces off unless the address asks (v2.3.2948).
+`node tools/qa/ground-studio.mjs` (41): the page shows no edge pieces, and
+with `?edgepieces` the explanation, the 39
 prompts, a ChatGPT-shaped pieces picture cut out whole (none cut by the
 picture's edge), no magenta left, the preview showing them on the road, the
-zip carrying them, and a picture with no magenta background giving no pieces
-and saying why. `node tools/qa/mp/run.mjs wheeltrial` (27): the game finds a
-ground's edge pieces made in the studio.
+zip carrying them, a browser without `?edgepieces` keeping them but showing
+none, and a picture with no magenta background giving no pieces and saying
+why. `node tools/qa/mp/run.mjs wheeltrial` (28): the game leaves a ground's
+edge pieces made in the studio unread, and a worker told `?edgepieces` finds
+them.
 
 ---
 

@@ -42,7 +42,9 @@ export function promptFor(entry) {
    game scatters wherever it lies over another ground (world/core/ground.js,
    edgeRecipe), so one picture serves every neighbour it has.  Pieces, not a
    picture of an edge: an edge in a picture runs one way, and every picture
-   is laid the same way up (NO_DIRECTION); the game draws the edge's shape. */
+   is laid the same way up (NO_DIRECTION); the game draws the edge's shape.
+   v2.3.2948: put away (the owner saw no difference; world/core/ground.js,
+   EDGE_PIECES): these prompts show in the studio only with ?edgepieces. */
 const PIECES = {
   grass: ['tufts and small clumps of its grass, with a few loose blades, and the odd small flower if it has them', 'grass'],
   moss: ['small cushions and clumps of its moss', 'moss'],

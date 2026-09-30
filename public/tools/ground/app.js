@@ -34,7 +34,7 @@ import { PLAN } from '../world/plan.js';
 import { buildBlueprint } from '../world/core/layout.js';
 import { gridInfo } from '../world/core/grid.js';
 import { spokePoint, arcPoint } from '../world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround, groundOverview, swatchesUnder, groundContacts, pieceMap } from '../world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, groundOverview, swatchesUnder, groundContacts, pieceMap, edgePiecesOn } from '../world/core/ground.js';
 import { openStore } from '../world/store.js';
 import { zipStore, unzip } from '../world/core/zip.js';
 import { PIXEL } from '../style/bible.js';
@@ -48,6 +48,12 @@ const DB = 'brotown-ground-studio', STORES = ['raw', 'prep', 'misc'];
 const VERS = ['A', 'B'];
 /* v2.3.2947: a swatch's third picture, its loose EDGE PIECES on magenta */
 const EDGE = 'E';
+/* v2.3.2948: put away, since the owner saw no difference (world/core/
+   ground.js, EDGE_PIECES): none of it shows unless the address says
+   ?edgepieces.  Pictures already made stay saved, go in the zip and
+   restore; they are just not shown, laid in the preview or counted in the
+   colours. */
+const PIECES = edgePiecesOn(location.search);
 const VIEW_H = 1024;          /* game px of height on the phone, as the game shows (worldViewport.js) */
 const FOOT = 0.56;            /* where the bro stands, as a share of the screen's height */
 const MARGIN = 48;            /* plan art px composed beyond the view, so a short drag needs no new ground */
@@ -161,7 +167,7 @@ function rebuildPalette() {
   if (S.frozen && S.palette) return false;
   const pool = [];
   if (S.key && S.key.sample) for (let k = 0; k < KEY_WEIGHT; k++) pool.push(S.key.sample);
-  for (const k of [...S.prep.keys()].sort()) pool.push(S.prep.get(k).sample);
+  for (const k of [...S.prep.keys()].sort()) if (PIECES || !k.endsWith(`|${EDGE}`)) pool.push(S.prep.get(k).sample);
   const before = JSON.stringify(S.palette);
   const per = Math.max(1024, Math.floor(POOL_BUDGET / Math.max(1, pool.length)));
   S.palette = pool.length ? buildPalette(pool, Math.max(2, PIXEL.palette - EFFECT_PALETTE.length), per).concat(EFFECT_PALETTE) : null;
@@ -374,7 +380,7 @@ async function composeView(m) {
   const rect = { x: Math.floor(v.x - MARGIN), y: Math.floor(v.y - MARGIN), w: Math.ceil(v.w + 2 * MARGIN), h: Math.ceil(v.h + 2 * MARGIN) };
   const tiles = Object.create(null);
   for (const id of swatchesIn(rect)) {
-    const t = S.tiles[id], ed = S.edges[id];
+    const t = S.tiles[id], ed = PIECES ? S.edges[id] : null;
     if (!t && !ed) continue;
     const A = t && t.byVer.A ? await pixelsOf(id, 'A') : null, B = t && t.byVer.B ? await pixelsOf(id, 'B') : null;
     const E = ed && ed.pieces ? await pixelsOf(id, EDGE) : null;
@@ -606,7 +612,7 @@ function renderSwatch(e) {
   const see = el('button', null, 'See it on the map');
   see.addEventListener('click', () => { const sp = spotFor(e.id); setSpot(sp.x, sp.y, `${e.name}, on the map`); $('preview').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   const r1 = el('div', 'row'); r1.appendChild(see); box.appendChild(r1);
-  if (hasEdgePieces(e)) box.appendChild(edgeBlock(e));
+  if (PIECES && hasEdgePieces(e)) box.appendChild(edgeBlock(e));
 }
 
 /* v2.3.2947: a swatch's EDGE PIECES -- its third, optional picture: the
@@ -734,11 +740,12 @@ function renderCount() {
    in earlier."  The answer, at the top of the page: what this browser has,
    by name, and when the last picture went in. */
 function renderSaved() {
-  const names = S.cat.filter((e) => S.tiles[e.id] || S.edges[e.id]).map((e) => {
+  const pieces = (id) => PIECES && S.edges[id];
+  const names = S.cat.filter((e) => S.tiles[e.id] || pieces(e.id)).map((e) => {
     const vers = VERS.filter((v) => S.prep.has(kv(e.id, v)));
     const parts = [];
     if (vers.length > 1) parts.push('A and B');
-    if (S.edges[e.id]) parts.push(vers.length ? 'edge pieces' : 'edge pieces only');
+    if (pieces(e.id)) parts.push(vers.length ? 'edge pieces' : 'edge pieces only');
     return parts.length ? `${e.name} (${parts.join(', ')})` : e.name;
   });
   let last = 0;
@@ -919,6 +926,8 @@ function wireSave() {
 /* ── start ── */
 
 async function start() {
+  /* v2.3.2948: the edge pieces' step and paragraphs, only if they are on */
+  for (const n of document.querySelectorAll('[data-pieces]')) n.hidden = !PIECES;
   await nextFrame();
   S.g = gridInfo(S.plan);
   S.bp = buildBlueprint(S.plan);
@@ -961,6 +970,6 @@ async function start() {
 S.ready = start().catch((e) => { $('status').textContent = `Something went wrong: ${e.message || e}`; throw e; });
 
 window.__ground = {
-  S,
+  S, pieces: PIECES,
   api: { addPicture, removePicture, exportZip, restoreZip, setSpot, spotFor, drawPreview, promptFor, edgePromptFor, pixelsOf, showEdge },
 };

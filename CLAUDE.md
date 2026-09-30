@@ -63,7 +63,10 @@ remnant to migrate server-side, not a mode to preserve.
   meet in a layered, pair-sized edge drawn from the two pictures, a land's
   stages change in patches, and each ground has an optional EDGE PIECES
   prompt, its loose tufts on magenta: `edgeRecipe`, `pieceMap`,
-  `edgePromptFor`, WORLD-MAP-PIPELINE "Where two grounds meet"),
+  `edgePromptFor`, WORLD-MAP-PIPELINE "Where two grounds meet"; since
+  v2.3.2948 the edge pieces are PUT AWAY, the owner seeing no difference:
+  kept and tested, but shown and loaded only with `?edgepieces` in the
+  address, and `EDGE_PIECES` in ground.js brings them back),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
