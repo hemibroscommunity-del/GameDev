@@ -4882,3 +4882,42 @@ threshold, or a window, on the composite. The first two versions of
 
 Draw each layer ALONE on a flat ground and take the centre of its brightness.
 With one-pixel blended seams, that centre moves exactly with the layer.
+## 122. Where three grounds meet, "answer to the nearest one" draws a ruler line (v2.3.2954)
+
+**Tempting:** at a corner where three grounds meet, let each pixel pick the
+nearest other ground and apply that pair's edge rule. Every pair's edge is
+ragged, so the corner should be ragged too.
+
+**Wrong.** Which ground is nearest changes along the straight line halfway
+between them: 45 degrees off a street corner. A patch of the square reaching
+into the yards was cut off along it wherever the street was nearer. The
+owner, zoomed in on the town square: *"In each of your pictures there's a
+noticeable straight line. I want to avoid that."* The street's two top
+corners each drew a "V" of two such lines.
+
+**Also wrong, the obvious patch:** pick the nearest by a *noisy* distance
+(each partner's distance plus its own slow noise). It bends the line, but
+it still cuts patches off. Where it runs just beside a patch's own edge, it
+leaves a thin sliver; right at a plan edge, it lets a farther ground win a
+strip touching that edge, which draws a straight line along the cell edge
+instead.
+
+**The fix** (`public/tools/world/core/ground.js`, `edgeAt`):
+- **Every other ground in reach has its say.** A pixel goes to whichever of
+  them its own pair's rule gives it to (`ruleAt`), so each patch keeps the
+  shape its own edge draws.
+- **Two would both take it:** the one further past its own line wins
+  (`marginAt`), nudged by its own slow noise (`PARTNER_TIE`).
+- **`settle`** follows the same rule: an art px is settled only when every
+  partner's answer is sure across it, and at most one of them takes it.
+
+**The same kind of line, one level down:** a mixing zone's end (`r.lim`)
+stops a patch dead where the patch would have gone further. That draws a
+straight line beside the plan's cell edge. `MIX_LIM` widens mixing zones
+enough that this is rare.
+
+**How to see it:** lay the ground with a flat colour per swatch and look for
+the longest run of edge pixels on one row, column or diagonal. Before the
+fix the town had a 26 game px diagonal. Now it has none over 16, the same as
+open country's ragged edges. `tools/world/test-world-core.mjs` holds it
+there.

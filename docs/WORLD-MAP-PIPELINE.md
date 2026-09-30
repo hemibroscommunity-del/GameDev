@@ -985,6 +985,73 @@ saved without the mark are remade from the uploads, the same to the pixel,
 and the mark is put back. The Style Lab uses the same step
 (`node tools/qa/style-lab.mjs`, 34, unchanged).
 
+## Where three grounds meet: no ruler lines (v2.3.2954)
+
+> Owner, 2026-09-30, zoomed in on the town square: *"In each of your
+> pictures there's a noticeable straight line. I want to avoid that."*
+> And, on blends: *"If I can get good results faster with just the 2
+> pictures instead of a 'blend' custom picture I'd rather do that."*
+
+![Your pictures at the street's two top corners: before (left), a "V" of straight lines at each; after (right)](world/corner-lines-fix.png)
+
+**Two pictures are enough.** Every pair of alike grounds mixes in big
+patches with just its two pictures, and every other pair meets in the
+layered edge. A blend (above) stays optional, for a pair that ever looks
+wrong without one.
+
+**The straight lines were where three grounds meet.** At a street's corner
+the square, the street and the yards all meet. A pixel near there answered
+only to its *nearest* other ground, and which ground is nearest changes
+along the straight line halfway between them, 45 degrees off the corner.
+A patch of the square reaching into the dirt was cut off along that line.
+The street's two top corners each drew a "V" of two of them: the owner's
+line.
+
+**Now every other ground in reach has its say** (`edgeAt` in
+`public/tools/world/core/ground.js`):
+- A pixel goes to whichever of them its own pair's edge rule gives it to
+  (`ruleAt`), so each patch keeps the shape its own edge draws.
+- Where two would both take it, it goes to the one further past its own
+  line (`marginAt`), each nudged by its own slow noise (`PARTNER_TIE`), so
+  the line between those two wanders too.
+- Where only one other ground is in reach (most edges), nothing changes, to
+  the byte.
+
+Tried first and dropped: picking the nearest by a noisy distance. It bent
+the lines, but cut patches into thin slivers where it ran beside their own
+edge (`docs/TRAPS.md` §122).
+
+**One smaller kind of straight line went too.** A mixing zone's end
+stopped a patch dead where the patch would have gone further, drawing a
+line 20–35 game px long beside the plan's cell edge. Mixing zones now
+reach 1.15 of their width (`MIX_LIM`). Pixels still cut off that way in the
+town fell from about 4,700 to 1,700; everything inside the old zone is
+laid as before.
+
+**Measured** over the whole town, with a flat colour per swatch (the
+longest run of edge pixels on one row, column or diagonal):
+
+| | before | after |
+|---|---|---|
+| diagonals | 22 and 26 game px | 14 and 12 |
+| rows and columns | 16 and 18 | 15 and 17 |
+
+Open country's ragged edges (three mixes on the spokes) run 11–16 either
+way.
+
+**Cost**, on the owner's own pictures, laid the way the game's worker lays
+them (desktop Chromium):
+- a piece of town ground: about 22 ms before, 26 now;
+- with the square's blend: about 29 ms before, 35 now;
+- pieces away from corners and mixing zones: no difference;
+- the Wheel trial's walk (`wheeltrial`): 57 ms a piece on average (49–54
+  before, run to run), no ground late on screen in the final run (four
+  pieces a moment late in one earlier run).
+
+**Tests.** `node tools/world/test-world-core.mjs`: nowhere in the town does
+an edge run straight for more than 18 game px, where three grounds meet
+included (a flat colour per swatch; the old code fails on the diagonals).
+
 ---
 
 ## The world trial: walking a seamless island today (v2.3.2932)

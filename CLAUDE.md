@@ -93,7 +93,14 @@ remnant to migrate server-side, not a mode to preserve.
   pictures at once (docs/TRAPS.md, averaging two textures is mush) -- the
   studio remaking saved tiles from the uploads once (`PREP_MADE`):
   `seamless`/`seamlessPixels` in `public/tools/style/process.js`,
-  WORLD-MAP-PIPELINE "Seamless by a cut"),
+  WORLD-MAP-PIPELINE "Seamless by a cut"; and since v2.3.2954 where
+  three grounds meet EVERY partner in reach has its say (`edgeAt` ->
+  `ruleAt`, ties by `marginAt` + `PARTNER_TIE` noise, `settle` the same) --
+  "answer to the nearest partner" cut patches off along the straight line
+  halfway between two, the owner's "V" at the street corners (TRAPS §122)
+  -- and a MIX zone reaches `MIX_LIM` 1.15; blends stay optional, the owner
+  choosing two pictures a pair: WORLD-MAP-PIPELINE "Where three grounds
+  meet"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

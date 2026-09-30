@@ -676,9 +676,58 @@ console.log('ground');
   /* (v2.3.2953, "Looks better but could use further improvement": the
      blend's big patches BLEND_BIG as strong in a zone as much wider -- it
      now wanders as far as a plain mix's, 12.4 game px to 12.6 (11 before),
-     its straightest stretch 13 game px, a plain mix's 33 (17 before)) */
+     its straightest stretch 13 game px (17 before).  v2.3.2954: the plain
+     mix's own straightest stretch there, 33 game px, was itself a straight
+     line -- a patch cut off at its zone's end, or where the square's corner
+     meets the street (below) -- and is 13 now too; so the bound is 16) */
   ok(`...and the yards turn into the blend along a ragged line, not a straight one (the bottom of the Town Hall's plot: it wanders ${blendE.spread} game px against a plain mix's ${plainE.spread}, its straightest stretch ${blendE.straight} game px against ${plainE.straight})`,
-    plotLineY !== null && blendE.spread >= 0.9 * plainE.spread && blendE.straight <= 0.5 * plainE.straight, { plotLineY, plainE, blendE });
+    plotLineY !== null && blendE.spread >= 0.85 * plainE.spread && blendE.straight <= 16, { plotLineY, plainE, blendE });
+  /* v2.3.2954, the owner zoomed into the town square: "In each of your
+     pictures there's a noticeable straight line. I want to avoid that." --
+     at a street's corners, where three grounds meet, a patch was cut off
+     along the straight line halfway between two of them (only the nearest
+     other ground had its say).  Across the whole town, a flat colour a
+     swatch, no edge between two grounds may run straight -- along a row, a
+     column or either diagonal -- for more than 18 game px (it ran 26 along
+     a diagonal; open country's ragged edges run up to 16) */
+  {
+    const cat2 = groundCatalog(PLAN), flat = {};
+    cat2.forEach((e, k) => {
+      const T2 = 64, t = { w: T2, h: T2, data: new Uint8ClampedArray(T2 * T2 * 4) };
+      for (let y = 0; y < T2; y++) for (let x = 0; x < T2; x++) { const o = (y * T2 + x) * 4, v = valueNoise(x / 5, y / 5, k * 13 + 1) * 0.5 + 0.5; t.data[o] = k; t.data[o + 1] = 200; t.data[o + 2] = Math.floor(v * 255); t.data[o + 3] = 255; }
+      flat[e.id] = { A: t };
+    });
+    const TR = { x: Math.round(g.cx - 384), y: Math.round(g.cy - 384), w: 768, h: 768 };
+    const o = composeGround(PLAN, bp, mm, TR, flat, { scale: 3 });
+    const W = o.w, H = o.h, lab = new Int16Array(W * H), skip = new Set(['boardwalk', 'water']);
+    for (let i = 0; i < W * H; i++) lab[i] = o.data[i * 4 + 1] === 200 && !skip.has(cat2[o.data[i * 4]] && cat2[o.data[i * 4]].id) ? o.data[i * 4] : -1;
+    const edgePx = new Uint8Array(W * H);
+    for (let y = 0; y < H - 1; y++) for (let x = 0; x < W - 1; x++) {
+      const i = y * W + x;
+      if (lab[i] < 0 || lab[i + 1] < 0 || lab[i + W] < 0) continue;
+      if (lab[i] !== lab[i + 1] || lab[i] !== lab[i + W]) edgePx[i] = 1;
+    }
+    const longest = {};
+    for (const [dx, dy, nm, k] of [[1, 0, 'rows', 1], [0, 1, 'columns', 1], [1, 1, 'diagonals \\', Math.SQRT2], [-1, 1, 'diagonals /', Math.SQRT2]]) {
+      const starts = [];
+      if (dy === 0) for (let y = 0; y < H; y++) starts.push([0, y]);
+      else if (dx === 0) for (let x = 0; x < W; x++) starts.push([x, 0]);
+      else if (dx === 1) { for (let y = 0; y < H; y++) starts.push([0, y]); for (let x = 1; x < W; x++) starts.push([x, 0]); }
+      else { for (let x = 0; x < W; x++) starts.push([x, 0]); for (let y = 1; y < H; y++) starts.push([W - 1, y]); }
+      let best = 0;
+      for (const [x0, y0] of starts) {
+        let run = 0, gap = 0;
+        for (let x = x0, y = y0; x >= 0 && y >= 0 && x < W && y < H; x += dx, y += dy) {
+          /* (a staircase steps, so the pixel beside counts too) */
+          const i = y * W + x, j = dx !== 0 && dy !== 0 ? i + 1 : dx === 0 ? i + 1 : i + W;
+          if (edgePx[i] || (j < W * H && edgePx[j])) { run++; gap = 0; if (run > best) best = run; } else if (++gap > 1) run = 0;
+        }
+      }
+      longest[nm] = Math.round((best * k) / 2);
+    }
+    ok(`...and nowhere in the town does an edge run straight for long, where three grounds meet included (the longest straight stretch: ${Object.entries(longest).map(([n, v]) => `${n} ${v}`).join(', ')} game px)`,
+      Object.values(longest).every((v) => v <= 18), longest);
+  }
   ok("...each pair with its own edge: a road's narrow, sand drifting wider than grass; two of a kind interlock evenly",
     rc('ember-3', 'road').ragged < rc('commons', 'road').ragged && rc('commons', 'road').ragged < rc('sky-2', 'road').ragged &&
     rc('commons', 'road').reach > 0 && rc('verdant-1', 'commons').even && rc('verdant-1', 'commons').reach === 0);
