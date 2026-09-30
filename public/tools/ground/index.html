@@ -90,6 +90,10 @@
   .edge .row { margin-top:6px; gap:6px; }
   .edge .btn, .edge button { padding:8px 10px; min-height:40px; font-size:13px; flex:1 1 auto; }
   .edge-bad { font-size:13px; color:#FFC7C0; margin-top:6px; }
+  .blend .edge-row canvas { display:block; width:96px; aspect-ratio:1; image-rendering:pixelated; border-radius:6px; background:#0c1216; }
+  .blend .row { gap:6px; }
+  .blend .btn, .blend button { padding:8px 10px; min-height:40px; font-size:13px; flex:1 1 auto; }
+  #blend-rest > summary { margin-top:14px; }
   .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); max-width:min(92vw,560px); z-index:80;
            background:#2A3940; border:1px solid var(--line); border-radius:10px; padding:12px 16px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
   .toast[data-bad="1"] { border-color:rgba(224,106,94,.7); color:#FFD6D0; }
@@ -105,7 +109,7 @@
     <p class="sub">BroTown's ground, made from about fifty seamless swatches in HD pixel art and laid onto the Wheel by the game.</p>
     <!-- v2.3.2942: the version on the page, so the owner can tell a stale
          copy (a phone's cached page) from the latest without asking -->
-    <p class="mut" id="ver">Version v2.3.2950: alike grounds mix over a wide zone.</p>
+    <p class="mut" id="ver">Version v2.3.2951: blend pictures between alike grounds.</p>
     <p class="mut" id="status">Building the plan…</p>
   </header>
 
@@ -129,6 +133,7 @@
       <li><b>Bring the picture back</b> as version A. The page makes it seamless, keeps it at your phone's own sharpness, puts it on the shared colours, and shows it laid on the map at game size next to your bro.</li>
       <li>Later, a <b>second version (B)</b> of the same prompt in a fresh chat. The game mixes A and B so the ground does not repeat.</li>
       <li data-pieces hidden><b>Edge pieces</b> (optional, under each swatch): in the same chat, ask for that ground's loose pieces on magenta. The game scatters them where it lies over another ground.</li>
+      <li><b>Blends</b> (optional, below the swatches): where two alike grounds mix, a third picture made from the two, laid through the middle. Start with the town square.</li>
       <li><b>Walk on them</b> in the game whenever you like (below): it lays them straight from this page, nothing to send.</li>
       <li>When you are happy, <b>Download all</b> and upload the zip to GitHub (below), so every player gets them. A session puts it in the game.</li>
     </ol>
@@ -146,7 +151,7 @@
       <li><b>The higher ground lies over the lower.</b> From the bottom up: lava; roads and the railway bed; bare rock; metal floor plates; earth and mud; sand and ash; moss; grass; ice; snow. So grass reaches over dirt, sand drifts onto rock, and snow lies on everything.</li>
       <li><b>Each pair has its own edge.</b> A road's edge is narrow; sand drifting onto rock is wide. Inside it, the two pictures interlock along their own tufts and lumps, so the edge looks drawn, not cut.</li>
       <li><b>A land's stages change over a wide area</b>, in patches, not along a line.</li>
-      <li><b>Grounds that are much alike mix over a wide zone</b>, in big patches, instead of meeting at an edge: the town square into the yards and the street, one meadow into the next, sand into dry earth (v2.3.2950).</li>
+      <li><b>Grounds that are much alike mix over a wide zone</b>, in big patches, instead of meeting at an edge: the town square into the yards and the street, one meadow into the next, sand into dry earth (v2.3.2950). Through a <b>blend</b> picture, if you make one (below).</li>
       <li>The boardwalks and bridges keep straight edges, and the water its shore.</li>
     </ul>
     <!-- v2.3.2948: the edge pieces are put away (owner: "I don't see any
@@ -193,6 +198,22 @@
   <section class="card" id="swatches">
     <h2>The swatches</h2>
     <div id="list"></div>
+  </section>
+
+  <!-- v2.3.2951, owner: "One idea I have is to have chatGPT make a blend of
+       the two surfaces that are mapped together" … "Bottom right looks the
+       best by a moderate margin" … "Yes build it".  One slot per pair of
+       alike grounds that meet on the Wheel, the town's first. -->
+  <section class="card" id="blends">
+    <h2>Blends between alike grounds <span id="blend-chip" class="chip">optional</span></h2>
+    <p>Where two alike grounds meet, the game mixes them over a wide strip. A <b>blend</b> is a third picture, made in ChatGPT from the two, that the game lays through the middle of that strip, so one ground turns into the other.</p>
+    <ol class="plan">
+      <li>Make both grounds first.</li>
+      <li>Copy the pair's <b>blend prompt</b> into a new ChatGPT chat, and attach <b>the two ground pictures</b> (the button beside the prompt saves them to your phone). Not the style key: the two pictures already carry the style.</li>
+      <li>Bring the picture back here. The preview jumps to where the two meet, with the blend laid.</li>
+    </ol>
+    <p class="mut">Each one is optional: a pair without one keeps the plain mix. The phone hardly notices (the ground takes about as long to lay, and a blend holds 1 MB only while you are near its pair). Start with the town square.</p>
+    <div id="blend-list"></div>
   </section>
 
   <section class="card" id="palette">

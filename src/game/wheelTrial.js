@@ -69,6 +69,9 @@ export function wheelMade() { return _info ? _info.made : null; }
    where they lie over another ground).  v2.3.2948: none unless the address
    says `edgepieces` -- they are put away */
 export function wheelEdges() { return _info && _info.edges ? _info.edges : []; }
+/* v2.3.2951: which pairs of alike grounds have a BLEND picture, laid through
+   the middle of the zone where they mix (their keys, as ground.js blendKey) */
+export function wheelBlends() { return _info && _info.blends ? _info.blends : []; }
 
 /* Start the worker (once) and build the plan.  Resolves with its 'ready'
    message; rejects, and leaves the trial on flat sea, if this browser cannot

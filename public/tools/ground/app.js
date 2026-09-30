@@ -28,19 +28,29 @@
  * palette stays a PNG too, decoded only while the colours are redone; a
  * 128 px sample of it is what the palette is made from.
  *
+ * v2.3.2951: BLENDS.  Where two alike grounds mix (world/core/ground.js,
+ * MIX), a pair may have a third picture, made in ChatGPT from the two -- the
+ * owner's idea, laid through the middle of the zone where they mix.  One is
+ * kept like a swatch's version, under the pair's key and version M (blendKey:
+ * 'plaza__town-yard|M' in 'raw' and 'prep'), made seamless and put on the
+ * palette like a swatch -- but never used to make the palette: it is made of
+ * two grounds already on it, so adding one never shifts every swatch's
+ * colours -- and goes in the zip as ground/<key>-M.png, listed in the
+ * manifest's `blends`, where the game's worker finds it.
+ *
  * window.__ground is the handle tools/qa/ground-studio.mjs drives.
  */
 import { PLAN } from '../world/plan.js';
 import { buildBlueprint } from '../world/core/layout.js';
 import { gridInfo } from '../world/core/grid.js';
 import { spokePoint, arcPoint } from '../world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround, groundOverview, swatchesUnder, groundContacts, pieceMap, edgePiecesOn } from '../world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, groundOverview, swatchesUnder, groundContacts, pieceMap, edgePiecesOn, blendKey, blendPair, blendsUnder } from '../world/core/ground.js';
 import { openStore } from '../world/store.js';
 import { zipStore, unzip } from '../world/core/zip.js';
 import { PIXEL } from '../style/bible.js';
 import { blobToCanvas, seamless, resize, buildPalette, hardenAndMap, mk, keyOut } from '../style/process.js';
 import { loadSprites, EFFECT_PALETTE } from '../style/scene.js';
-import { promptFor, edgePromptFor, hasEdgePieces } from './prompts.js';
+import { promptFor, edgePromptFor, hasEdgePieces, blendPromptFor } from './prompts.js';
 
 const TILE = PIXEL.groundTile, GPA = PIXEL.gamePxPerArtPx;   /* 1024 px a swatch, 0.5 game px a px */
 const K = Math.round(PLAN.worldPxPerArtPx / GPA);               /* ground px per plan art px: 3 */
@@ -54,6 +64,9 @@ const EDGE = 'E';
    restore; they are just not shown, laid in the preview or counted in the
    colours. */
 const PIECES = edgePiecesOn(location.search);
+/* v2.3.2951: a pair of alike grounds' BLEND picture, kept under the pair's
+   key (blendKey) as this version */
+const BLEND = 'M';
 const VIEW_H = 1024;          /* game px of height on the phone, as the game shows (worldViewport.js) */
 const FOOT = 0.56;            /* where the bro stands, as a share of the screen's height */
 const MARGIN = 48;            /* plan art px composed beyond the view, so a short drag needs no new ground */
@@ -77,6 +90,10 @@ const S = {
   /* v2.3.2947: id -> { w, h, png, thumb, pieces } for each swatch's edge pieces;
      every pair of swatches that touch (groundContacts); id -> the grounds it lies over */
   edges: Object.create(null), contacts: [], over: Object.create(null),
+  /* v2.3.2951: every pair of alike grounds that meet, the town's first
+     ({ key, a, b, n, at, town }), and key -> { w, h, png, thumb } for each
+     blend made */
+  blendPairs: [], blends: Object.create(null),
   palette: null, frozen: false,
   sprites: null,
   view: { x: 0, y: 0, name: '' }, pv: null, pvDirty: false, drag: null,
@@ -167,7 +184,9 @@ function rebuildPalette() {
   if (S.frozen && S.palette) return false;
   const pool = [];
   if (S.key && S.key.sample) for (let k = 0; k < KEY_WEIGHT; k++) pool.push(S.key.sample);
-  for (const k of [...S.prep.keys()].sort()) if (PIECES || !k.endsWith(`|${EDGE}`)) pool.push(S.prep.get(k).sample);
+  /* (v2.3.2951: never a blend -- it is made of two grounds already here, and
+     adding one must not shift every swatch's colours) */
+  for (const k of [...S.prep.keys()].sort()) if ((PIECES || !k.endsWith(`|${EDGE}`)) && !k.endsWith(`|${BLEND}`)) pool.push(S.prep.get(k).sample);
   const before = JSON.stringify(S.palette);
   const per = Math.max(1024, Math.floor(POOL_BUDGET / Math.max(1, pool.length)));
   S.palette = pool.length ? buildPalette(pool, Math.max(2, PIXEL.palette - EFFECT_PALETTE.length), per).concat(EFFECT_PALETTE) : null;
@@ -217,7 +236,26 @@ async function finalize(id) {
     S.edges[id] = { w: TILE, h: TILE, png, thumb, pieces: pm.pieces.length };
   } else delete S.edges[id];
 }
-async function finalizeAll() { for (const e of S.cat) await finalize(e.id); }
+/* v2.3.2951: a pair's blend, as the game will use it: on the palette, stray
+   pixels gone, kept as its PNG and a small copy, like a swatch's version */
+async function finalizeBlend(key) {
+  S.decoded.delete(kv(key, BLEND));
+  const p = S.prep.get(kv(key, BLEND));
+  if (!p) { delete S.blends[key]; return; }
+  const c = await blobToCanvas(p.png, TILE);
+  hardenAndMap(c, S.palette);
+  const thumb = resize(c, THUMB, THUMB, true);
+  const png = await canvasToBlob(c);
+  release(c);
+  S.blends[key] = { w: TILE, h: TILE, png, thumb };
+}
+/* is `id` a pair of alike grounds that meet (a blend's key)? */
+const isBlendId = (id) => S.blendPairs.some((p) => p.key === id);
+const finalizeOf = (id) => (isBlendId(id) ? finalizeBlend(id) : finalize(id));
+async function finalizeAll() {
+  for (const e of S.cat) await finalize(e.id);
+  for (const p of S.blendPairs) await finalizeBlend(p.key);
+}
 
 function meanOf(c) {
   const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
@@ -232,7 +270,7 @@ async function pixelsOf(id, ver) {
   const k = kv(id, ver);
   const hit = S.decoded.get(k);
   if (hit) { S.decoded.delete(k); S.decoded.set(k, hit); return hit; }
-  const t = ver === EDGE ? S.edges[id] : S.tiles[id] && S.tiles[id].byVer[ver];
+  const t = ver === EDGE ? S.edges[id] : ver === BLEND ? S.blends[id] : S.tiles[id] && S.tiles[id].byVer[ver];
   if (!t) return null;
   const c = await blobToCanvas(t.png, TILE);
   const px = { w: c.width, h: c.height, data: c.getContext('2d').getImageData(0, 0, c.width, c.height).data };
@@ -253,20 +291,20 @@ async function addPicture(id, ver, blob, name) {
   const k = kv(id, ver);
   /* v2.3.2944: the brief it was made from, so a later rewrite of that brief
      can say "make this one again" (renderSwatch) */
-  const brief = S.byId[id] ? S.byId[id].brief : '';
+  const brief = S.byId[id] ? S.byId[id].brief : isBlendId(id) ? blendBriefOf(id) : '';
   const at = Date.now();   /* v2.3.2946: when, for "Saved on this phone" */
   S.raw.set(k, { blob, name: name || '', brief, at });
   S.prep.set(k, kept);
   await S.store.put('raw', k, { blob, name: name || '', type: blob.type || '', brief, at });
   await S.store.put('prep', k, kept.png);
-  if (rebuildPalette()) { await finalizeAll(); await savePalette(); } else await finalize(id);
+  if (rebuildPalette()) { await finalizeAll(); await savePalette(); } else await finalizeOf(id);
 }
 
 async function removePicture(id, ver) {
   const k = kv(id, ver);
   S.raw.delete(k); S.prep.delete(k);
   await S.store.del('raw', k); await S.store.del('prep', k);
-  if (rebuildPalette()) { await finalizeAll(); await savePalette(); } else await finalize(id);
+  if (rebuildPalette()) { await finalizeAll(); await savePalette(); } else await finalizeOf(id);
 }
 
 async function loadAll() {
@@ -378,19 +416,23 @@ const swatchesIn = (rect) => swatchesUnder(S.bp, S.mm, rect);
 async function composeView(m) {
   const v = viewRect(m);
   const rect = { x: Math.floor(v.x - MARGIN), y: Math.floor(v.y - MARGIN), w: Math.ceil(v.w + 2 * MARGIN), h: Math.ceil(v.h + 2 * MARGIN) };
-  const tiles = Object.create(null);
-  for (const id of swatchesIn(rect)) {
+  const tiles = Object.create(null), ids = swatchesIn(rect);
+  for (const id of ids) {
     const t = S.tiles[id], ed = PIECES ? S.edges[id] : null;
     if (!t && !ed) continue;
     const A = t && t.byVer.A ? await pixelsOf(id, 'A') : null, B = t && t.byVer.B ? await pixelsOf(id, 'B') : null;
     const E = ed && ed.pieces ? await pixelsOf(id, EDGE) : null;
     if (A || B || E) tiles[id] = { A: A || B, B: A && B ? B : null, E };
   }
-  const out = composeGround(S.plan, S.bp, S.mm, rect, tiles, { scale: K });
+  /* v2.3.2951: and the blends between them, the ones the game's worker would
+     give it (blendsUnder) */
+  const blends = Object.create(null);
+  for (const k of blendsUnder(ids, (k) => !!S.blends[k])) { const px = await pixelsOf(k, BLEND); if (px) blends[k] = px; }
+  const out = composeGround(S.plan, S.bp, S.mm, rect, tiles, { scale: K, blends });
   const c = mk(out.w, out.h);
   c.getContext('2d').putImageData(new ImageData(out.data, out.w, out.h), 0, 0);
   const old = S.pv;
-  S.pv = { rect, canvas: c, mat: out.mat };
+  S.pv = { rect, canvas: c, mat: out.mat, blendsLaid: out.blendsLaid || [] };
   if (old && old.canvas) release(old.canvas);
 }
 
@@ -463,6 +505,9 @@ function paint(m) {
     box.appendChild(span);
     if (i < parts.length - 1) box.appendChild(document.createTextNode(', '));
   });
+  /* v2.3.2951: and the blends laid round here */
+  const bl = (P.blendsLaid || []).map((b) => blendName(b.key));
+  if (bl.length) { box.appendChild(document.createTextNode(' · ')); box.appendChild(el('span', null, `blend${bl.length > 1 ? 's' : ''}: ${bl.join('; ')}`)); }
   S.stats.previewDraws++;
 }
 
@@ -708,6 +753,146 @@ function showEdge(id) {
   return setSpot(o.at.x, o.at.y, `${S.byId[id].name} over ${S.byId[o.lo].name}`);
 }
 
+/* ── v2.3.2951: the blends ── */
+
+const blendName = (key) => { const p = blendPair(key); return p && S.byId[p[0]] && S.byId[p[1]] ? `${S.byId[p[0]].name} and ${S.byId[p[1]].name}` : key; };
+/* what a blend was made from: its two grounds' briefs, so rewriting either
+   marks it to make again, as a swatch's own brief does */
+const blendBriefOf = (key) => { const p = blendPair(key); return p && S.byId[p[0]] && S.byId[p[1]] ? `${S.byId[p[0]].brief} + ${S.byId[p[1]].brief}` : ''; };
+/* every pair of alike grounds that meet on the Wheel: the town's first (the
+   square, Main Street and the yards), then the longest meetings */
+function blendPairsOf(contacts) {
+  const hub = (id) => !!(S.byId[id] && S.byId[id].group === 'hub');
+  return contacts.filter((c) => c.recipe && c.recipe.mix).map((c) => {
+    const key = blendKey(c.a, c.b), [a, b] = blendPair(key);
+    return { key, a, b, n: c.n, at: c.at, town: hub(a) && hub(b) };
+  }).sort((p, q) => (q.town - p.town) || (q.n - p.n) || (p.key < q.key ? -1 : 1));
+}
+/* the preview where a pair meets (nearest the middle of the Wheel) */
+function showBlend(key) {
+  const p = S.blendPairs.find((q) => q.key === key);
+  return p ? setSpot(p.at.x, p.at.y, `Where ${blendName(key)} meet`) : null;
+}
+/* The two grounds' pictures, to attach in the blend's chat: on a phone one
+   Share (its sheet can save both to Photos), elsewhere both downloaded */
+function pairButton(A, B) {
+  const files = [A, B].map((e) => {
+    const t = S.tiles[e.id], v = t && (t.byVer.A || t.byVer.B);
+    return v && typeof File !== 'undefined' ? new File([v.png], `brotown-${e.id}.png`, { type: 'image/png' }) : null;
+  });
+  if (files.some((f) => !f)) return null;
+  const canShare = !!(navigator.canShare && navigator.canShare({ files }));
+  const b = el('button', null, canShare ? 'Share the two pictures…' : 'Save the two pictures');
+  b.dataset.pair = blendKey(A.id, B.id);
+  b.addEventListener('click', () => {
+    if (canShare) { navigator.share({ files }).catch(() => {}); return; }
+    for (const f of files) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(f); a.download = f.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    }
+  });
+  return b;
+}
+function renderBlends() {
+  const list = $('blend-list');
+  const wasOpen = !!($('blend-rest') && $('blend-rest').open);
+  list.textContent = '';
+  const town = S.blendPairs.filter((p) => p.town), rest = S.blendPairs.filter((p) => !p.town);
+  list.appendChild(el('h3', null, 'Brotown'));
+  for (const p of town) list.appendChild(blendBlock(p));
+  const det = el('details');
+  det.id = 'blend-rest';
+  det.appendChild(el('summary', null, `The other ${rest.length} pairs, the longest meeting first`));
+  for (const p of rest) det.appendChild(blendBlock(p));
+  /* (open when one of them is made, so it is never out of sight) */
+  det.open = wasOpen || rest.some((p) => S.blends[p.key]);
+  list.appendChild(det);
+  const made = S.blendPairs.filter((p) => S.blends[p.key]).length;
+  $('blend-chip').textContent = made ? `${made} of ${S.blendPairs.length} made` : 'optional';
+  $('blend-chip').className = made ? 'chip ok' : 'chip';
+}
+function blendBlock(p) {
+  const k = kv(p.key, BLEND), A = S.byId[p.a], B = S.byId[p.b], t = S.blends[p.key];
+  const box = el('div', 'sw blend');
+  box.id = `bl-${p.key}`;
+  box.dataset.blend = p.key;
+  const head = el('div', 'sw-head');
+  const name = el('span', 'sw-name', `${A.name} and ${B.name}`);
+  const chip = el('span', t ? 'chip ok' : 'chip', t ? 'made' : 'not made');
+  chip.dataset.blendChip = p.key;
+  name.appendChild(chip);
+  head.appendChild(name);
+  box.appendChild(head);
+  box.appendChild(el('div', 'sw-where', `They meet along ${p.n} map square${p.n === 1 ? '' : 's'} of edge.`));
+  const missing = [A, B].filter((e) => !S.tiles[e.id]);
+  if (missing.length) box.appendChild(el('div', 'sw-where', `Make ${missing.map((e) => e.name).join(' and ')} first: the prompt needs both pictures.`));
+  /* made from an older prompt, or before one of its grounds was made again */
+  const raw = S.raw.get(k);
+  if (raw && t) {
+    const rewritten = !!raw.brief && raw.brief !== blendBriefOf(p.key);
+    const newer = [A, B].filter((e) => VERS.some((v) => { const r = S.raw.get(kv(e.id, v)); return !!(r && r.at && raw.at && r.at > raw.at); }));
+    if (rewritten || newer.length) {
+      const note = el('div', 'sw-stale', rewritten
+        ? 'Made from an older prompt: one of its grounds was rewritten since. Make it again with the prompt below.'
+        : `${newer.map((e) => e.name).join(' and ')} ${newer.length > 1 ? 'were' : 'was'} made again after this blend. Make the blend again from the new picture${newer.length > 1 ? 's' : ''} for the best match.`);
+      note.dataset.stale = k;
+      box.appendChild(note);
+    }
+  }
+  const det = el('details');
+  det.appendChild(el('summary', null, 'The blend prompt'));
+  const ta = el('textarea');
+  ta.readOnly = true; ta.value = blendPromptFor(A, B); ta.dataset.blendPrompt = p.key;
+  det.appendChild(ta);
+  const copyBtn = el('button', null, 'Copy prompt');
+  copyBtn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(ta.value); toast(`Prompt copied. Attach the pictures of ${A.name} and ${B.name}.`); }
+    catch (err) { ta.select(); toast('Select the prompt and copy it.'); }
+  });
+  const r0 = el('div', 'row'); r0.appendChild(copyBtn);
+  const pb = pairButton(A, B);
+  if (pb) r0.appendChild(pb);
+  det.appendChild(r0);
+  box.appendChild(det);
+  const row = el('div', 'edge-row');
+  const cv = el('canvas'); cv.dataset.thumb = k;
+  drawThumb(cv, t || null);
+  row.appendChild(cv);
+  const right = el('div');
+  right.appendChild(el('div', 'sw-where', t ? 'Laid through the middle of the strip where they mix.' : 'Not made yet: they mix without one.'));
+  const btns = el('div', 'row');
+  const lab = el('label', 'btn', S.prep.has(k) ? 'Replace…' : 'Add picture');
+  const inp = el('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.dataset.file = k;
+  inp.addEventListener('change', async () => {
+    const f = inp.files && inp.files[0];
+    inp.value = '';
+    if (!f) return;
+    try {
+      await busy('Making it seamless and moving it onto the colours…', () => addPicture(p.key, BLEND, f, f.name));
+      refreshAll();
+      await showBlend(p.key);
+      toast(`The blend of ${A.name} and ${B.name} is in. The preview shows where they meet.`);
+    } catch (err) { toast(`That picture could not be read: ${err.message || err}`, true); }
+  });
+  lab.appendChild(inp);
+  btns.appendChild(lab);
+  if (S.prep.has(k)) {
+    const rm = el('button', 'danger', 'Remove');
+    rm.dataset.remove = k;
+    rm.addEventListener('click', async () => { await busy('Removing…', () => removePicture(p.key, BLEND)); refreshAll(); });
+    btns.appendChild(rm);
+  }
+  right.appendChild(btns);
+  const see = el('button', null, 'See where they meet');
+  see.addEventListener('click', () => { showBlend(p.key); $('preview').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  const r2 = el('div', 'row'); r2.appendChild(see); right.appendChild(r2);
+  row.appendChild(right);
+  box.appendChild(row);
+  return box;
+}
+
 function renderList() {
   const list = $('list');
   list.textContent = '';
@@ -740,7 +925,8 @@ function renderCount() {
   const both = S.cat.filter((e) => S.prep.has(kv(e.id, 'A')) && S.prep.has(kv(e.id, 'B'))).length;
   $('count').textContent = `${made} of ${S.cat.length}`;
   $('count').className = made ? 'chip ok' : 'chip';
-  $('status').textContent = made ? `${made} of ${S.cat.length} swatches made${both ? `, ${both} with a second version` : ''}.` : `${S.cat.length} swatches to make. Start with the commons, a road and one spoke's first stage.`;
+  const nb = S.blendPairs.filter((p) => S.blends[p.key]).length;
+  $('status').textContent = made ? `${made} of ${S.cat.length} swatches made${both ? `, ${both} with a second version` : ''}${nb ? `, and ${nb} blend${nb > 1 ? 's' : ''}` : ''}.` : `${S.cat.length} swatches to make. Start with the commons, a road and one spoke's first stage.`;
   renderSaved();
 }
 
@@ -755,7 +941,7 @@ function renderSaved() {
     if (vers.length > 1) parts.push('A and B');
     if (pieces(e.id)) parts.push(vers.length ? 'edge pieces' : 'edge pieces only');
     return parts.length ? `${e.name} (${parts.join(', ')})` : e.name;
-  });
+  }).concat(S.blendPairs.filter((p) => S.blends[p.key]).map((p) => `${blendName(p.key)} (blend)`));
   let last = 0;
   for (const r of S.raw.values()) if (r && r.at > last) last = r.at;
   const chip = $('saved-chip'), line = $('saved-line'), list = $('saved-list'), when = $('saved-when');
@@ -822,6 +1008,7 @@ function renderKey() {
 
 function refreshAll() {
   for (const e of S.cat) renderSwatch(e);
+  renderBlends();
   renderCount();
   renderEdgeCounts();
   renderMap();
@@ -856,11 +1043,20 @@ async function exportZip() {
     const from = vers.map((v) => S.raw.get(kv(e.id, v))).find((r) => r && r.brief);
     if (vers.length) made.push({ id: e.id, name: e.name, group: e.group, versions: vers, brief: e.brief, madeFrom: from ? from.brief : null });
   }
+  /* v2.3.2951: and the blends, as ground/<pair key>-M.png */
+  const blends = [];
+  for (const p of S.blendPairs) {
+    const k = kv(p.key, BLEND), raw = S.raw.get(k), t = S.blends[p.key];
+    if (!raw || !S.prep.has(k) || !t) continue;
+    files.push({ name: `ground/${p.key}-${BLEND}.png`, data: new Uint8Array(await t.png.arrayBuffer()) });
+    files.push({ name: `originals/${p.key}-${BLEND}.${extOf(raw.name, raw.blob.type)}`, data: new Uint8Array(await raw.blob.arrayBuffer()) });
+    blends.push({ key: p.key, a: p.a, b: p.b, madeFrom: raw.brief || null });
+  }
   const manifest = {
     tool: 'brotown-ground-studio', version: 1, made: new Date().toISOString(),
     plan: { id: S.plan.id, version: S.plan.version },
     tile: TILE, gamePxPerArtPx: GPA, tileGamePx: TILE * GPA, palette: S.palette, frozen: S.frozen,
-    swatches: made,
+    swatches: made, blends,
   };
   files.unshift({ name: 'manifest.json', data: enc.encode(JSON.stringify(manifest, null, 1)) });
   return zipStore(files);
@@ -881,9 +1077,12 @@ async function restoreZip(bytes) {
     const from = 'madeFrom' in sw ? sw.madeFrom : sw.brief;
     if (typeof from === 'string') briefOf[sw.id] = from;
   }
+  /* v2.3.2951: and each blend's */
+  for (const b of (manifest && manifest.blends) || []) if (b && typeof b.key === 'string' && typeof b.madeFrom === 'string') briefOf[b.key] = b.madeFrom;
   for (const f of entries) {
-    const m = /^originals\/(.+)-([ABE])\.([a-z0-9]+)$/i.exec(f.name);
-    if (!m || !S.byId[m[1]]) continue;
+    const m = /^originals\/(.+)-([ABEM])\.([a-z0-9]+)$/i.exec(f.name);
+    /* a swatch's A, B or E; a pair of alike grounds' blend (M) */
+    if (!m || (m[2].toUpperCase() === BLEND ? !isBlendId(m[1]) : !S.byId[m[1]])) continue;
     const blob = new Blob([f.data], { type: mimeOf(m[3].toLowerCase()) });
     const k = kv(m[1], m[2].toUpperCase());
     const kept = await keepPrep(await prepareFor(m[2].toUpperCase(), blob));
@@ -948,6 +1147,8 @@ async function start() {
     if (!c.recipe || c.recipe.even) continue;
     (S.over[c.recipe.up] = S.over[c.recipe.up] || []).push({ lo: c.recipe.lo, n: c.n, at: c.at });
   }
+  /* v2.3.2951: every pair of alike grounds that meet, for their blends */
+  S.blendPairs = blendPairsOf(S.contacts);
   S.store = await openStore(DB, STORES);
   keepStorage();
   await loadStyleKey();
@@ -964,6 +1165,7 @@ async function start() {
   });
   renderKey();
   renderList();
+  renderBlends();
   renderCount();
   renderMap();
   renderPalette();
@@ -979,5 +1181,5 @@ S.ready = start().catch((e) => { $('status').textContent = `Something went wrong
 
 window.__ground = {
   S, pieces: PIECES,
-  api: { addPicture, removePicture, exportZip, restoreZip, setSpot, spotFor, drawPreview, promptFor, edgePromptFor, pixelsOf, showEdge },
+  api: { addPicture, removePicture, exportZip, restoreZip, setSpot, spotFor, drawPreview, promptFor, edgePromptFor, pixelsOf, showEdge, blendPromptFor, showBlend, blendKey },
 };

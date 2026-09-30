@@ -25,6 +25,7 @@
  * stays the swatches, however big the map grows.  For that it also gives
  *
  *   swatchesUnder(...)    which swatches a rectangle's ground can use;
+ *   blendsUnder(...)      ...and which blend pictures (v2.3.2951);
  *   walkBits(...)         where you cannot walk (the sea, rivers, lakes);
  *   overviewPixels(...)   the whole map, small, in the plan's colours.
  *
@@ -52,6 +53,8 @@
  * v2.3.2950: two grounds that are much alike (of one kind, or both loose
  * dry ground) change over a wide zone, in big patches (MIX), not at an
  * edge -- the town square into the yards, one meadow into the next.
+ * v2.3.2951: such a pair may be given a BLEND picture, a third one made
+ * from the two, laid through the middle of their zone (BLEND PICTURES).
  * The water keeps its shore, and the boardwalks their straight edges
  * (below).
  *
@@ -190,6 +193,44 @@ const MIX_HEIGHTS = 0.7;
    zone -- at 0.8 it bunched up near the middle and still read as a line */
 const MIX_PATCH = 1.2;
 const MIX_FAMILY = { earth: 1, sand: 1, ash: 1 };
+/* ═══ v2.3.2951: BLEND PICTURES ═══
+   Owner, 2026-09-30, shown the town square's mixing zone on their own
+   pictures, alone and with their own blended third picture in its middle:
+   "Bottom right looks the best by a moderate margin", and, told the cost:
+   "Yes build it".  Two alike grounds (MIX) may be given a third picture,
+   made in ChatGPT from the two (the Ground Studio's blend prompt):
+   `opts.blends[blendKey(a, b)]`.  The zone then runs from one ground,
+   through the blend, to the other -- the blend most at the line, thinning
+   out to nothing at the zone's two sides -- in the same big patches, their
+   rims shaped by all three pictures; every pixel is still one of the
+   three.  Optional per pair: a pair without one mixes as before, to the
+   byte.  Measured on the owner's own pictures (desktop Chromium, laid the
+   way the game's worker lays them): a piece of town ground takes about
+   24 ms with or without it; a blend unpacked is 1 MB, only while you are
+   near its pair.  The cost is the pictures: 42 pairs of alike grounds
+   touch on the Wheel. */
+export const BLEND_SEP = '__';
+/* one key for a pair of swatches, whichever way round they are named */
+export function blendKey(a, b) { return a < b ? `${a}${BLEND_SEP}${b}` : `${b}${BLEND_SEP}${a}`; }
+/* ...and back: [a, b], or null for a key that is not a pair */
+export function blendPair(key) {
+  const s = String(key), k = s.indexOf(BLEND_SEP);
+  return k > 0 && k + BLEND_SEP.length < s.length ? [s.slice(0, k), s.slice(k + BLEND_SEP.length)] : null;
+}
+/* The blend pictures a rectangle's ground can use: every pair among the
+   swatches its ground can use (swatchesUnder's set, or any list) that has
+   one (`has(key)`).
+   A caller that unpacks exactly these gives the composer every blend it
+   will ask for -- and every chunk over a place the same ones, so chunks
+   laid apart still meet with no seam. */
+export function blendsUnder(ids, has) {
+  const list = [...ids], out = [];
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const k = blendKey(list[i], list[j]);
+    if (has(k)) out.push(k);
+  }
+  return out;
+}
 /* the smallest bit of ground an edge may leave, in picture px (a tuft) */
 const EDGE_BIT = 20;
 /* how far beyond an upper ground's ragged edge its edge pieces lie, game px */
@@ -853,12 +894,33 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       if (!r) continue;
       /* how far from `b` (thirds of an art px) this edge can still reach */
       const reachT = Math.ceil(((1.5 * r.reach + 1.35 * r.ragged) / GPA + 1.5) * 3);
-      const rr = { ...r, upQ: cat[a].id === r.up ? a : b, loQ: cat[a].id === r.up ? b : a, reachT };
+      const rr = { ...r, upQ: cat[a].id === r.up ? a : b, loQ: cat[a].id === r.up ? b : a, reachT, bl: -1 };
       recipes.set(a * 256 + b, rr);
       recOf[a * NQ + b] = rr;
       list.push(b);
     }
     if (list.length) { partners.set(a, list); partOf[a] = list; }
+  }
+  /* v2.3.2951: the pairs given a BLEND picture.  Each is laid as a ground
+     of its own -- a label above the catalog's, so the tidy-up leaves no
+     crumbs of it either -- numbered in the order of the pairs' keys, so two
+     blends compare the same way in every chunk whatever else it holds. */
+  const BL0 = NQ, blendTiles = [], blendLo = [], blendKeys = [];
+  const blends = opts.blends || null;
+  if (blends) {
+    const tileOfKey = (k) => { const t = typeof blends.get === 'function' ? blends.get(k) : blends[k]; return t && t.w ? t : null; };
+    const want = new Set();
+    for (const rr of recipes.values()) if (rr.mix && tileOfKey(blendKey(cat[rr.upQ].id, cat[rr.loQ].id))) want.add(blendKey(cat[rr.upQ].id, cat[rr.loQ].id));
+    for (const k of [...want].sort()) {
+      if (BL0 + blendKeys.length > 254) break;
+      blendKeys.push(k);
+      blendTiles.push(tileOfKey(k));
+    }
+    for (const rr of recipes.values()) {
+      if (!rr.mix) continue;
+      const n = blendKeys.indexOf(blendKey(cat[rr.upQ].id, cat[rr.loQ].id));
+      if (n >= 0) { rr.bl = BL0 + n; blendLo[n] = rr.loQ; }
+    }
   }
   for (const list of partners.values()) for (const b of list) if (!dts.has(b)) { const D = chamfer34(pmat, PW, PH, b); dts.set(b, D); dtOf[b] = D; }
   /* an art px is in reach of an edge when a partner is within the widest
@@ -991,7 +1053,19 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
             if (v > hi) hi = v;
           }
           const hw = r.mix ? MIX_HEIGHTS : 0.7;
-          if (lo - (t + slack) > hw) e = r.upQ;
+          /* v2.3.2951: with a blend, the zone's two halves each decide
+             between two pictures, on the half's own ramp (edgeAt): the
+             upper or the blend where t < 0, the blend or the lower after */
+          if (r.bl >= 0) {
+            const tl = t - slack, th = t + slack;
+            if (th < 0) {
+              if (lo - (2 * th + 1) > hw) e = r.upQ;
+              else if (hi - (2 * tl + 1) <= -hw) e = r.bl;
+            } else if (tl >= 0) {
+              if (lo - (2 * th - 1) > hw) e = r.bl;
+              else if (hi - (2 * tl - 1) <= -hw) e = r.loQ;
+            } else if (hi - (2 * tl + 1) <= -hw && lo - (2 * th - 1) > hw) e = r.bl;
+          } else if (lo - (t + slack) > hw) e = r.upQ;
           else if (hi - (t - slack) <= -hw) e = r.loQ;
         }
       }
@@ -1035,6 +1109,24 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     /* (the pictures' part is hw x a difference of two heights in 0..1:
        where the patch alone clears it, it cannot change the answer) */
     const hw = r.mix ? MIX_HEIGHTS : 0.7;
+    /* v2.3.2951: a pair with a BLEND picture: the zone's upper half goes
+       from the upper ground to the blend, its lower half from the blend to
+       the lower ground, each on its own ramp (2t + 1, 2t - 1) with the same
+       patches and the two pictures' heights -- so the blend is most at the
+       line and none is left at the zone's sides */
+    if (r.bl >= 0) {
+      const bt = blendTiles[r.bl - BL0], useB = pB[p] === 1;
+      if (t < 0) {
+        const t1 = 2 * t + 1;
+        if (patch - t1 > hw) return up;
+        if (patch - t1 <= -hw) return r.bl;
+        return hw * (heightAt(tileFor(up, useB), up, aox, aoy, seed) - heightAt(bt, r.bl, aox, aoy, seed)) + patch > t1 ? up : r.bl;
+      }
+      const t2 = 2 * t - 1;
+      if (patch - t2 > hw) return r.bl;
+      if (patch - t2 <= -hw) return lo;
+      return hw * (heightAt(bt, r.bl, aox, aoy, seed) - heightAt(tileFor(lo, useB), lo, aox, aoy, seed)) + patch > t2 ? r.bl : lo;
+    }
     if (patch - t > hw) return up;
     if (patch - t <= -hw) return lo;
     const useB = pB[p] === 1;
@@ -1184,6 +1276,10 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     return (look[q] = { A: t && t.A ? t.A : null, B: t && t.A && t.B ? t.B : null, E: t && t.E ? t.E : null, c1: e ? e.color : [0, 0, 0], c2: e ? shade(e.color, 0.86) : [0, 0, 0],
       planks: !!(e && e.laid === 'planks') });
   };
+  /* v2.3.2951: each BLEND's picture, laid like a swatch's -- anchored to the
+     world, never turned -- and how many of the rectangle's pixels it gave */
+  for (let n = 0; n < blendTiles.length; n++) look[BL0 + n] = { A: blendTiles[n], B: null, E: null, c1: [0, 0, 0], c2: [0, 0, 0], planks: false };
+  const blendPx = new Array(blendTiles.length).fill(0);
   /* v2.3.2949: a plank deck's boards (PLANK DECKS above): BW output px a
      board, one board per half cell of the whole world, counted along the
      deck; `board` is worked out once a board, not once a pixel */
@@ -1219,7 +1315,9 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       if (sub === K) { sub = 0; ax++; }
       const aox = OX0 + ox, i = oy * OW + ox, o = i * 4;
       const e0 = (oy + FW) * OEW + ox + FW, m = omat[e0];
-      if (mat) mat[i] = m;
+      /* (a blend's pixels count, in `mat`, as the pair's lower ground: the
+         catalog's labels are all a caller sees) */
+      if (m >= BL0) { blendPx[m - BL0]++; if (mat) mat[i] = blendLo[m - BL0]; } else if (mat) mat[i] = m;
       let c;
       if (m === water) {
         let land = false;
@@ -1258,8 +1356,11 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
     }
   }
-  if (opts.withMaterials === false) return { w: OW, h: OH, data, scale: K };
-  return { w: OW, h: OH, data, mat, scale: K };
+  /* v2.3.2951: the blends laid here, with their pixel counts (the Ground
+     Studio says which are in view) */
+  const blendsLaid = blendKeys.map((key, n) => ({ key, px: blendPx[n] })).filter((b) => b.px > 0);
+  if (opts.withMaterials === false) return { w: OW, h: OH, data, scale: K, blendsLaid };
+  return { w: OW, h: OH, data, mat, scale: K, blendsLaid };
 }
 
 /* v2.3.2947: can any two swatches that meet with an edge (edgeRecipe) lie

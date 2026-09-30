@@ -11,7 +11,7 @@
  * So two chats about the same swatch ask exactly the same question, and a
  * change to the style bible changes every prompt at once.
  */
-import { PIXEL, HD_STYLE, QUIET_GROUND, NO_DIRECTION, PLANK_BOARDS, KEY_MATCH, EDGE_MATCH, EDGE_BACKGROUND, personScale } from '../style/bible.js';
+import { PIXEL, HD_STYLE, QUIET_GROUND, NO_DIRECTION, PLANK_BOARDS, KEY_MATCH, EDGE_MATCH, EDGE_BACKGROUND, BLEND_MATCH, personScale } from '../style/bible.js';
 
 /* Swatches that ARE a surface -- a street, planks, gravel -- rather than
    ground things sit on.  The quiet rule still holds; "no paths" would not. */
@@ -71,5 +71,24 @@ export function edgePromptFor(entry) {
     `${EDGE_BACKGROUND} ${NO_DIRECTION} No text and no border.`,
     `Style: ${HD_STYLE}`,
     `${EDGE_MATCH} Scale: ${scaleLine()}.`,
+  ].join('\n\n');
+}
+
+/* ═══ v2.3.2951: BLEND PICTURES ═══
+   Owner, of the town square's edge: "One idea I have is to have chatGPT make
+   a blend of the two surfaces that are mapped together" -- and, shown their
+   own blend laid through the middle of the zone where the square mixes into
+   the yards: "Bottom right looks the best by a moderate margin ... Yes build
+   it".  One prompt per pair of alike grounds that meet on the Wheel (the
+   Ground Studio lists them, the town's first): the ground halfway between
+   the two, made from the two pictures, which are attached (style/bible.js,
+   BLEND_MATCH).  Like every ground it is laid the same way up everywhere,
+   so nothing in it runs one way. */
+const QUIET_BLEND = 'The texture is quiet and clean: broad, smooth areas of the base tones, with small details covering no more than about a tenth of the area, and no noise, speckle or grain. Only what the two grounds have themselves: no objects, no paths and no water.';
+export function blendPromptFor(a, b) {
+  return [
+    `A seamless, tileable square texture of ground for BroTown, a top-down 2D action RPG, seen from directly above: the ground halfway between two grounds that meet, which the game lays between them. One is ${a.name}: ${a.brief}. The other is ${b.name}: ${b.brief}. Mix the two evenly over the whole square, in patches of each running into the other with the small details of both scattered through, so that it looks like both at once and like neither one alone. ${QUIET_BLEND} ${NO_DIRECTION} Every edge must continue seamlessly into the opposite edge. No border, no text and no shadows cast on it.`,
+    `Style: ${HD_STYLE}`,
+    `Attached are the two ground pictures it goes between: ${a.name} and ${b.name}. ${BLEND_MATCH} Scale: ${scaleLine()}.`,
   ].join('\n\n');
 }

@@ -764,7 +764,8 @@ line, only wobbly); a wide mixing zone; and the same zone with the owner's
 blended third picture in its middle. The wide zone did most of the work;
 the blend added a little more in-between texture, for one more picture per
 pair of grounds. So the game now does the zone by itself, everywhere two
-grounds are alike, and a blend slot can come later if it is wanted.
+grounds are alike, and a blend slot can come later if it is wanted. (It
+came in v2.3.2951: "Blend pictures", below.)
 
 ![The four ways: now; a soft edge; a wide mixing zone; the zone with the owner's blend picture](world/dirt-mix-options.png)
 
@@ -803,6 +804,82 @@ falling off across the zone and its last pixel wandering, every pixel one
 of the two pictures', and the zone laid in halves the same as whole.
 `node tools/qa/ground-studio.mjs` (42) and `node tools/qa/mp/run.mjs
 wheeltrial` (28) as before.
+
+## Blend pictures (v2.3.2951)
+
+> Owner, 2026-09-30, shown the four ways at their spot: *"Bottom right looks
+> the best by a moderate margin than the bottom left. What's the performance
+> tradeoff though?"* Told it: *"Yes build it"*.
+
+![The owner's own pictures at the town square: the wide mixing zone alone (left), and with the owner's blend picture through its middle (right)](world/blend-town.png)
+
+**What it is.** Where two alike grounds mix (above), a pair may have a third
+picture, a **blend**: the ground halfway between the two, made in ChatGPT
+from the two pictures. The game lays it through the middle of the zone, so
+the square turns into the yards through ground that looks like both.
+Optional for every pair: a pair without one mixes exactly as before, to the
+byte.
+
+**How it is laid** (`public/tools/world/core/ground.js`, BLEND PICTURES).
+The zone runs from one ground, through the blend, to the other. Its upper
+half decides between the upper ground and the blend, its lower half between
+the blend and the lower ground, each on its own ramp across the half, with
+the same big patches and the pictures' own heights shaping their rims. So
+the blend is most at the line and none is left at the zone's sides (at the
+owner's spot, with stand-in pictures: 95% of the ground at the line, 71–77%
+12 game px either side, none 60 game px out). Every pixel is still one of
+the three pictures'. A blend is laid as a ground of its own, so the tidy-up
+leaves no crumbs of it; blends are numbered by their pairs' keys, so pieces
+laid apart still meet with no seam. `composeGround(..., { blends })` takes
+them by `blendKey(a, b)` (the two ids in order, joined by `__`), and
+`blendsUnder` names the ones a piece can use.
+
+**Where they come from.**
+
+- **The Ground Studio** (`/tools/ground/`) has a **Blends** card below the
+  swatches: every pair of alike grounds that meet on the Wheel (42), the
+  town's three first (the square and the yards, Main Street and the yards,
+  the square and Main Street), the rest folded away, longest meeting first.
+  Each has its **blend prompt** (`blendPromptFor`): the ground halfway
+  between the two, both briefs, the two pictures attached (not the style
+  key: they already carry the style; never the bro), nothing running one
+  way, seamless. A button beside it saves or shares the two ground pictures
+  for the chat. A blend brought back is made seamless and put on the
+  colours like a swatch, but it is never used to make the colours (it is
+  made of two grounds already on them). It is marked to make again when one
+  of its grounds is made again after it. It is kept under the pair's key as
+  version `M` (`plaza__town-yard|M`), goes in the zip as
+  `ground/<key>-M.png` with the original, listed in the manifest's
+  `blends`, and restores.
+- **The game's worker** (`ground-worker.js`) finds blends in both places it
+  finds swatches (the studio's storage on the site, then
+  `/world/ground/manifest.json`), unpacks the ones a piece needs, and lays
+  them. The trial's readout says `blends  N made`.
+
+**Cost**, measured on the owner's own pictures, laid the way the game's
+worker lays them (desktop Chromium):
+
+| | without the blend | with it |
+|---|---|---|
+| a piece of town ground | about 24 ms | about 24 ms (≈ 1 ms more on average) |
+| a piece on a long stage line (e.g. the dunes) | about 25 ms | no measurable difference |
+| memory while near the pair | | 1 MB more (the town's busiest piece needs 13 pictures of the 16 kept) |
+| download, the first time near the pair | | one picture, about 0.9 MB |
+| unpacking it | | about 50 ms, once, in the worker |
+
+The cost that counts is making the pictures: 42 pairs of alike grounds
+touch on the Wheel. Start with the town square.
+
+**Tests.** `node tools/world/test-world-core.mjs` (125): the key and its
+pair; square -> blend -> yards at the owner's spot, the blend most at the
+line and gone at the sides; every pixel one of the three pictures', `mat`
+naming only real swatches; halves the same as whole; and a blend for a pair
+that does not mix, or none, changing nothing. `node tools/qa/ground-studio.mjs`
+(54): the card, the prompt, a blend in and on the palette without shifting
+it, laid in the preview to the pixel, marked to redo, through the zip and
+back, removed. `node tools/qa/mp/run.mjs wheeltrial` (31): a blend made in
+the studio is found by the game, named in the readout, and laid on screen
+between the square and the yards.
 
 ---
 

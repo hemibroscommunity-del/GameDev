@@ -75,7 +75,13 @@ remnant to migrate server-side, not a mode to preserve.
   grounds -- one kind, or earth/sand/ash -- MIX over a wide zone in big
   patches shaped by both pictures (`MIX`, `MIX_PATCH`, `MIX_HEIGHTS`), the
   town square and street included, only the boardwalks keeping straight
-  edges (`CRISP`): WORLD-MAP-PIPELINE "Alike grounds mix"),
+  edges (`CRISP`): WORLD-MAP-PIPELINE "Alike grounds mix"; since v2.3.2951
+  such a pair may have a BLEND picture, the owner's idea, laid through the
+  middle of the zone (`opts.blends[blendKey(a, b)]`, the studio's version
+  `M` under the pair's key, `ground/<key>-M.png` + the manifest's `blends`,
+  `blendPromptFor` attaching the two swatches and not the key): optional
+  per pair, a pair without one mixing exactly as before;
+  WORLD-MAP-PIPELINE "Blend pictures"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

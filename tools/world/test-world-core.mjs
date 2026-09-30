@@ -38,7 +38,7 @@ import { promptFor } from '../../public/tools/ground/prompts.js';
 import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours } from '../../public/tools/world/core/grid.js';
 import { buildBlueprint, renderSketch, colorTable, planKey, C, CLASS_IDS } from '../../public/tools/world/core/layout.js';
 import { spokePoint, arcPoint } from '../../public/tools/world/core/wheel.js';
-import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, edgeRecipe, groundContacts, EDGE_CLEAR, EDGE_PIECES, edgePiecesOn, planksOf } from '../../public/tools/world/core/ground.js';
+import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, edgeRecipe, groundContacts, EDGE_CLEAR, EDGE_PIECES, edgePiecesOn, planksOf, blendKey, blendPair, blendsUnder } from '../../public/tools/world/core/ground.js';
 import { buildPrompt } from '../../public/tools/world/core/prompt.js';
 import { gridMinCut, INF } from '../../public/tools/world/core/maxflow.js';
 import { fuseSquare } from '../../public/tools/world/core/fuse.js';
@@ -595,6 +595,51 @@ console.log('ground');
     if (v !== mixed2.data[(y * mixed2.w + x) * 4]) mseam++;
   }
   ok('...and it is laid the same in two halves as whole, so chunks still meet with no seam', mseam === 0, mseam);
+  /* v2.3.2951: BLEND PICTURES.  Owner, shown the zone alone and with their
+     own blended third picture in its middle: "Bottom right looks the best
+     by a moderate margin" -- then "Yes build it".  At the same spot, with a
+     third stand-in picture (its own bluish colours) for the square and the
+     yards: the zone runs square -> blend -> yards, the blend most at the
+     line and gone at the zone's sides; every pixel one of the three
+     pictures'; `mat` still names only real swatches; chunks still agree;
+     and a pair without one -- or a blend handed for a pair that does not
+     mix -- changes nothing, to the byte. */
+  ok('a blend has one key for its pair, whichever way round, and gives the pair back; blendsUnder lists the pairs under a rectangle that have one',
+    blendKey('town-yard', 'plaza') === blendKey('plaza', 'town-yard') && blendKey('plaza', 'town-yard') === 'plaza__town-yard' &&
+    JSON.stringify(blendPair('plaza__town-yard')) === '["plaza","town-yard"]' && blendPair('plaza') === null &&
+    JSON.stringify(blendsUnder(['town-yard', 'plaza', 'street'], (k) => k !== 'street__town-yard')) === '["plaza__town-yard","plaza__street"]',
+    blendsUnder(['town-yard', 'plaza', 'street'], (k) => k !== 'street__town-yard'));
+  const blCols = [[70, 110, 150], [92, 132, 172], [114, 154, 194], [136, 176, 216]];
+  const blTile = texTile(256, blCols, 13);
+  const withBl = composeGround(PLAN, bp, mm, mixRM, mixTiles, { scale: 3, blends: { [blendKey('plaza', 'town-yard')]: blTile } });
+  const blSet = new Set(blCols.map((c) => c.join()));
+  const isBl = (i) => blSet.has(`${withBl.data[i * 4]},${withBl.data[i * 4 + 1]},${withBl.data[i * 4 + 2]}`);
+  const sqSet = new Set(sqCols.map((c) => c.join()));
+  const isSqPx = (i) => sqSet.has(`${withBl.data[i * 4]},${withBl.data[i * 4 + 1]},${withBl.data[i * 4 + 2]}`);
+  const rowFrac = (dGame, f) => { const oy = Math.round((64 + dGame / 1.5) * 3); let n = 0; for (let x = 0; x < withBl.w; x++) if (f(oy * withBl.w + x)) n++; return +(n / withBl.w).toFixed(2); };
+  const blF = [-60, -30, -12, 0, 12, 30, 60].map((d) => rowFrac(d, isBl)), sqF = [-60, 0, 60].map((d) => rowFrac(d, isSqPx));
+  const allowed3 = new Set([...sqCols, ...ydCols, ...blCols].map((c) => c.join()));
+  let foreign3 = 0, badMat = 0;
+  for (let i = 0; i < withBl.data.length; i += 4) if (!allowed3.has(`${withBl.data[i]},${withBl.data[i + 1]},${withBl.data[i + 2]}`)) foreign3++;
+  for (let i = 0; i < withBl.mat.length; i++) if (mm.ids[withBl.mat[i]] === undefined) badMat++;
+  const blLaid = withBl.blendsLaid.find((b) => b.key === 'plaza__town-yard');
+  ok(`with a blend picture, the zone runs square -> blend -> yards: the blend most at the line, none at the zone's sides (its share 60, 30, 12 game px above the line to 12, 30, 60 below: ${blF.join(', ')}); the square still all above and gone below (${sqF.join(', ')})`,
+    blF[0] <= 0.02 && blF[6] <= 0.02 && Math.max(blF[2], blF[3], blF[4]) >= 0.3 && Math.max(blF[2], blF[3], blF[4]) > blF[1] && Math.max(blF[2], blF[3], blF[4]) > blF[5] &&
+    sqF[0] >= 0.97 && sqF[2] <= 0.03, { blF, sqF });
+  ok('...every pixel one of the three pictures\', `mat` still names only real swatches, and the blend is reported laid',
+    foreign3 === 0 && badMat === 0 && !!blLaid && blLaid.px > 1000, { foreign3, badMat, laid: withBl.blendsLaid });
+  const blOpts = { scale: 3, blends: { [blendKey('plaza', 'town-yard')]: blTile } };
+  const blL = composeGround(PLAN, bp, mm, { ...mixRM, w: 60 }, mixTiles, blOpts), blR = composeGround(PLAN, bp, mm, { ...mixRM, x: mixRM.x + 60, w: 60 }, mixTiles, blOpts);
+  let blSeam = 0;
+  for (let y = 0; y < withBl.h; y++) for (let x = 0; x < withBl.w; x++) {
+    const v = x < 180 ? blL.data[(y * blL.w + x) * 4 + 2] : blR.data[(y * blR.w + x - 180) * 4 + 2];
+    if (v !== withBl.data[(y * withBl.w + x) * 4 + 2]) blSeam++;
+  }
+  ok('...laid in two halves the same as whole, so chunks with a blend still meet with no seam', blSeam === 0, blSeam);
+  const noBl = composeGround(PLAN, bp, mm, mixRM, mixTiles, { scale: 3, blends: { [blendKey('commons', 'road')]: blTile, [blendKey('plaza', 'street')]: null } });
+  let noBlDiff = 0;
+  for (let i = 0; i < noBl.data.length; i++) if (noBl.data[i] !== mixed2.data[i]) noBlDiff++;
+  ok('...and a blend for a pair that does not mix here (grass over the road), or none at all, changes nothing, to the byte', noBlDiff === 0 && noBl.blendsLaid.length === 0, noBlDiff);
   ok("...each pair with its own edge: a road's narrow, sand drifting wider than grass; two of a kind interlock evenly",
     rc('ember-3', 'road').ragged < rc('commons', 'road').ragged && rc('commons', 'road').ragged < rc('sky-2', 'road').ragged &&
     rc('commons', 'road').reach > 0 && rc('verdant-1', 'commons').even && rc('verdant-1', 'commons').reach === 0);

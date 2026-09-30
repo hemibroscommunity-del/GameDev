@@ -9,7 +9,8 @@
  *
  *   0. a swatch is made in the Ground Studio on this site -- planted in its
  *      storage exactly as the studio keeps it (the picture before the
- *      palette, and the palette) -- and never uploaded anywhere;
+ *      palette, and the palette) -- and never uploaded anywhere; (v2.3.2951)
+ *      with the yards and the BLEND between the square and the yards;
  *   1. town's stairs lead into the Wheel behind the ordinary loading
  *      overlay, which waits for the plan and the first screen of ground;
  *   2. you arrive in the town square, the worker agrees, and the pieces round
@@ -28,6 +29,9 @@ import { join } from 'node:path';
 const PHONE = { width: 390, height: 844 };
 /* the planted swatch: 16 px checks of two colours no plan colour is near */
 const MAGENTA = [230, 60, 200], CYAN = [40, 200, 220];
+/* v2.3.2951: the yards' swatch, and the blend between the square and the
+   yards, each in two more such colours */
+const ORANGE = [240, 140, 20], PURPLE = [120, 50, 170], YELLOW = [250, 230, 40], GREEN = [60, 200, 60];
 const ARRIVAL = { x: 21504, y: 21792 };
 
 const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
@@ -50,17 +54,20 @@ const tap = (P, text) => P.page.evaluate((t) => {
 
 /* In the page: the Ground Studio's storage, as addPicture leaves it for the
    town square's swatch (public/tools/ground/app.js). */
-const plant = (P) => P.page.evaluate(async ({ A, B }) => {
+const plant = (P) => P.page.evaluate(async ({ A, B, Y1, Y2, M1, M2 }) => {
   const T = 1024;
-  const c = document.createElement('canvas');
-  c.width = c.height = T;
-  const g = c.getContext('2d');
-  for (let y = 0; y < T; y += 16) for (let x = 0; x < T; x += 16) {
-    const col = ((x >> 4) + (y >> 4)) & 1 ? A : B;
-    g.fillStyle = `rgb(${col.join(',')})`;
-    g.fillRect(x, y, 16, 16);
-  }
-  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  const checks = async (p, q) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = T;
+    const g = c.getContext('2d');
+    for (let y = 0; y < T; y += 16) for (let x = 0; x < T; x += 16) {
+      const col = ((x >> 4) + (y >> 4)) & 1 ? p : q;
+      g.fillStyle = `rgb(${col.join(',')})`;
+      g.fillRect(x, y, 16, 16);
+    }
+    return new Promise((r) => c.toBlob(r, 'image/png'));
+  };
+  const blob = await checks(A, B);
   const db = await new Promise((res, rej) => {
     const r = indexedDB.open('brotown-ground-studio', 1);
     r.onupgradeneeded = () => { for (const s of ['raw', 'prep', 'misc']) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s); };
@@ -74,6 +81,13 @@ const plant = (P) => P.page.evaluate(async ({ A, B }) => {
   });
   await put('raw', 'plaza|A', { blob, name: 'checks.png', type: 'image/png' });
   await put('prep', 'plaza|A', blob);
+  /* v2.3.2951: the yards, and the square and the yards' BLEND, as the
+     studio keeps it: under the pair's key, version M */
+  const yard = await checks(Y1, Y2), mixed = await checks(M1, M2);
+  await put('raw', 'town-yard|A', { blob: yard, name: 'yard.png', type: 'image/png' });
+  await put('prep', 'town-yard|A', yard);
+  await put('raw', 'plaza__town-yard|M', { blob: mixed, name: 'blend.png', type: 'image/png' });
+  await put('prep', 'plaza__town-yard|M', mixed);
   /* v2.3.2947: and the commons' EDGE PIECES, as the studio keeps them: its
      tile before the palette, the magenta already cut away -- sixty round
      clumps on see-through, laid where the commons lies over the road */
@@ -88,10 +102,10 @@ const plant = (P) => P.page.evaluate(async ({ A, B }) => {
   const eblob = await new Promise((r) => e.toBlob(r, 'image/png'));
   await put('raw', 'commons|E', { blob: eblob, name: 'commons-pieces.png', type: 'image/png' });
   await put('prep', 'commons|E', eblob);
-  await put('misc', 'palette', { colours: [A, B, [0, 0, 0], [255, 255, 255]], frozen: true });
+  await put('misc', 'palette', { colours: [A, B, [0, 0, 0], [255, 255, 255], Y1, Y2, M1, M2], frozen: true });
   db.close();
   return blob.size;
-}, { A: MAGENTA, B: CYAN });
+}, { A: MAGENTA, B: CYAN, Y1: ORANGE, Y2: PURPLE, M1: YELLOW, M2: GREEN });
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
@@ -179,7 +193,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(400);
   }
   console.log('    HUD ->\n      ' + hud.split('\n').join('\n      '));
-  rec.ok('the readout finds the swatch made in the Ground Studio', /1 yours/.test(hud), { hud });
+  rec.ok('the readout finds the swatches made in the Ground Studio', /2 yours/.test(hud), { hud });
+  /* v2.3.2951, owner: "Bottom right looks the best by a moderate margin" --
+     "Yes build it": the blend between the square and the yards */
+  rec.ok('...and the blend between the square and the yards made there', /blends\s+1 made/.test(hud), { hud });
   /* v2.3.2948: the edge pieces are put away -- the game's worker leaves the
      commons' planted ones unread -- but a worker told `edgepieces` (the
      game's ?trial=wheel&edgepieces) still finds them (v2.3.2947) */
@@ -188,12 +205,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const w = new Worker('/tools/world/core/ground-worker.js', { type: 'module' });
     let t = null;
     const done = (v) => { clearTimeout(t); w.terminate(); resolve(v); };
-    w.onmessage = (ev) => { const m = ev.data || {}; if (m.type === 'ready') done({ edges: m.edges, made: Object.keys(m.made || {}) }); else if (m.type === 'error') done({ error: m.message }); };
+    w.onmessage = (ev) => { const m = ev.data || {}; if (m.type === 'ready') done({ edges: m.edges, made: Object.keys(m.made || {}), blends: m.blends }); else if (m.type === 'error') done({ error: m.message }); };
     w.onerror = (ev) => done({ error: (ev && ev.message) || 'the worker failed' });
     t = setTimeout(() => done({ error: 'no answer in 60 s' }), 60000);
     w.postMessage({ type: 'init', search: '?trial=wheel&edgepieces' });
   }));
   rec.ok('...which a worker told ?edgepieces still finds: put away, not gone', Array.isArray(told.edges) && told.edges.join() === 'commons', told);
+  rec.ok('...(and the blend is found either way, under its pair\'s key)', Array.isArray(told.blends) && told.blends.join() === 'plaza__town-yard', told);
   rec.ok('...and says it is under your feet', /here\s+Town square ✓/.test(hud), { hud });
   await shot(P, '01-arrival');
   const px = await H.screenshotPixels(P);
@@ -202,6 +220,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const all = px.width * px.height;
   rec.ok(`...and it is on screen, laid in its own colours (${(100 * (nMag + nCyan) / all).toFixed(0)}% of the screen)`,
     nMag > all * 0.03 && nCyan > all * 0.03, { nMag, nCyan, all });
+  const nYard = px.count(near(ORANGE)) + px.count(near(PURPLE)), nBlend = px.count(near(YELLOW)) + px.count(near(GREEN));
+  rec.ok(`...with the yards beyond it, and the blend laid where the square meets them (${(100 * nBlend / all).toFixed(1)}% of the screen)`,
+    nYard > all * 0.03 && nBlend > all * 0.01, { nYard, nBlend, all });
 
   /* ── 3. walk ── */
   const legs = [

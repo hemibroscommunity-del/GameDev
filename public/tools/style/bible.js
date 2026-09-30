@@ -125,6 +125,14 @@ export const KEY_MATCH = "Attached is the game's style key. Match its pixel size
    in this style, so it is attached too -- or the prompt is sent in the
    chat the swatch was made in.  (Never the bro: see the header.) */
 export const EDGE_MATCH = "Attached are the game's style key and this ground's own swatch (or send this in the chat where you made the swatch). Match the swatch exactly: its colours, pixel size, shading and the way it draws its material. Do not copy its layout.";
+/* v2.3.2951: BLEND PICTURES -- the ground halfway between two alike grounds,
+   which the game lays through the middle of the zone where they mix
+   (world/core/ground.js, BLEND PICTURES).  The one chat shown two ground
+   swatches and not the style key: a blend must be made of exactly those
+   two, and they are world art in this style already -- the key would only
+   be a third look to copy.  (Never the bro: see the header.)  Said after
+   the prompt names the two pictures. */
+export const BLEND_MATCH = 'Match them exactly: their colours, pixel size, shading and the way each draws its material, using only what is in them. Do not copy their layout.';
 /* The one flat colour an edge-pieces picture is drawn on, cut away by the
    Ground Studio (style/process.js, keyOut). */
 export const EDGE_BACKGROUND = 'The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the pieces is magenta.';

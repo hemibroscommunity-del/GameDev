@@ -17,7 +17,11 @@
  *   2. the game's copy, /world/ground/ (the studio's "Download all" zip,
  *      unpacked into the repo) -- what every other player will see.
  * A swatch in neither is drawn in its plan colour, chequered, as the studio
- * shows it.
+ * shows it.  v2.3.2951: the same two places give the BLENDS -- a pair of
+ * alike grounds' third picture, laid through the middle of the zone where
+ * they mix (ground.js, BLEND PICTURES): the studio's 'prep' key
+ * '<pair key>|M', the game's manifest `blends` and <pair key>-M.png.  Each
+ * is kept here like a swatch, under its pair's key, version M.
  *
  * MEMORY.  A swatch is 1024 x 1024; unpacked as colours that is 4 MB, so the
  * worker keeps them as one palette index a pixel (1 MB) and only the last
@@ -28,6 +32,7 @@
  * MESSAGES (all answered in order, one at a time):
  *   { type: 'init', search }     -> { type: 'ready', ... } (see init below;
  *                                   v2.3.2947: `edges`, the grounds with edge pieces;
+ *                                   v2.3.2951: `blends`, the pairs with a blend;
  *                                   v2.3.2948: `search`, the page's address query:
  *                                   edge pieces are put away and loaded only when
  *                                   it says `edgepieces` -- ground.js, EDGE_PIECES)
@@ -38,7 +43,7 @@
 import { PLAN } from '../plan.js';
 import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
-import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR, edgePiecesOn } from './ground.js';
+import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendPair, blendsUnder } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn } from '../../style/process.js';
 
@@ -48,12 +53,12 @@ const WPA = PLAN.worldPxPerArtPx;                                 /* 1.5 game px
 const CHUNK = 128;          /* plan art px a piece: 192 game px, 384 ground px */
 const APRON = 1;            /* art px laid past each edge, so smooth scaling reads the true neighbour at a join */
 const OVERVIEW_CELLS = 4;   /* blueprint cells an overview pixel */
-const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too) */
+const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too; v2.3.2951: and blends -- the town's busiest piece needs about 13) */
 const GAME_BASE = '/world/ground/';
 const STUDIO_DB = 'brotown-ground-studio';
 
 let W = null;               /* { bp, mm } once ready: bp is the light copy (no per-cell layers) */
-let swatches = Object.create(null);   /* id -> { from: 'studio'|'game', vers: { A?, B?, E? }, pal, mapped } */
+let swatches = Object.create(null);   /* id -> { from: 'studio'|'game', vers: { A?, B?, E? }, pal, mapped }; v2.3.2951: a pair's key -> { ..., vers: { M } } */
 const decoded = new Map();            /* 'id|ver' -> tile ({w, h, idx, pal} or {w, h, data}) */
 const failed = new Set();             /* 'id|ver' that could not be unpacked: drawn in plan colour */
 
@@ -89,12 +94,14 @@ async function init(m) {
   const swatchMs = Math.round(performance.now() - t1);
   /* you arrive in the town square, as the Ground Studio's first spot */
   const ax = g.cx, ay = g.cy + 0.25 * g.P;
-  const made = Object.create(null), edges = [];
+  const made = Object.create(null), edges = [], blends = [];
   for (const id of Object.keys(swatches)) {
     const v = swatches[id].vers;
     if (v.A || v.B) made[id] = swatches[id].from;
     /* v2.3.2947: which grounds have their edge pieces */
     if (v.E) edges.push(id);
+    /* v2.3.2951: which pairs have a blend */
+    if (v.M) blends.push(id);
   }
   post({
     type: 'ready',
@@ -105,7 +112,7 @@ async function init(m) {
     arrival: { x: Math.round((ax - bp.x0) * WPA), y: Math.round((ay - bp.y0) * WPA) },
     catalog: mm.ids.map((id, q) => ({ id, name: q === mm.water ? 'Water' : mm.catalog[q].name })),
     water: mm.water,
-    made, edges,
+    made, edges, blends: blends.sort(),
     planMs, swatchMs,
   }, [bits.buffer, ov.data.buffer]);
 }
@@ -140,6 +147,12 @@ async function findSwatches(mm, pieces) {
         for (const v of s.versions || []) if (v === 'A' || v === 'B' || (v === 'E' && pieces)) vers[v] = { url: `${GAME_BASE}${s.id}-${v}.png` };
         if (vers.A || vers.B || vers.E) out[s.id] = { from: 'game', vers, pal, mapped: true };
       }
+      /* v2.3.2951: and the blends, each under its pair's key */
+      for (const b of man.blends || []) {
+        const pr = b && typeof b.key === 'string' ? blendPair(b.key) : null;
+        if (!pr || !known.has(pr[0]) || !known.has(pr[1])) continue;
+        out[b.key] = { from: 'game', vers: { M: { url: `${GAME_BASE}${b.key}-M.png` } }, pal, mapped: true };
+      }
     }
   } catch (e) { /* no copy in the game yet */ }
   /* the Ground Studio's, on this site */
@@ -151,8 +164,11 @@ async function findSwatches(mm, pieces) {
       const pal = (palRec && palRec.colours) || null;
       const mine = Object.create(null);
       for (const k of keys || []) {
-        const mk = /^(.+)\|([ABE])$/.exec(String(k));
-        if (!mk || !known.has(mk[1]) || (mk[2] === 'E' && !pieces)) continue;
+        const mk = /^(.+)\|([ABEM])$/.exec(String(k));
+        if (!mk || (mk[2] === 'E' && !pieces)) continue;
+        /* a swatch's A, B or E -- or (v2.3.2951) a pair's blend, M */
+        const pr = mk[2] === 'M' ? blendPair(mk[1]) : null;
+        if (mk[2] === 'M' ? !pr || !known.has(pr[0]) || !known.has(pr[1]) : !known.has(mk[1])) continue;
         const blob = await ask(db, 'prep', (s) => s.get(k));
         if (!blob || !blob.size) continue;
         (mine[mk[1]] = mine[mk[1]] || Object.create(null))[mk[2]] = { blob };
@@ -262,8 +278,8 @@ async function chunk(m) {
   const t0 = performance.now();
   const { bp, mm } = W;
   const rect = { x: bp.x0 + m.i * CHUNK - APRON, y: bp.y0 + m.j * CHUNK - APRON, w: CHUNK + 2 * APRON, h: CHUNK + 2 * APRON };
-  const tiles = Object.create(null), keep = new Set();
-  for (const id of swatchesUnder(bp, mm, rect)) {
+  const tiles = Object.create(null), keep = new Set(), ids = swatchesUnder(bp, mm, rect);
+  for (const id of ids) {
     const s = swatches[id];
     if (!s) continue;
     const A = s.vers.A ? await tileOf(id, 'A') : null;
@@ -272,7 +288,15 @@ async function chunk(m) {
     keep.add(`${id}|A`); keep.add(`${id}|B`); keep.add(`${id}|E`);
     if (A || B || E) tiles[id] = { A: A || B, B: A && B ? B : null, E };
   }
-  const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, withMaterials: false });
+  /* v2.3.2951: the blends between them -- every one blendsUnder names, so
+     each piece over a place is given the same ones and they meet with no seam */
+  const blends = Object.create(null);
+  for (const k of blendsUnder(ids, (k) => !!(swatches[k] && swatches[k].vers.M))) {
+    keep.add(`${k}|M`);
+    const t = await tileOf(k, 'M');
+    if (t) blends[k] = t;
+  }
+  const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, withMaterials: false, blends });
   trim(keep);
   post({ type: 'chunk', id: m.id, i: m.i, j: m.j, w: out.w, h: out.h, data: out.data,
     ms: Math.round(performance.now() - t0), unpacked: decoded.size, unreadable: failed.size }, [out.data.buffer]);

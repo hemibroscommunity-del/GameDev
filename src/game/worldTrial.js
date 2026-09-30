@@ -54,7 +54,7 @@
    Vite alias does not exist. */
 import { ZONES } from '../data/zones.js';
 import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/effects.js';
-import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelResetCounts, wheelStats } from './wheelTrial.js';
+import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats } from './wheelTrial.js';
 
 export const WORLD_TRIAL_ZONE = 'worldview';
 export const WORLD_TRIAL_BASE = '/maps/world-trial-v1/';
@@ -362,6 +362,8 @@ function wheelHud(S) {
     /* v2.3.2947: the grounds whose edge pieces were found (v2.3.2948: none
        unless the address says `edgepieces` -- they are put away) */
     (wheelEdges().length ? 'edges   ' + wheelEdges().length + ' with edge pieces\n' : '') +
+    /* v2.3.2951: the pairs of alike grounds with a blend picture */
+    (wheelBlends().length ? 'blends  ' + wheelBlends().length + ' made\n' : '') +
     'here    ' + (here ? here.name.slice(0, 34) + (here.water ? '' : here.made ? ' ✓' : ' (not made)') : '…') +
     /* only when something went wrong: what, so a phone screenshot says it */
     (s.failures ? '\nfailed  ' + s.failures + ': ' + String(s.lastFailure || '').slice(0, 40) : '');

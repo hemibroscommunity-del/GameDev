@@ -22,6 +22,11 @@
  *      ground that lies over another has an edge-pieces prompt, and such a
  *      picture comes out as whole pieces on see-through that the preview
  *      scatters along its edges and the zip carries.
+ *   9. (v2.3.2951) BLENDS: every pair of alike grounds that meet has a slot,
+ *      the town's first, with a prompt that attaches the two grounds; a
+ *      blend picture comes out like a swatch, never shifts the colours, is
+ *      laid in the preview where the pair meets, marked to redo when one of
+ *      its grounds is made again, carried by the zip and removable.
  *
  *   node tools/qa/ground-studio.mjs          (GROUND_SHOTS=dir to keep pictures)
  */
@@ -462,7 +467,116 @@ try {
   const wrong = await pageP.evaluate(() => ({ pieces: window.__ground.S.edges['ember-1'].pieces, bad: !!document.querySelector('[data-edge="ember-1"] .edge-bad') }));
   ok('a picture with no magenta background gives no pieces, and the card says why', wrong.pieces === 0 && wrong.bad, wrong);
 
-  ok('no page errors', page.errs.length === 0 && pageB.errs.length === 0 && pageC.errs.length === 0 && pageP.errs.length === 0, [...page.errs, ...pageB.errs, ...pageC.errs, ...pageP.errs].slice(0, 3));
+  /* ── 9. v2.3.2951: blends between alike grounds ── */
+  console.log('9. blends between alike grounds');
+  /* Owner: "have chatGPT make a blend of the two surfaces that are mapped
+     together" ... "Bottom right looks the best by a moderate margin" ...
+     "Yes build it". */
+  const bl0 = await page.evaluate(() => {
+    const S = window.__ground.S;
+    const blocks = [...document.querySelectorAll('#blend-list [data-blend]')];
+    const card = (k) => (document.querySelector(`[data-blend="${k}"]`) || {}).textContent || '';
+    return {
+      n: blocks.length, pairs: S.blendPairs.length, first: blocks.slice(0, 3).map((b) => b.dataset.blend),
+      restN: document.querySelectorAll('#blend-rest [data-blend]').length, rest: (document.querySelector('#blend-rest > summary') || {}).textContent || '',
+      chip: document.getElementById('blend-chip').textContent,
+      prompt: (document.querySelector('textarea[data-blend-prompt="plaza__town-yard"]') || {}).value || '',
+      sqCard: card('plaza__town-yard'),
+      step: [...document.querySelectorAll('ol.plan li')].some((li) => /Blends/.test(li.textContent) && li.offsetParent !== null),
+    };
+  });
+  ok(`every pair of alike grounds that meet has a blend slot (${bl0.n}), the town's three first, the rest folded away`,
+    bl0.n === 42 && bl0.pairs === 42 && JSON.stringify(bl0.first) === '["plaza__town-yard","street__town-yard","plaza__street"]' && bl0.restN === 39 && /The other 39 pairs/.test(bl0.rest) && bl0.chip === 'optional' && bl0.step, bl0);
+  ok('...its prompt asks for the ground halfway between the two, attaching the two ground pictures (not the style key, never the bro), nothing running one way, seamless',
+    /halfway between two grounds/.test(bl0.prompt) && /Town square: packed pale gravel/.test(bl0.prompt) && /Brotown yards: packed earth/.test(bl0.prompt) &&
+    /Attached are the two ground pictures it goes between: Town square and Brotown yards/.test(bl0.prompt) && !/style key/.test(bl0.prompt) && !/hero|\bbro\b/i.test(bl0.prompt) &&
+    /Nothing in it runs one way/.test(bl0.prompt) && /seamlessly into the opposite edge/.test(bl0.prompt) && /BroTown HD pixel art/.test(bl0.prompt), bl0.prompt.slice(0, 300));
+  ok('...and a pair whose grounds are not made yet says to make them first', /Make Town square and Brotown yards first/.test(bl0.sqCard), bl0.sqCard.slice(0, 200));
+  await put(page, 'plaza', 'A', await makePicture(page, '#c8bca0', 21));
+  await put(page, 'town-yard', 'A', await makePicture(page, '#b07840', 22));
+  /* colours made from the swatches, not frozen: a blend must not change them */
+  await page.evaluate(async () => { if (window.__ground.S.frozen) document.getElementById('freeze').click(); });
+  await page.waitForFunction(() => !window.__ground.S.frozen && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const palBefore = await page.evaluate(() => JSON.stringify(window.__ground.S.palette));
+  const pairBtn = await page.evaluate(() => !!document.querySelector('[data-blend="plaza__town-yard"] [data-pair="plaza__town-yard"]'));
+  ok('...once both are made, the button to save or share the two pictures is there', pairBtn);
+  await page.setInputFiles('input[data-file="plaza__town-yard|M"]', { name: 'plaza-yard-blend.png', mimeType: 'image/png', buffer: Buffer.from(await makePicture(page, '#bc9a70', 23), 'base64') });
+  await page.waitForFunction(() => window.__ground.S.blends['plaza__town-yard'] && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const bf = await tileFacts(page, 'plaza__town-yard', 'M');
+  ok('a blend picture comes out like a swatch: one 1024 px tile, hard-edged, on the palette, seamless', bf.w === PIXEL.groundTile && bf.semi === 0 && bf.offPalette === 0 && bf.wrap <= bf.inside * 1.6 + 6, bf);
+  const bl1 = await page.evaluate(async () => {
+    const S = window.__ground.S;
+    await new Promise((r) => setTimeout(r, 50));
+    return {
+      pal: JSON.stringify(S.palette), chip: document.getElementById('blend-chip').textContent,
+      card: (document.querySelector('[data-blend-chip="plaza__town-yard"]') || {}).textContent,
+      view: S.view.name, laid: (S.pv.blendsLaid || []).find((b) => b.key === 'plaza__town-yard') || null,
+      inview: document.getElementById('inview').textContent,
+      saved: [...document.querySelectorAll('#saved-list li')].map((li) => li.textContent), status: document.getElementById('status').textContent,
+    };
+  });
+  ok('...never changes the colours the swatches are moved onto', bl1.pal === palBefore);
+  ok('...its card and the count say it is made, and the top of the page says it is saved', bl1.card === 'made' && bl1.chip === '1 of 42 made' && bl1.saved.includes('Town square and Brotown yards (blend)') && /and 1 blend\./.test(bl1.status), bl1);
+  ok(`...and the preview jumps to where the square meets the yards and lays it there (${bl1.laid && bl1.laid.px} px)`,
+    /Where Town square and Brotown yards meet/.test(bl1.view) && !!bl1.laid && bl1.laid.px > 1000 && /blend: Town square and Brotown yards/.test(bl1.inview), bl1);
+  const blLaid = await page.evaluate(async () => {
+    const { composeGround, swatchesUnder } = await import('/tools/world/core/ground.js');
+    const S = window.__ground.S, api = window.__ground.api, rect = S.pv.rect, tiles = Object.create(null);
+    for (const id of swatchesUnder(S.bp, S.mm, rect)) {
+      const t = S.tiles[id];
+      if (!t) continue;
+      const A = t.byVer.A ? await api.pixelsOf(id, 'A') : null, B = t.byVer.B ? await api.pixelsOf(id, 'B') : null;
+      tiles[id] = { A: A || B, B: A && B ? B : null, E: null };
+    }
+    const bt = await api.pixelsOf('plaza__town-yard', 'M');
+    const withB = composeGround(S.plan, S.bp, S.mm, rect, tiles, { scale: 3, blends: { 'plaza__town-yard': bt } });
+    const noB = composeGround(S.plan, S.bp, S.mm, rect, tiles, { scale: 3 });
+    const c = S.pv.canvas, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    const cols = new Set();
+    for (let i = 0; i < bt.data.length; i += 4) cols.add((bt.data[i] << 16) | (bt.data[i + 1] << 8) | bt.data[i + 2]);
+    let asPv = 0, changed = 0, notBlend = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] !== withB.data[i] || d[i + 1] !== withB.data[i + 1] || d[i + 2] !== withB.data[i + 2]) asPv++;
+      if (withB.data[i] !== noB.data[i] || withB.data[i + 1] !== noB.data[i + 1] || withB.data[i + 2] !== noB.data[i + 2]) { changed++; if (!cols.has((withB.data[i] << 16) | (withB.data[i + 1] << 8) | withB.data[i + 2])) notBlend++; }
+    }
+    return { asPv, changed, notBlend, n: d.length / 4 };
+  });
+  ok(`...the preview is the ground laid with the blend, to the pixel; it changes ${blLaid.changed} px, each from the blend picture or its two grounds`,
+    blLaid.asPv === 0 && blLaid.changed > 1000 && blLaid.notBlend < blLaid.changed * 0.35, blLaid);
+  await page.evaluate(() => document.getElementById('toast').setAttribute('hidden', ''));
+  await shot(page, 'blend', '#phone');
+  await shot(page, 'blend-card', '[data-blend="plaza__town-yard"]');
+  /* (colours frozen again before the zip, as the owner will have them: a
+     fresh browser remakes unfrozen colours from what it has -- here, no
+     style key -- so only frozen ones restore to the pixel) */
+  await page.click('#freeze');
+  await page.waitForFunction(() => window.__ground.S.frozen && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const [dl3] = await Promise.all([page.waitForEvent('download'), page.click('#export')]);
+  const zip3 = fs.readFileSync(await dl3.path());
+  const blendHash = (p) => p.evaluate(async () => {
+    const t = await window.__ground.api.pixelsOf('plaza__town-yard', 'M');
+    if (!t) return null;
+    let h = 0; for (let i = 0; i < t.data.length; i += 7) h = (Math.imul(h, 31) + t.data[i]) | 0;
+    return h;
+  });
+  const bh1 = await blendHash(page);
+  const ctxD = await browser.newContext(phone);
+  const pageD = await open(ctxD);
+  await pageD.setInputFiles('#restore', { name: 'backup.zip', mimeType: 'application/zip', buffer: zip3 });
+  await pageD.waitForFunction(() => window.__ground.S.blends['plaza__town-yard'] && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const bh2 = await blendHash(pageD);
+  ok('the zip carries the blend (ground/plaza__town-yard-M.png, the original, and the manifest), and it restores pixel for pixel',
+    zip3.includes(Buffer.from('ground/plaza__town-yard-M.png')) && zip3.includes(Buffer.from('originals/plaza__town-yard-M.png')) && zip3.includes(Buffer.from('"key": "plaza__town-yard"')) && bh1 !== null && bh1 === bh2, { bh1, bh2 });
+  /* one of its grounds made again after it: marked to redo */
+  await put(page, 'plaza', 'A', await makePicture(page, '#ccc0a4', 24));
+  const redo = await page.evaluate(() => ((document.querySelector('[data-blend="plaza__town-yard"] .sw-stale') || {}).textContent || ''));
+  ok('...and when one of its grounds is made again after it, the blend is marked to make again', /Town square was made again after this blend/.test(redo), redo);
+  await page.click('[data-blend="plaza__town-yard"] [data-remove="plaza__town-yard|M"]');
+  await page.waitForFunction(() => !window.__ground.S.blends['plaza__town-yard'] && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const gone = await page.evaluate(() => ({ chip: document.getElementById('blend-chip').textContent, card: (document.querySelector('[data-blend-chip="plaza__town-yard"]') || {}).textContent }));
+  ok('...and it can be removed: the pair mixes without one again', gone.chip === 'optional' && gone.card === 'not made', gone);
+
+  ok('no page errors', page.errs.length === 0 && pageB.errs.length === 0 && pageC.errs.length === 0 && pageP.errs.length === 0 && pageD.errs.length === 0, [...page.errs, ...pageB.errs, ...pageC.errs, ...pageP.errs, ...pageD.errs].slice(0, 3));
 } finally {
   await browser.close();
   server.close();
