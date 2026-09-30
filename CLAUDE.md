@@ -84,8 +84,16 @@ remnant to migrate server-side, not a mode to preserve.
   laid as TWO WHOLE PLAIN MIXES either side of the blend (`BLEND_OFF`, the
   zone 1.4x wider, heights at `BLEND_HEIGHTS` 0.45 to keep it cheap) --
   v2.3.2951's halved changes ran into the zone's end and drew a straight
-  line beside the plan's cell edge, which the owner spotted;
-  WORLD-MAP-PIPELINE "Blend pictures"),
+  line beside the plan's cell edge, which the owner spotted; since
+  v2.3.2953 their big patches are `BLEND_BIG` 1.3x as strong in a zone as
+  much wider (1.7x), so the blend's edges wander as far as a plain mix's;
+  WORLD-MAP-PIPELINE "Blend pictures"; and since v2.3.2953 a picture is
+  made SEAMLESS BY A CUT where its two ends look alike, never a cross-fade
+  -- the old one left three quarters of every tile see-through, two
+  pictures at once (docs/TRAPS.md, averaging two textures is mush) -- the
+  studio remaking saved tiles from the uploads once (`PREP_MADE`):
+  `seamless`/`seamlessPixels` in `public/tools/style/process.js`,
+  WORLD-MAP-PIPELINE "Seamless by a cut"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

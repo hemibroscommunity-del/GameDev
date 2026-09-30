@@ -233,8 +233,23 @@ const MIX_FAMILY = { earth: 1, sand: 1, ash: 1 };
    before, and the changes are as ragged. */
 const BLEND_OFF = 0.4;
 const BLEND_HEIGHTS = 0.45;
+/* v2.3.2953: the owner, on the fixed preview: "Looks better but could use
+   further improvement".  Measured along every straight stretch of the town
+   where the square meets the yards (100 game px windows, the regions
+   blurred as the eye sees them), the blend's two changes still wandered
+   less than a plain mix's edge at their straightest -- the straightest
+   tenth of the windows swayed 17 and 19 game px against 25 -- since each
+   change had only a plain mix's room either side of it.  Now a blend pair's
+   big patches are BLEND_BIG as strong, and its zone as much wider (its
+   end at BLEND_BIG + BLEND_OFF, so the end cuts off no more than before):
+   27 and 23 game px at their straightest, the middle window 43 and 47
+   against 36 and 37, for a town piece about a twelfth longer to lay.
+   (1.5 made bigger bays still, but at twice that cost, for a look the
+   owner's own pictures barely showed.)  Laid on stand-ins, the plain
+   blend-less mix and every other edge are unchanged, to the byte. */
+const BLEND_BIG = 1.3;
 /* the most a blend's zone reaches, in game px, for the margins below */
-const EDGE_MAX_BLEND_GAME = 2 + 1.35 * (1 + BLEND_OFF) * Math.max(...Object.values(MIX));
+const EDGE_MAX_BLEND_GAME = 2 + 1.35 * (BLEND_BIG + BLEND_OFF) * Math.max(...Object.values(MIX));
 export const BLEND_SEP = '__';
 /* one key for a pair of swatches, whichever way round they are named */
 export function blendKey(a, b) { return a < b ? `${a}${BLEND_SEP}${b}` : `${b}${BLEND_SEP}${a}`; }
@@ -950,8 +965,10 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       const n = blendKeys.indexOf(blendKey(cat[rr.upQ].id, cat[rr.loQ].id));
       if (n >= 0) {
         rr.bl = BL0 + n; blendLo[n] = rr.loQ;
-        /* (v2.3.2952: its zone reaches 1 + BLEND_OFF of a plain mix's) */
-        rr.lim = 1 + BLEND_OFF;
+        /* (v2.3.2952: its zone reaches BLEND_OFF past a plain mix's;
+           v2.3.2953: and its big patches are BLEND_BIG as strong, the zone
+           that much wider again) */
+        rr.lim = BLEND_BIG + BLEND_OFF;
         rr.reachT = Math.ceil(((1.5 * rr.reach + 1.35 * rr.ragged * rr.lim) / GPA + 1.5) * 3);
       }
     }
@@ -1082,7 +1099,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
           const px = p % PW, py = (p / PW) | 0;
           for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
             const qx = Math.min(PW - 1, Math.max(0, px + dx)), qy = Math.min(PH - 1, Math.max(0, py + dy)), q = qy * PW + qx;
-            const v = r.mix ? 0.18 * patchAt(q) + mixAt(q) : 0.6 * patchAt(q);
+            const v = r.mix ? 0.18 * patchAt(q) + (r.bl >= 0 ? BLEND_BIG : 1) * mixAt(q) : 0.6 * patchAt(q);
             if (v < lo) lo = v;
             if (v > hi) hi = v;
           }
@@ -1136,7 +1153,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     let patch = 0.6 * ((patchAt(q00) * (1 - ux) + patchAt(q00 + 1) * ux) * (1 - uy) + (patchAt(q00 + PW) * (1 - ux) + patchAt(q00 + PW + 1) * ux) * uy);
     /* v2.3.2950: where two alike grounds MIX, the patches are big -- about
        30 and 75 game px across -- with the small ones only at their rims */
-    if (r.mix) patch = 0.3 * patch + ((mixAt(q00) * (1 - ux) + mixAt(q00 + 1) * ux) * (1 - uy) + (mixAt(q00 + PW) * (1 - ux) + mixAt(q00 + PW + 1) * ux) * uy);
+    if (r.mix) patch = 0.3 * patch + (r.bl >= 0 ? BLEND_BIG : 1) * ((mixAt(q00) * (1 - ux) + mixAt(q00 + 1) * ux) * (1 - uy) + (mixAt(q00 + PW) * (1 - ux) + mixAt(q00 + PW + 1) * ux) * uy);
     /* (the pictures' part is hw x a difference of two heights in 0..1:
        where the patch alone clears it, it cannot change the answer) */
     const hw = r.bl >= 0 ? BLEND_HEIGHTS : r.mix ? MIX_HEIGHTS : 0.7;

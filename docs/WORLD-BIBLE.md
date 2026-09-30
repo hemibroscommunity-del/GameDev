@@ -1322,7 +1322,9 @@ definitely do the swatches."*
 - **48 swatches:** four stages for each of the eight elements (32), the
   commons, the town's yards, street, boardwalk and square, roads, the railway
   bed, lava, and the eight border lands. Each has two versions, mixed by the
-  game so the ground does not repeat.
+  game so the ground does not repeat. Each is made to repeat by a **cut**
+  where its two ends look alike, never by fading one over the other: a fade
+  leaves the stones see-through (v2.3.2953).
 - **Nothing in a swatch runs one way** (v2.3.2944, rule 12 in §6). The
   first Main Street swatch had wagon ruts, which the game tiled sideways
   down every north-south street. The street, road and boardwalk prompts,

@@ -8,7 +8,8 @@
  *                 magenta fringe is taken back out of the edge pixels
  *   splitObjects  a sheet of several objects becomes one picture each
  *   seamless      a ground tile is made to repeat without a visible edge
- *                 (the same per-axis cross-fade as tools/world/bake-trial-world.mjs)
+ *                 (v2.3.2953: by a hard cut where the picture's two ends
+ *                 look alike, no longer the cross-fade the trial bake uses)
  *   snap          reduced to a pixel grid (game px per art pixel) with hard
  *                 edges, then mapped onto ONE palette shared by the whole look,
  *                 with stray single pixels cleaned up (v2.3.2935, despeckle)
@@ -226,32 +227,141 @@ export function splitObjects(src, want = 4) {
   return out;
 }
 
-/* ── seamless ── one axis at a time (see the bake's note on why). */
+/* ── seamless ── v2.3.2953: by an OVERLAP CUT, not a cross-fade.
+   Until now the picture was laid over itself shifted half a tile, faded in
+   across the outer quarter each way (the trial bake's way) -- so three
+   quarters of every tile was two pictures at once.  On the owner's own
+   square, yard and blend pictures (2026-09-30) every stone there came out
+   see-through, the ground between was the low-contrast mush that averaging
+   two textures makes (docs/TRAPS.md, the town seam: the cure is an
+   irregular hard cut), and the middle of the picture showed twice in every
+   tile.  Now the tile repeats every n - ov px: the picture's last ov
+   columns are laid over its first ov, the two meeting along the cheapest
+   path down that strip -- where they already look alike, which runs round
+   the stones, not through them -- so the tile's right side runs on into
+   its left through the picture's own pixels.  Then the rows the same way,
+   that path closing on itself round the tile.  Every pixel is one of the
+   picture's own, none is shown twice, and the tile comes out ov smaller
+   (the callers resize it).  The overlap is whichever of 12-20% of the
+   picture joins best -- ChatGPT's pictures carry a pixel grid of their own,
+   and some overlaps line it up across the join better than others. */
 export function seamless(src) {
   const w = src.width, h = src.height;
-  const pass = (s, axis) => {
-    const out = mk(w, h), og = out.getContext('2d');
-    og.drawImage(s, 0, 0);
-    const cp = mk(w, h), cg = cp.getContext('2d');
-    const hw = Math.floor(w / 2), hh = Math.floor(h / 2);
-    if (axis === 'x') { cg.drawImage(s, -hw, 0); cg.drawImage(s, w - hw, 0); }
-    else { cg.drawImage(s, 0, -hh); cg.drawImage(s, 0, h - hh); }
-    const m = mk(w, h), mg = m.getContext('2d');
-    const img = mg.createImageData(w, h);
-    const n = axis === 'x' ? w : h, r = n / 4;
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const q = axis === 'x' ? x : y;
-      const e = Math.min(q, n - 1 - q);
-      const v = e >= r ? 0 : 1 - e / r;
-      img.data[(y * w + x) * 4 + 3] = Math.round(255 * v * v * (3 - 2 * v));
+  const r = seamlessPixels(ctx2d(src).getImageData(0, 0, w, h).data, w, h);
+  const out = mk(r.w, r.h);
+  out.getContext('2d').putImageData(new ImageData(r.data, r.w, r.h), 0, 0);
+  return out;
+}
+
+/* The same on RGBA pixels (no canvas, so Node can test it):
+   { data, w, h, overlap } */
+export function seamlessPixels(data, w, h, overlap = 0) {
+  const n = Math.min(w, h);
+  const ov = overlap || bestOverlap(data, w, h, Math.max(4, Math.round(n * 0.12)), Math.max(4, Math.round(n * 0.2)));
+  const a = overlapCut(data, w, h, true, ov);
+  const b = overlapCut(a.data, a.w, a.h, false, ov);
+  return { data: b.data, w: b.w, h: b.h, overlap: ov };
+}
+
+/* how unlike two pixels are (brightness counting most) */
+const unlike = (d, i, j) => {
+  const r = d[i] - d[j], g = d[i + 1] - d[j + 1], b = d[i + 2] - d[j + 2];
+  return r * r * 0.3 + g * g * 0.59 + b * b * 0.11;
+};
+
+/* One axis: the picture made to repeat every W - ov px along it (x when
+   `alongX`, else y).  u runs along that axis, v across it; the cut is one u
+   per v, in [1, ov - 2] -- the tile's first pixel must be the picture's end
+   laid over (it runs on from the tile's last), its pixel ov - 1 the
+   picture's start going on.  The rows' pass (the second) closes the path on
+   itself, so the tile still repeats along x. */
+function overlapCut(data, w, h, alongX, ov) {
+  const W = alongX ? w : h, H = alongX ? h : w, P = W - ov;
+  const at = alongX ? (u, v) => (v * w + u) * 4 : (u, v) => (u * w + v) * 4;
+  /* the cost of the join at each place in the strip, over a 5 x 5 box: a
+     cut beside a stone in one picture and not the other costs as much as
+     one through it */
+  const e0 = new Float32Array(ov * H), e1 = new Float32Array(ov * H), e = new Float32Array(ov * H);
+  for (let v = 0; v < H; v++) for (let u = 0; u < ov; u++) e0[v * ov + u] = unlike(data, at(u, v), at(u + P, v));
+  for (let v = 0; v < H; v++) for (let u = 0; u < ov; u++) {
+    let s = 0;
+    for (let k = -2; k <= 2; k++) s += e0[v * ov + Math.min(ov - 1, Math.max(0, u + k))];
+    e1[v * ov + u] = s;
+  }
+  for (let v = 0; v < H; v++) for (let u = 0; u < ov; u++) {
+    let s = 0;
+    for (let k = -2; k <= 2; k++) s += e1[(alongX ? Math.min(H - 1, Math.max(0, v + k)) : (v + k + H) % H) * ov + u];
+    e[v * ov + u] = s;
+  }
+  const cut = cheapestPath(e, ov, H, 1, ov - 2, !alongX);
+  const OW = alongX ? P : w, OH = alongX ? h : P, out = new Uint8ClampedArray(OW * OH * 4);
+  for (let v = 0; v < H; v++) for (let u = 0; u < P; u++) {
+    const i = (alongX ? v * OW + u : u * OW + v) * 4, j = at(u < cut[v] ? u + P : u, v);
+    out[i] = data[j]; out[i + 1] = data[j + 1]; out[i + 2] = data[j + 2]; out[i + 3] = data[j + 3];
+  }
+  return { data: out, w: OW, h: OH };
+}
+
+/* The cheapest path through costs e (n wide, H long), one u in [lo, hi] per
+   v, moving at most one a step.  Closed: its last u within one of its first
+   -- tried from where the free path starts and ends and from the few
+   cheapest places in the first row, keeping the cheapest. */
+function cheapestPath(e, n, H, lo, hi, closed) {
+  const m = hi - lo + 1;
+  const run = (start) => {
+    let C = new Float64Array(m), N = new Float64Array(m);
+    const from = new Int16Array(m * H);
+    for (let k = 0; k < m; k++) C[k] = start < 0 || k === start ? e[lo + k] : Infinity;
+    for (let v = 1; v < H; v++) {
+      for (let k = 0; k < m; k++) {
+        let b = C[k], bk = k;
+        if (k > 0 && C[k - 1] < b) { b = C[k - 1]; bk = k - 1; }
+        if (k < m - 1 && C[k + 1] < b) { b = C[k + 1]; bk = k + 1; }
+        N[k] = b + e[v * n + lo + k];
+        from[v * m + k] = bk;
+      }
+      [C, N] = [N, C];
     }
-    mg.putImageData(img, 0, 0);
-    cg.globalCompositeOperation = 'destination-in';
-    cg.drawImage(m, 0, 0);
-    og.drawImage(cp, 0, 0);
-    return out;
+    let best = Infinity, bk = 0;
+    for (let k = 0; k < m; k++) if ((start < 0 || Math.abs(k - start) <= 1) && C[k] < best) { best = C[k]; bk = k; }
+    const path = new Int32Array(H);
+    for (let v = H - 1; v >= 0; v--) { path[v] = lo + bk; bk = from[v * m + bk]; }
+    return { cost: best, path };
   };
-  return pass(pass(src, 'x'), 'y');
+  const free = run(-1);
+  if (!closed) return free.path;
+  const starts = new Set([free.path[0] - lo, free.path[H - 1] - lo]);
+  const first = [...Array(m).keys()].sort((a, b) => e[lo + a] - e[lo + b]);
+  for (const k of first.slice(0, 6)) starts.add(k);
+  let best = null;
+  for (const s of starts) { const r = run(s); if (!best || r.cost < best.cost) best = r; }
+  return best.path;
+}
+
+/* Which overlap in [lo, hi] joins best, both ways: every third one tried
+   on every other row and column (the join's cost along its cheapest path,
+   unsmoothed), the cheapest kept */
+function bestOverlap(data, w, h, lo, hi) {
+  let best = lo, bestCost = Infinity;
+  for (let ov = lo; ov <= hi; ov += 3) {
+    let cost = 0;
+    for (const alongX of [true, false]) {
+      const W = alongX ? w : h, H = alongX ? h : w, P = W - ov;
+      const at = alongX ? (u, v) => (v * w + u) * 4 : (u, v) => (u * w + v) * 4;
+      const m = Math.floor((ov - 2) / 2);
+      let C = new Float64Array(m), N = new Float64Array(m);
+      for (let v = 0; v < H; v += 2) {
+        for (let k = 0; k < m; k++) {
+          const c = unlike(data, at(1 + 2 * k, v), at(1 + 2 * k + P, v));
+          N[k] = v === 0 ? c : c + Math.min(C[k], k > 0 ? C[k - 1] : Infinity, k < m - 1 ? C[k + 1] : Infinity);
+        }
+        [C, N] = [N, C];
+      }
+      cost += Math.min(...C);
+    }
+    if (cost < bestCost) { bestCost = cost; best = ov; }
+  }
+  return best;
 }
 
 /* A good-quality shrink: halve while more than twice too big, then the rest. */

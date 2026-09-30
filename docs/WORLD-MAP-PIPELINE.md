@@ -460,7 +460,9 @@ ground swatches the Wheel needs (World Bible §13):
   if a brief ever asks for one again. Each picture now records the brief it
   was made from, and a swatch made from an older one says **"Made from an
   older prompt … make this one again"** on its card.
-- **Each picture brought back** is squared, made seamless, shrunk to one
+- **Each picture brought back** is squared, made seamless (since v2.3.2953
+  by a hard cut where its two ends look alike, not a cross-fade: see
+  "Seamless by a cut" below), shrunk to one
   1,024 px tile covering 512 game px (2 px per game px since v2.3.2942: the
   1.5 game px grid blew ChatGPT's picture up, soft and gritty), and moved
   onto the one shared palette with
@@ -826,8 +828,9 @@ whole plain mixes** (v2.3.2952): the upper ground gives way to the blend a
 little way (`BLEND_OFF`, 0.4 of a zone) to one side of the line, and the
 blend to the lower ground the same way to the other, each change with a
 plain mix's ramp, big patches and room, the pictures' heights shaping their
-rims (at `BLEND_HEIGHTS`, 0.45). The zone of a pair with a blend is that
-much wider (1.4 times). Both changes are judged everywhere, so nothing jumps
+rims (at `BLEND_HEIGHTS`, 0.45), their big patches 1.3 times as strong as
+a plain mix's (`BLEND_BIG`, v2.3.2953). The zone of a pair with a blend is
+that much wider (1.7 times). Both changes are judged everywhere, so nothing jumps
 at the line; the blend is most at the line and none is left at the zone's
 sides (at the owner's spot, with stand-in pictures: 64% of the ground at the
 line, about 40–50% 12 game px either side, none 60 game px out). Every pixel
@@ -850,6 +853,28 @@ keys, so pieces laid apart still meet with no seam. `composeGround(...,
 > 30). A test holds it there.
 >
 > ![The studio's preview at the same spot: v2.3.2951 (left), the bottom of the dirt patch ending in a straight line; v2.3.2952 (right)](world/blend-edge-fix.png)
+
+> **v2.3.2953, the second.** Owner, on that fix: *"Looks better but could
+> use further improvement."* Two things were still wrong, and the larger
+> was not the edge at all: the pictures' stones were see-through, which the
+> seamless step did to every picture (next section). The edge itself:
+> measured along every straight stretch of the town where the square meets
+> the yards (the regions blurred as the eye sees them, every 100 game px
+> window), the two changes still wandered less than a plain mix's edge at
+> their straightest, the straightest tenth of the windows swaying 17 and 19
+> game px against a plain mix's 25, because each change had only a plain
+> mix's room. Now a blend pair's big patches are `BLEND_BIG` (1.3) times as
+> strong, in a zone as much wider, so the zone's end cuts off no more than
+> before: 27 and 23 game px at their straightest, the middle window 43 and
+> 47 against 36 and 37. At the bottom of the Town Hall's plot the yards' end
+> now wanders 12.4 game px (a plain mix's 12.6), its straightest stretch 13
+> game px (a plain mix's 33). Tried and not taken: 1.5 times (bigger bays
+> still, at twice the cost, hardly visible in the owner's pictures); a blend
+> of varying width, in patches with gaps (a third dearer, and straighter
+> at its straightest); and softened zone ends (straighter still). Pairs without a blend, and every
+> other edge, are unchanged to the byte.
+>
+> ![Stand-in colours round the owner's spot (the square red, the yards green, the blend yellow): v2.3.2952 (left) and v2.3.2953 (right), the yards' block wandering in bigger bays](world/blend-edges-2953.png)
 
 **Where they come from.**
 
@@ -874,13 +899,13 @@ keys, so pieces laid apart still meet with no seam. `composeGround(...,
   them. The trial's readout says `blends  N made`.
 
 **Cost**, measured on the owner's own pictures, laid the way the game's
-worker lays them (desktop Chromium), since v2.3.2952:
+worker lays them (desktop Chromium), since v2.3.2953:
 
 | | without the blend | with it |
 |---|---|---|
-| a piece of town ground | about 23 ms | about 27 ms (a fifth more: the blend's zone is wider) |
+| a piece of town ground | about 22 ms | about 29 ms (27 in v2.3.2952: the blend's zone is wider again) |
 | pieces its zone does not reach | | no difference |
-| the Wheel trial, walking out of town and back | 44 ms a piece on average (v2.3.2951) | 50 ms, still no ground late on screen |
+| the Wheel trial, walking out of town and back | 44 ms a piece on average (v2.3.2951) | 49–51 ms (54 for v2.3.2952 in the same session: runs vary that much); one piece a moment late on screen in each of two walks, none with v2.3.2952 |
 | memory while near the pair | | 1 MB more (the town's busiest piece needs 13 pictures of the 16 kept) |
 | download, the first time near the pair | | one picture, about 0.9 MB |
 | unpacking it | | about 50 ms, once, in the worker |
@@ -893,18 +918,72 @@ a time.)
 The cost that counts is making the pictures: 42 pairs of alike grounds
 touch on the Wheel. Start with the town square.
 
-**Tests.** `node tools/world/test-world-core.mjs` (126): the key and its
+**Tests.** `node tools/world/test-world-core.mjs` (131): the key and its
 pair; square -> blend -> yards at the owner's spot, the blend most at the
 line and gone at the sides; every pixel one of the three pictures', `mat`
 naming only real swatches; halves the same as whole; a blend for a pair
-that does not mix, or none, changing nothing; and (v2.3.2952) the yards
-turning into the blend along a ragged line at the bottom of the Town Hall's
-plot, wandering nearly as much as a plain mix's and never straight for long. `node tools/qa/ground-studio.mjs`
-(54): the card, the prompt, a blend in and on the palette without shifting
+that does not mix, or none, changing nothing; and (v2.3.2952, tightened in
+v2.3.2953) the yards turning into the blend along a ragged line at the
+bottom of the Town Hall's plot, wandering at least nine tenths as much as a
+plain mix's, its straightest stretch under half a plain mix's. `node tools/qa/ground-studio.mjs`
+(55): the card, the prompt, a blend in and on the palette without shifting
 it, laid in the preview to the pixel, marked to redo, through the zip and
 back, removed. `node tools/qa/mp/run.mjs wheeltrial` (31): a blend made in
 the studio is found by the game, named in the readout, and laid on screen
 between the square and the yards.
+
+## Seamless by a cut, not a fade (v2.3.2953)
+
+> Owner, 2026-09-30, on the blend's fixed edge: *"Looks better but could use
+> further improvement."*
+
+Looked at again in their own pictures, the largest thing wrong was in every
+picture, not at the edge: **stones you could see through**. ChatGPT's
+pictures do not repeat on their own (on the owner's, the two ends of a
+picture differ two to five times as much as neighbouring columns do), so
+the Ground Studio makes each one repeat. It did so with the trial bake's
+cross-fade: the picture laid over itself shifted half a tile, faded in
+across the outer quarter each way. Three quarters of every tile was
+therefore two pictures at once: every stone there see-through, the ground
+between them the low-contrast mush that averaging two textures makes (the
+town-seam trap in `docs/TRAPS.md`), and the middle of the picture shown
+twice in every tile, so the ground repeated at half the picture's size.
+
+**Now** (`seamless` in `public/tools/style/process.js`, `seamlessPixels` on
+bare pixels): the tile repeats every *n − overlap* px. The picture's last
+*overlap* columns are laid over its first, and the two meet along the
+cheapest path down that strip, where they already look alike. That path
+runs round the stones, not through them: it is found by dynamic
+programming, each place costing how unlike the two pictures are over a
+5 × 5 box, so a cut beside a stone in one picture costs as much as a cut
+through it. Then the rows the same way, that path closing on itself round
+the tile so it still repeats both ways. Every pixel is one of the picture's
+own, none is shown twice, and the picture keeps its contrast (the owner's
+square: 11.1 against 11.2 as uploaded, the cross-fade's 10.0). The overlap
+is whichever of 12–20% of the picture joins best: ChatGPT's pictures carry
+a pixel grid of their own, about 6.4 px, and some overlaps line it up
+across the join better than others. The tile comes out that much smaller
+(about 1,050 px of a 1,254 px picture) and is shrunk to 1,024 as before.
+Making a picture seamless takes about a third of a second on a desktop.
+
+**Pictures already saved are remade, once.** The first time the Ground
+Studio opens, tiles saved the old way are made again from the pictures as
+uploaded. A line on the page counts them ("Making your pictures seamless
+the new way, once: 2 of 4…", about half a second each on a desktop), and
+the mark `prepMade` in its storage says it is done. A restored zip is
+always made from its originals. The game's worker reads the remade tiles.
+
+![The owner's pictures at their spot, laid with the same edges: made seamless by the old cross-fade (left), the stones see-through, and by the cut (right)](world/seamless-fix.png)
+
+**Tests.** `node tools/world/test-world-core.mjs` ("seamless"): a
+ChatGPT-shaped picture (a coarse pixel grid, stones with rims, not
+repeating) comes back square and an overlap of 12–20% smaller. Every pixel
+is a colour the picture has (the cross-fade made 46% of them new), it is as
+contrasty as it was, it repeats across its own edges, and it comes out the
+same every time. `node tools/qa/ground-studio.mjs`: on the next load, tiles
+saved without the mark are remade from the uploads, the same to the pixel,
+and the mark is put back. The Style Lab uses the same step
+(`node tools/qa/style-lab.mjs`, 34, unchanged).
 
 ---
 

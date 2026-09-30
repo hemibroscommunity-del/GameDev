@@ -280,6 +280,22 @@ try {
   ok('everything survives a reload, the same to the pixel', h1.h === h2.h && h2.n === 6 && h2.frozen, { h1, h2 });
   const saved2 = await page.evaluate(() => document.getElementById('saved-chip').textContent);
   ok('...and after the reload the page still says they are saved', saved2 === '6 saved', saved2);
+  /* v2.3.2953: tiles saved before the seamless step changed (the cross-fade
+     that left the stones see-through) are made again from the uploads, once:
+     the mark taken away and one saved tile spoiled, a reload must bring
+     back every swatch the same to the pixel, and put the mark back */
+  await page.evaluate(async () => {
+    const S = window.__ground.S, c = document.createElement('canvas');
+    c.width = c.height = 1024;
+    const g = c.getContext('2d'); g.fillStyle = '#ff00ff'; g.fillRect(0, 0, 1024, 1024);
+    await S.store.put('prep', 'commons|A', await new Promise((r) => c.toBlob(r, 'image/png')));
+    await S.store.del('misc', 'prepMade');
+  });
+  await page.close();
+  page = await open(ctxA);
+  const h2b = await hashOf(page);
+  const madeMark = await page.evaluate(() => window.__ground.S.store.get('misc', 'prepMade'));
+  ok('saved tiles made the old way are made again from the uploads, once, the same to the pixel', h2b.h === h1.h && h2b.n === 6 && /v2\.3\.2953/.test(madeMark || ''), { h1, h2b, madeMark });
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#export')]);
   const zipPath = await dl.path();
   const zipBytes = fs.readFileSync(zipPath);

@@ -24,6 +24,8 @@
  *             colour cast, re-invented texture) are put back where they
  *             belong and join cleanly; a picture that ignores its template
  *             grades "bad"
+ *   seamless  (v2.3.2953) a ground picture made to repeat by a cut where its
+ *             ends look alike: every pixel its own, as contrasty as it was
  *   zip       backups round-trip
  *
  * The fuse cases run on a procedurally painted test image rather than a real
@@ -671,8 +673,12 @@ console.log('ground');
   };
   const plainE = yardsEnd(composeGround(PLAN, bp, mm, plotR, mixTiles, { scale: 3 }));
   const blendE = yardsEnd(composeGround(PLAN, bp, mm, plotR, mixTiles, { scale: 3, blends: { [blendKey('plaza', 'town-yard')]: blTile } }));
+  /* (v2.3.2953, "Looks better but could use further improvement": the
+     blend's big patches BLEND_BIG as strong in a zone as much wider -- it
+     now wanders as far as a plain mix's, 12.4 game px to 12.6 (11 before),
+     its straightest stretch 13 game px, a plain mix's 33 (17 before)) */
   ok(`...and the yards turn into the blend along a ragged line, not a straight one (the bottom of the Town Hall's plot: it wanders ${blendE.spread} game px against a plain mix's ${plainE.spread}, its straightest stretch ${blendE.straight} game px against ${plainE.straight})`,
-    plotLineY !== null && blendE.spread >= 0.7 * plainE.spread && blendE.straight <= 0.75 * plainE.straight, { plotLineY, plainE, blendE });
+    plotLineY !== null && blendE.spread >= 0.9 * plainE.spread && blendE.straight <= 0.5 * plainE.straight, { plotLineY, plainE, blendE });
   ok("...each pair with its own edge: a road's narrow, sand drifting wider than grass; two of a kind interlock evenly",
     rc('ember-3', 'road').ragged < rc('commons', 'road').ragged && rc('commons', 'road').ragged < rc('sky-2', 'road').ragged &&
     rc('commons', 'road').reach > 0 && rc('verdant-1', 'commons').even && rc('verdant-1', 'commons').reach === 0);
@@ -916,6 +922,55 @@ console.log('fuse');
     if (Math.abs(good.out.data[o] - world.data[o]) > 2) { borderSame = false; break; }
   }
   ok('with every side finished the border keeps the finished pixels', borderSame);
+}
+
+/* ── seamless ── v2.3.2953: the Ground Studio's (and the Style Lab's) tile
+   is made to repeat by an overlap cut, not a cross-fade: on the owner's
+   pictures the cross-fade left every stone in three quarters of the tile
+   see-through.  A ChatGPT-shaped picture -- a coarse pixel grid of four
+   colours, stones of three greys with a dark rim, NOT seamless -- must come
+   back repeating, every pixel one of its own (a cross-fade makes colours in
+   between), as contrasty as it was (averaging two textures is mush:
+   docs/TRAPS.md), and a square an overlap of 12-20% smaller. */
+console.log('seamless');
+{
+  const N = 600, d = new Uint8ClampedArray(N * N * 4), rr = mulberry32(2953);
+  const ground = [[196, 150, 92], [214, 170, 110], [180, 136, 80], [228, 186, 126]];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const c = ground[(Math.floor(x / 6) * 7 + Math.floor(y / 6) * 13 + (Math.floor(x / 30) + Math.floor(y / 42)) * 3) % 4], o = (y * N + x) * 4;
+    d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+  }
+  const greys = [[150, 150, 160], [178, 176, 186], [120, 118, 132]], rim = [70, 66, 80];
+  for (let k = 0; k < 40; k++) {
+    const cx = rr() * N, cy = rr() * N, r = 8 + rr() * 16, c = greys[k % 3];
+    for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(N - 1, Math.ceil(cy + r)); y++) for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(N - 1, Math.ceil(cx + r)); x++) {
+      const e = Math.hypot(x - cx, y - cy);
+      if (e > r) continue;
+      const cc = e > r - 2 ? rim : c, o = (y * N + x) * 4;
+      d[o] = cc[0]; d[o + 1] = cc[1]; d[o + 2] = cc[2];
+    }
+  }
+  const { seamlessPixels } = await import('../../public/tools/style/process.js');
+  const t = seamlessPixels(d, N, N);
+  const key = (a, i) => (a[i] << 16) | (a[i + 1] << 8) | a[i + 2];
+  const own = new Set();
+  for (let i = 0; i < d.length; i += 4) own.add(key(d, i));
+  let foreign = 0;
+  for (let i = 0; i < t.data.length; i += 4) if (!own.has(key(t.data, i))) foreign++;
+  const jump = (a, w, i, j) => Math.abs(a[i] - a[j]) + Math.abs(a[i + 1] - a[j + 1]) + Math.abs(a[i + 2] - a[j + 2]);
+  const contrast = (a, w, h) => { let s = 0; for (let y = 0; y < h; y++) for (let x = 0; x < w - 1; x++) s += jump(a, w, (y * w + x) * 4, (y * w + x + 1) * 4); return s / (h * (w - 1)); };
+  let wrapC = 0, wrapR = 0;
+  for (let y = 0; y < t.h; y++) wrapC += jump(t.data, t.w, (y * t.w + t.w - 1) * 4, y * t.w * 4);
+  for (let x = 0; x < t.w; x++) wrapR += jump(t.data, t.w, ((t.h - 1) * t.w + x) * 4, x * 4);
+  const cPic = contrast(d, N, N), cTile = contrast(t.data, t.w, t.h);
+  ok(`a picture comes back a square ${t.overlap} px (${(100 * t.overlap / N).toFixed(0)}%) smaller, the overlap its two ends were cut together in`,
+    t.w === t.h && t.w === N - t.overlap && t.overlap >= 0.12 * N - 1 && t.overlap <= 0.2 * N + 1, { w: t.w, h: t.h, overlap: t.overlap });
+  ok(`...every pixel one of the picture's own: nothing seen through anything (${foreign} pixels of a colour it does not have)`, foreign === 0, foreign);
+  ok(`...as contrasty as the picture itself, not mush (${cTile.toFixed(1)} against ${cPic.toFixed(1)})`, cTile >= 0.95 * cPic && cTile <= 1.05 * cPic, { cTile, cPic });
+  ok(`...and it repeats: across its own edges it changes no more than between the picture's neighbouring pixels (${(wrapC / t.h).toFixed(1)} and ${(wrapR / t.w).toFixed(1)} against ${cPic.toFixed(1)})`,
+    wrapC / t.h <= 2.5 * cPic && wrapR / t.w <= 2.5 * cPic, { wrapC: wrapC / t.h, wrapR: wrapR / t.w, cPic });
+  const t2 = seamlessPixels(d, N, N);
+  ok('...the same every time', t2.overlap === t.overlap && t2.data.every((v, i) => v === t.data[i]));
 }
 
 /* ── zip ── */

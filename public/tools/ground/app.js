@@ -4,7 +4,10 @@
  *   1. copy its prompt (prompts.js) into a new ChatGPT chat, with the style
  *      key attached (only the key since v2.3.2939: the bro is simpler pixel
  *      art than the world, so he is the size check here, not the reference);
- *   2. bring the picture back: it is made seamless, kept as one 1024 px tile
+ *   2. bring the picture back: it is made seamless (v2.3.2953: by a hard
+ *      cut where its two ends look alike, so no stone is see-through --
+ *      style/process.js; saved tiles made the old way are remade on load,
+ *      PREP_MADE), kept as one 1024 px tile
  *      covering 512 game px -- 2 px per game px, about the phone's own
  *      sharpness (style/bible.js, v2.3.2942: it used to be shrunk onto a
  *      1.5 game px grid and stretched back, which the owner saw as "soft and
@@ -67,6 +70,9 @@ const PIECES = edgePiecesOn(location.search);
 /* v2.3.2951: a pair of alike grounds' BLEND picture, kept under the pair's
    key (blendKey) as this version */
 const BLEND = 'M';
+/* v2.3.2953: how the saved seamless tiles ('prep') were made -- saved in
+   'misc'; tiles made any other way are made again from the uploads */
+const PREP_MADE = 'overlap-cut v2.3.2953';
 const VIEW_H = 1024;          /* game px of height on the phone, as the game shows (worldViewport.js) */
 const FOOT = 0.56;            /* where the bro stands, as a share of the screen's height */
 const MARGIN = 48;            /* plan art px composed beyond the view, so a short drag needs no new ground */
@@ -309,21 +315,34 @@ async function removePicture(id, ver) {
 
 async function loadAll() {
   const keys = await S.store.keys('raw');
+  /* v2.3.2953: tiles made seamless the old way (the cross-fade that left
+     the stones see-through, style/process.js) are made again, once, from
+     the pictures as uploaded; edge pieces were never made seamless */
+  const remake = (await S.store.get('misc', 'prepMade')) !== PREP_MADE;
+  const redo = remake ? keys.filter((k) => !String(k).endsWith(`|${EDGE}`)).length : 0;
+  let done = 0;
   for (const k of keys) {
     const rec = await S.store.get('raw', k);
     if (!rec || !rec.blob) continue;
     S.raw.set(k, { blob: rec.blob, name: rec.name || '', brief: rec.brief || null, at: rec.at || null });
-    const pb = await S.store.get('prep', k);
+    const ver = String(k).split('|')[1];
     let kept = null;
+    if (remake && ver !== EDGE) {
+      $('status').textContent = `Making your pictures seamless the new way, once: ${++done} of ${redo}…`;
+      /* (an upload that will not decode now keeps the tile it had) */
+      try { kept = await keepPrep(await prepareFor(ver, rec.blob)); await S.store.put('prep', k, kept.png); } catch (e) { kept = null; }
+    }
+    const pb = kept ? null : await S.store.get('prep', k);
     if (pb) {
       try { const c = await blobToImg(pb); if (c.width === TILE) kept = await keepPrep(c, pb); else release(c); } catch (e) { kept = null; }
     }
     if (!kept) {
-      kept = await keepPrep(await prepareFor(String(k).split('|')[1], rec.blob));
+      kept = await keepPrep(await prepareFor(ver, rec.blob));
       await S.store.put('prep', k, kept.png);
     }
     S.prep.set(k, kept);
   }
+  if (remake) await S.store.put('misc', 'prepMade', PREP_MADE);
   const pal = await S.store.get('misc', 'palette');
   if (pal && pal.frozen && pal.colours) { S.palette = pal.colours; S.frozen = true; } else rebuildPalette();
   await finalizeAll();

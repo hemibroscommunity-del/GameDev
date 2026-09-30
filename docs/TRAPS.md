@@ -461,6 +461,18 @@ for: not "smoother than its surroundings" (that is blur) but "the same".
 
 **Receipt:** `tools/maps/build-town-v17.mjs` and its header.
 
+**Fallen into again (v2.3.2953).** The Ground Studio made every ChatGPT
+ground picture repeat with the trial bake's cross-fade: the picture laid
+over itself shifted half a tile, faded across the outer quarter each way.
+That is three quarters of every tile averaged from two pictures, and on
+the owner's own pictures it showed: every stone there see-through, the dirt
+lower in contrast (10.0 against 11.2). The owner saw only that the ground
+"could use further improvement". The fix was the same irregular hard cut,
+along the cheapest path where the picture's two ends already look alike
+(`seamless` in `public/tools/style/process.js`). The test that now guards
+it checks that every pixel is a colour the picture has and that the
+contrast is unchanged, not that the seam is smooth.
+
 ## §24 — Reading a timeout's constant instead of its clock (v2.3.1913)
 
 **Tempting:** the owner reports characters idling in the world for
