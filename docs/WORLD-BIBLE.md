@@ -1325,8 +1325,8 @@ definitely do the swatches."*
 - **Nothing in a swatch runs one way** (v2.3.2944, rule 12 in §6). The
   first Main Street swatch had wagon ruts, which the game tiled sideways
   down every north-south street. The street, road and boardwalk prompts,
-  and five others that asked for tracks, ripples, rows or streaks, were
-  rewritten, and the Ground Studio marks any swatch made from an older
+  and eight others that asked for tracks, ripples, rows, streaks or long
+  plates and wires, were rewritten, and the Ground Studio marks any swatch made from an older
   prompt. Ruts, rails and plank lines that really follow a road will be
   objects laid along it.
 - **The phone composes the ground** from the swatches as you walk, so the

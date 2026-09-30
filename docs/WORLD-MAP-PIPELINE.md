@@ -452,9 +452,10 @@ ground swatches the Wheel needs (World Bible §13):
   sideways and it doesn't look good. Any specific detail that would look bad
   when placed in the wrong direction tiled is probably not a good prompt."*
   A swatch is laid the same way up everywhere, so every prompt now says so
-  (`NO_DIRECTION`), and eight briefs that asked for ruts, planks, tracks,
-  ripples, rows or streaks were rewritten (the street, the road, the
-  boardwalk as a basket weave, and five stages and borders). A test fails
+  (`NO_DIRECTION`), and eleven briefs that asked for ruts, planks, tracks,
+  ripples, rows or streaks, or long plates and wires, were rewritten (the
+  street, the road, the boardwalk as a basket weave, and eight stages and
+  borders). A test fails
   if a brief ever asks for one again. Each picture now records the brief it
   was made from, and a swatch made from an older one says **"Made from an
   older prompt … make this one again"** on its card.
