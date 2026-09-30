@@ -74,6 +74,8 @@
   .sw-head { display:flex; gap:8px; align-items:baseline; justify-content:space-between; flex-wrap:wrap; }
   .sw-name { font-weight:700; }
   .sw-where { font-size:13px; color:var(--mut); }
+  .saved-list { margin:4px 0 8px; padding-left:20px; }
+  .saved-list li { margin:2px 0; }
   .sw-stale { font-size:13px; color:#FFD9A0; background:rgba(216,168,95,.12); border:1px solid rgba(216,168,95,.45); border-radius:8px; padding:8px 10px; margin-top:8px; }
   .vers { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
   .ver { border:1px dashed rgba(216,168,95,.45); border-radius:8px; padding:8px; min-width:0; }
@@ -96,9 +98,21 @@
     <p class="sub">BroTown's ground, made from about fifty seamless swatches in HD pixel art and laid onto the Wheel by the game.</p>
     <!-- v2.3.2942: the version on the page, so the owner can tell a stale
          copy (a phone's cached page) from the latest without asking -->
-    <p class="mut" id="ver">Version v2.3.2945: the town's street, boardwalks and square have straight edges.</p>
+    <p class="mut" id="ver">Version v2.3.2946: the page says what is saved on this phone.</p>
     <p class="mut" id="status">Building the plan…</p>
   </header>
+
+  <!-- v2.3.2946, owner: "I can't tell if the ground studio has saved what I
+       put in earlier."  What is saved here, where "here" is, and the trap:
+       the Claude app's built-in browser and Safari keep separate copies. -->
+  <section class="card" id="saved">
+    <h2>Saved on this phone <span id="saved-chip" class="chip">checking…</span></h2>
+    <p id="saved-line">Looking for your swatches…</p>
+    <ul id="saved-list" class="saved-list" hidden></ul>
+    <p id="saved-when" class="mut" hidden></p>
+    <p class="mut">Your pictures are saved in <b>this browser</b> only, never uploaded. The Claude app's built-in browser and Safari keep <b>separate</b> copies: if your swatches are missing, open this page the other way. To keep everything in one place, tap the compass button (Open in Safari) and use Safari from then on. <b>Download all</b> (at the bottom) is your backup, and <b>Restore</b> moves it to any browser.</p>
+    <p class="mut" id="saved-keep" hidden></p>
+  </section>
 
   <section class="card">
     <h2>How it works</h2>

@@ -202,9 +202,10 @@ async function addPicture(id, ver, blob, name) {
   /* v2.3.2944: the brief it was made from, so a later rewrite of that brief
      can say "make this one again" (renderSwatch) */
   const brief = S.byId[id] ? S.byId[id].brief : '';
-  S.raw.set(k, { blob, name: name || '', brief });
+  const at = Date.now();   /* v2.3.2946: when, for "Saved on this phone" */
+  S.raw.set(k, { blob, name: name || '', brief, at });
   S.prep.set(k, kept);
-  await S.store.put('raw', k, { blob, name: name || '', type: blob.type || '', brief });
+  await S.store.put('raw', k, { blob, name: name || '', type: blob.type || '', brief, at });
   await S.store.put('prep', k, kept.png);
   if (rebuildPalette()) { await finalizeAll(); await savePalette(); } else await finalize(id);
 }
@@ -221,7 +222,7 @@ async function loadAll() {
   for (const k of keys) {
     const rec = await S.store.get('raw', k);
     if (!rec || !rec.blob) continue;
-    S.raw.set(k, { blob: rec.blob, name: rec.name || '', brief: rec.brief || null });
+    S.raw.set(k, { blob: rec.blob, name: rec.name || '', brief: rec.brief || null, at: rec.at || null });
     const pb = await S.store.get('prep', k);
     let kept = null;
     if (pb) {
@@ -576,6 +577,52 @@ function renderCount() {
   $('count').textContent = `${made} of ${S.cat.length}`;
   $('count').className = made ? 'chip ok' : 'chip';
   $('status').textContent = made ? `${made} of ${S.cat.length} swatches made${both ? `, ${both} with a second version` : ''}.` : `${S.cat.length} swatches to make. Start with the commons, a road and one spoke's first stage.`;
+  renderSaved();
+}
+
+/* v2.3.2946, owner: "I can't tell if the ground studio has saved what I put
+   in earlier."  The answer, at the top of the page: what this browser has,
+   by name, and when the last picture went in. */
+function renderSaved() {
+  const names = S.cat.filter((e) => S.tiles[e.id]).map((e) => {
+    const vers = VERS.filter((v) => S.prep.has(kv(e.id, v)));
+    return vers.length > 1 ? `${e.name} (A and B)` : e.name;
+  });
+  let last = 0;
+  for (const r of S.raw.values()) if (r && r.at > last) last = r.at;
+  const chip = $('saved-chip'), line = $('saved-line'), list = $('saved-list'), when = $('saved-when');
+  chip.textContent = names.length ? `${names.length} saved` : 'none yet';
+  chip.className = names.length ? 'chip ok' : 'chip';
+  list.textContent = '';
+  list.hidden = !names.length;
+  when.hidden = !(names.length && last);
+  if (!names.length) {
+    line.textContent = 'Nothing is saved in this browser yet. If you made swatches before, they are in the other browser (see below).';
+    return;
+  }
+  line.textContent = `${names.length === 1 ? 'This swatch is' : `These ${names.length} swatches are`} saved here:`;
+  /* a list, not a sentence: some names have "and" in them */
+  for (const n of names) list.appendChild(el('li', null, n));
+  if (last) when.textContent = `The last picture went in ${whenText(last)}.`;
+}
+function whenText(t) {
+  const d = new Date(t), now = new Date();
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return `today at ${time}`;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return `yesterday at ${time}`;
+  return `on ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${time}`;
+}
+
+/* Ask the browser to keep this site's storage rather than clear it when
+   space runs low (Safari can clear a site's storage).  Said on the page
+   only when it agrees. */
+async function keepStorage() {
+  try {
+    if (!navigator.storage || !navigator.storage.persist) return;
+    const kept = (await navigator.storage.persisted()) || (await navigator.storage.persist());
+    if (kept) { $('saved-keep').textContent = 'This browser has agreed to keep them, even when the phone is short of space.'; $('saved-keep').hidden = false; }
+  } catch (e) { /* not offered here */ }
 }
 
 function renderPalette() {
@@ -670,10 +717,10 @@ async function restoreZip(bytes) {
     const blob = new Blob([f.data], { type: mimeOf(m[3].toLowerCase()) });
     const k = kv(m[1], m[2]);
     const kept = await keepPrep(await prepare(blob));
-    const brief = briefOf[m[1]] || null;
-    S.raw.set(k, { blob, name: f.name.split('/').pop(), brief });
+    const brief = briefOf[m[1]] || null, at = Date.now();
+    S.raw.set(k, { blob, name: f.name.split('/').pop(), brief, at });
     S.prep.set(k, kept);
-    await S.store.put('raw', k, { blob, name: f.name.split('/').pop(), type: blob.type, brief });
+    await S.store.put('raw', k, { blob, name: f.name.split('/').pop(), type: blob.type, brief, at });
     await S.store.put('prep', k, kept.png);
     n++;
   }
@@ -724,6 +771,7 @@ async function start() {
   S.cat = groundCatalog(S.plan);
   for (const e of S.cat) S.byId[e.id] = e;
   S.store = await openStore(DB, STORES);
+  keepStorage();
   await loadStyleKey();
   $('status').textContent = 'Loading your swatches…';
   await loadAll();

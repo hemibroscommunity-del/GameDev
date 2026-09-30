@@ -483,6 +483,16 @@ ground swatches the Wheel needs (World Bible §13):
   browser. The owner uploads it to GitHub; a session unpacks it into the game.
 - **The style key** is read from the World Builder's own storage on the
   same site, so it is made once.
+- **"Saved on this phone"** (v2.3.2946) heads the page: which swatches this
+  browser holds, by name, and when the last picture went in. Owner: *"I
+  can't tell if the ground studio has saved what I put in earlier."* The
+  trap it names: storage belongs to the browser, and **the Claude app's
+  built-in browser and Safari keep separate copies** of the same site, so
+  work made in one is missing from the other (and from the game opened in
+  the other; the Wheel trial's readout says "swatches none in this
+  browser"). Use one of them throughout; Download all and Restore move work
+  between them. The page also asks the browser to keep its storage when the
+  phone runs short of space (`navigator.storage.persist`).
 
 **How the ground is laid** (`core/ground.js`):
 
@@ -509,7 +519,7 @@ ground swatches the Wheel needs (World Bible §13):
 **Tests.** `node tools/world/test-world-core.mjs` checks the catalog, each
 spoke's stages and its passes' border land, determinism, seamless chunks,
 tile-true laying and the not-made-yet colour. `node tools/qa/ground-studio.mjs`
-(25 checks in real Chromium, at a phone's size) checks the prompts (only the
+(28 checks in real Chromium, at a phone's size) checks the prompts (only the
 style key attached, never the bro, every material drawn as itself: v2.3.2939,
 and nothing running one way: v2.3.2944), a picture made from an older
 prompt marked to make again,

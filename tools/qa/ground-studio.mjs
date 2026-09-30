@@ -147,6 +147,10 @@ try {
     /Nothing in it runs one way/.test(first.commons) && /Nothing in it runs one way/.test(first.road) && /worn evenly all over/.test(first.road) && !/wheel ruts/.test(first.road),
     first.road.slice(0, 260));
   ok('the progress map is the whole Wheel, a pixel a cell', first.map[0] === 1792 && first.map[1] === 1792, first.map);
+  /* v2.3.2946, owner: "I can't tell if the ground studio has saved what I
+     put in earlier" -- the page says so at the top */
+  const saved0 = await page.evaluate(() => ({ chip: document.getElementById('saved-chip').textContent, line: document.getElementById('saved-line').textContent }));
+  ok('with nothing made, the page says nothing is saved in this browser yet', saved0.chip === 'none yet' && /Nothing is saved in this browser yet/.test(saved0.line), saved0);
   const noKey = await page.evaluate(() => !document.getElementById('key-none').hidden);
   ok('with no style key yet, the page sends you to the World Builder for it', noKey);
 
@@ -188,6 +192,12 @@ try {
       thumb: document.querySelector('canvas[data-thumb="commons|A"]').width, means: Object.keys(S.means).length };
   });
   ok('progress counts it, its card says A, and a thumbnail shows the repeat', after.count === '5 of 48' && after.chip === 'A' && after.thumb === 192 && after.means === 5, after);
+  const saved1 = await page.evaluate(() => ({ chip: document.getElementById('saved-chip').textContent, line: document.getElementById('saved-line').textContent,
+    items: [...document.querySelectorAll('#saved-list li')].map((li) => li.textContent), when: document.getElementById('saved-when').textContent }));
+  ok('...and the top of the page says which swatches are saved here, and when the last went in',
+    saved1.chip === '5 saved' && /These 5 swatches are saved here/.test(saved1.line) && saved1.items.length === 5 &&
+    saved1.items.includes('Brotown Commons') && saved1.items.includes('Road') && /today at/.test(saved1.when), saved1);
+  await shot(page, 'saved', '#saved');
   const mapPx = await page.evaluate(() => {
     const S = window.__ground.S, cv = document.getElementById('map'), g = cv.getContext('2d');
     const i = S.mm.mat.findIndex((q) => S.mm.ids[q] === 'commons');
@@ -259,6 +269,8 @@ try {
   page = await open(ctxA);
   const h2 = await hashOf(page);
   ok('everything survives a reload, the same to the pixel', h1.h === h2.h && h2.n === 6 && h2.frozen, { h1, h2 });
+  const saved2 = await page.evaluate(() => document.getElementById('saved-chip').textContent);
+  ok('...and after the reload the page still says they are saved', saved2 === '6 saved', saved2);
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#export')]);
   const zipPath = await dl.path();
   const zipBytes = fs.readFileSync(zipPath);
