@@ -80,7 +80,11 @@ remnant to migrate server-side, not a mode to preserve.
   middle of the zone (`opts.blends[blendKey(a, b)]`, the studio's version
   `M` under the pair's key, `ground/<key>-M.png` + the manifest's `blends`,
   `blendPromptFor` attaching the two swatches and not the key): optional
-  per pair, a pair without one mixing exactly as before;
+  per pair, a pair without one mixing exactly as before; since v2.3.2952
+  laid as TWO WHOLE PLAIN MIXES either side of the blend (`BLEND_OFF`, the
+  zone 1.4x wider, heights at `BLEND_HEIGHTS` 0.45 to keep it cheap) --
+  v2.3.2951's halved changes ran into the zone's end and drew a straight
+  line beside the plan's cell edge, which the owner spotted;
   WORLD-MAP-PIPELINE "Blend pictures"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,

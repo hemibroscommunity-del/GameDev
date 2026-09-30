@@ -821,18 +821,35 @@ Optional for every pair: a pair without one mixes exactly as before, to the
 byte.
 
 **How it is laid** (`public/tools/world/core/ground.js`, BLEND PICTURES).
-The zone runs from one ground, through the blend, to the other. Its upper
-half decides between the upper ground and the blend, its lower half between
-the blend and the lower ground, each on its own ramp across the half, with
-the same big patches and the pictures' own heights shaping their rims. So
-the blend is most at the line and none is left at the zone's sides (at the
-owner's spot, with stand-in pictures: 95% of the ground at the line, 71–77%
-12 game px either side, none 60 game px out). Every pixel is still one of
-the three pictures'. A blend is laid as a ground of its own, so the tidy-up
-leaves no crumbs of it; blends are numbered by their pairs' keys, so pieces
-laid apart still meet with no seam. `composeGround(..., { blends })` takes
-them by `blendKey(a, b)` (the two ids in order, joined by `__`), and
-`blendsUnder` names the ones a piece can use.
+The zone runs from one ground, through the blend, to the other, as **two
+whole plain mixes** (v2.3.2952): the upper ground gives way to the blend a
+little way (`BLEND_OFF`, 0.4 of a zone) to one side of the line, and the
+blend to the lower ground the same way to the other, each change with a
+plain mix's ramp, big patches and room, the pictures' heights shaping their
+rims (at `BLEND_HEIGHTS`, 0.45). The zone of a pair with a blend is that
+much wider (1.4 times). Both changes are judged everywhere, so nothing jumps
+at the line; the blend is most at the line and none is left at the zone's
+sides (at the owner's spot, with stand-in pictures: 64% of the ground at the
+line, about 40–50% 12 game px either side, none 60 game px out). Every pixel
+is still one of the three pictures'. A blend is laid as a ground of its own,
+so the tidy-up leaves no crumbs of it; blends are numbered by their pairs'
+keys, so pieces laid apart still meet with no seam. `composeGround(...,
+{ blends })` takes them by `blendKey(a, b)` (the two ids in order, joined by
+`__`), and `blendsUnder` names the ones a piece can use.
+
+> **v2.3.2952, the first fix.** Owner, on the first preview: *"Why does the
+> top part of that patch look correctly blended but not the bottom? I can
+> see its edge … Bottom looks like it has a noticeable straight edge where
+> it transitions."* In v2.3.2951 each of the two changes had half the zone,
+> on a ramp twice as steep, so the patches moved it half as far, and where
+> they would have moved it further the zone's end stopped it. Along the
+> bottom of the Town Hall's plot the yards therefore turned into the blend
+> along a line running beside the plan's straight cell edge. Now, where the
+> yards end wanders 11 game px against a plain mix's 12.6 (it was 6.8), and
+> its straightest stretch is 17 game px against a plain mix's 33 (it was
+> 30). A test holds it there.
+>
+> ![The studio's preview at the same spot: v2.3.2951 (left), the bottom of the dirt patch ending in a straight line; v2.3.2952 (right)](world/blend-edge-fix.png)
 
 **Where they come from.**
 
@@ -857,24 +874,32 @@ them by `blendKey(a, b)` (the two ids in order, joined by `__`), and
   them. The trial's readout says `blends  N made`.
 
 **Cost**, measured on the owner's own pictures, laid the way the game's
-worker lays them (desktop Chromium):
+worker lays them (desktop Chromium), since v2.3.2952:
 
 | | without the blend | with it |
 |---|---|---|
-| a piece of town ground | about 24 ms | about 24 ms (≈ 1 ms more on average) |
-| a piece on a long stage line (e.g. the dunes) | about 25 ms | no measurable difference |
+| a piece of town ground | about 23 ms | about 27 ms (a fifth more: the blend's zone is wider) |
+| pieces its zone does not reach | | no difference |
+| the Wheel trial, walking out of town and back | 44 ms a piece on average (v2.3.2951) | 50 ms, still no ground late on screen |
 | memory while near the pair | | 1 MB more (the town's busiest piece needs 13 pictures of the 16 kept) |
 | download, the first time near the pair | | one picture, about 0.9 MB |
 | unpacking it | | about 50 ms, once, in the worker |
 
+(With the heights at a plain mix's 0.7 instead of 0.45, the same fix cost
+half as much again a piece, and six pieces came on screen late in the
+trial: hardly any pixel of the wider zone could be settled a whole art px at
+a time.)
+
 The cost that counts is making the pictures: 42 pairs of alike grounds
 touch on the Wheel. Start with the town square.
 
-**Tests.** `node tools/world/test-world-core.mjs` (125): the key and its
+**Tests.** `node tools/world/test-world-core.mjs` (126): the key and its
 pair; square -> blend -> yards at the owner's spot, the blend most at the
 line and gone at the sides; every pixel one of the three pictures', `mat`
-naming only real swatches; halves the same as whole; and a blend for a pair
-that does not mix, or none, changing nothing. `node tools/qa/ground-studio.mjs`
+naming only real swatches; halves the same as whole; a blend for a pair
+that does not mix, or none, changing nothing; and (v2.3.2952) the yards
+turning into the blend along a ragged line at the bottom of the Town Hall's
+plot, wandering nearly as much as a plain mix's and never straight for long. `node tools/qa/ground-studio.mjs`
 (54): the card, the prompt, a blend in and on the palette without shifting
 it, laid in the preview to the pixel, marked to redo, through the zip and
 back, removed. `node tools/qa/mp/run.mjs wheeltrial` (31): a blend made in

@@ -204,11 +204,37 @@ const MIX_FAMILY = { earth: 1, sand: 1, ash: 1 };
    out to nothing at the zone's two sides -- in the same big patches, their
    rims shaped by all three pictures; every pixel is still one of the
    three.  Optional per pair: a pair without one mixes as before, to the
-   byte.  Measured on the owner's own pictures (desktop Chromium, laid the
-   way the game's worker lays them): a piece of town ground takes about
-   24 ms with or without it; a blend unpacked is 1 MB, only while you are
-   near its pair.  The cost is the pictures: 42 pairs of alike grounds
-   touch on the Wheel. */
+   byte.  A blend unpacked is 1 MB, only while you are near its pair; a
+   piece of ground its zone reaches takes about a fifth longer to lay
+   (v2.3.2952, below).  The cost that counts is the pictures: 42 pairs of
+   alike grounds touch on the Wheel. */
+/* v2.3.2952: the owner, on the first preview: "Why does the top part of
+   that patch look correctly blended but not the bottom? I can see its edge
+   … Bottom looks like it has a noticeable straight edge where it
+   transitions."  The blend's two changes (upper -> blend, blend -> lower)
+   each had HALF the zone, on a ramp twice as steep as a plain mix's: the
+   patches and the pictures' heights moved each change half as far, and
+   where they would have moved it further the zone's end stopped it -- so
+   along a stretch where the big patches were flat, the yards turned into
+   the blend along a line running beside the plan's straight cell edge.
+   (And the two changes swapped over at the line itself, a jump wherever
+   the patches were strong.)  Now each change is a whole plain mix -- the
+   same ramp, patches and room as any MIX edge -- set BLEND_OFF of a zone
+   either side of the line, with the blend between them: the zone of a pair
+   with a blend is that much wider (1 + BLEND_OFF), and the two changes
+   wander about as far as a plain mix's.  Measured at the owner's spot, on
+   stand-ins (tools/world/test-world-core.mjs): where the yards end wanders
+   11 game px against a plain mix's 12.6 (it was 6.8), and its straightest
+   stretch is 17 game px against a plain mix's 33 (it was 30).
+   The pictures' heights count a little less than at a plain mix's edge
+   (BLEND_HEIGHTS, not MIX_HEIGHTS' 0.7): at 0.7 hardly a pixel of the
+   wider zone could be settled an art px at a time and a town piece took
+   half as long again to lay; at 0.45 it takes about a fifth longer than
+   before, and the changes are as ragged. */
+const BLEND_OFF = 0.4;
+const BLEND_HEIGHTS = 0.45;
+/* the most a blend's zone reaches, in game px, for the margins below */
+const EDGE_MAX_BLEND_GAME = 2 + 1.35 * (1 + BLEND_OFF) * Math.max(...Object.values(MIX));
 export const BLEND_SEP = '__';
 /* one key for a pair of swatches, whichever way round they are named */
 export function blendKey(a, b) { return a < b ? `${a}${BLEND_SEP}${b}` : `${b}${BLEND_SEP}${a}`; }
@@ -794,6 +820,11 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
      can reach the worked-out area must lie in it) */
   const anyPieces = !!tiles && Object.values(tiles).some((t) => t && t.E);
   let EA = Math.max(Math.ceil(EDGE_MAX_GAME / GPA), anyPieces ? Math.ceil((EDGE_BIT + 1 + EDGE_PIECE_MAX / 2) / K) : 0) + 2;
+  /* (v2.3.2952: and a blend's wider zone, when one is given -- every piece
+     it can reach is, blendsUnder's margin being wider still) */
+  const blends = opts.blends || null;
+  const tileOfKey = (k) => { const t = blends ? (typeof blends.get === 'function' ? blends.get(k) : blends[k]) : null; return t && t.w ? t : null; };
+  if (blends && (typeof blends.keys === 'function' ? [...blends.keys()] : Object.keys(blends)).some(tileOfKey)) EA = Math.max(EA, Math.ceil(EDGE_MAX_BLEND_GAME / GPA) + 2);
   /* ...but only where an edge can be: most rectangles lie inside one ground
      or along crisp edges only, and need no more than the old margin */
   if (!edgesNear(bp, mm, X0 - E2 - EA, Y0 - E2 - EA, RW + 2 * (E2 + EA), RH + 2 * (E2 + EA), M)) EA = 0;
@@ -894,7 +925,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       if (!r) continue;
       /* how far from `b` (thirds of an art px) this edge can still reach */
       const reachT = Math.ceil(((1.5 * r.reach + 1.35 * r.ragged) / GPA + 1.5) * 3);
-      const rr = { ...r, upQ: cat[a].id === r.up ? a : b, loQ: cat[a].id === r.up ? b : a, reachT, bl: -1 };
+      const rr = { ...r, upQ: cat[a].id === r.up ? a : b, loQ: cat[a].id === r.up ? b : a, reachT, bl: -1, lim: 1 };
       recipes.set(a * 256 + b, rr);
       recOf[a * NQ + b] = rr;
       list.push(b);
@@ -906,9 +937,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
      crumbs of it either -- numbered in the order of the pairs' keys, so two
      blends compare the same way in every chunk whatever else it holds. */
   const BL0 = NQ, blendTiles = [], blendLo = [], blendKeys = [];
-  const blends = opts.blends || null;
   if (blends) {
-    const tileOfKey = (k) => { const t = typeof blends.get === 'function' ? blends.get(k) : blends[k]; return t && t.w ? t : null; };
     const want = new Set();
     for (const rr of recipes.values()) if (rr.mix && tileOfKey(blendKey(cat[rr.upQ].id, cat[rr.loQ].id))) want.add(blendKey(cat[rr.upQ].id, cat[rr.loQ].id));
     for (const k of [...want].sort()) {
@@ -919,7 +948,12 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     for (const rr of recipes.values()) {
       if (!rr.mix) continue;
       const n = blendKeys.indexOf(blendKey(cat[rr.upQ].id, cat[rr.loQ].id));
-      if (n >= 0) { rr.bl = BL0 + n; blendLo[n] = rr.loQ; }
+      if (n >= 0) {
+        rr.bl = BL0 + n; blendLo[n] = rr.loQ;
+        /* (v2.3.2952: its zone reaches 1 + BLEND_OFF of a plain mix's) */
+        rr.lim = 1 + BLEND_OFF;
+        rr.reachT = Math.ceil(((1.5 * rr.reach + 1.35 * rr.ragged * rr.lim) / GPA + 1.5) * 3);
+      }
     }
   }
   for (const list of partners.values()) for (const b of list) if (!dts.has(b)) { const D = chamfer34(pmat, PW, PH, b); dts.set(b, D); dtOf[b] = D; }
@@ -1038,7 +1072,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
         const dist = Math.max(0, d0 / 3 - 0.5) * GPA, s = a === r.loQ ? dist : -dist;
         const E = r.ragged * pVar[2 * p + 1], t = (s - r.reach * pVar[2 * p]) / E;
         const slack = (0.75 * GPA + 0.1) / E;
-        e = t - slack >= 1 ? r.loQ : t + slack <= -1 ? r.upQ : -1;
+        e = t - slack >= r.lim ? r.loQ : t + slack <= -r.lim ? r.upQ : -1;
         /* in the band, the patches may decide it for the whole art px: the
            pictures' part (0.7 x their heights' difference) is never more
            than 0.7 either way, and every pixel's patch lies between the
@@ -1052,19 +1086,16 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
             if (v < lo) lo = v;
             if (v > hi) hi = v;
           }
-          const hw = r.mix ? MIX_HEIGHTS : 0.7;
-          /* v2.3.2951: with a blend, the zone's two halves each decide
-             between two pictures, on the half's own ramp (edgeAt): the
-             upper or the blend where t < 0, the blend or the lower after */
+          const hw = r.bl >= 0 ? BLEND_HEIGHTS : r.mix ? MIX_HEIGHTS : 0.7;
+          /* v2.3.2952: with a blend (edgeAt), the upper ground where even
+             the lowest patch and heights clear its change (at t + BLEND_OFF);
+             the lower where even the highest fall short of its change (at
+             t - BLEND_OFF); the blend where neither change can be reached */
           if (r.bl >= 0) {
-            const tl = t - slack, th = t + slack;
-            if (th < 0) {
-              if (lo - (2 * th + 1) > hw) e = r.upQ;
-              else if (hi - (2 * tl + 1) <= -hw) e = r.bl;
-            } else if (tl >= 0) {
-              if (lo - (2 * th - 1) > hw) e = r.bl;
-              else if (hi - (2 * tl - 1) <= -hw) e = r.loQ;
-            } else if (hi - (2 * tl + 1) <= -hw && lo - (2 * th - 1) > hw) e = r.bl;
+            const C = BLEND_OFF;
+            if (lo - (t + slack + C) > hw) e = r.upQ;
+            else if (hi - (t - slack - C) <= -hw) e = r.loQ;
+            else if (hi - (t - slack + C) <= -hw && lo - (t + slack - C) > hw) e = r.bl;
           } else if (lo - (t + slack) > hw) e = r.upQ;
           else if (hi - (t - slack) <= -hw) e = r.loQ;
         }
@@ -1098,8 +1129,8 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     /* the reach and the band vary along the edge, so it wanders */
     if (pB[p] < 0) slow(p);
     const t = (s - r.reach * pVar[2 * p]) / (r.ragged * pVar[2 * p + 1]);
-    if (t <= -1) return up;
-    if (t >= 1) return lo;
+    if (t <= -r.lim) return up;
+    if (t >= r.lim) return lo;
     /* patches a few game px across, so the upper ground comes in islands
        and the lower shows through in bays, thinning out across the band */
     let patch = 0.6 * ((patchAt(q00) * (1 - ux) + patchAt(q00 + 1) * ux) * (1 - uy) + (patchAt(q00 + PW) * (1 - ux) + patchAt(q00 + PW + 1) * ux) * uy);
@@ -1108,24 +1139,28 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     if (r.mix) patch = 0.3 * patch + ((mixAt(q00) * (1 - ux) + mixAt(q00 + 1) * ux) * (1 - uy) + (mixAt(q00 + PW) * (1 - ux) + mixAt(q00 + PW + 1) * ux) * uy);
     /* (the pictures' part is hw x a difference of two heights in 0..1:
        where the patch alone clears it, it cannot change the answer) */
-    const hw = r.mix ? MIX_HEIGHTS : 0.7;
-    /* v2.3.2951: a pair with a BLEND picture: the zone's upper half goes
-       from the upper ground to the blend, its lower half from the blend to
-       the lower ground, each on its own ramp (2t + 1, 2t - 1) with the same
-       patches and the two pictures' heights -- so the blend is most at the
-       line and none is left at the zone's sides */
+    const hw = r.bl >= 0 ? BLEND_HEIGHTS : r.mix ? MIX_HEIGHTS : 0.7;
+    /* v2.3.2951: a pair with a BLEND picture: the zone goes from the upper
+       ground, through the blend, to the lower one.  v2.3.2952: as two whole
+       plain mixes, BLEND_OFF either side of the line, each with a plain
+       mix's ramp and patches (and the heights at BLEND_HEIGHTS): the upper
+       ground where the patch and the heights (upper against blend) clear
+       t + BLEND_OFF; else the lower where they (blend against lower) fall
+       to t - BLEND_OFF; else the blend.  Both changes are judged
+       everywhere, so nothing jumps at the line, and each wanders about as
+       far as a plain mix's. */
     if (r.bl >= 0) {
-      const bt = blendTiles[r.bl - BL0], useB = pB[p] === 1;
-      if (t < 0) {
-        const t1 = 2 * t + 1;
-        if (patch - t1 > hw) return up;
-        if (patch - t1 <= -hw) return r.bl;
-        return hw * (heightAt(tileFor(up, useB), up, aox, aoy, seed) - heightAt(bt, r.bl, aox, aoy, seed)) + patch > t1 ? up : r.bl;
+      const bt = blendTiles[r.bl - BL0], useB = pB[p] === 1, tu = t + BLEND_OFF, tl = t - BLEND_OFF;
+      let hb = -1;
+      if (patch - tu > hw) return up;
+      if (patch - tu > -hw) {
+        hb = heightAt(bt, r.bl, aox, aoy, seed);
+        if (hw * (heightAt(tileFor(up, useB), up, aox, aoy, seed) - hb) + patch > tu) return up;
       }
-      const t2 = 2 * t - 1;
-      if (patch - t2 > hw) return r.bl;
-      if (patch - t2 <= -hw) return lo;
-      return hw * (heightAt(bt, r.bl, aox, aoy, seed) - heightAt(tileFor(lo, useB), lo, aox, aoy, seed)) + patch > t2 ? r.bl : lo;
+      if (patch - tl <= -hw) return lo;
+      if (patch - tl > hw) return r.bl;
+      if (hb < 0) hb = heightAt(bt, r.bl, aox, aoy, seed);
+      return hw * (hb - heightAt(tileFor(lo, useB), lo, aox, aoy, seed)) + patch > tl ? r.bl : lo;
     }
     if (patch - t > hw) return up;
     if (patch - t <= -hw) return lo;
@@ -1491,19 +1526,36 @@ function heightLut(tile) {
   tile.__heights = lut;
   return lut;
 }
+/* (v2.3.2952: the five reads written out, not a small function made on
+   every call -- a blend's wider zone reads twice as many heights, and the
+   one made per call was most of their cost; the same sums in the same
+   order, so the same answers to the bit) */
 function heightAt(tile, q, aox, aoy, seed) {
   if (!tile) return 0.5 + 0.5 * valueNoise(aox / 5 + q * 3.7, aoy / 5 - q * 1.3, seed + 53);
-  const lut = heightLut(tile), T = tile.w;
-  const u = ((aox % T) + T) % T, v = ((aoy % T) + T) % T;
-  const at = (uu, vv) => {
-    const k = vv * T + uu;
-    if (tile.idx) return lut[tile.idx[k]];
-    const o = k * 4, d = tile.data;
-    return lut[(d[o] * 2 + d[o + 1] * 5 + d[o + 2]) >> 3];
-  };
-  const u1 = u + 2 < T ? u + 2 : u + 2 - T, u0 = u >= 2 ? u - 2 : u - 2 + T;
-  const v1 = v + 2 < T ? v + 2 : v + 2 - T, v0 = v >= 2 ? v - 2 : v - 2 + T;
-  const h = (2 * at(u, v) + at(u1, v) + at(u0, v) + at(u, v1) + at(u, v0)) / 6;
+  const lut = tile.__heights || heightLut(tile), T = tile.w;
+  /* (a picture a power of two across -- every swatch -- wraps with a mask:
+     the same numbers as the remainder, whole px, either side of zero) */
+  const m = (T & (T - 1)) === 0 ? T - 1 : -1;
+  const u = m >= 0 ? aox & m : ((aox % T) + T) % T, v = m >= 0 ? aoy & m : ((aoy % T) + T) % T;
+  const u1 = m >= 0 ? (u + 2) & m : u + 2 < T ? u + 2 : u + 2 - T, u0 = m >= 0 ? (u - 2) & m : u >= 2 ? u - 2 : u - 2 + T;
+  const v1 = m >= 0 ? (v + 2) & m : v + 2 < T ? v + 2 : v + 2 - T, v0 = m >= 0 ? (v - 2) & m : v >= 2 ? v - 2 : v - 2 + T;
+  const r = v * T, idx = tile.idx;
+  let h;
+  if (idx) h = (2 * lut[idx[r + u]] + lut[idx[r + u1]] + lut[idx[r + u0]] + lut[idx[v1 * T + u]] + lut[idx[v0 * T + u]]) / 6;
+  else {
+    const d = tile.data;
+    let o = (r + u) * 4;
+    const a0 = lut[(d[o] * 2 + d[o + 1] * 5 + d[o + 2]) >> 3];
+    o = (r + u1) * 4;
+    const a1 = lut[(d[o] * 2 + d[o + 1] * 5 + d[o + 2]) >> 3];
+    o = (r + u0) * 4;
+    const a2 = lut[(d[o] * 2 + d[o + 1] * 5 + d[o + 2]) >> 3];
+    o = (v1 * T + u) * 4;
+    const a3 = lut[(d[o] * 2 + d[o + 1] * 5 + d[o + 2]) >> 3];
+    o = (v0 * T + u) * 4;
+    const a4 = lut[(d[o] * 2 + d[o + 1] * 5 + d[o + 2]) >> 3];
+    h = (2 * a0 + a1 + a2 + a3 + a4) / 6;
+  }
   return Math.min(1, Math.max(0, 0.5 + (h - 0.5) * 1.5));
 }
 

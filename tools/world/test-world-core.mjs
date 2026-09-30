@@ -640,6 +640,39 @@ console.log('ground');
   let noBlDiff = 0;
   for (let i = 0; i < noBl.data.length; i++) if (noBl.data[i] !== mixed2.data[i]) noBlDiff++;
   ok('...and a blend for a pair that does not mix here (grass over the road), or none at all, changes nothing, to the byte', noBlDiff === 0 && noBl.blendsLaid.length === 0, noBlDiff);
+  /* v2.3.2952, the owner on the first preview: "Top of that patch looks
+     blended. Bottom looks like it has a noticeable straight edge where it
+     transitions" -- the yards turning into the blend along the bottom of
+     the Town Hall's plot, just below-left of where the bro arrives.  The
+     blend's two changes had half a plain mix's room each and ran into the
+     zone's end, beside the plan's straight cell edge; each is now a whole
+     plain mix, either side of the blend.  Along that edge, where the yards
+     end must wander nearly as much as a plain mix's, with no long straight
+     stretch. */
+  const plotCol = Math.floor((g.cx - 44 - bp.x0) / bp.scale), cyMid = Math.floor((g.cy - bp.y0) / bp.scale);
+  let plotLineY = null;
+  for (let cy = cyMid; cy < cyMid + 12 && plotLineY === null; cy++) {
+    if (mm.ids[mm.mat[cy * bp.w + plotCol]] === 'town-yard' && mm.ids[mm.mat[(cy + 1) * bp.w + plotCol]] === 'plaza') plotLineY = bp.y0 + (cy + 1) * bp.scale;
+  }
+  const plotR = { x: Math.round(g.cx - 61), y: (plotLineY || 0) - 50, w: 140, h: 100 };
+  const ydSet = new Set(ydCols.map((c) => c.join()));
+  const yardsEnd = (o) => {
+    const isYd = (x, y) => ydSet.has(`${o.data[(y * o.w + x) * 4]},${o.data[(y * o.w + x) * 4 + 1]},${o.data[(y * o.w + x) * 4 + 2]}`);
+    const ys = [];
+    for (let x = 0; x < o.w; x++) { let y = 0; while (y < o.h - 4 && (isYd(x, y) || isYd(x, y + 1) || isYd(x, y + 2) || isYd(x, y + 3))) y++; ys.push(y); }
+    const m = ys.reduce((q, v) => q + v, 0) / ys.length, sd = Math.sqrt(ys.reduce((q, v) => q + (v - m) ** 2, 0) / ys.length);
+    let run = 0;
+    for (let i = 0; i < ys.length; i++) {
+      let lo = ys[i], hi = ys[i], j = i;
+      while (j + 1 < ys.length && Math.max(hi, ys[j + 1]) - Math.min(lo, ys[j + 1]) <= 3) { j++; lo = Math.min(lo, ys[j]); hi = Math.max(hi, ys[j]); }
+      run = Math.max(run, j - i + 1);
+    }
+    return { spread: +(sd / 2).toFixed(1), straight: Math.round(run / 2) };
+  };
+  const plainE = yardsEnd(composeGround(PLAN, bp, mm, plotR, mixTiles, { scale: 3 }));
+  const blendE = yardsEnd(composeGround(PLAN, bp, mm, plotR, mixTiles, { scale: 3, blends: { [blendKey('plaza', 'town-yard')]: blTile } }));
+  ok(`...and the yards turn into the blend along a ragged line, not a straight one (the bottom of the Town Hall's plot: it wanders ${blendE.spread} game px against a plain mix's ${plainE.spread}, its straightest stretch ${blendE.straight} game px against ${plainE.straight})`,
+    plotLineY !== null && blendE.spread >= 0.7 * plainE.spread && blendE.straight <= 0.75 * plainE.straight, { plotLineY, plainE, blendE });
   ok("...each pair with its own edge: a road's narrow, sand drifting wider than grass; two of a kind interlock evenly",
     rc('ember-3', 'road').ragged < rc('commons', 'road').ragged && rc('commons', 'road').ragged < rc('sky-2', 'road').ragged &&
     rc('commons', 'road').reach > 0 && rc('verdant-1', 'commons').even && rc('verdant-1', 'commons').reach === 0);
