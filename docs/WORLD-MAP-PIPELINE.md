@@ -447,6 +447,17 @@ ground swatches the Wheel needs (World Bible §13):
   bible.js`), and the scale line. The owner attaches the style key, and only
   the key: the bro is simpler pixel art than the world, so since v2.3.2939 his
   size is given in words instead (World Bible §6).
+- **Nothing in a swatch runs one way** (v2.3.2944, World Bible §6 rule 12).
+  Owner, on the first Main Street in the game: *"It's tiling wagon trails
+  sideways and it doesn't look good. Any specific detail that would look bad
+  when placed in the wrong direction tiled is probably not a good prompt."*
+  A swatch is laid the same way up everywhere, so every prompt now says so
+  (`NO_DIRECTION`), and eight briefs that asked for ruts, planks, tracks,
+  ripples, rows or streaks were rewritten (the street, the road, the
+  boardwalk as a basket weave, and five stages and borders). A test fails
+  if a brief ever asks for one again. Each picture now records the brief it
+  was made from, and a swatch made from an older one says **"Made from an
+  older prompt … make this one again"** on its card.
 - **Each picture brought back** is squared, made seamless, shrunk to one
   1,024 px tile covering 512 game px (2 px per game px since v2.3.2942: the
   1.5 game px grid blew ChatGPT's picture up, soft and gritty), and moved
@@ -489,8 +500,10 @@ ground swatches the Wheel needs (World Bible §13):
 **Tests.** `node tools/world/test-world-core.mjs` checks the catalog, each
 spoke's stages and its passes' border land, determinism, seamless chunks,
 tile-true laying and the not-made-yet colour. `node tools/qa/ground-studio.mjs`
-(23 checks in real Chromium, at a phone's size) checks the prompts (only the
-style key attached, never the bro, and every material drawn as itself: v2.3.2939),
+(25 checks in real Chromium, at a phone's size) checks the prompts (only the
+style key attached, never the bro, every material drawn as itself: v2.3.2939,
+and nothing running one way: v2.3.2944), a picture made from an older
+prompt marked to make again,
 the style key from the World Builder, a picture in through the real file input coming
 out 512 px, seamless, hard-edged and on the palette, the map and the preview,
 frozen colours, a reload, and a zip restored into a fresh browser with the

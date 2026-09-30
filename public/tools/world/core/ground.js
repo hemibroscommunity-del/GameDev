@@ -66,23 +66,27 @@ const mix = (a, b) => a.map((v, i) => Math.round((v + b[i]) / 2));
 
 /* Every swatch the world needs.  `group` is how the Ground Studio lists
    them; `color` is the plan's own colour for it, drawn wherever a swatch
-   has not been made yet. */
+   has not been made yet.
+   v2.3.2944: no brief asks for a detail with a direction (style/bible.js,
+   NO_DIRECTION -- the owner's rule, after wagon ruts tiled sideways down a
+   north-south street).  `revised` names the version a brief last changed
+   in, so the Ground Studio can tell the owner which swatches to redo. */
 export function groundCatalog(plan) {
   const R = plan.regions, K = plan.classes;
   const out = [];
-  const add = (e) => out.push({ levels: null, ...e });
+  const add = (e) => out.push({ levels: null, revised: null, ...e });
   add({ id: 'commons', group: 'hub', name: R.commons.name, brief: R.commons.stages[0].ground,
     where: 'the safe common land round the town', color: hexToRgb(R.commons.ground) });
   add({ id: 'town-yard', group: 'hub', name: 'Brotown yards', brief: 'packed earth with patchy short grass and a few pebbles',
     where: "the town's yards, and the ground under every building plot and camp", color: hexToRgb(R.town.ground) });
-  add({ id: 'street', group: 'hub', name: 'Main Street', brief: 'wide, hard-packed dirt street with faint wagon-wheel ruts and hoof prints',
-    where: "Brotown's streets", color: hexToRgb(K.street.color) });
-  add({ id: 'boardwalk', group: 'hub', name: 'Boardwalk planks', brief: 'weathered wooden planks laid side by side, running left to right',
-    where: "the town's boardwalks, and the bridges", color: hexToRgb(K.boardwalk.color) });
+  add({ id: 'street', group: 'hub', name: 'Main Street', brief: 'hard-packed dirt street, trodden smooth and a little darker in soft patches, with a few scattered pebbles and wisps of straw lying every which way',
+    where: "Brotown's streets", color: hexToRgb(K.street.color), revised: 'v2.3.2944' });
+  add({ id: 'boardwalk', group: 'hub', name: 'Boardwalk', brief: 'weathered wooden decking of short boards in a basket weave: small square blocks of three or four boards, each block turned a quarter turn from its neighbours',
+    where: "the town's boardwalks, and the bridges", color: hexToRgb(K.boardwalk.color), revised: 'v2.3.2944' });
   add({ id: 'plaza', group: 'hub', name: 'Town square', brief: 'packed pale gravel with a few flat flagstones',
     where: 'the town square round the Town Hall', color: hexToRgb(K.plaza.color) });
-  add({ id: 'road', group: 'routes', name: 'Road', brief: 'the surface of a worn dirt road: packed earth with faint wheel ruts and scattered pebbles',
-    where: 'every road and footpath', color: hexToRgb(K.path.color) });
+  add({ id: 'road', group: 'routes', name: 'Road', brief: 'the surface of a worn dirt road: packed earth worn evenly all over, with scattered pebbles and a few tiny tufts of grass',
+    where: 'every road and footpath', color: hexToRgb(K.path.color), revised: 'v2.3.2944' });
   add({ id: 'gravel', group: 'routes', name: 'Railway bed', brief: 'coarse grey ballast gravel',
     where: 'under the mine railway (its rails and sleepers are objects)', color: [138, 138, 134] });
   for (const id of Object.keys(R)) {
@@ -90,7 +94,8 @@ export function groundCatalog(plan) {
     if (!rd.dir) continue;
     const base = hexToRgb(rd.ground);
     rd.stages.forEach((st, k) => add({ id: `${id}-${k + 1}`, group: id, name: `${rd.name}: ${st.name}`, brief: st.ground,
-      levels: [k * 20 + 1, (k + 1) * 20], where: `levels ${k * 20 + 1}–${(k + 1) * 20} of ${rd.name}`, color: shade(base, 1.06 - 0.07 * k) }));
+      levels: [k * 20 + 1, (k + 1) * 20], where: `levels ${k * 20 + 1}–${(k + 1) * 20} of ${rd.name}`, color: shade(base, 1.06 - 0.07 * k),
+      revised: st.groundRevised || null }));
   }
   add({ id: 'lava', group: 'routes', name: 'Lava', brief: 'molten lava in bright orange and yellow under a cracked black crust (its own bright colours, with no glow spilling onto anything)',
     where: 'the lava pools and channels of the Flame Fields', color: hexToRgb(K.lava.color) });
@@ -99,7 +104,7 @@ export function groundCatalog(plan) {
     const [a, b] = key.split('|');
     add({ id: `border-${a}-${b}`, group: 'borders', name: `${R[a].name} and ${R[b].name}`, brief: br.ground || br.land,
       where: `where they meet, at their bases and on ${br.passes ? br.passes.join(' and ') : 'their passes'}`,
-      color: mix(hexToRgb(R[a].ground), hexToRgb(R[b].ground)) });
+      color: mix(hexToRgb(R[a].ground), hexToRgb(R[b].ground)), revised: br.groundRevised || null });
   }
   return out;
 }

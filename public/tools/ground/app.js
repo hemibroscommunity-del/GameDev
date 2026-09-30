@@ -199,9 +199,12 @@ async function savePalette() {
 async function addPicture(id, ver, blob, name) {
   const kept = await keepPrep(await prepare(blob));
   const k = kv(id, ver);
-  S.raw.set(k, { blob, name: name || '' });
+  /* v2.3.2944: the brief it was made from, so a later rewrite of that brief
+     can say "make this one again" (renderSwatch) */
+  const brief = S.byId[id] ? S.byId[id].brief : '';
+  S.raw.set(k, { blob, name: name || '', brief });
   S.prep.set(k, kept);
-  await S.store.put('raw', k, { blob, name: name || '', type: blob.type || '' });
+  await S.store.put('raw', k, { blob, name: name || '', type: blob.type || '', brief });
   await S.store.put('prep', k, kept.png);
   if (rebuildPalette()) { await finalizeAll(); await savePalette(); } else await finalize(id);
 }
@@ -218,7 +221,7 @@ async function loadAll() {
   for (const k of keys) {
     const rec = await S.store.get('raw', k);
     if (!rec || !rec.blob) continue;
-    S.raw.set(k, { blob: rec.blob, name: rec.name || '' });
+    S.raw.set(k, { blob: rec.blob, name: rec.name || '', brief: rec.brief || null });
     const pb = await S.store.get('prep', k);
     let kept = null;
     if (pb) {
@@ -486,6 +489,18 @@ function renderSwatch(e) {
   head.appendChild(name);
   box.appendChild(head);
   box.appendChild(el('div', 'sw-where', `Used for ${e.where}.`));
+  /* v2.3.2944: a picture made from an older brief than today's.  A picture
+     from before briefs were recorded counts as older when the brief has been
+     rewritten since (e.revised) -- the Main Street ruts that tiled sideways. */
+  const stale = vers.filter((v) => {
+    const r = S.raw.get(kv(e.id, v));
+    return r && (r.brief ? r.brief !== e.brief : !!e.revised);
+  });
+  if (stale.length) {
+    const note = el('div', 'sw-stale', `Made from an older prompt. It was rewritten${e.revised ? ` in ${e.revised}` : ''} so that nothing in it runs one way (ruts, long planks, ripples look wrong wherever the road turns). Make ${stale.length > 1 ? 'these' : 'this one'} again with the prompt below.`);
+    note.dataset.stale = e.id;
+    box.appendChild(note);
+  }
   const det = el('details');
   det.appendChild(el('summary', null, 'The prompt'));
   const ta = el('textarea');
@@ -619,7 +634,10 @@ async function exportZip() {
       const ext = extOf(raw.name, raw.blob.type);
       files.push({ name: `originals/${e.id}-${ver}.${ext}`, data: new Uint8Array(await raw.blob.arrayBuffer()) });
     }
-    if (vers.length) made.push({ id: e.id, name: e.name, group: e.group, versions: vers, brief: e.brief });
+    /* v2.3.2944: and the brief the pictures were made from (null when they
+       predate the record), so a restore still knows which to make again */
+    const from = vers.map((v) => S.raw.get(kv(e.id, v))).find((r) => r && r.brief);
+    if (vers.length) made.push({ id: e.id, name: e.name, group: e.group, versions: vers, brief: e.brief, madeFrom: from ? from.brief : null });
   }
   const manifest = {
     tool: 'brotown-ground-studio', version: 1, made: new Date().toISOString(),
@@ -637,15 +655,25 @@ async function restoreZip(bytes) {
   const mf = byName.get('manifest.json');
   const manifest = mf ? JSON.parse(new TextDecoder().decode(mf.data)) : null;
   let n = 0;
+  /* v2.3.2944: the brief each swatch was made from, as the zip recorded it */
+  const briefOf = Object.create(null);
+  for (const sw of (manifest && manifest.swatches) || []) {
+    if (!sw || !sw.id) continue;
+    /* a zip from before v2.3.2944 has only `brief`: the one current when it
+       was downloaded, which is what its pictures were made from */
+    const from = 'madeFrom' in sw ? sw.madeFrom : sw.brief;
+    if (typeof from === 'string') briefOf[sw.id] = from;
+  }
   for (const f of entries) {
     const m = /^originals\/(.+)-([AB])\.([a-z0-9]+)$/i.exec(f.name);
     if (!m || !S.byId[m[1]]) continue;
     const blob = new Blob([f.data], { type: mimeOf(m[3].toLowerCase()) });
     const k = kv(m[1], m[2]);
     const kept = await keepPrep(await prepare(blob));
-    S.raw.set(k, { blob, name: f.name.split('/').pop() });
+    const brief = briefOf[m[1]] || null;
+    S.raw.set(k, { blob, name: f.name.split('/').pop(), brief });
     S.prep.set(k, kept);
-    await S.store.put('raw', k, { blob, name: f.name.split('/').pop(), type: blob.type });
+    await S.store.put('raw', k, { blob, name: f.name.split('/').pop(), type: blob.type, brief });
     await S.store.put('prep', k, kept.png);
     n++;
   }

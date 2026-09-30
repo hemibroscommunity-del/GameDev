@@ -299,7 +299,11 @@ export const PLAN = {
      levels -- the prompt and the ground swatches use whichever a place is
      in -- each with the CAMP (waystation) that ends it.  `ground` in a
      stage is the swatch's brief: ground only, since whatever stands up is
-     an object (docs/WORLD-BIBLE.md §11).  `commonsEdge` is how the commons
+     an object (docs/WORLD-BIBLE.md §11), and -- v2.3.2944, the owner's rule
+     after wagon ruts tiled sideways -- with no detail that runs one way
+     (style/bible.js NO_DIRECTION); `groundRevised` marks a brief rewritten
+     for that, so the Ground Studio says which swatches to make again.
+     `commonsEdge` is how the commons
      changes as it meets the spoke; `riverPaint` how the Sweetwater looks
      here.
 
@@ -357,10 +361,10 @@ export const PLAN = {
           ground: 'patchy snow melting over wet brown grass and mud',
           camp: { name: "Trapper's Rest", paint: 'a log cabin with furs drying on racks and a woodpile by the door' } },
         { name: 'the snowbound taiga', paint: 'deep snow with wind-carved drifts, boot and hoof tracks, and snow-laden pines',
-          ground: 'deep, soft snow with wind-carved drifts and a few boot tracks',
+          ground: 'deep, soft snow in gentle rounded drifts, shaded pale blue in the hollows', groundRevised: 'v2.3.2944',
           camp: { name: 'the Snowshoe Lodge', paint: 'a snowed-in hunting lodge with a smoking chimney and snowshoes by the door' } },
         { name: 'the glacier', paint: 'a blue-white glacier of cracked ice and wind-scoured snow crust, split by deep blue crevasses',
-          ground: 'blue-white glacier ice with fine cracks under a crust of wind-scoured snow',
+          ground: 'blue-white glacier ice with fine cracks, under a thin, patchy crust of snow', groundRevised: 'v2.3.2944',
           camp: { name: 'Crevasse Camp', paint: 'an expedition camp of canvas tents, sledges and ice picks roped together on the ice' } },
         { name: 'the frozen crown', paint: 'a high white plateau of rime ice and frozen spires glittering under a hard blue sky',
           ground: 'hard rime ice and packed snow glittering with frost crystals',
@@ -424,13 +428,13 @@ export const PLAN = {
           ground: 'cracked dry earth with tufts of sage and tough grass',
           camp: { name: 'Tumbleweed Station', paint: 'a stagecoach relay station with a wooden water tower and a corral' } },
         { name: 'the dunes', paint: 'golden sand dunes with wind ripples, red hoodoo rock stacks, cacti and a half-buried wagon wreck',
-          ground: 'golden sand with fine wind ripples',
+          ground: 'fine golden sand in soft, rounded hummocks, with a few small pebbles', groundRevised: 'v2.3.2944',
           camp: { name: 'Oasis Camp', paint: 'striped tents round a small palm-shaded oasis pool' } },
         { name: 'the red mesas', paint: 'flat-topped red sandstone mesas seen from above like everything else: sunlit tops, layered sides in shadow, sand drifting between them',
           ground: 'red sandstone rock with drifts of red sand',
           camp: { name: 'Mesa Top', paint: 'a camp on a mesa top with a rope lift and a wind vane' } },
         { name: 'the storm heights', paint: 'wind-scoured bare rock high above the desert, sand streaming across it, and arches carved by the wind',
-          ground: 'wind-polished pale rock streaked with blown sand',
+          ground: 'wind-polished pale rock with small pockets of blown sand', groundRevised: 'v2.3.2944',
           camp: { name: 'Windbreak Keep', paint: 'a squat stone watchtower with ragged banners streaming in the wind' } },
       ],
       commonsEdge: 'the commons grass dries to straw and sand blows across it',
@@ -494,10 +498,10 @@ export const PLAN = {
           ground: 'trampled dark dirt with coal dust and flecks of slag',
           camp: { name: 'Coaling Station', paint: 'a coaling station with a crane over a heap of coal' } },
         { name: 'the foundry works', paint: 'dark slate and iron floor plates joined by brass seams, thick iron pipes along the ground and crackling blue electric light in the cracks',
-          ground: 'dark iron floor plates joined by brass seams',
+          ground: 'dark, square iron floor plates joined by brass seams', groundRevised: 'v2.3.2944',
           camp: { name: 'Shift House', paint: 'a brick workers\' canteen with a steam whistle on the roof' } },
         { name: 'the coil fields', paint: 'fields of copper coils and lightning rods on scorched iron ground, arcs of blue electricity jumping between them',
-          ground: 'scorched iron plating and cracked slate threaded with copper wire',
+          ground: 'scorched iron plating and cracked slate, with loose loops of copper wire', groundRevised: 'v2.3.2944',
           camp: { name: 'Relay Nine', paint: 'a telegraph relay hut with a humming antenna mast' } },
         { name: 'the storm plateau', paint: 'a high plateau of black iron under endless lightning, with twisted metal towers',
           ground: 'black iron plate spattered with fused glass where lightning struck',
@@ -558,7 +562,7 @@ export const PLAN = {
       paint: 'murky moss and bog ground with low drifting mist',
       stages: [
         { name: 'the blighted farm', paint: 'a blighted field of withered crops and sickly yellow grass, a toppled scarecrow and a broken snake-oil wagon spilling green bottles',
-          ground: 'sickly yellow grass and withered crop rows on grey soil',
+          ground: 'sickly yellow grass and patchy clumps of withered crops on grey soil', groundRevised: 'v2.3.2944',
           camp: { name: 'Snake-Oil Stop', paint: "a travelling quack doctor's painted wagon and awning" } },
         { name: 'the slime woods', paint: 'murky moss and bog ground among twisted dead trees dripping green slime and giant purple and yellow toadstools',
           ground: 'murky green moss over black bog mud',
@@ -644,7 +648,8 @@ export const PLAN = {
      landscape in between, used wherever the two meet: at their bases next
      to the commons, and on the PASSES that join them across the sea.
      `ground` is its ground swatch's brief (v2.3.2937, the Ground Studio):
-     ground only, since whatever stands up is an object.
+     ground only, since whatever stands up is an object, and nothing that
+     runs one way (v2.3.2944; `groundRevised` as for the stages).
      `passes` names the pass in each tier of `wheel.passes` (levels 20 and
      60): the home for monsters of both elements, and the natural place for
      fusion.  Only neighbours meet, so there are exactly eight. */
@@ -662,7 +667,7 @@ export const PLAN = {
                          ground: 'trampled grey spoil and ore dust with flakes of rusty iron',
                          passes: ['Ore Cut', 'the Slag Causeway'] },
     'thunder|tidal': { land: 'the foundry meets the shore: slag running down to the sand, rusted chains and cargo crates',
-                       ground: 'dark sand streaked with grey slag and rust',
+                       ground: 'dark sand spattered with grey slag and flecks of rust', groundRevised: 'v2.3.2944',
                        passes: ['Chain Ford', 'the Iron Pier'] },
     'mist|tidal': { land: 'brackish marsh: lagoons gone murky, mangrove roots and sickly dune grass',
                     ground: 'wet grey-green mud with patches of sickly dune grass',

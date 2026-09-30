@@ -211,10 +211,10 @@ above like everything else".
   - Ground: patchy snow melting over wet brown grass and mud.
   - Camp at level 20: **Trapper's Rest**, a log cabin with furs drying on racks and a woodpile by the door.
 - **Levels 21–40: the snowbound taiga.** Deep snow with wind-carved drifts, boot and hoof tracks, and snow-laden pines.
-  - Ground: deep, soft snow with wind-carved drifts and a few boot tracks.
+  - Ground: deep, soft snow in gentle rounded drifts, shaded pale blue in the hollows.
   - Camp at level 40: **the Snowshoe Lodge**, a snowed-in hunting lodge with a smoking chimney and snowshoes by the door.
 - **Levels 41–60: the glacier.** A blue-white glacier of cracked ice and wind-scoured snow crust, split by deep blue crevasses.
-  - Ground: blue-white glacier ice with fine cracks under a crust of wind-scoured snow.
+  - Ground: blue-white glacier ice with fine cracks, under a thin, patchy crust of snow.
   - Camp at level 60: **Crevasse Camp**, an expedition camp of canvas tents, sledges and ice picks roped together on the ice.
 - **Levels 61–80: the frozen crown.** A high white plateau of rime ice and frozen spires glittering under a hard blue sky.
   - Ground: hard rime ice and packed snow glittering with frost crystals.
@@ -250,13 +250,13 @@ above like everything else".
   - Ground: cracked dry earth with tufts of sage and tough grass.
   - Camp at level 20: **Tumbleweed Station**, a stagecoach relay station with a wooden water tower and a corral.
 - **Levels 21–40: the dunes.** Golden sand dunes with wind ripples, red hoodoo rock stacks, cacti and a half-buried wagon wreck.
-  - Ground: golden sand with fine wind ripples.
+  - Ground: fine golden sand in soft, rounded hummocks, with a few small pebbles.
   - Camp at level 40: **Oasis Camp**, striped tents round a small palm-shaded oasis pool.
 - **Levels 41–60: the red mesas.** Flat-topped red sandstone mesas seen from above like everything else: sunlit tops, layered sides in shadow, sand drifting between them.
   - Ground: red sandstone rock with drifts of red sand.
   - Camp at level 60: **Mesa Top**, a camp on a mesa top with a rope lift and a wind vane.
 - **Levels 61–80: the storm heights.** Wind-scoured bare rock high above the desert, sand streaming across it, and arches carved by the wind.
-  - Ground: wind-polished pale rock streaked with blown sand.
+  - Ground: wind-polished pale rock with small pockets of blown sand.
   - Camp at level 80: **Windbreak Keep**, a squat stone watchtower with ragged banners streaming in the wind.
 - **The Buried City** (levels 41–45): half-buried sandstone ruins: broken columns, toppled statues and a giant carved stone face half sunk in the sand.
 - **The gate: the Sky Arch.** A great natural stone arch on the highest rock, the wind howling through it, and beneath it a round stone gate carved with an eight-spoked wheel. It opens on the Light Summit.
@@ -290,10 +290,10 @@ above like everything else".
   - Ground: trampled dark dirt with coal dust and flecks of slag.
   - Camp at level 20: **Coaling Station**, a coaling station with a crane over a heap of coal.
 - **Levels 21–40: the foundry works.** Dark slate and iron floor plates joined by brass seams, thick iron pipes along the ground and crackling blue electric light in the cracks.
-  - Ground: dark iron floor plates joined by brass seams.
+  - Ground: dark, square iron floor plates joined by brass seams.
   - Camp at level 40: **Shift House**, a brick workers' canteen with a steam whistle on the roof.
 - **Levels 41–60: the coil fields.** Fields of copper coils and lightning rods on scorched iron ground, arcs of blue electricity jumping between them.
-  - Ground: scorched iron plating and cracked slate threaded with copper wire.
+  - Ground: scorched iron plating and cracked slate, with loose loops of copper wire.
   - Camp at level 60: **Relay Nine**, a telegraph relay hut with a humming antenna mast.
 - **Levels 61–80: the storm plateau.** A high plateau of black iron under endless lightning, with twisted metal towers.
   - Ground: black iron plate spattered with fused glass where lightning struck.
@@ -327,7 +327,7 @@ above like everything else".
 *Venom · reached by the Bog Trail · its gate opens on the Light Summit*
 
 - **Levels 1–20: the blighted farm.** A blighted field of withered crops and sickly yellow grass, a toppled scarecrow and a broken snake-oil wagon spilling green bottles.
-  - Ground: sickly yellow grass and withered crop rows on grey soil.
+  - Ground: sickly yellow grass and patchy clumps of withered crops on grey soil.
   - Camp at level 20: **Snake-Oil Stop**, a travelling quack doctor's painted wagon and awning.
 - **Levels 21–40: the slime woods.** Murky moss and bog ground among twisted dead trees dripping green slime and giant purple and yellow toadstools.
   - Ground: murky green moss over black bog mud.
@@ -632,7 +632,8 @@ table says which. The numbers and the prompt words live in one file,
 | 8 | **Objects.** Drawn whole on magenta, from the bro's steep three-quarter top-down angle, and recognisable at half size. Sizes come from one table: a tree about 1.8 × the bro, a door about 1.2 ×, a bush about 0.55 ×, a boulder about 0.5 ×. | the prompt; the pipeline scales each object to its size |
 | 9 | **Characters against the world.** The world is a bit finer-grained than the bro on purpose: it makes characters read as figures on a stage. | the grid (rule 1) |
 | 10 | **Process.** The style key first. Then a small **golden set** of approved pictures, attached alongside it. One fixed style paragraph in every prompt. Every picture judged next to the bro at game size, never on its own, but **the bro is never attached to a chat** (v2.3.2939): the key and the golden set are the only pictures anything is matched to. | the owner |
-| 11 | **Materials** (v2.3.2939). Every material is drawn as itself, recognisable from its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, sand in fine wind ripples. Texture comes from clear shapes and soft shading, never noise, speckle or grain (v2.3.2941: the first ground came back "too gritty"). Highlights are clusters of two or more pixels (rule 5). | the prompt (`MATERIALS` in `bible.js`), the style key's ninth tile, and the owner's eye |
+| 11 | **Materials** (v2.3.2939). Every material is drawn as itself, recognisable from its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, sand in soft, fine drifts (v2.3.2944: not wind ripples, which run one way, rule 12). Texture comes from clear shapes and soft shading, never noise, speckle or grain (v2.3.2941: the first ground came back "too gritty"). Highlights are clusters of two or more pixels (rule 5). | the prompt (`MATERIALS` in `bible.js`), the style key's ninth tile, and the owner's eye |
+| 12 | **Ground has no direction** (v2.3.2944). Owner, on the first Main Street swatch in the game: *"It's tiling wagon trails sideways and it doesn't look good. Any specific detail that would look bad when placed in the wrong direction tiled is probably not a good prompt."* A swatch is laid the same way up everywhere, whichever way the street, road or shore runs, so nothing in it may run one way: no ruts, tracks, footprints, rows, long planks, stripes, streaks or ripples. Every detail must look right from any side (a basket weave, not long planks; soft drifts, not ripples; square plates, not long ones). Whatever really does follow a road, such as ruts or rails, is an object laid along it (§11). | the prompt (`NO_DIRECTION` in `bible.js`, in every swatch prompt), and a test that no swatch brief asks for a direction |
 
 **What changed from ChatGPT's suggested style bible:** no gradients at all.
 Shading comes from the colour ramps, and soft light comes from the code.
@@ -649,7 +650,7 @@ Shading comes from the colour ramps, and soft light comes from the code.
 > shape of its highlights: grass in soft clumps of blades, packed earth with
 > a few small stones, stone with hard-edged facets, chips and cracks, wood
 > with grain lines and knots, metal with small, sharp, bright highlights, snow
-> and ice in cool blues with crisp edges, and sand in fine wind ripples.
+> and ice in cool blues with crisp edges, and sand in soft, fine drifts.
 > Texture comes from a few clear shapes and soft shading, never from noise,
 > speckle or grain. Highlights are small clusters of pixels, never single
 > stray ones. Soft,
@@ -1321,6 +1322,13 @@ definitely do the swatches."*
   commons, the town's yards, street, boardwalk and square, roads, the railway
   bed, lava, and the eight border lands. Each has two versions, mixed by the
   game so the ground does not repeat.
+- **Nothing in a swatch runs one way** (v2.3.2944, rule 12 in §6). The
+  first Main Street swatch had wagon ruts, which the game tiled sideways
+  down every north-south street. The street, road and boardwalk prompts,
+  and five others that asked for tracks, ripples, rows or streaks, were
+  rewritten, and the Ground Studio marks any swatch made from an older
+  prompt. Ruts, rails and plank lines that really follow a road will be
+  objects laid along it.
 - **The phone composes the ground** from the swatches as you walk, so the
   download does not grow with the map. `public/tools/world/core/ground.js`
   already does it: it decides which swatch covers each spot of the plan and

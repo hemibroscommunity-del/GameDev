@@ -141,6 +141,11 @@ try {
   ok('...attaching only the style key (never the bro) and asking for every material drawn as itself',
     /Attached is the game's style key/.test(first.commons) && !/hero|\bbro\b/i.test(first.commons) && /Every material is drawn as itself/.test(first.commons));
   ok("a stage's prompt is that stage's ground, and a road's allows the road", /patchy snow melting over wet brown grass/.test(first.frost1) && /whole square is this one surface/.test(first.road) && !/no objects, paths or water/.test(first.road));
+  /* v2.3.2944, owner: "It's tiling wagon trails sideways" -- nothing in a
+     swatch may run one way, and the road no longer asks for ruts */
+  ok('every prompt says nothing in it may run one way, and the road asks for no ruts',
+    /Nothing in it runs one way/.test(first.commons) && /Nothing in it runs one way/.test(first.road) && /worn evenly all over/.test(first.road) && !/wheel ruts/.test(first.road),
+    first.road.slice(0, 260));
   ok('the progress map is the whole Wheel, a pixel a cell', first.map[0] === 1792 && first.map[1] === 1792, first.map);
   const noKey = await page.evaluate(() => !document.getElementById('key-none').hidden);
   ok('with no style key yet, the page sends you to the World Builder for it', noKey);
@@ -267,6 +272,32 @@ try {
   const h3 = await hashOf(pageB);
   ok('restoring the zip in a fresh browser gives the same swatches, pixel for pixel', h3.h === h1.h && h3.frozen, { h1, h3 });
   await shot(pageB, 'restored');
+
+  /* ── 7. v2.3.2944: a swatch made from an older prompt is marked ── */
+  console.log('7. a swatch made from an older prompt');
+  const oldPic = await makePicture(page, '#a08050', 18);
+  await page.evaluate(async (b64) => {
+    const { openStore } = await import('/tools/world/store.js');
+    const bin = atob(b64), u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    const blob = new Blob([u], { type: 'image/png' });
+    const st = await openStore('brotown-ground-studio', ['raw', 'prep', 'misc']);
+    /* as the studio saved a picture before v2.3.2944: no brief recorded */
+    await st.put('raw', 'street|A', { blob, name: 'street-A.png', type: 'image/png' });
+    await st.put('prep', 'street|A', blob);
+    st.close();
+  }, oldPic);
+  await page.close();
+  page = await open(ctxA);
+  const stale = await page.evaluate(() => ({
+    street: !!document.querySelector('[data-stale="street"]'),
+    road: !!document.querySelector('[data-stale="road"]'),
+    commons: !!document.querySelector('[data-stale="commons"]'),
+    text: (document.querySelector('[data-stale="street"]') || {}).textContent || '',
+  }));
+  ok("a swatch made from an older prompt (the Main Street ruts) is marked to make again; ones made from today's prompts are not",
+    stale.street && !stale.road && !stale.commons && /Make this one again/.test(stale.text), stale);
+  await shot(page, 'stale', '#sw-street');
 
   ok('no page errors', page.errs.length === 0 && pageB.errs.length === 0, [...page.errs, ...pageB.errs].slice(0, 3));
 } finally {

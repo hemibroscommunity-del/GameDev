@@ -67,8 +67,10 @@ export const PIXEL = {
    Water is not listed: the game draws it (docs/WORLD-BIBLE.md §11).
    v2.3.2941, owner, on the first ground at game size: "too gritty and low
    resolution compared to the character."  This line asked for "earth with
-   grit", and got it; texture now comes from clear shapes, never noise. */
-export const MATERIALS = 'Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in fine wind ripples. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones.';
+   grit", and got it; texture now comes from clear shapes, never noise.
+   v2.3.2944: sand in soft drifts, not "wind ripples" -- ripples all run one
+   way, and a ground swatch must not (NO_DIRECTION below). */
+export const MATERIALS = 'Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones.';
 
 /* The style paragraph every picture's prompt carries. */
 export const HD_STYLE = [
@@ -86,6 +88,19 @@ export const HD_STYLE = [
    comes from two versions of each ground mixed by the game and from small
    details scattered on top, never from busy tiles. */
 export const QUIET_GROUND = 'The texture is quiet and clean: broad, smooth areas of the base tones, with small accents covering no more than about a tenth of the area, and no noise, speckle or grain. Nothing bigger than a pebble or a flower, and no objects, paths or water.';
+
+/* ═══ v2.3.2944: GROUND HAS NO DIRECTION ═══
+   Owner, on the first Main Street swatch in the game: "It's tiling wagon
+   trails sideways and it doesn't look good.  Any specific detail that would
+   look bad when placed in the wrong direction tiled is probably not a good
+   prompt."  Exactly so: a swatch is laid the same way up everywhere
+   (world/core/ground.js), whichever way the street, road or shore runs, so
+   ruts along the picture's width run ACROSS every north-south street.  Every
+   ground swatch's prompt carries this, and no swatch brief may ask for a
+   detail with a direction (tools/world/test-world-core.mjs checks the
+   briefs).  Things that do follow a road -- ruts, rails, a line of planks --
+   are objects laid along it later, never ground. */
+export const NO_DIRECTION = 'Nothing in it runs one way: no ruts, tracks, footprints, rows, long planks, stripes, streaks or ripples that point in a direction. This square is laid the same way up everywhere, whichever way a road or a shore runs, so every detail must look right from any side.';
 
 /* v2.3.2939: what every chat is told about the one picture attached to it --
    the style key, never the bro (see the header).  "Do not copy its tiles":

@@ -74,7 +74,9 @@ remnant to migrate server-side, not a mode to preserve.
   prompt words live in `public/tools/style/bible.js`, and every picture
   goes through `public/tools/style/process.js`; since v2.3.2939 every
   material is drawn as itself (`MATERIALS`, the owner's "material-aware
-  texturing"), and the STYLE KEY is the only picture any chat is matched to —
+  texturing"), since v2.3.2944 nothing in a ground swatch runs one way
+  (`NO_DIRECTION`: the owner's Main Street ruts tiled sideways, because a
+  swatch is laid the same way up whichever way a road runs), and the STYLE KEY is the only picture any chat is matched to —
   NEVER attach the bro: he is simpler pixel art than the world and ChatGPT
   copies what it sees, so sizes are given in words (`personScale`) and he is
   only the size check in previews),

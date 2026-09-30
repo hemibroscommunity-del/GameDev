@@ -33,7 +33,8 @@
  *   node tools/world/test-world-core.mjs
  */
 import { PLAN, SPOKES } from '../../public/tools/world/plan.js';
-import { PIXEL } from '../../public/tools/style/bible.js';
+import { PIXEL, NO_DIRECTION } from '../../public/tools/style/bible.js';
+import { promptFor } from '../../public/tools/ground/prompts.js';
 import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours } from '../../public/tools/world/core/grid.js';
 import { buildBlueprint, renderSketch, colorTable, planKey, C, CLASS_IDS } from '../../public/tools/world/core/layout.js';
 import { spokePoint, arcPoint } from '../../public/tools/world/core/wheel.js';
@@ -269,6 +270,15 @@ console.log('ground');
     SPOKES.every((k) => [1, 2, 3, 4].every((n) => ids.has(`${k}-${n}`))) &&
     ['commons', 'town-yard', 'street', 'boardwalk', 'plaza', 'road', 'gravel', 'lava'].every((id) => ids.has(id)) &&
     cat.filter((e) => e.group === 'borders').length === 8 && cat.every((e) => e.brief && e.brief.length > 10 && e.color.length === 3), cat.length);
+  /* v2.3.2944, the owner's rule: a swatch is laid the same way up everywhere,
+     so nothing in it may run one way (the Main Street ruts tiled sideways) */
+  const DIRECTIONAL = /\b(ruts?|wheel|tracks?|footprints?|prints|hoof|rows?|furrows?|planks?|stripes?|striped|streak(s|ed)?|ripples?|running|lines?|wind-carved|wind-scoured)\b/i;
+  const pointing = cat.filter((e) => DIRECTIONAL.test(e.brief)).map((e) => `${e.id}: ${e.brief}`);
+  ok('no swatch brief asks for anything that runs one way (ruts, tracks, rows, planks, ripples, streaks)', pointing.length === 0, pointing);
+  const noDir = cat.filter((e) => !promptFor(e).includes(NO_DIRECTION)).map((e) => e.id);
+  ok('...every swatch prompt says so, and the rewritten ones are marked for the Ground Studio',
+    noDir.length === 0 && ['street', 'road', 'boardwalk', 'frost-2', 'sky-2', 'mist-1', 'border-thunder-tidal'].every((id) => cat.find((e) => e.id === id).revised === 'v2.3.2944'),
+    { noDir, revised: cat.filter((e) => e.revised).map((e) => e.id) });
   const t0 = Date.now();
   const mm = materialMap(PLAN, bp);
   const mmMs = Date.now() - t0;
