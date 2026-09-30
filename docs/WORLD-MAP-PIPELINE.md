@@ -541,6 +541,10 @@ same pixels, and (v2.3.2947) the edge-pieces prompts and pictures below.
 > think about what other considerations there are and how you can think of
 > the best solution."*
 
+![Before (left) and after (right): grass over a road, snow over a road, sand over a road, laid from crops of the style key](world/edges-before-after.png)
+
+![The stages of a spoke, one colour each: before (left) a line, after (right) patches](world/stage-patches.png)
+
 **Why it looked jarring.** Two unrelated pictures met on a ragged line cut by
 noise. Nothing of either crossed it, nothing lay on top of anything, and the
 contrast was sharpest exactly at the line. Every pair looked the same, whether
