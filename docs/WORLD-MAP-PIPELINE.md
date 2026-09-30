@@ -739,6 +739,73 @@ wheeltrial` (28).
 
 ---
 
+## Alike grounds mix (v2.3.2950)
+
+> Owner, 2026-09-30, with their own town-square and yard pictures in the
+> Ground Studio: *"The problem surfacing is still the harsh transitions
+> between different surfaces even if they're similar in theory. … It looks
+> obvious and unnatural. One idea I have is to have chatGPT make a blend of
+> the two surfaces that are mapped together."* And, steering: *"Focus on the
+> area near the player where the dirt transitions from one type to the
+> other."*
+
+![The owner's own pictures, the spot round the bro at the town square: before (left), a ruler line; after (right), a wide mixing zone](world/dirt-mix.png)
+
+**Why it looked that way.** The town's street and square were laid on their
+cells with crisp edges (v2.3.2945, to save the one-cell boardwalks from
+crumbling, and "a surveyed town has straight edges"), so the v2.3.2947 edges
+never reached them: the square's pale, stony dirt met the yards' orange dirt
+along a ruler line, just below where the bro arrives, and round the Town
+Hall's plot.
+
+**Four ways, tried on the owner's own pictures at that spot**
+(`docs/world/dirt-mix-options.png`): now; a plain soft edge (still read as a
+line, only wobbly); a wide mixing zone; and the same zone with the owner's
+blended third picture in its middle. The wide zone did most of the work;
+the blend added a little more in-between texture, for one more picture per
+pair of grounds. So the game now does the zone by itself, everywhere two
+grounds are alike, and a blend slot can come later if it is wanted.
+
+![The four ways: now; a soft edge; a wide mixing zone; the zone with the owner's blend picture](world/dirt-mix-options.png)
+
+**What the game does now** (`public/tools/world/core/ground.js`):
+
+- **Alike grounds MIX instead of meeting at an edge** (`MIX`, `edgeRecipe`):
+  two of one kind (the square, the street and the yards are all earth now;
+  one meadow and the next; snow and snow), or two of the loose, dry family
+  (earth, sand, ash). The change is spread over a zone about 36 game px
+  either side of the line, wandering by a third either way.
+- **In big patches, shaped by the pictures.** Inside the zone each pixel
+  goes to one ground or the other by big patches of noise (about 30 and 75
+  game px across, `MIX_PATCH`) against a ramp across the zone, plus the two
+  pictures' own heights (`MIX_HEIGHTS`, as at an edge): so the square's
+  stones hold on out into the yard's dirt, and the dirt comes in between
+  them, the patches' rims following both pictures. Every pixel is still a
+  pixel of one of the two pictures.
+- **Not everything mixes.** A road stays a road (its edges stay narrow), and
+  rock and ice keep their narrow even band, since their boulders and plates
+  would be cut. Different kinds still meet at a layered edge (v2.3.2947).
+- **The town:** the street and the square still lie on their cells (it keeps
+  the town cheap to lay) but now MIX into the yards; only the boardwalks and
+  bridges keep straight edges (`CRISP`).
+
+**Cost.** Most of the town is now a mixing zone, so a piece of town ground
+costs more to lay: about 20 ms in Node against 8 before, after caching the
+slow noise on a coarse lattice, settling whole art px where the patches
+alone decide, and a smaller lookup table. Elsewhere pieces cost about what
+they did. In the Wheel trial (desktop Chromium, local server) the way in
+took about 5 s against 4.5 s, a piece averaged about 42 ms against about 30,
+with no pop-ins; a phone is slower, and its box shows the real numbers.
+
+**Tests.** `node tools/world/test-world-core.mjs` (120): which pairs mix and
+which do not; at the owner's own spot, the square's share of the ground
+falling off across the zone and its last pixel wandering, every pixel one
+of the two pictures', and the zone laid in halves the same as whole.
+`node tools/qa/ground-studio.mjs` (42) and `node tools/qa/mp/run.mjs
+wheeltrial` (28) as before.
+
+---
+
 ## The world trial: walking a seamless island today (v2.3.2932)
 
 > Owner, 2026-09-29: *"Can we do one trial run where you just replicate the

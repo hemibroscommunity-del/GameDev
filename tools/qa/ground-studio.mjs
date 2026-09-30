@@ -344,7 +344,7 @@ try {
     away.on === false && away.prompts === 0 && away.blocks === 0 && away.hidden.length === 3 && away.hidden.every(Boolean) &&
     !away.steps.some((t) => /Edge pieces/i.test(t)) && !/edge pieces/i.test(away.card), away);
   ok('...while the page still says how grounds meet, and the preview can jump to the longest edges',
-    away.bullets === 4 && /The higher ground lies over the lower/.test(away.card) && away.spots >= 8, { bullets: away.bullets, spots: away.spots });
+    away.bullets === 5 && /The higher ground lies over the lower/.test(away.card) && /much alike mix over a wide zone/.test(away.card) && away.spots >= 8, { bullets: away.bullets, spots: away.spots });
   /* ...and ?edgepieces brings every part of them back, as before */
   const pageP = await open(ctxA, '?edgepieces');
   const meet = await pageP.evaluate(() => ({

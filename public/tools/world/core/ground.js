@@ -49,12 +49,16 @@
  *     third picture -- are scattered whole along its edges (pieceMap).
  *     v2.3.2948: put away, since the owner saw no difference: kept and
  *     tested, but no tool shows or loads them (EDGE_PIECES below).
- * The water keeps its shore, and the town's built surfaces their straight
- * edges (below).
+ * v2.3.2950: two grounds that are much alike (of one kind, or both loose
+ * dry ground) change over a wide zone, in big patches (MIX), not at an
+ * edge -- the town square into the yards, one meadow into the next.
+ * The water keeps its shore, and the boardwalks their straight edges
+ * (below).
  *
  * BUILT surfaces -- the town's street, boardwalks and square (BUILT below)
- * -- are laid exactly on their cells, with straight edges, over the natural
- * ground.  v2.3.2945, owner, on Main Street in the Ground Studio: "I think
+ * -- are laid exactly on their cells over the natural ground; since
+ * v2.3.2950 only the boardwalks keep that straight edge (CRISP), the street
+ * and the square mixing into the yards.  v2.3.2945, owner, on Main Street in the Ground Studio: "I think
  * wooden plank bits are on the edges."  They were the boardwalks: one cell
  * wide, and a blurred field cannot hold a strip that thin -- between the
  * street and a yard all three shares come out near a third, the noise
@@ -96,6 +100,16 @@ const BORDER_BAND = 0.45;
 const JIT = 0.32;
 /* v2.3.2945: the surfaces laid exactly on their cells (see the header) */
 const BUILT = ['street', 'boardwalk', 'plaza'];
+/* v2.3.2950: which of them keep a CRISP edge -- only the boardwalks now (and
+   so the bridges, boardwalk decks).  Owner, on the town square with their
+   own pictures in: "The problem surfacing is still the harsh transitions
+   between different surfaces even if they're similar in theory."  The
+   square and the street kept crisp edges too (v2.3.2945, "a surveyed town
+   has straight edges"), so where the square's stony dirt met the yards'
+   dirt it did so along a ruler line.  They still lie on their cells (it
+   keeps the town's plan cheap to lay), but now meet the yards through a
+   wide MIX (below), which hides the line under big patches. */
+const CRISP = ['boardwalk'];
 
 /* ═══ v2.3.2947: WHERE TWO GROUNDS MEET ═══
    Owner, 2026-09-30: "the change between two swatches is still too jarring
@@ -111,8 +125,9 @@ const BUILT = ['street', 'boardwalk', 'plaza'];
    reaches over the lower by a little, and its edge is ragged over a band
    whose width is the pair's (EDGE_SPREAD) -- a road's edge is narrow, sand
    drifting onto rock wide.  Two grounds of the same kind (one grass giving
-   way to another) interlock evenly, with no upper.  The boardwalks, the
-   town square and the water keep their crisp edges.
+   way to another) interlock evenly, with no upper (v2.3.2950: most of them
+   now MIX over a wide zone instead, below).  The boardwalks and the water
+   keep their crisp edges.
 
    The ragged edge is drawn from the two pictures themselves, not from
    noise: within the band each pixel goes to whichever ground stands higher
@@ -127,7 +142,7 @@ const LAYER = { liquid: 0, road: 1, rock: 2, metal: 3, earth: 4, sand: 5, ash: 5
 /* The kind of every swatch, from its brief (plan.js).  A swatch not listed
    is taken as earth. */
 const KIND_OF = {
-  commons: 'grass', 'town-yard': 'earth', street: 'road', boardwalk: 'built', plaza: 'built', road: 'road', gravel: 'road', lava: 'liquid',
+  commons: 'grass', 'town-yard': 'earth', street: 'earth', boardwalk: 'built', plaza: 'earth', road: 'road', gravel: 'road', lava: 'liquid',
   'frost-1': 'snow', 'frost-2': 'snow', 'frost-3': 'ice', 'frost-4': 'snow',
   'ember-1': 'grass', 'ember-2': 'ash', 'ember-3': 'rock', 'ember-4': 'rock',
   'sky-1': 'earth', 'sky-2': 'sand', 'sky-3': 'rock', 'sky-4': 'rock',
@@ -150,6 +165,31 @@ const EDGE_SPREAD = {
 };
 /* Two grounds of one kind: no reach, just the band. */
 const EDGE_SAME = { road: 8, rock: 10, metal: 2, earth: 12, sand: 15, ash: 15, moss: 14, grass: 15, ice: 6, snow: 15, liquid: 0 };
+/* ═══ v2.3.2950: SIMILAR GROUNDS MIX ═══
+   Two grounds that are much alike -- of one kind (the square's stony dirt
+   and the yards' dirt; one meadow and the next), or both of the loose, dry
+   family (earth, sand, ash) -- do not meet along an edge at all, however
+   ragged: the change between them is spread over a wide zone, MIX game px
+   either side of the line (then wandering by a third either way), where
+   the two lie in patches from about 30 to 75 game px across, down to the
+   pictures' own stones and tufts at the rim of each patch.  Tried on the
+   owner's own square and yard pictures against a plain soft edge (still
+   read as a line) and against the same zone with a third, blended picture
+   in its middle (the owner's idea: close to this, without the picture).
+   The road is not in the family: a road stays a road.  Rock and ice keep
+   their narrow even band -- their boulders and plates would be cut. */
+const MIX = { earth: 36, sand: 36, ash: 36, grass: 36, moss: 30, snow: 36 };
+/* ...where the big patches do most of the deciding: the pictures' own
+   stones and tufts count this much (0.7 at an edge), shaping only the
+   patches' rims -- which also lets most of the zone be settled an art px
+   at a time, not pixel by pixel */
+const MIX_HEIGHTS = 0.7;
+/* ...and how strong the big patches are against the zone's own ramp (-1 at
+   one side, +1 at the other): strong enough that islands of each ground
+   reach most of the way across, so the change is spread over the whole
+   zone -- at 0.8 it bunched up near the middle and still read as a line */
+const MIX_PATCH = 1.2;
+const MIX_FAMILY = { earth: 1, sand: 1, ash: 1 };
 /* the smallest bit of ground an edge may leave, in picture px (a tuft) */
 const EDGE_BIT = 20;
 /* how far beyond an upper ground's ragged edge its edge pieces lie, game px */
@@ -178,19 +218,22 @@ export function edgePiecesOn(search) {
 /* the most any edge reaches, in game px, for the margins below */
 const EDGE_MAX_GAME = 2 + Math.max(
   ...Object.values(EDGE_SPREAD).map(([r, w]) => 1.5 * r + 1.35 * w),
-  ...Object.values(EDGE_SAME).map((w) => 1.35 * w));
+  ...Object.values(EDGE_SAME).map((w) => 1.35 * w),
+  ...Object.values(MIX).map((w) => 1.35 * w));
 
 /* The edge where swatches `a` and `b` (catalog entries) meet: null where it
-   stays crisp (the water, the boardwalks, the square); otherwise
-   { up, lo } -- which is the upper (the same when neither is) -- and
-   `reach`, `ragged` in game px. */
+   stays crisp (the water, the boardwalks); otherwise { up, lo } -- which is
+   the upper (the same when neither is) -- and `reach`, `ragged` in game px;
+   `mix` where the two are alike and change over a wide zone (MIX). */
 export function edgeRecipe(a, b) {
   if (!a || !b || a.id === b.id) return null;
-  /* the town's street, boardwalks and square keep their straight, surveyed
-     edges (v2.3.2945) */
-  if (BUILT.includes(a.id) || BUILT.includes(b.id)) return null;
+  /* the boardwalks keep their straight, surveyed edges (v2.3.2945) */
+  if (CRISP.includes(a.id) || CRISP.includes(b.id)) return null;
   const ka = kindOf(a.id), kb = kindOf(b.id);
   if (ka === 'built' || kb === 'built') return null;
+  if (MIX[ka] && MIX[kb] && (ka === kb || (MIX_FAMILY[ka] && MIX_FAMILY[kb]))) {
+    return { up: a.id < b.id ? a.id : b.id, lo: a.id < b.id ? b.id : a.id, even: true, reach: 0, ragged: Math.min(MIX[ka], MIX[kb]), mix: true };
+  }
   if (ka === kb) {
     const w = EDGE_SAME[ka] || 0;
     return w ? { up: a.id < b.id ? a.id : b.id, lo: a.id < b.id ? b.id : a.id, even: true, reach: 0, ragged: w } : null;
@@ -799,7 +842,9 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
   for (let q = 0; q < 256; q++) if (hereSeen[q]) here.push(q);
   /* (flat arrays, not maps: these are read for every pixel near an edge) */
   const recipes = new Map(), partners = new Map(), dts = new Map();
-  const recOf = new Array(65536), partOf = new Array(256), dtOf = new Array(256);
+  /* (v2.3.2950: indexed a x NQ + b, NQ the swatches there are -- not 256 x 256,
+     which was a 64K list made for every piece) */
+  const NQ = mm.ids.length, recOf = new Array(NQ * NQ), partOf = new Array(256), dtOf = new Array(256);
   for (const a of here) {
     const list = [];
     for (const b of here) {
@@ -810,7 +855,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       const reachT = Math.ceil(((1.5 * r.reach + 1.35 * r.ragged) / GPA + 1.5) * 3);
       const rr = { ...r, upQ: cat[a].id === r.up ? a : b, loQ: cat[a].id === r.up ? b : a, reachT };
       recipes.set(a * 256 + b, rr);
-      recOf[a * 256 + b] = rr;
+      recOf[a * NQ + b] = rr;
       list.push(b);
     }
     if (list.length) { partners.set(a, list); partOf[a] = list; }
@@ -823,7 +868,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     for (let p = 0; p < PW * PH; p++) {
       const a = pmat[p], list = partOf[a];
       if (!list) continue;
-      for (let k = 0; k < list.length; k++) if (dtOf[list[k]][p] <= recOf[a * 256 + list[k]].reachT) { inReach[p] = 1; break; }
+      for (let k = 0; k < list.length; k++) if (dtOf[list[k]][p] <= recOf[a * NQ + list[k]].reachT) { inReach[p] = 1; break; }
     }
   }
   const bSel = (ax, ay) => fbm(ax / 1100, ay / 1100, seed + 11, 2) + 0.18 * (hash2(ax >> 2, ay >> 2, seed + 13) - 0.5) > 0;
@@ -844,28 +889,116 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     if (v !== v) { const ax = PX0 + (q % PW), ay = PY0 + ((q / PW) | 0); v = pPatch[q] = valueNoise((ax * K + K / 2) / 16, (ay * K + K / 2) / 16, seed + 43); }
     return v;
   };
+  /* v2.3.2950: the SLOW fields -- how far an edge reaches and how wide its
+     band is (they wander over ~40 art px), the MIX zone's big patches (~20
+     and 50 art px), and A or B (~1100 art px) -- worked out every LAT art px,
+     on a lattice anchored to the world (so every chunk agrees), and read
+     between.  A field that slow comes out the same to about a hundredth, and
+     working it out at every art px was most of the town's time once the
+     square and the street mixed into the yards. */
+  const LAT = 4, LX0 = Math.floor(PX0 / LAT), LY0 = Math.floor(PY0 / LAT);
+  const LW = Math.floor((PX0 + PW) / LAT) - LX0 + 2, LH = Math.floor((PY0 + PH) / LAT) - LY0 + 2;
+  const lat = new Float32Array(LW * LH * 4).fill(NaN);
+  const latK = (i, j) => {
+    const k = (j * LW + i) * 4;
+    if (lat[k] !== lat[k]) {
+      const ax = (LX0 + i) * LAT, ay = (LY0 + j) * LAT, ox = ax * K + K / 2, oy = ay * K + K / 2;
+      lat[k] = valueNoise(ax / 40, ay / 40, seed + 31);
+      lat[k + 1] = valueNoise(ax / 40 + 17.3, ay / 40 - 9.1, seed + 37);
+      lat[k + 2] = MIX_PATCH * (0.69 * valueNoise(ox / 60, oy / 60, seed + 71) + 0.31 * valueNoise(ox / 150, oy / 150, seed + 73));
+      lat[k + 3] = bSel(ax, ay) ? 1 : 0;
+    }
+    return k;
+  };
+  /* the slow fields at art px `p` into pVar and pB (once) */
+  const slow = (p) => {
+    const fx = (PX0 + (p % PW) + 0.5) / LAT - LX0 - 0.5, fy = (PY0 + ((p / PW) | 0) + 0.5) / LAT - LY0 - 0.5;
+    const i = Math.floor(fx), j = Math.floor(fy), u = fx - i, v = fy - j;
+    const k00 = latK(i, j), k10 = latK(i + 1, j), k01 = latK(i, j + 1), k11 = latK(i + 1, j + 1);
+    const w00 = (1 - u) * (1 - v), w10 = u * (1 - v), w01 = (1 - u) * v, w11 = u * v;
+    pVar[2 * p] = 1 + 0.5 * (lat[k00] * w00 + lat[k10] * w10 + lat[k01] * w01 + lat[k11] * w11);
+    pVar[2 * p + 1] = 1 + 0.35 * (lat[k00 + 1] * w00 + lat[k10 + 1] * w10 + lat[k01 + 1] * w01 + lat[k11 + 1] * w11);
+    pB[p] = lat[(u < 0.5 ? (v < 0.5 ? k00 : k01) : v < 0.5 ? k10 : k11) + 3];
+  };
+  /* the MIX zone's big patches (about 30 and 75 game px across) at an art
+     px's middle, from the lattice; pixels read between art px */
+  const pMixN = new Float32Array(PW * PH).fill(NaN);
+  const mixAt = (q) => {
+    let r = pMixN[q];
+    if (r !== r) {
+      const fx = (PX0 + (q % PW) + 0.5) / LAT - LX0 - 0.5, fy = (PY0 + ((q / PW) | 0) + 0.5) / LAT - LY0 - 0.5;
+      const i = Math.floor(fx), j = Math.floor(fy), u = fx - i, v = fy - j;
+      r = pMixN[q] = (lat[latK(i, j) + 2] * (1 - u) + lat[latK(i + 1, j) + 2] * u) * (1 - v) + (lat[latK(i, j + 1) + 2] * (1 - u) + lat[latK(i + 1, j + 1) + 2] * u) * v;
+    }
+    return r;
+  };
   /* A whole art px settled at once, where one edge is near and its band
      coordinate, at the art px's middle, is plainly past either side of the
      ragged band (by more than the art px's half-diagonal can change it):
      the upper's or the lower's label, or -1 to work each pixel out. */
   const pSet = new Int16Array(PW * PH).fill(-2);
+  /* (v2.3.2950: near several partners too -- the town's square, street and
+     yards all meet -- when every one of them plainly gives the same answer,
+     since the pixel's nearest partner, whichever it is, then gives it too) */
   const settle = (a, p) => {
-    const list = partOf[a];
-    if (!list || list.length !== 1) return -1;
-    const b = list[0], r = recOf[a * 256 + b], d0 = dtOf[b][p];
-    if (d0 > r.reachT) return a;
-    if (pB[p] < 0) {
-      const ax = PX0 + (p % PW), ay = PY0 + ((p / PW) | 0);
-      pVar[2 * p] = 1 + 0.5 * valueNoise(ax / 40, ay / 40, seed + 31);
-      pVar[2 * p + 1] = 1 + 0.35 * valueNoise(ax / 40 + 17.3, ay / 40 - 9.1, seed + 37);
-      pB[p] = bSel(ax, ay) ? 1 : 0;
+    let list = partOf[a];
+    if (!list) return -1;
+    /* where several meet, a pixel answers to its nearest partner only: when
+       one partner is nearer than every other across the whole art px (its
+       farthest, among the art px centres round it, still nearer than their
+       nearest), only its answer counts */
+    if (list.length > 1) {
+      const px = p % PW, py = (p / PW) | 0;
+      let best = -1, bestMax = Infinity;
+      const mins = [], maxs = [];
+      for (let k = 0; k < list.length; k++) {
+        const D = dtOf[list[k]];
+        let mn = Infinity, mx = -Infinity;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const v = D[Math.min(PH - 1, Math.max(0, py + dy)) * PW + Math.min(PW - 1, Math.max(0, px + dx))];
+          if (v < mn) mn = v;
+          if (v > mx) mx = v;
+        }
+        mins.push(mn); maxs.push(mx);
+        if (mx < bestMax) { bestMax = mx; best = k; }
+      }
+      let clear = true;
+      for (let k = 0; k < list.length && clear; k++) if (k !== best && mins[k] <= bestMax) clear = false;
+      if (clear) list = [list[best]];
     }
-    const dist = Math.max(0, d0 / 3 - 0.5) * GPA, s = a === r.loQ ? dist : -dist;
-    const E = r.ragged * pVar[2 * p + 1], t = (s - r.reach * pVar[2 * p]) / E;
-    const slack = (0.75 * GPA + 0.1) / E;
-    if (t - slack >= 1) return r.loQ;
-    if (t + slack <= -1) return r.upQ;
-    return -1;
+    let ans = -3;
+    for (let k = 0; k < list.length; k++) {
+      const b = list[k], r = recOf[a * NQ + b], d0 = dtOf[b][p];
+      let e;
+      if (d0 > r.reachT) e = a;
+      else {
+        if (pB[p] < 0) slow(p);
+        const dist = Math.max(0, d0 / 3 - 0.5) * GPA, s = a === r.loQ ? dist : -dist;
+        const E = r.ragged * pVar[2 * p + 1], t = (s - r.reach * pVar[2 * p]) / E;
+        const slack = (0.75 * GPA + 0.1) / E;
+        e = t - slack >= 1 ? r.loQ : t + slack <= -1 ? r.upQ : -1;
+        /* in the band, the patches may decide it for the whole art px: the
+           pictures' part (0.7 x their heights' difference) is never more
+           than 0.7 either way, and every pixel's patch lies between the
+           lowest and highest of the art px centres round it */
+        if (e < 0) {
+          let lo = Infinity, hi = -Infinity;
+          const px = p % PW, py = (p / PW) | 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const qx = Math.min(PW - 1, Math.max(0, px + dx)), qy = Math.min(PH - 1, Math.max(0, py + dy)), q = qy * PW + qx;
+            const v = r.mix ? 0.18 * patchAt(q) + mixAt(q) : 0.6 * patchAt(q);
+            if (v < lo) lo = v;
+            if (v > hi) hi = v;
+          }
+          const hw = r.mix ? MIX_HEIGHTS : 0.7;
+          if (lo - (t + slack) > hw) e = r.upQ;
+          else if (hi - (t - slack) <= -hw) e = r.loQ;
+        }
+      }
+      if (e < 0 || (ans !== -3 && e !== ans)) return -1;
+      ans = e;
+    }
+    return ans;
   };
   /* the edge's answer for one output pixel, or -1 where there is no edge */
   const edgeAt = (a, p, aox, aoy) => {
@@ -883,27 +1016,30 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       if (d < bd) { bd = d; b = l; }
     }
     if (b < 0) return -1;
-    const r = recOf[a * 256 + b];
+    const r = recOf[a * NQ + b];
     /* game px from the line between the two, + into the lower ground */
     const dist = Math.max(0, bd / 3 - 0.5) * GPA;
     const up = r.upQ, lo = r.loQ;
     const s = a === lo ? dist : -dist;
     /* the reach and the band vary along the edge, so it wanders */
-    if (pB[p] < 0) {
-      const ax = Math.floor(axc), ay = Math.floor(ayc);
-      pVar[2 * p] = 1 + 0.5 * valueNoise(ax / 40, ay / 40, seed + 31);
-      pVar[2 * p + 1] = 1 + 0.35 * valueNoise(ax / 40 + 17.3, ay / 40 - 9.1, seed + 37);
-      pB[p] = bSel(ax, ay) ? 1 : 0;
-    }
+    if (pB[p] < 0) slow(p);
     const t = (s - r.reach * pVar[2 * p]) / (r.ragged * pVar[2 * p + 1]);
     if (t <= -1) return up;
     if (t >= 1) return lo;
-    const useB = pB[p] === 1;
-    const hu = heightAt(tileFor(up, useB), up, aox, aoy, seed), hl = heightAt(tileFor(lo, useB), lo, aox, aoy, seed);
     /* patches a few game px across, so the upper ground comes in islands
        and the lower shows through in bays, thinning out across the band */
-    const patch = 0.6 * ((patchAt(q00) * (1 - ux) + patchAt(q00 + 1) * ux) * (1 - uy) + (patchAt(q00 + PW) * (1 - ux) + patchAt(q00 + PW + 1) * ux) * uy);
-    return 0.7 * (hu - hl) + patch > t ? up : lo;
+    let patch = 0.6 * ((patchAt(q00) * (1 - ux) + patchAt(q00 + 1) * ux) * (1 - uy) + (patchAt(q00 + PW) * (1 - ux) + patchAt(q00 + PW + 1) * ux) * uy);
+    /* v2.3.2950: where two alike grounds MIX, the patches are big -- about
+       30 and 75 game px across -- with the small ones only at their rims */
+    if (r.mix) patch = 0.3 * patch + ((mixAt(q00) * (1 - ux) + mixAt(q00 + 1) * ux) * (1 - uy) + (mixAt(q00 + PW) * (1 - ux) + mixAt(q00 + PW + 1) * ux) * uy);
+    /* (the pictures' part is hw x a difference of two heights in 0..1:
+       where the patch alone clears it, it cannot change the answer) */
+    const hw = r.mix ? MIX_HEIGHTS : 0.7;
+    if (patch - t > hw) return up;
+    if (patch - t <= -hw) return lo;
+    const useB = pB[p] === 1;
+    const hu = heightAt(tileFor(up, useB), up, aox, aoy, seed), hl = heightAt(tileFor(lo, useB), lo, aox, aoy, seed);
+    return hw * (hu - hl) + patch > t ? up : lo;
   };
   /* 3. output pixels: an edge's answer where one is in reach; else the art
      px's answer where its neighbourhood is one swatch, each pixel's own
@@ -965,7 +1101,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
             const i0 = Math.floor(fx), j0 = Math.floor(fy), ux = fx - i0, uy = fy - j0, q00 = j0 * PW + i0;
             const lc = pmat[Math.round(fy) * PW + Math.round(fx)];
             if (lc === U) continue;
-            const r = recOf[lc * 256 + U];
+            const r = recOf[lc * NQ + U];
             if (!r || r.even || r.upQ !== U) continue;
             const d = Math.max(0, ((DU[q00] * (1 - ux) + DU[q00 + 1] * ux) * (1 - uy) + (DU[q00 + PW] * (1 - ux) + DU[q00 + PW + 1] * ux) * uy) / 3 - 0.5) * GPA;
             /* from a little inside the upper ground's ragged edge (nearer, it

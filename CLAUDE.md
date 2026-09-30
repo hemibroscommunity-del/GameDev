@@ -71,7 +71,11 @@ remnant to migrate server-side, not a mode to preserve.
   bridges straight and square-ended -- whose boards the game lays itself,
   12 game px each, across the deck and lined up with its ends: `planksOf`,
   the boardwalk's `laid: 'planks'`, the one swatch that may run one way,
-  WORLD-MAP-PIPELINE "Bridges and boardwalks"),
+  WORLD-MAP-PIPELINE "Bridges and boardwalks"; since v2.3.2950 ALIKE
+  grounds -- one kind, or earth/sand/ash -- MIX over a wide zone in big
+  patches shaped by both pictures (`MIX`, `MIX_PATCH`, `MIX_HEIGHTS`), the
+  town square and street included, only the boardwalks keeping straight
+  edges (`CRISP`): WORLD-MAP-PIPELINE "Alike grounds mix"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

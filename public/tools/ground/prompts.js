@@ -60,8 +60,10 @@ const PIECES = {
   earth: ['small clods and patches of its earth, with a few small stones', 'earth'],
   rock: ['small stones, chips and flakes of its rock', 'rock'],
 };
-/* Which swatches have edge pieces: those that ever lie over another. */
-export function hasEdgePieces(entry) { return !!(entry && PIECES[entry.kind]); }
+/* Which swatches have edge pieces: those that ever lie over another.
+   (v2.3.2950: not the town's surfaces, now of the kind earth: they mix with
+   the yards, where nothing lies over anything.) */
+export function hasEdgePieces(entry) { return !!(entry && PIECES[entry.kind] && !SURFACES.has(entry.id)); }
 export function edgePromptFor(entry) {
   const [what, noun] = PIECES[entry.kind] || ['small loose pieces of it', 'ground'];
   return [

@@ -421,14 +421,17 @@ console.log('ground');
   const town = composeGround(PLAN, bp, mm, RT, {}, { scale: 3 });
   const TW = town.w;
   let offCell = 0, bwPx = 0;
+  /* (v2.3.2950: the boardwalks' edges only -- the street and the square
+     still lie on their cells, but mix into the yards) */
+  const BW = mm.index.boardwalk;
   for (let y = 0; y < town.h; y++) for (let x = 0; x < TW; x++) {
     const ax = RT.x + (x + 0.5) / 3, ay = RT.y + (y + 0.5) / 3;
     const cq = mm.mat[Math.floor((ay - bp.y0) / bp.scale) * bp.w + Math.floor((ax - bp.x0) / bp.scale)];
     const q = town.mat[y * TW + x];
-    if (mm.built[cq] ? q !== cq : mm.built[q]) offCell++;
-    if (mm.ids[q] === 'boardwalk') bwPx++;
+    if (cq === BW ? q !== BW : q === BW) offCell++;
+    if (q === BW) bwPx++;
   }
-  ok('the street, the boardwalks and the square are laid exactly on their cells, with straight edges', offCell === 0 && bwPx > 1000 && ['street', 'boardwalk', 'plaza'].every((id) => mm.built[mm.index[id]]), { offCell, bwPx });
+  ok('the boardwalks are laid exactly on their cells, with straight edges', offCell === 0 && bwPx > 1000 && ['street', 'boardwalk', 'plaza'].every((id) => mm.built[mm.index[id]]), { offCell, bwPx });
   const seenPx = new Uint8Array(town.mat.length);
   let pieces = 0, specks = 0;
   for (let i = 0; i < town.mat.length; i++) {
@@ -542,9 +545,56 @@ console.log('ground');
   const byId = Object.fromEntries(mm.catalog.map((e) => [e.id, e]));
   const rc = (a, b) => edgeRecipe(byId[a], byId[b]);
   const over = (a, b) => { const r = rc(a, b); return !!r && !r.even && r.up === a && r.lo === b; };
-  ok('grounds lie in one order: grass over the road, snow over grass, sand over rock, rock over lava; the town and two of a kind stay as they were',
+  ok('grounds lie in one order: grass over the road, snow over grass, sand over rock, rock over lava; the boardwalks keep their edges',
     over('commons', 'road') && over('frost-2', 'commons') && over('sky-2', 'sky-3') && over('ember-3', 'lava') && over('commons', 'town-yard') &&
-    rc('street', 'town-yard') === null && rc('boardwalk', 'commons') === null && rc('plaza', 'town-yard') === null && rc('commons', 'commons') === null);
+    rc('boardwalk', 'commons') === null && rc('boardwalk', 'street') === null && rc('commons', 'commons') === null);
+  /* v2.3.2950: alike grounds MIX over a wide zone -- the town square, the
+     street and the yards; one meadow and the next; sand and dry earth --
+     but a road stays a road, and rock and ice keep their narrow band */
+  const mixW = (a, b) => { const r = rc(a, b); return r && r.mix && r.even && r.reach === 0 ? r.ragged : 0; };
+  ok('grounds that are much alike mix over a wide zone: the town square, the street and the yards, two meadows, sand and dry earth; not a road, rock or ice',
+    mixW('plaza', 'town-yard') >= 30 && mixW('street', 'town-yard') >= 30 && mixW('plaza', 'street') >= 30 && mixW('verdant-1', 'commons') >= 30 &&
+    mixW('sky-1', 'sky-2') >= 30 && !mixW('hollows-1', 'road') && !mixW('hollows-2', 'hollows-3') && !mixW('frost-3', 'frost-2') &&
+    rc('hollows-2', 'hollows-3').even && rc('hollows-2', 'hollows-3').ragged <= 12,
+    { plaza: mixW('plaza', 'town-yard'), road: rc('hollows-1', 'road') });
+  /* ...laid, at the owner's own spot: the town square's south edge, just
+     below where the bro arrives, where it met the yards along a ruler line.
+     Two stand-in pictures (each its own colours, textured so their pixels
+     rank): the change must be spread over a wide zone -- the square found
+     well below the line and the yard well above it, only one of them far
+     off -- and wander along it, every pixel one of the two pictures', and a
+     chunk laid in halves the same as whole. */
+  const texTile = (T, cols, sd) => {
+    const t = { w: T, h: T, data: new Uint8ClampedArray(T * T * 4) };
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+      const v = (valueNoise(x / 7, y / 7, sd) + valueNoise(x / 23, y / 23, sd + 1)) * 0.5 + 0.5, c = cols[Math.max(0, Math.min(cols.length - 1, Math.floor(v * cols.length)))], o = (y * T + x) * 4;
+      t.data[o] = c[0]; t.data[o + 1] = c[1]; t.data[o + 2] = c[2]; t.data[o + 3] = 255;
+    }
+    return t;
+  };
+  const sqCols = [[150, 140, 120], [178, 168, 146], [204, 196, 176], [230, 224, 206]], ydCols = [[120, 70, 30], [150, 92, 40], [180, 116, 52], [206, 140, 70]];
+  const mixTiles = { plaza: { A: texTile(256, sqCols, 5) }, 'town-yard': { A: texTile(256, ydCols, 9) } };
+  const mixLineY = bp.y0 + (Math.floor((g.cy - bp.y0) / bp.scale) + 14) * bp.scale;
+  const mixRM = { x: Math.round(g.cx - 216), y: mixLineY - 64, w: 120, h: 128 };
+  const mixed2 = composeGround(PLAN, bp, mm, mixRM, mixTiles, { scale: 3 });
+  const mixIsSq = (i) => mm.ids[mixed2.mat[i]] === 'plaza';
+  const mixFrac = (dGame) => { const oy = Math.round((64 + dGame / 1.5) * 3); let n = 0; for (let x = 0; x < mixed2.w; x++) if (mixIsSq(oy * mixed2.w + x)) n++; return n / mixed2.w; };
+  const mixF = [-60, -30, -12, 0, 12, 30, 60].map((d) => +mixFrac(d).toFixed(2));
+  /* where each column last shows the square, going down: it wanders */
+  let mixLo = Infinity, mixHi = -Infinity;
+  for (let x = 0; x < mixed2.w; x++) { let last = 0; for (let y = 0; y < mixed2.h; y++) if (mixIsSq(y * mixed2.w + x)) last = y; mixLo = Math.min(mixLo, last); mixHi = Math.max(mixHi, last); }
+  const mixAllowed = new Set([...sqCols, ...ydCols].map((c) => c.join()));
+  let mixForeign = 0;
+  for (let i = 0; i < mixed2.data.length; i += 4) if (!mixAllowed.has(`${mixed2.data[i]},${mixed2.data[i + 1]},${mixed2.data[i + 2]}`)) mixForeign++;
+  ok(`the town square now mixes into the yards below the bro over a wide zone, not a ruler line (square's share 60, 30, 12 game px above the line to 12, 30, 60 below: ${mixF.join(', ')}; its last pixel wanders ${Math.round((mixHi - mixLo) / 2)} game px)`,
+    mixF[0] >= 0.97 && mixF[6] <= 0.03 && mixF[2] > 0.15 && mixF[3] > 0.1 && mixF[3] < 0.9 && mixF[4] < 0.85 && mixF[1] > mixF[3] && mixF[3] > mixF[5] && (mixHi - mixLo) / 2 >= 24 && mixForeign === 0, { mixF, wander: mixHi - mixLo, mixForeign });
+  const mixL = composeGround(PLAN, bp, mm, { ...mixRM, w: 60 }, mixTiles, { scale: 3 }), mixR = composeGround(PLAN, bp, mm, { ...mixRM, x: mixRM.x + 60, w: 60 }, mixTiles, { scale: 3 });
+  let mseam = 0;
+  for (let y = 0; y < mixed2.h; y++) for (let x = 0; x < mixed2.w; x++) {
+    const v = x < 180 ? mixL.data[(y * mixL.w + x) * 4] : mixR.data[(y * mixR.w + x - 180) * 4];
+    if (v !== mixed2.data[(y * mixed2.w + x) * 4]) mseam++;
+  }
+  ok('...and it is laid the same in two halves as whole, so chunks still meet with no seam', mseam === 0, mseam);
   ok("...each pair with its own edge: a road's narrow, sand drifting wider than grass; two of a kind interlock evenly",
     rc('ember-3', 'road').ragged < rc('commons', 'road').ragged && rc('commons', 'road').ragged < rc('sky-2', 'road').ragged &&
     rc('commons', 'road').reach > 0 && rc('verdant-1', 'commons').even && rc('verdant-1', 'commons').reach === 0);
