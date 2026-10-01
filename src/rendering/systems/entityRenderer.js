@@ -603,6 +603,17 @@ function _hpFillTexFor(holder, frac) {
   return holder._hpFillTex;
 }
 
+/* v2.3.2956: the node HP bar's four display objects (drawNodeHpBar), named
+   once rather than per frame. */
+const NODE_HPBAR_PARTS = ['_nbFrame', '_nbFill', '_nbFx', '_nbText'];
+function _nodeHpBarHide(holder) {
+  if (holder._nbFrame.alpha !== 0) {
+    for (let i = 0; i < NODE_HPBAR_PARTS.length; i++) holder[NODE_HPBAR_PARTS[i]].alpha = 0;
+    holder._nbFx.clear();
+  }
+  holder._nbGhost = null; holder._nbLast = null;
+}
+
 /* ═══ v2.3.2956: A GATHER NODE WEARS THE MONSTER'S HEALTH BAR ═══
    Owner: "the resource has something akin to an hp bar and the player ticks
    away at it".  So the rock, the tree and the pond take the bar every monster
@@ -620,9 +631,17 @@ function _hpFillTexFor(holder, frac) {
    so the next harvest starts from a clean full bar. */
 export function drawNodeHpBar(layer, holder, bar) {
   if (!layer || !holder) return;
-  const parts = ['_nbFrame', '_nbFill', '_nbFx', '_nbText'];
-  if (parts.some((k) => !holder[k] || holder[k].destroyed)) {
-    for (const k of parts) { if (holder[k] && !holder[k].destroyed) holder[k].destroy(); }
+  const parts = NODE_HPBAR_PARTS;
+  let broken = false;
+  for (let i = 0; i < parts.length; i++) {
+    const o = holder[parts[i]];
+    if (!o || o.destroyed) { broken = true; break; }
+  }
+  if (broken) {
+    for (let i = 0; i < parts.length; i++) {
+      const o = holder[parts[i]];
+      if (o && !o.destroyed) o.destroy();
+    }
     holder._nbFrame = new Sprite(); holder._nbFrame.anchor.set(0.5, 0.5);
     holder._nbFill = new Sprite(); holder._nbFill.anchor.set(0, 0.5);
     holder._nbFx = new Graphics();
@@ -630,19 +649,20 @@ export function drawNodeHpBar(layer, holder, bar) {
     holder._nbText.anchor.set(0.5, 0.5);
     if (holder._hpFillTex) holder._hpFillTex.destroy(false);   /* the cropped view only; the art is shared */
     holder._hpFillTex = null; holder._hpFillTexW = 0;
-    for (const k of parts) holder[k].alpha = 0;
+    for (let i = 0; i < parts.length; i++) holder[parts[i]].alpha = 0;
   }
-  for (const k of parts) { if (holder[k].parent !== layer) layer.addChild(holder[k]); }
-  const hide = () => {
-    if (holder._nbFrame.alpha !== 0) {
-      for (const k of parts) holder[k].alpha = 0;
-      holder._nbFx.clear();
-    }
-    holder._nbGhost = null; holder._nbLast = null;
-  };
+  /* Hidden is the state nearly every frame of a session is in, so it does
+     no work beyond this: no allocation, no layer walk, no texture lookup
+     (iPhone memory -- the owner's "wonky with RAM" -- is why the idle path
+     is kept allocation-free). */
+  if (!bar || !bar.show || !(bar.maxHp > 0)) { _nodeHpBarHide(holder); return; }
   _ensureHudBarTextures();
   const frameTex = _hudBarTex.barFrame;
-  if (!bar || !bar.show || !frameTex || !(bar.maxHp > 0)) { hide(); return; }
+  if (!frameTex) { _nodeHpBarHide(holder); return; }
+  for (let i = 0; i < parts.length; i++) {
+    const o = holder[parts[i]];
+    if (o.parent !== layer) layer.addChild(o);
+  }
   /* On top of its layer.  The miner's and the angler's BODIES are re-parented
      into this same layer for the harvest (_updatePlayer's gestureFront
      promotion), after the bar was made -- and a body drawn over the bar it is

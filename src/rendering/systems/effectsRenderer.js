@@ -9447,11 +9447,16 @@ export class EffectsRenderer {
     }
     drawNodeHpBar(this.gestureLayer, this._nodeHpBar, bar);
     /* QA probe, like __btWindupBar: what the bar is showing, which an
-       anti-aliased 44px bar in a screenshot cannot be asked. */
+       anti-aliased 44px bar in a screenshot cannot be asked.  Written while
+       the bar is up, and once when it goes down -- not every idle frame. */
     if (typeof window !== 'undefined') {
-      window.__btNodeHpBar = bar
-        ? { show: true, hp: bar.hp, maxHp: bar.maxHp, x: +bar.x.toFixed(1), y: +bar.y.toFixed(1), shown: h.shown, of: h.plan.length }
-        : { show: false };
+      if (bar) {
+        window.__btNodeHpBar = { show: true, hp: bar.hp, maxHp: bar.maxHp, x: +bar.x.toFixed(1), y: +bar.y.toFixed(1), shown: h.shown, of: h.plan.length };
+        this._nodeHpBarUp = true;
+      } else if (this._nodeHpBarUp !== false) {
+        window.__btNodeHpBar = { show: false };
+        this._nodeHpBarUp = false;
+      }
     }
   }
 

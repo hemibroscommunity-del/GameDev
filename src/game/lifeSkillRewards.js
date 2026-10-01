@@ -241,20 +241,36 @@ export function tickGatherHits(S, ex, node, now) {
     /* Dead: no hits land.  Death does not clear S._extraction -- the
        respawn's zone change does, ~3.5 s later -- and a pick knocking
        numbers off a rock for a corpse is the v2.3.2281 bug in a new place
-       (every other harvest visual steps aside on death). */
-    if ((S.rpg && S.rpg.hp <= 0) || S._deathStart) return;
+       (every other harvest visual steps aside on death).  The same test as
+       entityRenderer's selfCorpseUp, including its time bound, so a
+       _deathStart that somehow outlived a respawn could never freeze every
+       later harvest on 0 hits. */
+    if ((S.rpg && S.rpg.hp <= 0) || (S._deathStart && (now - S._deathStart) < GATHER_DEATH_HOLD_MS)) return;
     if (!h.plan) {
       if (now >= h.waitUntil) _gatherHitsToTimer(S, ex, true);
       return;
     }
+    /* Every hit that is due lands on the HP, but at most ONE pops: back
+       from a backgrounded tab (an iPhone app switch) the whole plan can fall
+       due in a single frame, and ten numbers stacked on one spot is a
+       burst nobody asked for.  The hits
+       still count; the window opens on time either way. */
+    var landed = 0, lastD = 0;
     while (h.shown < h.plan.length && now >= h.times[h.shown]) {
-      var d = h.plan[h.shown];
-      h.hp = Math.max(0, h.hp - d);
+      lastD = h.plan[h.shown];
+      h.hp = Math.max(0, h.hp - lastD);
       h.shown++;
+      landed++;
+    }
+    if (landed) {
       h.lastHitAt = now;
-      _popGatherHit(S, ex, node, d, h.shown);
+      _popGatherHit(S, ex, node, lastD, h.shown);
     }
 }
+/* = entityRenderer SELF_DEATH_HOLD_MS, the corpse hold selfCorpseUp bounds
+   its _deathStart test by (not imported: game logic does not pull in the
+   renderer for one number). */
+var GATHER_DEATH_HOLD_MS = 3500;
 
 /* Back to the computeOpenDelay timer, from now.  `resend` re-declares the
    attempt WITHOUT a hitSeq so the worker overwrites its record with the
@@ -281,10 +297,14 @@ function _gatherHitsToTimer(S, ex, resend) {
 /* One hit landing: its number off the node, where the tool meets it, on
    alternating sides so a run of hits does not stack into one column.  The
    pick and the axe already sound and throw debris on this very blow (their
-   loops' own strike frames); the rod has no blow, so a nibble makes its own
-   ripple and plip.  Spawn points come from the node art measured at tier 1
-   (rock face ~70 px up beside the miner, the trunk under the canopy, the
-   pond's middle) and grow with the tier like the sprites do. */
+   loops' own strike frames).  The rod has no blow, and a nibble draws NO
+   splash and makes no sound: "reeling is the ONLY splash moment" (owner,
+   v2.3.1445 -- the catch burst was removed for exactly this), and the splash
+   is the reel gesture's own effect (v2.3.2760); the wait before the bite has
+   always been quiet.  So a nibble is its number and the pond's HP bar.
+   Spawn points come from the node art measured at tier 1 (rock face ~70 px
+   up beside the miner, the trunk under the canopy, the pond's middle) and
+   grow with the tier like the sprites do. */
 function _popGatherHit(S, ex, node, d, k) {
     var side = (k % 2) ? 1 : -1;
     var step = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
@@ -299,9 +319,6 @@ function _popGatherHit(S, ex, node, d, k) {
       x += chopSign * (18 + 10 * (side > 0 ? 1 : 0)) * g; y -= 76 * g;
     } else {
       x += side * 16 * g; y -= 8 * g;
-      if (!S._fxBursts) S._fxBursts = [];
-      if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'splash', t0: Date.now(), x: node.x, y: node.y + 2 });
-      try { if (BT_AUDIO.play) BT_AUDIO.play('lure-drop', { vol: 0.28 }); } catch (e) {}
     }
     pushDmgPopup(S, x, y, String(d), '#ffffff');
 }

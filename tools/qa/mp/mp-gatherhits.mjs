@@ -19,7 +19,8 @@
  *   3. the hits land ON THE BLOW: each pick and axe hit is held against the
  *      renderer's own strike effect (the rock debris / wood chips it stamps
  *      on the frame the tool lands), never against our own arithmetic
- *      (TRAPS §37);
+ *      (TRAPS §37); and a fishing nibble makes no splash (the owner's
+ *      "reeling is the ONLY splash moment", v2.3.1445);
  *   4. the gesture window opens on the last hit and not before;
  *   5. the gesture still completes and the worker pays -- it accepted a
  *      strike held to the plan's window.
@@ -43,8 +44,8 @@ const SKILL = { oreVein: 'mining', tree: 'woodcutting', fishSpot: 'fishing' };
 const RES = { oreVein: 'ore_', tree: 'wood_', fishSpot: 'fish_' };
 /* The renderer's own strike effect for each skill (effectsRenderer: 'rocks'
    on the pick's frame 4, 'woodchips' on the axe's bite + its 200 ms lead).
-   Fishing has no blow; its hits draw their own splash, so it is not held to
-   one. */
+   Fishing has no blow, and its nibbles draw no splash (the owner's "reeling
+   is the ONLY splash moment"), so it is held to having none. */
 const BLOW_FX = { mining: 'rocks', woodcutting: 'woodchips' };
 
 const stand = (P, tx, ty) => P.page.evaluate(({ x, y, t }) => {
@@ -438,8 +439,12 @@ async function body({ P, wsPort, rec }) {
       r.ok(`${skill}: every hit lands on a blow the renderer drew (its ${BLOW_FX[skill]} within a frame)`,
         offs.length === tr.events.length && offs.every((o) => o <= tol), { offs, tol: Math.round(tol), blows: blows.length });
     } else {
+      /* The owner's rule, pinned: "reeling is the ONLY splash moment"
+         (v2.3.1445).  A nibble is a number and the pond's bar, never a
+         splash -- the splash belongs to the reel gesture that follows. */
       const splashes = tr.fx.filter((f) => f.kind === 'splash').length;
-      r.ok(`${skill}: each nibble makes its own splash on the water`, splashes >= tr.plan.length, { splashes, hits: tr.plan.length });
+      r.ok(`${skill}: no splash before the reel -- the nibbles are numbers only (owner: reeling is the ONLY splash moment)`,
+        splashes === 0, { splashes, hits: tr.plan.length });
     }
     r.ok(`${skill}: the hits are one swing apart (${GATHER_SWING[skill].ms} ms)`,
       tr.times.every((t, i) => i === 0 || t - tr.times[i - 1] === GATHER_SWING[skill].ms), tr.times);

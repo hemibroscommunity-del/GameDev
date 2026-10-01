@@ -31,8 +31,10 @@ keeps its timer.
   exactly as it always did: the character stops, the bar flashes, the button
   teaches the gesture, and the gesture finishes the harvest. Nothing about the
   gesture changed.
-- Fishing has no blow, so each hit is a **nibble**: a ripple on the water, a
-  soft plip and the number. The "fish on the hook" sound still marks the end.
+- Fishing has no blow, so each hit is a **nibble**: the number and the
+  pond's bar, nothing else. No splash and no sound: "reeling is the ONLY splash
+  moment" (owner, v2.3.1445), and the wait before the bite has always been
+  quiet. The "fish on the hook" sound still marks the end.
 
 ## Numbers
 
@@ -100,6 +102,12 @@ the worker's bound, so it costs the anticheat nothing. The pick's clink, the deb
 and the wood chips already fire on those exact frames, so the number arrives
 with them. The browser test measures this against the renderer's own effect
 timestamps, not against the arithmetic above.
+
+Back from a backgrounded tab (an iPhone app switch), every hit that fell due
+while away still counts, but only the latest one pops, so there is no burst of
+ten numbers in one frame. No hits land while the player is dead (the same test
+as `selfCorpseUp`, including its 3.5 s bound), and the node's bar steps aside
+for the corpse like every other harvest visual.
 
 ### Where the pieces are
 

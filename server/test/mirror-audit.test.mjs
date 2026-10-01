@@ -1357,6 +1357,11 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('gather hits: the axe still bites on frame 9 with its sound 200 ms later (GATHER_SWING.woodcutting.blowAt)',
     /const CHOP_STRIKE_K = 9;/.test(fx) && /const _chopLead = ex\.status === 'ready' \? 0 : 200;/.test(fx)
       && CLIENT_GATHER_SWING.woodcutting.blowAt === (9 * 45 + 200) % 540);
+  const lsr = readFileSync(new URL('../../src/game/lifeSkillRewards.js', import.meta.url), 'utf8');
+  const holdR = /export const SELF_DEATH_HOLD_MS = (\d+);/.exec(ent);
+  const holdG = /var GATHER_DEATH_HOLD_MS = (\d+);/.exec(lsr);
+  check('gather hits: no hits over a corpse for exactly the hold selfCorpseUp uses (GATHER_DEATH_HOLD_MS = SELF_DEATH_HOLD_MS)',
+    !!holdR && !!holdG && holdR[1] === holdG[1], { renderer: holdR && holdR[1], hits: holdG && holdG[1] });
   check('gather hits: both wind-up loops still run free on the frame clock, which is Date.now()',
     /: Math\.floor\(now \/ CHOP_FRAME_MS\) % CHOP_COUNT;/.test(fx)
       && /: Math\.floor\(\(now \/ cycle\) \* fc\) % fc;/.test(ent)
