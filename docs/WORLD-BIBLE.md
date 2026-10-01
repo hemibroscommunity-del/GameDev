@@ -448,6 +448,15 @@ Only neighbours meet, so there are exactly eight borders.
 each fronted by a raised wooden boardwalk. The corners between the arms are
 the **outskirts**: fenced fields, haystacks and cart tracks.
 
+> **v2.3.2960: the boardwalks are put away until the buildings come.** The
+> owner, walking Market Row in the Wheel trial: *"The one thing I want to
+> change are the boards. They do not look good and I don't know what those
+> are supposed to be. Is it a road?"* With no shop behind it, a boardwalk is
+> a strip of planks in the dirt, and it reads as a fence. It comes back as
+> each shop's **porch, drawn with the building**. The plots stay where they
+> are, leaving it room, and the town's ground runs up to the street
+> meanwhile (`boardwalks` in `public/tools/world/plan.js`).
+
 **The plots are painted EMPTY. Buildings are separate pictures standing on
 them.** This is the one structural decision here, for three reasons:
 

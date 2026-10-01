@@ -515,7 +515,9 @@ try {
     };
   });
   ok(`every pair of alike grounds that meet has a blend slot (${bl0.n}), the town's three first, the rest folded away`,
-    bl0.n === 42 && bl0.pairs === 42 && JSON.stringify(bl0.first) === '["plaza__town-yard","street__town-yard","plaza__street"]' && bl0.restN === 39 && /The other 39 pairs/.test(bl0.rest) && bl0.chip === 'optional' && bl0.step, bl0);
+    bl0.n === 42 && bl0.pairs === 42 && /* (in order of how far they meet: since v2.3.2960, with the boardwalks
+       put away, the street meets the yards along more than the square does) */
+    JSON.stringify([...bl0.first].sort()) === '["plaza__street","plaza__town-yard","street__town-yard"]' && bl0.restN === 39 && /The other 39 pairs/.test(bl0.rest) && bl0.chip === 'optional' && bl0.step, bl0);
   ok('...its prompt asks for the ground halfway between the two, attaching the two ground pictures (not the style key, never the bro), nothing running one way, seamless',
     /halfway between two grounds/.test(bl0.prompt) && /Town square: packed pale gravel/.test(bl0.prompt) && /Brotown yards: packed earth/.test(bl0.prompt) &&
     /Attached are the two ground pictures it goes between: Town square and Brotown yards/.test(bl0.prompt) && !/style key/.test(bl0.prompt) && !/hero|\bbro\b/i.test(bl0.prompt) &&

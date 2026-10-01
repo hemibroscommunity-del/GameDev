@@ -555,7 +555,9 @@ export function buildBlueprint(plan) {
     stampRect(-T.square, -T.square, T.square, T.square, C.plaza, landAt, townId);
     for (const lot of townLots(T)) {
       stampRect(lot.x0, lot.y0, lot.x1, lot.y1, C.lot, landAt, townId);
-      if (lot.walk) {
+      /* v2.3.2960: only when the plan lays them (plan.js `boardwalks`:
+         put away until the buildings, whose porches they become) */
+      if (lot.walk && T.boardwalks) {
         stampRect(lot.walk.x0, lot.walk.y0, lot.walk.x1, lot.walk.y1, C.boardwalk, landAt, townId);
         /* v2.3.2949: a deck along its street -- the cells stampRect took */
         const cx = (rx) => Math.ceil((g.cx + rx - x0) / S - 0.5), cy = (ry) => Math.ceil((g.cy + ry - y0) / S - 0.5);

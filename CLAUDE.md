@@ -118,7 +118,12 @@ remnant to migrate server-side, not a mode to preserve.
   waits at most 4 s and is laid without a missing picture, then filled in
   when the worker says it came (`got`), pictures come two pieces ahead, and
   `?v=<manifest date>` + `public/_headers` let the phone keep them -- tested
-  by the `wheelnet` scenario, WORLD-MAP-PIPELINE "On a slow connection"),
+  by the `wheelnet` scenario, WORLD-MAP-PIPELINE "On a slow connection"; and
+  since v2.3.2960 the town's BOARDWALKS are put away until the buildings,
+  whose porches they become -- the owner: "I don't know what those are
+  supposed to be" -- `town.boardwalks: false` in plan.js, the bridges keeping
+  their plank decks and the boardwalk swatch, a plan copy with `true`
+  still tested in test-world-core),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

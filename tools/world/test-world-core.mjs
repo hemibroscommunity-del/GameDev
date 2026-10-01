@@ -85,6 +85,10 @@ console.log('layout');
 const t0 = Date.now();
 const bp = buildBlueprint(PLAN);
 const buildMs = Date.now() - t0;
+/* v2.3.2960: the town's boardwalks are put away (plan.js `boardwalks`) --
+   kept and tested on a copy of the plan that lays them */
+const PLANW = { ...PLAN, town: { ...PLAN.town, boardwalks: true } };
+const bpW = buildBlueprint(PLANW);
 const W = bp.wheel;
 const cell = (x, y) => Math.floor((y - bp.y0) / bp.scale) * bp.w + Math.floor((x - bp.x0) / bp.scale);
 const at = (x, y) => bp.cls[cell(x, y)];
@@ -114,10 +118,21 @@ const sqAt = (p) => { const [x, y] = art(p); const c = cellAt(g, x, y); return c
   ok('past the gates the streets become roads', [[0, -1000], [1000, 0], [0, 1000], [-1000, 0]].every(([dx, dy]) => at(g.cx + dx, g.cy + dy) === C.path));
   const townLots = bp.lots.filter((l) => l.town), places = bp.lots.filter((l) => !l.town);
   ok('Brotown has the Town Hall plus 16 plots along its streets', townLots.length === 17 && townLots.every((l) => at((l.x0 + l.x1) / 2, (l.y0 + l.y1) / 2) === C.lot), townLots.length);
-  ok('every plot fronts a boardwalk', townLots.filter((l) => l.id !== 'townhall').every((l) => {
+  /* v2.3.2960, owner: "The one thing I want to change are the boards. They
+     do not look good and I don't know what those are supposed to be." */
+  let townBoards = 0;
+  for (let i = 0; i < bp.cls.length; i++) if (bp.cls[i] === C.boardwalk && bp.regionIds[bp.reg[i]] === 'town') townBoards++;
+  const fronts = (b, l, cls) => {
+    const atB = (x, y) => b.cls[Math.floor((y - b.y0) / b.scale) * b.w + Math.floor((x - b.x0) / b.scale)];
     const mx = (l.x0 + l.x1) / 2, my = (l.y0 + l.y1) / 2;
-    return [[l.x0 - 12, my], [l.x1 + 12, my], [mx, l.y0 - 12], [mx, l.y1 + 12]].some(([x, y]) => at(x, y) === C.boardwalk);
-  }));
+    return [[l.x0 - 12, my], [l.x1 + 12, my], [mx, l.y0 - 12], [mx, l.y1 + 12]].some(([x, y]) => atB(x, y) === cls);
+  };
+  const T0 = PLAN.town;
+  ok('the boardwalks are put away until the buildings (v2.3.2960): none in town, the streets as wide as before, the plots where they were',
+    T0.boardwalks === false && townBoards === 0 && at(g.cx + T0.main - 3, g.cy - 430) === C.street && at(g.cx + T0.main + 3, g.cy - 430) !== C.street &&
+    townLots.filter((l) => l.id !== 'townhall').every((l) => !fronts(bp, l, C.boardwalk)), { townBoards });
+  ok('...and a plan that lays them still has every plot fronting one, the rest of the plan the same',
+    bpW.lots.filter((l) => l.town && l.id !== 'townhall').every((l) => fronts(bpW, l, C.boardwalk)) && bpW.lots.length === bp.lots.length);
   ok('the depot, the mill and the arena have plots', ['depot', 'mill', 'arena'].every((id) => { const l = places.find((q) => q.id === id); return l && at((l.x0 + l.x1) / 2, (l.y0 + l.y1) / 2) === C.lot; }));
 
   /* the Wheel */
@@ -420,35 +435,43 @@ console.log('ground');
      specks along the street; built surfaces are now laid on their cells. */
   /* up the north street from the square, where its boardwalks run */
   const RT = { x: Math.round(g.cx - 200), y: Math.round(g.cy - 600), w: 400, h: 320 };
-  const town = composeGround(PLAN, bp, mm, RT, {}, { scale: 3 });
+  /* (v2.3.2960: on the plan that lays the boardwalks -- they are put away) */
+  const mmW = materialMap(PLANW, bpW);
+  const town = composeGround(PLANW, bpW, mmW, RT, {}, { scale: 3 });
   const TW = town.w;
   let offCell = 0, bwPx = 0;
   /* (v2.3.2950: the boardwalks' edges only -- the street and the square
      still lie on their cells, but mix into the yards) */
-  const BW = mm.index.boardwalk;
+  const BW = mmW.index.boardwalk;
   for (let y = 0; y < town.h; y++) for (let x = 0; x < TW; x++) {
     const ax = RT.x + (x + 0.5) / 3, ay = RT.y + (y + 0.5) / 3;
-    const cq = mm.mat[Math.floor((ay - bp.y0) / bp.scale) * bp.w + Math.floor((ax - bp.x0) / bp.scale)];
+    const cq = mmW.mat[Math.floor((ay - bpW.y0) / bpW.scale) * bpW.w + Math.floor((ax - bpW.x0) / bpW.scale)];
     const q = town.mat[y * TW + x];
     if (cq === BW ? q !== BW : q === BW) offCell++;
     if (q === BW) bwPx++;
   }
-  ok('the boardwalks are laid exactly on their cells, with straight edges', offCell === 0 && bwPx > 1000 && ['street', 'boardwalk', 'plaza'].every((id) => mm.built[mm.index[id]]), { offCell, bwPx });
+  ok('the boardwalks (when laid) are laid exactly on their cells, with straight edges', offCell === 0 && bwPx > 1000 && ['street', 'boardwalk', 'plaza'].every((id) => mmW.built[mmW.index[id]]), { offCell, bwPx });
   const seenPx = new Uint8Array(town.mat.length);
   let pieces = 0, specks = 0;
   for (let i = 0; i < town.mat.length; i++) {
-    if (seenPx[i] || mm.ids[town.mat[i]] !== 'boardwalk') continue;
+    if (seenPx[i] || mmW.ids[town.mat[i]] !== 'boardwalk') continue;
     let n = 0; const st = [i]; seenPx[i] = 1;
     while (st.length) {
       const j = st.pop(); n++;
       const x = j % TW, y = (j / TW) | 0;
       for (const k of [x > 0 ? j - 1 : -1, x < TW - 1 ? j + 1 : -1, y > 0 ? j - TW : -1, y < town.h - 1 ? j + TW : -1]) {
-        if (k >= 0 && !seenPx[k] && mm.ids[town.mat[k]] === 'boardwalk') { seenPx[k] = 1; st.push(k); }
+        if (k >= 0 && !seenPx[k] && mmW.ids[town.mat[k]] === 'boardwalk') { seenPx[k] = 1; st.push(k); }
       }
     }
     pieces++; if (n < 400) specks++;
   }
   ok(`...so the one-cell boardwalks along the streets stay whole: ${pieces} strips, no specks`, pieces > 0 && specks === 0, { pieces, specks });
+  /* v2.3.2960: and with them put away, that stretch of street has no
+     plank on it at all -- the town's ground runs up to the street */
+  const townNow = composeGround(PLAN, bp, mm, RT, {}, { scale: 3 });
+  let nowBoards = 0;
+  for (let i = 0; i < townNow.mat.length; i++) if (townNow.mat[i] === mm.index.boardwalk) nowBoards++;
+  ok('...but they are put away: no plank laid along the street, the town\'s ground up to it', nowBoards === 0, { nowBoards });
   const bridgeCells = [];
   for (let i = 0; i < bp.w * bp.h; i++) if (mm.ids[mm.mat[i]] === 'boardwalk' && bp.regionIds[bp.reg[i]] !== 'town') bridgeCells.push(i);
   const shut = bridgeCells.filter((i) => bits[i >> 3] & (1 << (i & 7))).length;
@@ -456,7 +479,7 @@ console.log('ground');
 
   /* ── v2.3.2949: plank decks -- every bridge a straight deck, every
      boardwalk and bridge laid with boards across it, lined up ── */
-  const decks = bp.decks || [], bDecks = decks.filter((d) => d.kind === 'bridge'), wDecks = decks.filter((d) => d.kind === 'boardwalk');
+  const decks = bp.decks || [], bDecks = decks.filter((d) => d.kind === 'bridge'), wDecks = (bpW.decks || []).filter((d) => d.kind === 'boardwalk');
   let holes = 0, nBridge = 0, area = 0;
   for (const d of bDecks) { area += (d.x1 - d.x0) * (d.y1 - d.y0); for (let y = d.y0; y < d.y1; y++) for (let x = d.x0; x < d.x1; x++) if (bp.cls[y * bp.w + x] !== C.bridge) holes++; }
   for (let i = 0; i < bp.w * bp.h; i++) if (bp.cls[i] === C.bridge) nBridge++;
@@ -471,16 +494,17 @@ console.log('ground');
   };
   ok('...with the road meeting both ends, the diagonal crossings too', bDecks.every(meets), bDecks.filter((d) => !meets(d)).map((d) => d.road));
   let loose = 0, nPlank = 0;
-  for (let i = 0; i < bp.w * bp.h; i++) { const e = mm.catalog[mm.mat[i]]; if (e && e.laid === 'planks') { nPlank++; if (!mm.deckAt.has(i)) loose++; } }
+  for (let i = 0; i < bpW.w * bpW.h; i++) { const e = mmW.catalog[mmW.mat[i]]; if (e && e.laid === 'planks') { nPlank++; if (!mmW.deckAt.has(i)) loose++; } }
   ok(`every boardwalk and bridge cell is on a deck that knows the way along it (${wDecks.length} boardwalks, ${nPlank} cells)`,
-    nPlank > 0 && loose === 0 && wDecks.length >= 8 && wDecks.every((d) => (d.along === 'y') === (d.y1 - d.y0 > d.x1 - d.x0)), { loose });
+    nPlank > 0 && loose === 0 && wDecks.length >= 8 && wDecks.every((d) => (d.along === 'y') === (d.y1 - d.y0 > d.x1 - d.x0)) &&
+    !(bp.decks || []).some((d) => d.kind === 'boardwalk'), { loose });
   /* not made yet: the plan's colours, a board each -- which shows the
      boards' way and width exactly: 24 output px (12 game px, half a cell)
      along the deck, the same all the way across it, starting at its ends */
   const deckRect = (d) => ({ x: bp.x0 + d.x0 * bp.scale, y: bp.y0 + d.y0 * bp.scale, w: (d.x1 - d.x0) * bp.scale, h: (d.y1 - d.y0) * bp.scale });
   const bwe = mm.catalog.find((e) => e.id === 'boardwalk');
-  const stripes = (d) => {
-    const r = deckRect(d), o = composeGround(PLAN, bp, mm, r, {}, { scale: 3 });
+  const stripes = (d, P = PLAN, B = bp, M = mm) => {
+    const r = deckRect(d), o = composeGround(P, B, M, r, {}, { scale: 3 });
     let bad = 0;
     for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) {
       const s2 = d.along === 'x' ? r.x * 3 + x : r.y * 3 + y, want = Math.floor(s2 / 24) & 1 ? bwe.color : null;
@@ -490,7 +514,7 @@ console.log('ground');
     return { bad, boards: (d.along === 'x' ? o.w : o.h) / 24, startsOnSeam: ((d.along === 'x' ? r.x : r.y) * 3) % 24 === 0 };
   };
   const mill = bDecks.find((d) => d.road === 'west'), mainSt = wDecks.find((d) => d.along === 'y');
-  const sm = stripes(mill), sw = stripes(mainSt);
+  const sm = stripes(mill), sw = stripes(mainSt, PLANW, bpW, mmW);
   ok(`boards lie across the deck, 12 game px each, lined up with its ends: the Mill Bridge ${sm.boards} boards, a Main Street boardwalk ${sw.boards}`,
     mill.along === 'x' && sm.bad === 0 && sw.bad === 0 && sm.startsOnSeam && sw.startsOnSeam && Number.isInteger(sm.boards) && Number.isInteger(sw.boards), { sm, sw });
   /* a plank picture: boards of uneven widths (80-110 px, as ChatGPT draws
@@ -504,8 +528,8 @@ console.log('ground');
   const P1 = planksOf(pk, 24), P2 = planksOf(turnPic(pk), 24);
   ok(`the game finds a plank picture's boards (${P1.n} of ${edges0.length}) and makes it ${P1.scale.toFixed(1)} times smaller, boards run either way in the picture`,
     P1.n === edges0.length && !P1.turned && P2.turned && P1.scale > 3 && P1.scale < 5 && P2.n === P1.n && same(P1.tile.data, P2.tile.data), { n1: P1.n, n2: P2.n, s: P1.scale });
-  const oneBoard = (d, tiles) => {
-    const r = deckRect(d), o = composeGround(PLAN, bp, mm, r, tiles, { scale: 3 });
+  const oneBoard = (d, tiles, P = PLAN, B = bp, M = mm) => {
+    const r = deckRect(d), o = composeGround(P, B, M, r, tiles, { scale: 3 });
     const cols = new Set(bcols.map((c) => c.join())).add('30,20,14');
     let off = 0, mixed = 0;
     const per = new Map();
@@ -519,7 +543,7 @@ console.log('ground');
     }
     return { off, mixed, boards: per.size, data: o.data };
   };
-  const pm = oneBoard(mill, { boardwalk: { A: pk } }), pw = oneBoard(mainSt, { boardwalk: { A: pk } });
+  const pm = oneBoard(mill, { boardwalk: { A: pk } }), pw = oneBoard(mainSt, { boardwalk: { A: pk } }, PLANW, bpW, mmW);
   const pmT = oneBoard(mill, { boardwalk: { A: turnPic(pk) } });
   ok(`...and lays each board whole, one of the picture's, across the Mill Bridge (${pm.boards}) and along Main Street (${pw.boards}), every pixel the picture's own colour`,
     pm.off === 0 && pm.mixed === 0 && pw.off === 0 && pw.mixed === 0 && pm.boards === sm.boards && pw.boards === sw.boards && same(pm.data, pmT.data), { pm: [pm.off, pm.mixed], pw: [pw.off, pw.mixed] });

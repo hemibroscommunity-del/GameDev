@@ -234,6 +234,16 @@ export const PLAN = {
     main: 62,          /* Main Street half-width (north-south) */
     row: 52,           /* Market Row half-width (east-west) */
     boardwalk: 22,
+    /* v2.3.2960: the boardwalks are PUT AWAY until the buildings come.
+       Owner, 2026-10-01, walking Market Row in the Wheel trial: "The one
+       thing I want to change are the boards.  They do not look good and I
+       don't know what those are supposed to be.  Is it a road?"  With no
+       shop behind it a boardwalk is a strip of planks in the dirt -- it
+       reads as a fence.  It comes back as each shop's porch, drawn with the
+       building; the plots stay set back by `boardwalk` to leave it room,
+       and the town's ground runs up to the street meanwhile.  `true` lays
+       them again, exactly as before (layout.js pass 5; the tests do). */
+    boardwalks: false,
     square: 217,       /* the town square's half-size */
     hall: 104,         /* the Town Hall plot's half-size, in the square's middle */
     lot: { front: 200, deep: 200, gap: 35, first: 295, perSide: 2 },

@@ -669,6 +669,13 @@ them.
 
 ## Bridges and boardwalks: plank decks (v2.3.2949)
 
+> **v2.3.2960: the town's boardwalks are put away** until the buildings,
+> whose porches they become (owner: *"The one thing I want to change are the
+> boards … I don't know what those are supposed to be"*; World Bible §5).
+> `boardwalks: false` in the plan's `town` leaves the town's ground running up
+> to the street; `true` lays them exactly as below, and the tests still do.
+> The bridges keep their plank decks, and the boardwalk swatch is now theirs.
+
 > Owner, 2026-09-30, on the Mill Bridge in the Ground Studio: *"The bridge
 > needs to take shrink the tiles and maybe make them line up using your
 > coding I had to change the checker pattern wood the original prompt made

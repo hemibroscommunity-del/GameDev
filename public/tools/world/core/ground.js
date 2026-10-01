@@ -403,7 +403,9 @@ export function groundCatalog(plan) {
      made planks; a picture made while the prompt still asked for the weave
      is theirs, so it is not marked to make again (`accepts`). */
   add({ id: 'boardwalk', group: 'hub', name: 'Boardwalk', brief: 'weathered wooden decking: straight boards of about equal width laid side by side, with thin dark gaps between them, a few knots and nail heads, and here and there two boards butted end to end',
-    where: "the town's boardwalks, and the bridges", color: hexToRgb(K.boardwalk.color), revised: 'v2.3.2949', laid: 'planks',
+    /* v2.3.2960: the bridges only, the town's boardwalks put away
+       until its buildings (plan.js `boardwalks`) */
+    where: 'the bridges', color: hexToRgb(K.boardwalk.color), revised: 'v2.3.2949', laid: 'planks',
     accepts: ['weathered wooden decking of short boards in a basket weave: small square blocks of three or four boards, each block turned a quarter turn from its neighbours'] });
   add({ id: 'plaza', group: 'hub', name: 'Town square', brief: 'packed pale gravel with a few flat flagstones',
     where: 'the town square round the Town Hall', color: hexToRgb(K.plaza.color) });
