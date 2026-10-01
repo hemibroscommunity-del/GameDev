@@ -129,7 +129,8 @@ function onMessage(m, resolveInit, rejectInit) {
   }
   if (m.type === 'where') {
     _hereAsked = null;
-    if (m.q != null) _here = { q: m.q, x: m.id.x, y: m.id.y };
+    /* v2.3.2966: with the region and tier there, and in words (the map) */
+    if (m.q != null) _here = { q: m.q, x: m.id.x, y: m.id.y, region: m.reg || null, tier: m.tier || 0, words: m.words || null };
     return;
   }
   /* v2.3.2959: a picture some piece went without has come ('id|version') */
@@ -218,8 +219,17 @@ export function wheelHere(x, y) {
   }
   if (!_here) return null;
   const c = info.catalog[_here.q];
-  return c ? { id: c.id, name: c.name, water: _here.q === info.water, made: info.made[c.id] || null } : null;
+  return c ? { id: c.id, name: c.name, water: _here.q === info.water, made: info.made[c.id] || null,
+    region: _here.region, tier: _here.tier, words: _here.words } : null;
 }
+
+/* ═══ v2.3.2966: THE WHEEL'S MAP ═══
+   What the minimap and the world map draw (public/tools/world/core/
+   wheelmap.js, built by the worker from the blueprint): the lands and
+   their stages with their levels, the town, the camps, passes, gates and
+   landmarks, and the roads, the river and the railway as lines, in game
+   px.  null until the worker is ready. */
+export function wheelMapInfo() { return _info ? _info.map || null : null; }
 
 /* Stop the worker and let go of everything it gave. */
 export function wheelStop() {

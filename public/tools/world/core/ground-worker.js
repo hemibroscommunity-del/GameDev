@@ -39,7 +39,9 @@
  *                                   v2.3.2955: and blends only when it says
  *                                   `blends` -- ground.js, BLENDS)
  *   { type: 'chunk', id, i, j }  -> { type: 'chunk', id, i, j, w, h, data, ms }
- *   { type: 'where', id, x, y }  -> { type: 'where', id, q }  (answered at once)
+ *   { type: 'where', id, x, y }  -> { type: 'where', id, q, reg, tier, words }
+ *                                   (answered at once; v2.3.2966: the region
+ *                                   and tier there, and in words for the map)
  *   anything that fails          -> { type: 'error', id, message }
  */
 import { PLAN } from '../plan.js';
@@ -48,6 +50,7 @@ import { gridInfo } from './grid.js';
 import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
+import { wheelMap, whereWords } from './wheelmap.js';
 
 const TILE = PIXEL.groundTile;                                    /* 1024 px a swatch */
 const K = Math.round(PLAN.worldPxPerArtPx / PIXEL.gamePxPerArtPx); /* 3 ground px a plan art px: 2 a game px */
@@ -59,7 +62,8 @@ const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.29
 const GAME_BASE = '/world/ground/';
 const STUDIO_DB = 'brotown-ground-studio';
 
-let W = null;               /* { bp, mm } once ready: bp is the light copy (no per-cell layers) */
+let W = null;               /* { bp, mm } once ready: bp is the light copy (no per-cell layers) --
+                               v2.3.2966: and the region and tier of every cell, and the map */
 let swatches = Object.create(null);   /* id -> { from: 'studio'|'game', vers: { A?, B?, E? }, pal, mapped }; v2.3.2951: a pair's key -> { ..., vers: { M } } */
 const decoded = new Map();            /* 'id|ver' -> tile ({w, h, idx, pal} or {w, h, data}) */
 const failed = new Set();             /* 'id|ver' that could not be unpacked: drawn in plan colour */
@@ -199,7 +203,7 @@ let queue = Promise.resolve();
 self.onmessage = (ev) => {
   const m = ev.data || {};
   /* where you stand is answered at once, not behind the pieces being laid */
-  if (m.type === 'where') { post({ type: 'where', id: m.id, q: whereIs(m.x, m.y) }); return; }
+  if (m.type === 'where') { post({ type: 'where', id: m.id, ...whereIs(m.x, m.y) }); return; }
   queue = queue.then(() => handle(m)).catch((e) => post({ type: 'error', id: m.id, message: String((e && e.message) || e) }));
 };
 
@@ -220,7 +224,10 @@ async function init(m) {
   const planMs = Math.round(performance.now() - t0);
   const bits = walkBits(bp, mm);
   const ov = overviewPixels(bp, mm, OVERVIEW_CELLS);
-  W = { bp, mm };
+  /* v2.3.2966: the map the minimap and the world map draw (wheelmap.js),
+     and each cell's region and tier, kept for "where am I" (6 MB) */
+  const map = wheelMap(PLAN, full);
+  W = { bp, mm, reg: full.reg, tier: full.tier, regionIds: full.regionIds, map };
   const t1 = performance.now();
   await findSwatches(mm, edgePiecesOn(m && m.search), blendsOn(m && m.search));
   const swatchMs = Math.round(performance.now() - t1);
@@ -245,17 +252,20 @@ async function init(m) {
     catalog: mm.ids.map((id, q) => ({ id, name: q === mm.water ? 'Water' : mm.catalog[q].name })),
     water: mm.water,
     made, edges, blends: blends.sort(),
+    map,
     planMs, swatchMs,
   }, [bits.buffer, ov.data.buffer]);
 }
 
-/* The swatch under a game position, by its index in `catalog`. */
+/* The swatch under a game position, by its index in `catalog` -- and
+   v2.3.2966: the region and tier there, and where that is in words. */
 function whereIs(x, y) {
-  if (!W) return null;
+  if (!W) return { q: null };
   const { bp, mm } = W;
   const bx = Math.floor(x / WPA / bp.scale), by = Math.floor(y / WPA / bp.scale);
-  if (!(bx >= 0 && by >= 0 && bx < bp.w && by < bp.h)) return null;
-  return mm.mat[by * bp.w + bx];
+  if (!(bx >= 0 && by >= 0 && bx < bp.w && by < bp.h)) return { q: null };
+  const c = by * bp.w + bx, region = W.regionIds[W.reg[c]] || null, tier = W.tier[c];
+  return { q: mm.mat[c], reg: region, tier, words: whereWords(W.map, region, tier) };
 }
 
 /* ── the swatches ── */

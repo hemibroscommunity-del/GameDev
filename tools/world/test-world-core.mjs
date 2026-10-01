@@ -1221,5 +1221,35 @@ console.log('objects');
     ['oak', 'pine', 'palm', 'pylon', 'jungletree'].every((id) => /A wide picture \(3:2, landscape\)/.test(prompts[id])));
 }
 
+/* ── v2.3.2966: the Wheel's map (the minimap and the world map) ── */
+console.log('wheel map');
+{
+  const { wheelMap, whereWords } = await import('../../public/tools/world/core/wheelmap.js');
+  const bpM = buildBlueprint(PLAN);
+  const m = wheelMap(PLAN, bpM);
+  const inside = (x, y) => x >= 0 && y >= 0 && x <= m.worldW && y <= m.worldH;
+  const c = m.worldW / 2;
+  ok(`the map names the eight lands, each out along its own spoke from the town (${m.lands.map((l) => l.name).join(', ')})`,
+    m.lands.length === 8 && m.lands.every((l) => { const dx = l.x - c, dy = l.y - c, d = Math.hypot(dx, dy); return d > 5000 && (dx * l.ux + dy * l.uy) / d > 0.99; }) && m.hub.town.name === 'Brotown' && Math.abs(m.hub.town.x - c) < 2,
+    m.lands.map((l) => [l.id, l.x, l.y]));
+  ok('...and each land\'s four stages with their levels, in order outward (32)',
+    m.stages.length === 32 && m.lands.every((l) => { const st = m.stages.filter((s) => s.region === l.id); return st.length === 4 && st.every((s, k) => s.k === k && s.levels[0] === k * 20 + 1 && s.levels[1] === (k + 1) * 20 && (k === 0 || Math.hypot(s.x - c, s.y - c) > Math.hypot(st[k - 1].x - c, st[k - 1].y - c))); }));
+  const kinds = {};
+  for (const p of m.places) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
+  ok(`...the camps (32, each at the end of its stage), the passes (16, at levels 20 and 60), the gates (8, each to its realm) and the landmarks`,
+    kinds.camp === 32 && kinds.pass === 16 && kinds.gate === 8 && kinds.landmark === 4 && m.places.every((p) => inside(p.x, p.y)) &&
+    m.places.filter((p) => p.kind === 'camp').every((p) => [20, 40, 60, 80].includes(p.level)) && m.places.filter((p) => p.kind === 'pass').every((p) => p.level === 20 || p.level === 60) &&
+    m.places.filter((p) => p.kind === 'gate').every((p) => /the (Dark Sanctum|Light Summit)/.test(p.to)), kinds);
+  const before = bpM.routes.reduce((t, r) => t + r.pts.length, 0), after = m.routes.reduce((t, r) => t + r.pts.length / 2, 0);
+  ok(`...and the roads, the river and the railway as lines, simplified ${before} points to ${after}, all inside the world, the trunk roads marked`,
+    m.routes.length === bpM.routes.length && after < before / 4 && m.routes.every((r) => r.pts.length >= 4 && r.pts.every((v, i) => (i % 2 ? v <= m.worldH : v <= m.worldW) && v >= 0)) && m.routes.filter((r) => r.trunk).length === 8,
+    { before, after });
+  ok('"where am I" in words: the land, its stage and the levels there; the town and the commons safe',
+    JSON.stringify(whereWords(m, 'frost', 2)) === JSON.stringify({ title: 'Frost Ridge', sub: 'the thaw line · Lv 6–10' }) &&
+    whereWords(m, 'ember', 16).sub === 'the volcano flanks · Lv 76–80' && whereWords(m, 'town', 0).title === 'Brotown' && /safe/.test(whereWords(m, 'commons', 0).sub),
+    [whereWords(m, 'frost', 2), whereWords(m, 'ember', 16)]);
+  ok('...small enough to post to the game once (under 40 KB)', JSON.stringify(m).length < 40000, JSON.stringify(m).length);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -1690,6 +1690,99 @@ known: keep each piece as **palette numbers** (one byte a pixel, as the worker
 already keeps the swatches) and colour it on the graphics chip. That cuts the
 ground's memory to a quarter.
 
+### The minimap and the world map (v2.3.2966)
+
+> Owner, 2026-10-01: *"I'm thinking the minimap will need to be larger and
+> the most informative and intuitive it can be for navigation purposes.
+> Maybe tapping it brings up an overlay of a labelled world map. It would
+> probably help to have areas labelled so players can start memorizing the
+> territory."*
+
+**The map's facts** (`public/tools/world/core/wheelmap.js`, `wheelMap`).
+They are built once by the ground worker from the blueprint and posted with
+its first answer, about 22 KB, all in game px:
+
+- the eight lands, each labelled out along its own spoke;
+- each land's four stages, with their levels;
+- the town and the commons;
+- the 32 camps, each at the end of its stage, with its level;
+- the 16 passes, at levels 20 and 60;
+- the 8 gates, each with the realm it leads to;
+- the landmarks, the depot, the mill, the arena, the falls and the bridges;
+- the 33 roads, the river and the railway, as lines simplified from 13,461
+  points to 579.
+
+The worker now keeps every cell's region and tier (6 MB). Its answer for the
+spot under you (`where`) also says the place **in words** (`whereWords`):
+"Frost Ridge", "the thaw line · Lv 6–10". The town and the commons are
+"safe".
+
+**The minimap** (`src/rendering/systems/wheelMinimap.js`). In the Wheel,
+`MinimapRenderer` hands its box over to it; today's zones keep their own
+52 px box, a flat slab with icons, as the owner asked for it (v2.3.1792,
+v2.3.2247). The Wheel's minimap:
+
+- is 132 px, two and a half times bigger, in the same corner;
+- shows 3,200 game px round you, about three zones across, centred on you
+  and held at the world's edge like the camera;
+- draws the land from the worker's overview, its own ground colours a touch
+  darker so the marks read, with the sea round it;
+- draws the roads, the river and the railway as clean lines;
+- marks the town, camps, passes, gates and landmarks, and you (a chevron
+  the way you face), other bros and monsters;
+- says under the box where you are: the land, then its stage and levels;
+- carries a small "expand" mark in its corner.
+
+Nothing is loaded for it: the overview is a canvas the worker made before
+the Wheel opened.
+
+**The world map** (`src/ui/WorldMapOverlay.jsx`). A see-through button lies
+exactly over the minimap (its place is published as `window.__btWheelMini`),
+since the minimap is drawn in the WebGL canvas, which takes no taps. Tap it
+and the whole Wheel opens, full screen, with **labels that grow with the
+zoom**:
+
+- the eight lands' names first (one line each while the whole Wheel is on a
+  phone's screen), and you, in a pulsing ring;
+- from zoom 2.2, each land's stages with their levels, in place of the land
+  names;
+- the gates and where they lead; from zoom 3, the camps and the passes with
+  their levels; then the landmarks; from zoom 4.6, the roads' names along
+  them;
+- every label kept clear of the ones before it, so it never turns to mush.
+
+Drag to look round, pinch or **+ / −** to zoom, **◎** to come back to you,
+**×** to close. A key along the bottom names the marks. The top bar says
+where you are.
+
+The map is put into the page's body, not the game's tree. The bottom
+dashboard (z 30) sits above everything inside the game's wrapper, whatever
+its z-index, and covered the map's buttons until it moved (`mp-wheelmap`
+caught it). The trial's own readout steps aside while the map is open.
+
+**Tested.**
+
+- `test-world-core.mjs`, "wheel map": the lands each along their own
+  spoke; the stages in order outward with their levels; the camps, passes,
+  gates and landmarks; the lines simplified and inside the world; the words;
+  the size.
+- `node tools/qa/mp/run.mjs wheelmap` (18 checks), on a phone against a real
+  worker:
+  - in town, today's minimap;
+  - in the Wheel, the 132 px box with the land, lines and places, centred on
+    you, saying "Brotown", and drawn on screen;
+  - a real tap on it opens the world map: the eight lands named, you marked,
+    where you are said;
+  - zooming brings the stages, then the camps and passes; dragging looks
+    round; ◎ brings you back; × closes it;
+  - walking out onto Frost Ridge, the box says "Frost Ridge / the thaw line
+    · Lv 6–10";
+  - back in town, today's minimap again.
+- `wheeltrial` 33/33 and `wheelnet` pass as before.
+- `minimap` fails the same three checks with and without this change (the
+  enchanter's mark, and a render error on the way through the World View),
+  so those three were failing before it.
+
 ### Always daylight, for now (v2.3.2963)
 
 > Owner, 2026-10-01, after one visit came out very dark just past the game's

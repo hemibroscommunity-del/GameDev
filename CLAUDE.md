@@ -153,7 +153,18 @@ remnant to migrate server-side, not a mode to preserve.
   objects into one sprite sheet (`atlasFiles`, 2048 px max, a PixiJS sheet
   file with anchors at the feet and `meta.scale` 2): WORLD-MAP-PIPELINE
   "Sprite sheets"; the footstep-sound list per ground is WORLD-MAP-PIPELINE
-  "Footstep sounds"; placing objects on the Wheel is the next round),
+  "Footstep sounds"; placing objects on the Wheel is the next round; and
+  since v2.3.2966 the Wheel has its OWN MINIMAP and a WORLD MAP, the owner's
+  "larger and the most informative and intuitive it can be": the worker
+  posts the map's facts (`world/core/wheelmap.js`: lands, stages and levels,
+  camps, passes, gates, landmarks, the roads/river/railway simplified) and
+  says where you are in words (`whereWords`), `wheelMinimap.js` takes over
+  MinimapRenderer's box in the Wheel only (132 px, the land and its lines,
+  "Frost Ridge / the thaw line · Lv 6-10" under it; today's zones keep their
+  52 px slab), and a tap opens `src/ui/WorldMapOverlay.jsx` -- portalled to
+  the body, as the dashboard covers anything inside the game's wrapper --
+  with labels that grow with the zoom: WORLD-MAP-PIPELINE "The minimap and
+  the world map"; `mp-wheelmap` tests it),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
