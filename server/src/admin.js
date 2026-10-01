@@ -245,6 +245,11 @@ export const adminMethods = {
                locally and grants nothing (lifeSkillRewards, `if
                (!S._serverGatherNodes)`).  See gathering.js _strikeRefused. */
             lastStrike: this._lastStrikeFor(id),
+            /* v2.3.2956: the hits the worker rolled for the extraction in
+               flight ({nodeId, skill, level, hp, hits, windowMs}), or null on
+               the old timer.  What the client PLAYED is only worth anything
+               held against this. */
+            hitPlan: this._gatherHitPlanFor(id),
             /* ...and how many node_strike messages the switch has seen at all,
                room-wide.  0 with a client that swears it sent one is the
                allowlist shape; >0 with lastStrike null means the handler ran

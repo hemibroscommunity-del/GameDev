@@ -12,15 +12,21 @@
  * fishing -- in a real spoke zone (every spoke has one tree, one fish spot and
  * one ore vein, gathering.js), on a phone, through the real tap and the real
  * pointer path, and for each one:
- *   1. the wind-up: the bar fills and the character WORKS (its pose moves);
- *   2. `ready`, untouched: the character is FROZEN, the bar is full and
- *      flashing, the mini tool of THIS skill is the cue;
+ *   1. the wind-up: the node's HP bar drains and the character WORKS (its
+ *      pose moves);
+ *   2. `ready`, untouched: the character is FROZEN, the node's bar is empty
+ *      and CALLS for the gesture (it pulses), the mini tool of THIS skill is
+ *      the cue;
  *   3. the gesture: the pose moves with the strokes, the skill's own effect
  *      fires (rock debris / wood chips / a splash), and the meter fills;
  *   4. finished: the worker put the resource in the bag.
  * Screenshots of each stage land in tools/qa/mp/out/cueshow-*.png for a human
  * to look at -- the owner asked for a LOOK, and a 46px bar and a 26-unit icon
  * are exactly the things an assertion can pass on while looking wrong.
+ *
+ * v2.3.2956: "the bar" was the wind-up bar over the head until the owner
+ * retired it ("the HP-like bar will replace that"); it is the node's HP bar
+ * now (window.__btNodeHpBar), which the gathering hits drain.
  */
 import * as H from './harness.mjs';
 
@@ -54,13 +60,13 @@ const FX = { oreVein: 'rocks', tree: 'woodchips', fishSpot: 'splash' };
 const state = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   const ex = S._extraction;
-  const bar = window.__btWindupBar || null;
+  const bar = window.__btNodeHpBar || null;   /* v2.3.2956: the node's bar, which replaced the one over the head */
   const fx = (S._fxBursts || []).map((b) => b.kind);
   return {
     status: ex ? ex.status : null, skill: ex ? ex.skill : null,
     posF: ex && ex._posF != null ? +ex._posF.toFixed(3) : null,
     progress: ex ? +(ex.progress || 0).toFixed(3) : null,
-    bar: bar ? { bar01: bar.bar01, ready: bar.ready, idle: bar.idle, x: bar.x, y: bar.y, w: bar.w } : null,
+    bar: bar && bar.show ? { frac: bar.frac, hp: bar.hp, mode: bar.mode, ready: bar.ready, call: bar.call, skill: bar.skill, x: bar.x, y: bar.y } : null,
     player: S.player ? { x: Math.round(S.player.x), y: Math.round(S.player.y) } : null,
     band: S._selfBandTopY != null ? Math.round(S._selfBandTopY) : null,
     fx,
@@ -162,12 +168,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!node) return {};
 
     /* Stand there, with the field cleared so a monster cannot eat the tap
-       (the tap hit-tests monsters first, v2.3.1448). */
+       (the tap hit-tests monsters first, v2.3.1448).
+       v2.3.2956: WALKED there in steps the worker accepts (H.hopTo), then the
+       worker's own copy of the position is checked.  This used to be one
+       write of S.player.x/y -- a teleport -- and movement.js refuses any move
+       further than 500 px/s x the time since the last one + 80; with the
+       harvest heartbeat re-sending every 500 ms that is ~330 px, so a node
+       the worker happened to roll far from the zone entry left the player
+       at the entrance on the worker, and the paid strike came back
+       `out-of-range` (measured: 541 px).  Node positions re-roll on every
+       worker boot, so it passed or failed by where the ore landed. */
+    const sx = node.x + STAND[type][0], sy = node.y + STAND[type][1];
+    await H.hopTo(P, sx, sy);
     await P.page.evaluate(({ x, y }) => {
       const S = window._gameState.current;
       S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0;
       S._monstersStash = S.monsters; S.monsters = [];
-    }, { x: node.x + STAND[type][0], y: node.y + STAND[type][1] });
+    }, { x: sx, y: sy });
+    let srvAt = null;
+    for (let i = 0; i < 16; i++) {
+      srvAt = await H.serverPlayer(wsPort, myId).catch(() => null);
+      if (srvAt && Math.hypot(srvAt.x - sx, srvAt.y - sy) < 60) break;
+      await P.page.waitForTimeout(250);
+    }
+    rec.ok(`${skill}: the worker has the player at the node too (guard)`,
+      !!srvAt && Math.hypot(srvAt.x - sx, srvAt.y - sy) < 60,
+      { worker: srvAt && { x: Math.round(srvAt.x), y: Math.round(srvAt.y) }, client: { x: Math.round(sx), y: Math.round(sy) } });
     await P.page.waitForTimeout(900);
     const invBefore = await srvInv(wsPort, myId);
 
@@ -199,7 +225,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 1. THE WIND-UP ── */
     await dismissTips();
     const w1 = await state(P);
-    await P.page.waitForTimeout(400);
+    /* v2.3.2956: 400 -> 1400.  With gathering hits (caps.gatherhits) the
+       bar no longer creeps on a clock -- the node's HP steps down once per
+       HIT, one swing apart (540-650 ms) -- so two reads 400 ms apart could
+       both fall between hits and see the same fill.  1400 always spans two
+       hits' worth of swing while staying well inside a level-1 run of ten. */
+    await P.page.waitForTimeout(1400);
     const w2 = await state(P);
     const box = await H.figureBox(P, { pad: 70 }).catch(() => null);
     const shot = async (name) => {
@@ -213,7 +244,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (btn) await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/cueshow-${skill}-${name}-button.png`, clip: btn }).catch(() => {});
     };
     await shot('1-windup');
-    rec.ok(`${skill}: during the wind-up the bar fills`, !!(w1.bar && w2.bar && !w2.bar.ready && w2.bar.bar01 > w1.bar.bar01), { w1: w1.bar, w2: w2.bar });
+    rec.ok(`${skill}: during the wind-up the node's HP bar drains`,
+      !!(w1.bar && w2.bar && !w2.bar.ready && w2.bar.skill === skill && w2.bar.frac < w1.bar.frac), { w1: w1.bar, w2: w2.bar });
 
     console.log(`    ${skill} wind-up: ` + JSON.stringify({ bar: w2.bar, player: w2.player, band: w2.band }));
     /* ── 2. READY, UNTOUCHED ── */
@@ -229,7 +261,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/cueshow-${skill}-2-ready-full.png` }).catch(() => {});
     console.log(`    ${skill} ready: ` + JSON.stringify({ bar: r2.bar, player: r2.player, band: r2.band }));
     rec.ok(`${skill}: at ready the character is FROZEN on the ready pose`, r1.posF === 0 && r2.posF === 0, { r1: r1.posF, r2: r2.posF });
-    rec.ok(`${skill}: ...the bar is full and flashing`, !!(r2.bar && r2.bar.ready && r2.bar.idle), r2.bar);
+    rec.ok(`${skill}: ...the node's bar is empty and calls for the gesture (it pulses)`,
+      !!(r1.bar && r2.bar && r2.bar.ready && r2.bar.frac === 0 && r1.bar.call && r2.bar.call), { r1: r1.bar, r2: r2.bar });
     rec.ok(`${skill}: ...and the cue is the ${skill} tool`, new RegExp({ mining: 'pickaxe', woodcutting: 'axe', fishing: 'fishing-pole' }[skill]).test(r2.sprite || ''), r2);
 
     /* ── 3. THE GESTURE ──  In-page, continuous, and a quick pace. */

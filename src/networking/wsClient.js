@@ -127,6 +127,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
   } catch (e) { /* never let this break the state echo */ }
 }
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
+import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
@@ -2303,6 +2304,17 @@ export function setupWebSocket(ctx) {
                 pushDmgPopup(S, S.player.x, S.player.y - 50, _sklEmoji + ' ' + _sklLabel + ' Level ' + (hc.newLevel || '?') + '!', '#f5c542');
                 try { BT_AUDIO.collect(); } catch (e) {}
               }
+              break;
+            }
+          case 'gather_hits':
+            {
+              /* v2.3.2956: the worker's hits for the harvest in flight
+                 (gathering.js _planGatherHits) -- or `off`, the kill switch.
+                 Private to the harvester and in PRIVILEGED_EVENTS, so a relay
+                 cannot hand anyone a plan.  applyGatherHits accepts it only
+                 for the attempt that asked (seq + node); a plan for one the
+                 player already abandoned is dropped. */
+              applyGatherHits(S, msg.payload);
               break;
             }
           case 'gem_cut_result':

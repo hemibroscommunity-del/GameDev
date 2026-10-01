@@ -603,6 +603,148 @@ function _hpFillTexFor(holder, frac) {
   return holder._hpFillTex;
 }
 
+/* v2.3.2956: the node HP bar's four display objects (drawNodeHpBar), named
+   once rather than per frame. */
+const NODE_HPBAR_PARTS = ['_nbFrame', '_nbFill', '_nbFx', '_nbText'];
+function _nodeHpBarHide(holder) {
+  if (holder._nbFrame.alpha !== 0) {
+    for (let i = 0; i < NODE_HPBAR_PARTS.length; i++) holder[NODE_HPBAR_PARTS[i]].alpha = 0;
+    holder._nbFx.clear();
+  }
+  holder._nbGhost = null; holder._nbLast = null;
+}
+
+/* ═══ v2.3.2956: A GATHER NODE WEARS THE MONSTER'S HEALTH BAR ═══
+   Owner: "the resource has something akin to an hp bar and the player ticks
+   away at it".  So the rock, the tree and the pond take the bar every monster
+   already wears -- the same art, the same 44x13 box, the same white ghost
+   trail and damage flash, the same number in the middle -- for the reason
+   _drawPeerHpBar gives for the duel bar: a second bar style is a second thing
+   to keep in sync, and "an hp bar" is the monster's to anyone who has played
+   this game for a minute.
+   The PLACE is the node's own, and deliberately far from the head: the
+   player's own HP bar is this exact art over the character, so a node bar
+   near the face would read as yours.  effectsRenderer decides where (under
+   the rock, over the crown, under the pond -- it owns the node sprites) and
+   when; this draws.  `holder` keeps the four display objects and the ghost
+   state between frames; `bar.show === false` hides it and resets the ghost,
+   so the next harvest starts from a clean full bar.
+   v2.3.2956, when it replaced the bar over the head (owner: "you can remove
+   the status bar above the player head now since the HP-like bar will
+   replace that"), it took over that bar's other two jobs as well:
+     `smooth`  the harvest is on the old TIMER (an old worker, the kill
+               switch, a plan that never came): `frac` drains with the clock
+               and there is no number, because nothing was hit -- and no ghost
+               or flash, which would fire on every frame of a drain;
+     `call`    the window is open and nobody is gesturing: the empty bar
+               pulses in a gold halo, the old bar's flash, because a frozen
+               character over a still bar reads as a game that has stopped
+               (the reason v2.3.2514 made that bar breathe).
+   `scale` is the zone's perspective at the node (a campfire can be lit on a
+   vista map); the gathering nodes are drawn at 1. */
+export function drawNodeHpBar(layer, holder, bar) {
+  if (!layer || !holder) return;
+  const parts = NODE_HPBAR_PARTS;
+  let broken = false;
+  for (let i = 0; i < parts.length; i++) {
+    const o = holder[parts[i]];
+    if (!o || o.destroyed) { broken = true; break; }
+  }
+  if (broken) {
+    for (let i = 0; i < parts.length; i++) {
+      const o = holder[parts[i]];
+      if (o && !o.destroyed) o.destroy();
+    }
+    holder._nbFrame = new Sprite(); holder._nbFrame.anchor.set(0.5, 0.5);
+    holder._nbFill = new Sprite(); holder._nbFill.anchor.set(0, 0.5);
+    holder._nbFx = new Graphics();
+    holder._nbText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
+    holder._nbText.anchor.set(0.5, 0.5);
+    if (holder._hpFillTex) holder._hpFillTex.destroy(false);   /* the cropped view only; the art is shared */
+    holder._hpFillTex = null; holder._hpFillTexW = 0;
+    for (let i = 0; i < parts.length; i++) holder[parts[i]].alpha = 0;
+  }
+  /* Hidden is the state nearly every frame of a session is in, so it does
+     no work beyond this: no allocation, no layer walk, no texture lookup
+     (iPhone memory -- the owner's "wonky with RAM" -- is why the idle path
+     is kept allocation-free). */
+  const frac = !bar || !bar.show ? NaN
+    : (typeof bar.frac === 'number') ? bar.frac
+    : (bar.maxHp > 0 ? bar.hp / bar.maxHp : NaN);
+  if (!(frac === frac)) { _nodeHpBarHide(holder); return; }   /* hidden, or nothing to draw (NaN) */
+  _ensureHudBarTextures();
+  const frameTex = _hudBarTex.barFrame;
+  if (!frameTex) { _nodeHpBarHide(holder); return; }
+  for (let i = 0; i < parts.length; i++) {
+    const o = holder[parts[i]];
+    if (o.parent !== layer) layer.addChild(o);
+  }
+  /* On top of its layer.  The miner's and the angler's BODIES are re-parented
+     into this same layer for the harvest (_updatePlayer's gestureFront
+     promotion), after the bar was made -- and a body drawn over the bar it is
+     reducing is the v2.3.2636 rule broken ("a burst cannot hide the bar it is
+     reducing").  Re-appended only when something has landed above it, which
+     happens once per harvest, not per frame. */
+  const kids = layer.children;
+  if (kids[kids.length - 1] !== holder._nbText) for (const k of parts) layer.addChild(holder[k]);
+  const f01 = Math.max(0, Math.min(1, frac));
+  const k = bar.scale > 0 ? bar.scale : 1;
+  const W = MONSTER_HPBAR_W * k, H = MONSTER_HPBAR_H * k;
+  const { x, y, now } = bar;
+  const fr = holder._nbFrame;
+  if (fr.texture !== frameTex) fr.texture = frameTex;
+  fr.width = W; fr.height = H; fr.x = x; fr.y = y; fr.alpha = 1;
+  const fill = holder._nbFill;
+  const fillTex = f01 > 0 ? _hpFillTexFor(holder, f01) : null;
+  if (fillTex) {
+    if (fill.texture !== fillTex) fill.texture = fillTex;
+    fill.width = Math.max(1, W * f01); fill.height = H;
+    fill.x = x - W / 2; fill.y = y; fill.alpha = 1;
+  } else fill.alpha = 0;
+  /* Ghost trail + white flash: the monster bar's v2.3.458 constants.  Not
+     for a clock's drain (`smooth`): every frame of it is a drop. */
+  if (bar.smooth) {
+    holder._nbGhost = f01; holder._nbFlashUntil = 0;
+  } else {
+    if (holder._nbGhost == null) holder._nbGhost = f01;
+    if (holder._nbLast != null && f01 < holder._nbLast - 0.0005) {
+      holder._nbDrainAt = now + HP_GHOST_HOLD_MS;
+      holder._nbFlashUntil = now + HPBAR_FLASH_MS;
+    }
+    if (f01 >= holder._nbGhost) holder._nbGhost = f01;
+    else if (now >= (holder._nbDrainAt || 0)) holder._nbGhost = Math.max(f01, holder._nbGhost - HP_GHOST_DRAIN_M);
+  }
+  holder._nbLast = f01;
+  const fx = holder._nbFx;
+  fx.clear(); fx.alpha = 1;
+  const inL = x - W / 2 + W * HPBAR_IN_X, inW = W * HPBAR_IN_W;
+  const inT = y - H / 2 + H * HPBAR_IN_Y, inH = H * HPBAR_IN_H;
+  if (holder._nbGhost > f01 + 0.001) {
+    fx.rect(inL + inW * f01, inT, inW * (holder._nbGhost - f01), inH);
+    fx.fill({ color: HP_GHOST_WHITE, alpha: 0.92 });
+  }
+  const fl = (holder._nbFlashUntil || 0) - now;
+  if (fl > 0 && f01 > 0) {
+    fx.rect(inL, inT, inW * f01, inH);
+    fx.fill({ color: 0xffffff, alpha: 0.85 * (fl / HPBAR_FLASH_MS) });
+  }
+  /* THE CALL: the old bar's ready flash, on this bar -- a gold halo that
+     breathes at its pace (sin(now / 140)), never fully out, so it does not
+     wash into snow or sand at its dimmest. */
+  if (bar.call) {
+    const pulse = 0.5 + 0.5 * Math.sin(now / 140);
+    const halo = 2.4 * k;
+    fx.roundRect(x - W / 2 - halo, y - H / 2 - halo, W + 2 * halo, H + 2 * halo, H / 2 + halo);
+    fx.stroke({ width: Math.max(1.5, 2 * k), color: 0xF0C878, alpha: 0.35 + 0.6 * pulse });
+  }
+  const txt = holder._nbText;
+  if (bar.hp == null) { txt.alpha = 0; return; }   /* the timer: nothing was hit, so no number */
+  const str = String(Math.max(0, Math.round(bar.hp)));
+  if (txt.text !== str) txt.text = str;
+  if (txt.scale.x !== k) txt.scale.set(k);
+  txt.x = x; txt.y = y; txt.alpha = 1;
+}
+
 /* v2.3.261 (Bro-NFT Phase 4): trait textures for the local player's
    face/head composite layer.  One sprite per stored direction (east,
    north, northeast, south, southwest); W / NW / SE render via mirror.
@@ -14076,7 +14218,10 @@ export class EntityRenderer {
        (mp-cueshow): mining with a scratch of damage drew the HP bar exactly on
        top of the wind-up bar, hiding it.  So the band publishes its top, in
        the same world px the effects layer draws in, and the harvest bar sits
-       above it.  Half-height is the plate's (the HP bar frame is no taller). */
+       above it.  Half-height is the plate's (the HP bar frame is no taller).
+       v2.3.2956: the harvest bar is gone (the node's HP bar replaced it), and
+       this line stays for its other reader: the chat bubble's point sits on
+       it (effectsRenderer, v2.3.2896). */
     {
       const _bandHalf = Math.max(8, display._namePill
         ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);

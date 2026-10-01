@@ -117,18 +117,27 @@ export function gestureIdle(ex) {
 }
 
 /* ═══ ONE READING OF HOW FAR ALONG A HARVEST IS (v2.3.2514) ═══
- * Both meters -- the ring on the button and the bar over the head -- read
+ * Both meters -- the ring on the button and the node's HP bar (the bar over
+ * the head until v2.3.2956, effectsRenderer _drawGatherHpBar) -- read
  * this, so the two cannot drift.
  * v2.3.2760: the bar no longer stalls at 95%.  The owner's description is two
  * phases, each a full bar: the wind-up fills while the character works, and
  * "once it reaches the limit" the character stops and the gesture takes over
  * -- so `bar01` is the wind-up (0..1) and then, at `ready`, the gesture's own
- * progress (0..1).  `idle` says the bar should flash: full, waiting for you. */
+ * progress (0..1).  `idle` says the bar should flash: full, waiting for you.
+ * (v2.3.2956: the node's HP bar, empty by then, pulses on `idle` instead.) */
 export function extractionMeter01(ex, now) {
   if (!ex) return null;
   const t = (typeof now === 'number') ? now : Date.now();
   const span = Math.max(1, (ex.windowOpensAt || 0) - (ex.startedAt || 0));
-  const windup = Math.max(0, Math.min(1, (t - (ex.startedAt || 0)) / span));
+  let windup = Math.max(0, Math.min(1, (t - (ex.startedAt || 0)) / span));
+  /* v2.3.2956: with gathering HITS the wind-up is the node's HP, not a
+     clock: the ring steps up by each hit as it lands (and sits at
+     0 until the worker's plan does), so the two meters read the same thing
+     the numbers off the node say.  `ready` below still takes the gesture's
+     own progress, unchanged. */
+  const h = ex.hits;
+  if (h) windup = (h.plan && h.maxHp > 0) ? Math.max(0, Math.min(1, 1 - h.hp / h.maxHp)) : 0;
   const reps = Math.max(0, Math.min(1, ex.progress || 0));
   const ready = ex.status === 'ready';
   return {
