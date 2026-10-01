@@ -15,7 +15,7 @@
    call time, identical). The only React setter any of them touches is
    setRpgState, threaded via deps; succeedExtraction forwards deps to the
    appliers. All other refs are module imports below. */
-import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills } from '@/data/index.js';
+import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills, GATHER_SWING, GATHER_HIT_PLAN_WAIT_MS, GATHER_HIT_SETTLE_MS, gatherHitTimes, gatherNodeHp, zonePlayerScale, TILE } from '@/data/index.js'; /* v2.3.2956: the gathering hits (and the zone scale a cook's hit pops at) */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.1915 */
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
@@ -123,6 +123,20 @@ export function startExtraction(S, node, skill, extra) {
     var nodeTier = node.gatherLvl || 1;
     var openDelay = computeOpenDelay(skillLvl, nodeTier);
     var now = Date.now();
+    /* ═══ v2.3.2956: THE WIND-UP IS A RUN OF HITS ═══
+       Against a worker that advertises caps.gatherhits, the three gathering
+       skills no longer wait out computeOpenDelay: the worker rolls hits of
+       1..skill level against the node's HP and sends them (gather_hits ->
+       applyGatherHits), and the window opens on the last one
+       (tickGatherHits).  Until the plan lands the window is shut -- the
+       character swings, nothing is counted -- and if it never lands the
+       attempt drops back to this timer (GATHER_HIT_PLAN_WAIT_MS).  Cooking
+       too (owner: "Make it appear for cooking too"): its fish has the hit
+       points and the cooking level rolls the dice (the worker's
+       _planCookHits).  An old worker never sends a plan, so the timer stays
+       theirs (rule 19: gated on the cap, not on hope). */
+    var _hitMode = !!(S._serverCaps && S._serverCaps.gatherhits) && !!S.channel
+      && Object.prototype.hasOwnProperty.call(GATHER_SWING, skill);
     S._extraction = {
       nodeId: node.id,
       /* v2.3.253: keep the node reference too so the tick can find it
@@ -131,11 +145,24 @@ export function startExtraction(S, node, skill, extra) {
       nodeRef: node,
       skill: skill,
       startedAt: now,
-      windowOpensAt: now + openDelay,
-      windowClosesAt: now + openDelay + EXTRACT_WINDOW_MS,
+      windowOpensAt: _hitMode ? Infinity : now + openDelay,
+      windowClosesAt: _hitMode ? Infinity : now + openDelay + EXTRACT_WINDOW_MS,
       status: 'waiting',
       swipeSamples: [],
     };
+    if (_hitMode) {
+      S._gatherHitSeq = (S._gatherHitSeq || 0) + 1;
+      S._extraction.hits = {
+        seq: S._gatherHitSeq,
+        plan: null,                       /* the worker's dice, once they land */
+        times: null,                      /* when each one lands (Date.now() ms) */
+        shown: 0,                         /* how many have landed */
+        maxHp: gatherNodeHp(nodeTier),    /* replaced by the plan's own hp */
+        hp: gatherNodeHp(nodeTier),
+        lastHitAt: 0,
+        waitUntil: now + GATHER_HIT_PLAN_WAIT_MS,
+      };
+    }
     /* v2.3.853: cooking carries the chosen raw fish key so succeed/burn can
        apply the cook outcome (the "node" is the campfire, not a gather node). */
     if (extra) { for (var _k in extra) S._extraction[_k] = extra[_k]; }
@@ -146,18 +173,172 @@ export function startExtraction(S, node, skill, extra) {
        anti-cheat hook, not a hard gate. */
     /* v2.3.853: cooking happens at a client-local campfire (no server gather
        node and no node_strike — the reward flows through cook_request), so
-       skip the extraction_start handshake for it. */
-    if (S.channel && skill !== 'cooking') {
+       skip the extraction_start handshake for it.
+       v2.3.2956: ...except to ask for its HITS.  A cook's start names its
+       fish, not a node (the worker has never seen the campfire), and the
+       worker keeps no record of it: cook_request is still the whole cook. */
+    if (S.channel && (skill !== 'cooking' || S._extraction.hits)) {
       try {
-        S.channel.send({ type: 'extraction_start', payload: {
-          nodeId: node.id, zone: S.currentZone, skill: skill,
-        }});
+        var _esPayload = skill === 'cooking'
+          ? { skill: skill, fishKey: S._extraction.fishKey }
+          : { nodeId: node.id, zone: S.currentZone, skill: skill };
+        /* v2.3.2956: asking for hits, and naming this attempt so a plan for
+           an abandoned one can be told apart (applyGatherHits). */
+        if (S._extraction.hits) _esPayload.hitSeq = S._extraction.hits.seq;
+        S.channel.send({ type: 'extraction_start', payload: _esPayload });
       } catch (e) {}
     }
     try { BT_AUDIO.beep(440, 0.03, 0.04, 'sine'); } catch (e) {}
     /* v2.3.2761 (owner: sounds for the specific actions): the cast lands --
        the lure's plop, the moment the rod goes out. */
     if (skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('lure-drop', { vol: 0.6 }); } catch (e) {} }
+}
+
+/* ═══ v2.3.2956: PLAYING THE WORKER'S HITS ═══
+   The worker's plan for the attempt in flight (wsClient `gather_hits`).
+   Accepted only for THIS attempt -- same seq, same node (for a cook, the same
+   fish: the campfire has no id the worker could name), still winding up,
+   no plan yet -- because a plan for an attempt the player already walked away
+   from must not drive the one they started since.  `off` is the kill switch
+   answering a client that joined before it was thrown: the old timer, now.
+
+   Each hit is scheduled on the next blow of its swing's free-running loop
+   (gatherHitTimes), so the number pops on the strike the player watches land
+   and no animation restarts.  The window opens a beat after the last one
+   (GATHER_HIT_SETTLE_MS): BroTown's tick flips `waiting -> ready` at
+   windowOpensAt, exactly as it did for the timer, so the gesture, the meter
+   and the cue downstream are untouched. */
+export function applyGatherHits(S, p) {
+    if (!S || !p) return false;
+    var ex = S._extraction;
+    var h = ex && ex.hits;
+    if (!h || h.plan || ex.status !== 'waiting') return false;
+    if (p.seq !== h.seq) return false;
+    if (ex.skill === 'cooking' ? p.fishKey !== ex.fishKey : p.nodeId !== ex.nodeId) return false;
+    if (p.off) { _gatherHitsToTimer(S, ex, false); return false; }
+    var hits = Array.isArray(p.hits) ? p.hits : null;
+    var hp = Math.floor(Number(p.hp));
+    var ok = !!hits && hits.length > 0 && hits.length <= 200 && hp > 0;
+    for (var i = 0; ok && i < hits.length; i++) {
+      if (!(Number.isInteger(hits[i]) && hits[i] >= 1)) ok = false;
+    }
+    /* A plan this side cannot play is a plan the worker is about to hold the
+       strike to -- so it is not merely ignored: the attempt is re-declared
+       on the timer, which re-stamps the worker's record to match. */
+    if (!ok) { _gatherHitsToTimer(S, ex, true); return false; }
+    var now = Date.now();
+    h.plan = hits.slice();
+    h.planAt = now;   /* when it landed -- what mp-gatherhits times the round trip by */
+    h.maxHp = hp;
+    h.hp = hp;
+    h.shown = 0;
+    h.times = gatherHitTimes(ex.skill, now, h.plan.length);
+    /* A beat after the last hit, so its blow is SEEN to land before the body
+       freezes for the gesture (GATHER_HIT_SETTLE_MS). */
+    ex.windowOpensAt = h.times[h.times.length - 1] + GATHER_HIT_SETTLE_MS;
+    ex.windowClosesAt = ex.windowOpensAt + EXTRACT_WINDOW_MS;
+    return true;
+}
+
+/* Once a frame while the attempt winds up (BroTown's extraction tick, BEFORE
+   its waiting -> ready check, so the node always reads 0 by the time the cue
+   appears).  Lands every hit that is due, and gives up on a plan that never
+   came. */
+export function tickGatherHits(S, ex, node, now) {
+    var h = ex && ex.hits;
+    if (!h || ex.status !== 'waiting' || !node) return;
+    /* Dead: no hits land.  Death does not clear S._extraction -- the
+       respawn's zone change does, ~3.5 s later -- and a pick knocking
+       numbers off a rock for a corpse is the v2.3.2281 bug in a new place
+       (every other harvest visual steps aside on death).  The same test as
+       entityRenderer's selfCorpseUp, including its time bound, so a
+       _deathStart that somehow outlived a respawn could never freeze every
+       later harvest on 0 hits. */
+    if ((S.rpg && S.rpg.hp <= 0) || (S._deathStart && (now - S._deathStart) < GATHER_DEATH_HOLD_MS)) return;
+    if (!h.plan) {
+      if (now >= h.waitUntil) _gatherHitsToTimer(S, ex, true);
+      return;
+    }
+    /* Every hit that is due lands on the HP, but at most ONE pops: back
+       from a backgrounded tab (an iPhone app switch) the whole plan can fall
+       due in a single frame, and ten numbers stacked on one spot is a
+       burst nobody asked for.  The hits
+       still count; the window opens on time either way. */
+    var landed = 0, lastD = 0;
+    while (h.shown < h.plan.length && now >= h.times[h.shown]) {
+      lastD = h.plan[h.shown];
+      h.hp = Math.max(0, h.hp - lastD);
+      h.shown++;
+      landed++;
+    }
+    if (landed) {
+      h.lastHitAt = now;
+      _popGatherHit(S, ex, node, lastD, h.shown);
+    }
+}
+/* = entityRenderer SELF_DEATH_HOLD_MS, the corpse hold selfCorpseUp bounds
+   its _deathStart test by (not imported: game logic does not pull in the
+   renderer for one number). */
+var GATHER_DEATH_HOLD_MS = 3500;
+
+/* Back to the computeOpenDelay timer, from now.  `resend` re-declares the
+   attempt WITHOUT a hitSeq so the worker overwrites its record with the
+   timer's window too -- otherwise it would hold this strike to a plan this
+   side never played.  Not needed for `off`: the worker already recorded the
+   timer when it said so.  Never for a cook: the worker keeps no record of
+   one, so there is nothing to re-stamp. */
+function _gatherHitsToTimer(S, ex, resend) {
+    var node = ex.nodeRef;
+    var R = S.rpg;
+    var lvl = (R && R.lifeSkills && R.lifeSkills[ex.skill] && R.lifeSkills[ex.skill].level) || 0;
+    var now = Date.now();
+    var openDelay = computeOpenDelay(lvl, (node && node.gatherLvl) || 1);
+    ex.hits = null;
+    ex.startedAt = now;   /* the bar fills from empty on the timer's own span */
+    ex.windowOpensAt = now + openDelay;
+    ex.windowClosesAt = now + openDelay + EXTRACT_WINDOW_MS;
+    if (resend && S.channel && ex.skill !== 'cooking') {
+      try {
+        S.channel.send({ type: 'extraction_start', payload: { nodeId: ex.nodeId, zone: S.currentZone, skill: ex.skill } });
+      } catch (e) {}
+    }
+}
+
+/* One hit landing: its number off the node, where the tool meets it, on
+   alternating sides so a run of hits does not stack into one column.  The
+   pick and the axe already sound and throw debris on this very blow (their
+   loops' own strike frames).  The rod has no blow, and a nibble draws NO
+   splash and makes no sound: "reeling is the ONLY splash moment" (owner,
+   v2.3.1445 -- the catch burst was removed for exactly this), and the splash
+   is the reel gesture's own effect (v2.3.2760); the wait before the bite has
+   always been quiet.  So a nibble is its number and the pond's HP bar.
+   A cook's hit pops over the pan, which the cook holds over the flames, and
+   the pan's grease pops with it (effectsRenderer drives the grease off the
+   hits in a cook).  Spawn points come from the node art measured at tier 1
+   (rock face ~70 px up beside the miner, the trunk under the canopy, the
+   pond's middle, the pan ~(8, -20) off the fire's ground point -- the grease's
+   own fallback spot) and grow with the tier like the sprites do; the fire's
+   with the zone's perspective instead, because a fire can be lit anywhere,
+   vista maps included, and CampfireFx scales it there. */
+function _popGatherHit(S, ex, node, d, k) {
+    var side = (k % 2) ? 1 : -1;
+    var step = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
+    var g = 1 + (step - 1) * 0.15;
+    var x = node.x, y = node.y;
+    if (ex.skill === 'mining') { x += side * 44 * g; y -= 70 * g; }
+    else if (ex.skill === 'woodcutting') {
+      /* the far side of the trunk from the chopper, who stands on the
+         player's side (effectsRenderer chopSign) */
+      var _px = (S.player && typeof S.player.x === 'number') ? S.player.x : node.x;
+      var chopSign = node.x >= _px ? 1 : -1;
+      x += chopSign * (18 + 10 * (side > 0 ? 1 : 0)) * g; y -= 76 * g;
+    } else if (ex.skill === 'cooking') {
+      var zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
+      x += (8 + side * 12) * zs; y -= 30 * zs;
+    } else {
+      x += side * 16 * g; y -= 8 * g;
+    }
+    pushDmgPopup(S, x, y, String(d), '#ffffff');
 }
 
 export function succeedExtraction(S, accuracy, deps) {

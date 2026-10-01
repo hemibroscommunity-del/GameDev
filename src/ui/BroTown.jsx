@@ -56,7 +56,7 @@ import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT }
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
-import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the bar above the head) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -356,7 +356,7 @@ import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.j
 import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordDash,
   applyAbilityStrike, tickWhirlWindup /* v2.3.2824 */, DASH_STEP_PX, DASH_MAX_STEP_PX, DASH_STOP_PX, DASH_MAX_REACH_PX } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge; v2.3.2260: it strikes on arrival */
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
-import { startExtraction, succeedExtraction, applyCookingResult } from '@/game/lifeSkillRewards.js';
+import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl } from '@/game/interactions.js';
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
@@ -5420,7 +5420,8 @@ export var BroTown = function BroTown(_ref0) {
                  (gesturePose.js) now, because the new bar above the
                  character's head shows the SAME wind-up and the same strokes.
                  Two meters on two copies of the arithmetic drift, and the
-                 drift is the thing a player notices.  The ring's own
+                 drift is the thing a player notices.  (v2.3.2956: that bar is
+                 the node's HP bar now, and the strokes are this ring's alone.)  The ring's own
                  behaviour is unchanged: amber sweep for the wind-up, green
                  sweep for the strokes, each from 0. */
               var _m = extractionMeter01(_ex, Date.now());
@@ -5903,12 +5904,21 @@ export var BroTown = function BroTown(_ref0) {
             } else if (nodeReachDist(S, _exNode, EXTRACT_CANCEL_R) == null) {
               /* Walk-away cancel — no XP, no node damage, no popup. */
               S._extraction = null;
-            } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
-              _ex.status = 'ready';
-              try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
-              /* v2.3.2761 (owner: sounds for the specific actions): for fishing
-                 the window opening IS the bite -- a fish on the hook, now reel. */
-              if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
+            } else {
+              /* v2.3.2956: the gathering hits land first (each on its swing's
+                 blow), so the node always reads 0 by the time the cue appears.
+                 With hits, windowOpensAt is a beat after the last one
+                 (applyGatherHits, GATHER_HIT_SETTLE_MS); before the plan lands
+                 it is Infinity, so nothing below fires early. */
+              if (_ex.hits) tickGatherHits(S, _ex, _exNode, _exNow);
+              if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
+                _ex.status = 'ready';
+                _ex.readyAt = _exNow;   /* v2.3.2956: when the window really opened -- mp-gatherhits holds it against the last hit */
+                try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
+                /* v2.3.2761 (owner: sounds for the specific actions): for fishing
+                   the window opening IS the bite -- a fish on the hook, now reel. */
+                if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
+              }
             }
             /* v2.3.1416 (owner: "all resources NOT have a time out window
                — it'll just stay on the phase where the resource can be

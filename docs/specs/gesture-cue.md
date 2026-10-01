@@ -14,7 +14,8 @@
 > pace ... resource or action specific effects ... the cue was a mini sprite
 > of the tool being used."
 
-The flow, end to end:
+The flow, end to end (the "Bar over the head" column is history since
+v2.3.2956 — see the section at the end):
 
 | Phase | Character | Bar over the head | Right button |
 | --- | --- | --- | --- |
@@ -225,3 +226,30 @@ Mutation-tested — each of these turns the pin red on the assertions named:
 | the finger never renders | 3 |
 
 Regression: `mp-harvest` 30/30, `mp-cooktap` and `mp-chopyield` green.
+
+---
+
+## v2.3.2956 — the node's HP bar replaces the bar over the head
+
+> Owner: "Make it appear for cooking too. And you can remove the status bar
+> above the player head now since the HP-like bar will replace that."
+
+With gathering hits (`docs/specs/gathering-hits.md`) every harvest — mining,
+woodcutting, fishing and now cooking — puts the monster's HP bar on the node
+(under the rock, the pond and the campfire; over a tree's crown). The bar over
+the head is removed (`_drawWindupBar` and its `window.__btWindupBar` probe are
+gone), and the node's bar takes over its phases:
+
+| Phase | The node's bar | Right button |
+| --- | --- | --- |
+| **Wind-up** | the node's HP, dropping one hit at a time, with the number; on the old timer it drains with the clock, no number | amber ring, stepping per hit |
+| **Ready, untouched** | empty, and it **calls for the gesture**: a gold halo pulsing at the old flash's pace (`sin(now / 140)`) | unchanged: the mini tool flashes, chevrons, comet |
+| **Gesturing** | empty and still | green ring fills with the gesture (the only meter of it now) |
+| **Paid / abandoned** | gone | gone |
+
+The rule v2.3.2514 protected — a frozen character over a still bar reads as a
+stopped game — is kept by the call at `ready`. The probe is
+`window.__btNodeHpBar` (`mode`, `hp`, `frac`, `ready`, `call`, `skill`);
+`mp-cueshow`, `mp-gcue` and `mp-gatherhits` read it, and `mp-gatherhits` reads
+the ring off its SVG. `S._selfBandTopY` stays: the chat bubble's point sits on
+it (v2.3.2896).

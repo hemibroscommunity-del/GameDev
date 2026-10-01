@@ -2077,6 +2077,90 @@ export const EXTRACT_JITTER    = 0.15;       /* ±15% jitter on each open delay 
 export const EXTRACT_REPS_TARGET = { mining: 3, woodcutting: 3, fishing: 1.5, cooking: 1 };
 export const EXTRACT_REPS_DEFAULT = 3;
 
+/* ═══ v2.3.2956: GATHERING HITS — THE WIND-UP IS A RUN OF HITS ═══
+   Owner: "the resource has something akin to an hp bar and the player ticks
+   away at it and the tick range is determined by their skill level ... level
+   1 would do 1 tick per second (or whatever interval makes the most sense)
+   until the 10 ticks assigned to the resource are exhausted.  At that point
+   the user would have to do the gesture."  "Just add it for every resource
+   gathering process."
+
+   Behind caps.gatherhits the worker rolls the hits (server/src/gathering.js
+   GATHER_HITS) and this side PLAYS them: one hit per swing of the art, each
+   landing on the blow the player watches -- which is why the interval is
+   not the owner's placeholder second.  The swing loops are FREE-RUNNING on
+   Date.now() (entityRenderer's mine pose, effectsRenderer's chopper), so a
+   hit is simply scheduled on the next blow instant of that clock: no
+   animation is restarted or retimed, and nothing pops when a plan arrives.
+
+     mining       ms  650 = playerSprites MINE_DURATION_MS (the pose loop);
+                  the pick lands ENTERING frame 4 of 14 (effectsRenderer's
+                  `_crossedFrame(_mL, _mk, 4)`): 4/14 x 650 = 185.7 -> 186.
+     woodcutting  ms  540 = 12 played frames x CHOP_FRAME_MS 45; the axe bites
+                  on CHOP_STRIKE_K 9 (405 ms) and its sample + chips go 200 ms
+                  later (`_chopLead`) -- 605 ms, i.e. 65 into the next loop.
+     fishing      ms  650: the rod's sway has no blow, so a nibble on an even
+                  beat, the pick's pace.  A nibble draws no splash and makes
+                  no sound (owner: "reeling is the ONLY splash moment").
+     cooking      ms  650 (owner: "Make it appear for cooking too"): the cook's
+                  pan-shake has no blow either.  What the pan DOES have is its
+                  grease, popping on a 650 ms beat through the wind-up
+                  (effectsRenderer `_greaseGap`) -- so in a cook the grease
+                  pops ON each hit instead of on its own clock, and the
+                  number and the pop are one event whatever the phase.  The
+                  fish has the hit points (the worker's _planCookHits).
+
+   `ms` is mirrored by the worker (GATHER_HITS.MS), which validates the
+   strike against (hits - 1) swings (a cook is not held to it -- see
+   _planCookHits); mirror-audit.test.mjs pins the two
+   together AND pins the renderer numbers quoted above, so a retimed
+   animation cannot quietly slide the numbers off the blows. */
+export const GATHER_SWING = {
+  mining:      { ms: 650, blowAt: 186 },
+  woodcutting: { ms: 540, blowAt: 65 },
+  fishing:     { ms: 650, blowAt: 0 },
+  cooking:     { ms: 650, blowAt: 0 },
+};
+/* How long a started harvest waits for the worker's plan before it gives up
+   and runs the old timer (a refused start, a lost socket, a worker that
+   stopped advertising the cap mid-session).  A plan normally lands in one
+   round trip -- well inside the first swing. */
+export const GATHER_HIT_PLAN_WAIT_MS = 2500;
+/* The first hit never lands sooner than this after the plan does, so the
+   number cannot pop before the swing that carries it has visibly started. */
+export const GATHER_HIT_LEAD_MS = 90;
+/* ...and the window opens this long AFTER the last hit, not on it.  At
+   `ready` the body freezes on the raised pose (the owner's "stop animating
+   until you perform the gesture", gesture-cue.md), so opening on the very
+   frame of the last hit froze the pick a hair before it landed: the final
+   number popped on a blow nobody saw, with no clink and no debris
+   (mp-gatherhits measured the missing strike).  The pick's strike frames
+   run 186-279 ms into its loop, so 220 ms lets the blow land and the debris
+   fly before the cue takes over.  Only ever LATER than the worker's bound
+   ((hits - 1) swings), so it costs the anticheat nothing. */
+export const GATHER_HIT_SETTLE_MS = 220;
+
+/* The worker's own HP per tier (GATHER_HITS.HP_PER_TIER x (tier + 1)), for
+   the HP bar's denominator before a plan has said so.  Display only: the
+   plan's `hp` is what is drawn the moment it arrives. */
+export function gatherNodeHp(tierLvl) {
+  var t = Math.max(1, Math.floor(Number(tierLvl) || 1));
+  return 5 * (t + 1);
+}
+
+/* When each of `n` hits lands, on the blow instants of `skill`'s free-running
+   swing, starting no sooner than GATHER_HIT_LEAD_MS after `fromMs`.  Pure, so
+   the mirror audit can import it. */
+export function gatherHitTimes(skill, fromMs, n) {
+  var sw = GATHER_SWING[skill];
+  if (!sw || !(n > 0)) return [];
+  var t = fromMs + GATHER_HIT_LEAD_MS;
+  var first = t + ((((sw.blowAt - t) % sw.ms) + sw.ms) % sw.ms);
+  var out = [];
+  for (var i = 0; i < n; i++) out.push(first + i * sw.ms);
+  return out;
+}
+
 export function computeOpenDelay(skillLevel, nodeTier) {
   var lvl = Number(skillLevel) || 0;
   var tier = Number(nodeTier) || 1;

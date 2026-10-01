@@ -16,7 +16,8 @@
  *
  *   IDLE  the character's pose does NOT move; the mini tool does NOT move;
  *         the tool's opacity DOES (the flash); the comet DOES (the direction);
- *         the bar over the head is full and flashing.
+ *         the fire's HP bar is empty and calls for the gesture (v2.3.2956:
+ *         it replaced the bar over the head, whose flash it carries).
  *   LIVE  real PointerEvents through the real listeners on window: the phase
  *         runs FORWARD with the strokes, the tool rides it, a resting thumb
  *         holds the pose, a second finger lifting cannot end the stroke, and
@@ -52,7 +53,7 @@ const face = (P) => P.page.evaluate(() => {
   const head = comet && comet.firstChild;
   const arrows = hint && hint.querySelector('[data-cue="arrows"]');
   const trk = hint && hint.querySelector('[data-cue="track"]');
-  const bar = window.__btWindupBar || null;
+  const bar = window.__btNodeHpBar || null;   /* v2.3.2956: the fire's bar, which replaced the one over the head */
   return {
     status: ex ? ex.status : null,
     posF: ex && ex._posF != null ? +ex._posF.toFixed(4) : null,
@@ -68,7 +69,7 @@ const face = (P) => P.page.evaluate(() => {
     cometOp: head ? head.getAttribute('opacity') : null,
     arrows: arrows ? arrows.getAttribute('d') : null,
     track: trk ? trk.getAttribute('d') : null,
-    bar: bar ? { bar01: bar.bar01, ready: bar.ready, idle: bar.idle, skill: bar.skill } : null,
+    bar: bar && bar.show ? { frac: bar.frac, hp: bar.hp, mode: bar.mode, ready: bar.ready, call: bar.call, skill: bar.skill } : null,
     fx: (S._fxBursts || []).map((b) => b.kind).join(','),
     smoke: window.__btCookSmoke ? window.__btCookSmoke().live : 0,
   };
@@ -190,9 +191,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const late = idle.slice(-6);
   rec.ok('...and nothing comes off the still pan -- no grease, no smoke',
     late.every((r) => !/grease/.test(r.fx) && r.smoke === 0), { seen: late.map((r) => [r.fx, r.smoke]) });
-  rec.ok('the bar over the head is FULL and flashing while it waits',
-    !!idle[0].bar && idle[0].bar.ready === true && idle[0].bar.idle === true && idle[0].bar.skill === 'cooking',
-    idle[0].bar);
+  rec.ok('the fire\'s HP bar is EMPTY and calls for the gesture (it pulses) while it waits',
+    idle.every((r) => !!r.bar && r.bar.ready === true && r.bar.call === true && r.bar.frac === 0 && r.bar.skill === 'cooking'),
+    idle.map((r) => r.bar));
   /* The owner asked for a LOOK, so leave one behind. */
   /* Clipped to the button's OWN rect (it moved; a fixed clip had been
      photographing the bag sheet under it). */
