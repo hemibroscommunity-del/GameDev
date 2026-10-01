@@ -112,10 +112,12 @@ lines the swing timing is copied from (below).
   (`COOK_SHIELD_MS`), sized for a cook of "an open delay (≤10 s) plus a 3.5 s
   window". Hits make the wind-up up to 26 s (`MAX_HITS`), the gesture is ~6 s
   since v2.3.2761, and `ready` has waited for you since v2.3.1416, so the
-  shield ran out mid-flip: `mp-gatherhits` caught a snowman killing the cook
-  at the 30 s mark, and the cook was never sent. It is the node path's 120 s
-  now, for the node path's reason (what a liar buys is standing still, unable
-  to attack); every other bound is unchanged.
+  shield ran out mid-flip. Measured on a headless cook: it dropped exactly
+  30 s in, with the pan still being flipped; in `mp-gatherhits`' first
+  cooking run (in Frost Ridge) the cook was never paid and the player woke in
+  town. It is the node path's 120 s now, for the node path's reason (what a
+  liar buys is standing still, unable to attack); every other bound is
+  unchanged.
 - **No re-rolling by restarting.** Restarting on the same node within 60 s
   (`REUSE_MS`) replays the same hits with a fresh clock, so starting again to
   shop for a short plan buys nothing. A paid harvest clears it, so the next

@@ -1111,10 +1111,12 @@ export class GameRoom {
        the gesture (~6 s of work, never under 4.8 s), and the gathering hits
        (gathering.js _planCookHits) make the wind-up a run of 650 ms hits --
        10 on a minnow at level 1, up to MAX_HITS (26 s) on an older catch at a
-       low level.  So the 30 s ceiling expired MID-COOK: measured in
-       mp-gatherhits, the shield dropped 30 s after the cook began while the
-       pan was still being flipped, a snowman killed the cook, and the cook was
-       never sent.  The node path's 120 s, for the node path's reason: what a
+       low level.  So the 30 s ceiling expired MID-COOK.  Measured on a
+       headless cook: the shield dropped exactly 30 s after the cook began,
+       with the pan still being flipped.  In mp-gatherhits' first cooking run
+       (Frost Ridge) the cook was never paid and the player woke in town --
+       the snowmen had found a cook nobody was protecting.  The node path's
+       120 s, for the node path's reason: what a
        liar buys from it is standing still, unable to attack, which is worth
        less than walking away (_extractionShielded).  Every other bound -- the
        anchor, the live `ex`, death, the zone, any swing -- is unchanged, and
