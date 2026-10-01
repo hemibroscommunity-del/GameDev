@@ -26,7 +26,10 @@
  *   7. the kill switch answers `off` and keeps the timer;
  *   8. no re-roll fishing: a restart on the same node replays its rolls,
  *      until the window lapses or the harvest is paid;
- *   9. the caps flag, its name, and PRIVILEGED_EVENTS.
+ *   9. the caps flag, its name, and PRIVILEGED_EVENTS;
+ *   10. a COOK's hits (owner: "Make it appear for cooking too"): the fish
+ *      has the HP, the cooking level rolls them, the answer names the fish,
+ *      no record is kept, and cook_request is held to nothing new.
  * mp-gatherhits covers the other half -- the client actually playing the
  * plan, through the real shim, in a real zone -- which no fixture here can
  * reach (TRAPS #18). */
@@ -353,9 +356,112 @@ async function withRandom(fn, body) {
   const { LIVEOPS } = await import('../src/liveops.js');
   check('caps: the kill switch\'s name is one the admin flags route accepts (TRAPS §117)', LIVEOPS.FLAG_NAME_RE.test('gatherhits'));
   check('wire: gather_hits is privileged, so no client can forge a plan for another (rule 13)', PRIVILEGED_EVENTS.has('gather_hits'));
-  check('config: every hit skill has a swing length', ['mining', 'woodcutting', 'fishing'].every((s) => GATHER_HITS.MS[s] > 0)
-    && Object.keys(GATHER_HITS.MS).length === 3, GATHER_HITS.MS);
+  check('config: every hit skill has a swing length', ['mining', 'woodcutting', 'fishing', 'cooking'].every((s) => GATHER_HITS.MS[s] > 0)
+    && Object.keys(GATHER_HITS.MS).length === 4, GATHER_HITS.MS);
   check('config: every gathering node type maps to a hit skill', Object.keys(SKILL).every((t) => GATHER_HITS.MS[SKILL[t]] > 0));
+}
+
+// ── 10. a cook's hits ──
+{
+  const { room, ws, ps, byType, send, stand } = await setup();
+  ps.inventory.fish_minnow = 3;
+  ps.lifeSkills = { cooking: { level: 3, xp: 0 }, mining: { level: 50, xp: 0 } };
+  const planOf = () => (ofType(ws, 'gather_hits').pop() || {}).payload;
+  ws.sent.length = 0;
+  await send('extraction_start', { skill: 'cooking', fishKey: 'fish_minnow', hitSeq: 11 });
+  const p = planOf();
+  check('cook: a cook that asks gets ONE gather_hits back', ofType(ws, 'gather_hits').length === 1, ws.sent.map((m) => m.type));
+  check('cook: it names the attempt by seq and FISH (the campfire has no id the worker knows)',
+    !!p && p.seq === 11 && p.fishKey === 'fish_minnow' && p.nodeId === undefined, p);
+  check('cook: a minnow (tier 1) has the owner\'s 10 HP', !!p && p.hp === 10, p && p.hp);
+  check('cook: the dice are the COOKING level (3), not another skill\'s (mining 50)',
+    !!p && p.hits.every((d) => d >= 1 && d <= 3) && p.hits.reduce((a, b) => a + b, 0) >= 10
+      && p.hits.slice(0, -1).reduce((a, b) => a + b, 0) < 10, p && p.hits);
+  check('cook: no extraction record is kept (nothing for a node strike to read)', room.extractions.bp_gh === undefined, room.extractions.bp_gh);
+  const view = room._gatherHitPlanFor('bp_gh');
+  check('cook: the operator view reports the cook in flight',
+    !!view && view.skill === 'cooking' && view.fishKey === 'fish_minnow' && view.level === 3 && view.hp === 10
+      && JSON.stringify(view.hits) === JSON.stringify(p.hits), view);
+
+  /* The fish's tier is the HP: the same 5 x (tier + 1) as a node. */
+  const hpOf = async (fishKey) => { ws.sent.length = 0; await send('extraction_start', { skill: 'cooking', fishKey, hitSeq: 12 }); return (planOf() || {}).hp; };
+  const hps = { clownfish: await hpOf('fish_clownfish'), trout: await hpOf('fish_trout'), unknown: await hpOf('fish_mystery') };
+  check('cook: a higher-tier fish has more HP (clownfish 35, trout 60), an unknown one the first tier\'s',
+    hps.clownfish === 35 && hps.trout === 60 && hps.unknown === 10, hps);
+
+  /* With no cooking level at all: level 1, the owner's ten hits of 1. */
+  ps.lifeSkills = { mining: { level: 50, xp: 0 } };
+  ws.sent.length = 0;
+  await send('extraction_start', { skill: 'cooking', fishKey: 'fish_minnow', hitSeq: 13 });
+  const l1 = planOf();
+  check('cook: no cooking level rolls as level 1 (ten 1s on a minnow)', !!l1 && l1.hits.length === 10 && l1.hits.every((d) => d === 1), l1 && l1.hits);
+
+  /* A cook is held to nothing new: cook_request at once still cooks. */
+  ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
+  ws.sent.length = 0;
+  await send('extraction_start', { skill: 'cooking', fishKey: 'fish_minnow', hitSeq: 14 });
+  const before = ps.inventory.fish_minnow;
+  await send('cook_request', { fishKey: 'fish_minnow', kind: 'cooked', taps: [] });
+  check('cook: cook_request is held to NO plan -- an immediate cook still cooks (its bounds stay the floor, the rate and botfp)',
+    ps.inventory.fish_minnow === before - 1 && (ps.inventory.cooked_fish_minnow || 0) === 1,
+    { raw: ps.inventory.fish_minnow, cooked: ps.inventory.cooked_fish_minnow });
+  check('cook: ...and the cooked fish spends the plan (the operator view clears)', room._gatherHitPlanFor('bp_gh') === null, room._gatherHitPlanFor('bp_gh'));
+
+  /* The operator view is whichever attempt was asked for last. */
+  const ore = byType('oreVein');
+  stand(ore);
+  ps.lifeSkills = { mining: { level: 2, xp: 0 }, cooking: { level: 2, xp: 0 } };
+  await send('extraction_start', { nodeId: ore.id, zone: 'meadow', skill: 'mining', hitSeq: 15 });
+  const gatherRec = room.extractions.bp_gh;
+  ps._cookHits = null;
+  room.extractions.bp_gh.startedAt -= 5;   /* the clock is ms-coarse: make "later" unambiguous */
+  await send('extraction_start', { skill: 'cooking', fishKey: 'fish_minnow', hitSeq: 16 });
+  check('cook: a cook started after a harvest is what the operator view shows', (room._gatherHitPlanFor('bp_gh') || {}).skill === 'cooking');
+  check('cook: ...and it leaves the harvest\'s record alone', room.extractions.bp_gh === gatherRec && Array.isArray(gatherRec.hits));
+  ps._cookHits.rolledAt -= 10;
+  room.extractions.bp_gh.startedAt = Date.now();
+  check('cook: ...a harvest started after a cook is what it shows then', (room._gatherHitPlanFor('bp_gh') || {}).skill === 'mining');
+
+  /* Junk: nothing answered, nothing thrown. */
+  let threw = null, sent = 0;
+  const junk = [
+    { skill: 'cooking', fishKey: 'fish_minnow' },                         /* no hitSeq: an old shape */
+    { skill: 'cooking', fishKey: 'fish_minnow', hitSeq: '1' },
+    { skill: 'cooking', fishKey: 'fish_minnow', hitSeq: 2e9 },
+    { skill: 'cooking', fishKey: 'cooked_fish_minnow', hitSeq: 1 },
+    { skill: 'cooking', fishKey: '__proto__', hitSeq: 1 },
+    { skill: 'cooking', fishKey: 'fish_' + 'x'.repeat(80), hitSeq: 1 },
+    { skill: 'cooking', fishKey: { toString: () => 'fish_minnow' }, hitSeq: 1 },
+    { skill: 'cooking', hitSeq: 1 },
+  ];
+  for (const bad of junk) {
+    ws.sent.length = 0;
+    try { await send('extraction_start', bad); } catch (e) { threw = String(e); }
+    sent += ofType(ws, 'gather_hits').length;
+  }
+  check('cook: junk never throws', threw === null, threw);
+  check('cook: junk is never answered', sent === 0, sent);
+}
+{
+  /* The cook's shield (monsters leave a cook alone) has to outlast the
+     longest cook a plan can make: MAX_HITS pan beats, then the gesture.
+     It used to lapse at 30 s, mid-flip (index.js COOK_SHIELD_MS). */
+  const { room, ps } = await setup();
+  ps.ex = 'cook'; ps._exX = ps.x; ps._exY = ps.y;
+  const longest = GATHER_HITS.MAX_HITS * GATHER_HITS.MS.cooking;
+  ps._exAt = Date.now() - (longest + 30000);
+  check('cook: the shield outlasts the longest plan plus a slow gesture (MAX_HITS beats + 30 s)',
+    room._extractionShielded('bp_gh') === true, { longestMs: longest, ceiling: room.COOK_SHIELD_MS });
+  ps._exAt = Date.now() - room.COOK_SHIELD_MS - 1000;
+  check('cook: ...and still has a ceiling', room._extractionShielded('bp_gh') === false);
+}
+{
+  const { ws, ps, send } = await setup({ gatherhits: false });
+  ps.lifeSkills = { cooking: { level: 4, xp: 0 } };
+  ws.sent.length = 0;
+  await send('extraction_start', { skill: 'cooking', fishKey: 'fish_minnow', hitSeq: 3 });
+  const p = (ofType(ws, 'gather_hits')[0] || {}).payload;
+  check('cook: the kill switch answers a cook `off` too, naming its fish', !!p && p.off === true && p.seq === 3 && p.fishKey === 'fish_minnow' && !p.hits, p);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

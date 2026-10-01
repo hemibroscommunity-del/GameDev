@@ -5,23 +5,29 @@
  * level 1 would do 1 tick per second (or whatever interval makes the most
  * sense) until the 10 ticks assigned to the resource are exhausted.  At that
  * point the user would have to do the gesture to complete the resource
- * extraction."  "Just add it for every resource gathering process."
+ * extraction."  "Just add it for every resource gathering process."  And:
+ * "Make it appear for cooking too.  And you can remove the status bar above
+ * the player head now since the HP-like bar will replace that."
  *
  * server/test/gather-hits.test.mjs pins the worker's dice and its window
  * against a mocked room.  This is the half no fixture can reach (TRAPS #18:
  * ask the worker, not the browser): a real phone client, in Frost Ridge,
  * through the real tap, the real shim and the real worker, for each of
- * mining, woodcutting and fishing --
+ * mining, woodcutting, fishing and COOKING (a fire lit in town first, where
+ * nothing can interrupt it, and a minnow) --
  *   1. the client asks for hits and the worker's plan reaches it, and what
  *      the client plays is EXACTLY what the worker rolled (operator view);
  *   2. one number pops per hit, each hit takes its roll off the node, and the
- *      node's HP bar and the bar over the head follow it down to 0;
+ *      node's HP bar and the ring on the button follow it down to 0;
  *   3. the hits land ON THE BLOW: each pick and axe hit is held against the
  *      renderer's own strike effect (the rock debris / wood chips it stamps
  *      on the frame the tool lands), never against our own arithmetic
- *      (TRAPS §37); and a fishing nibble makes no splash (the owner's
- *      "reeling is the ONLY splash moment", v2.3.1445);
- *   4. the gesture window opens on the last hit and not before;
+ *      (TRAPS §37); a fishing nibble makes no splash (the owner's "reeling is
+ *      the ONLY splash moment", v2.3.1445); and a cook's grease pops on its
+ *      hits and nowhere between them;
+ *   4. the gesture window opens on the last hit and not before, and the
+ *      node's bar, empty, calls for the gesture (the job of the bar over the
+ *      head, which is gone);
  *   5. the gesture still completes and the worker pays -- it accepted a
  *      strike held to the plan's window.
  * Then the three ways out of the hits, each ending in a PAID harvest:
@@ -31,6 +37,8 @@
  *   B. an old client (no caps.gatherhits): the timer, untouched, no plan;
  *   C. the kill switch thrown mid-session through the real admin route: the
  *      worker answers `off` and the client is on the timer at once.
+ * A and the cook's own no-answer case also hold the node's bar to the timer:
+ * it drains with the clock and shows no number.
  * Screenshots: tools/qa/mp/out/gatherhits-<skill>-hits.png, mid-run, for a
  * human to look at -- a 44px bar and a white "1" are exactly what an
  * assertion passes on while looking wrong. */
@@ -40,13 +48,15 @@ import { GATHER_SWING, GATHER_HIT_PLAN_WAIT_MS, GATHER_HIT_SETTLE_MS } from '../
 const TILE = 32;
 const PHONE = { width: 390, height: 844 };
 const STAND = { oreVein: [0, -70], tree: [0, -130], fishSpot: [50, -40] };
-const SKILL = { oreVein: 'mining', tree: 'woodcutting', fishSpot: 'fishing' };
-const RES = { oreVein: 'ore_', tree: 'wood_', fishSpot: 'fish_' };
+/* `campfire` is the cook: no gather node, a fire lit where the player stands. */
+const SKILL = { oreVein: 'mining', tree: 'woodcutting', fishSpot: 'fishing', campfire: 'cooking' };
+const RES = { oreVein: 'ore_', tree: 'wood_', fishSpot: 'fish_', campfire: 'cooked_fish_' };
 /* The renderer's own strike effect for each skill (effectsRenderer: 'rocks'
    on the pick's frame 4, 'woodchips' on the axe's bite + its 200 ms lead).
    Fishing has no blow, and its nibbles draw no splash (the owner's "reeling
-   is the ONLY splash moment"), so it is held to having none. */
-const BLOW_FX = { mining: 'rocks', woodcutting: 'woodchips' };
+   is the ONLY splash moment"), so it is held to having none.  A cook has no
+   blow either: its pan's GREASE pops on each hit instead (v2.3.2956). */
+const BLOW_FX = { mining: 'rocks', woodcutting: 'woodchips', cooking: 'grease' };
 
 const stand = (P, tx, ty) => P.page.evaluate(({ x, y, t }) => {
   const S = window._gameState && window._gameState.current;
@@ -119,14 +129,6 @@ async function body({ P, wsPort, rec }) {
     }
     return (await H.readState(P, (S) => S.currentZone)) === zoneId;
   };
-  await travel(marks.townExit.tx, marks.townExit.ty, 'worldview');
-  const spoke = marks.spokes.find((s) => s.zoneId === 'frost') || marks.spokes[0];
-  const arrived = await travel(spoke.tx, spoke.ty, spoke.zoneId);
-  rec.ok(`arrived in a gathering zone (${spoke.zoneId}) (guard)`, arrived === true, { spoke });
-  if (!arrived) return;
-  await H.waitFor(P, (S) => (S.gatherNodes || []).filter((n) => n.alive).length, (n) => n >= 3,
-    { timeout: 15000, label: 'the nodes arrive' }).catch(() => {});
-  await H.closeDest(P).catch(() => {});
   /* Screenshot hygiene only (mp-cueshow's reasons): the quest banner, the
      coach's bubble and the zone's reminder card sit over the very spot the
      pictures are of.  Nothing asserted reads them. */
@@ -241,6 +243,50 @@ async function body({ P, wsPort, rec }) {
     if (S._monstersStash) { S.monsters = S._monstersStash; S._monstersStash = null; }
   });
 
+  /* A cook needs a fire: light one where the player stands (mp-gcue's route,
+     the Bag's "Light fire") unless one is still burning, then TAP it -- the
+     real touchscreen, as a player would.  Returns the fire or null. */
+  const startCook = async (r) => {
+    const fireAt = () => P.page.evaluate(() => {
+      const S = window._gameState.current, n = S._campfire;
+      return n && n.alive ? { x: n.x, y: n.y } : null;
+    });
+    let fire = await fireAt();
+    if (!fire) {
+      await P.page.evaluate(() => {
+        const bus = window._itemDetailBus;
+        const S = window._gameState && window._gameState.current;
+        if (bus && S && S.rpg) bus.open({ kind: 'inventory', key: 'wood_pine_log', count: (S.rpg.inventory || {}).wood_pine_log || 0 });
+      });
+      await P.page.waitForTimeout(600);
+      await H.clickText(P, 'Light fire').catch(() => {});
+      for (let i = 0; i < 40 && !fire; i++) { await P.page.waitForTimeout(250); fire = await fireAt(); }
+      await P.page.evaluate(() => { try { window._itemDetailBus.close(); } catch (e) { /* not open */ } });
+      await H.closeDest(P).catch(() => {});
+    }
+    r.ok('cooking: a campfire is lit (guard)', !!fire, { fire });
+    if (!fire) return null;
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      if (!S._monstersStash) { S._monstersStash = S.monsters; S.monsters = []; }
+    });
+    let started = null;
+    for (let i = 0; i < 4 && started !== 'cooking'; i++) {
+      const at = await P.page.evaluate(() => {
+        const S = window._gameState.current, n = S._campfire, cv = document.querySelector('canvas');
+        if (!n || !cv) return null;
+        const rc = cv.getBoundingClientRect();
+        return { x: rc.left + (n.x - S.camera.x) * (S._worldScaleX || 1), y: rc.top + (n.y - S.camera.y) * (S._worldScaleY || 1) };
+      });
+      if (!at) break;
+      await P.page.touchscreen.tap(at.x, at.y);
+      await P.page.waitForTimeout(250);
+      started = await H.readState(P, (S) => (S._extraction ? S._extraction.skill : null));
+    }
+    r.ok('cooking: tapping the fire starts a cook (guard)', started === 'cooking', { started });
+    return started === 'cooking' ? fire : null;
+  };
+
   /* The gesture, in-page and continuous at a quick pace (mp-cueshow's), and
      the worker's verdict on it. */
   const gestureAndPay = async (type, invBefore, r, label) => {
@@ -255,6 +301,7 @@ async function body({ P, wsPort, rec }) {
       const ev = (t, x, y) => window.dispatchEvent(new PointerEvent(t, { pointerId: 9, clientX: x, clientY: y,
         pointerType: 'touch', bubbles: true, cancelable: true, isPrimary: true }));
       const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+      const zone0 = S.currentZone;
       ev('pointerdown', cx, cy);
       const t0 = performance.now();
       let step = 0, lastProg = 0;
@@ -276,8 +323,15 @@ async function body({ P, wsPort, rec }) {
       }
       ev('pointerup', cx, cy);
       const ended = !S._extraction;
-      return { done: ended && lastProg >= 0.85, cancelled: ended && lastProg < 0.85, lastProg: +lastProg.toFixed(2) };
+      /* A harvest also ends when the player DIES (the respawn's zone change
+         clears it), and a death late in the gesture would otherwise read as
+         the meter finishing it -- what hid the v2.3.2956 cook-shield lapse. */
+      const died = !!(S.rpg && S.rpg.hp <= 0) || S.currentZone !== zone0;
+      return { done: ended && !died && lastProg >= 0.85, cancelled: ended && !died && lastProg < 0.85, died,
+        ms: Math.round(performance.now() - t0), lastProg: +lastProg.toFixed(2) };
     }, [skill, cue ? cue.x : 300, cue ? cue.y : 700]);
+    r.ok(`${label}: the player is alive and in the zone when the gesture ends (guard)`, !g.died, g);
+    if (g.died) return { cancelled: false };
     if (g.cancelled) return { cancelled: true };
     r.ok(`${label}: the gesture completes the harvest`, g.done === true, g);
     const got = await (async () => {
@@ -297,15 +351,25 @@ async function body({ P, wsPort, rec }) {
   const hitsOnce = async (type, r) => {
     const skill = SKILL[type];
     const invBefore = await srvInv(wsPort, myId);
-    const node = await tapNode(type, r);
+    const node = type === 'campfire' ? await startCook(r) : await tapNode(type, r);
     if (!node) return {};
     await dismissTips();
     /* Sample every frame from the tap to `ready`: each hit as it lands, what
-       the two bars said at that moment, every number popped, and every strike
-       effect the renderer stamped. */
+       the node's bar and the button's ring said at that moment, every number
+       popped, and every strike effect the renderer stamped. */
     const box = await H.figureBox(P, { pad: 90 }).catch(() => null);
     const traceP = P.page.evaluate(async () => {
       const S = window._gameState.current;
+      /* The ring on the right button, read off its own SVG: BroTown stamps its
+         dash as a fraction of 2*pi*r, r = 40% of the box it measured
+         (`_rpxW`).  The meter the player sees, not a copy of its maths. */
+      const ring = () => {
+        const c = document.querySelector('.bt-rjoy-base circle[r="40%"]');
+        const svg = c && c.parentNode;
+        if (!c || !svg || svg.style.display === 'none') return null;
+        const w = svg._rpxW || svg.clientWidth || 96;
+        return parseFloat(c.getAttribute('stroke-dasharray') || '0') / (2 * Math.PI * w * 0.4);
+      };
       const out = { events: [], pops: [], fx: [], dts: [], planAt: null, readyAt: null, aborted: null, fellBack: false };
       let prevFrame = 0;
       const seenPop = new Set(), seenFx = new Set();
@@ -333,8 +397,14 @@ async function body({ P, wsPort, rec }) {
           await new Promise((res) => requestAnimationFrame(res));
           await new Promise((res) => requestAnimationFrame(res));
           const bar = window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null;
-          const wb = window.__btWindupBar ? window.__btWindupBar.windup : null;
-          for (const e of batch) { e.bar = bar; e.windup = wb; }
+          const rg = ring();
+          /* Two frames on, a LAST hit can already be past the settle beat on a
+             slow box: then the window is open and the ring is turning over to
+             the gesture's own progress, from 0 -- what it is for at `ready` --
+             or still shows the full wind-up, if it was stamped the frame
+             before the window opened. */
+          const rgReady = !!S._extraction && S._extraction.status === 'ready';
+          for (const e of batch) { e.bar = bar; e.ring = rg; e.ringReady = rgReady; }
           out.events.push(...batch);
         }
         for (const p of (S.dmgNumbers || [])) {
@@ -356,7 +426,6 @@ async function body({ P, wsPort, rec }) {
           await new Promise((res) => requestAnimationFrame(res));
           await new Promise((res) => requestAnimationFrame(res));
           out.atReady.bar = window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null;
-          out.atReady.windup = window.__btWindupBar ? window.__btWindupBar.windup : null;
           break;
         }
         await new Promise((res) => requestAnimationFrame(res));
@@ -391,9 +460,10 @@ async function body({ P, wsPort, rec }) {
     r.ok(`${skill}: the worker's plan reached the client within one swing of the tap`,
       tr.planAt != null && tr.startedAt != null && tr.planAt - tr.startedAt < GATHER_SWING[skill].ms, { ms: tr.planAt - tr.startedAt });
     r.ok(`${skill}: the client plays EXACTLY the hits the worker rolled (operator view)`,
-      !!srvPlan && JSON.stringify(srvPlan.hits) === JSON.stringify(tr.plan) && srvPlan.hp === tr.hp && srvPlan.skill === skill,
+      !!srvPlan && JSON.stringify(srvPlan.hits) === JSON.stringify(tr.plan) && srvPlan.hp === tr.hp && srvPlan.skill === skill
+        && (type !== 'campfire' || srvPlan.fishKey === 'fish_minnow'),
       { client: tr.plan, worker: srvPlan });
-    r.ok(`${skill}: the first-tier node has the owner's 10 HP`, tr.hp === 10, tr.hp);
+    r.ok(`${skill}: the first tier (${type === 'campfire' ? 'a minnow' : 'the node'}) has the owner's 10 HP`, tr.hp === 10, tr.hp);
     const lvl = srvPlan ? srvPlan.level : 1;
     r.ok(`${skill}: every hit is 1..skill level (${lvl}), and they break the node exactly on the last one`,
       tr.plan.every((d) => d >= 1 && d <= lvl) && tr.plan.reduce((a, b) => a + b, 0) >= tr.hp
@@ -417,12 +487,15 @@ async function body({ P, wsPort, rec }) {
     const want = tr.plan.slice().sort().join(',');
     r.ok(`${skill}: one number popped per hit, showing the roll`, nums.length >= tr.plan.length
       && nums.slice(0, tr.plan.length).slice().sort().join(',') === want, { popped: nums, plan: tr.plan });
-    r.ok(`${skill}: the node's HP bar was up through the hits, reading the node's HP`,
-      tr.events.every((e) => e.bar && e.bar.show === true && e.bar.maxHp === tr.hp && e.bar.hp === e.want),
+    r.ok(`${skill}: the ${type === 'campfire' ? 'fire' : 'node'}'s HP bar was up through the hits, reading its HP`,
+      tr.events.every((e) => e.bar && e.bar.show === true && e.bar.mode === 'hits' && e.bar.skill === skill
+        && e.bar.maxHp === tr.hp && e.bar.hp === e.want),
       tr.events.map((e) => e.bar));
-    r.ok(`${skill}: the bar over the head stepped up with each hit (chunked, not a clock)`,
-      tr.events.every((e) => e.windup != null && Math.abs(e.windup - (1 - e.want / tr.hp)) < 0.02),
-      tr.events.map((e) => [e.windup, +(1 - e.want / tr.hp).toFixed(3)]));
+    r.ok(`${skill}: the ring on the button stepped up with each hit (chunked, not a clock)`,
+      tr.events.every((e) => e.ring != null && (Math.abs(e.ring - (1 - e.want / tr.hp)) < 0.02
+        || (e.ringReady && Math.abs(e.ring) < 0.02)))
+        && tr.events.slice(0, -1).every((e) => !e.ringReady),
+      tr.events.map((e) => [e.ring == null ? null : +e.ring.toFixed(3), +(1 - e.want / tr.hp).toFixed(3), e.ringReady ? 'ready' : '']));
 
     /* 3. on the blow */
     if (BLOW_FX[skill]) {
@@ -438,6 +511,17 @@ async function body({ P, wsPort, rec }) {
       const tol = Math.max(40, 1.25 * frame95 + 15);
       r.ok(`${skill}: every hit lands on a blow the renderer drew (its ${BLOW_FX[skill]} within a frame)`,
         offs.length === tr.events.length && offs.every((o) => o <= tol), { offs, tol: Math.round(tol), blows: blows.length });
+      if (skill === 'cooking') {
+        /* The pan's grease is the hit: from the plan's arrival on it pops on
+           the hits and nowhere else -- its own 650 ms clock is off while a
+           plan plays (it runs before the plan lands, and at `ready`, where
+           this sampler has stopped).  The plan lands between frames, so a
+           frame stamped after it is a frame that saw it. */
+        const lastT = tr.times[tr.times.length - 1];
+        const during = blows.filter((t) => t >= tr.planAt && t <= lastT + tol).length;
+        r.ok(`${skill}: ...and the grease pops ONLY on the hits while they land (one per hit)`,
+          during === tr.plan.length, { during, hits: tr.plan.length });
+      }
     } else {
       /* The owner's rule, pinned: "reeling is the ONLY splash moment"
          (v2.3.1445).  A nibble is a number and the pond's bar, never a
@@ -455,8 +539,9 @@ async function body({ P, wsPort, rec }) {
       !!tr.atReady && tr.atReady.shown === tr.plan.length && tr.readyAt >= last + GATHER_HIT_SETTLE_MS
         && tr.readyAt - last < GATHER_HIT_SETTLE_MS + 2 * frame95 + 120,
       { atReady: tr.atReady, readyMinusLast: tr.readyAt - last, settle: GATHER_HIT_SETTLE_MS });
-    r.ok(`${skill}: at ready the node reads 0, its bar shows 0, and the bar over the head is full`,
-      !!tr.atReady && tr.atReady.hp === 0 && !!tr.atReady.bar && tr.atReady.bar.hp === 0 && tr.atReady.windup >= 0.99, tr.atReady);
+    r.ok(`${skill}: at ready the node reads 0, its bar shows 0 and CALLS for the gesture (the old head bar's flash)`,
+      !!tr.atReady && tr.atReady.hp === 0 && !!tr.atReady.bar && tr.atReady.bar.show === true && tr.atReady.bar.hp === 0
+        && tr.atReady.bar.frac === 0 && tr.atReady.bar.ready === true && tr.atReady.bar.call === true, tr.atReady);
 
     /* 5. the gesture still pays */
     const res = await gestureAndPay(type, invBefore, r, skill);
@@ -483,6 +568,60 @@ async function body({ P, wsPort, rec }) {
       return;
     }
   };
+
+  /* ── THE COOK, IN TOWN, BEFORE THE TRIP ──  A fire needs no node, and town
+     has no monsters: in Frost Ridge the snowmen killed the cook in the idle
+     gaps between this file's steps (granting the fish, lighting the fire),
+     where no shield covers anyone -- a fixture failure, not the game's.  The
+     log and the minnows are granted. */
+  await H.grant(wsPort, myId, 'item', { invKey: 'wood_pine_log', count: 2 }).catch(() => {});
+  await H.grant(wsPort, myId, 'item', { invKey: 'fish_minnow', count: 3 }).catch(() => {});
+  await H.waitFor(P, (S) => ((S.rpg?.inventory || {}).fish_minnow || 0) + ':' + ((S.rpg?.inventory || {}).wood_pine_log || 0),
+    (v) => { const [f, w] = String(v).split(':').map(Number); return f >= 1 && w >= 1; },
+    { timeout: 20000, label: 'the log and the minnows reach the bag' }).catch(() => {});
+  await withRetry('cooking', (r) => hitsOnce('campfire', r));
+
+  /* ── A COOK THE WORKER NEVER ANSWERS ──  The cook's own fallback: the
+     timer, and NO re-declare -- the worker keeps no record of a cook. */
+  await withRetry('no answer (cook)', async (r) => {
+    const invBefore = await srvInv(wsPort, myId);
+    await H.instrumentWire(P);
+    const wire0 = (await H.wireCounts(P)).extraction_start || 0;
+    await P.page.evaluate(() => { window._gameState.current._gatherHitSeq = 5e9; });
+    const fire = await startCook(r);
+    if (!fire) { await P.page.evaluate(() => { window._gameState.current._gatherHitSeq = 0; }); return {}; }
+    const t0 = await H.readState(P, (S) => (S._extraction ? S._extraction.startedAt : null));
+    const fell = await H.waitFor(P, (S) => (S._extraction ? (S._extraction.hits ? 'hits' : 'timer') : 'none'), (v) => v !== 'hits',
+      { timeout: GATHER_HIT_PLAN_WAIT_MS + 4000, label: 'the plan wait gives up' }).catch(() => null);
+    const tFell = await H.readState(P, (S) => (S._extraction ? S._extraction.startedAt : null));
+    if (fell === 'none') { await P.page.evaluate(() => { window._gameState.current._gatherHitSeq = 0; }); return { cancelled: true, why: 'the cook ended while waiting' }; }
+    r.ok('no answer (cook): with no plan, the cook drops to the old timer', fell === 'timer', { fell });
+    r.ok('no answer (cook): ...after waiting GATHER_HIT_PLAN_WAIT_MS for it, not before',
+      t0 != null && tFell != null && tFell - t0 >= GATHER_HIT_PLAN_WAIT_MS - 50, { waited: tFell - t0 });
+    const b1 = await P.page.evaluate(() => (window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null));
+    await P.page.waitForTimeout(700);
+    const b2 = await P.page.evaluate(() => (window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null));
+    const wire1 = (await H.wireCounts(P)).extraction_start || 0;
+    r.ok('no answer (cook): ...and does NOT re-declare it (one start on the wire: the worker keeps no cook record to re-stamp)',
+      wire1 - wire0 === 1, { sent: wire1 - wire0 });
+    r.ok('no answer (cook): the fire\'s bar drains on the timer, with no number (nothing was hit)',
+      !!b1 && !!b2 && b1.mode === 'timer' && b2.mode === 'timer' && b1.hp == null && b2.hp == null && b2.frac < b1.frac,
+      { b1, b2 });
+    const res = await gestureAndPay('campfire', invBefore, r, 'no answer (cook)');
+    await unstash();
+    await P.page.evaluate(() => { window._gameState.current._gatherHitSeq = 0; });
+    return res;
+  });
+
+  /* ── THE TRIP ──  Every gathering skill has its node in each spoke zone. */
+  await travel(marks.townExit.tx, marks.townExit.ty, 'worldview');
+  const spoke = marks.spokes.find((s) => s.zoneId === 'frost') || marks.spokes[0];
+  const arrived = await travel(spoke.tx, spoke.ty, spoke.zoneId);
+  rec.ok(`arrived in a gathering zone (${spoke.zoneId}) (guard)`, arrived === true, { spoke });
+  if (!arrived) return;
+  await H.waitFor(P, (S) => (S.gatherNodes || []).filter((n) => n.alive).length, (n) => n >= 3,
+    { timeout: 15000, label: 'the nodes arrive' }).catch(() => {});
+  await H.closeDest(P).catch(() => {});
 
   for (const type of ['oreVein', 'tree', 'fishSpot']) await withRetry(SKILL[type], (r) => hitsOnce(type, r));
 
@@ -515,6 +654,12 @@ async function body({ P, wsPort, rec }) {
       { sent: wire1 - wire0 });
     r.ok('no answer: ...so the worker holds a timer record, not a plan', srv === null && !!live && live.extracting === true,
       { hitPlan: srv, extracting: live && live.extracting });
+    const b1 = await P.page.evaluate(() => (window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null));
+    await P.page.waitForTimeout(600);
+    const b2 = await P.page.evaluate(() => (window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null));
+    r.ok('no answer: the node\'s bar drains on the timer, with no number (nothing was hit)',
+      !!b1 && !!b2 && b1.mode === 'timer' && b2.mode === 'timer' && b1.hp == null && b2.hp == null && b2.frac < b1.frac,
+      { b1, b2 });
     const res = await gestureAndPay(pick.type, invBefore, r, 'no answer');
     await unstash();
     await P.page.evaluate(() => { window._gameState.current._gatherHitSeq = 0; });

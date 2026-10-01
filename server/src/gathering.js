@@ -24,7 +24,9 @@
  * resource are exhausted.  At that point the user would have to do the
  * gesture to complete the resource extraction.  Level 2 might be a tick from
  * 1-2 ... The next tier resource would have a higher max number of ticks."
- * Then: "Just add it for every resource gathering process."
+ * Then: "Just add it for every resource gathering process."  And then:
+ * "Make it appear for cooking too" -- the cook's FISH has the hit points
+ * (_planCookHits, below).
  *
  * So the wind-up -- which was a smooth timer (computeOpenDelay, 2-10 s by
  * skill level against node tier) -- is now a string of HITS the worker
@@ -45,7 +47,8 @@
  *   MS     one hit per SWING of the art, so the number pops on the blow the
  *          player watches land: the pick's 650 ms loop, the axe's 540 ms
  *          (12 frames x 45 ms), and a 650 ms nibble for the rod, which has no
- *          blow.  Mirrors GATHER_SWING (src/data/gameSystems.js), pinned by
+ *          blow -- nor has the pan, whose 650 ms is its grease beat, and in
+ *          a cook the grease pops ON each hit.  Mirrors GATHER_SWING (src/data/gameSystems.js), pinned by
  *          mirror-audit.test.mjs.  Level 1 on the first tier is 10 hits,
  *          ~6.5 s on a rock against the old 4 s wind-up.
  *   MAX_HITS  a bound no live node can reach (tier 1 is at most 10 hits): a
@@ -65,7 +68,7 @@
  *          permissive legacy branch below).  Harden both together, when that
  *          branch is retired. */
 export const GATHER_HITS = {
-  MS: { mining: 650, woodcutting: 540, fishing: 650 },
+  MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
   HP_PER_TIER: 5,
   MAX_HITS: 40,
   REUSE_MS: 60000,
@@ -630,6 +633,11 @@ export const gatheringMethods = {
   _handleExtractionStart(session, payload) {
     if (!session || !session.id) return;
     const { nodeId, zone, skill, hitSeq } = payload || {};
+    /* v2.3.2956: a cook asks for its hits here too, and is answered with no
+       node and no record -- see _planCookHits.  An old client never sends a
+       cook here at all (lifeSkillRewards skipped the handshake for cooking
+       until this change), so nothing it relied on moves. */
+    if (skill === 'cooking') { this._planCookHits(session, payload); return; }
     if (!nodeId || !zone || !skill) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
@@ -659,9 +667,15 @@ export const gatheringMethods = {
        only for the client that asked for it -- an old client still runs
        computeOpenDelay, and validating it against a plan it never played
        would refuse its harvests as too early. */
-    const seq = (typeof hitSeq === 'number' && Number.isInteger(hitSeq) && hitSeq > 0 && hitSeq <= GATHER_HITS.SEQ_MAX) ? hitSeq : 0;
+    const seq = this._hitSeqOf(hitSeq);
     if (seq) this._planGatherHits(session, ps, n, rec, seq);
     this.extractions[session.id] = rec;
+  },
+
+  /** v2.3.2956: a client's hitSeq, or 0 for none (absent, not an integer,
+   *  out of range) -- which every caller reads as "the old timer". */
+  _hitSeqOf(v) {
+    return (typeof v === 'number' && Number.isInteger(v) && v > 0 && v <= GATHER_HITS.SEQ_MAX) ? v : 0;
   },
 
   /** v2.3.2956: the kill switch.  `gatherhits: false` in the liveflags key
@@ -732,6 +746,46 @@ export const gatheringMethods = {
     this._sendGatherHits(session, { seq, nodeId: rec.nodeId, zone: rec.zone, hp, hits: rec.hits.slice() });
   },
 
+  /** v2.3.2956: a COOK's hits (owner: "Make it appear for cooking too").
+   *
+   *  Cooking has no gather node -- the campfire is a client-local prop the
+   *  worker has never seen -- so the attempt is named by its FISH, and the
+   *  fish is what has the hit points: its tier (_fishTierLvl, the table the
+   *  heal reads) through the same 5 x (tier + 1), so a minnow is the owner's
+   *  10, and the dice are the COOKING level.  The answer is the same
+   *  gather_hits a node gets, with the fishKey where a node's id would be.
+   *
+   *  NOTHING IS HELD TO IT, on purpose: there is no extraction record, and
+   *  cook_request is unchanged -- its bounds stay the flat 1.2 s floor, 20 a
+   *  minute and botfp.  Holding a cook to a plan means refusing every cook
+   *  whose client and worker disagree about it, and v2.3.1432 is what that
+   *  cost the last time (a cook floor read off the worker's view of the
+   *  level silently ate legit cooks).  These are the numbers the player
+   *  watches; the worker rolls them because dice are the worker's (rule
+   *  zero).  No re-roll memory either (REUSE_MS): with nothing enforced,
+   *  shopping for a short plan is a modified client's to skip anyway. */
+  _planCookHits(session, payload) {
+    const ps = this.playerState[session.id];
+    if (!ps) return;
+    const { fishKey, hitSeq } = payload || {};
+    const seq = this._hitSeqOf(hitSeq);
+    /* The key only names a tier (_fishTierLvl reads it as a string and
+       indexes nothing with it), and it is echoed back, so it is bounded to
+       what a real client sends: one raw fish_ key. */
+    if (!seq || typeof fishKey !== 'string' || !fishKey.startsWith('fish_') || fishKey.length > 64) return;
+    if (this._gatherHitsOff()) {
+      this._sendGatherHits(session, { seq, fishKey, off: true });
+      return;
+    }
+    const hp = this._gatherNodeHp(this._fishTierLvl(fishKey));
+    const lvl = (ps.lifeSkills && ps.lifeSkills.cooking && ps.lifeSkills.cooking.level) || 1;
+    const hits = this._rollGatherHits(lvl, hp);
+    /* in memory only, for the operator view: _saveRpg writes a fixed field
+       list and player_state echoes a fixed set, so neither carries it */
+    ps._cookHits = { fishKey, level: lvl, hp, hits, rolledAt: Date.now() };
+    this._sendGatherHits(session, { seq, fishKey, hp, hits: hits.slice() });
+  },
+
   /** v2.3.2956: the plan goes to the harvester alone (PRIVILEGED_EVENTS). */
   _sendGatherHits(session, payload) {
     const ws = this._wsBySessionId(session.id);
@@ -744,8 +798,18 @@ export const gatheringMethods = {
    *  rolled -- the TRAPS #18 lesson: ask the worker, not the browser. */
   _gatherHitPlanFor(playerId) {
     const e = this.extractions[playerId];
-    if (!e || !Array.isArray(e.hits)) return null;
-    return { nodeId: e.nodeId, skill: e.hitSkill, level: e.hitLevel, hp: e.hp, hits: e.hits.slice(), windowMs: e.openDelayBase };
+    const node = (e && Array.isArray(e.hits))
+      ? { nodeId: e.nodeId, skill: e.hitSkill, level: e.hitLevel, hp: e.hp, hits: e.hits.slice(), windowMs: e.openDelayBase, at: e.startedAt }
+      : null;
+    /* ...or a cook's (_planCookHits), whichever was asked for last: a player
+       has one attempt on the go at a time. */
+    const ps = this.playerState[playerId];
+    const c = ps && ps._cookHits;
+    const cook = (c && Array.isArray(c.hits))
+      ? { fishKey: c.fishKey, skill: 'cooking', level: c.level, hp: c.hp, hits: c.hits.slice(), windowMs: null, at: c.rolledAt }
+      : null;
+    if (!node || !cook) return node || cook;
+    return cook.at > node.at ? cook : node;
   },
 
   /* ═══ v2.3.2273: WHY A STRIKE PAID NOTHING ═══

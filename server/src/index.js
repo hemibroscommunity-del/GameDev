@@ -1104,8 +1104,23 @@ export class GameRoom {
        lighting a fire is 700ms client-side, and one cook is an open delay
        (<=10s) plus a 3.5s window, after which S._extraction clears, `ex` goes
        null, and the next cook re-arms a fresh window.  A player who is still
-       "cooking" 30s later is not cooking. */
-    this.COOK_SHIELD_MS = 30000;
+       "cooking" 30s later is not cooking.
+       ═══ v2.3.2956: A COOK IS NO LONGER SHORT ═══
+       The arithmetic above stopped being true in three steps: v2.3.1416 took
+       the timeout off `ready` (the window waits for you), v2.3.2761 doubled
+       the gesture (~6 s of work, never under 4.8 s), and the gathering hits
+       (gathering.js _planCookHits) make the wind-up a run of 650 ms hits --
+       10 on a minnow at level 1, up to MAX_HITS (26 s) on an older catch at a
+       low level.  So the 30 s ceiling expired MID-COOK: measured in
+       mp-gatherhits, the shield dropped 30 s after the cook began while the
+       pan was still being flipped, a snowman killed the cook, and the cook was
+       never sent.  The node path's 120 s, for the node path's reason: what a
+       liar buys from it is standing still, unable to attack, which is worth
+       less than walking away (_extractionShielded).  Every other bound -- the
+       anchor, the live `ex`, death, the zone, any swing -- is unchanged, and
+       firemaking shares the ceiling (its own `fire` code lasts under a second,
+       then `ex` goes null and the next activity re-arms from scratch). */
+    this.COOK_SHIELD_MS = 120000;
     /* Cooking and firemaking are STATIONARY — the client pins the player to
        the campfire for both — so the drift allowance is tighter than the node
        path's 200 (which has to absorb startExtraction's 86px gather-stance

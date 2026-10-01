@@ -1357,6 +1357,11 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('gather hits: the axe still bites on frame 9 with its sound 200 ms later (GATHER_SWING.woodcutting.blowAt)',
     /const CHOP_STRIKE_K = 9;/.test(fx) && /const _chopLead = ex\.status === 'ready' \? 0 : 200;/.test(fx)
       && CLIENT_GATHER_SWING.woodcutting.blowAt === (9 * 45 + 200) % 540);
+  /* v2.3.2956: a cook's hits have no blow to land on -- the pan's grease
+     pops ON them instead, and keeps the beat it had on the timer. */
+  check('gather hits: a cook\'s grease pops on its hits, at the pan\'s own wind-up beat (GATHER_SWING.cooking.ms)',
+    /const _greaseGap = ex\.status === 'ready' \? 380 : 650;/.test(fx) && CLIENT_GATHER_SWING.cooking.ms === 650
+      && /if \(_gh\.shown > \(ex\._greaseHit \|\| 0\)\) \{ ex\._greaseHit = _gh\.shown; _greaseNow = true; \}/.test(fx));
   const lsr = readFileSync(new URL('../../src/game/lifeSkillRewards.js', import.meta.url), 'utf8');
   const holdR = /export const SELF_DEATH_HOLD_MS = (\d+);/.exec(ent);
   const holdG = /var GATHER_DEATH_HOLD_MS = (\d+);/.exec(lsr);

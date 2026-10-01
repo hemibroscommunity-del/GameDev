@@ -15,7 +15,7 @@
    call time, identical). The only React setter any of them touches is
    setRpgState, threaded via deps; succeedExtraction forwards deps to the
    appliers. All other refs are module imports below. */
-import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills, GATHER_SWING, GATHER_HIT_PLAN_WAIT_MS, GATHER_HIT_SETTLE_MS, gatherHitTimes, gatherNodeHp } from '@/data/index.js'; /* v2.3.2956: the gathering hits */
+import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills, GATHER_SWING, GATHER_HIT_PLAN_WAIT_MS, GATHER_HIT_SETTLE_MS, gatherHitTimes, gatherNodeHp, zonePlayerScale, TILE } from '@/data/index.js'; /* v2.3.2956: the gathering hits (and the zone scale a cook's hit pops at) */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.1915 */
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
@@ -131,8 +131,10 @@ export function startExtraction(S, node, skill, extra) {
        (tickGatherHits).  Until the plan lands the window is shut -- the
        character swings, nothing is counted -- and if it never lands the
        attempt drops back to this timer (GATHER_HIT_PLAN_WAIT_MS).  Cooking
-       has no node and no hits; an old worker never sends a plan, so the
-       timer stays theirs (rule 19: gated on the cap, not on hope). */
+       too (owner: "Make it appear for cooking too"): its fish has the hit
+       points and the cooking level rolls the dice (the worker's
+       _planCookHits).  An old worker never sends a plan, so the timer stays
+       theirs (rule 19: gated on the cap, not on hope). */
     var _hitMode = !!(S._serverCaps && S._serverCaps.gatherhits) && !!S.channel
       && Object.prototype.hasOwnProperty.call(GATHER_SWING, skill);
     S._extraction = {
@@ -171,10 +173,15 @@ export function startExtraction(S, node, skill, extra) {
        anti-cheat hook, not a hard gate. */
     /* v2.3.853: cooking happens at a client-local campfire (no server gather
        node and no node_strike — the reward flows through cook_request), so
-       skip the extraction_start handshake for it. */
-    if (S.channel && skill !== 'cooking') {
+       skip the extraction_start handshake for it.
+       v2.3.2956: ...except to ask for its HITS.  A cook's start names its
+       fish, not a node (the worker has never seen the campfire), and the
+       worker keeps no record of it: cook_request is still the whole cook. */
+    if (S.channel && (skill !== 'cooking' || S._extraction.hits)) {
       try {
-        var _esPayload = { nodeId: node.id, zone: S.currentZone, skill: skill };
+        var _esPayload = skill === 'cooking'
+          ? { skill: skill, fishKey: S._extraction.fishKey }
+          : { nodeId: node.id, zone: S.currentZone, skill: skill };
         /* v2.3.2956: asking for hits, and naming this attempt so a plan for
            an abandoned one can be told apart (applyGatherHits). */
         if (S._extraction.hits) _esPayload.hitSeq = S._extraction.hits.seq;
@@ -189,7 +196,8 @@ export function startExtraction(S, node, skill, extra) {
 
 /* ═══ v2.3.2956: PLAYING THE WORKER'S HITS ═══
    The worker's plan for the attempt in flight (wsClient `gather_hits`).
-   Accepted only for THIS attempt -- same seq, same node, still winding up,
+   Accepted only for THIS attempt -- same seq, same node (for a cook, the same
+   fish: the campfire has no id the worker could name), still winding up,
    no plan yet -- because a plan for an attempt the player already walked away
    from must not drive the one they started since.  `off` is the kill switch
    answering a client that joined before it was thrown: the old timer, now.
@@ -205,7 +213,8 @@ export function applyGatherHits(S, p) {
     var ex = S._extraction;
     var h = ex && ex.hits;
     if (!h || h.plan || ex.status !== 'waiting') return false;
-    if (p.seq !== h.seq || p.nodeId !== ex.nodeId) return false;
+    if (p.seq !== h.seq) return false;
+    if (ex.skill === 'cooking' ? p.fishKey !== ex.fishKey : p.nodeId !== ex.nodeId) return false;
     if (p.off) { _gatherHitsToTimer(S, ex, false); return false; }
     var hits = Array.isArray(p.hits) ? p.hits : null;
     var hp = Math.floor(Number(p.hp));
@@ -276,7 +285,8 @@ var GATHER_DEATH_HOLD_MS = 3500;
    attempt WITHOUT a hitSeq so the worker overwrites its record with the
    timer's window too -- otherwise it would hold this strike to a plan this
    side never played.  Not needed for `off`: the worker already recorded the
-   timer when it said so. */
+   timer when it said so.  Never for a cook: the worker keeps no record of
+   one, so there is nothing to re-stamp. */
 function _gatherHitsToTimer(S, ex, resend) {
     var node = ex.nodeRef;
     var R = S.rpg;
@@ -287,7 +297,7 @@ function _gatherHitsToTimer(S, ex, resend) {
     ex.startedAt = now;   /* the bar fills from empty on the timer's own span */
     ex.windowOpensAt = now + openDelay;
     ex.windowClosesAt = now + openDelay + EXTRACT_WINDOW_MS;
-    if (resend && S.channel) {
+    if (resend && S.channel && ex.skill !== 'cooking') {
       try {
         S.channel.send({ type: 'extraction_start', payload: { nodeId: ex.nodeId, zone: S.currentZone, skill: ex.skill } });
       } catch (e) {}
@@ -302,9 +312,14 @@ function _gatherHitsToTimer(S, ex, resend) {
    v2.3.1445 -- the catch burst was removed for exactly this), and the splash
    is the reel gesture's own effect (v2.3.2760); the wait before the bite has
    always been quiet.  So a nibble is its number and the pond's HP bar.
-   Spawn points come from the node art measured at tier 1 (rock face ~70 px
-   up beside the miner, the trunk under the canopy, the pond's middle) and
-   grow with the tier like the sprites do. */
+   A cook's hit pops over the pan, which the cook holds over the flames, and
+   the pan's grease pops with it (effectsRenderer drives the grease off the
+   hits in a cook).  Spawn points come from the node art measured at tier 1
+   (rock face ~70 px up beside the miner, the trunk under the canopy, the
+   pond's middle, the pan ~(8, -20) off the fire's ground point -- the grease's
+   own fallback spot) and grow with the tier like the sprites do; the fire's
+   with the zone's perspective instead, because a fire can be lit anywhere,
+   vista maps included, and CampfireFx scales it there. */
 function _popGatherHit(S, ex, node, d, k) {
     var side = (k % 2) ? 1 : -1;
     var step = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
@@ -317,6 +332,9 @@ function _popGatherHit(S, ex, node, d, k) {
       var _px = (S.player && typeof S.player.x === 'number') ? S.player.x : node.x;
       var chopSign = node.x >= _px ? 1 : -1;
       x += chopSign * (18 + 10 * (side > 0 ? 1 : 0)) * g; y -= 76 * g;
+    } else if (ex.skill === 'cooking') {
+      var zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
+      x += (8 + side * 12) * zs; y -= 30 * zs;
     } else {
       x += side * 16 * g; y -= 8 * g;
     }

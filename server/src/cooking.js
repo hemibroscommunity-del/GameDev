@@ -615,6 +615,7 @@ export const cookingMethods = {
       return;
     }
     ps._lastCookAt = nowCk;
+    ps._cookHits = null;   /* v2.3.2956: the cook's hits are spent with its fish (gathering.js _planCookHits) */
     ps.inventory[fishKey] -= 1;
     if (ps.inventory[fishKey] <= 0) delete ps.inventory[fishKey];
     if (kind === 'cooked') {

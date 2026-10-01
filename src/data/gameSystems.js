@@ -2100,16 +2100,26 @@ export const EXTRACT_REPS_DEFAULT = 3;
                   on CHOP_STRIKE_K 9 (405 ms) and its sample + chips go 200 ms
                   later (`_chopLead`) -- 605 ms, i.e. 65 into the next loop.
      fishing      ms  650: the rod's sway has no blow, so a nibble on an even
-                  beat, the pick's pace; the hit draws its own splash.
+                  beat, the pick's pace.  A nibble draws no splash and makes
+                  no sound (owner: "reeling is the ONLY splash moment").
+     cooking      ms  650 (owner: "Make it appear for cooking too"): the cook's
+                  pan-shake has no blow either.  What the pan DOES have is its
+                  grease, popping on a 650 ms beat through the wind-up
+                  (effectsRenderer `_greaseGap`) -- so in a cook the grease
+                  pops ON each hit instead of on its own clock, and the
+                  number and the pop are one event whatever the phase.  The
+                  fish has the hit points (the worker's _planCookHits).
 
    `ms` is mirrored by the worker (GATHER_HITS.MS), which validates the
-   strike against (hits - 1) swings; mirror-audit.test.mjs pins the two
+   strike against (hits - 1) swings (a cook is not held to it -- see
+   _planCookHits); mirror-audit.test.mjs pins the two
    together AND pins the renderer numbers quoted above, so a retimed
    animation cannot quietly slide the numbers off the blows. */
 export const GATHER_SWING = {
   mining:      { ms: 650, blowAt: 186 },
   woodcutting: { ms: 540, blowAt: 65 },
   fishing:     { ms: 650, blowAt: 0 },
+  cooking:     { ms: 650, blowAt: 0 },
 };
 /* How long a started harvest waits for the worker's plan before it gives up
    and runs the old timer (a refused start, a lost socket, a worker that

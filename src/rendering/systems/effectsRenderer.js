@@ -260,7 +260,7 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
-import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the wind-up bar reads the button ring's own numbers) */
+import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -1699,6 +1699,12 @@ const NODE_HPBAR_AT = {
   oreVein:  { f: 0.737, edge: 1, gap: 10 },
   fishSpot: { f: 0.686, edge: 1, gap: 4 },
 };
+/* ...and a cook's, under the campfire (owner: "Make it appear for cooking
+   too").  The fire's (x, y) is its GROUND point (CampfireFx, v2.3.2846) and
+   the cook plants his boots at +8 below it (cookStandInSpot), so the bar's top
+   goes `gap` world px under the ground point, scaled by the zone's
+   perspective like the fire and the cook themselves. */
+const CAMPFIRE_HPBAR_GAP = 14;
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   _fxLoad(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
 )).catch((err) => console.warn('[node-sprites] load failed', err));
@@ -7557,8 +7563,8 @@ export class EffectsRenderer {
          on the built client in town: the point was ~50 screen px below the
          top of the plate.
          So the point sits just over that band, whose top the entity pass
-         publishes in world px -- S._selfBandTopY for you (the same line the
-         harvest bar clears), other._bandTopY for everyone else.  The gap is
+         publishes in world px -- S._selfBandTopY for you (the line the
+         harvest bar cleared until v2.3.2956 removed it), other._bandTopY for everyone else.  The gap is
          in SCREEN px, divided out of the world scale the way the bubble's own
          size is (v2.3.2247), so it is the same few pixels in every zone.
          WHEN THERE IS NO BAND THIS FRAME -- the figure is hidden behind one
@@ -9417,47 +9423,78 @@ export class EffectsRenderer {
     this._advanceItemPops(now);
   }
 
-  /* ═══ v2.3.2956: THE NODE'S HP BAR WHILE YOUR HITS LAND ═══
-     Up from the first hit to a beat after the last (the ghost trail drains
-     and the flash plays out), then gone -- `ready` belongs to the bar over
-     the head and the cue on the button.  YOUR attempt only: the hits are
-     rolled per player and nobody else is shown them.  Drawing is the
-     monster bar's (entityRenderer drawNodeHpBar); this is only the where and
-     the when, because the node sprites live here. */
+  /* ═══ v2.3.2956: THE NODE'S HP BAR, FROM THE FIRST SWING TO THE PAYOUT ═══
+     It is the harvest's ONLY bar now (owner: "you can remove the status bar
+     above the player head now since the HP-like bar will replace that"), so
+     it carries all three phases the bar over the head did:
+       wind-up  the node's HP, dropping with each hit as it lands -- up from
+                the moment the worker's plan does (one round trip, well
+                inside the first swing).  On the old TIMER instead (an old
+                worker, the kill switch, a plan that never came) it drains
+                with the clock and shows no number, because nothing was hit;
+       ready    empty, and while nobody is gesturing it CALLS for the gesture
+                (the gold pulse that was the old bar's flash);
+       gesture  holds at 0 until the harvest pays or is abandoned.
+     The gesture's own progress is the ring on the button's, as it always
+     was.  YOUR attempt only: the hits are rolled per player and nobody else
+     is shown them.  Drawing is the monster bar's (entityRenderer
+     drawNodeHpBar); this is only the where and the when, because the node
+     sprites (and the fire's place) live here. */
   _drawGatherHpBar(S, nodes, now) {
     if (!this._nodeHpBar) this._nodeHpBar = {};
     const ex = S._extraction;
-    const h = ex && ex.hits;
-    let bar = null;
+    const h = ex ? ex.hits : null;
+    let bar = null, m = null;
     /* Not over a corpse: the death hold keeps S._extraction alive until the
        respawn's zone change, and every other harvest visual already steps
        aside for it (v2.3.2281, _updateExtractionCue's _selfCorpse return). */
-    if (!this._selfCorpse && h && h.plan && h.shown > 0
-        && (ex.status === 'waiting' || (ex.status === 'ready' && now - (h.lastHitAt || 0) < 900))) {
+    if (!this._selfCorpse && ex && (ex.status === 'waiting' || ex.status === 'ready') && (!h || h.plan)) {
       const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
         : nodes.find((n) => n.id === ex.nodeId && n.alive);
-      const at = node && NODE_HPBAR_AT[node.nodeType];
-      if (at) {
-        const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
-        const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
-        const frameTop = node.y - (NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5) * targetH;
-        const y = frameTop + at.f * targetH + at.edge * (at.gap + 6.5);   /* 6.5 = half the bar's 13 px */
-        bar = { show: true, hp: h.hp, maxHp: h.maxHp, x: node.x, y, now };
+      const at = node ? this._nodeHpBarAt(S, node) : null;
+      m = at ? extractionMeter01(ex, Date.now()) : null;
+      if (m) {
+        bar = h
+          ? { show: true, hp: h.hp, maxHp: h.maxHp }
+          : { show: true, hp: null, maxHp: 1, frac: 1 - m.windup, smooth: true };
+        bar.call = m.idle;
+        bar.x = at.x; bar.y = at.y; bar.scale = at.scale; bar.now = now;
       }
     }
     drawNodeHpBar(this.gestureLayer, this._nodeHpBar, bar);
-    /* QA probe, like __btWindupBar: what the bar is showing, which an
-       anti-aliased 44px bar in a screenshot cannot be asked.  Written while
-       the bar is up, and once when it goes down -- not every idle frame. */
+    /* QA probe: what the bar is showing, which an anti-aliased 44px bar in a
+       screenshot cannot be asked.  Written while the bar is up, and once when
+       it goes down -- not every idle frame. */
     if (typeof window !== 'undefined') {
       if (bar) {
-        window.__btNodeHpBar = { show: true, hp: bar.hp, maxHp: bar.maxHp, x: +bar.x.toFixed(1), y: +bar.y.toFixed(1), shown: h.shown, of: h.plan.length };
+        window.__btNodeHpBar = { show: true, mode: h ? 'hits' : 'timer', skill: ex.skill,
+          hp: bar.hp, maxHp: h ? bar.maxHp : null, frac: +(h ? bar.hp / bar.maxHp : bar.frac).toFixed(3),
+          windup: +m.windup.toFixed(3), ready: m.ready, call: !!bar.call,
+          x: +bar.x.toFixed(1), y: +bar.y.toFixed(1), scale: +bar.scale.toFixed(3),
+          shown: h ? h.shown : null, of: h ? h.plan.length : null };
         this._nodeHpBarUp = true;
       } else if (this._nodeHpBarUp !== false) {
         window.__btNodeHpBar = { show: false };
         this._nodeHpBarUp = false;
       }
     }
+  }
+
+  /* Where a node's bar goes: the gathering nodes' from their art
+     (NODE_HPBAR_AT), the campfire's under its ground point.  The bar's centre,
+     in world px, and the scale it is drawn at.  Not cached: one call per frame
+     while a harvest is up, and the fire can be re-lit elsewhere. */
+  _nodeHpBarAt(S, node) {
+    if (node.nodeType === 'campfire') {
+      const zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
+      return { x: node.x, y: node.y + (CAMPFIRE_HPBAR_GAP + 6.5) * zs, scale: zs };   /* 6.5 = half the bar's 13 px */
+    }
+    const at = NODE_HPBAR_AT[node.nodeType];
+    if (!at) return null;
+    const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
+    const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
+    const frameTop = node.y - (NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5) * targetH;
+    return { x: node.x, y: frameTop + at.f * targetH + at.edge * (at.gap + 6.5), scale: 1 };
   }
 
   /* v2.3.2844: the snowman's per-hit plume is retired (tombstone near the old
@@ -12790,8 +12827,23 @@ export class EffectsRenderer {
       this._spawnCookSmoke(node.x + 8, node.y - 24, now);
     }
     const _greaseGap = ex.status === 'ready' ? 380 : 650;
-    if (ex.skill === 'cooking' && (ex.status !== 'ready' || _cookActive)
-        && now - (ex._greaseAt || 0) > _greaseGap) {
+    /* ═══ v2.3.2956: IN A COOK WITH HITS, THE GREASE IS THE HIT ═══
+       The pan-shake has no blow to land a number on, so the pan's one beat
+       -- this grease -- pops ON each hit (lifeSkillRewards tickGatherHits)
+       instead of on its own clock: the number and the pop are one event, and
+       at the same 650 ms (GATHER_SWING.cooking) the grease is as constant as
+       the owner asked (v2.3.1445).  Until the plan lands, on the timer, and
+       at `ready`, the beat runs as before.  One pop per frame however many
+       hits landed in it (an app switch's catch-up). */
+    const _gh = (ex.skill === 'cooking' && ex.status === 'waiting' && ex.hits && ex.hits.plan) ? ex.hits : null;
+    let _greaseNow = false;
+    if (_gh) {
+      if (_gh.shown > (ex._greaseHit || 0)) { ex._greaseHit = _gh.shown; _greaseNow = true; }
+    } else {
+      _greaseNow = ex.skill === 'cooking' && (ex.status !== 'ready' || _cookActive)
+        && now - (ex._greaseAt || 0) > _greaseGap;
+    }
+    if (_greaseNow) {
       ex._greaseAt = now;
       /* The tool sprite is force-hidden at the top of every frame and
          re-shown by the marker block AFTER this emitter, so visibility
@@ -13202,133 +13254,13 @@ export class EffectsRenderer {
        pace (gesturePose01).  The mining strike sparks + clink fire from the
        pump slam (ExtractionSwipeLayer onSlam), so nothing here is needed for
        them either. */
-    /* v2.3.2514: the wind-up bar over whichever figure is on screen -- see
-       _drawWindupBar.  Last, because it reads the stand-in sprites' final
-       transforms to find the top of the head. */
-    this._drawWindupBar(S, ex, now);
+    /* v2.3.2956: the wind-up bar that was drawn here, over whichever figure
+       was on screen (v2.3.2514, _drawWindupBar), is GONE -- the owner: "you
+       can remove the status bar above the player head now since the HP-like
+       bar will replace that."  Its three phases (fill, the flash at ready,
+       the gesture) are the node's HP bar now (_drawGatherHpBar) and, for the
+       gesture's progress, the ring on the button, as before. */
     void x; void y; void chopSign;
-  }
-
-  /* ═══ v2.3.2514: THE WIND-UP, OVER THE CHARACTER'S HEAD ═══
-   *
-   * Owner: a progress bar above the head that fills while the harvest winds
-   * up, and finishes as the strokes land.
-   *
-   * WHY IT IS NEEDED AT ALL.  The wind-up is 2-10 seconds long (base 4), and
-   * the only thing that has ever shown it is a thin ring on the right button
-   * -- under the player's own thumb, at the edge of the screen, while their
-   * eyes are on the character.  Then `ready` arrives and WAITS, with no
-   * timeout at all since v2.3.1416, so a player who does not notice the
-   * button can stand there indefinitely believing the game has stopped.
-   *
-   * v2.3.2514 stalled the bar at 95% and left the last sliver to the reps.
-   * v2.3.2760 (owner: "once it reaches the limit, the character is supposed
-   * to stop animating until you perform the correct gesture") makes it two
-   * full bars instead -- the wind-up fills to the top, the full bar FLASHES
-   * while it waits for you, and the gesture's ~3s fill green over it.  The
-   * rule 2514 was protecting survives unchanged: a still bar at a wait is a
-   * frozen bar to anyone looking at it, so the waiting bar is never still.
-   *
-   * ONE TIMER, NOT TWO: the fractions come from extractionMeter01
-   * (gesturePose.js), the same function the button's ring reads.  Two meters
-   * with two copies of the arithmetic drift apart, and the drift is what gets
-   * reported.
-   *
-   * WHERE "THE HEAD" IS depends on the skill, because woodcutting and cooking
-   * HIDE the real body and put a stand-in on screen instead (entityRenderer's
-   * _chopHide, v2.3.846/853).  So the anchor is whichever figure is actually
-   * drawn: the stand-in's own top for those two (read off its live transform,
-   * so it rides the zone's perspective curve for free), and the body's own
-   * height above the player's feet for mining and fishing.  Anchoring all
-   * four to the player would have floated the bar over empty grass while the
-   * lumberjack worked at a tree several tiles away.
-   *
-   * Drawn on cueGfx: cleared once per frame at the top of
-   * _updateExtractionCue, and in gestureFront, which is the layer that sits in
-   * FRONT of the trees (v2.3.1765) -- a bar over a lumberjack's head that a
-   * canopy can hide is worse than no bar. */
-  _drawWindupBar(S, ex, now) {
-    const gfx = this.cueGfx;
-    if (!gfx || !ex || !S || !S.player) return;
-    const m = extractionMeter01(ex, Date.now());
-    if (!m) return;
-    /* The zone's perspective curve at the FIGURE's feet, so the bar shrinks
-       with the bro on a vista map exactly as the stand-ins do (v2.3.2287). */
-    const pscale = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
-    let cx = S.player.x;
-    /* v2.3.2514: ...times the bro's build, because v2.3.2500 put that term on
-       every figure this bar sits over.  Identity today (both axes are locked
-       at 1.00, buildCatalog v2.3.1995/1996) -- written so the bar cannot drift
-       off a taller head the day a second height comes back. */
-    let topY = S.player.y - STANDIN_REF_BODY_H * pscale * _localBuild().sy;
-    const standIn = (ex.skill === 'woodcutting') ? this.chopSprite
-      : (ex.skill === 'cooking') ? this.cookSprite : null;
-    if (standIn && standIn.visible && standIn.texture) {
-      /* anchor (0.5, 1) = the figure's feet, so its crown is one drawn height
-         up.  Read off the sprite rather than recomputed from the constants,
-         because the two would have to be kept in step by hand. */
-      cx = standIn.x;
-      topY = standIn.y - Math.abs(standIn.scale.y) * (standIn.texture.height || 220);
-    }
-    /* 46 x 8 world px: the monster/peer health bar is 44 x 13 in its own
-       container units (entityRenderer), so this reads as the same family of
-       object at a glance -- same width, slimmer, because it is a secondary
-       meter and it must not be mistaken for health. */
-    const W = 50 * pscale, H = 9 * pscale;   /* v2.3.2760: 46x8 -> 50x9, see the contrast note below */
-    const x0 = cx - W / 2;
-    let y0 = topY - 12 * pscale;
-    /* v2.3.2760: over the REAL body (mining, fishing) your name plate or HP
-       bar is already on the band above the head -- lift the harvest bar
-       clear of it (entityRenderer publishes the band's top).  The stand-ins
-       stand elsewhere and wear no plate, so they keep their own anchor. */
-    if (!(standIn && standIn.visible) && typeof S._selfBandTopY === 'number') {
-      y0 = Math.min(y0, S._selfBandTopY - H - 3 * pscale);
-    }
-    if (!(W > 1 && H > 0.5)) return;   /* a speck on a vista rim: draw nothing */
-    const r = Math.min(H / 2, 3 * pscale);
-    /* track: the Lantern Slate `well` over a hairline border, the same trough
-       every other meter in the game sits in (docs/LANTERN-SLATE-SPEC.md).
-       v2.3.2760: with a DARK outer edge as well.  On a phone capture in Frost
-       Ridge a pale bar over white snow was simply not there, and a gold one
-       over the town's sand barely was -- the well alone cannot separate a
-       light fill from a light ground. */
-    gfx.roundRect(x0, y0, W, H, r).fill({ color: 0x121B20, alpha: 0.85 });
-    gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1.5, 1.6 * pscale), color: 0x05080A, alpha: 0.85 });
-    gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1, pscale * 0.8), color: 0xEEF2EB, alpha: 0.22 });
-    /* ═══ v2.3.2760: TWO FULL BARS, NOT ONE THAT STALLS AT 95% ═══
-       Owner: "a loading bar above their head indicating the progress of the
-       animation.  Then, once it reaches the limit, the character is supposed
-       to stop animating until you perform the correct gesture."  So:
-         wind-up  brass fills 0 -> full while the character works;
-         ready    the bar is FULL and FLASHES while it waits for you (the
-                  character is frozen now, so the bar is what says the game has
-                  not stopped -- the reason v2.3.2514 made its head breathe);
-         gesture  green fills over the dark well with the ~3s of the gesture.
-       Brass then green are the colours the button's ring has always used for
-       the same two phases, so the two meters still read as one thing. */
-    const fillW = Math.max(0, Math.min(1, m.bar01)) * W;
-    if (!m.ready) {
-      if (fillW > 0.5) gfx.roundRect(x0, y0, fillW, H, r).fill({ color: 0xD8A85F, alpha: 0.97 });
-    } else if (m.idle) {
-      /* THE FLASH: full brass, brightening toward pale gold and back, inside a
-         gold halo that pulses with it -- saturated at its dimmest, so it
-         never washes into snow or sand. */
-      const pulse = 0.5 + 0.5 * Math.sin(now / 140);
-      gfx.roundRect(x0, y0, W, H, r).fill({ color: 0xD8A85F, alpha: 0.97 });
-      gfx.roundRect(x0, y0, W, H, r).fill({ color: 0xFFF1C8, alpha: 0.5 * pulse });
-      const halo = Math.max(1.5, 2.2 * pscale);
-      gfx.roundRect(x0 - halo, y0 - halo, W + 2 * halo, H + 2 * halo, r + halo)
-        .stroke({ width: Math.max(1.5, 1.8 * pscale), color: 0xF0C878, alpha: 0.35 + 0.6 * pulse });
-    } else if (fillW > 0.5) {
-      gfx.roundRect(x0, y0, fillW, H, r).fill({ color: 0x59BF91, alpha: 0.97 });
-    }
-    /* v2.3.2514 QA probe: the fill fraction and phase, neither of which a
-       screenshot can read off an anti-aliased 46px bar. */
-    if (typeof window !== 'undefined') {
-      window.__btWindupBar = { bar01: +m.bar01.toFixed(3), windup: +m.windup.toFixed(3),
-        reps: +m.reps.toFixed(3), ready: m.ready, idle: m.idle, skill: ex.skill,
-        x: +cx.toFixed(1), y: +y0.toFixed(1), w: +W.toFixed(1) };
-    }
   }
 
   clear() {
