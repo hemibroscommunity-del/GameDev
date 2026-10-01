@@ -9429,7 +9429,10 @@ export class EffectsRenderer {
     const ex = S._extraction;
     const h = ex && ex.hits;
     let bar = null;
-    if (h && h.plan && h.shown > 0
+    /* Not over a corpse: the death hold keeps S._extraction alive until the
+       respawn's zone change, and every other harvest visual already steps
+       aside for it (v2.3.2281, _updateExtractionCue's _selfCorpse return). */
+    if (!this._selfCorpse && h && h.plan && h.shown > 0
         && (ex.status === 'waiting' || (ex.status === 'ready' && now - (h.lastHitAt || 0) < 900))) {
       const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
         : nodes.find((n) => n.id === ex.nodeId && n.alive);

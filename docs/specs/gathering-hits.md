@@ -73,10 +73,16 @@ lines the swing timing is copied from (below).
   timing. These hits are pure dice off the skill level, with no player input,
   which is exactly the kind of number rule zero gives the server. The gesture,
   which is timing, stays client-graded.
-- **Re-roll fishing is closed.** Restarting on the same node within 60 s
-  (`REUSE_MS`) replays the same hits with a fresh clock, so walking off and
-  back on cannot shop for a short plan. A paid harvest clears it, so the next
-  harvest of the respawned node rolls fresh.
+- **No re-rolling by restarting.** Restarting on the same node within 60 s
+  (`REUSE_MS`) replays the same hits with a fresh clock, so starting again to
+  shop for a short plan buys nothing. A paid harvest clears it, so the next
+  harvest of the respawned node rolls fresh. It is not a wall: the memory is
+  the single extraction record, so a start on another node, a start without
+  `hitSeq`, an attack or a reconnect in between clears it. A per-node memory
+  would buy nothing yet, because a modified client can already strike with no
+  record at all, which the worker accepts with no timing check (the lenient
+  legacy branch of `_handleNodeStrike`). Harden both together when that branch
+  is retired.
 
 ### Landing on the blow
 

@@ -215,6 +215,26 @@ async function body({ P, wsPort, rec }) {
     r.ok(`${skill}: tapping the node starts the harvest (guard)`, started === skill, { started });
     return started === skill ? node : null;
   };
+  /* The fallback paths are about the CODE PATH, not the skill, so each takes
+     whichever node is alive now instead of standing idle until one type
+     respawns: idling in Frost Ridge with no harvest running means no shield,
+     and a worker snowman can kill the player and send them to town, which has
+     no nodes at all (what an earlier run of this file did, after one refused
+     strike left its ore dead on the client for good). */
+  const pickAlive = async (prefer) => {
+    const order = [prefer, ...['oreVein', 'tree', 'fishSpot'].filter((t) => t !== prefer)];
+    for (let i = 0; i < 120; i++) {
+      const got = await P.page.evaluate((ts) => {
+        const S = window._gameState.current;
+        if (!S || S.currentZone === 'town') return { zone: S && S.currentZone };
+        for (const t of ts) if ((S.gatherNodes || []).some((g) => g.alive && g.nodeType === t)) return { type: t, zone: S.currentZone };
+        return { zone: S.currentZone };
+      }, order).catch(() => ({}));
+      if (got.type || got.zone === 'town') return got;
+      await P.page.waitForTimeout(250);
+    }
+    return {};
+  };
   const unstash = () => P.page.evaluate(() => {
     const S = window._gameState.current;
     if (S._monstersStash) { S.monsters = S._monstersStash; S._monstersStash = null; }
@@ -468,8 +488,11 @@ async function body({ P, wsPort, rec }) {
     const invBefore = await srvInv(wsPort, myId);
     await H.instrumentWire(P);
     const wire0 = (await H.wireCounts(P)).extraction_start || 0;
+    const pick = await pickAlive('oreVein');
+    r.ok('no answer: a live node and still in the zone (guard)', !!pick.type, pick);
+    if (!pick.type) return {};
     await P.page.evaluate(() => { window._gameState.current._gatherHitSeq = 5e9; });
-    const node = await tapNode('oreVein', r);
+    const node = await tapNode(pick.type, r);
     if (!node) return {};
     const t0 = await H.readState(P, (S) => (S._extraction ? S._extraction.startedAt : null));
     const fell = await H.waitFor(P, (S) => (S._extraction ? (S._extraction.hits ? 'hits' : 'timer') : 'none'), (v) => v !== 'hits',
@@ -487,7 +510,7 @@ async function body({ P, wsPort, rec }) {
       { sent: wire1 - wire0 });
     r.ok('no answer: ...so the worker holds a timer record, not a plan', srv === null && !!live && live.extracting === true,
       { hitPlan: srv, extracting: live && live.extracting });
-    const res = await gestureAndPay('oreVein', invBefore, r, 'no answer');
+    const res = await gestureAndPay(pick.type, invBefore, r, 'no answer');
     await unstash();
     await P.page.evaluate(() => { window._gameState.current._gatherHitSeq = 0; });
     return res;
@@ -496,15 +519,18 @@ async function body({ P, wsPort, rec }) {
   /* ── B. AN OLD CLIENT ──  No caps.gatherhits: it never asks. */
   await withRetry('old client', async (r) => {
     const invBefore = await srvInv(wsPort, myId);
+    const pick = await pickAlive('tree');
+    r.ok('old client: a live node and still in the zone (guard)', !!pick.type, pick);
+    if (!pick.type) return {};
     await P.page.evaluate(() => { const S = window._gameState.current; S._capsKeep = S._serverCaps; S._serverCaps = Object.assign({}, S._serverCaps, { gatherhits: false }); });
-    const node = await tapNode('tree', r);
+    const node = await tapNode(pick.type, r);
     if (!node) { await P.page.evaluate(() => { const S = window._gameState.current; S._serverCaps = S._capsKeep; }); return {}; }
     const hits = await H.readState(P, (S) => (S._extraction ? !!S._extraction.hits : null));
     await P.page.waitForTimeout(500);
     const srv = await hitPlanOf(wsPort, myId);
     r.ok('old client: no cap, no hits -- the timer it always ran', hits === false, { hits });
     r.ok('old client: ...and the worker holds it to the timer, not to a plan', srv === null, srv);
-    const res = await gestureAndPay('tree', invBefore, r, 'old client');
+    const res = await gestureAndPay(pick.type, invBefore, r, 'old client');
     await unstash();
     await P.page.evaluate(() => { const S = window._gameState.current; S._serverCaps = S._capsKeep; });
     return res;
@@ -516,7 +542,10 @@ async function body({ P, wsPort, rec }) {
     !!(set && set.ok && set.flags && set.flags.gatherhits === false), set);
   await withRetry('kill switch', async (r) => {
     const invBefore = await srvInv(wsPort, myId);
-    const node = await tapNode('fishSpot', r);
+    const pick = await pickAlive('fishSpot');
+    r.ok('kill switch: a live node and still in the zone (guard)', !!pick.type, pick);
+    if (!pick.type) return {};
+    const node = await tapNode(pick.type, r);
     if (!node) return {};
     const t0 = await H.readState(P, (S) => (S._extraction ? S._extraction.startedAt : null));
     const fell = await H.waitFor(P, (S) => (S._extraction ? (S._extraction.hits ? 'hits' : 'timer') : 'none'), (v) => v !== 'hits',
@@ -525,7 +554,7 @@ async function body({ P, wsPort, rec }) {
     if (fell === 'none') return { cancelled: true, why: 'the extraction ended while waiting' };
     r.ok('kill switch: the worker answers `off` and the harvest is on the timer AT ONCE (not after the plan wait)',
       fell === 'timer' && t0 != null && tFell != null && tFell - t0 < 1000, { fell, after: tFell - t0 });
-    const res = await gestureAndPay('fishSpot', invBefore, r, 'kill switch');
+    const res = await gestureAndPay(pick.type, invBefore, r, 'kill switch');
     await unstash();
     return res;
   });

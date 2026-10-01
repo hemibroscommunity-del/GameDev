@@ -53,10 +53,17 @@
  *          get a plan hundreds of hits long.  The last allowed hit takes
  *          whatever HP is left.
  *   REUSE_MS  a restart on the SAME node within this window replays the same
- *          rolls instead of re-rolling, so walking off and back on cannot be
- *          used to fish for a short plan.  Honest play never notices: the
- *          record is deleted on a successful strike, so the next harvest of
- *          the respawned node rolls fresh. */
+ *          rolls instead of re-rolling, so the obvious move -- start, see a
+ *          long plan, start again -- buys nothing.  Honest play never
+ *          notices: the record is deleted on a successful strike, so the next
+ *          harvest of the respawned node rolls fresh.  It is NOT a wall: the
+ *          memory is the single extraction record, so a start on another
+ *          node, a start without hitSeq, an attack or a reconnect in between
+ *          clears it.  A per-node memory would close that, and would buy
+ *          nothing yet: a modified client can already strike with NO record
+ *          at all, which _handleNodeStrike accepts with no timing check (the
+ *          permissive legacy branch below).  Harden both together, when that
+ *          branch is retired. */
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650 },
   HP_PER_TIER: 5,

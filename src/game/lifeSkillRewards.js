@@ -238,6 +238,11 @@ export function applyGatherHits(S, p) {
 export function tickGatherHits(S, ex, node, now) {
     var h = ex && ex.hits;
     if (!h || ex.status !== 'waiting' || !node) return;
+    /* Dead: no hits land.  Death does not clear S._extraction -- the
+       respawn's zone change does, ~3.5 s later -- and a pick knocking
+       numbers off a rock for a corpse is the v2.3.2281 bug in a new place
+       (every other harvest visual steps aside on death). */
+    if ((S.rpg && S.rpg.hp <= 0) || S._deathStart) return;
     if (!h.plan) {
       if (now >= h.waitUntil) _gatherHitsToTimer(S, ex, true);
       return;
