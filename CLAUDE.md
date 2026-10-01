@@ -110,7 +110,9 @@ remnant to migrate server-side, not a mode to preserve.
   and finished tiles, as palette PNGs (`world/core/png8.js`, half the bytes,
   the same pixels), in zips under 24 MB for GitHub's website, while
   "Download all" (279 MB with every original) stays the owner's backup and
-  never goes on GitHub -- WORLD-MAP-PIPELINE "Download for the game"),
+  never goes on GitHub -- WORLD-MAP-PIPELINE "Download for the game"; since
+  v2.3.2958 the owner's own 96 tiles (48 swatches, A and B) ARE the game's
+  ground, in `public/world/ground/` with its manifest),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

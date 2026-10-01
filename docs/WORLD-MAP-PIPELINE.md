@@ -1098,6 +1098,18 @@ the town.
 `manifest.json` into `public/world/ground/`. The manifests differ only in
 `part`.
 
+**v2.3.2958: the owner's ground is in the game.** The owner uploaded
+`brotown-ground-game-20261001-1049-part1of1.zip` (22.7 MB, one part) to
+`main`, with all 48 swatches in versions A and B. That is 96 palette tiles,
+each 1024 px and 0.05-0.47 MB (0.24 MB typical), and no blends or edge
+pieces. Main was merged into this branch, the tiles and manifest were
+unpacked into `public/world/ground/`, and the zip was removed, so the merge
+takes it out of `main` again. Every tile was checked as a 1024 x 1024
+palette PNG whose numbers stay inside its palette. Laid by the composer
+round the town square, they show the owner's own square, street and
+boardwalks. Their colours were not frozen when downloaded (`frozen: false`).
+That is fine for the game, which lays each tile's pixels as they are.
+
 **Tests.** `test-world-core.mjs` reads a palette PNG back by hand
 (signature, IHDR, PLTE, IDAT inflated) to the same pixels, smaller than full
 colour, and checks that more than 256 colours, or anything see-through,
