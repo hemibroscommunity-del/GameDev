@@ -1139,6 +1139,63 @@ console.log('palette PNGs');
   const clear = px.slice(); clear[3] = 0;
   ok('...but a picture of more than 256 colours, or with anything see-through, is not saved that way (the full-colour PNG is kept)',
     paletteOf(many, 300) === null && (await encodePalettePng(many, 300, 1)) === null && (await encodePalettePng(clear, W, H)) === null);
+  /* v2.3.2964: the Object Studio's pieces stand on nothing -- every pixel
+     solid or wholly see-through -- and are saved the same way, number 0
+     see-through (a tRNS chunk) */
+  const obj = px.slice();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if ((x - W / 2) ** 2 + (y - H / 2) ** 2 > (H / 2.2) ** 2) obj[(y * W + x) * 4 + 3] = 0;
+  const opng = Buffer.from(await encodePalettePng(obj, W, H, { clear: true }));
+  const och = read(opng), oraw = zlib.inflateSync(Buffer.concat(och.IDAT)), opal = och.PLTE[0];
+  let osame = true, holes = 0;
+  for (let y = 0; y < H && osame; y++) for (let x = 0; x < W && osame; x++) {
+    const n = oraw[y * (W + 1) + 1 + x], o = (y * W + x) * 4;
+    if (obj[o + 3] === 0) { holes++; osame = n === 0; } else osame = n > 0 && opal[n * 3] === obj[o] && opal[n * 3 + 1] === obj[o + 1] && opal[n * 3 + 2] === obj[o + 2];
+  }
+  ok(`an object's piece, with see-through round it, is saved as palette numbers too: number 0 see-through (tRNS), every other pixel its own colour (${holes} see-through)`,
+    osame && holes > 1000 && och.tRNS && och.tRNS[0].length === 1 && och.tRNS[0][0] === 0 && opal.length === 303, { osame, holes, pal: opal.length / 3 });
+  const half = obj.slice(); half[(Math.floor(H / 2) * W + Math.floor(W / 2)) * 4 + 3] = 128;
+  ok('...but a pixel only partly see-through is never saved that way', (await encodePalettePng(half, W, H, { clear: true })) === null && paletteOf(obj, W * H) === null);
+}
+
+/* ── v2.3.2964: the Object Studio's catalog and prompts ── */
+console.log('objects');
+{
+  const { objectCatalog, BUILDINGS, GROUPS, ENDS } = await import('../../public/tools/objects/catalog.js');
+  const { promptFor: objectPrompt, frameOf, sizeWords, fraction, FRAME_GAME_PX } = await import('../../public/tools/objects/prompts.js');
+  const cat = objectCatalog();
+  const ids = new Set(cat.map((e) => e.id));
+  const groundIds = new Set(groundCatalog(PLAN).map((e) => e.id));
+  ok(`every object has its own id, a known group and a ground swatch to stand on (${cat.length} objects)`,
+    ids.size === cat.length && cat.every((e) => GROUPS.some((g) => g.id === e.group) && groundIds.has(e.ground)),
+    cat.filter((e) => !groundIds.has(e.ground)).map((e) => e.id));
+  /* every plot in the plan has its building, under the plot's own id */
+  const lots = [PLAN.town.hallLot.id];
+  for (const sides of Object.values(PLAN.town.lots)) for (const list of Object.values(sides)) for (const l of list) lots.push(l.id);
+  ok(`every one of the town's ${lots.length} plots has its building, under the plot's id, and every building is on a plot`,
+    lots.length === 17 && BUILDINGS.length === 17 && lots.every((id) => BUILDINGS.some((b) => b.id === id)) && BUILDINGS.every((b) => lots.includes(b.id) && ENDS[b.end]));
+  /* the frame: as tall as a ground swatch covers, so ChatGPT draws its
+     pixels the ground's size; every object fits inside it with room */
+  ok(`every picture is as tall as a ground swatch covers (${FRAME_GAME_PX} game px), and every object fits inside it with room to spare`,
+    FRAME_GAME_PX === PIXEL.groundTile * PIXEL.gamePxPerArtPx && cat.every((e) => { const f = frameOf(e); return e.size <= (e.fit === 'w' ? f.w : f.h) * 0.8 && e.size >= 24; }),
+    cat.filter((e) => { const f = frameOf(e); return e.size > (e.fit === 'w' ? f.w : f.h) * 0.8; }).map((e) => e.id));
+  ok('sizes in words: a barrel waist-high, a lamp post one and a half people, an oak three, a building two and a half people wide',
+    sizeWords(cat.find((e) => e.id === 'barrel')) === 'about waist-high on a person' && sizeWords(cat.find((e) => e.id === 'lamp')) === 'about one and a half times as tall as a person' &&
+    sizeWords(cat.find((e) => e.id === 'oak')) === 'about three times as tall as a person' && sizeWords(cat.find((e) => e.id === 'blacksmith')) === 'about two and a half times as wide as a person is tall' &&
+    fraction(0.5) === 'half' && fraction(0.1) === 'a tenth');
+  const prompts = Object.fromEntries(cat.map((e) => [e.id, objectPrompt(e)]));
+  ok('every prompt: HD pixel art, the style key only (never the bro), one flat background to cut away, and the size in words',
+    cat.every((e) => { const p = prompts[e.id]; return /BroTown HD pixel art/.test(p) && /Attached is the game's style key/.test(p) && /ONE flat (magenta|bright green) colour/.test(p) && /one fifth as tall as this picture/.test(p) && p.includes(sizeWords(e)) && !/attach(ed)? (your|the|a) (bro|character|hero)/i.test(p); }));
+  ok('the pink and purple things are on green, everything else on magenta',
+    cat.every((e) => (e.key === 'green') === /ONE flat bright green colour \(#00FF00\)/.test(prompts[e.id])) && ['coral', 'shell', 'toadstool', 'crystal', 'giantflower', 'gemcutter'].every((id) => cat.find((e) => e.id === id).key === 'green'));
+  ok('every building\'s prompt is its own: its job, its end of town, its one sign, the porch, square-on, Built by Bros, and its door and storeys against a person',
+    BUILDINGS.every((b) => { const p = prompts[b.id]; return p.includes(b.job) && p.includes(ENDS[b.end]) && p.includes(`reads "${b.sign}"`) && p.includes(b.bro) && /raised wooden porch/.test(p) && /Drawn square-on/.test(p) && /Built by Bros/.test(p) && /Its door is a little taller than a person/.test(p); }) &&
+    new Set(BUILDINGS.map((b) => prompts[b.id])).size === BUILDINGS.length);
+  /* ChatGPT's lettering is unreliable past a word or two (WORLD-BIBLE §12) */
+  ok('every sign is one or two words, and only a building or the town gate has one; the rest say no text at all',
+    cat.every((e) => (e.sign ? e.sign.split(/\s+/).filter((w) => w !== '&').length <= 2 && (e.kind === 'building' || e.id === 'gate') : /No text, letters or numbers anywhere/.test(prompts[e.id]))));
+  ok('a set asks for that many different ones, side by side and not touching; the big trees come in a wide picture',
+    cat.every((e) => e.count === 1 ? /ONE (object|building)/.test(prompts[e.id]) : new RegExp(`a set of ${['', 'one', 'two', 'three', 'four'][e.count]} .*side by side and not touching`, 's').test(prompts[e.id])) &&
+    ['oak', 'pine', 'palm', 'pylon', 'jungletree'].every((id) => /A wide picture \(3:2, landscape\)/.test(prompts[id])));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

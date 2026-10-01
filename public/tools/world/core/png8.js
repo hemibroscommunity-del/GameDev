@@ -14,6 +14,11 @@
  * Where there is none, or the picture has more than 256 colours or any
  * see-through pixel, the answer is null and the caller keeps its full-colour
  * PNG -- never a wrong picture.
+ *
+ * v2.3.2964: `clear` -- the Object Studio's pictures stand on nothing, every
+ * pixel either solid or wholly see-through (style/process.js mapPixels).
+ * Number 0 is then the see-through one, said so in a tRNS chunk, and the
+ * colours follow it; a pixel only partly see-through still answers null.
  */
 import { crc32 } from './zip.js';
 
@@ -30,16 +35,20 @@ function chunk(type, data) {
 }
 
 /* The picture's colours, in the order they first appear, and each pixel's
-   number among them; null past 256 colours or at any pixel not fully opaque. */
-export function paletteOf(rgba, n) {
-  const seen = new Map(), idx = new Uint8Array(n), pal = [];
+   number among them; null past 256 colours or at any pixel not fully opaque.
+   v2.3.2964: with `clear`, number 0 is see-through and a pixel may be that
+   (alpha 0) as well as solid. */
+export function paletteOf(rgba, n, clear = false) {
+  const seen = new Map(), idx = new Uint8Array(n), pal = clear ? [0, 0, 0] : [];
   for (let i = 0, o = 0; i < n; i++, o += 4) {
+    if (clear && rgba[o + 3] === 0) { idx[i] = 0; continue; }
     if (rgba[o + 3] !== 255) return null;
     const key = (rgba[o] << 16) | (rgba[o + 1] << 8) | rgba[o + 2];
     let k = seen.get(key);
     if (k === undefined) {
-      if (seen.size === 256) return null;
-      k = seen.size;
+      const base = clear ? 1 : 0;
+      if (seen.size + base === 256) return null;
+      k = seen.size + base;
       seen.set(key, k);
       pal.push(rgba[o], rgba[o + 1], rgba[o + 2]);
     }
@@ -55,8 +64,8 @@ async function deflate(u8) {
 }
 
 /* rgba (w x h, 4 bytes a pixel) -> the bytes of a palette PNG, or null */
-export async function encodePalettePng(rgba, w, h) {
-  const p = paletteOf(rgba, w * h);
+export async function encodePalettePng(rgba, w, h, { clear = false } = {}) {
+  const p = paletteOf(rgba, w * h, clear);
   if (!p) return null;
   /* each row: filter 0 (none), then its w palette numbers */
   const raw = new Uint8Array((w + 1) * h);
@@ -67,7 +76,10 @@ export async function encodePalettePng(rgba, w, h) {
   dv.setUint32(0, w); dv.setUint32(4, h);
   ihdr[8] = 8;   /* 8 bits a palette number */
   ihdr[9] = 3;   /* colour type 3: palette */
-  const parts = [SIG, chunk('IHDR', ihdr), chunk('PLTE', p.pal), chunk('IDAT', z), chunk('IEND', new Uint8Array(0))];
+  const parts = [SIG, chunk('IHDR', ihdr), chunk('PLTE', p.pal)];
+  /* number 0 wholly see-through; the rest stay solid */
+  if (clear) parts.push(chunk('tRNS', new Uint8Array([0])));
+  parts.push(chunk('IDAT', z), chunk('IEND', new Uint8Array(0)));
   const out = new Uint8Array(parts.reduce((s, q) => s + q.length, 0));
   let o = 0;
   for (const q of parts) { out.set(q, o); o += q.length; }

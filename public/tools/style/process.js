@@ -167,8 +167,10 @@ export function trim(src, alphaMin = 24) {
 
 /* ── splitObjects ──
    Coarse occupancy grid, dilated so a canopy and its trunk (or a sign and its
-   post) stay one object, then connected parts, largest `want`, left to right. */
-export function splitObjects(src, want = 4) {
+   post) stay one object, then connected parts, largest `want`, left to right.
+   v2.3.2964: the parts themselves are `partsOf`, which the Object Studio also
+   uses to keep a building's loose bits (a sign on its own post) with it. */
+export function partsOf(src) {
   const w = src.width, h = src.height;
   const d = ctx2d(src).getImageData(0, 0, w, h).data;
   const cell = Math.max(1, Math.round(Math.max(w, h) / 320));
@@ -211,17 +213,28 @@ export function splitObjects(src, want = 4) {
     }
     if (p.n) parts.push(p);
   }
+  /* each part's box in the picture's own px, beside its grid cells */
+  for (const p of parts) {
+    p.x = p.x0 * cell; p.y = p.y0 * cell;
+    p.w = Math.min(w - p.x, (p.x1 - p.x0 + 1) * cell); p.h = Math.min(h - p.y, (p.y1 - p.y0 + 1) * cell);
+  }
+  return parts;
+}
+/* the box (x, y, w, h) of the picture cut out and trimmed */
+export function cropTo(src, b) {
+  const c = mk(b.w, b.h);
+  c.getContext('2d').drawImage(src, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
+  return trim(c);
+}
+export function splitObjects(src, want = 4) {
+  const parts = partsOf(src);
   if (!parts.length) return [];
   const biggest = Math.max(...parts.map((p) => p.n));
   const kept = parts.filter((p) => p.n >= biggest * 0.03).sort((a, b) => b.n - a.n).slice(0, want);
   kept.sort((a, b) => (a.x0 + a.x1) - (b.x0 + b.x1));
   const out = [];
   for (const p of kept) {
-    const x = p.x0 * cell, y = p.y0 * cell;
-    const cw = Math.min(w - x, (p.x1 - p.x0 + 1) * cell), ch = Math.min(h - y, (p.y1 - p.y0 + 1) * cell);
-    const c = mk(cw, ch);
-    c.getContext('2d').drawImage(src, x, y, cw, ch, 0, 0, cw, ch);
-    const t = trim(c);
+    const t = cropTo(src, p);
     if (t) out.push(t);
   }
   return out;

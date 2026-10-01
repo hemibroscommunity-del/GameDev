@@ -1215,6 +1215,153 @@ blend unread, and that a worker told `blends` still finds it.
 
 ---
 
+## The Object Studio: everything that stands up (v2.3.2964)
+
+> Owner, 2026-10-01, asking what the new map needs next: *"Yes make object
+> studio. I'll also want to redo all the buildings again using more specific
+> prompts."*
+
+Everything that stands up is an object, not ground paint
+([WORLD-BIBLE.md §11](WORLD-BIBLE.md#11-trees-rocks-water-and-props-objects-not-paint)).
+The **Object Studio** at `public/tools/objects/` is where the owner makes
+them, the way the Ground Studio makes the ground.
+
+**The catalog** (`objects/catalog.js`) has 76 objects, one picture each:
+
+- **the 17 Brotown buildings**, each under its plot's own id in `plan.js`
+  (`town.hallLot`, `town.lots`), so placing one is a lookup;
+- **14 town props**: lamp posts, barrels, crates, hay bales, troughs,
+  hitching posts, benches, the well, signposts, a hand cart, the bragging
+  board, the town gate, and fences running across and up and down;
+- **45 nature objects, land by land**: the commons' oaks, orchard trees,
+  bushes, haystacks, stones, wildflowers and stumps, and each spoke's own
+  (snowy pines and bare birches, charred trees, cacti and palms, boulders
+  and crystals, iron pylons and copper coils, driftwood and coral, slime
+  trees and toadstools, giant jungle trees and ferns).
+
+Each entry says how many different ones one picture holds (`count`, 1 to 4,
+side by side), its size in game px (`size`, measured by `fit`: its height,
+or its width for buildings, fences, carts and boats), the ground it is shown
+on, and its background (`key`).
+
+**The buildings' prompts**, the owner's "more specific prompts". Each one
+says:
+
+- **its job** ("where players forge their gear") **and its end of town.**
+  The four ends each have their own materials (`ENDS`), from the World
+  Bible's "who goes where" (§5): the workshops north in fieldstone and
+  soot-dark timber; the saloon end south in bold painted boards; farming
+  west in whitewash, barn red and green tin; money east in red brick,
+  sandstone and brass. A street reads as one place;
+- **its look**: the architecture, the materials, one strong silhouette;
+- **its one or two big jokes**: the World Bible's table (§12) where it has
+  them, new ones in the same spirit for the rest;
+- **one sign of one or two words**, since ChatGPT's lettering fails past
+  that. The Sheriff's "0" (days since the last slime incident) is the one
+  number allowed;
+- **a raised wooden porch** along its front, with steps down at the door.
+  This is how the boardwalks come back (v2.3.2960);
+- **drawn square-on**: its front and its roof from above, no side walls,
+  every upright straight up the picture, so it stands squarely on its
+  rectangular plot;
+- **the Built by Bros brief** (`BUILT_BY_BROS` in `style/bible.js`).
+
+**The scale.** Every picture is as tall as a ground swatch covers, 512 game
+px (a person about one fifth of it, as in the ground prompts), and the
+object is asked for at its true size inside that: *"each one is about
+waist-high on a person, so it is about a tenth as tall as the picture."*
+Matched to the style key's pixel size, its pixels then come out the
+ground's size. The big trees and pylons come two to a **wide** picture
+(3:2), still 512 game px tall.
+
+**The background** is one flat colour the studio cuts away: magenta, or
+bright green for the things that are pink or purple themselves (coral,
+shells, toadstools, crystals, the giant flowers and the Gem Cutter's
+amethyst), whose edges a magenta key would eat (`objectBackground`).
+`keyOut` finds the background's colour round the border, so either works.
+
+**A picture in** (`makePieces` in `objects/app.js`):
+
+1. it is cut out of its background (`keyOut`, as the edge pieces were);
+2. a set is cut apart (`splitObjects`). A single object keeps the loose bits
+   round it that are at least 8% of its biggest part, such as a sign on its
+   own post, and drops specks (`partsOf`, `cropTo` in `style/process.js`);
+3. it is sized exactly, at 2 px a game px. The middle of a set is made the
+   catalog's size (of four, the two middle ones averaged) and the rest stay
+   in step, so a set keeps its big and its small ones. It is shrunk
+   smoothly, as the ground is, and never blown up smoothly: enlarging only
+   repeats its pixels;
+4. the whole set shares 64 colours of its own (`ownPalette`, the ground's
+   rule since v2.3.2961), with hard edges and the stray pixels cleaned up
+   (`hardenAndMap`).
+
+**The card says what went wrong:**
+
+- the background was not one flat colour (less than 60% of the border
+  within 40 of its commonest colour; a flat colour shading a little toward
+  the corners passes);
+- fewer were found than asked for (two that touch count as one);
+- it was drawn far too big or too small for its picture, so its pixels came
+  out finer or coarser than the ground's (outside 0.7 to 1.45 times the
+  ground's own scale, `pixelRatio`);
+- it was made from an older prompt (each picture keeps a short fingerprint
+  of the prompt it was made from).
+
+**The stage** stands it on its land's ground, from the game's own swatches
+(`public/world/ground/<id>-A.png`), next to the bro, as big as it will be on
+a phone held upright: 844 CSS px for 1024 game px. A building has the bro at
+its steps. One stage at a time, in the card that asked.
+
+**Size.** Each object's size can be nudged from 70% to 140%. The pieces are
+made again from the upload.
+
+**Saving**, as in the Ground Studio:
+
+- **Download all** (the backup): `manifest.json`, `objects/<id>-<n>.png` and
+  `originals/<id>.<ext>`. Restore makes everything again from the
+  originals, with the size choices;
+- **Download for the game**: the manifest and the pieces only, each saved as
+  palette numbers with number 0 see-through (`png8.js` `clear`, a tRNS
+  chunk), in zips under 24 MB;
+- the manifest lists each object's pieces with their size in px and in game
+  px, and `foot`, where it touches the ground: the middle of its bottom row,
+  until the placing round gives each a footprint.
+
+**Facing.** Every building faces the viewer with its door at the bottom, as
+in most top-down games. The plots along Main Street line a north-south
+street, so their doors face south, not onto the street. The placing round
+decides how to handle that: a path round to each door, or turning the plots.
+
+**Next:**
+
+1. place the objects on the Wheel: buildings on their plots, trees along the
+   edges of the woods, props by rule;
+2. draw them in the game, sorted by their feet (`depthSort.js`), each with a
+   footprint for collision;
+3. then the Old Mill, the Rail Depot, the Arena and the 32 camps join the
+   catalog.
+
+**Tests.**
+
+- `test-world-core.mjs`, "objects" and "palette PNGs": every plot has its
+  building under its own id; every object fits its picture with room; the
+  sizes in words; every prompt carries the style, the style key only, one
+  flat background and its size; every building's prompt is its own; signs
+  of one or two words; sets ask for that many, not touching; and a piece
+  with see-through round it is saved as palette numbers with number 0
+  see-through, while a pixel only partly see-through never is.
+- `tools/qa/object-studio.mjs` (35 checks) drives the page in Chromium:
+  - the prompts and groups;
+  - a set of barrels in through the file input, sized, hard-edged, on its
+    own colours, with no magenta left;
+  - a building keeping its sign and dropping a speck, and nudged to 125%;
+  - the stage on the street with the bro;
+  - the warnings: a scene background, two touching, drawn too big;
+  - a green background shading toward its corners still counting as flat;
+  - a reload, the backup restored in a fresh browser to the pixel, and the
+    game's zip, decoded by hand, the same pixels;
+  - an older prompt marked, and removing an object.
+
 ## The world trial: walking a seamless island today (v2.3.2932)
 
 > Owner, 2026-09-29: *"Can we do one trial run where you just replicate the

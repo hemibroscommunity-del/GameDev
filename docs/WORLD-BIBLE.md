@@ -1299,6 +1299,26 @@ phone.
 - They are drawn in the player's style (§6), at his size, so they stand
   beside him as equals.
 
+> **v2.3.2964: the buildings' prompts are written.** The owner: *"I'll also
+> want to redo all the buildings again using more specific prompts."* The
+> **Object Studio** (`public/tools/objects/`) has one prompt for each of the
+> 17 buildings. Each prompt carries:
+>
+> - the building's job and its end of town, with that end's materials
+>   (workshops north, the saloon end south, farming west, money east, from
+>   §5);
+> - its architecture and its one or two big jokes from the table above, or
+>   new ones in the same spirit;
+> - one sign of one or two words;
+> - its porch, which is where the boardwalks come back;
+> - a square-on view, and this brief.
+>
+> It also has prompts for the town's props and each land's trees, rocks and
+> bushes (§11). `objects/catalog.js` holds the words, and
+> `docs/WORLD-MAP-PIPELINE.md`, "The Object Studio", says how a picture
+> becomes an object. Where the catalog and this section differ, the catalog
+> is what the prompts say.
+
 ---
 
 ## 13. The ground: baked from swatches

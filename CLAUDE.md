@@ -133,7 +133,17 @@ remnant to migrate server-side, not a mode to preserve.
   the owner's re-exported 96 tiles on their own colours are the game's; since
   v2.3.2963 the Wheel is ALWAYS DAYLIGHT for now (`setAlwaysDay` in
   timeOfDay.js, set by worldTrial.js syncWheel, winning over ?tod=) -- the
-  owner saw one unexplained very dark visit: "make it daylight only for now"),
+  owner saw one unexplained very dark visit: "make it daylight only for now");
+  and since v2.3.2964 the OBJECT STUDIO at `public/tools/objects/` makes
+  everything that stands up -- 76 objects in `objects/catalog.js`, each of
+  the 17 buildings under its plot's id with its own prompt (job, end of
+  town, look, big jokes, one sign, porch, square-on, Built by Bros: the
+  owner's "redo all the buildings again using more specific prompts"), cut
+  out of one flat magenta (green for pink or purple things) background,
+  sized exactly at 2 px a game px, on 64 colours of its own, shown next to
+  the bro at phone size, and zipped for the game as see-through palette
+  PNGs (`png8.js` `clear`): WORLD-MAP-PIPELINE "The Object Studio"; placing
+  them on the Wheel is the next round),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

@@ -150,6 +150,26 @@ export const BLEND_MATCH = 'Match them exactly: their colours, pixel size, shadi
    Ground Studio (style/process.js, keyOut). */
 export const EDGE_BACKGROUND = 'The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the pieces is magenta.';
 
+/* ═══ v2.3.2964: OBJECTS — everything that stands up ═══
+   The Object Studio's pictures (../objects/): a building, a tree, a set of
+   barrels, each on a flat background the studio cuts away (process.js
+   keyOut finds the background's colour round the border, so any one flat
+   colour works).  Magenta, as the edge pieces; green for the few things
+   that are themselves pink or purple -- coral, toadstools, crystals, the
+   Gem Cutter's amethyst -- whose edges a magenta key would eat. */
+const KEYS = {
+  magenta: ['magenta', '#FF00FF', 'magenta or bright pink'],
+  green: ['bright green', '#00FF00', 'bright green'],
+};
+export function objectBackground(key = 'magenta') {
+  const [name, hex, avoid] = KEYS[key] || KEYS.magenta;
+  return `The background is ONE flat ${name} colour (${hex}) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is ${avoid}.`;
+}
+/* The owner's "something more 'bro'" (docs/WORLD-BIBLE.md §12), as every
+   building's prompt says it: handsome underneath, bro on top, fewer and
+   bigger jokes, the clutter kept off the way in. */
+export const BUILT_BY_BROS = 'Built by Bros: solid, handsome, well-made frontier architecture underneath, with the personality in what was added later -- things bolted on, bragged about, or patched after an adventure went wrong. Nothing is new: proud repairs and adventure dents everywhere. One or two big jokes, big enough to read on a phone, rather than many small ones. Clutter only at the ends of the porch and on the roof, never on the steps in front of the door, where people walk.';
+
 /* v2.3.2939: a size in words -- "a person standing here would be about one
    seventh as tall as this picture" -- for a picture `pictureGamePx` game px
    on a side. */
