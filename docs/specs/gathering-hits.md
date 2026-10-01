@@ -164,3 +164,16 @@ one ends in a paid harvest (checked live by `mp-gatherhits`):
   (`_desktopGather`'s `if (false)`). A level-1 player on a tier sized for level
   51 would face ~260 HP, so turning tiers on should come with a level lock.
 - Other players do not see your hits or your node's bar; the hits are yours.
+- **A pre-existing trust hole this gives a new payoff (found in review).** On a
+  player's FIRST connect, `join.js` copies `lifeSkills` from the client
+  unchecked (`{ ...msg.data.rpgLifeSkills }`), while every sibling field in
+  that bootstrap block is capped, and the block's own comment names the threat
+  ("Cheaters who localStorage-tamper before their first ever connect"). A
+  forged mining 1000 now rolls 1-hit plans, so it wins a contested node by ~6 s
+  against a level-1 player (the old timer's 2 s floor capped that at ~2 s).
+  Resources per hour are unchanged (respawn and `HARVEST_HOUR_CAP`). The same
+  hole already pays far more elsewhere: forged blacksmithing opens the weapon
+  forge, amulet and hardening tiers, and the blob can carry pets and gems. The
+  fix is a sanitizer for the whole bootstrap `lifeSkills` (levels, pets, gems),
+  which is its own change and needs an owner decision on the cap for migrating
+  single-player veterans, so it is not folded in here.
