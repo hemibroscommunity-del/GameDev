@@ -52,7 +52,7 @@ import { openStore } from '../world/store.js';
 import { zipStore, unzip } from '../world/core/zip.js';
 import { encodePalettePng } from '../world/core/png8.js';
 import { PIXEL } from '../style/bible.js';
-import { blobToCanvas, seamless, resize, buildPalette, hardenAndMap, mk, keyOut } from '../style/process.js';
+import { blobToCanvas, seamless, resize, buildPalette, ownPalette, hardenAndMap, mk, keyOut } from '../style/process.js';
 import { loadSprites, EFFECT_PALETTE } from '../style/scene.js';
 import { promptFor, edgePromptFor, hasEdgePieces, blendPromptFor } from './prompts.js';
 
@@ -79,6 +79,13 @@ const BLENDS_ON = blendsOn(location.search);
 /* v2.3.2953: how the saved seamless tiles ('prep') were made -- saved in
    'misc'; tiles made any other way are made again from the uploads */
 const PREP_MADE = 'overlap-cut v2.3.2953';
+/* v2.3.2961: each swatch keeps its OWN colours, this many, chosen from its
+   own picture (style/bible.js PIXEL.ownColours, the owner's clumpy grass:
+   the one palette all 48 grounds shared left it 3 greens).  Nothing to
+   remake: the seamless tiles ('prep') are kept before any palette, so the
+   colours are simply chosen again from them on the next load.  0 would
+   bring back the one shared palette below. */
+const OWN = PIXEL.ownColours || 0;
 const VIEW_H = 1024;          /* game px of height on the phone, as the game shows (worldViewport.js) */
 const FOOT = 0.56;            /* where the bro stands, as a share of the screen's height */
 const MARGIN = 48;            /* plan art px composed beyond the view, so a short drag needs no new ground */
@@ -193,6 +200,7 @@ const release = (c) => { c.width = c.height = 0; };
    too); and each picture gives fewer pixels as the set grows, so a full set
    of a hundred pictures still makes its colours from about POOL_BUDGET. */
 function rebuildPalette() {
+  if (OWN) { S.palette = null; S.frozen = false; return false; }   /* v2.3.2961: none shared */
   if (S.frozen && S.palette) return false;
   const pool = [];
   if (S.key && S.key.sample) for (let k = 0; k < KEY_WEIGHT; k++) pool.push(S.key.sample);
@@ -203,6 +211,14 @@ function rebuildPalette() {
   const per = Math.max(1024, Math.floor(POOL_BUDGET / Math.max(1, pool.length)));
   S.palette = pool.length ? buildPalette(pool, Math.max(2, PIXEL.palette - EFFECT_PALETTE.length), per).concat(EFFECT_PALETTE) : null;
   return JSON.stringify(S.palette) !== before;
+}
+
+/* v2.3.2961: the colours a picture is moved onto -- its own (OWN), or the
+   one shared palette */
+function paletteFor(c) {
+  if (!OWN) return S.palette;
+  const d = c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, c.width, c.height).data;
+  return ownPalette(d, c.width, c.height, OWN);
 }
 
 /* The swatch as the game will use it: on the palette, stray pixels gone.
@@ -216,7 +232,7 @@ async function finalize(id) {
     const p = S.prep.get(kv(id, ver));
     if (!p) continue;
     const c = await blobToCanvas(p.png, TILE);
-    hardenAndMap(c, S.palette);
+    hardenAndMap(c, paletteFor(c));
     const thumb = resize(c, THUMB, THUMB, true);
     if (!mean) mean = meanOf(thumb);
     const png = await canvasToBlob(c);
@@ -236,7 +252,7 @@ async function finalize(id) {
   const pe = S.prep.get(kv(id, EDGE));
   if (pe) {
     const c = await blobToCanvas(pe.png, TILE);
-    hardenAndMap(c, S.palette);
+    hardenAndMap(c, paletteFor(c));
     const g = c.getContext('2d', { willReadFrequently: true });
     const img = g.getImageData(0, 0, c.width, c.height);
     const pm = pieceMap({ w: c.width, h: c.height, data: img.data });
@@ -255,7 +271,7 @@ async function finalizeBlend(key) {
   const p = S.prep.get(kv(key, BLEND));
   if (!p) { delete S.blends[key]; return; }
   const c = await blobToCanvas(p.png, TILE);
-  hardenAndMap(c, S.palette);
+  hardenAndMap(c, paletteFor(c));
   const thumb = resize(c, THUMB, THUMB, true);
   const png = await canvasToBlob(c);
   release(c);
@@ -350,7 +366,7 @@ async function loadAll() {
   }
   if (remake) await S.store.put('misc', 'prepMade', PREP_MADE);
   const pal = await S.store.get('misc', 'palette');
-  if (pal && pal.frozen && pal.colours) { S.palette = pal.colours; S.frozen = true; } else rebuildPalette();
+  if (pal && pal.frozen && pal.colours && !OWN) { S.palette = pal.colours; S.frozen = true; } else rebuildPalette();
   await finalizeAll();
 }
 
@@ -1006,6 +1022,13 @@ async function keepStorage() {
 }
 
 function renderPalette() {
+  /* v2.3.2961: each swatch's own colours -- nothing shared to show or freeze */
+  $('pal-own').hidden = !OWN; $('pal-shared').hidden = !!OWN;
+  if (OWN) {
+    $('pal-own-n').textContent = String(OWN);
+    $('pal-chip').textContent = 'its own'; $('pal-chip').className = 'chip ok';
+    return;
+  }
   const box = $('pal');
   box.textContent = '';
   for (const c of S.palette || []) {
@@ -1086,6 +1109,8 @@ async function exportFiles({ originals = true, tilePng = null } = {}) {
     tool: 'brotown-ground-studio', version: 1, made: new Date().toISOString(),
     plan: { id: S.plan.id, version: S.plan.version },
     tile: TILE, gamePxPerArtPx: GPA, tileGamePx: TILE * GPA, palette: S.palette, frozen: S.frozen,
+    /* v2.3.2961: each swatch on this many colours of its own (palette null) */
+    ownColours: OWN || null,
     swatches: made, blends,
   };
   return { files, manifest, enc };
@@ -1163,7 +1188,7 @@ async function restoreZip(bytes) {
     await S.store.put('prep', k, kept.png);
     n++;
   }
-  if (manifest && manifest.frozen && manifest.palette) { S.palette = manifest.palette; S.frozen = true; }
+  if (manifest && manifest.frozen && manifest.palette && !OWN) { S.palette = manifest.palette; S.frozen = true; }
   else { S.frozen = false; rebuildPalette(); }
   await savePalette();
   await finalizeAll();

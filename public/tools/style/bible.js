@@ -48,6 +48,19 @@ export const PIXEL = {
      the Verdant Wilds', metal would lose its shine steps).  Still ONE shared
      palette, so the look stays one world. */
   palette: 128,
+  /* v2.3.2961: a GROUND SWATCH keeps its own colours -- this many, chosen
+     from its own picture (style/process.js ownPalette) -- instead of moving
+     onto the palette above.  Owner, 2026-10-01, on their commons in the
+     Wheel trial: "I'm not sure about the grass. It looks like a lot of the
+     same green color got clumped together making it look clumpy."  It had:
+     the 128 colours were cut from all 48 grounds at once, and the grass,
+     one narrow band of greens covering more of the world than anything,
+     got 3 of them -- 92% of the commons was three flat greens, and some
+     light green came out tan.  64 of its own keep the picture's shading,
+     still hard-edged pixel art, the stray pixels still cleaned up; the look
+     stays one world through the style key and the prompts.  The shared
+     palette above is now the Style Lab's and the game's effects'. */
+  ownColours: 64,
   /* A ground swatch, in picture px: 1024, covering 512 game px -- about a
      phone screen's width and half its height.  v2.3.2942 (the owner's idea
      above): 768 game px until then, which is what blew ChatGPT's picture

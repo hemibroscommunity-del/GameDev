@@ -10,11 +10,13 @@
  *   2. THE STYLE KEY is read from the World Builder's storage on the site;
  *   3. A PICTURE IN, through the real file input, comes out as the game will
  *      use it: 1024 px for 512 game px (v2.3.2942: 2 px per game px, never
- *      blown up), seamless, hard-edged, on one palette of at most
- *      PIXEL.palette colours (128 since v2.3.2940); the progress map and the preview pick it up;
+ *      blown up), seamless, hard-edged, on at most PIXEL.ownColours
+ *      colours of its own (v2.3.2961; one palette of 128 all the ground
+ *      shared until then); the progress map and the preview pick it up;
  *   4. THE PREVIEW draws the ground at game size round the bro, and says
  *      which swatches are on screen and which are not made yet;
- *   5. FROZEN COLOURS stay frozen when another swatch comes in;
+ *   5. OWN COLOURS (v2.3.2961; frozen shared ones until then): a new
+ *      swatch changes no other's pixels;
  *   6. WORK SURVIVES A RELOAD, and a downloaded zip restores into a fresh
  *      browser with the same pixels;
  *   7. no page errors;
@@ -110,8 +112,10 @@ const tileFacts = (page, id, ver) => page.evaluate(async ([i, v]) => {
   const cols = new Set(); let semi = 0;
   for (let k = 0; k < d.length; k += 4) { cols.add((d[k] << 16) | (d[k + 1] << 8) | d[k + 2]); if (d[k + 3] !== 255) semi++; }
   const diff = (a, b) => { let s = 0; for (let y = 0; y < h; y++) { const p = (y * w + a) * 4, q = (y * w + b) * 4; s += Math.abs(d[p] - d[q]) + Math.abs(d[p + 1] - d[q + 1]) + Math.abs(d[p + 2] - d[q + 2]); } return s / h; };
+  /* (v2.3.2961: with each swatch on its own colours there is no shared
+     palette to be off -- the count of its colours says it instead) */
   const pal = new Set((window.__ground.S.palette || []).map((c) => (c[0] << 16) | (c[1] << 8) | c[2]));
-  let off = 0; for (const c of cols) if (!pal.has(c)) off++;
+  let off = 0; if (pal.size) for (const c of cols) if (!pal.has(c)) off++;
   return { w, h, colours: cols.size, semi, offPalette: off, wrap: diff(0, w - 1), inside: diff(Math.floor(w / 3), Math.floor(w / 3) + 1) };
 }, [id, ver]);
 
@@ -178,10 +182,15 @@ try {
   });
   await page.close();
   page = await open(ctxA);
-  const key = await page.evaluate(() => ({ chip: document.getElementById('key-chip').textContent, img: !document.getElementById('key-img').hidden, pal: (window.__ground.S.palette || []).length }));
-  ok('the style key is found in the World Builder and the colours start from it', key.chip === 'found' && key.img && key.pal > 16 && key.pal <= PIXEL.palette, key);
-  /* (not exactly PIXEL.palette: the median cut stops early when the test's
-     made-up key has too few distinct colours -- 127 of 128 in v2.3.2940) */
+  const key = await page.evaluate(() => ({ chip: document.getElementById('key-chip').textContent, img: !document.getElementById('key-img').hidden, pal: window.__ground.S.palette,
+    colours: document.getElementById('pal-chip').textContent, own: !document.getElementById('pal-own').hidden && document.getElementById('pal-shared').hidden,
+    ownText: document.getElementById('pal-own').textContent }));
+  ok('the style key is found in the World Builder', key.chip === 'found' && key.img, key);
+  /* v2.3.2961, owner: "It looks like a lot of the same green color got
+     clumped together making it look clumpy" -- the grass had 3 greens of the
+     palette every ground shared */
+  ok(`...and the colours card says each swatch keeps its own ${PIXEL.ownColours}, with nothing shared to freeze`,
+    key.pal === null && key.colours === 'its own' && key.own && new RegExp(`its own ${PIXEL.ownColours} colours`).test(key.ownText), key);
 
   /* ── 3. pictures in ── */
   console.log('3. pictures in, through the file inputs');
@@ -193,7 +202,7 @@ try {
   for (const id of Object.keys(pics)) await put(page, id, 'A', pics[id]);
   const f = await tileFacts(page, 'commons', 'A');
   ok('a picture comes out as one 1024 px tile: 512 game px at 2 px per game px, never blown up', f.w === PIXEL.groundTile && f.h === PIXEL.groundTile && PIXEL.groundTile * PIXEL.gamePxPerArtPx === 512, f);
-  ok(`...hard-edged, on the one palette, at most ${PIXEL.palette} colours`, f.semi === 0 && f.offPalette === 0 && f.colours <= PIXEL.palette && f.colours > 4, f);
+  ok(`...hard-edged, on at most ${PIXEL.ownColours} colours of its own (v2.3.2961)`, f.semi === 0 && f.colours <= PIXEL.ownColours && f.colours > 16, f);
   ok('...and seamless: its wrap-round edge is no worse than two columns inside it', f.wrap <= f.inside * 1.6 + 6, f);
   const after = await page.evaluate(() => {
     const S = window.__ground.S;
@@ -250,14 +259,18 @@ try {
   });
   ok('dragging the preview looks around', moved.dx > 20, moved);
 
-  /* ── 5. frozen colours ── */
-  console.log('5. frozen colours');
-  await page.click('#freeze');
-  const pal1 = await page.evaluate(() => JSON.stringify(window.__ground.S.palette));
+  /* ── 5. v2.3.2961: each swatch's own colours -- a new one changes no other ── */
+  console.log('5. own colours');
+  const tileHash = (p, id, ver) => p.evaluate(async ([i, v]) => {
+    const t = await window.__ground.api.pixelsOf(i, v); let h = 0;
+    for (let k = 0; k < t.data.length; k += 13) h = (Math.imul(h, 31) + t.data[k]) | 0;
+    return h;
+  }, [id, ver]);
+  const before5 = await tileHash(page, 'commons', 'A');
   await put(page, 'frost-2', 'A', await makePicture(page, '#e8eef6', 16));
-  const frozen = await page.evaluate((p1) => ({ same: JSON.stringify(window.__ground.S.palette) === p1, chip: document.getElementById('pal-chip').textContent }), pal1);
   const f2 = await tileFacts(page, 'frost-2', 'A');
-  ok('frozen colours stay the same when a new swatch comes in, and it is moved onto them', frozen.same && frozen.chip === 'frozen' && f2.offPalette === 0, { frozen, f2 });
+  ok('a new swatch comes in on its own colours and changes no other swatch\'s pixels (once, the one palette they shared moved every one)',
+    (await tileHash(page, 'commons', 'A')) === before5 && f2.colours <= PIXEL.ownColours && f2.semi === 0, { f2 });
   await put(page, 'commons', 'B', await makePicture(page, '#79b04e', 17));
   const both = await page.evaluate(() => document.querySelector('[data-chip="commons"]').textContent);
   ok('a second version goes in beside the first', both === 'A + B', both);
@@ -271,13 +284,13 @@ try {
       const t = await window.__ground.api.pixelsOf(id, v);
       for (let i = 0; i < t.data.length; i += 61) h = (Math.imul(h, 31) + t.data[i]) | 0;
     }
-    return { h, n: Object.keys(S.tiles).length, frozen: S.frozen };
+    return { h, n: Object.keys(S.tiles).length };
   });
   const h1 = await hashOf(page);
   await page.close();
   page = await open(ctxA);
   const h2 = await hashOf(page);
-  ok('everything survives a reload, the same to the pixel', h1.h === h2.h && h2.n === 6 && h2.frozen, { h1, h2 });
+  ok('everything survives a reload, the same to the pixel', h1.h === h2.h && h2.n === 6, { h1, h2 });
   const saved2 = await page.evaluate(() => document.getElementById('saved-chip').textContent);
   ok('...and after the reload the page still says they are saved', saved2 === '6 saved', saved2);
   /* v2.3.2953: tiles saved before the seamless step changed (the cross-fade
@@ -301,13 +314,15 @@ try {
   const zipBytes = fs.readFileSync(zipPath);
   ok('Download all gives a zip with the manifest, every swatch as the game uses it, and every original',
     zipBytes.includes(Buffer.from('manifest.json')) && zipBytes.includes(Buffer.from('ground/commons-A.png')) && zipBytes.includes(Buffer.from('ground/commons-B.png')) &&
-    zipBytes.includes(Buffer.from('originals/frost-2-A.png')) && zipBytes.includes(Buffer.from('"frozen": true')), zipBytes.length);
+    zipBytes.includes(Buffer.from('originals/frost-2-A.png')) && zipBytes.includes(Buffer.from(`"ownColours": ${PIXEL.ownColours}`)), zipBytes.length);
   const ctxB = await browser.newContext(phone);
   const pageB = await open(ctxB);
   await pageB.setInputFiles('#restore', { name: 'backup.zip', mimeType: 'application/zip', buffer: zipBytes });
   await pageB.waitForFunction(() => Object.keys(window.__ground.S.tiles).length === 6 && document.getElementById('busy').hidden, null, { timeout: 60000 });
   const h3 = await hashOf(pageB);
-  ok('restoring the zip in a fresh browser gives the same swatches, pixel for pixel', h3.h === h1.h && h3.frozen, { h1, h3 });
+  /* (v2.3.2961: own colours are made from the tile alone, so they restore to
+     the pixel with nothing frozen -- shared ones had to be frozen first) */
+  ok('restoring the zip in a fresh browser gives the same swatches, pixel for pixel', h3.h === h1.h, { h1, h3 });
   await shot(pageB, 'restored');
 
   /* ── 7. v2.3.2944: a swatch made from an older prompt is marked ── */
@@ -408,20 +423,21 @@ try {
   await pageP.waitForFunction(() => window.__ground.S.edges.commons && document.getElementById('busy').hidden, null, { timeout: 60000 });
   const ef = await pageP.evaluate(async () => {
     const S = window.__ground.S, t = await window.__ground.api.pixelsOf('commons', 'E'), d = t.data;
-    const pal = new Set((S.palette || []).map((c) => (c[0] << 16) | (c[1] << 8) | c[2]));
-    let clear = 0, magenta = 0, off = 0, semi = 0;
+    /* (v2.3.2961: on colours of its own -- at most PIXEL.ownColours) */
+    const cols = new Set();
+    let clear = 0, magenta = 0, semi = 0;
     for (let k = 0; k < d.length; k += 4) {
       if (d[k + 3] === 0) { clear++; continue; }
       if (d[k + 3] !== 255) semi++;
       if (d[k] > 190 && d[k + 1] < 90 && d[k + 2] > 190) magenta++;
-      if (!pal.has((d[k] << 16) | (d[k + 1] << 8) | d[k + 2])) off++;
+      cols.add((d[k] << 16) | (d[k + 1] << 8) | d[k + 2]);
     }
-    return { w: t.w, pieces: S.edges.commons.pieces, clear: clear / (d.length / 4), magenta, off, semi,
+    return { w: t.w, pieces: S.edges.commons.pieces, clear: clear / (d.length / 4), magenta, colours: cols.size, semi,
       card: (document.querySelector('[data-edge="commons"]') || {}).textContent || '', made: document.getElementById('edge-count').textContent,
       saved: [...document.querySelectorAll('#saved-list li')].map((li) => li.textContent) };
   });
   ok(`an edge-pieces picture comes out as its pieces, cut out whole (${ef.pieces} of the 50; the two the picture's edge cuts are left out)`, ef.pieces >= 45 && ef.pieces <= 50 && ef.w === PIXEL.groundTile, ef);
-  ok('...on see-through, with no magenta left on them, hard-edged and on the one palette', ef.clear > 0.8 && ef.magenta === 0 && ef.semi === 0 && ef.off === 0, ef);
+  ok('...on see-through, with no magenta left on them, hard-edged and on colours of their own', ef.clear > 0.8 && ef.magenta === 0 && ef.semi === 0 && ef.colours <= PIXEL.ownColours, ef);
   ok('...and the page says so: its card, the count, and what is saved here', new RegExp(`${ef.pieces} pieces found`).test(ef.card) && /1 of 39 made/.test(ef.made) && ef.saved.includes('Brotown Commons (A and B, edge pieces)'), { made: ef.made, saved: ef.saved });
   await pageP.evaluate(() => window.__ground.api.showEdge('commons'));
   const laid = await pageP.evaluate(async () => {
@@ -528,13 +544,13 @@ try {
   /* colours made from the swatches, not frozen: a blend must not change them */
   await page.evaluate(async () => { if (window.__ground.S.frozen) document.getElementById('freeze').click(); });
   await page.waitForFunction(() => !window.__ground.S.frozen && document.getElementById('busy').hidden, null, { timeout: 60000 });
-  const palBefore = await page.evaluate(() => JSON.stringify(window.__ground.S.palette));
+  const hBeforeBlend = await hashOf(page);
   const pairBtn = await page.evaluate(() => !!document.querySelector('[data-blend="plaza__town-yard"] [data-pair="plaza__town-yard"]'));
   ok('...once both are made, the button to save or share the two pictures is there', pairBtn);
   await page.setInputFiles('input[data-file="plaza__town-yard|M"]', { name: 'plaza-yard-blend.png', mimeType: 'image/png', buffer: Buffer.from(await makePicture(page, '#bc9a70', 23), 'base64') });
   await page.waitForFunction(() => window.__ground.S.blends['plaza__town-yard'] && document.getElementById('busy').hidden, null, { timeout: 60000 });
   const bf = await tileFacts(page, 'plaza__town-yard', 'M');
-  ok('a blend picture comes out like a swatch: one 1024 px tile, hard-edged, on the palette, seamless', bf.w === PIXEL.groundTile && bf.semi === 0 && bf.offPalette === 0 && bf.wrap <= bf.inside * 1.6 + 6, bf);
+  ok('a blend picture comes out like a swatch: one 1024 px tile, hard-edged, on its own colours, seamless', bf.w === PIXEL.groundTile && bf.semi === 0 && bf.colours <= PIXEL.ownColours && bf.wrap <= bf.inside * 1.6 + 6, bf);
   const bl1 = await page.evaluate(async () => {
     const S = window.__ground.S;
     await new Promise((r) => setTimeout(r, 50));
@@ -546,7 +562,7 @@ try {
       saved: [...document.querySelectorAll('#saved-list li')].map((li) => li.textContent), status: document.getElementById('status').textContent,
     };
   });
-  ok('...never changes the colours the swatches are moved onto', bl1.pal === palBefore);
+  ok('...never changes a swatch\'s pixels', (await hashOf(page)).h === hBeforeBlend.h);
   ok('...its card and the count say it is made, and the top of the page says it is saved', bl1.card === 'made' && bl1.chip === '1 of 42 made' && bl1.saved.includes('Town square and Brotown yards (blend)') && /and 1 blend\./.test(bl1.status), bl1);
   ok(`...and the preview jumps to where the square meets the yards and lays it there (${bl1.laid && bl1.laid.px} px)`,
     /Where Town square and Brotown yards meet/.test(bl1.view) && !!bl1.laid && bl1.laid.px > 1000 && /blend: Town square and Brotown yards/.test(bl1.inview), bl1);
@@ -577,11 +593,8 @@ try {
   await page.evaluate(() => document.getElementById('toast').setAttribute('hidden', ''));
   await shot(page, 'blend', '#phone');
   await shot(page, 'blend-card', '[data-blend="plaza__town-yard"]');
-  /* (colours frozen again before the zip, as the owner will have them: a
-     fresh browser remakes unfrozen colours from what it has -- here, no
-     style key -- so only frozen ones restore to the pixel) */
-  await page.click('#freeze');
-  await page.waitForFunction(() => window.__ground.S.frozen && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  /* (v2.3.2961: nothing to freeze before the zip -- each picture's own
+     colours are made from it alone, so they restore to the pixel) */
   const [dl3] = await Promise.all([page.waitForEvent('download'), page.click('#export')]);
   const zip3 = fs.readFileSync(await dl3.path());
   const blendHash = (p) => p.evaluate(async () => {
@@ -638,7 +651,7 @@ try {
         for (const f of await unzip(z.bytes)) {
           if (f.name === 'manifest.json') {
             const m = JSON.parse(new TextDecoder().decode(f.data));
-            if (m.forGame === true && m.part === z.part && m.parts === z.parts && Array.isArray(m.swatches) && m.swatches.length && Array.isArray(m.palette)) manifests++;
+            if (m.forGame === true && m.part === z.part && m.parts === z.parts && Array.isArray(m.swatches) && m.swatches.length && m.ownColours === 64) manifests++;
             continue;
           }
           if (f.name.startsWith('originals/')) { originals++; continue; }

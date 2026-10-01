@@ -47,7 +47,7 @@ import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
 import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
-import { mapPixels, nearestIn } from '../../style/process.js';
+import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 
 const TILE = PIXEL.groundTile;                                    /* 1024 px a swatch */
 const K = Math.round(PLAN.worldPxPerArtPx / PIXEL.gamePxPerArtPx); /* 3 ground px a plan art px: 2 a game px */
@@ -385,8 +385,13 @@ async function tileOf(id, ver, wait) {
     if (bm.close) bm.close();
     const d = g.getImageData(0, 0, TILE, TILE).data;
     c.width = c.height = 1;
-    if (!s.mapped) mapPixels(d, TILE, TILE, s.pal);   /* the studio's finalize, verbatim */
-    tile = indexed(d, TILE, s.pal);
+    /* the studio's finalize, verbatim -- v2.3.2961: onto the picture's own
+       colours (PIXEL.ownColours), not the palette all the ground shared */
+    if (!s.mapped) mapPixels(d, TILE, TILE, PIXEL.ownColours ? ownPalette(d, TILE, TILE, PIXEL.ownColours) : s.pal);
+    /* v2.3.2961: kept as numbers into the colours it has (EDGE_CLEAR, 255,
+       is a see-through pixel's, so 255 at most); a game picture made on the
+       old shared palette has fewer, and comes out the same */
+    tile = indexed(d, TILE, coloursOf(d, 255) || s.pal);
   } catch (e) {
     failed.add(k);               /* this browser cannot unpack it: plan colour, and the readout says so */
     return null;

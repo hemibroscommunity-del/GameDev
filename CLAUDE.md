@@ -123,7 +123,13 @@ remnant to migrate server-side, not a mode to preserve.
   whose porches they become -- the owner: "I don't know what those are
   supposed to be" -- `town.boardwalks: false` in plan.js, the bridges keeping
   their plank decks and the boardwalk swatch, a plan copy with `true`
-  still tested in test-world-core),
+  still tested in test-world-core; and since v2.3.2961 each GROUND SWATCH
+  KEEPS ITS OWN 64 COLOURS (`PIXEL.ownColours`, `ownPalette`/`coloursOf` in
+  style/process.js) instead of the one 128-colour palette -- the owner's
+  grass came out 3 flat greens, "clumpy" (TRAPS §124); the studio chooses
+  them again from its 'prep' tiles on load, nothing to freeze, and the
+  worker keeps each tile as numbers into its own colours:
+  WORLD-MAP-PIPELINE "Each ground keeps its own colours"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

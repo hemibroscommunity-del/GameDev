@@ -400,26 +400,68 @@ export function buildPalette(canvases, n, perPicture = 24000) {
       if (d[i + 3] >= 128) samples.push([d[i], d[i + 1], d[i + 2]]);
     }
   }
+  return medianCut(samples, n);
+}
+
+/* v2.3.2961: a picture's OWN colours, for a ground swatch (bible.js
+   PIXEL.ownColours) -- the same median cut, over its own opaque pixels
+   only.  Pure, on RGBA: the Ground Studio and the game's worker make the
+   same colours from the same pixels.  OWN_SAMPLES pixels at most, evenly
+   spread: plenty for 64 colours, and quick on a phone. */
+const OWN_SAMPLES = 65536;
+export function ownPalette(d, w, h, n, perPicture = OWN_SAMPLES) {
+  const samples = [];
+  const px = w * h, step = Math.max(1, Math.floor(px / perPicture));
+  for (let p = 0; p < px; p += step) {
+    const i = p * 4;
+    if (d[i + 3] >= 128) samples.push([d[i], d[i + 1], d[i + 2]]);
+  }
+  return medianCut(samples, n);
+}
+/* v2.3.2961: the colours a picture already has, as a palette -- null past
+   `max` of them (a picture not yet on any palette) */
+export function coloursOf(d, max = 256) {
+  const seen = new Map(), out = [];
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 128) continue;
+    const key = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
+    if (seen.has(key)) continue;
+    if (out.length === max) return null;
+    seen.set(key, out.length);
+    out.push([d[i], d[i + 1], d[i + 2]]);
+  }
+  return out;
+}
+
+/* v2.3.2961: each box's widest channel measured once, when it is made --
+   not every box again for every cut, which made a swatch's own 64 colours
+   cost 155 ms (the Ground Studio makes 96 on every load).  The same cuts in
+   the same order: the first box, and its first channel, of the widest
+   range wins, as before. */
+function medianCut(samples, n) {
   if (!samples.length || n < 2) return [];
-  const boxes = [samples];
-  while (boxes.length < n) {
-    let bi = -1, bestRange = -1, bestCh = 0;
-    for (let k = 0; k < boxes.length; k++) {
-      const b = boxes[k];
-      if (b.length < 2) continue;
-      for (let ch = 0; ch < 3; ch++) {
+  const span = (b) => {
+    let range = -1, ch = 0;
+    if (b.length >= 2) {
+      for (let c = 0; c < 3; c++) {
         let lo = 255, hi = 0;
-        for (const s of b) { if (s[ch] < lo) lo = s[ch]; if (s[ch] > hi) hi = s[ch]; }
-        if (hi - lo > bestRange) { bestRange = hi - lo; bi = k; bestCh = ch; }
+        for (const s of b) { if (s[c] < lo) lo = s[c]; if (s[c] > hi) hi = s[c]; }
+        if (hi - lo > range) { range = hi - lo; ch = c; }
       }
     }
+    return { b, range, ch };
+  };
+  const boxes = [span(samples)];
+  while (boxes.length < n) {
+    let bi = -1, bestRange = -1, bestCh = 0;
+    for (let k = 0; k < boxes.length; k++) if (boxes[k].range > bestRange) { bestRange = boxes[k].range; bi = k; bestCh = boxes[k].ch; }
     if (bi < 0 || bestRange <= 0) break;
-    const b = boxes[bi];
+    const b = boxes[bi].b;
     b.sort((u, v) => u[bestCh] - v[bestCh]);
     const mid = b.length >> 1;
-    boxes.splice(bi, 1, b.slice(0, mid), b.slice(mid));
+    boxes.splice(bi, 1, span(b.slice(0, mid)), span(b.slice(mid)));
   }
-  return boxes.map((b) => {
+  return boxes.map(({ b }) => {
     let r = 0, g = 0, bl = 0;
     for (const s of b) { r += s[0]; g += s[1]; bl += s[2]; }
     return [Math.round(r / b.length), Math.round(g / b.length), Math.round(bl / b.length)];

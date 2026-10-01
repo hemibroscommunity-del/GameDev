@@ -1073,6 +1073,58 @@ a MIX pair has no upper and cuts through stones either way.
 
 ---
 
+## Each ground keeps its own colours (v2.3.2961)
+
+> Owner, 2026-10-01, on their commons in the Wheel trial: *"I'm not sure
+> about the grass. It looks like a lot of the same green color got clumped
+> together making it look clumpy."*
+
+![Your style key's grass, zoomed in: as ChatGPT drew it, as the game drew it, and on its own 64 colours](world/grass-own-colours.png)
+
+**Why it looked clumpy.** Every swatch was moved onto **one palette of 128
+colours**, made from the style key and all 48 grounds at once. The palette is
+made by cutting the colours where they spread widest. Lava's reds, snow's
+whites and the sea's blues spread wide, so they got most of the colours. The
+grass is one narrow band of greens, even though it covers more of the world
+than anything else, so it got **3 greens**. 92% of the owner's commons came
+out as those three flat greens, and some light green came out tan.
+
+**Now each swatch keeps its own 64 colours**, chosen from its own picture by
+the same cut (`ownPalette` in `public/tools/style/process.js`,
+`PIXEL.ownColours` in `bible.js`).
+
+- It is still hard-edged pixel art: no gradients, and the stray single
+  pixels are still cleaned up. The grass in the picture above comes out with
+  63 colours, close to what ChatGPT drew. The look stays one world through
+  the style key and the prompts.
+- **Nothing to remake.** The Ground Studio keeps every swatch's seamless tile
+  before any palette, so it simply chooses the colours again from it the next
+  time it opens. Adding a swatch no longer changes any other swatch's pixels,
+  and there is nothing left to freeze, so the colours card now says so.
+- **The game** keeps each picture as numbers into its own colours
+  (`coloursOf`, at most 255). Pictures made on the old shared palette come out
+  exactly as before, so the game's copy works whichever version is uploaded.
+  The Ground Studio's swatches on the same site are put on their own colours
+  by the worker, exactly as the studio does.
+- **Cost.** A finished tile is about 1.3–1.6 times the bytes, so the game's
+  set is about 30–35 MB (two zips under 24 MB). Choosing a picture's
+  colours takes about 40 ms, after the cut was made to measure each box once
+  rather than every box for every cut (155 ms before).
+- **The shared palette** stays for the Style Lab's looks and, for now, for
+  future objects.
+
+**For the owner:** open the Ground Studio once on the phone where your
+pictures are, then tap **Download for the game** and upload the zips to
+`main`, as before.
+
+Tested: `node tools/world/test-world-core.mjs` (a grass picture keeps 63
+colours of its own where the one palette made with eleven other grounds
+left it 8, and stays closer to the picture; the same colours every time);
+`node tools/qa/ground-studio.mjs` 62/62 (each finished tile at most 64
+colours; a new swatch changes no other's pixels; reload and restore the same
+to the pixel with nothing frozen; the game zip says `ownColours: 64`);
+`wheeltrial` and `wheelnet` pass.
+
 ## Download for the game (v2.3.2957)
 
 > Owner, 2026-10-01, every swatch made: *"It's 279mb in the zip file. Isn't

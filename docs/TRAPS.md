@@ -4958,3 +4958,28 @@ forever. Re-lay only when the worker says a missing picture has come
 **How to see it:** `node tools/qa/mp/run.mjs wheelnet` routes the ground
 pictures through a deliberately bad connection: all late, one hanging, one
 failing.
+
+## 124. One palette cut from every picture starves the ground you see most (v2.3.2961)
+
+**Tempting:** make one palette for the whole world (128 colours, median cut
+over samples of every picture, the same number from each) and move every
+ground swatch onto it. One palette, one look.
+
+**Wrong** for the ground. A median cut splits wherever the colours spread
+**widest**, not wherever there are **most** pixels. Lava, snow, the sea and
+rock spread wide, so they take most of the colours. Grass is one narrow band
+of greens, even though it covers more of the world than anything else, and
+got 3. The owner's commons came out 92% three flat greens, with some light
+green turned tan: *"It looks like a lot of the same green color got clumped
+together making it look clumpy."* Raising the count only thins the problem
+out; the cut still feeds the wide spreads first.
+
+**The fix** (`ownPalette`, `PIXEL.ownColours`): each ground swatch keeps its
+**own** 64 colours, cut from its own picture. The style key and the prompts
+keep the world one look. Keep the shared palette for things that must
+match each other exactly.
+
+**How to see it:** count the colours in a finished tile (`coloursOf`) and
+how much of it the top three take. `tools/world/test-world-core.mjs`
+("own colours") makes a grass picture with eleven other grounds and checks
+the grass keeps at least three times the colours on its own.

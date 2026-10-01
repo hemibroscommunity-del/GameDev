@@ -1051,6 +1051,48 @@ console.log('seamless');
   ok('...the same every time', t2.overlap === t.overlap && t2.data.every((v, i) => v === t.data[i]));
 }
 
+/* ── v2.3.2961: each ground keeps its own colours ── */
+console.log('own colours');
+{
+  /* Owner, on their commons in the Wheel trial: "It looks like a lot of the
+     same green color got clumped together making it look clumpy."  The 128
+     colours were cut from every ground at once, and the grass -- one narrow
+     band of greens -- got 3.  Here: a grass picture with soft shading, and
+     eleven other grounds of other hues; the one palette made from all twelve
+     (as the Ground Studio made it) against the grass's own 64. */
+  const { ownPalette, coloursOf, mapPixels } = await import('../../public/tools/style/process.js');
+  const N = 128, hues = [[96, 140, 52], [214, 186, 122], [236, 240, 248], [200, 72, 30], [120, 118, 132], [52, 110, 170],
+    [150, 104, 64], [70, 60, 90], [180, 160, 60], [90, 70, 50], [40, 140, 140], [230, 120, 160]];
+  const pic = (c0, seed) => {
+    const d = new Uint8ClampedArray(N * N * 4);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const v = (fbm(x / 9, y / 9, seed, 3) - 0.5) * 90, w = (hash2(x, y, seed + 1) - 0.5) * 24, o = (y * N + x) * 4;
+      d[o] = c0[0] + v * 0.7 + w; d[o + 1] = c0[1] + v + w; d[o + 2] = c0[2] + v * 0.5 + w; d[o + 3] = 255;
+    }
+    return d;
+  };
+  const pics = hues.map((c, k) => pic(c, 11 + k)), grass = pics[0];
+  /* the one palette: every picture sampled alike, as one tall atlas */
+  const atlas = new Uint8ClampedArray(N * N * 4 * pics.length);
+  pics.forEach((d, k) => atlas.set(d, k * d.length));
+  const shared = ownPalette(atlas, N, N * pics.length, PIXEL.palette - 8);
+  const own = ownPalette(grass, N, N, PIXEL.ownColours);
+  const onto = (pal) => { const d = new Uint8ClampedArray(grass); mapPixels(d, N, N, pal); return d; };
+  const gS = onto(shared), gO = onto(own);
+  const nCol = (d) => coloursOf(d, 100000).length;
+  const err = (d) => { let e = 0; for (let i = 0; i < d.length; i += 4) e += Math.abs(d[i] - grass[i]) + Math.abs(d[i + 1] - grass[i + 1]) + Math.abs(d[i + 2] - grass[i + 2]); return e / (N * N); };
+  ok(`a ground keeps ${PIXEL.ownColours} colours of its own: the grass ${nCol(gO)} greens where the palette every ground shares leaves it ${nCol(gS)}`,
+    PIXEL.ownColours === 64 && nCol(gO) >= 40 && nCol(gO) >= 3 * nCol(gS) && nCol(gO) <= PIXEL.ownColours, { own: nCol(gO), shared: nCol(gS) });
+  ok(`...and stays closer to the picture (off by ${err(gO).toFixed(1)} a pixel against ${err(gS).toFixed(1)})`, err(gO) < 0.6 * err(gS), { own: err(gO), shared: err(gS) });
+  const again = ownPalette(new Uint8ClampedArray(grass), N, N, PIXEL.ownColours);
+  ok('...the same colours every time from the same pixels (the Ground Studio and the game\'s worker agree)', JSON.stringify(again) === JSON.stringify(own));
+  /* coloursOf: the colours a picture has, null past the limit; see-through
+     pixels are not a colour */
+  const two = new Uint8ClampedArray([1, 2, 3, 255, 1, 2, 3, 255, 9, 9, 9, 255, 0, 0, 0, 0]);
+  ok('the colours a picture has are read back as its palette, see-through left out; too many gives none',
+    JSON.stringify(coloursOf(two)) === '[[1,2,3],[9,9,9]]' && coloursOf(two, 1) === null && coloursOf(gO, 255).length === nCol(gO));
+}
+
 /* ── zip ── */
 console.log('zip');
 {

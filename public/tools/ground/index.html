@@ -9,8 +9,9 @@
     - every swatch's ChatGPT prompt, ready to copy;
     - bring each picture back (and a second version): it is made seamless,
       kept at 1024 px for 512 game px (2 px per game px, the phone's own
-      sharpness, v2.3.2942), and moved onto the one
-      shared palette, as the game will use it;
+      sharpness, v2.3.2942), and put on its own 64 colours (v2.3.2961:
+      it was the one palette all the ground shared, and the grass got 3
+      greens), as the game will use it;
     - see it laid on the Wheel at game size, next to the bro, with the real
       roads, rivers, shores and borders round it;
     - download everything as one zip, to upload to GitHub.
@@ -130,7 +131,7 @@
     <ol class="plan">
       <li><b>Make the style key first</b>, in <a href="../world/" style="color:#F3D9A2">the World Builder</a>. Every swatch is matched to it.</li>
       <li>For each swatch below: <b>copy its prompt</b> into a new ChatGPT chat, and attach <b>the style key</b>, and only the key. Not your bro: the world is finer, more detailed pixel art than he is, and ChatGPT copies what it sees.</li>
-      <li><b>Bring the picture back</b> as version A. The page makes it seamless (by cutting where its two ends already look alike, so nothing in it is see-through), keeps it at your phone's own sharpness, puts it on the shared colours, and shows it laid on the map at game size next to your bro.</li>
+      <li><b>Bring the picture back</b> as version A. The page makes it seamless (by cutting where its two ends already look alike, so nothing in it is see-through), keeps it at your phone's own sharpness, keeps its own 64 colours, and shows it laid on the map at game size next to your bro.</li>
       <li>Later, a <b>second version (B)</b> of the same prompt in a fresh chat. The game mixes A and B so the ground does not repeat.</li>
       <li data-pieces hidden><b>Edge pieces</b> (optional, under each swatch): in the same chat, ask for that ground's loose pieces on magenta. The game scatters them where it lies over another ground.</li>
       <li data-blends hidden><b>Blends</b> (optional, below the swatches): where two alike grounds mix, a third picture made from the two, laid through the middle. Start with the town square.</li>
@@ -166,7 +167,7 @@
     <div class="keyrow">
       <img id="key-img" class="keyimg" alt="The style key" hidden>
       <div>
-        <p id="key-none">No style key in this browser yet. Make it in <a href="../world/" style="color:#F3D9A2">the World Builder</a> first, then come back: this page reads it from there, and builds the shared colours from it.</p>
+        <p id="key-none">No style key in this browser yet. Make it in <a href="../world/" style="color:#F3D9A2">the World Builder</a> first, then come back: this page reads it from there.</p>
         <p id="key-has" hidden>Found in the World Builder. Attach it, and only it, to every swatch chat.</p>
         <div class="row"><a id="key-save" class="btn" download="brotown-style-key.png" hidden>Save style key</a><button id="key-share" hidden>Share…</button></div>
       </div>
@@ -219,10 +220,14 @@
   </section>
 
   <section class="card" id="palette">
-    <h2>The shared colours <span id="pal-chip" class="chip">automatic</span></h2>
-    <p class="mut">Every swatch is moved onto one palette of <span id="pal-n">128</span> colours, made from the style key and the swatches so far (the water, night and light colours the game draws are always kept). Freeze it once you are happy with the first few: after that, every new swatch is moved onto exactly these colours.</p>
-    <div class="pal" id="pal"></div>
-    <div class="row"><button id="freeze">Freeze these colours</button></div>
+    <h2>Colours <span id="pal-chip" class="chip">automatic</span></h2>
+    <!-- v2.3.2961: each swatch keeps its own colours -->
+    <p class="mut" id="pal-own" hidden>Every swatch keeps its own <span id="pal-own-n">64</span> colours, chosen from its own picture, so the grass keeps its greens. They all used to share one set of 128, which left the grass only 3 greens: it looked clumpy.</p>
+    <div id="pal-shared">
+      <p class="mut">Every swatch is moved onto one palette of <span id="pal-n">128</span> colours, made from the style key and the swatches so far (the water, night and light colours the game draws are always kept). Freeze it once you are happy with the first few: after that, every new swatch is moved onto exactly these colours.</p>
+      <div class="pal" id="pal"></div>
+      <div class="row"><button id="freeze">Freeze these colours</button></div>
+    </div>
   </section>
 
   <section class="card" id="save">

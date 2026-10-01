@@ -632,7 +632,7 @@ table says which. The numbers and the prompt words live in one file,
 | # | Rule | Held by |
 |---|---|---|
 | 1 | **The phone's own sharpness** (v2.3.2942; one 1.5 game px grid until then). Every picture is kept at **2 px per game px**, about what a phone shows, so nothing is ever blown up. The bro's own pixels are about 2 game px, so the world is finer-grained than he is. A tree comes out about 380 px tall, and a ground swatch is 1,024 × 1,024 px covering 512 game px. | the pipeline: every picture is resized to it |
-| 2 | **One frozen palette** of **128 colours** (64 until v2.3.2940, when the owner chose 128 for material-aware texturing across eight lands and the town), in ramps of 4–6 shades per material. Shadows lean cool (blue-purple) and highlights warm (yellow). It is made once from the style key, then frozen, and every picture is moved onto it. This is the biggest consistency lever. | the pipeline |
+| 2 | **One frozen palette** of **128 colours** (64 until v2.3.2940, when the owner chose 128 for material-aware texturing across eight lands and the town), in ramps of 4–6 shades per material. Shadows lean cool (blue-purple) and highlights warm (yellow). It is made once from the style key, then frozen, and every picture is moved onto it. This is the biggest consistency lever. **Since v2.3.2961 the ground swatches are the exception: each keeps its own 64 colours**, chosen from its own picture. Owner, on their commons in the game: *"It looks like a lot of the same green color got clumped together making it look clumpy."* The 128 were cut from all 48 grounds at once, and the grass got 3 greens: 92% of the commons came out as three flat greens, and some light green turned tan. With its own 64, the grass keeps its shading, still hard-edged pixel art. The look stays one world through the style key and the prompts. | the pipeline (`PIXEL.ownColours`, `ownPalette` in `process.js`) |
 | 3 | **Readability ranking.** Ground is calm: middle tones, low contrast. Objects are medium contrast. Characters, monsters and loot are the brightest and punchiest. The test: squint at a screenshot, and the bro and the goblin still jump out. | the prompt, and the owner's eye |
 | 4 | **Light.** Soft daylight from the upper left, with 3–5 shading steps per surface. Slightly darker pixels where things touch the ground are fine. **No shadows cast on the ground, and no glow, fog or night drawn in.** The game's code adds those, so they can change with the time of day. | the prompt |
 | 5 | **Edges.** Hard pixels only: no blur, no soft brushes, no smooth gradients, and dithering rarely. Detail comes in clusters of two or more pixels. | the pipeline: hard alpha, and stray single pixels are cleaned up |
@@ -764,7 +764,8 @@ of characters, the drift is what you saw.
 4. **Start the golden set.** The first few pictures you approve (a ground
    swatch, a tree, a building) are attached next to the key from then on. A
    picture to match beats a paragraph to follow.
-5. **The palette is made from it** (rule 2) and then frozen.
+5. **The palette is made from it** (rule 2) and then frozen. (Since
+   v2.3.2961 the ground swatches each keep their own colours instead.)
 
 ---
 
