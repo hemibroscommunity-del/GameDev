@@ -1117,6 +1117,14 @@ the same cut (`ownPalette` in `public/tools/style/process.js`,
 pictures are, then tap **Download for the game** and upload the zips to
 `main`, as before.
 
+**v2.3.2962: done.** The owner uploaded the two zips, and their 96 tiles
+replaced the old ones in `public/world/ground/` (33.8 MB, each a palette PNG
+on at most 64 colours, the manifest saying `ownColours: 64`). Their commons
+went from 100 colours, 92% of it three greens, to 64, the top three only
+35%:
+
+![The owner's commons, before (3 greens) and on its own 64 colours](world/commons-own-colours.png)
+
 Tested: `node tools/world/test-world-core.mjs` (a grass picture keeps 63
 colours of its own where the one palette made with eleven other grounds
 left it 8, and stays closer to the picture; the same colours every time);

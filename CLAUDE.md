@@ -129,7 +129,8 @@ remnant to migrate server-side, not a mode to preserve.
   grass came out 3 flat greens, "clumpy" (TRAPS §124); the studio chooses
   them again from its 'prep' tiles on load, nothing to freeze, and the
   worker keeps each tile as numbers into its own colours:
-  WORLD-MAP-PIPELINE "Each ground keeps its own colours"),
+  WORLD-MAP-PIPELINE "Each ground keeps its own colours"; since v2.3.2962
+  the owner's re-exported 96 tiles on their own colours are the game's),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
