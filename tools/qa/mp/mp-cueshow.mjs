@@ -199,7 +199,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 1. THE WIND-UP ── */
     await dismissTips();
     const w1 = await state(P);
-    await P.page.waitForTimeout(400);
+    /* v2.3.2956: 400 -> 1400.  With gathering hits (caps.gatherhits) the
+       wind-up bar no longer creeps on a clock -- it steps up once per HIT,
+       one swing apart (540-650 ms) -- so two reads 400 ms apart could both
+       fall between hits and see the same fill.  1400 always spans two hits'
+       worth of swing while staying well inside a level-1 run of ten. */
+    await P.page.waitForTimeout(1400);
     const w2 = await state(P);
     const box = await H.figureBox(P, { pad: 70 }).catch(() => null);
     const shot = async (name) => {

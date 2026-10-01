@@ -15,6 +15,56 @@
  * _rollHarvestShard's monster-kill sibling (_rollShardForKill, 10%)
  * stays in the index.js combat region. */
 
+/* ═══ v2.3.2956: GATHERING HITS — THE NODE HAS HIT POINTS ═══
+ *
+ * Owner: "the resource has something akin to an hp bar and the player ticks
+ * away at it and the tick range is determined by their skill level in
+ * harvesting that resource.  So like level 1 would do 1 tick per second (or
+ * whatever interval makes the most sense) until the 10 ticks assigned to the
+ * resource are exhausted.  At that point the user would have to do the
+ * gesture to complete the resource extraction.  Level 2 might be a tick from
+ * 1-2 ... The next tier resource would have a higher max number of ticks."
+ * Then: "Just add it for every resource gathering process."
+ *
+ * So the wind-up -- which was a smooth timer (computeOpenDelay, 2-10 s by
+ * skill level against node tier) -- is now a string of HITS the worker
+ * rolls: each hit takes 1..level off the node's HP, and the gesture window
+ * opens when the HP is gone.  The gesture itself is untouched.
+ *
+ * WHY THE WORKER ROLLS THEM, and why that is not TRAPS #4.  #4 forbids
+ * server-rolling the COOK minigame because its outcome is the player's
+ * TIMING, which a server roll would overrule.  These hits are pure dice off
+ * the skill level -- there is no player input in them at all -- so they are
+ * exactly the kind of number rule zero says the server owns.  The gesture,
+ * which IS timing, stays client-graded as before.
+ *
+ * Numbers, all owner-facing:
+ *   HP     5 x (tier level + 1): the first tier is the owner's 10, and every
+ *          tier takes about ten hits at the level that unlocks it (rolls of
+ *          1..L average (L+1)/2).  Only tier 1 spawns today (_placeGatherNode).
+ *   MS     one hit per SWING of the art, so the number pops on the blow the
+ *          player watches land: the pick's 650 ms loop, the axe's 540 ms
+ *          (12 frames x 45 ms), and a 650 ms nibble for the rod, which has no
+ *          blow.  Mirrors GATHER_SWING (src/data/gameSystems.js), pinned by
+ *          mirror-audit.test.mjs.  Level 1 on the first tier is 10 hits,
+ *          ~6.5 s on a rock against the old 4 s wind-up.
+ *   MAX_HITS  a bound no live node can reach (tier 1 is at most 10 hits): a
+ *          far-under-levelled player on a future high tier would otherwise
+ *          get a plan hundreds of hits long.  The last allowed hit takes
+ *          whatever HP is left.
+ *   REUSE_MS  a restart on the SAME node within this window replays the same
+ *          rolls instead of re-rolling, so walking off and back on cannot be
+ *          used to fish for a short plan.  Honest play never notices: the
+ *          record is deleted on a successful strike, so the next harvest of
+ *          the respawned node rolls fresh. */
+export const GATHER_HITS = {
+  MS: { mining: 650, woodcutting: 540, fishing: 650 },
+  HP_PER_TIER: 5,
+  MAX_HITS: 40,
+  REUSE_MS: 60000,
+  SEQ_MAX: 1e9,
+};
+
 export const gatheringMethods = {
   // ═══ Gather nodes (trees / fish spots / ore veins) ═══
   //
@@ -572,7 +622,7 @@ export const gatheringMethods = {
 
   _handleExtractionStart(session, payload) {
     if (!session || !session.id) return;
-    const { nodeId, zone, skill } = payload || {};
+    const { nodeId, zone, skill, hitSeq } = payload || {};
     if (!nodeId || !zone || !skill) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
@@ -587,12 +637,108 @@ export const gatheringMethods = {
     if (!this._hasGatherTool(ps, skill)) return;
     const skillLevel = (ps.lifeSkills && ps.lifeSkills[skill] && ps.lifeSkills[skill].level) || 0;
     const nodeTier = n.tierLvl || 1;
-    this.extractions[session.id] = {
+    const rec = {
       nodeId, zone, skill,
       startedAt: Date.now(),
       skillLevel, nodeTier,
       openDelayBase: this._computeOpenDelayBase(skillLevel, nodeTier),
     };
+    /* v2.3.2956: a client that plays the HITS says so with `hitSeq`, a
+       per-attempt counter it gets echoed back, so a plan that arrives late
+       for an attempt it has already abandoned is recognised and dropped.  No
+       hitSeq is an old client (or one whose worker did not advertise
+       caps.gatherhits): it keeps the timer above, byte-identical, and is
+       sent nothing it would not understand.  The plan replaces the window
+       only for the client that asked for it -- an old client still runs
+       computeOpenDelay, and validating it against a plan it never played
+       would refuse its harvests as too early. */
+    const seq = (typeof hitSeq === 'number' && Number.isInteger(hitSeq) && hitSeq > 0 && hitSeq <= GATHER_HITS.SEQ_MAX) ? hitSeq : 0;
+    if (seq) this._planGatherHits(session, ps, n, rec, seq);
+    this.extractions[session.id] = rec;
+  },
+
+  /** v2.3.2956: the kill switch.  `gatherhits: false` in the liveflags key
+   *  (POST /api/admin/flags -- lower case so that route accepts it, TRAPS
+   *  §117) un-advertises caps.gatherhits for anyone who joins after it, AND
+   *  answers a client that joined before it with `off`, so its harvest drops
+   *  back to the old timer at once instead of waiting out its plan timeout. */
+  _gatherHitsOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'gatherhits') && !f.gatherhits);
+  },
+
+  /** v2.3.2956: a node's hit points -- see GATHER_HITS.HP_PER_TIER. */
+  _gatherNodeHp(tierLvl) {
+    const t = Math.max(1, Math.floor(Number(tierLvl) || 1));
+    return GATHER_HITS.HP_PER_TIER * (t + 1);
+  },
+
+  /** v2.3.2956: roll hits of 1..level until the node's HP is gone.  The
+   *  LAST hit is the one that crosses zero, so the plan never carries a hit
+   *  after the node is already broken.  MAX_HITS bounds it (see the config). */
+  _rollGatherHits(level, hp) {
+    const top = Math.max(1, Math.floor(Number(level) || 1));
+    const hits = [];
+    let left = Math.max(1, Math.floor(Number(hp) || 1));
+    while (left > 0) {
+      let d = 1 + Math.floor(Math.random() * top);
+      if (hits.length >= GATHER_HITS.MAX_HITS - 1) d = Math.max(d, left);
+      hits.push(d);
+      left -= d;
+    }
+    return hits;
+  },
+
+  /** v2.3.2956: decide this attempt's hits, rewrite the record's window to
+   *  match them, and tell the harvester.
+   *
+   *  The skill is the NODE's, never the payload's: `skill` arrives from the
+   *  client, and taking it at its word would let a tree be cut at the
+   *  player's mining level.  (The legacy record above still reads the
+   *  payload's -- that path is unchanged on purpose, and its only use is the
+   *  timer an old client runs anyway.)
+   *
+   *  The window: the client lands its hits on the swing's own blows, the
+   *  first within one swing of the plan arriving and one swing apart after
+   *  that, so the gesture cannot open before (hits - 1) swings have passed
+   *  since this record was stamped.  That is the bound -- no jitter, the dice
+   *  already vary it.  The gesture that follows needs GESTURE_FLOOR_MS of
+   *  real motion on top, so an honest strike is never near the edge. */
+  _planGatherHits(session, ps, n, rec, seq) {
+    const hitSkill = this._harvestSkillName(n.nodeType);
+    if (this._gatherHitsOff() || !Object.prototype.hasOwnProperty.call(GATHER_HITS.MS, hitSkill)) {
+      this._sendGatherHits(session, { seq, nodeId: rec.nodeId, zone: rec.zone, off: true });
+      return;
+    }
+    const hp = this._gatherNodeHp(rec.nodeTier);
+    const lvl = (ps.lifeSkills && ps.lifeSkills[hitSkill] && ps.lifeSkills[hitSkill].level) || 1;
+    const prev = this.extractions[session.id];
+    const reuse = !!(prev && Array.isArray(prev.hits) && prev.nodeId === rec.nodeId && prev.zone === rec.zone
+      && prev.hp === hp && (rec.startedAt - (prev.rolledAt || 0)) < GATHER_HITS.REUSE_MS);
+    rec.hits = reuse ? prev.hits : this._rollGatherHits(lvl, hp);
+    rec.hp = hp;
+    rec.hitSkill = hitSkill;
+    rec.hitLevel = reuse ? prev.hitLevel : lvl;
+    rec.rolledAt = reuse ? prev.rolledAt : rec.startedAt;
+    rec.openDelayBase = (rec.hits.length - 1) * GATHER_HITS.MS[hitSkill];
+    rec.jitter = 0;
+    this._sendGatherHits(session, { seq, nodeId: rec.nodeId, zone: rec.zone, hp, hits: rec.hits.slice() });
+  },
+
+  /** v2.3.2956: the plan goes to the harvester alone (PRIVILEGED_EVENTS). */
+  _sendGatherHits(session, payload) {
+    const ws = this._wsBySessionId(session.id);
+    if (!ws) return;
+    try { ws.send(JSON.stringify({ type: 'gather_hits', payload })); } catch (e) {}
+  },
+
+  /** v2.3.2956: the operator view of the plan (admin.js `hitPlan`), so a
+   *  headless check can hold what the client played against what the worker
+   *  rolled -- the TRAPS #18 lesson: ask the worker, not the browser. */
+  _gatherHitPlanFor(playerId) {
+    const e = this.extractions[playerId];
+    if (!e || !Array.isArray(e.hits)) return null;
+    return { nodeId: e.nodeId, skill: e.hitSkill, level: e.hitLevel, hp: e.hp, hits: e.hits.slice(), windowMs: e.openDelayBase };
   },
 
   /* ═══ v2.3.2273: WHY A STRIKE PAID NOTHING ═══
@@ -684,8 +830,11 @@ export const gatheringMethods = {
     let coercedAccuracy = accuracy || 'good';
     let openLatencyMs = null;
     if (ex && ex.nodeId === id && ex.zone === zone) {
-      const jitterLo = 1 - this.EXTRACT_JITTER;
-      const jitterHi = 1 + this.EXTRACT_JITTER;
+      /* v2.3.2956: a HIT plan's window is exact (the dice vary it, not a
+         jitter), so its record carries jitter 0; the timer's keeps ±15%. */
+      const jit = (typeof ex.jitter === 'number') ? ex.jitter : this.EXTRACT_JITTER;
+      const jitterLo = 1 - jit;
+      const jitterHi = 1 + jit;
       const earliestOpen = ex.startedAt + Math.floor(ex.openDelayBase * jitterLo) - this.EXTRACTION_GRACE_MS;
       const latestClose  = ex.startedAt + Math.ceil(ex.openDelayBase * jitterHi) + this.EXTRACT_WINDOW_MS + this.EXTRACTION_GRACE_MS;
       if (now < earliestOpen) {
@@ -694,7 +843,7 @@ export const gatheringMethods = {
         // can still complete.
         if (!session._extractionRejects) session._extractionRejects = 0;
         session._extractionRejects++;
-        this._strikeRefused(session, 'too-early', { earlyBy: earliestOpen - now, openDelayBase: ex.openDelayBase, sinceStart: now - ex.startedAt });
+        this._strikeRefused(session, 'too-early', { earlyBy: earliestOpen - now, openDelayBase: ex.openDelayBase, sinceStart: now - ex.startedAt, hits: Array.isArray(ex.hits) ? ex.hits.length : 0 /* v2.3.2956 */ });
         return;
       }
       /* v2.3.1416 (owner: harvest windows no longer time out): the

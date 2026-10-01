@@ -128,7 +128,14 @@ export function extractionMeter01(ex, now) {
   if (!ex) return null;
   const t = (typeof now === 'number') ? now : Date.now();
   const span = Math.max(1, (ex.windowOpensAt || 0) - (ex.startedAt || 0));
-  const windup = Math.max(0, Math.min(1, (t - (ex.startedAt || 0)) / span));
+  let windup = Math.max(0, Math.min(1, (t - (ex.startedAt || 0)) / span));
+  /* v2.3.2956: with gathering HITS the wind-up is the node's HP, not a
+     clock: the bar and the ring step up by each hit as it lands (and sit at
+     0 until the worker's plan does), so the two meters read the same thing
+     the numbers off the node say.  `ready` below still takes the gesture's
+     own progress, unchanged. */
+  const h = ex.hits;
+  if (h) windup = (h.plan && h.maxHp > 0) ? Math.max(0, Math.min(1, 1 - h.hp / h.maxHp)) : 0;
   const reps = Math.max(0, Math.min(1, ex.progress || 0));
   const ready = ex.status === 'ready';
   return {

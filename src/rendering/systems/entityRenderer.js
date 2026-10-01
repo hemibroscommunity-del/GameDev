@@ -603,6 +603,95 @@ function _hpFillTexFor(holder, frac) {
   return holder._hpFillTex;
 }
 
+/* ═══ v2.3.2956: A GATHER NODE WEARS THE MONSTER'S HEALTH BAR ═══
+   Owner: "the resource has something akin to an hp bar and the player ticks
+   away at it".  So the rock, the tree and the pond take the bar every monster
+   already wears -- the same art, the same 44x13 box, the same white ghost
+   trail and damage flash, the same number in the middle -- for the reason
+   _drawPeerHpBar gives for the duel bar: a second bar style is a second thing
+   to keep in sync, and "an hp bar" is the monster's to anyone who has played
+   this game for a minute.
+   The PLACE is the node's own, and deliberately far from the head: the
+   player's own HP bar is this exact art over the character, so a node bar
+   near the face would read as yours.  effectsRenderer decides where (under
+   the rock, over the crown, under the pond -- it owns the node sprites) and
+   when; this draws.  `holder` keeps the four display objects and the ghost
+   state between frames; `bar.show === false` hides it and resets the ghost,
+   so the next harvest starts from a clean full bar. */
+export function drawNodeHpBar(layer, holder, bar) {
+  if (!layer || !holder) return;
+  const parts = ['_nbFrame', '_nbFill', '_nbFx', '_nbText'];
+  if (parts.some((k) => !holder[k] || holder[k].destroyed)) {
+    for (const k of parts) { if (holder[k] && !holder[k].destroyed) holder[k].destroy(); }
+    holder._nbFrame = new Sprite(); holder._nbFrame.anchor.set(0.5, 0.5);
+    holder._nbFill = new Sprite(); holder._nbFill.anchor.set(0, 0.5);
+    holder._nbFx = new Graphics();
+    holder._nbText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
+    holder._nbText.anchor.set(0.5, 0.5);
+    if (holder._hpFillTex) holder._hpFillTex.destroy(false);   /* the cropped view only; the art is shared */
+    holder._hpFillTex = null; holder._hpFillTexW = 0;
+    for (const k of parts) holder[k].alpha = 0;
+  }
+  for (const k of parts) { if (holder[k].parent !== layer) layer.addChild(holder[k]); }
+  const hide = () => {
+    if (holder._nbFrame.alpha !== 0) {
+      for (const k of parts) holder[k].alpha = 0;
+      holder._nbFx.clear();
+    }
+    holder._nbGhost = null; holder._nbLast = null;
+  };
+  _ensureHudBarTextures();
+  const frameTex = _hudBarTex.barFrame;
+  if (!bar || !bar.show || !frameTex || !(bar.maxHp > 0)) { hide(); return; }
+  /* On top of its layer.  The miner's and the angler's BODIES are re-parented
+     into this same layer for the harvest (_updatePlayer's gestureFront
+     promotion), after the bar was made -- and a body drawn over the bar it is
+     reducing is the v2.3.2636 rule broken ("a burst cannot hide the bar it is
+     reducing").  Re-appended only when something has landed above it, which
+     happens once per harvest, not per frame. */
+  const kids = layer.children;
+  if (kids[kids.length - 1] !== holder._nbText) for (const k of parts) layer.addChild(holder[k]);
+  const frac = Math.max(0, Math.min(1, bar.hp / bar.maxHp));
+  const W = MONSTER_HPBAR_W, H = MONSTER_HPBAR_H;
+  const { x, y, now } = bar;
+  const fr = holder._nbFrame;
+  if (fr.texture !== frameTex) fr.texture = frameTex;
+  fr.width = W; fr.height = H; fr.x = x; fr.y = y; fr.alpha = 1;
+  const fill = holder._nbFill;
+  const fillTex = frac > 0 ? _hpFillTexFor(holder, frac) : null;
+  if (fillTex) {
+    if (fill.texture !== fillTex) fill.texture = fillTex;
+    fill.width = Math.max(1, W * frac); fill.height = H;
+    fill.x = x - W / 2; fill.y = y; fill.alpha = 1;
+  } else fill.alpha = 0;
+  /* Ghost trail + white flash: the monster bar's v2.3.458 constants. */
+  if (holder._nbGhost == null) holder._nbGhost = frac;
+  if (holder._nbLast != null && frac < holder._nbLast - 0.0005) {
+    holder._nbDrainAt = now + HP_GHOST_HOLD_MS;
+    holder._nbFlashUntil = now + HPBAR_FLASH_MS;
+  }
+  if (frac >= holder._nbGhost) holder._nbGhost = frac;
+  else if (now >= (holder._nbDrainAt || 0)) holder._nbGhost = Math.max(frac, holder._nbGhost - HP_GHOST_DRAIN_M);
+  holder._nbLast = frac;
+  const fx = holder._nbFx;
+  fx.clear(); fx.alpha = 1;
+  const inL = x - W / 2 + W * HPBAR_IN_X, inW = W * HPBAR_IN_W;
+  const inT = y - H / 2 + H * HPBAR_IN_Y, inH = H * HPBAR_IN_H;
+  if (holder._nbGhost > frac + 0.001) {
+    fx.rect(inL + inW * frac, inT, inW * (holder._nbGhost - frac), inH);
+    fx.fill({ color: HP_GHOST_WHITE, alpha: 0.92 });
+  }
+  const fl = (holder._nbFlashUntil || 0) - now;
+  if (fl > 0 && frac > 0) {
+    fx.rect(inL, inT, inW * frac, inH);
+    fx.fill({ color: 0xffffff, alpha: 0.85 * (fl / HPBAR_FLASH_MS) });
+  }
+  const txt = holder._nbText;
+  const str = String(Math.max(0, Math.round(bar.hp)));
+  if (txt.text !== str) txt.text = str;
+  txt.x = x; txt.y = y; txt.alpha = 1;
+}
+
 /* v2.3.261 (Bro-NFT Phase 4): trait textures for the local player's
    face/head composite layer.  One sprite per stored direction (east,
    north, northeast, south, southwest); W / NW / SE render via mirror.

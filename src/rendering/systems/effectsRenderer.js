@@ -270,7 +270,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, remoteBodyArt, monsterBodySprite /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
@@ -1684,6 +1684,21 @@ const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
    gap -- in front of the trunk, drawn behind it.  The depth pass reads
    `_groundDy` to lift the tree's line up to its drawn base. */
 const NODE_ART_BASE = { tree: 0.839, oreVein: 0.737 };
+/* v2.3.2956: where a node's HP bar hangs, as a fraction of its frame --
+   measured off the same webps' alpha (>40): the pine's crown tops out at
+   0.103, the ore's rock bottoms out at its ground line (NODE_ART_BASE), the
+   pond's water at 0.686.  `edge` says which side of that line the bar goes:
+   over the CROWN for a tree (the chopper stands at the trunk) and UNDER the
+   rock and the pond (the miner and the angler are above them).  Never near
+   the head -- the player's own HP bar is the same art, right there.  `gap`
+   is the clear space between that line and the bar; the rock's is wider
+   because the miner's boots hang just below the ore's base (measured on the
+   mp-gatherhits capture: a 4 px gap let them clip the bar's number). */
+const NODE_HPBAR_AT = {
+  tree:     { f: 0.103, edge: -1, gap: 4 },
+  oreVein:  { f: 0.737, edge: 1, gap: 10 },
+  fishSpot: { f: 0.686, edge: 1, gap: 4 },
+};
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   _fxLoad(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
 )).catch((err) => console.warn('[node-sprites] load failed', err));
@@ -9397,8 +9412,44 @@ export class EffectsRenderer {
       }
     }
 
+    this._drawGatherHpBar(S, nodes, now);   /* v2.3.2956 */
     this._advanceOreBreaks(now);
     this._advanceItemPops(now);
+  }
+
+  /* ═══ v2.3.2956: THE NODE'S HP BAR WHILE YOUR HITS LAND ═══
+     Up from the first hit to a beat after the last (the ghost trail drains
+     and the flash plays out), then gone -- `ready` belongs to the bar over
+     the head and the cue on the button.  YOUR attempt only: the hits are
+     rolled per player and nobody else is shown them.  Drawing is the
+     monster bar's (entityRenderer drawNodeHpBar); this is only the where and
+     the when, because the node sprites live here. */
+  _drawGatherHpBar(S, nodes, now) {
+    if (!this._nodeHpBar) this._nodeHpBar = {};
+    const ex = S._extraction;
+    const h = ex && ex.hits;
+    let bar = null;
+    if (h && h.plan && h.shown > 0
+        && (ex.status === 'waiting' || (ex.status === 'ready' && now - (h.lastHitAt || 0) < 900))) {
+      const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
+        : nodes.find((n) => n.id === ex.nodeId && n.alive);
+      const at = node && NODE_HPBAR_AT[node.nodeType];
+      if (at) {
+        const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
+        const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
+        const frameTop = node.y - (NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5) * targetH;
+        const y = frameTop + at.f * targetH + at.edge * (at.gap + 6.5);   /* 6.5 = half the bar's 13 px */
+        bar = { show: true, hp: h.hp, maxHp: h.maxHp, x: node.x, y, now };
+      }
+    }
+    drawNodeHpBar(this.gestureLayer, this._nodeHpBar, bar);
+    /* QA probe, like __btWindupBar: what the bar is showing, which an
+       anti-aliased 44px bar in a screenshot cannot be asked. */
+    if (typeof window !== 'undefined') {
+      window.__btNodeHpBar = bar
+        ? { show: true, hp: bar.hp, maxHp: bar.maxHp, x: +bar.x.toFixed(1), y: +bar.y.toFixed(1), shown: h.shown, of: h.plan.length }
+        : { show: false };
+    }
   }
 
   /* v2.3.2844: the snowman's per-hit plume is retired (tombstone near the old

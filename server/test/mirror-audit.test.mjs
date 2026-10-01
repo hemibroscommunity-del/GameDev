@@ -31,6 +31,8 @@ import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_AR
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
+import { GATHER_HITS as SRV_GATHER_HITS } from '../src/gathering.js'; /* v2.3.2956 */
+import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes } from '../../src/data/gameSystems.js'; /* v2.3.2956 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -1311,6 +1313,55 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     check('smelting: ' + k + ' ore / cost / level / xp match',
       a.ore === b.ore && a.oreCost === b.oreCost && a.minLvl === b.minLvl && a.xp === b.xp, { srv: a, cli: b });
   }
+}
+
+// ── GATHERING HITS: one hit per swing, on the blow ──
+// v2.3.2956.  The worker validates a harvest against (hits - 1) swings of
+// GATHER_HITS.MS; the client plays the hits on GATHER_SWING's blow instants.
+// Three things have to agree, and only the first two are tables:
+//   1. the worker's swing length and the client's, per skill;
+//   2. the node HP the client draws and the HP the worker rolls against;
+//   3. the ART -- GATHER_SWING copies the pose loop lengths and the blow
+//      frames out of the renderers, which own them.  Those are read as TEXT
+//      (the renderers import Pixi, which this suite cannot load), so a retimed
+//      swing fails here, naming the constant to move with it, instead of
+//      quietly sliding every number off the blow it was meant to land on.
+{
+  const room = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {} }, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  const keys = (o) => Object.keys(o).sort().join(',');
+  check('gather hits: the worker and the client know the same hit skills', keys(SRV_GATHER_HITS.MS) === keys(CLIENT_GATHER_SWING),
+    { srv: keys(SRV_GATHER_HITS.MS), cli: keys(CLIENT_GATHER_SWING) });
+  for (const k of Object.keys(SRV_GATHER_HITS.MS)) {
+    check('gather hits: ' + k + ' swings at the same pace on both sides',
+      SRV_GATHER_HITS.MS[k] === (CLIENT_GATHER_SWING[k] || {}).ms, { srv: SRV_GATHER_HITS.MS[k], cli: CLIENT_GATHER_SWING[k] });
+  }
+  check('gather hits: node HP agrees at every tier the tables define',
+    [1, 6, 11, 21, 51, 96].every((t) => room._gatherNodeHp(t) === clientGatherNodeHp(t)),
+    [1, 6, 11, 21, 51, 96].map((t) => [t, room._gatherNodeHp(t), clientGatherNodeHp(t)]));
+  const times = clientGatherHitTimes('mining', 1000000, 4);
+  check('gather hits: the client schedules hits one swing apart, on the blow, after the lead',
+    times.length === 4 && times.every((t, i) => i === 0 || t - times[i - 1] === 650)
+      && ((times[0] % 650) + 650) % 650 === 186 && times[0] >= 1000000 + 90 && times[0] < 1000000 + 90 + 650, times);
+
+  const sprites = readFileSync(new URL('../../src/rendering/playerSprites.js', import.meta.url), 'utf8');
+  const fx = readFileSync(new URL('../../src/rendering/systems/effectsRenderer.js', import.meta.url), 'utf8');
+  const ent = readFileSync(new URL('../../src/rendering/systems/entityRenderer.js', import.meta.url), 'utf8');
+  const pixi = readFileSync(new URL('../../src/rendering/pixiRenderer.js', import.meta.url), 'utf8');
+  check('gather hits: the pick\'s loop is still 650 ms (playerSprites MINE_DURATION_MS = GATHER_SWING.mining.ms)',
+    /const MINE_DURATION_MS = 650;/.test(sprites) && CLIENT_GATHER_SWING.mining.ms === 650);
+  check('gather hits: the pick still lands entering frame 4 of 14 (GATHER_SWING.mining.blowAt = 4/14 of the loop)',
+    /_crossedFrame\(_mL, _mk, 4\)/.test(fx) && CLIENT_GATHER_SWING.mining.blowAt === Math.round(4 / 14 * 650));
+  check('gather hits: the chop is still 12 frames of 45 ms (GATHER_SWING.woodcutting.ms)',
+    /const CHOP_FRAME_MS = 45;/.test(fx) && /const CHOP_BASE = 12, CHOP_COUNT = 12;/.test(fx) && CLIENT_GATHER_SWING.woodcutting.ms === 12 * 45);
+  check('gather hits: the axe still bites on frame 9 with its sound 200 ms later (GATHER_SWING.woodcutting.blowAt)',
+    /const CHOP_STRIKE_K = 9;/.test(fx) && /const _chopLead = ex\.status === 'ready' \? 0 : 200;/.test(fx)
+      && CLIENT_GATHER_SWING.woodcutting.blowAt === (9 * 45 + 200) % 540);
+  check('gather hits: both wind-up loops still run free on the frame clock, which is Date.now()',
+    /: Math\.floor\(now \/ CHOP_FRAME_MS\) % CHOP_COUNT;/.test(fx)
+      && /: Math\.floor\(\(now \/ cycle\) \* fc\) % fc;/.test(ent)
+      && /: Math\.floor\(\(now \/ jogCycleMs\('mine', 'south'\)\) \* _mfc\) % _mfc;/.test(fx)
+      && /const now = Date\.now\(\);/.test(pixi));
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

@@ -407,6 +407,10 @@ export const PRIVILEGED_EVENTS = new Set([
   // visual -- a cheater can clear their own corpse on others' screens
   // but can't actually revive themselves server-side.
   'combat_credit', 'harvest_credit', 'loot_credit', 'lifesteal_credit', 'loot_pickup_rejected',
+  // v2.3.2956: the server-rolled gathering hits (gathering.js
+  // _sendGatherHits).  A forged plan relayed to a harvester would paint
+  // numbers the worker never rolled and open their gesture window early.
+  'gather_hits',
   'stat_allocated', 'ability_rejected',
   // v2.3.1659: prog3 combat-rebuild emissions (prog3.js) — the trained
   // level-up celebration and the allocation ack are both server-truth;
