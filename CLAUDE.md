@@ -130,7 +130,10 @@ remnant to migrate server-side, not a mode to preserve.
   them again from its 'prep' tiles on load, nothing to freeze, and the
   worker keeps each tile as numbers into its own colours:
   WORLD-MAP-PIPELINE "Each ground keeps its own colours"; since v2.3.2962
-  the owner's re-exported 96 tiles on their own colours are the game's),
+  the owner's re-exported 96 tiles on their own colours are the game's; since
+  v2.3.2963 the Wheel is ALWAYS DAYLIGHT for now (`setAlwaysDay` in
+  timeOfDay.js, set by worldTrial.js syncWheel, winning over ?tod=) -- the
+  owner saw one unexplained very dark visit: "make it daylight only for now"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

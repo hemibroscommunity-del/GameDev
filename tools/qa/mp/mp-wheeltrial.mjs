@@ -226,6 +226,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const nYard = px.count(near(ORANGE)) + px.count(near(PURPLE)), nBlend = px.count(near(YELLOW)) + px.count(near(GREEN));
   rec.ok(`...with the yards beyond it, and no blend laid where the square meets them, the pair mixing on its two pictures (${(100 * nBlend / all).toFixed(2)}% of the screen in the blend's colours)`,
     nYard > all * 0.03 && nBlend < all * 0.002, { nYard, nBlend, all });
+  /* v2.3.2963: daylight only in the Wheel, for now -- the owner: "Yeah make it
+     daylight only for now".  The game clock set to night: the Wheel stays at
+     midday, its ground in its own colours to the pixel, the sun in the bar */
+  await P.page.evaluate(() => { window.__btTod = 'night'; });
+  await P.page.waitForTimeout(900);
+  const sky = await P.page.evaluate(() => ({
+    tod: window.__btTimeOfDay ? window.__btTimeOfDay() : null,
+    drawn: window.__btWorldFx ? window.__btWorldFx().tod : null,
+    icon: (document.querySelector('.bt-zone-header__tod') || { dataset: {} }).dataset.tod || null,
+  }));
+  const pxN = await H.screenshotPixels(P);
+  const nMagN = pxN.count(near(MAGENTA)), nCyanN = pxN.count(near(CYAN));
+  rec.ok('the Wheel is always daylight, for now: with the game clock at night it stays at midday, nothing darkened (v2.3.2963)',
+    sky.tod && sky.tod.name === 'day' && sky.drawn && sky.drawn.name === 'day' && sky.drawn.lamp === 0 && sky.icon === 'day' &&
+    nMagN > 0.9 * nMag && nCyanN > 0.9 * nCyan, { sky, nMag, nMagN, nCyan, nCyanN });
 
   /* ── 3. walk ── */
   const legs = [
@@ -290,6 +305,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1500);
   const after = await P.page.evaluate(() => ({ stats: Object.assign({}, window.__btWorldTrial.stats), ready: window.__btWorldTrial.ready() }));
   rec.ok('the marker takes you back to town', back === 'town', { back });
+  /* v2.3.2963: ...where the game clock is back in charge: still night there */
+  const townSky = await P.page.evaluate(() => (window.__btTimeOfDay ? window.__btTimeOfDay() : null));
+  rec.ok('...where the day and night come back: the game clock\'s night is night in town', !!townSky && townSky.name === 'night', townSky);
+  await P.page.evaluate(() => { delete window.__btTod; });
   rec.ok('...and every piece is freed on the way out', after.stats.resident === 0 && after.ready === false, after);
   await P.page.waitForTimeout(6500);
   const running = await P.page.evaluate(() => window.__btWorldTrial.running());

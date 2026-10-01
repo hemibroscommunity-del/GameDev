@@ -1418,6 +1418,25 @@ known: keep each piece as **palette numbers** (one byte a pixel, as the worker
 already keeps the swatches) and colour it on the graphics chip. That cuts the
 ground's memory to a quarter.
 
+### Always daylight, for now (v2.3.2963)
+
+> Owner, 2026-10-01, after one visit came out very dark just past the game's
+> night: *"Something is wrong with the way it's displaying after entering the
+> wheel (preview). Too dark"* … *"Yeah make it daylight only for now".*
+
+While you are in the Wheel (or walking into it) the game's 40-minute day holds
+at midday: no dusk, night or dawn tint, no lanterns, the sun in the top bar.
+Town and every other zone keep the day as before. It is one switch,
+`setAlwaysDay` in `src/game/timeOfDay.js`, set every frame by
+`syncWheel` in `src/game/worldTrial.js`, and it wins over `?tod=` too.
+`wheeltrial` sets the game clock to night in the Wheel and checks the ground
+keeps its own colours to the pixel, then checks night is back in town.
+
+(The dark visit itself was not reproduced: at that moment the lighting should
+have been nearly full day, and the darkening layer looked as if it had kept an
+earlier night picture while the character loaded in. If it is ever seen again
+outside the Wheel, a screenshot with the phone's clock is what to look at.)
+
 ### On a slow connection (v2.3.2959)
 
 > Owner, 2026-10-01, walking the Wheel on a phone with their own 96 tiles in

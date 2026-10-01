@@ -55,6 +55,7 @@
 import { ZONES } from '../data/zones.js';
 import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/effects.js';
 import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats } from './wheelTrial.js';
+import { setAlwaysDay } from './timeOfDay.js';
 
 export const WORLD_TRIAL_ZONE = 'worldview';
 export const WORLD_TRIAL_BASE = '/maps/world-trial-v1/';
@@ -300,6 +301,8 @@ function syncWheel(S, inTrial, now) {
   /* set whenever there is one, not only once inside: the way in reads it on
      its first frame (nudgeSpawnToWalkable), before this runs again */
   if (grid && S._tiledWalkable[WORLD_TRIAL_ZONE] !== grid) S._tiledWalkable[WORLD_TRIAL_ZONE] = grid;
+  /* v2.3.2963: daylight only in the Wheel, for now (timeOfDay.js setAlwaysDay) */
+  setAlwaysDay(inTrial || coming);
   if (inTrial || coming) { _wheelAwayAt = 0; return; }
   if (!wheelRunning()) return;
   if (!_wheelAwayAt) { _wheelAwayAt = now; return; }
