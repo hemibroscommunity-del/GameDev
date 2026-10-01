@@ -1186,6 +1186,45 @@ pixel for pixel the same as the backup's. It also checks that a smaller part
 limit splits the zips (each under the limit, each with the manifest, every
 picture once), and that the page's "Save part" button saves the zip.
 
+## Footstep sounds, one per kind of ground (the list, v2.3.2965)
+
+> Owner, 2026-10-01: *"I also want to give each ground type its own footstep
+> sound. Grass sounds like walking through grass, walking through rocks
+> sounds like walking through rocks etc. come up with a list of the different
+> footstep sounds I'll need (since some terrain types work with several)"*
+
+Twelve sounds cover all 48 swatches. The game's one footstep today,
+`footstep-v3`, is dirt (v2.3.1422).
+
+| Sound | Like | Swatches |
+|---|---|---|
+| grass | a soft swish | commons, ember-1, mist-1, verdant-1, border-mist-verdant, border-frost-verdant |
+| dirt | a dull, packed-earth thud (today's `footstep-v3`) | town-yard, street, road, sky-1, thunder-1, border-hollows-thunder |
+| gravel | loose stones crunching | plaza, gravel, hollows-1, tidal-4, border-hollows-sky |
+| stone | a hard scuff on solid rock | ember-3, ember-4, sky-3, sky-4, hollows-2, hollows-3, hollows-4, tidal-3 |
+| sand | a soft, sliding crunch | sky-2, tidal-1, tidal-2, border-thunder-tidal |
+| snow | a squeaky crunch | frost-1, frost-2, frost-4 |
+| ice | a hard, glassy click | frost-3 |
+| mud | a wet squelch | mist-2, mist-3, border-ember-frost, border-mist-tidal |
+| forest floor | soft and muffled, a little leaf rustle | mist-4, verdant-2, verdant-3, verdant-4 |
+| ash | a dry, brittle cinder crunch | ember-2, border-ember-sky |
+| wood | a hollow knock | boardwalk (every bridge, porch and dock) |
+| metal | a clanky ring | thunder-2, thunder-3, thunder-4 |
+
+Lava is not walked on. A thirteenth, **shallow water** (a splash), would
+only be needed if players can wade, through fords or tide pools.
+
+**What to make:** one clip a sound of about six single steps (light boots
+at a jog), each under about 0.3 s with a short gap between, no echo, music
+or background noise, as MP3, like `public/sfx/footstep/`. The game cuts the
+steps apart and varies their pitch and loudness, as `footstep()` in
+`src/data/gameDisplay.js` does today.
+
+**The hookup** (when the sounds come, or sooner on the owner's word): the
+Wheel already knows the swatch under the bro (`wheelHere`). Each swatch
+names its sound, and each step plays that ground's sound, falling back to
+today's dirt step for any sound not made yet.
+
 ## Blend pictures, put away (v2.3.2955)
 
 > Owner, 2026-09-30: *"If I can get good results faster with just the 2
@@ -1318,14 +1357,87 @@ made again from the upload.
 **Saving**, as in the Ground Studio:
 
 - **Download all** (the backup): `manifest.json`, `objects/<id>-<n>.png` and
-  `originals/<id>.<ext>`. Restore makes everything again from the
-  originals, with the size choices;
-- **Download for the game**: the manifest and the pieces only, each saved as
-  palette numbers with number 0 see-through (`png8.js` `clear`, a tRNS
-  chunk), in zips under 24 MB;
+  `originals/<id>.<ext>`, and since v2.3.2965 `originals/sheets/<sheet>.<ext>`
+  with each sheet's boxes and names in the manifest. Restore makes
+  everything again from the originals, with the size choices and the names;
+- **Download for the game**: the manifest and each land's sprite sheets
+  (v2.3.2965, below), in zips under 24 MB. Until v2.3.2965 it held each
+  piece on its own, as palette numbers with number 0 see-through
+  (`png8.js` `clear`, a tRNS chunk), which the sprite sheets still use when
+  a sheet has 255 colours or fewer;
 - the manifest lists each object's pieces with their size in px and in game
   px, and `foot`, where it touches the ground: the middle of its bottom row,
   until the placing round gives each a footprint.
+
+### Sprite sheets (v2.3.2965)
+
+> Owner, 2026-10-01: *"I also want to fit as many things as I can on one
+> sprite sheet for objects as long as it stays organized."*
+
+Two kinds of sheet, one at each end of the pipe.
+
+**Sheet pictures: many objects to a ChatGPT picture** (`objects/sheets.js`).
+A picture is 512 game px tall so that its pixels come out the ground's size,
+and a set of four barrels filled a tenth of it. Now each land's objects are
+packed as many to a wide picture as fit at their true size:
+
+- **in rows read like a page**, each row left to right and the rows top to
+  bottom, each kind's ones together, in the order the prompt lists them;
+- **tallest first, first fit**: each kind goes beside the kinds in the
+  first row with room for it, else in a new row, else on a new sheet. The
+  sizes are estimates (the catalog's `ar`, how wide one is for its height),
+  with 16 game px of margin and 28 between any two objects;
+- **at most 7 kinds a sheet** (`SHEET_KINDS`), since past that ChatGPT
+  starts losing count;
+- **one flat background a sheet**: the pink and purple things get sheets of
+  their own on green;
+- **some objects keep a picture of their own**: a kind too big to share a
+  row (the two giant jungle trees), or a kind that would be alone on its
+  sheet;
+- **buildings are never packed**: each has its own long prompt, and two in
+  one chat would blend.
+
+59 objects that are not buildings come on 15 sheet pictures, plus 5 with a
+picture of their own: 20 chats instead of 59, and 37 with the buildings
+instead of 76.
+
+**Reading a sheet back** (`addSheet` in `objects/app.js`):
+
+1. it is cut out like any picture, and its objects found (`partsOf`), specks
+   left out (anything smaller than 15% of the smallest object asked for);
+2. they are put in rows (`readingOrder`): a part joins the row it shares the
+   most height with, at least 40% of the shorter one;
+3. each is named by its place (`autoAssign`): row by row in the prompt's
+   order, or simply in reading order when ChatGPT drew a different number
+   of rows. Past the ones asked for, a part is "not used";
+4. every name is a select on the sheet's card, so the owner can put any the
+   studio got wrong right with a tap. Only the objects whose names changed
+   are made again;
+5. each object is then made from its parts exactly as from a picture of its
+   own (`finishPieces`): sized, on its own 64 colours, hard-edged.
+
+**An object's own picture always wins.** Its own prompt is still on its
+card, to make or redo just that one. Remove its own picture and the
+sheet's ones take its place. Remove a sheet-made object and its parts on the
+sheet become "not used".
+
+**Sprite sheets for the game** (`atlasFiles`). "Download for the game" packs
+each land's finished objects into as few pictures as hold them:
+
+- at most 2048 px a side (`ATLAS_MAX`; every iPhone takes a texture that
+  big), in shelves, tallest first, with 2 clear px between any two objects
+  (`ATLAS_PAD`) so the game's smoothing never bleeds one into another;
+- one sheet a land, and two for the buildings;
+- beside each, a **PixiJS sheet file** (`objects/<land>-<n>.json`): the
+  frames, named `<object>-<n>`, each with its **anchor at its foot** (0.5,
+  1), and `meta.scale` 2, the art's px per game px, so the game's sprites
+  come out in game px;
+- the pixels are the pieces' own: each frame is the very piece the backup
+  holds;
+- the game's manifest says which sheet and frame each object's pieces are.
+
+So the game loads one file a land, for the land you are in: per-zone
+loading, as CLAUDE.md asks of zone art.
 
 **Facing.** Every building faces the viewer with its door at the bottom, as
 in most top-down games. The plots along Main Street line a north-south
@@ -1335,7 +1447,8 @@ decides how to handle that: a path round to each door, or turning the plots.
 **Next:**
 
 1. place the objects on the Wheel: buildings on their plots, trees along the
-   edges of the woods, props by rule;
+   edges of the woods, props by rule, each land's sprite sheet loaded with
+   the land;
 2. draw them in the game, sorted by their feet (`depthSort.js`), each with a
    footprint for collision;
 3. then the Old Mill, the Rail Depot, the Arena and the 32 camps join the
@@ -1350,7 +1463,12 @@ decides how to handle that: a path round to each door, or turning the plots.
   of one or two words; sets ask for that many, not touching; and a piece
   with see-through round it is saved as palette numbers with number 0
   see-through, while a pixel only partly see-through never is.
-- `tools/qa/object-studio.mjs` (35 checks) drives the page in Chromium:
+- `test-world-core.mjs`, since v2.3.2965, also checks the sheets: every
+  object that is not a building on exactly one sheet or with a picture of
+  its own; every sheet one background, 2 to 7 kinds, its rows fitting a wide
+  picture by the sizes asked for; and each sheet's prompt listing its rows
+  in the order the studio reads them back.
+- `tools/qa/object-studio.mjs` (45 checks since v2.3.2965) drives the page in Chromium:
   - the prompts and groups;
   - a set of barrels in through the file input, sized, hard-edged, on its
     own colours, with no magenta left;
@@ -1360,7 +1478,14 @@ decides how to handle that: a path round to each door, or turning the plots.
   - a green background shading toward its corners still counting as flat;
   - a reload, the backup restored in a fresh browser to the pixel, and the
     game's zip, decoded by hand, the same pixels;
-  - an older prompt marked, and removing an object.
+  - an older prompt marked, and removing an object;
+  - (v2.3.2965) the sheet cards and their prompts; a sheet of 21 objects in
+    four rows, drawn as its prompt asks, coming back with every object named
+    by its place and made as from its own picture; a name changed with a
+    tap; an own picture winning and, once removed, the sheet's taking its
+    place; the backup carrying the sheet and its names; and the game's
+    sprite sheets, every frame decoded and compared with the backup's piece,
+    anchored at its foot.
 
 ## The world trial: walking a seamless island today (v2.3.2932)
 

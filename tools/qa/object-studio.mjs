@@ -27,7 +27,15 @@
  *   7. WORK SURVIVES A RELOAD, the backup zip restores into a fresh browser
  *      with the same pixels, and the game's zip carries the same pixels as
  *      see-through palette PNGs and no originals;
- *   8. a picture made from an older prompt is marked; no page errors.
+ *   8. a picture made from an older prompt is marked; no page errors;
+ *   9. (v2.3.2965) SPRITE SHEETS: every land's objects come on sheet
+ *      pictures, each object on one; a sheet drawn as its prompt asks comes
+ *      back as every object on it, each named by its place and made as from
+ *      a picture of its own; a name changes with a tap; an object's own
+ *      picture wins, and its sheet's take over when it goes; the backup
+ *      carries the sheet and its names; and "Download for the game" packs
+ *      each land into one sprite sheet with a PixiJS sheet file, every frame
+ *      the very piece, anchored at its foot.
  *
  *   node tools/qa/object-studio.mjs          (OBJECT_SHOTS=dir to keep pictures)
  */
@@ -107,11 +115,14 @@ const makePicture = (page, opts) => page.evaluate(async ({ bg, shapes, scene, gr
   for (const [x, y, w, h, col, kind] of shapes) {
     const grd = g.createLinearGradient(x, y, x + w, y + h);
     grd.addColorStop(0, col); grd.addColorStop(1, '#2a1c14');
-    g.fillStyle = grd; g.strokeStyle = '#2b1d16'; g.lineWidth = 6;
+    /* (v2.3.2965: 'solid', one flat colour, so a test can tell which kind
+       a piece is by its colour) */
+    g.fillStyle = kind === 'solid' ? col : grd; g.strokeStyle = '#2b1d16'; g.lineWidth = 6;
     g.beginPath();
     if (kind === 'round') g.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, 7);
     else g.rect(x, y, w, h);
     g.fill(); g.stroke();
+    if (kind === 'solid') continue;
     /* a band of detail, so it has more than two colours */
     g.fillStyle = 'rgba(255,230,160,0.55)';
     g.fillRect(x + w * 0.15, y + h * 0.3, w * 0.7, Math.max(4, h * 0.08));
@@ -133,7 +144,7 @@ const put = async (page, id, b64) => {
 const facts = (page, id) => page.evaluate(async (i) => {
   const f = window.__objects.S.fin.get(i);
   if (!f) return null;
-  const out = { n: f.pieces.length, ratio: f.ratio, found: f.found, colours: 0, semi: 0, magenta: 0, green: 0, pieces: [] };
+  const out = { n: f.pieces.length, ratio: f.ratio, found: f.found, src: f.src || 'own', colours: 0, semi: 0, magenta: 0, green: 0, pieces: [] };
   const all = new Set();
   let hash = 0;
   for (const p of f.pieces) {
@@ -150,7 +161,12 @@ const facts = (page, id) => page.evaluate(async (i) => {
       if (d[k + 1] > 200 && d[k] < 90 && d[k + 2] < 90) out.green++;
       hash = (hash * 31 + d[k] * 7 + d[k + 1] * 13 + d[k + 2] * 17) >>> 0;
     }
-    out.pieces.push({ w: c.width, h: c.height, clear: clear / (c.width * c.height) });
+    /* its commonest solid colour */
+    const tally = new Map();
+    for (let k = 0; k < d.length; k += 4) if (d[k + 3]) { const key = (d[k] << 16) | (d[k + 1] << 8) | d[k + 2]; tally.set(key, (tally.get(key) || 0) + 1); }
+    let top = 0, topN = 0;
+    for (const [key, n] of tally) if (n > topN) { topN = n; top = key; }
+    out.pieces.push({ w: c.width, h: c.height, clear: clear / (c.width * c.height), main: [top >> 16, (top >> 8) & 255, top & 255] });
   }
   out.colours = all.size;
   out.hash = hash;
@@ -205,6 +221,25 @@ try {
     /a set of four .*wooden barrels.*four different ones in a row, side by side and not touching/s.test(P.barrel) && /waist-high on a person/.test(P.barrel) && /proud repair or a dent/.test(P.barrel) && /No text, letters or numbers anywhere/.test(P.barrel) &&
     /A wide picture \(3:2, landscape\) of a set of two/.test(P.oak) && /three times as tall as a person/.test(P.oak));
   ok('the pink and purple things are drawn on green, and say so', /ONE flat bright green colour \(#00FF00\)/.test(P.coral) && /ONE flat bright green colour/.test(P.gemcutter) && /ONE flat magenta colour/.test(P.bush));
+  /* v2.3.2965: the sheet pictures */
+  const sheets0 = await page.evaluate(() => {
+    const { S } = window.__objects;
+    const prompts = Object.fromEntries([...document.querySelectorAll('textarea[data-sheet-prompt]')].map((t) => [t.dataset.sheetPrompt, t.value]));
+    const on = Object.create(null);
+    for (const sh of S.sheets) for (const id of sh.rows.flat()) on[id] = (on[id] || 0) + 1;
+    return {
+      n: S.sheets.length, cards: document.querySelectorAll('.ob.sheet').length, prompts,
+      everyOnce: S.cat.filter((e) => e.kind !== 'building').every((e) => (on[e.id] || 0) + (S.alone.has(e.id) ? 1 : 0) === 1),
+      buildingsOn: S.cat.filter((e) => e.kind === 'building' && on[e.id]).length,
+      groupsWithSheets: [...new Set(S.sheets.map((sh) => sh.group))].length,
+      lines: [...document.querySelectorAll('#ob-crate .ob-where')].map((x) => x.textContent).join(' | '),
+    };
+  });
+  ok(`most objects come on sheet pictures: ${sheets0.n} sheets for every land, each object on one sheet or with a picture of its own, never a building`,
+    sheets0.n >= 12 && sheets0.n <= 24 && sheets0.cards === sheets0.n && sheets0.everyOnce && sheets0.buildingsOn === 0 && sheets0.groupsWithSheets === 10 && /On Town props, sheet/.test(sheets0.lines), sheets0);
+  ok("every sheet's prompt asks for a SPRITE SHEET in rows read like a page, each kind's ones together, at their sizes, on one flat background, with the style key",
+    Object.values(sheets0.prompts).every((p) => /SPRITE SHEET/.test(p) && /Row 1, left to right/.test(p) && /each kind's ones stay together/.test(p) && /ONE flat (magenta|bright green) colour/.test(p) && /Attached is the game's style key/.test(p) && /one fifth as tall as this picture/.test(p)),
+    Object.keys(sheets0.prompts));
   const saved0 = await page.evaluate(() => ({ chip: document.getElementById('saved-chip').textContent, line: document.getElementById('saved-line').textContent, noKey: !document.getElementById('key-none').hidden }));
   ok('with nothing made, the page says nothing is saved here yet, and sends you to the World Builder for the style key', saved0.chip === 'none yet' && /Nothing is saved in this browser yet/.test(saved0.line) && saved0.noKey, saved0);
 
@@ -258,6 +293,7 @@ try {
 
   /* ── 5. the stage ── */
   console.log('5. the stage');
+  await page.waitForFunction(() => !!document.querySelector('canvas[data-stage-canvas="barrel"]'), null, { timeout: 30000 }).catch(() => {});
   const st = await page.evaluate(() => {
     const cv = document.querySelector('canvas[data-stage-canvas="barrel"]');
     if (!cv) return null;
@@ -289,6 +325,8 @@ try {
      speck is not (the piece is no taller than the building) */
   const sx = (bw + 14 + 60) / bw;
   ok('...keeping the sign on its own post beside it, and dropping a speck far off', fs1.pieces[0].h < fs1.pieces[0].w * (640 / bw) * sx * 1.1 && fs1.pieces[0].h > fs1.pieces[0].w * (640 / (bw + 74)) * 0.9, { piece: fs1.pieces[0], bw });
+  /* (the stage is drawn just after the picture is in) */
+  await page.waitForFunction(() => !!document.querySelector('canvas[data-stage-canvas="saloon"]'), null, { timeout: 30000 }).catch(() => {});
   const stage2 = await page.evaluate(() => ({ barrel: !!document.querySelector('canvas[data-stage-canvas="barrel"]'), saloon: !!document.querySelector('canvas[data-stage-canvas="saloon"]'), cap: (document.querySelector('[data-stage="saloon"]') || {}).textContent || '' }));
   ok('...the stage moves to it (one stage at a time), on the town\'s yards', stage2.saloon && !stage2.barrel && /on the town's yards/.test(stage2.cap), stage2);
   await shot(page, 'saloon', '#ob-saloon');
@@ -326,14 +364,83 @@ try {
   ok('a set where two touch is caught: the card says how many were found and why', /Found 3 of 4/.test(stoneNote) && /not touching/.test(stoneNote), stoneNote);
   ok('...and one drawn far too big for its picture: the card says its pixels are finer than the ground\'s', /times too big for the picture/.test(stoneNote) && /finer than the ground's/.test(stoneNote), stoneNote);
 
+  /* ── 6b. v2.3.2965: a sheet picture ── */
+  console.log('6b. a sheet picture: many objects in rows, each named by its place');
+  /* the town's second sheet, drawn as the prompt asks: its rows top to
+     bottom, each kind's ones left to right, at the sizes the packer
+     planned, standing on each row's line -- every kind in a colour of its
+     own, so the test can tell which object each piece is */
+  const KC = ['#c0392b', '#2e86c1', '#27ae60', '#f1c40f', '#8e44ad', '#e67e22', '#16a085'];
+  const plan = await page.evaluate(() => {
+    const { S } = window.__objects;
+    const sh = S.sheetById['town-sheet-2'];
+    return { rows: sh.rows, kinds: Object.fromEntries(sh.rows.flat().map((id) => { const e = S.byId[id]; return [id, { count: e.count, fit: e.fit, size: e.size, ar: e.ar || 1 }]; })) };
+  });
+  const kindColour = Object.create(null);
+  plan.rows.flat().forEach((id, i) => { kindColour[id] = KC[i % KC.length]; });
+  const SPX = 1024 / 512;   /* a wide picture 1024 px tall: 2 px a game px */
+  const shapes = [];
+  let ry = 16 * SPX;
+  for (const ids of plan.rows) {
+    const boxes = ids.map((id) => { const k = plan.kinds[id]; const w = k.fit === 'w' ? k.size : k.size * k.ar, h = k.fit === 'w' ? k.size / k.ar : k.size; return { id, w: w * SPX, h: h * SPX, n: k.count }; });
+    const rowH = Math.max(...boxes.map((b) => b.h));
+    let x = 16 * SPX;
+    for (const b of boxes) for (let i = 0; i < b.n; i++) { shapes.push([Math.round(x), Math.round(ry + rowH - b.h), Math.round(b.w), Math.round(b.h), kindColour[b.id], 'solid']); x += b.w + 28 * SPX; }
+    ry += rowH + 28 * SPX;
+  }
+  const sheetPic = await makePicture(page, { bg: '#ff00ff', shapes, W: 1536, H: 1024 });
+  await page.setInputFiles('input[data-sheet-file="town-sheet-2"]', { name: 'town-sheet-2.png', mimeType: 'image/png', buffer: Buffer.from(sheetPic, 'base64') });
+  await page.waitForFunction(() => document.getElementById('busy').hidden && window.__objects.S.sheetRaw.has('town-sheet-2'), null, { timeout: 60000 });
+  const nearestKind = (rgb) => {
+    let best = null, bd = Infinity;
+    for (const [id, hex] of Object.entries(kindColour)) {
+      const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+      const dd = (c[0] - rgb[0]) ** 2 + (c[1] - rgb[1]) ** 2 + (c[2] - rgb[2]) ** 2;
+      if (dd < bd) { bd = dd; best = id; }
+    }
+    return best;
+  };
+  const sheetKinds = plan.rows.flat();
+  const made = {};
+  for (const id of sheetKinds) made[id] = await facts(page, id);
+  const fromSheet = sheetKinds.filter((id) => id !== 'barrel');
+  ok(`a sheet comes back as every object on it (${shapes.length}), each named by its place: ${fromSheet.length} kinds made from it, each with its own ones and nobody else's`,
+    fromSheet.every((id) => made[id] && made[id].src === 'town-sheet-2' && made[id].n === plan.kinds[id].count && made[id].pieces.every((p) => nearestKind(p.main) === id)),
+    Object.fromEntries(fromSheet.map((id) => [id, made[id] && { src: made[id].src, n: made[id].n, mains: made[id].pieces.map((p) => nearestKind(p.main)) }])));
+  ok('...each sized like an object from its own picture: the middle of a set at its size, hard-edged, on its own colours, no magenta left',
+    fromSheet.every((id) => { const f = made[id], k = plan.kinds[id], d = f.pieces.map((p) => (k.fit === 'w' ? p.w : p.h)).sort((a, b) => a - b); return Math.abs((d[(d.length - 1) >> 1] + d[d.length >> 1]) / 2 - k.size * PX) <= 2 && f.semi === 0 && f.magenta === 0 && f.colours <= PIXEL.ownColours; }));
+  const card6 = await page.evaluate(() => ({
+    chip: document.querySelector('[data-sheet-chip="town-sheet-2"]').textContent,
+    selects: [...document.querySelectorAll('select[data-assign^="town-sheet-2|"]')].map((x) => x.value),
+    warn: !!document.querySelector('[data-warn="town-sheet-2"]'),
+    text: document.getElementById('sheet-town-sheet-2').textContent,
+    from: (document.querySelector('[data-from="crate"]') || {}).textContent || '',
+  }));
+  ok('...its card shows every object found with its name, nothing to warn about, and the crates\' card says where they came from',
+    card6.chip === 'made' && card6.selects.length === shapes.length && card6.selects.every((v) => v) && !card6.warn && /Made from Town props, sheet 2/.test(card6.from), card6);
+  ok("...and an object with its own picture keeps it: the barrels made earlier are not replaced, and the sheet says so",
+    made.barrel.src === 'own' && /Barrels: kept its own picture/.test(card6.text), { src: made.barrel.src });
+  /* a name changed by hand: one crate is "not used", then a crate again */
+  const firstCrate = card6.selects.indexOf('crate');
+  await page.selectOption(`select[data-assign="town-sheet-2|${firstCrate}"]`, '');
+  await page.waitForFunction(() => document.getElementById('busy').hidden && window.__objects.S.fin.get('crate').pieces.length === 3, null, { timeout: 30000 });
+  const crates3 = (await facts(page, 'crate')).n;
+  await page.selectOption(`select[data-assign="town-sheet-2|${firstCrate}"]`, 'crate');
+  await page.waitForFunction(() => document.getElementById('busy').hidden && window.__objects.S.fin.get('crate').pieces.length === 4, null, { timeout: 30000 });
+  ok('a name can be changed with a tap: a crate set to "not used" leaves three crates, and set back makes four again', crates3 === 3 && (await facts(page, 'crate')).n === 4);
+  await shot(page, 'sheet', '#sheet-town-sheet-2');
+
   /* ── 7. a reload, the zips, a restore ── */
   console.log('7. a reload, the zips, a restore');
-  const before = { barrel: (await facts(page, 'barrel')).hash, saloon: (await facts(page, 'saloon')).hash, coral: (await facts(page, 'coral')).hash };
+  const KEEP = ['barrel', 'saloon', 'coral', 'crate', 'fence', 'haybale'];
+  const hashes = async (pg) => { const o = {}; for (const id of KEEP) o[id] = (await facts(pg, id)).hash; return o; };
+  const before = await hashes(page);
   await page.close();
   page = await open(ctxA);
-  const after = { barrel: (await facts(page, 'barrel')).hash, saloon: (await facts(page, 'saloon')).hash, coral: (await facts(page, 'coral')).hash };
-  const afterUi = await page.evaluate(() => ({ saved: document.getElementById('saved-chip').textContent, size: document.querySelector('select[data-size="saloon"]').value }));
-  ok('everything survives a reload, the same to the pixel, the size choice too', JSON.stringify(before) === JSON.stringify(after) && afterUi.saved === '5 saved' && afterUi.size === '1.25', { before, after, afterUi });
+  const after = await hashes(page);
+  const afterUi = await page.evaluate(() => ({ saved: document.getElementById('saved-chip').textContent, size: document.querySelector('select[data-size="saloon"]').value, sheet: document.querySelector('[data-sheet-chip="town-sheet-2"]').textContent }));
+  const nMade = 5 + fromSheet.length;
+  ok('everything survives a reload, the same to the pixel, the size choice and the sheet too', JSON.stringify(before) === JSON.stringify(after) && afterUi.saved === `${nMade} saved` && afterUi.size === '1.25' && afterUi.sheet === 'made', { before, after, afterUi });
 
   const backup = await page.evaluate(async () => {
     const bytes = await window.__objects.api.exportZip();
@@ -347,9 +454,12 @@ try {
   const names = entries.map((e) => e.name);
   const manifest = JSON.parse(new TextDecoder().decode(entries.find((e) => e.name === 'manifest.json').data));
   const mBarrel = manifest.objects.find((o) => o.id === 'barrel'), mSaloon = manifest.objects.find((o) => o.id === 'saloon');
-  ok('Download all gives a zip with the manifest, every piece as the game uses it, and every original',
-    names.includes('objects/barrel-1.png') && names.includes('objects/barrel-4.png') && names.includes('objects/saloon-1.png') && names.includes('originals/barrel.png') && names.includes('originals/saloon.png') && manifest.objects.length === 5,
+  const mSheet = (manifest.sheets || []).find((x) => x.id === 'town-sheet-2');
+  ok('Download all gives a zip with the manifest, every piece as the game uses it, and every original: the objects\' own pictures and the sheet',
+    names.includes('objects/barrel-1.png') && names.includes('objects/barrel-4.png') && names.includes('objects/saloon-1.png') && names.includes('objects/crate-4.png') && names.includes('originals/barrel.png') && names.includes('originals/saloon.png') && names.includes('originals/sheets/town-sheet-2.png') && !names.includes('originals/crate.png') && manifest.objects.length === nMade,
     names);
+  ok("...the manifest recording the sheet: where each object was found on it and what it is",
+    mSheet && mSheet.boxes.length === shapes.length && mSheet.assign.length === shapes.length && manifest.objects.find((o) => o.id === 'crate').from === 'town-sheet-2' && mBarrel.from === 'own', mSheet && { boxes: mSheet.boxes.length });
   ok("...the manifest saying each piece's size in the game and where it stands, and the size choice",
     mBarrel.pieces.length === 4 && mBarrel.pieces.every((p) => p.foot[0] === Math.round(p.w / 2) && p.foot[1] === p.h && p.gameH === p.h / PX) && mSaloon.sizeMul === 1.25 && mSaloon.pieces[0].gameW === Math.round(276 * 1.25 * PX) / PX && manifest.gamePxPerArtPx === PIXEL.gamePxPerArtPx,
     { barrel: mBarrel.pieces, saloon: mSaloon });
@@ -360,29 +470,53 @@ try {
   });
   const gEntries = await unzip(new Uint8Array(Buffer.from(game[0], 'base64')));
   const gNames = gEntries.map((e) => e.name);
-  const gPng = Buffer.from(gEntries.find((e) => e.name === 'objects/barrel-1.png').data);
-  const gc = chunks(gPng);
-  /* the palette PNG's pixels, unpacked by hand, against the backup's PNG
-     decoded by the browser */
-  const ih = gc.IHDR[0], W = ih.readUInt32BE(0), H = ih.readUInt32BE(4), idx = zlib.inflateSync(Buffer.concat(gc.IDAT)), pal = gc.PLTE[0];
-  const fromBackup = await page.evaluate(async (b64) => {
-    const bin = atob(b64), u8 = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    const bm = await createImageBitmap(new Blob([u8], { type: 'image/png' }));
-    const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height;
-    const g = c.getContext('2d'); g.drawImage(bm, 0, 0);
-    return Array.from(g.getImageData(0, 0, c.width, c.height).data);
-  }, Buffer.from(entries.find((e) => e.name === 'objects/barrel-1.png').data).toString('base64'));
-  let same = W * H * 4 === fromBackup.length;
-  for (let y = 0; y < H && same; y++) for (let x = 0; x < W && same; x++) {
-    const n = idx[y * (W + 1) + 1 + x], o = (y * W + x) * 4;
-    same = n === 0 ? fromBackup[o + 3] === 0 : (fromBackup[o + 3] === 255 && pal[n * 3] === fromBackup[o] && pal[n * 3 + 1] === fromBackup[o + 1] && pal[n * 3 + 2] === fromBackup[o + 2]);
-  }
-  ok(`Download for the game carries every piece and none of the originals, in one zip under 25 MB (${(Buffer.from(game[0], 'base64').length / 1e6).toFixed(2)} MB)`,
-    game.length === 1 && gNames.filter((n) => n.startsWith('objects/')).length === names.filter((n) => n.startsWith('objects/')).length && !gNames.some((n) => n.startsWith('originals/')) && Buffer.from(game[0], 'base64').length < 25e6,
+  const gManifest = JSON.parse(new TextDecoder().decode(gEntries.find((e) => e.name === 'manifest.json').data));
+  /* v2.3.2965: each land's objects in its own sprite sheet, with its PixiJS
+     sheet file; every frame the very piece the backup holds */
+  const sheetsIn = gNames.filter((n) => /^objects\/[a-z]+-\d+\.png$/.test(n));
+  const b64 = (u8) => Buffer.from(u8).toString('base64');
+  const atlasCheck = await page.evaluate(async ({ atlases, jsons, pieces }) => {
+    const decode = async (s) => {
+      const bin = atob(s), u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      const bm = await createImageBitmap(new Blob([u8], { type: 'image/png' }));
+      const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height;
+      const g = c.getContext('2d'); g.drawImage(bm, 0, 0);
+      return { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data };
+    };
+    let frames = 0, same = 0, anchored = 0, scaled = 0;
+    const missing = [];
+    for (const [name, json] of Object.entries(jsons)) {
+      const sheet = JSON.parse(json), A = await decode(atlases[name]);
+      if (sheet.meta.scale === '2' && sheet.meta.size.w === A.w && sheet.meta.size.h === A.h) scaled++;
+      for (const [frame, f] of Object.entries(sheet.frames)) {
+        frames++;
+        if (f.anchor && f.anchor.x === 0.5 && f.anchor.y === 1) anchored++;
+        if (!pieces[frame]) { missing.push(frame); continue; }
+        const P = await decode(pieces[frame]);
+        let ok = P.w === f.frame.w && P.h === f.frame.h;
+        for (let y = 0; y < P.h && ok; y++) for (let x = 0; x < P.w && ok; x++) {
+          const a = ((f.frame.y + y) * A.w + f.frame.x + x) * 4, p = (y * P.w + x) * 4;
+          ok = A.d[a + 3] === P.d[p + 3] && (P.d[p + 3] === 0 || (A.d[a] === P.d[p] && A.d[a + 1] === P.d[p + 1] && A.d[a + 2] === P.d[p + 2]));
+        }
+        if (ok) same++;
+      }
+    }
+    return { frames, same, anchored, scaled, missing };
+  }, {
+    atlases: Object.fromEntries(sheetsIn.map((n) => [n.replace(/^objects\/|\.png$/g, ''), b64(gEntries.find((e) => e.name === n).data)])),
+    jsons: Object.fromEntries(sheetsIn.map((n) => [n.replace(/^objects\/|\.png$/g, ''), new TextDecoder().decode(gEntries.find((e) => e.name === n.replace(/\.png$/, '.json')).data)])),
+    pieces: Object.fromEntries(entries.filter((e) => /^objects\/.+\.png$/.test(e.name)).map((e) => [e.name.replace(/^objects\/|\.png$/g, ''), b64(e.data)])),
+  });
+  const piecesInBackup = names.filter((n) => /^objects\/.+\.png$/.test(n)).length;
+  ok(`Download for the game packs each land's objects into its own sprite sheet (${sheetsIn.map((n) => n.slice(8)).join(', ')}), each with its sheet file, and no originals, in one zip under 25 MB`,
+    game.length === 1 && sheetsIn.includes('objects/town-1.png') && sheetsIn.includes('objects/buildings-1.png') && sheetsIn.every((n) => gNames.includes(n.replace(/\.png$/, '.json'))) && !gNames.some((n) => n.startsWith('originals/')) && Buffer.from(game[0], 'base64').length < 25e6 && gManifest.atlases.length === sheetsIn.length,
     gNames);
-  ok('...each piece the very same pixels as the backup\'s, saved as palette numbers with number 0 see-through (a tRNS chunk)',
-    ih[9] === 3 && gc.tRNS && gc.tRNS[0].length === 1 && gc.tRNS[0][0] === 0 && same, { type: ih[9], trns: gc.tRNS && [...gc.tRNS[0]], same });
+  ok(`...every one of the ${piecesInBackup} objects in it, each frame the very same pixels as the backup's piece, its anchor at its foot, at 2 px a game px`,
+    atlasCheck.frames === piecesInBackup && atlasCheck.same === piecesInBackup && atlasCheck.anchored === piecesInBackup && atlasCheck.scaled === sheetsIn.length && !atlasCheck.missing.length,
+    atlasCheck);
+  ok("...and the game's manifest says which sprite sheet and frame each object's pieces are",
+    gManifest.objects.length === nMade && gManifest.objects.every((o) => o.pieces.every((p) => sheetsIn.includes(`objects/${p.atlas}.png`) && /^[a-z-]+-\d+$/.test(p.frame))), gManifest.objects.slice(0, 2));
 
   const ctxB = await browser.newContext(phone);
   const pageB = await open(ctxB);
@@ -391,8 +525,10 @@ try {
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     return window.__objects.api.restoreZip(u8);
   }, backup);
-  const restored = { barrel: (await facts(pageB, 'barrel')).hash, saloon: (await facts(pageB, 'saloon')).hash, coral: (await facts(pageB, 'coral')).hash };
-  ok(`restoring the backup in a fresh browser gives the same objects, pixel for pixel (${nB} restored)`, nB === 5 && JSON.stringify(restored) === JSON.stringify(before), { nB, restored, before });
+  const restored = await hashes(pageB);
+  const restoredSheet = await pageB.evaluate(() => { const r = window.__objects.S.sheetRaw.get('town-sheet-2'); return r && r.assign.filter(Boolean).length; });
+  ok(`restoring the backup in a fresh browser gives the same objects, pixel for pixel, the sheet's names too (${nB} pictures restored)`,
+    nB === 6 && JSON.stringify(restored) === JSON.stringify(before) && restoredSheet === shapes.length, { nB, restored, before, restoredSheet });
   await ctxB.close();
 
   /* ── 8. an older prompt; removing; errors ── */
@@ -413,7 +549,13 @@ try {
   await page.click('[data-remove="coral"]');
   await page.waitForFunction(() => document.getElementById('busy').hidden && !window.__objects.S.fin.has('coral'), null, { timeout: 30000 });
   const gone = await page.evaluate(() => ({ chip: document.querySelector('[data-chip="coral"]').textContent, saved: document.getElementById('saved-chip').textContent }));
-  ok('an object can be removed', gone.chip === 'not made' && gone.saved === '4 saved', gone);
+  ok('an object can be removed', gone.chip === 'not made' && gone.saved === `${nMade - 1} saved`, gone);
+  /* v2.3.2965: the barrels' own picture removed, the sheet's barrels take its place */
+  await page.evaluate(() => { document.querySelector('details[data-group="town"]').open = true; });
+  await page.click('[data-remove="barrel"]');
+  await page.waitForFunction(() => document.getElementById('busy').hidden && window.__objects.S.fin.has('barrel') && window.__objects.S.fin.get('barrel').src === 'town-sheet-2', null, { timeout: 30000 });
+  const fb2 = await facts(page, 'barrel');
+  ok("an object's own picture removed, its sheet's ones take its place", fb2.src === 'town-sheet-2' && fb2.n === 4 && fb2.pieces.every((p) => nearestKind(p.main) === 'barrel'), { src: fb2.src, n: fb2.n });
   await shot(page, 'page');
   ok('no page errors', page.errs.length === 0, page.errs);
 } catch (e) {

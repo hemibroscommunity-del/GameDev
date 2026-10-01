@@ -77,6 +77,14 @@
   .stage-wrap { margin-top:10px; border-radius:8px; border:1px solid var(--line); overflow-x:auto; background:#0c1216; }
   .stage-wrap canvas { display:block; image-rendering:pixelated; margin:0 auto; }
   .stage-cap { font-size:12.5px; color:var(--mut); margin-top:4px; }
+  /* v2.3.2965: sheet pictures */
+  h3.sub-h { font-size:13px; text-transform:uppercase; letter-spacing:.9px; color:var(--brass); margin:14px 0 2px; font-weight:600; }
+  .ob.sheet { border-color:rgba(216,168,95,.45); }
+  .sheet-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(124px, 1fr)); gap:8px; margin-top:8px; }
+  .sheet-cell { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; padding:6px; border-radius:6px; min-width:0;
+                background:repeating-conic-gradient(#26343a 0% 25%, #1d292e 0% 50%) 50% / 16px 16px; }
+  .sheet-cell canvas { display:block; max-width:100%; max-height:72px; image-rendering:pixelated; }
+  .sheet-cell select { width:100%; min-height:36px; padding:4px; font-size:12px; }
   .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); max-width:min(92vw,560px); z-index:80;
            background:#2A3940; border:1px solid var(--line); border-radius:10px; padding:12px 16px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
   .toast[data-bad="1"] { border-color:rgba(224,106,94,.7); color:#FFD6D0; }
@@ -90,7 +98,7 @@
   <header>
     <h1>Object Studio</h1>
     <p class="sub">Everything in BroTown that stands up: every building, the town's props, and each land's trees, rocks and bushes. Each is drawn once in HD pixel art, and the game stands it on the ground.</p>
-    <p class="mut" id="ver">Version v2.3.2964: the first Object Studio -- a prompt for every object, each building its own.</p>
+    <p class="mut" id="ver">Version v2.3.2965: sprite sheets -- many objects to a picture, and one sprite sheet a land for the game.</p>
     <p class="mut" id="status">Loading…</p>
   </header>
 
@@ -107,8 +115,9 @@
     <h2>How it works</h2>
     <ol class="plan">
       <li><b>Make the style key first</b>, in <a href="../world/" style="color:#F3D9A2">the World Builder</a>. Every object is matched to it, as the ground is.</li>
-      <li>Open an object below, <b>copy its prompt</b> into a new ChatGPT chat, and attach <b>the style key</b>, and only the key. Not your bro: the world is finer pixel art than he is, and ChatGPT copies what it sees.</li>
-      <li><b>Bring the picture back</b> with <b>Add picture</b>. The page cuts it out of its flat background, cuts a set apart (four barrels become four barrels), makes it exactly its size in the game, and gives it its own 64 colours with hard pixel edges.</li>
+      <li>Open a group below. Most objects come on <b>sheet pictures</b>: one ChatGPT picture of many objects in tidy rows. <b>Copy a sheet's prompt</b> into a new ChatGPT chat, and attach <b>the style key</b>, and only the key. Not your bro: the world is finer pixel art than he is, and ChatGPT copies what it sees.</li>
+      <li><b>Bring the picture back</b> with <b>Add sheet picture</b>. The page cuts out every object, names each one by its place on the sheet (check the names under each, and tap to change one), makes each exactly its size in the game, and gives it its own 64 colours with hard pixel edges.</li>
+      <li>Every object also has <b>its own prompt</b>, to make or redo just that one: a picture made with it wins over the sheet's. The buildings are one to a picture: each needs its detail.</li>
       <li><b>See it at game size</b>: it stands on its land's ground next to your bro, as big as it will be on your phone.</li>
       <li>Not right? Ask the same chat again, or start a fresh one, and <b>Replace</b> it. The size can be nudged too.</li>
       <li>When you are happy, <b>Download for the game</b> and upload it to GitHub (at the bottom). Placing the objects in the world comes next.</li>
@@ -138,7 +147,7 @@
     <h2>Save and send</h2>
     <p><b>Download all</b> is your <b>backup</b>: every picture as ChatGPT made it, every object as the game will use it, and your size choices. Keep it in iCloud or Google Drive, not on GitHub. <b>Restore</b> brings everything back on any device.</p>
     <div class="row"><button id="export">Download all (backup)</button><label class="btn">Restore…<input type="file" id="restore" accept=".zip,application/zip"></label></div>
-    <p><b>Download for the game</b> is what goes on GitHub: only the finished objects, saved small, in zips of under 25 MB so GitHub's website takes each one.</p>
+    <p><b>Download for the game</b> is what goes on GitHub: each land's finished objects packed into one <b>sprite sheet</b> (as full as it holds; the buildings take two), with a list of where each one is, in zips of under 25 MB so GitHub's website takes each one. The game loads only the sheet for the land you are in.</p>
     <div class="row"><button id="export-game" class="brass">Download for the game</button></div>
     <div class="row" id="game-parts" hidden></div>
     <details>

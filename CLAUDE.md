@@ -142,8 +142,18 @@ remnant to migrate server-side, not a mode to preserve.
   out of one flat magenta (green for pink or purple things) background,
   sized exactly at 2 px a game px, on 64 colours of its own, shown next to
   the bro at phone size, and zipped for the game as see-through palette
-  PNGs (`png8.js` `clear`): WORLD-MAP-PIPELINE "The Object Studio"; placing
-  them on the Wheel is the next round),
+  PNGs (`png8.js` `clear`): WORLD-MAP-PIPELINE "The Object Studio"; and
+  since v2.3.2965 SPRITE SHEETS, the owner's "fit as many things as I can on
+  one sprite sheet ... as long as it stays organized": `objects/sheets.js`
+  packs each land's objects as many to a wide ChatGPT picture as fit at true
+  size, in rows read like a page (15 sheets + 5 alone instead of 59
+  pictures, never a building), the studio names each cut-out object by its
+  place (`readingOrder`, `autoAssign`, a select per piece; an object's own
+  picture wins), and "Download for the game" packs each land's finished
+  objects into one sprite sheet (`atlasFiles`, 2048 px max, a PixiJS sheet
+  file with anchors at the feet and `meta.scale` 2): WORLD-MAP-PIPELINE
+  "Sprite sheets"; the footstep-sound list per ground is WORLD-MAP-PIPELINE
+  "Footstep sounds"; placing objects on the Wheel is the next round),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

@@ -1193,6 +1193,29 @@ console.log('objects');
   /* ChatGPT's lettering is unreliable past a word or two (WORLD-BIBLE §12) */
   ok('every sign is one or two words, and only a building or the town gate has one; the rest say no text at all',
     cat.every((e) => (e.sign ? e.sign.split(/\s+/).filter((w) => w !== '&').length <= 2 && (e.kind === 'building' || e.id === 'gate') : /No text, letters or numbers anywhere/.test(prompts[e.id]))));
+  /* ── v2.3.2965: sprite sheets ── */
+  const { sheetsFor, sheetPrompt, runOf, SHEET, SHEET_KINDS } = await import('../../public/tools/objects/sheets.js');
+  const packed = sheetsFor(cat);
+  const onSheet = Object.create(null);
+  for (const sh of packed.sheets) for (const id of sh.rows.flat()) onSheet[id] = (onSheet[id] || 0) + 1;
+  const loose = cat.filter((e) => e.kind !== 'building');
+  ok(`sprite sheets: the ${loose.length} objects that are not buildings come on ${packed.sheets.length} sheet pictures, each on exactly one or with a picture of its own (${packed.own.length}), never a building`,
+    loose.every((e) => (onSheet[e.id] || 0) + (packed.own.includes(e.id) ? 1 : 0) === 1) && BUILDINGS.every((b) => !onSheet[b.id]) && packed.sheets.length + packed.own.length < loose.length / 2,
+    { sheets: packed.sheets.length, own: packed.own });
+  const W = SHEET.w - 2 * SHEET.margin, H = SHEET.h - 2 * SHEET.margin;
+  ok(`...every sheet one flat background, at most ${SHEET_KINDS} kinds, more than one, and by the sizes asked for its rows fit a wide picture with room between them`,
+    packed.sheets.every((sh) => {
+      const kinds = sh.rows.flat().map((id) => cat.find((e) => e.id === id));
+      const rowsW = sh.rows.map((ids) => ids.reduce((t, id, i) => t + runOf(cat.find((e) => e.id === id)).w + (i ? SHEET.gap : 0), 0));
+      const rowsH = sh.rows.map((ids) => Math.max(...ids.map((id) => runOf(cat.find((e) => e.id === id)).h)));
+      return kinds.every((e) => (e.key || 'magenta') === sh.key) && kinds.length > 1 && kinds.length <= SHEET_KINDS &&
+        rowsW.every((w) => w <= W) && rowsH.reduce((t, h) => t + h, 0) + SHEET.gap * (sh.rows.length - 1) <= H;
+    }));
+  const town2 = packed.sheets.find((sh) => sh.id === 'town-sheet-2'), sp = sheetPrompt(town2, packed.byId);
+  ok("...and a sheet's prompt lists its rows top to bottom, each kind's ones left to right with how many and how big, in the order the studio reads them back",
+    packed.sheets.every((sh) => { const p = sheetPrompt(sh, packed.byId); return sh.rows.every((ids, i) => p.includes(`Row ${i + 1}, left to right: `)) && /SPRITE SHEET/.test(p) && /each kind's ones stay together, in the order given/.test(p); }) &&
+    sp.indexOf('hitching rails') < sp.indexOf('wooden crates') && /four wooden crates/.test(sp) && /each about waist-high on a person/.test(sp),
+    sp.slice(0, 400));
   ok('a set asks for that many different ones, side by side and not touching; the big trees come in a wide picture',
     cat.every((e) => e.count === 1 ? /ONE (object|building)/.test(prompts[e.id]) : new RegExp(`a set of ${['', 'one', 'two', 'three', 'four'][e.count]} .*side by side and not touching`, 's').test(prompts[e.id])) &&
     ['oak', 'pine', 'palm', 'pylon', 'jungletree'].every((id) => /A wide picture \(3:2, landscape\)/.test(prompts[id])));

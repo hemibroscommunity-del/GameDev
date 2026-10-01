@@ -28,6 +28,8 @@
  *   key     the flat background it is drawn on, cut away by the studio:
  *           magenta, or green for the few things that are pink or purple
  *   what    what it is, for the prompt; `ones` how the ones in a set differ
+ *   ar      v2.3.2965: about how wide one is for its height, as drawn -- the
+ *           sheet packer's estimate (sheets.js), never a size the studio sets
  *
  * A building also has `job` (what players do there), `look` (its
  * architecture and materials), `bro` (its one or two big jokes, §12) and
@@ -160,20 +162,20 @@ export const BUILDINGS = [
 /* ── the town's props ── */
 const T = (o) => ({ group: 'town', kind: 'prop', count: 4, fit: 'h', frame: 'square', ground: 'street', key: 'magenta', ...o });
 export const TOWN = [
-  T({ id: 'lamp', name: 'Lamp posts', count: 2, size: 180, ground: 'plaza', what: 'black iron street lamps on tall posts, each with a glass lantern box on top under a little iron cap, unlit', ones: 'one straight and plain; one with a bent post and a dent, proudly patched with a riveted iron strap' }),
-  T({ id: 'barrel', name: 'Barrels', size: 52, what: 'wooden barrels with iron hoops', ones: 'one standing upright; one lying on its side; one small keg; one with a dented hoop and a patched plank' }),
-  T({ id: 'crate', name: 'Crates', size: 54, what: 'wooden crates with plank sides and corner battens', ones: 'one single crate; two stacked crates; one open crate full of straw; one long crate' }),
-  T({ id: 'haybale', name: 'Hay bales', size: 46, ground: 'town-yard', what: 'square hay bales tied with twine', ones: 'one single bale; two bales stacked; one bale with a pitchfork stuck in it; one round bale' }),
-  T({ id: 'trough', name: 'Water troughs', count: 2, size: 48, what: 'wooden water troughs on short legs, full of water', ones: 'one plain; one with an iron hand pump at one end' }),
-  T({ id: 'hitch', name: 'Hitching posts', count: 2, size: 64, what: 'wooden hitching rails: two short posts with a rail between them, for tying up horses', ones: 'one plain; one with a horseshoe nailed to a post for luck' }),
-  T({ id: 'bench', name: 'Benches', count: 2, size: 52, ground: 'plaza', what: 'wooden benches seen from the front', ones: 'one plain bench; one with a carved backrest and armrests' }),
-  T({ id: 'well', name: 'Well', count: 1, size: 160, ground: 'plaza', what: 'a round stone well with a little shingled roof on two posts, a crank and a wooden bucket on a rope' }),
-  T({ id: 'signpost', name: 'Signposts', count: 2, size: 150, ground: 'road', what: 'wooden signposts with arrow-shaped boards pointing different ways, the boards left blank', ones: 'one with three arrows; one with two arrows and an old boot hung on top' }),
-  T({ id: 'cart', name: 'Hand cart', count: 1, fit: 'w', size: 150, what: 'a wooden hand cart with two big spoked wheels and long handles, seen from the side, the handles to the left' }),
-  T({ id: 'noticeboard', name: 'Bragging board', count: 1, size: 150, ground: 'plaza', what: 'a wooden notice board on two posts with a little shingled roof, covered in pinned papers that have only drawings on them (monsters, a big fish, a flexing arm) and no writing, with a mounted trophy fish on top' }),
-  T({ id: 'gate', name: 'Town gate', count: 1, fit: 'w', size: 270, sign: 'BROTOWN', what: 'the big gate where a street leaves town: two tall log posts with a heavy log crossbeam between them high overhead, a hanging board sign under the beam, and a pair of long cattle horns on top, seen square-on across the street' }),
-  T({ id: 'fence', name: 'Fence, across', count: 3, fit: 'w', size: 160, ground: 'town-yard', what: 'sections of split-rail fence running straight across the picture, left to right: rough posts with two or three split rails between them', ones: 'two straight sections and one with a little gate in it' }),
-  T({ id: 'fence-down', name: 'Fence, up and down', count: 2, size: 170, ground: 'town-yard', what: 'sections of the same split-rail fence running straight up and down the picture, away from us: seen from above, so the rails are short and the posts stand one behind another', ones: 'two straight sections side by side' }),
+  T({ id: 'lamp', ar: 0.3, name: 'Lamp posts', count: 2, size: 180, ground: 'plaza', what: 'black iron street lamps on tall posts, each with a glass lantern box on top under a little iron cap, unlit', ones: 'one straight and plain; one with a bent post and a dent, proudly patched with a riveted iron strap' }),
+  T({ id: 'barrel', ar: 0.85, name: 'Barrels', size: 52, what: 'wooden barrels with iron hoops', ones: 'one standing upright; one lying on its side; one small keg; one with a dented hoop and a patched plank' }),
+  T({ id: 'crate', ar: 1.0, name: 'Crates', size: 54, what: 'wooden crates with plank sides and corner battens', ones: 'one single crate; two stacked crates; one open crate full of straw; one long crate' }),
+  T({ id: 'haybale', ar: 1.3, name: 'Hay bales', size: 46, ground: 'town-yard', what: 'square hay bales tied with twine', ones: 'one single bale; two bales stacked; one bale with a pitchfork stuck in it; one round bale' }),
+  T({ id: 'trough', ar: 2.2, name: 'Water troughs', count: 2, size: 48, what: 'wooden water troughs on short legs, full of water', ones: 'one plain; one with an iron hand pump at one end' }),
+  T({ id: 'hitch', ar: 1.6, name: 'Hitching posts', count: 2, size: 64, what: 'wooden hitching rails: two short posts with a rail between them, for tying up horses', ones: 'one plain; one with a horseshoe nailed to a post for luck' }),
+  T({ id: 'bench', ar: 2.0, name: 'Benches', count: 2, size: 52, ground: 'plaza', what: 'wooden benches seen from the front', ones: 'one plain bench; one with a carved backrest and armrests' }),
+  T({ id: 'well', ar: 0.8, name: 'Well', count: 1, size: 160, ground: 'plaza', what: 'a round stone well with a little shingled roof on two posts, a crank and a wooden bucket on a rope' }),
+  T({ id: 'signpost', ar: 0.6, name: 'Signposts', count: 2, size: 150, ground: 'road', what: 'wooden signposts with arrow-shaped boards pointing different ways, the boards left blank', ones: 'one with three arrows; one with two arrows and an old boot hung on top' }),
+  T({ id: 'cart', ar: 1.6, name: 'Hand cart', count: 1, fit: 'w', size: 150, what: 'a wooden hand cart with two big spoked wheels and long handles, seen from the side, the handles to the left' }),
+  T({ id: 'noticeboard', ar: 0.9, name: 'Bragging board', count: 1, size: 150, ground: 'plaza', what: 'a wooden notice board on two posts with a little shingled roof, covered in pinned papers that have only drawings on them (monsters, a big fish, a flexing arm) and no writing, with a mounted trophy fish on top' }),
+  T({ id: 'gate', ar: 0.95, name: 'Town gate', count: 1, fit: 'w', size: 270, sign: 'BROTOWN', what: 'the big gate where a street leaves town: two tall log posts with a heavy log crossbeam between them high overhead, a hanging board sign under the beam, and a pair of long cattle horns on top, seen square-on across the street' }),
+  T({ id: 'fence', ar: 2.5, name: 'Fence, across', count: 3, fit: 'w', size: 160, ground: 'town-yard', what: 'sections of split-rail fence running straight across the picture, left to right: rough posts with two or three split rails between them', ones: 'two straight sections and one with a little gate in it' }),
+  T({ id: 'fence-down', ar: 0.35, name: 'Fence, up and down', count: 2, size: 170, ground: 'town-yard', what: 'sections of split-rail fence (rough posts with two or three split rails) running straight up and down the picture, away from us: seen from above, so the rails are short and the posts stand one behind another', ones: 'two straight sections side by side' }),
 ];
 
 /* ── nature, land by land ── (`size` is the middle one's; ground ids are
@@ -181,59 +183,59 @@ export const TOWN = [
 const N = (group, o) => ({ group, kind: 'nature', count: 4, fit: 'h', frame: 'square', key: 'magenta', ...o });
 export const NATURE = [
   /* Brotown Commons */
-  N('commons', { id: 'oak', name: 'Oak trees', count: 2, size: 300, frame: 'wide', ground: 'commons', what: 'broad, leafy oak trees with thick trunks and round, layered canopies', ones: 'one big and round; one a little lopsided' }),
-  N('commons', { id: 'orchard', name: 'Orchard trees', count: 2, size: 220, ground: 'commons', what: 'small orchard apple trees with red apples among the leaves', ones: 'one round; one a little taller' }),
-  N('commons', { id: 'bush', name: 'Bushes', size: 60, ground: 'commons', what: 'round leafy green bushes', ones: 'one small; one wide; one with a few white flowers; one tall' }),
-  N('commons', { id: 'haystack', name: 'Haystacks', count: 2, size: 110, ground: 'commons', what: 'big round haystacks of golden hay, a little ragged', ones: 'one tall and rounded; one lower, with a pitchfork leaning on it' }),
-  N('commons', { id: 'stone', name: 'Stones', size: 50, ground: 'commons', what: 'grey field stones and small boulders', ones: 'one round; one flat; one tall; one pair leaning together' }),
-  N('commons', { id: 'flowers', name: 'Wildflower clumps', size: 30, ground: 'commons', what: 'small clumps of wildflowers with their leaves', ones: 'yellow; white; blue; and a mix' }),
-  N('commons', { id: 'stump', name: 'Tree stumps', size: 40, ground: 'commons', what: 'tree stumps sawn flat, showing their rings', ones: 'one wide; one narrow; one with an axe stuck in it; one with moss and a little mushroom' }),
+  N('commons', { id: 'oak', ar: 0.9, name: 'Oak trees', count: 2, size: 300, frame: 'wide', ground: 'commons', what: 'broad, leafy oak trees with thick trunks and round, layered canopies', ones: 'one big and round; one a little lopsided' }),
+  N('commons', { id: 'orchard', ar: 0.9, name: 'Orchard trees', count: 2, size: 220, ground: 'commons', what: 'small orchard apple trees with red apples among the leaves', ones: 'one round; one a little taller' }),
+  N('commons', { id: 'bush', ar: 1.3, name: 'Bushes', size: 60, ground: 'commons', what: 'round leafy green bushes', ones: 'one small; one wide; one with a few white flowers; one tall' }),
+  N('commons', { id: 'haystack', ar: 1.1, name: 'Haystacks', count: 2, size: 110, ground: 'commons', what: 'big round haystacks of golden hay, a little ragged', ones: 'one tall and rounded; one lower, with a pitchfork leaning on it' }),
+  N('commons', { id: 'stone', ar: 1.2, name: 'Stones', size: 50, ground: 'commons', what: 'grey field stones and small boulders', ones: 'one round; one flat; one tall; one pair leaning together' }),
+  N('commons', { id: 'flowers', ar: 1.2, name: 'Wildflower clumps', size: 30, ground: 'commons', what: 'small clumps of wildflowers with their leaves', ones: 'yellow; white; blue; and a mix' }),
+  N('commons', { id: 'stump', ar: 1.3, name: 'Tree stumps', size: 40, ground: 'commons', what: 'tree stumps sawn flat, showing their rings', ones: 'one wide; one narrow; one with an axe stuck in it; one with moss and a little mushroom' }),
   /* Frost Ridge */
-  N('frost', { id: 'pine', name: 'Snowy pines', count: 2, size: 340, frame: 'wide', ground: 'frost-2', what: 'tall pine trees heavy with snow on their branches', ones: 'one tall and narrow; one fuller' }),
-  N('frost', { id: 'birch', name: 'Bare birches', count: 2, size: 280, ground: 'frost-1', what: 'bare white birch trees with no leaves, their thin branches dusted with snow', ones: 'one single trunk; one double trunk' }),
-  N('frost', { id: 'snowrock', name: 'Snowy rocks', size: 60, ground: 'frost-2', what: 'grey rocks capped with snow', ones: 'one round; one flat; one tall; one pair' }),
-  N('frost', { id: 'icespire', name: 'Ice spires', count: 2, size: 180, ground: 'frost-4', what: 'jagged spires of blue-white ice standing up from the ground', ones: 'one single tall spire; one cluster of three' }),
-  N('frost', { id: 'frostbush', name: 'Frosted shrubs', size: 50, ground: 'frost-1', what: 'low brown winter shrubs with frost on their twigs', ones: 'four different shapes' }),
+  N('frost', { id: 'pine', ar: 0.55, name: 'Snowy pines', count: 2, size: 340, frame: 'wide', ground: 'frost-2', what: 'tall pine trees heavy with snow on their branches', ones: 'one tall and narrow; one fuller' }),
+  N('frost', { id: 'birch', ar: 0.6, name: 'Bare birches', count: 2, size: 280, ground: 'frost-1', what: 'bare white birch trees with no leaves, their thin branches dusted with snow', ones: 'one single trunk; one double trunk' }),
+  N('frost', { id: 'snowrock', ar: 1.3, name: 'Snowy rocks', size: 60, ground: 'frost-2', what: 'grey rocks capped with snow', ones: 'one round; one flat; one tall; one pair' }),
+  N('frost', { id: 'icespire', ar: 0.5, name: 'Ice spires', count: 2, size: 180, ground: 'frost-4', what: 'jagged spires of blue-white ice standing up from the ground', ones: 'one single tall spire; one cluster of three' }),
+  N('frost', { id: 'frostbush', ar: 1.3, name: 'Frosted shrubs', size: 50, ground: 'frost-1', what: 'low brown winter shrubs with frost on their twigs', ones: 'four different shapes' }),
   /* Flame Fields */
-  N('ember', { id: 'deadtree', name: 'Charred trees', count: 2, size: 260, ground: 'ember-1', what: 'dead trees burnt black, with bare twisted branches and glowing orange cracks drawn flat in the bark', ones: 'one tall; one snapped off halfway' }),
-  N('ember', { id: 'charstump', name: 'Burnt stumps', size: 40, ground: 'ember-1', what: 'blackened tree stumps', ones: 'four different shapes' }),
-  N('ember', { id: 'basalt', name: 'Basalt rocks', size: 70, ground: 'ember-2', what: 'black basalt rocks with sharp edges', ones: 'one round; one flat; one tall column; one pair' }),
-  N('ember', { id: 'obsidian', name: 'Obsidian shards', count: 2, size: 140, ground: 'ember-4', what: 'tall shards of glassy black obsidian with sharp purple-grey highlights', ones: 'one single shard; one cluster of three' }),
+  N('ember', { id: 'deadtree', ar: 0.8, name: 'Charred trees', count: 2, size: 260, ground: 'ember-1', what: 'dead trees burnt black, with bare twisted branches and glowing orange cracks drawn flat in the bark', ones: 'one tall; one snapped off halfway' }),
+  N('ember', { id: 'charstump', ar: 1.3, name: 'Burnt stumps', size: 40, ground: 'ember-1', what: 'blackened tree stumps', ones: 'four different shapes' }),
+  N('ember', { id: 'basalt', ar: 1.2, name: 'Basalt rocks', size: 70, ground: 'ember-2', what: 'black basalt rocks with sharp edges', ones: 'one round; one flat; one tall column; one pair' }),
+  N('ember', { id: 'obsidian', ar: 0.6, name: 'Obsidian shards', count: 2, size: 140, ground: 'ember-4', what: 'tall shards of glassy black obsidian with sharp purple-grey highlights', ones: 'one single shard; one cluster of three' }),
   /* Wind Dunes */
-  N('sky', { id: 'cactus', name: 'Cacti', size: 130, ground: 'sky-2', what: 'desert cacti', ones: 'a tall cactus with two arms; a short one with one arm; a round barrel cactus; a prickly pear with a pink flower' }),
-  N('sky', { id: 'palm', name: 'Palm trees', count: 2, size: 320, frame: 'wide', ground: 'sky-2', what: 'oasis palm trees with curving trunks and a crown of long fronds', ones: 'one leaning left; one leaning right' }),
-  N('sky', { id: 'tumbleweed', name: 'Tumbleweeds', size: 40, ground: 'sky-1', what: 'dry tumbleweeds, round tangles of pale twigs', ones: 'four sizes' }),
-  N('sky', { id: 'skull', name: 'Bleached skulls', fit: 'w', size: 56, ground: 'sky-1', what: 'bleached cattle skulls with horns, lying on the ground', ones: 'four, turned different ways' }),
-  N('sky', { id: 'hoodoo', name: 'Hoodoo rocks', count: 2, size: 240, ground: 'sky-2', what: 'red sandstone rock stacks, banded in layers, with a wider stone balanced on top', ones: 'one tall and thin; one wider and lower' }),
-  N('sky', { id: 'sage', name: 'Sage brush', size: 45, ground: 'sky-1', what: 'dry grey-green sage bushes', ones: 'four different shapes' }),
+  N('sky', { id: 'cactus', ar: 0.7, name: 'Cacti', size: 130, ground: 'sky-2', what: 'desert cacti', ones: 'a tall cactus with two arms; a short one with one arm; a round barrel cactus; a prickly pear with a pink flower' }),
+  N('sky', { id: 'palm', ar: 0.8, name: 'Palm trees', count: 2, size: 320, frame: 'wide', ground: 'sky-2', what: 'oasis palm trees with curving trunks and a crown of long fronds', ones: 'one leaning left; one leaning right' }),
+  N('sky', { id: 'tumbleweed', ar: 1.1, name: 'Tumbleweeds', size: 40, ground: 'sky-1', what: 'dry tumbleweeds, round tangles of pale twigs', ones: 'four sizes' }),
+  N('sky', { id: 'skull', ar: 1.6, name: 'Bleached skulls', fit: 'w', size: 56, ground: 'sky-1', what: 'bleached cattle skulls with horns, lying on the ground', ones: 'four, turned different ways' }),
+  N('sky', { id: 'hoodoo', ar: 0.6, name: 'Hoodoo rocks', count: 2, size: 240, ground: 'sky-2', what: 'red sandstone rock stacks, banded in layers, with a wider stone balanced on top', ones: 'one tall and thin; one wider and lower' }),
+  N('sky', { id: 'sage', ar: 1.4, name: 'Sage brush', size: 45, ground: 'sky-1', what: 'dry grey-green sage bushes', ones: 'four different shapes' }),
   /* Stone Hollows */
-  N('hollows', { id: 'boulder', name: 'Boulders', size: 90, ground: 'hollows-1', what: 'grey granite boulders with hard facets and cracks', ones: 'one round; one flat-topped; one split in two; one with pale moss' }),
-  N('hollows', { id: 'crystal', name: 'Crystal clusters', key: 'green', size: 100, ground: 'hollows-2', what: 'clusters of blue and violet crystals growing out of a grey rock base', ones: 'four different clusters' }),
-  N('hollows', { id: 'minecart', name: 'Mine cart', count: 1, fit: 'w', size: 110, ground: 'hollows-1', what: 'an old iron mine cart full of grey ore, seen from the side, standing alone with no rails' }),
-  N('hollows', { id: 'rubble', name: 'Rubble', size: 45, ground: 'hollows-1', what: 'small heaps of broken grey rubble', ones: 'four different heaps' }),
+  N('hollows', { id: 'boulder', ar: 1.2, name: 'Boulders', size: 90, ground: 'hollows-1', what: 'grey granite boulders with hard facets and cracks', ones: 'one round; one flat-topped; one split in two; one with pale moss' }),
+  N('hollows', { id: 'crystal', ar: 0.9, name: 'Crystal clusters', key: 'green', size: 100, ground: 'hollows-2', what: 'clusters of blue and violet crystals growing out of a grey rock base', ones: 'four different clusters' }),
+  N('hollows', { id: 'minecart', ar: 1.4, name: 'Mine cart', count: 1, fit: 'w', size: 110, ground: 'hollows-1', what: 'an old iron mine cart full of grey ore, seen from the side, standing alone with no rails' }),
+  N('hollows', { id: 'rubble', ar: 1.6, name: 'Rubble', size: 45, ground: 'hollows-1', what: 'small heaps of broken grey rubble', ones: 'four different heaps' }),
   /* Electric Foundry */
-  N('thunder', { id: 'pylon', name: 'Iron pylons', count: 2, size: 380, frame: 'wide', ground: 'thunder-3', what: 'tall iron lattice pylons with crossbars and white insulators', ones: 'one straight; one a little bent and patched with riveted plates' }),
-  N('thunder', { id: 'scrap', name: 'Scrap piles', size: 60, ground: 'thunder-1', what: 'piles of rusty iron scrap: gears, pipes and bent plates', ones: 'four different piles' }),
-  N('thunder', { id: 'coal', name: 'Coal heaps', count: 2, size: 70, ground: 'thunder-1', what: 'heaps of black coal with a shovel stuck in them', ones: 'one big; one small' }),
-  N('thunder', { id: 'coil', name: 'Copper coils', count: 2, size: 190, ground: 'thunder-3', what: 'tall copper coils on iron stands, each topped with a lightning rod', ones: 'one single coil; one twin coil' }),
+  N('thunder', { id: 'pylon', ar: 0.45, name: 'Iron pylons', count: 2, size: 380, frame: 'wide', ground: 'thunder-3', what: 'tall iron lattice pylons with crossbars and white insulators', ones: 'one straight; one a little bent and patched with riveted plates' }),
+  N('thunder', { id: 'scrap', ar: 1.4, name: 'Scrap piles', size: 60, ground: 'thunder-1', what: 'piles of rusty iron scrap: gears, pipes and bent plates', ones: 'four different piles' }),
+  N('thunder', { id: 'coal', ar: 1.5, name: 'Coal heaps', count: 2, size: 70, ground: 'thunder-1', what: 'heaps of black coal with a shovel stuck in them', ones: 'one big; one small' }),
+  N('thunder', { id: 'coil', ar: 0.5, name: 'Copper coils', count: 2, size: 190, ground: 'thunder-3', what: 'tall copper coils on iron stands, each topped with a lightning rod', ones: 'one single coil; one twin coil' }),
   /* Water Caves */
-  N('tidal', { id: 'driftwood', name: 'Driftwood', fit: 'w', size: 120, ground: 'tidal-1', what: 'pale, sea-worn driftwood logs and branches lying on the ground', ones: 'four different pieces' }),
-  N('tidal', { id: 'netpole', name: 'Net poles', count: 2, size: 170, ground: 'tidal-1', what: 'two wooden poles with a fishing net hung between them to dry, with cork floats', ones: 'one neat; one with a torn, patched net' }),
-  N('tidal', { id: 'rowboat', name: 'Beached boat', count: 1, fit: 'w', size: 210, ground: 'tidal-1', what: 'a small wooden rowing boat pulled up on the sand, seen from the side, the bow to the left, with its oars inside' }),
-  N('tidal', { id: 'searock', name: 'Sea rocks', size: 70, ground: 'tidal-3', what: 'dark sea rocks with green moss and a few barnacles', ones: 'four different shapes' }),
-  N('tidal', { id: 'shell', name: 'Giant shells', key: 'green', size: 60, ground: 'tidal-4', what: 'giant sea shells, as big as a barrel', ones: 'a spiral conch; a fan scallop; a clam; a spiky one' }),
-  N('tidal', { id: 'coral', name: 'Coral', key: 'green', size: 80, ground: 'tidal-4', what: 'clumps of coral', ones: 'pink branching; orange fan; purple brain coral; teal tube coral' }),
+  N('tidal', { id: 'driftwood', ar: 3.0, name: 'Driftwood', fit: 'w', size: 120, ground: 'tidal-1', what: 'pale, sea-worn driftwood logs and branches lying on the ground', ones: 'four different pieces' }),
+  N('tidal', { id: 'netpole', ar: 1.2, name: 'Net poles', count: 2, size: 170, ground: 'tidal-1', what: 'two wooden poles with a fishing net hung between them to dry, with cork floats', ones: 'one neat; one with a torn, patched net' }),
+  N('tidal', { id: 'rowboat', ar: 2.6, name: 'Beached boat', count: 1, fit: 'w', size: 210, ground: 'tidal-1', what: 'a small wooden rowing boat pulled up on the sand, seen from the side, the bow to the left, with its oars inside' }),
+  N('tidal', { id: 'searock', ar: 1.3, name: 'Sea rocks', size: 70, ground: 'tidal-3', what: 'dark sea rocks with green moss and a few barnacles', ones: 'four different shapes' }),
+  N('tidal', { id: 'shell', ar: 1.1, name: 'Giant shells', key: 'green', size: 60, ground: 'tidal-4', what: 'giant sea shells, as big as a barrel', ones: 'a spiral conch; a fan scallop; a clam; a spiky one' }),
+  N('tidal', { id: 'coral', ar: 1.0, name: 'Coral', key: 'green', size: 80, ground: 'tidal-4', what: 'clumps of coral', ones: 'pink branching; orange fan; purple brain coral; teal tube coral' }),
   /* Poison Forest */
-  N('mist', { id: 'slimetree', name: 'Slime trees', count: 2, size: 290, ground: 'mist-2', what: 'twisted dead trees dripping green slime from their branches', ones: 'one tall and crooked; one hunched' }),
-  N('mist', { id: 'toadstool', name: 'Giant toadstools', key: 'green', size: 130, ground: 'mist-2', what: 'giant toadstools with spotted caps', ones: 'a tall purple one; a wide yellow one; a cluster of small purple ones; a drooping yellow one' }),
-  N('mist', { id: 'mangrove', name: 'Mangroves', count: 2, size: 270, ground: 'mist-3', what: 'mangrove trees standing on tangled arching roots, hung with grey moss', ones: 'one tall; one wider' }),
-  N('mist', { id: 'scarecrow', name: 'Scarecrow', count: 1, size: 130, ground: 'mist-1', what: 'a lopsided, withered scarecrow on a pole, in a torn hat and patched shirt' }),
+  N('mist', { id: 'slimetree', ar: 0.8, name: 'Slime trees', count: 2, size: 290, ground: 'mist-2', what: 'twisted dead trees dripping green slime from their branches', ones: 'one tall and crooked; one hunched' }),
+  N('mist', { id: 'toadstool', ar: 0.8, name: 'Giant toadstools', key: 'green', size: 130, ground: 'mist-2', what: 'giant toadstools with spotted caps', ones: 'a tall purple one; a wide yellow one; a cluster of small purple ones; a drooping yellow one' }),
+  N('mist', { id: 'mangrove', ar: 1.0, name: 'Mangroves', count: 2, size: 270, ground: 'mist-3', what: 'mangrove trees standing on tangled arching roots, hung with grey moss', ones: 'one tall; one wider' }),
+  N('mist', { id: 'scarecrow', ar: 0.7, name: 'Scarecrow', count: 1, size: 130, ground: 'mist-1', what: 'a lopsided, withered scarecrow on a pole, in a torn hat and patched shirt' }),
   /* Verdant Wilds */
-  N('verdant', { id: 'jungletree', name: 'Giant jungle trees', count: 2, size: 400, frame: 'wide', ground: 'verdant-2', what: 'giant jungle trees with huge mossy trunks, buttress roots and vines hanging from a vast canopy', ones: 'one very tall; one wider' }),
-  N('verdant', { id: 'wildfruit', name: 'Wild fruit trees', count: 2, size: 240, ground: 'verdant-1', what: 'old fruit trees gone wild, overgrown, with orange fruit', ones: 'one round; one leaning' }),
-  N('verdant', { id: 'giantflower', name: 'Giant flowers', key: 'green', size: 110, ground: 'verdant-2', what: 'giant jungle flowers on thick stems', ones: 'red; purple; teal; yellow' }),
-  N('verdant', { id: 'fern', name: 'Ferns', size: 60, ground: 'verdant-2', what: 'lush green ferns', ones: 'four different shapes' }),
-  N('verdant', { id: 'stonewall', name: 'Tumbledown wall', fit: 'w', size: 150, ground: 'verdant-1', what: 'short pieces of an old tumbledown dry-stone wall running left to right, mossy, with a few stones fallen', ones: 'four different pieces' }),
+  N('verdant', { id: 'jungletree', ar: 0.9, name: 'Giant jungle trees', count: 2, size: 400, frame: 'wide', ground: 'verdant-2', what: 'giant jungle trees with huge mossy trunks, buttress roots and vines hanging from a vast canopy', ones: 'one very tall; one wider' }),
+  N('verdant', { id: 'wildfruit', ar: 0.9, name: 'Wild fruit trees', count: 2, size: 240, ground: 'verdant-1', what: 'old fruit trees gone wild, overgrown, with orange fruit', ones: 'one round; one leaning' }),
+  N('verdant', { id: 'giantflower', ar: 0.7, name: 'Giant flowers', key: 'green', size: 110, ground: 'verdant-2', what: 'giant jungle flowers on thick stems', ones: 'red; purple; teal; yellow' }),
+  N('verdant', { id: 'fern', ar: 1.3, name: 'Ferns', size: 60, ground: 'verdant-2', what: 'lush green ferns', ones: 'four different shapes' }),
+  N('verdant', { id: 'stonewall', ar: 2.5, name: 'Tumbledown wall', fit: 'w', size: 150, ground: 'verdant-1', what: 'short pieces of an old tumbledown dry-stone wall running left to right, mossy, with a few stones fallen', ones: 'four different pieces' }),
 ];
 
 /* The groups, in the order the page shows them */

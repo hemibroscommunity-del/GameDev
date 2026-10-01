@@ -24,6 +24,22 @@
  * MEMORY, FOR THE PHONE.  Finished pieces are kept as PNGs; the cards show
  * small copies; only the one object on the stage is unpacked at full size.
  *
+ * v2.3.2965: SPRITE SHEETS.  Owner: "I also want to fit as many things as I
+ * can on one sprite sheet for objects as long as it stays organized."  Two
+ * kinds, one for each end of the pipe:
+ *   - SHEET PICTURES (sheets.js): each land's objects packed as many to a
+ *     ChatGPT picture as fit at their true size, in rows read like a page.
+ *     A sheet brought back is cut into its objects, each named by where it
+ *     stands (readingOrder, autoAssign), every name a select the owner can
+ *     change; each object is then made from its pieces exactly as from a
+ *     picture of its own (finishPieces).  An object's OWN picture, from its
+ *     own prompt, always wins over its sheet's pieces.
+ *   - SPRITE SHEETS FOR THE GAME (atlasFiles): "Download for the game" packs
+ *     each land's finished objects into as few big pictures as hold them
+ *     (one, mostly), with a PixiJS sheet file naming where each one is and
+ *     where it stands (its anchor at its foot), so the game loads one file a
+ *     land, the land you are in (CLAUDE.md, per-zone loading).
+ *
  * window.__objects is the handle tools/qa/object-studio.mjs drives.
  */
 import { PLAN } from '../world/plan.js';
@@ -35,6 +51,7 @@ import { blobToCanvas, keyOut, partsOf, cropTo, splitObjects, resize, ownPalette
 import { loadSprites } from '../style/scene.js';
 import { objectCatalog, GROUPS } from './catalog.js';
 import { promptFor, sizeWords, FRAME_GAME_PX } from './prompts.js';
+import { sheetsFor, sheetPrompt, boxOf, SHEET } from './sheets.js';
 
 const GPA = PIXEL.gamePxPerArtPx;      /* 0.5 game px a picture px */
 const PX = 1 / GPA;                    /* 2 picture px a game px */
@@ -56,6 +73,16 @@ const LOOSE_MIN = 0.08;
 /* a picture whose border is less than this share one flat colour was drawn
    on a scene, not on the background the prompt asks for */
 const FLAT_MIN = 0.6;
+/* v2.3.2965: a sheet picture is kept in 'raw' under this key, beside the
+   objects' own pictures */
+const SHEET_KEY = (id) => `sheet:${id}`;
+/* on a sheet, a part smaller than this share of the smallest object asked
+   for is a speck, not an object */
+const SPECK = 0.15;
+/* the game's sprite sheets: at most this many px a side (every iPhone takes
+   a texture this big), with this much clear space between two objects so
+   neither bleeds into the other when the game smooths them */
+const ATLAS_MAX = 2048, ATLAS_PAD = 2;
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -66,8 +93,18 @@ const S = {
   store: null, key: null,
   /* id -> { blob, name, type, at, promptId } */
   raw: new Map(),
-  /* id -> { pieces: [{ png, w, h, thumb }], ratio, found, flat, colours, size, made, at } */
+  /* id -> { pieces: [{ png, w, h, thumb }], ratio, found, flat, colours, size, made, at,
+     src: 'own' or the sheet it was made from (v2.3.2965) } */
   fin: new Map(),
+  /* v2.3.2965: the sheet pictures -- the sheets (sheets.js), which sheet each
+     object is on, the objects that keep a picture of their own; and
+     sheet id -> { blob, name, type, at, promptId, boxes, assign, thumbs,
+     flat, frameH, rows }: where each object was found on it, in reading
+     order, and which object each one is (null: not used) */
+  sheets: [], sheetById: Object.create(null), sheetOf: Object.create(null), alone: new Set(),
+  sheetRaw: new Map(), sheetThumbs: new Map(), sheetCards: Object.create(null),
+  /* the one sheet kept cut out while it is worked on */
+  cut: null,
   sizes: Object.create(null),
   sprites: null,
   ground: { made: '', imgs: Object.create(null) },
@@ -108,11 +145,22 @@ function promptId(text) {
 }
 
 /* ═══ the pipeline: a ChatGPT picture -> the object's pieces ═══ */
-async function makePieces(entry, blob, mul = 1) {
+
+/* A picture, its flat background cut away.  `frameH` is its height before
+   anything is cut: the frame its sizes are measured against (prompts.js). */
+async function cutPicture(blob) {
   const src = await blobToCanvas(blob, 2048);
   /* ChatGPT sometimes draws the object on a scene, not one flat colour */
   const flat = flatBorder(src);
   const { canvas: cut } = keyOut(src);
+  const frameH = src.height;
+  release(src);
+  return { cut, frameH, flat };
+}
+
+/* An object's OWN picture: one object and the loose bits round it, or its set */
+async function makePieces(entry, blob, mul = 1) {
+  const { cut, frameH, flat } = await cutPicture(blob);
   let pieces;
   if (entry.count === 1) {
     /* one object: its biggest part and the loose bits round it */
@@ -127,9 +175,14 @@ async function makePieces(entry, blob, mul = 1) {
       if (t) pieces.push(t);
     }
   } else pieces = splitObjects(cut, entry.count);
-  const frameH = src.height;
-  release(src); release(cut);
+  release(cut);
   if (!pieces.length) throw new Error('nothing was left once the background was cut away');
+  return finishPieces(entry, pieces, frameH, flat, mul);
+}
+
+/* An object's pieces, cut out -- from its own picture or from a sheet -- made
+   as the game will use them.  The pieces are let go. */
+function finishPieces(entry, pieces, frameH, flat, mul) {
   /* the middle of the set made the catalog's size (of four, the two in the
      middle, averaged); the rest in step */
   const dims = pieces.map((p) => (entry.fit === 'w' ? p.width : p.height)).sort((a, b) => a - b);
@@ -191,16 +244,18 @@ function thumbOf(c) {
   return t;
 }
 
-/* made pieces -> what is kept: PNGs, sizes, the card's copies */
-async function keepPieces(made, mul) {
+/* made pieces -> what is kept: PNGs, sizes, the card's copies, and where
+   they came from ('own', or the sheet) */
+async function keepPieces(made, mul, src = 'own') {
   const pieces = [];
   for (const c of made.canvases) {
     pieces.push({ png: await canvasToBlob(c), w: c.width, h: c.height, thumb: thumbOf(c) });
     release(c);
   }
-  return { pieces, ratio: made.ratio, found: made.found, flat: made.flat, colours: made.colours, size: mul, made: MADE, at: Date.now() };
+  return { pieces, ratio: made.ratio, found: made.found, flat: made.flat, colours: made.colours, size: mul, made: MADE, at: Date.now(), src };
 }
 const storedFin = (f) => ({ ...f, pieces: f.pieces.map(({ png, w, h }) => ({ png, w, h })) });
+const srcOf = (f) => (f && f.src) || 'own';
 
 async function finish(id) {
   const e = S.byId[id], raw = S.raw.get(id), mul = S.sizes[id] || 1;
@@ -224,43 +279,205 @@ async function addPicture(id, blob, name) {
   return f;
 }
 
+/* v2.3.2965: an object made from a sheet lets its pieces there go (they
+   show as "not used"); one made from its own picture loses that picture,
+   and its sheet's pieces, if it has any, take its place */
 async function removePicture(id) {
+  const f = S.fin.get(id);
+  if (S.stage.id === id) hideStage();
+  if (srcOf(f) !== 'own') {
+    const rec = S.sheetRaw.get(f.src);
+    if (rec) { rec.assign = rec.assign.map((a) => (a === id ? null : a)); await S.store.put('raw', SHEET_KEY(f.src), rec); }
+    S.fin.delete(id);
+    await S.store.del('fin', id);
+    return;
+  }
   S.raw.delete(id); S.fin.delete(id);
   await S.store.del('raw', id); await S.store.del('fin', id);
-  if (S.stage.id === id) hideStage();
+  const sid = S.sheetOf[id], rec = sid && S.sheetRaw.get(sid);
+  if (rec && rec.assign.includes(id)) { await makeFromSheet(sid, [id]); dropCut(); }
 }
 
 async function setSize(id, mul) {
   if (mul === 1) delete S.sizes[id]; else S.sizes[id] = mul;
   await S.store.put('misc', 'sizes', { ...S.sizes });
   if (S.raw.has(id)) await finish(id);
+  else if (srcOf(S.fin.get(id)) !== 'own') { await makeFromSheet(S.fin.get(id).src, [id]); dropCut(); }
+}
+
+/* ═══ v2.3.2965: sheet pictures ═══ */
+
+/* The objects on a cut-out sheet, as rows read like a page: each a box in
+   the picture's px.  Specks -- a part much smaller than the smallest object
+   the sheet asks for -- are left out. */
+function sheetRows(cut, frameH, sheet) {
+  const parts = partsOf(cut);
+  const cell = Math.max(1, Math.round(Math.max(cut.width, cut.height) / 320));
+  const k = frameH / SHEET.h;   /* picture px a game px */
+  const smallest = Math.min(...sheet.rows.flat().map((id) => { const b = boxOf(S.byId[id]); return b.w * b.h; }));
+  const minN = Math.max(4, (SPECK * smallest * k * k) / (cell * cell));
+  return readingOrder(parts.filter((p) => p.n >= minN)).map((row) => row.map(({ x, y, w, h }) => ({ x, y, w, h })));
+}
+
+/* Rows, by how the parts overlap top to bottom: a part joins the row it
+   shares the most height with (at least 40% of the shorter), so a short
+   barrel beside a tall lamp post is one row, and the next row down is not.
+   Rows top to bottom, each left to right. */
+function readingOrder(parts) {
+  const rows = [];
+  for (const p of [...parts].sort((a, b) => a.y - b.y)) {
+    let best = null, bestO = 0;
+    for (const r of rows) {
+      const o = Math.min(p.y + p.h, r.y1) - Math.max(p.y, r.y0);
+      if (o > bestO) { bestO = o; best = r; }
+    }
+    if (best && bestO >= 0.4 * Math.min(p.h, best.y1 - best.y0)) {
+      best.items.push(p); best.y0 = Math.min(best.y0, p.y); best.y1 = Math.max(best.y1, p.y + p.h);
+    } else rows.push({ y0: p.y, y1: p.y + p.h, items: [p] });
+  }
+  rows.sort((a, b) => (a.y0 + a.y1) - (b.y0 + b.y1));
+  for (const r of rows) r.items.sort((a, b) => (a.x + a.w / 2) - (b.x + b.w / 2));
+  return rows.map((r) => r.items);
+}
+
+/* Which object each part is, in reading order: row by row, each kind's
+   ones in the order the prompt asked for them -- or, when ChatGPT drew a
+   different number of rows, simply in reading order.  Past the ones asked
+   for, a part is not used. */
+function autoAssign(sheet, rows) {
+  const want = sheet.rows.map((ids) => ids.flatMap((id) => Array(S.byId[id].count).fill(id)));
+  if (rows.length === want.length) return rows.flatMap((r, i) => r.map((_, j) => want[i][j] || null));
+  const seq = want.flat();
+  return rows.flat().map((_, i) => seq[i] || null);
+}
+
+/* the sheet kept cut out, while one is worked on */
+async function sheetCut(id) {
+  const raw = S.sheetRaw.get(id);
+  if (S.cut && S.cut.id === id && S.cut.blob === raw.blob) return S.cut;
+  dropCut();
+  S.cut = { id, blob: raw.blob, ...(await cutPicture(raw.blob)) };
+  return S.cut;
+}
+function dropCut() { if (S.cut) { release(S.cut.cut); S.cut = null; } }
+
+async function decodeSheetThumbs(id) {
+  const rec = S.sheetRaw.get(id), out = [];
+  for (const b of (rec && rec.thumbs) || []) { try { out.push(await blobToCanvas(b, 512)); } catch (e) { out.push(mk(1, 1)); } }
+  S.sheetThumbs.set(id, out);
+}
+
+/* `keep`: the names a backup recorded ({ assign, promptId }), used when it
+   lines up with the parts found now (the same picture, so it does) */
+async function addSheet(id, blob, name, keep = null) {
+  const sheet = S.sheetById[id];
+  if (!sheet) throw new Error(`no sheet ${id}`);
+  dropCut();
+  const c = await cutPicture(blob);
+  const rows = sheetRows(c.cut, c.frameH, sheet);
+  const boxes = rows.flat();
+  if (!boxes.length) { release(c.cut); throw new Error('nothing was left once the background was cut away'); }
+  const thumbs = [];
+  for (const b of boxes) { const t = cropTo(c.cut, b); thumbs.push(await canvasToBlob(thumbOf(t))); release(t); }
+  const kinds = new Set(sheet.rows.flat());
+  const kept = keep && Array.isArray(keep.assign) && keep.assign.length === boxes.length ? keep.assign.map((a) => (a && kinds.has(a) ? a : null)) : null;
+  const rec = { blob, name: name || '', type: blob.type, at: Date.now(), promptId: (keep && keep.promptId) || promptId(sheetPrompt(sheet, S.byId)),
+    boxes, assign: kept || autoAssign(sheet, rows), thumbs, flat: c.flat, frameH: c.frameH, rows: rows.length };
+  S.sheetRaw.set(id, rec);
+  S.cut = { id, blob, ...c };
+  await S.store.put('raw', SHEET_KEY(id), rec);
+  await decodeSheetThumbs(id);
+  /* a sheet made again makes all its objects again, but any with its own
+     picture (which wins) */
+  for (const eid of sheet.rows.flat()) {
+    const f = S.fin.get(eid);
+    if (f && f.src === id && !rec.assign.includes(eid)) { S.fin.delete(eid); await S.store.del('fin', eid); }
+  }
+  await makeFromSheet(id);
+  dropCut();
+}
+
+/* Each object on the sheet (or `only` these) made from the parts named
+   after it -- but an object with its own picture keeps it. */
+async function makeFromSheet(id, only = null) {
+  const sheet = S.sheetById[id], rec = S.sheetRaw.get(id);
+  if (!sheet || !rec) return;
+  const c = await sheetCut(id);
+  for (const eid of sheet.rows.flat()) {
+    if (only && !only.includes(eid)) continue;
+    if (S.raw.has(eid)) continue;
+    const boxes = rec.boxes.filter((_, i) => rec.assign[i] === eid);
+    if (!boxes.length) {
+      if (srcOf(S.fin.get(eid)) === id) { S.fin.delete(eid); await S.store.del('fin', eid); if (S.stage.id === eid) hideStage(); }
+      continue;
+    }
+    const pieces = boxes.map((b) => cropTo(c.cut, b)).filter(Boolean);
+    const mul = S.sizes[eid] || 1;
+    const f = await keepPieces(finishPieces(S.byId[eid], pieces, c.frameH, rec.flat, mul), mul, id);
+    S.fin.set(eid, f);
+    await S.store.put('fin', eid, storedFin(f));
+  }
+}
+
+/* the owner names part `index` of a sheet: an object on it, or null */
+async function reassign(id, index, eid) {
+  const rec = S.sheetRaw.get(id), sheet = S.sheetById[id];
+  if (!rec || !sheet || index < 0 || index >= rec.assign.length) return;
+  if (eid && !sheet.rows.flat().includes(eid)) return;
+  const before = rec.assign[index];
+  rec.assign[index] = eid || null;
+  await S.store.put('raw', SHEET_KEY(id), rec);
+  await makeFromSheet(id, [before, eid].filter(Boolean));
+  dropCut();
+}
+
+async function removeSheet(id) {
+  const sheet = S.sheetById[id];
+  S.sheetRaw.delete(id); S.sheetThumbs.delete(id);
+  await S.store.del('raw', SHEET_KEY(id));
+  for (const eid of sheet.rows.flat()) {
+    if (srcOf(S.fin.get(eid)) !== id) continue;
+    if (S.stage.id === eid) hideStage();
+    S.fin.delete(eid);
+    await S.store.del('fin', eid);
+  }
+  dropCut();
 }
 
 async function loadAll() {
   const sizes = await S.store.get('misc', 'sizes');
   if (sizes && typeof sizes === 'object') for (const [k, v] of Object.entries(sizes)) if (S.byId[k] && SIZES.includes(v)) S.sizes[k] = v;
-  const keys = await S.store.keys('raw');
-  let n = 0;
-  for (const id of keys) {
-    if (!S.byId[id]) continue;
-    const rec = await S.store.get('raw', id);
+  for (const k of await S.store.keys('raw')) {
+    const rec = await S.store.get('raw', k);
     if (!rec || !rec.blob) continue;
-    S.raw.set(id, rec);
-    const f = await S.store.get('fin', id);
-    const mul = S.sizes[id] || 1;
-    if (f && f.made === MADE && f.size === mul && Array.isArray(f.pieces) && f.pieces.length) {
+    const key = String(k);
+    if (key.startsWith('sheet:')) {
+      const sid = key.slice(6);
+      if (S.sheetById[sid] && Array.isArray(rec.boxes) && Array.isArray(rec.assign)) { S.sheetRaw.set(sid, rec); await decodeSheetThumbs(sid); }
+    } else if (S.byId[key]) S.raw.set(key, rec);
+  }
+  /* each object from its own picture, else from its sheet's parts */
+  let n = 0;
+  for (const e of S.cat) {
+    const sid = S.sheetOf[e.id], rec = sid && S.sheetRaw.get(sid);
+    const want = S.raw.has(e.id) ? 'own' : rec && rec.assign.includes(e.id) ? sid : null;
+    if (!want) continue;
+    const f = await S.store.get('fin', e.id);
+    const mul = S.sizes[e.id] || 1;
+    if (f && f.made === MADE && f.size === mul && srcOf(f) === want && Array.isArray(f.pieces) && f.pieces.length) {
       const pieces = [];
       for (const p of f.pieces) {
         const c = await blobToCanvas(p.png, 4096);
         pieces.push({ png: p.png, w: p.w, h: p.h, thumb: thumbOf(c) });
         release(c);
       }
-      S.fin.set(id, { ...f, pieces });
+      S.fin.set(e.id, { ...f, src: want, pieces });
     } else {
       $('status').textContent = `Making your objects again with this version, once: ${++n}…`;
-      try { await finish(id); } catch (err) { S.fin.delete(id); }
+      try { if (want === 'own') await finish(e.id); else await makeFromSheet(want, [e.id]); } catch (err) { S.fin.delete(e.id); }
     }
   }
+  dropCut();
 }
 
 async function loadStyleKey() {
@@ -371,7 +588,18 @@ function plotOf(id) {
 function whereLine(e) {
   const size = sizeWords(e);
   if (e.kind === 'building') return `${plotOf(e.id)} The building is ${size}.`;
-  return `${e.count === 1 ? 'One' : `${e.count} different ones`} in one picture, each ${size}.`;
+  return `${e.count === 1 ? 'One' : `${e.count} different ones`}, ${e.count === 1 ? '' : 'each '}${size}.`;
+}
+/* v2.3.2965: which sheet it is on, or why it has a picture of its own */
+const groupName = (id) => (GROUPS.find((g) => g.id === id) || { name: id }).name;
+const sheetName = (sh) => `${groupName(sh.group)}, sheet ${sh.n}${sh.of > 1 ? ` of ${sh.of}` : ''}`;
+function sheetLine(e) {
+  if (e.kind === 'building') return '';
+  const sid = S.sheetOf[e.id];
+  if (sid) return `On ${sheetName(S.sheetById[sid])}. Its own prompt below makes just this one, and a picture made with it wins over the sheet's.`;
+  return e.key === 'green' && !S.cat.some((x) => x !== e && x.group === e.group && x.key === 'green' && S.sheetOf[x.id])
+    ? 'Not on a sheet: it is the only pink or purple thing in its land, so it has a picture of its own.'
+    : 'Not on a sheet: too big to share one, so it has a picture of its own.';
 }
 
 function pixelNote(f, e) {
@@ -396,6 +624,8 @@ function renderCard(e) {
   head.appendChild(name);
   box.appendChild(head);
   box.appendChild(el('div', 'ob-where', whereLine(e)));
+  const onSheet = sheetLine(e);
+  if (onSheet) box.appendChild(el('div', 'ob-where', onSheet));
   if (e.key === 'green') box.appendChild(el('div', 'ob-where', 'Drawn on a green background, not magenta: it is pink or purple itself.'));
   if (raw && raw.promptId && raw.promptId !== promptId(promptFor(e))) {
     const note = el('div', 'ob-note warn', 'Made from an older prompt. Make it again with the prompt below whenever you like.');
@@ -403,7 +633,7 @@ function renderCard(e) {
     box.appendChild(note);
   }
   const det = el('details');
-  det.appendChild(el('summary', null, 'The prompt'));
+  det.appendChild(el('summary', null, S.sheetOf[e.id] ? 'Its own prompt (just this one)' : 'The prompt'));
   const ta = el('textarea');
   ta.readOnly = true; ta.value = promptFor(e); ta.dataset.prompt = e.id;
   det.appendChild(ta);
@@ -432,6 +662,10 @@ function renderCard(e) {
   row.appendChild(lab);
   box.appendChild(row);
   if (!f) return;
+  const from = srcOf(f) === 'own' ? 'Made from its own picture.' : `Made from ${sheetName(S.sheetById[f.src])}.`;
+  const fromLine = el('div', 'ob-where', from);
+  fromLine.dataset.from = e.id;
+  box.appendChild(fromLine);
   const strip = el('div', 'ob-strip');
   for (const p of f.pieces) { p.thumb.dataset.piece = e.id; strip.appendChild(p.thumb); }
   box.appendChild(strip);
@@ -460,13 +694,120 @@ function renderCard(e) {
   r2.appendChild(sel);
   const rm = el('button', 'danger', 'Remove');
   rm.dataset.remove = e.id;
-  rm.addEventListener('click', async () => { await busy('Removing…', () => removePicture(e.id)); renderCard(e); renderCounts(); renderSaved(); });
+  rm.addEventListener('click', async () => {
+    const sid = srcOf(f) !== 'own' ? f.src : S.sheetOf[e.id];
+    await busy('Removing…', () => removePicture(e.id));
+    renderCard(e); renderCounts(); renderSaved();
+    if (sid && S.sheetById[sid]) renderSheet(S.sheetById[sid]);
+  });
   r2.appendChild(rm);
   box.appendChild(r2);
   const slot = el('div');
   slot.dataset.stage = e.id;
   slot.hidden = true;
   box.appendChild(slot);
+}
+
+/* v2.3.2965: a sheet picture's card: what is on it, its prompt, and once
+   made, every object found on it with its name, which the owner can change */
+function rowsText(sheet) {
+  return sheet.rows.map((ids, i) => `Row ${i + 1}: ${ids.map((id) => { const e = S.byId[id]; return e.count > 1 ? `${e.name.toLowerCase()} (${e.count})` : e.name.toLowerCase(); }).join(', ')}.`).join(' ');
+}
+function renderSheet(sheet) {
+  const box = S.sheetCards[sheet.id];
+  if (!box) return;
+  box.textContent = '';
+  const rec = S.sheetRaw.get(sheet.id);
+  const kinds = sheet.rows.flat();
+  const asked = kinds.reduce((t, id) => t + S.byId[id].count, 0);
+  const head = el('div', 'ob-head');
+  const name = el('span', 'ob-name', `Sheet ${sheet.n}${sheet.of > 1 ? ` of ${sheet.of}` : ''}`);
+  const chip = el('span', rec ? 'chip ok' : 'chip', rec ? 'made' : 'not made');
+  chip.dataset.sheetChip = sheet.id;
+  name.appendChild(chip);
+  head.appendChild(name);
+  box.appendChild(head);
+  box.appendChild(el('div', 'ob-where', `${asked} objects in one wide picture. ${rowsText(sheet)}`));
+  if (sheet.key === 'green') box.appendChild(el('div', 'ob-where', 'Drawn on a green background, not magenta: these are pink or purple themselves.'));
+  if (rec && rec.promptId && rec.promptId !== promptId(sheetPrompt(sheet, S.byId))) {
+    const note = el('div', 'ob-note warn', 'Made from an older prompt. Make it again with the prompt below whenever you like.');
+    note.dataset.stale = sheet.id;
+    box.appendChild(note);
+  }
+  const det = el('details');
+  det.appendChild(el('summary', null, 'The sheet prompt'));
+  const ta = el('textarea');
+  ta.readOnly = true; ta.value = sheetPrompt(sheet, S.byId); ta.dataset.sheetPrompt = sheet.id;
+  det.appendChild(ta);
+  box.appendChild(det);
+  const row = el('div', 'row');
+  const copyBtn = el('button', null, 'Copy prompt');
+  copyBtn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(ta.value); toast('Prompt copied. Attach the style key in the chat.'); }
+    catch (err) { det.open = true; ta.select(); toast('Select the prompt and copy it.'); }
+  });
+  row.appendChild(copyBtn);
+  const lab = el('label', rec ? 'btn' : 'btn brass', rec ? 'Replace…' : 'Add sheet picture');
+  const inp = el('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.dataset.sheetFile = sheet.id;
+  inp.addEventListener('change', async () => {
+    const file = inp.files && inp.files[0];
+    inp.value = '';
+    if (!file) return;
+    try {
+      await busy('Cutting out every object and naming it…', () => addSheet(sheet.id, file, file.name));
+      renderSheet(sheet);
+      for (const id of kinds) renderCard(S.byId[id]);
+      renderCounts(); renderSaved();
+      const r = S.sheetRaw.get(sheet.id);
+      toast(`${r.boxes.length} objects found on the sheet. Check the names under each.`);
+    } catch (err) { toast(`That picture could not be used: ${err.message || err}`, true); }
+  });
+  lab.appendChild(inp);
+  row.appendChild(lab);
+  if (rec) {
+    const rm = el('button', 'danger', 'Remove');
+    rm.dataset.removeSheet = sheet.id;
+    rm.addEventListener('click', async () => {
+      await busy('Removing…', () => removeSheet(sheet.id));
+      renderSheet(sheet);
+      for (const id of kinds) renderCard(S.byId[id]);
+      renderCounts(); renderSaved();
+    });
+    row.appendChild(rm);
+  }
+  box.appendChild(row);
+  if (!rec) return;
+  const notes = [];
+  if (rec.flat < FLAT_MIN) notes.push(`The background is not one flat colour, so it could not be cut out cleanly. Ask for it on one flat ${sheet.key === 'green' ? 'bright green' : 'magenta'} background, with nothing else in the picture.`);
+  if (rec.boxes.length !== asked) notes.push(`Found ${rec.boxes.length} objects; the sheet asks for ${asked}. Two that touch count as one. Check the names below, or ask again with them "not touching, with space between".`);
+  else if (rec.rows !== sheet.rows.length) notes.push(`The rows came out differently from the prompt, so the names were given in reading order. Check them below.`);
+  for (const t of notes) { const n = el('div', 'ob-note warn', t); n.dataset.warn = sheet.id; box.appendChild(n); }
+  const own = kinds.filter((id) => S.raw.has(id) && rec.assign.includes(id));
+  if (own.length) box.appendChild(el('div', 'ob-where', `${own.map((id) => S.byId[id].name).join(', ')}: kept ${own.length > 1 ? 'their' : 'its'} own picture, which wins over the sheet's.`));
+  box.appendChild(el('div', 'ob-where', 'What each one is (tap to change):'));
+  const grid = el('div', 'sheet-grid');
+  const thumbs = S.sheetThumbs.get(sheet.id) || [];
+  rec.boxes.forEach((b, i) => {
+    const cell = el('div', 'sheet-cell');
+    const t = thumbs[i];
+    if (t) { const c = mk(t.width, t.height); c.getContext('2d').drawImage(t, 0, 0); cell.appendChild(c); }
+    const sel = el('select');
+    sel.dataset.assign = `${sheet.id}|${i}`;
+    sel.setAttribute('aria-label', `Object ${i + 1} on the sheet`);
+    for (const id of kinds) { const o = el('option', null, S.byId[id].name); o.value = id; sel.appendChild(o); }
+    const none = el('option', null, 'Not used'); none.value = ''; sel.appendChild(none);
+    sel.value = rec.assign[i] || '';
+    sel.addEventListener('change', async () => {
+      const before = rec.assign[i];
+      await busy('Making it again…', () => reassign(sheet.id, i, sel.value || null));
+      renderSheet(sheet);
+      for (const id of [before, sel.value].filter(Boolean)) renderCard(S.byId[id]);
+      renderCounts(); renderSaved();
+    });
+    cell.appendChild(sel);
+    grid.appendChild(cell);
+  });
+  box.appendChild(grid);
 }
 
 function renderGroups() {
@@ -483,6 +824,20 @@ function renderGroups() {
     chip.dataset.groupCount = gr.id;
     sum.appendChild(chip);
     det.appendChild(sum);
+    /* v2.3.2965: its sheet pictures first: the quickest way to make them */
+    const sheets = S.sheets.filter((sh) => sh.group === gr.id);
+    if (sheets.length) {
+      det.appendChild(el('h3', 'sub-h', sheets.length > 1 ? `Sheet pictures: ${sheets.length} make every object below` : 'Sheet picture: one makes every object below'));
+      det.appendChild(el('p', 'mut', `A sheet is one ChatGPT picture of many objects in tidy rows, each kind together. Bring it back and every object on it is cut out and named for you; check the names under each.${S.alone.size && list.some((e) => S.alone.has(e.id)) ? ' The few too big to share, or the only pink or purple thing here, have a picture of their own.' : ''}`));
+      for (const sh of sheets) {
+        const box = el('div', 'ob sheet');
+        box.id = `sheet-${sh.id}`;
+        S.sheetCards[sh.id] = box;
+        det.appendChild(box);
+        renderSheet(sh);
+      }
+      det.appendChild(el('h3', 'sub-h', 'The objects'));
+    }
     for (const e of list) {
       const box = el('div', 'ob');
       box.id = `ob-${e.id}`;
@@ -511,7 +866,7 @@ function renderCounts() {
 function renderSaved() {
   const names = S.cat.filter((e) => S.fin.has(e.id)).map((e) => e.name);
   let last = 0;
-  for (const r of S.raw.values()) if (r && r.at > last) last = r.at;
+  for (const r of [...S.raw.values(), ...S.sheetRaw.values()]) if (r && r.at > last) last = r.at;
   const chip = $('saved-chip'), line = $('saved-line'), list = $('saved-list'), when = $('saved-when');
   chip.textContent = names.length ? `${names.length} saved` : 'none yet';
   chip.className = names.length ? 'chip ok' : 'chip';
@@ -564,35 +919,40 @@ async function pixelsOfBlob(blob) {
   return out;
 }
 
-/* `small`: each piece as palette numbers with number 0 see-through
-   (world/core/png8.js), about half the bytes; the full-colour PNG when
-   that cannot be (never a wrong picture) */
-async function exportFiles({ originals = true, small = false } = {}) {
-  const files = [], made = [];
+/* The backup: every picture as uploaded -- objects' own and the sheets
+   (v2.3.2965, with where each object was found on its sheet and what it
+   is) -- every finished piece, and the size choices. */
+async function exportFiles() {
+  const files = [], made = [], sheets = [];
   for (const e of S.cat) {
-    const f = S.fin.get(e.id), raw = S.raw.get(e.id);
-    if (!f || !raw) continue;
+    const f = S.fin.get(e.id);
+    if (!f) continue;
+    const src = srcOf(f), raw = src === 'own' ? S.raw.get(e.id) : S.sheetRaw.get(src);
+    if (!raw) continue;
     const pieces = [];
     for (let i = 0; i < f.pieces.length; i++) {
       const p = f.pieces[i], file = `${e.id}-${i + 1}.png`;
-      let data = null;
-      if (small) { const px = await pixelsOfBlob(p.png); data = await encodePalettePng(px.data, px.w, px.h, { clear: true }); }
-      if (!data) data = new Uint8Array(await p.png.arrayBuffer());
-      files.push({ name: `objects/${file}`, data });
+      files.push({ name: `objects/${file}`, data: new Uint8Array(await p.png.arrayBuffer()) });
       /* `foot`: where it touches the ground, in its own px -- the middle of
          its bottom row, until the placing round gives each a footprint */
       pieces.push({ file, w: p.w, h: p.h, gameW: p.w * GPA, gameH: p.h * GPA, foot: [Math.round(p.w / 2), p.h] });
     }
-    if (originals) files.push({ name: `originals/${e.id}.${extOf(raw.name, raw.blob.type)}`, data: new Uint8Array(await raw.blob.arrayBuffer()) });
+    if (src === 'own') files.push({ name: `originals/${e.id}.${extOf(raw.name, raw.blob.type)}`, data: new Uint8Array(await raw.blob.arrayBuffer()) });
     made.push({
       id: e.id, name: e.name, group: e.group, kind: e.kind, count: e.count, fit: e.fit, size: e.size,
-      sizeMul: f.size, pixelRatio: Math.round(f.ratio * 100) / 100, madeFrom: raw.promptId || null, pieces,
+      sizeMul: f.size, pixelRatio: Math.round(f.ratio * 100) / 100, from: src, madeFrom: raw.promptId || null, pieces,
     });
   }
+  for (const sh of S.sheets) {
+    const rec = S.sheetRaw.get(sh.id);
+    if (!rec) continue;
+    files.push({ name: `originals/sheets/${sh.id}.${extOf(rec.name, rec.blob.type)}`, data: new Uint8Array(await rec.blob.arrayBuffer()) });
+    sheets.push({ id: sh.id, group: sh.group, madeFrom: rec.promptId || null, boxes: rec.boxes, assign: rec.assign });
+  }
   const manifest = {
-    tool: 'brotown-object-studio', version: 1, made: new Date().toISOString(),
+    tool: 'brotown-object-studio', version: 2, made: new Date().toISOString(),
     plan: { id: PLAN.id, version: PLAN.version },
-    gamePxPerArtPx: GPA, ownColours: OWN, objects: made,
+    gamePxPerArtPx: GPA, ownColours: OWN, objects: made, sheets,
   };
   return { files, manifest, enc: new TextEncoder() };
 }
@@ -603,19 +963,99 @@ async function exportZip() {
   return zipStore(files);
 }
 
-/* the zips for GitHub: only what the game reads, each under GAME_PART
-   (GitHub's website takes files of up to 25 MB), each with the manifest */
+/* ═══ v2.3.2965: THE GAME'S SPRITE SHEETS ═══
+   Each land's finished objects packed into as few pictures as hold them,
+   ATLAS_MAX px a side at most (one, for every land but the buildings): in
+   shelves, tallest first, ATLAS_PAD clear px between any two.  Beside each
+   picture a PixiJS sheet file (frames, and each frame's anchor at its foot:
+   the middle of its bottom row; `meta.scale` 2, the art's px a game px, so
+   the game's sprites come out in game px).  The pixels are the pieces' own,
+   each frame the very piece the backup holds. */
+export function packAtlas(items, max = ATLAS_MAX, pad = ATLAS_PAD) {
+  const sorted = [...items].sort((a, b) => b.h - a.h || b.w - a.w);
+  const area = sorted.reduce((t, it) => t + (it.w + pad) * (it.h + pad), 0);
+  const widest = Math.max(...sorted.map((it) => it.w));
+  const W = Math.min(max, Math.max(widest, Math.ceil(Math.sqrt(area * 1.15) / 4) * 4));
+  const pages = [];
+  let page = null, x = 0, y = 0, rowH = 0;
+  const newPage = () => { page = { items: [], w: 0, h: 0 }; pages.push(page); x = 0; y = 0; rowH = 0; };
+  newPage();
+  for (const it of sorted) {
+    if (x && x + it.w > W) { y += rowH + pad; x = 0; rowH = 0; }
+    if (y + it.h > max) newPage();
+    page.items.push({ ...it, x, y });
+    x += it.w + pad;
+    if (it.h > rowH) rowH = it.h;
+    page.w = Math.max(page.w, x - pad); page.h = Math.max(page.h, y + it.h);
+  }
+  return pages;
+}
+
+async function atlasFiles(enc) {
+  const files = [], atlases = [], where = Object.create(null);
+  for (const g of GROUPS) {
+    const items = [];
+    for (const e of S.cat) {
+      if (e.group !== g.id || !S.fin.has(e.id)) continue;
+      S.fin.get(e.id).pieces.forEach((p, i) => items.push({ w: p.w, h: p.h, name: `${e.id}-${i + 1}`, png: p.png }));
+    }
+    if (!items.length) continue;
+    const pages = packAtlas(items);
+    for (let k = 0; k < pages.length; k++) {
+      const pg = pages[k], name = `${g.id}-${k + 1}`;
+      const c = mk(pg.w, pg.h), cg = c.getContext('2d', { willReadFrequently: true });
+      const frames = {};
+      for (const it of pg.items) {
+        const img = await blobToCanvas(it.png, 4096);
+        cg.drawImage(img, it.x, it.y);
+        release(img);
+        frames[it.name] = { frame: { x: it.x, y: it.y, w: it.w, h: it.h }, rotated: false, trimmed: false,
+          spriteSourceSize: { x: 0, y: 0, w: it.w, h: it.h }, sourceSize: { w: it.w, h: it.h }, anchor: { x: 0.5, y: 1 } };
+        where[it.name] = name;
+      }
+      /* palette numbers when the page has 255 colours or fewer, else full colour */
+      const rgba = cg.getImageData(0, 0, pg.w, pg.h).data;
+      const png = (await encodePalettePng(rgba, pg.w, pg.h, { clear: true })) || new Uint8Array(await (await canvasToBlob(c)).arrayBuffer());
+      release(c);
+      const json = { frames, meta: { app: 'brotown-object-studio', version: '1', image: `${name}.png`, format: 'RGBA8888', size: { w: pg.w, h: pg.h }, scale: String(PX) } };
+      files.push({ name: `objects/${name}.png`, data: png }, { name: `objects/${name}.json`, data: enc.encode(JSON.stringify(json)) });
+      atlases.push({ name, group: g.id, w: pg.w, h: pg.h, image: `${name}.png`, sheet: `${name}.json`, objects: pg.items.length });
+    }
+  }
+  return { files, atlases, where };
+}
+
+/* the zips for GitHub: only what the game reads -- each land's sprite
+   sheets and the manifest -- each zip under GAME_PART (GitHub's website
+   takes files of up to 25 MB), each with the manifest */
 const GAME_PART = 24e6;
 async function exportGameZips(limit = GAME_PART) {
-  const { files, manifest, enc } = await exportFiles({ originals: false, small: true });
-  const head = (n, of) => enc.encode(JSON.stringify({ ...manifest, forGame: true, part: n, parts: of }, null, 1));
+  const enc = new TextEncoder();
+  const { files, atlases, where } = await atlasFiles(enc);
+  const objects = [];
+  for (const e of S.cat) {
+    const f = S.fin.get(e.id);
+    if (!f) continue;
+    objects.push({
+      id: e.id, name: e.name, group: e.group, kind: e.kind, count: e.count, fit: e.fit, size: e.size, sizeMul: f.size,
+      pieces: f.pieces.map((p, i) => ({ frame: `${e.id}-${i + 1}`, atlas: where[`${e.id}-${i + 1}`], w: p.w, h: p.h, gameW: p.w * GPA, gameH: p.h * GPA, foot: [Math.round(p.w / 2), p.h] })),
+    });
+  }
+  const manifest = {
+    tool: 'brotown-object-studio', version: 2, made: new Date().toISOString(), forGame: true,
+    plan: { id: PLAN.id, version: PLAN.version }, gamePxPerArtPx: GPA, atlases, objects,
+  };
+  const head = (n, of) => enc.encode(JSON.stringify({ ...manifest, part: n, parts: of }, null, 1));
   const room = limit - head(99, 99).length - 4096;
+  /* a sprite sheet and its sheet file always travel in the same zip */
+  const pairs = [];
+  for (let i = 0; i < files.length; i += 2) pairs.push([files[i], files[i + 1]]);
   const groups = [[]];
   let size = 0;
-  for (const f of files) {
-    const cost = f.data.length + 2 * f.name.length + 80;
+  for (const pair of pairs) {
+    const cost = pair.reduce((t, f) => t + f.data.length + 2 * f.name.length + 80, 0);
     if (size + cost > room && groups[groups.length - 1].length) { groups.push([]); size = 0; }
-    groups[groups.length - 1].push(f);
+    groups[groups.length - 1].push(...pair);
     size += cost;
   }
   return groups.map((g, i) => ({ part: i + 1, parts: groups.length, bytes: zipStore([{ name: 'manifest.json', data: head(i + 1, groups.length) }, ...g]) }));
@@ -626,14 +1066,30 @@ async function restoreZip(bytes) {
   const byName = new Map(entries.map((f) => [f.name, f]));
   const mf = byName.get('manifest.json');
   const manifest = mf ? JSON.parse(new TextDecoder().decode(mf.data)) : null;
-  const info = Object.create(null);
+  const info = Object.create(null), sheetInfo = Object.create(null);
   for (const o of (manifest && manifest.objects) || []) if (o && typeof o.id === 'string') info[o.id] = o;
+  for (const o of (manifest && manifest.sheets) || []) if (o && typeof o.id === 'string') sheetInfo[o.id] = o;
+  for (const id of Object.keys(info)) {
+    const o = info[id];
+    if (!S.byId[id]) continue;
+    if (SIZES.includes(o.sizeMul) && o.sizeMul !== 1) S.sizes[id] = o.sizeMul; else delete S.sizes[id];
+  }
+  await S.store.put('misc', 'sizes', { ...S.sizes });
   let n = 0;
+  /* v2.3.2965: the sheets first, each with the names it was given... */
+  for (const f of entries) {
+    const m = /^originals\/sheets\/([a-z0-9-]+)\.([a-z0-9]+)$/i.exec(f.name);
+    if (!m || !S.sheetById[m[1]]) continue;
+    const blob = new Blob([f.data], { type: mimeOf(m[2].toLowerCase()) });
+    const o = sheetInfo[m[1]];
+    await addSheet(m[1], blob, f.name.split('/').pop(), o ? { assign: o.assign, promptId: o.madeFrom } : null);
+    n++;
+  }
+  /* ...then the objects' own pictures, which win */
   for (const f of entries) {
     const m = /^originals\/([a-z0-9-]+)\.([a-z0-9]+)$/i.exec(f.name);
     if (!m || !S.byId[m[1]]) continue;
     const id = m[1], o = info[id];
-    if (o && SIZES.includes(o.sizeMul) && o.sizeMul !== 1) S.sizes[id] = o.sizeMul; else delete S.sizes[id];
     const blob = new Blob([f.data], { type: mimeOf(m[2].toLowerCase()) });
     const rec = { blob, name: f.name.split('/').pop(), type: blob.type, at: Date.now(), promptId: (o && o.madeFrom) || null };
     S.raw.set(id, rec);
@@ -641,7 +1097,6 @@ async function restoreZip(bytes) {
     await finish(id);
     n++;
   }
-  await S.store.put('misc', 'sizes', { ...S.sizes });
   return n;
 }
 
@@ -684,9 +1139,10 @@ function wireSave() {
     try {
       const n = await busy('Restoring…', async () => restoreZip(new Uint8Array(await f.arrayBuffer())));
       hideStage();
+      for (const sh of S.sheets) renderSheet(sh);
       for (const e of S.cat) renderCard(e);
       renderCounts(); renderSaved();
-      toast(n ? `Restored ${n} object${n === 1 ? '' : 's'}.` : 'Nothing to restore in that zip: it needs the backup from Download all.', !n);
+      toast(n ? `Restored ${n} picture${n === 1 ? '' : 's'}.` : 'Nothing to restore in that zip: it needs the backup from Download all.', !n);
     } catch (err) { toast(`That zip could not be restored: ${err.message || err}`, true); }
   });
 }
@@ -697,6 +1153,11 @@ async function start() {
   await nextFrame();
   S.cat = objectCatalog();
   for (const e of S.cat) S.byId[e.id] = e;
+  /* v2.3.2965: the sheet pictures, and which sheet each object is on */
+  const packed = sheetsFor(S.cat);
+  S.sheets = packed.sheets;
+  for (const sh of S.sheets) { S.sheetById[sh.id] = sh; for (const id of sh.rows.flat()) S.sheetOf[id] = sh.id; }
+  for (const id of packed.own) S.alone.add(id);
   S.store = await openStore(DB, STORES);
   keepStorage();
   await loadStyleKey();
@@ -711,12 +1172,13 @@ async function start() {
   renderGroups();
   renderSaved();
   wireSave();
-  $('status').textContent = `${S.cat.length} objects, ${S.cat.filter((e) => e.kind === 'building').length} of them buildings.`;
+  $('status').textContent = `${S.cat.length} objects, ${S.cat.filter((e) => e.kind === 'building').length} of them buildings; ${S.sheets.length} sheet pictures make the other ${S.cat.filter((e) => S.sheetOf[e.id]).length}.`;
 }
 
 S.ready = start().catch((e) => { $('status').textContent = `Something went wrong: ${e.message || e}`; throw e; });
 
 window.__objects = {
   S,
-  api: { addPicture, removePicture, setSize, showStage, hideStage, exportZip, exportGameZips, restoreZip, promptFor, makePieces, promptId },
+  api: { addPicture, removePicture, setSize, showStage, hideStage, exportZip, exportGameZips, restoreZip, promptFor, makePieces, promptId,
+    addSheet, reassign, removeSheet, sheetPrompt, packAtlas },
 };
