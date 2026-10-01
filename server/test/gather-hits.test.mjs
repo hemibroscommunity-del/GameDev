@@ -20,6 +20,8 @@
  *   4. the strike window: refused one beat early, paid one beat late;
  *   5. an OLD client (no hitSeq) keeps the timer, byte-identical, and is sent
  *      nothing (deploy-order safety, rule 19);
+ *   5b. the client's own fallback (a re-declare without hitSeq) REPLACES a
+ *      recorded plan, so the strike is held to the timer it actually ran;
  *   6. junk hitSeq values fall back to the timer without throwing;
  *   7. the kill switch answers `off` and keeps the timer;
  *   8. no re-roll fishing: a restart on the same node replays its rolls,
@@ -226,6 +228,36 @@ async function withRandom(fn, body) {
   rec.startedAt = Date.now() - rec.openDelayBase;
   await send('node_strike', { id: ore.id, zone: 'meadow', accuracy: 'good' });
   check('old client: a strike inside the timer window is paid', ore.alive === false, room._lastStrikeFor('bp_gh'));
+}
+
+// ── 5b. a plan, then the client re-declares on the timer ──
+// The client's own fallback (no plan in GATHER_HIT_PLAN_WAIT_MS, or a plan it
+// cannot play) re-sends extraction_start WITHOUT hitSeq.  That must REPLACE a
+// recorded plan, or the worker would hold the strike to hits the client never
+// played: at level 1 the plan's bound is 9 swings (5.85 s), the timer's ~3.15 s,
+// so a strike at 4 s tells the two apart.  (Review found this path untested:
+// section 5 is a fresh old client, and mp-gatherhits' "no answer" case uses a
+// seq the worker ignores, so no plan is ever recorded first.)
+{
+  const { room, ws, ps, byType, send, stand } = await setup();
+  const ore = byType('oreVein');
+  stand(ore);
+  ps.lifeSkills = { mining: { level: 1, xp: 0 } };
+  await send('extraction_start', { nodeId: ore.id, zone: 'meadow', skill: 'mining', hitSeq: 9 });
+  check('re-declare: (fixture) a ten-hit plan is recorded first', Array.isArray((room.extractions.bp_gh || {}).hits)
+    && room.extractions.bp_gh.hits.length === 10, room.extractions.bp_gh);
+  ws.sent.length = 0;
+  await send('extraction_start', { nodeId: ore.id, zone: 'meadow', skill: 'mining' });
+  const rec = room.extractions.bp_gh;
+  check('re-declare: the timer start REPLACES the plan (no hits, default jitter, the timer window)',
+    !!rec && rec.hits === undefined && rec.jitter === undefined && rec.openDelayBase === room._computeOpenDelayBase(1, ore.tierLvl || 1),
+    rec && { hits: rec.hits, jitter: rec.jitter, openDelayBase: rec.openDelayBase });
+  check('re-declare: ...is answered with nothing, and the operator view drops the plan',
+    ofType(ws, 'gather_hits').length === 0 && room._gatherHitPlanFor('bp_gh') === null);
+  rec.startedAt = Date.now() - 4000;
+  await send('node_strike', { id: ore.id, zone: 'meadow', accuracy: 'good' });
+  check('re-declare: a strike at 4 s is paid -- held to the timer, not to the plan it replaced',
+    ore.alive === false && (room._lastStrikeFor('bp_gh') || {}).why === 'paid', room._lastStrikeFor('bp_gh'));
 }
 
 // ── 6. junk hitSeq ──

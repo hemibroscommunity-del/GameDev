@@ -142,7 +142,7 @@ one ends in a paid harvest (checked live by `mp-gatherhits`):
 | **Old worker** (no cap) | The client never asks; the timer, exactly as before. |
 | **Old client** (no `hitSeq`) | The worker keeps that client's timer record and never holds it to a plan it did not play. |
 | **No answer** (refused start, lost socket, a worker that ignores `hitSeq`) | After `GATHER_HIT_PLAN_WAIT_MS` (2.5 s) the client drops to the timer and **re-declares** the attempt without `hitSeq`, so the worker's record follows. |
-| **Kill switch** `gatherhits: false` in liveflags (`POST /api/admin/flags`) | Un-advertises the cap for anyone who joins after, and answers a client that still asks with `off`, so it is on the timer at once. |
+| **Kill switch** `gatherhits: false` in liveflags (`POST /api/admin/flags`) | Un-advertises the cap for anyone who joins after, and answers a client that still asks with `off`, so it is on the timer at once. **To turn hits back on, DELETE the flag** (the test panel does): every worker spreads its liveflags over its caps, so a stored `gatherhits: true` would make a worker rolled back to before this change advertise a cap it cannot honour. Its clients would then wait the 2.5 s plan timeout on every harvest before the timer, paid but slow. |
 | **Bad plan** (cannot be played) | Same as no answer: timer + re-declare. |
 
 ## Tests

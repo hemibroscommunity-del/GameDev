@@ -162,12 +162,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!node) return {};
 
     /* Stand there, with the field cleared so a monster cannot eat the tap
-       (the tap hit-tests monsters first, v2.3.1448). */
+       (the tap hit-tests monsters first, v2.3.1448).
+       v2.3.2956: WALKED there in steps the worker accepts (H.hopTo), then the
+       worker's own copy of the position is checked.  This used to be one
+       write of S.player.x/y -- a teleport -- and movement.js refuses any move
+       further than 500 px/s x the time since the last one + 80; with the
+       harvest heartbeat re-sending every 500 ms that is ~330 px, so a node
+       the worker happened to roll far from the zone entry left the player
+       at the entrance on the worker, and the paid strike came back
+       `out-of-range` (measured: 541 px).  Node positions re-roll on every
+       worker boot, so it passed or failed by where the ore landed. */
+    const sx = node.x + STAND[type][0], sy = node.y + STAND[type][1];
+    await H.hopTo(P, sx, sy);
     await P.page.evaluate(({ x, y }) => {
       const S = window._gameState.current;
       S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0;
       S._monstersStash = S.monsters; S.monsters = [];
-    }, { x: node.x + STAND[type][0], y: node.y + STAND[type][1] });
+    }, { x: sx, y: sy });
+    let srvAt = null;
+    for (let i = 0; i < 16; i++) {
+      srvAt = await H.serverPlayer(wsPort, myId).catch(() => null);
+      if (srvAt && Math.hypot(srvAt.x - sx, srvAt.y - sy) < 60) break;
+      await P.page.waitForTimeout(250);
+    }
+    rec.ok(`${skill}: the worker has the player at the node too (guard)`,
+      !!srvAt && Math.hypot(srvAt.x - sx, srvAt.y - sy) < 60,
+      { worker: srvAt && { x: Math.round(srvAt.x), y: Math.round(srvAt.y) }, client: { x: Math.round(sx), y: Math.round(sy) } });
     await P.page.waitForTimeout(900);
     const invBefore = await srvInv(wsPort, myId);
 
