@@ -64,6 +64,136 @@ let swatches = Object.create(null);   /* id -> { from: 'studio'|'game', vers: { 
 const decoded = new Map();            /* 'id|ver' -> tile ({w, h, idx, pal} or {w, h, data}) */
 const failed = new Set();             /* 'id|ver' that could not be unpacked: drawn in plan colour */
 
+/* ═══ v2.3.2959: DOWNLOADS THAT CANNOT STOP THE GROUND ═══
+   The owner, 2026-10-01, walking the Wheel on a phone with their own 96
+   tiles in the game: "the ground wasn't loading fast enough to keep up with
+   me walking across it to the next area sometimes".  Their readout: 177 ms
+   a piece on average, the worst 6.5 s, pop-ins 52 and then 118 -- and then
+   no ground at all, 3 pieces waiting and one swatch "unreadable".  A picture
+   was fetched only when a piece first needed it, one at a time, with no time
+   limit, and the pieces are laid one after another: one download that hung
+   on a slow connection stopped every piece behind it for good, and one that
+   failed was never tried again.  Now:
+   - DOWNLOADS run apart from the laying, DL_PARALLEL at a time, each given
+     DL_TIMEOUT_MS; one that fails or runs out of time is tried again after a
+     wait that grows from DL_RETRY_MS to DL_RETRY_MAX_MS;
+   - a piece waits for its pictures at most PIECE_WAIT_MS -- counted from
+     when a piece FIRST waited for that download, so one stuck download holds
+     up one piece, not each piece after it in turn; a picture that has not
+     come is laid in the plan's colour and the piece goes back marked
+     `partial`, with the pictures it went without (`lacking`);
+   - those pictures are tried again until they come, piece or no piece, and
+     when one does the worker says so ('got'): the game lays again, without
+     waiting, just the pieces that went without it (wheelGround.js) -- never
+     on a timer, so a picture that never comes costs nothing but its tries;
+   - every piece asked for starts the downloads for the swatches PREFETCH
+     pieces round it, so a walk finds them already here -- in all but one of
+     the DL_PARALLEL lines, the last kept for a piece being laid now;
+   - the game's pictures are asked for at ?v=<their manifest's date>, which
+     public/_headers lets the phone keep: a second visit reads them from the
+     phone, with no trip to the server at all. */
+const DL_PARALLEL = 4;
+const DL_TIMEOUT_MS = 15000;
+const DL_RETRY_MS = 3000;
+const DL_RETRY_MAX_MS = 30000;
+const PIECE_WAIT_MS = 4000;
+const PREFETCH = 2;
+/* downloaded pictures kept as their files (about 0.25 MB each) -- the phone's
+   own cache holds the rest, and this many cover a walk's next few screens */
+const FILES_KEEP = 32;
+const files = new Map();              /* 'id|ver' -> Blob, the picture as downloaded */
+const dlJobs = new Map();             /* 'id|ver' -> { k, p, resolve, urgentAt } waiting or downloading */
+const dlLine = [];                    /* the waiting ones, most wanted first */
+const dlRetry = new Map();            /* 'id|ver' -> { at, wait } after a failed try */
+let dlActive = 0, dlFails = 0;
+const lacking = new Set();            /* pictures the piece being laid went without */
+const owed = new Set();               /* every picture some piece went without: tried until it comes, then 'got' */
+const chasing = new Set();            /* owed pictures with a try already set for when their wait is over */
+
+/* The picture's file: at once if it is here; else a promise of it -- or of
+   null, when it cannot be had (yet).  `urgent`: a piece is waiting for it. */
+function want(k, urgent) {
+  const f = files.get(k);
+  if (f) { files.delete(k); files.set(k, f); return Promise.resolve(f); }
+  const job = dlJobs.get(k);
+  if (job) {
+    if (urgent) {
+      if (job.urgentAt == null) job.urgentAt = performance.now();
+      const n = dlLine.indexOf(job);
+      if (n > 0) { dlLine.splice(n, 1); dlLine.unshift(job); }
+    }
+    return job.p;
+  }
+  const r = dlRetry.get(k);
+  if (r && performance.now() < r.at) return Promise.resolve(null);
+  let resolve;
+  const p = new Promise((res) => { resolve = res; });
+  const fresh = { k, p, resolve, urgentAt: urgent ? performance.now() : null };
+  dlJobs.set(k, fresh);
+  if (urgent) dlLine.unshift(fresh); else dlLine.push(fresh);
+  pump();
+  return p;
+}
+function pump() {
+  while (dlActive < DL_PARALLEL && dlLine.length) {
+    /* the wanted-now ones are at the front; the rest leave a line free */
+    if (dlLine[0].urgentAt == null && dlActive >= DL_PARALLEL - 1) break;
+    const job = dlLine.shift();
+    dlActive++;
+    fetchFile(job.k).then((blob) => {
+      dlActive--;
+      dlJobs.delete(job.k);
+      if (blob) {
+        dlRetry.delete(job.k);
+        files.set(job.k, blob);
+        while (files.size > FILES_KEEP) files.delete(files.keys().next().value);
+        if (owed.delete(job.k)) post({ type: 'got', k: job.k });
+      } else {
+        dlFails++;
+        const prev = dlRetry.get(job.k), wait = prev ? Math.min(DL_RETRY_MAX_MS, prev.wait * 2) : DL_RETRY_MS;
+        dlRetry.set(job.k, { at: performance.now() + wait, wait });
+        chase(job.k);
+      }
+      job.resolve(blob);
+      pump();
+    });
+  }
+}
+/* A picture some piece went without: on its way, or tried again when its
+   wait is over -- asked for or not -- until it comes and 'got' is said. */
+function chase(k) {
+  if (!owed.has(k) || dlJobs.has(k) || chasing.has(k)) return;
+  if (files.has(k)) { owed.delete(k); post({ type: 'got', k }); return; }
+  const r = dlRetry.get(k), left = r ? r.at - performance.now() : 0;
+  if (left > 0) { chasing.add(k); setTimeout(() => { chasing.delete(k); chase(k); }, left + 20); return; }
+  want(k, false);
+}
+/* one download, given DL_TIMEOUT_MS from start to the last byte; null on
+   any failure (a phone's connection drops, a server's error, a hang) */
+async function fetchFile(k) {
+  const cut = k.lastIndexOf('|'), s = swatches[k.slice(0, cut)], src = s && s.vers[k.slice(cut + 1)];
+  if (!src) return null;
+  if (src.blob) return src.blob;      /* the Ground Studio's: already on the phone */
+  const ac = typeof AbortController === 'function' ? new AbortController() : null;
+  let timer = null;
+  const late = new Promise((res) => { timer = setTimeout(() => { if (ac) ac.abort(); res(null); }, DL_TIMEOUT_MS); });
+  const get = (async () => {
+    const r = await fetch(src.url, ac ? { signal: ac.signal } : undefined);
+    return r.ok ? await r.blob() : null;
+  })().catch(() => null);
+  try { return await Promise.race([get, late]); } finally { clearTimeout(timer); }
+}
+/* the pictures under the pieces round (i, j), downloading quietly */
+function prefetchRound(i, j) {
+  const { bp, mm } = W;
+  const rect = { x: bp.x0 + (i - PREFETCH) * CHUNK, y: bp.y0 + (j - PREFETCH) * CHUNK, w: (2 * PREFETCH + 1) * CHUNK, h: (2 * PREFETCH + 1) * CHUNK };
+  for (const id of swatchesUnder(bp, mm, rect)) {
+    const s = swatches[id];
+    if (!s) continue;
+    for (const v of ['A', 'B', 'E']) if (s.vers[v] && !decoded.has(`${id}|${v}`)) want(`${id}|${v}`, false);
+  }
+}
+
 const post = (msg, transfer) => self.postMessage(msg, transfer || []);
 let queue = Promise.resolve();
 self.onmessage = (ev) => {
@@ -139,22 +269,28 @@ async function findSwatches(mm, pieces, withBlends) {
   const out = Object.create(null);
   /* the game's copy */
   try {
-    const r = await fetch(GAME_BASE + 'manifest.json', { cache: 'no-cache' });
+    /* v2.3.2959: at a fresh address every time -- public/_headers lets the
+       phone keep everything under /world/ground/, which must never include
+       an old list of what is there */
+    const r = await fetch(GAME_BASE + 'manifest.json?t=' + Date.now(), { cache: 'no-cache' });
     if (r.ok) {
       const man = await r.json();          /* throws on a site's "page not found" HTML: no copy yet */
       const pal = man.palette || null;
+      /* v2.3.2959: each picture at ?v=<the manifest's date>: a new upload is a
+         new address, so the phone may keep the old one for good */
+      const ver = man.made ? '?v=' + encodeURIComponent(man.made) : '';
       for (const s of man.swatches || []) {
         if (!known.has(s.id)) continue;
         const vers = Object.create(null);
         /* v2.3.2947: E, the swatch's edge pieces (see-through round them) */
-        for (const v of s.versions || []) if (v === 'A' || v === 'B' || (v === 'E' && pieces)) vers[v] = { url: `${GAME_BASE}${s.id}-${v}.png` };
+        for (const v of s.versions || []) if (v === 'A' || v === 'B' || (v === 'E' && pieces)) vers[v] = { url: `${GAME_BASE}${s.id}-${v}.png${ver}` };
         if (vers.A || vers.B || vers.E) out[s.id] = { from: 'game', vers, pal, mapped: true };
       }
       /* v2.3.2951: and the blends, each under its pair's key */
       for (const b of withBlends ? man.blends || [] : []) {
         const pr = b && typeof b.key === 'string' ? blendPair(b.key) : null;
         if (!pr || !known.has(pr[0]) || !known.has(pr[1])) continue;
-        out[b.key] = { from: 'game', vers: { M: { url: `${GAME_BASE}${b.key}-M.png` } }, pal, mapped: true };
+        out[b.key] = { from: 'game', vers: { M: { url: `${GAME_BASE}${b.key}-M.png${ver}` } }, pal, mapped: true };
       }
     }
   } catch (e) { /* no copy in the game yet */ }
@@ -207,17 +343,40 @@ function ask(db, store, fn) {
   });
 }
 
-/* A swatch picture, unpacked (least recently used ones let go). */
-async function tileOf(id, ver) {
+/* A swatch picture, unpacked (least recently used ones let go).
+   v2.3.2959: its file from want(), waited for -- when `wait` -- until
+   PIECE_WAIT_MS after a piece first waited for that download; one not here
+   by then is drawn in plan colour this time (`lacking`), and the piece goes
+   back marked partial. */
+async function tileOf(id, ver, wait) {
   const k = `${id}|${ver}`;
   const hit = decoded.get(k);
   if (hit) { decoded.delete(k); decoded.set(k, hit); return hit; }
   if (failed.has(k)) return null;
   const s = swatches[id], src = s && s.vers[ver];
   if (!src) return null;
+  let blob = files.get(k) || src.blob || null;     /* the studio's are on the phone already */
+  if (!blob) {
+    const p = want(k, true), job = dlJobs.get(k);
+    const left = wait && job ? job.urgentAt + PIECE_WAIT_MS - performance.now() : 0;
+    if (left > 0) {
+      let timer = null;
+      blob = await Promise.race([p, new Promise((res) => { timer = setTimeout(() => res(null), left); })]);
+      clearTimeout(timer);
+    } else if (!job) {
+      blob = await p;          /* here after all, or in its wait to be tried again (null) */
+    }
+    blob = blob || files.get(k) || null;
+  }
+  if (!blob) {
+    /* still downloading, or waiting to be tried again: 'got' when it comes */
+    lacking.add(k);
+    owed.add(k);
+    chase(k);
+    return null;
+  }
   let tile = null;
   try {
-    const blob = src.blob || await (await fetch(src.url)).blob();
     const bm = await createImageBitmap(blob);
     const c = new OffscreenCanvas(TILE, TILE);
     const g = c.getContext('2d', { willReadFrequently: true });
@@ -282,12 +441,23 @@ async function chunk(m) {
   const { bp, mm } = W;
   const rect = { x: bp.x0 + m.i * CHUNK - APRON, y: bp.y0 + m.j * CHUNK - APRON, w: CHUNK + 2 * APRON, h: CHUNK + 2 * APRON };
   const tiles = Object.create(null), keep = new Set(), ids = swatchesUnder(bp, mm, rect);
+  /* v2.3.2959: every picture this piece needs asked for at once (they come
+     DL_PARALLEL at a time), then those for the pieces round it */
+  for (const id of ids) {
+    const s = swatches[id];
+    if (s) for (const v of ['A', 'B', 'E']) if (s.vers[v] && !decoded.has(`${id}|${v}`) && !failed.has(`${id}|${v}`)) want(`${id}|${v}`, true);
+  }
+  prefetchRound(m.i, m.j);
+  /* a piece laid again (`relay`, it went back partial) waits for nothing:
+     it takes what has come since, and the rest is still on its way */
+  const wait = !m.relay;
+  lacking.clear();
   for (const id of ids) {
     const s = swatches[id];
     if (!s) continue;
-    const A = s.vers.A ? await tileOf(id, 'A') : null;
-    const B = s.vers.B ? await tileOf(id, 'B') : null;
-    const E = s.vers.E ? await tileOf(id, 'E') : null;
+    const A = s.vers.A ? await tileOf(id, 'A', wait) : null;
+    const B = s.vers.B ? await tileOf(id, 'B', wait) : null;
+    const E = s.vers.E ? await tileOf(id, 'E', wait) : null;
     keep.add(`${id}|A`); keep.add(`${id}|B`); keep.add(`${id}|E`);
     if (A || B || E) tiles[id] = { A: A || B, B: A && B ? B : null, E };
   }
@@ -296,11 +466,14 @@ async function chunk(m) {
   const blends = Object.create(null);
   for (const k of blendsUnder(ids, (k) => !!(swatches[k] && swatches[k].vers.M))) {
     keep.add(`${k}|M`);
-    const t = await tileOf(k, 'M');
+    const t = await tileOf(k, 'M', wait);
     if (t) blends[k] = t;
   }
   const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, withMaterials: false, blends });
   trim(keep);
   post({ type: 'chunk', id: m.id, i: m.i, j: m.j, w: out.w, h: out.h, data: out.data,
-    ms: Math.round(performance.now() - t0), unpacked: decoded.size, unreadable: failed.size }, [out.data.buffer]);
+    ms: Math.round(performance.now() - t0), unpacked: decoded.size, unreadable: failed.size,
+    /* v2.3.2959: laid without some of its pictures (lay it again later), and
+       how the downloads stand */
+    partial: lacking.size > 0, lacking: [...lacking], downloading: dlJobs.size, dlFails }, [out.data.buffer]);
 }

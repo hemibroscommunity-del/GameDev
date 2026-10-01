@@ -39,6 +39,7 @@ const _pending = new Map();    /* request id -> { resolve, reject } */
 const _warm = new Map();       /* "i,j" -> a piece laid ahead by the zone gate, not yet shown */
 let _here = null;              /* the swatch under your feet: { q, x, y } */
 let _hereAsked = null;
+const _gotFns = new Set();     /* v2.3.2959: told when a picture some piece went without has come */
 
 export const wheelStats = {
   entryMs: null,       /* the way in: the plan, then the first screen of ground */
@@ -54,6 +55,15 @@ export const wheelStats = {
   pieceBytes: 0,       /* the colours of one piece */
   unpacked: 0,         /* swatch pictures unpacked in the worker now */
   unreadable: 0,       /* swatch pictures this browser could not unpack (drawn in plan colour) */
+  /* v2.3.2959: the downloads (ground-worker.js, DOWNLOADS THAT CANNOT STOP THE
+     GROUND) -- pictures on their way now, tries that failed and will be made
+     again, pieces laid without some of their pictures, and laid again */
+  downloading: 0,
+  dlFails: 0,
+  partial: 0,          /* pieces laid short of a picture */
+  relaid: 0,           /* ...laid again when one came */
+  mended: 0,           /* ...and whole at last */
+  short: 0,            /* pieces in memory now still short of one */
   failures: 0,         /* pieces the worker could not lay */
   lastFailure: null,
   error: null,
@@ -122,6 +132,11 @@ function onMessage(m, resolveInit, rejectInit) {
     if (m.q != null) _here = { q: m.q, x: m.id.x, y: m.id.y };
     return;
   }
+  /* v2.3.2959: a picture some piece went without has come ('id|version') */
+  if (m.type === 'got') {
+    for (const fn of _gotFns) { try { fn(m.k); } catch (e) { /* one listener's trouble */ } }
+    return;
+  }
   const p = _pending.get(m.id);
   if (!p) return;
   _pending.delete(m.id);
@@ -129,22 +144,35 @@ function onMessage(m, resolveInit, rejectInit) {
   p.resolve(m);
 }
 
-/* One piece of ground: { i, j, w, h, data (RGBA), ms }. */
-export function wheelChunk(i, j) {
-  const warm = _warm.get(i + ',' + j);
+/* One piece of ground: { i, j, w, h, data (RGBA), ms, partial, lacking }.
+   v2.3.2959: `partial` -- laid without some pictures still on their way,
+   `lacking` their keys; wheelOnGot() says when each comes.  `relay` -- such
+   a piece asked for again: the worker waits for nothing this time, and it
+   counts as neither a piece laid nor a short one. */
+export function wheelOnGot(fn) {
+  _gotFns.add(fn);
+  return () => { _gotFns.delete(fn); };
+}
+export function wheelChunk(i, j, relay) {
+  const warm = relay ? null : _warm.get(i + ',' + j);
   if (warm) { _warm.delete(i + ',' + j); return Promise.resolve(warm); }
   if (!_w || !_info) return Promise.reject(new Error('not ready'));
   const id = ++_seq;
   return new Promise((resolve, reject) => {
     _pending.set(id, { resolve, reject });
-    _w.postMessage({ type: 'chunk', id, i, j });
+    _w.postMessage({ type: 'chunk', id, i, j, relay: !!relay });
   }).then((m) => {
-    wheelStats.loads++;
-    wheelStats.lastMs = m.ms;
-    wheelStats.maxMs = Math.max(wheelStats.maxMs, m.ms);
-    wheelStats.sumMs += m.ms;
+    if (!relay) {
+      wheelStats.loads++;
+      wheelStats.lastMs = m.ms;
+      wheelStats.maxMs = Math.max(wheelStats.maxMs, m.ms);
+      wheelStats.sumMs += m.ms;
+      if (m.partial) wheelStats.partial++;
+    }
     wheelStats.unpacked = m.unpacked;
     wheelStats.unreadable = m.unreadable || 0;
+    wheelStats.downloading = m.downloading || 0;
+    wheelStats.dlFails = m.dlFails || 0;
     return m;
   }, (e) => {
     /* 'stopped' is the worker being let go on the way out, not a failure */
@@ -172,7 +200,7 @@ export async function wheelWarm(x, y, rx, ry) {
 export function wheelIsWarm(i, j) { return _warm.has(i + ',' + j); }
 /* The readout's counts start again on each way in: they describe this visit. */
 export function wheelResetCounts() {
-  Object.assign(wheelStats, { loads: 0, lastMs: 0, maxMs: 0, sumMs: 0, popIns: 0, failures: 0, lastFailure: null });
+  Object.assign(wheelStats, { loads: 0, lastMs: 0, maxMs: 0, sumMs: 0, popIns: 0, failures: 0, lastFailure: null, partial: 0, relaid: 0, mended: 0 });
 }
 /* Pieces laid ahead that were never shown (you walked in somewhere else). */
 export function wheelDropWarm() { _warm.clear(); }

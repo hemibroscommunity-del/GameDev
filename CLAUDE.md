@@ -112,7 +112,13 @@ remnant to migrate server-side, not a mode to preserve.
   "Download all" (279 MB with every original) stays the owner's backup and
   never goes on GitHub -- WORLD-MAP-PIPELINE "Download for the game"; since
   v2.3.2958 the owner's own 96 tiles (48 swatches, A and B) ARE the game's
-  ground, in `public/world/ground/` with its manifest),
+  ground, in `public/world/ground/` with its manifest; since v2.3.2959 a slow
+  or failing download can no longer stop the ground: downloads run apart
+  from the laying, four at a time with a 15 s limit and retries, a piece
+  waits at most 4 s and is laid without a missing picture, then filled in
+  when the worker says it came (`got`), pictures come two pieces ahead, and
+  `?v=<manifest date>` + `public/_headers` let the phone keep them -- tested
+  by the `wheelnet` scenario, WORLD-MAP-PIPELINE "On a slow connection"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

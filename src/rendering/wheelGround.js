@@ -36,7 +36,7 @@
  * instead of leaving one.
  */
 import { Container, Sprite, Texture, Rectangle, BufferImageSource, CanvasSource } from 'pixi.js';
-import { wheelInfo, wheelStart, wheelChunk, wheelIsWarm, wheelDropWarm, wheelOverview, wheelStats } from '../game/wheelTrial.js';
+import { wheelInfo, wheelStart, wheelChunk, wheelIsWarm, wheelDropWarm, wheelOverview, wheelStats, wheelOnGot } from '../game/wheelTrial.js';
 import { worldTrialLeft } from '../game/worldTrial.js';
 
 const MAX_IN_FLIGHT = 3;
@@ -62,6 +62,15 @@ export class WheelGround {
     this.under = null;
     this.pieces = new Map();   /* "i,j" -> { i, j, sprite, ready, popped } */
     this.inFlight = 0;
+    /* v2.3.2959: pieces laid short of a picture (ground-worker.js,
+       DOWNLOADS THAT CANNOT STOP THE GROUND) show what they have, plan
+       colour for the rest, and are laid again -- one at a time, after any
+       new piece -- when the worker says the picture has come: never on a
+       timer, so one that never comes costs nothing */
+    this.relays = 0;
+    this._offGot = wheelOnGot((k) => {
+      for (const rec of this.pieces.values()) if (rec.lacking && rec.lacking.indexOf(k) >= 0) rec.due = true;
+    });
     this.dead = false;
     this._vx = 0; this._vy = 0;   /* the camera's speed, game px a ms, smoothed */
     this._lastT = null;
@@ -135,15 +144,28 @@ export class WheelGround {
       if (this.inFlight >= MAX_IN_FLIGHT && !wheelIsWarm(w.i, w.j)) continue;
       this._load(w.i, w.j, info, w.on === 0);
     }
+    /* v2.3.2959: then, with room to spare, a short piece whose picture has
+       come -- on screen first */
+    if (!this.relays && this.inFlight < MAX_IN_FLIGHT) {
+      let best = null, bestOn = false;
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const rec = this.pieces.get(i + ',' + j);
+        if (!rec || !rec.ready || !rec.due) continue;
+        const on = i >= vi0 && i <= vi1 && j >= vj0 && j <= vj1;
+        if (!best || (on && !bestOn)) { best = rec; bestOn = on; }
+      }
+      if (best) this._relay(best.i + ',' + best.j, best, info);
+    }
 
     const k0 = Math.floor((nx0 - KEEP_PX) / cs), k1 = Math.floor((nx1 + KEEP_PX) / cs);
     const l0 = Math.floor((ny0 - KEEP_PX) / cs), l1 = Math.floor((ny1 + KEEP_PX) / cs);
-    let resident = 0;
+    let resident = 0, short = 0;
     for (const [key, rec] of this.pieces) {
       if (rec.i < k0 || rec.i > k1 || rec.j < l0 || rec.j > l1) this._free(key, rec);
-      else if (rec.ready) resident++;
+      else if (rec.ready) { resident++; if (rec.lacking) short++; }
     }
     wheelStats.resident = resident;
+    wheelStats.short = short;
     wheelStats.loading = this.inFlight;
   }
 
@@ -158,22 +180,58 @@ export class WheelGround {
       if (!warm) this.inFlight--;
       /* freed, or the whole ground torn down, while it was being laid */
       if (this.dead || this.pieces.get(key) !== rec) return;
-      const src = new BufferImageSource({
-        resource: m.data, width: m.w, height: m.h,
-        format: 'rgba8unorm', scaleMode: 'linear', alphaMode: 'no-premultiply-alpha',
-      });
-      /* show one ground px of the apron each side: half a game px */
-      const a = info.chunk.apronPx - 1, cs = info.chunk.gamePx, half = cs / info.chunk.px;
-      const tex = new Texture({ source: src, frame: new Rectangle(a, a, m.w - 2 * a, m.h - 2 * a) });
-      const s = new Sprite(tex);
-      s.x = i * cs - half; s.y = j * cs - half;
-      s.width = cs + 2 * half; s.height = cs + 2 * half;
-      this.root.addChild(s);
-      rec.sprite = s;
+      rec.sprite = this._sprite(m, info, i, j);
       rec.ready = true;
+      this._short(rec, m);
     }).catch(() => {
       if (!warm) this.inFlight--;
       if (this.pieces.get(key) === rec) this.pieces.delete(key);
+    });
+  }
+
+  /* the sprite of a piece the worker laid: one ground px of the apron shown
+     each side, half a game px */
+  _sprite(m, info, i, j) {
+    const src = new BufferImageSource({
+      resource: m.data, width: m.w, height: m.h,
+      format: 'rgba8unorm', scaleMode: 'linear', alphaMode: 'no-premultiply-alpha',
+    });
+    const a = info.chunk.apronPx - 1, cs = info.chunk.gamePx, half = cs / info.chunk.px;
+    const tex = new Texture({ source: src, frame: new Rectangle(a, a, m.w - 2 * a, m.h - 2 * a) });
+    const s = new Sprite(tex);
+    s.x = i * cs - half; s.y = j * cs - half;
+    s.width = cs + 2 * half; s.height = cs + 2 * half;
+    this.root.addChild(s);
+    return s;
+  }
+
+  /* v2.3.2959: which pictures the piece went without, if any */
+  _short(rec, m) {
+    rec.lacking = m.partial && m.lacking && m.lacking.length ? m.lacking : null;
+    rec.due = false;
+  }
+
+  /* v2.3.2959: lay a short piece again; the new one replaces it once laid,
+     so the ground never blinks.  Not counted in `loading`: nothing is
+     missing from the screen while it is laid. */
+  _relay(key, rec, info) {
+    this.relays++;
+    rec.due = false;
+    wheelChunk(rec.i, rec.j, true).then((m) => {
+      this.relays--;
+      if (this.dead || this.pieces.get(key) !== rec) return;
+      const old = rec.sprite;
+      rec.sprite = this._sprite(m, info, rec.i, rec.j);
+      if (old) { try { old.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ } }
+      wheelStats.relaid++;
+      if (!m.partial) wheelStats.mended++;
+      /* a 'got' that came while it was being laid again still counts */
+      const due = rec.due;
+      this._short(rec, m);
+      rec.due = due && !!rec.lacking;
+    }).catch(() => {
+      this.relays--;
+      if (this.pieces.get(key) === rec) rec.due = true;
     });
   }
 
@@ -190,11 +248,13 @@ export class WheelGround {
   destroy() {
     if (this.dead) return;
     this.dead = true;
+    if (this._offGot) { this._offGot(); this._offGot = null; }
     for (const [key, rec] of [...this.pieces]) this._free(key, rec);
     if (this.under) { try { this.under.destroy({ texture: true, textureSource: true }); } catch (e) { /* ignore */ } this.under = null; }
     try { this.root.destroy(); } catch (e) { /* ignore */ }
     wheelStats.resident = 0;
     wheelStats.loading = 0;
+    wheelStats.short = 0;
     worldTrialLeft();
   }
 }

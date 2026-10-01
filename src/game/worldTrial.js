@@ -354,10 +354,15 @@ function wheelHud(S) {
     'way in  ' + (s.entryMs == null ? '…' : (s.entryMs / 1000).toFixed(1) + ' s') + (s.planMs != null ? ' · plan ' + (s.planMs / 1000).toFixed(1) : '') + '\n' +
     'ground  ' + s.resident + ' pieces ~' + mb + ' MB' + (s.loading ? ' +' + s.loading : '') + '\n' +
     'laid    ' + s.loads + ' · avg ' + avg + ' ms · worst ' + s.maxMs + '\n' +
-    'pop-ins ' + s.popIns + '\n' +
+    'pop-ins ' + s.popIns +
+    /* v2.3.2959: a connection's trouble, when there is any -- downloads
+       that failed and are tried again, and pieces still waiting for a
+       picture to fill in */
+    (s.dlFails ? ' · ' + s.dlFails + ' retried' : '') + (s.short ? ' · ' + s.short + ' filling in' : '') + '\n' +
     /* v2.3.2946: none at all usually means the Ground Studio was used in the
        other browser -- the Claude app's own and Safari keep separate copies */
     (mine + game ? 'swatches ' + mine + ' yours · ' + game + ' in game' : 'swatches none in this browser') +
+    (s.downloading ? ' · ' + s.downloading + ' coming' : '') +
     (s.unreadable ? ' · ' + s.unreadable + ' unreadable' : '') + '\n' +
     /* v2.3.2947: the grounds whose edge pieces were found (v2.3.2948: none
        unless the address says `edgepieces` -- they are put away) */

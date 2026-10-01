@@ -1308,7 +1308,11 @@ town's stairs as usual.
 - **laid**: how many, with the average and worst time a piece took;
 - **pop-ins**: pieces that came on screen before they were laid;
 - **swatches**: how many are yours (from the Ground Studio) and how many came
-  with the game, and how many this phone could not read (if any);
+  with the game, how many this phone could not read (if any), and — since
+  v2.3.2959 — how many pictures are still **coming** (downloading);
+- after **pop-ins**, only when the connection is in trouble (v2.3.2959):
+  **retried** — downloads that failed or hung and were tried again — and
+  **filling in** — pieces on screen still waiting for a picture;
 - **here**: the swatch under your feet, ✓ if it is made;
 - **failed**: only if a piece could not be laid, with the reason, so a
   screenshot of the phone says what went wrong.
@@ -1346,6 +1350,57 @@ the graphics chip. That is fine on a recent iPhone. If it is ever too much, the 
 known: keep each piece as **palette numbers** (one byte a pixel, as the worker
 already keeps the swatches) and colour it on the graphics chip. That cuts the
 ground's memory to a quarter.
+
+### On a slow connection (v2.3.2959)
+
+> Owner, 2026-10-01, walking the Wheel on a phone with their own 96 tiles in
+> the game: *"I don't know if it's because my internet got slow or what but
+> the ground wasn't loading fast enough to keep up with me walking across it
+> to the next area sometimes."*
+
+Their readout said why: 177 ms a piece on average, the worst 6.5 s, pop-ins
+52 and then 118, and then **no ground at all** — 3 pieces waiting, for good,
+and one swatch "unreadable". A ground picture was downloaded only when a
+piece first needed it, one at a time, with no time limit; and the worker lays
+pieces one after another. So **one download that hung stopped every piece
+behind it**, and one that failed was marked unreadable and never tried again.
+Every picture was also checked with the server again on every visit.
+
+Now (`ground-worker.js`, *DOWNLOADS THAT CANNOT STOP THE GROUND*;
+`wheelGround.js`):
+
+- **Downloads run on their own**, four at a time (one always kept for a
+  piece being laid now), each given **15 s**. One that fails or runs out of
+  time is **tried again** after 3 s, then 6, 12 … up to 30 s.
+- **A piece waits at most 4 s for its pictures** — counted from when a piece
+  first waited for that download, so one stuck download holds up one piece,
+  not every piece after it in turn. A picture that has not come is drawn in
+  its plan colour, and the piece is shown at once.
+- **It fills in when the picture comes.** The worker keeps trying every
+  picture a piece went without and says when one arrives; the game then lays
+  just those pieces again, one at a time and after any new piece, and swaps
+  the new one in without a blink. Never on a timer: a picture that never
+  comes costs nothing but its tries.
+- **Pictures come ahead of you.** Every piece asked for also starts the
+  downloads for the swatches two pieces round it, so walking into the next
+  area finds them already here.
+- **The phone keeps them.** The game's pictures are asked for at
+  `?v=<the manifest's date>`, and `public/_headers` lets the phone keep
+  anything under `/world/ground/` for a year: a second visit reads them from
+  the phone with no trip to the server. A new upload has a new date, so a
+  new address; the manifest itself is fetched fresh every time.
+- **"Unreadable" means unreadable**: only a picture this browser cannot
+  unpack. A download that failed is not marked, it is tried again.
+
+**Tested** by `node tools/qa/mp/run.mjs wheelnet` (10 checks): the game's own
+tiles over a connection made worse than the owner's — every ground picture
+450 ms late, the street's (the commonest in town) hanging with no answer the
+first time, the square's failing the first time. The way in lifts (11 s
+there, of which 4 s is the first piece waiting for the stuck street); a
+walk east, north and back lays 312 pieces with **0 pop-ins** (31 before
+the downloads came ahead); 53 pieces were laid short of a picture, every one
+on screen filled in once it came, and **none left waiting**. The ordinary
+`wheeltrial` passes as before.
 
 **Removing the trial** once it has served: delete `src/game/wheelTrial.js`,
 `src/rendering/wheelGround.js`, `public/tools/world/core/ground-worker.js`

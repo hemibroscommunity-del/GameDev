@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  wheelnet: () => import('./mp-wheelnet.mjs'), /* v2.3.2959: the Wheel on a slow, unreliable connection -- every ground picture late, one never coming, one failing once: the way in lifts, the ground keeps coming on the walk, pieces short a picture are laid without it and laid again, failed downloads tried again, pictures at a keepable ?v= address */
   wheeltrial: () => import('./mp-wheeltrial.mjs'), /* v2.3.2943: ?trial=wheel -- the World View as the Wheel at full size, its ground laid on the device from the Ground Studio's own swatches by a worker; a swatch planted in the studio's storage is under your feet, the sea stops you, pieces laid ahead and freed behind, the worker stopped after you leave */
   worldtrial: () => import('./mp-worldtrial.mjs'), /* v2.3.2932: ?trial=world -- the World View as the whole island at full size, streamed in pieces; the way in timed, memory bounded across a walk, the worker following, sea and river solid, every piece freed on the way out */
   devarmor: () => import('./mp-devarmor.mjs'), /* v2.3.2875: the admin kit hands out the copper and iron armour sets, into the right bags, wearable */

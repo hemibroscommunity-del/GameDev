@@ -4921,3 +4921,40 @@ the longest run of edge pixels on one row, column or diagonal. Before the
 fix the town had a 26 game px diagonal. Now it has none over 16, the same as
 open country's ragged edges. `tools/world/test-world-core.mjs` holds it
 there.
+
+## 123. A download with no time limit, in a worker that does one job at a time, stops everything behind it (v2.3.2959)
+
+**Tempting:** in a worker that lays ground pieces one after another, fetch
+each swatch picture the first time a piece needs it: `await (await
+fetch(url)).blob()`, inside the same `try` that unpacks it. On any error,
+mark the picture unreadable and draw its plan colour. Simple, and fine on
+the office Wi-Fi.
+
+**Wrong** on a phone's connection, in three ways at once:
+- `fetch` has **no time limit**. One request that never answers holds its
+  piece forever, and every piece queued behind it. The owner's readout:
+  *"3 pieces waiting"*, for good, and no ground ahead at all.
+- A **network failure was filed as "unreadable"**, so the picture was never
+  tried again, even once the connection came back.
+- Pictures were fetched **only when needed, one at a time**, so a walk into
+  a new area waited for each download in turn.
+
+**The fix** (`public/tools/world/core/ground-worker.js`, *DOWNLOADS THAT
+CANNOT STOP THE GROUND*):
+- Downloads run apart from the laying, a few at a time, each **given a time
+  limit** (AbortController, raced against a timer).
+- A failure is **tried again** after a wait that grows.
+- A piece **waits a bounded time** for its pictures. That time is counted
+  per download, not per piece, so one stuck picture cannot make each piece
+  wait in turn. After it, the piece is laid without the picture and filled
+  in when the picture comes.
+- **Unreadable** is kept for pictures the browser cannot unpack.
+
+**Also wrong, the obvious patch:** lay the short pieces again on a timer.
+A picture that never comes then costs a piece laid every few seconds,
+forever. Re-lay only when the worker says a missing picture has come
+(`got`).
+
+**How to see it:** `node tools/qa/mp/run.mjs wheelnet` routes the ground
+pictures through a deliberately bad connection: all late, one hanging, one
+failing.
