@@ -1066,6 +1066,47 @@ a MIX pair has no upper and cuts through stones either way.
 
 ---
 
+## Download for the game (v2.3.2957)
+
+> Owner, 2026-10-01, every swatch made: *"It's 279mb in the zip file. Isn't
+> that way too much for GitHub? And the game in general?"*
+
+**Download all** is the backup, and nearly all of its size is the originals
+as ChatGPT made them (about 3 MB each), which the game never reads: they are
+there so the studio can make the tiles again. GitHub's website takes files
+of up to 25 MB, and refuses anything over 100 MB.
+
+**Download for the game** (the Ground Studio's Save card) packs only what the
+game's worker reads, `manifest.json` and `ground/<id>-<version>.png`, with:
+
+- **every opaque tile saved as palette numbers** (`world/core/png8.js`: a
+  PNG of colour type 3, one byte a pixel, the colours listed once). These are
+  the same pixels, about half the bytes: the owner's square 0.96 MB to 0.41,
+  the yards 0.50 to 0.20. The rows are unfiltered, as the PNG spec advises for
+  palette pictures; trying all four filters saved nothing. Edge pieces keep
+  their see-through full-colour PNG, as does any picture past 256 colours, or
+  a browser without CompressionStream;
+- **as many zips as keep each under 24 MB** (`GAME_PART`), each holding the
+  whole manifest (plus `forGame`, `part`, `parts`). The page shows a "Save
+  part N of M" button for each, because a phone saves one download per tap.
+
+All 96 tiles come to about 30 MB this way, against about 65 MB as the canvas
+saves them. A player downloads only the tiles near them: about 1.5 MB for
+the town.
+
+**Unpacking** (a session): every part's `ground/*.png` and one
+`manifest.json` into `public/world/ground/`. The manifests differ only in
+`part`.
+
+**Tests.** `test-world-core.mjs` reads a palette PNG back by hand
+(signature, IHDR, PLTE, IDAT inflated) to the same pixels, smaller than full
+colour, and checks that more than 256 colours, or anything see-through,
+keeps the full-colour PNG. `ground-studio.mjs` checks the game's zip carries
+every finished picture the backup does and no originals, each one decoded
+pixel for pixel the same as the backup's. It also checks that a smaller part
+limit splits the zips (each under the limit, each with the manifest, every
+picture once), and that the page's "Save part" button saves the zip.
+
 ## Blend pictures, put away (v2.3.2955)
 
 > Owner, 2026-09-30: *"If I can get good results faster with just the 2

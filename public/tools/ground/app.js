@@ -50,6 +50,7 @@ import { spokePoint, arcPoint } from '../world/core/wheel.js';
 import { groundCatalog, materialMap, composeGround, groundOverview, swatchesUnder, groundContacts, pieceMap, edgePiecesOn, blendsOn, blendKey, blendPair, blendsUnder } from '../world/core/ground.js';
 import { openStore } from '../world/store.js';
 import { zipStore, unzip } from '../world/core/zip.js';
+import { encodePalettePng } from '../world/core/png8.js';
 import { PIXEL } from '../style/bible.js';
 import { blobToCanvas, seamless, resize, buildPalette, hardenAndMap, mk, keyOut } from '../style/process.js';
 import { loadSprites, EFFECT_PALETTE } from '../style/scene.js';
@@ -1043,10 +1044,15 @@ function refreshAll() {
 
 /* ── save and restore ── */
 
-async function exportZip() {
+/* What a zip carries: the manifest and every finished picture -- and, for
+   the backup, every original as ChatGPT made it (`originals`).  v2.3.2957:
+   `tilePng(tile, id, ver)` may give a picture's bytes another way (the game's
+   zip saves them as palette numbers). */
+async function exportFiles({ originals = true, tilePng = null } = {}) {
   const files = [];
   const enc = new TextEncoder();
   const made = [];
+  const bytesOf = async (tile, id, ver) => (tilePng && (await tilePng(tile, id, ver))) || new Uint8Array(await tile.png.arrayBuffer());
   for (const e of S.cat) {
     const t = S.tiles[e.id], ed = S.edges[e.id];
     if (!t && !ed) continue;
@@ -1059,9 +1065,8 @@ async function exportZip() {
       const tile = ver === EDGE ? ed : t && t.byVer[ver];
       if (!tile) continue;
       vers.push(ver);
-      files.push({ name: `ground/${e.id}-${ver}.png`, data: new Uint8Array(await tile.png.arrayBuffer()) });
-      const ext = extOf(raw.name, raw.blob.type);
-      files.push({ name: `originals/${e.id}-${ver}.${ext}`, data: new Uint8Array(await raw.blob.arrayBuffer()) });
+      files.push({ name: `ground/${e.id}-${ver}.png`, data: await bytesOf(tile, e.id, ver) });
+      if (originals) files.push({ name: `originals/${e.id}-${ver}.${extOf(raw.name, raw.blob.type)}`, data: new Uint8Array(await raw.blob.arrayBuffer()) });
     }
     /* v2.3.2944: and the brief the pictures were made from (null when they
        predate the record), so a restore still knows which to make again */
@@ -1073,8 +1078,8 @@ async function exportZip() {
   for (const p of S.blendPairs) {
     const k = kv(p.key, BLEND), raw = S.raw.get(k), t = S.blends[p.key];
     if (!raw || !S.prep.has(k) || !t) continue;
-    files.push({ name: `ground/${p.key}-${BLEND}.png`, data: new Uint8Array(await t.png.arrayBuffer()) });
-    files.push({ name: `originals/${p.key}-${BLEND}.${extOf(raw.name, raw.blob.type)}`, data: new Uint8Array(await raw.blob.arrayBuffer()) });
+    files.push({ name: `ground/${p.key}-${BLEND}.png`, data: await bytesOf(t, p.key, BLEND) });
+    if (originals) files.push({ name: `originals/${p.key}-${BLEND}.${extOf(raw.name, raw.blob.type)}`, data: new Uint8Array(await raw.blob.arrayBuffer()) });
     blends.push({ key: p.key, a: p.a, b: p.b, madeFrom: raw.brief || null });
   }
   const manifest = {
@@ -1083,8 +1088,48 @@ async function exportZip() {
     tile: TILE, gamePxPerArtPx: GPA, tileGamePx: TILE * GPA, palette: S.palette, frozen: S.frozen,
     swatches: made, blends,
   };
+  return { files, manifest, enc };
+}
+
+async function exportZip() {
+  const { files, manifest, enc } = await exportFiles();
   files.unshift({ name: 'manifest.json', data: enc.encode(JSON.stringify(manifest, null, 1)) });
   return zipStore(files);
+}
+
+/* ═══ v2.3.2957: DOWNLOAD FOR THE GAME ═══
+   The owner, 2026-10-01, every swatch made: "It's 279mb in the zip file.
+   Isn't that way too much for GitHub? And the game in general?"  Nearly all
+   of it is the originals as ChatGPT made them (about 3 MB each), which the
+   game never reads -- they are the backup, there to make the tiles again --
+   and GitHub's website takes files of up to 25 MB.  So this packs only what
+   the game's worker reads, the manifest and each finished picture, every one
+   saved as palette numbers (world/core/png8.js: about half the bytes, the
+   same pixels), in as many zips as keep each under GAME_PART, every zip
+   with the whole manifest -- a session unpacks them all into
+   public/world/ground/.  Edge pieces keep their see-through PNG. */
+const GAME_PART = 24e6;
+/* (`limit`: the tests ask for small parts, to see the split) */
+async function exportGameZips(limit = GAME_PART) {
+  const tilePng = async (tile, id, ver) => {
+    if (ver === EDGE) return null;
+    const px = await pixelsOf(id, ver);
+    return px ? encodePalettePng(px.data, px.w, px.h) : null;
+  };
+  const { files, manifest, enc } = await exportFiles({ originals: false, tilePng });
+  /* the parts: pictures in catalog order, a new zip whenever the next would
+     pass GAME_PART (with room for the manifest and the zip's own records) */
+  const head = (n, of) => enc.encode(JSON.stringify({ ...manifest, forGame: true, part: n, parts: of }, null, 1));
+  const room = limit - head(99, 99).length - 4096;
+  const groups = [[]];
+  let size = 0;
+  for (const f of files) {
+    const cost = f.data.length + 2 * f.name.length + 80;
+    if (size + cost > room && groups[groups.length - 1].length) { groups.push([]); size = 0; }
+    groups[groups.length - 1].push(f);
+    size += cost;
+  }
+  return groups.map((g, i) => ({ part: i + 1, parts: groups.length, bytes: zipStore([{ name: 'manifest.json', data: head(i + 1, groups.length) }, ...g]) }));
 }
 
 async function restoreZip(bytes) {
@@ -1134,7 +1179,26 @@ function wireSave() {
     a.download = `brotown-ground-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.zip`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-    toast('Downloaded. Upload it to GitHub (see "Putting the swatches in the game").');
+    toast('Downloaded. Keep it safe as your backup (iCloud or Google Drive).');
+  });
+  /* v2.3.2957: the small zip(s) for GitHub, each a link of its own -- a phone
+     saves one download per tap, so every part is a tap */
+  $('export-game').addEventListener('click', async () => {
+    const zips = await busy('Packing the game\'s zip…', () => exportGameZips());
+    const d = new Date(), p = (x) => String(x).padStart(2, '0');
+    const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+    const box = $('game-parts');
+    for (const a of box.querySelectorAll('a')) URL.revokeObjectURL(a.href);
+    box.textContent = '';
+    for (const z of zips) {
+      const a = el('a', 'btn brass', `Save part ${z.part} of ${z.parts} (${(z.bytes.length / 1e6).toFixed(1)} MB)`);
+      a.href = URL.createObjectURL(new Blob([z.bytes], { type: 'application/zip' }));
+      a.download = `brotown-ground-game-${stamp}-part${z.part}of${z.parts}.zip`;
+      a.dataset.part = String(z.part);
+      box.appendChild(a);
+    }
+    box.hidden = false;
+    toast(zips.length > 1 ? `Ready in ${zips.length} parts: tap each to save it, then upload them all to GitHub.` : 'Ready: tap it to save it, then upload it to GitHub.');
   });
   $('restore').addEventListener('change', async (ev) => {
     const f = ev.target.files && ev.target.files[0];
@@ -1208,5 +1272,5 @@ S.ready = start().catch((e) => { $('status').textContent = `Something went wrong
 
 window.__ground = {
   S, pieces: PIECES, blends: BLENDS_ON,
-  api: { addPicture, removePicture, exportZip, restoreZip, setSpot, spotFor, drawPreview, promptFor, edgePromptFor, pixelsOf, showEdge, blendPromptFor, showBlend, blendKey },
+  api: { addPicture, removePicture, exportZip, exportGameZips, restoreZip, setSpot, spotFor, drawPreview, promptFor, edgePromptFor, pixelsOf, showEdge, blendPromptFor, showBlend, blendKey },
 };

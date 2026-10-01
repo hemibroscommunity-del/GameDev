@@ -105,7 +105,12 @@ remnant to migrate server-side, not a mode to preserve.
   card and the game's worker only with `?blends` in the address, kept and
   tested; still open when the owner stopped that round: a short
   checkmark-shaped edge beside the street corner, and rocky ground lying ON
-  TOP of plain dirt where they mix -- WORLD-MAP-PIPELINE "Still open"),
+  TOP of plain dirt where they mix -- WORLD-MAP-PIPELINE "Still open"; and
+  since v2.3.2957 the studio's "Download for the game" packs only the manifest
+  and finished tiles, as palette PNGs (`world/core/png8.js`, half the bytes,
+  the same pixels), in zips under 24 MB for GitHub's website, while
+  "Download all" (279 MB with every original) stays the owner's backup and
+  never goes on GitHub -- WORLD-MAP-PIPELINE "Download for the game"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

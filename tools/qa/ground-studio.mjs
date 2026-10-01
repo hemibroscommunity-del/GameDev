@@ -612,6 +612,72 @@ try {
   const gone = await page.evaluate(() => ({ chip: document.getElementById('blend-chip').textContent, card: (document.querySelector('[data-blend-chip="plaza__town-yard"]') || {}).textContent }));
   ok('...and it can be removed: the pair mixes without one again', gone.chip === 'optional' && gone.card === 'not made', gone);
 
+  /* ── 10. v2.3.2957: download for the game ── */
+  console.log('10. download for the game');
+  /* Owner: "It's 279mb in the zip file. Isn't that way too much for GitHub?
+     And the game in general?" -- the game's zips carry no originals, every
+     finished tile as palette numbers, each zip under GitHub's 25 MB */
+  const game = await page.evaluate(async () => {
+    const api = window.__ground.api;
+    const { unzip } = await import('/tools/world/core/zip.js');
+    const full = await unzip(await api.exportZip());
+    const fullGround = full.filter((f) => f.name.startsWith('ground/'));
+    const decode = async (bytes) => {
+      const bm = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const c = new OffscreenCanvas(bm.width, bm.height), x = c.getContext('2d');
+      x.drawImage(bm, 0, 0);
+      return x.getImageData(0, 0, bm.width, bm.height).data;
+    };
+    const check = async (zips) => {
+      const names = [], sizes = [], bad = [];
+      let originals = 0, manifests = 0, palette = 0, bytes = 0;
+      for (const z of zips) {
+        sizes.push(z.bytes.length);
+        for (const f of await unzip(z.bytes)) {
+          if (f.name === 'manifest.json') {
+            const m = JSON.parse(new TextDecoder().decode(f.data));
+            if (m.forGame === true && m.part === z.part && m.parts === z.parts && Array.isArray(m.swatches) && m.swatches.length && Array.isArray(m.palette)) manifests++;
+            continue;
+          }
+          if (f.name.startsWith('originals/')) { originals++; continue; }
+          names.push(f.name);
+          bytes += f.data.length;
+          if (f.data[25] === 3) palette++;          /* IHDR's colour type: 3, palette */
+          const ref = fullGround.find((g) => g.name === f.name);
+          const a = await decode(f.data), b = ref ? await decode(ref.data) : null;
+          if (!b || a.length !== b.length || a.some((v, i) => v !== b[i])) bad.push(f.name);
+        }
+      }
+      return { parts: zips.length, sizes, names: names.sort(), bad, originals, manifests, palette, bytes };
+    };
+    const one = await check(await api.exportGameZips());
+    /* parts small enough to hold two or three pictures, to see the split */
+    const biggest = Math.max(...fullGround.map((f) => f.data.length));
+    const limit = Math.ceil(2.5 * biggest) + 8192;
+    const split = await check(await api.exportGameZips(limit));
+    return { one, split, limit, fullNames: fullGround.map((f) => f.name).sort(), fullBytes: fullGround.reduce((s, f) => s + f.data.length, 0),
+      fullOriginals: full.filter((f) => f.name.startsWith('originals/')).length };
+  });
+  const opaque = (names) => names.filter((n) => !/-E\.png$/.test(n)).length;
+  ok(`"Download for the game" carries every finished picture the backup does (${game.one.names.length}) and none of the originals (the backup has ${game.fullOriginals}), in one zip under GitHub's 25 MB`,
+    game.one.parts === 1 && game.one.sizes[0] < 24e6 && game.one.originals === 0 && game.fullOriginals > 0 && game.one.manifests === 1 &&
+    JSON.stringify(game.one.names) === JSON.stringify(game.fullNames) && game.one.names.length >= 3, { ...game.one, bad: game.one.bad.slice(0, 3) });
+  ok(`...every one the very same pixels as the backup's, the opaque ones saved as palette numbers: ${(game.one.bytes / 1e6).toFixed(2)} MB against ${(game.fullBytes / 1e6).toFixed(2)}`,
+    game.one.bad.length === 0 && game.one.palette === opaque(game.one.names) && game.one.bytes < game.fullBytes, { bad: game.one.bad.slice(0, 3), palette: game.one.palette, bytes: game.one.bytes, fullBytes: game.fullBytes });
+  ok(`...and more than fits one zip is split, every part under its limit and carrying the manifest, together every picture once (${game.split.parts} parts of up to ${(game.limit / 1e6).toFixed(2)} MB)`,
+    game.split.parts >= 2 && game.split.sizes.every((n) => n <= game.limit) && game.split.manifests === game.split.parts && game.split.originals === 0 &&
+    JSON.stringify(game.split.names) === JSON.stringify(game.fullNames) && game.split.bad.length === 0, { parts: game.split.parts, sizes: game.split.sizes, limit: game.limit });
+  /* the button: a tap-to-save link per part (a phone saves one download a tap) */
+  await page.click('#export-game');
+  await page.waitForFunction(() => document.querySelectorAll('#game-parts a[download]').length > 0 && document.getElementById('busy').hidden, null, { timeout: 120000 });
+  const links = await page.evaluate(() => [...document.querySelectorAll('#game-parts a[download]')].map((a) => ({ text: a.textContent, file: a.getAttribute('download'), shown: a.offsetParent !== null })));
+  const [dlg] = await Promise.all([page.waitForEvent('download'), page.click('#game-parts a[data-part="1"]')]);
+  const gameZip = fs.readFileSync(await dlg.path());
+  ok('...and the page shows a "Save part" button for each part, which saves that zip',
+    links.length === 1 && /^Save part 1 of 1 \([0-9.]+ MB\)$/.test(links[0].text) && /^brotown-ground-game-\d{8}-\d{4}-part1of1\.zip$/.test(links[0].file) && links[0].shown &&
+    gameZip.includes(Buffer.from('manifest.json')) && !gameZip.includes(Buffer.from('originals/')), { links, size: gameZip.length });
+  await shot(page, 'game-download', '#save');
+
   ok('no page errors', offErrs.length === 0 && page.errs.length === 0 && pageB.errs.length === 0 && pageC.errs.length === 0 && pageP.errs.length === 0 && pageD.errs.length === 0, [...offErrs, ...page.errs, ...pageB.errs, ...pageC.errs, ...pageP.errs, ...pageD.errs].slice(0, 3));
 } finally {
   await browser.close();

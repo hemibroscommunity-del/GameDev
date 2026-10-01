@@ -45,7 +45,7 @@ import { buildPrompt } from '../../public/tools/world/core/prompt.js';
 import { gridMinCut, INF } from '../../public/tools/world/core/maxflow.js';
 import { fuseSquare } from '../../public/tools/world/core/fuse.js';
 import { makeImg, crop, warpAffine, blurField, resample } from '../../public/tools/world/core/image.js';
-import { mulberry32, fbm, valueNoise } from '../../public/tools/world/core/rng.js';
+import { mulberry32, fbm, valueNoise, hash2 } from '../../public/tools/world/core/rng.js';
 import { zipStore, unzip } from '../../public/tools/world/core/zip.js';
 
 let pass = 0, fail = 0;
@@ -1033,6 +1033,46 @@ console.log('zip');
   const files = [{ name: 'backup.json', data: new TextEncoder().encode('{"a":1}') }, { name: 'squares/F7.png', data: new Uint8Array([137, 80, 78, 71, 1, 2, 3]) }];
   const back = await unzip(zipStore(files));
   ok('a backup zip round-trips', back.length === 2 && back[1].name === 'squares/F7.png' && back[1].data.join() === files[1].data.join() && new TextDecoder().decode(back[0].data) === '{"a":1}');
+}
+
+/* ── v2.3.2957: palette PNGs for the game ── */
+console.log('palette PNGs');
+{
+  const { encodePalettePng, paletteOf } = await import('../../public/tools/world/core/png8.js');
+  const zlib = await import('node:zlib');
+  /* a picture on 100 colours, in clumps (as a swatch is), read back by hand:
+     signature, IHDR, PLTE, IDAT inflated, each row's filter byte and numbers */
+  const W = 256, H = 192, cols = [];
+  for (let k = 0; k < 100; k++) cols.push([(k * 37) & 255, (k * 91 + 17) & 255, (k * 53 + 5) & 255]);
+  const px = new Uint8Array(W * H * 4);
+  /* (2 x 2 px dots of any of the 100, as busy as a swatch's grit) */
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const c = cols[Math.floor(hash2(x >> 1, y >> 1, 7) * 100)], o = (y * W + x) * 4; px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = 255; }
+  const png = Buffer.from(await encodePalettePng(px, W, H));
+  const read = (buf) => {
+    const out = {}; let o = 8;
+    while (o < buf.length) { const len = buf.readUInt32BE(o), type = buf.toString('latin1', o + 4, o + 8); (out[type] = out[type] || []).push(buf.subarray(o + 8, o + 8 + len)); o += 12 + len; }
+    return out;
+  };
+  const ch = read(png), ih = ch.IHDR[0], pal = ch.PLTE[0], raw = zlib.inflateSync(Buffer.concat(ch.IDAT));
+  let same = true;
+  for (let y = 0; y < H && same; y++) {
+    if (raw[y * (W + 1)] !== 0) same = false;
+    for (let x = 0; x < W && same; x++) { const n = raw[y * (W + 1) + 1 + x], o = (y * W + x) * 4; same = pal[n * 3] === px[o] && pal[n * 3 + 1] === px[o + 1] && pal[n * 3 + 2] === px[o + 2]; }
+  }
+  ok('a finished tile saved as palette numbers is read back as the very same pixels (a palette PNG: colour type 3, 8 bits, unfiltered rows)',
+    png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) && ih.readUInt32BE(0) === W && ih.readUInt32BE(4) === H && ih[8] === 8 && ih[9] === 3 && pal.length === 300 && same && !!ch.IEND,
+    { size: png.length, palette: pal.length / 3, same });
+  /* the full-colour PNG of the same pixels, unfiltered, for scale */
+  const fullRaw = Buffer.alloc((W * 4 + 1) * H);
+  for (let y = 0; y < H; y++) Buffer.from(px.subarray(y * W * 4, (y + 1) * W * 4)).copy(fullRaw, y * (W * 4 + 1) + 1);
+  ok(`...and smaller than the same pixels in full colour (${png.length} bytes against ${zlib.deflateSync(fullRaw).length})`, png.length < zlib.deflateSync(fullRaw).length);
+  /* never a wrong picture: past 256 colours, or anything see-through, the
+     answer is null and the studio keeps the full-colour PNG */
+  const many = new Uint8Array(300 * 4);
+  for (let i = 0; i < 300; i++) { many[i * 4] = i & 255; many[i * 4 + 1] = i >> 8; many[i * 4 + 3] = 255; }
+  const clear = px.slice(); clear[3] = 0;
+  ok('...but a picture of more than 256 colours, or with anything see-through, is not saved that way (the full-colour PNG is kept)',
+    paletteOf(many, 300) === null && (await encodePalettePng(many, 300, 1)) === null && (await encodePalettePng(clear, W, H)) === null);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
