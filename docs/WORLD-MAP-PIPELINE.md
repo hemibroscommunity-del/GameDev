@@ -1881,6 +1881,7 @@ placing change here was looked at that way.
 | | |
 |---|---|
 | at the arrival | 14 objects drawn, 16 of 40 sheets, **~31 MB** decoded |
+| walking round town | up to 20 sheets, ~39 MB (the buildings within 1,000 px stay) |
 | on Frost Ridge | 20 drawn, 7 sheets, ~23 MB; the town's let go |
 | before the overlay lifts | 12 sheets in 1.1–1.3 s, alongside the ground |
 | late draws | 0 |
