@@ -2045,7 +2045,15 @@ nearest place stands 184 px outside it).
   (16–30 MB). That is at the edge of iPhone Safari's ~250 MB (below); the
   next step, if a phone struggles, is loading each land's monsters as you walk
   toward it, which needs the owner's yes (it is the new preloading clause
-  below).
+  below). **Done in v2.3.2989** — the owner: *"Yes only load as you walk
+  towards it"*: a monster type's look loads when one wearing it is within
+  2,600 px (the worker tells a phone of those within 2,400; one is on screen
+  within ~500) and goes once none has been within 3,600 px for 10 s
+  (`src/rendering/wheelMonsterArt.js`); a monster whose look is not ready is
+  not drawn at all. The Wheel now arrives with **no** monster looks: about
+  176 MB of textures, not 241; Frost Ridge's and the Flame Fields' came on
+  the way out there, the slowest in about a second, no monster in view ever
+  waiting (docs/specs/wheel-monsters.md "Looks loaded as you walk").
 - **Only the ones near you are drawn, or sent**: a monster far off screen is
   left undrawn, and the worker tells each player only of the monsters within
   2,400 px, so the other lands cost nothing a frame and nothing on the wire

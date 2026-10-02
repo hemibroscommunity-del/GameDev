@@ -88,7 +88,10 @@ export async function preloadZoneAssets(zoneId) {
     /* v2.3.1535: variantsForZone covers BOTH the whole-archetype map and the
        per-spawn-entry overrides (verdant's single blueSlime), so a variant
        assigned by the spawn table warms here like any other. */
-    const keys = variantsForZone(zoneId);
+    /* v2.3.2989: ...but not the Wheel's (a zone of other zones' monsters,
+       `homes`): its eight lands' looks load as you walk toward them, the
+       owner's "Yes only load as you walk towards it" (wheelMonsterArt.js) */
+    const keys = zoneHomes(zoneId) ? new Set() : variantsForZone(zoneId);
     /* skeleton has no zone entry — it only appears via the mummy->skeleton
        transform, so co-load it wherever mummy loads (sky). */
     if (keys.has('mummy')) keys.add('skeleton');
@@ -141,9 +144,10 @@ export async function preloadZoneAssets(zoneId) {
   /* frost is the only snowman zone — its sprites load here instead of
      globally.  v2.3.2844: the ice-burst impact sheet that used to ride along
      (~2MB) is retired with the plume it drew (effectsRenderer tombstone). */
-  /* v2.3.2978: ...and the Wheel, where Frost Ridge's snowmen stand too
-     (zones.js zoneHomes) */
-  if (zoneId === 'frost' || (zoneHomes(zoneId) || []).includes('frost')) {
+  /* (v2.3.2978 loaded them for the Wheel here too, where Frost Ridge's
+     snowmen stand; since v2.3.2989 they come as you walk toward them,
+     wheelMonsterArt.js) */
+  if (zoneId === 'frost') {
     tasks.push(Promise.resolve(loadSnowmanSprites()).catch(() => {}));
     /* v2.3.2217: the thrown ball's burst — AWAITED (pushed into tasks) rather
        than fire-and-forget, so it is ready before the zone overlay lifts

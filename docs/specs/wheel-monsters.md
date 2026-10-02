@@ -29,7 +29,9 @@ unchanged**, to the **inner end of its own spoke**: the land's first stage
 - Dying in the Wheel brings you back in town, as dying anywhere does.
 - Every land's monster art loads behind the Wheel's loading overlay (the
   zone-asset exception of the preloading law), and all of it is let go when
-  you leave.
+  you leave. **Since v2.3.2989** (the owner: *"Yes only load as you walk
+  towards it"*) a land's monster looks load as you walk toward it instead,
+  and go once you are well away — see "Looks loaded as you walk" below.
 
 ## Where they stand
 
@@ -134,9 +136,10 @@ the room restarts (no tick polls the flag).
   `wheel` only in the Wheel trial **and** against a worker that advertises
   `caps.wheelmonsters`; otherwise `worldview`, as before.
 - Art: `variantsForZone('wheel')` is the union of the homes' variants, so
-  `preloadZoneAssets('wheel')` loads all eight lands' monsters behind the
-  overlay and `freeZoneAssets` lets them go; the snowman's sheets follow any
-  zone he stands in. `wsClient` skins each monster by `local.home`.
+  `preloadZoneAssets('wheel')` loaded all eight lands' monsters behind the
+  overlay (until v2.3.2989: now it loads none of them, below) and
+  `freeZoneAssets` lets them go; the snowman's sheets follow any zone he
+  stands in. `wsClient` skins each monster by `local.home`.
 - `lifeSkills.spawnGatherNodes` places no nodes in a zone with `homes`.
 - **Far off screen is not drawn** (entityRenderer `_updateMonsters`,
   `FAR_MARGIN`): in a zone with `homes`, a live monster farther than the view's
@@ -146,9 +149,10 @@ the room restarts (no tick polls the flag).
   stage timings went from 1.4–2.0 ms (entities) + 2.3–2.5 ms (drawing) a
   frame to 0.33–0.36 + 0.82–0.94 — the same as with no monsters at all
   (0.32–0.34 + 0.79–0.89). Pixi's texture GC may then drop a far land's GPU
-  copies after a minute unused, like any unused animation's; their sheets stay
-  loaded (the preloading LAW). `S._viewW/_viewH` (pixiRenderer) give the view;
-  `S._monstersFarHidden` is the QA readout.
+  copies after a minute unused, like any unused animation's (and since
+  v2.3.2989 a land's looks are let go once you are well away, below).
+  `S._viewW/_viewH` (pixiRenderer) give the view; `S._monstersFarHidden` is
+  the QA readout.
 - **Leaving clears the list** (zoneTransitions, the hub-exit flip): until the
   Wheel no hub held server monsters, so the hub exit never cleared them; the
   Wheel's 48 stayed in the list until town's `zone_state` came in, the
@@ -178,7 +182,43 @@ the room restarts (no tick polls the flag).
   before and after this change), so it says nothing about a phone.
 - If the 60 MB ever matters on a phone, the next step is loading each land's
   monsters as you approach it — which bends the preloading law and needs the
-  owner's yes first.
+  owner's yes first. (Given, and done: v2.3.2989, below.)
+
+## Looks loaded as you walk (v2.3.2989)
+
+Owner, 2026-10-02: *"Yes only load as you walk towards it."*
+
+- **What loads when** (`src/rendering/wheelMonsterArt.js`): a monster type's
+  LOOK — a variant's sheets with any recolour it asks for, the mummy's with
+  the skeleton it turns into, or the snowman's sheets and his snowball's
+  burst — loads when a monster wearing it is within `LOAD_R` 2,600 px of you.
+  The worker tells a phone of the monsters within 2,400 px (and of all 48 in
+  the zone's first list), and a monster comes on screen within about 500 px,
+  so there are some 1,900 px of walking to load it in. A look none of whose
+  monsters has been within `FREE_R` 3,600 px for `FREE_AFTER` 10 s is let go;
+  a sprite module two looks share (rockmonster and thornShambler, fishman and
+  bogLurker) is kept while either is.
+- **From Brotown's square none is near** (the nearest is ~2,800 px): the
+  Wheel arrives with no monster looks at all. `preloadZoneAssets('wheel')`
+  loads none of them (nor the snowman's); leaving lets everything go, as
+  before.
+- **Never drawn without its look**: in the Wheel a monster whose look is not
+  ready — a slow phone, or one met before its look, say on a reconnect inside
+  the Wheel — is not drawn at all (never in a stand-in body) and holds no
+  display, so nothing points at a look that was let go (entityRenderer
+  `_updateMonsters`, `wheelArtReady`). The lazy first-sighting kick in
+  `monsterVariantSprites.variantSpritesFor` is off there (`setVariantKicks`),
+  so nothing else starts a load behind its back. The ones in view that wait
+  are counted (`S._monstersArtWait`), and the longest wait is in the
+  readout's `monsters` line and `window.__btWheelArt()`.
+- **Measured** (mp-wheelmonsters, headless Chromium, phone viewport, local
+  worker): monster looks **0 MB on arriving in the Wheel** (was 60.3), all
+  textures 170.5 → **175.9 MB** on arrival (was 241.3); walking out to Frost
+  Ridge and the Flame Fields loaded 5 looks, the slowest in 1,069 ms, and no
+  monster in view ever waited (0 ms): 58.3 MB of looks, 222.9 MB of textures;
+  back home 0 MB (171). mp-wheeltrial's walk-past-the-ground pop-in check
+  still swings with this box's load (42 before this change at v2.3.2983, 59
+  at v2.3.2985, 43 after), as noted above.
 
 ## Not in this round
 

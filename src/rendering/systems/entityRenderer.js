@@ -53,6 +53,7 @@ import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount 
   getPhaseFrame as getSnowmanPhaseFrame, phaseFrameCount as snowmanPhaseFrameCount /* v2.3.2221 */
 } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
+import { wheelArtTick, wheelArtOn, wheelArtReady, wheelArtWaiting } from '../wheelMonsterArt.js'; /* v2.3.2989: the Wheel's monsters' looks, loaded as you walk toward them */
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling corpse */
@@ -7989,6 +7990,12 @@ export class EntityRenderer {
   _updateMonsters(S, now) {
     const monsters = S.monsters || [];
     const activeIds = new Set();
+    /* v2.3.2989: in the Wheel its monsters' looks load as you walk toward
+       them (wheelMonsterArt.js): which are wanted, loaded and let go is
+       decided here, before any monster is drawn */
+    wheelArtTick(S, monsters, now);
+    const _artOn = wheelArtOn(S.currentZone);
+    let _artWait = 0;
     const SLIME_DEATH_MS = 400; /* v7 sprite: 15-frame burst (windup pre-trimmed in
                                     the sheet, so frame 0 is already the explosion).
                                     400 ms / 15 = ~27 ms/frame -> ~37 fps, fast enough
@@ -8030,11 +8037,13 @@ export class EntityRenderer {
        live monster's display -- body and above-head UI -- is hidden and
        skipped.  It keeps its display (activeIds), so walking back costs no
        re-create, and the lines below show it again the frame it is in range
-       (`display.visible !== m.alive`, `_ui.visible`).  Its sheets were
-       loaded behind the Wheel's overlay like any zone's (the preloading
-       LAW); like any animation unused for a minute, Pixi's texture GC may
-       drop their GPU copy while you are elsewhere, which on a phone is the
-       point.  The view is S._viewW/_viewH (pixiRenderer, world px). */
+       (`display.visible !== m.alive`, `_ui.visible`).  (v2.3.2989: its
+       look loads as you walk toward it and goes once you are well away,
+       wheelMonsterArt.js; a monster whose look is not ready holds no
+       display at all, below.)  Like any animation unused for a minute,
+       Pixi's texture GC may drop their GPU copy while you are elsewhere,
+       which on a phone is the point.  The view is S._viewW/_viewH
+       (pixiRenderer, world px). */
     const FAR_MARGIN = 400;
     const _farCull = !!(zoneHomes(S.currentZone) && S.camera && S._viewW > 0 && S._viewH > 0);
     const _farCX = _farCull ? S.camera.x + S._viewW / 2 : 0;
@@ -8084,6 +8093,27 @@ export class EntityRenderer {
       const isFodder = arch === 'fodder' || !!(variant && variant.useSlimeSheets);
       const variantSprites = variantKey ? variantSpritesFor(variantKey) : null;
       const isSnowman = arch === 'snowman';
+      /* v2.3.2989: a Wheel monster whose look is not ready -- not loaded yet,
+         or let go behind you -- is not drawn at all, never in a stand-in
+         body, and holds no display, so none is left pointing at a look that
+         was let go (CLAUDE.md, the ZONE-ASSET EXCEPTION: drop the texture
+         reference, do not merely hide it).  The ones in view are counted:
+         how long they wait says whether the loads keep ahead of you. */
+      if (_artOn && !wheelArtReady(arch)) {
+        const _ad = this.monsterDisplays.get(m.id);
+        if (_ad) {
+          if (_ad._deathFx) clearMonsterDeath(_ad);
+          if (_ad._hpUi && !_ad._hpUi.destroyed) _ad._hpUi.destroy({ children: true });
+          _ad.destroy({ children: true });
+          this.monsterDisplays.delete(m.id);
+        }
+        if (m.alive) {
+          /* (one far off screen counts as far, as it would have anyway) */
+          const _wx = (m.renderX != null ? m.renderX : m.x) - _farCX, _wy = (m.renderY != null ? m.renderY : m.y) - _farCY;
+          if (_farCull && _wx * _wx + _wy * _wy > _farR * _farR) _farHidden++; else _artWait++;
+        }
+        continue;
+      }
 
       /* Fodder + variant death timer — first observation of alive=false
          stamps m._slimeDeathStart (kept its slime-era name to avoid
@@ -10057,6 +10087,8 @@ export class EntityRenderer {
       }
     }
     S._monstersFarHidden = _farHidden;   /* v2.3.2978: QA readout (mp-wheelmonsters) */
+    S._monstersArtWait = _artWait;       /* v2.3.2989: ...and those in view still waiting for their look */
+    if (_artOn) wheelArtWaiting(_artWait, now);
   }
 
   /* v2.3.1091: zone perspective player-scale -- the Overlook/vista "world

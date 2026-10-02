@@ -56,6 +56,7 @@ import { ZONES } from '../data/zones.js';
 import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/effects.js';
 import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo, wheelObjectStats, wheelObjectsInfo, wheelObjectsOn, wheelBigTown } from './wheelTrial.js';
 import { setAlwaysDay } from './timeOfDay.js';
+import { wheelArtStats } from '../rendering/wheelMonsterArt.js';   /* v2.3.2989: the monsters' looks, loaded as you walk toward them */
 
 export const WORLD_TRIAL_ZONE = 'worldview';
 /* v2.3.2978: the Wheel's own zone, where the server stands each element
@@ -462,6 +463,11 @@ function wheelHud(S) {
       (wheelObjectStats.lateDraws ? ' · ' + wheelObjectStats.lateDraws + ' late' : '') + (wheelObjectStats.failed ? ' · ' + wheelObjectStats.failed + ' failed' : '') +
       /* v2.3.2983: the buildings drawn with their life (wheelLife.js) */
       (wheelObjectStats.alive ? ' · ' + wheelObjectStats.alive + ' with life' : '') + '\n' : '') +
+    /* v2.3.2989: the monsters' looks held now (they load as you walk toward
+       a land and go once you are well away), and, if any monster in view ever
+       waited for its look, the longest wait */
+    (S && S.currentZone === 'wheel' ? 'monsters ' + wheelArtStats.ready + ' looks' + (wheelArtStats.loading ? ' +' + wheelArtStats.loading : '') +
+      ' · ' + wheelArtStats.loads + ' loaded · ' + wheelArtStats.frees + ' let go' + (wheelArtStats.waitedMs ? ' · waited ' + wheelArtStats.waitedMs + ' ms' : '') + '\n' : '') +
     'here    ' + (here ? here.name.slice(0, 34) + (here.water ? '' : here.made ? ' ✓' : ' (not made)') : '…') +
     /* only when something went wrong: what, so a phone screenshot says it */
     (s.failures ? '\nfailed  ' + s.failures + ': ' + String(s.lastFailure || '').slice(0, 40) : '');

@@ -12,7 +12,10 @@
  *   3. each land's stand at the inner end of its own spoke, past the commons;
  *   4. their art was loaded on the way in, behind the overlay: walk up to the
  *      snowmen and the fire goblins and every body is drawn from a live
- *      texture on the first frame;
+ *      texture on the first frame -- since v2.3.2989 (the owner: "Yes only
+ *      load as you walk towards it") the Wheel arrives with NONE of their
+ *      looks, and a land's loads on the way toward it, before any of its
+ *      monsters is on screen (wheelMonsterArt.js);
  *   5. one of them fights back and dies to you, and the kill pays (XP);
  *   6. back in town the Wheel's monster art is let go;
  *   7. no page errors, and no render errors.
@@ -138,6 +141,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...each skinned as at home: fire goblins, snowmen, fishmen, rock monsters, mummies, wisps and lurkers, blue slimes, slimes',
     wrongSkin.length === 0, wrongSkin.slice(0, 6).map((m) => ({ id: m.id, home: m.home, arch: m.arch })));
   const mem1 = await monsterMb(P);
+  /* v2.3.2989: ...and none of their looks is loaded yet -- they come as you
+     walk toward a land */
+  const art1 = await P.page.evaluate(() => (window.__btWheelArt ? window.__btWheelArt() : null));
+  rec.ok(`...and the Wheel arrives with none of their looks: monster sheets ${mem0 && mem0.monsters} MB in town, ${mem1 && mem1.monsters} MB here (until v2.3.2989 all eight lands', loaded on the way in)`,
+    !!art1 && art1.zone === 'wheel' && Object.keys(art1.looks).length === 0 && !!(mem0 && mem1) && mem1.monsters <= mem0.monsters + 1, { art1, mem0, mem1 });
   /* v2.3.2978: ...and from Brotown's square, 3,000 px and more from every one
      of them, none is drawn: the renderer leaves a monster far off screen
      undrawn in the Wheel (entityRenderer, FAR_MARGIN) */
@@ -186,6 +194,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     gob.length === 6 && gobDrawn.length >= 1 && gob.filter((m) => m.sprite).every((m) => m.sprite.texAlive), gob.map((m) => m.sprite));
 
   const memWalk = await monsterMb(P);   /* after two lands' objects and ground came in too */
+  /* v2.3.2989: their looks came on the way, before any of their monsters was
+     on screen (the renderer counts a monster in view it could not draw yet,
+     and how long the longest wait lasted) */
+  const art2 = await P.page.evaluate(() => (window.__btWheelArt ? window.__btWheelArt() : null));
+  rec.ok(`walking out to Frost Ridge and the Flame Fields, their looks loaded on the way, before any of their monsters was on screen (${art2 && art2.loads} loaded, the slowest in ${art2 && art2.maxMs} ms; the longest a monster in view waited: ${art2 && art2.waitedMs} ms)`,
+    !!art2 && art2.looks.snowman === 'ready' && art2.looks.fireGoblin === 'ready' && art2.waitedMs === 0 && !!memWalk && memWalk.monsters > mem0.monsters + 3, { art2, memWalk });
   /* ── 5. a fight ── */
   phase = 'the fight';
   /* The swing is the same `monster_damage` the game sends (mp-capekill), stood
@@ -263,10 +277,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`back in town, none of the Wheel's monsters is held (${after.length} in town)`, homeZone === 'town' && after.every((m) => !m.home),
     { homeZone, n: after.length, exit, where });
   const mem2 = await monsterMb(P);
-  /* the eight lands' sheets, loaded on the way in, behind the overlay -- and
-     let go on the way out (freeZoneAssets, by ZONES.wheel.homes) */
-  rec.ok(`...and their art is let go: monster sheets ${mem0 && mem0.monsters} MB in town, ${mem1 && mem1.monsters} MB in the Wheel, ${mem2 && mem2.monsters} MB back home (all textures ${mem0 && mem0.all} -> ${mem1 && mem1.all} on arrival, ${memWalk && memWalk.all} after two lands -> ${mem2 && mem2.all} MB; the ground's pieces are not in these)`,
-    !!(mem0 && mem1 && mem2) && mem1.monsters > mem0.monsters + 5 && mem2.monsters <= mem0.monsters + 1, { mem0, mem1, memWalk, mem2 });
+  /* the looks loaded on the way -- let go on the way out (freeZoneAssets, by
+     ZONES.wheel.homes), and the loader no longer running */
+  const art3 = await P.page.evaluate(() => (window.__btWheelArt ? window.__btWheelArt() : null));
+  rec.ok(`...and their art is let go: monster sheets ${mem0 && mem0.monsters} MB in town, ${mem1 && mem1.monsters} MB on arriving in the Wheel, ${memWalk && memWalk.monsters} MB after two lands, ${mem2 && mem2.monsters} MB back home (all textures ${mem0 && mem0.all} -> ${mem1 && mem1.all} on arrival, ${memWalk && memWalk.all} after two lands -> ${mem2 && mem2.all} MB; the ground's pieces are not in these)`,
+    !!(mem0 && mem1 && mem2 && memWalk) && memWalk.monsters > mem0.monsters + 3 && mem2.monsters <= mem0.monsters + 1 && !!art3 && art3.zone === null, { mem0, mem1, memWalk, mem2, art3 });
 
   const pageErrors = P.logs.filter((l) => /pageerror/.test(l));
   rec.ok('no page errors, and no render errors', pageErrors.length === 0 && !firstThrow, { errors: pageErrors.slice(0, 5), firstThrow: firstThrow && firstThrow.slice(0, 600) });

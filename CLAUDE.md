@@ -273,8 +273,9 @@ remnant to migrate server-side, not a mode to preserve.
   monster list at the flip, the Wheel's 48 having been redrawn in town on
   freed sheets; the Wheel at 241 MB of textures on arrival is at iPhone
   Safari's edge, and loading each land's monsters on approach needs the
-  owner's yes: docs/specs/wheel-monsters.md, `wheelzone` suite,
-  `mp-wheelmonsters`; and since v2.3.2980 the WATER HAS PICTURES of its own
+  owner's yes (given, and done since v2.3.2989: the looks-as-you-walk clause
+  under Conventions, ~176 MB on arrival): docs/specs/wheel-monsters.md,
+  `wheelzone` suite, `mp-wheelmonsters`; and since v2.3.2980 the WATER HAS PICTURES of its own
   -- the owner: "I don't see anywhere to add water in the ground studio" --
   the Ground Studio's Water group, `sea`, `shallows` and `fresh`
   (`WATER_SWATCHES` in ground.js, `waterPromptFor` in ground/prompts.js, no
@@ -549,6 +550,18 @@ Two protocol versions coexist; both must keep working:
     art was global, and once decor was actually freed the second visit to
     a zone rendered a destroyed source ("Cannot read properties of null
     (reading 'alphaMode')", caught by mp-zonechurn).
+  - **THE WHEEL'S LOOKS-AS-YOU-WALK CLAUSE (owner yes, 2026-10-02: "Yes
+    only load as you walk towards it", v2.3.2989).** In a zone with `homes`
+    (the Wheel) the monsters' looks are NOT loaded behind the overlay: each
+    monster type's look loads when one wearing it is within 2,600 px and
+    goes once none has been within 3,600 px for 10 s
+    (`src/rendering/wheelMonsterArt.js`). The law's intent is kept by a
+    harder rule in its place: there a monster whose look is not ready is
+    NOT DRAWN AT ALL -- never in a stand-in body -- and holds no display,
+    and the lazy first-sighting kick is off (`setVariantKicks`). The Wheel
+    arrives with no monster looks (~176 MB of textures, was 241). This
+    clause is the Wheel's only: every other zone still awaits its monsters'
+    art behind its overlay.
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.
