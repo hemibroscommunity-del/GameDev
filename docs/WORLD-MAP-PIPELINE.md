@@ -1262,7 +1262,7 @@ the bro's feet. Today's zones keep their one dirt step.
   - **Sand.** The sand walk was recorded beside the surf: its steps stand
     only 2–4.5 dB over the waves. Cleaned, two steps came out clear, and
     those two are used. A cleaner recording would be better.
-  - **Licenses.** Five recordings' licenses still need a look (CREDITS.md).
+  - **Licenses.** Six recordings' licenses still need a look (CREDITS.md).
     Snow and ice are CC BY and are credited in the game's About panel.
 - **Tested.** `tools/world/test-world-core.mjs` checks that every ground
   has a sound and every sound a clip. `mp-wheelsteps` walks it in Chromium:

@@ -177,7 +177,7 @@ remnant to migrate server-side, not a mode to preserve.
   SFX_MANIFEST, and go with its worker; dirt is still footstep-v3, the
   forest floor plays grass until it has its own, the zones keep dirt;
   CREDITS.md has the licenses -- two CC BY (snow, ice) credited in the
-  About panel, five to CONFIRM: WORLD-MAP-PIPELINE "Footstep sounds";
+  About panel, six to CONFIRM: WORLD-MAP-PIPELINE "Footstep sounds";
   `mp-wheelsteps` tests it),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
