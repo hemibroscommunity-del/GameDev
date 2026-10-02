@@ -50,7 +50,7 @@ const ok = (n, c, d = '') => {
   else { fail++; console.log('  FAIL ' + n + (d !== '' ? '  ' + JSON.stringify(d) : '')); }
 };
 
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.webp': 'image/webp', '.png': 'image/png', '.json': 'application/json' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.webp': 'image/webp', '.png': 'image/png', '.json': 'application/json', '.mp3': 'audio/mpeg' };
 const PUB = path.join(REPO, 'public');
 const server = http.createServer((req, res) => {
   let p = decodeURIComponent(req.url.split('?')[0]);
@@ -693,7 +693,64 @@ try {
     gameZip.includes(Buffer.from('manifest.json')) && !gameZip.includes(Buffer.from('originals/')), { links, size: gameZip.length });
   await shot(page, 'game-download', '#save');
 
-  ok('no page errors', offErrs.length === 0 && page.errs.length === 0 && pageB.errs.length === 0 && pageC.errs.length === 0 && pageP.errs.length === 0 && pageD.errs.length === 0, [...offErrs, ...page.errs, ...pageB.errs, ...pageC.errs, ...pageP.errs, ...pageD.errs].slice(0, 3));
+  /* ── v2.3.2968: each ground's footsteps, on its card ── */
+  console.log('footsteps');
+  const stepsOf = (pg) => pg.evaluate(() => {
+    const sel = (id) => (document.querySelector(`[data-step-select="${id}"]`) || {}).value || null;
+    const txt = (id) => (document.querySelector(`[data-step="${id}"]`) || {}).textContent || '';
+    return { rows: document.querySelectorAll('[data-step]').length, selects: document.querySelectorAll('[data-step-select]').length,
+      plays: document.querySelectorAll('[data-step-play]').length, resets: [...document.querySelectorAll('[data-step-reset]')].map((b) => b.dataset.stepReset),
+      commons: sel('commons'), frost3: sel('frost-3'), boardwalk: sel('boardwalk'), plaza: sel('plaza'), lava: txt('lava'), forest: txt('verdant-2'),
+      chosen: { ...window.__ground.S.steps } };
+  });
+  const st0 = await stepsOf(page);
+  ok('every card says what its ground sounds like underfoot: 47 with a menu of the twelve sounds and a play button, the lava none (v2.3.2968)',
+    st0.rows === 48 && st0.selects === 47 && st0.plays === 47 && st0.commons === 'grass' && st0.frost3 === 'ice' && st0.boardwalk === 'wood' && st0.plaza === 'gravel' &&
+    /nobody walks on it/.test(st0.lava) && st0.resets.length === 0 && Object.keys(st0.chosen).length === 0, st0);
+  ok('...and the forest floor says it plays grass until it has a recording of its own', /plays grass until it has a recording of its own/.test(st0.forest), st0.forest);
+  await page.click('[data-step-play="frost-3"]');
+  await page.waitForFunction(() => { const l = window.__ground.S.sound.last; return l && l.id === 'frost-3'; }, null, { timeout: 20000 });
+  const heard = await page.evaluate(() => {
+    const A = window.__ground.S.sound, l = A.last, buf = A.bufs.get(l.clip);
+    const n = A.clips[l.sound].steps.length;
+    return { ...l, state: A.ctx.state, decoded: buf ? +buf.duration.toFixed(2) : 0, n, repeats: l.steps.some((k, i) => i && k === l.steps[i - 1]) };
+  });
+  ok(`▶ Hear it plays a few steps of the ground's own recording: the glacier, ${heard.steps.length} steps of ice, picked from its ${heard.n}, never the same twice running`,
+    heard.sound === 'ice' && heard.clip === '/sfx/footstep/step-ice.mp3' && heard.steps.length === 4 && heard.decoded > 1 && heard.state === 'running' && !heard.repeats, heard);
+  await page.selectOption('[data-step-select="commons"]', 'snow');
+  await page.waitForFunction(() => window.__ground.S.steps.commons === 'snow' && document.querySelector('[data-step-reset="commons"]')
+    && window.__ground.S.sound.last && window.__ground.S.sound.last.id === 'commons', null, { timeout: 20000 });
+  const chg = await page.evaluate(async () => ({ stored: await window.__ground.S.store.get('misc', 'steps'), last: window.__ground.S.sound.last.sound,
+    back: document.querySelector('[data-step-reset="commons"]').textContent, toast: (document.getElementById('toast') || {}).textContent || '' }));
+  ok('the menu changes the sound: the commons as snow, kept with the swatches, played at once, with a button back to grass',
+    chg.stored && chg.stored.commons === 'snow' && Object.keys(chg.stored).length === 1 && chg.last === 'snow' && /Back to grass/.test(chg.back), chg);
+  await page.reload();
+  await page.waitForFunction(() => window.__ground && window.__ground.S.ready, null, { timeout: 60000 });
+  await page.evaluate(() => window.__ground.S.ready.then(() => true));
+  const st1 = await stepsOf(page);
+  ok('...which survives a reload', st1.commons === 'snow' && st1.chosen.commons === 'snow' && st1.resets.join() === 'commons', st1);
+  const carried = await page.evaluate(async () => {
+    const { unzip } = await import('/tools/world/core/zip.js');
+    const man = async (bytes) => { const f = (await unzip(bytes)).find((e) => e.name === 'manifest.json'); return JSON.parse(new TextDecoder().decode(f.data)); };
+    const api = window.__ground.api;
+    return { all: (await man(await api.exportZip())).steps, game: (await man((await api.exportGameZips())[0].bytes)).steps };
+  });
+  ok('...and goes in both downloads, so the game -- and a restore -- get it', carried.all && carried.all.commons === 'snow' && carried.game && carried.game.commons === 'snow' && Object.keys(carried.game).length === 1, carried);
+  const [dls] = await Promise.all([page.waitForEvent('download'), page.click('#export')]);
+  const ctxS = await browser.newContext(phone);
+  const pageS = await open(ctxS);
+  await pageS.setInputFiles('#restore', { name: 'backup.zip', mimeType: 'application/zip', buffer: fs.readFileSync(await dls.path()) });
+  await pageS.waitForFunction(() => window.__ground.S.steps.commons === 'snow' && document.getElementById('busy').hidden, null, { timeout: 60000 });
+  const st2 = await stepsOf(pageS);
+  ok('restoring the backup in a fresh browser brings the changed sound back', st2.commons === 'snow' && st2.chosen.commons === 'snow', st2);
+  await page.click('[data-step-reset="commons"]');
+  await page.waitForFunction(() => !window.__ground.S.steps.commons && !document.querySelector('[data-step-reset="commons"]'), null, { timeout: 20000 });
+  const st3 = await stepsOf(page);
+  const stored3 = await page.evaluate(() => window.__ground.S.store.get('misc', 'steps'));
+  ok('the button back puts the planned sound back, and forgets the change', st3.commons === 'grass' && Object.keys(st3.chosen).length === 0 && stored3 && Object.keys(stored3).length === 0, { st3, stored3 });
+  await shot(page, 'footsteps', '#sw-commons');
+
+  ok('no page errors', offErrs.length === 0 && page.errs.length === 0 && pageB.errs.length === 0 && pageC.errs.length === 0 && pageP.errs.length === 0 && pageD.errs.length === 0 && pageS.errs.length === 0, [...offErrs, ...page.errs, ...pageB.errs, ...pageC.errs, ...pageP.errs, ...pageD.errs, ...pageS.errs].slice(0, 3));
 } finally {
   await browser.close();
   server.close();

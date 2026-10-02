@@ -1276,6 +1276,41 @@ the bro's feet. Today's zones keep their one dirt step.
 To change a sound, download a better recording and run the tool with it
 (its Freesound id goes in `SOURCES`).
 
+### In the Ground Studio (v2.3.2968)
+
+> Owner, 2026-10-02: *"Yes make each grounds sound with play button idea"*
+
+Every swatch card in the Ground Studio now has a **Footsteps** row:
+
+- **The menu** says the ground's sound ("Grass (as planned)") and offers
+  all twelve. Picking another changes it and plays it at once. A **Back to
+  …** button returns to the planned sound. Lava says nobody walks on it.
+- **▶ Hear it** plays four steps of the ground's own recording, a jog's
+  pace apart. It picks among the recording's steps, never the same one
+  twice in a row, with the small pitch and loudness changes the game gives
+  every step. The forest floor says it plays grass until it has its own
+  recording.
+- **Where a change goes.** Only the grounds changed are kept,
+  `{ id: sound }`. They are stored with the studio's swatches (its `misc`
+  store, key `steps`) and go in **both downloads** as the manifest's
+  `steps`. A restore brings them back.
+- **The game follows it.** The ground worker plays the studio's choice on
+  that site, else the game copy's (the manifest in `public/world/ground/`),
+  else the table in `world/core/footsteps.js`. `cleanSteps` keeps only real
+  grounds and real sounds, and only where they change something. So a
+  change heard in the studio is in the game on that phone straight away,
+  and in everyone's once the "Download for the game" zip is uploaded.
+- **The clips.** The studio is a page served as it is and cannot read
+  `src/`. So `tools/audio/cut_footsteps.py` also writes the clip table to
+  `public/sfx/footstep/clips.json`, with dirt as `footstep-v3` plays it.
+  `test-world-core` checks the two copies match.
+- **Tested.**
+  - `ground-studio` (70/70): every card's row; ▶ playing four steps of the
+    glacier's ice; a change kept, surviving a reload, in both downloads,
+    restored in a fresh browser, and undone.
+  - `mp-wheelsteps` (11/11): the commons, made snow in the studio's
+    storage, plays snow in the game on the next way in.
+
 ## Blend pictures, put away (v2.3.2955)
 
 > Owner, 2026-09-30: *"If I can get good results faster with just the 2

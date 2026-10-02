@@ -81,6 +81,10 @@
   .vers { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
   .ver { border:1px dashed rgba(216,168,95,.45); border-radius:8px; padding:8px; min-width:0; }
   .ver .lbl { font-size:12px; color:var(--mut); margin-bottom:6px; }
+  /* v2.3.2968: the card's footstep row -- the menu beside its play button */
+  .step { gap:8px; }
+  .step .lbl { font-size:13px; font-weight:600; color:var(--ink); }
+  .step select { width:auto; flex:1 1 150px; min-width:140px; }
   .ver canvas { display:block; width:100%; aspect-ratio:1; image-rendering:pixelated; background:#0c1216; border-radius:6px; }
   .ver .row { margin-top:6px; gap:6px; }
   .ver .btn, .ver button { padding:8px 10px; min-height:40px; font-size:13px; flex:1 1 auto; }
@@ -110,7 +114,7 @@
     <p class="sub">BroTown's ground, made from about fifty seamless swatches in HD pixel art and laid onto the Wheel by the game.</p>
     <!-- v2.3.2942: the version on the page, so the owner can tell a stale
          copy (a phone's cached page) from the latest without asking -->
-    <p class="mut" id="ver">Version v2.3.2957: Download for the game -- small zips for GitHub; Download all stays your backup.</p>
+    <p class="mut" id="ver">Version v2.3.2968: each ground's footsteps -- hear them on its card, and change them.</p>
     <p class="mut" id="status">Building the plan…</p>
   </header>
 
@@ -135,6 +139,7 @@
       <li>Later, a <b>second version (B)</b> of the same prompt in a fresh chat. The game mixes A and B so the ground does not repeat.</li>
       <li data-pieces hidden><b>Edge pieces</b> (optional, under each swatch): in the same chat, ask for that ground's loose pieces on magenta. The game scatters them where it lies over another ground.</li>
       <li data-blends hidden><b>Blends</b> (optional, below the swatches): where two alike grounds mix, a third picture made from the two, laid through the middle. Start with the town square.</li>
+      <li><b>Footsteps</b>: each card says what that ground sounds like underfoot. <b>▶ Hear it</b> plays a few steps; the menu changes the sound, and the game follows (v2.3.2968).</li>
       <li><b>Walk on them</b> in the game whenever you like (below): it lays them straight from this page, nothing to send.</li>
       <li>When you are happy, <b>Download all</b> and upload the zip to GitHub (below), so every player gets them. A session puts it in the game.</li>
     </ol>

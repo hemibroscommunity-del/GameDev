@@ -19,7 +19,10 @@
  *      plan's own ground for the spot most of the time (the pieces' grids
  *      are where they belong, not shifted or turned);
  *   5. back in town the steps are dirt again, and once the Wheel's worker
- *      stops the clips are let go.
+ *      stops the clips are let go;
+ *   6. (v2.3.2968) a sound changed in the Ground Studio -- the commons made
+ *      snow, kept in the studio's storage on this site -- is what the game
+ *      plays on the next way in.
  */
 import * as H from './harness.mjs';
 
@@ -231,5 +234,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(7000);   /* WHEEL_LINGER_MS (5 s) and a little */
   const left = await P.page.evaluate((ks) => ks.filter((k) => !!(window.BT_AUDIO._samples || {})[k]), keys);
   rec.ok('once the Wheel\'s worker stops, its footstep clips are let go', left.length === 0, left);
+
+  /* ── 6. v2.3.2968: a sound changed in the Ground Studio is the game's ──
+     The studio keeps a change in its own storage on this site ('misc',
+     'steps'), as its card's menu does; the next way into the Wheel plays it */
+  await P.page.evaluate(() => new Promise((res, rej) => {
+    const r = indexedDB.open('brotown-ground-studio', 1);
+    r.onupgradeneeded = () => { for (const s of ['raw', 'prep', 'misc']) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s); };
+    r.onsuccess = () => {
+      const db = r.result, tx = db.transaction('misc', 'readwrite');
+      tx.objectStore('misc').put({ commons: 'snow' }, 'steps');
+      tx.oncomplete = () => { db.close(); res(); };
+      tx.onerror = () => rej(tx.error);
+    };
+    r.onerror = () => rej(r.error);
+  }));
+  await H.hopTo(P, door.tx * 32 + 16, (door.ty - 1) * 32 + 16);
+  zone = null;
+  for (let i = 0; i < 60; i++) {
+    zone = await H.readState(P, (S) => S.currentZone);
+    if (zone === 'worldview' && !(await H.readState(P, (S) => !!S._zoneLoading))) break;
+    await P.page.waitForTimeout(1000);
+  }
+  const commonsAt = (walks.find((w) => w.label === 'the commons') || {}).at;
+  let onCommons = [];
+  if (zone === 'worldview' && commonsAt) {
+    await H.hopTo(P, commonsAt.x, commonsAt.y, { tries: 90 });
+    await P.page.waitForTimeout(2500);
+    await takeSteps(P);
+    for (let k = 0; k < 4 && onCommons.length < 3; k++) { await pace(P, 1600); onCommons.push(...(await takeSteps(P)).filter((q) => q.ground === 'commons')); }
+  }
+  rec.ok(`a sound changed in the Ground Studio is the game's: the commons, made snow there, plays snow (${onCommons.length} steps)`,
+    onCommons.length >= 1 && onCommons.every((q) => q.want === 'snow' && q.surface === 'snow' && q.played === 'snow'), { zone, commonsAt, steps: onCommons.slice(0, 4) });
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
 }

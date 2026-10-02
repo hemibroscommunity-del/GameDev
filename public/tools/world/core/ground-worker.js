@@ -53,7 +53,7 @@ import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, ED
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 import { wheelMap, whereWords } from './wheelmap.js';
-import { stepOf } from './footsteps.js';
+import { stepOf, cleanSteps } from './footsteps.js';
 
 const TILE = PIXEL.groundTile;                                    /* 1024 px a swatch */
 const K = Math.round(PLAN.worldPxPerArtPx / PIXEL.gamePxPerArtPx); /* 3 ground px a plan art px: 2 a game px */
@@ -69,6 +69,7 @@ const STUDIO_DB = 'brotown-ground-studio';
 let W = null;               /* { bp, mm } once ready: bp is the light copy (no per-cell layers) --
                                v2.3.2966: and the region and tier of every cell, and the map */
 let swatches = Object.create(null);   /* id -> { from: 'studio'|'game', vers: { A?, B?, E? }, pal, mapped }; v2.3.2951: a pair's key -> { ..., vers: { M } } */
+let stepChoices = Object.create(null); /* v2.3.2968: id -> the footstep sound the owner chose (the studio's, else the game copy's) */
 const decoded = new Map();            /* 'id|ver' -> tile ({w, h, idx, pal} or {w, h, data}) */
 const failed = new Set();             /* 'id|ver' that could not be unpacked: drawn in plan colour */
 
@@ -255,7 +256,7 @@ async function init(m) {
       under: CHUNK / UNDER },
     arrival: { x: Math.round((ax - bp.x0) * WPA), y: Math.round((ay - bp.y0) * WPA) },
     /* v2.3.2967: and what each sounds like underfoot (footsteps.js) */
-    catalog: mm.ids.map((id, q) => ({ id, name: q === mm.water ? 'Water' : mm.catalog[q].name, step: q === mm.water ? null : stepOf(id) })),
+    catalog: mm.ids.map((id, q) => ({ id, name: q === mm.water ? 'Water' : mm.catalog[q].name, step: q === mm.water ? null : stepChoices[id] || stepOf(id) })),
     water: mm.water,
     made, edges, blends: blends.sort(),
     map,
@@ -283,6 +284,11 @@ function whereIs(x, y) {
 async function findSwatches(mm, pieces, withBlends) {
   const known = new Set(mm.ids);
   const out = Object.create(null);
+  /* v2.3.2968: the footstep sounds the owner changed in the Ground Studio --
+     the game copy's (the manifest's `steps`), then this site's studio's over
+     them, the newest winning as for the pictures (world/core/footsteps.js) */
+  const isSwatch = (id) => known.has(id) && id !== 'water';
+  let gameSteps = null, studioSteps = null;
   /* the game's copy */
   try {
     /* v2.3.2959: at a fresh address every time -- public/_headers lets the
@@ -292,6 +298,7 @@ async function findSwatches(mm, pieces, withBlends) {
     if (r.ok) {
       const man = await r.json();          /* throws on a site's "page not found" HTML: no copy yet */
       const pal = man.palette || null;
+      gameSteps = cleanSteps(man.steps, isSwatch);
       /* v2.3.2959: each picture at ?v=<the manifest's date>: a new upload is a
          new address, so the phone may keep the old one for good */
       const ver = man.made ? '?v=' + encodeURIComponent(man.made) : '';
@@ -316,6 +323,7 @@ async function findSwatches(mm, pieces, withBlends) {
     try {
       const keys = await ask(db, 'prep', (s) => s.getAllKeys());
       const palRec = await ask(db, 'misc', (s) => s.get('palette'));
+      studioSteps = cleanSteps(await ask(db, 'misc', (s) => s.get('steps')), isSwatch);
       const pal = (palRec && palRec.colours) || null;
       const mine = Object.create(null);
       for (const k of keys || []) {
@@ -332,6 +340,7 @@ async function findSwatches(mm, pieces, withBlends) {
     } finally { db.close(); }
   }
   swatches = out;
+  stepChoices = Object.assign(Object.create(null), gameSteps, studioSteps);
 }
 
 /* Open a database only if the Ground Studio made it: opening one that is not

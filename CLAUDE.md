@@ -178,7 +178,15 @@ remnant to migrate server-side, not a mode to preserve.
   forest floor plays grass until it has its own, the zones keep dirt;
   CREDITS.md has the licenses -- two CC BY (snow, ice) credited in the
   About panel, six to CONFIRM: WORLD-MAP-PIPELINE "Footstep sounds";
-  `mp-wheelsteps` tests it),
+  `mp-wheelsteps` tests it; and since v2.3.2968 each Ground Studio card has
+  a FOOTSTEPS row, the owner's "sound with play button idea": the menu
+  says and changes the ground's sound, ▶ plays four steps of its recording
+  (`public/sfx/footstep/clips.json`, written by the tool beside
+  footstepClips.js, test-world-core checking they match), a change is kept
+  in the studio's 'misc' 'steps' and in both downloads as the manifest's
+  `steps`, and the worker plays the studio's choice, else the game copy's,
+  else the table (`cleanSteps`) -- FOOTSTEPS ARE THE NEW MAP'S ONLY: the
+  owner said no to today's zones),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

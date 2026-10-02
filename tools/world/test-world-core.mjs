@@ -1281,6 +1281,18 @@ console.log('footsteps');
     if (!c.steps.length || c.steps.some(([o, d], i) => !(d >= 0.15 && d <= 0.6) || (i && o < c.steps[i - 1][0] + c.steps[i - 1][1]))) bad.push(`${name}: steps ${JSON.stringify(c.steps)}`);
   }
   ok(`...each a small mp3 of single steps, in order, none overlapping the next (${(bytes / 1024).toFixed(0)} KB in all)`, bad.length === 0 && bytes < 300 * 1024, bad);
+  /* v2.3.2968: the Ground Studio's copy of the table, and the owner's choices */
+  const { cleanSteps, STEP_LABELS } = await import('../../public/tools/world/core/footsteps.js');
+  const studio = JSON.parse(readFileSync(new URL('../../public/sfx/footstep/clips.json', import.meta.url), 'utf8')).clips;
+  const same = Object.keys(FOOTSTEP_CLIPS).every((k) => studio[k] && studio[k].url === FOOTSTEP_CLIPS[k].url && JSON.stringify(studio[k].steps) === JSON.stringify(FOOTSTEP_CLIPS[k].steps));
+  ok("the Ground Studio's copy of the clips (public/sfx/footstep/clips.json) is the game's, with dirt as footstep-v3 plays it and the forest floor marked as grass's (v2.3.2968)",
+    same && studio.dirt && studio.dirt.url === '/sfx/footstep/footstep-v3.mp3' && studio.dirt.steps.length === 2 && studio.forest.standIn === 'grass' &&
+    STEP_SOUNDS.every((k) => studio[k] && STEP_LABELS[k]), Object.keys(studio));
+  const isSw = (id) => ids.includes(id);
+  const c1 = cleanSteps(JSON.parse('{"commons":"snow","road":"dirt","frost-3":"lava","nowhere":"mud","__proto__":"ice","plaza":42}'), isSw);
+  ok("the owner's sound choices are kept only for real grounds and real sounds, and only where they change something",
+    JSON.stringify(Object.keys(c1)) === '["commons"]' && c1.commons === 'snow' && Object.getPrototypeOf(c1) === null &&
+    Object.keys(cleanSteps(null, isSw)).length === 0 && Object.keys(cleanSteps('snow', isSw)).length === 0, c1);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

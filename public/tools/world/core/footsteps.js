@@ -21,6 +21,11 @@
 
 /* The twelve, in the owner's order.  Dirt is today's footstep-v3. */
 export const STEP_SOUNDS = ['grass', 'dirt', 'gravel', 'stone', 'sand', 'snow', 'ice', 'mud', 'forest', 'ash', 'wood', 'metal'];
+/* v2.3.2968: their names, as the Ground Studio's cards show them */
+export const STEP_LABELS = {
+  grass: 'Grass', dirt: 'Dirt', gravel: 'Gravel', stone: 'Stone', sand: 'Sand', snow: 'Snow',
+  ice: 'Ice', mud: 'Mud', forest: 'Forest floor', ash: 'Ash', wood: 'Wood', metal: 'Metal',
+};
 
 const BY_SOUND = {
   grass: ['commons', 'ember-1', 'mist-1', 'verdant-1', 'border-mist-verdant', 'border-frost-verdant'],
@@ -53,4 +58,26 @@ export function stepOf(id) {
 /* Every swatch id with a sound, for the tests. */
 export function steppedIds() {
   return [...SOUND_OF.keys()];
+}
+
+/* ═══ v2.3.2968: THE OWNER'S OWN CHOICES ═══
+ * Owner, 2026-10-02: "Yes make each grounds sound with play button idea" --
+ * each card in the Ground Studio says its ground's sound, plays it, and lets
+ * it be changed.  A change is kept with the studio's swatches (its 'misc'
+ * store, key 'steps') and goes into "Download for the game" as the
+ * manifest's `steps`; the game's ground worker plays, for a swatch, the
+ * studio's choice on this site, else the game copy's, else the table above.
+ * Only the swatches whose sound was CHANGED are kept: { id: sound }.
+ *
+ * `cleanSteps` keeps only what is real -- a swatch the plan has and a sound
+ * of the twelve -- from storage or a zip, so nothing odd ever reaches the
+ * game; keyed with no prototype, as anything read in must be. */
+export function cleanSteps(obj, isSwatch) {
+  const out = Object.create(null);
+  if (!obj || typeof obj !== 'object') return out;
+  for (const id of Object.keys(obj)) {
+    const s = obj[id];
+    if (typeof s === 'string' && STEP_SOUNDS.includes(s) && isSwatch(id) && s !== stepOf(id)) out[id] = s;
+  }
+  return out;
 }

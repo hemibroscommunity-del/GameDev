@@ -41,6 +41,14 @@
  * colours -- and goes in the zip as ground/<key>-M.png, listed in the
  * manifest's `blends`, where the game's worker finds it.
  *
+ * v2.3.2968: FOOTSTEPS.  Owner: "Yes make each grounds sound with play button
+ * idea" -- each card says what its ground sounds like underfoot, plays a few
+ * steps of it (the clips the game plays, /sfx/footstep/clips.json), and the
+ * sound can be changed.  A change is kept in 'misc' under 'steps' (only the
+ * grounds changed, { id: sound }), goes into both downloads as the
+ * manifest's `steps`, and comes back with a restore; the game's worker
+ * plays the choice (world/core/footsteps.js, cleanSteps).
+ *
  * window.__ground is the handle tools/qa/ground-studio.mjs drives.
  */
 import { PLAN } from '../world/plan.js';
@@ -55,6 +63,7 @@ import { PIXEL } from '../style/bible.js';
 import { blobToCanvas, seamless, resize, buildPalette, ownPalette, hardenAndMap, mk, keyOut } from '../style/process.js';
 import { loadSprites, EFFECT_PALETTE } from '../style/scene.js';
 import { promptFor, edgePromptFor, hasEdgePieces, blendPromptFor } from './prompts.js';
+import { STEP_SOUNDS, STEP_LABELS, stepOf, cleanSteps } from '../world/core/footsteps.js';
 
 const TILE = PIXEL.groundTile, GPA = PIXEL.gamePxPerArtPx;   /* 1024 px a swatch, 0.5 game px a px */
 const K = Math.round(PLAN.worldPxPerArtPx / GPA);               /* ground px per plan art px: 3 */
@@ -114,6 +123,10 @@ const S = {
      blend made */
   blendPairs: [], blends: Object.create(null),
   palette: null, frozen: false,
+  /* v2.3.2968: the footstep sounds changed here ({ id: sound }), and what
+     plays them: the clips' table, their decoded sounds, the last walk played */
+  steps: Object.create(null),
+  sound: { ctx: null, clips: null, bufs: new Map(), last: null, playing: 0 },
   sprites: null,
   view: { x: 0, y: 0, name: '' }, pv: null, pvDirty: false, drag: null,
   stats: { previewDraws: 0 },
@@ -365,6 +378,8 @@ async function loadAll() {
     S.prep.set(k, kept);
   }
   if (remake) await S.store.put('misc', 'prepMade', PREP_MADE);
+  /* v2.3.2968: the footstep sounds changed here */
+  S.steps = cleanSteps(await S.store.get('misc', 'steps'), (id) => !!S.byId[id]);
   const pal = await S.store.get('misc', 'palette');
   if (pal && pal.frozen && pal.colours && !OWN) { S.palette = pal.colours; S.frozen = true; } else rebuildPalette();
   await finalizeAll();
@@ -637,6 +652,7 @@ function renderSwatch(e) {
   head.appendChild(name);
   box.appendChild(head);
   box.appendChild(el('div', 'sw-where', `Used for ${e.where}.`));
+  box.appendChild(stepRow(e));
   /* v2.3.2949: the boardwalk's boards are laid by the game (world/core/
      ground.js, PLANK DECKS) -- say so, so big boards in the picture are
      not a worry */
@@ -707,6 +723,112 @@ function renderSwatch(e) {
   see.addEventListener('click', () => { const sp = spotFor(e.id); setSpot(sp.x, sp.y, `${e.name}, on the map`); $('preview').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   const r1 = el('div', 'row'); r1.appendChild(see); box.appendChild(r1);
   if (PIECES && hasEdgePieces(e)) box.appendChild(edgeBlock(e));
+}
+
+/* ═══ v2.3.2968: WHAT THE GROUND SOUNDS LIKE UNDERFOOT ═══
+   The card's footstep row: the sound (a menu of the twelve), a button that
+   plays a few steps of it, and -- when it has been changed here -- the sound
+   it had, to go back to.  Lava has none: nobody walks on it. */
+const WALK_STEPS = 4;       /* steps a play button plays */
+const WALK_GAP = 0.42;      /* s between them: about a jog's foot plants */
+const WALK_VOL = 0.6;       /* louder than the game's 0.13-0.17 under its music: a preview, alone */
+
+function stepFor(id) { return S.steps[id] || stepOf(id); }
+
+function stepRow(e) {
+  const row = el('div', 'row step');
+  row.dataset.step = e.id;
+  const base = stepOf(e.id);
+  if (!base) { row.appendChild(el('span', 'sw-where', 'Footsteps: none (nobody walks on it).')); return row; }
+  row.appendChild(el('span', 'lbl', 'Footsteps'));
+  const sel = el('select');
+  sel.dataset.stepSelect = e.id;
+  sel.setAttribute('aria-label', `What ${e.name} sounds like underfoot`);
+  for (const s of STEP_SOUNDS) {
+    const o = el('option', null, STEP_LABELS[s] + (s === base ? ' (as planned)' : ''));
+    o.value = s;
+    sel.appendChild(o);
+  }
+  sel.value = stepFor(e.id);
+  sel.addEventListener('change', async () => {
+    await setStep(e.id, sel.value);
+    renderSwatch(e);
+    playStep(e.id).catch(() => {});
+  });
+  row.appendChild(sel);
+  const play = el('button', null, '▶ Hear it');
+  play.dataset.stepPlay = e.id;
+  play.setAttribute('aria-label', `Play ${e.name}'s footsteps`);
+  play.addEventListener('click', () => {
+    playStep(e.id).catch((err) => toast(`The footsteps could not play: ${err.message || err}`, true));
+  });
+  row.appendChild(play);
+  if (S.steps[e.id]) {
+    const back = el('button', null, `Back to ${STEP_LABELS[base].toLowerCase()}`);
+    back.dataset.stepReset = e.id;
+    back.addEventListener('click', async () => { await setStep(e.id, base); renderSwatch(e); });
+    row.appendChild(back);
+  }
+  const clip = S.sound.clips && S.sound.clips[stepFor(e.id)];
+  if (clip && clip.standIn) row.appendChild(el('span', 'sw-where', `(plays ${STEP_LABELS[clip.standIn].toLowerCase()} until it has a recording of its own)`));
+  return row;
+}
+
+/* Change a ground's sound (back to the planned one forgets the change). */
+async function setStep(id, sound) {
+  if (!S.byId[id] || !STEP_SOUNDS.includes(sound)) return;
+  if (sound === stepOf(id)) delete S.steps[id]; else S.steps[id] = sound;
+  await S.store.put('misc', 'steps', { ...S.steps });
+  toast(sound === stepOf(id) ? `${S.byId[id].name} sounds as planned again: ${STEP_LABELS[sound].toLowerCase()}.`
+    : `${S.byId[id].name} now sounds like ${STEP_LABELS[sound].toLowerCase()}. Download for the game to give it to everyone.`);
+}
+
+/* A few steps of a ground's sound, a jog's pace apart -- one of its clip's
+   steps at random each time, never the same twice running, with the same
+   small changes of pitch and loudness the game gives every step. */
+async function playStep(id) {
+  const sound = stepFor(id);
+  if (!sound) return null;
+  const A = S.sound;
+  if (!A.ctx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) throw new Error('this browser cannot play sounds');
+    A.ctx = new AC();
+  }
+  if (A.ctx.state !== 'running') { try { await A.ctx.resume(); } catch (e) { /* plays when it can */ } }
+  if (!A.clips) {
+    const r = await fetch('/sfx/footstep/clips.json', { cache: 'no-cache' });
+    if (!r.ok) throw new Error('the footstep sounds are not on this site');
+    A.clips = (await r.json()).clips;
+  }
+  const clip = A.clips[sound];
+  if (!clip) throw new Error(`no recording for ${sound}`);
+  let buf = A.bufs.get(clip.url);
+  if (!buf) {
+    const r = await fetch(clip.url);
+    if (!r.ok) throw new Error(`${clip.url} is missing`);
+    const data = await r.arrayBuffer();
+    buf = await new Promise((res, rej) => A.ctx.decodeAudioData(data, res, rej));
+    A.bufs.set(clip.url, buf);
+  }
+  const n = clip.steps.length, picked = [];
+  const t0 = A.ctx.currentTime + 0.05;
+  for (let i = 0; i < WALK_STEPS; i++) {
+    let k = Math.floor(Math.random() * n);
+    if (n > 1 && picked.length && k === picked[picked.length - 1]) k = (k + 1) % n;
+    picked.push(k);
+    const [off, dur] = clip.steps[k];
+    const src = A.ctx.createBufferSource(), g = A.ctx.createGain();
+    src.buffer = buf;
+    src.playbackRate.value = 1.06 + (Math.random() - 0.5) * 0.1;
+    g.gain.value = WALK_VOL * (0.9 + Math.random() * 0.2);
+    src.connect(g); g.connect(A.ctx.destination);
+    src.onended = () => { try { src.disconnect(); g.disconnect(); } catch (e) { /* gone */ } };
+    src.start(t0 + i * WALK_GAP, off, dur);
+  }
+  A.playing++;
+  A.last = { id, sound, clip: clip.url, steps: picked, at: Date.now() };
+  return A.last;
 }
 
 /* v2.3.2947: a swatch's EDGE PIECES -- its third, optional picture: the
@@ -1112,6 +1234,9 @@ async function exportFiles({ originals = true, tilePng = null } = {}) {
     /* v2.3.2961: each swatch on this many colours of its own (palette null) */
     ownColours: OWN || null,
     swatches: made, blends,
+    /* v2.3.2968: the footstep sounds changed here, { id: sound } -- the
+       game's worker plays them (world/core/footsteps.js) */
+    steps: { ...S.steps },
   };
   return { files, manifest, enc };
 }
@@ -1190,6 +1315,12 @@ async function restoreZip(bytes) {
   }
   if (manifest && manifest.frozen && manifest.palette && !OWN) { S.palette = manifest.palette; S.frozen = true; }
   else { S.frozen = false; rebuildPalette(); }
+  /* v2.3.2968: and the footstep sounds changed when it was made (a zip from
+     before carries none, and changes nothing) */
+  if (manifest && manifest.steps) {
+    S.steps = cleanSteps(manifest.steps, (id) => !!S.byId[id]);
+    await S.store.put('misc', 'steps', { ...S.steps });
+  }
   await savePalette();
   await finalizeAll();
   return n;
@@ -1270,6 +1401,9 @@ async function start() {
   await loadStyleKey();
   $('status').textContent = 'Loading your swatches…';
   await loadAll();
+  /* v2.3.2968: the footstep clips' table (tiny), so each card can say which
+     sounds still play another's recording */
+  try { const r = await fetch('/sfx/footstep/clips.json', { cache: 'no-cache' }); if (r.ok) S.sound.clips = (await r.json()).clips; } catch (e) { /* the cards say less */ }
   try { S.sprites = await loadSprites(); } catch (e) { S.sprites = null; }
   S.spots = spots();
   renderEdgeCounts();
@@ -1297,5 +1431,6 @@ S.ready = start().catch((e) => { $('status').textContent = `Something went wrong
 
 window.__ground = {
   S, pieces: PIECES, blends: BLENDS_ON,
-  api: { addPicture, removePicture, exportZip, exportGameZips, restoreZip, setSpot, spotFor, drawPreview, promptFor, edgePromptFor, pixelsOf, showEdge, blendPromptFor, showBlend, blendKey },
+  api: { addPicture, removePicture, exportZip, exportGameZips, restoreZip, setSpot, spotFor, drawPreview, promptFor, edgePromptFor, pixelsOf, showEdge, blendPromptFor, showBlend, blendKey,
+    stepFor, setStep, playStep },
 };
