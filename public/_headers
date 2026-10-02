@@ -10,3 +10,12 @@
 # on a file that quietly changes is the "it looks fine for me" bug.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# v2.3.2959: the Wheel's ground pictures (public/world/ground/).  The owner's
+# phone fell behind walking the Wheel on a slow connection: every tile was
+# revalidated, a round trip each, every visit.  The worker asks for each at
+# ?v=<its manifest's date>, so a new upload is a new address and keeping the
+# old one forever is safe; the manifest itself is fetched at a fresh address
+# every time (public/tools/world/core/ground-worker.js).
+/world/ground/*
+  Cache-Control: public, max-age=31536000, immutable

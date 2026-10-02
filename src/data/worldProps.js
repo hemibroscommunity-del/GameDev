@@ -837,10 +837,28 @@ function pointInBox(x, y, b) {
    rule 4). */
 const _blockerCache = Object.create(null);
 
+/* ═══ v2.3.2975: FOOTPRINTS THAT MOVE WITH YOU ═══
+   The Wheel's objects (src/rendering/wheelObjects.js) are streamed: there
+   are thousands, and only the ones near the player can stop anyone.  So the
+   Wheel hands its own list in through this hook -- the footprints within a
+   few hundred px of the player, made again as they walk -- and every reader
+   of zoneBlockers (the feet test, a prop's cover against arrows) takes it as
+   that zone's.  One hook, set while the Wheel is drawn; a zone it answers
+   null for falls through to the props table. */
+let _blockerHook = null;
+export function setZoneBlockerHook(fn) {
+  _blockerHook = fn;
+  return () => { if (_blockerHook === fn) _blockerHook = null; };
+}
+
 /** Every blocking footprint in a zone — the LOS obstacle set.
  *  The returned array is SHARED and must not be mutated by callers. */
 export function zoneBlockers(zoneId) {
   if (!zoneId) return [];
+  if (_blockerHook) {
+    const live = _blockerHook(zoneId);
+    if (live) return live;
+  }
   const hit = Object.prototype.hasOwnProperty.call(_blockerCache, zoneId) ? _blockerCache[zoneId] : null;
   if (hit) return hit;
   const out = [];

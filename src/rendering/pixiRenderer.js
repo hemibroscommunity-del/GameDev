@@ -5,6 +5,9 @@
 import { createPixiApp } from './pixiApp.js';
 import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
+import { WheelObjects } from './wheelObjects.js'; /* v2.3.2975: the Wheel's buildings, trees, rocks and props */
+import { isWheelTrialZone } from '../game/worldTrial.js';
+import { wheelObjectsOn } from '../game/wheelTrial.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
@@ -263,12 +266,18 @@ export async function initPixiRenderer(canvas) {
 
   let currentZone = null;
   let currentMap = null;
+  /* v2.3.2975: the Wheel's objects, while you are in it (wheelObjects.js) */
+  let wheelObjects = null;
 
   function onZoneChange(map, zoneId, S) {
     if (zoneId === currentZone && map === currentMap) return;
     currentZone = zoneId;
     currentMap = map;
     tileRenderer.rebuild(app, map, zoneId);
+    /* v2.3.2975: made on the way into the Wheel, destroyed -- every page let
+       go -- on the way out (the ZONE-ASSET rule) */
+    if (wheelObjects && !isWheelTrialZone(zoneId)) { try { wheelObjects.destroy(); } catch (e) { /* ignore */ } wheelObjects = null; }
+    if (!wheelObjects && isWheelTrialZone(zoneId) && wheelObjectsOn()) wheelObjects = new WheelObjects(layers.entities, app.renderer);
     entityRenderer.clear();
     effectsRenderer.clear();
     lightFx.clear();   /* v2.3.2710: last zone's shadows and glints go with its figures */
@@ -362,6 +371,11 @@ export async function initPixiRenderer(canvas) {
        coords: screenX = (worldX - camera.x) * scaleX. */
     S._worldScaleX = scaleX;
     S._worldScaleY = scaleY;
+    /* v2.3.2978: ...and the view itself, in world px, so the Wheel's
+       renderer can leave a monster far off it undrawn (entityRenderer,
+       FAR_MARGIN) */
+    S._viewW = viewW;
+    S._viewH = viewH;
     /* v2.3.2262: the in-world TEXT counter-scales against this, so it stays
        readable when the world zooms out (owner).  Published through a setter
        rather than read off S inside entityRenderer, because the plate update
@@ -407,6 +421,12 @@ export async function initPixiRenderer(canvas) {
        and paint a locked zone's portal as locked (see tileRenderer). */
     try { tileRenderer.update(cx, cy, viewW, viewH, S); }
     catch (e) { if (!update._tileErr) { update._tileErr = true; console.error('[pixi-render] tileRenderer threw', e && e.message, e && e.stack); } }
+    /* v2.3.2975: the Wheel's objects round the camera, and the footprints
+       round the player -- before the depth pass, which sorts them */
+    if (wheelObjects) {
+      try { wheelObjects.update(cx, cy, viewW, viewH, S); }
+      catch (e) { if (!update._wobjErr) { update._wobjErr = true; console.error('[pixi-render] wheelObjects threw', e && e.message, e && e.stack); } }
+    }
     const _t1 = performance.now();
     update._lastStages.tileMs = _t1 - _t0;
     try { entityRenderer.update(S, now); }
@@ -475,7 +495,31 @@ export async function initPixiRenderer(canvas) {
 
     // Manual render
     try { app.render(); }
-    catch (e) { if (!update._renderErr) { update._renderErr = true; console.error('[pixi-render] app.render threw', e && e.message, e && e.stack); } }
+    catch (e) {
+      if (!update._renderErr) {
+        update._renderErr = true;
+        /* v2.3.2975: and WHAT it tripped on -- "reading 'alphaMode'" is a
+           sprite drawing a texture whose source was freed, and the stack
+           never says whose.  Only on the first throw, so it costs nothing. */
+        let dead = [];
+        try {
+          const walk = (c, depth) => {
+            if (!c || dead.length >= 6 || depth > 12) return;
+            const t = c.texture;
+            /* textured things only (a Sprite's texture has a frame; a
+               Graphics answers here with no source and is not one) */
+            if (t && t.frame && typeof t.frame === 'object' && !c.context && (t.destroyed || !t.source || t.source.destroyed)) {
+              dead.push({ label: c.label || null, parent: c.parent ? c.parent.label || null : null, x: Math.round(c.x || 0), y: Math.round(c.y || 0),
+                tex: t.label || null, src: t.source ? t.source.label || null : null, wheelObject: c._wheelObject != null ? c._wheelObject : null });
+            }
+            const k = c.children || [];
+            for (let i = 0; i < k.length; i++) walk(k[i], depth + 1);
+          };
+          walk(app.stage, 0);
+        } catch (e2) { dead = ['(walk failed)']; }
+        console.error('[pixi-render] app.render threw', e && e.message, JSON.stringify(dead), e && e.stack);
+      }
+    }
     const _t5 = performance.now();
     update._lastStages.appMs = _t5 - _t4;
 
@@ -509,6 +553,7 @@ export async function initPixiRenderer(canvas) {
   }
 
   function destroy() {
+    if (wheelObjects) { try { wheelObjects.destroy(); } catch (e) { /* ignore */ } wheelObjects = null; }
     tileRenderer.destroy();
     entityRenderer.clear();
     effectsRenderer.clear();

@@ -1,0 +1,3692 @@
+{
+ "tool": "brotown-object-studio",
+ "version": 2,
+ "made": "2026-10-02T16:00:53.257Z",
+ "forGame": true,
+ "repacked": "v2.3.2975 a few objects a page",
+ "plan": {
+  "id": "brotown-world",
+  "version": 3
+ },
+ "gamePxPerArtPx": 0.5,
+ "atlases": [
+  {
+   "name": "buildings-1",
+   "group": "buildings",
+   "w": 772,
+   "h": 770,
+   "image": "buildings-1.png",
+   "sheet": "buildings-1.json",
+   "objects": 1,
+   "kinds": [
+    "blacksmith"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-2",
+   "group": "buildings",
+   "w": 772,
+   "h": 722,
+   "image": "buildings-2.png",
+   "sheet": "buildings-2.json",
+   "objects": 1,
+   "kinds": [
+    "woodworker"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-3",
+   "group": "buildings",
+   "w": 772,
+   "h": 821,
+   "image": "buildings-3.png",
+   "sheet": "buildings-3.json",
+   "objects": 1,
+   "kinds": [
+    "gemcutter"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-4",
+   "group": "buildings",
+   "w": 772,
+   "h": 698,
+   "image": "buildings-4.png",
+   "sheet": "buildings-4.json",
+   "objects": 1,
+   "kinds": [
+    "sheriff"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-5",
+   "group": "buildings",
+   "w": 772,
+   "h": 724,
+   "image": "buildings-5.png",
+   "sheet": "buildings-5.json",
+   "objects": 1,
+   "kinds": [
+    "saloon"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-6",
+   "group": "buildings",
+   "w": 772,
+   "h": 748,
+   "image": "buildings-6.png",
+   "sheet": "buildings-6.json",
+   "objects": 1,
+   "kinds": [
+    "gambling"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-7",
+   "group": "buildings",
+   "w": 772,
+   "h": 899,
+   "image": "buildings-7.png",
+   "sheet": "buildings-7.json",
+   "objects": 1,
+   "kinds": [
+    "hotel"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-8",
+   "group": "buildings",
+   "w": 772,
+   "h": 666,
+   "image": "buildings-8.png",
+   "sheet": "buildings-8.json",
+   "objects": 1,
+   "kinds": [
+    "post"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-9",
+   "group": "buildings",
+   "w": 772,
+   "h": 682,
+   "image": "buildings-9.png",
+   "sheet": "buildings-9.json",
+   "objects": 1,
+   "kinds": [
+    "cookhouse"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-10",
+   "group": "buildings",
+   "w": 772,
+   "h": 795,
+   "image": "buildings-10.png",
+   "sheet": "buildings-10.json",
+   "objects": 1,
+   "kinds": [
+    "feedseed"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-11",
+   "group": "buildings",
+   "w": 772,
+   "h": 692,
+   "image": "buildings-11.png",
+   "sheet": "buildings-11.json",
+   "objects": 1,
+   "kinds": [
+    "landoffice"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-12",
+   "group": "buildings",
+   "w": 772,
+   "h": 716,
+   "image": "buildings-12.png",
+   "sheet": "buildings-12.json",
+   "objects": 1,
+   "kinds": [
+    "guildhall"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-13",
+   "group": "buildings",
+   "w": 772,
+   "h": 737,
+   "image": "buildings-13.png",
+   "sheet": "buildings-13.json",
+   "objects": 1,
+   "kinds": [
+    "bank"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-14",
+   "group": "buildings",
+   "w": 772,
+   "h": 906,
+   "image": "buildings-14.png",
+   "sheet": "buildings-14.json",
+   "objects": 1,
+   "kinds": [
+    "assay"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-15",
+   "group": "buildings",
+   "w": 772,
+   "h": 643,
+   "image": "buildings-15.png",
+   "sheet": "buildings-15.json",
+   "objects": 1,
+   "kinds": [
+    "store"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-16",
+   "group": "buildings",
+   "w": 772,
+   "h": 750,
+   "image": "buildings-16.png",
+   "sheet": "buildings-16.json",
+   "objects": 1,
+   "kinds": [
+    "auction"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-17",
+   "group": "buildings",
+   "w": 812,
+   "h": 807,
+   "image": "buildings-17.png",
+   "sheet": "buildings-17.json",
+   "objects": 1,
+   "kinds": [
+    "townhall"
+   ],
+   "palette": true
+  },
+  {
+   "name": "town-1",
+   "group": "town",
+   "w": 357,
+   "h": 583,
+   "image": "town-1.png",
+   "sheet": "town-1.json",
+   "objects": 10,
+   "kinds": [
+    "lamp",
+    "barrel",
+    "crate"
+   ],
+   "palette": true
+  },
+  {
+   "name": "town-2",
+   "group": "town",
+   "w": 337,
+   "h": 454,
+   "image": "town-2.png",
+   "sheet": "town-2.json",
+   "objects": 8,
+   "kinds": [
+    "haybale",
+    "trough",
+    "hitch"
+   ],
+   "palette": true
+  },
+  {
+   "name": "town-3",
+   "group": "town",
+   "w": 536,
+   "h": 617,
+   "image": "town-3.png",
+   "sheet": "town-3.json",
+   "objects": 6,
+   "kinds": [
+    "bench",
+    "well",
+    "signpost",
+    "cart"
+   ],
+   "palette": true
+  },
+  {
+   "name": "town-4",
+   "group": "town",
+   "w": 635,
+   "h": 774,
+   "image": "town-4.png",
+   "sheet": "town-4.json",
+   "objects": 5,
+   "kinds": [
+    "noticeboard",
+    "gate",
+    "fence"
+   ],
+   "palette": true
+  },
+  {
+   "name": "town-5",
+   "group": "town",
+   "w": 199,
+   "h": 340,
+   "image": "town-5.png",
+   "sheet": "town-5.json",
+   "objects": 2,
+   "kinds": [
+    "fence-down"
+   ],
+   "palette": true
+  },
+  {
+   "name": "commons-1",
+   "group": "commons",
+   "w": 1011,
+   "h": 1588,
+   "image": "commons-1.png",
+   "sheet": "commons-1.json",
+   "objects": 8,
+   "kinds": [
+    "oak",
+    "orchard",
+    "bush"
+   ],
+   "palette": true
+  },
+  {
+   "name": "commons-2",
+   "group": "commons",
+   "w": 433,
+   "h": 483,
+   "image": "commons-2.png",
+   "sheet": "commons-2.json",
+   "objects": 10,
+   "kinds": [
+    "haystack",
+    "stone",
+    "flowers"
+   ],
+   "palette": true
+  },
+  {
+   "name": "commons-3",
+   "group": "commons",
+   "w": 147,
+   "h": 267,
+   "image": "commons-3.png",
+   "sheet": "commons-3.json",
+   "objects": 4,
+   "kinds": [
+    "stump"
+   ],
+   "palette": true
+  },
+  {
+   "name": "frost-1",
+   "group": "frost",
+   "w": 936,
+   "h": 1350,
+   "image": "frost-1.png",
+   "sheet": "frost-1.json",
+   "objects": 8,
+   "kinds": [
+    "pine",
+    "birch",
+    "snowrock"
+   ],
+   "palette": true
+  },
+  {
+   "name": "frost-2",
+   "group": "frost",
+   "w": 462,
+   "h": 515,
+   "image": "frost-2.png",
+   "sheet": "frost-2.json",
+   "objects": 6,
+   "kinds": [
+    "icespire",
+    "frostbush"
+   ],
+   "palette": true
+  },
+  {
+   "name": "ember-1",
+   "group": "ember",
+   "w": 813,
+   "h": 1143,
+   "image": "ember-1.png",
+   "sheet": "ember-1.json",
+   "objects": 10,
+   "kinds": [
+    "deadtree",
+    "charstump",
+    "basalt"
+   ],
+   "palette": true
+  },
+  {
+   "name": "ember-2",
+   "group": "ember",
+   "w": 319,
+   "h": 296,
+   "image": "ember-2.png",
+   "sheet": "ember-2.json",
+   "objects": 2,
+   "kinds": [
+    "obsidian"
+   ],
+   "palette": true
+  },
+  {
+   "name": "sky-1",
+   "group": "sky",
+   "w": 953,
+   "h": 1525,
+   "image": "sky-1.png",
+   "sheet": "sky-1.json",
+   "objects": 10,
+   "kinds": [
+    "cactus",
+    "palm",
+    "tumbleweed"
+   ],
+   "palette": true
+  },
+  {
+   "name": "sky-2",
+   "group": "sky",
+   "w": 670,
+   "h": 764,
+   "image": "sky-2.png",
+   "sheet": "sky-2.json",
+   "objects": 10,
+   "kinds": [
+    "skull",
+    "hoodoo",
+    "sage"
+   ],
+   "palette": true
+  },
+  {
+   "name": "hollows-1",
+   "group": "hollows",
+   "w": 519,
+   "h": 625,
+   "image": "hollows-1.png",
+   "sheet": "hollows-1.json",
+   "objects": 9,
+   "kinds": [
+    "boulder",
+    "crystal",
+    "minecart"
+   ],
+   "palette": true
+  },
+  {
+   "name": "hollows-2",
+   "group": "hollows",
+   "w": 148,
+   "h": 370,
+   "image": "hollows-2.png",
+   "sheet": "hollows-2.json",
+   "objects": 4,
+   "kinds": [
+    "rubble"
+   ],
+   "palette": true
+  },
+  {
+   "name": "thunder-1",
+   "group": "thunder",
+   "w": 777,
+   "h": 885,
+   "image": "thunder-1.png",
+   "sheet": "thunder-1.json",
+   "objects": 8,
+   "kinds": [
+    "pylon",
+    "scrap",
+    "coal"
+   ],
+   "palette": true
+  },
+  {
+   "name": "thunder-2",
+   "group": "thunder",
+   "w": 386,
+   "h": 383,
+   "image": "thunder-2.png",
+   "sheet": "thunder-2.json",
+   "objects": 2,
+   "kinds": [
+    "coil"
+   ],
+   "palette": true
+  },
+  {
+   "name": "tidal-1",
+   "group": "tidal",
+   "w": 720,
+   "h": 983,
+   "image": "tidal-1.png",
+   "sheet": "tidal-1.json",
+   "objects": 7,
+   "kinds": [
+    "driftwood",
+    "netpole",
+    "rowboat"
+   ],
+   "palette": true
+  },
+  {
+   "name": "tidal-2",
+   "group": "tidal",
+   "w": 527,
+   "h": 565,
+   "image": "tidal-2.png",
+   "sheet": "tidal-2.json",
+   "objects": 12,
+   "kinds": [
+    "searock",
+    "shell",
+    "coral"
+   ],
+   "palette": true
+  },
+  {
+   "name": "mist-1",
+   "group": "mist",
+   "w": 1036,
+   "h": 1452,
+   "image": "mist-1.png",
+   "sheet": "mist-1.json",
+   "objects": 8,
+   "kinds": [
+    "slimetree",
+    "toadstool",
+    "mangrove"
+   ],
+   "palette": true
+  },
+  {
+   "name": "mist-2",
+   "group": "mist",
+   "w": 176,
+   "h": 260,
+   "image": "mist-2.png",
+   "sheet": "mist-2.json",
+   "objects": 1,
+   "kinds": [
+    "scarecrow"
+   ],
+   "palette": true
+  },
+  {
+   "name": "verdant-1",
+   "group": "verdant",
+   "w": 1387,
+   "h": 1591,
+   "image": "verdant-1.png",
+   "sheet": "verdant-1.json",
+   "objects": 8,
+   "kinds": [
+    "jungletree",
+    "wildfruit",
+    "giantflower"
+   ],
+   "palette": true
+  },
+  {
+   "name": "verdant-2",
+   "group": "verdant",
+   "w": 568,
+   "h": 749,
+   "image": "verdant-2.png",
+   "sheet": "verdant-2.json",
+   "objects": 8,
+   "kinds": [
+    "fern",
+    "stonewall"
+   ],
+   "palette": true
+  }
+ ],
+ "objects": [
+  {
+   "id": "blacksmith",
+   "name": "Blacksmith",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "blacksmith-1",
+     "atlas": "buildings-1",
+     "w": 772,
+     "h": 770,
+     "gameW": 386,
+     "gameH": 385,
+     "foot": [
+      386,
+      770
+     ]
+    }
+   ]
+  },
+  {
+   "id": "woodworker",
+   "name": "Woodworker",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "woodworker-1",
+     "atlas": "buildings-2",
+     "w": 772,
+     "h": 722,
+     "gameW": 386,
+     "gameH": 361,
+     "foot": [
+      386,
+      722
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gemcutter",
+   "name": "Gem Cutter",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "gemcutter-1",
+     "atlas": "buildings-3",
+     "w": 772,
+     "h": 821,
+     "gameW": 386,
+     "gameH": 410.5,
+     "foot": [
+      386,
+      821
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sheriff",
+   "name": "Sheriff's Office",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "sheriff-1",
+     "atlas": "buildings-4",
+     "w": 772,
+     "h": 698,
+     "gameW": 386,
+     "gameH": 349,
+     "foot": [
+      386,
+      698
+     ]
+    }
+   ]
+  },
+  {
+   "id": "saloon",
+   "name": "Saloon",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "saloon-1",
+     "atlas": "buildings-5",
+     "w": 772,
+     "h": 724,
+     "gameW": 386,
+     "gameH": 362,
+     "foot": [
+      386,
+      724
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gambling",
+   "name": "Gambling Den",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "gambling-1",
+     "atlas": "buildings-6",
+     "w": 772,
+     "h": 748,
+     "gameW": 386,
+     "gameH": 374,
+     "foot": [
+      386,
+      748
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hotel",
+   "name": "Hotel",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "hotel-1",
+     "atlas": "buildings-7",
+     "w": 772,
+     "h": 899,
+     "gameW": 386,
+     "gameH": 449.5,
+     "foot": [
+      386,
+      899
+     ]
+    }
+   ]
+  },
+  {
+   "id": "post",
+   "name": "Post Office & Telegraph",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "post-1",
+     "atlas": "buildings-8",
+     "w": 772,
+     "h": 666,
+     "gameW": 386,
+     "gameH": 333,
+     "foot": [
+      386,
+      666
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cookhouse",
+   "name": "Cookhouse",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "cookhouse-1",
+     "atlas": "buildings-9",
+     "w": 772,
+     "h": 682,
+     "gameW": 386,
+     "gameH": 341,
+     "foot": [
+      386,
+      682
+     ]
+    }
+   ]
+  },
+  {
+   "id": "feedseed",
+   "name": "Feed & Seed",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "feedseed-1",
+     "atlas": "buildings-10",
+     "w": 772,
+     "h": 795,
+     "gameW": 386,
+     "gameH": 397.5,
+     "foot": [
+      386,
+      795
+     ]
+    }
+   ]
+  },
+  {
+   "id": "landoffice",
+   "name": "Land Office",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "landoffice-1",
+     "atlas": "buildings-11",
+     "w": 772,
+     "h": 692,
+     "gameW": 386,
+     "gameH": 346,
+     "foot": [
+      386,
+      692
+     ]
+    }
+   ]
+  },
+  {
+   "id": "guildhall",
+   "name": "Guild Hall",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "guildhall-1",
+     "atlas": "buildings-12",
+     "w": 772,
+     "h": 716,
+     "gameW": 386,
+     "gameH": 358,
+     "foot": [
+      386,
+      716
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bank",
+   "name": "Bank",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "bank-1",
+     "atlas": "buildings-13",
+     "w": 772,
+     "h": 737,
+     "gameW": 386,
+     "gameH": 368.5,
+     "foot": [
+      386,
+      737
+     ]
+    }
+   ]
+  },
+  {
+   "id": "assay",
+   "name": "Assay Office",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "assay-1",
+     "atlas": "buildings-14",
+     "w": 772,
+     "h": 906,
+     "gameW": 386,
+     "gameH": 453,
+     "foot": [
+      386,
+      906
+     ]
+    }
+   ]
+  },
+  {
+   "id": "store",
+   "name": "General Store",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "store-1",
+     "atlas": "buildings-15",
+     "w": 772,
+     "h": 643,
+     "gameW": 386,
+     "gameH": 321.5,
+     "foot": [
+      386,
+      643
+     ]
+    }
+   ]
+  },
+  {
+   "id": "auction",
+   "name": "Auction House",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 386,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "auction-1",
+     "atlas": "buildings-16",
+     "w": 772,
+     "h": 750,
+     "gameW": 386,
+     "gameH": 375,
+     "foot": [
+      386,
+      750
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lamp",
+   "name": "Lamp posts",
+   "group": "town",
+   "kind": "prop",
+   "count": 2,
+   "fit": "h",
+   "size": 180,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "lamp-1",
+     "atlas": "town-1",
+     "w": 81,
+     "h": 362,
+     "gameW": 40.5,
+     "gameH": 181,
+     "foot": [
+      41,
+      362
+     ]
+    },
+    {
+     "frame": "lamp-2",
+     "atlas": "town-1",
+     "w": 80,
+     "h": 358,
+     "gameW": 40,
+     "gameH": 179,
+     "foot": [
+      40,
+      358
+     ]
+    }
+   ]
+  },
+  {
+   "id": "barrel",
+   "name": "Barrels",
+   "group": "town",
+   "kind": "prop",
+   "count": 4,
+   "fit": "h",
+   "size": 52,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "barrel-1",
+     "atlas": "town-1",
+     "w": 86,
+     "h": 121,
+     "gameW": 43,
+     "gameH": 60.5,
+     "foot": [
+      43,
+      121
+     ]
+    },
+    {
+     "frame": "barrel-2",
+     "atlas": "town-1",
+     "w": 115,
+     "h": 93,
+     "gameW": 57.5,
+     "gameH": 46.5,
+     "foot": [
+      58,
+      93
+     ]
+    },
+    {
+     "frame": "barrel-3",
+     "atlas": "town-1",
+     "w": 61,
+     "h": 82,
+     "gameW": 30.5,
+     "gameH": 41,
+     "foot": [
+      31,
+      82
+     ]
+    },
+    {
+     "frame": "barrel-4",
+     "atlas": "town-1",
+     "w": 83,
+     "h": 115,
+     "gameW": 41.5,
+     "gameH": 57.5,
+     "foot": [
+      42,
+      115
+     ]
+    }
+   ]
+  },
+  {
+   "id": "crate",
+   "name": "Crates",
+   "group": "town",
+   "kind": "prop",
+   "count": 4,
+   "fit": "h",
+   "size": 54,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "crate-1",
+     "atlas": "town-1",
+     "w": 99,
+     "h": 105,
+     "gameW": 49.5,
+     "gameH": 52.5,
+     "foot": [
+      50,
+      105
+     ]
+    },
+    {
+     "frame": "crate-2",
+     "atlas": "town-1",
+     "w": 104,
+     "h": 146,
+     "gameW": 52,
+     "gameH": 73,
+     "foot": [
+      52,
+      146
+     ]
+    },
+    {
+     "frame": "crate-3",
+     "atlas": "town-1",
+     "w": 126,
+     "h": 110,
+     "gameW": 63,
+     "gameH": 55,
+     "foot": [
+      63,
+      110
+     ]
+    },
+    {
+     "frame": "crate-4",
+     "atlas": "town-1",
+     "w": 158,
+     "h": 102,
+     "gameW": 79,
+     "gameH": 51,
+     "foot": [
+      79,
+      102
+     ]
+    }
+   ]
+  },
+  {
+   "id": "haybale",
+   "name": "Hay bales",
+   "group": "town",
+   "kind": "prop",
+   "count": 4,
+   "fit": "h",
+   "size": 46,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "haybale-1",
+     "atlas": "town-2",
+     "w": 88,
+     "h": 70,
+     "gameW": 44,
+     "gameH": 35,
+     "foot": [
+      44,
+      70
+     ]
+    },
+    {
+     "frame": "haybale-2",
+     "atlas": "town-2",
+     "w": 93,
+     "h": 98,
+     "gameW": 46.5,
+     "gameH": 49,
+     "foot": [
+      47,
+      98
+     ]
+    },
+    {
+     "frame": "haybale-3",
+     "atlas": "town-2",
+     "w": 89,
+     "h": 122,
+     "gameW": 44.5,
+     "gameH": 61,
+     "foot": [
+      45,
+      122
+     ]
+    },
+    {
+     "frame": "haybale-4",
+     "atlas": "town-2",
+     "w": 92,
+     "h": 86,
+     "gameW": 46,
+     "gameH": 43,
+     "foot": [
+      46,
+      86
+     ]
+    }
+   ]
+  },
+  {
+   "id": "trough",
+   "name": "Water troughs",
+   "group": "town",
+   "kind": "prop",
+   "count": 2,
+   "fit": "h",
+   "size": 48,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "trough-1",
+     "atlas": "town-2",
+     "w": 126,
+     "h": 84,
+     "gameW": 63,
+     "gameH": 42,
+     "foot": [
+      63,
+      84
+     ]
+    },
+    {
+     "frame": "trough-2",
+     "atlas": "town-2",
+     "w": 139,
+     "h": 108,
+     "gameW": 69.5,
+     "gameH": 54,
+     "foot": [
+      70,
+      108
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hitch",
+   "name": "Hitching posts",
+   "group": "town",
+   "kind": "prop",
+   "count": 2,
+   "fit": "h",
+   "size": 64,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "hitch-1",
+     "atlas": "town-2",
+     "w": 259,
+     "h": 130,
+     "gameW": 129.5,
+     "gameH": 65,
+     "foot": [
+      130,
+      130
+     ]
+    },
+    {
+     "frame": "hitch-2",
+     "atlas": "town-2",
+     "w": 246,
+     "h": 126,
+     "gameW": 123,
+     "gameH": 63,
+     "foot": [
+      123,
+      126
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bench",
+   "name": "Benches",
+   "group": "town",
+   "kind": "prop",
+   "count": 2,
+   "fit": "h",
+   "size": 52,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "bench-1",
+     "atlas": "town-3",
+     "w": 171,
+     "h": 91,
+     "gameW": 85.5,
+     "gameH": 45.5,
+     "foot": [
+      86,
+      91
+     ]
+    },
+    {
+     "frame": "bench-2",
+     "atlas": "town-3",
+     "w": 200,
+     "h": 117,
+     "gameW": 100,
+     "gameH": 58.5,
+     "foot": [
+      100,
+      117
+     ]
+    }
+   ]
+  },
+  {
+   "id": "well",
+   "name": "Well",
+   "group": "town",
+   "kind": "prop",
+   "count": 1,
+   "fit": "h",
+   "size": 160,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "well-1",
+     "atlas": "town-3",
+     "w": 253,
+     "h": 320,
+     "gameW": 126.5,
+     "gameH": 160,
+     "foot": [
+      127,
+      320
+     ]
+    }
+   ]
+  },
+  {
+   "id": "signpost",
+   "name": "Signposts",
+   "group": "town",
+   "kind": "prop",
+   "count": 2,
+   "fit": "h",
+   "size": 150,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "signpost-1",
+     "atlas": "town-3",
+     "w": 147,
+     "h": 303,
+     "gameW": 73.5,
+     "gameH": 151.5,
+     "foot": [
+      74,
+      303
+     ]
+    },
+    {
+     "frame": "signpost-2",
+     "atlas": "town-3",
+     "w": 132,
+     "h": 297,
+     "gameW": 66,
+     "gameH": 148.5,
+     "foot": [
+      66,
+      297
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cart",
+   "name": "Hand cart",
+   "group": "town",
+   "kind": "prop",
+   "count": 1,
+   "fit": "w",
+   "size": 150,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "cart-1",
+     "atlas": "town-3",
+     "w": 300,
+     "h": 202,
+     "gameW": 150,
+     "gameH": 101,
+     "foot": [
+      150,
+      202
+     ]
+    }
+   ]
+  },
+  {
+   "id": "noticeboard",
+   "name": "Bragging board",
+   "group": "town",
+   "kind": "prop",
+   "count": 1,
+   "fit": "h",
+   "size": 150,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "noticeboard-1",
+     "atlas": "town-4",
+     "w": 258,
+     "h": 300,
+     "gameW": 129,
+     "gameH": 150,
+     "foot": [
+      129,
+      300
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gate",
+   "name": "Town gate",
+   "group": "town",
+   "kind": "prop",
+   "count": 1,
+   "fit": "w",
+   "size": 270,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "gate-1",
+     "atlas": "town-4",
+     "w": 540,
+     "h": 341,
+     "gameW": 270,
+     "gameH": 170.5,
+     "foot": [
+      270,
+      341
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fence",
+   "name": "Fence, across",
+   "group": "town",
+   "kind": "prop",
+   "count": 3,
+   "fit": "w",
+   "size": 160,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "fence-1",
+     "atlas": "town-4",
+     "w": 320,
+     "h": 126,
+     "gameW": 160,
+     "gameH": 63,
+     "foot": [
+      160,
+      126
+     ]
+    },
+    {
+     "frame": "fence-2",
+     "atlas": "town-4",
+     "w": 313,
+     "h": 129,
+     "gameW": 156.5,
+     "gameH": 64.5,
+     "foot": [
+      157,
+      129
+     ]
+    },
+    {
+     "frame": "fence-3",
+     "atlas": "town-4",
+     "w": 370,
+     "h": 129,
+     "gameW": 185,
+     "gameH": 64.5,
+     "foot": [
+      185,
+      129
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fence-down",
+   "name": "Fence, up and down",
+   "group": "town",
+   "kind": "prop",
+   "count": 2,
+   "fit": "h",
+   "size": 170,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "fence-down-1",
+     "atlas": "town-5",
+     "w": 86,
+     "h": 340,
+     "gameW": 43,
+     "gameH": 170,
+     "foot": [
+      43,
+      340
+     ]
+    },
+    {
+     "frame": "fence-down-2",
+     "atlas": "town-5",
+     "w": 111,
+     "h": 340,
+     "gameW": 55.5,
+     "gameH": 170,
+     "foot": [
+      56,
+      340
+     ]
+    }
+   ]
+  },
+  {
+   "id": "oak",
+   "name": "Oak trees",
+   "group": "commons",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 300,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "oak-1",
+     "atlas": "commons-1",
+     "w": 655,
+     "h": 614,
+     "gameW": 327.5,
+     "gameH": 307,
+     "foot": [
+      328,
+      614
+     ]
+    },
+    {
+     "frame": "oak-2",
+     "atlas": "commons-1",
+     "w": 682,
+     "h": 586,
+     "gameW": 341,
+     "gameH": 293,
+     "foot": [
+      341,
+      586
+     ]
+    }
+   ]
+  },
+  {
+   "id": "orchard",
+   "name": "Orchard trees",
+   "group": "commons",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 220,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "orchard-1",
+     "atlas": "commons-1",
+     "w": 342,
+     "h": 384,
+     "gameW": 171,
+     "gameH": 192,
+     "foot": [
+      171,
+      384
+     ]
+    },
+    {
+     "frame": "orchard-2",
+     "atlas": "commons-1",
+     "w": 327,
+     "h": 496,
+     "gameW": 163.5,
+     "gameH": 248,
+     "foot": [
+      164,
+      496
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bush",
+   "name": "Bushes",
+   "group": "commons",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 60,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "bush-1",
+     "atlas": "commons-1",
+     "w": 109,
+     "h": 102,
+     "gameW": 54.5,
+     "gameH": 51,
+     "foot": [
+      55,
+      102
+     ]
+    },
+    {
+     "frame": "bush-2",
+     "atlas": "commons-1",
+     "w": 166,
+     "h": 116,
+     "gameW": 83,
+     "gameH": 58,
+     "foot": [
+      83,
+      116
+     ]
+    },
+    {
+     "frame": "bush-3",
+     "atlas": "commons-1",
+     "w": 132,
+     "h": 124,
+     "gameW": 66,
+     "gameH": 62,
+     "foot": [
+      66,
+      124
+     ]
+    },
+    {
+     "frame": "bush-4",
+     "atlas": "commons-1",
+     "w": 131,
+     "h": 156,
+     "gameW": 65.5,
+     "gameH": 78,
+     "foot": [
+      66,
+      156
+     ]
+    }
+   ]
+  },
+  {
+   "id": "haystack",
+   "name": "Haystacks",
+   "group": "commons",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 110,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "haystack-1",
+     "atlas": "commons-2",
+     "w": 208,
+     "h": 255,
+     "gameW": 104,
+     "gameH": 127.5,
+     "foot": [
+      104,
+      255
+     ]
+    },
+    {
+     "frame": "haystack-2",
+     "atlas": "commons-2",
+     "w": 223,
+     "h": 185,
+     "gameW": 111.5,
+     "gameH": 92.5,
+     "foot": [
+      112,
+      185
+     ]
+    }
+   ]
+  },
+  {
+   "id": "stone",
+   "name": "Stones",
+   "group": "commons",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 50,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "stone-1",
+     "atlas": "commons-2",
+     "w": 109,
+     "h": 99,
+     "gameW": 54.5,
+     "gameH": 49.5,
+     "foot": [
+      55,
+      99
+     ]
+    },
+    {
+     "frame": "stone-2",
+     "atlas": "commons-2",
+     "w": 142,
+     "h": 90,
+     "gameW": 71,
+     "gameH": 45,
+     "foot": [
+      71,
+      90
+     ]
+    },
+    {
+     "frame": "stone-3",
+     "atlas": "commons-2",
+     "w": 106,
+     "h": 134,
+     "gameW": 53,
+     "gameH": 67,
+     "foot": [
+      53,
+      134
+     ]
+    },
+    {
+     "frame": "stone-4",
+     "atlas": "commons-2",
+     "w": 135,
+     "h": 101,
+     "gameW": 67.5,
+     "gameH": 50.5,
+     "foot": [
+      68,
+      101
+     ]
+    }
+   ]
+  },
+  {
+   "id": "flowers",
+   "name": "Wildflower clumps",
+   "group": "commons",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 30,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "flowers-1",
+     "atlas": "commons-2",
+     "w": 58,
+     "h": 56,
+     "gameW": 29,
+     "gameH": 28,
+     "foot": [
+      29,
+      56
+     ]
+    },
+    {
+     "frame": "flowers-2",
+     "atlas": "commons-2",
+     "w": 61,
+     "h": 56,
+     "gameW": 30.5,
+     "gameH": 28,
+     "foot": [
+      31,
+      56
+     ]
+    },
+    {
+     "frame": "flowers-3",
+     "atlas": "commons-2",
+     "w": 59,
+     "h": 63,
+     "gameW": 29.5,
+     "gameH": 31.5,
+     "foot": [
+      30,
+      63
+     ]
+    },
+    {
+     "frame": "flowers-4",
+     "atlas": "commons-2",
+     "w": 72,
+     "h": 67,
+     "gameW": 36,
+     "gameH": 33.5,
+     "foot": [
+      36,
+      67
+     ]
+    }
+   ]
+  },
+  {
+   "id": "stump",
+   "name": "Tree stumps",
+   "group": "commons",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 40,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "stump-1",
+     "atlas": "commons-3",
+     "w": 113,
+     "h": 80,
+     "gameW": 56.5,
+     "gameH": 40,
+     "foot": [
+      57,
+      80
+     ]
+    },
+    {
+     "frame": "stump-2",
+     "atlas": "commons-3",
+     "w": 62,
+     "h": 57,
+     "gameW": 31,
+     "gameH": 28.5,
+     "foot": [
+      31,
+      57
+     ]
+    },
+    {
+     "frame": "stump-3",
+     "atlas": "commons-3",
+     "w": 98,
+     "h": 104,
+     "gameW": 49,
+     "gameH": 52,
+     "foot": [
+      49,
+      104
+     ]
+    },
+    {
+     "frame": "stump-4",
+     "atlas": "commons-3",
+     "w": 83,
+     "h": 79,
+     "gameW": 41.5,
+     "gameH": 39.5,
+     "foot": [
+      42,
+      79
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pine",
+   "name": "Snowy pines",
+   "group": "frost",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 340,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "pine-1",
+     "atlas": "frost-1",
+     "w": 358,
+     "h": 688,
+     "gameW": 179,
+     "gameH": 344,
+     "foot": [
+      179,
+      688
+     ]
+    },
+    {
+     "frame": "pine-2",
+     "atlas": "frost-1",
+     "w": 517,
+     "h": 670,
+     "gameW": 258.5,
+     "gameH": 335,
+     "foot": [
+      259,
+      670
+     ]
+    }
+   ]
+  },
+  {
+   "id": "birch",
+   "name": "Bare birches",
+   "group": "frost",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 280,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "birch-1",
+     "atlas": "frost-1",
+     "w": 216,
+     "h": 562,
+     "gameW": 108,
+     "gameH": 281,
+     "foot": [
+      108,
+      562
+     ]
+    },
+    {
+     "frame": "birch-2",
+     "atlas": "frost-1",
+     "w": 294,
+     "h": 558,
+     "gameW": 147,
+     "gameH": 279,
+     "foot": [
+      147,
+      558
+     ]
+    }
+   ]
+  },
+  {
+   "id": "snowrock",
+   "name": "Snowy rocks",
+   "group": "frost",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 60,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "snowrock-1",
+     "atlas": "frost-1",
+     "w": 123,
+     "h": 118,
+     "gameW": 61.5,
+     "gameH": 59,
+     "foot": [
+      62,
+      118
+     ]
+    },
+    {
+     "frame": "snowrock-2",
+     "atlas": "frost-1",
+     "w": 170,
+     "h": 96,
+     "gameW": 85,
+     "gameH": 48,
+     "foot": [
+      85,
+      96
+     ]
+    },
+    {
+     "frame": "snowrock-3",
+     "atlas": "frost-1",
+     "w": 120,
+     "h": 151,
+     "gameW": 60,
+     "gameH": 75.5,
+     "foot": [
+      60,
+      151
+     ]
+    },
+    {
+     "frame": "snowrock-4",
+     "atlas": "frost-1",
+     "w": 175,
+     "h": 122,
+     "gameW": 87.5,
+     "gameH": 61,
+     "foot": [
+      88,
+      122
+     ]
+    }
+   ]
+  },
+  {
+   "id": "icespire",
+   "name": "Ice spires",
+   "group": "frost",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 180,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "icespire-1",
+     "atlas": "frost-2",
+     "w": 164,
+     "h": 385,
+     "gameW": 82,
+     "gameH": 192.5,
+     "foot": [
+      82,
+      385
+     ]
+    },
+    {
+     "frame": "icespire-2",
+     "atlas": "frost-2",
+     "w": 225,
+     "h": 334,
+     "gameW": 112.5,
+     "gameH": 167,
+     "foot": [
+      113,
+      334
+     ]
+    }
+   ]
+  },
+  {
+   "id": "frostbush",
+   "name": "Frosted shrubs",
+   "group": "frost",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 50,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "frostbush-1",
+     "atlas": "frost-2",
+     "w": 111,
+     "h": 90,
+     "gameW": 55.5,
+     "gameH": 45,
+     "foot": [
+      56,
+      90
+     ]
+    },
+    {
+     "frame": "frostbush-2",
+     "atlas": "frost-2",
+     "w": 102,
+     "h": 128,
+     "gameW": 51,
+     "gameH": 64,
+     "foot": [
+      51,
+      128
+     ]
+    },
+    {
+     "frame": "frostbush-3",
+     "atlas": "frost-2",
+     "w": 136,
+     "h": 99,
+     "gameW": 68,
+     "gameH": 49.5,
+     "foot": [
+      68,
+      99
+     ]
+    },
+    {
+     "frame": "frostbush-4",
+     "atlas": "frost-2",
+     "w": 107,
+     "h": 100,
+     "gameW": 53.5,
+     "gameH": 50,
+     "foot": [
+      54,
+      100
+     ]
+    }
+   ]
+  },
+  {
+   "id": "deadtree",
+   "name": "Charred trees",
+   "group": "ember",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 260,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "deadtree-1",
+     "atlas": "ember-1",
+     "w": 499,
+     "h": 591,
+     "gameW": 249.5,
+     "gameH": 295.5,
+     "foot": [
+      250,
+      591
+     ]
+    },
+    {
+     "frame": "deadtree-2",
+     "atlas": "ember-1",
+     "w": 366,
+     "h": 449,
+     "gameW": 183,
+     "gameH": 224.5,
+     "foot": [
+      183,
+      449
+     ]
+    }
+   ]
+  },
+  {
+   "id": "charstump",
+   "name": "Burnt stumps",
+   "group": "ember",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 40,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "charstump-1",
+     "atlas": "ember-1",
+     "w": 155,
+     "h": 74,
+     "gameW": 77.5,
+     "gameH": 37,
+     "foot": [
+      78,
+      74
+     ]
+    },
+    {
+     "frame": "charstump-2",
+     "atlas": "ember-1",
+     "w": 119,
+     "h": 86,
+     "gameW": 59.5,
+     "gameH": 43,
+     "foot": [
+      60,
+      86
+     ]
+    },
+    {
+     "frame": "charstump-3",
+     "atlas": "ember-1",
+     "w": 127,
+     "h": 67,
+     "gameW": 63.5,
+     "gameH": 33.5,
+     "foot": [
+      64,
+      67
+     ]
+    },
+    {
+     "frame": "charstump-4",
+     "atlas": "ember-1",
+     "w": 139,
+     "h": 86,
+     "gameW": 69.5,
+     "gameH": 43,
+     "foot": [
+      70,
+      86
+     ]
+    }
+   ]
+  },
+  {
+   "id": "basalt",
+   "name": "Basalt rocks",
+   "group": "ember",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 70,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "basalt-1",
+     "atlas": "ember-1",
+     "w": 149,
+     "h": 138,
+     "gameW": 74.5,
+     "gameH": 69,
+     "foot": [
+      75,
+      138
+     ]
+    },
+    {
+     "frame": "basalt-2",
+     "atlas": "ember-1",
+     "w": 203,
+     "h": 99,
+     "gameW": 101.5,
+     "gameH": 49.5,
+     "foot": [
+      102,
+      99
+     ]
+    },
+    {
+     "frame": "basalt-3",
+     "atlas": "ember-1",
+     "w": 119,
+     "h": 155,
+     "gameW": 59.5,
+     "gameH": 77.5,
+     "foot": [
+      60,
+      155
+     ]
+    },
+    {
+     "frame": "basalt-4",
+     "atlas": "ember-1",
+     "w": 173,
+     "h": 142,
+     "gameW": 86.5,
+     "gameH": 71,
+     "foot": [
+      87,
+      142
+     ]
+    }
+   ]
+  },
+  {
+   "id": "obsidian",
+   "name": "Obsidian shards",
+   "group": "ember",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 140,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "obsidian-1",
+     "atlas": "ember-2",
+     "w": 136,
+     "h": 296,
+     "gameW": 68,
+     "gameH": 148,
+     "foot": [
+      68,
+      296
+     ]
+    },
+    {
+     "frame": "obsidian-2",
+     "atlas": "ember-2",
+     "w": 181,
+     "h": 263,
+     "gameW": 90.5,
+     "gameH": 131.5,
+     "foot": [
+      91,
+      263
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cactus",
+   "name": "Cacti",
+   "group": "sky",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 130,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "cactus-1",
+     "atlas": "sky-1",
+     "w": 233,
+     "h": 356,
+     "gameW": 116.5,
+     "gameH": 178,
+     "foot": [
+      117,
+      356
+     ]
+    },
+    {
+     "frame": "cactus-2",
+     "atlas": "sky-1",
+     "w": 156,
+     "h": 241,
+     "gameW": 78,
+     "gameH": 120.5,
+     "foot": [
+      78,
+      241
+     ]
+    },
+    {
+     "frame": "cactus-3",
+     "atlas": "sky-1",
+     "w": 172,
+     "h": 173,
+     "gameW": 86,
+     "gameH": 86.5,
+     "foot": [
+      86,
+      173
+     ]
+    },
+    {
+     "frame": "cactus-4",
+     "atlas": "sky-1",
+     "w": 186,
+     "h": 279,
+     "gameW": 93,
+     "gameH": 139.5,
+     "foot": [
+      93,
+      279
+     ]
+    }
+   ]
+  },
+  {
+   "id": "palm",
+   "name": "Palm trees",
+   "group": "sky",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 320,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "palm-1",
+     "atlas": "sky-1",
+     "w": 530,
+     "h": 624,
+     "gameW": 265,
+     "gameH": 312,
+     "foot": [
+      395,
+      624
+     ]
+    },
+    {
+     "frame": "palm-2",
+     "atlas": "sky-1",
+     "w": 570,
+     "h": 656,
+     "gameW": 285,
+     "gameH": 328,
+     "foot": [
+      478,
+      656
+     ]
+    }
+   ]
+  },
+  {
+   "id": "tumbleweed",
+   "name": "Tumbleweeds",
+   "group": "sky",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 40,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "tumbleweed-1",
+     "atlas": "sky-1",
+     "w": 110,
+     "h": 111,
+     "gameW": 55,
+     "gameH": 55.5,
+     "foot": [
+      55,
+      111
+     ]
+    },
+    {
+     "frame": "tumbleweed-2",
+     "atlas": "sky-1",
+     "w": 93,
+     "h": 89,
+     "gameW": 46.5,
+     "gameH": 44.5,
+     "foot": [
+      47,
+      89
+     ]
+    },
+    {
+     "frame": "tumbleweed-3",
+     "atlas": "sky-1",
+     "w": 67,
+     "h": 71,
+     "gameW": 33.5,
+     "gameH": 35.5,
+     "foot": [
+      34,
+      71
+     ]
+    },
+    {
+     "frame": "tumbleweed-4",
+     "atlas": "sky-1",
+     "w": 52,
+     "h": 51,
+     "gameW": 26,
+     "gameH": 25.5,
+     "foot": [
+      26,
+      51
+     ]
+    }
+   ]
+  },
+  {
+   "id": "skull",
+   "name": "Bleached skulls",
+   "group": "sky",
+   "kind": "nature",
+   "count": 4,
+   "fit": "w",
+   "size": 56,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "skull-1",
+     "atlas": "sky-2",
+     "w": 111,
+     "h": 103,
+     "gameW": 55.5,
+     "gameH": 51.5,
+     "foot": [
+      56,
+      103
+     ]
+    },
+    {
+     "frame": "skull-2",
+     "atlas": "sky-2",
+     "w": 110,
+     "h": 95,
+     "gameW": 55,
+     "gameH": 47.5,
+     "foot": [
+      55,
+      95
+     ]
+    },
+    {
+     "frame": "skull-3",
+     "atlas": "sky-2",
+     "w": 113,
+     "h": 92,
+     "gameW": 56.5,
+     "gameH": 46,
+     "foot": [
+      57,
+      92
+     ]
+    },
+    {
+     "frame": "skull-4",
+     "atlas": "sky-2",
+     "w": 116,
+     "h": 93,
+     "gameW": 58,
+     "gameH": 46.5,
+     "foot": [
+      58,
+      93
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hoodoo",
+   "name": "Hoodoo rocks",
+   "group": "sky",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 240,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "hoodoo-1",
+     "atlas": "sky-2",
+     "w": 310,
+     "h": 562,
+     "gameW": 155,
+     "gameH": 281,
+     "foot": [
+      155,
+      562
+     ]
+    },
+    {
+     "frame": "hoodoo-2",
+     "atlas": "sky-2",
+     "w": 340,
+     "h": 398,
+     "gameW": 170,
+     "gameH": 199,
+     "foot": [
+      170,
+      398
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sage",
+   "name": "Sage brush",
+   "group": "sky",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 45,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "sage-1",
+     "atlas": "sky-2",
+     "w": 88,
+     "h": 90,
+     "gameW": 44,
+     "gameH": 45,
+     "foot": [
+      44,
+      90
+     ]
+    },
+    {
+     "frame": "sage-2",
+     "atlas": "sky-2",
+     "w": 101,
+     "h": 90,
+     "gameW": 50.5,
+     "gameH": 45,
+     "foot": [
+      51,
+      90
+     ]
+    },
+    {
+     "frame": "sage-3",
+     "atlas": "sky-2",
+     "w": 77,
+     "h": 59,
+     "gameW": 38.5,
+     "gameH": 29.5,
+     "foot": [
+      39,
+      59
+     ]
+    },
+    {
+     "frame": "sage-4",
+     "atlas": "sky-2",
+     "w": 109,
+     "h": 108,
+     "gameW": 54.5,
+     "gameH": 54,
+     "foot": [
+      55,
+      108
+     ]
+    }
+   ]
+  },
+  {
+   "id": "boulder",
+   "name": "Boulders",
+   "group": "hollows",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 90,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "boulder-1",
+     "atlas": "hollows-1",
+     "w": 180,
+     "h": 192,
+     "gameW": 90,
+     "gameH": 96,
+     "foot": [
+      90,
+      192
+     ]
+    },
+    {
+     "frame": "boulder-2",
+     "atlas": "hollows-1",
+     "w": 195,
+     "h": 153,
+     "gameW": 97.5,
+     "gameH": 76.5,
+     "foot": [
+      98,
+      153
+     ]
+    },
+    {
+     "frame": "boulder-3",
+     "atlas": "hollows-1",
+     "w": 175,
+     "h": 184,
+     "gameW": 87.5,
+     "gameH": 92,
+     "foot": [
+      88,
+      184
+     ]
+    },
+    {
+     "frame": "boulder-4",
+     "atlas": "hollows-1",
+     "w": 167,
+     "h": 176,
+     "gameW": 83.5,
+     "gameH": 88,
+     "foot": [
+      84,
+      176
+     ]
+    }
+   ]
+  },
+  {
+   "id": "crystal",
+   "name": "Crystal clusters",
+   "group": "hollows",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 100,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "crystal-1",
+     "atlas": "hollows-1",
+     "w": 143,
+     "h": 253,
+     "gameW": 71.5,
+     "gameH": 126.5,
+     "foot": [
+      72,
+      253
+     ]
+    },
+    {
+     "frame": "crystal-2",
+     "atlas": "hollows-1",
+     "w": 156,
+     "h": 189,
+     "gameW": 78,
+     "gameH": 94.5,
+     "foot": [
+      78,
+      189
+     ]
+    },
+    {
+     "frame": "crystal-3",
+     "atlas": "hollows-1",
+     "w": 148,
+     "h": 154,
+     "gameW": 74,
+     "gameH": 77,
+     "foot": [
+      74,
+      154
+     ]
+    },
+    {
+     "frame": "crystal-4",
+     "atlas": "hollows-1",
+     "w": 152,
+     "h": 211,
+     "gameW": 76,
+     "gameH": 105.5,
+     "foot": [
+      76,
+      211
+     ]
+    }
+   ]
+  },
+  {
+   "id": "minecart",
+   "name": "Mine cart",
+   "group": "hollows",
+   "kind": "nature",
+   "count": 1,
+   "fit": "w",
+   "size": 110,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "minecart-1",
+     "atlas": "hollows-1",
+     "w": 220,
+     "h": 210,
+     "gameW": 110,
+     "gameH": 105,
+     "foot": [
+      110,
+      210
+     ]
+    }
+   ]
+  },
+  {
+   "id": "rubble",
+   "name": "Rubble",
+   "group": "hollows",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 45,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "rubble-1",
+     "atlas": "hollows-2",
+     "w": 121,
+     "h": 93,
+     "gameW": 60.5,
+     "gameH": 46.5,
+     "foot": [
+      61,
+      93
+     ]
+    },
+    {
+     "frame": "rubble-2",
+     "atlas": "hollows-2",
+     "w": 146,
+     "h": 86,
+     "gameW": 73,
+     "gameH": 43,
+     "foot": [
+      73,
+      86
+     ]
+    },
+    {
+     "frame": "rubble-3",
+     "atlas": "hollows-2",
+     "w": 137,
+     "h": 98,
+     "gameW": 68.5,
+     "gameH": 49,
+     "foot": [
+      69,
+      98
+     ]
+    },
+    {
+     "frame": "rubble-4",
+     "atlas": "hollows-2",
+     "w": 148,
+     "h": 87,
+     "gameW": 74,
+     "gameH": 43.5,
+     "foot": [
+      74,
+      87
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pylon",
+   "name": "Iron pylons",
+   "group": "thunder",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 380,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "pylon-1",
+     "atlas": "thunder-1",
+     "w": 314,
+     "h": 758,
+     "gameW": 157,
+     "gameH": 379,
+     "foot": [
+      157,
+      758
+     ]
+    },
+    {
+     "frame": "pylon-2",
+     "atlas": "thunder-1",
+     "w": 299,
+     "h": 758,
+     "gameW": 149.5,
+     "gameH": 379,
+     "foot": [
+      150,
+      758
+     ]
+    }
+   ]
+  },
+  {
+   "id": "scrap",
+   "name": "Scrap piles",
+   "group": "thunder",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 60,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "scrap-1",
+     "atlas": "thunder-1",
+     "w": 116,
+     "h": 119,
+     "gameW": 58,
+     "gameH": 59.5,
+     "foot": [
+      58,
+      119
+     ]
+    },
+    {
+     "frame": "scrap-2",
+     "atlas": "thunder-1",
+     "w": 116,
+     "h": 116,
+     "gameW": 58,
+     "gameH": 58,
+     "foot": [
+      58,
+      116
+     ]
+    },
+    {
+     "frame": "scrap-3",
+     "atlas": "thunder-1",
+     "w": 121,
+     "h": 121,
+     "gameW": 60.5,
+     "gameH": 60.5,
+     "foot": [
+      61,
+      121
+     ]
+    },
+    {
+     "frame": "scrap-4",
+     "atlas": "thunder-1",
+     "w": 125,
+     "h": 125,
+     "gameW": 62.5,
+     "gameH": 62.5,
+     "foot": [
+      63,
+      125
+     ]
+    }
+   ]
+  },
+  {
+   "id": "coal",
+   "name": "Coal heaps",
+   "group": "thunder",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 70,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "coal-1",
+     "atlas": "thunder-1",
+     "w": 160,
+     "h": 160,
+     "gameW": 80,
+     "gameH": 80,
+     "foot": [
+      80,
+      160
+     ]
+    },
+    {
+     "frame": "coal-2",
+     "atlas": "thunder-1",
+     "w": 99,
+     "h": 120,
+     "gameW": 49.5,
+     "gameH": 60,
+     "foot": [
+      50,
+      120
+     ]
+    }
+   ]
+  },
+  {
+   "id": "coil",
+   "name": "Copper coils",
+   "group": "thunder",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 190,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "coil-1",
+     "atlas": "thunder-2",
+     "w": 141,
+     "h": 383,
+     "gameW": 70.5,
+     "gameH": 191.5,
+     "foot": [
+      71,
+      383
+     ]
+    },
+    {
+     "frame": "coil-2",
+     "atlas": "thunder-2",
+     "w": 243,
+     "h": 377,
+     "gameW": 121.5,
+     "gameH": 188.5,
+     "foot": [
+      122,
+      377
+     ]
+    }
+   ]
+  },
+  {
+   "id": "driftwood",
+   "name": "Driftwood",
+   "group": "tidal",
+   "kind": "nature",
+   "count": 4,
+   "fit": "w",
+   "size": 120,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "driftwood-1",
+     "atlas": "tidal-1",
+     "w": 298,
+     "h": 162,
+     "gameW": 149,
+     "gameH": 81,
+     "foot": [
+      149,
+      162
+     ]
+    },
+    {
+     "frame": "driftwood-2",
+     "atlas": "tidal-1",
+     "w": 223,
+     "h": 115,
+     "gameW": 111.5,
+     "gameH": 57.5,
+     "foot": [
+      112,
+      115
+     ]
+    },
+    {
+     "frame": "driftwood-3",
+     "atlas": "tidal-1",
+     "w": 207,
+     "h": 172,
+     "gameW": 103.5,
+     "gameH": 86,
+     "foot": [
+      104,
+      172
+     ]
+    },
+    {
+     "frame": "driftwood-4",
+     "atlas": "tidal-1",
+     "w": 257,
+     "h": 135,
+     "gameW": 128.5,
+     "gameH": 67.5,
+     "foot": [
+      129,
+      135
+     ]
+    }
+   ]
+  },
+  {
+   "id": "netpole",
+   "name": "Net poles",
+   "group": "tidal",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 170,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "netpole-1",
+     "atlas": "tidal-1",
+     "w": 499,
+     "h": 332,
+     "gameW": 249.5,
+     "gameH": 166,
+     "foot": [
+      250,
+      332
+     ]
+    },
+    {
+     "frame": "netpole-2",
+     "atlas": "tidal-1",
+     "w": 456,
+     "h": 348,
+     "gameW": 228,
+     "gameH": 174,
+     "foot": [
+      228,
+      348
+     ]
+    }
+   ]
+  },
+  {
+   "id": "rowboat",
+   "name": "Beached boat",
+   "group": "tidal",
+   "kind": "nature",
+   "count": 1,
+   "fit": "w",
+   "size": 210,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "rowboat-1",
+     "atlas": "tidal-1",
+     "w": 420,
+     "h": 149,
+     "gameW": 210,
+     "gameH": 74.5,
+     "foot": [
+      210,
+      149
+     ]
+    }
+   ]
+  },
+  {
+   "id": "searock",
+   "name": "Sea rocks",
+   "group": "tidal",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 70,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "searock-1",
+     "atlas": "tidal-2",
+     "w": 143,
+     "h": 150,
+     "gameW": 71.5,
+     "gameH": 75,
+     "foot": [
+      72,
+      150
+     ]
+    },
+    {
+     "frame": "searock-2",
+     "atlas": "tidal-2",
+     "w": 212,
+     "h": 104,
+     "gameW": 106,
+     "gameH": 52,
+     "foot": [
+      106,
+      104
+     ]
+    },
+    {
+     "frame": "searock-3",
+     "atlas": "tidal-2",
+     "w": 162,
+     "h": 165,
+     "gameW": 81,
+     "gameH": 82.5,
+     "foot": [
+      81,
+      165
+     ]
+    },
+    {
+     "frame": "searock-4",
+     "atlas": "tidal-2",
+     "w": 211,
+     "h": 130,
+     "gameW": 105.5,
+     "gameH": 65,
+     "foot": [
+      106,
+      130
+     ]
+    }
+   ]
+  },
+  {
+   "id": "shell",
+   "name": "Giant shells",
+   "group": "tidal",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 60,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "shell-1",
+     "atlas": "tidal-2",
+     "w": 123,
+     "h": 125,
+     "gameW": 61.5,
+     "gameH": 62.5,
+     "foot": [
+      62,
+      125
+     ]
+    },
+    {
+     "frame": "shell-2",
+     "atlas": "tidal-2",
+     "w": 123,
+     "h": 115,
+     "gameW": 61.5,
+     "gameH": 57.5,
+     "foot": [
+      62,
+      115
+     ]
+    },
+    {
+     "frame": "shell-3",
+     "atlas": "tidal-2",
+     "w": 136,
+     "h": 105,
+     "gameW": 68,
+     "gameH": 52.5,
+     "foot": [
+      68,
+      105
+     ]
+    },
+    {
+     "frame": "shell-4",
+     "atlas": "tidal-2",
+     "w": 134,
+     "h": 129,
+     "gameW": 67,
+     "gameH": 64.5,
+     "foot": [
+      67,
+      129
+     ]
+    }
+   ]
+  },
+  {
+   "id": "coral",
+   "name": "Coral",
+   "group": "tidal",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 80,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "coral-1",
+     "atlas": "tidal-2",
+     "w": 155,
+     "h": 163,
+     "gameW": 77.5,
+     "gameH": 81.5,
+     "foot": [
+      78,
+      163
+     ]
+    },
+    {
+     "frame": "coral-2",
+     "atlas": "tidal-2",
+     "w": 144,
+     "h": 160,
+     "gameW": 72,
+     "gameH": 80,
+     "foot": [
+      72,
+      160
+     ]
+    },
+    {
+     "frame": "coral-3",
+     "atlas": "tidal-2",
+     "w": 141,
+     "h": 115,
+     "gameW": 70.5,
+     "gameH": 57.5,
+     "foot": [
+      71,
+      115
+     ]
+    },
+    {
+     "frame": "coral-4",
+     "atlas": "tidal-2",
+     "w": 148,
+     "h": 160,
+     "gameW": 74,
+     "gameH": 80,
+     "foot": [
+      74,
+      160
+     ]
+    }
+   ]
+  },
+  {
+   "id": "slimetree",
+   "name": "Slime trees",
+   "group": "mist",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 290,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "slimetree-1",
+     "atlas": "mist-1",
+     "w": 372,
+     "h": 676,
+     "gameW": 186,
+     "gameH": 338,
+     "foot": [
+      186,
+      676
+     ]
+    },
+    {
+     "frame": "slimetree-2",
+     "atlas": "mist-1",
+     "w": 418,
+     "h": 484,
+     "gameW": 209,
+     "gameH": 242,
+     "foot": [
+      209,
+      484
+     ]
+    }
+   ]
+  },
+  {
+   "id": "toadstool",
+   "name": "Giant toadstools",
+   "group": "mist",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 130,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "toadstool-1",
+     "atlas": "mist-1",
+     "w": 171,
+     "h": 310,
+     "gameW": 85.5,
+     "gameH": 155,
+     "foot": [
+      86,
+      310
+     ]
+    },
+    {
+     "frame": "toadstool-2",
+     "atlas": "mist-1",
+     "w": 221,
+     "h": 240,
+     "gameW": 110.5,
+     "gameH": 120,
+     "foot": [
+      111,
+      240
+     ]
+    },
+    {
+     "frame": "toadstool-3",
+     "atlas": "mist-1",
+     "w": 161,
+     "h": 191,
+     "gameW": 80.5,
+     "gameH": 95.5,
+     "foot": [
+      81,
+      191
+     ]
+    },
+    {
+     "frame": "toadstool-4",
+     "atlas": "mist-1",
+     "w": 162,
+     "h": 280,
+     "gameW": 81,
+     "gameH": 140,
+     "foot": [
+      81,
+      280
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mangrove",
+   "name": "Mangroves",
+   "group": "mist",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 270,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "mangrove-1",
+     "atlas": "mist-1",
+     "w": 306,
+     "h": 588,
+     "gameW": 153,
+     "gameH": 294,
+     "foot": [
+      153,
+      588
+     ]
+    },
+    {
+     "frame": "mangrove-2",
+     "atlas": "mist-1",
+     "w": 443,
+     "h": 492,
+     "gameW": 221.5,
+     "gameH": 246,
+     "foot": [
+      222,
+      492
+     ]
+    }
+   ]
+  },
+  {
+   "id": "scarecrow",
+   "name": "Scarecrow",
+   "group": "mist",
+   "kind": "nature",
+   "count": 1,
+   "fit": "h",
+   "size": 130,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "scarecrow-1",
+     "atlas": "mist-2",
+     "w": 176,
+     "h": 260,
+     "gameW": 88,
+     "gameH": 130,
+     "foot": [
+      88,
+      260
+     ]
+    }
+   ]
+  },
+  {
+   "id": "jungletree",
+   "name": "Giant jungle trees",
+   "group": "verdant",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 400,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "jungletree-1",
+     "atlas": "verdant-1",
+     "w": 543,
+     "h": 879,
+     "gameW": 271.5,
+     "gameH": 439.5,
+     "foot": [
+      272,
+      879
+     ]
+    },
+    {
+     "frame": "jungletree-2",
+     "atlas": "verdant-1",
+     "w": 842,
+     "h": 720,
+     "gameW": 421,
+     "gameH": 360,
+     "foot": [
+      421,
+      720
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wildfruit",
+   "name": "Wild fruit trees",
+   "group": "verdant",
+   "kind": "nature",
+   "count": 2,
+   "fit": "h",
+   "size": 240,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "wildfruit-1",
+     "atlas": "verdant-1",
+     "w": 614,
+     "h": 481,
+     "gameW": 307,
+     "gameH": 240.5,
+     "foot": [
+      307,
+      481
+     ]
+    },
+    {
+     "frame": "wildfruit-2",
+     "atlas": "verdant-1",
+     "w": 707,
+     "h": 479,
+     "gameW": 353.5,
+     "gameH": 239.5,
+     "foot": [
+      354,
+      479
+     ]
+    }
+   ]
+  },
+  {
+   "id": "giantflower",
+   "name": "Giant flowers",
+   "group": "verdant",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 110,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "giantflower-1",
+     "atlas": "verdant-1",
+     "w": 165,
+     "h": 220,
+     "gameW": 82.5,
+     "gameH": 110,
+     "foot": [
+      83,
+      220
+     ]
+    },
+    {
+     "frame": "giantflower-2",
+     "atlas": "verdant-1",
+     "w": 145,
+     "h": 227,
+     "gameW": 72.5,
+     "gameH": 113.5,
+     "foot": [
+      73,
+      227
+     ]
+    },
+    {
+     "frame": "giantflower-3",
+     "atlas": "verdant-1",
+     "w": 150,
+     "h": 216,
+     "gameW": 75,
+     "gameH": 108,
+     "foot": [
+      75,
+      216
+     ]
+    },
+    {
+     "frame": "giantflower-4",
+     "atlas": "verdant-1",
+     "w": 156,
+     "h": 220,
+     "gameW": 78,
+     "gameH": 110,
+     "foot": [
+      78,
+      220
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fern",
+   "name": "Ferns",
+   "group": "verdant",
+   "kind": "nature",
+   "count": 4,
+   "fit": "h",
+   "size": 60,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "fern-1",
+     "atlas": "verdant-2",
+     "w": 174,
+     "h": 127,
+     "gameW": 87,
+     "gameH": 63.5,
+     "foot": [
+      87,
+      127
+     ]
+    },
+    {
+     "frame": "fern-2",
+     "atlas": "verdant-2",
+     "w": 185,
+     "h": 113,
+     "gameW": 92.5,
+     "gameH": 56.5,
+     "foot": [
+      93,
+      113
+     ]
+    },
+    {
+     "frame": "fern-3",
+     "atlas": "verdant-2",
+     "w": 151,
+     "h": 118,
+     "gameW": 75.5,
+     "gameH": 59,
+     "foot": [
+      76,
+      118
+     ]
+    },
+    {
+     "frame": "fern-4",
+     "atlas": "verdant-2",
+     "w": 188,
+     "h": 121,
+     "gameW": 94,
+     "gameH": 60.5,
+     "foot": [
+      94,
+      121
+     ]
+    }
+   ]
+  },
+  {
+   "id": "stonewall",
+   "name": "Tumbledown wall",
+   "group": "verdant",
+   "kind": "nature",
+   "count": 4,
+   "fit": "w",
+   "size": 150,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "stonewall-1",
+     "atlas": "verdant-2",
+     "w": 310,
+     "h": 165,
+     "gameW": 155,
+     "gameH": 82.5,
+     "foot": [
+      155,
+      165
+     ]
+    },
+    {
+     "frame": "stonewall-2",
+     "atlas": "verdant-2",
+     "w": 259,
+     "h": 165,
+     "gameW": 129.5,
+     "gameH": 82.5,
+     "foot": [
+      130,
+      165
+     ]
+    },
+    {
+     "frame": "stonewall-3",
+     "atlas": "verdant-2",
+     "w": 307,
+     "h": 143,
+     "gameW": 153.5,
+     "gameH": 71.5,
+     "foot": [
+      154,
+      143
+     ]
+    },
+    {
+     "frame": "stonewall-4",
+     "atlas": "verdant-2",
+     "w": 293,
+     "h": 171,
+     "gameW": 146.5,
+     "gameH": 85.5,
+     "foot": [
+      147,
+      171
+     ]
+    }
+   ]
+  },
+  {
+   "id": "townhall",
+   "name": "Town Hall",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 406,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "townhall-1",
+     "atlas": "buildings-17",
+     "w": 812,
+     "h": 807,
+     "gameW": 406,
+     "gameH": 403.5,
+     "foot": [
+      406,
+      807
+     ]
+    }
+   ]
+  }
+ ]
+}

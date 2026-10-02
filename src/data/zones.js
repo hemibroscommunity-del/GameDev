@@ -61,6 +61,47 @@ export const ZONES = {
     element: null, level: [0, 0], music: 'town', safe: true,
     palette: { ground: '#4a6741', path: '#8b7355', accent: '#5a7a50' }
   },
+  /* ═══ v2.3.2978: THE WHEEL, the one seamless map, as its own zone ═══
+     Owner: "can you place the monsters where they belong in their zones (on
+     the ends closest to the central map)?"  `?trial=wheel` rode 'worldview',
+     the safe empty hub, sharing that id with every ordinary World View player
+     on a different map.  Against a worker that advertises caps.wheelmonsters
+     it enters this zone instead (src/game/worldTrial.js trialZoneFor), where
+     the server stands each element zone's own monsters at the inner end of
+     its spoke (server/src/wheelzone.js).  NOT safe -- that is what lets them
+     in -- but levels [1, 2] like every zone today, and no spawns of its own:
+     the monsters are the server's, each carrying its `home` zone, which
+     skins it.  The size is the Wheel's (43,008 px); worldTrial.js gives it
+     the trial's look and exits at boot, as it gives 'worldview' them.
+     MIRROR: server/src/data.js VALID_ZONE_IDS (zones.test.mjs). */
+  wheel: {
+    id: 'wheel', name: 'The Wheel', w: 1344, h: 1344,
+    element: null, level: [1, 2], music: 'town', safe: false,
+    palette: { ground: '#1c467e', path: '#c9a36a', accent: '#86b94f' },
+    spawns: [],
+    sharedRows: true,
+    /* the element zones whose monsters stand on it, in their spokes' order --
+       MIRROR of server/src/wheelzone.js WHEEL.HOMES (wheelzone.test.mjs).
+       Their art is this zone's art (monsterVariants.js variantsForZone) */
+    homes: ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'],
+    /* v2.3.2990: the safe ground's radius round the Wheel's middle, game px --
+       the commons and Brotown, where no monster goes after anyone; a player
+       who has not yet spoken to Mayor Bro (and so carries no sword) stays
+       inside it (src/game/wheelHome.js).  MIRROR of server/src/wheelspawns.js
+       WHEEL_SAFE_R (test-world-core). */
+    safeR: 2937,
+    /* v2.3.2990: the middle of where each land's monsters stand, game px.  A
+       quest naming a land says which one ("Frost Ridge"), and the gold road
+       points at this spot (src/game/questRoute.js).  Every one of them stands
+       within ~550 px of it.  MIRROR of server/src/wheelspawns.js
+       WHEEL_SPAWNS[home].anchor (test-world-core). */
+    lands: {
+      frost: [18985, 18985], ember: [21504, 18050], sky: [23946, 19062], hollows: [24946, 21504],
+      thunder: [23934, 23934], tidal: [21504, 24958], mist: [19087, 23921], verdant: [17966, 21504],
+    },
+    /* not a place to list: the encyclopedia's zones leave it out */
+    hidden: true,
+  },
   worldview: {
     /* v2.3.859: zoomed-out hub map. The town is the small circle at its
        centre; trails branch to every region (WORLDVIEW_EXITS). The avatar
@@ -380,6 +421,22 @@ export const ZONES = {
    the two halves only make sense together -- a small far monster that still
    hits from flat distances strikes from outside its own body. */
 let _depthLive = false;
+/* ═══ v2.3.2978: THE WORLD VIEW, BY EITHER NAME ═══
+   'worldview' is the hub town's World View exit leads to.  The Wheel trial
+   rides it -- or, against a worker that runs the Wheel's monsters, its own
+   zone 'wheel' (src/game/worldTrial.js trialZoneFor) -- and either way it is
+   the same map, with the same exits, the same arrival and the same way home.
+   Every hub rule written for 'worldview' (zoneTransitions.js, the exits and
+   map in tileRenderer.js, the quest route, ...) asks this instead, so the
+   Wheel keeps them all when its monsters arrive. */
+export function isWorldViewZone(z) { return z === 'worldview' || z === 'wheel'; }
+/* v2.3.2978: the zones whose monsters stand in this one -- the Wheel's eight
+   lands -- or null for an ordinary zone, whose monsters are its own. */
+export function zoneHomes(zoneId) {
+  const z = Object.prototype.hasOwnProperty.call(ZONES, zoneId) ? ZONES[zoneId] : null;
+  return z && Array.isArray(z.homes) ? z.homes : null;
+}
+
 export function setZoneDepthLive(on) { _depthLive = !!on; }
 function _previewOn(name) {
   if (name !== 'depth') return false;

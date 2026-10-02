@@ -13,6 +13,13 @@
 
 const TILE = 32;
 
+/* v2.3.2932: the world trial replaces the World View's one picture with a
+   streamed ground, so "is its map resident" means "are the trial's first
+   pieces warm" -- which is what arms the ordinary zone-loading overlay on the
+   way in.  (Relative import: this file is loaded straight into Node by
+   tools/qa/qa-mapfree-race.mjs.) */
+import { isWorldTrialZone, worldTrialReady } from '../game/worldTrial.js';
+
 // zoneId -> /maps/<file>.tmx
 // All 9 main zones now use single-image maps via IMAGE_ZONE_MAPS.
 // This map is kept for any future zones (dungeons, farm, etc.) that
@@ -198,6 +205,7 @@ export const WALKABILITY_MAPS = {
  *  cleared by freeZoneMap. */
 const _residentZoneMaps = new Set();
 export function isZoneMapResident(zoneId) {
+  if (isWorldTrialZone(zoneId)) return worldTrialReady();
   /* v2.3.1406: a zone with no image map has nothing to load — report it
      resident so the transition gate never arms (else a procedural-map
      zone would flash the overlay on EVERY entry for a near-instant load). */

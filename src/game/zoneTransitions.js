@@ -27,6 +27,9 @@ import { _typeof } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
 import { preloadZoneAssets, freeZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate; v2.3.2272: and its exit half */
+import { syncWorldTrial, trialZoneFor } from '@/game/worldTrial.js'; /* v2.3.2932: the world trial; v2.3.2978: + the Wheel's own zone */
+import { wheelSpawnTick, wheelSpawnPass, wheelCommonsGate } from '@/game/wheelHome.js'; /* v2.3.2990: you start in the Wheel's Brotown */
+import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel' */
 import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
 import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2859: town's NPCs + buildings load and free with town */
 
@@ -83,7 +86,7 @@ function _freeLeftZoneAssets(fromZone, toZone) {
  * them gets a fix and the other does not. */
 export function releaseLeftZoneArt(fromZone, toZone) {
   if (!fromZone || fromZone === toZone) return;
-  if (fromZone !== 'town' && fromZone !== 'worldview') {
+  if (fromZone !== 'town' && !isWorldViewZone(fromZone)) {
     setTimeout(function () {
       Promise.resolve(freeZoneMap(fromZone)).catch(function () {});
     }, 400);
@@ -445,7 +448,7 @@ export function driveDevWarp(S) {
   if (w.nextAt && Date.now() < w.nextAt) return;
 
   var door = null;
-  if (S.currentZone === 'town' || S.currentZone === 'worldview') {
+  if (S.currentZone === 'town' || isWorldViewZone(S.currentZone)) {
     var exits = S.currentZone === 'town' ? TOWN_EXITS : WORLDVIEW_EXITS;
     var i;
     for (i = 0; i < exits.length; i++) { if (exits[i].zoneId === w.to) { door = exits[i]; break; } }
@@ -479,6 +482,12 @@ export function driveDevWarp(S) {
 
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
+  syncWorldTrial(S);   /* v2.3.2932: the world trial's walk grid + readout (one falsy check when off) */
+  /* v2.3.2990: on the way in and after a death, down town's stairs into the
+     Wheel's Brotown; and in the Wheel, an unarmed player stays on its safe
+     ground (wheelHome.js) */
+  wheelSpawnTick(S);
+  wheelCommonsGate(S);
   driveDevWarp(S);   /* v2.3.2308: one leg of a pending test-panel warp */
   syncTownScenery(S);   /* v2.3.2859: town's NPCs + buildings, whichever way you arrived */
         /* v2.3.1406: STUCK-GATE FAILSAFE.  S._zoneLoading is normally
@@ -494,7 +503,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
            pure belt-and-braces).  The bestExit-mismatch case is cleared
            inside the hub block where bestExit is known. */
         if (S._zoneLoading) {
-          var _zlStale = S.currentZone !== 'town' && S.currentZone !== 'worldview';
+          var _zlStale = S.currentZone !== 'town' && !isWorldViewZone(S.currentZone);
           if (!_zlStale && S._zoneLoading.t && Date.now() - S._zoneLoading.t > 20000) _zlStale = true;
           if (_zlStale) { S._zoneLoading = null; hideZoneLoadingOverlay(); }
         }
@@ -505,7 +514,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
         /* v2.3.859: hubs with exit markers -- the town and the World View.
            Each branches via its own exits array. */
         var _hubExits = S.currentZone === 'town' ? TOWN_EXITS
-          : (S.currentZone === 'worldview' ? WORLDVIEW_EXITS : null);
+          : (isWorldViewZone(S.currentZone) ? WORLDVIEW_EXITS : null);
         if (_hubExits) {
           var TOWN_EXIT_R = 2;
           /* ═══ v2.3.1708: THE MARKER YOU CAME OUT OF IS DEAF FOR A MOMENT ═══
@@ -552,6 +561,15 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               bestExit = ex;
             }
           });
+          /* v2.3.2978: town's World View exit leads into the Wheel's own zone
+             when the trial is on and the worker runs its monsters
+             (worldTrial.js trialZoneFor) -- a copy of the exit, so the shared
+             TOWN_EXITS table never changes and everything below (the loading
+             gate, the switch, the arrival) is told the zone it is really for. */
+          if (bestExit) {
+            var _trialTo = trialZoneFor(bestExit.zoneId, S);
+            if (_trialTo !== bestExit.zoneId) bestExit = Object.assign({}, bestExit, { zoneId: _trialTo });
+          }
           /* v2.3.1406: second half of the stuck-gate failsafe — the armed
              load no longer matches where the player is standing (drifted
              off the exit, or a different exit now wins).  Abandon it; the
@@ -586,7 +604,9 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                by going up to the map first. */
             var _tutR = S.rpg || {};
             var _spokeToMayor = !!(_tutR._quests && _tutR._quests.tut_1);
-            if (!_spokeToMayor) {
+            /* v2.3.2990: ...except the trip that starts you in the Wheel's
+               Brotown, whose own Mayor Bro arms you (wheelHome.js) */
+            if (!_spokeToMayor && !wheelSpawnPass(S, bestExit.zoneId)) {
               if (!S._mayorGateAt || Date.now() - S._mayorGateAt > 2500) {
                 S._mayorGateAt = Date.now();
                 if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
@@ -729,7 +749,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 if (!_zl.done) return; /* still loading — hold frozen at the exit */
                 hideZoneLoadingOverlay();
                 S._zoneLoading = null;
-                if (_zl.from && _zl.from !== 'town' && _zl.from !== 'worldview') {
+                if (_zl.from && _zl.from !== 'town' && !isWorldViewZone(_zl.from)) {
                   Promise.resolve(freeZoneMap(_zl.from)).catch(function () {});
                 }
                 /* v2.3.2272: and the variant sheets the zone we just left used
@@ -784,6 +804,17 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               /* Monsters + nodes at shallow depth */
               var depthCfg = DEPTH_CONFIG[entryDepth];
               if(!S._serverMonsters) S.monsters = spawnMonstersForZone(newZone, (depthCfg === null || depthCfg === void 0 ? void 0 : depthCfg.levelMod) || 0);
+              /* v2.3.2978: ...and a server-run list is the zone you LEFT's,
+                 dropped at the flip as the spoke return drops its own ("hub
+                 has no monsters", below).  Until the Wheel ('wheel') no hub
+                 held any, so this never mattered: the Wheel's 48 stayed in
+                 the list until town's zone_state came in, the renderer re-made
+                 them in town, and _freeLeftZoneAssets pulled their sheets out
+                 from under them a beat later ("reading 'addressModeU'",
+                 mp-wheelmonsters).  Nothing of the destination's can be in the
+                 list yet -- a zone_state stamped for a zone you are not in is
+                 dropped (wsClient, v2.3.1181) -- so it is always safe. */
+              else S.monsters = [];
               if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(bestExit.zoneId, entryDepth);
               /* v2.3.1301: apply a buffered node snapshot that raced the
                  zone flip, or arm the lost-move reclaim (nodeSync.js). */
@@ -870,7 +901,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                  Falls back to the old centre-south spawn when no reciprocal
                  marker exists, so an unexpected hub pairing can never strand
                  anyone at (0,0). */
-              if (bestExit.zoneId === 'worldview' || bestExit.zoneId === 'town') {
+              if (isWorldViewZone(bestExit.zoneId) || bestExit.zoneId === 'town') {
                 P.x = midX; P.y = midY + TILE * 7;
                 /* ═══ v2.3.2075: THE WORLD VIEW'S TOWN IS WALLED NOW ═══
                    Owner: "make sure the player doesn't spawn on the line or
@@ -884,9 +915,11 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 var _dstExits = bestExit.zoneId === 'town' ? TOWN_EXITS : WORLDVIEW_EXITS;
                 var _backMark = null;
                 for (var _bi = 0; _bi < _dstExits.length; _bi++) {
-                  if (_dstExits[_bi].zoneId === S._enteredFromHub) { _backMark = _dstExits[_bi]; break; }
+                  /* v2.3.2978: town's World View stairs are the way back from
+                     the Wheel's own zone too (trialZoneFor maps them there) */
+                  if (trialZoneFor(_dstExits[_bi].zoneId, S) === S._enteredFromHub) { _backMark = _dstExits[_bi]; break; }
                 }
-                if (bestExit.zoneId === 'worldview') {
+                if (isWorldViewZone(bestExit.zoneId)) {
                   P.x = WORLDVIEW_ARRIVAL.x; P.y = WORLDVIEW_ARRIVAL.y;
                 }
                 if (_backMark) {
@@ -900,7 +933,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                      tiles up from the stairs is open plaza, well inside the
                      ring, and tools/dev/check-town-rim.mjs recomputes this
                      exact point and fails if it ever is not. */
-                  if (bestExit.zoneId !== 'worldview') {
+                  if (!isWorldViewZone(bestExit.zoneId)) {
                     P.x = (_backMark.tx + _hdx / _hlen * 4) * TILE;
                     P.y = (_backMark.ty + _hdy / _hlen * 4) * TILE;
                   }
@@ -1062,7 +1095,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.camera.y = P.y - H / 2;
             } /* end zone transition */
           }
-        } else if (S.currentZone !== 'town' && S.currentZone !== 'worldview' && !S._inDungeon) {
+        } else if (S.currentZone !== 'town' && !isWorldViewZone(S.currentZone) && !S._inDungeon) {
           /* In combat zones: return to town when NEAR a tile-9 return marker.
              v2.3.823: was an exact step-onto-tile-9 check, but the player's
              bottom foot-margin (kept off the dashboard) now leaves the very
@@ -1088,7 +1121,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           }
           if (_czNearReturn) {
             var _leftZone = S.currentZone; /* v2.3.1405: free its ~4MB map on exit (below) */
-            var _retHub = (S._enteredFromHub === 'worldview') ? 'worldview' : 'town'; /* v2.3.859 */
+            var _retHub = isWorldViewZone(S._enteredFromHub) ? S._enteredFromHub : 'town'; /* v2.3.859; v2.3.2978: either name */
             S.currentZone = _retHub;
             updateZoneDimensions(_retHub);
             BT_AUDIO.startZoneAmbient(_retHub);
@@ -1143,7 +1176,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             nudgeSpawnToWalkable(S, _retHub, twn2);
             S._enteredFromDir = null;
             S._enteredFromExit = null;
-            pushDmgPopup(S, P.x, P.y - 40, _retHub === 'worldview' ? 'World View' : 'Town', '#5b52ff');
+            pushDmgPopup(S, P.x, P.y - 40, isWorldViewZone(_retHub) ? 'World View' : 'Town', '#5b52ff');
             S.npcs = null;
             S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
@@ -1176,7 +1209,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                zone's map would accumulate resident).  Hub maps are kept
                (freeZoneMap skips town/worldview).  Safe: tileRenderer
                destroyed the old ground sprite on the hub's rebuild. */
-            if (_leftZone && _leftZone !== 'town' && _leftZone !== 'worldview') {
+            if (_leftZone && _leftZone !== 'town' && !isWorldViewZone(_leftZone)) {
               Promise.resolve(freeZoneMap(_leftZone)).catch(function () {});
             }
             /* v2.3.2272: same on the way back to a hub.  A hub needs no

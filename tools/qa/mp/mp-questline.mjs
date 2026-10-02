@@ -29,6 +29,9 @@
  *   • ONE REAL ROUND TRIP is walked anyway — town → World View → Frost Ridge
  *     → back — because "go to the zone and come back to hand it in" is the
  *     shape of every step, and a chain that cannot be walked is not a chain.
+ *     (v2.3.2990: the Wheel is the world and you start in its Brotown, so the
+ *     trip is out of its safe commons onto Frost Ridge's land and back; the
+ *     old World View's walk stays, for a run with `?trial=off`.)
  *     The remaining steps hand in from town, which is where the giver is.
  *
  * Read from the WORKER at every checkpoint. The client's own _quests map is
@@ -51,8 +54,14 @@ const ARC = [
 ];
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Pilgrim', wsPort, webPort });
+  /* v2.3.2990: the game as a player gets it -- the Wheel is the world, and a
+     fresh character starts in its Brotown, where its own Mayor Bro gives
+     and takes every quest here (src/game/wheelHome.js) */
+  const P = await H.newPlayer(browser, { name: 'Pilgrim', wsPort, webPort, world: 'wheel' });
   await H.enterWorld(P);
+  const arrived = await H.waitFor(P, (S) => ({ z: S.currentZone, loading: !!S._zoneLoading }),
+    (v) => (v.z === 'wheel' || v.z === 'worldview') && !v.loading, { timeout: 120000, label: 'start in the Wheel' }).catch(() => null);
+  rec.ok('a fresh character starts in the Wheel\'s Brotown, not today\'s town', !!arrived, arrived);
   await P.page.waitForTimeout(1500);
   const myId = await H.readState(P, (S) => S.myId);
 
@@ -212,7 +221,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
       /* ── THE ROUND TRIP.  Done once, on the first step, because every step
             has this shape and a chain you cannot walk is not a chain. ── */
-      const marks = await P.page.evaluate(() => {
+      /* v2.3.2990: in the Wheel the quest's land is its spoke, past the safe
+         commons -- walked out to and back from, at a pace the worker takes
+         (its anti-teleport cap is 500 px/s + 80), as there is no door */
+      const inWheel = await H.readState(P, (S) => S.currentZone === 'wheel' || S.currentZone === 'worldview');
+      if (inWheel) {
+        const { WHEEL_SPAWNS, WHEEL_CENTRE, WHEEL_SAFE_R } = await import(H.REPO + '/server/src/wheelspawns.js');
+        const home = await P.page.evaluate(() => { const S = window._gameState.current; return { x: S.player.x, y: S.player.y }; });
+        const [ax, ay] = WHEEL_SPAWNS.frost.anchor, [cx, cy] = WHEEL_CENTRE;
+        const ux = (ax - cx) / Math.hypot(ax - cx, ay - cy), uy = (ay - cy) / Math.hypot(ax - cx, ay - cy);
+        /* just past the safe ground on Frost Ridge's spoke, short of its snowmen */
+        const out = { x: cx + ux * (WHEEL_SAFE_R + 80), y: cy + uy * (WHEEL_SAFE_R + 80) };
+        await H.hopTo(P, out.x, out.y, { tries: 120 });
+        await P.page.waitForTimeout(800);
+        const there = await P.page.evaluate(() => {
+          const S = window._gameState.current, T = window.__btWorldTrial;
+          const h = T && T.here ? T.here(S.player.x, S.player.y) : null;
+          return { x: Math.round(S.player.x), y: Math.round(S.player.y), region: h ? h.region : null, zone: S.currentZone };
+        });
+        const rOut = Math.hypot(there.x - cx, there.y - cy);
+        const outOk = rOut > WHEEL_SAFE_R && there.zone === 'wheel';
+        rec.ok(`an armed character can leave Brotown's safe commons for Frost Ridge's land (${Math.round(rOut)} px from the middle, ${there.region || '?'})`,
+          outOk, there);
+        await H.hopTo(P, home.x, home.y, { tries: 120 });
+        await P.page.waitForTimeout(800);
+        const back = await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y), zone: S.currentZone }));
+        const backOk = Math.hypot(back.x - home.x, back.y - home.y) < 40 && back.zone === 'wheel';
+        rec.ok('...and walk back into Brotown to hand it in', backOk, back);
+        walked = { wheel: true, out: outOk, back: backOk, there, home: back };
+      }
+      const marks = inWheel ? null : await P.page.evaluate(() => {
         const f = window._gameFns;
         if (!f || !f.TOWN_EXITS || !f.WORLDVIEW_EXITS) return null;
         return {
@@ -542,7 +580,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { stash: (end && end.weaponStash || []).map((w) => w && w.type), worn: end && end.weapon && end.weapon.type });
   rec.ok('and the line paid real gold', !!end && (end.coins || 0) > 0, end && end.coins);
   if (walked) rec.ok('the round trip walked cleanly in both directions',
-    walked.toWorld && walked.toFrost && walked.backFromSpoke && walked.backHome, walked);
+    walked.wheel ? walked.out && walked.back : walked.toWorld && walked.toFrost && walked.backFromSpoke && walked.backHome, walked);
 
   await P.ctx.close().catch(() => {});
 }

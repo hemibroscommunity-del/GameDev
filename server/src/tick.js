@@ -15,6 +15,8 @@
  * Start/stop call sites (webSocketConnect first-join, webSocketClose
  * last-leave) stay in index.js untouched. */
 
+import { WHEEL_ZONE } from './wheelzone.js';   /* v2.3.2978: the Wheel's monsters go out by interest */
+
 /* v2.3.2062: server ticks between regen passes. Exported because the Mana
    Draught sizes its per-tick floor against this cadence (server/src/data.js
    manaSurgePerTick), and a cadence that lives as a literal in one file and an
@@ -467,7 +469,10 @@ export const tickMethods = {
          (overwhelmingly common) unmuted case.  Sessions whose mutes do not
          intersect this tick's speakers pass null and keep sharing the
          plain per-(zone, protocolVersion) serialization. */
-      const buildFor = (zone, pv, muted) => {
+      /* v2.3.2978: `interest` -- for a v2 session in the Wheel, the monsters
+         it hears about ({seen, entered}, wheelzone.js _wheelInterest); null
+         everywhere else, which is the unchanged shared path. */
+      const buildFor = (zone, pv, muted, interest) => {
         const d = { type: 'tick', seq, ts };
         let any = false;
 
@@ -498,11 +503,18 @@ export const tickMethods = {
         // Zone-scoped entities.  A session with no resolved zone (still
         // pre-join) simply gets none -- its state_sync carries the world.
         if (zone) {
-          if (this.dirtyMonsters.has(zone)) {
+          if (this.dirtyMonsters.has(zone) || (interest && interest.entered.size > 0)) {
             const monsters = this.monsters[zone];
             if (monsters) {
               let list = null;
-              if (pv === 2) {
+              if (interest) {
+                /* the Wheel: the dirty ones in reach, and every one that just
+                   came into reach, whole */
+                const ids = this.dirtyMonsterIds[zone];
+                const changed = monsters.filter((m) => interest.seen.has(m.id)
+                  && (interest.entered.has(m.id) || (ids && ids.has(m.id))));
+                if (changed.length > 0) list = changed;
+              } else if (pv === 2) {
                 const ids = this.dirtyMonsterIds[zone];
                 if (ids) {
                   const changed = monsters.filter((m) => ids.has(m.id));
@@ -558,10 +570,18 @@ export const tickMethods = {
            A muter's key names exactly the intersection, so two players who
            mute the same flooder still share ONE serialization. */
         const muteKey = chatSpeakers ? this._chatModMuteKey(s.id, chatSpeakers) : '';
-        const key = pv + '|' + zone + muteKey;
+        let key = pv + '|' + zone + muteKey;
+        /* v2.3.2978: a v2 session in the Wheel hears its own part of it
+           (wheelzone.js INTEREST_R), so it serialises on its own; leaving the
+           Wheel forgets what it had heard, so a return re-sends all in reach */
+        let interest = null;
+        if (zone === WHEEL_ZONE && pv === 2 && ps && typeof ps.x === 'number' && typeof ps.y === 'number') {
+          interest = this._wheelInterest(s, ps, this.monsters[zone] || []);
+          key += '|' + s.id;
+        } else if (s._wheelSeen) s._wheelSeen = null;
         let msg = groupCache.get(key);
         if (msg === undefined) {
-          msg = buildFor(zone, pv, muteKey ? this._chatModMuteSet(s.id) : null);
+          msg = buildFor(zone, pv, muteKey ? this._chatModMuteSet(s.id) : null, interest);
           groupCache.set(key, msg);
         }
         if (msg) { try { ws.send(msg); } catch {} }

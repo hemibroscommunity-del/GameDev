@@ -1,0 +1,168 @@
+<!doctype html>
+<!-- ═══ v2.3.2934: THE STYLE LAB ═══
+
+  Owner, 2026-09-29: "Maybe I'll test which aesthetic style looks best.
+  Simple pixel art, high definition pixel art, painterly, and any other art
+  styles you think would pair well with the simple character art sprite …
+  Help me out with a test plan too."
+
+  One page to run that test on a phone (the plan itself: docs/STYLE-TEST.md):
+  copy each look's prompts into ChatGPT, bring the pictures back, and walk the
+  bro round them on a stand-in for the game's screen -- at the game's scale,
+  beside the real goblin, slime and blacksmith, under code-drawn night, rain,
+  water and shadows -- then score each look.
+
+  SELF-CONTAINED, like the other pages in public/tools: no external scripts,
+  styles or fonts, and nothing is uploaded anywhere.  Pictures stay in this
+  browser (IndexedDB); scores in localStorage.
+  Driven in a real browser by tools/qa/style-lab.mjs (window.__styleLab).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>BroTown — Style Lab</title>
+<style>
+  :root { --bg:#121B20; --card:#202C32; --line:rgba(238,242,235,.14); --ink:#F7F2E7;
+          --mut:#96A2A0; --brass:#D8A85F; --ok:#59BF91; --bad:#E06A5E;
+          --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--bg); color:var(--ink); padding:20px 16px 80px;
+         font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; display:grid; gap:16px; }
+  h1 { font-size:24px; margin:0 0 2px; }
+  h2 { font-size:17px; margin:0 0 4px; }
+  h3 { font-size:13px; text-transform:uppercase; letter-spacing:.9px; color:var(--brass); margin:14px 0 6px; font-weight:600; }
+  p { margin:6px 0; }
+  .sub, .mut { color:var(--mut); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .btn, button { appearance:none; border:1px solid var(--line); background:#2A3940; color:var(--ink);
+         border-radius:8px; padding:10px 14px; min-height:44px; font-family:inherit; font-size:14px; font-weight:600; line-height:1.2;
+         cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+  button:disabled { opacity:.45; cursor:default; }
+  .brass { background:var(--brass); color:#1b1206; border-color:var(--brass); }
+  .danger { color:#FFC7C0; border-color:rgba(224,106,94,.5); }
+  .chip { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:99px; background:#34474F; color:#DDE6E1; margin-left:6px; vertical-align:2px; }
+  .chip.ok { background:rgba(89,191,145,.22); color:#A9E6C8; }
+  .facts { font-size:14px; color:#C9D1CC; }
+  .facts b { color:var(--ink); }
+  .slot { border-top:1px solid var(--line); padding-top:10px; margin-top:10px; }
+  .slot-head { display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+  .slot-name { font-weight:700; }
+  .vers { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+  .ver { border:1px dashed rgba(216,168,95,.45); border-radius:8px; padding:8px; min-width:0; }
+  .ver .lbl { font-size:12px; color:var(--mut); margin-bottom:6px; }
+  .thumb { display:block; width:100%; aspect-ratio:1; object-fit:contain; background:#0c1216; border-radius:6px; }
+  .ver .row { margin-top:6px; gap:6px; }
+  .ver .btn, .ver button { padding:8px 10px; min-height:40px; font-size:13px; flex:1 1 auto; }
+  label.btn input { display:none; }
+  textarea { width:100%; min-height:130px; background:#18242A; color:var(--ink); border:1px solid var(--line);
+             border-radius:6px; padding:9px 10px; font:12.5px/1.45 var(--mono); resize:vertical; }
+  details summary { cursor:pointer; color:#F3D9A2; font-weight:600; margin:10px 0 4px; }
+  .tune { display:grid; grid-template-columns:auto 1fr; gap:8px 12px; align-items:center; font-size:14px; }
+  select, input[type=range] { width:100%; }
+  select { background:#18242A; color:var(--ink); border:1px solid var(--line); border-radius:6px; min-height:40px; padding:6px; font:inherit; }
+  .crit { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; align-items:center; font-size:14px; margin:6px 0; }
+  .stars { display:inline-flex; gap:2px; }
+  .stars button { min-height:36px; min-width:36px; padding:0; font-size:20px; background:transparent; border:0; color:#56656A; }
+  .stars button.on { color:var(--brass); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 6px; border-top:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; }
+  .broimg { display:block; width:100%; max-width:280px; aspect-ratio:1; border-radius:8px; border:1px solid var(--line); background:#0c1216; }
+  ol.plan { padding-left:20px; margin:6px 0; } ol.plan li { margin:4px 0; color:#C9D1CC; }
+  .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); max-width:min(92vw,560px); z-index:80;
+           background:#2A3940; border:1px solid var(--line); border-radius:10px; padding:12px 16px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
+  .toast[data-bad="1"] { border-color:rgba(224,106,94,.7); color:#FFD6D0; }
+
+  /* the stand-in game screen */
+  .pv { position:fixed; inset:0; z-index:60; background:#000; touch-action:none; }
+  .pv canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .pvbar { position:absolute; left:0; right:0; top:0; padding:calc(env(safe-area-inset-top, 0px) + 6px) 8px 6px;
+           display:flex; gap:6px; align-items:center; background:rgba(12,18,22,.82); border-bottom:1px solid rgba(216,168,95,.45); }
+  .pvbar button { min-height:40px; padding:6px 10px; }
+  .pvname { flex:1; min-width:0; text-align:center; font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pvset { position:absolute; left:8px; right:8px; top:calc(env(safe-area-inset-top, 0px) + 60px); padding:12px; border-radius:10px;
+           background:rgba(20,29,34,.95); border:1px solid var(--line); display:grid; gap:8px; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; flex-wrap:wrap; }
+  .seg button { border:0; border-radius:0; background:transparent; min-height:38px; padding:6px 10px; }
+  .seg button.on { background:#34474F; }
+  .setrow { display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; font-size:14px; }
+  .pvnote { position:absolute; left:8px; right:8px; bottom:calc(env(safe-area-inset-bottom, 0px) + 50px); text-align:center;
+            font-size:13px; color:#F3D9A2; text-shadow:0 1px 3px #000; pointer-events:none; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Style Lab</h1>
+    <p class="sub">Which look should BroTown have? Make each one with ChatGPT, see it round your bro at game size, and score it.</p>
+  </header>
+
+  <section class="card" id="decided">
+    <h2>Decided: HD pixel art</h2>
+    <p>You chose <b>HD pixel art</b> (v2.3.2935). The <b>HD pixel art (chosen)</b> look below uses exactly the settings every picture in the game will get: <b>2 px per game px</b>, about your phone's own sharpness (a 1.5 game px grid until v2.3.2942, which came out soft and gritty), one 128-colour palette and 512 game px ground tiles. Put any picture in it to see it at game size next to your bro before you keep it.</p>
+    <p><b>The world is matched to the style key, not to your bro</b> (v2.3.2939). He is simpler pixel art than the world, and ChatGPT copies what it sees, so the chosen look's prompts attach the style key from <a href="../world/" style="color:#F3D9A2">the World Builder</a>, ask for every material drawn as itself, and give sizes in words. He stays the size check in every preview.</p>
+    <p class="mut">The rules: <code>docs/WORLD-BIBLE.md</code> §6. The other looks stay here for the record.</p>
+  </section>
+
+  <section class="card">
+    <h2>How the test works</h2>
+    <ol class="plan">
+      <li><b>Save your bro's picture</b> below. Attach it to every ChatGPT chat for the test's looks, so each is drawn to match him. (The chosen look attaches the style key instead.)</li>
+      <li><b>Round 1 (one evening):</b> for each look, copy the <b>Ground</b> and <b>Objects</b> prompts into two new chats and bring the pictures back as version A. The two looks that borrow pictures need none of their own.</li>
+      <li><b>Preview</b> each look and walk around. Try night, rain and the open dashboard. Score it. Keep the best two or three.</li>
+      <li><b>Round 2:</b> for those, make version B of the ground and objects (a fresh chat each, same prompt), plus the Building and the NPC. Score again. The A-and-B line says whether ChatGPT can keep the look up for hundreds of pictures.</li>
+      <li><b>Sleep on it</b>, then show three friends the previews without saying which is which. Copy your results and send them to Claude.</li>
+    </ol>
+    <p class="mut">The whole plan: <code>docs/STYLE-TEST.md</code>. Pictures stay in this browser; nothing is uploaded.</p>
+  </section>
+
+  <section class="card" id="bro">
+    <h2>1. Your bro</h2>
+    <p>ChatGPT matches what it can see. The test's other looks attach this picture to every prompt below. The chosen HD pixel art attaches the style key instead.</p>
+    <img id="bro-img" class="broimg" alt="The bro, front, side and back" hidden>
+    <p class="mut" id="bro-hint">Preparing…</p>
+    <div class="row"><a id="bro-save" class="btn brass" download="bro-reference.png" hidden>Save bro picture</a><button id="bro-share" hidden>Share…</button></div>
+  </section>
+
+  <div id="styles"></div>
+
+  <section class="card" id="results">
+    <h2>Results</h2>
+    <div id="results-table"></div>
+    <div class="row"><button id="results-copy" class="brass">Copy my results</button></div>
+  </section>
+</div>
+
+<div class="pv" id="pv" hidden>
+  <canvas id="pv-canvas" aria-label="The look, round the bro. Drag to walk."></canvas>
+  <div class="pvbar">
+    <button id="pv-close" aria-label="Close">✕</button>
+    <button id="pv-prev" aria-label="Previous look">◀</button>
+    <div class="pvname" id="pv-name"></div>
+    <button id="pv-next" aria-label="Next look">▶</button>
+    <button id="pv-ver" aria-label="Version A or B">A</button>
+    <button id="pv-set" aria-label="Settings">⚙</button>
+  </div>
+  <div class="pvset" id="pv-settings" hidden>
+    <div class="setrow"><span>Time</span><span class="seg" data-opt="time"><button data-v="day">Day</button><button data-v="dusk">Dusk</button><button data-v="night">Night</button></span></div>
+    <div class="setrow"><span>Weather</span><span class="seg" data-opt="weather"><button data-v="none">None</button><button data-v="rain">Rain</button><button data-v="snow">Snow</button></span></div>
+    <div class="setrow"><span>Dashboard</span><span class="seg" data-opt="dash"><button data-v="closed">Closed</button><button data-v="open">Open</button></span></div>
+    <div class="setrow"><span>Shadows</span><span class="seg" data-opt="shadows"><button data-v="1">On</button><button data-v="0">Off</button></span></div>
+    <div class="setrow"><span>Trees sway</span><span class="seg" data-opt="sway"><button data-v="1">On</button><button data-v="0">Off</button></span></div>
+    <div class="setrow"><span>Game frame</span><span class="seg" data-opt="frame"><button data-v="1">On</button><button data-v="0">Off</button></span></div>
+    <div class="setrow"><span>Stroll when idle</span><span class="seg" data-opt="auto"><button data-v="1">On</button><button data-v="0">Off</button></span></div>
+  </div>
+  <div class="pvnote" id="pv-note"></div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
