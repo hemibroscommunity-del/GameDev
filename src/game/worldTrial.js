@@ -54,7 +54,7 @@
    Vite alias does not exist. */
 import { ZONES } from '../data/zones.js';
 import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/effects.js';
-import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats } from './wheelTrial.js';
+import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo } from './wheelTrial.js';
 import { setAlwaysDay } from './timeOfDay.js';
 
 export const WORLD_TRIAL_ZONE = 'worldview';
@@ -161,6 +161,10 @@ export function applyWorldTrial() {
   if (typeof window !== 'undefined') {
     window.__btWorldTrial = { mode, stats: mode === 'wheel' ? wheelStats : worldTrialStats, manifest: () => _manifest, ready: () => _ready,
       running: () => wheelRunning(), hud: () => (_hud ? _hud.textContent : ''),
+      /* v2.3.2967: the ground drawn at a spot and its footstep sound, the
+         sound under the player now, and the map (its places, for walking to) */
+      ground: (x, y) => wheelGroundAt(x, y), surface: () => footstepSurface(window._gameState && window._gameState.current),
+      wheelMap: () => wheelMapInfo(),
       map: () => { const c = worldTrialMapPicture(WORLD_TRIAL_ZONE); return c ? { w: c.width, h: c.height } : null; } };
   }
   return true;
@@ -265,11 +269,40 @@ export async function preloadWorldTrial() {
 async function preloadWheel() {
   const t0 = performance.now();
   wheelResetCounts();
+  /* v2.3.2967: the grounds' footsteps, behind the same overlay -- but never
+     holding it up past STEPS_WAIT_MS: a step whose clip is late plays dirt */
+  const steps = loadGroundSteps();
   const info = await wheelStart();
   if (info.arrival) setExits(exitBeside(info.arrival), info.arrival, 'west');
   await wheelWarm(WORLDVIEW_ARRIVAL.x, WORLDVIEW_ARRIVAL.y, 360, 620);
+  await Promise.race([steps, new Promise((r) => setTimeout(r, STEPS_WAIT_MS))]);
   _ready = true;
   wheelStats.entryMs = Math.round(performance.now() - t0);
+}
+
+/* ═══ v2.3.2967: EACH GROUND ITS OWN FOOTSTEP ═══
+   The sound of the ground drawn under the player (wheelTrial.wheelStepAt,
+   from the piece of ground laid there), for BT_AUDIO.footstep at every
+   foot plant (entityRenderer).  In the Wheel only: today's zones keep their
+   one dirt step until the owner says otherwise.  Over water or ground not
+   laid yet, the last sound heard. */
+const STEPS_WAIT_MS = 5000;
+let _lastSurface = null;
+export function footstepSurface(S) {
+  if (!S || !S.player || !isWheelTrialZone(S.currentZone)) return null;
+  const s = wheelStepAt(S.player.x, S.player.y);
+  if (s) _lastSurface = s;
+  return s || _lastSurface;
+}
+function audio() {
+  return typeof window !== 'undefined' ? window.BT_AUDIO || null : null;
+}
+function loadGroundSteps() {
+  try {
+    const A = audio();
+    if (A && A.loadGroundSteps) return Promise.resolve(A.loadGroundSteps()).catch(() => {});
+  } catch (e) { /* no audio here */ }
+  return Promise.resolve();
 }
 
 /* Once per frame from zoneTransitions: hand isSolid the walk grid while you
@@ -309,6 +342,9 @@ function syncWheel(S, inTrial, now) {
   if (now - _wheelAwayAt < WHEEL_LINGER_MS) return;
   _wheelAwayAt = 0;
   wheelStop();
+  /* v2.3.2967: and the grounds' footsteps with it (the ZONE-ASSET rule) */
+  try { const A = audio(); if (A && A.dropGroundSteps) A.dropGroundSteps(); } catch (e) { /* no audio here */ }
+  _lastSurface = null;
   _ready = false;
   if (S._tiledWalkable[WORLD_TRIAL_ZONE] === grid) delete S._tiledWalkable[WORLD_TRIAL_ZONE];
 }

@@ -90,6 +90,7 @@ import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, bl
 import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js'; /* v2.3.1757: material recolor; v2.3.2872: + owned pieces -> art */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
+import { footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel) */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
@@ -12172,7 +12173,9 @@ export class EntityRenderer {
            frame (works forward + backpedal; the jog advances <=1 frame/tick). */
         if (display._prevJogFrame !== frameIdx) {
           if (_contacts.indexOf(frameIdx) !== -1 && typeof window !== 'undefined' && window.BT_AUDIO) {
-            window.BT_AUDIO.footstep(isWearingArmor());
+            /* v2.3.2967: on the ground drawn under the feet (the Wheel; null
+               elsewhere, which is today's dirt step) */
+            window.BT_AUDIO.footstep(isWearingArmor(), footstepSurface(S));
           }
           display._prevJogFrame = frameIdx;
         }

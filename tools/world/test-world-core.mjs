@@ -1251,5 +1251,37 @@ console.log('wheel map');
   ok('...small enough to post to the game once (under 40 KB)', JSON.stringify(m).length < 40000, JSON.stringify(m).length);
 }
 
+console.log('footsteps');
+{
+  /* v2.3.2967: each ground its own footstep (footsteps.js, footstepClips.js) */
+  const { STEP_SOUNDS, stepOf, steppedIds, NO_STEP } = await import('../../public/tools/world/core/footsteps.js');
+  const { FOOTSTEP_CLIPS } = await import('../../src/data/footstepClips.js');
+  const { readFileSync, existsSync } = await import('node:fs');
+  const cat = groundCatalog(PLAN);
+  const ids = (Array.isArray(cat) ? cat : Object.values(cat)).map((e) => e.id);
+  const silent = ids.filter((id) => !stepOf(id) && !NO_STEP.includes(id));
+  ok(`every one of the plan's ${ids.length} grounds sounds like something underfoot, but the lava (${steppedIds().length} with a sound)`,
+    silent.length === 0 && !stepOf('lava') && !stepOf('water') && steppedIds().every((id) => ids.includes(id)) && ids.every((id) => !stepOf(id) || STEP_SOUNDS.includes(stepOf(id))),
+    { silent, unknown: steppedIds().filter((id) => !ids.includes(id)) });
+  const heard = new Set(ids.map(stepOf).filter(Boolean));
+  ok(`...and all twelve sounds are used (${[...heard].join(', ')})`, STEP_SOUNDS.length === 12 && STEP_SOUNDS.every((s) => heard.has(s)));
+  const noClip = STEP_SOUNDS.filter((s) => s !== 'dirt' && !FOOTSTEP_CLIPS[s]);
+  ok('every sound but dirt (today\'s footstep-v3) has a clip -- the forest floor grass\'s, until it has its own recording',
+    noClip.length === 0 && !FOOTSTEP_CLIPS.dirt && FOOTSTEP_CLIPS.forest === FOOTSTEP_CLIPS.grass, noClip);
+  const bad = [];
+  let bytes = 0;
+  for (const [name, c] of Object.entries(FOOTSTEP_CLIPS)) {
+    const f = new URL('../../public' + c.url, import.meta.url);
+    if (!existsSync(f)) { bad.push(`${name}: no file`); continue; }
+    const b = readFileSync(f);
+    if (name !== 'forest') bytes += b.length;
+    const mp3 = (b[0] === 0xff && (b[1] & 0xe0) === 0xe0) || b.slice(0, 3).toString() === 'ID3';
+    if (!mp3) bad.push(`${name}: not an mp3`);
+    if (c.key !== 'step-' + (name === 'forest' ? 'grass' : name)) bad.push(`${name}: key ${c.key}`);
+    if (!c.steps.length || c.steps.some(([o, d], i) => !(d >= 0.15 && d <= 0.6) || (i && o < c.steps[i - 1][0] + c.steps[i - 1][1]))) bad.push(`${name}: steps ${JSON.stringify(c.steps)}`);
+  }
+  ok(`...each a small mp3 of single steps, in order, none overlapping the next (${(bytes / 1024).toFixed(0)} KB in all)`, bad.length === 0 && bytes < 300 * 1024, bad);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

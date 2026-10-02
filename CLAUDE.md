@@ -164,7 +164,21 @@ remnant to migrate server-side, not a mode to preserve.
   52 px slab), and a tap opens `src/ui/WorldMapOverlay.jsx` -- portalled to
   the body, as the dashboard covers anything inside the game's wrapper --
   with labels that grow with the zoom: WORLD-MAP-PIPELINE "The minimap and
-  the world map"; `mp-wheelmap` tests it),
+  the world map"; `mp-wheelmap` tests it; and since v2.3.2967 EACH GROUND
+  ITS OWN FOOTSTEP in the Wheel, from the owner's Freesound recordings:
+  `tools/audio/cut_footsteps.py` (pip numpy scipy soundfile lameenc
+  pyloudnorm noisereduce; the WAVs are not kept) cuts them into single
+  steps at footstep-v3's loudness, one small mp3 a sound plus
+  `src/data/footstepClips.js`, GENERATED, step windows measured in the
+  encoded file; `world/core/footsteps.js` names each swatch's sound; the
+  worker sends each piece's `under`, the swatch DRAWN every 3 game px, so
+  the sound changes where the picture does (`wheelGroundAt`,
+  `footstepSurface`); the clips load behind the Wheel's overlay, never in
+  SFX_MANIFEST, and go with its worker; dirt is still footstep-v3, the
+  forest floor plays grass until it has its own, the zones keep dirt;
+  CREDITS.md has the licenses -- two CC BY (snow, ice) credited in the
+  About panel, five to CONFIRM: WORLD-MAP-PIPELINE "Footstep sounds";
+  `mp-wheelsteps` tests it),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

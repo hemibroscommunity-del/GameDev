@@ -1220,10 +1220,61 @@ or background noise, as MP3, like `public/sfx/footstep/`. The game cuts the
 steps apart and varies their pitch and loudness, as `footstep()` in
 `src/data/gameDisplay.js` does today.
 
-**The hookup** (when the sounds come, or sooner on the owner's word): the
-Wheel already knows the swatch under the bro (`wheelHere`). Each swatch
-names its sound, and each step plays that ground's sound, falling back to
-today's dirt step for any sound not made yet.
+### In the game (v2.3.2967)
+
+> Owner, 2026-10-01, with eleven Freesound recordings: *"Here are the
+> footstep sounds you can use in order of how you have them to me (you can
+> use current footstep sound for dirt)."*
+
+Every step in the Wheel now plays the sound of the ground **drawn** under
+the bro's feet. Today's zones keep their one dirt step.
+
+- **The clips.** `tools/audio/cut_footsteps.py` turns each recording into
+  one small mp3 of single steps, `public/sfx/footstep/step-<sound>.mp3`
+  (184 KB for all ten), and writes where each step lies in it to
+  `src/data/footstepClips.js` (generated: run the tool again, never edit).
+  It finds the steps (a step stands out from the walk's quiet; the one-step
+  files are all one step), cuts each from where it rises to where it dies
+  away (at most 0.45 s, faded at both ends so nothing clicks), keeps the
+  best few, brings each to **the loudness of today's step** (footstep-v3,
+  measured the way ears hear it), and **measures** each step's place in the
+  encoded file, because an mp3 decoder starts the sound about 25 ms late.
+  Dirt stays footstep-v3.
+- **Which sound where.** `public/tools/world/core/footsteps.js` names the
+  sound of every swatch (the table above). The ground worker gives each
+  catalog entry its sound.
+- **The ground under the feet.** The plan's cell says only which ground is
+  *meant* at a spot; where two grounds meet or mix, the pictures decide,
+  patch by patch. So the worker sends each piece of ground with `under`, the
+  swatch actually laid every 3 game px (4 KB a piece). `wheelGroundAt(x, y)`
+  reads it, and the sound changes exactly where the picture does.
+- **Playing.** The renderer passes the sound at each foot plant
+  (`footstepSurface`). `BT_AUDIO.footstep(armored, surface)` plays one of
+  that clip's steps, never the same one twice running, with the same
+  armoured or bare pitch and volume as always. Dirt, no ground, or a clip
+  still loading plays today's step: never silence.
+- **Loading.** The ten clips load behind the Wheel's own loading overlay,
+  never in `SFX_MANIFEST` (which every player downloads). They go when the
+  Wheel's worker stops, a few seconds after you leave.
+- **Still open.**
+  - **Forest floor.** The wood step came twice, so the forest floor plays
+    grass until it has its own recording.
+  - **Sand.** The sand walk was recorded beside the surf: its steps stand
+    only 2–4.5 dB over the waves. Cleaned, two steps came out clear, and
+    those two are used. A cleaner recording would be better.
+  - **Licenses.** Five recordings' licenses still need a look (CREDITS.md).
+    Snow and ice are CC BY and are credited in the game's About panel.
+- **Tested.** `tools/world/test-world-core.mjs` checks that every ground
+  has a sound and every sound a clip. `mp-wheelsteps` walks it in Chromium:
+  - town is dirt;
+  - the ten clips decode on the way into the Wheel;
+  - in Chromium's own decoder, every step window holds its step whole;
+  - the town square, the commons and Frost Ridge each play their own ground
+    (gravel, grass, snow);
+  - back home it is dirt again, and the clips are let go.
+
+To change a sound, download a better recording and run the tool with it
+(its Freesound id goes in `SOURCES`).
 
 ## Blend pictures, put away (v2.3.2955)
 

@@ -78,7 +78,11 @@ export const AboutPanel = () => (
       A Hemi Bros game. Most art and all music were made for this
       game with AI tools (OpenAI image generation, Suno). Sound effects come from
       Pixabay and Freesound creators, including floraphonic,
-      freesound_community, matthewvakaliuk73627 and litupsubway. Fonts: Baloo 2,
+      freesound_community, matthewvakaliuk73627 and litupsubway. Footsteps
+      (cut into single steps and levelled) from Freesound.org: "Walking Through
+      Snow" by Percy Duke (CC BY 3.0); "Running, Ice, A" by InspectorJ,
+      www.jshaw.co.uk (CC BY 4.0); and steps by Ali_6868, qubodup, amholma,
+      lukiacostello, jazzkdh, notarget and Phil25. Fonts: Baloo 2,
       Press Start 2P and Source Sans 3 (SIL Open Font License). Built with
       React, PixiJS, Vite and Cloudflare Workers.
     </Section>

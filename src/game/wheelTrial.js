@@ -28,6 +28,7 @@
    own modules, which live there too. */
 const WORKER_URL = '/tools/world/core/ground-worker.js';
 const ROW_KEEP = 160;          /* walk-grid rows kept made, ~14 KB each on iPhone */
+const UNDER_KEEP = 160;        /* v2.3.2967: pieces whose ground-underfoot is kept, 4 KB each */
 
 let _w = null;
 let _initP = null;
@@ -40,6 +41,7 @@ const _warm = new Map();       /* "i,j" -> a piece laid ahead by the zone gate, 
 let _here = null;              /* the swatch under your feet: { q, x, y } */
 let _hereAsked = null;
 const _gotFns = new Set();     /* v2.3.2959: told when a picture some piece went without has come */
+const _under = new Map();      /* v2.3.2967: "i,j" -> the swatch drawn at every 3 game px of that piece */
 
 export const wheelStats = {
   entryMs: null,       /* the way in: the plan, then the first screen of ground */
@@ -163,6 +165,14 @@ export function wheelChunk(i, j, relay) {
     _pending.set(id, { resolve, reject });
     _w.postMessage({ type: 'chunk', id, i, j, relay: !!relay });
   }).then((m) => {
+    /* v2.3.2967: what the feet are on there (a piece laid again replaces it:
+       a picture that came may move where one ground gives way to another) */
+    if (m.under) {
+      const k = i + ',' + j;
+      _under.delete(k);
+      _under.set(k, m.under);
+      if (_under.size > UNDER_KEEP) _under.delete(_under.keys().next().value);
+    }
     if (!relay) {
       wheelStats.loads++;
       wheelStats.lastMs = m.ms;
@@ -223,6 +233,32 @@ export function wheelHere(x, y) {
     region: _here.region, tier: _here.tier, words: _here.words } : null;
 }
 
+/* ═══ v2.3.2967: THE GROUND UNDER YOUR FEET, for the footstep sound ═══
+   The swatch DRAWN at a game position -- read from the piece of ground laid
+   there (the worker's `under`, a byte every 3 game px), so where two
+   grounds meet or mix the sound changes exactly where the picture does,
+   not at the plan's cell edge.  { id, name, step } from the worker's
+   catalog, or null where no piece has been laid (the caller keeps the last
+   sound).  Synchronous: it is read at every foot plant. */
+export function wheelGroundAt(x, y) {
+  const info = _info;
+  if (!info || !info.chunk || !info.chunk.under) return null;
+  const cs = info.chunk.gamePx, n = info.chunk.under;
+  const i = Math.floor(x / cs), j = Math.floor(y / cs);
+  const g = _under.get(i + ',' + j);
+  if (!g) return null;
+  const u = Math.min(n - 1, Math.max(0, Math.floor(((x - i * cs) / cs) * n)));
+  const v = Math.min(n - 1, Math.max(0, Math.floor(((y - j * cs) / cs) * n)));
+  return info.catalog[g[v * n + u]] || null;
+}
+/* ...and what it sounds like (public/tools/world/core/footsteps.js): a
+   footstep sound's name, or null where nobody walks (water, lava) or
+   nothing is laid yet. */
+export function wheelStepAt(x, y) {
+  const c = wheelGroundAt(x, y);
+  return c ? c.step || null : null;
+}
+
 /* ═══ v2.3.2966: THE WHEEL'S MAP ═══
    What the minimap and the world map draw (public/tools/world/core/
    wheelmap.js, built by the worker from the blueprint): the lands and
@@ -242,6 +278,7 @@ export function wheelStop() {
   for (const p of _pending.values()) p.reject(new Error('stopped'));
   _pending.clear();
   _warm.clear();
+  _under.clear();
   _here = null;
   _hereAsked = null;
 }

@@ -38,7 +38,9 @@
  *                                   it says `edgepieces` -- ground.js, EDGE_PIECES;
  *                                   v2.3.2955: and blends only when it says
  *                                   `blends` -- ground.js, BLENDS)
- *   { type: 'chunk', id, i, j }  -> { type: 'chunk', id, i, j, w, h, data, ms }
+ *   { type: 'chunk', id, i, j }  -> { type: 'chunk', id, i, j, w, h, data, ms, under }
+ *                                   (v2.3.2967: `under`, the swatch DRAWN at every
+ *                                   UNDER art px of the piece, for the footsteps)
  *   { type: 'where', id, x, y }  -> { type: 'where', id, q, reg, tier, words }
  *                                   (answered at once; v2.3.2966: the region
  *                                   and tier there, and in words for the map)
@@ -51,12 +53,14 @@ import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, ED
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 import { wheelMap, whereWords } from './wheelmap.js';
+import { stepOf } from './footsteps.js';
 
 const TILE = PIXEL.groundTile;                                    /* 1024 px a swatch */
 const K = Math.round(PLAN.worldPxPerArtPx / PIXEL.gamePxPerArtPx); /* 3 ground px a plan art px: 2 a game px */
 const WPA = PLAN.worldPxPerArtPx;                                 /* 1.5 game px a plan art px */
 const CHUNK = 128;          /* plan art px a piece: 192 game px, 384 ground px */
 const APRON = 1;            /* art px laid past each edge, so smooth scaling reads the true neighbour at a join */
+const UNDER = 2;            /* v2.3.2967: art px (3 game px) a byte of a piece's `under` -- 4 KB a piece */
 const OVERVIEW_CELLS = 4;   /* blueprint cells an overview pixel */
 const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too; v2.3.2951: and blends -- the town's busiest piece needs about 13) */
 const GAME_BASE = '/world/ground/';
@@ -247,9 +251,11 @@ async function init(m) {
     worldW: bp.w * bp.scale * WPA, worldH: bp.h * bp.scale * WPA,
     walk: { cols: bp.w, rows: bp.h, bits },
     overview: ov,
-    chunk: { artPx: CHUNK, gamePx: CHUNK * WPA, px: CHUNK * K, apronPx: APRON * K, cols: Math.ceil(bp.w * bp.scale / CHUNK), rows: Math.ceil(bp.h * bp.scale / CHUNK) },
+    chunk: { artPx: CHUNK, gamePx: CHUNK * WPA, px: CHUNK * K, apronPx: APRON * K, cols: Math.ceil(bp.w * bp.scale / CHUNK), rows: Math.ceil(bp.h * bp.scale / CHUNK),
+      under: CHUNK / UNDER },
     arrival: { x: Math.round((ax - bp.x0) * WPA), y: Math.round((ay - bp.y0) * WPA) },
-    catalog: mm.ids.map((id, q) => ({ id, name: q === mm.water ? 'Water' : mm.catalog[q].name })),
+    /* v2.3.2967: and what each sounds like underfoot (footsteps.js) */
+    catalog: mm.ids.map((id, q) => ({ id, name: q === mm.water ? 'Water' : mm.catalog[q].name, step: q === mm.water ? null : stepOf(id) })),
     water: mm.water,
     made, edges, blends: blends.sort(),
     map,
@@ -484,11 +490,28 @@ async function chunk(m) {
     const t = await tileOf(k, 'M', wait);
     if (t) blends[k] = t;
   }
-  const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, withMaterials: false, blends });
+  const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, blends });
+  const under = underOf(out.mat, out.w);
   trim(keep);
-  post({ type: 'chunk', id: m.id, i: m.i, j: m.j, w: out.w, h: out.h, data: out.data,
+  post({ type: 'chunk', id: m.id, i: m.i, j: m.j, w: out.w, h: out.h, data: out.data, under,
     ms: Math.round(performance.now() - t0), unpacked: decoded.size, unreadable: failed.size,
     /* v2.3.2959: laid without some of its pictures (lay it again later), and
        how the downloads stand */
-    partial: lacking.size > 0, lacking: [...lacking], downloading: dlJobs.size, dlFails }, [out.data.buffer]);
+    partial: lacking.size > 0, lacking: [...lacking], downloading: dlJobs.size, dlFails }, [out.data.buffer, under.buffer]);
+}
+
+/* v2.3.2967: the swatch DRAWN under the piece's own square (not its apron),
+   one byte every UNDER art px, read at the middle of each: what the bro's
+   feet are on, for the footstep sound.  The plan's cell (whereIs) is only
+   the ground meant there; where two grounds meet or mix, the pictures
+   decide, patch by patch, and this is what they decided -- so the sound
+   changes where the ground you see does. */
+function underOf(mat, ow) {
+  const n = CHUNK / UNDER, out = new Uint8Array(n * n);
+  const a = APRON * K, h = (UNDER * K) >> 1;
+  for (let v = 0; v < n; v++) {
+    const row = (a + v * UNDER * K + h) * ow + a + h;
+    for (let u = 0; u < n; u++) out[v * n + u] = mat[row + u * UNDER * K];
+  }
+  return out;
 }
