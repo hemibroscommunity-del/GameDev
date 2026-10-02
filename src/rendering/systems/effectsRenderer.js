@@ -12686,6 +12686,167 @@ export class EffectsRenderer {
     else this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, this.bowWeaponSprite);
   }
 
+  /* ═══ v2.3.2986: THE SWING AND THE SHOT, PHOTOGRAPHED FOR THE STAT SCENE ═══
+   *
+   * Owner, on the Points window's little fight: "play the animation for
+   * attacking as if the player and slime were in that little window having a
+   * fight.  Right now it's just the static character standing and getting
+   * nudged to the right and back to position."
+   *
+   * The attack animation IS this renderer's stand-in: the owner's swing and
+   * bow-shot sheets worn by THIS player -- the recoloured body, the shirt, the
+   * plate and greaves in their metal, the weapon in its metal, the head traits
+   * on each frame's crown, the slung shield, the cape.  Rebuilding that on a
+   * 2D canvas would be a second renderer, and this file has written down more
+   * than once why a second copy of one piece of geometry is the one that
+   * drifts (the cape notes, TRAPS #51).  So nothing is rebuilt: the stand-in
+   * is driven through its OWN update with a stand-in state -- mid-swing,
+   * facing east, planted at a spot no map reaches -- one frame at a time, and
+   * each frame is photographed off the node layer (renderer.generateTexture,
+   * as the death crumble photographs the body).  Whatever the world draws on a
+   * swing, the window draws, by construction.
+   *
+   * Runs BETWEEN world frames (StatDemo calls it from a React effect), which is
+   * what makes it safe: every stand-in is re-placed or hidden from the REAL
+   * state at the top of each world frame (update(): hideSkillTraits, then these
+   * two), so nothing posed here reaches a frame the player sees -- and the
+   * finally below hides them again regardless.  The node layer is drawn only
+   * inside `box`, round the far-off feet, so nothing else on it is pictured.
+   *
+   * kind 'sword' | 'bow'.  opts: bodyH, the figure's crown-to-feet in the
+   * caller's px (the stand-in is sized off it exactly as off S._swordBodyH);
+   * res, device px per caller px; weapon / shield, what the figure holds and
+   * wears.  Returns { frames: [canvas], w, h, feet: [x, y], times: [ms], dur }
+   * in caller px -- frame i shows from times[i], on the world's own clock -- or
+   * null when the art is not in yet (the caller keeps its old figure). */
+  captureAttackFrames(kind, opts) {
+    const R = this._captureRenderer;
+    if (!R || !R.extract || this._selfCorpse) return null;
+    const o = opts || {};
+    const sword = kind === 'sword';
+    const cfg = sword ? this._swordCfg.east : this._bowCfg.east;
+    const strip = this._standInStrip(sword ? this._swordBodyFrames : this._bowBodyFrames, 'east', false);
+    if (!cfg || !strip || !strip.length) return null;
+    const n = strip.length;
+    const bodyH = Math.max(8, +o.bodyH || 84);
+    const res = Math.max(1, Math.min(3, +o.res || 1));
+    /* The frame clocks _updateSwordSwing / _updateBowShot run on: the swing's
+       frames evenly across SWORD_SWING_MS; the bow's load and pull across
+       BOW_RELEASE_MS, then the release frame held to BOW_SHOT_MS.  Each frame
+       is photographed at the middle of its own window. */
+    const dur = sword ? SWORD_SWING_MS : BOW_SHOT_MS;
+    const times = [], mids = [];
+    for (let i = 0; i < n; i++) {
+      if (sword) { times.push(i * dur / n); mids.push((i + 0.5) * dur / n); }
+      else if (i < n - 1) { times.push(i * BOW_RELEASE_MS / (n - 1)); mids.push((i + 0.5) * BOW_RELEASE_MS / (n - 1)); }
+      else { times.push(BOW_RELEASE_MS); mids.push((BOW_RELEASE_MS + dur) / 2); }
+    }
+    /* the box: the authored frame round the feet, scaled exactly as the
+       stand-in is, with headroom for a hat and a little width for a cape */
+    const FAR = -40000;
+    const s = bodyH / 188 * (cfg.bodyScale || 1);
+    const halfW = (cfg.fw / 2) * s * 1.1;
+    const up = cfg.feetY * s + bodyH * 0.35;
+    const down = (cfg.fh - cfg.feetY) * s + 4;
+    const box = new Rectangle(FAR - halfW, FAR - up, halfW * 2, up + down);
+    const real = (typeof window !== 'undefined' && window._gameState && window._gameState.current) || {};
+    const realRpg = real.rpg || {};
+    const rpg = Object.assign({}, realRpg, {
+      weapon: o.weapon || realRpg.weapon || null,
+      rangedWeapon: sword ? realRpg.rangedWeapon : (o.weapon || realRpg.rangedWeapon || null),
+      shield: o.shield ? (realRpg.shield || { type: 'shield' }) : null,
+    });
+    const now = Date.now();
+    /* Each frame is photographed into its own small texture -- clipped to its
+       own box, so a blade tip cannot spill into the next frame -- and the GPU
+       is read back ONCE, for all of them laid out on one sheet: one pipeline
+       flush instead of eleven.  MEASURED (headless Chromium, whose GPU is
+       software): posing and drawing are under 1ms a frame, and the readback
+       is the whole cost, ~230ms for the swing's eleven, scaling with pixels
+       either way -- a phone's GPU reads back in a fraction of that, but it is
+       still why `res` is capped at 2 and the frames are cropped to their
+       paint (fighterCapture).  The sheet is a grid no wider than 2048px,
+       because older iPhones cannot make a texture wider than 4096. */
+    const texs = [];
+    let frames = null, fw = 0, fh = 0;
+    try {
+      for (let i = 0; i < n; i++) {
+        const F = Object.assign({}, real, {
+          player: Object.assign({}, real.player || {}, { x: FAR, y: FAR }),
+          rpg, _renderFacing: 'east', _aimAngle: 0, _lastAimAngle: 0, _facingAngle: 0,
+          _swordBodyH: bodyH, _swordFootY: FAR,
+          _shieldUp: false, _bashPose: false, _blockPose: false, _specialAttack: false,
+          _swordJogLegs: false, _bowJogLegs: false,
+          _swordSwinging: sword, _swordSwingDir: sword ? 'east' : null, isSwinging: sword, swingTimer: now - mids[i],
+          _bowShowing: !sword, _bowDir: 'east', _bowShotAt: now - mids[i],
+        });
+        hideSkillTraits(this.skillTraits);
+        if (sword) { this._updateBowShot(null, now); this._updateSwordSwing(F, now); }
+        else { this._updateSwordSwing(null, now); this._updateBowShot(F, now); }
+        texs.push(this._photographFar(R, box, res, FAR));
+      }
+      /* generateTexture truncates the box to whole px (GenerateTextureSystem);
+         the frames are what it made, not what was asked for */
+      fw = texs[0].width; fh = texs[0].height;
+      const cols = Math.max(1, Math.min(n, Math.floor(2048 / Math.max(1, fw * res))));
+      const rows = Math.ceil(n / cols);
+      const sheet = new Container();
+      texs.forEach((t, i) => {
+        const sp = new Sprite(t);
+        sp.x = (i % cols) * fw; sp.y = Math.floor(i / cols) * fh;
+        sheet.addChild(sp);
+      });
+      const all = R.generateTexture({ target: sheet, frame: new Rectangle(0, 0, cols * fw, rows * fh), resolution: res });
+      let big = null;
+      try { big = R.extract.canvas({ target: all }); } finally { all.destroy(true); sheet.destroy({ children: true }); }
+      const pw = Math.round(fw * res), ph = Math.round(fh * res);
+      frames = texs.map((t, i) => {
+        const c = document.createElement('canvas');
+        c.width = pw; c.height = ph;
+        c.getContext('2d').drawImage(big, (i % cols) * pw, Math.floor(i / cols) * ph, pw, ph, 0, 0, pw, ph);
+        return c;
+      });
+    } catch (e) {
+      return null;
+    } finally {
+      for (const t of texs) { try { t.destroy(true); } catch (e) { /* already gone */ } }
+      hideSkillTraits(this.skillTraits);
+      try { this._updateSwordSwing(null, now); this._updateBowShot(null, now); } catch (e) { /* the next world frame re-hides them */ }
+    }
+    return { frames, w: fw, h: fh, feet: [halfW, up], times, dur, res };
+  }
+  /* v2.3.2986: one photograph of whatever is standing at the far-off spot.
+     NOT the node layer itself: renderer.render() calls enableRenderGroup() on
+     whatever it is handed -- PERMANENTLY (AbstractRenderer.render) -- and then
+     draws all of it, so photographing the layer would quietly turn a live
+     world layer into a render group and draw every prop on the map to
+     picture one figure.  So the pieces standing out there (body, gear,
+     weapon, traits and their masks, cape, shield -- every visible child of
+     the layer within reach of FAR) are lifted, in the layer's own order,
+     into a throwaway container, that is photographed, and each goes back to
+     the exact index it came from: re-inserted lowest index first, every
+     index lands where it was. */
+  _photographFar(R, box, res, FAR) {
+    const layer = this.nodeLayer;
+    const moved = [];
+    layer.children.forEach((c, idx) => {
+      if (c.visible && Math.abs((c.x || 0) - FAR) < 4000 && Math.abs((c.y || 0) - FAR) < 4000) moved.push([c, idx]);
+    });
+    const tmp = new Container();
+    tmp.sortableChildren = !!layer.sortableChildren;
+    try {
+      for (let k = moved.length - 1; k >= 0; k--) layer.removeChildAt(moved[k][1]);
+      for (const [c] of moved) tmp.addChild(c);
+      return R.generateTexture({ target: tmp, frame: box, resolution: res });
+    } finally {
+      for (const [c] of moved) if (c.parent === tmp) tmp.removeChild(c);
+      for (const [c, idx] of moved) if (!c.parent && !c.destroyed) layer.addChildAt(c, Math.min(idx, layer.children.length));
+      tmp.destroy();
+    }
+  }
+  /** v2.3.2986: the renderer the capture above photographs with (pixiRenderer). */
+  setCaptureRenderer(renderer) { this._captureRenderer = renderer || null; }
+
   /* ── Extraction cue (v2.3.229) ──
    * Renders the "ready to extract" cue at the active node when
    * S._extraction.status === 'ready'. Procedural shapes for v1; swap

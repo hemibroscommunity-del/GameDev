@@ -972,6 +972,45 @@ than loaded when the window opens because the window is global UI, not zone
 art, and a first-open load is exactly the hitch the law forbids; the
 per-zone caps in that doc are for zone art and do not apply.
 
+**He attacks with his own animation (v2.3.2986).** Owner: "play the
+animation for attacking as if the player and slime were in that little
+window having a fight. Right now it's just the static character standing and
+getting nudged to the right and back to position." The hero stands side-on
+(east, the facing the world's attack sheets are drawn in) as his portrait, and
+attacks with the WORLD's own animation in his own look:
+
+- **Sword (any melee weapon) and bow** — the world's sword-swing and bow-shot
+  stand-ins, *photographed* off its own renderer
+  (`EffectsRenderer.captureAttackFrames`, handed over by
+  `fighterCapture.js`): the stand-in is driven through its own update with a
+  stand-in state (mid-swing, facing east, planted at a spot no map reaches),
+  one frame at a time, and each frame is drawn into a texture. Recoloured
+  body, shirt, armour in its metal, the weapon in its metal, hair/hat/beard on
+  each frame's crown, cape, slung shield — whatever the world draws on a swing,
+  the window draws, because nothing was rebuilt. 11 frames over
+  `SWORD_SWING_MS`; the bow's load and pull over `BOW_RELEASE_MS`, then the
+  release held to `BOW_SHOT_MS` — and the arrow leaves on the release frame.
+- **Staff** — no body animation in the world either: the held staff kicks
+  toward the target about its grip (`staffCastPose`, 14°, 24° for the big
+  bolt), so the window's staff is its own layer turned by those angles.
+- **Planted on his feet.** `drawCharacterPortrait` reports where the standing
+  figure's feet are and how tall it is (`__btFigure`, read through the
+  canvas's own transform), and the capture is sized off that exactly as the
+  world sizes its stand-ins off the standing body (`S._swordBodyH`), so
+  standing and swinging are the same man in the same place.
+- **Cost.** The capture runs once per window open (and when the look,
+  weapon or shield changes): the pieces at the far-off spot are lifted into a
+  throwaway container — `renderer.render()` would otherwise turn the whole
+  node layer into a render group, permanently, and draw every prop on it —
+  and the GPU is read back once for all frames. The readback is the whole
+  cost (measured in headless Chromium's software GPU: ~230 ms for the swing;
+  a phone's GPU is far quicker), so frames are captured at no more than 2×
+  and cropped to what they paint. They are held only while the window is
+  open. Where the world cannot supply them (no renderer, a corpse) the old
+  nudge plays.
+- `mp-statdemo` §4e: per lane, the world's frame count, frames actually
+  playing and painted, no nudge, and no arrow before the release.
+
 **Out of scope, deliberately.** Food and potion buffs, the hexer's curse
 and elemental collisions stay out, as they do from the DPS row. The
 `infopop` / `freshpoints` combat-card failures noted above are still

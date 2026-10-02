@@ -185,12 +185,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the scene stands the hero LEFT of the slime (the premise)', heroLeft, geo);
   const face = await heroFacing(P, '.bt-sd-hero');
   rec.ok('the scene draws a figure at all (guard)', !!face, face);
-  /* Mirrored is what "facing right" IS for this compositor: characterPortrait
-     draws five base directions and flips three of them (east/southeast/
-     northeast).  A mirror:false figure is looking away from the slime, which
-     is the bug as reported. */
-  rec.ok('...facing the slime, not away from it (mirrored composite)',
-    !!(face && face.mirror), face);
+  /* characterPortrait draws five base directions and flips three of them, so
+     "facing right" is east (a base direction, unmirrored), southeast (the
+     southwest sheet mirrored) or northeast (unmirrored).  v2.3.2986: the scene
+     stands him EAST now -- side-on, the facing the world's attack sheets are
+     drawn in, because he attacks with them. */
+  const facesRight = !!face && ((face.dir === 'east' && !face.mirror)
+    || (face.dir === 'southwest' && face.mirror) || (face.dir === 'northeast' && !face.mirror));
+  rec.ok('...facing the slime, not away from it', facesRight, face);
+  rec.ok('...side-on (east), the facing his attack animations are drawn in', !!(face && face.dir === 'east' && !face.mirror), face);
 
   /* ── 2. THE +1 LANDS ON HIM ── */
   const at = await waitForPoint(P);
@@ -227,7 +230,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      which is why it is only the guard, and the Bow lane below is the test. */
   rec.ok('the melee lane\'s scene holds the melee weapon (guard)',
     !!(face && face.weapon === 'greatsword'), face);
-  rec.ok('...and attacks with a lunge, not a projectile',
+  /* v2.3.2986: "a lunge" was the CSS nudge; it swings the world's sword
+     animation now (4e).  What this line was always about stands: no
+     projectile out of a melee lane. */
+  rec.ok('...and attacks up close, not with a projectile',
     !(await P.page.evaluate(() => !!document.querySelector('.bt-sd-shot'))));
 
   await P.page.keyboard.press('Escape');
@@ -468,6 +474,71 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and the line under it says how many hits a slime takes, now and with the point',
       /hit/.test(v.now || '') && /hit/.test(v.after || ''), v);
     await P.page.screenshot({ path: 'tools/qa/mp/out/statdemo-power.png' }).catch(() => {});
+  }
+
+  /* ══ 4e. v2.3.2986: HE ATTACKS WITH HIS OWN ANIMATION ══
+     Owner: "play the animation for attacking as if the player and slime were
+     in that little window having a fight.  Right now it's just the static
+     character standing and getting nudged to the right and back to
+     position."  The swing and the shot are the WORLD's stand-ins,
+     photographed off its own renderer in this rig's look
+     (EffectsRenderer.captureAttackFrames); the staff kicks by the world's
+     staffCastPose.  So, per lane: he attacks with the world's frame count,
+     the frames PLAY (several different ones on screen over a loop) and are
+     painted rather than blank, the old nudge is not what moves him, and a
+     bow's arrow does not leave before the string does. */
+  for (const [lane, want] of [['sword', 11], ['bow', 3], ['staff', 'staff']]) {
+    await P.page.keyboard.press('Escape');
+    await P.page.waitForTimeout(350);
+    await H.openPointCols(P, [lane]);
+    await H.openPointCols(P, [lane]);
+    const opened = await openStat(P, lane, 'dmg');
+    await P.page.waitForTimeout(400);
+    if (!opened) { rec.skip(`${lane}: he attacks with the world's own animation`, 'row not reachable'); continue; }
+    const seen = { fighter: null, frames: new Set(), painted: false, kicks: new Set(), nudge: false, early: 0 };
+    for (let i = 0; i < 70; i++) {
+      const f = await P.page.evaluate(() => {
+        const a = document.querySelector('[data-sd-atk]');
+        const k = document.querySelector('[data-sd-kick]');
+        const fr = a ? +a.getAttribute('data-sd-atk') : -1;
+        let painted = false;
+        if (a && fr >= 0) {
+          try {
+            const d = a.getContext('2d').getImageData(0, 0, a.width, a.height).data;
+            for (let j = 3; j < d.length; j += 16) if (d[j] > 40) { painted = true; break; }
+          } catch (e) { painted = false; }
+        }
+        return {
+          fighter: window.__btStatScene ? window.__btStatScene.fighter : null,
+          frame: fr, painted, kick: k ? +k.getAttribute('data-sd-kick') : 0,
+          nudge: !!document.querySelector('.bt-sd-hero--swing, .bt-sd-hero--loose, .bt-sd-hero--special'),
+          shot: !!document.querySelector('.bt-sd-shot'),
+        };
+      });
+      if (f.fighter != null) seen.fighter = f.fighter;
+      if (f.frame >= 0) seen.frames.add(f.frame);
+      if (f.painted) seen.painted = true;
+      if (f.kick) seen.kicks.add(f.kick);
+      if (f.nudge) seen.nudge = true;
+      /* an arrow in the air while the bow is still loading or pulling */
+      if (lane === 'bow' && f.shot && f.frame >= 0 && f.frame < 2) seen.early++;
+      await P.page.waitForTimeout(40);
+    }
+    const res = { fighter: seen.fighter, frames: [...seen.frames], painted: seen.painted, kicks: [...seen.kicks], nudge: seen.nudge, early: seen.early };
+    if (lane === 'staff') {
+      rec.ok('Magic: the staff KICKS on each cast, by the world\'s own angles -- not a nudge',
+        seen.fighter === 'staff' && seen.kicks.size >= 1 && !seen.nudge, res);
+    } else {
+      rec.ok(`${lane === 'sword' ? 'Melee: he swings the world\'s own sword animation' : 'Bow: he draws and looses the world\'s own bow animation'} (${want} frames) -- not a nudge`,
+        seen.fighter === want && seen.frames.size >= Math.min(want, lane === 'sword' ? 4 : 2) && seen.painted && !seen.nudge, res);
+      if (lane === 'bow') rec.ok('...and the arrow leaves on the release frame, not before the string does', seen.early === 0, res);
+    }
+    /* a picture of each, pinned mid-attack (__btFighterHold: a 27ms frame
+       cannot be caught by a screenshot that lands 50ms after it is asked) */
+    await P.page.evaluate((h) => { window.__btFighterHold = h; }, lane === 'staff' ? { kick: 14 } : { frame: lane === 'sword' ? 6 : 1 });
+    await P.page.waitForTimeout(350);
+    await P.page.screenshot({ path: `tools/qa/mp/out/statdemo-attack-${lane}.png` }).catch(() => {});
+    await P.page.evaluate(() => { window.__btFighterHold = null; });
   }
 
   /* ══ 4c. THE PRELOADING LAW ══

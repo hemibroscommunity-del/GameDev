@@ -10,6 +10,7 @@ import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/ef
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
+import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986 */
 import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
 import { setArrowWoundRenderer } from './arrowWound.js';   /* v2.3.2923 */
 import { LightFx, setLightFx, lightFxOn } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1; v2.3.2904: + lightFxOn for the loading-screen warm */
@@ -176,6 +177,10 @@ export async function initPixiRenderer(canvas) {
   const worldLife = new WorldLife(layers);
   worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
+  /* v2.3.2986: the stat scene's hero swings in frames photographed off the
+     world's own sword / bow stand-ins (fighterCapture.js). */
+  effectsRenderer.setCaptureRenderer(app.renderer);
+  setFighterEffects(effectsRenderer);
   setMonsterDeathRenderer(app.renderer);   /* v2.3.2913: measures each body once for the cuts */
   setArrowWoundRenderer(app.renderer);     /* v2.3.2923: bakes a stuck shaft at its monster's resolution */
   /* v2.3.2710: shadows cast by each map's own sun, and metal that catches the

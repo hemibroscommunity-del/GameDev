@@ -1,5 +1,7 @@
 import React from 'react';
-import { CharacterView } from './CharacterView.jsx';
+import { CharacterView, cropShift, cropWidth } from './CharacterView.jsx';
+import { captureAttack } from '@/rendering/fighterCapture.js';   /* v2.3.2986: the world's own swing / shot, photographed */
+import { staffCastPose } from '@/rendering/staffCastFx.js';      /* v2.3.2986: the staff's cast kick, the world's angles */
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx';
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -94,6 +96,7 @@ const START = {
   pops: [], hero: { kind: null, n: 0, ms: 0 }, slime: { kind: 'idle', n: 0, ms: 0 },
   slimeBar: null, orb: 0, shots: [], point: 0, shield: 0, guard: false,
   bar: null, phase: 0, blue: false,
+  atk: null, kick: null,   /* v2.3.2986: an attack frame on screen, the staff's turn */
 };
 
 /* ── the timeline ───────────────────────────────────────────────────────
@@ -128,6 +131,38 @@ function passSteps(pass, off, phase, ctx) {
     at(t, (s) => ({ shots: s.shots.concat({ id, ...spec }) }));
     at(t + life, (s) => ({ shots: s.shots.filter((x) => x.id !== id) }));
   };
+  /* ═══ v2.3.2986: THE HERO ATTACKS WITH HIS OWN ANIMATION ═══
+     Owner: "play the animation for attacking as if the player and slime were
+     in that little window having a fight.  Right now it's just the static
+     character standing and getting nudged to the right and back."
+     ctx.attack is what the world gave this window (fighterCapture): a sword
+     swing or a bow shot photographed off the world's own stand-ins, frame i
+     shown from times[i] -- the world's clock -- or the staff's cast kick
+     (staffCastPose, the world's angles at its own 12 fps steps).  Returns the
+     moment a bow LOOSES (the release frame -- the arrow cannot leave before
+     the string does), 0 when the attack lands from its first moment, or null
+     when there is nothing to play and the caller falls back to the old
+     nudge. */
+  const play = (t, big) => {
+    const A = ctx.attack;
+    if (A && A.frames) {
+      const id = ++ctx.atkN;
+      A.times.forEach((ft, i) => at(t + ft, () => ({ atk: { frame: i, id } })));
+      at(t + A.dur, (s) => (s.atk && s.atk.id === id ? { atk: null } : {}));
+      return A.release || 0;
+    }
+    if (A && A.kick) {
+      const id = ++ctx.atkN;
+      const steps = staffKick(big);
+      steps.forEach((k) => at(t + k.t, () => ({ kick: { rot: k.rot, id } })));
+      at(t + steps[steps.length - 1].t + 1, (s) => (s.kick && s.kick.id === id ? { kick: null } : {}));
+      return 0;
+    }
+    return null;
+  };
+  /* a bow's arrow leaves at the release and still lands on the simulated
+     impact, so it crosses in whatever is left of the 200ms */
+  const flight = (rel, ms) => (rel ? { ms: Math.max(60, ms - rel) } : null);
   const cat = ctx.shot;
   /* the half begins on a fresh slime and full bars */
   at(0, () => ({
@@ -138,20 +173,33 @@ function passSteps(pass, off, phase, ctx) {
   }));
   for (const b of pass.beats) {
     switch (b.k) {
-      case 'atk':
-        if (b.ranged && cat) { hero(b.t, 'loose', 260); shot(b.t, { cat }, 200); }
-        else hero(b.t, 'swing', 340);
+      case 'atk': {
+        const rel = play(b.t, false);
+        if (b.ranged && cat) {
+          if (rel === null) hero(b.t, 'loose', 260);
+          shot(b.t + (rel || 0), { cat, ...flight(rel, 200) }, 200 - (rel || 0));
+        } else if (rel === null) hero(b.t, 'swing', 340);
         break;
+      }
       case 'special':
         if (b.ranged && cat) {
-          hero(b.t, 'loose', 260);
-          for (let j = 0; j < (b.shots || 1); j++) shot(b.t + j * (b.gapMs || 0), { cat, big: !!b.big }, 200);
-        } else hero(b.t, 'special', 420);
+          /* every arrow of a volley is its own draw and loose, as on the map */
+          for (let j = 0; j < (b.shots || 1); j++) {
+            const tj = b.t + j * (b.gapMs || 0);
+            const rel = play(tj, !!b.big);
+            if (rel === null && j === 0) hero(b.t, 'loose', 260);
+            shot(tj + (rel || 0), { cat, big: !!b.big, ...flight(rel, 200) }, 200 - (rel || 0));
+          }
+        } else if (play(b.t, true) === null) hero(b.t, 'special', 420);
         break;
-      case 'short':
-        if (b.ranged && cat) { hero(b.t, 'loose', 260); shot(b.t, { cat, short: true, frac: b.frac }, 420); }
-        else hero(b.t, 'short', 340);
+      case 'short': {
+        const rel = play(b.t, false);
+        if (b.ranged && cat) {
+          if (rel === null) hero(b.t, 'loose', 260);
+          shot(b.t + (rel || 0), { cat, short: true, frac: b.frac, ...flight(rel, 340) }, 420 - (rel || 0));
+        } else if (rel === null) hero(b.t, 'short', 340);
         break;
+      }
       case 'hit':
         if (!b.kill) slime(b.t, 'hit', 800);
         at(b.t, () => ({ slimeBar: hpBar(b.hp, b.max) }));
@@ -219,8 +267,8 @@ function passSteps(pass, off, phase, ctx) {
 /* One loop: the before half, the point, the after half.  A stat at its cap
    has no after half -- the before half simply loops, and the window's own
    "at its cap" line says why. */
-function loopSteps(prep, passes, shot) {
-  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, shot, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
+function loopSteps(prep, passes, shot, attack) {
+  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, atkN: 0, shot, attack: attack || null, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
   const steps = passSteps(passes[0], 0, 0, ctx);
   let end = passes[0].end;
   if (passes[1]) {
@@ -240,7 +288,7 @@ function stillOf(prep, shot) {
   const passes = prep.play(1);
   const p = passes[1] || passes[0];
   if (!p) return START;
-  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, shot, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
+  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, atkN: 0, shot, attack: null, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
   let s = { ...START };
   const steps = passSteps(p, 0, passes[1] ? 1 : 0, ctx).sort((a, b) => a.t - b.t);
   for (const st of steps) s = { ...s, ...st.patch(s) };
@@ -308,6 +356,9 @@ const Shot = ({ s }) => {
            0px walk is still a no-op, and the arrow flies. */
         '--sd-frames': Math.max(2, a.frames), '--sd-strip': -((a.frames - 1) * a.w) + 'px',
         ...(s.short ? { '--sd-short': Math.round(120 * Math.max(0, Math.min(1, s.frac == null ? 0.45 : s.frac))) + 'px' } : null),
+        /* v2.3.2986: a bow's arrow leaves at the release frame, so it crosses
+           in what is left of the flight (passSteps' `flight`) */
+        ...(s.ms ? { animationDuration: s.ms + 'ms' } : null),
       }} />
   );
 };
@@ -369,6 +420,111 @@ const Verdict = ({ v, capped }) => (
   </div>
 );
 
+/* ═══ v2.3.2986: THE FIGHTER ═══
+   The hero stands as his portrait (CharacterView -- the same figure the
+   Equipment screen draws), side-on to the slime: EAST, the facing the
+   world's attack sheets are drawn in, so standing and swinging are the same
+   man from the same side.  When he attacks, the world's own frames play over
+   him (see `play` in passSteps), planted on the portrait's feet at the
+   portrait's height -- drawCharacterPortrait reports both (__btFigure) and
+   the capture is sized off them exactly as the world sizes its stand-ins off
+   the standing body.  A staff kicks as its own layer, turned about the grip
+   the portrait reports for it (__btWeaponPlace). */
+
+/* The staff's cast kick, as the world turns it: staffCastPose sampled until
+   it settles, kept where the angle changes -- its own 12 fps steps, in
+   radians, the sign it uses for a cast due east (toward the slime). */
+const _kicks = {};
+function staffKick(big) {
+  const key = big ? 'big' : 'cast';
+  if (_kicks[key]) return _kicks[key];
+  const out = [];
+  let last = null;
+  for (let t = 0; t <= 1200; t += 4) {
+    let r = 0;
+    try { r = staffCastPose(1e6 + t, 1e6, 0, 0, 0, false, true, !!big) || 0; } catch (e) { r = 0; }
+    if (last === null || Math.abs(r - last) > 1e-6) { out.push({ t, rot: r }); last = r; }
+  }
+  if (!out.length || out[out.length - 1].rot !== 0) out.push({ t: 1200, rot: 0 });
+  return (_kicks[key] = out);
+}
+
+/* 2D affine matrices as [a, b, c, d, e, f] -- canvas getTransform()'s and CSS
+   matrix()'s own order (x' = a x + c y + e). */
+const mmul = (M, N) => [
+  M[0] * N[0] + M[2] * N[1], M[1] * N[0] + M[3] * N[1],
+  M[0] * N[2] + M[2] * N[3], M[1] * N[2] + M[3] * N[3],
+  M[0] * N[4] + M[2] * N[5] + M[4], M[1] * N[4] + M[3] * N[5] + M[5],
+];
+const mrot = (r) => [Math.cos(r), Math.sin(r), -Math.sin(r), Math.cos(r), 0, 0];
+
+/* The hero box is the figure's crop window (CharacterView's measured one, so
+   everything laid against it -- the held shield, the numbers over his head --
+   stays put), but the portrait is drawn UNCROPPED inside it, slid left by the
+   crop's own shift: side-on, the sword is held out in front, and the window
+   (measured on the three-quarter pose) would cut it off.  The stage clips. */
+const HERO_SHIFT = cropShift(HERO_SIZE);
+const HERO_W = cropWidth(HERO_SIZE);
+
+const Fighter = ({ weapon, shield, staff, atk: atkLive, kick: kickLive, attack, fig, onDrawn }) => {
+  /* QA, for pictures (mp-statdemo): window.__btFighterHold = { frame } pins an
+     attack frame (-1: standing), { kick } (degrees) the staff's turn -- a 27ms
+     frame cannot be caught by a screenshot that lands 50ms after it was asked
+     for. */
+  const hold = (typeof window !== 'undefined' && window.__btFighterHold) || null;
+  const atk = hold && hold.frame != null ? (hold.frame < 0 ? null : { frame: hold.frame, id: -1 }) : atkLive;
+  const kick = hold && hold.kick != null ? { rot: hold.kick * Math.PI / 180, id: -1 } : kickLive;
+  const atkRef = React.useRef(null);
+  const staffRef = React.useRef(null);
+  const place = staff && fig ? fig.place : null;
+  /* the staff, drawn once per placement into its own canvas; CSS turns it */
+  React.useEffect(() => {
+    const c = staffRef.current;
+    if (!c || !place || !place.layer) return;
+    const lw = place.layer.naturalWidth || place.layer.width, lh = place.layer.naturalHeight || place.layer.height;
+    if (!(lw > 0 && lh > 0)) return;
+    c.width = lw; c.height = lh;
+    const x = c.getContext('2d');
+    x.clearRect(0, 0, lw, lh);
+    x.drawImage(place.layer, 0, 0, lw, lh);
+  }, [place]);
+  /* the attack frame on screen, blitted when it changes */
+  React.useEffect(() => {
+    const c = atkRef.current;
+    if (!c || !atk || !attack || !attack.frames) return;
+    const f = attack.frames[atk.frame];
+    if (!f) return;
+    if (c.width !== f.width || c.height !== f.height) { c.width = f.width; c.height = f.height; }
+    const x = c.getContext('2d');
+    x.clearRect(0, 0, c.width, c.height);
+    x.drawImage(f, 0, 0);
+  }, [atk, attack]);
+  const showAtk = !!(atk && attack && attack.frames && fig);
+  /* the staff's matrix: hero box <- canvas (slid by HERO_SHIFT, scaled to
+     CSS) <- the portrait's grip matrix <- the kick about the grip <- the
+     layer's own box in grip space */
+  let staffTf = null;
+  if (place) {
+    const M = mmul(mmul(mmul([fig.k, 0, 0, fig.k, -HERO_SHIFT, 0], place.m), mrot(kick ? kick.rot : 0)), [1, 0, 0, 1, place.x, place.y]);
+    staffTf = 'matrix(' + M.map((v) => +v.toFixed(5)).join(',') + ')';
+  }
+  return (
+    <div className="bt-sd-fig" style={{ width: HERO_W, height: HERO_SIZE }}>
+      <div className="bt-sd-figure" style={{ left: -HERO_SHIFT, visibility: showAtk ? 'hidden' : 'visible' }}>
+        <CharacterView size={HERO_SIZE} weapon={weapon} shield={shield} dir="east" weaponOut={staff} onDrawn={onDrawn} />
+      </div>
+      {place && (
+        <canvas ref={staffRef} className="bt-sd-staff" data-sd-kick={kick ? Math.round(kick.rot * 180 / Math.PI) : 0}
+          style={{ width: place.w, height: place.h, transform: staffTf, visibility: showAtk ? 'hidden' : 'visible' }} />
+      )}
+      {attack && attack.frames && fig && (
+        <canvas ref={atkRef} className="bt-sd-atk" data-sd-atk={showAtk ? atk.frame : -1}
+          style={{ left: fig.feet[0] - attack.feet[0], top: fig.feet[1] - attack.feet[1], width: attack.w, height: attack.h, visibility: showAtk ? 'visible' : 'hidden' }} />
+      )}
+    </div>
+  );
+};
+
 const reducedMotion = () => {
   try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
   catch (e) { return false; }
@@ -407,6 +563,51 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
     } catch (e) { return null; }
   }, [has, stat, cat, shot, pts, weapon, shield, rpg]);
   const [s, setS] = React.useState(START);
+  /* ═══ v2.3.2986: HIS OWN ATTACK ═══
+     `fig` is where the portrait put his feet and how tall it drew him (in the
+     hero box's px); `attack` is what the world gave for the weapon in hand --
+     the sword swing or bow shot photographed off its own stand-ins at exactly
+     that height, or the staff's kick.  Re-taken whenever the portrait redraws
+     (a new look, weapon or shield), never per loop. */
+  const [fig, setFig] = React.useState(null);
+  const onDrawn = React.useCallback((cv) => {
+    const f = cv && cv.__btFigure;
+    if (!f || !(f.px > 0)) return;
+    const k = HERO_SIZE / f.px;
+    setFig({ k, feet: [f.feet[0] * k - HERO_SHIFT, f.feet[1] * k], bodyH: f.bodyPx * k, place: cv.__btWeaponPlace || null });
+  }, []);
+  const [attack, setAttack] = React.useState(null);
+  const attackRef = React.useRef(null);
+  /* v2.3.2986: the slime's ball flies to HIM.  It leaves from a slime placed
+     off the stage's right edge toward a hero placed off its left, so the
+     distance is the stage's width less both -- measured, and re-measured if
+     the window is resized. */
+  const stageRef = React.useRef(null);
+  const heroRef = React.useRef(null);
+  const [geo, setGeo] = React.useState(null);
+  React.useLayoutEffect(() => {
+    const st = stageRef.current, he = heroRef.current;
+    if (!st || !he) return undefined;
+    const measure = () => setGeo({ w: st.clientWidth || 0, heroX: he.offsetLeft || 0 });
+    measure();
+    let ro = null;
+    try { ro = new ResizeObserver(measure); ro.observe(st); } catch (e) { ro = null; }
+    return () => { try { if (ro) ro.disconnect(); } catch (e) { /* gone */ } };
+  }, [has]);
+  /* the ball's centre starts 99px in from the right (right:88px, 22px wide)
+     and lands just in front of his chest */
+  const orbDx = geo && geo.w > 0 ? Math.max(40, (geo.w - 99) - (geo.heroX + (fig ? fig.feet[0] : HERO_W / 2) + 10)) : null;
+  React.useEffect(() => {
+    let a = null;
+    if (fig && shot === 'staff') a = fig.place ? { kick: true } : null;
+    else if (fig && (shot === 'sword' || shot === 'bow')) {
+      const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+      const cap = captureAttack(shot, { bodyH: fig.bodyH, res: Math.min(2, dpr), weapon, shield: !!shield });
+      if (cap) a = { ...cap, release: shot === 'bow' ? cap.times[cap.times.length - 1] : 0 };
+    }
+    attackRef.current = a;
+    setAttack(a);
+  }, [fig, shot, weapon && weapon.type, weapon && weapon.gearBase, !!shield]);   /* keyed on the weapon's identity, not the object -- the CharacterView rule */
   React.useEffect(() => {
     if (!prep || prep.kind === 'empty') { setS(START); return undefined; }
     if (reducedMotion()) { setS(stillOf(prep, shotCat)); return undefined; }
@@ -423,9 +624,12 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
         window.__btStatScene = {
           stat, seed, kind: prep.kind, verdict: prep.verdict,
           texts: passes.map((p) => (p ? p.beats.filter((b) => b.text).map((b) => (b.k === 'land' ? 'hero:' : 'slime:') + b.text) : null)),
+          /* v2.3.2986: what the hero attacks WITH: the frame count of the
+             world's swing / shot, 'staff' for the kick, null for the nudge */
+          fighter: attackRef.current ? (attackRef.current.kick ? 'staff' : attackRef.current.frames.length) : null,
         };
       } catch (e) { /* no window: nothing to report to */ }
-      const { steps, end } = loopSteps(prep, passes, shotCat);
+      const { steps, end } = loopSteps(prep, passes, shotCat, attackRef.current);
       /* v2.3.2979: the t=0 steps (the fresh slime, both bars) go in WITH the
          reset, not a setTimeout(0) after it.  START has no bars, and the vital
          row under the stage sits in normal flow, so a frame painted between
@@ -443,26 +647,27 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
     };
     run();
     return () => { alive = false; timers.forEach(clearTimeout); };
-  }, [prep, shotCat]);   /* v2.3.2979: a new window, lane or stepper count is a new fight */
+  }, [prep, shotCat, attack]);   /* v2.3.2979: a new window, lane or stepper count is a new fight; v2.3.2986: so is the hero's own attack arriving */
   if (!has) return null;
   const tag = s.phase === 1 ? '+' + pts : 'Now';
   return (
     <div className="bt-sd" data-stat-demo={stat} data-sd-kind={prep ? prep.kind : ''} aria-hidden="true">
-      <div className="bt-sd-stage" style={{ height: SCENE_H }}>
-      <div className={'bt-sd-hero' + (s.hero.kind ? ' bt-sd-hero--' + s.hero.kind : '')}
+      <div className="bt-sd-stage" ref={stageRef} style={{ height: SCENE_H }}>
+      <div ref={heroRef} className={'bt-sd-hero' + (s.hero.kind ? ' bt-sd-hero--' + s.hero.kind : '')}
         style={s.hero.kind === 'trek' && s.hero.ms ? { animationDuration: s.hero.ms + 'ms' } : undefined}>
         {/* v2.3.2230 (owner: "the character preview is facing the wrong way"):
-            southEAST, so he faces the slime.  The scene stands him on the
-            left and the slime on the right, and CharacterView's default
-            southwest turned his back on it. */}
-        <CharacterView size={HERO_SIZE} weapon={weapon} shield={shield} crop dir="southeast" />
+            he faces the slime.  v2.3.2986: side-on (east) rather than the
+            three-quarter southeast, because east is the facing the world's
+            attack sheets are drawn in -- and he now attacks with them. */}
+        <Fighter weapon={weapon} shield={shield} staff={shot === 'staff'} atk={s.atk} kick={s.kick}
+          attack={attack} fig={fig} onDrawn={onDrawn} />
         {s.guard && <img className="bt-sd-shield bt-sd-shield--held" src={ICON.shield} alt="" draggable={false} />}
         {s.shield > 0 && <img key={'s' + s.shield} className="bt-sd-shield" src={ICON.shield} alt="" draggable={false} />}
       </div>
       <Slime anim={s.slime} blue={s.blue} />
       {s.slimeBar && s.slime.kind !== 'death' && <SlimeBar b={s.slimeBar} />}
       {s.orb > 0 && <i key={'o' + s.orb} className="bt-sd-orb"
-        style={{ backgroundImage: `url(${ORB_URL})`, animationDuration: SLIME_THROW.FLIGHT_MS + 'ms' }} />}
+        style={{ backgroundImage: `url(${ORB_URL})`, animationDuration: SLIME_THROW.FLIGHT_MS + 'ms', ...(orbDx ? { '--sd-orb-dx': orbDx + 'px' } : null) }} />}
       {s.shots.map((x) => <Shot key={'sh' + x.id} s={x} />)}
       {s.pops.map((p) => <Pop key={p.id} p={p} />)}
       {s.point > 0 && (

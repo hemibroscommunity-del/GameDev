@@ -753,6 +753,28 @@ export async function drawCharacterPortrait(canvas, opts) {
     eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt, undefined, undefined,
     wantEs ? EYE_BLANK[`stand-${DIR}`] : null);
   ctx.drawImage(_bodyCv, 0, 0);
+  /* ═══ v2.3.2986: WHERE THIS FIGURE STANDS, FOR A FIGURE DRAWN ELSEWHERE ═══
+     StatDemo's hero plays his ATTACKS from frames the world's own stand-in
+     renderer photographs (fighterCapture.js), and between them stands as this
+     portrait -- so the swing has to plant its feet exactly where these feet
+     are and be exactly this tall, or the figure jumps every time it swings.
+     The world sizes its stand-ins off the standing body's crown and feet rows
+     (entityRenderer BODY_ROWS: S._swordBodyH = (feet - crown + 1) x scale),
+     and those are this facing's crown[1] and FOOT_ROW, so the same two rows
+     are reported here.  Read through getTransform() at the exact call that
+     draws the body, for the v2.3.1965 reason: the chain above is a mirror, a
+     zoom, a drop, PORTRAIT_FIT and the build's two axes, and a caller
+     re-deriving them would drift the first time one is tuned.  In the OUTPUT
+     canvas's backing pixels (FRAME * S); stamped with the blit below, so a
+     superseded draw cannot leave a stale one. */
+  let _figure = null;
+  let _weaponPlace = null;   /* v2.3.2986: see opts.weaponOut at the weapon */
+  try {
+    const _m = ctx.getTransform();
+    const _fr = FOOT_ROW[DIR] || 221;
+    const _at = (x, y) => [_m.a * x + _m.c * y + _m.e, _m.b * x + _m.d * y + _m.f];
+    _figure = { feet: _at(FRAME / 2, _fr), bodyPx: Math.abs(_m.d) * (_fr - crown[1] + 1), px: FRAME * S, dir: DIR, mirror: !!_mirror };
+  } catch (e) { _figure = null; }
   /* Stamped on the OUTPUT canvas, beside __btDir, because that is where the
      caller can reach it.  The grids are in the BODY SHEET's own 256-space.
      v2.3.1965: ...and the matrix that maps that space onto this canvas is
@@ -909,7 +931,21 @@ export async function drawCharacterPortrait(canvas, opts) {
          the world now carries it that way (entityRenderer); flipping it here
          would show the Hero sheet a broom the world no longer draws. */
       if (_wpnType !== 'staff') ctx.scale(1, -1);
-      ctx.drawImage(_wLayer, -grip[0] * k, -grip[1] * k, tw * k, th * k);
+      /* ═══ v2.3.2986: OR HAND IT BACK, PLACED ═══
+         StatDemo's staff KICKS when it casts (staffCastPose: the world turns
+         the held staff about this same grip).  A portrait per step of the
+         kick would be a ~2.4MB canvas each at a phone's scale, so instead the
+         staff is left OUT of the figure and returned with exactly where it
+         would have gone -- the layer, the matrix at the grip, and its box in
+         grip space -- and the caller draws it as its own layer, turned about
+         the origin of that matrix.  Same numbers as the line below; nothing
+         is re-derived. */
+      if (opts && opts.weaponOut) {
+        const _gm = ctx.getTransform();
+        _weaponPlace = { layer: _wLayer, m: [_gm.a, _gm.b, _gm.c, _gm.d, _gm.e, _gm.f], x: -grip[0] * k, y: -grip[1] * k, w: tw * k, h: th * k };
+      } else {
+        ctx.drawImage(_wLayer, -grip[0] * k, -grip[1] * k, tw * k, th * k);
+      }
       ctx.restore();
     }
   }
@@ -1017,6 +1053,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      canvas is still exactly 256 and this line is unchanged. */
   canvas.width = FRAME * S; canvas.height = FRAME * S;
   canvas.getContext('2d').drawImage(work, 0, 0);
+  try { canvas.__btFigure = _figure; canvas.__btWeaponPlace = _weaponPlace; } catch (e) { /* ignore */ }   /* v2.3.2986 */
 }
 
 /** v2.3.715: fire-and-forget warm of every preview angle's sprites for the

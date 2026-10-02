@@ -5378,11 +5378,22 @@ html[data-orient="landscape"] .bt-dashboard{
    purpose: the card is a fixed 320 max, and a number that scales with the
    viewport would no longer be the 21/38px the world draws. */
 .bt-sd{overflow:hidden;border-radius:9px;background:#111E23;border:1px solid rgba(229,237,233,.08);contain:paint}
-.bt-sd-stage{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(0,0,0,0) 62%,rgba(0,0,0,.28) 100%)}
+.bt-sd-stage{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(0,0,0,0) 62%,rgba(0,0,0,.28) 100%);--sd-hx:30px}
+/* v2.3.2986: --sd-hx moves the hero, and everything placed against him (his
+   shots, the numbers over his head), 30px in from the left: he swings the
+   world's own sword now, and its wind-up carries the blade ~85px behind his
+   feet -- off the stage's edge where he used to stand. */
 /* the ground line the figures stand on: the hero's feet (canvas bottom -4px,
    feet drawn 13px up it) and the slime's base row both land on it */
 .bt-sd-stage::after{content:"";position:absolute;left:0;right:0;bottom:9px;height:1px;background:rgba(229,237,233,.07);pointer-events:none}
-.bt-sd-hero{position:absolute;left:24px;bottom:-4px;line-height:0;will-change:transform}
+.bt-sd-hero{position:absolute;left:calc(24px + var(--sd-hx,0px));bottom:-4px;line-height:0;will-change:transform}
+/* v2.3.2986: the fighter -- the portrait (uncropped, slid to the figure's
+   window), the staff as its own turning layer, and the world's own attack
+   frames over them while he swings or shoots (StatDemo Fighter) */
+.bt-sd-fig{position:relative}
+.bt-sd-figure{position:absolute;top:0}
+.bt-sd-staff{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}
+.bt-sd-atk{position:absolute;pointer-events:none}
 .bt-sd-hero--swing{animation:bt-sd-lunge .34s ease-out 1}
 @keyframes bt-sd-lunge{0%{transform:translateX(0)}35%{transform:translateX(12px)}100%{transform:translateX(0)}}
 .bt-sd-hero--dodge{animation:bt-sd-sidestep .6s ease-in-out 1}
@@ -5452,7 +5463,10 @@ html[data-orient="landscape"] .bt-dashboard{
 /* the orb: from the slime's mouth to the hero, straight -- v2.3.2979: over
    the ball's real flight time (statSim SLIME_THROW.FLIGHT_MS, set inline) */
 .bt-sd-orb{position:absolute;right:88px;bottom:34px;width:22px;height:22px;background-size:22px 22px;background-repeat:no-repeat;animation:bt-sd-orb .38s linear 1 both}
-@keyframes bt-sd-orb{from{transform:translateX(0)}to{transform:translateX(-120px)}}
+/* v2.3.2986: --sd-orb-dx is measured (StatDemo): the ball flies from the
+   slime, which is placed from the RIGHT edge, to the hero, placed from the
+   LEFT -- a fixed 120px only met him at one window width */
+@keyframes bt-sd-orb{from{transform:translateX(0)}to{transform:translateX(calc(-1 * var(--sd-orb-dx,120px)))}}
 /* v2.3.2979: the slime's HP over its head (the world's monster band, in the
    menu's bar), centred on the blob -- right:16 + half the 128 cell, less
    half the bar -- and low enough that the numbers rise clear of it. */
@@ -5477,7 +5491,7 @@ html[data-orient="landscape"] .bt-dashboard{
    scene's rhythm moves.  The bolt steps its 4 cels over the same flight;
    the arrow is one cel and simply travels.  Both sheets are painted
    pointing east, the direction this scene fires, so no rotation. */
-.bt-sd-shot{position:absolute;left:66px;bottom:56px;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-fly .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
+.bt-sd-shot{position:absolute;left:calc(66px + var(--sd-hx,0px));bottom:56px;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-fly .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
 @keyframes bt-sd-fly{from{transform:translateX(0)}to{transform:translateX(120px)}}
 .bt-sd-shot--bow{image-rendering:pixelated}
 /* v2.3.2612: the shot that falls short — a third of the flight, then gone.
@@ -5494,7 +5508,7 @@ html[data-orient="landscape"] .bt-dashboard{
 /* combat numbers, in DMG_STYLE's dress: Source Sans 3 800, the black stroke
    under the fill (paint-order keeps the fill whole), rising as they fade */
 .bt-sd-pop{position:absolute;bottom:96px;display:inline-flex;align-items:center;gap:3px;font-family:'Source Sans 3',sans-serif;font-weight:800;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums;-webkit-text-stroke:3px #000;paint-order:stroke fill;text-shadow:0 1px 2px rgba(0,0,0,.6);animation:bt-sd-rise 1.05s ease-out 1 both;pointer-events:none}
-.bt-sd-pop--hero{left:calc(56px + var(--sd-dx,0px));transform:translateX(-50%)}
+.bt-sd-pop--hero{left:calc(56px + var(--sd-hx,0px) + var(--sd-dx,0px));transform:translateX(-50%)}
 /* v2.3.2979: 70 -> 80, so a number rises from above the slime's HP bar
    rather than through it (the world's own rule, entityRenderer v2.3.1638) */
 .bt-sd-pop--slime{right:calc(80px - var(--sd-dx,0px));bottom:80px;transform:translateX(50%)}

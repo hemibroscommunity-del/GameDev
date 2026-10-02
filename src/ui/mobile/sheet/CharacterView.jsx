@@ -62,15 +62,18 @@ import { getEquip, onEquipChange } from '@/rendering/gearCatalog.js';
  */
 export const FIGURE_W_FRAC = 0.52;   /* window width, as a fraction of `size` */
 const FIGURE_CX_FRAC = 0.483;        /* measured centre of the painted figure */
+/* v2.3.2986: the crop's two numbers, for a caller that lays its own layers
+   over the figure (StatDemo's fighter) -- computed here, once, from the same
+   constants the crop below uses. */
+export function cropWidth(size) { return Math.round(size * FIGURE_W_FRAC); }
+export function cropShift(size) { return Math.round(size * FIGURE_CX_FRAC - cropWidth(size) / 2); }
 
-/* v2.3.2230: `dir` is a PROP now, defaulting to the southwest this view has
-   always drawn.  The Equipment screen's three-quarter facing was an owner
-   pick (see the header) and is untouched; StatDemo needs the opposite one,
-   because its scene puts a slime on the RIGHT and a hero facing away from
-   the thing about to hit him reads as a bug -- which is exactly how the
-   owner reported it. */
-export const CharacterView = ({ size, weapon, shield, crop, dir }) => {
-  const ref = React.useRef(null);
+/* v2.3.2986: the wardrobe subscription and the option list, lifted out of
+   the component unchanged so StatDemo's fighter can draw the SAME figure
+   (its staff-kick frames, and the rev its attack captures key on) without a
+   second copy of either -- a second list is how a figure comes to wear one
+   thing in the window and another in the world. */
+export function useWardrobeRev() {
   /* Bumped by every catalog subscription below; the draw effect keys on it.
      A counter rather than the values themselves because there are twelve
      sources and comparing them all would be more code than redrawing. */
@@ -96,60 +99,85 @@ export const CharacterView = ({ size, weapon, shield, crop, dir }) => {
     }
     return () => offs.forEach((f) => { try { f && f(); } catch (e) { /* ignore */ } });
   }, []);
+  return rev;
+}
+
+/** The local player's portrait options: every wardrobe store, read now. */
+export function localPortraitOpts(dir, weapon, shield, extra) {
+  const hair = getHair();
+  const weaponNow = weapon || null;
+  const shieldNow = !!shield;
+  return {
+    dir: dir || 'southwest',
+    skin: getSkin(), pants: getPants(), shoes: getShoes(),
+    hair,
+    /* 'long' opts out of hair recolour in the creator's own wiring
+       (characterCreatorEffects) — matched here so the two views cannot
+       disagree about the same head. */
+    hairColor: hair === 'long' ? null : hairColorTarget(getHairColor()),
+    facialHair: getFacialHair(), facialHairColor: facialHairColorTarget(getFacialHairColor()),
+    headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor(), getHeadwear()), /* v2.3.1927 */
+      eyeColor: getEyeColor(),
+    eyewear: getEyewear(),   /* v2.3.2361 */
+    eyeStyle: getEyeStyle(),   /* v2.3.2643 */
+    species: getSpecies(),   /* v2.3.2682 */
+    /* The shirt is a GEAR SLOT, not a trait — getShirt() is a different
+       wardrobe with the same word on it, and reading the trait one here
+       drew a bare-chested figure while the world sprite wore a tee.
+       Caught by looking: __btWardrobe reported gearShirt 'tshirt' while
+       this canvas rendered bare skin.  The COLOUR is still the trait
+       (getShirtColor), which is what the world tints the gear sheet with
+       and what join sends as `stc`. */
+    shirt: getEquip('shirt'), shirtColor: shirtColorTarget(getShirtColor()),
+    gear: { chest: getEquip('chest'), legs: getEquip('legs'), shoulders: getEquip('shoulders') },
+    /* v2.3.1841 (owner: "It should also reflect the currently equipped items
+       (like sword and shield) but right now it doesn't").  These come from
+       the RPG state rather than the wardrobe catalogs — a weapon is not a
+       cosmetic, and getEquip has no slot for it.  Passed as the live objects
+       so the portrait can resolve the per-facing art and the grip. */
+    weapon: weaponNow, shield: shieldNow,
+    /* No groundShadow: the creator floats its figure on painted art where a
+       contact shadow grounds it. Here it sits in a slate well, and a shadow
+       with no floor under it reads as a smudge. */
+    scale: Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1),
+    ...(extra || null),
+  };
+}
+
+/* v2.3.2230: `dir` is a PROP now, defaulting to the southwest this view has
+   always drawn.  The Equipment screen's three-quarter facing was an owner
+   pick (see the header) and is untouched; StatDemo needs the opposite one,
+   because its scene puts a slime on the RIGHT and a hero facing away from
+   the thing about to hit him reads as a bug -- which is exactly how the
+   owner reported it. */
+export const CharacterView = ({ size, weapon, shield, crop, dir, weaponOut, onDrawn }) => {
+  const ref = React.useRef(null);
+  const rev = useWardrobeRev();
 
   React.useEffect(() => {
     let alive = true;
     const cv = ref.current;
     if (!cv) return undefined;
-    const hair = getHair();
-    const weaponNow = weapon || null;
-    const shieldNow = !!shield;
-    drawCharacterPortrait(cv, {
-      dir: dir || 'southwest',
-      skin: getSkin(), pants: getPants(), shoes: getShoes(),
-      hair,
-      /* 'long' opts out of hair recolour in the creator's own wiring
-         (characterCreatorEffects) — matched here so the two views cannot
-         disagree about the same head. */
-      hairColor: hair === 'long' ? null : hairColorTarget(getHairColor()),
-      facialHair: getFacialHair(), facialHairColor: facialHairColorTarget(getFacialHairColor()),
-      headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor(), getHeadwear()), /* v2.3.1927 */
-        eyeColor: getEyeColor(),
-      eyewear: getEyewear(),   /* v2.3.2361 */
-      eyeStyle: getEyeStyle(),   /* v2.3.2643 */
-      species: getSpecies(),   /* v2.3.2682 */
-      /* The shirt is a GEAR SLOT, not a trait — getShirt() is a different
-         wardrobe with the same word on it, and reading the trait one here
-         drew a bare-chested figure while the world sprite wore a tee.
-         Caught by looking: __btWardrobe reported gearShirt 'tshirt' while
-         this canvas rendered bare skin.  The COLOUR is still the trait
-         (getShirtColor), which is what the world tints the gear sheet with
-         and what join sends as `stc`. */
-      shirt: getEquip('shirt'), shirtColor: shirtColorTarget(getShirtColor()),
-      gear: { chest: getEquip('chest'), legs: getEquip('legs'), shoulders: getEquip('shoulders') },
-      /* v2.3.1841 (owner: "It should also reflect the currently equipped items
-         (like sword and shield) but right now it doesn't").  These come from
-         the RPG state rather than the wardrobe catalogs — a weapon is not a
-         cosmetic, and getEquip has no slot for it.  Passed as the live objects
-         so the portrait can resolve the per-facing art and the grip. */
-      weapon: weaponNow, shield: shieldNow,
-      /* No groundShadow: the creator floats its figure on painted art where a
-         contact shadow grounds it. Here it sits in a slate well, and a shadow
-         with no floor under it reads as a smudge. */
-      scale: Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1),
-    }).catch(() => { /* a missing sheet degrades to a bare figure, never a throw */ });
+    /* v2.3.2986: `weaponOut` leaves the held weapon out of the figure and
+       reports where it goes instead (__btWeaponPlace -- the staff kicks as its
+       own layer); `onDrawn` hands the finished canvas to a caller that needs
+       to know where the figure landed on it (__btFigure) -- StatDemo plants
+       its attack frames on those feet. */
+    drawCharacterPortrait(cv, localPortraitOpts(dir, weapon, shield, weaponOut ? { weaponOut: true } : null))
+      .then(() => { if (alive && onDrawn) onDrawn(cv); })
+      .catch(() => { /* a missing sheet degrades to a bare figure, never a throw */ });
     return () => { alive = false; };
     /* Keyed on the weapon's identity and whether a shield is worn, not on the
        object: the RPG state is replaced wholesale on every server delta, so
        keying on the reference alone would repaint the canvas several times a
        second. */
-  }, [rev, size, dir, weapon && (weapon.id || weapon.type), weapon && weapon.gearBase, !!shield]);   /* v2.3.2230: dir joins the deps -- a facing the effect never re-reads is a facing that silently sticks */
+  }, [rev, size, dir, weapon && (weapon.id || weapon.type), weapon && weapon.gearBase, !!shield, !!weaponOut]);   /* v2.3.2230: dir joins the deps -- a facing the effect never re-reads is a facing that silently sticks */
 
-  const winW = crop ? Math.round(size * FIGURE_W_FRAC) : size;
+  const winW = crop ? cropWidth(size) : size;
   /* Slide the canvas so the figure's measured centre lands in the window's
      centre.  Without this the window would show the frame's middle, which is
      not where the figure is. */
-  const shift = crop ? Math.round(size * FIGURE_CX_FRAC - winW / 2) : 0;
+  const shift = crop ? cropShift(size) : 0;
   const canvasEl = (
     <canvas
       ref={ref}
