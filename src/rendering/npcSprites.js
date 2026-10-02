@@ -348,6 +348,43 @@ export function freeTownScenery() {
   return true;
 }
 
+/* ═══ v2.3.2975: MAYOR BRO'S OWN COPY, FOR THE WHEEL ═══
+   Owner: "Put mayor bro in town too" -- the Wheel's Brotown, in
+   `?trial=wheel`.  His picture is town scenery, and town scenery is freed a
+   beat after you leave town (syncTownScenery), which is exactly when you
+   arrive in the Wheel: his figure there was drawn from a texture destroyed
+   under it (alphaMode, caught by mp-wheelobjects).  So the Wheel loads its
+   own copy -- its own file request, its own texture, its own bundle -- behind
+   its loading overlay (worldTrial.preloadWheel), and getNpcTexture prefers
+   it; it is let go when the Wheel's worker stops (wheelObjects.js).  Just
+   him: nobody else stands in the Wheel yet. */
+const WHEEL_NPC_BUNDLE = 'wheel-npcs';
+const _wheelTex = Object.create(null);
+let _wheelArt = null;
+export function wheelNpcSources() {
+  return (NPC_DATA || []).filter((n) => n && n.name === 'Mayor Bro' && n.sprite).map((n) => n.sprite);
+}
+export function loadWheelNpcArt() {
+  if (_wheelArt) return _wheelArt.p;
+  const run = { p: null };
+  run.p = Promise.allSettled(wheelNpcSources().map((src) => Promise.resolve(
+    loadTracked(WHEEL_NPC_BUNDLE, npcArtUrl(src) + (npcArtUrl(src).indexOf('?') >= 0 ? '&' : '?') + 'wheel=1'),
+  ).then((tex) => {
+    if (!tex || _wheelArt !== run) return;
+    if (tex.source) { try { tex.source.scaleMode = 'nearest'; } catch (e) { /* older pixi */ } }
+    _wheelTex[src] = tex;
+  })));
+  _wheelArt = run;
+  return run.p;
+}
+export function freeWheelNpcArt() {
+  if (!_wheelArt) return;
+  _wheelArt = null;
+  /* out of the lookup first, then the textures (see freeZoneDecor) */
+  for (const k of Object.keys(_wheelTex)) delete _wheelTex[k];
+  unloadBundle(WHEEL_NPC_BUNDLE).catch(() => 0);
+}
+
 /* QA probe, house style: is town's art resident, and how much of it. */
 if (typeof window !== 'undefined') {
   window.__btTownScenery = function () {
@@ -365,7 +402,8 @@ if (typeof window !== 'undefined') {
 
 /** The loaded Texture for a sprite path, or null if it never resolved. */
 export function getNpcTexture(src) {
-  return (src && _tex[src]) || null;
+  /* v2.3.2975: the Wheel's own copy first (below), then the registry */
+  return (src && (_wheelTex[src] || _tex[src])) || null;
 }
 
 /* ═══ v2.3.2651: ZONE DECOR LOADS AND UNLOADS WITH ITS ZONE ═══

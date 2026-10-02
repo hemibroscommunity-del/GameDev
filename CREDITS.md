@@ -51,6 +51,41 @@ where something came from costs nothing and guessing later costs a lot.
 | Menu click / dialog close ticks | `public/sfx/ui/click.mp3`, `public/sfx/ui/close.mp3` | "Mouse Click" by **matthewvakaliuk73627**, id 290204 (the click) and "UI Close SFX" by **litupsubway**, id 513359 (the close) — uploader, title and id all read off the supplied filenames — supplied by the repository owner (v2.3.2658 for the click; the close shipped at v2.3.2637 under the general `public/sfx/` row above and is named here now that its filename is on record). Both trimmed losslessly at mp3 frame boundaries; no re-encode. | **CONFIRM.** Same open question as the four rows above: recorded here as the Pixabay Content License to match how the files were supplied, but the owner has not confirmed whether they came from Pixabay (Content License, no attribution required) or from Freesound (where a clip may be CC0 or CC-BY). Both permit the use; only CC-BY would require an attribution line. |
 | Item equip / unequip tick | `public/sfx/ui/equip.mp3` | "Item Equip" by **freesound_community**, id 6904 — uploader, title and id read off the supplied filename — supplied by the repository owner (v2.3.2659). It REPLACES the sample that shipped at v2.3.2637 under the general `public/sfx/` row above. Trimmed losslessly at mp3 frame boundaries (MPEG-2 Layer III, 24 kHz); no re-encode. | **CONFIRM.** Same open question as the rows above: recorded here as the Pixabay Content License to match how the file was supplied, but the owner has not confirmed whether it came from Pixabay (Content License, no attribution required) or from Freesound (where a clip may be CC0 or CC-BY). Both permit the use; only CC-BY would require an attribution line. |
 
+#### Footsteps, one sound per kind of ground (v2.3.2967)
+
+`public/sfx/footstep/step-*.mp3`, cut by `tools/audio/cut_footsteps.py` from
+recordings the repository owner supplied (Freesound downloads, named
+`<id>__<user>__<title>.wav`). Every clip is **changed**: cut into single
+steps, brought to the level of the game's own step, and re-encoded. The licenses were looked up on 2026-10-02; Freesound
+itself could not be reached from the build machine, so the ones marked
+**CONFIRM** came from search results, or not at all, and want a look at the
+sound's own page. All three Freesound licenses (CC0, CC BY, CC BY-NC) allow
+use in the game, but **CC BY-NC forbids commercial use** -- which the
+supporter pass is -- so a CONFIRM that turns out to be NC must be replaced.
+
+| Ground | File | Source | License |
+|---|---|---|---|
+| snow | `step-snow.mp3` | "Walking Through Snow.wav" by **Percy Duke**, Freesound 420559 | **CC BY 3.0 -- attribution required.** Credited in the game's About panel. |
+| ice | `step-ice.mp3` | "Running, Ice, A.wav" by **InspectorJ** (www.jshaw.co.uk), Freesound 416967 | **CC BY 4.0 -- attribution required**, in the uploader's requested form. Credited in the game's About panel. |
+| metal | `step-metal.mp3` | "Metal Steps" by **Phil25**, Freesound 208101 | CC0 |
+| stone | `step-stone.mp3` | "Dry Footsteps Loop" by **qubodup**, Freesound 816017 | CC0 |
+| sand | `step-sand.mp3` | "Steps_Fine_Snow_Or_Sand_Strong_29" by **BlondPanda**, Freesound 778568 (v2.3.2970; until then "Footsteps on sand" by amholma, 376797) | **CONFIRM** -- likely CC0: a search result gives another step of the same series (778546, "..._Strong_08") as CC0. |
+| grass | `step-grass.mp3` (also the forest floor's, for now) | "Right Grassgrassy Footstep 4" by **Ali_6868**, Freesound 384869 | **CONFIRM** -- likely CC0: Pixabay carries this uploader's footsteps as freesound_community, which it does for CC0 sounds. |
+| gravel | `step-gravel.mp3` | "Right Gravel Footstep 5" by **Ali_6868**, Freesound 384880 | **CONFIRM**, as the row above. |
+| mud | `step-mud.mp3` | "Walking In Mud" by **lukiacostello**, Freesound 446257 | **CONFIRM** -- not found. |
+| ash | `step-ash.mp3` | "powder_softimpact_006" by **jazzkdh**, Freesound 768596 | **CONFIRM** -- not found. |
+| wood | `step-wood.mp3` | "wood step sample 4" by **notarget**, Freesound 434759 | **CONFIRM** -- not found. |
+
+Dirt stays `footstep-v3.mp3`, under the general `public/sfx/` row above. The
+About panel credits every uploader by name either way, so a CC BY among the
+CONFIRM rows is already attributed.
+
+**Not used:** the owner's second mud recording, "walking in the mud" by
+**arnaud coutancier** (Freesound 582400, v2.3.2970). Search results give the
+uploader's sounds as Attribution NonCommercial (CC BY-NC 3.0), which the
+supporter pass rules out (above). Its cut is kept, commented out, in
+`cut_footsteps.py`, should the license ever allow it.
+
 > **Note on the Pixabay license.** It permits commercial use and modification
 > without attribution, but it does *not* permit redistributing the audio "as a
 > standalone file" for others to download. Bundling the clips inside a game is

@@ -536,6 +536,12 @@ export function variantsForZone(zoneId) {
   for (const s of (z && z.spawns) || []) {
     if (s && s.variant) keys.add(s.variant);
   }
+  /* v2.3.2978: a zone of other zones' monsters (the Wheel, `homes`) wears
+     all of their skins -- loaded together on its way in, freed together on
+     its way out, by the same two callers (preloadAnimations.js) */
+  for (const h of (z && Array.isArray(z.homes)) ? z.homes : []) {
+    if (h !== zoneId) for (const k of variantsForZone(h)) keys.add(k);
+  }
   return keys;
 }
 

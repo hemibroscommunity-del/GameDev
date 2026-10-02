@@ -378,6 +378,10 @@ export const VALID_ZONE_IDS = new Set([
          _spawnZoneMonsters returns [] and they tick empty -- legal, and
          they must NOT be rejected or the endgame is unreachable. */
       'shadow', 'radiant',
+      /* v2.3.2978: the Wheel, the one seamless map (wheelzone.js).  Not in
+         ZONES: it has no zone config of its own -- its monsters are the eight
+         element zones' own, each standing on its spoke. */
+      'wheel',
     ]);
 
 /* v2.3.1625: dungeon instance zones are minted server-side as

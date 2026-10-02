@@ -5,6 +5,7 @@ import { debugBus } from './debug/debugBus.js';
 import { installPerfHud } from './debug/perfHud.js';
 import { installCrashTrap } from './debug/crashTrap.js';
 import { installUiSfxDelegate } from './ui/uiSfxDelegate.js';
+import { applyWorldTrial } from './game/worldTrial.js';
 import './styles/game.css';
 
 /* Debug console intercept is handled by debugBus.initFromUrl() alone now.
@@ -36,5 +37,11 @@ installPerfHud();
    render: it listens in the capture phase on `document`, so it needs no
    element to exist yet and it catches panels that mount into portals. */
 installUiSfxDelegate();
+
+/* v2.3.2932: `?trial=world` -- the World View becomes the whole island at full
+   size, streamed in pieces (src/game/worldTrial.js).  BEFORE the render: it
+   rewrites the World View's shared tables (size, exits, arrival), and nothing
+   may read them first.  Does nothing without the switch. */
+applyWorldTrial();
 
 createRoot(document.getElementById('root')).render(<GameApp />);

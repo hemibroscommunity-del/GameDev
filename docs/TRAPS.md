@@ -461,6 +461,18 @@ for: not "smoother than its surroundings" (that is blur) but "the same".
 
 **Receipt:** `tools/maps/build-town-v17.mjs` and its header.
 
+**Fallen into again (v2.3.2953).** The Ground Studio made every ChatGPT
+ground picture repeat with the trial bake's cross-fade: the picture laid
+over itself shifted half a tile, faded across the outer quarter each way.
+That is three quarters of every tile averaged from two pictures, and on
+the owner's own pictures it showed: every stone there see-through, the dirt
+lower in contrast (10.0 against 11.2). The owner saw only that the ground
+"could use further improvement". The fix was the same irregular hard cut,
+along the cheapest path where the picture's two ends already look alike
+(`seamless` in `public/tools/style/process.js`). The test that now guards
+it checks that every pixel is a colour the picture has and that the
+contrast is unchanged, not that the seam is smooth.
+
 ## §24 — Reading a timeout's constant instead of its clock (v2.3.1913)
 
 **Tempting:** the owner reports characters idling in the world for
@@ -4870,3 +4882,169 @@ threshold, or a window, on the composite. The first two versions of
 
 Draw each layer ALONE on a flat ground and take the centre of its brightness.
 With one-pixel blended seams, that centre moves exactly with the layer.
+## 122. Where three grounds meet, "answer to the nearest one" draws a ruler line (v2.3.2954)
+
+**Tempting:** at a corner where three grounds meet, let each pixel pick the
+nearest other ground and apply that pair's edge rule. Every pair's edge is
+ragged, so the corner should be ragged too.
+
+**Wrong.** Which ground is nearest changes along the straight line halfway
+between them: 45 degrees off a street corner. A patch of the square reaching
+into the yards was cut off along it wherever the street was nearer. The
+owner, zoomed in on the town square: *"In each of your pictures there's a
+noticeable straight line. I want to avoid that."* The street's two top
+corners each drew a "V" of two such lines.
+
+**Also wrong, the obvious patch:** pick the nearest by a *noisy* distance
+(each partner's distance plus its own slow noise). It bends the line, but
+it still cuts patches off. Where it runs just beside a patch's own edge, it
+leaves a thin sliver; right at a plan edge, it lets a farther ground win a
+strip touching that edge, which draws a straight line along the cell edge
+instead.
+
+**The fix** (`public/tools/world/core/ground.js`, `edgeAt`):
+- **Every other ground in reach has its say.** A pixel goes to whichever of
+  them its own pair's rule gives it to (`ruleAt`), so each patch keeps the
+  shape its own edge draws.
+- **Two would both take it:** the one further past its own line wins
+  (`marginAt`), nudged by its own slow noise (`PARTNER_TIE`).
+- **`settle`** follows the same rule: an art px is settled only when every
+  partner's answer is sure across it, and at most one of them takes it.
+
+**The same kind of line, one level down:** a mixing zone's end (`r.lim`)
+stops a patch dead where the patch would have gone further. That draws a
+straight line beside the plan's cell edge. `MIX_LIM` widens mixing zones
+enough that this is rare.
+
+**How to see it:** lay the ground with a flat colour per swatch and look for
+the longest run of edge pixels on one row, column or diagonal. Before the
+fix the town had a 26 game px diagonal. Now it has none over 16, the same as
+open country's ragged edges. `tools/world/test-world-core.mjs` holds it
+there.
+
+## 123. A download with no time limit, in a worker that does one job at a time, stops everything behind it (v2.3.2959)
+
+**Tempting:** in a worker that lays ground pieces one after another, fetch
+each swatch picture the first time a piece needs it: `await (await
+fetch(url)).blob()`, inside the same `try` that unpacks it. On any error,
+mark the picture unreadable and draw its plan colour. Simple, and fine on
+the office Wi-Fi.
+
+**Wrong** on a phone's connection, in three ways at once:
+- `fetch` has **no time limit**. One request that never answers holds its
+  piece forever, and every piece queued behind it. The owner's readout:
+  *"3 pieces waiting"*, for good, and no ground ahead at all.
+- A **network failure was filed as "unreadable"**, so the picture was never
+  tried again, even once the connection came back.
+- Pictures were fetched **only when needed, one at a time**, so a walk into
+  a new area waited for each download in turn.
+
+**The fix** (`public/tools/world/core/ground-worker.js`, *DOWNLOADS THAT
+CANNOT STOP THE GROUND*):
+- Downloads run apart from the laying, a few at a time, each **given a time
+  limit** (AbortController, raced against a timer).
+- A failure is **tried again** after a wait that grows.
+- A piece **waits a bounded time** for its pictures. That time is counted
+  per download, not per piece, so one stuck picture cannot make each piece
+  wait in turn. After it, the piece is laid without the picture and filled
+  in when the picture comes.
+- **Unreadable** is kept for pictures the browser cannot unpack.
+
+**Also wrong, the obvious patch:** lay the short pieces again on a timer.
+A picture that never comes then costs a piece laid every few seconds,
+forever. Re-lay only when the worker says a missing picture has come
+(`got`).
+
+**How to see it:** `node tools/qa/mp/run.mjs wheelnet` routes the ground
+pictures through a deliberately bad connection: all late, one hanging, one
+failing.
+
+## 124. One palette cut from every picture starves the ground you see most (v2.3.2961)
+
+**Tempting:** make one palette for the whole world (128 colours, median cut
+over samples of every picture, the same number from each) and move every
+ground swatch onto it. One palette, one look.
+
+**Wrong** for the ground. A median cut splits wherever the colours spread
+**widest**, not wherever there are **most** pixels. Lava, snow, the sea and
+rock spread wide, so they take most of the colours. Grass is one narrow band
+of greens, even though it covers more of the world than anything else, and
+got 3. The owner's commons came out 92% three flat greens, with some light
+green turned tan: *"It looks like a lot of the same green color got clumped
+together making it look clumpy."* Raising the count only thins the problem
+out; the cut still feeds the wide spreads first.
+
+**The fix** (`ownPalette`, `PIXEL.ownColours`): each ground swatch keeps its
+**own** 64 colours, cut from its own picture. The style key and the prompts
+keep the world one look. Keep the shared palette for things that must
+match each other exactly.
+
+**How to see it:** count the colours in a finished tile (`coloursOf`) and
+how much of it the top three take. `tools/world/test-world-core.mjs`
+("own colours") makes a grass picture with eleven other grounds and checks
+the grass keeps at least three times the colours on its own.
+
+## 125. An edge nudged by slow noise is still a ruler line, and a pixel test won't see it (v2.3.2977)
+
+**Tempting:** draw a shape out of rectangles (Brotown's yards) and make its
+edge "ragged" by growing every rectangle by some noise. Check it with a test
+that looks for straight runs of edge pixels.
+
+**Wrong** three ways, all found on the owner's screenshot of the town: *"the
+lines between dirt and grass are razor straight."*
+- **The noise was too slow.** It changed over 480 art px and was 35 art px
+  at most, so each side of the town moved a little but stayed straight.
+- **It was read off a coarse lattice.** Points 128 art px apart, joined by
+  straight lines, make a ruler edge out of any noise.
+- **It was read where the cell is.** The edge sits where a cell's distance
+  from the rectangle equals the noise at that cell. Where the noise climbs
+  steeply away from the edge, the two keep pace and the edge stays pinned
+  in one column, here for 400 game px.
+
+The pixel test passed throughout. The ground compositor's ragged edge breaks
+every pixel run within a few px, however straight the line underneath runs.
+
+**The fix** (`edgeWobble`, `inWobblyRect` in `core/layout.js`; plan.js
+`town.edge`):
+- three octaves, of bays, coves and bumps (300, 110 and 45 art px);
+- read for every cell near the edge, never from a lattice;
+- read at the **nearest point of the edge**, so the edge moves exactly as
+  far as the noise says.
+
+The country plots (`places`) get the same treatment, smaller.
+
+**How to see it:** measure on the plan, not the pixels.
+`tools/world/test-world-core.mjs` ("the town's edge on the grass wanders")
+counts how much of the town's edge runs straight along a row or column for
+192 game px or more (82% before, 18% after), checks the longest stretch
+(552 before, 336 after), and checks the town is still one piece. Draw it the
+way the game does (`composeGround` at scale 3), not with the one-third-scale
+preview tool, before judging an edge by eye.
+
+## 126. A hub exit that never clears the monster list, once a hub has monsters (v2.3.2978)
+
+**Plausible:** "Hubs have no monsters, so leaving one has nothing to clear."
+True of town and the World View for as long as the game has had them, so the
+hub-exit flip in `zoneTransitions.js` replaced `S.monsters` only for
+client-local zones (`if (!S._serverMonsters) ...`) and otherwise left the list
+for the destination's `zone_state` to replace.
+
+**Wrong** the day the Wheel became a hub with monsters (`isWorldViewZone`
+covers `wheel`). Walking home, the Wheel's 48 stayed in the list until town's
+`zone_state` came in; the renderer saw a zone change, cleared, and re-made all
+48 in town; 400 ms later `_freeLeftZoneAssets` freed their sheets out from
+under them, and the frame threw "Cannot read properties of null (reading
+'addressModeU')". The render dump named the shadow layer's pooled sprites,
+which hold the same freed textures but are hidden — the culprit was further
+down the tree.
+
+**The fix:** the hub-exit flip clears a server-run list too (`else
+S.monsters = []`). Always safe: a `zone_state` stamped for a zone you are not
+in is dropped (wsClient, v2.3.1181), so nothing of the destination's can be
+in the list yet. Every other way out of a zone already cleared it (the spoke
+return, the respawn).
+
+**How to see it:** `mp-wheelmonsters` walks home from the Wheel and fails on
+any render error. Its first version pressed Space to fight, which is the
+DODGE (`desktopControls.js`): a test that swings sends `monster_damage`, as
+mp-capekill does.

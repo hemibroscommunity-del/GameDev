@@ -36,7 +36,7 @@ export const DAY_CYCLE_MS = 40 * 60 * 1000;
    is the one place a sun that jumps is impossible to miss.  It is outdoors;
    it takes the hour. */
 const OUTDOOR = Object.create(null);
-for (const z of ['town', 'worldview', 'meadow', 'ember', 'mist', 'verdant', 'frost', 'sky', 'radiant', 'farm_home']) OUTDOOR[z] = true;
+for (const z of ['town', 'worldview', 'wheel' /* v2.3.2978 */, 'meadow', 'ember', 'mist', 'verdant', 'frost', 'sky', 'radiant', 'farm_home']) OUTDOOR[z] = true;
 
 export function zoneHasSky(zoneId, S) {
   if (S && S._inDungeon) return false;
@@ -96,7 +96,20 @@ function overridePhase() {
   return overridePhase._url;
 }
 
+/* v2.3.2963: DAYLIGHT ONLY, for now, in the Wheel trial.  Owner, 2026-10-01,
+   after one visit came out very dark just past the game's night ("Something is
+   wrong with the way it's displaying after entering the wheel (preview). Too
+   dark"), then: "Yeah make it daylight only for now".  While they judge the
+   ground's colours in the Wheel, the sky there holds at midday; town and every
+   other zone keep the 40-minute day.  Set every frame by worldTrial.js
+   (syncWheel) while you are in the Wheel or walking into it, and it wins over
+   ?tod= and window.__btTod too -- "only daylight" means only daylight. */
+let _alwaysDay = false;
+export function setAlwaysDay(on) { _alwaysDay = !!on; }
+export function alwaysDay() { return _alwaysDay; }
+
 export function dayPhase(nowMs) {
+  if (_alwaysDay) return NAMED_PHASES.day;
   const o = overridePhase();
   if (o != null) return o;
   return (((nowMs || Date.now()) % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS / DAY_CYCLE_MS;

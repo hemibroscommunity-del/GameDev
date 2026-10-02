@@ -162,12 +162,19 @@ export function loadAllVariantSprites() {
 /* v2.3.1119: track which variants we've already kicked a load for, so the
    per-frame render lookup fires each variant's load() exactly once. */
 const _variantLoadKicked = new Set();
+/* v2.3.2989: the Wheel loads its monsters' looks itself, as you walk toward
+   them (wheelMonsterArt.js), and draws none before its look is ready; there
+   the kick below is off, so nothing else starts a load behind its back (or
+   loads again what it let go). */
+let _kicksOn = true;
+export function setVariantKicks(on) { _kicksOn = !!on; }
+
 export function variantSpritesFor(variantKey) {
   const v = (variantKey && VARIANT_SPRITES[variantKey]) || null;
   /* Lazy first-sighting load: the renderer calls this every frame for a visible
      monster; kick the variant's own loader once and let it fall back to the base
      archetype until the sheets land. */
-  if (v && v.load && !_variantLoadKicked.has(variantKey)) {
+  if (_kicksOn && v && v.load && !_variantLoadKicked.has(variantKey)) {
     _variantLoadKicked.add(variantKey);
     try { Promise.resolve(v.load()).catch(() => {}); } catch (e) { /* ignore */ }
   }

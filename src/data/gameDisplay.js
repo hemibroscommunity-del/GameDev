@@ -16,9 +16,10 @@
    us — a back-edge would be a circular-init TDZ hazard). */
 
 import { TILE } from './constants.js';
-import { ZONES } from './zones.js';
+import { ZONES, isWorldViewZone } from './zones.js'; /* v2.3.2978: + either name of the World View */
 import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
+import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
 function _defineProperty(e, r, t) { return (r in e) ? Object.defineProperty(e, r, { value: t, enumerable: true, configurable: true, writable: true }) : e[r] = t, e; }
@@ -669,7 +670,13 @@ export function generateZoneMap(zoneId) {
   var zone = ZONES[zoneId];
   var W = zone.w,
     H = zone.h;
-  var map = Array.from({
+  /* v2.3.2943: `?trial=wheel` makes the World View 1344 x 1344 tiles
+     (src/game/worldTrial.js), every one 0 but the two-by-two way home: one
+     row shared by all the rest instead of 1.8 million cells, ~14 MB on
+     iPhone.  Only the World View's branch below writes into it, and it
+     gives a row its own copy before it does (unshare). */
+  var _sharedRow = zone.sharedRows ? Array(W).fill(0) : null;
+  var map = _sharedRow ? Array(H).fill(_sharedRow) : Array.from({
     length: H
   }, function () {
     return Array(W).fill(0);
@@ -736,7 +743,7 @@ export function generateZoneMap(zoneId) {
         if (py >= 0 && py < H && px >= 0 && px < W && map[py][px] === 0) map[py][px] = 2;
       }
     }
-  } else if (zoneId === 'worldview') {
+  } else if (isWorldViewZone(zoneId)) {
     /* ═══ WORLD VIEW — trail-head portal markers only (v2.3.1303) ═══
        Owner bug report: "in world view it's not clear where the portals
        are because they're invisible" — and they always were.  The v2.3.859
@@ -754,7 +761,10 @@ export function generateZoneMap(zoneId) {
     WORLDVIEW_EXITS.forEach(function (ex) {
       for (var _wy = -1; _wy <= 0; _wy++) for (var _wx = -1; _wx <= 0; _wx++) {
         var _wry = ex.ty + _wy, _wrx = ex.tx + _wx;
-        if (_wry >= 0 && _wry < H && _wrx >= 0 && _wrx < W) map[_wry][_wrx] = 8;
+        if (_wry >= 0 && _wry < H && _wrx >= 0 && _wrx < W) {
+          if (_sharedRow && map[_wry] === _sharedRow) map[_wry] = _sharedRow.slice();   /* v2.3.2943: unshare */
+          map[_wry][_wrx] = 8;
+        }
       }
     });
   } else if (zoneId === 'farm_home') {
@@ -2254,8 +2264,34 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   npcChat: function npcChat() {
     this.beep(600, 0.04, 0.03, 'sine');
   },
-  footstep: function footstep(armored) {
+  footstep: function footstep(armored, surface) {
     if (!this.ctx || this.muted) return;
+    /* ═══ v2.3.2967: EACH GROUND ITS OWN STEP ═══
+       Owner: "give each ground type its own footstep sound.  Grass sounds
+       like walking through grass, walking through rocks sounds like walking
+       through rocks etc." -- and then the recordings, "(you can use current
+       footstep sound for dirt)".  `surface` is the sound of the ground drawn
+       under the feet (worldTrial.footstepSurface: in the Wheel only, for
+       now), one of footstepClips.js's: a clip of single steps cut from the
+       owner's recording and brought to footstep-v3's loudness, so the
+       volumes below are the ones dirt has always had.  One of its steps at
+       random, never the same one twice running; the same armoured/bare
+       pitch and volume jitter.  No surface, dirt, or a clip still loading
+       -> today's dirt step, below. */
+    var clip = surface && surface !== 'dirt' ? FOOTSTEP_CLIPS[surface] : null;
+    if (clip && this._samples && this._samples[clip.key]) {
+      var n = clip.steps.length;
+      var k = Math.floor(Math.random() * n);
+      if (n > 1 && this._lastStep && this._lastStep.key === clip.key && this._lastStep.i === k) k = (k + 1) % n;
+      var st = clip.steps[k];
+      this._noteStep(surface, surface, clip.key, k);
+      if (armored) {
+        this.play(clip.key, { offset: st[0], duration: st[1], vol: 0.17 + Math.random() * 0.03, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
+      } else {
+        this.play(clip.key, { offset: st[0], duration: st[1], vol: 0.13 + Math.random() * 0.025, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
+      }
+      return;
+    }
     /* v2.3.1104: owner-supplied footstep. The source is a 25 s continuous
        walking clip, so we ISOLATE just the first step (offset 0 -> 0.22 s) and
        fire it once per jog cycle on foot-strike. `armored` (from equipped gear)
@@ -2273,6 +2309,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     if (!_fsKey) return;
     if (this._footToggle === undefined) this._footToggle = 0;
     var two = (this._footToggle++ & 1);
+    this._noteStep(surface || null, 'dirt', _fsKey, two);
     var off = _fsKey === 'footstep-v3' ? (two ? 0.92 : 0.08) : (two ? 0.57 : 0.0);
     var dur = _fsKey === 'footstep-v3' ? 0.34 : (two ? 0.18 : 0.22);
     /* v2.3.1237: owner feedback — footstep volume halved (armored
@@ -3341,6 +3378,42 @@ BT_AUDIO.loadCriticalSfx = function () {
     if (u) this.loadSample(k, u);
   }
 };
+/* ═══ v2.3.2967: THE GROUNDS' FOOTSTEPS (footstepClips.js) ═══
+ * Ten clips, ~200 KB, used only in the Wheel -- so NOT in SFX_MANIFEST,
+ * which every player of every zone downloads (the ZONE_AMBIENT reasoning
+ * above).  worldTrial.preloadWheel loads them behind the Wheel's own loading
+ * overlay (the per-zone rule in CLAUDE.md) and lets them go on the way out
+ * with the ground worker.  Before the first gesture there is no context to
+ * decode into: the ask is remembered and unlock() replays it, like the
+ * manifest's.  Resolves when every clip has decoded or failed -- a step
+ * whose clip never came plays dirt, never silence. */
+BT_AUDIO.loadGroundSteps = function () {
+  this._groundStepsWanted = true;
+  if (!this.ctx) return Promise.resolve();
+  var self = this, jobs = [], seen = Object.create(null);
+  for (var s in FOOTSTEP_CLIPS) {
+    var c = FOOTSTEP_CLIPS[s];
+    if (seen[c.key]) continue;
+    seen[c.key] = true;
+    jobs.push(this.loadSample(c.key, c.url).then(function (key) {
+      /* left the Wheel while it was on its way: let it go now */
+      return function () { if (!self._groundStepsWanted) delete self._samples[key]; };
+    }(c.key)));
+  }
+  return Promise.all(jobs);
+};
+BT_AUDIO.dropGroundSteps = function () {
+  this._groundStepsWanted = false;
+  for (var s in FOOTSTEP_CLIPS) delete this._samples[FOOTSTEP_CLIPS[s].key];
+};
+/* What the last footstep was, for the tests: the ground asked for, the
+   sound played (dirt where its clip is not in yet), which sample and step,
+   and a count of each sound played. */
+BT_AUDIO._noteStep = function (asked, played, key, i) {
+  this._lastStep = { asked: asked, played: played, key: key, i: i, at: Date.now() };
+  if (!this._stepCounts) this._stepCounts = Object.create(null);
+  this._stepCounts[played] = (this._stepCounts[played] || 0) + 1;
+};
 /* v2.3.1422: managed looping SFX (sizzle while cooking, reel while
    cranking).  Keyed + idempotent: callers ENSURE the loop every frame
    and stop it when their condition lapses, so lifecycle bugs can't
@@ -3567,6 +3640,8 @@ BT_AUDIO.unlock = function () {
      of the gate, so the first swing of a cold session has a hit sound.  See
      loadCriticalSfx.  Cheap (57 KB) and idempotent. */
   try { this.loadCriticalSfx(); } catch (e) {}
+  /* v2.3.2967: the Wheel asked for its footsteps before there was a context */
+  if (this._groundStepsWanted) { try { this.loadGroundSteps(); } catch (e) {} }
   /* v2.3.1577: the session track starts here — this is the first gesture on
      the LOGIN screen (GameApp registers the handler at app level), so the
      music is playing before the player ever enters the world, and nothing

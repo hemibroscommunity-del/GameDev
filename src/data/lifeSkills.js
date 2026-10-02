@@ -190,6 +190,11 @@ export function spawnGatherNodes(zoneId, depth) {
      zone.safe check has been here since the original spawn logic;
      keep both for belt + suspenders. */
   if (!zone || zone.safe || zoneId === 'town') return [];
+  /* v2.3.2978: nor in a zone of other zones' monsters (the Wheel, `homes`):
+     the server spawns it no nodes, and this legacy layout would scatter a
+     tree, a pool and a vein at random over 43,008 px of it, sea included.
+     Fishing from its water is its own round. */
+  if (Array.isArray(zone.homes)) return [];
   /* v2.3.1346 (owner): uniform 3-of-each for every combat zone. */
   /* v2.3.1592: one of each resource per zone (owner).  MIRROR of the server's
      gathering.js _getZoneNodeConfig — that one is authoritative for what

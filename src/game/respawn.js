@@ -21,6 +21,7 @@
 
 import { BT_AUDIO, ZONES, TILE, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
 import { releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone */
+import { wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: and you come back in the Wheel's Brotown */
 
 /**
  * Put the player back on their feet in `zone`.  Idempotent enough to call
@@ -53,6 +54,13 @@ export function applyLocalRespawn(S, zone) {
      deferred here when the walk-out frees the map immediately. */
   var _diedIn = S.currentZone;
   S.currentZone = zone || 'town';
+  /* v2.3.2990: the npc list belongs to the zone.  Every other zone change
+     nulls it, and BroTown spawns the list for the zone you are in once it is
+     null.  This one never did, which was harmless while nobody died anywhere
+     that HAD npcs.  The Wheel does (its Brotown's Mayor Bro), so a death
+     there carried him back to today's town, at the Wheel's coordinates, and
+     town's own townsfolk never came. */
+  if (_diedIn !== S.currentZone) S.npcs = null;
   try { releaseLeftZoneArt(_diedIn, S.currentZone); } catch (e) {}
   updateZoneDimensions(S.currentZone);
   try { BT_AUDIO.startZoneAmbient(S.currentZone); } catch (e) {}
@@ -67,6 +75,10 @@ export function applyLocalRespawn(S, zone) {
   S.respawnTimer = Date.now() + 3000;
   S._deathStart = 0;
   S._dying = false;
+  /* v2.3.2990: the worker brings you back in today's town; from there you
+     are taken down its stairs into the Wheel's Brotown, where you start
+     (wheelHome.js) */
+  if (S.currentZone === 'town') wantWheelSpawn(S);
   /* Tell the server our new position + zone + dead=false.  Other clients
      clear our _isDead via the broadcast. */
   if (S.channel && S.player) {

@@ -23,6 +23,7 @@
 import { QUEST_CHAINS, QUEST_STATUS } from '@/data/gameSystems.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
+import { ZONES, isWorldViewZone, zoneHomes } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel'; v2.3.2990: its lands */
 
 /* v2.3.1906: where the quest givers stand.  Every live NPC is spawned by
    BroTown's _spawnTownNpcs, which is town-only, so a finished objective always
@@ -110,9 +111,24 @@ export function questRouteExits(currentZone, rpg, S) {
 
   const at = (e) => ({ x: (e.tx + 0.5) * TILE, y: (e.ty + 0.5) * TILE, zoneId: e.zoneId });
 
+  /* v2.3.2990: a hand-in where the quest giver stands right here -- the
+     Wheel's Brotown has its own Mayor Bro -- is a walk to him, not a portal.
+     Starring the marker back to today's town would send you away from the man
+     the road points at (questRoutePoint, below). */
+  if (target === QUEST_HOME_ZONE && currentZone !== QUEST_HOME_ZONE) {
+    const want = _wantNpc(rpg, S);
+    if (want && _npcHere(S, want)) return [];
+  }
+
   /* v2.3.2128: "out there, anywhere". */
   if (target === ANY_FIELD_ZONE) {
-    if (currentZone === 'worldview') {
+    /* v2.3.2990: the Wheel has no portals out at all -- the World View's
+       trails to the old lands are gone with it, its one exit the marker back
+       to today's town -- and nothing to gather yet.  "Back to the Mayor" is
+       advice for a locked spoke; with no spokes it would be a road to
+       nowhere. */
+    if (!WORLDVIEW_EXITS.some((e) => e && e.zoneId !== 'town')) return [];
+    if (isWorldViewZone(currentZone)) {
       /* Every live spoke EXCEPT the one back to town — that is the way home,
          not a place to fish — and only the ones you can actually walk into.
          A locked spoke is painted shut (tileRenderer, v2.3.1822) and starring
@@ -151,7 +167,7 @@ export function questRouteExits(currentZone, rpg, S) {
 function _routeOne(currentZone, target, S, at) {
   if (currentZone === target) return null;          /* you are there — hunt, don't travel */
 
-  if (currentZone === 'worldview') {
+  if (isWorldViewZone(currentZone)) {
     /* The hub: the spoke itself is here, so point straight at it.  A target
        whose spoke is CLOSED (the four unfinished ones are commented out of
        WORLDVIEW_EXITS) finds nothing and stars nothing, rather than marking
@@ -182,7 +198,7 @@ function _routeOne(currentZone, target, S, at) {
      Ridge holding four snowmen, the next step is the Mayor, and "deliberately
      nothing" left the one screen where you actually need directions blank. */
   const home = _nearestReturnTile(S);
-  return home ? { x: home.x, y: home.y, zoneId: (S && S._enteredFromHub === 'worldview') ? 'worldview' : 'town' } : null;
+  return home ? { x: home.x, y: home.y, zoneId: (S && isWorldViewZone(S._enteredFromHub)) ? S._enteredFromHub : 'town' } : null;
 }
 
 /** The FIRST exit worth starring, or null.  Kept because "where is the quest
@@ -277,36 +293,86 @@ const WELCOME_NPC = 'Mayor Bro';
 export function questRoutePoint(currentZone, rpg, S) {
   const exit = questRouteExit(currentZone, rpg, S);
   if (exit) return exit;
-  if (currentZone !== QUEST_HOME_ZONE) return null;
+  if (currentZone !== QUEST_HOME_ZONE) return _wheelPoint(currentZone, rpg, S);
 
+  const wantNpc = _wantNpc(rpg, S);
+  if (!wantNpc) return null;
+  return _npcHere(S, wantNpc);
+}
+
+/* The quest giver the road should lead to: the Mayor for a brand-new player
+   (the welcome), or whoever gives the first active quest whose objective is
+   met (the hand-in) -- or null.  v2.3.2990: hoisted out of questRoutePoint,
+   unchanged, for the Wheel's own Brotown below. */
+function _wantNpc(rpg, S) {
   const quests = (rpg && rpg._quests) || null;
-  let wantNpc = null;
-
   if (!quests || !Object.keys(quests).length) {
     /* v2.3.2765: "no quests" only means brand new once the worker has said
        so -- before its first player_state this is a blank default, and a
        returning player was shown the road to the Mayor (wsClient
        _rpgFromServer).  Absent S (a caller without one) keeps the old rule. */
     if (S && S._rpgFromServer === false) return null;
-    wantNpc = WELCOME_NPC;                       /* brand new: go meet him */
-  } else {
-    for (const qid of Object.keys(quests)) {
-      if (quests[qid] !== QUEST_STATUS.active) continue;
-      const q = QUEST_CHAINS[qid];
-      if (!q || !q.npc) continue;
-      let done = false;
-      try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
-      if (done) { wantNpc = q.npc; break; }      /* hand it in */
-    }
+    return WELCOME_NPC;                          /* brand new: go meet him */
   }
-  if (!wantNpc) return null;
+  for (const qid of Object.keys(quests)) {
+    if (quests[qid] !== QUEST_STATUS.active) continue;
+    const q = QUEST_CHAINS[qid];
+    if (!q || !q.npc) continue;
+    let done = false;
+    try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
+    if (done) return q.npc;                      /* hand it in */
+  }
+  return null;
+}
 
+/* Where that quest giver stands in the zone you are in, from the LIVE npc list
+   (the note above questRoutePoint), or null when he is not here. */
+function _npcHere(S, name) {
   const npcs = (S && S.npcs) || null;
   if (!Array.isArray(npcs)) return null;
-  const n = npcs.find((o) => o && o.name === wantNpc);
+  const n = npcs.find((o) => o && o.name === name);
   return (n && typeof n.x === 'number' && typeof n.y === 'number')
-    ? { x: n.x, y: n.y, npc: wantNpc }
+    ? { x: n.x, y: n.y, npc: name }
     : null;
+}
+
+/* ═══ v2.3.2990: IN THE WHEEL THE WAY IS A PLACE, NOT A PORTAL ═══
+ *
+ * Owner, 2026-10-02: "I'm ready to have this replace the old game map. Just
+ * have players spawn in town" -- the Wheel's Brotown (src/game/wheelHome.js).
+ * Every rule above finds its way through the old World View's portals to the
+ * old lands, and the Wheel has none: its one exit is the marker back to
+ * today's town.  But it has what those portals led to.  Its Brotown has its
+ * own Mayor Bro (BroTown _spawnWheelNpcs, in the live npc list like
+ * today's townsfolk), and each land's monsters stand at the inner end of its
+ * spoke.  So here:
+ *
+ *   - a quest that names a land ("Bring 4 Snowman Remnants from Frost
+ *     Ridge") leads to the middle of where that land's monsters stand
+ *     (ZONES.wheel.lands), and stops once you are among them: there you
+ *     hunt, you don't travel (what `currentZone === target` says elsewhere);
+ *   - a hand-in, or a brand-new player's welcome, leads to the Mayor here;
+ *   - "any zone will do" (fishing, ore) leads nowhere: the Wheel has nothing
+ *     to gather yet.
+ *
+ * Anywhere else this is what it was -- null -- as no other zone but town has
+ * a live npc list or a `lands` table. */
+const LAND_HERE_R = 600;   /* game px: each land's monsters all stand within ~550 of its middle */
+
+function _wheelPoint(currentZone, rpg, S) {
+  const target = questTargetZone(rpg, S);
+  if (target === ANY_FIELD_ZONE) return null;
+  if (target && target !== QUEST_HOME_ZONE) {
+    const homes = zoneHomes(currentZone);
+    const z = homes && homes.includes(target) ? ZONES[currentZone] : null;
+    const spot = z && z.lands && z.lands[target];
+    if (!spot) return null;
+    const P = (S && S.player) || null;
+    if (P && Math.hypot(P.x - spot[0], P.y - spot[1]) < LAND_HERE_R) return null;
+    return { x: spot[0], y: spot[1], zoneId: target, land: true };
+  }
+  const want = _wantNpc(rpg, S);
+  return want ? _npcHere(S, want) : null;
 }
 
 /** Is `zoneId` open to this player?

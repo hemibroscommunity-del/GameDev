@@ -625,10 +625,11 @@ export function EncyclopediaPanel(props) {
       fontVariantNumeric: 'tabular-nums'
     }
   }, "Visited ", visitedZones.size, "/", Object.values(ZONES).filter(function (z) {
-    /* v2.3.1127: hide transient server-dungeon instance entries */
-    return !z._instance;
+    /* v2.3.1127: hide transient server-dungeon instance entries;
+       v2.3.2978: and the Wheel trial's zone (`hidden`) */
+    return !z._instance && !z.hidden;
   }).length, " zones"), Object.values(ZONES).filter(function (z) {
-    return !z._instance;
+    return !z._instance && !z.hidden;
   }).map(function (zone) {
     var visited = visitedZones.has(zone.id) || zone.id === 'town';
     var elem = zone.element ? ELEMENTS[zone.element] : null;

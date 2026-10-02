@@ -1,0 +1,567 @@
+{
+  "tool": "brotown-ground-studio",
+  "version": 1,
+  "made": "2026-10-01T19:51:25.074Z",
+  "plan": {
+    "id": "brotown-world",
+    "version": 3
+  },
+  "tile": 1024,
+  "gamePxPerArtPx": 0.5,
+  "tileGamePx": 512,
+  "palette": null,
+  "frozen": false,
+  "ownColours": 64,
+  "swatches": [
+    {
+      "id": "commons",
+      "name": "Brotown Commons",
+      "group": "hub",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "short green grass with a few small wildflowers",
+      "madeFrom": "short green grass with a few small wildflowers"
+    },
+    {
+      "id": "town-yard",
+      "name": "Brotown yards",
+      "group": "hub",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "packed earth with patchy short grass and a few pebbles",
+      "madeFrom": "packed earth with patchy short grass and a few pebbles"
+    },
+    {
+      "id": "street",
+      "name": "Main Street",
+      "group": "hub",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "hard-packed dirt street, trodden smooth and a little darker in soft patches, with a few scattered pebbles and wisps of straw lying every which way",
+      "madeFrom": "hard-packed dirt street, trodden smooth and a little darker in soft patches, with a few scattered pebbles and wisps of straw lying every which way"
+    },
+    {
+      "id": "boardwalk",
+      "name": "Boardwalk",
+      "group": "hub",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "weathered wooden decking: straight boards of about equal width laid side by side, with thin dark gaps between them, a few knots and nail heads, and here and there two boards butted end to end",
+      "madeFrom": "weathered wooden decking of short boards in a basket weave: small square blocks of three or four boards, each block turned a quarter turn from its neighbours"
+    },
+    {
+      "id": "plaza",
+      "name": "Town square",
+      "group": "hub",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "packed pale gravel with a few flat flagstones",
+      "madeFrom": "packed pale gravel with a few flat flagstones"
+    },
+    {
+      "id": "road",
+      "name": "Road",
+      "group": "routes",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "the surface of a worn dirt road: packed earth worn evenly all over, with scattered pebbles and a few tiny tufts of grass",
+      "madeFrom": "the surface of a worn dirt road: packed earth worn evenly all over, with scattered pebbles and a few tiny tufts of grass"
+    },
+    {
+      "id": "gravel",
+      "name": "Railway bed",
+      "group": "routes",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "coarse grey ballast gravel",
+      "madeFrom": "coarse grey ballast gravel"
+    },
+    {
+      "id": "frost-1",
+      "name": "Frost Ridge: the thaw line",
+      "group": "frost",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "patchy snow melting over wet brown grass and mud",
+      "madeFrom": "patchy snow melting over wet brown grass and mud"
+    },
+    {
+      "id": "frost-2",
+      "name": "Frost Ridge: the snowbound taiga",
+      "group": "frost",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "deep, soft snow in gentle rounded drifts, shaded pale blue in the hollows",
+      "madeFrom": "deep, soft snow in gentle rounded drifts, shaded pale blue in the hollows"
+    },
+    {
+      "id": "frost-3",
+      "name": "Frost Ridge: the glacier",
+      "group": "frost",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "blue-white glacier ice with fine cracks, under a thin, patchy crust of snow",
+      "madeFrom": "blue-white glacier ice with fine cracks, under a thin, patchy crust of snow"
+    },
+    {
+      "id": "frost-4",
+      "name": "Frost Ridge: the frozen crown",
+      "group": "frost",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "hard rime ice and packed snow glittering with frost crystals",
+      "madeFrom": "hard rime ice and packed snow glittering with frost crystals"
+    },
+    {
+      "id": "ember-1",
+      "name": "Flame Fields: the burn line",
+      "group": "ember",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "scorched yellow grass with patches of grey ash",
+      "madeFrom": "scorched yellow grass with patches of grey ash"
+    },
+    {
+      "id": "ember-2",
+      "name": "Flame Fields: the ash plains",
+      "group": "ember",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "black volcanic ash over cracked basalt, with a few faint glowing embers",
+      "madeFrom": "black volcanic ash over cracked basalt, with a few faint glowing embers"
+    },
+    {
+      "id": "ember-3",
+      "name": "Flame Fields: the lava fields",
+      "group": "ember",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "cracked black basalt with thin glowing orange seams",
+      "madeFrom": "cracked black basalt with thin glowing orange seams"
+    },
+    {
+      "id": "ember-4",
+      "name": "Flame Fields: the volcano flanks",
+      "group": "ember",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "rough black cooled lava with drifts of grey ash",
+      "madeFrom": "rough black cooled lava with drifts of grey ash"
+    },
+    {
+      "id": "sky-1",
+      "name": "Wind Dunes: the sage flats",
+      "group": "sky",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "cracked dry earth with tufts of sage and tough grass",
+      "madeFrom": "cracked dry earth with tufts of sage and tough grass"
+    },
+    {
+      "id": "sky-2",
+      "name": "Wind Dunes: the dunes",
+      "group": "sky",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "fine golden sand in soft, rounded hummocks, with a few small pebbles",
+      "madeFrom": "fine golden sand in soft, rounded hummocks, with a few small pebbles"
+    },
+    {
+      "id": "sky-3",
+      "name": "Wind Dunes: the red mesas",
+      "group": "sky",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "red sandstone rock with drifts of red sand",
+      "madeFrom": "red sandstone rock with drifts of red sand"
+    },
+    {
+      "id": "sky-4",
+      "name": "Wind Dunes: the storm heights",
+      "group": "sky",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "wind-polished pale rock with small pockets of blown sand",
+      "madeFrom": "wind-polished pale rock with small pockets of blown sand"
+    },
+    {
+      "id": "hollows-1",
+      "name": "Stone Hollows: the quarry",
+      "group": "hollows",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "packed grey gravel and stone dust with chips of cut stone",
+      "madeFrom": "packed grey gravel and stone dust with chips of cut stone"
+    },
+    {
+      "id": "hollows-2",
+      "name": "Stone Hollows: the badlands",
+      "group": "hollows",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "cracked grey flagstone rock with loose rubble and pale moss",
+      "madeFrom": "cracked grey flagstone rock with loose rubble and pale moss"
+    },
+    {
+      "id": "hollows-3",
+      "name": "Stone Hollows: the granite canyons",
+      "group": "hollows",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "smooth grey granite with thin glowing crystal veins",
+      "madeFrom": "smooth grey granite with thin glowing crystal veins"
+    },
+    {
+      "id": "hollows-4",
+      "name": "Stone Hollows: the deep roots",
+      "group": "hollows",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "dark slate-grey cave stone, smooth and cold",
+      "madeFrom": "dark slate-grey cave stone, smooth and cold"
+    },
+    {
+      "id": "thunder-1",
+      "name": "Electric Foundry: the smelter yards",
+      "group": "thunder",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "trampled dark dirt with coal dust and flecks of slag",
+      "madeFrom": "trampled dark dirt with coal dust and flecks of slag"
+    },
+    {
+      "id": "thunder-2",
+      "name": "Electric Foundry: the foundry works",
+      "group": "thunder",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "dark, square iron floor plates joined by brass seams",
+      "madeFrom": "dark, square iron floor plates joined by brass seams"
+    },
+    {
+      "id": "thunder-3",
+      "name": "Electric Foundry: the coil fields",
+      "group": "thunder",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "scorched iron plating and cracked slate, with loose loops of copper wire",
+      "madeFrom": "scorched iron plating and cracked slate, with loose loops of copper wire"
+    },
+    {
+      "id": "thunder-4",
+      "name": "Electric Foundry: the storm plateau",
+      "group": "thunder",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "black iron plate spattered with fused glass where lightning struck",
+      "madeFrom": "black iron plate spattered with fused glass where lightning struck"
+    },
+    {
+      "id": "tidal-1",
+      "name": "Water Caves: the dune grass",
+      "group": "tidal",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "pale sand with tufts of dune grass",
+      "madeFrom": "pale sand with tufts of dune grass"
+    },
+    {
+      "id": "tidal-2",
+      "name": "Water Caves: the lagoons",
+      "group": "tidal",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "wet pale sand with small tide pools",
+      "madeFrom": "wet pale sand with small tide pools"
+    },
+    {
+      "id": "tidal-3",
+      "name": "Water Caves: the sea caves",
+      "group": "tidal",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "dark wet rock with barnacles and faintly glowing teal algae",
+      "madeFrom": "dark wet rock with barnacles and faintly glowing teal algae"
+    },
+    {
+      "id": "tidal-4",
+      "name": "Water Caves: the drowned reef",
+      "group": "tidal",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "pale coral rubble and wet sand",
+      "madeFrom": "pale coral rubble and wet sand"
+    },
+    {
+      "id": "mist-1",
+      "name": "Poison Forest: the blighted farm",
+      "group": "mist",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "sickly yellow grass and patchy clumps of withered crops on grey soil",
+      "madeFrom": "sickly yellow grass and patchy clumps of withered crops on grey soil"
+    },
+    {
+      "id": "mist-2",
+      "name": "Poison Forest: the slime woods",
+      "group": "mist",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "murky green moss over black bog mud",
+      "madeFrom": "murky green moss over black bog mud"
+    },
+    {
+      "id": "mist-3",
+      "name": "Poison Forest: the mangrove marsh",
+      "group": "mist",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "dark mud laced with tangled roots and green scum",
+      "madeFrom": "dark mud laced with tangled roots and green scum"
+    },
+    {
+      "id": "mist-4",
+      "name": "Poison Forest: the spore depths",
+      "group": "mist",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "a spongy purple fungal mat dusted with glowing spores",
+      "madeFrom": "a spongy purple fungal mat dusted with glowing spores"
+    },
+    {
+      "id": "verdant-1",
+      "name": "Verdant Wilds: the overgrown orchards",
+      "group": "verdant",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "tall green grass with fallen leaves and small wildflowers",
+      "madeFrom": "tall green grass with fallen leaves and small wildflowers"
+    },
+    {
+      "id": "verdant-2",
+      "name": "Verdant Wilds: the vine jungle",
+      "group": "verdant",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "dark green jungle floor of ferns and moss with fallen petals",
+      "madeFrom": "dark green jungle floor of ferns and moss with fallen petals"
+    },
+    {
+      "id": "verdant-3",
+      "name": "Verdant Wilds: the waterfall cliffs",
+      "group": "verdant",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "wet mossy stone and fern-covered earth",
+      "madeFrom": "wet mossy stone and fern-covered earth"
+    },
+    {
+      "id": "verdant-4",
+      "name": "Verdant Wilds: the elder grove",
+      "group": "verdant",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "deep moss and root-laced earth scattered with glowing petals",
+      "madeFrom": "deep moss and root-laced earth scattered with glowing petals"
+    },
+    {
+      "id": "lava",
+      "name": "Lava",
+      "group": "routes",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "molten lava in bright orange and yellow under a cracked black crust (its own bright colours, with no glow spilling onto anything)",
+      "madeFrom": "molten lava in bright orange and yellow under a cracked black crust (its own bright colours, with no glow spilling onto anything)"
+    },
+    {
+      "id": "sea",
+      "name": "Open sea",
+      "group": "water",
+      "versions": [
+        "A"
+      ],
+      "brief": "deep, calm open sea in rich blues: soft, broad patches of darker and lighter blue, with small, short glints of light scattered all over",
+      "madeFrom": "deep, calm open sea in rich blues: soft, broad patches of darker and lighter blue, with small, short glints of light scattered all over"
+    },
+    {
+      "id": "shallows",
+      "name": "Shallows",
+      "group": "water",
+      "versions": [
+        "A"
+      ],
+      "brief": "clear, shallow sea water over pale sand: light turquoise water through which the sandy bottom and a few small pebbles show, with small, soft glints of light scattered all over",
+      "madeFrom": "clear, shallow sea water over pale sand: light turquoise water through which the sandy bottom and a few small pebbles show, with small, soft glints of light scattered all over"
+    },
+    {
+      "id": "border-ember-frost",
+      "name": "Flame Fields and Frost Ridge",
+      "group": "borders",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "wet black rock and slushy melting snow, with small steaming puddles",
+      "madeFrom": "wet black rock and slushy melting snow, with small steaming puddles"
+    },
+    {
+      "id": "border-ember-sky",
+      "name": "Flame Fields and Wind Dunes",
+      "group": "borders",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "grey volcanic ash drifted over golden sand",
+      "madeFrom": "grey volcanic ash drifted over golden sand"
+    },
+    {
+      "id": "border-hollows-sky",
+      "name": "Stone Hollows and Wind Dunes",
+      "group": "borders",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "red sand scattered over grey granite gravel",
+      "madeFrom": "red sand scattered over grey granite gravel"
+    },
+    {
+      "id": "border-hollows-thunder",
+      "name": "Stone Hollows and Electric Foundry",
+      "group": "borders",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "trampled grey spoil and ore dust with flakes of rusty iron",
+      "madeFrom": "trampled grey spoil and ore dust with flakes of rusty iron"
+    },
+    {
+      "id": "border-thunder-tidal",
+      "name": "Electric Foundry and Water Caves",
+      "group": "borders",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "dark sand spattered with grey slag and flecks of rust",
+      "madeFrom": "dark sand spattered with grey slag and flecks of rust"
+    },
+    {
+      "id": "border-mist-tidal",
+      "name": "Poison Forest and Water Caves",
+      "group": "borders",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "wet grey-green mud with patches of sickly dune grass",
+      "madeFrom": "wet grey-green mud with patches of sickly dune grass"
+    },
+    {
+      "id": "border-mist-verdant",
+      "name": "Poison Forest and Verdant Wilds",
+      "group": "borders",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "wilting grey-green grass and fallen grey petals over dark soil",
+      "madeFrom": "wilting grey-green grass and fallen grey petals over dark soil"
+    },
+    {
+      "id": "border-frost-verdant",
+      "name": "Frost Ridge and Verdant Wilds",
+      "group": "borders",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "short alpine grass with small white and purple flowers and patches of old snow",
+      "madeFrom": "short alpine grass with small white and purple flowers and patches of old snow"
+    }
+  ],
+  "blends": [],
+  "forGame": true
+}

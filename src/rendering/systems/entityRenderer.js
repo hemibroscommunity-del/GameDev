@@ -8,7 +8,7 @@ import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCoun
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2748: a building's base, read off its art */
 import { TILE } from '@/data/constants.js';
-import { ZONES, zonePlayerScale, zoneDepthScale } from '@/data/zones.js';
+import { ZONES, zonePlayerScale, zoneDepthScale, zoneHomes } from '@/data/zones.js';   /* v2.3.2978: + zoneHomes, the Wheel's far-monster cull */
 import { ELEMENTS } from '@/data/elements.js';
 import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
 import { isProg3RelEnabled, prog3Live, prog3SkillLevel, prog3ActiveCat } from '@/data/prog3.js'; /* v2.3.2680: the plate's yardstick */
@@ -53,6 +53,7 @@ import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount 
   getPhaseFrame as getSnowmanPhaseFrame, phaseFrameCount as snowmanPhaseFrameCount /* v2.3.2221 */
 } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
+import { wheelArtTick, wheelArtOn, wheelArtReady, wheelArtWaiting } from '../wheelMonsterArt.js'; /* v2.3.2989: the Wheel's monsters' looks, loaded as you walk toward them */
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling corpse */
@@ -90,6 +91,7 @@ import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, bl
 import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js'; /* v2.3.1757: material recolor; v2.3.2872: + owned pieces -> art */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
+import { footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel) */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
@@ -7988,6 +7990,12 @@ export class EntityRenderer {
   _updateMonsters(S, now) {
     const monsters = S.monsters || [];
     const activeIds = new Set();
+    /* v2.3.2989: in the Wheel its monsters' looks load as you walk toward
+       them (wheelMonsterArt.js): which are wanted, loaded and let go is
+       decided here, before any monster is drawn */
+    wheelArtTick(S, monsters, now);
+    const _artOn = wheelArtOn(S.currentZone);
+    let _artWait = 0;
     const SLIME_DEATH_MS = 400; /* v7 sprite: 15-frame burst (windup pre-trimmed in
                                     the sheet, so frame 0 is already the explosion).
                                     400 ms / 15 = ~27 ms/frame -> ~37 fps, fast enough
@@ -8017,6 +8025,31 @@ export class EntityRenderer {
            normal frame rate the cap never binds and the timing is unchanged. */
     const BURST_START_GRACE_MS = 2000;
     const BURST_MAX_SKIP = 2;
+    /* ═══ v2.3.2978: IN THE WHEEL, A MONSTER FAR OFF SCREEN IS NOT DRAWN ═══
+       An ordinary zone's six to twelve monsters all stand within a screen or
+       two of you, so every one is updated and drawn every frame and that is
+       fine.  The Wheel ('wheel', the zone with `homes`) holds eight lands'
+       worth across 43,008 px, and from Brotown's square every one of the 48
+       is 3,000 px or more away: updating and drawing them cost the QA box
+       ~1.1-1.7 ms + ~1.5 ms a frame (2.0 + 2.5 ms with them, 0.3 + 0.9
+       without -- the renderer's own stage timings), for nothing on screen.
+       So past the view's half-diagonal plus FAR_MARGIN from its middle, a
+       live monster's display -- body and above-head UI -- is hidden and
+       skipped.  It keeps its display (activeIds), so walking back costs no
+       re-create, and the lines below show it again the frame it is in range
+       (`display.visible !== m.alive`, `_ui.visible`).  (v2.3.2989: its
+       look loads as you walk toward it and goes once you are well away,
+       wheelMonsterArt.js; a monster whose look is not ready holds no
+       display at all, below.)  Like any animation unused for a minute,
+       Pixi's texture GC may drop their GPU copy while you are elsewhere,
+       which on a phone is the point.  The view is S._viewW/_viewH
+       (pixiRenderer, world px). */
+    const FAR_MARGIN = 400;
+    const _farCull = !!(zoneHomes(S.currentZone) && S.camera && S._viewW > 0 && S._viewH > 0);
+    const _farCX = _farCull ? S.camera.x + S._viewW / 2 : 0;
+    const _farCY = _farCull ? S.camera.y + S._viewH / 2 : 0;
+    const _farR = _farCull ? Math.hypot(S._viewW, S._viewH) / 2 + FAR_MARGIN : 0;
+    let _farHidden = 0;
     /* Absolute ceiling on how long a corpse may be held for its burst, so a
        clock that stops advancing for any reason (the death sheet freed
        mid-animation, say) cannot leave a swollen corpse on the field
@@ -8060,6 +8093,27 @@ export class EntityRenderer {
       const isFodder = arch === 'fodder' || !!(variant && variant.useSlimeSheets);
       const variantSprites = variantKey ? variantSpritesFor(variantKey) : null;
       const isSnowman = arch === 'snowman';
+      /* v2.3.2989: a Wheel monster whose look is not ready -- not loaded yet,
+         or let go behind you -- is not drawn at all, never in a stand-in
+         body, and holds no display, so none is left pointing at a look that
+         was let go (CLAUDE.md, the ZONE-ASSET EXCEPTION: drop the texture
+         reference, do not merely hide it).  The ones in view are counted:
+         how long they wait says whether the loads keep ahead of you. */
+      if (_artOn && !wheelArtReady(arch)) {
+        const _ad = this.monsterDisplays.get(m.id);
+        if (_ad) {
+          if (_ad._deathFx) clearMonsterDeath(_ad);
+          if (_ad._hpUi && !_ad._hpUi.destroyed) _ad._hpUi.destroy({ children: true });
+          _ad.destroy({ children: true });
+          this.monsterDisplays.delete(m.id);
+        }
+        if (m.alive) {
+          /* (one far off screen counts as far, as it would have anyway) */
+          const _wx = (m.renderX != null ? m.renderX : m.x) - _farCX, _wy = (m.renderY != null ? m.renderY : m.y) - _farCY;
+          if (_farCull && _wx * _wx + _wy * _wy > _farR * _farR) _farHidden++; else _artWait++;
+        }
+        continue;
+      }
 
       /* Fodder + variant death timer — first observation of alive=false
          stamps m._slimeDeathStart (kept its slime-era name to avoid
@@ -8374,6 +8428,20 @@ export class EntityRenderer {
       }
 
       activeIds.add(m.id);
+
+      if (_farCull) {   /* v2.3.2978: see FAR_MARGIN above */
+        const _fox = (m.renderX != null ? m.renderX : m.x) - _farCX;
+        const _foy = (m.renderY != null ? m.renderY : m.y) - _farCY;
+        if (_fox * _fox + _foy * _foy > _farR * _farR) {
+          const _fd = this.monsterDisplays.get(m.id);
+          if (_fd) {
+            if (_fd.visible) _fd.visible = false;
+            if (_fd._hpUi && _fd._hpUi.visible) _fd._hpUi.visible = false;
+          }
+          _farHidden++;
+          continue;
+        }
+      }
 
       let display = this.monsterDisplays.get(m.id);
       /* v2.3.2913: alive again on the same display -- drop any leftover pieces */
@@ -10018,6 +10086,9 @@ export class EntityRenderer {
         this.monsterDisplays.delete(id);
       }
     }
+    S._monstersFarHidden = _farHidden;   /* v2.3.2978: QA readout (mp-wheelmonsters) */
+    S._monstersArtWait = _artWait;       /* v2.3.2989: ...and those in view still waiting for their look */
+    if (_artOn) wheelArtWaiting(_artWait, now);
   }
 
   /* v2.3.1091: zone perspective player-scale -- the Overlook/vista "world
@@ -12172,7 +12243,9 @@ export class EntityRenderer {
            frame (works forward + backpedal; the jog advances <=1 frame/tick). */
         if (display._prevJogFrame !== frameIdx) {
           if (_contacts.indexOf(frameIdx) !== -1 && typeof window !== 'undefined' && window.BT_AUDIO) {
-            window.BT_AUDIO.footstep(isWearingArmor());
+            /* v2.3.2967: on the ground drawn under the feet (the Wheel; null
+               elsewhere, which is today's dirt step) */
+            window.BT_AUDIO.footstep(isWearingArmor(), footstepSurface(S));
           }
           display._prevJogFrame = frameIdx;
         }
@@ -14850,9 +14923,15 @@ export class EntityRenderer {
          bind it whenever it becomes available rather than once at creation. */
       const fig = display._fig;
       if (fig) {
-        if (fig.texture === Texture.EMPTY) {
+        /* v2.3.2975: and again whenever the one bound was FREED under it --
+           a townsperson whose art is let go (town's scenery, a beat after you
+           leave town) must fall back to the registry's live copy, or to
+           nothing, not draw a destroyed source (alphaMode: mp-wheelobjects,
+           Mayor Bro walking into the Wheel) */
+        const bound = fig.texture;
+        if (bound === Texture.EMPTY || bound.destroyed || !bound.source || bound.source.destroyed) {
           const t = getNpcTexture(display._figSrc);
-          if (t) fig.texture = t;
+          fig.texture = t && !t.destroyed && t.source && !t.source.destroyed ? t : Texture.EMPTY;
         }
         /* Only hide the emoji stand-in once real art is actually on screen —
            otherwise a failed load leaves an NPC you cannot see at all. */

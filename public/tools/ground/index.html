@@ -1,0 +1,271 @@
+<!doctype html>
+<!-- ═══ v2.3.2937: THE GROUND STUDIO ═══
+
+  Owner, 2026-09-29: "Yes definitely do the swatches."  The ground of the
+  whole world is made from about fifty seamless ground swatches in HD pixel
+  art, and the game lays them onto the plan (docs/WORLD-BIBLE.md §13).  This
+  page is where the owner makes them:
+
+    - every swatch's ChatGPT prompt, ready to copy;
+    - bring each picture back (and a second version): it is made seamless,
+      kept at 1024 px for 512 game px (2 px per game px, the phone's own
+      sharpness, v2.3.2942), and put on its own 64 colours (v2.3.2961:
+      it was the one palette all the ground shared, and the grass got 3
+      greens), as the game will use it;
+    - see it laid on the Wheel at game size, next to the bro, with the real
+      roads, rivers, shores and borders round it;
+    - download everything as one zip, to upload to GitHub.
+
+  SELF-CONTAINED, like the other pages in public/tools: no external scripts,
+  styles or fonts, and nothing is uploaded anywhere.  Pictures stay in this
+  browser (IndexedDB).  The style key is read from the World Builder's own
+  storage on this site.  Driven in a real browser by
+  tools/qa/ground-studio.mjs (window.__ground).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>BroTown — Ground Studio</title>
+<style>
+  :root { --bg:#121B20; --card:#202C32; --line:rgba(238,242,235,.14); --ink:#F7F2E7;
+          --mut:#96A2A0; --brass:#D8A85F; --ok:#59BF91; --bad:#E06A5E;
+          --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--bg); color:var(--ink); padding:20px 16px 80px;
+         font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; display:grid; gap:16px; }
+  h1 { font-size:24px; margin:0 0 2px; }
+  h2 { font-size:17px; margin:0 0 4px; }
+  h3 { font-size:13px; text-transform:uppercase; letter-spacing:.9px; color:var(--brass); margin:18px 0 4px; font-weight:600; }
+  p { margin:6px 0; }
+  .sub, .mut { color:var(--mut); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .btn, button { appearance:none; border:1px solid var(--line); background:#2A3940; color:var(--ink);
+         border-radius:8px; padding:10px 14px; min-height:44px; font-family:inherit; font-size:14px; font-weight:600; line-height:1.2;
+         cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+  button:disabled { opacity:.45; cursor:default; }
+  .brass { background:var(--brass); color:#1b1206; border-color:var(--brass); }
+  .danger { color:#FFC7C0; border-color:rgba(224,106,94,.5); }
+  .chip { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:99px; background:#34474F; color:#DDE6E1; margin-left:6px; vertical-align:2px; }
+  .chip.ok { background:rgba(89,191,145,.22); color:#A9E6C8; }
+  /* v2.3.2984: what the game has (public/world/ground/), and the contents at the top */
+  .chip.game { background:rgba(110,168,214,.22); color:#BFDDF2; }
+  #list h3, #list .sw { scroll-margin-top:14px; }
+  .jump { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:10px 0 2px; }
+  .jump a { font-size:13px; font-weight:600; padding:7px 11px; border-radius:99px; background:#34474F; color:#DDE6E1; text-decoration:none; }
+  .jump a.new { background:rgba(243,217,162,.24); color:#F3D9A2; box-shadow:inset 0 0 0 1px rgba(243,217,162,.5); }
+  label.btn input { display:none; }
+  textarea { width:100%; min-height:150px; background:#18242A; color:var(--ink); border:1px solid var(--line);
+             border-radius:6px; padding:9px 10px; font:12.5px/1.45 var(--mono); resize:vertical; }
+  details summary { cursor:pointer; color:#F3D9A2; font-weight:600; margin:8px 0 4px; }
+  select { width:100%; background:#18242A; color:var(--ink); border:1px solid var(--line); border-radius:6px; min-height:44px; padding:6px; font:inherit; }
+  ol.plan { padding-left:20px; margin:6px 0; } ol.plan li { margin:4px 0; color:#C9D1CC; }
+  .keyrow { display:grid; grid-template-columns:120px 1fr; gap:12px; align-items:start; margin-top:8px; }
+  .keyimg { width:120px; aspect-ratio:1; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:#0c1216; }
+  .mapwrap { margin-top:10px; border-radius:8px; overflow:hidden; border:1px solid var(--line); background:#16263a; }
+  .mapwrap canvas { display:block; width:100%; height:auto; image-rendering:pixelated; touch-action:manipulation; }
+  .phone { position:relative; margin:10px auto 0; width:100%; max-width:390px; aspect-ratio:390/844; border-radius:14px; overflow:hidden;
+           border:1px solid var(--line); background:#0c1216; touch-action:none; }
+  .phone canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .phone .inview { position:absolute; left:0; right:0; bottom:0; padding:8px 10px; font-size:12.5px; line-height:1.4;
+                   background:rgba(12,18,22,.82); border-top:1px solid rgba(216,168,95,.45); }
+  .inview b { color:#F3D9A2; }
+  .inview .missing { color:#FFC7C0; }
+  .pal { display:grid; grid-template-columns:repeat(16, 1fr); gap:2px; margin-top:8px; }
+  .pal span { aspect-ratio:1; border-radius:2px; }
+  .sw { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; }
+  .sw-head { display:flex; gap:8px; align-items:baseline; justify-content:space-between; flex-wrap:wrap; }
+  .sw-name { font-weight:700; }
+  .sw-where { font-size:13px; color:var(--mut); }
+  .saved-list { margin:4px 0 8px; padding-left:20px; }
+  .saved-list li { margin:2px 0; }
+  .sw-stale { font-size:13px; color:#FFD9A0; background:rgba(216,168,95,.12); border:1px solid rgba(216,168,95,.45); border-radius:8px; padding:8px 10px; margin-top:8px; }
+  .vers { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+  .ver { border:1px dashed rgba(216,168,95,.45); border-radius:8px; padding:8px; min-width:0; }
+  .ver .lbl { font-size:12px; color:var(--mut); margin-bottom:6px; }
+  /* v2.3.2968: the card's footstep row -- the menu beside its play button */
+  .step { gap:8px; }
+  .step .lbl { font-size:13px; font-weight:600; color:var(--ink); }
+  .step select { width:auto; flex:1 1 150px; min-width:140px; }
+  .ver canvas { display:block; width:100%; aspect-ratio:1; image-rendering:pixelated; background:#0c1216; border-radius:6px; }
+  .ver .row { margin-top:6px; gap:6px; }
+  .ver .btn, .ver button { padding:8px 10px; min-height:40px; font-size:13px; flex:1 1 auto; }
+  .edge { border:1px dashed rgba(216,168,95,.45); border-radius:8px; padding:8px; margin-top:10px; }
+  .edge .lbl { font-size:12px; color:var(--mut); margin-bottom:6px; }
+  .edge-row { display:grid; grid-template-columns:96px 1fr; gap:10px; align-items:start; margin-top:6px; }
+  .edge canvas { display:block; width:96px; aspect-ratio:1; image-rendering:pixelated; border-radius:6px; background:#0c1216; }
+  .edge .row { margin-top:6px; gap:6px; }
+  .edge .btn, .edge button { padding:8px 10px; min-height:40px; font-size:13px; flex:1 1 auto; }
+  .edge-bad { font-size:13px; color:#FFC7C0; margin-top:6px; }
+  .blend .edge-row canvas { display:block; width:96px; aspect-ratio:1; image-rendering:pixelated; border-radius:6px; background:#0c1216; }
+  .blend .row { gap:6px; }
+  .blend .btn, .blend button { padding:8px 10px; min-height:40px; font-size:13px; flex:1 1 auto; }
+  #blend-rest > summary { margin-top:14px; }
+  .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); max-width:min(92vw,560px); z-index:80;
+           background:#2A3940; border:1px solid var(--line); border-radius:10px; padding:12px 16px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
+  .toast[data-bad="1"] { border-color:rgba(224,106,94,.7); color:#FFD6D0; }
+  .busy { position:fixed; inset:0; z-index:70; background:rgba(8,12,15,.6); display:flex; align-items:center; justify-content:center;
+          font-weight:700; color:#F3D9A2; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Ground Studio</h1>
+    <p class="sub">BroTown's ground, made from about fifty seamless swatches in HD pixel art and laid onto the Wheel by the game.</p>
+    <!-- v2.3.2942: the version on the page, so the owner can tell a stale
+         copy (a phone's cached page) from the latest without asking -->
+    <p class="mut" id="ver">Version v2.3.2984: the <b>Water</b> cards -- the open sea, its shallows, fresh water -- are third in the list. Tap <b>Water</b> below to jump there.</p>
+    <p class="mut" id="status">Building the plan…</p>
+    <!-- v2.3.2984: the contents (app.js renderJump).  The owner twice did not
+         find the Water cards: on a phone they were ten screens down a page
+         thirty screens long.  A link to …/tools/ground/#water lands there. -->
+    <nav class="jump" id="jump" aria-label="Jump to a group of swatches"></nav>
+  </header>
+
+  <!-- v2.3.2946, owner: "I can't tell if the ground studio has saved what I
+       put in earlier."  What is saved here, where "here" is, and the trap:
+       the Claude app's built-in browser and Safari keep separate copies. -->
+  <section class="card" id="saved">
+    <h2>Saved on this phone <span id="saved-chip" class="chip">checking…</span></h2>
+    <p id="saved-line">Looking for your swatches…</p>
+    <ul id="saved-list" class="saved-list" hidden></ul>
+    <p id="saved-when" class="mut" hidden></p>
+    <p class="mut">Your pictures are saved in <b>this browser</b> only, never uploaded. The Claude app's built-in browser and Safari keep <b>separate</b> copies: if your swatches are missing, open this page the other way. To keep everything in one place, tap the compass button (Open in Safari) and use Safari from then on. <b>Download all</b> (at the bottom) is your backup, and <b>Restore</b> moves it to any browser.</p>
+    <p class="mut" id="saved-keep" hidden></p>
+  </section>
+
+  <section class="card">
+    <h2>How it works</h2>
+    <ol class="plan">
+      <li><b>Make the style key first</b>, in <a href="../world/" style="color:#F3D9A2">the World Builder</a>. Every swatch is matched to it.</li>
+      <li>For each swatch below: <b>copy its prompt</b> into a new ChatGPT chat, and attach <b>the style key</b>, and only the key. Not your bro: the world is finer, more detailed pixel art than he is, and ChatGPT copies what it sees.</li>
+      <li><b>Bring the picture back</b> as version A. The page makes it seamless (by cutting where its two ends already look alike, so nothing in it is see-through), keeps it at your phone's own sharpness, keeps its own 64 colours, and shows it laid on the map at game size next to your bro.</li>
+      <li>Later, a <b>second version (B)</b> of the same prompt in a fresh chat. The game mixes A and B so the ground does not repeat.</li>
+      <li data-pieces hidden><b>Edge pieces</b> (optional, under each swatch): in the same chat, ask for that ground's loose pieces on magenta. The game scatters them where it lies over another ground.</li>
+      <li data-blends hidden><b>Blends</b> (optional, below the swatches): where two alike grounds mix, a third picture made from the two, laid through the middle. Start with the town square.</li>
+      <li><b>Footsteps</b>: each card says what that ground sounds like underfoot. <b>▶ Hear it</b> plays a few steps; the menu changes the sound, and the game follows (v2.3.2968).</li>
+      <li><b>Walk on them</b> in the game whenever you like (below): it lays them straight from this page, nothing to send.</li>
+      <li>When you are happy, <b>Download all</b> and upload the zip to GitHub (below), so every player gets them. A session puts it in the game.</li>
+    </ol>
+    <p class="mut">Start with the commons, a road and the first stage of one spoke: that is enough to judge the look round town. Pictures stay in this browser; nothing is uploaded.</p>
+  </section>
+
+  <!-- v2.3.2947, owner: "There needs to be specific and additional prompts
+       for when two swatches have a contact area … layers need to be correct
+       (grass slightly overlapping dirt areas) … that border area will need
+       to vary in size depending on what two swatches are coming together." -->
+  <section class="card" id="edges">
+    <h2>Where two grounds meet</h2>
+    <p>The game draws every edge between two grounds itself, from the two swatches:</p>
+    <ul class="plan">
+      <li><b>The higher ground lies over the lower.</b> From the bottom up: lava; roads and the railway bed; bare rock; metal floor plates; earth and mud; sand and ash; moss; grass; ice; snow. So grass reaches over dirt, sand drifts onto rock, and snow lies on everything.</li>
+      <li><b>Each pair has its own edge.</b> A road's edge is narrow; sand drifting onto rock is wide. Inside it, the two pictures interlock along their own tufts and lumps, so the edge looks drawn, not cut.</li>
+      <li><b>A land's stages change over a wide area</b>, in patches, not along a line.</li>
+      <li><b>Grounds that are much alike mix over a wide zone</b>, in big patches, instead of meeting at an edge: the town square into the yards and the street, one meadow into the next, sand into dry earth (v2.3.2950). <span data-blends hidden>Through a <b>blend</b> picture, if you make one (below).</span></li>
+      <li>The bridges keep straight edges, and the water its shore.</li>
+    </ul>
+    <!-- v2.3.2948: the edge pieces are put away (owner: "I don't see any
+         difference"): these two paragraphs, the step above and the slot
+         under each swatch show only with ?edgepieces in the address -->
+    <p data-pieces hidden><b>Edge pieces (optional).</b> Every ground that lies over others has one more prompt, under its swatch: its own loose tufts, lumps or drifts on a plain magenta background. The game scatters them along that ground's edges. <span id="edge-count"></span></p>
+    <p class="mut" data-pieces hidden>Why one per ground and not one per pair: <span id="pair-count">about 200</span> pairs of grounds touch on the Wheel (the road alone meets <span id="road-count">45</span>), and one set of pieces works against every neighbour. Make a ground's edge pieces in the same chat as its swatch.</p>
+  </section>
+
+  <section class="card" id="key">
+    <h2>The style key <span id="key-chip" class="chip">not found</span></h2>
+    <div class="keyrow">
+      <img id="key-img" class="keyimg" alt="The style key" hidden>
+      <div>
+        <p id="key-none">No style key in this browser yet. Make it in <a href="../world/" style="color:#F3D9A2">the World Builder</a> first, then come back: this page reads it from there.</p>
+        <p id="key-has" hidden>Found in the World Builder. Attach it, and only it, to every swatch chat.</p>
+        <div class="row"><a id="key-save" class="btn" download="brotown-style-key.png" hidden>Save style key</a><button id="key-share" hidden>Share…</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Progress <span id="count" class="chip">0 of 0</span></h2>
+    <p class="mut">The Wheel, each swatch in its own colour once it is made (dim until then). Tap the map to preview that spot.</p>
+    <div class="mapwrap"><canvas id="map" aria-label="The Wheel, coloured by swatch. Tap to preview a spot."></canvas></div>
+  </section>
+
+  <section class="card" id="preview">
+    <h2>Preview at game size</h2>
+    <p class="mut">Your bro stands in the middle, at the game's own scale. Drag to look around; pick a place to jump there.</p>
+    <select id="spot" aria-label="Place to preview"></select>
+    <div class="phone" id="phone"><canvas id="pv"></canvas><div class="inview" id="inview"></div></div>
+  </section>
+
+  <!-- v2.3.2943: the game lays its ground from this page's own swatches
+       (public/tools/world/core/ground-worker.js reads this browser's storage) -->
+  <section class="card" id="walk">
+    <h2>Walk on them in the game</h2>
+    <p>The game can lay this ground itself, from the swatches on this page, the moment you make them. Open it with the test switch, walk down the town's stairs, and you arrive in the Wheel's town square. Nothing to download or upload.</p>
+    <div class="row"><a class="btn brass" id="walk-link" href="/?trial=wheel">Open the game on the Wheel</a></div>
+    <p class="mut">It works on this same site only: this browser keeps your swatches for this address. Swatches not made yet show as chequered colour. To go back to the normal game, open it with <code>?trial=off</code> on the end.</p>
+  </section>
+
+  <section class="card" id="swatches">
+    <h2>The swatches</h2>
+    <div id="list"></div>
+  </section>
+
+  <!-- v2.3.2951, owner: "One idea I have is to have chatGPT make a blend of
+       the two surfaces that are mapped together" … "Bottom right looks the
+       best by a moderate margin" … "Yes build it".  One slot per pair of
+       alike grounds that meet on the Wheel, the town's first. -->
+  <!-- v2.3.2955: put away, the owner choosing two pictures a pair ("Yeah
+       hide it"): the card and its step show only with ?blends in the address -->
+  <section class="card" id="blends" data-blends hidden>
+    <h2>Blends between alike grounds <span id="blend-chip" class="chip">optional</span></h2>
+    <p>Where two alike grounds meet, the game mixes them over a wide strip. A <b>blend</b> is a third picture, made in ChatGPT from the two, that the game lays through the middle of that strip, so one ground turns into the other.</p>
+    <ol class="plan">
+      <li>Make both grounds first.</li>
+      <li>Copy the pair's <b>blend prompt</b> into a new ChatGPT chat, and attach <b>the two ground pictures</b> (the button beside the prompt saves them to your phone). Not the style key: the two pictures already carry the style.</li>
+      <li>Bring the picture back here. The preview jumps to where the two meet, with the blend laid.</li>
+    </ol>
+    <p class="mut">Each one is optional: a pair without one keeps the plain mix. The phone hardly notices (the ground takes about as long to lay, and a blend holds 1 MB only while you are near its pair). Start with the town square.</p>
+    <div id="blend-list"></div>
+  </section>
+
+  <section class="card" id="palette">
+    <h2>Colours <span id="pal-chip" class="chip">automatic</span></h2>
+    <!-- v2.3.2961: each swatch keeps its own colours -->
+    <p class="mut" id="pal-own" hidden>Every swatch keeps its own <span id="pal-own-n">64</span> colours, chosen from its own picture, so the grass keeps its greens. They all used to share one set of 128, which left the grass only 3 greens: it looked clumpy.</p>
+    <div id="pal-shared">
+      <p class="mut">Every swatch is moved onto one palette of <span id="pal-n">128</span> colours, made from the style key and the swatches so far (the water, night and light colours the game draws are always kept). Freeze it once you are happy with the first few: after that, every new swatch is moved onto exactly these colours.</p>
+      <div class="pal" id="pal"></div>
+      <div class="row"><button id="freeze">Freeze these colours</button></div>
+    </div>
+  </section>
+
+  <section class="card" id="save">
+    <h2>Save and send</h2>
+    <p><b>Download all</b> is your <b>backup</b>: one big zip with every picture as ChatGPT made it, every swatch as the game will use it, and the colours. Keep it in iCloud or Google Drive, not on GitHub. <b>Restore</b> brings everything back on any device.</p>
+    <div class="row"><button id="export">Download all (backup)</button><label class="btn">Restore…<input type="file" id="restore" accept=".zip,application/zip"></label></div>
+    <!-- v2.3.2957, owner: "It's 279mb in the zip file. Isn't that way too much
+         for GitHub?" -- the game needs only the finished swatches -->
+    <p><b>Download for the game</b> is what goes on GitHub: only the finished swatches, saved small (same pixels, about half the size), split into zips of under 25 MB so GitHub's website takes each one.</p>
+    <div class="row"><button id="export-game" class="brass">Download for the game</button></div>
+    <div class="row" id="game-parts" hidden></div>
+    <details>
+      <summary>Putting the swatches in the game</summary>
+      <ol class="plan">
+        <li>Tap <b>Download for the game</b>, then tap each <b>Save part</b> button that appears.</li>
+        <li>On GitHub, open the repository, tap <b>Add file → Upload files</b>, choose every part, and commit them (any folder is fine, for example <code>art</code>).</li>
+        <li>Tell Claude the swatches are uploaded. A session unpacks them into the game and checks them.</li>
+      </ol>
+    </details>
+  </section>
+</div>
+<div id="busy" class="busy" hidden>Working…</div>
+<div id="toast" class="toast" hidden></div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

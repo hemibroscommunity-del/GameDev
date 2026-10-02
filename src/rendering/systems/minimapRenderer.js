@@ -57,6 +57,8 @@ import { propsForZone } from '@/data/worldProps.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
 import { questRouteExits } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants; v2.3.2128: plural */
+import { isWheelTrialZone } from '@/game/worldTrial.js';
+import { WheelMinimap } from './wheelMinimap.js';   /* v2.3.2966: the Wheel's own, bigger box */
 
 /* Box size in CSS px.
    v2.3.1781: 104, ~27% of a 390px phone's width.
@@ -328,6 +330,10 @@ export class MinimapRenderer {
 
     this._dotTex = this._makeDotTexture();
     this._buildIcons();
+    /* v2.3.2966: in the Wheel the box is the Wheel's own (wheelMinimap.js):
+       bigger, the land and its roads, and where you are in words -- the
+       owner's "larger and the most informative and intuitive it can be" */
+    this.wheel = new WheelMinimap(hudLayer, this._icons, this._dotTex);
     this._pool = [];
     this._used = 0;
     this._topInset = 0;
@@ -695,7 +701,14 @@ export class MinimapRenderer {
     const zone = zoneId && ZONES[zoneId];
     /* Hold the box back while the per-zone loading overlay is up — a
        half-swapped zone would draw the new player position on the old map. */
-    if (!P || !zone || S._zoneLoading) { this.root.visible = false; return; }
+    if (!P || !zone || S._zoneLoading) { this.root.visible = false; this.wheel.hide(); return; }
+    /* v2.3.2966: the Wheel has its own box */
+    if (isWheelTrialZone(zoneId)) {
+      this.root.visible = false;
+      this.wheel.update(S, cssW, cssH, canvas, this._measureTopInset(canvas, cssH));
+      return;
+    }
+    this.wheel.hide();
 
     const zoneW = zone.w * TILE;
     const zoneH = zone.h * TILE;
@@ -955,6 +968,7 @@ export class MinimapRenderer {
   }
 
   destroy() {
+    try { this.wheel.destroy(); } catch (e) {}
     try { this.root.destroy({ children: true }); } catch (e) {}
     this._pool = [];
   }

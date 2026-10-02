@@ -132,6 +132,7 @@ import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
 import { StorePanel } from './panels/buildings/StorePanel.jsx';   /* v2.3.2476: the auction house */
 import { StoreToast } from './mobile/StoreToast.jsx';   /* v2.3.2476: "your thing sold" */
+import { WorldMapOverlay } from './WorldMapOverlay.jsx';  /* v2.3.2966: the Wheel's labelled world map */
 import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
 import { pageIsPinchZoomed } from '@/data/joinGate.js';   /* v2.3.2388 */
 /* v2.3.1189: LEGACY DEBT burn-down — these five resolved only via the
@@ -452,6 +453,8 @@ import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band =
 import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
+import { isWheelTrialZone } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown */
+import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
@@ -744,6 +747,28 @@ function _spawnTownNpcs() {
     .map(function (npc) { return _objectSpread({}, npc); });
 }
 var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
+
+/* ═══ v2.3.2975: MAYOR BRO IN THE WHEEL'S BROTOWN ═══
+   Owner, with the objects for the new map: "Put mayor bro in town too."
+   In `?trial=wheel` the World View is the whole Wheel, Brotown in its
+   middle; he stands beside the Town Hall's steps there (the ground worker
+   works the spot out from the plan: placing.js mayorSpot), and talks, gives
+   and takes his quests exactly as in today's town -- the server's quest
+   hand-ins never ask which zone you are in (quests.js).  Only him: the
+   shopkeeper, the blacksmith, Lil Bro and Ace stay in today's town until
+   their buildings have doors. */
+function _spawnWheelNpcs() {
+  var info = wheelObjectsInfo();
+  var spot = info && info.mayor;
+  if (!spot) return null;
+  return NPC_DATA.filter(function (n) { return n.name === 'Mayor Bro'; })
+    .map(function (npc) {
+      return _objectSpread(_objectSpread({}, npc), { x: spot.x, y: spot.y, spawnX: spot.x, spawnY: spot.y,
+        renderX: spot.x, renderY: spot.y, targetX: spot.x, targetY: spot.y });
+    });
+}
+/* the zones townsfolk stand in: today's town, and the Wheel's Brotown */
+function _npcZone(z) { return z === 'town' || isWheelTrialZone(z); }
 
 export var BroTown = function BroTown(_ref0) {
   var _stateRef$current, _stateRef$current2, _minigameInstance$win, _minigameInstance$win2, _rpgState$lifeSkills3, _rpgState$lifeSkills4, _rpgState$lifeSkills5, _rpgState$lifeSkills6, _rpgState$lifeSkills0, _rpgState$weapon, _rpgState$rangedWeapo, _rpgState$armor, _rpgState$lifeSkills1, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills14, _rpgState$lifeSkills18, _stateRef$current7, _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$play5, _MKT_CATEGORIES$mktCa, _rpgState$lifeSkills21, _rpgState$lifeSkills29, _rpgState$lifeSkills33, _rpgState$lifeSkills36, _stateRef$current18, _stateRef$current19, _stateRef$current20, _stateRef$current$_sl, _stateRef$current21, _stateRef$current22, _stateRef$current$_fe, _stateRef$current23, _stateRef$current24, _stateRef$current$_sl2, _stateRef$current25, _clanData$members, _clanData$members2, _questPanel$npcRef, _incomingTrade$offer, _RARITY_TIERS$rpgStat, _rpgState$armor2, _rpgState$armor3, _rpgState$armor4, _AMULET_TIERS$rpgStat, _ELEMENTS$rpgState$am4, _ELEMENTS$rpgState$am5, _ELEMENTS$rpgState$am6, _BLACKSMITH_TIERS$rpg, _BLACKSMITH_TIERS$rpg2, _rpgState$lifeSkills37, _rpgState$lifeSkills38, _rpgState$lifeSkills39, _rpgState$lifeSkills40, _rpgState$lifeSkills42, _stateRef$current30, _REPUTATION$stateRef$, _REPUTATION$stateRef$2, _stateRef$current31, _ZONES, _stateRef$current33, _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current40, _stateRef$current41, _stateRef$current42, _stateRef$current43, _stateRef$current44, _stateRef$current45, _stateRef$current46, _stateRef$current47, _stateRef$current48, _stateRef$current49, _stateRef$current50, _stateRef$current51, _stateRef$current52, _stateRef$current53, _stateRef$current54, _stateRef$current55, _stateRef$current56, _stateRef$current57, _stateRef$current58, _stateRef$current$_ne, _stateRef$current$_ne2, _stateRef$current$_ne3, _stateRef$current$_ne4, _window$matchMedia, _window;
@@ -4020,6 +4045,8 @@ export var BroTown = function BroTown(_ref0) {
        would also make NPCs silently vanish the day a town mask ships. */
     if (!S.npcs && S.currentZone === 'town') {
       S.npcs = _spawnTownNpcs();
+    } else if (!S.npcs && isWheelTrialZone(S.currentZone)) {
+      S.npcs = _spawnWheelNpcs();   /* v2.3.2975 */
     }
 
     /* Loaded avatar images cache */
@@ -4455,6 +4482,10 @@ export var BroTown = function BroTown(_ref0) {
            visit and vanishes on re-entry (zone transitions null S.npcs). */
         if (!S.npcs && S.currentZone === 'town') {
           S.npcs = _spawnTownNpcs();
+        } else if (!S.npcs && isWheelTrialZone(S.currentZone)) {
+          /* v2.3.2975: Mayor Bro in the Wheel's Brotown (null until the
+             worker has said where; tried again next frame) */
+          S.npcs = _spawnWheelNpcs();
         }
         /* Active weapon — available to all render/combat sections */
         var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : {
@@ -5937,7 +5968,7 @@ export var BroTown = function BroTown(_ref0) {
 
         /* §KB — Detect nearest interactable NPC (for E-key on desktop) */
         S._nearNpc = null;
-        if (S.npcs && S.currentZone === 'town') {
+        if (S.npcs && _npcZone(S.currentZone)) {   /* v2.3.2975: and the Wheel's Brotown */
           /* v2.3.1717: 60 -> 90.  A judge on a fresh character could not talk
              to Mayor Bro at all.  Measured: E works at 55px and dies by 65,
              which is under two tiles -- standing what LOOKS like next to him
@@ -6065,17 +6096,17 @@ export var BroTown = function BroTown(_ref0) {
           var _pn = S._nearNpc;
           /* Resolved BEFORE the latch check so the latch can be compared
              against it.  One small table walk per frame. */
-          var _pq = (_pn && S.currentZone === 'town') ? getNpcQuest(S.rpg, _pn.name) : null;
+          var _pq = (_pn && _npcZone(S.currentZone)) ? getNpcQuest(S.rpg, _pn.name) : null;
           var _pqReady = _npcQuestReady(S, _pq);
           if (_latched) {
             var _ld = Math.sqrt(Math.pow(_latched.npc.x - _px, 2) + Math.pow(_latched.npc.y - _py, 2));
             /* Released by walking away, by anything that ends this visit to
                town (zone change nulls S.npcs), or by the quest becoming
                claimable under your feet. */
-            if (!S.npcs || S.currentZone !== 'town' || _ld > NPC_PROX_CLEAR
+            if (!S.npcs || !_npcZone(S.currentZone) || _ld > NPC_PROX_CLEAR
               || (_pn === _latched.npc && _pqReady && !_latched.ready)) S._npcProxLatch = null;
           }
-          if (_pn && !S._npcProxLatch && S.currentZone === 'town') {
+          if (_pn && !S._npcProxLatch && _npcZone(S.currentZone)) {
             var _pd = Math.sqrt(Math.pow(_pn.x - _px, 2) + Math.pow(_pn.y - _py, 2));
             /* Every gate that means "not now": something else is on screen,
                mid-extraction, behind the per-zone loading overlay, or dead. */
@@ -6409,8 +6440,14 @@ export var BroTown = function BroTown(_ref0) {
                 var dist = Math.random() * npc.pathRadius;
                 npc.targetX = npc.spawnX + Math.cos(angle) * dist;
                 npc.targetY = npc.spawnY + Math.sin(angle) * dist;
-                npc.targetX = Math.max(TILE * 2, Math.min(TOWN_W - TILE * 2, npc.targetX));
-                npc.targetY = Math.max(TILE * 2, Math.min(TOWN_H - TILE * 2, npc.targetY));
+                /* v2.3.2975: kept inside the zone he is in -- the town's own
+                   size in town, the Wheel's in the Wheel, where he stands
+                   some 21,000 px from its corner and the town's would walk
+                   him out of Brotown toward it */
+                var _nz = ZONES[S.currentZone], _nzW = _nz && !isWheelTrialZone(S.currentZone) ? TOWN_W : (_nz ? _nz.w * TILE : TOWN_W);
+                var _nzH = _nz && !isWheelTrialZone(S.currentZone) ? TOWN_H : (_nz ? _nz.h * TILE : TOWN_H);
+                npc.targetX = Math.max(TILE * 2, Math.min(_nzW - TILE * 2, npc.targetX));
+                npc.targetY = Math.max(TILE * 2, Math.min(_nzH - TILE * 2, npc.targetY));
                 npc.moveTimer = 2000 + Math.random() * 4000;
               }
               var nDx = npc.targetX - npc.x,
@@ -6825,8 +6862,22 @@ export var BroTown = function BroTown(_ref0) {
            Maps narrower/shorter than the viewport (only possible on a very
            wide desktop window) center instead, since some void is then
            unavoidable. */
-        var _maxCamX = ZONE_W - W;
-        var _maxCamY = ZONE_H - H;
+        /* ═══ v2.3.2932: CLAMP TO THE ZONE YOU ARE IN NOW ═══
+           ZONE_W/ZONE_H were read at the top of the frame, BEFORE
+           handleZoneTransitions -- deliberately, for the water check.  But
+           on the frame a zone change lands, the transition has just snapped
+           the camera onto the player in the NEW zone, and clamping that to
+           the OLD zone's size pinned it in the old map's far corner; the
+           camera then slid in from there over the next ~15 frames.  On a
+           1024 px spoke that is a flick nobody noticed.  On the world trial's
+           13,312 px island it was a sweep across the whole map, and the
+           streamed ground dutifully loaded every piece along the way
+           (mp-worldtrial caught 17 wasted loads on arrival). */
+        var _camZone = ZONES[S.currentZone];
+        var _camZW = _camZone ? _camZone.w * TILE : ZONE_W,
+          _camZH = _camZone ? _camZone.h * TILE : ZONE_H;
+        var _maxCamX = _camZW - W;
+        var _maxCamY = _camZH - H;
         S.camera.x = _maxCamX <= 0 ? _maxCamX / 2 : Math.max(0, Math.min(_maxCamX, S.camera.x));
         S.camera.y = _maxCamY <= 0 ? _maxCamY / 2 : Math.max(0, Math.min(_maxCamY, S.camera.y));
 
@@ -11084,7 +11135,7 @@ export var BroTown = function BroTown(_ref0) {
       color: '#D8A94D',
       marginTop: 4
     }
-  }, collectMsg.text)), React.createElement(ActiveWarBanner, { stateRef: stateRef }), React.createElement(EndedWarBanner, { stateRef: stateRef }), /*#__PURE__*/React.createElement(StoreToast, null) /* v2.3.2476 */, null /* v2.3.1333: bt-exit-fab retired — logout lives in the ZoneHeader rail chip (GameApp), now with confirmation */, showGuildPanel && rpgState && /*#__PURE__*/React.createElement(GuildPanel, { rpgState: rpgState, guildSkill: guildSkill, setGuildSkill: setGuildSkill, setRpgState: setRpgState, setShowGuildPanel: setShowGuildPanel, stateRef: stateRef }), showFeedback && /*#__PURE__*/React.createElement(FeedbackPanel, { stateRef: stateRef, feedbackTab: feedbackTab, setFeedbackTab: setFeedbackTab, feedbackCategory: feedbackCategory, setFeedbackCategory: setFeedbackCategory, feedbackTopic: feedbackTopic, setFeedbackTopic: setFeedbackTopic, feedbackText: feedbackText, setFeedbackText: setFeedbackText, feedbackSort: feedbackSort, setFeedbackSort: setFeedbackSort, feedbackTickets: feedbackTickets, setFeedbackTickets: setFeedbackTickets, feedbackSubmitCategory: feedbackSubmitCategory, setFeedbackSubmitCategory: setFeedbackSubmitCategory, feedbackSubmitTopic: feedbackSubmitTopic, setFeedbackSubmitTopic: setFeedbackSubmitTopic, setShowFeedback: setShowFeedback }), showLeaderboard && /*#__PURE__*/React.createElement(LeaderboardPanel, { stateRef: stateRef, leaderboardTab: leaderboardTab, setLeaderboardTab: setLeaderboardTab, setRpgState: setRpgState, setShowLeaderboard: setShowLeaderboard }), showEncyclopedia && /*#__PURE__*/React.createElement(EncyclopediaPanel, { encyclopediaTab: encyclopediaTab, setEncyclopediaTab: setEncyclopediaTab, setShowEncyclopedia: setShowEncyclopedia }), showPetHouse && rpgState && /*#__PURE__*/React.createElement(PetHousePanel, { rpgState: rpgState, stateRef: stateRef, petHouseTab: petHouseTab, setPetHouseTab: setPetHouseTab, petEvolve1: petEvolve1, setPetEvolve1: setPetEvolve1, petEvolve2: petEvolve2, setPetEvolve2: setPetEvolve2, setRpgState: setRpgState, setShowPetHouse: setShowPetHouse }), showFurniture && rpgState && /*#__PURE__*/React.createElement(FurniturePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowFurniture: setShowFurniture }), showDungeonCreator && dungeonCreator && rpgState && /*#__PURE__*/React.createElement(DungeonCreatorPanel, { rpgState: rpgState, stateRef: stateRef, dungeonCreator: dungeonCreator, setDungeonCreator: setDungeonCreator, dungeonCreatorTab: dungeonCreatorTab, setDungeonCreatorTab: setDungeonCreatorTab, setRpgState: setRpgState, setShowDungeonCreator: setShowDungeonCreator }), showStatScreen && rpgState && /*#__PURE__*/React.createElement(StatScreenPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowStatScreen: setShowStatScreen }), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
+  }, collectMsg.text)), React.createElement(ActiveWarBanner, { stateRef: stateRef }), React.createElement(EndedWarBanner, { stateRef: stateRef }), /*#__PURE__*/React.createElement(StoreToast, null) /* v2.3.2476 */, /*#__PURE__*/React.createElement(WorldMapOverlay, { stateRef: stateRef }) /* v2.3.2966: the Wheel's world map, opened from its minimap */, null /* v2.3.1333: bt-exit-fab retired — logout lives in the ZoneHeader rail chip (GameApp), now with confirmation */, showGuildPanel && rpgState && /*#__PURE__*/React.createElement(GuildPanel, { rpgState: rpgState, guildSkill: guildSkill, setGuildSkill: setGuildSkill, setRpgState: setRpgState, setShowGuildPanel: setShowGuildPanel, stateRef: stateRef }), showFeedback && /*#__PURE__*/React.createElement(FeedbackPanel, { stateRef: stateRef, feedbackTab: feedbackTab, setFeedbackTab: setFeedbackTab, feedbackCategory: feedbackCategory, setFeedbackCategory: setFeedbackCategory, feedbackTopic: feedbackTopic, setFeedbackTopic: setFeedbackTopic, feedbackText: feedbackText, setFeedbackText: setFeedbackText, feedbackSort: feedbackSort, setFeedbackSort: setFeedbackSort, feedbackTickets: feedbackTickets, setFeedbackTickets: setFeedbackTickets, feedbackSubmitCategory: feedbackSubmitCategory, setFeedbackSubmitCategory: setFeedbackSubmitCategory, feedbackSubmitTopic: feedbackSubmitTopic, setFeedbackSubmitTopic: setFeedbackSubmitTopic, setShowFeedback: setShowFeedback }), showLeaderboard && /*#__PURE__*/React.createElement(LeaderboardPanel, { stateRef: stateRef, leaderboardTab: leaderboardTab, setLeaderboardTab: setLeaderboardTab, setRpgState: setRpgState, setShowLeaderboard: setShowLeaderboard }), showEncyclopedia && /*#__PURE__*/React.createElement(EncyclopediaPanel, { encyclopediaTab: encyclopediaTab, setEncyclopediaTab: setEncyclopediaTab, setShowEncyclopedia: setShowEncyclopedia }), showPetHouse && rpgState && /*#__PURE__*/React.createElement(PetHousePanel, { rpgState: rpgState, stateRef: stateRef, petHouseTab: petHouseTab, setPetHouseTab: setPetHouseTab, petEvolve1: petEvolve1, setPetEvolve1: setPetEvolve1, petEvolve2: petEvolve2, setPetEvolve2: setPetEvolve2, setRpgState: setRpgState, setShowPetHouse: setShowPetHouse }), showFurniture && rpgState && /*#__PURE__*/React.createElement(FurniturePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowFurniture: setShowFurniture }), showDungeonCreator && dungeonCreator && rpgState && /*#__PURE__*/React.createElement(DungeonCreatorPanel, { rpgState: rpgState, stateRef: stateRef, dungeonCreator: dungeonCreator, setDungeonCreator: setDungeonCreator, dungeonCreatorTab: dungeonCreatorTab, setDungeonCreatorTab: setDungeonCreatorTab, setRpgState: setRpgState, setShowDungeonCreator: setShowDungeonCreator }), showStatScreen && rpgState && /*#__PURE__*/React.createElement(StatScreenPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowStatScreen: setShowStatScreen }), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     /* v2.3.2826: the Blacksmith sits LOW with a light scrim, so the smith
        is seen working above it (game/smithing.js) -- every other building
