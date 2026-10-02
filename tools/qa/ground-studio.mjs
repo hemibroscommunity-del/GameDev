@@ -169,6 +169,28 @@ try {
      put in earlier" -- the page says so at the top */
   const saved0 = await page.evaluate(() => ({ chip: document.getElementById('saved-chip').textContent, line: document.getElementById('saved-line').textContent }));
   ok('with nothing made, the page says nothing is saved in this browser yet', saved0.chip === 'none yet' && /Nothing is saved in this browser yet/.test(saved0.line), saved0);
+  /* v2.3.2984, owner: "Again I don't see anywhere to add water in the ground
+     studio" -- the Water cards were there, ten screens down a phone's page */
+  const gameMan = JSON.parse(fs.readFileSync(path.join(REPO, 'public/world/ground/manifest.json'), 'utf8'));
+  const gameHas = Object.fromEntries(gameMan.swatches.map((s) => [s.id, s.versions.filter((v) => v === 'A' || v === 'B')]));
+  const jump = await page.evaluate(() => ({
+    links: [...document.querySelectorAll('#jump a')].map((a) => ({ t: a.textContent, href: a.getAttribute('href'), cls: a.className })),
+    ver: document.getElementById('ver').textContent,
+    game: Object.fromEntries(['sea', 'shallows', 'fresh', 'commons'].map((id) => [id, { chip: (document.querySelector(`[data-game="${id}"]`) || {}).textContent || null, mine: !document.querySelector(`[data-chip="${id}"]`).hidden }])),
+    saved: document.getElementById('saved-line').textContent,
+  }));
+  const wl = jump.links.find((l) => l.href === '#grp-water');
+  ok('the top of the page lists every group to jump to, the Water group marked new, each with how many have a picture',
+    jump.links.length === 12 && !!wl && wl.cls === 'new' && /^Water \d\/3 · new$/.test(wl.t) && /v2\.3\.2984/.test(jump.ver), jump.links);
+  ok('...and each card says what the game already has (the sea and shallows went in from chat): no "not made" beside it',
+    Object.entries(jump.game).every(([id, g]) => ((gameHas[id] || []).length ? g.chip === `in the game: ${gameHas[id].join(' + ')}` && !g.mine : g.chip === null && g.mine))
+    && /The game itself already has \d+ of the 51/.test(jump.saved), { game: jump.game, gameHas: { sea: gameHas.sea, fresh: gameHas.fresh }, saved: jump.saved });
+  /* a link to the Water cards lands on them (the list is made after the
+     page loads, too late for the browser's own jump) */
+  const pW = await open(ctxA, '#water');
+  const landed = await pW.evaluate(() => { const h = document.getElementById('grp-water').getBoundingClientRect(); return { top: Math.round(h.top), y: Math.round(scrollY) }; });
+  ok('a link to …/tools/ground/#water opens the page at the Water cards', landed.y > 2000 && landed.top >= 0 && landed.top < 60, landed);
+  await pW.close();
   const noKey = await page.evaluate(() => !document.getElementById('key-none').hidden);
   ok('with no style key yet, the page sends you to the World Builder for it', noKey);
 

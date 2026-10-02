@@ -52,6 +52,12 @@
   .danger { color:#FFC7C0; border-color:rgba(224,106,94,.5); }
   .chip { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:99px; background:#34474F; color:#DDE6E1; margin-left:6px; vertical-align:2px; }
   .chip.ok { background:rgba(89,191,145,.22); color:#A9E6C8; }
+  /* v2.3.2984: what the game has (public/world/ground/), and the contents at the top */
+  .chip.game { background:rgba(110,168,214,.22); color:#BFDDF2; }
+  #list h3, #list .sw { scroll-margin-top:14px; }
+  .jump { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:10px 0 2px; }
+  .jump a { font-size:13px; font-weight:600; padding:7px 11px; border-radius:99px; background:#34474F; color:#DDE6E1; text-decoration:none; }
+  .jump a.new { background:rgba(243,217,162,.24); color:#F3D9A2; box-shadow:inset 0 0 0 1px rgba(243,217,162,.5); }
   label.btn input { display:none; }
   textarea { width:100%; min-height:150px; background:#18242A; color:var(--ink); border:1px solid var(--line);
              border-radius:6px; padding:9px 10px; font:12.5px/1.45 var(--mono); resize:vertical; }
@@ -114,8 +120,12 @@
     <p class="sub">BroTown's ground, made from about fifty seamless swatches in HD pixel art and laid onto the Wheel by the game.</p>
     <!-- v2.3.2942: the version on the page, so the owner can tell a stale
          copy (a phone's cached page) from the latest without asking -->
-    <p class="mut" id="ver">Version v2.3.2968: each ground's footsteps -- hear them on its card, and change them.</p>
+    <p class="mut" id="ver">Version v2.3.2984: the <b>Water</b> cards -- the open sea, its shallows, fresh water -- are third in the list. Tap <b>Water</b> below to jump there.</p>
     <p class="mut" id="status">Building the plan…</p>
+    <!-- v2.3.2984: the contents (app.js renderJump).  The owner twice did not
+         find the Water cards: on a phone they were ten screens down a page
+         thirty screens long.  A link to …/tools/ground/#water lands there. -->
+    <nav class="jump" id="jump" aria-label="Jump to a group of swatches"></nav>
   </header>
 
   <!-- v2.3.2946, owner: "I can't tell if the ground studio has saved what I

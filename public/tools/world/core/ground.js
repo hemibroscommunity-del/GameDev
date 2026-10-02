@@ -107,6 +107,19 @@ export const WATER = 'water';
    still one material: these only say how a water pixel looks (waterLook).
    The foam at the shore stays the game's own. */
 export const WATER_SWATCHES = ['sea', 'shallows', 'fresh'];
+/* v2.3.2984: a look whose picture is not made yet borrows one that is, in
+   this order.  The owner made the sea and the shallows first ("Is this what
+   you need for water?"), and two real pictures beside the plan's flat blue
+   read as a mistake: the rivers and ponds take the shallows' clear water
+   until fresh water is made. */
+const WATER_STANDIN = { sea: ['sea', 'shallows', 'fresh'], shallows: ['shallows', 'sea', 'fresh'], fresh: ['fresh', 'shallows', 'sea'] };
+/* v2.3.2984: how far the shallows reach out from the shore, in plan cells
+   (24 game px each): SHALLOW_CELLS on average, their outer line wandering
+   SHALLOW_WANDER either way.  The shore's distance is worked out only to
+   SHORE_CAP; past it is open sea.  (Until now the shallows were wherever
+   the water's blurred share was under 0.8, about 2 cells: 54 game px, one
+   bro tall, a thin line round every coast.) */
+export const SHALLOW_CELLS = 5, SHALLOW_WANDER = 2.6, SHORE_CAP = 8;
 /* how far either side of the line between two spokes their border land
    reaches, in squares (about 700 art px across, a zone) */
 const BORDER_BAND = 0.45;
@@ -544,18 +557,29 @@ export function materialMap(plan, bp) {
       if (x >= 0 && y >= 0 && x < bp.w && y < bp.h && !deckAt.has(i) && cat[mat[i]] && cat[mat[i]].laid === 'planks') deckAt.set(i, k);
     }
   });
-  return { mat, ids, index, water, catalog: cat, built, decks, deckAt };
+  /* v2.3.2984: which water cells are FRESH -- a river, a pond or a lake --
+     one bit a cell: all a water pixel's look needs of the plan's classes
+     (waterLook, shoreSampler).  The game's ground worker keeps no classes
+     (a slim blueprint: 3 MB it does without), and reading them there broke
+     every piece with water in it the day the first water picture came. */
+  const fresh = new Uint8Array((bp.w * bp.h + 7) >> 3);
+  for (let i = 0; i < bp.w * bp.h; i++) {
+    const c = bp.cls[i];
+    if (c === C.river || c === C.water) fresh[i >> 3] |= 1 << (i & 7);
+  }
+  return { mat, ids, index, water, catalog: cat, built, decks, deckAt, fresh };
 }
 
 /* ═══ v2.3.2980: HOW A WATER PIXEL LOOKS ═══
    FRESH where its cell is a river, a pond, a lake or an oasis (the plan's
-   own classes); else the sea's SHALLOWS where the water's share of the
-   ground `d` is low -- near the shore, the same share the plan's blues were
-   drawn by (shallow below 0.72, deep from 0.93) -- and the open SEA past
-   them.  Both lines wander with noise: a ruler line where a river meets the
-   sea, or round every shore, is the thing every other edge here avoids.
+   own classes); else the sea's SHALLOWS within about SHALLOW_CELLS of the
+   shore -- `shore`, the distance out in cells, from shoreSampler (v2.3.2984;
+   before, where the water's blurred share was under 0.8, a thin line) --
+   and the open SEA past them.  Both lines wander with noise: a ruler line
+   where a river meets the sea, or round every shore, is the thing every
+   other edge here avoids.
    Called only when a water picture has been made (composeGround). */
-function waterLook(bp, ax, ay, d, seed) {
+function waterLook(bp, mm, ax, ay, shore, seed) {
   const S = bp.scale;
   /* (valueNoise is -1..1) */
   const jx = valueNoise(ax * 0.021, ay * 0.021, seed + 41) * S * 0.8;
@@ -564,10 +588,12 @@ function waterLook(bp, ax, ay, d, seed) {
      the bank, or the drawn shore lies a little past its cells -- the
      pixel's own cell's, or the nearest water beside it (13% of a river's
      pixels took the sea's shallows before this looked past the bank) */
+  /* (from the materials and the fresh bits alone, v2.3.2984: the game's
+     worker has no classes; a water cell is the sea's unless it is fresh) */
   const kindAt = (x, y) => {
     if (x < 0 || y < 0 || x >= bp.w || y >= bp.h) return -1;
-    const c = bp.cls[y * bp.w + x];
-    return c === C.river || c === C.water ? 1 : c === C.ocean ? 0 : -1;
+    const i = y * bp.w + x;
+    return mm.mat[i] !== mm.water ? -1 : (mm.fresh[i >> 3] >> (i & 7)) & 1 ? 1 : 0;
   };
   const ox = Math.floor((ax - bp.x0) / S), oy = Math.floor((ay - bp.y0) / S);
   let k = kindAt(Math.floor((ax + jx - bp.x0) / S), Math.floor((ay + jy - bp.y0) / S));
@@ -576,14 +602,84 @@ function waterLook(bp, ax, ay, d, seed) {
     for (let dy = -r; dy <= r && k < 0; dy++) for (let dx = -r; dx <= r && k < 0; dx++) k = kindAt(ox + dx, oy + dy);
   }
   if (k === 1) return 'fresh';
-  return d + 0.08 * valueNoise(ax * 0.05, ay * 0.05, seed + 47) < 0.8 ? 'shallows' : 'sea';
+  /* the shallows' outer line: a broad sweep (~140 art px) and a finer fray,
+     so it reads as a sandbank's edge, not a line drawn round the coast */
+  const n = valueNoise(ax * 0.0045, ay * 0.0045, seed + 47) * 0.7 + valueNoise(ax * 0.03, ay * 0.03, seed + 53) * 0.3;
+  return shore + SHALLOW_WANDER * n < SHALLOW_CELLS ? 'shallows' : 'sea';
 }
-/* the water pictures made, or null when there are none (the plan's blues
-   then, exactly as before any was made) */
+/* the water's pictures by look, a look not made yet taking its stand-in
+   (WATER_STANDIN); or null when none is made (the plan's blues then,
+   exactly as before any was) */
 function waterTiles(tiles) {
   if (!tiles) return null;
-  for (const id of WATER_SWATCHES) if (tiles[id] && tiles[id].A) return tiles;
-  return null;
+  const out = Object.create(null);
+  let any = false;
+  for (const id of WATER_SWATCHES) {
+    const pick = WATER_STANDIN[id].find((q) => tiles[q] && tiles[q].A);
+    if (pick) { out[id] = tiles[pick]; any = true; }
+  }
+  return any ? out : null;
+}
+/* ═══ v2.3.2984: HOW FAR OUT FROM THE SHORE ═══
+   Each cell of open sea's distance to the nearest cell that is not -- land,
+   or a river, pond or lake, so a river's mouth and a pond that meets the sea
+   open into the sea's shallows, not straight onto its deep blue -- in cells
+   (a cell's middle to a cell's middle, diagonals counted as 1.41),
+   worked out for the cells round the rectangle (art px) and sampled between
+   cell middles, so the shallows' line is smooth and not the cells' steps.
+   Only distances up to SHORE_CAP are needed, and every land cell that close
+   to a pixel lies within SHORE_CAP + 2 cells of the rectangle, as does the
+   shortest way to it -- so a pixel's distance is the same whichever
+   rectangle it is worked out in, and chunks laid apart still meet. */
+function shoreSampler(bp, mm, X0, Y0, RW, RH) {
+  const S = bp.scale, water = mm.water, mat = mm.mat, fresh = mm.fresh;
+  const M = SHORE_CAP + 2;
+  const gx0 = Math.floor((X0 - bp.x0) / S) - M, gy0 = Math.floor((Y0 - bp.y0) / S) - M;
+  const gw = Math.ceil(RW / S) + 2 * M + 2, gh = Math.ceil(RH / S) + 2 * M + 2;
+  const D = new Float32Array(gw * gh);
+  const FAR = 1e6, DG = Math.SQRT2;
+  for (let y = 0; y < gh; y++) {
+    const by = gy0 + y;
+    for (let x = 0; x < gw; x++) {
+      const bx = gx0 + x;
+      /* (off the plan is open sea) */
+      const k = by * bp.w + bx;
+      D[y * gw + x] = bx >= 0 && by >= 0 && bx < bp.w && by < bp.h && (mat[k] !== water || (fresh[k >> 3] >> (k & 7)) & 1) ? 0 : FAR;
+    }
+  }
+  /* two sweeps, down then up (an exact chamfer distance) */
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    const i = y * gw + x;
+    let v = D[i];
+    if (v === 0) continue;
+    if (x > 0) v = Math.min(v, D[i - 1] + 1);
+    if (y > 0) {
+      v = Math.min(v, D[i - gw] + 1);
+      if (x > 0) v = Math.min(v, D[i - gw - 1] + DG);
+      if (x < gw - 1) v = Math.min(v, D[i - gw + 1] + DG);
+    }
+    D[i] = v;
+  }
+  for (let y = gh - 1; y >= 0; y--) for (let x = gw - 1; x >= 0; x--) {
+    const i = y * gw + x;
+    let v = D[i];
+    if (v === 0) continue;
+    if (x < gw - 1) v = Math.min(v, D[i + 1] + 1);
+    if (y < gh - 1) {
+      v = Math.min(v, D[i + gw] + 1);
+      if (x < gw - 1) v = Math.min(v, D[i + gw + 1] + DG);
+      if (x > 0) v = Math.min(v, D[i + gw - 1] + DG);
+    }
+    D[i] = v;
+  }
+  for (let i = 0; i < D.length; i++) if (D[i] > SHORE_CAP) D[i] = SHORE_CAP;
+  return (ax, ay) => {
+    const gxf = (ax + 0.5 - bp.x0) / S - 0.5 - gx0, gyf = (ay + 0.5 - bp.y0) / S - 0.5 - gy0;
+    const i = Math.min(gw - 2, Math.max(0, Math.floor(gxf))), j = Math.min(gh - 2, Math.max(0, Math.floor(gyf)));
+    const ux = Math.min(1, Math.max(0, gxf - i)), uy = Math.min(1, Math.max(0, gyf - j));
+    const p = j * gw + i;
+    return (D[p] * (1 - ux) + D[p + 1] * ux) * (1 - uy) + (D[p + gw] * (1 - ux) + D[p + gw + 1] * ux) * uy;
+  };
 }
 
 /* v2.3.2947: every land cell's stage, averaged over about a dozen cells
@@ -749,6 +845,7 @@ export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
   const mat = new Uint8Array(RW * RH);
   const cat = mm.catalog;
   const wt = waterTiles(tiles);   /* v2.3.2980 */
+  const shoreAt = wt ? shoreSampler(bp, mm, X0, Y0, RW, RH) : null;   /* v2.3.2984 */
   for (let py = 0; py < RH; py++) {
     const ay = Y0 + py;
     for (let px = 0; px < RW; px++) {
@@ -759,7 +856,7 @@ export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
       if (m === water) {
         const land = emat[e0 - 1] !== water || emat[e0 + 1] !== water || emat[e0 - EW] !== water || emat[e0 + EW] !== water;
         const d = wdepth[e0];
-        const t = !land && wt ? wt[waterLook(bp, ax, ay, d, seed)] : null;
+        const t = !land && wt ? wt[waterLook(bp, mm, ax, ay, shoreAt(ax, ay), seed)] : null;
         if (t && t.A) {
           const useB = t.B && fbm(ax / 1100, ay / 1100, seed + 17, 2) > 0;
           const tile = useB ? t.B : t.A, T = tile.w;
@@ -1540,6 +1637,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     pkT = t;
   };
   const wt = waterTiles(tiles);   /* v2.3.2980: the water's pictures, if any */
+  const shoreAt = wt ? shoreSampler(bp, mm, X0, Y0, RW, RH) : null;   /* v2.3.2984 */
   let wlx = null, wly = null, wlt = null;
   for (let oy = 0; oy < OH; oy++) {
     const aoy = OY0 + oy, ay = Math.floor(aoy / K);
@@ -1560,7 +1658,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
         /* v2.3.2980: the water's own pictures where made (waterLook), one
            look an art px, laid in output px like any swatch */
         if (!land && wt) {
-          if (ax !== wlx || ay !== wly) { wlx = ax; wly = ay; wlt = wt[waterLook(bp, ax, ay, dd, seed)] || null; }
+          if (ax !== wlx || ay !== wly) { wlx = ax; wly = ay; wlt = wt[waterLook(bp, mm, ax, ay, shoreAt(ax, ay), seed)] || null; }
           if (wlt && wlt.A) {
             const tile = wlt.B && fbm(ax / 1100, ay / 1100, seed + 17, 2) > 0 ? wlt.B : wlt.A, T = tile.w;
             let u = aox % T, v = aoy % T;

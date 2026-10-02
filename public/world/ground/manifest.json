@@ -454,6 +454,26 @@
       "madeFrom": "molten lava in bright orange and yellow under a cracked black crust (its own bright colours, with no glow spilling onto anything)"
     },
     {
+      "id": "sea",
+      "name": "Open sea",
+      "group": "water",
+      "versions": [
+        "A"
+      ],
+      "brief": "deep, calm open sea in rich blues: soft, broad patches of darker and lighter blue, with small, short glints of light scattered all over",
+      "madeFrom": "deep, calm open sea in rich blues: soft, broad patches of darker and lighter blue, with small, short glints of light scattered all over"
+    },
+    {
+      "id": "shallows",
+      "name": "Shallows",
+      "group": "water",
+      "versions": [
+        "A"
+      ],
+      "brief": "clear, shallow sea water over pale sand: light turquoise water through which the sandy bottom and a few small pebbles show, with small, soft glints of light scattered all over",
+      "madeFrom": "clear, shallow sea water over pale sand: light turquoise water through which the sandy bottom and a few small pebbles show, with small, soft glints of light scattered all over"
+    },
+    {
       "id": "border-ember-frost",
       "name": "Flame Fields and Frost Ridge",
       "group": "borders",

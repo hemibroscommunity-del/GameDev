@@ -1763,8 +1763,9 @@ cut), and no footstep row (nobody walks on water).
   where a river meets the sea, and all round every shore.
 - **The foam stays the game's own**: the line of white at the very edge is not
   in any picture.
-- **Without them, nothing changes**: the flat blues and the foam as before,
-  picture by picture (a fresh picture alone draws only the rivers and ponds).
+- **Without them, nothing changes**: the flat blues and the foam as before.
+  (v2.3.2984: once one is made, a look with no picture borrows one that has —
+  see "The owner's water, in the game" below.)
 - **The prompts** (`ground/prompts.js` `waterPromptFor`): a seamless square of
   water seen from straight above, quiet (glints of light on at most a tenth of
   it), the whole square water edge to edge (no shore, no foam, nothing
@@ -1778,6 +1779,79 @@ footstep, the prompt, `swatchesUnder` asks for them under water, the flat
 fallback, open sea away from the shore, a river all fresh, shore foam then
 shallows then sea, two halves composed apart meeting exactly); the Ground
 Studio's browser test (51 cards in 12 groups, the Water group's prompts).
+
+## The owner's water, in the game (v2.3.2984)
+
+Owner, 2026-10-02, with two pictures: *"Is this what you need for water?
+Again I don't see anywhere to add water in the ground studio"*
+
+![A coast and the river by the Mill Bridge, in the game](world/water-ingame.png)
+
+- **They were what was needed.** The light turquoise one is the **Shallows**
+  (version A), the deep blue one the **Open sea** (A). Both went through the
+  studio's own steps (the seamless cut, 1024 px, each on its own 64 colours)
+  by `tools/world/add-ground-pictures.mjs`: it runs the Ground Studio in a
+  headless browser on a fresh page, puts each picture on its card as an
+  upload would, takes the studio's own **Download for the game**, and MERGES
+  it into `public/world/ground/` — two tiles and two manifest entries,
+  nothing else touched. The manifest's `made` (the `?v=` every tile is
+  fetched at) changes only when a tile the game had is REPLACED, as
+  `public/_headers` lets a phone keep a tile forever at its address.
+
+  ```
+  node tools/world/add-ground-pictures.mjs sea:A=<picture> shallows:A=<picture> [--dry]
+  ```
+- **Fresh water is still to make.** Until it is, a look with no picture
+  borrows one that has (`WATER_STANDIN` in `world/core/ground.js`): the
+  rivers, ponds and oasis pools take the shallows' clear water, never the
+  plan's flat blue beside two real pictures; the sea and the shallows stand
+  in for each other the same way.
+- **The shallows are a shelf, not a line.** About `SHALLOW_CELLS` 5 cells
+  (120 game px) out from the shore, the outer line wandering `SHALLOW_WANDER`
+  2.6 cells either way, in a broad sweep with a finer fray. Until now they
+  were wherever the water's blurred share was under 0.8: about 2 cells, 54
+  game px, one bro wide — a thin line round every coast. The distance
+  (`shoreSampler`) is each cell of open sea's to the nearest cell that is not
+  (land, a river, a pond), worked out round each piece only as far as
+  `SHORE_CAP` 8 cells: exact that far, so the same whichever piece it is
+  worked out in, and pieces meet. **Rivers and ponds count as shore**, so a
+  river's mouth or a pond that meets the sea opens into the shallows: the
+  first try put a pond's turquoise straight against the deep blue, along the
+  cells' staircase.
+- **A crash that waited for the first water picture.** The game's ground
+  worker keeps a SLIM blueprint — `{ w, h, scale, x0, y0 }`, no classes —
+  and v2.3.2980's `waterLook` read the classes. It never ran until a water
+  picture existed; then every piece with water in it failed ("Cannot read
+  properties of undefined"), its ground left the blurry overview. The look
+  now reads only the materials and a one-bit FRESH layer (`mm.fresh`, made by
+  `materialMap`, 0.4 MB; every water cell is the sea's unless fresh, which
+  matches the classes cell for cell). test-world-core composes with the
+  worker's slim blueprint and checks it lays water exactly as the whole one.
+- **The Ground Studio says where things are.** A **Jump to** row at the top
+  names every group with how many of its swatches have a picture, the Water
+  group marked new; a link to `…/tools/ground/#water` (or `#sw-sea`, a card)
+  opens the page there — the list is made after the page loads, too late for
+  the browser's own jump; and each card says what the GAME already has
+  ("in the game: A", read from `public/world/ground/manifest.json`), whatever
+  this browser has saved. The owner's water cards would have said "not made"
+  beside pictures the game was laying. The Water cards were third in the
+  list all along — ten screens down a phone's page, under the cards about
+  saving, the style key, the map and the preview. The version line at the
+  top had not changed since v2.3.2968; it says v2.3.2984 now. (Each
+  commit's own preview address is a different site with its own saved
+  swatches; the branch's address, `claude-game-map-movement-fea.gamedev-aix
+  .pages.dev`, is always the newest.)
+- **Cost**: a piece along a coast takes ~5 ms more to lay (27 ms in Node,
+  from 22); open sea and rivers the same as before.
+
+Tests: test-world-core (5 more: a river drawn from the shallows' picture with
+no fresh one; the sea's alone drawing every water px; the shallows reaching
+about 5 cells out, median 72 art px over 31 coasts; no fresh px beside the
+deep sea's at 9 mouths; the worker's slim blueprint laying water exactly as
+the whole one); `mp-wheelwater` (4, phone viewport, real worker: both
+pictures fetched, a coast drawn from them, the river from the shallows', no
+errors); the Ground Studio's browser test (3 more: the jump row, the "in the
+game" chips, `#water`).
 
 ## Oases in the Wind Dunes (v2.3.2981)
 

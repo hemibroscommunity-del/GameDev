@@ -115,6 +115,10 @@ const S = {
   store: null, key: null,
   raw: new Map(), prep: new Map(),
   tiles: Object.create(null), means: Object.create(null), decoded: new Map(),
+  /* v2.3.2984: id -> the versions the GAME has (public/world/ground/), which
+     a session may have put in from pictures sent in chat, never through
+     this page */
+  inGame: Object.create(null),
   /* v2.3.2947: id -> { w, h, png, thumb, pieces } for each swatch's edge pieces;
      every pair of swatches that touch (groundContacts); id -> the grounds it lies over */
   edges: Object.create(null), contacts: [], over: Object.create(null),
@@ -618,15 +622,19 @@ function wireMap() {
 /* ── the list of swatches ── */
 
 const GROUPS = () => {
-  /* v2.3.2980: the water's pictures, near the top: the owner looked for them */
-  const out = [['hub', 'Brotown and the commons'], ['routes', 'Roads and special ground'], ['water', 'Water']];
+  /* v2.3.2980: the water's pictures, near the top: the owner looked for them
+     (and v2.3.2984: each group's short name, for the contents at the top) */
+  const out = [['hub', 'Brotown and the commons', 'Brotown'], ['routes', 'Roads and special ground', 'Roads'], ['water', 'Water', 'Water']];
   for (const id of Object.keys(S.plan.regions)) {
     const rd = S.plan.regions[id];
-    if (rd.dir) out.push([id, `${rd.name} (${rd.element})`]);
+    if (rd.dir) out.push([id, `${rd.name} (${rd.element})`, rd.name]);
   }
-  out.push(['borders', 'Where two spokes meet']);
+  out.push(['borders', 'Where two spokes meet', 'Borders']);
   return out;
 };
+/* the group a new kind of swatch is in, marked in the contents until the
+   next one (v2.3.2984: the water's) */
+const NEW_GROUP = 'water';
 
 /* a 2 x 2 repeat of the swatch, so a seam would show (an empty slot stays
    a one-pixel canvas: fifty swatches' thumbnails add up on a phone) */
@@ -650,9 +658,19 @@ function renderSwatch(e) {
   const chip = el('span', vers.length ? 'chip ok' : 'chip', vers.length ? vers.join(' + ') : 'not made');
   chip.dataset.chip = e.id;
   name.appendChild(chip);
+  /* v2.3.2984: and what the game has, whatever this browser has */
+  const game = S.inGame[e.id] || [];
+  /* ("not made" beside "in the game" read as a contradiction) */
+  if (game.length && !vers.length) chip.hidden = true;
+  if (game.length) {
+    const g = el('span', 'chip game', `in the game: ${game.join(' + ')}`);
+    g.dataset.game = e.id;
+    name.appendChild(g);
+  }
   head.appendChild(name);
   box.appendChild(head);
   box.appendChild(el('div', 'sw-where', `Used for ${e.where}.`));
+  if (game.length && !vers.length) box.appendChild(el('div', 'sw-where', `The game already lays ${game.length > 1 ? 'these pictures' : 'this picture'}. Add one here only to replace ${game.length > 1 ? 'them' : 'it'}, or to make the other version.`));
   box.appendChild(stepRow(e));
   /* v2.3.2949: the boardwalk's boards are laid by the game (world/core/
      ground.js, PLANK DECKS) -- say so, so big boards in the picture are
@@ -1065,7 +1083,9 @@ function renderList() {
   for (const [gid, title] of GROUPS()) {
     const items = S.cat.filter((e) => e.group === gid);
     if (!items.length) continue;
-    list.appendChild(el('h3', null, title));
+    const h = el('h3', null, title);
+    h.id = `grp-${gid}`;
+    list.appendChild(h);
     for (const e of items) {
       const box = el('div', 'sw');
       box.id = `sw-${e.id}`;
@@ -1074,6 +1094,39 @@ function renderList() {
       renderSwatch(e);
     }
   }
+}
+
+/* ═══ v2.3.2984: THE CONTENTS, AND A LINK THAT LANDS ON A CARD ═══
+   Owner, twice: "I don't see anywhere to add water in the ground studio".
+   The Water cards were there, third in the list -- ten screens down on a
+   phone, under the page's cards about saving, the style key, the map and
+   the preview.  So: every group by name at the top, each with how many of
+   its swatches are made, the newest marked; and a link to a group or a
+   card (…/tools/ground/#water, #sw-sea) lands on it, which the browser's
+   own jump cannot do -- the list is made after the page has loaded. */
+function renderJump() {
+  const nav = $('jump');
+  if (!nav) return;
+  nav.textContent = '';
+  nav.appendChild(el('span', 'mut', 'Jump to:'));
+  for (const [gid, , short] of GROUPS()) {
+    const items = S.cat.filter((e) => e.group === gid);
+    if (!items.length) continue;
+    /* (made: here, or in the game) */
+    const made = items.filter((e) => S.tiles[e.id] || S.inGame[e.id]).length;
+    const a = el('a', gid === NEW_GROUP ? 'new' : null, `${short} ${made}/${items.length}${gid === NEW_GROUP ? ' · new' : ''}`);
+    a.href = `#grp-${gid}`;
+    a.dataset.group = gid;
+    nav.appendChild(a);
+  }
+}
+function jumpToHash() {
+  const h = decodeURIComponent((location.hash || '').slice(1));
+  if (!h) return null;
+  const t = document.getElementById(h) || document.getElementById(`grp-${h}`) || document.getElementById(`sw-${h}`);
+  if (!t || !t.closest('#list')) return null;
+  t.scrollIntoView({ block: 'start' });
+  return t.id;
 }
 
 /* v2.3.2947: the numbers the "Where two grounds meet" card quotes */
@@ -1086,6 +1139,7 @@ function renderEdgeCounts() {
 }
 
 function renderCount() {
+  renderJump();
   const made = S.cat.filter((e) => S.tiles[e.id]).length;
   const both = S.cat.filter((e) => S.prep.has(kv(e.id, 'A')) && S.prep.has(kv(e.id, 'B'))).length;
   $('count').textContent = `${made} of ${S.cat.length}`;
@@ -1115,8 +1169,10 @@ function renderSaved() {
   list.textContent = '';
   list.hidden = !names.length;
   when.hidden = !(names.length && last);
+  /* v2.3.2984: and that the game has its own copy, whatever is here */
+  const inGame = S.cat.filter((e) => S.inGame[e.id]).length;
   if (!names.length) {
-    line.textContent = 'Nothing is saved in this browser yet. If you made swatches before, they are in the other browser (see below).';
+    line.textContent = `Nothing is saved in this browser yet. If you made swatches before, they are in the other browser (see below).${inGame ? ` The game itself already has ${inGame} of the ${S.cat.length} (each card says which).` : ''}`;
     return;
   }
   line.textContent = `${names.length === 1 ? 'This swatch is' : `These ${names.length} swatches are`} saved here:`;
@@ -1406,6 +1462,19 @@ async function start() {
      sounds still play another's recording */
   try { const r = await fetch('/sfx/footstep/clips.json', { cache: 'no-cache' }); if (r.ok) S.sound.clips = (await r.json()).clips; } catch (e) { /* the cards say less */ }
   try { S.sprites = await loadSprites(); } catch (e) { S.sprites = null; }
+  /* v2.3.2984: which swatches the game itself already has.  The owner's sea
+     and shallows went in from chat ("Is this what you need for water?"):
+     their cards here would have said "not made" beside a picture the game
+     was already laying, and sent them to make it again. */
+  try {
+    const r = await fetch('/world/ground/manifest.json', { cache: 'no-cache' });
+    if (r.ok) {
+      for (const sw of (await r.json()).swatches || []) {
+        const v = sw && S.byId[sw.id] ? (sw.versions || []).filter((q) => VERS.includes(q)) : [];
+        if (v.length) S.inGame[sw.id] = v;
+      }
+    }
+  } catch (e) { /* the cards say less */ }
   S.spots = spots();
   renderEdgeCounts();
   const sel = $('spot');
@@ -1423,9 +1492,15 @@ async function start() {
   wirePreview();
   wireMap();
   wireSave();
+  /* v2.3.2984: a link to a group or a card lands on it -- now, and again
+     once the preview is laid, if nobody has scrolled since (the cards above
+     the list can still be settling their height) */
+  const jumped = jumpToHash(), atY = window.scrollY;
+  window.addEventListener('hashchange', jumpToHash);
   const first = S.spots[1];
   sel.value = '1';
   await setSpot(first.x, first.y, first.name);
+  if (jumped && Math.abs(window.scrollY - atY) < 2) jumpToHash();
 }
 
 S.ready = start().catch((e) => { $('status').textContent = `Something went wrong: ${e.message || e}`; throw e; });

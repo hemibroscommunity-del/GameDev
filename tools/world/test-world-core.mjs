@@ -1683,6 +1683,91 @@ console.log("the water's pictures (v2.3.2980)");
     if (v !== whole.data[(y * whole.w + x) * 4 + c2]) wseam++;
   }
   ok('...and two halves of a shore laid apart match the whole, water and all', wseam === 0, wseam);
+
+  /* v2.3.2984: the owner made the sea and its shallows ("Is this what you
+     need for water?") and not fresh water yet -- a look not made yet
+     borrows one that is, never the plan's flat blue beside real pictures */
+  const { SHALLOW_CELLS, SHALLOW_WANDER } = await import('../../public/tools/world/core/ground.js');
+  const twoT = { sea: wtiles.sea, shallows: wtiles.shallows };
+  const riv2 = tally(composeGround(PLAN, bp, mmW, Rm, twoT, { scale: 3 }));
+  ok(`with fresh water not made yet, a river takes the shallows' picture (${riv2.shallows} of ${riv2.water} px)`,
+    riv2.shallows > 200 && riv2.sea === 0 && riv2.fresh === 0 && riv2.other === 0, riv2);
+  const seaOnly = tally(composeGround(PLAN, bp, mmW, Rc, { sea: wtiles.sea }, { scale: 3 }));
+  ok('...and with only the sea made, every water px but the foam is the sea\'s', seaOnly.sea > 0 && seaOnly.sea + seaOnly.foam === seaOnly.water, seaOnly);
+  /* the shallows reach about SHALLOW_CELLS (24 game px each) out from the
+     shore -- until v2.3.2984 about 2, a line one bro wide round every coast:
+     across each spoke's coast, square on, at its outer stages */
+  const looks = (out, x, y) => {
+    const i = y * out.w + x, r = out.data[i * 4], gg = out.data[i * 4 + 1], b = out.data[i * 4 + 2];
+    if (mmW.ids[out.mat[i]] !== 'water') return '.';
+    return r === 200 && gg === 0 && b === 0 ? 'S' : r === 0 && gg === 200 && b === 0 ? 'h' : r === 0 && gg === 0 && b === 200 ? 'f' : '~';
+  };
+  const runs = [];
+  for (const s of W.spokes) for (const t of [2, 3]) for (const side of [-1, 1]) {
+    let q0 = null;
+    for (let q = 0; q < 3 && q0 == null; q += 1 / 96) { const [x, y] = art(spokePoint(s, W.tierMid(t), side * q)); if (clsAt(x, y) === C.ocean) q0 = q; }
+    if (q0 == null) continue;
+    const [ax0, ay0] = art(spokePoint(s, W.tierMid(t), side * (q0 - 2 / 96)));
+    const [ax1, ay1] = art(spokePoint(s, W.tierMid(t), side * (q0 + 26 / 96)));
+    const R = { x: Math.floor(Math.min(ax0, ax1)) - 2, y: Math.floor(Math.min(ay0, ay1)) - 2 };
+    R.w = Math.ceil(Math.max(ax0, ax1)) + 2 - R.x; R.h = Math.ceil(Math.max(ay0, ay1)) + 2 - R.y;
+    const out = composeGround(PLAN, bp, mmW, R, twoT, { scale: 1 });
+    let line = '';
+    for (let k = 0; k <= 112; k++) {
+      const u = k / 112, x = Math.floor(ax0 + (ax1 - ax0) * u) - R.x, y = Math.floor(ay0 + (ay1 - ay0) * u) - R.y;
+      line += looks(out, x, y);
+    }
+    /* from the first water to the first open sea, art px (2 a step) */
+    const w0 = line.search(/[Sh~]/), s0 = line.indexOf('S', w0);
+    if (w0 < 0 || s0 < 0 || /\./.test(line.slice(w0, s0))) continue;
+    runs.push((s0 - w0) * 2);
+  }
+  runs.sort((a, b) => a - b);
+  const med = runs[runs.length >> 1];
+  ok(`the shallows reach about ${SHALLOW_CELLS} cells out from a coast (median ${med} art px over ${runs.length} coasts, ${runs[0]}-${runs[runs.length - 1]})`,
+    runs.length >= 20 && med >= (SHALLOW_CELLS - 1.5) * 16 && med <= (SHALLOW_CELLS + 1) * 16
+    && runs[0] >= (SHALLOW_CELLS - SHALLOW_WANDER - 1) * 16 && runs[runs.length - 1] <= (SHALLOW_CELLS + SHALLOW_WANDER + 1) * 16, runs);
+  /* a river's mouth, or a pond that meets the sea, opens into the shallows:
+     fresh water never touches the deep sea's blue */
+  const mouths = [];
+  for (let i = 0; i < bp.w * bp.h && mouths.length < 400; i += 7) {
+    const c = bp.cls[i];
+    if (c !== C.river && c !== C.water) continue;
+    const x = i % bp.w, y = (i / bp.w) | 0;
+    if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => bp.cls[(y + dy) * bp.w + x + dx] === C.ocean)) mouths.push([x, y]);
+  }
+  let touch = 0, mouthsSeen = 0, freshPx = 0;
+  for (let k = 0; k < mouths.length; k += Math.max(1, Math.floor(mouths.length / 8))) {
+    const [x, y] = mouths[k], ax = bp.x0 + (x + 0.5) * bp.scale, ay = bp.y0 + (y + 0.5) * bp.scale;
+    const out = composeGround(PLAN, bp, mmW, { x: Math.round(ax - 80), y: Math.round(ay - 80), w: 160, h: 160 }, wtiles, { scale: 1 });
+    mouthsSeen++;
+    for (let py = 0; py < out.h; py++) for (let px = 0; px < out.w; px++) {
+      if (looks(out, px, py) !== 'f') continue;
+      freshPx++;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const qx = px + dx, qy = py + dy;
+        if (qx >= 0 && qy >= 0 && qx < out.w && qy < out.h && looks(out, qx, qy) === 'S') touch++;
+      }
+    }
+  }
+  ok(`where fresh water meets the sea it opens into the shallows: no fresh px beside the deep sea's (${mouthsSeen} mouths, ${freshPx} fresh px)`,
+    mouthsSeen >= 4 && freshPx > 1000 && touch === 0, { mouths: mouths.length, touch });
+  /* the game's ground worker keeps a SLIM blueprint -- ground-worker.js
+     init: { w, h, scale, x0, y0 }, no classes -- and the water's look must
+     come from what it keeps (the materials and their fresh bits): the day
+     the first water pictures came, reading the classes there broke every
+     piece with water in it ("Cannot read properties of undefined") */
+  const slim = { w: bp.w, h: bp.h, scale: bp.scale, x0: bp.x0, y0: bp.y0 };
+  const slimRuns = [[Rc, twoT], [Rm, twoT], [Rc, wtiles], [Rm, wtiles]].map(([R, T]) => {
+    const want = composeGround(PLAN, bp, mmW, R, T, { scale: 3 });
+    try {
+      const got = composeGround(PLAN, slim, mmW, R, T, { scale: 3 });
+      let d = 0;
+      for (let i = 0; i < want.data.length; i++) if (want.data[i] !== got.data[i]) d++;
+      return d;
+    } catch (e) { return String(e); }
+  });
+  ok('the game worker\'s slim blueprint (no classes) lays water exactly as the whole one does', slimRuns.every((d) => d === 0), slimRuns);
 }
 
 /* ── v2.3.2978: the Wheel's monsters, at the inner end of each spoke ──

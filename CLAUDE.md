@@ -312,7 +312,24 @@ remnant to migrate server-side, not a mode to preserve.
   copy), drawn by `src/rendering/wheelLife.js` in one Container with the
   building's picture so the depth pass moves both; its five textures made
   in `wheelObjectsWarm` and freed with the pages; `?nolife` turns it off:
-  WORLD-MAP-PIPELINE "The buildings' life", `mp-wheellife`)
+  WORLD-MAP-PIPELINE "The buildings' life", `mp-wheellife`; and since
+  v2.3.2984 the owner's own SEA and SHALLOWS pictures are the game's -- sent
+  in chat: "Is this what you need for water? Again I don't see anywhere to
+  add water in the ground studio" -- put through the studio's own steps by
+  `tools/world/add-ground-pictures.mjs` (the Ground Studio run headless, its
+  download MERGED into public/world/ground/, `made` changing only when a
+  tile is replaced), a look with no picture borrowing one (`WATER_STANDIN`:
+  rivers and ponds the shallows' until fresh water is made), the shallows a
+  ~5-cell shelf (`shoreSampler`: each cell of open sea's distance to the
+  nearest that is not, rivers and ponds counting as shore, exact to
+  `SHORE_CAP` so pieces meet), and the water's look reading only the
+  materials and `mm.fresh` -- the game's worker keeps a SLIM blueprint, no
+  classes, and v2.3.2980's look read them: harmless until a water picture
+  existed, then every piece with water failed; test-world-core composes with
+  the slim one -- and the studio a "Jump to" row, `#water` links and "in the
+  game" chips from the game's manifest (the Water cards were ten phone
+  screens down): WORLD-MAP-PIPELINE "The owner's water, in the game",
+  `mp-wheelwater`)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
