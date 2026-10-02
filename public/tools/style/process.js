@@ -227,18 +227,248 @@ export function cropTo(src, b) {
   return trim(c);
 }
 export function splitObjects(src, want = 4) {
-  const parts = partsOf(src);
-  if (!parts.length) return [];
-  const biggest = Math.max(...parts.map((p) => p.n));
-  const kept = parts.filter((p) => p.n >= biggest * 0.03).sort((a, b) => b.n - a.n).slice(0, want);
-  kept.sort((a, b) => (a.x0 + a.x1) - (b.x0 + b.x1));
+  /* v2.3.2971: found by count (objectsIn, below), each cut out by its own
+     parts only -- a neighbour's overhang never comes along */
+  const found = objectsIn(src, want);
+  const kept = found.boxes.slice().sort((a, b) => b.n - a.n).slice(0, want);
+  kept.sort((a, b) => (a.x + a.w / 2) - (b.x + b.w / 2));
   const out = [];
-  for (const p of kept) {
-    const t = cropTo(src, p);
+  for (const b of kept) {
+    const t = cropObject(src, found, b);
     if (t) out.push(t);
   }
   return out;
 }
+
+/* ═══ v2.3.2971: OBJECTS FOUND BY COUNT ═══
+ * Owner, 2026-10-02: "Your object detector isn't doing a good job of
+ * recognizing the objects from the sprite sheet even though there's space
+ * between the objects."  partsOf (above) grows every part three cells
+ * before it joins them -- so a canopy keeps its trunk -- and that reach is
+ * about 30 px on a sheet: two objects ChatGPT drew a little closer than
+ * their prompt asks (28 game px, 56 picture px) came out as one piece, and
+ * every name after them on the sheet slid along by one.  Any fixed reach
+ * trades that for the opposite fault (a lamp's head parted from its post).
+ * What the studio does know is HOW MANY objects a picture should hold.  So:
+ *
+ *   1. the solid parts, joined only where they touch, on a fine grid
+ *      (FIND_CELLS cells along the picture's long side, ~3 px: a crack
+ *      narrower than a cell is no gap) -- labelMask;
+ *   2. the gap between each two neighbouring parts, found by growing every
+ *      part outward a ring at a time until the growths meet -- gapsOf;
+ *   3. specks join a part close by (BIT_REACH of the picture) or are
+ *      dropped -- parts too small to be an object (`minArea`, the caller's;
+ *      `relMin` of the biggest part, for a set of like objects);
+ *   4. then the two closest parts join, then the next two, ... and the
+ *      joining stops where the gaps JUMP: at the count asked for, unless
+ *      a clearly better break lies within two of it (a gap twice as wide
+ *      as any joined so far wins over the count -- ChatGPT drew one more
+ *      or fewer).  Never across more than JOIN_REACH of the picture.
+ *
+ * Pure but for objectsIn and cropObject, so tools/world/test-world-core
+ * can run it on masks it draws itself. */
+export const FIND_CELLS = 512;      /* grid cells along the picture's long side */
+export const BIT_REACH = 0.03;      /* a speck joins a part this close (share of the long side) */
+export const JOIN_REACH = 0.1;      /* no join bridges more than this */
+const COUNT_PULL = 2;               /* the count asked for: a break there counts double */
+
+/* alpha -> occupancy, a cell solid where any of its px is */
+export function maskOf(d, w, h, cell, alphaMin = 96) {
+  const gw = Math.ceil(w / cell), gh = Math.ceil(h / cell);
+  const occ = new Uint8Array(gw * gh);
+  for (let y = 0; y < h; y++) {
+    const row = ((y / cell) | 0) * gw;
+    for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > alphaMin) occ[row + ((x / cell) | 0)] = 1;
+  }
+  return { occ, gw, gh };
+}
+
+/* the solid parts, touching 8 ways: a label per cell (-1 none), and each
+   part's cells and box in cells */
+export function labelMask(occ, gw, gh) {
+  const lab = new Int32Array(gw * gh).fill(-1);
+  const parts = [];
+  const stack = [];
+  for (let s = 0; s < gw * gh; s++) {
+    if (!occ[s] || lab[s] >= 0) continue;
+    const id = parts.length;
+    const p = { n: 0, x0: gw, y0: gh, x1: -1, y1: -1 };
+    lab[s] = id; stack.push(s);
+    while (stack.length) {
+      const q = stack.pop();
+      const qx = q % gw, qy = (q / gw) | 0;
+      p.n++;
+      if (qx < p.x0) p.x0 = qx; if (qx > p.x1) p.x1 = qx;
+      if (qy < p.y0) p.y0 = qy; if (qy > p.y1) p.y1 = qy;
+      for (let v = Math.max(0, qy - 1); v <= Math.min(gh - 1, qy + 1); v++) {
+        for (let u = Math.max(0, qx - 1); u <= Math.min(gw - 1, qx + 1); u++) {
+          const r = v * gw + u;
+          if (occ[r] && lab[r] < 0) { lab[r] = id; stack.push(r); }
+        }
+      }
+    }
+    parts.push(p);
+  }
+  return { lab, parts };
+}
+
+/* The gap, in empty cells, between every two parts whose growths meet
+   within `maxGap`: every part grows a ring at a time (a ring is one cell
+   further any of 8 ways), and where two growths touch, the rings each grew
+   add up to the cells between them.  Closest first. */
+export function gapsOf(lab, gw, gh, maxGap) {
+  const own = Int32Array.from(lab);
+  const ring = new Int32Array(gw * gh).fill(-1);
+  let front = [];
+  for (let i = 0; i < own.length; i++) if (own[i] >= 0) { ring[i] = 0; front.push(i); }
+  const best = new Map();
+  const reach = Math.ceil(maxGap / 2);
+  for (let d = 0; front.length; d++) {
+    const next = [];
+    for (const q of front) {
+      const qx = q % gw, qy = (q / gw) | 0, A = own[q];
+      for (let v = Math.max(0, qy - 1); v <= Math.min(gh - 1, qy + 1); v++) {
+        for (let u = Math.max(0, qx - 1); u <= Math.min(gw - 1, qx + 1); u++) {
+          const r = v * gw + u, B = own[r];
+          if (B < 0) {
+            if (d < reach) { own[r] = A; ring[r] = d + 1; next.push(r); }
+          } else if (B !== A) {
+            const g = d + ring[r], k = A < B ? `${A},${B}` : `${B},${A}`;
+            const o = best.get(k);
+            if (g <= maxGap && (o === undefined || g < o)) best.set(k, g);
+          }
+        }
+      }
+    }
+    front = next;
+  }
+  const out = [];
+  for (const [k, gap] of best) { const [a, b] = k.split(',').map(Number); out.push({ a, b, gap }); }
+  return out.sort((x, y) => x.gap - y.gap || x.a - y.a || x.b - y.b);
+}
+
+/* Parts -> objects: specks first, then closest first to the count's break.
+   `want` objects asked for; `minN` cells, smaller is a speck; `bitGap` cells
+   a speck may join across; `maxJoin` cells, the widest join.  -> arrays of
+   part ids, one per object. */
+export function groupParts(parts, edges, want, { minN, bitGap, maxJoin }) {
+  const n = parts.length;
+  const up = new Int32Array(n);
+  for (let i = 0; i < n; i++) up[i] = i;
+  const find = (i) => { while (up[i] !== i) { up[i] = up[up[i]]; i = up[i]; } return i; };
+  const size = parts.map((p) => p.n);
+  /* 3. specks join the part nearest them, if near enough */
+  for (const e of edges) {
+    if (e.gap > bitGap) break;
+    const a = find(e.a), b = find(e.b);
+    if (a === b || (size[a] >= minN && size[b] >= minN)) continue;
+    const [lo, hi] = size[a] < size[b] ? [a, b] : [b, a];
+    up[lo] = hi; size[hi] += size[lo];
+  }
+  const solid = (r) => size[r] >= minN;
+  const groups0 = new Set();
+  for (let i = 0; i < n; i++) if (solid(find(i))) groups0.add(find(i));
+  const K0 = groups0.size;
+  /* 4. the joins, closest first, between solid objects only */
+  const trial = Int32Array.from(up);
+  const tfind = (i) => { i = find(i); while (trial[i] !== i) { trial[i] = trial[trial[i]]; i = trial[i]; } return i; };
+  const joins = [];
+  for (const e of edges) {
+    if (e.gap > maxJoin) break;
+    const a = find(e.a), b = find(e.b);
+    if (a === b || !solid(a) || !solid(b)) continue;
+    const ta = tfind(a), tb = tfind(b);
+    if (ta === tb) continue;
+    trial[ta] = tb;
+    joins.push({ a, b, gap: e.gap });
+  }
+  /* how many joins: where the gaps jump, pulled toward the count */
+  let m = 0;
+  if (K0 > want && joins.length) {
+    const lo = Math.max(0, K0 - want - 2), hi = Math.min(joins.length, K0 - want + 2);
+    /* fewer joins within reach than the count needs: all of them */
+    if (hi < lo) m = joins.length;
+    let bestScore = -1;
+    for (let k = lo; k <= hi; k++) {
+      const last = k ? joins[k - 1].gap : 0;
+      const next = k < joins.length ? joins[k].gap : maxJoin * 2 + 2;
+      let score = next / Math.max(last, 2);
+      if (K0 - k === want) score *= COUNT_PULL;
+      if (score > bestScore) { bestScore = score; m = k; }
+    }
+  }
+  for (let k = 0; k < m; k++) {
+    const a = find(joins[k].a), b = find(joins[k].b);
+    if (a !== b) { up[a] = b; size[b] += size[a]; }
+  }
+  const byRoot = new Map();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    if (!solid(r)) continue;
+    if (!byRoot.has(r)) byRoot.set(r, []);
+    byRoot.get(r).push(i);
+  }
+  return [...byRoot.values()];
+}
+
+/* The whole search on a picture's RGBA px: each object's box in px, its
+   size `n` in cells and the parts it is made of -- and what cropObject
+   needs to cut it out by those parts alone. */
+export function objectBoxes(d, w, h, want, { minArea = 0, relMin = 0.03 } = {}) {
+  const L = Math.max(w, h);
+  const cell = Math.max(1, Math.round(L / FIND_CELLS));
+  const { occ, gw, gh } = maskOf(d, w, h, cell);
+  const { lab, parts } = labelMask(occ, gw, gh);
+  /* a part touching three of the picture's four edges is background left
+     in (a picture drawn on a scene, not one flat colour -- the card says
+     so), never an object: it is made empty, so nothing joins it either */
+  const bg = new Set();
+  parts.forEach((p, i) => { if ((p.x0 === 0) + (p.y0 === 0) + (p.x1 === gw - 1) + (p.y1 === gh - 1) >= 3) bg.add(i); });
+  if (bg.size) {
+    for (let i = 0; i < lab.length; i++) if (bg.has(lab[i])) lab[i] = -1;
+    for (const i of bg) parts[i].n = 0;
+  }
+  if (!parts.some((p) => p.n)) return { boxes: [], lab, gw, gh, cell };
+  const biggest = Math.max(...parts.map((p) => p.n));
+  const minN = Math.max(4, minArea / (cell * cell), relMin * biggest);
+  const maxJoin = Math.max(2, Math.ceil((JOIN_REACH * L) / cell));
+  const edges = gapsOf(lab, gw, gh, maxJoin);
+  const groups = groupParts(parts, edges, want, { minN, bitGap: Math.max(1, Math.ceil((BIT_REACH * L) / cell)), maxJoin });
+  const boxes = groups.map((ids) => {
+    let x0 = gw, y0 = gh, x1 = -1, y1 = -1, nn = 0;
+    for (const i of ids) {
+      const p = parts[i];
+      x0 = Math.min(x0, p.x0); y0 = Math.min(y0, p.y0); x1 = Math.max(x1, p.x1); y1 = Math.max(y1, p.y1); nn += p.n;
+    }
+    const x = x0 * cell, y = y0 * cell;
+    return { x, y, w: Math.min(w - x, (x1 - x0 + 1) * cell), h: Math.min(h - y, (y1 - y0 + 1) * cell), n: nn, ids };
+  });
+  return { boxes, lab, gw, gh, cell };
+}
+export function objectsIn(src, want, opts) {
+  const w = src.width, h = src.height;
+  return objectBoxes(ctx2d(src).getImageData(0, 0, w, h).data, w, h, want, opts);
+}
+/* One found object cut out and trimmed: its box, with every px of any
+   other object (or speck) in it made clear */
+export function cropObject(src, found, b) {
+  const c = mk(b.w, b.h), g = ctx2d(c);
+  g.drawImage(src, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
+  const img = g.getImageData(0, 0, b.w, b.h), d = img.data;
+  const mine = new Set(b.ids), { lab, gw, cell } = found;
+  for (let y = 0; y < b.h; y++) {
+    const row = (((b.y + y) / cell) | 0) * gw;
+    for (let x = 0; x < b.w; x++) {
+      const L2 = lab[row + (((b.x + x) / cell) | 0)];
+      if (L2 >= 0 && !mine.has(L2)) d[(y * b.w + x) * 4 + 3] = 0;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  const t = trim(c);
+  release2(c);
+  return t;
+}
+const release2 = (c) => { if (c) c.width = c.height = 0; };
 
 /* ── seamless ── v2.3.2953: by an OVERLAP CUT, not a cross-fade.
    Until now the picture was laid over itself shifted half a tile, faded in

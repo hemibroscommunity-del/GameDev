@@ -1178,9 +1178,10 @@ console.log('objects');
   ok(`every picture is as tall as a ground swatch covers (${FRAME_GAME_PX} game px), and every object fits inside it with room to spare`,
     FRAME_GAME_PX === PIXEL.groundTile * PIXEL.gamePxPerArtPx && cat.every((e) => { const f = frameOf(e); return e.size <= (e.fit === 'w' ? f.w : f.h) * 0.8 && e.size >= 24; }),
     cat.filter((e) => { const f = frameOf(e); return e.size > (e.fit === 'w' ? f.w : f.h) * 0.8; }).map((e) => e.id));
-  ok('sizes in words: a barrel waist-high, a lamp post one and a half people, an oak three, a building two and a half people wide',
+  ok('sizes in words: a barrel waist-high, a lamp post one and a half people, an oak three, a building three and a half people wide (v2.3.2971: 1.4 times the old plan)',
     sizeWords(cat.find((e) => e.id === 'barrel')) === 'about waist-high on a person' && sizeWords(cat.find((e) => e.id === 'lamp')) === 'about one and a half times as tall as a person' &&
-    sizeWords(cat.find((e) => e.id === 'oak')) === 'about three times as tall as a person' && sizeWords(cat.find((e) => e.id === 'blacksmith')) === 'about two and a half times as wide as a person is tall' &&
+    sizeWords(cat.find((e) => e.id === 'oak')) === 'about three times as tall as a person' && sizeWords(cat.find((e) => e.id === 'blacksmith')) === 'about three and a half times as wide as a person is tall' &&
+    BUILDINGS.every((b) => b.size === Math.round(b.sizeWas * 1.4) && b.sizeWas >= 276) &&
     fraction(0.5) === 'half' && fraction(0.1) === 'a tenth');
   const prompts = Object.fromEntries(cat.map((e) => [e.id, objectPrompt(e)]));
   ok('every prompt: HD pixel art, the style key only (never the bro), one flat background to cut away, and the size in words',
@@ -1297,6 +1298,67 @@ console.log('footsteps');
   ok("the owner's sound choices are kept only for real grounds and real sounds, and only where they change something",
     JSON.stringify(Object.keys(c1)) === '["commons"]' && c1.commons === 'snow' && Object.getPrototypeOf(c1) === null &&
     Object.keys(cleanSteps(null, isSw)).length === 0 && Object.keys(cleanSteps('snow', isSw)).length === 0, c1);
+}
+
+/* ── v2.3.2971: objects found by count, not by a fixed reach ──
+   Owner, 2026-10-02: "Your object detector isn't doing a good job of
+   recognizing the objects from the sprite sheet even though there's space
+   between the objects."  Sheets drawn here as ChatGPT draws them: closer
+   than the prompt's 56 px, some objects in two pieces, specks about. */
+console.log('objects found by count (v2.3.2971)');
+{
+  const { objectBoxes, FIND_CELLS } = await import('../../public/tools/style/process.js');
+  const W = 1536, H = 1024;
+  const pic = (w = W, h = H) => ({ w, h, d: new Uint8ClampedArray(w * h * 4) });
+  const rect = (p, x, y, w, h) => { for (let v = y; v < y + h; v++) for (let u = x; u < x + w; u++) p.d[(v * p.w + u) * 4 + 3] = 255; };
+  const disc = (p, cx, cy, r) => { for (let v = cy - r; v <= cy + r; v++) for (let u = cx - r; u <= cx + r; u++) if ((u - cx) ** 2 + (v - cy) ** 2 <= r * r) p.d[(v * p.w + u) * 4 + 3] = 255; };
+  /* the sheet: row 1 four barrels 14 px apart; row 2 two lamp posts whose
+     heads float 6 px over their poles, and three crates 18 px apart; row 3
+     two trees (a canopy on its trunk) and four rocks 20 px apart; and specks */
+  const s = pic(), want = 4 + 2 + 3 + 2 + 4, truth = [];
+  let x = 40;
+  for (let i = 0; i < 4; i++) { rect(s, x, 60, 80, 100); truth.push([x, 60, 80, 100]); x += 94; }
+  x = 40;
+  for (let i = 0; i < 2; i++) { rect(s, x + 26, 300, 28, 22); rect(s, x + 34, 328, 12, 190); truth.push([x + 26, 300, 28, 218]); x += 66; }
+  for (let i = 0; i < 3; i++) { rect(s, x, 420, 96, 98); truth.push([x, 420, 96, 98]); x += 114; }
+  x = 40;
+  for (let i = 0; i < 2; i++) { disc(s, x + 90, 680, 90); rect(s, x + 78, 760, 24, 160); truth.push([x, 590, 181, 330]); x += 200; }
+  for (let i = 0; i < 4; i++) { rect(s, x, 850, 70, 70); truth.push([x, 850, 70, 70]); x += 90; }
+  for (const [u, v] of [[1400, 100], [900, 200], [1300, 980], [700, 560]]) rect(s, u, v, 3, 3);
+  const found = objectBoxes(s.d, s.w, s.h, want, { minArea: 0.15 * 70 * 70, relMin: 0 });
+  const near = (b, t) => Math.abs(b.x - t[0]) <= 4 && Math.abs(b.y - t[1]) <= 4 && Math.abs(b.x + b.w - t[0] - t[2]) <= 4 && Math.abs(b.y + b.h - t[1] - t[3]) <= 4;
+  const matched = truth.filter((t) => found.boxes.some((b) => near(b, t)));
+  ok(`a sheet packed tighter than its prompt asks: all ${want} objects found, each whole -- the barrels 14 px apart, the lamps with their floating heads, the trees, the rocks -- and the specks left out (${found.boxes.length} found)`,
+    found.boxes.length === want && matched.length === want, { found: found.boxes.length, missed: truth.filter((t) => !matched.includes(t)), cells: FIND_CELLS });
+  /* the same row with one barrel more than asked: kept apart, not glued to
+     a neighbour to make the count */
+  const e = pic();
+  for (let i = 0, u = 40; i < 5; i++, u += 94) rect(e, u, 60, 80, 100);
+  const extra = objectBoxes(e.d, e.w, e.h, 4, { relMin: 0.03 });
+  ok('ChatGPT drew one barrel more than asked: five found, none glued to another to make the count (the fifth is then "not used")',
+    extra.boxes.length === 5 && extra.boxes.every((b) => b.w <= 84), extra.boxes.map((b) => b.w));
+  /* one fewer: the three it drew */
+  const f = pic();
+  for (let i = 0, u = 40; i < 3; i++, u += 94) rect(f, u, 60, 80, 100);
+  ok('...and one fewer: the three it drew', objectBoxes(f.d, f.w, f.h, 4).boxes.length === 3);
+  /* a set on its own square picture: four barrels 10 px apart (partsOf's
+     reach took them as one), and a sign 20 px off the first one's side */
+  const g = pic(1024, 1024);
+  for (let i = 0, u = 100; i < 4; i++, u += 190) rect(g, u, 400, 180, 240);
+  rect(g, 60, 450, 20, 14);
+  const set4 = objectBoxes(g.d, g.w, g.h, 4);
+  const first = set4.boxes.slice().sort((a, b) => a.x - b.x)[0];
+  ok('a set of four barrels 10 px apart comes apart into four, and a small sign beside the first stays with it',
+    set4.boxes.length === 4 && first.x <= 62 && set4.boxes.every((b) => b.w <= 252), set4.boxes.map((b) => [b.x, b.w]));
+  /* a picture drawn on a scene: what its cut-out leaves of the scene runs
+     to the picture's edges -- background, never an object (it once came out
+     a piece 2839 px wide, too big for any sprite sheet) */
+  const sc = pic(1024, 1024);
+  rect(sc, 0, 0, 1024, 300); rect(sc, 0, 0, 200, 1024); rect(sc, 0, 900, 1024, 124);
+  rect(sc, 500, 450, 160, 160);
+  const scene = objectBoxes(sc.d, sc.w, sc.h, 4);
+  ok('a scene left round the edges of a picture is background, not an object: only the bush in the middle is found',
+    scene.boxes.length === 1 && scene.boxes[0].x === 500 && scene.boxes[0].w === 160, scene.boxes.map((b) => [b.x, b.y, b.w, b.h]));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

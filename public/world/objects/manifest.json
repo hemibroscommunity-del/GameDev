@@ -1,0 +1,437 @@
+{
+ "tool": "brotown-object-studio",
+ "version": 2,
+ "made": "2026-10-02T12:59:48.329Z",
+ "forGame": true,
+ "plan": {
+  "id": "brotown-world",
+  "version": 3
+ },
+ "gamePxPerArtPx": 0.5,
+ "atlases": [
+  {
+   "name": "buildings-1",
+   "group": "buildings",
+   "w": 1547,
+   "h": 1729,
+   "image": "buildings-1.png",
+   "sheet": "buildings-1.json",
+   "objects": 4
+  },
+  {
+   "name": "buildings-2",
+   "group": "buildings",
+   "w": 1548,
+   "h": 1521,
+   "image": "buildings-2.png",
+   "sheet": "buildings-2.json",
+   "objects": 4
+  },
+  {
+   "name": "buildings-3",
+   "group": "buildings",
+   "w": 1548,
+   "h": 1442,
+   "image": "buildings-3.png",
+   "sheet": "buildings-3.json",
+   "objects": 4
+  },
+  {
+   "name": "buildings-4",
+   "group": "buildings",
+   "w": 1548,
+   "h": 1361,
+   "image": "buildings-4.png",
+   "sheet": "buildings-4.json",
+   "objects": 4
+  }
+ ],
+ "objects": [
+  {
+   "id": "blacksmith",
+   "name": "Blacksmith",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "blacksmith-1",
+     "atlas": "buildings-2",
+     "w": 773,
+     "h": 770,
+     "gameW": 386.5,
+     "gameH": 385,
+     "foot": [
+      387,
+      770
+     ]
+    }
+   ]
+  },
+  {
+   "id": "woodworker",
+   "name": "Woodworker",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "woodworker-1",
+     "atlas": "buildings-3",
+     "w": 773,
+     "h": 722,
+     "gameW": 386.5,
+     "gameH": 361,
+     "foot": [
+      387,
+      722
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gemcutter",
+   "name": "Gem Cutter",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "gemcutter-1",
+     "atlas": "buildings-1",
+     "w": 772,
+     "h": 820,
+     "gameW": 386,
+     "gameH": 410,
+     "foot": [
+      386,
+      820
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sheriff",
+   "name": "Sheriff's Office",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "sheriff-1",
+     "atlas": "buildings-3",
+     "w": 773,
+     "h": 698,
+     "gameW": 386.5,
+     "gameH": 349,
+     "foot": [
+      387,
+      698
+     ]
+    }
+   ]
+  },
+  {
+   "id": "saloon",
+   "name": "Saloon",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "saloon-1",
+     "atlas": "buildings-3",
+     "w": 773,
+     "h": 725,
+     "gameW": 386.5,
+     "gameH": 362.5,
+     "foot": [
+      387,
+      725
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gambling",
+   "name": "Gambling Den",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "gambling-1",
+     "atlas": "buildings-2",
+     "w": 772,
+     "h": 749,
+     "gameW": 386,
+     "gameH": 374.5,
+     "foot": [
+      386,
+      749
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hotel",
+   "name": "Hotel",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "hotel-1",
+     "atlas": "buildings-1",
+     "w": 772,
+     "h": 898,
+     "gameW": 386,
+     "gameH": 449,
+     "foot": [
+      386,
+      898
+     ]
+    }
+   ]
+  },
+  {
+   "id": "post",
+   "name": "Post Office & Telegraph",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "post-1",
+     "atlas": "buildings-4",
+     "w": 772,
+     "h": 667,
+     "gameW": 386,
+     "gameH": 333.5,
+     "foot": [
+      386,
+      667
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cookhouse",
+   "name": "Cookhouse",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "cookhouse-1",
+     "atlas": "buildings-4",
+     "w": 773,
+     "h": 682,
+     "gameW": 386.5,
+     "gameH": 341,
+     "foot": [
+      387,
+      682
+     ]
+    }
+   ]
+  },
+  {
+   "id": "feedseed",
+   "name": "Feed & Seed",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "feedseed-1",
+     "atlas": "buildings-1",
+     "w": 773,
+     "h": 794,
+     "gameW": 386.5,
+     "gameH": 397,
+     "foot": [
+      387,
+      794
+     ]
+    }
+   ]
+  },
+  {
+   "id": "landoffice",
+   "name": "Land Office",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "landoffice-1",
+     "atlas": "buildings-4",
+     "w": 773,
+     "h": 692,
+     "gameW": 386.5,
+     "gameH": 346,
+     "foot": [
+      387,
+      692
+     ]
+    }
+   ]
+  },
+  {
+   "id": "guildhall",
+   "name": "Guild Hall",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "guildhall-1",
+     "atlas": "buildings-3",
+     "w": 773,
+     "h": 715,
+     "gameW": 386.5,
+     "gameH": 357.5,
+     "foot": [
+      387,
+      715
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bank",
+   "name": "Bank",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "bank-1",
+     "atlas": "buildings-2",
+     "w": 772,
+     "h": 737,
+     "gameW": 386,
+     "gameH": 368.5,
+     "foot": [
+      386,
+      737
+     ]
+    }
+   ]
+  },
+  {
+   "id": "assay",
+   "name": "Assay Office",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "assay-1",
+     "atlas": "buildings-1",
+     "w": 772,
+     "h": 907,
+     "gameW": 386,
+     "gameH": 453.5,
+     "foot": [
+      386,
+      907
+     ]
+    }
+   ]
+  },
+  {
+   "id": "store",
+   "name": "General Store",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "store-1",
+     "atlas": "buildings-4",
+     "w": 773,
+     "h": 645,
+     "gameW": 386.5,
+     "gameH": 322.5,
+     "foot": [
+      387,
+      645
+     ]
+    }
+   ]
+  },
+  {
+   "id": "auction",
+   "name": "Auction House",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 276,
+   "sizeMul": 1.4,
+   "pieces": [
+    {
+     "frame": "auction-1",
+     "atlas": "buildings-2",
+     "w": 773,
+     "h": 751,
+     "gameW": 386.5,
+     "gameH": 375.5,
+     "foot": [
+      387,
+      751
+     ]
+    }
+   ]
+  }
+ ],
+ "part": 1,
+ "parts": 1
+}

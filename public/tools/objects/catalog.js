@@ -48,15 +48,25 @@ export const ENDS = {
 };
 
 /* A building on a 200 x 200 art px plot is 300 x 300 game px of ground
-   (plan.js town.lot, x 1.5); it fills the plot's width but for a strip of
-   yard either side.  The Town Hall's plot is 208. */
-const PLOT_W = 276, HALL_W = 290;
+   (plan.js town.lot, x 1.5); it filled the plot's width but for a strip of
+   yard either side, 276 game px (the Town Hall, on 208, 290).
+   v2.3.2971: 1.4 times that.  Owner, 2026-10-02, with all sixteen made:
+   "the buildings needed to be upscaled to 140% for all of them because
+   they were too small in the game.  Maybe could've been larger too." --
+   140% was the top of the size menu.  So a building is now about three
+   and a half people wide, and the menu's 140% goes nearly twice the old
+   plan.  The plots grow to match when the buildings are placed (the
+   placing round; plan.js town.lot is unchanged until then).  `sizeWas`
+   is the old size, so a size chosen against it, or a picture made from
+   its prompt, is still known (objects/app.js). */
+const PLOT_W = 386, HALL_W = 406;
+const PLOT_W_WAS = 276, HALL_W_WAS = 290;
 
-const B = (o) => ({ group: 'buildings', kind: 'building', count: 1, fit: 'w', size: PLOT_W, frame: 'square', ground: 'town-yard', key: 'magenta', ...o });
+const B = (o) => ({ group: 'buildings', kind: 'building', count: 1, fit: 'w', size: PLOT_W, sizeWas: PLOT_W_WAS, frame: 'square', ground: 'town-yard', key: 'magenta', ...o });
 
 export const BUILDINGS = [
   B({
-    id: 'townhall', name: 'Town Hall', end: 'square', size: HALL_W, ground: 'plaza', sign: 'TOWN HALL',
+    id: 'townhall', name: 'Town Hall', end: 'square', size: HALL_W, sizeWas: HALL_W_WAS, ground: 'plaza', sign: 'TOWN HALL',
     job: 'where Mayor Bro stands and the town is run',
     look: 'A handsome two-storey civic hall of pale cut stone below and white-painted clapboard above, with a square clock tower rising from the middle of its roof, a flagpole on the tower, and a columned porch at the top of wide stone steps.',
     bro: 'a stone statue of Mayor Bro beside the steps, a burly man with a big moustache flexing both arms, on a plinth; and a glass trophy case on the porch crammed with trophies of every size. Strings of red and gold bunting hang along the porch roof',

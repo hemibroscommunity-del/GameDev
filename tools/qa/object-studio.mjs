@@ -311,16 +311,18 @@ try {
   /* ── 4. a building ── */
   console.log('4. a building');
   /* the Saloon, drawn a little wider than the prompt asks, with a sign on
-     its own post beside it and a speck far off */
-  const bw = Math.round(276 * S_ * 1.1);
+     its own post beside it and a speck far off.  (v2.3.2971: a building is
+     planned 1.4 times as big as before, PLOT game px wide) */
+  const PLOT = await page.evaluate(() => window.__objects.S.byId.saloon.size);
+  const bw = Math.round(PLOT * S_ * 1.1);
   const saloon = await makePicture(page, { bg: '#ff00ff', shapes: [
-    [200, 300, bw, 640, '#8c3b2a', 'box'],
-    [200 + bw + 14, 760, 60, 180, '#7a5030', 'box'],
-    [40, 40, 14, 14, '#7a5030', 'box'],
+    [40, 300, bw, 640, '#8c3b2a', 'box'],
+    [40 + bw + 14, 760, 60, 180, '#7a5030', 'box'],
+    [1200, 40, 14, 14, '#7a5030', 'box'],
   ] });
   await put(page, 'saloon', saloon);
   const fs1 = await facts(page, 'saloon');
-  ok(`a building comes out as one piece exactly its plot's width: ${fs1.pieces[0].w} px, 276 game px`, fs1.n === 1 && fs1.pieces[0].w === 276 * PX, fs1.pieces);
+  ok(`a building comes out as one piece exactly its planned width: ${fs1.pieces[0].w} px, ${PLOT} game px -- 1.4 times the old plan's 276 (v2.3.2971)`, PLOT === 386 && fs1.n === 1 && fs1.pieces[0].w === PLOT * PX, fs1.pieces);
   /* the sign is kept (the piece is wider than the building alone), the
      speck is not (the piece is no taller than the building) */
   const sx = (bw + 14 + 60) / bw;
@@ -335,7 +337,7 @@ try {
   await page.waitForFunction(() => document.getElementById('busy').hidden && window.__objects.S.fin.get('saloon').size === 1.25, null, { timeout: 30000 });
   const fs2 = await facts(page, 'saloon');
   const shown2 = await page.evaluate(() => ({ cv: !!document.querySelector('canvas[data-stage-canvas="saloon"]'), sel: document.querySelector('select[data-size="saloon"]').value }));
-  ok(`its size can be nudged: 125% makes it ${fs2.pieces[0].w} px, and the stage shows the new size`, fs2.pieces[0].w === Math.round(276 * 1.25 * PX) && shown2.cv && shown2.sel === '1.25', { w: fs2.pieces[0].w, shown2 });
+  ok(`its size can be nudged: 125% makes it ${fs2.pieces[0].w} px, and the stage shows the new size`, fs2.pieces[0].w === Math.round(PLOT * 1.25 * PX) && shown2.cv && shown2.sel === '1.25', { w: fs2.pieces[0].w, shown2 });
 
   /* ── 6. what the card warns about ── */
   console.log('6. what the card says when a picture is off');
@@ -385,8 +387,11 @@ try {
     const boxes = ids.map((id) => { const k = plan.kinds[id]; const w = k.fit === 'w' ? k.size : k.size * k.ar, h = k.fit === 'w' ? k.size / k.ar : k.size; return { id, w: w * SPX, h: h * SPX, n: k.count }; });
     const rowH = Math.max(...boxes.map((b) => b.h));
     let x = 16 * SPX;
-    for (const b of boxes) for (let i = 0; i < b.n; i++) { shapes.push([Math.round(x), Math.round(ry + rowH - b.h), Math.round(b.w), Math.round(b.h), kindColour[b.id], 'solid']); x += b.w + 28 * SPX; }
-    ry += rowH + 28 * SPX;
+    /* v2.3.2971: packed TIGHTER than the prompt asks, as ChatGPT does: 8
+       game px between objects, not 28 (partsOf's fixed reach glued these
+       into one piece a row) */
+    for (const b of boxes) for (let i = 0; i < b.n; i++) { shapes.push([Math.round(x), Math.round(ry + rowH - b.h), Math.round(b.w), Math.round(b.h), kindColour[b.id], 'solid']); x += b.w + 8 * SPX; }
+    ry += rowH + 20 * SPX;
   }
   const sheetPic = await makePicture(page, { bg: '#ff00ff', shapes, W: 1536, H: 1024 });
   await page.setInputFiles('input[data-sheet-file="town-sheet-2"]', { name: 'town-sheet-2.png', mimeType: 'image/png', buffer: Buffer.from(sheetPic, 'base64') });
@@ -461,7 +466,7 @@ try {
   ok("...the manifest recording the sheet: where each object was found on it and what it is",
     mSheet && mSheet.boxes.length === shapes.length && mSheet.assign.length === shapes.length && manifest.objects.find((o) => o.id === 'crate').from === 'town-sheet-2' && mBarrel.from === 'own', mSheet && { boxes: mSheet.boxes.length });
   ok("...the manifest saying each piece's size in the game and where it stands, and the size choice",
-    mBarrel.pieces.length === 4 && mBarrel.pieces.every((p) => p.foot[0] === Math.round(p.w / 2) && p.foot[1] === p.h && p.gameH === p.h / PX) && mSaloon.sizeMul === 1.25 && mSaloon.pieces[0].gameW === Math.round(276 * 1.25 * PX) / PX && manifest.gamePxPerArtPx === PIXEL.gamePxPerArtPx,
+    mBarrel.pieces.length === 4 && mBarrel.pieces.every((p) => p.foot[0] === Math.round(p.w / 2) && p.foot[1] === p.h && p.gameH === p.h / PX) && mSaloon.sizeMul === 1.25 && mSaloon.pieces[0].gameW === Math.round(PLOT * 1.25 * PX) / PX && manifest.gamePxPerArtPx === PIXEL.gamePxPerArtPx,
     { barrel: mBarrel.pieces, saloon: mSaloon });
 
   const game = await page.evaluate(async () => {
@@ -545,6 +550,44 @@ try {
   page = await open(ctxA);
   const stale = await page.evaluate(() => ({ barrel: !!document.querySelector('[data-stale="barrel"]'), saloon: !!document.querySelector('[data-stale="saloon"]') }));
   ok("a picture made from an older prompt is marked to make again; one made from today's is not", stale.barrel && !stale.saloon, stale);
+
+  /* ── 8b. v2.3.2971: what was made before the bigger buildings and the
+     finder that counts carries over, once ── */
+  console.log('8b. sizes and sheets saved before v2.3.2971');
+  const oldSheet = await page.evaluate(async () => {
+    const { S, api } = window.__objects;
+    const { openStore } = await import('/tools/world/store.js');
+    const st = await openStore('brotown-object-studio', ['raw', 'fin', 'misc']);
+    /* the owner's 140% against the old plan; the saloon's picture made from
+       the old plan's prompt; the sheet read by the old finder: no `finder`,
+       and its first row glued into one box */
+    await st.put('misc', 'sizes', { saloon: 1.4 });
+    await st.del('misc', 'sizesBase');
+    const e = S.byId.saloon, raw = await st.get('raw', 'saloon');
+    raw.promptId = api.promptId(api.promptFor({ ...e, size: e.sizeWas }));
+    await st.put('raw', 'saloon', raw);
+    const rec = await st.get('raw', 'sheet:town-sheet-2');
+    const n = rec.boxes.length;
+    delete rec.finder;
+    rec.boxes = [{ x: 0, y: 0, w: 900, h: 400 }];
+    rec.assign = [rec.assign[0]];
+    await st.put('raw', 'sheet:town-sheet-2', rec);
+    st.close();
+    return n;
+  });
+  await page.close();
+  page = await open(ctxA);
+  const carried = await page.evaluate(async () => {
+    const { S } = window.__objects;
+    const rec = S.sheetRaw.get('town-sheet-2'), note = document.querySelector('[data-stale="saloon"]');
+    return { size: S.sizes.saloon || 1, sel: document.querySelector('select[data-size="saloon"]').value, w: S.fin.get('saloon').pieces[0].w,
+      finder: rec.finder, boxes: rec.boxes.length, named: rec.assign.filter(Boolean).length,
+      note: note ? note.textContent : '', warn: note ? note.classList.contains('warn') : null };
+  });
+  ok(`the owner's 140% under the old plan is "as planned" under the new one: the same size, ${carried.w} px`, carried.size === 1 && carried.sel === '1' && carried.w === PLOT * PX, carried);
+  ok('...and a building made from the smaller plan\'s prompt gets a gentle note, not a warning', /planned smaller/.test(carried.note) && carried.warn === false, carried);
+  ok(`a sheet the old finder read is read again, once, with the one that counts: all ${oldSheet} objects found and named again`,
+    carried.finder === 'by count v2.3.2971' && carried.boxes === oldSheet && carried.named === oldSheet, carried);
   await page.evaluate(() => { document.querySelector('details[data-group="tidal"]').open = true; });
   await page.click('[data-remove="coral"]');
   await page.waitForFunction(() => document.getElementById('busy').hidden && !window.__objects.S.fin.has('coral'), null, { timeout: 30000 });

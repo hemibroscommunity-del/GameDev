@@ -195,7 +195,19 @@ remnant to migrate server-side, not a mode to preserve.
   is the owner's clean BlondPanda step and their second mud (arnaud
   coutancier) is HELD BACK, its maker's sounds being CC BY-NC -- check a
   recording's license before using it, NC is out (CREDITS.md):
-  WORLD-MAP-PIPELINE "Tweaks after listening"),
+  WORLD-MAP-PIPELINE "Tweaks after listening"; and since v2.3.2971 the
+  Object Studio FINDS A SHEET'S OBJECTS BY COUNT (`objectsIn`/`gapsOf`/
+  `groupParts` in style/process.js: touching parts, gaps by growth, joined
+  closest first to the count's break, cut out by their own parts) -- the
+  owner: "Your object detector isn't doing a good job ... even though
+  there's space between the objects" -- partsOf's 30 px reach glued them;
+  old sheets are read again once (`FINDER`); a building is planned 1.4x
+  bigger (PLOT_W 386, `sizeWas` 276, `SIZES_BASE` moving old choices), the
+  owner having chosen the menu's top, 140%, for all sixteen; and those
+  sixteen are in `public/world/objects/` (manifest + four PixiJS sheets),
+  the Town Hall still to make, nothing loading them until the placing
+  round, when the plots must grow to fit: WORLD-MAP-PIPELINE "Objects found
+  by count")
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

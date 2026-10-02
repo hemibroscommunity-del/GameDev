@@ -40,6 +40,14 @@
  *     where it stands (its anchor at its foot), so the game loads one file a
  *     land, the land you are in (CLAUDE.md, per-zone loading).
  *
+ * v2.3.2971: a sheet's (and a set's) objects are FOUND BY COUNT
+ * (style/process.js objectsIn) -- as many as it asks for, joined closest
+ * first -- since partsOf's fixed reach glued close neighbours together
+ * (owner: "even though there's space between the objects"); sheets read
+ * the old way are read again once (FINDER).  And a building is planned 1.4
+ * times as big (catalog.js PLOT_W), sizes chosen against the old plan moved
+ * to match, once (SIZES_BASE).
+ *
  * window.__objects is the handle tools/qa/object-studio.mjs drives.
  */
 import { PLAN } from '../world/plan.js';
@@ -47,7 +55,7 @@ import { openStore } from '../world/store.js';
 import { zipStore, unzip } from '../world/core/zip.js';
 import { encodePalettePng } from '../world/core/png8.js';
 import { PIXEL } from '../style/bible.js';
-import { blobToCanvas, keyOut, partsOf, cropTo, splitObjects, resize, ownPalette, hardenAndMap, mk, trim } from '../style/process.js';
+import { blobToCanvas, keyOut, partsOf, cropTo, splitObjects, objectsIn, cropObject, resize, ownPalette, hardenAndMap, mk, trim } from '../style/process.js';
 import { loadSprites } from '../style/scene.js';
 import { objectCatalog, GROUPS } from './catalog.js';
 import { promptFor, sizeWords, FRAME_GAME_PX } from './prompts.js';
@@ -59,8 +67,22 @@ const OWN = PIXEL.ownColours || 64;    /* each object's own colours, shared by i
 const DB = 'brotown-object-studio', STORES = ['raw', 'fin', 'misc'];
 /* How the finished pieces were made; pieces made any other way are made
    again from the pictures as uploaded, on load. */
-const MADE = 'object-studio v2.3.2964';
+const MADE = 'object-studio v2.3.2971';
+/* v2.3.2971: how a sheet's objects were found -- a sheet found any other
+   way (partsOf's fixed reach, which glued close neighbours together) is
+   read again on load, once, with objectsIn */
+const FINDER = 'by count v2.3.2971';
 const SIZES = [0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.4];
+/* v2.3.2971: the size menu's choices are shares of a building's planned
+   size, which grew 1.4 times (catalog.js PLOT_W) -- so a choice made
+   against the old plan is moved to the one nearest the same size, once,
+   and a backup's by its own `size` */
+const SIZES_BASE = 'plots x1.4 v2.3.2971';
+function nearestSize(mul) {
+  let best = 1, bd = Infinity;
+  for (const s of SIZES) { const d = Math.abs(Math.log(mul / s)); if (d < bd) { bd = d; best = s; } }
+  return best;
+}
 /* CSS px a game px on a phone held upright: the game shows 1024 game px of
    height (src/game/worldViewport.js) on an 844 px tall screen */
 const PHONE = 844 / 1024;
@@ -307,16 +329,39 @@ async function setSize(id, mul) {
 
 /* ═══ v2.3.2965: sheet pictures ═══ */
 
-/* The objects on a cut-out sheet, as rows read like a page: each a box in
-   the picture's px.  Specks -- a part much smaller than the smallest object
-   the sheet asks for -- are left out. */
-function sheetRows(cut, frameH, sheet) {
-  const parts = partsOf(cut);
-  const cell = Math.max(1, Math.round(Math.max(cut.width, cut.height) / 320));
+/* The objects on a cut-out sheet.  Specks -- a part much smaller than the
+   smallest object the sheet asks for -- are left out.  v2.3.2971: found BY
+   COUNT (style/process.js objectsIn): as many as the sheet asks for, its
+   parts joined closest first and stopped where the gaps jump -- partsOf's
+   fixed 30 px reach glued neighbours ChatGPT drew close together into one
+   (owner: "even though there's space between the objects").  Each keeps
+   the parts it is made of, so it is cut out by them alone (cropBox). */
+function sheetFind(cut, frameH, sheet) {
   const k = frameH / SHEET.h;   /* picture px a game px */
   const smallest = Math.min(...sheet.rows.flat().map((id) => { const b = boxOf(S.byId[id]); return b.w * b.h; }));
-  const minN = Math.max(4, (SPECK * smallest * k * k) / (cell * cell));
-  return readingOrder(parts.filter((p) => p.n >= minN)).map((row) => row.map(({ x, y, w, h }) => ({ x, y, w, h })));
+  const want = sheet.rows.flat().reduce((n, id) => n + S.byId[id].count, 0);
+  return objectsIn(cut, want, { minArea: SPECK * smallest * k * k, relMin: 0 });
+}
+/* ...as rows read like a page: each a box in the picture's px */
+function sheetRows(found) {
+  return readingOrder(found.boxes).map((row) => row.map(({ x, y, w, h }) => ({ x, y, w, h })));
+}
+/* A box on the sheet cut out by its own parts -- a neighbour's overhang
+   or a speck inside its box made clear -- or plainly, for a box the finder
+   does not give (a record from before it) */
+function cropBox(c, b) {
+  const f = c.found && c.found.boxes.find((o) => o.x === b.x && o.y === b.y && o.w === b.w && o.h === b.h);
+  return f ? cropObject(c.cut, c.found, f) : cropTo(c.cut, b);
+}
+/* each box's copy for the sheet's card */
+async function boxThumbs(c, boxes) {
+  const thumbs = [];
+  for (const b of boxes) {
+    const t = cropBox(c, b);
+    thumbs.push(await canvasToBlob(t ? thumbOf(t) : mk(1, 1)));
+    release(t);
+  }
+  return thumbs;
 }
 
 /* Rows, by how the parts overlap top to bottom: a part joins the row it
@@ -356,8 +401,25 @@ async function sheetCut(id) {
   const raw = S.sheetRaw.get(id);
   if (S.cut && S.cut.id === id && S.cut.blob === raw.blob) return S.cut;
   dropCut();
-  S.cut = { id, blob: raw.blob, ...(await cutPicture(raw.blob)) };
+  const c = await cutPicture(raw.blob);
+  S.cut = { id, blob: raw.blob, ...c, found: sheetFind(c.cut, c.frameH, S.sheetById[id]) };
   return S.cut;
+}
+
+/* v2.3.2971: a sheet found the old way (no `finder`, or another), read
+   again with this finder, once: new boxes, names by place again, copies */
+async function rereadSheet(id, rec) {
+  const sheet = S.sheetById[id];
+  dropCut();
+  const c = await cutPicture(rec.blob);
+  const found = sheetFind(c.cut, c.frameH, sheet);
+  const rows = sheetRows(found), boxes = rows.flat();
+  S.cut = { id, blob: rec.blob, ...c, found };
+  if (!boxes.length) return;
+  Object.assign(rec, { boxes, assign: autoAssign(sheet, rows), thumbs: await boxThumbs(S.cut, boxes), rows: rows.length,
+    frameH: c.frameH, flat: c.flat, finder: FINDER });
+  await S.store.put('raw', SHEET_KEY(id), rec);
+  await decodeSheetThumbs(id);
 }
 function dropCut() { if (S.cut) { release(S.cut.cut); S.cut = null; } }
 
@@ -374,17 +436,19 @@ async function addSheet(id, blob, name, keep = null) {
   if (!sheet) throw new Error(`no sheet ${id}`);
   dropCut();
   const c = await cutPicture(blob);
-  const rows = sheetRows(c.cut, c.frameH, sheet);
+  const found = sheetFind(c.cut, c.frameH, sheet);
+  const rows = sheetRows(found);
   const boxes = rows.flat();
   if (!boxes.length) { release(c.cut); throw new Error('nothing was left once the background was cut away'); }
-  const thumbs = [];
-  for (const b of boxes) { const t = cropTo(c.cut, b); thumbs.push(await canvasToBlob(thumbOf(t))); release(t); }
+  const thumbs = await boxThumbs({ ...c, found }, boxes);
   const kinds = new Set(sheet.rows.flat());
-  const kept = keep && Array.isArray(keep.assign) && keep.assign.length === boxes.length ? keep.assign.map((a) => (a && kinds.has(a) ? a : null)) : null;
+  /* a backup's names, when it was found the same way (v2.3.2971: a backup
+     from the old finder had other boxes, so its names are not used) */
+  const kept = keep && keep.finder === FINDER && Array.isArray(keep.assign) && keep.assign.length === boxes.length ? keep.assign.map((a) => (a && kinds.has(a) ? a : null)) : null;
   const rec = { blob, name: name || '', type: blob.type, at: Date.now(), promptId: (keep && keep.promptId) || promptId(sheetPrompt(sheet, S.byId)),
-    boxes, assign: kept || autoAssign(sheet, rows), thumbs, flat: c.flat, frameH: c.frameH, rows: rows.length };
+    boxes, assign: kept || autoAssign(sheet, rows), thumbs, flat: c.flat, frameH: c.frameH, rows: rows.length, finder: FINDER };
   S.sheetRaw.set(id, rec);
-  S.cut = { id, blob, ...c };
+  S.cut = { id, blob, ...c, found };
   await S.store.put('raw', SHEET_KEY(id), rec);
   await decodeSheetThumbs(id);
   /* a sheet made again makes all its objects again, but any with its own
@@ -411,7 +475,7 @@ async function makeFromSheet(id, only = null) {
       if (srcOf(S.fin.get(eid)) === id) { S.fin.delete(eid); await S.store.del('fin', eid); if (S.stage.id === eid) hideStage(); }
       continue;
     }
-    const pieces = boxes.map((b) => cropTo(c.cut, b)).filter(Boolean);
+    const pieces = boxes.map((b) => cropBox(c, b)).filter(Boolean);
     const mul = S.sizes[eid] || 1;
     const f = await keepPieces(finishPieces(S.byId[eid], pieces, c.frameH, rec.flat, mul), mul, id);
     S.fin.set(eid, f);
@@ -446,7 +510,15 @@ async function removeSheet(id) {
 
 async function loadAll() {
   const sizes = await S.store.get('misc', 'sizes');
-  if (sizes && typeof sizes === 'object') for (const [k, v] of Object.entries(sizes)) if (S.byId[k] && SIZES.includes(v)) S.sizes[k] = v;
+  const rebase = (await S.store.get('misc', 'sizesBase')) !== SIZES_BASE;
+  if (sizes && typeof sizes === 'object') for (const [k, v] of Object.entries(sizes)) {
+    const e = S.byId[k];
+    if (!e || !SIZES.includes(v)) continue;
+    /* v2.3.2971: a building's 140% under the old plan is "as planned" now */
+    const m = rebase && e.sizeWas ? nearestSize((v * e.sizeWas) / e.size) : v;
+    if (m !== 1) S.sizes[k] = m;
+  }
+  if (rebase) { await S.store.put('misc', 'sizes', { ...S.sizes }); await S.store.put('misc', 'sizesBase', SIZES_BASE); }
   for (const k of await S.store.keys('raw')) {
     const rec = await S.store.get('raw', k);
     if (!rec || !rec.blob) continue;
@@ -455,6 +527,14 @@ async function loadAll() {
       const sid = key.slice(6);
       if (S.sheetById[sid] && Array.isArray(rec.boxes) && Array.isArray(rec.assign)) { S.sheetRaw.set(sid, rec); await decodeSheetThumbs(sid); }
     } else if (S.byId[key]) S.raw.set(key, rec);
+  }
+  /* v2.3.2971: sheets found the old way, read again with the finder that
+     counts, once -- their objects are then made again below */
+  let r = 0;
+  for (const [sid, rec] of [...S.sheetRaw]) {
+    if (rec.finder === FINDER) continue;
+    $('status').textContent = `Reading your sheet pictures again with the better finder, once: ${++r}…`;
+    try { await rereadSheet(sid, rec); } catch (err) { /* left as it was */ }
   }
   /* each object from its own picture, else from its sheet's parts */
   let n = 0;
@@ -628,7 +708,11 @@ function renderCard(e) {
   if (onSheet) box.appendChild(el('div', 'ob-where', onSheet));
   if (e.key === 'green') box.appendChild(el('div', 'ob-where', 'Drawn on a green background, not magenta: it is pink or purple itself.'));
   if (raw && raw.promptId && raw.promptId !== promptId(promptFor(e))) {
-    const note = el('div', 'ob-note warn', 'Made from an older prompt. Make it again with the prompt below whenever you like.');
+    /* v2.3.2971: only its size changed -- the plan's buildings grew 1.4 times */
+    const grew = e.sizeWas && raw.promptId === promptId(promptFor({ ...e, size: e.sizeWas }));
+    const note = el('div', grew ? 'ob-note' : 'ob-note warn', grew
+      ? 'Made when buildings were planned smaller. It is fine at the size you chose; the prompt now asks for it bigger in the picture, so making it again would only make its pixels match the ground\'s more closely.'
+      : 'Made from an older prompt. Make it again with the prompt below whenever you like.');
     note.dataset.stale = e.id;
     box.appendChild(note);
   }
@@ -947,7 +1031,7 @@ async function exportFiles() {
     const rec = S.sheetRaw.get(sh.id);
     if (!rec) continue;
     files.push({ name: `originals/sheets/${sh.id}.${extOf(rec.name, rec.blob.type)}`, data: new Uint8Array(await rec.blob.arrayBuffer()) });
-    sheets.push({ id: sh.id, group: sh.group, madeFrom: rec.promptId || null, boxes: rec.boxes, assign: rec.assign });
+    sheets.push({ id: sh.id, group: sh.group, madeFrom: rec.promptId || null, boxes: rec.boxes, assign: rec.assign, finder: rec.finder || null });
   }
   const manifest = {
     tool: 'brotown-object-studio', version: 2, made: new Date().toISOString(),
@@ -982,7 +1066,9 @@ export function packAtlas(items, max = ATLAS_MAX, pad = ATLAS_PAD) {
   newPage();
   for (const it of sorted) {
     if (x && x + it.w > W) { y += rowH + pad; x = 0; rowH = 0; }
-    if (y + it.h > max) newPage();
+    /* (v2.3.2971: never an empty page -- a piece taller than a page used to
+       leave one behind, whose 0 px width stopped "Download for the game") */
+    if (y + it.h > max && page.items.length) newPage();
     page.items.push({ ...it, x, y });
     x += it.w + pad;
     if (it.h > rowH) rowH = it.h;
@@ -1070,9 +1156,12 @@ async function restoreZip(bytes) {
   for (const o of (manifest && manifest.objects) || []) if (o && typeof o.id === 'string') info[o.id] = o;
   for (const o of (manifest && manifest.sheets) || []) if (o && typeof o.id === 'string') sheetInfo[o.id] = o;
   for (const id of Object.keys(info)) {
-    const o = info[id];
-    if (!S.byId[id]) continue;
-    if (SIZES.includes(o.sizeMul) && o.sizeMul !== 1) S.sizes[id] = o.sizeMul; else delete S.sizes[id];
+    const o = info[id], e = S.byId[id];
+    if (!e) continue;
+    /* v2.3.2971: the same size as the backup's, whatever its plan said */
+    const was = typeof o.size === 'number' && o.size > 0 ? o.size : e.size;
+    const m = SIZES.includes(o.sizeMul) ? nearestSize((o.sizeMul * was) / e.size) : 1;
+    if (m !== 1) S.sizes[id] = m; else delete S.sizes[id];
   }
   await S.store.put('misc', 'sizes', { ...S.sizes });
   let n = 0;
@@ -1082,7 +1171,7 @@ async function restoreZip(bytes) {
     if (!m || !S.sheetById[m[1]]) continue;
     const blob = new Blob([f.data], { type: mimeOf(m[2].toLowerCase()) });
     const o = sheetInfo[m[1]];
-    await addSheet(m[1], blob, f.name.split('/').pop(), o ? { assign: o.assign, promptId: o.madeFrom } : null);
+    await addSheet(m[1], blob, f.name.split('/').pop(), o ? { assign: o.assign, promptId: o.madeFrom, finder: o.finder } : null);
     n++;
   }
   /* ...then the objects' own pictures, which win */

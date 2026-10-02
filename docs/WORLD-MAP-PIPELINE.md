@@ -1552,8 +1552,9 @@ instead of 76.
 
 **Reading a sheet back** (`addSheet` in `objects/app.js`):
 
-1. it is cut out like any picture, and its objects found (`partsOf`), specks
-   left out (anything smaller than 15% of the smallest object asked for);
+1. it is cut out like any picture, and its objects found (`partsOf`; since
+   v2.3.2971 `objectsIn`, by count, below), specks left out (anything
+   smaller than 15% of the smallest object asked for);
 2. they are put in rows (`readingOrder`): a part joins the row it shares the
    most height with, at least 40% of the shorter one;
 3. each is named by its place (`autoAssign`): row by row in the prompt's
@@ -1592,6 +1593,64 @@ loading, as CLAUDE.md asks of zone art.
 in most top-down games. The plots along Main Street line a north-south
 street, so their doors face south, not onto the street. The placing round
 decides how to handle that: a path round to each door, or turning the plots.
+
+### Objects found by count; bigger buildings; the buildings in the game (v2.3.2971)
+
+> Owner, 2026-10-02, with a zip of sixteen buildings: *"Your object detector
+> isn't doing a good job of recognizing the objects from the sprite sheet
+> even though there's space between the objects. … Also the buildings
+> needed to be upscaled to 140% for all of them because they were too small
+> in the game. Maybe could've been larger too."*
+
+**Finding the objects on a sheet** (`objectsIn` in `style/process.js`).
+`partsOf` grew every part about 30 px before joining parts, so a canopy kept
+its trunk. But objects ChatGPT drew closer together than the prompt's 56 px
+came out as one piece, and every name after them slid along by one. On a
+test sheet drawn that way it found 5 of 15 objects. Now the studio uses
+what it knows, **how many objects the sheet asks for**:
+
+1. the solid parts, joined only where they touch, on a grid of about 3 px;
+2. the gap between each two neighbouring parts (`gapsOf`: every part grows
+   a ring at a time until two growths meet);
+3. specks join a part within 3% of the picture, or are dropped;
+4. the two closest parts join, then the next two, and the joining stops
+   where the gaps jump. That is at the count asked for, unless a clearly
+   better break lies within two of it, when ChatGPT drew one more or fewer.
+   No join bridges more than 10% of the picture.
+
+Each object is then cut out by its own parts (`cropObject`), so a
+neighbour's overhang or a speck inside its box never comes along. A part
+touching three of the picture's edges is background left in (a picture
+drawn on a scene), never an object. Sets on a picture of their own (four
+barrels) are found the same way. **Sheets read by the old finder are read
+again, once, on the next visit** (`FINDER`). Their names are set by place
+again, so a name the owner changed by hand needs changing again.
+
+**Bigger buildings** (`catalog.js`). The size menu's top was 140%, and the
+owner chose it for all sixteen. A building is now planned 1.4 times as big:
+386 game px wide, about three and a half people (the Town Hall 406). So:
+
+- the menu's 140% now goes nearly twice the old plan;
+- a 140% chosen against the old plan becomes "as planned", the same size,
+  once (`SIZES_BASE`), and a backup's choice is taken by its own `size`;
+- the prompt asks for the building to fill three quarters of the picture,
+  not half, so its pixels come out the ground's size without enlarging;
+- a building made from the old prompt gets a gentle note, not a warning
+  (`sizeWas`): it is fine at its size, and making it again only matches its
+  pixels to the ground more closely.
+
+The plots (`plan.js` `town.lot`, 300 game px) are now narrower than the
+buildings. They grow to fit in the placing round, which makes Main Street
+longer.
+
+**The buildings in the game files.** The owner's "Download for the game"
+zip is in `public/world/objects/`: `manifest.json` and four sprite sheets
+(`buildings-1` to `-4`, each a PNG and its PixiJS sheet file). That is
+sixteen buildings at the owner's 140%, each 386 game px wide; only the Town
+Hall is still to make. Nothing in the game loads them yet. Three of the four
+pages are full-colour PNGs: four buildings of 64 colours each are one colour
+too many for a palette PNG. So the sixteen are 6.7 MB, and packing three to
+a page would bring that to about 2.8 MB. That is for the placing round.
 
 **Next:**
 
