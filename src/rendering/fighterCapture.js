@@ -16,11 +16,20 @@
  *
  * Null whenever the world cannot supply them (no renderer yet, the strips
  * not in, a corpse on screen): the caller keeps its standing figure.
+ *
+ * v2.3.2987 (owner: "Yes do dodges and walking too"): the dodge roll and the
+ * jog come the same way, off the OTHER renderer -- they are not stand-ins
+ * but the player's own figure in two of its poses, so they are photographed
+ * off EntityRenderer.capturePoseFrames (the note there says how).
  */
 let _effects = null;
+let _entities = null;
 
-/** pixiRenderer, once, after the EffectsRenderer exists. */
-export function setFighterEffects(effects) { _effects = effects || null; }
+/** pixiRenderer, once, after the renderers exist. */
+export function setFighterEffects(effects, entities) {
+  _effects = effects || null;
+  _entities = entities || null;
+}
 
 /* Crop every frame to the UNION of what any frame paints.  The box the
    stand-in is photographed in is its authored frame plus headroom, and most
@@ -85,6 +94,24 @@ export function captureAttack(kind, opts) {
   try { return cropToPaint(cap); } catch (e) { return null; }
 }
 
+/**
+ * v2.3.2987: the hero's dodge roll or his jog, frame by frame, as the world
+ * draws his own figure.
+ *   kind  'dodge' | 'jog'
+ *   opts  { bodyH, res, weapon, shield } -- see capturePoseFrames
+ * Returns what captureAttack returns, or null.
+ */
+export function capturePose(kind, opts) {
+  if (!_entities || typeof _entities.capturePoseFrames !== 'function') return null;
+  let cap = null;
+  try { cap = _entities.capturePoseFrames(kind, opts); } catch (e) { cap = null; }
+  if (!cap || !cap.frames || !cap.frames.length) return null;
+  try { return cropToPaint(cap); } catch (e) { return null; }
+}
+
 /* QA probe (mp-statdemo): the capture on demand, so a rig can photograph the
-   swing itself and hold the window's frames to it. */
-if (typeof window !== 'undefined') window.__btFighterCapture = (kind, opts) => captureAttack(kind, opts);
+   swing itself and hold the window's frames to it.  v2.3.2987: the roll and
+   the jog by the same door. */
+if (typeof window !== 'undefined') {
+  window.__btFighterCapture = (kind, opts) => ((kind === 'dodge' || kind === 'jog') ? capturePose(kind, opts) : captureAttack(kind, opts));
+}

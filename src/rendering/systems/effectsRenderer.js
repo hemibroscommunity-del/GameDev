@@ -6,6 +6,7 @@
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
 import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, FillGradient, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
    see CLAUDE.md "Animation preloading is LAW"): every Assets.load in
@@ -12757,16 +12758,9 @@ export class EffectsRenderer {
       shield: o.shield ? (realRpg.shield || { type: 'shield' }) : null,
     });
     const now = Date.now();
-    /* Each frame is photographed into its own small texture -- clipped to its
-       own box, so a blade tip cannot spill into the next frame -- and the GPU
-       is read back ONCE, for all of them laid out on one sheet: one pipeline
-       flush instead of eleven.  MEASURED (headless Chromium, whose GPU is
-       software): posing and drawing are under 1ms a frame, and the readback
-       is the whole cost, ~230ms for the swing's eleven, scaling with pixels
-       either way -- a phone's GPU reads back in a fraction of that, but it is
-       still why `res` is capped at 2 and the frames are cropped to their
-       paint (fighterCapture).  The sheet is a grid no wider than 2048px,
-       because older iPhones cannot make a texture wider than 4096. */
+    /* Each frame is photographed into its own small texture and the GPU is
+       read back once for all of them (photoSheet.readbackFrames -- the
+       readback is the whole cost, measured; the note there has the numbers). */
     const texs = [];
     let frames = null, fw = 0, fh = 0;
     try {
@@ -12788,24 +12782,7 @@ export class EffectsRenderer {
       /* generateTexture truncates the box to whole px (GenerateTextureSystem);
          the frames are what it made, not what was asked for */
       fw = texs[0].width; fh = texs[0].height;
-      const cols = Math.max(1, Math.min(n, Math.floor(2048 / Math.max(1, fw * res))));
-      const rows = Math.ceil(n / cols);
-      const sheet = new Container();
-      texs.forEach((t, i) => {
-        const sp = new Sprite(t);
-        sp.x = (i % cols) * fw; sp.y = Math.floor(i / cols) * fh;
-        sheet.addChild(sp);
-      });
-      const all = R.generateTexture({ target: sheet, frame: new Rectangle(0, 0, cols * fw, rows * fh), resolution: res });
-      let big = null;
-      try { big = R.extract.canvas({ target: all }); } finally { all.destroy(true); sheet.destroy({ children: true }); }
-      const pw = Math.round(fw * res), ph = Math.round(fh * res);
-      frames = texs.map((t, i) => {
-        const c = document.createElement('canvas');
-        c.width = pw; c.height = ph;
-        c.getContext('2d').drawImage(big, (i % cols) * pw, Math.floor(i / cols) * ph, pw, ph, 0, 0, pw, ph);
-        return c;
-      });
+      frames = readbackFrames(R, texs, res);
     } catch (e) {
       return null;
     } finally {

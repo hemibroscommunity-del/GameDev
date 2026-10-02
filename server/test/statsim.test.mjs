@@ -302,6 +302,9 @@ for (const b of BUILDS) {
   check('flora, sword: the slime SWINGS at arm\'s length (no ball), and the thorn answers it',
     scF.passes[0].beats.some((b) => b.k === 'swing') && !scF.passes[0].beats.some((b) => b.k === 'throw') && scF.passes[0].beats.some((b) => b.k === 'recoil'),
     scF.passes[0].beats.map((b) => b.k));
+  /* v2.3.2987: a fight the slime answers is one your Dodge can roll out of,
+     so the window takes the roll's frames for it (StatDemo, prep.rolls) */
+  check('...and it is a fight he can roll in (rolls: true)', scF.rolls === true, { rolls: scF.rolls });
   /* a fresh bow (skill 1): a stronger one can put the slime down in three
      arrows before its first ball lands, and then nothing is thrown at all */
   const flB = makeChar({
@@ -466,6 +469,43 @@ for (const b of BUILDS) {
   const blk = stSw.passes[0].beats.filter((b) => b.k === 'land' && b.kind === 'blocked');
   check('Stamina, sword and board: each swing caught on the shield takes the block cost off the bar',
     blk.length > 0 && blk.every((b) => typeof b.stam === 'number'), blk);
+  /* v2.3.2987: the window now plays the hero's OWN roll and jog, photographed
+     off the world -- and it photographs only what a scene can play.  `rolls`
+     says the slime attacks and your Dodge can answer; a roll beat carries the
+     moment the attack lands (the tumble is centred on it); a trek beat
+     carries its distance. */
+  const stNo = simulateStatScene(R, 'stam', null, 1, R.weapon, false, caps, 5);
+  const rollB = stNo.passes[0].beats.filter((b) => b.k === 'roll');
+  const landT = new Set(stNo.passes[0].beats.filter((b) => b.k === 'land').map((b) => b.t));
+  check('Stamina without a shield rolls (rolls: true), and each roll names the landing it dodges',
+    stNo.rolls === true && rollB.length > 0 && rollB.every((b) => landT.has(b.land) && b.land > b.t),
+    { rolls: stNo.rolls, rollB, lands: [...landT] });
+  check('...and with a shield it holds its guard instead (rolls: false)', stSw.rolls === false, { rolls: stSw.rolls });
+  /* the roll starts half the hero's roll window before the attack lands (his
+     tumble meets it curled up), and the stamina goes as it starts -- so the
+     regen ticks must be counted up to the roll, or the bar would show a tick
+     landing before the cost it follows (caught in review of this change).
+     Every roll length the world can produce, 250ms to 700ms. */
+  let ordered = true, centred = true;
+  const ordDetail = [];
+  for (const rollMs of [undefined, 250, 400, 700]) {
+    const sc = simulateStatScene(R, 'stam', null, 1, R.weapon, false, caps, 5, rollMs);
+    for (const pass of sc.passes) {
+      if (!pass) continue;
+      const bar = pass.beats.filter((b) => b.k === 'stam' || b.k === 'roll');
+      for (let i = 1; i < bar.length; i++) if (bar[i].t < bar[i - 1].t) { ordered = false; ordDetail.push({ rollMs, at: bar[i - 1], then: bar[i] }); }
+      for (const b of pass.beats) if (b.k === 'roll' && Math.abs((b.land - b.t) - (rollMs ? rollMs / 2 : 260)) > 1e-9) centred = false;
+    }
+  }
+  check('...each roll starts half his roll window before the landing (the old 260ms lead without one)', centred);
+  check('...and the stamina bar\'s changes come in time order whatever the roll length', ordered, ordDetail.slice(0, 3));
+  check('a defend scene can roll (your Dodge answers the slime)', hpSw.rolls === true, { rolls: hpSw.rolls });
+  const pw = simulateStatScene(R, 'dmg', 'sword', 1, R.weapon, false, caps, 5);
+  check('...and a fight the slime never answers does not (no frames taken for nothing)', !pw.rolls, { rolls: pw.rolls });
+  const mv = simulateStatScene(R, 'move', null, 1, R.weapon, false, caps, 5);
+  const trekB = mv.passes[0].beats.filter((b) => b.k === 'trek');
+  check('Move Speed\'s trek says how far he walks out (and back)',
+    trekB.length === 2 && trekB.every((b) => b.px === 64 && b.ms > 0), trekB);
   const a = simulateStatScene(R, 'luck', 'sword', 1, R.weapon, false, caps, 777);
   const b = simulateStatScene(R, 'luck', 'sword', 1, R.weapon, false, caps, 777);
   check('the same dice give the same scene', JSON.stringify(a.passes) === JSON.stringify(b.passes));

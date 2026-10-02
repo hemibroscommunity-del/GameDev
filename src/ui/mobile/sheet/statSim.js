@@ -715,7 +715,7 @@ export function rollsInARow(R) {
   const max = (R && R.maxStamina) || 100;
   return Math.floor(max / rpgBlockSize(R, 'stamina'));
 }
-function guardPass(R, slime, n, shield, ranged) {
+function guardPass(R, slime, n, shield, ranged, rollMs) {
   const beats = [];
   const max = (R && R.maxStamina) || 100;
   const atk = slimeAttack(ranged);
@@ -745,14 +745,20 @@ function guardPass(R, slime, n, shield, ranged) {
     return { beats, end: lastLand + TAIL_MS, bar: { kind: 'stamina', cur: max, max } };
   }
   const cost = rpgBlockSize(R, 'stamina');
+  /* v2.3.2987: the roll starts half the hero's roll window before the attack
+     lands, so his own tumble (StatDemo) meets it curled up -- and the stamina
+     goes when the roll starts, so the regen ticks are counted up to THAT
+     moment, or one would be shown landing before the cost it follows.
+     Without a window (tests, an old caller) the old 260ms lead. */
+  const lead = rollMs > 0 ? rollMs / 2 : 260;
   let nextTick = GUARD.TICK_MS, lastLand = 0;
   for (let i = 0; i < n; i++) {
     const t = LEAD_MS + i * atk.cd;
     const land = t + atk.hitAt;
-    while (nextTick < land - 260) { if (st < max) { st = Math.min(max, st + GUARD.REGEN); beats.push({ t: nextTick, k: 'stam', cur: st }); } nextTick += GUARD.TICK_MS; }
+    while (nextTick < land - lead) { if (st < max) { st = Math.min(max, st + GUARD.REGEN); beats.push({ t: nextTick, k: 'stam', cur: st }); } nextTick += GUARD.TICK_MS; }
     beats.push({ t, k: atk.kind });
     st = Math.max(0, st - cost);
-    beats.push({ t: land - 260, k: 'roll', stam: st, cost });
+    beats.push({ t: land - lead, k: 'roll', stam: st, cost, land });
     beats.push({ t: land, k: 'land', text: '', kind: 'miss' });
     lastLand = land;
   }
@@ -789,12 +795,12 @@ export function walkPxPerSec(R) {
   const amu = (ab && ab.stat === 'moveSpd') ? 1 + ab.value / 100 : 1;
   return calcMoveSpeed((R && R.agility) || 0, swift) / 5 * SPEED * 60 * prog3MoveMult(R) * amu;
 }
-const TREK_PX = 64;   /* game.css bt-sd-trek: out 64px and back */
+const TREK_PX = 64;   /* out 64px and back: the hero's own jog (v2.3.2987), or game.css bt-sd-trek */
 function trekPass(R) {
   const ms = Math.round((TREK_PX * 2) / Math.max(1, walkPxPerSec(R)) * 1000);
   /* two trips, so the second half's quicker step has a rhythm to be read against */
   return {
-    beats: [{ t: LEAD_MS, k: 'trek', ms }, { t: LEAD_MS + ms + 250, k: 'trek', ms }],
+    beats: [{ t: LEAD_MS, k: 'trek', ms, px: TREK_PX }, { t: LEAD_MS + ms + 250, k: 'trek', ms, px: TREK_PX }],
     end: LEAD_MS + 2 * ms + 250 + TAIL_MS, trekMs: ms,
   };
 }
@@ -830,11 +836,14 @@ const LANE_GEAR = { sword: 'a melee weapon', bow: 'a bow', staff: 'a staff' };
  *   weapon  what the figure holds (the lane's weapon, or the one in hand)
  *   shield  is a shield worn (Stamina's guard needs one)
  *   caps    the connected worker's caps (bowvolley / bigorb)
+ *   rollMs  v2.3.2987: the hero's roll window (game/dodge.js dodgeWindowMs,
+ *           which this module cannot import) -- a stamina roll starts half of
+ *           it before the attack it dodges; absent, the old 260ms lead
  * Returns null for a stat with no scene.  play() returns [before, after];
  * `after` is null when the stat is at its cap (there is no second half to
  * show, and the window says so).
  */
-export function prepareStatScene(R, stat, cat, n, weapon, shield, caps) {
+export function prepareStatScene(R, stat, cat, n, weapon, shield, caps, rollMs) {
   if (!R || !stat) return null;
   const slime = sceneSlime();
   const capped = statCapped(R, stat, cat);
@@ -872,7 +881,9 @@ export function prepareStatScene(R, stat, cat, n, weapon, shield, caps) {
     const k0 = killStats(o0, slime, kOpt), k1 = capped ? null : killStats(o1, slime, kOpt);
     const ttk = (k) => fmtN(k.hits) + (Math.abs(k.hits - 1) < 0.05 ? ' hit · ' : ' hits · ') + fmtSecs(k.secs);
     return {
-      ...base, kind: 'fight', shot: o0.ranged ? o0.type : null, note,
+      /* v2.3.2987: `rolls` -- the slime attacks in this scene, so your Dodge
+         can roll you out of one, and the window wants the roll's frames */
+      ...base, kind: 'fight', shot: o0.ranged ? o0.type : null, note, rolls: attacks,
       verdict: k0 ? { label: 'Slime down in', now: ttk(k0), after: k1 ? ttk(k1) : null } : null,
       play: (seed) => fightPair(o0, capped ? null : o1, slime, seed || 1, t0, t1),
     };
@@ -909,7 +920,7 @@ export function prepareStatScene(R, stat, cat, n, weapon, shield, caps) {
   if (stat === 'hp' || stat === 'def' || stat === 'dodge') {
     const h0 = hitsToDown(A, slime), h1 = capped ? null : hitsToDown(B, slime);
     return {
-      ...base, kind: 'defend',
+      ...base, kind: 'defend', rolls: true,
       verdict: { label: 'Slime hits to drop you', now: fmtN(h0), after: h1 == null ? null : fmtN(h1) },
       play: (seed) => [hitsPass(A, slime, seed || 1, 2, ranged), capped ? null : hitsPass(B, slime, seed || 1, 2, ranged)],
     };
@@ -919,11 +930,11 @@ export function prepareStatScene(R, stat, cat, n, weapon, shield, caps) {
        rolling out of the way -- the two things stamina is spent on */
     const hasShield = !!shield;
     return {
-      ...base, kind: 'stamina', shield: hasShield,
+      ...base, kind: 'stamina', shield: hasShield, rolls: !hasShield,
       verdict: hasShield
         ? { label: 'Guard holds vs. a slime', now: fmtSecs(guardHoldMs(A, ranged) / 1000), after: capped ? null : fmtSecs(guardHoldMs(B, ranged) / 1000) }
         : { label: 'Dodge rolls on a full bar', now: String(rollsInARow(A)), after: capped ? null : String(rollsInARow(B)) },
-      play: () => [guardPass(A, slime, 2, hasShield, ranged), capped ? null : guardPass(B, slime, 2, hasShield, ranged)],
+      play: () => [guardPass(A, slime, 2, hasShield, ranged, rollMs), capped ? null : guardPass(B, slime, 2, hasShield, ranged, rollMs)],
     };
   }
   if (stat === 'eres') {
@@ -944,8 +955,8 @@ export function prepareStatScene(R, stat, cat, n, weapon, shield, caps) {
 }
 /** prepareStatScene + one loop's play, in one call (tests, and any caller
  *  that wants a single scene). */
-export function simulateStatScene(R, stat, cat, n, weapon, shield, caps, seed) {
-  const prep = prepareStatScene(R, stat, cat, n, weapon, shield, caps);
+export function simulateStatScene(R, stat, cat, n, weapon, shield, caps, seed, rollMs) {
+  const prep = prepareStatScene(R, stat, cat, n, weapon, shield, caps, rollMs);
   if (!prep) return null;
   const { play, ...rest } = prep;
   return { ...rest, passes: play(seed || 1) };

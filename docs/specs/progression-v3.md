@@ -1011,6 +1011,54 @@ attacks with the WORLD's own animation in his own look:
 - `mp-statdemo` §4e: per lane, the world's frame count, frames actually
   playing and painted, no nudge, and no arrow before the release.
 
+**He rolls and walks with his own animations (v2.3.2987).** Owner: "Yes do
+dodges and walking too." The dodge was a CSS sidestep of the standing
+portrait and the Move Speed trek a CSS slide of it. Both are now the world's
+own poses in his own look:
+
+- **Photographed off his own figure.** The roll and the jog are not
+  stand-ins — they are the player's figure in two of its poses — so they come
+  off the *player* renderer (`EntityRenderer.capturePoseFrames`):
+  `_updatePlayer`, the function that draws your figure every frame, is run on
+  a private copy of your display with a stand-in state (rolling or jogging
+  due east, nothing else: no aim, lock, raised shield, hit or swing), one frame
+  at a time. For each call the renderer's `playerDisplay` is the copy and its
+  `playerLayer` a throwaway root, so no live layer is touched; your display,
+  the layer, the prewarm order and every `window.__bt*` probe the call writes
+  are put back afterwards, and the copy is destroyed. The zone's perspective
+  and your height are divided out before the photo; your build's width is
+  kept, and the photo is sized off the standing body as the attack is.
+- **The roll** is the world's 9 frames (the last is the stand it hands back
+  to), spread over *your* roll window — `dodgeWindowMs` (`game/dodge.js`), the
+  world's one formula (250 ms + Endurance + Reflexes) — and centred on the
+  moment the attack lands, so the ball or swing meets him curled up. He rolls
+  where he stands: the world's roll carries the player 100 px or more, which
+  the stage does not have. Stamina's bar drops when the roll starts.
+- **The walk** jogs out to the slime on the world's east stride and home on
+  the world's own *west* stride — not a flipped picture of the east one: the
+  world puts the weapon in the other hand on a mirrored facing (`getAnchor`'s
+  mirror) and pre-flips your drawn-on art so it still reads. The stride runs
+  on the world's cadence (`cycleMs('jog')`, armour-aware) while the distance
+  covers the trek at your simulated speed. It plays on
+  `requestAnimationFrame` inside the Fighter (one small canvas, blitted only
+  when the frame changes) rather than thirty setStates a second.
+- **Only what a scene plays is taken.** `prepareStatScene` says `rolls: true`
+  where the slime attacks and your Dodge can answer (HP/Defense/Dodge,
+  Stamina without a shield, a thorn fight); the jog only for Move Speed.
+- **Cost.** The photo box is the union of what every frame draws
+  (`getLocalBounds` — so a tall hat or a greatsword carried point-up is inside
+  it by construction), measured in a first pass because posing is nearly free
+  (all 28 jog frames, ~10 ms) and every pixel of the box is paid for in the
+  readback. Measured in headless Chromium's software GPU: ~50 ms for the roll,
+  ~430 ms for one direction of the jog (a phone's GPU reads back far faster).
+  `photoSheet.readbackFrames` is the one readback both renderers use: sheets
+  no larger than 2048 px a side (older iPhones cap textures at 4096).
+- `mp-statdemo` §4f: the roll's 9 frames playing and painted with no
+  sidestep; the jog's strides out and home, painted, travelling, with no
+  slide; and your figure in the world exactly where and what it was after
+  the captures. `statsim.test` holds the `rolls` flag, the roll's landing
+  and the trek's distance.
+
 **Out of scope, deliberately.** Food and potion buffs, the hexer's curse
 and elemental collisions stay out, as they do from the DPS row. The
 `infopop` / `freshpoints` combat-card failures noted above are still

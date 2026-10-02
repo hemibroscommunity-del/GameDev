@@ -4,6 +4,7 @@
  */
 import { tickSmithing } from '@/game/smithing.js';   /* v2.3.2827: the smith borrows the mining swing */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
+import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's roll and jog, one readback */
 import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2748: a building's base, read off its art */
@@ -14263,6 +14264,189 @@ export class EntityRenderer {
       body.fill({ color: 0x000000, alpha: 0.5 });
     }
   }
+
+  /* ═══ v2.3.2987: THE ROLL AND THE JOG, PHOTOGRAPHED FOR THE STAT SCENE ═══
+   *
+   * Owner, once the Points window's hero swung his own sword (v2.3.2986):
+   * "Yes do dodges and walking too."  The dodge was a CSS sidestep of the
+   * standing portrait and the Move Speed trek a CSS slide of it -- a statue
+   * gliding, the thing the swing had just stopped being.
+   *
+   * The roll and the jog are not stand-ins (effectsRenderer's swing and shot
+   * are); they are the player's OWN figure in two of its poses, and the whole
+   * of that figure is drawn by _updatePlayer: the recoloured body, gear in its
+   * metal, the head traits on each frame's crown, the cape, the slung shield,
+   * the weapon in the hand that is forward this frame.  So, as with the swing,
+   * nothing is rebuilt: _updatePlayer is run on a PRIVATE copy of your display
+   * (createPlayerDisplay, the one your figure is made from), with a stand-in
+   * state that is rolling or jogging due east and nothing else -- no aim, no
+   * lock, no shield up, no hit, no swing -- one frame at a time, and each frame
+   * is photographed.  Whatever the world draws in a roll or a stride, the
+   * window draws, by construction.
+   *
+   * The swap is total and brief.  For the length of each call the renderer's
+   * playerDisplay IS the private copy and its playerLayer is a throwaway root,
+   * so _updatePlayer's every-frame re-attach parks the copy there and never
+   * touches a live layer; your own display, the layer, the prewarm order
+   * (_localBakeDir) and every window.__bt* probe _updatePlayer writes are put
+   * back in the finally.  It runs between world frames (StatDemo calls it from
+   * a React effect), so no frame the player sees ever has the copy in it, and
+   * the copy is destroyed when the run is done, as a departed peer's is.
+   *
+   * The stand-in state is the REAL one with the combat fields cleared, so the
+   * figure is in your zone's look and your gear -- and then the copy's scale is
+   * normalised before it is photographed: the zone's perspective (3% at the
+   * World View's rim) and your height divided out, your build's width kept.
+   * The photograph is sized off the STANDING body, exactly as the world sizes
+   * its stand-ins (S._swordBodyH): `bodyH`, crown to feet in the caller's px,
+   * is what the standing figure measures, so a stride or a tumble is as much
+   * bigger or smaller than him as it is on the map.
+   *
+   * kind 'dodge' | 'jog'.  opts: bodyH; res (device px per caller px); weapon
+   * (the item in hand, null for none -- its type picks the slot, as the world's
+   * activeSlot does); shield (worn: slung on the back, as when it is down);
+   * west (face west instead: the world's OWN mirrored facing, which is not a
+   * flipped picture of east -- the weapon changes hands (getAnchor's mirror)
+   * and your drawn-on art is pre-flipped so it still reads).
+   * Returns { frames: [canvas], w, h, feet: [x, y], times: [ms], dur, res } in
+   * caller px -- frame i shows from times[i] on the world's own clock (the jog
+   * loops over dur; the roll is the world's 9 frames over its default window,
+   * the last being the stand it hands back to) -- or null when the world
+   * cannot supply it (no renderer, the poses not in, your corpse on screen). */
+  capturePoseFrames(kind, opts) {
+    const R = this._captureRenderer;
+    if (!R || !R.extract || typeof window === 'undefined') return null;
+    const real = (window._gameState && window._gameState.current) || null;
+    if (!real || !real.player || selfCorpseUp(real)) return null;
+    const pose = kind === 'dodge' ? 'dodge' : kind === 'jog' ? 'jog' : null;
+    if (!pose || !hasPose(pose)) return null;
+    const dir = 'east';   /* the sheet: west is east mirrored, by the world */
+    const n = playerFrameCount(pose, dir);
+    if (!(n > 0)) return null;
+    const o = opts || {};
+    const west = !!o.west;
+    const bodyH = Math.max(8, +o.bodyH || 84);
+    const res = Math.max(1, Math.min(3, +o.res || 1));
+    /* the world's clocks: the jog's cadence is armour-aware (cycleMs), the
+       roll's frames are spread evenly over its window */
+    const dur = pose === 'jog'
+      ? cycleMs('jog', dir, getEquip('chest') !== 'none' && getEquip('legs') !== 'none')
+      : cycleMs('dodge', dir);
+    const times = [], mids = [];
+    for (let i = 0; i < n; i++) { times.push(i * dur / n); mids.push((i + 0.5) * dur / n); }
+    /* what is in hand: the item's type picks the slot, as activeSlot does */
+    const realRpg = real.rpg || {};
+    const w = ('weapon' in o) ? (o.weapon || null) : null;
+    const slot = !('weapon' in o) ? (realRpg.activeSlot || 'melee')
+      : (w && w.type === 'bow') ? 'ranged' : (w && w.type === 'staff') ? 'staff' : 'melee';
+    const rpg = Object.assign({}, realRpg, {
+      hp: Math.max(1, realRpg.hp || 1), activeSlot: slot,
+      ...(('weapon' in o) ? {
+        weapon: slot === 'melee' ? w : realRpg.weapon,
+        rangedWeapon: slot === 'ranged' ? w : realRpg.rangedWeapon,
+        staffWeapon: slot === 'staff' ? w : realRpg.staffWeapon,
+      } : null),
+      shield: o.shield ? (realRpg.shield || { type: 'shield' }) : null,
+    });
+    /* the standing body this is all measured against, in the copy's own units
+       once its scale is normalised to 1 (see below) */
+    const sRows = bodyRows('stand', dir);
+    const sScale = bodyDirScale('stand', dir) * LOCAL_BODY_SCALE;
+    const standH = (sRows.feet - sRows.crown + 1) * sScale;
+    const footY = (sRows.feet - BODY_CELL_MID) * sScale;
+    const rr = (bodyH * res) / standH;   /* device px per unit */
+    const u = bodyH / standH;            /* caller px per unit */
+    const clock = Date.now();
+    const base = Math.floor(clock / dur) * dur;
+    /* everything the swap touches, to put back */
+    const saved = { display: this.playerDisplay, layer: this.playerLayer, bake: _localBakeDir, probes: {} };
+    for (const k of Object.keys(window)) if (k.startsWith('__bt')) saved.probes[k] = window[k];
+    const root = new Container();
+    let cap = null, box = null, frames = null, fw = 0, fh = 0;
+    const texs = [];
+    /* frame i, posed on the copy: _updatePlayer with the stand-in state, then
+       the copy normalised -- the zone's perspective and your height divided
+       out, your build's width kept, its origin at the root's.  false when the
+       world did not draw what was asked (the facing came out wrong, say). */
+    const poseFrame = (i) => {
+      const now = pose === 'jog' ? base + mids[i] : clock;
+      const F = Object.assign({}, real, {
+        player: Object.assign({}, real.player, { vx: pose === 'jog' ? (west ? -1 : 1) : 0, vy: 0, _resonanceStreak: 0 }),
+        rpg, monsters: [],
+        _extraction: null, _firemaking: null, _smithing: null, _lootFreezeUntil: 0,
+        _deathStart: null, _dying: false, _respawnInvuln: 0, _playerStunUntil: 0, _stunUntil: 0,
+        _dodgeRoll: pose === 'dodge' ? { angle: west ? Math.PI : 0, startTime: now - mids[i], durMs: dur } : null,
+        _bashDash: null, _bashPose: null,
+        _shieldUp: false, _shieldAngle: null, _blockPose: false, _blockFlash: 0, _blockShieldBehind: null,
+        _aimAngle: null, _lastAimAngle: null, _swingAng: null, _aiming: false, _backpedaling: false,
+        autoAttack: false, lockedTarget: null, stickX: 0, stickY: 0,
+        isSwinging: false, swingTimer: 0, _specialAttack: false, _bowShotAt: 0, _bowShotAng: null,
+        _staffCastAt: 0, _staffCastBig: 0, _staffCastAng: null,
+        _hitFlash: 0, lastDamageTaken: 0, _pvpSkullType: null, _pvpSkullUntil: 0,
+        _facingAngle: west ? Math.PI : 0, _targetFacingAngle: west ? Math.PI : 0,
+      });
+      /* the carried weapon eases toward the hand frame to frame; each
+         photograph is its own moment, so it starts where the hand is */
+      cap._wpnSmX = null; cap._wpnSmY = null; cap._wpnSmKey = null;
+      this._updatePlayer(F, now);
+      if (cap.parent !== root || !cap.visible || F._renderFacing !== (west ? 'west' : 'east')) return false;
+      const bx = Math.abs(cap.scale.x / (cap.scale.y || 1)) || 1;
+      cap.position.set(0, 0);
+      cap.scale.set(bx, 1);
+      if (cap._uiLayer) cap._uiLayer.visible = false;   /* the name plate is not the figure */
+      if (cap._skullText) cap._skullText.visible = false;
+      return true;
+    };
+    try {
+      cap = createPlayerDisplay();
+      this.playerDisplay = cap;
+      this.playerLayer = root;
+      /* Two passes.  The first only MEASURES: the union of what every frame
+         draws (getLocalBounds -- the sprites' own frames, so a tall hat, a
+         cape or a greatsword held point-up is inside it by construction), and
+         the photograph's box is that, in whole units so the photograph is not
+         shifted by a truncated origin.  Posing is cheap (all 28 jog frames
+         together, ~10ms measured); every pixel of the box is paid for in the
+         readback, and a guessed box was three times the figure. */
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let i = 0; i < n; i++) {
+        if (!poseFrame(i)) return null;
+        const b = root.getLocalBounds();
+        if (!(b.maxX > b.minX && b.maxY > b.minY)) continue;
+        x0 = Math.min(x0, b.minX); y0 = Math.min(y0, b.minY);
+        x1 = Math.max(x1, b.maxX); y1 = Math.max(y1, b.maxY);
+      }
+      /* nothing drawn, or something drawn absurdly far off (a stray sprite
+         would cost a texture the size of the map): not a figure, no photo */
+      if (!(x1 > x0 && y1 > y0) || (x1 - x0) > standH * 6 || (y1 - y0) > standH * 6) return null;
+      box = new Rectangle(Math.floor(x0) - 1, Math.floor(y0) - 1,
+        Math.ceil(x1) - Math.floor(x0) + 2, Math.ceil(y1) - Math.floor(y0) + 2);
+      for (let i = 0; i < n; i++) {
+        if (!poseFrame(i)) return null;
+        texs.push(R.generateTexture({ target: root, frame: box, resolution: rr }));
+      }
+      fw = texs[0].width; fh = texs[0].height;
+      frames = readbackFrames(R, texs, rr);
+    } catch (e) {
+      return null;
+    } finally {
+      for (const t of texs) { try { t.destroy(true); } catch (e) { /* already gone */ } }
+      this.playerDisplay = saved.display;
+      this.playerLayer = saved.layer;
+      _localBakeDir = saved.bake;
+      for (const k of Object.keys(window)) if (k.startsWith('__bt') && !(k in saved.probes)) delete window[k];
+      Object.assign(window, saved.probes);
+      try { if (cap) { cap.removeFromParent(); cap.destroy({ children: true }); } } catch (e) { /* gone */ }
+      try { root.destroy(); } catch (e) { /* gone */ }
+    }
+    return {
+      frames, res, times, dur,
+      w: fw * u, h: fh * u,
+      feet: [-box.x * u, (footY - box.y) * u],
+    };
+  }
+  /** v2.3.2987: the renderer the capture above photographs with (pixiRenderer). */
+  setCaptureRenderer(renderer) { this._captureRenderer = renderer || null; }
 
   /* ═══ v2.3.2078: YOUR PET WAS INVISIBLE ═══
      This read `S._activePet`, and NOTHING in the whole client has ever

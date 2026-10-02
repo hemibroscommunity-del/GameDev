@@ -360,7 +360,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         shot: document.querySelectorAll('.bt-sd-shot').length,
         pops: [...document.querySelectorAll('[data-sd-pop]')].map((e) => ({
           t: e.textContent.trim(), side: /--slime/.test(e.className) ? 'slime' : 'hero' })),
-        rolled: !!document.querySelector('.bt-sd-hero--dodge'),
+        /* v2.3.2987: his own roll (a frame on the roll canvas), or the old
+           sidestep where the frames could not be taken */
+        rolled: !!document.querySelector('.bt-sd-hero--dodge')
+          || +((document.querySelector('[data-sd-roll]') || { getAttribute: () => -1 }).getAttribute('data-sd-roll')) >= 0,
         swell: !!document.querySelector('.bt-sd-slime--swell'),
         windup: !!document.querySelector('.bt-sd-slime--windup'),
         orb: !!document.querySelector('.bt-sd-orb'),
@@ -540,6 +543,86 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.screenshot({ path: `tools/qa/mp/out/statdemo-attack-${lane}.png` }).catch(() => {});
     await P.page.evaluate(() => { window.__btFighterHold = null; });
   }
+
+  /* ══ 4f. v2.3.2987: HE ROLLS AND WALKS WITH HIS OWN ANIMATIONS ══
+     Owner: "Yes do dodges and walking too."  The roll was a CSS sidestep of
+     the standing portrait and the Move Speed trek a CSS slide of it.  Both
+     are now the world's own poses, photographed off his own figure
+     (EntityRenderer.capturePoseFrames): the 9-frame dodge roll, and the jog
+     -- out facing the slime, home on the world's own west-facing stride.
+     Asserted per scene: the frames were taken (the world's counts), they
+     PLAY (several different ones over a loop) and are painted, and the old
+     CSS motion is not what moves him.  Then the WORLD is checked: the capture
+     runs your own figure's draw on a private copy, so your figure must be
+     exactly where and what it was. */
+  const before = await P.page.evaluate(() => (window.__btPlayerDrawn ? window.__btPlayerDrawn() : null));
+  for (const [lane, key] of [['shared', 'stam'], ['shared', 'move']]) {
+    await P.page.keyboard.press('Escape');
+    await P.page.waitForTimeout(350);
+    await H.openPointCols(P, [lane]);
+    const opened = await openStat(P, lane, key);
+    await P.page.waitForTimeout(400);
+    if (!opened) { rec.skip(`${key}: he moves with his own animation`, 'row not reachable'); continue; }
+    const seen = { moves: null, rolls: new Set(), strides: new Set(), painted: false, css: false, far: 0 };
+    for (let i = 0; i < 90; i++) {
+      const f = await P.page.evaluate(() => {
+        const r = document.querySelector('[data-sd-roll]');
+        const w = document.querySelector('[data-sd-walk]');
+        const fr = r ? +r.getAttribute('data-sd-roll') : -1;
+        const walking = !!(w && w.getAttribute('data-sd-walk') === 'on');
+        const lit = (c) => {
+          try {
+            const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+            for (let j = 3; j < d.length; j += 16) if (d[j] > 40) return true;
+          } catch (e) { /* tainted or gone */ }
+          return false;
+        };
+        const tx = walking ? /translateX\((-?[\d.]+)px\)/.exec(w.style.transform || '') : null;
+        return {
+          moves: window.__btStatScene ? window.__btStatScene.moves : null,
+          roll: fr, stride: walking ? w.getAttribute('data-sd-stride') : null,
+          painted: (fr >= 0 && lit(r)) || (walking && lit(w)),
+          x: tx ? +tx[1] : 0,
+          css: !!document.querySelector('.bt-sd-hero--dodge, .bt-sd-hero--trek'),
+        };
+      });
+      if (f.moves) seen.moves = f.moves;
+      if (f.roll >= 0) seen.rolls.add(f.roll);
+      if (f.stride) seen.strides.add(f.stride);
+      if (f.painted) seen.painted = true;
+      if (f.css) seen.css = true;
+      seen.far = Math.max(seen.far, f.x);
+      await P.page.waitForTimeout(45);
+    }
+    const res = { moves: seen.moves, rolls: [...seen.rolls], strides: [...seen.strides], painted: seen.painted, css: seen.css, far: seen.far };
+    if (key === 'stam') {
+      rec.ok('Stamina: he dodges with the world\'s own roll (9 frames over his roll window) -- not a sidestep',
+        !!seen.moves && seen.moves.dodge === 9 && seen.moves.rollMs >= 250 && seen.rolls.size >= 4 && seen.painted && !seen.css, res);
+      await P.page.evaluate(() => { window.__btFighterHold = { roll: 3 }; });
+      await P.page.waitForTimeout(400);
+      await P.page.screenshot({ path: 'tools/qa/mp/out/statdemo-roll.png' }).catch(() => {});
+    } else {
+      const out = [...seen.strides].filter((t) => /^out:/.test(t)).length;
+      const home = [...seen.strides].filter((t) => /^home:/.test(t)).length;
+      rec.ok('Move Speed: he JOGS the trek with the world\'s own stride, out and home -- not a slide',
+        !!seen.moves && seen.moves.jog > 8 && seen.moves.home === seen.moves.jog
+          && out >= 3 && home >= 3 && seen.painted && !seen.css && seen.far > 30, { ...res, out, home });
+      await P.page.evaluate(() => { window.__btFighterHold = { walk: 0.25 }; });
+      await P.page.waitForTimeout(400);
+      await P.page.screenshot({ path: 'tools/qa/mp/out/statdemo-walk-out.png' }).catch(() => {});
+      await P.page.evaluate(() => { window.__btFighterHold = { walk: 0.75 }; });
+      await P.page.waitForTimeout(400);
+      await P.page.screenshot({ path: 'tools/qa/mp/out/statdemo-walk-home.png' }).catch(() => {});
+    }
+    await P.page.evaluate(() => { window.__btFighterHold = null; });
+  }
+  await P.page.keyboard.press('Escape');
+  await P.page.waitForTimeout(500);
+  const after = await P.page.evaluate(() => (window.__btPlayerDrawn ? window.__btPlayerDrawn() : null));
+  rec.ok('...and your own figure in the world is where and what it was (the capture drew a private copy)',
+    !!before && !!after && after.visible && Math.abs(after.x - before.x) < 1 && Math.abs(after.footY - before.footY) < 1
+      && Math.abs((after.scale || 0) - (before.scale || 0)) < 1e-6 && after.height > 0, { before, after });
+  await P.page.screenshot({ path: 'tools/qa/mp/out/statdemo-world-after.png' }).catch(() => {});
 
   /* ══ 4c. THE PRELOADING LAW ══
      CLAUDE.md: every animation asset loads on the gate, and a first-use fetch
