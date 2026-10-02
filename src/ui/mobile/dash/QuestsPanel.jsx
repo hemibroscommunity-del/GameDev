@@ -5,7 +5,7 @@ import { questSteps } from '../../../data/gameSystems.js';   /* v2.3.2820 */
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2172: the sheet's width, not the shell's */
-import { TRAIL_STYLES, isTrailOff, getShownTrailStyle, setTrailShown } from '@/game/questTrailStyle.js'; /* v2.3.2896 */
+import { TRAIL_STYLES, isTrailOff, getShownTrailStyle, setTrailShown, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2896; v2.3.2991 GROUND_PATH */
 import { useScrollTap } from '../sheet/scrollTap.js'; /* v2.3.2896: the switch sits in a scroller */
 
 /* v2.3.1265: Quests — read-only quest log (accepting/turning-in stays
@@ -199,7 +199,10 @@ export const QuestsPanel = () => {
       </div>
 
       <div style={{ paddingBottom: 26 }}>
-        <PathSwitch />
+        {/* v2.3.2991: the road on the ground is put away -- the way is on
+            the minimap (questTrailStyle.js GROUND_PATH) -- so its switch
+            goes with it, back with `?questpath` */}
+        {GROUND_PATH && <PathSwitch />}
         {segment === 'Active' && (
           activeSorted.length === 0
             ? <EmptyLine text="No active quests. Choose one from Available or speak with someone in town." />

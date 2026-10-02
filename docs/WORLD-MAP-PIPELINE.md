@@ -2473,9 +2473,12 @@ What a player gets now, with nothing added to the address:
   where you land, with its shops and townsfolk. Its stairs bring you back to
   the Wheel.
 - **The quest's way works in the Wheel** (`src/game/questRoute.js`). The gold
-  road on the ground and a star on the Wheel's minimap both point the same
-  way. The old rules led through the World View's portals, and the Wheel has
-  none, so here they point at a place:
+  road and a star on the Wheel's minimap both point the same way. Since
+  v2.3.2991 the road is drawn on the minimap only, from you to the star. The
+  owner: *"just rely on the gold road on the minimap of where to go"*; the road
+  on the ground is put away, back with `?questpath`
+  (docs/specs/quest-path-guide.md §0). The old rules led through the World
+  View's portals, and the Wheel has none, so here they point at a place:
   - a new character's welcome, and a quest ready to hand in, lead to the
     Wheel's own Mayor Bro, not to the marker back to today's town;
   - a quest that names a land (*"Bring 4 Snowman Remnants from Frost

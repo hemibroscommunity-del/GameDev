@@ -56,7 +56,7 @@ import { IMAGE_ZONE_MAPS } from '../tiledMaps.js';
 import { propsForZone } from '@/data/worldProps.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
-import { questRouteExits } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants; v2.3.2128: plural */
+import { questRouteExits, questRoutePoint } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants; v2.3.2128: plural; v2.3.2991: the road's end */
 import { isWheelTrialZone } from '@/game/worldTrial.js';
 import { WheelMinimap } from './wheelMinimap.js';   /* v2.3.2966: the Wheel's own, bigger box */
 
@@ -139,6 +139,10 @@ const C_QUEST      = 0xd8aa58;   /* COL.accent — gold '!', same as the in-worl
 const C_QUEST_STAR = 0xf5ce3c;
 const STAR_ICON_PX = 18;
 const C_QUEST_DONE = 0x58b97b;   /* COL.xp — green '?', same as the in-world badge */
+/* v2.3.2991: the gold road to the quest's spot -- width and dark casing, CSS
+   px; it starts clear of your chevron, is not drawn when the spot is this
+   close, and stops this far in from the box's edge when the spot is off it */
+const ROAD_W = 1.75, ROAD_CASE = 3.5, ROAD_FROM = 6, ROAD_MIN = 8, ROAD_EDGE = 4, C_ROAD_CASE = 0x0b161b;
 
 /* v2.3.1783: which glyph a building gets, keyed off the ACTION its door
    opens (worldProps.js) rather than off its id.  Keying on the action means
@@ -314,6 +318,9 @@ export class MinimapRenderer {
     this.land = new Graphics();
     this.pan.addChild(this.land);
     this._landW = -1; this._landH = -1;
+    /* v2.3.2991: the gold road, over the ground and under every mark */
+    this.road = new Graphics();
+    this.pan.addChild(this.road);
     this.markers = new Container();
     this.pan.addChild(this.markers);
 
@@ -874,6 +881,41 @@ export class MinimapRenderer {
     }
     const routeTo = routeList.length ? routeList[0] : null;
 
+    /* ═══ v2.3.2991: THE GOLD ROAD, ON THE MAP ═══
+       Owner: "I think I want to remove the footsteps and just rely on the
+       gold road on the minimap of where to go."  The road on the ground is
+       put away (questTrailStyle.js GROUND_PATH), so this is the way now: a
+       gold line from you to where the quest leads.  It uses the same answer
+       the ground road used (questRoutePoint: the portal the star marks, or
+       the person to see), drawn under every mark so the star or the pin sits
+       on its end.  When the spot is off the box, the road runs to the box's
+       edge on the line toward it.  No star waits there: this box's star
+       marks portals only (v2.3.1817, mp-minimap), unlike the Wheel's. */
+    this.road.clear();
+    let questRoad = null;
+    let questTo = null;
+    try { questTo = questRoutePoint(zoneId, S.rpg || null, S); } catch (e) { questTo = null; }
+    if (questTo) {
+      const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
+      const dx = questTo.x * SCALE + this.pan.x - pbx, dy = questTo.y * SCALE + this.pan.y - pby;
+      const D = Math.hypot(dx, dy);
+      const lo = ROAD_EDGE, hi = MINIMAP_PX - ROAD_EDGE;
+      let t = 1;
+      if (dx > 0) t = Math.min(t, (hi - pbx) / dx); else if (dx < 0) t = Math.min(t, (lo - pbx) / dx);
+      if (dy > 0) t = Math.min(t, (hi - pby) / dy); else if (dy < 0) t = Math.min(t, (lo - pby) / dy);
+      t = Math.max(0, t);
+      const L = D * t;
+      let len = 0;
+      if (L > ROAD_MIN) {
+        const x0 = P.x * SCALE + (dx / D) * ROAD_FROM, y0 = P.y * SCALE + (dy / D) * ROAD_FROM;
+        const x1 = P.x * SCALE + dx * t, y1 = P.y * SCALE + dy * t;
+        this.road.moveTo(x0, y0).lineTo(x1, y1).stroke({ width: ROAD_CASE, color: C_ROAD_CASE, alpha: 0.55, cap: 'round' });
+        this.road.moveTo(x0, y0).lineTo(x1, y1).stroke({ width: ROAD_W, color: C_QUEST_STAR, alpha: 0.95, cap: 'round' });
+        len = Math.round(L - ROAD_FROM);
+      }
+      questRoad = { to: { x: Math.round(questTo.x), y: Math.round(questTo.y), npc: questTo.npc || null, zoneId: questTo.zoneId || null }, edge: t < 1, len };
+    }
+
     /* '❗' = he has work for you, '❓' = you can hand it in.  Read straight off
        npc._questMarker, which is what the in-world badge over his head reads
        too — one source, so the map and the world can never disagree about
@@ -916,6 +958,9 @@ export class MinimapRenderer {
            claim worth testing now is "how many, and which zones" — a single
            entry cannot tell a four-star field quest from a one-star trip. */
         questRoutes: routeList.map((r) => ({ x: Math.round(r.x), y: Math.round(r.y), zoneId: r.zoneId })),
+        /* v2.3.2991: the gold road -- where it leads, whether it stops at the
+           box's edge, and how long it is drawn (box px) */
+        questRoad,
         /* v2.3.1908: the star's own colour and size, so "more yellow and
            slightly larger" is assertable rather than eyeballed — and so a
            later tidy-up cannot quietly fold it back into C_QUEST. */

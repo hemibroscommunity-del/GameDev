@@ -19,11 +19,13 @@
  *      they stay there;
  *   6. `?trial=off` is today's town and the old World View, as before;
  *   7. no page errors;
- *   8. the quest's way works there (src/game/questRoute.js): the gold road
- *      and the minimap's star lead a new character to the Wheel's own Mayor
- *      Bro, then, with his first quest, to Frost Ridge's monsters, stopping
- *      among them; and a death there no longer leaves today's town with the
- *      Wheel's npc list (src/game/respawn.js).
+ *   8. the quest's way works there (src/game/questRoute.js): the minimap's
+ *      star and, since v2.3.2991, its gold road lead a new character to the
+ *      Wheel's own Mayor Bro, then, with his first quest, to Frost Ridge's
+ *      monsters, stopping among them -- and nothing is drawn on the ground
+ *      (the owner: "just rely on the gold road on the minimap"); and a death
+ *      there no longer leaves today's town with the Wheel's npc list
+ *      (src/game/respawn.js).
  */
 import * as H from './harness.mjs';
 
@@ -48,8 +50,17 @@ const way = (P) => P.page.evaluate(() => {
   const road = window.__btQuestRoad || null, mini = window.__btMinimap || null;
   const m = (Array.isArray(S.npcs) ? S.npcs : []).find((n) => n && n.name === 'Mayor Bro');
   return { road: road ? { to: road.to, motes: road.motes, style: road.style } : null,
-    star: mini && mini.wheel ? mini.quest : undefined, mayor: m ? { x: Math.round(m.x), y: Math.round(m.y) } : null };
+    star: mini && mini.wheel ? mini.quest : undefined, mayor: m ? { x: Math.round(m.x), y: Math.round(m.y) } : null,
+    me: { x: Math.round(S.player.x), y: Math.round(S.player.y) } };
 });
+/* v2.3.2991: does the minimap's gold road run from you toward `to`?  (its
+   ends in box px, against the world's own direction) */
+const roadToward = (w, to) => {
+  const r = w && w.star && w.star.road;
+  if (!r || !(r.len > 0)) return false;
+  const ax = r.x1 - r.x0, ay = r.y1 - r.y0, bx = to.x - w.me.x, by = to.y - w.me.y;
+  return (ax * bx + ay * by) / (Math.hypot(ax, ay) * Math.hypot(bx, by) || 1) > 0.99;
+};
 const near = (a, b, d = 2) => !!a && !!b && Math.abs(a.x - b.x) <= d && Math.abs(a.y - b.y) <= d;
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -83,9 +94,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 8a. the way to the Mayor, before a word with him ── */
   const w0 = await way(P);
-  rec.ok("a new character's gold road leads to the Wheel's own Mayor Bro, not the marker to today's town", !!w0.road && !!w0.road.to
-    && w0.road.to.npc === 'Mayor Bro' && near(w0.road.to, w0.mayor) && (w0.road.style === 'off' || w0.road.motes > 0), w0);
-  rec.ok("...and the Wheel's minimap stars him", !!w0.star && w0.star.npc === 'Mayor Bro' && near(w0.star, w0.mayor) && !w0.star.edge, w0.star);
+  rec.ok("a new character's way leads to the Wheel's own Mayor Bro, not the marker to today's town -- and nothing is drawn on the ground",
+    !!w0.road && !!w0.road.to && w0.road.to.npc === 'Mayor Bro' && near(w0.road.to, w0.mayor) && w0.road.style === 'off' && w0.road.motes === 0, w0);
+  rec.ok("...the Wheel's minimap stars him", !!w0.star && w0.star.npc === 'Mayor Bro' && near(w0.star, w0.mayor) && !w0.star.edge, w0.star);
+  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/wheelhome-road-mayor.png` }).catch(() => {});   /* v2.3.2991: to look at */
 
   /* ── 2. the commons hold an unarmed player ── */
   const [fx, fy] = WHEEL_SPAWNS.frost.anchor;
@@ -96,6 +108,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const held = await at(P);
   rec.ok(`until they speak to Mayor Bro, walking out stops at the safe commons' edge (${r(held)} px from the middle, the edge at ${WHEEL_SAFE_R}), with the banner`,
     !held.tut1 && r(held) <= WHEEL_SAFE_R && held.gateHits >= 1, held);
+  /* v2.3.2991: from out there he is far off the box -- the gold road runs to
+     its edge, the star waiting there, pointing back at him */
+  const wHeld = await way(P);
+  rec.ok(`...and from there the minimap's gold road leads back to him, to the box's edge (${wHeld.star && wHeld.star.road ? wHeld.star.road.len : '?'} px drawn)`,
+    !!wHeld.star && wHeld.star.npc === 'Mayor Bro' && wHeld.star.edge === true && wHeld.star.road && wHeld.star.road.len > 30
+    && !!wHeld.mayor && roadToward(wHeld, wHeld.mayor) && wHeld.road && wHeld.road.motes === 0, wHeld);
+  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/wheelhome-road-back.png` }).catch(() => {});
 
   /* ── 3. the Wheel's own Mayor Bro gives the first quest, and the land opens ── */
   const home = { x: a.x, y: a.y };
@@ -111,9 +130,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const frostAt = { x: WHEEL_SPAWNS.frost.anchor[0], y: WHEEL_SPAWNS.frost.anchor[1] };
   await P.page.waitForTimeout(600);
   const w1 = await way(P);
-  rec.ok('with his quest the road leads to the middle of Frost Ridge\'s monsters, and the minimap\'s star waits at its edge that way',
+  rec.ok('with his quest the way leads to the middle of Frost Ridge\'s monsters, and the minimap\'s star waits at its edge that way',
     !!w1.road && !!w1.road.to && w1.road.to.zoneId === 'frost' && near(w1.road.to, frostAt)
     && !!w1.star && w1.star.zoneId === 'frost' && w1.star.edge === true, { w1, frostAt });
+  rec.ok('...its gold road running from you toward them', !!w1.star && !!w1.star.road && w1.star.road.len > 30 && roadToward(w1, frostAt), { star: w1.star, me: w1.me, frostAt });
+  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/wheelhome-road-frost.png` }).catch(() => {});
   const out = { x: cx + ux * (WHEEL_SAFE_R + 150), y: cy + uy * (WHEEL_SAFE_R + 150) };
   await H.hopTo(P, out.x, out.y, { tries: 80 });
   await P.page.waitForTimeout(800);

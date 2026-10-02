@@ -29,6 +29,28 @@
 
 const KEY = 'brotown_quest_path';
 
+/* ═══ v2.3.2991: PUT AWAY -- THE WAY IS ON THE MINIMAP NOW ═══
+ * Owner, 2026-10-02: "I think I want to remove the footsteps and just rely on
+ * the gold road on the minimap of where to go."
+ *
+ * So nothing is drawn on the ground any more: getTrailStyle() answers 'off'
+ * for every player, and the two controls that chose the ground's look (the
+ * Settings row, the Quests panel's switch) are not shown.  The way lives on
+ * the minimap instead: a gold road from you to where the quest leads, with
+ * its star at the end (minimapRenderer.js, wheelMinimap.js).  It is drawn
+ * from the same answer the ground road used (questRoute.js
+ * questRoutePoint).  The gold beam on a quest's portal stays: it is the
+ * portal's own colour, not the road.
+ *
+ * PUT AWAY, NOT DELETED, like the owner's other set-asides (the Wheel's edge
+ * pieces and blends).  `?questpath` in the address brings the road on the
+ * ground back for that page, with its Settings row and Quests switch, set as
+ * the player last left them (a stored choice is never rewritten).
+ * mp-pathstyle tests it that way.  GROUND_PATH is the one switch. */
+export const GROUND_PATH = (() => {
+  try { return new URLSearchParams(window.location.search).has('questpath'); } catch (e) { return false; }
+})();
+
 /* Ordered as they appear in Settings.  `hint` is the one line under the row --
  * it names what you will SEE, because "Ribbon" and "Beads" mean nothing to
  * someone who has not yet turned them on. */
@@ -76,11 +98,11 @@ let _style = (() => {
 
 /** The style the road should draw in.  Cheap enough for a render loop --
  *  a variable read, never storage. */
-export function getTrailStyle() { return _style; }
+export function getTrailStyle() { return GROUND_PATH ? _style : 'off'; }   /* v2.3.2991: put away */
 
 /** True when the guide is switched off entirely.  Named rather than compared
  *  at each call site so `=== 'off'` exists in exactly one place. */
-export function isTrailOff() { return _style === 'off'; }
+export function isTrailOff() { return getTrailStyle() === 'off'; }   /* v2.3.2991: and while put away */
 
 /* ═══ v2.3.2896: THE LOOK TO COME BACK TO ═══
  * Owner: "Allow an option to switch off the footprints from the quest

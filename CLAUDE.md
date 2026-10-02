@@ -369,6 +369,19 @@ remnant to migrate server-side, not a mode to preserve.
     `ZONES.wheel.lands` (it mirrors the anchors; test-world-core checks it),
     stopping within 600 px of them. Nowhere for any-zone gathering. Every
     old rule went through portals the Wheel does not have.
+  - Since v2.3.2991 the way is drawn ON THE MINIMAP ONLY. The owner: "I
+    think I want to remove the footsteps and just rely on the gold road on
+    the minimap of where to go".
+    - Both minimaps draw a gold road from your chevron to the
+      questRoutePoint spot. wheelMinimap ends it at its star, held at the
+      box's edge; the zones' box runs it to the edge with no star, since its
+      star marks portals only (v2.3.1817).
+    - The road ON THE GROUND (every look) is PUT AWAY:
+      `GROUND_PATH`/`getTrailStyle()` 'off' in questTrailStyle.js. The
+      Settings row and the Quests switch are hidden. `?questpath` brings all
+      of it back, and mp-pathstyle and mp-questroad test it that way.
+    - The welcome says "Follow the gold road on your map".
+    - See docs/specs/quest-path-guide.md §0.
   - A respawn now nulls `S.npcs` like every zone change. It used to carry the
     Wheel's Mayor into today's town, where the townsfolk never spawned.
   - Not there yet, so not in the game: gathering (life_1 fish, life_2 ore

@@ -29,6 +29,9 @@
  * with no quest records gets the Mayor as their route target.  The two were
  * built together and one without the other is half the feature — this says
  * who, the road says where.
+ *
+ * v2.3.2991: the road is on the MINIMAP now (the owner: "just rely on the
+ * gold road on the minimap of where to go"), so the sentence says so.
  */
 import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js';
 import { noteOnboardingPlate, noteWelcomePending } from '@/ui/onboardingPace.js'; /* v2.3.2888; v2.3.2890 + pending */
@@ -105,7 +108,9 @@ export function maybeShowWelcome(getS) {
                and the title line is nowrap-with-ellipsis, so it is also the
                line that cannot afford the extra words. */
             title: 'Bro Town',
-            sub: 'Find Mayor Bro — he wants a word. Follow the gold.',
+            /* v2.3.2991: the gold is on the map now, the road on the
+               ground put away (questTrailStyle.js GROUND_PATH) */
+            sub: 'Find Mayor Bro — he wants a word. Follow the gold road on your map.',
             ts: Date.now(),
             /* queue: the player has caused nothing yet, so there is nothing
                to preempt, and if something did land first this should wait
