@@ -206,7 +206,10 @@ remnant to migrate server-side, not a mode to preserve.
   owner having chosen the menu's top, 140%, for all sixteen; and those
   sixteen are in `public/world/objects/` (manifest + four PixiJS sheets),
   the Town Hall still to make, nothing loading them until the placing
-  round, when the plots must grow to fit: WORLD-MAP-PIPELINE "Objects found
+  round, when the plots must grow to fit -- on the owner's own five sheets
+  it found all 59 objects (the old finder 18); and since v2.3.2972 keyOut
+  DESPILLS within 6 px of a magenta background, the owner's frost bushes
+  having come out with pink twigs: WORLD-MAP-PIPELINE "Objects found
   by count")
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,

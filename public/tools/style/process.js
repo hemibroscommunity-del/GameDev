@@ -59,6 +59,16 @@ export function copy(src) {
         9 x 9 window), and its colour is un-mixed from the background with
         that alpha -- so a dark outline anti-aliased into magenta comes back
         dark, and a green leaf edge comes back green. */
+/* v2.3.2972: DESPILL near a magenta background.  ChatGPT's pictures are
+   soft, so between the thin twigs of a bush the background blends into the
+   object several px deep -- past the 2 px edge band above -- and those px
+   came out pink (the owner's frost bushes: 7% of them).  So within
+   DESPILL_R px of the background, a px leaning magenta -- its red AND blue
+   both more than SPILL_OK over its green -- has that lean taken off both,
+   the way a green screen is despilled.  Brown, grey, white, red and blue are
+   untouched (one of red or blue is not over green); pink and purple things
+   are drawn on green instead (bible.js objectBackground). */
+const DESPILL_R = 6, SPILL_OK = 24;
 export function keyOut(src) {
   const c = copy(src);
   const w = c.width, h = c.height, g = ctx2d(c);
@@ -142,6 +152,25 @@ export function keyOut(src) {
       out[i] = r; out[i + 1] = gg; out[i + 2] = bl;
     }
     out[i + 3] = Math.round(a * 255);
+  }
+  if (br > 150 && bb > 150 && bgc < 110) {
+    const t2 = new Uint8Array(N), far = new Uint8Array(N);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let v = 0;
+      for (let u = Math.max(0, x - DESPILL_R); u <= Math.min(w - 1, x + DESPILL_R) && !v; u++) v = bgm[y * w + u];
+      t2[y * w + x] = v;
+    }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let v = 0;
+      for (let t = Math.max(0, y - DESPILL_R); t <= Math.min(h - 1, y + DESPILL_R) && !v; t++) v = t2[t * w + x];
+      far[y * w + x] = v;
+    }
+    for (let p = 0; p < N; p++) {
+      const i = p * 4;
+      if (!far[p] || !out[i + 3]) continue;
+      const lean = Math.min(out[i], out[i + 2]) - out[i + 1] - SPILL_OK;
+      if (lean > 0) { out[i] -= lean; out[i + 2] -= lean; }
+    }
   }
   img.data.set(out);
   g.putImageData(img, 0, 0);

@@ -1639,6 +1639,22 @@ owner chose it for all sixteen. A building is now planned 1.4 times as big:
   (`sizeWas`): it is fine at its size, and making it again only matches its
   pixels to the ground more closely.
 
+**On the owner's own five sheets** (v2.3.2972: town sheets 1 and 2, the
+commons' two, the frost's second), every object was found and named by
+place: 10 of 10, 21 of 21, 18 of 18, 4 of 4 and 6 of 6. The old finder had
+6, 4, 5, 1 and 2. Each came out whole: the gate with its horns and sign, the
+lamps with their heads, the noticeboard with its fish, the stump with its
+axe.
+
+**Despill** (v2.3.2972, `keyOut`). ChatGPT's pictures are soft, so between
+a bush's thin twigs the magenta blends in several px deep, past the 2 px
+edge band. The owner's frost bushes came out with pink twigs. Now, within
+`DESPILL_R` (6) px of the background, a px whose red and blue are both more
+than `SPILL_OK` (24) over its green has that lean taken off both, the way a
+green screen is despilled. Brown, grey, white, red and blue are untouched;
+pink and purple things are drawn on green anyway. Pink px on the frost
+bushes went from 194 to 43, on the birches from 46 to 0.
+
 The plots (`plan.js` `town.lot`, 300 game px) are now narrower than the
 buildings. They grow to fit in the placing round, which makes Main Street
 longer.

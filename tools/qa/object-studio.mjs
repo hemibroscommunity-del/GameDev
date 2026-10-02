@@ -365,6 +365,51 @@ try {
   const stoneNote = await page.evaluate(() => [...document.querySelectorAll('#ob-stone .ob-note')].map((n) => n.textContent).join(' | '));
   ok('a set where two touch is caught: the card says how many were found and why', /Found 3 of 4/.test(stoneNote) && /not touching/.test(stoneNote), stoneNote);
   ok('...and one drawn far too big for its picture: the card says its pixels are finer than the ground\'s', /times too big for the picture/.test(stoneNote) && /finer than the ground's/.test(stoneNote), stoneNote);
+  /* v2.3.2972: bushes of thin brown twigs, soft-edged as ChatGPT draws them,
+     the magenta blending in between the twigs -- the owner's frost bushes
+     came out with pink twigs until the cut-out despilled near the background */
+  const twigPic = await page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = c.height = 1254;
+    const g = c.getContext('2d');
+    g.fillStyle = '#ff00ff'; g.fillRect(0, 0, 1254, 1254);
+    let s = 11;
+    const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    g.strokeStyle = '#6b3a2a';
+    for (let b = 0; b < 4; b++) {
+      const bx = 160 + b * 300, by = 760;
+      for (let i = 0; i < 46; i++) {
+        const an = -Math.PI / 2 + (rnd() - 0.5) * 2.2, len = 60 + rnd() * 150;
+        g.lineWidth = 1.2 + rnd() * 1.6;
+        g.beginPath(); g.moveTo(bx + (rnd() - 0.5) * 20, by); g.lineTo(bx + Math.cos(an) * len, by + Math.sin(an) * len); g.stroke();
+      }
+    }
+    /* soft, as ChatGPT's pictures are */
+    const soft = document.createElement('canvas'); soft.width = soft.height = 1254;
+    const sg = soft.getContext('2d'); sg.filter = 'blur(1.2px)'; sg.drawImage(c, 0, 0);
+    const b = await new Promise((r) => soft.toBlob(r, 'image/png'));
+    const buf = new Uint8Array(await b.arrayBuffer());
+    let str = '';
+    for (let i = 0; i < buf.length; i += 0x8000) str += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    return btoa(str);
+  });
+  await put(page, 'bush', twigPic);
+  const twigs = await page.evaluate(async () => {
+    const f = window.__objects.S.fin.get('bush');
+    let solid = 0, pink = 0;
+    for (const p of f.pieces) {
+      const bm = await createImageBitmap(p.png);
+      const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height;
+      const g = c.getContext('2d'); g.drawImage(bm, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      for (let k = 0; k < d.length; k += 4) { if (!d[k + 3]) continue; solid++; if (Math.min(d[k], d[k + 2]) - d[k + 1] > 40) pink++; }
+    }
+    return { n: f.pieces.length, solid, pink, share: +(pink / Math.max(1, solid)).toFixed(4) };
+  });
+  /* (measured on this picture: 59% of the cut-out's px leaned magenta before
+     the despill, 4% after -- the rest in the bushes' dense middles, more
+     than DESPILL_R from any clean background; the owner's frost bushes
+     went from 3.6% to 0.8%) */
+  ok(`thin twigs on magenta come out brown, not pink: ${(twigs.share * 100).toFixed(1)}% of their px lean magenta, 59% before the despill (v2.3.2972)`, twigs.n === 4 && twigs.solid > 500 && twigs.share < 0.1, twigs);
 
   /* ── 6b. v2.3.2965: a sheet picture ── */
   console.log('6b. a sheet picture: many objects in rows, each named by its place');
