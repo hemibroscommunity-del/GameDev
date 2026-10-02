@@ -117,6 +117,9 @@ async function waitForShot(P, ms = 12000) {
       const cs = getComputedStyle(el);
       return {
         cls: el.className, img: cs.backgroundImage, frames: cs.getPropertyValue('--sd-frames').trim(),
+        /* v2.3.2979: what the browser actually RUNS -- an invalid timing
+           function voids the whole shorthand to `none` (see Shot) */
+        anim: cs.animationName,
         cx: b.left + b.width / 2, w: b.width, h: b.height,
         heroCx: h.left + h.width / 2, slimeCx: s2.left + s2.width / 2,
       };
@@ -274,6 +277,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...leaving HIS side of the stage, not the slime\'s',
       Math.abs(shot.cx - shot.heroCx) < Math.abs(shot.cx - shot.slimeCx),
       { cx: shot.cx, heroCx: shot.heroCx, slimeCx: shot.slimeCx });
+    /* v2.3.2979: ...and it FLIES.  The check above passes just as well for
+       an arrow frozen in his hand, which is exactly what every bow arrow was
+       from v2.3.2231 on: the arrow is one cel, steps(1, jump-none) is
+       invalid, and an invalid timing function through var() voids the whole
+       animation, flight included (Chromium: animation-name none). */
+    rec.ok('...and the arrow actually flies (its animation is not voided)',
+      /bt-sd-fly/.test(shot.anim || ''), shot.anim);
   }
 
   /* The MAGIC lane takes the other branch of SHOT: a 4-cel strip stepped by
@@ -337,7 +347,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.2979: and what the scene is DOING -- the roll, the swell, the
        stamina bar -- because the simulated scenes prove themselves with the
        real mechanic, not with a caption. */
-    const seen = { scene: false, shot: 0, frames: 0, texts: {}, rolled: false, swell: false, stam: [], verdict: null };
+    const seen = { scene: false, shot: 0, frames: 0, texts: {}, rolled: false, swell: false, windup: false, orb: false, stam: [], verdict: null };
     for (let i = 0; i < 34; i++) {
       const f = await P.page.evaluate(() => ({
         scene: !!document.querySelector('[data-stat-demo]'),
@@ -346,6 +356,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
           t: e.textContent.trim(), side: /--slime/.test(e.className) ? 'slime' : 'hero' })),
         rolled: !!document.querySelector('.bt-sd-hero--dodge'),
         swell: !!document.querySelector('.bt-sd-slime--swell'),
+        windup: !!document.querySelector('.bt-sd-slime--windup'),
+        orb: !!document.querySelector('.bt-sd-orb'),
         stam: (document.querySelector('[data-sd-bar="stamina"] .bt-sd-vital-n') || {}).textContent || null,
         verdict: window.__btStatScene ? window.__btStatScene.verdict : null,
       }));
@@ -355,6 +367,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (const p of f.pops) seen.texts[p.side + ':' + p.t] = (seen.texts[p.side + ':' + p.t] || 0) + 1;
       if (f.rolled) seen.rolled = true;
       if (f.swell) seen.swell = true;
+      if (f.windup) seen.windup = true;
+      if (f.orb) seen.orb = true;
       if (f.stam && seen.stam[seen.stam.length - 1] !== f.stam) seen.stam.push(f.stam);
       if (f.verdict) seen.verdict = f.verdict;
       await P.page.waitForTimeout(260);
@@ -368,14 +382,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
          Simulated (statSim.js), stamina pays for what it actually pays for:
          WITH a shield, holding your guard (5 a regen tick held; a ball caught
          on the shield costs nothing more -- statsim.test measures the worker);
-         WITHOUT one -- this rig -- ROLLING out of the slime's ball, one stamina
-         block a roll.  A roll is silent in the world (the ball just misses),
-         so the proof is the roll and the bar dropping, not a popup. */
+         WITHOUT one -- this rig -- ROLLING out of the slime's attack (a swing,
+         at this rig's sword), one stamina block a roll.  A roll is silent in
+         the world (the attack just misses), so the proof is the roll and the
+         bar dropping, not a popup. */
       const dips = seen.stam.map((t) => { const m = /^(\d+)\/(\d+)$/.exec(t.replace(/\s/g, '')); return m ? { cur: +m[1], max: +m[2] } : null; }).filter(Boolean);
       rec.ok('...and Stamina pays for a dodge roll: the hero rolls, and the bar drops by a block',
         seen.rolled && dips.some((d) => d.cur < d.max), { rolled: seen.rolled, bar: seen.stam });
       rec.ok('...and nothing in it attacks the slime (the "shooting an orb" report)',
         seen.shot === 0 && !texts.some((t) => /^slime:\d+$/.test(t)), { texts, shots: seen.shot });
+      /* v2.3.2979: and the slime attacks the way it would attack HIM.  This
+         rig holds a greatsword, so he stands inside the slime's reach, where
+         the worker has it SWING (a 500ms wind-up the world draws as a throb)
+         and never throw -- the first cut threw balls at everyone, which is
+         also why a sword-and-board guard read twice as long as it lasts. */
+      rec.ok('...and with a sword in hand the slime SWINGS at him (a wind-up, no ball)',
+        seen.windup && !seen.orb, { windup: seen.windup, orb: seen.orb });
     }
     if (key === 'range') {
       rec.ok('...and Range FALLS SHORT before the point and connects after (reach, not damage)',

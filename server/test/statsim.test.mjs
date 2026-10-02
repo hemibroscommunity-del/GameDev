@@ -38,9 +38,11 @@ import { setGearQEnabled, recalcDerived, STAFF_BIG_BOLT_BAND } from '../../src/d
 import { setBlockScaleEnabled } from '../../src/data/abilities.js';
 import { BOW_VOLLEY } from '../../src/game/bowVolley.js';
 import {
-  sceneSlime, offenseOf, rollHit, landedDmg, takenOf, burstOf, simulateStatScene,
-  SLIME_THROW, BLUE_BURST, GUARD, SIM_STATS, sceneDie, hitsToDown, killStats, dotOf, thornOf,
+  sceneSlime, offenseOf, rollHit, landedDmg, takenOf, burstOf, simulateStatScene, prepareStatScene,
+  SLIME_THROW, SLIME_SWING, SERVER_TICK_MS, BLUE_BURST, GUARD, SIM_STATS, sceneDie, hitsToDown, killStats, dotOf, thornOf,
+  guardHoldMs, walkPxPerSec,
 } from '../../src/ui/mobile/sheet/statSim.js';
+import { getAmuletBonus } from '../../src/data/items.js';
 import { withPoints } from '../../src/ui/mobile/sheet/statPreview.js';
 
 const mockState = {
@@ -259,6 +261,31 @@ for (const b of BUILDS) {
     const tick = ev[0] && ev[0].dmg;
     check(`a burn tick is the worker's (Element ${elem})`, !!dotOf(off) && dotOf(off).raw === tick, { scene: dotOf(off), worker: tick });
   }
+  /* ...and it ticks as OFTEN as the worker's.  "Every 0.5s" is checked on the
+     22ms heartbeat and re-stamped to the tick that fired, so a burn really
+     ticks every 506ms and a root every 1012 -- a lone 4s burn 7 times, not
+     the 8 the first cut drew (reviewer-found).  MEASURED: the worker's own
+     tickElementStatuses on its own clock, from five different phases. */
+  for (const [el, sid] of [['flame', 'burn'], ['venom', 'root']]) {
+    const ch = makeChar({ weapon: { type: 'greatsword', tierMult: 1.12, quality: 'normal', element1: el, hardness: 0 } });
+    const d = dotOf(offenseOf(ch, ch.weapon, slime));
+    /* fightPass/killStats: a tick at hit + k x tickMs while it is <= until */
+    const sceneTicks = d ? Math.floor(d.durMs / d.tickMs) : -1;
+    const counts = new Set(), gaps = new Set();
+    for (const phase of [1, 6, 11, 17, 22]) {
+      const m = { hp: 1e6, maxHp: 1e6, level: slime.level, statuses: null };
+      const t0 = 3000000;
+      applyElementStatus(m, el, 'p', 0, t0, 1);
+      let n = 0, last = null;
+      for (let t = t0 + phase; m.statuses && m.statuses[sid] && t < t0 + 20000; t += room.TICK_RATE) {
+        if (tickElementStatuses(m, room.TICK_RATE / 1000, t).length) { n++; if (last != null) gaps.add(t - last); last = t; }
+      }
+      counts.add(n);
+    }
+    check(`a lone ${sid} ticks as often as the worker's: ${sceneTicks} times, every ${d && d.tickMs}ms`,
+      !!d && counts.size === 1 && counts.has(sceneTicks) && gaps.size === 1 && gaps.has(d.tickMs),
+      { worker: { ticks: [...counts], every: [...gaps] }, scene: d && { ticks: sceneTicks, every: d.tickMs } });
+  }
   /* Flora's thorn answers the slime's attacks off the same snapshot. */
   const fl = makeChar({
     weapon: { type: 'greatsword', tierMult: 1.12, quality: 'normal', element1: 'flora', hardness: 0 },
@@ -268,13 +295,26 @@ for (const b of BUILDS) {
   check('a thorn recoil is priced off the worker\'s own snapshot (4 + power x 0.25)',
     thornOf(offF) === Math.round(4 + elemAttackStat(fl, 'power', 'sword', slime.level) * 0.25),
     { scene: thornOf(offF), power: elemAttackStat(fl, 'power', 'sword', slime.level) });
+  /* v2.3.2979: the attack the thorn answers is the one this hero meets --
+     a SWING at a sword (you stand inside its reach, where it never throws),
+     a ball at a bow (index.js: the throw band starts past the melee ring) */
   const scF = simulateStatScene(fl, 'elem', 'sword', 5, fl.weapon, false, { bowvolley: true, bigorb: true }, 99);
-  check('flora: the scene has the slime throw, and the thorn answer it',
-    scF.passes[0].beats.some((b) => b.k === 'throw') && scF.passes[0].beats.some((b) => b.k === 'recoil'),
+  check('flora, sword: the slime SWINGS at arm\'s length (no ball), and the thorn answers it',
+    scF.passes[0].beats.some((b) => b.k === 'swing') && !scF.passes[0].beats.some((b) => b.k === 'throw') && scF.passes[0].beats.some((b) => b.k === 'recoil'),
     scF.passes[0].beats.map((b) => b.k));
-  const kF0 = killStats(offF, slime, { throws: true });
+  /* a fresh bow (skill 1): a stronger one can put the slime down in three
+     arrows before its first ball lands, and then nothing is thrown at all */
+  const flB = makeChar({
+    rangedWeapon: { type: 'bow', tierMult: 1.0, quality: 'normal', element1: 'flora', hardness: 0 },
+    prog3: { sk: { sword: { level: 8, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 4, xp: 0 } }, atk: { bow: { elem: 6 } }, alloc: {}, pool: 0 },
+  });
+  const scFB = simulateStatScene(flB, 'elem', 'bow', 5, flB.rangedWeapon, false, { bowvolley: true, bigorb: true }, 99);
+  check('flora, bow: the slime THROWS (you stand off), and the thorn answers it',
+    scFB.passes[0].beats.some((b) => b.k === 'throw') && !scFB.passes[0].beats.some((b) => b.k === 'swing') && scFB.passes[0].beats.some((b) => b.k === 'recoil'),
+    scFB.passes[0].beats.map((b) => b.k));
+  const kF0 = killStats(offF, slime, { attacks: true });
   const fl5 = withPoints(fl, 'elem', 'sword', 10);
-  const kF1 = killStats(offenseOf(fl5, fl5.weapon, slime), slime, { throws: true });
+  const kF1 = killStats(offenseOf(fl5, fl5.weapon, slime), slime, { attacks: true });
   check('flora: the verdict counts the thorn, so Element moves it', kF1.hits <= kF0.hits && kF1.secs <= kF0.secs && (kF1.hits < kF0.hits || kF1.secs < kF0.secs),
     { now: kF0, after: kF1 });
 }
@@ -283,6 +323,9 @@ for (const b of BUILDS) {
 {
   const rc = room.MONSTER_RANGED_BY_ARCH.fodder;
   check('the slime\'s throw cooldown is the worker\'s', SLIME_THROW.CD_MS === rc.cd, { scene: SLIME_THROW.CD_MS, worker: rc.cd });
+  check('...its melee swing\'s cooldown', SLIME_SWING.CD_MS === room.MONSTER_ATTACK_CD, { scene: SLIME_SWING.CD_MS, worker: room.MONSTER_ATTACK_CD });
+  check('...and the swing\'s wind-up (fodder)', SLIME_SWING.WINDUP_MS === BASIC_WINDUP.MS.fodder, { scene: SLIME_SWING.WINDUP_MS, worker: BASIC_WINDUP.MS.fodder });
+  check('the scene ticks statuses on the worker\'s heartbeat', SERVER_TICK_MS === room.TICK_RATE, { scene: SERVER_TICK_MS, worker: room.TICK_RATE });
   check('...its ball\'s flight', SLIME_THROW.FLIGHT_MS === rc.travelMs, { scene: SLIME_THROW.FLIGHT_MS, worker: rc.travelMs });
   check('...and the arm going back before it', SLIME_THROW.WINDUP_MS === BASIC_WINDUP.THROW_MS, { scene: SLIME_THROW.WINDUP_MS, worker: BASIC_WINDUP.THROW_MS });
   check('the burst\'s damage, cap and swell are the worker\'s',
@@ -311,6 +354,75 @@ for (const b of BUILDS) {
     check('...while a blocked melee SWING is what BLOCK_STAMINA_COST prices (not the scene\'s ball)', BLOCK_STAMINA_COST > 0, BLOCK_STAMINA_COST);
     delete room.playerState[sidB];
     room.monsters.meadow = [];
+  }
+  /* ...and the SWING a slime throws at a hero inside its reach, measured the
+     same way: the worker's own resolution of a swing on a raised shield
+     (blockStartT 0, so no parry window). */
+  {
+    const sidS = 'sim-guard-swing';
+    const chS = makeChar();
+    room.playerState[sidS] = Object.assign(chS, { z: 'meadow', x: 600, y: 600, id: sidS, blocking: true, blockStartT: 0, stamina: 50 });
+    const mS = { id: 'sim-swinger', arch: 'fodder', level: slime.level, hp: 58, maxHp: 58, dmg: slime.dmg, alive: true, x: 630, y: 600, spawnX: 630, spawnY: 600 };
+    room.monsters.meadow = [mS];
+    room.eventBuffer = [];
+    room._resolveBasicSwingHit('meadow', mS, sidS, Date.now());
+    const evS = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload && e.payload.targetId === sidS);
+    check('a slime SWING caught on a raised shield is a block that costs SLIME_SWING.BLOCK_COST (the worker resolved it)',
+      !!(evS && evS.payload.blocked) && 50 - chS.stamina === SLIME_SWING.BLOCK_COST,
+      { stamina: chS.stamina, payload: evS && evS.payload, scene: SLIME_SWING.BLOCK_COST });
+    delete room.playerState[sidS];
+    room.monsters.meadow = [];
+  }
+  /* The guard verdict, on those numbers -- the long run over every phase of
+     the regen tick (and of the swing), since neither lands at a fixed point
+     after you raise the shield. */
+  {
+    const G = { maxStamina: 100 };
+    check('the parry window the guard verdict starts after is the worker\'s', GUARD.PARRY_MS === room.PARRY_WINDOW_MS, { scene: GUARD.PARRY_MS, worker: room.PARRY_WINDOW_MS });
+    /* balls: only the hold drains, 5 a tick, so the guard breaks on drain
+       ceil(max/5), after a first tick that falls anywhere in the regen period */
+    let first = 0; for (let a = 1; a <= 30; a++) first += a * room.TICK_RATE; first /= 30;
+    const balls = first + (Math.ceil(100 / GUARD.HOLD_DRAIN) - 1) * GUARD.TICK_MS;
+    check('against balls the guard holds ceil(max/5) regen ticks (100 stamina: ~12.9s)',
+      Math.abs(guardHoldMs(G, true) - balls) < 1e-6, { scene: guardHoldMs(G, true), expect: balls });
+    /* swings: DRIVEN THROUGH THE WORKER -- its own regen tick and its own swing
+       resolution, in time order, at every phase the scene averages, until the
+       worker itself drops the shield */
+    const sidG = 'sim-guard-hold';
+    const mG = { id: 'sim-hold-swinger', arch: 'fodder', level: slime.level, hp: 1e6, maxHp: 1e6, dmg: slime.dmg, alive: true, x: 630, y: 600, spawnX: 630, spawnY: 600 };
+    room.monsters.meadow = [mG];
+    let sum = 0, n = 0, stuck = 0;
+    for (let a = 1; a <= 30; a++) {
+      for (let b = 0; b < 30; b++) {
+        const ch = makeChar();
+        room.playerState[sidG] = Object.assign(ch, { z: 'meadow', x: 600, y: 600, id: sidG, blocking: true, blockStartT: 0, maxStamina: 100, stamina: 100, lastDamageAt: Date.now() });
+        let tick = a * room.TICK_RATE, sw = room.PARRY_WINDOW_MS + b * (room.MONSTER_ATTACK_CD / 30), broke = -1;
+        for (let i = 0; i < 400 && broke < 0; i++) {
+          if (sw < tick) { room._resolveBasicSwingHit('meadow', mG, sidG, Date.now()); sw += room.MONSTER_ATTACK_CD; }
+          else { room._tickPlayerRegen(); if (!ch.blocking) broke = tick; tick += GUARD.TICK_MS; }
+        }
+        room.eventBuffer = [];
+        if (broke < 0) stuck++;
+        sum += broke; n++;
+      }
+    }
+    delete room.playerState[sidG];
+    room.monsters.meadow = [];
+    const worker = sum / n;
+    check('against swings the guard holds what the WORKER holds it for (its own regen tick and swing, all 900 phases; ~7.2s on 100)',
+      !stuck && Math.abs(guardHoldMs(G, false) - worker) < 1e-6, { scene: guardHoldMs(G, false), worker, stuck });
+    check('...and against swings it breaks well before it does against balls', guardHoldMs(G, false) < guardHoldMs(G, true) - 4000,
+      { swings: guardHoldMs(G, false), balls: guardHoldMs(G, true) });
+    /* stamina counts in fives (every cost here is a multiple of 5): one more
+       never shortens the hold, five more always lengthen it */
+    let mono = true;
+    for (let m = 90; m <= 140; m++) {
+      for (const r of [true, false]) {
+        const h0 = guardHoldMs({ maxStamina: m }, r);
+        if (!(guardHoldMs({ maxStamina: m + 1 }, r) >= h0 && guardHoldMs({ maxStamina: m + 5 }, r) > h0)) mono = false;
+      }
+    }
+    check('more stamina never shortens the guard, and five more always lengthen it', mono);
   }
   check('the guard-break lockout is the worker\'s', GUARD.BREAK_MS === room.GUARD_BREAK_MS, { scene: GUARD.BREAK_MS, worker: room.GUARD_BREAK_MS });
   check('the regen tick is 30 worker ticks', GUARD.TICK_MS === room.TICK_RATE * 30, { scene: GUARD.TICK_MS, worker: room.TICK_RATE * 30 });
@@ -343,6 +455,17 @@ for (const b of BUILDS) {
     check(`${stat}: a scene with both halves`, ok, sc && { kind: sc.kind, note: sc.note });
   }
   check('the live character is never written by a scene', JSON.stringify(R) === frozen);
+  /* a body stat has no lane: the slime meets what is in your hand */
+  const hpSw = simulateStatScene(R, 'hp', 'sword', 1, R.weapon, false, caps, 5);
+  const hpBw = simulateStatScene(R, 'hp', 'bow', 1, R.rangedWeapon, false, caps, 5);
+  check('HP with a sword in hand: the slime swings (no ball); with a bow: it throws (no swing)',
+    hpSw.passes[0].beats.some((b) => b.k === 'swing') && !hpSw.passes[0].beats.some((b) => b.k === 'throw')
+      && hpBw.passes[0].beats.some((b) => b.k === 'throw') && !hpBw.passes[0].beats.some((b) => b.k === 'swing'),
+    { sword: hpSw.passes[0].beats.map((b) => b.k), bow: hpBw.passes[0].beats.map((b) => b.k) });
+  const stSw = simulateStatScene(R, 'stam', null, 1, R.weapon, true, caps, 5);
+  const blk = stSw.passes[0].beats.filter((b) => b.k === 'land' && b.kind === 'blocked');
+  check('Stamina, sword and board: each swing caught on the shield takes the block cost off the bar',
+    blk.length > 0 && blk.every((b) => typeof b.stam === 'number'), blk);
   const a = simulateStatScene(R, 'luck', 'sword', 1, R.weapon, false, caps, 777);
   const b = simulateStatScene(R, 'luck', 'sword', 1, R.weapon, false, caps, 777);
   check('the same dice give the same scene', JSON.stringify(a.passes) === JSON.stringify(b.passes));
@@ -357,6 +480,54 @@ for (const b of BUILDS) {
     if (sc.passes[1].end > sc.passes[0].end) slower++;
   }
   check('Power: the after half never takes longer than the before half (200 loops)', slower === 0, { slower });
+  /* ...and the same holds once an element ticks or answers.  A burn can
+     finish a slime BETWEEN swings, so a point decides whether slime 1 falls
+     to a tick or a swing; with pass-wide dice that handed every later slime
+     the other half's rolls, and ~6% of Speed loops on a flame sword showed
+     "+n" doing worse than "Now" (reviewer-found).  The dice are per slime
+     now.  A before half that put nothing down is skipped: there the after
+     half may finish the slime, and its death splat is time well spent. */
+  {
+    const ELEM_BUILDS = ['flame', 'venom', 'flora'].map((el) => [el, makeChar({
+      weapon: { type: 'greatsword', tierMult: 1.12, quality: 'normal', element1: el, hardness: 0 },
+      prog3: { sk: { sword: { level: 8, xp: 0 }, bow: { level: 6, xp: 0 }, staff: { level: 4, xp: 0 } }, atk: { sword: { elem: 5 } }, alloc: {}, pool: 0 },
+    }), 'sword', 'weapon']);
+    /* a flora BOW: the corpse case needs a hit landing inside the thorn's old
+       60ms, which an arrow's 200ms flight reaches and a sword's swing did not */
+    ELEM_BUILDS.push(['flora bow', makeChar({
+      rangedWeapon: { type: 'bow', tierMult: 1.12, quality: 'normal', element1: 'flora', hardness: 0 },
+      prog3: { sk: { sword: { level: 8, xp: 0 }, bow: { level: 8, xp: 0 }, staff: { level: 8, xp: 0 } }, atk: { bow: { elem: 3 } }, alloc: {}, pool: 0 },
+    }), 'bow', 'rangedWeapon']);
+    const late = [];
+    /* nothing lands on a slime between its death and the next one's spawn --
+       the thorn once did: computed at the ball's landing, drawn 60ms later,
+       after an arrow that landed in between had already killed it */
+    const corpse = [];
+    const deadHits = (p) => {
+      let alive = true, n = 0;
+      for (const b of p.beats.slice().sort((x, y) => x.t - y.t)) {
+        if (b.k === 'death') alive = false;
+        else if (b.k === 'spawn') alive = true;
+        else if (!alive && (b.k === 'hit' || b.k === 'tick' || b.k === 'recoil')) n++;
+      }
+      return n;
+    };
+    for (const [el, C, lane, slot] of ELEM_BUILDS) {
+      for (const [stat, n] of [['aspd', 10], ['elem', 1], ['elem', 10], ['dmg', 1], ['luck', 1]]) {
+        const prep = prepareStatScene(C, stat, lane, n, C[slot], false, caps);
+        for (let s = 1; s <= 200; s++) {
+          const [p0, p1] = prep.play(s * 7919 + 13);
+          if (p0.kills > 0 && p1.end > p0.end) late.push({ el, stat, n, seed: s * 7919 + 13, now: p0.end, after: p1.end });
+          const d = deadHits(p0) + deadHits(p1);
+          if (d) corpse.push({ el, stat, n, seed: s * 7919 + 13, d });
+        }
+      }
+    }
+    check('flame/venom/flora: the after half never finishes the same job later (Speed, Element, Power, Luck; 200 loops each)',
+      late.length === 0, late.slice(0, 3));
+    check('...and nothing lands on a dead slime (no hit, tick or thorn between its death and the next spawn)',
+      corpse.length === 0, corpse.slice(0, 3));
+  }
   /* The verdict moves the right way.  A FRESH character for Power: the
      build above one-shots a 58-HP slime, and against a slime it already
      one-shots Power genuinely changes nothing about the kill -- which the
@@ -373,6 +544,14 @@ for (const b of BUILDS) {
   const RS = withPoints(R, 'aspd', 'sword', 5);
   const kOS = killStats(offenseOf(RS, RS.weapon, slime), slime);
   check('Speed shows even for a character that one-shots the slime', kO.hits === 1 && kOS.secs < kO.secs, { now: kO, after: kOS });
+  /* the walk is BroTown's finalSpd: the Move stat AND a moveSpd amulet
+     (amuletSpdMult) -- the first cut left the amulet out (reviewer-found) */
+  const W0 = makeChar();
+  const W1 = makeChar({ amulet: { gem: 'wind', tier: 'ornate' } });
+  const wab = getAmuletBonus(W1.amulet);
+  check('a Move Speed amulet speeds the walk by its own bonus, as it does in play',
+    !!(wab && wab.stat === 'moveSpd') && Math.abs(walkPxPerSec(W1) / walkPxPerSec(W0) - (1 + wab.value / 100)) < 1e-9,
+    { bonus: wab, plain: walkPxPerSec(W0), amulet: walkPxPerSec(W1) });
   /* a lane with no weapon in it plays no fight -- it says so */
   const bare = makeChar({ rangedWeapon: null });
   const e = simulateStatScene(bare, 'dmg', 'bow', 1, null, false, caps, 1);

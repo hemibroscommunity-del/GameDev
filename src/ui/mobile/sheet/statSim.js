@@ -87,23 +87,43 @@ export const SLIME_THROW = {
   WINDUP_MS: 350,     /* telegraph.js BASIC_WINDUP.THROW_MS -- the arm going back */
   FLIGHT_MS: 650,     /* MONSTER_RANGED_BY_ARCH.fodder.travelMs */
 };
+/* v2.3.2979: ...and what it does INSTEAD once you stand inside its reach,
+   which a melee hero always does: it swings (index.js -- the throw fires only
+   in the band past the melee ring, "closing to melee switches it back to
+   swinging").  No ball and no attack strip -- the world's slime throbs
+   through the wind-up (entityRenderer _windupFx; the throw strip is gated
+   off a swing) -- and a swing caught on a raised shield DOES cost stamina,
+   where a ball costs none (reviewer-found: the first cut threw balls at
+   everyone, so a sword-and-board guard read ~13s against a slime that would
+   break it in ~7). */
+export const SLIME_SWING = {
+  CD_MS: 1500,        /* index.js MONSTER_ATTACK_CD -- the wind-up sits inside it */
+  WINDUP_MS: 500,     /* telegraph.js BASIC_WINDUP.MS.fodder */
+  BLOCK_COST: 10,     /* data.js BLOCK_STAMINA_COST x _blockStaminaMult, which is 1 on prog3 */
+};
+/* The worker's heartbeat (index.js TICK_RATE).  A burn's "every 0.5s" is
+   checked on it and re-stamped to the tick that fired, so it really ticks
+   every 23 x 22 = 506ms, a root every 1012 -- and a lone 4s burn ticks 7
+   times, not 8 (reviewer-found; statsim.test counts the worker's). */
+export const SERVER_TICK_MS = 22;
 export const BLUE_BURST = {
   DMG: 60,            /* telegraph.js SLIME_BURST.DMG -- flat, ELEMENTAL */
   MAX_HIT_PCT: 0.5,   /* telegraph.js TELEGRAPH.MAX_HIT_PCT -- never more than half your max HP */
   SWELL_MS: 1600,     /* SLIME_BURST.SWELL_MS -- the swell is the only warning */
 };
 /* What holding a shield costs.  NOT the 10 a blocked hit costs
-   (BLOCK_STAMINA_COST): that is charged on a blocked melee SWING, and the
-   scene's slime throws -- the worker resolves a ball that meets a raised
+   (BLOCK_STAMINA_COST): that is charged on a blocked melee SWING
+   (SLIME_SWING.BLOCK_COST) -- the worker resolves a ball that meets a raised
    shield in its projectile branch (index.js, the in-flight ball) with no
-   stamina drain at all ("that cost is tied to the melee cadence").  So against
-   the scene's balls the only cost is the hold, and statsim.test measures the
+   stamina drain at all ("that cost is tied to the melee cadence").  So
+   against a ball the only cost is the hold, and statsim.test measures the
    worker doing exactly that rather than pinning a constant. */
 export const GUARD = {
   HOLD_DRAIN: 5,      /* _tickPlayerRegen: holding the shield, per regen tick */
   REGEN: 7,           /* _tickPlayerRegen: not holding, per regen tick */
   TICK_MS: 660,       /* the regen tick: 30 server ticks x TICK_RATE 22 */
   BREAK_MS: 3000,     /* GUARD_BREAK_MS -- the lockout when the bar empties */
+  PARRY_MS: 250,      /* PARRY_WINDOW_MS -- a block this soon after raising is a parry */
 };
 /* entityRenderer SLIME_DEATH_MS -- the splat the world plays. */
 export const SLIME_DEATH_MS = 400;
@@ -116,6 +136,15 @@ const LEAD_MS = 350;
 const RESPAWN_MS = 350;
 const TAIL_MS = 700;
 const IMPACT_MS = { melee: 160, ranged: 200 };
+/* The slime's attack on THIS hero: a ball against a bow or a staff (you
+   stand off), a swing against anything held at arm's length.  `hitAt` is
+   when it resolves, from the start of its wind-up. */
+function slimeAttack(ranged) {
+  return ranged
+    ? { kind: 'throw', cd: SLIME_THROW.CD_MS, hitAt: SLIME_THROW.WINDUP_MS + SLIME_THROW.FLIGHT_MS }
+    : { kind: 'swing', cd: SLIME_SWING.CD_MS, hitAt: SLIME_SWING.WINDUP_MS };
+}
+const isRangedWeapon = (w) => !!w && (w.type === 'bow' || w.type === 'staff');
 /* A pass is a few seconds, not a fight to the bitter end: up to this long,
    and never fewer than MIN_SWINGS (a character that one-shots a slime fights
    three of them, so a crit chance has three rolls to show itself in). */
@@ -129,7 +158,8 @@ const VERDICT_SEED = 0x5eed2957;
 /* ── dice ───────────────────────────────────────────────────────────────
    Stateless on purpose: sceneDie(seed, stream, i) is the same number however
    many times it is asked and in whatever order, which is what lets the two
-   halves of a scene share swing i's roll without sharing a cursor. */
+   halves of a scene share a roll without sharing a cursor.  v2.3.2979: a
+   fight's i is slime k's hit j (fightPass), not the loop's swing n. */
 function mix32(x) {
   x = (x + 0x9e3779b9) >>> 0;
   x = Math.imul(x ^ (x >>> 16), 0x85ebca6b) >>> 0;
@@ -250,7 +280,7 @@ export function dotOf(off) {
   const per = id === 'burn' ? 5 + off.elemPower * 0.3 : id === 'root' ? 3 + off.elemPower * 0.15 : 0;
   if (!(per > 0)) return null;
   return {
-    id, raw: Math.round(per), tickMs: def.tick * 1000,
+    id, raw: Math.round(per), tickMs: Math.ceil(def.tick * 1000 / SERVER_TICK_MS) * SERVER_TICK_MS,
     durMs: def.dur * 1000, refreshMs: (def.refresh || 0) * 1000, maxMs: (def.maxDur || def.dur) * 1000,
   };
 }
@@ -319,27 +349,31 @@ function derived(c) {
      hit    the impact: text, crit, hp/max of the slime, kill
      tick   a burn/root tick: text, status, hp/max, kill
      death  the slime's splat;  spawn  the next one hops in (hp/max)
-     throw  the slime winds up and throws;  land  its ball arrives:
+     throw  the slime winds up and throws;  swing  it winds up a swing
+            (a hero at arm's length -- slimeAttack);  land  either resolves:
             text, kind 'hurt' | 'dodged' | 'blocked' | 'miss', hero hp/max
-     recoil thorns answer a throw: text on the slime
+     recoil thorns answer an attack: text on the slime
    The pass also says what the bars start at, and when it is over. */
 function fightPass(off, slime, seed, opts) {
   const o = opts || {};
   const beats = [];
   const imp = off.ranged ? IMPACT_MS.ranged : IMPACT_MS.melee;
   const dot = o.noDot ? null : dotOf(off);
-  const thorn = o.throws ? thornOf(off) : 0;
+  /* o.attacks: the slime fights back (flora's scene, for its thorn) -- with
+     the attack it really uses on this hero */
+  const atk = o.attacks ? slimeAttack(off.ranged) : null;
+  const thorn = atk ? thornOf(off) : 0;
   const swingCap = o.swings || swingCapFor(off);
   /* `kills`: the AFTER half fights exactly as many slimes as the BEFORE half
      put down, so the two are the same job and the second can only finish
      sooner.  Unset (the before half), a pass ends at its first kill once it
      has swung MIN_SWINGS times. */
   const wantKills = o.kills || 0;
-  let hp = slime.hp, swings = 0, hitsHere = 0, throws = 0, kills = 0;
+  let hp = slime.hp, swings = 0, hitsHere = 0, strikes = 0, kills = 0;
   let nextSwing = LEAD_MS, lastAt = LEAD_MS, alive = true;
   let dotSt = null;        /* {next, until}: a burn/root ticking on this slime */
-  let thornUntil = -1;     /* a thorn on this slime answers its throws until then */
-  let nextThrow = o.throws ? LEAD_MS + 250 : Infinity;
+  let thornUntil = -1;     /* a thorn on this slime answers its attacks until then */
+  let nextAtk = atk ? LEAD_MS + 250 : Infinity;
   const firstKill = { hits: 0, ms: 0 };
   let endAt = -1;
   /* Once the swings are spent, a burn still on the slime is shown for a
@@ -358,14 +392,14 @@ function fightPass(off, slime, seed, opts) {
     beats.push({ t: back, k: 'spawn', hp: slime.hp, max: slime.hp });
     hp = slime.hp; hitsHere = 0; alive = true;
     nextSwing = Math.max(nextSwing, back + 120);
-    if (o.throws) nextThrow = Math.max(nextThrow, back + 300);
+    if (atk) nextAtk = Math.max(nextAtk, back + 300);
   };
   for (let guard = 0; guard < 400 && endAt < 0; guard++) {
     const swingAt = swings < swingCap ? nextSwing : Infinity;
     const impactAt = swingAt + imp;
     const tickAt = (dotSt && dotSt.next <= dotSt.until) ? dotSt.next : Infinity;
     /* the slime keeps throwing only while there is still a fight to have */
-    const landAt = (o.throws && (swings < swingCap || thornUntil >= nextThrow)) ? nextThrow + SLIME_THROW.WINDUP_MS + SLIME_THROW.FLIGHT_MS : Infinity;
+    const landAt = (atk && (swings < swingCap || thornUntil >= nextAtk)) ? nextAtk + atk.hitAt : Infinity;
     const first = Math.min(impactAt, tickAt, landAt);
     if (first === Infinity || first > quitAt) { endAt = lastAt + TAIL_MS; break; }
     if (first === tickAt) {
@@ -378,29 +412,39 @@ function fightPass(off, slime, seed, opts) {
       continue;
     }
     if (first === landAt) {
-      /* the slime's ball arrives (flora's scene only) -- and a thorn on the
-         slime answers it, landed or dodged (index.js: the recoil follows the
-         attack, not the damage) */
-      beats.push({ t: nextThrow, k: 'throw' });
-      const dodged = sceneDie(seed, D.DODGE, throws) < o.taken.dodge;
+      /* the slime's ball or swing resolves (flora's scene only) -- and a
+         thorn on the slime answers it, landed or dodged (index.js: the recoil
+         follows the attack, not the damage) */
+      beats.push({ t: nextAtk, k: atk.kind });
+      const dodged = sceneDie(seed, D.DODGE, strikes) < o.taken.dodge;
       beats.push(dodged
         ? { t: landAt, k: 'land', text: 'Dodged!', kind: 'dodged' }
         : { t: landAt, k: 'land', text: '-' + toDisplayDamage(Math.ceil(o.taken.dmg)), kind: 'hurt' });
-      throws++;
+      strikes++;
       lastAt = landAt;
-      nextThrow += SLIME_THROW.CD_MS;
+      nextAtk += atk.cd;
+      /* AT landAt, the instant the attack resolves -- the worker answers in
+         the same strike.  It used to be drawn 60ms later but applied here, ahead
+         of an arrow landing inside those 60ms: the arrow killed the slime,
+         then the thorn popped on the corpse and refilled its bar. */
       if (thorn > 0 && alive && thornUntil >= landAt) {
         const before = hp;
         hp = Math.max(0, hp - thorn);
-        beats.push({ t: landAt + 60, k: 'recoil', text: String(toDisplayHitDamage(before, hp, thorn)), element: off.element, hp, max: slime.hp, kill: hp <= 0 });
-        lastAt = landAt + 60;
-        if (hp <= 0) kill(landAt + 60);
+        beats.push({ t: landAt, k: 'recoil', text: String(toDisplayHitDamage(before, hp, thorn)), element: off.element, hp, max: slime.hp, kill: hp <= 0 });
+        if (hp <= 0) kill(landAt);
       }
       continue;
     }
-    /* a swing, and its impact */
+    /* a swing, and its impact.  The dice are SLIME k's hit j, not the pass's
+       swing n: a burn/root tick can finish a slime BETWEEN swings, and when
+       the points change whether slime 1 falls to a tick or to a swing, a
+       pass-wide count hands every later slime the other half's rolls -- the
+       "+n" half then visibly crits less and finishes later (reviewer-found,
+       ~6% of loops for Speed on a flame sword).  Keyed per slime, each slime
+       meets the same rolls in both halves, whatever finished the last one. */
     beats.push({ t: swingAt, k: 'atk', ranged: off.ranged });
-    const r = rollHit(off, sceneDie(seed, D.VAR, swings), sceneDie(seed, D.CRIT, swings), false);
+    const die = kills * 64 + hitsHere;
+    const r = rollHit(off, sceneDie(seed, D.VAR, die), sceneDie(seed, D.CRIT, die), false);
     const raw = landedDmg(r, 1, 1);
     swings++; hitsHere++;
     const before = hp;
@@ -452,16 +496,18 @@ function fightPair(o0, o1, slime, seed, opt0, opt1) {
    costs one swing, and the swing is shorter.  Averaged over VERDICT_FIGHTS
    fights on a FIXED set of dice -- the long run, stable from one render to
    the next.  A fight still going after 60 swings is scored at 60.
-   `throws`: the slime throws at you as it does in the flora scene, and a
-   thorn on it answers each ball -- the worker routes the slime's swing and its
-   ball through the same strike (_monsterStrikePlayer), so the thorn answers
-   either; the scene draws the ball, and so does this. */
+   `attacks`: the slime fights back as it does in the flora scene, and a
+   thorn on it answers each attack -- the worker routes the slime's swing and
+   its ball through the same strike (_monsterStrikePlayer), so the thorn
+   answers either, at the cadence of whichever this hero meets (slimeAttack:
+   a swing every 1.5s at arm's length, a ball every 2s at range). */
 export function killStats(off, slime, opts) {
   if (!off) return null;
   const dot = dotOf(off);
-  const thorn = (opts && opts.throws) ? thornOf(off) : 0;
+  const atk = (opts && opts.attacks) ? slimeAttack(off.ranged) : null;
+  const thorn = atk ? thornOf(off) : 0;
   const imp = off.ranged ? IMPACT_MS.ranged : IMPACT_MS.melee;
-  const firstLand = 250 + SLIME_THROW.WINDUP_MS + SLIME_THROW.FLIGHT_MS;   /* fightPass' first throw */
+  const firstLand = atk ? 250 + atk.hitAt : Infinity;   /* fightPass' first attack */
   const td = STATUS_DEFS.thorn;
   let swingSum = 0;
   for (let f = 0; f < VERDICT_FIGHTS; f++) {
@@ -471,13 +517,13 @@ export function killStats(off, slime, opts) {
     while (swings < 60 && !dead) {
       const impactAt = swings * off.period + imp;
       /* whatever lands before this swing does, in time order: burn/root
-         ticks, and thorns answering the slime's balls */
+         ticks, and thorns answering the slime's attacks */
       for (;;) {
         const tickAt = (status && status.next <= status.until) ? status.next : Infinity;
         const t = Math.min(tickAt, nextLand);
         if (!(t < impactAt)) break;
         if (t === tickAt) { hp -= dot.raw; status.next += dot.tickMs; }
-        else { if (thornUntil >= nextLand) hp -= thorn; nextLand += SLIME_THROW.CD_MS; }
+        else { if (thornUntil >= nextLand) hp -= thorn; nextLand += atk.cd; }
         if (hp <= 0) { dead = true; break; }
       }
       if (dead) break;
@@ -593,16 +639,20 @@ function reachPass(off, slime, seed, reach, dist) {
   return { beats, end: LEAD_MS + Math.max(off.period, 900) + 240 + TAIL_MS, slime: { hp: slime.hp, max: slime.hp } };
 }
 
-/* ── a pass: the slime's balls on you ─────────────────────────────────── */
-function hitsPass(R, slime, seed, n) {
+/* ── a pass: the slime's attacks on you ───────────────────────────────── */
+/* A ball against a bow or a staff, a swing against anything else
+   (slimeAttack) -- the same m.dmg either way (index.js: "the impact uses the
+   same m.dmg the swing does"), so only the picture and the rhythm differ. */
+function hitsPass(R, slime, seed, n, ranged) {
   const beats = [];
   const tk = takenOf(R, slime);
+  const atk = slimeAttack(ranged);
   let hp = (R && R.maxHp) || 100;
   const max = hp;
   for (let i = 0; i < n; i++) {
-    const t = LEAD_MS + i * SLIME_THROW.CD_MS;
-    const land = t + SLIME_THROW.WINDUP_MS + SLIME_THROW.FLIGHT_MS;
-    beats.push({ t, k: 'throw' });
+    const t = LEAD_MS + i * atk.cd;
+    const land = t + atk.hitAt;
+    beats.push({ t, k: atk.kind });
     if (sceneDie(seed, D.DODGE, i) < tk.dodge) {
       beats.push({ t: land, k: 'land', text: 'Dodged!', kind: 'dodged', hp: toDisplayHp(hp), max: toDisplayHp(max), dodge: true });
     } else {
@@ -610,10 +660,10 @@ function hitsPass(R, slime, seed, n) {
       beats.push({ t: land, k: 'land', text: '-' + toDisplayDamage(Math.ceil(tk.dmg)), kind: 'hurt', hp: toDisplayHp(hp), max: toDisplayHp(max) });
     }
   }
-  const end = LEAD_MS + (n - 1) * SLIME_THROW.CD_MS + SLIME_THROW.WINDUP_MS + SLIME_THROW.FLIGHT_MS + TAIL_MS;
+  const end = LEAD_MS + (n - 1) * atk.cd + atk.hitAt + TAIL_MS;
   return { beats, end, bar: { kind: 'hp', cur: toDisplayHp(max), max: toDisplayHp(max) } };
 }
-/* How many of the slime's balls it takes to put you down from full: the
+/* How many of the slime's attacks it takes to put you down from full: the
    ones that land, over the share that is not dodged.  Exact -- no dice. */
 export function hitsToDown(R, slime) {
   const tk = takenOf(R, slime);
@@ -623,34 +673,70 @@ export function hitsToDown(R, slime) {
 }
 
 /* ── a pass: stamina ──────────────────────────────────────────────────── */
-/* WITH a shield: you hold your guard through the slime's throws.  Holding
+/* WITH a shield: you hold your guard through the slime's attacks.  Holding
    drains HOLD_DRAIN every regen tick; a ball caught on it costs nothing more
-   (GUARD's note); at zero the guard breaks.  WITHOUT one: you roll out of
-   each ball, and a roll is one stamina block (rpgBlockSize), refilled at
-   REGEN a tick between. */
-export function guardHoldMs(R) {
+   (GUARD's note), a SWING caught on it costs SLIME_SWING.BLOCK_COST; at zero
+   the guard breaks.  WITHOUT one: you roll out of each attack, and a roll is
+   one stamina block (rpgBlockSize), refilled at REGEN a tick between.
+   Which attack is slimeAttack's: a swing unless you hold a bow or a staff. */
+export function guardHoldMs(R, ranged) {
   const max = (R && R.maxStamina) || 100;
-  return Math.ceil(max / GUARD.HOLD_DRAIN) * GUARD.TICK_MS;
+  /* The LONG RUN, like the fight's verdict: the regen tick and the slime's
+     swing fall at no fixed point after you raise the shield, so this is the
+     break averaged over every phase of both -- the regen tick's 30 places on
+     the 22ms heartbeat, and 30 places in the swing's 1.5s (from the end of
+     the parry window: a swing caught inside it is a parry, which costs
+     nothing and is not holding a guard).  In time order: the hold's drain on
+     each regen tick, the block's cost on each swing.  The guard only BREAKS
+     on a regen tick (_tickPlayerRegen is what drops the shield), so a swing
+     that empties the bar is still caught and the break lands on the tick
+     after.  A single fixed phase made one point read "no change" and the
+     next a whole tick; what is left is real -- every cost here is a multiple
+     of 5, so stamina only counts in fives. */
+  const TPH = Math.round(GUARD.TICK_MS / SERVER_TICK_MS);
+  const SPH = ranged ? 1 : 30;
+  let sum = 0;
+  for (let a = 1; a <= TPH; a++) {
+    for (let b = 0; b < SPH; b++) {
+      let st = max, tick = a * SERVER_TICK_MS;
+      let sw = ranged ? Infinity : GUARD.PARRY_MS + b * (SLIME_SWING.CD_MS / SPH);
+      for (let i = 0; i < 4000; i++) {
+        if (sw < tick) { st = Math.max(0, st - SLIME_SWING.BLOCK_COST); sw += SLIME_SWING.CD_MS; continue; }
+        st = Math.max(0, st - GUARD.HOLD_DRAIN);
+        if (st <= 0) break;
+        tick += GUARD.TICK_MS;
+      }
+      sum += tick;
+    }
+  }
+  return sum / (TPH * SPH);
 }
 export function rollsInARow(R) {
   const max = (R && R.maxStamina) || 100;
   return Math.floor(max / rpgBlockSize(R, 'stamina'));
 }
-function guardPass(R, slime, n, shield) {
+function guardPass(R, slime, n, shield, ranged) {
   const beats = [];
   const max = (R && R.maxStamina) || 100;
+  const atk = slimeAttack(ranged);
   let st = max;
   if (shield) {
     beats.push({ t: 0, k: 'guard', on: true });
     let nextTick = GUARD.TICK_MS;
     let lastLand = 0;
     for (let i = 0; i < n; i++) {
-      const t = LEAD_MS + i * SLIME_THROW.CD_MS;
-      const land = t + SLIME_THROW.WINDUP_MS + SLIME_THROW.FLIGHT_MS;
+      const t = LEAD_MS + i * atk.cd;
+      const land = t + atk.hitAt;
       while (nextTick < land) { st = Math.max(0, st - GUARD.HOLD_DRAIN); beats.push({ t: nextTick, k: 'stam', cur: st }); nextTick += GUARD.TICK_MS; }
-      beats.push({ t, k: 'throw' });
-      /* caught on the shield: the BLOCK the world pops, and no charge */
-      beats.push({ t: land, k: 'land', text: 'Blocked!', kind: 'blocked' });
+      beats.push({ t, k: atk.kind });
+      /* caught on the shield: the BLOCK the world pops -- free for a ball,
+         BLOCK_COST off the bar for a swing */
+      if (atk.kind === 'swing') {
+        st = Math.max(0, st - SLIME_SWING.BLOCK_COST);
+        beats.push({ t: land, k: 'land', text: 'Blocked!', kind: 'blocked', stam: st });
+      } else {
+        beats.push({ t: land, k: 'land', text: 'Blocked!', kind: 'blocked' });
+      }
       lastLand = land;
     }
     /* the hold keeps costing until the shield comes down */
@@ -661,10 +747,10 @@ function guardPass(R, slime, n, shield) {
   const cost = rpgBlockSize(R, 'stamina');
   let nextTick = GUARD.TICK_MS, lastLand = 0;
   for (let i = 0; i < n; i++) {
-    const t = LEAD_MS + i * SLIME_THROW.CD_MS;
-    const land = t + SLIME_THROW.WINDUP_MS + SLIME_THROW.FLIGHT_MS;
+    const t = LEAD_MS + i * atk.cd;
+    const land = t + atk.hitAt;
     while (nextTick < land - 260) { if (st < max) { st = Math.min(max, st + GUARD.REGEN); beats.push({ t: nextTick, k: 'stam', cur: st }); } nextTick += GUARD.TICK_MS; }
-    beats.push({ t, k: 'throw' });
+    beats.push({ t, k: atk.kind });
     st = Math.max(0, st - cost);
     beats.push({ t: land - 260, k: 'roll', stam: st, cost });
     beats.push({ t: land, k: 'land', text: '', kind: 'miss' });
@@ -693,10 +779,15 @@ function burstPass(R) {
 
 /* ── a pass: ground covered ───────────────────────────────────────────── */
 /** Walk speed in px/s: BroTown's baseSpd (calcMoveSpeed/5 x SPEED per frame,
- *  at 60 frames a second) x the Move stat. */
+ *  at 60 frames a second) x the Move stat x a moveSpd amulet.
+ *  v2.3.2979: the amulet is BroTown's amuletSpdMult, in finalSpd beside the
+ *  Move stat -- left out at first, so anyone wearing one was told they cross
+ *  the meadow slower than they do (reviewer-found). */
 export function walkPxPerSec(R) {
   const swift = ((R && R.enduranceSpec) || {}).swiftness || 0;
-  return calcMoveSpeed((R && R.agility) || 0, swift) / 5 * SPEED * 60 * prog3MoveMult(R);
+  const ab = R && getAmuletBonus(R.amulet);
+  const amu = (ab && ab.stat === 'moveSpd') ? 1 + ab.value / 100 : 1;
+  return calcMoveSpeed((R && R.agility) || 0, swift) / 5 * SPEED * 60 * prog3MoveMult(R) * amu;
 }
 const TREK_PX = 64;   /* game.css bt-sd-trek: out 64px and back */
 function trekPass(R) {
@@ -774,10 +865,10 @@ export function prepareStatScene(R, stat, cat, n, weapon, shield, caps) {
       if (!el) note = 'This weapon has no element, so Element has nothing to power yet.';
       else if (!dotOf(o0) && !thornOf(o0)) note = (ELEMENTS[el] && ELEMENTS[el].status ? cap1(ELEMENTS[el].status) : cap1(el)) + ' does no damage over time. Element only powers combos with it.';
     }
-    const throws = stat === 'elem' && !!thornOf(o0);
-    const t0 = throws ? { throws: true, taken: takenOf(A, slime) } : null;
-    const t1 = throws ? { throws: true, taken: takenOf(B, slime) } : null;
-    const kOpt = throws ? { throws: true } : null;
+    const attacks = stat === 'elem' && !!thornOf(o0);
+    const t0 = attacks ? { attacks: true, taken: takenOf(A, slime) } : null;
+    const t1 = attacks ? { attacks: true, taken: takenOf(B, slime) } : null;
+    const kOpt = attacks ? { attacks: true } : null;
     const k0 = killStats(o0, slime, kOpt), k1 = capped ? null : killStats(o1, slime, kOpt);
     const ttk = (k) => fmtN(k.hits) + (Math.abs(k.hits - 1) < 0.05 ? ' hit · ' : ' hits · ') + fmtSecs(k.secs);
     return {
@@ -812,12 +903,15 @@ export function prepareStatScene(R, stat, cat, n, weapon, shield, caps) {
       play: (seed) => [reachPass(o0, slime, seed || 1, r0, dist), capped ? null : reachPass(o1, slime, seed || 1, r1, dist)],
     };
   }
+  /* A body stat has no lane: the slime meets what is in your hand, so it
+     swings at a sword and throws at a bow (slimeAttack). */
+  const ranged = isRangedWeapon(weapon);
   if (stat === 'hp' || stat === 'def' || stat === 'dodge') {
     const h0 = hitsToDown(A, slime), h1 = capped ? null : hitsToDown(B, slime);
     return {
       ...base, kind: 'defend',
       verdict: { label: 'Slime hits to drop you', now: fmtN(h0), after: h1 == null ? null : fmtN(h1) },
-      play: (seed) => [hitsPass(A, slime, seed || 1, 2), capped ? null : hitsPass(B, slime, seed || 1, 2)],
+      play: (seed) => [hitsPass(A, slime, seed || 1, 2, ranged), capped ? null : hitsPass(B, slime, seed || 1, 2, ranged)],
     };
   }
   if (stat === 'stam') {
@@ -827,9 +921,9 @@ export function prepareStatScene(R, stat, cat, n, weapon, shield, caps) {
     return {
       ...base, kind: 'stamina', shield: hasShield,
       verdict: hasShield
-        ? { label: 'Guard holds vs. a slime', now: fmtSecs(guardHoldMs(A) / 1000), after: capped ? null : fmtSecs(guardHoldMs(B) / 1000) }
+        ? { label: 'Guard holds vs. a slime', now: fmtSecs(guardHoldMs(A, ranged) / 1000), after: capped ? null : fmtSecs(guardHoldMs(B, ranged) / 1000) }
         : { label: 'Dodge rolls on a full bar', now: String(rollsInARow(A)), after: capped ? null : String(rollsInARow(B)) },
-      play: () => [guardPass(A, slime, 2, hasShield), capped ? null : guardPass(B, slime, 2, hasShield)],
+      play: () => [guardPass(A, slime, 2, hasShield, ranged), capped ? null : guardPass(B, slime, 2, hasShield, ranged)],
     };
   }
   if (stat === 'eres') {

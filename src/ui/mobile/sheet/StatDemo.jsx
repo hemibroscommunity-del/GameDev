@@ -6,7 +6,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { prog3CatFor } from '@/data/prog3.js';   /* v2.3.2231: weapon type -> combat lane */
 import { toDisplayHp } from '@/data/gameSystems.js';
 import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON, blueSlimeSheet } from '@/data/statDemoAssets.js';   /* v2.3.2616: shared with the preloader */
-import { prepareStatScene, newSceneSeed, SIM_STATS, SLIME_THROW, SLIME_DEATH_MS } from './statSim.js';   /* v2.3.2979 */
+import { prepareStatScene, newSceneSeed, SIM_STATS, SLIME_THROW, SLIME_SWING, SLIME_DEATH_MS } from './statSim.js';   /* v2.3.2979 */
 
 /* ═══ v2.3.2222: WHAT A STAT IS FOR, SHOWN WITH THE GAME'S OWN PIECES ═══
  *
@@ -183,6 +183,12 @@ function passSteps(pass, off, phase, ctx) {
         slime(b.t, 'shoot', 420);
         at(b.t + SLIME_THROW.WINDUP_MS, (s) => ({ orb: s.orb + 1 }));
         break;
+      case 'swing':
+        /* v2.3.2979: at arm's length the slime swings instead -- no ball and
+           no attack strip, the throb the world plays through the wind-up
+           (entityRenderer _windupFx), then the hit lands on the hero */
+        slime(b.t, 'windup', SLIME_SWING.WINDUP_MS, SLIME_SWING.WINDUP_MS);
+        break;
       case 'land':
         at(b.t, () => ({ orb: 0 }));
         if (b.kind === 'dodged') hero(b.t - 150, 'dodge', 600);
@@ -292,8 +298,15 @@ const Shot = ({ s }) => {
         backgroundSize: `${a.frames * a.w}px ${a.h}px`,
         /* the same two knobs bt-sd-strip reads for the slime: how many cels
            and how far to walk.  A 1-cel sheet walks 0px, so the arrow's
-           strip animation is a no-op rather than a special case. */
-        '--sd-frames': a.frames, '--sd-strip': -((a.frames - 1) * a.w) + 'px',
+           strip animation is a no-op rather than a special case.
+           v2.3.2979: ...but only if it counts at least 2 steps.
+           steps(1, jump-none) is INVALID (jump-none needs n >= 2), and
+           through var() that voids the WHOLE animation shorthand at
+           computed-value time -- the flight included -- so every bow arrow
+           since v2.3.2231 sat in the hero's hand and never crossed (Chromium
+           computes animation-name: none; reviewer-found).  Two steps over a
+           0px walk is still a no-op, and the arrow flies. */
+        '--sd-frames': Math.max(2, a.frames), '--sd-strip': -((a.frames - 1) * a.w) + 'px',
         ...(s.short ? { '--sd-short': Math.round(120 * Math.max(0, Math.min(1, s.frac == null ? 0.45 : s.frac))) + 'px' } : null),
       }} />
   );
@@ -307,13 +320,14 @@ const Slime = ({ anim, blue }) => {
   const url = (blue && blueSlimeSheet(kind)) || sheet.url;
   return (
     <span key={anim.kind + ':' + anim.n}
-      className={'bt-sd-slime bt-sd-slime--' + (anim.kind === 'spawn' || anim.kind === 'swell' ? anim.kind : kind)}
+      className={'bt-sd-slime bt-sd-slime--' + (anim.kind === 'spawn' || anim.kind === 'swell' || anim.kind === 'windup' ? anim.kind : kind)}
       style={{
         backgroundImage: `url(${url})`,
         backgroundSize: `${sheet.frames * SLIME_PX}px ${SLIME_PX}px`,
         '--sd-frames': sheet.frames, '--sd-strip': -((sheet.frames - 1) * SLIME_PX) + 'px',
         ...(anim.kind === 'death' ? { '--sd-death-ms': SLIME_DEATH_MS + 'ms' } : null),
         ...(anim.kind === 'swell' ? { '--sd-swell-ms': (anim.ms || 1600) + 'ms' } : null),
+        ...(anim.kind === 'windup' ? { '--sd-windup-ms': (anim.ms || 500) + 'ms' } : null),
       }} />
   );
 };
@@ -412,8 +426,17 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
         };
       } catch (e) { /* no window: nothing to report to */ }
       const { steps, end } = loopSteps(prep, passes, shotCat);
-      setS(START);
+      /* v2.3.2979: the t=0 steps (the fresh slime, both bars) go in WITH the
+         reset, not a setTimeout(0) after it.  START has no bars, and the vital
+         row under the stage sits in normal flow, so a frame painted between
+         the two dropped the row and jumped everything below it ~26px -- every
+         loop, and (the stepper re-prepares the scene) every press of [+]
+         (reviewer-found).  Applied in the order their timers would have run. */
+      let first = START;
+      for (const step of steps) if (step.t <= 0) first = { ...first, ...step.patch(first) };
+      setS(first);
       for (const step of steps) {
+        if (step.t <= 0) continue;
         timers.push(setTimeout(() => { if (alive) setS((prev) => ({ ...prev, ...step.patch(prev) })); }, step.t));
       }
       timers.push(setTimeout(() => { if (alive) { timers = []; run(); } }, end + 300));

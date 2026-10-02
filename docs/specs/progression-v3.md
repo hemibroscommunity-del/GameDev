@@ -906,15 +906,42 @@ and lane, through the client mirrors of the worker's arithmetic:
 | Element | the fight, plus the weapon's own status: burn/root ticks (`tickElementStatuses`), or a flora thorn answering the slime's balls; a weapon with no ticking element gets the plain fight and a line saying why | `Slime down in` |
 | Range | a slime standing between today's reach and the reach with the points: the attack stops short by exactly the difference, then lands | — (the row above already says how much farther) |
 | HP, Defense, Dodge | the slime's real ball on you through `_applyDamage` (Dodge roll, Defense under the combined floor, armour, floor 1) | `Slime hits to drop you` |
-| Stamina | with a shield, holding your guard (5 a regen tick; a ball caught on the shield costs nothing more -- that 10 is a blocked melee swing's); without, rolling out of the ball (one stamina block a roll) | `Guard holds vs. a slime` / `Dodge rolls on a full bar` |
+| Stamina | with a shield, holding your guard (5 a regen tick; a ball caught on the shield costs nothing more, a SWING caught on it costs 10); without, rolling out of the slime's attack (one stamina block a roll) | `Guard holds vs. a slime` / `Dodge rolls on a full bar` |
 | Resist | the one elemental thing a slime does: the blue slime's death burst (60 flat, at most half your max HP) | `Blue slime burst` |
 | Move Speed | the walk, at your real speed | `Cross the meadow` |
 
 **One set of dice, both halves.** The before and after halves read the
-same random numbers swing for swing (`sceneDie`: a hash of the loop's
-seed, the stream and the swing index), so the only thing that differs is
-the points. The seed is fresh every loop. The after half fights exactly
-as many slimes as the before half put down, so it can only finish sooner.
+same random numbers hit for hit (`sceneDie`: a hash of the loop's seed,
+the stream, and WHICH SLIME and which hit on it), so the only thing that
+differs is the points. The seed is fresh every loop. The after half fights
+exactly as many slimes as the before half put down, so it can only finish
+sooner. The dice are keyed per slime, not per swing of the whole loop: a
+burn tick can finish a slime between swings, and when the points changed
+whether slime 1 fell to a tick or a swing, a loop-wide count handed every
+later slime the other half's rolls (reviewer-found; ~6% of Speed loops on
+a flame sword showed "+n" doing worse). A thorn answers the slime's attack
+in the same instant it lands, as the worker does.
+
+**The slime attacks the way it would attack YOU.** Inside its reach — where
+anyone holding a sword stands — a slime swings (500 ms wind-up, every
+1.5 s, `MONSTER_ATTACK_CD`); it only throws from the band past that, which
+is where a bow or a staff fights it from (2 s). So the scene's slime swings
+at a melee hero and throws at a ranged one, in the thorn fight, the
+HP/Defense/Dodge scenes and the Stamina scene alike. It matters most for the
+guard: a swing caught on a shield costs 10 stamina where a ball costs
+nothing, so 100 stamina holds ~7.2 s against swings and ~12.9 s against
+balls. That verdict is the long run over every timing of the regen tick and
+the swing (neither falls at a fixed point after you raise the shield), and
+`statsim.test` drives the worker's own regen tick and swing through all 900
+of those timings and requires the same answer. Stamina still counts in fives
+— every cost here is a multiple of 5 — so a single point (+3) can honestly
+buy nothing for the guard. The swing is drawn as the world draws it — no
+attack strip, the sprite throbs through the wind-up
+(`entityRenderer _windupFx`).
+
+**Burns tick on the worker's clock.** "Every 0.5 s" is checked on the
+worker's 22 ms heartbeat and re-stamped to the tick that fired, so a burn
+ticks every 506 ms and a root every 1012 ms: a lone burn 7 times, not 8.
 The stepper's `n` is what the after half fights with.
 
 **Held to the worker, not restated.** `server/test/statsim.test.mjs`
@@ -935,6 +962,15 @@ the world retints the green sheets at runtime — so `statDemoPreload.js`
 bakes the same retint (`monsterRecolor.retintToCanvas`, the variant's own
 `recolor`) into two image URLs on the loading screen, per the preloading
 law.
+
+What that costs, in the only unit that matters (`ART-ASSET-PHASES.md` §2,
+decoded RGBA): the green death strip 1920×128 = 0.98 MB, the blue idle
+3072×128 = 1.57 MB, the blue death 0.98 MB — **3.5 MB more, held for the
+session** beside the scene's existing slime strips, against the ~380 MB of
+texture the game already holds (under 1%). Kept on the global gate rather
+than loaded when the window opens because the window is global UI, not zone
+art, and a first-open load is exactly the hitch the law forbids; the
+per-zone caps in that doc are for zone art and do not apply.
 
 **Out of scope, deliberately.** Food and potion buffs, the hexer's curse
 and elemental collisions stay out, as they do from the DPS row. The
