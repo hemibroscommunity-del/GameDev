@@ -34,18 +34,23 @@ export function encodePNG(width, height, rgba) {
 }
 
 export function decodePNG(buf) {
-  let p = 8, width = 0, height = 0, ctype = 0, depth = 0;
+  let p = 8, width = 0, height = 0, ctype = 0, depth = 0, plte = null, trns = null;
   const idat = [];
   while (p < buf.length) {
     const len = buf.readUInt32BE(p), type = buf.toString('ascii', p + 4, p + 8);
     const data = buf.subarray(p + 8, p + 8 + len);
     if (type === 'IHDR') { width = data.readUInt32BE(0); height = data.readUInt32BE(4); depth = data[8]; ctype = data[9]; }
+    else if (type === 'PLTE') plte = data;
+    else if (type === 'tRNS') trns = data;
     else if (type === 'IDAT') idat.push(data);
     else if (type === 'IEND') break;
     p += 12 + len;
   }
-  if (depth !== 8 || (ctype !== 6 && ctype !== 2)) throw new Error(`decodePNG: only 8-bit RGB/RGBA (got depth ${depth}, type ${ctype})`);
-  const bpp = ctype === 6 ? 4 : 3, stride = width * bpp;
+  /* v2.3.2975: and 8-bit palette PNGs (colour type 3), with their tRNS --
+     the game's object sprite sheets and ground tiles (world/core/png8.js) */
+  if (depth !== 8 || (ctype !== 6 && ctype !== 2 && ctype !== 3)) throw new Error(`decodePNG: only 8-bit RGB/RGBA/palette (got depth ${depth}, type ${ctype})`);
+  if (ctype === 3 && !plte) throw new Error('decodePNG: a palette PNG with no PLTE');
+  const bpp = ctype === 6 ? 4 : ctype === 3 ? 1 : 3, stride = width * bpp;
   const raw = zlib.inflateSync(Buffer.concat(idat));
   const out = new Uint8ClampedArray(width * height * 4);
   const prev = Buffer.alloc(stride), cur = Buffer.alloc(stride);
@@ -59,9 +64,17 @@ export function decodePNG(buf) {
       else if (f === 4) { const pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - c); v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
       cur[i] = v & 255;
     }
-    for (let x = 0; x < width; x++) {
-      const o = (y * width + x) * 4;
-      out[o] = cur[x * bpp]; out[o + 1] = cur[x * bpp + 1]; out[o + 2] = cur[x * bpp + 2]; out[o + 3] = bpp === 4 ? cur[x * bpp + 3] : 255;
+    if (ctype === 3) {
+      for (let x = 0; x < width; x++) {
+        const o = (y * width + x) * 4, k = cur[x];
+        out[o] = plte[k * 3]; out[o + 1] = plte[k * 3 + 1]; out[o + 2] = plte[k * 3 + 2];
+        out[o + 3] = trns && k < trns.length ? trns[k] : 255;
+      }
+    } else {
+      for (let x = 0; x < width; x++) {
+        const o = (y * width + x) * 4;
+        out[o] = cur[x * bpp]; out[o + 1] = cur[x * bpp + 1]; out[o + 2] = cur[x * bpp + 2]; out[o + 3] = bpp === 4 ? cur[x * bpp + 3] : 255;
+      }
     }
     cur.copy(prev);
   }

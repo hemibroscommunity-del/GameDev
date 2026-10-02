@@ -60,6 +60,9 @@ import { loadSprites } from '../style/scene.js';
 import { objectCatalog, GROUPS } from './catalog.js';
 import { promptFor, sizeWords, FRAME_GAME_PX } from './prompts.js';
 import { sheetsFor, sheetPrompt, boxOf, SHEET } from './sheets.js';
+/* v2.3.2975: the game's sprite sheets are packed a few objects a page, each
+   page a palette PNG (atlas.js) -- the same packing the repack tool uses */
+import { packAtlas, pagesByColour, coloursIn, PAGE_KINDS } from './atlas.js';
 
 const GPA = PIXEL.gamePxPerArtPx;      /* 0.5 game px a picture px */
 const PX = 1 / GPA;                    /* 2 picture px a game px */
@@ -101,10 +104,6 @@ const SHEET_KEY = (id) => `sheet:${id}`;
 /* on a sheet, a part smaller than this share of the smallest object asked
    for is a speck, not an object */
 const SPECK = 0.15;
-/* the game's sprite sheets: at most this many px a side (every iPhone takes
-   a texture this big), with this much clear space between two objects so
-   neither bleeds into the other when the game smooths them */
-const ATLAS_MAX = 2048, ATLAS_PAD = 2;
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -1048,45 +1047,34 @@ async function exportZip() {
 }
 
 /* ═══ v2.3.2965: THE GAME'S SPRITE SHEETS ═══
-   Each land's finished objects packed into as few pictures as hold them,
-   ATLAS_MAX px a side at most (one, for every land but the buildings): in
-   shelves, tallest first, ATLAS_PAD clear px between any two.  Beside each
-   picture a PixiJS sheet file (frames, and each frame's anchor at its foot:
-   the middle of its bottom row; `meta.scale` 2, the art's px a game px, so
-   the game's sprites come out in game px).  The pixels are the pieces' own,
-   each frame the very piece the backup holds. */
-export function packAtlas(items, max = ATLAS_MAX, pad = ATLAS_PAD) {
-  const sorted = [...items].sort((a, b) => b.h - a.h || b.w - a.w);
-  const area = sorted.reduce((t, it) => t + (it.w + pad) * (it.h + pad), 0);
-  const widest = Math.max(...sorted.map((it) => it.w));
-  const W = Math.min(max, Math.max(widest, Math.ceil(Math.sqrt(area * 1.15) / 4) * 4));
-  const pages = [];
-  let page = null, x = 0, y = 0, rowH = 0;
-  const newPage = () => { page = { items: [], w: 0, h: 0 }; pages.push(page); x = 0; y = 0; rowH = 0; };
-  newPage();
-  for (const it of sorted) {
-    if (x && x + it.w > W) { y += rowH + pad; x = 0; rowH = 0; }
-    /* (v2.3.2971: never an empty page -- a piece taller than a page used to
-       leave one behind, whose 0 px width stopped "Download for the game") */
-    if (y + it.h > max && page.items.length) newPage();
-    page.items.push({ ...it, x, y });
-    x += it.w + pad;
-    if (it.h > rowH) rowH = it.h;
-    page.w = Math.max(page.w, x - pad); page.h = Math.max(page.h, y + it.h);
-  }
-  return pages;
-}
-
+   Each land's finished objects packed into sprite sheets: in shelves,
+   tallest first, ATLAS_PAD clear px between any two, ATLAS_MAX px a side at
+   most (atlas.js).  Beside each picture a PixiJS sheet file (frames, and
+   each frame's anchor at its foot: the middle of its bottom row;
+   `meta.scale` 2, the art's px a game px, so the game's sprites come out in
+   game px).  The pixels are the pieces' own, each frame the very piece the
+   backup holds.
+   v2.3.2975: a few objects a PAGE -- as many as keep the page's colours to
+   255, so every page is a palette PNG (atlas.js pagesByColour): 5.0 MB for
+   the owner's 75 objects where one sheet a land was 15.7 MB -- and the
+   Wheel loads only the pages whose objects stand near you. */
 async function atlasFiles(enc) {
   const files = [], atlases = [], where = Object.create(null);
   for (const g of GROUPS) {
-    const items = [];
+    const objs = [];
     for (const e of S.cat) {
       if (e.group !== g.id || !S.fin.has(e.id)) continue;
-      S.fin.get(e.id).pieces.forEach((p, i) => items.push({ w: p.w, h: p.h, name: `${e.id}-${i + 1}`, png: p.png }));
+      const items = [], colours = new Set();
+      for (const [i, p] of S.fin.get(e.id).pieces.entries()) {
+        const img = await blobToCanvas(p.png, 4096);
+        coloursIn(img.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, img.width, img.height).data, colours);
+        release(img);
+        items.push({ w: p.w, h: p.h, name: `${e.id}-${i + 1}`, png: p.png });
+      }
+      objs.push({ id: e.id, colours, items });
     }
-    if (!items.length) continue;
-    const pages = packAtlas(items);
+    if (!objs.length) continue;
+    const pages = pagesByColour(objs, { kinds: PAGE_KINDS[g.id] || Infinity });
     for (let k = 0; k < pages.length; k++) {
       const pg = pages[k], name = `${g.id}-${k + 1}`;
       const c = mk(pg.w, pg.h), cg = c.getContext('2d', { willReadFrequently: true });
@@ -1105,7 +1093,7 @@ async function atlasFiles(enc) {
       release(c);
       const json = { frames, meta: { app: 'brotown-object-studio', version: '1', image: `${name}.png`, format: 'RGBA8888', size: { w: pg.w, h: pg.h }, scale: String(PX) } };
       files.push({ name: `objects/${name}.png`, data: png }, { name: `objects/${name}.json`, data: enc.encode(JSON.stringify(json)) });
-      atlases.push({ name, group: g.id, w: pg.w, h: pg.h, image: `${name}.png`, sheet: `${name}.json`, objects: pg.items.length });
+      atlases.push({ name, group: g.id, w: pg.w, h: pg.h, image: `${name}.png`, sheet: `${name}.json`, objects: pg.items.length, kinds: pg.objects });
     }
   }
   return { files, atlases, where };
