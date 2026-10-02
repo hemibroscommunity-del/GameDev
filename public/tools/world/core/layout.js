@@ -154,56 +154,114 @@ function thin(pts, k) {
   return out;
 }
 
-/* Is (dx, dy) -- art px from the world centre -- inside Brotown?  A plus
-   shape: each street arm is as wide as its plots plus a yard, narrowing to
-   the street and its verges past the last plot, out to the gate. */
-export function townShape(T) {
-  const L = T.lot;
-  const lotsEnd = L.first + L.perSide * L.front + (L.perSide - 1) * L.gap;
-  return {
-    lotsEnd,
-    mainOuter: T.main + T.boardwalk + L.deep + T.yard,
-    rowOuter: T.row + T.boardwalk + L.deep + T.yard,
-    mainEnd: T.main + T.yard + 40,
-    rowEnd: T.row + T.yard + 40,
+/* ═══ v2.3.2975: THE TOWN LAID OUT ROUND ITS BUILDINGS ═══
+   The owner's buildings came (2026-10-02), each drawn square-on: roof from
+   above, front below, the door at the bottom on a porch with steps -- so
+   every one FACES SOUTH, toward the viewer, as in most top-down games, and
+   stands 321-453 game px tall on a plot 386 wide.  The old plots (300 game
+   px, two a side along every street arm) were laid out before any was
+   drawn: too narrow, and on Main Street, a north-south street, every door
+   would have faced the yard of the plot beside it.  So the town is laid out
+   round what was drawn:
+
+     - every door opens onto the square, a street, or a FRONT WALK -- a
+       strip of street from Main Street to the door (`fronts`);
+     - along Main Street the buildings stand side-on, two a side on each
+       arm, the first ones' doors on the square (north) or on the BACK LANE
+       (south) and the second ones' on front walks.  Each is far enough from
+       the next that no roof hides a door: `tall` (the tallest building's
+       drawn height) and a walk apart;
+     - on Market Row the buildings on the NORTH side open straight onto the
+       street; those on the SOUTH side stand back so their roofs stay off it
+       and open onto the Back Lane, which runs behind Market Row from end to
+       end and crosses Main Street;
+     - the Town Hall stands in the middle of the square, its door to the
+       south, where Mayor Bro waits.
+
+   In art px from the world centre, like everything here.  `lot` and `hall`
+   in plan.js size it (a building, its ground depth `d`, its drawn height
+   budget `tall`, a front walk `walk`); the buildings themselves are placed
+   on these plots by core/placing.js.  Each plot keeps the building's
+   ground: x0..x1 its width, y0..y1 its depth, the DOOR at (foot.x, foot.y),
+   the middle of its south edge. */
+export function townPlan(T) {
+  const L = T.lot, Hl = T.hall;
+  const verge = T.boardwalks ? Math.max(L.verge, T.boardwalk) : L.verge;
+  const porch = T.boardwalks ? Math.max(L.porch, T.boardwalk) : L.porch;
+  const lots = [], fronts = [];
+  const lot = (o, x0, x1, footY) => {
+    const r = { ...o, x0, x1, y0: footY - L.d, y1: footY, foot: { x: (x0 + x1) / 2, y: footY } };
+    /* v2.3.2949/2960: a plan that lays boardwalks puts one along each door */
+    r.walk = { x0, x1, y0: footY, y1: footY + T.boardwalk };
+    lots.push(r);
+    return r;
   };
+  lots.push({ ...T.hallLot, arm: 'square', x0: -Hl.w / 2, x1: Hl.w / 2, y0: -Hl.d / 2, y1: Hl.d / 2, foot: { x: 0, y: Hl.d / 2 } });
+  const near = T.main + verge, far = near + L.w;          /* a side-on plot beside Main Street */
+  const yN0 = -(T.square + porch);                         /* the north arm's first doors, on the square */
+  const yS0 = T.square + porch + L.d;                      /* the south arm's first doors, and the Back Lane */
+  const step = L.tall + L.walk;
+  const rowAt = (k) => far + L.gap + k * (L.w + L.gap);    /* a Market Row plot's near edge */
+  let rowEnd = far;
+  const arms = T.lots || {};
+  for (const arm of Object.keys(arms)) {
+    for (const side of Object.keys(arms[arm])) {
+      arms[arm][side].slice(0, L.perSide).forEach((o, k) => {
+        const base = { ...o, arm, side };
+        if (arm === 'north' || arm === 'south') {
+          const [x0, x1] = side === 'west' ? [-far, -near] : [near, far];
+          const footY = arm === 'north' ? yN0 - k * step : yS0 + k * step;
+          lot(base, x0, x1, footY);
+          /* its front walk, from Main Street to its door -- the first ones
+             south open onto the Back Lane, the first ones north the square */
+          if (k > 0 || arm === 'south') {
+            if (!(arm === 'south' && k === 0)) fronts.push({ x0: side === 'west' ? -far : T.main, x1: side === 'west' ? -T.main : far, y0: footY, y1: footY + L.walk });
+          }
+        } else {
+          const a0 = rowAt(k), [x0, x1] = arm === 'west' ? [-(a0 + L.w), -a0] : [a0, a0 + L.w];
+          rowEnd = Math.max(rowEnd, a0 + L.w);
+          lot(base, x0, x1, side === 'north' ? -(T.row + porch) : yS0);
+        }
+      });
+    }
+  }
+  /* the Back Lane: behind Market Row's south side, end to end, across Main Street */
+  fronts.push({ x0: -rowEnd, x1: rowEnd, y0: yS0, y1: yS0 + L.walk, lane: true });
+  const northEnd = -Math.min(yN0, ...lots.filter((l) => l.arm === 'north').map((l) => l.y0));
+  const southEnd = Math.max(yS0 + L.walk, ...lots.filter((l) => l.arm === 'south').map((l) => l.y1 + L.walk));
+  return { lots, fronts, verge, porch, rowEnd, northEnd, southEnd, yN0, yS0 };
+}
+
+/* The town's ground, as rectangles (art px from the centre): the square, the
+   four arms round their plots with a yard behind, and the streets out to
+   the gates.  Brotown is wherever one of them is, give or take its wobble. */
+export function townShape(T) {
+  const tp = townPlan(T), y = T.yard, L = T.lot;
+  const sideOuter = T.main + tp.verge + L.w + y;
+  const rows = tp.lots.filter((l) => l.arm === 'west' || l.arm === 'east');
+  const rowTop = rows.length ? -Math.min(...rows.map((l) => Math.min(l.y0, l.y1 - L.tall * 0.5))) : T.row;
+  const rowBot = tp.yS0 + L.walk;
+  const rects = [
+    { x0: -T.square - y, x1: T.square + y, y0: -T.square - y, y1: T.square + y },
+    { x0: -sideOuter, x1: sideOuter, y0: -(tp.northEnd + y), y1: 0 },
+    { x0: -sideOuter, x1: sideOuter, y0: 0, y1: tp.southEnd + y },
+    { x0: -(tp.rowEnd + y), x1: tp.rowEnd + y, y0: -(rowTop + y), y1: rowBot + y },
+    { x0: -(T.main + y + 40), x1: T.main + y + 40, y0: -T.gate, y1: T.gate },
+    { x0: -T.gate, x1: T.gate, y0: -(T.row + y + 40), y1: T.row + y + 40 },
+  ];
+  return { ...tp, rects };
 }
 function inTown(dx, dy, T, sh, wob) {
-  const ax = Math.abs(dx), ay = Math.abs(dy);
-  if (ay <= T.gate + wob * 0.5 && ax <= (ay <= sh.lotsEnd + T.yard ? sh.mainOuter : sh.mainEnd) + wob) return true;
-  if (ax <= T.gate + wob * 0.5 && ay <= (ax <= sh.lotsEnd + T.yard ? sh.rowOuter : sh.rowEnd) + wob) return true;
+  for (const r of sh.rects) {
+    if (dx >= r.x0 - wob && dx <= r.x1 + wob && dy >= r.y0 - wob && dy <= r.y1 + wob) return true;
+  }
   return false;
 }
 
-/* The town's plots, in art px from the world centre, square-outward along
-   each arm.  Also used by the World Bible's lot table. */
+/* The town's plots, in art px from the world centre (townPlan).  Also used
+   by the World Bible's lot table. */
 export function townLots(T) {
-  const L = T.lot, out = [];
-  const bwk = T.boardwalk;
-  out.push({ ...T.hallLot, x0: -T.hall, y0: -T.hall, x1: T.hall, y1: T.hall, arm: 'square' });
-  const along = (k) => [L.first + k * (L.front + L.gap), L.first + k * (L.front + L.gap) + L.front];
-  const put = (arm, side, k, lot) => {
-    const [a0, a1] = along(k);
-    let r;
-    if (arm === 'north' || arm === 'south') {
-      const [y0, y1] = arm === 'north' ? [-a1, -a0] : [a0, a1];
-      const near = T.main + bwk;
-      r = side === 'west'
-        ? { x0: -(near + L.deep), x1: -near, y0, y1, walk: { x0: -near, x1: -T.main, y0, y1 } }
-        : { x0: near, x1: near + L.deep, y0, y1, walk: { x0: T.main, x1: near, y0, y1 } };
-    } else {
-      const [x0, x1] = arm === 'west' ? [-a1, -a0] : [a0, a1];
-      const near = T.row + bwk;
-      r = side === 'north'
-        ? { x0, x1, y0: -(near + L.deep), y1: -near, walk: { x0, x1, y0: -near, y1: -T.row } }
-        : { x0, x1, y0: near, y1: near + L.deep, walk: { x0, x1, y0: T.row, y1: near } };
-    }
-    out.push({ ...lot, arm, side, ...r });
-  };
-  for (const arm of Object.keys(T.lots || {})) {
-    for (const side of Object.keys(T.lots[arm])) T.lots[arm][side].slice(0, L.perSide).forEach((lot, k) => put(arm, side, k, lot));
-  }
-  return out;
+  return townPlan(T).lots;
 }
 
 export function buildBlueprint(plan) {
@@ -552,8 +610,11 @@ export function buildBlueprint(plan) {
   if (T && townId != null) {
     stampRect(-T.main, -T.gate, T.main, T.gate, C.street, landAt, townId);
     stampRect(-T.gate, -T.row, T.gate, T.row, C.street, landAt, townId);
+    /* v2.3.2975: the front walks and the Back Lane, so every door opens
+       onto a street (townPlan) */
+    for (const f of TS.fronts) stampRect(f.x0, f.y0, f.x1, f.y1, C.street, landAt, townId);
     stampRect(-T.square, -T.square, T.square, T.square, C.plaza, landAt, townId);
-    for (const lot of townLots(T)) {
+    for (const lot of TS.lots) {
       stampRect(lot.x0, lot.y0, lot.x1, lot.y1, C.lot, landAt, townId);
       /* v2.3.2960: only when the plan lays them (plan.js `boardwalks`:
          put away until the buildings, whose porches they become) */
@@ -561,11 +622,14 @@ export function buildBlueprint(plan) {
         stampRect(lot.walk.x0, lot.walk.y0, lot.walk.x1, lot.walk.y1, C.boardwalk, landAt, townId);
         /* v2.3.2949: a deck along its street -- the cells stampRect took */
         const cx = (rx) => Math.ceil((g.cx + rx - x0) / S - 0.5), cy = (ry) => Math.ceil((g.cy + ry - y0) / S - 0.5);
-        decks.push({ kind: 'boardwalk', lot: lot.id, along: lot.arm === 'north' || lot.arm === 'south' ? 'y' : 'x',
+        /* v2.3.2975: along each plot's door, its south side: boards run east-west */
+        decks.push({ kind: 'boardwalk', lot: lot.id, along: 'x',
           x0: cx(lot.walk.x0), x1: cx(lot.walk.x1), y0: cy(lot.walk.y0), y1: cy(lot.walk.y1) });
       }
+      /* v2.3.2975: and where its door is (the middle of its south edge) */
       lots.push({ id: lot.id, name: lot.name, today: lot.today || null, arm: lot.arm, side: lot.side || null,
-        x0: g.cx + lot.x0, y0: g.cy + lot.y0, x1: g.cx + lot.x1, y1: g.cy + lot.y1, town: true });
+        x0: g.cx + lot.x0, y0: g.cy + lot.y0, x1: g.cx + lot.x1, y1: g.cy + lot.y1, town: true,
+        foot: { x: g.cx + lot.foot.x, y: g.cy + lot.foot.y } });
     }
   }
 

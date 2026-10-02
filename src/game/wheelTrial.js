@@ -72,6 +72,38 @@ export const wheelStats = {
 };
 
 export function wheelInfo() { return _info; }
+
+/* ═══ v2.3.2975: THE WHEEL'S OBJECTS ═══
+   Where every building, tree, rock and prop stands comes with the worker's
+   'ready' (`objects`, public/tools/world/core/placing.js); the renderer that
+   draws them is src/rendering/wheelObjects.js.  Its numbers live here so the
+   readout (worldTrial.js) can show them without loading pixi, and it is told
+   when the worker stops, so it lets go of its sprite sheets with it. */
+export const wheelObjectStats = {
+  placed: 0,        /* objects on the Wheel with a picture */
+  drawn: 0,         /* sprites now */
+  pages: 0,         /* sprite sheets in memory */
+  pagesOf: 0,       /* ...of how many */
+  mb: 0,            /* their colours, decoded (w x h x 4) */
+  loading: 0,
+  loads: 0,         /* pages loaded since entering */
+  failed: 0,
+  lateDraws: 0,     /* objects that came on screen before their page */
+  blockers: 0,      /* footprints the walk test is looking at */
+  placeMs: null,    /* the worker's placing */
+  warmMs: null,     /* the way in's wait for the pages round the arrival */
+};
+export function wheelObjectsInfo() { return _info ? _info.objects || null : null; }
+/* `?noobjects` in the address leaves the Wheel bare, as before v2.3.2975 --
+   the ground alone -- so its cost can be told from theirs on a phone */
+export function wheelObjectsOn() {
+  try { return !/(^|[?&])noobjects(=|&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+}
+const _stopFns = new Set();
+export function wheelOnStop(fn) {
+  _stopFns.add(fn);
+  return () => { _stopFns.delete(fn); };
+}
 export function wheelWalkGrid() { return _grid; }
 export function wheelOverview() { return _overview; }
 export function wheelRunning() { return !!_w; }
@@ -269,6 +301,8 @@ export function wheelMapInfo() { return _info ? _info.map || null : null; }
 
 /* Stop the worker and let go of everything it gave. */
 export function wheelStop() {
+  /* v2.3.2975: the objects' sprite sheets first, while the index is there */
+  for (const fn of _stopFns) { try { fn(); } catch (e) { /* one listener's trouble */ } }
   if (_w) { try { _w.terminate(); } catch (e) { /* gone */ } }
   _w = null;
   _initP = null;

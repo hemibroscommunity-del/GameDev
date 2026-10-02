@@ -54,7 +54,7 @@
    Vite alias does not exist. */
 import { ZONES } from '../data/zones.js';
 import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/effects.js';
-import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo } from './wheelTrial.js';
+import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo, wheelObjectStats, wheelObjectsInfo, wheelObjectsOn } from './wheelTrial.js';
 import { setAlwaysDay } from './timeOfDay.js';
 
 export const WORLD_TRIAL_ZONE = 'worldview';
@@ -165,6 +165,8 @@ export function applyWorldTrial() {
          sound under the player now, and the map (its places, for walking to) */
       ground: (x, y) => wheelGroundAt(x, y), surface: () => footstepSurface(window._gameState && window._gameState.current),
       wheelMap: () => wheelMapInfo(),
+      /* v2.3.2975: the objects' numbers */
+      objects: () => wheelObjectStats,
       map: () => { const c = worldTrialMapPicture(WORLD_TRIAL_ZONE); return c ? { w: c.width, h: c.height } : null; } };
   }
   return true;
@@ -274,7 +276,23 @@ async function preloadWheel() {
   const steps = loadGroundSteps();
   const info = await wheelStart();
   if (info.arrival) setExits(exitBeside(info.arrival), info.arrival, 'west');
+  /* v2.3.2975: and the sprite sheets of the objects round the arrival --
+     the town's buildings and props -- so the town is standing when the
+     overlay lifts, loading WHILE the worker lays the first screen of ground
+     rather than after it (src/rendering/wheelObjects.js; imported here, not
+     at the top, because this module must load in Node with no pixi) */
+  const objects = (async () => {
+    try {
+      const wo = await import('../rendering/wheelObjects.js');
+      wo.wheelObjectsResetCounts();
+      /* ...and Mayor Bro's own copy of his picture: town's is freed a beat
+         after you leave town (npcSprites.js loadWheelNpcArt) */
+      const ns = await import('../rendering/npcSprites.js');
+      await Promise.all([wheelObjectsOn() ? wo.wheelObjectsWarm(WORLDVIEW_ARRIVAL.x, WORLDVIEW_ARRIVAL.y, WARM_OBJECTS_X, WARM_OBJECTS_Y) : null, ns.loadWheelNpcArt()]);
+    } catch (e) { /* no objects: the ground alone, as before */ }
+  })();
   await wheelWarm(WORLDVIEW_ARRIVAL.x, WORLDVIEW_ARRIVAL.y, 360, 620);
+  await objects;
   await Promise.race([steps, new Promise((r) => setTimeout(r, STEPS_WAIT_MS))]);
   _ready = true;
   wheelStats.entryMs = Math.round(performance.now() - t0);
@@ -287,6 +305,10 @@ async function preloadWheel() {
    one dirt step until the owner says otherwise.  Over water or ground not
    laid yet, the last sound heard. */
 const STEPS_WAIT_MS = 5000;
+/* v2.3.2975: how far round the arrival (game px either way, and up from
+   below for tall pictures) the objects' sheets are loaded before the
+   overlay lifts: a portrait phone shows about 585 x 1270 game px */
+const WARM_OBJECTS_X = 420, WARM_OBJECTS_Y = 720;
 let _lastSurface = null;
 export function footstepSurface(S) {
   if (!S || !S.player || !isWheelTrialZone(S.currentZone)) return null;
@@ -408,6 +430,11 @@ function wheelHud(S) {
     (wheelEdges().length ? 'edges   ' + wheelEdges().length + ' with edge pieces\n' : '') +
     /* v2.3.2951: the pairs of alike grounds with a blend picture */
     (wheelBlends().length ? 'blends  ' + wheelBlends().length + ' made\n' : '') +
+    /* v2.3.2975: the objects -- drawn now, sprite sheets in memory, and
+       any that came on screen before their sheet */
+    (wheelObjectsInfo() ? 'objects ' + wheelObjectStats.drawn + ' drawn · ' + wheelObjectStats.pages + '/' + wheelObjectStats.pagesOf + ' sheets ~' +
+      wheelObjectStats.mb.toFixed(0) + ' MB' + (wheelObjectStats.loading ? ' +' + wheelObjectStats.loading : '') +
+      (wheelObjectStats.lateDraws ? ' · ' + wheelObjectStats.lateDraws + ' late' : '') + (wheelObjectStats.failed ? ' · ' + wheelObjectStats.failed + ' failed' : '') + '\n' : '') +
     'here    ' + (here ? here.name.slice(0, 34) + (here.water ? '' : here.made ? ' ✓' : ' (not made)') : '…') +
     /* only when something went wrong: what, so a phone screenshot says it */
     (s.failures ? '\nfailed  ' + s.failures + ': ' + String(s.lastFailure || '').slice(0, 40) : '');

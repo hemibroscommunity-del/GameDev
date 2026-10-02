@@ -31,6 +31,8 @@
  *
  * MESSAGES (all answered in order, one at a time):
  *   { type: 'init', search }     -> { type: 'ready', ... } (see init below;
+ *                                   v2.3.2975: `objects`, where every object stands --
+ *                                   core/placing.js -- and `objects.mayor`, Mayor Bro's spot;
  *                                   v2.3.2947: `edges`, the grounds with edge pieces;
  *                                   v2.3.2951: `blends`, the pairs with a blend;
  *                                   v2.3.2948: `search`, the page's address query:
@@ -54,6 +56,7 @@ import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 import { wheelMap, whereWords } from './wheelmap.js';
 import { stepOf, cleanSteps } from './footsteps.js';
+import { placeObjects, mayorSpot, objectFootprints } from './placing.js';
 
 const TILE = PIXEL.groundTile;                                    /* 1024 px a swatch */
 const K = Math.round(PLAN.worldPxPerArtPx / PIXEL.gamePxPerArtPx); /* 3 ground px a plan art px: 2 a game px */
@@ -64,6 +67,7 @@ const UNDER = 2;            /* v2.3.2967: art px (3 game px) a byte of a piece's
 const OVERVIEW_CELLS = 4;   /* blueprint cells an overview pixel */
 const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too; v2.3.2951: and blends -- the town's busiest piece needs about 13) */
 const GAME_BASE = '/world/ground/';
+const OBJECTS_BASE = '/world/objects/';   /* v2.3.2975: the Object Studio's "Download for the game", repacked */
 const STUDIO_DB = 'brotown-ground-studio';
 
 let W = null;               /* { bp, mm } once ready: bp is the light copy (no per-cell layers) --
@@ -232,10 +236,23 @@ async function init(m) {
   /* v2.3.2966: the map the minimap and the world map draw (wheelmap.js),
      and each cell's region and tier, kept for "where am I" (6 MB) */
   const map = wheelMap(PLAN, full);
+  /* v2.3.2975: where every object stands (placing.js) -- worked out here,
+     once, from the blueprint, and handed to the game, which draws the ones
+     near you and stops you at their footprints (src/rendering/wheelObjects.js) */
+  const tp0 = performance.now();
+  const objects = placeObjects(PLAN, full);
+  objects.placeMs = Math.round(performance.now() - tp0);
+  objects.mayor = mayorSpot(PLAN, full);
   W = { bp, mm, reg: full.reg, tier: full.tier, regionIds: full.regionIds, map };
   const t1 = performance.now();
+  const objMan = objectsManifest();
   await findSwatches(mm, edgePiecesOn(m && m.search), blendsOn(m && m.search));
   const swatchMs = Math.round(performance.now() - t1);
+  /* v2.3.2975: each object's footprint from its picture's size, and which
+     have pictures (an object with none is not drawn and stops nobody) */
+  objects.manifest = await objMan;
+  const foot = objectFootprints(objects, objects.manifest);
+  objects.present = foot.present; objects.boxOf = foot.boxOf; objects.boxes = foot.boxes;
   /* you arrive in the town square, as the Ground Studio's first spot */
   const ax = g.cx, ay = g.cy + 0.25 * g.P;
   const made = Object.create(null), edges = [], blends = [];
@@ -261,7 +278,11 @@ async function init(m) {
     made, edges, blends: blends.sort(),
     map,
     planMs, swatchMs,
-  }, [bits.buffer, ov.data.buffer]);
+    /* v2.3.2975: the objects, as placing.js gives them (typed arrays, moved
+       not copied) */
+    objects,
+  }, [bits.buffer, ov.data.buffer, objects.kind.buffer, objects.piece.buffer, objects.flip.buffer, objects.x.buffer, objects.y.buffer,
+    objects.boxOf.buffer, objects.boxes.buffer]);
 }
 
 /* The swatch under a game position, by its index in `catalog` -- and
@@ -273,6 +294,17 @@ function whereIs(x, y) {
   if (!(bx >= 0 && by >= 0 && bx < bp.w && by < bp.h)) return { q: null };
   const c = by * bp.w + bx, region = W.regionIds[W.reg[c]] || null, tier = W.tier[c];
   return { q: mm.mat[c], reg: region, tier, words: whereWords(W.map, region, tier) };
+}
+
+/* v2.3.2975: the game's objects manifest -- which pictures there are, and
+   on which sprite sheet; null when there is none (nothing is drawn) */
+async function objectsManifest() {
+  try {
+    const r = await fetch(OBJECTS_BASE + 'manifest.json?t=' + Date.now(), { cache: 'no-cache' });
+    if (!r.ok) return null;
+    const man = await r.json();
+    return man && Array.isArray(man.objects) && Array.isArray(man.atlases) ? man : null;
+  } catch (e) { return null; }
 }
 
 /* ── the swatches ── */

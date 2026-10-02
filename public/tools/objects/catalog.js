@@ -55,8 +55,9 @@ export const ENDS = {
    they were too small in the game.  Maybe could've been larger too." --
    140% was the top of the size menu.  So a building is now about three
    and a half people wide, and the menu's 140% goes nearly twice the old
-   plan.  The plots grow to match when the buildings are placed (the
-   placing round; plan.js town.lot is unchanged until then).  `sizeWas`
+   plan.  The plots grew to match when the buildings were placed (v2.3.2975:
+   plan.js town.lot, 405 game px wide, the town laid out round them --
+   world/core/layout.js townPlan).  `sizeWas`
    is the old size, so a size chosen against it, or a picture made from
    its prompt, is still known (objects/app.js). */
 const PLOT_W = 386, HALL_W = 406;

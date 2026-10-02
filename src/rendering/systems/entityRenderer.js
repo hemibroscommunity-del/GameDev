@@ -14853,9 +14853,15 @@ export class EntityRenderer {
          bind it whenever it becomes available rather than once at creation. */
       const fig = display._fig;
       if (fig) {
-        if (fig.texture === Texture.EMPTY) {
+        /* v2.3.2975: and again whenever the one bound was FREED under it --
+           a townsperson whose art is let go (town's scenery, a beat after you
+           leave town) must fall back to the registry's live copy, or to
+           nothing, not draw a destroyed source (alphaMode: mp-wheelobjects,
+           Mayor Bro walking into the Wheel) */
+        const bound = fig.texture;
+        if (bound === Texture.EMPTY || bound.destroyed || !bound.source || bound.source.destroyed) {
           const t = getNpcTexture(display._figSrc);
-          if (t) fig.texture = t;
+          fig.texture = t && !t.destroyed && t.source && !t.source.destroyed ? t : Texture.EMPTY;
         }
         /* Only hide the emoji stand-in once real art is actually on screen —
            otherwise a failed load leaves an NPC you cannot see at all. */

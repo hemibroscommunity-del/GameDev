@@ -115,7 +115,9 @@ const sqAt = (p) => { const [x, y] = art(p); const c = cellAt(g, x, y); return c
   ok('the Town Hall plot is in the middle of the town square', at(g.cx, g.cy) === C.lot && at(g.cx + 170, g.cy + 170) === C.plaza && regAt(g.cx, g.cy) === 'town');
   ok('Main Street runs north-south through town to its gates', [-780, -430, 430, 780].every((dy) => at(g.cx, g.cy + dy) === C.street));
   ok('Market Row runs east-west through town to its gates', [-780, -430, 430, 780].every((dx) => at(g.cx + dx, g.cy) === C.street));
-  ok('past the gates the streets become roads', [[0, -1000], [1000, 0], [0, 1000], [-1000, 0]].every(([dx, dy]) => at(g.cx + dx, g.cy + dy) === C.path));
+  /* (v2.3.2975: the gates moved out with the bigger plots, 867 -> 1050 art px) */
+  const PAST = PLAN.town.gate + 150;
+  ok('past the gates the streets become roads', [[0, -PAST], [PAST, 0], [0, PAST], [-PAST, 0]].every(([dx, dy]) => at(g.cx + dx, g.cy + dy) === C.path));
   const townLots = bp.lots.filter((l) => l.town), places = bp.lots.filter((l) => !l.town);
   ok('Brotown has the Town Hall plus 16 plots along its streets', townLots.length === 17 && townLots.every((l) => at((l.x0 + l.x1) / 2, (l.y0 + l.y1) / 2) === C.lot), townLots.length);
   /* v2.3.2960, owner: "The one thing I want to change are the boards. They
@@ -175,7 +177,8 @@ const sqAt = (p) => { const [x, y] = art(p); const c = cellAt(g, x, y); return c
   ok('a road reaches every gate and landmark', unreached.length === 0, unreached);
   ok('the town to a gate is about 19 zones: two minutes at a run', Math.abs(W.gateR / W.Z - 19.1) < 0.3, W.gateR / W.Z);
   const trunks = new Set(PLAN.roads.flatMap((r) => r.pts.map((p) => p.join(','))));
-  ok('every road starts at a town gate or ON another road (so forks join cleanly)', PLAN.roads.every((r) => Math.hypot(r.pts[0][0], r.pts[0][1]) < 1.2 ||
+  const gateSq = PLAN.town.gate / (PLAN.square.px - PLAN.square.overlap);
+  ok('every road starts at a town gate or ON another road (so forks join cleanly)', PLAN.roads.every((r) => Math.hypot(r.pts[0][0], r.pts[0][1]) < gateSq + 0.01 ||
     PLAN.roads.some((o) => o !== r && o.pts.some((p) => p[0] === r.pts[0][0] && p[1] === r.pts[0][1]))) && trunks.size > 0);
 
   /* the river */
@@ -327,7 +330,7 @@ console.log('ground');
   ok('a pass is its two elements\' border land', passMid.every(([m, want]) => m === want), passMid.filter(([m, w]) => m !== w));
   const [cx1, cy1] = art([1.9, 0.9]);
   ok('the sea is water, the commons is the commons, the Town Hall stands on the town yard, roads are road',
-    matAt(bp.x0 + 10, bp.y0 + 10) === 'water' && matAt(cx1, cy1) === 'commons' && matAt(g.cx, g.cy) === 'town-yard' && matAt(g.cx, g.cy - 1000) === 'road');
+    matAt(bp.x0 + 10, bp.y0 + 10) === 'water' && matAt(cx1, cy1) === 'commons' && matAt(g.cx, g.cy) === 'town-yard' && matAt(g.cx, g.cy - (PLAN.town.gate + 150)) === 'road');
   const rect = (sx, sy, w, h) => { const [x, y] = art([sx, sy]); return { x: Math.round(x - w / 2), y: Math.round(y - h / 2), w, h }; };
   const R0 = rect(-2.02, 0, 512, 512);
   const one = composeGround(PLAN, bp, mm, R0, {}), two = composeGround(PLAN, bp, mm, R0, {});
@@ -433,8 +436,10 @@ console.log('ground');
   /* v2.3.2945, owner, on Main Street in the Ground Studio: "I think wooden
      plank bits are on the edges."  The one-cell boardwalks crumbled into
      specks along the street; built surfaces are now laid on their cells. */
-  /* up the north street from the square, where its boardwalks run */
-  const RT = { x: Math.round(g.cx - 200), y: Math.round(g.cy - 600), w: 400, h: 320 };
+  /* along the doors of the first two plots up Main Street, where a plan that
+     lays boardwalks lays them (v2.3.2975: along each plot's door, its south
+     side, since the buildings came -- every one faces south) */
+  const RT = { x: Math.round(g.cx - 360), y: Math.round(g.cy - 300), w: 720, h: 120 };
   /* (v2.3.2960: on the plan that lays the boardwalks -- they are put away) */
   const mmW = materialMap(PLANW, bpW);
   const town = composeGround(PLANW, bpW, mmW, RT, {}, { scale: 3 });
@@ -513,9 +518,9 @@ console.log('ground');
     }
     return { bad, boards: (d.along === 'x' ? o.w : o.h) / 24, startsOnSeam: ((d.along === 'x' ? r.x : r.y) * 3) % 24 === 0 };
   };
-  const mill = bDecks.find((d) => d.road === 'west'), mainSt = wDecks.find((d) => d.along === 'y');
+  const mill = bDecks.find((d) => d.road === 'west'), mainSt = wDecks.find((d) => d.lot === 'blacksmith') || wDecks[0];
   const sm = stripes(mill), sw = stripes(mainSt, PLANW, bpW, mmW);
-  ok(`boards lie across the deck, 12 game px each, lined up with its ends: the Mill Bridge ${sm.boards} boards, a Main Street boardwalk ${sw.boards}`,
+  ok(`boards lie across the deck, 12 game px each, lined up with its ends: the Mill Bridge ${sm.boards} boards, the Blacksmith's boardwalk ${sw.boards}`,
     mill.along === 'x' && sm.bad === 0 && sw.bad === 0 && sm.startsOnSeam && sw.startsOnSeam && Number.isInteger(sm.boards) && Number.isInteger(sw.boards), { sm, sw });
   /* a plank picture: boards of uneven widths (80-110 px, as ChatGPT draws
      them), each one flat colour, dark seams between -- so every board laid
@@ -600,7 +605,8 @@ console.log('ground');
   };
   const sqCols = [[150, 140, 120], [178, 168, 146], [204, 196, 176], [230, 224, 206]], ydCols = [[120, 70, 30], [150, 92, 40], [180, 116, 52], [206, 140, 70]];
   const mixTiles = { plaza: { A: texTile(256, sqCols, 5) }, 'town-yard': { A: texTile(256, ydCols, 9) } };
-  const mixLineY = bp.y0 + (Math.floor((g.cy - bp.y0) / bp.scale) + 14) * bp.scale;
+  /* (v2.3.2975: the square's edge from the plan -- it grew, 217 -> 240) */
+  const mixLineY = bp.y0 + (Math.floor((g.cy - bp.y0) / bp.scale) + Math.round(PLAN.town.square / bp.scale)) * bp.scale;
   const mixRM = { x: Math.round(g.cx - 216), y: mixLineY - 64, w: 120, h: 128 };
   const mixed2 = composeGround(PLAN, bp, mm, mixRM, mixTiles, { scale: 3 });
   const mixIsSq = (i) => mm.ids[mixed2.mat[i]] === 'plaza';
@@ -1359,6 +1365,165 @@ console.log('objects found by count (v2.3.2971)');
   const scene = objectBoxes(sc.d, sc.w, sc.h, 4);
   ok('a scene left round the edges of a picture is background, not an object: only the bush in the middle is found',
     scene.boxes.length === 1 && scene.boxes[0].x === 500 && scene.boxes[0].w === 160, scene.boxes.map((b) => [b.x, b.y, b.w, b.h]));
+}
+
+/* ── v2.3.2975: the objects on the Wheel -- placed, and in the game ──
+   Owner, 2026-10-02: "Wire this stuff into the game.  Put mayor bro in town
+   too." */
+console.log('objects on the Wheel (v2.3.2975)');
+{
+  const { placeObjects, footprintOf, objectFootprints, mayorSpot, PLACING } = await import('../../public/tools/world/core/placing.js');
+  const { townPlan } = await import('../../public/tools/world/core/layout.js');
+  const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
+  const { pagesByColour, PAGE_COLOURS, PAGE_KINDS } = await import('../../public/tools/objects/atlas.js');
+  const { decodePNG } = await import('./png.mjs');
+  const fs = await import('node:fs');
+  const WPA = PLAN.worldPxPerArtPx;
+  const t0 = Date.now();
+  const P1 = placeObjects(PLAN, bp);
+  const placeMs = Date.now() - t0;
+  const P2 = placeObjects(PLAN, buildBlueprint(PLAN));
+  const sameArr = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  ok(`every object on the Wheel is placed (${P1.n}, ${placeMs} ms), the same every time`,
+    P1.n > 8000 && P1.n < 40000 && placeMs < 3000 && P1.version === PLACING &&
+    ['kind', 'piece', 'flip', 'x', 'y'].every((k) => sameArr(P1[k], P2[k])), { n: P1.n, placeMs });
+  const cat = objectCatalog(), byId = Object.fromEntries(cat.map((e) => [e.id, e]));
+  const idOf = (i) => P1.kinds[P1.kind[i]];
+  const cellOfG = (x, y) => Math.floor(y / WPA / bp.scale) * bp.w + Math.floor(x / WPA / bp.scale);
+  const clsAtG = (x, y) => bp.cls[cellOfG(x, y)];
+  const regAtG = (x, y) => bp.regionIds[bp.reg[cellOfG(x, y)]];
+  const gOf = (ax, ay) => [(ax - bp.x0) * WPA, (ay - bp.y0) * WPA];
+
+  /* the buildings */
+  const T = PLAN.town, tp = townPlan(T), townLots = bp.lots.filter((l) => l.town);
+  const bAt = Object.create(null);
+  for (let i = 0; i < P1.n; i++) if (byId[idOf(i)] && byId[idOf(i)].kind === 'building') bAt[idOf(i)] = [P1.x[i], P1.y[i]];
+  ok('every building stands on its own plot, the bottom of its steps on the plot\'s door, the Town Hall too',
+    townLots.length === 17 && townLots.every((l) => { const b = bAt[l.id], [fx, fy] = gOf(l.foot.x, l.foot.y); return b && Math.abs(b[0] - fx) < 1 && Math.abs(b[1] - fy) < 1; }), Object.keys(bAt).length);
+  /* every door opens to the south onto a street, the square or a walk */
+  const shut = townLots.filter((l) => { const [fx, fy] = gOf(l.foot.x, l.foot.y + T.lot.porch + 6); const c = clsAtG(fx, fy); return c !== C.street && c !== C.plaza; });
+  ok('every building faces south, as drawn, and its door opens onto a street, the square, the Back Lane or a front walk to Main Street',
+    shut.length === 0, shut.map((l) => l.id));
+  /* no roof hides another's door */
+  const hid = [];
+  for (const a of tp.lots) for (const b of tp.lots) {
+    if (a === b) continue;
+    const tall = a.arm === 'square' ? T.hall.d * 2 : T.lot.tall;
+    if (b.foot.x > a.x0 && b.foot.x < a.x1 && b.foot.y > a.foot.y - tall && b.foot.y < a.foot.y) hid.push([a.id, b.id]);
+  }
+  ok('no building stands so close in front of another that its roof hides that one\'s door', hid.length === 0, hid);
+  ok('the plots are as big as the buildings drawn for them: 386 game px wide, 465 tall at most (the tallest is 453)',
+    T.lot.w * WPA >= 386 + 12 && T.lot.tall * WPA >= 453 && T.hall.w * WPA >= 406, { w: T.lot.w * WPA, tall: T.lot.tall * WPA });
+  /* Main Street: two a side up and down from the square; Market Row's
+     north side straight onto the street; its south side and the first ones
+     south onto the Back Lane */
+  const lane = tp.fronts.find((f) => f.lane);
+  const onLane = tp.lots.filter((l) => Math.abs(l.foot.y - lane.y0) < 1).map((l) => l.id).sort();
+  ok(`the Back Lane runs behind Market Row from end to end, across Main Street, and six doors open onto it (${onLane.join(', ')})`,
+    !!lane && lane.x0 <= -tp.rowEnd && lane.x1 >= tp.rowEnd && onLane.length === 6, onLane);
+
+  /* the town's furniture */
+  const townKinds = new Set(cat.filter((e) => e.group === 'town').map((e) => e.id));
+  const inTownIds = [];
+  for (let i = 0; i < P1.n; i++) if (regAtG(P1.x[i], P1.y[i]) === 'town') inTownIds.push(idOf(i));
+  const gates = [];
+  for (let i = 0; i < P1.n; i++) if (idOf(i) === 'gate') gates.push([P1.x[i], P1.y[i]]);
+  ok(`the town has its furniture -- lamps, benches, the well, the bragging board, barrels, crates, hay, troughs, hitching rails, the cart, signposts -- and nothing wild (${inTownIds.length} things)`,
+    ['lamp', 'bench', 'well', 'noticeboard', 'barrel', 'crate', 'haybale', 'trough', 'hitch', 'cart', 'signpost'].every((k) => inTownIds.includes(k)) &&
+    inTownIds.every((k) => townKinds.has(k) || byId[k].kind === 'building'), [...new Set(inTownIds)]);
+  const gb = gates.map(([x, y]) => footprintOf('gate', 'prop', x, y, 270, 170));
+  const [mx0, mx1] = [gOf(gridInfo(PLAN).cx - T.main, 0)[0], gOf(gridInfo(PLAN).cx + T.main, 0)[0]];
+  ok('the town gate stands over Main Street at both ends, its two posts beside the street and the street open between them',
+    gates.length === 2 && gb.every((b) => b.length === 2 && b[0].x1 < mx0 + 30 && b[1].x0 > mx1 - 30), gb.map((b) => b.map((q) => Math.round(q.x0))));
+
+  /* nature: on the land, off everything else */
+  const wild = new Set(cat.filter((e) => e.kind === 'nature').map((e) => e.id));
+  const TALL = new Set(['oak', 'orchard', 'pine', 'birch', 'deadtree', 'palm', 'hoodoo', 'pylon', 'coil', 'netpole', 'slimetree', 'mangrove', 'jungletree', 'wildfruit']);
+  const badSpot = [], wrongLand = [], tooNear = [];
+  const free = (c) => c === C.ground || c === C.obstacle;
+  let big = 0, bigInClump = 0;
+  for (let i = 0; i < P1.n; i++) {
+    const id = idOf(i);
+    if (!wild.has(id)) continue;
+    const x = P1.x[i], y = P1.y[i], c = clsAtG(x, y), r = regAtG(x, y);
+    if (!free(c)) badSpot.push([id, CLASS_IDS[c]]);
+    if (r !== byId[id].group) wrongLand.push([id, r]);
+    /* the trees, pylons and rock stacks (the kinds only the tall layer
+       places): a free cell all round the one they stand in */
+    if (TALL.has(id)) {
+      big++;
+      if (c === C.obstacle) bigInClump++;
+      for (const [u, v] of [[-24, 0], [24, 0], [0, -24], [0, 24]]) { const cc = clsAtG(x + u, y + v); if (!free(cc)) { tooNear.push([id, CLASS_IDS[cc]]); break; } }
+    }
+  }
+  ok('nothing wild stands on a road, a street, a bridge, the railway, water, lava, a cliff, a plot, a camp, a landmark or a gate', badSpot.length === 0, badSpot.slice(0, 6));
+  ok('every land grows only its own things: no pine in the dunes, no cactus in the snow', wrongLand.length === 0, wrongLand.slice(0, 6));
+  ok('a tree or anything tall keeps a cell (24 game px) all round from a road, water or a cliff, so no trunk stands in one', tooNear.length === 0, tooNear.slice(0, 6));
+  ok(`the plan's obstacle clumps are woods and rock fields at last: most of the tall things stand in them (${bigInClump} of ${big})`,
+    big > 2000 && bigInClump / big > 0.5, { big, bigInClump });
+  const perLand = Object.create(null);
+  for (let i = 0; i < P1.n; i++) { const g = byId[idOf(i)].group; perLand[g] = (perLand[g] || 0) + 1; }
+  ok('every land has its things', ['commons', 'frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'].every((g) => perLand[g] > 150), perLand);
+  /* the shore things by the water */
+  const isWet = (c) => c === C.water || c === C.river || c === C.ocean;
+  let shoreN = 0, shoreNear = 0;
+  for (let i = 0; i < P1.n; i++) {
+    if (!['driftwood', 'rowboat', 'netpole', 'shell'].includes(idOf(i))) continue;
+    shoreN++;
+    let near = false;
+    for (let d = 24; d <= 96 && !near; d += 24) for (const [u, v] of [[-d, 0], [d, 0], [0, -d], [0, d], [-d, -d], [d, -d], [-d, d], [d, d]]) if (isWet(clsAtG(P1.x[i] + u * 0.75, P1.y[i] + v * 0.75)) || isWet(clsAtG(P1.x[i] + u, P1.y[i] + v))) { near = true; break; }
+    if (near) shoreNear++;
+  }
+  ok(`the sea caves' driftwood, boats, nets and shells are mostly by the water (${shoreNear} of ${shoreN} within 96 game px)`, shoreN > 100 && shoreNear / shoreN > 0.5, { shoreN, shoreNear });
+
+  /* the game's pictures and footprints */
+  const man = JSON.parse(fs.readFileSync(new URL('../../public/world/objects/manifest.json', import.meta.url)));
+  const foot = objectFootprints(P1, man);
+  const hall = P1.kinds.indexOf('townhall');
+  ok('an object with no picture yet (the Town Hall) is not drawn and stops nobody; every other has its footprint',
+    foot.present[hall] === 0 && foot.present.reduce((a, b) => a + b, 0) === man.objects.length && foot.boxes.length > 4 * 5000, { present: foot.present.reduce((a, b) => a + b, 0) });
+  const boxes = [];
+  for (let i = 0; i < P1.n; i++) for (let b = foot.boxOf[i]; b < foot.boxOf[i + 1]; b++) boxes.push([foot.boxes[b * 4], foot.boxes[b * 4 + 1], foot.boxes[b * 4 + 2], foot.boxes[b * 4 + 3], idOf(i)]);
+  const g0 = gridInfo(PLAN);
+  const [arX, arY] = gOf(g0.cx, g0.cy + 0.25 * g0.P);
+  const ms = mayorSpot(PLAN, bp);
+  const inside = (x, y, m = 0) => boxes.filter((q) => x > q[0] - m && x < q[2] + m && y > q[1] - m && y < q[3] + m).map((q) => q[4]);
+  ok('where you arrive and where Mayor Bro stands are clear of every footprint, with room round them',
+    inside(arX, arY, 40).length === 0 && !!ms && inside(ms.x, ms.y, 24).length === 0 && regAtG(ms.x, ms.y) === 'town' && clsAtG(ms.x, ms.y) === C.plaza,
+    { arrival: inside(arX, arY, 40), mayor: ms && inside(ms.x, ms.y, 24) });
+  /* a building's footprint: its plot's width, back from its door */
+  const bBox = boxes.filter((q) => byId[q[4]].kind === 'building');
+  ok('each building stops you on its own plot: its width, and back from its porch half its height (the roof you walk behind)',
+    bBox.length === 16 && bBox.every((q) => { const l = townLots.find((t) => t.id === q[4]); const [x0, y0] = gOf(l.x0, l.y0), [x1, y1] = gOf(l.x1, l.y1); return q[0] >= x0 - 2 && q[2] <= x1 + 2 && Math.abs(q[3] - y1) < 1 && q[3] - q[1] > 140; }), bBox.length);
+
+  /* the sprite sheets: palette PNGs, a few objects a page, a building a page */
+  const dir = new URL('../../public/world/objects/', import.meta.url);
+  let palette = 0, bytes = 0, framesOk = true, maxCol = 0;
+  const buildingPages = man.atlases.filter((a) => a.group === 'buildings');
+  for (const a of man.atlases) {
+    const buf = fs.readFileSync(new URL(a.image, dir));
+    bytes += buf.length;
+    if (buf[25] === 3) palette++;
+    const sheet = JSON.parse(fs.readFileSync(new URL(a.sheet, dir)));
+    const img = decodePNG(buf);
+    const cols = new Set();
+    for (let o = 0; o < img.data.length; o += 4) if (img.data[o + 3]) cols.add((img.data[o] << 16) | (img.data[o + 1] << 8) | img.data[o + 2]);
+    maxCol = Math.max(maxCol, cols.size);
+    for (const o of man.objects) for (const pc of o.pieces) if (pc.atlas === a.name) {
+      const fr = sheet.frames[pc.frame];
+      if (!fr || fr.frame.w !== pc.w || fr.frame.h !== pc.h || fr.anchor.x !== 0.5 || fr.anchor.y !== 1 || Math.abs(pc.gameW - pc.w / 2) > 0.01) framesOk = false;
+    }
+  }
+  ok(`the game's objects are ${man.atlases.length} sprite sheets, every one a palette PNG of ${PAGE_COLOURS} colours or fewer (at most ${maxCol}): ${(bytes / 1048576).toFixed(1)} MB, where one full-colour sheet a land was 15.7`,
+    palette === man.atlases.length && maxCol <= PAGE_COLOURS && bytes < 7 * 1048576, { palette, bytes, maxCol });
+  ok('...each building a page of its own, so only the ones near you are in memory', buildingPages.length === 16 && buildingPages.every((a) => a.kinds.length === PAGE_KINDS.buildings), buildingPages.length);
+  ok('...every object\'s every piece a frame of its page, its size, its anchor at its foot, 2 px a game px', framesOk);
+  /* the packer itself: kinds join a page while their colours fit */
+  const fake = (id, n, w = 60, h = 60) => ({ id, colours: new Set(Array.from({ length: n }, (_, k) => (id.length << 16) + k * 7 + id.charCodeAt(0) * 1000)), items: [{ name: id + '-1', w, h }] });
+  const pg = pagesByColour([fake('a', 64), fake('bb', 64), fake('ccc', 64), fake('dddd', 64), fake('eeeee', 64)]);
+  const pg1 = pagesByColour([fake('a', 64), fake('bb', 64)], { kinds: 1 });
+  ok('the packer puts kinds on a page while their colours together fit a palette PNG: three of 64 colours a page, then the next',
+    pg.length === 2 && pg[0].objects.length === 3 && pg[0].colours <= 255 && pg1.length === 2, pg.map((p) => p.objects));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

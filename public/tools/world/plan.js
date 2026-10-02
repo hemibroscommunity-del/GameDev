@@ -244,11 +244,25 @@ export const PLAN = {
        and the town's ground runs up to the street meanwhile.  `true` lays
        them again, exactly as before (layout.js pass 5; the tests do). */
     boardwalks: false,
-    square: 217,       /* the town square's half-size */
-    hall: 104,         /* the Town Hall plot's half-size, in the square's middle */
-    lot: { front: 200, deep: 200, gap: 35, first: 295, perSide: 2 },
+    /* v2.3.2975: the town laid out round the buildings the owner drew
+       (core/layout.js townPlan): each faces south, its door at the bottom,
+       so every door opens onto the square, a street, the Back Lane or a
+       front walk, and no roof hides another's door.  Was: square 217, the
+       hall's plot 208 square, plots 200 x 200 (300 game px), two a side
+       from 295 out, gates at 867. */
+    square: 240,       /* the town square's half-size */
+    /* the Town Hall's plot, in the square's middle: 420 x 240 game px, its
+       door to the south (the building is planned 406 wide, catalog.js) */
+    hall: { w: 280, d: 160 },
+    /* a plot: `w` wide (405 game px; the buildings are 386), `d` of ground
+       from its door back (225 game px), room for a building drawn `tall`
+       (465 game px; the tallest is 453), a front walk `walk` wide, `gap`
+       between two side by side, `verge` between Main Street and a plot
+       beside it, `porch` between a door and the street or square it opens
+       onto; `perSide` plots a side on each street arm */
+    lot: { w: 270, d: 150, tall: 310, walk: 60, gap: 34, verge: 14, porch: 8, perSide: 2 },
     yard: 78,          /* town ground kept behind the plots */
-    gate: 867,         /* where the streets leave town and become roads */
+    gate: 1050,        /* where the streets leave town and become roads (v2.3.2975: was 867) */
     wobble: 35,        /* how ragged the town's edge is */
     hallLot: { id: 'townhall', name: 'Town Hall', today: 'mayor (NPC)' },
     lots: {
