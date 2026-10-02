@@ -282,7 +282,18 @@ remnant to migrate server-side, not a mode to preserve.
   looks (fresh on a river or pond cell, shallows where the water's share is
   low, the open sea past them, both lines wandering), the foam the game's
   own, the flat blues where a picture is not made: WORLD-MAP-PIPELINE "The
-  water's own pictures")
+  water's own pictures"; and since v2.3.2981 the dunes' palms ring OASES --
+  the owner: "The palm trees don't belong in the desert unless they
+  surround water" -- ten pools in plan.js (`clear` of roads, rail, camps and
+  landmarks: layout.js, as they are laid after the features), a ring each
+  in placing.js (`oasis`; none on the near side, each leaning in, hoodoos
+  8 cells off), and a LEANING PICTURE STANDS ON ITS TRUNK: the catalog's
+  `lean` mirrors any piece leaning the other way and puts its manifest
+  `foot` on the trunk on the way into the game (`standPiece`, objects/
+  atlas.js, in the studio's download and repack-objects.mjs), and the game
+  anchors every Wheel sprite at its foot (the palms' trunks were drawn 65-96
+  px from where they stood): WORLD-MAP-PIPELINE "Oases in the Wind Dunes";
+  the monsters' places re-baked)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

@@ -23,8 +23,8 @@ import fs from 'fs';
 import path from 'path';
 import { unzip } from '../../public/tools/world/core/zip.js';
 import { encodePalettePng } from '../../public/tools/world/core/png8.js';
-import { pagesByColour, coloursIn, PAGE_KINDS } from '../../public/tools/objects/atlas.js';
-import { GROUPS } from '../../public/tools/objects/catalog.js';
+import { pagesByColour, coloursIn, PAGE_KINDS, standPiece } from '../../public/tools/objects/atlas.js';
+import { GROUPS, objectCatalog } from '../../public/tools/objects/catalog.js';
 import { decodePNG, encodePNG } from './png.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
@@ -112,6 +112,24 @@ if (!FRESH && fs.existsSync(path.join(OUT, 'manifest.json'))) {
 }
 for (const [id, o] of incoming) objects.set(id, o);
 
+/* v2.3.2981: an object the catalog says leans (the palms) stands on its
+   trunk, every piece leaning the catalog's way -- mirrored if drawn the
+   other way (atlas.js standPiece, as the studio's own "Download for the
+   game" does); any other keeps its foot at the middle of its bottom row */
+const leanOfId = Object.create(null);
+for (const e of objectCatalog()) if (e.lean) leanOfId[e.id] = e.lean;
+let mirrored = 0;
+for (const [id, o] of objects) {
+  o.info = { ...o.info, pieces: (o.info.pieces || []).map((p) => ({ ...p })) };
+  for (const p of o.pieces) {
+    const st = standPiece(leanOfId[id], p.rgba, p.w, p.h);
+    if (st.mirrored) { mirrored++; console.log(`  ${p.name}: leaned the other way -- mirrored`); }
+    p.rgba = st.rgba;
+    const ip = o.info.pieces.find((q) => q.frame === p.name);
+    if (ip) ip.foot = st.foot;
+  }
+}
+
 /* pages, land by land in the studio's order, each object's pieces together */
 const pagesOut = [], where = Object.create(null);
 for (const g of GROUPS) {
@@ -169,5 +187,5 @@ const keep = new Set(['manifest.json', ...files.map(([n]) => n)]);
 for (const f of fs.readdirSync(OUT)) if (!keep.has(f) && /\.(png|json)$/.test(f)) fs.unlinkSync(path.join(OUT, f));
 for (const [n, data] of files) fs.writeFileSync(path.join(OUT, n), data);
 fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 1));
-console.log(`${objects.size} objects (${kept} kept from the game's copy) on ${atlases.length} pages, ${atlases.filter((a) => a.palette).length} of them palette PNGs: ${(total / 1048576).toFixed(2)} MB -> ${path.relative(ROOT, OUT) || OUT}`);
+console.log(`${objects.size} objects (${kept} kept from the game's copy${mirrored ? `, ${mirrored} pieces mirrored to lean the catalog's way` : ''}) on ${atlases.length} pages, ${atlases.filter((a) => a.palette).length} of them palette PNGs: ${(total / 1048576).toFixed(2)} MB -> ${path.relative(ROOT, OUT) || OUT}`);
 for (const a of atlases) console.log(`  ${a.name.padEnd(12)} ${String(a.w).padStart(4)} x ${String(a.h).padEnd(4)} ${a.kinds.join(', ')}`);

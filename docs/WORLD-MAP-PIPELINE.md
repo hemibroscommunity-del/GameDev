@@ -1779,6 +1779,48 @@ fallback, open sea away from the shore, a river all fresh, shore foam then
 shallows then sea, two halves composed apart meeting exactly); the Ground
 Studio's browser test (51 cards in 12 groups, the Water group's prompts).
 
+## Oases in the Wind Dunes (v2.3.2981)
+
+Owner, 2026-10-02: *"The palm trees don't belong in the desert unless they
+surround water to emulate an oasis."*
+
+- **The pools** (`plan.js`, the dunes' last feature): ten, on the sage flats,
+  the dunes and the red mesas (2/4/4; none up on the storm heights), 306–455
+  game px across. The first try was a third of that and the palms hid it:
+  a palm is ~300 game px tall. Each keeps `clear` of the roads, the railway,
+  the camps and the landmarks (`layout.js`, new): those are laid after the
+  features, and a road through a pool would be a road across the water with
+  no bridge.
+- **The palms** (`placing.js`, `oasis`): none out on the sand any more (where
+  one stood, nothing does, so the hoodoos are as thick as before). Every pool
+  gets a ring, a trunk 22–46 game px past the water's edge and on dry ground a
+  cell all round, about 150 px apart (4–9 a pool), **none on the side facing
+  you** (a crown there hides the water — and it leaves a way down to the
+  water), each **leaning in** over the pool. The land's other big things (the
+  hoodoos) keep 8 cells (192 game px) off the water, its cacti 2.
+- **A leaning picture stands on its trunk** (`objects/atlas.js` `standPiece`,
+  the catalog's `lean: 'left'`). The owner's two palms lean opposite ways, their
+  trunks 65 and 96 game px off their pictures' middles — and the game stood
+  every picture on its middle, so a palm's trunk was drawn that far from where
+  it was placed, its footprint bare sand beside it. On the way into the game
+  (the studio's "Download for the game" and `repack-objects.mjs` alike) every
+  piece of a `lean` object that leans the other way is mirrored, and its
+  `foot` in the manifest is where its trunk meets the ground; the game
+  anchors each sprite at its foot (`wheelObjects.js`, and
+  `render-wheel-objects.mjs`). Today only the palm is marked; every other
+  object keeps its foot at the middle of its bottom row, unchanged.
+- **The monsters' places** were baked again: two pools stand at the dunes'
+  inner end.
+
+Tests: test-world-core "the oases" (the pools, their size, nothing running
+into one; every palm by a pool, every pool ringed, none on the near side, each
+leaning in; no hoodoo crowding one; `leanOf`/`standPiece`/`mirrorRGBA`; the
+game's two palms leaning left on their trunks); the Object Studio's browser
+test (two palms drawn leaning opposite ways come out of "Download for the
+game" both leaning left, the right one mirrored pixel for pixel, each foot on
+its trunk); `mp-wheelobjects` (at an oasis its palms drawn standing on their
+trunks, leaning in as placed).
+
 ## The monsters on the Wheel (v2.3.2978)
 
 Owner, 2026-10-02: "can you place the monsters where they belong in their

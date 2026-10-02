@@ -24,7 +24,8 @@
  *             (the ZONE-ASSET rule in CLAUDE.md).
  *   SPRITES   one for each object whose picture can reach the screen, made
  *             as it comes near and destroyed as it goes (never its texture:
- *             that is the page's); anchored at the foot, (0.5, 1), in
+ *             that is the page's); anchored at the foot (the middle of its
+ *             bottom row, or a palm's trunk: v2.3.2981), in
  *             `entities`, so the depth pass sorts them by where they touch the
  *             ground like every other prop (depthSort.js) -- walk north of a
  *             building and its roof hides you.
@@ -72,11 +73,20 @@ function index() {
   const kinds = o.kinds.map((id) => {
     const m = byId[id];
     if (!m || !m.pieces || !m.pieces.length) return null;
-    return m.pieces.map((pc) => ({ page: pageOf[pc.atlas] != null ? pageOf[pc.atlas] : -1, frame: pc.frame, w: pc.gameW, h: pc.gameH }));
+    /* v2.3.2981: `ax`, where it stands across its picture (its foot, a share
+       of its width): the middle for most, the trunk for a leaning palm,
+       whose trunk is far off its picture's middle (objects/atlas.js
+       standPiece) -- so its trunk is drawn where it was placed, on its
+       footprint, and a mirrored one turns on its trunk */
+    return m.pieces.map((pc) => ({ page: pageOf[pc.atlas] != null ? pageOf[pc.atlas] : -1, frame: pc.frame, w: pc.gameW, h: pc.gameH,
+      ax: pc.foot && pc.w > 0 ? Math.min(1, Math.max(0, pc.foot[0] / pc.w)) : 0.5 }));
   });
   const n = o.n, worldW = o.worldW, worldH = o.worldH;
   const cols = Math.ceil(worldW / BUCKET), rows = Math.ceil(worldH / BUCKET);
   const page = new Int16Array(n).fill(-1), w = new Float32Array(n), h = new Float32Array(n);
+  /* the anchor across each picture, and how far it reaches either side of
+     its foot (half its width, more for a palm stood on its trunk) */
+  const ax = new Float32Array(n), reach = new Float32Array(n);
   const frame = new Array(n);
   const count = new Uint32Array(cols * rows + 1);
   let maxH = 0, maxHalfW = 0, placed = 0;
@@ -86,8 +96,9 @@ function index() {
     const pc = ks[o.piece[i] % ks.length];
     if (pc.page < 0) continue;
     page[i] = pc.page; w[i] = pc.w; h[i] = pc.h; frame[i] = pc.frame;
+    ax[i] = pc.ax; reach[i] = Math.max(pc.ax, 1 - pc.ax) * pc.w;
     if (pc.h > maxH) maxH = pc.h;
-    if (pc.w / 2 > maxHalfW) maxHalfW = pc.w / 2;
+    if (reach[i] > maxHalfW) maxHalfW = reach[i];
     placed++;
     count[cellOf(o.x[i], o.y[i], cols, rows) + 1]++;
   }
@@ -99,7 +110,7 @@ function index() {
   wheelObjectStats.placed = placed;
   wheelObjectStats.pagesOf = pageNames.length;
   wheelObjectStats.placeMs = o.placeMs != null ? o.placeMs : null;
-  _idx = { src: o, o, n, cols, rows, start: count, items, page, w, h, frame, maxH, maxHalfW, pageNames, pageMB,
+  _idx = { src: o, o, n, cols, rows, start: count, items, page, w, h, ax, reach, frame, maxH, maxHalfW, pageNames, pageMB,
     sheets: man.atlases.map((a) => BASE + a.sheet) };
   return _idx;
 }
@@ -252,7 +263,7 @@ export class WheelObjects {
     const seen = this._seen || (this._seen = new Set());
     seen.clear();
     each(ix, vx0 - ix.maxHalfW, vy0, vx1 + ix.maxHalfW, vy1 + ix.maxH, (i) => {
-      const x = ix.o.x[i], y = ix.o.y[i], hw = ix.w[i] / 2;
+      const x = ix.o.x[i], y = ix.o.y[i], hw = ix.reach[i];
       if (x + hw < vx0 || x - hw > vx1 || y < vy0 || y - ix.h[i] > vy1) return;
       seen.add(i);
       if (this.sprites.has(i)) return;
@@ -264,7 +275,7 @@ export class WheelObjects {
       const tex = rec.sheet && rec.sheet.textures && rec.sheet.textures[ix.frame[i]];
       if (!tex) return;
       const s = new Sprite(tex);
-      s.anchor.set(0.5, 1);
+      s.anchor.set(ix.ax[i], 1);
       s.x = x; s.y = y;
       if (ix.o.flip[i]) s.scale.x = -1;
       s.label = 'wheelObject';
@@ -357,7 +368,8 @@ if (typeof window !== 'undefined') {
        pass put it on: 'entities' (under him) or 'gatherNodesFront' (over) */
     sprite: (i) => {
       const s2 = _live && _live.sprites.get(i);
-      return s2 && !s2.destroyed ? { layer: s2.parent ? s2.parent.label : null, x: s2.x, y: s2.y, w: Math.abs(s2.width), h: s2.height } : null;
+      return s2 && !s2.destroyed ? { layer: s2.parent ? s2.parent.label : null, x: s2.x, y: s2.y, w: Math.abs(s2.width), h: s2.height,
+        ax: s2.anchor.x, flip: s2.scale.x < 0 } : null;
     },
     /* the sprite sheets in memory now, by name */
     pagesLoaded: () => {

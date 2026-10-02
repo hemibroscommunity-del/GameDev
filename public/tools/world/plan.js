@@ -478,9 +478,21 @@ export const PLAN = {
                   paint: 'half-buried sandstone ruins: broken columns, toppled statues and a giant carved stone face half sunk in the sand' },
       gate: { name: 'the Sky Arch', color: '#ff8a8a', colorName: 'coral', r: 260,
               paint: 'a great natural stone arch on the highest rock, the wind howling through it, and beneath it a round stone gate carved with an eight-spoked wheel' },
+      /* v2.3.2981: the OASES -- pools on the sage flats, the dunes and the
+         red mesas (none up on the storm heights), each ringed with palms
+         (placing.js, `oasis`): the owner, "The palm trees don't belong in
+         the desert unless they surround water to emulate an oasis".  Big
+         enough to show between palms 300 game px tall (330-480 game px
+         across; the first try, a third of that, was hidden under their
+         crowns), `clear` of the roads, the railway, the camps and the
+         landmarks (layout.js), and last in the list, so the rocks and cliffs
+         before it keep their places. */
+      water: '#1f9e96', waterName: 'deep teal',
+      waterPaint: 'a small, still oasis pool of clear water ringed with palm trees',
       features: [
         { class: 'obstacle', density: 10, r: [34, 95] },
         { class: 'cliff', density: 0.3, r: [26, 44], shape: 'ridge', len: [260, 520], in: [3, 4] },
+        { class: 'water', density: 2, r: [110, 160], in: [1, 2, 3], clear: 30 },
       ],
     },
     hollows: {

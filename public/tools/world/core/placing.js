@@ -55,7 +55,7 @@ import { hash2, fbm } from './rng.js';
 import { gridInfo } from './grid.js';
 import { objectCatalog } from '../../objects/catalog.js';
 
-export const PLACING = 'v2.3.2975';
+export const PLACING = 'v2.3.2981';
 
 /* ── how much ground each object stops you on ──
    Shares of its picture's game size: `w` of its width, centred on its foot,
@@ -131,9 +131,15 @@ const LANDS = {
     small: [['charstump', [1, 0.7, 0.35, 0.15]]],
   },
   sky: {
-    big: [['palm', [0.8, 0.45, 0.15, 0.3]], ['hoodoo', [0.3, 0.7, 1, 1]]],
+    /* v2.3.2981: no palms out on the sand -- the owner: "The palm trees
+       don't belong in the desert unless they surround water to emulate an
+       oasis".  They ring the dunes' pools instead (`oasis`); where one stood
+       out here, nothing does (`null`), so the hoodoos are as thick as before
+       rather than standing in every palm's place */
+    big: [[null, [0.8, 0.45, 0.15, 0.3]], ['hoodoo', [0.3, 0.7, 1, 1]]],
     mid: [['cactus', 1]],
     small: [['tumbleweed', 1], ['sage', 1], ['skull', 0.35]],
+    oasis: 'palm',
   },
   hollows: {
     big: [['boulder', 1], ['crystal', [0.15, 0.45, 0.9, 1]]],
@@ -182,6 +188,15 @@ const LAYERS = [
 /* how wide a stretch of open ground goes bare, and how strongly: the scatter
    comes in drifts and clearings, not an even sprinkle */
 const DRIFT = 1 / 1400, DRIFT_SEED = 9113;
+/* v2.3.2981: an oasis's ring (game px): each trunk `back` past the water's
+   edge, about `step` apart round the pool, `min` to `max` of them, none on
+   the side facing you (`open`: where the ring's direction points further
+   south than this) -- a palm is 300 game px tall, and one on the near shore
+   hides the water behind its crown; nothing else nothing wild may stand on
+   (a road, a cliff) within `keep` cells of a trunk; and the land's own
+   things kept back from the water -- big ones (the hoodoos) `shoreBig`
+   cells, the rest `shore` -- and big ones `clearBig` game px from a trunk */
+const OASIS = { back: [22, 46], step: 150, min: 4, max: 12, open: 0.8, keep: 2, shoreBig: 8, shore: 2, clearBig: 70 };
 
 /* ── the town's furniture, in plan art px from the world centre ──
    The square (the Town Hall in its middle, its door at (0, hall.d / 2); you
@@ -446,9 +461,7 @@ export function placeObjects(plan, bp, opts = {}) {
     }
   }
 
-  /* ── 4. nature: each land's big, middle and small things ── */
   const landOf = (r) => LANDS[bp.regionIds[r]] || null;
-  const weightAt = (w, stage) => (Array.isArray(w) ? w[Math.max(0, Math.min(3, stage))] : w);
   /* a big thing's picture must not cover the town: its top corners and
      middle are checked against the town's cells */
   const coversTown = (x, y, w, h) => {
@@ -459,6 +472,102 @@ export function placeObjects(plan, bp, opts = {}) {
     return false;
   };
   const counts = Object.create(null);
+
+  /* ── 4. v2.3.2981: THE OASES ──
+     Owner, 2026-10-02: "The palm trees don't belong in the desert unless
+     they surround water to emulate an oasis."  Every pool (C.water) of a
+     land with `oasis` -- the dunes' small pools, plan.js -- gets a ring of
+     that tree: OASIS.back past the water's edge, all the way round, each
+     leaning in over the pool.  Every palm leans left in the game's copy
+     (catalog `lean`, stood on its trunk by objects/atlas.js), so one east of
+     the water is drawn as it is and one west of it mirrored.  A spot on
+     anything nothing wild may stand on, or with one within OASIS.keep cells
+     (a road, a cliff: never the pool's own water), is skipped, so a pool
+     beside the trail is open on that side.  Before the land's scatter,
+     whose big things keep OASIS.clearBig from these trunks. */
+  const oasisFeet = [];
+  {
+    const seen = new Uint8Array(N);
+    const keepNear = (c) => {
+      const cx = c % BW, cy = (c / BW) | 0;
+      for (let dy = -OASIS.keep; dy <= OASIS.keep; dy++) for (let dx = -OASIS.keep; dx <= OASIS.keep; dx++) {
+        const x = cx + dx, y = cy + dy;
+        if (x < 0 || y < 0 || x >= BW || y >= BH) return true;
+        const k = bp.cls[y * BW + x];
+        if (KEEP_CLEAR[k] && k !== C.water) return true;
+      }
+      return false;
+    };
+    for (let i0 = 0; i0 < N; i0++) {
+      if (seen[i0] || bp.cls[i0] !== C.water) continue;
+      const land = landOf(bp.reg[i0]);
+      if (!land || !land.oasis || !byId[land.oasis]) continue;
+      /* the pool: its cells, its middle, its size were it round */
+      const stack = [i0];
+      seen[i0] = 1;
+      let n = 0, sx = 0, sy = 0;
+      while (stack.length) {
+        const c = stack.pop(), cx = c % BW;
+        n++; sx += cx; sy += (c / BW) | 0;
+        if (cx > 0 && !seen[c - 1] && bp.cls[c - 1] === C.water) { seen[c - 1] = 1; stack.push(c - 1); }
+        if (cx < BW - 1 && !seen[c + 1] && bp.cls[c + 1] === C.water) { seen[c + 1] = 1; stack.push(c + 1); }
+        if (c >= BW && !seen[c - BW] && bp.cls[c - BW] === C.water) { seen[c - BW] = 1; stack.push(c - BW); }
+        if (c < N - BW && !seen[c + BW] && bp.cls[c + BW] === C.water) { seen[c + BW] = 1; stack.push(c + BW); }
+      }
+      const mx = (sx / n + 0.5) * cellPx, my = (sy / n + 0.5) * cellPx;
+      const rad = Math.sqrt(n / Math.PI) * cellPx;
+      const ring = 2 * Math.PI * (rad + (OASIS.back[0] + OASIS.back[1]) / 2);
+      const count = Math.max(OASIS.min, Math.min(OASIS.max, Math.round(ring / OASIS.step)));
+      /* everything about the ring from where the pool is, never from how
+         many pools came before it */
+      const ps = seed + 6011, pi = Math.floor(mx / 8), pj = Math.floor(my / 8);
+      const a0 = hash2(pi, pj, ps) * 2 * Math.PI;
+      const e = byId[land.oasis];
+      for (let k = 0; k < count; k++) {
+        const a = a0 + ((k + 0.35 * (hash2(pi + k, pj, ps + 1) - 0.5)) * 2 * Math.PI) / count;
+        const ux = Math.cos(a), uy = Math.sin(a);
+        if (uy > OASIS.open) continue;
+        /* out from the middle to the water's edge, then back from it */
+        let t = 0;
+        while (t < rad * 3 + cellPx * 4) {
+          const c = cellOf(mx + ux * t, my + uy * t);
+          if (c < 0 || bp.cls[c] !== C.water) break;
+          t += 4;
+        }
+        const back = OASIS.back[0] + hash2(pi + k, pj, ps + 2) * (OASIS.back[1] - OASIS.back[0]);
+        /* ...and on dry ground a cell (24 game px) all round, as every tall
+           thing stands: further out until it is */
+        let x = 0, y = 0, dry = false;
+        for (let d = t + back, tries = 0; tries < 6 && !dry; tries++, d += 8) {
+          x = Math.round((mx + ux * d) * 2) / 2; y = Math.round((my + uy * d) * 2) / 2;
+          dry = [[0, 0], [-24, 0], [24, 0], [0, -24], [0, 24]].every(([u, v]) => { const q = cellOf(x + u, y + v); return q >= 0 && bp.cls[q] !== C.water; });
+        }
+        if (!dry) continue;
+        const c = cellOf(x, y);
+        if (c < 0 || landOf(bp.reg[c]) !== land) continue;
+        if (bp.cls[c] !== C.ground && bp.cls[c] !== C.obstacle) continue;
+        if (keepNear(c) || nearFoot(x, y, 40)) continue;
+        const h = e.fit === 'w' ? e.size / (e.ar || 1) : e.size, w = e.fit === 'w' ? e.size : e.size * (e.ar || 1);
+        if (coversTown(x, y, w, h)) continue;
+        /* leaning in: drawn leaning left, so mirrored west of the pool (and
+           either way, by the hash, right above or below it) */
+        const flip = Math.abs(ux) < 0.25 ? hash2(pi + k, pj, ps + 3) < 0.5 : ux < 0;
+        put(e.id, x, y, Math.floor(hash2(pi + k, pj, ps + 4) * (e.count || 1)), flip, 26);
+        oasisFeet.push(x, y);
+        counts[e.id] = (counts[e.id] || 0) + 1;
+      }
+    }
+  }
+  const nearOasis = (x, y, r) => {
+    for (let q = 0; q < oasisFeet.length; q += 2) {
+      const dx = oasisFeet[q] - x, dy = oasisFeet[q + 1] - y;
+      if (dx * dx + dy * dy < r * r) return true;
+    }
+    return false;
+  };
+
+  /* ── 5. nature: each land's big, middle and small things ── */
+  const weightAt = (w, stage) => (Array.isArray(w) ? w[Math.max(0, Math.min(3, stage))] : w);
   for (const L of LAYERS) {
     const st = L.step, cols = Math.ceil(worldW / st), rows = Math.ceil(worldH / st);
     const ls = seed + Math.imul(L.id.length + 3, 1013);
@@ -478,6 +587,9 @@ export function placeObjects(plan, bp, opts = {}) {
       const cls = bp.cls[c];
       if (cls !== C.ground && cls !== C.obstacle) continue;
       const clump = cls === C.obstacle;
+      /* v2.3.2981: an oasis's shore is its palms' (a pool laid over a rock
+         field had hoodoos standing at the water's edge) */
+      if (land.oasis && wet[c] < (L.id === 'big' ? OASIS.shoreBig : OASIS.shore)) continue;
       /* open ground in drifts and clearings */
       const drift = 0.5 + 0.5 * fbm(x * DRIFT, y * DRIFT, ls + DRIFT_SEED, 2);
       const dense = (land.dense && land.dense[L.id]) || 1;
@@ -495,8 +607,8 @@ export function placeObjects(plan, bp, opts = {}) {
       if (tot <= 0) continue;
       let pick = hash2(i, j, ls + 3) * tot, k = 0;
       while (k < ws.length - 1 && pick >= ws[k]) { pick -= ws[k]; k++; }
-      const id = list[k][0], e = byId[id];
-      if (!e) continue;
+      const id = list[k][0], e = id == null ? null : byId[id];
+      if (!e) continue;      /* `null`: nothing stands here (the dunes' old palms) */
       /* a shore thing away from the water is mostly not there at all (only
          re-weighting it did nothing where it is a layer's one kind: shells) */
       if (land.shore && land.shore.includes(id) && !shore && hash2(i, j, ls + 6) < 0.92) continue;
@@ -505,6 +617,7 @@ export function placeObjects(plan, bp, opts = {}) {
          off the town */
       const h = e.fit === 'w' ? e.size / (e.ar || 1) : e.size, w = e.fit === 'w' ? e.size : e.size * (e.ar || 1);
       if (L.id === 'big' && coversTown(x, y, w, h)) continue;
+      if (L.id === 'big' && oasisFeet.length && nearOasis(x, y, OASIS.clearBig)) continue;
       const piece = Math.floor(hash2(i, j, ls + 4) * (e.count || 1));
       put(id, x, y, piece, !NO_FLIP.has(id) && hash2(i, j, ls + 5) < 0.5, L.id === 'big' ? 26 : L.id === 'mid' ? 14 : 8);
       counts[id] = (counts[id] || 0) + 1;

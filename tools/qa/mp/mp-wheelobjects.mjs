@@ -17,6 +17,8 @@
  *      put it in front of the player);
  *   6. out on Frost Ridge its own trees and rocks are drawn, and the town's
  *      sheets have been let go behind you;
+ *   6b. (v2.3.2981) at an oasis in the dunes its palms are drawn standing on
+ *      their trunks, leaning in over the water;
  *   7. back in town every sheet is let go;
  *   8. no page errors.
  * Pictures in tools/qa/mp/out/wheelobjects-*.png.
@@ -208,6 +210,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...and the town's sprite sheets were let go behind you (in memory: ${frost.pages.join(', ')})`,
     frost.pages.length > 0 && frost.pages.every((n) => !/^buildings-|^town-/.test(n)), frost.pages);
   await shot(P, 'frost');
+
+  phase = 'oasis';
+  /* ── 6b. v2.3.2981: an oasis in the dunes -- its palms drawn standing on
+     their trunks, leaning in over the water (a palm's trunk is far off its
+     picture's middle: the sprite's anchor is its foot, from the manifest) ── */
+  {
+    const { PLAN } = await import(H.REPO + '/public/tools/world/plan.js');
+    const { buildBlueprint, C } = await import(H.REPO + '/public/tools/world/core/layout.js');
+    const { placeObjects } = await import(H.REPO + '/public/tools/world/core/placing.js');
+    const { readFileSync } = await import('node:fs');
+    const bp = buildBlueprint(PLAN), placed = placeObjects(PLAN, bp);
+    const man = JSON.parse(readFileSync(join(H.REPO, 'public/world/objects/manifest.json'), 'utf8'));
+    const palmMan = man.objects.find((o) => o.id === 'palm');
+    const share = palmMan.pieces.map((pc) => pc.foot[0] / pc.w);
+    /* the pool with the most palms round it, stood south of it: its open side */
+    const cell = bp.scale * PLAN.worldPxPerArtPx, sky = bp.regionIds.indexOf('sky'), palm = placed.kinds.indexOf('palm');
+    const seen = new Uint8Array(bp.w * bp.h);
+    let best = null;
+    for (let i0 = 0; i0 < seen.length; i0++) {
+      if (seen[i0] || bp.cls[i0] !== C.water || bp.reg[i0] !== sky) continue;
+      const st = [i0]; seen[i0] = 1;
+      let n = 0, sx = 0, sy = 0;
+      while (st.length) {
+        const c = st.pop(); n++; sx += c % bp.w; sy += (c / bp.w) | 0;
+        for (const q of [c - 1, c + 1, c - bp.w, c + bp.w]) if (!seen[q] && bp.cls[q] === C.water) { seen[q] = 1; st.push(q); }
+      }
+      const x = (sx / n + 0.5) * cell, y = (sy / n + 0.5) * cell, r = Math.sqrt(n / Math.PI) * cell;
+      let palms = 0;
+      for (let i = 0; i < placed.n; i++) if (placed.kind[i] === palm && Math.hypot(placed.x[i] - x, placed.y[i] - y) < r + 160) palms++;
+      if (!best || palms > best.palms) best = { x, y, r, palms };
+    }
+    await H.hopTo(P, best.x, best.y + best.r + 110, { tries: 200 });
+    await P.page.waitForTimeout(4000);
+    const oasis = await P.page.evaluate(({ px, py }) => {
+      const W = window.__btWheelObjects;
+      return W.near(px, py, 700).filter((o) => o.id === 'palm').map((o) => ({ i: o.i, x: o.x, y: o.y, s: W.sprite(o.i) }));
+    }, { px: best.x, py: best.y });
+    const drawn = oasis.filter((o) => o.s);
+    const wrong = drawn.filter((o) => {
+      const k = placed.piece[o.i] % share.length;
+      return Math.abs(o.s.ax - share[k]) > 1e-3 || o.s.flip !== !!placed.flip[o.i] || Math.abs(o.s.x - o.x) > 0.5 || Math.abs(o.s.y - o.y) > 0.5;
+    });
+    rec.ok(`at an oasis in the dunes its ${drawn.length} palms are drawn standing on their trunks (the anchor ${share.map((v) => v.toFixed(2)).join(' / ')} across the picture, not its middle), each leaning in as placed`,
+      drawn.length >= 4 && wrong.length === 0 && share.every((v) => v > 0.65), { pool: best, wrong: wrong.slice(0, 3), drawn: drawn.length });
+    await shot(P, 'oasis');
+  }
 
   phase = 'home';
   /* ── 7. home: every sheet let go ── */

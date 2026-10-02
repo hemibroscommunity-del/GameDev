@@ -457,6 +457,49 @@ try {
   await page.evaluate(() => window.__objects.api.removePicture('obsidian'));
   await page.waitForFunction(() => document.getElementById('busy').hidden && !window.__objects.S.fin.has('obsidian'), null, { timeout: 30000 });
 
+  /* ── v2.3.2981: two palms, drawn leaning opposite ways (the owner's were):
+     "Download for the game" stands both on their trunks, leaning left ── */
+  console.log('6a. a leaning picture stands on its trunk');
+  const palmPic = await makePicture(page, { bg: '#ff00ff', shapes: [
+    [200, 500, 40, 500, '#8a5a2b', 'box'], [230, 390, 300, 160, '#3f8f3a', 'round'],    /* trunk on the left, crown out to the right */
+    [1010, 500, 40, 500, '#8a5a2b', 'box'], [720, 390, 300, 160, '#3f8f3a', 'round'],   /* and the other way */
+  ] });
+  await page.evaluate(() => { document.querySelector('details[data-group="sky"]').open = true; });
+  await put(page, 'palm', palmPic);
+  const { leanOf, mirrorRGBA } = await import('../../public/tools/objects/atlas.js');
+  const { decodePNG } = await import('../world/png.mjs');
+  const { unzip: unzipP } = await import('../../public/tools/world/core/zip.js');
+  const palmOut = await page.evaluate(async () => {
+    const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+    const pieces = [];
+    for (const p of window.__objects.S.fin.get('palm').pieces) pieces.push(b64(new Uint8Array(await p.png.arrayBuffer())));
+    const zips = await window.__objects.api.exportGameZips();
+    return { pieces, zips: zips.map((z) => b64(z.bytes)) };
+  });
+  const studioPieces = palmOut.pieces.map((b) => decodePNG(Buffer.from(b, 'base64')));
+  const gameFiles = [];
+  for (const z of palmOut.zips) gameFiles.push(...await unzipP(new Uint8Array(Buffer.from(z, 'base64'))));
+  const pMan = JSON.parse(new TextDecoder().decode(gameFiles.find((e) => e.name === 'manifest.json').data));
+  const mPalm = pMan.objects.find((o) => o.id === 'palm');
+  const frames = mPalm.pieces.map((pc) => {
+    const sheet = JSON.parse(new TextDecoder().decode(gameFiles.find((e) => e.name === `objects/${pc.atlas}.json`).data));
+    const img = decodePNG(Buffer.from(gameFiles.find((e) => e.name === `objects/${pc.atlas}.png`).data)), f = sheet.frames[pc.frame].frame;
+    const rgba = new Uint8ClampedArray(f.w * f.h * 4);
+    for (let y = 0; y < f.h; y++) rgba.set(img.data.subarray(((f.y + y) * img.w + f.x) * 4, ((f.y + y) * img.w + f.x + f.w) * 4), y * f.w * 4);
+    return { rgba, w: f.w, h: f.h, foot: pc.foot };
+  });
+  const sameRGBA = (a, b) => a.length === b.length && a.every((v, k) => (k & 3) === 3 ? v === b[k] : (a[k | 3] === 0 || v === b[k]));
+  const studioLeans = studioPieces.map((q) => leanOf(q.data, q.w, q.h).dir);
+  ok('two palms drawn leaning opposite ways come out of the studio as drawn: one leaning right, one left', studioPieces.length === 2 && studioLeans[0] === 1 && studioLeans[1] === -1, studioLeans);
+  ok('...and "Download for the game" stands both leaning left: the right-leaning one mirrored, pixel for pixel, the other as it is',
+    frames.length === 2 && sameRGBA(frames[0].rgba, mirrorRGBA(studioPieces[0].data, studioPieces[0].w, studioPieces[0].h)) && sameRGBA(frames[1].rgba, studioPieces[1].data) &&
+    frames.every((f) => leanOf(f.rgba, f.w, f.h).dir === -1), frames.map((f) => leanOf(f.rgba, f.w, f.h)));
+  ok("...each one's foot on its trunk, far off its picture's middle, in the game's manifest",
+    frames.every((f) => f.foot[0] === leanOf(f.rgba, f.w, f.h).foot[0] && f.foot[1] === f.h && f.foot[0] - f.w / 2 > f.w * 0.15), frames.map((f) => ({ foot: f.foot, w: f.w })));
+  /* (taken away again, so the counts below are as they were) */
+  await page.evaluate(() => window.__objects.api.removePicture('palm'));
+  await page.waitForFunction(() => document.getElementById('busy').hidden && !window.__objects.S.fin.has('palm'), null, { timeout: 30000 });
+
   /* ── 6b. v2.3.2965: a sheet picture ── */
   console.log('6b. a sheet picture: many objects in rows, each named by its place');
   /* the town's second sheet, drawn as the prompt asks: its rows top to

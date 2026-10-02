@@ -214,7 +214,11 @@ export const NATURE = [
   N('ember', { id: 'obsidian', ar: 0.6, name: 'Obsidian shards', count: 2, size: 140, ground: 'ember-4', what: 'tall shards of glassy black obsidian with sharp purple-grey highlights', ones: 'one single shard; one cluster of three' }),
   /* Wind Dunes */
   N('sky', { id: 'cactus', ar: 0.7, name: 'Cacti', size: 130, ground: 'sky-2', what: 'desert cacti', ones: 'a tall cactus with two arms; a short one with one arm; a round barrel cactus; a prickly pear with a pink flower' }),
-  N('sky', { id: 'palm', ar: 0.8, name: 'Palm trees', count: 2, size: 320, frame: 'wide', ground: 'sky-2', what: 'oasis palm trees with curving trunks and a crown of long fronds', ones: 'one leaning left; one leaning right' }),
+  /* v2.3.2981: `lean` -- every palm leans LEFT in the game's copy (one drawn
+     leaning right is mirrored on the way in, and each stands on its trunk:
+     objects/atlas.js standPiece), so the Wheel can lean each one round an
+     oasis in over its pool (world/core/placing.js) */
+  N('sky', { id: 'palm', ar: 0.8, name: 'Palm trees', count: 2, size: 320, frame: 'wide', ground: 'sky-2', what: 'oasis palm trees with curving trunks and a crown of long fronds', ones: 'one leaning left; one leaning right', lean: 'left' }),
   N('sky', { id: 'tumbleweed', ar: 1.1, name: 'Tumbleweeds', size: 40, ground: 'sky-1', what: 'dry tumbleweeds, round tangles of pale twigs', ones: 'four sizes' }),
   N('sky', { id: 'skull', ar: 1.6, name: 'Bleached skulls', fit: 'w', size: 56, ground: 'sky-1', what: 'bleached cattle skulls with horns, lying on the ground', ones: 'four, turned different ways' }),
   N('sky', { id: 'hoodoo', ar: 0.6, name: 'Hoodoo rocks', count: 2, size: 240, ground: 'sky-2', what: 'red sandstone rock stacks, banded in layers, with a wider stone balanced on top', ones: 'one tall and thin; one wider and lower' }),

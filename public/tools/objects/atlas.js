@@ -96,3 +96,66 @@ export function pagesByColour(objs, { colours = PAGE_COLOURS, max = ATLAS_MAX, p
   close();
   return out;
 }
+
+/* ═══ v2.3.2981: A LEANING PICTURE STANDS ON ITS TRUNK ═══
+   The game stands a picture on its foot (its anchor), which was always the
+   middle of its bottom row.  For a leaning tree that is nowhere near its
+   trunk: the owner's two palms stand 65 and 96 game px off their pictures'
+   middles, one leaning each way -- so a palm's trunk was drawn that far from
+   where it was placed, and its footprint, the ground it stops you on, was
+   bare sand beside it.  An object the catalog marks `lean: 'left'` (or
+   'right') is put right on the way into the game, by the studio's "Download
+   for the game" and by tools/world/repack-objects.mjs alike: every piece
+   that leans the other way is MIRRORED, so all lean as the catalog says,
+   and each piece's `foot` is where its trunk meets the ground.  So the Wheel
+   can lean every palm round an oasis in over its pool (placing.js), and the
+   game draws it with its trunk on its foot (src/rendering/wheelObjects.js:
+   the anchor is the foot).  Pure, RGBA, 4 bytes a pixel. */
+export const LEAN_ROWS = 0.06;    /* the lowest share of a picture's rows that its trunk's foot is found in */
+
+/* Where a picture's trunk meets the ground -- the middle of the solid pixels
+   in its lowest rows, in its own px from its left -- and which way it
+   leans: -1 when the middle of its top third is left of that, +1 right, 0
+   when it is within 4% of the picture's width of it. */
+export function leanOf(rgba, w, h) {
+  let bottom = -1;
+  for (let y = h - 1; y >= 0 && bottom < 0; y--) {
+    for (let x = 0; x < w; x++) if (rgba[(y * w + x) * 4 + 3] >= 128) { bottom = y; break; }
+  }
+  if (bottom < 0) return { foot: [Math.round(w / 2), h], dir: 0 };
+  const band = Math.max(4, Math.round(h * LEAN_ROWS));
+  let bx = 0, bn = 0, tx = 0, tn = 0;
+  for (let y = Math.max(0, bottom - band); y <= bottom; y++) {
+    for (let x = 0; x < w; x++) if (rgba[(y * w + x) * 4 + 3] >= 128) { bx += x; bn++; }
+  }
+  for (let y = 0; y < h / 3; y++) {
+    for (let x = 0; x < w; x++) if (rgba[(y * w + x) * 4 + 3] >= 128) { tx += x; tn++; }
+  }
+  const fx = bx / bn, top = tn ? tx / tn : fx;
+  return { foot: [Math.round(fx), h], dir: top < fx - w * 0.04 ? -1 : top > fx + w * 0.04 ? 1 : 0 };
+}
+
+/* A picture mirrored left to right (a new array). */
+export function mirrorRGBA(rgba, w, h) {
+  const out = new Uint8ClampedArray(rgba.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const s = (y * w + x) * 4, d = (y * w + (w - 1 - x)) * 4;
+      out[d] = rgba[s]; out[d + 1] = rgba[s + 1]; out[d + 2] = rgba[s + 2]; out[d + 3] = rgba[s + 3];
+    }
+  }
+  return out;
+}
+
+/* One piece as the game wants it: for an object that leans (`lean`, the
+   catalog's 'left' or 'right'), mirrored if it leans the other way, and its
+   foot on its trunk; for any other, as it is, its foot the middle of its
+   bottom row.  `{ rgba, foot, mirrored }`. */
+export function standPiece(lean, rgba, w, h) {
+  if (lean !== 'left' && lean !== 'right') return { rgba, foot: [Math.round(w / 2), h], mirrored: false };
+  const want = lean === 'left' ? -1 : 1;
+  const first = leanOf(rgba, w, h);
+  if (first.dir === 0 || first.dir === want) return { rgba, foot: first.foot, mirrored: false };
+  const m = mirrorRGBA(rgba, w, h);
+  return { rgba: m, foot: leanOf(m, w, h).foot, mirrored: true };
+}

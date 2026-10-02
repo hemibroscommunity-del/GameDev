@@ -1743,5 +1743,111 @@ console.log('monsters on the Wheel (v2.3.2978)');
   ok('...and none inside anything that stands there (the game\'s own footprints)', inside.length === 0, inside.slice(0, 4));
 }
 
+/* ── v2.3.2981: the oases ──
+   Owner, 2026-10-02: "The palm trees don't belong in the desert unless they
+   surround water to emulate an oasis." */
+console.log('the oases (v2.3.2981)');
+{
+  const { placeObjects } = await import('../../public/tools/world/core/placing.js');
+  const { leanOf, standPiece, mirrorRGBA } = await import('../../public/tools/objects/atlas.js');
+  const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
+  const { decodePNG } = await import('./png.mjs');
+  const fs = await import('node:fs');
+  const P = placeObjects(PLAN, bp);
+  const cellG = bp.scale * PLAN.worldPxPerArtPx;
+  const sky = bp.regionIds.indexOf('sky'), N = bp.w * bp.h;
+  const clsAt = (x, y) => { const bx = Math.floor(x / cellG), by = Math.floor(y / cellG); return bx < 0 || by < 0 || bx >= bp.w || by >= bp.h ? -1 : bp.cls[by * bp.w + bx]; };
+  /* the dunes' pools */
+  const seen = new Uint8Array(N), pools = [];
+  let crossed = 0;
+  for (let i0 = 0; i0 < N; i0++) {
+    if (seen[i0] || bp.cls[i0] !== C.water || bp.reg[i0] !== sky) continue;
+    const st = [i0]; seen[i0] = 1;
+    let n = 0, sx = 0, sy = 0, band = 0;
+    while (st.length) {
+      const c = st.pop(), cx = c % bp.w, cy = (c / bp.w) | 0;
+      n++; sx += cx; sy += cy; band = Math.max(band, bp.band[c] + 1);
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const q = (cy + dy) * bp.w + cx + dx, k = bp.cls[q];
+        if (k === C.path || k === C.rail || k === C.lot || k === C.bridge || k === C.landmark) { crossed++; dy = dx = 3; }
+      }
+      for (const q of [c - 1, c + 1, c - bp.w, c + bp.w]) if (!seen[q] && bp.cls[q] === C.water) { seen[q] = 1; st.push(q); }
+    }
+    pools.push({ x: (sx / n + 0.5) * cellG, y: (sy / n + 0.5) * cellG, r: Math.sqrt(n / Math.PI) * cellG, band, palms: [] });
+  }
+  const perStage = [1, 2, 3, 4].map((b) => pools.filter((p) => p.band === b).length);
+  ok(`the dunes have their pools: ${pools.length}, on the sage flats, the dunes and the red mesas (${perStage.slice(0, 3).join('/')}), none up on the storm heights`,
+    pools.length >= 6 && perStage[0] >= 1 && perStage[1] >= 1 && perStage[2] >= 1 && perStage[3] === 0, perStage);
+  const small = pools.filter((p) => p.r * 2 < 280);
+  ok(`each big enough to show between palms 300 game px tall: ${Math.round(Math.min(...pools.map((p) => p.r * 2)))}-${Math.round(Math.max(...pools.map((p) => p.r * 2)))} game px across`,
+    small.length === 0, small.map((p) => Math.round(p.r * 2)));
+  ok('no road, railway, camp or landmark runs into one (they are laid after the pools: layout.js `clear`)', crossed === 0, crossed);
+  /* the palms */
+  const palm = P.kinds.indexOf('palm');
+  const stray = [], openSide = [], leanOut = [];
+  let palms = 0;
+  for (let i = 0; i < P.n; i++) {
+    if (P.kind[i] !== palm) continue;
+    palms++;
+    const x = P.x[i], y = P.y[i];
+    let wetNear = false;
+    for (let dy = -7; dy <= 7 && !wetNear; dy++) for (let dx = -7; dx <= 7; dx++) if (clsAt(x + dx * cellG, y + dy * cellG) === C.water) { wetNear = true; break; }
+    let best = null, bd = Infinity;
+    for (const p of pools) { const d = Math.hypot(x - p.x, y - p.y) - p.r; if (d < bd) { bd = d; best = p; } }
+    if (!wetNear || !best || bd > 200) { stray.push([Math.round(x), Math.round(y)]); continue; }
+    best.palms.push(i);
+    const d = Math.hypot(x - best.x, y - best.y), ux = (x - best.x) / d, uy = (y - best.y) / d;
+    if (uy > 0.8 + 1e-6) openSide.push([Math.round(x), Math.round(y)]);
+    if (Math.abs(ux) >= 0.25 && !!P.flip[i] !== ux < 0) leanOut.push([Math.round(x), Math.round(y)]);
+  }
+  ok(`no palm out on the open sand: all ${palms} stand by a pool's water`, palms > 0 && stray.length === 0, stray.slice(0, 4));
+  const bare = pools.filter((p) => p.palms.length < 4);
+  ok(`every pool has its ring of palms (${Math.min(...pools.map((p) => p.palms.length))}-${Math.max(...pools.map((p) => p.palms.length))} a pool)`, bare.length === 0, bare.map((p) => p.palms.length));
+  ok('...none on the side facing you, where a crown would hide the water', openSide.length === 0, openSide.slice(0, 4));
+  ok('...each leaning in over the water: east of it drawn as it is (leaning left), west of it mirrored', leanOut.length === 0, leanOut.slice(0, 4));
+  /* the hoodoos keep back from an oasis's shore */
+  const hoodoo = P.kinds.indexOf('hoodoo'), crowd = [];
+  for (let i = 0; i < P.n; i++) {
+    if (P.kind[i] !== hoodoo) continue;
+    for (let dy = -7; dy <= 7; dy++) for (let dx = -7 + Math.abs(dy); dx <= 7 - Math.abs(dy); dx++) {
+      if (clsAt(P.x[i] + dx * cellG, P.y[i] + dy * cellG) === C.water) { crowd.push([Math.round(P.x[i]), Math.round(P.y[i])]); dy = 8; break; }
+    }
+  }
+  ok('no hoodoo crowds an oasis: 8 cells (192 game px) from its water at the least', crowd.length === 0, crowd.slice(0, 4));
+
+  /* standing a leaning picture on its trunk (objects/atlas.js) */
+  const W = 40, H = 60, pic = new Uint8ClampedArray(W * H * 4);
+  for (let y = 0; y < H; y++) {
+    const cx = y < 20 ? 28 : 8 + Math.round((y - 20) * 0.1);     /* a crown up and to the right, a trunk low on the left */
+    for (let x = cx - 3; x <= cx + 3; x++) pic[(y * W + x) * 4 + 3] = 255;
+  }
+  const L0 = leanOf(pic, W, H), S1 = standPiece('left', pic, W, H), S2 = standPiece('right', pic, W, H), S3 = standPiece(undefined, pic, W, H);
+  ok('a picture leaning right is found leaning right, its foot on its trunk, not its middle', L0.dir === 1 && Math.abs(L0.foot[0] - 12) <= 1 && L0.foot[1] === H, L0);
+  ok('...stood for a catalog that wants it leaning left, it is mirrored, its foot mirrored with it', S1.mirrored && leanOf(S1.rgba, W, H).dir === -1 && S1.foot[0] === W - 1 - L0.foot[0], S1.foot);
+  ok('...for one that wants it leaning right it is left as it is, and anything else keeps its foot in the middle of its bottom row',
+    !S2.mirrored && S2.rgba === pic && S2.foot[0] === L0.foot[0] && !S3.mirrored && S3.foot[0] === W / 2, [S2.foot, S3.foot]);
+  ok('mirroring twice gives the picture back', mirrorRGBA(mirrorRGBA(pic, W, H), W, H).every((v, k) => v === pic[k]));
+  /* ...and the game's own palms: all leaning left, each standing on its trunk */
+  const lean = Object.create(null);
+  for (const e of objectCatalog()) if (e.lean) lean[e.id] = e.lean;
+  const man = JSON.parse(fs.readFileSync(new URL('../../public/world/objects/manifest.json', import.meta.url)));
+  const sheetOf = Object.create(null), bad = [];
+  let checked = 0;
+  for (const o of man.objects) {
+    if (!lean[o.id]) continue;
+    for (const pc of o.pieces) {
+      const a = man.atlases.find((q) => q.name === pc.atlas);
+      if (!sheetOf[a.name]) sheetOf[a.name] = { img: decodePNG(fs.readFileSync(new URL(`../../public/world/objects/${a.image}`, import.meta.url))), json: JSON.parse(fs.readFileSync(new URL(`../../public/world/objects/${a.sheet}`, import.meta.url))) };
+      const { img, json } = sheetOf[a.name], f = json.frames[pc.frame].frame;
+      const rgba = new Uint8ClampedArray(f.w * f.h * 4);
+      for (let y = 0; y < f.h; y++) rgba.set(img.data.subarray(((f.y + y) * img.w + f.x) * 4, ((f.y + y) * img.w + f.x + f.w) * 4), y * f.w * 4);
+      const got = leanOf(rgba, f.w, f.h);
+      checked++;
+      if (got.dir !== (lean[o.id] === 'left' ? -1 : 1) || got.foot[0] !== pc.foot[0] || Math.abs(pc.foot[0] - f.w / 2) < f.w * 0.15) bad.push({ frame: pc.frame, dir: got.dir, foot: pc.foot, found: got.foot, w: f.w });
+    }
+  }
+  ok(`the game's palms all lean the catalog's way and stand on their trunks, far off their pictures' middles (${checked} pictures)`, checked >= 2 && bad.length === 0, bad);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

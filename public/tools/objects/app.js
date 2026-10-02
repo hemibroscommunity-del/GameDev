@@ -62,7 +62,7 @@ import { promptFor, sizeWords, FRAME_GAME_PX } from './prompts.js';
 import { sheetsFor, sheetPrompt, boxOf, SHEET } from './sheets.js';
 /* v2.3.2975: the game's sprite sheets are packed a few objects a page, each
    page a palette PNG (atlas.js) -- the same packing the repack tool uses */
-import { packAtlas, pagesByColour, coloursIn, PAGE_KINDS } from './atlas.js';
+import { packAtlas, pagesByColour, coloursIn, PAGE_KINDS, standPiece } from './atlas.js';
 
 const GPA = PIXEL.gamePxPerArtPx;      /* 0.5 game px a picture px */
 const PX = 1 / GPA;                    /* 2 picture px a game px */
@@ -1059,7 +1059,7 @@ async function exportZip() {
    the owner's 75 objects where one sheet a land was 15.7 MB -- and the
    Wheel loads only the pages whose objects stand near you. */
 async function atlasFiles(enc) {
-  const files = [], atlases = [], where = Object.create(null);
+  const files = [], atlases = [], where = Object.create(null), feet = Object.create(null);
   for (const g of GROUPS) {
     const objs = [];
     for (const e of S.cat) {
@@ -1069,7 +1069,7 @@ async function atlasFiles(enc) {
         const img = await blobToCanvas(p.png, 4096);
         coloursIn(img.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, img.width, img.height).data, colours);
         release(img);
-        items.push({ w: p.w, h: p.h, name: `${e.id}-${i + 1}`, png: p.png });
+        items.push({ w: p.w, h: p.h, name: `${e.id}-${i + 1}`, png: p.png, lean: e.lean || null });
       }
       objs.push({ id: e.id, colours, items });
     }
@@ -1081,7 +1081,14 @@ async function atlasFiles(enc) {
       const frames = {};
       for (const it of pg.items) {
         const img = await blobToCanvas(it.png, 4096);
-        cg.drawImage(img, it.x, it.y);
+        /* v2.3.2981: a leaning object (the catalog's `lean`: the palms)
+           stands on its trunk, every piece leaning the catalog's way --
+           mirrored if drawn the other way (atlas.js standPiece, as
+           tools/world/repack-objects.mjs does) */
+        const st = it.lean ? standPiece(it.lean, img.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, img.width, img.height).data, img.width, img.height) : null;
+        if (st) feet[it.name] = st.foot;
+        if (st && st.mirrored) cg.putImageData(new ImageData(new Uint8ClampedArray(st.rgba), img.width, img.height), it.x, it.y);
+        else cg.drawImage(img, it.x, it.y);
         release(img);
         frames[it.name] = { frame: { x: it.x, y: it.y, w: it.w, h: it.h }, rotated: false, trimmed: false,
           spriteSourceSize: { x: 0, y: 0, w: it.w, h: it.h }, sourceSize: { w: it.w, h: it.h }, anchor: { x: 0.5, y: 1 } };
@@ -1096,7 +1103,7 @@ async function atlasFiles(enc) {
       atlases.push({ name, group: g.id, w: pg.w, h: pg.h, image: `${name}.png`, sheet: `${name}.json`, objects: pg.items.length, kinds: pg.objects });
     }
   }
-  return { files, atlases, where };
+  return { files, atlases, where, feet };
 }
 
 /* the zips for GitHub: only what the game reads -- each land's sprite
@@ -1105,14 +1112,15 @@ async function atlasFiles(enc) {
 const GAME_PART = 24e6;
 async function exportGameZips(limit = GAME_PART) {
   const enc = new TextEncoder();
-  const { files, atlases, where } = await atlasFiles(enc);
+  const { files, atlases, where, feet } = await atlasFiles(enc);
   const objects = [];
   for (const e of S.cat) {
     const f = S.fin.get(e.id);
     if (!f) continue;
     objects.push({
       id: e.id, name: e.name, group: e.group, kind: e.kind, count: e.count, fit: e.fit, size: e.size, sizeMul: f.size,
-      pieces: f.pieces.map((p, i) => ({ frame: `${e.id}-${i + 1}`, atlas: where[`${e.id}-${i + 1}`], w: p.w, h: p.h, gameW: p.w * GPA, gameH: p.h * GPA, foot: [Math.round(p.w / 2), p.h] })),
+      pieces: f.pieces.map((p, i) => ({ frame: `${e.id}-${i + 1}`, atlas: where[`${e.id}-${i + 1}`], w: p.w, h: p.h, gameW: p.w * GPA, gameH: p.h * GPA,
+        foot: feet[`${e.id}-${i + 1}`] || [Math.round(p.w / 2), p.h] })),
     });
   }
   const manifest = {

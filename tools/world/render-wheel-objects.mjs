@@ -95,7 +95,7 @@ for (let i = 0; i < placed.n; i++) {
   if (!o) { missing++; continue; }
   const pc = o.pieces[placed.piece[i] % o.pieces.length];
   const x = placed.x[i], y = placed.y[i];
-  if (x + pc.gameW / 2 < x0 || x - pc.gameW / 2 > x0 + VW || y < y0 || y - pc.gameH > y0 + VH) continue;
+  if (x + pc.gameW < x0 || x - pc.gameW > x0 + VW || y < y0 || y - pc.gameH > y0 + VH) continue;
   draw.push({ id, o, pc, x, y, flip: placed.flip[i] });
 }
 draw.sort((a, b) => a.y - b.y);
@@ -105,7 +105,10 @@ for (const d of draw) {
   if (!fr) continue;
   const k = 1 / (2 * PXS);           /* picture px a sheet px */
   const dw = Math.round(fr.frame.w * k), dh = Math.round(fr.frame.h * k);
-  const ox = Math.round((d.x - x0) / PXS - dw / 2), oy = Math.round((d.y - y0) / PXS - dh);
+  /* v2.3.2981: stood on its foot, as the game stands it (a palm on its
+     trunk; a mirrored one turns on it) */
+  const fa = d.pc.foot && d.pc.w ? d.pc.foot[0] / d.pc.w : 0.5, fax = d.flip ? 1 - fa : fa;
+  const ox = Math.round((d.x - x0) / PXS - dw * fax), oy = Math.round((d.y - y0) / PXS - dh);
   for (let v = 0; v < dh; v++) {
     const yy = oy + v;
     if (yy < 0 || yy >= OH) continue;

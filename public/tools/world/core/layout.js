@@ -490,6 +490,29 @@ export function buildBlueprint(plan) {
      One candidate per L x L lattice cell (L from the density), jittered
      inside it by a hash of the cell -- so a feature's place, size and shape
      depend only on WHERE it is, never on how many came before it. */
+  /* v2.3.2981: a feature with `clear` (art px) stands that far, past its own
+     reach, from every road and the railway (their wobble allowed for) and
+     every place: they are laid after it, and a road through a pool is a
+     road across the water with no bridge (the dunes' oases, plan.js) */
+  let avoid = null;
+  const tooNear = (x, y, m) => {
+    if (!avoid) {
+      avoid = { segs: [], discs: [] };
+      const line = (pts, pad) => { for (let k = 0; k < pts.length - 1; k++) avoid.segs.push([pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1], pad]); };
+      for (const rd of plan.roads || []) line(rd.pts.map(toArt), (rd.half || 30) + (rd.wobble != null ? rd.wobble : 80));
+      for (const rl of plan.rails || []) line(rl.pts.map(toArt), ((plan.classes.rail && plan.classes.rail.half) || 14) + 60);
+      for (const pl of plan.places || []) { const [ax, ay] = toArt(pl.at); avoid.discs.push([ax, ay, pl.r || Math.max(pl.size[0], pl.size[1]) / 2]); }
+      /* ...and the landmarks (pass 8 lays them over any water but a river) */
+      for (const rk of regionIds) {
+        const lm = plan.regions[rk].landmark, sp = W.byId[rk];
+        const at = lm && (lm.at || (sp && lm.tier ? spokePoint(sp, W.tierMid(lm.tier), lm.side || 0) : null));
+        if (at) { const [ax, ay] = toArt(at); avoid.discs.push([ax, ay, lm.r * 1.25]); }
+      }
+    }
+    for (const q of avoid.segs) if (segDist(x, y, q[0], q[1], q[2], q[3]) < m + q[4]) return true;
+    for (const q of avoid.discs) if (Math.hypot(x - q[0], y - q[1]) < m + q[2]) return true;
+    return false;
+  };
   for (const rk of regionIds) {
     const rd = plan.regions[rk];
     if (!rd.features) continue;
@@ -508,6 +531,7 @@ export function buildBlueprint(plan) {
         if (ci < 0 || reg[ci] !== rid || cls[ci] !== C.ground) continue;
         if (bandOk && !bandOk.has(band[ci])) continue;
         const r = (f.r[0] + hash2(i, j, fs + 2) * (f.r[1] - f.r[0])) / S;
+        if (f.clear && tooNear(px, py, r * S * 1.35 + f.clear)) continue;
         const fx = cellX(px), fy = cellY(py), ns = fs + Math.imul(i, 31) + Math.imul(j, 17);
         if (f.shape === 'ridge') {
           let ux = hash2(i, j, fs + 3) * 2 - 1, uy = hash2(i, j, fs + 4) * 2 - 1;
