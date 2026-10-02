@@ -1699,11 +1699,9 @@ a page would bring that to about 2.8 MB. That is for the placing round.
 
 **Next:**
 
-1. place the objects on the Wheel: buildings on their plots, trees along the
-   edges of the woods, props by rule, each land's sprite sheet loaded with
-   the land;
-2. draw them in the game, sorted by their feet (`depthSort.js`), each with a
-   footprint for collision;
+1. ~~place the objects on the Wheel~~ and
+2. ~~draw them in the game~~: done in v2.3.2975, "The objects in the game"
+   below;
 3. then the Old Mill, the Rail Depot, the Arena and the 32 camps join the
    catalog.
 
@@ -1739,6 +1737,225 @@ a page would bring that to about 2.8 MB. That is for the placing round.
     place; the backup carrying the sheet and its names; and the game's
     sprite sheets, every frame decoded and compared with the backup's piece,
     anchored at its foot.
+
+## The objects in the game (v2.3.2975)
+
+> Owner, 2026-10-02, with a zip of every object but the Town Hall: *"Wire
+> this stuff into the game. Put mayor bro in town too."*
+
+With `?trial=wheel`, the Wheel now has its objects: the sixteen buildings on
+their plots, the town's lamps, benches, well, bragging board, barrels,
+crates, hay, troughs, hitching rails, cart, gates and signposts, split-rail
+fences and haystacks along the Old Roads, and every land's own trees, rocks
+and things. They are about 13,000 in all. Mayor Bro stands beside the Town
+Hall's steps. `?trial=wheel&noobjects` leaves the Wheel bare, as before, to
+compare.
+
+### The sprite sheets, a few objects a page
+
+The owner's zip had one full-colour sheet per land: 15.7 MB, 7.5 MB of it
+the buildings. Every object has 64 colours of its own, so three objects
+together fit a palette PNG (255 colours, number 0 see-through). Now:
+
+- **a page takes objects only while their colours fit a palette PNG**
+  (`pagesByColour` in `public/tools/objects/atlas.js`), so every page is
+  palette numbers, with the same pixels;
+- **a building is a page of its own** (`PAGE_KINDS`), since the Wheel loads
+  a page for any of its objects standing near you;
+- so the 75 objects are **40 pages, 5.2 MB**.
+
+The Object Studio's "Download for the game" packs this way, and so does
+`node tools/world/repack-objects.mjs <zip or folder>`, which put the owner's
+zip in `public/world/objects/`. That tool merges: an object already in the
+game's copy and missing from the zip is kept (`--fresh` keeps only the
+zip's). It checks every frame against the picture it came from, pixel for
+pixel, before writing.
+
+### The town, laid out round its buildings
+
+Every building is drawn square-on with its door at the bottom, so every one
+**faces south**. The old plots (300 game px, for buildings now 386) were
+laid out before any was drawn, and along Main Street every door faced the
+next plot's yard. `townPlan` in `core/layout.js` now lays the town out round
+what was drawn:
+
+- **every door opens** onto the square, a street, the **Back Lane** or a
+  **front walk** to Main Street (strips of street, `fronts`);
+- **along Main Street**, two a side on each arm, side-on, the first ones'
+  doors on the square (north) or the Back Lane (south). Each stands its
+  drawn height plus a walk from the next, so **no roof hides a door**;
+- **on Market Row**, the north side opens straight onto the street; the
+  south side stands back so its roofs stay off the street, and opens onto
+  the Back Lane, which runs behind it end to end and across Main Street;
+- **the Town Hall** stands in the middle of the square, its door to the
+  south.
+
+A plot is `lot.w` 270 × `lot.d` 150 art px (405 × 225 game px), with room
+for a building drawn `lot.tall` 310 art px (465 game px; the tallest, the
+Assay Office, is 453). The square is 480 across, the Town Hall's plot
+280 × 160, and the gates 1,050 from the centre (867 before). Docs:
+WORLD-BIBLE §5 has the new plot table.
+
+### Where everything stands (`core/placing.js`)
+
+Worked out once by the ground worker, on the way in, from the blueprint, the
+same on every device (`placeObjects`):
+
+- **the buildings**, the bottom of each one's steps on its plot's door;
+- **the town's furniture** (`townDressing`, `DOOR_PROPS`):
+  - in the square: benches either side of the Town Hall's porch, the well
+    and the bragging board in its north corners, and lamps;
+  - lamps along both streets at the gaps between plots, never at a door;
+  - beside the porches that suit them: hitching rails and troughs at the
+    saloon and the sheriff's, hay at the Feed & Seed, crates and barrels at
+    the shops;
+  - the town gate over both ends of Main Street, and a signpost where every
+    street leaves town;
+  - the cart and hay in the yards, and a light scatter of barrels, crates
+    and bales where nothing else is;
+- **the commons**: split-rail fences along the four Old Roads out of town,
+  with a gap into each field now and then, and haystacks in the fields;
+- **each land's own things** (`LANDS`), in three layers on a hashed lattice
+  (`LAYERS`):
+  - the **big** ones (trees, pylons, rock stacks) stand thick in the plan's
+    obstacle clumps, the woods and rock fields the prompts always described
+    and the ground could never draw, and sparse elsewhere;
+  - the **middle** and **small** ones are scattered in drifts and clearings;
+  - weights can change stage by stage: birches at the thaw line, pines in
+    the taiga, ice spires on the glacier;
+  - the shore things (driftwood, boats, nets, shells, mangroves) keep to
+    the water;
+  - a land's `dense` makes it thicker or thinner: the commons thicker, the
+    jungle and the poison forest thinner.
+
+**Never** on a road, a street, a bridge, the railway, water, lava, a cliff, a
+plot, a camp, a landmark or a keystone gate, and nothing wild in town. A big
+thing keeps a cell all round its trunk, and its picture never covers the
+town.
+
+**Positions come from the catalog**, never from which pictures exist. An
+object with no picture yet (the Town Hall) keeps its place, and is neither
+drawn nor in anyone's way. Making a picture never moves anything else.
+
+**Each object's footprint**, the ground it stops you on, comes from its
+picture's size (`footprintOf`, `FOOT`):
+
+- a building: its width, and back from its porch half its height (the roof
+  is the half you walk behind);
+- a tree: its trunk;
+- the town gate: its two posts, with the street open between them;
+- flowers, shells and small shrubs: nothing.
+
+It takes about 0.4 s in Node and 0.7–1.1 s in the worker on the test
+machine.
+
+`node tools/world/render-wheel-objects.mjs [--at town|land:frost:6|x,y]`
+draws a picture of any spot from the game's own swatches and sprite sheets,
+sorted as the game sorts them (`--feet` outlines the footprints). Every
+placing change here was looked at that way.
+
+### In the game (`src/rendering/wheelObjects.js`)
+
+- **Sprite sheets load near you.**
+  - A page loads when one of its objects stands within 480 game px of the
+    view, further on the side you are heading.
+  - It is let go 4 s after none is within 1,000.
+  - The way in loads the pages round the arrival behind the zone overlay,
+    while the worker lays the first screen of ground.
+  - Leaving the Wheel lets every page go.
+  - Frames go into Pixi's cache under a prefix of their own
+    (`wheel-object/`), since a bare frame name like `stone-1` would take,
+    and on unload take away, any other sheet's frame of that name.
+- **A sprite for each object whose picture can reach the screen**, anchored
+  at its foot in `entities`. The depth pass (depthSort.js) sorts it by where
+  it touches the ground like every prop: walk behind a building and its
+  roof is drawn over you.
+- **Footprints near the player go to the walk test** through
+  `worldProps.setZoneBlockerHook`. What you can see is what stops you, and
+  a page still loading stops nobody.
+- **The readout** adds a line: objects drawn, sheets in memory and their
+  size, and any that came on screen before their sheet ("late").
+
+**Measured** in headless Chromium at phone size (`mp-wheelobjects`):
+
+| | |
+|---|---|
+| at the arrival | 14 objects drawn, 16 of 40 sheets, **~31 MB** decoded |
+| on Frost Ridge | 20 drawn, 7 sheets, ~23 MB; the town's let go |
+| before the overlay lifts | 12 sheets in 1.1–1.3 s, alongside the ground |
+| late draws | 0 |
+| the way in, overall | 7.2 s on this machine (5.7 s before the objects) |
+
+The test machine draws in software and is slow. Its ground pop-in check
+(`wheeltrial`) fails the same way with and without this change: 34 pop-ins
+before it, 31 with objects switched off.
+
+**Memory.** A building is 772 px wide at 2 px a game px, 2.3 MB decoded,
+and about ten stand near you in town. The sheets cost what they cost. The
+saving was making each one load only when it is near. The Wheel already
+frees today's town map (11.3 MB) and its NPCs, and has no monsters.
+
+### Mayor Bro in the Wheel's Brotown
+
+He stands **beside the Town Hall's steps, to the east** (`mayorSpot`). The
+way home is marked just west of where you arrive, and his name plate
+covered its label. He talks, gives and takes his quests exactly as in
+today's town: the server's quest hand-ins never ask which zone you are in
+(`server/src/quests.js`). The townsfolk checks that said "town" now say
+"town, or the Wheel's Brotown" (`_npcZone` in BroTown.jsx). Only he stands
+there: the shopkeeper, the blacksmith, Lil Bro and Ace wait for their
+buildings' doors.
+
+**His picture is the Wheel's own copy.** Town's NPC art is freed a beat
+after you leave town (v2.3.2859), which is the moment you arrive in the
+Wheel. The first run drew him from a texture destroyed under him: Pixi's
+"Cannot read properties of null (reading 'alphaMode')". So:
+
+- the Wheel loads its own copy behind its overlay
+  (`npcSprites.loadWheelNpcArt`), and lets it go with the Wheel's worker;
+- an NPC whose texture is freed under him now falls back to a live one, or
+  to nothing, instead of crashing the frame (entityRenderer);
+- the render loop's error now names what it tripped on.
+
+### Tests
+
+- `test-world-core.mjs`, "objects on the Wheel (v2.3.2975)" (21 checks):
+  - placing: the same every time, under 3 s;
+  - every building on its plot, facing south, its door on a street, the
+    square or a walk; no roof hiding a door; plots as big as the buildings;
+    the Back Lane with its six doors;
+  - the town's furniture and nothing wild in town; the gate's posts beside
+    Main Street;
+  - nothing wild on anything it may not stand on, a free cell round every
+    trunk, every land its own things, most tall things in the clumps, shore
+    things by the water;
+  - the Town Hall not drawn; the arrival and Mayor Bro's spot clear;
+    buildings' footprints on their plots;
+  - the sprite sheets all palette PNGs, a building a page, every frame
+    right; the packer's colour rule.
+- The town checks that measured the old layout read it from the plan now
+  (the gates, the square's edge, the boardwalks of a plan that lays them).
+- `node tools/qa/mp/run.mjs wheelobjects` (12 checks), on a phone against a
+  real worker:
+  - placed and the arrival's sheets loaded before the overlay lifts;
+  - the town round you, each object its own sprite on its foot;
+  - Mayor Bro beside the steps and answering a tap;
+  - the Hotel stopping your feet at its porch;
+  - behind it, its roof drawn over you; in front, under you again;
+  - Frost Ridge's pines and birches, with the town's sheets let go;
+  - every sheet let go back in town;
+  - no page errors, and no render errors.
+- `object-studio` (51), `ground-studio` (70), `style-lab` (34),
+  `world-page` (38) and `test-world-core` (194) all pass.
+
+### Still to do
+
+- **the Town Hall picture**, the one building not made yet;
+- **doors**: a building is scenery so far; its job (forge, bank, market) is
+  a later round;
+- **the camps, landmarks, the Old Mill, the Rail Depot and the Arena** are
+  still empty plots;
+- the minimap could mark the buildings.
 
 ## The world trial: walking a seamless island today (v2.3.2932)
 

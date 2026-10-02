@@ -215,7 +215,26 @@ remnant to migrate server-side, not a mode to preserve.
   purple glints keep their green, so they stay; and since v2.3.2974 the
   gap rule and despill work on GREEN too, by each px's lean (`leanOf`); all
   15 of the owner's sheets found complete (154 objects; the old finder 64):
-  WORLD-MAP-PIPELINE "Objects found by count")
+  WORLD-MAP-PIPELINE "Objects found by count"; and since v2.3.2975 the
+  objects are IN THE GAME, the owner's "Wire this stuff into the game. Put
+  mayor bro in town too": `world/core/placing.js` places ~13,000 from the
+  CATALOG in the ground worker (buildings on their plots, the town's
+  furniture, fences along the Old Roads, each land's trees thick in the
+  plan's obstacle clumps; never on a road, water or plot; positions never
+  depend on which pictures exist), `src/rendering/wheelObjects.js` draws the
+  ones near you from sprite sheets that load near you and free behind you,
+  depth-sorted by their feet, their footprints handed to the walk test
+  (`worldProps.setZoneBlockerHook`); the town is RE-LAID round its
+  south-facing buildings (`townPlan` in layout.js: every door on the square,
+  a street, the Back Lane or a front walk, no roof hiding a door, gates at
+  1,050); the game's sheets are a few objects a page as palette PNGs, a
+  building a page (`objects/atlas.js`, `tools/world/repack-objects.mjs`,
+  15.7 -> 5.2 MB); Mayor Bro stands beside the Town Hall's steps with his
+  OWN copy of his picture (town's NPC art is freed a beat after leaving
+  town: `loadWheelNpcArt`; an NPC texture freed under him now falls back
+  instead of crashing the frame); `?trial=wheel&noobjects` leaves it bare;
+  `node tools/world/render-wheel-objects.mjs` draws any spot;
+  `mp-wheelobjects` tests it: WORLD-MAP-PIPELINE "The objects in the game")
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

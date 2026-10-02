@@ -448,6 +448,30 @@ Only neighbours meet, so there are exactly eight borders.
 each fronted by a raised wooden boardwalk. The corners between the arms are
 the **outskirts**: fenced fields, haystacks and cart tracks.
 
+> **v2.3.2975: the town is laid out round the buildings the owner drew.**
+> Every one is drawn square-on with its door at the bottom, on a porch, so
+> every one **faces south**. The plots were laid out before any was drawn:
+> 300 game px wide for buildings now 386, and along Main Street, a
+> north-south street, every door faced the next plot's yard. Now every door
+> opens onto the square, a street, the **Back Lane** or a short **front
+> walk** to Main Street:
+>
+> - along Main Street they stand side-on, two a side on each arm, spaced so
+>   no roof hides the next one's door;
+> - on Market Row the north side opens straight onto the street; the south
+>   side stands back so its roofs stay off the street, and opens onto the
+>   Back Lane, which runs behind it from end to end and across Main Street;
+> - the Town Hall stands in the middle of the square, its door to the south,
+>   with Mayor Bro beside its steps.
+>
+> The plots are `w` 270 × `d` 150 art px (405 × 225 game px), the square
+> 480 across, the gates 1,050 from the centre (`town` in
+> `public/tools/world/plan.js`, `townPlan` in `core/layout.js`). The porch
+> is drawn with each building, so the boardwalks stay put away. The plot
+> table below is the new one. The objects round the buildings, and in every
+> land, are placed by `core/placing.js` (docs/WORLD-MAP-PIPELINE.md, "The
+> objects in the game").
+
 > **v2.3.2960: the boardwalks are put away until the buildings come.** The
 > owner, walking Market Row in the Wheel trial: *"The one thing I want to
 > change are the boards. They do not look good and I don't know what those
@@ -482,10 +506,11 @@ the game.
 | Part | Size |
 |---|---|
 | Main Street | 124 wide (Market Row 104) |
-| Boardwalk | 22 deep |
-| Building plot | 200 × 200 |
-| Town square | 434 × 434, with the Town Hall plot 208 × 208 in its middle |
-| Gate to gate | 1,734 = 2,600 game px, about **17 s** to walk; about **9 s** from the square to any gate |
+| Boardwalk | 22 deep (put away: the porches are drawn with the buildings) |
+| Building plot | 270 wide × 150 deep, with room for a building drawn 310 tall (v2.3.2975; was 200 × 200) |
+| Front walk, Back Lane | 60 wide |
+| Town square | 480 × 480, with the Town Hall plot 280 × 160 in its middle (v2.3.2975; was 434 and 208 × 208) |
+| Gate to gate | 2,100 = 3,150 game px, about **21 s** to walk; about **10 s** from the square to any gate (v2.3.2975; was 1,734) |
 | The whole town | squares X24–Z26. **Y25, the middle square, holds the whole town square.** |
 
 ### Who goes where (a proposal)
@@ -500,25 +525,25 @@ The ends of town have characters:
 Every building the game has today has a plot, and four plots are spare for
 systems that exist without a building (duels, mail, clans) or might (an inn).
 
-| Arm | Side | Plot | Takes today's | Plot (art px from the centre) |
-|---|---|---|---|---|
-| square | — | Town Hall | mayor (NPC) | -104,-104 → 104,104 |
-| north | west | Blacksmith | blacksmith | -284,-495 → -84,-295 |
-| north | west | Woodworker | woodworker | -284,-730 → -84,-530 |
-| north | east | Gem Cutter | gemcutter | 84,-495 → 284,-295 |
-| north | east | Sheriff's Office | (new: duels, arena sign-up, bounties) | 84,-730 → 284,-530 |
-| south | west | Saloon | party | -284,295 → -84,495 |
-| south | west | Gambling Den | gambler | -284,530 → -84,730 |
-| south | east | Hotel | (new: rest, respawn) | 84,295 → 284,495 |
-| south | east | Post Office & Telegraph | (new: mail and offline inbox) | 84,530 → 284,730 |
-| west | north | Cookhouse | cooking | -495,-274 → -295,-74 |
-| west | north | Feed & Seed | farm | -730,-274 → -530,-74 |
-| west | south | Land Office | farmhome | -495,74 → -295,274 |
-| west | south | Guild Hall | (new: clans and guilds) | -730,74 → -530,274 |
-| east | north | Bank | bank | 295,-274 → 495,-74 |
-| east | north | Assay Office | enchanting | 530,-274 → 730,-74 |
-| east | south | General Store | marketplace | 295,74 → 495,274 |
-| east | south | Auction House | auctionhouse | 530,74 → 730,274 |
+| Arm | Side | Plot | Takes today's | Plot (art px from the centre) | Door |
+|---|---|---|---|---|---|
+| square | — | Town Hall | mayor (NPC) | -140,-80 → 140,80 | 0,80 |
+| north | west | Blacksmith | blacksmith | -346,-398 → -76,-248 | -211,-248 |
+| north | west | Woodworker | woodworker | -346,-768 → -76,-618 | -211,-618 |
+| north | east | Gem Cutter | gemcutter | 76,-398 → 346,-248 | 211,-248 |
+| north | east | Sheriff's Office | (new: duels, arena sign-up, bounties) | 76,-768 → 346,-618 | 211,-618 |
+| south | west | Saloon | party | -346,248 → -76,398 | -211,398 |
+| south | west | Gambling Den | gambler | -346,618 → -76,768 | -211,768 |
+| south | east | Hotel | (new: rest, respawn) | 76,248 → 346,398 | 211,398 |
+| south | east | Post Office & Telegraph | (new: mail and offline inbox) | 76,618 → 346,768 | 211,768 |
+| west | north | Cookhouse | cooking | -650,-210 → -380,-60 | -515,-60 |
+| west | north | Feed & Seed | farm | -954,-210 → -684,-60 | -819,-60 |
+| west | south | Land Office | farmhome | -650,248 → -380,398 | -515,398 |
+| west | south | Guild Hall | (new: clans and guilds) | -954,248 → -684,398 | -819,398 |
+| east | north | Bank | bank | 380,-210 → 650,-60 | 515,-60 |
+| east | north | Assay Office | enchanting | 684,-210 → 954,-60 | 819,-60 |
+| east | south | General Store | marketplace | 380,248 → 650,398 | 515,398 |
+| east | south | Auction House | auctionhouse | 684,248 → 954,398 | 819,398 |
 
 **The NPCs:**
 
