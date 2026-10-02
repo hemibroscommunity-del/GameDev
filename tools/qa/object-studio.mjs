@@ -374,6 +374,12 @@ try {
     g.fillStyle = '#ff00ff'; g.fillRect(0, 0, 1254, 1254);
     let s = 11;
     const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    /* (v2.3.2973: and the background seen through each bush's tangle drawn
+       darker and paler than the border's, as in the owner's tumbleweeds) */
+    for (let b = 0; b < 4; b++) for (let k = 0; k < 6; k++) {
+      g.fillStyle = k % 2 ? '#8a048c' : '#d00cbe';
+      g.beginPath(); g.arc(160 + b * 300 + (rnd() - 0.5) * 70, 700 + (rnd() - 0.5) * 60, 6 + rnd() * 6, 0, 7); g.fill();
+    }
     g.strokeStyle = '#6b3a2a';
     for (let b = 0; b < 4; b++) {
       const bx = 160 + b * 300, by = 760;
@@ -395,21 +401,61 @@ try {
   await put(page, 'bush', twigPic);
   const twigs = await page.evaluate(async () => {
     const f = window.__objects.S.fin.get('bush');
-    let solid = 0, pink = 0;
+    let solid = 0, pink = 0, spots = 0;
     for (const p of f.pieces) {
       const bm = await createImageBitmap(p.png);
       const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height;
       const g = c.getContext('2d'); g.drawImage(bm, 0, 0);
       const d = g.getImageData(0, 0, c.width, c.height).data;
-      for (let k = 0; k < d.length; k += 4) { if (!d[k + 3]) continue; solid++; if (Math.min(d[k], d[k + 2]) - d[k + 1] > 40) pink++; }
+      for (let k = 0; k < d.length; k += 4) {
+        if (!d[k + 3]) continue;
+        solid++;
+        if (Math.min(d[k], d[k + 2]) - d[k + 1] > 40) pink++;
+        if (d[k + 1] < 75 && Math.min(d[k], d[k + 2]) - d[k + 1] > 90 && Math.abs(d[k] - d[k + 2]) < 60) spots++;
+      }
     }
-    return { n: f.pieces.length, solid, pink, share: +(pink / Math.max(1, solid)).toFixed(4) };
+    return { n: f.pieces.length, solid, pink, spots, share: +(pink / Math.max(1, solid)).toFixed(4) };
   });
   /* (measured on this picture: 59% of the cut-out's px leaned magenta before
      the despill, 4% after -- the rest in the bushes' dense middles, more
      than DESPILL_R from any clean background; the owner's frost bushes
      went from 3.6% to 0.8%) */
   ok(`thin twigs on magenta come out brown, not pink: ${(twigs.share * 100).toFixed(1)}% of their px lean magenta, 59% before the despill (v2.3.2972)`, twigs.n === 4 && twigs.solid > 500 && twigs.share < 0.1, twigs);
+  ok('...and the background seen through their tangle, darker or paler than the border\'s, is cut away too: no magenta spots inside (v2.3.2973)', twigs.spots === 0, twigs);
+  /* but a dark shard's purple glints, which keep their green, stay */
+  const shardPic = await page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = c.height = 1254;
+    const g = c.getContext('2d');
+    g.fillStyle = '#ff00ff'; g.fillRect(0, 0, 1254, 1254);
+    for (const [x, w] of [[260, 220], [760, 260]]) {
+      g.fillStyle = '#2b2a3a';
+      g.beginPath(); g.moveTo(x, 1000); g.lineTo(x + w / 2, 250); g.lineTo(x + w, 1000); g.closePath(); g.fill();
+      g.strokeStyle = '#c886f0'; g.lineWidth = 8;
+      g.beginPath(); g.moveTo(x + 10, 990); g.lineTo(x + w / 2, 262); g.stroke();
+    }
+    const b = await new Promise((r) => c.toBlob(r, 'image/png'));
+    const buf = new Uint8Array(await b.arrayBuffer());
+    let str = '';
+    for (let i = 0; i < buf.length; i += 0x8000) str += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    return btoa(str);
+  });
+  await put(page, 'obsidian', shardPic);
+  const glints = await page.evaluate(async () => {
+    const f = window.__objects.S.fin.get('obsidian');
+    let solid = 0, violet = 0;
+    for (const p of f.pieces) {
+      const bm = await createImageBitmap(p.png);
+      const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height;
+      const g = c.getContext('2d'); g.drawImage(bm, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      for (let k = 0; k < d.length; k += 4) { if (!d[k + 3]) continue; solid++; if (d[k + 2] > 170 && d[k] > 120 && d[k + 1] > 90) violet++; }
+    }
+    return { n: f.pieces.length, solid, violet, share: +(violet / Math.max(1, solid)).toFixed(4) };
+  });
+  ok(`...while a dark shard's purple glints stay: ${(glints.share * 100).toFixed(1)}% of its px (v2.3.2973)`, glints.n === 2 && glints.share > 0.02, glints);
+  /* (taken away again, so the counts below are as they were) */
+  await page.evaluate(() => window.__objects.api.removePicture('obsidian'));
+  await page.waitForFunction(() => document.getElementById('busy').hidden && !window.__objects.S.fin.has('obsidian'), null, { timeout: 30000 });
 
   /* ── 6b. v2.3.2965: a sheet picture ── */
   console.log('6b. a sheet picture: many objects in rows, each named by its place');

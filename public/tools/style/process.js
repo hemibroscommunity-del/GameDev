@@ -69,6 +69,15 @@ export function copy(src) {
    untouched (one of red or blue is not over green); pink and purple things
    are drawn on green instead (bible.js objectBackground). */
 const DESPILL_R = 6, SPILL_OK = 24;
+/* v2.3.2973: background seen through the GAPS in an object -- a
+   tumbleweed's tangle, a sage bush, a frosty shrub -- is drawn darker or
+   paler than the border's, out of T0's reach, and came out as magenta spots
+   inside the owner's tumbleweeds.  On magenta, a px of the key's own hue
+   (red and blue within HOLE_HUE of each other, both more than HOLE_LEAN over
+   green) with next to no green (under HOLE_G) is background wherever it is.
+   The obsidian's purple glints keep their green (110-140) and the cactus
+   flower's pink is another hue, so both stay. */
+const HOLE_G = 75, HOLE_LEAN = 90, HOLE_HUE = 60;
 export function keyOut(src) {
   const c = copy(src);
   const w = c.width, h = c.height, g = ctx2d(c);
@@ -98,9 +107,11 @@ export function keyOut(src) {
   br /= bn; bgc /= bn; bb /= bn;
   const N = w * h, T0 = 60, R = 2, WIN = R + 2;
   const bgm = new Uint8Array(N);
+  const magenta = br > 150 && bb > 150 && bgc < 110;
   for (let p = 0, i = 0; p < N; p++, i += 4) {
     const dr = d[i] - br, dg = d[i + 1] - bgc, db = d[i + 2] - bb;
     if (dr * dr + dg * dg + db * db < T0 * T0) bgm[p] = 1;
+    else if (magenta && d[i + 1] < HOLE_G && Math.min(d[i], d[i + 2]) - d[i + 1] > HOLE_LEAN && Math.abs(d[i] - d[i + 2]) < HOLE_HUE) bgm[p] = 1;
   }
   /* within R px of background: a separable max filter */
   const tmp = new Uint8Array(N), near = new Uint8Array(N);
@@ -153,7 +164,7 @@ export function keyOut(src) {
     }
     out[i + 3] = Math.round(a * 255);
   }
-  if (br > 150 && bb > 150 && bgc < 110) {
+  if (magenta) {
     const t2 = new Uint8Array(N), far = new Uint8Array(N);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       let v = 0;

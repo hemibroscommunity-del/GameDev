@@ -67,7 +67,7 @@ const OWN = PIXEL.ownColours || 64;    /* each object's own colours, shared by i
 const DB = 'brotown-object-studio', STORES = ['raw', 'fin', 'misc'];
 /* How the finished pieces were made; pieces made any other way are made
    again from the pictures as uploaded, on load. */
-const MADE = 'object-studio v2.3.2972';   /* v2.3.2972: made again for the despill (style/process.js keyOut) */
+const MADE = 'object-studio v2.3.2973';   /* made again for the despill (v2.3.2972) and the background in gaps (v2.3.2973), style/process.js keyOut */
 /* v2.3.2971: how a sheet's objects were found -- a sheet found any other
    way (partsOf's fixed reach, which glued close neighbours together) is
    read again on load, once, with objectsIn */

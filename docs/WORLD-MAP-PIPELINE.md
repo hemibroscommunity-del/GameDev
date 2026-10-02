@@ -1655,6 +1655,20 @@ green screen is despilled. Brown, grey, white, red and blue are untouched;
 pink and purple things are drawn on green anyway. Pink px on the frost
 bushes went from 194 to 43, on the birches from 46 to 0.
 
+**Background seen through gaps** (v2.3.2973, `keyOut`). The owner's next
+five sheets (Frost Ridge 1 and 2, the Flame Fields, Wind Dunes 1 and 2) were
+also all found and named: 6, 8, 12, 10 and 10, against the old finder's 2,
+7, 10, 5 and 5. But magenta spots were left inside the tumbleweeds and the
+sage: the background showing through their tangles is drawn darker or
+paler than the border's, out of `T0`'s reach. Now, on magenta, a px of the
+key's own hue with next to no green (red and blue within `HOLE_HUE` 60 of
+each other, both more than `HOLE_LEAN` 90 over a green under `HOLE_G` 75)
+is background wherever it is, and the despill works round it. Magenta-
+leaning px went from 4.2% to 0 on the tumbleweeds and from 2.8% to 0.2% on
+the sage. The obsidian's purple glints keep their green (110-140), so they
+stay; so does the cactus flower's pink, another hue. The studio makes every
+object again once for this (`MADE`).
+
 The plots (`plan.js` `town.lot`, 300 game px) are now narrower than the
 buildings. They grow to fit in the placing round, which makes Main Street
 longer.
