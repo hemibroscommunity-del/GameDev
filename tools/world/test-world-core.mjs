@@ -1921,5 +1921,50 @@ console.log('the big-town preview (v2.3.2982)');
     ['depot', 'mill'].every((id) => { const l = bbp.lots.find((q) => q.id === id); return l && Math.abs((l.x0 + l.x1) / 2 - g2.cx) > G2.ew; }));
 }
 
+/* ── v2.3.2983: the buildings' life ──
+   Owner, 2026-10-02: "Also add effects just using code to each building to
+   make subtle liveliness effects".  Where each building's smoke, lamps,
+   sparks and glints are (src/data/buildingLife.js), against the game's own
+   pictures: a building drawn again moves them, and this says which. */
+console.log("the buildings' life (v2.3.2983)");
+{
+  const { BUILDING_LIFE } = await import('../../src/data/buildingLife.js');
+  const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
+  const { decodePNG } = await import('./png.mjs');
+  const fs = await import('node:fs');
+  const buildings = objectCatalog().filter((e) => e.kind === 'building').map((e) => e.id);
+  const FX = new Set(['smoke', 'glow', 'sparks', 'glint', 'chaff']);
+  const ids = Object.keys(BUILDING_LIFE);
+  ok(`every one of the ${buildings.length} buildings has some life, and nothing else does; each spot a known kind, on its picture (0-1)`,
+    buildings.every((b) => BUILDING_LIFE[b] && BUILDING_LIFE[b].length) && ids.every((b) => buildings.includes(b)) &&
+    ids.every((b) => BUILDING_LIFE[b].every((e) => FX.has(e.fx) && e.u >= 0 && e.u <= 1 && e.v >= 0 && e.v <= 1)),
+    ids.filter((b) => !buildings.includes(b)));
+  const man = JSON.parse(fs.readFileSync(new URL('../../public/world/objects/manifest.json', import.meta.url)));
+  const pages = Object.create(null), off = [];
+  let checked = 0;
+  for (const id of ids) {
+    const o = man.objects.find((q) => q.id === id);
+    if (!o) continue;
+    const pc = o.pieces[0], a = man.atlases.find((q) => q.name === pc.atlas);
+    if (!pages[a.name]) pages[a.name] = { img: decodePNG(fs.readFileSync(new URL(`../../public/world/objects/${a.image}`, import.meta.url))), js: JSON.parse(fs.readFileSync(new URL(`../../public/world/objects/${a.sheet}`, import.meta.url))) };
+    const { img, js } = pages[a.name], f = js.frames[pc.frame].frame;
+    const solid = (x, y) => x >= 0 && y >= 0 && x < f.w && y < f.h && img.data[((f.y + y) * img.w + f.x + x) * 4 + 3] > 128;
+    for (const e of BUILDING_LIFE[id]) {
+      const x = Math.round(e.u * f.w), y = Math.round(e.v * f.h), r = Math.round(0.02 * f.w);
+      let hit = false;
+      if (e.fx === 'smoke') {
+        /* a chimney's top: solid just below it (a stovepipe stands in front
+           of its roof, so what is above it may be roof) */
+        for (let dy = 0; dy <= r && !hit; dy++) for (let dx = -r; dx <= r && !hit; dx++) hit = solid(x + dx, y + dy);
+      } else {
+        for (let dy = -r; dy <= r && !hit; dy++) for (let dx = -r; dx <= r && !hit; dx++) hit = solid(x + dx, y + dy);
+      }
+      checked++;
+      if (!hit) off.push(`${id} ${e.fx} ${e.u},${e.v}`);
+    }
+  }
+  ok(`...and every one of the ${checked} spots is on its picture as the game has it: each smoke on a chimney's top, each lamp, spark and glint on the building`, checked > 60 && off.length === 0, off);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

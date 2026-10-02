@@ -303,7 +303,16 @@ remnant to migrate server-side, not a mode to preserve.
   moved out), placing.js `kindScale` (buildings k, the rest 1) and
   `wheelObjects.js` drawing at it; the default plan untouched -- a phone
   shows a 2x building two screens wide: WORLD-MAP-PIPELINE "The big-town
-  preview", `mp-bigtown`)
+  preview", `mp-bigtown`; and since v2.3.2983 every building has a little
+  LIFE drawn in code -- the owner: "add effects just using code to each
+  building to make subtle liveliness effects" -- chimney smoke, lamps
+  breathing, the forge's sparks, glints on gold and glass, chaff from the
+  loft, at 68 spots measured off the pictures (`src/data/buildingLife.js`,
+  shares of each picture; test-world-core checks them against the game's
+  copy), drawn by `src/rendering/wheelLife.js` in one Container with the
+  building's picture so the depth pass moves both; its five textures made
+  in `wheelObjectsWarm` and freed with the pages; `?nolife` turns it off:
+  WORLD-MAP-PIPELINE "The buildings' life", `mp-wheellife`)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

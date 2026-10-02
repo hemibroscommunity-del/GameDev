@@ -1873,6 +1873,50 @@ Hotel's bigger porch stopping your feet, no errors; `BIGTOWN=1.5` for that
 size's pictures). `node tools/world/render-wheel-objects.mjs --bigtown 2`
 draws it from above.
 
+## The buildings' life (v2.3.2983)
+
+Owner, 2026-10-02: *"Also add effects just using code to each building to
+make subtle liveliness effects"*
+
+Every building in the Wheel's town has a little life over its picture, drawn
+in code (`src/rendering/wheelLife.js`), no new pictures:
+
+| Effect | Where | What it does |
+|---|---|---|
+| smoke | every chimney and stovepipe (16 buildings) | a puff every second or so, rising ~50 px, drifting with the wind, fading |
+| glow | the lanterns, the lit windows, the forge and the bread oven | a warm light that breathes and flickers a little |
+| sparks | the Blacksmith's forge | a spark or two jumping up and falling |
+| glint | the gem, the magnifying glass, the Sheriff's star, the bank's gold, the scales, the trophies, the bells | a four-pointed star that comes and goes every few seconds |
+| chaff | the Feed & Seed's hay loft | a speck of hay drifting down |
+
+- **Where** (`src/data/buildingLife.js`): 68 spots, as shares of each picture,
+  so they follow it at any size (the big-town preview too). Measured off the
+  owner's pictures: a chimney's spot is the top of its solid column, a lamp's
+  the middle of its warm pixels. test-world-core checks every spot still sits
+  on its picture, so a building drawn again says which spots moved.
+- **Drawn with its building**: a building with life is one Container, its
+  picture and its life over it, standing at its foot, so the depth pass moves
+  both: walk behind the Hotel and its roof and its lanterns are drawn over you.
+- **Subtle**: low alphas, a handful of sprites a building (up to ~10), only
+  for buildings on screen. The Wheel is always daylight for now, so a lamp is
+  a breath of warmth, not a pool of light. The first smoke, soft all the way
+  through, vanished over the town's pale dirt; it is a shade greyer now.
+- **Cheap**: 0.3–0.4 ms a frame for the five buildings round the arrival
+  (headless Chromium on this box).
+- **Textures**: five tiny canvases made on the way in, behind the zone overlay
+  (`wheelLifeWarm`, from `wheelObjectsWarm`), destroyed with the objects'
+  pages on the way out (`wheelLifeFree`).
+- **`?trial=wheel&nolife`** leaves the buildings still, to compare.
+- **Not done in code**: flags and banners waving, doors swinging, the clock's
+  hands, the roulette wheel turning. Those move part of a picture, which needs
+  that part drawn separately (an Object Studio job, if wanted).
+
+Tests: test-world-core "the buildings' life" (2: every building has life and
+only buildings; every spot on its picture); `mp-wheellife` (6, phone viewport,
+real worker: buildings drawn with life round the arrival and nothing else, its
+cost, the forge's sparks, the Hotel's life going over you with its roof,
+`?nolife`, no errors).
+
 ## The monsters on the Wheel (v2.3.2978)
 
 Owner, 2026-10-02: "can you place the monsters where they belong in their

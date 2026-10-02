@@ -459,7 +459,9 @@ function wheelHud(S) {
        any that came on screen before their sheet */
     (wheelObjectsInfo() ? 'objects ' + wheelObjectStats.drawn + ' drawn · ' + wheelObjectStats.pages + '/' + wheelObjectStats.pagesOf + ' sheets ~' +
       wheelObjectStats.mb.toFixed(0) + ' MB' + (wheelObjectStats.loading ? ' +' + wheelObjectStats.loading : '') +
-      (wheelObjectStats.lateDraws ? ' · ' + wheelObjectStats.lateDraws + ' late' : '') + (wheelObjectStats.failed ? ' · ' + wheelObjectStats.failed + ' failed' : '') + '\n' : '') +
+      (wheelObjectStats.lateDraws ? ' · ' + wheelObjectStats.lateDraws + ' late' : '') + (wheelObjectStats.failed ? ' · ' + wheelObjectStats.failed + ' failed' : '') +
+      /* v2.3.2983: the buildings drawn with their life (wheelLife.js) */
+      (wheelObjectStats.alive ? ' · ' + wheelObjectStats.alive + ' with life' : '') + '\n' : '') +
     'here    ' + (here ? here.name.slice(0, 34) + (here.water ? '' : here.made ? ' ✓' : ' (not made)') : '…') +
     /* only when something went wrong: what, so a phone screenshot says it */
     (s.failures ? '\nfailed  ' + s.failures + ': ' + String(s.lastFailure || '').slice(0, 40) : '');

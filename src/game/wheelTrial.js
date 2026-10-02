@@ -92,12 +92,19 @@ export const wheelObjectStats = {
   blockers: 0,      /* footprints the walk test is looking at */
   placeMs: null,    /* the worker's placing */
   warmMs: null,     /* the way in's wait for the pages round the arrival */
+  alive: 0,         /* v2.3.2983: buildings drawn with their life (smoke, lamps...) */
+  lifeMs: null,     /* ...and what moving it costs a frame, smoothed */
 };
 export function wheelObjectsInfo() { return _info ? _info.objects || null : null; }
 /* `?noobjects` in the address leaves the Wheel bare, as before v2.3.2975 --
    the ground alone -- so its cost can be told from theirs on a phone */
 export function wheelObjectsOn() {
   try { return !/(^|[?&])noobjects(=|&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+}
+/* v2.3.2983: `?nolife` leaves the buildings still -- no smoke, lamps,
+   sparks or glints (src/rendering/wheelLife.js) -- to tell their cost */
+export function wheelLifeOn() {
+  try { return !/(^|[?&])nolife(=|&|$)/.test(window.location.search || ''); } catch (e) { return true; }
 }
 const _stopFns = new Set();
 export function wheelOnStop(fn) {

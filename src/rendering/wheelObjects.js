@@ -34,8 +34,9 @@
  *             the walk test through worldProps.zoneBlockers -- what you can
  *             see is what stops you, and a page still loading stops nobody.
  */
-import { Sprite, Assets } from 'pixi.js';
-import { wheelInfo, wheelObjectStats, wheelOnStop } from '../game/wheelTrial.js';
+import { Sprite, Assets, Container } from 'pixi.js';
+import { wheelInfo, wheelObjectStats, wheelOnStop, wheelLifeOn } from '../game/wheelTrial.js';
+import { BuildingLife, hasLife, wheelLifeWarm, wheelLifeFree, wheelLifeReady } from './wheelLife.js';
 import { setZoneBlockerHook } from '../data/worldProps.js';
 import { freeWheelNpcArt } from './npcSprites.js';
 
@@ -178,6 +179,8 @@ export async function wheelObjectsWarm(x, y, rx, ry) {
   const t0 = performance.now();
   const ix = index();
   if (!ix) return;
+  /* v2.3.2983: the buildings' life -- its textures, made in code (wheelLife.js) */
+  if (wheelLifeOn()) wheelLifeWarm();
   const want = new Set();
   each(ix, x - rx - ix.maxHalfW, y - ry, x + rx + ix.maxHalfW, y + ry + ix.maxH, (i) => want.add(ix.page[i]));
   const all = Promise.all([...want].map((k) => loadPage(ix, k)));
@@ -194,6 +197,7 @@ export function wheelObjectsFree() {
     else _pages.delete(k);
   }
   _idx = null;
+  wheelLifeFree();
   wheelObjectStats.pages = 0;
   wheelObjectStats.mb = 0;
   wheelObjectStats.drawn = 0;
@@ -223,6 +227,9 @@ export class WheelObjects {
     this._late = new Set();
     this._offHook = setZoneBlockerHook((zoneId) => (zoneId === this._zone ? this._blockers : null));
     this._zone = null;
+    /* v2.3.2983: the buildings' life (wheelLife.js), unless `?nolife` */
+    this.life = wheelLifeOn();
+    this._lifeT = null;
     _live = this;
   }
 
@@ -277,10 +284,21 @@ export class WheelObjects {
       }
       const tex = rec.sheet && rec.sheet.textures && rec.sheet.textures[ix.frame[i]];
       if (!tex) return;
-      const s = new Sprite(tex);
-      s.anchor.set(ix.ax[i], 1);
+      const pic = new Sprite(tex);
+      pic.anchor.set(ix.ax[i], 1);
+      pic.scale.set(ix.o.flip[i] ? -ix.scl[i] : ix.scl[i], ix.scl[i]);
+      /* v2.3.2983: a building with life is its picture and its life over it,
+         one Container at its foot, so the depth pass moves them together */
+      const id = ix.o.kinds[ix.o.kind[i]];
+      let s = pic;
+      if (this.life && wheelLifeReady() && hasLife(id)) {
+        s = new Container();
+        s.addChild(pic);
+        s._pic = pic;
+        s._life = new BuildingLife(id, ix.w[i], ix.h[i], ix.ax[i], ix.scl[i]);
+        s.addChild(s._life.view);
+      }
       s.x = x; s.y = y;
-      s.scale.set(ix.o.flip[i] ? -ix.scl[i] : ix.scl[i], ix.scl[i]);
       s.label = 'wheelObject';
       s._wheelObject = i;
       this.layer.addChild(s);
@@ -289,9 +307,25 @@ export class WheelObjects {
     for (const [i, s] of this.sprites) {
       if (seen.has(i)) continue;
       this.sprites.delete(i);
-      try { s.destroy(); } catch (e) { /* gone */ }
+      try { s.destroy({ children: true }); } catch (e) { /* gone */ }
     }
     if (this._late.size > 2000) this._late.clear();
+    /* v2.3.2983: the buildings' life, for the ones drawn */
+    if (this.life) {
+      const dt = this._lifeT != null ? Math.min(0.1, (now - this._lifeT) / 1000) : 0;
+      this._lifeT = now;
+      const t0 = performance.now();
+      let alive = 0;
+      for (const s of this.sprites.values()) {
+        if (!s._life) continue;
+        s._life.update(dt);
+        alive++;
+      }
+      wheelObjectStats.alive = alive;
+      /* what it costs a frame, smoothed (QA) */
+      const ms = performance.now() - t0;
+      wheelObjectStats.lifeMs = wheelObjectStats.lifeMs == null ? ms : wheelObjectStats.lifeMs * 0.95 + ms * 0.05;
+    }
 
     /* 3. the footprints near the player, for the walk test */
     const P = S && S.player;
@@ -329,13 +363,13 @@ export class WheelObjects {
     for (const [i, s] of this.sprites) {
       if (ix.page[i] !== k) continue;
       this.sprites.delete(i);
-      try { s.destroy(); } catch (e) { /* gone */ }
+      try { s.destroy({ children: true }); } catch (e) { /* gone */ }
     }
     dropPage(ix, k);
   }
 
   _clearSprites() {
-    for (const s of this.sprites.values()) { try { s.destroy(); } catch (e) { /* gone */ } }
+    for (const s of this.sprites.values()) { try { s.destroy({ children: true }); } catch (e) { /* gone */ } }
     this.sprites.clear();
   }
 
@@ -371,8 +405,11 @@ if (typeof window !== 'undefined') {
        pass put it on: 'entities' (under him) or 'gatherNodesFront' (over) */
     sprite: (i) => {
       const s2 = _live && _live.sprites.get(i);
-      return s2 && !s2.destroyed ? { layer: s2.parent ? s2.parent.label : null, x: s2.x, y: s2.y, w: Math.abs(s2.width), h: s2.height,
-        ax: s2.anchor.x, flip: s2.scale.x < 0 } : null;
+      if (!s2 || s2.destroyed) return null;
+      /* (v2.3.2983: a building with life is a Container; its picture is `_pic`) */
+      const pic = s2._pic || s2;
+      return { layer: s2.parent ? s2.parent.label : null, x: s2.x, y: s2.y, w: Math.abs(pic.width), h: pic.height,
+        ax: pic.anchor.x, flip: pic.scale.x < 0, life: s2._life ? s2._life.count() : null };
     },
     /* the sprite sheets in memory now, by name */
     pagesLoaded: () => {
