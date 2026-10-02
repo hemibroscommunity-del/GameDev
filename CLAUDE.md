@@ -20,6 +20,12 @@ remnant to migrate server-side, not a mode to preserve.
   Feedback. The Marketplace and Arena DO classes still exist for their
   wrangler bindings but are **retired from routing** — their logic was
   folded into the GameRoom (see `docs/ARCHITECTURE-HANDOFF.md`).
+- **The world (owner, 2026-10-02, v2.3.2990):** the WHEEL is the world.
+  Players start in its Brotown, on login and after a death. The old lands
+  (today's element zones as places to walk, their World View and its trails)
+  are CLOSED for now, though their code still runs the Wheel's monsters and
+  `?trial=off` reopens them for a tab. Details in the WORLD-MAP-PIPELINE
+  clause below ("The Wheel is the world").
 - **Heavy-systems architecture (v2.3.1116+):** persistent identity,
   offline mail/escrow, server-settled marketplace/trades/quests/duels.
   Before touching the server, read **`docs/ARCHITECTURE-HANDOFF.md`** —
@@ -335,7 +341,43 @@ remnant to migrate server-side, not a mode to preserve.
   fit?" -- Market Row two a side up to `TWO_A_SIDE_MAX` 1.5 (at 1.6 the town
   is in the river), the mine railway leaving from the depot where it stands
   and the diagonal roads forking just past each gate (`layWheel`; the plan's
-  own town unchanged): WORLD-MAP-PIPELINE "At 1.5x, all 17 fit")
+  own town unchanged): WORLD-MAP-PIPELINE "At 1.5x, all 17 fit"; and
+  since v2.3.2990 THE WHEEL IS THE WORLD -- the owner: "I'm ready to have
+  this replace the old game map. Just have players spawn in town. Then push
+  to main", then "The Wheel's new Brotown" and, of the old lands, "Close
+  them for now":
+  - `readFlag` in worldTrial.js gives everyone 'wheel'. `?trial=off` (kept
+    for the tab) is the old World View and lands, a hidden way back.
+    `?trial=world` still works.
+  - You START IN ITS BROTOWN. The client still begins every session in
+    today's town, and the worker's respawn names it. So
+    `src/game/wheelHome.js` puts you on town's stairs once the worker's caps
+    are in, and the hub exit takes you down: the same trip as walking them,
+    with the same overlay.
+    - `wheelSpawnPass` lets that one trip past the Mayor gate.
+    - `applyLocalRespawn` asks for it again after a death.
+    - `?nospawn` stays in today's town.
+  - The Mayor gate MOVES WITH YOU (`wheelCommonsGate`). Until tut_1, a player
+    is held inside the safe commons, `ZONES.wheel.safeR`. It mirrors
+    `WHEEL_SAFE_R`, and test-world-core checks it. The Wheel's own Mayor Bro
+    arms them.
+  - The zone is named "The Wheel", and its test readout shows only with
+    `?trial=`/`?trialhud`.
+  - THE QUEST'S WAY in the Wheel points at a PLACE (questRoute.js
+    `_wheelPoint`): the road and wheelMinimap's star go to the Wheel's
+    Mayor Bro for the welcome or a hand-in, and to a quest's land's monsters,
+    `ZONES.wheel.lands` (it mirrors the anchors; test-world-core checks it),
+    stopping within 600 px of them. Nowhere for any-zone gathering. Every
+    old rule went through portals the Wheel does not have.
+  - A respawn now nulls `S.npcs` like every zone change. It used to carry the
+    Wheel's Mayor into today's town, where the townsfolk never spawned.
+  - Not there yet, so not in the game: gathering (life_1 fish, life_2 ore
+    can't finish), monsters past levels 1-5, dungeons.
+  - The QA harness gives every scenario `trial=off&nospawn` unless it passes
+    `world: 'wheel'` (`nospawn` alone when its query names a trial).
+  - `mp-questline`, CI's "playable", plays in the Wheel. `mp-wheelhome`
+    tests the way in on a phone.
+  - See WORLD-MAP-PIPELINE "The Wheel is the world".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

@@ -261,7 +261,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '' }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null }) {
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
@@ -330,7 +330,14 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
   await page.addInitScript(() => { window.__btTod = 'day'; window.__btAmbienceOff = true; window.__btCoachGapMs = 2600; });
   if (init) await page.addInitScript(init);
   /* v2.3.2927: `query` -- extra URL params (e.g. 'bladesoft=0') for scenarios that compare a URL switch */
-  const _q = [guest ? 'guest=1' : '', query].filter(Boolean).join('&');
+  /* v2.3.2990: the Wheel is the world now, and you start in its Brotown
+     (src/game/wheelHome.js).  The suite was written for the old one, so a
+     scenario that asks for nothing still plays the old World View, standing
+     in today's town (`trial=off&nospawn`); one that names a trial still walks
+     down town's stairs itself (`nospawn`); and `world: 'wheel'` plays the
+     game exactly as a player gets it. */
+  const _world = world === 'wheel' ? '' : /(?:^|&)trial=/.test(query) ? 'nospawn' : 'trial=off&nospawn';
+  const _q = [guest ? 'guest=1' : '', query, _world].filter(Boolean).join('&');
   await page.goto(`http://localhost:${webPort}/${_q ? '?' + _q : ''}`, { waitUntil: 'domcontentloaded' });
   return { ctx, page, logs, name, seeded: !!phrase };
 }

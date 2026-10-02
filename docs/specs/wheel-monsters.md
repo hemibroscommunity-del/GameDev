@@ -27,6 +27,11 @@ unchanged**, to the **inner end of its own spoke**: the land's first stage
   a swing it had started, or a ball already thrown. A chase also gives up
   720 px from the monster's own spot.
 - Dying in the Wheel brings you back in town, as dying anywhere does.
+  **Since v2.3.2990** that town is the Wheel's Brotown: the Wheel is
+  everyone's World View, a new session and a respawn both take you straight
+  down town's stairs into its town square, and until you have spoken to Mayor
+  Bro you stay inside the safe ground below (`src/game/wheelHome.js`;
+  docs/WORLD-MAP-PIPELINE.md "The Wheel is the world").
 - Every land's monster art loads behind the Wheel's loading overlay (the
   zone-asset exception of the preloading law), and all of it is let go when
   you leave. **Since v2.3.2989** (the owner: *"Yes only load as you walk
@@ -164,6 +169,10 @@ the room restarts (no tick polls the flag).
 
 - New client, old worker: no `caps.wheelmonsters`, so the client asks for
   `worldview` as before — never for a zone the old worker would refuse.
+  Since v2.3.2990 that player still starts in the Wheel's Brotown, on
+  `worldview` with the Wheel's ground and no monsters: the spawn trip waits
+  for the worker's caps before taking the stairs, so it never picks the zone
+  before the worker has said which one it runs.
 - Old client, new worker: an old client never asks for `wheel`; the cap is
   ignored.
 

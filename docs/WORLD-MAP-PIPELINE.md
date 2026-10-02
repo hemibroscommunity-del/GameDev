@@ -6,6 +6,9 @@
 - No game code has changed yet, apart from the `?trial=world` switch
   (v2.3.2932, below) and the `?trial=wheel` switch (v2.3.2943, below: the
   Wheel at full size, its ground laid on the phone from your swatches).
+- **v2.3.2990: the Wheel is the world.** It is everyone's World View, players
+  start in its Brotown, and the old lands are closed for now ("The Wheel is
+  the world", below).
 - The world plan in `public/tools/world/plan.js` is the source of truth for
   the map's layout.
 - **v2.3.2933 asked two questions before phase 2; v2.3.2935 has both
@@ -2438,12 +2441,97 @@ old map's far corner, and it slid in over ~15 frames.
 - keep `chunkGround.js` if the real world is going to stream the same way,
   which is the plan.
 
+## The Wheel is the world (v2.3.2990)
+
+> Owner, 2026-10-02: *"I'm ready to have this replace the old game map. Just
+> have players spawn in town. Then push to main"* — and, asked which town and
+> what of the old lands: *"The Wheel's new Brotown"*, *"Close them for now"*.
+
+What a player gets now, with nothing added to the address:
+
+- **You start in the Wheel's Brotown**, by its town square, on every login
+  and after every death. The game still begins in today's town for a moment
+  (the client starts every session there, and the worker's respawn names it),
+  then takes you down town's stairs at once. It is the same trip as walking
+  them, with the same loading screen, so nothing about arriving is new
+  (`src/game/wheelHome.js`). On a local worker it is about four seconds from
+  pressing play to standing in the square.
+- **The Wheel is the World View for everyone.** Today's town stairs lead into
+  it. The old World View and its trails to the old lands went with it, so
+  **the old lands are closed for now**: nothing leads to them.
+- **Mayor Bro is in the Wheel's Brotown**, beside the Town Hall's steps. He
+  gives the first quest there, with the sword and shield, as he does in
+  today's town.
+  - Until you have spoken to him you stay on the safe commons round Brotown:
+    walking out stops at its edge, with the banner *"Speak to Mayor Bro
+    first"*.
+  - The edge is the worker's own safe ground: 2,937 game px round the middle,
+    `ZONES.wheel.safeR`, a copy of `WHEEL_SAFE_R` that test-world-core checks.
+  - It is v2.3.1676's gate, which kept you in today's town without him, moved
+    to where the town is now.
+- **Today's town is still there**, through the glowing marker just west of
+  where you land, with its shops and townsfolk. Its stairs bring you back to
+  the Wheel.
+- **The quest's way works in the Wheel** (`src/game/questRoute.js`). The gold
+  road on the ground and a star on the Wheel's minimap both point the same
+  way. The old rules led through the World View's portals, and the Wheel has
+  none, so here they point at a place:
+  - a new character's welcome, and a quest ready to hand in, lead to the
+    Wheel's own Mayor Bro, not to the marker back to today's town;
+  - a quest that names a land (*"Bring 4 Snowman Remnants from Frost
+    Ridge"*) leads to the middle of where that land's monsters stand. Those
+    spots are in `ZONES.wheel.lands`, a copy of the baked anchors that
+    test-world-core checks. The road stops once you are among them;
+  - "any zone will do" (fishing, ore) gets no road while there is nothing to
+    gather;
+  - while the spot is off the minimap's box, the star waits at its edge, on
+    the line from you.
+- **A death no longer carries the Wheel's Mayor Bro into today's town**
+  (`src/game/respawn.js`). Every zone change clears the list of people
+  standing in the zone, except the respawn did not. So after a death in the
+  Wheel, today's town kept the Wheel's list and its own townsfolk never
+  came, until you next changed zone. Since v2.3.2978 that has been the case
+  for every death in the Wheel.
+- The zone is called **The Wheel**. The test readout (top left: ground pieces
+  and timings) shows only with `?trial=wheel` or `?trialhud` in the address.
+
+**Not in the Wheel yet, so not in the game while the old lands are closed:**
+
+- monsters past levels 1–5: each land has only its first stage's six;
+- gathering (fishing, trees, ore). Mayor Bro's two trade quests, *Learn a
+  Trade* (cook two fish) and *Rock Bottom* (five ore), cannot be finished
+  until it comes. The four first quests (*tut_1–tut_4*, monster kills) can
+  all be done in the Wheel;
+- dungeons, and fishing from the Wheel's own water (its own round).
+
+**Switches, each kept for that browser tab:**
+
+- `?trial=off` brings back the old World View and its lands: a hidden way
+  back, for testing or if something goes wrong.
+- `?trial=wheel` and `?trial=world` work as before.
+- `?nospawn` starts you in today's town, as before.
+
+**Tests:**
+
+- `mp-wheelhome` (new) runs on a phone viewport against a real worker and
+  checks the whole way in, the gate, the Wheel's Mayor Bro, the quest's way
+  (road and star, to him and then to Frost Ridge's monsters), a death and
+  today's town's townsfolk after it, the marker, and `?trial=off`.
+- `mp-questline`, the pull request's "playable" check, now plays in the
+  Wheel. A new character starts there, takes the first quest from the Wheel's
+  Mayor Bro, then walks out onto a land and back.
+- Every other scenario keeps today's world. The harness gives them
+  `trial=off&nospawn` unless they ask for the Wheel (`world: 'wheel'`), or
+  `nospawn` when they name a trial themselves.
+
 ## The Wheel trial: your own swatches under your feet (v2.3.2943)
 
 > Owner, 2026-09-29, after the swatches came out sharp: *"I want to continue
 > on. What are the next steps?"*
 
-**How to try it.** Open the game with **`?trial=wheel`** on the end of the
+**How to try it.** *(Since v2.3.2990 there is nothing to add: the Wheel is
+everyone's World View, and you start in its Brotown. See "The Wheel is the
+world" above.)* Open the game with **`?trial=wheel`** on the end of the
 address — on the **same site** as the Ground Studio you made your swatches
 in (the pull request's preview link, or the site once merged). Walk down the
 town's stairs as usual.

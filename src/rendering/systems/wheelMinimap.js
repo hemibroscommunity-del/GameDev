@@ -26,6 +26,12 @@
  *   - carries a small "expand" mark: tapping the box opens the world map
  *     (src/ui/WorldMapOverlay.jsx, a DOM button laid exactly over this box,
  *     whose place is published here as window.__btWheelMini).
+ *   - v2.3.2990: stars the quest's way, as the gold road on the ground reads
+ *     it (questRoute.js questRoutePoint): the Wheel's Mayor Bro for the
+ *     welcome or a hand-in, or the middle of a land's monsters for a quest
+ *     that names the land.  While the spot is off the box, the star waits at
+ *     its edge on the line from you, so the box says which way however far.
+ *     Today's zones star their portals, and the Wheel has none to star.
  *
  * PRELOADING: nothing to load.  The overview is a canvas the worker made
  * before the Wheel opened (behind its loading screen); the lines and marks
@@ -33,6 +39,7 @@
  */
 import { Container, Graphics, Sprite, Text, Texture, CanvasSource } from 'pixi.js';
 import { wheelOverview, wheelMapInfo, wheelHere } from '@/game/wheelTrial.js';
+import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 
 export const WHEEL_BOX = 132;      /* CSS px a side */
 export const WHEEL_WINDOW = 3200;  /* game px across the box: about three zones */
@@ -41,6 +48,7 @@ const SCALE = WHEEL_BOX / WHEEL_WINDOW;
 const C_SEA = 0x16324a, C_FRAME = 0xd8aa58, C_ROAD = 0xf2e4c2, C_PATH = 0xe6d5ae, C_RIVER = 0x5aaee8, C_RAIL = 0x2b2320;
 const C_TOWN = 0xf4f0e7, C_CAMP = 0xeac675, C_GATE = 0xc58cff, C_PASS = 0xf4f0e7, C_LANDMARK = 0x9fe0c0;
 const C_PLAYER = 0xf4f0e7, C_OTHER = 0x58b97b, C_MONSTER = 0xe35d5b;
+const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = 10;   /* v2.3.2990: as the zones' minimap stars, held this far in from the box's edge */
 const FACING_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 
 export class WheelMinimap {
@@ -193,6 +201,21 @@ export class WheelMinimap {
       if (!m || m.alive === false || m.dead || (m.hp != null && m.hp <= 0)) continue;
       this._mark(m.x, m.y, 'monster', C_MONSTER, 12);
     }
+    /* v2.3.2990: the quest's way (above the bros and monsters: drawn last) */
+    let quest = null;
+    try { quest = questRoutePoint(S.currentZone, S.rpg || null, S); } catch (e) { quest = null; }
+    let questEdge = false;
+    if (quest) {
+      const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
+      const dx = quest.x * SCALE + this.pan.x - pbx, dy = quest.y * SCALE + this.pan.y - pby;
+      const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE;
+      let t = 1;
+      if (dx > 0) t = Math.min(t, (hi - pbx) / dx); else if (dx < 0) t = Math.min(t, (lo - pbx) / dx);
+      if (dy > 0) t = Math.min(t, (hi - pby) / dy); else if (dy < 0) t = Math.min(t, (lo - pby) / dy);
+      t = Math.max(0, t);
+      questEdge = t < 1;
+      this._mark((pbx + dx * t - this.pan.x) / SCALE, (pby + dy * t - this.pan.y) / SCALE, 'star', C_QUEST_STAR, QUEST_STAR_PX);
+    }
     for (let i = this.used; i < this.pool.length; i++) this.pool[i].visible = false;
     const f = FACING_SECTORS.indexOf(S._renderFacing || 'south');
     this.player.x = P.x * SCALE; this.player.y = P.y * SCALE;
@@ -230,6 +253,7 @@ export class WheelMinimap {
         playerBoxX: P.x * SCALE + this.pan.x, playerBoxY: P.y * SCALE + this.pan.y,
         facingRot: this.player.rotation, markers: this.used, under: !!this.under,
         routes: map.routes.length, places: map.places.length, words: w ? { ...w } : null,
+        quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge } : null,
       };
     } catch (e) { /* never breaks the frame */ }
   }

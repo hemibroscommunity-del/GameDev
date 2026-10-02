@@ -88,6 +88,12 @@ const WHEEL_LINGER_MS = 5000;
 
 let _on = false;
 let _mode = null;             /* 'world' (the baked island) or 'wheel' */
+/* v2.3.2990: the Wheel is the world now.  `_spawnOff` (`?nospawn`) keeps you
+   in today's town on the way in, as before -- the QA suite's scenarios walk
+   down the stairs themselves -- and `_hudOn` shows the readout only to a
+   tester (an address naming `trial=`, or `trialhud`), never to a player. */
+let _spawnOff = false;
+let _hudOn = false;
 let _wheelAwayAt = 0;
 let _manifest = null;
 let _manifestP = null;
@@ -109,6 +115,8 @@ export const worldTrialStats = {
 
 export function worldTrialOn() { return _on; }
 export function worldTrialMode() { return _mode; }
+/* v2.3.2990: the Wheel is the world and you start in its Brotown (wheelHome.js) */
+export function wheelIsHome() { return _on && _mode === 'wheel' && !_spawnOff; }
 export function isWorldTrialZone(zoneId) { return _on && (zoneId === WORLD_TRIAL_ZONE || (_mode === 'wheel' && zoneId === WHEEL_ZONE)); }
 /* v2.3.2978: the zone town's World View exit really leads to.  In the Wheel
    trial, against a worker that runs the Wheel's monsters (caps.wheelmonsters),
@@ -130,18 +138,22 @@ export function worldTrialLeft() { _ready = false; }
 export function worldTrialManifest() { return _manifest; }
 
 /* Which trial this tab is in: 'world', 'wheel' or null.  The stored value
-   was '1' before v2.3.2943, when there was only the island. */
+   was '1' before v2.3.2943, when there was only the island.
+   v2.3.2990, owner: "I'm ready to have this replace the old game map" --
+   with no switch at all it is the WHEEL, for everyone.  `?trial=off` still
+   brings back the old World View (and with it the old lands, which the
+   Wheel has closed for now), kept for the tab like the others: a way back
+   if a phone cannot carry the Wheel, and for comparing. */
 function readFlag() {
   if (typeof window === 'undefined') return null;
   let v = null;
   try { v = new URLSearchParams(window.location.search).get('trial'); } catch (e) { /* no URL */ }
   try {
-    if (v === 'world' || v === 'wheel') window.sessionStorage.setItem(FLAG_KEY, v);
-    else if (v === 'off') window.sessionStorage.removeItem(FLAG_KEY);
+    if (v === 'world' || v === 'wheel' || v === 'off') window.sessionStorage.setItem(FLAG_KEY, v);
     const got = window.sessionStorage.getItem(FLAG_KEY);
-    return got === 'wheel' ? 'wheel' : got === 'world' || got === '1' ? 'world' : null;
+    return got === 'off' ? null : got === 'world' || got === '1' ? 'world' : 'wheel';
   } catch (e) {
-    return v === 'world' || v === 'wheel' ? v : null;   /* storage blocked: the URL alone decides */
+    return v === 'off' ? null : v === 'world' ? 'world' : 'wheel';   /* storage blocked: the URL alone decides */
   }
 }
 
@@ -150,11 +162,16 @@ export function applyWorldTrial() {
   if (_on) return false;
   const mode = readFlag();
   if (!mode) return false;
+  try {
+    const q = new URLSearchParams(window.location.search);
+    _spawnOff = q.has('nospawn');
+    _hudOn = q.has('trial') || q.has('trialhud');
+  } catch (e) { /* no URL: a player's defaults */ }
   _on = true;
   _mode = mode;
   const z = ZONES[WORLD_TRIAL_ZONE];
   const size = mode === 'wheel' ? WHEEL : BAKED;
-  z.name = mode === 'wheel' ? 'The Wheel (trial)' : 'World Trial';
+  z.name = mode === 'wheel' ? 'The Wheel' : 'World Trial';
   z.w = Math.round(size.worldW / TILE);
   z.h = Math.round(size.worldH / TILE);
   /* v2.3.2943: 1344 x 1344 tiles for the Wheel, and every one of them 0 but
@@ -182,6 +199,8 @@ export function applyWorldTrial() {
       /* v2.3.2967: the ground drawn at a spot and its footstep sound, the
          sound under the player now, and the map (its places, for walking to) */
       ground: (x, y) => wheelGroundAt(x, y), surface: () => footstepSurface(window._gameState && window._gameState.current),
+      /* v2.3.2990: which land a spot is in, as the worker says (region, tier) */
+      here: (x, y) => wheelHere(x, y),
       wheelMap: () => wheelMapInfo(),
       /* v2.3.2975: the objects' numbers */
       objects: () => wheelObjectStats,
@@ -362,7 +381,7 @@ export function syncWorldTrial(S) {
   }
   if (now - _hudAt < 250) return;
   _hudAt = now;
-  drawHud(inTrial, S);
+  drawHud(inTrial && _hudOn, S);
 }
 
 /* The Wheel's walk grid, and its worker's life: kept while you are in the

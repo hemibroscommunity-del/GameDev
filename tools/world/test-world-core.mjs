@@ -1816,6 +1816,20 @@ console.log('monsters on the Wheel (v2.3.2978)');
   const nearPlace = Math.min(...HOMES.flatMap((h) => (b.spawns[h] || { points: [] }).points.map(([x, y]) => Math.hypot(x - b.centre[0], y - b.centre[1]))));
   ok(`the safe ground holds all of the commons and the town (out to ${Math.round(farCommons)} px, the circle ${b.safeR}) and stops ${Math.round(nearPlace - b.safeR)} px short of the nearest place`,
     farCommons < b.safeR && nearPlace - b.safeR >= 100, { farCommons, safeR: b.safeR, nearPlace });
+  /* v2.3.2990: the game holds a player who has not yet spoken to Mayor Bro
+     inside that same circle (src/game/wheelHome.js), from its own copy */
+  const { ZONES } = await import('../../src/data/zones.js');
+  const zw = ZONES.wheel;
+  ok(`the game's copy of the safe ground is the worker's (src/data/zones.js wheel.safeR ${zw.safeR}, round the same middle)`,
+    zw.safeR === b.safeR && (zw.w * 32) / 2 === b.centre[0] && (zw.h * 32) / 2 === b.centre[1],
+    { safeR: zw.safeR, want: b.safeR, centre: b.centre, size: [zw.w, zw.h] });
+  /* ...and the gold road leads a quest to each land's monsters from its own
+     copy of where they stand (src/game/questRoute.js) */
+  const offLand = HOMES.filter((h) => !zw.lands || !zw.lands[h] || !b.spawns[h]
+    || zw.lands[h][0] !== b.spawns[h].anchor[0] || zw.lands[h][1] !== b.spawns[h].anchor[1]);
+  ok('the game\'s copy of where each land\'s monsters stand is the worker\'s (src/data/zones.js wheel.lands)',
+    offLand.length === 0 && Object.keys(zw.lands || {}).length === HOMES.length,
+    offLand.map((h) => ({ h, game: zw.lands && zw.lands[h], worker: b.spawns[h] && b.spawns[h].anchor })));
   /* and never inside a tree, a rock or a building: the game's own footprints */
   const man = JSON.parse(fs.readFileSync(new URL('../../public/world/objects/manifest.json', import.meta.url)));
   const F = objectFootprints(placeObjects(PLAN, bp), man);

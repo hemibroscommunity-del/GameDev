@@ -28,6 +28,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
 import { preloadZoneAssets, freeZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate; v2.3.2272: and its exit half */
 import { syncWorldTrial, trialZoneFor } from '@/game/worldTrial.js'; /* v2.3.2932: the world trial; v2.3.2978: + the Wheel's own zone */
+import { wheelSpawnTick, wheelSpawnPass, wheelCommonsGate } from '@/game/wheelHome.js'; /* v2.3.2990: you start in the Wheel's Brotown */
 import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel' */
 import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
 import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2859: town's NPCs + buildings load and free with town */
@@ -482,6 +483,11 @@ export function driveDevWarp(S) {
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
   syncWorldTrial(S);   /* v2.3.2932: the world trial's walk grid + readout (one falsy check when off) */
+  /* v2.3.2990: on the way in and after a death, down town's stairs into the
+     Wheel's Brotown; and in the Wheel, an unarmed player stays on its safe
+     ground (wheelHome.js) */
+  wheelSpawnTick(S);
+  wheelCommonsGate(S);
   driveDevWarp(S);   /* v2.3.2308: one leg of a pending test-panel warp */
   syncTownScenery(S);   /* v2.3.2859: town's NPCs + buildings, whichever way you arrived */
         /* v2.3.1406: STUCK-GATE FAILSAFE.  S._zoneLoading is normally
@@ -598,7 +604,9 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                by going up to the map first. */
             var _tutR = S.rpg || {};
             var _spokeToMayor = !!(_tutR._quests && _tutR._quests.tut_1);
-            if (!_spokeToMayor) {
+            /* v2.3.2990: ...except the trip that starts you in the Wheel's
+               Brotown, whose own Mayor Bro arms you (wheelHome.js) */
+            if (!_spokeToMayor && !wheelSpawnPass(S, bestExit.zoneId)) {
               if (!S._mayorGateAt || Date.now() - S._mayorGateAt > 2500) {
                 S._mayorGateAt = Date.now();
                 if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {

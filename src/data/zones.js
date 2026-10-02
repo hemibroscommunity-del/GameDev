@@ -75,7 +75,7 @@ export const ZONES = {
      the trial's look and exits at boot, as it gives 'worldview' them.
      MIRROR: server/src/data.js VALID_ZONE_IDS (zones.test.mjs). */
   wheel: {
-    id: 'wheel', name: 'The Wheel (trial)', w: 1344, h: 1344,
+    id: 'wheel', name: 'The Wheel', w: 1344, h: 1344,
     element: null, level: [1, 2], music: 'town', safe: false,
     palette: { ground: '#1c467e', path: '#c9a36a', accent: '#86b94f' },
     spawns: [],
@@ -84,6 +84,21 @@ export const ZONES = {
        MIRROR of server/src/wheelzone.js WHEEL.HOMES (wheelzone.test.mjs).
        Their art is this zone's art (monsterVariants.js variantsForZone) */
     homes: ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'],
+    /* v2.3.2990: the safe ground's radius round the Wheel's middle, game px --
+       the commons and Brotown, where no monster goes after anyone; a player
+       who has not yet spoken to Mayor Bro (and so carries no sword) stays
+       inside it (src/game/wheelHome.js).  MIRROR of server/src/wheelspawns.js
+       WHEEL_SAFE_R (test-world-core). */
+    safeR: 2937,
+    /* v2.3.2990: the middle of where each land's monsters stand, game px.  A
+       quest naming a land says which one ("Frost Ridge"), and the gold road
+       points at this spot (src/game/questRoute.js).  Every one of them stands
+       within ~550 px of it.  MIRROR of server/src/wheelspawns.js
+       WHEEL_SPAWNS[home].anchor (test-world-core). */
+    lands: {
+      frost: [18985, 18985], ember: [21504, 18050], sky: [23946, 19062], hollows: [24946, 21504],
+      thunder: [23934, 23934], tidal: [21504, 24958], mist: [19087, 23921], verdant: [17966, 21504],
+    },
     /* not a place to list: the encyclopedia's zones leave it out */
     hidden: true,
   },
