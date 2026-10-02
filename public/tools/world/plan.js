@@ -829,7 +829,11 @@ function layWheel(P) {
   const startOf = (s) => Math.round((gateOf(s) / step - 0.03) * 1000) / 1000;
   /* where a diagonal road leaves its compass road: 1.75 squares out, or
      (v2.3.2982) past the gate of a town that reaches further */
-  const forkOf = (s) => Math.max(1.75, Math.round((gateOf(s) / step + 0.3) * 1000) / 1000);
+  /* (v2.3.2985: just past the gate, not 0.3 squares past it -- at 1.5x the
+     west gate stands 95 art px from the Sweetwater River, and a fork past
+     the river sent the Bog Trail back over it, a second bridge beside the
+     Mill Bridge.  The plan's own town still forks at 1.75.) */
+  const forkOf = (s) => Math.max(1.75, Math.round((gateOf(s) / step + 0.02) * 1000) / 1000);
   const cardinal = (s) => s.ux === 0 || s.uy === 0;
   /* The diagonal roads fork off the next compass road clockwise -- the old
      pinwheel: the North Road forks to the Frost Trail, the East Road to the
@@ -925,8 +929,14 @@ function layWheel(P) {
   const J = spokePoint(st, R(4) - 0.25, 0.5);
   const lm = (s) => { const L = P.regions[s.id].landmark; return spokePoint(s, R(L.tier), L.side); };
   const rr = R(4) - 0.18;
+  /* v2.3.2985: from the Rail Depot where it stands -- the big-town preview
+     moves it out past a wider town, and the line's first stretch, left where
+     the depot used to be, ran through the town at 1.5x with all 17 buildings
+     (the owner: "Let me try 1.5 size for buildings. Does that fit?") */
+  const dep = P.places.find((pl) => pl.id === 'depot'), dep0 = BASE_ROUTES.places.find((pl) => pl.id === 'depot');
+  const ddx = dep && dep0 ? dep.at[0] - dep0.at[0] : 0, ddy = dep && dep0 ? dep.at[1] - dep0.at[1] : 0;
   P.rails.push({ id: 'mine-line', name: 'the mine railway',
-    pts: [[1.66, 0.46], [2.3, 0.5], spokePoint(st, R(2), 0.5), spokePoint(st, R(3), 0.52), J, spokePoint(st, R(5), 0.62), lm(st)] });
+    pts: [[1.66 + ddx, 0.46 + ddy], [2.3 + ddx, 0.5 + ddy], spokePoint(st, R(2), 0.5), spokePoint(st, R(3), 0.52), J, spokePoint(st, R(5), 0.62), lm(st)] });
   P.rails.push({ id: 'foundry-branch', name: 'the foundry branch of the mine railway',
     pts: [J, arcPoint(st, sm, rr, 0.2), arcPoint(st, sm, rr, 0.45), arcPoint(st, sm, rr, 0.7), arcPoint(st, sm, rr, 0.92),
       spokePoint(sm, R(4.7), -0.45), spokePoint(sm, R(5.4), -0.6), lm(sm)] });
@@ -957,13 +967,19 @@ export const SPOKES = Object.keys(PLAN.regions).filter((k) => PLAN.regions[k].di
  * the ground, and the hub does not grow -- it cannot: the Wheel already
  * nearly fills its frame -- so Market Row keeps ONE plot a side on each arm
  * (`perSideRow`), the second ones' buildings left out (13 of the 17 stand),
- * which keeps the town off the Sweetwater River west of it.  The gates go
+ * which keeps the town off the Sweetwater River west of it.  (v2.3.2985: up
+ * to TWO_A_SIDE_MAX, 1.5x, all 17 fit, and keep both.)  The gates go
  * where the plots end, each street its own (`gateNS`, `gateEW`); the wheel's
  * roads are laid again from them (layWheel), and the Rail Depot and the Old
  * Mill, which the bigger town would cover, move out past the east and west
  * gates.  The monsters stand where they stood: the lands are the same.
  */
 export const BIG_TOWN_MAX = 2.5;
+/* v2.3.2985, owner: "Let me try 1.5 size for buildings. Does that fit?"  It
+   does: Market Row keeps its TWO plots a side -- all 17 buildings -- up to
+   1.5x, the town then reaching 1,455 art px from the centre, 95 short of
+   the Sweetwater River (at 1.6x it is in it).  Past this, one a side. */
+export const TWO_A_SIDE_MAX = 1.5;
 
 /* The building size the address asks for: `bigtown` alone is 2, `bigtown=k`
    is k (1 to BIG_TOWN_MAX); 1 without it. */
@@ -980,7 +996,7 @@ export function bigTownPlan(k) {
   if (!(k > 1)) return PLAN;
   const T = PLAN.town, L = T.lot;
   const grow = (v) => Math.round(v * k), half = (v) => Math.round((v * (1 + k)) / 2);
-  const lot = { ...L, w: grow(L.w), d: grow(L.d), tall: grow(L.tall), walk: half(L.walk), gap: half(L.gap), perSideRow: 1 };
+  const lot = { ...L, w: grow(L.w), d: grow(L.d), tall: grow(L.tall), walk: half(L.walk), gap: half(L.gap), perSideRow: k > TWO_A_SIDE_MAX ? 1 : L.perSide };
   const town = { ...T, square: half(T.square), hall: { w: grow(T.hall.w), d: grow(T.hall.d) }, lot, buildingScale: k };
   /* the gates: past the last door on each street (Main Street's last front
      walks; Market Row's last plot), and the town's ground behind it */

@@ -329,7 +329,12 @@ remnant to migrate server-side, not a mode to preserve.
   the slim one -- and the studio a "Jump to" row, `#water` links and "in the
   game" chips from the game's manifest (the Water cards were ten phone
   screens down): WORLD-MAP-PIPELINE "The owner's water, in the game",
-  `mp-wheelwater`)
+  `mp-wheelwater`; and since v2.3.2985 the `bigtown=1.5` preview holds ALL
+  17 buildings -- the owner: "Let me try 1.5 size for buildings. Does that
+  fit?" -- Market Row two a side up to `TWO_A_SIDE_MAX` 1.5 (at 1.6 the town
+  is in the river), the mine railway leaving from the depot where it stands
+  and the diagonal roads forking just past each gate (`layWheel`; the plan's
+  own town unchanged): WORLD-MAP-PIPELINE "At 1.5x, all 17 fit")
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

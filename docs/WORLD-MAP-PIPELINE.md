@@ -1947,6 +1947,30 @@ Hotel's bigger porch stopping your feet, no errors; `BIGTOWN=1.5` for that
 size's pictures). `node tools/world/render-wheel-objects.mjs --bigtown 2`
 draws it from above.
 
+### At 1.5x, all 17 fit (v2.3.2985)
+
+Owner, 2026-10-02: *"Let me try 1.5 size for buildings. Does that fit?"*
+
+Yes: `?trial=wheel&bigtown=1.5` keeps Market Row's **two plots a side**, so
+all 17 buildings stand, every door on its street or the square and none
+covering another's (`TWO_A_SIDE_MAX` in plan.js: up to 1.5x; past it, one a
+side as at 2x). The town then reaches 1,455 art px from the centre on
+Market Row, 95 short of the Sweetwater River — at 1.6x it is in it. Two
+things the first try got wrong, both now fixed in `layWheel`:
+
+- **The mine railway** started where the Rail Depot used to stand, so its
+  first stretch ran through the bigger town; it now leaves from the depot
+  where it stands (the plan's own town: the same points as before).
+- **The diagonal roads** forked 0.3 squares past a bigger town's gate; on
+  the west that is past the river, and the Bog Trail went back over it, a
+  second bridge beside the Mill Bridge. They fork just past the gate now
+  (the plan's own town still at 1.75 squares, unchanged).
+
+Tests: test-world-core (2 more: 17 of 17 at 1.5x, doors, no covering,
+1.6x back to one a side; the town in the commons with no river, railway or
+pond in it, the railway from the moved depot, three bridges);
+`BIGTOWN=1.5 mp-bigtown` (5: "preview buildings x1.5 (17 of 17)").
+
 ## The buildings' life (v2.3.2983)
 
 Owner, 2026-10-02: *"Also add effects just using code to each building to

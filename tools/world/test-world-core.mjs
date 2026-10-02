@@ -2004,6 +2004,42 @@ console.log('the big-town preview (v2.3.2982)');
     { beyond, wet, firsts: firsts.map(Math.round) });
   ok('...the river keeps its three bridges, and the Rail Depot and the Old Mill stand out past the gates', (bbp.decks || []).filter((d) => d.kind === 'bridge').length === 3 &&
     ['depot', 'mill'].every((id) => { const l = bbp.lots.find((q) => q.id === id); return l && Math.abs((l.x0 + l.x1) / 2 - g2.cx) > G2.ew; }));
+
+  /* v2.3.2985, owner: "Let me try 1.5 size for buildings. Does that fit?"
+     -- yes: all 17, Market Row keeping two plots a side (TWO_A_SIDE_MAX).
+     The first try ran the mine railway's first stretch through the town
+     (it started where the depot used to be) and forked the Bog Trail past
+     the river, back over it beside the Mill Bridge. */
+  const { TWO_A_SIDE_MAX } = await import('../../public/tools/world/plan.js');
+  const P15 = bigTownPlan(1.5), b15 = buildBlueprint(P15), O15 = placeObjects(P15, b15), T15 = P15.town, g15 = gridInfo(P15);
+  const g15Of = (ax, ay) => [(ax - b15.x0) * WPA, (ay - b15.y0) * WPA];
+  const cls15 = (x, y) => b15.cls[Math.floor(y / cellG) * b15.w + Math.floor(x / cellG)];
+  const lots15 = b15.lots.filter((l) => l.town);
+  const shut15 = lots15.filter((l) => { const [fx, fy] = g15Of(l.foot.x, l.foot.y + T15.lot.porch + 6); const c = cls15(fx, fy); return c !== C.street && c !== C.plaza; });
+  const tp15 = townPlan(T15), cov15 = [];
+  for (const a of tp15.lots) for (const b of tp15.lots) {
+    const p = picOf[a.id];
+    if (a === b || !p) continue;
+    const hw = (p.gameW * 1.5) / WPA / 2, h = (p.gameH * 1.5) / WPA;
+    if (b.foot.x > a.foot.x - hw && b.foot.x < a.foot.x + hw && b.foot.y > a.foot.y - h && b.foot.y < a.foot.y) cov15.push([a.id, b.id]);
+  }
+  ok(`at 1.5x all ${O15.buildings} of the ${O15.buildingsOf} buildings stand (Market Row two a side, up to ${TWO_A_SIDE_MAX}x), every door open, none covering another's`,
+    TWO_A_SIDE_MAX === 1.5 && O15.buildings === 17 && O15.buildingsOf === 17 && lots15.length === 17 && shut15.length === 0 && cov15.length === 0
+    && bigTownPlan(1.6).town.lot.perSideRow === 1, { buildings: O15.buildings, shut: shut15.map((l) => l.id), cov15 });
+  const t15 = b15.regionIds.indexOf('town'), hub15 = P15.wheel.hub * (P15.square.px - P15.square.overlap);
+  let beyond15 = 0, wet15 = 0;
+  for (let i = 0; i < b15.w * b15.h; i++) {
+    if (b15.reg[i] !== t15) continue;
+    const c = b15.cls[i];
+    if (c === C.river || c === C.rail || c === C.water) wet15++;
+    const x = ((i % b15.w) + 0.5) * b15.scale + b15.x0 - g15.cx, y = (((i / b15.w) | 0) + 0.5) * b15.scale + b15.y0 - g15.cy;
+    if (Math.hypot(x, y) > hub15) beyond15++;
+  }
+  const G15 = townGates(T15), step15 = P15.square.px - P15.square.overlap;
+  const rail0 = P15.rails.find((r) => r.id === 'mine-line').pts[0], dep15 = b15.lots.find((q) => q.id === 'depot');
+  ok('...the town in the commons, no river, railway or pond in it; the railway leaving from the moved depot; the river with its three bridges',
+    beyond15 === 0 && wet15 === 0 && rail0[0] * step15 > G15.ew && !!dep15 && (dep15.x0 + dep15.x1) / 2 - g15.cx > G15.ew
+    && (b15.decks || []).filter((d) => d.kind === 'bridge').length === 3, { beyond15, wet15, rail0, gate: G15.ew, bridges: (b15.decks || []).filter((d) => d.kind === 'bridge').map((d) => d.road) });
 }
 
 /* ── v2.3.2983: the buildings' life ──

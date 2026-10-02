@@ -4,7 +4,8 @@
  * large let me see preview".  `?trial=wheel&bigtown` lays the town for
  * buildings twice the size and draws them so (public/tools/world/plan.js
  * bigTownPlan).  On a phone viewport, against a real worker:
- *   1. the way in says it is the preview -- buildings x2, 13 of 17;
+ *   1. the way in says it is the preview -- buildings x2, 13 of 17 (at 1.5,
+ *      BIGTOWN=1.5, all 17: v2.3.2985);
  *   2. round the arrival the buildings are drawn twice their pictures' size,
  *      everything else as made, Mayor Bro beside the bigger Town Hall;
  *   3. walking up to the Hotel your feet stop at its (bigger) porch;
@@ -64,8 +65,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const o of man.objects) gameW[o.id] = o.pieces.map((p) => p.gameW);
 
   /* BIGTOWN=1.5 in the environment for that size's pictures (the checks
-     are written for twice) */
+     are written for twice) -- v2.3.2985: and, up to TWO_A_SIDE_MAX, all 17
+     buildings stand (the owner: "Let me try 1.5 size for buildings. Does
+     that fit?") */
   const K = Number(process.env.BIGTOWN || 2);
+  const { TWO_A_SIDE_MAX } = await import(H.REPO + '/public/tools/world/plan.js');
+  const STAND = K <= TWO_A_SIDE_MAX ? 17 : 13;
   const tag = K === 2 ? '' : `-${K}`;
   const P = await H.newPlayer(browser, { name: 'Surveyor', wsPort, webPort, viewport: PHONE, touch: true, query: K === 2 ? 'trial=wheel&bigtown' : `trial=wheel&bigtown=${K}` });
   await H.enterWorld(P);
@@ -94,7 +99,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const o = window.__btWorldTrial.objects(), t = document.body.innerText || '';
     return { o, readout: (t.match(/preview buildings[^\n]*/) || [''])[0] };
   });
-  rec.ok(`the way in is the preview: "${info.readout}"`, WHEELISH(zone) && info.readout.includes(`preview buildings x${K} (13 of 17)`), info);
+  rec.ok(`the way in is the preview: "${info.readout}"`, WHEELISH(zone) && info.readout.includes(`preview buildings x${K} (${STAND} of 17)`), info);
 
   phase = 'the town';
   const town = await P.page.evaluate(() => {
