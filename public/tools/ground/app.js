@@ -618,7 +618,8 @@ function wireMap() {
 /* ── the list of swatches ── */
 
 const GROUPS = () => {
-  const out = [['hub', 'Brotown and the commons'], ['routes', 'Roads and special ground']];
+  /* v2.3.2980: the water's pictures, near the top: the owner looked for them */
+  const out = [['hub', 'Brotown and the commons'], ['routes', 'Roads and special ground'], ['water', 'Water']];
   for (const id of Object.keys(S.plan.regions)) {
     const rd = S.plan.regions[id];
     if (rd.dir) out.push([id, `${rd.name} (${rd.element})`]);

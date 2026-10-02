@@ -94,8 +94,19 @@ import { gridInfo } from './grid.js';
 import { C, hexToRgb } from './layout.js';
 import { axisDist } from './wheel.js';
 
-/* the id of the sea and every other water: drawn by the game, not a swatch */
+/* the id of the sea and every other water: one material, all of it (the walk
+   grid, the shore, the edges), drawn from the WATER SWATCHES below where they
+   are made and in the plan's own blues where they are not */
 export const WATER = 'water';
+/* ═══ v2.3.2980: THE WATER'S OWN PICTURES ═══
+   Owner: "I don't see anywhere to add water in the ground studio and also
+   give me the prompts."  Three pictures, made in the Ground Studio like any
+   swatch: the open SEA, its SHALLOWS along every shore (where the water's
+   share of the ground is low -- the same share the plan's blues were drawn
+   by), and FRESH water for the rivers, ponds, lakes and oases.  The water is
+   still one material: these only say how a water pixel looks (waterLook).
+   The foam at the shore stays the game's own. */
+export const WATER_SWATCHES = ['sea', 'shallows', 'fresh'];
 /* how far either side of the line between two spokes their border land
    reaches, in squares (about 700 art px across, a zone) */
 const BORDER_BAND = 0.45;
@@ -156,6 +167,7 @@ const KIND_OF = {
   'verdant-1': 'grass', 'verdant-2': 'moss', 'verdant-3': 'moss', 'verdant-4': 'moss',
   'border-ember-frost': 'earth', 'border-ember-sky': 'ash', 'border-hollows-sky': 'sand', 'border-hollows-thunder': 'earth',
   'border-thunder-tidal': 'sand', 'border-mist-tidal': 'earth', 'border-mist-verdant': 'grass', 'border-frost-verdant': 'grass',
+  sea: 'liquid', shallows: 'liquid', fresh: 'liquid',   /* v2.3.2980: never a cell's ground; only how water looks */
 };
 export function kindOf(id) { return KIND_OF[id] || 'earth'; }
 /* How an upper ground lies over a lower one, in game px: [reach, ragged].
@@ -423,6 +435,14 @@ export function groundCatalog(plan) {
   }
   add({ id: 'lava', group: 'routes', name: 'Lava', brief: 'molten lava in bright orange and yellow under a cracked black crust (its own bright colours, with no glow spilling onto anything)',
     where: 'the lava pools and channels of the Flame Fields', color: hexToRgb(K.lava.color) });
+  /* v2.3.2980: the water's pictures (WATER_SWATCHES above): `water` marks a
+     look of the one water material, never a ground of its own */
+  add({ id: 'sea', group: 'water', water: true, name: 'Open sea', brief: 'deep, calm open sea in rich blues: soft, broad patches of darker and lighter blue, with small, short glints of light scattered all over',
+    where: 'the sea between the spokes, away from the shore', color: WATER_RGB.deep });
+  add({ id: 'shallows', group: 'water', water: true, name: 'Shallows', brief: 'clear, shallow sea water over pale sand: light turquoise water through which the sandy bottom and a few small pebbles show, with small, soft glints of light scattered all over',
+    where: 'the sea along every shore, before it deepens (the foam line at the very edge is the game\'s own)', color: WATER_RGB.shallow });
+  add({ id: 'fresh', group: 'water', water: true, name: 'Fresh water', brief: 'clear, calm fresh water in blue-green, with a hint of the dark bed showing through, a few small rings and glints of light scattered all over',
+    where: 'the rivers, ponds, lakes and oasis pools', color: WATER_RGB.mid });
   for (const key of Object.keys(plan.borders || {})) {
     const br = plan.borders[key];
     const [a, b] = key.split('|');
@@ -525,6 +545,45 @@ export function materialMap(plan, bp) {
     }
   });
   return { mat, ids, index, water, catalog: cat, built, decks, deckAt };
+}
+
+/* ═══ v2.3.2980: HOW A WATER PIXEL LOOKS ═══
+   FRESH where its cell is a river, a pond, a lake or an oasis (the plan's
+   own classes); else the sea's SHALLOWS where the water's share of the
+   ground `d` is low -- near the shore, the same share the plan's blues were
+   drawn by (shallow below 0.72, deep from 0.93) -- and the open SEA past
+   them.  Both lines wander with noise: a ruler line where a river meets the
+   sea, or round every shore, is the thing every other edge here avoids.
+   Called only when a water picture has been made (composeGround). */
+function waterLook(bp, ax, ay, d, seed) {
+  const S = bp.scale;
+  /* (valueNoise is -1..1) */
+  const jx = valueNoise(ax * 0.021, ay * 0.021, seed + 41) * S * 0.8;
+  const jy = valueNoise(ax * 0.021 + 17.3, ay * 0.021 - 9.1, seed + 43) * S * 0.8;
+  /* which water this is: the nudged cell's, or -- where the nudge lands on
+     the bank, or the drawn shore lies a little past its cells -- the
+     pixel's own cell's, or the nearest water beside it (13% of a river's
+     pixels took the sea's shallows before this looked past the bank) */
+  const kindAt = (x, y) => {
+    if (x < 0 || y < 0 || x >= bp.w || y >= bp.h) return -1;
+    const c = bp.cls[y * bp.w + x];
+    return c === C.river || c === C.water ? 1 : c === C.ocean ? 0 : -1;
+  };
+  const ox = Math.floor((ax - bp.x0) / S), oy = Math.floor((ay - bp.y0) / S);
+  let k = kindAt(Math.floor((ax + jx - bp.x0) / S), Math.floor((ay + jy - bp.y0) / S));
+  if (k < 0) k = kindAt(ox, oy);
+  for (let r = 1; r <= 2 && k < 0; r++) {
+    for (let dy = -r; dy <= r && k < 0; dy++) for (let dx = -r; dx <= r && k < 0; dx++) k = kindAt(ox + dx, oy + dy);
+  }
+  if (k === 1) return 'fresh';
+  return d + 0.08 * valueNoise(ax * 0.05, ay * 0.05, seed + 47) < 0.8 ? 'shallows' : 'sea';
+}
+/* the water pictures made, or null when there are none (the plan's blues
+   then, exactly as before any was made) */
+function waterTiles(tiles) {
+  if (!tiles) return null;
+  for (const id of WATER_SWATCHES) if (tiles[id] && tiles[id].A) return tiles;
+  return null;
 }
 
 /* v2.3.2947: every land cell's stage, averaged over about a dozen cells
@@ -689,6 +748,7 @@ export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
   const data = new Uint8ClampedArray(RW * RH * 4);
   const mat = new Uint8Array(RW * RH);
   const cat = mm.catalog;
+  const wt = waterTiles(tiles);   /* v2.3.2980 */
   for (let py = 0; py < RH; py++) {
     const ay = Y0 + py;
     for (let px = 0; px < RW; px++) {
@@ -699,6 +759,13 @@ export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
       if (m === water) {
         const land = emat[e0 - 1] !== water || emat[e0 + 1] !== water || emat[e0 - EW] !== water || emat[e0 + EW] !== water;
         const d = wdepth[e0];
+        const t = !land && wt ? wt[waterLook(bp, ax, ay, d, seed)] : null;
+        if (t && t.A) {
+          const useB = t.B && fbm(ax / 1100, ay / 1100, seed + 17, 2) > 0;
+          const tile = useB ? t.B : t.A, T = tile.w;
+          putTexel(data, o, tile, (((ay % T) + T) % T) * T + (((ax % T) + T) % T));
+          continue;
+        }
         c = land ? WATER_RGB.foam : d < 0.72 ? WATER_RGB.shallow : d < 0.93 ? WATER_RGB.mid : WATER_RGB.deep;
       } else {
         const e = cat[m], t = tiles && tiles[e.id];
@@ -1472,6 +1539,8 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
     pkR = s - j * BW;
     pkT = t;
   };
+  const wt = waterTiles(tiles);   /* v2.3.2980: the water's pictures, if any */
+  let wlx = null, wly = null, wlt = null;
   for (let oy = 0; oy < OH; oy++) {
     const aoy = OY0 + oy, ay = Math.floor(aoy / K);
     let lastAx = null, bsel = 0;
@@ -1488,6 +1557,19 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
         let land = false;
         for (let d = 1; d <= FOAM && !land; d++) land = omat[e0 - d] !== water || omat[e0 + d] !== water || omat[e0 - d * OEW] !== water || omat[e0 + d * OEW] !== water;
         const dd = odep[e0];
+        /* v2.3.2980: the water's own pictures where made (waterLook), one
+           look an art px, laid in output px like any swatch */
+        if (!land && wt) {
+          if (ax !== wlx || ay !== wly) { wlx = ax; wly = ay; wlt = wt[waterLook(bp, ax, ay, dd, seed)] || null; }
+          if (wlt && wlt.A) {
+            const tile = wlt.B && fbm(ax / 1100, ay / 1100, seed + 17, 2) > 0 ? wlt.B : wlt.A, T = tile.w;
+            let u = aox % T, v = aoy % T;
+            if (u < 0) u += T;
+            if (v < 0) v += T;
+            putTexel(data, o, tile, v * T + u);
+            continue;
+          }
+        }
         c = land ? WATER_RGB.foam : dd < 0.72 ? WATER_RGB.shallow : dd < 0.93 ? WATER_RGB.mid : WATER_RGB.deep;
       } else {
         const L = look[m] || lookOf(m);
@@ -1749,6 +1831,8 @@ export function swatchesUnder(bp, mm, rect) {
   const x1 = Math.min(bp.w - 1, Math.ceil((rect.x + rect.w - bp.x0) / sc) + M), y1 = Math.min(bp.h - 1, Math.ceil((rect.y + rect.h - bp.y0) / sc) + M);
   const ids = new Set();
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) ids.add(mm.ids[mm.mat[y * bp.w + x]]);
+  /* v2.3.2980: water under it needs the water's pictures (waterLook) */
+  if (ids.has(WATER)) for (const id of WATER_SWATCHES) ids.add(id);
   return ids;
 }
 

@@ -1739,6 +1739,46 @@ a page would bring that to about 2.8 MB. That is for the placing round.
     sprite sheets, every frame decoded and compared with the backup's piece,
     anchored at its foot.
 
+## The water's own pictures (v2.3.2980)
+
+Owner, 2026-10-02: *"I don't see anywhere to add water in the ground studio
+and also give me the prompts."*
+
+The Ground Studio has a **Water** group now, after the roads: three cards made
+like any swatch (two versions, A and B, a prompt each, the same seamless
+cut), and no footstep row (nobody walks on water).
+
+| Card | Id | Where the game draws it |
+|---|---|---|
+| Open sea | `sea` | the sea between the spokes, past the shallows |
+| Shallows | `shallows` | the sea along every shore, before it deepens |
+| Fresh water | `fresh` | the rivers, ponds, lakes and oasis pools |
+
+- **Still one material.** The plan's water is one swatch (`water`) as before;
+  the three pictures only say how a water pixel LOOKS (`waterLook` in
+  `world/core/ground.js`). Fresh where its cell is a river or a pond (the
+  plan's own classes); else the shallows where the water's share of the ground
+  is low, near the shore (the same share the old blues were drawn by), and the
+  open sea past them. Both lines wander with noise, as every other edge does:
+  where a river meets the sea, and all round every shore.
+- **The foam stays the game's own**: the line of white at the very edge is not
+  in any picture.
+- **Without them, nothing changes**: the flat blues and the foam as before,
+  picture by picture (a fresh picture alone draws only the rivers and ponds).
+- **The prompts** (`ground/prompts.js` `waterPromptFor`): a seamless square of
+  water seen from straight above, quiet (glints of light on at most a tenth of
+  it), the whole square water edge to edge (no shore, no foam, nothing
+  floating), nothing running one way (`NO_DIRECTION`), in the HD pixel style
+  and matched to the style key.
+- **Moving water** (waves, a drift on the river) is a later round: these are
+  still pictures.
+
+Tests: test-world-core "the water's pictures" (the studio's group and no
+footstep, the prompt, `swatchesUnder` asks for them under water, the flat
+fallback, open sea away from the shore, a river all fresh, shore foam then
+shallows then sea, two halves composed apart meeting exactly); the Ground
+Studio's browser test (51 cards in 12 groups, the Water group's prompts).
+
 ## The monsters on the Wheel (v2.3.2978)
 
 Owner, 2026-10-02: "can you place the monsters where they belong in their

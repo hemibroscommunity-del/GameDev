@@ -55,8 +55,9 @@ const BY_SOUND = {
   metal: ['thunder-2', 'thunder-3', 'thunder-4'],
 };
 
-/* Not walked on: lava, and the sea and the rivers (the walk grid stops you). */
-export const NO_STEP = ['lava', 'water'];
+/* Not walked on: lava, and the sea and the rivers (the walk grid stops you) --
+   and so none of the water's own pictures either (v2.3.2980). */
+export const NO_STEP = ['lava', 'water', 'sea', 'shallows', 'fresh'];
 
 const SOUND_OF = new Map();
 for (const s of Object.keys(BY_SOUND)) for (const id of BY_SOUND[s]) SOUND_OF.set(id, s);

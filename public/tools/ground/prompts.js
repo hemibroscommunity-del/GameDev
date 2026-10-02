@@ -27,7 +27,22 @@ export function scaleLine() {
    rule, after wagon ruts tiled sideways down a north-south Main Street.
    v2.3.2949: all but the boardwalk, whose boards the game lays itself
    (`laid`), and which says PLANK_BOARDS instead. */
+/* v2.3.2980: the water's pictures (world/core/ground.js, WATER_SWATCHES) --
+   water, not ground: the same seamless square, the same no-direction rule
+   (a wave running one way runs the wrong way along half the shores), and
+   nothing in it but the water and what shows through it.  The foam at the
+   shore is the game's own. */
+const QUIET_WATER = 'The texture is calm and clean: broad, soft areas of two or three tones of its water, with small glints of light covering no more than about a tenth of the area, and no noise, speckle or grain. The whole square is this water, edge to edge: no shore, no foam, no plants and nothing floating on it.';
+function waterPromptFor(entry) {
+  return [
+    `A seamless, tileable square texture of water for BroTown, a top-down 2D action RPG, seen from directly above: ${entry.brief}. ${QUIET_WATER} ${NO_DIRECTION} Every edge must continue seamlessly into the opposite edge. No border, no text, no reflections of sky or clouds, and no shadows cast on it.`,
+    `Style: ${HD_STYLE}`,
+    `${KEY_MATCH} Scale: ${personScale(PIXEL.groundTile * PIXEL.gamePxPerArtPx)}, so draw every glint and pebble at that size.`,
+  ].join('\n\n');
+}
+
 export function promptFor(entry) {
+  if (entry.water) return waterPromptFor(entry);
   const quiet = SURFACES.has(entry.id) ? QUIET_SURFACE : QUIET_GROUND;
   const way = entry.laid === 'planks' ? PLANK_BOARDS : NO_DIRECTION;
   return [

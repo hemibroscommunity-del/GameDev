@@ -142,10 +142,15 @@ try {
       commons: (prompts.find((t) => t.dataset.prompt === 'commons') || {}).value || '',
       road: (prompts.find((t) => t.dataset.prompt === 'road') || {}).value || '',
       frost1: (prompts.find((t) => t.dataset.prompt === 'frost-1') || {}).value || '',
+      /* v2.3.2980: the water's cards */
+      water: ['sea', 'shallows', 'fresh'].map((id) => (prompts.find((t) => t.dataset.prompt === id) || {}).value || ''),
       map: [document.getElementById('map').width, document.getElementById('map').height],
     };
   });
-  ok(`every swatch is listed, in groups (${first.n}: ${first.groups.length} groups)`, first.n === 48 && first.prompts === 48 && first.groups.length === 11 && first.count === '0 of 48', { n: first.n, groups: first.groups, count: first.count });
+  /* (v2.3.2980: 48 grounds and the water's three pictures, in a Water group) */
+  ok(`every swatch is listed, in groups (${first.n}: ${first.groups.length} groups)`, first.n === 51 && first.prompts === 51 && first.groups.length === 12 && first.groups.includes('Water') && first.count === '0 of 51', { n: first.n, groups: first.groups, count: first.count });
+  ok('the Water group has the sea, the shallows and fresh water, each a prompt for a seamless square of water (v2.3.2980)',
+    first.water.length === 3 && first.water.every((t) => /^A seamless, tileable square texture of water/.test(t) && /no shore, no foam/.test(t)), first.water.map((t) => t.slice(0, 80)));
   ok('a prompt carries the HD pixel art paragraph, its brief, the quiet-ground rule and the scale', /BroTown HD pixel art/.test(first.commons) &&
     /short green grass/.test(first.commons) && /The texture is quiet/.test(first.commons) && first.commons.includes(personScale(PIXEL.groundTile * PIXEL.gamePxPerArtPx)) && /one fifth as tall as this picture/.test(first.commons) &&
     /style key/.test(first.commons) && /seamlessly into the opposite edge/.test(first.commons), first.commons.slice(0, 200));
@@ -209,7 +214,7 @@ try {
     return { count: document.getElementById('count').textContent, chip: document.querySelector('[data-chip="commons"]').textContent,
       thumb: document.querySelector('canvas[data-thumb="commons|A"]').width, means: Object.keys(S.means).length };
   });
-  ok('progress counts it, its card says A, and a thumbnail shows the repeat', after.count === '5 of 48' && after.chip === 'A' && after.thumb === 192 && after.means === 5, after);
+  ok('progress counts it, its card says A, and a thumbnail shows the repeat', after.count === '5 of 51' && after.chip === 'A' && after.thumb === 192 && after.means === 5, after);
   const saved1 = await page.evaluate(() => ({ chip: document.getElementById('saved-chip').textContent, line: document.getElementById('saved-line').textContent,
     items: [...document.querySelectorAll('#saved-list li')].map((li) => li.textContent), when: document.getElementById('saved-when').textContent }));
   ok('...and the top of the page says which swatches are saved here, and when the last went in',
@@ -704,8 +709,8 @@ try {
       chosen: { ...window.__ground.S.steps } };
   });
   const st0 = await stepsOf(page);
-  ok('every card says what its ground sounds like underfoot: 47 with a menu of the twelve sounds and a play button, the lava none (v2.3.2968)',
-    st0.rows === 48 && st0.selects === 47 && st0.plays === 47 && st0.commons === 'grass' && st0.frost3 === 'ice' && st0.boardwalk === 'wood' && st0.plaza === 'gravel' &&
+  ok('every card says what its ground sounds like underfoot: 47 with a menu of the twelve sounds and a play button, the lava and the water none (v2.3.2968; v2.3.2980)',
+    st0.rows === 51 && st0.selects === 47 && st0.plays === 47 && st0.commons === 'grass' && st0.frost3 === 'ice' && st0.boardwalk === 'wood' && st0.plaza === 'gravel' &&
     /nobody walks on it/.test(st0.lava) && st0.resets.length === 0 && Object.keys(st0.chosen).length === 0, st0);
   ok('...and the forest floor says it plays grass until it has a recording of its own', /plays grass until it has a recording of its own/.test(st0.forest), st0.forest);
   await page.click('[data-step-play="frost-3"]');

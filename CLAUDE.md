@@ -274,7 +274,15 @@ remnant to migrate server-side, not a mode to preserve.
   freed sheets; the Wheel at 241 MB of textures on arrival is at iPhone
   Safari's edge, and loading each land's monsters on approach needs the
   owner's yes: docs/specs/wheel-monsters.md, `wheelzone` suite,
-  `mp-wheelmonsters`)
+  `mp-wheelmonsters`; and since v2.3.2980 the WATER HAS PICTURES of its own
+  -- the owner: "I don't see anywhere to add water in the ground studio" --
+  the Ground Studio's Water group, `sea`, `shallows` and `fresh`
+  (`WATER_SWATCHES` in ground.js, `waterPromptFor` in ground/prompts.js, no
+  footstep), still ONE material: `waterLook` only says how a water pixel
+  looks (fresh on a river or pond cell, shallows where the water's share is
+  low, the open sea past them, both lines wandering), the foam the game's
+  own, the flat blues where a picture is not made: WORLD-MAP-PIPELINE "The
+  water's own pictures")
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

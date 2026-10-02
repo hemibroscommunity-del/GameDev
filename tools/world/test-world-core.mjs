@@ -286,7 +286,9 @@ console.log('ground');
 {
   const cat = groundCatalog(PLAN);
   const ids = new Set(cat.map((e) => e.id));
-  ok(`the catalog lists every swatch the world needs (${cat.length})`, cat.length === 48 && ids.size === 48 &&
+  /* (v2.3.2980: 48 grounds and the water's three pictures) */
+  ok(`the catalog lists every swatch the world needs (${cat.length})`, cat.length === 51 && ids.size === 51 &&
+    cat.filter((e) => e.water).map((e) => e.id).join() === 'sea,shallows,fresh' &&
     SPOKES.every((k) => [1, 2, 3, 4].every((n) => ids.has(`${k}-${n}`))) &&
     ['commons', 'town-yard', 'street', 'boardwalk', 'plaza', 'road', 'gravel', 'lava'].every((id) => ids.has(id)) &&
     cat.filter((e) => e.group === 'borders').length === 8 && cat.every((e) => e.brief && e.brief.length > 10 && e.color.length === 3), cat.length);
@@ -1602,6 +1604,85 @@ console.log('objects on the Wheel (v2.3.2975)');
   const pg1 = pagesByColour([fake('a', 64), fake('bb', 64)], { kinds: 1 });
   ok('the packer puts kinds on a page while their colours together fit a palette PNG: three of 64 colours a page, then the next',
     pg.length === 2 && pg[0].objects.length === 3 && pg[0].colours <= 255 && pg1.length === 2, pg.map((p) => p.objects));
+}
+
+/* ── v2.3.2980: the water's own pictures ──
+   Owner: "I don't see anywhere to add water in the ground studio and also
+   give me the prompts."  Three swatches -- the open sea, its shallows along
+   the shore, fresh water -- each a look of the one water material. */
+console.log("the water's pictures (v2.3.2980)");
+{
+  const { WATER_SWATCHES, swatchesUnder: under } = await import('../../public/tools/world/core/ground.js');
+  const { promptFor } = await import('../../public/tools/ground/prompts.js');
+  const { NO_DIRECTION } = await import('../../public/tools/style/bible.js');
+  const { stepOf } = await import('../../public/tools/world/core/footsteps.js');
+  const mmW = materialMap(PLAN, bp);
+  const cat = groundCatalog(PLAN);
+  const solid = (r, gg, b) => { const T = 16, t = { w: T, h: T, data: new Uint8ClampedArray(T * T * 4) }; for (let i = 0; i < T * T; i++) t.data.set([r, gg, b, 255], i * 4); return t; };
+  const SEA = [200, 0, 0], SHALLOWS = [0, 200, 0], FRESH = [0, 0, 200];
+  const wtiles = { sea: { A: solid(...SEA) }, shallows: { A: solid(...SHALLOWS) }, fresh: { A: solid(...FRESH) } };
+  const tally = (out) => {
+    const n = { sea: 0, shallows: 0, fresh: 0, foam: 0, other: 0, water: 0 };
+    for (let i = 0; i < out.w * out.h; i++) {
+      if (mmW.ids[out.mat[i]] !== 'water') continue;
+      n.water++;
+      const r = out.data[i * 4], gg = out.data[i * 4 + 1], b = out.data[i * 4 + 2];
+      if (r === 200 && gg === 0 && b === 0) n.sea++;
+      else if (r === 0 && gg === 200 && b === 0) n.shallows++;
+      else if (r === 0 && gg === 0 && b === 200) n.fresh++;
+      else if (r === 226 && gg === 238 && b === 240) n.foam++;
+      else n.other++;
+    }
+    return n;
+  };
+  ok('the Ground Studio has the water\'s three pictures, in a Water group, not walked on',
+    WATER_SWATCHES.join() === 'sea,shallows,fresh' && WATER_SWATCHES.every((id) => { const e = cat.find((q) => q.id === id); return e && e.group === 'water' && e.water && e.kind === 'liquid'; })
+    && WATER_SWATCHES.every((id) => !stepOf(id)), WATER_SWATCHES);
+  const pr = promptFor(cat.find((q) => q.id === 'sea'));
+  ok('...each with a prompt for a seamless square of WATER, running no one way, its foam left to the game',
+    /^A seamless, tileable square texture of water/.test(pr) && pr.includes(NO_DIRECTION) && /no shore, no foam/.test(pr) && WATER_SWATCHES.every((id) => promptFor(cat.find((q) => q.id === id)).includes(cat.find((q) => q.id === id).brief)));
+  /* the Mill Bridge's river (fresh) and the sea in the Wheel's corner */
+  const [mx, my] = art([-2.02, 0]);
+  const Rm = { x: Math.round(mx - 64), y: Math.round(my - 64), w: 128, h: 128 };
+  /* out from the centre between two spokes: the shore, and open sea well past it */
+  const [ccx, ccy] = art([0, 0]);
+  const ang = Math.atan2(W.spokes[0].uy + W.spokes[1].uy, W.spokes[0].ux + W.spokes[1].ux);
+  const clsAt = (x, y) => bp.cls[Math.floor((y - bp.y0) / bp.scale) * bp.w + Math.floor((x - bp.x0) / bp.scale)];
+  const along = (r) => [ccx + Math.cos(ang) * r, ccy + Math.sin(ang) * r];
+  let shoreR = null;
+  for (let r = 300; r < 9000 && shoreR == null; r += 4) if (clsAt(...along(r)) === C.ocean) shoreR = r;
+  let deepR = null;
+  for (let r = shoreR + 300; r < 12000 && deepR == null; r += 16) {
+    const [x, y] = along(r);
+    let all = true;
+    /* (the shallows reach about 100 art px out from any land, rocks and all) */
+    for (let dy = -208; dy <= 256 && all; dy += 8) for (let dx = -208; dx <= 256 && all; dx += 8) all = clsAt(x + dx, y + dy) === C.ocean;
+    if (all) deepR = r;
+  }
+  const [dx0, dy0] = along(deepR);
+  const Rs = { x: Math.round(dx0), y: Math.round(dy0), w: 48, h: 48 };
+  ok('a piece over water asks for the water\'s pictures', WATER_SWATCHES.every((id) => under(bp, mmW, Rs).has(id) && under(bp, mmW, Rm).has(id)));
+  const plainS = tally(composeGround(PLAN, bp, mmW, Rs, {}, { scale: 3 }));
+  ok('until one is made, the water is drawn in the plan\'s blues exactly as before', plainS.water > 0 && plainS.sea + plainS.shallows + plainS.fresh === 0, plainS);
+  const seaT = tally(composeGround(PLAN, bp, mmW, Rs, wtiles, { scale: 3 }));
+  ok(`the open sea is drawn from the sea's picture (${seaT.sea} of ${seaT.water} px)`, seaT.water > 0 && seaT.sea === seaT.water, seaT);
+  const rivT = tally(composeGround(PLAN, bp, mmW, Rm, wtiles, { scale: 3 }));
+  ok(`a river is drawn from the fresh water's alone (${rivT.fresh} px, ${rivT.foam} of foam at its banks)`, rivT.fresh > 200 && rivT.sea === 0 && rivT.shallows === 0 && rivT.foam > 0 && rivT.other === 0, rivT);
+  /* a shore, from the land out past the shallows (about 60 art px of them) */
+  const [shx, shy] = along(shoreR + 64);
+  const Rc = { x: Math.round(shx - 96), y: Math.round(shy - 96), w: 192, h: 192 };
+  const shT = tally(composeGround(PLAN, bp, mmW, Rc, wtiles, { scale: 3 }));
+  ok(`along a shore: foam at the edge, the shallows' picture, then the sea's (${shT.foam} / ${shT.shallows} / ${shT.sea} px)`,
+    shT.foam > 0 && shT.shallows > 0 && shT.sea > 0 && shT.other === 0, shT);
+  /* pieces laid apart still meet: the look is a function of where it is */
+  const whole = composeGround(PLAN, bp, mmW, Rc, wtiles, { scale: 3 });
+  const lh = composeGround(PLAN, bp, mmW, { ...Rc, w: 96 }, wtiles, { scale: 3 }), rh = composeGround(PLAN, bp, mmW, { ...Rc, x: Rc.x + 96, w: 96 }, wtiles, { scale: 3 });
+  let wseam = 0;
+  for (let y = 0; y < whole.h; y++) for (let x = 0; x < whole.w; x++) for (let c2 = 0; c2 < 4; c2++) {
+    const v = x < 288 ? lh.data[(y * 288 + x) * 4 + c2] : rh.data[(y * 288 + x - 288) * 4 + c2];
+    if (v !== whole.data[(y * whole.w + x) * 4 + c2]) wseam++;
+  }
+  ok('...and two halves of a shore laid apart match the whole, water and all', wseam === 0, wseam);
 }
 
 /* ── v2.3.2978: the Wheel's monsters, at the inner end of each spoke ──
