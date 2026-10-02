@@ -54,7 +54,7 @@
    Vite alias does not exist. */
 import { ZONES } from '../data/zones.js';
 import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/effects.js';
-import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo, wheelObjectStats, wheelObjectsInfo, wheelObjectsOn } from './wheelTrial.js';
+import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo, wheelObjectStats, wheelObjectsInfo, wheelObjectsOn, wheelBigTown } from './wheelTrial.js';
 import { setAlwaysDay } from './timeOfDay.js';
 
 export const WORLD_TRIAL_ZONE = 'worldview';
@@ -453,6 +453,8 @@ function wheelHud(S) {
     (wheelEdges().length ? 'edges   ' + wheelEdges().length + ' with edge pieces\n' : '') +
     /* v2.3.2951: the pairs of alike grounds with a blend picture */
     (wheelBlends().length ? 'blends  ' + wheelBlends().length + ' made\n' : '') +
+    /* v2.3.2982: the big-town preview, so a screenshot says which town it is */
+    (wheelBigTown() > 1 ? 'preview buildings x' + wheelBigTown() + (wheelObjectsInfo() ? ' (' + wheelObjectsInfo().buildings + ' of ' + wheelObjectsInfo().buildingsOf + ')' : '') + '\n' : '') +
     /* v2.3.2975: the objects -- drawn now, sprite sheets in memory, and
        any that came on screen before their sheet */
     (wheelObjectsInfo() ? 'objects ' + wheelObjectStats.drawn + ' drawn · ' + wheelObjectStats.pages + '/' + wheelObjectStats.pagesOf + ' sheets ~' +

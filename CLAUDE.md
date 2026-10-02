@@ -293,7 +293,17 @@ remnant to migrate server-side, not a mode to preserve.
   atlas.js, in the studio's download and repack-objects.mjs), and the game
   anchors every Wheel sprite at its foot (the palms' trunks were drawn 65-96
   px from where they stood): WORLD-MAP-PIPELINE "Oases in the Wind Dunes";
-  the monsters' places re-baked)
+  the monsters' places re-baked; and since v2.3.2982 a BIG-TOWN PREVIEW,
+  `?trial=wheel&bigtown` (or `bigtown=1.5`) -- the owner: "all the buildings
+  need to be twice as large let me see preview" -- `bigTownPlan` in plan.js
+  (plots, hall, square, walks and gaps scaled, streets not; Market Row ONE
+  plot a side, `perSideRow`, so 13 of 17 stand, as the hub cannot grow: the
+  Wheel nearly fills its frame; per-street gates `gateNS`/`gateEW`,
+  `townGates` in layout.js; `layWheel` re-run from them; depot and mill
+  moved out), placing.js `kindScale` (buildings k, the rest 1) and
+  `wheelObjects.js` drawing at it; the default plan untouched -- a phone
+  shows a 2x building two screens wide: WORLD-MAP-PIPELINE "The big-town
+  preview", `mp-bigtown`)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

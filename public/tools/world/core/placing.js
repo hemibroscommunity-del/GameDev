@@ -383,11 +383,15 @@ export function placeObjects(plan, bp, opts = {}) {
 
   /* ── 1. the buildings, and what stands at their doors ── */
   const T = plan.town;
+  /* v2.3.2982: the big-town preview's buildings are drawn `bk` times the
+     size (plan.js bigTownPlan), so what stands beside a porch stands that
+     much further out */
+  const bk = (T && T.buildingScale) || 1;
   const townLots = bp.lots.filter((l) => l.town && l.foot);
   for (const l of townLots) {
     const fx = (l.foot.x - bp.x0) * WPA, fy = (l.foot.y - bp.y0) * WPA;
     put(l.id, fx, fy, 0, false);
-    for (const [id, dx, dy, piece] of DOOR_PROPS[l.id] || []) put(id, fx + dx * WPA, fy + dy * WPA, piece, false);
+    for (const [id, dx, dy, piece] of DOOR_PROPS[l.id] || []) put(id, fx + dx * bk * WPA, fy + dy * bk * WPA, piece, false);
   }
   /* ── 2. the town's furniture ── */
   if (T) {
@@ -625,8 +629,15 @@ export function placeObjects(plan, bp, opts = {}) {
   }
 
   const n = out.kind.length;
+  /* v2.3.2982: how many times its picture's size each kind is drawn -- the
+     big-town preview's buildings bigger, everything else as made */
+  const kindScale = new Float32Array(kinds.length).fill(1);
+  if (bk !== 1) cat.forEach((e, k) => { if (e.kind === 'building') kindScale[k] = bk; });
   const res = {
-    version: PLACING, kinds, n, worldW, worldH,
+    version: PLACING, kinds, kindScale, n, worldW, worldH,
+    /* v2.3.2982: the buildings standing, of the catalog's (the big-town
+       preview has room for 13 of the 17) */
+    buildings: townLots.length, buildingsOf: cat.filter((e) => e.kind === 'building').length,
     kind: Uint8Array.from(out.kind), piece: Uint8Array.from(out.piece), flip: Uint8Array.from(out.flip),
     x: Float32Array.from(out.x), y: Float32Array.from(out.y),
     town: placedTown, fences: fences.length, counts, ms: Date.now() - t0,
@@ -642,7 +653,9 @@ export function mayorSpot(plan, bp) {
   const hall = bp.lots.find((l) => l.id === (plan.town && plan.town.hallLot && plan.town.hallLot.id));
   if (!hall || !hall.foot) return null;
   const WPA = plan.worldPxPerArtPx;
-  return { x: (hall.foot.x + 70 - bp.x0) * WPA, y: (hall.foot.y + 20 - bp.y0) * WPA };
+  /* (v2.3.2982: beside a bigger Town Hall's wider steps in the big-town preview) */
+  const bk = plan.town.buildingScale || 1;
+  return { x: (hall.foot.x + 70 * bk - bp.x0) * WPA, y: (hall.foot.y + 20 - bp.y0) * WPA };
 }
 
 /* The ground each object stops you on, from its picture's size in the
@@ -662,7 +675,9 @@ export function objectFootprints(placed, manifest) {
     const id = placed.kinds[placed.kind[i]], o = byId[id];
     if (!o) continue;
     const pc = o.pieces[placed.piece[i] % o.pieces.length];
-    for (const b of footprintOf(id, o.kind, placed.x[i], placed.y[i], pc.gameW, pc.gameH)) boxes.push(b.x0, b.y0, b.x1, b.y1);
+    /* (v2.3.2982: drawn bigger in the big-town preview, so a bigger footprint) */
+    const ks = (placed.kindScale && placed.kindScale[placed.kind[i]]) || 1;
+    for (const b of footprintOf(id, o.kind, placed.x[i], placed.y[i], pc.gameW * ks, pc.gameH * ks)) boxes.push(b.x0, b.y0, b.x1, b.y1);
   }
   boxOf[placed.n] = boxes.length >> 2;
   return { present, boxOf, boxes: Float32Array.from(boxes) };

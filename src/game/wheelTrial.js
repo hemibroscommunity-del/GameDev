@@ -116,6 +116,9 @@ export function wheelEdges() { return _info && _info.edges ? _info.edges : []; }
 /* v2.3.2951: which pairs of alike grounds have a BLEND picture, laid through
    the middle of the zone where they mix (their keys, as ground.js blendKey) */
 export function wheelBlends() { return _info && _info.blends ? _info.blends : []; }
+/* v2.3.2982: the big-town preview's building size (`?trial=wheel&bigtown`,
+   public/tools/world/plan.js bigTownPlan): 1 without it */
+export function wheelBigTown() { return _info && _info.bigTown > 1 ? _info.bigTown : 1; }
 
 /* Start the worker (once) and build the plan.  Resolves with its 'ready'
    message; rejects, and leaves the trial on flat sea, if this browser cannot

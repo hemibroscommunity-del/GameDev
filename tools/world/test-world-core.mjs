@@ -1849,5 +1849,77 @@ console.log('the oases (v2.3.2981)');
   ok(`the game's palms all lean the catalog's way and stand on their trunks, far off their pictures' middles (${checked} pictures)`, checked >= 2 && bad.length === 0, bad);
 }
 
+/* ── v2.3.2982: the big-town preview ──
+   Owner, 2026-10-02: "I actually think all the buildings need to be twice as
+   large let me see preview".  `?trial=wheel&bigtown` -- the town laid for
+   buildings twice the size, drawn so; without it nothing changes. */
+console.log('the big-town preview (v2.3.2982)');
+{
+  const { bigTownPlan, bigTownScale, BIG_TOWN_MAX } = await import('../../public/tools/world/plan.js');
+  const { townPlan, townGates } = await import('../../public/tools/world/core/layout.js');
+  const { placeObjects, objectFootprints, mayorSpot } = await import('../../public/tools/world/core/placing.js');
+  const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
+  const fs = await import('node:fs');
+  ok('the switch: `bigtown` is twice the size, `bigtown=1.5` one and a half, at most BIG_TOWN_MAX, and without it the plan itself, untouched',
+    bigTownScale('?trial=wheel&bigtown') === 2 && bigTownScale('?trial=wheel&bigtown=1.5') === 1.5 && bigTownScale('?bigtown=9') === BIG_TOWN_MAX &&
+    bigTownScale('?trial=wheel') === 1 && bigTownScale('?trial=wheel&bigtownish') === 1 && bigTownPlan(1) === PLAN &&
+    PLAN.town.gateNS === undefined && PLAN.town.lot.perSideRow === undefined && !PLAN.town.buildingScale);
+  const BP = bigTownPlan(2), bbp = buildBlueprint(BP), BO = placeObjects(BP, bbp), T2 = BP.town, tp2 = townPlan(T2);
+  const WPA = BP.worldPxPerArtPx, cellG = bbp.scale * WPA;
+  const gOf = (ax, ay) => [(ax - bbp.x0) * WPA, (ay - bbp.y0) * WPA];
+  const clsAtG = (x, y) => bbp.cls[Math.floor(y / cellG) * bbp.w + Math.floor(x / cellG)];
+  const cat = objectCatalog(), byId = Object.fromEntries(cat.map((e) => [e.id, e]));
+  const lots2 = bbp.lots.filter((l) => l.town), bAt = Object.create(null);
+  for (let i = 0; i < BO.n; i++) { const id = BO.kinds[BO.kind[i]]; if (byId[id] && byId[id].kind === 'building') bAt[id] = [BO.x[i], BO.y[i]]; }
+  ok(`${BO.buildings} of its ${BO.buildingsOf} buildings stand, Market Row keeping one plot a side, each on its plot's door, drawn twice the size (everything else as made)`,
+    BO.buildings === 13 && BO.buildingsOf === 17 && lots2.length === 13 &&
+    lots2.every((l) => { const b = bAt[l.id], [fx, fy] = gOf(l.foot.x, l.foot.y); return b && Math.abs(b[0] - fx) < 1 && Math.abs(b[1] - fy) < 1; }) &&
+    BO.kinds.every((id, k) => BO.kindScale[k] === (byId[id] && byId[id].kind === 'building' ? 2 : 1)), Object.keys(bAt));
+  const shut = lots2.filter((l) => { const [fx, fy] = gOf(l.foot.x, l.foot.y + T2.lot.porch + 6); const c = clsAtG(fx, fy); return c !== C.street && c !== C.plaza; });
+  ok('every door still opens onto a street, the square, the Back Lane or a front walk', shut.length === 0, shut.map((l) => l.id));
+  /* as drawn: the game's pictures, twice the size */
+  const man = JSON.parse(fs.readFileSync(new URL('../../public/world/objects/manifest.json', import.meta.url)));
+  const picOf = Object.create(null);
+  for (const o of man.objects) if (o.kind === 'building' && o.pieces.length) picOf[o.id] = o.pieces[0];
+  const covered = [];
+  for (const a of tp2.lots) for (const b of tp2.lots) {
+    const p = picOf[a.id];
+    if (a === b || !p) continue;
+    const hw = (p.gameW * 2) / WPA / 2, h = (p.gameH * 2) / WPA;
+    if (b.foot.x > a.foot.x - hw && b.foot.x < a.foot.x + hw && b.foot.y > a.foot.y - h && b.foot.y < a.foot.y) covered.push([a.id, b.id]);
+  }
+  const tooWide = tp2.lots.filter((l) => picOf[l.id] && (picOf[l.id].gameW * 2) / WPA > l.x1 - l.x0 + 1);
+  ok('...no picture, twice the size, covers another\'s door, and every one fits its plot\'s width', covered.length === 0 && tooWide.length === 0, { covered, tooWide: tooWide.map((l) => l.id) });
+  const F = objectFootprints(BO, man), bBox = [];
+  for (let i = 0; i < BO.n; i++) {
+    const id = BO.kinds[BO.kind[i]];
+    if (!byId[id] || byId[id].kind !== 'building') continue;
+    for (let q = F.boxOf[i]; q < F.boxOf[i + 1]; q++) bBox.push({ id, w: F.boxes[q * 4 + 2] - F.boxes[q * 4], y1: F.boxes[q * 4 + 3] });
+  }
+  ok('...and each stops you on ground twice as wide as today\'s building does',
+    bBox.length === 13 && bBox.every((q) => Math.abs(q.w - 0.94 * picOf[q.id].gameW * 2) < 1), bBox.slice(0, 3));
+  /* the arrival (192 art px south of the centre, the worker's) and Mayor Bro, clear */
+  const g2 = gridInfo(BP), [arX, arY] = gOf(g2.cx, g2.cy + 0.25 * g2.P), ms = mayorSpot(BP, bbp);
+  const hit = (x, y, m) => { for (let q = 0; q < F.boxes.length; q += 4) if (x > F.boxes[q] - m && x < F.boxes[q + 2] + m && y > F.boxes[q + 1] - m && y < F.boxes[q + 3] + m) return true; return false; };
+  ok('where you arrive and where Mayor Bro stands are clear of every footprint, and he stands in the square', !hit(arX, arY, 40) && !!ms && !hit(ms.x, ms.y, 24) && clsAtG(ms.x, ms.y) === C.plaza, { ms });
+  /* the town in the commons: off the river, inside the hub, the roads from its own gates */
+  const townR = bbp.regionIds.indexOf('town'), hubR = BP.wheel.hub * (BP.square.px - BP.square.overlap);
+  let beyond = 0, wet = 0;
+  for (let i = 0; i < bbp.w * bbp.h; i++) {
+    if (bbp.reg[i] !== townR) continue;
+    const c = bbp.cls[i];
+    if (c === C.river || c === C.rail || c === C.water) wet++;
+    const x = ((i % bbp.w) + 0.5) * bbp.scale + bbp.x0 - g2.cx, y = (((i / bbp.w) | 0) + 0.5) * bbp.scale + bbp.y0 - g2.cy;
+    if (Math.hypot(x, y) > hubR) beyond++;
+  }
+  const G2 = townGates(T2), step = BP.square.px - BP.square.overlap;
+  const firsts = BP.roads.filter((r) => ['north', 'east', 'south', 'west'].includes(r.id)).map((r) => Math.hypot(r.pts[0][0], r.pts[0][1]) * step);
+  ok(`the town stays in the commons -- no river, railway or pond in it, none of it past the commons' edge -- and the four Old Roads leave from its own gates (${G2.ns} and ${G2.ew} art px)`,
+    beyond === 0 && wet === 0 && firsts.length === 4 && firsts.every((d) => Math.abs(d - G2.ns) < 30 || Math.abs(d - G2.ew) < 30) && G2.ns > PLAN.town.gate && G2.ew > PLAN.town.gate,
+    { beyond, wet, firsts: firsts.map(Math.round) });
+  ok('...the river keeps its three bridges, and the Rail Depot and the Old Mill stand out past the gates', (bbp.decks || []).filter((d) => d.kind === 'bridge').length === 3 &&
+    ['depot', 'mill'].every((id) => { const l = bbp.lots.find((q) => q.id === id); return l && Math.abs((l.x0 + l.x1) / 2 - g2.cx) > G2.ew; }));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

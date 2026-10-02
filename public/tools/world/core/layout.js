@@ -184,8 +184,18 @@ function thin(pts, k) {
    on these plots by core/placing.js.  Each plot keeps the building's
    ground: x0..x1 its width, y0..y1 its depth, the DOOR at (foot.x, foot.y),
    the middle of its south edge. */
+/* v2.3.2982: where the streets leave town, each axis apart -- Main Street's
+   (north-south) and Market Row's (east-west); one `gate` for both unless the
+   plan says otherwise (the big-town preview, plan.js bigTownPlan) */
+export function townGates(T) {
+  return { ns: T.gateNS || T.gate, ew: T.gateEW || T.gate };
+}
+
 export function townPlan(T) {
   const L = T.lot, Hl = T.hall;
+  /* v2.3.2982: Market Row's arms may hold fewer a side than Main Street's
+     (`perSideRow`; the big-town preview) */
+  const perRow = L.perSideRow != null ? L.perSideRow : L.perSide;
   const verge = T.boardwalks ? Math.max(L.verge, T.boardwalk) : L.verge;
   const porch = T.boardwalks ? Math.max(L.porch, T.boardwalk) : L.porch;
   const lots = [], fronts = [];
@@ -206,7 +216,7 @@ export function townPlan(T) {
   const arms = T.lots || {};
   for (const arm of Object.keys(arms)) {
     for (const side of Object.keys(arms[arm])) {
-      arms[arm][side].slice(0, L.perSide).forEach((o, k) => {
+      arms[arm][side].slice(0, arm === 'north' || arm === 'south' ? L.perSide : perRow).forEach((o, k) => {
         const base = { ...o, arm, side };
         if (arm === 'north' || arm === 'south') {
           const [x0, x1] = side === 'west' ? [-far, -near] : [near, far];
@@ -241,13 +251,14 @@ export function townShape(T) {
   const rows = tp.lots.filter((l) => l.arm === 'west' || l.arm === 'east');
   const rowTop = rows.length ? -Math.min(...rows.map((l) => Math.min(l.y0, l.y1 - L.tall * 0.5))) : T.row;
   const rowBot = tp.yS0 + L.walk;
+  const G = townGates(T);
   const rects = [
     { x0: -T.square - y, x1: T.square + y, y0: -T.square - y, y1: T.square + y },
     { x0: -sideOuter, x1: sideOuter, y0: -(tp.northEnd + y), y1: 0 },
     { x0: -sideOuter, x1: sideOuter, y0: 0, y1: tp.southEnd + y },
     { x0: -(tp.rowEnd + y), x1: tp.rowEnd + y, y0: -(rowTop + y), y1: rowBot + y },
-    { x0: -(T.main + y + 40), x1: T.main + y + 40, y0: -T.gate, y1: T.gate },
-    { x0: -T.gate, x1: T.gate, y0: -(T.row + y + 40), y1: T.row + y + 40 },
+    { x0: -(T.main + y + 40), x1: T.main + y + 40, y0: -G.ns, y1: G.ns },
+    { x0: -G.ew, x1: G.ew, y0: -(T.row + y + 40), y1: T.row + y + 40 },
   ];
   return { ...tp, rects };
 }
@@ -705,8 +716,9 @@ export function buildBlueprint(plan) {
 
   /* ── pass 5: Brotown -- streets, the square, boardwalks and empty plots ── */
   if (T && townId != null) {
-    stampRect(-T.main, -T.gate, T.main, T.gate, C.street, landAt, townId);
-    stampRect(-T.gate, -T.row, T.gate, T.row, C.street, landAt, townId);
+    const G = townGates(T);
+    stampRect(-T.main, -G.ns, T.main, G.ns, C.street, landAt, townId);
+    stampRect(-G.ew, -T.row, G.ew, T.row, C.street, landAt, townId);
     /* v2.3.2975: the front walks and the Back Lane, so every door opens
        onto a street (townPlan) */
     for (const f of TS.fronts) stampRect(f.x0, f.y0, f.x1, f.y1, C.street, landAt, townId);

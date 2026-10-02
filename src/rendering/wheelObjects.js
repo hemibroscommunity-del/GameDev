@@ -70,15 +70,18 @@ function index() {
   const byId = Object.create(null);
   for (const m of man.objects) byId[m.id] = m;
   /* per kind and piece: page, frame, size */
-  const kinds = o.kinds.map((id) => {
+  const kinds = o.kinds.map((id, kk) => {
     const m = byId[id];
     if (!m || !m.pieces || !m.pieces.length) return null;
+    /* v2.3.2982: how many times its picture's size it is drawn -- the
+       big-town preview's buildings bigger (placing.js kindScale), else 1 */
+    const ks = (o.kindScale && o.kindScale[kk]) || 1;
     /* v2.3.2981: `ax`, where it stands across its picture (its foot, a share
        of its width): the middle for most, the trunk for a leaning palm,
        whose trunk is far off its picture's middle (objects/atlas.js
        standPiece) -- so its trunk is drawn where it was placed, on its
        footprint, and a mirrored one turns on its trunk */
-    return m.pieces.map((pc) => ({ page: pageOf[pc.atlas] != null ? pageOf[pc.atlas] : -1, frame: pc.frame, w: pc.gameW, h: pc.gameH,
+    return m.pieces.map((pc) => ({ page: pageOf[pc.atlas] != null ? pageOf[pc.atlas] : -1, frame: pc.frame, w: pc.gameW * ks, h: pc.gameH * ks, ks,
       ax: pc.foot && pc.w > 0 ? Math.min(1, Math.max(0, pc.foot[0] / pc.w)) : 0.5 }));
   });
   const n = o.n, worldW = o.worldW, worldH = o.worldH;
@@ -86,7 +89,7 @@ function index() {
   const page = new Int16Array(n).fill(-1), w = new Float32Array(n), h = new Float32Array(n);
   /* the anchor across each picture, and how far it reaches either side of
      its foot (half its width, more for a palm stood on its trunk) */
-  const ax = new Float32Array(n), reach = new Float32Array(n);
+  const ax = new Float32Array(n), reach = new Float32Array(n), scl = new Float32Array(n);
   const frame = new Array(n);
   const count = new Uint32Array(cols * rows + 1);
   let maxH = 0, maxHalfW = 0, placed = 0;
@@ -96,7 +99,7 @@ function index() {
     const pc = ks[o.piece[i] % ks.length];
     if (pc.page < 0) continue;
     page[i] = pc.page; w[i] = pc.w; h[i] = pc.h; frame[i] = pc.frame;
-    ax[i] = pc.ax; reach[i] = Math.max(pc.ax, 1 - pc.ax) * pc.w;
+    ax[i] = pc.ax; reach[i] = Math.max(pc.ax, 1 - pc.ax) * pc.w; scl[i] = pc.ks;
     if (pc.h > maxH) maxH = pc.h;
     if (reach[i] > maxHalfW) maxHalfW = reach[i];
     placed++;
@@ -110,7 +113,7 @@ function index() {
   wheelObjectStats.placed = placed;
   wheelObjectStats.pagesOf = pageNames.length;
   wheelObjectStats.placeMs = o.placeMs != null ? o.placeMs : null;
-  _idx = { src: o, o, n, cols, rows, start: count, items, page, w, h, ax, reach, frame, maxH, maxHalfW, pageNames, pageMB,
+  _idx = { src: o, o, n, cols, rows, start: count, items, page, w, h, ax, reach, scl, frame, maxH, maxHalfW, pageNames, pageMB,
     sheets: man.atlases.map((a) => BASE + a.sheet) };
   return _idx;
 }
@@ -277,7 +280,7 @@ export class WheelObjects {
       const s = new Sprite(tex);
       s.anchor.set(ix.ax[i], 1);
       s.x = x; s.y = y;
-      if (ix.o.flip[i]) s.scale.x = -1;
+      s.scale.set(ix.o.flip[i] ? -ix.scl[i] : ix.scl[i], ix.scl[i]);
       s.label = 'wheelObject';
       s._wheelObject = i;
       this.layer.addChild(s);

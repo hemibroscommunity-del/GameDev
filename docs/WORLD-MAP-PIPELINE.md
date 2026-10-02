@@ -1821,6 +1821,58 @@ game" both leaning left, the right one mirrored pixel for pixel, each foot on
 its trunk); `mp-wheelobjects` (at an oasis its palms drawn standing on their
 trunks, leaning in as placed).
 
+## The big-town preview: buildings twice the size (v2.3.2982)
+
+Owner, 2026-10-02: *"I actually think all the buildings need to be twice as
+large let me see preview"*
+
+**`?trial=wheel&bigtown`** (and `bigtown=1.5`, any size up to 2.5) lays the
+town for buildings that many times the size and draws them so. Without it
+nothing changes: the default plan is the same object, byte for byte (the
+monsters' baked hash says so).
+
+![The Hotel from the same spot, on a phone: today, 1.5x, 2x](world/bigtown-hotel-compare.png)
+
+- **What grows** (`plan.js` `bigTownPlan`): every plot (width, depth, the room
+  for a roof), the Town Hall's, and halfway — `(1 + k) / 2` — the square, the
+  front walks and the gaps. The streets keep their width.
+- **13 of the 17 buildings stand.** Twice-size buildings make a town twice as
+  wide (four times the ground), and the hub cannot grow: the Wheel already
+  nearly fills its frame (its cardinal tips ~580 art px from the edge). So
+  Market Row keeps one plot a side on each arm (`perSideRow`, layout.js);
+  Feed & Seed, the Guild Hall, the Assay Office and the Auction House are left
+  out. All 17 at that size would reach the Sweetwater River west of town.
+- **The gates go where the plots end**, each street its own (`gateNS` 1,546,
+  `gateEW` 1,285 art px; `townGates`), the wheel's roads are laid again from
+  them (`layWheel` runs again on the preview's plan, the diagonal roads forking
+  past the gates), and the Rail Depot and the Old Mill move out past the east
+  and west gates.
+- **Drawn bigger, not redrawn**: `placing.js` gives every kind a scale
+  (`kindScale`: the buildings k, everything else 1), the porch props and Mayor
+  Bro's spot stand k times further out, the footprints grow with the pictures,
+  and `wheelObjects.js` draws each sprite at its kind's scale. Each building's
+  pixels are k times as big as everything else's, so they look softer.
+- **What it shows**: on a phone today's Hotel just fits the screen's width; at
+  1.5x it overflows it; at 2x a screen holds its porch and door and little
+  more. Choosing bigger for good means one of: the commons shrinking to a thin
+  ring along the four roads (this preview), the whole Wheel growing (a bigger
+  frame, every land moved out, about a day's work and more ground to lay), or
+  fewer buildings in town — and, for sharp pictures, remaking the buildings
+  bigger in the Object Studio (four times the memory each at 2x: ~9 MB
+  decoded a building instead of ~2.3).
+
+![The big-town preview from above](world/bigtown-from-above.png)
+
+Tests: test-world-core "the big-town preview" (8: the switch, 13 of 17 on
+their doors drawn twice, every door onto a street, no picture covering a door,
+footprints twice as wide, the arrival and Mayor Bro clear, the town inside the
+commons off the river with the roads from its own gates, the bridges, depot and
+mill); `mp-bigtown` (5, phone viewport, real worker: the readout, buildings
+drawn twice and nothing else, Mayor Bro beside the bigger Town Hall, the
+Hotel's bigger porch stopping your feet, no errors; `BIGTOWN=1.5` for that
+size's pictures). `node tools/world/render-wheel-objects.mjs --bigtown 2`
+draws it from above.
+
 ## The monsters on the Wheel (v2.3.2978)
 
 Owner, 2026-10-02: "can you place the monsters where they belong in their

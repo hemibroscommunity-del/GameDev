@@ -72,6 +72,7 @@
  * suite proves nothing moves (tools/world/test-world-core.mjs, "growth").
  */
 import { wheelInfo, spokePoint, arcPoint, arcPoints, stageOf } from './core/wheel.js';
+import { townPlan, townGates } from './core/layout.js';
 import { MATERIALS } from '../style/bible.js';
 
 export const PLAN = {
@@ -812,12 +813,23 @@ export const PLAN = {
  * point of the road it leaves -- which is how a fork is recognised
  * (core/prompt.js) and why the two meet cleanly (core/layout.js).
  */
-(function layWheel(P) {
+/* v2.3.2982: the routes and places the plan lists itself, before the
+   wheel's join them -- so a plan with another town (bigTownPlan, below) can
+   lay the wheel's again round it */
+const BASE_ROUTES = { roads: PLAN.roads.slice(), rivers: PLAN.rivers.slice(), rails: PLAN.rails.slice(), places: PLAN.places.slice() };
+
+function layWheel(P) {
   const W = wheelInfo(P);
   const R = W.tierMid;
   const step = P.square.px - P.square.overlap;
-  const startR = Math.round((P.town.gate / step - 0.03) * 1000) / 1000;   /* just inside a town gate, to meet its street */
-  const forkR = 1.75;                                                     /* where a diagonal road leaves its compass road */
+  /* just inside a town gate, to meet its street (v2.3.2982: each street's
+     own gate -- Main Street's north and south, Market Row's east and west) */
+  const G = townGates(P.town);
+  const gateOf = (s) => (s.ux === 0 ? G.ns : G.ew);
+  const startOf = (s) => Math.round((gateOf(s) / step - 0.03) * 1000) / 1000;
+  /* where a diagonal road leaves its compass road: 1.75 squares out, or
+     (v2.3.2982) past the gate of a town that reaches further */
+  const forkOf = (s) => Math.max(1.75, Math.round((gateOf(s) / step + 0.3) * 1000) / 1000);
   const cardinal = (s) => s.ux === 0 || s.uy === 0;
   /* The diagonal roads fork off the next compass road clockwise -- the old
      pinwheel: the North Road forks to the Frost Trail, the East Road to the
@@ -834,9 +846,9 @@ export const PLAN = {
   for (const s of W.spokes) {
     const rd = P.regions[s.id];
     let pts;
-    if (cardinal(s)) pts = [spokePoint(s, startR), spokePoint(s, forkR)];
+    if (cardinal(s)) pts = [spokePoint(s, startOf(s)), spokePoint(s, forkOf(s))];
     else {
-      const f = spokePoint(forkFrom[s.id], forkR), h = spokePoint(s, W.hub);
+      const f = spokePoint(forkFrom[s.id], forkOf(forkFrom[s.id])), h = spokePoint(s, W.hub);
       pts = [f, midpoint(f, h)];
     }
     pts.push(spokePoint(s, W.hub));
@@ -922,8 +934,74 @@ export const PLAN = {
     paint: 'an abandoned single-track railway: rails rusted and half-buried in drifting sand, sleepers missing, telegraph poles leaning or fallen',
     pts: [J, arcPoint(wd, st, rr, 0.8), arcPoint(wd, st, rr, 0.55), arcPoint(wd, st, rr, 0.3), arcPoint(wd, st, rr, 0.08),
       spokePoint(wd, R(4.7), 0.45), spokePoint(wd, R(5.8), 0.55), spokePoint(wd, R(7), 0.6)] });
-})(PLAN);
+}
+layWheel(PLAN);
 
 /* The spokes, in the order the plan lists them (clockwise from north-west)
    -- the regions that are not the town or the commons. */
 export const SPOKES = Object.keys(PLAN.regions).filter((k) => PLAN.regions[k].dir);
+
+/* ═══ v2.3.2982: THE BIG-TOWN PREVIEW ═══
+ *
+ * Owner, 2026-10-02: "I actually think all the buildings need to be twice as
+ * large let me see preview".  `?trial=wheel&bigtown` (twice; `bigtown=1.5`
+ * any size up to BIG_TOWN_MAX) lays the town for buildings that many times
+ * the size and draws them so: the SAME pictures, drawn bigger -- softer,
+ * every pixel of theirs that many times as big as everything else's.
+ * Without it nothing changes.
+ *
+ * What grows with the buildings: each plot (its width, its depth, the room
+ * for a roof), the Town Hall's plot, and -- halfway, (1 + k) / 2 -- the
+ * square, the front walks and the gaps between plots.  The streets keep
+ * their width.  Twice-size buildings make a town twice as wide, four times
+ * the ground, and the hub does not grow -- it cannot: the Wheel already
+ * nearly fills its frame -- so Market Row keeps ONE plot a side on each arm
+ * (`perSideRow`), the second ones' buildings left out (13 of the 17 stand),
+ * which keeps the town off the Sweetwater River west of it.  The gates go
+ * where the plots end, each street its own (`gateNS`, `gateEW`); the wheel's
+ * roads are laid again from them (layWheel), and the Rail Depot and the Old
+ * Mill, which the bigger town would cover, move out past the east and west
+ * gates.  The monsters stand where they stood: the lands are the same.
+ */
+export const BIG_TOWN_MAX = 2.5;
+
+/* The building size the address asks for: `bigtown` alone is 2, `bigtown=k`
+   is k (1 to BIG_TOWN_MAX); 1 without it. */
+export function bigTownScale(search) {
+  const m = /(?:^|[?&])bigtown(?:=([0-9.]*))?(?:&|$)/.exec(search || '');
+  if (!m) return 1;
+  const k = m[1] ? Number(m[1]) : 2;
+  return Number.isFinite(k) && k > 0 ? Math.max(1, Math.min(BIG_TOWN_MAX, k)) : 2;
+}
+
+/* The plan with the town laid for buildings `k` times the size, or the plan
+   itself when k is 1. */
+export function bigTownPlan(k) {
+  if (!(k > 1)) return PLAN;
+  const T = PLAN.town, L = T.lot;
+  const grow = (v) => Math.round(v * k), half = (v) => Math.round((v * (1 + k)) / 2);
+  const lot = { ...L, w: grow(L.w), d: grow(L.d), tall: grow(L.tall), walk: half(L.walk), gap: half(L.gap), perSideRow: 1 };
+  const town = { ...T, square: half(T.square), hall: { w: grow(T.hall.w), d: grow(T.hall.d) }, lot, buildingScale: k };
+  /* the gates: past the last door on each street (Main Street's last front
+     walks; Market Row's last plot), and the town's ground behind it */
+  const tp = townPlan(town);
+  const ends = { ns: 0, ew: tp.rowEnd };
+  for (const l of tp.lots) {
+    if (l.arm === 'north' || l.arm === 'south') ends.ns = Math.max(ends.ns, Math.abs(l.foot.y) + lot.walk);
+  }
+  town.gateNS = Math.round(Math.max(T.gate, ends.ns + T.yard));
+  town.gateEW = Math.round(Math.max(T.gate, ends.ew + T.yard));
+  const step = PLAN.square.px - PLAN.square.overlap;
+  /* the depot and the mill, out past the gates as far as they stood past
+     the old one (in squares from the centre) */
+  const out = (pl, axis, g) => {
+    const at = pl.at.slice();
+    at[axis] = Math.sign(at[axis]) * (Math.abs(at[axis]) + (g - T.gate) / step);
+    return { ...pl, at };
+  };
+  const places = BASE_ROUTES.places.map((pl) => (pl.id === 'depot' || pl.id === 'mill' ? out(pl, 0, town.gateEW) : pl));
+  const P = { ...PLAN, town, bigTown: k, wheel: { ...PLAN.wheel },
+    roads: BASE_ROUTES.roads.slice(), rivers: BASE_ROUTES.rivers.slice(), rails: BASE_ROUTES.rails.slice(), places };
+  layWheel(P);
+  return P;
+}

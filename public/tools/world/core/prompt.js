@@ -112,8 +112,8 @@ function townLines(plan, g, rect, cov) {
     return best && bd < 300 * 300 ? best : null;
   };
   const streets = [
-    { name: 'Main Street', x0: -T.main, y0: -T.gate, x1: T.main, y1: T.gate, ns: true },
-    { name: 'Market Row', x0: -T.gate, y0: -T.row, x1: T.gate, y1: T.row, ns: false },
+    { name: 'Main Street', x0: -T.main, y0: -(T.gateNS || T.gate), x1: T.main, y1: T.gateNS || T.gate, ns: true },
+    { name: 'Market Row', x0: -(T.gateEW || T.gate), y0: -T.row, x1: T.gateEW || T.gate, y1: T.row, ns: false },
   ];
   for (const s of streets) {
     if (!overlaps(s.x0, s.y0, s.x1, s.y1)) continue;

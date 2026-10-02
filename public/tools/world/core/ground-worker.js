@@ -48,7 +48,7 @@
  *                                   and tier there, and in words for the map)
  *   anything that fails          -> { type: 'error', id, message }
  */
-import { PLAN } from '../plan.js';
+import { PLAN as BASE_PLAN, bigTownPlan, bigTownScale } from '../plan.js';
 import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
 import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder } from './ground.js';
@@ -59,6 +59,9 @@ import { stepOf, cleanSteps } from './footsteps.js';
 import { placeObjects, mayorSpot, objectFootprints } from './placing.js';
 
 const TILE = PIXEL.groundTile;                                    /* 1024 px a swatch */
+/* v2.3.2982: the plan this worker lays -- the plan itself, or the big-town
+   preview's (`?trial=wheel&bigtown`, plan.js bigTownPlan), chosen on init */
+let PLAN = BASE_PLAN;
 const K = Math.round(PLAN.worldPxPerArtPx / PIXEL.gamePxPerArtPx); /* 3 ground px a plan art px: 2 a game px */
 const WPA = PLAN.worldPxPerArtPx;                                 /* 1.5 game px a plan art px */
 const CHUNK = 128;          /* plan art px a piece: 192 game px, 384 ground px */
@@ -226,6 +229,7 @@ async function handle(m) {
 
 async function init(m) {
   const t0 = performance.now();
+  PLAN = bigTownPlan(bigTownScale(m && m.search));
   const g = gridInfo(PLAN);
   const full = buildBlueprint(PLAN);
   const mm = materialMap(PLAN, full);
@@ -281,6 +285,8 @@ async function init(m) {
     /* v2.3.2975: the objects, as placing.js gives them (typed arrays, moved
        not copied) */
     objects,
+    /* v2.3.2982: the big-town preview's building size (1 without it) */
+    bigTown: PLAN.bigTown || 1,
   }, [bits.buffer, ov.data.buffer, objects.kind.buffer, objects.piece.buffer, objects.flip.buffer, objects.x.buffer, objects.y.buffer,
     objects.boxOf.buffer, objects.boxes.buffer]);
 }

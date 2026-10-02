@@ -14,7 +14,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { PLAN } from '../../public/tools/world/plan.js';
+import { PLAN as BASE_PLAN, bigTownPlan } from '../../public/tools/world/plan.js';
 import { buildBlueprint } from '../../public/tools/world/core/layout.js';
 import { materialMap, composeGround, swatchesUnder } from '../../public/tools/world/core/ground.js';
 import { placeObjects, footprintOf, mayorSpot } from '../../public/tools/world/core/placing.js';
@@ -30,6 +30,9 @@ const [VW, VH] = arg('--size', '2400x2000').split('x').map(Number);
 /* by default where the QA pictures go, which git ignores */
 const OUT = arg('--out', path.join(ROOT, 'tools/qa/out/wheel-objects.png'));
 const FEET = process.argv.includes('--feet');
+/* v2.3.2982: `--bigtown [k]`, the big-town preview's plan (plan.js bigTownPlan) */
+const BIG = process.argv.includes('--bigtown') ? Number(arg('--bigtown', '2')) || 2 : 1;
+const PLAN = bigTownPlan(BIG);
 
 const bp = buildBlueprint(PLAN);
 const mm = materialMap(PLAN, bp);
@@ -94,16 +97,16 @@ for (let i = 0; i < placed.n; i++) {
   const id = placed.kinds[placed.kind[i]], o = objBy[id];
   if (!o) { missing++; continue; }
   const pc = o.pieces[placed.piece[i] % o.pieces.length];
-  const x = placed.x[i], y = placed.y[i];
-  if (x + pc.gameW < x0 || x - pc.gameW > x0 + VW || y < y0 || y - pc.gameH > y0 + VH) continue;
-  draw.push({ id, o, pc, x, y, flip: placed.flip[i] });
+  const x = placed.x[i], y = placed.y[i], ks = placed.kindScale[placed.kind[i]] || 1;
+  if (x + pc.gameW * ks < x0 || x - pc.gameW * ks > x0 + VW || y < y0 || y - pc.gameH * ks > y0 + VH) continue;
+  draw.push({ id, o, pc, x, y, flip: placed.flip[i], ks });
 }
 draw.sort((a, b) => a.y - b.y);
 for (const d of draw) {
   const pg = pageOf(d.pc.atlas);
   const fr = pg && pg.sheet.frames[d.pc.frame];
   if (!fr) continue;
-  const k = 1 / (2 * PXS);           /* picture px a sheet px */
+  const k = d.ks / (2 * PXS);        /* picture px a sheet px (v2.3.2982: the big town's buildings bigger) */
   const dw = Math.round(fr.frame.w * k), dh = Math.round(fr.frame.h * k);
   /* v2.3.2981: stood on its foot, as the game stands it (a palm on its
      trunk; a mirrored one turns on it) */
@@ -126,7 +129,7 @@ for (const d of draw) {
   }
   drawn++;
   if (FEET) {
-    for (const b of footprintOf(d.id, d.o.kind, d.x, d.y, d.pc.gameW, d.pc.gameH)) {
+    for (const b of footprintOf(d.id, d.o.kind, d.x, d.y, d.pc.gameW * d.ks, d.pc.gameH * d.ks)) {
       const bx0 = Math.round((b.x0 - x0) / PXS), bx1 = Math.round((b.x1 - x0) / PXS), by0 = Math.round((b.y0 - y0) / PXS), by1 = Math.round((b.y1 - y0) / PXS);
       const dot = (xx, yy) => { if (xx >= 0 && yy >= 0 && xx < OW && yy < OH) { const o = (yy * OW + xx) * 4; out[o] = 255; out[o + 1] = 0; out[o + 2] = 0; } };
       for (let xx = bx0; xx <= bx1; xx++) { dot(xx, by0); dot(xx, by1); }
