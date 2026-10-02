@@ -213,9 +213,9 @@ remnant to migrate server-side, not a mode to preserve.
   with next to no green is background ANYWHERE (`HOLE_G`/`HOLE_LEAN`/
   `HOLE_HUE`), the gaps in the owner's tumbleweeds having stayed magenta --
   purple glints keep their green, so they stay; and since v2.3.2974 the
-  gap rule and despill work on GREEN too, by each px's lean (`leanOf`); 14
-  of the owner's 15 sheets found complete (144 objects): WORLD-MAP-PIPELINE
-  "Objects found by count")
+  gap rule and despill work on GREEN too, by each px's lean (`leanOf`); all
+  15 of the owner's sheets found complete (154 objects; the old finder 64):
+  WORLD-MAP-PIPELINE "Objects found by count")
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

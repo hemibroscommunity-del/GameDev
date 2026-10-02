@@ -1679,8 +1679,10 @@ despill now work on green as on magenta, by each px's LEAN (on magenta, red
 and blue over green; on green, green over red and blue). That took the
 corals' green-leaning px from 1.7% to 1.4%. The rest are olive blends of the
 fan's thin branches, too small to see at its size; un-mixing them against
-the coral's own colour made no difference, so it was not kept. That makes
-all 15 sheets of the plan but the Verdant one: 144 objects found complete.
+the coral's own colour made no difference, so it was not kept. Then the
+Verdant sheet: 10 of 10 (the old finder 6). So **all 15 sheets of the plan,
+the owner's own pictures, came back complete: 154 objects**, each named by
+its place and cut out whole (the old finder: 64).
 
 The plots (`plan.js` `town.lot`, 300 game px) are now narrower than the
 buildings. They grow to fit in the placing round, which makes Main Street
