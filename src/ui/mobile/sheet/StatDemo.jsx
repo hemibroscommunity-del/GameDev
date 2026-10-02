@@ -4,7 +4,9 @@ import { VitalBar, VITAL_ICONS } from './VitalBar.jsx';
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { prog3CatFor } from '@/data/prog3.js';   /* v2.3.2231: weapon type -> combat lane */
-import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON } from '@/data/statDemoAssets.js';   /* v2.3.2616: shared with the preloader */
+import { toDisplayHp } from '@/data/gameSystems.js';
+import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON, blueSlimeSheet } from '@/data/statDemoAssets.js';   /* v2.3.2616: shared with the preloader */
+import { prepareStatScene, newSceneSeed, SIM_STATS, SLIME_THROW, SLIME_DEATH_MS } from './statSim.js';   /* v2.3.2979 */
 
 /* ═══ v2.3.2222: WHAT A STAT IS FOR, SHOWN WITH THE GAME'S OWN PIECES ═══
  *
@@ -20,7 +22,7 @@ import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON } from '@/data/statDemoAssets.js';
  *   - YOUR character, drawn by CharacterView -- the same figure the
  *     Equipment screen shows, with whatever you are holding and wearing.
  *   - A slime, off its real sprite sheets (idle bounce, the squash when it
- *     is hit, the lunge when it shoots, and its orb).
+ *     is hit, the lunge when it shoots, its orb, and its death splat).
  *   - The real health / energy bar (VitalBar) with its in-trough readout,
  *     for the stats that move one.
  *   - Hit numbers in the combat renderer's own dress: 21px white with the
@@ -29,13 +31,35 @@ import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON } from '@/data/statDemoAssets.js';
  *     as monsterCombat pops it; 'Dodged!' in its green.
  *
  * It plays BEFORE -> AFTER: the scene runs once as things are, then a point
- * lands on the stat (the row's own icon, a brass +1), and the same scene
- * runs again with the stat's effect exaggerated -- the crit that used to be
- * one in four is one in two, the bar you just watched drain is half again
- * as long, the blow that took twenty takes eight.  No captions: the second
- * pass is read against the first, which is the comparison a definition
- * cannot carry.  The real per-point rate and the real numbers print under
- * the scene (InfoPopup rows), so nothing here is mistaken for arithmetic.
+ * lands on the stat (the row's own icon, a brass +n), and the same scene
+ * runs again with the points in.
+ *
+ * ═══ v2.3.2979: ...AND NOW IT IS A FIGHT, NOT A STORYBOARD ═══
+ * Owner: "Make it so the preview of the combat skills stat allocation
+ * confirmation window shows real simulation of the hits against a slime
+ * monster.  These previews were made under a worse model."
+ *
+ * Until now each stat had a hand-written storyboard -- '12' then '24' for
+ * Power, a '25' crit every fourth swing for Luck, a burn shrinking from 8 to
+ * 2 for Resist -- the same numbers for every character, exaggerated on
+ * purpose.  None of it was anything YOUR character would do, and two scenes
+ * showed mechanics slimes do not have.  The storyboards are gone.  Every beat
+ * now comes out of statSim.js, which fights the Starting Meadow's real slime
+ * with your real build through the worker's own damage arithmetic (and a
+ * server suite, statsim.test.mjs, holds that arithmetic to the worker roll
+ * for roll):
+ *   - the numbers are what the world would pop over that slime, crits and
+ *     the killing blow included, and its HP bar drains to them;
+ *   - the swings come at your real cadence, so Speed is time you can see;
+ *   - both halves read ONE set of dice, so whatever changes between them is
+ *     the points and nothing else -- and the dice are fresh every loop, so a
+ *     few loops show the real spread;
+ *   - a VERDICT line under the stage says what the long run comes to ("Slime
+ *     down in 2.8 hits · 1.68s -> 2.4 hits · 1.43s"), because one point of a
+ *     curve stat is honestly small and a single fight can hide it.
+ * Where the honest answer is "nothing changes" -- Element on a weapon with no
+ * element, Power against a slime you already one-shot -- the scene shows
+ * exactly that, and a line says why.
  *
  * TIMING IS A LIST OF TIMEOUTS, NOT A rAF LOOP.  CharacterView documents
  * why it draws once and sits still (v2.3.1815: a per-frame canvas repaint
@@ -49,342 +73,180 @@ import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON } from '@/data/statDemoAssets.js';
  * ASSETS: the slime strips, its orb and the popup icons are the world's
  * own (preloadWorldAnimations / effectsRenderer load them before the intro
  * lifts), so by the time this window can open they are in cache; the same
- * URLs are used here so the cache is what answers.  The stat icon is the
- * one the row is already showing. */
-
-/* Slime strips: horizontal, 128px cells (slimeSprites.js), drawn at cell
-   size so the blob (rows 29-86 of the cell) stands ~57px tall against the
-   ~85px figure -- the proportion the world draws.  A strip's
-   background-size is (frames * 128) x 128; the box hangs 33px below the
-   stage so row 86 lands on the ground line (game.css .bt-sd-slime). */
-/* ═══ v2.3.2616: THE ASSET LIST MOVED OUT ═══
-   SLIME / ORB_URL / SHOT / ICON now live in src/data/statDemoAssets.js, with
-   the notes on why each URL carries the ?v= it does.  They moved because the
-   PRELOADER needs the same list and must not import this component to get it
-   (statDemoPreload.js).  One list, two readers — a scene that adds an asset
-   adds it there and is warmed on the loading screen for free. */
+ * URLs are used here so the cache is what answers.  The blue slime is baked
+ * on the same gate (statDemoPreload.js).  The stat icon is the one the row is
+ * already showing. */
 
 /* The character: CharacterView composites a 256 square; cropped to its
    measured figure window (FIGURE_W_FRAC) so the scene holds the person, not
    the empty frame around them. */
 const HERO_SIZE = 120;
-const SCENE_H = 130;
-
-/* ── the timeline ───────────────────────────────────────────────────────
-   A scene is a list of {t, patch} beats; each patch is a function of the
-   previous state.  `Script` collects them in order with a running clock so
-   a scene reads as a story rather than as a table of milliseconds. */
-class Script {
-  constructor(shot) { this.t = 0; this.steps = []; this.n = 0; this.shot = shot || null; }
-  at(dt, patch) { this.t += dt; this.steps.push({ t: this.t, patch }); return this; }
-  /* One combat number over the hero or the slime.  Removed after it has
-     risen and faded (the CSS animation is 1.05s). */
-  pop(side, text, kind, dx) {
-    const id = ++this.n;
-    this.at(0, (s) => ({ pops: s.pops.concat({ id, side, text, kind, dx: dx || 0 }) }));
-    const t = this.t;
-    this.steps.push({ t: t + 1100, patch: (s) => ({ pops: s.pops.filter((p) => p.id !== id) }) });
-    return this;
-  }
-  /* The hero attacks; the slime squashes and a number comes off it.
-     MELEE lunges.  RANGED looses a shot that crosses the gap and lands --
-     the flight IS the tell, so the impact beat is what it always was and
-     every scene's rhythm is unchanged (v2.3.2231).  `this.shot` is the
-     scene's weapon category, set by StatDemo before the script is built. */
-  strike(text, kind, dx, extra) {
-    /* The motion is a class toggled on, then off after its CSS animation --
-       NOT a keyed remount: the wrapper holds the character's canvas, and a
-       new key would repaint it every swing. */
-    const ranged = !!(this.shot && SHOT[this.shot]);
-    this.at(0, (s) => ({
-      hero: { kind: ranged ? 'loose' : 'swing', n: s.hero.n + 1 },
-      ...(ranged ? { shot: s.shot + 1 } : null),
-    }));
-    this.steps.push({ t: this.t + (ranged ? 260 : 340), patch: () => ({ hero: { kind: null, n: 0 } }) });
-    this.at(ranged ? 200 : 160, (s) => ({
-      slime: { kind: 'hit', n: s.slime.n + 1 },
-      ...(ranged ? { shot: 0 } : null),
-      ...(extra ? extra(s) : null),
-    }));
-    this.pop('slime', text, kind, dx);
-    this.steps.push({ t: this.t + 900, patch: () => ({ slime: { kind: 'idle', n: 0 } }) });
-    return this;
-  }
-  /* The slime lunges and throws its orb; `land` is what happens when it
-     arrives at the hero (~380ms of flight). */
-  shoot(land) {
-    this.at(0, (s) => ({ slime: { kind: 'shoot', n: s.slime.n + 1 } }));
-    this.at(220, (s) => ({ orb: s.orb + 1 }));
-    this.at(380, (s) => ({ orb: 0, slime: { kind: 'idle', n: 0 }, ...land(s) }));
-    return this;
-  }
-  /* ═══ v2.3.2616: THE ATTACK THAT DOES NOT GET THERE ═══
-     Range's whole claim is reach, so the BEFORE half has to visibly fall
-     short.  Same loose, same lunge, same rhythm as strike() — what differs is
-     that the shot stops in the gap and fades, the slime is never touched, and
-     no damage number comes off it.  The grey "Short!" is the non-damage event
-     in the dress 'Dodged!' already established. */
-  fallShort() {
-    const ranged = !!(this.shot && SHOT[this.shot]);
-    this.at(0, (s) => ({
-      hero: { kind: ranged ? 'loose' : 'short', n: s.hero.n + 1 },
-      ...(ranged ? { shot: s.shot + 1, shotShort: 1 } : null),
-    }));
-    this.steps.push({ t: this.t + (ranged ? 260 : 340), patch: () => ({ hero: { kind: null, n: 0 } }) });
-    this.at(ranged ? 340 : 240, () => (ranged ? { shot: 0, shotShort: 0 } : {}));
-    this.pop('slime', 'Short!', 'miss');
-    return this;
-  }
-  /* ═══ v2.3.2616: GROUND COVERED ═══
-     Move Speed is read the way aspd reads attack speed — same span of time,
-     more of it done.  One round trip before the point, two after.  `fast` is
-     not a different path, only a shorter one in time, so what the eye compares
-     is distance per second and nothing else. */
-  trek(fast) {
-    this.at(0, (s) => ({ hero: { kind: fast ? 'trekfast' : 'trek', n: s.hero.n + 1 } }));
-    this.steps.push({ t: this.t + (fast ? 1200 : 2400), patch: () => ({ hero: { kind: null, n: 0 } }) });
-    return this;
-  }
-  /* The point lands: the row's icon rises with a +1, and the bars refill. */
-  point(reset) {
-    this.at(500, (s) => ({ point: s.point + 1, ...(reset ? reset(s) : null) }));
-    this.at(900, () => ({ point: 0 }));
-    return this;
-  }
-}
+/* v2.3.2979: 130 -> 140.  The slime wears its HP bar now, and the world's
+   rule is that the numbers rise ABOVE the bar (entityRenderer v2.3.1638), so
+   the pops start ten px higher and need the room to finish rising. */
+const SCENE_H = 140;
+/* The point lands between the halves: the badge rises for 900 ms, and the
+   second half starts a beat after it has gone. */
+const POINT_MS = 900;
+const POINT_GAP_MS = 1100;
 
 const START = {
-  pops: [], hero: { kind: null, n: 0 }, slime: { kind: 'idle', n: 0 },
-  orb: 0, shot: 0, shotShort: 0, point: 0, shield: 0, bar: null,
+  pops: [], hero: { kind: null, n: 0, ms: 0 }, slime: { kind: 'idle', n: 0, ms: 0 },
+  slimeBar: null, orb: 0, shots: [], point: 0, shield: 0, guard: false,
+  bar: null, phase: 0, blue: false,
 };
 
-/* Bars: `bar` is {kind, cur, max, base} where `base` is the max the trough
-   was drawn at when the scene began -- the trough itself gets LONGER as the
-   max rises, which is what "more HP" looks like rather than a fuller bar. */
-const bar = (kind, cur, max, base) => ({ bar: { kind, cur, max, base: base || max } });
-const hurt = (s, n) => ({ bar: { ...s.bar, cur: Math.max(0, s.bar.cur - n) } });
+/* ── the timeline ───────────────────────────────────────────────────────
+   statSim hands back each half as a list of beats ({t, k, ...}, ms from the
+   start of the half).  These turn them into {t, patch} steps on one clock.
+   Every animation a beat starts carries its own id, taken here while the
+   steps are built, so the step that ends it can tell whether something newer
+   has replaced it in the meantime -- a hit's squash must not snap a slime
+   that has since died back to idle. */
+const hpBar = (hp, max) => ({ cur: toDisplayHp(hp), max: Math.max(1, toDisplayHp(max)) });
 
-/* ── the scenes ─────────────────────────────────────────────────────────
-   Each returns {script, still}: the timeline, and the AFTER end-state drawn
-   for reduced motion.  The BEFORE half plays honest-looking numbers; the
-   AFTER half exaggerates the stat's job.  Text matches what the renderer
-   would print: plain numbers off the slime, '-N' off you. */
-const SCENES = {
-  dmg: (shot) => {
-    const sc = new Script(shot);
-    sc.at(400).strike('12', 'hit').at(900).strike('12', 'hit', 10);
-    sc.point();
-    sc.at(400).strike('24', 'hit').at(900).strike('24', 'hit', 10);
-    sc.at(700);
-    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '24', kind: 'hit' }] } };
-  },
-  crit: (shot) => {
-    /* One in four goes gold; then every other one does. */
-    const sc = new Script(shot);
-    sc.at(400).strike('10', 'hit', -8).at(800).strike('10', 'hit', 8)
-      .at(800).strike('10', 'hit', -8).at(800).strike('25', 'crit', 6);
-    sc.point();
-    sc.at(400).strike('10', 'hit', -8).at(800).strike('25', 'crit', 6)
-      .at(800).strike('10', 'hit', -8).at(800).strike('25', 'crit', 6);
-    sc.at(700);
-    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '25', kind: 'crit' }] } };
-  },
-  critDmg: (shot) => {
-    const sc = new Script(shot);
-    sc.at(400).strike('25', 'crit').at(1000).strike('25', 'crit', 8);
-    sc.point();
-    sc.at(400).strike('60', 'crit').at(1000).strike('60', 'crit', 8);
-    sc.at(700);
-    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '60', kind: 'crit' }] } };
-  },
-  /* ═══ v2.3.2592: LUCK — both halves of a crit in one scene ═══
-     Before: one hit in four goes gold.  After the point: one in two does,
-     AND the gold ones land harder — the two things a Luck point buys,
-     read against each other rather than captioned. */
-  luck: (shot) => {
-    const sc = new Script(shot);
-    sc.at(400).strike('10', 'hit', -8).at(800).strike('10', 'hit', 8)
-      .at(800).strike('10', 'hit', -8).at(800).strike('25', 'crit', 6);
-    sc.point();
-    sc.at(400).strike('10', 'hit', -8).at(800).strike('40', 'crit', 6)
-      .at(800).strike('10', 'hit', -8).at(800).strike('40', 'crit', 6);
-    sc.at(700);
-    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '40', kind: 'crit' }] } };
-  },
-  /* ═══ v2.3.2592: SPECIAL — the big hit is the one that grows ═══
-     An ordinary hit and then the special, twice; after the point the
-     ordinary hit is unchanged and the special is half again as large,
-     which is the whole claim the stat makes. */
-  special: (shot) => {
-    const sc = new Script(shot);
-    sc.at(400).strike('10', 'hit', -8).at(900).strike('30', 'hit', 8);
-    sc.point();
-    sc.at(400).strike('10', 'hit', -8).at(900).strike('55', 'hit', 8);
-    sc.at(700);
-    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '55', kind: 'hit' }] } };
-  },
-  aspd: (shot) => {
-    /* Same numbers, twice as many of them in the same time. */
-    const sc = new Script(shot);
-    sc.at(400);
-    for (let i = 0; i < 3; i++) sc.strike('10', 'hit', (i % 2) * 14 - 7).at(1000);
-    sc.point();
-    sc.at(400);
-    for (let i = 0; i < 6; i++) sc.strike('10', 'hit', (i % 3) * 12 - 12).at(480);
-    sc.at(500);
-    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '10', kind: 'hit', dx: -10 }, { id: 2, side: 'slime', text: '10', kind: 'hit', dx: 10 }] } };
-  },
-  def: (shot) => {
-    /* The same orb, twice; after the point the shield shows and it lands
-       for less. */
-    const sc = new Script(shot);
-    sc.at(0, () => bar('hp', 100, 100));
-    for (let i = 0; i < 2; i++) {
-      sc.at(500).shoot((s) => hurt(s, 20)).pop('hero', '-20', 'hurt', i * 10 - 5);
+function passSteps(pass, off, phase, ctx) {
+  const steps = [];
+  const at = (t, patch) => steps.push({ t: off + t, patch });
+  const hero = (t, kind, dur, ms) => {
+    const id = ++ctx.heroN;
+    at(t, () => ({ hero: { kind, n: id, ms: ms || 0 } }));
+    at(t + dur, (s) => (s.hero.n === id ? { hero: { kind: null, n: id, ms: 0 } } : {}));
+  };
+  const slime = (t, kind, back, ms) => {
+    const id = ++ctx.slimeN;
+    at(t, () => ({ slime: { kind, n: id, ms: ms || 0 } }));
+    if (back) at(t + back, (s) => (s.slime.n === id ? { slime: { kind: 'idle', n: id, ms: 0 } } : {}));
+  };
+  const pop = (t, side, text, kind, dx, color) => {
+    const id = ++ctx.popN;
+    at(t, (s) => ({ pops: s.pops.concat({ id, side, text, kind, dx: dx || 0, color }) }));
+    at(t + 1100, (s) => ({ pops: s.pops.filter((p) => p.id !== id) }));
+  };
+  const shot = (t, spec, life) => {
+    const id = ++ctx.shotN;
+    at(t, (s) => ({ shots: s.shots.concat({ id, ...spec }) }));
+    at(t + life, (s) => ({ shots: s.shots.filter((x) => x.id !== id) }));
+  };
+  const cat = ctx.shot;
+  /* the half begins on a fresh slime and full bars */
+  at(0, () => ({
+    phase, blue: !!pass.blue, guard: false, orb: 0, shots: [],
+    slime: { kind: 'idle', n: ++ctx.slimeN, ms: 0 },
+    slimeBar: pass.slime ? hpBar(pass.slime.hp, pass.slime.max) : null,
+    bar: pass.bar ? { ...pass.bar, base: ctx.barBase || pass.bar.max } : null,
+  }));
+  for (const b of pass.beats) {
+    switch (b.k) {
+      case 'atk':
+        if (b.ranged && cat) { hero(b.t, 'loose', 260); shot(b.t, { cat }, 200); }
+        else hero(b.t, 'swing', 340);
+        break;
+      case 'special':
+        if (b.ranged && cat) {
+          hero(b.t, 'loose', 260);
+          for (let j = 0; j < (b.shots || 1); j++) shot(b.t + j * (b.gapMs || 0), { cat, big: !!b.big }, 200);
+        } else hero(b.t, 'special', 420);
+        break;
+      case 'short':
+        if (b.ranged && cat) { hero(b.t, 'loose', 260); shot(b.t, { cat, short: true, frac: b.frac }, 420); }
+        else hero(b.t, 'short', 340);
+        break;
+      case 'hit':
+        if (!b.kill) slime(b.t, 'hit', 800);
+        at(b.t, () => ({ slimeBar: hpBar(b.hp, b.max) }));
+        pop(b.t, 'slime', b.text, b.crit ? 'crit' : 'hit', b.dx || 0);
+        break;
+      case 'tick':
+      case 'recoil':
+        at(b.t, () => ({ slimeBar: hpBar(b.hp, b.max) }));
+        pop(b.t, 'slime', b.text, 'burn', 0, (ELEMENTS[b.element] || {}).color);
+        break;
+      case 'death':
+      case 'burst':
+        slime(b.t, 'death', 0);
+        if (b.k === 'death') at(b.t, (s) => (s.slimeBar ? { slimeBar: { ...s.slimeBar, cur: 0 } } : {}));
+        break;
+      case 'spawn':
+        slime(b.t, 'spawn', 320);
+        at(b.t, () => ({ slimeBar: hpBar(b.hp, b.max) }));
+        break;
+      case 'miss':
+        pop(b.t, 'slime', b.text, 'miss');
+        break;
+      case 'swell':
+        slime(b.t, 'swell', 0, b.ms);
+        break;
+      case 'throw':
+        /* the arm goes back, then the ball leaves -- the worker's own split
+           (BASIC_WINDUP.THROW_MS, then travelMs in the air) */
+        slime(b.t, 'shoot', 420);
+        at(b.t + SLIME_THROW.WINDUP_MS, (s) => ({ orb: s.orb + 1 }));
+        break;
+      case 'land':
+        at(b.t, () => ({ orb: 0 }));
+        if (b.kind === 'dodged') hero(b.t - 150, 'dodge', 600);
+        if (b.kind === 'blocked') at(b.t, (s) => ({ shield: s.shield + 1 }));
+        if (b.text) pop(b.t, 'hero', b.text, b.kind === 'dodged' || b.kind === 'blocked' ? 'dodged' : 'hurt', 0);
+        if (typeof b.hp === 'number') at(b.t, (s) => (s.bar ? { bar: { ...s.bar, cur: b.hp } } : {}));
+        if (typeof b.stam === 'number') at(b.t, (s) => (s.bar ? { bar: { ...s.bar, cur: b.stam } } : {}));
+        break;
+      case 'guard':
+        at(b.t, () => ({ guard: !!b.on }));
+        break;
+      case 'stam':
+        at(b.t, (s) => (s.bar ? { bar: { ...s.bar, cur: b.cur } } : {}));
+        break;
+      case 'roll':
+        hero(b.t, 'dodge', 600);
+        at(b.t, (s) => (s.bar ? { bar: { ...s.bar, cur: b.stam } } : {}));
+        break;
+      case 'trek':
+        hero(b.t, 'trek', b.ms, b.ms);
+        break;
+      default: break;
     }
-    sc.point((s) => ({ bar: { ...s.bar, cur: s.bar.max } }));
-    for (let i = 0; i < 2; i++) {
-      sc.at(500).shoot((s) => ({ ...hurt(s, 8), shield: s.shield + 1 })).pop('hero', '-8', 'hurt', i * 10 - 5);
-      sc.steps.push({ t: sc.t + 700, patch: () => ({ shield: 0 }) });
-    }
-    sc.at(800);
-    return { script: sc, still: { ...bar('hp', 84, 100), shield: 1, pops: [{ id: 1, side: 'hero', text: '-8', kind: 'hurt' }] } };
-  },
-  hp: (shot) => {
-    /* The bar you watched drain is half again as long after the point. */
-    const sc = new Script(shot);
-    sc.at(0, () => bar('hp', 100, 100));
-    sc.at(500).shoot((s) => hurt(s, 40)).pop('hero', '-40', 'hurt');
-    sc.at(700).shoot((s) => hurt(s, 40)).pop('hero', '-40', 'hurt', 8);
-    sc.point(() => bar('hp', 160, 160, 100));
-    sc.at(500).shoot((s) => hurt(s, 40)).pop('hero', '-40', 'hurt');
-    sc.at(700).shoot((s) => hurt(s, 40)).pop('hero', '-40', 'hurt', 8);
-    sc.at(1000);
-    return { script: sc, still: { ...bar('hp', 80, 160, 100), pops: [{ id: 1, side: 'hero', text: '-40', kind: 'hurt' }] } };
-  },
-  dodge: (shot) => {
-    /* Before: it lands.  After: you are not there when it arrives. */
-    const sc = new Script(shot);
-    sc.at(0, () => bar('hp', 100, 100));
-    for (let i = 0; i < 2; i++) {
-      sc.at(500).shoot((s) => hurt(s, 20)).pop('hero', '-20', 'hurt', i * 10 - 5);
-    }
-    sc.point((s) => ({ bar: { ...s.bar, cur: s.bar.max } }));
-    for (let i = 0; i < 2; i++) {
-      sc.at(500);
-      sc.steps.push({ t: sc.t + 260, patch: (s) => ({ hero: { kind: 'dodge', n: s.hero.n + 1 } }) });
-      sc.shoot(() => ({})).pop('hero', 'Dodged!', 'dodged', i * 8 - 4);
-      sc.steps.push({ t: sc.t + 600, patch: () => ({ hero: { kind: null, n: 0 } }) });
-    }
-    sc.at(800);
-    return { script: sc, still: { ...bar('hp', 100, 100), pops: [{ id: 1, side: 'hero', text: 'Dodged!', kind: 'dodged' }] } };
-  },
-  /* ═══ v2.3.2616: STAMINA IS WHAT YOU BLOCK AND DODGE WITH ═══
-     Owner: "Change stamina info animation from shooting an orb to using
-     shield block or/and dodging."
-     The old scene had the hero swinging three times to drain the bar, and
-     strike() looses a projectile for a ranged weapon — so with a staff in hand
-     it was literally a man throwing orbs, which is what they saw.
-     It is also the wrong idea twice over. Stamina in this game pays for shield
-     bash (30% of the pool, and it needs a held shield) and for the contextual
-     dodge — server/src/abilities.js STAM_ABILITIES. So the scene now shows the
-     pool doing its actual job, and both of the moves the owner named.
-     BEFORE: three orbs come in. Block, dodge — and the pool is empty, so the
-     third one simply lands on you.
-     AFTER: the same three orbs against a pool half again as long, and there is
-     enough left to answer all three. The bar is the star of this scene; the
-     trough itself grows, which is what "more stamina" looks like. */
-  stam: (shot) => {
-    const sc = new Script(shot);
-    const spend = (n) => (s) => ({ bar: { ...s.bar, cur: Math.max(0, s.bar.cur - n) } });
-    const guard = (s) => ({ ...spend(30)(s), shield: s.shield + 1 });
-    sc.at(0, () => bar('stamina', 60, 60));
-    sc.at(400).shoot(guard).pop('hero', 'Blocked!', 'dodged', -6);
-    sc.steps.push({ t: sc.t + 700, patch: () => ({ shield: 0 }) });
-    sc.at(700);
-    sc.steps.push({ t: sc.t + 260, patch: (s) => ({ hero: { kind: 'dodge', n: s.hero.n + 1 } }) });
-    sc.shoot(spend(30)).pop('hero', 'Dodged!', 'dodged', 6);
-    sc.steps.push({ t: sc.t + 600, patch: () => ({ hero: { kind: null, n: 0 } }) });
-    /* Nothing left to spend, so the third one is simply taken. */
-    sc.at(700).shoot((s) => hurt(s, 0)).pop('hero', '-20', 'hurt');
-    sc.point(() => bar('stamina', 120, 120, 60));
-    sc.at(400).shoot(guard).pop('hero', 'Blocked!', 'dodged', -6);
-    sc.steps.push({ t: sc.t + 700, patch: () => ({ shield: 0 }) });
-    sc.at(700);
-    sc.steps.push({ t: sc.t + 260, patch: (s) => ({ hero: { kind: 'dodge', n: s.hero.n + 1 } }) });
-    sc.shoot(spend(30)).pop('hero', 'Dodged!', 'dodged', 6);
-    sc.steps.push({ t: sc.t + 600, patch: () => ({ hero: { kind: null, n: 0 } }) });
-    sc.at(700).shoot(guard).pop('hero', 'Blocked!', 'dodged', 0);
-    sc.steps.push({ t: sc.t + 700, patch: () => ({ shield: 0 }) });
-    sc.at(800);
-    return { script: sc, still: { ...bar('stamina', 30, 120, 60), shield: 1, pops: [{ id: 1, side: 'hero', text: 'Blocked!', kind: 'dodged' }] } };
-  },
-  elem: (shot) => {
-    /* A hit, then the burn ticks it leaves; the point makes the ticks bite. */
-    const sc = new Script(shot);
-    sc.at(400).strike('10', 'hit');
-    for (let i = 0; i < 3; i++) sc.at(550).pop('slime', '2', 'burn', (i % 2) * 16 - 8);
-    sc.point();
-    sc.at(400).strike('10', 'hit');
-    for (let i = 0; i < 3; i++) sc.at(550).pop('slime', '7', 'burn', (i % 2) * 16 - 8);
-    sc.at(900);
-    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '7', kind: 'burn' }] } };
-  },
-  /* ═══ v2.3.2616: RANGE — REACH, NOT DAMAGE ═══
-     prog3.js says so in its own words (dpsNote: 'reach, not damage'), so the
-     number must NOT grow across the point or the scene teaches the wrong
-     thing. The same attack falls short twice, then the point lands, then the
-     same attack covers the gap and does the damage it always did.
-     It reads for every lane without a special case: a bow's arrow and a
-     staff's bolt stop in the air and fade, and bare hands / a sword lunge
-     visibly less far, because fallShort() branches exactly where strike()
-     does. */
-  range: (shot) => {
-    const sc = new Script(shot);
-    sc.at(400).fallShort().at(900).fallShort();
-    sc.point();
-    sc.at(400).strike('12', 'hit').at(900).strike('12', 'hit', 10);
-    sc.at(700);
-    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '12', kind: 'hit' }] } };
-  },
-  /* ═══ v2.3.2616: MOVE SPEED — GROUND COVERED IN THE SAME TIME ═══
-     Read the way aspd reads attack speed, which is the idiom this file already
-     has: the span does not change, the amount done in it does. One trip out
-     and back before the point; two after. Nothing is captioned, and no damage
-     number appears at all — prog3.js calls this 'movement, not damage'. */
-  move: (shot) => {
-    const sc = new Script(shot);
-    sc.at(300).trek(false);
-    sc.at(2500);
-    sc.point();
-    sc.at(300).trek(true);
-    sc.at(1300).trek(true);
-    sc.at(1400);
-    return { script: sc, still: { hero: { kind: null, n: 0 } } };
-  },
-  /* ═══ v2.3.2616: ELEM RESIST — THE BURN SHRINKS, THE HIT DOES NOT ═══
-     "−0.4% elemental damage taken", and the word that matters is ELEMENTAL.
-     So the orb's own impact is the SAME -10 on both halves and only the burn
-     ticks after it fall, from -8 to -2. A scene that shrank both would be
-     claiming a flat damage reduction, which is a different stat.
-     It is the elem scene read from the other side: there the burn is something
-     you inflict and it grows, here it is something taken and it shrinks. */
-  eres: (shot) => {
-    const sc = new Script(shot);
-    /* 620ms apart and spread across 36px: a pop lives 1100ms, so two are on
-       screen at once and at the ±7 the other scenes use they land on top of
-       each other. Measured off the strip, not guessed. */
-    const tick = (n, i) => { sc.at(620, (s) => hurt(s, n)); sc.pop('hero', '-' + n, 'burn', (i - 1) * 18); };
-    sc.at(0, () => bar('hp', 100, 100));
-    sc.at(500).shoot((s) => hurt(s, 10)).pop('hero', '-10', 'hurt');
-    for (let i = 0; i < 3; i++) tick(8, i);
-    sc.point((s) => ({ bar: { ...s.bar, cur: s.bar.max } }));
-    sc.at(500).shoot((s) => hurt(s, 10)).pop('hero', '-10', 'hurt');
-    for (let i = 0; i < 3; i++) tick(2, i);
-    sc.at(900);
-    return { script: sc, still: { ...bar('hp', 84, 100), pops: [{ id: 1, side: 'hero', text: '-2', kind: 'burn' }] } };
-  },
-};
+  }
+  return steps;
+}
+
+/* One loop: the before half, the point, the after half.  A stat at its cap
+   has no after half -- the before half simply loops, and the window's own
+   "at its cap" line says why. */
+function loopSteps(prep, passes, shot) {
+  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, shot, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
+  const steps = passSteps(passes[0], 0, 0, ctx);
+  let end = passes[0].end;
+  if (passes[1]) {
+    const T0 = passes[0].end;
+    steps.push({ t: T0, patch: (s) => ({ point: s.point + 1 }) });
+    steps.push({ t: T0 + POINT_MS, patch: () => ({ point: 0 }) });
+    const T1 = T0 + POINT_GAP_MS;
+    steps.push(...passSteps(passes[1], T1, 1, ctx));
+    end = T1 + passes[1].end;
+  }
+  return { steps, end };
+}
+
+/* Reduced motion: the last half's closing frame, drawn still, with its last
+   number on it. */
+function stillOf(prep, shot) {
+  const passes = prep.play(1);
+  const p = passes[1] || passes[0];
+  if (!p) return START;
+  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, shot, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
+  let s = { ...START };
+  const steps = passSteps(p, 0, passes[1] ? 1 : 0, ctx).sort((a, b) => a.t - b.t);
+  for (const st of steps) s = { ...s, ...st.patch(s) };
+  const last = [...p.beats].reverse().find((b) => b.text);
+  return {
+    ...s, hero: { kind: null, n: 0, ms: 0 }, shots: [], orb: 0, point: 0,
+    slime: s.slime.kind === 'death' ? s.slime : { kind: 'idle', n: 0, ms: 0 },
+    pops: last ? [{ id: 1, side: (last.k === 'land') ? 'hero' : 'slime', text: last.text,
+      kind: last.k === 'land' ? (last.kind === 'hurt' || last.kind === 'burst' ? 'hurt' : 'dodged') : (last.crit ? 'crit' : (last.k === 'tick' || last.k === 'recoil') ? 'burn' : last.k === 'miss' ? 'miss' : 'hit'),
+      color: (last.k === 'tick' || last.k === 'recoil') ? (ELEMENTS[last.element] || {}).color : undefined }] : [],
+  };
+}
 
 /* ── the pieces ───────────────────────────────────────────────────────── */
 
@@ -406,24 +268,24 @@ const Pop = ({ p }) => {
   const icon = st.icon && <img className="bt-sd-pop-ic" src={st.icon} alt="" draggable={false} style={{ height: st.iconH }} />;
   return (
     <span className={'bt-sd-pop bt-sd-pop--' + p.side} data-sd-pop={p.kind}
-      style={{ color: st.color, fontSize: st.size, '--sd-dx': (p.dx || 0) + 'px' }}>
+      style={{ color: p.color || st.color, fontSize: st.size, '--sd-dx': (p.dx || 0) + 'px' }}>
       {st.before && icon}<span>{p.text}</span>{!st.before && icon}
     </span>
   );
 };
 
-/* The projectile the hero looses, in flight.  Keyed by the shot counter so
-   each loose is a fresh element and therefore a fresh run of the CSS
-   flight; the bolt additionally steps its 4-cel strip the way the slime
-   steps its own (v2.3.2231). */
-const Shot = ({ cat, n, short: isShort }) => {
-  const a = SHOT[cat];
+/* The projectile the hero looses, in flight.  Each is its own element with
+   its own id, so the bow's three-arrow special can have three in the air;
+   the bolt additionally steps its 4-cel strip the way the slime steps its
+   own (v2.3.2231). */
+const Shot = ({ s }) => {
+  const a = SHOT[s.cat];
   if (!a) return null;
   return (
-    /* v2.3.2616: `short` flies a fraction of the way and fades, for Range's
-       before half.  A modifier class, not a second component — same sheet,
-       same stepping, only the flight differs. */
-    <i key={'sh' + n} className={'bt-sd-shot bt-sd-shot--' + cat + (isShort ? ' bt-sd-shot--short' : '')}
+    /* v2.3.2616: `short` flies part of the way and fades, for Range's before
+       half.  v2.3.2979: and exactly the part its real reach covers (--sd-short,
+       statSim's frac of the gap).  `big` is the staff's big bolt. */
+    <i className={'bt-sd-shot bt-sd-shot--' + s.cat + (s.short ? ' bt-sd-shot--short' : '') + (s.big ? ' bt-sd-shot--big' : '')}
       style={{
         backgroundImage: `url(${a.url})`,
         width: a.w, height: a.h,
@@ -432,28 +294,48 @@ const Shot = ({ cat, n, short: isShort }) => {
            and how far to walk.  A 1-cel sheet walks 0px, so the arrow's
            strip animation is a no-op rather than a special case. */
         '--sd-frames': a.frames, '--sd-strip': -((a.frames - 1) * a.w) + 'px',
+        ...(s.short ? { '--sd-short': Math.round(120 * Math.max(0, Math.min(1, s.frac == null ? 0.45 : s.frac))) + 'px' } : null),
       }} />
   );
 };
 
-const Slime = ({ anim }) => {
-  const sheet = SLIME[anim.kind] || SLIME.idle;
+const Slime = ({ anim, blue }) => {
+  const kind = SLIME[anim.kind] ? anim.kind : (anim.kind === 'death' ? 'death' : 'idle');
+  const sheet = SLIME[kind] || SLIME.idle;
+  /* v2.3.2979: the blue slime (Resist's scene) wears the preloader's baked
+     retint; the green sheet stands in if the bake did not happen. */
+  const url = (blue && blueSlimeSheet(kind)) || sheet.url;
   return (
-    <span key={anim.kind + ':' + anim.n} className={'bt-sd-slime bt-sd-slime--' + (SLIME[anim.kind] ? anim.kind : 'idle')}
+    <span key={anim.kind + ':' + anim.n}
+      className={'bt-sd-slime bt-sd-slime--' + (anim.kind === 'spawn' || anim.kind === 'swell' ? anim.kind : kind)}
       style={{
-        backgroundImage: `url(${sheet.url})`,
+        backgroundImage: `url(${url})`,
         backgroundSize: `${sheet.frames * SLIME_PX}px ${SLIME_PX}px`,
         '--sd-frames': sheet.frames, '--sd-strip': -((sheet.frames - 1) * SLIME_PX) + 'px',
+        ...(anim.kind === 'death' ? { '--sd-death-ms': SLIME_DEATH_MS + 'ms' } : null),
+        ...(anim.kind === 'swell' ? { '--sd-swell-ms': (anim.ms || 1600) + 'ms' } : null),
       }} />
   );
 };
+
+/* v2.3.2979: the slime's HP, over its head -- the world's monster band, in
+   the menu's own bar construction.  The number is its displayed HP, so the
+   pops rising above it add up to it exactly the way they do in play
+   (toDisplayHitDamage's consistency rule). */
+const SlimeBar = ({ b }) => (
+  <div className="bt-sd-mhp" data-sd-slime-hp={b.cur}>
+    <VitalBar kind="hp" cur={b.cur} max={b.max} thick={12} inset={(
+      <span className="bt-sd-mhp-n">{b.cur}</span>
+    )} />
+  </div>
+);
 
 /* The real bar, in the compact vitals' own dress (v2.3.1922 readout), with
    the trough drawn at base width and stretched by max/base. */
 const Bar = ({ b }) => (
   <div className="bt-sd-vital" data-sd-bar={b.kind}>
     <img src={VITAL_ICONS[b.kind]} alt="" draggable={false} className="bt-sd-vital-ic" />
-    <div className="bt-sd-vital-w" style={{ width: Math.round(120 * (b.max / b.base)) }}>
+    <div className="bt-sd-vital-w" style={{ width: Math.round(120 * (b.max / (b.base || b.max))) }}>
       <VitalBar kind={b.kind} cur={b.cur} max={b.max} thick={14} inset={(
         <span className="bt-sd-vital-n">{Math.ceil(b.cur)}<span className="bt-sd-vital-s">/</span>{b.max}</span>
       )} />
@@ -461,9 +343,25 @@ const Bar = ({ b }) => (
   </div>
 );
 
+/* v2.3.2979: the long run, in one line -- the same now → after dress the
+   window's own rows use, so it reads as one more of them. */
+const Verdict = ({ v, capped }) => (
+  <div className="bt-sd-verdict" data-sd-verdict="">
+    <span className="bt-sd-verdict-l">{v.label}</span>
+    <span className="bt-sd-verdict-v">
+      {v.now}
+      {!capped && v.after != null && <> → <b>{v.after}</b></>}
+    </span>
+  </div>
+);
+
 const reducedMotion = () => {
   try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
   catch (e) { return false; }
+};
+/* The character and the worker's caps, when the window did not hand them in. */
+const liveState = () => {
+  try { return (window._gameState && window._gameState.current) || null; } catch (e) { return null; }
 };
 
 /** The scene for one spendable stat.  Unknown keys render nothing rather
@@ -471,63 +369,101 @@ const reducedMotion = () => {
  *  on day one and its scene when somebody writes it. */
 /* v2.3.2696: `n` is the confirm window's stepper count -- the brass badge that
    lands between the two passes says "+3" when three points are about to go
-   in.  Only the badge follows it: the scene is an exaggeration by design
-   (above), so scaling its numbers by n would dress it up as arithmetic. */
-export const StatDemo = ({ stat, iconSrc, weapon, shield, n }) => {
-  const make = SCENES[stat];
+   in.  v2.3.2979: and now the second half FIGHTS with all three: the scene is
+   a simulation, so the stepper is how you see what a batch buys.
+   `rpg` / `cat` are the character and the lane the window is about; both fall
+   back to the live game state for a caller that does not pass them. */
+export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
+  const has = SIM_STATS.includes(stat);
+  const pts = Math.max(1, Math.floor(Number(n) || 1));
   /* v2.3.2231: the attack this scene plays, read off the weapon in the
      figure's hands.  prog3CatFor is the game's own mapping (greatsword
      counts as sword), so the scene cannot disagree with the lane the points
      are actually being spent in.  `sword` and no weapon both mean the
      lunge, which is why only bow/staff have a SHOT entry. */
   const shot = weapon && weapon.type ? prog3CatFor(weapon.type) : null;
+  const shotCat = shot && SHOT[shot] ? shot : null;
+  const prep = React.useMemo(() => {
+    if (!has) return null;
+    const S = liveState();
+    const R = rpg || (S && S.rpg);
+    if (!R) return null;
+    try {
+      return prepareStatScene(R, stat, cat || shot || 'sword', pts, weapon || null, !!shield, (S && S._serverCaps) || {});
+    } catch (e) { return null; }
+  }, [has, stat, cat, shot, pts, weapon, shield, rpg]);
   const [s, setS] = React.useState(START);
   React.useEffect(() => {
-    if (!make) return undefined;
-    if (reducedMotion()) { setS({ ...START, ...make(shot).still }); return undefined; }
+    if (!prep || prep.kind === 'empty') { setS(START); return undefined; }
+    if (reducedMotion()) { setS(stillOf(prep, shotCat)); return undefined; }
     let timers = [];
     let alive = true;
     const run = () => {
-      const { script } = make(shot);
+      let passes;
+      const seed = newSceneSeed();
+      try { passes = prep.play(seed); } catch (e) { return; }
+      if (!passes || !passes[0]) return;
+      /* For QA (mp-statdemo): this loop's dice and every number it will pop,
+         so a rig can hold what is drawn to what was simulated. */
+      try {
+        window.__btStatScene = {
+          stat, seed, kind: prep.kind, verdict: prep.verdict,
+          texts: passes.map((p) => (p ? p.beats.filter((b) => b.text).map((b) => (b.k === 'land' ? 'hero:' : 'slime:') + b.text) : null)),
+        };
+      } catch (e) { /* no window: nothing to report to */ }
+      const { steps, end } = loopSteps(prep, passes, shotCat);
       setS(START);
-      for (const step of script.steps) {
-        timers.push(setTimeout(() => { if (alive) setS((prev) => ({ ...prev, ...(step.patch ? step.patch(prev) : null) })); }, step.t));
+      for (const step of steps) {
+        timers.push(setTimeout(() => { if (alive) setS((prev) => ({ ...prev, ...step.patch(prev) })); }, step.t));
       }
-      const end = script.steps.reduce((m, st) => Math.max(m, st.t), 0) + 400;
-      timers.push(setTimeout(() => { if (alive) { timers = []; run(); } }, end));
+      timers.push(setTimeout(() => { if (alive) { timers = []; run(); } }, end + 300));
     };
     run();
     return () => { alive = false; timers.forEach(clearTimeout); };
-  }, [stat, shot]);   /* v2.3.2231: a scene built for a bow must be rebuilt when the lane changes */
-  if (!make) return null;
+  }, [prep, shotCat]);   /* v2.3.2979: a new window, lane or stepper count is a new fight */
+  if (!has) return null;
+  const tag = s.phase === 1 ? '+' + pts : 'Now';
   return (
-    <div className="bt-sd" data-stat-demo={stat} aria-hidden="true">
+    <div className="bt-sd" data-stat-demo={stat} data-sd-kind={prep ? prep.kind : ''} aria-hidden="true">
       <div className="bt-sd-stage" style={{ height: SCENE_H }}>
-      <div className={'bt-sd-hero' + (s.hero.kind ? ' bt-sd-hero--' + s.hero.kind : '')}>
+      <div className={'bt-sd-hero' + (s.hero.kind ? ' bt-sd-hero--' + s.hero.kind : '')}
+        style={s.hero.kind === 'trek' && s.hero.ms ? { animationDuration: s.hero.ms + 'ms' } : undefined}>
         {/* v2.3.2230 (owner: "the character preview is facing the wrong way"):
             southEAST, so he faces the slime.  The scene stands him on the
             left and the slime on the right, and CharacterView's default
             southwest turned his back on it. */}
         <CharacterView size={HERO_SIZE} weapon={weapon} shield={shield} crop dir="southeast" />
+        {s.guard && <img className="bt-sd-shield bt-sd-shield--held" src={ICON.shield} alt="" draggable={false} />}
         {s.shield > 0 && <img key={'s' + s.shield} className="bt-sd-shield" src={ICON.shield} alt="" draggable={false} />}
       </div>
-      <Slime anim={s.slime} />
-      {s.orb > 0 && <i key={'o' + s.orb} className="bt-sd-orb" style={{ backgroundImage: `url(${ORB_URL})` }} />}
-      {s.shot > 0 && <Shot cat={shot} n={s.shot} short={s.shotShort > 0} />}
+      <Slime anim={s.slime} blue={s.blue} />
+      {s.slimeBar && s.slime.kind !== 'death' && <SlimeBar b={s.slimeBar} />}
+      {s.orb > 0 && <i key={'o' + s.orb} className="bt-sd-orb"
+        style={{ backgroundImage: `url(${ORB_URL})`, animationDuration: SLIME_THROW.FLIGHT_MS + 'ms' }} />}
+      {s.shots.map((x) => <Shot key={'sh' + x.id} s={x} />)}
       {s.pops.map((p) => <Pop key={p.id} p={p} />)}
       {s.point > 0 && (
         <span key={'p' + s.point} className="bt-sd-point">
-          <img src={iconSrc} alt="" draggable={false} /><b>+{Math.max(1, n || 1)}</b>
+          <img src={iconSrc} alt="" draggable={false} /><b>+{pts}</b>
         </span>
+      )}
+      {/* v2.3.2979: which half is playing.  The badge marks the moment the
+          points go in; this says which side of it you are watching, which a
+          real (and so often small) difference needs. */}
+      {prep && prep.kind !== 'empty' && (
+        <span className={'bt-sd-tag' + (s.phase === 1 ? ' bt-sd-tag--after' : '')} data-sd-phase={s.phase}>{tag}</span>
       )}
       </div>
       {/* The bar sits UNDER the stage, where the Equipment screen keeps the
           vitals under the figure -- and clear of the numbers rising off
           the hero's head. */}
       {s.bar && <Bar b={s.bar} />}
+      {prep && prep.verdict && <Verdict v={prep.verdict} capped={prep.capped} />}
+      {prep && prep.note && <div className="bt-sd-note" data-sd-note="">{prep.note}</div>}
     </div>
   );
 };
 
-/** For QA: which stats have a scene. */
-export const STAT_DEMO_KEYS = Object.keys(SCENES);
+/** For QA, and for the window deciding whether to reserve room: which stats
+ *  have a scene. */
+export const STAT_DEMO_KEYS = SIM_STATS;

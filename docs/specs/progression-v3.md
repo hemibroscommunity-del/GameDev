@@ -880,3 +880,63 @@ The contract is unchanged in meaning — centre the icon in the space it
 actually has — but measuring *through* the count to the `[+]` would
 report every row as off-centre by the count's width, which is a true
 measurement of the wrong distance.
+
+## The window's scene is a simulation (v2.3.2979)
+
+Owner: "Make it so the preview of the combat skills stat allocation
+confirmation window shows real simulation of the hits against a slime
+monster. These previews were made under a worse model."
+
+**What it replaced.** `StatDemo` played one hand-written storyboard per
+stat — `12` then `24` for Power, a `25` crit every fourth swing for Luck,
+a burn of 8 shrinking to 2 for Resist — the same numbers for every
+character, exaggerated on purpose (v2.3.2222's brief). None of them was
+anything a given character would do, and two scenes showed mechanics a
+slime does not have (its ball is base damage and burns nobody).
+
+**What plays now.** `src/ui/mobile/sheet/statSim.js` fights the Starting
+Meadow's slime (archetype fodder at the zone's floor level, built by
+`createMonster`: 58 HP, a 10-damage ball) with the window's own character
+and lane, through the client mirrors of the worker's arithmetic:
+
+| Stat | The fight | The line under the stage |
+|---|---|---|
+| Power, Luck, Speed (+ the retired Crit / Crit Dmg) | auto-attack at your real cadence, every hit the `_computeAttackDamage` roll, numbers by `toDisplayHitDamage`, the slime's HP bar draining to them, the death splat | `Slime down in` hits · swing-time, averaged over 400 fixed fights |
+| Special | one ordinary hit, then the worker's special shape for that weapon (`bowvolley` 3 arrows at WORTH/3, `bigorb` one bolt from its own band × 3 orbs, or the old shapes against an older worker) | `Special hits for (avg)` |
+| Element | the fight, plus the weapon's own status: burn/root ticks (`tickElementStatuses`), or a flora thorn answering the slime's balls; a weapon with no ticking element gets the plain fight and a line saying why | `Slime down in` |
+| Range | a slime standing between today's reach and the reach with the points: the attack stops short by exactly the difference, then lands | — (the row above already says how much farther) |
+| HP, Defense, Dodge | the slime's real ball on you through `_applyDamage` (Dodge roll, Defense under the combined floor, armour, floor 1) | `Slime hits to drop you` |
+| Stamina | with a shield, holding your guard (5 a regen tick; a ball caught on the shield costs nothing more -- that 10 is a blocked melee swing's); without, rolling out of the ball (one stamina block a roll) | `Guard holds vs. a slime` / `Dodge rolls on a full bar` |
+| Resist | the one elemental thing a slime does: the blue slime's death burst (60 flat, at most half your max HP) | `Blue slime burst` |
+| Move Speed | the walk, at your real speed | `Cross the meadow` |
+
+**One set of dice, both halves.** The before and after halves read the
+same random numbers swing for swing (`sceneDie`: a hash of the loop's
+seed, the stream and the swing index), so the only thing that differs is
+the points. The seed is fresh every loop. The after half fights exactly
+as many slimes as the before half put down, so it can only finish sooner.
+The stepper's `n` is what the after half fights with.
+
+**Held to the worker, not restated.** `server/test/statsim.test.mjs`
+rigs `Math.random` and requires the scene's roll to equal
+`_computeAttackDamage` over a grid of builds and dice (both ends of every
+band, both sides of the crit roll), end to end through
+`_handleMonsterDamage` for the volley arrow and the big bolt; holds
+`takenOf` / `burstOf` to `_applyDamage`, the burn tick and thorn power to
+`elemental.js`, the slime to `_makeZoneMonster`, and the throw, burst and
+stamina constants to the worker's tables (the two per-tick stamina
+numbers are literals in `_tickPlayerRegen`, so they are measured).
+`mp-statdemo` checks in a real browser that every number over the slime
+is one that loop simulated (`window.__btStatScene`).
+
+**Assets.** The slime's death strip joins `statDemoAssets.js` (warm on the
+gate already, via the world's slime group). The blue slime has no file —
+the world retints the green sheets at runtime — so `statDemoPreload.js`
+bakes the same retint (`monsterRecolor.retintToCanvas`, the variant's own
+`recolor`) into two image URLs on the loading screen, per the preloading
+law.
+
+**Out of scope, deliberately.** Food and potion buffs, the hexer's curse
+and elemental collisions stay out, as they do from the DPS row. The
+`infopop` / `freshpoints` combat-card failures noted above are still
+pre-existing and untouched.

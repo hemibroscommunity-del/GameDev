@@ -334,36 +334,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!opened) { rec.skip(`${key} has a scene`, 'row not reachable'); continue; }
     /* Sample the live stage across a full loop — a single frame proves
        nothing about an animation. */
-    const seen = { scene: false, shot: 0, frames: 0, texts: {} };
-    for (let i = 0; i < 26; i++) {
+    /* v2.3.2979: and what the scene is DOING -- the roll, the swell, the
+       stamina bar -- because the simulated scenes prove themselves with the
+       real mechanic, not with a caption. */
+    const seen = { scene: false, shot: 0, frames: 0, texts: {}, rolled: false, swell: false, stam: [], verdict: null };
+    for (let i = 0; i < 34; i++) {
       const f = await P.page.evaluate(() => ({
         scene: !!document.querySelector('[data-stat-demo]'),
         shot: document.querySelectorAll('.bt-sd-shot').length,
         pops: [...document.querySelectorAll('[data-sd-pop]')].map((e) => ({
           t: e.textContent.trim(), side: /--slime/.test(e.className) ? 'slime' : 'hero' })),
+        rolled: !!document.querySelector('.bt-sd-hero--dodge'),
+        swell: !!document.querySelector('.bt-sd-slime--swell'),
+        stam: (document.querySelector('[data-sd-bar="stamina"] .bt-sd-vital-n') || {}).textContent || null,
+        verdict: window.__btStatScene ? window.__btStatScene.verdict : null,
       }));
       if (f.scene) seen.scene = true;
       seen.shot += f.shot;
       seen.frames++;
       for (const p of f.pops) seen.texts[p.side + ':' + p.t] = (seen.texts[p.side + ':' + p.t] || 0) + 1;
+      if (f.rolled) seen.rolled = true;
+      if (f.swell) seen.swell = true;
+      if (f.stam && seen.stam[seen.stam.length - 1] !== f.stam) seen.stam.push(f.stam);
+      if (f.verdict) seen.verdict = f.verdict;
       await P.page.waitForTimeout(260);
     }
     rec.ok(`${key} opens a scene on its stage`, seen.scene, seen);
     const texts = Object.keys(seen.texts);
     if (key === 'stam') {
-      /* WHAT DISTINGUISHES THE NEW SCENE FROM THE OLD, and it is NOT the
-         projectile count. The old scene drove strike(), which looses a shot
-         only for a RANGED weapon — this rig fights with a greatsword (see the
-         body-stat check above), so `shot === 0` would have passed on the old
-         code too. It is kept because it costs nothing and holds the line for
-         whatever the rig equips later, but it is not what proves the fix.
-         These two are: the old scene put bare damage numbers on the SLIME
-         (three '10's a half, the hero attacking it), and the new one puts
-         Blocked!/Dodged! over the HERO. Neither can pass on the other. */
-      rec.ok('...and Stamina blocks and dodges — the moves it actually pays for',
-        texts.some((t) => /^hero:(Blocked|Dodged)/i.test(t)),
-        { texts, shots: seen.shot });
-      rec.ok('...and nothing in it attacks the slime any more (the "shooting an orb" report)',
+      /* v2.3.2979: THE REAL ECONOMY.  The v2.3.2616 scene had the hero block
+         and then dodge, 30 stamina each, with 'Blocked!'/'Dodged!' popping --
+         numbers the game does not charge and a popup the game does not show.
+         Simulated (statSim.js), stamina pays for what it actually pays for:
+         WITH a shield, holding your guard (5 a regen tick held; a ball caught
+         on the shield costs nothing more -- statsim.test measures the worker);
+         WITHOUT one -- this rig -- ROLLING out of the slime's ball, one stamina
+         block a roll.  A roll is silent in the world (the ball just misses),
+         so the proof is the roll and the bar dropping, not a popup. */
+      const dips = seen.stam.map((t) => { const m = /^(\d+)\/(\d+)$/.exec(t.replace(/\s/g, '')); return m ? { cur: +m[1], max: +m[2] } : null; }).filter(Boolean);
+      rec.ok('...and Stamina pays for a dodge roll: the hero rolls, and the bar drops by a block',
+        seen.rolled && dips.some((d) => d.cur < d.max), { rolled: seen.rolled, bar: seen.stam });
+      rec.ok('...and nothing in it attacks the slime (the "shooting an orb" report)',
         seen.shot === 0 && !texts.some((t) => /^slime:\d+$/.test(t)), { texts, shots: seen.shot });
     }
     if (key === 'range') {
@@ -371,13 +382,70 @@ export async function run({ browser, wsPort, webPort, rec }) {
         texts.some((t) => /Short/i.test(t)) && texts.some((t) => /^slime:\d+$/.test(t)), { texts });
     }
     if (key === 'eres') {
-      /* The claim is "elemental damage taken", so the orb's own -10 must be
-         the SAME on both halves and only the burn ticks may fall. A scene
-         where both shrank would be teaching a flat damage reduction. */
-      rec.ok('...and Elem Resist shrinks the BURN while the hit itself is unchanged',
-        texts.includes('hero:-10') && texts.includes('hero:-8') && texts.includes('hero:-2'), { texts });
+      /* v2.3.2979: the v2.3.2616 scene burned the hero for 8, then 2, off a
+         slime ball -- but a slime's ball is BASE damage and burns nobody.  The
+         one elemental thing a slime does is the BLUE slime's death burst, and
+         that is what Resist is shown against now: it swells, it goes off, and
+         the number on you is the worker's burst through your Resist -- the
+         verdict line's own two numbers, one per half. */
+      const v = seen.verdict || {};
+      rec.ok('...and Resist meets the blue slime\'s burst: it swells, and you take the simulated number, before and after',
+        seen.swell && !!v.now && texts.includes('hero:' + v.now) && (!v.after || texts.includes('hero:' + v.after)),
+        { swell: seen.swell, verdict: v, texts });
     }
     await P.page.screenshot({ path: `tools/qa/mp/out/statdemo-${key}.png` }).catch(() => {});
+  }
+
+  /* ══ 4d. v2.3.2979: THE NUMBERS ARE A SIMULATION, NOT A STORYBOARD ══
+     Owner: "Make it so the preview of the combat skills stat allocation
+     confirmation window shows real simulation of the hits against a slime
+     monster."  Until now Power's scene popped a hard-coded '12' then '24'
+     whoever you were.  It now fights the meadow's slime with THIS rig's
+     greatsword at skill 8 (statSim.js), and the server suite holds that
+     arithmetic to the worker's own roll (statsim.test.mjs).  What only a
+     browser can show is that the scene DRAWS the simulation it ran: every
+     number over the slime is one that loop rolled (window.__btStatScene),
+     the slime's HP bar drains to them and the slime dies, and both halves
+     play on the same window. */
+  await P.page.keyboard.press('Escape');
+  await P.page.waitForTimeout(350);
+  await H.openPointCols(P, ['sword']);
+  const powOpened = await openStat(P, 'sword', 'dmg');
+  await P.page.waitForTimeout(300);
+  if (!powOpened) {
+    rec.skip('Power plays a simulated fight', 'row not reachable');
+  } else {
+    const sim = { pops: new Set(), rolled: new Set(), bars: new Set(), phases: new Set(), died: false, verdict: null };
+    for (let i = 0; i < 60; i++) {
+      const f = await P.page.evaluate(() => ({
+        pops: [...document.querySelectorAll('[data-sd-pop]')].filter((e) => /--slime/.test(e.className)).map((e) => 'slime:' + e.textContent.trim()),
+        hook: (window.__btStatScene && window.__btStatScene.stat === 'dmg') ? window.__btStatScene : null,
+        bar: (document.querySelector('[data-sd-slime-hp]') || { getAttribute: () => null }).getAttribute('data-sd-slime-hp'),
+        phase: (document.querySelector('[data-sd-phase]') || { getAttribute: () => null }).getAttribute('data-sd-phase'),
+        died: !!document.querySelector('.bt-sd-slime--death'),
+      }));
+      if (f.hook) {
+        for (const list of f.hook.texts) for (const t of (list || [])) sim.rolled.add(t);
+        sim.verdict = f.hook.verdict;
+      }
+      for (const t of f.pops) sim.pops.add(t);
+      if (f.bar != null) sim.bars.add(+f.bar);
+      if (f.phase != null) sim.phases.add(f.phase);
+      if (f.died) sim.died = true;
+      await P.page.waitForTimeout(150);
+    }
+    const pops = [...sim.pops];
+    rec.ok('Power: every number over the slime is one the simulation rolled for that loop',
+      pops.length > 0 && pops.every((t) => sim.rolled.has(t)), { pops, rolled: [...sim.rolled] });
+    const bars = [...sim.bars];
+    rec.ok('...the slime\'s HP bar drains to them, and the slime dies',
+      bars.length > 1 && Math.min(...bars) < Math.max(...bars) && sim.died, { bars, died: sim.died });
+    rec.ok('...both halves play: "Now", then the point, then "+n"',
+      sim.phases.has('0') && sim.phases.has('1'), [...sim.phases]);
+    const v = sim.verdict || {};
+    rec.ok('...and the line under it says how many hits a slime takes, now and with the point',
+      /hit/.test(v.now || '') && /hit/.test(v.after || ''), v);
+    await P.page.screenshot({ path: 'tools/qa/mp/out/statdemo-power.png' }).catch(() => {});
   }
 
   /* ══ 4c. THE PRELOADING LAW ══
