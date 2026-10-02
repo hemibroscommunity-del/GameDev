@@ -1194,20 +1194,22 @@ picture once), and that the page's "Save part" button saves the zip.
 > footstep sounds I'll need (since some terrain types work with several)"*
 
 Twelve sounds cover all 48 swatches. The game's one footstep today,
-`footstep-v3`, is dirt (v2.3.1422).
+`footstep-v3`, is dirt (v2.3.1422). Since v2.3.2969 the table goes by what
+the owner's pictures show, not the plan's words (below, "Tweaks after
+listening").
 
 | Sound | Like | Swatches |
 |---|---|---|
 | grass | a soft swish | commons, ember-1, mist-1, verdant-1, border-mist-verdant, border-frost-verdant |
 | dirt | a dull, packed-earth thud (today's `footstep-v3`) | town-yard, street, road, sky-1, thunder-1, border-hollows-thunder |
 | gravel | loose stones crunching | plaza, gravel, hollows-1, tidal-4, border-hollows-sky |
-| stone | a hard scuff on solid rock | ember-3, ember-4, sky-3, sky-4, hollows-2, hollows-3, hollows-4, tidal-3 |
-| sand | a soft, sliding crunch | sky-2, tidal-1, tidal-2, border-thunder-tidal |
+| stone | a hard scuff on solid rock | ember-2, ember-3, ember-4, sky-3, sky-4, hollows-2, hollows-3, hollows-4, tidal-3, border-ember-frost |
+| sand | a soft, sliding crunch | sky-2, tidal-1, tidal-2, border-thunder-tidal, border-ember-sky |
 | snow | a squeaky crunch | frost-1, frost-2, frost-4 |
 | ice | a hard, glassy click | frost-3 |
-| mud | a wet squelch | mist-2, mist-3, border-ember-frost, border-mist-tidal |
-| forest floor | soft and muffled, a little leaf rustle | mist-4, verdant-2, verdant-3, verdant-4 |
-| ash | a dry, brittle cinder crunch | ember-2, border-ember-sky |
+| mud | a wet squelch | mist-3, border-mist-tidal |
+| forest floor | soft and muffled, a little leaf rustle | mist-2, mist-4, verdant-2, verdant-3, verdant-4 |
+| ash | a dry, brittle cinder crunch | none since v2.3.2969: no picture is ash. A choice in the Ground Studio's menu |
 | wood | a hollow knock | boardwalk (every bridge, porch and dock) |
 | metal | a clanky ring | thunder-2, thunder-3, thunder-4 |
 
@@ -1261,7 +1263,8 @@ the bro's feet. Today's zones keep their one dirt step.
     grass until it has its own recording.
   - **Sand.** The sand walk was recorded beside the surf: its steps stand
     only 2–4.5 dB over the waves. Cleaned, two steps came out clear, and
-    those two are used. A cleaner recording would be better.
+    those two are used. A cleaner recording would be better. (v2.3.2969:
+    those two were the walk's worst; three better ones now, below.)
   - **Licenses.** Six recordings' licenses still need a look (CREDITS.md).
     Snow and ice are CC BY and are credited in the game's About panel.
 - **Tested.** `tools/world/test-world-core.mjs` checks that every ground
@@ -1310,6 +1313,52 @@ Every swatch card in the Ground Studio now has a **Footsteps** row:
     restored in a fresh browser, and undone.
   - `mp-wheelsteps` (11/11): the commons, made snow in the studio's
     storage, plays snow in the game on the next way in.
+
+### Tweaks after listening (v2.3.2969)
+
+> Owner, 2026-10-02: *"Ok so sand, mud, and ash are ones I think can use
+> tweaking, especially sand. What is "ash" used for? I don't recall seeing
+> any ground type of primarily ash"*
+
+**Which ground plays which sound now goes by its picture.** The first table
+followed the plan's words, but four of the owner's pictures show something
+else:
+
+| Ground | The plan says | The picture shows | Was | Now |
+|---|---|---|---|---|
+| ember-2, the ash plains | black volcanic ash | cracked dark rock over red dust | ash | stone |
+| border-ember-sky, flame meets dunes | ash dunes | orange sand with stones | ash | sand |
+| border-ember-frost, the steam fields | wet black rock and snow | the same: rock slabs, snow | mud | stone |
+| mist-2, the slime woods | moss over bog mud | moss, leaves and roots | mud | forest floor |
+
+Mud keeps the mangrove marsh (mist-3, dark mud and roots) and the salt
+marsh where the poison forest meets the sea (border-mist-tidal). No ground
+plays ash: it is still one of the twelve in the Ground Studio's menu. A
+sound the owner already chose in the studio still wins over this table.
+
+**The three clips, cut again** by `tools/audio/cut_footsteps.py` from the
+same recordings:
+
+- **Sand.** The two steps kept in v2.3.2967 were the walk's worst. After
+  cleaning they stood only 1–4 dB over what was left of the sea: more a
+  burst of hiss than a step. The walk is now cleaned against a **noise
+  print**, its own quiet before the waves (`clean='print'`). That keeps
+  three steps standing 7–17 dB clear (`at`), each 0.28 s, with the surf's
+  rumble taken off under 200 Hz. It is still a beach walk.
+  - **The real fix is a cleaner recording.** Candidates on Freesound:
+    - byjoshberry, *Walking on beach sand* (431416, CC BY 4.0): sneakers in
+      deep dry sand, shotgun microphone;
+    - kessir, *Footsteps in Sand* (264124, CC0): rice, made to sound like
+      sand.
+  - Its id in `SOURCES` and one run of the tool replace the clip.
+- **Mud.** The walk's steps are a squelch and a suck, often two or three
+  hits in one, and the five kept had two each, a "squish-squash" every
+  step. The five kept now are each **one squelch** (`pick`: their starts),
+  cut to its own end.
+- **Ash.** A 0.46 s "pfff" became a short 0.22 s puff (`most`), so it is a
+  step if the owner ever chooses it.
+
+The other eight clips came out byte for byte the same.
 
 ## Blend pictures, put away (v2.3.2955)
 

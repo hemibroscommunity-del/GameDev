@@ -27,17 +27,29 @@ export const STEP_LABELS = {
   ice: 'Ice', mud: 'Mud', forest: 'Forest floor', ash: 'Ash', wood: 'Wood', metal: 'Metal',
 };
 
+/* v2.3.2969: BY WHAT THE OWNER'S PICTURES SHOW.  The first table went by the
+   plan's words (plan.js), and four grounds came out drawn as something else
+   -- owner, 2026-10-02: "What is 'ash' used for?  I don't recall seeing any
+   ground type of primarily ash".  So, by the pictures in public/world/ground/:
+   the ash plains (ember-2) are cracked dark rock over red dust, and the
+   steam fields where the flame meets the frost (border-ember-frost) wet black
+   rock with snow -- both stone; where the flame meets the dunes
+   (border-ember-sky) is orange sand with stones -- sand; and the slime woods
+   (mist-2) a floor of moss, leaves and roots -- forest.  Mud keeps the
+   mangrove marsh (mist-3, dark mud and roots) and the salt marsh where the
+   venom meets the sea (border-mist-tidal).  No picture is ash, so no ground
+   plays it; it stays one of the twelve, for the Ground Studio's menu. */
 const BY_SOUND = {
   grass: ['commons', 'ember-1', 'mist-1', 'verdant-1', 'border-mist-verdant', 'border-frost-verdant'],
   dirt: ['town-yard', 'street', 'road', 'sky-1', 'thunder-1', 'border-hollows-thunder'],
   gravel: ['plaza', 'gravel', 'hollows-1', 'tidal-4', 'border-hollows-sky'],
-  stone: ['ember-3', 'ember-4', 'sky-3', 'sky-4', 'hollows-2', 'hollows-3', 'hollows-4', 'tidal-3'],
-  sand: ['sky-2', 'tidal-1', 'tidal-2', 'border-thunder-tidal'],
+  stone: ['ember-2', 'ember-3', 'ember-4', 'sky-3', 'sky-4', 'hollows-2', 'hollows-3', 'hollows-4', 'tidal-3', 'border-ember-frost'],
+  sand: ['sky-2', 'tidal-1', 'tidal-2', 'border-thunder-tidal', 'border-ember-sky'],
   snow: ['frost-1', 'frost-2', 'frost-4'],
   ice: ['frost-3'],
-  mud: ['mist-2', 'mist-3', 'border-ember-frost', 'border-mist-tidal'],
-  forest: ['mist-4', 'verdant-2', 'verdant-3', 'verdant-4'],
-  ash: ['ember-2', 'border-ember-sky'],
+  mud: ['mist-3', 'border-mist-tidal'],
+  forest: ['mist-2', 'mist-4', 'verdant-2', 'verdant-3', 'verdant-4'],
+  ash: [],
   /* every boardwalk, and every bridge's plank deck (ground.js PLANK DECKS) */
   wood: ['boardwalk'],
   metal: ['thunder-2', 'thunder-3', 'thunder-4'],

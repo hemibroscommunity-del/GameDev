@@ -1264,7 +1264,11 @@ console.log('footsteps');
     silent.length === 0 && !stepOf('lava') && !stepOf('water') && steppedIds().every((id) => ids.includes(id)) && ids.every((id) => !stepOf(id) || STEP_SOUNDS.includes(stepOf(id))),
     { silent, unknown: steppedIds().filter((id) => !ids.includes(id)) });
   const heard = new Set(ids.map(stepOf).filter(Boolean));
-  ok(`...and all twelve sounds are used (${[...heard].join(', ')})`, STEP_SOUNDS.length === 12 && STEP_SOUNDS.every((s) => heard.has(s)));
+  /* v2.3.2969: by the owner's pictures, and none of them is ash -- it stays
+     one of the twelve, a choice in the Ground Studio's menu */
+  ok(`...and every sound but ash is used (${[...heard].join(', ')}); ash is only a choice, no picture being ash (v2.3.2969)`,
+    STEP_SOUNDS.length === 12 && STEP_SOUNDS.every((s) => heard.has(s) === (s !== 'ash')) &&
+    stepOf('ember-2') === 'stone' && stepOf('border-ember-sky') === 'sand' && stepOf('border-ember-frost') === 'stone' && stepOf('mist-2') === 'forest');
   const noClip = STEP_SOUNDS.filter((s) => s !== 'dirt' && !FOOTSTEP_CLIPS[s]);
   ok('every sound but dirt (today\'s footstep-v3) has a clip -- the forest floor grass\'s, until it has its own recording',
     noClip.length === 0 && !FOOTSTEP_CLIPS.dirt && FOOTSTEP_CLIPS.forest === FOOTSTEP_CLIPS.grass, noClip);
