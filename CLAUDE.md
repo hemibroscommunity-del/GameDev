@@ -191,9 +191,11 @@ remnant to migrate server-side, not a mode to preserve.
   'ash' used for? I don't recall seeing any ground type of primarily ash"
   -- the ash plains and the steam fields stone, flame-meets-dunes sand, the
   slime woods forest floor, NO ground ash (still in the menu), and sand,
-  mud and ash cut again (`at`, `pick`, a noise print for the beach walk;
-  a cleaner sand recording is the real fix): WORLD-MAP-PIPELINE "Tweaks
-  after listening"),
+  mud and ash cut again (`pick`: single squelches); since v2.3.2970 sand
+  is the owner's clean BlondPanda step and their second mud (arnaud
+  coutancier) is HELD BACK, its maker's sounds being CC BY-NC -- check a
+  recording's license before using it, NC is out (CREDITS.md):
+  WORLD-MAP-PIPELINE "Tweaks after listening"),
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

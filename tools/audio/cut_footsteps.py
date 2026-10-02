@@ -7,20 +7,19 @@ like walking through rocks etc." -- then, with eleven recordings from
 Freesound: "Here are the footstep sounds you can use in order of how you have
 them to me (you can use current footstep sound for dirt)."
 
-The recordings are nothing alike: four are ONE step each (grass, gravel,
-wood, the ash "soft impact"), six are 4 to 32 seconds of someone walking
-(stone, sand, snow, ice, mud, metal), at 44.1 or 48 kHz, 16- or 24-bit,
-integer or float, one or two channels -- and their levels run from a step
-peaking at full scale (wood) to a beach walk whose loudest moment is -26 dB
-under the surf (sand).  The game wants none of that: it plays ONE step per
+The recordings are nothing alike: five are ONE step each (grass, gravel,
+sand since v2.3.2969, wood, the ash "soft impact"), five are 4 to 32 seconds
+of someone walking (stone, snow, ice, mud, metal), at 44.1 or 48 kHz, 16- or
+24-bit, integer or float, one or two channels -- and their levels run from a
+step peaking at full scale (wood) to a mud walk 13 dB too quiet.  The game wants none of that: it plays ONE step per
 foot plant, about every 0.4 s, at the level of the step it has today.  So,
 for each ground:
 
   1. FIND THE STEPS.  Mono, rumble off (50 Hz), a 10 ms loudness curve of
      the sound with its low end off (`hp`: the wind, the handling, the surf
      live down there and the crunch of a step does not), and a step is a
-     stretch of it standing `on` dB over the walk's quiet.  The sand walk is
-     cleaned of its surf first (`clean`).  A one-step file is all one step.
+     stretch of it standing `on` dB over the walk's quiet.  A one-step file
+     is all one step.
   2. CUT EACH ONE CLEAN: from where it rises out of the quiet to where it
      falls back into it, never into the next step and never longer than
      MAX_LEN (a one-step file: to SINGLE_DECAY dB under its peak, at most
@@ -30,9 +29,8 @@ for each ground:
      away on their own (not cut off by the next), and are neither the
      loudest nor the faintest of the walk -- spread over the recording, so
      the few kept are different steps, not one step's echoes.  (v2.3.2969:
-     or the steps chosen by their starts, where the owner heard the best
-     few fall short -- `pick` among the steps found, `at` to cut them
-     there: mud's single squelches, sand's clearest three.)
+     or the steps chosen by their starts, `pick`, where the owner heard the
+     best few fall short: mud's single squelches.)
   4. MATCH THE LOUDNESS OF TODAY'S STEP: footstep-v3 (dirt, which keeps its
      own sound) measured the way ears hear it -- K-weighted (ITU-R BS.1770,
      the pyloudnorm filters), the loudest 100 ms of the step -- and every new
@@ -50,7 +48,7 @@ for each ground:
 Usage (the owner's files are not kept in the repository -- they were
 uploaded to a session; the clips made from them are):
 
-    pip install numpy scipy soundfile lameenc pyloudnorm noisereduce
+    pip install numpy scipy soundfile lameenc pyloudnorm
     python3 tools/audio/cut_footsteps.py <folder with the WAVs> [--plot out.png]
 
 Files are found by their Freesound id, which every Freesound download
@@ -67,8 +65,7 @@ import lameenc
 import numpy as np
 import pyloudnorm
 import soundfile as sf
-from scipy.ndimage import median_filter
-from scipy.signal import butter, find_peaks, resample_poly, sosfiltfilt
+from scipy.signal import butter, resample_poly, sosfiltfilt
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 OUT_DIR = os.path.join(ROOT, 'public', 'sfx', 'footstep')
@@ -82,7 +79,6 @@ SR = 44100
 KBPS = 96
 MAX_LEN = 0.45       # s, the longest step kept from a walk (steps come every ~0.4 s)
 SINGLE_LEN = 0.45    # s, the longest kept of a one-step file
-TRANSIENT_WIN = 1.0  # s, the running median a short step is measured over (sand)
 SINGLE_DECAY = 45.0  # dB under its peak that a one-step file has died away
 LEAD = 0.02          # s played before each step
 TAIL = 0.05          # s played after it
@@ -92,30 +88,21 @@ HEADROOM = 10 ** (-1 / 20)   # -1 dBFS
 # The grounds, in the order of the owner's list (dirt keeps footstep-v3).
 # `id` is the Freesound id; `single` a file that is one step; `keep` how many
 # steps to keep of a walk; `hp` the low end taken off where the steps are
-# FOUND (wind, handling, surf -- the clip itself keeps it); `on` how far (dB)
-# a step stands over the walk's quiet; `clean` the sound cleaned of a steady
-# background first and `transient` a step measured against the curve's own
-# running median (sand: it was recorded beside the surf, whose swell is as
-# loud as the steps); `most` its own longest step.  The forest
-# floor has no recording yet -- the owner sent the wood step twice -- so
-# footstep() plays grass there for now.
+# FOUND (wind, handling -- the clip itself keeps it); `on` how far (dB) a
+# step stands over the walk's quiet; `most` its own longest step; `pick` the
+# steps kept, by their starts.  The forest floor has no recording yet -- the
+# owner sent the wood step twice -- so footstep() plays grass there for now.
 SOURCES = [
     dict(sound='grass',  id=384869, by='Ali_6868',      title='Right Grassgrassy Footstep 4', single=True),
     dict(sound='gravel', id=384880, by='Ali_6868',      title='Right Gravel Footstep 5',      single=True),
     dict(sound='stone',  id=816017, by='qubodup',       title='Dry Footsteps Loop',           keep=5, hp=200),
-    # sand: recorded beside the surf, its steps stand only 2-4.5 dB over it
-    # (measured).  v2.3.2969 (owner: "sand, mud, and ash are ones I think can
-    # use tweaking, especially sand"): the two steps v2.3.2967 kept were the
-    # walk's worst -- after cleaning they stood 1-4 dB over what was left of
-    # the sea, a burst of hiss more than a step.  Cleaned now against a NOISE
-    # PRINT of the walk's own quiet before the waves (`clean='print'`, the
-    # quietest 35% of `span`; the waves come in at 4.1 s), the three steps
-    # at `at` s stand 7-17 dB clear and the first three still 1-4, so these
-    # three are the clip, each `most` s from its start, the surf's rumble
-    # taken off under `hp_out` Hz.  Still a beach walk: a cleaner sand
-    # recording is the real fix (WORLD-MAP-PIPELINE "Footstep sounds").
-    dict(sound='sand',   id=376797, by='amholma',       title='Footsteps on sand',            at=[2.31, 2.93, 3.51], most=0.28,
-         span=(0, 4.05), clean='print', hp_out=200),
+    # sand, v2.3.2970: the owner's second recording, "These might be
+    # better" -- one clean, strong step on fine sand, its crunch over by
+    # 0.14 s and a soft hiss after it to 0.6 s, so its first `most` s.  The
+    # first, a beach walk (amholma, 376797), was recorded beside the surf:
+    # its steps stood 2-4.5 dB over the waves, and no cleaning made them
+    # more than a burst of hiss (v2.3.2967-2969).
+    dict(sound='sand',   id=778568, by='BlondPanda',    title='Steps Fine Snow Or Sand Strong 29', single=True, most=0.32),
     dict(sound='snow',   id=420559, by='Percy Duke',    title='Walking Through Snow',         keep=5, hp=1000),
     dict(sound='ice',    id=416967, by='InspectorJ',    title='Running, Ice, A',              keep=5, hp=1000, on=14),
     # mud, v2.3.2969: the walk's steps are a squelch and a suck, often two
@@ -123,6 +110,13 @@ SOURCES = [
     # squash" a step) -- so the five kept are steps that are ONE squelch
     # (`pick`: their starts, s, among the steps found), each to its own end
     dict(sound='mud',    id=446257, by='lukiacostello', title='Walking In Mud',               hp=1000, pick=[1.77, 10.05, 10.93, 11.51, 11.91]),
+    # NOT USED -- the owner's second mud, arnaud coutancier's "walking in the
+    # mud" (582400): louder and cleaner, but its maker licenses their sounds
+    # Attribution NonCommercial (CC BY-NC 3.0), and a game with a paid
+    # supporter pass (WORLD-ARCHITECTURE §11) is commercial.  Should the
+    # license allow it one day, this is the cut, five single squelches:
+    # dict(sound='mud', id=582400, by='arnaud coutancier', title='walking in the mud', hp=1000, on=14,
+    #      pick=[2.38, 16.51, 18.65, 21.19, 26.20]),
     # ash, v2.3.2969: a "powder soft impact" ran 0.46 s, a long "pfff" more
     # than a step -- now its first `most` s, a short puff.  No ground plays it
     # since the owner's pictures came in (footsteps.js): it stays a choice
@@ -141,30 +135,6 @@ def load(path):
         m = resample_poly(m, SR // g, sr // g)
     m = sosfiltfilt(butter(2, 50, 'hp', fs=SR, output='sos'), m)
     return m
-
-
-def clean(m):
-    """The surf out from under the steps: noisereduce's spectral gate, the
-    non-stationary kind (the waves come and go), most of the way down."""
-    import noisereduce
-    return noisereduce.reduce_noise(y=m, sr=SR, stationary=False, prop_decrease=0.9, time_constant_s=2.0)
-
-
-def print_clean(m, span):
-    """v2.3.2969: the background out from under the steps by a NOISE PRINT
-    -- the quietest 35% of the walk inside `span` s (between the steps, before
-    the waves), its level at every pitch gated out of the whole of it.  Steady
-    sea hiss comes out cleaner this way than by the non-stationary gate, which
-    took the quieter steps with it."""
-    import noisereduce
-    a, b = (int(t * SR) for t in span)
-    x = m[a:b]
-    db = curve(x)
-    quiet = np.zeros(len(x), bool)
-    for i in np.nonzero(db < np.percentile(db, 35))[0]:
-        quiet[i * HOP:i * HOP + WIN] = True
-    return noisereduce.reduce_noise(y=m, sr=SR, y_noise=x[quiet], stationary=True, prop_decrease=0.95,
-                                    n_std_thresh_stationary=1.5, n_fft=1024)
 
 
 HOP = int(0.0025 * SR)
@@ -243,42 +213,21 @@ def shape(x, natural=True):
 
 def detection(src, m):
     """What the steps are found in: the sound with its low end off (wind,
-    handling, the thump of the surf) -- or only its top band (`band`, the
-    sand walk: a step on sand is a hiss the surf barely reaches) -- and
-    nothing outside `span` s (sand again: the waves come in at 4.1 s)."""
+    handling)."""
     x = m
-    if src.get('band'):
-        x = sosfiltfilt(butter(4, src['band'], 'bp', fs=SR, output='sos'), x)
-    elif src.get('hp'):
+    if src.get('hp'):
         x = sosfiltfilt(butter(4, src['hp'], 'hp', fs=SR, output='sos'), x)
-    if src.get('span'):
-        a, b = (int(t * SR) for t in src['span'])
-        x = x.copy()
-        x[:a] = 0
-        x[b:] = 0
     return x
 
 
 def steps_of(src, m):
     """-> the steps to keep, each {a, b} in samples of `m`, and the curve."""
     db = curve(detection(src, m))
-    if src.get('transient'):
-        # v2.3.2967: the sand walk's steps are short puffs riding on the
-        # waves' slow swell -- so a step is what stands over the curve's own
-        # running median (TRANSIENT_WIN), and the swell is no step at all
-        base = median_filter(db, size=int(TRANSIENT_WIN * SR / HOP), mode='nearest')
-        db = np.where(db > -150, db - base, 0.0)
-    if src.get('at'):
-        # v2.3.2969: steps chosen by their starts (s), each `most` s long
-        return [dict(a=max(0, int((t - 0.01) * SR)), b=min(len(m), int((t + src['most']) * SR)), natural=False,
-                     peak=0.0) for t in src['at']], db
     if src.get('single'):
         s, e, natural = single(db, src.get('most', SINGLE_LEN))
         a = max(0, s * HOP - int(0.004 * SR))
         b = min(len(m), e * HOP + WIN)
         return [dict(a=a, b=b, natural=natural, peak=float(db.max()))], db
-    if src.get('transient'):
-        return transients(src, m, db), db
     found = events(db, src.get('on', 12))
     if not found:
         raise SystemExit(f"{src['sound']}: no steps found")
@@ -310,34 +259,6 @@ def steps_of(src, m):
             keep.append(f)
     keep.sort(key=lambda f: f['a'])
     return keep, db
-
-
-def transients(src, m, db):
-    """The sand walk's steps: the bumps of the swell-free curve (a step on
-    sand is a quarter-second "shff", a wave is seconds long), each cut from
-    where it rises to `most` s on -- the steps standing out most over their
-    surroundings, nearest the walk's usual level, spread out."""
-    pk, pr = find_peaks(db, prominence=src.get('on', 6), width=(None, int(0.4 * SR / HOP)),
-                        distance=int(src.get('pace', 0.3) * SR / HOP))
-    if not len(pk):
-        raise SystemExit(f"{src['sound']}: no steps found")
-    med = float(np.median(db[pk]))
-    found = []
-    for p, q in zip(pk, pr['prominences']):
-        s, lo = p, max(0, p - int(0.12 * SR / HOP))
-        while s > lo and db[s - 1] > 2:
-            s -= 1
-        a = max(0, s * HOP - int(0.01 * SR))
-        found.append(dict(a=a, b=min(len(m), a + int(src.get('most', 0.25) * SR)),
-                          natural=True, peak=float(db[p]), score=float(q) - abs(float(db[p]) - med)))
-    keep, spread = [], src.get('pace', 0.6) * SR
-    for f in sorted(found, key=lambda f: -f['score']):
-        if len(keep) >= src['keep']:
-            break
-        if all(abs(f['a'] - g['a']) > spread for g in keep):
-            keep.append(f)
-    keep.sort(key=lambda f: f['a'])
-    return keep
 
 
 _meter_filters = pyloudnorm.Meter(SR)._filters
@@ -404,11 +325,8 @@ def main(argv):
         if not hits:
             raise SystemExit(f"{src['sound']}: no file with Freesound id {src['id']} in {folder}")
         raw = load(sorted(hits)[0])
-        # found in the recording as it is, cut from it cleaned where asked
-        steps, db = steps_of(src, raw)
-        m = print_clean(raw, src['span']) if src.get('clean') == 'print' else clean(raw) if src.get('clean') else raw
-        if src.get('hp_out'):
-            m = sosfiltfilt(butter(2, src['hp_out'], 'hp', fs=SR, output='sos'), m)
+        m = raw
+        steps, db = steps_of(src, m)
         packed = [np.zeros(int(GAP * SR))]
         at = len(packed[0])
         places = []

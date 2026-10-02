@@ -1351,10 +1351,24 @@ same recordings:
     - kessir, *Footsteps in Sand* (264124, CC0): rice, made to sound like
       sand.
   - Its id in `SOURCES` and one run of the tool replace the clip.
+  - **v2.3.2970: done, by the owner** -- *"I attached two more sounds for
+    sand and mud. These might be better"*. Sand is now BlondPanda's
+    *Steps_Fine_Snow_Or_Sand_Strong_29* (778568): one clean, strong step on
+    fine sand, used as it is (its first 0.32 s, no cleaning and no boost:
+    -4.7 dB). One step, like grass and gravel, so the game varies it only
+    by pitch and loudness; more steps from the same series would add
+    variety. The beach walk and its cleaning (`at`, the noise print) are
+    gone from the tool.
 - **Mud.** The walk's steps are a squelch and a suck, often two or three
   hits in one, and the five kept had two each, a "squish-squash" every
   step. The five kept now are each **one squelch** (`pick`: their starts),
   cut to its own end.
+  - **v2.3.2970: the owner's second mud is held back.** arnaud coutancier's
+    *walking in the mud* (582400) is louder and cleaner, but search results
+    give the uploader's sounds as **CC BY-NC 3.0**, non-commercial, which
+    the supporter pass rules out (CREDITS.md). Its cut (five single
+    squelches) is kept, commented out, in `SOURCES`, should the license
+    ever allow it.
 - **Ash.** A 0.46 s "pfff" became a short 0.22 s puff (`most`), so it is a
   step if the owner ever chooses it.
 
