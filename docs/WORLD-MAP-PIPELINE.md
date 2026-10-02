@@ -1669,6 +1669,19 @@ the sage. The obsidian's purple glints keep their green (110-140), so they
 stay; so does the cactus flower's pink, another hue. The studio makes every
 object again once for this (`MADE`).
 
+**The last five sheets, and green** (v2.3.2974). The Stone Hollows, the
+Electric Foundry, both Water Caves sheets and the Poison Forest's were all
+found and named too: 9, 10, 11, 8 and 3 (the old finder 3, 4, 8, 2 and 3).
+The fishing nets keep their mesh with the holes cut through, and the
+pylons their lattice. The corals and shells are on green, and the orange
+fan coral kept green specks between its branches. So the gap rule and the
+despill now work on green as on magenta, by each px's LEAN (on magenta, red
+and blue over green; on green, green over red and blue). That took the
+corals' green-leaning px from 1.7% to 1.4%. The rest are olive blends of the
+fan's thin branches, too small to see at its size; un-mixing them against
+the coral's own colour made no difference, so it was not kept. That makes
+all 15 sheets of the plan but the Verdant one: 144 objects found complete.
+
 The plots (`plan.js` `town.lot`, 300 game px) are now narrower than the
 buildings. They grow to fit in the placing round, which makes Main Street
 longer.

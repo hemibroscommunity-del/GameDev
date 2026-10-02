@@ -212,9 +212,10 @@ remnant to migrate server-side, not a mode to preserve.
   having come out with pink twigs; and since v2.3.2973 magenta's own hue
   with next to no green is background ANYWHERE (`HOLE_G`/`HOLE_LEAN`/
   `HOLE_HUE`), the gaps in the owner's tumbleweeds having stayed magenta --
-  purple glints keep their green, so they stay; all 10 of the owner's
-  sheets found complete (113 objects): WORLD-MAP-PIPELINE "Objects found
-  by count")
+  purple glints keep their green, so they stay; and since v2.3.2974 the
+  gap rule and despill work on GREEN too, by each px's lean (`leanOf`); 14
+  of the owner's 15 sheets found complete (144 objects): WORLD-MAP-PIPELINE
+  "Objects found by count")
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

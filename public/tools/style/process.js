@@ -107,11 +107,19 @@ export function keyOut(src) {
   br /= bn; bgc /= bn; bb /= bn;
   const N = w * h, T0 = 60, R = 2, WIN = R + 2;
   const bgm = new Uint8Array(N);
+  /* v2.3.2974: the same on GREEN, the pink and purple things' background
+     -- the owner's orange fan coral kept green specks between its branches.
+     A px's lean is how much more of the key's colour it has than of the
+     rest (magenta: red and blue over green; green: green over red and
+     blue), and its rest is that other part */
   const magenta = br > 150 && bb > 150 && bgc < 110;
+  const green = bgc > 150 && br < 110 && bb < 110;
+  const leanOf = (r, g, b) => (magenta ? Math.min(r, b) - g : g - Math.max(r, b));
+  const restOf = (r, g, b) => (magenta ? g : Math.max(r, b));
   for (let p = 0, i = 0; p < N; p++, i += 4) {
     const dr = d[i] - br, dg = d[i + 1] - bgc, db = d[i + 2] - bb;
     if (dr * dr + dg * dg + db * db < T0 * T0) bgm[p] = 1;
-    else if (magenta && d[i + 1] < HOLE_G && Math.min(d[i], d[i + 2]) - d[i + 1] > HOLE_LEAN && Math.abs(d[i] - d[i + 2]) < HOLE_HUE) bgm[p] = 1;
+    else if ((magenta || green) && restOf(d[i], d[i + 1], d[i + 2]) < HOLE_G && leanOf(d[i], d[i + 1], d[i + 2]) > HOLE_LEAN && Math.abs(d[i] - d[i + 2]) < HOLE_HUE) bgm[p] = 1;
   }
   /* within R px of background: a separable max filter */
   const tmp = new Uint8Array(N), near = new Uint8Array(N);
@@ -164,7 +172,7 @@ export function keyOut(src) {
     }
     out[i + 3] = Math.round(a * 255);
   }
-  if (magenta) {
+  if (magenta || green) {
     const t2 = new Uint8Array(N), far = new Uint8Array(N);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       let v = 0;
@@ -179,8 +187,8 @@ export function keyOut(src) {
     for (let p = 0; p < N; p++) {
       const i = p * 4;
       if (!far[p] || !out[i + 3]) continue;
-      const lean = Math.min(out[i], out[i + 2]) - out[i + 1] - SPILL_OK;
-      if (lean > 0) { out[i] -= lean; out[i + 2] -= lean; }
+      const lean = leanOf(out[i], out[i + 1], out[i + 2]) - SPILL_OK;
+      if (lean > 0) { if (magenta) { out[i] -= lean; out[i + 2] -= lean; } else out[i + 1] -= lean; }
     }
   }
   img.data.set(out);
