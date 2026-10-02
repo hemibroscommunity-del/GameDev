@@ -1,7 +1,9 @@
 /* ═══ THE WHEEL'S OBJECTS, WALKED (v2.3.2975) ═══
  *
  * Owner, 2026-10-02, with a zip of every object but the Town Hall: "Wire
- * this stuff into the game.  Put mayor bro in town too."
+ * this stuff into the game.  Put mayor bro in town too."  (v2.3.2976: and
+ * then the Town Hall: "Town hall should be there but here it is again" --
+ * it stands in the square now, so the arrival asks for it.)
  *
  * On a phone viewport, against a real worker, in `?trial=wheel`:
  *   1. the way in places every object (public/tools/world/core/placing.js)
@@ -107,7 +109,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { stats: { ...W.stats }, ids: [...new Set(drawn.map((o) => o.id))].sort(), drawn: drawn.length, onFoot, player: { x: S.player.x, y: S.player.y } };
   });
   rec.ok(`round the arrival the town stands: ${town.drawn} objects drawn -- ${town.ids.join(', ')}`,
-    town.drawn >= 10 && ['saloon', 'hotel', 'lamp', 'bench'].every((id) => town.ids.includes(id)), town);
+    town.drawn >= 10 && ['townhall', 'saloon', 'hotel', 'lamp', 'bench'].every((id) => town.ids.includes(id)), town);
   rec.ok('...each its own sprite, on its foot, at its size in game px', town.onFoot, town.stats);
   await shot(P, 'arrival');
 
@@ -141,6 +143,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(400);
     await shot(P, 'mayor');
     await tap(P, 'Close');
+    /* v2.3.2976: the Town Hall in the square, Mayor Bro beside its steps,
+       from a step back -- the owner's picture */
+    await H.hopTo(P, mayor.spot.x - 75, mayor.spot.y + 130, { tries: 30 });
+    await P.page.waitForTimeout(900);
+    await tap(P, 'Close');
+    await shot(P, 'townhall');
   }
 
   phase = 'porch';

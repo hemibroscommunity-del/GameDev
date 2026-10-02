@@ -234,7 +234,13 @@ remnant to migrate server-side, not a mode to preserve.
   town: `loadWheelNpcArt`; an NPC texture freed under him now falls back
   instead of crashing the frame); `?trial=wheel&noobjects` leaves it bare;
   `node tools/world/render-wheel-objects.mjs` draws any spot;
-  `mp-wheelobjects` tests it: WORLD-MAP-PIPELINE "The objects in the game")
+  `mp-wheelobjects` tests it: WORLD-MAP-PIPELINE "The objects in the game";
+  and since v2.3.2976 the TOWN HALL stands in the square too -- the owner:
+  "Town hall should be there but here it is again", neither of their zips
+  having had it (the studio packs only finished objects) -- their picture put
+  through the studio's own steps in a browser and merged by
+  repack-objects.mjs as `buildings-17`: all 17 buildings, 76 objects, 41
+  pages, 5.3 MB)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

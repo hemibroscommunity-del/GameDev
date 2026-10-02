@@ -1480,8 +1480,17 @@ console.log('objects on the Wheel (v2.3.2975)');
   const man = JSON.parse(fs.readFileSync(new URL('../../public/world/objects/manifest.json', import.meta.url)));
   const foot = objectFootprints(P1, man);
   const hall = P1.kinds.indexOf('townhall');
-  ok('an object with no picture yet (the Town Hall) is not drawn and stops nobody; every other has its footprint',
-    foot.present[hall] === 0 && foot.present.reduce((a, b) => a + b, 0) === man.objects.length && foot.boxes.length > 4 * 5000, { present: foot.present.reduce((a, b) => a + b, 0) });
+  /* v2.3.2976: the Town Hall came, the owner: "Town hall should be there but
+     here it is again" -- every kind placed now has its picture */
+  ok(`every object placed has its picture, the Town Hall too, and its footprint (${man.objects.length} kinds)`,
+    foot.present[hall] === 1 && foot.present.every((v) => v === 1) && man.objects.length === P1.kinds.length && foot.boxes.length > 4 * 5000, { present: foot.present.reduce((a, b) => a + b, 0), kinds: P1.kinds.length });
+  /* ...and one with none is neither drawn nor in anyone's way: the game's
+     copy as it was before the Town Hall came */
+  const noHall = objectFootprints(P1, { ...man, objects: man.objects.filter((o) => o.id !== 'townhall') });
+  let hallAt = -1;
+  for (let i = 0; i < P1.n && hallAt < 0; i++) if (P1.kind[i] === hall) hallAt = i;
+  ok('...and an object with no picture yet is not drawn and stops nobody (the copy before the Town Hall came)',
+    hallAt >= 0 && noHall.present[hall] === 0 && noHall.boxOf[hallAt + 1] === noHall.boxOf[hallAt] && foot.boxOf[hallAt + 1] > foot.boxOf[hallAt], { hallAt });
   const boxes = [];
   for (let i = 0; i < P1.n; i++) for (let b = foot.boxOf[i]; b < foot.boxOf[i + 1]; b++) boxes.push([foot.boxes[b * 4], foot.boxes[b * 4 + 1], foot.boxes[b * 4 + 2], foot.boxes[b * 4 + 3], idOf(i)]);
   const g0 = gridInfo(PLAN);
@@ -1494,7 +1503,21 @@ console.log('objects on the Wheel (v2.3.2975)');
   /* a building's footprint: its plot's width, back from its door */
   const bBox = boxes.filter((q) => byId[q[4]].kind === 'building');
   ok('each building stops you on its own plot: its width, and back from its porch half its height (the roof you walk behind)',
-    bBox.length === 16 && bBox.every((q) => { const l = townLots.find((t) => t.id === q[4]); const [x0, y0] = gOf(l.x0, l.y0), [x1, y1] = gOf(l.x1, l.y1); return q[0] >= x0 - 2 && q[2] <= x1 + 2 && Math.abs(q[3] - y1) < 1 && q[3] - q[1] > 140; }), bBox.length);
+    bBox.length === 17 && bBox.every((q) => { const l = townLots.find((t) => t.id === q[4]); const [x0, y0] = gOf(l.x0, l.y0), [x1, y1] = gOf(l.x1, l.y1); return q[0] >= x0 - 2 && q[2] <= x1 + 2 && Math.abs(q[3] - y1) < 1 && q[3] - q[1] > 140; }), bBox.length);
+  /* v2.3.2976: the door check above went by the plan's height budgets; with
+     all seventeen pictures in, by the pictures themselves -- one drawn in
+     front of another's door would hide it */
+  const picOf = Object.create(null);
+  for (const o of man.objects) if (o.kind === 'building' && o.pieces.length) picOf[o.id] = o.pieces[0];
+  const covered = [];
+  for (const a of tp.lots) for (const b of tp.lots) {
+    const p = picOf[a.id];
+    if (a === b || !p) continue;
+    const hw = p.gameW / WPA / 2, h = p.gameH / WPA;
+    if (b.foot.x > a.foot.x - hw && b.foot.x < a.foot.x + hw && b.foot.y > a.foot.y - h && b.foot.y < a.foot.y) covered.push([a.id, b.id]);
+  }
+  ok(`...and as drawn: no building's picture covers another's door, all ${Object.keys(picOf).length} of them (the Town Hall ${picOf.townhall ? `${picOf.townhall.gameW} x ${picOf.townhall.gameH}` : 'missing'} game px)`,
+    Object.keys(picOf).length === 17 && covered.length === 0, covered);
 
   /* the sprite sheets: palette PNGs, a few objects a page, a building a page */
   const dir = new URL('../../public/world/objects/', import.meta.url);
@@ -1516,7 +1539,7 @@ console.log('objects on the Wheel (v2.3.2975)');
   }
   ok(`the game's objects are ${man.atlases.length} sprite sheets, every one a palette PNG of ${PAGE_COLOURS} colours or fewer (at most ${maxCol}): ${(bytes / 1048576).toFixed(1)} MB, where one full-colour sheet a land was 15.7`,
     palette === man.atlases.length && maxCol <= PAGE_COLOURS && bytes < 7 * 1048576, { palette, bytes, maxCol });
-  ok('...each building a page of its own, so only the ones near you are in memory', buildingPages.length === 16 && buildingPages.every((a) => a.kinds.length === PAGE_KINDS.buildings), buildingPages.length);
+  ok('...each building a page of its own, so only the ones near you are in memory', buildingPages.length === 17 && buildingPages.every((a) => a.kinds.length === PAGE_KINDS.buildings), buildingPages.length);
   ok('...every object\'s every piece a frame of its page, its size, its anchor at its foot, 2 px a game px', framesOk);
   /* the packer itself: kinds join a page while their colours fit */
   const fake = (id, n, w = 60, h = 60) => ({ id, colours: new Set(Array.from({ length: n }, (_, k) => (id.length << 16) + k * 7 + id.charCodeAt(0) * 1000)), items: [{ name: id + '-1', w, h }] });

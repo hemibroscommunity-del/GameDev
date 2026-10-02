@@ -1692,7 +1692,8 @@ longer.
 zip is in `public/world/objects/`: `manifest.json` and four sprite sheets
 (`buildings-1` to `-4`, each a PNG and its PixiJS sheet file). That is
 sixteen buildings at the owner's 140%, each 386 game px wide; only the Town
-Hall is still to make. Nothing in the game loads them yet. Three of the four
+Hall is still to make (it came at v2.3.2976). Nothing in the game loads them
+yet. Three of the four
 pages are full-colour PNGs: four buildings of 64 colours each are one colour
 too many for a palette PNG. So the sixteen are 6.7 MB, and packing three to
 a page would bring that to about 2.8 MB. That is for the placing round.
@@ -1751,6 +1752,18 @@ and things. They are about 13,000 in all. Mayor Bro stands beside the Town
 Hall's steps. `?trial=wheel&noobjects` leaves the Wheel bare, as before, to
 compare.
 
+**v2.3.2976: the Town Hall too.** Owner: *"Town hall should be there but
+here it is again."* Neither of their zips had it (the studio's "Download for
+the game" takes only the objects it has finished), so the middle of the
+square was an empty plot with Mayor Bro beside it. Their picture went
+through the Object Studio's own steps in a browser, exactly as on their
+phone: cut out of its magenta, 406 game px wide (812 × 807 px), on 64
+colours of its own. `repack-objects.mjs` merged it into the game's copy as
+a page of its own (`buildings-17`) and left the other 40 pages as they were.
+All seventeen buildings stand now: 76 objects, 41 pages, 5.3 MB. Under it
+the plot's yard ground mixes into the square's paving as before, so nothing
+square shows round it.
+
 ### The sprite sheets, a few objects a page
 
 The owner's zip had one full-colour sheet per land: 15.7 MB, 7.5 MB of it
@@ -1762,7 +1775,8 @@ together fit a palette PNG (255 colours, number 0 see-through). Now:
   palette numbers, with the same pixels;
 - **a building is a page of its own** (`PAGE_KINDS`), since the Wheel loads
   a page for any of its objects standing near you;
-- so the 75 objects are **40 pages, 5.2 MB**.
+- so the 75 objects are **40 pages, 5.2 MB** (with the Town Hall, v2.3.2976:
+  76 objects, 41 pages, 5.3 MB).
 
 The Object Studio's "Download for the game" packs this way, and so does
 `node tools/world/repack-objects.mjs <zip or folder>`, which put the owner's
@@ -1834,8 +1848,8 @@ thing keeps a cell all round its trunk, and its picture never covers the
 town.
 
 **Positions come from the catalog**, never from which pictures exist. An
-object with no picture yet (the Town Hall) keeps its place, and is neither
-drawn nor in anyone's way. Making a picture never moves anything else.
+object with no picture yet keeps its place (the Town Hall did, until
+v2.3.2976), and is neither drawn nor in anyone's way. Making a picture never moves anything else.
 
 **Each object's footprint**, the ground it stops you on, comes from its
 picture's size (`footprintOf`, `FOOT`):
@@ -1880,8 +1894,8 @@ placing change here was looked at that way.
 
 | | |
 |---|---|
-| at the arrival | 14 objects drawn, 16 of 40 sheets, **~31 MB** decoded |
-| walking round town | up to 20 sheets, ~39 MB (the buildings within 1,000 px stay) |
+| at the arrival | 14 objects drawn, 16 of 40 sheets, **~31 MB** decoded; with the Town Hall (v2.3.2976) 15 drawn, 18 of 41 sheets, **~36 MB** |
+| walking round town | up to 20 sheets, ~39 MB (the buildings within 1,000 px stay), measured before the Town Hall came; its page adds 2.6 MB |
 | on Frost Ridge | 20 drawn, 7 sheets, ~23 MB; the town's let go |
 | before the overlay lifts | 12 sheets in 1.1–1.3 s, alongside the ground |
 | late draws | 0 |
@@ -1930,8 +1944,11 @@ Wheel. The first run drew him from a texture destroyed under him: Pixi's
   - nothing wild on anything it may not stand on, a free cell round every
     trunk, every land its own things, most tall things in the clumps, shore
     things by the water;
-  - the Town Hall not drawn; the arrival and Mayor Bro's spot clear;
-    buildings' footprints on their plots;
+  - every object with its picture, the Town Hall too (v2.3.2976), and one
+    with no picture neither drawn nor in the way (the game's copy as it was
+    before the Town Hall came); the arrival and Mayor Bro's spot clear;
+    buildings' footprints on their plots; no building's picture covering
+    another's door, by the pictures' own sizes (v2.3.2976);
   - the sprite sheets all palette PNGs, a building a page, every frame
     right; the packer's colour rule.
 - The town checks that measured the old layout read it from the plan now
@@ -1939,19 +1956,21 @@ Wheel. The first run drew him from a texture destroyed under him: Pixi's
 - `node tools/qa/mp/run.mjs wheelobjects` (12 checks), on a phone against a
   real worker:
   - placed and the arrival's sheets loaded before the overlay lifts;
-  - the town round you, each object its own sprite on its foot;
-  - Mayor Bro beside the steps and answering a tap;
+  - the town round you, the Town Hall among it (v2.3.2976), each object its
+    own sprite on its foot;
+  - Mayor Bro beside the steps and answering a tap, and a picture of the
+    Town Hall with him (`wheelobjects-townhall.png`);
   - the Hotel stopping your feet at its porch;
   - behind it, its roof drawn over you; in front, under you again;
   - Frost Ridge's pines and birches, with the town's sheets let go;
   - every sheet let go back in town;
   - no page errors, and no render errors.
 - `object-studio` (51), `ground-studio` (70), `style-lab` (34),
-  `world-page` (38) and `test-world-core` (194) all pass.
+  `world-page` (38) and `test-world-core` (194; 196 with the Town Hall's
+  checks, v2.3.2976) all pass.
 
 ### Still to do
 
-- **the Town Hall picture**, the one building not made yet;
 - **doors**: a building is scenery so far; its job (forge, bank, market) is
   a later round;
 - **the camps, landmarks, the Old Mill, the Rail Depot and the Arena** are

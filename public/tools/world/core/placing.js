@@ -40,9 +40,9 @@
  * decided in a fixed order (big, then medium, then small).
  *
  * Positions are decided from the CATALOG, never from which pictures exist:
- * an object whose picture is not made yet (the Town Hall) keeps its place,
- * and the game simply does not draw it, or let it stop anyone.  So making a
- * picture never moves anything else.
+ * an object whose picture is not made yet keeps its place (the Town Hall
+ * did, until v2.3.2976), and the game simply does not draw it, or let it
+ * stop anyone.  So making a picture never moves anything else.
  *
  * OUT, in game px with the Wheel's top-left at 0 (as the ground worker's
  * pieces are): { kinds: [object ids], n, kind, piece, flip, x, y } -- x, y

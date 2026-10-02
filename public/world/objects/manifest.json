@@ -1,7 +1,7 @@
 {
  "tool": "brotown-object-studio",
  "version": 2,
- "made": "2026-10-02T14:12:48.957Z",
+ "made": "2026-10-02T16:00:53.257Z",
  "forGame": true,
  "repacked": "v2.3.2975 a few objects a page",
  "plan": {
@@ -215,6 +215,19 @@
    "objects": 1,
    "kinds": [
     "auction"
+   ],
+   "palette": true
+  },
+  {
+   "name": "buildings-17",
+   "group": "buildings",
+   "w": 812,
+   "h": 807,
+   "image": "buildings-17.png",
+   "sheet": "buildings-17.json",
+   "objects": 1,
+   "kinds": [
+    "townhall"
    ],
    "palette": true
   },
@@ -3647,6 +3660,30 @@
      "foot": [
       147,
       171
+     ]
+    }
+   ]
+  },
+  {
+   "id": "townhall",
+   "name": "Town Hall",
+   "group": "buildings",
+   "kind": "building",
+   "count": 1,
+   "fit": "w",
+   "size": 406,
+   "sizeMul": 1,
+   "pieces": [
+    {
+     "frame": "townhall-1",
+     "atlas": "buildings-17",
+     "w": 812,
+     "h": 807,
+     "gameW": 406,
+     "gameH": 403.5,
+     "foot": [
+      406,
+      807
      ]
     }
    ]
