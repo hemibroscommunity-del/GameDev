@@ -1059,6 +1059,88 @@ own poses in his own look:
   the captures. `statsim.test` holds the `rolls` flag, the roll's landing
   and the trek's distance.
 
+**The special animates, the slime throws its gunk, arrows stick
+(v2.3.2991).** Owner: "Also special attacks need to animate. Look at the
+sword frames it looks like there's some white pixels that shouldn't be there.
+But whatever changes you make make sure they are compatible with getting
+recolored because all swords will get recolored using the same base. Also
+make it so the slime shows the hit effect (green gunk coming out after
+getting hit). I haven't tested this part but make sure arrows stick in the
+monster too."
+
+- **The white pixels (v2.3.2988)** were the erased sword's ghost in the
+  swing's BODY sheets (`sword-<dir>-body.png` / `-torso.png`): the body
+  sheets were cut from the original art by erasing its key colours, which
+  left everything blended with them — highlight specks, the motion smear, a
+  purple fringe, teal at the guard. Scrubbed at the source
+  (`tools/art/clean-sword-ghosts.py`, idempotent, `--check` to report): a
+  pixel is kept exactly or made fully transparent, only inside the original
+  sword's footprint, so the body's own recolour sees the pixels it always
+  saw. The weapon strip — the one base every metal is tinted from — is not
+  touched, so every sword inherits the fix.
+- **Films, not redraws.** The spray, the stuck shaft and its wound, the
+  white-hot bow special and the staff's crash are the world's own classes
+  (`HitMaterialFx`, `StuckArrowBaker`, `HotArrowFx`, `StaffCastFx` with
+  `orbCrashFx`'s records), run as PRIVATE instances on throwaway containers,
+  fed the record the world feeds them, stepped on a synthetic clock and
+  photographed every frame (`EffectsRenderer.captureFxFilm`). The effect
+  classes register the world's QA probes as they are built, so every
+  `window.__bt*` probe is put back afterwards. `fighterCapture.captureFilm`
+  crops each film to what any of its layers paints and turns each layer into
+  one horizontal strip, stepped by the same CSS (`bt-sd-strip`) as the
+  slime's own; a strip wider than 4096 px drops every other frame. Two layers
+  where the world draws two (behind the slime and in front of it), so the
+  slime sits between them on the stage.
+- **At the slime's true size.** The world draws a slime texel at 1.125 world
+  px (its sprite at 96/128 in a monster container scaled `MONSTER_SIZE_MULT`
+  1.5); the stage draws one CSS px a texel, so films round the slime are taken
+  at 1/1.125 — the spray keeps the world's size against the blob. Its
+  material is the meadow slime's (`fodder`: the green sampled off the sheet;
+  an unknown archetype falls to the default teal).
+- **The gunk.** The weapon's own spray — a blade's sheet, an arrow's jet, a
+  bolt's blast — at the point the blow lands, with the slime's own art cut
+  into the pieces as the world cuts them. Two takes, played in turn, so hit
+  after hit is not the one splash. Two liberties, both for the stage: the
+  marks hold ~1 s and fade (the world keeps them 5.4 s; a fresh slime stands
+  on that spot every second or two here), and the ground they land on is
+  raised 9 world px (the map is seen from three-quarters up, so a piece thrown
+  toward you lands lower on screen — past the stage's edge, on a stage seen
+  nearly side-on).
+- **Arrows stick, and ride the slime.** A shot flies a straight line from
+  the bow's grip on the release frame (where the world launches it; the take
+  reports it) into the blob, with its pivot on the grip as the world looses
+  it. `slimePins.js` finds where each line goes in with the world's own move
+  (`arrowPin.pinEntry`, on the frame on screen when it lands: the hit strip's
+  first) and carries the pin through every frame of the hit, idle and throw
+  strips with the world's other move (`pinCarry`); each track is a CSS
+  `@keyframes` of step-end translates at the fractions the strip's own
+  `steps()` shows its frames, and the arrows are children of the slime's
+  span — they mount with each strip, so they step with it, with no frame
+  loop. Five fixed lines, taken in turn on each fresh slime; a dead slime
+  drops its arrows (the world's v2.3.2891 rule), and a fresh one has none.
+  The arrows are the world's arrow at his size (the bow take's `arrowLen`,
+  52.5 world px at the figure's scale — the scene's arrow was 30 px, two
+  thirds of that).
+- **The special.** Sword: its own take of the swing with
+  `S._specialAttack` set, the painted crescent laid out by
+  `_updateSwordSwing` over the swing's own clock, scaled about the figure's
+  origin by the figure's own scale. Bow: the volley flies white-hot
+  (`HotArrowFx` in flight), and an arrow of it that sticks smoulders and
+  burns out on the volley's 500 ms ticks (its stuck take). Staff: the big
+  bolt's crash with its third ring opening to *your* blast reach
+  (`STAFF_BIG_BOLT_BLAST_PX` × `staffAoeMult`).
+- **Cost.** Each film is a few tens of ms of drawing and one GPU readback
+  (measured in headless Chromium's software GPU: the gunk ~75 ms, the stuck
+  shaft ~30 ms, the hot arrow ~45 ms and its smoulder ~50 ms, a crash
+  ~45–65 ms). They are taken one per task as the window opens, so it keeps
+  painting, and kept (16 at most) — a film depends only on what it is asked
+  for, so a second window on the lane plays them at once.
+- `mp-statdemo` §4g: per lane, the gunk filmed and on the stage; the bow's
+  shots aimed and stuck inside the slime's span, riding its frames, never on
+  the splat; the staff's crash; each lane's special (the sword's 11-frame
+  take playing, the white-hot volley, the big crash); and the world's own
+  effect probes untouched.
+
 **Out of scope, deliberately.** Food and potion buffs, the hexer's curse
 and elemental collisions stay out, as they do from the DPS row. The
 `infopop` / `freshpoints` combat-card failures noted above are still

@@ -1,6 +1,9 @@
 import React from 'react';
 import { CharacterView, cropShift, cropWidth } from './CharacterView.jsx';
-import { captureAttack, capturePose } from '@/rendering/fighterCapture.js';   /* v2.3.2986: the world's own swing / shot, photographed; v2.3.2987 + his roll and jog */
+import { captureAttack, capturePose, captureFilm } from '@/rendering/fighterCapture.js';   /* v2.3.2986: the world's own swing / shot, photographed; v2.3.2987 + his roll and jog; v2.3.2991 + the effects round a hit */
+import { loadSlimePins, slimePinsReady, slimePinsFrom, pinAnimation, PIN_V } from './slimePins.js';   /* v2.3.2991: arrows ride the slime */
+import { STAFF_BIG_BOLT_BLAST_PX, staffAoeMult } from '@/data/gameSystems.js';   /* v2.3.2991: the big bolt's blast reach */
+import { SLIME_BASE_ROW } from '@/rendering/slimeSprites.js';   /* v2.3.2991: the row the blob stands on */
 import { dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2987: how long YOUR roll lasts, the world's one formula */
 import { staffCastPose } from '@/rendering/staffCastFx.js';      /* v2.3.2986: the staff's cast kick, the world's angles */
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx';
@@ -96,6 +99,13 @@ const SCENE_H = 140;
    second half starts a beat after it has gone. */
 const POINT_MS = 900;
 const POINT_GAP_MS = 1100;
+/* v2.3.2991: a hit's spray.  The pieces land in its first second, as the
+   world's do; the world then keeps the marks to 5.4s (hitMaterialFx
+   BURST_MS), but this stage meets a fresh slime on the same spot every second
+   or two, and five seconds of marks would bury it -- so they hold a second
+   and fade */
+const GUNK_MS = 3000;
+const GUNK_FADE_MS = 900;
 
 const START = {
   pops: [], hero: { kind: null, n: 0, ms: 0 }, slime: { kind: 'idle', n: 0, ms: 0 },
@@ -103,6 +113,7 @@ const START = {
   bar: null, phase: 0, blue: false,
   atk: null, kick: null,   /* v2.3.2986: an attack frame on screen, the staff's turn */
   mv: null, walk: null,    /* v2.3.2987: a roll frame on screen; the trek under way */
+  films: [], stuck: [],    /* v2.3.2991: the effects round a hit; the arrows in the slime */
 };
 
 /* ── the timeline ───────────────────────────────────────────────────────
@@ -122,10 +133,12 @@ function passSteps(pass, off, phase, ctx) {
     at(t, () => ({ hero: { kind, n: id, ms: ms || 0 } }));
     at(t + dur, (s) => (s.hero.n === id ? { hero: { kind: null, n: id, ms: 0 } } : {}));
   };
+  /* v2.3.2991: + t0, the wall clock as the strip starts -- what an arrow in
+     the slime resumes its wound's film from when the slime's span remounts */
   const slime = (t, kind, back, ms) => {
     const id = ++ctx.slimeN;
-    at(t, () => ({ slime: { kind, n: id, ms: ms || 0 } }));
-    if (back) at(t + back, (s) => (s.slime.n === id ? { slime: { kind: 'idle', n: id, ms: 0 } } : {}));
+    at(t, () => ({ slime: { kind, n: id, ms: ms || 0, t0: Date.now() } }));
+    if (back) at(t + back, (s) => (s.slime.n === id ? { slime: { kind: 'idle', n: id, ms: 0, t0: Date.now() } } : {}));
   };
   const pop = (t, side, text, kind, dx, color) => {
     const id = ++ctx.popN;
@@ -136,6 +149,53 @@ function passSteps(pass, off, phase, ctx) {
     const id = ++ctx.shotN;
     at(t, (s) => ({ shots: s.shots.concat({ id, ...spec }) }));
     at(t + life, (s) => ({ shots: s.shots.filter((x) => x.id !== id) }));
+  };
+  /* ═══ v2.3.2991: WHAT A HIT LEAVES ═══
+     Owner: "make it so the slime shows the hit effect (green gunk coming out
+     after getting hit) ... make sure arrows stick in the monster too."
+     ctx.fx is what the world filmed for this window (fighterCapture
+     .captureFilm): the slime's material thrown by this weapon, the stuck
+     shaft and its wound, the white-hot special and its smoulder, the staff's
+     crash.  A projectile flies in on one of a few fixed lines (slimePins'
+     PIN_V), each fresh slime's shots taking them in turn from the first --
+     the line is taken when the shot leaves and handed back when it lands, so
+     the arrow that sticks is pinned where that shot went in. */
+  const line = () => {
+    const vi = (ctx.onSlime++) % PIN_V.length;
+    ctx.lines.push(vi);
+    return vi;
+  };
+  const film = (t, kind, vi, life) => {
+    const F = ctx.fx && ctx.fx[kind];
+    if (!F) return;
+    const id = ++ctx.fxN;
+    at(t, (s) => ({ films: s.films.concat({ id, kind, vi }) }));
+    at(t + life, (s) => ({ films: s.films.filter((x) => x.id !== id) }));
+  };
+  const stick = (t, vi, hot) => {
+    const F = ctx.fx && (hot ? ctx.fx.hotStuck : ctx.fx.stuck);
+    if (!F || vi < 0) return;
+    const id = ++ctx.fxN;
+    /* t0 on the wall clock, taken as it lands: when the slime's next strip
+       remounts it, the wound's film resumes where it was, not from the start */
+    at(t, (s) => ({ stuck: s.stuck.concat({ id, vi, hot: !!hot, t0: Date.now() }) }));
+    /* the special's shaft burns out and is gone, as on the map */
+    if (hot) at(t + F.ms, (s) => ({ stuck: s.stuck.filter((x) => x.id !== id) }));
+  };
+  const hitFx = (b) => {
+    const F = ctx.fx;
+    if (!F) return;
+    const lane = ctx.lane;
+    const ranged = lane === 'bow' || lane === 'staff';
+    const vi = ranged ? (ctx.lines.length ? ctx.lines.shift() : 0) : -1;
+    /* the gunk: two takes of the world's spray, in turn, so hit after hit is
+       not the one splash; its marks hold a moment and fade (GUNK_MS) */
+    film(b.t, (ctx.gunkN++ % 2 && F.gunk2) ? 'gunk2' : 'gunk', vi, GUNK_MS);
+    if (lane === 'staff') {
+      const big = !!b.special && F.crashBig;
+      film(b.t, big ? 'crashBig' : 'crash', vi, ((big ? F.crashBig : F.crash) || { ms: 500 }).ms + 60);
+    }
+    if (lane === 'bow') stick(b.t, vi, !!b.special && !!F.hotStuck);
   };
   /* ═══ v2.3.2986: THE HERO ATTACKS WITH HIS OWN ANIMATION ═══
      Owner: "play the animation for attacking as if the player and slime were
@@ -150,10 +210,12 @@ function passSteps(pass, off, phase, ctx) {
      when there is nothing to play and the caller falls back to the old
      nudge. */
   const play = (t, big) => {
-    const A = ctx.attack;
+    /* v2.3.2991: the special swing has its own take -- the crescent and all */
+    const SP = big && ctx.fx && ctx.fx.special && ctx.fx.special.frames ? ctx.fx.special : null;
+    const A = SP || ctx.attack;
     if (A && A.frames) {
       const id = ++ctx.atkN;
-      A.times.forEach((ft, i) => at(t + ft, () => ({ atk: { frame: i, id } })));
+      A.times.forEach((ft, i) => at(t + ft, () => ({ atk: { frame: i, id, sp: !!SP } })));
       at(t + A.dur, (s) => (s.atk && s.atk.id === id ? { atk: null } : {}));
       return A.release || 0;
     }
@@ -189,10 +251,11 @@ function passSteps(pass, off, phase, ctx) {
     return true;
   };
   const cat = ctx.shot;
+  ctx.onSlime = 0;   /* v2.3.2991 */
   /* the half begins on a fresh slime and full bars */
   at(0, () => ({
-    phase, blue: !!pass.blue, guard: false, orb: 0, shots: [],
-    slime: { kind: 'idle', n: ++ctx.slimeN, ms: 0 },
+    phase, blue: !!pass.blue, guard: false, orb: 0, shots: [], stuck: [],   /* v2.3.2991: a fresh slime has no arrows in it */
+    slime: { kind: 'idle', n: ++ctx.slimeN, ms: 0, t0: Date.now() },
     slimeBar: pass.slime ? hpBar(pass.slime.hp, pass.slime.max) : null,
     bar: pass.bar ? { ...pass.bar, base: ctx.barBase || pass.bar.max } : null,
   }));
@@ -202,7 +265,7 @@ function passSteps(pass, off, phase, ctx) {
         const rel = play(b.t, false);
         if (b.ranged && cat) {
           if (rel === null) hero(b.t, 'loose', 260);
-          shot(b.t + (rel || 0), { cat, ...flight(rel, 200) }, 200 - (rel || 0));
+          shot(b.t + (rel || 0), { cat, vi: line(), ...flight(rel, 200) }, 200 - (rel || 0));
         } else if (rel === null) hero(b.t, 'swing', 340);
         break;
       }
@@ -213,7 +276,8 @@ function passSteps(pass, off, phase, ctx) {
             const tj = b.t + j * (b.gapMs || 0);
             const rel = play(tj, !!b.big);
             if (rel === null && j === 0) hero(b.t, 'loose', 260);
-            shot(tj + (rel || 0), { cat, big: !!b.big, ...flight(rel, 200) }, 200 - (rel || 0));
+            /* v2.3.2991: the bow's volley flies white-hot, as on the map */
+            shot(tj + (rel || 0), { cat, big: !!b.big, hot: cat === 'bow' && !!(ctx.fx && ctx.fx.hot), vi: line(), ...flight(rel, 200) }, 200 - (rel || 0));
           }
         } else if (play(b.t, true) === null) hero(b.t, 'special', 420);
         break;
@@ -229,6 +293,7 @@ function passSteps(pass, off, phase, ctx) {
         if (!b.kill) slime(b.t, 'hit', 800);
         at(b.t, () => ({ slimeBar: hpBar(b.hp, b.max) }));
         pop(b.t, 'slime', b.text, b.crit ? 'crit' : 'hit', b.dx || 0);
+        hitFx(b);   /* v2.3.2991 */
         break;
       case 'tick':
       case 'recoil':
@@ -238,10 +303,17 @@ function passSteps(pass, off, phase, ctx) {
       case 'death':
       case 'burst':
         slime(b.t, 'death', 0);
+        /* v2.3.2991: a dead slime drops its arrows (the world's rule since
+           v2.3.2891, "Arrows stuck in monsters persist even after death"),
+           and the next one's shots start on the first line again */
+        at(b.t, () => ({ stuck: [] }));
+        ctx.onSlime = 0;
         if (b.k === 'death') at(b.t, (s) => (s.slimeBar ? { slimeBar: { ...s.slimeBar, cur: 0 } } : {}));
         break;
       case 'spawn':
         slime(b.t, 'spawn', 320);
+        at(b.t, () => ({ stuck: [] }));
+        ctx.onSlime = 0;
         at(b.t, () => ({ slimeBar: hpBar(b.hp, b.max) }));
         break;
       case 'miss':
@@ -300,8 +372,8 @@ function passSteps(pass, off, phase, ctx) {
 /* One loop: the before half, the point, the after half.  A stat at its cap
    has no after half -- the before half simply loops, and the window's own
    "at its cap" line says why. */
-function loopSteps(prep, passes, shot, attack, moves, rollMs) {
-  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, atkN: 0, mvN: 0, shot, attack: attack || null, moves: moves || null, rollMs: rollMs || 300, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
+function loopSteps(prep, passes, shot, attack, moves, rollMs, fx, lane) {
+  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, atkN: 0, mvN: 0, fxN: 0, onSlime: 0, gunkN: 0, lines: [], shot, attack: attack || null, moves: moves || null, rollMs: rollMs || 300, fx: fx || null, lane: lane || null, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
   const steps = passSteps(passes[0], 0, 0, ctx);
   let end = passes[0].end;
   if (passes[1]) {
@@ -309,6 +381,7 @@ function loopSteps(prep, passes, shot, attack, moves, rollMs) {
     steps.push({ t: T0, patch: (s) => ({ point: s.point + 1 }) });
     steps.push({ t: T0 + POINT_MS, patch: () => ({ point: 0 }) });
     const T1 = T0 + POINT_GAP_MS;
+    ctx.lines.length = 0;   /* v2.3.2991: each half's shots land in that half */
     steps.push(...passSteps(passes[1], T1, 1, ctx));
     end = T1 + passes[1].end;
   }
@@ -321,13 +394,13 @@ function stillOf(prep, shot) {
   const passes = prep.play(1);
   const p = passes[1] || passes[0];
   if (!p) return START;
-  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, atkN: 0, mvN: 0, shot, attack: null, moves: null, rollMs: 300, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
+  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, atkN: 0, mvN: 0, fxN: 0, onSlime: 0, gunkN: 0, lines: [], shot, attack: null, moves: null, rollMs: 300, fx: null, lane: null, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
   let s = { ...START };
   const steps = passSteps(p, 0, passes[1] ? 1 : 0, ctx).sort((a, b) => a.t - b.t);
   for (const st of steps) s = { ...s, ...st.patch(s) };
   const last = [...p.beats].reverse().find((b) => b.text);
   return {
-    ...s, hero: { kind: null, n: 0, ms: 0 }, shots: [], orb: 0, point: 0, atk: null, kick: null, mv: null, walk: null,
+    ...s, hero: { kind: null, n: 0, ms: 0 }, shots: [], orb: 0, point: 0, atk: null, kick: null, mv: null, walk: null, films: [], stuck: [],
     slime: s.slime.kind === 'death' ? s.slime : { kind: 'idle', n: 0, ms: 0 },
     pops: last ? [{ id: 1, side: (last.k === 'land') ? 'hero' : 'slime', text: last.text,
       kind: last.k === 'land' ? (last.kind === 'hurt' || last.kind === 'burst' ? 'hurt' : 'dodged') : (last.crit ? 'crit' : (last.k === 'tick' || last.k === 'recoil') ? 'burn' : last.k === 'miss' ? 'miss' : 'hit'),
@@ -365,14 +438,53 @@ const Pop = ({ p }) => {
    its own id, so the bow's three-arrow special can have three in the air;
    the bolt additionally steps its 4-cel strip the way the slime steps its
    own (v2.3.2231). */
-const Shot = ({ s }) => {
-  const a = SHOT[s.cat];
-  if (!a) return null;
+const Shot = ({ s, aim }) => {
+  /* v2.3.2991: the bow's special flies white-hot -- the world's own arrow,
+     filmed (aim.hot) -- in place of the plain pine arrow */
+  const hot = s.hot && aim && aim.hot ? aim.hot : null;
+  /* v2.3.2991: and a plain arrow at the WORLD's size for the man who shot it
+     (the bow take's arrowLen: the world's arrow, 128x32 art, at his scale) --
+     it was 30px, about two thirds of that, and the arrow that flies is the
+     arrow that sticks */
+  const L = s.cat === 'bow' && aim && aim.arrowLen ? aim.arrowLen : 0;
+  const a = hot ? { url: hot.strips[0], w: hot.w, h: hot.h, frames: hot.frames }
+    : L ? { ...SHOT.bow, w: L, h: L / 4 } : SHOT[s.cat];
+  if (!a || !a.url) return null;
+  /* ═══ v2.3.2991: AIMED -- FROM THE BOW TO WHERE IT GOES IN ═══
+     The shots used to fly a fixed 120px along a fixed line, which at most
+     widths passed over the resting slime or stopped short of it -- harmless
+     while a shot simply vanished on arrival, not once an arrow STICKS.  With
+     the stage measured (aim) the shot leaves the release point (the bow's
+     grip, off the world's own bow frames) and arrives at the point its line
+     goes into the slime (slimePins), its point leading: rotated to its line,
+     about its tip.  Unmeasured, or falling short (Range's before half), it
+     flies the old way. */
+  const end = aim && !s.short && s.vi != null ? aim.pin(s.vi) : null;
+  const start = end ? aim.start(s.cat) : null;
+  let aimed = null;
+  if (start && end) {
+    let dx = end[0] - start[0], dy = end[1] - start[1];
+    /* off the grip, the point leaves `lead` ahead of it along the line: the
+       world looses an arrow with its pivot on the grip */
+    const d = Math.hypot(dx, dy) || 1;
+    const lead = aim.grip && s.cat === 'bow' ? Math.max(0, Math.min(d - 2, hot ? hot.tip : (aim.arrowLead || 0))) : 0;
+    const sx = start[0] + (dx / d) * lead, sy = start[1] + (dy / d) * lead;
+    dx = end[0] - sx; dy = end[1] - sy;
+    /* the point: a plain arrow's and a bolt's is their right edge; the hot
+       film's is `tip` ahead of its pivot (origin) */
+    const ax = hot ? hot.origin[0] + hot.tip : a.w, ay = hot ? hot.origin[1] : a.h / 2;
+    aimed = {
+      left: sx - ax, top: sy - ay, bottom: 'auto',
+      transformOrigin: ax + 'px ' + ay + 'px',
+      '--sd-dx': dx.toFixed(1) + 'px', '--sd-dy': dy.toFixed(1) + 'px', '--sd-ang': Math.atan2(dy, dx).toFixed(4) + 'rad',
+    };
+  }
   return (
     /* v2.3.2616: `short` flies part of the way and fades, for Range's before
        half.  v2.3.2979: and exactly the part its real reach covers (--sd-short,
        statSim's frac of the gap).  `big` is the staff's big bolt. */
-    <i className={'bt-sd-shot bt-sd-shot--' + s.cat + (s.short ? ' bt-sd-shot--short' : '') + (s.big ? ' bt-sd-shot--big' : '')}
+    <i className={'bt-sd-shot bt-sd-shot--' + s.cat + (s.short ? ' bt-sd-shot--short' : '') + (s.big ? ' bt-sd-shot--big' : '') + (aimed ? ' bt-sd-shot--aim' : '') + (hot ? ' bt-sd-shot--hot' : '')}
+      data-sd-hot={hot ? '1' : undefined} data-sd-line={aimed ? s.vi : undefined}
       style={{
         backgroundImage: `url(${a.url})`,
         width: a.w, height: a.h,
@@ -392,16 +504,51 @@ const Shot = ({ s }) => {
         /* v2.3.2986: a bow's arrow leaves at the release frame, so it crosses
            in what is left of the flight (passSteps' `flight`) */
         ...(s.ms ? { animationDuration: s.ms + 'ms' } : null),
+        ...aimed,
       }} />
   );
 };
 
-const Slime = ({ anim, blue }) => {
+/* ═══ v2.3.2991: A FILM -- ONE LAYER OF A WORLD EFFECT, ON THE STAGE ═══
+   The gunk and the staff's crash, each two layers (behind the slime, in
+   front of it): a strip stepped by bt-sd-strip like the slime's own, played
+   once and held, then faded.  Placed by its origin: the slime's feet for the
+   gunk (its burst point is in the film), the shot's point of entry for the
+   crash. */
+const Film = ({ f, F, layer, at }) => {
+  const url = F && F.strips && F.strips[layer];
+  if (!url || !at) return null;
+  const gunk = f.kind === 'gunk' || f.kind === 'gunk2';
+  /* the crash is pixel art; the gunk the slime's own (soft) art */
+  return (
+    <i className={'bt-sd-film' + (gunk ? '' : ' bt-sd-film--px')} data-sd-film={f.kind} data-sd-layer={layer}
+      style={{
+        left: at[0] - F.origin[0], top: at[1] - F.origin[1], width: F.w, height: F.h,
+        backgroundImage: `url(${url})`, backgroundSize: `${F.frames * F.w}px ${F.h}px`,
+        '--sd-frames': Math.max(2, F.frames), '--sd-strip': -((F.frames - 1) * F.w) + 'px',
+        '--sd-film-ms': F.ms + 'ms',
+        /* the gunk's marks hold a moment and fade (GUNK_MS); a crash is gone as it ends */
+        '--sd-fade-at': (gunk ? GUNK_MS - GUNK_FADE_MS : F.ms + 60) + 'ms',
+        '--sd-fade-ms': (gunk ? GUNK_FADE_MS : 400) + 'ms',
+      }} />
+  );
+};
+
+const Slime = ({ anim, blue, stuck, fx, pins }) => {
   const kind = SLIME[anim.kind] ? anim.kind : (anim.kind === 'death' ? 'death' : 'idle');
   const sheet = SLIME[kind] || SLIME.idle;
   /* v2.3.2979: the blue slime (Resist's scene) wears the preloader's baked
      retint; the green sheet stands in if the bake did not happen. */
   const url = (blue && blueSlimeSheet(kind)) || sheet.url;
+  /* ═══ v2.3.2991: THE ARROWS IN IT ═══
+     Children of the span, so they mount WITH it: every strip change is a new
+     span (its key), and an arrow's pin keyframes (slimePins) start on the same
+     style pass as the strip they follow -- in step by construction.  Each is
+     the world's stuck shaft and wound, filmed (or the white-hot special's
+     smoulder), its film resumed where it was by a negative delay: the age it
+     had as this strip began (anim.t0) -- fixed for the life of the span, so a
+     re-render mid-strip does not move it. */
+  const set = stuck && stuck.length && fx ? pins : null;
   return (
     <span key={anim.kind + ':' + anim.n}
       className={'bt-sd-slime bt-sd-slime--' + (anim.kind === 'spawn' || anim.kind === 'swell' || anim.kind === 'windup' ? anim.kind : kind)}
@@ -412,7 +559,25 @@ const Slime = ({ anim, blue }) => {
         ...(anim.kind === 'death' ? { '--sd-death-ms': SLIME_DEATH_MS + 'ms' } : null),
         ...(anim.kind === 'swell' ? { '--sd-swell-ms': (anim.ms || 1600) + 'ms' } : null),
         ...(anim.kind === 'windup' ? { '--sd-windup-ms': (anim.ms || 500) + 'ms' } : null),
-      }} />
+      }}>
+      {set && stuck.map((a) => {
+        const F = a.hot ? fx.hotStuck : fx.stuck;
+        const run = pinAnimation(set, a.vi, anim.kind);
+        if (!F || !F.strips[0] || !run) return null;
+        const age = Math.max(0, Math.min(F.ms, (anim.t0 || 0) - a.t0));
+        return (
+          <i key={a.id} className="bt-sd-pin" data-sd-stuck={a.hot ? 'hot' : 'shaft'} style={{ animation: run }}>
+            <i className="bt-sd-stuck"
+              style={{
+                left: -F.entry[0], top: -F.entry[1], width: F.w, height: F.h,
+                backgroundImage: `url(${F.strips[0]})`, backgroundSize: `${F.frames * F.w}px ${F.h}px`,
+                '--sd-frames': Math.max(2, F.frames), '--sd-strip': -((F.frames - 1) * F.w) + 'px',
+                '--sd-film-ms': F.ms + 'ms', animationDelay: -age + 'ms',
+              }} />
+          </i>
+        );
+      })}
+    </span>
   );
 };
 
@@ -508,18 +673,20 @@ const blit = (c, f) => {
   x.drawImage(f, 0, 0);
 };
 
-const Fighter = ({ weapon, shield, staff, atk: atkLive, kick: kickLive, mv: mvLive, walk, attack, moves, fig, onDrawn }) => {
+const Fighter = ({ weapon, shield, staff, atk: atkLive, kick: kickLive, mv: mvLive, walk, attack, special, moves, fig, onDrawn }) => {
   /* QA, for pictures (mp-statdemo): window.__btFighterHold = { frame } pins an
      attack frame (-1: standing), { kick } (degrees) the staff's turn -- a 27ms
      frame cannot be caught by a screenshot that lands 50ms after it was asked
      for.  v2.3.2987: { roll } pins a roll frame, { walk } (0..1) a point on
-     the trek, out and home. */
+     the trek, out and home.  v2.3.2991: { frame, sp: true } a frame of the
+     special swing. */
   const hold = (typeof window !== 'undefined' && window.__btFighterHold) || null;
-  const atk = hold && hold.frame != null ? (hold.frame < 0 ? null : { frame: hold.frame, id: -1 }) : atkLive;
+  const atk = hold && hold.frame != null ? (hold.frame < 0 ? null : { frame: hold.frame, id: -1, sp: !!hold.sp }) : atkLive;
   const kick = hold && hold.kick != null ? { rot: hold.kick * Math.PI / 180, id: -1 } : kickLive;
   const mv = hold && hold.roll != null ? { frame: hold.roll, id: -1 } : mvLive;
   const walkAt = hold && hold.walk != null ? Math.max(0, Math.min(1, +hold.walk || 0)) : null;
   const atkRef = React.useRef(null);
+  const spRef = React.useRef(null);   /* v2.3.2991: the special swing's take */
   const rollRef = React.useRef(null);
   const walkRef = React.useRef(null);
   const staffRef = React.useRef(null);
@@ -537,11 +704,13 @@ const Fighter = ({ weapon, shield, staff, atk: atkLive, kick: kickLive, mv: mvLi
     x.clearRect(0, 0, lw, lh);
     x.drawImage(place.layer, 0, 0, lw, lh);
   }, [place]);
-  /* the attack frame on screen, blitted when it changes */
+  /* the attack frame on screen, blitted when it changes -- from the special
+     swing's own take when the step says so (v2.3.2991) */
+  const take = atk && atk.sp && special && special.frames ? special : attack;
   React.useEffect(() => {
-    if (!atk || !attack || !attack.frames) return;
-    blit(atkRef.current, attack.frames[atk.frame]);
-  }, [atk, attack]);
+    if (!atk || !take || !take.frames) return;
+    blit(take === special ? spRef.current : atkRef.current, take.frames[atk.frame]);
+  }, [atk, take, special]);
   /* v2.3.2987: the roll frame on screen, the same way */
   React.useEffect(() => {
     if (!mv || !dodge) return;
@@ -597,7 +766,8 @@ const Fighter = ({ weapon, shield, staff, atk: atkLive, kick: kickLive, mv: mvLi
      the world -- _updatePlayer's pose ladder puts 'dodge' over everything but
      a pickup), else attacking, else standing */
   const showRoll = !walking && !!(mv && dodge && fig);
-  const showAtk = !walking && !showRoll && !!(atk && attack && attack.frames && fig);
+  const showAtk = !walking && !showRoll && !!(atk && take && take.frames && fig);
+  const showSp = showAtk && take === special;
   const busy = walking || showRoll || showAtk;
   /* the staff's matrix: hero box <- canvas (slid by HERO_SHIFT, scaled to
      CSS) <- the portrait's grip matrix <- the kick about the grip <- the
@@ -617,8 +787,12 @@ const Fighter = ({ weapon, shield, staff, atk: atkLive, kick: kickLive, mv: mvLi
           style={{ width: place.w, height: place.h, transform: staffTf, visibility: busy ? 'hidden' : 'visible' }} />
       )}
       {attack && attack.frames && fig && (
-        <canvas ref={atkRef} className="bt-sd-atk" data-sd-atk={showAtk ? atk.frame : -1}
-          style={{ left: fig.feet[0] - attack.feet[0], top: fig.feet[1] - attack.feet[1], width: attack.w, height: attack.h, visibility: showAtk ? 'visible' : 'hidden' }} />
+        <canvas ref={atkRef} className="bt-sd-atk" data-sd-atk={showAtk && !showSp ? atk.frame : -1}
+          style={{ left: fig.feet[0] - attack.feet[0], top: fig.feet[1] - attack.feet[1], width: attack.w, height: attack.h, visibility: showAtk && !showSp ? 'visible' : 'hidden' }} />
+      )}
+      {special && special.frames && fig && (
+        <canvas ref={spRef} className="bt-sd-atk" data-sd-special={showSp ? atk.frame : -1}
+          style={{ left: fig.feet[0] - special.feet[0], top: fig.feet[1] - special.feet[1], width: special.w, height: special.h, visibility: showSp ? 'visible' : 'hidden' }} />
       )}
       {dodge && fig && (
         <canvas ref={rollRef} className="bt-sd-atk" data-sd-roll={showRoll ? mv.frame : -1}
@@ -712,11 +886,14 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
      and lands just in front of his chest */
   const orbDx = geo && geo.w > 0 ? Math.max(40, (geo.w - 99) - (geo.heroX + (fig ? fig.feet[0] : HERO_W / 2) + 10)) : null;
   React.useEffect(() => {
-    let a = null;
+    /* v2.3.2991: false once it has been tried and there is nothing to play,
+       null until then (no figure yet) -- the shots wait for the bow's take,
+       which says where the arrow leaves */
+    let a = fig ? false : null;
     /* v2.3.2987: reduced motion draws the scene still -- nothing to play, so
        nothing to photograph */
     if (reducedMotion()) { attackRef.current = null; setAttack(null); return; }
-    if (fig && shot === 'staff') a = fig.place ? { kick: true } : null;
+    if (fig && shot === 'staff') a = fig.place ? { kick: true } : false;
     else if (fig && (shot === 'sword' || shot === 'bow')) {
       const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
       const cap = captureAttack(shot, { bodyH: fig.bodyH, res: Math.min(2, dpr), weapon, shield: !!shield });
@@ -748,6 +925,107 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
     movesRef.current = m;
     setMoves(m);
   }, [fig, wantRoll, wantWalk, weapon && weapon.type, weapon && weapon.gearBase, !!shield]);
+  /* ═══ v2.3.2991: THE SPECIAL, AND WHAT A HIT LEAVES ═══
+     Owner: "Also special attacks need to animate ... make it so the slime
+     shows the hit effect (green gunk coming out after getting hit) ... make
+     sure arrows stick in the monster too."  Filmed off the world once per
+     window, for a scene where he lands hits on the slime: the slime's
+     material thrown by this lane's weapon (a blade's sheet, an arrow's jet, a
+     bolt's blast -- two takes, played in turn), the stuck shaft and its wound
+     (bow), the staff's crash; and for the Special scene, the special itself --
+     the sword's crescent swing, the bow's white-hot volley and its smoulder,
+     the big bolt's explosion.
+
+     WHERE THINGS ARE ON THE STAGE.  The slime is placed off the stage's right
+     edge (game.css: right 16px, bottom -33px, 128 square, one px a texel),
+     the hero off its left; the stage is measured (geo).  A shot leaves the
+     bow's grip on the release frame (the bow take's `grip`) -- or, without
+     one, the old launch point -- and flies a straight line into the slime
+     (slimePins: where each line goes in, from that point); the gunk stands
+     on the slime's feet; a crash is where its bolt went in.  So a projectile
+     lane waits for the slime's pins, and the bow for its take, before the
+     films are taken: the stuck shaft is filmed at the angle its arrow flies. */
+  const hitsScene = !!(prep && (prep.kind === 'fight' || prep.kind === 'special' || prep.kind === 'range'));
+  const specialScene = !!(prep && prep.kind === 'special');
+  const ranged = shot === 'bow' || shot === 'staff';
+  const [pinsIn, setPinsIn] = React.useState(() => slimePinsReady());
+  React.useEffect(() => {
+    if (!hitsScene || !ranged || slimePinsReady()) return undefined;
+    let live = true;
+    loadSlimePins().then((ok) => { if (live && ok) setPinsIn(true); });
+    return () => { live = false; };
+  }, [hitsScene, ranged]);
+  const slimeX = geo && geo.w > 0 ? geo.w - 16 - SLIME_PX : null;
+  const slimeY = SCENE_H + 33 - SLIME_PX;
+  const launch = React.useMemo(() => {
+    if (slimeX == null || !ranged) return null;
+    if (shot === 'bow' && attack === null) return null;   /* the take is not in yet */
+    const take = attack && attack.frames ? attack : null;
+    if (shot === 'bow' && take && take.grip && fig) {
+      const heroTop = SCENE_H + 4 - HERO_SIZE;
+      return [geo.heroX + fig.feet[0] - take.feet[0] + take.grip[0], heroTop + fig.feet[1] - take.feet[1] + take.grip[1]];
+    }
+    const a = SHOT[shot] || SHOT.bow;
+    return [geo.heroX + 42 + a.w, SCENE_H - 56 - a.h / 2];   /* the old launch point (game.css .bt-sd-shot) */
+  }, [slimeX, ranged, shot, attack, fig, geo]);
+  const pinSet = React.useMemo(() => (pinsIn && launch && slimeX != null
+    ? slimePinsFrom([launch[0] - slimeX, launch[1] - slimeY]) : null), [pinsIn, launch, slimeX, slimeY]);
+  /* the arrow: the world's, at his size (the bow take's), or the old 30px */
+  const arrowLen = (attack && attack.arrowLen) || SHOT.bow.w;
+  const [fx, setFx] = React.useState(null);
+  const fxRef = React.useRef(null);
+  React.useEffect(() => {
+    const jobs = [];
+    if (fig && hitsScene && shot && !reducedMotion() && (!ranged || pinSet)) {
+      const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+      const res = Math.min(2, dpr);
+      const S = liveState();
+      const R = rpg || (S && S.rpg) || {};
+      /* where the first line goes in, in the slime's texels: the gunk's burst point */
+      const p0 = pinSet ? pinSet.pins[0] : null;
+      const elem = (weapon && weapon.element1) || null;
+      const color = (elem && ELEMENTS[elem] && ELEMENTS[elem].color) || '#a855f7';
+      /* the gunk at 1x: its pieces are cut from the slime, which the stage
+         draws one px a texel -- the resolution it has.  `lift`: they land on
+         the stage's few px of ground, not past its edge (the note in
+         _filmGunk).  The crash is pixel art, at 1x and shown crisp. */
+      const gunk = { weapon: shot === 'bow' ? 'arrow' : shot === 'staff' ? 'bolt' : 'sword', res: 1, texelPx: 1, lift: 9, at: p0 ? [p0.u, p0.v] : undefined };
+      jobs.push(['gunk', () => captureFilm('gunk', { ...gunk, take: 1 })]);
+      jobs.push(['gunk2', () => captureFilm('gunk', { ...gunk, take: 2 })]);
+      if (shot === 'bow') jobs.push(['stuck', () => captureFilm('stuck', { res, texelPx: 1, ang: pinSet.ang, arrowLen })]);
+      if (shot === 'staff') jobs.push(['crash', () => captureFilm('crash', { res: 1, texelPx: 1, color, elem })]);
+      if (specialScene) {
+        if (shot === 'sword') jobs.push(['special', () => captureAttack('sword', { bodyH: fig.bodyH, res, weapon, shield: !!shield, special: true })]);
+        if (shot === 'bow') {
+          jobs.push(['hot', () => captureFilm('hotArrow', { res, arrowLen, warm: 40 })]);   /* loosed a stride away: little tracer yet */
+          jobs.push(['hotStuck', () => captureFilm('hotStuck', { res, ang: pinSet.ang, arrowLen })]);
+        }
+        if (shot === 'staff') jobs.push(['crashBig', () => captureFilm('crash', { res: 1, texelPx: 1, big: true, color, elem, blastR: STAFF_BIG_BOLT_BLAST_PX * staffAoeMult(R) })]);
+      }
+    }
+    /* one film a task, so the window keeps painting while they are taken
+       (each is a GPU readback; a phone would otherwise stall for all of
+       them at once as the window opens) -- a film already taken comes back
+       at once (fighterCapture keeps them) */
+    fxRef.current = null;
+    setFx(null);
+    if (!jobs.length) return undefined;
+    let live = true;
+    const f = {};
+    const next = () => {
+      if (!live) return;
+      const job = jobs.shift();
+      if (job) {
+        try { f[job[0]] = job[1](); } catch (e) { f[job[0]] = null; }
+        setTimeout(next, 0);
+        return;
+      }
+      fxRef.current = f;
+      setFx(f);
+    };
+    const t = setTimeout(next, 0);
+    return () => { live = false; clearTimeout(t); };
+  }, [fig, hitsScene, specialScene, shot, ranged, pinSet && pinSet.key, pinSet && pinSet.ang, arrowLen, weapon && weapon.type, weapon && weapon.gearBase, weapon && weapon.element1, !!shield, rpg]);
   React.useEffect(() => {
     if (!prep || prep.kind === 'empty') { setS(START); return undefined; }
     if (reducedMotion()) { setS(stillOf(prep, shotCat)); return undefined; }
@@ -770,6 +1048,8 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
           /* v2.3.2987: and how he moves: frame counts of the roll and of the
              two legs of the trek (null where the old CSS motion plays), and
              the roll window his frames are spread over */
+          /* v2.3.2991: what the world filmed for this window (frame counts) */
+          fx: fxRef.current ? Object.fromEntries(Object.entries(fxRef.current).map(([k, v]) => [k, v ? (v.frames && v.frames.length != null ? v.frames.length : v.frames) : null])) : null,
           moves: movesRef.current ? {
             dodge: movesRef.current.dodge ? movesRef.current.dodge.frames.length : null,
             jog: movesRef.current.jog ? movesRef.current.jog.frames.length : null,
@@ -778,7 +1058,7 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
           } : null,
         };
       } catch (e) { /* no window: nothing to report to */ }
-      const { steps, end } = loopSteps(prep, passes, shotCat, attackRef.current, movesRef.current, rollMs);
+      const { steps, end } = loopSteps(prep, passes, shotCat, attackRef.current, movesRef.current, rollMs, fxRef.current, shot);
       /* v2.3.2979: the t=0 steps (the fresh slime, both bars) go in WITH the
          reset, not a setTimeout(0) after it.  START has no bars, and the vital
          row under the stage sits in normal flow, so a frame painted between
@@ -796,7 +1076,24 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
     };
     run();
     return () => { alive = false; timers.forEach(clearTimeout); };
-  }, [prep, shotCat, attack, moves, rollMs]);   /* v2.3.2979: a new window, lane or stepper count is a new fight; v2.3.2986: so is the hero's own attack arriving; v2.3.2987: and his roll and stride */
+  }, [prep, shotCat, attack, moves, rollMs, fx]);   /* v2.3.2979: a new window, lane or stepper count is a new fight; v2.3.2986: so is the hero's own attack arriving; v2.3.2987: and his roll and stride; v2.3.2991: and the effects round a hit */
+  const aim = React.useMemo(() => {
+    if (slimeX == null) return null;
+    return {
+      hot: fx && fx.hot,
+      arrowLen: attack && attack.arrowLen ? attack.arrowLen : 0,
+      arrowLead: attack && attack.arrowLead ? attack.arrowLead : 0,
+      grip: !!(shot === 'bow' && attack && attack.frames && attack.grip && fig),
+      feet: [slimeX + SLIME_PX / 2, slimeY + SLIME_BASE_ROW.hit],
+      pin: (vi) => {
+        const n = pinSet ? pinSet.pins.length : 0;
+        const p = n ? pinSet.pins[((vi % n) + n) % n] : null;
+        return p ? [slimeX + p.u + 0.5, slimeY + p.v + 0.5] : null;
+      },
+      start: () => launch,
+    };
+  }, [slimeX, slimeY, pinSet, launch, fx, attack, shot, fig]);
+  const filmAt = (f) => (f.kind === 'gunk' || f.kind === 'gunk2' ? (aim && aim.feet) : (aim && (aim.pin(f.vi) || aim.feet)));
   if (!has) return null;
   const tag = s.phase === 1 ? '+' + pts : 'Now';
   return (
@@ -809,15 +1106,19 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
             three-quarter southeast, because east is the facing the world's
             attack sheets are drawn in -- and he now attacks with them. */}
         <Fighter weapon={weapon} shield={shield} staff={shot === 'staff'} atk={s.atk} kick={s.kick}
-          mv={s.mv} walk={s.walk} attack={attack} moves={moves} fig={fig} onDrawn={onDrawn} />
+          mv={s.mv} walk={s.walk} attack={attack} special={fx && fx.special} moves={moves} fig={fig} onDrawn={onDrawn} />
         {s.guard && <img className="bt-sd-shield bt-sd-shield--held" src={ICON.shield} alt="" draggable={false} />}
         {s.shield > 0 && <img key={'s' + s.shield} className="bt-sd-shield" src={ICON.shield} alt="" draggable={false} />}
       </div>
-      <Slime anim={s.slime} blue={s.blue} />
+      {/* v2.3.2991: what a hit throws BEHIND the slime, then the slime with its
+          arrows in it, then what is thrown in front */}
+      {fx && s.films.map((f) => <Film key={'fb' + f.id} f={f} F={fx[f.kind]} layer={0} at={filmAt(f)} />)}
+      <Slime anim={s.slime} blue={s.blue} stuck={s.stuck} fx={fx} pins={pinSet} />
+      {fx && s.films.map((f) => <Film key={'ff' + f.id} f={f} F={fx[f.kind]} layer={1} at={filmAt(f)} />)}
       {s.slimeBar && s.slime.kind !== 'death' && <SlimeBar b={s.slimeBar} />}
       {s.orb > 0 && <i key={'o' + s.orb} className="bt-sd-orb"
         style={{ backgroundImage: `url(${ORB_URL})`, animationDuration: SLIME_THROW.FLIGHT_MS + 'ms', ...(orbDx ? { '--sd-orb-dx': orbDx + 'px' } : null) }} />}
-      {s.shots.map((x) => <Shot key={'sh' + x.id} s={x} />)}
+      {s.shots.map((x) => <Shot key={'sh' + x.id} s={x} aim={aim} />)}
       {s.pops.map((p) => <Pop key={p.id} p={p} />)}
       {s.point > 0 && (
         <span key={'p' + s.point} className="bt-sd-point">

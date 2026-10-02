@@ -5505,6 +5505,40 @@ html[data-orient="landscape"] .bt-dashboard{
 /* v2.3.2979: the staff's big bolt (caps.bigorb) -- the same bolt, drawn big */
 .bt-sd-shot--big{animation:bt-sd-flybig .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
 @keyframes bt-sd-flybig{from{transform:translateX(0) scale(1.9)}to{transform:translateX(120px) scale(1.9)}}
+/* ═══ v2.3.2991: AIMED -- FROM THE BOW TO WHERE IT GOES IN ═══
+   A shot that sticks has to arrive where it sticks.  StatDemo's Shot sets
+   left/top so the shot's POINT sits where it leaves (an arrow's pivot on the
+   bow's grip, as the world looses it), the transform-origin on that point,
+   and the trip to the slime's pin as --sd-dx/--sd-dy along --sd-ang: the
+   shot turns to its line about its own point and slides along it, so the
+   point is what lands on the pin.  Repeats the strip
+   stepping for the same reason --short does (it must override the flight). */
+.bt-sd-shot--aim{animation:bt-sd-aim .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
+@keyframes bt-sd-aim{from{transform:translate(0,0) rotate(var(--sd-ang,0rad))}to{transform:translate(var(--sd-dx,120px),var(--sd-dy,0px)) rotate(var(--sd-ang,0rad))}}
+.bt-sd-shot--aim.bt-sd-shot--big{animation:bt-sd-aimbig .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
+@keyframes bt-sd-aimbig{from{transform:translate(0,0) rotate(var(--sd-ang,0rad)) scale(1.9)}to{transform:translate(var(--sd-dx,120px),var(--sd-dy,0px)) rotate(var(--sd-ang,0rad)) scale(1.9)}}
+/* the bow's special: the world's white-hot arrow, filmed at the screen's
+   own resolution -- a glow, not pixel art, so not stepped up in blocks */
+.bt-sd-shot--hot{image-rendering:auto}
+/* ═══ v2.3.2991: WHAT A HIT LEAVES ═══
+   A film (StatDemo Film): one layer of a world effect photographed off the
+   world's own classes -- the slime's gunk, the staff's crash -- stepped
+   through once like the slime's strips, its last cell held (the gunk's
+   marks lying on the ground), then faded from --sd-fade-at over --sd-fade-ms
+   (StatDemo GUNK_MS: a shorter linger than the map's, for a stage that meets
+   a fresh slime on the same spot every second or two).
+   The crash is pixel art at 1x, so it is scaled up in crisp blocks (--px). */
+.bt-sd-film{position:absolute;pointer-events:none;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-strip var(--sd-film-ms,.5s) steps(var(--sd-frames,2),jump-none) 1 forwards,bt-sd-filmfade var(--sd-fade-ms,.4s) linear var(--sd-fade-at,2.6s) 1 forwards}
+.bt-sd-film--px{image-rendering:pixelated}
+@keyframes bt-sd-filmfade{from{opacity:1}to{opacity:0}}
+/* An arrow in the slime: .bt-sd-pin is a zero-size point that slimePins'
+   keyframes (sdpin-*, set inline, the slime strip's own duration) step to
+   the texel the shaft is pinned to on each of the slime's frames; the film
+   of the shaft and its wound (.bt-sd-stuck) hangs off it by its point of
+   entry, and plays once and holds -- the shaft stays in.  Both are children
+   of the slime's span, so they mount, step and go with it. */
+.bt-sd-pin{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none}
+.bt-sd-stuck{position:absolute;pointer-events:none;background-repeat:no-repeat;background-position:0 0;animation:bt-sd-strip var(--sd-film-ms,1.5s) steps(var(--sd-frames,2),jump-none) 1 forwards}
 /* combat numbers, in DMG_STYLE's dress: Source Sans 3 800, the black stroke
    under the fill (paint-order keeps the fill whole), rising as they fade */
 .bt-sd-pop{position:absolute;bottom:96px;display:inline-flex;align-items:center;gap:3px;font-family:'Source Sans 3',sans-serif;font-weight:800;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums;-webkit-text-stroke:3px #000;paint-order:stroke fill;text-shadow:0 1px 2px rgba(0,0,0,.6);animation:bt-sd-rise 1.05s ease-out 1 both;pointer-events:none}
@@ -5538,7 +5572,7 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-vital-n{font-size:11px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.7);display:flex;align-items:center}
 .bt-sd-vital-s{padding:0 2px;opacity:.6}
 @media (prefers-reduced-motion:reduce){
-  .bt-sd-hero,.bt-sd-slime,.bt-sd-shield,.bt-sd-orb,.bt-sd-shot,.bt-sd-pop,.bt-sd-point{animation:none}
+  .bt-sd-hero,.bt-sd-slime,.bt-sd-shield,.bt-sd-orb,.bt-sd-shot,.bt-sd-pop,.bt-sd-point,.bt-sd-film,.bt-sd-pin,.bt-sd-stuck{animation:none}
   .bt-sd-slime--swell{transform:scale(1.9)}
   .bt-sd-pop{opacity:1;margin-bottom:8px}
   .bt-sd-shield{opacity:1}

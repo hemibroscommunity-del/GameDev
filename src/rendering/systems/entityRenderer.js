@@ -267,7 +267,9 @@ SPAWN_WHITE_FILTER.matrix = [
   0, 0, 0, 0, 1,
   0, 0, 0, 1, 0,
 ];
-const MONSTER_SIZE_MULT = 1.5;
+/* v2.3.2991: exported -- the stat scene's films are sized off the slime as
+   the world really draws it (effectsRenderer captureFxFilm) */
+export const MONSTER_SIZE_MULT = 1.5;
 /* NPC art draw scale.  96 world px per frame is what this renderer treats as
    player scale (see the 96/128 baseScale at the harvest stand-in, commented
    exactly that).
@@ -5283,6 +5285,20 @@ export function standFootDy(zoneScale) {
   const rows = bodyRows('stand', 'south');
   return (rows.feet - BODY_CELL_MID) * bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE
     * PLAYER_SIZE_MULT * (zoneScale || 1);
+}
+/* ═══ v2.3.2991: THE STANDING FIGURE ON A FLAT MAP, IN WORLD PX ═══
+   The stat scene sizes the world's swing off its own portrait (bodyH, in the
+   window's px), and some of what the world draws round a swing is sized in
+   WORLD px -- the special's crescent is GS_OUTER_RADIUS wide whatever the
+   figure measures.  This is the yardstick between the two: the standing
+   body's crown-to-feet height for a facing, and how far below the figure's
+   origin (S.player.y) its boots are, on a zone with no perspective, at the
+   default build.  The same rows and scales the body is drawn with. */
+export function nominalStandFigure(dir) {
+  const d = dir || 'south';
+  const rows = bodyRows('stand', d);
+  const s = bodyDirScale('stand', d) * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT;
+  return { bodyH: (rows.feet - rows.crown + 1) * s, footDy: (rows.feet - BODY_CELL_MID) * s };
 }
 /* v2.3.2710: where a player figure (yours or a peer's) actually touches the
    ground, in its layer's space.  The body is centred on its frame, so the

@@ -5,7 +5,7 @@
  */
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
-import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, FillGradient, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
@@ -263,7 +263,7 @@ const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
-import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
+import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
@@ -271,7 +271,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
@@ -287,7 +287,7 @@ import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.176
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
-import { rangedAimAngle, bowGripPoint } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
+import { rangedAimAngle, bowGripPoint, orbCrashFx /* v2.3.2991: the staff's crash, filmed for the stat scene */ } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG, BLOCK_ARM_FACING, blockArmTextureFrom } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon; v2.3.2920 a peer's arm */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js'; /* v2.3.1864; weaponFitH v2.3.2910 */
@@ -12719,7 +12719,19 @@ export class EffectsRenderer {
    * res, device px per caller px; weapon / shield, what the figure holds and
    * wears.  Returns { frames: [canvas], w, h, feet: [x, y], times: [ms], dur }
    * in caller px -- frame i shows from times[i], on the world's own clock -- or
-   * null when the art is not in yet (the caller keeps its old figure). */
+   * null when the art is not in yet (the caller keeps its old figure).
+   *
+   * ═══ v2.3.2991: AND THE SPECIAL ═══
+   * Owner: "Also special attacks need to animate."  opts.special (the sword
+   * only) photographs the special swing: the same stand-in with
+   * S._specialAttack set, which is what makes _updateSwordSwing lay the
+   * painted crescent (SWORD_SLASH, v2.3.1396) out along the aim over the
+   * swing's own clock.  The crescent is sized in WORLD px (GS_OUTER_RADIUS)
+   * while this figure is sized off the window's portrait, so once placed it is
+   * scaled about the figure's origin by the same factor the body was --
+   * bodyH over the standing body's world height on a flat map
+   * (nominalStandFigure) -- and the box grows to hold it.  Placed by the
+   * world's code, frame by the world's clock; only the size is the window's. */
   captureAttackFrames(kind, opts) {
     const R = this._captureRenderer;
     if (!R || !R.extract || this._selfCorpse) return null;
@@ -12731,6 +12743,11 @@ export class EffectsRenderer {
     const n = strip.length;
     const bodyH = Math.max(8, +o.bodyH || 84);
     const res = Math.max(1, Math.min(3, +o.res || 1));
+    const special = sword && !!o.special && SWORD_SLASH.frames.length > 0;
+    /* v2.3.2991: world px -> the window's, and where the figure's origin is
+       (S.player.y: the crescent is placed off it, the body off its feet) */
+    const fig = nominalStandFigure('east');
+    const k = bodyH / Math.max(1, fig.bodyH);
     /* The frame clocks _updateSwordSwing / _updateBowShot run on: the swing's
        frames evenly across SWORD_SWING_MS; the bow's load and pull across
        BOW_RELEASE_MS, then the release frame held to BOW_SHOT_MS.  Each frame
@@ -12750,6 +12767,18 @@ export class EffectsRenderer {
     const up = cfg.feetY * s + bodyH * 0.35;
     const down = (cfg.fh - cfg.feetY) * s + 4;
     const box = new Rectangle(FAR - halfW, FAR - up, halfW * 2, up + down);
+    const originY = FAR - fig.footDy * k;
+    if (special) {
+      /* the crescent at its widest, due east (aim 0): centred 0.85 of the reach
+         out and 10 world px over the origin, 2.2 reaches tall, its frame's
+         own aspect wide -- the numbers _updateSwordSwing places it with */
+      const t0 = SWORD_SLASH.frames[0];
+      const sh = GS_OUTER_RADIUS * 2.2 * k, sw = sh * ((t0.width || 128) / (t0.height || 128));
+      const cx = FAR + GS_OUTER_RADIUS * 0.85 * k, cy = originY - 10 * k;
+      const x0 = Math.min(box.x, cx - sw / 2 - 2), y0 = Math.min(box.y, cy - sh / 2 - 2);
+      const x1 = Math.max(box.x + box.width, cx + sw / 2 + 2), y1 = Math.max(box.y + box.height, cy + sh / 2 + 2);
+      box.x = x0; box.y = y0; box.width = x1 - x0; box.height = y1 - y0;
+    }
     const real = (typeof window !== 'undefined' && window._gameState && window._gameState.current) || {};
     const realRpg = real.rpg || {};
     const rpg = Object.assign({}, realRpg, {
@@ -12763,13 +12792,14 @@ export class EffectsRenderer {
        readback is the whole cost, measured; the note there has the numbers). */
     const texs = [];
     let frames = null, fw = 0, fh = 0;
+    let grip = null;   /* v2.3.2991: where the arrow leaves the bow, on the release frame */
     try {
       for (let i = 0; i < n; i++) {
         const F = Object.assign({}, real, {
-          player: Object.assign({}, real.player || {}, { x: FAR, y: FAR }),
+          player: Object.assign({}, real.player || {}, { x: FAR, y: special ? originY : FAR }),
           rpg, _renderFacing: 'east', _aimAngle: 0, _lastAimAngle: 0, _facingAngle: 0,
           _swordBodyH: bodyH, _swordFootY: FAR,
-          _shieldUp: false, _bashPose: false, _blockPose: false, _specialAttack: false,
+          _shieldUp: false, _bashPose: false, _blockPose: false, _specialAttack: special,
           _swordJogLegs: false, _bowJogLegs: false,
           _swordSwinging: sword, _swordSwingDir: sword ? 'east' : null, isSwinging: sword, swingTimer: now - mids[i],
           _bowShowing: !sword, _bowDir: 'east', _bowShotAt: now - mids[i],
@@ -12777,6 +12807,16 @@ export class EffectsRenderer {
         hideSkillTraits(this.skillTraits);
         if (sword) { this._updateBowShot(null, now); this._updateSwordSwing(F, now); }
         else { this._updateSwordSwing(null, now); this._updateBowShot(F, now); }
+        /* v2.3.2991: _updateBowShot publishes the teal grip's world point (the
+           arrow's launch point, v2.3.937) -- kept off the last frame, the release */
+        if (!sword && i === n - 1 && Number.isFinite(F._bowGripX) && Number.isFinite(F._bowGripY)) grip = [F._bowGripX, F._bowGripY];
+        const spx = this.slashSprite;
+        if (special && spx && spx.visible) {
+          /* the world placed it in world px; the window's figure is k of that */
+          spx.x = FAR + (spx.x - FAR) * k;
+          spx.y = originY + (spx.y - originY) * k;
+          spx.scale.set(spx.scale.x * k, spx.scale.y * k);
+        }
         texs.push(this._photographFar(R, box, res, FAR));
       }
       /* generateTexture truncates the box to whole px (GenerateTextureSystem);
@@ -12790,7 +12830,15 @@ export class EffectsRenderer {
       hideSkillTraits(this.skillTraits);
       try { this._updateSwordSwing(null, now); this._updateBowShot(null, now); } catch (e) { /* the next world frame re-hides them */ }
     }
-    return { frames, w: fw, h: fh, feet: [halfW, up], times, dur, res };
+    /* v2.3.2991: + k, the caller's px per world px of this figure, and for the
+       bow the arrow it looses at that size -- the window's arrows are the
+       world's arrow, in proportion to the man who shot it */
+    return { frames, w: fw, h: fh, feet: [FAR - box.x, FAR - box.y], times, dur, res,
+      grip: grip ? [grip[0] - box.x, grip[1] - box.y] : null,
+      k, arrowLen: sword ? null : ARROW_PINE.lenPx * k,
+      /* and how far its point is ahead of its pivot -- the world looses an
+         arrow with its pivot on the grip */
+      arrowLead: sword ? null : ARROW_PINE.lenPx * k * (1 - ARROW_PINE.anchor.x) };
   }
   /* v2.3.2986: one photograph of whatever is standing at the far-off spot.
      NOT the node layer itself: renderer.render() calls enableRenderGroup() on
@@ -12823,6 +12871,305 @@ export class EffectsRenderer {
   }
   /** v2.3.2986: the renderer the capture above photographs with (pixiRenderer). */
   setCaptureRenderer(renderer) { this._captureRenderer = renderer || null; }
+
+  /* ═══ v2.3.2991: THE WORLD'S EFFECTS, FILMED FOR THE STAT SCENE ═══
+   *
+   * Owner, after the swing, the roll and the jog: "Also special attacks need
+   * to animate ... make it so the slime shows the hit effect (green gunk
+   * coming out after getting hit) ... make sure arrows stick in the monster
+   * too."  The scene's slime is a DOM sprite strip, so none of what the world
+   * draws AROUND a hit could reach it: the material spray (HitMaterialFx), the
+   * stuck shaft and its wound (StuckArrowBaker), the white-hot bow special
+   * (HotArrowFx), the staff's crash (StaffCastFx).
+   *
+   * Same posture as the swing: nothing is redrawn.  Each of those systems is
+   * a self-contained class that draws into the containers it is handed, so a
+   * PRIVATE instance is made on throwaway containers -- never attached to a
+   * live layer, so nothing the player sees is touched -- fed the same record
+   * the world feeds it (a burst, a stuck arrow, a crash), stepped on a
+   * synthetic clock, and photographed every frame: a film.  Where the world
+   * draws two depths (the spray behind the monster and in front of it, the
+   * crash under the bolt) the film has two layers, kept apart so the scene
+   * can put its slime between them.
+   *
+   * Every film is in the window's px, opts.res device px per window px.  A
+   * film ROUND THE SLIME (the spray, the wound, the crash) is sized off the
+   * slime: opts.texelPx is the window's px per slime texel (the scene draws
+   * it one px a texel), and a texel is what the world draws it at -- its
+   * sprite at 96/128 in a monster container scaled MONSTER_SIZE_MULT, 1.125
+   * world px -- so the spray keeps the world's size against the blob.  The
+   * ARROWS are sized off opts.arrowLen, the window's arrow (the one that
+   * flew is the one that sticks).  Each returns
+   *   { layers: [[canvas...], ...], w, h, origin: [x, y], ms, res }
+   * -- the same box for every frame and layer, `origin` where the event is
+   * (the slime's feet, or the arrow's point) in window px, frame i at
+   * i * ms / frames -- or null.  Costs a few ms of stepping and one readback
+   * per layer (photoSheet); the caller takes them once per window. */
+  /* world px per slime texel, as the world draws a slime (entityRenderer:
+     the sprite's 96/128 baseScale in a container scaled MONSTER_SIZE_MULT) */
+  _slimeTexelWorld() { return (96 / 128) * MONSTER_SIZE_MULT; }
+  /* window px per world px for a film round the slime */
+  _filmScale(o) { return +o.scale || ((+o.texelPx || 1) / this._slimeTexelWorld()); }
+
+  captureFxFilm(kind, opts) {
+    const R = this._captureRenderer;
+    if (!R || !R.extract || typeof window === 'undefined') return null;
+    const o = opts || {};
+    /* the effect classes register the world's QA probes as they are built
+       (window.__btHotArrow, __btStaffFx): a private copy must not take them
+       over, so every __bt* probe goes back as it was */
+    const probes = {};
+    for (const k of Object.keys(window)) if (k.startsWith('__bt')) probes[k] = window[k];
+    try {
+      if (kind === 'gunk') return this._filmGunk(R, o);
+      if (kind === 'stuck') return this._filmStuck(R, o);
+      if (kind === 'hotArrow') return this._filmHotArrow(R, o, false);
+      if (kind === 'hotStuck') return this._filmHotArrow(R, o, true);
+      if (kind === 'crash') return this._filmCrash(R, o);
+    } catch (e) {
+      return null;
+    } finally {
+      for (const k of Object.keys(window)) if (k.startsWith('__bt') && !(k in probes)) delete window[k];
+      Object.assign(window, probes);
+    }
+    return null;
+  }
+
+  /* n frames of `roots` (private containers), each through `box` (world
+     units), after step(i) poses frame i.  One readback per root. */
+  _filmShoot(R, roots, box, res, n, step) {
+    const texs = roots.map(() => []);
+    try {
+      for (let i = 0; i < n; i++) {
+        step(i);
+        roots.forEach((r, j) => texs[j].push(R.generateTexture({ target: r, frame: box, resolution: res })));
+      }
+      const w = texs[0][0].width, h = texs[0][0].height;
+      return { layers: texs.map((list) => readbackFrames(R, list, res)), w, h };
+    } finally {
+      for (const list of texs) for (const t of list) { try { t.destroy(true); } catch (e) { /* gone */ } }
+    }
+  }
+
+  /* THE GUNK.  A green slime hit by `weapon` ('sword' | 'arrow' | 'bolt'),
+     through a private HitMaterialFx: the record spawnHitDebris builds,
+     at the slime's feet (0, 0), the blow travelling due east (the hero
+     stands west of it), for a projectile where it went in (`at`, a texel of
+     the hit cell -- the scene's pin), for a blade the facing side.  The
+     slime's own art goes in too (`artOf`), for the remnant chips the world
+     cuts from the body it is hitting, at the world's texel size.  The
+     material is the meadow slime's -- archetype `fodder`, whose goo is the
+     green sampled off the sheet (an unknown archetype falls to the minty
+     teal default).  Two layers: behind the monster, in front of it. */
+  _filmGunk(R, o) {
+    const scale = this._filmScale(o);
+    const res = Math.max(1, Math.min(3, +o.res || 1)) * scale;
+    const ms = Math.max(200, +o.ms || 1000);
+    const fps = Math.max(8, Math.min(30, +o.fps || 16));
+    const n = Math.max(2, Math.round(ms * fps / 1000));
+    const arch = o.arch || 'fodder';
+    const mat = hitMaterialOf(arch);
+    const h = monsterBodyOffsetY(arch);
+    const weapon = o.weapon === 'arrow' || o.weapon === 'bolt' ? o.weapon : 'sword';
+    const tw = this._slimeTexelWorld();
+    const bodyTex = getSlimeFrame('hit', 0);
+    const body = bodyTex ? { texture: bodyTex, scale: { x: tw, y: tw }, worldTransform: new Matrix(tw, 0, 0, tw, 0, 0), _btBaseTint: 0xffffff, tint: 0xffffff } : null;
+    const front = new Container(), back = new Container();
+    const fx = new HitMaterialFx(front, back, { artOf: () => body });
+    /* the texel the shot went in at -> world px round the feet, by the world's
+       own anchor (the middle column; the cell's base row on the ground) */
+    const at = Array.isArray(o.at) && o.at.length === 2 ? o.at : null;
+    const hitH = at ? (SLIME_BASE_ROW.hit - (at[1] + 0.5)) * tw : (Number.isFinite(+o.hitH) ? +o.hitH : h);
+    const proj = weapon !== 'sword';
+    const S = { currentZone: null, _debrisBursts: [] };
+    const t0 = 1e6;
+    /* `lift`: the ground the pieces land on, raised this many world px.  The
+       map is seen from three-quarters up, so a piece thrown toward you lands
+       LOWER on screen; the stage is seen nearly side-on, with a strip of
+       ground a few px deep under the slime, and the pieces thrown its way
+       landed past the stage's edge.  Raised, the marks lie on the stage's
+       ground; the burst itself stays where the blow lands (h less the lift
+       above the raised ground is the same point on screen). */
+    const lift = Math.max(0, +o.lift || 0);
+    S._debrisBursts.push({
+      monsterId: 'sd-gunk', kind: mat.fx || mat.kind, tint: hitFxTintOf(arch),
+      x: 0, y: -h, gy: -lift, h: proj ? h : Math.max(8, h - lift), ang: 0, t0, weapon, crit: !!o.crit, big: !!o.big, heavy: false, elem: o.elem || null,
+      hitX: proj ? (at ? (at[0] + 0.5 - SLIME_FRAME_PX / 2) * tw : (Number.isFinite(+o.hitX) ? +o.hitX : -6)) : undefined, hitY: proj ? -hitH : undefined,
+    });
+    /* how far the spray can reach, in world px round the feet: generous --
+       the blow carries it east, a bolt's blast throws it every way, and a
+       piece that left the box would vanish in mid-air -- and the caller crops
+       each layer to its paint */
+    const box = new Rectangle(-110, -Math.max(70, hitH + 50), 270, Math.max(70, hitH + 50) + 30);
+    try {
+      /* the burst at t0, then n frames of physics on the world's own step */
+      const shot = this._filmShoot(R, [back, front], box, res, n, (i) => {
+        const now = t0 + Math.round(i * 1000 / fps);
+        if (i === 0) fx.update(S, now);
+        else {
+          /* the world steps every ~16ms; a 50ms film step is three of them,
+             so the physics is the world's at any frame rate */
+          const prev = t0 + Math.round((i - 1) * 1000 / fps);
+          for (let t = prev + 16; t < now; t += 16) fx.update(S, t);
+          fx.update(S, now);
+        }
+      });
+      return { layers: shot.layers, w: shot.w * scale, h: shot.h * scale, origin: [-box.x * scale, -box.y * scale], ms, frames: n, res: res / scale };
+    } finally {
+      try { fx.clear(); } catch (e) { /* gone */ }
+      try { front.destroy({ children: true }); back.destroy({ children: true }); } catch (e) { /* gone */ }
+    }
+  }
+
+  /* A STUCK ARROW: the headless shaft, its wound and the lip over it, baked
+     by a private StuckArrowBaker exactly as the world bakes them -- on the
+     slime's own texel grid (a stand-in body: its hit-frame texture at the
+     size the world draws it, anchored on its base row as the world anchors
+     it), so the injury lands at the monster's resolution.  The point of
+     entry is (0, 0); the shaft runs back out along `ang` + PI.  A film
+     because the wound moves for its first second and a half: the gel collar
+     wobbles, the goo drips run down and hold. */
+  _filmStuck(R, o) {
+    if (!ARROW_PINE.noHead || !ARROW_PINE.full) return null;
+    /* photographed at the SLIME's scale (the bake is on its texel grid);
+       the arrow in it sized to the window's own arrows (`arrowLen`) */
+    const scale = this._filmScale(o);
+    const res = Math.max(1, Math.min(3, +o.res || 1)) * scale;
+    const ms = Math.max(200, +o.ms || 1500);
+    const fps = Math.max(6, Math.min(30, +o.fps || 12));
+    const n = Math.max(2, Math.round(ms * fps / 1000));
+    const arch = o.arch || 'fodder';
+    const ang = Number.isFinite(+o.ang) ? +o.ang : 0;
+    /* the arrow's size: the window's arrow is arrowLen px and the film is
+       `scale` window px per world px -- so in the bake's world units the
+       arrow is arrowLen / scale long, kArrow of a world arrow */
+    const kArrow = ((+o.arrowLen) || 30) / ARROW_PINE.lenPx / scale;
+    const bodyTex = getSlimeFrame('hit', 0);
+    if (!bodyTex) return null;
+    const layer = new Container();
+    const body = new Sprite(bodyTex);
+    body.anchor.set(0.5, SLIME_BASE_ROW.hit / SLIME_FRAME_PX);
+    body.scale.set(this._slimeTexelWorld());
+    layer.addChild(body);
+    const baker = new StuckArrowBaker(layer);
+    const sc = stuckShaftScale(kArrow);
+    const arrow = { x: 0, y: 0, ang, k: kArrow, mat: hitMaterialOf(arch), tint: hitFxTintOf(arch), age: 0, seed: (+o.seed || 7) | 0,
+      shaftScale: sc, shaftLen: sc * ARROW_PINE.noHead.width };
+    const len = arrow.shaftLen + 6;
+    const box = new Rectangle(Math.min(-len, -18 * kArrow) - 4, -Math.max(len, 18 * kArrow) * 0.6 - 4, len + 18 * kArrow + 8, Math.max(len, 18 * kArrow) * 0.6 + 26 * kArrow + 8);
+    try {
+      const shot = this._filmShoot(R, [layer], box, res, n, (i) => {
+        arrow.age = Math.round(i * 1000 / fps);
+        body.visible = true;
+        baker.bake('sd-stuck', body, [arrow], ARROW_PINE.noHead, 1e6 + arrow.age);
+        body.visible = false;   /* the slime is the scene's; only the injury is filmed */
+      });
+      return { layers: shot.layers, w: shot.w * scale, h: shot.h * scale, origin: [-box.x * scale, -box.y * scale], ms, frames: n, res: res / scale };
+    } finally {
+      try { baker.end(1e9); } catch (e) { /* frees its texture */ }
+      try { layer.destroy({ children: true }); } catch (e) { /* gone */ }
+    }
+  }
+
+  /* THE BOW SPECIAL, WHITE-HOT, through a private HotArrowFx.
+     In flight: the arrow travelling due east at `speed` world px a second,
+     the box riding with it so the frames hold it still and its spark tracer
+     streams out behind -- warmed up first, so the tracer is there from the
+     first frame.  Stuck (headless): from the moment it goes in, smouldering
+     on the volley's 500ms ticks and burning out as the world's does.
+     `origin` is the arrow's pivot (flight) or point of entry (stuck). */
+  _filmHotArrow(R, o, stuck) {
+    if (!hotArrowReady()) return null;
+    /* the special is HOT_LEN to the plain arrow's lenPx in the world; the
+       window's plain arrow is `arrowLen` px, so this is drawn to match */
+    const scale = ((+o.arrowLen) || 30) / ARROW_PINE.lenPx;
+    const art = hotArrowArt();
+    const ax = (art && art.ax) || ARROW_PINE.anchor.x, headFrac = (art && art.headFrac) || ARROW_PINE.headFrac;
+    const res = Math.max(1, Math.min(3, +o.res || 1)) * scale;
+    const fps = Math.max(8, Math.min(30, +o.fps || (stuck ? 12 : 30)));
+    const ms = Math.max(100, +o.ms || (stuck ? 2600 : 200));
+    const n = Math.max(2, Math.round(ms * fps / 1000));
+    const layer = new Container();
+    const hot = new HotArrowFx(layer);
+    const a = { volley: true };
+    const t0 = 1e6;
+    const speed = +o.speed || 600;
+    const L = HOT_LEN;
+    let box;
+    try {
+      if (!stuck) {
+        /* the tracer is warmed up first, so it is there from the first frame
+           (opts.warm ms of it: an arrow loosed a stride away has little) */
+        const warm = Number.isFinite(+o.warm) ? Math.max(0, +o.warm) : 240;
+        for (let t = 0; t < warm; t += 16) {
+          hot.begin(); hot.arrow(a, (t / 1000) * speed, 0, 0, 1, 1, t0 + t, false, 0, false); hot.update(t0 + t); hot.end();
+        }
+        box = new Rectangle(-L * 1.9, -L * 0.42, L * 2.6, L * 0.84);
+        let xNow = 0;
+        const shot = this._filmShoot(R, [layer], box, res, n, (i) => {
+          const tt = warm + Math.round(i * 1000 / fps);
+          xNow = (tt / 1000) * speed;
+          hot.begin(); hot.arrow(a, xNow, 0, 0, 1, 1, t0 + tt, false, 0, false); hot.update(t0 + tt); hot.end();
+          /* the box rides with the arrow: shift the drawing back to 0 (the
+             effect's own root -- a render target's OWN transform is not
+             applied when it is drawn as the root) */
+          hot.root.x = -xNow;
+        });
+        /* `tip`: how far ahead of the pivot (origin) the point is, window px */
+        return { layers: shot.layers, w: shot.w * scale, h: shot.h * scale, origin: [-box.x * scale, -box.y * scale], ms, frames: n, res: res / scale,
+          tip: (1 - ax) * L * scale };
+      }
+      /* stuck: in at t0, ticking from t0 (the burn's clock) */
+      box = new Rectangle(-L * 0.9, -L * 0.75, L * 1.3, L * 1.05);
+      const ang = Number.isFinite(+o.ang) ? +o.ang : 0;
+      const shot = this._filmShoot(R, [layer], box, res, n, (i) => {
+        const tt = t0 + Math.round(i * 1000 / fps);
+        hot.begin(); hot.arrow(a, 0, 0, ang, 1, 1, tt, true, t0, false); hot.update(tt); hot.end();
+      });
+      /* `entry`: where the head went in (the buried cut, ahead of the pivot),
+         window px -- what the scene pins to the slime */
+      const cut = (headFrac - ax) * L;
+      return { layers: shot.layers, w: shot.w * scale, h: shot.h * scale, origin: [-box.x * scale, -box.y * scale], ms, frames: n, res: res / scale,
+        entry: [(-box.x + Math.cos(ang) * cut) * scale, (-box.y + Math.sin(ang) * cut) * scale] };
+    } finally {
+      try { layer.destroy({ children: true }); } catch (e) { /* gone */ }
+    }
+  }
+
+  /* THE STAFF'S CRASH where its bolt meets the slime: orbCrashFx's own
+     records (the pixel rings and the hot-to-cool burst -- and, for the big
+     bolt, the third ring that opens out to its blast reach, `blastR`) drawn
+     by a private StaffCastFx.  Two layers like the world's: the burst over
+     the bolt, the rings under it.  `origin` is the impact. */
+  _filmCrash(R, o) {
+    const scale = this._filmScale(o);
+    const res = Math.max(1, Math.min(3, +o.res || 1)) * scale;
+    const big = !!o.big;
+    const ms = Math.max(200, +o.ms || (big ? 600 : 460));
+    const fps = Math.max(8, Math.min(30, +o.fps || 24));
+    const n = Math.max(2, Math.round(ms * fps / 1000));
+    const front = new Container(), back = new Container();
+    const sfx = new StaffCastFx(front, back);
+    const S = { currentZone: null, rpg: {}, others: {}, _impactRings: [], _staffCrashes: [] };
+    const realNow = Date.now;
+    const t0 = realNow();
+    orbCrashFx(S, 0, 0, o.color || '#a855f7', { elem: o.elem || null, vdx: 0, vdy: 0, big, blastR: big ? (+o.blastR || 0) : 0 });
+    const reach = Math.max(40, big ? (+o.blastR || 0) + 8 : 0, 26 * (big ? 1.6 : 1) + 8) + 30;
+    const box = new Rectangle(-reach, -reach, reach * 2, reach * 2);
+    try {
+      const shot = this._filmShoot(R, [back, front], box, res, n, (i) => {
+        const now = t0 + Math.round(i * 1000 / fps);
+        sfx.begin();
+        for (const ring of S._impactRings) { if (ring.style === 'staff' && now - ring.ts < (ring.duration || 400) + (ring.startDelay || 0)) sfx.ring(ring, now, 1); }
+        try { sfx.update(S, now, false); } catch (e) { /* drawing only */ }
+        sfx.end();
+      });
+      return { layers: shot.layers, w: shot.w * scale, h: shot.h * scale, origin: [-box.x * scale, -box.y * scale], ms, frames: n, res: res / scale };
+    } finally {
+      try { sfx.clear(); } catch (e) { /* gone */ }
+      try { front.destroy({ children: true }); back.destroy({ children: true }); } catch (e) { /* gone */ }
+    }
+  }
 
   /* ── Extraction cue (v2.3.229) ──
    * Renders the "ready to extract" cue at the active node when

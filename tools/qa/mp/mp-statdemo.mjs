@@ -287,9 +287,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
        an arrow frozen in his hand, which is exactly what every bow arrow was
        from v2.3.2231 on: the arrow is one cel, steps(1, jump-none) is
        invalid, and an invalid timing function through var() voids the whole
-       animation, flight included (Chromium: animation-name none). */
+       animation, flight included (Chromium: animation-name none).
+       v2.3.2991: or bt-sd-aim -- the flight aimed from the bow's grip to
+       where the arrow goes in (§4g), once the stage is measured. */
     rec.ok('...and the arrow actually flies (its animation is not voided)',
-      /bt-sd-fly/.test(shot.anim || ''), shot.anim);
+      /bt-sd-(fly|aim)/.test(shot.anim || ''), shot.anim);
   }
 
   /* The MAGIC lane takes the other branch of SHOT: a 4-cel strip stepped by
@@ -623,6 +625,120 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!before && !!after && after.visible && Math.abs(after.x - before.x) < 1 && Math.abs(after.footY - before.footY) < 1
       && Math.abs((after.scale || 0) - (before.scale || 0)) < 1e-6 && after.height > 0, { before, after });
   await P.page.screenshot({ path: 'tools/qa/mp/out/statdemo-world-after.png' }).catch(() => {});
+
+  /* ══ 4g. v2.3.2991: THE SPECIAL ANIMATES, THE SLIME THROWS ITS GUNK, ARROWS STICK ══
+     Owner: "Also special attacks need to animate ... make it so the slime
+     shows the hit effect (green gunk coming out after getting hit) ... make
+     sure arrows stick in the monster too."  The spray, the stuck shaft and
+     its wound, the white-hot volley and the staff's crash are filmed off
+     private copies of the world's own effect classes (captureFxFilm) and
+     played as strips; a stuck arrow is pinned to the slime's art by the
+     world's own pin moves and steps with the slime's frames (slimePins).
+     Sampled per scene: what was filmed (__btStatScene.fx, frame counts);
+     the films on the stage; the shots flying aimed lines; a stuck arrow
+     INSIDE the slime's span, riding it (its point moves between samples as
+     the blob bounces), and never on the splat (a dead slime drops its
+     arrows, the world's v2.3.2891 rule); the special's own take.
+     PICTURES are taken from a frozen stage: until each scene's picture is
+     in, every sample first holds the scene's clock (its beats are
+     setTimeouts, deferred while __qaPaused -- the wrapper below, installed
+     for this section and taken out after it) and pauses every CSS
+     animation, so the frame shot is the frame sampled -- a picture of
+     arrows in a slime that died in the 80ms between the two is no
+     evidence. */
+  await P.page.evaluate(() => {
+    window.__qaHotProbe = window.__btHotArrow; window.__qaStaffProbe = window.__btStaffFx;
+    const st = window.setTimeout;
+    window.__qaSetTimeout = st;
+    window.__qaPaused = false;
+    window.setTimeout = function (fn, ms, ...args) {
+      if (typeof fn !== 'function') return st(fn, ms, ...args);
+      const tick = () => { if (window.__qaPaused) { st(tick, 16); return; } fn(...args); };
+      return st(tick, ms);
+    };
+  });
+  const freeze = (on) => P.page.evaluate((on) => {
+    window.__qaPaused = on;
+    for (const a of document.getAnimations()) { if (on) a.pause(); else a.play(); }
+  }, on);
+  const stagePic = async (path) => {
+    const el = await P.page.$('[data-stat-demo] .bt-sd-stage');
+    const box = el && await el.boundingBox();
+    if (box) await P.page.screenshot({ path, clip: { x: box.x, y: box.y, width: box.width, height: box.height } }).catch(() => {});
+  };
+  for (const [lane, key] of [['sword', 'dmg'], ['bow', 'dmg'], ['staff', 'dmg'], ['sword', 'special'], ['bow', 'special'], ['staff', 'special']]) {
+    await P.page.keyboard.press('Escape');
+    await P.page.waitForTimeout(350);
+    await H.openPointCols(P, [lane]);
+    await H.openPointCols(P, [lane]);
+    const opened = await openStat(P, lane, key);
+    await P.page.waitForTimeout(500);
+    if (!opened) { rec.skip(`${lane} ${key}: the hit's effects`, 'row not reachable'); continue; }
+    const seen = { fx: null, films: new Set(), aimed: 0, hot: 0, stuck: 0, outside: 0, onSplat: 0, pins: new Set(), special: new Set(), pic: false };
+    for (let i = 0; i < 110; i++) {
+      if (!seen.pic) await freeze(true);
+      const f = await P.page.evaluate(() => {
+        const sc = window.__btStatScene || {};
+        const slime = document.querySelector('.bt-sd-slime');
+        return {
+          fx: sc.fx || null,
+          films: [...document.querySelectorAll('[data-sd-film]')].map((e) => e.getAttribute('data-sd-film')),
+          aimed: document.querySelectorAll('[data-sd-line]').length,
+          hot: document.querySelectorAll('[data-sd-hot]').length,
+          stuck: [...document.querySelectorAll('[data-sd-stuck]')].map((e) => ({ inSlime: !!e.closest('.bt-sd-slime'), tf: getComputedStyle(e).transform })),
+          splat: !!(slime && /--death/.test(slime.className)),
+          special: +((document.querySelector('[data-sd-special]') || { getAttribute: () => -1 }).getAttribute('data-sd-special')),
+        };
+      });
+      if (f.fx) seen.fx = f.fx;
+      for (const k of f.films) seen.films.add(k);
+      seen.aimed += f.aimed;
+      seen.hot += f.hot;
+      seen.stuck = Math.max(seen.stuck, f.stuck.length);
+      for (const s of f.stuck) { if (!s.inSlime) seen.outside++; seen.pins.add(s.tf); }
+      if (f.splat && f.stuck.length) seen.onSplat++;
+      if (f.special >= 0) seen.special.add(f.special);
+      if (!seen.pic) {
+        const want = key === 'special'
+          ? (lane === 'bow' ? f.hot > 0 : lane === 'sword' ? f.special >= 3 : f.films.includes('crashBig'))
+          : lane === 'bow' ? f.stuck.length >= 2 && !f.splat
+          : f.films.some((k) => /^gunk/.test(k)) && !f.splat;
+        if (want) {
+          await stagePic(`tools/qa/mp/out/statdemo-fx-${lane}-${key}.png`);
+          seen.pic = true;
+        }
+        await freeze(false);
+      }
+      await P.page.waitForTimeout(45);
+    }
+    const res = { fx: seen.fx, films: [...seen.films], aimed: seen.aimed, hot: seen.hot, stuck: seen.stuck, pins: seen.pins.size, outside: seen.outside, onSplat: seen.onSplat, special: [...seen.special] };
+    const gunk = !!seen.fx && seen.fx.gunk > 1 && seen.films.has('gunk');
+    if (key === 'dmg') {
+      rec.ok(`${lane}: the slime throws its gunk on a hit -- the world's spray, filmed and played on the stage`,
+        gunk, res);
+      if (lane === 'bow') {
+        rec.ok('Bow: the arrows fly aimed lines and STICK in the slime -- inside its span, riding its frames, never on the splat',
+          !!seen.fx && seen.fx.stuck > 1 && seen.aimed > 0 && seen.stuck >= 1 && seen.pins.size >= 2 && seen.outside === 0 && seen.onSplat === 0, res);
+      }
+      if (lane === 'staff') rec.ok('Magic: the bolt flies to where it goes in and CRASHES there (the world\'s crash, filmed)',
+        !!seen.fx && seen.fx.crash > 1 && seen.films.has('crash') && seen.aimed > 0, res);
+    } else if (lane === 'sword') {
+      rec.ok('Melee Special: he swings the world\'s special -- the crescent and all, its own take',
+        !!seen.fx && seen.fx.special === 11 && seen.special.size >= 3 && gunk, res);
+    } else if (lane === 'bow') {
+      rec.ok('Bow Special: the volley flies WHITE-HOT, the world\'s own arrow filmed (and smoulders where it sticks)',
+        !!seen.fx && seen.fx.hot > 1 && seen.fx.hotStuck > 1 && seen.hot > 0 && seen.outside === 0 && seen.onSplat === 0, res);
+    } else {
+      rec.ok('Magic Special: the big bolt\'s explosion opens out where it lands (the world\'s crash, big)',
+        !!seen.fx && seen.fx.crashBig > 1 && seen.films.has('crashBig'), res);
+    }
+  }
+  await P.page.evaluate(() => { window.__qaPaused = false; if (window.__qaSetTimeout) window.setTimeout = window.__qaSetTimeout; });
+  /* the films are taken on PRIVATE copies of the effect classes, whose
+     constructors register the world's QA probes -- those must be the world's
+     own instances still */
+  const probesKept = await P.page.evaluate(() => window.__qaHotProbe === window.__btHotArrow && window.__qaStaffProbe === window.__btStaffFx);
+  rec.ok('...and the world\'s own effect probes are untouched by the films', probesKept);
 
   /* ══ 4c. THE PRELOADING LAW ══
      CLAUDE.md: every animation asset loads on the gate, and a first-use fetch
