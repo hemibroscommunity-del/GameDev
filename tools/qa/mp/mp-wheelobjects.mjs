@@ -24,6 +24,9 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+/* v2.3.2978: the Wheel is its own zone, 'wheel', against a worker that runs
+   its monsters (server/src/wheelzone.js) -- 'worldview' against an older one */
+const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 
 const PHONE = { width: 390, height: 844 };
 const FROST = { x: 18464, y: 18464 };   /* the north-west spoke, Frost Ridge's second stage */
@@ -49,7 +52,7 @@ const waitZone = async (P, want, n = 60, gap = 1000) => {
   let zone = null;
   for (let i = 0; i < n; i++) {
     zone = await H.readState(P, (S) => S.currentZone);
-    if (zone === want && !(await H.readState(P, (S) => !!S._zoneLoading))) return zone;
+    if ((typeof want === 'function' ? want(zone) : zone === want) && !(await H.readState(P, (S) => !!S._zoneLoading))) return zone;
     await P.page.waitForTimeout(gap);
   }
   return zone;
@@ -93,10 +96,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 1. the way in ── */
   const door = TOWN_EXITS.find((e) => e.zoneId === 'worldview');
   await H.hopTo(P, door.tx * 32 + 16, (door.ty - 1) * 32 + 16);
-  const zone = await waitZone(P, 'worldview');
+  const zone = await waitZone(P, WHEELISH);
   const st0 = await P.page.evaluate(() => ({ ...window.__btWorldTrial.objects() }));
   rec.ok(`on the way in every object is placed (${st0.placed} with pictures, in ${st0.placeMs} ms) and the sheets round the arrival are loaded before the overlay lifts (${st0.pages} of ${st0.pagesOf}, ${st0.warmMs} ms)`,
-    zone === 'worldview' && st0.placed > 8000 && st0.pages >= 4 && st0.warmMs != null && st0.failed === 0, st0);
+    WHEELISH(zone) && st0.placed > 8000 && st0.pages >= 4 && st0.warmMs != null && st0.failed === 0, st0);
 
   phase = 'the town';
   /* ── 2. the town round the arrival ── */
@@ -156,7 +159,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const hotel = await P.page.evaluate(() => {
     const S = window._gameState.current, W = window.__btWheelObjects;
     const o = W.near(S.player.x, S.player.y, 1400).find((q) => q.id === 'hotel');
-    const box = (window.__btBlockers('worldview') || []).find((b) => b.id === 'hotel');
+    const box = (window.__btBlockers(window._gameState.current.currentZone) || []).find((b) => b.id === 'hotel');
     return o ? { o, box } : null;
   });
   let stopped = null;
@@ -164,7 +167,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const dy = await P.page.evaluate(() => { const S = window._gameState.current, g = window.__btPlayerGround(); return g.y - S.player.y; });
     await H.hopTo(P, hotel.o.x, hotel.o.y + 60 - dy, { tries: 30 });
     await P.page.waitForTimeout(800);
-    const box = await P.page.evaluate(() => (window.__btBlockers('worldview') || []).find((b) => b.id === 'hotel') || null);
+    const box = await P.page.evaluate(() => (window.__btBlockers(window._gameState.current.currentZone) || []).find((b) => b.id === 'hotel') || null);
     await P.page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
     await P.page.keyboard.down('w'); await P.page.waitForTimeout(1600); await P.page.keyboard.up('w');
     await P.page.waitForTimeout(400);

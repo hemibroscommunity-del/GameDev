@@ -437,6 +437,11 @@ export const spawnScaleMethods = {
          the zone the moment you walk in -- "it just noticed you" is a
          TRANSITION, and a transition needs a previous value. See tick.js. */
       tg: m.targetId || null,
+      /* v2.3.2978: a Wheel monster says which zone it is from, and so its
+         skin -- one zone with eight zones' monsters cannot be skinned by
+         the zone's own name (wheelzone.js).  Both fields only on those, so
+         every other zone's snapshot is byte-identical. */
+      ...(m.home ? { home: m.home, variant: m.variant || null } : {}),
     }));
     const nodes = (this._ensureZoneNodes(zoneId) || []).map((n) => ({
       id: n.id, nodeType: n.nodeType, x: n.x, y: n.y,

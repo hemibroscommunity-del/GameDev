@@ -1604,5 +1604,63 @@ console.log('objects on the Wheel (v2.3.2975)');
     pg.length === 2 && pg[0].objects.length === 3 && pg[0].colours <= 255 && pg1.length === 2, pg.map((p) => p.objects));
 }
 
+/* ── v2.3.2978: the Wheel's monsters, at the inner end of each spoke ──
+   Owner, 2026-10-02: "can you place the monsters where they belong in their
+   zones (on the ends closest to the central map)?"  The worker cannot build
+   the plan (~1 s, 13 MB), so where they stand is baked into
+   server/src/wheelspawns.js -- and the worker redeploys only when server/**
+   changes, so a plan (or placing) change must re-bake it in the same PR. */
+console.log('monsters on the Wheel (v2.3.2978)');
+{
+  const { bakeWheelSpawns, wheelSpawnsSource, SPAWN_RULES } = await import('./bake-wheel-spawns.mjs');
+  const { placeObjects, objectFootprints } = await import('../../public/tools/world/core/placing.js');
+  const fs = await import('node:fs');
+  const b = bakeWheelSpawns();
+  const onDisk = fs.readFileSync(new URL('../../server/src/wheelspawns.js', import.meta.url), 'utf8');
+  ok('the worker\'s copy of where they stand is the plan\'s (if not: node tools/world/bake-wheel-spawns.mjs)', onDisk === wheelSpawnsSource(b));
+  const HOMES = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];
+  const cellG = bp.scale * PLAN.worldPxPerArtPx;
+  const ri = Object.create(null);
+  bp.regionIds.forEach((k, i) => { ri[k] = i; });
+  const cellOf = (x, y) => Math.floor(y / cellG) * bp.w + Math.floor(x / cellG);
+  ok('each of the eight lands has places for its six', HOMES.every((h) => b.spawns[h] && b.spawns[h].points.length >= 6),
+    HOMES.map((h) => b.spawns[h] && b.spawns[h].points.length));
+  const off = [];
+  for (const h of HOMES) for (const [x, y] of (b.spawns[h] || { points: [] }).points) {
+    const i = cellOf(x, y);
+    if (bp.reg[i] !== ri[h] || bp.cls[i] !== C.ground || bp.tier[i] !== 1) off.push({ h, x, y, reg: bp.regionIds[bp.reg[i]], tier: bp.tier[i] });
+  }
+  ok('every one on open ground of its own land, on its first stage: levels 1-5, the end nearest the centre', off.length === 0, off.slice(0, 4));
+  const tooClose = [];
+  for (const h of HOMES) {
+    const pts = (b.spawns[h] || { points: [] }).points;
+    for (let a = 0; a < pts.length; a++) for (let c = a + 1; c < pts.length; c++) {
+      if (Math.hypot(pts[a][0] - pts[c][0], pts[a][1] - pts[c][1]) < SPAWN_RULES.apart) tooClose.push(h);
+    }
+  }
+  ok(`...spread out, ${SPAWN_RULES.apart} px apart at the least`, tooClose.length === 0, tooClose);
+  /* the safe ground (the worker keeps monsters off it): one circle holding
+     every land cell of the commons and the town, short of every place */
+  let farCommons = 0;
+  for (let i = 0; i < bp.w * bp.h; i++) {
+    if ((bp.reg[i] !== ri.commons && bp.reg[i] !== ri.town) || bp.cls[i] === C.ocean || bp.cls[i] === C.water || bp.cls[i] === C.river) continue;
+    const x = ((i % bp.w) + 0.5) * cellG - b.centre[0], y = (((i / bp.w) | 0) + 0.5) * cellG - b.centre[1];
+    farCommons = Math.max(farCommons, Math.hypot(x, y));
+  }
+  const nearPlace = Math.min(...HOMES.flatMap((h) => (b.spawns[h] || { points: [] }).points.map(([x, y]) => Math.hypot(x - b.centre[0], y - b.centre[1]))));
+  ok(`the safe ground holds all of the commons and the town (out to ${Math.round(farCommons)} px, the circle ${b.safeR}) and stops ${Math.round(nearPlace - b.safeR)} px short of the nearest place`,
+    farCommons < b.safeR && nearPlace - b.safeR >= 100, { farCommons, safeR: b.safeR, nearPlace });
+  /* and never inside a tree, a rock or a building: the game's own footprints */
+  const man = JSON.parse(fs.readFileSync(new URL('../../public/world/objects/manifest.json', import.meta.url)));
+  const F = objectFootprints(placeObjects(PLAN, bp), man);
+  const inside = [];
+  for (const h of HOMES) for (const [x, y] of (b.spawns[h] || { points: [] }).points) {
+    for (let q = 0; q < F.boxes.length; q += 4) {
+      if (x >= F.boxes[q] && x <= F.boxes[q + 2] && y >= F.boxes[q + 1] && y <= F.boxes[q + 3]) { inside.push({ h, x, y }); break; }
+    }
+  }
+  ok('...and none inside anything that stands there (the game\'s own footprints)', inside.length === 0, inside.slice(0, 4));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

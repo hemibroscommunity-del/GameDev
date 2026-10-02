@@ -8,7 +8,7 @@ import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCoun
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2748: a building's base, read off its art */
 import { TILE } from '@/data/constants.js';
-import { ZONES, zonePlayerScale, zoneDepthScale } from '@/data/zones.js';
+import { ZONES, zonePlayerScale, zoneDepthScale, zoneHomes } from '@/data/zones.js';   /* v2.3.2978: + zoneHomes, the Wheel's far-monster cull */
 import { ELEMENTS } from '@/data/elements.js';
 import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
 import { isProg3RelEnabled, prog3Live, prog3SkillLevel, prog3ActiveCat } from '@/data/prog3.js'; /* v2.3.2680: the plate's yardstick */
@@ -8018,6 +8018,29 @@ export class EntityRenderer {
            normal frame rate the cap never binds and the timing is unchanged. */
     const BURST_START_GRACE_MS = 2000;
     const BURST_MAX_SKIP = 2;
+    /* ═══ v2.3.2978: IN THE WHEEL, A MONSTER FAR OFF SCREEN IS NOT DRAWN ═══
+       An ordinary zone's six to twelve monsters all stand within a screen or
+       two of you, so every one is updated and drawn every frame and that is
+       fine.  The Wheel ('wheel', the zone with `homes`) holds eight lands'
+       worth across 43,008 px, and from Brotown's square every one of the 48
+       is 3,000 px or more away: updating and drawing them cost the QA box
+       ~1.1-1.7 ms + ~1.5 ms a frame (2.0 + 2.5 ms with them, 0.3 + 0.9
+       without -- the renderer's own stage timings), for nothing on screen.
+       So past the view's half-diagonal plus FAR_MARGIN from its middle, a
+       live monster's display -- body and above-head UI -- is hidden and
+       skipped.  It keeps its display (activeIds), so walking back costs no
+       re-create, and the lines below show it again the frame it is in range
+       (`display.visible !== m.alive`, `_ui.visible`).  Its sheets were
+       loaded behind the Wheel's overlay like any zone's (the preloading
+       LAW); like any animation unused for a minute, Pixi's texture GC may
+       drop their GPU copy while you are elsewhere, which on a phone is the
+       point.  The view is S._viewW/_viewH (pixiRenderer, world px). */
+    const FAR_MARGIN = 400;
+    const _farCull = !!(zoneHomes(S.currentZone) && S.camera && S._viewW > 0 && S._viewH > 0);
+    const _farCX = _farCull ? S.camera.x + S._viewW / 2 : 0;
+    const _farCY = _farCull ? S.camera.y + S._viewH / 2 : 0;
+    const _farR = _farCull ? Math.hypot(S._viewW, S._viewH) / 2 + FAR_MARGIN : 0;
+    let _farHidden = 0;
     /* Absolute ceiling on how long a corpse may be held for its burst, so a
        clock that stops advancing for any reason (the death sheet freed
        mid-animation, say) cannot leave a swollen corpse on the field
@@ -8375,6 +8398,20 @@ export class EntityRenderer {
       }
 
       activeIds.add(m.id);
+
+      if (_farCull) {   /* v2.3.2978: see FAR_MARGIN above */
+        const _fox = (m.renderX != null ? m.renderX : m.x) - _farCX;
+        const _foy = (m.renderY != null ? m.renderY : m.y) - _farCY;
+        if (_fox * _fox + _foy * _foy > _farR * _farR) {
+          const _fd = this.monsterDisplays.get(m.id);
+          if (_fd) {
+            if (_fd.visible) _fd.visible = false;
+            if (_fd._hpUi && _fd._hpUi.visible) _fd._hpUi.visible = false;
+          }
+          _farHidden++;
+          continue;
+        }
+      }
 
       let display = this.monsterDisplays.get(m.id);
       /* v2.3.2913: alive again on the same display -- drop any leftover pieces */
@@ -10019,6 +10056,7 @@ export class EntityRenderer {
         this.monsterDisplays.delete(id);
       }
     }
+    S._monstersFarHidden = _farHidden;   /* v2.3.2978: QA readout (mp-wheelmonsters) */
   }
 
   /* v2.3.1091: zone perspective player-scale -- the Overlook/vista "world

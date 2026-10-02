@@ -25,6 +25,9 @@
  *      plays on the next way in.
  */
 import * as H from './harness.mjs';
+/* v2.3.2978: the Wheel is its own zone, 'wheel', against a worker that runs
+   its monsters (server/src/wheelzone.js) -- 'worldview' against an older one */
+const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 
 const PHONE = { width: 390, height: 844 };
 const FROST = { x: 18464, y: 18464 };   /* the north-west spoke, Frost Ridge's second stage */
@@ -132,12 +135,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let zone = null;
   for (let i = 0; i < 60; i++) {
     zone = await H.readState(P, (S) => S.currentZone);
-    if (zone === 'worldview' && !(await H.readState(P, (S) => !!S._zoneLoading))) break;
+    if (WHEELISH(zone) && !(await H.readState(P, (S) => !!S._zoneLoading))) break;
     await P.page.waitForTimeout(1000);
   }
   const loaded = await P.page.evaluate((ks) => ks.filter((k) => !!(window.BT_AUDIO._samples || {})[k]), keys);
   rec.ok(`on the way into the Wheel its ${keys.length} footstep clips decode, before the overlay lifts (${loaded.length})`,
-    zone === 'worldview' && loaded.length === keys.length, { zone, missing: keys.filter((k) => !loaded.includes(k)) });
+    WHEELISH(zone) && loaded.length === keys.length, { zone, missing: keys.filter((k) => !loaded.includes(k)) });
   await takeSteps(P);
 
   /* ── 3. this browser's decoder: every window holds its step ── */
@@ -191,7 +194,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   walks.push(await walkOn('the town square', T0.x, T0.y, null));
   if (map && map.commons) walks.push(await walkOn('the commons', map.commons.x, map.commons.y, 'grass'));
   walks.push(await walkOn('Frost Ridge', FROST.x, FROST.y, 'snow'));
-  const onWheel = heard.filter((s) => s.zone === 'worldview');
+  const onWheel = heard.filter((s) => WHEELISH(s.zone));
   const mism = onWheel.filter((s) => s.want && s.surface !== s.want);
   const wrongPlay = onWheel.filter((s) => s.surface && s.played !== s.surface);
   rec.ok(`every foot plant in the Wheel asks for the sound of the ground drawn under the feet (${onWheel.length} steps)`,
@@ -253,12 +256,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   zone = null;
   for (let i = 0; i < 60; i++) {
     zone = await H.readState(P, (S) => S.currentZone);
-    if (zone === 'worldview' && !(await H.readState(P, (S) => !!S._zoneLoading))) break;
+    if (WHEELISH(zone) && !(await H.readState(P, (S) => !!S._zoneLoading))) break;
     await P.page.waitForTimeout(1000);
   }
   const commonsAt = (walks.find((w) => w.label === 'the commons') || {}).at;
   let onCommons = [];
-  if (zone === 'worldview' && commonsAt) {
+  if (WHEELISH(zone) && commonsAt) {
     await H.hopTo(P, commonsAt.x, commonsAt.y, { tries: 90 });
     await P.page.waitForTimeout(2500);
     await takeSteps(P);

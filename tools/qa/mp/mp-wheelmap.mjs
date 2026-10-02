@@ -25,6 +25,9 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+/* v2.3.2978: the Wheel is its own zone, 'wheel', against a worker that runs
+   its monsters (server/src/wheelzone.js) -- 'worldview' against an older one */
+const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 
 const PHONE = { width: 390, height: 844 };
 const ARRIVAL = { x: 21504, y: 21792 };
@@ -86,7 +89,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let zone = null;
   for (let i = 0; i < 60; i++) {
     zone = await H.readState(P, (S) => S.currentZone);
-    if (zone === 'worldview') break;
+    if (WHEELISH(zone)) break;
     await P.page.waitForTimeout(1000);
   }
   let m = null;
@@ -95,7 +98,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (m && m.wheel && m.words && m.under) break;
     await P.page.waitForTimeout(500);
   }
-  rec.ok('in the Wheel the minimap is the Wheel\'s own, two and a half times bigger, in the same corner', zone === 'worldview' && m && m.wheel === true && m.box === 132 && m.rootX === PHONE.width - 132, { zone, m });
+  rec.ok('in the Wheel the minimap is the Wheel\'s own, two and a half times bigger, in the same corner', WHEELISH(zone) && m && m.wheel === true && m.box === 132 && m.rootX === PHONE.width - 132, { zone, m });
   rec.ok('...showing the land under it, and the roads, river and railway, the camps, passes and gates', m && m.under && m.routes >= 30 && m.places >= 60, m && { under: m.under, routes: m.routes, places: m.places });
   rec.ok('...about three zones across, centred on you', m && m.window === 3200 && Math.abs(m.playerBoxX - 66) < 2 && Math.abs(m.playerBoxY - 66) < 2, m && { x: m.playerBoxX, y: m.playerBoxY });
   rec.ok('...and says under it where you are: the town', m && m.words && m.words.title === 'Brotown', m && m.words);

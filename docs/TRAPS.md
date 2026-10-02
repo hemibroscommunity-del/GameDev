@@ -5020,3 +5020,31 @@ counts how much of the town's edge runs straight along a row or column for
 (552 before, 336 after), and checks the town is still one piece. Draw it the
 way the game does (`composeGround` at scale 3), not with the one-third-scale
 preview tool, before judging an edge by eye.
+
+## 126. A hub exit that never clears the monster list, once a hub has monsters (v2.3.2978)
+
+**Plausible:** "Hubs have no monsters, so leaving one has nothing to clear."
+True of town and the World View for as long as the game has had them, so the
+hub-exit flip in `zoneTransitions.js` replaced `S.monsters` only for
+client-local zones (`if (!S._serverMonsters) ...`) and otherwise left the list
+for the destination's `zone_state` to replace.
+
+**Wrong** the day the Wheel became a hub with monsters (`isWorldViewZone`
+covers `wheel`). Walking home, the Wheel's 48 stayed in the list until town's
+`zone_state` came in; the renderer saw a zone change, cleared, and re-made all
+48 in town; 400 ms later `_freeLeftZoneAssets` freed their sheets out from
+under them, and the frame threw "Cannot read properties of null (reading
+'addressModeU')". The render dump named the shadow layer's pooled sprites,
+which hold the same freed textures but are hidden — the culprit was further
+down the tree.
+
+**The fix:** the hub-exit flip clears a server-run list too (`else
+S.monsters = []`). Always safe: a `zone_state` stamped for a zone you are not
+in is dropped (wsClient, v2.3.1181), so nothing of the destination's can be
+in the list yet. Every other way out of a zone already cleared it (the spoke
+return, the respawn).
+
+**How to see it:** `mp-wheelmonsters` walks home from the Wheel and fails on
+any render error. Its first version pressed Space to fight, which is the
+DODGE (`desktopControls.js`): a test that swings sends `monster_damage`, as
+mp-capekill does.

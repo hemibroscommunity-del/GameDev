@@ -36,7 +36,7 @@ export const DAY_CYCLE_MS = 40 * 60 * 1000;
    is the one place a sun that jumps is impossible to miss.  It is outdoors;
    it takes the hour. */
 const OUTDOOR = Object.create(null);
-for (const z of ['town', 'worldview', 'meadow', 'ember', 'mist', 'verdant', 'frost', 'sky', 'radiant', 'farm_home']) OUTDOOR[z] = true;
+for (const z of ['town', 'worldview', 'wheel' /* v2.3.2978 */, 'meadow', 'ember', 'mist', 'verdant', 'frost', 'sky', 'radiant', 'farm_home']) OUTDOOR[z] = true;
 
 export function zoneHasSky(zoneId, S) {
   if (S && S._inDungeon) return false;

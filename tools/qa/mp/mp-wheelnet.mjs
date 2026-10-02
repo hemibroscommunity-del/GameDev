@@ -21,6 +21,9 @@
  * for good (?v=).
  */
 import * as H from './harness.mjs';
+/* v2.3.2978: the Wheel is its own zone, 'wheel', against a worker that runs
+   its monsters (server/src/wheelzone.js) -- 'worldview' against an older one */
+const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 
 const PHONE = { width: 390, height: 844 };
 const DELAY_MS = 450;
@@ -91,14 +94,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (let i = 0; i < 90; i++) {
     zone = await H.readState(P, (S) => S.currentZone);
     const overlay = await P.page.evaluate(() => !!document.querySelector('.bt-zone-loading'));
-    if (zone === 'worldview' && !overlay) break;
+    if (WHEELISH(zone) && !overlay) break;
     await P.page.waitForTimeout(1000);
   }
   const inAt = Date.now() - t0;
   const entry = await stats(P);
   console.log('    WAY IN -> ' + JSON.stringify({ zone, ms: inAt, stats: entry }));
   rec.ok(`the way in finishes over a slow connection with one picture stuck (${(inAt / 1000).toFixed(0)} s)`,
-    zone === 'worldview' && entry.resident >= 12, { zone, inAt, entry });
+    WHEELISH(zone) && entry.resident >= 12, { zone, inAt, entry });
   rec.ok('...the pictures asked for at an address the phone may keep for good (?v=<the manifest\'s date>)',
     urls.length > 0 && urls.every((u) => /\.png\?v=\d{4}-\d\d-\d\dT/.test(u)), urls.slice(0, 3));
 

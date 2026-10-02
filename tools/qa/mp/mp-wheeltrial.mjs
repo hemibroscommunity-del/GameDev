@@ -26,6 +26,9 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+/* v2.3.2978: the Wheel is its own zone, 'wheel', against a worker that runs
+   its monsters (server/src/wheelzone.js) -- 'worldview' against an older one */
+const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 
 const PHONE = { width: 390, height: 844 };
 /* the planted swatch: 16 px checks of two colours no plan colour is near */
@@ -162,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let zone = null;
   for (let i = 0; i < 60; i++) {
     zone = await H.readState(P, (S) => S.currentZone);
-    if (zone === 'worldview') break;
+    if (WHEELISH(zone)) break;
     await P.page.waitForTimeout(1000);
   }
   await P.page.waitForTimeout(2000);
@@ -173,14 +176,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       x: S.player.x, y: S.player.y, ready: W.ready() };
   });
   console.log('    WAY IN -> ' + JSON.stringify({ zones: trace.zones, overlayMs: trace.overlayAt && trace.overlayGone ? Math.round(trace.overlayGone - trace.overlayAt) : null, stats: entry.stats }));
-  rec.ok('town\'s stairs lead into the Wheel (43,008 game px, 1344 tiles a side)', zone === 'worldview' && entry.mapRows === 1344, { zone, rows: entry.mapRows });
+  rec.ok('town\'s stairs lead into the Wheel (43,008 game px, 1344 tiles a side)', WHEELISH(zone) && entry.mapRows === 1344, { zone, rows: entry.mapRows });
   rec.ok('...whose tile map is one shared row, not 1.8 million cells', entry.shared, {});
   rec.ok('...behind the ordinary loading overlay, which waited for the plan and the first screen',
     trace.overlayAt != null && entry.stats.entryMs != null && entry.stats.planMs != null && entry.ready, { trace, stats: entry.stats });
   rec.ok('you arrive in the Wheel\'s town square', Math.hypot(entry.x - ARRIVAL.x, entry.y - ARRIVAL.y) < 64, { at: [entry.x, entry.y] });
   let srv = await devState(myId);
-  for (let i = 0; i < 10 && srv.zone !== 'worldview'; i++) { await P.page.waitForTimeout(500); srv = await devState(myId); }
-  rec.ok('the worker has you in the World View too', srv.zone === 'worldview', { server: srv.zone });
+  for (let i = 0; i < 10 && !WHEELISH(srv.zone); i++) { await P.page.waitForTimeout(500); srv = await devState(myId); }
+  rec.ok('the worker has you in the World View too', WHEELISH(srv.zone), { server: srv.zone });
   rec.ok('the pieces round you are laid and in memory', entry.stats.resident >= 12 && entry.stats.resident <= 70, entry.stats);
   const map = await P.page.evaluate(() => window.__btWorldTrial.map());
   rec.ok('the Map panel has the whole Wheel to show, drawn on the device', !!map && map.w === 448 && map.h === 448, { map });
@@ -268,7 +271,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let live = await H.serverPlayer(wsPort, myId);
   const closeTo = (l) => l && typeof l.x === 'number' && Math.hypot(l.x - me.x, l.y - me.y) < 200;
   for (let i = 0; i < 10 && !closeTo(live); i++) { await P.page.waitForTimeout(500); live = await H.serverPlayer(wsPort, myId); }
-  rec.ok('the worker followed you (it accepts the Wheel\'s size)', !!live && live.zone === 'worldview' && closeTo(live),
+  rec.ok('the worker followed you (it accepts the Wheel\'s size)', !!live && WHEELISH(live.zone) && closeTo(live),
     { client: me, server: live && { x: live.x, y: live.y, zone: live.zone } });
 
   /* ── 4. what stops you ── */

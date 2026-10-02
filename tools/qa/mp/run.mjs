@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  wheelmonsters: () => import('./mp-wheelmonsters.mjs'), /* v2.3.2978: the Wheel's own zone 'wheel' -- every element zone's monsters at the inner end of its spoke, skinned as at home, their art loaded on the way in, none drawn from Brotown's square (far off screen), a fire goblin fought and killed for XP, none held back in town, its art let go */
   wheelobjects: () => import('./mp-wheelobjects.mjs'), /* v2.3.2975: the Wheel's objects -- placed and the arrival's sheets loaded on the way in, the town standing round you, Mayor Bro beside the Town Hall's steps answering a tap, a building stopping your feet at its porch and drawn over you from behind, Frost Ridge's own trees out there with the town's sheets let go, everything let go back in town */
   wheelnet: () => import('./mp-wheelnet.mjs'), /* v2.3.2959: the Wheel on a slow, unreliable connection -- every ground picture late, one never coming, one failing once: the way in lifts, the ground keeps coming on the walk, pieces short a picture are laid without it and laid again, failed downloads tried again, pictures at a keepable ?v= address */
   wheelsteps: () => import('./mp-wheelsteps.mjs'), /* v2.3.2967: each ground its own footstep -- dirt in town, the Wheel's ten clips decoded on the way in and every step window whole in Chromium's decoder, each foot plant the sound of the ground drawn under it (square, commons grass, Frost Ridge snow), dirt again at home and the clips let go */

@@ -384,6 +384,19 @@ Summary of the wire-visible changes:
   and run legacy client-side credit paths ONLY when the server hasn't
   claimed the job. HTTP responses use `settled: true` for the same
   purpose. This is the deploy-order safety mechanism; preserve it.
+- v2.3.2978 (wheel-monsters.md): **`caps.wheelmonsters`** — the worker
+  runs the Wheel's own zone, `wheel` (in `VALID_ZONE_IDS`, not in `ZONES`):
+  each element zone's spawn list at the inner end of its spoke, every monster
+  carrying `home` in the join snapshot and in `zone_state` (with `variant`
+  there), in `wheel` only. The client takes town's World View stairs into
+  `wheel` only in the `?trial=wheel` trial against a worker that advertises
+  it; without it the trial stays on `worldview`, as before. Lower case:
+  `wheelmonsters: false` in liveflags un-advertises it and leaves a Wheel
+  spawned after it empty. **In `wheel` only, a v2 session's `tick` carries
+  only the monsters within 2,400 px of the player** (kept until 2,800), and a
+  monster coming into that reach is sent whole that tick, moving or not
+  (tick.js, wheelzone.js `_wheelInterest`); such a session's tick is
+  serialised for it alone. Every other zone's tick is unchanged.
 - v2.3.2956 (gathering-hits.md): **`caps.gatherhits`** — mining,
   woodcutting, fishing and cooking wind up as worker-rolled hits on the
   node's (or the fish's) HP

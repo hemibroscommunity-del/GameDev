@@ -16,7 +16,7 @@
    us — a back-edge would be a circular-init TDZ hazard). */
 
 import { TILE } from './constants.js';
-import { ZONES } from './zones.js';
+import { ZONES, isWorldViewZone } from './zones.js'; /* v2.3.2978: + either name of the World View */
 import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
@@ -743,7 +743,7 @@ export function generateZoneMap(zoneId) {
         if (py >= 0 && py < H && px >= 0 && px < W && map[py][px] === 0) map[py][px] = 2;
       }
     }
-  } else if (zoneId === 'worldview') {
+  } else if (isWorldViewZone(zoneId)) {
     /* ═══ WORLD VIEW — trail-head portal markers only (v2.3.1303) ═══
        Owner bug report: "in world view it's not clear where the portals
        are because they're invisible" — and they always were.  The v2.3.859

@@ -138,6 +138,7 @@ import { PROV_MINTED } from './gearprov.js'; /* v2.3.2664: godly armour needs a 
 import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js'; // v2.3.1919: a blocked PvP hit costs stamina too
 import { LIVEOPS } from './liveops.js';
 import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
+import { WHEEL_ZONE, WHEEL } from './wheelzone.js'; /* v2.3.2978 */
 
 export const combatMethods = {
   /* ═══ v2.3.2221: THE ONE DAMAGE-DENIAL GATE ═══
@@ -1097,6 +1098,17 @@ export const combatMethods = {
       const _rdy = attackerPs.y - m.y;
       if (_rdx * _rdx + _rdy * _rdy > this.PVE_MELEE_RANGE * this.PVE_MELEE_RANGE) return;
     }
+    /* v2.3.2978: ...but the Wheel is forty zones across, so "anywhere in this
+       zone" is no longer a cap at all.  A ranged or staff hit there must come
+       from within WHEEL.RANGED_MAX of the monster -- wide enough for a maxed
+       bow and its stuck arrow chipping while you kite (wheelzone.js). */
+    else if (zone === WHEEL_ZONE
+        && typeof attackerPs.x === 'number' && typeof attackerPs.y === 'number'
+        && typeof m.x === 'number' && typeof m.y === 'number') {
+      const _wdx = attackerPs.x - m.x;
+      const _wdy = attackerPs.y - m.y;
+      if (_wdx * _wdx + _wdy * _wdy > WHEEL.RANGED_MAX * WHEEL.RANGED_MAX) return;
+    }
 
     // v2.3.1134: HIT-CADENCE FLOOR.  Until now damage-per-hit was capped
     // but hit FREQUENCY was not -- a hacked client could spam
@@ -1663,7 +1675,8 @@ export const combatMethods = {
            credit loop simply never received it, which is why no kill quest
            could say WHERE.  The tutorial arc's zone-scoped objectives are
            the first consumer. */
-        this._creditQuestObjective(rid, 'kill', m.arch, zone);
+        /* v2.3.2978: a Wheel monster counts for its home zone (wheelzone.js) */
+        this._creditQuestObjective(rid, 'kill', m.arch, this._rewardZone(zone, m));
         const share = shares[rid] || 0;
         // v2.3.1150: xp_mult live-ops flag -- the "2x weekend" lever.
         // Clamped [1,4] at read; monster_kill's payload.xp stays base
@@ -1704,7 +1717,7 @@ export const combatMethods = {
         // client's legacy roll site (monsterCombat.js "GEM DROP FROM
         // MONSTER KILL", now gated off under caps.gems).  Rides the
         // same _saveRpg + player_state flush as the nugget roll above.
-        if (rid === killerId) this._gemRawOnKill(recipPs, zone);
+        if (rid === killerId) this._gemRawOnKill(recipPs, this._rewardZone(zone, m));   /* v2.3.2978: its home's element */
         this._saveRpg(rid, recipPs);
         const recipWs = this._wsBySessionId(rid);
         if (recipWs) {

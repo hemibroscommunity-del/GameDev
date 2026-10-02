@@ -1339,7 +1339,9 @@ export function setupWebSocket(ctx) {
                      Maps ember fodder -> fireGoblin so the renderer + AI
                      route to the variant sheets without any inline
                      zone/archetype check elsewhere in the codebase. */
-                  applyZoneVariant(local, S.currentZone);
+                  /* v2.3.2978: a Wheel monster wears its HOME zone's skin
+                     (server/src/wheelzone.js); every other one its zone's */
+                  applyZoneVariant(local, local.home || S.currentZone);
                   /* Remember the post-variant archetype so the respawn
                      branch in the tick handler can revert a transformed
                      monster (mummy -> skeleton) back to its spawn form.
@@ -3216,7 +3218,7 @@ export function setupWebSocket(ctx) {
               /* v2.3.2295: see the state_sync copy of this map. */
               _tgPrev: m.tg !== undefined ? m.tg : null,
             });
-            applyZoneVariant(local, S.currentZone);
+            applyZoneVariant(local, local.home || S.currentZone);   /* v2.3.2978: see state_sync */
             /* See state_sync handler -- mirror the same spawn
                archetype stash so respawn can revert a transformed
                monster back to the zone's spawn variant. */

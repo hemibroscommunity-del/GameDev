@@ -1739,6 +1739,47 @@ a page would bring that to about 2.8 MB. That is for the placing round.
     sprite sheets, every frame decoded and compared with the backup's piece,
     anchored at its foot.
 
+## The monsters on the Wheel (v2.3.2978)
+
+Owner, 2026-10-02: "can you place the monsters where they belong in their
+zones (on the ends closest to the central map)?"
+
+The Wheel is a zone of its own on the worker now, `wheel`, and each of today's
+eight element zones brings its own six monsters, unchanged, to the **inner end
+of its own spoke**: the land's first stage (levels 1–5), from about 350 px past
+where the land begins. Snowmen on Frost Ridge, fire goblins on the Flame
+Fields, and so on round the Wheel; 48 in all. They fight, chase, die, drop and
+pay as at home, and a kill counts for the home zone's quests. The commons and
+Brotown are safe ground: no monster goes after anyone there, steps onto it, or
+lands a hit there (one circle round the centre, baked with the places; the
+nearest place stands 184 px outside it).
+
+- **Where**: worked out from the plan by `tools/world/bake-wheel-spawns.mjs`
+  into `server/src/wheelspawns.js` (the worker never builds the plan). Open
+  ground of the land's first stage, clear of water, cliffs, lava, roads, the
+  commons and anything placed there (`placing.js`). A plan or placing change
+  that moves the land must re-bake in the same PR; test-world-core fails
+  until it does, naming the command.
+- **Deploy order**: the client goes into `wheel` only against a worker that
+  advertises `caps.wheelmonsters`; otherwise the trial stays on `worldview`
+  as before. `wheelmonsters: false` in liveflags is the kill switch.
+- **Memory**: all eight lands' monster art loads behind the Wheel's overlay —
+  60 MB decoded — and goes when you leave. The Wheel measured about 240 MB of
+  textures on arrival (town 171), not counting the ground's pieces
+  (16–30 MB). That is at the edge of iPhone Safari's ~250 MB (below); the
+  next step, if a phone struggles, is loading each land's monsters as you walk
+  toward it, which needs the owner's yes (it is the new preloading clause
+  below).
+- **Only the ones near you are drawn, or sent**: a monster far off screen is
+  left undrawn, and the worker tells each player only of the monsters within
+  2,400 px, so the other lands cost nothing a frame and nothing on the wire
+  (from Brotown's square: 4 KB in 10 s, where telling everyone of all 48 was
+  846 KB).
+- **Not yet**: monsters deeper down the spokes (levels 6–80), fishing from the
+  Wheel's water (its own round), resource nodes, PvP, dungeons.
+
+The full design, wire and tests: [specs/wheel-monsters.md](specs/wheel-monsters.md).
+
 ## The town's edge wanders (v2.3.2977)
 
 > Owner, 2026-10-02, with a picture of the town from above: *"The problems
@@ -2414,6 +2455,9 @@ From the feasibility study, in order.
 **Monster art is the memory risk, not the map.**
 - iPhone Safari kills the tab at about 250 MB of textures, and the game sits
   at about 165–185 MB.
+- Measured on the Wheel (v2.3.2978): the eight lands' first-stage monsters are
+  60 MB decoded, all loaded behind the overlay, and the Wheel sits at 241 MB of
+  textures on arrival before its ground pieces.
 - Where two elements meet, both sets of monsters must be loaded. On the
   Wheel that is only at the spokes' bases and on the passes, which have
   their own small two-element sets.

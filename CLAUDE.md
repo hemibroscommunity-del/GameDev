@@ -247,7 +247,34 @@ remnant to migrate server-side, not a mode to preserve.
   slow wobble off the coarse lattice, read where the cell is, kept every
   side a ruler line: TRAPS §125), the country plots the same
   (`PLACE_EDGE`), test-world-core measuring the whole outline: WORLD-MAP-PIPELINE
-  "The town's edge wanders")
+  "The town's edge wanders"; and since v2.3.2978 the Wheel has MONSTERS --
+  the owner: "place the monsters where they belong in their zones (on the
+  ends closest to the central map)" -- the worker's own zone `wheel`
+  (`server/src/wheelzone.js`; in VALID_ZONE_IDS, NOT in ZONES, no zone
+  config, so clamps/scaler/nodes/PvP all skip), each element zone's six
+  built by `_makeZoneMonster` exactly as at home and moved to the inner end
+  of its spoke, its first stage (levels 1-5), every one carrying `home`
+  (skin, element, and `_rewardZone`: shards, drops, quest credit), the
+  commons and town SAFE GROUND (`_wheelSafeAt`, one baked circle: nobody on
+  it targeted or hit, no monster on it chasing -- a 720 px chase leash alone
+  let a goblin ~400 px into the commons), and a 3,600 px ranged cap; where they stand is BAKED from the
+  plan by `tools/world/bake-wheel-spawns.mjs` into
+  `server/src/wheelspawns.js` (generated; test-world-core fails until a plan
+  or placing change re-bakes it); the client enters `wheel` only against
+  `caps.wheelmonsters` (`trialZoneFor`, deploy-order safe; `wheelmonsters:
+  false` the kill switch), `isWorldViewZone` makes `wheel` a hub everywhere
+  `worldview` was, and all eight lands' art (60 MB decoded) loads behind the
+  Wheel's overlay and goes on leaving, the renderer leaving a monster far off
+  screen UNDRAWN in a zone with `homes` (`FAR_MARGIN`; 48 far ones cost the
+  frame what none do) and the worker telling each v2 player in `wheel` only
+  of the monsters within 2,400 px, one coming into reach sent whole (tick.js,
+  `_wheelInterest`: ~85 KB a second of far monsters' moves otherwise) -- the
+  hub exit now CLEARS a server
+  monster list at the flip, the Wheel's 48 having been redrawn in town on
+  freed sheets; the Wheel at 241 MB of textures on arrival is at iPhone
+  Safari's edge, and loading each land's monsters on approach needs the
+  owner's yes: docs/specs/wheel-monsters.md, `wheelzone` suite,
+  `mp-wheelmonsters`)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

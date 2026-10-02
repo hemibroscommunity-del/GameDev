@@ -364,6 +364,11 @@ export async function initPixiRenderer(canvas) {
        coords: screenX = (worldX - camera.x) * scaleX. */
     S._worldScaleX = scaleX;
     S._worldScaleY = scaleY;
+    /* v2.3.2978: ...and the view itself, in world px, so the Wheel's
+       renderer can leave a monster far off it undrawn (entityRenderer,
+       FAR_MARGIN) */
+    S._viewW = viewW;
+    S._viewH = viewH;
     /* v2.3.2262: the in-world TEXT counter-scales against this, so it stays
        readable when the world zooms out (owner).  Published through a setter
        rather than read off S inside entityRenderer, because the plate update

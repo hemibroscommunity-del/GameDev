@@ -48,6 +48,7 @@ import { preloadCapes } from './capeSprites.js'; /* v2.3.2023: cosmetic capes ar
 import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
 import { ZONE_VARIANT_MAP, MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
+import { zoneHomes } from '../data/zones.js'; /* v2.3.2978: the Wheel's eight lands' monsters are its own */
 import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js'; /* v2.3.1534: per-zone recolour; v2.3.2272: and its release */
 import { loadFootprints, freeFootprints } from './footprintSprites.js'; /* v2.3.2654: per-zone ground reaction */
 import { loadNpcSprites, loadZoneDecor, freeZoneDecor, loadTownScenery } from './npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2651: + per-zone decor props */
@@ -140,7 +141,9 @@ export async function preloadZoneAssets(zoneId) {
   /* frost is the only snowman zone — its sprites load here instead of
      globally.  v2.3.2844: the ice-burst impact sheet that used to ride along
      (~2MB) is retired with the plume it drew (effectsRenderer tombstone). */
-  if (zoneId === 'frost') {
+  /* v2.3.2978: ...and the Wheel, where Frost Ridge's snowmen stand too
+     (zones.js zoneHomes) */
+  if (zoneId === 'frost' || (zoneHomes(zoneId) || []).includes('frost')) {
     tasks.push(Promise.resolve(loadSnowmanSprites()).catch(() => {}));
     /* v2.3.2217: the thrown ball's burst — AWAITED (pushed into tasks) rather
        than fire-and-forget, so it is ready before the zone overlay lifts
@@ -200,7 +203,10 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
   for (const key of going) if (!keeping.has(key)) drop.push(key);
   const tasks = [];
   if (drop.length) tasks.push(Promise.resolve(unloadVariantSprites(drop)).catch(() => []));
-  if (fromZoneId === 'frost' && toZoneId !== 'frost') {
+  /* v2.3.2978: the snowman's sheets go with any zone he stands in (the Wheel's
+     frost spoke too), and stay for one he also stands in */
+  const _snowIn = (z) => z === 'frost' || (zoneHomes(z) || []).includes('frost');
+  if (_snowIn(fromZoneId) && !_snowIn(toZoneId)) {
     tasks.push(Promise.resolve(unloadSnowmanSprites()).catch(() => 0));
     /* The ice-burst and snowball-burst strips are frost-only for the same
        reason the snowman is; they were the ~6.5MB frost still kept after the

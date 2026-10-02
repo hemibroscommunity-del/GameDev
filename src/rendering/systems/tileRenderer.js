@@ -7,7 +7,7 @@
  */
 import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Assets } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
-import { ZONES } from '@/data/zones.js';
+import { ZONES, isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: + either name of the World View */
 import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from '@/data/effects.js';
 import { isZoneUnlocked, zoneUnlockQuest, questRoutePoint } from "@/game/questRoute.js"; /* v2.3.1822: a shut door looks shut; v2.3.2121: and the way there is lit */
 import { getTrailStyle } from '@/game/questTrailStyle.js'; /* v2.3.2141: ...in the shape the player chose, or not at all */
@@ -402,7 +402,7 @@ export class TileRenderer {
        its plume pointing south too -- see the flip at the beam draw below. */
     const _dirAt = new Map();
     const _declared = zoneId === 'town' ? TOWN_EXITS
-      : zoneId === 'worldview' ? WORLDVIEW_EXITS : null;
+      : isWorldViewZone(zoneId) ? WORLDVIEW_EXITS : null;
     if (_declared) {
       for (const ex of _declared) {
         /* ═══ v2.3.2095: CLAIM THE BLOCK, WHICHEVER CORNER IT IS ═══
@@ -485,7 +485,7 @@ export class TileRenderer {
           this._exitLabelPos(ex.tx, ex.ty, cols, rows, text, ex.dir),
           { zoneId: ex.zoneId, baseText: text }));
       }
-    } else if (zoneId === 'worldview') {
+    } else if (isWorldViewZone(zoneId)) {
       /* v2.3.1303: worldview trail-heads get destination labels —
          before this the zone fell into the tile-9 branch below and,
          having no tile 9, showed nothing.  Unlike town, whose exits
@@ -591,7 +591,7 @@ export class TileRenderer {
           rotation: 0, soon: true,
         });
       }
-    } else if (zoneId === 'worldview') {
+    } else if (isWorldViewZone(zoneId)) {
       const live = new Set(WORLDVIEW_EXITS.map((e) => e.zoneId));
       for (const m of COMING_SOON_MARKS) {
         if (live.has(m.zoneId)) continue;      // a real portal shipped; never label it

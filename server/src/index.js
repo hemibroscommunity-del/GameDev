@@ -166,6 +166,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 // v2.3.1983: population-scaled spawns -- monsters and gather nodes sized to
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
+import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 
 /* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
@@ -1462,6 +1463,8 @@ export class GameRoom {
   }
 
   _spawnZoneMonsters(zoneId) {
+    /* v2.3.2978: the Wheel is many zones' monsters in one (wheelzone.js) */
+    if (zoneId === WHEEL_ZONE) return this._wheelSpawnMonsters();
     const zone = this._getZoneConfig(zoneId);
     if (!zone || !zone.spawns) return [];
     const monsters = [];
@@ -1626,6 +1629,11 @@ export class GameRoom {
        fixed.  Silent, like a dodge: no monster_attack event, so the client
        draws nothing rather than a "0" it would have to explain. */
     if (this._extractionShielded(targetId, now)) return;
+    /* v2.3.2978: ...and nobody on the Wheel's safe ground, the commons and the
+       town, takes a monster's hit at all -- a swing wound up, or a ball thrown,
+       before you stepped onto it included.  Here for the reason the line above
+       is: one choke point.  Silent, like the harvester shield (wheelzone.js). */
+    if (zoneId === WHEEL_ZONE && targetPs && this._wheelSafeAt(targetPs.x, targetPs.y)) return;
     /* ═══ v2.3.2652: A ROCK IN THE WAY STOPS IT ═══
        Owner: "I would like it if these props could block my and enemy
        attacks."
@@ -2098,7 +2106,9 @@ export class GameRoom {
         const stickyAggroActive = m._aggroOverrideUntil && now < m._aggroOverrideUntil;
         if (stickyAggroActive) {
           const _sticky = playersInZone.find(p => p.id === m._aggroOverrideTarget);
-          const stickyP = (_sticky && _sticky.extracting) ? null : _sticky;
+          /* v2.3.2978: ...nor is anyone on the Wheel's safe ground, the commons
+             and the town (wheelzone.js _wheelSafeAt) */
+          const stickyP = (_sticky && (_sticky.extracting || (zoneId === WHEEL_ZONE && this._wheelSafeAt(_sticky.x, _sticky.y)))) ? null : _sticky;
           if (stickyP) {
             const dxS = stickyP.x - m.x;
             const dyS = stickyP.y - m.y;
@@ -2117,6 +2127,7 @@ export class GameRoom {
                player in the zone is extracting, `nearest` stays null and the
                monster wanders — which is the whole point. */
             if (p.extracting) continue;
+            if (zoneId === WHEEL_ZONE && this._wheelSafeAt(p.x, p.y)) continue;   /* v2.3.2978: safe ground */
             const dx = p.x - m.x;
             const dy = p.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -2199,6 +2210,18 @@ export class GameRoom {
            The 1200 sticky bump is not scaled: it means "whoever shot me,
            from anywhere on screen", and anywhere on screen is still that. */
         const effAggroRange = stickyAggroActive ? 1200 : _archAggro * _dk;
+        /* v2.3.2978: on the Wheel a chase ends WHEEL.CHASE_LEASH from home,
+           shot or not -- an ordinary zone's edge ends one, and the Wheel's
+           commons and town are meant to be safe ground (wheelzone.js).  The
+           monster falls through to the wander branch below, whose leash
+           walks it home. */
+        if (nearest && zoneId === WHEEL_ZONE
+            && (Math.hypot(m.x - m.spawnX, m.y - m.spawnY) > WHEEL.CHASE_LEASH
+              || this._wheelSafeAt(m.x, m.y))) {   /* ...or it has stepped onto the safe ground */
+          nearest = null;
+          m._aggroOverrideTarget = null;
+          m._aggroOverrideUntil = 0;
+        }
         if (nearest && nearestDist < effAggroRange) {
           m.targetId = nearest.id;
           const dxA = nearest.x - m.x;
@@ -3790,7 +3813,11 @@ export class GameRoom {
     /* monster.arch is always the TRUE base archetype (the server runs AI on it
        and only the skin is per-zone), so it is the honest fallback. */
     const skull = this._isRemnantSkullArch(skullSource, monster.arch) ? skullSource : null;
-    const shard = this._rollShardForKill(zone);
+    /* v2.3.2978: a Wheel monster's shard and weapon are its home zone's --
+       'shard_wheel' is not an item (wheelzone.js _rewardZone).  The pile
+       itself still lies where it died, in `zone`. */
+    const rewardZone = this._rewardZone(zone, monster);
+    const shard = this._rollShardForKill(rewardZone);
     // v2.3.1141: weapon rides the pile; only rolled when someone can
     // actually claim it (the claim is recipient-gated below).
     // v2.3.1150: disable_weapon_drops kill switch -- caps.weaponDrops
@@ -3819,7 +3846,7 @@ export class GameRoom {
        be a hole in the lever rather than a new feature. */
     const ironWeapon = wpnDropsOn ? this._rollIronWeaponForKill() : null;
     const weapon = ironWeapon
-      || (wpnDropsOn ? this._rollWeaponDropForKill(zone, monster) : null);
+      || (wpnDropsOn ? this._rollWeaponDropForKill(rewardZone, monster) : null);
     /* v2.3.1924: both gated on there being someone who could claim them, the
        same condition the weapon roll uses — rolling loot for an empty
        recipient list mints an item nobody can ever pick up and then counts it
@@ -5742,3 +5769,4 @@ Object.assign(GameRoom.prototype, burstMethods); /* v2.3.1734 */
 Object.assign(GameRoom.prototype, arrowBlastMethods); /* v2.3.2279 */
 // v2.3.1983: population-scaled spawns -- see spawnscale.js.
 Object.assign(GameRoom.prototype, spawnScaleMethods);
+Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */

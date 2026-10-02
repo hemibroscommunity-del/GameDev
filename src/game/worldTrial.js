@@ -58,6 +58,11 @@ import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOve
 import { setAlwaysDay } from './timeOfDay.js';
 
 export const WORLD_TRIAL_ZONE = 'worldview';
+/* v2.3.2978: the Wheel's own zone, where the server stands each element
+   zone's monsters at the inner end of its spoke (server/src/wheelzone.js).
+   The trial enters it only against a worker that says it runs them
+   (trialZoneFor); otherwise it rides WORLD_TRIAL_ZONE as before. */
+export const WHEEL_ZONE = 'wheel';
 export const WORLD_TRIAL_BASE = '/maps/world-trial-v1/';
 const FLAG_KEY = 'bt-world-trial';
 const TILE = 32;
@@ -103,7 +108,19 @@ export const worldTrialStats = {
 
 export function worldTrialOn() { return _on; }
 export function worldTrialMode() { return _mode; }
-export function isWorldTrialZone(zoneId) { return _on && zoneId === WORLD_TRIAL_ZONE; }
+export function isWorldTrialZone(zoneId) { return _on && (zoneId === WORLD_TRIAL_ZONE || (_mode === 'wheel' && zoneId === WHEEL_ZONE)); }
+/* v2.3.2978: the zone town's World View exit really leads to.  In the Wheel
+   trial, against a worker that runs the Wheel's monsters (caps.wheelmonsters),
+   the Wheel's own zone; anywhere else -- and against an older worker, which
+   would refuse 'wheel' and freeze the player at town's door -- 'worldview' as
+   before (deploy-order safety, rule 19).  zoneTransitions.js asks it as the
+   exit is taken; nothing else needs to. */
+export function trialZoneFor(zoneId, S) {
+  if (!_on || _mode !== 'wheel' || zoneId !== WORLD_TRIAL_ZONE) return zoneId;
+  /* read as `_serverCaps.wheelmonsters` in one piece: server/test/caps-audit
+     finds a flag's client gate by that text */
+  return S && S._serverCaps && S._serverCaps.wheelmonsters === true ? WHEEL_ZONE : zoneId;
+}
 export function isWheelTrialZone(zoneId) { return _mode === 'wheel' && isWorldTrialZone(zoneId); }
 export function worldTrialReady() { return _ready; }
 /* Leaving frees every piece (chunkGround.destroy), so the next way in has to
@@ -334,7 +351,7 @@ let _hud = null;
 let _hudAt = 0;
 export function syncWorldTrial(S) {
   if (!_on || !S) return;
-  const inTrial = S.currentZone === WORLD_TRIAL_ZONE;
+  const inTrial = isWorldTrialZone(S.currentZone);
   const now = performance.now();
   if (_mode === 'wheel') {
     syncWheel(S, inTrial, now);
@@ -350,12 +367,17 @@ export function syncWorldTrial(S) {
 /* The Wheel's walk grid, and its worker's life: kept while you are in the
    Wheel or walking into it, stopped WHEEL_LINGER_MS after you leave. */
 function syncWheel(S, inTrial, now) {
-  const coming = S._zoneLoading && S._zoneLoading.toZone === WORLD_TRIAL_ZONE;
+  const coming = S._zoneLoading && isWorldTrialZone(S._zoneLoading.toZone);
   const grid = wheelWalkGrid();
   S._tiledWalkable = S._tiledWalkable || {};
   /* set whenever there is one, not only once inside: the way in reads it on
-     its first frame (nudgeSpawnToWalkable), before this runs again */
-  if (grid && S._tiledWalkable[WORLD_TRIAL_ZONE] !== grid) S._tiledWalkable[WORLD_TRIAL_ZONE] = grid;
+     its first frame (nudgeSpawnToWalkable), before this runs again.
+     v2.3.2978: under both of the Wheel's names -- the way in is decided as
+     the exit is taken (trialZoneFor), after this has run */
+  if (grid) {
+    if (S._tiledWalkable[WORLD_TRIAL_ZONE] !== grid) S._tiledWalkable[WORLD_TRIAL_ZONE] = grid;
+    if (S._tiledWalkable[WHEEL_ZONE] !== grid) S._tiledWalkable[WHEEL_ZONE] = grid;
+  }
   /* v2.3.2963: daylight only in the Wheel, for now (timeOfDay.js setAlwaysDay) */
   setAlwaysDay(inTrial || coming);
   if (inTrial || coming) { _wheelAwayAt = 0; return; }
@@ -369,6 +391,7 @@ function syncWheel(S, inTrial, now) {
   _lastSurface = null;
   _ready = false;
   if (S._tiledWalkable[WORLD_TRIAL_ZONE] === grid) delete S._tiledWalkable[WORLD_TRIAL_ZONE];
+  if (S._tiledWalkable[WHEEL_ZONE] === grid) delete S._tiledWalkable[WHEEL_ZONE];
 }
 
 function drawHud(show, S) {
@@ -407,7 +430,7 @@ function wheelHud(S) {
   const avg = s.loads ? Math.round(s.sumMs / s.loads) : 0;
   const mb = (s.resident * s.pieceBytes / 1048576).toFixed(0);
   const P = S && S.player;
-  const here = P && S.currentZone === WORLD_TRIAL_ZONE ? wheelHere(P.x, P.y) : null;
+  const here = P && isWorldTrialZone(S.currentZone) ? wheelHere(P.x, P.y) : null;
   let mine = 0, game = 0;
   const made = wheelMade() || {};
   for (const id of Object.keys(made)) { if (made[id] === 'studio') mine++; else game++; }

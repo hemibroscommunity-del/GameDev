@@ -23,6 +23,7 @@
 import { QUEST_CHAINS, QUEST_STATUS } from '@/data/gameSystems.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
+import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel' */
 
 /* v2.3.1906: where the quest givers stand.  Every live NPC is spawned by
    BroTown's _spawnTownNpcs, which is town-only, so a finished objective always
@@ -112,7 +113,7 @@ export function questRouteExits(currentZone, rpg, S) {
 
   /* v2.3.2128: "out there, anywhere". */
   if (target === ANY_FIELD_ZONE) {
-    if (currentZone === 'worldview') {
+    if (isWorldViewZone(currentZone)) {
       /* Every live spoke EXCEPT the one back to town — that is the way home,
          not a place to fish — and only the ones you can actually walk into.
          A locked spoke is painted shut (tileRenderer, v2.3.1822) and starring
@@ -151,7 +152,7 @@ export function questRouteExits(currentZone, rpg, S) {
 function _routeOne(currentZone, target, S, at) {
   if (currentZone === target) return null;          /* you are there — hunt, don't travel */
 
-  if (currentZone === 'worldview') {
+  if (isWorldViewZone(currentZone)) {
     /* The hub: the spoke itself is here, so point straight at it.  A target
        whose spoke is CLOSED (the four unfinished ones are commented out of
        WORLDVIEW_EXITS) finds nothing and stars nothing, rather than marking
@@ -182,7 +183,7 @@ function _routeOne(currentZone, target, S, at) {
      Ridge holding four snowmen, the next step is the Mayor, and "deliberately
      nothing" left the one screen where you actually need directions blank. */
   const home = _nearestReturnTile(S);
-  return home ? { x: home.x, y: home.y, zoneId: (S && S._enteredFromHub === 'worldview') ? 'worldview' : 'town' } : null;
+  return home ? { x: home.x, y: home.y, zoneId: (S && isWorldViewZone(S._enteredFromHub)) ? S._enteredFromHub : 'town' } : null;
 }
 
 /** The FIRST exit worth starring, or null.  Kept because "where is the quest
