@@ -258,6 +258,52 @@ function inTown(dx, dy, T, sh, wob) {
   return false;
 }
 
+/* v2.3.2977: how far an edge is pushed out (+) or in (-) where it stands,
+   art px: `amp` either way over `wave` art px, `amp2` over `wave2` and
+   `amp3` over `wave3` on top -- bays, then coves, then bumps.
+   The owner, of the town's yards meeting the grass: "the lines between dirt
+   and grass are razor straight" -- the town's rectangles were grown by noise
+   that changed over 480 art px and was read off the coarse lattice, 128 art
+   px apart and joined by straight lines, so each side stayed a ruler line a
+   few px either way.  Read here for every cell near an edge, never from the
+   lattice.  Each change is about 1 px a px along the edge at the very most
+   (half that as a rule), so an edge wanders in bays and coves and seldom
+   folds back on itself; where it does, it leaves a tuft of grass. */
+export const TOWN_EDGE = { amp: 60, wave: 300, amp2: 30, wave2: 110, amp3: 12, wave3: 45 };
+/* ...the plots out in the country, smaller, the same way (plan.places) */
+export const PLACE_EDGE = { amp: 18, wave: 140, amp2: 9, wave2: 55, amp3: 4, wave3: 24 };
+export function edgeWobble(E, nseed, ax, ay) {
+  let w = E.amp * valueNoise(ax / E.wave, ay / E.wave, nseed | 0);
+  if (E.amp2) w += E.amp2 * valueNoise(ax / E.wave2, ay / E.wave2, (nseed + 7) | 0);
+  if (E.amp3) w += E.amp3 * valueNoise(ax / E.wave3, ay / E.wave3, (nseed + 13) | 0);
+  return w;
+}
+const edgeReach = (E) => E.amp + (E.amp2 || 0) + (E.amp3 || 0);
+/* Is (dx, dy) -- art px from (ox, oy) -- inside the rectangle `r` once its
+   edge has wandered (E)?  The wobble is read at the NEAREST POINT OF THE
+   EDGE, not where the cell is: read where the cell is, the edge sat where
+   the cell's distance matched the noise there, and where the noise climbed
+   steeply away from the edge that pinned it in one column for 400 game px
+   (the town's north-west corner, the first try of v2.3.2977).  Read on the
+   edge, it moves exactly as far as the noise says, everywhere. */
+function inWobblyRect(dx, dy, r, E, nseed, ox, oy, reach) {
+  const ix = Math.min(Math.max(dx, r.x0), r.x1), iy = Math.min(Math.max(dy, r.y0), r.y1);
+  let d, px, py;
+  if (ix !== dx || iy !== dy) {
+    /* outside: how far, and the nearest point of the rectangle */
+    d = -Math.hypot(dx - ix, dy - iy);
+    if (d < -reach) return false;
+    px = ix; py = iy;
+  } else {
+    /* inside: how far in from the nearest side, and the point on it */
+    const l = dx - r.x0, rt = r.x1 - dx, t = dy - r.y0, b = r.y1 - dy, m = Math.min(l, rt, t, b);
+    if (m > reach) return true;
+    d = m;
+    if (m === l) { px = r.x0; py = dy; } else if (m === rt) { px = r.x1; py = dy; } else if (m === t) { px = dx; py = r.y0; } else { px = dx; py = r.y1; }
+  }
+  return d + edgeWobble(E, nseed, ox + px, oy + py) >= 0;
+}
+
 /* The town's plots, in art px from the world centre (townPlan).  Also used
    by the World Bible's lot table. */
 export function townLots(T) {
@@ -301,7 +347,7 @@ export function buildBlueprint(plan) {
   const warpX = field((gx, gy) => fbm(sqx(gx) * warp.freq, sqy(gy) * warp.freq, seed + 23, 3));
   const warpY = field((gx, gy) => fbm(sqx(gx) * warp.freq + 17.3, sqy(gy) * warp.freq + 5.1, seed + 37, 3));
   const ringN = field((gx, gy) => fbm(sqx(gx) * cmn.freq, sqy(gy) * cmn.freq, seed + 41, 3));
-  const townN = field((gx, gy) => fbm(sqx(gx) * 1.6, sqy(gy) * 1.6, seed + 53, 2));
+  /* (v2.3.2977: the town's edge, read per cell near it: edgeWobble) */
   const tierN = field((gx, gy) => fbm(sqx(gx) * tw.freq, sqy(gy) * tw.freq, seed + 61, 2));
 
   const spokes = W.spokes.map((sp) => ({ ...sp, rid: R[sp.id] }));
@@ -309,6 +355,15 @@ export function buildBlueprint(plan) {
   for (const [pa, pb] of W.pairs) for (const t of plan.wheel.passes) passes.push({ a: pa, b: pb, r: W.tierMid(t), half: (plan.wheel.passZones * W.Z) / 2 });
   const T = plan.town || null;
   const TS = T ? townShape(T) : null;
+  const TE = T ? { ...TOWN_EDGE, ...(T.edge || {}) } : null;
+  /* the town's rectangles, grown by the most its edge can wander: only a
+     cell inside this asks edgeWobble */
+  const townReach = TE ? edgeReach(TE) : 0;
+  const townBox = TS ? (() => {
+    const m = townReach + S;
+    return { x0: Math.min(...TS.rects.map((r) => r.x0)) - m, x1: Math.max(...TS.rects.map((r) => r.x1)) + m,
+      y0: Math.min(...TS.rects.map((r) => r.y0)) - m, y1: Math.max(...TS.rects.map((r) => r.y1)) + m };
+  })() : null;
   const commonsId = R.commons;
 
   /* ── pass 1: sea, anchors, the town, the commons, the spokes and passes,
@@ -347,7 +402,10 @@ export function buildBlueprint(plan) {
         if (ax >= an.core.x0 && ax < an.core.x1 && ay >= an.core.y0 && ay < an.core.y1) { inAnchor = true; break; }
       }
       if (inAnchor) { cls[i] = C.anchor; reg[i] = townId != null ? townId : best; continue; }
-      if (T && townId != null && inTown(ax - g.cx, ay - g.cy, T, TS, T.wobble * townN(gx, gy))) { reg[i] = townId; continue; }
+      if (T && townId != null) {
+        const tx = ax - g.cx, ty = ay - g.cy;
+        if (tx >= townBox.x0 && tx <= townBox.x1 && ty >= townBox.y0 && ty <= townBox.y1 && TS.rects.some((r) => inWobblyRect(tx, ty, r, TE, seed + 53, g.cx, g.cy, townReach))) { reg[i] = townId; continue; }
+      }
       if (inCommons && commonsId != null) { reg[i] = commonsId; continue; }
       reg[i] = best;
       const t = Math.max(1, tierAt(W, r + tw.amount * tierN(gx, gy)));
@@ -393,6 +451,21 @@ export function buildBlueprint(plan) {
       let d = Infinity;
       for (let s = 0; s < pts.length - 1; s++) d = Math.min(d, segDist(x + 0.5, y + 0.5, pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1]));
       if (d / r + 0.3 * valueNoise((gx0 + x) * 0.14, (gy0 + y) * 0.14, nseed) < 1) cls[i] = k;
+    }
+  }
+  /* v2.3.2977: a rectangle whose sides wander (`E` as TOWN_EDGE): a cell is
+     in when it is inside the rectangle grown, or shrunk, by edgeWobble where
+     it stands */
+  function stampRectEdge(rx0, ry0, rx1, ry1, k, can, rid, E, nseed) {
+    const reach = edgeReach(E), m = reach + S, r = { x0: rx0, y0: ry0, x1: rx1, y1: ry1 };
+    const xa = Math.max(0, Math.floor(cellX(g.cx + rx0 - m) - 1)), xb = Math.min(bw - 1, Math.ceil(cellX(g.cx + rx1 + m) + 1));
+    const ya = Math.max(0, Math.floor(cellY(g.cy + ry0 - m) - 1)), yb = Math.min(bh - 1, Math.ceil(cellY(g.cy + ry1 + m) + 1));
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      if (!inWobblyRect(artX(x) - g.cx, artY(y) - g.cy, r, E, nseed, g.cx, g.cy, reach)) continue;
+      const i = y * bw + x;
+      if (!can(cls[i], i)) continue;
+      cls[i] = k;
+      if (rid != null) reg[i] = rid;
     }
   }
   /* art-px rectangle relative to the world centre, by cell centres */
@@ -651,7 +724,8 @@ export function buildBlueprint(plan) {
       box = { x0: px - pl.r, y0: py - pl.r, x1: px + pl.r, y1: py + pl.r };
     } else {
       const w = pl.size[0], h = pl.size[1];
-      stampRect(px - g.cx - w / 2, py - g.cy - h / 2, px - g.cx + w / 2, py - g.cy + h / 2, C.lot, can, null);
+      /* v2.3.2977: its sides wander, as the town's edge does */
+      stampRectEdge(px - g.cx - w / 2, py - g.cy - h / 2, px - g.cx + w / 2, py - g.cy + h / 2, C.lot, can, null, PLACE_EDGE, strSeed(pl.id) + 71);
       box = { x0: px - w / 2, y0: py - h / 2, x1: px + w / 2, y1: py + h / 2 };
     }
     lots.push({ id: pl.id, name: pl.name, round: !!pl.r, ...box, town: false });

@@ -758,6 +758,61 @@ console.log('ground');
     ok(`...and nowhere in the town does an edge run straight for long, where three grounds meet included (the longest straight stretch: ${Object.entries(longest).map(([n, v]) => `${n} ${v}`).join(', ')} game px)`,
       Object.values(longest).every((v) => v <= 18), longest);
   }
+  /* v2.3.2977, the owner, of the town's yards on the grass: "the lines
+     between dirt and grass are razor straight".  The test above looks round
+     the square, a pixel at a time, and a line that wiggles a few px but runs
+     on for 500 game px passes it.  So, on the plan, round the WHOLE town:
+     how much of its edge on the grass runs straight along a row or a column
+     for 8 cells (192 game px) or more, and the longest (before: 82% of it,
+     the longest 552 game px; the town's rectangles grown by a slow wobble). */
+  {
+    const ri = Object.create(null);
+    bp.regionIds.forEach((k, i) => { ri[k] = i; });
+    const BW = bp.w, BH = bp.h, cellG = bp.scale * PLAN.worldPxPerArtPx;
+    const town = (i) => bp.reg[i] === ri.town;
+    const grass = (i) => bp.reg[i] === ri.commons && bp.cls[i] !== C.ocean && bp.cls[i] !== C.river;
+    let longest = 0, edgeN = 0, inLong = 0;
+    for (const [dx, ox, oy] of [[1, 0, -1], [1, 0, 1], [0, -1, 0], [0, 1, 0]]) {
+      const lines = dx ? BH : BW, len = dx ? BW : BH;
+      for (let a = 1; a < lines - 1; a++) {
+        let run = 0;
+        for (let b = 1; b < len; b++) {
+          const x = dx ? b : a, y = dx ? a : b, i = y * BW + x;
+          if (b < len - 1 && town(i) && grass((y + oy) * BW + x + ox)) { run++; edgeN++; } else { if (run >= 8) inLong += run; longest = Math.max(longest, run); run = 0; }
+        }
+      }
+    }
+    /* ...and still one town: no yard cut off out in the grass */
+    const seen = new Uint8Array(BW * BH);
+    let parts = 0;
+    for (let s0 = 0; s0 < BW * BH; s0++) {
+      if (seen[s0] || !town(s0)) continue;
+      parts++;
+      const st = [s0];
+      seen[s0] = 1;
+      while (st.length) {
+        const i = st.pop(), x = i % BW;
+        for (const j of [x > 0 ? i - 1 : -1, x < BW - 1 ? i + 1 : -1, i - BW, i + BW]) if (j >= 0 && j < BW * BH && !seen[j] && town(j)) { seen[j] = 1; st.push(j); }
+      }
+    }
+    ok(`the town's edge on the grass wanders: ${Math.round((100 * inLong) / edgeN)}% of it runs straight for 192 game px or more, the longest ${longest * cellG} game px, and the town is one piece (was 82%, 552)`,
+      edgeN > 300 && inLong / edgeN <= 0.3 && longest * cellG <= 400 && parts === 1, { edgeN, inLong, longest, parts });
+    /* the plots out in the country too: none a rectangle any more */
+    const notRect = [];
+    for (const l of bp.lots.filter((q) => !q.town && !q.round)) {
+      const widths = new Set();
+      const x0 = Math.floor((l.x0 - 80 - bp.x0) / bp.scale), x1 = Math.ceil((l.x1 + 80 - bp.x0) / bp.scale);
+      const y0 = Math.floor((l.y0 - 80 - bp.y0) / bp.scale), y1 = Math.ceil((l.y1 + 80 - bp.y0) / bp.scale);
+      for (let y = y0; y <= y1; y++) {
+        let w = 0;
+        for (let x = x0; x <= x1; x++) if (bp.cls[y * BW + x] === C.lot) w++;
+        if (w) widths.add(w);
+      }
+      notRect.push([l.id, widths.size]);
+    }
+    ok(`...and so do the plots out in the country, never a rectangle: ${notRect.map(([id, n]) => `${id} ${n} widths`).join(', ')} across its rows`,
+      notRect.length >= 2 && notRect.every(([, n]) => n >= 3), notRect);
+  }
   ok("...each pair with its own edge: a road's narrow, sand drifting wider than grass; two of a kind interlock evenly",
     rc('ember-3', 'road').ragged < rc('commons', 'road').ragged && rc('commons', 'road').ragged < rc('sky-2', 'road').ragged &&
     rc('commons', 'road').reach > 0 && rc('verdant-1', 'commons').even && rc('verdant-1', 'commons').reach === 0);

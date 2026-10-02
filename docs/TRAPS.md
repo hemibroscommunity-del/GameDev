@@ -4983,3 +4983,40 @@ match each other exactly.
 how much of it the top three take. `tools/world/test-world-core.mjs`
 ("own colours") makes a grass picture with eleven other grounds and checks
 the grass keeps at least three times the colours on its own.
+
+## 125. An edge nudged by slow noise is still a ruler line, and a pixel test won't see it (v2.3.2977)
+
+**Tempting:** draw a shape out of rectangles (Brotown's yards) and make its
+edge "ragged" by growing every rectangle by some noise. Check it with a test
+that looks for straight runs of edge pixels.
+
+**Wrong** three ways, all found on the owner's screenshot of the town: *"the
+lines between dirt and grass are razor straight."*
+- **The noise was too slow.** It changed over 480 art px and was 35 art px
+  at most, so each side of the town moved a little but stayed straight.
+- **It was read off a coarse lattice.** Points 128 art px apart, joined by
+  straight lines, make a ruler edge out of any noise.
+- **It was read where the cell is.** The edge sits where a cell's distance
+  from the rectangle equals the noise at that cell. Where the noise climbs
+  steeply away from the edge, the two keep pace and the edge stays pinned
+  in one column, here for 400 game px.
+
+The pixel test passed throughout. The ground compositor's ragged edge breaks
+every pixel run within a few px, however straight the line underneath runs.
+
+**The fix** (`edgeWobble`, `inWobblyRect` in `core/layout.js`; plan.js
+`town.edge`):
+- three octaves, of bays, coves and bumps (300, 110 and 45 art px);
+- read for every cell near the edge, never from a lattice;
+- read at the **nearest point of the edge**, so the edge moves exactly as
+  far as the noise says.
+
+The country plots (`places`) get the same treatment, smaller.
+
+**How to see it:** measure on the plan, not the pixels.
+`tools/world/test-world-core.mjs` ("the town's edge on the grass wanders")
+counts how much of the town's edge runs straight along a row or column for
+192 game px or more (82% before, 18% after), checks the longest stretch
+(552 before, 336 after), and checks the town is still one piece. Draw it the
+way the game does (`composeGround` at scale 3), not with the one-third-scale
+preview tool, before judging an edge by eye.

@@ -1739,6 +1739,50 @@ a page would bring that to about 2.8 MB. That is for the placing round.
     sprite sheets, every frame decoded and compared with the backup's piece,
     anchored at its foot.
 
+## The town's edge wanders (v2.3.2977)
+
+> Owner, 2026-10-02, with a picture of the town from above: *"The problems
+> seen in this screenshot is that the lines between dirt and grass are razor
+> straight."*
+
+Brotown's yards are drawn from rectangles: the square, the four arms round
+their plots, and the strips beside the streets out to the gates
+(`townShape`). Each rectangle was grown by a wobble of at most 35 art px,
+and that wobble changed over 480 art px. Each side of the town moved a
+little, but stayed a ruler line, hundreds of game px long, wherever the
+yards met the grass. The game drew it that way too; the preview tool was not
+the cause.
+
+Now each edge wanders in three sizes at once (plan.js `town.edge`):
+
+| | either way | over |
+|---|---|---|
+| bays | 60 art px (90 game px) | 300 art px |
+| coves | 30 | 110 |
+| bumps | 12 | 45 |
+
+- **Read per cell, near the edge only** (`edgeWobble`), never from the
+  coarse lattice, whose points 128 art px apart are joined by straight lines.
+- **Read at the nearest point of the edge** (`inWobblyRect`), not where the
+  cell is. Read where the cell is, the edge got pinned in one column for 400
+  game px where the noise climbed steeply away from it.
+- **Still one town.** The edge never breaks off a yard out in the grass.
+- **The plots out in the country** (the Old Mill, the Rail Depot) are
+  irregular clearings now, not dirt rectangles (`PLACE_EDGE`). The Arena
+  stays round.
+
+**Measured** on the plan, round the whole town: before, 82% of the town's
+edge on the grass ran straight along a row or column for 192 game px or
+more, the longest 552. Now 18%, the longest 336.
+
+**Tested:**
+- `test-world-core`, 198 checks, two of them new: the town's edge (share of
+  straight runs, longest run, one piece) and the country plots (never a
+  rectangle). The old pixel test missed this because the ragged edge breaks
+  every pixel run (TRAPS §125).
+- `world-page` (38), `ground-studio` (70), `wheelsteps` (11) and
+  `wheelobjects` (12) all pass.
+
 ## The objects in the game (v2.3.2975)
 
 > Owner, 2026-10-02, with a zip of every object but the Town Hall: *"Wire

@@ -240,7 +240,14 @@ remnant to migrate server-side, not a mode to preserve.
   having had it (the studio packs only finished objects) -- their picture put
   through the studio's own steps in a browser and merged by
   repack-objects.mjs as `buildings-17`: all 17 buildings, 76 objects, 41
-  pages, 5.3 MB)
+  pages, 5.3 MB; and since v2.3.2977 the TOWN'S EDGE on the grass wanders
+  in bays and coves -- the owner: "the lines between dirt and grass are
+  razor straight" -- `edgeWobble`/`inWobblyRect` in layout.js, plan.js
+  `town.edge`, the noise read per cell at the NEAREST POINT OF THE EDGE (a
+  slow wobble off the coarse lattice, read where the cell is, kept every
+  side a ruler line: TRAPS §125), the country plots the same
+  (`PLACE_EDGE`), test-world-core measuring the whole outline: WORLD-MAP-PIPELINE
+  "The town's edge wanders")
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

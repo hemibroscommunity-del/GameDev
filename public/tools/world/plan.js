@@ -263,7 +263,15 @@ export const PLAN = {
     lot: { w: 270, d: 150, tall: 310, walk: 60, gap: 34, verge: 14, porch: 8, perSide: 2 },
     yard: 78,          /* town ground kept behind the plots */
     gate: 1050,        /* where the streets leave town and become roads (v2.3.2975: was 867) */
-    wobble: 35,        /* how ragged the town's edge is */
+    /* v2.3.2977: how the town's edge wanders, in art px -- `amp` either way
+       over `wave`, and smaller `amp2` over `wave2` and `amp3` over `wave3`
+       on top: bays, coves and bumps.  The owner, of
+       the yards' edge on the grass: "the lines between dirt and grass are
+       razor straight".  It was `wobble: 35`, the town's rectangles grown by
+       noise that changed over 480 art px and was sampled every 128, so each
+       side stayed a ruler line a few px either way.  (core/layout.js
+       townEdgeAt; the same for the plots out in the country, `places`.) */
+    edge: { amp: 60, wave: 300, amp2: 30, wave2: 110, amp3: 12, wave3: 45 },
     hallLot: { id: 'townhall', name: 'Town Hall', today: 'mayor (NPC)' },
     lots: {
       north: {
