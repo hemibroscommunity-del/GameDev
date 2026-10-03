@@ -2332,8 +2332,8 @@ export function updateSlimeProjectiles(S) {
               var _thrX = _thr ? _thr.x : P.x - Math.cos(proj.ang) * 50;
               var _thrY = _thr ? _thr.y : P.y - Math.sin(proj.ang) * 50;
               proj._shotShield = !!(S._shieldUp && isAttackInShieldArc(S, _thrX, _thrY));
-              queueSnowballBurst(S, proj);
-              return false;
+              /* one line: mirror-audit counts the flight's endings by it */
+              queueSnowballBurst(S, proj); return false;
             }
             if (_pInvuln) return false;
             /* Shield blocks slime projectiles outright — no damage,
