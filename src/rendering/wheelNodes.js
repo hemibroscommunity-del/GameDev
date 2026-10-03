@@ -85,14 +85,17 @@ const FISH_LOOK = {
 const lookFor = (lvl) => FISH_LOOK[lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1];
 
 /* Where the fish swim, from the spot's anchor (where the line lands).  The
-   bake guarantees water in a block round the spot -- three cells west of it to
-   one east, two up and down (bake-wheel-spawns.mjs SPOT_SIDE): x-84..x+36 by
-   y-60..y+60 -- and the shore past it, under the angler.  So the school's
-   circle, centred a little west of the line, stays inside the block nose and
-   tail: x-18 +/- 32 and a fish's half-length is x-63..x+27, y +/- 20 and it
-   is y-33..y+33. */
-const SWIM_DX = -18;
-const SWIM_RX = 32, SWIM_RY = 20;
+   bake guarantees water in a block west of the spot -- three cells west of it
+   to its own, one up and down (bake-wheel-spawns.mjs SPOT_SIDE): x-84..x+12 by
+   y-36..y+36 -- and the shore east of it, under the angler.  So the school's
+   circle, centred just west of the line, stays inside the block nose and
+   tail: x-30 +/- 26 and a fish's half-length (a trout's 12.5) is
+   x-69..x+9, y +/- 18 and it is y-31..y+31.
+   v2.3.3007: was x-18 +/- 32 by +/- 20, inside the first bake's bigger 5 x 5
+   block, which only a perfectly straight shore had (the owner: "Make all 8
+   have fishing spots"). */
+const SWIM_DX = -30;
+const SWIM_RX = 26, SWIM_RY = 18;
 
 /* a stable 0..1 from a few numbers, so a spot's fish are the same every visit */
 function hash01(a, b, c) {

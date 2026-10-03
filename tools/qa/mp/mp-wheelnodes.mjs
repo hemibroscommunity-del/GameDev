@@ -30,7 +30,12 @@
  *   7. walking up to town drops the Wheel's nodes at the flip, not when town's
  *      snapshot comes in;
  *   8. no page errors.
- * Pictures: tools/qa/mp/out/wheelnodes-{fish,iron}.png.
+ * And, v2.3.3007's follow-ups (owner: "Make the black steel black.  Show
+ * nodes on minimap."): the minimap marks every live resource in its reach
+ * once the tools are in the bag (and none before), and a black steel blade is
+ * drawn in the Black Steel metal.
+ * Pictures: tools/qa/mp/out/wheelnodes-{fish,fish-close,minimap,blacksteel,
+ * iron,iron-close}.png.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -38,8 +43,13 @@ import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 /* where the body's centre stands to work each kind (mp-gatherhits' STAND):
-   east of a pond, north of a vein */
-const STAND = { oreVein: [0, -70], tree: [0, -130], fishSpot: [50, -40] };
+   north of a vein, and the angler's own seat for a fishing spot
+   (FISH_SEAT_DX/DY, 52/-43).  Not mp-gatherhits' (50, -40): 3 px lower puts
+   the boots on the line to the cell below the seat, which the bake does not
+   promise is dry, and the walk test answers "open" everywhere while you stand
+   in something solid (so you can walk out) -- the water check read nothing
+   but dry land from there. */
+const STAND = { oreVein: [0, -70], tree: [0, -130], fishSpot: [52, -43] };
 const SKILL = { oreVein: 'mining', tree: 'woodcutting', fishSpot: 'fishing' };
 const RES = { oreVein: 'ore_', tree: 'wood_', fishSpot: 'fish_' };
 
@@ -79,8 +89,9 @@ async function body({ P, wsPort, rec, OUT, errors }) {
   /* ── 1. no tools, nothing drawn ── */
   await P.page.waitForTimeout(800);
   const bare = await P.page.evaluate(() => ({ wn: window.__btWheelNodes || null, fish: (window.__btWheelFish || []).length,
+    mini: window.__btMinimap ? window.__btMinimap.nodes : null,
     tools: ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe'].filter((k) => ((window._gameState.current.rpg || {}).inventory || {})[k] > 0) }));
-  rec.ok('with no tools in the bag, no node of the Wheel\'s is drawn', bare.tools.length === 0 && !!bare.wn && bare.wn.total > 100 && bare.wn.drawn === 0 && bare.fish === 0, bare);
+  rec.ok('with no tools in the bag, no node of the Wheel\'s is drawn -- nor marked on the minimap', bare.tools.length === 0 && !!bare.wn && bare.wn.total > 100 && bare.wn.drawn === 0 && bare.fish === 0 && bare.mini === 0, bare);
 
   /* ── the tools, the way a player gets them: life_1 hands you the axe and
      the pole; the pickaxe is life_1's REWARD, so it is granted.  life_1 ALONE
@@ -135,8 +146,8 @@ async function body({ P, wsPort, rec, OUT, errors }) {
        52 px below (mp-wheelshore) -- so ask about a ground point g with g-52 */
     const at = (gx, gy) => window.__btIsSolid(gx, gy - 52);
     /* the school's circle and a fish's half-length round it (wheelNodes.js
-       SWIM_*): x-18 +/- 45, y +/- 33 */
-    const swim = [[-18, 0], [-63, 0], [27, 0], [-18, -33], [-18, 33], [-50, -20], [-50, 20], [10, -20], [10, 20]];
+       SWIM_*): x-30 +/- 39, y +/- 31 */
+    const swim = [[-30, 0], [-69, 0], [9, 0], [-30, -31], [-30, 31], [-55, -16], [-55, 16], [-5, -16], [-5, 16]];
     return {
       spot: at(x, y),
       swim: swim.map(([dx, dy]) => at(x + dx, y + dy)),
@@ -156,14 +167,62 @@ async function body({ P, wsPort, rec, OUT, errors }) {
   }, spot);
   await P.page.screenshot({ path: join(OUT, 'wheelnodes-fish-close.png'), clip }).catch(() => {});
 
+  /* ── v2.3.3007: the resources on the minimap (owner: "Show nodes on minimap") ── */
+  const mini = await P.page.evaluate(() => {
+    const S = window._gameState.current, M = window.__btMinimap, P = S.player;
+    const reach = (M && M.window ? M.window : 3200) * 0.6;
+    const want = (S.gatherNodes || []).filter((n) => n.alive && Math.abs(n.x - P.x) <= reach && Math.abs(n.y - P.y) <= reach).length;
+    return { marked: M ? M.nodes : null, want, rect: window.__btWheelMini || null };
+  });
+  rec.ok(`the minimap marks the resources round you (${mini.marked} of the ${mini.want} in its reach)`, mini.marked > 0 && mini.marked === mini.want, mini);
+  if (mini.rect) await P.page.screenshot({ path: join(OUT, 'wheelnodes-minimap.png'), clip: { x: mini.rect.left - 4, y: mini.rect.top - 4, width: mini.rect.w + 8, height: mini.rect.h + 44 } }).catch(() => {});
+
+  /* ── v2.3.3007: black steel is black (owner: "Make the black steel black") --
+     a black steel greatsword (the forge's `steel` tier) in the hand, set on
+     this page only: the forge needs smithing 16 and the ore, and what is
+     checked is how the renderer draws the metal ── */
+  const bs = await P.page.evaluate(async () => {
+    const S = window._gameState.current, R = S.rpg;
+    const keep = { weapon: R.weapon, slot: R.activeSlot };
+    R.weapon = { type: 'greatsword', gearBase: 'steel', tierMult: 1.4, name: 'Black Steel Greatsword' };
+    R.activeSlot = 'melee';
+    await new Promise((res) => setTimeout(res, 1200));
+    const out = { material: window.__btWeaponMaterial('greatsword', 'steel'), tint: window.__btWeaponTint().local,
+      copper: window.__btWeaponMaterial('greatsword', 'copper'), keep: !!keep.weapon };
+    window.__qaKeepWeapon = keep;
+    return out;
+  });
+  rec.ok('a black steel blade is drawn in the Black Steel metal, a blued near-black (73, 78, 97)', bs.material === 'blacksteel' && bs.tint === 0x494e61 && bs.copper === 'copper', bs);
+  const heroClip = await P.page.evaluate(() => {
+    const S = window._gameState.current, cv = document.querySelector('canvas'), rc = cv.getBoundingClientRect();
+    const sx = rc.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), sy = rc.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1);
+    return { x: Math.max(0, sx - 90), y: Math.max(0, sy - 110), width: 180, height: 180 };
+  });
+  await P.page.screenshot({ path: join(OUT, 'wheelnodes-blacksteel.png'), clip: heroClip }).catch(() => {});
+  await P.page.evaluate(() => {
+    const S = window._gameState.current, k = window.__qaKeepWeapon;
+    if (k) { S.rpg.weapon = k.weapon; S.rpg.activeSlot = k.slot; }
+  });
+
   /* ── 4. fish it ── */
   const fished = await harvest(P, wsPort, myId, rec, 'fishSpot', spot);
   if (fished) {
     const after = await P.page.evaluate((id) => ({ alive: ((window._gameState.current.gatherNodes || []).find((n) => n.id === id) || {}).alive,
       fishHere: (window.__btWheelFish || []).some((f) => f.id === id) }), spot.id);
     rec.ok('fished out, its fish are gone until it comes back', after.alive === false && after.fishHere === false, after);
+    /* the road stops within 160 px of the node it leads to (questRoute.js
+       GATHER_HERE_R: "you are there"), and a pond's bank may have its tree
+       that close -- so step back from it first, if need be */
+    let tree = await nearest('tree');
+    if (tree && tree.d < 220) {
+      const away = await P.page.evaluate(({ x, y }) => {
+        const S = window._gameState.current, p = S.player, dx = p.x - x, dy = p.y - y, d = Math.hypot(dx, dy) || 1;
+        return { x: x + (dx / d) * 260, y: y + (dy / d) * 260 };
+      }, tree);
+      await H.hopTo(P, away.x, away.y, { tries: 20 });
+      tree = await nearest('tree');
+    }
     const road2 = await H.waitFor(P, () => (window.__btMinimap && window.__btMinimap.quest) || null, (q) => !!q && typeof q.x === 'number', { timeout: 8000, label: 'the road on' }).catch(() => null);
-    const tree = await nearest('tree');
     rec.ok('with a fish in the bag, the road moves on to the nearest tree (the quest\'s next step)',
       !!road2 && !!tree && road2.x === Math.round(tree.x) && road2.y === Math.round(tree.y), { road2, tree });
   }

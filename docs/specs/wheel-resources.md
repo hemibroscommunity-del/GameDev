@@ -10,7 +10,7 @@ areas showing fish swimming around in the water"*.
 
 Since the Wheel became the world (v2.3.2990) there was nothing to gather in
 it, so Mayor Bro's two trade quests, *Learn a Trade* and *Rock Bottom*, could
-not be finished. Now the Wheel grows **128 resource nodes** in three bands:
+not be finished. Now the Wheel grows **141 resource nodes** in three bands:
 
 | Where | Levels | Gathering tier | Ore | Wood | Fish |
 |---|---|---|---|---|---|
@@ -24,13 +24,19 @@ planned.
 ## What the player sees
 
 - **Copper, pine and minnows round town.** Six copper veins and six pines on
-  the commons, nearest the gates first, and nine fishing spots in its four
+  the commons, nearest the gates first, and ten fishing spots in its four
   ponds and the Sweetwater River.
 - **Iron, softwood and clownfish** in every land's levels 1–10, where the
-  monsters start: three veins and three trees in each of the eight lands, and
-  clownfish on the coasts of four of them.
+  monsters start: three veins and three trees in each of the eight lands.
 - **Black steel, hardwood and trout** in levels 11–20, farther out: three veins
-  and three trees in each land, trout in four lands' rivers and pools.
+  and three trees in each land.
+- **Every land has fishing** (the owner: *"Make all 8 have fishing spots"*).
+  Clownfish swim in seven lands' levels 1–10 and trout in seven lands'
+  levels 11–20. The two gaps are geography, not rules:
+  - the Hollows' levels 1–10 have no water a line can reach;
+  - the Verdant Wilds' shores at 11–20 have their water on the wrong side
+    (below, "Fishing spots").
+  The Hollows have trout, and the Verdant Wilds clownfish.
 - **Each tier looks like itself.** An iron vein's flecks are rust red; a black
   steel vein is dark slate with blue-black metal; copper keeps its gold-flecked
   look. Softwood trees are paler and yellower than pines, hardwood darker and
@@ -42,11 +48,22 @@ planned.
   The kind tells the tier — a school of six silver minnows, three orange-and-white
   clownfish, three big speckled trout. Fished out, the fish are gone until the
   spot comes back.
-- **You fish from dry land.** Every spot has water all round it (a block four
-  cells wide and five tall) and dry ground where the angler sits, two cells
-  east; nothing tall stands in front of him, or in front of a vein or tree.
+- **You fish from dry land.** Every spot has a patch of water to its west,
+  four cells wide and three tall, where its fish swim. The angler sits on dry
+  ground two cells east of it. Nothing tall stands in front of him, or in
+  front of a vein or tree.
 - **As anywhere, a node needs its tool** (axe, pole, pickaxe). Without the
   tool it is not drawn.
+- **The minimap shows them** (the owner: *"Show nodes on minimap"*). Each
+  vein, tree and fishing spot in the box's reach gets a small glyph: a
+  faceted lump, a pine, a fish. Its colour is its tier:
+  - ore: copper orange, iron rust, black steel slate;
+  - trees: pine green, pale softwood, olive hardwood;
+  - fish: silver minnow, orange clownfish, olive trout.
+
+  The glyphs sit under the bros, the monsters and the quest's star. Like the
+  world, the minimap marks only live nodes you hold the tool for
+  (`wheelMinimap.js`; the glyphs are minted in `minimapRenderer.js`).
 - **The quest's way leads to them.** *Learn a Trade*'s gold road on the
   minimap now goes to the nearest fishing spot, then, once a fish is in the
   bag, to the nearest tree. *Rock Bottom*'s goes to the nearest vein. Light the
@@ -60,8 +77,24 @@ The tier after iron is **Black Steel** now. Its ore is the one levels 11–20
 grow (`ore_black_steel_ore`), and the blacksmith's tier that used to be called
 Steel forges from it. Its key stays `steel`, because that is the `gearBase`
 every forged piece carries and the art's material name. No steel ore was ever
-gathered, so no bag held the old key. Black steel gear still draws as bright
-steel; a darker look is a follow-up.
+gathered, so no bag held the old key.
+
+**It is black** (the owner: *"Make the black steel black"*). A black steel
+sword or greatsword is drawn in the **Black Steel** metal, a blued near-black:
+the art's white highlights land on a dark slate (73, 78, 97) and everything
+under them darker. That is as black as a tint can go and still show the
+blade's shape (`materialTints.js` `MATERIALS.blacksteel`).
+
+- The forge tier keeps its key, so weapons reach the metal through
+  `BASE_MATERIAL` (`steel` → `blacksteel`). `steel` itself is still the native
+  art for anything else.
+- Its design colour is its tint, so the character portrait (a multiply by the
+  design colour) and the world (a multiply by the tint) draw the same blade.
+- Its bag and forge icons were written by `tools/gear/make-metal-icons.mjs`'s
+  multiply, saved lossless: `sword-`, `great-sword-`, `chest-plate-` and
+  `greaves-blacksteel.webp`.
+- There is no black steel armour yet. The two armour icons are only what the
+  tool writes for every metal.
 
 ## How it works
 
@@ -78,10 +111,25 @@ For each area (the commons, then each land) and each band:
   tall may stand in front of the node's picture or the miner.
 - The commons fills in **nearest town first**; a land's are spread across its
   band **farthest-first**.
-- **Fishing spots** need water in a block round them, and dry, clear ground
-  under the angler's seat (`FISH_SEAT_DX/DY`, 52 px east). They are in fresh
-  water in the commons, a land's coast for clownfish, and its rivers and pools
-  for trout (the coast where it has none).
+- **Fishing spots** are placed by where the baked rod's line falls. The line
+  drops down-left of the angler and ends 52 px west of him, 9 px above his
+  boots. So a spot needs:
+  - a 4 × 3 patch of water from three cells west of it to its own cell, one
+    row up and down (its fish swim there, `wheelNodes.js` `SWIM_*`);
+  - the cell east of it, which the line crosses;
+  - two dry, clear cells under the angler's seat (`FISH_SEAT_DX/DY`, 52 px
+    east).
+
+  The first bake asked for a perfectly straight five-row north–south shore,
+  which wandering or east–west coasts never have. The Wind Dunes, the Storm
+  Peaks and the Verdant Wilds had no spot at all. Spots are in fresh water in
+  the commons, a land's coast for clownfish, and its rivers and pools for
+  trout (the coast where it has none).
+
+  A shore whose water lies EAST of the land would need the angler mirrored,
+  casting right. That is the Verdant Wilds' trout and much of every eastern
+  shore. The Hollows' levels 1–10 have only east–west shores, which the line
+  cannot reach from either side.
 - Positions depend only on the plan and the placer, never on which pictures
   exist. `test-world-core` fails when `wheelspawns.js` is stale, as before.
 
@@ -137,11 +185,11 @@ do.
 
 ## Tests
 
-- `server/test/wheelzone.test.mjs` §8 (the worker), 24 assertions:
+- `server/test/wheelzone.test.mjs` §8 (the worker), 25 assertions:
   - every baked node spawns, with a unique id, a kind and a tier;
   - the commons grows tier 1 with no shard; every land grows iron and black
     steel, softwood and hardwood, off the safe ground; clownfish and trout grow
-    somewhere;
+    somewhere, and every one of the eight lands has fishing;
   - the median distance from town rises with the tier; no two nodes are within
     160 px; none is in a monster camp;
   - the nine names, black steel ore is what the black steel tier forges, and
@@ -150,26 +198,33 @@ do.
     a strike from another zone is refused;
   - the wire carries `home` only in the Wheel; `caps.wheelnodes`; the kill
     switch.
-- `mp-wheelnodes` (phone, real worker), 24 assertions:
-  - none drawn without tools;
+- `mp-wheelnodes` (phone, real worker), 26 assertions:
+  - none drawn without tools, and none marked on the minimap;
   - the road goes to the nearest fishing spot, then to a tree;
   - six minnows swim where the game's own walk test says is water, and the
     seat is dry;
+  - the minimap marks every live node in its reach once the tools are in;
+  - a black steel greatsword is drawn in the Black Steel metal;
   - tapping and the gesture pay a minnow, and the fish go;
   - only the nodes near the view hold a display;
   - an iron vein is drawn in its own picture, and mining it pays iron ore;
   - the nodes drop at the flip to town;
   - no page errors.
-  - Pictures: `wheelnodes-{fish,fish-close,iron,iron-close}.png`.
+  - Pictures: `wheelnodes-{fish,fish-close,minimap,blacksteel,iron,iron-close}.png`.
 - `test-world-core` checks the bake is current; `mp-questline` (CI's
   "playable") still passes in the Wheel.
 
 ## Not in this round
 
-- Black steel gear still draws as bright steel.
-- The Wheel's minimap shows no nodes; the world map neither.
+- The world map (the overlay a tap on the minimap opens) shows no nodes.
 - Tiers past 20 (titanium, cedar, …) are not placed.
-- Fishing is at four lands' waters, not all eight. The Wind Dunes' oases are
-  ringed with palms, which stand in front of every seat.
+- Two lands' bands have no fishing of their tier:
+  - The Hollows at 1–10 have no water a line can reach.
+  - The Verdant Wilds at 11–20 have shores whose water lies east of the
+    land. A mirrored angler would reach them, but that means flipping the
+    fishing pose, its rod overlay and armour layers, and how other players
+    see you fish.
+- The Wind Dunes' oases are ringed with palms that stand in front of every
+  seat. The dunes fish their coast.
 - The node art for veins and trees is the old painted art; Wheel-style
   pictures would come from the Object Studio.

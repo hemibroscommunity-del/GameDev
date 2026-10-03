@@ -537,19 +537,24 @@ remnant to migrate server-side, not a mode to preserve.
     resources back to the wheel", "Copper can be in the safe areas around
     town. Iron can be in lvl 1 monster areas ... 'black steel' in like level
     10+ areas":
-    - 128 nodes baked with the monsters' places (`WHEEL_NODES`,
+    - 141 nodes baked with the monsters' places (`WHEEL_NODES`,
       bake-wheel-spawns.mjs `bakeWheelNodes`; the worker's
       wheelzone.js `_wheelSpawnNodes`): copper/pine/minnow on the commons
       (tier 1), iron/softwood/clownfish at levels 1-10 (tier 6), black
       steel/hardwood/trout at 11-20 (tier 11); a node carries `home`, its
       land, whose shard it drops (none on the commons);
-    - fishing spots in the real water, the angler on dry ground, nothing tall
-      in front of any node or its worker; the spot's FISH drawn in code
+    - fishing spots in the real water (a 4 x 3 patch WEST of the spot, as
+      the baked rod's line falls; every land has some -- "Make all 8 have
+      fishing spots"), the angler on dry ground, nothing tall in front of any
+      node or its worker; the spot's FISH drawn in code
       (`src/rendering/wheelNodes.js` `WheelFish`), only the nodes near the
-      view drawn (`wheelNodeView`); veins and trees by tier
-      (`tools/make_tier_art.py`, effectsRenderer `NODE_TIER_*`);
+      view drawn (`wheelNodeView`) and marked on the Wheel's minimap, a glyph
+      a kind tinted by tier ("Show nodes on minimap"); veins and trees by
+      tier (`tools/make_tier_art.py`, effectsRenderer `NODE_TIER_*`);
     - the tier after iron is BLACK STEEL (`BLACKSMITH_TIERS.steel`, key
-      unchanged, `ore_black_steel_ore`); the quest's road leads to the nearest
+      unchanged, `ore_black_steel_ore`), its blades black ("Make the black
+      steel black": materialTints.js `blacksteel` via `BASE_MATERIAL`); the
+      quest's road leads to the nearest
       node its next step needs (questRoute.js `_wheelGatherPoint`, a step's
       `node`); the Wheel's nodes drop at the flip to town;
     - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,

@@ -237,8 +237,8 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
  * Fishing SEATS you at the spot + FISH_SEAT_DX/DY (src/data/constants.js:
  * up and right, so the rod's line falls on the spot) with the body's 52 px
  * drop to the boots: so a spot is only used where that seat is dry, clear
- * ground of the same band, with water all round the spot itself (its fish
- * swim there).  The same for the miner's seat (MINE_SEAT_DX/DY).
+ * ground of the same band, with water west of the spot (its fish swim there:
+ * SPOT_SIDE, below).  The same for the miner's seat (MINE_SEAT_DX/DY).
  *
  * Positions never depend on which pictures exist, only on the plan and the
  * placer -- like everything else this tool bakes. */
@@ -302,16 +302,26 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
   };
   const ALL = [[0, 0], [-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
   /* A fishing spot's seat is two cells EAST of it (52 px), so the shore runs
-     between them: the spot needs water on its own side (west, north, south)
-     and the seat dry ground on its side (east, north, south) -- asking for
-     water or dry ground all round each would ask the one cell between them
-     to be both.  The spot's side is a block, three cells west of it to one
-     east, two up and down (x-84..x+36, y-60..y+60): its fish swim there
-     (src/rendering/wheelNodes.js), the shore is the line between its east
-     column and the seat's cell. */
-  const SPOT_SIDE = [];
-  for (let dy = -2; dy <= 2; dy++) for (let dx = -3; dx <= 1; dx++) SPOT_SIDE.push([dx, dy]);
-  const SEAT_SIDE = [[0, 0], [1, 0], [0, -1], [0, 1], [1, -1], [1, 1]];
+     between them: the spot needs water on its own side and the seat dry
+     ground on its -- asking for water or dry ground all round each would ask
+     the cells between them to be both.  The baked rod's line drops down-LEFT
+     of the angler, ending 52 px west of him and 9 px above his boots, so the
+     water is always WEST of where he stands.
+     v2.3.3007 (owner: "Make all 8 have fishing spots"): the spot's side was a
+     5 x 5 block of water (three cells west of it to one east, two up and
+     down) with a dry 2 x 3 seat beside it: a perfectly straight north-south
+     shore, five cells long.  A land whose coasts wander or run east-west
+     never has one -- the Wind Dunes, the Storm Peaks and the Verdant Wilds
+     had no spot at all.  So the water is a 4 x 3 block now (x-84..x+12,
+     y-36..y+36) plus the one cell the line crosses (east of the spot, its
+     own row), and the seat is the boots' cell and the one east of it: any
+     shore with three rows of water to the west of a dry cell will do, the
+     angler's body standing over the water behind him as a 3/4 view draws
+     it.  The fish swim inside the block (src/rendering/wheelNodes.js
+     SWIM_*). */
+  const SPOT_SIDE = [[1, 0]];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -3; dx <= 0; dx++) SPOT_SIDE.push([dx, dy]);
+  const SEAT_SIDE = [[0, 0], [1, 0]];
   const monsterPts = [];
   for (const s of Object.values(spawns)) for (const p of s.points) monsterPts.push(p);
   const clearOfMonsters = (x, y) => monsterPts.every((p) => Math.hypot(p[0] - x, p[1] - y) >= rules.clearMonster);

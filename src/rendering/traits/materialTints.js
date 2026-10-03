@@ -109,6 +109,18 @@ export const MATERIALS = {
      the bright steel the art is drawn as — hence `level`.  The art IS steel, so
      'steel' stays the native no-op and iron sits between it and copper. */
   iron: { id: 'iron', name: 'Iron', rgb: [198, 206, 218], level: 0.80, swatch: '#8f97a3' },
+  /* v2.3.3007 (owner: "Make the black steel black").  The forge's tier after
+     iron is BLACK STEEL (server/src/data.js BLACKSMITH_TIERS.steel, its ore the
+     Wheel's levels 11-20 grow), and its pieces carry gearBase 'steel' -- the
+     key of the native art above, so they drew as bright steel.  A blued
+     near-black: the art's white highlights land on a dark slate (73, 78, 97)
+     and everything under them darker still, which is as black as a multiply
+     can go and keep the blade's shape readable.  The design colour IS the
+     tint (level 0.38 brings its brightest channel back to 97), so the
+     portrait, which multiplies by `rgb` (characterPortrait.js), and the world,
+     which multiplies by `tint`, draw the same blade.  Weapons reach it through
+     BASE_MATERIAL below; 'steel' itself stays the native no-op. */
+  blacksteel: { id: 'blacksteel', name: 'Black Steel', rgb: [73, 78, 97], level: 0.38, swatch: '#3b3f4a' },
 };
 
 for (const m of Object.values(MATERIALS)) m.tint = tintFromRgb(m.rgb, m.level == null ? 1 : m.level);
@@ -129,11 +141,18 @@ for (const m of Object.values(MATERIALS)) m.tint = tintFromRgb(m.rgb, m.level ==
    iron keep the art they have until someone gives them a colour. */
 const MELEE_TYPES = { sword: 1, greatsword: 1 };
 
+/* v2.3.3007: a forge tier whose METAL is not its key.  The tier after iron
+   kept the key `steel` when it became Black Steel (it is every minted piece's
+   gearBase, so renaming it would orphan them), and `steel` here is the native
+   art -- so a black steel blade looked up by its key drew bright. */
+const BASE_MATERIAL = { steel: 'blacksteel' };
+
 export function weaponMaterial(type, gearBase) {
   if (!type || !MELEE_TYPES[type]) return null;      /* no staff, no bow */
   const base = gearBase ? String(gearBase) : '';
   if (!base || base.indexOf('ww_') === 0) return null;
-  return MATERIALS[base] ? base : null;
+  const mat = Object.prototype.hasOwnProperty.call(BASE_MATERIAL, base) ? BASE_MATERIAL[base] : base;
+  return MATERIALS[mat] ? mat : null;
 }
 
 /** The icon file for a base icon in a given metal.

@@ -376,6 +376,10 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     && lands.every((n) => n.home === area(n) && WHEEL.HOMES.includes(n.home) && n.tierLvl !== 1 && R(n) >= WHEEL_SAFE_R));
   check('nodes: and catches fish in some land at each of its tiers (clownfish, trout)',
     [6, 11].every((t) => lands.some((n) => n.nodeType === 'fishSpot' && n.tierLvl === t)));
+  /* the owner: "Make all 8 have fishing spots" */
+  check('nodes: every one of the eight lands has fishing',
+    WHEEL.HOMES.every((h) => lands.some((n) => n.home === h && n.nodeType === 'fishSpot')),
+    Object.fromEntries(WHEEL.HOMES.map((h) => [h, lands.filter((n) => n.home === h && n.nodeType === 'fishSpot').length])));
   /* "the higher lvl resources will be progressively more distant" */
   const med = (t) => { const r = nodes.filter((n) => n.tierLvl === t).map(R).sort((a, b) => a - b); return r[r.length >> 1]; };
   check('nodes: the richer the tier, the farther from town it grows', med(1) < med(6) && med(6) < med(11),

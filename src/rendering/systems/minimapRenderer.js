@@ -584,6 +584,25 @@ export class MinimapRenderer {
       g.circle(21, 22, 6.5).fill(0xffffff).stroke(KL);
       g.circle(C, 12, 6.5).fill(0xffffff).stroke(KL);
     });
+    /* ═══ v2.3.3007: THE WHEEL'S RESOURCES, ONE SHAPE A KIND ═══
+       Owner: "Show nodes on minimap".  The Wheel's minimap (wheelMinimap.js)
+       marks each vein, tree and fishing spot near you, so each kind gets its
+       own silhouette -- a faceted lump, a pine, a fish -- and its TIER is the
+       tint (copper/iron/black steel, pine/softwood/hardwood, minnow/clownfish/
+       trout).  White under a near-black keyline, as every glyph here. */
+    this._mintIcon('ore', (g) => {
+      g.poly([7, 24, 10, 12, 18, 7, 26, 13, 27, 24, 17, 28]).fill(0xffffff).stroke(KL);
+      g.poly([14, 15, 18, 12, 21, 16, 17, 19]).fill(0x0b161b);   /* a facet */
+    });
+    this._mintIcon('tree', (g) => {
+      g.poly([C, 3, 25, 15, 20, 15, 27, 24, 5, 24, 12, 15, 7, 15]).fill(0xffffff).stroke(KL);
+      g.rect(13.5, 24, 5, 5).fill(0x0b161b);                       /* trunk */
+    });
+    this._mintIcon('fish', (g) => {
+      g.ellipse(14, C, 9.5, 6).fill(0xffffff).stroke(KL);
+      g.poly([22, C, 29, 9.5, 29, 22.5]).fill(0xffffff).stroke(KL);   /* tail */
+      g.circle(9.5, 14.5, 1.8).fill(0x0b161b);                       /* eye */
+    });
     /* The two quest states, matching the in-world badge exactly: '❗' means
        he has work, '❓' means you can hand it in (entityRenderer sets
        npc._questMarker to one of those two glyphs, and this reads it rather

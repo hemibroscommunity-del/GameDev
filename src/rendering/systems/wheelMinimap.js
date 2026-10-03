@@ -44,6 +44,7 @@
 import { Container, Graphics, Sprite, Text, Texture, CanvasSource } from 'pixi.js';
 import { wheelOverview, wheelMapInfo, wheelHere } from '@/game/wheelTrial.js';
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
+import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3007: a node is marked as the world draws it */
 
 export const WHEEL_BOX = 132;      /* CSS px a side */
 export const WHEEL_WINDOW = 3200;  /* game px across the box: about three zones */
@@ -57,6 +58,20 @@ const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = 10;   /* v2.3.29
    starts clear of your chevron and is not drawn when the spot is this close */
 const ROAD_W = 2.5, ROAD_CASE = 5, ROAD_FROM = 8, ROAD_MIN = 12, C_ROAD_CASE = 0x0b161b;
 const FACING_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+/* ═══ v2.3.3007: THE RESOURCES NEAR YOU ═══
+   Owner: "Show nodes on minimap".  One glyph a kind (minimapRenderer mints
+   'ore', 'tree', 'fish'), tinted by its tier as the world draws it: the
+   vein's flecks (copper, rust-red iron, black steel -- a blued slate light
+   enough to read on the map), the tree's tint (pine, pale softwood, olive
+   hardwood), the fish in the water (silver minnows, orange clownfish, olive
+   trout).  Small: they sit under the bros, monsters and the quest's star. */
+const NODE_ICON = { oreVein: 'ore', tree: 'tree', fishSpot: 'fish' };
+const C_NODE = {
+  oreVein: { 1: 0xe08a45, 6: 0xc65f45, 11: 0x8e9ab8 },
+  tree: { 1: 0x58b85a, 6: 0xc6dc6c, 11: 0xa08c52 },
+  fishSpot: { 1: 0xd6e8f5, 6: 0xff8a3a, 11: 0xc4b46a },
+};
+const NODE_PX = 10;
 
 export class WheelMinimap {
   constructor(hudLayer, icons, dotTex) {
@@ -199,8 +214,24 @@ export class WheelMinimap {
     this.root.y = topInset;
     this.root.visible = true;
 
-    /* other bros and monsters */
     this.used = 0;
+    /* v2.3.3007: the resources first, under everything else -- the live ones
+       you hold the tool for, as the world draws them (effectsRenderer,
+       v2.3.1680: a node you cannot work is not drawn), and only those the box
+       can reach (it shows WHEEL_WINDOW round you) */
+    let nodeMarks = 0;
+    const nodes = S.gatherNodes || [];
+    const reach = WHEEL_WINDOW * 0.6;
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      if (!n || !n.alive || !NODE_ICON[n.nodeType]) continue;
+      if (Math.abs(n.x - P.x) > reach || Math.abs(n.y - P.y) > reach) continue;
+      if (!hasGatherTool(S.rpg || null, n.nodeType)) continue;
+      const lvl = n.gatherLvl || 1, tier = lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1;
+      this._mark(n.x, n.y, NODE_ICON[n.nodeType], C_NODE[n.nodeType][tier], NODE_PX);
+      nodeMarks++;
+    }
+    /* other bros and monsters */
     const others = S.others;
     if (others) for (const id in others) { const o = others[id]; if (o && (o.zone || o.z) === S.currentZone) this._mark(o.x, o.y, 'player', C_OTHER, 13); }
     const mons = S.monsters || [];
@@ -273,6 +304,7 @@ export class WheelMinimap {
         playerBoxX: P.x * SCALE + this.pan.x, playerBoxY: P.y * SCALE + this.pan.y,
         facingRot: this.player.rotation, markers: this.used, under: !!this.under,
         routes: map.routes.length, places: map.places.length, words: w ? { ...w } : null,
+        nodes: nodeMarks,   /* v2.3.3007: the resources marked */
         quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road } : null,
       };
     } catch (e) { /* never breaks the frame */ }

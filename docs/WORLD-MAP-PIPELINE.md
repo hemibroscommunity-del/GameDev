@@ -2243,7 +2243,7 @@ cost, the forge's sparks, the Hotel's life going over you with its roof,
 > areas ... 'black steel' in like level 10+ areas and have its own ore to
 > mine. Same principle for fishing and wood cutting too."*
 
-128 nodes, baked with the monsters' places (`WHEEL_NODES` in
+141 nodes, baked with the monsters' places (`WHEEL_NODES` in
 `server/src/wheelspawns.js`, by `tools/world/bake-wheel-spawns.mjs`
 `bakeWheelNodes`):
 
@@ -2251,14 +2251,18 @@ cost, the forge's sparks, the Hotel's life going over you with its roof,
 - iron, softwood and clownfish at each land's levels 1–10;
 - black steel, hardwood and trout at 11–20.
 
-Fishing spots are in the real ponds, river and sea: water in a block round
-each, the angler on dry ground two cells east. Their fish are drawn in code
-swimming there (`src/rendering/wheelNodes.js` `WheelFish`), not a pond
-picture. Nothing tall stands in front of a node or of the one working it.
-Only the nodes near the view are drawn.
+Fishing spots are in the real ponds, river and sea: a patch of water west of
+each, the angler on dry ground two cells east. Every land has fishing (owner:
+*"Make all 8 have fishing spots"*), seven of eight at each tier. Their fish
+are drawn in code swimming there (`src/rendering/wheelNodes.js` `WheelFish`),
+not a pond picture. Nothing tall stands in front of a node or of the one
+working it. Only the nodes near the view are drawn, and the Wheel's minimap
+marks them, one glyph a kind tinted by tier (owner: *"Show nodes on
+minimap"*).
 
 The tier after iron is **Black Steel** (`BLACKSMITH_TIERS.steel`, key
-unchanged). The quest's road leads to the nearest node the next step needs.
+unchanged). Its blades are black: the Black Steel metal in `materialTints.js`
+(owner: *"Make the black steel black"*). The quest's road leads to the nearest node the next step needs.
 The kill switch is `wheelnodes: false`.
 
 The whole story is in docs/specs/wheel-resources.md. Tests:
