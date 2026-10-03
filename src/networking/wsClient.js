@@ -20,6 +20,7 @@ import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the 
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
+import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
@@ -4136,7 +4137,13 @@ export function setupWebSocket(ctx) {
                 ? (typeof _S4._shieldAngle === 'number' ? _S4._shieldAngle
                   : (typeof _S4._facingAngle === 'number' ? _S4._facingAngle : 0))
                 : null,
-              dead: _S4.rpg ? _S4.rpg.hp <= 0 : false
+              dead: _S4.rpg ? _S4.rpg.hp <= 0 : false,
+              /* v2.3.3006: a sprint step.  The worker bills it in stamina and judges
+                 it at SPRINT.MULT the walking bound (server/src/sprint.js); left
+                 off (undefined, so not on the wire) when walking.  Only `sp: 1`
+                 counts there, and only against a worker that advertised
+                 caps.sprint does the client sprint at all (game/sprint.js). */
+              sp: sprintStepFlag(_S4) ? 1 : undefined
             };
             startBatchTimer();
           } else if (msg.event === 'player_attack') {

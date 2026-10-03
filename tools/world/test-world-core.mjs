@@ -1786,6 +1786,63 @@ console.log("the water's pictures (v2.3.2980)");
     } catch (e) { return String(e); }
   });
   ok('the game worker\'s slim blueprint (no classes) lays water exactly as the whole one does', slimRuns.every((d) => d === 0), slimRuns);
+
+  /* ═══ v2.3.3003: WHERE YOU CAN SWIM (ground.js swimBits) ═══
+     Owner: "add swimming ... and change the movement behavior".  The walk
+     grid's water opens where you may swim -- every river, pond and lake and
+     the sea's shallows -- and the open sea past them stays shut: worked out
+     at each cell's middle exactly as the shallows are drawn, so you swim out
+     to the line you see. */
+  const { swimBits: swimBitsOf, walkBits: walkBitsOf } = await import('../../public/tools/world/core/ground.js');
+  const wbits = walkBitsOf(slim, mmW);
+  const tsw = Date.now();
+  const sw = swimBitsOf(slim, mmW, (PLAN.seed | 0) + 900, wbits);
+  const swMs = Date.now() - tsw;
+  const bitAt = (bits, i) => !!(bits[i >> 3] & (1 << (i & 7)));
+  let nSwim = 0, outside = 0, nFresh = 0, freshShut = 0, decked = 0;
+  for (let i = 0; i < bp.w * bp.h; i++) {
+    const s2 = bitAt(sw, i);
+    if (s2) nSwim++;
+    if (s2 && !bitAt(wbits, i)) outside++;
+    if (mmW.mat[i] === mmW.water && (mmW.fresh[i >> 3] >> (i & 7)) & 1) {
+      /* (a bridge's deck is walked on, over its river: nothing to open) */
+      if (!bitAt(wbits, i)) { decked++; continue; }
+      nFresh++;
+      if (!s2) freshShut++;
+    }
+  }
+  ok(`swimming opens only water the walk grid shuts (${nSwim} cells, ${swMs} ms)`, nSwim > 0 && outside === 0 && sw.length === wbits.length && swMs < 3000, { nSwim, outside, swMs });
+  ok(`...every river, pond, lake and oasis (${nFresh} cells; ${decked} more under bridges' decks, walked on)`, nFresh > 0 && freshShut === 0, { nFresh, freshShut, decked });
+  const cellIdx = (x, y) => Math.floor((y - bp.y0) / bp.scale) * bp.w + Math.floor((x - bp.x0) / bp.scale);
+  let deepOpen = 0;
+  for (let y = Rs.y; y < Rs.y + Rs.h; y += 8) for (let x = Rs.x; x < Rs.x + Rs.w; x += 8) if (bitAt(sw, cellIdx(x, y))) deepOpen++;
+  ok('...and never the open sea, far from any shore', deepOpen === 0, deepOpen);
+  ok('...the same answer every time', (() => { const again = swimBitsOf(slim, mmW, (PLAN.seed | 0) + 900); for (let i = 0; i < sw.length; i++) if (again[i] !== sw[i]) return false; return true; })());
+  /* the line is the one drawn: at each cell's middle, the shallows' and the
+     fresh water's pictures are open to swim, the open sea's is not -- along
+     a coast of every spoke, at its outer stages */
+  let agree = 0, cells = 0;
+  const bad = [];
+  for (const s3 of W.spokes) for (const t of [2, 3]) {
+    let q0 = null;
+    for (let q = 0; q < 3 && q0 == null; q += 1 / 96) { const [x, y] = art(spokePoint(s3, W.tierMid(t), q)); if (clsAt(x, y) === C.ocean) q0 = q; }
+    if (q0 == null) continue;
+    const [cx0, cy0] = art(spokePoint(s3, W.tierMid(t), q0 + 6 / 96));
+    const R = { x: Math.round(cx0 - 96), y: Math.round(cy0 - 96), w: 192, h: 192 };
+    const out = composeGround(PLAN, slim, mmW, R, wtiles, { scale: 1 });
+    for (let by = Math.ceil((R.y - bp.y0) / bp.scale); (by + 1) * bp.scale + bp.y0 <= R.y + R.h; by++) {
+      for (let bx = Math.ceil((R.x - bp.x0) / bp.scale); (bx + 1) * bp.scale + bp.x0 <= R.x + R.w; bx++) {
+        const px = Math.floor(bp.x0 + (bx + 0.5) * bp.scale) - R.x, py = Math.floor(bp.y0 + (by + 0.5) * bp.scale) - R.y;
+        const lk = looks(out, px, py);
+        if (lk !== 'S' && lk !== 'h' && lk !== 'f') continue;
+        cells++;
+        const open = bitAt(sw, by * bp.w + bx);
+        if (open === (lk !== 'S')) agree++;
+        else if (bad.length < 6) bad.push({ bx, by, lk, open });
+      }
+    }
+  }
+  ok(`...swimming stops where the shallows' picture gives way to the sea's (${agree} of ${cells} water cells agree)`, cells > 300 && agree / cells > 0.95, { cells, agree, bad });
 }
 
 /* ── v2.3.2978: the Wheel's monsters, at the inner end of each spoke ──
@@ -2381,6 +2438,78 @@ console.log('placing v2, the ?placing=2 preview (v2.3.2999)');
   };
   const g1 = gaps(V1), g2 = gaps(V);
   ok(`gaps the feet catch in (20-36 px between two footprints): ${g2}, v1 ${g1}`, g2 < g1 / 3, { v1: g1, v2: g2 });
+}
+
+/* ── v2.3.3003: swimming's rules (src/game/wheelSwim.js) ──
+   Owner: "add swimming ... and change the movement behavior".  When you are
+   swimming, how fast, the glide, and that a teleport (a respawn, a way in)
+   goes in or out of the water without a splash. */
+console.log('swimming (v2.3.3003)');
+{
+  const W8 = await import('../../src/game/wheelSwim.js');
+  /* water south of y = 1000, land north of it */
+  const waterAt = (x, y) => y >= 1000;
+  ok('five looks round the boots: all wet in the water, none on the bank', W8.wetProbes(waterAt, 0, 1100) === 5 && W8.wetProbes(waterAt, 0, 900) === 0
+    && W8.wetProbes(() => null, 0, 0) === -1);
+  ok('in when four are wet, out only at one -- a walk along a shore does not flicker',
+    W8.swimNext(false, 4) && !W8.swimNext(false, 3) && W8.swimNext(true, 2) && !W8.swimNext(true, 1) && W8.swimNext(true, -1) && !W8.swimNext(false, -1));
+  const S = { player: { x: 0, y: 900, vx: 0, vy: 0 } };
+  let t = 1000;
+  const step = (dy, dtMs = 16) => {
+    t += dtMs;
+    S.player.y += dy;
+    const ev = W8.updateWheelSwim(S, t, true, 52, waterAt);
+    S.player.vy = dy;
+    return ev;
+  };
+  const evs = [];
+  for (let i = 0; i < 40; i++) evs.push(step(3));
+  ok(`walking into the water: 'in' once, as the boots go in (${evs.filter(Boolean).join(',')})`, evs.filter((e) => e === 'in').length === 1 && W8.isWheelSwimming(S), evs.filter(Boolean));
+  ok('...the walk carried in as the glide\'s way, so you do not stall at the edge', S._wheelSwim.vy > 0.9);
+  /* the stroke's clock, at a full stick */
+  const out = [0, 0];
+  let strokes = 0, sumM = 0, n = 0;
+  for (let i = 0; i < 400; i++) {
+    W8.swimGlide(S, 0, 1, 1, out);
+    const ev = step(0.5);
+    if (ev === 'stroke') strokes++;
+    sumM += W8.wheelSwimMult(S); n++;
+  }
+  const avgM = sumM / n;
+  ok(`a stroke every ${W8.STROKE_MS} ms (${strokes} in 6.4 s), its push averaging out to ${avgM.toFixed(3)} of a walk (SWIM_MULT ${W8.SWIM_MULT})`,
+    strokes >= 8 && strokes <= 11 && Math.abs(avgM - W8.SWIM_MULT) < 0.02, { strokes, avgM });
+  /* the glide: never faster than the stick, and it eases off when let go */
+  let longest = 0;
+  for (let i = 0; i < 60; i++) { W8.swimGlide(S, i % 2 ? 1 : 0, i % 3 ? 0 : -1, 2, out); longest = Math.max(longest, Math.hypot(out[0], out[1])); }
+  ok(`the glide never goes faster than the stick (longest ${longest.toFixed(3)})`, longest <= 1.0001, longest);
+  W8.swimGlide(S, 0, 1, 1, out); for (let i = 0; i < 60; i++) W8.swimGlide(S, 0, 1, 1, out);
+  const v0 = out[1];
+  let drift = 0, frames = 0;
+  while (frames < 200) { W8.swimGlide(S, 0, 0, 1, out); if (!out[1]) break; drift += out[1]; frames++; }
+  ok(`let go and you drift ${drift.toFixed(1)} strides' worth, then stop (${frames} frames)`, v0 > 0.99 && drift > 3 && drift < 15 && frames < 100, { v0, drift, frames });
+  ok('out of the water the walk is the walk: 1, and the glide hands the stick back untouched',
+    (() => { const L = { player: { x: 0, y: 0 } }; const o = W8.swimGlide(L, 0.3, -0.7, 1, [0, 0]); return W8.wheelSwimMult(L) === 1 && o[0] === 0.3 && o[1] === -0.7; })());
+  /* refusals say so, but not every frame */
+  const n1 = W8.swimNote(S, t), n2 = W8.swimNote(S, t + 100), n3 = W8.swimNote(S, t + W8.NOTE_MS + 1);
+  ok('"Swimming!" over your head when refused, not more often than NOTE_MS', !!n1 && !n2 && !!n3 && n1.y < S._wheelSwim.fy);
+  /* walking out: 'out', and the walk back */
+  const ev2 = [];
+  for (let i = 0; i < 130; i++) ev2.push(step(-3));
+  ok(`walking out: 'out' once (${ev2.filter((e) => e && e !== 'stroke').join(',')})`, ev2.filter((e) => e === 'out').length === 1 && !W8.isWheelSwimming(S));
+  /* a teleport: in the water and out again without a splash */
+  S.player.y = 1400; const tIn = W8.updateWheelSwim(S, t += 16, true, 52, waterAt);
+  ok(`a teleport into the water (a way in) swims at once, with no splash: '${tIn}'`, tIn === 'landed' && W8.isWheelSwimming(S));
+  S.player.y = 300; const tOut = W8.updateWheelSwim(S, t += 16, true, 52, waterAt);
+  ok('...and out of it (a respawn after drowning in a pond) stands at once, with no drip', tOut === null && !W8.isWheelSwimming(S));
+  /* leaving the Wheel lets it all go */
+  W8.updateWheelSwim(S, t += 16, false, 52, waterAt);
+  ok('outside the Wheel there is no swimming at all', S._wheelSwim === null && !W8.isWheelSwimming(S));
+  /* the game's own copies agree: the sounds the strokes and splashes play are
+     the manifest's, so every player has them */
+  const { readFileSync } = await import('node:fs');
+  const gd = readFileSync(new URL('../../src/data/gameDisplay.js', import.meta.url), 'utf8');
+  const keys = ['fish-on-hook', 'lure-drop', 'catch-splash'];
+  ok('swimming\'s sounds are recordings already in the game (the fishing ones in SFX_MANIFEST)', keys.every((k) => new RegExp(`'${k}':\\s*'/sfx/`).test(gd)) && /BT_AUDIO\.SWIM_SAMPLES = \['fish-on-hook', 'lure-drop', 'catch-splash'\]/.test(gd));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

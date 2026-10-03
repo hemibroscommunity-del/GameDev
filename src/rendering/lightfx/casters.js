@@ -120,7 +120,9 @@ export function collectCasters(S, er, fx, zone) {
 
   /* you */
   const pd = er.playerDisplay;
-  if (pd && !pd.destroyed && S && S.player) {
+  /* v2.3.3003: not while you swim -- only your head is out of the water
+     (rendering/swimFx.js marks the figure with how far under it is) */
+  if (pd && !pd.destroyed && S && S.player && !(pd._swimK > 0)) {
     const sprites = [];
     if (pd.visible) walkDisplay(pd, sprites, pd._uiLayer);
     const own = sprites.length;
@@ -132,7 +134,7 @@ export function collectCasters(S, er, fx, zone) {
   const others = (S && S.others) || null;
   if (er.otherPlayerDisplays) {
     for (const [id, d] of er.otherPlayerDisplays) {
-      if (!d || d.destroyed) continue;
+      if (!d || d.destroyed || d._swimK > 0) continue;   /* v2.3.3003: a swimmer casts nothing */
       const o = others && others[id];
       const here = !!(o && (o.zone || o.z || 'town') === zone && !o._isDead);
       const sprites = [];

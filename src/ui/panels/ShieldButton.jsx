@@ -319,6 +319,34 @@ export function leftCluster(isLandscape) {
   };
 }
 
+/* ═══ v2.3.3006: THE SPRINT BUTTON, RIGHT OF THE MOVEMENT DISC ═══
+ *
+ * Owner: "a sprint button by the left joystick ... Maybe just to the right of
+ * the left joystick" (SprintButton.jsx).
+ *
+ * LEVEL WITH THE DISC'S CENTRE, the thumb's resting height -- the same height
+ * Bash takes beside the attack disc (ctlColumn slot 0) -- and LCTL_GAP clear of
+ * the disc's right edge.  That patch was empty: Element Burst is ABOVE the disc
+ * (leftCluster), the weapon button and the bell are in the band BELOW it.
+ *
+ * IT STAYS IN THE MOVEMENT HALF.  Its right edge lands at 153px in portrait and
+ * 178 sideways, inside 50vw even on a 320px phone (160), so unlike ctlColumn
+ * there is nothing to squeeze and it never reaches toward the attack controls.
+ * Its top edge is under the disc's top, so it does not raise combatBandTopPx's
+ * answer (it is listed there anyway: that list is every slot, by rule).
+ *
+ * The same 44px floor and the same 48/54 size as the clusters. */
+export function sprintAnchor(isLandscape) {
+  var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
+  var discW = isLandscape ? LBTN.wLand : LBTN.w;
+  var discLeft = isLandscape ? LBTN.leftLand : LBTN.left;
+  return {
+    size: size,
+    leftPx: discLeft + discW + LCTL_GAP,
+    bottomPx: Math.round(LBTN.bottom + (discW - size) / 2),
+  };
+}
+
 /* ═══ v2.3.2574: THE RIGHT CLUSTER -- SPECIAL AND WHIRLWIND, ABOVE THE DISC ═══
  *
  * Owner: "Spec and swirl need to be on the right joystick.  It was put on the
@@ -437,6 +465,7 @@ export function combatBandTopPx(isLandscape) {
   var r = rightCluster(isLandscape);
   var c = ctlColumn(isLandscape);
   var blk = blockAnchor(isLandscape);
+  var spr = sprintAnchor(isLandscape);   /* v2.3.3006 */
   var discR = isLandscape ? RBTN.wLand : RBTN.w;
   var discL = isLandscape ? LBTN.wLand : LBTN.w;
   /* ═══ v2.3.2574: EVERY SLOT, STILL -- INCLUDING THE ONES THAT MOVED ═══
@@ -454,6 +483,7 @@ export function combatBandTopPx(isLandscape) {
     l.bottomPx(LCTL_SLOT.burst) + l.size,      /* Element Burst, over the movement disc */
     c.bottomPx(CTL_SLOT.bash) + c.size,        /* Shield Bash */
     blk.bottomPx + blk.size,                   /* Block */
+    spr.bottomPx + spr.size,                   /* Sprint, right of the movement disc (v2.3.3006) */
     RBTN.bottom + discR,                       /* the attack disc */
     LBTN.bottom + discL);                      /* the movement disc */
 }

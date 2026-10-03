@@ -614,6 +614,68 @@ function specialStats(off, caps) {
   return sum / VERDICT_FIGHTS;
 }
 
+/* ── a pass: the mana bar ─────────────────────────────────────────────── */
+/* ═══ v2.3.3008: MAX MP GETS ITS SCENE ═══
+   Owner: "add a max mp before and after for the simulation stat allocation
+   confirmation window it's the only one missing one" -- every other body
+   stat's window played its fight; Max MP's had none (SIM_STATS left it out).
+
+   What a bigger bar buys is CASTS.  A special costs one BLOCK of it
+   (prog3.js specialManaCost: maxMana / manaBlocks), and the block count
+   climbs the ladder the worker counts (blocksAt: 5, then one more every 20
+   points of Magic level + Max MP points).  So the scene is the bar: the hero
+   casts his special at the slime until it cannot pay for another, the bar a
+   block lighter each time, and the "+n" lane's bar drawn as much longer as
+   the points make it.  A point that crosses a rung shows its extra cast;
+   one that does not shows the honest answer, the same casts from a bigger
+   bar.  The same dice both halves, cast for cast (sceneDie's index is the
+   cast).  No regen: "on a full bar" is the question. */
+/** Specials a full bar pays for (one block each). */
+export function specialsOnABar(R) {
+  const max = (R && R.maxMana) || 100;
+  return Math.floor(max / rpgBlockSize(R, 'mana'));
+}
+const MANA_CASTS_MAX = 12;   /* the ladder tops out at 10 blocks */
+function manaPass(off, R, slime, seed, caps) {
+  const max = (R && R.maxMana) || 100;
+  const cost = rpgBlockSize(R, 'mana');
+  const bar = { kind: 'mana', cur: max, max };
+  /* nothing in hand: the bar alone, full -- its length is still the answer */
+  if (!off) return { beats: [], end: LEAD_MS + TAIL_MS, bar };
+  const beats = [];
+  const imp = off.ranged ? IMPACT_MS.ranged : IMPACT_MS.melee;
+  const sp = specialShots(off, caps);
+  const gap = Math.max(off.period, 700);
+  let mp = max, hp = slime.hp, at = LEAD_MS, lastAt = LEAD_MS;
+  for (let c = 0; mp >= cost && c < MANA_CASTS_MAX; c++) {
+    if (hp <= 0) {
+      const back = lastAt + SLIME_DEATH_MS + RESPAWN_MS;
+      beats.push({ t: back, k: 'spawn', hp: slime.hp, max: slime.hp });
+      hp = slime.hp;
+      at = Math.max(at, back + 200);
+    }
+    mp -= cost;
+    beats.push({ t: at, k: 'special', ranged: off.ranged, shots: sp.n, big: sp.orbs > 1, gapMs: sp.gapMs });
+    beats.push({ t: at, k: 'mana', cur: mp });
+    for (let j = 0; j < sp.n; j++) {
+      const dice = SP_DICE[j] || SP_DICE[0];
+      const r = rollHit(off, sceneDie(seed, dice[0], c), sceneDie(seed, dice[1], c), true, sp.band);
+      const raw = landedDmg(r, sp.orbs, sp.part);
+      if (hp <= 0) continue;
+      const before = hp;
+      hp = Math.max(0, hp - raw);
+      const t = at + imp + j * sp.gapMs;
+      lastAt = t;
+      beats.push({ t, k: 'hit', text: String(toDisplayHitDamage(before, hp, raw)), crit: r.isCrit, raw, hp, max: slime.hp, kill: hp <= 0, special: true, dx: (j - (sp.n - 1) / 2) * 16 });
+      if (hp <= 0) beats.push({ t, k: 'death' });
+    }
+    at += gap;
+  }
+  /* the bar cannot pay for the next one: said where it would have gone */
+  beats.push({ t: at, k: 'nomana', text: 'Out of mana' });
+  return { beats, end: at + 600 + TAIL_MS, slime: { hp: slime.hp, max: slime.hp }, bar };
+}
+
 /* ── a pass: reach ────────────────────────────────────────────────────── */
 /** How far this weapon reaches, in world px: melee's swing ring, the arrow's
  *  plant cap, the bolt's flight (life x speed), each x its lane's Range. */
@@ -937,6 +999,20 @@ export function prepareStatScene(R, stat, cat, n, weapon, shield, caps, rollMs) 
       play: () => [guardPass(A, slime, 2, hasShield, ranged, rollMs), capped ? null : guardPass(B, slime, 2, hasShield, ranged, rollMs)],
     };
   }
+  if (stat === 'mana') {
+    /* v2.3.3008: the bar and the casts it pays for (manaPass).  Two lines
+       under it: the Max MP itself, now -> after (the owner's ask, word for
+       word), and the specials a full bar pays for. */
+    const o0 = offenseOf(A, weapon, slime), o1 = offenseOf(B, weapon, slime);
+    const mp = (C) => String(Math.round((C && C.maxMana) || 100));
+    return {
+      ...base, kind: 'mana', shot: o0 && o0.ranged ? o0.type : null,
+      note: o0 ? null : gearNote('its specials'),
+      verdict: { label: 'Max MP', now: mp(A), after: capped ? null : mp(B) },
+      verdict2: o0 ? { label: 'Specials on a full bar', now: String(specialsOnABar(A)), after: capped ? null : String(specialsOnABar(B)) } : null,
+      play: (seed) => [manaPass(o0, A, slime, seed || 1, caps), capped ? null : manaPass(o1, B, slime, seed || 1, caps)],
+    };
+  }
   if (stat === 'eres') {
     return {
       ...base, kind: 'burst',
@@ -964,4 +1040,5 @@ export function simulateStatScene(R, stat, cat, n, weapon, shield, caps, seed, r
 function cap1(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
 /** The stats that have a scene -- StatDemo's STAT_DEMO_KEYS. */
-export const SIM_STATS = ['dmg', 'aspd', 'luck', 'crit', 'critDmg', 'special', 'elem', 'range', 'hp', 'def', 'dodge', 'stam', 'eres', 'move'];
+/* v2.3.3008: + 'mana', the one body stat that had no scene */
+export const SIM_STATS = ['dmg', 'aspd', 'luck', 'crit', 'critDmg', 'special', 'elem', 'range', 'hp', 'def', 'dodge', 'stam', 'mana', 'eres', 'move'];

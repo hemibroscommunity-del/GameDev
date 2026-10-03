@@ -352,6 +352,15 @@ function passSteps(pass, off, phase, ctx) {
       case 'stam':
         at(b.t, (s) => (s.bar ? { bar: { ...s.bar, cur: b.cur } } : {}));
         break;
+      /* v2.3.3008: Max MP's scene -- a block off the bar as each special
+         goes, and the word when it cannot pay for the next (statSim
+         manaPass) */
+      case 'mana':
+        at(b.t, (s) => (s.bar ? { bar: { ...s.bar, cur: b.cur } } : {}));
+        break;
+      case 'nomana':
+        pop(b.t, 'hero', b.text, 'miss', 0);
+        break;
       case 'roll':
         /* the stamina goes as the roll starts -- the sim puts that half his
            roll window before the attack lands (prepareStatScene's rollMs) */
@@ -626,8 +635,8 @@ const Bar = ({ b }) => (
 
 /* v2.3.2979: the long run, in one line -- the same now → after dress the
    window's own rows use, so it reads as one more of them. */
-const Verdict = ({ v, capped }) => (
-  <div className="bt-sd-verdict" data-sd-verdict="">
+const Verdict = ({ v, capped, second }) => (
+  <div className="bt-sd-verdict" {...(second ? { 'data-sd-verdict2': '' } : { 'data-sd-verdict': '' })}>
     <span className="bt-sd-verdict-l">{v.label}</span>
     <span className="bt-sd-verdict-v">
       {v.now}
@@ -968,8 +977,10 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
      on the slime's feet; a crash is where its bolt went in.  So a projectile
      lane waits for the slime's pins, and the bow for its take, before the
      films are taken: the stuck shaft is filmed at the angle its arrow flies. */
-  const hitsScene = !!(prep && (prep.kind === 'fight' || prep.kind === 'special' || prep.kind === 'range'));
-  const specialScene = !!(prep && prep.kind === 'special');
+  /* v2.3.3008: Max MP's scene ('mana') is specials too, so it takes the
+     special's frames and the slime's pins the same way */
+  const hitsScene = !!(prep && (prep.kind === 'fight' || prep.kind === 'special' || prep.kind === 'range' || prep.kind === 'mana'));
+  const specialScene = !!(prep && (prep.kind === 'special' || prep.kind === 'mana'));
   const ranged = shot === 'bow' || shot === 'staff';
   const [pinsIn, setPinsIn] = React.useState(() => slimePinsReady());
   React.useEffect(() => {
@@ -1064,8 +1075,10 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
       try {
         window.__btStatScene = {
           stat, seed, kind: prep.kind, verdict: prep.verdict,
+          verdict2: prep.verdict2 || null,   /* v2.3.3008 */
+          bars: passes.map((p) => (p && p.bar ? { kind: p.bar.kind, max: p.bar.max } : null)),   /* v2.3.3008: each lane's bar, its max */
           lanes: passes[1] ? 2 : 1,   /* v2.3.3002: both halves at once, one lane each */
-          texts: passes.map((p) => (p ? p.beats.filter((b) => b.text).map((b) => (b.k === 'land' ? 'hero:' : 'slime:') + b.text) : null)),
+          texts: passes.map((p) => (p ? p.beats.filter((b) => b.text).map((b) => (b.k === 'land' || b.k === 'nomana' ? 'hero:' : 'slime:') + b.text) : null)),
           /* v2.3.2986: what the hero attacks WITH: the frame count of the
              world's swing / shot, 'staff' for the kick, null for the nudge */
           fighter: attackRef.current ? (attackRef.current.kick ? 'staff' : attackRef.current.frames.length) : null,
@@ -1173,6 +1186,9 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
     <div className="bt-sd" data-stat-demo={stat} data-sd-kind={prep ? prep.kind : ''} data-sd-lanes={lanes.length} aria-hidden="true">
       {lanes.map(lane)}
       {prep && prep.verdict && <Verdict v={prep.verdict} capped={prep.capped} />}
+      {/* v2.3.3008: a second line where one stat buys two things (Max MP: the
+          bar, and the casts it pays for) */}
+      {prep && prep.verdict2 && <Verdict v={prep.verdict2} capped={prep.capped} second />}
       {prep && prep.note && <div className="bt-sd-note" data-sd-note="">{prep.note}</div>}
     </div>
   );

@@ -40,8 +40,9 @@ import { BOW_VOLLEY } from '../../src/game/bowVolley.js';
 import {
   sceneSlime, offenseOf, rollHit, landedDmg, takenOf, burstOf, simulateStatScene, prepareStatScene,
   SLIME_THROW, SLIME_SWING, SERVER_TICK_MS, BLUE_BURST, GUARD, SIM_STATS, sceneDie, hitsToDown, killStats, dotOf, thornOf,
-  guardHoldMs, walkPxPerSec,
+  guardHoldMs, walkPxPerSec, specialsOnABar,
 } from '../../src/ui/mobile/sheet/statSim.js';
+import { rpgBlockSize } from '../../src/data/abilities.js';
 import { getAmuletBonus } from '../../src/data/items.js';
 import { withPoints } from '../../src/ui/mobile/sheet/statPreview.js';
 
@@ -596,6 +597,48 @@ for (const b of BUILDS) {
   const bare = makeChar({ rangedWeapon: null });
   const e = simulateStatScene(bare, 'dmg', 'bow', 1, null, false, caps, 1);
   check('an empty lane gets a line, not a fight with a weapon you do not own', e && e.kind === 'empty' && /bow/i.test(e.note || ''), e);
+}
+
+/* ── 7. MAX MP (v2.3.3008) ───────────────────────────────────────────── */
+/* The owner: "add a max mp before and after for the simulation stat
+   allocation confirmation window it's the only one missing one".  The bar is
+   the scene: a special costs one block of it, so a lane casts until the bar
+   cannot pay for another, a block lighter each cast; the "+n" lane's bar is
+   the bigger one; a point that crosses a rung of the block ladder casts once
+   more. */
+{
+  const caps = { bowvolley: true, bigorb: true };
+  setBlockScaleEnabled(true);
+  const R = BUILDS[1].c();
+  const sc = simulateStatScene(R, 'mana', null, 4, R.weapon, false, caps, 77);
+  const casts = (p) => p.beats.filter((b) => b.k === 'special').length;
+  const bars = (p) => p.beats.filter((b) => b.k === 'mana').map((b) => b.cur);
+  check('mana: a scene with the mana bar on both halves', sc && sc.kind === 'mana' && sc.passes[0].bar && sc.passes[0].bar.kind === 'mana' && sc.passes[1] && sc.passes[1].bar.kind === 'mana', sc && { kind: sc.kind });
+  check(`mana: the "+n" bar is the bigger one (${sc.passes[0].bar.max} -> ${sc.passes[1].bar.max}), as the window's Max MP line says`,
+    sc.passes[1].bar.max > sc.passes[0].bar.max && sc.verdict.label === 'Max MP' && sc.verdict.now === String(sc.passes[0].bar.max) && sc.verdict.after === String(sc.passes[1].bar.max), { bars: [sc.passes[0].bar.max, sc.passes[1].bar.max], verdict: sc.verdict });
+  const R0 = (() => { const c = JSON.parse(JSON.stringify(R)); recalcDerived(c); return c; })();
+  const cost0 = rpgBlockSize(R0, 'mana');
+  const b0 = bars(sc.passes[0]);
+  check(`mana: each special takes one block (${cost0}) off the bar`, b0.length > 0 && b0.every((v, i) => Math.abs((i ? b0[i - 1] : sc.passes[0].bar.max) - v - cost0) < 1e-9), { b0, cost0 });
+  check(`mana: casts until the bar cannot pay for another (${casts(sc.passes[0])} casts, the bar's ${specialsOnABar(R0)} blocks), then says so`,
+    casts(sc.passes[0]) === specialsOnABar(R0) && b0[b0.length - 1] < cost0 && sc.passes[0].beats.some((b) => b.k === 'nomana'), { casts: casts(sc.passes[0]), blocks: specialsOnABar(R0), last: b0[b0.length - 1] });
+  check(`mana: the second line is the casts a full bar pays for (${sc.verdict2 && sc.verdict2.now} -> ${sc.verdict2 && sc.verdict2.after})`,
+    !!sc.verdict2 && sc.verdict2.now === String(casts(sc.passes[0])) && sc.verdict2.after === String(casts(sc.passes[1])), sc.verdict2);
+  /* across a rung: Magic level + Max MP points 19 -> 20 is a sixth block */
+  const lvl = R.prog3.sk.staff.level;
+  const Rr = BUILDS[1].c();
+  Rr.prog3.alloc = Object.assign({}, Rr.prog3.alloc, { mana: 19 - lvl });
+  recalcDerived(Rr);
+  const sr = simulateStatScene(Rr, 'mana', null, 1, Rr.weapon, false, caps, 77);
+  check(`mana: a point that crosses a rung of the block ladder casts once more (${casts(sr.passes[0])} -> ${casts(sr.passes[1])})`,
+    casts(sr.passes[1]) === casts(sr.passes[0]) + 1 && sr.verdict2.after === String(casts(sr.passes[0]) + 1), { now: casts(sr.passes[0]), after: casts(sr.passes[1]), v: sr.verdict2 });
+  check('mana: the same dice both halves, cast for cast (the first cast pops the same numbers)',
+    JSON.stringify(sc.passes[0].beats.filter((b) => b.k === 'hit').slice(0, 2).map((b) => b.text)) === JSON.stringify(sc.passes[1].beats.filter((b) => b.k === 'hit').slice(0, 2).map((b) => b.text)));
+  const bare = makeChar({ weapon: null });
+  const sb = simulateStatScene(bare, 'mana', null, 1, null, false, caps, 1);
+  check('mana: nothing in hand -- the bars alone, both lengths, and a line saying what to equip',
+    sb && sb.kind === 'mana' && sb.passes[0].bar.max < sb.passes[1].bar.max && /equip/i.test(sb.note || '') && !sb.verdict2, sb && { note: sb.note, v2: sb.verdict2 });
+  setBlockScaleEnabled(false);
 }
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }

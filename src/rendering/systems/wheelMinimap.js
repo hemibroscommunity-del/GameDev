@@ -20,9 +20,17 @@
  *     the railway as clean lines over it (wheelmap.js);
  *   - marks the town, the camps, the passes, the gates and the landmarks,
  *     you (a chevron the way you face), other bros and monsters;
- *   - says under it where you are, in words: the land, its stage and the
+ *   - said under it where you are, in words: the land, its stage and the
  *     levels there ("Frost Ridge / the thaw line · Lv 6-10"), from the
- *     worker's answer for the spot under you (wheelHere);
+ *     worker's answer for the spot under you (wheelHere).  v2.3.3009: the
+ *     TOP BAR says it now, in place of "The Wheel (Lv1-2)" (ZoneHeader.jsx
+ *     wheelWhere) -- the owner: "It'll free up more room around the
+ *     minimap".  The probe below still carries the words;
+ *   - v2.3.3009: wears a THICK FRAME, the owner's "give the minimap thicker
+ *     borders so it's not confused with game screen area": a dark keyline, a
+ *     slate band the colour of the bars, and the brass line it always had,
+ *     inside, FRAME px in all, drawn over the map's edge (the box stays BOX
+ *     px, the map centred in it as before), and the box is opaque;
  *   - carries a small "expand" mark: tapping the box opens the world map
  *     (src/ui/WorldMapOverlay.jsx, a DOM button laid exactly over this box,
  *     whose place is published here as window.__btWheelMini).
@@ -41,7 +49,7 @@
  * before the Wheel opened (behind its loading screen); the lines and marks
  * are drawn once from numbers.
  */
-import { Container, Graphics, Sprite, Text, Texture, CanvasSource } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture, CanvasSource } from 'pixi.js';
 import { wheelOverview, wheelMapInfo, wheelHere } from '@/game/wheelTrial.js';
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 
@@ -52,7 +60,13 @@ const SCALE = WHEEL_BOX / WHEEL_WINDOW;
 const C_SEA = 0x16324a, C_FRAME = 0xd8aa58, C_ROAD = 0xf2e4c2, C_PATH = 0xe6d5ae, C_RIVER = 0x5aaee8, C_RAIL = 0x2b2320;
 const C_TOWN = 0xf4f0e7, C_CAMP = 0xeac675, C_GATE = 0xc58cff, C_PASS = 0xf4f0e7, C_LANDMARK = 0x9fe0c0;
 const C_PLAYER = 0xf4f0e7, C_OTHER = 0x58b97b, C_MONSTER = 0xe35d5b;
-const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = 10;   /* v2.3.2990: as the zones' minimap stars, held this far in from the box's edge */
+/* v2.3.3009: the frame -- its width over the map's edge, CSS px: a dark
+   keyline, a slate band (the bars' panel colour, LANTERN-SLATE) and the brass
+   line inside it */
+const FRAME = 7, R_BOX = 8, R_IN = 4, C_KEYLINE = 0x0b161b, C_SLATE = 0x202c32, C_SLATE_HI = 0x3a4b55;
+/* v2.3.2990: as the zones' minimap stars, held this far in from the box's
+   edge -- v2.3.3009: and clear of the frame (was 10) */
+const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = FRAME + 9;
 /* v2.3.2992: the gold road -- its width and its dark casing, CSS px; it
    starts clear of your chevron and is not drawn when the spot is this close */
 const ROAD_W = 2.5, ROAD_CASE = 5, ROAD_FROM = 8, ROAD_MIN = 12, C_ROAD_CASE = 0x0b161b;
@@ -65,17 +79,19 @@ export class WheelMinimap {
     this.root = new Container();
     this.root.label = 'wheel-minimap';
     this.root.visible = false;
-    this.root.alpha = 0.92;
+    /* v2.3.3009: opaque (was 0.92): the world showing through it is part of
+       what made it read as more of the game screen */
+    this.root.alpha = 1;
     hudLayer.addChild(this.root);
 
-    const shadow = new Graphics().roundRect(-2, -2, WHEEL_BOX + 4, WHEEL_BOX + 4, 8).fill({ color: 0x000000, alpha: 0.45 });
-    const bg = new Graphics().roundRect(0, 0, WHEEL_BOX, WHEEL_BOX, 7).fill(C_SEA);
+    const shadow = new Graphics().roundRect(-2, -2, WHEEL_BOX + 4, WHEEL_BOX + 4, R_BOX + 2).fill({ color: 0x000000, alpha: 0.45 });
+    const bg = new Graphics().roundRect(0, 0, WHEEL_BOX, WHEEL_BOX, R_BOX).fill(C_SEA);
     this.root.addChild(shadow, bg);
     this.clip = new Container();
     this.root.addChild(this.clip);
     this.pan = new Container();
     this.clip.addChild(this.pan);
-    const mask = new Graphics().roundRect(0, 0, WHEEL_BOX, WHEEL_BOX, 7).fill(0xffffff);
+    const mask = new Graphics().roundRect(0, 0, WHEEL_BOX, WHEEL_BOX, R_BOX).fill(0xffffff);
     this.root.addChild(mask);
     this.clip.mask = mask;
     this.lines = new Graphics();     /* roads, river, railway: drawn once */
@@ -88,10 +104,23 @@ export class WheelMinimap {
     this.player.width = 15; this.player.height = 15;
     this.player.tint = C_PLAYER;
     this.pan.addChild(this.player);
-    const border = new Graphics().roundRect(0.5, 0.5, WHEEL_BOX - 1, WHEEL_BOX - 1, 7).stroke({ width: 1.5, color: C_FRAME, alpha: 0.85 });
-    /* the "tap me" mark: two corner arrows, bottom left */
+    /* v2.3.3009: the thick frame (was one 1.5 px brass line at 0.85): a
+       ring FRAME px wide drawn over the map's edge -- the slate band with a
+       lighter top-left lip, a dark keyline outside and in, and the brass line
+       just inside it -- so the box reads as a panel, not a hole in the world */
+    const B = WHEEL_BOX, IN = B - 2 * FRAME;
+    const border = new Graphics();
+    border.roundRect(0, 0, B, B, R_BOX).fill(C_SLATE)
+      .roundRect(FRAME, FRAME, IN, IN, R_IN).cut();
+    border.moveTo(2.25, B - R_BOX).lineTo(2.25, R_BOX).arcTo(2.25, 2.25, R_BOX, 2.25, R_BOX - 2.25).lineTo(B - R_BOX, 2.25)
+      .stroke({ width: 1.5, color: C_SLATE_HI, cap: 'round' });
+    border.roundRect(0.75, 0.75, B - 1.5, B - 1.5, R_BOX).stroke({ width: 1.5, color: C_KEYLINE });
+    border.roundRect(FRAME - 0.9, FRAME - 0.9, IN + 1.8, IN + 1.8, R_IN + 1).stroke({ width: 1.8, color: C_FRAME });
+    border.roundRect(FRAME + 0.5, FRAME + 0.5, IN - 1, IN - 1, R_IN).stroke({ width: 1, color: C_KEYLINE, alpha: 0.55 });
+    /* the "tap me" mark: two corner arrows, bottom left (v2.3.3009: inside
+       the frame) */
     const expand = new Graphics();
-    const ex = 6, ey = WHEEL_BOX - 18;
+    const ex = FRAME + 5, ey = WHEEL_BOX - FRAME - 17;
     expand.roundRect(ex - 2, ey - 2, 16, 16, 4).fill({ color: 0x0b161b, alpha: 0.7 });
     expand.moveTo(ex + 2, ey + 6).lineTo(ex + 2, ey + 2).lineTo(ex + 6, ey + 2)
       .moveTo(ex + 10, ey + 6).lineTo(ex + 10, ey + 10).lineTo(ex + 6, ey + 10)
@@ -99,20 +128,13 @@ export class WheelMinimap {
       .stroke({ width: 1.5, color: C_FRAME, cap: 'round', join: 'round' });
     this.root.addChild(border, expand);
 
-    /* where you are, in words, under the box */
-    this.label = new Container();
-    this.labelBg = new Graphics();
-    this.title = new Text({ text: '', resolution: 2, style: { fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: 12, fontWeight: '700', fill: 0xf4f0e7, stroke: { color: 0x0b161b, width: 3 } } });
-    this.sub = new Text({ text: '', resolution: 2, style: { fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: 10.5, fontWeight: '600', fill: 0xeac675, stroke: { color: 0x0b161b, width: 3 } } });
-    this.title.anchor.set(1, 0); this.sub.anchor.set(1, 0);
-    this.label.addChild(this.labelBg, this.title, this.sub);
-    this.root.addChild(this.label);
+    /* v2.3.3009: the words that were printed under the box are the top
+       bar's now (ZoneHeader.jsx wheelWhere) */
 
     this.pool = [];
     this.used = 0;
     this.built = null;      /* the map the lines were drawn from */
     this.under = null;      /* the overview sprite */
-    this.words = '';
     this._rectFor = '';
   }
 
@@ -241,21 +263,10 @@ export class WheelMinimap {
     this.player.x = P.x * SCALE; this.player.y = P.y * SCALE;
     this.player.rotation = f >= 0 ? f * Math.PI / 4 + Math.PI / 2 : 0;
 
-    /* where you are, in words */
+    /* where you are, in words: for the probe only since v2.3.3009, the top
+       bar printing them (ZoneHeader.jsx asks wheelHere itself) */
     const here = wheelHere(P.x, P.y);
     const w = here && here.words;
-    const key = w ? `${w.title}|${w.sub}` : '';
-    if (key !== this.words) {
-      this.words = key;
-      this.title.text = w ? w.title : '';
-      this.sub.text = w ? w.sub : '';
-      const tw = Math.max(this.title.width, this.sub.width);
-      this.title.x = this.sub.x = WHEEL_BOX - 4;
-      this.title.y = WHEEL_BOX + 4;
-      this.sub.y = WHEEL_BOX + 4 + 15;
-      this.labelBg.clear();
-      if (w) this.labelBg.roundRect(WHEEL_BOX - tw - 10, WHEEL_BOX + 2, tw + 10, w.sub ? 32 : 19, 5).fill({ color: 0x0b161b, alpha: 0.72 });
-    }
 
     /* the box's place on the page, for the button that opens the world map */
     try {
@@ -273,6 +284,7 @@ export class WheelMinimap {
         playerBoxX: P.x * SCALE + this.pan.x, playerBoxY: P.y * SCALE + this.pan.y,
         facingRot: this.player.rotation, markers: this.used, under: !!this.under,
         routes: map.routes.length, places: map.places.length, words: w ? { ...w } : null,
+        frame: FRAME, label: false,   /* v2.3.3009: the frame's width; nothing printed under the box */
         quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road } : null,
       };
     } catch (e) { /* never breaks the frame */ }

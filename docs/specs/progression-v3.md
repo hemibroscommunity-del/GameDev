@@ -909,6 +909,7 @@ and lane, through the client mirrors of the worker's arithmetic:
 | Stamina | with a shield, holding your guard (5 a regen tick; a ball caught on the shield costs nothing more, a SWING caught on it costs 10); without, rolling out of the slime's attack (one stamina block a roll) | `Guard holds vs. a slime` / `Dodge rolls on a full bar` |
 | Resist | the one elemental thing a slime does: the blue slime's death burst (60 flat, at most half your max HP) | `Blue slime burst` |
 | Move Speed | the walk, at your real speed | `Cross the meadow` |
+| Max MP (v2.3.3008) | specials cast back to back, each paying one block of mana (`specialManaCost` = `rpgBlockSize(R,'mana')`) off a full bar drawn at its real size, the slime coming back between kills, until the bar cannot pay for another: "Out of mana" over the hero (`manaPass`) | `Max MP` now → after, and `Specials on a full bar` (`specialsOnABar`: a bar's worth of blocks, which goes up a rung at 20/40/60/80/100) |
 
 **One set of dice, both halves.** The before and after halves read the
 same random numbers hit for hit (`sceneDie`: a hash of the loop's seed,

@@ -24,6 +24,14 @@ const MODE = new URLSearchParams(location.search).get('layers') || 'all';
 const WEAR = new URLSearchParams(location.search).get('wear') || 'full';
 // ?bg=magenta: chroma-key background — for exporting ChatGPT source boards
 const BG = new URLSearchParams(location.search).get('bg') === 'magenta' ? '#ff00ff' : '#3c4048';
+// v2.3.3010: ?pose=stand draws the standing frames instead of the jog (the
+// greaves-alone clamp runs on both)
+const POSE = new URLSearchParams(location.search).get('pose') || 'jog';
+// ?tint=FF9E58: draw the gear in a metal, as the game's multiply tint does
+// (copper is 0xFF9E58, materialTints.js) -- for a picture of the real thing
+const TINT = new URLSearchParams(location.search).get('tint');
+// ?clamp=off: the bake as it was before the greaves-alone clamp, to compare
+if (new URLSearchParams(location.search).get('clamp') === 'off') globalThis.__btLegsClampOff = true;
 // mirrored production angles: rendered from the base dir with a negative
 // x-scale, exactly how the game mirrors (v2.3.1349b)
 const MIRROR = { west: 'east', northwest: 'northeast', southeast: 'southwest' };
@@ -39,9 +47,25 @@ async function ready(fn, tries = 200) {
   return null;
 }
 
-function drawTex(ctx, tex, dx, dy, scale = 1, flip = false) {
+function drawTex(ctx, tex, dx, dy, scale = 1, flip = false, tint = null) {
   const src = tex && tex.source && tex.source.resource;
   if (!src) return;
+  if (tint) {
+    /* the gear alone on a scratch canvas, multiplied by the tint, its own
+       alpha kept -- then drawn as any frame is */
+    const n = Math.round(256 * scale);
+    const c = document.createElement('canvas'); c.width = n; c.height = n;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+    drawGearFrame(x, tex, 0, 0, n, n);
+    x.globalCompositeOperation = 'multiply'; x.fillStyle = '#' + tint; x.fillRect(0, 0, n, n);
+    x.globalCompositeOperation = 'destination-in'; drawGearFrame(x, tex, 0, 0, n, n);
+    tex = { source: { resource: c }, frame: { x: 0, y: 0, width: n, height: n } };
+    ctx.save();
+    if (flip) { ctx.translate(dx + 256 * scale, dy); ctx.scale(-1, 1); ctx.drawImage(c, 0, 0); }
+    else ctx.drawImage(c, dx, dy);
+    ctx.restore();
+    return;
+  }
   /* v2.3.2750: drawGearFrame -- gear frames may be cropped (gearSheets
      packTrimmed); for any other texture it is the same drawImage as before. */
   if (!flip) {
@@ -58,7 +82,7 @@ function drawTex(ctx, tex, dx, dy, scale = 1, flip = false) {
 async function board(dir) {
   const base = MIRROR[dir] || dir;
   const flip = !!MIRROR[dir];
-  const n = frameCount('jog', base) || 1;
+  const n = frameCount(POSE, base) || 1;
   const cols = Math.min(n, 7);
   const rows = Math.ceil(n / cols);
   const Z = 1.6;
@@ -71,15 +95,15 @@ async function board(dir) {
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, cv.width, cv.height);
   for (let f = 0; f < n; f++) {
-    const body = await ready(() => getBodyFrame(SKIN, PANTS, SHOES, 'jog', base, f, null, 'none'));
-    const chest = await ready(() => getGearFrame('chest', 'steelplate', 'jog', base, f));
-    const legs = await ready(() => getGearFrame('legs', 'steelgreaves', 'jog', base, f));
+    const body = await ready(() => getBodyFrame(SKIN, PANTS, SHOES, POSE, base, f, null, 'none'));
+    const chest = await ready(() => getGearFrame('chest', 'steelplate', POSE, base, f));
+    const legs = await ready(() => getGearFrame('legs', 'steelgreaves', POSE, base, f));
     const belt = await ready(() => getGearFrame('belt', 'chainbelt', 'jog', base, f), 60);
     if (f === 0) console.log('[harness]', dir, 'body=', !!body, 'chest=', !!chest, 'legs=', !!legs, 'belt=', !!belt);
     if (!body || !chest || !legs) continue;
     // v2.3.1361: the fullset figure replaces everything when it ships for
     // this dir (only jog-south so far); dirs without it keep the bake path.
-    if (MODE !== 'body' && WEAR === 'full') {
+    if (MODE !== 'body' && WEAR === 'full' && POSE === 'jog') {
       // v2.3.1367: draw by cycle phase — mirrors the game's native-count
       // playback for sheets whose frame count differs from the body's.
       const fs = await ready(() => getGearFramePhased('fullset', 'steel', 'jog', base, f / n), f === 0 ? 60 : 10);
@@ -110,15 +134,15 @@ async function board(dir) {
         : [{ k: 'chest:steelplate', tex: chest }, { k: 'legs:steelgreaves', tex: legs }];
     let masked = null;
     for (let t = 0; t < 40 && !masked; t++) {
-      try { masked = _maskedBodyFrame(body, worn, 6, { pose: 'jog', dir: base, frameIdx: f }); } catch (e) { break; }
+      try { masked = _maskedBodyFrame(body, worn, 6, { pose: POSE, dir: base, frameIdx: f }); } catch (e) { break; }
       if (masked && belt === null) break;
       if (!masked) await wait(50);
     }
     const dx = (f % cols) * 256 * Z, dy = Math.floor(f / cols) * 256 * Z;
     drawTex(ctx, masked || body, dx, dy, Z, flip);
     if (MODE !== 'body') {
-      if (WEAR !== 'chest') drawTex(ctx, legs, dx, dy, Z, flip);
-      if (WEAR !== 'legs') drawTex(ctx, chest, dx, dy, Z, flip);
+      if (WEAR !== 'chest') drawTex(ctx, legs, dx, dy, Z, flip, TINT);
+      if (WEAR !== 'legs') drawTex(ctx, chest, dx, dy, Z, flip, TINT);
     }
     ctx.fillStyle = '#ffdd44'; ctx.font = '20px monospace';
     ctx.fillText(dir + ' f' + f, dx + 8, dy + 24);

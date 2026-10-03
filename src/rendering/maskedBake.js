@@ -29,6 +29,150 @@ function _histMedian(h, n) {
 const _medR = new Uint32Array(256), _medG = new Uint32Array(256), _medB = new Uint32Array(256);
 const _fillStack = new Int32Array(256 * 256 + 1024);
 
+/* ═══ v2.3.3010: THE GREAVES-ALONE CLAMP (its call and the owner's words are
+   at the end of bakeMaskedCanvas) ═══
+   d      the bake's pixels after the confinement pass (erased in place)
+   body   the body frame BEFORE the erase (colours for the skin test)
+   gop    the worn gear's opaque pixels (alpha > 30); fill0 the same with its
+          interior windows; gLo..gHi the rows they span
+   w0..w1 the waist band's rows, rowMin/rowMax the gear's span in each of them
+   From the greaves' top row down, every body pixel outside fill0 goes,
+   unless it is in the waist band between the gear's outer edges (the V where
+   the thigh plates part), or it is the ARM: skin by the same three-way colour
+   test the ghost-hand blend uses (skin from the head, trousers from the upper
+   leg, shoes from the foot band, whichever the pixel aligns with best), in a
+   blob big enough to be a hand, plus its dark outline.  Inside a window the
+   plates enclose it turns under-armour shadow.  Returns how many changed. */
+const LEG_TOP_SHARE = 0.03;   /* the greaves' top: the row above which 3% of their pixels lie (a stray speck above the knee does not move it) */
+const ARM_MIN_PX = 20;        /* a skin blob smaller than this is a highlight, not an arm (the ghost-hand blend's despeckle)... */
+const ARM_NEAR = 3;           /* ...unless it lies this close to one that is (a knuckle a crease cut off the fist) */
+function _medianRGB(px, y0, y1, keep) {
+  _medR.fill(0); _medG.fill(0); _medB.fill(0);
+  let n = 0;
+  for (let y = Math.max(0, y0); y < Math.min(256, y1); y++)
+    for (let x = 0; x < 256; x++) {
+      const o = (y * 256 + x) * 4;
+      if (px[o + 3] <= 40 || (keep && !keep(px[o], px[o + 1], px[o + 2]))) continue;
+      _medR[px[o]]++; _medG[px[o + 1]]++; _medB[px[o + 2]]++; n++;
+    }
+  return n ? [_histMedian(_medR, n), _histMedian(_medG, n), _histMedian(_medB, n)] : null;
+}
+function _legsOnlyClamp(d, body, gop, fill0, gLo, gHi, figTop, figBot, neckY, w0, w1, rowMin, rowMax) {
+  if (!(gHi >= gLo) || !(figBot > figTop)) return 0;
+  let total = 0;
+  for (let p = gLo * 256; p < (gHi + 1) * 256; p++) if (gop[p]) total++;
+  if (!total) return 0;
+  let top = gLo;
+  for (let y = gLo, cum = 0; y <= gHi; y++) {
+    for (let x = 0; x < 256; x++) if (gop[y * 256 + x]) cum++;
+    if (cum >= LEG_TOP_SHARE * total) { top = y; break; }
+  }
+  /* the colours, sampled from this body as the ghost-hand blend samples them */
+  const fh = figBot - figTop;
+  const skin = _medianRGB(body, figTop, neckY);
+  const shoes = _medianRGB(body, figBot - Math.round(0.18 * fh), figBot + 1);
+  let pants = null;
+  if (skin) {
+    const sn = Math.hypot(skin[0], skin[1], skin[2]) || 1;
+    const waistY = Math.round(figTop + 0.45 * fh);
+    const notSkin = (R, G, B) => (R * skin[0] + G * skin[1] + B * skin[2]) / ((Math.hypot(R, G, B) || 1) * sn) < 0.985;
+    pants = _medianRGB(body, waistY, waistY + Math.round(0.40 * fh), notSkin) || _medianRGB(body, waistY, waistY + Math.round(0.40 * fh));
+  }
+  const score = (R, G, B, T) => { const n = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / n; };
+  /* the arms: skin below the neck, in blobs big enough to be a hand -- and
+     the small ones beside such a blob (a knuckle a dark crease cut off the
+     fist), so only a lone fleck is not an arm */
+  const arm = new Uint8Array(256 * 256);
+  if (skin && pants && shoes) {
+    const y0 = Math.max(0, neckY);
+    const sk = new Uint8Array(256 * 256);
+    const d2 = (R, G, B, T) => (R - T[0]) * (R - T[0]) + (G - T[1]) * (G - T[1]) + (B - T[2]) * (B - T[2]);
+    const sn = Math.hypot(skin[0], skin[1], skin[2]) || 1;
+    /* an outline is never skin: a near-black pixel's hue is noise (a 7,2,0
+       outline "points" nearer skin than trousers), so nothing darker than a
+       third of this skin's own brightness is tested -- a dark-skinned bro's
+       shading stays above it, every outline below */
+    const dim = 0.3 * (skin[0] + skin[1] + skin[2]);
+    for (let y = y0; y < 256; y++) for (let x = 0; x < 256; x++) {
+      const p = y * 256 + x, o = p * 4;
+      if (body[o + 3] <= 40) continue;
+      const R = body[o], G = body[o + 1], B = body[o + 2];
+      if (R + G + B <= dim) continue;
+      const s = score(R, G, B, skin);
+      if (s > score(R, G, B, pants) && s > score(R, G, B, shoes)) { sk[p] = 1; continue; }
+      /* a knuckle's pale highlight lines up with the trousers' hue a hair
+         better than with skin -- the hue test ignores brightness -- so skin
+         is also whatever is NEAREST skin in plain colour and of its hue */
+      const ds = d2(R, G, B, skin);
+      if (ds < d2(R, G, B, pants) && ds < d2(R, G, B, shoes)
+          && (R * skin[0] + G * skin[1] + B * skin[2]) / ((Math.hypot(R, G, B) || 1) * sn) >= 0.98) sk[p] = 1;
+    }
+    const seen = new Uint8Array(256 * 256), st = _fillStack, small = [];
+    for (let p0 = y0 * 256; p0 < 256 * 256; p0++) {
+      if (!sk[p0] || seen[p0]) continue;
+      let sp = 0; const comp = [];
+      st[sp++] = p0; seen[p0] = 1;
+      while (sp > 0) {
+        const p = st[--sp]; comp.push(p);
+        const x = p & 255, y = p >> 8;
+        if (x > 0 && sk[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; st[sp++] = p - 1; }
+        if (x < 255 && sk[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; st[sp++] = p + 1; }
+        if (y > 0 && sk[p - 256] && !seen[p - 256]) { seen[p - 256] = 1; st[sp++] = p - 256; }
+        if (y < 255 && sk[p + 256] && !seen[p + 256]) { seen[p + 256] = 1; st[sp++] = p + 256; }
+      }
+      if (comp.length >= ARM_MIN_PX) for (let i = 0; i < comp.length; i++) arm[comp[i]] = 1;
+      else small.push(comp);
+    }
+    if (small.length) {
+      /* within ARM_NEAR px (a box) of a hand-sized blob */
+      const R2 = ARM_NEAR, row = new Uint8Array(256 * 256), near = new Uint8Array(256 * 256);
+      for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
+        let v = 0;
+        for (let k = Math.max(0, x - R2); k <= Math.min(255, x + R2) && !v; k++) v = arm[y * 256 + k];
+        row[y * 256 + x] = v;
+      }
+      for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
+        let v = 0;
+        for (let k = Math.max(0, y - R2); k <= Math.min(255, y + R2) && !v; k++) v = row[k * 256 + x];
+        near[y * 256 + x] = v;
+      }
+      for (const comp of small) if (comp.some((p) => near[p])) for (let i = 0; i < comp.length; i++) arm[comp[i]] = 1;
+    }
+  }
+  let gone = 0;
+  for (let y = Math.max(top, neckY); y < 256; y++) {
+    const inWaist = y >= w0 && y < w1;
+    for (let x = 0; x < 256; x++) {
+      const p = y * 256 + x, o = p * 4;
+      if (d[o + 3] === 0 || arm[p]) continue;
+      if (inWaist && x >= rowMin[y] && x <= rowMax[y]) continue;   /* the waistband's V, as it was */
+      if (fill0[p]) {
+        /* a window the greaves enclose (the legs crossing, a gap between
+           plates): the trousers showed through it.  Quiet under-armour
+           shadow instead -- the full set's own colour for its windows
+           (v2.3.1349 / v2.3.1359) -- never a see-through hole. */
+        if (!gop[p] && !(d[o] === 44 && d[o + 1] === 47 && d[o + 2] === 54)) {
+          d[o] = 44; d[o + 1] = 47; d[o + 2] = 54; d[o + 3] = 255; gone++;
+        }
+        continue;
+      }
+      /* the arm's dark outline: within 2 px (Manhattan) of the arm */
+      if (d[o] < 85 && d[o + 1] < 85 && d[o + 2] < 85) {
+        let edge = false;
+        for (let dy = -2; dy <= 2 && !edge; dy++)
+          for (let dx = -2; dx <= 2; dx++) {
+            if (Math.abs(dx) + Math.abs(dy) > 2) continue;
+            const xx = x + dx, yy = y + dy;
+            if (xx >= 0 && xx < 256 && yy >= 0 && yy < 256 && arm[yy * 256 + xx]) { edge = true; break; }
+          }
+        if (edge) continue;
+      }
+      d[o + 3] = 0; gone++;
+    }
+  }
+  return gone;
+}
+
 export function bakeMaskedCanvas(inp) {
   const { mk, body, worn, dilate, poseInfo, belt, fishRod } = inp;
   let _beltPending = false;  /* v2.3.1347: belt sheet not loaded yet -> skip caching */
@@ -667,6 +811,34 @@ export function bakeMaskedCanvas(inp) {
               }
             }
           }
+        }
+        /* ═══ v2.3.3010: UNDER GREAVES ALONE, NO PLAIN LEGS ═══
+           Owner: "While wearing copper greaves the legs underneath near the
+           shoes poke out during east jog. You can just remove the plain
+           clothes legs beneath."  Greaves without the plate are PARTIAL wear,
+           and partial wear keeps a row whole wherever the gear wraps less than
+           85% of the body there (v2.3.684, for bare thighs under a hanging
+           gauntlet).  On the east jog the greave art is narrower than the
+           body's legs behind the knee and by the feet, so those rows came back
+           whole -- the olive trousers and the dark shoe beside the metal boot
+           -- and the 2 px allowance ring kept the trousers' outline round the
+           plates.  So under the greaves the body keeps none of its legs: from
+           the greaves' own top row down, only the plates' exact
+           silhouette (interior windows included, fill0 -- the full set's rule
+           below its waist since v2.3.1353) and the ARMS (skin, by the bake's
+           own three-way colour test, with their outline) may show.  Above the
+           plates the waist band is untouched, and inside it, between the
+           plates' outer edges, the body still fills the V where the thigh
+           plates part (the full set's waist allowance, rowMin..rowMax): taken
+           out, that read as a hole at the crotch.  A window the plates
+           enclose (the legs crossing) shows under-armour shadow, as the full
+           set's do, not the trousers.  Jog and stand only: the other poses'
+           sheets carry tools and props in the leg rows. */
+        if (wornLegs && !wornChest && origBody && poseInfo
+            && (poseInfo.pose === 'jog' || poseInfo.pose === 'stand')
+            && !globalThis.__btLegsClampOff) {   /* QA: the old look, for a before/after (src/belt-harness.html ?clamp=off) */
+          const n = _legsOnlyClamp(d2, origBody, gop, fill0, gLo, gHi, figTop, figBot, neckY, w0, w1, rowMin, rowMax);
+          if (n) dirty2 = true;
         }
         if (dirty2) ctx.putImageData(img2, 0, 0);
       }

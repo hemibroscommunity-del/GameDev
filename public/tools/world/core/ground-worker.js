@@ -51,7 +51,7 @@
 import { PLAN as BASE_PLAN, bigTownPlan, bigTownScale } from '../plan.js';
 import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
-import { materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder } from './ground.js';
+import { materialMap, composeGround, swatchesUnder, walkBits, swimBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 import { wheelMap, whereWords } from './wheelmap.js';
@@ -236,6 +236,10 @@ async function init(m) {
   const bp = { w: full.w, h: full.h, scale: full.scale, x0: full.x0, y0: full.y0 };
   const planMs = Math.round(performance.now() - t0);
   const bits = walkBits(bp, mm);
+  /* v2.3.3003: ...and of those, where you can swim (ground.js swimBits:
+     the rivers, ponds and lakes and the sea's shallows, never the open sea),
+     with composeGround's seed, so you swim out to the line that is drawn */
+  const swim = swimBits(bp, mm, (PLAN.seed | 0) + 900, bits);
   const ov = overviewPixels(bp, mm, OVERVIEW_CELLS);
   /* v2.3.2966: the map the minimap and the world map draw (wheelmap.js),
      and each cell's region and tier, kept for "where am I" (6 MB) */
@@ -272,7 +276,7 @@ async function init(m) {
   post({
     type: 'ready',
     worldW: bp.w * bp.scale * WPA, worldH: bp.h * bp.scale * WPA,
-    walk: { cols: bp.w, rows: bp.h, bits },
+    walk: { cols: bp.w, rows: bp.h, bits, swim },
     overview: ov,
     chunk: { artPx: CHUNK, gamePx: CHUNK * WPA, px: CHUNK * K, apronPx: APRON * K, cols: Math.ceil(bp.w * bp.scale / CHUNK), rows: Math.ceil(bp.h * bp.scale / CHUNK),
       under: CHUNK / UNDER },

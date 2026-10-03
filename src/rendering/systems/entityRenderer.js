@@ -93,6 +93,7 @@ import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js';
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel) */
+import { sprintMult } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
@@ -2601,6 +2602,99 @@ if (typeof window !== 'undefined') {
       } catch (e) { out.push('err'); }
     }
     return out.sort();
+  };
+  /* ═══ v2.3.3010: QA probe -- the plain legs under greaves, counted ═══
+     tools/qa/mp/mp-greaveslegs.mjs.  Bakes the local player's own frames for
+     a pose and facing AFRESH (bakeMaskedCanvas, never the cache) in what they
+     wear, with the greaves-alone clamp (maskedBake.js) on and then off, and
+     counts what the owner saw poke out: the body's pixels left OUTSIDE the
+     worn gear below the waist band (jogWaistRow + 18 on the jog, the band's
+     foot; 0.64 of the figure standing) and below the greaves' own top --
+     and, apart, the skin from the greaves' top down (the hands, which must
+     stay), told by the head's colour. */
+  window.__btLegsPeek = function (pose, dir, detail) {
+    const out = { pose, dir, frames: 0, want: playerFrameCount(pose, dir) || 1, on: [], off: [], armOn: [], armOff: [], seen: [] };
+    const worn = [];
+    for (const sl of ['chest', 'legs']) {
+      const it = getEquip(sl);
+      if (it && it !== 'none') worn.push([sl, it]);
+    }
+    const draw = (t) => (c, x, y, w, h) => drawGearFrame(c, t, x, y, w, h);
+    const read = (fn) => {
+      const c = _mkBakeCanvas(256, 256);
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.imageSmoothingEnabled = false;
+      fn(x);
+      return x.getImageData(0, 0, 256, 256).data;
+    };
+    for (let f = 0; f < out.want; f++) {
+      const body = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, null, 'none', getEyeColor(), localBodyArt(false), getEyeStyle());
+      const gear = worn.map(([sl, it]) => ({ k: sl + ':' + it, tex: getGearFrame(sl, it, pose, dir, f) }));
+      if (!body || !gear.length || gear.some((g) => !g.tex)) continue;
+      const g = read((x) => { for (const w of gear) drawGearFrame(x, w.tex, 0, 0, 256, 256); });
+      const b = read((x) => drawGearFrame(x, body, 0, 0, 256, 256));
+      let top = 256, bot = -1;
+      for (let p = 0; p < 256 * 256; p++) if (b[p * 4 + 3] > 40) { const y = p >> 8; if (y < top) top = y; bot = y; }
+      if (bot <= top) continue;
+      /* skin: hue-aligned with the head band's mean colour, and not dark */
+      let sr = 0, sg = 0, sb = 0, sn = 0;
+      for (let p = top * 256; p < Math.round(top + 0.3 * (bot - top)) * 256; p++) {
+        const o = p * 4;
+        if (b[o + 3] > 40 && b[o] + b[o + 1] + b[o + 2] > 200) { sr += b[o]; sg += b[o + 1]; sb += b[o + 2]; sn++; }
+      }
+      const sk = sn ? [sr / sn, sg / sn, sb / sn] : [200, 130, 80];
+      const skl = Math.hypot(sk[0], sk[1], sk[2]);
+      const isSkin = (R, G, B) => R + G + B > 200 && (R * sk[0] + G * sk[1] + B * sk[2]) / ((Math.hypot(R, G, B) || 1) * skl) >= 0.985;
+      /* below the waist band AND the greaves' own top (where 3% of their
+         pixels lie above): above them is the waistband, which stays */
+      let gn = 0, gTop = 0;
+      for (let p = 0; p < 256 * 256; p++) if (g[p * 4 + 3] > 30) gn++;
+      for (let y = 0, c = 0; y < 256 && gn; y++) {
+        for (let x = 0; x < 256; x++) if (g[(y * 256 + x) * 4 + 3] > 30) c++;
+        if (c >= 0.03 * gn) { gTop = y; break; }
+      }
+      const band = Math.max(gTop, pose === 'jog' ? jogWaistRow(dir, f) + 18 : Math.round(top + 0.64 * (bot - top)));
+      for (const off of [false, true]) {
+        let r = null;
+        globalThis.__btLegsClampOff = off;
+        try {
+          r = bakeMaskedCanvas({ mk: _mkBakeCanvas, body: draw(body), worn: gear.map((w) => ({ k: w.k, draw: draw(w.tex) })),
+            dilate: 6, poseInfo: { pose, dir, frameIdx: f }, belt: () => null, fishRod: { has: () => false, at: () => false } });
+        } catch (e) { r = null; } finally { globalThis.__btLegsClampOff = false; }
+        if (!r) continue;
+        const d = r.cv.getContext('2d').getImageData(0, 0, 256, 256).data;
+        let peek = 0, arm = 0;
+        /* skin or its shading (darker, the same hue): what a hand's outline borders */
+        const skinAt = (x, y) => {
+          const o = (y * 256 + x) * 4, R = d[o], G = d[o + 1], B = d[o + 2];
+          return d[o + 3] > 40 && R + G + B > 120 && (R * sk[0] + G * sk[1] + B * sk[2]) / ((Math.hypot(R, G, B) || 1) * skl) >= 0.98;
+        };
+        /* the arms: skin from the greaves' top down, where the hands hang */
+        for (let p = gTop * 256; p < 256 * 256; p++) { const o = p * 4; if (d[o + 3] > 40 && isSkin(d[o], d[o + 1], d[o + 2])) arm++; }
+        for (let y = Math.max(0, band); y < 256; y++) for (let x = 0; x < 256; x++) {
+          const o = (y * 256 + x) * 4;
+          if (d[o + 3] <= 40 || g[o + 3] > 30) continue;
+          if (d[o] === 44 && d[o + 1] === 47 && d[o + 2] === 54) continue;   /* under-armour shadow in a window: not the legs */
+          if (isSkin(d[o], d[o + 1], d[o + 2])) continue;                     /* an arm */
+          /* a hand's dark outline (within 2 px of skin) is the arm's too */
+          if (d[o] < 85 && d[o + 1] < 85 && d[o + 2] < 85) {
+            let near = false;
+            for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2; dx++) {
+              if (Math.abs(dx) + Math.abs(dy) > 2) continue;
+              const xx = x + dx, yy = y + dy;
+              if (xx >= 0 && xx < 256 && yy >= 0 && yy < 256 && skinAt(xx, yy)) { near = true; break; }
+            }
+            if (near) continue;
+          }
+          peek++;
+          if (detail && !off && out.seen.length < 60) out.seen.push([f, x, y, d[o], d[o + 1], d[o + 2]]);   /* which, to look at */
+        }
+        (off ? out.off : out.on).push(peek);
+        (off ? out.armOff : out.armOn).push(arm);
+      }
+      out.frames++;
+    }
+    return out;
   };
 }
 /* v2.3.1349: exported for tools/qa/belt-harness (headless ground-truth render
@@ -5301,6 +5395,29 @@ export function nominalStandFigure(dir) {
   const rows = bodyRows('stand', d);
   const s = bodyDirScale('stand', d) * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT;
   return { bodyH: (rows.feet - rows.crown + 1) * s, footDy: (rows.feet - BODY_CELL_MID) * s };
+}
+/* ═══ v2.3.3003: A SWIMMER'S WATERLINE ═══
+   Swimming in the Wheel (game/wheelSwim.js, rendering/swimFx.js) only the
+   head is out of the water: the figure is sunk until this row is at the
+   water's surface and cut off below it.  The row is the middle of the NECK
+   -- the whole head and its hat above it, the shoulders under -- measured
+   off the bare body sheets the way BODY_ROWS is (256-frame units): each
+   standing sheet's narrowest run between the jaw and the shoulders, and the
+   jog's the median of its frames plus two (its body bobs; the head bobs in
+   the water with it).  Returned in the figure's own units, like
+   _feetOffsetUnits, with its feet and crown for the same frame. */
+const NECK_ROWS = {
+  stand: { south: 83, east: 82, north: 84, northeast: 79, southwest: 80 },
+  jog: { south: 80, east: 92, north: 72, northeast: 82, southwest: 76 },
+};
+export function figureSwimLine(display) {
+  const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
+  const dir = (display && display._animDir) || 'south';
+  const rows = bodyRows(pose, dir);
+  const necks = NECK_ROWS[pose];
+  const neck = necks[dir] != null ? necks[dir] : necks.south;
+  const k = bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
+  return { water: (neck - BODY_CELL_MID) * k, feet: (rows.feet - BODY_CELL_MID) * k, crown: (rows.crown - BODY_CELL_MID) * k };
 }
 /* v2.3.2710: where a player figure (yours or a peer's) actually touches the
    ground, in its layer's space.  The body is centred on its frame, so the
@@ -12239,12 +12356,29 @@ export class EntityRenderer {
            the naked body gets the +35% speed-up. */
         const _armCadence = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
         const baseCycle = cycleMs('jog', dir, _armCadence);
-        const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
-        const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
+        /* v2.3.3006: a sprint plays the stride SPRINT_MULT quicker, so the
+           legs keep up with the ground going by (game/sprint.js; 1 walking). */
+        const effectiveCycle = (useAimDirection ? baseCycle * 2 : baseCycle) / sprintMult(S);
+        /* ...and when the cadence changes -- a sprint starting or ending, the
+           aim's half speed, a turn to a direction with a longer loop -- the
+           stride carries on from where it was.  `now / cycle` with a new
+           cycle is a new, random place in the loop: the legs jumped a frame
+           at every change.  The offset keeps the loop's 0..1 phase. */
+        if (display._jogCyc !== effectiveCycle) {
+          const _ph0 = display._jogCyc
+            ? ((((now + (display._jogOff || 0)) / display._jogCyc) % 1) + 1) % 1 : null;
+          display._jogOff = _ph0 == null ? 0 : _ph0 * effectiveCycle - (now % effectiveCycle);
+          display._jogCyc = effectiveCycle;
+        }
+        /* QA (mp-sprint), armed by the harness only: the loop's length now and
+           unsped, so a test can see the legs keep up */
+        if (typeof window !== 'undefined' && window.__btProbe) window.__btJogCyc = { cyc: effectiveCycle, base: baseCycle, aim: !!useAimDirection };
+        const _jt = now + (display._jogOff || 0);
+        const rawIdx = Math.floor((_jt / effectiveCycle) * fc) % fc;
         frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
         /* v2.3.1367: the same clock as rawIdx, as a 0..1 phase — drives
            native-frame-count fullset sheets (east: 25f vs 28f body). */
-        _jogPhase = ((now / effectiveCycle) % 1 + 1) % 1;
+        _jogPhase = ((_jt / effectiveCycle) % 1 + 1) % 1;
         if (isMovingBackward) _jogPhase = 1 - _jogPhase;
         /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each
            direction's jog loop, so the sound lands exactly when a foot hits the
