@@ -46,8 +46,9 @@
  *                      join-gate-protected player id, or not-a-map)
  *                      carries an inline `proto-ok:<reason>` marker and
  *                      is skipped (item H, v2.3.1214).
- *   7. server-tests  — if server/ changed, runs `cd server && npm test`
- *                      (zero-dep, sandbox-safe).
+ *   7. server-tests  — if server/ or src/ changed, runs `cd server && npm
+ *                      test` (zero-dep, sandbox-safe; src/ because the
+ *                      mirror audits read the client, v2.3.3001).
  *   7. worker-entry-exports — FAIL: server/src/index.js is the Worker's
  *                      ENTRY module; workerd registers every named export as
  *                      a handler, so a PRIMITIVE export refuses to boot the
@@ -799,7 +800,16 @@ if (changedClient.length) {
 }
 
 /* ---- 7. server tests ----------------------------------------------- */
-if (changedServer.length) {
+/* ═══ v2.3.3001: ...AND FOR A CLIENT CHANGE, BECAUSE CI CAUGHT IT AGAIN ═══
+ * Twenty of the suites READ the client (mirror-audit and its kind open
+ * src/ files and hold them to the worker's twin, or to the shape a check
+ * counts).  A client edit that split `queueSnowballBurst(S, proj); return
+ * false;` over two lines turned CI's `test` red -- "snowball burst: both
+ * ways a flight can end queue one" -- while this gate said OK TO PUSH,
+ * because it ran the suites only when server/ changed.  The whole suite is
+ * ~25 s, so a client change runs it too (the v2.3.2124 lint precedent
+ * above: a gate that green-lights a push CI rejects is not one). */
+if (changedServer.length || changedClient.length) {
   const r = spawnSync('npm', ['test'], { cwd: join(root, 'server'), encoding: 'utf8', timeout: 5 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });
   if (r.status === 0) add('PASS', 'server-tests', 'cd server && npm test — all suites green');
   else {
@@ -807,7 +817,7 @@ if (changedServer.length) {
     add('FAIL', 'server-tests', `cd server && npm test exited ${r.status ?? 'timeout'}:\n    ${tail}`);
   }
 } else {
-  add('PASS', 'server-tests', 'no server/ changes — suite skipped');
+  add('PASS', 'server-tests', 'no server/ or src/ changes — suite skipped');
 }
 
 /* ---- 8. prog3 blob-vs-cap ------------------------------------------

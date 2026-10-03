@@ -162,8 +162,22 @@ function castPiecePoint(T, px, py, V, fw, fh, P, v, i) {
   v[i * 2] = P.x; v[i * 2 + 1] = P.y;
 }
 
+/* ═══ v2.3.3000: A FREED SHEET LEAVES NO SHADOW BEHIND ═══
+   The Wheel's objects cast from their sprite sheets' own textures, and those
+   sheets load as you walk toward them and are freed behind you
+   (wheelObjects.js).  A pooled shadow piece only HIDES when it is not used
+   this frame -- it keeps its texture, the v2.3.2651 shape (CLAUDE.md, the
+   zone-asset exception; TRAPS §126).  So the Wheel calls this before it lets
+   a sheet go, and every shadow pool drops every texture; the pieces still
+   wanted are placed again on the next frame. */
+const _systems = new Set();
+export function releaseShadowTextures() {
+  for (const sys of _systems) { try { sys.clear(); } catch (e) { /* one pool's trouble */ } }
+}
+
 export class ShadowSystem {
   constructor(layer, root) {
+    _systems.add(this);
     this.layer = layer;
     this.root = root;
     this.pool = [];
@@ -414,7 +428,10 @@ export class ShadowSystem {
       /* the ground projection about this figure's feet (see header) */
       P.set(1, 0, -lx, -ly, lx * py, py * (1 + ly));
       let placed = 0;
-      const items = [];
+      /* v2.3.3000: a caster that never vanishes for a moment (the Wheel's
+         objects: drawn or gone) keeps nothing to hold -- a hundred of them
+         would otherwise make a hundred matrices a frame for the collector */
+      const items = cs.noHold ? null : [];
       const list = cs.sprites || [];
       for (let i = 0; i < list.length; i++) {
         const sp = list[i];
@@ -430,11 +447,11 @@ export class ShadowSystem {
         placed++;
         /* remembered relative to the feet, so a held shadow follows the
            figure if it moves while its body is hidden */
-        items.push({ tex: sp.texture, ax: sp.anchor.x, ay: sp.anchor.y,
+        if (items) items.push({ tex: sp.texture, ax: sp.anchor.x, ay: sp.anchor.y,
           m: new Matrix(M.a, M.b, M.c, M.d, M.tx - px, M.ty - py) });
       }
       if (placed) {
-        this._held.set(cs.key, { t: now, items });
+        if (items) this._held.set(cs.key, { t: now, items });
         st.casters++; st.pieces += placed; st.keys.push(cs.key);
         if (cs.key === 'self') st.self = { px, py, pieces: placed, held: false, standIns: cs.standIns || 0 };
         if (st.list.length < 16) st.list.push({ key: cs.key, px, py, pieces: placed });

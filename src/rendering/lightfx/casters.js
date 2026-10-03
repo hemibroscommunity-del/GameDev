@@ -27,6 +27,7 @@
  */
 import { Sprite } from 'pixi.js';
 import { figureFeetY } from '../systems/entityRenderer.js';
+import { wheelObjectCasters } from '../wheelObjects.js';   /* v2.3.3000: the Wheel's objects cast */
 
 /* The local player's stand-in sprites on the effects renderer.  NOT every
    sprite it owns: `slashSprite` is the sword's arc effect, light rather than
@@ -207,5 +208,9 @@ export function collectCasters(S, er, fx, zone) {
       out.push({ key: 'node:' + (n.id != null ? n.id : i), px: s.x, py: s.y + s._groundDy, sprites: [s], alive: true });
     }
   }
+  /* v2.3.3000: the Wheel's trees, rocks, props and buildings -- the
+     billboards and the column-by-column buildings, as the props above
+     (wheelObjects.js wheelObjectCasters); nothing outside the Wheel */
+  wheelObjectCasters(out);
   return out;
 }

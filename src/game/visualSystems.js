@@ -8,7 +8,8 @@
    simulation. Only capture is BT_AUDIO (footsteps); S is stateRef.current
    and the block reads S.player directly. */
 import { BT_AUDIO } from '@/data/index.js';
-import { zoneLeavesPrints } from '@/rendering/footprintSprites.js'; /* v2.3.2654 */
+import { zoneLeavesPrints, printsAt } from '@/rendering/footprintSprites.js'; /* v2.3.2654; v2.3.3000: + where the ground takes them */
+import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3000: prints are where the boots are */
 import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2730: a peer's shot stops at a prop on your screen too */
 import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap, STUCK_ARROW_MS, SCORCH_MS, scorchStyle } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap; v2.3.2995 what stays in the Wheel's objects */
 import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: a peer's shot hits the Wheel's objects on your screen too */
@@ -102,7 +103,13 @@ export function updateVisualSystems(S) {
 
            Spawned from the LAST position, not the current one: the print
            belongs where the foot was when it came down. */
-        if (_fIsMoving && zoneLeavesPrints(S.currentZone)) {
+        /* v2.3.3000: in the Wheel only on its snow (printsAt): off it the
+           anchor is let go, so the first print back on the snow is not dropped
+           where you left it */
+        var _pOn = _fIsMoving && zoneLeavesPrints(S.currentZone)
+          && printsAt(S.currentZone, S.player.x, S.player.y + playerGroundDy(S.currentZone, S.player.x, S.player.y));
+        if (_fIsMoving && zoneLeavesPrints(S.currentZone) && !_pOn) S._printLast = null;
+        if (_pOn) {
           var _pLast = S._printLast;
           if (!_pLast) { S._printLast = { x: S.player.x, y: S.player.y }; }
           else {
@@ -111,6 +118,10 @@ export function updateVisualSystems(S) {
               if (!S.footprints) S.footprints = [];
               S.footprints.push({
                 x: _pLast.x, y: _pLast.y,
+                /* v2.3.3000: where the BOOTS were -- x/y is the body's centre
+                   (and what mp-peerprints compares); the print is drawn this
+                   far below it (effectsRenderer _updateFootprints) */
+                fdy: playerGroundDy(S.currentZone, _pLast.x, _pLast.y),
                 /* Rotated to the direction of travel so the toes point the way
                    you went.  A pair of prints that always faces south would be
                    wallpaper, not a trail. */
@@ -161,14 +172,16 @@ export function updateVisualSystems(S) {
               : !!_qo && (Math.abs(_qo._vx || 0) > 0.01 || Math.abs(_qo._vy || 0) > 0.01);
             var _qWalk = !!_qo && !_qo._isDead && _qStep
               && (_qo.zone || _qo.z || 'town') === S.currentZone
-              && isFinite(_qx) && isFinite(_qy);
+              && isFinite(_qx) && isFinite(_qy)
+              /* v2.3.3000: on the ground that takes prints (the Wheel's snow) */
+              && printsAt(S.currentZone, _qx, _qy + playerGroundDy(S.currentZone, _qx, _qy));
             if (!_qWalk) { S._peerPrintLast.delete(_qid); continue; }
             var _qLast = S._peerPrintLast.get(_qid);
             if (!_qLast) { S._peerPrintLast.set(_qid, { x: _qx, y: _qy }); continue; }
             var _qdx = _qx - _qLast.x, _qdy = _qy - _qLast.y;
             if (_qdx * _qdx + _qdy * _qdy >= PRINT_GAP * PRINT_GAP) {
               if (!S.peerFootprints) S.peerFootprints = [];
-              S.peerFootprints.push({ x: _qLast.x, y: _qLast.y, ang: Math.atan2(_qdy, _qdx), ts: Date.now() });
+              S.peerFootprints.push({ x: _qLast.x, y: _qLast.y, fdy: playerGroundDy(S.currentZone, _qLast.x, _qLast.y), ang: Math.atan2(_qdy, _qdx), ts: Date.now() });
               if (S.peerFootprints.length > PEER_PRINT_MAX) {
                 S.peerFootprints.splice(0, S.peerFootprints.length - PEER_PRINT_MAX);
               }

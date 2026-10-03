@@ -8541,7 +8541,9 @@ export class EffectsRenderer {
          A screenshot of the trail caught it; nothing else would have. */
       const fi = Math.min(frames.length - 1, Math.floor((age / PRINT_TTL_MS) * frames.length));
       if (sp.texture !== frames[fi]) sp.texture = frames[fi];
-      sp.x = d.x; sp.y = d.y;
+      /* v2.3.3000: at the boots, not the body's centre 52 px above them --
+         a trail walked east ran along your belt line */
+      sp.x = d.x; sp.y = d.y + (d.fdy || 0);
       sp.rotation = (d.ang || 0) + Math.PI / 2;
       sp.width = PRINT_W;
       sp.height = PRINT_W * (frames[fi].height / (frames[fi].width || 1));

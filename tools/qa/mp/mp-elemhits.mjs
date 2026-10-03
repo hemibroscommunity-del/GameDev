@@ -49,6 +49,19 @@ const walk = (P, ms, sx = 1, sy = 0) => P.page.evaluate(({ ms, sx, sy }) => new 
   setTimeout(() => { S.stickX = 0; S.stickY = 0; res({ dx: S.player.x - x0, dy: S.player.y - y0, d: Math.hypot(S.player.x - x0, S.player.y - y0) }); }, ms);
 }), { ms, sx, sy });
 
+/* v2.3.2999: room round you, by the game's own answers -- no footprint
+   (wheelObjects' walk-test boxes) within r of your boots, and open ground at
+   16 points r round your body.  "Every walk moved 3 px" passed a spot behind
+   the 1.15x town's Hotel (v2.3.2997) with its back wall 3.6 px from the
+   boots, and the gust's 5 px south ran into the wall. */
+const roomy = (P, r) => P.page.evaluate((r) => {
+  const S = window._gameState.current, W = window.__btWheelObjects, g = window.__btPlayerGround ? window.__btPlayerGround() : null;
+  const fx = S.player.x, fy = g ? g.y : S.player.y + 52;
+  const near = (W && W.blockers ? W.blockers() : []).filter((b) => b.x1 > fx - r && b.x0 < fx + r && b.y1 > fy - r && b.y0 < fy + r).length;
+  let solid = 0;
+  for (let a = 0; a < 16; a++) if (window.__btIsSolid(S.player.x + Math.cos(a * Math.PI / 8) * r, S.player.y + Math.sin(a * Math.PI / 8) * r)) solid++;
+  return { near, solid };
+}, r);
 const icons = (P) => P.page.evaluate(() => Object.assign({}, window.__btPopupIconsDrawn || {}));
 const elemLog = (P) => P.page.evaluate(() => (window.__btElemLog || []).slice());
 const clearStatuses = (P) => P.page.evaluate(() => {
@@ -103,7 +116,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const away = geo.ex ? Math.atan2(geo.me.y - geo.ex.y, geo.me.x - geo.ex.x) : Math.PI / 2;
   let home0 = null;
   const tried = [];
-  for (const r of [420, 640, 300]) {
+  for (const r of [420, 640, 300, 860]) {
     for (const da of [0, 0.6, -0.6, 1.2, -1.2, 2]) {
       const spot = { x: geo.me.x + Math.cos(away + da) * r, y: geo.me.y + Math.sin(away + da) * r };
       await H.hopTo(P, spot.x, spot.y, { step: 100, gap: 260, tries: 20 });
@@ -111,8 +124,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const z = await H.readState(P, (S) => S.currentZone);
       const e1 = await walk(P, 300, 1, 0), w1 = await walk(P, 300, -1, 0);
       const n1 = await walk(P, 300, 0, -1), s1 = await walk(P, 300, 0, 1);
-      const ok = z === 'wheel' && [e1, w1, n1, s1].every((m) => m.d > 3);
-      tried.push({ r, da, z, ok, d: [e1, w1, n1, s1].map((m) => Math.round(m.d)) });
+      /* room for the 48 px gust and the walks, and a margin (v2.3.2999) */
+      const room = await roomy(P, 72);
+      const ok = z === 'wheel' && [e1, w1, n1, s1].every((m) => m.d > 3) && !room.near && !room.solid;
+      tried.push({ r, da, z, ok, room, d: [e1, w1, n1, s1].map((m) => Math.round(m.d)) });
       if (ok) { home0 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y })); break; }
     }
     if (home0) break;

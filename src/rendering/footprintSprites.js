@@ -26,16 +26,34 @@
  */
 import { Rectangle, Texture } from 'pixi.js';
 import { loadTracked, unloadBundle } from './zoneTextures.js';
+import { wheelStepAt } from '@/game/wheelTrial.js';   /* v2.3.3000: the Wheel's snow */
 
 /* zone -> its ground-reaction strip.  A Map-shaped lookup guarded by
    hasOwnProperty because zone ids come from state (CLAUDE.md rule 4). */
 const FOOTPRINT_ART = Object.create(null);
 FOOTPRINT_ART.frost = { url: '/sprites/fx/snow-footprints.webp', frames: 4 };
+/* ═══ v2.3.3000: THE WHEEL'S SNOW TAKES PRINTS TOO ═══
+   Owner: "I liked the old shadows (and any other visual effect
+   enhancements?) of the old map put that on this wheel world too".  Frost
+   Ridge's snow is the Wheel's now, but the Wheel is one zone, and the art was
+   keyed by the zone -- so a walk across its snow left nothing.  The same
+   strip (0.139 MB, loaded with the Wheel behind its overlay), laid only
+   where the ground under the boots is snow: `on` is the footstep sound the
+   worker names for the swatch drawn there (wheelTrial.js wheelStepAt), so
+   prints start and stop where the snow you see does. */
+FOOTPRINT_ART.wheel = { url: '/sprites/fx/snow-footprints.webp', frames: 4, on: 'snow' };
 
 /** Does this zone leave prints? Read by the spawner so a zone with no art
  *  costs nothing per frame rather than spawning invisible decals. */
 export function zoneLeavesPrints(zoneId) {
   return !!(zoneId && Object.prototype.hasOwnProperty.call(FOOTPRINT_ART, zoneId));
+}
+/** ...and at this ground point (feet, world px): a zone whose prints are
+ *  only on one ground (the Wheel's snow) asks what is underfoot. */
+export function printsAt(zoneId, x, y) {
+  if (!zoneLeavesPrints(zoneId)) return false;
+  const on = FOOTPRINT_ART[zoneId].on;
+  return !on || wheelStepAt(x, y) === on;
 }
 
 /* zone -> [Texture] once sliced. */

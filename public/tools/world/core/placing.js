@@ -53,6 +53,7 @@
 import { C, townPlan } from './layout.js';
 import { hash2, fbm } from './rng.js';
 import { gridInfo } from './grid.js';
+import { wheelInfo } from './wheel.js';
 import { objectCatalog } from '../../objects/catalog.js';
 
 export const PLACING = 'v2.3.2981';
@@ -197,6 +198,163 @@ const DRIFT = 1 / 1400, DRIFT_SEED = 9113;
    things kept back from the water -- big ones (the hoodoos) `shoreBig`
    cells, the rest `shore` -- and big ones `clearBig` game px from a trunk */
 const OASIS = { back: [22, 46], step: 150, min: 4, max: 12, open: 0.8, keep: 2, shoreBig: 8, shore: 2, clearBig: 70 };
+
+/* ═══ v2.3.2999: PLACING v2, A PREVIEW (`?placing=2`) ═══
+ *
+ * Owner, 2026-10-03: "work throughout the night on studying object placement
+ * in the game's maps and what a good distribution is".  What the study
+ * (tools/world/study-placement.mjs, docs/OBJECT-PLACEMENT-STUDY.md) measured
+ * of the scatter above, and what v2 does about it:
+ *
+ *   NO WOODS.  The tall things are spread almost exactly at random (Clark-
+ *   Evans R 0.95-1.04; within 300 px of a tree as many trees as a random
+ *   scatter would put there).  The plan's obstacle "clumps" are hundreds of
+ *   blobs of ~25-40 cells, each the size of ONE tree.  v2: a GROVE field --
+ *   noise over ~1,500 game px, nudged up where the plan's clumps are thick --
+ *   and the tall things thick where it is high (groves), thin where it is
+ *   middling, and all but gone where it is low (clearings).
+ *
+ *   POLKA DOTS.  The rocks, cacti, toadstools and scrap stand one by one at
+ *   an even spacing (R 1.1-1.3 for everything: more even than random).  v2:
+ *   they come in PILES (rocks, crystals, scrap), SCATTERS (cacti, stumps,
+ *   driftwood), RINGS (toadstools: fairy rings) and LINES (the ruined stone
+ *   walls), a few to a group, with open ground between groups.
+ *
+ *   TREES FLOATING.  Nothing small stands near a tree (the old rule kept
+ *   small things 34 px off a big thing's foot).  v2: a little UNDERGROWTH --
+ *   a fern, a flower, a stone -- at the foot of some trees, in front of the
+ *   trunk where it shows.
+ *
+ *   TRUNKS TOO CLOSE.  Nothing kept two tall things apart but the lattice's
+ *   jitter (35 px at worst).  v2: each tall thing keeps a fair share of its
+ *   own width from the next (Poisson-disc spacing, `tallSpace`).
+ *
+ *   ROADSIDE WALLS.  Things crowd the band just past a road's kept-clear
+ *   cells (frost 29 a screen there against 23 further out).  v2: tall and
+ *   middle things thin out toward a road and come back over ~150 px.
+ *
+ *   CLUTTERED CAMPS.  The monsters' camps are as cluttered as the land round
+ *   them (0.56-0.91 of it).  v2: tall things a quarter as thick there and
+ *   middle ones half (campBands: where the worker's monsters stand,
+ *   tools/world/bake-wheel-spawns.mjs).
+ *
+ *   SLITS.  387 gaps between two footprints under 20 px (the feet cannot
+ *   pass, the eye says you can) and 467 of 20-36 (the feet catch).  v2: a
+ *   thing whose footprint would leave a gap under 40 px to another's is not
+ *   placed; the members of one pile may touch, so a pile is one solid lump.
+ *
+ *   TWINS.  A fifth of the tall things stand within 250 px of the same
+ *   picture drawn the same way round.  v2: such a one is turned the other way.
+ *
+ * Still deterministic: every candidate is a hashed point of its own lattice
+ * cell, decided in a fixed order, from the catalog's sizes (never from which
+ * pictures exist).  The town, the fences, the oases are as before; only the
+ * land's own scatter (section 5) is v2's.  Behind `?placing=2` while the
+ * owner looks: the server's monster places are baked against v1, and v2
+ * keeps their camps clearer, not fuller.
+ */
+export const PLACING_V2 = 'v2.3.2999';
+/* `?placing=2` in the address: placing v2 (ground-worker.js init) */
+export function placingOpts(search) {
+  const m = /(?:^|[?&])placing=([0-9]+)(?:&|$)/.exec(search || '');
+  return m && m[1] === '2' ? { v: 2 } : {};
+}
+const V2 = {
+  /* the woods: noise over the land (warped, so a wood is not a blob), read
+     every `coarse` cells -- under `glade` a clearing, from `open` scattered
+     trees, from `woodLo` to `woodHi` thickening into a wood */
+  field: { wave: 2400, warp: 650, warpWave: 1700, coarse: 4, glade: [0.36, 0.46], wood: [0.54, 0.64] },
+  /* tall things a phone screen (619 x 1280 game px): in a clearing, in the
+     open, and in the heart of a wood; candidates every `step` px; a hard
+     core of max(`crown` x the picture's width, `core` / sqrt(density)) --
+     Matern II, by hashed priority, so the order never matters */
+  tall: { step: 64, glade: 0.3, open: 4, wood: 22, pow: 1.5, crown: 0.42, core: 0.38, clear: 2, clump: 1.8 },
+  /* middle things in groups: `groups` a screen, more at a wood's edge */
+  mid: { step: 240, groups: 2.6, edge: 1.7, clear: 2 },
+  /* low things: `perScreen`, in drifts (`patch`) */
+  low: { step: 60, perScreen: 11, patchWave: 650, patch: [0.45, 0.62], core: 0.6, clear: 1, gapTall: 30 },
+  /* undergrowth at a tall thing's foot: up to `max`, `near`-`far` px, in front */
+  under: { max: 3, chance: 0.5, near: 24, far: 92 },
+  road: { tall: [2, 8], mid: [2, 5] },     /* cells from a road: none at the first, all by the second */
+  /* inside a camp (the band) and round it (`margin` px): open in the
+     middle, its edge framed by rocks and bushes */
+  camp: { tall: 0.3, mid: 0.5, frame: 1.6, low: 0.8, margin: 160 },
+  slit: 40,                 /* game px: a gap under this between two footprints is not left */
+  slitOverlap: 14,          /* ...and two that overlap by less are not "touching" */
+  tallCover: 160,           /* a picture this tall may not cover a road, a plot or a camp */
+};
+const SCREEN_AREA = 619 * 1280;
+/* how each middle kind gathers: a PILE (touching, a lump), a SCATTER
+   (loose), a RING (a fairy ring), a LINE (a run of wall), or ONE; `r` in
+   widths of the kind's picture */
+const GROUPS = {
+  pile: { n: [2, 5], r: 0.6 }, scatter: { n: [2, 4], r: 1.7 }, ring: { n: [5, 8], r: 1.5 }, line: { n: [3, 5], r: 0.92 }, one: { n: [1, 1], r: 0 },
+};
+const GROUP_OF = {
+  boulder: 'pile', crystal: 'pile', snowrock: 'pile', basalt: 'pile', stone: 'pile', searock: 'pile', scrap: 'pile', coal: 'pile', coral: 'pile', icespire: 'pile',
+  obsidian: 'scatter', cactus: 'scatter', driftwood: 'scatter', giantflower: 'scatter', bush: 'scatter', stump: 'scatter', haystack: 'scatter',
+  toadstool: 'ring', stonewall: 'line',
+  minecart: 'one', rowboat: 'one', scarecrow: 'one',
+};
+/* stone and scrap like the open, living things the woods */
+const MINERAL = new Set(['boulder', 'crystal', 'snowrock', 'basalt', 'stone', 'searock', 'scrap', 'coal', 'obsidian', 'cactus', 'icespire', 'minecart']);
+const UNDERWOOD = new Set(['toadstool', 'giantflower', 'bush', 'stump']);
+/* per land: how thick each layer is against the numbers above (set so each
+   land keeps about v1's count -- study-placement.mjs --placing 2 measures),
+   and what grows at a tall thing's foot */
+const V2_LANDS = {
+  commons: { tall: 0.5, mid: 2.1, low: 2.0, under: ['flowers', 'stone', 'bush'] },
+  frost: { tall: 2.5, mid: 0.9, low: 0.82, under: ['frostbush', 'snowrock'] },
+  ember: { tall: 4.2, mid: 1.4, low: 1.35, under: ['charstump', 'basalt'] },
+  sky: { tall: 1.75, mid: 1.3, low: 0.93, under: ['sage', 'skull', 'tumbleweed'] },
+  hollows: { tall: 1, mid: 0.96, low: 0.8, under: ['rubble', 'crystal'] },
+  thunder: { tall: 1.45, mid: 0.6, low: 1.3, under: ['scrap', 'coal'] },
+  tidal: { tall: 0.33, mid: 1.4, low: 1.2, under: ['shell', 'searock'] },
+  mist: { tall: 0.73, mid: 0.3, low: 1, under: ['toadstool'] },
+  verdant: { tall: 2.2, mid: 1.3, low: 0.98, under: ['fern', 'giantflower'] },
+};
+const smooth = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+/* The camps: where the worker's monsters stand (bake-wheel-spawns.mjs
+   SPAWN_RULES -- the band 350-1,350 game px past the commons' edge along
+   each spoke's axis, or to its first stage's end, within 420 px of the
+   axis), grown by `margin`.  A Uint8Array a blueprint cell.  test-world-core
+   holds it to the bake's own bands. */
+export function campBands(plan, bp, rules = { from: 350, to: 1350, half: 420, tier: 1 }, margin = 0) {
+  const W = wheelInfo(plan), g = gridInfo(plan);
+  const WPA = plan.worldPxPerArtPx, cellG = bp.scale * WPA;
+  const ri = Object.create(null);
+  bp.regionIds.forEach((k, i) => { ri[k] = i; });
+  const cxG = (g.cx - bp.x0) * WPA, cyG = (g.cy - bp.y0) * WPA, sqPx = g.P * WPA;
+  const mask = new Uint8Array(bp.w * bp.h);
+  const bands = Object.create(null);
+  for (const s of W.spokes) {
+    const rid = ri[s.id];
+    if (rid == null) continue;
+    let rEdge = null;
+    for (let r = W.hub * sqPx * 0.6; r < W.hub * sqPx * 2; r += cellG / 2) {
+      const i = Math.floor((cyG + s.uy * r) / cellG) * bp.w + Math.floor((cxG + s.ux * r) / cellG);
+      if (bp.reg[i] === rid && bp.cls[i] !== C.ocean) { rEdge = r; break; }
+    }
+    if (rEdge == null) continue;
+    let rStage = rEdge + rules.to;
+    for (let r = rEdge; r < rEdge + rules.to; r += cellG / 2) {
+      const i = Math.floor((cyG + s.uy * r) / cellG) * bp.w + Math.floor((cxG + s.ux * r) / cellG);
+      if (bp.tier[i] > rules.tier) { rStage = r; break; }
+    }
+    const r0 = rEdge + rules.from, r1 = Math.min(rEdge + rules.to, rStage);
+    bands[s.id] = { r0, r1, anchor: [Math.round(cxG + s.ux * (r0 + r1) / 2), Math.round(cyG + s.uy * (r0 + r1) / 2)] };
+    const R = Math.ceil((r1 + rules.half + margin) / cellG) + 2;
+    const bx0 = Math.max(0, Math.floor(cxG / cellG) - R), bx1 = Math.min(bp.w - 1, Math.floor(cxG / cellG) + R);
+    const by0 = Math.max(0, Math.floor(cyG / cellG) - R), by1 = Math.min(bp.h - 1, Math.floor(cyG / cellG) + R);
+    for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
+      const dx = (bx + 0.5) * cellG - cxG, dy = (by + 0.5) * cellG - cyG;
+      const along = dx * s.ux + dy * s.uy, side = Math.abs(dx * s.uy - dy * s.ux);
+      if (along >= r0 - margin && along <= r1 + margin && side <= rules.half + margin) mask[by * bp.w + bx] = 1;
+    }
+  }
+  return { mask, bands };
+}
 
 /* ── the town's furniture, in plan art px from the world centre ──
    The square (the Town Hall in its middle, its door at (0, hall.d / 2); you
@@ -600,7 +758,9 @@ export function placeObjects(plan, bp, opts = {}) {
 
   /* ── 5. nature: each land's big, middle and small things ── */
   const weightAt = (w, stage) => (Array.isArray(w) ? w[Math.max(0, Math.min(3, stage))] : w);
-  for (const L of LAYERS) {
+  /* v2.3.2999: `?placing=2`, the woods, groups and undergrowth of PLACING v2 */
+  if (opts.v === 2) natureV2({ plan, bp, seed, cellOf, cellPx, BW, BH, N, worldW, worldH, clear, wet, byId, landOf, townR, commonsR, coversTown, nearOasis, nearFoot, put, counts });
+  else for (const L of LAYERS) {
     const st = L.step, cols = Math.ceil(worldW / st), rows = Math.ceil(worldH / st);
     const ls = seed + Math.imul(L.id.length + 3, 1013);
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
@@ -662,7 +822,7 @@ export function placeObjects(plan, bp, opts = {}) {
   const kindScale = new Float32Array(kinds.length).fill(1);
   if (bk !== 1) cat.forEach((e, k) => { if (e.kind === 'building') kindScale[k] = bk; });
   const res = {
-    version: PLACING, kinds, kindScale, n, worldW, worldH,
+    version: opts.v === 2 ? PLACING_V2 : PLACING, kinds, kindScale, n, worldW, worldH,
     /* v2.3.2982: the buildings standing, of the catalog's (the big-town
        preview has room for 13 of the 17) */
     buildings: townLots.length, buildingsOf: cat.filter((e) => e.kind === 'building').length,
@@ -709,4 +869,354 @@ export function objectFootprints(placed, manifest) {
   }
   boxOf[placed.n] = boxes.length >> 2;
   return { present, boxOf, boxes: Float32Array.from(boxes) };
+}
+
+/* ═══ v2.3.2999: THE LAND'S OWN SCATTER, v2 (`?placing=2`) ═══
+   What PLACING v2 (above) says, in order: the tall things (kept by the woods
+   field, then a hard core), the undergrowth at their feet, the middle things
+   in groups, the low things in drifts.  Called by placeObjects in place of
+   its section 5, with that function's own helpers. */
+
+/* city-block distance in cells from every cell `seed` says yes to, to `cap` */
+function chamfer(N, BW, BH, seed, cap) {
+  const d = new Uint8Array(N);
+  for (let i = 0; i < N; i++) d[i] = seed(i) ? 0 : cap;
+  for (let y = 0; y < BH; y++) for (let x = 0; x < BW; x++) {
+    const i = y * BW + x;
+    let v = d[i];
+    if (x > 0 && d[i - 1] + 1 < v) v = d[i - 1] + 1;
+    if (y > 0 && d[i - BW] + 1 < v) v = d[i - BW] + 1;
+    d[i] = v;
+  }
+  for (let y = BH - 1; y >= 0; y--) for (let x = BW - 1; x >= 0; x--) {
+    const i = y * BW + x;
+    let v = d[i];
+    if (x < BW - 1 && d[i + 1] + 1 < v) v = d[i + 1] + 1;
+    if (y < BH - 1 && d[i + BW] + 1 < v) v = d[i + BW] + 1;
+    d[i] = v;
+  }
+  return d;
+}
+
+/* Matern II over candidates { x, y, r, pri }: keep one unless another within
+   max(both r) has a higher priority -- every decision local, none hanging on
+   the order anything was made in */
+function hardCore(cand, worldW, reach) {
+  const CB = 256, cols = Math.ceil(worldW / CB) + 1, hash = new Map();
+  cand.forEach((q, k) => {
+    const key = Math.floor(q.y / CB) * cols + Math.floor(q.x / CB);
+    let a = hash.get(key);
+    if (!a) hash.set(key, (a = []));
+    a.push(k);
+  });
+  const kept = [];
+  for (let k = 0; k < cand.length; k++) {
+    const q = cand[k];
+    let ok = true;
+    for (let j = Math.floor((q.y - reach) / CB); ok && j <= Math.floor((q.y + reach) / CB); j++) {
+      for (let i = Math.floor((q.x - reach) / CB); ok && i <= Math.floor((q.x + reach) / CB); i++) {
+        for (const m of hash.get(j * cols + i) || []) {
+          if (m === k) continue;
+          const o = cand[m];
+          if (o.pri < q.pri || (o.pri === q.pri && m > k)) continue;
+          const rr = Math.max(q.r, o.r), dx = o.x - q.x, dy = o.y - q.y;
+          if (dx * dx + dy * dy < rr * rr) { ok = false; break; }
+        }
+      }
+    }
+    if (ok) kept.push(q);
+  }
+  /* highest priority first: what is decided next (a twin's turn) is
+     decided in an order of WHERE, not of when */
+  return kept.sort((a, b) => b.pri - a.pri);
+}
+
+function natureV2(X) {
+  const { plan, bp, seed, cellOf, cellPx, BW, BH, N, worldW, worldH, clear, wet, byId, landOf, townR, commonsR, coversTown, nearOasis, nearFoot, put, counts } = X;
+  const s0 = seed + 7121;
+  const weightAt = (w, stage) => (Array.isArray(w) ? w[Math.max(0, Math.min(3, stage))] : w);
+  const sizeOf = (e) => (e.fit === 'w' ? { w: e.size, h: e.size / (e.ar || 1) } : { w: e.size * (e.ar || 1), h: e.size });
+  const landId = (r) => bp.regionIds[r];
+  const count = (id) => { counts[id] = (counts[id] || 0) + 1; };
+  const halfPx = (v) => Math.round(v * 2) / 2;
+
+  /* roads (cells, to 12), and what a tall picture may not cover */
+  const ROADC = new Uint8Array(64), NOCOVER = new Uint8Array(64);
+  for (const k of ['path', 'street', 'rail', 'bridge', 'boardwalk', 'plaza']) if (C[k] != null) ROADC[C[k]] = 1;
+  for (const k of ['path', 'street', 'rail', 'bridge', 'boardwalk', 'plaza', 'lot', 'landmark', 'gate']) if (C[k] != null) NOCOVER[C[k]] = 1;
+  const road = chamfer(N, BW, BH, (i) => ROADC[bp.cls[i]], 12);
+  /* where the worker's monsters stand, and round them */
+  const camp = campBands(plan, bp, undefined, V2.camp.margin).mask;
+  const core = campBands(plan, bp).mask;
+
+  /* the woods field, every `coarse` cells, read between them */
+  const F = V2.field, KP = F.coarse * cellPx, GW = Math.ceil(worldW / KP) + 2, GH = Math.ceil(worldH / KP) + 2;
+  const nf = new Float32Array(GW * GH);
+  for (let gj = 0; gj < GH; gj++) for (let gi = 0; gi < GW; gi++) {
+    const x = gi * KP, y = gj * KP;
+    const wx = x + F.warp * fbm(x / F.warpWave, y / F.warpWave, s0 + 3, 2);
+    const wy = y + F.warp * fbm(x / F.warpWave + 17.3, y / F.warpWave + 5.1, s0 + 4, 2);
+    nf[gj * GW + gi] = 0.5 + 0.5 * fbm(wx / F.wave, wy / F.wave, s0 + 5, 3);
+  }
+  const fieldAt = (x, y) => {
+    const u = x / KP, v = y / KP;
+    const i = Math.max(0, Math.min(GW - 2, Math.floor(u))), j = Math.max(0, Math.min(GH - 2, Math.floor(v)));
+    const fu = Math.max(0, Math.min(1, u - i)), fv = Math.max(0, Math.min(1, v - j));
+    const a = nf[j * GW + i], b = nf[j * GW + i + 1], c = nf[(j + 1) * GW + i], d = nf[(j + 1) * GW + i + 1];
+    return (a + (b - a) * fu) * (1 - fv) + (c + (d - c) * fu) * fv;
+  };
+  const woodOf = (n) => smooth(F.wood[0], F.wood[1], n);
+  const edgeOf = (n) => { const w = woodOf(n); return 4 * w * (1 - w); };
+  const T = V2.tall;
+  const tallPerScreen = (n) => T.glade + (T.open - T.glade) * smooth(F.glade[0], F.glade[1], n) + (T.wood - T.open) * Math.pow(woodOf(n), T.pow);
+  /* each kind of a list in stands: its weight times its own slow noise */
+  const pickKind = (list, stage, x, y, h, salt, wetC, shoreKinds) => {
+    let tot = 0;
+    const ws = list.map(([id, w], k) => {
+      let v = weightAt(w, stage);
+      if (v > 0) v *= 0.35 + 1.3 * (0.5 + 0.5 * fbm(x / 850, y / 850, s0 + 211 + salt + k * 31, 2));
+      if (v > 0 && shoreKinds && shoreKinds.includes(id)) v *= wetC <= 3 ? 4 : 0.3;
+      tot += v;
+      return v;
+    });
+    if (tot <= 0) return null;
+    let pick = h * tot, k = 0;
+    while (k < ws.length - 1 && pick >= ws[k]) { pick -= ws[k]; k++; }
+    return list[k][0];
+  };
+
+  /* a tall picture covers the ground north of its foot: not a road, a
+     plot, a landmark or a camp's middle (seen from the south, a tree just
+     below a road stood in it) -- 2 of 9 points of its upper part */
+  const covers = (x, y, w, h) => {
+    if (h < V2.tallCover) return false;
+    let hit = 0;
+    for (const u of [-0.4, 0, 0.4]) for (const v of [-0.85, -0.6, -0.35]) {
+      const q = cellOf(x + u * w, y + v * h);
+      if (q >= 0 && (NOCOVER[bp.cls[q]] || core[q] || bp.reg[q] === townR)) hit++;
+    }
+    return hit > 1;
+  };
+
+  /* footprints v2 has placed, for the slit rule (game px, a 128 px hash) */
+  const FB = 128, fcols = Math.ceil(worldW / FB) + 1, fboxes = new Map();
+  const feetOf = (id, e, x, y) => { const { w, h } = sizeOf(e); return footprintOf(id, e.kind, x, y, w, h); };
+  const addBoxes = (bs, group) => {
+    for (const b of bs) for (let j = Math.floor(b.y0 / FB); j <= Math.floor(b.y1 / FB); j++) for (let i = Math.floor(b.x0 / FB); i <= Math.floor(b.x1 / FB); i++) {
+      const key = j * fcols + i;
+      let a = fboxes.get(key);
+      if (!a) fboxes.set(key, (a = []));
+      a.push({ x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1, group });
+    }
+  };
+  /* would these boxes leave a gap under V2.slit to one already placed?
+     Touching is no gap: overlapping footprints are one lump */
+  const slit = (bs, group) => {
+    const S = V2.slit;
+    for (const b of bs) for (let j = Math.floor((b.y0 - S) / FB); j <= Math.floor((b.y1 + S) / FB); j++) for (let i = Math.floor((b.x0 - S) / FB); i <= Math.floor((b.x1 + S) / FB); i++) {
+      for (const q of fboxes.get(j * fcols + i) || []) {
+        /* (a pile's stones may touch -- one lump -- but, like anything,
+           not stand a foot apart) */
+        const gx = Math.max(q.x0 - b.x1, b.x0 - q.x1), gy = Math.max(q.y0 - b.y1, b.y0 - q.y1);
+        /* touching is overlapping by a clear margin: these are the
+           catalog's sizes, and a picture can come out a fifth wider or
+           narrower (study-placement.mjs measures the real ones) */
+        const over = Math.max(V2.slitOverlap, 0.25 * Math.min(b.x1 - b.x0, q.x1 - q.x0));
+        if (gx <= -over && gy <= 0) continue;
+        if (gy <= -over && gx <= 0) continue;
+        const gap = gx > 0 && gy > 0 ? Math.hypot(gx, gy) : Math.max(gx, gy);
+        if (gap < S) return true;
+      }
+    }
+    return false;
+  };
+
+  /* ── 1. tall things: kept by the woods, then a hard core ── */
+  const ts = T.step, lsT = s0 + 101;
+  const cand = [];
+  for (let j = 0, rows = Math.ceil(worldH / ts); j < rows; j++) for (let i = 0, cols = Math.ceil(worldW / ts); i < cols; i++) {
+    const x = halfPx((i + hash2(i, j, lsT)) * ts), y = halfPx((j + hash2(i, j, lsT + 1)) * ts);
+    const c = cellOf(x, y);
+    if (c < 0) continue;
+    const r = bp.reg[c];
+    if (r === townR) continue;
+    const land = landOf(r);
+    if (!land || !land.big || !land.big.length) continue;
+    const cls = bp.cls[c];
+    if ((cls !== C.ground && cls !== C.obstacle) || clear[c] < T.clear) continue;
+    if (land.oasis && wet[c] < OASIS.shoreBig) continue;
+    const V = V2_LANDS[landId(r)] || { tall: 1 };
+    let per = tallPerScreen(fieldAt(x, y)) * V.tall;
+    if (cls === C.obstacle) per *= T.clump;
+    per *= smooth(V2.road.tall[0], V2.road.tall[1], road[c]);
+    if (core[c]) per *= V2.camp.tall;
+    if (hash2(i, j, lsT + 2) >= (per * ts * ts / SCREEN_AREA) * 1.25) continue;
+    const stage = r === commonsR ? 0 : Math.max(0, bp.band[c]);
+    const id = pickKind(land.big, stage, x, y, hash2(i, j, lsT + 3), 0);
+    const e = id == null ? null : byId[id];
+    if (!e) continue;
+    const { w, h } = sizeOf(e);
+    if (coversTown(x, y, w, h) || nearOasis(x, y, OASIS.clearBig)) continue;
+    if (covers(x, y, w, h)) continue;
+    const spacing = Math.sqrt(SCREEN_AREA / Math.max(0.05, per));
+    cand.push({ x, y, i, j, id, e, w, h, r: Math.max(T.crown * w, Math.min(260, T.core * spacing)), pri: hash2(i, j, lsT + 4) });
+  }
+  const tall = [];
+  const TB = 256, tcols = Math.ceil(worldW / TB) + 1, tallHash = new Map();
+  for (const q of hardCore(cand, worldW, 300)) {
+    if (nearFoot(q.x, q.y, 10)) continue;
+    /* (a wide-footed tall thing -- a hoodoo, a pylon -- spaced by its crown
+       can still leave a slit beside the next) */
+    const qf = feetOf(q.id, q.e, q.x, q.y);
+    if (qf.length && slit(qf, null)) continue;
+    const cnt = q.e.count || 1, flippable = !NO_FLIP.has(q.id);
+    let piece = Math.floor(hash2(q.i, q.j, lsT + 5) * cnt), flip = flippable && hash2(q.i, q.j, lsT + 6) < 0.5;
+    /* its nearest twin already standing, within 2.5 widths: drawn the
+       same, turn this one the other way */
+    let best = null, bd = 2.5 * q.w;
+    for (let j = Math.floor((q.y - bd) / TB); j <= Math.floor((q.y + bd) / TB); j++) for (let i = Math.floor((q.x - bd) / TB); i <= Math.floor((q.x + bd) / TB); i++) {
+      for (const o of tallHash.get(j * tcols + i) || []) {
+        if (o.id !== q.id) continue;
+        const d = Math.hypot(o.x - q.x, o.y - q.y);
+        if (d < bd) { bd = d; best = o; }
+      }
+    }
+    if (best && best.piece === piece && best.flip === flip) { if (flippable) flip = !flip; else piece = (piece + 1) % cnt; }
+    put(q.id, q.x, q.y, piece, flip, 26);
+    count(q.id);
+    addBoxes(qf, null);
+    const rec = { x: q.x, y: q.y, i: q.i, j: q.j, id: q.id, piece, flip };
+    const key = Math.floor(q.y / TB) * tcols + Math.floor(q.x / TB);
+    let a = tallHash.get(key);
+    if (!a) tallHash.set(key, (a = []));
+    a.push(rec);
+    tall.push(rec);
+  }
+
+  /* ── 2. the undergrowth at their feet, in front of the trunk ── */
+  const U = V2.under, lsU = s0 + 301;
+  for (const q of tall) {
+    const c0 = cellOf(q.x, q.y), V = c0 >= 0 ? V2_LANDS[landId(bp.reg[c0])] : null;
+    if (!V || !V.under) continue;
+    const n = fieldAt(q.x, q.y);
+    const want = U.chance * (0.4 + 0.9 * woodOf(n) + 0.6 * edgeOf(n));
+    for (let k = 0; k < U.max; k++) {
+      const hk = lsU + k * 7;
+      if (hash2(q.i, q.j, hk) >= want / (k + 1)) continue;
+      const id = V.under[Math.floor(hash2(q.i, q.j, hk + 1) * V.under.length)], e = byId[id];
+      if (!e) continue;
+      const ang = (-0.15 + 1.3 * hash2(q.i, q.j, hk + 2)) * Math.PI;
+      const d = U.near + (U.far - U.near) * hash2(q.i, q.j, hk + 3);
+      const x = halfPx(q.x + Math.cos(ang) * d), y = halfPx(q.y + Math.sin(ang) * d * 0.6);
+      const c = cellOf(x, y);
+      /* in its tree's own land (a tree at a land's edge keeps its fern) */
+      if (c < 0 || bp.reg[c] === townR || bp.reg[c] !== bp.reg[c0]) continue;
+      const cls = bp.cls[c];
+      if ((cls !== C.ground && cls !== C.obstacle) || clear[c] < 1) continue;
+      if (nearFoot(x, y, 8)) continue;
+      const fb = feetOf(id, e, x, y);
+      if (fb.length && slit(fb, null)) continue;
+      put(id, x, y, Math.floor(hash2(q.i, q.j, hk + 4) * (e.count || 1)), !NO_FLIP.has(id) && hash2(q.i, q.j, hk + 5) < 0.5, 8);
+      count(id);
+      if (fb.length) addBoxes(fb, null);
+    }
+  }
+
+  /* ── 3. the middle things, in groups ── */
+  const M = V2.mid, ms = M.step, lsM = s0 + 401;
+  const parents = [];
+  for (let j = 0, rows = Math.ceil(worldH / ms); j < rows; j++) for (let i = 0, cols = Math.ceil(worldW / ms); i < cols; i++) {
+    const x = halfPx((i + hash2(i, j, lsM)) * ms), y = halfPx((j + hash2(i, j, lsM + 1)) * ms);
+    const c = cellOf(x, y);
+    if (c < 0) continue;
+    const r = bp.reg[c];
+    if (r === townR) continue;
+    const land = landOf(r);
+    if (!land || !land.mid || !land.mid.length) continue;
+    const cls = bp.cls[c];
+    if ((cls !== C.ground && cls !== C.obstacle) || clear[c] < M.clear) continue;
+    if (land.oasis && wet[c] < OASIS.shore) continue;
+    const stage = r === commonsR ? 0 : Math.max(0, bp.band[c]);
+    const shore = land.shore ? wet[c] <= 3 : false;
+    const id = pickKind(land.mid, stage, x, y, hash2(i, j, lsM + 3), 50, wet[c], land.shore);
+    const e = id == null ? null : byId[id];
+    if (!e) continue;
+    if (land.shore && land.shore.includes(id) && !shore && hash2(i, j, lsM + 6) < 0.92) continue;
+    const V = V2_LANDS[landId(r)] || { mid: 1 };
+    const n = fieldAt(x, y), wood = woodOf(n);
+    let per = M.groups * V.mid * (MINERAL.has(id) ? 1.3 - 0.9 * wood : UNDERWOOD.has(id) ? 0.45 + 1.1 * wood : 1) * (1 + (M.edge - 1) * edgeOf(n));
+    per *= smooth(V2.road.mid[0], V2.road.mid[1], road[c]);
+    if (core[c]) per *= V2.camp.mid; else if (camp[c]) per *= V2.camp.frame;
+    if (hash2(i, j, lsM + 2) >= per * ms * ms / SCREEN_AREA) continue;
+    const G = GROUPS[GROUP_OF[id] || 'scatter'];
+    const { w } = sizeOf(e);
+    parents.push({ x, y, i, j, id, e, w, G, r: Math.max(110, 2 * G.r * w + 50), pri: hash2(i, j, lsM + 4) });
+  }
+  let group = 0;
+  for (const p of hardCore(parents, worldW, 600)) {
+    group++;
+    const nm = p.G.n[0] + Math.floor(hash2(p.i, p.j, lsM + 5) * (p.G.n[1] - p.G.n[0] + 1));
+    const R = p.G.r * p.w, a0 = hash2(p.i, p.j, lsM + 7) * 2 * Math.PI;
+    const cnt = p.e.count || 1, piece0 = Math.floor(hash2(p.i, p.j, lsM + 8) * cnt);
+    /* a line runs mostly across the screen, a little askew */
+    const lineA = (hash2(p.i, p.j, lsM + 9) - 0.5) * 0.5;
+    for (let k = 0; k < nm; k++) {
+      const hk = lsM + 20 + k * 5;
+      let x = p.x, y = p.y;
+      if (p.G === GROUPS.ring) {
+        const a = a0 + (k / nm) * 2 * Math.PI + (hash2(p.i, p.j, hk) - 0.5) * 0.4;
+        x = p.x + Math.cos(a) * R; y = p.y + Math.sin(a) * R * 0.6;
+      } else if (p.G === GROUPS.line) {
+        const t = (k - (nm - 1) / 2) * R;
+        x = p.x + Math.cos(lineA) * t; y = p.y + Math.sin(lineA) * t * 0.6 + (hash2(p.i, p.j, hk) - 0.5) * 6;
+      } else if (k > 0) {
+        const a = hash2(p.i, p.j, hk) * 2 * Math.PI, rr = R * Math.sqrt(0.25 + 0.75 * hash2(p.i, p.j, hk + 1));
+        x = p.x + Math.cos(a) * rr; y = p.y + Math.sin(a) * rr * 0.6;
+      }
+      x = halfPx(x); y = halfPx(y);
+      const c = cellOf(x, y);
+      if (c < 0 || bp.reg[c] === townR || landOf(bp.reg[c]) !== landOf(bp.reg[cellOf(p.x, p.y)])) continue;
+      const cls = bp.cls[c];
+      if ((cls !== C.ground && cls !== C.obstacle) || clear[c] < (k === 0 ? M.clear : 1)) continue;
+      if (nearFoot(x, y, 6)) continue;
+      const ps = sizeOf(p.e);
+      if (covers(x, y, ps.w, ps.h) || coversTown(x, y, ps.w, ps.h)) continue;
+      const fb = feetOf(p.id, p.e, x, y);
+      if (fb.length && slit(fb, group)) continue;
+      put(p.id, x, y, (piece0 + k) % cnt, !NO_FLIP.has(p.id) && hash2(p.i, p.j, hk + 2) < 0.5, 14);
+      count(p.id);
+      if (fb.length) addBoxes(fb, group);
+    }
+  }
+
+  /* ── 4. the low things, in drifts ── */
+  const L = V2.low, lsL = s0 + 701;
+  for (let j = 0, rows = Math.ceil(worldH / L.step); j < rows; j++) for (let i = 0, cols = Math.ceil(worldW / L.step); i < cols; i++) {
+    const x = halfPx((i + hash2(i, j, lsL)) * L.step), y = halfPx((j + hash2(i, j, lsL + 1)) * L.step);
+    const c = cellOf(x, y);
+    if (c < 0) continue;
+    const r = bp.reg[c];
+    if (r === townR) continue;
+    const land = landOf(r);
+    if (!land || !land.small || !land.small.length) continue;
+    const cls = bp.cls[c];
+    if ((cls !== C.ground && cls !== C.obstacle) || clear[c] < L.clear) continue;
+    if (land.oasis && wet[c] < OASIS.shore) continue;
+    const V = V2_LANDS[landId(r)] || { low: 1 };
+    const n2 = 0.5 + 0.5 * fbm(x / L.patchWave, y / L.patchWave, s0 + 9, 3);
+    const per = L.perScreen * V.low * (0.15 + 2.0 * smooth(L.patch[0], L.patch[1], n2)) * (1 + 0.5 * edgeOf(fieldAt(x, y))) * (core[c] ? V2.camp.low : 1);
+    if (hash2(i, j, lsL + 2) >= per * L.step * L.step / SCREEN_AREA) continue;
+    const stage = r === commonsR ? 0 : Math.max(0, bp.band[c]);
+    const shore = land.shore ? wet[c] <= 3 : false;
+    const id = pickKind(land.small, stage, x, y, hash2(i, j, lsL + 3), 90, wet[c], land.shore);
+    const e = id == null ? null : byId[id];
+    if (!e) continue;
+    if (land.shore && land.shore.includes(id) && !shore && hash2(i, j, lsL + 6) < 0.92) continue;
+    if (nearFoot(x, y, 20)) continue;
+    const fb = feetOf(id, e, x, y);
+    if (fb.length && slit(fb, null)) continue;
+    put(id, x, y, Math.floor(hash2(i, j, lsL + 4) * (e.count || 1)), !NO_FLIP.has(id) && hash2(i, j, lsL + 5) < 0.5, 8);
+    count(id);
+    if (fb.length) addBoxes(fb, null);
+  }
 }

@@ -16,7 +16,7 @@ import { addBuildUse, pushDmgPopup, lockAimPoint } from '@/game/combatHelpers.js
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
-import { hitMaterialOf } from '@/data/monsterVariants.js'; /* v2.3.2452 */
+import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: the lunge's hit in its monster's voice (was hitMaterialOf, v2.3.2452) */
 import { isStuck } from '@/game/elemHits.js'; /* v2.3.2996: a slime's goo holds you */
 
 /* ═══ v2.3.2916: HOW LONG A ROLL LASTS -- ONE ANSWER, SENT WITH IT ═══
@@ -232,8 +232,11 @@ export var doLunge = function (S, R, ang) {
       /* v2.3.2452: the lunge lands in the same body the swing does, so it
          picks its sample the same way.  `lt` is a live monster here — it is
          S.lockedTarget.ref, returned out of this function when null and again
-         when !lt.alive before the strike timer fires. */
-      BT_AUDIO.swordHit({ vol: 0.5 }, hitMaterialOf(lt.archetype || lt.type).kind);
+         when !lt.alive before the strike timer fires.
+         v2.3.3001: the monster's voice (hitSounds.js), as the swing's is --
+         and the stamp it leaves is what keeps the worker's `ability: 'lunge'`
+         echo of this same blow from sounding again. */
+      monsterHitSfx(lt, 0.5, 'lunge');
       /* v2.3.1747: a lunge hit used to advance the combo chain; chain removed. */
     }, 160);
   };

@@ -148,10 +148,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
 
   phase = 'nolife';
+  /* v2.3.3001: the first player is done -- close it, so the second is not
+     drawing the Wheel's shadows (v2.3.3000) on a CPU shared with a whole
+     second game: on the headless renderer two of them at once drew no
+     buildings round the second's arrival in 16 s */
+  await P.ctx.close().catch(() => {});
   const Q = await H.newPlayer(browser, { name: 'Stillness', wsPort, webPort, viewport: PHONE, touch: true, query: 'trial=wheel&nolife' });
   const zq = await wayIn(Q);
-  await Q.page.waitForTimeout(2500);
-  const still = await lives(Q);
-  const stillB = still.near.filter((o) => BUILDING_LIFE[o.id]);
+  /* v2.3.2999: until the buildings round the arrival are drawn, not a fixed
+     2.5 s -- the view 25% further out (v2.3.2997) loads more pages on the way
+     in, and a busy machine drew none in time: "0 buildings" was the wait */
+  let still = null, stillB = [];
+  for (let i = 0; i < 30; i++) {
+    await Q.page.waitForTimeout(500);
+    still = await lives(Q);
+    stillB = still.near.filter((o) => BUILDING_LIFE[o.id]);
+    if (stillB.length >= 3) break;
+  }
+  await Q.page.waitForTimeout(1000);
+  still = await lives(Q);
+  stillB = still.near.filter((o) => BUILDING_LIFE[o.id]);
+  /* v2.3.3000: what the second player saw, for when it saw nothing */
+  const qs = await Q.page.evaluate(() => {
+    const S = window._gameState.current, W = window.__btWheelObjects;
+    return { zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y), loading: !!S._zoneLoading,
+      objects: W ? { drawn: W.stats.drawn, pages: W.stats.pages, loading: W.stats.loading, placed: W.stats.placed } : null,
+      near: W ? W.near(S.player.x, S.player.y, 1400).length : -1 };
+  });
+  console.log(`    nolife: ${JSON.stringify({ zq, ...qs, withSprites: still.near.length, buildings: stillB.length })}`);
   rec.ok(`with ?nolife the ${stillB.length} buildings round the arrival are plain pictures, no life`, WHEELISH(zq) && stillB.length >= 3 && stillB.every((o) => o.s.life == null) && !still.stats.alive, { ids: stillB.map((o) => o.id), alive: still.stats.alive });
 }

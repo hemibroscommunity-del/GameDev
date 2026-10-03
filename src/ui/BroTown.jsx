@@ -4205,8 +4205,19 @@ export var BroTown = function BroTown(_ref0) {
         var _gw = (_wgrid[0] && _wgrid[0].length) || 0;
         if (_gw > 0) {
           var _mw = zone.w * TILE, _mh = zone.h * TILE;
+          /* ═══ v2.3.2999: THE WHEEL'S WATER STOPS YOUR BOOTS ═══
+             The Wheel's grid is the ground's own (wheelTrial.js lazyGrid,
+             `atFeet`), so it is read where your boots are, playerGroundDy
+             below the body's centre -- the same move the NPC test above and
+             propFeetBlocked below make.  Read at the centre, a walk south
+             took your boots ~45 px into the water and a walk north stopped you
+             52 px short of the shore.  The never-trap rule below reads your
+             boots too, so it keeps meaning "already standing in it". */
+          var _gfd = _wgrid.atFeet ? playerGroundDy(S.currentZone, px, py) : 0;
           var _gx = Math.floor(px * _gw / _mw);
-          var _gy = Math.floor(py * _gh / _mh);
+          var _gy = Math.floor((py + _gfd) * _gh / _mh);
+          /* boots past the world's last row: the sea's edge, read as its last row */
+          if (_gfd && _gy >= _gh) _gy = _gh - 1;
           if (_gy >= 0 && _gy < _gh && _gx >= 0 && _gx < _gw) {
             var _cellSolid = _wgrid[_gy][_gx] === false;
             /* ═══ v2.3.2075: NEVER TRAP SOMEONE ALREADY INSIDE ═══
@@ -4230,7 +4241,8 @@ export var BroTown = function BroTown(_ref0) {
             var _me = S.player;
             if (_cellSolid && _me) {
               var _pgx = Math.floor(_me.x * _gw / _mw);
-              var _pgy = Math.floor(_me.y * _gh / _mh);
+              var _pgy = Math.floor((_me.y + (_gfd ? playerGroundDy(S.currentZone, _me.x, _me.y) : 0)) * _gh / _mh);
+              if (_gfd && _pgy >= _gh) _pgy = _gh - 1;
               if (_pgy >= 0 && _pgy < _gh && _pgx >= 0 && _pgx < _gw
                   && _wgrid[_pgy][_pgx] === false) return false;
             }

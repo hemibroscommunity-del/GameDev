@@ -54,6 +54,47 @@ export function zoneLight(zoneId) {
   return (zoneId && ZONE_LIGHT[zoneId]) || null;
 }
 
+/* ═══ v2.3.3000: THE WHEEL'S ONE SUN ═══
+ *
+ * Owner, 2026-10-03: "I liked the old shadows (and any other visual effect
+ * enhancements?) of the old map put that on this wheel world too".  The
+ * Wheel had no row above, so nothing in it cast -- not you, not a monster,
+ * not one of its ~13,000 objects -- and its pictures may not bring their own
+ * (the art law: "no shadows cast on the ground ... the game adds those",
+ * public/tools/style/bible.js).
+ *
+ * ONE SUN FOR THE WHOLE WHEEL, where every row above was read off its own
+ * painting.  The Wheel is one seamless world under one sky, and the rule
+ * this file was written for (WORLD-DEPTH-PLAN §15: a tree must not cast a
+ * different way from the rock beside it) now runs across land borders too:
+ * so the direction is fixed -- the bible's upper-left sun, town's numbers --
+ * and only the shade's COLOUR and depth follow the land you stand in (the
+ * layer has one filter, so one colour a frame; lightFx eases between lands
+ * as you cross).  The four lands the old map lit some other way (ember's
+ * lava, hollows' cave, thunder's night, the commons that never was) are
+ * under the same daylight here, so they have new values, chosen the way the
+ * old ones were: a shadow takes the dark of the ground it falls on. */
+export const WHEEL_SUN = { lx: 0.50, ly: 0.34 };
+export const WHEEL_LAND_LIGHT = Object.assign(Object.create(null), {
+  town:    { alpha: 0.38, color: 0x2e1c0c },   /* packed earth and cobble: town's own */
+  commons: { alpha: 0.36, color: 0x13240c },   /* short grass: the meadow's */
+  frost:   { alpha: 0.34, color: 0x1a2c52 },   /* blue on snow */
+  ember:   { alpha: 0.36, color: 0x2a120a },   /* scorched earth, ash */
+  sky:     { alpha: 0.42, color: 0x3a220c },   /* the dunes' hard sun */
+  hollows: { alpha: 0.34, color: 0x1c1a24 },   /* grey stone and crystal */
+  thunder: { alpha: 0.32, color: 0x161c26 },   /* wet steel-grey plains */
+  tidal:   { alpha: 0.34, color: 0x14282e },
+  mist:    { alpha: 0.26, color: 0x14200e },   /* under the haze: faint */
+  verdant: { alpha: 0.30, color: 0x0e220e },   /* dappled jungle */
+  shadow:  { alpha: 0.40, color: 0x140c1e },
+  radiant: { alpha: 0.30, color: 0x2a2210 },
+});
+/** The shade of the Wheel's land `region` (wheelHere().region), the
+ *  commons' for the sea and anything unnamed. */
+export function wheelLandLight(region) {
+  return (region && WHEEL_LAND_LIGHT[region]) || WHEEL_LAND_LIGHT.commons;
+}
+
 /* How much of the sun is left, 0-1.  The depth levels of a zone darken the
    whole screen (effectsRenderer _updateAtmosphere: mid .1 ... core .5), and a
    shadow at full strength in a gloom that dark reads as a hole in the floor.

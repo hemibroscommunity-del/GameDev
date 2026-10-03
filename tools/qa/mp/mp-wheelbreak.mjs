@@ -16,7 +16,8 @@
  *      the arrow STAYS in it, headless, on its face, past the old 2 s;
  *   2. a bolt into it: a burn mark of its own pixels, its heat fading;
  *   3. a lamp rings as metal, a rock as stone (the pickaxe), a tree throws
- *      its crown's leaves;
+ *      its crown's leaves (v2.3.3001: and its crown is heard rustling after
+ *      the trunk's knock; a bush rustles as a plant, no wooden knock);
  *   4. enough hits and it shatters: its sprite gone, shards of its picture
  *      flying, falling, landing on its footprint, the break sound, its marks
  *      gone with it, and its footprint gone from the walk test -- the next
@@ -34,7 +35,10 @@ import { join } from 'node:path';
 const PHONE = { width: 390, height: 844 };
 /* long enough that a slow headless screenshot (several seconds under load)
    cannot outlast it between two checks of the broken state */
-const REPAIR_MS = 15000;
+/* v2.3.3000: 25 s (was 15): the steps between the break and the mending --
+   the shards' fall, an arrow through -- run in a headless page's slow motion,
+   and with the Wheel's shadows on they ran past 15 s */
+const REPAIR_MS = 25000;
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 const BOW_H = 30;     /* a shot flies this far above the ground line (the bow grip) */
 
@@ -191,6 +195,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const m4 = await marksOn(P, wood.oi);
   rec.ok('...its arrow and its burn mark gone with it', m4.length === 0, m4);
   rec.ok('...and its footprint gone from the walk test', !st4.box, st4);
+  /* and you can stand there -- asked straight away (v2.3.3000): asked after
+     the shards' fall and the next arrow, on a slow page it came after the
+     mending, when the footprint is rightly back */
+  const walk = await P.page.evaluate(({ b }) => {
+    const S = window._gameState.current, f = window.__btPropFeetBlocked;
+    const dy = (window.__btPlayerGround() || {}).y - S.player.y || 52;
+    const x = (b.x0 + b.x1) / 2, y = (b.y0 + b.y1) / 2 - dy;
+    return { blocked: f ? f(x, y + 30, x, y) : null };
+  }, { b: wood.box });
+  rec.ok('...and you can walk where it stood', walk.blocked === false, walk);
   let st4b = null;
   for (let i = 0; i < 30; i++) {
     /* (a headless page runs at a few frames a second: the shards fall in
@@ -206,14 +220,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* the next arrow flies through where it stood */
   const s4 = await shootAt(P, wood, { through: true });
   rec.ok('...the next arrow flies on through where it stood (it does not stop there)', s4.inProp == null && (s4.y == null || s4.y < wood.box.y0 - BOW_H - 4), s4);
-  /* and you can stand there */
-  const walk = await P.page.evaluate(({ b }) => {
-    const S = window._gameState.current, f = window.__btPropFeetBlocked;
-    const dy = (window.__btPlayerGround() || {}).y - S.player.y || 52;
-    const x = (b.x0 + b.x1) / 2, y = (b.y0 + b.y1) / 2 - dy;
-    return { blocked: f ? f(x, y + 30, x, y) : null };
-  }, { b: wood.box });
-  rec.ok('...and you can walk where it stood', walk.blocked === false, walk);
+
 
   /* ── 5. mended ── */
   let st5 = null;
@@ -272,6 +279,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const dt = await debrisFor(P, 'wobj:' + tree.oi + ':c');
     const sway = await state(P, tree.oi);
     rec.ok(`a tree (${tree.id}) answers as wood, sways, and its crown lets go of leaves`, !!lp && lp.mat === 'wood' && dt.some((b) => b.kind === 'canopy' && b.crown) && sway.shaking, { lp, dt, sway });
+    /* v2.3.3001: ...and the crown is HEARD: its leaves rustle after the knock */
+    rec.ok(`...and its crown is heard: the leaves' rustle (${lp ? lp.crownKey : 'none'}) after the trunk's ${lp ? lp.key : 'none'}`,
+      !!lp && lp.crown === 'leaf' && lp.crownKey === 'step-grass' && (lp.key === 'axe-chop' || lp.key === 'wood-chop'), lp);
     await P.page.waitForTimeout(700);
     await shot(P, '5-tree');
   } else rec.ok('a tree near town', false, null);
@@ -298,6 +308,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const freed = await state(P, t.oi);
     rec.ok('...step out and it is mended', !freed.broken && freed.drawn, freed);
   } else rec.ok('a small thing to break', false, null);
+
+  /* ── 5c. v2.3.3001: a bush is a plant -- a rustle, no wooden knock ── */
+  const bush = (await targets(P, ['bush'], 2600))[0];
+  if (bush) {
+    await standBefore(P, bush, 60);
+    const sh = await shootAt(P, (await targets(P, ['bush'], 400)).find((t) => t.oi === bush.oi) || bush);
+    await P.page.waitForTimeout(80);
+    const lp = sh.sound;
+    rec.ok(`a bush rustles as a PLANT (${lp ? lp.mat + ' ' + lp.key : 'none'}), not wood`, !!lp && lp.what === 'hit' && lp.mat === 'leaf' && lp.key === 'step-grass', lp);
+  } else rec.skip('a bush rustles as a plant', 'no bush within 2,600 px of the arrival');
 
   /* ── 6. a building ── */
   const bld = (await targets(P, ['saloon', 'hotel', 'gambling', 'post', 'store', 'bank', 'auction', 'assay', 'sheriff', 'blacksmith', 'woodworker', 'gemcutter', 'cookhouse', 'feedseed', 'landoffice', 'guildhall'], 2600))[0];

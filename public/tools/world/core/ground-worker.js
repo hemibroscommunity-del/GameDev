@@ -56,7 +56,7 @@ import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 import { wheelMap, whereWords } from './wheelmap.js';
 import { stepOf, cleanSteps } from './footsteps.js';
-import { placeObjects, mayorSpot, objectFootprints } from './placing.js';
+import { placeObjects, mayorSpot, objectFootprints, placingOpts } from './placing.js';
 
 const TILE = PIXEL.groundTile;                                    /* 1024 px a swatch */
 /* v2.3.2982: the plan this worker lays -- the plan itself, or the big-town
@@ -244,7 +244,8 @@ async function init(m) {
      once, from the blueprint, and handed to the game, which draws the ones
      near you and stops you at their footprints (src/rendering/wheelObjects.js) */
   const tp0 = performance.now();
-  const objects = placeObjects(PLAN, full);
+  /* v2.3.2999: `?placing=2`, placing v2 (placing.js PLACING v2) */
+  const objects = placeObjects(PLAN, full, placingOpts(m && m.search));
   objects.placeMs = Math.round(performance.now() - tp0);
   objects.mayor = mayorSpot(PLAN, full);
   W = { bp, mm, reg: full.reg, tier: full.tier, regionIds: full.regionIds, map };
@@ -277,7 +278,10 @@ async function init(m) {
       under: CHUNK / UNDER },
     arrival: { x: Math.round((ax - bp.x0) * WPA), y: Math.round((ay - bp.y0) * WPA) },
     /* v2.3.2967: and what each sounds like underfoot (footsteps.js) */
-    catalog: mm.ids.map((id, q) => ({ id, name: q === mm.water ? 'Water' : mm.catalog[q].name, step: q === mm.water ? null : stepChoices[id] || stepOf(id) })),
+    catalog: mm.ids.map((id, q) => ({ id, name: q === mm.water ? 'Water' : mm.catalog[q].name, step: q === mm.water ? null : stepChoices[id] || stepOf(id),
+      /* v2.3.3000: its colour, for the dust a foot kicks up off it (rendering/
+         worldFx.js), and whether it is water, which kicks up none */
+      color: q === mm.water ? null : (mm.catalog[q].color || null), water: q === mm.water })),
     water: mm.water,
     made, edges, blends: blends.sort(),
     map,

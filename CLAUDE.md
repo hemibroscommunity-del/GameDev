@@ -456,7 +456,83 @@ remnant to migrate server-side, not a mode to preserve.
       was; the wider view holds up to ~2x the ground pieces standing (how
       the view sits on the 192 px grid), +15 MB at worst;
     - `mp-zoomout`: WORLD-MAP-PIPELINE "1.15x, and the whole view 25%
-      further out".)
+      further out".
+  - Since v2.3.2999 the OBJECT PLACEMENT STUDY -- the owner: "work
+    throughout the night on studying object placement in the game's maps and
+    what a good distribution is" -- docs/OBJECT-PLACEMENT-STUDY.md (and
+    docs/research/OBJECT-PLACEMENT-RESEARCH.md):
+    - `tools/world/study-placement.mjs [--placing 2]` measures the Wheel's
+      spread (per screen, Clark-Evans, groves, cover, roads, camps, twins,
+      pockets and the gaps the feet catch in) and draws a density map;
+    - today's placing has no woods (tall things about random, the plan's
+      clumps one tree each), polka-dot rocks, cluttered camps, 467 gaps that
+      catch the feet;
+    - PLACING v2 behind `?placing=2` (placing.js `natureV2`): a woods field
+      (glades, open, woods), a Matern-II hard core by hashed priority
+      (`hardCore`), nothing tall covering a road or a camp, camps as framed
+      clearings (`campBands`, held to the bake), groups (piles, scatters,
+      fairy rings, wall lines), undergrowth, drifts, no gap under 40 px, no
+      twins -- the town, fences and oases exactly v1's; and see-through trees
+      (wheelObjects.js `_seeThrough`, with `?placing=2` or `?fade`); costs
+      ~0.5 s more placing on the way in; making it default means re-baking
+      the monsters' places; `mp-placing2`, test-world-core "placing v2";
+    - and the ELEVATION PLAN, docs/ELEVATION-PLAN.md (research in
+      docs/research/ELEVATION-RESEARCH.md): terraces drawn on the flat map,
+      the first step a raised knoll behind `?elev`, the owner's choices;
+    - and the WATER STOPS YOUR BOOTS, found by that study: the Wheel's walk
+      grid answers `atFeet` (wheelTrial.js lazyGrid), so isSolid and
+      nudgeSpawnToWalkable read it playerGroundDy below the body's centre --
+      read at the centre, a walk south put the boots ~45 px into a river and
+      a walk north stopped them 52 px short: TRAPS §127, `mp-wheelshore`.
+  - Since v2.3.3000 the OLD MAP'S SHADOWS AND AIR are on the Wheel -- the
+    owner: "I liked the old shadows (and any other visual effect
+    enhancements?) of the old map put that on this wheel world too":
+    - one sun for the whole Wheel (zoneLight.js `WHEEL_SUN`), its shade's
+      colour by the land you stand in (`WHEEL_LAND_LIGHT`, eased in
+      lightFx `_wheelLight`); every drawn object casts
+      (wheelObjects.js `wheelObjectCasters`: billboards, buildings column by
+      column), objects drawn for a shadow that reaches the screen, and a
+      freed sheet clears every shadow pool first (shadows.js
+      `releaseShadowTextures`);
+    - objects shaded toward their foot (formShade), trees and bushes swaying
+      with their foot held (worldLife `_updateWheelSway`; since v2.3.3001 a
+      strong gust shakes a leaf, a fleck of snow or a flake of char off a
+      tree by its `canopy`, `CROWN_BITS`, as the old map's pines shed
+      needles; QA's `__btGustAll`), the air and dust
+      by land (worldFx `airHere`, the worker's catalog carrying each ground's
+      `color`), snow prints on the Wheel's snow (footprintSprites `printsAt`)
+      and every print drawn at the boots (`fdy`);
+    - WORLD-MAP-PIPELINE "The old map's shadows and air", `mp-wheelshadows`.
+  - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
+    sound effects based on material type so hitting wood vs plants etc for
+    props and also against monsters (arrow, melee, magic hit sound for
+    snowmen vs slime etc should all sound like their material type). Same
+    with when monster projectiles break on you":
+    - a monster's hit is a VOICE of its material (`BT_AUDIO.HIT_VOICES`, a
+      body and a texture from recordings already in the game): snow (his
+      thud + a crunch), goo (the thud + a mud squelch), ember (+ a sizzle),
+      stone (the pickaxe + a stone knock, not the clang), wet (+ a splash),
+      mud; bone (mummy, skeleton) is sword-hit3 UNCHANGED; picked by
+      monsterVariants `hitSoundOf()` (`HIT_MATERIALS` `sound`, else `kind`,
+      which still picks the look); melee 0.55, lunge 0.5, arrow 0.6, bolt
+      0.22 under its magic, all through `src/game/hitSounds.js`; an arrow or
+      bolt into a snowman no longer plays the slime's thud too;
+    - the props: `plant` (cactus, giant flower) and `mushroom` (toadstool)
+      in wheelMaterials.js, the bush a rustle alone, `soft` gone; a tree's
+      crown is heard after its trunk (`CROWN_SOUNDS`);
+    - a monster's ball breaks in its material (`SHOT_SOUNDS`: a snowball's
+      crunch, a fireball's sizzle, a glob's squelch) on you, on your shield
+      (half) or on the ground (quieter by distance); the worker's blow for it
+      (`heroHitSfx`: a ball of that monster ended at you within 400 ms, or is
+      still flying) plays the armour clang at 0.3 and nothing bare;
+    - hits nobody here played (a teammate's, your abilities' and splash) are
+      heard at 0.35, softer with distance, never twice, 3 per 150 ms at most;
+    - a voice whose samples are not all in (the Wheel's footstep clips,
+      outside the Wheel) plays `fb`, its sound before v2.3.3001, never
+      silence; levels measured against sword-hit3 (0.92-1.10, peaks <= 0.66;
+      there is no limiter on the bus);
+    - test-world-core "hits sound like what they hit", `mp-hitsound`,
+      `mp-hitvoices`, `mp-wheelbreak`: docs/specs/material-hit-sounds.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
@@ -505,10 +581,10 @@ remnant to migrate server-side, not a mode to preserve.
   Never read it as evidence a feature exists; work from
   `docs/DEPTH-ROADMAP.md`, which costs it against the actual renderer.
   (Dynamic occlusion WAS the headline example here and no longer is —
-  it shipped v2.3.2633–2635, `src/rendering/depthSort.js`. The still-
-  missing one is a near-camera FOREGROUND layer: `WORLD_LAYER_NAMES` has
-  no foreground entry, so edge-cropped framing art cannot be drawn at
-  all — roadmap item 5.)
+  it shipped v2.3.2633–2635, `src/rendering/depthSort.js`. So did the
+  near-camera FOREGROUND layer this note used to call missing (roadmap
+  item 5): `'foreground'` in `WORLD_LAYER_NAMES`, v2.3.2655 -- corrected
+  v2.3.2999, found by the elevation study, docs/ELEVATION-PLAN.md.)
 
 The server previously lived in a separate `brotown-server` repo, now
 archived. Do not push there or build patches against it.

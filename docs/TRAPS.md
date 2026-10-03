@@ -5048,3 +5048,71 @@ return, the respawn).
 any render error. Its first version pressed Space to fight, which is the
 DODGE (`desktopControls.js`): a test that swings sends `monster_damage`, as
 mp-capekill does.
+
+
+## 127. A ground grid read at the body's centre stops your waist, not your boots (v2.3.2999)
+
+**Plausible:** "isSolid reads the walk grid at S.player, which is where the
+player is." True for a grid made in the same space as S.player: town's rock
+ring bakes the feet offset in (`townRimFor`, v2.3.2896), and the old zones'
+painted masks were drawn for the body.
+
+**Wrong** for a grid that is the ground's own. The Wheel's walk bits are the
+plan's water, cell for cell, and S.player.y is the body's centre,
+playerGroundDy (52 px) above the boots. Walking south into a river, the boots
+went ~45 px in before the waist met the water; walking north, they stopped 52
+px short of the bank. It went unseen because no scenario walked up to water.
+The elevation study found it: a terrace's face is the same kind of wall
+(docs/ELEVATION-PLAN.md).
+
+**The fix:** the grid says which space it is in. The Wheel's `lazyGrid`
+answers `atFeet: true`, and isSolid and nudgeSpawnToWalkable read it at
+`py + playerGroundDy`, the never-trap rule included, so "already inside" still
+means your boots. Not a shift of rows inside the grid: the offset is 2.17
+rows, and the quest trail's route finder draws on the ground, so it must keep
+reading the ground. A grid with the offset baked in (town) has no flag and is
+read as before. It is the walk-grid twin of v2.3.2748's "a prop stops your
+feet, not just your waist" (propFeetBlocked).
+
+**How to see it:** `mp-wheelshore` walks into a river's north bank and a
+pond's south bank. Before the fix it read +45 px (in the water) and -52 px
+(short of the bank); after, -7.5 and 0.
+
+
+## 128. Ground laid late at a brisk walk: the worker's laying time is the limit, not how it is asked (v2.3.3001)
+
+**Plausible:** "mp-wheeltrial counts ~120 Wheel ground pieces on screen
+before they are laid. WheelGround asks the worker only once a frame, three at
+a time (`MAX_IN_FLIGHT`), and a headless page draws 3-17 frames a second, so
+the worker must be sitting idle. Ask again the moment a piece arrives, ask
+for more at once, or look further ahead (`AHEAD_MS`)."
+
+**Wrong**, measured on one build, one run each, on the same three legs (the
+test hops 100 px a hop, which at the test page's frame rate is ~210 game px a
+second; the game's base walk is 150, a Swift Draught 225):
+
+| | late pieces |
+|---|---|
+| as shipped (ahead 700 ms) | 122 |
+| a piece arriving asks for the next at once (`_refill`) | 123 |
+| ahead 1400 ms | 110 |
+| a normal walk (70 px a hop, ~150 px/s) | 26 |
+| a normal walk, ahead 1400 ms | 19 |
+
+The worker lays one piece at a time, ~75-90 ms each in the test page (it
+shares four CPUs with the software renderer), ~36-43 ms in Node alone
+(`profile-ground.mjs` in a session's scratchpad: ~730-880 px/s of walking
+north). A portrait phone's view needs ~6 new pieces per 192 px walked north
+and ~10 per 192 px east, so at ~210 px/s eastward it needs ~11 pieces a
+second, more than ~80 ms a piece can lay. More requests in flight only queue
+behind it; looking further ahead only moves the same queue earlier.
+
+**What would help, if a phone shows it:** a faster `composeFine` (its hot
+spots: the A/B picture choice's noise is worked out per output row, three
+times per art px, ~7%; the rest is spread through the label and colour
+passes), or a late piece faded in so it reads as a reveal. Not a bigger
+`MAX_IN_FLIGHT`, a refill on arrival or a longer `AHEAD_MS`.
+
+**How to see it:** mp-wheeltrial's "...ahead of you: at a brisk walk few
+pieces are on screen before they are laid", its legs' `popIns`, `loads` and
+`sumMs` (worker ms) in the log.

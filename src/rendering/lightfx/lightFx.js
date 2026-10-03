@@ -21,8 +21,10 @@ import { ShadowSystem } from './shadows.js';
 import { GlintSystem, sheenOn } from './glint.js';
 import { collectCasters, SELF_STAND_IN_FIELDS, SELF_STAND_IN_SETS } from './casters.js';
 import { Sprite } from 'pixi.js';
-import { zoneLight, sunLeft } from './zoneLight.js';
+import { zoneLight, sunLeft, WHEEL_SUN, wheelLandLight } from './zoneLight.js';
 import { dayPhase, lightingAt, zoneHasSky } from '@/game/timeOfDay.js';   /* v2.3.2717: the sun sets */
+import { isWheelTrialZone } from '@/game/worldTrial.js';   /* v2.3.3000: the Wheel's one sun */
+import { wheelHere } from '@/game/wheelTrial.js';
 
 const KEY = 'bt-lightfx';
 let _on = null;
@@ -59,6 +61,39 @@ export class LightFx {
     this.lastMs = 0;
     this.zone = null;
     this.sheenSun = null;   /* v2.3.2864: QA override of the sheen's sun direction */
+    /* v2.3.3000: the Wheel's light as it eases from land to land, and the
+       light used last frame (the probe's) */
+    this._wl = null;
+    this._wlT = 0;
+    this.light = null;
+  }
+
+  /* ═══ v2.3.3000: THE WHEEL'S LIGHT ═══
+     The Wheel's one sun (zoneLight.js WHEEL_SUN) in the shade of the land you
+     stand in, eased over about a second as you cross into another -- the
+     shadow layer has one filter and so one colour a frame, and a border
+     crossed in a step would flick every shadow on screen at once.  `region`
+     is the worker's answer for the cell under you (wheelHere), null for a
+     moment on the way in: the commons' shade until then. */
+  _wheelLight(S, now) {
+    const P = S && S.player;
+    const here = P ? wheelHere(P.x, P.y) : null;
+    const want = wheelLandLight(here && here.region);
+    const tr = (want.color >> 16) & 255, tg = (want.color >> 8) & 255, tb = want.color & 255;
+    let w = this._wl;
+    if (!w) {
+      w = this._wl = { lx: WHEEL_SUN.lx, ly: WHEEL_SUN.ly, alpha: want.alpha, color: want.color, r: tr, g: tg, b: tb, region: here ? here.region : null };
+      this._wlT = now;
+      return w;
+    }
+    const dt = Math.max(0, Math.min(250, now - this._wlT));
+    this._wlT = now;
+    const k = 1 - Math.exp(-dt / 350);
+    w.alpha += (want.alpha - w.alpha) * k;
+    w.r += (tr - w.r) * k; w.g += (tg - w.g) * k; w.b += (tb - w.b) * k;
+    w.color = (Math.round(w.r) << 16) | (Math.round(w.g) << 8) | Math.round(w.b);
+    w.region = here ? here.region : w.region;
+    return w;
   }
 
   clear() {
@@ -78,7 +113,10 @@ export class LightFx {
     const zone = S.currentZone || 'town';
     this.zone = zone;
     if (this.shadows) {
-      let light = zoneLight(zone);
+      /* v2.3.3000: the Wheel (and the trial's 'worldview' when it is the
+         Wheel) has its one sun; the old World View's vista stays unlit, as
+         it always was */
+      let light = isWheelTrialZone(zone) ? this._wheelLight(S, now) : zoneLight(zone);
       /* v2.3.2717: the sun these shadows are cast by sets with the time of
          day (game/timeOfDay.js).  Under an open sky the shadow fades out
          through dusk and back in at dawn -- a sun shadow at midnight, under a
@@ -87,6 +125,7 @@ export class LightFx {
         const sun = 1 - lightingAt(dayPhase(now)).lamp;
         light = sun < 0.02 ? null : Object.assign({}, light, { alpha: light.alpha * sun });
       }
+      this.light = light;
       this.shadows.update(light ? collectCasters(S, er, fx, zone) : null, light, sunLeft(S), now);
     }
     this.glint.update(S, now, er, fx, zone, sheenOn() ? this._sheenLight(S, zone, now) : null);
@@ -99,7 +138,8 @@ export class LightFx {
      moon.  A zone with no sun gets a sheen with no direction. */
   _sheenLight(S, zone, now) {
     const o = this._sheenOut || (this._sheenOut = { k: 0, sx: 0, sy: 0 });   /* one object, every frame */
-    const L = zoneLight(zone);
+    /* v2.3.3000: the Wheel's metal shines from its one sun's side */
+    const L = isWheelTrialZone(zone) ? WHEEL_SUN : zoneLight(zone);
     let k = 0.6 + 0.4 * sunLeft(S);
     if (L && zoneHasSky(zone, S)) k *= 0.5 + 0.5 * (1 - lightingAt(dayPhase(now)).lamp);
     o.k = k;
@@ -119,7 +159,8 @@ export class LightFx {
     return {
       on: lightFxOn(),
       zone: this.zone,
-      light: zoneLight(this.zone),
+      /* v2.3.3000: the light used last frame -- the Wheel's eased one there */
+      light: this.light ? { lx: this.light.lx, ly: this.light.ly, alpha: +(+this.light.alpha).toFixed(3), color: this.light.color, region: this.light.region || null } : zoneLight(this.zone),
       shadows: sh ? { ...sh.stats, keys: sh.stats.keys.slice(), filtered: !!(layer && layer.filters && layer.filters.length), pool: sh.pool.length } : null,
       glint: { ...this.glint.probeStats(), force: this.glint.force, sheenOn: sheenOn() },
       ms: +this.lastMs.toFixed(3),

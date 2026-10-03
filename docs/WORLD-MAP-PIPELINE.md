@@ -2800,7 +2800,10 @@ town's stairs as usual.
   the smoothing never shows a join.
 - **Where you cannot walk** is worked out from the same blurred share of
   water the shore is drawn from, so you stop where the water starts, give or
-  take the shore's ragged edge (about 12 game px).
+  take the shore's ragged edge (about 12 game px). Since v2.3.2999 it is your
+  BOOTS that stop there: the grid is read where they are (`atFeet`), not at
+  the body's centre 52 px above them, which let a walk south take them ~45 px
+  into a river and stopped a walk north 52 px short (`mp-wheelshore`).
 - **It is careful with memory.** The worker keeps a dozen swatches unpacked,
   as palette numbers (1 MB each rather than 4). The walk grid is kept as bits
   (400 KB, where plain rows would be ~26 MB on an iPhone), and the World
@@ -2969,6 +2972,91 @@ keeps its own colours to the pixel, then checks night is back in town.
 have been nearly full day, and the darkening layer looked as if it had kept an
 earlier night picture while the character loaded in. If it is ever seen again
 outside the Wheel, a screenshot with the phone's clock is what to look at.)
+
+### The old map's shadows and air (v2.3.3000)
+
+> Owner, 2026-10-03: *"I liked the old shadows (and any other visual effect
+> enhancements?) of the old map put that on this wheel world too"*.
+
+**Nothing in the Wheel cast a shadow.** The old map's shadows are drawn by the
+game (`src/rendering/lightfx/`): each figure, prop and tree is drawn a second
+time, flattened onto the ground along the map's sun, under one soft filter.
+Each map's sun was a row in `zoneLight.js`, and the Wheel had no row. Its
+13,000 objects were never on the list of things that cast, either. And the
+Wheel's pictures may not bring shadows of their own: the art law says the game
+adds them.
+
+What it does now:
+
+- **One sun for the whole Wheel** (`WHEEL_SUN`, town's upper left). A tree
+  must never cast a different way from the rock beside it, and in a seamless
+  world that holds across land borders too, so the direction never changes.
+  Only the shade's colour and depth follow the land you stand in
+  (`WHEEL_LAND_LIGHT`): blue on Frost Ridge's snow, warm brown in the dunes,
+  faint under the swamp's haze. It eases over about a second as you cross.
+  You, other players, the townsfolk and the monsters cast again.
+- **Every object casts** (`wheelObjectCasters` in `wheelObjects.js`):
+  - trees, rocks and props as one flattened copy, pivoted on their footprint;
+  - buildings column by column, the front wall from its foot and the roof
+    from the back of its footprint, as the old town's did.
+
+  An object just off the top or the left of the screen is drawn too when its
+  shadow reaches into view, so shadows don't pop in at the edge.
+- **Shaded toward the ground.** Every object is a little darker and cooler
+  toward its foot (`formShade.js`, as the old props were); snow things take
+  the near-neutral snow shade.
+- **The wind.** Trees and bushes sway (`worldLife.js _updateWheelSway`), the
+  same springs and rolling gusts as the old map's trees. Each leans from its
+  foot, which stays put, and its shadow sways with it.
+  - Since v2.3.3001 a strong gust also shakes a bit of a tree's crown loose,
+    as the old map's pines shed needles, at the same rate (`CROWN_BITS`, by
+    the tree's `canopy` in `wheelMaterials.js`). A leafy tree drops a leaf,
+    a pine or a birch a fleck of its snow, and a burnt tree a flake of char.
+    A slime tree's goo stays put; it drips only when the trunk is hit.
+    A strong gust reaches a given tree about 1% of the time, so this is a
+    now-and-then thing. The test sets `window.__btGustAll` to put every tree
+    in one at once.
+- **The air and the dust by land** (`worldFx.js airHere`):
+  - snow drifts in Frost Ridge's air, embers over the Flame Fields, sand on
+    the dunes, spores in the swamp, pollen in the green;
+  - the dust a step kicks up is the colour of the ground under it (the
+    worker's catalog now carries each ground's colour);
+  - water kicks up none.
+- **Prints in the snow.** Walking on the Wheel's snow leaves the old Frost
+  Ridge footprints. `printsAt` asks the ground under your boots, so the
+  prints start and stop where the snow does. Every print is drawn at the
+  boots now, not 52 px up at the body's middle, as it always had been.
+
+**What it costs.** No new pictures: a shadow shares its object's own sheet,
+and the motes, prints and dust were already in the game.
+
+- One soft filter pass a frame, over the shadows, which town already paid.
+- A few dozen extra flattened copies on screen.
+- When the Wheel lets a sprite sheet go, every shadow drops its pictures
+  first (`releaseShadowTextures` in `shadows.js`), in the same frame and
+  before anything is drawn. Otherwise a hidden shadow would keep a freed
+  picture, the crash CLAUDE.md's zone-asset rule is about.
+
+Switches: `?lightfx=0` (all shadows), `?shade=0` (the shading).
+
+**Tested by `mp-wheelshadows`:**
+
+- the Wheel's sun, and every drawn object and building casting;
+- a pine's shadow darkening the snow below and right of it, with its sunlit
+  left untouched;
+- the shading, and the sway with the foot held;
+- a gust shaking snow off Frost Ridge's trees (v2.3.3001);
+- Frost Ridge's blue shade, its snow in the air, and prints at the boots;
+- dust the colour of the ground;
+- a long walk across the lands with no page error.
+
+Pictures, off and on: `tools/qa/mp/out/wheelshadows-*.png`.
+
+Still to do, if wanted:
+
+- glints on the water and the lava's glow, found from the ground;
+- swinging signs and waving flags on the Wheel's buildings;
+- a banner as you enter each land.
 
 ### On a slow connection (v2.3.2959)
 

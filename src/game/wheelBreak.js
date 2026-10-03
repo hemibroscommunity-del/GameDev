@@ -12,7 +12,8 @@
  * copy runs in visualSystems.js), so two players shooting the same barrel
  * both see it go.
  *
- *   A HIT       sounds like the material (BT_AUDIO.propHit), throws its
+ *   A HIT       sounds like the material (BT_AUDIO.propHit; v2.3.3001: a
+ *               tree's crown answering its trunk), throws its
  *               pieces (S._debrisBursts, cut from the object's own picture
  *               where it is drawn: hitMaterialFx.js), shakes it (the
  *               renderer reads `events`), and counts: an arrow, a bolt or a
@@ -141,7 +142,10 @@ export function strikeWheelObject(S, hit) {
     }
   }
   const big = !!k.big;
-  try { BT_AUDIO.propHit(k.mat, { vol: hit.vol != null ? hit.vol : 0.32, big }); } catch (e) { /* audio is best-effort */ }
+  /* v2.3.3001: + its crown -- a hit on a tree's trunk shakes the leaves, snow,
+     char or slime in it, and that is heard just after the knock
+     (BT_AUDIO.CROWN_SOUNDS), the way its pieces are seen falling */
+  try { BT_AUDIO.propHit(k.mat, { vol: hit.vol != null ? hit.vol : 0.32, big, crown: k.canopy || null }); } catch (e) { /* audio is best-effort */ }
   /* the count */
   let d = _dmg.get(oi);
   if (!d || now - d.last > HEAL_MS) d = { d: 0, last: now };
