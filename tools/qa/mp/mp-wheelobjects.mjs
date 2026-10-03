@@ -114,7 +114,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { stats: { ...W.stats }, ids: [...new Set(drawn.map((o) => o.id))].sort(), drawn: drawn.length, onFoot, player: { x: S.player.x, y: S.player.y } };
   });
   rec.ok(`round the arrival the town stands: ${town.drawn} objects drawn -- ${town.ids.join(', ')}`,
-    town.drawn >= 10 && ['townhall', 'saloon', 'hotel', 'lamp', 'bench'].every((id) => town.ids.includes(id)), town);
+    /* (v2.3.2994: the 1.5x town's buildings are bigger and further apart --
+       8 things within 900 px of the arrival, where the old town had 10+) */
+    town.drawn >= 6 && ['townhall', 'saloon', 'hotel', 'lamp', 'bench'].every((id) => town.ids.includes(id)), town);
   rec.ok('...each its own sprite, on its foot, at its size in game px', town.onFoot, town.stats);
   await shot(P, 'arrival');
 

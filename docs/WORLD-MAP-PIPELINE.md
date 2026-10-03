@@ -1809,6 +1809,15 @@ Again I don't see anywhere to add water in the ground studio"*
   rivers, ponds and oasis pools take the shallows' clear water, never the
   plan's flat blue beside two real pictures; the sea and the shallows stand
   in for each other the same way.
+- **Since v2.3.2993 fresh water is the owner's own.** They sent two pictures
+  in chat: *"here's the missing water I didn't want to rezip everything that
+  included older stuff"*. Both went in the same way, as Fresh water A and B
+  (`fresh:A=… fresh:B=…`). The rivers, ponds and oasis pools are drawn from
+  them now, the stand-in only for a look still unmade. That includes the
+  four ponds and the Sweetwater River in the safe commons, where the
+  starting fish are planned. `mp-wheelwater` checks the river by the Mill
+  Bridge shows them, not the shallows: 79,508 px in its own colours, 1 in
+  the shallows'.
 - **The shallows are a shelf, not a line.** About `SHALLOW_CELLS` 5 cells
   (120 game px) out from the shore, the outer line wandering `SHALLOW_WANDER`
   2.6 cells either way, in a broad sweep with a finer fray. Until now they
@@ -1973,6 +1982,49 @@ Tests: test-world-core (2 more: 17 of 17 at 1.5x, doors, no covering,
 1.6x back to one a side; the town in the commons with no river, railway or
 pond in it, the railway from the moved depot, three bridges);
 `BIGTOWN=1.5 mp-bigtown` (5: "preview buildings x1.5 (17 of 17)").
+
+### 1.5x is the standard (v2.3.2994)
+
+Owner, 2026-10-03, after trying `?bigtown=1.5`: *"yes make 1.5x live and the
+standard size"*. The buildings had looked small.
+
+- **The plan everything imports is the 1.5x town.** `plan.js` keeps the plan
+  as written as `BASE_PLAN`, and exports `PLAN = bigTownPlan(BUILDINGS)`,
+  with `BUILDINGS` 1.5. Everything that imports it gets the bigger town:
+  - the game's ground worker;
+  - the server's baked monster places (`bake-wheel-spawns.mjs`);
+  - the World Builder and the Ground Studio's preview;
+  - every test.
+- **What the town is now:** all 17 buildings drawn 1.5x their pictures'
+  size; the square, walks and gaps grown halfway; each street with its own
+  gate (Main Street's at 1,226 art px, Market Row's at 1,455); the Rail
+  Depot and the Old Mill out past the gates; the roads and the railway laid
+  again from them.
+- **The switch, turned round:** `?bigtown=1` shows the town as it was, the
+  pictures at their own size. `?bigtown` is still 2x (13 of 17), and
+  `bigtown=k` any other size.
+- **Nothing outside the town moved.** Re-baked, the monsters' places, the
+  safe ring and each land's middle are identical; only the bake's
+  fingerprint changed.
+- **Its edge has its own noise** (`BIG_TOWN_EDGE_SEED`, read as
+  `town.edge.seed` in `core/layout.js`).
+  - With the town's usual noise, Market Row's south side lay where that noise
+    is nearly flat. Its edge on the grass ran ruler-straight for 672 game px
+    (31% of the edge in straight runs), the owner's "razor straight" lines of
+    v2.3.2977 back again.
+  - The same noise also pushed the town's yard onto the east end of the Mill
+    Bridge. In the bigger town, the bridge starts right at Market Row's west
+    gate.
+  - With its own noise: 16% straight, the longest 384 game px (the old town:
+    18%, 336), and the bridge clear. test-world-core measures both.
+- **The World Builder's prompts read the real gates.** A road starting
+  within 1.5 squares of the centre used to count as starting at a town gate.
+  The 1.5x town's north gate is just past that, so the North Road's square
+  lost its "begins at the town gate here". Now it reads the town's own
+  gates (`gateReach`, `core/prompt.js`).
+- **Still to do, if wanted:** the pictures are stretched 1.5x, so they are a
+  little softer than the ground beside them. Remaking them bigger in the
+  Object Studio would make them as sharp as everything else.
 
 ## The buildings' life (v2.3.2983)
 
@@ -2473,9 +2525,12 @@ What a player gets now, with nothing added to the address:
   where you land, with its shops and townsfolk. Its stairs bring you back to
   the Wheel.
 - **The quest's way works in the Wheel** (`src/game/questRoute.js`). The gold
-  road on the ground and a star on the Wheel's minimap both point the same
-  way. The old rules led through the World View's portals, and the Wheel has
-  none, so here they point at a place:
+  road and a star on the Wheel's minimap both point the same way. Since
+  v2.3.2992 the road is drawn on the minimap only, from you to the star. The
+  owner: *"just rely on the gold road on the minimap of where to go"*; the road
+  on the ground is put away, back with `?questpath`
+  (docs/specs/quest-path-guide.md §0). The old rules led through the World
+  View's portals, and the Wheel has none, so here they point at a place:
   - a new character's welcome, and a quest ready to hand in, lead to the
     Wheel's own Mayor Bro, not to the marker back to today's town;
   - a quest that names a land (*"Bring 4 Snowman Remnants from Frost

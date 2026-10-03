@@ -24,7 +24,7 @@ const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
   wheelmonsters: () => import('./mp-wheelmonsters.mjs'), /* v2.3.2978: the Wheel's own zone 'wheel' -- every element zone's monsters at the inner end of its spoke, skinned as at home, their art loaded on the way in, none drawn from Brotown's square (far off screen), a fire goblin fought and killed for XP, none held back in town, its art let go */
-  wheelhome: () => import('./mp-wheelhome.mjs'), /* v2.3.2990: the Wheel is the world -- a new character starts in its Brotown without walking a step, an unarmed one stays on the safe commons until the Wheel's Mayor Bro arms them, dying brings you back there, the marker still leads to today's town, ?trial=off is the old World View */
+  wheelhome: () => import('./mp-wheelhome.mjs'), /* v2.3.2990: the Wheel is the world -- a new character starts in its Brotown without walking a step, an unarmed one stays on the safe commons until the Wheel's Mayor Bro arms them, dying brings you back there, the marker still leads to today's town, ?trial=off is the old World View; v2.3.2992: the minimap's gold road leads the way, nothing on the ground */
   wheelwater: () => import('./mp-wheelwater.mjs'), /* v2.3.2984: the owner's water pictures in the Wheel -- both fetched, a coast drawn as sand, the shallows' turquoise shelf and the deep sea from the pictures, the river by the Mill Bridge from the shallows' picture until fresh water is made */
   wheellife: () => import('./mp-wheellife.mjs'), /* v2.3.2983: the buildings' life -- smoke, lamps, sparks and glints drawn in code over each building near you, cheap, moved with it by the depth pass, none with ?nolife */
   bigtown: () => import('./mp-bigtown.mjs'), /* v2.3.2982: the big-town preview (?trial=wheel&bigtown) -- the town laid for buildings twice the size, drawn so, 13 of 17, Mayor Bro beside the bigger Town Hall, the Hotel's bigger porch stopping your feet, pictures of the square and the streets */
@@ -175,7 +175,7 @@ const SCENARIOS = {
   landview: () => import('./mp-landscape-view.mjs'), /* v2.3.2156: the view rule switches axes; portrait is pinned */
   hatrun: () => import('./shot-hatrun.mjs'), /* v2.3.2896: every hat on the head standing and mid-jog, both sideways directions -- a contact sheet for the eye, asserts only that it could take the pictures */
   townrim: () => import('./mp-townrim.mjs'), /* v2.3.2896: the rocks round town are a wall -- walked into from seven sides, boots stop on the ground at the edge; the stairs still lead out */
-  pathstyle: () => import('./mp-pathstyle.mjs'), /* v2.3.2141: the quest path can be turned off, and it has a shape; v2.3.2896: + the on/off switch in the Quests panel */
+  pathstyle: () => import('./mp-pathstyle.mjs'), /* v2.3.2141: the quest path can be turned off, and it has a shape; v2.3.2896: + the on/off switch in the Quests panel; v2.3.2992: all of it with ?questpath, the ground road put away -- and without it, nothing on the ground, the minimap's gold road to the Mayor, neither control shown */
   wvglass: () => import('./mp-wvglass.mjs'), /* v2.3.2141: the World View figure is small again, and the glass is centred on him */
   inkreset: () => import('./mp-inkreset.mjs'), /* v2.3.2114: do Reset and Randomize clear the tattoos — all four of them? */
   rollbake: () => import('./mp-rollbake.mjs'), /* v2.3.2083: is the dodge roll baked before you roll? */
@@ -242,7 +242,7 @@ const SCENARIOS = {
   fishhand: () => import('./mp-fishhand.mjs'), /* v2.3.1914: the reeling hand over the shirt */
   previewweapon: () => import('./mp-previewweapon.mjs'), /* v2.3.1914: the preview follows the active weapon */
   questchain: () => import('./mp-questchain.mjs'), /* v2.3.1914: proximity turn-in across the whole chain */
-  questroad: () => import('./mp-questroad.mjs'), /* v2.3.2121: the gold road on the ground + the first-join welcome */
+  questroad: () => import('./mp-questroad.mjs'), /* v2.3.2121: the gold road on the ground + the first-join welcome; v2.3.2992: the road with ?questpath (put away), the welcome naming the map */
   crowdsoak: () => import('./mp-crowdsoak.mjs'), /* v2.3.2122: the demo's load — peers + zone changes — which mp-soak does not drive */
   armorloss: () => import('./mp-armorloss.mjs'), /* v2.3.2122: where a dropped chest piece goes, and whether it comes back */
   weaponloss: () => import('./mp-weaponloss.mjs'), /* v2.3.2123: does a weapon survive a full stash? */

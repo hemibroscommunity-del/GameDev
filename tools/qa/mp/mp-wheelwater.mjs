@@ -10,7 +10,10 @@
  *      the sea's deep blue past it -- each a PICTURE, dozens of colours, where
  *      the plan's flat blues were three;
  *   3. the river by the Mill Bridge, with no fresh-water picture made yet,
- *      is drawn from the shallows' picture, not the plan's flat blue;
+ *      is drawn from the shallows' picture, not the plan's flat blue -- and
+ *      since v2.3.2993, when the owner sent their Fresh water ("here's the
+ *      missing water"), from the fresh-water picture: its own colours on the
+ *      screen, not the shallows';
  *   4. no page errors.
  * Pictures in tools/qa/mp/out/wheelwater-*.png.
  */
@@ -103,6 +106,32 @@ async function waterOf(file, y0f, y1f) {
   return { deep: +(nd / n).toFixed(3), light: +(nl / n).toFixed(3), deepColours: deep.size, lightColours: light.size };
 }
 
+/* v2.3.2993: whose picture a screenshot's water is.  Each ground tile keeps
+   its own 64 colours (v2.3.2961), so a colour found in one water picture and
+   not the other says which was laid: count the screen's pixels in each's own
+   colours (exact matches -- the inside of a patch of one colour comes through
+   the drawing unblended). */
+async function whoseWater(file, y0f, y1f, a, b) {
+  const { decodePNG } = await import(H.REPO + '/tools/world/png.mjs');
+  const pal = (names) => {
+    const s = new Set();
+    for (const f of names) {
+      const im = decodePNG(readFileSync(join(H.REPO, 'public/world/ground', f)));
+      for (let i = 0; i < im.data.length; i += 4) s.add((im.data[i] << 16) | (im.data[i + 1] << 8) | im.data[i + 2]);
+    }
+    return s;
+  };
+  const A = pal(a), B = pal(b);
+  const img = decodePNG(readFileSync(file));
+  let na = 0, nb = 0;
+  for (let y = Math.floor(img.h * y0f); y < Math.floor(img.h * y1f); y++) for (let x = 0; x < img.w; x++) {
+    const o = (y * img.w + x) * 4, k = (img.data[o] << 16) | (img.data[o + 1] << 8) | img.data[o + 2];
+    const inA = A.has(k), inB = B.has(k);
+    if (inA && !inB) na++; else if (inB && !inA) nb++;
+  }
+  return { mine: na, theirs: nb };
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
@@ -137,7 +166,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await settle(P);
   await P.page.screenshot({ path: shotPath('river') });
   const r = await waterOf(shotPath('river'), 0.15, 0.85);
-  rec.ok(`the river by the Mill Bridge, no fresh-water picture made yet, is drawn from the shallows' picture (${r.lightColours} colours of turquoise, ${r.deepColours} of deep blue)`,
-    !made.some((k) => k.startsWith('fresh-')) ? r.light > 0.02 && r.lightColours >= 16 : true, r);
+  const hasFresh = made.some((k) => k.startsWith('fresh-'));
+  if (!hasFresh) {
+    rec.ok(`the river by the Mill Bridge, no fresh-water picture made yet, is drawn from the shallows' picture (${r.lightColours} colours of turquoise, ${r.deepColours} of deep blue)`,
+      r.light > 0.02 && r.lightColours >= 16, r);
+  } else {
+    /* v2.3.2993: the owner's Fresh water is made -- the river is its picture */
+    const freshFiles = made.filter((k) => k.startsWith('fresh-')).map((k) => k + '.png');
+    const who = await whoseWater(shotPath('river'), 0.15, 0.85, freshFiles, ['shallows-A.png']);
+    rec.ok(`the river by the Mill Bridge is drawn from the owner's fresh-water picture (${who.mine} px in its own colours, ${who.theirs} in the shallows'; ${r.lightColours} colours of turquoise on screen)`,
+      asked.has('fresh-A') && who.mine > 500 && who.mine > who.theirs * 4 && r.lightColours >= 16, { who, r, asked: [...asked].filter((k) => /fresh/.test(k)) });
+  }
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
 }

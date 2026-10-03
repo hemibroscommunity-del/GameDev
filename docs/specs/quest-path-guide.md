@@ -11,6 +11,40 @@ Prior art this builds on, all still true unless contradicted below:
 
 ---
 
+## 0. Since v2.3.2992: the way is on the minimap, and the ground road is put away
+
+> Owner, 2026-10-02: "I think I want to remove the footsteps and just rely on
+> the gold road on the minimap of where to go."
+
+- **Nothing is drawn on the ground.** `getTrailStyle()` answers `off` for every
+  player (`src/game/questTrailStyle.js`, `GROUND_PATH`), so the Footprints, and
+  every other look below, are gone from the world. The Settings row and the
+  Quests panel's switch that chose that look are not shown.
+- **The minimap draws the gold road instead.** A gold line, cased dark, runs
+  from your chevron to where the quest leads. It uses the same answer the
+  ground road used (`questRoute.js questRoutePoint`): the person to see, or
+  the portal the star marks.
+  - On the Wheel's minimap (`wheelMinimap.js`) the star sits at the road's
+    end. When the spot is off the box, the road runs to the box's edge on the
+    line toward it, and the star waits there.
+  - On today's zones' minimap (`minimapRenderer.js`) the road runs under the
+    marks to the portal's star or the person's pin. When the spot is off the
+    box, it runs to the edge, and no star waits there: that box's star marks
+    portals only (v2.3.1817).
+- **Kept, not deleted.** `?questpath` in the address brings the road on the
+  ground back for that page, with both controls, set as the player last left
+  them (a stored choice is never rewritten). `mp-pathstyle` and `mp-questroad`
+  test it that way. `mp-pathstyle`'s last section, and `mp-wheelhome`, test
+  the game as players get it: nothing on the ground, and the minimap's road
+  leading the same way.
+- **The welcome says so:** *"Find Mayor Bro — he wants a word. Follow the gold
+  road on your map."*
+- The gold beam on a quest's portal stays. It is the portal's own colour, not
+  the road.
+
+Everything below describes the road on the ground, as it still is with
+`?questpath`.
+
 ## 1. The path guide can be turned off, and it has a shape
 
 > Owner: "Add an option to turn off the path guide for the quest. Also explore

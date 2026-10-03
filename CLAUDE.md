@@ -326,7 +326,8 @@ remnant to migrate server-side, not a mode to preserve.
   `tools/world/add-ground-pictures.mjs` (the Ground Studio run headless, its
   download MERGED into public/world/ground/, `made` changing only when a
   tile is replaced), a look with no picture borrowing one (`WATER_STANDIN`:
-  rivers and ponds the shallows' until fresh water is made), the shallows a
+  rivers and ponds the shallows' until fresh water is made -- made since
+  v2.3.2993, the owner's two Fresh pictures sent in chat), the shallows a
   ~5-cell shelf (`shoreSampler`: each cell of open sea's distance to the
   nearest that is not, rivers and ponds counting as shore, exact to
   `SHORE_CAP` so pieces meet), and the water's look reading only the
@@ -342,6 +343,18 @@ remnant to migrate server-side, not a mode to preserve.
   is in the river), the mine railway leaving from the depot where it stands
   and the diagonal roads forking just past each gate (`layWheel`; the plan's
   own town unchanged): WORLD-MAP-PIPELINE "At 1.5x, all 17 fit"; and
+  since v2.3.2994 1.5x IS THE STANDARD TOWN -- the owner: "yes make 1.5x
+  live and the standard size":
+  - plan.js exports `PLAN = bigTownPlan(BUILDINGS)` (1.5) of `BASE_PLAN`, the
+    plan as written. So the worker, the server's bake, the studios and the
+    tests all get the 1.5x town.
+  - `?bigtown=1` is the old town, and `?bigtown` is 2x.
+  - The town's edge has its own noise (`BIG_TOWN_EDGE_SEED` 16, read as
+    `town.edge.seed`). The usual noise lay flat along Market Row's south side,
+    672 game px straight, and put yard on the Mill Bridge.
+  - The prompt's town-gate test reads the real gates (`gateReach`).
+  - Re-baked, no monster place moved.
+  - WORLD-MAP-PIPELINE "1.5x is the standard". And
   since v2.3.2990 THE WHEEL IS THE WORLD -- the owner: "I'm ready to have
   this replace the old game map. Just have players spawn in town. Then push
   to main", then "The Wheel's new Brotown" and, of the old lands, "Close
@@ -369,6 +382,19 @@ remnant to migrate server-side, not a mode to preserve.
     `ZONES.wheel.lands` (it mirrors the anchors; test-world-core checks it),
     stopping within 600 px of them. Nowhere for any-zone gathering. Every
     old rule went through portals the Wheel does not have.
+  - Since v2.3.2992 the way is drawn ON THE MINIMAP ONLY. The owner: "I
+    think I want to remove the footsteps and just rely on the gold road on
+    the minimap of where to go".
+    - Both minimaps draw a gold road from your chevron to the
+      questRoutePoint spot. wheelMinimap ends it at its star, held at the
+      box's edge; the zones' box runs it to the edge with no star, since its
+      star marks portals only (v2.3.1817).
+    - The road ON THE GROUND (every look) is PUT AWAY:
+      `GROUND_PATH`/`getTrailStyle()` 'off' in questTrailStyle.js. The
+      Settings row and the Quests switch are hidden. `?questpath` brings all
+      of it back, and mp-pathstyle and mp-questroad test it that way.
+    - The welcome says "Follow the gold road on your map".
+    - See docs/specs/quest-path-guide.md §0.
   - A respawn now nulls `S.npcs` like every zone change. It used to carry the
     Wheel's Mayor into today's town, where the townsfolk never spawned.
   - Not there yet, so not in the game: gathering (life_1 fish, life_2 ore

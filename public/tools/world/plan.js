@@ -75,7 +75,10 @@ import { wheelInfo, spokePoint, arcPoint, arcPoints, stageOf } from './core/whee
 import { townPlan, townGates } from './core/layout.js';
 import { MATERIALS } from '../style/bible.js';
 
-export const PLAN = {
+/* v2.3.2994: the plan as written, its town laid for buildings at their
+   pictures' own size.  What everything imports is PLAN, at the end of this
+   file: this one with the town laid for buildings 1.5x that (BUILDINGS). */
+const BASE_PLAN = {
   id: 'brotown-world',
   version: 3,
   /* Every random choice in the blueprint (coast wobble, where the ponds and
@@ -816,7 +819,7 @@ export const PLAN = {
 /* v2.3.2982: the routes and places the plan lists itself, before the
    wheel's join them -- so a plan with another town (bigTownPlan, below) can
    lay the wheel's again round it */
-const BASE_ROUTES = { roads: PLAN.roads.slice(), rivers: PLAN.rivers.slice(), rails: PLAN.rails.slice(), places: PLAN.places.slice() };
+const BASE_ROUTES = { roads: BASE_PLAN.roads.slice(), rivers: BASE_PLAN.rivers.slice(), rails: BASE_PLAN.rails.slice(), places: BASE_PLAN.places.slice() };
 
 function layWheel(P) {
   const W = wheelInfo(P);
@@ -945,11 +948,11 @@ function layWheel(P) {
     pts: [J, arcPoint(wd, st, rr, 0.8), arcPoint(wd, st, rr, 0.55), arcPoint(wd, st, rr, 0.3), arcPoint(wd, st, rr, 0.08),
       spokePoint(wd, R(4.7), 0.45), spokePoint(wd, R(5.8), 0.55), spokePoint(wd, R(7), 0.6)] });
 }
-layWheel(PLAN);
+layWheel(BASE_PLAN);
 
 /* The spokes, in the order the plan lists them (clockwise from north-west)
    -- the regions that are not the town or the commons. */
-export const SPOKES = Object.keys(PLAN.regions).filter((k) => PLAN.regions[k].dir);
+export const SPOKES = Object.keys(BASE_PLAN.regions).filter((k) => BASE_PLAN.regions[k].dir);
 
 /* ═══ v2.3.2982: THE BIG-TOWN PREVIEW ═══
  *
@@ -980,24 +983,37 @@ export const BIG_TOWN_MAX = 2.5;
    1.5x, the town then reaching 1,455 art px from the centre, 95 short of
    the Sweetwater River (at 1.6x it is in it).  Past this, one a side. */
 export const TWO_A_SIDE_MAX = 1.5;
+/* v2.3.2994: the bigger town's own edge noise (core/layout.js reads
+   `town.edge.seed`).  With the town's usual noise, the 1.5x town's Market
+   Row reached its south side along a stretch where that noise is nearly
+   flat: the edge on the grass ran ruler-straight for 672 game px (31% of
+   it in straight runs; the owner's "razor straight" lines of v2.3.2977).
+   This one wanders the whole way round: 16% in straight runs, the longest
+   384 game px (the old town's: 18%, 336).  test-world-core measures it. */
+export const BIG_TOWN_EDGE_SEED = 16;
 
 /* The building size the address asks for: `bigtown` alone is 2, `bigtown=k`
-   is k (1 to BIG_TOWN_MAX); 1 without it. */
+   is k (1 to BIG_TOWN_MAX); BUILDINGS (1.5) without it, since v2.3.2994 --
+   `bigtown=1` is the town as it was, the pictures at their own size. */
 export function bigTownScale(search) {
   const m = /(?:^|[?&])bigtown(?:=([0-9.]*))?(?:&|$)/.exec(search || '');
-  if (!m) return 1;
+  if (!m) return BUILDINGS;
   const k = m[1] ? Number(m[1]) : 2;
   return Number.isFinite(k) && k > 0 ? Math.max(1, Math.min(BIG_TOWN_MAX, k)) : 2;
 }
 
 /* The plan with the town laid for buildings `k` times the size, or the plan
-   itself when k is 1. */
+   as written when k is 1.  v2.3.2994: from the plan as written (BASE_PLAN),
+   and the standard size (BUILDINGS) is always the one PLAN, below. */
 export function bigTownPlan(k) {
-  if (!(k > 1)) return PLAN;
-  const T = PLAN.town, L = T.lot;
+  if (!(k > 1)) return BASE_PLAN;
+  if (k === BUILDINGS && _standard) return _standard;
+  const T = BASE_PLAN.town, L = T.lot;
   const grow = (v) => Math.round(v * k), half = (v) => Math.round((v * (1 + k)) / 2);
   const lot = { ...L, w: grow(L.w), d: grow(L.d), tall: grow(L.tall), walk: half(L.walk), gap: half(L.gap), perSideRow: k > TWO_A_SIDE_MAX ? 1 : L.perSide };
-  const town = { ...T, square: half(T.square), hall: { w: grow(T.hall.w), d: grow(T.hall.d) }, lot, buildingScale: k };
+  /* v2.3.2994: and its edge on the grass its own noise (BIG_TOWN_EDGE_SEED) */
+  const town = { ...T, square: half(T.square), hall: { w: grow(T.hall.w), d: grow(T.hall.d) }, lot, buildingScale: k,
+    edge: { ...(T.edge || {}), seed: BIG_TOWN_EDGE_SEED } };
   /* the gates: past the last door on each street (Main Street's last front
      walks; Market Row's last plot), and the town's ground behind it */
   const tp = townPlan(town);
@@ -1007,7 +1023,7 @@ export function bigTownPlan(k) {
   }
   town.gateNS = Math.round(Math.max(T.gate, ends.ns + T.yard));
   town.gateEW = Math.round(Math.max(T.gate, ends.ew + T.yard));
-  const step = PLAN.square.px - PLAN.square.overlap;
+  const step = BASE_PLAN.square.px - BASE_PLAN.square.overlap;
   /* the depot and the mill, out past the gates as far as they stood past
      the old one (in squares from the centre) */
   const out = (pl, axis, g) => {
@@ -1016,8 +1032,28 @@ export function bigTownPlan(k) {
     return { ...pl, at };
   };
   const places = BASE_ROUTES.places.map((pl) => (pl.id === 'depot' || pl.id === 'mill' ? out(pl, 0, town.gateEW) : pl));
-  const P = { ...PLAN, town, bigTown: k, wheel: { ...PLAN.wheel },
+  const P = { ...BASE_PLAN, town, bigTown: k, wheel: { ...BASE_PLAN.wheel },
     roads: BASE_ROUTES.roads.slice(), rivers: BASE_ROUTES.rivers.slice(), rails: BASE_ROUTES.rails.slice(), places };
   layWheel(P);
   return P;
 }
+
+/* ═══ v2.3.2994: 1.5x IS THE STANDARD SIZE ═══
+ *
+ * Owner, 2026-10-03, after trying the preview (`?bigtown=1.5`): "yes make
+ * 1.5x live and the standard size" -- the buildings had looked small.  So the
+ * plan everything imports -- the game's ground worker, the server's baked
+ * monster places (tools/world/bake-wheel-spawns.mjs), the World Builder, the
+ * Ground Studio's preview, the tests -- is the town laid for buildings 1.5x
+ * their pictures' size: bigTownPlan(BUILDINGS), all 17 standing (Market Row
+ * two a side up to TWO_A_SIDE_MAX), the square, walks and gaps grown
+ * halfway, the Rail Depot and the Old Mill out past the gates, the roads
+ * and the railway laid again from them.  The SAME pictures, drawn bigger
+ * (placing.js kindScale): softer than the ground beside them until they are
+ * remade bigger in the Object Studio.  `?bigtown=1` still shows the town as
+ * it was, and `?bigtown` (2x) or `bigtown=k` any other size.
+ */
+export const BUILDINGS = 1.5;
+let _standard = null;
+export const PLAN = bigTownPlan(BUILDINGS);
+_standard = PLAN;

@@ -26,12 +26,16 @@
  *   - carries a small "expand" mark: tapping the box opens the world map
  *     (src/ui/WorldMapOverlay.jsx, a DOM button laid exactly over this box,
  *     whose place is published here as window.__btWheelMini).
- *   - v2.3.2990: stars the quest's way, as the gold road on the ground reads
- *     it (questRoute.js questRoutePoint): the Wheel's Mayor Bro for the
- *     welcome or a hand-in, or the middle of a land's monsters for a quest
- *     that names the land.  While the spot is off the box, the star waits at
- *     its edge on the line from you, so the box says which way however far.
- *     Today's zones star their portals, and the Wheel has none to star.
+ *   - v2.3.2990: stars the quest's way (questRoute.js questRoutePoint): the
+ *     Wheel's Mayor Bro for the welcome or a hand-in, or the middle of a
+ *     land's monsters for a quest that names the land.  While the spot is off
+ *     the box, the star waits at its edge on the line from you, so the box
+ *     says which way however far.  Today's zones star their portals, and the
+ *     Wheel has none to star.
+ *   - v2.3.2992: and draws the GOLD ROAD to it, from you to the star.  The
+ *     owner: "I think I want to remove the footsteps and just rely on the
+ *     gold road on the minimap of where to go".  The road on the ground is put
+ *     away (questTrailStyle.js GROUND_PATH), so this is the way now.
  *
  * PRELOADING: nothing to load.  The overview is a canvas the worker made
  * before the Wheel opened (behind its loading screen); the lines and marks
@@ -49,6 +53,9 @@ const C_SEA = 0x16324a, C_FRAME = 0xd8aa58, C_ROAD = 0xf2e4c2, C_PATH = 0xe6d5ae
 const C_TOWN = 0xf4f0e7, C_CAMP = 0xeac675, C_GATE = 0xc58cff, C_PASS = 0xf4f0e7, C_LANDMARK = 0x9fe0c0;
 const C_PLAYER = 0xf4f0e7, C_OTHER = 0x58b97b, C_MONSTER = 0xe35d5b;
 const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = 10;   /* v2.3.2990: as the zones' minimap stars, held this far in from the box's edge */
+/* v2.3.2992: the gold road -- its width and its dark casing, CSS px; it
+   starts clear of your chevron and is not drawn when the spot is this close */
+const ROAD_W = 2.5, ROAD_CASE = 5, ROAD_FROM = 8, ROAD_MIN = 12, C_ROAD_CASE = 0x0b161b;
 const FACING_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 
 export class WheelMinimap {
@@ -74,7 +81,8 @@ export class WheelMinimap {
     this.lines = new Graphics();     /* roads, river, railway: drawn once */
     this.places = new Graphics();    /* town, camps, passes, gates, landmarks: drawn once */
     this.marks = new Container();    /* bros and monsters: every frame */
-    this.pan.addChild(this.lines, this.places, this.marks);
+    this.road = new Graphics();      /* v2.3.2992: the gold road to the quest's star: every frame */
+    this.pan.addChild(this.lines, this.places, this.road, this.marks);
     this.player = new Sprite(this.icons.self || this.dotTex);
     this.player.anchor.set(0.5);
     this.player.width = 15; this.player.height = 15;
@@ -204,7 +212,8 @@ export class WheelMinimap {
     /* v2.3.2990: the quest's way (above the bros and monsters: drawn last) */
     let quest = null;
     try { quest = questRoutePoint(S.currentZone, S.rpg || null, S); } catch (e) { quest = null; }
-    let questEdge = false;
+    let questEdge = false, road = null;
+    this.road.clear();
     if (quest) {
       const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
       const dx = quest.x * SCALE + this.pan.x - pbx, dy = quest.y * SCALE + this.pan.y - pby;
@@ -214,6 +223,17 @@ export class WheelMinimap {
       if (dy > 0) t = Math.min(t, (hi - pby) / dy); else if (dy < 0) t = Math.min(t, (lo - pby) / dy);
       t = Math.max(0, t);
       questEdge = t < 1;
+      /* v2.3.2992: the gold road, you to the star (in the pan's own px, as
+         everything here is), cased dark so it reads on any ground */
+      const L = Math.hypot(dx, dy) * t;
+      if (L > ROAD_MIN) {
+        const ux = dx / Math.hypot(dx, dy), uy = dy / Math.hypot(dx, dy);
+        const x0 = P.x * SCALE + ux * ROAD_FROM, y0 = P.y * SCALE + uy * ROAD_FROM;
+        const x1 = P.x * SCALE + dx * t, y1 = P.y * SCALE + dy * t;
+        this.road.moveTo(x0, y0).lineTo(x1, y1).stroke({ width: ROAD_CASE, color: C_ROAD_CASE, alpha: 0.55, cap: 'round' });
+        this.road.moveTo(x0, y0).lineTo(x1, y1).stroke({ width: ROAD_W, color: C_QUEST_STAR, alpha: 0.95, cap: 'round' });
+        road = { len: Math.round(L - ROAD_FROM), x0: Math.round(x0 + this.pan.x), y0: Math.round(y0 + this.pan.y), x1: Math.round(x1 + this.pan.x), y1: Math.round(y1 + this.pan.y) };
+      }
       this._mark((pbx + dx * t - this.pan.x) / SCALE, (pby + dy * t - this.pan.y) / SCALE, 'star', C_QUEST_STAR, QUEST_STAR_PX);
     }
     for (let i = this.used; i < this.pool.length; i++) this.pool[i].visible = false;
@@ -253,7 +273,7 @@ export class WheelMinimap {
         playerBoxX: P.x * SCALE + this.pan.x, playerBoxY: P.y * SCALE + this.pan.y,
         facingRot: this.player.rotation, markers: this.used, under: !!this.under,
         routes: map.routes.length, places: map.places.length, words: w ? { ...w } : null,
-        quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge } : null,
+        quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road } : null,
       };
     } catch (e) { /* never breaks the frame */ }
   }

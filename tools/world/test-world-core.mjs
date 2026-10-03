@@ -116,8 +116,12 @@ const sqAt = (p) => { const [x, y] = art(p); const c = cellAt(g, x, y); return c
   ok('Main Street runs north-south through town to its gates', [-780, -430, 430, 780].every((dy) => at(g.cx, g.cy + dy) === C.street));
   ok('Market Row runs east-west through town to its gates', [-780, -430, 430, 780].every((dx) => at(g.cx + dx, g.cy) === C.street));
   /* (v2.3.2975: the gates moved out with the bigger plots, 867 -> 1050 art px) */
-  const PAST = PLAN.town.gate + 150;
-  ok('past the gates the streets become roads', [[0, -PAST], [PAST, 0], [0, PAST], [-PAST, 0]].every(([dx, dy]) => at(g.cx + dx, g.cy + dy) === C.path));
+  /* (v2.3.2994: the standard town is the 1.5x one -- each street its own
+     gate, Main Street's at gateNS, Market Row's at gateEW) */
+  const gNS = PLAN.town.gateNS || PLAN.town.gate, gEW = PLAN.town.gateEW || PLAN.town.gate;
+  /* (...and past the west gate the road is straight onto the Mill Bridge,
+     the bigger town reaching nearly to the Sweetwater River) */
+  ok('past the gates the streets become roads', [[0, -(gNS + 150)], [gEW + 150, 0], [0, gNS + 150], [-(gEW + 150), 0]].every(([dx, dy]) => at(g.cx + dx, g.cy + dy) === C.path || at(g.cx + dx, g.cy + dy) === C.bridge));
   const townLots = bp.lots.filter((l) => l.town), places = bp.lots.filter((l) => !l.town);
   ok('Brotown has the Town Hall plus 16 plots along its streets', townLots.length === 17 && townLots.every((l) => at((l.x0 + l.x1) / 2, (l.y0 + l.y1) / 2) === C.lot), townLots.length);
   /* v2.3.2960, owner: "The one thing I want to change are the boards. They
@@ -150,7 +154,14 @@ const sqAt = (p) => { const [x, y] = art(p); const c = cellAt(g, x, y); return c
     if (tierOf(x, y) !== t || regAt(x, y) !== s.id || bp.band[cell(x, y)] !== Math.floor((t - 1) / 4)) ladder.push(`${s.id}:${t}=${tierOf(x, y)}/${regAt(x, y)}`);
   }
   ok('down every spoke the tier climbs 1 to 16, one per zone, in four stages of four', ladder.length === 0, ladder.slice(0, 12));
-  const commonsTier = [[1.9, 0.9], [-0.9, 1.9], [-1.9, -0.9], [0.9, -1.9]].map((p) => { const [x, y] = art(p); return [regAt(x, y), tierOf(x, y)]; });
+  /* (v2.3.2994: just past the town's edge each way round, wherever that is --
+     the 1.5x town reaches where these were read before) */
+  const commonsTier = [[1, 0.47], [-0.47, 1], [-1, -0.47], [0.47, -1]].map(([ux, uy]) => {
+    let t = 0.5;
+    while (t < 3 && regAt(...art([ux * t, uy * t])) === 'town') t += 0.05;
+    const [x, y] = art([ux * (t + 0.2), uy * (t + 0.2)]);
+    return [regAt(x, y), tierOf(x, y)];
+  });
   ok('the commons round the town is safe: no tier, no monsters', commonsTier.every(([r, t]) => r === 'commons' && t === 0), commonsTier);
   const between = [];
   for (const [a, b] of W.pairs) for (const r of [8.5, 15]) {
@@ -177,7 +188,7 @@ const sqAt = (p) => { const [x, y] = art(p); const c = cellAt(g, x, y); return c
   ok('a road reaches every gate and landmark', unreached.length === 0, unreached);
   ok('the town to a gate is about 19 zones: two minutes at a run', Math.abs(W.gateR / W.Z - 19.1) < 0.3, W.gateR / W.Z);
   const trunks = new Set(PLAN.roads.flatMap((r) => r.pts.map((p) => p.join(','))));
-  const gateSq = PLAN.town.gate / (PLAN.square.px - PLAN.square.overlap);
+  const gateSq = Math.max(PLAN.town.gate, PLAN.town.gateNS || 0, PLAN.town.gateEW || 0) / (PLAN.square.px - PLAN.square.overlap);   /* v2.3.2994: each street's own */
   ok('every road starts at a town gate or ON another road (so forks join cleanly)', PLAN.roads.every((r) => Math.hypot(r.pts[0][0], r.pts[0][1]) < gateSq + 0.01 ||
     PLAN.roads.some((o) => o !== r && o.pts.some((p) => p[0] === r.pts[0][0] && p[1] === r.pts[0][1]))) && trunks.size > 0);
 
@@ -257,7 +268,8 @@ console.log('prompt');
   ok('the style key is made from words alone: no bro, no hero, no attached screenshot, and a plain figure for size',
     !/hero|screenshot|attached/i.test(keyText) && /plain dark-grey silhouette of a standing man/.test(keyText) && /iron hoops/.test(keyText) && /Every material is drawn as itself/.test(keyText), keyText.slice(0, 160));
   ok('the style key asks for bright lava, crystals and ooze, never glow', !/glowing/i.test(keyText) && /no glow round it/.test(keyText));
-  const north = P(rel(0, -1));
+  /* (v2.3.2994: the square the north gate is in -- further out in the 1.5x town) */
+  const north = P(sqAt([0, -((PLAN.town.gateNS || PLAN.town.gate) + 40) / (PLAN.square.px - PLAN.square.overlap)]));
   ok('Main Street ends at the north gate and becomes the North Road', /ends at the town's north gate, where it becomes the North Road/.test(north.text) && /The North Road begins at the town gate here/.test(north.text), north.summary);
   const millSq = sqAt([-2.02, 0]), mill = P(millSq, { right: true });
   ok('says which edges are finished', /along the right edge is finished neighbouring squares/.test(mill.text));
@@ -330,9 +342,11 @@ console.log('ground');
   ok(`each spoke's ground follows its stages (the map sorted in ${mmMs} ms)`, wrong.length === 0, wrong.slice(0, 8));
   const passMid = W.pairs.map(([a, b]) => { const [x, y] = art(arcPoint(a, b, W.tierMid(12), 0.5)); return [groundAt(x, y), `border-${[a.id, b.id].sort().join('-')}`]; });
   ok('a pass is its two elements\' border land', passMid.every(([m, want]) => m === want), passMid.filter(([m, w]) => m !== w));
-  const [cx1, cy1] = art([1.9, 0.9]);
+  /* (v2.3.2994: a commons point clear of the bigger town, and the road past
+     Main Street's own gate) */
+  const [cx1, cy1] = art([1.3, 1.3]);
   ok('the sea is water, the commons is the commons, the Town Hall stands on the town yard, roads are road',
-    matAt(bp.x0 + 10, bp.y0 + 10) === 'water' && matAt(cx1, cy1) === 'commons' && matAt(g.cx, g.cy) === 'town-yard' && matAt(g.cx, g.cy - (PLAN.town.gate + 150)) === 'road');
+    matAt(bp.x0 + 10, bp.y0 + 10) === 'water' && matAt(cx1, cy1) === 'commons' && matAt(g.cx, g.cy) === 'town-yard' && matAt(g.cx, g.cy - ((PLAN.town.gateNS || PLAN.town.gate) + 150)) === 'road');
   const rect = (sx, sy, w, h) => { const [x, y] = art([sx, sy]); return { x: Math.round(x - w / 2), y: Math.round(y - h / 2), w, h }; };
   const R0 = rect(-2.02, 0, 512, 512);
   const one = composeGround(PLAN, bp, mm, R0, {}), two = composeGround(PLAN, bp, mm, R0, {});
@@ -441,7 +455,11 @@ console.log('ground');
   /* along the doors of the first two plots up Main Street, where a plan that
      lays boardwalks lays them (v2.3.2975: along each plot's door, its south
      side, since the buildings came -- every one faces south) */
-  const RT = { x: Math.round(g.cx - 360), y: Math.round(g.cy - 300), w: 720, h: 120 };
+  /* (v2.3.2994: read off the plots themselves -- the 1.5x town's are bigger
+     and further out) */
+  const firstUp = bpW.lots.filter((l) => l.town && l.arm === 'north').sort((a, b) => b.y1 - a.y1).slice(0, 2);
+  const doorY = firstUp[0].y1, upX0 = Math.min(...firstUp.map((l) => l.x0)), upX1 = Math.max(...firstUp.map((l) => l.x1));
+  const RT = { x: Math.round(upX0), y: Math.round(doorY - 60), w: Math.round(upX1 - upX0), h: 120 };
   /* (v2.3.2960: on the plan that lays the boardwalks -- they are put away) */
   const mmW = materialMap(PLANW, bpW);
   const town = composeGround(PLANW, bpW, mmW, RT, {}, { scale: 3 });
@@ -1954,15 +1972,18 @@ console.log('the oases (v2.3.2981)');
    buildings twice the size, drawn so; without it nothing changes. */
 console.log('the big-town preview (v2.3.2982)');
 {
-  const { bigTownPlan, bigTownScale, BIG_TOWN_MAX } = await import('../../public/tools/world/plan.js');
+  const { bigTownPlan, bigTownScale, BIG_TOWN_MAX, BUILDINGS } = await import('../../public/tools/world/plan.js');
   const { townPlan, townGates } = await import('../../public/tools/world/core/layout.js');
   const { placeObjects, objectFootprints, mayorSpot } = await import('../../public/tools/world/core/placing.js');
   const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
   const fs = await import('node:fs');
-  ok('the switch: `bigtown` is twice the size, `bigtown=1.5` one and a half, at most BIG_TOWN_MAX, and without it the plan itself, untouched',
+  /* v2.3.2994, owner: "yes make 1.5x live and the standard size" -- without
+     the switch, the plan itself IS the 1.5x town; `bigtown=1` the old one */
+  ok('the switch: `bigtown` is twice the size, `bigtown=1.5` one and a half, at most BIG_TOWN_MAX, `bigtown=1` the town as it was, and without it the standard 1.5x -- the plan itself',
     bigTownScale('?trial=wheel&bigtown') === 2 && bigTownScale('?trial=wheel&bigtown=1.5') === 1.5 && bigTownScale('?bigtown=9') === BIG_TOWN_MAX &&
-    bigTownScale('?trial=wheel') === 1 && bigTownScale('?trial=wheel&bigtownish') === 1 && bigTownPlan(1) === PLAN &&
-    PLAN.town.gateNS === undefined && PLAN.town.lot.perSideRow === undefined && !PLAN.town.buildingScale);
+    bigTownScale('?trial=wheel') === BUILDINGS && bigTownScale('?trial=wheel&bigtownish') === BUILDINGS && bigTownScale('?bigtown=1') === 1 &&
+    BUILDINGS === 1.5 && bigTownPlan(BUILDINGS) === PLAN && PLAN.town.buildingScale === 1.5 && PLAN.bigTown === 1.5 &&
+    bigTownPlan(1) !== PLAN && bigTownPlan(1).town.gateNS === undefined && bigTownPlan(1).town.lot.perSideRow === undefined && !bigTownPlan(1).town.buildingScale);
   const BP = bigTownPlan(2), bbp = buildBlueprint(BP), BO = placeObjects(BP, bbp), T2 = BP.town, tp2 = townPlan(T2);
   const WPA = BP.worldPxPerArtPx, cellG = bbp.scale * WPA;
   const gOf = (ax, ay) => [(ax - bbp.x0) * WPA, (ay - bbp.y0) * WPA];

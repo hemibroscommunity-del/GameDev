@@ -97,9 +97,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1500);
   const info = await P.page.evaluate(() => {
     const o = window.__btWorldTrial.objects(), t = document.body.innerText || '';
-    return { o, readout: (t.match(/preview buildings[^\n]*/) || [''])[0] };
+    /* (v2.3.2994: the readout says "buildings x1.5" -- 1.5x is the standard
+       now, not a preview) */
+    return { o, readout: (t.match(/buildings x[^\n]*/) || [''])[0] };
   });
-  rec.ok(`the way in is the preview: "${info.readout}"`, WHEELISH(zone) && info.readout.includes(`preview buildings x${K} (${STAND} of 17)`), info);
+  rec.ok(`the way in is the preview: "${info.readout}"`, WHEELISH(zone) && info.readout.includes(`buildings x${K} (${STAND} of 17)`), info);
 
   phase = 'the town';
   const town = await P.page.evaluate(() => {

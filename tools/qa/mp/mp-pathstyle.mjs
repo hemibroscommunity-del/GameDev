@@ -42,8 +42,11 @@ const setStyle = async (P, id) => {
 export async function run({ browser, wsPort, webPort, rec }) {
   /* A brand-new bro in town: the road points at Mayor Bro with nothing
      accepted (v2.3.2121), which is the shortest way to a live route. */
+  /* v2.3.2992: the road on the ground and its two controls are put away
+     (questTrailStyle.js GROUND_PATH); `?questpath` brings them back, which is
+     how everything down to the last section tests them */
   const P = await H.newPlayer(browser, {
-    name: 'Pathy', wsPort, webPort, touch: true, viewport: { width: 390, height: 844 },
+    name: 'Pathy', wsPort, webPort, touch: true, viewport: { width: 390, height: 844 }, query: 'questpath',
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3800);
@@ -221,4 +224,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!qOn && qOn.style === 'ribbon' && qOn.motes > 0, qOn);
 
   await P.ctx.close().catch(() => {});
+
+  /* ═══ v2.3.2992: AND AS EVERY PLAYER GETS IT -- PUT AWAY ═══
+     Owner: "I think I want to remove the footsteps and just rely on the gold
+     road on the minimap of where to go."  No `?questpath`: nothing on the
+     ground (while the route is still resolved -- the same honest pair as Off
+     above), the minimap's gold road leading where the ground road would have,
+     and neither Settings nor the Quests panel offering a path that is not
+     there. */
+  const Q = await H.newPlayer(browser, {
+    name: 'Mappy', wsPort, webPort, touch: true, viewport: { width: 390, height: 844 },
+  });
+  await H.enterWorld(Q);
+  await Q.page.waitForTimeout(3800);
+  const qr = await road(Q);
+  console.log('    put away: ' + JSON.stringify(qr));
+  rec.ok('without ?questpath, nothing is drawn on the ground -- the route still resolved to Mayor Bro',
+    !!qr && qr.style === 'off' && qr.motes === 0 && !!qr.to && qr.to.npc === 'Mayor Bro', qr);
+  const mm = await Q.page.evaluate(() => (window.__btMinimap && window.__btMinimap.questRoad) || null);
+  console.log('    minimap road: ' + JSON.stringify(mm));
+  rec.ok("...and the minimap's gold road leads to him instead", !!mm && !!mm.to && mm.to.npc === 'Mayor Bro'
+    && !!qr && !!qr.to && mm.to.x === Math.round(qr.to.x) && mm.to.y === Math.round(qr.to.y) && mm.len > 0, { mm, ground: qr && qr.to });
+  await Q.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/pathstyle-minimap-road.png` }).catch(() => {});
+  await Q.page.evaluate(() => window.__broDashPanelBus.open('more'));
+  await Q.page.waitForTimeout(300);
+  const qOpened = await Q.page.evaluate(() => {
+    const t = document.querySelector('[data-more-tile="settings"]');
+    if (!t) return false;
+    t.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    return true;
+  });
+  await Q.page.waitForTimeout(600);
+  const qChips = await Q.page.evaluate(() => document.querySelectorAll('[data-trailstyle]').length);
+  const qSettings = await Q.page.evaluate(() => /Audio/.test(document.body.innerText || ''));
+  rec.ok('...Settings no longer offers a quest path on the ground', qOpened && qSettings && qChips === 0, { qOpened, qSettings, qChips });
+  await Q.page.evaluate(() => window.__broDashPanelBus.clear());
+  await Q.page.waitForTimeout(400);
+  await H.openDest(Q, 'Quests');
+  await Q.page.waitForTimeout(600);
+  const qPanel = await Q.page.evaluate(() => ({ sw: !!document.querySelector('[data-questpath-switch]'),
+    open: /Active|Available/.test(document.body.innerText || '') }));
+  rec.ok('...nor does the Quests panel', qPanel.open && !qPanel.sw, qPanel);
+  await H.closeDest(Q);
+  await Q.ctx.close().catch(() => {});
 }
