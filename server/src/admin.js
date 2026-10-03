@@ -233,6 +233,10 @@ export const adminMethods = {
                harvestShield  — the record is currently granting immunity
                                 (all of _extractionShielded's clauses hold) */
           live: ps ? { coins: ps.coins, level: ps.level, hp: ps.hp, zone: ps.z, x: ps.x, y: ps.y, dead: !!ps.dead, disconnected: !!ps.disconnected,
+            /* v2.3.3006: the pool a sprint spends (sprint.js) -- the client's bar is
+               a prediction between echoes, so a test of the bill reads it here */
+            stamina: ps.stamina, maxStamina: ps.maxStamina,
+            sprint: ps._sprintTally || null,   /* v2.3.3006: moves seen, marked, sprint steps, paid, still, ms billed */
             ex: ps.ex || null, extracting: !!this.extractions[id], harvestShield: !!this._extractionShielded(id),
             /* v2.3.2273: WHAT HAPPENED TO THE LAST node_strike.
                `{ why, at, ... }` -- 'paid' when the bag was credited, otherwise
@@ -286,6 +290,7 @@ export const adminMethods = {
                is invisible on screen (the next echo silently corrects the bar)
                and readable only from here.  Both read-only. */
             stamina: ps.stamina, maxStamina: ps.maxStamina,
+            sprint: ps._sprintTally || null,   /* v2.3.3006: moves seen, marked, sprint steps, paid, still, ms billed */
             mana: ps.mana, maxMana: ps.maxMana } : null,
           online: !!this._wsBySessionId(id),
           auth: auth2 ? { createdAt: auth2.createdAt } : null,

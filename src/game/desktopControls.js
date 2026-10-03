@@ -251,16 +251,32 @@ export function setupDesktopControls(S, deps) {
     };
     var onKeyUp = function onKeyUp(e) {
       S.keys[e.key] = false;
+      /* v2.3.3006: Shift is the sprint now, so it is held WHILE walking, and a
+         letter's e.key changes case with it: press W, press Shift, let go of W
+         and the keyup says 'W' -- K['w'] stayed true and you walked on with
+         no key down.  A letter's release clears both cases. */
+      if (typeof e.key === 'string' && e.key.length === 1) {
+        S.keys[e.key.toLowerCase()] = false;
+        S.keys[e.key.toUpperCase()] = false;
+      }
       /* Release Q → drop shield */
       if (e.code === 'KeyQ' && S._shieldUp) {
         S._shieldKb = false; /* v2.3.1726: stop the rAF mouse-steer too */
         _desktopShieldOff();
       }
     };
+    /* v2.3.3006: a key held as the window loses focus never sends its keyup
+       (alt-tab with Shift down kept a sprint running, with W down kept you
+       walking), so every held key is let go there. */
+    var onBlur = function onBlur() {
+      for (var k in S.keys) S.keys[k] = false;
+    };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
   return function teardownDesktopControls() {
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
+    window.removeEventListener('blur', onBlur);
   };
 }

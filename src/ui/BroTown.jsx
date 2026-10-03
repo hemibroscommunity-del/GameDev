@@ -351,6 +351,7 @@ import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
 import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
+import { updateSprint, sprintMult, sprintHoldsRegen } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard) */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
@@ -4803,6 +4804,29 @@ export var BroTown = function BroTown(_ref0) {
           try { if (BT_AUDIO.swimStroke) BT_AUDIO.swimStroke(); } catch (e) { /* audio is best-effort */ }
         }
 
+        /* ═══ v2.3.3006: THE SPRINT ═══
+           Owner: "a sprint button by the left joystick that drains down
+           stamina but makes you run about 33% faster until it drains out".
+           Decided here, after the water (going in ends it) and before the
+           walk, so this frame's step is taken at this frame's answer
+           (game/sprint.js; the button is ui/panels/SprintButton.jsx, Shift
+           is the keyboard's).  MOVING means the step can take you somewhere:
+           mid-roll, held by a slime's goo, veiled or on the sled it cannot,
+           and a frame that cannot move must not spend the predicted
+           stamina.  An attack, the shield or the water ends a sprint. */
+        var _sprNow = Date.now();
+        updateSprint(S, _sprNow, {
+          moving: (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1)
+            && !S._dodgeRoll && !S._sled && !S._zoneLoading && !S._netHold && !S._townArtHold
+            && elemMoveMult(S, _sprNow) > 0,
+          key: !!(K['Shift']),
+          swimming: isWheelSwimming(S),
+          shield: !!S._shieldUp,
+          attacking: !!(S.autoAttack || S.isSwinging || S._bashDash),
+          dead: _playerDead,
+          dtMs: (S._dtScale || 1) * 16.667
+        });
+
         /* §14 Terrain feel — tile under player affects movement */
         var footTile = (_S$map$Math$floor$Mat = (_S$map2 = S.map) === null || _S$map2 === void 0 || (_S$map2 = _S$map2[Math.floor(P.y / TILE)]) === null || _S$map2 === void 0 ? void 0 : _S$map2[Math.floor(P.x / TILE)]) !== null && _S$map$Math$floor$Mat !== void 0 ? _S$map$Math$floor$Mat : 0;
         var terrainMult = 1.0;
@@ -4885,6 +4909,7 @@ export var BroTown = function BroTown(_ref0) {
         if (_dsc != null) vistaSpeedMult = Math.max(0.2, _dsc / ((_vz.depth && _vz.depth.near) || 1));
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
         finalSpd *= wheelSwimMult(S);   /* v2.3.3003: the Wheel's water, in strokes (1 on land) */
+        finalSpd *= sprintMult(S);   /* v2.3.3006: SPRINT_MULT while you sprint; the worker widens its bound by the same for the moves it paid for (server/src/sprint.js) */
         /* v2.3.1405: per-zone loading gate — while a zone's assets warm
            behind the loading overlay (zoneTransitions.js), freeze the
            player at the hub exit so the proximity trigger stays armed and
@@ -6622,7 +6647,10 @@ export var BroTown = function BroTown(_ref0) {
           /* Stamina regen — 10/s base (10 sec full recharge) × Restoration.
              v2.3.232 (Phase 2): Endurance also multiplies the regen rate.
              0.2% per point up to 2x at E=500, on top of Restoration. */
-          if (_R7.stamina < _R7.maxStamina && !S._serverMonsters) {
+          /* v2.3.3006: ...and not while you sprint (sprint.sprintHoldsRegen, the
+             worker's REGEN_PAUSE_MS): a bar that refilled as it drained would
+             never run out. */
+          if (_R7.stamina < _R7.maxStamina && !S._serverMonsters && !sprintHoldsRegen(S, Date.now())) {
             var _R7$_amuletBonus;
             /* v2.3.1155: restoration mult deleted with the stat (was
                ×1.0 for every live player since v2.3.910). */
@@ -6649,7 +6677,7 @@ export var BroTown = function BroTown(_ref0) {
           /* In-combat HP regen disabled (v2.3.149) -- see OOC block above. */
           /* Stamina always regens — 10/sec.
              v2.3.232 (Phase 2): Endurance multiplies combat regen too. */
-          if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
+          if (_R8.stamina < _R8.maxStamina && !S._serverMonsters && !sprintHoldsRegen(S, Date.now())) {   /* v2.3.3006: not while you sprint */
             var _stEndMult8 = 1 + (_R8.endurance || 0) * 0.002;
             /* v2.3.1154: × Conditioning, same as the OOC branch above. */
             _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60 * _stEndMult8 + getConditioningFlat(_R8) / 60); /* v2.3.1345: flat regen */

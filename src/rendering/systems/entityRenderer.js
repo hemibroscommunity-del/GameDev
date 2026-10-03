@@ -93,6 +93,7 @@ import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js';
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel) */
+import { sprintMult } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
@@ -12262,12 +12263,29 @@ export class EntityRenderer {
            the naked body gets the +35% speed-up. */
         const _armCadence = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
         const baseCycle = cycleMs('jog', dir, _armCadence);
-        const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
-        const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
+        /* v2.3.3006: a sprint plays the stride SPRINT_MULT quicker, so the
+           legs keep up with the ground going by (game/sprint.js; 1 walking). */
+        const effectiveCycle = (useAimDirection ? baseCycle * 2 : baseCycle) / sprintMult(S);
+        /* ...and when the cadence changes -- a sprint starting or ending, the
+           aim's half speed, a turn to a direction with a longer loop -- the
+           stride carries on from where it was.  `now / cycle` with a new
+           cycle is a new, random place in the loop: the legs jumped a frame
+           at every change.  The offset keeps the loop's 0..1 phase. */
+        if (display._jogCyc !== effectiveCycle) {
+          const _ph0 = display._jogCyc
+            ? ((((now + (display._jogOff || 0)) / display._jogCyc) % 1) + 1) % 1 : null;
+          display._jogOff = _ph0 == null ? 0 : _ph0 * effectiveCycle - (now % effectiveCycle);
+          display._jogCyc = effectiveCycle;
+        }
+        /* QA (mp-sprint), armed by the harness only: the loop's length now and
+           unsped, so a test can see the legs keep up */
+        if (typeof window !== 'undefined' && window.__btProbe) window.__btJogCyc = { cyc: effectiveCycle, base: baseCycle, aim: !!useAimDirection };
+        const _jt = now + (display._jogOff || 0);
+        const rawIdx = Math.floor((_jt / effectiveCycle) * fc) % fc;
         frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
         /* v2.3.1367: the same clock as rawIdx, as a 0..1 phase — drives
            native-frame-count fullset sheets (east: 25f vs 28f body). */
-        _jogPhase = ((now / effectiveCycle) % 1 + 1) % 1;
+        _jogPhase = ((_jt / effectiveCycle) % 1 + 1) % 1;
         if (isMovingBackward) _jogPhase = 1 - _jogPhase;
         /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each
            direction's jog loop, so the sound lands exactly when a foot hits the

@@ -257,6 +257,13 @@ export const devToolsMethods = {
       ps.dead = false; ps.dying = false;
       out.healed = { hp: ps.hp, stamina: ps.stamina, mana: ps.mana };
     }
+    /* v2.3.3006: a stamina level to test against -- a sprint running dry
+       (mp-sprint) in two seconds rather than nine.  After the heal, so
+       `{ stamina: 20 }` alone is "healed, with 20 stamina". */
+    if (typeof o.stamina === 'number' && Number.isFinite(o.stamina) && typeof ps.maxStamina === 'number') {
+      ps.stamina = Math.max(0, Math.min(ps.maxStamina, o.stamina));
+      out.stamina = ps.stamina;
+    }
 
     if (o.god !== undefined) {
       if (o.god) {

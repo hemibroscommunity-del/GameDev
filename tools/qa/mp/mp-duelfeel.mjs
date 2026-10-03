@@ -97,7 +97,7 @@ function keepAlive(B) {
   let stop = false;
   (async () => {
     while (!stop) {
-      await B.page.keyboard.press('Shift').catch(() => {});
+      await B.page.keyboard.press('Control').catch(() => {});
       for (let i = 0; i < 20 && !stop; i++) await B.page.waitForTimeout(500).catch(() => {});
     }
   })();

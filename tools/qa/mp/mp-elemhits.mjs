@@ -90,11 +90,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* A real keystroke on a loop (mp-hitreal's remedy): the page logs itself
      out after two minutes without REAL input (wsClient idleLogout), and a
      scenario driven through page.evaluate makes none however busy it looks.
-     Shift: real input to the window, nothing in the game. */
+     Control: real input to the window, nothing in the game (Shift was, until
+     v2.3.3006 made it the sprint). */
   let stopAlive = false;
   (async () => {
     while (!stopAlive) {
-      await P.page.keyboard.press('Shift').catch(() => {});
+      await P.page.keyboard.press('Control').catch(() => {});
       for (let i = 0; i < 40 && !stopAlive; i++) await P.page.waitForTimeout(500).catch(() => {});
     }
   })();

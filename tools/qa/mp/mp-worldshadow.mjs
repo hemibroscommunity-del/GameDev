@@ -77,7 +77,7 @@ const onScreen = (P) => P.page.evaluate(() => {
    WITHOUT one.  This scenario spends longer than that looking at the town,
    and the first run of the longer version was logged out before its warp.
    A real key press, the way a player's thumb would, before each step. */
-const keepAlive = (P) => P.page.keyboard.press('Shift').catch(() => {});
+const keepAlive = (P) => P.page.keyboard.press('Control').catch(() => {});
 
 const keyOf = (f) => (f.kind === 'm' ? 'm:' + f.id : f.kind === 'prop' ? 'prop:' + f.id : 'node:' + f.id);
 

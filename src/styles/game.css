@@ -5789,3 +5789,21 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 @media (prefers-reduced-motion: reduce){
   .bt-auction-keeper{animation:none;background-position-x:0%}
 }
+
+/* ═══ v2.3.3006: THE SPRINT BUTTON'S "NO" ═══
+   A tap with too little stamina to start a sprint shakes the button's face
+   (SprintButton.jsx) while "Not enough energy!" rises over your head: a
+   control that silently does nothing reads as broken.  The face is re-keyed
+   on every refusal, so two refusals in a row both shake.  Only the face
+   moves; the touch box stays put under the thumb. */
+@keyframes bt-sprint-nope{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-4px)}
+  40%{transform:translateX(4px)}
+  60%{transform:translateX(-3px)}
+  80%{transform:translateX(2px)}
+}
+.bt-sprint-nope{animation:bt-sprint-nope .42s ease-out 1}
+@media (prefers-reduced-motion: reduce){
+  .bt-sprint-nope{animation:none}
+}

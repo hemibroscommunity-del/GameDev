@@ -184,11 +184,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      BroTown IDLE_LOGOUT_MS), and this run drives everything through
      page.evaluate -- so past two minutes the grants below stopped reaching
      it, and the bag read as empty.  A real keystroke on a loop, as mp-hitreal
-     does: Shift, which is input to the window and nothing in the game. */
+     does: Control, which is input to the window and nothing in the game
+     (Shift was, until v2.3.3006 made it the sprint). */
   let awake = true;
   (async () => {
     while (awake && !P.page.isClosed()) {
-      await P.page.keyboard.press('Shift').catch(() => {});
+      await P.page.keyboard.press('Control').catch(() => {});
       for (let i = 0; i < 40 && awake; i++) await P.page.waitForTimeout(500).catch(() => {});
     }
   })();

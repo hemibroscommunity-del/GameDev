@@ -559,7 +559,32 @@ remnant to migrate server-side, not a mode to preserve.
       the ground at the BOOTS;
     - the worker knows nothing of it (monsters follow you in); `?noswim`
       puts the water back as walls; mp-wheelshore runs with it;
-    - test-world-core "swimming", `mp-wheelswim`: docs/specs/wheel-swimming.md.)
+    - test-world-core "swimming", `mp-wheelswim`: docs/specs/wheel-swimming.md.
+  - Since v2.3.3006 you can SPRINT, everywhere -- the owner: "a sprint button
+    by the left joystick that drains down stamina but makes you run about
+    33% faster until it drains out. Maybe just to the right of the left
+    joystick":
+    - a TAP on the winged-boot button (`src/ui/panels/SprintButton.jsx`,
+      placed by `sprintAnchor` in ShieldButton.jsx, drawn by TouchControls)
+      or SHIFT held; 1.33x the walk while moving (`SPRINT_MULT`), the jog
+      loop as much quicker, 11 stamina a second, none while standing;
+    - it ends at zero, on a tap, standing still 0.7 s (2 s before the first
+      step), the shield, an attack, the water, death or a zone change; 5
+      stamina to start one (`src/game/sprint.js`, no imports, node-tested);
+    - the WORKER bills it (`server/src/sprint.js`): a sprinting move carries
+      `sp: 1` -- no new message type -- and is judged at 1.33x the bound
+      (movement.js `_sprintK`) and paid for (`_sprintPay`: the time since the
+      move before, when THAT was a paid step too -- the client's rest packet
+      and keepalives end a run, so standing is never billed; never "a long gap
+      is a pause", which let a few-frames-a-second phone sprint free), the
+      regen held 1 s after; 1.5 s of wide bound after the last paid step; the client's
+      drain is a prediction the echo overwrites; `caps.sprint` gates the
+      client, `sprint: false` is the kill switch;
+    - Shift is the sprint now: a letter's keyup clears both cases and a
+      window blur lets every key go (desktopControls.js), and the QA
+      keep-alive key is Control;
+    - `sprint` suite (47 checks, the client's rules too), mirror-audit,
+      `mp-sprint`: docs/specs/sprint.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

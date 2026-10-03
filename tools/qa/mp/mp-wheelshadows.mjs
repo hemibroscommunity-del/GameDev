@@ -87,7 +87,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   const myId = await H.readState(P, (S) => S.myId);
   let alive = true;
-  const keep = (async () => { while (alive) { await P.page.keyboard.press('Shift').catch(() => {}); await P.page.waitForTimeout(20000); } })();
+  const keep = (async () => { while (alive) { await P.page.keyboard.press('Control').catch(() => {}); await P.page.waitForTimeout(20000); } })();
   const settle = async (n = 80) => {
     let v = null;
     for (let i = 0; i < n; i++) {

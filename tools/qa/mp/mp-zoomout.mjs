@@ -81,7 +81,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* real input now and then: the client logs an idle player out after two
        minutes (mp-elemhits) */
     let alive = true;
-    const keep = (async () => { while (alive) { await P.page.keyboard.press('Shift').catch(() => {}); await P.page.waitForTimeout(20000); } })();
+    const keep = (async () => { while (alive) { await P.page.keyboard.press('Control').catch(() => {}); await P.page.waitForTimeout(20000); } })();
 
     const first = await settle(P, 120);
     /* standing a while: the pieces the zone gate laid ahead and this view

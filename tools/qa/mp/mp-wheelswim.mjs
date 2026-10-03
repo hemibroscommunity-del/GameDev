@@ -138,7 +138,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   const myId = await H.readState(P, (S) => S.myId);
   let alive = true;
-  const keep = (async () => { while (alive) { await P.page.keyboard.press('Shift').catch(() => {}); await P.page.waitForTimeout(20000); } })();
+  const keep = (async () => { while (alive) { await P.page.keyboard.press('Control').catch(() => {}); await P.page.waitForTimeout(20000); } })();
   const done = async () => { alive = false; await keep.catch(() => {}); await P.ctx.close().catch(() => {}); };
   const inWheel = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading, grid: !!(S._tiledWalkable && S._tiledWalkable.wheel && S._tiledWalkable.wheel.length) }),
     (v) => v.zone === 'wheel' && !v.loading && v.grid, { timeout: 90000, label: 'into the Wheel' }).catch(() => null);
