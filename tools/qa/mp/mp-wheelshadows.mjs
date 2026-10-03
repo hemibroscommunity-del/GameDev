@@ -125,6 +125,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const bCast = bld.filter((b) => keySet1.has('w:' + b.i));
   rec.ok(`the town's buildings cast too: ${bCast.length} of the ${bld.length} drawn round the arrival (${bCast.map((b) => b.id).join(', ')})`, bld.length > 0 && bCast.length === bld.length, { bld });
 
+  /* ── what it costs: frames a second with the light off and on, at the same
+     spot (a headless page draws without a graphics card, so this is the worst
+     case, not a phone), and the light's own time a frame ── */
+  const fps = (on) => P.page.evaluate(async (on) => {
+    window.__btLightFx.set(on);
+    await new Promise((r) => setTimeout(r, 600));
+    let n = 0; const t0 = performance.now();
+    await new Promise((res) => { const f = () => { n++; if (performance.now() - t0 < 3000) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); });
+    return +(n / ((performance.now() - t0) / 1000)).toFixed(1);
+  }, on);
+  const fOff = await fps(false), fOn = await fps(true);
+  const pCost = await probe(P);
+  console.log(`    cost: ${JSON.stringify({ fpsOff: fOff, fpsOn: fOn, lightMs: pCost && pCost.ms, pieces: pCost && pCost.shadows && pCost.shadows.pieces })}`);
+  rec.ok(`what the light costs here: ${fOff} -> ${fOn} frames a second in this headless page (no graphics card), ${pCost ? pCost.ms : '?'} ms a frame of its own`, fOn > 0 && pCost && pCost.ms < 4, { fOff, fOn, ms: pCost && pCost.ms });
+
   /* ── 3. shaded toward the ground ── */
   const look = await P.page.evaluate(() => {
     const S = window._gameState.current, W = window.__btWheelObjects;

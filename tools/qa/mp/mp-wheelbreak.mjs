@@ -34,7 +34,10 @@ import { join } from 'node:path';
 const PHONE = { width: 390, height: 844 };
 /* long enough that a slow headless screenshot (several seconds under load)
    cannot outlast it between two checks of the broken state */
-const REPAIR_MS = 15000;
+/* v2.3.3000: 25 s (was 15): the steps between the break and the mending --
+   the shards' fall, an arrow through -- run in a headless page's slow motion,
+   and with the Wheel's shadows on they ran past 15 s */
+const REPAIR_MS = 25000;
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 const BOW_H = 30;     /* a shot flies this far above the ground line (the bow grip) */
 
@@ -191,6 +194,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const m4 = await marksOn(P, wood.oi);
   rec.ok('...its arrow and its burn mark gone with it', m4.length === 0, m4);
   rec.ok('...and its footprint gone from the walk test', !st4.box, st4);
+  /* and you can stand there -- asked straight away (v2.3.3000): asked after
+     the shards' fall and the next arrow, on a slow page it came after the
+     mending, when the footprint is rightly back */
+  const walk = await P.page.evaluate(({ b }) => {
+    const S = window._gameState.current, f = window.__btPropFeetBlocked;
+    const dy = (window.__btPlayerGround() || {}).y - S.player.y || 52;
+    const x = (b.x0 + b.x1) / 2, y = (b.y0 + b.y1) / 2 - dy;
+    return { blocked: f ? f(x, y + 30, x, y) : null };
+  }, { b: wood.box });
+  rec.ok('...and you can walk where it stood', walk.blocked === false, walk);
   let st4b = null;
   for (let i = 0; i < 30; i++) {
     /* (a headless page runs at a few frames a second: the shards fall in
@@ -206,14 +219,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* the next arrow flies through where it stood */
   const s4 = await shootAt(P, wood, { through: true });
   rec.ok('...the next arrow flies on through where it stood (it does not stop there)', s4.inProp == null && (s4.y == null || s4.y < wood.box.y0 - BOW_H - 4), s4);
-  /* and you can stand there */
-  const walk = await P.page.evaluate(({ b }) => {
-    const S = window._gameState.current, f = window.__btPropFeetBlocked;
-    const dy = (window.__btPlayerGround() || {}).y - S.player.y || 52;
-    const x = (b.x0 + b.x1) / 2, y = (b.y0 + b.y1) / 2 - dy;
-    return { blocked: f ? f(x, y + 30, x, y) : null };
-  }, { b: wood.box });
-  rec.ok('...and you can walk where it stood', walk.blocked === false, walk);
+
 
   /* ── 5. mended ── */
   let st5 = null;
