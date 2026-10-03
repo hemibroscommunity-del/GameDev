@@ -240,6 +240,17 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                 ways — brass fill, brass border, aria-pressed — and a 8x5px
                 triangle is precisely the size of detail the owner has been
                 asking this band to stop relying on. */}
+            {/* ═══ v2.3.3004: POINTS TO SPEND, THE CHARACTER TAB GLOWS ═══
+                Owner: "when you level up make the character tab do a light
+                flashing effect ... until all points are spent".  Same number
+                as the badge below (BottomDashboard's dots.hero is
+                unspentPointsTotal), so the two start and stop together.
+                Before the badge in the DOM so the count stays on top of the
+                light; the icon underneath takes a gentle gold wash with it.
+                game.css .bt-pts-glow. */}
+            {d.id === 'hero' && typeof count === 'number' && count > 0 ? (
+              <span className="bt-pts-glow" data-pts-glow="nav" aria-hidden="true" />
+            ) : null}
             {count ? (
               <span aria-hidden="true" style={{
                 position: 'absolute', top: -3, right: -3,
