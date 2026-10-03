@@ -880,3 +880,268 @@ The contract is unchanged in meaning — centre the icon in the space it
 actually has — but measuring *through* the count to the `[+]` would
 report every row as off-centre by the count's width, which is a true
 measurement of the wrong distance.
+
+## The window's scene is a simulation (v2.3.2979)
+
+Owner: "Make it so the preview of the combat skills stat allocation
+confirmation window shows real simulation of the hits against a slime
+monster. These previews were made under a worse model."
+
+**What it replaced.** `StatDemo` played one hand-written storyboard per
+stat — `12` then `24` for Power, a `25` crit every fourth swing for Luck,
+a burn of 8 shrinking to 2 for Resist — the same numbers for every
+character, exaggerated on purpose (v2.3.2222's brief). None of them was
+anything a given character would do, and two scenes showed mechanics a
+slime does not have (its ball is base damage and burns nobody).
+
+**What plays now.** `src/ui/mobile/sheet/statSim.js` fights the Starting
+Meadow's slime (archetype fodder at the zone's floor level, built by
+`createMonster`: 58 HP, a 10-damage ball) with the window's own character
+and lane, through the client mirrors of the worker's arithmetic:
+
+| Stat | The fight | The line under the stage |
+|---|---|---|
+| Power, Luck, Speed (+ the retired Crit / Crit Dmg) | auto-attack at your real cadence, every hit the `_computeAttackDamage` roll, numbers by `toDisplayHitDamage`, the slime's HP bar draining to them, the death splat | `Slime down in` hits · swing-time, averaged over 400 fixed fights |
+| Special | one ordinary hit, then the worker's special shape for that weapon (`bowvolley` 3 arrows at WORTH/3, `bigorb` one bolt from its own band × 3 orbs, or the old shapes against an older worker) | `Special hits for (avg)` |
+| Element | the fight, plus the weapon's own status: burn/root ticks (`tickElementStatuses`), or a flora thorn answering the slime's balls; a weapon with no ticking element gets the plain fight and a line saying why | `Slime down in` |
+| Range | a slime standing between today's reach and the reach with the points: the attack stops short by exactly the difference, then lands | — (the row above already says how much farther) |
+| HP, Defense, Dodge | the slime's real ball on you through `_applyDamage` (Dodge roll, Defense under the combined floor, armour, floor 1) | `Slime hits to drop you` |
+| Stamina | with a shield, holding your guard (5 a regen tick; a ball caught on the shield costs nothing more, a SWING caught on it costs 10); without, rolling out of the slime's attack (one stamina block a roll) | `Guard holds vs. a slime` / `Dodge rolls on a full bar` |
+| Resist | the one elemental thing a slime does: the blue slime's death burst (60 flat, at most half your max HP) | `Blue slime burst` |
+| Move Speed | the walk, at your real speed | `Cross the meadow` |
+
+**One set of dice, both halves.** The before and after halves read the
+same random numbers hit for hit (`sceneDie`: a hash of the loop's seed,
+the stream, and WHICH SLIME and which hit on it), so the only thing that
+differs is the points. The seed is fresh every loop. The after half fights
+exactly as many slimes as the before half put down, so it can only finish
+sooner. The dice are keyed per slime, not per swing of the whole loop: a
+burn tick can finish a slime between swings, and when the points changed
+whether slime 1 fell to a tick or a swing, a loop-wide count handed every
+later slime the other half's rolls (reviewer-found; ~6% of Speed loops on
+a flame sword showed "+n" doing worse). A thorn answers the slime's attack
+in the same instant it lands, as the worker does.
+
+**The slime attacks the way it would attack YOU.** Inside its reach — where
+anyone holding a sword stands — a slime swings (500 ms wind-up, every
+1.5 s, `MONSTER_ATTACK_CD`); it only throws from the band past that, which
+is where a bow or a staff fights it from (2 s). So the scene's slime swings
+at a melee hero and throws at a ranged one, in the thorn fight, the
+HP/Defense/Dodge scenes and the Stamina scene alike. It matters most for the
+guard: a swing caught on a shield costs 10 stamina where a ball costs
+nothing, so 100 stamina holds ~7.2 s against swings and ~12.9 s against
+balls. That verdict is the long run over every timing of the regen tick and
+the swing (neither falls at a fixed point after you raise the shield), and
+`statsim.test` drives the worker's own regen tick and swing through all 900
+of those timings and requires the same answer. Stamina still counts in fives
+— every cost here is a multiple of 5 — so a single point (+3) can honestly
+buy nothing for the guard. The swing is drawn as the world draws it — no
+attack strip, the sprite throbs through the wind-up
+(`entityRenderer _windupFx`).
+
+**Burns tick on the worker's clock.** "Every 0.5 s" is checked on the
+worker's 22 ms heartbeat and re-stamped to the tick that fired, so a burn
+ticks every 506 ms and a root every 1012 ms: a lone burn 7 times, not 8.
+The stepper's `n` is what the after half fights with.
+
+**Held to the worker, not restated.** `server/test/statsim.test.mjs`
+rigs `Math.random` and requires the scene's roll to equal
+`_computeAttackDamage` over a grid of builds and dice (both ends of every
+band, both sides of the crit roll), end to end through
+`_handleMonsterDamage` for the volley arrow and the big bolt; holds
+`takenOf` / `burstOf` to `_applyDamage`, the burn tick and thorn power to
+`elemental.js`, the slime to `_makeZoneMonster`, and the throw, burst and
+stamina constants to the worker's tables (the two per-tick stamina
+numbers are literals in `_tickPlayerRegen`, so they are measured).
+`mp-statdemo` checks in a real browser that every number over the slime
+is one that loop simulated (`window.__btStatScene`).
+
+**Assets.** The slime's death strip joins `statDemoAssets.js` (warm on the
+gate already, via the world's slime group). The blue slime has no file —
+the world retints the green sheets at runtime — so `statDemoPreload.js`
+bakes the same retint (`monsterRecolor.retintToCanvas`, the variant's own
+`recolor`) into two image URLs on the loading screen, per the preloading
+law.
+
+What that costs, in the only unit that matters (`ART-ASSET-PHASES.md` §2,
+decoded RGBA): the green death strip 1920×128 = 0.98 MB, the blue idle
+3072×128 = 1.57 MB, the blue death 0.98 MB — **3.5 MB more, held for the
+session** beside the scene's existing slime strips, against the ~380 MB of
+texture the game already holds (under 1%). Kept on the global gate rather
+than loaded when the window opens because the window is global UI, not zone
+art, and a first-open load is exactly the hitch the law forbids; the
+per-zone caps in that doc are for zone art and do not apply.
+
+**He attacks with his own animation (v2.3.2986).** Owner: "play the
+animation for attacking as if the player and slime were in that little
+window having a fight. Right now it's just the static character standing and
+getting nudged to the right and back to position." The hero stands side-on
+(east, the facing the world's attack sheets are drawn in) as his portrait, and
+attacks with the WORLD's own animation in his own look:
+
+- **Sword (any melee weapon) and bow** — the world's sword-swing and bow-shot
+  stand-ins, *photographed* off its own renderer
+  (`EffectsRenderer.captureAttackFrames`, handed over by
+  `fighterCapture.js`): the stand-in is driven through its own update with a
+  stand-in state (mid-swing, facing east, planted at a spot no map reaches),
+  one frame at a time, and each frame is drawn into a texture. Recoloured
+  body, shirt, armour in its metal, the weapon in its metal, hair/hat/beard on
+  each frame's crown, cape, slung shield — whatever the world draws on a swing,
+  the window draws, because nothing was rebuilt. 11 frames over
+  `SWORD_SWING_MS`; the bow's load and pull over `BOW_RELEASE_MS`, then the
+  release held to `BOW_SHOT_MS` — and the arrow leaves on the release frame.
+- **Staff** — no body animation in the world either: the held staff kicks
+  toward the target about its grip (`staffCastPose`, 14°, 24° for the big
+  bolt), so the window's staff is its own layer turned by those angles.
+- **Planted on his feet.** `drawCharacterPortrait` reports where the standing
+  figure's feet are and how tall it is (`__btFigure`, read through the
+  canvas's own transform), and the capture is sized off that exactly as the
+  world sizes its stand-ins off the standing body (`S._swordBodyH`), so
+  standing and swinging are the same man in the same place.
+- **Cost.** The capture runs once per window open (and when the look,
+  weapon or shield changes): the pieces at the far-off spot are lifted into a
+  throwaway container — `renderer.render()` would otherwise turn the whole
+  node layer into a render group, permanently, and draw every prop on it —
+  and the GPU is read back once for all frames. The readback is the whole
+  cost (measured in headless Chromium's software GPU: ~230 ms for the swing;
+  a phone's GPU is far quicker), so frames are captured at no more than 2×
+  and cropped to what they paint. They are held only while the window is
+  open. Where the world cannot supply them (no renderer, a corpse) the old
+  nudge plays.
+- `mp-statdemo` §4e: per lane, the world's frame count, frames actually
+  playing and painted, no nudge, and no arrow before the release.
+
+**He rolls and walks with his own animations (v2.3.2987).** Owner: "Yes do
+dodges and walking too." The dodge was a CSS sidestep of the standing
+portrait and the Move Speed trek a CSS slide of it. Both are now the world's
+own poses in his own look:
+
+- **Photographed off his own figure.** The roll and the jog are not
+  stand-ins — they are the player's figure in two of its poses — so they come
+  off the *player* renderer (`EntityRenderer.capturePoseFrames`):
+  `_updatePlayer`, the function that draws your figure every frame, is run on
+  a private copy of your display with a stand-in state (rolling or jogging
+  due east, nothing else: no aim, lock, raised shield, hit or swing), one frame
+  at a time. For each call the renderer's `playerDisplay` is the copy and its
+  `playerLayer` a throwaway root, so no live layer is touched; your display,
+  the layer, the prewarm order and every `window.__bt*` probe the call writes
+  are put back afterwards, and the copy is destroyed. The zone's perspective
+  and your height are divided out before the photo; your build's width is
+  kept, and the photo is sized off the standing body as the attack is.
+- **The roll** is the world's 9 frames (the last is the stand it hands back
+  to), spread over *your* roll window — `dodgeWindowMs` (`game/dodge.js`), the
+  world's one formula (250 ms + Endurance + Reflexes) — and centred on the
+  moment the attack lands, so the ball or swing meets him curled up. He rolls
+  where he stands: the world's roll carries the player 100 px or more, which
+  the stage does not have. Stamina's bar drops when the roll starts.
+- **The walk** jogs out to the slime on the world's east stride and home on
+  the world's own *west* stride — not a flipped picture of the east one: the
+  world puts the weapon in the other hand on a mirrored facing (`getAnchor`'s
+  mirror) and pre-flips your drawn-on art so it still reads. The stride runs
+  on the world's cadence (`cycleMs('jog')`, armour-aware) while the distance
+  covers the trek at your simulated speed. It plays on
+  `requestAnimationFrame` inside the Fighter (one small canvas, blitted only
+  when the frame changes) rather than thirty setStates a second.
+- **Only what a scene plays is taken.** `prepareStatScene` says `rolls: true`
+  where the slime attacks and your Dodge can answer (HP/Defense/Dodge,
+  Stamina without a shield, a thorn fight); the jog only for Move Speed.
+- **Cost.** The photo box is the union of what every frame draws
+  (`getLocalBounds` — so a tall hat or a greatsword carried point-up is inside
+  it by construction), measured in a first pass because posing is nearly free
+  (all 28 jog frames, ~10 ms) and every pixel of the box is paid for in the
+  readback. Measured in headless Chromium's software GPU: ~50 ms for the roll,
+  ~430 ms for one direction of the jog (a phone's GPU reads back far faster).
+  `photoSheet.readbackFrames` is the one readback both renderers use: sheets
+  no larger than 2048 px a side (older iPhones cap textures at 4096).
+- `mp-statdemo` §4f: the roll's 9 frames playing and painted with no
+  sidestep; the jog's strides out and home, painted, travelling, with no
+  slide; and your figure in the world exactly where and what it was after
+  the captures. `statsim.test` holds the `rolls` flag, the roll's landing
+  and the trek's distance.
+
+**The special animates, the slime throws its gunk, arrows stick
+(v2.3.2991).** Owner: "Also special attacks need to animate. Look at the
+sword frames it looks like there's some white pixels that shouldn't be there.
+But whatever changes you make make sure they are compatible with getting
+recolored because all swords will get recolored using the same base. Also
+make it so the slime shows the hit effect (green gunk coming out after
+getting hit). I haven't tested this part but make sure arrows stick in the
+monster too."
+
+- **The white pixels (v2.3.2988)** were the erased sword's ghost in the
+  swing's BODY sheets (`sword-<dir>-body.png` / `-torso.png`): the body
+  sheets were cut from the original art by erasing its key colours, which
+  left everything blended with them — highlight specks, the motion smear, a
+  purple fringe, teal at the guard. Scrubbed at the source
+  (`tools/art/clean-sword-ghosts.py`, idempotent, `--check` to report): a
+  pixel is kept exactly or made fully transparent, only inside the original
+  sword's footprint, so the body's own recolour sees the pixels it always
+  saw. The weapon strip — the one base every metal is tinted from — is not
+  touched, so every sword inherits the fix.
+- **Films, not redraws.** The spray, the stuck shaft and its wound, the
+  white-hot bow special and the staff's crash are the world's own classes
+  (`HitMaterialFx`, `StuckArrowBaker`, `HotArrowFx`, `StaffCastFx` with
+  `orbCrashFx`'s records), run as PRIVATE instances on throwaway containers,
+  fed the record the world feeds them, stepped on a synthetic clock and
+  photographed every frame (`EffectsRenderer.captureFxFilm`). The effect
+  classes register the world's QA probes as they are built, so every
+  `window.__bt*` probe is put back afterwards. `fighterCapture.captureFilm`
+  crops each film to what any of its layers paints and turns each layer into
+  one horizontal strip, stepped by the same CSS (`bt-sd-strip`) as the
+  slime's own; a strip wider than 4096 px drops every other frame. Two layers
+  where the world draws two (behind the slime and in front of it), so the
+  slime sits between them on the stage.
+- **At the slime's true size.** The world draws a slime texel at 1.125 world
+  px (its sprite at 96/128 in a monster container scaled `MONSTER_SIZE_MULT`
+  1.5); the stage draws one CSS px a texel, so films round the slime are taken
+  at 1/1.125 — the spray keeps the world's size against the blob. Its
+  material is the meadow slime's (`fodder`: the green sampled off the sheet;
+  an unknown archetype falls to the default teal).
+- **The gunk.** The weapon's own spray — a blade's sheet, an arrow's jet, a
+  bolt's blast — at the point the blow lands, with the slime's own art cut
+  into the pieces as the world cuts them. Two takes, played in turn, so hit
+  after hit is not the one splash. Two liberties, both for the stage: the
+  marks hold ~1 s and fade (the world keeps them 5.4 s; a fresh slime stands
+  on that spot every second or two here), and the ground they land on is
+  raised 9 world px (the map is seen from three-quarters up, so a piece thrown
+  toward you lands lower on screen — past the stage's edge, on a stage seen
+  nearly side-on).
+- **Arrows stick, and ride the slime.** A shot flies a straight line from
+  the bow's grip on the release frame (where the world launches it; the take
+  reports it) into the blob, with its pivot on the grip as the world looses
+  it. `slimePins.js` finds where each line goes in with the world's own move
+  (`arrowPin.pinEntry`, on the frame on screen when it lands: the hit strip's
+  first) and carries the pin through every frame of the hit, idle and throw
+  strips with the world's other move (`pinCarry`); each track is a CSS
+  `@keyframes` of step-end translates at the fractions the strip's own
+  `steps()` shows its frames, and the arrows are children of the slime's
+  span — they mount with each strip, so they step with it, with no frame
+  loop. Five fixed lines, taken in turn on each fresh slime; a dead slime
+  drops its arrows (the world's v2.3.2891 rule), and a fresh one has none.
+  The arrows are the world's arrow at his size (the bow take's `arrowLen`,
+  52.5 world px at the figure's scale — the scene's arrow was 30 px, two
+  thirds of that).
+- **The special.** Sword: its own take of the swing with
+  `S._specialAttack` set, the painted crescent laid out by
+  `_updateSwordSwing` over the swing's own clock, scaled about the figure's
+  origin by the figure's own scale. Bow: the volley flies white-hot
+  (`HotArrowFx` in flight), and an arrow of it that sticks smoulders and
+  burns out on the volley's 500 ms ticks (its stuck take). Staff: the big
+  bolt's crash with its third ring opening to *your* blast reach
+  (`STAFF_BIG_BOLT_BLAST_PX` × `staffAoeMult`).
+- **Cost.** Each film is a few tens of ms of drawing and one GPU readback
+  (measured in headless Chromium's software GPU: the gunk ~75 ms, the stuck
+  shaft ~30 ms, the hot arrow ~45 ms and its smoulder ~50 ms, a crash
+  ~45–65 ms). They are taken one per task as the window opens, so it keeps
+  painting, and kept (16 at most) — a film depends only on what it is asked
+  for, so a second window on the lane plays them at once.
+- `mp-statdemo` §4g: per lane, the gunk filmed and on the stage; the bow's
+  shots aimed and stuck inside the slime's span, riding its frames, never on
+  the splat; the staff's crash; each lane's special (the sword's 11-frame
+  take playing, the white-hot volley, the big crash); and the world's own
+  effect probes untouched.
+
+**Out of scope, deliberately.** Food and potion buffs, the hexer's curse
+and elemental collisions stay out, as they do from the DPS row. The
+`infopop` / `freshpoints` combat-card failures noted above are still
+pre-existing and untouched.

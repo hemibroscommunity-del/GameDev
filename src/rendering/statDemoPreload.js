@@ -37,9 +37,46 @@
  * is collectable under memory pressure — which would put the fetch back on
  * first use, silently.
  */
-import { STAT_DEMO_URLS } from '../data/statDemoAssets.js';
+import { STAT_DEMO_URLS, SLIME, setBlueSlimeSheets } from '../data/statDemoAssets.js';
+import { retintToCanvas } from './monsterRecolor.js';          /* v2.3.2979 */
+import { MONSTER_VARIANTS } from '../data/monsterVariants.js';  /* v2.3.2979 */
 
 const _held = [];
+
+/* ═══ v2.3.2979: THE BLUE SLIME, BAKED ON THE GATE ═══
+   Resist's scene is the blue slime's death burst (statDemoAssets.js says
+   why).  The world draws that slime by retinting the green sheets into Pixi
+   textures; the scene is DOM, so it needs the same retint as image URLs.
+   Same function, same colour (the variant's own `recolor`), so the scene's
+   slime is the world's slime -- and done HERE, on the loading screen, because
+   an asset known at load time that is built on first open of a window is the
+   first-use hitch the preloading law names.  Two strips (idle for the swell,
+   death for the burst), encoded once and kept for the session; a failure
+   leaves the scene on the green sheets and never fails the gate. */
+function bakeBlueSlime() {
+  const v = MONSTER_VARIANTS && MONSTER_VARIANTS.blueSlime;
+  const rgb = v && v.recolor;
+  if (!rgb || typeof document === 'undefined') return Promise.resolve(null);
+  const one = (state) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const cv = retintToCanvas(img, rgb);
+        if (!cv.toBlob) { resolve(null); return; }
+        cv.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null), 'image/png');
+      } catch (e) { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = SLIME[state].url;
+  });
+  return Promise.all([one('idle'), one('death')]).then(([idle, death]) => {
+    if (!idle || !death) return null;
+    setBlueSlimeSheets({ idle, death });
+    /* ...and decoded and held like every other scene asset, so the first
+       swell paints a bitmap that is already there */
+    return Promise.all([warm(idle), warm(death)]);
+  });
+}
 
 function warm(url) {
   if (typeof Image === 'undefined') return Promise.resolve(null);
@@ -60,7 +97,7 @@ function warm(url) {
 }
 
 export function preloadStatDemo() {
-  return Promise.all(STAT_DEMO_URLS.map(warm));
+  return Promise.all([...STAT_DEMO_URLS.map(warm), bakeBlueSlime()]);
 }
 
 /* For rigs: how many warms are actually being held. */

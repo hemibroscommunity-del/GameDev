@@ -5468,7 +5468,27 @@ export function toDisplayHitDamage(hpBefore, hpAfter, rawDmg) {
    convert without being touched (including BottomDashboard.jsx, which
    another lane is editing concurrently).  rawMin/rawMax ride along for any
    caller that needs the real figure. */
-export function calcCombatDmgRange(rpg, wpn) {
+/* ═══ v2.3.2979: THE ROLL'S TWO INPUTS, AS FUNCTIONS ═══
+   Owner, on the Points window's scene: "shows real simulation of the hits
+   against a slime monster."  A simulated hit is the server's roll
+   (combat.js _computeAttackDamage) done on the client: the PRE-VARIANCE base
+   times one draw from the weapon's band.  Both halves already lived in
+   calcCombatDmgRange below, written inline -- so the simulation either read
+   them from here or became a second copy of the damage formula, which is the
+   copy that drifts (the v2.3.1206 note above is that story).
+   Extracted VERBATIM: calcCombatDmgRange now calls these two, its numbers are
+   byte-identical (display-dps.test pins them), and the band table holds the
+   same [floor, ceiling] pairs it always multiplied by.  The roll functions
+   (calcWeaponDmg / calcSpecialDmg) keep their own literals, untouched. */
+export function weaponVarBand(weaponType) {
+  if (weaponType === 'bow') return [0.6, 0.8];
+  if (weaponType === 'staff') return [0.5, 1.65];
+  return [0.75, 1.25];
+}
+/* `mlvl` is the target's level, for the EDGE on Power (prog3PowerMult);
+   omitted, the edge is 1, which is what every readout has always used.
+   Returns { base, flat }: a hit is base x (one draw from the band) + flat. */
+export function combatHitBase(rpg, wpn, mlvl) {
   var w = wpn && WEAPON_TYPES[wpn.type];
   if (!w) return null;
   var statKey = EQUIP_STAT_MAP[wpn.type] || 'power';
@@ -5486,15 +5506,22 @@ export function calcCombatDmgRange(rpg, wpn) {
      the readout mirrors the server roll it predicts. */
   var base = (weaponEffBase(w.base, wpn)
     + (prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667))
-    * (prog3Live(rpg) ? prog3PowerMult(rpg, prog3CatFor(wpn.type)) : 1) /* v2.3.2680: Power multiplies, pre-tier */
+    * (prog3Live(rpg) ? prog3PowerMult(rpg, prog3CatFor(wpn.type), mlvl) : 1) /* v2.3.2680: Power multiplies, pre-tier */
     * weaponTierFactor(wpn.tierMult || 1) * weaponQualityMult(wpn); /* v2.3.2664: tier factor + grade, the roll's order */
+  return { base: base, flat: flat };
+}
+export function calcCombatDmgRange(rpg, wpn) {
+  var hb = combatHitBase(rpg, wpn);
+  if (!hb) return null;
+  var base = hb.base, flat = hb.flat;
+  var band = weaponVarBand(wpn.type);   /* v2.3.2979: the table above, same pairs */
   /* v2.3.1207: Tempo folds into the period (see header); the staff's
      +300ms cast penalty is added AFTER the mult, unscaled, matching
      the auto-attack gate. */
   var dmgMin, dmgMax, cdMs = SWING_COOLDOWN * swingCooldownMultFor(rpg, wpn.type) * weaponSwingMult(wpn.type);   /* v2.3.2265: the bow's 25% */
-  if (wpn.type === 'bow')        { dmgMin = base * 0.6 + flat;  dmgMax = base * 0.8 + flat;  }
-  else if (wpn.type === 'staff') { dmgMin = base * 0.5 + flat;  dmgMax = base * 1.65 + flat;  cdMs += 300; }
-  else                           { dmgMin = base * 0.75 + flat; dmgMax = base * 1.25 + flat; }
+  dmgMin = base * band[0] + flat;
+  dmgMax = base * band[1] + flat;
+  if (wpn.type === 'staff') cdMs += 300;
   dmgMin = Math.round(dmgMin); dmgMax = Math.round(dmgMax);
   return {
     min: dmgMin,

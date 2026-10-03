@@ -70,6 +70,52 @@ function luckDmgBonus(pts) {
     : Math.min(PROG3_LINEAR.luck.cap, pts) * PROG3_LINEAR.luck.dmgPer;
 }
 
+/* ═══ v2.3.2979: THE CHARACTER AFTER THE POINTS, IN ONE PLACE ═══
+   previewStatPoint built this copy inline for its DPS half; the window's
+   scene (statSim.js) now needs the very same "you, plus n points" to fight
+   its slime with.  Two copies of the spend would be two answers to "what
+   does the point do" on one screen, so the copy moved here and both read it.
+   Returns null when there is no prog3 block to spend into, or the stat is not
+   one this worker knows. */
+export function withPoints(R, stat, cat, n) {
+  const step = Math.max(1, Math.floor(Number(n) || 1));
+  if (!R || !R.prog3 || !stat) return null;
+  const isAtk = prog3IsAtkStat(stat);
+  const cfg = isAtk ? (PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]) : PROG3.BODY[stat]; /* v2.3.2592: the retired pair still previews against an old worker */
+  if (!cfg) return null;
+  const pts = isAtk ? prog3AtkPts(R, cat, stat) : prog3Pts(R, stat);
+  /* Deep copy: the allocation lives two or three levels down (prog3.atk[cat]
+     [stat]), so a shallow clone would write the point straight into the real
+     character — a preview that spends the point it is previewing. */
+  try {
+    const copy = JSON.parse(JSON.stringify(R));
+    if (isAtk) {
+      if (!copy.prog3.atk) copy.prog3.atk = {};
+      if (!copy.prog3.atk[cat]) copy.prog3.atk[cat] = {};
+      copy.prog3.atk[cat][stat] = pts + step;
+    } else {
+      if (!copy.prog3.alloc) copy.prog3.alloc = {};
+      copy.prog3.alloc[stat] = pts + step;
+    }
+    return copy;
+  } catch (e) { return null; }
+}
+
+/* v2.3.2979: is `stat` already at the most this worker will let it hold?
+   (The [+]'s own refusal is prog3StatCap -- the per-level bound -- and the
+   window says so; this is the stat's hard ceiling, which is what decides
+   whether there is any "after" to show at all.) */
+export function statCapped(R, stat, cat) {
+  if (!R || !R.prog3 || !stat) return false;
+  const isAtk = prog3IsAtkStat(stat);
+  const cfg = isAtk ? (PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]) : PROG3.BODY[stat];
+  if (!cfg) return false;
+  const pts = isAtk ? prog3AtkPts(R, cat, stat) : prog3Pts(R, stat);
+  /* v2.3.2680: a linear worker still caps at the retired numbers. */
+  const capOf = (!isProg3RelEnabled() && PROG3_LINEAR[stat]) ? PROG3_LINEAR[stat].cap : cfg.cap;
+  return pts >= capOf;
+}
+
 /** Preview one more point in `stat`.  `cat` is the weapon category an offense
  *  stat belongs to ('sword' | 'bow' | 'staff'); ignored for body stats.
  *  Returns null when the character has no prog3 block to spend into.
@@ -84,26 +130,12 @@ export function previewStatPoint(R, stat, cat, n) {
   if (!cfg) return null;
 
   const pts = isAtk ? prog3AtkPts(R, cat, stat) : prog3Pts(R, stat);
-  /* v2.3.2680: a linear worker still caps at the retired numbers. */
-  const capOf = (!isProg3RelEnabled() && PROG3_LINEAR[stat]) ? PROG3_LINEAR[stat].cap : cfg.cap;
-  const capped = pts >= capOf;
+  const capped = statCapped(R, stat, cat);   /* v2.3.2979: one definition, shared with the scene */
 
-  /* Deep copy: the allocation lives two or three levels down (prog3.atk[cat]
-     [stat]), so a shallow clone would write the point straight into the real
-     character — a preview that spends the point it is previewing. */
-  let after = null;
-  try {
-    const copy = JSON.parse(JSON.stringify(R));
-    if (isAtk) {
-      if (!copy.prog3.atk) copy.prog3.atk = {};
-      if (!copy.prog3.atk[cat]) copy.prog3.atk[cat] = {};
-      copy.prog3.atk[cat][stat] = pts + step;
-    } else {
-      if (!copy.prog3.alloc) copy.prog3.alloc = {};
-      copy.prog3.alloc[stat] = pts + step;
-    }
-    after = copy;
-  } catch (e) { return null; }
+  /* v2.3.2979: the copy is withPoints' now (above), so the scene beside these
+     numbers fights with exactly the character they describe. */
+  const after = withPoints(R, stat, cat, step);
+  if (!after) return null;
 
   /* ═══ v2.3.2620: AN OFFENSE STAT IS PREVIEWED ON ITS OWN LANE'S WEAPON ═══
      `cat` names the lane the player is standing in, and every offense stat is

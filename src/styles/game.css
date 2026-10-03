@@ -5378,11 +5378,22 @@ html[data-orient="landscape"] .bt-dashboard{
    purpose: the card is a fixed 320 max, and a number that scales with the
    viewport would no longer be the 21/38px the world draws. */
 .bt-sd{overflow:hidden;border-radius:9px;background:#111E23;border:1px solid rgba(229,237,233,.08);contain:paint}
-.bt-sd-stage{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(0,0,0,0) 62%,rgba(0,0,0,.28) 100%)}
+.bt-sd-stage{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(0,0,0,0) 62%,rgba(0,0,0,.28) 100%);--sd-hx:30px}
+/* v2.3.2986: --sd-hx moves the hero, and everything placed against him (his
+   shots, the numbers over his head), 30px in from the left: he swings the
+   world's own sword now, and its wind-up carries the blade ~85px behind his
+   feet -- off the stage's edge where he used to stand. */
 /* the ground line the figures stand on: the hero's feet (canvas bottom -4px,
    feet drawn 13px up it) and the slime's base row both land on it */
 .bt-sd-stage::after{content:"";position:absolute;left:0;right:0;bottom:9px;height:1px;background:rgba(229,237,233,.07);pointer-events:none}
-.bt-sd-hero{position:absolute;left:24px;bottom:-4px;line-height:0;will-change:transform}
+.bt-sd-hero{position:absolute;left:calc(24px + var(--sd-hx,0px));bottom:-4px;line-height:0;will-change:transform}
+/* v2.3.2986: the fighter -- the portrait (uncropped, slid to the figure's
+   window), the staff as its own turning layer, and the world's own attack
+   frames over them while he swings or shoots (StatDemo Fighter) */
+.bt-sd-fig{position:relative}
+.bt-sd-figure{position:absolute;top:0}
+.bt-sd-staff{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}
+.bt-sd-atk{position:absolute;pointer-events:none}
 .bt-sd-hero--swing{animation:bt-sd-lunge .34s ease-out 1}
 @keyframes bt-sd-lunge{0%{transform:translateX(0)}35%{transform:translateX(12px)}100%{transform:translateX(0)}}
 .bt-sd-hero--dodge{animation:bt-sd-sidestep .6s ease-in-out 1}
@@ -5401,6 +5412,9 @@ html[data-orient="landscape"] .bt-dashboard{
      sits at right:16 with a 128px cell. */
 .bt-sd-hero--short{animation:bt-sd-lungeshort .34s ease-out 1}
 @keyframes bt-sd-lungeshort{0%{transform:translateX(0)}35%{transform:translateX(6px)}100%{transform:translateX(0)}}
+/* v2.3.2979: the melee special -- the lunge, bigger and longer */
+.bt-sd-hero--special{animation:bt-sd-lungebig .42s ease-out 1}
+@keyframes bt-sd-lungebig{0%{transform:translateX(0)}30%{transform:translateX(22px)}100%{transform:translateX(0)}}
 .bt-sd-hero--trek{animation:bt-sd-trek 2.4s ease-in-out 1}
 .bt-sd-hero--trekfast{animation:bt-sd-trek 1.2s ease-in-out 1}
 @keyframes bt-sd-trek{0%{transform:translateX(0)}50%{transform:translateX(64px)}100%{transform:translateX(0)}}
@@ -5408,6 +5422,9 @@ html[data-orient="landscape"] .bt-dashboard{
 @keyframes bt-sd-sidestep{0%{transform:translateX(0);opacity:1}30%{transform:translateX(-18px);opacity:.6}70%{transform:translateX(-18px);opacity:.85}100%{transform:translateX(0);opacity:1}}
 /* the block mark on the hero's leading side, flashing once per orb */
 .bt-sd-shield{position:absolute;right:-16px;top:48px;width:30px;height:30px;object-fit:contain;animation:bt-sd-shield .7s ease-out 1 both;filter:drop-shadow(0 0 6px rgba(116,172,232,.7))}
+/* v2.3.2979: a guard HELD through the slime's throws (Stamina, with a
+   shield) -- the mark stays up; each block still flashes over it */
+.bt-sd-shield--held{animation:none;opacity:.8;filter:none}
 @keyframes bt-sd-shield{0%{opacity:0;transform:scale(.6)}25%{opacity:1;transform:scale(1.15)}60%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
 /* the slime: a strip of --sd-frames cells stepped through by moving the
    background; idle loops, hit and shoot play once and hold their last cell
@@ -5419,10 +5436,54 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-slime{position:absolute;right:16px;bottom:-33px;width:128px;height:128px;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-strip 1.2s steps(var(--sd-frames,24),jump-none) infinite}
 .bt-sd-slime--hit{animation:bt-sd-strip .8s steps(var(--sd-frames,24),jump-none) 1 forwards}
 .bt-sd-slime--shoot{animation:bt-sd-strip .42s steps(var(--sd-frames,8),jump-none) 1 forwards}
+/* ═══ v2.3.2979: THE SLIME CAN DIE NOW, AND COME BACK ═══
+   The scene fights it to the end (statSim.js), so it plays the world's
+   splat: 15 cels over SLIME_DEATH_MS, once, holding the last.  The splat sits
+   on its OWN baseline -- row 108 of the cell, where the idle blob rests on
+   86 (slimeSprites.js SLIME_BASE_ROW, measured) -- so its box hangs 22px
+   higher to put row 108 on the same ground line; sharing the idle's offset
+   would sink the splat through the floor.
+   --spawn is the next slime hopping in; --swell is the blue slime filling up
+   before it bursts (Resist's scene), from the blob's base (row 86 = 67% down
+   the cell) so it grows off the ground rather than off its middle, and to
+   1.9x rather than the world's 3.5x because the stage is 140px tall. */
+.bt-sd-slime--death{bottom:-11px;animation:bt-sd-strip var(--sd-death-ms,.4s) steps(var(--sd-frames,15),jump-none) 1 forwards}
+.bt-sd-slime--spawn{transform-origin:50% 67%;animation:bt-sd-strip 1.2s steps(var(--sd-frames,24),jump-none) infinite,bt-sd-spawn .32s ease-out 1 both}
+@keyframes bt-sd-spawn{from{opacity:0;transform:translateY(8px) scale(.7)}to{opacity:1;transform:none}}
+.bt-sd-slime--swell{transform-origin:50% 67%;animation:bt-sd-strip .6s steps(var(--sd-frames,24),jump-none) infinite,bt-sd-swell var(--sd-swell-ms,1.6s) ease-in 1 both}
+@keyframes bt-sd-swell{from{transform:scale(1)}to{transform:scale(1.9)}}
+/* v2.3.2979: the slime's melee wind-up -- what it does INSTEAD of throwing
+   at a hero inside its reach (statSim slimeAttack).  The world plays no
+   attack strip for a swing; it throbs the sprite, faster and wider as the
+   hit nears (entityRenderer _windupFx: +5% growing to +14%, the beat
+   quickening), so the scene does the same over the wind-up's 500ms. */
+.bt-sd-slime--windup{transform-origin:50% 67%;animation:bt-sd-strip 1.2s steps(var(--sd-frames,24),jump-none) infinite,bt-sd-throb var(--sd-windup-ms,.5s) linear 1 both}
+@keyframes bt-sd-throb{0%{transform:scale(1)}22%{transform:scale(1.05)}44%{transform:scale(1)}62%{transform:scale(1.1)}76%{transform:scale(1)}88%{transform:scale(1.14)}100%{transform:scale(1)}}
 @keyframes bt-sd-strip{from{background-position:0 0}to{background-position:var(--sd-strip,-2944px) 0}}
-/* the orb: from the slime's mouth to the hero, straight and quick */
+/* the orb: from the slime's mouth to the hero, straight -- v2.3.2979: over
+   the ball's real flight time (statSim SLIME_THROW.FLIGHT_MS, set inline) */
 .bt-sd-orb{position:absolute;right:88px;bottom:34px;width:22px;height:22px;background-size:22px 22px;background-repeat:no-repeat;animation:bt-sd-orb .38s linear 1 both}
-@keyframes bt-sd-orb{from{transform:translateX(0)}to{transform:translateX(-120px)}}
+/* v2.3.2986: --sd-orb-dx is measured (StatDemo): the ball flies from the
+   slime, which is placed from the RIGHT edge, to the hero, placed from the
+   LEFT -- a fixed 120px only met him at one window width */
+@keyframes bt-sd-orb{from{transform:translateX(0)}to{transform:translateX(calc(-1 * var(--sd-orb-dx,120px)))}}
+/* v2.3.2979: the slime's HP over its head (the world's monster band, in the
+   menu's bar), centred on the blob -- right:16 + half the 128 cell, less
+   half the bar -- and low enough that the numbers rise clear of it. */
+.bt-sd-mhp{position:absolute;right:54px;bottom:66px;width:52px;pointer-events:none}
+.bt-sd-mhp-n{font-size:10px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.7)}
+/* v2.3.2979: which half is playing -- "Now", then the brass "+n".  Top
+   CENTRE, in the gap between the figures: the numbers rise off the hero's
+   head on the left and off the slime on the right, and a corner tag sat
+   under one or the other. */
+.bt-sd-tag{position:absolute;top:6px;left:50%;transform:translateX(-50%);padding:3px 6px;border-radius:5px;background:rgba(0,0,0,.3);font-family:'Source Sans 3',sans-serif;font-size:10px;font-weight:800;line-height:1;letter-spacing:.1em;text-transform:uppercase;color:#8D9B98;pointer-events:none;white-space:nowrap}
+.bt-sd-tag--after{color:#D8AA58}
+/* v2.3.2979: the long run under the stage, in the window's own row dress */
+.bt-sd-verdict{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:0 10px;padding:6px 10px 7px;background:rgba(0,0,0,.22);border-top:1px solid rgba(229,237,233,.06);font-variant-numeric:tabular-nums}
+.bt-sd-verdict-l{color:#8D9B98;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.bt-sd-verdict-v{color:#F4F0E7;font-size:12.5px;font-weight:800;white-space:nowrap}
+.bt-sd-verdict-v b{color:#59BF91;font-weight:800}
+.bt-sd-note{padding:0 10px 7px;background:rgba(0,0,0,.22);font-size:11px;line-height:1.35;color:#8D9B98}
 /* v2.3.2231: the hero's shot -- the orb's mirror image.  Leaves the hand
    (left:66px is just off the figure's centre line, at chest height) and
    crosses to the slime in 200ms, which is the beat Script.strike already
@@ -5430,19 +5491,61 @@ html[data-orient="landscape"] .bt-dashboard{
    scene's rhythm moves.  The bolt steps its 4 cels over the same flight;
    the arrow is one cel and simply travels.  Both sheets are painted
    pointing east, the direction this scene fires, so no rotation. */
-.bt-sd-shot{position:absolute;left:66px;bottom:56px;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-fly .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
+.bt-sd-shot{position:absolute;left:calc(66px + var(--sd-hx,0px));bottom:56px;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-fly .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
 @keyframes bt-sd-fly{from{transform:translateX(0)}to{transform:translateX(120px)}}
 .bt-sd-shot--bow{image-rendering:pixelated}
 /* v2.3.2612: the shot that falls short — a third of the flight, then gone.
    It must OVERRIDE the flight in .bt-sd-shot, so it repeats both animations
-   (the strip stepping included) rather than relying on cascade order. */
-.bt-sd-shot--short{animation:bt-sd-flyshort .42s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
-@keyframes bt-sd-flyshort{0%{transform:translateX(0);opacity:1}55%{transform:translateX(44px);opacity:1}100%{transform:translateX(56px);opacity:0}}
+   (the strip stepping included) rather than relying on cascade order.
+   v2.3.2979: not a third any more -- exactly as far as its real reach gets it
+   (--sd-short, set from statSim's reach over the slime's distance), at the
+   ordinary shot's speed, and then it fades where it stopped. */
+.bt-sd-shot--short{animation:bt-sd-flyshort .34s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
+@keyframes bt-sd-flyshort{0%{transform:translateX(0);opacity:1}60%{transform:translateX(var(--sd-short,56px));opacity:1}100%{transform:translateX(var(--sd-short,56px));opacity:0}}
+/* v2.3.2979: the staff's big bolt (caps.bigorb) -- the same bolt, drawn big */
+.bt-sd-shot--big{animation:bt-sd-flybig .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
+@keyframes bt-sd-flybig{from{transform:translateX(0) scale(1.9)}to{transform:translateX(120px) scale(1.9)}}
+/* ═══ v2.3.2991: AIMED -- FROM THE BOW TO WHERE IT GOES IN ═══
+   A shot that sticks has to arrive where it sticks.  StatDemo's Shot sets
+   left/top so the shot's POINT sits where it leaves (an arrow's pivot on the
+   bow's grip, as the world looses it), the transform-origin on that point,
+   and the trip to the slime's pin as --sd-dx/--sd-dy along --sd-ang: the
+   shot turns to its line about its own point and slides along it, so the
+   point is what lands on the pin.  Repeats the strip
+   stepping for the same reason --short does (it must override the flight). */
+.bt-sd-shot--aim{animation:bt-sd-aim .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
+@keyframes bt-sd-aim{from{transform:translate(0,0) rotate(var(--sd-ang,0rad))}to{transform:translate(var(--sd-dx,120px),var(--sd-dy,0px)) rotate(var(--sd-ang,0rad))}}
+.bt-sd-shot--aim.bt-sd-shot--big{animation:bt-sd-aimbig .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
+@keyframes bt-sd-aimbig{from{transform:translate(0,0) rotate(var(--sd-ang,0rad)) scale(1.9)}to{transform:translate(var(--sd-dx,120px),var(--sd-dy,0px)) rotate(var(--sd-ang,0rad)) scale(1.9)}}
+/* the bow's special: the world's white-hot arrow, filmed at the screen's
+   own resolution -- a glow, not pixel art, so not stepped up in blocks */
+.bt-sd-shot--hot{image-rendering:auto}
+/* ═══ v2.3.2991: WHAT A HIT LEAVES ═══
+   A film (StatDemo Film): one layer of a world effect photographed off the
+   world's own classes -- the slime's gunk, the staff's crash -- stepped
+   through once like the slime's strips, its last cell held (the gunk's
+   marks lying on the ground), then faded from --sd-fade-at over --sd-fade-ms
+   (StatDemo GUNK_MS: a shorter linger than the map's, for a stage that meets
+   a fresh slime on the same spot every second or two).
+   The crash is pixel art at 1x, so it is scaled up in crisp blocks (--px). */
+.bt-sd-film{position:absolute;pointer-events:none;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-strip var(--sd-film-ms,.5s) steps(var(--sd-frames,2),jump-none) 1 forwards,bt-sd-filmfade var(--sd-fade-ms,.4s) linear var(--sd-fade-at,2.6s) 1 forwards}
+.bt-sd-film--px{image-rendering:pixelated}
+@keyframes bt-sd-filmfade{from{opacity:1}to{opacity:0}}
+/* An arrow in the slime: .bt-sd-pin is a zero-size point that slimePins'
+   keyframes (sdpin-*, set inline, the slime strip's own duration) step to
+   the texel the shaft is pinned to on each of the slime's frames; the film
+   of the shaft and its wound (.bt-sd-stuck) hangs off it by its point of
+   entry, and plays once and holds -- the shaft stays in.  Both are children
+   of the slime's span, so they mount, step and go with it. */
+.bt-sd-pin{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none}
+.bt-sd-stuck{position:absolute;pointer-events:none;background-repeat:no-repeat;background-position:0 0;animation:bt-sd-strip var(--sd-film-ms,1.5s) steps(var(--sd-frames,2),jump-none) 1 forwards}
 /* combat numbers, in DMG_STYLE's dress: Source Sans 3 800, the black stroke
    under the fill (paint-order keeps the fill whole), rising as they fade */
 .bt-sd-pop{position:absolute;bottom:96px;display:inline-flex;align-items:center;gap:3px;font-family:'Source Sans 3',sans-serif;font-weight:800;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums;-webkit-text-stroke:3px #000;paint-order:stroke fill;text-shadow:0 1px 2px rgba(0,0,0,.6);animation:bt-sd-rise 1.05s ease-out 1 both;pointer-events:none}
-.bt-sd-pop--hero{left:calc(56px + var(--sd-dx,0px));transform:translateX(-50%)}
-.bt-sd-pop--slime{right:calc(80px - var(--sd-dx,0px));bottom:70px;transform:translateX(50%)}
+.bt-sd-pop--hero{left:calc(56px + var(--sd-hx,0px) + var(--sd-dx,0px));transform:translateX(-50%)}
+/* v2.3.2979: 70 -> 80, so a number rises from above the slime's HP bar
+   rather than through it (the world's own rule, entityRenderer v2.3.1638) */
+.bt-sd-pop--slime{right:calc(80px - var(--sd-dx,0px));bottom:80px;transform:translateX(50%)}
 .bt-sd-pop-ic{display:block;width:auto;-webkit-text-stroke:0}
 @keyframes bt-sd-rise{0%{opacity:0;margin-bottom:-6px}12%{opacity:1;margin-bottom:0}70%{opacity:1;margin-bottom:18px}100%{opacity:0;margin-bottom:30px}}
 /* the point landing: the row's icon with a brass +1, rising once */
@@ -5469,7 +5572,8 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-vital-n{font-size:11px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.7);display:flex;align-items:center}
 .bt-sd-vital-s{padding:0 2px;opacity:.6}
 @media (prefers-reduced-motion:reduce){
-  .bt-sd-hero,.bt-sd-slime,.bt-sd-shield,.bt-sd-orb,.bt-sd-shot,.bt-sd-pop,.bt-sd-point{animation:none}
+  .bt-sd-hero,.bt-sd-slime,.bt-sd-shield,.bt-sd-orb,.bt-sd-shot,.bt-sd-pop,.bt-sd-point,.bt-sd-film,.bt-sd-pin,.bt-sd-stuck{animation:none}
+  .bt-sd-slime--swell{transform:scale(1.9)}
   .bt-sd-pop{opacity:1;margin-bottom:8px}
   .bt-sd-shield{opacity:1}
   .bt-sd-vital-w{transition:none}

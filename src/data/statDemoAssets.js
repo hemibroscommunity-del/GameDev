@@ -22,7 +22,28 @@ export const SLIME = {
   idle:  { url: '/sprites/monsters/slime-idle-v5.png',  frames: 24 },
   hit:   { url: '/sprites/monsters/slime-hit-v1.png',   frames: 24 },
   shoot: { url: '/sprites/monsters/slime-shoot-v2.png', frames: 8 },
+  /* v2.3.2979: the scene now FIGHTS the slime to the end (statSim.js), so it
+     needs the splat the world plays when one dies -- 15 cels, 400 ms
+     (entityRenderer SLIME_DEATH_MS), on its own lower baseline (row 108,
+     slimeSprites.js SLIME_BASE_ROW.death; game.css places it). */
+  death: { url: '/sprites/monsters/slime-death-v10.png', frames: 15 },
 };
+
+/* ═══ v2.3.2979: THE BLUE SLIME, FOR RESIST'S SCENE ═══
+   Resist only ever meets ONE slime attack: the blue slime's death burst (the
+   ball is base damage; the burst is elemental -- combat.js v2.3.2680).  So
+   that is what Resist's scene shows, and it has to be the blue slime, not a
+   green one doing something green slimes never do.
+   The world's blue slime is not a file: it is the green sheets retinted at
+   runtime (monsterRecolor.js, the variant's own `recolor`), into Pixi
+   textures a DOM scene cannot use.  statDemoPreload bakes the same retint
+   into two image URLs on the loading gate (the preloading law: an asset known
+   at load time is loaded at load time) and parks them here, so this file stays
+   free of imports and the scene asks for them by state.  Null until baked --
+   the scene then draws the green sheets rather than nothing. */
+let _blueSheets = null;
+export function setBlueSlimeSheets(sheets) { _blueSheets = sheets || null; }
+export function blueSlimeSheet(state) { return (_blueSheets && _blueSheets[state]) || null; }
 export const ORB_URL = '/sprites/monsters/slime-projectile-v1.png';
 
 /* What leaves the hero's hands, at effectsRenderer's own _fxLoad URLs —
