@@ -32,6 +32,8 @@ import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
 import { GATHER_HITS as SRV_GATHER_HITS } from '../src/gathering.js'; /* v2.3.2956 */
+import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
+import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC } from '../../src/game/elemHits.js'; /* v2.3.2996 */
 import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes } from '../../src/data/gameSystems.js'; /* v2.3.2956 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
@@ -1372,6 +1374,26 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       && /: Math\.floor\(\(now \/ cycle\) \* fc\) % fc;/.test(ent)
       && /: Math\.floor\(\(now \/ jogCycleMs\('mine', 'south'\)\) \* _mfc\) % _mfc;/.test(fx)
       && /const now = Date\.now\(\);/.test(pixi));
+}
+
+// ── v2.3.2996: a monster's hit carries its element (server monsterstatus.js,
+// client game/elemHits.js).  The worker names the status and its length on
+// the wire, so only three things have to agree by hand: the chill's walk
+// (the worker's copy is documentation -- the client's is the one that moves
+// you), the status names the client knows how to carry out, and an icon for
+// every element the worker names -- each file actually in public/.
+{
+  check('elem hits: the chill walks you at the same pace on both sides (CHILL.MULT = CHILL_MULT)',
+    SRV_CHILL.MULT === CLIENT_CHILL_MULT, { srv: SRV_CHILL.MULT, cli: CLIENT_CHILL_MULT });
+  const srvSt = Object.values(SRV_ELEM_HITS).sort().join(','), cliSt = CLIENT_ELEM_STATUSES.slice().sort().join(',');
+  check('elem hits: the client carries out every status the worker sends, and only those', srvSt === cliSt, { srv: srvSt, cli: cliSt });
+  check('elem hits: every element the worker names has a look on the client',
+    Object.keys(SRV_ELEM_HITS).every((e) => Object.prototype.hasOwnProperty.call(CLIENT_ELEM_LOOK, e)
+      && Object.prototype.hasOwnProperty.call(CLIENT_ELEM_ICON_SRC, CLIENT_ELEM_LOOK[e].icon)),
+    { srv: Object.keys(SRV_ELEM_HITS), cli: Object.keys(CLIENT_ELEM_LOOK) });
+  const pubDir = fileURLToPath(new URL('../../public/', import.meta.url));
+  const missing = Object.values(CLIENT_ELEM_ICON_SRC).filter((u) => { try { readFileSync(join(pubDir, u.replace(/^\//, ''))); return false; } catch (e) { return true; } });
+  check('elem hits: every element icon is in public/', missing.length === 0, missing);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

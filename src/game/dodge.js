@@ -17,6 +17,7 @@ import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { hitMaterialOf } from '@/data/monsterVariants.js'; /* v2.3.2452 */
+import { isStuck } from '@/game/elemHits.js'; /* v2.3.2996: a slime's goo holds you */
 
 /* ═══ v2.3.2916: HOW LONG A ROLL LASTS -- ONE ANSWER, SENT WITH IT ═══
    Owner: "check all other broadcasted player animations to make sure they
@@ -55,6 +56,18 @@ export function walkingNow(S) {
 
 export var triggerContextualDodge = function (S, R, ang) {
     if (S._dodgeRoll) return;
+    /* ═══ v2.3.2996: HELD IN PLACE MEANS NO ROLL EITHER ═══
+       Owner: "slime for floral damage ... a brief held in place effect".  A
+       roll out of the goo would make the hold a speed bump, so for its 0.7 s
+       the swipe says why it did nothing instead (game/elemHits.js).  The
+       shield stays up: nothing was spent. */
+    if (isStuck(S, Date.now())) {
+      if (!S._stuckNoteAt || Date.now() - S._stuckNoteAt > 600) {
+        S._stuckNoteAt = Date.now();
+        if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 44, 'Stuck!', '#8be36a', { ts: Date.now() + 1 });
+      }
+      return;
+    }
     /* ═══ v2.3.2242: A DODGE CANCELS THE BLOCK ═══
        Owner: "Dodge will be a swipe on the left side of the screen as it
        already is and will cancel any blocking action by doing so."  Dropped

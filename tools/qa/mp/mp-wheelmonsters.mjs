@@ -182,6 +182,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ms = (await monsters(P)).filter((m) => m.home === home);
     return ms;
   };
+  /* v2.3.2996: untouchable for the walk (the dev panel's own god mode: hits
+     still come, and land as 0).  It stands you in the middle of each land's
+     six without fighting back, which was always a thin margin -- six
+     snowmen's 14s and six goblins' 10s -- and since a goblin's hit also sets
+     you burning (server/src/monsterstatus.js) it stopped surviving: the art
+     is under test here, not how long you last standing still.  Off again,
+     at full health, for the fight below. */
+  await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 5 });
   const snow = await drawnNear('frost');
   await shot(P, 'frost');
   const snowDrawn = snow.filter((m) => m.sprite && m.sprite.visible && m.sprite.texAlive);
@@ -202,6 +210,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!art2 && art2.looks.snowman === 'ready' && art2.looks.fireGoblin === 'ready' && art2.waitedMs === 0 && !!memWalk && memWalk.monsters > mem0.monsters + 3, { art2, memWalk });
   /* ── 5. a fight ── */
   phase = 'the fight';
+  /* v2.3.2996: and mortal again, at full health, for a fight that answers back */
+  await H.devOp(wsPort, 'vitals', myId, { heal: true, god: false });
   /* The swing is the same `monster_damage` the game sends (mp-capekill), stood
      on the goblin: the server gates melee on PVE_MELEE_RANGE and recomputes
      the damage, so this is intent and repetition, exactly as a player's client

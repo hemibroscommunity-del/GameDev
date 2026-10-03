@@ -483,6 +483,10 @@ export const telegraphMethods = {
     if (!res.dodged) {
       this._trackMonsterDamage(ps, m.id, res.graced ? (res.dmgIntent || 0) : res.dmgTaken);
     }
+    /* v2.3.2996: a telegraphed hit carries its monster's element too -- a
+       blue slime's burst holds you, a fire goblin's lunge sets you burning
+       (monsterstatus.js) */
+    const _elemHit = this._elemOnHit ? this._elemOnHit(zoneId, m, pid, ps, res, Date.now()) : null;
     this.eventBuffer.push({
       type: 'monster_attack',
       payload: {
@@ -508,6 +512,7 @@ export const telegraphMethods = {
            reads it back.  Deploy-order (rule 19): an older worker omits
            it and the client keeps its current filtering exactly. */
         ability: (kit && kit.kind) || undefined,
+        ...(_elemHit || null),   /* v2.3.2996: elem / st / stMs / kb */
       },
     });
     this._saveRpgVitals(pid, ps);
