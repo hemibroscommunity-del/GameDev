@@ -1978,11 +1978,14 @@ console.log('the big-town preview (v2.3.2982)');
   const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
   const fs = await import('node:fs');
   /* v2.3.2994, owner: "yes make 1.5x live and the standard size" -- without
-     the switch, the plan itself IS the 1.5x town; `bigtown=1` the old one */
-  ok('the switch: `bigtown` is twice the size, `bigtown=1.5` one and a half, at most BIG_TOWN_MAX, `bigtown=1` the town as it was, and without it the standard 1.5x -- the plan itself',
+     the switch, the plan itself IS the standard town; `bigtown=1` the old one.
+     v2.3.2997, owner: "Change buildings from 1.5x to 1.15x" -- the standard
+     is 1.15x, and `bigtown=1.5` shows the 1.5x town to compare */
+  ok('the switch: `bigtown` is twice the size, `bigtown=1.5` one and a half, at most BIG_TOWN_MAX, `bigtown=1` the town as it was, and without it the standard 1.15x -- the plan itself',
     bigTownScale('?trial=wheel&bigtown') === 2 && bigTownScale('?trial=wheel&bigtown=1.5') === 1.5 && bigTownScale('?bigtown=9') === BIG_TOWN_MAX &&
     bigTownScale('?trial=wheel') === BUILDINGS && bigTownScale('?trial=wheel&bigtownish') === BUILDINGS && bigTownScale('?bigtown=1') === 1 &&
-    BUILDINGS === 1.5 && bigTownPlan(BUILDINGS) === PLAN && PLAN.town.buildingScale === 1.5 && PLAN.bigTown === 1.5 &&
+    BUILDINGS === 1.15 && bigTownPlan(BUILDINGS) === PLAN && PLAN.town.buildingScale === 1.15 && PLAN.bigTown === 1.15 &&
+    bigTownPlan(1.5) !== PLAN && bigTownPlan(1.5).town.buildingScale === 1.5 &&
     bigTownPlan(1) !== PLAN && bigTownPlan(1).town.gateNS === undefined && bigTownPlan(1).town.lot.perSideRow === undefined && !bigTownPlan(1).town.buildingScale);
   const BP = bigTownPlan(2), bbp = buildBlueprint(BP), BO = placeObjects(BP, bbp), T2 = BP.town, tp2 = townPlan(T2);
   const WPA = BP.worldPxPerArtPx, cellG = bbp.scale * WPA;

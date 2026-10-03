@@ -206,10 +206,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     inTown.viewW <= inTown.zoneW + 1 && inTown.viewH <= inTown.zoneH + 1
       && inSpoke.viewW <= inSpoke.zoneW + 1 && inSpoke.viewH <= inSpoke.zoneH + 1,
     { town: inTown, dunes: inSpoke });
-  rec.ok(`...and the character is the SAME SIZE in town as in a combat zone (${inTown.bodyCssPx} vs ${inSpoke.bodyCssPx} CSS px)`,
-    inTown.bodyCssPx > 0 && inSpoke.bodyCssPx > 0
-      && Math.abs(inTown.bodyCssPx - inSpoke.bodyCssPx) <= 0.6,
-    { town: inTown, dunes: inSpoke });
+  /* ═══ v2.3.2997: ...AND NOW TOWN IS VIEW_OUT OF IT ═══
+     Owner, 2026-10-03: "about 25% more zoomed out for everything by
+     default".  worldViewport multiplies the character-size floors by
+     VIEW_OUT (0.8) and leaves each zone's no-void floor alone, so town --
+     1664x1760, room to spare -- is drawn at 0.8 the scale, while a 32x32
+     combat zone, whose map is exactly the screen already, keeps its own (the
+     old lands are closed; the Wheel, where everyone is, has room).  So the
+     parity is now a fixed ratio: the bro in town is VIEW_OUT the size. */
+  const viewOut = await P.page.evaluate(() => (window.__btWorldView && (window.__btWorldView('town') || {}).viewOut) || null);
+  /* On the WORLD scale, not the figure: the Wind Dunes also shrink the figure
+     itself with depth (v2.3.2745, zonePlayerScale -- 85 world px tall where
+     the test stands there, against 106 in town), which the old figure-to-
+     figure comparison here never allowed for; it read 83.2 vs 67.1 CSS px
+     before VIEW_OUT existed.  The scale is the thing VIEW_OUT sets, and the
+     figure-tracks-the-scale check below still covers the figure. */
+  rec.ok(`...and town is drawn at VIEW_OUT (${viewOut}) the scale of a combat zone (${inTown.sx && inTown.sx.toFixed(4)} vs ${inSpoke.sx && inSpoke.sx.toFixed(4)}; the figure ${inTown.bodyCssPx} vs ${inSpoke.bodyCssPx} CSS px)`,
+    inTown.sx > 0 && inSpoke.sx > 0 && viewOut > 0
+      && Math.abs(inTown.sx / inSpoke.sx - viewOut) <= 0.01,
+    { town: inTown, dunes: inSpoke, viewOut });
   /* Guard: a parity assertion passes trivially if BOTH readings are the flat
      FIGURE_SCALE_FLOOR, which is what happens on a short phone -- and that was
      the state the old landview pin mistook for fairness.  This harness runs a
@@ -217,7 +232,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is above the 0.50 floor, so the equality above is the new rule working
      rather than the old floor binding twice. */
   rec.ok('...and it is the reference term doing it, not the flat floor binding twice',
-    inTown.sx > 0.51, { townScale: inTown.sx, flatFloor: 0.50 });
+    inTown.sx > 0.50 * (viewOut || 1) + 0.01, { townScale: inTown.sx, flatFloor: 0.50 * (viewOut || 1) });
 
   if (boxTown && boxSpoke && boxTown.height > 0 && boxSpoke.height > 0) {
     const ratio = boxSpoke.height / boxTown.height;

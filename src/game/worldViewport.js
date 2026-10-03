@@ -157,6 +157,40 @@ const MIN_SCALE = 0.75 / WORLD_ZOOM;   /* 0.25 at WORLD_ZOOM 3 */
  * with no floor at all).  Re-run the sweep before moving this number. */
 export const FIGURE_SCALE_FLOOR = 0.50;
 
+/* ═══ v2.3.2997: THE WHOLE GAME ABOUT 25% FURTHER OUT ═══
+ * Owner, 2026-10-03: "let me see what making the default scale looks like
+ * about 25% more zoomed out for everything by default".
+ *
+ * VIEW_OUT multiplies every CHARACTER-SIZE floor below -- the 32x32
+ * reference zone (v2.3.2257), the vista's old width rule, FIGURE_SCALE_FLOOR
+ * -- and nothing else.  Those floors are what decide the scale wherever the
+ * map has room, the Wheel above all, so there the view takes in 25% more
+ * world each way (1 / 0.8 = 1.25) and everything in it, the bro included, is
+ * drawn at 0.8 the size: on a 390x844 phone with the dashboard up, 0.587 ->
+ * 0.470, the figure ~62 -> ~50 CSS px; with it folded (mp-zoomout, measured)
+ * 0.787 -> 0.630, 83 -> 67 CSS px, 495 -> 619 world px across (the owner's
+ * "too small" was 37 CSS px, at 0.349, v2.3.2249).
+ *
+ * The NO-VOID floor is not multiplied.  "Don't zoom out larger than the
+ * screen area would show" (v2.3.2247) still holds: a map that would end on
+ * screen refuses the zoom, which today touches only the closed old lands --
+ * a 32x32 combat zone is exactly as big as the screen already.  So "one
+ * character size in every zone" (v2.3.2257) now holds wherever the view can
+ * go, and the old lands keep theirs.
+ *
+ * `?zoom=k` sets the factor for the tab, 0.4 to 1.5 -- `?zoom=1` is the view
+ * before this, to compare the two on the same phone. */
+export const VIEW_OUT_DEFAULT = 0.8;
+function readViewOut() {
+  try {
+    const m = /(?:^|[?&])zoom=([0-9.]+)(?:&|$)/.exec((typeof window !== 'undefined' && window.location && window.location.search) || '');
+    const k = m ? Number(m[1]) : NaN;
+    if (Number.isFinite(k) && k > 0) return Math.max(0.4, Math.min(1.5, k));
+  } catch (_e) { /* no address: the default */ }
+  return VIEW_OUT_DEFAULT;
+}
+export const VIEW_OUT = readViewOut();
+
 /* ═══ v2.3.2156: LANDSCAPE GETS ITS OWN REFERENCE, ON THE OTHER AXIS ═══
  *
  * Owner: "Landscape would be an optional view.  You can play in portrait or
@@ -313,7 +347,7 @@ export function worldViewport(canvas, zoneId) {
        the dashboard folded.  "As big as he was previously" has an exact answer
        and this is it; the reference floor is for the zones that are supposed to
        match each other, and the vista is explicitly not one of them. */
-    scale = Math.max(scale, (land ? cssH : cssW) / _vref);
+    scale = Math.max(scale, VIEW_OUT * (land ? cssH : cssW) / _vref);   /* v2.3.2997: x VIEW_OUT */
   } else if (land) {
     /* ═══ v2.3.2497: D10 -- SIDEWAYS, ONLY TOWN ZOOMS OUT ═══
        Owner: "landscape zoom: town/worldview only; combat zones stay."
@@ -343,12 +377,14 @@ export function worldViewport(canvas, zoneId) {
        combat zone are no longer the same character size.  That is the trade
        D10 makes -- the owner asked for the wider view of the town he cannot
        get in a 1024px-wide combat map. */
-    scale = Math.max(scale, cssH / FIGURE_REF_PX);
+    scale = Math.max(scale, VIEW_OUT * cssH / FIGURE_REF_PX);
   } else {
-    scale = Math.max(scale, cssW / FIGURE_REF_PX, cssH / FIGURE_REF_PX);
+    scale = Math.max(scale, VIEW_OUT * Math.max(cssW, cssH) / FIGURE_REF_PX);
   }
-  /* v2.3.2249: ...and never so far out that the character stops reading. */
-  scale = Math.max(scale, FIGURE_SCALE_FLOOR);
+  /* v2.3.2249: ...and never so far out that the character stops reading.
+     v2.3.2997: the three character-size floors are VIEW_OUT of what they
+     were; the zone's own no-void floor above is not (see VIEW_OUT). */
+  scale = Math.max(scale, FIGURE_SCALE_FLOOR * VIEW_OUT);
   return { W: cssW / scale, H: cssH / scale, scale };
 }
 
@@ -368,7 +404,7 @@ if (typeof window !== 'undefined') {
       if (!c) return null;
       const v = worldViewport(c, zoneId);
       return { zone: zoneId || null, scale: +v.scale.toFixed(4),
-        W: Math.round(v.W), H: Math.round(v.H) };
+        W: Math.round(v.W), H: Math.round(v.H), viewOut: VIEW_OUT };   /* v2.3.2997: + the zoom-out in force */
     } catch (_e) { return null; }
   };
 }

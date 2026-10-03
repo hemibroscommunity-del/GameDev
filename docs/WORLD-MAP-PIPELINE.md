@@ -2026,6 +2026,65 @@ standard size"*. The buildings had looked small.
   little softer than the ground beside them. Remaking them bigger in the
   Object Studio would make them as sharp as everything else.
 
+### 1.15x, and the whole view 25% further out (v2.3.2997)
+
+Owner, 2026-10-03, with 1.5x live: *"Change buildings from 1.5x to 1.15x and
+let me see what making the default scale looks like about 25% more zoomed out
+for everything by default (make both changes)"*.
+
+- **The town is 1.15x** (`BUILDINGS` in `plan.js`). Everything the 1.5x section
+  above says still holds at 1.15x:
+  - all 17 buildings, Market Row two a side;
+  - the gates at 1,050 art px (Main Street) and 1,161 (Market Row);
+  - the edge on the grass with its own noise: 19% in straight runs, the longest
+    264 game px;
+  - the monsters' places re-baked, none moved.
+- **The yard's few things keep to the town's ground.** The yard behind the
+  Back Lane is 78 art px deep, and the town's edge wanders up to about 100 art
+  px either way. So a spot a little way into the yard can come out on the
+  commons' grass: at 1.15x the cart did, at 1.5x two of the hay bales, at 1x a
+  barrel and a crate. Each moves to the nearest spot, along the yard or toward
+  the lane, where the ground under its whole footprint is the town's
+  (`placing.js`, the dressing's `yard`). If there is none, it stays put; one
+  crate at 1x has none.
+- **The view is 25% further out everywhere it can be**
+  (`src/game/worldViewport.js`, `VIEW_OUT` 0.8). The scale is set by three
+  floors that keep the character big enough:
+  - the 32x32 reference zone, which gives one character size in every zone
+    (v2.3.2257);
+  - the vista's old width rule;
+  - `FIGURE_SCALE_FLOOR`.
+
+  `VIEW_OUT` multiplies all three. So wherever the map has room, the world is
+  drawn at 0.8 the scale and the view takes in 1.25x the world each way. On the
+  QA phone (390x844, dashboard folded) that is scale 0.787 → 0.630, the view
+  495 → 619 world px across, and the bro 83 → 67 CSS px.
+- **"Don't zoom out larger than the screen area would show" still holds**
+  (v2.3.2247). Each zone's own no-void floor is not multiplied:
+  - The Wheel, where everyone is, has room to spare, and so does today's town.
+  - The old lands' 32x32 combat maps are exactly the screen already, so they
+    keep their size (they are closed).
+  - So the bro is now 0.8 the size in town that he is in a combat zone.
+    `mp-figscale` pins that ratio where it used to pin equality.
+- **`?zoom=k`** sets the factor for the tab, from 0.4 to 1.5. `?zoom=1` is the
+  view as it was, and `?zoom=1&bigtown=1.5` is the game exactly as it was on
+  2026-10-02.
+- **What it costs** (`mp-zoomout`, standing still, the same phone):
+  - The ground's pieces: 28 → 54 at the arrival (16 → 31 MB of colours) and
+    37 → 45 out on Frost Ridge.
+    - How many a view holds depends on how it sits on the 192 px grid of
+      pieces. 54 is exactly what this view and its margin can touch, so
+      nothing is kept that the view does not need.
+  - The decoded pictures go 165 → 173 MB at the arrival (more of the town's
+    sheets in view) and stay the same out on a land.
+  - The tested ceiling is "no more pieces than the view can touch", not a
+    ratio.
+- **Tests:** `mp-zoomout` shows both views on a phone against a real worker:
+  the scale ×0.8, the view ×1.25 across, the bro ×0.8, the buildings drawn
+  1.15x their pictures (1.5x under the old switches), the ground laid, the
+  cost, and pictures of each (`zoomout-{now,was}-{arrival,square,land}.png`).
+  test-world-core checks the switch and the plan.
+
 ## The objects take hits (v2.3.2995)
 
 Owner, 2026-10-03: *"change the sound if projectiles hit props to be more

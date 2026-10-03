@@ -131,6 +131,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     combat: window.__btWorldView && window.__btWorldView('ember'),
     canvasW: Math.round(document.querySelector('canvas').getBoundingClientRect().width),
     canvasH: Math.round(document.querySelector('canvas').getBoundingClientRect().height),
+    /* v2.3.2997: town's map as it is now (68 x 72 tiles), not the 1664 px it
+       was when this was written */
+    townW: (() => { const z = (window.__btZones || {}).town; return z ? z.w * 32 : 0; })(),
   }));
   console.log('    D10 sideways: ' + JSON.stringify(d10));
   rec.ok('the viewport rule can be asked about either zone (guard)',
@@ -145,8 +148,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       d10.town.scale < combatFloor - 0.05, { town: d10.town, combatFloor });
     /* And what it IS held to: town's own map, which is the "no void" rule
        doing the deciding rather than a reference the town does not need. */
-    rec.ok('...it is held to the TOWN map instead, so the view widens without void',
-      d10.town.W <= 1664 + 1 && d10.town.W > 1024, d10.town);
+    /* v2.3.2997: against the town map's own width, read live -- the literal
+       1664 here was town's width when D10 shipped (52 tiles); it is 68 now,
+       2176 px, and at 1664 this failed before VIEW_OUT existed (sideways
+       town drew 1688 px across at the 0.50 floor) */
+    rec.ok(`...it is held to the TOWN map instead, so the view widens without void (${d10.town.W} of ${d10.townW} px)`,
+      d10.townW > 0 && d10.town.W <= d10.townW + 1 && d10.town.W > 1024, d10);
   }
 
   /* open the Bag, then rotate back with it open */

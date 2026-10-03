@@ -77,7 +77,8 @@ import { MATERIALS } from '../style/bible.js';
 
 /* v2.3.2994: the plan as written, its town laid for buildings at their
    pictures' own size.  What everything imports is PLAN, at the end of this
-   file: this one with the town laid for buildings 1.5x that (BUILDINGS). */
+   file: this one with the town laid for buildings BUILDINGS times that
+   (1.15x since v2.3.2997; 1.5x before). */
 const BASE_PLAN = {
   id: 'brotown-world',
   version: 3,
@@ -993,8 +994,9 @@ export const TWO_A_SIDE_MAX = 1.5;
 export const BIG_TOWN_EDGE_SEED = 16;
 
 /* The building size the address asks for: `bigtown` alone is 2, `bigtown=k`
-   is k (1 to BIG_TOWN_MAX); BUILDINGS (1.5) without it, since v2.3.2994 --
-   `bigtown=1` is the town as it was, the pictures at their own size. */
+   is k (1 to BIG_TOWN_MAX); BUILDINGS without it (1.5 from v2.3.2994, 1.15
+   since v2.3.2997) -- `bigtown=1` is the town as it was, the pictures at
+   their own size, and `bigtown=1.5` the 1.5x town to compare. */
 export function bigTownScale(search) {
   const m = /(?:^|[?&])bigtown(?:=([0-9.]*))?(?:&|$)/.exec(search || '');
   if (!m) return BUILDINGS;
@@ -1053,7 +1055,20 @@ export function bigTownPlan(k) {
  * remade bigger in the Object Studio.  `?bigtown=1` still shows the town as
  * it was, and `?bigtown` (2x) or `bigtown=k` any other size.
  */
-export const BUILDINGS = 1.5;
+/* ═══ v2.3.2997: ...AND NOW 1.15x ═══
+ *
+ * Owner, 2026-10-03, with 1.5x live: "Change buildings from 1.5x to 1.15x",
+ * alongside "about 25% more zoomed out for everything by default"
+ * (src/game/worldViewport.js VIEW_OUT) -- at the wider view a 1.5x building
+ * filled the phone.  Everything above holds at 1.15: all 17 buildings, Market
+ * Row two a side, the gates at 1,050 (Main Street) and 1,161 (Market Row)
+ * art px, the edge on the grass its own noise (19% in straight runs, the
+ * longest 264 game px; 1.5x: 16%, 384).  The monsters' places re-baked and
+ * none moved.  The yard's cart, which the wandering edge put out on the
+ * commons' grass at this size, now finds town ground (placing.js, `yard`).
+ * `?bigtown=1.5` still shows the 1.5x town.
+ */
+export const BUILDINGS = 1.15;
 let _standard = null;
 export const PLAN = bigTownPlan(BUILDINGS);
 _standard = PLAN;
