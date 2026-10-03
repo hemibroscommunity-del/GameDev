@@ -3601,7 +3601,8 @@ BT_AUDIO.monsterHitHero = function (armored, opts, fallbackKey) {
   }
 };
 /* ═══ v2.3.2996: WHAT A MONSTER'S ELEMENT SOUNDS LIKE ON YOU ═══
-   The four statuses a monster's hit now carries (game/elemHits.js), each from
+   The four statuses a monster's hit now carries (game/elemHits.js; eight since
+   v2.3.3014, below), each from
    a recording already in the game -- no new files, nothing synthesised: the
    snowball's own crunch for a chill, the pan's sizzle for a burn and quieter
    for each of its ticks, the whirlwind's rush for a gust, the slime orb's
@@ -3615,6 +3616,38 @@ BT_AUDIO.ELEM_SOUNDS = {
   burnTick: ['pan-sizzle', 1.5, 0.35, 2.6, 1.08],
   gust: ['whirlwind', 0.1, 0.62, 0.45, 1.2],
   stuck: ['slime-projectile-hit', 0, 0.62, 2.2, 0.9],
+  /* v2.3.3014: the other four, each from a recording already here, its slice
+     picked off the recording's own loudness curve (the attack at its start,
+     peaks ~0.3-0.4 at full, under the clang): the pickaxe's first strike
+     slowed to a stony knock for the daze; the magic hit sped up to a zap for
+     the storm, and the cast's flicker for its arc on someone near; the
+     fishing catch's splash for the soak; the slime's death pop for the venom,
+     and the lure's small plop, deeper, for each poison tick. */
+  daze: ['mine-strike', 0, 0.25, 0.32, 0.72],
+  shock: ['magic-hit', 0.02, 0.3, 0.7, 1.3],
+  shockTick: ['magic-cast', 0, 0.2, 1, 1.5],
+  soak: ['catch-splash', 0.1, 0.55, 0.5, 1],
+  poison: ['slime-death', 0, 0.3, 0.26, 1.2],
+  poisonTick: ['lure-drop', 0, 0.13, 3.2, 0.8],
+};
+/* ═══ v2.3.3015: A SPRINT'S PUSH-OFF ═══
+   Asked of the sprint "no sprint sound or dust at the feet", the owner: "Yes
+   continue working on those items".  As a sprint's first stride lands
+   (game/sprint.js updateSprint 'run'), a short rush of air: the special
+   swipe's swoosh, its attack (0.02-0.32 s off its own loudness curve) a
+   touch slower, peaking ~0.3 -- under the footsteps that follow, which
+   already quicken with the stride.  A recording already in the game. */
+BT_AUDIO.SPRINT_PUSH = ['special-swipe', 0.02, 0.3, 2, 0.82];
+BT_AUDIO.sprintPush = function () {
+  var L = this.SPRINT_PUSH;
+  this._lastSprintSound = 'push';   /* what it meant to play, for the tests (mp-sprint) */
+  var h = this.play(L[0], { offset: L[1], duration: L[2], vol: L[3], rate: L[4] * (1 + (Math.random() - 0.5) * 0.06) });
+  if (!h || !h.gain || !this.ctx) return;
+  try {
+    var real = L[2] / (L[4] || 1), t0 = this.ctx.currentTime;
+    h.gain.gain.setValueAtTime(L[3], t0 + Math.max(0, real - 0.08));
+    h.gain.gain.linearRampToValueAtTime(0, t0 + real);
+  } catch (e) { /* the fade is a nicety */ }
 };
 BT_AUDIO.elemHit = function (st) {
   var L = st && Object.prototype.hasOwnProperty.call(this.ELEM_SOUNDS, st) ? this.ELEM_SOUNDS[st] : null;

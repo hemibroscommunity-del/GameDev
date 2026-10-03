@@ -22,6 +22,10 @@
  *   9. THE CLIENT'S RULES (src/game/sprint.js, no imports, so node runs it):
  *      who may start one, the speed, the predicted drain, what ends one, and
  *      the regen it holds off -- the half of the feature the browser runs.
+ *  10. WHAT THE OTHERS SEE (v2.3.3015): the tick's player carries `spr: 1`
+ *      while a paid step is within WIRE_MS -- never on a marked move the
+ *      worker did not pay for -- and a walking player's wire is unchanged;
+ *      the client's push-off ('run' on a sprint's first stride) and dust.
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { SPRINT } from '../src/sprint.js';
@@ -312,6 +316,59 @@ async function run(n, step, gapMs, extra) {
   C.updateSprint(S, 10, { key: true, moving: true, dtMs: FR });
   C.updateSprint(S, 20, { key: false, moving: true, dtMs: FR });
   check('client: letting go of Shift never ends a sprint the button started', C.sprintArmed(S) && S._sprint.how === 'tap');
+}
+
+// ── 10. WHAT THE OTHERS SEE (v2.3.3015) ─────────────────────────────────
+{
+  check('wire: the flag lasts SPRINT.WIRE_MS after the last paid step (a slow phone\'s ~400 ms gaps inside it)', SPRINT.WIRE_MS >= 450 && SPRINT.WIRE_MS <= 1000, SPRINT.WIRE_MS);
+  await fresh(100);
+  await run(4, 40, 100, { sp: 1 });
+  check('wire: sprinting, the worker says so (_sprintWire)', room._sprintWire(ps, T) === true);
+  wait(SPRINT.WIRE_MS + 1);
+  check('wire: ...and WIRE_MS after the last paid step, no longer', room._sprintWire(ps, T) === false);
+  await fresh(0);
+  await run(3, 40, 100, { sp: 1 });
+  check('wire: a marked move the worker did not pay for (no stamina) says nothing', room._sprintWire(ps, T) === false && !ps._sprintAt);
+  /* the real tick, to a second player in the same zone: the runner's
+     player carries spr while sprinting and is exactly as before walking --
+     and never `sp`, which in a player's data is the shirt pattern */
+  const wsW = fakeWs('w');
+  room.sessions.set(wsW, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: T });
+  await room.webSocketMessage(wsW, JSON.stringify({ type: 'join', id: 'pw', name: 'Watcher', protocolVersion: 2, data: { x: 1100, y: 1000, z: 'meadow' } }));
+  room.playerState.pw.z = 'meadow';
+  const tickOnce = async () => {
+    wsW.sent.length = 0;
+    room.startTickLoop();
+    await new Promise((r) => setTimeout(r, room.TICK_RATE * 3));
+    clearInterval(room.tickInterval); room.tickInterval = null;
+    const ticks = wsW.sent.filter((m) => m.type === 'tick' && m.players && m.players.p1);
+    return ticks.length ? ticks[ticks.length - 1].players.p1 : null;
+  };
+  await fresh(100);
+  await run(4, 40, 100, { sp: 1 });
+  room.dirtyPlayers.add('p1');
+  const seen = await tickOnce();
+  check('wire: the watcher\'s tick says the runner sprints (spr: 1), and leaves `sp` (the shirt pattern\'s key) alone', !!seen && seen.spr === 1 && !('sp' in seen), seen);
+  wait(SPRINT.WIRE_MS + 1);
+  await run(2, 40, 100);
+  room.dirtyPlayers.add('p1');
+  const walking = await tickOnce();
+  check('wire: ...and walking, the runner\'s player is exactly as before (no spr key at all)', !!walking && !('spr' in walking) && !('sp' in walking), walking);
+  room.sessions.delete(wsW);
+  delete room.playerState.pw;
+
+  /* the client: a sprint's first stride is its push-off, once */
+  const S = { rpg: { stamina: 100, maxStamina: 100 }, _serverCaps: { sprint: true }, currentZone: 'wheel', hitParticles: [] };
+  C.startSprint(S, 1000, 'tap');
+  const e1 = C.updateSprint(S, 1017, { moving: true, dtMs: 16.7 });
+  const e2 = C.updateSprint(S, 1034, { moving: true, dtMs: 16.7 });
+  check('client: the first moving frame of a sprint is its push-off (\'run\'), and only the first', e1 === 'run' && e2 === null, { e1, e2 });
+  const n = C.sprintDust(S, 100, 200, 'snow', 0, 1, 4);
+  check('client: a footfall\'s dust is the ground\'s colour, thrown back against the run',
+    n === 4 && S.hitParticles.length === 4 && S.hitParticles.every((p) => C.SPRINT_DUST.snow.includes(p.color) && p.vx < 0.5), S.hitParticles.slice(0, 2));
+  S.hitParticles.length = 0;
+  C.sprintDust(S, 100, 200, 'lava', null, 1, 3);
+  check('client: a ground it does not know is the dirt\'s', S.hitParticles.every((p) => C.SPRINT_DUST.dirt.includes(p.color)));
 }
 
 Date.now = realNow;

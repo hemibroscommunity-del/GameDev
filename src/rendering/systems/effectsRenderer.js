@@ -501,6 +501,8 @@ import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_IN
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
 import { wheelNodeView, WheelFish } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
+import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
+import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
@@ -9612,6 +9614,13 @@ export class EffectsRenderer {
       if (!this._wheelFish) this._wheelFish = new WheelFish(this.lootLayer);
       this._wheelFish.update(_wheelSpots || [], now);
     }
+    /* v2.3.3016: the Wheel's dungeon mouths at its landmarks (wheelDoors.js)
+       -- and, anywhere else or against a worker that opens none, none */
+    const _doors = (S.currentZone === 'wheel' && wheelDungeonsSupported(S)) ? wheelDungeonDoors() : null;
+    if (_doors || (this._wheelDoors && this._wheelDoors.size)) {
+      if (!this._wheelDoors) this._wheelDoors = new WheelDoors(this.lootLayer);
+      this._wheelDoors.update(_doors || [], S, now);
+    }
     this._drawGatherHpBar(S, nodes, now);   /* v2.3.2956 */
     this._advanceOreBreaks(now);
     this._advanceItemPops(now);
@@ -10330,7 +10339,13 @@ export class EffectsRenderer {
       const stuck = R._stuckUntil > now ? R._stuckUntil - now : 0;
       const burn = R._burnUntil > now ? R._burnUntil - now : 0;
       const gustAge = R._gustAt ? now - R._gustAt : Infinity;
-      if (!chill && !stuck && !burn && !(gustAge >= 0 && gustAge < GUST_FX_MS)) return;
+      /* v2.3.3014: the rock monster's daze, the storm's crackle, the
+         fishman's soak, the Mire's poison */
+      const daze = R._dazeUntil > now ? R._dazeUntil - now : 0;
+      const shock = R._shockUntil > now ? R._shockUntil - now : 0;
+      const soak = R._soakUntil > now ? R._soakUntil - now : 0;
+      const poison = R._poisonUntil > now ? R._poisonUntil - now : 0;
+      if (!chill && !stuck && !burn && !(gustAge >= 0 && gustAge < GUST_FX_MS) && !daze && !shock && !soak && !poison) return;
       const k = zonePlayerScale(zone, x, y, TILE) || 1;
       const fy = y + playerGroundDy(zone, x, y);
       /* QA (mp-elemhits), armed by the harness only: frames each look was drawn */
@@ -10340,6 +10355,11 @@ export class EffectsRenderer {
         if (stuck) d.stuck = (d.stuck || 0) + 1;
         if (burn) d.burn = (d.burn || 0) + 1;
         if (gustAge >= 0 && gustAge < GUST_FX_MS) d.gust = (d.gust || 0) + 1;
+        if (daze) d.daze = (d.daze || 0) + 1;
+        if (shock) d.shock = (d.shock || 0) + 1;
+        if (soak) d.soak = (d.soak || 0) + 1;
+        if (poison) d.poison = (d.poison || 0) + 1;
+        if (shock && R._shockFrom) d.arc = (d.arc || 0) + 1;
       }
       if (burn) {
         const a = Math.min(1, burn / 250);
@@ -10449,6 +10469,138 @@ export class EffectsRenderer {
           }
         }
       }
+      /* ═══ v2.3.3014: THE OTHER FOUR LOOKS ═══
+         Each in code, round whoever was hit (peers too), sized as the four
+         above: the figure ~100 tall, boots at fy. */
+      if (soak) {
+        /* WATER: a deep-blue puddle at the feet with ripples running out of
+           it, water running down you, and drips falling off you while it
+           lasts.  (The first cut, a faint ring, did not read on sand at
+           phone size: mp-elemhits' look-soak.) */
+        const a = Math.min(1, soak / 400);
+        g.ellipse(x, fy, 27 * k, 9.5 * k); g.fill({ color: 0x2f7fd0, alpha: 0.5 * a });
+        g.ellipse(x - 5 * k, fy - 1.5 * k, 13 * k, 3.6 * k); g.fill({ color: 0x9fd8ff, alpha: 0.55 * a });
+        for (let i = 0; i < 2; i++) {
+          const ph = ((now / 900) + i * 0.5) % 1;
+          g.ellipse(x, fy, (12 + ph * 24) * k, (4 + ph * 8.2) * k);
+          g.stroke({ color: 0xd8f2ff, width: 2.2 * k, alpha: 0.9 * (1 - ph) * a });
+        }
+        /* water running down the body, in front of it */
+        for (let i = 0; i < 4; i++) {
+          const ph = ((now / 650) + i * 0.27) % 1;
+          const sx = x + (i - 1.5) * 6.5 * k;
+          const sy = fy - (78 - i * 9) * k + ph * 26 * k;
+          f.moveTo(sx, sy); f.lineTo(sx, sy + 9 * k);
+          f.stroke({ color: 0x8fd0ff, width: 2 * k, alpha: 0.85 * (1 - ph) * a, cap: 'round' });
+          f.circle(sx, sy + 10 * k, 1.6 * k); f.fill({ color: 0xcfeeff, alpha: 0.9 * (1 - ph) * a });
+        }
+        if (parts && Math.random() < 0.75 * dts) {
+          parts.push({ x: x + (Math.random() - 0.5) * 24 * k, y: fy - (30 + Math.random() * 50) * k,
+            vx: (Math.random() - 0.5) * 0.15, vy: 1.6 + Math.random() * 0.8, life: 0.45,
+            color: Math.random() < 0.5 ? '#3f9be8' : '#cfeeff', size: 2.1 + Math.random() * 0.9 });
+        }
+      }
+      if (poison) {
+        /* VENOM: a sick green pool underfoot, a green haze on you, bubbles
+           rising off you and popping over your head and shoulders */
+        const a = Math.min(1, poison / 300);
+        const pl = 0.85 + 0.15 * Math.sin(now / 160);
+        g.ellipse(x, fy, 27 * k, 9.5 * k); g.fill({ color: 0x6fcf2a, alpha: 0.45 * a * pl });
+        g.ellipse(x, fy, 27 * k, 9.5 * k); g.stroke({ color: 0x3f8a1a, width: 2.2 * k, alpha: 0.85 * a });
+        f.ellipse(x, fy - 48 * k, 17 * k, 44 * k); f.fill({ color: 0x8be04a, alpha: 0.13 * a * pl });
+        const spots = [[-9, 78], [10, 84], [-15, 52], [15, 56]];
+        for (let i = 0; i < spots.length; i++) {
+          const ph = ((now / 700) + i * 0.27) % 1;
+          const bx = x + spots[i][0] * k, by = fy - (spots[i][1] + ph * 24) * k;
+          const r = (2.8 + ph * 3.8) * k;
+          f.circle(bx, by, r); f.fill({ color: 0x9fe04a, alpha: 0.35 * (1 - ph) * a });
+          f.circle(bx, by, r); f.stroke({ color: 0x4f9a24, width: 1.8 * k, alpha: 0.95 * (1 - ph * ph) * a });
+          f.circle(bx - r * 0.35, by - r * 0.35, 1.1 * k); f.fill({ color: 0xeaffc8, alpha: 0.9 * (1 - ph) * a });
+        }
+        if (parts && Math.random() < 0.6 * dts) {
+          parts.push({ x: x + (Math.random() - 0.5) * 26 * k, y: fy - (8 + Math.random() * 60) * k,
+            vx: (Math.random() - 0.5) * 0.3, vy: -0.7 - Math.random() * 0.6, life: 0.7,
+            color: Math.random() < 0.5 ? '#a6e24a' : '#4f9a24', size: 2 + Math.random() * 1.4 });
+        }
+      }
+      if (daze) {
+        /* STONE: five stars wheeling round your head on a faint halo -- the
+           half behind it drawn under the figure, the half in front over it
+           -- and grit off the blow, once */
+        const a = Math.min(1, daze / 150);
+        const hx = x, hy = fy - 98 * k;
+        g.ellipse(hx, hy, 20 * k, 6.5 * k); g.stroke({ color: 0xfff2a8, width: 1.6 * k, alpha: 0.55 * a });
+        for (let i = 0; i < 5; i++) {
+          const ang = now / 170 + i * (Math.PI * 2 / 5);
+          const sx = hx + Math.cos(ang) * 20 * k, sy = hy + Math.sin(ang) * 6.5 * k;
+          const gg = Math.sin(ang) < 0 ? g : f;
+          const rO = 5.6 * k, rI = 2.4 * k;
+          for (let q = 0; q < 10; q++) {
+            const qa = -Math.PI / 2 + q * Math.PI / 5 + now / 400;
+            const rr = q % 2 ? rI : rO;
+            if (q === 0) gg.moveTo(sx + Math.cos(qa) * rr, sy + Math.sin(qa) * rr);
+            else gg.lineTo(sx + Math.cos(qa) * rr, sy + Math.sin(qa) * rr);
+          }
+          gg.closePath();
+          gg.fill({ color: 0xffe36b, alpha: 0.97 * a });
+          gg.stroke({ color: 0x5a4410, width: 1.1 * k, alpha: 0.8 * a });
+        }
+        if (parts && R._dazeGritAt !== R._dazeUntil) {
+          R._dazeGritAt = R._dazeUntil;
+          for (let i = 0; i < 9; i++) {
+            parts.push({ x: x + (Math.random() - 0.5) * 20 * k, y: fy - (20 + Math.random() * 50) * k,
+              vx: (Math.random() - 0.5) * 2.4, vy: -0.6 - Math.random() * 1.2, life: 0.55,
+              color: i % 2 ? '#a89a82' : '#d4c8b0', size: 2 + Math.random() });
+          }
+        }
+      }
+      if (shock) {
+        /* STORM: a crackling glow on you and lightning forking off you, new
+           every 50 ms -- a pale core over a wide blue glow, so it reads on
+           snow and on sand -- and, for an arc that came off someone near
+           you, the bolt from them.  (The first cut's thin sparks were lost
+           at phone size: mp-elemhits' look-shock.) */
+        const a = Math.min(1, shock / 150);
+        let seed = (Math.floor(now / 50) * 9301 + (R === S ? 7 : 13)) % 233280;
+        const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+        const zig = (x0, y0, x1, y1, n, amp) => {
+          const pts = [[x0, y0]];
+          const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+          for (let i = 1; i < n; i++) {
+            const t = i / n, o = (rnd() - 0.5) * 2 * amp;
+            pts.push([x0 + dx * t + nx * o, y0 + dy * t + ny * o]);
+          }
+          pts.push([x1, y1]);
+          return pts;
+        };
+        const stroke = (pts, w) => {
+          for (const pass of [0, 1]) {
+            f.moveTo(pts[0][0], pts[0][1]);
+            for (let i = 1; i < pts.length; i++) f.lineTo(pts[i][0], pts[i][1]);
+            f.stroke({ color: pass ? 0xfffbe0 : 0x5fbcff, width: pass ? w : w * 3.2, alpha: (pass ? 0.98 : 0.5) * a, cap: 'round', join: 'round' });
+          }
+        };
+        const fl = 0.7 + 0.3 * rnd();
+        g.ellipse(x, fy - 46 * k, 24 * k, 54 * k); g.fill({ color: 0xbfe6ff, alpha: 0.18 * a * fl });
+        f.ellipse(x, fy - 46 * k, 15 * k, 44 * k); f.fill({ color: 0xfff6a0, alpha: 0.12 * a * fl });
+        for (let i = 0; i < 4; i++) {
+          const ang0 = rnd() * Math.PI * 2;
+          const cx0 = x + Math.cos(ang0) * 10 * k, cy0 = fy - (22 + rnd() * 62) * k;
+          const len = (24 + rnd() * 16) * k;
+          const ex = cx0 + Math.cos(ang0) * len, ey = cy0 + Math.sin(ang0) * len * 0.7;
+          const pts = zig(cx0, cy0, ex, ey, 5, 5 * k);
+          stroke(pts, 2.2 * k);
+          /* a fork off its middle */
+          const mid = pts[2], fa = ang0 + (rnd() < 0.5 ? 0.7 : -0.7);
+          stroke(zig(mid[0], mid[1], mid[0] + Math.cos(fa) * len * 0.45, mid[1] + Math.sin(fa) * len * 0.32, 3, 3 * k), 1.5 * k);
+        }
+        const from = R._shockFrom;
+        if (from && typeof from.x === 'number' && now - (R._shockAt || 0) < 300) {
+          const ty = fy - 50 * k, sy0 = from.y + playerGroundDy(zone, from.x, from.y) - 50 * k;
+          const L = Math.hypot(x - from.x, ty - sy0);
+          stroke(zig(from.x, sy0, x, ty, Math.max(4, Math.round(L / (14 * k))), 8 * k), 2.8 * k);
+        }
+      }
     };
     if (!isPlayerDead(S)) draw(S, S.player.x, S.player.y);
     const others = S.others;
@@ -10456,7 +10608,8 @@ export class EffectsRenderer {
       for (const id of Object.keys(others)) {
         const o = others[id];
         if (!o || o._isDead || (o.zone || o.z || 'town') !== zone) continue;
-        if (!(o._chillUntil > now || o._stuckUntil > now || o._burnUntil > now || (o._gustAt && now - o._gustAt < GUST_FX_MS))) continue;
+        if (!(o._chillUntil > now || o._stuckUntil > now || o._burnUntil > now || (o._gustAt && now - o._gustAt < GUST_FX_MS)
+          || o._dazeUntil > now || o._shockUntil > now || o._soakUntil > now || o._poisonUntil > now)) continue;   /* v2.3.3014: + the other four */
         const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
         const oy = typeof o.renderY === 'number' ? o.renderY : o.y;
         if (typeof ox === 'number' && typeof oy === 'number') draw(o, ox, oy);
@@ -14152,6 +14305,7 @@ export class EffectsRenderer {
     }
     this.nodeGfx.clear();
     if (this._wheelFish) this._wheelFish.clear();   /* v2.3.3012 */
+    if (this._wheelDoors) this._wheelDoors.clear();   /* v2.3.3016 */
     this.flashOverlay.clear();
     this.atmosphereGfx.clear();
     for (const t of this.dmgTexts) t.destroy();

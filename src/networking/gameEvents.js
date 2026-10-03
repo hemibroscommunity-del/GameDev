@@ -30,8 +30,11 @@ import { rollMonsterShard } from '@/data/shards.js';
 import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowball stops where the worker's own line meets a prop */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
-import { applyElemHit, elemLook, isBurnTick } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element */
+import { applyElemHit, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks */
 import { echoHitSfx, heroHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's */
+import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
+import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
+import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
@@ -693,66 +696,139 @@ export function processGameEvent(type, payload, S, deps) {
                  and delivers the wave. */
               if (!payload || !payload.zone) break;
               var _dCfg = payload.cfg || {};
-              var _ddW = _dCfg.width || 25,
-                _ddH = _dCfg.height || 20;
-              S._preDungeonPos = { x: S.player.x, y: S.player.y };
-              var _ddMap = Array.from({ length: _ddH }, function () { return Array(_ddW).fill(0); });
-              for (var _ddx = 0; _ddx < _ddW; _ddx++) { _ddMap[0][_ddx] = 7; _ddMap[_ddH - 1][_ddx] = 7; }
-              for (var _ddy = 0; _ddy < _ddH; _ddy++) { _ddMap[_ddy][0] = 7; _ddMap[_ddy][_ddW - 1] = 7; }
-              var _ddMX = Math.floor(_ddW / 2),
-                _ddMY = Math.floor(_ddH / 2);
-              for (var _ddx2 = 1; _ddx2 < _ddW - 1; _ddx2++) _ddMap[_ddMY][_ddx2] = 1;
-              for (var _ddy2 = 1; _ddy2 < _ddH - 1; _ddy2++) _ddMap[_ddy2][_ddMX] = 1;
-              for (var _ddi = 0; _ddi < Math.floor(_ddW * _ddH * 0.08); _ddi++) {
-                _ddMap[2 + Math.floor(Math.random() * (_ddH - 4))][2 + Math.floor(Math.random() * (_ddW - 4))] = 1;
-              }
-              _ddMap[_ddH - 1][_ddMX] = 9;
-              _ddMap[_ddH - 1][_ddMX + 1] = 9;
-              S.map = _ddMap;
-              globalThis.TOWN_W = _ddW * TILE;
-              globalThis.TOWN_H = _ddH * TILE;
-              globalThis.COLS = _ddW;
-              globalThis.ROWS = _ddH;
-              /* Synthetic zone entry: not safe (combat works), not
-                 lawless (PvP fails closed server-side anyway), empty
-                 spawns (spawnMonstersForZone guards on it).  Tagged
-                 _instance so exit paths only ever delete what we added
-                 and the Encyclopedia can filter it. */
-              ZONES[payload.zone] = {
-                id: payload.zone, name: _dCfg.name || 'Dungeon', w: _ddW, h: _ddH,
-                level: [_dCfg.monsterLevel || 1, _dCfg.monsterLevel || 1],
-                element: _dCfg.element || null, safe: false, spawns: [], _instance: true
+              /* ═══ v2.3.3016: A WHEEL DUNGEON -- ITS LAND'S OWN MONSTERS ═══
+                 Opened at one of the Wheel's mouths (game/wheelDungeons.js,
+                 server/src/wheeldungeon.js): its config names the land
+                 (`home`) and the worker sends the way back out (`back`, a
+                 step outside the mouth).  Every look the land's monsters
+                 wear loads first, behind the loading screen (the law, for
+                 any zone but the Wheel itself); then the arena below, as for
+                 any dungeon; then the Wheel's own looks that the arena does
+                 not use are let go (releaseLeftZoneArt).  The worker holds
+                 the wave until someone stands in it. */
+              var _dHome = (typeof _dCfg.home === 'string' && Object.prototype.hasOwnProperty.call(ZONES, _dCfg.home)) ? _dCfg.home : null;
+              var _dFrom = S.currentZone;
+              var _enterArena = function () {
+                var _ddW = _dCfg.width || 25,
+                  _ddH = _dCfg.height || 20;
+                S._preDungeonPos = { x: S.player.x, y: S.player.y };
+                var _ddMap, _ddSpawn = null;
+                if (_dHome) {
+                  /* v2.3.3016: a Wheel dungeon's arena is its own -- the size
+                     an upright phone shows at the Wheel's character size, its
+                     way out a row you can step on (game/wheelDungeons.js) */
+                  var _wa = wheelArenaMap(_ddW, _ddH);
+                  _ddW = _wa.W; _ddH = _wa.H;
+                  _ddMap = _wa.map;
+                  _ddSpawn = _wa.spawn;
+                } else {
+                  _ddMap = Array.from({ length: _ddH }, function () { return Array(_ddW).fill(0); });
+                  for (var _ddx = 0; _ddx < _ddW; _ddx++) { _ddMap[0][_ddx] = 7; _ddMap[_ddH - 1][_ddx] = 7; }
+                  for (var _ddy = 0; _ddy < _ddH; _ddy++) { _ddMap[_ddy][0] = 7; _ddMap[_ddy][_ddW - 1] = 7; }
+                  var _ddMX0 = Math.floor(_ddW / 2),
+                    _ddMY = Math.floor(_ddH / 2);
+                  for (var _ddx2 = 1; _ddx2 < _ddW - 1; _ddx2++) _ddMap[_ddMY][_ddx2] = 1;
+                  for (var _ddy2 = 1; _ddy2 < _ddH - 1; _ddy2++) _ddMap[_ddy2][_ddMX0] = 1;
+                  for (var _ddi = 0; _ddi < Math.floor(_ddW * _ddH * 0.08); _ddi++) {
+                    _ddMap[2 + Math.floor(Math.random() * (_ddH - 4))][2 + Math.floor(Math.random() * (_ddW - 4))] = 1;
+                  }
+                  _ddMap[_ddH - 1][_ddMX0] = 9;
+                  _ddMap[_ddH - 1][_ddMX0 + 1] = 9;
+                }
+                var _ddMX = Math.floor(_ddW / 2);
+                S.map = _ddMap;
+                globalThis.TOWN_W = _ddW * TILE;
+                globalThis.TOWN_H = _ddH * TILE;
+                globalThis.COLS = _ddW;
+                globalThis.ROWS = _ddH;
+                /* Synthetic zone entry: not safe (combat works), not
+                   lawless (PvP fails closed server-side anyway), empty
+                   spawns (spawnMonstersForZone guards on it).  Tagged
+                   _instance so exit paths only ever delete what we added
+                   and the Encyclopedia can filter it. */
+                ZONES[payload.zone] = {
+                  id: payload.zone, name: _dCfg.name || 'Dungeon', w: _ddW, h: _ddH,
+                  level: [_dCfg.monsterLevel || 1, _dCfg.monsterLevel || 1],
+                  element: _dCfg.element || null, safe: false, spawns: [], _instance: true
+                };
+                /* v2.3.3016: a Wheel dungeon's monsters are its land's own:
+                   the land is the arena's `homes`, so their looks are kept
+                   and drawn as in the Wheel (rendering/wheelMonsterArt.js),
+                   and the townsfolk of where you came from stay there */
+                if (_dHome) {
+                  ZONES[payload.zone].homes = [_dHome];
+                  S.npcs = null;
+                  /* v2.3.3016: and its land's look -- its colours (the floor's
+                     fallback, and every reader of a zone's palette) and its own
+                     ground picture for the floor (tileRenderer.js
+                     _rebuildFloorPic), walled in the floor's darkest shade */
+                  var _hz = ZONES[_dHome], _fl = WHEEL_DUNGEON_FLOOR[_dHome] || {};
+                  if (_hz && _hz.palette) ZONES[payload.zone].palette = _hz.palette;
+                  if (_dFloor) ZONES[payload.zone].floorPic = _dFloor;
+                  if (_fl.wall != null) ZONES[payload.zone].wallColor = _fl.wall;
+                  if (_fl.edge != null) ZONES[payload.zone].edgeColor = _fl.edge;
+                }
+                S._dungeonZone = S.currentZone; /* return zone for the tile-9 exit */
+                S.currentZone = payload.zone;
+                S._serverDungeon = payload.zone;
+                S._dungeonEnteredAt = Date.now();   /* v2.3.3016: its door is deaf a moment (zoneTransitions.js) */
+                S._inDungeon = true;
+                S._inCustomDungeon = true;
+                S._customDungeonConfig = _dCfg;
+                S._dungeonDepth = 'shallow';
+                S._dungeonWave = 0;
+                S._dungeonMaxWaves = _dCfg.waves || 3;
+                S._dungeonBossSpawned = false;
+                S._dungeonComplete = false;
+                S.monsters = [];
+                S.gatherNodes = [];
+                S.groundLoot = [];
+                if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
+                S.hitParticles = [];
+                S.deathExplosions = [];
+                S.arrows = [];
+                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */ S.slimeShockwaves = []; /* v2.3.2912: and the slime burst's shockwave */
+                S.player.x = _ddSpawn ? _ddSpawn.x : _ddMX * TILE;
+                S.player.y = _ddSpawn ? _ddSpawn.y : (_ddH - 3) * TILE;
+                S._zoneWipe = Date.now();
+                /* Step into the instance NOW (not on the next joystick
+                   packet) so the wave-1 zone_state arrives immediately. */
+                if (S.channel) {
+                  try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
+                }
+                pushDmgPopup(S, S.player.x, S.player.y - 50, _dCfg.name || 'Dungeon', '#a070e0');
+                pushDmgPopup(S, S.player.x, S.player.y - 35, 'Wave 1/' + (_dCfg.waves || 3), 'rgba(255,255,255,.5)');
+                BT_AUDIO.beep(400, 0.1, 0.12, 'sine');
               };
-              S._dungeonZone = S.currentZone; /* return zone for the tile-9 exit */
-              S.currentZone = payload.zone;
-              S._serverDungeon = payload.zone;
-              S._inDungeon = true;
-              S._inCustomDungeon = true;
-              S._customDungeonConfig = _dCfg;
-              S._dungeonDepth = 'shallow';
-              S._dungeonWave = 0;
-              S._dungeonMaxWaves = _dCfg.waves || 3;
-              S._dungeonBossSpawned = false;
-              S._dungeonComplete = false;
-              S.monsters = [];
-              S.gatherNodes = [];
-              S.groundLoot = [];
-              if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-              S.hitParticles = [];
-              S.deathExplosions = [];
-              S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */ S.slimeShockwaves = []; /* v2.3.2912: and the slime burst's shockwave */
-              S.player.x = _ddMX * TILE;
-              S.player.y = (_ddH - 3) * TILE;
-              S._zoneWipe = Date.now();
-              /* Step into the instance NOW (not on the next joystick
-                 packet) so the wave-1 zone_state arrives immediately. */
-              if (S.channel) {
-                try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
+              var _dFloor = null, _dFloorLate = false;
+              if (_dHome && payload.back) {
+                keepDungeonBack(S, payload.back);
+                S._wheelDungeonOpening = payload.zone;
+                showZoneLoadingOverlay(_dCfg.name || 'Dungeon');
+                /* v2.3.3016: ...and its floor, the land's own ground picture.
+                   One that comes in after the screen has lifted without it is
+                   let go: the arena already drew the land's flat colour. */
+                var _floorP = loadDungeonFloor(_dHome).then(function (u) {
+                  if (_dFloorLate) { freeDungeonFloor(u); return; }
+                  _dFloor = u;
+                }).catch(function () { return null; });
+                Promise.race([
+                  Promise.all([loadLandLooks(_dHome).catch(function () { return null; }), _floorP]),
+                  new Promise(function (r) { setTimeout(r, 8000); }),
+                ]).then(function () {
+                  _dFloorLate = true;
+                  hideZoneLoadingOverlay();
+                  if (S._wheelDungeonOpening !== payload.zone) { freeDungeonFloor(_dFloor); return; }
+                  S._wheelDungeonOpening = null;
+                  /* died, or somewhere else, while it loaded: the worker
+                     sweeps the instance nobody entered */
+                  if (S.currentZone !== _dFrom || S._dying || !S.player) { S._dungeonBack = null; freeDungeonFloor(_dFloor); return; }
+                  _enterArena();
+                  try { releaseLeftZoneArt(_dFrom, payload.zone); } catch (e) { /* a leak, not a crash */ }
+                });
+              } else {
+                _enterArena();
               }
-              pushDmgPopup(S, S.player.x, S.player.y - 50, _dCfg.name || 'Dungeon', '#a070e0');
-              pushDmgPopup(S, S.player.x, S.player.y - 35, 'Wave 1/' + (_dCfg.waves || 3), 'rgba(255,255,255,.5)');
-              BT_AUDIO.beep(400, 0.1, 0.12, 'sine');
               break;
             }
           case 'dungeon_wave':
@@ -797,6 +873,9 @@ export function processGameEvent(type, payload, S, deps) {
               S.screenShake = 10;
               setTimeout(function () {
                 if (!S._serverDungeon) return; /* already left via the exit tile */
+                /* v2.3.3016: a Wheel dungeon's way home is the mouth you went in
+                   by (game/wheelDungeons.js), not the farm */
+                if (leaveWheelDungeon(S)) return;
                 if (ZONES[S._serverDungeon] && ZONES[S._serverDungeon]._instance) delete ZONES[S._serverDungeon];
                 S._serverDungeon = null;
                 S._inDungeon = false;
@@ -2505,7 +2584,7 @@ export function processGameEvent(type, payload, S, deps) {
                      (see the local branch below).  Their max HP is the one
                      their health bar reads (rpgMaxHp). */
                   var _bdmg = typeof payload.dmgTaken === 'number' ? payload.dmgTaken : 0;
-                  if (_bdmg > 0 && !payload.blocked && !payload.dodged && !isBurnTick(payload)) {   /* v2.3.2996: fire does not bleed */
+                  if (_bdmg > 0 && !payload.blocked && !payload.dodged && !tickKind(payload)) {   /* v2.3.2996: fire does not bleed; v2.3.3014: nor poison, nor a storm's arc */
                     var _bSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
                     var _bx = (typeof payload.attackerX === 'number') ? payload.attackerX : (_bSrc ? _bSrc.x : null);
                     var _by = (typeof payload.attackerY === 'number') ? payload.attackerY : (_bSrc ? _bSrc.y : null);
@@ -2543,7 +2622,11 @@ export function processGameEvent(type, payload, S, deps) {
                   if (_eLog.length > 60) _eLog.splice(0, _eLog.length - 60);
                 } catch (e) { /* a probe never breaks the game */ }
               }
-              var _burnTick = isBurnTick(payload);
+              /* v2.3.3014: a poison's tick and a storm's arc are not blows
+                 either -- `_burnTick` below means "a tick", whichever; its
+                 kind picks the sparks and the sound */
+              var _tickK = tickKind(payload);
+              var _burnTick = !!_tickK;
               var _elLook = elemLook(payload.elem) || (payload.ability === 'firetrail' ? elemLook('flame') : null);
               /* ── Out-of-range filter ──
                  The server's monster-attack ranging was firing damage
@@ -2845,15 +2928,18 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.secondWind > 0) {
                 pushDmgPopup(S, S.player.x + 16, S.player.y - 38, '+' + payload.secondWind + ' Second Wind', '#4ade80', { ts: Date.now() + 2 });
               }
+              /* v2.3.3014: a poison's sparks green, a storm's yellow-white */
+              var _tickCols = _tickK === 'poison' ? ['#b6f05a', '#6fbf3a'] : _tickK === 'shock' ? ['#fff7b0', '#9fd8ff'] : ['#ffd27a', '#ff9a3c'];
               for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
                 x: S.player.x, y: S.player.y,
                 vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
-                life: 0.6, color: _burnTick ? (hp3 & 1 ? '#ffd27a' : '#ff9a3c') : '#ff5e6c', size: 2
+                life: 0.6, color: _burnTick ? _tickCols[hp3 & 1] : '#ff5e6c', size: 2
               });
               if (_burnTick) {
                 /* v2.3.2996: the sizzle is the tick's sound; the armour clang
-                   below is for a blow */
-                try { BT_AUDIO.elemHit('burnTick'); } catch (e) { /* sound only */ }
+                   below is for a blow.  v2.3.3014: a poison's tick bubbles,
+                   a storm's arc crackles. */
+                try { BT_AUDIO.elemHit(_tickK + 'Tick'); } catch (e) { /* sound only */ }
                 break;
               }
               S.screenShake = 3;

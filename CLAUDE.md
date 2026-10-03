@@ -640,7 +640,112 @@ remnant to migrate server-side, not a mode to preserve.
       node its next step needs (questRoute.js `_wheelGatherPoint`, a step's
       `node`); the Wheel's nodes drop at the flip to town;
     - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,
-      `mp-wheelnodes`: docs/specs/wheel-resources.md.)
+      `mp-wheelnodes`: docs/specs/wheel-resources.md.
+  - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
+    levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
+    continue working on those items":
+    - each land's next three stretches (tiers 2-4, levels 6-10, 11-15, 16-20,
+      the rest of its first stage) have its own spawn list again, 6 a
+      stretch: 144 more, 192 in all, ids `wm-<home>-t<tier>-<k>`, the first
+      stretch's 48 unchanged and first in the list (wheelzone.js);
+    - a monster's level is its stretch's by where it stands in it; its stats
+      from the one copy of the math, `_makeZoneMonster(..., atLevel)`;
+      rewards its home's; the first stretch keeps levels 1-2;
+    - places baked like the first stretch's (`SPAWN_RULES.deep`,
+      `WHEEL_SPAWNS[home].deeper`): on that very tier, 120 px inside it,
+      360 px from a camp's plot; test-world-core checks them;
+    - the client no longer clamps a Wheel monster's level to its home's 1-2
+      (monsterVariants.js applyZoneVariant: "Lv 2" on a level-18 snowman);
+    - the Wheel's monster separation is a sweep along x (`_wheelSeparate`):
+      every pair of 192 was 1.0 of the tick's 1.27 ms, now 0.26 ms in all;
+      every other zone keeps the old loop; `wheeldeep: false` the kill switch;
+    - the resources (#780's, v2.3.3012) keep their 300 px from these places
+      too (the bake's `monsterPts` takes `deeper`): re-baked, 142 nodes, 84
+      moved; `mp-wheelseats` walks to all 34 fishing seats on a phone and
+      checks them against the ground as drawn (docs/specs/wheel-resources.md);
+    - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§9,
+      `mp-wheeldeep`.
+  - Since v2.3.3014 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
+    stuns briefly; storm shocks nearby players; water slows stamina refill;
+    venom poisons over time", the owner: "Yes continue working on those
+    items" (server/src/monsterstatus.js, client src/game/elemHits.js):
+    - stone (rock monsters) DAZE 0.5 s: no walk, swing, roll or shield
+      (`combatHelpers.dazeRefused` beside `swimRefused`, and the auto-attack
+      loop), 2.5 s before another; stars round the head;
+    - storm (Storm Peaks slimes) SHOCK: the hit arcs to every other player
+      within 150 px (nearest 4), half its damage each, elemental, under a
+      15% max-HP rail, never onto the safe ground or a harvester -- each arc
+      that player's own monster_attack `ability: 'shock'` (`_shockArcs`);
+    - water (fishmen) SOAK 4 s: the regen tick refills stamina at 0.4
+      (`_soakRegenMult`; exactly 1 when dry);
+    - venom (wisps, lurkers) POISON: the burn's machinery in its own Map
+      (`_poisons`, `_igniteDot`/`_tickDots`/`_dotTick`), five ticks of 12%;
+    - looks, chips (Dazed/Soaked/Poisoned), icons `elem-stone/storm/water/
+      venom`, sounds sliced from recordings already here (ELEM_SOUNDS);
+      `elemhits: false` still stops them all; `monsterstatus` §10-13,
+      `mp-elemhits`: docs/specs/monster-statuses.md "The other four".
+  - Since v2.3.3015 A SPRINT IS SEEN AND HEARD -- offered "sprint polish:
+    other players' legs at sprint pace, a dust puff, a sprint sound", the
+    owner: "Yes continue working on those items":
+    - the tick's player carries `spr: 1` while the worker paid it a sprint
+      step in the last `SPRINT.WIRE_MS` 600 (`_sprintWire`), absent when
+      walking -- NOT `sp`, which in a player's data is the shirt pattern;
+      wsClient keeps it as `other._sp`, and a peer's jog loop plays
+      SPRINT_MULT quicker, its phase kept across the change (`_jogOff`);
+    - dust at each foot plant of a sprint (`sprintDust`, game/sprint.js):
+      yours the ground's colour (`SPRINT_DUST` by footstep surface), a
+      peer's the dirt's; a sprint's first stride pushes off (updateSprint
+      'run'): `BT_AUDIO.sprintPush`, the special swipe, and a bigger puff;
+    - a foot plant STEPPED OVER between two draws counts now
+      (`_jogPlantCrossed`): a page drawing a few frames a second rarely
+      landed on one, and lost its footsteps and dust;
+    - `sprint` §10, `mp-sprintpeer`: docs/specs/sprint.md "Seen and heard".
+  - Since v2.3.3016 DUNGEONS IN THE WHEEL -- offered "Dungeons in the Wheel
+    ... the other big missing piece", the owner: "Yes continue working on
+    those items":
+    - a land's LANDMARK is its dungeon's mouth: the Great Cave (hollows,
+      levels 26-30), the Foundry Dome (thunder, 26-30), the Buried City (sky,
+      41-45) -- `WHEEL_DUNGEON.LANDS` in `server/src/wheeldungeon.js`; the
+      other five lands have no landmark on their spokes yet;
+    - where each stands and the way back out are BAKED with the monsters'
+      places (`WHEEL_DOORS`, bake-wheel-spawns.mjs); the client finds the
+      mouths in the worker's own map (`wheelMapInfo().places`), only WHICH
+      lands in `src/data/wheelDungeons.js` (mirror-audit);
+    - each mouth drawn in code until it has a picture
+      (`src/rendering/wheelDoors.js`), "⚔️ Enter the Great Cave" within 200
+      px (or E); `dungeon_start` sends `{ entrance }` and nothing else, the
+      worker judging the rest within 260 px (`_wheelDungeonConfig`);
+    - inside: dungeon.js's instance, its waves the land's own spawn list
+      built by `_makeZoneMonster` with `home` (their looks, shards, quests),
+      the boss its last kind five levels up; the level the place's top but
+      never above yours; its looks loaded behind the loading screen
+      (`loadLandLooks`) and the arena's zone given the land as `homes`;
+    - the ARENA is its own, not the Workshop's (`wheelArenaMap`): 36 x 52
+      (`WHEEL_ARENA` = `WHEEL_DUNGEON.WIDTH/HEIGHT`, mirror-audited) so an
+      upright phone keeps the Wheel's character size -- the Workshop's 28 x 22
+      was zoomed in to fill the screen, the bro 2.5x -- its way out in the
+      last floor row on a 3-row bottom wall (a door IN the bottom row is never
+      stepped on: `_FOOT_MARGIN` 80), deaf 2.5 s after you arrive; floored
+      with the land's own ground picture (`WHEEL_DUNGEON_FLOOR`: hollows-4,
+      thunder-2, sky-3; tileRenderer.js `_rebuildFloorPic`, mipmapped, walls
+      in code), loaded behind the screen at the Wheel's `?v=` address and
+      freed a beat after you leave; no old zone tools (the Deep Hollows'
+      torch) in a zone with `homes`;
+    - found by its phone test: leaving the Wheel for an arena freed the
+      thorn shambler's look, which IS the rock monster's module -- the Great
+      Cave's monsters undrawn and the renderer throwing on destroyed
+      textures; `unloadVariantSprites(keys, keep)` keeps any module a kept
+      look draws from; and a zone with no `palette` (every dungeon arena,
+      the Workshop's too) threw in `getTileHexColor`, so no floor drew;
+    - out (cleared, or its door) through today's town and down the stairs,
+      arriving at the mouth (`leaveWheelDungeon`, `setWheelArrival`); a
+      party member comes in only from within 600 px of the mouth;
+    - `caps.wheeldungeons`, kill switch `wheeldungeons: false`; the QA op
+      `clearwave`; `wheeldungeon` suite, `mp-wheeldungeon`:
+      docs/specs/wheel-dungeons.md.
+    - Found on the way: the Wheel's buildings have NO DOORS yet -- the
+      forge, the bank, the shop and the farm (the Dungeon Workshop) are
+      unreachable from the Wheel.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

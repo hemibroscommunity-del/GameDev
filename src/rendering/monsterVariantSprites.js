@@ -199,12 +199,25 @@ export function variantSpritesFor(variantKey) {
  * The kicked-load set is cleared for the freed keys too: it exists so
  * variantSpritesFor's lazy first-sighting fallback fires once, and a key left
  * in it after its art is gone would leave that fallback permanently spent. */
-export function unloadVariantSprites(keys) {
+export function unloadVariantSprites(keys, keep) {
   const fns = new Set();
   const freed = [];
+  /* ═══ v2.3.3016: ...AND NEVER A MODULE A KEPT KEY DRAWS FROM ═══
+     Deduping within `keys` was half of it.  The day a zone kept SOME of the
+     zone it left -- out of the Wheel (all eight lands' looks) into one of its
+     dungeons (one land's) -- the free dropped the Verdant Wilds' thornShambler
+     and with it the one rockmonster module, from under the Great Cave's rock
+     monsters: their textures destroyed under live sprites ("Cannot read
+     properties of null (reading 'addressModeU')" every frame, none drawn).
+     `keep` is the destination's keys (freeZoneAssets passes them). */
+  const held = new Set();
+  for (const key of keep || []) {
+    const v = VARIANT_SPRITES[key];
+    if (v && v.unload) held.add(v.unload);
+  }
   for (const key of keys || []) {
     const v = VARIANT_SPRITES[key];
-    if (!v || !v.unload || fns.has(v.unload)) continue;
+    if (!v || !v.unload || fns.has(v.unload) || held.has(v.unload)) continue;
     fns.add(v.unload);
     freed.push(key);
   }

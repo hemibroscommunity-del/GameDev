@@ -74,6 +74,11 @@ export const SPRINT = {
   STEP_MAX_MS: 1000,
   /* no regen within this of a paid step */
   REGEN_PAUSE_MS: 1000,
+  /* v2.3.3015: the tick tells the others a player sprints (`spr` on its
+     player, tick.js) until this long after their last paid step -- a slow
+     phone's moves arrive ~400 ms apart, and a peer's legs flicking between
+     paces on every gap would be worse than a beat of sprint after it ends */
+  WIRE_MS: 600,
 };
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
@@ -148,6 +153,18 @@ export const sprintMethods = {
       if (pid && typeof this._queuePlayerStateFlush === 'function') this._queuePlayerStateFlush(pid);
       ps._regenDirty = true;
     }
+  },
+
+  /* ═══ v2.3.3015: WHAT THE OTHERS SEE ═══
+     Asked of the sprint "other players' legs run at walking pace when they
+     sprint", the owner: "Yes continue working on those items".  The tick's
+     player (tick.js playerWire) carries `spr: 1` while this is true: a step
+     this worker paid for within WIRE_MS -- never the client's own say-so.
+     Absent otherwise, so a walking player's wire is byte for byte what it
+     was; a client reads "absent" as walking (wsClient.js), which is also what
+     an old worker's wire means. */
+  _sprintWire(ps, now) {
+    return !!(ps && ps._sprintAt && now - ps._sprintAt < SPRINT.WIRE_MS);
   },
 
   /* Is the regen held off for a sprint (index.js _tickPlayerRegen)? */

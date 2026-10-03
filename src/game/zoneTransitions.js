@@ -27,7 +27,8 @@ import { _typeof } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
 import { preloadZoneAssets, freeZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate; v2.3.2272: and its exit half */
-import { syncWorldTrial, trialZoneFor } from '@/game/worldTrial.js'; /* v2.3.2932: the world trial; v2.3.2978: + the Wheel's own zone */
+import { syncWorldTrial, trialZoneFor, takeWheelArrival } from '@/game/worldTrial.js'; /* v2.3.2932: the world trial; v2.3.2978: + the Wheel's own zone; v2.3.3016: + the arrival at a dungeon's mouth */
+import { leaveWheelDungeon } from '@/game/wheelDungeons.js'; /* v2.3.3016: a Wheel dungeon's door leads back to its mouth */
 import { wheelSpawnTick, wheelSpawnPass, wheelCommonsGate } from '@/game/wheelHome.js'; /* v2.3.2990: you start in the Wheel's Brotown */
 import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel' */
 import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
@@ -207,7 +208,9 @@ function nudgeSpawnToWalkable(S, zoneId, zone) {
    because the gate that drives it lives here.  Its compositor-driven CSS
    spin keeps turning through main-thread stutter. */
 var _zoneLoadEl = null;
-function showZoneLoadingOverlay(name) {
+/* v2.3.3016: exported for the Wheel's dungeons (game/wheelDungeons.js), whose
+   way in waits on the land's monsters' looks behind this same screen */
+export function showZoneLoadingOverlay(name) {
   if (typeof document === 'undefined') return;
   try {
     if (!_zoneLoadEl) {
@@ -225,7 +228,7 @@ function showZoneLoadingOverlay(name) {
     if (nameEl) nameEl.textContent = name || '';
   } catch (e) {}
 }
-function hideZoneLoadingOverlay() {
+export function hideZoneLoadingOverlay() {
   try { if (_zoneLoadEl) { _zoneLoadEl.remove(); _zoneLoadEl = null; } } catch (e) {}
 }
 
@@ -934,7 +937,10 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                   if (trialZoneFor(_dstExits[_bi].zoneId, S) === S._enteredFromHub) { _backMark = _dstExits[_bi]; break; }
                 }
                 if (isWorldViewZone(bestExit.zoneId)) {
-                  P.x = WORLDVIEW_ARRIVAL.x; P.y = WORLDVIEW_ARRIVAL.y;
+                  /* v2.3.3016: ...or, coming back out of a Wheel dungeon, the
+                     mouth you went in by (game/wheelDungeons.js) */
+                  var _arr = bestExit.zoneId === 'wheel' ? takeWheelArrival() : null;
+                  P.x = _arr ? _arr.x : WORLDVIEW_ARRIVAL.x; P.y = _arr ? _arr.y : WORLDVIEW_ARRIVAL.y;
                 }
                 if (_backMark) {
                   var _hcx = newZone.w / 2, _hcy = newZone.h / 2;
@@ -1398,7 +1404,20 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
         if (S._inDungeon && S.map && ptx >= 0 && pty >= 0) {
           var _S$map$pty2;
           var dTile = (_S$map$pty2 = S.map[pty]) === null || _S$map$pty2 === void 0 ? void 0 : _S$map$pty2[ptx];
-          if (dTile === 9) {
+          /* v2.3.3016: a Wheel dungeon's door is deaf for a moment after you
+             arrive, as a hub's trail-head is (HUB_EXIT_DEAF_MS): a stick still
+             held from before the loading screen must not walk you straight
+             back out of it */
+          var _wdDeaf = !!S._dungeonBack && Date.now() - (S._dungeonEnteredAt || 0) < HUB_EXIT_DEAF_MS;
+          if (dTile === 9 && !_wdDeaf) {
+            /* v2.3.3016: a Wheel dungeon's door leads back out to the mouth
+               you went in by (game/wheelDungeons.js) -- through today's town
+               and down its stairs, as a death comes back */
+            if (S._serverDungeon && leaveWheelDungeon(S)) {
+              pushDmgPopup(S, S.player.x, S.player.y - 30, 'Exited dungeon', '#3dd497');
+              BT_AUDIO.beep(500, 0.05, 0.06, 'sine');
+              return;
+            }
             /* v2.3.1127: abandoning a server-dungeon instance --
                restore the real zone BEFORE the legacy regen below
                reads S.currentZone, drop the synthetic ZONES entry,

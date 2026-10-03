@@ -66,6 +66,7 @@ import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
 import { sprintMethods } from './sprint.js'; /* v2.3.3006: sprint -- stamina for 1.33x the walk */
+import { wheelDungeonMethods } from './wheeldungeon.js'; /* v2.3.3016: the Wheel's dungeons, behind its landmarks */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
@@ -1490,7 +1491,13 @@ export class GameRoom {
      resolution, same hp/dmg/xp/gold curves.  A second copy of this math
      would drift, and drifted monster stats desync client damage
      prediction from monster_hit (the v2.3.1144 lockstep lesson). */
-  _makeZoneMonster(zoneId, zone, spawn, id, x, y) {
+  /* v2.3.3013: `atLevel` -- a level the caller has already decided, used
+     instead of the one read off the zone's depth.  The Wheel's deeper
+     stretches (wheelzone.js) are levels 6-20 of a land whose home zone is
+     levels 1-2; every stat below still comes from this one copy of the math.
+     Omitted everywhere else, so every other monster is built exactly as
+     before. */
+  _makeZoneMonster(zoneId, zone, spawn, id, x, y, atLevel) {
     const H = zone.h * this.TILE;
     const depthPct = Math.max(0, Math.min(1, y / H));
     const baseLvl = zone.level[0] || 1;
@@ -1502,7 +1509,9 @@ export class GameRoom {
     // src/data/gameSystems.js; the client's applyZoneVariant level
     // clamp was relaxed to minLv-4 to match.
     const ramp = depthPct < 0.15 ? Math.round((1 - depthPct / 0.15) * 4) : 0;
-    const lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)) - ramp);
+    const lvl = (typeof atLevel === 'number' && atLevel >= 1)
+      ? Math.min(100, Math.round(atLevel))
+      : Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)) - ramp);
     const a = this._getArchetype(spawn.arch);
     // baseline-10 rescale: 60 ÷ 4.8; HP curve centralized v2.3.1140 (BF-1)
     const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
@@ -2503,7 +2512,13 @@ export class GameRoom {
       // n <= ~14 per zone (~100 pair checks) -- negligible at 45 Hz.
       // Player<->monster separation stays client-side (the _monBlock
       // push-out in BroTown.jsx) so the server never shoves a player.
-      {
+      /* v2.3.3013: ...but not on the Wheel, whose ~190 monsters made 18,000
+         pair checks a tick -- 1.0 of the 1.2 ms the whole monster tick took
+         there (measured).  It keeps them apart by a sweep along x instead
+         (wheelzone.js _wheelSeparate), the same rule for every pair close
+         enough to matter; every other zone runs the loop below, unchanged. */
+      if (zoneId === WHEEL_ZONE) this._wheelSeparate(zoneId, monsters, 22);
+      else {
         const MIN_SEP = 22;
         for (let i = 0; i < monsters.length; i++) {
           const a = monsters[i];
@@ -3431,7 +3446,11 @@ export class GameRoom {
           // v2.3.1154: × Endurance-grid Conditioning (+1%/pt, cap +50%)
           // — the successor to the retired restoration mult, deleted
           // v2.3.1155 (it was ×1.0 for every live player since v2.3.910).
-          const stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stEndMult) + this._conditioningFlat(ps)); // v2.3.1345: flat regen add
+          let stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stEndMult) + this._conditioningFlat(ps)); // v2.3.1345: flat regen add
+          /* v2.3.3014: soaked by a fishman's hit, it refills at SOAK.REGEN_MULT
+             (monsterstatus.js) -- exactly the line above when dry */
+          const stSoak = this._soakRegenMult(ps, now);
+          if (stSoak !== 1) stHeal = Math.max(1, Math.round(stHeal * stSoak));
           const beforeSt = ps.stamina;
           ps.stamina = Math.min(ps.maxStamina, ps.stamina + stHeal);
           if (ps.stamina !== beforeSt) changed = true;
@@ -5719,6 +5738,7 @@ Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
 Object.assign(GameRoom.prototype, sprintMethods); /* v2.3.3006 */
+Object.assign(GameRoom.prototype, wheelDungeonMethods); /* v2.3.3016 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.
 Object.assign(GameRoom.prototype, abilityMethods);

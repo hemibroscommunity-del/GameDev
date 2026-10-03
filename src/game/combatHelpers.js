@@ -15,6 +15,7 @@ import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: the Wh
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
 import { isWheelSwimming, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: no fighting while you swim */
+import { isDazed } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -665,6 +666,24 @@ export function swimRefused(S) {
   if (!isWheelSwimming(S)) return false;
   var at = swimNote(S, Date.now());
   if (at) pushDmgPopup(S, at.x, at.y, SWIM_NOTE, SWIM_NOTE_COLOR, { ts: Date.now() + 1 });
+  return true;
+}
+
+/* ═══ v2.3.3014: NOTHING OF THIS WHILE DAZED ═══
+   "stone stuns briefly": a rock monster's landed hit leaves you dazed for
+   half a second (server/src/monsterstatus.js DAZE, carried out here as the
+   slime's hold is: game/elemHits.js).  No swing, special, ability, roll or
+   shield until it passes -- true when refused, having said "Dazed!" over
+   your head, not more often than every 600 ms.  Beside swimRefused, on
+   every one of its paths. */
+export var DAZE_NOTE = 'Dazed!';
+export function dazeRefused(S) {
+  var now = Date.now();
+  if (!isDazed(S, now)) return false;
+  if (S.player && (!S._dazeNoteAt || now - S._dazeNoteAt > 600)) {
+    S._dazeNoteAt = now;
+    pushDmgPopup(S, S.player.x, S.player.y - 44, DAZE_NOTE, '#e9d27a', { ts: now + 1 });
+  }
   return true;
 }
 
