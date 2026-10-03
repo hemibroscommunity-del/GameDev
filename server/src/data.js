@@ -724,7 +724,14 @@ export const BLACKSMITH_TIERS = {
       wood:         {minLvl:1, slots:1, oreName:'wood', wood:'pine_log', oreCost:3,  goldCost:8,    tierMult:1.00, statReq:0  },
       copper:       {minLvl:6, slots:1, oreName:'copper',        oreCost:3,  goldCost:20,   tierMult:1.12, statReq:10 },
       iron:         {minLvl:11,slots:1, oreName:'iron',          oreCost:4,  goldCost:35,   tierMult:1.25, statReq:20 },
-      steel:        {minLvl:16,slots:1, oreName:'steel',         oreCost:5,  goldCost:55,   tierMult:1.40, statReq:30 },
+      /* v2.3.3007 (owner: "let's plan on 'black steel' in like level 10+ areas
+         and have its own ore to mine"): the tier after iron is BLACK STEEL, and
+         its ore is the one the Wheel's levels 11-20 grow (gathering.js
+         'Black Steel Ore' -> ore_black_steel_ore).  The key stays `steel`: it
+         is the gearBase every minted piece carries, and the native art's
+         material name (materialTints.js); only the name and the ore move.
+         No steel ore was ever minted, so no bag holds the old key. */
+      steel:        {minLvl:16,slots:1, oreName:'black_steel',   oreCost:5,  goldCost:55,   tierMult:1.40, statReq:30 },
       titanium:     {minLvl:21,slots:1, oreName:'titanium',      oreCost:5,  goldCost:85,   tierMult:1.56, statReq:40 },
       obsidian:     {minLvl:26,slots:1, oreName:'obsidian',      oreCost:6,  goldCost:120,  tierMult:1.74, statReq:50 },
       mythril:      {minLvl:31,slots:2, oreName:'mythril',       oreCost:7,  goldCost:170,  tierMult:1.94, statReq:60 },
@@ -1037,7 +1044,7 @@ export const MONSTER_IRON_WEAPON_DROP = {
  * than bloating BLACKSMITH_TIERS/WOODWORKING_TIERS; §8e pins them). */
 export const GEM_EXTRACT_BASE_COST = 25;
 export const BLACKSMITH_TIER_LABELS = {
-  wood: 'Wood', copper: 'Copper', iron: 'Iron', steel: 'Steel',
+  wood: 'Wood', copper: 'Copper', iron: 'Iron', steel: 'Black Steel', /* v2.3.3007 */
   titanium: 'Titanium', obsidian: 'Obsidian', mythril: 'Mythril',
   diamond: 'Diamond', abyssal: 'Abyssal', dragonbone: 'Dragonbone',
   shadowsteel: 'Shadowsteel', bloodstone: 'Bloodstone', runestone: 'Runestone',

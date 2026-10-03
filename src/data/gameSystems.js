@@ -129,17 +129,23 @@ export const BLACKSMITH_TIERS = {
     color: '#8a8a8a',
     desc: 'Dull metallic gray'
   },
+  /* v2.3.3007 (owner: "let's plan on 'black steel' in like level 10+ areas and
+     have its own ore to mine"): the tier after iron is BLACK STEEL, made from
+     the black steel ore the Wheel's levels 11-20 grow.  Mirrors server/src/
+     data.js BLACKSMITH_TIERS.steel (mirror-audit).  The KEY stays `steel` --
+     it is every minted piece's gearBase and the native art's material name
+     (materialTints.js); only the name, the ore and the swatch move. */
   steel: {
     minLvl: 16,
-    label: 'Steel',
+    label: 'Black Steel',
     slots: 1,
-    oreName: 'steel',
+    oreName: 'black_steel',
     oreCost: 5,
     goldCost: 55,
     tierMult: 1.40,
     statReq: 30,
-    color: '#c0c0c8',
-    desc: 'Polished silver'
+    color: '#3b3f4a',
+    desc: 'Dark blued steel'
   },
   titanium: {
     minLvl: 21,
@@ -6307,7 +6313,9 @@ export function questSteps(quest, R, S) {
     var d = false;
     if (whole && i < last) d = true;
     else { try { d = !!st.done(inv, S); } catch (e) { d = false; } }
-    return { label: st.label, done: d, current: false };
+    /* v2.3.3007: + the node kind the step is done at, if any -- the Wheel's
+       gold road leads to the nearest one (questRoute.js _wheelGatherPoint) */
+    return { label: st.label, done: d, current: false, node: st.node || null };
   });
   /* The first undone step is "current" -- but a later step being done means
      every step before it is behind you, so the pointer never sits BEHIND
@@ -6546,9 +6554,11 @@ export const QUEST_CHAINS = {
        log and the fish for the second: the first step not done is always the
        honest next thing to do. */
     steps: [
-      { label: 'Catch a fish at a fishing spot in any zone',
+      /* v2.3.3007: `node`, the kind of node the step is done at -- the
+         Wheel's gold road leads to the nearest (questRoute.js) */
+      { label: 'Catch a fish at a fishing spot in any zone', node: 'fishSpot',
         done: function (inv) { return questInvCount(inv, 'fish_') > 0; } },
-      { label: 'Chop a tree in any zone to get a log',
+      { label: 'Chop a tree in any zone to get a log', node: 'tree',
         done: function (inv, S) { return questInvCount(inv, 'wood_') > 0 || questFireLit(S); } },
       { label: 'Open your Bag and tap the log to light a campfire',
         done: function (inv, S) { return questFireLit(S); } },
@@ -6576,6 +6586,7 @@ export const QUEST_CHAINS = {
   life_2: {
     id: 'life_2', npc: 'Mayor Bro', title: 'Rock Bottom',
     anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
+    node: 'oreVein',   /* v2.3.3007: the Wheel's gold road leads to the nearest vein (questRoute.js) */
     desc: 'Bring 5 Ore to Mayor Bro.',
     check: function (rpg) {
       var inv = rpg.inventory || {};

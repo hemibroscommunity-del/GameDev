@@ -2236,6 +2236,34 @@ real worker: buildings drawn with life round the arrival and nothing else, its
 cost, the forge's sparks, the Hotel's life going over you with its roof,
 `?nolife`, no errors).
 
+## The Wheel's resources (v2.3.3007)
+
+> Owner, 2026-10-03: *"Add harvestable resources back to the wheel"* —
+> *"Copper can be in the safe areas around town. Iron can be in lvl 1 monster
+> areas ... 'black steel' in like level 10+ areas and have its own ore to
+> mine. Same principle for fishing and wood cutting too."*
+
+128 nodes, baked with the monsters' places (`WHEEL_NODES` in
+`server/src/wheelspawns.js`, by `tools/world/bake-wheel-spawns.mjs`
+`bakeWheelNodes`):
+
+- copper, pine and minnows on the commons;
+- iron, softwood and clownfish at each land's levels 1–10;
+- black steel, hardwood and trout at 11–20.
+
+Fishing spots are in the real ponds, river and sea: water in a block round
+each, the angler on dry ground two cells east. Their fish are drawn in code
+swimming there (`src/rendering/wheelNodes.js` `WheelFish`), not a pond
+picture. Nothing tall stands in front of a node or of the one working it.
+Only the nodes near the view are drawn.
+
+The tier after iron is **Black Steel** (`BLACKSMITH_TIERS.steel`, key
+unchanged). The quest's road leads to the nearest node the next step needs.
+The kill switch is `wheelnodes: false`.
+
+The whole story is in docs/specs/wheel-resources.md. Tests:
+`wheelzone` §8, `mp-wheelnodes`.
+
 ## The monsters on the Wheel (v2.3.2978)
 
 Owner, 2026-10-02: "can you place the monsters where they belong in their
@@ -2704,7 +2732,9 @@ What a player gets now, with nothing added to the address:
     spots are in `ZONES.wheel.lands`, a copy of the baked anchors that
     test-world-core checks. The road stops once you are among them;
   - "any zone will do" (fishing, ore) gets no road while there is nothing to
-    gather;
+    gather; since v2.3.3007 the Wheel grows its resources, and the road leads
+    to the nearest fishing spot, tree or vein the quest's next step needs
+    ("The Wheel's resources", below);
   - while the spot is off the minimap's box, the star waits at its edge, on
     the line from you.
 - **A death no longer carries the Wheel's Mayor Bro into today's town**
@@ -2719,11 +2749,10 @@ What a player gets now, with nothing added to the address:
 **Not in the Wheel yet, so not in the game while the old lands are closed:**
 
 - monsters past levels 1–5: each land has only its first stage's six;
-- gathering (fishing, trees, ore). Mayor Bro's two trade quests, *Learn a
-  Trade* (cook two fish) and *Rock Bottom* (five ore), cannot be finished
-  until it comes. The four first quests (*tut_1–tut_4*, monster kills) can
-  all be done in the Wheel;
-- dungeons, and fishing from the Wheel's own water (its own round).
+- ~~gathering (fishing, trees, ore)~~ — in since v2.3.3007 ("The Wheel's
+  resources", below), so *Learn a Trade* and *Rock Bottom* can be finished in
+  the Wheel too;
+- dungeons.
 
 **Switches, each kept for that browser tab:**
 

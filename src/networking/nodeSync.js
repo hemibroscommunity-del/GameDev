@@ -67,6 +67,14 @@ export function onZoneEntered(S, zoneId) {
     return;
   }
   if (!S._serverGatherNodes) return; /* legacy local spawn already ran */
+  /* v2.3.3007: the Wheel (a zone of other zones' monsters) has nodes only
+     from a worker that grows them -- caps.wheelnodes, server wheelzone.js.
+     Before that its list is empty by design, and the reclaim below re-sent
+     the move four times on every way in, for a snapshot that never comes.
+     Read as `_serverCaps.wheelnodes` in one piece: server/test/caps-audit
+     finds a flag's client gate by that text.  An older worker and the kill
+     switch (wheelnodes: false) both leave it unset. */
+  if (cfg && Array.isArray(cfg.homes) && !(S._serverCaps && S._serverCaps.wheelnodes === true)) return;
   var tries = 0;
   S._nodeResyncT = setInterval(function () {
     tries++;

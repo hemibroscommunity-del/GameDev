@@ -19,9 +19,10 @@
  *   - No zone config (_getZoneConfig('wheel') is null, like the hubs').  Every
  *     consumer already guards on that: knockback/pull/burrow clamps skip (a
  *     43,008 px zone has no edge to clamp to), the population scaler skips
- *     (spawnscale.js _spawnScalableZone), nodes skip (gathering.js) -- so no
- *     resource nodes are scattered over the sea, and fishing waits for its own
- *     round.  Not in ZONES either, so ZONES stays "the zones the server spawns"
+ *     (spawnscale.js _spawnScalableZone), and the random node layout skips
+ *     (gathering.js) -- so no resource nodes are scattered over the sea.  Its
+ *     nodes are baked instead, since v2.3.3007 (_wheelSpawnNodes, below).
+ *     Not in ZONES either, so ZONES stays "the zones the server spawns"
  *     and every ZONES-wide rule (PvP needs ZONES[z].lawless) fails closed here.
  *   - Each monster carries `home`, the element zone it belongs to.  Its
  *     element, skin (variant) and stats come from home; so do its REWARDS
@@ -51,7 +52,7 @@
  * monsters until the room restarts (no tick polls the flag).
  */
 import { ZONES } from './data.js';
-import { WHEEL_SPAWNS, WHEEL_CENTRE, WHEEL_SAFE_R } from './wheelspawns.js';
+import { WHEEL_SPAWNS, WHEEL_NODES, WHEEL_CENTRE, WHEEL_SAFE_R } from './wheelspawns.js';
 
 export const WHEEL_ZONE = 'wheel';
 
@@ -80,6 +81,10 @@ export const WHEEL = Object.freeze({
      state is fresh before it can be drawn. */
   INTEREST_R: 2400,
   INTEREST_OUT: 2800,
+  /* v2.3.3007: WHEEL_NODES' kind letters, and the only gathering tiers a baked
+     node may carry -- the three gathering.js _harvestNameForTier names */
+  NODE_TYPES: Object.freeze({ o: 'oreVein', t: 'tree', f: 'fishSpot' }),
+  NODE_TIERS: Object.freeze([1, 6, 11]),
 });
 
 export const wheelzoneMethods = {
@@ -112,6 +117,52 @@ export const wheelzoneMethods = {
           m.home = home;
           out.push(m);
         }
+      }
+    }
+    return out;
+  },
+
+  /* ═══ v2.3.3007: THE WHEEL'S RESOURCES ═══
+     Owner: "Add harvestable resources back to the wheel" -- tiered by how far
+     from town they grow ("Copper can be in the safe areas around town ...
+     Iron can be in lvl 1 monster areas ... 'black steel' in like level 10+
+     areas ... Same principle for fishing and wood cutting too").
+     Their places are baked from the plan with the monsters' (WHEEL_NODES,
+     tools/world/bake-wheel-spawns.mjs): the commons' at gathering tier 1
+     (copper, pine, minnow), each land's levels 1-10 at tier 6 (iron,
+     softwood, clownfish) and 11-20 at tier 11 (black steel, hardwood,
+     trout).  Built exactly like any zone's nodes (gathering.js
+     _placeGatherNode's shape), with `home`: the land whose shard a harvest
+     can drop -- none in the commons, which belongs to no element.
+     KILL SWITCH (lower case, TRAPS §117): `wheelnodes: false` in liveflags
+     un-advertises caps.wheelnodes and a Wheel whose nodes are spawned after
+     it has none; ones already spawned stay until the room restarts, as the
+     monsters' do. */
+  _wheelNodesOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheelnodes') && !f.wheelnodes);
+  },
+
+  _wheelSpawnNodes() {
+    if (this._wheelNodesOff() || !WHEEL_NODES) return [];
+    const out = [];
+    for (const area of Object.keys(WHEEL_NODES)) {
+      const list = WHEEL_NODES[area];
+      if (!Array.isArray(list)) continue;
+      const home = Object.prototype.hasOwnProperty.call(ZONES, area) ? area : null;
+      for (let k = 0; k < list.length; k++) {
+        const p = list[k];
+        const nodeType = WHEEL.NODE_TYPES[p && p[0]];
+        if (!nodeType || typeof p[1] !== 'number' || typeof p[2] !== 'number') continue;
+        out.push({
+          id: 'wn-' + area + '-' + k,
+          nodeType,
+          x: p[1], y: p[2],
+          tierLvl: WHEEL.NODE_TIERS.includes(p[3]) ? p[3] : 1,
+          alive: true,
+          respawnAt: 0,
+          ...(home ? { home } : {}),
+        });
       }
     }
     return out;

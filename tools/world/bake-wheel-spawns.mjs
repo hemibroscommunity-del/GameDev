@@ -88,19 +88,37 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
   for (const e of objectCatalog()) catById[e.id] = e;
   const HB = 128, hcols = Math.ceil(placed.worldW / HB) + 1;
   const boxes = new Map();
+  /* v2.3.3007: and each one's PICTURE, its foot at the bottom middle -- a
+     node's place must not be under a tall thing standing in front of it (the
+     first bake put an iron vein of the Wind Dunes behind a hoodoo: clear of
+     its footprint, hidden by its picture) */
+  const pics = new Map();
+  const into = (map, b) => {
+    for (let j = Math.floor(b.y0 / HB); j <= Math.floor(b.y1 / HB); j++) for (let i = Math.floor(b.x0 / HB); i <= Math.floor(b.x1 / HB); i++) {
+      const key = j * hcols + i;
+      let a = map.get(key);
+      if (!a) map.set(key, (a = []));
+      a.push(b);
+    }
+  };
   for (let k = 0; k < placed.n; k++) {
     const id = placed.kinds[placed.kind[k]], e = catById[id];
     if (!e) continue;
     const h = e.fit === 'w' ? e.size / (e.ar || 1) : e.size, w = e.fit === 'w' ? e.size : e.size * (e.ar || 1);
-    for (const b of footprintOf(id, e.kind, placed.x[k], placed.y[k], w, h)) {
-      for (let j = Math.floor(b.y0 / HB); j <= Math.floor(b.y1 / HB); j++) for (let i = Math.floor(b.x0 / HB); i <= Math.floor(b.x1 / HB); i++) {
-        const key = j * hcols + i;
-        let a = boxes.get(key);
-        if (!a) boxes.set(key, (a = []));
-        a.push(b);
+    for (const b of footprintOf(id, e.kind, placed.x[k], placed.y[k], w, h)) into(boxes, b);
+    into(pics, { x0: placed.x[k] - w / 2, x1: placed.x[k] + w / 2, y0: placed.y[k] - h, y1: placed.y[k] });
+  }
+  /* whether a picture standing in FRONT of footY (its foot further south, so
+     drawn over it) reaches into the box x0..x1, y0..y1 -- every picture is in
+     each hash cell it covers, so the box's own cells find all that reach it */
+  const coveredAt = (x0, x1, y0, y1, footY) => {
+    for (let j = Math.floor(y0 / HB); j <= Math.floor(y1 / HB); j++) for (let i = Math.floor(x0 / HB); i <= Math.floor(x1 / HB); i++) {
+      for (const b of pics.get(j * hcols + i) || []) {
+        if (b.y1 > footY && b.x0 < x1 && b.x1 > x0 && b.y0 < y1 && b.y1 > y0) return true;
       }
     }
-  }
+    return false;
+  };
   const nearObject = (x, y, r) => {
     for (let j = Math.floor((y - r) / HB); j <= Math.floor((y + r) / HB); j++) for (let i = Math.floor((x - r) / HB); i <= Math.floor((x + r) / HB); i++) {
       for (const b of boxes.get(j * hcols + i) || []) {
@@ -182,8 +200,225 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
     const x = gameX(i % bp.w) - cxG, y = gameY((i / bp.w) | 0) - cyG;
     safeR = Math.max(safeR, Math.hypot(x, y) + cellG * 0.71);
   }
-  return { spawns: out, hash: bp.hash, world: [Math.round(bp.w * cellG), Math.round(bp.h * cellG)], centre: [Math.round(cxG), Math.round(cyG)],
-    safeR: Math.ceil(safeR + rules.safeMargin) };
+  safeR = Math.ceil(safeR + rules.safeMargin);
+  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR }, NODE_RULES);
+  return { spawns: out, nodes, hash: bp.hash, world: [Math.round(bp.w * cellG), Math.round(bp.h * cellG)], centre: [Math.round(cxG), Math.round(cyG)],
+    safeR };
+}
+
+/* ═══ v2.3.3007: WHERE THE WHEEL'S RESOURCES GROW ═══
+ *
+ * Owner, 2026-10-03: "Add harvestable resources back to the wheel" -- and of
+ * their tiers: "the higher lvl resources will be progressively more distant
+ * ... let's plan on 'black steel' in like level 10+ areas and have its own ore
+ * to mine.  Iron can be in lvl 1 monster areas.  Copper can be in the safe
+ * areas around town.  Same principle for fishing and wood cutting too."
+ *
+ * So three bands, by the plan's own level map (layout.js `tier`: 0 in the
+ * commons, 1 for levels 1-5, 2 for 6-10, ...), each with the gathering tier
+ * whose items the worker already names (gathering.js _harvestNameForTier):
+ *
+ *   commons  round town          tier 1   copper ore, pine, minnow
+ *   near     levels 1-10         tier 6   iron ore, softwood, clownfish
+ *   far      levels 11-20        tier 11  black steel ore, hardwood, trout
+ *
+ * "far" stops at level 20, where the first pass is: past it the next tiers
+ * (titanium, cedar, ...) will grow, once they are planned.
+ *
+ * LAND NODES (ore veins, trees) stand on open ground (`C.ground`) of their
+ * band, clear of water, roads, the town, every placed object and every
+ * monster place, spread apart.  The commons' fill in nearest town first, so
+ * the first copper and pine are a short walk out of the gates; a land's are
+ * spread across its band farthest-first, like the monsters' places.
+ *
+ * FISHING SPOTS are in real water now -- the commons' four ponds and the
+ * Sweetwater River (fresh, minnows), a land's coast (clownfish) and its
+ * rivers and pools past level 10 (trout; the coast where it has none).
+ * Fishing SEATS you at the spot + FISH_SEAT_DX/DY (src/data/constants.js:
+ * up and right, so the rod's line falls on the spot) with the body's 52 px
+ * drop to the boots: so a spot is only used where that seat is dry, clear
+ * ground of the same band, with water all round the spot itself (its fish
+ * swim there).  The same for the miner's seat (MINE_SEAT_DX/DY).
+ *
+ * Positions never depend on which pictures exist, only on the plan and the
+ * placer -- like everything else this tool bakes. */
+export const NODE_RULES = Object.freeze({
+  bands: Object.freeze([
+    Object.freeze({ id: 'commons', tiers: Object.freeze([0]), tierLvl: 1, ore: 6, tree: 6, fish: 10, order: 'near' }),
+    Object.freeze({ id: 'near', tiers: Object.freeze([1, 2]), tierLvl: 6, ore: 3, tree: 3, fish: 2, order: 'spread' }),
+    Object.freeze({ id: 'far', tiers: Object.freeze([3, 4]), tierLvl: 11, ore: 3, tree: 3, fish: 2, order: 'spread' }),
+  ]),
+  apart: 360,           /* between two of a band's ore veins and trees */
+  fishApart: 240,       /* between two fishing spots */
+  clearObject: 40,      /* a vein or tree from anything placing.js put down */
+  clearSeat: 24,        /* a harvest seat's boots from the same */
+  clearRoad: 40,        /* from a road, the railway, a bridge or a street */
+  clearWater: 72,       /* a vein or tree from water, a cliff or lava */
+  clearMonster: 300,    /* anything from a monster's place */
+  clearTown: 240,       /* a commons node from the town's own ground */
+  clearNode: 160,       /* a vein or tree from a fishing spot, any area's */
+  fishSeat: Object.freeze([52, 9]),   /* FISH_SEAT_DX, FISH_SEAT_DY + the 52 px drop to the boots */
+  mineSeat: Object.freeze([-7, -34]), /* MINE_SEAT_DX, MINE_SEAT_DY + 52 */
+});
+
+export function bakeWheelNodes(ctx, rules = NODE_RULES) {
+  const { bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns, safeR } = ctx;
+  /* nothing standing in front of the node's own picture, or of the bro working
+     it (a body's box, 44 x 64, over his boots) -- `art` [half-width, height]
+     of each kind's picture over its anchor (effectsRenderer NODE_SPRITE_HEIGHT_BASE,
+     at a tier-11's 1.15x) */
+  const ART = { o: [52, 118], t: [62, 196] };
+  const hidden = (x, y, kind) => {
+    if (!coveredAt) return false;
+    if (kind === 'f') {
+      const bx = x + rules.fishSeat[0], by = y + rules.fishSeat[1];
+      return coveredAt(bx - 22, bx + 22, by - 64, by, by);
+    }
+    const [hw, h] = ART[kind];
+    if (coveredAt(x - hw, x + hw, y - h, y, y)) return true;
+    if (kind === 'o') {
+      const bx = x + rules.mineSeat[0], by = y + rules.mineSeat[1];
+      return coveredAt(bx - 22, bx + 22, by - 64, by, by);
+    }
+    return false;
+  };
+  const n = bp.w * bp.h;
+  const WATER = new Set([C.water, C.ocean, C.river]);
+  const FRESH = new Set([C.water, C.river]);
+  const DRY = new Set([C.ground, C.path, C.anchor, C.street, C.boardwalk, C.plaza, C.rail, C.bridge]);
+  const dTown = dist((i) => bp.reg[i] === ri.town);
+  const cellAt = (x, y) => {
+    const bx = Math.floor(x / cellG), by = Math.floor(y / cellG);
+    return bx < 0 || by < 0 || bx >= bp.w || by >= bp.h ? -1 : by * bp.w + bx;
+  };
+  /* i and its neighbours at the given offsets, all passing `test` */
+  const around = (i, offs, test) => {
+    const x = i % bp.w, y = (i / bp.w) | 0;
+    for (const [dx, dy] of offs) {
+      const xx = x + dx, yy = y + dy;
+      if (xx < 0 || yy < 0 || xx >= bp.w || yy >= bp.h || !test(yy * bp.w + xx)) return false;
+    }
+    return true;
+  };
+  const ALL = [[0, 0], [-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+  /* A fishing spot's seat is two cells EAST of it (52 px), so the shore runs
+     between them: the spot needs water on its own side (west, north, south)
+     and the seat dry ground on its side (east, north, south) -- asking for
+     water or dry ground all round each would ask the one cell between them
+     to be both.  The spot's side is a block, three cells west of it to one
+     east, two up and down (x-84..x+36, y-60..y+60): its fish swim there
+     (src/rendering/wheelNodes.js), the shore is the line between its east
+     column and the seat's cell. */
+  const SPOT_SIDE = [];
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -3; dx <= 1; dx++) SPOT_SIDE.push([dx, dy]);
+  const SEAT_SIDE = [[0, 0], [1, 0], [0, -1], [0, 1], [1, -1], [1, 1]];
+  const monsterPts = [];
+  for (const s of Object.values(spawns)) for (const p of s.points) monsterPts.push(p);
+  const clearOfMonsters = (x, y) => monsterPts.every((p) => Math.hypot(p[0] - x, p[1] - y) >= rules.clearMonster);
+  /* every node placed so far, whatever its area or band: two lands' bands meet
+     at a border, and each picks its own -- the first bake put a Mist Marsh and
+     a Tidal Coast fishing spot 34 px apart on the river between them.  So a
+     node keeps the same distance from ANY node of its kind (veins and trees
+     `apart`, spots `fishApart`) and `clearNode` from the other kind. */
+  const placed = [];
+  const clearOfNodes = (x, y, fish) => placed.every((p) => Math.hypot(p.x - x, p.y - y)
+    >= (p.fish === fish ? (fish ? rules.fishApart : rules.apart) : rules.clearNode));
+  /* whether cell i is ground of this band (and land).  A land's must also be
+     off the safe ground: WHEEL_SAFE_R is a circle round the commons' ragged
+     edge, so in places it reaches a few hundred px into a land's levels 1-5,
+     and iron grows where the monsters can reach you ("Iron can be in lvl 1
+     monster areas") -- copper is the safe ground's own. */
+  const inBand = (i, band, rid) => band.id === 'commons'
+    ? bp.reg[i] === ri.commons
+    : bp.reg[i] === rid && band.tiers.includes(bp.tier[i])
+      && !(safeR > 0 && Math.hypot(gameX(i % bp.w) - cxG, gameY((i / bp.w) | 0) - cyG) < safeR + cellG);
+  const dryClear = (x, y, band, rid, side = ALL) => {
+    const j = cellAt(x, y);
+    return j >= 0 && DRY.has(bp.cls[j]) && inBand(j, band, rid) && around(j, side, (k) => !WATER.has(bp.cls[k]))
+      && !nearObject(x, y, rules.clearSeat);
+  };
+  /* nearest the centre first (the commons), or farthest-first from the
+     candidate nearest the band's middle (a land) -- ties by y, then x, so the
+     bake is the same on every run */
+  const pick = (cand, count, apart, order) => {
+    if (!cand.length || count <= 0) return [];
+    const out = [];
+    if (order === 'near') {
+      cand.sort((a, b) => a.r - b.r || a.y - b.y || a.x - b.x);
+      for (const c of cand) {
+        if (out.length >= count) break;
+        if (out.every((o) => Math.hypot(o.x - c.x, o.y - c.y) >= apart)) out.push(c);
+      }
+      return out;
+    }
+    const mid = cand.reduce((s, c) => s + c.r, 0) / cand.length;
+    cand.sort((a, b) => Math.abs(a.r - mid) - Math.abs(b.r - mid) || a.y - b.y || a.x - b.x);
+    out.push(cand[0]);
+    const dMin = cand.map((c) => Math.hypot(c.x - cand[0].x, c.y - cand[0].y));
+    while (out.length < count) {
+      let best = -1, bestD = apart;
+      for (let k = 0; k < cand.length; k++) if (dMin[k] >= bestD) { bestD = dMin[k]; best = k; }
+      if (best < 0) break;
+      const c = cand[best];
+      out.push(c);
+      for (let k = 0; k < cand.length; k++) dMin[k] = Math.min(dMin[k], Math.hypot(cand[k].x - c.x, cand[k].y - c.y));
+    }
+    return out;
+  };
+  const areas = [{ id: 'commons', rid: ri.commons, bands: rules.bands.filter((b) => b.id === 'commons') }];
+  for (const s of W.spokes) if (ri[s.id] != null) areas.push({ id: s.id, rid: ri[s.id], bands: rules.bands.filter((b) => b.id !== 'commons') });
+  const result = Object.create(null);
+  for (const area of areas) {
+    const list = [];
+    for (const band of area.bands) {
+      /* veins and trees */
+      const land = [];
+      for (let i = 0; i < n; i++) {
+        if (bp.cls[i] !== C.ground || !inBand(i, band, area.rid)) continue;
+        if (dHaz[i] * cellG < rules.clearWater || dRoad[i] * cellG < rules.clearRoad) continue;
+        if (band.id === 'commons' && dTown[i] * cellG < rules.clearTown) continue;
+        const x = gameX(i % bp.w), y = gameY((i / bp.w) | 0);
+        if (nearObject(x, y, rules.clearObject) || !clearOfMonsters(x, y) || !clearOfNodes(x, y, false)) continue;
+        if (!dryClear(x + rules.mineSeat[0], y + rules.mineSeat[1], band, area.rid)) continue;
+        /* hidden as either kind: which it becomes is decided after the pick */
+        if (hidden(x, y, 'o') || hidden(x, y, 't')) continue;
+        land.push({ x, y, r: Math.hypot(x - cxG, y - cyG) });
+      }
+      const placedLand = pick(land, band.ore + band.tree, rules.apart, band.order);
+      let ore = 0, tree = 0;
+      placedLand.forEach((c, k) => {
+        /* alternate, so a band's veins and trees are spread through it alike */
+        const wantOre = (k % 2 === 0 && ore < band.ore) || tree >= band.tree;
+        if (wantOre) ore++; else tree++;
+        list.push([wantOre ? 'o' : 't', Math.round(c.x), Math.round(c.y), band.tierLvl]);
+        placed.push({ x: c.x, y: c.y, fish: false });
+      });
+      /* fishing spots: fresh water in the commons; a land's coast for its
+         clownfish; its rivers and pools for trout, else its coast */
+      const prefer = band.id === 'near' ? (k) => bp.cls[k] === C.ocean : (k) => FRESH.has(bp.cls[k]);
+      const fishAt = (want) => {
+        const cand = [];
+        for (let i = 0; i < n; i++) {
+          if (!WATER.has(bp.cls[i]) || !want(i)) continue;
+          if (band.id === 'commons' && !FRESH.has(bp.cls[i])) continue;
+          if (!around(i, SPOT_SIDE, (k) => WATER.has(bp.cls[k]))) continue;
+          const x = gameX(i % bp.w), y = gameY((i / bp.w) | 0);
+          const sx = x + rules.fishSeat[0], sy = y + rules.fishSeat[1];
+          if (!dryClear(sx, sy, band, area.rid, SEAT_SIDE) || !clearOfMonsters(sx, sy) || !clearOfNodes(x, y, true) || hidden(x, y, 'f')) continue;
+          cand.push({ x, y, r: Math.hypot(x - cxG, y - cyG) });
+        }
+        return cand;
+      };
+      let fish = fishAt(prefer);
+      if (fish.length < band.fish && band.id !== 'commons') fish = fishAt(() => true);
+      for (const c of pick(fish, band.fish, rules.fishApart, band.order)) {
+        list.push(['f', Math.round(c.x), Math.round(c.y), band.tierLvl]);
+        placed.push({ x: c.x, y: c.y, fish: true });
+      }
+    }
+    if (list.length) result[area.id] = list;
+  }
+  return result;
 }
 
 export function wheelSpawnsSource(b) {
@@ -208,6 +443,17 @@ export const WHEEL_CENTRE = [${b.centre.join(', ')}];
 export const WHEEL_SAFE_R = ${b.safeR};
 export const WHEEL_SPAWNS = {
 ${lines.join('\n')}
+};
+
+/* v2.3.3007: where the Wheel's resources grow (gathering.js through
+ * wheelzone.js _wheelSpawnNodes): per area -- the commons, then each land --
+ * [kind, x, y, tierLvl], kind 'o' an ore vein, 't' a tree, 'f' a fishing
+ * spot, tierLvl the worker's gathering tier: 1 in the commons (copper, pine,
+ * minnow), 6 at levels 1-10 (iron, softwood, clownfish), 11 at levels 11-20
+ * (black steel, hardwood, trout).  A fishing spot is in the water; its seat
+ * (+52, +9 to the boots) is dry ground. */
+export const WHEEL_NODES = {
+${Object.entries(b.nodes || {}).map(([id, list]) => `  ${id}: [${list.map((p) => `['${p[0]}', ${p[1]}, ${p[2]}, ${p[3]}]`).join(', ')}],`).join('\n')}
 };
 `;
 }

@@ -67,6 +67,8 @@
  *          at all, which _handleNodeStrike accepts with no timing check (the
  *          permissive legacy branch below).  Harden both together, when that
  *          branch is retired. */
+import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3007: the Wheel's baked nodes */
+
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
   HP_PER_TIER: 5,
@@ -120,6 +122,11 @@ export const gatheringMethods = {
   // once at first-ever zone activation; after that they're fixed for
   // the lifetime of the Durable Object (re-randomized only on DO wake).
   _spawnZoneNodes(zoneId) {
+    /* v2.3.3007: the Wheel's nodes are BAKED from its plan, tiered by how far
+       from town they grow (wheelzone.js _wheelSpawnNodes).  It has no zone
+       config, so the random layout below would place none -- and must not: a
+       random point of its 43,008 px is most likely sea. */
+    if (zoneId === WHEEL_ZONE) return this._wheelSpawnNodes();
     const zone = this._getZoneConfig(zoneId);
     if (!zone) return [];
     /* v2.3.1983: the dimensions/margin/gap arithmetic moved with the
@@ -225,9 +232,16 @@ export const gatheringMethods = {
        Those two were never connected before this: tier one asked for
        `wood_wood`, a key nothing in the game has ever produced, so the first
        bow could not be crafted from anything a player could gather. */
-    const TREE = { 1: 'Pine Log', 6: 'Softwood' };
-    const FISH = { 1: 'Minnow',   6: 'Clownfish' };
-    const ORE  = { 1: 'Copper Ore', 6: 'Iron Ore' };
+    /* v2.3.3007: and the third tier, which the Wheel's levels 11-20 grow
+       (wheelzone.js): hardwood (WOODWORKING_TIERS.hardwood's wood), trout,
+       and BLACK STEEL ORE -- the owner's name for the ore after iron ("let's
+       plan on 'black steel' in like level 10+ areas and have its own ore to
+       mine"), which BLACKSMITH_TIERS.steel consumes (data.js oreName
+       'black_steel': ore_black_steel_ore).  Client mirror: src/data/
+       lifeSkills.js FISHING_TIERS / WOODCUTTING_TIERS / MINING_TIERS. */
+    const TREE = { 1: 'Pine Log', 6: 'Softwood', 11: 'Hardwood' };
+    const FISH = { 1: 'Minnow',   6: 'Clownfish', 11: 'Trout' };
+    const ORE  = { 1: 'Copper Ore', 6: 'Iron Ore', 11: 'Black Steel Ore' };
     const t = tierLvl || 1;
     if (nodeType === 'tree') return TREE[t] || TREE[1];
     if (nodeType === 'fishSpot') return FISH[t] || FISH[1];
@@ -1019,7 +1033,12 @@ export const gatheringMethods = {
     /* Shard roll -- 33% per successful harvest.  Server-rolled so a
        modified client can't force shard drops.  Goes straight into
        inventory under shard_<zone> keyed off node.zone. */
-    const shard = this._rollHarvestShard(n.zoneId || zone);
+    /* v2.3.3007: a Wheel node drops its LAND's shard -- `home`, server-
+       authored by wheelzone.js -- since 'shard_wheel' is not an item; and a
+       commons node, which belongs to no element, drops none.  Every other
+       zone exactly as before. */
+    const shardZone = zone === WHEEL_ZONE ? (n.home || null) : (n.zoneId || zone);
+    const shard = shardZone ? this._rollHarvestShard(shardZone) : null;
     if (shard) {
       ps.inventory[shard] = (ps.inventory[shard] || 0) + 1;
     }

@@ -446,6 +446,9 @@ export const spawnScaleMethods = {
     const nodes = (this._ensureZoneNodes(zoneId) || []).map((n) => ({
       id: n.id, nodeType: n.nodeType, x: n.x, y: n.y,
       tierLvl: n.tierLvl, alive: n.alive, respawnAt: n.respawnAt,
+      /* v2.3.3007: a Wheel node says which land it grows in (wheelzone.js);
+         only on those, so every other zone's snapshot is byte-identical. */
+      ...(n.home ? { home: n.home } : {}),
     }));
     return { monsters, nodes, loot: this._zoneLootForWire(zoneId) };
   },

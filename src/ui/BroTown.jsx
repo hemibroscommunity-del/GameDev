@@ -4,7 +4,7 @@ import { standFootDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.284
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
-import { zonePlayerScale, zoneDepthScale, depthK } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve; v2.3.2745: + the dunes' depth */
+import { zonePlayerScale, zoneDepthScale, depthK, zoneHomes /* v2.3.3007: the Wheel's fishing spots are in real water */ } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve; v2.3.2745: + the dunes' depth */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
 import { InfoPanel } from './panels/InfoPanel.jsx';
@@ -636,6 +636,11 @@ function nodeBlockEllipse(S, n) {
   if (n.respawnAt && Date.now() < n.respawnAt) return null;
   var art = NODE_ART[n.nodeType];
   if (!art) return null;          /* campfire and anything new: walkable */
+  /* v2.3.3007: the Wheel's fishing spots stand in its real water, which its
+     walk grid already keeps you out of -- the pond's ellipse would only take
+     a bite out of the bank beside it (it reaches ~33 px east of the spot,
+     where the shore and the angler's seat are). */
+  if (n.nodeType === 'fishSpot' && zoneHomes(S.currentZone)) return null;
   var b = nodeWorldBox(S, n);
   if (!b) return null;
   var w = b.r - b.l, h = b.b - b.t;
@@ -5065,6 +5070,10 @@ export var BroTown = function BroTown(_ref0) {
              tree your boots used to walk ~52 px past the trunk's base. */
           var _tfdy = playerGroundDy(S.currentZone, px, py);
           for (var _ni = 0; _ni < ns.length; _ni++) {
+            /* v2.3.3007: the Wheel holds ~130 nodes; a node's solid shape is
+               never 300 px from its anchor (a tier-11 vein's rock is ~150 px
+               tall), so the far ones are skipped before their box is built */
+            if (Math.abs(ns[_ni].x - px) > 300 || Math.abs(ns[_ni].y - py) > 300) continue;
             var _e = nodeBlockEllipse(S, ns[_ni]);
             if (!_e) continue;
             var _rx = _e.rx + hs, _ry = _e.ry + hs;

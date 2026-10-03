@@ -475,7 +475,13 @@ function applyWoodReward(S, node, result, deps) {
        v2.3.1430 (owner: "make that true for each life skill"): upgraded to
        the fish-catch treatment — the CURRENT bag icon (icons/items/) with
        the breach-pop stage before the flight, launched from the trunk. */
-    _flyResourceToInventory(S, node.x, node.y - 60, '/icons/items/wood-log.webp?v=2.3.1452', { pop: true });
+    /* v2.3.3007: softwood and hardwood have their own logs (InventoryPanel
+       WOOD_THUMBS, kept inline for the same reason as the fish's below) */
+    var _woodIcon = ({
+      6: '/icons/items/wood-softwood.webp?v=2.3.1774',
+      11: '/icons/items/wood-hardwood.webp?v=2.3.1774',
+    })[node.gatherLvl] || '/icons/items/wood-log.webp?v=2.3.1452';
+    _flyResourceToInventory(S, node.x, node.y - 60, _woodIcon, { pop: true });
     /* When the server owns gather-node state, tell it about the harvest so
        it broadcasts the deplete + respawn to every other player.  Local
        mutation above stays as a client-prediction so the player sees the
@@ -556,8 +562,13 @@ function applyMiningReward(S, node, result, deps) {
     /* v2.3.1430 (owner): the ore's bag icon pops out of the vein and flies
        into the Bag — fish-catch treatment for mining too.  ore-copper is
        the only ore art in the bag catalog (ItemsPanel ORE_THUMB_DEFAULT),
-       so every tier ships it until per-tier art exists. */
-    _flyResourceToInventory(S, node.x, node.y - 40, '/icons/items/ore-copper.webp?v=2.3.1452', { pop: true });
+       so every tier ships it until per-tier art exists.
+       v2.3.3007: iron and black steel exist now (InventoryPanel ORE_THUMBS). */
+    var _oreIcon = ({
+      6: '/icons/items/ore-iron.webp?v=2.3.1774',
+      11: '/icons/items/ore-black-steel.webp?v=2.3.1774',
+    })[node.gatherLvl] || '/icons/items/ore-copper.webp?v=2.3.1452';
+    _flyResourceToInventory(S, node.x, node.y - 40, _oreIcon, { pop: true });
     /* When the server owns gather-node state, tell it about the harvest so
        it broadcasts the deplete + respawn to every other player.  Local
        mutation above stays as a client-prediction so the player sees the
