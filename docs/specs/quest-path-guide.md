@@ -11,7 +11,7 @@ Prior art this builds on, all still true unless contradicted below:
 
 ---
 
-## 0. Since v2.3.2991: the way is on the minimap, and the ground road is put away
+## 0. Since v2.3.2992: the way is on the minimap, and the ground road is put away
 
 > Owner, 2026-10-02: "I think I want to remove the footsteps and just rely on
 > the gold road on the minimap of where to go."

@@ -56,7 +56,7 @@ import { IMAGE_ZONE_MAPS } from '../tiledMaps.js';
 import { propsForZone } from '@/data/worldProps.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
-import { questRouteExits, questRoutePoint } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants; v2.3.2128: plural; v2.3.2991: the road's end */
+import { questRouteExits, questRoutePoint } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants; v2.3.2128: plural; v2.3.2992: the road's end */
 import { isWheelTrialZone } from '@/game/worldTrial.js';
 import { WheelMinimap } from './wheelMinimap.js';   /* v2.3.2966: the Wheel's own, bigger box */
 
@@ -139,7 +139,7 @@ const C_QUEST      = 0xd8aa58;   /* COL.accent — gold '!', same as the in-worl
 const C_QUEST_STAR = 0xf5ce3c;
 const STAR_ICON_PX = 18;
 const C_QUEST_DONE = 0x58b97b;   /* COL.xp — green '?', same as the in-world badge */
-/* v2.3.2991: the gold road to the quest's spot -- width and dark casing, CSS
+/* v2.3.2992: the gold road to the quest's spot -- width and dark casing, CSS
    px; it starts clear of your chevron, is not drawn when the spot is this
    close, and stops this far in from the box's edge when the spot is off it */
 const ROAD_W = 1.75, ROAD_CASE = 3.5, ROAD_FROM = 6, ROAD_MIN = 8, ROAD_EDGE = 4, C_ROAD_CASE = 0x0b161b;
@@ -318,7 +318,7 @@ export class MinimapRenderer {
     this.land = new Graphics();
     this.pan.addChild(this.land);
     this._landW = -1; this._landH = -1;
-    /* v2.3.2991: the gold road, over the ground and under every mark */
+    /* v2.3.2992: the gold road, over the ground and under every mark */
     this.road = new Graphics();
     this.pan.addChild(this.road);
     this.markers = new Container();
@@ -881,7 +881,7 @@ export class MinimapRenderer {
     }
     const routeTo = routeList.length ? routeList[0] : null;
 
-    /* ═══ v2.3.2991: THE GOLD ROAD, ON THE MAP ═══
+    /* ═══ v2.3.2992: THE GOLD ROAD, ON THE MAP ═══
        Owner: "I think I want to remove the footsteps and just rely on the
        gold road on the minimap of where to go."  The road on the ground is
        put away (questTrailStyle.js GROUND_PATH), so this is the way now: a
@@ -958,7 +958,7 @@ export class MinimapRenderer {
            claim worth testing now is "how many, and which zones" — a single
            entry cannot tell a four-star field quest from a one-star trip. */
         questRoutes: routeList.map((r) => ({ x: Math.round(r.x), y: Math.round(r.y), zoneId: r.zoneId })),
-        /* v2.3.2991: the gold road -- where it leads, whether it stops at the
+        /* v2.3.2992: the gold road -- where it leads, whether it stops at the
            box's edge, and how long it is drawn (box px) */
         questRoad,
         /* v2.3.1908: the star's own colour and size, so "more yellow and

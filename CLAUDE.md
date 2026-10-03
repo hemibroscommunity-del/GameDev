@@ -369,7 +369,7 @@ remnant to migrate server-side, not a mode to preserve.
     `ZONES.wheel.lands` (it mirrors the anchors; test-world-core checks it),
     stopping within 600 px of them. Nowhere for any-zone gathering. Every
     old rule went through portals the Wheel does not have.
-  - Since v2.3.2991 the way is drawn ON THE MINIMAP ONLY. The owner: "I
+  - Since v2.3.2992 the way is drawn ON THE MINIMAP ONLY. The owner: "I
     think I want to remove the footsteps and just rely on the gold road on
     the minimap of where to go".
     - Both minimaps draw a gold road from your chevron to the

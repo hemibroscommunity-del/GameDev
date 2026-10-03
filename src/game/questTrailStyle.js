@@ -29,7 +29,7 @@
 
 const KEY = 'brotown_quest_path';
 
-/* ═══ v2.3.2991: PUT AWAY -- THE WAY IS ON THE MINIMAP NOW ═══
+/* ═══ v2.3.2992: PUT AWAY -- THE WAY IS ON THE MINIMAP NOW ═══
  * Owner, 2026-10-02: "I think I want to remove the footsteps and just rely on
  * the gold road on the minimap of where to go."
  *
@@ -98,11 +98,11 @@ let _style = (() => {
 
 /** The style the road should draw in.  Cheap enough for a render loop --
  *  a variable read, never storage. */
-export function getTrailStyle() { return GROUND_PATH ? _style : 'off'; }   /* v2.3.2991: put away */
+export function getTrailStyle() { return GROUND_PATH ? _style : 'off'; }   /* v2.3.2992: put away */
 
 /** True when the guide is switched off entirely.  Named rather than compared
  *  at each call site so `=== 'off'` exists in exactly one place. */
-export function isTrailOff() { return getTrailStyle() === 'off'; }   /* v2.3.2991: and while put away */
+export function isTrailOff() { return getTrailStyle() === 'off'; }   /* v2.3.2992: and while put away */
 
 /* ═══ v2.3.2896: THE LOOK TO COME BACK TO ═══
  * Owner: "Allow an option to switch off the footprints from the quest

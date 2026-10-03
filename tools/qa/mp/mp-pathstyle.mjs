@@ -42,7 +42,7 @@ const setStyle = async (P, id) => {
 export async function run({ browser, wsPort, webPort, rec }) {
   /* A brand-new bro in town: the road points at Mayor Bro with nothing
      accepted (v2.3.2121), which is the shortest way to a live route. */
-  /* v2.3.2991: the road on the ground and its two controls are put away
+  /* v2.3.2992: the road on the ground and its two controls are put away
      (questTrailStyle.js GROUND_PATH); `?questpath` brings them back, which is
      how everything down to the last section tests them */
   const P = await H.newPlayer(browser, {
@@ -225,7 +225,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await P.ctx.close().catch(() => {});
 
-  /* ═══ v2.3.2991: AND AS EVERY PLAYER GETS IT -- PUT AWAY ═══
+  /* ═══ v2.3.2992: AND AS EVERY PLAYER GETS IT -- PUT AWAY ═══
      Owner: "I think I want to remove the footsteps and just rely on the gold
      road on the minimap of where to go."  No `?questpath`: nothing on the
      ground (while the route is still resolved -- the same honest pair as Off

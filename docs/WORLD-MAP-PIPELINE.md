@@ -2474,7 +2474,7 @@ What a player gets now, with nothing added to the address:
   the Wheel.
 - **The quest's way works in the Wheel** (`src/game/questRoute.js`). The gold
   road and a star on the Wheel's minimap both point the same way. Since
-  v2.3.2991 the road is drawn on the minimap only, from you to the star. The
+  v2.3.2992 the road is drawn on the minimap only, from you to the star. The
   owner: *"just rely on the gold road on the minimap of where to go"*; the road
   on the ground is put away, back with `?questpath`
   (docs/specs/quest-path-guide.md §0). The old rules led through the World

@@ -30,7 +30,7 @@ const road = (P) => P.page.evaluate(() => window.__btQuestRoad || null);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   /* ── A BRAND-NEW BRO, which is the whole premise of the welcome ── */
-  /* v2.3.2991: the road on the ground is put away (the way is on the
+  /* v2.3.2992: the road on the ground is put away (the way is on the
      minimap now: questTrailStyle.js GROUND_PATH) -- `?questpath` brings it
      back, and this keeps testing it that way, as the edge pieces are */
   const P = await H.newPlayer(browser, {
@@ -78,7 +78,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...it names the town', !!welcome && /Bro Town/i.test(welcome.text || ''), welcome);
   rec.ok('...and sends you to the Mayor',
     !!welcome && /Mayor Bro/i.test(welcome.text || ''), welcome);
-  /* v2.3.2991: ...along the gold road on the map, where the way is now */
+  /* v2.3.2992: ...along the gold road on the map, where the way is now */
   rec.ok('...along the gold road on your map', !!welcome && /gold road on your map/i.test(welcome.text || ''), welcome);
   /* v2.3.2890: its own, longer hold -- it carries the Skip tutorial button,
      and a button needs time to be reached (mp-tutskip) */

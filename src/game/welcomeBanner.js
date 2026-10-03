@@ -30,7 +30,7 @@
  * built together and one without the other is half the feature — this says
  * who, the road says where.
  *
- * v2.3.2991: the road is on the MINIMAP now (the owner: "just rely on the
+ * v2.3.2992: the road is on the MINIMAP now (the owner: "just rely on the
  * gold road on the minimap of where to go"), so the sentence says so.
  */
 import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js';
@@ -108,7 +108,7 @@ export function maybeShowWelcome(getS) {
                and the title line is nowrap-with-ellipsis, so it is also the
                line that cannot afford the extra words. */
             title: 'Bro Town',
-            /* v2.3.2991: the gold is on the map now, the road on the
+            /* v2.3.2992: the gold is on the map now, the road on the
                ground put away (questTrailStyle.js GROUND_PATH) */
             sub: 'Find Mayor Bro — he wants a word. Follow the gold road on your map.',
             ts: Date.now(),

@@ -32,7 +32,7 @@
  *     the box, the star waits at its edge on the line from you, so the box
  *     says which way however far.  Today's zones star their portals, and the
  *     Wheel has none to star.
- *   - v2.3.2991: and draws the GOLD ROAD to it, from you to the star.  The
+ *   - v2.3.2992: and draws the GOLD ROAD to it, from you to the star.  The
  *     owner: "I think I want to remove the footsteps and just rely on the
  *     gold road on the minimap of where to go".  The road on the ground is put
  *     away (questTrailStyle.js GROUND_PATH), so this is the way now.
@@ -53,7 +53,7 @@ const C_SEA = 0x16324a, C_FRAME = 0xd8aa58, C_ROAD = 0xf2e4c2, C_PATH = 0xe6d5ae
 const C_TOWN = 0xf4f0e7, C_CAMP = 0xeac675, C_GATE = 0xc58cff, C_PASS = 0xf4f0e7, C_LANDMARK = 0x9fe0c0;
 const C_PLAYER = 0xf4f0e7, C_OTHER = 0x58b97b, C_MONSTER = 0xe35d5b;
 const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = 10;   /* v2.3.2990: as the zones' minimap stars, held this far in from the box's edge */
-/* v2.3.2991: the gold road -- its width and its dark casing, CSS px; it
+/* v2.3.2992: the gold road -- its width and its dark casing, CSS px; it
    starts clear of your chevron and is not drawn when the spot is this close */
 const ROAD_W = 2.5, ROAD_CASE = 5, ROAD_FROM = 8, ROAD_MIN = 12, C_ROAD_CASE = 0x0b161b;
 const FACING_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
@@ -81,7 +81,7 @@ export class WheelMinimap {
     this.lines = new Graphics();     /* roads, river, railway: drawn once */
     this.places = new Graphics();    /* town, camps, passes, gates, landmarks: drawn once */
     this.marks = new Container();    /* bros and monsters: every frame */
-    this.road = new Graphics();      /* v2.3.2991: the gold road to the quest's star: every frame */
+    this.road = new Graphics();      /* v2.3.2992: the gold road to the quest's star: every frame */
     this.pan.addChild(this.lines, this.places, this.road, this.marks);
     this.player = new Sprite(this.icons.self || this.dotTex);
     this.player.anchor.set(0.5);
@@ -223,7 +223,7 @@ export class WheelMinimap {
       if (dy > 0) t = Math.min(t, (hi - pby) / dy); else if (dy < 0) t = Math.min(t, (lo - pby) / dy);
       t = Math.max(0, t);
       questEdge = t < 1;
-      /* v2.3.2991: the gold road, you to the star (in the pan's own px, as
+      /* v2.3.2992: the gold road, you to the star (in the pan's own px, as
          everything here is), cased dark so it reads on any ground */
       const L = Math.hypot(dx, dy) * t;
       if (L > ROAD_MIN) {

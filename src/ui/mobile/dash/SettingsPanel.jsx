@@ -5,7 +5,7 @@ import { BT_AUDIO } from '@/data/index.js';   /* v2.3.2820: see toggleAudio */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
 import { installHintBus } from '../installHintBus.js'; /* v2.3.2159 */
-import { TRAIL_STYLES, getTrailStyle, setTrailStyle, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2991 GROUND_PATH */
+import { TRAIL_STYLES, getTrailStyle, setTrailStyle, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2992 GROUND_PATH */
 import { DASH_SIDES, getDashSidePref, setDashSidePref } from '@/game/dashSidePref.js'; /* v2.3.2177 */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — 44px
@@ -271,7 +271,7 @@ export const SettingsPanel = () => {
           ONE row, not a toggle plus a picker: a player who wants it gone and
           a player who wants it different are reaching for the same control,
           and Off as a fourth chip is one tap from either. */}
-      {/* v2.3.2991: put away with the road it chose the look of -- the
+      {/* v2.3.2992: put away with the road it chose the look of -- the
           way is on the minimap now (questTrailStyle.js GROUND_PATH); back
           with `?questpath` */}
       {GROUND_PATH && (
