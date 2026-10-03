@@ -63,7 +63,10 @@ const ITEMS_V = '?v=2.3.1774'; /* v2.3.1774: pine shield icon */
    mint path writes it (server quests.js `_grantQuestItem`, the forge, drops).
    No fallback is needed, and one that guesses from the slot is exactly the
    bug. */
-const wpnIconSrc = (R, wpn) => {
+/* v2.3.3003: exported for the weapon button under the movement stick
+   (WeaponSwapButton.jsx), so the button and the Weapon cell draw the same
+   picture for the same weapon, metal and cache version included. */
+export const wpnIconSrc = (R, wpn) => {
   if (!wpn) return null;
   /* v2.3.1760: a melee weapon's icon takes its METAL (metalIconPath); a bow or
      a staff never does — owner: "only for metals though not staff or bow". */
