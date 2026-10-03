@@ -17,7 +17,7 @@
  *   flora  the blue slime   STUCK  held in place for STUCK.MS
  *
  * The other four elements (stone, storm, water, venom) carried nothing at
- * first: the owner's "Etc" was theirs to choose.  ═══ v2.3.3013: THEY DO NOW ═══
+ * first: the owner's "Etc" was theirs to choose.  ═══ v2.3.3014: THEY DO NOW ═══
  * Offered "stone stuns briefly; storm shocks nearby players; water slows
  * stamina refill; venom poisons over time", the owner: "Yes continue working
  * on those items" --
@@ -85,7 +85,7 @@ export const ELEM_HITS = Object.freeze({
   flame: 'burn',
   wind: 'gust',
   flora: 'stuck',
-  /* v2.3.3013 */
+  /* v2.3.3014 */
   stone: 'daze',
   storm: 'shock',
   water: 'soak',
@@ -133,7 +133,7 @@ export const STUCK = Object.freeze({
   IMMUNE_MS: 2000,
 });
 
-/* v2.3.3013: "stone stuns briefly".  Shorter than the slime's hold, and more:
+/* v2.3.3014: "stone stuns briefly".  Shorter than the slime's hold, and more:
    no walk, no swing, no roll, no shield (the client's to carry out, as the
    hold is: src/game/elemHits.js, combatHelpers.dazeRefused) -- stars round
    your head.  The Hollows' rock monsters come in sixes and hit hard, so the
@@ -143,7 +143,7 @@ export const DAZE = Object.freeze({
   IMMUNE_MS: 2500,
 });
 
-/* v2.3.3013: "storm shocks nearby players".  A landed hit arcs from you to
+/* v2.3.3014: "storm shocks nearby players".  A landed hit arcs from you to
    every other player within R px (the nearest MAX_ARCS of them), PCT of the
    monster's damage each, priced as elemental (Resist reads it, Dodge does
    not), never more than MAX_HP_PCT of their max HP -- the burn's no-one-shot
@@ -157,7 +157,7 @@ export const SHOCK = Object.freeze({
   MS: 450,
 });
 
-/* v2.3.3013: "water slows stamina refill".  Soaked for MS (each hit starts it
+/* v2.3.3014: "water slows stamina refill".  Soaked for MS (each hit starts it
    again), your stamina refills at REGEN_MULT of its pace -- the sprint, the
    roll and the shield all draw on it.  The worker's regen tick reads it
    (_soakRegenMult); the client draws the drips and the chip. */
@@ -166,7 +166,7 @@ export const SOAK = Object.freeze({
   REGEN_MULT: 0.4,
 });
 
-/* v2.3.3013: "venom poisons over time".  The burn's machinery (one a player,
+/* v2.3.3014: "venom poisons over time".  The burn's machinery (one a player,
    refreshed by the next hit, never stacked, put out by the same things), but
    slower and longer: five ticks, a second apart, 12% of the hit each -- the
    burn's 60% of a hit again, spread over five seconds instead of three. */
@@ -190,7 +190,7 @@ const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnPro
 
 export const monsterStatusMethods = {
   /* The element a monster's hit carries, when it carries one that does
-     something: 'frost' | 'flame' | 'wind' | 'flora' (and since v2.3.3013
+     something: 'frost' | 'flame' | 'wind' | 'flora' (and since v2.3.3014
      'stone' | 'storm' | 'water' | 'venom'), else null.  Server-authored
      (`m.element`), checked against the table all the same. */
   _elemHitOf(m) {
@@ -241,14 +241,14 @@ export const monsterStatusMethods = {
         out.st = st; out.stMs = STUCK.MS;
       }
     } else if (st === 'daze') {
-      /* v2.3.3013: the stun, with its window after (STUCK's rule) */
+      /* v2.3.3014: the stun, with its window after (STUCK's rule) */
       if (!(t < (ps._dazeImmuneUntil || 0))) {
         ps._dazeUntil = t + DAZE.MS;
         ps._dazeImmuneUntil = t + DAZE.MS + DAZE.IMMUNE_MS;
         out.st = st; out.stMs = DAZE.MS;
       }
     } else if (st === 'shock') {
-      /* v2.3.3013: the crackle on you, and the arcs to whoever stands near */
+      /* v2.3.3014: the crackle on you, and the arcs to whoever stands near */
       const n = this._shockArcs(zoneId, m, pid, ps, t);
       out.st = st; out.stMs = SHOCK.MS;
       if (n > 0) out.arcs = n;
@@ -262,7 +262,7 @@ export const monsterStatusMethods = {
     return out;
   },
 
-  /* ═══ v2.3.3013: THE STORM'S ARCS ═══
+  /* ═══ v2.3.3014: THE STORM'S ARCS ═══
      From the player a storm monster just struck (`ps`) to every other player
      standing within SHOCK.R of them -- the nearest SHOCK.MAX_ARCS, ties by id
      so it is the same on every run.  Not the dead, the dying, the
@@ -316,7 +316,7 @@ export const monsterStatusMethods = {
     return n;
   },
 
-  /* v2.3.3013: the regen tick's stamina multiplier (index.js): SOAK.REGEN_MULT
+  /* v2.3.3014: the regen tick's stamina multiplier (index.js): SOAK.REGEN_MULT
      while soaked, else exactly 1. */
   _soakRegenMult(ps, now) {
     return ps && ps._soakUntil && now < ps._soakUntil ? SOAK.REGEN_MULT : 1;
@@ -356,7 +356,7 @@ export const monsterStatusMethods = {
     return this._igniteDot('burn', zoneId, m, pid, now);
   },
 
-  /* v2.3.3013: the burn's rule for either damage-over-time status (DOTS):
+  /* v2.3.3014: the burn's rule for either damage-over-time status (DOTS):
      the burn, and the venom's poison in its own Map. */
   _igniteDot(kind, zoneId, m, pid, now) {
     const D = DOTS[kind], C = D.cfg;
@@ -377,7 +377,7 @@ export const monsterStatusMethods = {
   /* Once a tick (tick.js): every burn whose next tick is due.  Burns that
      can no longer land -- the player gone, dead, in another zone, or on the
      Wheel's safe ground -- are put out here rather than wherever that
-     happened, so nothing else has to remember them.  v2.3.3013: and every
+     happened, so nothing else has to remember them.  v2.3.3014: and every
      poison, by the same rules (the name stays: tick.js calls it). */
   _tickMonsterBurns(now) {
     this._tickDots('burn', now);
@@ -409,7 +409,7 @@ export const monsterStatusMethods = {
     return this._dotTick('burn', pid, ps, b);
   },
 
-  /* v2.3.3013: ...and of a poison, its own ability and icon */
+  /* v2.3.3014: ...and of a poison, its own ability and icon */
   _dotTick(kind, pid, ps, b) {
     const D = DOTS[kind], C = D.cfg;
     const raw = Math.min(b.dmg, Math.max(1, Math.floor((ps.maxHp || 100) * C.MAX_HP_PCT)));

@@ -10257,7 +10257,7 @@ export class EffectsRenderer {
       const stuck = R._stuckUntil > now ? R._stuckUntil - now : 0;
       const burn = R._burnUntil > now ? R._burnUntil - now : 0;
       const gustAge = R._gustAt ? now - R._gustAt : Infinity;
-      /* v2.3.3013: the rock monster's daze, the storm's crackle, the
+      /* v2.3.3014: the rock monster's daze, the storm's crackle, the
          fishman's soak, the Mire's poison */
       const daze = R._dazeUntil > now ? R._dazeUntil - now : 0;
       const shock = R._shockUntil > now ? R._shockUntil - now : 0;
@@ -10387,7 +10387,7 @@ export class EffectsRenderer {
           }
         }
       }
-      /* ═══ v2.3.3013: THE OTHER FOUR LOOKS ═══
+      /* ═══ v2.3.3014: THE OTHER FOUR LOOKS ═══
          Each in code, round whoever was hit (peers too), sized as the four
          above: the figure ~100 tall, boots at fy. */
       if (soak) {
@@ -10527,7 +10527,7 @@ export class EffectsRenderer {
         const o = others[id];
         if (!o || o._isDead || (o.zone || o.z || 'town') !== zone) continue;
         if (!(o._chillUntil > now || o._stuckUntil > now || o._burnUntil > now || (o._gustAt && now - o._gustAt < GUST_FX_MS)
-          || o._dazeUntil > now || o._shockUntil > now || o._soakUntil > now || o._poisonUntil > now)) continue;   /* v2.3.3013: + the other four */
+          || o._dazeUntil > now || o._shockUntil > now || o._soakUntil > now || o._poisonUntil > now)) continue;   /* v2.3.3014: + the other four */
         const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
         const oy = typeof o.renderY === 'number' ? o.renderY : o.y;
         if (typeof ox === 'number' && typeof oy === 'number') draw(o, ox, oy);

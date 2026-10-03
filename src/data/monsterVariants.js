@@ -609,7 +609,7 @@ export function hitShapeOf(archOrType) {
 export function applyZoneVariant(monster, zoneId) {
   if (!monster || !zoneId) return monster;
   const zone = ZONES[zoneId];
-  /* v2.3.3012: ...but never a Wheel monster's (it carries `home`).  It is
+  /* v2.3.3013: ...but never a Wheel monster's (it carries `home`).  It is
      skinned by its home zone (zoneId here IS that home), and the home's range
      is the old zone's levels 1-2; the worker sets each Wheel monster's level by
      the stretch of its land it stands in, 6-20 past the first

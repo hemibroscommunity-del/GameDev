@@ -1916,7 +1916,7 @@ console.log('monsters on the Wheel (v2.3.2978)');
   }
   ok('...and none inside anything that stands there (the game\'s own footprints)', inside.length === 0, inside.slice(0, 4));
 
-  /* v2.3.3012: the stretches past the first -- levels 6-10, 11-15 and 16-20,
+  /* v2.3.3013: the stretches past the first -- levels 6-10, 11-15 and 16-20,
      the rest of each land's first stage -- each with places of its own */
   const D = SPAWN_RULES.deep;
   const W = wheelInfo(PLAN);

@@ -27,7 +27,7 @@ import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesE
   prog3CharLevel, getActiveWeapon,
   meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
 import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
-import { isPlayerDead, pushDmgPopup, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3013 */ } from '@/game/combatHelpers.js';
+import { isPlayerDead, pushDmgPopup, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */ } from '@/game/combatHelpers.js';
 import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
 import { monsterLock } from '@/game/targeting.js';  /* v2.3.2542: whirlwind wants a fight under way */
 

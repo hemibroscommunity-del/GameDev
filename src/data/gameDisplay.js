@@ -3602,7 +3602,7 @@ BT_AUDIO.monsterHitHero = function (armored, opts, fallbackKey) {
 };
 /* ═══ v2.3.2996: WHAT A MONSTER'S ELEMENT SOUNDS LIKE ON YOU ═══
    The four statuses a monster's hit now carries (game/elemHits.js; eight since
-   v2.3.3013, below), each from
+   v2.3.3014, below), each from
    a recording already in the game -- no new files, nothing synthesised: the
    snowball's own crunch for a chill, the pan's sizzle for a burn and quieter
    for each of its ticks, the whirlwind's rush for a gust, the slime orb's
@@ -3616,7 +3616,7 @@ BT_AUDIO.ELEM_SOUNDS = {
   burnTick: ['pan-sizzle', 1.5, 0.35, 2.6, 1.08],
   gust: ['whirlwind', 0.1, 0.62, 0.45, 1.2],
   stuck: ['slime-projectile-hit', 0, 0.62, 2.2, 0.9],
-  /* v2.3.3013: the other four, each from a recording already here, its slice
+  /* v2.3.3014: the other four, each from a recording already here, its slice
      picked off the recording's own loudness curve (the attack at its start,
      peaks ~0.3-0.4 at full, under the clang): the pickaxe's first strike
      slowed to a stony knock for the daze; the magic hit sped up to a zap for

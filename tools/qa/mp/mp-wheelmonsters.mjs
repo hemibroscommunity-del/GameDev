@@ -21,7 +21,7 @@
  *   7. no page errors, and no render errors.
  * Pictures in tools/qa/mp/out/wheelmonsters-*.png.
  *
- * v2.3.3012: the lands' next three stretches have monsters too (levels 6-20,
+ * v2.3.3013: the lands' next three stretches have monsters too (levels 6-20,
  * mp-wheeldeep), 192 in all; what this scenario says of "each land's six" is
  * said of the first stretch's, the ones at the inner end.
  */
@@ -34,7 +34,7 @@ const PHONE = { width: 390, height: 844 };
    its monsters (server/src/wheelzone.js) */
 const SKIN = { frost: ['snowman'], ember: ['fireGoblin'], sky: ['mummy', 'skeleton'], hollows: ['rockmonster'],
   thunder: ['fodder'], tidal: ['fishman'], mist: ['mireWisp', 'bogLurker'], verdant: ['blueSlime'] };
-/* v2.3.3012: the first stretch's (ids wm-<home>-<k>; the deeper ones' are
+/* v2.3.3013: the first stretch's (ids wm-<home>-<k>; the deeper ones' are
    wm-<home>-t<tier>-<k>) */
 const isFirst = (m) => !/-t\d+-\d+$/.test(m.id);
 
@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   phase = 'the list';
   await P.page.waitForTimeout(1500);
   const every = await monsters(P);
-  const all = every.filter(isFirst);   /* v2.3.3012: the inner end's */
+  const all = every.filter(isFirst);   /* v2.3.3013: the inner end's */
   const byHome = {};
   for (const m of all) (byHome[m.home] = byHome[m.home] || []).push(m);
   rec.ok(`every element zone's monsters are there, each saying its home (${all.length} at the inner ends: ${Object.entries(byHome).map(([h, a]) => `${h} ${a.length}`).join(', ')}; ${every.length} in all with the deeper stretches)`,

@@ -21,7 +21,7 @@
  */
 import { BT_AUDIO } from '@/data/index.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js';
-import { lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3013 */ } from '@/game/combatHelpers.js';
+import { lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */ } from '@/game/combatHelpers.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no button in the water */
 import { targetCandidates } from '@/game/targeting.js'; /* v2.3.2472: the nearest-monster fallback below */
 

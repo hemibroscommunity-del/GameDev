@@ -27,7 +27,7 @@
  *   9. THE WIRE: additive fields on monster_attack only -- no new event type --
  *      and a plain hit's payload is exactly what it was.
  *
- * v2.3.3013, the other four ("stone stuns briefly; storm shocks nearby
+ * v2.3.3014, the other four ("stone stuns briefly; storm shocks nearby
  * players; water slows stamina refill; venom poisons over time" -- the owner:
  * "Yes continue working on those items"):
  *  10. DAZE: the rock monster's hit dazes you for DAZE.MS, and not again until
@@ -91,7 +91,7 @@ function stage(m, opts) {
   ps.hp = o.hp != null ? o.hp : (ps.maxHp || 100);
   ps.blocking = false; ps._zoneEntryGraceUntil = 0; ps._godUntil = 0;
   ps._chillUntil = 0; ps._stuckUntil = 0; ps._stuckImmuneUntil = 0; ps._gustLeft = 0; ps._gustUntil = 0;
-  ps._dazeUntil = 0; ps._dazeImmuneUntil = 0; ps._soakUntil = 0;   /* v2.3.3013 */
+  ps._dazeUntil = 0; ps._dazeImmuneUntil = 0; ps._soakUntil = 0;   /* v2.3.3014 */
   if (room._burns) room._burns.clear();
   if (room._poisons) room._poisons.clear();
   room.extractions && room.extractions.delete && room.extractions.delete('p1');
@@ -103,7 +103,7 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
 
 // ── 1. WHICH MONSTERS ─────────────────────────────────────────────────────
 {
-  check('which: the eight elements and what each does (v2.3.3013: stone, storm, water and venom too)',
+  check('which: the eight elements and what each does (v2.3.3014: stone, storm, water and venom too)',
     ELEM_HITS.frost === 'chill' && ELEM_HITS.flame === 'burn' && ELEM_HITS.wind === 'gust' && ELEM_HITS.flora === 'stuck'
       && ELEM_HITS.stone === 'daze' && ELEM_HITS.storm === 'shock' && ELEM_HITS.water === 'soak' && ELEM_HITS.venom === 'poison'
       && Object.keys(ELEM_HITS).length === 8, ELEM_HITS);
@@ -328,14 +328,14 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
     check('kill switch: ' + h + '\'s hit carries nothing with elemhits off', hit && !('elem' in hit) && !('st' in hit) && !('kb' in hit), hit);
   }
   check('kill switch: no burn, no hold, no room granted', !(room._burns && room._burns.size) && !ps._stuckUntil && !(ps._gustLeft > 0));
-  check('kill switch: no daze, no soak, no poison (v2.3.3013)', !ps._dazeUntil && !ps._soakUntil && !(room._poisons && room._poisons.size));
+  check('kill switch: no daze, no soak, no poison (v2.3.3014)', !ps._dazeUntil && !ps._soakUntil && !(room._poisons && room._poisons.size));
   room._liveFlags = keep;
 }
 
 // ── 9. THE WIRE ───────────────────────────────────────────────────────────
 {
   check('wire: monster_attack is still the worker\'s alone', PRIVILEGED_EVENTS.has('monster_attack'));
-  /* v2.3.3013: every land's monsters carry an element now; the meadow's do
+  /* v2.3.3014: every land's monsters carry an element now; the meadow's do
      not -- a plain monster, as the Rock Hollows' were */
   const m = room._makeZoneMonster('meadow', ZONES.meadow, ZONES.meadow.spawns[0], 'plain-1', 512, 512);
   stage(m);
@@ -350,7 +350,7 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   check('wire: no new event type', [...types].every((t) => t === 'monster_attack' || PRIVILEGED_EVENTS.has(t)), [...types]);
 }
 
-// ── 10. DAZE (v2.3.3013) ─────────────────────────────────────────────────
+// ── 10. DAZE (v2.3.3014) ─────────────────────────────────────────────────
 {
   const m = of('hollows');
   stage(m);
@@ -369,7 +369,7 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   check('daze: a hit that lands nothing dazes nobody', g && g.elem === 'stone' && !('st' in g) && !ps._dazeUntil, g);
 }
 
-// ── 11. SHOCK (v2.3.3013) ────────────────────────────────────────────────
+// ── 11. SHOCK (v2.3.3014) ────────────────────────────────────────────────
 {
   /* five more players, joined as players are */
   const others = [];
@@ -443,7 +443,7 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   void weak;
 }
 
-// ── 12. SOAK (v2.3.3013) ─────────────────────────────────────────────────
+// ── 12. SOAK (v2.3.3014) ─────────────────────────────────────────────────
 {
   const m = of('tidal');
   stage(m);
@@ -471,7 +471,7 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   check('soak: each hit starts it again', ps._soakUntil >= u1 - 5 && ps._soakUntil > Date.now() + SOAK.MS - 50);
 }
 
-// ── 13. POISON (v2.3.3013) ───────────────────────────────────────────────
+// ── 13. POISON (v2.3.3014) ───────────────────────────────────────────────
 {
   const m = of('mist');
   stage(m);

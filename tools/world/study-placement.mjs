@@ -464,7 +464,7 @@ if (MAPS) {
     px[o] = col[0] * (1 - 0.75 * d); px[o + 1] = col[1] * (1 - 0.75 * d); px[o + 2] = col[2] * (1 - 0.75 * d); px[o + 3] = 255;
   }
   for (const p of pockets) { const i = Math.floor(p.x / K), j = Math.floor(p.y / K); for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) { const q = ((j + v) * MW + i + u) * 4; if (q >= 0 && q < px.length) { px[q] = 255; px[q + 1] = 30; px[q + 2] = 30; } } }
-  /* v2.3.3012: and the deeper stretches' places (levels 6-20) with them */
+  /* v2.3.3013: and the deeper stretches' places (levels 6-20) with them */
   for (const sp of Object.values(WHEEL_SPAWNS)) for (const [x, y] of [...sp.points, ...(sp.deeper || []).flatMap((d) => d.points)]) { const q = (Math.floor(y / K) * MW + Math.floor(x / K)) * 4; px[q] = 255; px[q + 1] = 230; px[q + 2] = 0; }
   fs.writeFileSync(path.join(OUT, `placement-density${TAG}.png`), encodePNG(MW, MH, px));
   console.log(`-> ${path.join(OUT, `placement-density${TAG}.png`)} (${MW} x ${MH}, a pixel 64 game px)`);

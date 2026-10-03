@@ -4,7 +4,7 @@
  *
  * The snowman's chill, the fire goblin's burn and the blue slime's hold
  * (game/elemHits.js), each a chip with its own icon -- the snowflake, the
- * flame, the slime -- and the seconds left; since v2.3.3013 the rock
+ * flame, the slime -- and the seconds left; since v2.3.3014 the rock
  * monster's daze, the fishman's soak and the Mire's poison too.  The gust is
  * a shove, over before a chip could say so; its icon rides the hit's number
  * instead.
@@ -23,7 +23,7 @@ const ROWS = [
   { key: '_chillUntil', img: ELEM_ICON_SRC['elem-frost'], label: 'Chilled', color: '#9fd8ff' },
   { key: '_burnUntil', img: ELEM_ICON_SRC['elem-flame'], label: 'Burning', color: '#ff9a3c' },
   { key: '_stuckUntil', img: ELEM_ICON_SRC.slime, label: 'Stuck', color: '#8be36a' },
-  /* v2.3.3013: the rock monster's daze, the fishman's soak, the Mire's
+  /* v2.3.3014: the rock monster's daze, the fishman's soak, the Mire's
      poison (the storm's crackle is over before a chip could say so, as the
      gust's shove is: its icon rides the number) */
   { key: '_dazeUntil', img: ELEM_ICON_SRC['elem-stone'], label: 'Dazed', color: '#e9d27a' },

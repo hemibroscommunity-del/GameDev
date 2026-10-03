@@ -25,7 +25,7 @@
  * gameEvents.js puts the element's icon on the number.  No imports, so the
  * server's mirror-audit.test.mjs can read CHILL_MULT and the tables here.
  *
- * ═══ v2.3.3013: AND THE OTHER FOUR ═══
+ * ═══ v2.3.3014: AND THE OTHER FOUR ═══
  * "stone stuns briefly; storm shocks nearby players; water slows stamina
  * refill; venom poisons over time" -- the owner: "Yes continue working on
  * those items":
@@ -55,7 +55,7 @@ export const ELEM_LOOK = {
   /* the owner's "slime for floral damage": the slime's own splat, not the
      leaf of the element icons */
   flora: { icon: 'slime', color: '#8be36a' },
-  /* v2.3.3013 */
+  /* v2.3.3014 */
   stone: { icon: 'elem-stone', color: '#c9b48a' },
   storm: { icon: 'elem-storm', color: '#f5e663' },
   water: { icon: 'elem-water', color: '#5fb8ff' },
@@ -69,7 +69,7 @@ export const ELEM_ICON_SRC = {
   'elem-flame': '/icons/ui/elem-flame.webp',
   'elem-wind': '/icons/ui/elem-wind.webp',
   slime: '/icons/monsters/slime-remnants.webp',
-  /* v2.3.3013 */
+  /* v2.3.3014 */
   'elem-stone': '/icons/ui/elem-stone.webp',
   'elem-storm': '/icons/ui/elem-storm.webp',
   'elem-water': '/icons/ui/elem-water.webp',
@@ -97,7 +97,7 @@ export function isBurnTick(p) {
 }
 
 /**
- * v2.3.3013: damage the worker resolved that is NOT a blow -- a burn's tick,
+ * v2.3.3014: damage the worker resolved that is NOT a blow -- a burn's tick,
  * the fire trail's, a poison's, or a storm's arc from someone near you.  No
  * flinch, no camera kick, no blood, no armour clang: 'burn', 'poison' or
  * 'shock' (what it sounds and sparkles like), else null.
@@ -124,7 +124,7 @@ export function applyElemHit(S, p, now, who) {
   if (p.st === 'chill') R._chillUntil = Math.max(R._chillUntil || 0, t + ms);
   else if (p.st === 'stuck') R._stuckUntil = Math.max(R._stuckUntil || 0, t + ms);
   else if (p.st === 'burn') R._burnUntil = Math.max(R._burnUntil || 0, t + ms);
-  /* v2.3.3013 */
+  /* v2.3.3014 */
   else if (p.st === 'daze') R._dazeUntil = Math.max(R._dazeUntil || 0, t + ms);
   else if (p.st === 'soak') R._soakUntil = Math.max(R._soakUntil || 0, t + ms);
   else if (p.st === 'poison') R._poisonUntil = Math.max(R._poisonUntil || 0, t + ms);
@@ -155,7 +155,7 @@ export function applyElemHit(S, p, now, who) {
 export function elemMoveMult(S, now) {
   if (!S) return 1;
   if (S._stuckUntil && now < S._stuckUntil) return 0;
-  if (S._dazeUntil && now < S._dazeUntil) return 0;   /* v2.3.3013 */
+  if (S._dazeUntil && now < S._dazeUntil) return 0;   /* v2.3.3014 */
   if (S._chillUntil && now < S._chillUntil) return CHILL_MULT;
   return 1;
 }
@@ -165,7 +165,7 @@ export function isStuck(S, now) {
   return !!(S && S._stuckUntil && (typeof now === 'number' ? now : Date.now()) < S._stuckUntil);
 }
 
-/** v2.3.3013: dazed by a rock monster right now? */
+/** v2.3.3014: dazed by a rock monster right now? */
 export function isDazed(S, now) {
   return !!(S && S._dazeUntil && (typeof now === 'number' ? now : Date.now()) < S._dazeUntil);
 }
@@ -190,5 +190,5 @@ export function gustStep(S, now) {
 export function clearElemStatuses(S) {
   if (!S) return;
   S._chillUntil = 0; S._stuckUntil = 0; S._burnUntil = 0; S._gust = null;
-  S._dazeUntil = 0; S._shockUntil = 0; S._shockFrom = null; S._soakUntil = 0; S._poisonUntil = 0;   /* v2.3.3013 */
+  S._dazeUntil = 0; S._shockUntil = 0; S._shockFrom = null; S._soakUntil = 0; S._poisonUntil = 0;   /* v2.3.3014 */
 }

@@ -612,7 +612,7 @@ remnant to migrate server-side, not a mode to preserve.
     worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard
     folded, ~40 with it up (37 was "too small", v2.3.2249); `?zoom=0.8` is
     the view before; WORLD-MAP-PIPELINE "And another 25%", `mp-zoomout`.
-  - Since v2.3.3012 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
+  - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
     - each land's next three stretches (tiers 2-4, levels 6-10, 11-15, 16-20,
@@ -632,7 +632,7 @@ remnant to migrate server-side, not a mode to preserve.
       every other zone keeps the old loop; `wheeldeep: false` the kill switch;
     - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§8,
       `mp-wheeldeep`.
-  - Since v2.3.3013 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
+  - Since v2.3.3014 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
     stuns briefly; storm shocks nearby players; water slows stamina refill;
     venom poisons over time", the owner: "Yes continue working on those
     items" (server/src/monsterstatus.js, client src/game/elemHits.js):

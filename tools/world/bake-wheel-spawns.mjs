@@ -18,7 +18,7 @@
  * the commons -- and spread apart, farthest first, so the first six are as
  * far from each other as the land allows.
  *
- * v2.3.3012: AND THE STRETCHES PAST IT.  The owner said yes to "monsters past
+ * v2.3.3013: AND THE STRETCHES PAST IT.  The owner said yes to "monsters past
  * level 5": each land's next three stretches (tiers 2-4, levels 6-10, 11-15
  * and 16-20 -- the rest of its first stage, up to the first pass and the
  * camp at level 20) get places of their own, worked out the same way along
@@ -58,7 +58,7 @@ export const SPAWN_RULES = Object.freeze({
   safeMargin: 48,      /* the safe ground: every land cell of the commons and the town lies
                           within WHEEL_SAFE_R of the centre, this much to spare */
   keep: 12,            /* places kept a land (six are used today) */
-  /* v2.3.3012: the stretches past the first, each a tier of its own (one zone
+  /* v2.3.3013: the stretches past the first, each a tier of its own (one zone
      of walking, five levels).  The rest of the rules above hold there too
      (hazards, roads, objects, `apart`, `half`, `keep`); these are theirs. */
   deep: Object.freeze({
@@ -96,7 +96,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
   const dHaz = dist((i) => HAZ.has(bp.cls[i]));
   const dRoad = dist((i) => ROAD.has(bp.cls[i]));
   const dCommons = dist((i) => bp.reg[i] === ri.commons || bp.reg[i] === ri.town);
-  /* v2.3.3012: for the deeper stretches -- from the plots out in the country
+  /* v2.3.3013: for the deeper stretches -- from the plots out in the country
      (the camps), and, per tier, from any land of another tier (the commons,
      the town and the sea are tier 0: they bound no stretch) */
   const D = rules.deep || null;
@@ -152,7 +152,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
     return false;
   };
   /* farthest first, from the place nearest the band's middle on the axis
-     (v2.3.3012: one copy for every stretch -- the first's places came out of
+     (v2.3.3013: one copy for every stretch -- the first's places came out of
      exactly this, and still do) */
   const pick = (cand, mid) => {
     cand.sort((a, b) => (Math.abs(a.along - mid) + a.side) - (Math.abs(b.along - mid) + b.side) || a.y - b.y || a.x - b.x);
@@ -218,7 +218,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
       band: [Math.round(r0), Math.round(r1)],
       points: picked.map((c) => [Math.round(c.x), Math.round(c.y), Math.round(((c.along - r0) / (r1 - r0)) * 100) / 100]),
     };
-    /* ── v2.3.3012: the stretches past the first ──
+    /* ── v2.3.3013: the stretches past the first ──
        Each is a tier: from where it begins on the axis to where it ends,
        less `clearTier` at either end, and every place on a cell of that very
        tier, `clearTier` from land of any other (the tiers' edges wander,
@@ -268,7 +268,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
 }
 
 export function wheelSpawnsSource(b) {
-  /* v2.3.3012: a land's deeper stretches follow its first, one a line */
+  /* v2.3.3013: a land's deeper stretches follow its first, one a line */
   const pts = (a) => a.map((p) => `[${p.join(', ')}]`).join(', ');
   const lines = Object.entries(b.spawns).map(([id, s]) =>
     `  ${id}: { anchor: [${s.anchor.join(', ')}], band: [${s.band.join(', ')}],\n    points: [${pts(s.points)}]`
@@ -286,7 +286,7 @@ export function wheelSpawnsSource(b) {
  * and up to twelve places, farthest-apart first: [x, y, depth], depth 0 at the
  * band's inner end and 1 at its outer -- the server's level spread.
  *
- * v2.3.3012: and 'deeper', the land's next stretches, each a tier: its levels,
+ * v2.3.3013: and 'deeper', the land's next stretches, each a tier: its levels,
  * its band on the axis and its places, in the same shape. */
 export const WHEEL_SPAWNS_HASH = '${b.hash}';
 export const WHEEL_WORLD = [${b.world.join(', ')}];

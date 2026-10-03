@@ -50,7 +50,7 @@
  * and a Wheel spawned after it is empty.  A Wheel already spawned keeps its
  * monsters until the room restarts (no tick polls the flag).
  *
- * ═══ v2.3.3012: AND PAST LEVEL 5 ═══
+ * ═══ v2.3.3013: AND PAST LEVEL 5 ═══
  * The owner said yes to "monsters past level 5": each land's first stage runs
  * levels 1-20, a tier (one zone of walking, five levels) at a time, and only
  * its first tier had monsters.  Now its next three do too -- levels 6-10,
@@ -103,7 +103,7 @@ export const wheelzoneMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheelmonsters') && !f.wheelmonsters);
   },
-  /* v2.3.3012: `wheeldeep: false` -- the first tier's monsters only */
+  /* v2.3.3013: `wheeldeep: false` -- the first tier's monsters only */
   _wheelDeepOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheeldeep') && !f.wheeldeep);
@@ -135,7 +135,7 @@ export const wheelzoneMethods = {
         }
       }
     }
-    /* v2.3.3012: the stretches past the first, after all of the first's (so
+    /* v2.3.3013: the stretches past the first, after all of the first's (so
        those 48 keep their places in the list): each land's spawn list again
        per tier, at the tier's own levels.  The stand-in point is irrelevant
        here -- the level is given -- so it is the home zone's middle. */
@@ -167,7 +167,7 @@ export const wheelzoneMethods = {
     return out;
   },
 
-  /* v2.3.3012: the Wheel's monster<->monster separation (index.js, the end of
+  /* v2.3.3013: the Wheel's monster<->monster separation (index.js, the end of
      _tickMonsters): the same push as every zone's -- two live monsters' feet
      within `minSep` are pushed half the overlap each apart -- found by a sweep
      along x instead of every pair.  The Wheel's monsters stand in tens of

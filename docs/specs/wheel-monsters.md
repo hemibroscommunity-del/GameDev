@@ -1,4 +1,4 @@
-# The Wheel's monsters — each land's at its inner end (v2.3.2978), and past level 5 (v2.3.3012)
+# The Wheel's monsters — each land's at its inner end (v2.3.2978), and past level 5 (v2.3.3013)
 
 Owner, 2026-10-02: "can you place the monsters where they belong in their
 zones (on the ends closest to the central map)?"
@@ -229,7 +229,7 @@ Owner, 2026-10-02: *"Yes only load as you walk towards it."*
   still swings with this box's load (42 before this change at v2.3.2983, 59
   at v2.3.2985, 43 after), as noted above.
 
-## Past level 5 (v2.3.3012)
+## Past level 5 (v2.3.3013)
 
 Asked *"monsters past level 5 ... levels 6–20 in all eight lands (up to the
 first pass)"*, the owner, 2026-10-03: *"Yes continue working on those items."*
@@ -327,8 +327,8 @@ Lv 11–15"). Only the first stretch had monsters. Now the next three do too.
   way in, all 48 with their homes and skins, at the inner ends, drawn from
   live art at Frost Ridge and the Flame Fields, a kill that pays, the way
   home with the list cleared and the art let go, no page or render errors.
-  Since v2.3.3012 its "48" is the first stretch's, of 192.
-- **v2.3.3012:** the `wheelzone` suite's §1b (the deeper stretches: 144, per
+  Since v2.3.3013 its "48" is the first stretch's, of 192.
+- **v2.3.3013:** the `wheelzone` suite's §1b (the deeper stretches: 144, per
   land and stretch the home's spawn list, at the stretch's levels by depth,
   both ends of every stretch, the stretches outward in order, every stat what
   the home zone builds at that level, the home's shard, the weapon roll's

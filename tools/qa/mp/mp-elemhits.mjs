@@ -24,7 +24,7 @@
  *   C. No page errors.
  * Pictures in tools/qa/mp/out/elemhits-*.png.
  *
- * v2.3.3013, the other four ("stone stuns briefly; storm shocks nearby
+ * v2.3.3014, the other four ("stone stuns briefly; storm shocks nearby
  * players; water slows stamina refill; venom poisons over time" -- the owner:
  * "Yes continue working on those items"):
  *   A. the daze stops your walk, your roll and your swing ("Dazed!"), then
@@ -80,7 +80,7 @@ const elemLog = (P) => P.page.evaluate(() => (window.__btElemLog || []).slice())
 const clearStatuses = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   S._chillUntil = 0; S._stuckUntil = 0; S._burnUntil = 0; S._gust = null; S._gustAt = 0;
-  S._dazeUntil = 0; S._shockUntil = 0; S._shockFrom = null; S._soakUntil = 0; S._poisonUntil = 0;   /* v2.3.3013 */
+  S._dazeUntil = 0; S._shockUntil = 0; S._shockFrom = null; S._soakUntil = 0; S._poisonUntil = 0;   /* v2.3.3014 */
 });
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -231,7 +231,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`burn: a tick's number carries the flame (${(tick.icons['elem-flame'] || 0) - (before.icons['elem-flame'] || 0)} drawn), with no flinch and no shove of the camera, and sizzles (${tick.sound})`,
     (tick.icons['elem-flame'] || 0) >= (before.icons['elem-flame'] || 0) + 2 && !tick.flash && !tick.punch && tick.sound === 'burnTick', tick);
 
-  /* ── v2.3.3013: the other four, through the same dispatcher ── */
+  /* ── v2.3.3014: the other four, through the same dispatcher ── */
   /* 4b. the daze: no walk, no roll, no swing -- "Dazed!" -- then free */
   await clearStatuses(P);
   const dz = await P.page.evaluate(() => {
@@ -295,7 +295,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(120);
   await hitMe(P, { elem: 'flora' });
   await P.page.waitForTimeout(120);
-  for (const e of ['stone', 'storm', 'water', 'venom']) {   /* v2.3.3013 */
+  for (const e of ['stone', 'storm', 'water', 'venom']) {   /* v2.3.3014 */
     await hitMe(P, { elem: e });
     await P.page.waitForTimeout(120);
   }
@@ -305,7 +305,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const more = (k) => (i1[k] || 0) - (i0[k] || 0);
   rec.ok(`icons: the snowflake (${more('elem-frost')}), the wind (${more('elem-wind')}) and the slime (${more('slime')}) on their numbers, the heart on a plain one (${more('heart')})`,
     more('elem-frost') >= 1 && more('elem-wind') >= 1 && more('slime') >= 1 && more('heart') >= 1, { i0, i1 });
-  rec.ok(`icons: ...and the stone (${more('elem-stone')}), the storm (${more('elem-storm')}), the water (${more('elem-water')}) and the venom (${more('elem-venom')}) on theirs (v2.3.3013)`,
+  rec.ok(`icons: ...and the stone (${more('elem-stone')}), the storm (${more('elem-storm')}), the water (${more('elem-water')}) and the venom (${more('elem-venom')}) on theirs (v2.3.3014)`,
     ['elem-stone', 'elem-storm', 'elem-water', 'elem-venom'].every((k) => more(k) >= 1), { i0, i1 });
 
   /* 6. the chips */
@@ -313,7 +313,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await hitMe(P, { elem: 'frost', st: 'chill', stMs: 5000 });
   await hitMe(P, { elem: 'flame', st: 'burn', stMs: 5000 });
   await hitMe(P, { elem: 'flora', st: 'stuck', stMs: 5000 });
-  /* v2.3.3013 */
+  /* v2.3.3014 */
   await hitMe(P, { elem: 'stone', st: 'daze', stMs: 5000 });
   await hitMe(P, { elem: 'water', st: 'soak', stMs: 5000 });
   await hitMe(P, { elem: 'venom', st: 'poison', stMs: 5000 });
@@ -327,7 +327,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot(P, 'a6-all');
   rec.ok(`chips: the chill, the burn and the hold each show in the HUD with its icon (${chips.map((c) => c.alt).join(', ')})`,
     ['Chilled', 'Burning', 'Stuck'].every((a) => chips.some((c) => c.alt === a && c.visible)), chips);
-  rec.ok('chips: ...and the daze, the soak and the poison (v2.3.3013)',
+  rec.ok('chips: ...and the daze, the soak and the poison (v2.3.3014)',
     ['Dazed', 'Soaked', 'Poisoned'].every((a) => chips.some((c) => c.alt === a && c.visible)), chips);
   await clearStatuses(P);
   await H.devOp(wsPort, 'vitals', myId, { heal: true });
@@ -371,7 +371,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(500);
     await shot(P, 'look-gust');
     await P.page.evaluate(() => clearInterval(window.__qaGustHold));
-    /* v2.3.3013: the other four */
+    /* v2.3.3014: the other four */
     await look('daze', { elem: 'stone', st: 'daze', stMs: 4000 }, 400);
     await look('shock', { elem: 'storm', st: 'shock', stMs: 4000 }, 300);
     await look('soak', { elem: 'water', st: 'soak', stMs: 4000 }, 700);
@@ -396,7 +396,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { home: 'ember', st: 'burn', name: 'a fire goblin' },
     { home: 'frost', st: 'chill', name: 'a snowman' },
     { home: 'verdant', st: 'stuck', name: 'a blue slime' },
-    /* v2.3.3013: on round the wheel, south-west to east */
+    /* v2.3.3014: on round the wheel, south-west to east */
     { home: 'mist', st: 'poison', name: 'a wisp' },
     { home: 'tidal', st: 'soak', name: 'a fishman' },
     { home: 'thunder', st: 'shock', name: 'a Storm Peaks slime' },
@@ -430,7 +430,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return m ? { id: m.id, x: m.x, y: m.y } : null;
     }, L.home);
     if (!target) { rec.ok(`real: ${L.name} to meet`, false, { home: L.home }); continue; }
-    /* v2.3.3013: what came in since now, by the time on each entry -- the
+    /* v2.3.3014: what came in since now, by the time on each entry -- the
        log keeps its last 60, so by the fifth land an index into it no longer
        moves (it read the Tidal Coast's hits as none) */
     const n0 = await P.page.evaluate(() => Date.now());
@@ -474,7 +474,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`real: ${L.name} sets you burning (${got.stMs} ms), and its ticks come with the flame (${ticks.length} so far, ${ticks.map((t) => t.dmgTaken).join('/')} hp)`,
         got.stMs === 3000 && ticks.length >= 1 && ticks.every((t) => t.dmgTaken > 0), { got, ticks });
     } else if (got && L.st === 'poison') {
-      /* v2.3.3013: its ticks, as the burn's */
+      /* v2.3.3014: its ticks, as the burn's */
       await shot(P, 'b-' + L.st);
       let ticks = [];
       for (let i = 0; i < 16 && ticks.length < 1; i++) {
@@ -484,7 +484,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`real: ${L.name} poisons you (${got.stMs} ms), and its ticks come with the venom (${ticks.length} so far)`,
         got.stMs === 5000 && ticks.length >= 1 && ticks.every((t) => typeof t.dmgTaken === 'number'), { got, ticks });
     } else if (got && L.st === 'soak') {
-      /* v2.3.3013: soaked, the worker refills your stamina slower -- read off
+      /* v2.3.3014: soaked, the worker refills your stamina slower -- read off
          its own echoes, from 20 (the dev op heals you too): first where you
          stand, the fishmen's next hits keeping you soaked; then dry, out of
          their reach on the commons' safe ground once the soak has run out */
@@ -507,7 +507,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`real: ${L.name} soaks you (${got.stMs} ms), and soaked the worker refills your stamina slower (+${soaked.gain} in 2 s soaked, +${dry.gain} dry)`,
         got.stMs === 4000 && soaked.wet && !dry.wet && dry.gain > 0 && soaked.gain >= 0 && soaked.gain < dry.gain * 0.6, { got, soaked, dry });
     } else if (got && (L.st === 'shock' || L.st === 'daze')) {
-      /* v2.3.3013: the crackle (alone, nobody to arc to) and the daze */
+      /* v2.3.3014: the crackle (alone, nobody to arc to) and the daze */
       const now2 = await H.readState(P, (S) => ({ shock: S._shockUntil || 0, daze: S._dazeUntil || 0, from: S._shockFrom || null, t: Date.now() }));
       await shot(P, 'b-' + L.st);
       const until = L.st === 'shock' ? now2.shock : now2.daze;

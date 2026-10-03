@@ -9,7 +9,7 @@
  * and up to twelve places, farthest-apart first: [x, y, depth], depth 0 at the
  * band's inner end and 1 at its outer -- the server's level spread.
  *
- * v2.3.3012: and 'deeper', the land's next stretches, each a tier: its levels,
+ * v2.3.3013: and 'deeper', the land's next stretches, each a tier: its levels,
  * its band on the axis and its places, in the same shape. */
 export const WHEEL_SPAWNS_HASH = '0ca10b09';
 export const WHEEL_WORLD = [43008, 43008];

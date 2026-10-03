@@ -28,7 +28,7 @@
  *   7. WHAT 'wheel' IS NOT: no nodes scattered over the sea, no population
  *      scaling, no PvP, no zone config -- and it is a zone a client may name.
  *
- * v2.3.3012, PAST LEVEL 5 (the owner's yes to "monsters past level 5"):
+ * v2.3.3013, PAST LEVEL 5 (the owner's yes to "monsters past level 5"):
  *  1b. THE DEEPER STRETCHES: each land's spawn list again in each of its next
  *      three tiers, at the tier's levels (6-10, 11-15, 16-20) by depth, built
  *      by the one copy of the stat math, on the tier's baked places; the first
@@ -66,7 +66,7 @@ const CENTRE = [21504, 21504];
 
 // ── 1. THE SPAWN ──────────────────────────────────────────────────────────
 const wheel = room._ensureZoneMonsters(WHEEL_ZONE);
-/* v2.3.3012: the first tier's -- levels 1-2 at each land's inner end, as
+/* v2.3.3013: the first tier's -- levels 1-2 at each land's inner end, as
    since v2.3.2978; the deeper stretches carry `tier` (1b below) */
 const first = wheel.filter((m) => !m.tier);
 {
@@ -114,7 +114,7 @@ const first = wheel.filter((m) => !m.tier);
   check('spawn: a second call is the same list (lazy, once per room)', room._ensureZoneMonsters(WHEEL_ZONE) === wheel);
 }
 
-// ── 1b. THE DEEPER STRETCHES (v2.3.3012) ─────────────────────────────────
+// ── 1b. THE DEEPER STRETCHES (v2.3.3013) ─────────────────────────────────
 const deep = wheel.filter((m) => m.tier);
 {
   const TIERS = { 2: [6, 10], 3: [11, 15], 4: [16, 20] };
@@ -228,7 +228,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 21504, y: 21792, z: WHEEL_ZONE }));
   const zs = msgsOfType(wsA, 'zone_state');
   check('wire: moving into the Wheel is accepted (a zone a client may name)', room.playerState.wa.z === WHEEL_ZONE && VALID_ZONE_IDS.has(WHEEL_ZONE), room.playerState.wa.z);
-  /* v2.3.3012: all 192, the deeper ones each with its own level (the client
+  /* v2.3.3013: all 192, the deeper ones each with its own level (the client
      shows it: monsterVariants.js applyZoneVariant) and nothing new */
   check(`wire: one zone_state with all ${wheel.length}, each saying its home and its skin, and its own level`,
     zs.length === 1 && zs[0].zone === WHEEL_ZONE && zs[0].monsters.length === wheel.length && wheel.length === 192
@@ -270,7 +270,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   check('kill switch: and the cap is no longer advertised', !!sync && !!sync.caps && sync.caps.wheelmonsters === false, sync && sync.caps && sync.caps.wheelmonsters);
   room._liveFlags = keep;
   check('kill switch: off again, the Wheel spawns', room._spawnZoneMonsters(WHEEL_ZONE).length === wheel.length);
-  /* v2.3.3012: 4b. `wheeldeep: false` -- the first tier's alone */
+  /* v2.3.3013: 4b. `wheeldeep: false` -- the first tier's alone */
   room._liveFlags = { ...(keep || {}), wheeldeep: false };
   const only = room._spawnZoneMonsters(WHEEL_ZONE);
   check('kill switch: `wheeldeep: false` leaves a Wheel spawned after it with the first stretch\'s 48, exactly',
@@ -363,7 +363,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     ps._zoneEntryGraceUntil = Date.now() + 600000;   /* about what is heard, not who is hit */
   };
   const mid = (home) => {
-    const ms = first.filter((q) => q.home === home);   /* v2.3.3012: the inner end's six */
+    const ms = first.filter((q) => q.home === home);   /* v2.3.3013: the inner end's six */
     return { x: ms.reduce((a, q) => a + q.spawnX, 0) / ms.length, y: ms.reduce((a, q) => a + q.spawnY, 0) / ms.length };
   };
   const heard = (ws) => {
@@ -451,7 +451,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     !['town', 'worldview', 'farm_home'].includes(WHEEL_ZONE));
 }
 
-// ── 8. THE SEPARATION SWEEP (v2.3.3012) ──────────────────────────────────
+// ── 8. THE SEPARATION SWEEP (v2.3.3013) ──────────────────────────────────
 {
   /* the same push as every zone's (index.js): two live monsters' feet within
      22 px are pushed half the overlap each apart; dirty both */

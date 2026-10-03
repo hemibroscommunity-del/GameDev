@@ -1,4 +1,4 @@
-# A monster's hit carries its element (v2.3.2996; the other four, v2.3.3013)
+# A monster's hit carries its element (v2.3.2996; the other four, v2.3.3014)
 
 > Owner, 2026-10-03: "eventually I want elemental damage per monster type so
 > using a snowflake icon for instance when hit by a snowman's snowball and
@@ -21,7 +21,7 @@ monsters carry their land's.
 | flora | the blue slime | **stuck** | held in place for 0.7 s: no walk, no roll | the slime (`slime-remnants`) |
 
 The other four elements (stone, storm, water, venom) carried nothing at
-first: each was the owner's "Etc" to choose. **Since v2.3.3013 they do** (below,
+first: each was the owner's "Etc" to choose. **Since v2.3.3014 they do** (below,
 "The other four"). Only an element that does something is named on the wire, so
 an element icon on a number always means "this did something".
 
@@ -65,7 +65,7 @@ sixes. Without it, three of them would hold you for good.
 the zone's depth where you stand (`_depthK`). Standing exactly on top of it
 there is no "away", so there is no shove.
 
-## The other four (v2.3.3013)
+## The other four (v2.3.3014)
 
 Offered *"stone stuns briefly; storm shocks nearby players; water slows stamina
 refill; venom poisons over time"*, the owner: *"Yes continue working on those
@@ -285,7 +285,7 @@ A worker restart forgetting a second of slow is correct, not a bug.
   - the wire: a plain hit's payload is exactly what it was.
 - **`server/test/mirror-audit.test.mjs`:** the chill's pace, the status names
   and an icon for every element, both sides, plus the icon files in `public/`.
-- **v2.3.3013:** `monsterstatus.test.mjs` §10–13:
+- **v2.3.3014:** `monsterstatus.test.mjs` §10–13:
   - the daze and its window;
   - the shock: alone, one friend near and one far, the nearest four of six,
     never the dead, the dying, the disconnected, another zone, a harvester or

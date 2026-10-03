@@ -1490,7 +1490,7 @@ export class GameRoom {
      resolution, same hp/dmg/xp/gold curves.  A second copy of this math
      would drift, and drifted monster stats desync client damage
      prediction from monster_hit (the v2.3.1144 lockstep lesson). */
-  /* v2.3.3012: `atLevel` -- a level the caller has already decided, used
+  /* v2.3.3013: `atLevel` -- a level the caller has already decided, used
      instead of the one read off the zone's depth.  The Wheel's deeper
      stretches (wheelzone.js) are levels 6-20 of a land whose home zone is
      levels 1-2; every stat below still comes from this one copy of the math.
@@ -2511,7 +2511,7 @@ export class GameRoom {
       // n <= ~14 per zone (~100 pair checks) -- negligible at 45 Hz.
       // Player<->monster separation stays client-side (the _monBlock
       // push-out in BroTown.jsx) so the server never shoves a player.
-      /* v2.3.3012: ...but not on the Wheel, whose ~190 monsters made 18,000
+      /* v2.3.3013: ...but not on the Wheel, whose ~190 monsters made 18,000
          pair checks a tick -- 1.0 of the 1.2 ms the whole monster tick took
          there (measured).  It keeps them apart by a sweep along x instead
          (wheelzone.js _wheelSeparate), the same rule for every pair close
@@ -3446,7 +3446,7 @@ export class GameRoom {
           // — the successor to the retired restoration mult, deleted
           // v2.3.1155 (it was ×1.0 for every live player since v2.3.910).
           let stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stEndMult) + this._conditioningFlat(ps)); // v2.3.1345: flat regen add
-          /* v2.3.3013: soaked by a fishman's hit, it refills at SOAK.REGEN_MULT
+          /* v2.3.3014: soaked by a fishman's hit, it refills at SOAK.REGEN_MULT
              (monsterstatus.js) -- exactly the line above when dry */
           const stSoak = this._soakRegenMult(ps, now);
           if (stSoak !== 1) stHeal = Math.max(1, Math.round(stHeal * stSoak));
