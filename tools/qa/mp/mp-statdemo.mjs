@@ -349,7 +349,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          and prog3.js says of this stat, in its own words, "reach, not damage".
        - Move Speed and Elem Resist need a scene at all, where before the
          window opened with an empty stage. */
-  for (const [lane, key] of [['shared', 'stam'], ['bow', 'range'], ['shared', 'move'], ['shared', 'eres']]) {
+  for (const [lane, key] of [['shared', 'stam'], ['bow', 'range'], ['shared', 'move'], ['shared', 'eres'], ['shared', 'mana']]) {
     await P.page.keyboard.press('Escape');
     await P.page.waitForTimeout(350);
     await H.openPointCols(P, [lane]);
@@ -361,7 +361,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.2979: and what the scene is DOING -- the roll, the swell, the
        stamina bar -- because the simulated scenes prove themselves with the
        real mechanic, not with a caption. */
-    const seen = { scene: false, shot: 0, frames: 0, texts: {}, rolled: false, swell: false, windup: false, orb: false, stam: [], verdict: null };
+    const seen = { scene: false, shot: 0, frames: 0, texts: {}, rolled: false, swell: false, windup: false, orb: false, stam: [], verdict: null, mana: [], manaBars: 0, v1: null, v2: null, sim: null };
     for (let i = 0; i < 34; i++) {
       const f = await P.page.evaluate(() => ({
         scene: !!document.querySelector('[data-stat-demo]'),
@@ -377,6 +377,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         orb: !!document.querySelector('.bt-sd-orb'),
         stam: (document.querySelector('[data-sd-bar="stamina"] .bt-sd-vital-n') || {}).textContent || null,
         verdict: window.__btStatScene ? window.__btStatScene.verdict : null,
+        /* v2.3.3008: Max MP's scene -- each lane's mana bar, and the two lines */
+        mana: [...document.querySelectorAll('[data-sd-bar="mana"] .bt-sd-vital-n')].map((e) => e.textContent.replace(/\s/g, '')),
+        v1: (document.querySelector('[data-sd-verdict]') || {}).textContent || null,
+        v2: (document.querySelector('[data-sd-verdict2]') || {}).textContent || null,
+        sim: window.__btStatScene && window.__btStatScene.stat === 'mana' ? { bars: window.__btStatScene.bars, verdict2: window.__btStatScene.verdict2 } : null,
       }));
       if (f.scene) seen.scene = true;
       seen.shot += f.shot;
@@ -388,6 +393,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (f.orb) seen.orb = true;
       if (f.stam && seen.stam[seen.stam.length - 1] !== f.stam) seen.stam.push(f.stam);
       if (f.verdict) seen.verdict = f.verdict;
+      if (f.mana.length) { seen.manaBars = Math.max(seen.manaBars, f.mana.length); const k = f.mana.join(' | '); if (seen.mana[seen.mana.length - 1] !== k) seen.mana.push(k); }
+      if (f.v1) seen.v1 = f.v1;
+      if (f.v2) seen.v2 = f.v2;
+      if (f.sim) seen.sim = f.sim;
       await P.page.waitForTimeout(260);
     }
     rec.ok(`${key} opens a scene on its stage`, seen.scene, seen);
@@ -431,6 +440,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('...and Resist meets the blue slime\'s burst: it swells, and you take the simulated number, before and after',
         seen.swell && !!v.now && texts.includes('hero:' + v.now) && (!v.after || texts.includes('hero:' + v.after)),
         { swell: seen.swell, verdict: v, texts });
+    }
+    if (key === 'mana') {
+      /* ═══ v2.3.3008: MAX MP HAS ITS SCENE ═══
+         Owner: "add a max mp before and after for the simulation stat
+         allocation confirmation window it's the only one missing one".  The
+         bar is the scene: in both lanes the hero casts his special until the
+         bar cannot pay for another, a block a cast; the "+n" lane's bar is
+         the bigger one; the window says Max MP now -> after, and the casts a
+         full bar pays for. */
+      const parse = (t) => { const m = /^(\d+)\/(\d+)$/.exec(t || ''); return m ? { cur: +m[1], max: +m[2] } : null; };
+      const firsts = (seen.mana[0] || '').split(' | ').map(parse);
+      const maxes = firsts.map((b) => b && b.max);
+      const dropped = seen.mana.some((k) => k.split(' | ').map(parse).some((b) => b && b.cur < b.max));
+      rec.ok(`...and Max MP draws the mana bar in both lanes, the "+n" one bigger (${maxes.join(' -> ')})`,
+        seen.manaBars === 2 && maxes.length === 2 && maxes[1] > maxes[0], { bars: seen.mana.slice(0, 3), sim: seen.sim });
+      rec.ok('...the bar drops a block with each special, and the special lands on the slime',
+        dropped && texts.some((t) => /^slime:\d+$/.test(t)), { bars: seen.mana.slice(0, 6), texts });
+      rec.ok('...until it cannot pay for another: "Out of mana" over him', texts.some((t) => /^hero:Out of mana/i.test(t)), { texts });
+      rec.ok(`...and the window says Max MP now -> after ("${(seen.v1 || '').trim()}") and the casts a full bar pays for ("${(seen.v2 || '').trim()}")`,
+        /Max MP/.test(seen.v1 || '') && new RegExp(String(maxes[0]) + '\\s*\u2192\\s*' + String(maxes[1])).test(seen.v1 || '') && /Specials on a full bar/.test(seen.v2 || ''),
+        { v1: seen.v1, v2: seen.v2, maxes });
     }
     await P.page.screenshot({ path: `tools/qa/mp/out/statdemo-${key}.png` }).catch(() => {});
   }

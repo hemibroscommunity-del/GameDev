@@ -584,7 +584,34 @@ remnant to migrate server-side, not a mode to preserve.
       window blur lets every key go (desktopControls.js), and the QA
       keep-alive key is Control;
     - `sprint` suite (47 checks, the client's rules too), mirror-audit,
-      `mp-sprint`: docs/specs/sprint.md.)
+      `mp-sprint`: docs/specs/sprint.md.
+  - Since v2.3.3008 the Points window's MAX MP has its before/after scene,
+    "the only one missing one": both lanes cast specials at one block of
+    mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
+    longer, with "Max MP" and "Specials on a full bar" lines
+    (`specialsOnABar`); `statsim` suite §7, `mp-statdemo`.
+  - Since v2.3.3009 the Wheel's TOP BAR says where you are -- the owner:
+    "Put the 'brotown safe' and other location indicators in place of the
+    'the wheel lvl 1-2' on the top bar" -- the land over its stage and
+    levels or "safe" in gold (ZoneHeader.jsx `wheelWhere`, the last answer
+    kept), nothing printed under the minimap any more (its probe keeps
+    `words`), and the minimap wears a 7 px slate-and-brass FRAME, opaque
+    (`FRAME` in wheelMinimap.js): WORLD-MAP-PIPELINE "Where you are, on the
+    top bar"; `mp-wheelmap`, `mp-wheelhome`.
+  - Since v2.3.3010 GREAVES ALONE HIDE THE PLAIN LEGS -- the owner: "the
+    legs underneath near the shoes poke out during east jog. You can just
+    remove the plain clothes legs beneath": maskedBake.js `_legsOnlyClamp`
+    (jog and stand, legs worn without the chest) keeps, from the greaves' top
+    row down, only the plates' silhouette, the waistband V between the thigh
+    plates and the arms (skin by hue AND plain colour distance, nothing
+    darker than a third of the skin -- TRAPS §129); enclosed windows turn
+    under-armour shadow; the full set is untouched; `mp-greaveslegs`
+    (`window.__btLegsPeek`), src/belt-harness.html `?wear=legs&pose=&tint=&clamp=off`.
+  - Since v2.3.3011 the view is ANOTHER 25% further out -- the owner: "If it
+    is already zoom it out another 25%" -- `VIEW_OUT` 0.64 (0.8 x 0.8) in
+    worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard
+    folded, ~40 with it up (37 was "too small", v2.3.2249); `?zoom=0.8` is
+    the view before; WORLD-MAP-PIPELINE "And another 25%", `mp-zoomout`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

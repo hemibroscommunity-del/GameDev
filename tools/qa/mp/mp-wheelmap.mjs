@@ -20,6 +20,14 @@
  *      the land, its stage and the levels there;
  *   5. back in town the Wheel's box and the button are gone, today's back.
  *
+ * v2.3.3009, the owner: "Put the 'brotown safe' and other location
+ * indicators in place of the 'the wheel lvl 1-2' on the top bar. It'll free
+ * up more room around the minimap. Also give the minimap thicker borders so
+ * it's not confused with game screen area" -- so 2 and 4 read the words on
+ * the TOP BAR (both lines whole, inside it), nothing is printed under the box,
+ * and the box wears a thick frame: its slate band and brass line are read off
+ * the screen.
+ *
  * Pictures land in tools/qa/mp/out/wheelmap-*.png.
  */
 import * as H from './harness.mjs';
@@ -51,6 +59,22 @@ const tap = (P, text) => P.page.evaluate((t) => {
 }, text);
 const mini = (P) => P.page.evaluate(() => (window.__btMinimap ? JSON.parse(JSON.stringify(window.__btMinimap)) : null));
 const wm = (P) => P.page.evaluate(() => (window.__btWorldMap ? JSON.parse(JSON.stringify(window.__btWorldMap)) : null));
+/* v2.3.3009: the top bar's words in the Wheel (ZoneHeader.jsx wheelWhere):
+   the place, the gold line under it, and whether each fits whole in the bar */
+const bar = (P) => P.page.evaluate(() => {
+  const t = document.querySelector('[data-zone-title]');
+  const hd = document.querySelector('.bt-zone-header');
+  const one = (el) => {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { text: el.textContent, l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom), whole: el.scrollWidth <= el.clientWidth + 1 };
+  };
+  const h = hd ? hd.getBoundingClientRect() : null;
+  return { text: t ? t.textContent : null, place: one(document.querySelector('[data-zone-place]')),
+    sub: one(document.querySelector('[data-zone-sub]')), barBottom: h ? Math.round(h.bottom) : null };
+});
+const barHolds = (b, place, subRe) => !!b && !!b.place && b.place.text === place && !!b.sub && subRe.test(b.sub.text)
+  && b.place.whole && b.sub.whole && b.place.b <= b.sub.t + 1 && b.sub.b <= b.barBottom && !/The Wheel|Lv1-2/.test(b.text);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
@@ -101,11 +125,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('in the Wheel the minimap is the Wheel\'s own, two and a half times bigger, in the same corner', WHEELISH(zone) && m && m.wheel === true && m.box === 132 && m.rootX === PHONE.width - 132, { zone, m });
   rec.ok('...showing the land under it, and the roads, river and railway, the camps, passes and gates', m && m.under && m.routes >= 30 && m.places >= 60, m && { under: m.under, routes: m.routes, places: m.places });
   rec.ok('...about three zones across, centred on you', m && m.window === 3200 && Math.abs(m.playerBoxX - 66) < 2 && Math.abs(m.playerBoxY - 66) < 2, m && { x: m.playerBoxX, y: m.playerBoxY });
-  rec.ok('...and says under it where you are: the town', m && m.words && m.words.title === 'Brotown', m && m.words);
+  /* v2.3.3009: the words are the top bar's now, in place of "The Wheel (Lv1-2)" */
+  let tb = null;
+  for (let i = 0; i < 10; i++) { tb = await bar(P); if (barHolds(tb, 'Brotown', /^safe$/)) break; await P.page.waitForTimeout(300); }
+  rec.ok(`...and the TOP BAR says where you are: "${tb && tb.place && tb.place.text}" over "${tb && tb.sub && tb.sub.text}", not "The Wheel (Lv1-2)" -- both lines whole, inside the bar`,
+    m && m.words && m.words.title === 'Brotown' && barHolds(tb, 'Brotown', /^safe$/), { tb, words: m && m.words });
+  rec.ok('...and nothing is printed under the minimap any more', m && m.label === false, m && m.label);
   await shot(P, '01-minimap');
   /* the box is drawn: its middle is the land's colours, not one flat colour */
   const box = await H.screenshotPixels(P);
   const dpr = box.width / PHONE.width;   /* the screenshot is in device px */
+  /* v2.3.3009: and framed -- the slate band down both sides, the brass line
+     inside it (read halfway down, where no corner rounds it) */
+  const px = (x, y) => box.at(Math.round(x * dpr), Math.round(y * dpr));
+  const like = (p, hex, tol) => !!p && Math.abs(p[0] - ((hex >> 16) & 255)) <= tol && Math.abs(p[1] - ((hex >> 8) & 255)) <= tol && Math.abs(p[2] - (hex & 255)) <= tol;
+  const midY = m.topInset + 66;
+  const frame = { band: m.frame, left: px(m.rootX + 4, midY), right: px(PHONE.width - 4, midY), brassL: px(m.rootX + 6, midY), brassR: px(PHONE.width - 6, midY) };
+  rec.ok(`the minimap wears a thick frame (${m.frame} px): a slate band down both sides, the colour of the bars, and the brass line inside it`,
+    m.frame >= 6 && like(frame.left, 0x202c32, 14) && like(frame.right, 0x202c32, 14) && like(frame.brassL, 0xd8aa58, 40) && like(frame.brassR, 0xd8aa58, 40), frame);
   let distinct = new Set();
   for (let y = m.topInset + 6; y < m.topInset + 126; y += 3) for (let x = PHONE.width - 126; x < PHONE.width - 6; x += 3) {
     const p = box.at(Math.round(x * dpr), Math.round(y * dpr));
@@ -180,7 +217,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (fw.words && fw.words.title === 'Frost Ridge') break;
     await P.page.waitForTimeout(400);
   }
-  rec.ok('walking out onto Frost Ridge, the minimap says so: the land, its stage and the levels there', fw.words && fw.words.title === 'Frost Ridge' && /the thaw line · Lv 6–10/.test(fw.words.sub), fw.words);
+  let fb = null;
+  for (let i = 0; i < 10; i++) { fb = await bar(P); if (barHolds(fb, 'Frost Ridge', /the thaw line · Lv 6–10/)) break; await P.page.waitForTimeout(300); }
+  rec.ok(`walking out onto Frost Ridge, the top bar says so: the land, its stage and the levels there ("${fb && fb.place && fb.place.text}" over "${fb && fb.sub && fb.sub.text}", whole)`,
+    fw.words && fw.words.title === 'Frost Ridge' && /the thaw line · Lv 6–10/.test(fw.words.sub) && barHolds(fb, 'Frost Ridge', /the thaw line · Lv 6–10/), { fb, words: fw.words });
   await shot(P, '04-frost');
 
   /* ── 5. home: today's minimap again ── */

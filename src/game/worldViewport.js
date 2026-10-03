@@ -179,8 +179,20 @@ export const FIGURE_SCALE_FLOOR = 0.50;
  * go, and the old lands keep theirs.
  *
  * `?zoom=k` sets the factor for the tab, 0.4 to 1.5 -- `?zoom=1` is the view
- * before this, to compare the two on the same phone. */
-export const VIEW_OUT_DEFAULT = 0.8;
+ * before this, to compare the two on the same phone.
+ *
+ * ═══ v2.3.3011: AND ANOTHER 25% ═══
+ * Owner, 2026-10-03: "Also on main is the game map zoomed out 25% already? If
+ * not do it. If it is already zoom it out another 25%".  It was (v2.3.2997,
+ * 0.8), so 0.8 x 0.8 = 0.64: the view takes in 1.25x the world it did each
+ * way (1.56x the v2.3.2996 view), the bro 0.8 the size again -- on the QA
+ * phone with the dashboard folded 0.630 -> 0.504, 67 -> ~54 CSS px; with it
+ * up ~50 -> ~40, near the 37 the owner once called "too small" (v2.3.2249),
+ * so that is the first thing to look at on his phone.  Nothing else moves:
+ * the ground and the Wheel's objects follow the view's own size, monster
+ * looks load 2,600 px out and the worker sends 2,400 px, both well past the
+ * view's ~920 px corner.  `?zoom=0.8` is the view before this. */
+export const VIEW_OUT_DEFAULT = 0.64;
 function readViewOut() {
   try {
     const m = /(?:^|[?&])zoom=([0-9.]+)(?:&|$)/.exec((typeof window !== 'undefined' && window.location && window.location.search) || '');

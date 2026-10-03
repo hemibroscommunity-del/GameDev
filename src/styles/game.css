@@ -1578,6 +1578,16 @@ body:has(.bt-pcard) [data-coach]{display:none}
   text-align:center;text-overflow:ellipsis;white-space:nowrap;
   pointer-events:auto;
   text-shadow:0 1px 2px rgba(0,0,0,.78)}
+/* v2.3.3009: in the Wheel the title says where you are, in two lines -- the
+   land over its stage and levels (or "safe") in gold, as the minimap printed
+   them under its box until now (ZoneHeader.jsx wheelWhere).  Each line keeps
+   its own ellipsis, so a long stage name gives up its tail, never the land. */
+.bt-zone-header__title--where{display:flex;flex-direction:column;
+  align-items:center;justify-content:center;line-height:1.05}
+.bt-zone-header__place,.bt-zone-header__sub{display:block;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-zone-header__sub{margin-top:1px;color:#EAC675;
+  font:650 11.5px/1.1 'Source Sans 3',sans-serif;letter-spacing:.03em}
 /* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
    holds the old 38px so the title stays centred on the SCREEN while the
    purse is narrow, which is the property the spacer existed for. */
