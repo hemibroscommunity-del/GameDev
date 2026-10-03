@@ -707,6 +707,12 @@ export function setupWebSocket(ctx) {
                        stand-in in the renderer. Absent (old server) => leave
                        untouched. */
                     if (data.ex !== undefined) S.others[pid]._ex = data.ex || null;
+                    /* v2.3.3015: sprinting, says the worker (server/src/tick.js
+                       playerWire `spr` -- not `sp`, a player's shirt pattern
+                       everywhere else), so their legs run at its pace.  Every
+                       tick player is the whole wire, so an absent `spr` is
+                       "not sprinting" -- from an old worker as from a new one. */
+                    S.others[pid]._sp = data.spr === 1;
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */

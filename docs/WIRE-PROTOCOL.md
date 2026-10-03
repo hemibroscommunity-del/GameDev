@@ -117,7 +117,7 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 
 | Type | Purpose / payload | Client handler (BroTown.jsx) |
 |---|---|---|
-| `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
+| `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields; v2.3.3015: `spr: 1` while that player sprints -- a step the worker paid for in the last 600 ms, absent when walking, and deliberately not `sp`, which in a player's data is the shirt pattern; docs/specs/sprint.md "Seen and heard"), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
 | `state_sync` | Full room snapshot on join: players, zone monsters, etc. | ~2223 |
 | `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged. **v2.3.1983: also sent MID-SESSION**, unprompted, when population-scaled spawns change a zone's roster — the client already replaces its lists wholesale on it, and a per-entity `tick` delta cannot introduce an entity, so this resend is how a new monster becomes real on any client (`docs/specs/spawn-scaling.md`) | ~2352 |
 | `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback). v2.3.1983: `zone_monsters` + `zone_nodes` are the v1 half of the mid-session roster push above (no `zone_loot` — piles are unaffected) | ~2732 / ~2727 / ~2347 |
@@ -149,7 +149,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | Type | Purpose | Server case |
 |---|---|---|
 | `join` | Session start; negotiates `protocolVersion` | ~3418 |
-| `move` | Position/zone update (batched client-side, 33 ms) | ~3672 |
+| `move` | Position/zone update (batched client-side, 33 ms). v2.3.3006: `sp: 1` marks a sprint step, judged at 1.33x the walking bound and paid for in stamina (server/src/sprint.js; an old worker ignores it) | ~3672 |
 | `pong` | Heartbeat reply | ~3811 |
 | `track` | **Cosmetics/appearance only** (2 s cadence) — allowlisted, see below | ~3819 |
 | `player_attack` | Attack swing (also relayed to peers — see Quirks) | ~3828 |

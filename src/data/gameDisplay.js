@@ -3630,6 +3630,25 @@ BT_AUDIO.ELEM_SOUNDS = {
   poison: ['slime-death', 0, 0.3, 0.26, 1.2],
   poisonTick: ['lure-drop', 0, 0.13, 3.2, 0.8],
 };
+/* ═══ v2.3.3015: A SPRINT'S PUSH-OFF ═══
+   Asked of the sprint "no sprint sound or dust at the feet", the owner: "Yes
+   continue working on those items".  As a sprint's first stride lands
+   (game/sprint.js updateSprint 'run'), a short rush of air: the special
+   swipe's swoosh, its attack (0.02-0.32 s off its own loudness curve) a
+   touch slower, peaking ~0.3 -- under the footsteps that follow, which
+   already quicken with the stride.  A recording already in the game. */
+BT_AUDIO.SPRINT_PUSH = ['special-swipe', 0.02, 0.3, 2, 0.82];
+BT_AUDIO.sprintPush = function () {
+  var L = this.SPRINT_PUSH;
+  this._lastSprintSound = 'push';   /* what it meant to play, for the tests (mp-sprint) */
+  var h = this.play(L[0], { offset: L[1], duration: L[2], vol: L[3], rate: L[4] * (1 + (Math.random() - 0.5) * 0.06) });
+  if (!h || !h.gain || !this.ctx) return;
+  try {
+    var real = L[2] / (L[4] || 1), t0 = this.ctx.currentTime;
+    h.gain.gain.setValueAtTime(L[3], t0 + Math.max(0, real - 0.08));
+    h.gain.gain.linearRampToValueAtTime(0, t0 + real);
+  } catch (e) { /* the fade is a nicety */ }
+};
 BT_AUDIO.elemHit = function (st) {
   var L = st && Object.prototype.hasOwnProperty.call(this.ELEM_SOUNDS, st) ? this.ELEM_SOUNDS[st] : null;
   if (!L) return;

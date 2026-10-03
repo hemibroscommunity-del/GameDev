@@ -650,7 +650,23 @@ remnant to migrate server-side, not a mode to preserve.
     - looks, chips (Dazed/Soaked/Poisoned), icons `elem-stone/storm/water/
       venom`, sounds sliced from recordings already here (ELEM_SOUNDS);
       `elemhits: false` still stops them all; `monsterstatus` §10-13,
-      `mp-elemhits`: docs/specs/monster-statuses.md "The other four".)
+      `mp-elemhits`: docs/specs/monster-statuses.md "The other four".
+  - Since v2.3.3015 A SPRINT IS SEEN AND HEARD -- offered "sprint polish:
+    other players' legs at sprint pace, a dust puff, a sprint sound", the
+    owner: "Yes continue working on those items":
+    - the tick's player carries `spr: 1` while the worker paid it a sprint
+      step in the last `SPRINT.WIRE_MS` 600 (`_sprintWire`), absent when
+      walking -- NOT `sp`, which in a player's data is the shirt pattern;
+      wsClient keeps it as `other._sp`, and a peer's jog loop plays
+      SPRINT_MULT quicker, its phase kept across the change (`_jogOff`);
+    - dust at each foot plant of a sprint (`sprintDust`, game/sprint.js):
+      yours the ground's colour (`SPRINT_DUST` by footstep surface), a
+      peer's the dirt's; a sprint's first stride pushes off (updateSprint
+      'run'): `BT_AUDIO.sprintPush`, the special swipe, and a bigger puff;
+    - a foot plant STEPPED OVER between two draws counts now
+      (`_jogPlantCrossed`): a page drawing a few frames a second rarely
+      landed on one, and lost its footsteps and dust;
+    - `sprint` §10, `mp-sprintpeer`: docs/specs/sprint.md "Seen and heard".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

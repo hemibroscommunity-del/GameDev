@@ -93,7 +93,7 @@ import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js';
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel) */
-import { sprintMult } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker */
+import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
@@ -973,6 +973,32 @@ const JOG_FOOT_FRAMES = {
      silent and bunched the audible pair into a "first two replay". */
   southwest: [2, 8, 13, 18], southeast: [2, 8, 13, 18],
 };
+
+/* ═══ v2.3.3015: A FOOT-PLANT STEPPED OVER STILL COUNTS ═══
+   The footstep's edge-trigger fired only when the drawn frame LANDED on a
+   plant frame -- right at 60 fps, where the jog moves at most one frame a
+   draw, but a page drawing fewer frames (a busy phone, a test machine) or a
+   sprint's quicker stride steps over plants, and their footsteps (and the
+   sprint's dust) were dropped: mp-sprintpeer counted 0 puffs from a runner
+   whose legs were at sprint pace, its page drawing a few frames a second.
+   This walks the frames passed since the frame last changed, the way the
+   loop runs (backward when you backpedal), and says whether one of them was
+   a plant -- whenever that change was less than one loop ago (`gapMs` <
+   `cycMs`), so the frames passed are exactly the ones between.  A longer gap
+   is a pause or a hidden tab, not a stride, and then only the frame landed on
+   counts, as before.  At one frame a draw it is exactly the old test. */
+function _jogPlantCrossed(contacts, prev, cur, fc, backward, gapMs, cycMs) {
+  if (prev === cur) return false;
+  if (prev == null || !(fc > 0) || !(gapMs >= 0 && gapMs < cycMs)) return contacts.indexOf(cur) !== -1;
+  const d = backward ? ((prev - cur) % fc + fc) % fc : ((cur - prev) % fc + fc) % fc;
+  const step = backward ? -1 : 1;
+  let f = prev;
+  for (let k = 0; k < d; k++) {
+    f = ((f + step) % fc + fc) % fc;
+    if (contacts.indexOf(f) !== -1) return true;
+  }
+  return false;
+}
 
 /* v2.3.537: per-(pose,dir) body render scale, DERIVED from silhouette
    measurement -- replaces the old hand-tuned bump stack (v2.3.164-171:
@@ -10816,9 +10842,47 @@ export class EntityRenderer {
           /* v2.3.603: armoured remote keeps slower NE/NW cadence; naked = +35%. */
           const _arm = !!(other.equip && other.equip.chest && other.equip.chest !== 'none'
             && other.equip.legs && other.equip.legs !== 'none');
-          frameIdx = Math.floor((now / cycleMs('jog', dir, _arm)) * fc) % fc;
+          /* ═══ v2.3.3015: A SPRINTING PEER RUNS AT ITS PACE ═══
+             "Other players' legs run at walking pace when they sprint": the
+             worker says who sprints (`spr` on the tick's player,
+             server/src/tick.js; wsClient keeps it as other._sp), and their
+             stride plays SPRINT_MULT quicker, as your own does.  When the
+             pace changes -- a sprint starting or ending, or a turn to a
+             facing with a longer loop -- the stride carries on from where it
+             was (the local player's v2.3.3006 rule), where `now / cycle`
+             with a new cycle jumped to a random frame. */
+          const _rCyc = cycleMs('jog', dir, _arm) / (other._sp ? SPRINT_MULT : 1);
+          if (display._jogCyc !== _rCyc) {
+            const _ph0 = display._jogCyc
+              ? ((((now + (display._jogOff || 0)) / display._jogCyc) % 1) + 1) % 1 : null;
+            display._jogOff = _ph0 == null ? 0 : _ph0 * _rCyc - (now % _rCyc);
+            display._jogCyc = _rCyc;
+          }
+          const _rT = now + (display._jogOff || 0);
+          frameIdx = Math.floor((_rT / _rCyc) * fc) % fc;
           /* v2.3.1367: cycle phase for native-count fullset playback. */
-          _rJogPhase = ((now / cycleMs('jog', dir, _arm)) % 1 + 1) % 1;
+          _rJogPhase = ((_rT / _rCyc) % 1 + 1) % 1;
+          /* ...and kicks up dust at each footfall of it, on its own foot-plant
+             frames (the ground's colour is yours to look up only under your
+             own boots: a peer's is the dirt's) */
+          if (display._prevJogFrame !== frameIdx) {
+            if (other._sp && _jogPlantCrossed(JOG_FOOT_FRAMES[dir] || JOG_FOOT_FRAMES.south, display._prevJogFrame, frameIdx, fc, false,
+                now - (display._prevJogAt || 0), _rCyc)) {
+              const _ox = other.renderX || other.x || 0, _oy = other.renderY || other.y || 0;
+              const _ok = zonePlayerScale(S.currentZone, _ox, _oy, TILE) || 1;
+              const _ov = Math.abs(other._vx || 0) + Math.abs(other._vy || 0) > 0.0001;
+              sprintDust(S, _ox, _oy + playerGroundDy(S.currentZone, _ox, _oy), 'dirt',
+                _ov ? Math.atan2(other._vy || 0, other._vx || 0) : null, _ok, 3);
+              if (typeof window !== 'undefined' && window.__btProbe) window.__btPeerSprintDust = (window.__btPeerSprintDust || 0) + 1;
+            }
+            display._prevJogFrame = frameIdx;
+            display._prevJogAt = now;
+          }
+          /* QA (mp-sprint), armed by the harness only: each peer's loop now */
+          if (typeof window !== 'undefined' && window.__btProbe) {
+            const _pc = window.__btPeerJogCyc || (window.__btPeerJogCyc = Object.create(null));
+            _pc[id] = { cyc: _rCyc, base: cycleMs('jog', dir, _arm), sp: !!other._sp };
+          }
         } else if (pose === 'hit') {
           const hitT = (now - (other._hitFlash || 0)) / 250;
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
@@ -12402,12 +12466,26 @@ export class EntityRenderer {
         /* Edge-trigger: fire once when the animation first lands on a plant
            frame (works forward + backpedal; the jog advances <=1 frame/tick). */
         if (display._prevJogFrame !== frameIdx) {
-          if (_contacts.indexOf(frameIdx) !== -1 && typeof window !== 'undefined' && window.BT_AUDIO) {
+          /* v2.3.3015: a plant passed since the last draw, not only one
+             landed on (_jogPlantCrossed) */
+          const _plant = _jogPlantCrossed(_contacts, display._prevJogFrame, frameIdx, fc, isMovingBackward,
+            now - (display._prevJogAt || 0), effectiveCycle);
+          if (_plant && typeof window !== 'undefined' && window.BT_AUDIO) {
             /* v2.3.2967: on the ground drawn under the feet (the Wheel; null
                elsewhere, which is today's dirt step) */
             window.BT_AUDIO.footstep(isWearingArmor(), footstepSurface(S));
           }
+          /* v2.3.3015: a sprinting foot kicks up a puff of the ground it
+             lands on, thrown back against the run (game/sprint.js) */
+          if (_plant && isSprinting(S)) {
+            const _gk = zonePlayerScale(S.currentZone, P.x, P.y, TILE) || 1;
+            const _moving = Math.abs(P.vx || 0) + Math.abs(P.vy || 0) > 0.01;
+            sprintDust(S, P.x, P.y + playerGroundDy(S.currentZone, P.x, P.y), footstepSurface(S) || 'dirt',
+              _moving ? Math.atan2(P.vy || 0, P.vx || 0) : null, _gk, 4);
+            if (typeof window !== 'undefined' && window.__btProbe) window.__btSprintDust = (window.__btSprintDust || 0) + 1;
+          }
           display._prevJogFrame = frameIdx;
+          display._prevJogAt = now;
         }
       } else if (pose === 'hit') {
         const hitT = (now - (S._hitFlash || 0)) / 250;

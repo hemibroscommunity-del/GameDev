@@ -352,7 +352,7 @@ import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
 import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
-import { updateSprint, sprintMult, sprintHoldsRegen } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard) */
+import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
@@ -458,7 +458,7 @@ import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band =
 import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
-import { isWheelTrialZone } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown */
+import { isWheelTrialZone, footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 
@@ -4816,7 +4816,7 @@ export var BroTown = function BroTown(_ref0) {
            and a frame that cannot move must not spend the predicted
            stamina.  An attack, the shield or the water ends a sprint. */
         var _sprNow = Date.now();
-        updateSprint(S, _sprNow, {
+        var _sprEv = updateSprint(S, _sprNow, {
           moving: (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1)
             && !S._dodgeRoll && !S._sled && !S._zoneLoading && !S._netHold && !S._townArtHold
             && elemMoveMult(S, _sprNow) > 0,
@@ -4827,6 +4827,15 @@ export var BroTown = function BroTown(_ref0) {
           dead: _playerDead,
           dtMs: (S._dtScale || 1) * 16.667
         });
+        /* v2.3.3015: the first stride of a sprint pushes off -- a rush of air
+           and a burst of the ground's dust (game/sprint.js) */
+        if (_sprEv === 'run') {
+          try { BT_AUDIO.sprintPush(); } catch (e) { /* sound only */ }
+          try {
+            sprintDust(S, P.x, P.y + playerGroundDy(S.currentZone, P.x, P.y), footstepSurface(S) || 'dirt',
+              Math.atan2(dy, dx), zonePlayerScale(S.currentZone, P.x, P.y, TILE) || 1, 7);
+          } catch (e) { /* a look only */ }
+        }
 
         /* §14 Terrain feel — tile under player affects movement */
         var footTile = (_S$map$Math$floor$Mat = (_S$map2 = S.map) === null || _S$map2 === void 0 || (_S$map2 = _S$map2[Math.floor(P.y / TILE)]) === null || _S$map2 === void 0 ? void 0 : _S$map2[Math.floor(P.x / TILE)]) !== null && _S$map$Math$floor$Mat !== void 0 ? _S$map$Math$floor$Mat : 0;

@@ -330,6 +330,13 @@ export const tickMethods = {
            (broverify.js is the only writer) and absent from
            TRACK_COSMETIC_KEYS, so a client cannot set it by sending it. */
         bro: ps.bro,
+        /* v2.3.3015: sprinting -- a step this worker paid for in the last
+           SPRINT.WIRE_MS (sprint.js _sprintWire), so the others draw their
+           legs at its pace.  Absent when walking: their wire is unchanged.
+           `spr`, not the move's `sp`: in a PLAYER's data `sp` is the shirt
+           pattern (join, the track relay, state_sync's players), and a peer
+           update read through peerCosmetics.js would take a 1 for one. */
+        ...(this._sprintWire(ps, ts) ? { spr: 1 } : {}),
       });
 
       // Dirty players bucketed by the zone they are standing in, so a

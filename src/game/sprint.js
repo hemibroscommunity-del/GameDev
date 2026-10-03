@@ -123,6 +123,55 @@ export function toggleSprint(S, now) {
   return startSprint(S, now, 'tap');
 }
 
+/* ═══ v2.3.3015: WHAT A SPRINT LOOKS AND SOUNDS LIKE ═══
+   Asked of the sprint "other players' legs run at walking pace when they
+   sprint; no sprint sound or dust at the feet", the owner: "Yes continue
+   working on those items".  So: a push-off as a sprint's first stride lands
+   (updateSprint's 'run', BroTown plays BT_AUDIO.sprintPush), a puff of dust
+   at every footfall of a sprint -- yours and a peer's (entityRenderer, on the
+   jog's own foot-plant frames) -- in the colour of the ground it lands on
+   (worldTrial.footstepSurface: the Wheel's; null elsewhere, the dirt), and a
+   peer's legs at sprint pace while the worker says they sprint (`spr` on the
+   tick's player, server/src/tick.js). */
+export const SPRINT_DUST = {
+  snow: ['#ffffff', '#dcefff'],
+  ice: ['#eef8ff', '#bfe3ff'],
+  sand: ['#e6d29e', '#cdb27c'],
+  grass: ['#a8c97a', '#8a6a44'],
+  forest: ['#9ab86c', '#6e5236'],
+  gravel: ['#c4bdb0', '#948c80'],
+  stone: ['#bdb6aa', '#8f887c'],
+  mud: ['#7a5a3a', '#5e4630'],
+  ash: ['#8f8a85', '#5f5a55'],
+  wood: ['#c9b48a', '#a08860'],
+  metal: ['#c9c2b4', '#9a9284'],
+  dirt: ['#c8b08a', '#a48c66'],
+};
+
+/**
+ * A puff of dust where a sprinting foot lands: `n` motes at (x, y) -- the
+ * boots -- thrown back against the run (`ang`, the way you run) and up, in
+ * the colours of `surface` (SPRINT_DUST; anything else is the dirt's).
+ * Pushed to the game's own particles (S.hitParticles, drawn by
+ * effectsRenderer); `k` is how big the figure is drawn there.
+ */
+export function sprintDust(S, x, y, surface, ang, k, n) {
+  const parts = S && S.hitParticles;
+  if (!parts || typeof x !== 'number' || typeof y !== 'number') return 0;
+  const cols = (surface && Object.prototype.hasOwnProperty.call(SPRINT_DUST, surface)) ? SPRINT_DUST[surface] : SPRINT_DUST.dirt;
+  const kk = k > 0 ? k : 1;
+  const back = typeof ang === 'number' ? ang + Math.PI : Math.PI / 2;
+  const count = n || 4;
+  for (let i = 0; i < count; i++) {
+    const a = back + (Math.random() - 0.5) * 1.3;
+    const sp = 0.5 + Math.random() * 1.1;
+    parts.push({ x: x + (Math.random() - 0.5) * 8 * kk, y: y - Math.random() * 3 * kk,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.4 - 0.5 - Math.random() * 0.5,
+      life: 0.42 + Math.random() * 0.2, color: cols[i % 2], size: (1.8 + Math.random() * 1.2) * Math.min(1.4, kk) });
+  }
+  return count;
+}
+
 /**
  * Once a frame, before the walk.  `f`:
  *   moving     the stick or the keys are pushed this frame AND the walk can
@@ -131,7 +180,8 @@ export function toggleSprint(S, now) {
  *   key        Shift is held
  *   swimming / shield / attacking / dead   what ends a sprint
  *   dtMs       this frame, in game time (BroTown's _dtScale x 16.7)
- * Returns 'start' | 'stop' | null for the caller's sound or note.
+ * Returns 'start' | 'stop' | null for the caller's sound or note -- and
+ * since v2.3.3015 'run' on a sprint's first moving frame, its push-off.
  */
 export function updateSprint(S, now, f) {
   if (!S) return null;
@@ -155,6 +205,8 @@ export function updateSprint(S, now, f) {
   else if (sp.how !== 'key' && now - sp.lastMoveAt > (sp.ran ? IDLE_STOP_MS : START_WAIT_MS)) return end('still');
   sp.moving = !!fr.moving;
   if (sp.moving) {
+    /* v2.3.3015: the first stride of this sprint: its push-off */
+    if (!sp.ran) ev = ev || 'run';
     sp.ran = true;
     sp.ranAt = now;
     /* the prediction: the worker's player_state overwrites it */
