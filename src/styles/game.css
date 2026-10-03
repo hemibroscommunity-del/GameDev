@@ -5378,6 +5378,13 @@ html[data-orient="landscape"] .bt-dashboard{
    purpose: the card is a fixed 320 max, and a number that scales with the
    viewport would no longer be the 21/38px the world draws. */
 .bt-sd{overflow:hidden;border-radius:9px;background:#111E23;border:1px solid rgba(229,237,233,.08);contain:paint}
+/* ═══ v2.3.3002: TWO LANES, ONE CLOCK ═══
+   Owner: "show live side by side simulations of the before and after".  On
+   a phone the window is ~290px wide, so side by side is one above the other
+   (the owner's pick): "Now" over "+n", each a full-size stage with its own
+   bar, playing the same fight at the same moment.  A hairline between them,
+   and the "+n" lane lit a touch brass from the top, the colour of its tag. */
+.bt-sd-lane--after{border-top:1px solid rgba(216,170,88,.22);background:linear-gradient(180deg,rgba(216,170,88,.06),rgba(216,170,88,0) 45%)}
 .bt-sd-stage{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(0,0,0,0) 62%,rgba(0,0,0,.28) 100%);--sd-hx:30px}
 /* v2.3.2986: --sd-hx moves the hero, and everything placed against him (his
    shots, the numbers over his head), 30px in from the left: he swings the
