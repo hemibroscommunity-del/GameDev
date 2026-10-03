@@ -4328,6 +4328,38 @@ body:has(.bt-pcard) [data-coach]{display:none}
   .bt-joystick-zone { display:none !important; }
   .bt-desktop-hide { display:none !important; }
 }
+/* ═══ v2.3.3005: THE WEAPON BUTTON TAKES THE CORNER; THE BELL STEPS RIGHT ═══
+   WeaponSwapButton.jsx (owner: "a little icon of current equipped weapon in
+   bottom left above dashboard but beneath left joystick").  The bell
+   (WorldChatFeed) adds this to its left edge: 58px = the button's 18px start
+   (clear of the iOS edge guard) + its 44px touch box + 4px of air - the
+   bell's own 8px.  Zero where the button is hidden, so a desktop keeps the
+   bell in the corner it had.  mp-weaponswap measures the real gap. */
+:root { --bt-wpn-slot: 58px; }
+@media (pointer:fine) {
+  :root { --bt-wpn-slot: 0px; }
+}
+/* The swap lands with a small turn-in; a tap with nowhere to go shakes.
+   transform/opacity only -- never a filter over the WebGL canvas (iOS grain). */
+@keyframes bt-wpn-in {
+  0%   { transform: scale(.55) rotate(-28deg); opacity: .25; }
+  60%  { transform: scale(1.12) rotate(5deg); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes bt-wpn-nope {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+.bt-wpn-icon--in { animation: bt-wpn-in 240ms cubic-bezier(.2,.8,.2,1); }
+.bt-wpn-face--nope { animation: bt-wpn-nope 300ms ease; }
+.bt-wpn-btn { transition: bottom 220ms cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion: reduce) {
+  .bt-wpn-icon--in, .bt-wpn-face--nope { animation: none; }
+  .bt-wpn-btn { transition: none; }
+}
 /* v2.3.1715: bottom was a HARDCODED 140px, and --dash-h's own boot fallback
    is 145px — so this strip has been sitting INSIDE the dashboard band, under
    an opaque panel, at every viewport size.  Owner (desktop playtest) never
