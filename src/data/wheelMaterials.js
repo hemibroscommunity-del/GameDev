@@ -25,7 +25,9 @@
  *   hp      how many hits it takes before it breaks (src/game/wheelBreak.js):
  *           an arrow, a bolt or a sword blow is one, a special three.
  *   canopy  a tree's crown, which a hit on its trunk shakes things out of:
- *           leaves, the snow on a pine, the char of a burnt tree, slime.
+ *           leaves, the snow on a pine, the char of a burnt tree, slime --
+ *           and, since v2.3.3001, is heard doing it (BT_AUDIO.CROWN_SOUNDS:
+ *           a rustle, a crunch of snow, a puff of ash, a squelch).
  *   big     a heavy thing: the deeper of the material's sounds, and its
  *           break is a collapse, not a snap.
  *
@@ -48,7 +50,16 @@ export const MATERIALS = {
   ice:     { fx: 'ice',     sound: 'ice',     tint: 0xbfe3f5 },
   crystal: { fx: 'crystal', sound: 'crystal', tint: 0x9a7fe0 },
   coal:    { fx: 'coal',    sound: 'coal',    tint: 0x2b2b2e },
-  soft:    { fx: 'soft',    sound: 'soft',    tint: 0x8fbf5a },
+  /* ═══ v2.3.3001: PLANTS ARE NOT WOOD, AND NOT SLIME ═══
+     Owner: "modify hit sound effects based on material type so hitting wood
+     vs plants etc".  The cactus, the toadstool and the giant flower were all
+     'soft', whose sound was the fleshy monster thud -- a slime's.  They keep
+     the soft pulpy pieces (`fx`) and get sounds of their own: `plant` is the
+     rustle and a pulpy squish (the cactus, the giant flower), `mushroom` a
+     squelch (the toadstool).  The bush ('leaf') is a rustle alone.  The look
+     is soft's exactly, its tint included: this is a change of sound only. */
+  plant:    { fx: 'soft',   sound: 'plant',    tint: 0x8fbf5a },
+  mushroom: { fx: 'soft',   sound: 'mushroom', tint: 0x8fbf5a },
 };
 
 const W = (mat, hp, o) => Object.assign({ mat, hp }, o || {});
@@ -109,7 +120,7 @@ export const WHEEL_MATERIALS = {
   basalt:    W('stone', 8),
   obsidian:  W('crystal', 8),   /* volcanic glass */
   /* ── Wind Dunes ── */
-  cactus:     W('soft', 4),
+  cactus:     W('plant', 4),      /* v2.3.3001: was 'soft' (a slime's thud) */
   palm:       W('wood', 10, { big: true, canopy: 'leaf' }),
   tumbleweed: W('straw', 1),    /* no footprint */
   skull:      W('stone', 1),    /* no footprint */
@@ -134,13 +145,13 @@ export const WHEEL_MATERIALS = {
   coral:     W('stone', 1),     /* no footprint */
   /* ── Poison Forest ── */
   slimetree: W('wood', 10, { big: true, canopy: 'slime' }),
-  toadstool: W('soft', 4),
+  toadstool: W('mushroom', 4),   /* v2.3.3001: was 'soft' */
   mangrove:  W('wood', 10, { big: true, canopy: 'leaf' }),
   scarecrow: W('straw', 4),
   /* ── Verdant Wilds ── */
   jungletree:  W('wood', 16, { big: true, canopy: 'leaf' }),
   wildfruit:   W('wood', 8, { canopy: 'leaf' }),
-  giantflower: W('soft', 3),
+  giantflower: W('plant', 3),     /* v2.3.3001: was 'soft' */
   fern:        W('leaf', 1),    /* no footprint */
   stonewall:   W('stone', 10),
 };

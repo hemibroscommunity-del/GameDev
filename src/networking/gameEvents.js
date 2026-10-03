@@ -31,6 +31,7 @@ import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowbal
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 import { applyElemHit, elemLook, isBurnTick } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element */
+import { echoHitSfx, heroHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
@@ -2163,6 +2164,14 @@ export function processGameEvent(type, payload, S, deps) {
                       : payload.slot === 'ranged' ? 'arrow'
                       : payload.slot === 'staff' ? 'bolt' : null;
                     spawnHitDebris(S, hitM, _dbAng, { weapon: _dbW, crit: !!payload.isCrit });
+                    /* ═══ v2.3.3001: ...AND IS HEARD ═══
+                       These hits were silent: a teammate's blows, and your own
+                       Shield Bash, Whirlwind, staff splash and bursts (rolled
+                       by the worker, with no local hit site).  Now each is the
+                       monster's material voice at about a third of your own
+                       melee, softer with distance -- never a blow, tick or
+                       collision you already heard (game/hitSounds.js). */
+                    echoHitSfx(S, payload, hitM);
                   }
                   /* v2.3.2844: the peer half of the snowman's ice-burst plume
                      (v2.3.1124) is retired with the plume -- a teammate's hit on
@@ -2859,8 +2868,14 @@ export function processGameEvent(type, payload, S, deps) {
                  the legacy client-local combat path in monsterCombat.js has
                  called it since v2.3.1108.  Only the network path was missed,
                  and the network path is the only one players hear.
-                 vol 0.85 matches the four monsterCombat.js call sites. */
-              try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
+                 vol 0.85 matches the four monsterCombat.js call sites.
+                 v2.3.3001: ...unless the blow is the ball that just broke on
+                 you, which was heard as itself (a snowball's crunch, a
+                 fireball's sizzle): then the clang is a muted share of this
+                 in armour and nothing without -- a snowball no longer sounds
+                 like a sword.  hitSounds.heroHitSfx; the element's own sound
+                 above is untouched. */
+              try { heroHitSfx(S, payload, isWearingArmor()); } catch (e) { /* audio is best-effort */ }
               /* Death path: in MP the worker fires player_died (which
                  handles the death animation + popup) and player_respawned
                  (which teleports to town) -- both wired in the WS switch

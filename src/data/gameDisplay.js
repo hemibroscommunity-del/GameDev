@@ -3227,29 +3227,165 @@ BT_AUDIO._swordHitToggle = 0;
  * play -- the exact bug being fixed above it.  The multipliers bring each to
  * the loudness of sword-hit3, which is what the existing vol:0.55 call sites
  * were tuned against.  Resulting peaks: 0.29 / 0.61 / 0.46 -- no clipping. */
-BT_AUDIO.HIT_KEY_BY_MATERIAL = {
-  goo:   'monster-hit',   /* slimes, wisps, bog lurkers, fishman, swarm */
-  ember: 'monster-hit',   /* fire goblin -- owner named it fleshy */
-  flesh: 'monster-hit',   /* players and NPCs (no HIT_MATERIALS entry) */
-  bone:  'sword-hit3',    /* mummy, skeleton, hexer */
-  stone: 'sword-hit2',    /* rockmonster, thorn shambler, brute, sentinel */
+/* ═══ v2.3.3001: A HIT IS A VOICE OF ITS MATERIAL, NOT ONE OF THREE SAMPLES ═══
+ *
+ * Owner: "modify hit sound effects based on material type so hitting wood vs
+ * plants etc for props and also against monsters (arrow, melee, magic hit
+ * sound for snowmen vs slime etc should all sound like their material type).
+ * Same with when monster projectiles break on you."
+ *
+ * The table above (HIT_KEY_BY_MATERIAL) voiced every monster in the game with
+ * three samples: a slime, a fire goblin, a fishman and a bog lurker were all
+ * the same low thud, a rock monster rang like a sword, and a snowman hit by an
+ * arrow played its snowball thud AND the slime's thud (no 'snow' key, so the
+ * flesh fallback).  Worse on a phone: the thud is 98% below 250 Hz, which a
+ * phone's speaker barely makes.  Each material is now a VOICE built the way
+ * PROP_SOUNDS builds a prop's (below) -- a body and a texture, from
+ * recordings already in the game (procedural sound is out: the owner's
+ * v2.3.1103 "worse than nothing"):
+ *
+ *   flesh  the wet thud (monster-hit), as before: players and NPCs
+ *   bone   sword-hit3's dry crack, UNCHANGED: the mummy ("Bony is mummy",
+ *          the owner, v2.3.2452 -- kept on purpose by v2.3.2843), skeleton,
+ *          hexer
+ *   goo    the thud with a squelch of mud over it: every slime, the mire wisp
+ *   ember  the thud with a short sizzle (the cooking sting): the fire goblin
+ *   stone  the owner's pickaxe on stone, as stone props have it, with a dull
+ *          knock of stone under it: the rock monster -- no longer the clang
+ *   snow   the snowman's own snowball thud with a crunch of snow
+ *   mud    a heavy squelch first, the thud under it: the bog lurker
+ *   wet    the thud with a short splash (the fish thrashing on the hook): the
+ *          fishman
+ *
+ * Which voice a monster gets is monsterVariants.js hitSoundOf() -- its
+ * HIT_MATERIALS `sound`, else its `kind` -- the one lookup the melee, the
+ * lunge, the arrow, the bolt and the worker's echo all read
+ * (src/game/hitSounds.js).  Melee plays it at 0.55, the lunge 0.5, an arrow
+ * 0.6, a bolt 0.22 under magicHit's 0.3 -- the levels those sites always had.
+ *
+ * LAYERS are PROP_SOUNDS' shape plus one: [key, offset s, duration s (0 = to
+ * the end of the file), gain, rate, delay s, fade s].  `hit` alternates hit
+ * by hit and `layer` goes with it; both take the alternating +-1.5% detune
+ * the one-sample mixer had (SWORD_HIT_DETUNE).  `fade` ramps a slice that
+ * ends mid-sound to silence instead of clicking off (elemHit's trick).
+ *
+ * LEVELS, MEASURED (the PROP_SOUNDS method -- the mean of the plain and the
+ * A-weighted peak-50ms RMS of each slice against sword-hit3's -- then every
+ * voice rendered whole, its layers summed at their delays; mp-hitsound
+ * renders them again, through Web Audio, and fails on a clip): at the
+ * arrow's 0.6, the loudest call, each voice measures 0.92-1.10 of sword-hit3
+ * at the same level (before this, the slime's thud measured 0.84 and the rock
+ * monster's clang 0.99) and peaks at 0.39-0.66 of full scale.  There is no
+ * limiter on the bus, so the texture layers sit at about half their matched
+ * gain: heard, not on top.  The thud keeps 2.73 and sword-hit3 1 -- the
+ * levels the owner has heard since v2.3.2452.
+ *
+ * NEVER SILENT, NEVER NEW WHERE IT CANNOT BE WHOLE.  The textures of goo,
+ * stone, snow and mud are the Wheel's footstep clips, loaded only in the
+ * Wheel (loadGroundSteps).  A voice whose samples for this hit are not all
+ * decoded plays `fb` -- the very sound this material made before v2.3.3001
+ * -- so outside the Wheel, or before a clip has come, a hit is exactly what
+ * it was, never silence.  A voice with no `fb` (flesh, bone) is one sample,
+ * as before, and its first use kicks its load the way swordHit's always did. */
+BT_AUDIO.HIT_VOICES = {
+  flesh: { hit: [['monster-hit', 0, 0, 2.73]] },
+  bone: { hit: [['sword-hit3', 0, 0, 1]] },
+  goo: {
+    hit: [['monster-hit', 0, 0, 2.73]],
+    layer: [['step-mud', 0.22, 0.14, 2.2, 1.15, 0.012], ['step-mud', 0.86, 0.12, 2, 1.1, 0.012]],
+    fb: ['monster-hit', 0, 0, 2.73],
+  },
+  ember: {
+    hit: [['monster-hit', 0, 0, 2.73]],
+    layer: [['cook-success', 0.1, 0.2, 0.3, 1, 0.01, 0.06]],
+    fb: ['monster-hit', 0, 0, 2.73],
+  },
+  stone: {
+    hit: [['mine-strike', 0.06, 0.4, 0.62], ['mine-strike', 0.58, 0.45, 0.5]],
+    layer: [['step-stone', 0.18, 0.06, 2.4, 0.9, 0.02], ['step-stone', 0.93, 0.1, 1.8, 0.9, 0.02]],
+    fb: ['sword-hit2', 0, 0, 0.63],
+  },
+  snow: {
+    hit: [['snowman-hit', 0.03, 0.27, 0.7]],
+    layer: [['step-snow', 0.295, 0.2, 1.6, 1, 0.015], ['step-snow', 0.765, 0.2, 1.7, 1, 0.015]],
+    fb: ['snowman-hit', 0.03, 0.27, 0.75],
+  },
+  mud: {
+    hit: [['step-mud', 0.51, 0.15, 2.6, 0.85], ['step-mud', 1.265, 0.12, 2.3, 0.85]],
+    layer: [['monster-hit', 0, 0, 2.2, 0.9, 0.005]],
+    fb: ['monster-hit', 0, 0, 2.73],
+  },
+  wet: {
+    hit: [['monster-hit', 0, 0, 2.73]],
+    layer: [['fish-on-hook', 0.375, 0.16, 1.5, 1, 0.01, 0.05], ['fish-on-hook', 1.465, 0.12, 1.25, 1, 0.01, 0.04]],
+    fb: ['monster-hit', 0, 0, 2.73],
+  },
 };
-BT_AUDIO.HIT_KEY_GAIN = {
-  'monster-hit': 2.73,    /* 0.131 / 0.048 */
-  'sword-hit3':  1,       /* the reference */
-  'sword-hit2':  0.63,    /* 0.131 / 0.209 */
+/* Is sample `key` decoded and ready to play? */
+BT_AUDIO._has = function (key) {
+  return !!(key && this._samples && this._samples[key]);
 };
-/* Snow is deliberately absent: the snowman already plays its own snowball
-   thud from the hit-reaction block, and the melee call site skips it. */
-BT_AUDIO.swordHit = function (opts, material) {
+/* One layer of a table above or below: [key, offset, duration (0 = to the
+   end), gain, rate, delay, fade], played at vol x hg x gain.  `hg` is
+   HIT_GAIN for the hit tables and 1 for the raw-level ones (SHOT_SOUNDS).
+   Returns play()'s handle (null when its sample is not in -- and play() then
+   kicks its load, if the manifest has it). */
+BT_AUDIO._playLayer = function (L, vol, rate, hg) {
+  var dur = L[2] > 0 ? L[2] : null;
+  var o = { vol: vol * (hg == null ? this.HIT_GAIN : hg) * L[3], rate: (L[4] || 1) * (rate || 1) };
+  if (L[1] > 0) o.offset = L[1];
+  if (dur != null) o.duration = dur;
+  if (L[5] > 0) o.delay = L[5];
+  var h = this.play(L[0], o);
+  if (h && h.gain && L[6] > 0 && dur != null && this.ctx) {
+    try {
+      var real = dur / o.rate, t0 = this.ctx.currentTime + (o.delay || 0);
+      h.gain.gain.setValueAtTime(o.vol, t0 + Math.max(0, real - L[6]));
+      h.gain.gain.linearRampToValueAtTime(0, t0 + real);
+    } catch (e) { /* the fade is a nicety */ }
+  }
+  return h;
+};
+/* What the last hit voice was, for the tests (mp-hitsound, mp-hitvoices):
+   the material, the samples that played, and whether it was the whole voice
+   ('voice'), today's sound in its place ('fb'), or a cold first use whose
+   sample was still loading ('cold'). */
+BT_AUDIO._noteHit = function (mat, keys, how, vol) {
+  this._lastHit = { mat: mat, keys: keys, how: how, vol: vol, at: Date.now() };
+  if (!this._hitCounts) this._hitCounts = Object.create(null);
+  var k = mat + ':' + how;
+  this._hitCounts[k] = (this._hitCounts[k] || 0) + 1;
+};
+/** A hit on something made of `material` (a HIT_VOICES key: hitSoundOf() for
+ *  a monster, 'flesh' for a player or NPC).  opts.vol is the call site's
+ *  level, as swordHit's always was; opts.rate overrides the detune. */
+BT_AUDIO.materialHit = function (material, opts) {
+  var mat = (material && Object.prototype.hasOwnProperty.call(this.HIT_VOICES, material)) ? material : 'flesh';
+  var V = this.HIT_VOICES[mat];
   var step = this._swordHitToggle++;
-  var base = (opts && opts.vol != null) ? opts.vol : 0.6;
-  var key = this.HIT_KEY_BY_MATERIAL[material] || 'monster-hit';
-  var o = {};
-  for (var q in opts) o[q] = opts[q];
-  o.vol = base * this.HIT_GAIN * (this.HIT_KEY_GAIN[key] || 1);
-  if (o.rate == null) o.rate = this.SWORD_HIT_DETUNE[step % this.SWORD_HIT_DETUNE.length];
-  this.play(key, o);
+  var vol = (opts && opts.vol != null) ? opts.vol : 0.6;
+  var rate = (opts && opts.rate) || this.SWORD_HIT_DETUNE[step % this.SWORD_HIT_DETUNE.length];
+  var L = V.hit[step % V.hit.length];
+  var X = V.layer ? V.layer[step % V.layer.length] : null;
+  var whole = this._has(L[0]) && (!X || this._has(X[0]));
+  if (!whole && V.fb) {
+    /* today's sound -- and asked for even when it too is still loading,
+       because play() then fetches it from the manifest, where a Wheel clip
+       outside the Wheel would never come */
+    this._playLayer(V.fb, vol, rate);
+    this._noteHit(mat, [V.fb[0]], this._has(V.fb[0]) ? 'fb' : 'cold', vol);
+    return;
+  }
+  this._playLayer(L, vol, rate);
+  var keys = [L[0]];
+  if (X && this._has(X[0])) { this._playLayer(X, vol, rate); keys.push(X[0]); }
+  this._noteHit(mat, keys, whole ? 'voice' : 'cold', vol);
+};
+/* The name every caller has used since v2.3.2452 -- NPCs and players
+   ('flesh'), the arrow that snaps ('bone'), the old lands' props -- kept as
+   the same voice. */
+BT_AUDIO.swordHit = function (opts, material) {
+  return this.materialHit(material, opts);
 };
 /* Magic-hit alternation — same pattern as sword. Cycles magic-hit and
    magic-hit2 so staff-projectile hits don't repeat the same waveform. */
@@ -3302,7 +3438,24 @@ BT_AUDIO._armorHitToggle = 0;
  * and a phone's speaker hears the A-weighted half.  The Wheel's footstep
  * clips are only loaded in the Wheel, which is where its objects are; a
  * layer whose sample is not in plays nothing, and a hit with nothing at
- * all falls back to the old stone clang. */
+ * all falls back to the old stone clang.
+ *
+ * ═══ v2.3.3001: PLANTS ARE NOT WOOD, AND NOT SLIME ═══
+ * Owner: "modify hit sound effects based on material type so hitting wood vs
+ * plants etc for props".  'soft' gave a cactus, a toadstool and a giant
+ * flower the fleshy monster thud -- a slime's sound -- and the bush's rustle
+ * had a wooden knock under it.  Now:
+ *
+ *   leaf      the bush: the rustle alone, two of them (the knock is gone)
+ *   plant     the cactus and the giant flower: the rustle with a small
+ *             pulpy squish under it (the Wheel's mud step, pitched up)
+ *   mushroom  the toadstool: a squelch of mud with a soft dirt thud
+ *
+ * and a hit on a TREE's trunk shakes its crown, heard ~40 ms after the trunk
+ * at about half its level (CROWN_SOUNDS, below): leaves rustle, snow
+ * crunches off a pine, char puffs off a burnt tree, slime squelches.
+ * A plant's own `fb` is what it made before (the soft thud), for a hit that
+ * comes before the Wheel's clips. */
 BT_AUDIO.PROP_SOUNDS = {
   wood: {
     hit: [['axe-chop', 0.13, 0.3, 2.1], ['axe-chop', 1.135, 0.3, 1.7]],
@@ -3321,8 +3474,21 @@ BT_AUDIO.PROP_SOUNDS = {
     brk: [['armor-hit-2', 0.06, 0.9, 0.28, 0.74], ['armor-hit-1', 0.12, 0.7, 0.24, 0.92, 0.09], ['skeleton-death', 0, 1.3, 0.35, 1.2, 0.05]],
   },
   leaf: {
-    hit: [['step-grass', 0.145, 0.53, 6.2]], layer: ['step-wood', 0.145, 0.25, 2.2, 1.2],
+    /* v2.3.3001: a pure rustle, two of them -- no wooden knock under a bush */
+    hit: [['step-grass', 0.145, 0.53, 6.2], ['step-grass', 0.145, 0.53, 6.2, 1.12]],
     brk: [['step-grass', 0.145, 0.53, 5, 0.85], ['step-grass', 0.145, 0.53, 4, 1.15, 0.12], ['step-wood', 0.145, 0.32, 2.5, 0.9]],
+  },
+  /* v2.3.3001: the cactus and the giant flower -- rustle and pulp */
+  plant: {
+    hit: [['step-grass', 0.145, 0.53, 5.6], ['step-grass', 0.145, 0.53, 5.6, 1.1]], layer: ['step-mud', 0.22, 0.14, 2.2, 1.25, 0.008],
+    brk: [['step-grass', 0.145, 0.53, 5, 0.85], ['step-mud', 0.22, 0.14, 2.4, 0.95, 0.02], ['step-grass', 0.145, 0.53, 4, 1.15, 0.12], ['step-mud', 0.86, 0.12, 2, 1.1, 0.1]],
+    fb: ['monster-hit', 0, 0.21, 3, 1.1],
+  },
+  /* v2.3.3001: the toadstool -- a squish */
+  mushroom: {
+    hit: [['step-mud', 1.265, 0.12, 3, 0.9], ['step-mud', 0.51, 0.15, 3.2, 0.95]], layer: ['footstep-v3', 0.1, 0.16, 1.8, 0.9, 0.004],
+    brk: [['step-mud', 0.51, 0.15, 2.8, 0.8], ['footstep-v3', 0.1, 0.16, 2, 0.8, 0.01], ['step-mud', 1.265, 0.12, 2.4, 0.95, 0.08]],
+    fb: ['monster-hit', 0, 0.21, 3, 1.1],
   },
   straw: {
     hit: [['step-grass', 0.145, 0.53, 5.4, 0.9]], layer: ['step-wood', 0.145, 0.3, 3.6, 1],
@@ -3344,10 +3510,20 @@ BT_AUDIO.PROP_SOUNDS = {
     hit: [['mine-strike', 0.06, 0.4, 0.6, 0.8]], layer: ['step-gravel', 0.145, 0.4, 3, 0.9],
     brk: [['skeleton-death', 0, 1.3, 0.42, 0.7], ['step-gravel', 0.145, 0.53, 3.5, 0.8], ['mine-strike', 0.58, 0.45, 0.3, 0.7, 0.05]],
   },
-  soft: {
-    hit: [['monster-hit', 0, 0.21, 3, 1.1]],
-    brk: [['slime-death', 0, 1.2, 0.18, 1.1]],
-  },
+  /* v2.3.3001: 'soft' (the slime's thud on a plant) is gone: plant and
+     mushroom above are what those three objects are made of now */
+};
+/* v2.3.3001: a tree's CROWN, shaken by a hit on its trunk (wheelMaterials.js
+   `canopy`).  One layer each, [key, offset, duration, gain, rate, delay]: about
+   half the matched level (a rustle measures 0.25 of sword-hit3 at an arrow's
+   0.32 where the trunk is 0.5-0.75), 40 ms after the trunk so the knock leads
+   and the crown answers.  Only the Wheel's clips: before they come, the
+   trunk alone, as before. */
+BT_AUDIO.CROWN_SOUNDS = {
+  leaf: ['step-grass', 0.145, 0.53, 3, 1.05, 0.04],
+  snow: ['step-snow', 0.295, 0.2, 2, 1.1, 0.04],
+  char: ['step-ash', 0.165, 0.22, 2.6, 1, 0.04],
+  slime: ['step-mud', 0.86, 0.12, 1.8, 1, 0.04],
 };
 BT_AUDIO._propHitN = 0;
 /* One layer.  Returns whether its sample was in to play. */
@@ -3357,16 +3533,19 @@ BT_AUDIO._propLayer = function (L, vol, rateK) {
     rate: (L[4] || 1) * (rateK || 1) * (1 + (Math.random() - 0.5) * 0.06), delay: L[5] || 0 });
   return true;
 };
-/* What the last prop sound was, for the tests (mp-wheelbreak). */
-BT_AUDIO._noteProp = function (what, mat, key) {
-  this._lastProp = { what: what, mat: mat, key: key, at: Date.now() };
+/* What the last prop sound was, for the tests (mp-wheelbreak).
+   v2.3.3001: + the tree's crown, and the sample it played (null when its
+   clip was not in). */
+BT_AUDIO._noteProp = function (what, mat, key, crown, crownKey) {
+  this._lastProp = { what: what, mat: mat, key: key, crown: crown || null, crownKey: crownKey || null, at: Date.now() };
   if (!this._propCounts) this._propCounts = Object.create(null);
   var k = what + ':' + mat;
   this._propCounts[k] = (this._propCounts[k] || 0) + 1;
 };
 /** A hit on a prop made of `mat` (data/wheelMaterials.js MATERIALS).
  *  opts: vol (an arrow's 0.32, as before), big (a heavy thing: the deeper
- *  sound, a little lower). */
+ *  sound, a little lower), crown (v2.3.3001: a tree's `canopy` -- 'leaf',
+ *  'snow', 'char' or 'slime' -- whose CROWN_SOUNDS answer the trunk). */
 BT_AUDIO.propHit = function (mat, opts) {
   var S = this.PROP_SOUNDS[mat] || this.PROP_SOUNDS.stone;
   var o = opts || {};
@@ -3376,16 +3555,23 @@ BT_AUDIO.propHit = function (mat, opts) {
   var L = alts[this._propHitN++ % alts.length];
   var rateK = big ? 0.9 : 1.05;
   var played = this._propLayer(L, vol, rateK);
+  /* v2.3.3001: a plant whose own sound is not in yet makes what it made
+     before (`fb`, the soft thud) -- not a stray layer of its new one */
+  if (!played && S.fb && this._propLayer(S.fb, vol, rateK)) { this._noteProp('hit', mat, S.fb[0]); return; }
   if (big && S.bigLayer) this._propLayer(S.bigLayer, vol, rateK);
   if (S.layer) played = this._propLayer(S.layer, vol, rateK) || played;
   if (!played) {
     /* nothing of this material's is in yet: the old stone clang, so a hit
-       is never silent */
-    this.swordHit({ vol: vol }, 'stone');
+       is never silent (v2.3.3001: played straight -- swordHit('stone') is
+       the pickaxe's voice now) */
+    this.play('sword-hit2', { vol: vol * this.HIT_GAIN * 0.63, rate: this.SWORD_HIT_DETUNE[this._swordHitToggle++ % 2] });
     this._noteProp('hit', mat, 'sword-hit2');
     return;
   }
-  this._noteProp('hit', mat, L[0]);
+  /* v2.3.3001: ...and a tree's crown answers it */
+  var C = (o.crown && Object.prototype.hasOwnProperty.call(this.CROWN_SOUNDS, o.crown)) ? this.CROWN_SOUNDS[o.crown] : null;
+  var crownKey = (C && this._propLayer(C, vol, rateK)) ? C[0] : null;
+  this._noteProp('hit', mat, L[0], o.crown, crownKey);
 };
 /** The prop breaking.  `as`: 'building' | 'tree' | 'big' | 'small' -- a
  *  building collapses, a tree falls, anything else breaks. */
@@ -3438,6 +3624,78 @@ BT_AUDIO.elemHit = function (st) {
     h.gain.gain.setValueAtTime(L[3], t0 + Math.max(0, real - 0.08));
     h.gain.gain.linearRampToValueAtTime(0, t0 + real);
   } catch (e) { /* the fade is a nicety */ }
+};
+/* ═══ v2.3.3001: A MONSTER'S BALL BREAKS WITH ITS OWN SOUND ═══
+   Owner: "Same with when monster projectiles break on you."  A snowball, a
+   fire goblin's fireball and a slime's glob ended in silence wherever they
+   ended -- on you, on the ground, on a rock -- and a ball that hit you was
+   heard only as the monster's melee blow (monsterHitHero: the armour's clang
+   or the bare thud), the same for a snowball as for a sword.  Now each breaks
+   as what it is, from recordings in the game:
+
+     snowball  a sharp crunch of snow with a second, lighter one
+     fire      the cooking sizzle, faded out
+     goo       a squelch of mud on contact, the slime orb's sloppy splort after
+
+   Raw play() levels like ELEM_SOUNDS (no HIT_GAIN): [key, offset, duration,
+   vol, rate, delay, fade], every layer of a ball played together.  On you
+   each measures 0.67-0.74 of sword-hit3 at full (the chill, the burn and the
+   hold measure 0.74 / 0.53 / 0.85) and peaks at 0.28-0.54.  Where it breaks
+   scales it (SHOT_HOW): on you 1, on your shield 0.5, on the ground or a rock
+   0.45 -- and those last two by how far off it is (hitSounds.earVol).  The
+   snowball's crunch and the glob's squelch are the Wheel's clips: before
+   them, `fb` (the snowball's thud, the orb's splort), never silence.
+   game/hitSounds.js decides where and how loud; this only plays it. */
+BT_AUDIO.SHOT_SOUNDS = {
+  snowball: {
+    layers: [['step-snow', 2.385, 0.17, 2.6, 1], ['step-snow', 0.295, 0.2, 1.6, 1.05, 0.02]],
+    fb: ['snowman-hit', 0.03, 0.27, 0.45, 1.1],
+  },
+  fire: {
+    layers: [['cook-success', 0.1, 0.25, 0.42, 1, 0, 0.06]],
+  },
+  goo: {
+    layers: [['step-mud', 0.22, 0.14, 2.6, 1], ['slime-projectile-hit', 0.18, 0.42, 1.7, 1.05, 0.02, 0.06]],
+    fb: ['slime-projectile-hit', 0, 0.62, 1.7, 1.05, 0, 0.06],
+  },
+};
+BT_AUDIO.SHOT_HOW = { player: 1, shield: 0.5, land: 0.45, prop: 0.45 };
+/* What the last ball's sound was, for the tests (mp-hitvoices). */
+BT_AUDIO._noteShot = function (style, how, keys, vol) {
+  this._lastShot = { style: style, how: how, keys: keys, vol: vol, at: Date.now() };
+  if (!this._shotCounts) this._shotCounts = Object.create(null);
+  var k = style + ':' + how;
+  this._shotCounts[k] = (this._shotCounts[k] || 0) + 1;
+};
+/** A monster's ball breaking.  style 'snowball' | 'fire' | 'goo'
+ *  (monsterShots.shotStyleOf); how 'player' | 'shield' | 'land' | 'prop';
+ *  k the distance's share (1 on you). */
+BT_AUDIO.shotHit = function (style, how, k) {
+  var B = (style && Object.prototype.hasOwnProperty.call(this.SHOT_SOUNDS, style)) ? this.SHOT_SOUNDS[style] : this.SHOT_SOUNDS.goo;
+  var vol = (Object.prototype.hasOwnProperty.call(this.SHOT_HOW, how) ? this.SHOT_HOW[how] : 0.45) * (k == null ? 1 : k);
+  if (!(vol > 0.005)) return;
+  var rate = 1 + (Math.random() - 0.5) * 0.06;
+  var keys = [];
+  if (!this._has(B.layers[0][0]) && B.fb) {
+    /* the Wheel's clip not in: its stand-in from the manifest (fetched now
+       if it is still loading too) */
+    this._playLayer(B.fb, vol, rate, 1);
+    keys.push(B.fb[0]);
+    this._noteShot(style, how, keys, vol);
+    return;
+  }
+  for (var i = 0; i < B.layers.length; i++) {
+    var L = B.layers[i];
+    if (i > 0 && !this._has(L[0])) continue;
+    this._playLayer(L, vol, rate, 1);
+    keys.push(L[0]);
+  }
+  this._noteShot(style, how, keys, vol);
+};
+/* What the last monster blow on YOU sounded like, for the tests: `ball` when
+   it was a ball's, softened (game/hitSounds.heroHitSfx). */
+BT_AUDIO._noteHero = function (armored, ball, vol) {
+  this._lastHero = { armored: !!armored, ball: !!ball, vol: vol, at: Date.now() };
 };
 BT_AUDIO.monsterDeath = function (arch, opts) {
   /* No-op for slimes (fodder).  The splat SFX is owned by the render-

@@ -381,17 +381,18 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
     weapon: fx.bolt ? 'bolt' : 'arrow', big: fx.big, elem: fx.elem, arch: arch,
     hitX: tx + vdx, hitY: ty + vdy,
   });
-  if (arch === 'snowman' && m.curHp > 0) {
-    try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
-  }
   /* v2.3.2511: an arrow sounds like what it hit; magic keeps its own voice on
-     top, with the material under it (the long note at the hit block) */
+     top, with the material under it (the long note at the hit block)
+     v2.3.3001: the material is a VOICE now (hitSounds.js monsterHitSfx,
+     BT_AUDIO.HIT_VOICES) -- and a snowman's is 'snow', his snowball thud with
+     a crunch.  This used to play that thud here AND swordHit('snow'), which
+     had no snow sample and fell to the slime's flesh thud: every arrow or bolt
+     into a snowman sounded like two hits, one of them a slime's. */
   if (fx.staff) {
     try { BT_AUDIO.magicHit({ vol: 0.3 }); } catch (e) { /* audio is best-effort */ }
-    try { BT_AUDIO.swordHit({ vol: 0.22 }, fx.kind); } catch (e) { /* audio is best-effort */ }
+    monsterHitSfx(m, 0.22, 'bolt', fx.snd);
   } else {
-    try { BT_AUDIO.swordHit({ vol: 0.6 }, fx.kind); }
-    catch (e) { try { BT_AUDIO.play('arrow-hit', { vol: 0.6 }); } catch (e2) { /* audio is best-effort */ } }
+    monsterHitSfx(m, 0.6, 'arrow', fx.snd);
   }
   if (fx.staff) {
     /* v2.3.2505: the crash where the orb is.  v2.3.2730: through combatHelpers'
@@ -627,7 +628,8 @@ import {
   STAFF_BIG_BOLT_SCALE, /* v2.3.2842: the one-bolt special's drawn + hit size */
   STAFF_BIG_BOLT_BLAST_PX, /* v2.3.2849: how far its explosion reaches */
 } from '@/data/index.js';
-import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
+import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, hitSoundOf /* v2.3.3001: ...in its material's voice */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
+import { monsterHitSfx, shotEndSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits and monster balls sound like their material */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
@@ -675,7 +677,17 @@ function queueShotImpact(S, proj, why) {
 }
 
 function queueSnowballBurst(S, proj) {
-  queueShotImpact(S, proj, (proj && proj._fxWhy) || (proj && proj.propStopT != null ? 'prop' : 'land'));
+  var why = (proj && proj._fxWhy) || (proj && proj.propStopT != null ? 'prop' : 'land');
+  queueShotImpact(S, proj, why);
+  /* ═══ v2.3.3001: ...AND EVERY ONE OF THEM IS HEARD ═══
+     Owner: "Same with when monster projectiles break on you."  Every ending
+     of a ball runs through here (see above), so here is where it breaks in
+     its own material: a snowball's crunch, a fireball's sizzle, a glob's
+     squelch -- on you at full, on your shield at half, on the ground or a
+     rock quieter and softer with distance (game/hitSounds.js shotEndSfx).
+     The legacy local orb's hit on you never comes here: it has its own
+     sound, below. */
+  shotEndSfx(S, proj, proj && proj._shotShield ? 'shield' : why);
   if (!proj || proj.kind !== 'snowball') return;
   if (!S.snowballBursts) S.snowballBursts = [];
   if (S.snowballBursts.length >= 12) return;   /* nothing drains it if FX are off */
@@ -1755,6 +1767,7 @@ export function updateArrows(S, deps) {
                   elem: projElem || null,
                   orbColor: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa',
                   kind: (_hitMat && _hitMat.kind) || 'flesh',
+                  snd: hitSoundOf(m.archetype || m.type),   /* v2.3.3001: its voice, as it was when hit */
                   stub: !a.isStaff && !a.isSpecial,
                   stubColor: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914',
                 };
@@ -2308,7 +2321,20 @@ export function updateSlimeProjectiles(S) {
                double-hit the player and take damage authority back to the
                client (rule zero).  Despawn on contact and let the
                server's own event draw the popup, flash and particles. */
-            if (proj.displayOnly) { queueSnowballBurst(S, proj); return false; }
+            if (proj.displayOnly) {
+              /* v2.3.3001: on your raised shield, if it faces the thrower --
+                 the worker's own question at impact (_blockArcCovers from the
+                 monster), so the ball breaks on the shield, half as loud */
+              var _thr = null;
+              for (var _ti = 0; S.monsters && _ti < S.monsters.length; _ti++) {
+                if (S.monsters[_ti] && S.monsters[_ti].id === proj.ownerId) { _thr = S.monsters[_ti]; break; }
+              }
+              var _thrX = _thr ? _thr.x : P.x - Math.cos(proj.ang) * 50;
+              var _thrY = _thr ? _thr.y : P.y - Math.sin(proj.ang) * 50;
+              proj._shotShield = !!(S._shieldUp && isAttackInShieldArc(S, _thrX, _thrY));
+              queueSnowballBurst(S, proj);
+              return false;
+            }
             if (_pInvuln) return false;
             /* Shield blocks slime projectiles outright — no damage,
                no hit-react, plays the metal-clang shield-block SFX,

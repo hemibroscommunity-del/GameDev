@@ -459,6 +459,18 @@ export function isFodderLike(arch) {
  * the look reads `fx` (rendering/hitMaterialFx.js) and falls back to `kind`:
  * snow, goo, bone, stone, ember, plus the two new ones, 'ash' (mummy) and
  * 'goblin' (a little blood, char and embers). */
+/* ═══ v2.3.3001: `sound`, WHAT THE HIT SOUNDS LIKE, WHERE IT DIFFERS ═══
+ * Owner: "modify hit sound effects based on material type ... against
+ * monsters (arrow, melee, magic hit sound for snowmen vs slime etc should all
+ * sound like their material type)".  The hit SOUND is a layered voice per
+ * material now (gameDisplay.js BT_AUDIO.HIT_VOICES): snow crunches, goo
+ * squelches, a fire goblin sizzles, stone takes the pickaxe.  `kind` still
+ * names both the voice and the look for almost everyone; `sound` is the one
+ * field to write when a monster SOUNDS unlike what its pieces look like --
+ * the fishman throws goo but is a wet slap ('wet'), the bog lurker throws
+ * goo but is a squelch of mud ('mud').  Read it through hitSoundOf() below,
+ * never as `.kind`, so the two can never drift.  The mummy keeps 'bone': the
+ * owner chose "Bony is mummy" (v2.3.2452) and v2.3.2843 kept it on purpose. */
 const HIT_MATERIALS = {
   snowman:       { kind: 'snow',  tint: 0xe8f4ff, decal: '#dbeafe' },
   skeleton:      { kind: 'bone',  tint: 0xe6ddc8, decal: '#c9bfa5' },
@@ -472,8 +484,8 @@ const HIT_MATERIALS = {
   mossSlime:     { kind: 'goo',   tint: 0x4cbf6b, decal: '#2a6e3e' },
   blueSlime:     { kind: 'goo',   tint: 0x4c9fdc, decal: '#28567e' },
   mireWisp:      { kind: 'goo',   tint: 0x7fd0c9, decal: '#3d6f6a' },
-  bogLurker:     { kind: 'goo',   tint: 0x5e7a52, decal: '#37482f' },
-  fishman:       { kind: 'goo',   tint: 0x62b8c7, decal: '#2f6570' },
+  bogLurker:     { kind: 'goo',   sound: 'mud', tint: 0x5e7a52, decal: '#37482f' },   /* v2.3.3001: a bog's mud */
+  fishman:       { kind: 'goo',   sound: 'wet', tint: 0x62b8c7, decal: '#2f6570' },   /* v2.3.3001: a wet slap */
   swarm:         { kind: 'goo',   tint: 0x8a6dc0, decal: '#4c3a70' },
   volatile:      { kind: 'ember', tint: 0xf59e0b, decal: '#78350f' },
   stalker:       { kind: 'goo',   tint: 0x94a3b8, decal: '#475569' },
@@ -484,6 +496,15 @@ export function hitMaterialOf(archOrVariant) {
   return HIT_MATERIALS[archOrVariant]
     || HIT_MATERIALS[baseArchetypeOf(archOrVariant)]
     || HIT_MATERIAL_DEFAULT;
+}
+
+/** v2.3.3001: the material a hit on this monster SOUNDS like -- the key of
+ *  its voice in BT_AUDIO.HIT_VOICES (gameDisplay.js): its `sound` where it
+ *  has one, else its `kind`.  The one lookup every hit sound reads (melee,
+ *  lunge, arrow, bolt and the worker's echo of a hit nobody here played). */
+export function hitSoundOf(archOrVariant) {
+  const m = hitMaterialOf(archOrVariant);
+  return m.sound || m.kind;
 }
 
 /* ═══ v2.3.2844: A SLIME SHEDS THE COLOUR IT IS DRAWN IN ═══

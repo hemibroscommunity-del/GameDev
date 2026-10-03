@@ -2168,6 +2168,107 @@ console.log('what the objects are made of (v2.3.2995)');
   ok(`...and every one of the ${named.length} samples they play is one the game loads`, named.length > 10 && !unknown.length, unknown);
 }
 
+/* ── v2.3.3001: hits sound like what they hit ──
+   Owner, 2026-10-03: "modify hit sound effects based on material type so
+   hitting wood vs plants etc for props and also against monsters (arrow,
+   melee, magic hit sound for snowmen vs slime etc should all sound like their
+   material type).  Same with when monster projectiles break on you".  The
+   tables are text in gameDisplay.js (BT_AUDIO.PROP_SOUNDS, CROWN_SOUNDS,
+   HIT_VOICES, SHOT_SOUNDS); this reads them the way the block above does. */
+console.log('hits sound like what they hit (v2.3.3001)');
+{
+  const fs = await import('node:fs');
+  const gd = fs.readFileSync(new URL('../../src/data/gameDisplay.js', import.meta.url), 'utf8');
+  const blockOf = (name) => { const at = gd.indexOf(`BT_AUDIO.${name} = {`); return at >= 0 ? gd.slice(at, gd.indexOf('\n};', at)) : ''; };
+  /* one entry of a table: from `\n  key: ` to the next entry at the same depth */
+  const entryOf = (block, key) => {
+    const at = block.search(new RegExp(`\\n  ${key}: [{\\[]`));
+    if (at < 0) return null;
+    const rest = block.slice(at + 1);
+    const next = rest.slice(1).search(/\n {2}[a-z]+: [{[]/);
+    return next < 0 ? rest : rest.slice(0, next + 1);
+  };
+  const samplesIn = (txt) => [...(txt || '').matchAll(/\['([a-z0-9-]+)', [0-9.]+, [0-9.]+, [0-9.]+/g)].map((m) => m[1]);
+  const props = blockOf('PROP_SOUNDS'), crowns = blockOf('CROWN_SOUNDS'), voices = blockOf('HIT_VOICES'), shots = blockOf('SHOT_SOUNDS');
+  ok('the four tables are there (PROP_SOUNDS, CROWN_SOUNDS, HIT_VOICES, SHOT_SOUNDS)', !!(props && crowns && voices && shots));
+  const { WHEEL_MATERIALS, MATERIALS } = await import('../../src/data/wheelMaterials.js');
+  const { FOOTSTEP_CLIPS } = await import('../../src/data/footstepClips.js');
+  const clipKeys = new Set(Object.values(FOOTSTEP_CLIPS).map((c) => c.key));
+  const manAt = gd.indexOf('BT_AUDIO.SFX_MANIFEST = {');
+  const manBlock = gd.slice(manAt, gd.indexOf('\n};', manAt));
+  const inManifest = (k) => manBlock.includes(`'${k}':`);
+
+  /* PROPS: the plants are plants -- neither the slime's thud nor wood */
+  const plants = ['cactus', 'giantflower', 'toadstool', 'bush'];
+  const plantSounds = plants.map((id) => {
+    const mat = WHEEL_MATERIALS[id] && WHEEL_MATERIALS[id].mat;
+    const e = entryOf(props, MATERIALS[mat] && MATERIALS[mat].sound) || '';
+    const hit = e.slice(0, e.indexOf('brk:') >= 0 ? e.indexOf('brk:') : e.length);   /* its hit and layer, not its break or `fb` */
+    return { id, mat, hit: samplesIn(hit) };
+  });
+  const unplanty = plantSounds.filter((p) => !p.hit.length || p.hit.some((k) => ['monster-hit', 'axe-chop', 'wood-chop', 'step-wood', 'slime-death'].includes(k)));
+  ok(`the plants sound like plants: ${plantSounds.map((p) => `${p.id} ${p.mat} (${[...new Set(p.hit)].join('+')})`).join(', ')} -- no slime thud, no wood knock`, !unplanty.length, unplanty);
+  ok('...the cactus and giant flower a rustle and a squish (plant), the toadstool a squelch (mushroom), the bush a rustle alone (leaf)',
+    WHEEL_MATERIALS.cactus.mat === 'plant' && WHEEL_MATERIALS.giantflower.mat === 'plant' && WHEEL_MATERIALS.toadstool.mat === 'mushroom' && WHEEL_MATERIALS.bush.mat === 'leaf'
+      && plantSounds.find((p) => p.id === 'cactus').hit.includes('step-grass') && plantSounds.find((p) => p.id === 'toadstool').hit.includes('step-mud')
+      && plantSounds.find((p) => p.id === 'bush').hit.every((k) => k === 'step-grass'), plantSounds);
+  ok('...and no object is the slime-thud material any more', !Object.values(WHEEL_MATERIALS).some((m) => m.mat === 'soft') && !MATERIALS.soft, null);
+  /* TREES: every crown kind is heard */
+  const canopies = [...new Set(Object.values(WHEEL_MATERIALS).map((m) => m.canopy).filter(Boolean))];
+  const crownSamples = Object.fromEntries(canopies.map((c) => [c, samplesIn(entryOf(crowns, c))]));
+  const noCrown = canopies.filter((c) => crownSamples[c].length !== 1);
+  ok(`every tree's crown answers its trunk: ${canopies.map((c) => `${c} ${crownSamples[c][0] || '?'}`).join(', ')}`,
+    canopies.length === 4 && !noCrown.length && crownSamples.leaf[0] === 'step-grass' && crownSamples.snow[0] === 'step-snow'
+      && crownSamples.char[0] === 'step-ash' && crownSamples.slime[0] === 'step-mud', { noCrown, crownSamples });
+
+  /* MONSTERS: each of the Wheel's monsters its own voice */
+  const { hitSoundOf, hitMaterialOf } = await import('../../src/data/monsterVariants.js');
+  const expectVoice = { snowman: 'snow', fireGoblin: 'ember', mummy: 'bone', skeleton: 'bone', hexer: 'bone', rockmonster: 'stone',
+    fodder: 'goo', blueSlime: 'goo', mireWisp: 'goo', mossSlime: 'goo', fishman: 'wet', bogLurker: 'mud' };
+  const wrongVoice = Object.entries(expectVoice).filter(([a, v]) => hitSoundOf(a) !== v).map(([a, v]) => `${a}: ${hitSoundOf(a)} (want ${v})`);
+  ok(`every Wheel monster sounds like its material: ${Object.entries(expectVoice).map(([a, v]) => `${a} ${v}`).join(', ')}`, !wrongVoice.length, wrongVoice);
+  ok('...the fishman and bog lurker still LOOK like goo (`kind`, the pieces)', hitMaterialOf('fishman').kind === 'goo' && hitMaterialOf('bogLurker').kind === 'goo');
+  const voiceNames = [...new Set([...Object.values(expectVoice), 'flesh'])];
+  const noVoice = voiceNames.filter((v) => !entryOf(voices, v));
+  ok(`...and each has its voice in HIT_VOICES (${voiceNames.join(', ')})`, !noVoice.length, noVoice);
+  const vs = Object.fromEntries(voiceNames.map((v) => [v, entryOf(voices, v) || '']));
+  ok('the mummy stays BONY: the bone voice is sword-hit3 alone, as the owner chose ("Bony is mummy", v2.3.2452)',
+    JSON.stringify([...new Set(samplesIn(vs.bone))]) === '["sword-hit3"]' && !/fb:/.test(vs.bone), vs.bone);
+  ok('a slime squelches (mud over its thud), a snowman crunches (snow over his thud), a rock takes the pickaxe -- not the sword clang',
+    samplesIn(vs.goo).includes('step-mud') && samplesIn(vs.goo)[0] === 'monster-hit'
+      && samplesIn(vs.snow)[0] === 'snowman-hit' && samplesIn(vs.snow).includes('step-snow') && !/'monster-hit'/.test(vs.snow)
+      && samplesIn(vs.stone)[0] === 'mine-strike' && !samplesIn(vs.stone.split('fb:')[0]).includes('sword-hit2'),
+    { goo: vs.goo, snow: vs.snow, stone: vs.stone });
+  ok('...a fire goblin sizzles, a fishman splashes, a bog lurker squelches',
+    samplesIn(vs.ember).includes('cook-success') && samplesIn(vs.wet).includes('fish-on-hook') && samplesIn(vs.mud)[0] === 'step-mud', { ember: vs.ember, wet: vs.wet, mud: vs.mud });
+  /* never silent: a voice that needs a Wheel clip has today's sound to fall
+     back on, from the manifest (loaded everywhere) */
+  const fbOf = (txt) => { const m = (txt || '').match(/fb: \['([a-z0-9-]+)'/); return m ? m[1] : null; };
+  const needsFb = voiceNames.filter((v) => samplesIn(vs[v]).some((k) => !inManifest(k) || k === 'cook-success' || k === 'fish-on-hook' || k === 'mine-strike'));
+  const badFb = needsFb.filter((v) => !fbOf(vs[v]) || !inManifest(fbOf(vs[v])));
+  ok(`every voice with a texture has today's sound as its fallback (${needsFb.map((v) => `${v} -> ${fbOf(vs[v])}`).join(', ')})`,
+    needsFb.length >= 5 && !badFb.length && fbOf(vs.stone) === 'sword-hit2' && fbOf(vs.goo) === 'monster-hit' && fbOf(vs.snow) === 'snowman-hit', badFb);
+
+  /* BALLS: each style a ball can be drawn in has its break */
+  const styles = ['snowball', 'fire', 'goo'];
+  const shotSamples = Object.fromEntries(styles.map((s) => [s, samplesIn(entryOf(shots, s))]));
+  ok(`every monster ball breaks in its material: ${styles.map((s) => `${s} ${[...new Set(shotSamples[s])].join('+')}`).join(', ')}`,
+    shotSamples.snowball.includes('step-snow') && shotSamples.fire.includes('cook-success') && shotSamples.goo.includes('slime-projectile-hit')
+      && fbOf(entryOf(shots, 'snowball')) === 'snowman-hit' && fbOf(entryOf(shots, 'goo')) === 'slime-projectile-hit', shotSamples);
+
+  /* every sample the four tables name is one the game loads */
+  const all = [...new Set([props, crowns, voices, shots].flatMap(samplesIn))];
+  const unloaded = all.filter((k) => !clipKeys.has(k) && !inManifest(k));
+  ok(`...and every one of the ${all.length} samples the four tables play is one the game loads (the manifest, or the Wheel's footstep clips)`, all.length > 15 && !unloaded.length, unloaded);
+  /* a slice of a Wheel footstep clip is ONE step of it: cut_footsteps.py
+     re-cutting the clips moves the steps, and a slice measured on the old
+     file would land in silence or across two steps */
+  const stepByKey = Object.fromEntries(Object.values(FOOTSTEP_CLIPS).map((c) => [c.key, c.steps]));
+  const slices = [props, crowns, voices, shots].flatMap((b) => [...b.matchAll(/\['(step-[a-z]+)', ([0-9.]+), ([0-9.]+), [0-9.]+/g)].map((m) => ({ k: m[1], off: +m[2], dur: +m[3] })));
+  const outside = slices.filter((s) => !(stepByKey[s.k] || []).some(([o, d]) => s.off >= o - 0.005 && s.off + s.dur <= o + d + 0.005));
+  ok(`...each of the ${slices.length} slices of a footstep clip lies inside one of its steps (footstepClips.js)`, slices.length > 20 && !outside.length, outside);
+}
+
 /* ═══ v2.3.2999: PLACING v2, THE `?placing=2` PREVIEW ═══
    Owner, 2026-10-03: "work throughout the night on studying object placement
    in the game's maps and what a good distribution is" (docs/OBJECT-

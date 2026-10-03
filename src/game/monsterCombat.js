@@ -52,6 +52,7 @@ import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
+import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: a hit sounds like the monster's material */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 
@@ -2160,12 +2161,13 @@ export function updateMonsterCombat(S, deps) {
                     m._aggroTs = m._aggroTs || Date.now();
                     m._chaseUntil = Date.now() + 5000;
                   }
-                  if (_hitArch === 'snowman' && m.curHp > 0) {
-                    try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
-                    /* v2.3.2844: the ice-burst plume stamp (_impactAt, v2.3.1124)
-                       is gone with the plume -- the snow the hit throws is the
-                       reaction now (hitMaterialFx).  The sound stays. */
-                  }
+                  /* v2.3.2844: the ice-burst plume stamp (_impactAt, v2.3.1124)
+                     is gone with the plume -- the snow the hit throws is the
+                     reaction now (hitMaterialFx).
+                     v2.3.3001: and the snowman's own snowball-thud that played
+                     here is the main layer of his voice now ('snow', played
+                     with every other monster's below): a crunch of snow
+                     over it. */
                 }
                 /* Count-based weight: 1 per landed hit (Power for melee).
                    Pairs with block = 3 to match the user's hits-vs-blocks
@@ -2317,10 +2319,13 @@ export function updateMonsterCombat(S, deps) {
                    v2.3.2452: and every OTHER body picks its sample by what
                    it is made of, off the same HIT_MATERIALS table that
                    already chooses this hit's debris and ground decal —
-                   flesh thuds, bone cracks, stone clangs. */
-                if ((m.archetype || m.type) !== 'snowman') {
-                  BT_AUDIO.swordHit({ vol: 0.55 }, hitMaterialOf(m.archetype || m.type).kind);
-                }
+                   flesh thuds, bone cracks, stone clangs.
+                   v2.3.3001: ...each a voice of its material now (hitSounds.js,
+                   BT_AUDIO.HIT_VOICES): goo squelches, a fire goblin sizzles,
+                   stone takes the pickaxe -- the snowman included, his
+                   snowball thud the body of his ('snow'), so he is no longer
+                   the one monster skipped here. */
+                monsterHitSfx(m, 0.55, 'melee');
 
                 /* §19.1 Quest tracking — combat flags */
                 if (!_R6._questFlags) _R6._questFlags = {};

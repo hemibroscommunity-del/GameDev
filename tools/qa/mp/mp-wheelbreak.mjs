@@ -16,7 +16,8 @@
  *      the arrow STAYS in it, headless, on its face, past the old 2 s;
  *   2. a bolt into it: a burn mark of its own pixels, its heat fading;
  *   3. a lamp rings as metal, a rock as stone (the pickaxe), a tree throws
- *      its crown's leaves;
+ *      its crown's leaves (v2.3.3001: and its crown is heard rustling after
+ *      the trunk's knock; a bush rustles as a plant, no wooden knock);
  *   4. enough hits and it shatters: its sprite gone, shards of its picture
  *      flying, falling, landing on its footprint, the break sound, its marks
  *      gone with it, and its footprint gone from the walk test -- the next
@@ -278,6 +279,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const dt = await debrisFor(P, 'wobj:' + tree.oi + ':c');
     const sway = await state(P, tree.oi);
     rec.ok(`a tree (${tree.id}) answers as wood, sways, and its crown lets go of leaves`, !!lp && lp.mat === 'wood' && dt.some((b) => b.kind === 'canopy' && b.crown) && sway.shaking, { lp, dt, sway });
+    /* v2.3.3001: ...and the crown is HEARD: its leaves rustle after the knock */
+    rec.ok(`...and its crown is heard: the leaves' rustle (${lp ? lp.crownKey : 'none'}) after the trunk's ${lp ? lp.key : 'none'}`,
+      !!lp && lp.crown === 'leaf' && lp.crownKey === 'step-grass' && (lp.key === 'axe-chop' || lp.key === 'wood-chop'), lp);
     await P.page.waitForTimeout(700);
     await shot(P, '5-tree');
   } else rec.ok('a tree near town', false, null);
@@ -304,6 +308,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const freed = await state(P, t.oi);
     rec.ok('...step out and it is mended', !freed.broken && freed.drawn, freed);
   } else rec.ok('a small thing to break', false, null);
+
+  /* ── 5c. v2.3.3001: a bush is a plant -- a rustle, no wooden knock ── */
+  const bush = (await targets(P, ['bush'], 2600))[0];
+  if (bush) {
+    await standBefore(P, bush, 60);
+    const sh = await shootAt(P, (await targets(P, ['bush'], 400)).find((t) => t.oi === bush.oi) || bush);
+    await P.page.waitForTimeout(80);
+    const lp = sh.sound;
+    rec.ok(`a bush rustles as a PLANT (${lp ? lp.mat + ' ' + lp.key : 'none'}), not wood`, !!lp && lp.what === 'hit' && lp.mat === 'leaf' && lp.key === 'step-grass', lp);
+  } else rec.skip('a bush rustles as a plant', 'no bush within 2,600 px of the arrival');
 
   /* ── 6. a building ── */
   const bld = (await targets(P, ['saloon', 'hotel', 'gambling', 'post', 'store', 'bank', 'auction', 'assay', 'sheriff', 'blacksmith', 'woodworker', 'gemcutter', 'cookhouse', 'feedseed', 'landoffice', 'guildhall'], 2600))[0];

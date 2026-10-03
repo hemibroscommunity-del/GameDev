@@ -499,7 +499,37 @@ remnant to migrate server-side, not a mode to preserve.
       by land (worldFx `airHere`, the worker's catalog carrying each ground's
       `color`), snow prints on the Wheel's snow (footprintSprites `printsAt`)
       and every print drawn at the boots (`fdy`);
-    - WORLD-MAP-PIPELINE "The old map's shadows and air", `mp-wheelshadows`.)
+    - WORLD-MAP-PIPELINE "The old map's shadows and air", `mp-wheelshadows`.
+  - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
+    sound effects based on material type so hitting wood vs plants etc for
+    props and also against monsters (arrow, melee, magic hit sound for
+    snowmen vs slime etc should all sound like their material type). Same
+    with when monster projectiles break on you":
+    - a monster's hit is a VOICE of its material (`BT_AUDIO.HIT_VOICES`, a
+      body and a texture from recordings already in the game): snow (his
+      thud + a crunch), goo (the thud + a mud squelch), ember (+ a sizzle),
+      stone (the pickaxe + a stone knock, not the clang), wet (+ a splash),
+      mud; bone (mummy, skeleton) is sword-hit3 UNCHANGED; picked by
+      monsterVariants `hitSoundOf()` (`HIT_MATERIALS` `sound`, else `kind`,
+      which still picks the look); melee 0.55, lunge 0.5, arrow 0.6, bolt
+      0.22 under its magic, all through `src/game/hitSounds.js`; an arrow or
+      bolt into a snowman no longer plays the slime's thud too;
+    - the props: `plant` (cactus, giant flower) and `mushroom` (toadstool)
+      in wheelMaterials.js, the bush a rustle alone, `soft` gone; a tree's
+      crown is heard after its trunk (`CROWN_SOUNDS`);
+    - a monster's ball breaks in its material (`SHOT_SOUNDS`: a snowball's
+      crunch, a fireball's sizzle, a glob's squelch) on you, on your shield
+      (half) or on the ground (quieter by distance); the worker's blow for it
+      (`heroHitSfx`: a ball of that monster ended at you within 400 ms, or is
+      still flying) plays the armour clang at 0.3 and nothing bare;
+    - hits nobody here played (a teammate's, your abilities' and splash) are
+      heard at 0.35, softer with distance, never twice, 3 per 150 ms at most;
+    - a voice whose samples are not all in (the Wheel's footstep clips,
+      outside the Wheel) plays `fb`, its sound before v2.3.3001, never
+      silence; levels measured against sword-hit3 (0.92-1.10, peaks <= 0.66;
+      there is no limiter on the bus);
+    - test-world-core "hits sound like what they hit", `mp-hitsound`,
+      `mp-hitvoices`, `mp-wheelbreak`: docs/specs/material-hit-sounds.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

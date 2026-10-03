@@ -80,6 +80,14 @@ Dirt stays `footstep-v3.mp3`, under the general `public/sfx/` row above. The
 About panel credits every uploader by name either way, so a CC BY among the
 CONFIRM rows is already attributed.
 
+**Also hit sounds (v2.3.3001).** Slices of the snow, mud, stone, ash and grass
+clips (and `footstep-v3`) now also sound hits: a snowman's crunch, a slime's
+squelch, a rock monster's knock, a plant's rustle, a tree's crown, a snowball
+or a slime's glob breaking (`src/data/gameDisplay.js` HIT_VOICES, PROP_SOUNDS,
+CROWN_SOUNDS, SHOT_SOUNDS; docs/specs/material-hit-sounds.md).  The same
+files, so the same licenses and credits as above -- nothing new is shipped --
+but a CONFIRM row that turns out to be NC now has more uses to replace.
+
 **Not used:** the owner's second mud recording, "walking in the mud" by
 **arnaud coutancier** (Freesound 582400, v2.3.2970). Search results give the
 uploader's sounds as Attribution NonCommercial (CC BY-NC 3.0), which the
