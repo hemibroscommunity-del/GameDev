@@ -483,7 +483,23 @@ remnant to migrate server-side, not a mode to preserve.
       grid answers `atFeet` (wheelTrial.js lazyGrid), so isSolid and
       nudgeSpawnToWalkable read it playerGroundDy below the body's centre --
       read at the centre, a walk south put the boots ~45 px into a river and
-      a walk north stopped them 52 px short: TRAPS §127, `mp-wheelshore`.)
+      a walk north stopped them 52 px short: TRAPS §127, `mp-wheelshore`.
+  - Since v2.3.3000 the OLD MAP'S SHADOWS AND AIR are on the Wheel -- the
+    owner: "I liked the old shadows (and any other visual effect
+    enhancements?) of the old map put that on this wheel world too":
+    - one sun for the whole Wheel (zoneLight.js `WHEEL_SUN`), its shade's
+      colour by the land you stand in (`WHEEL_LAND_LIGHT`, eased in
+      lightFx `_wheelLight`); every drawn object casts
+      (wheelObjects.js `wheelObjectCasters`: billboards, buildings column by
+      column), objects drawn for a shadow that reaches the screen, and a
+      freed sheet clears every shadow pool first (shadows.js
+      `releaseShadowTextures`);
+    - objects shaded toward their foot (formShade), trees and bushes swaying
+      with their foot held (worldLife `_updateWheelSway`), the air and dust
+      by land (worldFx `airHere`, the worker's catalog carrying each ground's
+      `color`), snow prints on the Wheel's snow (footprintSprites `printsAt`)
+      and every print drawn at the boots (`fdy`);
+    - WORLD-MAP-PIPELINE "The old map's shadows and air", `mp-wheelshadows`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
