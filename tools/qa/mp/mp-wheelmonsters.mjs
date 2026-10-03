@@ -20,6 +20,10 @@
  *   6. back in town the Wheel's monster art is let go;
  *   7. no page errors, and no render errors.
  * Pictures in tools/qa/mp/out/wheelmonsters-*.png.
+ *
+ * v2.3.3012: the lands' next three stretches have monsters too (levels 6-20,
+ * mp-wheeldeep), 192 in all; what this scenario says of "each land's six" is
+ * said of the first stretch's, the ones at the inner end.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -30,6 +34,9 @@ const PHONE = { width: 390, height: 844 };
    its monsters (server/src/wheelzone.js) */
 const SKIN = { frost: ['snowman'], ember: ['fireGoblin'], sky: ['mummy', 'skeleton'], hollows: ['rockmonster'],
   thunder: ['fodder'], tidal: ['fishman'], mist: ['mireWisp', 'bogLurker'], verdant: ['blueSlime'] };
+/* v2.3.3012: the first stretch's (ids wm-<home>-<k>; the deeper ones' are
+   wm-<home>-t<tier>-<k>) */
+const isFirst = (m) => !/-t\d+-\d+$/.test(m.id);
 
 const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
   const el = document.querySelector('.bt-zone-header__title');
@@ -132,12 +139,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 2. every land's own ── */
   phase = 'the list';
   await P.page.waitForTimeout(1500);
-  const all = await monsters(P);
+  const every = await monsters(P);
+  const all = every.filter(isFirst);   /* v2.3.3012: the inner end's */
   const byHome = {};
   for (const m of all) (byHome[m.home] = byHome[m.home] || []).push(m);
-  rec.ok(`every element zone's monsters are there, each saying its home (${all.length}: ${Object.entries(byHome).map(([h, a]) => `${h} ${a.length}`).join(', ')})`,
-    all.length === 48 && Object.keys(SKIN).every((h) => (byHome[h] || []).length === 6), Object.keys(byHome));
-  const wrongSkin = all.filter((m) => !(SKIN[m.home] || []).includes(m.arch));
+  rec.ok(`every element zone's monsters are there, each saying its home (${all.length} at the inner ends: ${Object.entries(byHome).map(([h, a]) => `${h} ${a.length}`).join(', ')}; ${every.length} in all with the deeper stretches)`,
+    all.length === 48 && every.length === 192 && Object.keys(SKIN).every((h) => (byHome[h] || []).length === 6), Object.keys(byHome));
+  const wrongSkin = every.filter((m) => !(SKIN[m.home] || []).includes(m.arch));
   rec.ok('...each skinned as at home: fire goblins, snowmen, fishmen, rock monsters, mummies, wisps and lurkers, blue slimes, slimes',
     wrongSkin.length === 0, wrongSkin.slice(0, 6).map((m) => ({ id: m.id, home: m.home, arch: m.arch })));
   const mem1 = await monsterMb(P);
@@ -150,8 +158,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      of them, none is drawn: the renderer leaves a monster far off screen
      undrawn in the Wheel (entityRenderer, FAR_MARGIN) */
   const farHidden = await H.readState(P, (S) => S._monstersFarHidden);
-  rec.ok(`...and from Brotown's square, far off screen, none of them is drawn (${farHidden} of ${all.length} left undrawn)`,
-    farHidden === all.length && all.length === 48, farHidden);
+  rec.ok(`...and from Brotown's square, far off screen, none of them is drawn (${farHidden} of ${every.length} left undrawn)`,
+    farHidden === every.length && every.length === 192, farHidden);
   /* ── 3. at the inner end of their own spoke ── */
   const C = 21504;
   const misplaced = all.filter((m) => {
@@ -173,13 +181,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ...then into the middle of the land's six, where they are, so the
        picture shows them */
     const mid = await P.page.evaluate((h) => {
-      const ms = (window._gameState.current.monsters || []).filter((m) => m.home === h && m.alive !== false);
+      const ms = (window._gameState.current.monsters || []).filter((m) => m.home === h && m.alive !== false && !/-t\d+-\d+$/.test(m.id));
       if (!ms.length) return null;
       return { x: ms.reduce((a, m) => a + m.x, 0) / ms.length, y: ms.reduce((a, m) => a + m.y, 0) / ms.length };
     }, home);
     if (mid) await H.hopTo(P, mid.x, mid.y + 40, { tries: 40 });
     await P.page.waitForTimeout(1200);
-    const ms = (await monsters(P)).filter((m) => m.home === home);
+    const ms = (await monsters(P)).filter((m) => m.home === home && isFirst(m));
     return ms;
   };
   /* v2.3.2996: untouchable for the walk (the dev panel's own god mode: hits

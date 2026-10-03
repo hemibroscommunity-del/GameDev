@@ -1,4 +1,4 @@
-# A monster's hit carries its element (v2.3.2996)
+# A monster's hit carries its element (v2.3.2996; the other four, v2.3.3013)
 
 > Owner, 2026-10-03: "eventually I want elemental damage per monster type so
 > using a snowflake icon for instance when hit by a snowman's snowball and
@@ -20,10 +20,10 @@ monsters carry their land's.
 | wind | the mummies (all three kinds) | **gust** | shoved 48 px straight away from it | the wind swirl (`elem-wind`) |
 | flora | the blue slime | **stuck** | held in place for 0.7 s: no walk, no roll | the slime (`slime-remnants`) |
 
-The other four elements (stone, storm, water, venom) carry nothing yet. Each
-is the owner's "Etc" to choose, and an effect nobody asked for would be a
-balance change smuggled in with a feature. They are not named on the wire
-either, so an element icon on a number always means "this did something".
+The other four elements (stone, storm, water, venom) carried nothing at
+first: each was the owner's "Etc" to choose. **Since v2.3.3013 they do** (below,
+"The other four"). Only an element that does something is named on the wire, so
+an element icon on a number always means "this did something".
 
 "Landed" means: not dodged, not blocked, more than 0 damage (the zone-entry
 grace and god mode land nothing), and not the killing blow. Those carry the
@@ -64,6 +64,105 @@ sixes. Without it, three of them would hold you for good.
 **The gust** goes straight away from the monster that struck, and is scaled by
 the zone's depth where you stand (`_depthK`). Standing exactly on top of it
 there is no "away", so there is no shove.
+
+## The other four (v2.3.3013)
+
+Offered *"stone stuns briefly; storm shocks nearby players; water slows stamina
+refill; venom poisons over time"*, the owner: *"Yes continue working on those
+items."*
+
+| element | monster | status | what you feel | icon on the number |
+|---|---|---|---|---|
+| stone | the rock monster (the Rock Hollows) | **daze** | 0.5 s: no walk, swing, roll or shield; stars wheel round your head | the stone (`elem-stone`) |
+| storm | the Storm Peaks' slimes | **shock** | a crackle on you; the hit **arcs** to every other player within 150 px of you, half its damage each | the lightning (`elem-storm`) |
+| water | the fishman (the Tidal Coast) | **soak** | 4 s: your stamina refills at 40% of its pace; drips fall off you | the drop (`elem-water`) |
+| venom | the Mire's wisps and bog lurkers | **poison** | five ticks of damage, one a second; bubbles rise off you | the venom (`elem-venom`) |
+
+### The numbers
+
+All in `server/src/monsterstatus.js`.
+
+| | value | why |
+|---|---|---|
+| `DAZE.MS` | 500 | "briefly": shorter than the slime's 0.7 s hold, and it takes more (your swing and shield too) |
+| `DAZE.IMMUNE_MS` | 2500 | the rock monsters come in sixes and hit hard: after a daze, no new one for 2.5 s |
+| `SHOCK.R` | 150 | a little more than a body or two apart: "spread out" |
+| `SHOCK.PCT` | 0.5 | each arc is half the hit |
+| `SHOCK.MAX_HP_PCT` | 0.15 | no arc above 15% of the victim's max HP (the no-one-shot rail) |
+| `SHOCK.MAX_ARCS` | 4 | the nearest four, ties by id |
+| `SHOCK.MS` | 450 | how long the crackle shows |
+| `SOAK.MS` | 4000 | each hit starts it again |
+| `SOAK.REGEN_MULT` | 0.4 | the stamina refill while soaked: +3 a regen tick instead of +7 at base |
+| `POISON.TICKS` × `EVERY_MS` | 5 × 1000 | slower and longer than the burn's 3 × 1000 |
+| `POISON.PCT` | 0.12 | a tick is 12% of the hit: the burn's 60% of a hit again, over five seconds |
+| `POISON.MAX_HP_PCT` | 0.08 | no tick above 8% of your max HP |
+
+### How each works
+
+- **The daze** is carried out by the client, as the hold is. `elemMoveMult` is
+  0 while dazed, and `combatHelpers.dazeRefused` turns down a swing, a special,
+  an ability, a roll and the shield, saying "Dazed!" (not more than every
+  600 ms). It sits beside `swimRefused` on every one of its paths, plus the
+  auto-attack loop that fires bow and staff shots itself (monsterCombat.js).
+  Like the hold, the worker does not enforce it.
+- **The shock** is damage, so it is the worker's: `_shockArcs` finds the other
+  players within `SHOCK.R` of the one struck, in the same zone. It skips the
+  dead, the dying, the disconnected, a harvester (the v2.3.1704 shield) and
+  anyone on the Wheel's safe ground. Each arc is priced through `_applyDamage`
+  as elemental (Resist reads it, Dodge does not), credited to the monster, and
+  announced as that player's own `monster_attack` with `ability: 'shock'` (the
+  v2.3.2235 bypass). Its `attackerX/Y` is where the struck player stands: the
+  arc's start, which the clients draw a bolt from. An arc that kills goes
+  through the death path. The struck player's own hit carries `arcs: n`.
+- **The soak** is the worker's: the regen tick multiplies the stamina refill by
+  `_soakRegenMult` (exactly 1 when dry, so the line is unchanged then). The
+  client has no stamina prediction in server zones, so the bar it draws is the
+  worker's own number.
+- **The poison** is the burn's machinery in a Map of its own, `this._poisons`:
+  one a player, refreshed by the next hit (the count, not the clock), never
+  stacked, put out by death, a zone change, a disconnect or the safe ground,
+  skipped on a harvester. A player can burn and be poisoned at once; each ticks
+  on its own clock. Its ticks say `ability: 'poison'`, `elem: 'venom'`.
+  `_tickMonsterBurns` (the name tick.js calls) now ticks both.
+
+### On the client
+
+- **Ticks that are not blows.** A poison's tick and a storm's arc on you join
+  the burn's: no flinch, no camera kick, no blood, no armour clang
+  (`elemHits.tickKind`). Their sparks are green or yellow-white; the poison's
+  bubbles and the arc crackles.
+- **The looks** (effectsRenderer `_updateElemStatusFx`, round you and peers):
+  - daze: five stars wheeling round the head, the half behind it drawn under
+    the figure and the half in front over it, and grit off the blow;
+  - shock: lightning crackling round the body, new every 50 ms, a pale core
+    over a blue glow. For an arc, a bolt from the player it came off;
+  - soak: a puddle at the feet with ripples running out, drips falling off you;
+  - poison: a sick green glow underfoot, bubbles rising, two popping over the
+    head.
+- **The chips:** Dazed (the stone), Soaked (the drop), Poisoned (the venom).
+  The storm's crackle is over before a chip could say so, like the gust's
+  shove; its icon rides the number.
+- **Sounds** (`BT_AUDIO.ELEM_SOUNDS`), from recordings already in the game,
+  each slice picked off the recording's own loudness curve:
+  - daze: the pickaxe's first strike, slowed to a stony knock;
+  - shock: the magic hit sped up to a zap, and the cast's flicker for an arc;
+  - soak: the fishing catch's splash;
+  - poison: the slime's death pop, and the lure's small plop, deeper, for
+    each tick.
+- **Icons:** `elem-stone`, `elem-storm`, `elem-water`, `elem-venom` (256 px each,
+  about 1 MB more in all), loaded at start with the other popup icons.
+
+### Deploy order
+
+As before, every field is additive and no cap is needed.
+
+- An old client ignores `st: 'daze' | 'shock' | 'soak' | 'poison'` (its
+  `applyElemHit` knows only the first four) and draws the heart for the new
+  elements.
+- It shows a poison tick and a storm's arc as ordinary hits, through the same
+  `ability` bypass the burn uses.
+- The soak and the arcs' damage are the worker's, so they happen whatever the
+  client.
 
 ## Who owns what
 
@@ -186,6 +285,15 @@ A worker restart forgetting a second of slow is correct, not a bug.
   - the wire: a plain hit's payload is exactly what it was.
 - **`server/test/mirror-audit.test.mjs`:** the chill's pace, the status names
   and an icon for every element, both sides, plus the icon files in `public/`.
+- **v2.3.3013:** `monsterstatus.test.mjs` §10–13:
+  - the daze and its window;
+  - the shock: alone, one friend near and one far, the nearest four of six,
+    never the dead, the dying, the disconnected, another zone, a harvester or
+    the safe ground, the rail, and an arc that kills;
+  - the soak, measured on the regen tick itself, soaked and dry;
+  - the poison: ticks, refresh, rail, put out, and beside a burn.
+  §1, §8 and §9 now cover all eight elements, and the plain hit is a meadow
+  monster's.
 - **`tools/qa/mp/mp-elemhits.mjs`** (a phone viewport, a real worker):
   - each status through the game's own dispatcher: the chill's pace read off
     the walk itself (x0.55), the hold (0 px, no roll, "Stuck!", nothing

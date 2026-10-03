@@ -27,6 +27,15 @@
  *      bow range does.
  *   7. WHAT 'wheel' IS NOT: no nodes scattered over the sea, no population
  *      scaling, no PvP, no zone config -- and it is a zone a client may name.
+ *
+ * v2.3.3012, PAST LEVEL 5 (the owner's yes to "monsters past level 5"):
+ *  1b. THE DEEPER STRETCHES: each land's spawn list again in each of its next
+ *      three tiers, at the tier's levels (6-10, 11-15, 16-20) by depth, built
+ *      by the one copy of the stat math, on the tier's baked places; the first
+ *      tier's 48 exactly as they were, and first in the list.
+ *  4b. `wheeldeep: false` leaves a Wheel spawned after it with those 48.
+ *   8. THE SEPARATION SWEEP: the Wheel keeps its monsters apart as every zone
+ *      does, by a sweep instead of every pair (the tick's cost, measured).
  */
 import { GameRoom } from '../src/index.js';
 import { ZONES, VALID_ZONE_IDS } from '../src/data.js';
@@ -57,14 +66,18 @@ const CENTRE = [21504, 21504];
 
 // ── 1. THE SPAWN ──────────────────────────────────────────────────────────
 const wheel = room._ensureZoneMonsters(WHEEL_ZONE);
+/* v2.3.3012: the first tier's -- levels 1-2 at each land's inner end, as
+   since v2.3.2978; the deeper stretches carry `tier` (1b below) */
+const first = wheel.filter((m) => !m.tier);
 {
   const want = WHEEL.HOMES.reduce((n, h) => n + ZONES[h].spawns.reduce((t, s) => t + s.count, 0), 0);
-  check(`spawn: the Wheel fields every element zone's own monsters (${wheel.length} of ${want})`,
-    want === 48 && wheel.length === want, { got: wheel.length, want });
+  check(`spawn: the Wheel fields every element zone's own monsters at its inner end (${first.length} of ${want})`,
+    want === 48 && first.length === want, { got: first.length, want });
+  check('spawn: ...the first 48 in the list, as before the deeper stretches came', wheel.slice(0, 48).every((m) => !m.tier));
   check('spawn: ids are unique and say whose they are', new Set(wheel.map((m) => m.id)).size === wheel.length
-    && wheel.every((m) => m.id === `wm-${m.home}-${m.id.split('-').pop()}`));
+    && first.every((m) => m.id === `wm-${m.home}-${m.id.split('-').pop()}`));
   const perHome = {};
-  for (const m of wheel) (perHome[m.home] = perHome[m.home] || []).push(m);
+  for (const m of first) (perHome[m.home] = perHome[m.home] || []).push(m);
   check('spawn: each of the eight lands has its own', WHEEL.HOMES.every((h) => (perHome[h] || []).length === 6),
     Object.fromEntries(Object.entries(perHome).map(([h, a]) => [h, a.length])));
   let built = true, why = null;
@@ -82,10 +95,10 @@ const wheel = room._ensureZoneMonsters(WHEEL_ZONE);
     }
   }
   check('spawn: built as in their own zone -- archetypes and counts, element, skin, levels 1-2', built, why);
-  const levels = new Set(wheel.map((m) => m.level));
+  const levels = new Set(first.map((m) => m.level));
   check('spawn: both levels appear, nearer the commons level 1, further out level 2', levels.has(1) && levels.has(2), [...levels]);
   let placed = true, bad = null;
-  for (const m of wheel) {
+  for (const m of first) {
     const at = WHEEL_SPAWNS[m.home];
     const onPoint = at.points.some((p) => p[0] === m.x && p[1] === m.y);
     const r = Math.hypot(m.x - CENTRE[0], m.y - CENTRE[1]);
@@ -95,10 +108,95 @@ const wheel = room._ensureZoneMonsters(WHEEL_ZONE);
   }
   check('spawn: every monster stands on one of its land\'s places, in its band, on its own spoke', placed, bad);
   /* the inner end: no monster nearer the centre than its band allows */
-  const nearest = Math.min(...wheel.map((m) => Math.hypot(m.x - CENTRE[0], m.y - CENTRE[1])));
+  const nearest = Math.min(...first.map((m) => Math.hypot(m.x - CENTRE[0], m.y - CENTRE[1])));
   check(`spawn: at the inner end of each land, past the commons (nearest ${Math.round(nearest)} px from the centre)`,
     nearest > 2900 && nearest < 4400, nearest);
   check('spawn: a second call is the same list (lazy, once per room)', room._ensureZoneMonsters(WHEEL_ZONE) === wheel);
+}
+
+// ── 1b. THE DEEPER STRETCHES (v2.3.3012) ─────────────────────────────────
+const deep = wheel.filter((m) => m.tier);
+{
+  const TIERS = { 2: [6, 10], 3: [11, 15], 4: [16, 20] };
+  const want = WHEEL.HOMES.reduce((n, h) => n + 3 * ZONES[h].spawns.reduce((t, s) => t + s.count, 0), 0);
+  check(`deeper: each land's own monsters again in each of its next three stretches (${deep.length} of ${want}; ${wheel.length} in all)`,
+    want === 144 && deep.length === want && wheel.length === 192, { got: deep.length, want, all: wheel.length });
+  check('deeper: ids say whose they are and which stretch', deep.every((m) => m.id === `wm-${m.home}-t${m.tier}-${m.id.split('-').pop()}`),
+    deep.filter((m) => !/^wm-[a-z]+-t[234]-\d+$/.test(m.id)).slice(0, 3).map((m) => m.id));
+  /* per land and tier: the home's spawn list exactly, its element and skin */
+  let built = true, why = null;
+  for (const h of WHEEL.HOMES) for (const t of [2, 3, 4]) {
+    const ms = deep.filter((m) => m.home === h && m.tier === t);
+    const archs = {};
+    for (const m of ms) archs[m.arch] = (archs[m.arch] || 0) + 1;
+    for (const sp of ZONES[h].spawns) if ((archs[sp.arch] || 0) !== sp.count) { built = false; why = { h, t, archs }; }
+    for (const m of ms) {
+      const sp = ZONES[h].spawns.find((q) => q.arch === m.arch);
+      const variant = (sp && sp.variant) || room._variantForArchInZone(m.arch, h);
+      if (m.element !== (ZONES[h].element || null) || m.variant !== variant) { built = false; why = { h, t, m: { id: m.id, element: m.element, variant: m.variant } }; }
+    }
+  }
+  check('deeper: per land and stretch, its home\'s spawn list -- archetypes, counts, element, skin', built, why);
+  const offLevel = deep.filter((m) => m.level < TIERS[m.tier][0] || m.level > TIERS[m.tier][1]);
+  check('deeper: each at its stretch\'s levels -- 6-10, 11-15, 16-20, what the top bar says there', offLevel.length === 0,
+    offLevel.slice(0, 4).map((m) => ({ id: m.id, tier: m.tier, level: m.level })));
+  const seen = {};
+  for (const m of deep) (seen[m.tier] = seen[m.tier] || new Set()).add(m.level);
+  check('deeper: both ends of every stretch appear (6 and 10, 11 and 15, 16 and 20)',
+    [2, 3, 4].every((t) => seen[t] && seen[t].has(TIERS[t][0]) && seen[t].has(TIERS[t][1])), Object.fromEntries(Object.entries(seen).map(([t, v]) => [t, [...v].sort((a, b) => a - b)])));
+  /* the level is the place's depth in its band, and the band runs outward */
+  let byDepth = true, why2 = null;
+  for (const m of deep) {
+    const st = WHEEL_SPAWNS[m.home].deeper.find((d) => d.tier === m.tier);
+    const p = st && st.points.find((q) => q[0] === m.x && q[1] === m.y);
+    const want = p && Math.round(st.levels[0] + p[2] * (st.levels[1] - st.levels[0]));
+    if (!p || m.level !== want || m.spawnX !== m.x || m.spawnY !== m.y) { byDepth = false; why2 = { id: m.id, level: m.level, want, p }; break; }
+  }
+  check('deeper: every one on one of its stretch\'s places, its level by how far out it stands there', byDepth, why2);
+  let outward = true;
+  for (const h of WHEEL.HOMES) {
+    const r = (t) => deep.filter((m) => m.home === h && m.tier === t).map((m) => Math.hypot(m.x - CENTRE[0], m.y - CENTRE[1]));
+    const t1 = first.filter((m) => m.home === h).map((m) => Math.hypot(m.x - CENTRE[0], m.y - CENTRE[1]));
+    const [a, b, c] = [r(2), r(3), r(4)];
+    if (!(Math.max(...t1) < Math.min(...a) && Math.max(...a) < Math.min(...b) && Math.max(...b) < Math.min(...c))) outward = false;
+  }
+  check('deeper: down every spoke the stretches follow one another outward, none overlapping the one before', outward);
+  /* the one copy of the stat math: what its home zone would build at that level */
+  let same = true, why3 = null;
+  for (const m of deep) {
+    const z = ZONES[m.home], sp = z.spawns.find((q) => q.arch === m.arch);
+    const ref = room._makeZoneMonster(m.home, z, sp, 'ref', 10, 10, m.level);
+    for (const k of ['level', 'hp', 'maxHp', 'dmg', 'xp', 'gold', 'spd', 'variant', 'element', 'arch']) {
+      if (ref[k] !== m[k]) { same = false; why3 = { id: m.id, k, got: m[k], want: ref[k] }; }
+    }
+  }
+  check('deeper: every stat what its home zone builds at that level (_makeZoneMonster, given the level)', same, why3);
+  const snow1 = first.find((m) => m.home === 'frost' && m.level === 1);
+  const snow20 = deep.find((m) => m.home === 'frost' && m.level === 20);
+  check(`deeper: a level-20 snowman is tougher and pays more than a level-1 (hp ${snow1 && snow1.maxHp} -> ${snow20 && snow20.maxHp}, hit ${snow1 && snow1.dmg} -> ${snow20 && snow20.dmg}, XP ${snow1 && snow1.xp} -> ${snow20 && snow20.xp})`,
+    !!snow1 && !!snow20 && snow20.maxHp > snow1.maxHp && snow20.dmg > snow1.dmg && snow20.xp > snow1.xp && snow20.gold > snow1.gold);
+  check('deeper: without a level given, a monster is built exactly as before (the level off the zone\'s depth)',
+    room._makeZoneMonster('frost', ZONES.frost, ZONES.frost.spawns[0], 'a', 512, 900).level === room._makeZoneMonster('frost', ZONES.frost, ZONES.frost.spawns[0], 'b', 512, 900, undefined).level
+    && room._makeZoneMonster('frost', ZONES.frost, ZONES.frost.spawns[0], 'c', 512, 900, 0).level <= 2);
+  /* the rewards are the home's, at the level's rates */
+  const keep = room.SHARD_DROP_RATE;
+  room.SHARD_DROP_RATE = 1;
+  check('deeper: its shard is its home\'s too', !!snow20 && room._rollShardForKill(room._rewardZone(WHEEL_ZONE, snow20)) === 'shard_frost');
+  room.SHARD_DROP_RATE = keep;
+  /* the weapon roll's chance climbs with the level (index.js, the cubic curve) */
+  const rnd = Math.random;
+  let p1 = 0, p20 = 0;
+  for (const [m, set] of [[snow1, (v) => { p1 = v; }], [snow20, (v) => { p20 = v; }]]) {
+    let lo = 0, hi = 0.01;
+    for (let i = 0; i < 30; i++) {
+      const midP = (lo + hi) / 2;
+      Math.random = () => midP;
+      if (room._rollWeaponDropForKill('frost', m)) lo = midP; else hi = midP;
+    }
+    set(lo);
+  }
+  Math.random = rnd;
+  check(`deeper: a weapon drops a little more often off it (${(p1 * 100).toFixed(3)}% at level 1, ${(p20 * 100).toFixed(3)}% at level 20)`, p20 > p1 && p1 > 0, { p1, p20 });
 }
 
 // ── 2. THE REWARDS ────────────────────────────────────────────────────────
@@ -130,10 +228,15 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 21504, y: 21792, z: WHEEL_ZONE }));
   const zs = msgsOfType(wsA, 'zone_state');
   check('wire: moving into the Wheel is accepted (a zone a client may name)', room.playerState.wa.z === WHEEL_ZONE && VALID_ZONE_IDS.has(WHEEL_ZONE), room.playerState.wa.z);
-  check('wire: one zone_state with all 48, each saying its home and its skin',
-    zs.length === 1 && zs[0].zone === WHEEL_ZONE && zs[0].monsters.length === 48
-    && zs[0].monsters.every((m) => WHEEL.HOMES.includes(m.home) && 'variant' in m && typeof m.x === 'number'),
+  /* v2.3.3012: all 192, the deeper ones each with its own level (the client
+     shows it: monsterVariants.js applyZoneVariant) and nothing new */
+  check(`wire: one zone_state with all ${wheel.length}, each saying its home and its skin, and its own level`,
+    zs.length === 1 && zs[0].zone === WHEEL_ZONE && zs[0].monsters.length === wheel.length && wheel.length === 192
+    && zs[0].monsters.every((m) => WHEEL.HOMES.includes(m.home) && 'variant' in m && typeof m.x === 'number')
+    && zs[0].monsters.every((m) => m.level === wheel.find((q) => q.id === m.id).level && !('tier' in m)),
     zs.length && { n: zs[0].monsters.length, first: zs[0].monsters[0] });
+  const bytes = zs.length ? JSON.stringify(zs[0]).length : 0;
+  check(`wire: ...in ${Math.round(bytes / 1024)} KB, once, on the way in (the ticks after carry only the monsters in reach)`, bytes > 0 && bytes < 64 * 1024, bytes);
   wsA.sent.length = 0;
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'town' }));
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 500, y: 500, z: 'tidal' }));
@@ -166,7 +269,13 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   const sync = msgsOfType(wsK, 'state_sync')[0];
   check('kill switch: and the cap is no longer advertised', !!sync && !!sync.caps && sync.caps.wheelmonsters === false, sync && sync.caps && sync.caps.wheelmonsters);
   room._liveFlags = keep;
-  check('kill switch: off again, the Wheel spawns', room._spawnZoneMonsters(WHEEL_ZONE).length === 48);
+  check('kill switch: off again, the Wheel spawns', room._spawnZoneMonsters(WHEEL_ZONE).length === wheel.length);
+  /* v2.3.3012: 4b. `wheeldeep: false` -- the first tier's alone */
+  room._liveFlags = { ...(keep || {}), wheeldeep: false };
+  const only = room._spawnZoneMonsters(WHEEL_ZONE);
+  check('kill switch: `wheeldeep: false` leaves a Wheel spawned after it with the first stretch\'s 48, exactly',
+    only.length === 48 && only.every((m, i) => !m.tier && m.id === first[i].id && m.level === first[i].level && m.x === first[i].x), only.length);
+  room._liveFlags = keep;
 }
 
 // ── 5. THE CHASE LEASH ────────────────────────────────────────────────────
@@ -254,7 +363,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     ps._zoneEntryGraceUntil = Date.now() + 600000;   /* about what is heard, not who is hit */
   };
   const mid = (home) => {
-    const ms = wheel.filter((q) => q.home === home);
+    const ms = first.filter((q) => q.home === home);   /* v2.3.3012: the inner end's six */
     return { x: ms.reduce((a, q) => a + q.spawnX, 0) / ms.length, y: ms.reduce((a, q) => a + q.spawnY, 0) / ms.length };
   };
   const heard = (ws) => {
@@ -280,13 +389,13 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   for (const w of [wsN, wsF, wsT]) w.sent.length = 0;
   await run(4);
   const hn = heard(wsN), hf = heard(wsF), ht = heard(wsT);
-  const frostIds = wheel.filter((q) => q.home === 'frost').map((q) => q.id);
+  const frostIds = first.filter((q) => q.home === 'frost').map((q) => q.id);
   const inReach = (id, pid) => {
     const q = wheel.find((w) => w.id === id), p = room.playerState[pid];
     return !!q && Math.hypot(q.x - p.x, q.y - p.y) <= WHEEL.INTEREST_OUT;
   };
   check('traffic: among Frost Ridge\'s six you hear about each of them', frostIds.every((id) => hn.has(id)), { heard: [...hn] });
-  check(`traffic: ...and about none out of reach (${WHEEL.INTEREST_R} px), though all 48 moved`, [...hn].every((id) => inReach(id, 'hn')), [...hn].filter((id) => !inReach(id, 'hn')));
+  check(`traffic: ...and about none out of reach (${WHEEL.INTEREST_R} px), though all ${wheel.length} moved`, [...hn].every((id) => inReach(id, 'hn')), [...hn].filter((id) => !inReach(id, 'hn')));
   check('traffic: in Brotown\'s square, 3,000 px and more from every one, you hear about none', hf.size === 0, [...hf]);
   check('traffic: an ordinary zone is unchanged -- its player hears every one of its moving monsters, none of the Wheel\'s',
     tidal.every((q) => ht.has(q.id)) && [...ht].every((id) => !id.startsWith('wm-')), { n: ht.size, tidal: tidal.length });
@@ -297,7 +406,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   room.playerState.hf.x = e.x; room.playerState.hf.y = e.y + 60;
   wsF.sent.length = 0;
   await run(3);
-  const emberIds = wheel.filter((q) => q.home === 'ember').map((q) => q.id);
+  const emberIds = first.filter((q) => q.home === 'ember').map((q) => q.id);
   const he = heard(wsF);
   const whole = msgsOfType(wsF, 'tick').flatMap((t) => (t.monsters && t.monsters[WHEEL_ZONE]) || []).filter((m) => emberIds.includes(m.id));
   check('traffic: walk up to the Flame Fields and its six come in whole, moving or not',
@@ -340,6 +449,54 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   check('not: in ZONES (PvP needs ZONES[z].lawless, so it fails closed)', !Object.prototype.hasOwnProperty.call(ZONES, WHEEL_ZONE));
   check('not: a hub -- it heals at the ordinary rate (no town top-off on the spokes)',
     !['town', 'worldview', 'farm_home'].includes(WHEEL_ZONE));
+}
+
+// ── 8. THE SEPARATION SWEEP (v2.3.3012) ──────────────────────────────────
+{
+  /* the same push as every zone's (index.js): two live monsters' feet within
+     22 px are pushed half the overlap each apart; dirty both */
+  const mk = (id, x, y, alive = true) => ({ id, x, y, alive });
+  const a = mk('sa', 1000, 1000), b = mk('sb', 1010, 1000), far = mk('sf', 1010, 1600), dead = mk('sd', 1005, 1000, false);
+  room.dirtyMonsterIds = Object.create(null);
+  room._wheelSeparate(WHEEL_ZONE, [a, far, dead, b], 22);
+  check('sweep: two monsters 10 px apart are pushed to 22, half each, and marked to send',
+    Math.abs(Math.hypot(b.x - a.x, b.y - a.y) - 22) < 1e-9 && Math.abs(a.x - 994) < 1e-9 && Math.abs(b.x - 1016) < 1e-9
+    && room.dirtyMonsterIds[WHEEL_ZONE] && room.dirtyMonsterIds[WHEEL_ZONE].has('sa') && room.dirtyMonsterIds[WHEEL_ZONE].has('sb'),
+    { a, b });
+  check('sweep: one in line on x but 600 px off on y, and a dead one, are left alone',
+    far.x === 1010 && far.y === 1600 && dead.x === 1005 && !room.dirtyMonsterIds[WHEEL_ZONE].has('sf') && !room.dirtyMonsterIds[WHEEL_ZONE].has('sd'));
+  /* against the loop every other zone runs: a tight knot of 12 (the pack
+     round a player), many pairs close at once.  One gentle pass a tick does
+     not open a knot in one go -- the loop does not either -- so both run a
+     second's worth of ticks, and the knot must open as far either way */
+  const knot = () => Array.from({ length: 12 }, (_, i) => mk('k' + i, 5000 + (i % 4) * 9, 5000 + Math.floor(i / 4) * 9));
+  const minD = (L) => { let d = Infinity; for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) d = Math.min(d, Math.hypot(L[i].x - L[j].x, L[i].y - L[j].y)); return d; };
+  const loopPass = (L) => {
+    for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+      const p = L[i], q = L[j], dx = q.x - p.x, dy = q.y - p.y, d2 = dx * dx + dy * dy;
+      if (d2 >= 484 || d2 < 0.0001) continue;
+      const d = Math.sqrt(d2), push = (22 - d) / 2, ux = dx / d, uy = dy / d;
+      p.x -= ux * push; p.y -= uy * push; q.x += ux * push; q.y += uy * push;
+    }
+  };
+  const swept = knot(), looped = knot();
+  for (let t = 0; t < 45; t++) { room._wheelSeparate(WHEEL_ZONE, swept, 22); loopPass(looped); }
+  const k0 = minD(knot()), kS = minD(swept), kL = minD(looped);
+  check(`sweep: a knot of 12 opens in a second of ticks as the loop opens it (closest pair ${k0.toFixed(1)} px -> ${kS.toFixed(1)} swept, ${kL.toFixed(1)} looped)`,
+    kS >= 20 && kL >= 20, { k0, kS, kL });
+  /* what it is for: the whole monster tick with the Wheel's 192 */
+  const r2 = new GameRoom(mockState, mockEnv);
+  const ms = r2._ensureZoneMonsters(WHEEL_ZONE);
+  r2.playerState.bench = { id: 'bench', z: WHEEL_ZONE, x: CENTRE[0], y: CENTRE[1] + 300, hp: 100, maxHp: 100 };
+  for (let i = 0; i < 200; i++) r2._tickMonsters();
+  let calls = 0;
+  const sep = r2._wheelSeparate;
+  r2._wheelSeparate = function (...a2) { calls++; return sep.apply(this, a2); };
+  const N = 400, t0 = process.hrtime.bigint();
+  for (let i = 0; i < N; i++) r2._tickMonsters();
+  const us = Number(process.hrtime.bigint() - t0) / 1e3 / N;
+  check(`sweep: the Wheel's monster tick uses it, once a tick (${ms.length} monsters, ${us.toFixed(0)} µs a tick here; ~1,270 µs with every pair)`,
+    calls === N && ms.length === 192, { calls, us });
 }
 
 if (failures) { console.log(`\n${failures} TEST(S) FAILED`); process.exit(1); }

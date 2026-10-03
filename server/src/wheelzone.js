@@ -49,6 +49,22 @@
  * so a client that joins after it keeps the Wheel on 'worldview' as before;
  * and a Wheel spawned after it is empty.  A Wheel already spawned keeps its
  * monsters until the room restarts (no tick polls the flag).
+ *
+ * ═══ v2.3.3012: AND PAST LEVEL 5 ═══
+ * The owner said yes to "monsters past level 5": each land's first stage runs
+ * levels 1-20, a tier (one zone of walking, five levels) at a time, and only
+ * its first tier had monsters.  Now its next three do too -- levels 6-10,
+ * 11-15 and 16-20, up to the first pass and the camp at level 20 -- each the
+ * land's own spawn list again (the same archetypes, skins and element), at
+ * that tier's baked places (WHEEL_SPAWNS[home].deeper), at the tier's levels:
+ * 6 at its inner end, 10 at its outer, by the place's depth in its band.
+ * Every stat comes from the one copy of the math (_makeZoneMonster, given the
+ * level), so a level-15 snowman is exactly what a level-15 snowman's zone
+ * would build.  8 lands x 3 tiers x 6 = 144 more, 192 in all; ids
+ * `wm-<home>-t<tier>-<k>`, the first tier's 48 unchanged and first in the
+ * list.  `wheeldeep: false` in liveflags leaves a Wheel spawned after it with
+ * the first tier's 48 alone.  The client shows such a monster's own level
+ * (monsterVariants.js applyZoneVariant clamped it to its home's 1-2).
  */
 import { ZONES } from './data.js';
 import { WHEEL_SPAWNS, WHEEL_CENTRE, WHEEL_SAFE_R } from './wheelspawns.js';
@@ -87,6 +103,11 @@ export const wheelzoneMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheelmonsters') && !f.wheelmonsters);
   },
+  /* v2.3.3012: `wheeldeep: false` -- the first tier's monsters only */
+  _wheelDeepOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheeldeep') && !f.wheeldeep);
+  },
 
   /* Each home's spawn list, at its baked places on its spoke, built exactly as
      in its own zone.  Level: _makeZoneMonster reads depth from y / zone height,
@@ -114,7 +135,69 @@ export const wheelzoneMethods = {
         }
       }
     }
+    /* v2.3.3012: the stretches past the first, after all of the first's (so
+       those 48 keep their places in the list): each land's spawn list again
+       per tier, at the tier's own levels.  The stand-in point is irrelevant
+       here -- the level is given -- so it is the home zone's middle. */
+    if (this._wheelDeepOff()) return out;
+    for (const home of WHEEL.HOMES) {
+      const zone = ZONES[home], at = WHEEL_SPAWNS[home];
+      if (!zone || !zone.spawns || !at || !Array.isArray(at.deeper)) continue;
+      const H = zone.h * this.TILE, W = zone.w * this.TILE;
+      for (const st of at.deeper) {
+        if (!st || !Array.isArray(st.points) || !st.points.length || !Array.isArray(st.levels)) continue;
+        const lo = Number(st.levels[0]) || 1, hi = Number(st.levels[1]) || lo;
+        let k = 0;
+        for (const spawn of zone.spawns) {
+          for (let c = 0; c < (spawn.count || 0); c++, k++) {
+            const p = st.points[k % st.points.length];
+            const depth = Math.max(0, Math.min(1, Number(p[2]) || 0));
+            const m = this._makeZoneMonster(home, zone, spawn, 'wm-' + home + '-t' + st.tier + '-' + k, W / 2, H / 2,
+              Math.round(lo + depth * (hi - lo)));
+            if (!m) continue;
+            m.x = m.spawnX = p[0];
+            m.y = m.spawnY = p[1];
+            m.home = home;
+            m.tier = st.tier;   /* server-side only: the serializers name their fields */
+            out.push(m);
+          }
+        }
+      }
+    }
     return out;
+  },
+
+  /* v2.3.3012: the Wheel's monster<->monster separation (index.js, the end of
+     _tickMonsters): the same push as every zone's -- two live monsters' feet
+     within `minSep` are pushed half the overlap each apart -- found by a sweep
+     along x instead of every pair.  The Wheel's monsters stand in tens of
+     small groups across 43,008 px, so all but a handful of the ~18,000 pairs
+     are thousands of px apart; sorted by x, a monster is checked only against
+     the next ones within `minSep` of it in x, and nothing else can be within
+     `minSep` of it at all.  No depth scaling: 'wheel' has no depth row
+     (depth.js zoneDepthK is 1 here), so the flat ring is the ring. */
+  _wheelSeparate(zoneId, monsters, minSep) {
+    const live = [];
+    for (const m of monsters) if (m.alive) live.push(m);
+    live.sort((a, b) => a.x - b.x);
+    const s2 = minSep * minSep;
+    for (let i = 0; i < live.length; i++) {
+      const a = live[i];
+      for (let j = i + 1; j < live.length; j++) {
+        const b = live[j];
+        const dx = b.x - a.x;
+        if (dx >= minSep) break;
+        const dy = b.y - a.y, d2 = dx * dx + dy * dy;
+        if (d2 >= s2 || d2 < 0.0001) continue;
+        const d = Math.sqrt(d2);
+        const push = (minSep - d) / 2;
+        const ux = dx / d, uy = dy / d;
+        a.x -= ux * push; a.y -= uy * push;
+        b.x += ux * push; b.y += uy * push;
+        this._markMonsterDirty(zoneId, a.id);
+        this._markMonsterDirty(zoneId, b.id);
+      }
+    }
   },
 
   /* Whether (x, y) is the Wheel's safe ground: the commons and the town, every

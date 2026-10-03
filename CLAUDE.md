@@ -611,7 +611,46 @@ remnant to migrate server-side, not a mode to preserve.
     is already zoom it out another 25%" -- `VIEW_OUT` 0.64 (0.8 x 0.8) in
     worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard
     folded, ~40 with it up (37 was "too small", v2.3.2249); `?zoom=0.8` is
-    the view before; WORLD-MAP-PIPELINE "And another 25%", `mp-zoomout`.)
+    the view before; WORLD-MAP-PIPELINE "And another 25%", `mp-zoomout`.
+  - Since v2.3.3012 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
+    levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
+    continue working on those items":
+    - each land's next three stretches (tiers 2-4, levels 6-10, 11-15, 16-20,
+      the rest of its first stage) have its own spawn list again, 6 a
+      stretch: 144 more, 192 in all, ids `wm-<home>-t<tier>-<k>`, the first
+      stretch's 48 unchanged and first in the list (wheelzone.js);
+    - a monster's level is its stretch's by where it stands in it; its stats
+      from the one copy of the math, `_makeZoneMonster(..., atLevel)`;
+      rewards its home's; the first stretch keeps levels 1-2;
+    - places baked like the first stretch's (`SPAWN_RULES.deep`,
+      `WHEEL_SPAWNS[home].deeper`): on that very tier, 120 px inside it,
+      360 px from a camp's plot; test-world-core checks them;
+    - the client no longer clamps a Wheel monster's level to its home's 1-2
+      (monsterVariants.js applyZoneVariant: "Lv 2" on a level-18 snowman);
+    - the Wheel's monster separation is a sweep along x (`_wheelSeparate`):
+      every pair of 192 was 1.0 of the tick's 1.27 ms, now 0.26 ms in all;
+      every other zone keeps the old loop; `wheeldeep: false` the kill switch;
+    - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§8,
+      `mp-wheeldeep`.
+  - Since v2.3.3013 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
+    stuns briefly; storm shocks nearby players; water slows stamina refill;
+    venom poisons over time", the owner: "Yes continue working on those
+    items" (server/src/monsterstatus.js, client src/game/elemHits.js):
+    - stone (rock monsters) DAZE 0.5 s: no walk, swing, roll or shield
+      (`combatHelpers.dazeRefused` beside `swimRefused`, and the auto-attack
+      loop), 2.5 s before another; stars round the head;
+    - storm (Storm Peaks slimes) SHOCK: the hit arcs to every other player
+      within 150 px (nearest 4), half its damage each, elemental, under a
+      15% max-HP rail, never onto the safe ground or a harvester -- each arc
+      that player's own monster_attack `ability: 'shock'` (`_shockArcs`);
+    - water (fishmen) SOAK 4 s: the regen tick refills stamina at 0.4
+      (`_soakRegenMult`; exactly 1 when dry);
+    - venom (wisps, lurkers) POISON: the burn's machinery in its own Map
+      (`_poisons`, `_igniteDot`/`_tickDots`/`_dotTick`), five ticks of 12%;
+    - looks, chips (Dazed/Soaked/Poisoned), icons `elem-stone/storm/water/
+      venom`, sounds sliced from recordings already here (ELEM_SOUNDS);
+      `elemhits: false` still stops them all; `monsterstatus` §10-13,
+      `mp-elemhits`: docs/specs/monster-statuses.md "The other four".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

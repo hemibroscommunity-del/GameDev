@@ -39,7 +39,7 @@ import { PIXEL, NO_DIRECTION, PLANK_BOARDS } from '../../public/tools/style/bibl
 import { promptFor } from '../../public/tools/ground/prompts.js';
 import { gridInfo, cellName, parseCell, cellRect, cellAt, allCells, neighbours } from '../../public/tools/world/core/grid.js';
 import { buildBlueprint, renderSketch, colorTable, planKey, C, CLASS_IDS } from '../../public/tools/world/core/layout.js';
-import { spokePoint, arcPoint } from '../../public/tools/world/core/wheel.js';
+import { spokePoint, arcPoint, wheelInfo } from '../../public/tools/world/core/wheel.js';
 import { groundCatalog, materialMap, composeGround, swatchesUnder, walkBits, overviewPixels, edgeRecipe, groundContacts, EDGE_CLEAR, EDGE_PIECES, edgePiecesOn, BLENDS, blendsOn, planksOf, blendKey, blendPair, blendsUnder } from '../../public/tools/world/core/ground.js';
 import { buildPrompt } from '../../public/tools/world/core/prompt.js';
 import { gridMinCut, INF } from '../../public/tools/world/core/maxflow.js';
@@ -1915,6 +1915,50 @@ console.log('monsters on the Wheel (v2.3.2978)');
     }
   }
   ok('...and none inside anything that stands there (the game\'s own footprints)', inside.length === 0, inside.slice(0, 4));
+
+  /* v2.3.3012: the stretches past the first -- levels 6-10, 11-15 and 16-20,
+     the rest of each land's first stage -- each with places of its own */
+  const D = SPAWN_RULES.deep;
+  const W = wheelInfo(PLAN);
+  ok(`each land has places for its six in each of its next ${D.tiers.length} stretches (levels ${D.tiers.map((t) => W.levels(t).join('-')).join(', ')})`,
+    HOMES.every((h) => b.spawns[h] && D.tiers.every((t) => { const d = (b.spawns[h].deeper || []).find((q) => q.tier === t); return d && d.points.length >= 6 && d.levels.join() === W.levels(t).join(); })),
+    HOMES.map((h) => [h, (b.spawns[h].deeper || []).map((d) => `${d.tier}:${d.points.length}`).join(' ')]));
+  const nearOther = (i, t, r) => {
+    const R = Math.ceil(r / cellG), bx = i % bp.w, by = (i / bp.w) | 0;
+    for (let y = by - R; y <= by + R; y++) for (let x = bx - R; x <= bx + R; x++) {
+      if (x < 0 || y < 0 || x >= bp.w || y >= bp.h || Math.abs(x - bx) + Math.abs(y - by) >= r / cellG) continue;
+      const tt = bp.tier[y * bp.w + x];
+      if (tt > 0 && tt !== t) return true;
+    }
+    return false;
+  };
+  const offD = [], seamD = [], closeD = [], insideD = [];
+  let lotCells = 0;
+  const lotXY = [];
+  for (let i = 0; i < bp.w * bp.h; i++) if (bp.cls[i] === C.lot) { lotCells++; lotXY.push([((i % bp.w) + 0.5) * cellG, (((i / bp.w) | 0) + 0.5) * cellG]); }
+  let nearCamp = Infinity;
+  for (const h of HOMES) for (const d of b.spawns[h].deeper || []) {
+    for (const [x, y] of d.points) {
+      const i = cellOf(x, y);
+      if (bp.reg[i] !== ri[h] || bp.cls[i] !== C.ground || bp.tier[i] !== d.tier) offD.push({ h, t: d.tier, x, y, tier: bp.tier[i] });
+      if (nearOther(i, d.tier, D.clearTier - cellG)) seamD.push({ h, t: d.tier, x, y });
+      for (const [lx, ly] of lotXY) nearCamp = Math.min(nearCamp, Math.hypot(lx - x, ly - y));
+      for (let q = 0; q < F.boxes.length; q += 4) {
+        if (x >= F.boxes[q] && x <= F.boxes[q + 2] && y >= F.boxes[q + 1] && y <= F.boxes[q + 3]) { insideD.push({ h, t: d.tier, x, y }); break; }
+      }
+    }
+    for (let a = 0; a < d.points.length; a++) for (let c = a + 1; c < d.points.length; c++) {
+      if (Math.hypot(d.points[a][0] - d.points[c][0], d.points[a][1] - d.points[c][1]) < SPAWN_RULES.apart) closeD.push({ h, t: d.tier });
+    }
+  }
+  ok('every deeper place on open ground of its own land, on the very stretch it is for', offD.length === 0, offD.slice(0, 4));
+  ok(`...${D.clearTier} px inside its stretch, from land of any other (its levels are the ones the top bar says there)`, seamD.length === 0, seamD.slice(0, 4));
+  ok(`...${SPAWN_RULES.apart} px apart within a stretch, and none inside anything that stands there`, closeD.length === 0 && insideD.length === 0, { closeD: closeD.slice(0, 3), insideD: insideD.slice(0, 3) });
+  ok(`...and none within ${D.clearPlace} px of a camp's plot (the nearest ${Math.round(nearCamp)} px off)`, lotCells > 0 && nearCamp >= D.clearPlace - cellG, nearCamp);
+  /* the first stretch's places are exactly where they stood before the
+     deeper ones came: its rules, its pick, its output (the server's first 48) */
+  ok('the first stretch\'s places are untouched by the deeper ones (the first 48 stand where they stood)',
+    b.spawns.frost.points[0].join() === '18996,18996,0.48' && b.spawns.verdant.points[11].join() === '18084,21708,0.32' && b.spawns.mist.points.length === 10);
 }
 
 /* ── v2.3.2981: the oases ──

@@ -30,7 +30,7 @@ import { rollMonsterShard } from '@/data/shards.js';
 import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowball stops where the worker's own line meets a prop */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
-import { applyElemHit, elemLook, isBurnTick } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element */
+import { applyElemHit, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3013: + the poison's and the storm's ticks */
 import { echoHitSfx, heroHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
@@ -2505,7 +2505,7 @@ export function processGameEvent(type, payload, S, deps) {
                      (see the local branch below).  Their max HP is the one
                      their health bar reads (rpgMaxHp). */
                   var _bdmg = typeof payload.dmgTaken === 'number' ? payload.dmgTaken : 0;
-                  if (_bdmg > 0 && !payload.blocked && !payload.dodged && !isBurnTick(payload)) {   /* v2.3.2996: fire does not bleed */
+                  if (_bdmg > 0 && !payload.blocked && !payload.dodged && !tickKind(payload)) {   /* v2.3.2996: fire does not bleed; v2.3.3013: nor poison, nor a storm's arc */
                     var _bSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
                     var _bx = (typeof payload.attackerX === 'number') ? payload.attackerX : (_bSrc ? _bSrc.x : null);
                     var _by = (typeof payload.attackerY === 'number') ? payload.attackerY : (_bSrc ? _bSrc.y : null);
@@ -2543,7 +2543,11 @@ export function processGameEvent(type, payload, S, deps) {
                   if (_eLog.length > 60) _eLog.splice(0, _eLog.length - 60);
                 } catch (e) { /* a probe never breaks the game */ }
               }
-              var _burnTick = isBurnTick(payload);
+              /* v2.3.3013: a poison's tick and a storm's arc are not blows
+                 either -- `_burnTick` below means "a tick", whichever; its
+                 kind picks the sparks and the sound */
+              var _tickK = tickKind(payload);
+              var _burnTick = !!_tickK;
               var _elLook = elemLook(payload.elem) || (payload.ability === 'firetrail' ? elemLook('flame') : null);
               /* ── Out-of-range filter ──
                  The server's monster-attack ranging was firing damage
@@ -2845,15 +2849,18 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.secondWind > 0) {
                 pushDmgPopup(S, S.player.x + 16, S.player.y - 38, '+' + payload.secondWind + ' Second Wind', '#4ade80', { ts: Date.now() + 2 });
               }
+              /* v2.3.3013: a poison's sparks green, a storm's yellow-white */
+              var _tickCols = _tickK === 'poison' ? ['#b6f05a', '#6fbf3a'] : _tickK === 'shock' ? ['#fff7b0', '#9fd8ff'] : ['#ffd27a', '#ff9a3c'];
               for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
                 x: S.player.x, y: S.player.y,
                 vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
-                life: 0.6, color: _burnTick ? (hp3 & 1 ? '#ffd27a' : '#ff9a3c') : '#ff5e6c', size: 2
+                life: 0.6, color: _burnTick ? _tickCols[hp3 & 1] : '#ff5e6c', size: 2
               });
               if (_burnTick) {
                 /* v2.3.2996: the sizzle is the tick's sound; the armour clang
-                   below is for a blow */
-                try { BT_AUDIO.elemHit('burnTick'); } catch (e) { /* sound only */ }
+                   below is for a blow.  v2.3.3013: a poison's tick bubbles,
+                   a storm's arc crackles. */
+                try { BT_AUDIO.elemHit(_tickK + 'Tick'); } catch (e) { /* sound only */ }
                 break;
               }
               S.screenShake = 3;

@@ -13,7 +13,7 @@ import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
 import { ARROW_SPEED_PX } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it */
 import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2848 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
-import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso */
+import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3013 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 
 export function swingAttack(S) {
@@ -25,7 +25,7 @@ export function swingAttack(S) {
        harvest running underneath. */
     if (S._extraction) return;
     /* v2.3.3003: nor in the water -- only your head is out of it */
-    if (swimRefused(S)) return;
+    if (swimRefused(S) || dazeRefused(S)) return;
     /* ═══ v2.3.2246: YOU DO NOT SWING AND BLOCK AT THE SAME TIME ═══
        Owner: "you can both swing and block at the same time. That is not
        right."  This overrules control-redesign.md §5.4, which allowed it on
@@ -102,7 +102,7 @@ export function specialAttack(S) {
        mid-chop used to swap the character to a swing for a frame and leave the
        harvest running underneath. */
     if (S._extraction) return;
-    if (swimRefused(S)) return;   /* v2.3.3003 */
+    if (swimRefused(S) || dazeRefused(S)) return;   /* v2.3.3003 */
     /* v2.3.2246: ...and no special from behind a raised shield either (see
        swingAttack above).  The flick lives on the same button as the swing,
        so exempting it would just move the owner's complaint.
@@ -588,7 +588,7 @@ export function raiseShield(S, deps) {
     if ((S._shieldStamina || 3000) <= 0) return;
     /* v2.3.212: no shield equipped -> block is disabled. */
     if (!S.rpg || !S.rpg.shield) return;
-    if (swimRefused(S)) return;   /* v2.3.3003 */
+    if (swimRefused(S) || dazeRefused(S)) return;   /* v2.3.3003 */
     S._shieldUp = true;
     setShieldUp(true);
     S.shieldActive = now;
@@ -626,7 +626,7 @@ export function elementBurst(S) {
   if (!S || !S.rpg) return;
   if (isPlayerDead(S)) return;
   if (S._extraction) return;   /* parity with swing/special */
-  if (swimRefused(S)) return;   /* v2.3.3003 */
+  if (swimRefused(S) || dazeRefused(S)) return;   /* v2.3.3003 */
   var R = S.rpg;
   var now = Date.now();
   var wpn = burstWeapon(R);   /* NOT getActiveWeapon — see burstWeapon's note */
