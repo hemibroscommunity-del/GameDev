@@ -21,7 +21,7 @@
  *     43,008 px zone has no edge to clamp to), the population scaler skips
  *     (spawnscale.js _spawnScalableZone), and the random node layout skips
  *     (gathering.js) -- so no resource nodes are scattered over the sea.  Its
- *     nodes are baked instead, since v2.3.3007 (_wheelSpawnNodes, below).
+ *     nodes are baked instead, since v2.3.3012 (_wheelSpawnNodes, below).
  *     Not in ZONES either, so ZONES stays "the zones the server spawns"
  *     and every ZONES-wide rule (PvP needs ZONES[z].lawless) fails closed here.
  *   - Each monster carries `home`, the element zone it belongs to.  Its
@@ -81,7 +81,7 @@ export const WHEEL = Object.freeze({
      state is fresh before it can be drawn. */
   INTEREST_R: 2400,
   INTEREST_OUT: 2800,
-  /* v2.3.3007: WHEEL_NODES' kind letters, and the only gathering tiers a baked
+  /* v2.3.3012: WHEEL_NODES' kind letters, and the only gathering tiers a baked
      node may carry -- the three gathering.js _harvestNameForTier names */
   NODE_TYPES: Object.freeze({ o: 'oreVein', t: 'tree', f: 'fishSpot' }),
   NODE_TIERS: Object.freeze([1, 6, 11]),
@@ -122,7 +122,7 @@ export const wheelzoneMethods = {
     return out;
   },
 
-  /* ═══ v2.3.3007: THE WHEEL'S RESOURCES ═══
+  /* ═══ v2.3.3012: THE WHEEL'S RESOURCES ═══
      Owner: "Add harvestable resources back to the wheel" -- tiered by how far
      from town they grow ("Copper can be in the safe areas around town ...
      Iron can be in lvl 1 monster areas ... 'black steel' in like level 10+

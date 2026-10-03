@@ -724,7 +724,7 @@ export const BLACKSMITH_TIERS = {
       wood:         {minLvl:1, slots:1, oreName:'wood', wood:'pine_log', oreCost:3,  goldCost:8,    tierMult:1.00, statReq:0  },
       copper:       {minLvl:6, slots:1, oreName:'copper',        oreCost:3,  goldCost:20,   tierMult:1.12, statReq:10 },
       iron:         {minLvl:11,slots:1, oreName:'iron',          oreCost:4,  goldCost:35,   tierMult:1.25, statReq:20 },
-      /* v2.3.3007 (owner: "let's plan on 'black steel' in like level 10+ areas
+      /* v2.3.3012 (owner: "let's plan on 'black steel' in like level 10+ areas
          and have its own ore to mine"): the tier after iron is BLACK STEEL, and
          its ore is the one the Wheel's levels 11-20 grow (gathering.js
          'Black Steel Ore' -> ore_black_steel_ore).  The key stays `steel`: it
@@ -1044,7 +1044,7 @@ export const MONSTER_IRON_WEAPON_DROP = {
  * than bloating BLACKSMITH_TIERS/WOODWORKING_TIERS; §8e pins them). */
 export const GEM_EXTRACT_BASE_COST = 25;
 export const BLACKSMITH_TIER_LABELS = {
-  wood: 'Wood', copper: 'Copper', iron: 'Iron', steel: 'Black Steel', /* v2.3.3007 */
+  wood: 'Wood', copper: 'Copper', iron: 'Iron', steel: 'Black Steel', /* v2.3.3012 */
   titanium: 'Titanium', obsidian: 'Obsidian', mythril: 'Mythril',
   diamond: 'Diamond', abyssal: 'Abyssal', dragonbone: 'Dragonbone',
   shadowsteel: 'Shadowsteel', bloodstone: 'Bloodstone', runestone: 'Runestone',

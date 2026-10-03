@@ -67,7 +67,7 @@
  *          at all, which _handleNodeStrike accepts with no timing check (the
  *          permissive legacy branch below).  Harden both together, when that
  *          branch is retired. */
-import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3007: the Wheel's baked nodes */
+import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3012: the Wheel's baked nodes */
 
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
@@ -122,7 +122,7 @@ export const gatheringMethods = {
   // once at first-ever zone activation; after that they're fixed for
   // the lifetime of the Durable Object (re-randomized only on DO wake).
   _spawnZoneNodes(zoneId) {
-    /* v2.3.3007: the Wheel's nodes are BAKED from its plan, tiered by how far
+    /* v2.3.3012: the Wheel's nodes are BAKED from its plan, tiered by how far
        from town they grow (wheelzone.js _wheelSpawnNodes).  It has no zone
        config, so the random layout below would place none -- and must not: a
        random point of its 43,008 px is most likely sea. */
@@ -232,7 +232,7 @@ export const gatheringMethods = {
        Those two were never connected before this: tier one asked for
        `wood_wood`, a key nothing in the game has ever produced, so the first
        bow could not be crafted from anything a player could gather. */
-    /* v2.3.3007: and the third tier, which the Wheel's levels 11-20 grow
+    /* v2.3.3012: and the third tier, which the Wheel's levels 11-20 grow
        (wheelzone.js): hardwood (WOODWORKING_TIERS.hardwood's wood), trout,
        and BLACK STEEL ORE -- the owner's name for the ore after iron ("let's
        plan on 'black steel' in like level 10+ areas and have its own ore to
@@ -1033,7 +1033,7 @@ export const gatheringMethods = {
     /* Shard roll -- 33% per successful harvest.  Server-rolled so a
        modified client can't force shard drops.  Goes straight into
        inventory under shard_<zone> keyed off node.zone. */
-    /* v2.3.3007: a Wheel node drops its LAND's shard -- `home`, server-
+    /* v2.3.3012: a Wheel node drops its LAND's shard -- `home`, server-
        authored by wheelzone.js -- since 'shard_wheel' is not an item; and a
        commons node, which belongs to no element, drops none.  Every other
        zone exactly as before. */

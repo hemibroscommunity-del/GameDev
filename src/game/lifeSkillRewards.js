@@ -475,7 +475,7 @@ function applyWoodReward(S, node, result, deps) {
        v2.3.1430 (owner: "make that true for each life skill"): upgraded to
        the fish-catch treatment — the CURRENT bag icon (icons/items/) with
        the breach-pop stage before the flight, launched from the trunk. */
-    /* v2.3.3007: softwood and hardwood have their own logs (InventoryPanel
+    /* v2.3.3012: softwood and hardwood have their own logs (InventoryPanel
        WOOD_THUMBS, kept inline for the same reason as the fish's below) */
     var _woodIcon = ({
       6: '/icons/items/wood-softwood.webp?v=2.3.1774',
@@ -563,7 +563,7 @@ function applyMiningReward(S, node, result, deps) {
        into the Bag — fish-catch treatment for mining too.  ore-copper is
        the only ore art in the bag catalog (ItemsPanel ORE_THUMB_DEFAULT),
        so every tier ships it until per-tier art exists.
-       v2.3.3007: iron and black steel exist now (InventoryPanel ORE_THUMBS). */
+       v2.3.3012: iron and black steel exist now (InventoryPanel ORE_THUMBS). */
     var _oreIcon = ({
       6: '/icons/items/ore-iron.webp?v=2.3.1774',
       11: '/icons/items/ore-black-steel.webp?v=2.3.1774',

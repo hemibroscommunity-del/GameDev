@@ -75,7 +75,7 @@ export const WOODCUTTING_TIERS = [
 export const MINING_TIERS = [
   { lvl: 1, name: 'Copper Ore', vein: 'Dirt Mound', size: 8, rockColor: '#8a6a3a', streakColor: '#b08050', hp: 3 },
   { lvl: 6, name: 'Iron Ore', vein: 'Rock Vein', size: 10, rockColor: '#6a6a6a', streakColor: '#8a8a8a', hp: 4 },
-  /* v2.3.3007: BLACK STEEL ORE -- the owner's ore after iron, grown at the
+  /* v2.3.3012: BLACK STEEL ORE -- the owner's ore after iron, grown at the
      Wheel's levels 11-20.  Mirrors gathering.js _harvestNameForTier (the
      worker names the item ore_black_steel_ore from this same string). */
   { lvl: 11, name: 'Black Steel Ore', vein: 'Black Steel Seam', size: 12, rockColor: '#3a3d48', streakColor: '#6f7a96', hp: 6 },

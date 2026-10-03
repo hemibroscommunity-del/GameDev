@@ -109,7 +109,7 @@ export const MATERIALS = {
      the bright steel the art is drawn as — hence `level`.  The art IS steel, so
      'steel' stays the native no-op and iron sits between it and copper. */
   iron: { id: 'iron', name: 'Iron', rgb: [198, 206, 218], level: 0.80, swatch: '#8f97a3' },
-  /* v2.3.3007 (owner: "Make the black steel black").  The forge's tier after
+  /* v2.3.3012 (owner: "Make the black steel black").  The forge's tier after
      iron is BLACK STEEL (server/src/data.js BLACKSMITH_TIERS.steel, its ore the
      Wheel's levels 11-20 grow), and its pieces carry gearBase 'steel' -- the
      key of the native art above, so they drew as bright steel.  A blued
@@ -141,7 +141,7 @@ for (const m of Object.values(MATERIALS)) m.tint = tintFromRgb(m.rgb, m.level ==
    iron keep the art they have until someone gives them a colour. */
 const MELEE_TYPES = { sword: 1, greatsword: 1 };
 
-/* v2.3.3007: a forge tier whose METAL is not its key.  The tier after iron
+/* v2.3.3012: a forge tier whose METAL is not its key.  The tier after iron
    kept the key `steel` when it became Black Steel (it is every minted piece's
    gearBase, so renaming it would orphan them), and `steel` here is the native
    art -- so a black steel blade looked up by its key drew bright. */

@@ -129,7 +129,7 @@ export const BLACKSMITH_TIERS = {
     color: '#8a8a8a',
     desc: 'Dull metallic gray'
   },
-  /* v2.3.3007 (owner: "let's plan on 'black steel' in like level 10+ areas and
+  /* v2.3.3012 (owner: "let's plan on 'black steel' in like level 10+ areas and
      have its own ore to mine"): the tier after iron is BLACK STEEL, made from
      the black steel ore the Wheel's levels 11-20 grow.  Mirrors server/src/
      data.js BLACKSMITH_TIERS.steel (mirror-audit).  The KEY stays `steel` --
@@ -6313,7 +6313,7 @@ export function questSteps(quest, R, S) {
     var d = false;
     if (whole && i < last) d = true;
     else { try { d = !!st.done(inv, S); } catch (e) { d = false; } }
-    /* v2.3.3007: + the node kind the step is done at, if any -- the Wheel's
+    /* v2.3.3012: + the node kind the step is done at, if any -- the Wheel's
        gold road leads to the nearest one (questRoute.js _wheelGatherPoint) */
     return { label: st.label, done: d, current: false, node: st.node || null };
   });
@@ -6554,7 +6554,7 @@ export const QUEST_CHAINS = {
        log and the fish for the second: the first step not done is always the
        honest next thing to do. */
     steps: [
-      /* v2.3.3007: `node`, the kind of node the step is done at -- the
+      /* v2.3.3012: `node`, the kind of node the step is done at -- the
          Wheel's gold road leads to the nearest (questRoute.js) */
       { label: 'Catch a fish at a fishing spot in any zone', node: 'fishSpot',
         done: function (inv) { return questInvCount(inv, 'fish_') > 0; } },
@@ -6586,7 +6586,7 @@ export const QUEST_CHAINS = {
   life_2: {
     id: 'life_2', npc: 'Mayor Bro', title: 'Rock Bottom',
     anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
-    node: 'oreVein',   /* v2.3.3007: the Wheel's gold road leads to the nearest vein (questRoute.js) */
+    node: 'oreVein',   /* v2.3.3012: the Wheel's gold road leads to the nearest vein (questRoute.js) */
     desc: 'Bring 5 Ore to Mayor Bro.',
     check: function (rpg) {
       var inv = rpg.inventory || {};

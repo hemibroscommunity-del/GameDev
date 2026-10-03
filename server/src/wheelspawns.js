@@ -34,7 +34,7 @@ export const WHEEL_SPAWNS = {
     points: [[17964, 21564, 0.5], [18276, 21084, 0.03], [17700, 21084, 0.9], [17700, 21924, 0.9], [18108, 21924, 0.28], [17988, 21228, 0.47], [18276, 21636, 0.03], [17652, 21612, 0.98], [18276, 21324, 0.03], [17892, 21780, 0.61], [17676, 21276, 0.94], [18084, 21708, 0.32]] },
 };
 
-/* v2.3.3007: where the Wheel's resources grow (gathering.js through
+/* v2.3.3012: where the Wheel's resources grow (gathering.js through
  * wheelzone.js _wheelSpawnNodes): per area -- the commons, then each land --
  * [kind, x, y, tierLvl], kind 'o' an ore vein, 't' a tree, 'f' a fishing
  * spot, tierLvl the worker's gathering tier: 1 in the commons (copper, pine,

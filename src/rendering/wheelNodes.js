@@ -1,4 +1,4 @@
-/* ═══ v2.3.3007: THE WHEEL'S RESOURCES, AS THE RENDERER SEES THEM ═══
+/* ═══ v2.3.3012: THE WHEEL'S RESOURCES, AS THE RENDERER SEES THEM ═══
  *
  * Owner, 2026-10-03: "Add harvestable resources back to the wheel" -- and,
  * earlier: "fishing could be bodies of water close to town with active fishing
@@ -91,7 +91,7 @@ const lookFor = (lvl) => FISH_LOOK[lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1];
    circle, centred just west of the line, stays inside the block nose and
    tail: x-30 +/- 26 and a fish's half-length (a trout's 12.5) is
    x-69..x+9, y +/- 18 and it is y-31..y+31.
-   v2.3.3007: was x-18 +/- 32 by +/- 20, inside the first bake's bigger 5 x 5
+   v2.3.3012: was x-18 +/- 32 by +/- 20, inside the first bake's bigger 5 x 5
    block, which only a perfectly straight shore had (the owner: "Make all 8
    have fishing spots"). */
 const SWIM_DX = -30;

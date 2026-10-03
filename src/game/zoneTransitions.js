@@ -822,7 +822,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                  dropped (wsClient, v2.3.1181) -- so it is always safe. */
               else S.monsters = [];
               if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(bestExit.zoneId, entryDepth);
-              /* v2.3.3007: ...and the same for a server-run node list: the
+              /* v2.3.3012: ...and the same for a server-run node list: the
                  Wheel grows nodes now (server wheelzone.js), and walking up to
                  town kept its ~130 in the list until town's zone_state came
                  in -- drawn, tested for reach and walked into, at the Wheel's

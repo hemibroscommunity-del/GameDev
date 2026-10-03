@@ -1,4 +1,4 @@
-# The Wheel's resources — ore, trees and fish, richer the farther out (v2.3.3007)
+# The Wheel's resources — ore, trees and fish, richer the farther out (v2.3.3012)
 
 Owner, 2026-10-03: *"Add harvestable resources back to the wheel"*, and of
 their tiers: *"I'm thinking the higher lvl resources will be progressively more

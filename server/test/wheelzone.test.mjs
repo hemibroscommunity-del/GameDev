@@ -27,7 +27,7 @@
  *      bow range does.
  *   7. WHAT 'wheel' IS NOT: no nodes scattered over the sea, no population
  *      scaling, no PvP, no zone config -- and it is a zone a client may name.
- *   8. THE RESOURCES (v2.3.3007): the Wheel's baked nodes, tiered by distance
+ *   8. THE RESOURCES (v2.3.3012): the Wheel's baked nodes, tiered by distance
  *      from town (copper, pine and minnows on the safe ground; iron, softwood
  *      and clownfish at levels 1-10; black steel, hardwood and trout at
  *      11-20), each named for what the forge and the workbench consume; a
@@ -342,7 +342,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
 // ── 7. WHAT 'wheel' IS NOT ────────────────────────────────────────────────
 {
   check('not: a zone config (no edge to clamp to, nothing to scale)', room._getZoneConfig(WHEEL_ZONE) === null);
-  /* v2.3.3007: it has nodes now, but only the baked ones (section 8) -- none
+  /* v2.3.3012: it has nodes now, but only the baked ones (section 8) -- none
      from the random layout, whose every point of 43,008 px is likely sea */
   check('not: nodes scattered over the map at random', (room._ensureZoneNodes(WHEEL_ZONE) || []).every((n) => /^wn-/.test(n.id)));
   check('not: population-scaled', room._spawnScalableZone(WHEEL_ZONE) === false);
@@ -351,7 +351,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     !['town', 'worldview', 'farm_home'].includes(WHEEL_ZONE));
 }
 
-// ── 8. THE RESOURCES (v2.3.3007) ──────────────────────────────────────────
+// ── 8. THE RESOURCES (v2.3.3012) ──────────────────────────────────────────
 {
   const nodes = room._ensureZoneNodes(WHEEL_ZONE) || [];
   const want = Object.values(WHEEL_NODES).reduce((t, l) => t + l.length, 0);

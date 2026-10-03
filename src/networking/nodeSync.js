@@ -67,7 +67,7 @@ export function onZoneEntered(S, zoneId) {
     return;
   }
   if (!S._serverGatherNodes) return; /* legacy local spawn already ran */
-  /* v2.3.3007: the Wheel (a zone of other zones' monsters) has nodes only
+  /* v2.3.3012: the Wheel (a zone of other zones' monsters) has nodes only
      from a worker that grows them -- caps.wheelnodes, server wheelzone.js.
      Before that its list is empty by design, and the reclaim below re-sent
      the move four times on every way in, for a snapshot that never comes.

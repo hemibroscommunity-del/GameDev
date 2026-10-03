@@ -500,7 +500,7 @@ import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
-import { wheelNodeView, WheelFish } from '../wheelNodes.js';   /* v2.3.3007: the Wheel's resources -- drawn near the view, its fishing spots as fish */
+import { wheelNodeView, WheelFish } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
@@ -1724,7 +1724,7 @@ Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   _fxLoad(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
 )).catch((err) => console.warn('[node-sprites] load failed', err));
 
-/* ═══ v2.3.3007: EACH GATHERING TIER LOOKS LIKE ITSELF ═══
+/* ═══ v2.3.3012: EACH GATHERING TIER LOOKS LIKE ITSELF ═══
    Owner: "Copper can be in the safe areas around town.  Iron can be in lvl 1
    monster areas ... 'black steel' in like level 10+ areas and have its own
    ore to mine."  Until the Wheel every live node was tier 1, so one picture
@@ -9308,7 +9308,7 @@ export class EffectsRenderer {
        becomes hidden tears its sprite down properly rather than orphaning it. */
     const _allNodes = S.gatherNodes || [];
     const _rpg = S.rpg || null;
-    /* v2.3.3007: and in the Wheel, only the nodes near the view
+    /* v2.3.3012: and in the Wheel, only the nodes near the view
        (wheelNodes.js): ~130 over 43,008 px, each a sprite and a handful of
        Texts.  A node let go here is disposed by the pass below and rebuilt
        when it comes back, exactly as one whose tool you put down. */
@@ -9390,9 +9390,9 @@ export class EffectsRenderer {
       const tierLvl = node.gatherLvl || 1;
       const tierStep = Math.min(10, Math.max(1, Math.ceil(tierLvl / 10)));
 
-      const spriteTex = nodeSpriteTex(node);   /* v2.3.3007: its tier's own picture, when it has one */
+      const spriteTex = nodeSpriteTex(node);   /* v2.3.3012: its tier's own picture, when it has one */
       if (_wheelSpots && node.nodeType === 'fishSpot') {
-        /* v2.3.3007: in the Wheel a fishing spot is its fish, swimming in the
+        /* v2.3.3012: in the Wheel a fishing spot is its fish, swimming in the
            real water it stands in (WheelFish, after the loop) -- no pond
            picture.  The badge and the tips below still mark it. */
         _wheelSpots.push(node);
@@ -9405,7 +9405,7 @@ export class EffectsRenderer {
         if (!node._pixiSprite || node._pixiSprite.destroyed) {
           node._pixiSprite = new Sprite(spriteTex);
           node._pixiSprite.anchor.set(0.5, NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5);
-          /* v2.3.3007: a tier without a picture of its own takes a tint */
+          /* v2.3.3012: a tier without a picture of its own takes a tint */
           const _tint = NODE_TIER_TINT[node.nodeType] && NODE_TIER_TINT[node.nodeType][node.gatherLvl || 1];
           if (_tint) node._pixiSprite.tint = _tint;
           /* v2.3.2767: formShade.js -- trees, rocks and ore stand lit from
@@ -9606,7 +9606,7 @@ export class EffectsRenderer {
       }
     }
 
-    /* v2.3.3007: the Wheel's fish -- and, anywhere else, none (an empty list
+    /* v2.3.3012: the Wheel's fish -- and, anywhere else, none (an empty list
        lets every spot go: leaving the Wheel, or putting the pole down) */
     if (_wheelSpots || (this._wheelFish && this._wheelFish.spots.size)) {
       if (!this._wheelFish) this._wheelFish = new WheelFish(this.lootLayer);
@@ -9890,7 +9890,7 @@ export class EffectsRenderer {
     sp.scale.set((targetH / (ORE_BREAK_FRAME * ORE_BREAK_FILL)) * ORE_BREAK_SCALE);
     sp.x = node.x;
     sp.y = node.y;
-    /* v2.3.3007: an iron or black steel vein breaks in its own colours, and
+    /* v2.3.3012: an iron or black steel vein breaks in its own colours, and
        its own ore pops out (the strip is the copper vein's) */
     if (ORE_BREAK_TINT[tierLvl]) sp.tint = ORE_BREAK_TINT[tierLvl];
     this.nodeLayer.addChild(sp);
@@ -14151,7 +14151,7 @@ export class EffectsRenderer {
       this._snowballBursts = [];
     }
     this.nodeGfx.clear();
-    if (this._wheelFish) this._wheelFish.clear();   /* v2.3.3007 */
+    if (this._wheelFish) this._wheelFish.clear();   /* v2.3.3012 */
     this.flashOverlay.clear();
     this.atmosphereGfx.clear();
     for (const t of this.dmgTexts) t.destroy();

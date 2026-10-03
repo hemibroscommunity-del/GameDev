@@ -52,7 +52,7 @@
 import { Container, Graphics, Sprite, Texture, CanvasSource } from 'pixi.js';
 import { wheelOverview, wheelMapInfo, wheelHere } from '@/game/wheelTrial.js';
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
-import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3007: a node is marked as the world draws it */
+import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 
 export const WHEEL_BOX = 132;      /* CSS px a side */
 export const WHEEL_WINDOW = 3200;  /* game px across the box: about three zones */
@@ -72,7 +72,7 @@ const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = FRAME + 9;
    starts clear of your chevron and is not drawn when the spot is this close */
 const ROAD_W = 2.5, ROAD_CASE = 5, ROAD_FROM = 8, ROAD_MIN = 12, C_ROAD_CASE = 0x0b161b;
 const FACING_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
-/* ═══ v2.3.3007: THE RESOURCES NEAR YOU ═══
+/* ═══ v2.3.3012: THE RESOURCES NEAR YOU ═══
    Owner: "Show nodes on minimap".  One glyph a kind (minimapRenderer mints
    'ore', 'tree', 'fish'), tinted by its tier as the world draws it: the
    vein's flecks (copper, rust-red iron, black steel -- a blued slate light
@@ -237,7 +237,7 @@ export class WheelMinimap {
     this.root.visible = true;
 
     this.used = 0;
-    /* v2.3.3007: the resources first, under everything else -- the live ones
+    /* v2.3.3012: the resources first, under everything else -- the live ones
        you hold the tool for, as the world draws them (effectsRenderer,
        v2.3.1680: a node you cannot work is not drawn), and only those the box
        can reach (it shows WHEEL_WINDOW round you) */
@@ -315,7 +315,7 @@ export class WheelMinimap {
         playerBoxX: P.x * SCALE + this.pan.x, playerBoxY: P.y * SCALE + this.pan.y,
         facingRot: this.player.rotation, markers: this.used, under: !!this.under,
         routes: map.routes.length, places: map.places.length, words: w ? { ...w } : null,
-        nodes: nodeMarks,   /* v2.3.3007: the resources marked */
+        nodes: nodeMarks,   /* v2.3.3012: the resources marked */
         frame: FRAME, label: false,   /* v2.3.3009: the frame's width; nothing printed under the box */
         quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road } : null,
       };

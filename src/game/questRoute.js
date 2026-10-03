@@ -20,8 +20,8 @@
  * in town with nothing marked at all, which is worse than no feature: it
  * would read as "no quest is active".
  */
-import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3007: which node a gathering quest's next step needs */ } from '@/data/gameSystems.js';
-import { hasGatherTool } from '@/data/lifeSkills.js';   /* v2.3.3007: never lead to a node that is not drawn */
+import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */ } from '@/data/gameSystems.js';
+import { hasGatherTool } from '@/data/lifeSkills.js';   /* v2.3.3012: never lead to a node that is not drawn */
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
 import { ZONES, isWorldViewZone, zoneHomes } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel'; v2.3.2990: its lands */
@@ -355,7 +355,7 @@ function _npcHere(S, name) {
  *   - a hand-in, or a brand-new player's welcome, leads to the Mayor here;
  *   - "any zone will do" (fishing, ore) leads nowhere: the Wheel has nothing
  *     to gather yet.
- *     v2.3.3007: it has now (server wheelzone.js) -- so it leads to the
+ *     v2.3.3012: it has now (server wheelzone.js) -- so it leads to the
  *     nearest live node of the kind the quest's next step needs (a fishing
  *     spot, then a tree, for life_1; a vein for life_2), and stops when you
  *     are at it.  A step that needs no node (light the fire, cook) has no
@@ -381,7 +381,7 @@ function _wheelPoint(currentZone, rpg, S) {
   return want ? _npcHere(S, want) : null;
 }
 
-/* ═══ v2.3.3007: A GATHERING QUEST LEADS TO THE NEAREST NODE ═══
+/* ═══ v2.3.3012: A GATHERING QUEST LEADS TO THE NEAREST NODE ═══
    The node kind comes from the quest: its current step's `node` when it has
    steps (life_1: fish, then a log), else its own (life_2: ore) -- the first
    active "any zone" quest that is not yet done, as questTargetZone reads them.

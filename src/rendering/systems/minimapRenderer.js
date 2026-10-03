@@ -584,7 +584,7 @@ export class MinimapRenderer {
       g.circle(21, 22, 6.5).fill(0xffffff).stroke(KL);
       g.circle(C, 12, 6.5).fill(0xffffff).stroke(KL);
     });
-    /* ═══ v2.3.3007: THE WHEEL'S RESOURCES, ONE SHAPE A KIND ═══
+    /* ═══ v2.3.3012: THE WHEEL'S RESOURCES, ONE SHAPE A KIND ═══
        Owner: "Show nodes on minimap".  The Wheel's minimap (wheelMinimap.js)
        marks each vein, tree and fishing spot near you, so each kind gets its
        own silhouette -- a faceted lump, a pine, a fish -- and its TIER is the

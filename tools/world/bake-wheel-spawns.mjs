@@ -88,7 +88,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
   for (const e of objectCatalog()) catById[e.id] = e;
   const HB = 128, hcols = Math.ceil(placed.worldW / HB) + 1;
   const boxes = new Map();
-  /* v2.3.3007: and each one's PICTURE, its foot at the bottom middle -- a
+  /* v2.3.3012: and each one's PICTURE, its foot at the bottom middle -- a
      node's place must not be under a tall thing standing in front of it (the
      first bake put an iron vein of the Wind Dunes behind a hoodoo: clear of
      its footprint, hidden by its picture) */
@@ -206,7 +206,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
     safeR };
 }
 
-/* ═══ v2.3.3007: WHERE THE WHEEL'S RESOURCES GROW ═══
+/* ═══ v2.3.3012: WHERE THE WHEEL'S RESOURCES GROW ═══
  *
  * Owner, 2026-10-03: "Add harvestable resources back to the wheel" -- and of
  * their tiers: "the higher lvl resources will be progressively more distant
@@ -307,7 +307,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
      the cells between them to be both.  The baked rod's line drops down-LEFT
      of the angler, ending 52 px west of him and 9 px above his boots, so the
      water is always WEST of where he stands.
-     v2.3.3007 (owner: "Make all 8 have fishing spots"): the spot's side was a
+     v2.3.3012 (owner: "Make all 8 have fishing spots"): the spot's side was a
      5 x 5 block of water (three cells west of it to one east, two up and
      down) with a dry 2 x 3 seat beside it: a perfectly straight north-south
      shore, five cells long.  A land whose coasts wander or run east-west
@@ -455,7 +455,7 @@ export const WHEEL_SPAWNS = {
 ${lines.join('\n')}
 };
 
-/* v2.3.3007: where the Wheel's resources grow (gathering.js through
+/* v2.3.3012: where the Wheel's resources grow (gathering.js through
  * wheelzone.js _wheelSpawnNodes): per area -- the commons, then each land --
  * [kind, x, y, tierLvl], kind 'o' an ore vein, 't' a tree, 'f' a fishing
  * spot, tierLvl the worker's gathering tier: 1 in the commons (copper, pine,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3007: the gathering tiers' own colours -- iron and black steel ore,
+"""v2.3.3012: the gathering tiers' own colours -- iron and black steel ore,
 softwood and hardwood -- from the art each tier already shares.
 
 Owner, 2026-10-03: "Copper can be in the safe areas around town.  Iron can be

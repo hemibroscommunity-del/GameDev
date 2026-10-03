@@ -465,7 +465,7 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   px.coins = 100;
   px.shield = { gearBase: 'steel', gem: 'venom', name: 'Venom Shield' };
   await forge(wsx, { op: 'extract', target: 'shield' });
-  /* v2.3.3007: the steel tier is called Black Steel now (data.js
+  /* v2.3.3012: the steel tier is called Black Steel now (data.js
      BLACKSMITH_TIER_LABELS -- the owner's ore after iron), so the rebuilt
      name is too; the gearBase key is still 'steel' */
   check('extract shield: gem removed + blacksmith name rebuilt + polished credited + flat 25g',

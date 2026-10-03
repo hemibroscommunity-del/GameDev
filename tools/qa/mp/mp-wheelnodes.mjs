@@ -1,4 +1,4 @@
-/* ═══ THE WHEEL'S RESOURCES, ON A PHONE (v2.3.3007) ═══
+/* ═══ THE WHEEL'S RESOURCES, ON A PHONE (v2.3.3012) ═══
  *
  * Owner: "Add harvestable resources back to the wheel", and of their tiers:
  * "Copper can be in the safe areas around town ... Iron can be in lvl 1
@@ -30,7 +30,7 @@
  *   7. walking up to town drops the Wheel's nodes at the flip, not when town's
  *      snapshot comes in;
  *   8. no page errors.
- * And, v2.3.3007's follow-ups (owner: "Make the black steel black.  Show
+ * And, v2.3.3012's follow-ups (owner: "Make the black steel black.  Show
  * nodes on minimap."): the minimap marks every live resource in its reach
  * once the tools are in the bag (and none before), and a black steel blade is
  * drawn in the Black Steel metal.
@@ -167,7 +167,7 @@ async function body({ P, wsPort, rec, OUT, errors }) {
   }, spot);
   await P.page.screenshot({ path: join(OUT, 'wheelnodes-fish-close.png'), clip }).catch(() => {});
 
-  /* ── v2.3.3007: the resources on the minimap (owner: "Show nodes on minimap") ── */
+  /* ── v2.3.3012: the resources on the minimap (owner: "Show nodes on minimap") ── */
   const mini = await P.page.evaluate(() => {
     const S = window._gameState.current, M = window.__btMinimap, P = S.player;
     const reach = (M && M.window ? M.window : 3200) * 0.6;
@@ -177,7 +177,7 @@ async function body({ P, wsPort, rec, OUT, errors }) {
   rec.ok(`the minimap marks the resources round you (${mini.marked} of the ${mini.want} in its reach)`, mini.marked > 0 && mini.marked === mini.want, mini);
   if (mini.rect) await P.page.screenshot({ path: join(OUT, 'wheelnodes-minimap.png'), clip: { x: mini.rect.left - 4, y: mini.rect.top - 4, width: mini.rect.w + 8, height: mini.rect.h + 44 } }).catch(() => {});
 
-  /* ── v2.3.3007: black steel is black (owner: "Make the black steel black") --
+  /* ── v2.3.3012: black steel is black (owner: "Make the black steel black") --
      a black steel greatsword (the forge's `steel` tier) in the hand, set on
      this page only: the forge needs smithing 16 and the ore, and what is
      checked is how the renderer draws the metal ── */

@@ -2260,7 +2260,7 @@ real worker: buildings drawn with life round the arrival and nothing else, its
 cost, the forge's sparks, the Hotel's life going over you with its roof,
 `?nolife`, no errors).
 
-## The Wheel's resources (v2.3.3007)
+## The Wheel's resources (v2.3.3012)
 
 > Owner, 2026-10-03: *"Add harvestable resources back to the wheel"* —
 > *"Copper can be in the safe areas around town. Iron can be in lvl 1 monster
@@ -2760,7 +2760,7 @@ What a player gets now, with nothing added to the address:
     spots are in `ZONES.wheel.lands`, a copy of the baked anchors that
     test-world-core checks. The road stops once you are among them;
   - "any zone will do" (fishing, ore) gets no road while there is nothing to
-    gather; since v2.3.3007 the Wheel grows its resources, and the road leads
+    gather; since v2.3.3012 the Wheel grows its resources, and the road leads
     to the nearest fishing spot, tree or vein the quest's next step needs
     ("The Wheel's resources", below);
   - while the spot is off the minimap's box, the star waits at its edge, on
@@ -2777,7 +2777,7 @@ What a player gets now, with nothing added to the address:
 **Not in the Wheel yet, so not in the game while the old lands are closed:**
 
 - monsters past levels 1–5: each land has only its first stage's six;
-- ~~gathering (fishing, trees, ore)~~ — in since v2.3.3007 ("The Wheel's
+- ~~gathering (fishing, trees, ore)~~ — in since v2.3.3012 ("The Wheel's
   resources", below), so *Learn a Trade* and *Rock Bottom* can be finished in
   the Wheel too;
 - dungeons.

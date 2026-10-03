@@ -400,7 +400,7 @@ remnant to migrate server-side, not a mode to preserve.
   - A respawn now nulls `S.npcs` like every zone change. It used to carry the
     Wheel's Mayor into today's town, where the townsfolk never spawned.
   - Not there yet, so not in the game: monsters past levels 1-5, dungeons.
-    (Gathering came in v2.3.3007, a bullet below.)
+    (Gathering came in v2.3.3012, a bullet below.)
   - The QA harness gives every scenario `trial=off&nospawn` unless it passes
     `world: 'wheel'` (`nospawn` alone when its query names a trial).
   - `mp-questline`, CI's "playable", plays in the Wheel. `mp-wheelhome`
@@ -585,7 +585,7 @@ remnant to migrate server-side, not a mode to preserve.
       keep-alive key is Control;
     - `sprint` suite (47 checks, the client's rules too), mirror-audit,
       `mp-sprint`: docs/specs/sprint.md.
-  - Since v2.3.3007 the WHEEL GROWS RESOURCES -- the owner: "Add harvestable
+  - Since v2.3.3012 the WHEEL GROWS RESOURCES -- the owner: "Add harvestable
     resources back to the wheel", "Copper can be in the safe areas around
     town. Iron can be in lvl 1 monster areas ... 'black steel' in like level
     10+ areas":
