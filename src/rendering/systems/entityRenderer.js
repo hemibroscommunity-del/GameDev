@@ -8335,6 +8335,15 @@ export class EntityRenderer {
                stun, reused), so mp-shieldbonk asserts on what is drawn rather
                than on the _stunUntil field that should cause it. */
             stunStars: !!(d._stunStarSprite && !d._stunStarSprite.destroyed && d._stunStarSprite.visible),
+            /* v2.3.3012: the nameplate as last drawn -- its level and its
+               difficulty band -- so mp-wheeldeep can read that a Wheel monster
+               past the first stretch shows its own level (it was clamped to
+               its home's 1-2: monsterVariants.js applyZoneVariant) */
+            plate: (function () {
+              const u = d._hpUi;
+              if (!u || !u._pillLevel) return null;
+              return { level: u._pillLevel.text, band: u._pillBand || null, shown: !!(u._namePill && u._namePill.visible) };
+            })(),
           };
         };
       }
