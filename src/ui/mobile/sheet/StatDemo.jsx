@@ -39,6 +39,10 @@ import { prepareStatScene, newSceneSeed, SIM_STATS, SLIME_THROW, SLIME_SWING, SL
  * It plays BEFORE -> AFTER: the scene runs once as things are, then a point
  * lands on the stat (the row's own icon, a brass +n), and the same scene
  * runs again with the points in.
+ * v2.3.3002: ...and now both at ONCE (owner: "show live side by side
+ * simulations of the before and after ... instead of the sequence"): "Now"
+ * in a lane on top, "+n" in a lane under it, the same fight on one clock --
+ * see loopSteps.
  *
  * ═══ v2.3.2979: ...AND NOW IT IS A FIGHT, NOT A STORYBOARD ═══
  * Owner: "Make it so the preview of the combat skills stat allocation
@@ -95,10 +99,10 @@ const HERO_SIZE = 120;
    rule is that the numbers rise ABOVE the bar (entityRenderer v2.3.1638), so
    the pops start ten px higher and need the room to finish rising. */
 const SCENE_H = 140;
-/* The point lands between the halves: the badge rises for 900 ms, and the
-   second half starts a beat after it has gone. */
+/* The point lands on the "+n" lane's hero: the badge rises for 900 ms.
+   v2.3.3002: as the loop begins -- the halves play together now, so there
+   is no gap between them to land in. */
 const POINT_MS = 900;
-const POINT_GAP_MS = 1100;
 /* v2.3.2991: a hit's spray.  The pieces land in its first second, as the
    world's do; the world then keeps the marks to 5.4s (hitMaterialFx
    BURST_MS), but this stage meets a fresh slime on the same spot every second
@@ -369,43 +373,57 @@ function passSteps(pass, off, phase, ctx) {
   return steps;
 }
 
-/* One loop: the before half, the point, the after half.  A stat at its cap
-   has no after half -- the before half simply loops, and the window's own
-   "at its cap" line says why. */
+/* ═══ v2.3.3002: ONE LOOP -- BOTH FIGHTS AT ONCE, ONE ABOVE THE OTHER ═══
+   Owner: "I was thinking it would be better to show live side by side
+   simulations of the before and after effects of what allocating the points
+   would do in the previews instead of the sequence of showing the before
+   first and then after afterwards."  Asked how, on a phone the window is
+   ~290px wide: stacked -- "Now" on top, "+n" underneath, both full size.
+   So a loop is the two halves on ONE clock, each in its own lane (`ln` on
+   every step): the same dice (statSim reads one seed for both, slime by
+   slime), the same number of slimes (fightPair), started together -- so
+   whatever the points change shows as the two fights drifting apart, the
+   "+n" slime falling first, its number bigger, its bar holding.  The lane
+   that finishes first stands where it ended until the other does; then both
+   go again on fresh dice.  The point still lands on HIS head (the owner's
+   v2.3.2230 ask), as the loop begins, on the lane that has it.  A stat at
+   its cap has no after half: one lane, looping, and the window's own "at
+   its cap" line says why. */
+function newCtx(passes, shot, attack, moves, rollMs, fx, lane) {
+  return { heroN: 0, slimeN: 0, popN: 0, shotN: 0, atkN: 0, mvN: 0, fxN: 0, onSlime: 0, gunkN: 0, lines: [], shot, attack: attack || null, moves: moves || null, rollMs: rollMs || 300, fx: fx || null, lane: lane || null, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
+}
 function loopSteps(prep, passes, shot, attack, moves, rollMs, fx, lane) {
-  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, atkN: 0, mvN: 0, fxN: 0, onSlime: 0, gunkN: 0, lines: [], shot, attack: attack || null, moves: moves || null, rollMs: rollMs || 300, fx: fx || null, lane: lane || null, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
-  const steps = passSteps(passes[0], 0, 0, ctx);
+  const steps = passSteps(passes[0], 0, 0, newCtx(passes, shot, attack, moves, rollMs, fx, lane)).map((st) => ({ ...st, ln: 0 }));
   let end = passes[0].end;
   if (passes[1]) {
-    const T0 = passes[0].end;
-    steps.push({ t: T0, patch: (s) => ({ point: s.point + 1 }) });
-    steps.push({ t: T0 + POINT_MS, patch: () => ({ point: 0 }) });
-    const T1 = T0 + POINT_GAP_MS;
-    ctx.lines.length = 0;   /* v2.3.2991: each half's shots land in that half */
-    steps.push(...passSteps(passes[1], T1, 1, ctx));
-    end = T1 + passes[1].end;
+    steps.push({ t: 0, ln: 1, patch: (s) => ({ point: s.point + 1 }) });
+    steps.push({ t: POINT_MS, ln: 1, patch: () => ({ point: 0 }) });
+    steps.push(...passSteps(passes[1], 0, 1, newCtx(passes, shot, attack, moves, rollMs, fx, lane)).map((st) => ({ ...st, ln: 1 })));
+    end = Math.max(end, passes[1].end);
   }
-  return { steps, end };
+  return { steps, end, lanes: passes[1] ? 2 : 1 };
 }
+/* a lane's patch, applied to that lane only */
+const patchLane = (lanes, step) => lanes.map((ls, i) => (i === step.ln ? { ...ls, ...step.patch(ls) } : ls));
 
-/* Reduced motion: the last half's closing frame, drawn still, with its last
+/* Reduced motion: each lane's closing frame, drawn still, with its last
    number on it. */
 function stillOf(prep, shot) {
   const passes = prep.play(1);
-  const p = passes[1] || passes[0];
-  if (!p) return START;
-  const ctx = { heroN: 0, slimeN: 0, popN: 0, shotN: 0, atkN: 0, mvN: 0, fxN: 0, onSlime: 0, gunkN: 0, lines: [], shot, attack: null, moves: null, rollMs: 300, fx: null, lane: null, barBase: passes[0] && passes[0].bar ? passes[0].bar.max : 0 };
-  let s = { ...START };
-  const steps = passSteps(p, 0, passes[1] ? 1 : 0, ctx).sort((a, b) => a.t - b.t);
-  for (const st of steps) s = { ...s, ...st.patch(s) };
-  const last = [...p.beats].reverse().find((b) => b.text);
-  return {
-    ...s, hero: { kind: null, n: 0, ms: 0 }, shots: [], orb: 0, point: 0, atk: null, kick: null, mv: null, walk: null, films: [], stuck: [],
-    slime: s.slime.kind === 'death' ? s.slime : { kind: 'idle', n: 0, ms: 0 },
-    pops: last ? [{ id: 1, side: (last.k === 'land') ? 'hero' : 'slime', text: last.text,
-      kind: last.k === 'land' ? (last.kind === 'hurt' || last.kind === 'burst' ? 'hurt' : 'dodged') : (last.crit ? 'crit' : (last.k === 'tick' || last.k === 'recoil') ? 'burn' : last.k === 'miss' ? 'miss' : 'hit'),
-      color: (last.k === 'tick' || last.k === 'recoil') ? (ELEMENTS[last.element] || {}).color : undefined }] : [],
-  };
+  if (!passes || !passes[0]) return [START];
+  return passes.filter(Boolean).map((p, i) => {
+    let s = { ...START };
+    const steps = passSteps(p, 0, i, newCtx(passes, shot, null, null, 300, null, null)).sort((a, b) => a.t - b.t);
+    for (const st of steps) s = { ...s, ...st.patch(s) };
+    const last = [...p.beats].reverse().find((b) => b.text);
+    return {
+      ...s, hero: { kind: null, n: 0, ms: 0 }, shots: [], orb: 0, point: 0, atk: null, kick: null, mv: null, walk: null, films: [], stuck: [],
+      slime: s.slime.kind === 'death' ? s.slime : { kind: 'idle', n: 0, ms: 0 },
+      pops: last ? [{ id: 1, side: (last.k === 'land') ? 'hero' : 'slime', text: last.text,
+        kind: last.k === 'land' ? (last.kind === 'hurt' || last.kind === 'burst' ? 'hurt' : 'dodged') : (last.crit ? 'crit' : (last.k === 'tick' || last.k === 'recoil') ? 'burn' : last.k === 'miss' ? 'miss' : 'hit'),
+        color: (last.k === 'tick' || last.k === 'recoil') ? (ELEMENTS[last.element] || {}).color : undefined }] : [],
+    };
+  });
 }
 
 /* ── the pieces ───────────────────────────────────────────────────────── */
@@ -850,7 +868,12 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
       return prepareStatScene(R, stat, cat || shot || 'sword', pts, weapon || null, !!shield, (S && S._serverCaps) || {}, rollMs);
     } catch (e) { return null; }
   }, [has, stat, cat, shot, pts, weapon, shield, rpg, rollMs]);
-  const [s, setS] = React.useState(START);
+  /* v2.3.3002: one state per lane -- "Now", and "+n" under it while the
+     stat can still take the points.  Seeded with the lanes the window will
+     show, so it opens at its full height rather than growing a lane on the
+     first loop. */
+  const laneCount = prep && prep.kind !== 'empty' && !prep.capped ? 2 : 1;
+  const [lanes, setLanes] = React.useState(() => (laneCount === 2 ? [START, START] : [START]));
   /* ═══ v2.3.2986: HIS OWN ATTACK ═══
      `fig` is where the portrait put his feet and how tall it drew him (in the
      hero box's px); `attack` is what the world gave for the weapon in hand --
@@ -1027,8 +1050,8 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
     return () => { live = false; clearTimeout(t); };
   }, [fig, hitsScene, specialScene, shot, ranged, pinSet && pinSet.key, pinSet && pinSet.ang, arrowLen, weapon && weapon.type, weapon && weapon.gearBase, weapon && weapon.element1, !!shield, rpg]);
   React.useEffect(() => {
-    if (!prep || prep.kind === 'empty') { setS(START); return undefined; }
-    if (reducedMotion()) { setS(stillOf(prep, shotCat)); return undefined; }
+    if (!prep || prep.kind === 'empty') { setLanes([START]); return undefined; }
+    if (reducedMotion()) { setLanes(stillOf(prep, shotCat)); return undefined; }
     let timers = [];
     let alive = true;
     const run = () => {
@@ -1041,6 +1064,7 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
       try {
         window.__btStatScene = {
           stat, seed, kind: prep.kind, verdict: prep.verdict,
+          lanes: passes[1] ? 2 : 1,   /* v2.3.3002: both halves at once, one lane each */
           texts: passes.map((p) => (p ? p.beats.filter((b) => b.text).map((b) => (b.k === 'land' ? 'hero:' : 'slime:') + b.text) : null)),
           /* v2.3.2986: what the hero attacks WITH: the frame count of the
              world's swing / shot, 'staff' for the kick, null for the nudge */
@@ -1058,19 +1082,20 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
           } : null,
         };
       } catch (e) { /* no window: nothing to report to */ }
-      const { steps, end } = loopSteps(prep, passes, shotCat, attackRef.current, movesRef.current, rollMs, fxRef.current, shot);
+      const { steps, end, lanes: n } = loopSteps(prep, passes, shotCat, attackRef.current, movesRef.current, rollMs, fxRef.current, shot);
       /* v2.3.2979: the t=0 steps (the fresh slime, both bars) go in WITH the
          reset, not a setTimeout(0) after it.  START has no bars, and the vital
          row under the stage sits in normal flow, so a frame painted between
          the two dropped the row and jumped everything below it ~26px -- every
          loop, and (the stepper re-prepares the scene) every press of [+]
-         (reviewer-found).  Applied in the order their timers would have run. */
-      let first = START;
-      for (const step of steps) if (step.t <= 0) first = { ...first, ...step.patch(first) };
-      setS(first);
+         (reviewer-found).  Applied in the order their timers would have run.
+         v2.3.3002: per lane -- each step patches its own (`ln`). */
+      let first = Array.from({ length: n }, () => START);
+      for (const step of steps) if (step.t <= 0) first = patchLane(first, step);
+      setLanes(first);
       for (const step of steps) {
         if (step.t <= 0) continue;
-        timers.push(setTimeout(() => { if (alive) setS((prev) => ({ ...prev, ...step.patch(prev) })); }, step.t));
+        timers.push(setTimeout(() => { if (alive) setLanes((prev) => patchLane(prev, step)); }, step.t));
       }
       timers.push(setTimeout(() => { if (alive) { timers = []; run(); } }, end + 300));
     };
@@ -1095,18 +1120,24 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
   }, [slimeX, slimeY, pinSet, launch, fx, attack, shot, fig]);
   const filmAt = (f) => (f.kind === 'gunk' || f.kind === 'gunk2' ? (aim && aim.feet) : (aim && (aim.pin(f.vi) || aim.feet)));
   if (!has) return null;
-  const tag = s.phase === 1 ? '+' + pts : 'Now';
-  return (
-    <div className="bt-sd" data-stat-demo={stat} data-sd-kind={prep ? prep.kind : ''} aria-hidden="true">
-      <div className="bt-sd-stage" ref={stageRef} style={{ height: SCENE_H }}>
-      <div ref={heroRef} className={'bt-sd-hero' + (s.hero.kind ? ' bt-sd-hero--' + s.hero.kind : '')}
+  /* ═══ v2.3.3002: ONE LANE PER HALF ═══
+     "Now" on top, "+n" under it, each its own stage with its own hero,
+     slime, numbers and bar, on one clock (loopSteps).  Everything measured
+     (the stage, the hero's spot, the slime's pins, the films) is the same in
+     both lanes, so it is measured once, in the first. */
+  const lane = (s, i) => {
+    const tag = i === 1 ? '+' + pts : 'Now';
+    return (
+      <div key={i} className={'bt-sd-lane' + (i === 1 ? ' bt-sd-lane--after' : '')} data-sd-lane={i}>
+      <div className="bt-sd-stage" ref={i === 0 ? stageRef : undefined} style={{ height: SCENE_H }}>
+      <div ref={i === 0 ? heroRef : undefined} className={'bt-sd-hero' + (s.hero.kind ? ' bt-sd-hero--' + s.hero.kind : '')}
         style={s.hero.kind === 'trek' && s.hero.ms ? { animationDuration: s.hero.ms + 'ms' } : undefined}>
         {/* v2.3.2230 (owner: "the character preview is facing the wrong way"):
             he faces the slime.  v2.3.2986: side-on (east) rather than the
             three-quarter southeast, because east is the facing the world's
             attack sheets are drawn in -- and he now attacks with them. */}
         <Fighter weapon={weapon} shield={shield} staff={shot === 'staff'} atk={s.atk} kick={s.kick}
-          mv={s.mv} walk={s.walk} attack={attack} special={fx && fx.special} moves={moves} fig={fig} onDrawn={onDrawn} />
+          mv={s.mv} walk={s.walk} attack={attack} special={fx && fx.special} moves={moves} fig={fig} onDrawn={i === 0 ? onDrawn : undefined} />
         {s.guard && <img className="bt-sd-shield bt-sd-shield--held" src={ICON.shield} alt="" draggable={false} />}
         {s.shield > 0 && <img key={'s' + s.shield} className="bt-sd-shield" src={ICON.shield} alt="" draggable={false} />}
       </div>
@@ -1125,17 +1156,22 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
           <img src={iconSrc} alt="" draggable={false} /><b>+{pts}</b>
         </span>
       )}
-      {/* v2.3.2979: which half is playing.  The badge marks the moment the
-          points go in; this says which side of it you are watching, which a
-          real (and so often small) difference needs. */}
+      {/* v2.3.2979: which half this is -- "Now", or the brass "+n".
+          v2.3.3002: one per lane, both on screen at once. */}
       {prep && prep.kind !== 'empty' && (
-        <span className={'bt-sd-tag' + (s.phase === 1 ? ' bt-sd-tag--after' : '')} data-sd-phase={s.phase}>{tag}</span>
+        <span className={'bt-sd-tag' + (i === 1 ? ' bt-sd-tag--after' : '')} data-sd-phase={i}>{tag}</span>
       )}
       </div>
       {/* The bar sits UNDER the stage, where the Equipment screen keeps the
           vitals under the figure -- and clear of the numbers rising off
-          the hero's head. */}
+          the hero's head.  v2.3.3002: each lane's under its own fight. */}
       {s.bar && <Bar b={s.bar} />}
+      </div>
+    );
+  };
+  return (
+    <div className="bt-sd" data-stat-demo={stat} data-sd-kind={prep ? prep.kind : ''} data-sd-lanes={lanes.length} aria-hidden="true">
+      {lanes.map(lane)}
       {prep && prep.verdict && <Verdict v={prep.verdict} capped={prep.capped} />}
       {prep && prep.note && <div className="bt-sd-note" data-sd-note="">{prep.note}</div>}
     </div>

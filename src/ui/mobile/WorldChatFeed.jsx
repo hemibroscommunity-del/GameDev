@@ -345,7 +345,10 @@ export function WorldChatFeed() {
            and untappable in the one state the player spends most of their
            time in.  --land-fold-w is 0 everywhere else (BroTown resize()),
            so this is the same `left` in portrait and with any sheet open. */
-        left: 'calc(var(--world-x, 0px) + var(--land-fold-w, 0px) + 8px)',
+        /* v2.3.3005: ...and one place right of the weapon button, which took
+           the corner under the movement stick (WeaponSwapButton.jsx).
+           --bt-wpn-slot is 0 where that button is hidden (game.css). */
+        left: 'calc(var(--world-x, 0px) + var(--land-fold-w, 0px) + 8px + var(--bt-wpn-slot, 0px))',
         /* Clears the dashboard band. See the note above: the band height is
            the CSS var, and 8px of air keeps the panel off its edge. */
         bottom: 'calc(var(--dash-h, 135px) + 8px)',

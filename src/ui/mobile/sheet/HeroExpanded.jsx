@@ -862,6 +862,17 @@ export const HeroExpanded = () => {
                    and the reserve goes with it. */
                 paddingRight: badge > 0 && !landPane ? 12 : 0,
               }}>{SECTION_LABEL[s] || s}</span>
+              {/* ═══ v2.3.3004: ...AND SO DOES THE POINTS TAB ═══
+                  The other half of the owner's ask ("and the points section
+                  light flashing effect until all points are spent").  Keyed
+                  on the same badge, so it stops on the tap that spends the
+                  last point.  It keeps glowing while the section is open:
+                  "until all points are spent" is the rule, and the lane cells
+                  inside carry their own bt-build-flash for WHERE to spend.
+                  Before the count so the number paints over the light. */}
+              {badge > 0 && (
+                <span className="bt-pts-glow" data-pts-glow="tab" aria-hidden="true" />
+              )}
               {badge > 0 && (landPane ? (
                 /* v2.3.2176b: sideways, a DOT.  The digits need a 13px pill
                    and 12px of clearance in a column that has neither, and

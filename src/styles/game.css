@@ -1072,6 +1072,29 @@ input{font-family:inherit}
 @keyframes bt-arrive-pulse{0%{box-shadow:0 0 0 0 rgba(216,168,95,.75);filter:brightness(1.45)}100%{box-shadow:0 0 0 6px rgba(216,168,95,0);filter:brightness(1)}}
 .bt-arrive-pulse{animation:bt-arrive-pulse 480ms ease-out 1;border-radius:8px}
 .bt-build-flash{animation:bt-build-flash 1.2s ease-in-out infinite}
+/* ═══ v2.3.3004: POINTS WAITING — THE CHARACTER TAB AND THE POINTS TAB GLOW ═══
+   Owner: "when you level up make the character tab do a light flashing effect
+   and the points section light flashing effect until all points are spent".
+   A layer INSIDE the button (NavRail's Character button, HeroExpanded's Points
+   tab), drawn only while unspentPointsTotal > 0 -- the same number as the gold
+   count badge beside it, so the glow and the badge start and stop together.
+   OPACITY is the only thing that animates: the compositor runs it, so a glow
+   that may run for a whole session costs no paint, and there is no CSS filter
+   anywhere (a filter on a DOM overlay over the WebGL canvas is the documented
+   iOS grain, v2.3.948/v2.3.1236 -- bt-build-flash above predates that rule).
+   It rests at a faint wash rather than at nothing, so the button never looks
+   switched off between flashes.  The wash and ring are inset, so a parent that
+   clips (the Points tab tops an overflow:auto scroller) still shows them; the
+   outer glow is a bonus where there is room.  Reduced motion: the lit state,
+   held still. */
+@keyframes bt-pts-glow{0%,100%{opacity:.18}50%{opacity:1}}
+.bt-pts-glow{position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:rgba(240,200,120,.24);
+  box-shadow:inset 0 0 0 1.5px rgba(240,200,120,.9),inset 0 0 8px rgba(240,200,120,.45),0 0 9px 1px rgba(240,200,120,.45);
+  animation:bt-pts-glow 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){
+  .bt-pts-glow{animation:none;opacity:.7}
+}
 /* v2.3.2599: THE POINT-LANDED ORB IS RETIRED.  Owner: "Remove the small circle
    icon to the left of the plus sign."  It was v2.3.2329's answer to "when you
    spend combat points it's kind of ambiguous whether it took effect or not" —
@@ -4328,6 +4351,38 @@ body:has(.bt-pcard) [data-coach]{display:none}
   .bt-joystick-zone { display:none !important; }
   .bt-desktop-hide { display:none !important; }
 }
+/* ═══ v2.3.3005: THE WEAPON BUTTON TAKES THE CORNER; THE BELL STEPS RIGHT ═══
+   WeaponSwapButton.jsx (owner: "a little icon of current equipped weapon in
+   bottom left above dashboard but beneath left joystick").  The bell
+   (WorldChatFeed) adds this to its left edge: 58px = the button's 18px start
+   (clear of the iOS edge guard) + its 44px touch box + 4px of air - the
+   bell's own 8px.  Zero where the button is hidden, so a desktop keeps the
+   bell in the corner it had.  mp-weaponswap measures the real gap. */
+:root { --bt-wpn-slot: 58px; }
+@media (pointer:fine) {
+  :root { --bt-wpn-slot: 0px; }
+}
+/* The swap lands with a small turn-in; a tap with nowhere to go shakes.
+   transform/opacity only -- never a filter over the WebGL canvas (iOS grain). */
+@keyframes bt-wpn-in {
+  0%   { transform: scale(.55) rotate(-28deg); opacity: .25; }
+  60%  { transform: scale(1.12) rotate(5deg); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes bt-wpn-nope {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+.bt-wpn-icon--in { animation: bt-wpn-in 240ms cubic-bezier(.2,.8,.2,1); }
+.bt-wpn-face--nope { animation: bt-wpn-nope 300ms ease; }
+.bt-wpn-btn { transition: bottom 220ms cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion: reduce) {
+  .bt-wpn-icon--in, .bt-wpn-face--nope { animation: none; }
+  .bt-wpn-btn { transition: none; }
+}
 /* v2.3.1715: bottom was a HARDCODED 140px, and --dash-h's own boot fallback
    is 145px — so this strip has been sitting INSIDE the dashboard band, under
    an opaque panel, at every viewport size.  Owner (desktop playtest) never
@@ -5378,6 +5433,13 @@ html[data-orient="landscape"] .bt-dashboard{
    purpose: the card is a fixed 320 max, and a number that scales with the
    viewport would no longer be the 21/38px the world draws. */
 .bt-sd{overflow:hidden;border-radius:9px;background:#111E23;border:1px solid rgba(229,237,233,.08);contain:paint}
+/* ═══ v2.3.3002: TWO LANES, ONE CLOCK ═══
+   Owner: "show live side by side simulations of the before and after".  On
+   a phone the window is ~290px wide, so side by side is one above the other
+   (the owner's pick): "Now" over "+n", each a full-size stage with its own
+   bar, playing the same fight at the same moment.  A hairline between them,
+   and the "+n" lane lit a touch brass from the top, the colour of its tag. */
+.bt-sd-lane--after{border-top:1px solid rgba(216,170,88,.22);background:linear-gradient(180deg,rgba(216,170,88,.06),rgba(216,170,88,0) 45%)}
 .bt-sd-stage{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(0,0,0,0) 62%,rgba(0,0,0,.28) 100%);--sd-hx:30px}
 /* v2.3.2986: --sd-hx moves the hero, and everything placed against him (his
    shots, the numbers over his head), 30px in from the left: he swings the

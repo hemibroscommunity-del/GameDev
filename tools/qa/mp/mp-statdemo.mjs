@@ -86,9 +86,15 @@ const heroFacing = (P, root) => P.page.evaluate((sel) => {
   return { dir: cv.__btDir || null, mirror: !!cv.__btMirror, weapon: cv.__btWeapon || null, w: cv.width, h: cv.height };
 }, root);
 
+/* v2.3.3002: the scene is two lanes now ("Now" over "+n"), and the +1 lands
+   in the "+n" one -- so the stage, hero and slime it is measured against are
+   that lane's, not merely the first in the page. */
 const rects = (P) => P.page.evaluate(() => {
-  const g = (s) => { const el = document.querySelector(s); if (!el) return null; const r = el.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, cx: r.left + r.width / 2, w: r.width, h: r.height }; };
-  return { stage: g('.bt-sd-stage'), hero: g('.bt-sd-hero'), slime: g('.bt-sd-slime'), point: g('.bt-sd-point') };
+  const pt = document.querySelector('.bt-sd-point');
+  const root = (pt && pt.closest('[data-sd-lane]')) || document;
+  const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, cx: r.left + r.width / 2, w: r.width, h: r.height }; };
+  const g = (s) => box(root.querySelector(s));
+  return { stage: g('.bt-sd-stage'), hero: g('.bt-sd-hero'), slime: g('.bt-sd-slime'), point: box(pt) };
 });
 
 /* The +1 shows for well under a second inside a looping timeline, so waiting
@@ -439,7 +445,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      browser can show is that the scene DRAWS the simulation it ran: every
      number over the slime is one that loop rolled (window.__btStatScene),
      the slime's HP bar drains to them and the slime dies, and both halves
-     play on the same window. */
+     play on the same window.
+     v2.3.3002: ...AT THE SAME TIME.  Owner: "show live side by side
+     simulations of the before and after ... instead of the sequence" --
+     stacked, on a phone: a "Now" lane over a "+n" lane, one clock.  So the
+     two lanes are on screen together, and each pops ITS half's numbers: the
+     "Now" lane's are the before half's rolls, the "+n" lane's the after
+     half's. */
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(350);
   await H.openPointCols(P, ['sword']);
@@ -448,22 +460,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (!powOpened) {
     rec.skip('Power plays a simulated fight', 'row not reachable');
   } else {
-    const sim = { pops: new Set(), rolled: new Set(), bars: new Set(), phases: new Set(), died: false, verdict: null };
+    const sim = { pops: new Set(), rolled: new Set(), bars: new Set(), phases: new Set(), died: false, verdict: null,
+      lanePops: [new Set(), new Set()], laneRolled: [new Set(), new Set()], together: 0, laneHooks: 0, stray: [] };
     for (let i = 0; i < 60; i++) {
       const f = await P.page.evaluate(() => ({
         pops: [...document.querySelectorAll('[data-sd-pop]')].filter((e) => /--slime/.test(e.className)).map((e) => 'slime:' + e.textContent.trim()),
+        /* v2.3.3002: per lane, and which lanes are on screen right now */
+        lanes: [...document.querySelectorAll('[data-sd-lane]')].map((l) => ({
+          i: +l.getAttribute('data-sd-lane'),
+          tag: (l.querySelector('[data-sd-phase]') || {}).textContent || null,
+          pops: [...l.querySelectorAll('[data-sd-pop]')].filter((e) => /--slime/.test(e.className)).map((e) => 'slime:' + e.textContent.trim()),
+        })),
         hook: (window.__btStatScene && window.__btStatScene.stat === 'dmg') ? window.__btStatScene : null,
         bar: (document.querySelector('[data-sd-slime-hp]') || { getAttribute: () => null }).getAttribute('data-sd-slime-hp'),
-        phase: (document.querySelector('[data-sd-phase]') || { getAttribute: () => null }).getAttribute('data-sd-phase'),
+        phases: [...document.querySelectorAll('[data-sd-phase]')].map((e) => e.getAttribute('data-sd-phase')),
         died: !!document.querySelector('.bt-sd-slime--death'),
       }));
       if (f.hook) {
         for (const list of f.hook.texts) for (const t of (list || [])) sim.rolled.add(t);
+        (f.hook.texts || []).forEach((list, k) => { if (k < 2) for (const t of (list || [])) sim.laneRolled[k].add(t); });
+        if (f.hook.lanes === 2) sim.laneHooks++;
         sim.verdict = f.hook.verdict;
       }
       for (const t of f.pops) sim.pops.add(t);
+      for (const l of f.lanes) if (l.i < 2) for (const t of l.pops) sim.lanePops[l.i].add(t);
+      if (f.lanes.length === 2 && f.lanes[0].tag === 'Now' && /^\+\d+$/.test(f.lanes[1].tag || '')) sim.together++;
       if (f.bar != null) sim.bars.add(+f.bar);
-      if (f.phase != null) sim.phases.add(f.phase);
+      for (const ph of f.phases) sim.phases.add(ph);
       if (f.died) sim.died = true;
       await P.page.waitForTimeout(150);
     }
@@ -473,8 +496,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const bars = [...sim.bars];
     rec.ok('...the slime\'s HP bar drains to them, and the slime dies',
       bars.length > 1 && Math.min(...bars) < Math.max(...bars) && sim.died, { bars, died: sim.died });
-    rec.ok('...both halves play: "Now", then the point, then "+n"',
-      sim.phases.has('0') && sim.phases.has('1'), [...sim.phases]);
+    /* v2.3.3002 */
+    rec.ok('...both halves play AT ONCE: a "Now" lane and a "+n" lane on screen together, the whole loop',
+      sim.phases.has('0') && sim.phases.has('1') && sim.together >= 55 && sim.laneHooks > 0,
+      { phases: [...sim.phases], together: sim.together, samples: 60 });
+    const off0 = [...sim.lanePops[0]].filter((t) => !sim.laneRolled[0].has(t));
+    const off1 = [...sim.lanePops[1]].filter((t) => !sim.laneRolled[1].has(t));
+    rec.ok('...and each lane pops ITS half: "Now" the before half\'s rolls, "+n" the after half\'s',
+      sim.lanePops[0].size > 0 && sim.lanePops[1].size > 0 && off0.length === 0 && off1.length === 0,
+      { now: [...sim.lanePops[0]], after: [...sim.lanePops[1]], off0, off1 });
     const v = sim.verdict || {};
     rec.ok('...and the line under it says how many hits a slime takes, now and with the point',
       /hit/.test(v.now || '') && /hit/.test(v.after || ''), v);
@@ -662,7 +692,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const a of document.getAnimations()) { if (on) a.pause(); else a.play(); }
   }, on);
   const stagePic = async (path) => {
-    const el = await P.page.$('[data-stat-demo] .bt-sd-stage');
+    /* v2.3.3002: the whole scene -- both lanes, "Now" over "+n" */
+    const el = await P.page.$('[data-stat-demo]');
     const box = el && await el.boundingBox();
     if (box) await P.page.screenshot({ path, clip: { x: box.x, y: box.y, width: box.width, height: box.height } }).catch(() => {});
   };
@@ -685,7 +716,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
           films: [...document.querySelectorAll('[data-sd-film]')].map((e) => e.getAttribute('data-sd-film')),
           aimed: document.querySelectorAll('[data-sd-line]').length,
           hot: document.querySelectorAll('[data-sd-hot]').length,
-          stuck: [...document.querySelectorAll('[data-sd-stuck]')].map((e) => ({ inSlime: !!e.closest('.bt-sd-slime'), tf: getComputedStyle(e).transform })),
+          /* v2.3.3002: two lanes, two slimes -- so "on the splat" is asked of
+             the arrow's OWN slime, the span it is a child of */
+          stuck: [...document.querySelectorAll('[data-sd-stuck]')].map((e) => {
+            const own = e.closest('.bt-sd-slime');
+            return { inSlime: !!own, onSplat: !!(own && /--death/.test(own.className)), tf: getComputedStyle(e).transform };
+          }),
           splat: !!(slime && /--death/.test(slime.className)),
           special: +((document.querySelector('[data-sd-special]') || { getAttribute: () => -1 }).getAttribute('data-sd-special')),
         };
@@ -696,7 +732,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       seen.hot += f.hot;
       seen.stuck = Math.max(seen.stuck, f.stuck.length);
       for (const s of f.stuck) { if (!s.inSlime) seen.outside++; seen.pins.add(s.tf); }
-      if (f.splat && f.stuck.length) seen.onSplat++;
+      seen.onSplat += f.stuck.filter((a) => a.onSplat).length;
       if (f.special >= 0) seen.special.add(f.special);
       if (!seen.pic) {
         const want = key === 'special'

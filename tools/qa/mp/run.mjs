@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  weaponswap: () => import('./mp-weaponswap.mjs'), /* v2.3.3005: the weapon button under the movement stick -- bottom-left above the band, beneath the disc, clear of the edge guard, the bell one place right; the weapon in hand's picture and a dot per weapon; real taps cycle sword -> bow -> staff without walking or locking, a drag does not swap, one weapon shakes, empty hands are the faint slot; above an open sheet, sideways, and the open chat feed beside it */
   hitvoices: () => import('./mp-hitvoices.mjs'), /* v2.3.3001: hits sound like what they hit -- every Wheel monster x sword, arrow and bolt plays its material's voice (snow, goo, ember, stone, bone, wet, mud) at the weapon's level, the snowman one hit not two; a teammate's blow and your own Shield Bash heard quieter, never twice, never across the map, three at most at once; a monster's ball breaks in its material on you, your shield and the ground, and the worker's blow for it is not a sword's */
   wheelbreak: () => import('./mp-wheelbreak.mjs'), /* v2.3.2995: the Wheel's objects take hits -- each its material's sound (wood, metal, stone) and pieces cut from its own picture, a shake, arrows that stay in, a bolt's burn mark; enough hits and it shatters into shards of its picture, its footprint gone, mended a few minutes later (repairms= in the test), never over you; a building collapsing */
   wheelshadows: () => import('./mp-wheelshadows.mjs'), /* v2.3.3000: the old map's shadows and air on the Wheel -- a sun, you and every object casting (buildings column by column), the shade side never the sun side, objects shaded toward their foot, trees and bushes swaying with their foot still, Frost Ridge's blue shade, its snow in the air and prints at the boots in its snow, ground-coloured dust, and a long walk across the lands with no page error; pictures off and on */
@@ -271,6 +272,7 @@ const SCENARIOS = {
   dunes: () => import('./mp-dunes.mjs'), /* v2.3.2122: the Wind Dunes arrival you cannot walk out of */
   queststar: () => import('./mp-queststar.mjs'), /* v2.3.1906: the star after the objective is done */
   freshpoints: () => import('./mp-freshpoints.mjs'), /* v2.3.1860: a new character has nothing to spend */
+  pointsglow: () => import('./mp-pointsglow.mjs'), /* v2.3.3004: points waiting make the Character tab and the Points tab glow -- none on a new bro, a real level-up lights the Character tab and its light flashes, a real tap still opens the sheet, the Points tab (only) glows there and stays lit while points wait, sideways too, reduced motion lit and still, and spending every point through prog3_allocate puts both out with the count */
   bandsummary: () => import('./mp-bandsummary.mjs'), /* v2.3.1848: the band's compact summary */
   itemcard: () => import('./mp-itemcard.mjs'), /* v2.3.1845: the item card's art, name and rarity */
   arrowdt: () => import('./mp-arrowdt.mjs'), /* v2.3.1770: arrows fly at a speed */

@@ -922,6 +922,28 @@ later slime the other half's rolls (reviewer-found; ~6% of Speed loops on
 a flame sword showed "+n" doing worse). A thorn answers the slime's attack
 in the same instant it lands, as the worker does.
 
+**Both halves at once (v2.3.3002).** Owner: "I was thinking it would be
+better to show live side by side simulations of the before and after effects
+of what allocating the points would do in the previews instead of the
+sequence of showing the before first and then after afterwards." Asked how
+(the window is ~290 px wide on a phone, so two full fights cannot stand side
+by side), the owner chose **stacked**: a "Now" lane on top and a "+n" lane
+under it, each a full-size stage with its own hero, slime, numbers and vital
+bar, on ONE clock (`loopSteps` tags every step with its lane). Both start
+together on the same dice and fight the same number of slimes, so the points
+show as the two fights drifting apart — the "+n" slime falling first, its
+numbers bigger, its bar holding — and the lane that finishes first stands
+where it ended until the other does; then both go again on fresh dice. The
+point still lands on his head (v2.3.2230), on the "+n" lane, as each loop
+begins. A stat at its cap has one lane, as before. Reduced motion draws each
+lane's closing frame still. The scene is ~140 px taller with two lanes
+(~155 with a vital bar under each); on a 390×844 phone the card measured 661
+px tall and still fits without scrolling. Everything measured
+(the stage, the hero's spot, the slime's pins, the films) is the same in
+both lanes and is measured once; each lane draws its own portrait.
+`mp-statdemo` checks both lanes are on screen the whole loop and that each
+pops its own half's numbers.
+
 **The slime attacks the way it would attack YOU.** Inside its reach — where
 anyone holding a sword stands — a slime swings (500 ms wind-up, every
 1.5 s, `MONSTER_ATTACK_CD`); it only throws from the band past that, which
@@ -1145,3 +1167,36 @@ monster too."
 and elemental collisions stay out, as they do from the DPS row. The
 `infopop` / `freshpoints` combat-card failures noted above are still
 pre-existing and untouched.
+
+## Points waiting make two tabs glow (v2.3.3004)
+
+Owner, 2026-10-03: "when you level up make the character tab do a light
+flashing effect and the points section light flashing effect until all points
+are spent."
+
+- **What glows:** the dashboard's Character tab (`NavRail`, the `hero` button)
+  and the Points tab of the Character sheet (`HeroExpanded`, section `Build`).
+  Nothing else; the lane cells inside already carry `bt-build-flash` for *where*
+  to spend.
+- **When:** while `unspentPointsTotal(R) > 0` — the lane pool plus the shared
+  pool, the same number as the gold count badge on both tabs. A level-up mints
+  points, so the glow starts with it; the spend that takes the last point puts it
+  out, with the badge. Points carried over from an earlier session still glow,
+  because "until all points are spent" is the rule. It keeps glowing while the
+  sheet and the Points section are open.
+- **How:** `.bt-pts-glow` (game.css), an inset layer in each tab: a gold ring, a
+  soft inner glow and a 24% wash, with only its **opacity** animating
+  (0.18 → 1 → 0.18 over 1.6s), so the compositor runs it and a glow left on for
+  a whole session does not repaint every frame. No CSS filter (the iOS grain rule). It sits
+  under the count badge and takes no touches. Reduced motion holds it lit at
+  0.7.
+- **Sideways:** the dashboard's Character tab glows whenever the dashboard is
+  open. At rest the tabs are folded away behind the ▴ chip, so nothing glows
+  there. Lighting the chip itself would be a one-line follow-up if wanted.
+
+`mp-pointsglow` pins it: nothing on a new bro; a real level-up (the dev kit's
+levels, through the worker's own `_prog3AwardXp`) lights the Character tab, and
+its opacity really moves; a real tap still opens the sheet; only the Points tab
+glows there, and it stays lit with the section open; sideways too; reduced
+motion lit and still; and spending every point with `prog3_allocate` (the
+Points screen's own wire message) puts both out, with the badge.

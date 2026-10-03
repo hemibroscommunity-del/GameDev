@@ -1368,3 +1368,71 @@ is refused and nothing shows. **Not fixed** — those handlers predate this work
 — same overlay, different control, found by `mp-abilslot`'s reachability probe.
 The band dodge above is vertical and does not address a card that is beside the
 joystick rather than above it. Still the onboarding layout's to fix.
+
+## 13. The weapon button under the movement stick (v2.3.3005)
+
+Owner, 2026-10-03:
+
+> Add a little icon of current equipped weapon in bottom left above
+> dashboard but beneath left joystick. If you tap on it it switches to the
+> next equipped weapon.
+
+`src/ui/panels/WeaponSwapButton.jsx`, mounted beside the other touch controls
+inside `.brotown-wrap` (so sideways it rides with the world like the discs).
+
+**What it shows.** The picture of the weapon in your hand (`getActiveWeapon`),
+drawn by the Weapon cell's own rule (`equipModel.wpnIconSrc`, now exported), so
+the button and the Character sheet can never show different art for one weapon.
+Empty hands (a new bro before the Mayor arms him) show the Weapon cell's own
+empty-slot silhouette, faint. With two or more weapons there is a dot per weapon
+along the bottom, the one in hand lit, and the edge is brass ("a tap does
+something"); with one, the bell's neutral hairline.
+
+**What a tap does.** Exactly what the left stick's double tap (v2.3.97)
+and the desktop key do: it calls BroTown's
+`_desktopCycleWeapon`, so the rotation is `weaponSlots.js`'s (never a slot you
+cannot fill), the worker hears `set_active_slot`, and the weapon's name floats
+over your head. The button only decides "is there anywhere to go"; with one
+weapon a tap shakes it instead of doing nothing silently. The swap waits for a
+real tap (release within 14px and 600ms of the press), so a thumb that lands on
+it while starting to walk does not change weapon, and every touch is stopped
+there so the movement zone underneath never hears it. The double tap stays.
+
+**Where, and why the bell moved one place right.** The band under the movement
+disc is 70px tall and the notification bell already stood in its corner. The
+button takes the corner and the bell steps right by `--bt-wpn-slot` (58px,
+game.css; 0 under `pointer:fine`, where the button is hidden):
+
+- the corner is directly under the disc, where the left thumb already is;
+- the bell is the chat feed's fold, and opened it grows into a 226px header and
+  list. The feed lives OUTSIDE `.brotown-wrap`, so it paints over anything in
+  the wrap whatever the z-index (TRAPS §20). Right of the bell, the button
+  would have been under the open feed; left of it, the feed opens beside it;
+- the iOS edge guard (`EDGE_GUARD_PX`, a full-height 18px strip at z40) ate the
+  leftmost 10px of the bell at `left: 8`. The button starts at the guard's edge,
+  and the bell, now further in, answers a tap across its whole face too.
+
+44px of touch (Apple's minimum) round a 40px face, centred on the bell's centre
+line so the two read as one row. It rides above an open sheet (`--sheet-h`) and
+sideways clears the resting fold chip (`--land-fold-w`).
+
+**Judgement calls, for review.**
+
+- The open chat feed keeps its width, so beside the button its right edge is
+  58px further right than before (294 instead of 234 on a 390px phone). With a
+  long feed open in a fight, its translucent list now reaches the left edge of
+  the ATTACK disc (taps still go through: the list has never taken a touch).
+  The alternative, narrowing the feed to keep the old right edge, leaves its
+  header ~45px short on a 390px phone (measured: "World Chat" ~90px and "Tap
+  to close" ~95px, plus gap and padding, in a 168px feed), so the title would
+  be cut off every time anyone opened chat. The open feed is a choice the player
+  makes and folds with a tap; the button is there all the time.
+- The coach's "Swap weapons" lesson still teaches the double tap on the left
+  stick (QuestCoach `cycle`), because that is the owner's own wording for it.
+  Pointing it at the new button instead is a one-line change if wanted.
+
+`mp-weaponswap` drives it with real touches: where it sits (beneath the disc,
+above the band, clear of the guard, the bell beside it on one line), what it
+shows, sword → bow → staff → sword with the picture following and no walk or
+lock, a drag not swapping, one weapon shaking, empty hands, above an open sheet,
+sideways, and the open feed beside it.
