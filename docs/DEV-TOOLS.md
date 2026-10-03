@@ -45,7 +45,7 @@ block). Checks:
 | 4 | dmg-popup | raw `S.dmgNumbers.push(` in changed client files — use `pushDmgPopup` (v2.3.1188) |
 | 5 | storage-keys | literal `storage.put/get('<prefix>:` in changed server/src files not in the ARCHITECTURE-HANDOFF rule-2 registry (GameRoom only; marketplace/arena/leaderboard/feedback DOs exempt) |
 | 6 | proto-safety | WARN: `= {}` / `: {}` indexed nearby by an id-shaped bracket key — use `Object.create(null)` or `Map` (duel.away v2.3.1175, party meta v2.3.1185, amulet tiers v2.3.1192). A site triaged SAFE (server-generated key, join-gate-protected player id, or not-a-map) carries an inline `// proto-ok:<reason>` marker and is skipped (v2.3.1214) |
-| 7 | server-tests | `cd server && npm test` when server/ changed (zero-dep, sandbox-safe) |
+| 7 | server-tests | `cd server && npm test` when server/ or src/ changed (zero-dep, sandbox-safe, ~25 s; src/ since v2.3.3001, as the mirror audits read the client) |
 
 Known limits: check 5 is literal-only (computed keys aren't extracted —
 register them by hand); check 6 is a heuristic, review each hit; the
