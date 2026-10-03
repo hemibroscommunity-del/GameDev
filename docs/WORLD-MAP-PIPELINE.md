@@ -2026,6 +2026,113 @@ standard size"*. The buildings had looked small.
   little softer than the ground beside them. Remaking them bigger in the
   Object Studio would make them as sharp as everything else.
 
+## The objects take hits (v2.3.2995)
+
+Owner, 2026-10-03: *"change the sound if projectiles hit props to be more
+appropriate for the type of material it is you already have access to
+different sounds. Also destructive props would be cool. Maybe after too many
+shots it shatters into pieces using code. It would be cool if there were burn
+marks from magic or arrows stuck in it if using bow ... I also think it would
+be cool if on the client side you could destroy buildings before having them
+repaired in a few minutes"*
+
+**On your screen only**, as asked: the worker knows nothing of the Wheel's
+objects, so breaking one changes no fight and no one else's world. Another
+player's shots that hit an object on your screen count too, so two players
+shooting one barrel both see it go.
+
+### What each is made of (`src/data/wheelMaterials.js`)
+
+Until now every Wheel object answered a hit as grey stone: the old material
+table is keyed by the OLD town's prop ids, a Wheel footprint carries its
+catalog id (`oak`, `barrel`, `saloon`), and an id it did not know fell back to
+stone. Now every one of the 76 catalog objects has a material, read off its
+picture and prompt (a building is what its ground floor is built of), and how
+many hits it takes. test-world-core fails when an object is added to the
+catalog without one.
+
+| Material | Objects | A hit sounds like | A hit throws | Its break |
+|---|---|---|---|---|
+| wood | 9 buildings, trees, barrels, crates, benches, fences, carts, signs, the gate, boats | the owner's hatchet (axe-chop); a heavy thing the deep wood-chop thunk | splinters cut from its picture, sawdust | the timber crash (tree-fall); a building with a heavy thud and rubble |
+| stone / brick | 5 + 3 buildings, rocks, the well, boulders, hoodoos, walls | the owner's pickaxe on stone (mine-strike) | stone chips, dust, sparks from an arrow | a strike and the bones-crumble pitched down: stones tumbling |
+| metal | lamps, pylons, coils, scrap, the mine cart | the armour clangs, cut short | sparks, a flake or two | a clattering crash |
+| leaf | bushes | a rustle (the grass footstep) over a soft thup | leaves that sail and turn over | a big rustle |
+| straw | hay bales, haystacks, the scarecrow | the rustle, the thup louder | straws, dust | rustles and a soft thump |
+| ice / crystal | ice spires; crystals, obsidian | the ice step's crunch / the sword clang pitched up, which rings like glass | glassy shards that ring and skitter, glints | a glassy clatter |
+| coal | coal heaps | a dull strike in gravel | black chips and black dust | a gravelly crumble |
+| soft | toadstools, cacti, giant flowers | the fleshy monster-hit | a puff of spores, soft pieces | a splat |
+
+A tree's crown lets go when its trunk is hit: leaves sail down from it, a pine
+sheds snow, a burnt tree its char, a slime tree drips.
+
+All the sounds are recordings the game already had (no sound is made in code:
+the owner's v2.3.1103 rule); `wood-chop`, a Pixabay thunk that sat in
+`public/audio` unused, is in the manifest now. Each slice is brought to the
+hit mixer's loudness by a measured gain (the recordings lie 25x apart), the
+mean of the plain and the A-weighted peak loudness, as a phone's speaker hears
+the A-weighted half. What a hit throws is cut from the object's own picture,
+round where the shot went in, at its own resolution (the HD pixel art): a
+barrel's staves, an oak's bark, a bush's leaves.
+
+### What stays in it
+
+- **Arrows**: a plain arrow that sticks in a Wheel object now STAYS in it, for
+  90 s or until it breaks (the old 2 s was a rock's, when nothing on the map
+  could hold one); the newest six on any one object. A bow special keeps its
+  planted life: its burn and its send-off hang off the arrow itself.
+- **Burn marks**: a bolt leaves a mark of the object's OWN pixels where it
+  landed, burnt dark, never spilling past the picture's edge, glowing hot for
+  a couple of seconds, there for a minute; the newest four on an object. The
+  bolt's element decides the mark: fire, lightning and plain magic burn, frost
+  leaves rime, water a wet stain, venom and flora a green one, wind and stone
+  nothing.
+- **Sword cuts** on the Wheel's objects are drawn now too (they never were:
+  the marks only knew the old zones' props), for 20 s.
+
+### Breaking and mending (`src/game/wheelBreak.js`, `src/rendering/wheelShatter.js`)
+
+- **The count**: an arrow, a bolt or a sword blow is 1 hit, a special 3. A
+  barrel, a crate, a bench or a bush takes 3; a lamp 4; a cart 6; a rock 6–10;
+  a tree 8–16; the town gate 14; a pylon 16; a building 24, the Town Hall 30.
+  Left alone for 30 s, the count is forgotten. Each hit shakes the object (a
+  tree sways on its roots), harder as it nears breaking.
+- **The break**: the picture is cut into shards of itself (a Voronoi split,
+  thicker round the last blow, each shard drawn once into one canvas so they
+  share a texture), with a hairline of shadow along each cut. They fly apart
+  from the blow, fall under gravity, bounce once and settle as a heap over the
+  object's own footprint, sorted into the scene where each lies; a cloud of
+  dust rolls out in the material's colour. A building cuts into 32 shards in
+  about 20 ms. Its footprint leaves the walk test at once: you walk through
+  where it stood, and the arrow that broke it flies on through the pieces.
+- **The mending**: after **3 minutes** (`REPAIR_MS`; `?repairms=` for tests)
+  the heap fades and the object fades back in, whole -- but never over you:
+  while you stand where it stands, it waits.
+- **Memory**: every heap's canvases together are held under 6 million pixels
+  (a building's is ~1.3 million), the oldest fading early past that; at most
+  24 objects are broken at once (the oldest mends). Everything is whole again
+  after leaving the Wheel.
+
+Tests: test-world-core "what the objects are made of" (5: every catalog object
+has a material and nothing else does; each known, at least one hit; buildings
+20+ and heavy, trees crowned; every material has its pieces and its sounds;
+every sample those sounds play is one the game loads). `mp-wheelbreak` (28,
+phone viewport, real worker, in the Wheel's Brotown, real arrows and bolts
+through the game's own projectile code): the wood sound, its pieces cut from
+its picture, a shake, one hit counted; the arrow staying in it past 2 s; a
+bolt's burn mark and its heat fading; the break, its shards, its sound, its
+marks gone, its footprint gone, the shards landing on its footprint, the next
+arrow flying through, standing where it stood; the mending, its fade, never
+over you; a lamp ringing as metal, the well as stone, a tree's leaves; a
+building's 24 arrows and its collapse; no errors.
+
+### Still to come (asked for, not in this round)
+
+Elemental damage by monster (a snowman's snowball slowing you with a snowflake
+on the hit, a fire goblin's burn ticking with a flame, a dune mummy's wind
+knocking you back) is the worker's work -- it owns damage -- and monster
+voices and projectile sounds need recordings the game does not have. Both are
+planned in the PR that shipped this.
+
 ## The buildings' life (v2.3.2983)
 
 Owner, 2026-10-02: *"Also add effects just using code to each building to

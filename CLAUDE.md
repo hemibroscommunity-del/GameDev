@@ -403,7 +403,21 @@ remnant to migrate server-side, not a mode to preserve.
     `world: 'wheel'` (`nospawn` alone when its query names a trial).
   - `mp-questline`, CI's "playable", plays in the Wheel. `mp-wheelhome`
     tests the way in on a phone.
-  - See WORLD-MAP-PIPELINE "The Wheel is the world".)
+  - See WORLD-MAP-PIPELINE "The Wheel is the world".
+  - Since v2.3.2995 the Wheel's OBJECTS TAKE HITS, on your screen only (the
+    owner's "on the client side"; the worker knows nothing of them):
+    - each its MATERIAL, `src/data/wheelMaterials.js` -- its sound
+      (`BT_AUDIO.PROP_SOUNDS`, recordings already in the game, level-matched)
+      and its pieces cut from its own picture (hitMaterialFx `propChips`);
+      test-world-core fails for a catalog object without one;
+    - an arrow STAYS in it 90 s, a bolt leaves a burn mark of its own pixels
+      (`wheelScorch`), both prop marks in effectsRenderer, keyed by `oi`;
+    - enough hits (`hp`: a barrel 3, a tree 8-16, a building 24) and it
+      SHATTERS into Voronoi shards of its picture (`src/rendering/
+      wheelShatter.js`), its footprint gone at once; mended after
+      `REPAIR_MS` 3 min (`src/game/wheelBreak.js`, `?repairms=`), never over
+      you. A footprint's `oi` says which object.
+    - `mp-wheelbreak` tests it: WORLD-MAP-PIPELINE "The objects take hits".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

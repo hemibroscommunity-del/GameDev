@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  wheelbreak: () => import('./mp-wheelbreak.mjs'), /* v2.3.2995: the Wheel's objects take hits -- each its material's sound (wood, metal, stone) and pieces cut from its own picture, a shake, arrows that stay in, a bolt's burn mark; enough hits and it shatters into shards of its picture, its footprint gone, mended a few minutes later (repairms= in the test), never over you; a building collapsing */
   wheelmonsters: () => import('./mp-wheelmonsters.mjs'), /* v2.3.2978: the Wheel's own zone 'wheel' -- every element zone's monsters at the inner end of its spoke, skinned as at home, their art loaded on the way in, none drawn from Brotown's square (far off screen), a fire goblin fought and killed for XP, none held back in town, its art let go */
   wheelhome: () => import('./mp-wheelhome.mjs'), /* v2.3.2990: the Wheel is the world -- a new character starts in its Brotown without walking a step, an unarmed one stays on the safe commons until the Wheel's Mayor Bro arms them, dying brings you back there, the marker still leads to today's town, ?trial=off is the old World View; v2.3.2992: the minimap's gold road leads the way, nothing on the ground */
   wheelwater: () => import('./mp-wheelwater.mjs'), /* v2.3.2984: the owner's water pictures in the Wheel -- both fetched, a coast drawn as sand, the shallows' turquoise shelf and the deep sea from the pictures, the river by the Mill Bridge from the shallows' picture until fresh water is made */

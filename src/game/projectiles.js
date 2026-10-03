@@ -631,7 +631,8 @@ import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound l
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2845: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2845: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, scorchGlow /* v2.3.2995 */ } from '@/game/combatHelpers.js';
+import { strikeWheelObject } from '@/game/wheelBreak.js'; /* v2.3.2995: the Wheel's objects take hits, break, and are mended */
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
 import { BOW_VOLLEY, burnT0, burnLifeMs, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2848: the special's three arrows share one train, one burn and one shove; v2.3.2849: + its burn length */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -2148,7 +2149,20 @@ export function updateArrows(S, deps) {
               var _pBox = _propStop.box || null;
               var _pId = _pBox ? _pBox.id : null;
               var _pGy = _propStop.y;   /* the ground line at the contact point */
-              if (_pId) {
+              /* ═══ v2.3.2995: ONE OF THE WHEEL'S OBJECTS ═══
+                 Owner: "change the sound if projectiles hit props to be more
+                 appropriate for the type of material ... destructive props
+                 would be cool ... burn marks from magic or arrows stuck in it".
+                 Its footprint says which object (`oi`), and wheelBreak.js
+                 answers for it: its own material's sound and pieces, a shake,
+                 and a hit toward breaking it. */
+              var _wOi = (_pBox && _pBox.oi != null) ? _pBox.oi : null;
+              var _wHit = null;
+              var _pFace = _pBox ? boxFace(_pBox, _propStop.x, _propStop.y) : 's';
+              if (_wOi != null) {
+                _wHit = strikeWheelObject(S, { oi: _wOi, x: _impX, y: _impY, gy: _pGy, ang: a.ang + Math.PI,
+                  weapon: a.isStaff ? 'bolt' : 'arrow', special: !!a.isSpecial, vol: a.isStaff ? 0.18 : 0.32 });
+              } else if (_pId) {
                 spawnPropDebris(S, { id: _pId, x: _impX, y: _impY, gy: _pGy,
                   ang: a.ang + Math.PI, weapon: a.isStaff ? 'bolt' : 'arrow' });
                 propImpactSound(_pId, a.isStaff ? 0.18 : 0.32);   /* under a monster hit's 0.6: a rock is hit far more often than it is news */
@@ -2161,14 +2175,36 @@ export function updateArrows(S, deps) {
                 orbCrashFx(S, _impX, _impY, projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa',
                   { elem: projElem || null, vdx: a._fxResX, vdy: a._fxResY });   /* v2.3.2841: the staff cast's crash, where the orb was seen */
                 try { BT_AUDIO.magicHit({ vol: 0.3 }); } catch (e) { /* audio is best-effort */ }
+                /* v2.3.2995: and it leaves its mark on the object, in its
+                   element's way (combatHelpers.scorchStyle) -- unless the
+                   object broke, or it hit the side you cannot see */
+                if (_wHit && !_wHit.broke && _pFace !== 'n') {
+                  var _mkStyle = scorchStyle(projElem);
+                  if (_mkStyle) markProp(S, { kind: 'scorch', id: _pId, oi: _wOi, x: _impX, y: _impY, gy: _pGy, face: _pFace,
+                    r: a.isSpecial ? 18 : 11, style: _mkStyle, glow: scorchGlow(projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : null), ttl: SCORCH_MS });
+                }
                 return false;
               }
+              /* v2.3.2995: an arrow that broke what it hit flies on through the
+                 pieces (the object's footprint left the walk test in the same
+                 call: wheelObjects' onWheelBreak) */
+              if (_wHit && _wHit.broke) { a._inBox = null; return true; }
               /* v2.3.2731: ...unless it is one of the one-in-eight that SNAP,
                  which on a rock is the likelier thing an arrow does anyway.
                  Nothing hangs off a plain arrow's planted life (the send-off
                  is the special's), so it can simply go. */
               if (!a.isSpecial && arrowSnaps(S.myId, a._shotTs)) {
                 queueArrowSnap(S, _impX, _impY, _pGy, a.ang);
+                return false;
+              }
+              /* v2.3.2995: a plain arrow in one of the Wheel's objects STAYS in
+                 it -- a mark on the object (effectsRenderer), not a planted
+                 projectile with a 2 s life -- until STUCK_ARROW_MS has passed or
+                 the object breaks.  A special keeps its planted life below: its
+                 ground ticks and its send-off hang off the arrow itself. */
+              if (_wOi != null && !a.isSpecial) {
+                markProp(S, { kind: 'arrow', id: _pId, oi: _wOi, x: _impX, y: _impY, gy: _pGy, face: _pFace,
+                  ang: a.ang, ttl: STUCK_ARROW_MS });
                 return false;
               }
               /* v2.3.2730: an arrow that met a prop STICKS IN IT -- no spent
@@ -2194,7 +2230,7 @@ export function updateArrows(S, deps) {
                 a._plantStartY = a._plantY;
               }
               a.life = 999;        // plantedAt governs removal now, not life
-              a._inProp = _pId ? { id: _pId, gy: _pGy, face: boxFace(_pBox, _propStop.x, _propStop.y) } : null;
+              a._inProp = _pId ? { id: _pId, oi: _wOi, gy: _pGy, face: _pFace } : null;   /* v2.3.2995: + which of the Wheel's objects */
             }
             return true;
           });

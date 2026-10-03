@@ -248,6 +248,9 @@ import { ZONES, zonePlayerScale, depthK /* v2.3.2790 */ } from '@/data/zones.js'
 import { TILE, MINE_SPOT_R, FISH_CUE_DY, MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915: + the harvest seats */
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
 import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn ON props -- slash marks, arrows standing in the rock */
+import { wheelPropRec, wheelPropArt, wheelScorch, freeWheelScorch } from '../wheelObjects.js';   /* v2.3.2995: ...and on the Wheel's objects: arrows, burn marks, the pieces a hit cuts */
+import { isWheelBroken } from '@/game/wheelBreak.js';   /* v2.3.2995: a broken object's marks go with it */
+import { freePropChips } from '../hitMaterialFx.js';    /* v2.3.2995 */
 
 /* v2.3.2654: how a print reads and how long it lasts.  PRINT_TTL_MS is
    mirrored by stateCleanup's filter -- the array and the drawer must expire on
@@ -1499,6 +1502,12 @@ const SNAP_FADE_MS = 380;     /* ...then gone */
 const SNAP_MAX = 10;
 const PROP_SLASH_LEN = 30;       /* drawn world px along the cut */
 const PROP_SLASHES_PER_PROP = 5;  /* a rock that has been hacked at shows the last five */
+/* v2.3.2995: on the Wheel's objects, an arrow stays in and a bolt leaves a
+   mark -- the newest few on any one object, and so many altogether */
+const PROP_ARROWS_PER_PROP = 6;
+const PROP_SCORCHES_PER_PROP = 4;
+const PROP_MARKS_MAX = 90;
+const SCORCH_GLOW_MS = 1800;      /* a burn mark's heat fading off it */
 
 /* ═══ v2.3.2331: PARTICLES ARE SPRITES, NOT POLYGONS ═══
  * _updateParticles used to draw every hit particle, death-explosion particle
@@ -8796,6 +8805,14 @@ export class EffectsRenderer {
     return (id && this._pmIdx && this._pmIdx[id]) || null;
   }
 
+  /* v2.3.2995: the prop a mark or an arrow is on -- one of the Wheel's
+     objects (`oi`, wheelObjects.wheelPropRec: null once it is broken), or a
+     zone's prop by id */
+  _propRec(S, rec) {
+    if (rec && rec.oi != null) return wheelPropRec(rec.oi);
+    return this._propById(S, rec && rec.id);
+  }
+
   _propOverlay(p, back) {
     if (!this._propOv) this._propOv = new Map();
     const key = p.id + (back ? ':back' : ':front');
@@ -8827,15 +8844,55 @@ export class EffectsRenderer {
 
   _killPropMark(fx) {
     if (fx && fx.sprite && !fx.sprite.destroyed) fx.sprite.destroy();
+    /* v2.3.2995: a burn mark is pixels of its own, and its heat a second sprite */
+    if (fx && fx.glow && !fx.glow.destroyed) fx.glow.destroy();
+    if (fx && fx.scorch) { freeWheelScorch(fx.scorch); fx.scorch = null; }
   }
 
   _spawnPropMark(S, rec, now) {
-    const p = this._propById(S, rec.id);
+    const p = this._propRec(S, rec);
     if (!p) return;
     const back = rec.face === 'n';
     const ov = this._propOverlay(p, back);
     const pk = zonePlayerScale(S.currentZone, rec.x, rec.y, TILE) || 1;
-    let sp = null;
+    let sp = null, glow = null, scorch = null;
+    /* v2.3.2995: the newest few arrows and burn marks on any one object, and
+       a ceiling on them all -- the oldest goes */
+    const cap = rec.kind === 'arrow' ? PROP_ARROWS_PER_PROP : rec.kind === 'scorch' ? PROP_SCORCHES_PER_PROP : 0;
+    if (cap) {
+      let n = 0;
+      for (let i = this._pmFx.length - 1; i >= 0; i--) {
+        const f = this._pmFx[i];
+        if (f.kind === rec.kind && f.propId === p.id && ++n >= cap) { this._killPropMark(f); this._pmFx.splice(i, 1); }
+      }
+    }
+    while (this._pmFx.length >= PROP_MARKS_MAX) this._killPropMark(this._pmFx.shift());
+    if (rec.kind === 'scorch') {
+      /* v2.3.2995: a bolt's mark -- the object's own pixels where it landed,
+         burnt (wheelObjects.wheelScorch), and its heat over it, fading */
+      if (back || rec.oi == null) return;
+      scorch = wheelScorch(rec.oi, rec.x, rec.y, rec.r || 9, rec.style || 'burn');
+      if (!scorch) return;
+      sp = new Sprite(scorch.tex);
+      sp.label = 'propmark-scorch';
+      sp.anchor.set(0.5);
+      sp.scale.set(scorch.sx, scorch.sy);
+      sp.x = scorch.x - ov.x; sp.y = scorch.y - ov.y;
+      ov.addChild(sp);
+      if (!rec.style || rec.style === 'burn') {
+        glow = new Sprite(scorch.glow);
+        glow.label = 'propmark-glow';
+        glow.anchor.set(0.5);
+        glow.scale.set(scorch.sx, scorch.sy);
+        glow.x = sp.x; glow.y = sp.y;
+        glow.blendMode = 'add';
+        glow.tint = rec.glow != null ? rec.glow : 0xff8a2a;
+        ov.addChild(glow);
+      }
+      this._pmFx.push({ kind: 'scorch', propId: p.id, oi: rec.oi, sprite: sp, glow, scorch, t0: rec.t0 || now,
+        ttl: rec.ttl > 0 ? rec.ttl : 60000 });
+      return;
+    }
     if (rec.kind === 'slash') {
       /* the newest five on any one prop */
       let n = 0;
@@ -8863,7 +8920,7 @@ export class EffectsRenderer {
     ov.addChild(sp);
     /* v2.3.2847: a teammate's white-hot special smoulders in the rock too */
     if (rec.kind === 'arrow' && rec.special && HOT_SPECIAL_ARROW) this._heatPropArrow(sp, now, now, rec.t0 || now, !this._volleyWorld(S));
-    this._pmFx.push({ kind: rec.kind, propId: rec.id, sprite: sp, t0: rec.t0 || now,
+    this._pmFx.push({ kind: rec.kind, propId: p.id, oi: rec.oi, sprite: sp, t0: rec.t0 || now,
       ttl: rec.ttl > 0 ? rec.ttl : 3000, special: !!rec.special, hotSince: now });
   }
 
@@ -8902,7 +8959,7 @@ export class EffectsRenderer {
   /* YOUR arrow, planted in a prop (projectiles.js `_inProp`). */
   _placePropArrow(S, a, now, pk) {
     const ip = a._inProp;
-    const p = this._propById(S, ip && ip.id);
+    const p = this._propRec(S, ip);
     if (!p) return;
     const ov = this._propOverlay(p, ip.face === 'n');
     const special = !!(a.isSpecial && !a._isStaffProj);
@@ -8972,7 +9029,11 @@ export class EffectsRenderer {
 
   _updatePropMarks(S, now) {
     const zone = S && S.currentZone;
-    if (this._pmZone !== zone) { this._clearPropMarks(); this._pmZone = zone; }
+    if (this._pmZone !== zone) {
+      /* v2.3.2995: and the chips cut from the last zone's objects */
+      if (this._pmZone === 'wheel') { try { freePropChips(); } catch (e) { /* gone */ } }
+      this._clearPropMarks(); this._pmZone = zone;
+    }
     if (!this._pmFx) this._pmFx = [];
     const q = S && S._propMarks;
     if (q && q.length) {
@@ -8982,11 +9043,38 @@ export class EffectsRenderer {
       }
       q.length = 0;
     }
+    let _shook = null;
     for (let i = this._pmFx.length - 1; i >= 0; i--) {
       const fx = this._pmFx[i];
       const age = now - fx.t0;
-      if (!fx.sprite || fx.sprite.destroyed || age >= fx.ttl) {
+      /* v2.3.2995: an object that has broken takes its marks with it */
+      if (!fx.sprite || fx.sprite.destroyed || age >= fx.ttl || (fx.oi != null && isWheelBroken(fx.oi))) {
         this._killPropMark(fx); this._pmFx.splice(i, 1); continue;
+      }
+      /* v2.3.2995: ...and they shake with it (its overlay follows it) */
+      if (fx.oi != null) {
+        if (!_shook) _shook = new Set();
+        if (!_shook.has(fx.propId)) {
+          _shook.add(fx.propId);
+          const pr = wheelPropRec(fx.oi);
+          if (pr && this._propOv) {
+            for (const key of [fx.propId + ':front', fx.propId + ':back']) {
+              const ov = this._propOv.get(key);
+              if (ov && !ov.destroyed) ov.x = pr.drawnX;
+            }
+          }
+        }
+      }
+      if (fx.kind === 'scorch') {
+        /* a burn mark is there at once and weathers away over its last 3 s;
+           its heat glows off it in its first SCORCH_GLOW_MS */
+        fx.sprite.alpha = Math.max(0, Math.min(1, (fx.ttl - age) / 3000));
+        if (fx.glow && !fx.glow.destroyed) {
+          const h = 1 - age / SCORCH_GLOW_MS;
+          if (h <= 0) { fx.glow.destroy(); fx.glow = null; }
+          else fx.glow.alpha = h * h * (0.85 + 0.15 * Math.sin(age * 0.03));
+        }
+        continue;
       }
       /* a cut is there at once and weathers away over its last 1.2 s; an
          arrow stands until its last 300 ms, like yours does */
@@ -9041,7 +9129,9 @@ export class EffectsRenderer {
         for (const c of ov.children) {
           const _hotShaft = HOT_SPECIAL_ARROW && hotArrowArt().ember.indexOf(c.texture) >= 0;   /* v2.3.2847 */
           const isArrow = c.texture === ARROW_PINE.noHead || _hotShaft || ARROW_SPECIAL.noHead.indexOf(c.texture) >= 0;
-          out.push({ key, kind: c.texture === _PROP_SLASH_TEX ? 'slash' : (isArrow ? 'arrow' : 'other'), hot: !!_hotShaft,
+          /* v2.3.2995: + a bolt's burn mark and its heat, by their labels */
+          const _mk = c.label === 'propmark-scorch' ? 'scorch' : c.label === 'propmark-glow' ? 'glow' : null;
+          out.push({ key, kind: _mk || (c.texture === _PROP_SLASH_TEX ? 'slash' : (isArrow ? 'arrow' : 'other')), hot: !!_hotShaft,
             x: +(ov.x + c.x).toFixed(1), y: +(ov.y + c.y).toFixed(1), ovY: ov.y,
             rot: +c.rotation.toFixed(3), alpha: +c.alpha.toFixed(2), visible: !!(c.visible && ov.visible),
             layer: layerName(ov), headless: isArrow });
@@ -9060,6 +9150,18 @@ export class EffectsRenderer {
       const _selfD = this;
       window.__btDebris = function () { return _selfD._hitFx ? _selfD._hitFx.report(Date.now()) : []; };
       window.__btHitFx = function () { return _selfD._hitFx ? _selfD._hitFx.probe() : null; };
+    }
+    /* v2.3.2995: a hit on one of the Wheel's objects is handed the object's
+       picture, where it landed (or, for a tree's crown, where its leaves
+       hang), so its pieces are cut from the art (wheelObjects.wheelPropArt;
+       hitMaterialFx.propChips).  The game side holds no pixi. */
+    const q = S && S._debrisBursts;
+    if (q && q.length) {
+      for (let i = 0; i < q.length; i++) {
+        const b = q[i];
+        if (!b || b.oi == null || b.art) continue;
+        try { b.art = wheelPropArt(b.oi, Number.isFinite(b.hitX) ? b.hitX : b.x, Number.isFinite(b.hitY) ? b.hitY : b.y, !!b.crown); } catch (e) { b.art = null; }
+      }
     }
     this._hitFx.update(S, now);
   }
