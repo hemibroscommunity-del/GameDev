@@ -64,6 +64,7 @@ import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south 
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
+import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
@@ -1740,6 +1741,10 @@ export class GameRoom {
       const trackAmt = dmgResult.graced ? (dmgResult.dmgIntent || 0) : dmgTaken;
       this._trackMonsterDamage(targetPs, m.id, trackAmt);
     }
+    /* v2.3.2996: ...and what its element does -- a snowman's chill, a fire
+       goblin's burn, a mummy's gust, a blue slime's hold (monsterstatus.js).
+       A blocked hit takes 0 and carries nothing but the element's name. */
+    const _elemHit = this._elemOnHit(zoneId, m, targetId, targetPs, dmgResult, now);
     this.eventBuffer.push({
       type: 'monster_attack',
       payload: {
@@ -1767,6 +1772,9 @@ export class GameRoom {
         zone: zoneId,
         attackerX: atkX,
         attackerY: atkY,
+        /* v2.3.2996: elem / st / stMs / kb, each absent when it does not
+           apply, so the wire is unchanged for every other monster */
+        ...(_elemHit || null),
       }
     });
     // Echo authoritative hp to the victim + persist.  Death
@@ -5703,6 +5711,7 @@ Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
+Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.
 Object.assign(GameRoom.prototype, abilityMethods);

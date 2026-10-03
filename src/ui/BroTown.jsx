@@ -349,6 +349,8 @@ import { renderFrame } from '@/game/renderFrame.js';
 import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
 import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
+import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
+import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
@@ -4850,6 +4852,10 @@ export var BroTown = function BroTown(_ref0) {
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
         if (S._zoneLoading || S._netHold || S._townArtHold) finalSpd = 0;   /* v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
+        /* v2.3.2996: a monster's element on you -- a snowman's chill walks you
+           at CHILL_MULT, a blue slime's goo holds you where you stand
+           (game/elemHits.js; the worker said so on the hit). */
+        finalSpd *= elemMoveMult(S, Date.now());
 
         /* Auto-attack movement: 50% speed across the board while
            S.autoAttack is on. Backpedal flag still tracks "moving
@@ -5070,6 +5076,21 @@ export var BroTown = function BroTown(_ref0) {
             sy = P.y + (S._slideVy || 0) * _slideDt;
           if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y) && !_nodeBlock(P.x, P.y, sx, P.y) && !propFeetBlocked(P.x, P.y, sx, P.y, hs)) P.x = sx;
           if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy) && !_nodeBlock(P.x, P.y, P.x, sy) && !propFeetBlocked(P.x, P.y, P.x, sy, hs)) P.y = sy;
+        }
+        /* ═══ v2.3.2996: A MUMMY'S GUST SHOVES YOU ═══
+           Owner: "From desert winds mummy an air icon that blows the character
+           back."  The worker chose the shove and widened its own speed bound
+           for it (server monsterstatus.js); this carries it out over its few
+           frames with the ice slide's own per-axis test above, so a wall, a
+           monster, a node or a prop stops it on that axis and you slide along
+           the rest.  Not while dead: a corpse is not blown about. */
+        if (S._gust) {
+          var _gs = _playerDead ? (S._gust = null) : gustStep(S, Date.now());
+          if (_gs) {
+            var gx = P.x + _gs.x, gy = P.y + _gs.y;
+            if (!isSolid(gx - hs, P.y - hs) && !isSolid(gx + hs, P.y + hs) && !_monBlock(P.x, P.y, gx, P.y) && !_nodeBlock(P.x, P.y, gx, P.y) && !propFeetBlocked(P.x, P.y, gx, P.y, hs)) P.x = gx;
+            if (!isSolid(P.x - hs, gy - hs) && !isSolid(P.x + hs, gy + hs) && !_monBlock(P.x, P.y, P.x, gy) && !_nodeBlock(P.x, P.y, P.x, gy) && !propFeetBlocked(P.x, P.y, P.x, gy, hs)) P.y = gy;
+          }
         }
         /* v2.3.1110: PUSH-OUT -- _monBlock only stops the player moving
            deeper; a server-driven monster can still walk INTO the player
@@ -6906,7 +6927,12 @@ export var BroTown = function BroTown(_ref0) {
            S._dodgeRoll is already in this term for the identical reason -- it
            is the other move that repositions the player without the stick --
            so the lunge joins it rather than getting a mechanism of its own. */
-        var isMoving = dx || dy || S._dodgeRoll || S._bashDash;
+        /* v2.3.2996: ...and so does a mummy's gust (game/elemHits.js), for the
+           same reason again: shoved while standing still, the only thing that
+           told the worker where you landed was the 1 s keepalive, so for up to
+           a second it kept you where the hit found you -- and a monster's next
+           swing is measured from there.  mp-elemhits caught it 46 px apart. */
+        var isMoving = dx || dy || S._dodgeRoll || S._bashDash || S._gust;
         /* v2.3.396: also broadcast when the facing changes while standing
            (turning to aim without moving) so remote clients see the turn --
            the move payload now carries the true rendered facing (f). */
@@ -11782,7 +11808,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       color: 'rgba(255,255,255,.6)'
     }
-  }, function () {
+  }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */, function () {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];

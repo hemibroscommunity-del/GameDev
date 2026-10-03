@@ -417,7 +417,24 @@ remnant to migrate server-side, not a mode to preserve.
       wheelShatter.js`), its footprint gone at once; mended after
       `REPAIR_MS` 3 min (`src/game/wheelBreak.js`, `?repairms=`), never over
       you. A footprint's `oi` says which object.
-    - `mp-wheelbreak` tests it: WORLD-MAP-PIPELINE "The objects take hits".)
+    - `mp-wheelbreak` tests it: WORLD-MAP-PIPELINE "The objects take hits".
+  - Since v2.3.2996 a MONSTER'S HIT CARRIES ITS ELEMENT (the owner's snowflake,
+    fire and air icons, and "slime for floral damage ... a brief held in place"):
+    - a landed hit by a frost/flame/wind/flora monster chills (walk x0.55 for
+      1 s), burns (3 ticks of 20% of its hit), gusts (shoved 48 px away) or
+      holds you (0.7 s, no roll; 2 s immunity after), its element's icon in
+      the heart's place on the number; the other four elements do nothing yet;
+    - the worker decides it all (`server/src/monsterstatus.js`: `elem`, `st`,
+      `stMs`, `kb` on monster_attack; burn ticks are `ability: 'burn'`; the
+      speed bound widens only for a gust it granted, `_gustAllowance`), and the
+      client acts only on those fields (`src/game/elemHits.js`); kill switch
+      `elemhits: false`;
+    - the looks drawn round you (effectsRenderer `_updateElemStatusFx`), HUD
+      chips on their own clock (`src/ui/ElemStatusChips.jsx`), sounds from
+      recordings already in the game (`BT_AUDIO.elemHit`);
+    - a gust counts as moving for the move broadcast, so the worker hears where
+      you landed at once;
+    - `monsterstatus` suite, `mp-elemhits`: docs/specs/monster-statuses.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

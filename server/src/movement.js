@@ -260,7 +260,16 @@ export const movementMethods = {
          (_handleProg3Allocate) and re-clamped on every read (_prog3Pts).
          prog3.test.mjs pins the arithmetic against the client's constants. */
       const _moveMult = (ps.prog3 && typeof this._prog3MoveMult === 'function') ? this._prog3MoveMult(ps) : 1;
-      const maxDist = 500 * _spdCap * _moveMult * dt + 80;
+      /* ═══ v2.3.2996: ...AND FOR A GUST THE SERVER ITSELF BLEW ═══
+         A mummy's landed hit shoves you GUST.PX away (monsterstatus.js), and
+         the client carries the shove out on top of your walk.  The 80 px of
+         burst slack below would cover one on its own today, but that slack is
+         sized for a roll and network jitter, not for a shove stacked on both,
+         so the bound widens by what is left of the gusts the WORKER granted
+         -- spent as it is used, gone after GUST.ALLOW_MS.  Nothing on the
+         wire can raise it. */
+      const _gust = typeof this._gustAllowance === 'function' ? this._gustAllowance(ps, _now) : 0;
+      const maxDist = 500 * _spdCap * _moveMult * dt + 80 + _gust;
       const dx = msg.x - ps.x;
       const dy = msg.y - ps.y;
       if (dx * dx + dy * dy > maxDist * maxDist) {
@@ -269,6 +278,8 @@ export const movementMethods = {
         // client's next legit move will snap back to server view
         // via the broadcast tick.
         accept = false;
+      } else if (_gust > 0) {
+        this._spendGust(ps, Math.sqrt(dx * dx + dy * dy) - (maxDist - _gust));
       }
     }
     /* ═══ v2.3.1629: THE ZONE-FLIP BYPASS IS *NOT* CLOSED HERE ═══

@@ -30,6 +30,7 @@ import { rollMonsterShard } from '@/data/shards.js';
 import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowball stops where the worker's own line meets a prop */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
+import { applyElemHit, elemLook, isBurnTick } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
@@ -2487,18 +2488,22 @@ export function processGameEvent(type, payload, S, deps) {
                 var rOther = S.others && S.others[payload.targetId];
                 if (rOther && !rOther._isDead) {
                   rOther._hitFlash = Date.now();
+                  /* v2.3.2996: their chill, goo, flames or gust, drawn on them
+                     (their movement is their own client's) */
+                  applyElemHit(S, payload, Date.now(), rOther);
+                  var _rLook = elemLook(payload.elem) || (payload.ability === 'firetrail' ? elemLook('flame') : null);
                   /* v2.3.2712: a friend being hit bleeds too, the same way
                      (see the local branch below).  Their max HP is the one
                      their health bar reads (rpgMaxHp). */
                   var _bdmg = typeof payload.dmgTaken === 'number' ? payload.dmgTaken : 0;
-                  if (_bdmg > 0 && !payload.blocked && !payload.dodged) {
+                  if (_bdmg > 0 && !payload.blocked && !payload.dodged && !isBurnTick(payload)) {   /* v2.3.2996: fire does not bleed */
                     var _bSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
                     var _bx = (typeof payload.attackerX === 'number') ? payload.attackerX : (_bSrc ? _bSrc.x : null);
                     var _by = (typeof payload.attackerY === 'number') ? payload.attackerY : (_bSrc ? _bSrc.y : null);
                     var _rx = rOther.renderX != null ? rOther.renderX : rOther.x, _ry = rOther.renderY != null ? rOther.renderY : rOther.y;
                     queueBlood(S, _rx || 0, _ry || 0, _bx, _by, _bdmg / Math.max(1, rOther.rpgMaxHp || 100));
                   }
-                  pushDmgPopup(S, rOther.x || 0, (rOther.y || 0) - 20, '-' + toDisplayDamage(payload.dmg || 0), '#ff5e6c');   /* v2.3.2520: display scale */
+                  pushDmgPopup(S, rOther.x || 0, (rOther.y || 0) - 20, '-' + toDisplayDamage(payload.dmg || 0), '#ff5e6c', _rLook ? { iconKey: _rLook.icon } : undefined);   /* v2.3.2520: display scale; v2.3.2996: + the element's icon */
                 }
                 break;
               }
@@ -2514,6 +2519,23 @@ export function processGameEvent(type, payload, S, deps) {
                  said we were struck; that is the stamp, before any of the
                  display filters below decide whether to DRAW it. */
               S.lastDamageTaken = Date.now();
+              /* ═══ v2.3.2996: WHAT ITS ELEMENT DID ═══
+                 A snowman's chill, a fire goblin's burn, a mummy's gust, a
+                 blue slime's hold -- carried out HERE, before the filters
+                 below, for the reason the stamp above is: they decide whether
+                 to draw a number, not whether the hit happened, and the worker
+                 has said it did (game/elemHits.js, server monsterstatus.js). */
+              var _elSt = applyElemHit(S, payload, Date.now());
+              if (_elSt) { try { BT_AUDIO.elemHit(_elSt); } catch (e) { /* sound only */ } }
+              if (window.__btProbe && (payload.elem || _elSt)) {   /* QA (mp-elemhits), armed by the harness only */
+                try {
+                  var _eLog = window.__btElemLog || (window.__btElemLog = []);
+                  _eLog.push({ elem: payload.elem || null, st: _elSt, stMs: payload.stMs, kb: payload.kb || null, ability: payload.ability || null, dmgTaken: payload.dmgTaken, monsterId: payload.monsterId, at: Date.now() });
+                  if (_eLog.length > 60) _eLog.splice(0, _eLog.length - 60);
+                } catch (e) { /* a probe never breaks the game */ }
+              }
+              var _burnTick = isBurnTick(payload);
+              var _elLook = elemLook(payload.elem) || (payload.ability === 'firetrail' ? elemLook('flame') : null);
               /* ── Out-of-range filter ──
                  The server's monster-attack ranging was firing damage
                  events for monsters the player can't see (off-screen or
@@ -2727,7 +2749,10 @@ export function processGameEvent(type, payload, S, deps) {
                 trainDefense(R2, mDmg, 0, (atkSrc && atkSrc.level) || null, false);
               }
               /* Check dodge */
-              if (S._dodgeRoll) break; /* in i-frames */
+              /* v2.3.2996: ...but a burn's tick is fire on you, not a blow a
+                 roll slips: the worker priced it as elemental, which no roll
+                 or Dodge stat avoids (combat.js v2.3.2680), so it shows. */
+              if (S._dodgeRoll && !_burnTick) break; /* in i-frames */
               /* HP mutation: worker authoritative in MP.  Don't decrement
                  local R.hp here -- the player_state event that follows
                  monster_attack carries the new authoritative hp.  Keep
@@ -2770,7 +2795,12 @@ export function processGameEvent(type, payload, S, deps) {
                  check at entityRenderer.js:1943 never tripped and the
                  sprite never flashed red.  Only flash when actual damage
                  lands (block / dodge zero dmgTaken2 → no flash). */
-              if (Math.ceil(dmgTaken2) > 0) {
+              /* v2.3.2996: ...except a burn's tick (or the fire trail's): fire
+                 on you, not a blow -- no flinch, no shove of the camera, no
+                 blood thrown away from a blow that has no direction.  It gets
+                 its flame on the number, flame-coloured sparks and the sizzle
+                 (below). */
+              if (Math.ceil(dmgTaken2) > 0 && !_burnTick) {
                 S._hitFlash = Date.now();
                 /* v2.3.2200: directional camera kick AWAY from the
                    attacker — being hit should physically shove the view,
@@ -2793,7 +2823,9 @@ export function processGameEvent(type, payload, S, deps) {
               }
               /* v2.3.110: heart glyph alongside "-N" popup so the
                  loss-of-HP intent reads instantly. */
-              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + toDisplayDamage(Math.ceil(dmgTaken2)), '#ff5e6c', { iconKey: 'heart' });   /* v2.3.2520: display scale */
+              /* v2.3.2996: the element's icon in the heart's place -- the
+                 owner's "fire icon as the damage type" (game/elemHits.js). */
+              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + toDisplayDamage(Math.ceil(dmgTaken2)), '#ff5e6c', { iconKey: _elLook ? _elLook.icon : 'heart' });   /* v2.3.2520: display scale */
               /* v2.3.1137: Second Wind — the worker healed us right after
                  this hit (defense channel, 10s cooldown); green popup.
                  The authoritative hp arrives via player_state as usual. */
@@ -2807,8 +2839,14 @@ export function processGameEvent(type, payload, S, deps) {
               for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
                 x: S.player.x, y: S.player.y,
                 vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
-                life: 0.6, color: '#ff5e6c', size: 2
+                life: 0.6, color: _burnTick ? (hp3 & 1 ? '#ffd27a' : '#ff9a3c') : '#ff5e6c', size: 2
               });
+              if (_burnTick) {
+                /* v2.3.2996: the sizzle is the tick's sound; the armour clang
+                   below is for a blow */
+                try { BT_AUDIO.elemHit('burnTick'); } catch (e) { /* sound only */ }
+                break;
+              }
               S.screenShake = 3;
               /* v2.3.1598 (owner): the armour clang, not a dead beep.
                  This is the SERVER-AUTHORITATIVE hit path — the one that

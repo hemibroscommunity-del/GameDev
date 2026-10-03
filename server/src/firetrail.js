@@ -250,6 +250,9 @@ export const fireTrailMethods = {
            knows, so without this the number is dropped by the very first
            filter in the handler. */
         ability: 'firetrail',
+        /* v2.3.2996: fire is flame damage -- the client shows the flame on
+           the number (monsterstatus.js).  Display-only. */
+        elem: 'flame',
       },
     });
     this._saveRpgVitals(pid, ps);

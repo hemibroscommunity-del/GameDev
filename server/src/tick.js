@@ -157,6 +157,10 @@ export const tickMethods = {
       // Monster AI tick
       guard('monsters', () => this._tickMonsters());
 
+      /* v2.3.2996: a fire goblin's burn ticks on its own clock, after the
+         monsters' hits of this tick have set it (monsterstatus.js). */
+      guard('burns', () => this._tickMonsterBurns(Date.now()));
+
       /* v2.3.2824: windup abilities (whirlwind) strike when their ring ends. */
       guard('abilWindups', () => this._tickAbilityWindups(Date.now()));
 

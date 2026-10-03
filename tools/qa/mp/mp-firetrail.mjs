@@ -299,8 +299,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(300);
   const ctrl = await popped(P);
   console.log('    BURN TICK (tagged) -> ' + JSON.stringify(ctrl));
-  rec.ok('CONTROL: a burn tick floats its damage number on us',
-    ctrl.some((p) => /^-\d/.test(p.text) && p.icon === 'heart'), ctrl);
+  /* v2.3.2996: with the flame on it, not the heart -- fire is the damage
+     type (game/elemHits.js; the owner's "fire icon as the damage type") */
+  rec.ok('CONTROL: a burn tick floats its damage number on us, with the flame',
+    ctrl.some((p) => /^-\d/.test(p.text) && p.icon === 'elem-flame'), ctrl);
 
   /* ── 5. A RAISED SHIELD DOES NOT SWALLOW IT (v2.3.2238) ──
      The handler's local block fallback zeroed the number whenever the
@@ -313,7 +315,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const shielded = await popped(P);
   console.log('    BURN TICK WHILE BLOCKING -> ' + JSON.stringify(shielded));
   rec.ok('a burn tick still shows its number while we are blocking',
-    shielded.some((p) => /^-\d/.test(p.text) && p.icon === 'heart'), shielded);
+    shielded.some((p) => /^-\d/.test(p.text) && p.icon === 'elem-flame'), shielded);
   await P.page.evaluate(() => { window._gameState.current._shieldUp = false; });
 
   /* ── 6. DEPLOY ORDER (rule 19) ──

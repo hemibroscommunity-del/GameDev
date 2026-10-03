@@ -3411,6 +3411,34 @@ BT_AUDIO.monsterHitHero = function (armored, opts, fallbackKey) {
     this.play(fallbackKey || 'monster-hit', opts);
   }
 };
+/* ═══ v2.3.2996: WHAT A MONSTER'S ELEMENT SOUNDS LIKE ON YOU ═══
+   The four statuses a monster's hit now carries (game/elemHits.js), each from
+   a recording already in the game -- no new files, nothing synthesised: the
+   snowball's own crunch for a chill, the pan's sizzle for a burn and quieter
+   for each of its ticks, the whirlwind's rush for a gust, the slime orb's
+   splat for being held.  Under the hit's own clang (monsterHitHero, peak
+   ~0.9): each slice peaks at ~0.25-0.4.  A slice that ends mid-sound fades
+   out over its last 80 ms rather than clicking off.
+   Entries: [sample, offset s, duration s, vol, rate]. */
+BT_AUDIO.ELEM_SOUNDS = {
+  chill: ['snowman-hit', 0.03, 0.27, 0.55, 1.12],
+  burn: ['pan-sizzle', 0.3, 0.6, 2.2, 1],
+  burnTick: ['pan-sizzle', 1.5, 0.35, 2.6, 1.08],
+  gust: ['whirlwind', 0.1, 0.62, 0.45, 1.2],
+  stuck: ['slime-projectile-hit', 0, 0.62, 2.2, 0.9],
+};
+BT_AUDIO.elemHit = function (st) {
+  var L = st && Object.prototype.hasOwnProperty.call(this.ELEM_SOUNDS, st) ? this.ELEM_SOUNDS[st] : null;
+  if (!L) return;
+  this._lastElemSound = st;   /* what it meant to play, for the tests (mp-elemhits) */
+  var h = this.play(L[0], { offset: L[1], duration: L[2], vol: L[3], rate: L[4] * (1 + (Math.random() - 0.5) * 0.06) });
+  if (!h || !h.gain || !this.ctx) return;
+  try {
+    var real = L[2] / (L[4] || 1), t0 = this.ctx.currentTime;
+    h.gain.gain.setValueAtTime(L[3], t0 + Math.max(0, real - 0.08));
+    h.gain.gain.linearRampToValueAtTime(0, t0 + real);
+  } catch (e) { /* the fade is a nicety */ }
+};
 BT_AUDIO.monsterDeath = function (arch, opts) {
   /* No-op for slimes (fodder).  The splat SFX is owned by the render-
      loop death-detection in BroTown.jsx — playing the bony-death wav

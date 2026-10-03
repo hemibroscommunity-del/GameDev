@@ -251,6 +251,7 @@ import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn O
 import { wheelPropRec, wheelPropArt, wheelScorch, freeWheelScorch } from '../wheelObjects.js';   /* v2.3.2995: ...and on the Wheel's objects: arrows, burn marks, the pieces a hit cuts */
 import { isWheelBroken } from '@/game/wheelBreak.js';   /* v2.3.2995: a broken object's marks go with it */
 import { freePropChips } from '../hitMaterialFx.js';    /* v2.3.2995 */
+import { ELEM_ICON_SRC } from '@/game/elemHits.js';   /* v2.3.2996: a monster's element on the number */
 
 /* v2.3.2654: how a print reads and how long it lasts.  PRINT_TTL_MS is
    mirrored by stateCleanup's filter -- the array and the drawer must expire on
@@ -274,7 +275,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
@@ -290,7 +291,7 @@ import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.176
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
-import { rangedAimAngle, bowGripPoint, orbCrashFx /* v2.3.2991: the staff's crash, filmed for the stat scene */ } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
+import { rangedAimAngle, bowGripPoint, orbCrashFx /* v2.3.2991: the staff's crash, filmed for the stat scene */, isPlayerDead /* v2.3.2996 */ } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG, BLOCK_ARM_FACING, blockArmTextureFrom } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon; v2.3.2920 a peer's arm */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js'; /* v2.3.1864; weaponFitH v2.3.2910 */
@@ -855,7 +856,10 @@ const DMG_CRIT_FONT_PX = 38;
 export const DMG_CRIT_COLOR = '#FFF27A';
 
 const POPUP_ICONS = {};
-const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit'];
+/* v2.3.2996: + the four elements a monster's hit carries (game/elemHits.js):
+   the snowflake, the flame, the wind and the slime, in the heart's place on
+   the number.  Loaded here with the rest, at start -- never on first hit. */
+const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit'].concat(Object.keys(ELEM_ICON_SRC));
 /* v2.3.2211: 'crit' is the one key whose art does not live in /icons/popups.
    Reusing the Hero screen's own crit icon rather than copying it to a second
    path -- one asset, one meaning, and no chance of the two drifting apart
@@ -869,7 +873,7 @@ const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit
    in place because StatDemo's DOM <img> (which shares this URL so the
    browser cache is warm) and combatHelpers' BUILD_ICONS name it; a twin
    under its own name changes only the two readers that were measured. */
-const POPUP_ICON_SRC = { crit: '/icons/ui/hero/crit.webp', heart: '/icons/popups/heart-256.webp' };
+const POPUP_ICON_SRC = Object.assign({ crit: '/icons/ui/hero/crit.webp', heart: '/icons/popups/heart-256.webp' }, ELEM_ICON_SRC);
 /* v2.3.1403 (owner: "the damage bow icon did not work" while damage
    numbers still showed): the icon load was one-shot — a single flaked
    fetch (common right after a deploy) left that icon undefined for the
@@ -2347,6 +2351,14 @@ export class EffectsRenderer {
     /* v2.3.2824: the whirlwind's windup ring -- ground layer, under everyone. */
     this.windupGfx = new Graphics();
     this.telegraphLayer.addChild(this.windupGfx);
+    /* v2.3.2996: a monster's element on whoever it hit -- frost round the
+       feet, the slime's goo, a burn's glow on the GROUND under everyone; the
+       goo over the boots, a burn's flames at the feet and the wind's streaks
+       on top (overlayWorld), so they show over the figure they are on. */
+    this.elemGfx = new Graphics();
+    this.telegraphLayer.addChild(this.elemGfx);
+    this.elemFrontGfx = new Graphics();
+    this.overlayLayer.addChild(this.elemFrontGfx);
     this.fireTrailSprites = [];
 
     this.overlayGfx = new Graphics();
@@ -4023,6 +4035,7 @@ export class EffectsRenderer {
     try { this._updateWhirlVortex(S, now); } catch (e) { if (typeof window !== 'undefined' && window.__btProbe) window.__btWhirlErr = String(e && e.message); }
     try { this._updateAbilityWindups(S, now); } catch (e) { /* v2.3.2824: ditto */ }
     try { this._updateSmithing(S, now); } catch (e) { /* v2.3.2827: ditto */ }
+    try { this._updateElemStatusFx(S, now); } catch (e) { /* v2.3.2996: ditto */ }
     this._updateScreenFlash(S, viewW, viewH, now);
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
@@ -4624,6 +4637,12 @@ export class EffectsRenderer {
           icon.scale.set(targetH / tex.height);
           this.dmgLayer.addChild(icon);
           dmg._pixiIcon = icon;
+          /* v2.3.2996: QA -- which icons the numbers were actually drawn with
+             (mp-elemhits), house style: armed by the harness only */
+          if (typeof window !== 'undefined' && window.__btProbe) {
+            const _pi = window.__btPopupIconsDrawn || (window.__btPopupIconsDrawn = Object.create(null));
+            _pi[iconKey] = (_pi[iconKey] || 0) + 1;
+          }
         }
         /* Optional muted-gray suffix Text drawn on the same line as the
            main number (e.g. "11" with "block 14" after it for mitigated
@@ -10200,6 +10219,173 @@ export class EffectsRenderer {
       }
       try { BT_AUDIO.play('mine-strike', { offset: 0.08, duration: 0.4, vol: 0.45 }); } catch (e) { /* sound only */ }
       if (typeof window !== 'undefined' && window.__btProbe) window.__btSmithStrikes = (window.__btSmithStrikes || 0) + 1;
+    }
+  }
+
+  /* ═══ v2.3.2996: A MONSTER'S ELEMENT, DRAWN ON WHOEVER IT HIT ═══
+     Owner: "a snowflake icon for instance when hit by a snowman's snowball and
+     slowing down for a second or having burning tick damage from a fire
+     goblin ... From desert winds mummy an air icon that blows the character
+     back", and "slime for floral damage ... a brief held in place effect".
+     The icon rides the number (gameEvents.js); this is the rest, drawn in code
+     for as long as the status lasts (game/elemHits.js stamps the times -- on
+     S for you, on a peer's record for them), so a slowed or held player can
+     SEE why:
+       chill  a ring of frost round the feet, ice spikes on it, snow falling
+       stuck  a puddle of the slime's goo, and goo over the boots
+       burn   a warm glow underfoot, flames at the feet, embers up the body
+       gust   streaks of wind blowing past, and a puff of dust where it struck
+     Sized with the figure (zonePlayerScale -- the dunes draw you smaller
+     toward the horizon) and fading over each status's last moments. */
+  _updateElemStatusFx(S, now) {
+    const g = this.elemGfx, f = this.elemFrontGfx;
+    if (!g || !f) return;
+    g.clear(); f.clear();
+    if (!S || !S.player) return;
+    const zone = S.currentZone;
+    const dts = S._dtScale || 1;
+    const parts = S.hitParticles;
+    const GUST_FX_MS = 650;
+    /* Sizes are world px for the standing figure (~100 tall, boots at fy),
+       and were checked at phone size (mp-elemhits' look-* pictures): the
+       first cut -- a thin ring, three 8 px flames -- was there but did not
+       read on a phone, so each look now reaches up the body as well. */
+    const draw = (R, x, y) => {
+      const chill = R._chillUntil > now ? R._chillUntil - now : 0;
+      const stuck = R._stuckUntil > now ? R._stuckUntil - now : 0;
+      const burn = R._burnUntil > now ? R._burnUntil - now : 0;
+      const gustAge = R._gustAt ? now - R._gustAt : Infinity;
+      if (!chill && !stuck && !burn && !(gustAge >= 0 && gustAge < GUST_FX_MS)) return;
+      const k = zonePlayerScale(zone, x, y, TILE) || 1;
+      const fy = y + playerGroundDy(zone, x, y);
+      /* QA (mp-elemhits), armed by the harness only: frames each look was drawn */
+      if (typeof window !== 'undefined' && window.__btProbe) {
+        const d = window.__btElemFxDrawn || (window.__btElemFxDrawn = Object.create(null));
+        if (chill) d.chill = (d.chill || 0) + 1;
+        if (stuck) d.stuck = (d.stuck || 0) + 1;
+        if (burn) d.burn = (d.burn || 0) + 1;
+        if (gustAge >= 0 && gustAge < GUST_FX_MS) d.gust = (d.gust || 0) + 1;
+      }
+      if (burn) {
+        const a = Math.min(1, burn / 250);
+        const fl = 0.8 + 0.2 * Math.sin(now / 70);
+        g.ellipse(x, fy, 24 * k, 8 * k); g.fill({ color: 0xff8a2a, alpha: 0.3 * a * fl });
+        /* a row of flames at the feet, the middle ones tallest... */
+        for (let i = 0; i < 5; i++) {
+          const tx = x + (i - 2) * 7 * k + Math.sin(now / 95 + i * 2.1) * 1.5 * k;
+          const h = (22 + (i === 2 ? 14 : (i === 1 || i === 3) ? 8 : 0)) * k * (0.78 + 0.22 * Math.sin(now / 60 + i * 1.7));
+          const wv = (i === 2 ? 6 : 5) * k;
+          f.moveTo(tx - wv, fy); f.quadraticCurveTo(tx + Math.sin(now / 80 + i) * 4 * k, fy - h, tx + wv, fy);
+          f.fill({ color: (i & 1) ? 0xffc23a : 0xff5e14, alpha: 0.88 * a });
+          f.moveTo(tx - wv * 0.45, fy); f.quadraticCurveTo(tx, fy - h * 0.55, tx + wv * 0.45, fy);
+          f.fill({ color: 0xfff0b0, alpha: 0.85 * a });
+        }
+        /* ...and licking up both sides of the body */
+        for (const sx of [-1, 1]) {
+          const bx = x + sx * 12 * k, by = fy - (30 + 8 * Math.sin(now / 110 + sx)) * k;
+          const h = (16 + 5 * Math.sin(now / 55 + sx * 2)) * k;
+          f.moveTo(bx - 4 * k, by); f.quadraticCurveTo(bx + sx * 3 * k, by - h, bx + 4 * k, by);
+          f.fill({ color: 0xff7a1e, alpha: 0.8 * a });
+        }
+        if (parts && Math.random() < 0.85 * dts) {
+          parts.push({ x: x + (Math.random() - 0.5) * 26 * k, y: fy - (6 + Math.random() * 60) * k,
+            vx: (Math.random() - 0.5) * 0.6, vy: -1.8 - Math.random() * 1.6, life: 0.6 + Math.random() * 0.3,
+            color: ['#ff5e14', '#ff9a3c', '#ffc23a', '#ffe9a8'][(Math.random() * 4) | 0], size: 1.8 + Math.random() * 1.4 });
+        }
+      }
+      if (chill) {
+        const a = Math.min(1, chill / 200);
+        g.ellipse(x, fy, 27 * k, 9.5 * k); g.fill({ color: 0xd8f2ff, alpha: 0.5 * a });
+        g.ellipse(x, fy, 27 * k, 9.5 * k); g.stroke({ color: 0x8fd0ff, width: 2.2 * k, alpha: 0.95 * a });
+        for (let i = 0; i < 9; i++) {
+          const ang = i / 9 * Math.PI * 2 + 0.25;
+          const bx = x + Math.cos(ang) * 26 * k, by = fy + Math.sin(ang) * 9 * k;
+          const h = (7 + (i % 3) * 3.5) * k;
+          g.moveTo(bx - 2.6 * k, by); g.lineTo(bx, by - h); g.lineTo(bx + 2.6 * k, by); g.closePath();
+          g.fill({ color: 0xf2fbff, alpha: 0.95 * a });
+        }
+        /* frost creeping up the shins, in front of them */
+        for (let i = 0; i < 6; i++) {
+          const sx = (i & 1) ? 1 : -1;
+          const cx = x + sx * (5 + (i % 3) * 2.5) * k, cy = fy - (3 + i * 3.6) * k;
+          const r = (3.2 - i * 0.3) * k;
+          f.moveTo(cx, cy - r * 1.6); f.lineTo(cx + r, cy); f.lineTo(cx, cy + r * 1.6); f.lineTo(cx - r, cy); f.closePath();
+          f.fill({ color: i % 2 ? 0xdff4ff : 0xb6e3ff, alpha: 0.9 * a });
+        }
+        if (parts && Math.random() < 0.6 * dts) {
+          parts.push({ x: x + (Math.random() - 0.5) * 40 * k, y: fy - (50 + Math.random() * 45) * k,
+            vx: (Math.random() - 0.5) * 0.4, vy: -0.8, life: 0.75, color: Math.random() < 0.5 ? '#ffffff' : '#bfe7ff', size: 1.9 });
+        }
+      }
+      if (stuck) {
+        const a = Math.min(1, stuck / 180);
+        const wob = Math.sin(now / 110) * 0.06;
+        g.ellipse(x, fy, 28 * k * (1 + wob), 9.5 * k * (1 - wob)); g.fill({ color: 0x4fae3a, alpha: 0.85 * a });
+        for (let i = 0; i < 7; i++) {
+          const ang = i / 7 * Math.PI * 2 + 0.4;
+          const r = (3.4 + (i % 3)) * k * (1 + 0.15 * Math.sin(now / 90 + i));
+          g.circle(x + Math.cos(ang) * 26 * k, fy + Math.sin(ang) * 8.8 * k, r); g.fill({ color: 0x4fae3a, alpha: 0.85 * a });
+        }
+        g.ellipse(x - 4 * k, fy - 1.5 * k, 17 * k, 5 * k); g.fill({ color: 0x8be36a, alpha: 0.8 * a });
+        g.ellipse(x + 8 * k, fy - 2.8 * k, 4.5 * k, 1.8 * k); g.fill({ color: 0xe8ffd8, alpha: 0.65 * a });
+        /* over the boots: the goo that is holding them */
+        for (const s2 of [-1, 1]) {
+          f.ellipse(x + s2 * 6.5 * k, fy - 3.5 * k, 8.5 * k, 6 * k * (1 + wob)); f.fill({ color: 0x5cc044, alpha: 0.88 * a });
+          f.ellipse(x + s2 * 6.5 * k - 2 * k, fy - 6.5 * k, 3 * k, 1.4 * k); f.fill({ color: 0xd9ffc9, alpha: 0.65 * a });
+        }
+        if (parts && Math.random() < 0.15 * dts) {
+          parts.push({ x: x + (Math.random() - 0.5) * 18 * k, y: fy - 12 * k, vx: 0, vy: 0.3, life: 0.45, color: '#6fcf4a', size: 1.9 });
+        }
+      }
+      if (gustAge >= 0 && gustAge < GUST_FX_MS) {
+        const t = gustAge / GUST_FX_MS, a = 1 - t * t;
+        const ang = typeof R._gustAng === 'number' ? R._gustAng : 0;
+        const ux = Math.cos(ang), uy = Math.sin(ang);
+        const px = -uy, py = ux;
+        const cy = y - 10 * k;
+        /* streaks blowing past you, the way you were blown */
+        /* each streak twice: a dark line under a pale one, so it reads on
+           snow, on sand and across the bro's own white shirt */
+        for (const pass of [0, 1]) {
+          const col = pass ? 0xf2faff : 0x41586a, wAdd = pass ? 0 : 2.2 * k, al = pass ? 0.92 : 0.42;
+          for (let i = 0; i < 5; i++) {
+            const off = (i - 2) * 11 * k;
+            const lead = (-50 + t * 96) * k + (i % 2) * 10 * k;
+            const sx = x + px * off + ux * lead, sy = cy + py * off * 0.7 + uy * lead;
+            const len = (38 - (i % 2) * 10) * k;
+            f.moveTo(sx, sy); f.lineTo(sx + ux * len, sy + uy * len);
+            f.stroke({ color: col, width: 3.2 * k + wAdd, alpha: al * a, cap: 'round' });
+            /* a curl at the head of the middle streak, the wind icon's swirl */
+            if (i === 2) {
+              f.moveTo(sx + ux * len, sy + uy * len);
+              f.arc(sx + ux * len + px * 5 * k, sy + uy * len + py * 5 * k, 5 * k, ang - Math.PI / 2, ang + Math.PI);
+              f.stroke({ color: col, width: 2.8 * k + wAdd, alpha: al * a, cap: 'round' });
+            }
+          }
+        }
+        /* a puff of dust where it struck, once */
+        if (parts && R._gustDustAt !== R._gustAt) {
+          R._gustDustAt = R._gustAt;
+          for (let i = 0; i < 9; i++) {
+            const da = ang + Math.PI + (Math.random() - 0.5) * 1.6;
+            const sp = 0.8 + Math.random() * 1.6;
+            parts.push({ x: x + (Math.random() - 0.5) * 14 * k, y: fy - 2 * k, vx: Math.cos(da) * sp, vy: Math.sin(da) * sp * 0.5 - 0.9,
+              life: 0.6, color: i % 2 ? '#d9cbb0' : '#efe6d4', size: 2.1 });
+          }
+        }
+      }
+    };
+    if (!isPlayerDead(S)) draw(S, S.player.x, S.player.y);
+    const others = S.others;
+    if (others) {
+      for (const id of Object.keys(others)) {
+        const o = others[id];
+        if (!o || o._isDead || (o.zone || o.z || 'town') !== zone) continue;
+        if (!(o._chillUntil > now || o._stuckUntil > now || o._burnUntil > now || (o._gustAt && now - o._gustAt < GUST_FX_MS))) continue;
+        const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
+        const oy = typeof o.renderY === 'number' ? o.renderY : o.y;
+        if (typeof ox === 'number' && typeof oy === 'number') draw(o, ox, oy);
+      }
     }
   }
 
