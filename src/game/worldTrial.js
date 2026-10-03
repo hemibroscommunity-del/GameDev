@@ -474,7 +474,7 @@ function wheelHud(S) {
     /* v2.3.2951: the pairs of alike grounds with a blend picture */
     (wheelBlends().length ? 'blends  ' + wheelBlends().length + ' made\n' : '') +
     /* v2.3.2982: the big-town preview, so a screenshot says which town it is */
-    (wheelBigTown() > 1 ? 'preview buildings x' + wheelBigTown() + (wheelObjectsInfo() ? ' (' + wheelObjectsInfo().buildings + ' of ' + wheelObjectsInfo().buildingsOf + ')' : '') + '\n' : '') +
+    (wheelBigTown() > 1 ? 'buildings x' + wheelBigTown()   /* v2.3.2994: 1.5 is the standard now, not a preview */ + (wheelObjectsInfo() ? ' (' + wheelObjectsInfo().buildings + ' of ' + wheelObjectsInfo().buildingsOf + ')' : '') + '\n' : '') +
     /* v2.3.2975: the objects -- drawn now, sprite sheets in memory, and
        any that came on screen before their sheet */
     (wheelObjectsInfo() ? 'objects ' + wheelObjectStats.drawn + ' drawn · ' + wheelObjectStats.pages + '/' + wheelObjectStats.pagesOf + ' sheets ~' +

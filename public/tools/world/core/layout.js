@@ -415,7 +415,7 @@ export function buildBlueprint(plan) {
       if (inAnchor) { cls[i] = C.anchor; reg[i] = townId != null ? townId : best; continue; }
       if (T && townId != null) {
         const tx = ax - g.cx, ty = ay - g.cy;
-        if (tx >= townBox.x0 && tx <= townBox.x1 && ty >= townBox.y0 && ty <= townBox.y1 && TS.rects.some((r) => inWobblyRect(tx, ty, r, TE, seed + 53, g.cx, g.cy, townReach))) { reg[i] = townId; continue; }
+        if (tx >= townBox.x0 && tx <= townBox.x1 && ty >= townBox.y0 && ty <= townBox.y1 && TS.rects.some((r) => inWobblyRect(tx, ty, r, TE, seed + 53 + (TE.seed | 0), g.cx, g.cy, townReach))) { reg[i] = townId; continue; }
       }
       if (inCommons && commonsId != null) { reg[i] = commonsId; continue; }
       reg[i] = best;

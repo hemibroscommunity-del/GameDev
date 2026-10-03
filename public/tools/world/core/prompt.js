@@ -140,6 +140,11 @@ function routeLines(plan, bp, rect) {
   const out = [];
   const near = (p, q, d) => (p[0] - q[0]) * (p[0] - q[0]) + (p[1] - q[1]) * (p[1] - q[1]) < d * d;
   const g = gridInfo(plan);
+  /* v2.3.2994: a road that starts this near the centre starts at a town
+     gate -- 1.5 squares was the old town's; the 1.5x town's north gate is
+     past it (each street its own gate, gateNS / gateEW) */
+  const TG = plan.town;
+  const gateReach = Math.max(1.5 * g.P, TG ? Math.max(TG.gate || 0, TG.gateNS || 0, TG.gateEW || 0) + 0.25 * g.P : 0);
   const planRoad = Object.create(null), planRiver = Object.create(null), planRail = Object.create(null);
   for (const r of plan.roads || []) planRoad[r.id] = r;
   for (const r of plan.rivers || []) planRiver[r.id] = r;
@@ -186,7 +191,7 @@ function routeLines(plan, bp, rect) {
         const at = endsAt(first);
         out.push(trunk ? `${name} branches off ${trunk} here and heads out by the ${s.to} edge.`
           : at ? `${name} begins at ${at} here and heads out by the ${s.to} edge.`
-            : route.kind === 'road' && Math.hypot(first[0] - g.cx, first[1] - g.cy) < 1.5 * g.P ? `${name} begins at the town gate here and heads out by the ${s.to} edge.`
+            : route.kind === 'road' && Math.hypot(first[0] - g.cx, first[1] - g.cy) < gateReach ? `${name} begins at the town gate here and heads out by the ${s.to} edge.`
               : `${name} begins here and heads out by the ${s.to} edge.`);
       } else if (s.from && !s.to) {
         const at = endsAt(last), joined = route.kind === 'road' ? joins(route) : null;

@@ -343,6 +343,18 @@ remnant to migrate server-side, not a mode to preserve.
   is in the river), the mine railway leaving from the depot where it stands
   and the diagonal roads forking just past each gate (`layWheel`; the plan's
   own town unchanged): WORLD-MAP-PIPELINE "At 1.5x, all 17 fit"; and
+  since v2.3.2994 1.5x IS THE STANDARD TOWN -- the owner: "yes make 1.5x
+  live and the standard size":
+  - plan.js exports `PLAN = bigTownPlan(BUILDINGS)` (1.5) of `BASE_PLAN`, the
+    plan as written. So the worker, the server's bake, the studios and the
+    tests all get the 1.5x town.
+  - `?bigtown=1` is the old town, and `?bigtown` is 2x.
+  - The town's edge has its own noise (`BIG_TOWN_EDGE_SEED` 16, read as
+    `town.edge.seed`). The usual noise lay flat along Market Row's south side,
+    672 game px straight, and put yard on the Mill Bridge.
+  - The prompt's town-gate test reads the real gates (`gateReach`).
+  - Re-baked, no monster place moved.
+  - WORLD-MAP-PIPELINE "1.5x is the standard". And
   since v2.3.2990 THE WHEEL IS THE WORLD -- the owner: "I'm ready to have
   this replace the old game map. Just have players spawn in town. Then push
   to main", then "The Wheel's new Brotown" and, of the old lands, "Close
