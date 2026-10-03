@@ -142,6 +142,28 @@ export function isWheelSwimming(S) {
   return !!(S && S._wheelSwim && S._wheelSwim.on);
 }
 
+/**
+ * v2.3.3012: out of the water NOW.  Fishing and mining SEAT you
+ * (lifeSkillRewards.startExtraction), and the Wheel's seats are baked onto
+ * dry ground -- so a swimmer who taps a fishing spot is put on its bank.  The
+ * looks round the boots can still find the drawn shore a few px off a seat
+ * (a survey of all 32 seats as drawn: two with one or two of the five wet),
+ * and a swimmer seated there would stay one -- fishing as a head in the
+ * water.  The seat is the
+ * bank, so this ends the swim; the looks decide again from here as ever
+ * (back in only at SWIM_IN wet).  True when you were swimming, for the drip.
+ */
+export function climbOut(S, now) {
+  const sw = S && S._wheelSwim;
+  if (!sw || !sw.on) return false;
+  sw.on = false;
+  sw.at = typeof now === 'number' ? now : Date.now();
+  sw.ph = 0;
+  sw.vx = 0;
+  sw.vy = 0;
+  return true;
+}
+
 /** The walk's multiplier: SWIM_MULT with the stroke's push, 1 out of it. */
 export function wheelSwimMult(S) {
   const sw = S && S._wheelSwim;

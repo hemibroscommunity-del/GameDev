@@ -399,8 +399,8 @@ remnant to migrate server-side, not a mode to preserve.
     - See docs/specs/quest-path-guide.md §0.
   - A respawn now nulls `S.npcs` like every zone change. It used to carry the
     Wheel's Mayor into today's town, where the townsfolk never spawned.
-  - Not there yet, so not in the game: gathering (life_1 fish, life_2 ore
-    can't finish), monsters past levels 1-5, dungeons.
+  - Not there yet, so not in the game: monsters past levels 1-5, dungeons.
+    (Gathering came in v2.3.3012, the last bullet below.)
   - The QA harness gives every scenario `trial=off&nospawn` unless it passes
     `world: 'wheel'` (`nospawn` alone when its query names a trial).
   - `mp-questline`, CI's "playable", plays in the Wheel. `mp-wheelhome`
@@ -612,6 +612,35 @@ remnant to migrate server-side, not a mode to preserve.
     worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard
     folded, ~40 with it up (37 was "too small", v2.3.2249); `?zoom=0.8` is
     the view before; WORLD-MAP-PIPELINE "And another 25%", `mp-zoomout`.
+  - Since v2.3.3012 the WHEEL GROWS RESOURCES -- the owner: "Add harvestable
+    resources back to the wheel", "Copper can be in the safe areas around
+    town. Iron can be in lvl 1 monster areas ... 'black steel' in like level
+    10+ areas":
+    - 140 nodes baked with the monsters' places (`WHEEL_NODES`,
+      bake-wheel-spawns.mjs `bakeWheelNodes`; the worker's
+      wheelzone.js `_wheelSpawnNodes`): copper/pine/minnow on the commons
+      (tier 1), iron/softwood/clownfish at levels 1-10 (tier 6), black
+      steel/hardwood/trout at 11-20 (tier 11); a node carries `home`, its
+      land, whose shard it drops (none on the commons);
+    - fishing spots in the real water (a 4 x 3 patch WEST of the spot, as
+      the baked rod's line falls; every land has some -- "Make all 8 have
+      fishing spots"), the angler on dry ground, nothing tall in front of any
+      node or its worker; with v2.3.3003's swimming, a swimmer who taps a
+      spot or a vein climbs out onto its baked-dry seat, and a chop or a cook
+      from the water is refused, "Swimming!" (lifeSkillRewards.js
+      `startExtraction`); the spot's FISH drawn in code
+      (`src/rendering/wheelNodes.js` `WheelFish`), only the nodes near the
+      view drawn (`wheelNodeView`) and marked on the Wheel's minimap, a glyph
+      a kind tinted by tier ("Show nodes on minimap"); veins and trees by
+      tier (`tools/make_tier_art.py`, effectsRenderer `NODE_TIER_*`);
+    - the tier after iron is BLACK STEEL (`BLACKSMITH_TIERS.steel`, key
+      unchanged, `ore_black_steel_ore`), its blades black ("Make the black
+      steel black": materialTints.js `blacksteel` via `BASE_MATERIAL`); the
+      quest's road leads to the nearest
+      node its next step needs (questRoute.js `_wheelGatherPoint`, a step's
+      `node`); the Wheel's nodes drop at the flip to town;
+    - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,
+      `mp-wheelnodes`: docs/specs/wheel-resources.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -630,7 +659,11 @@ remnant to migrate server-side, not a mode to preserve.
     - the Wheel's monster separation is a sweep along x (`_wheelSeparate`):
       every pair of 192 was 1.0 of the tick's 1.27 ms, now 0.26 ms in all;
       every other zone keeps the old loop; `wheeldeep: false` the kill switch;
-    - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§8,
+    - the resources (#780's, v2.3.3012) keep their 300 px from these places
+      too (the bake's `monsterPts` takes `deeper`): re-baked, 142 nodes, 84
+      moved; `mp-wheelseats` walks to all 34 fishing seats on a phone and
+      checks them against the ground as drawn (docs/specs/wheel-resources.md);
+    - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§9,
       `mp-wheeldeep`.
   - Since v2.3.3014 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
     stuns briefly; storm shocks nearby players; water slows stamina refill;

@@ -99,6 +99,17 @@ const FISH_THUMB_DEFAULT = `/icons/items/fish-minnow.webp${ITEMS_V}`;
 const COOKED_FISH_THUMB_DEFAULT = `/icons/items/cooked-minnow.webp${ITEMS_V}`;
 export const ORE_THUMBS = {  /* v2.3.2822: exported for the Smelting rows */
   ore_copper_ore: `/icons/items/ore-copper.webp${ITEMS_V}`,
+  /* v2.3.3012: the Wheel grows iron (levels 1-10) and black steel (11-20);
+     each its own colours, gradient-mapped from the copper lump by
+     tools/make_tier_art.py */
+  ore_iron_ore: `/icons/items/ore-iron.webp${ITEMS_V}`,
+  ore_black_steel_ore: `/icons/items/ore-black-steel.webp${ITEMS_V}`,
+};
+/* v2.3.3012: and softwood and hardwood, the log recoloured the same way; the
+   pine log (and any wood not listed) keeps the one log picture */
+const WOOD_THUMBS = {
+  wood_softwood: `/icons/items/wood-softwood.webp${ITEMS_V}`,
+  wood_hardwood: `/icons/items/wood-hardwood.webp${ITEMS_V}`,
 };
 const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
 /* v2.3.2822: smelted bars (server smelting.js).  One painted grey ingot, the
@@ -181,6 +192,7 @@ export const thumbFor = (key) => {
   if (k.startsWith('burnt_'))       return BURNT_DUST_THUMB;
   if (FISH_THUMBS[k])               return FISH_THUMBS[k];
   if (k.startsWith('fish_'))        return FISH_THUMB_DEFAULT;
+  if (WOOD_THUMBS[k])               return WOOD_THUMBS[k];   /* v2.3.3012 */
   if (k.startsWith('wood_'))        return WOOD_THUMB;
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;

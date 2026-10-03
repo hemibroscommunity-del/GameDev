@@ -298,6 +298,11 @@ Lv 11–15"). Only the first stretch had monsters. Now the next three do too.
 - **The phone.** Nothing new to load: a stretch's monsters wear their land's
   looks, which load as you walk toward them (below). From Brotown's square all
   192 are far off screen and none is drawn.
+- **The resources keep clear of them.** The Wheel's resources (v2.3.3012,
+  docs/specs/wheel-resources.md) stand at least 300 px from every monster
+  place. Their bake took only the first stretch's places until the two came
+  together; it takes each land's `deeper` ones too now, which moved 84 of the
+  nodes and added two fishing spots (142 in all).
 
 ## Not in this round
 
@@ -333,7 +338,7 @@ Lv 11–15"). Only the first stretch had monsters. Now the next three do too.
   both ends of every stretch, the stretches outward in order, every stat what
   the home zone builds at that level, the home's shard, the weapon roll's
   level curve), §4b (`wheeldeep: false`), §3 (192 in the `zone_state`, under
-  64 KB) and §8 (the sweep: the push, what it leaves alone, a knot of 12 opened
+  64 KB) and §9 (the sweep: the push, what it leaves alone, a knot of 12 opened
   as the loop opens it, the tick using it); test-world-core's deeper places
   (on the very tier, `clearTier` inside it, 150 px apart, inside nothing,
   360 px from a camp, the first stretch untouched); and

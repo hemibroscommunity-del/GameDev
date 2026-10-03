@@ -122,7 +122,8 @@ export function getSalvageReturns(item, BLACKSMITH_TIERS, WOODWORKING_TIERS) {
   if (isWood) {
     returns.push({ key: 'wood_' + tier.wood, label: tier.wood.replace(/_/g, ' '), qty: Math.max(1, Math.floor((tier.woodCost || 3) * SALVAGE_RETURN_RATE)), type: 'wood' });
   } else {
-    returns.push({ key: 'ore_' + tier.oreName + '_ore', label: tier.oreName + ' ore', qty: Math.max(1, Math.floor((tier.oreCost || 3) * SALVAGE_RETURN_RATE)), type: 'ore' });
+    /* v2.3.3012: 'black_steel' reads as two words */
+    returns.push({ key: 'ore_' + tier.oreName + '_ore', label: tier.oreName.replace(/_/g, ' ') + ' ore', qty: Math.max(1, Math.floor((tier.oreCost || 3) * SALVAGE_RETURN_RATE)), type: 'ore' });
   }
   returns.push({ key: '_gold', label: 'gold', qty: Math.max(1, Math.floor((tier.goldCost || 10) * SALVAGE_RETURN_RATE)), type: 'gold' });
   return returns;

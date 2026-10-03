@@ -20,7 +20,8 @@
  * in town with nothing marked at all, which is worse than no feature: it
  * would read as "no quest is active".
  */
-import { QUEST_CHAINS, QUEST_STATUS } from '@/data/gameSystems.js';
+import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */ } from '@/data/gameSystems.js';
+import { hasGatherTool } from '@/data/lifeSkills.js';   /* v2.3.3012: never lead to a node that is not drawn */
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
 import { ZONES, isWorldViewZone, zoneHomes } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel'; v2.3.2990: its lands */
@@ -354,6 +355,11 @@ function _npcHere(S, name) {
  *   - a hand-in, or a brand-new player's welcome, leads to the Mayor here;
  *   - "any zone will do" (fishing, ore) leads nowhere: the Wheel has nothing
  *     to gather yet.
+ *     v2.3.3012: it has now (server wheelzone.js) -- so it leads to the
+ *     nearest live node of the kind the quest's next step needs (a fishing
+ *     spot, then a tree, for life_1; a vein for life_2), and stops when you
+ *     are at it.  A step that needs no node (light the fire, cook) has no
+ *     road, as before.
  *
  * Anywhere else this is what it was -- null -- as no other zone but town has
  * a live npc list or a `lands` table. */
@@ -361,7 +367,7 @@ const LAND_HERE_R = 600;   /* game px: each land's monsters all stand within ~55
 
 function _wheelPoint(currentZone, rpg, S) {
   const target = questTargetZone(rpg, S);
-  if (target === ANY_FIELD_ZONE) return null;
+  if (target === ANY_FIELD_ZONE) return zoneHomes(currentZone) ? _wheelGatherPoint(rpg, S) : null;
   if (target && target !== QUEST_HOME_ZONE) {
     const homes = zoneHomes(currentZone);
     const z = homes && homes.includes(target) ? ZONES[currentZone] : null;
@@ -373,6 +379,50 @@ function _wheelPoint(currentZone, rpg, S) {
   }
   const want = _wantNpc(rpg, S);
   return want ? _npcHere(S, want) : null;
+}
+
+/* ═══ v2.3.3012: A GATHERING QUEST LEADS TO THE NEAREST NODE ═══
+   The node kind comes from the quest: its current step's `node` when it has
+   steps (life_1: fish, then a log), else its own (life_2: ore) -- the first
+   active "any zone" quest that is not yet done, as questTargetZone reads them.
+   Only live nodes you hold the tool for: a node without one is not drawn
+   (effectsRenderer, v2.3.1680), and a road to something invisible is worse
+   than none.  Within GATHER_HERE_R of it you are there, and the road stops,
+   as it does among a land's monsters. */
+const GATHER_HERE_R = 160;
+
+function _wantNode(rpg, S) {
+  const quests = (rpg && rpg._quests) || null;
+  if (!quests) return null;
+  for (const qid of Object.keys(quests)) {
+    if (quests[qid] !== QUEST_STATUS.active) continue;
+    const q = QUEST_CHAINS[qid];
+    if (!q || !q.anyZone) continue;
+    let done = false;
+    try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
+    if (done) continue;
+    const steps = questSteps(q, rpg, S);
+    if (steps) {
+      const cur = steps.find((st) => st.current);
+      return (cur && cur.node) || null;
+    }
+    return q.node || null;
+  }
+  return null;
+}
+
+function _wheelGatherPoint(rpg, S) {
+  const want = _wantNode(rpg, S);
+  const P = (S && S.player) || null;
+  if (!want || !P || !hasGatherTool(rpg, want)) return null;
+  let best = null, bestD = Infinity;
+  for (const n of ((S && S.gatherNodes) || [])) {
+    if (!n || n.nodeType !== want || !n.alive) continue;
+    const d = Math.hypot(n.x - P.x, n.y - P.y);
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  if (!best || bestD < GATHER_HERE_R) return null;
+  return { x: best.x, y: best.y, node: want };
 }
 
 /** Is `zoneId` open to this player?

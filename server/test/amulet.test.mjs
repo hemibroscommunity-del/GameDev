@@ -465,8 +465,11 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   px.coins = 100;
   px.shield = { gearBase: 'steel', gem: 'venom', name: 'Venom Shield' };
   await forge(wsx, { op: 'extract', target: 'shield' });
+  /* v2.3.3012: the steel tier is called Black Steel now (data.js
+     BLACKSMITH_TIER_LABELS -- the owner's ore after iron), so the rebuilt
+     name is too; the gearBase key is still 'steel' */
   check('extract shield: gem removed + blacksmith name rebuilt + polished credited + flat 25g',
-    px.shield.gem === null && px.shield.name === 'Steel Shield' && px.lifeSkills.gems.polished_venom === 1 && px.coins === 75,
+    px.shield.gem === null && px.shield.name === 'Black Steel Shield' && px.lifeSkills.gems.polished_venom === 1 && px.coins === 75,
     { shield: px.shield, coins: px.coins });
 
   // --- insufficient coins: no partial spend (gear + gems untouched) ---

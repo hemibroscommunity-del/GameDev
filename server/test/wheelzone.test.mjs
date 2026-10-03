@@ -27,6 +27,13 @@
  *      bow range does.
  *   7. WHAT 'wheel' IS NOT: no nodes scattered over the sea, no population
  *      scaling, no PvP, no zone config -- and it is a zone a client may name.
+ *   8. THE RESOURCES (v2.3.3012): the Wheel's baked nodes, tiered by distance
+ *      from town (copper, pine and minnows on the safe ground; iron, softwood
+ *      and clownfish at levels 1-10; black steel, hardwood and trout at
+ *      11-20), each named for what the forge and the workbench consume; a
+ *      harvest pays as anywhere and drops its land's shard (none on the
+ *      commons); the wire says each node's land only in the Wheel;
+ *      caps.wheelnodes; and the kill switch `wheelnodes: false`.
  *
  * v2.3.3013, PAST LEVEL 5 (the owner's yes to "monsters past level 5"):
  *  1b. THE DEEPER STRETCHES: each land's spawn list again in each of its next
@@ -34,13 +41,13 @@
  *      by the one copy of the stat math, on the tier's baked places; the first
  *      tier's 48 exactly as they were, and first in the list.
  *  4b. `wheeldeep: false` leaves a Wheel spawned after it with those 48.
- *   8. THE SEPARATION SWEEP: the Wheel keeps its monsters apart as every zone
+ *   9. THE SEPARATION SWEEP: the Wheel keeps its monsters apart as every zone
  *      does, by a sweep instead of every pair (the tick's cost, measured).
  */
 import { GameRoom } from '../src/index.js';
-import { ZONES, VALID_ZONE_IDS } from '../src/data.js';
+import { ZONES, VALID_ZONE_IDS, BLACKSMITH_TIERS, WOODWORKING_TIERS } from '../src/data.js';
 import { WHEEL_ZONE, WHEEL } from '../src/wheelzone.js';
-import { WHEEL_SPAWNS, WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns.js';
+import { WHEEL_SPAWNS, WHEEL_NODES, WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns.js';
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
 
 const mockState = {
@@ -444,14 +451,152 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
 // ── 7. WHAT 'wheel' IS NOT ────────────────────────────────────────────────
 {
   check('not: a zone config (no edge to clamp to, nothing to scale)', room._getZoneConfig(WHEEL_ZONE) === null);
-  check('not: nodes scattered over the map', (room._ensureZoneNodes(WHEEL_ZONE) || []).length === 0);
+  /* v2.3.3012: it has nodes now, but only the baked ones (section 8) -- none
+     from the random layout, whose every point of 43,008 px is likely sea */
+  check('not: nodes scattered over the map at random', (room._ensureZoneNodes(WHEEL_ZONE) || []).every((n) => /^wn-/.test(n.id)));
   check('not: population-scaled', room._spawnScalableZone(WHEEL_ZONE) === false);
   check('not: in ZONES (PvP needs ZONES[z].lawless, so it fails closed)', !Object.prototype.hasOwnProperty.call(ZONES, WHEEL_ZONE));
   check('not: a hub -- it heals at the ordinary rate (no town top-off on the spokes)',
     !['town', 'worldview', 'farm_home'].includes(WHEEL_ZONE));
 }
 
-// ── 8. THE SEPARATION SWEEP (v2.3.3013) ──────────────────────────────────
+// ── 8. THE RESOURCES (v2.3.3012) ──────────────────────────────────────────
+{
+  const nodes = room._ensureZoneNodes(WHEEL_ZONE) || [];
+  const want = Object.values(WHEEL_NODES).reduce((t, l) => t + l.length, 0);
+  check(`nodes: the Wheel grows every baked node (${nodes.length} of ${want})`, want > 100 && nodes.length === want, { got: nodes.length, want });
+  check('nodes: ids are unique and say whose they are', new Set(nodes.map((n) => n.id)).size === nodes.length
+    && nodes.every((n) => /^wn-[a-z]+-\d+$/.test(n.id) && Object.prototype.hasOwnProperty.call(WHEEL_NODES, n.id.split('-')[1])));
+  check('nodes: each is a vein, a tree or a fishing spot, alive, at a tier the worker names',
+    nodes.every((n) => ['oreVein', 'tree', 'fishSpot'].includes(n.nodeType) && n.alive === true && n.respawnAt === 0
+      && WHEEL.NODE_TIERS.includes(n.tierLvl) && typeof n.x === 'number' && typeof n.y === 'number'));
+  const R = (n) => Math.hypot(n.x - WHEEL_CENTRE[0], n.y - WHEEL_CENTRE[1]);
+  const area = (n) => n.id.split('-')[1];
+  const commons = nodes.filter((n) => area(n) === 'commons'), lands = nodes.filter((n) => area(n) !== 'commons');
+  /* "Copper can be in the safe areas around town" */
+  check('nodes: the safe ground grows copper, pine and minnows, all three, and no land\'s shard',
+    commons.length > 0 && commons.every((n) => n.tierLvl === 1 && !('home' in n) && R(n) < WHEEL_SAFE_R)
+    && ['oreVein', 'tree', 'fishSpot'].every((t) => commons.some((n) => n.nodeType === t)),
+    commons.map((n) => [n.nodeType, n.tierLvl, n.home, Math.round(R(n))]));
+  /* "Iron can be in lvl 1 monster areas ... 'black steel' in like level 10+" */
+  check('nodes: every land grows iron and black steel ore, softwood and hardwood, off the safe ground',
+    WHEEL.HOMES.every((h) => [6, 11].every((t) => ['oreVein', 'tree'].every((k) =>
+      lands.some((n) => n.home === h && n.tierLvl === t && n.nodeType === k))))
+    && lands.every((n) => n.home === area(n) && WHEEL.HOMES.includes(n.home) && n.tierLvl !== 1 && R(n) >= WHEEL_SAFE_R));
+  check('nodes: and catches fish in some land at each of its tiers (clownfish, trout)',
+    [6, 11].every((t) => lands.some((n) => n.nodeType === 'fishSpot' && n.tierLvl === t)));
+  /* the owner: "Make all 8 have fishing spots" */
+  check('nodes: every one of the eight lands has fishing',
+    WHEEL.HOMES.every((h) => lands.some((n) => n.home === h && n.nodeType === 'fishSpot')),
+    Object.fromEntries(WHEEL.HOMES.map((h) => [h, lands.filter((n) => n.home === h && n.nodeType === 'fishSpot').length])));
+  /* "the higher lvl resources will be progressively more distant" */
+  const med = (t) => { const r = nodes.filter((n) => n.tierLvl === t).map(R).sort((a, b) => a - b); return r[r.length >> 1]; };
+  check('nodes: the richer the tier, the farther from town it grows', med(1) < med(6) && med(6) < med(11),
+    { 1: Math.round(med(1)), 6: Math.round(med(6)), 11: Math.round(med(11)) });
+  /* the bake keeps nodes apart, across lands too (two lands' bands meet) */
+  let close = Infinity;
+  for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++)
+    close = Math.min(close, Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y));
+  check('nodes: no two stand on top of each other, whoever\'s they are', close >= 160, Math.round(close));
+  /* every monster's place stays clear of them */
+  const mPts = Object.values(WHEEL_SPAWNS).flatMap((s) => s.points);
+  check('nodes: none stands in a monster camp', nodes.every((n) => mPts.every((p) => Math.hypot(p[0] - n.x, p[1] - n.y) >= 300)));
+
+  /* what each harvest is called -- and the forge and the workbench take them */
+  const names = {
+    'oreVein 1': 'ore_copper_ore', 'oreVein 6': 'ore_iron_ore', 'oreVein 11': 'ore_black_steel_ore',
+    'tree 1': 'wood_pine_log', 'tree 6': 'wood_softwood', 'tree 11': 'wood_hardwood',
+    'fishSpot 1': 'fish_minnow', 'fishSpot 6': 'fish_clownfish', 'fishSpot 11': 'fish_trout',
+  };
+  const got = Object.fromEntries(Object.keys(names).map((k) => { const [t, l] = k.split(' '); return [k, room._harvestInvKey(t, Number(l))]; }));
+  check('nodes: each tier\'s harvest has its own name', Object.keys(names).every((k) => got[k] === names[k]), got);
+  check('nodes: black steel ore is what the black steel tier forges from (BLACKSMITH_TIERS.steel)',
+    'ore_' + BLACKSMITH_TIERS.steel.oreName + '_ore' === room._harvestInvKey('oreVein', 11)
+    && 'ore_' + BLACKSMITH_TIERS.iron.oreName + '_ore' === room._harvestInvKey('oreVein', 6)
+    && 'ore_' + BLACKSMITH_TIERS.copper.oreName + '_ore' === room._harvestInvKey('oreVein', 1),
+    BLACKSMITH_TIERS.steel);
+  check('nodes: and each wood what its bow tier is made from',
+    ['pine', 'softwood', 'hardwood'].every((k, i) => 'wood_' + WOODWORKING_TIERS[k].wood === room._harvestInvKey('tree', [1, 6, 11][i])));
+
+  /* a harvest, end to end, in the Wheel */
+  const ps = room.playerState.wa;
+  const session = room.sessions.get(wsA);
+  ps.z = WHEEL_ZONE; ps.dead = false; ps.disconnected = false;
+  ps.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
+  ps.lifeSkills = {};
+  const shardAsked = [];
+  const keepRoll = room._rollHarvestShard;
+  room._rollHarvestShard = function (z) { shardAsked.push(z); return 'shard_' + z; };
+  const harvest = async (n) => {
+    n.alive = true; n.respawnAt = 0;
+    ps.x = n.x; ps.y = n.y;
+    wsA.sent.length = 0;
+    await room.webSocketMessage(wsA, JSON.stringify({ type: 'extraction_start', payload: { nodeId: n.id, zone: WHEEL_ZONE, skill: room._harvestSkillName(n.nodeType) } }));
+    const ex = room.extractions.wa;
+    if (ex) ex.startedAt = Date.now() - ex.openDelayBase - 500;
+    await room.webSocketMessage(wsA, JSON.stringify({ type: 'node_strike', payload: { id: n.id, zone: WHEEL_ZONE, accuracy: 'good' } }));
+  };
+  const iron = nodes.find((n) => n.home === 'frost' && n.nodeType === 'oreVein' && n.tierLvl === 6);
+  await harvest(iron);
+  check('harvest: a Wheel vein pays its ore and mining XP, and goes down',
+    (ps.inventory.ore_iron_ore || 0) >= 1 && ps.lifeSkills.mining && ps.lifeSkills.mining.xp > 0 && iron.alive === false && iron.respawnAt > Date.now(),
+    { inv: ps.inventory, ls: ps.lifeSkills, alive: iron.alive });
+  check('harvest: and its land\'s shard, never shard_wheel', shardAsked.join() === 'frost' && (ps.inventory.shard_frost || 0) === 1 && !ps.inventory.shard_wheel,
+    { shardAsked, inv: ps.inventory });
+  check('harvest: the private credit goes to the harvester', msgsOfType(wsA, 'harvest_credit').length === 1);
+  shardAsked.length = 0;
+  const minnow = commons.find((n) => n.nodeType === 'fishSpot');
+  await harvest(minnow);
+  check('harvest: a commons fishing spot pays a minnow and no shard at all', (ps.inventory.fish_minnow || 0) >= 1 && shardAsked.length === 0
+    && !Object.keys(ps.inventory).some((k) => k === 'shard_wheel' || k === 'shard_commons'),
+    { shardAsked, inv: ps.inventory });
+  const black = nodes.find((n) => n.nodeType === 'oreVein' && n.tierLvl === 11);
+  await harvest(black);
+  check('harvest: a levels 11-20 vein pays black steel ore', (ps.inventory.ore_black_steel_ore || 0) >= 1, ps.inventory);
+  room._rollHarvestShard = keepRoll;
+  /* a strike from the vein's own spot in another zone is refused: a node is
+     its zone's, and the Wheel's ids are not anyone else's */
+  ps.z = 'tidal';
+  const before = ps.inventory.ore_black_steel_ore;
+  black.alive = true;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'node_strike', payload: { id: black.id, zone: WHEEL_ZONE, accuracy: 'good' } }));
+  check('harvest: not from another zone', black.alive === true && ps.inventory.ore_black_steel_ore === before);
+  ps.z = WHEEL_ZONE;
+
+  /* the wire */
+  const wsN = fakeWs('nodes');
+  room.sessions.set(wsN, baseSession());
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'join', id: 'wn', name: 'N', protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+  const sync = msgsOfType(wsN, 'state_sync')[0];
+  check('wire: state_sync advertises caps.wheelnodes', !!(sync && sync.caps && sync.caps.wheelnodes === true), sync && sync.caps && sync.caps.wheelnodes);
+  wsN.sent.length = 0;
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'move', x: 21504, y: 21792, z: WHEEL_ZONE }));
+  const zs = msgsOfType(wsN, 'zone_state').filter((q) => q.zone === WHEEL_ZONE);
+  check('wire: the Wheel\'s zone_state carries every node, a land\'s saying its land',
+    zs.length === 1 && Array.isArray(zs[0].nodes) && zs[0].nodes.length === want
+    && zs[0].nodes.every((n) => (n.id.startsWith('wn-commons-') ? !('home' in n) : WHEEL.HOMES.includes(n.home))),
+    zs[0] && { n: zs[0].nodes && zs[0].nodes.length, first: zs[0].nodes && zs[0].nodes[0] });
+  wsN.sent.length = 0;
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'town' }));
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'move', x: 500, y: 500, z: 'meadow' }));
+  const mz = msgsOfType(wsN, 'zone_state').filter((q) => q.zone === 'meadow');
+  check('wire: every other zone\'s nodes are unchanged -- no home there',
+    mz.length === 1 && mz[0].nodes.length > 0 && mz[0].nodes.every((n) => !('home' in n)), mz[0] && mz[0].nodes[0]);
+
+  /* the kill switch */
+  const keep = room._liveFlags;
+  room._liveFlags = { ...(keep || {}), wheelnodes: false };
+  check('kill switch: a Wheel whose nodes spawn after it has none', room._spawnZoneNodes(WHEEL_ZONE).length === 0);
+  const wsK = fakeWs('nodekill');
+  room.sessions.set(wsK, baseSession());
+  await room.webSocketMessage(wsK, JSON.stringify({ type: 'join', id: 'wnk', name: 'NK', protocolVersion: 2, data: { x: 10, y: 10, z: 'town' } }));
+  const ksync = msgsOfType(wsK, 'state_sync')[0];
+  check('kill switch: and caps.wheelnodes is no longer advertised', !!ksync && !!ksync.caps && ksync.caps.wheelnodes === false, ksync && ksync.caps && ksync.caps.wheelnodes);
+  room._liveFlags = keep;
+  check('kill switch: off again, the nodes grow', room._spawnZoneNodes(WHEEL_ZONE).length === want);
+}
+
+// ── 9. THE SEPARATION SWEEP (v2.3.3013) ──────────────────────────────────
 {
   /* the same push as every zone's (index.js): two live monsters' feet within
      22 px are pushed half the overlap each apart; dirty both */
