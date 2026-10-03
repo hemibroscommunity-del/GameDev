@@ -922,6 +922,28 @@ later slime the other half's rolls (reviewer-found; ~6% of Speed loops on
 a flame sword showed "+n" doing worse). A thorn answers the slime's attack
 in the same instant it lands, as the worker does.
 
+**Both halves at once (v2.3.3002).** Owner: "I was thinking it would be
+better to show live side by side simulations of the before and after effects
+of what allocating the points would do in the previews instead of the
+sequence of showing the before first and then after afterwards." Asked how
+(the window is ~290 px wide on a phone, so two full fights cannot stand side
+by side), the owner chose **stacked**: a "Now" lane on top and a "+n" lane
+under it, each a full-size stage with its own hero, slime, numbers and vital
+bar, on ONE clock (`loopSteps` tags every step with its lane). Both start
+together on the same dice and fight the same number of slimes, so the points
+show as the two fights drifting apart — the "+n" slime falling first, its
+numbers bigger, its bar holding — and the lane that finishes first stands
+where it ended until the other does; then both go again on fresh dice. The
+point still lands on his head (v2.3.2230), on the "+n" lane, as each loop
+begins. A stat at its cap has one lane, as before. Reduced motion draws each
+lane's closing frame still. The scene is ~140 px taller with two lanes
+(~155 with a vital bar under each); on a 390×844 phone the card measured 661
+px tall and still fits without scrolling. Everything measured
+(the stage, the hero's spot, the slime's pins, the films) is the same in
+both lanes and is measured once; each lane draws its own portrait.
+`mp-statdemo` checks both lanes are on screen the whole loop and that each
+pops its own half's numbers.
+
 **The slime attacks the way it would attack YOU.** Inside its reach — where
 anyone holding a sword stands — a slime swings (500 ms wind-up, every
 1.5 s, `MONSTER_ATTACK_CD`); it only throws from the band past that, which
