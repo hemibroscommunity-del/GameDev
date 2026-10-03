@@ -247,14 +247,17 @@ function townDressing(T, tp) {
   add('signpost', -(T.main + 44), T.gate - 30, 1);
   add('signpost', T.gate - 40, -(T.row + 28), 0);
   add('signpost', -(T.gate - 40), T.row + 64, 1);
-  /* the yards behind the Back Lane: the farm end's hay and the store's cart */
+  /* the yards behind the Back Lane: the farm end's hay and the store's cart
+     (v2.3.2997: marked `yard`, so placeObjects keeps them on the town's
+     ground -- see there) */
   const yb = tp.yS0 + L.walk + 44;
-  add('cart', tp.rowEnd - L.w * 0.45, yb + 6, 0);
-  add('haybale', -(tp.rowEnd - 40), yb, 0);
-  add('haybale', -(tp.rowEnd - 92), yb + 8, 1);
-  add('haybale', -(tp.rowEnd - 64), yb + 30, 3);
-  add('barrel', tp.rowEnd - 30, yb - 4, 0);
-  add('crate', tp.rowEnd - 64, yb + 2, 1);
+  const yard = (id, x, y, piece) => out.push({ id, x, y, piece, yard: true });
+  yard('cart', tp.rowEnd - L.w * 0.45, yb + 6, 0);
+  yard('haybale', -(tp.rowEnd - 40), yb, 0);
+  yard('haybale', -(tp.rowEnd - 92), yb + 8, 1);
+  yard('haybale', -(tp.rowEnd - 64), yb + 30, 3);
+  yard('barrel', tp.rowEnd - 30, yb - 4, 0);
+  yard('crate', tp.rowEnd - 64, yb + 2, 1);
   return out;
 }
 /* Beside each porch, by what goes on there (art px from its door: +x east,
@@ -396,7 +399,32 @@ export function placeObjects(plan, bp, opts = {}) {
   /* ── 2. the town's furniture ── */
   if (T) {
     const tp = townPlan(T);
-    for (const d of townDressing(T, tp)) put(d.id, gx(d.x), gy(d.y), d.piece, false);
+    /* v2.3.2997: the yards' things stand on the town's ground.  The yard
+       behind the Back Lane is T.yard deep (78 art px) and the town's edge
+       wanders up to ~100 either way (layout.js TOWN_EDGE), so a spot a
+       little way into it can come out on the commons' grass: at 1.15x the
+       cart did, at 1.5x two of the bales, at 1x a barrel and a crate.  Such
+       a spot moves to the nearest one -- along the yard, or toward the lane
+       by up to 24 art px -- where the ground under its whole footprint is
+       the town's, clear of anything already standing; with none, it stays. */
+    const townGround = (x, y) => { const c = cellOf(x, y); return c >= 0 && bp.reg[c] === townR && bp.cls[c] === C.ground; };
+    const solidYard = (id, x, y) => {
+      const e = byId[id], f = FOOT[id] || { w: 0.7 };
+      const hw = e ? (f.w * (e.fit === 'w' ? e.size : e.size * (e.ar || 1))) / 2 : 30;
+      for (const u of [-hw, 0, hw]) for (const v of [-12, 0, 12]) if (!townGround(x + u, y + v)) return false;
+      return true;
+    };
+    const YARD_TRIES = [];
+    for (let dy = 0; dy >= -24; dy -= 8) for (let dx = -96; dx <= 96; dx += 16) YARD_TRIES.push([dx, dy]);
+    YARD_TRIES.sort((a, b) => Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]));
+    for (const d of townDressing(T, tp)) {
+      let ax = d.x, ay = d.y;
+      if (d.yard && !solidYard(d.id, gx(ax), gy(ay))) {
+        const t = YARD_TRIES.find(([u, v]) => solidYard(d.id, gx(d.x + u), gy(d.y + v)) && !nearFoot(gx(d.x + u), gy(d.y + v), 40));
+        if (t) { ax = d.x + t[0]; ay = d.y + t[1]; }
+      }
+      put(d.id, gx(ax), gy(ay), d.piece, false);
+    }
     /* ...and a few barrels, crates and bales in the yards between: never on a
        street, a walk or the square, never under a building's roof (the ground
        behind a building, which its picture covers), never before a door */

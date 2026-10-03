@@ -30,9 +30,12 @@ const [VW, VH] = arg('--size', '2400x2000').split('x').map(Number);
 /* by default where the QA pictures go, which git ignores */
 const OUT = arg('--out', path.join(ROOT, 'tools/qa/out/wheel-objects.png'));
 const FEET = process.argv.includes('--feet');
-/* v2.3.2982: `--bigtown [k]`, the big-town preview's plan (plan.js bigTownPlan) */
-const BIG = process.argv.includes('--bigtown') ? Number(arg('--bigtown', '2')) || 2 : 1;
-const PLAN = bigTownPlan(BIG);
+/* v2.3.2982: `--bigtown [k]`, the big-town preview's plan (plan.js bigTownPlan).
+   v2.3.2998: without it, the STANDARD plan -- the town the game lays
+   (plan.js PLAN, BUILDINGS 1.15) -- not bigTownPlan(1), the town as written,
+   which this drew by default after v2.3.2994 made a bigger town standard */
+const BIG = process.argv.includes('--bigtown') ? Number(arg('--bigtown', '2')) || 2 : null;
+const PLAN = BIG == null ? BASE_PLAN : bigTownPlan(BIG);
 
 const bp = buildBlueprint(PLAN);
 const mm = materialMap(PLAN, bp);

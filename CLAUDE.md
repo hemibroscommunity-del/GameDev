@@ -354,7 +354,9 @@ remnant to migrate server-side, not a mode to preserve.
     672 game px straight, and put yard on the Mill Bridge.
   - The prompt's town-gate test reads the real gates (`gateReach`).
   - Re-baked, no monster place moved.
-  - WORLD-MAP-PIPELINE "1.5x is the standard". And
+  - WORLD-MAP-PIPELINE "1.5x is the standard".
+  - Since v2.3.2997 the standard is 1.15x (`BUILDINGS`), `?bigtown=1.5` the
+    1.5x town: see the v2.3.2997 bullet under the Wheel below. And
   since v2.3.2990 THE WHEEL IS THE WORLD -- the owner: "I'm ready to have
   this replace the old game map. Just have players spawn in town. Then push
   to main", then "The Wheel's new Brotown" and, of the old lands, "Close
@@ -434,7 +436,27 @@ remnant to migrate server-side, not a mode to preserve.
       recordings already in the game (`BT_AUDIO.elemHit`);
     - a gust counts as moving for the move broadcast, so the worker hears where
       you landed at once;
-    - `monsterstatus` suite, `mp-elemhits`: docs/specs/monster-statuses.md.)
+    - `monsterstatus` suite, `mp-elemhits`: docs/specs/monster-statuses.md.
+  - Since v2.3.2997 the TOWN IS 1.15x AND THE VIEW 25% FURTHER OUT -- the
+    owner: "Change buildings from 1.5x to 1.15x and let me see what making the
+    default scale looks like about 25% more zoomed out for everything by
+    default (make both changes)":
+    - `BUILDINGS` 1.15 in plan.js (all 17, the gates at 1,050/1,161, re-baked,
+      no monster moved); the yard's cart, hay, barrel and crate find town
+      ground where the wandering edge put them on the grass (placing.js
+      `yard`);
+    - `VIEW_OUT` 0.8 in `src/game/worldViewport.js` multiplies the three
+      CHARACTER-SIZE floors (the 32x32 reference, the vista's width rule,
+      `FIGURE_SCALE_FLOOR`) and never the zone's no-void floor -- so the
+      Wheel and town are drawn at 0.8 the scale (1.25x the world each way,
+      the bro ~83 -> 67 CSS px on the QA phone), and the closed old lands'
+      1024 px maps keep theirs; mp-figscale now pins town = 0.8 x a combat
+      zone;
+    - `?zoom=k` (0.4-1.5) for the tab, `?zoom=1&bigtown=1.5` the game as it
+      was; the wider view holds up to ~2x the ground pieces standing (how
+      the view sits on the 192 px grid), +15 MB at worst;
+    - `mp-zoomout`: WORLD-MAP-PIPELINE "1.15x, and the whole view 25%
+      further out".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
