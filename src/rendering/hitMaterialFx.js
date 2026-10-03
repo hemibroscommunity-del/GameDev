@@ -152,6 +152,19 @@ const ART = {
   stoneS: { pal: GREY, rows: ['LM', 'MO'] },
   stoneM: { pal: GREY, rows: ['.LM', 'LMD', 'MDO'] },
   stoneL: { pal: GREY, rows: ['.LL.', 'LMMD', 'MMDO', '.DO.'] },
+  /* v2.3.2995: a wood splinter in four turns, small and large, and a leaf
+     in two -- in GREY, tinted per material: what a prop throws when its own
+     picture is not to hand (hitMaterialFx's chips are cut from it when it is) */
+  splS0: { pal: GREY, rows: ['.O.', 'OLO', 'OMO', 'ODO', '.O.'] },
+  splS1: { pal: GREY, rows: ['...O.', '..OLO', '.OMO.', 'ODO..', '.O...'] },
+  splS2: { pal: GREY, rows: ['.OOO.', 'ODMLO', '.OOO.'] },
+  splS3: { pal: GREY, rows: ['.O...', 'OLO..', '.OMO.', '..ODO', '...O.'] },
+  splL0: { pal: GREY, rows: ['.OO.', 'OLLO', '.OMO', '.OMO', '.ODO', '.ODO', '..O.'] },
+  splL1: { pal: GREY, rows: ['....OO', '...OLO', '..OMO.', '.OMO..', 'ODO...', '.O....'] },
+  splL2: { pal: GREY, rows: ['.....O.', '.OOOOLO', 'ODDMMLO', '.OOOOO.'] },
+  splL3: { pal: GREY, rows: ['OO....', 'OLO...', '.OMO..', '..OMO.', '...ODO', '....O.'] },
+  leafA: { pal: GREY, rows: ['.LM', 'LMD', 'MD.'] },
+  leafB: { pal: GREY, rows: ['ML.', 'DML', '.DM'] },
   /* a sizzle bubble and its pop */
   bubble: { pal: WHITE, rows: ['.L.', 'L.L', '.L.'] },
   bubblePop: { pal: WHITE, rows: ['L.L', '...', 'L.L'] },
@@ -273,6 +286,26 @@ function softShadow() {
 /* the outline a chip is cut to, around (0,0), radius r */
 function chipShape(fx, r) {
   const pts = [];
+  /* v2.3.2995: a leaf is a blob drawn long; wood and straw splinter like
+     bone (straw thinner); metal, crystal, ice and coal flake like stone */
+  if (fx === 'leaf' || fx === 'soft') {
+    const ax = fx === 'leaf' ? 1.45 : 1.1, ay = fx === 'leaf' ? 0.72 : 1;
+    const N = 12, ph = Math.random() * 6.28, rot = Math.random() * Math.PI;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const k = 1 + 0.12 * Math.sin(a * 2 + ph) + (Math.random() - 0.5) * 0.12;
+      const x = Math.cos(a) * r * ax * k, y = Math.sin(a) * r * ay * k;
+      pts.push([x * Math.cos(rot) - y * Math.sin(rot), x * Math.sin(rot) + y * Math.cos(rot)]);
+    }
+    return pts;
+  }
+  if (fx === 'wood' || fx === 'straw') {
+    const L = r * (fx === 'straw' ? 2.2 : 1.6 + Math.random() * 0.6), Wd = r * (fx === 'straw' ? 0.22 : 0.36 + Math.random() * 0.18);
+    pts.push([-L, -Wd * 0.7], [-L * 0.35, -Wd], [L * 0.55, -Wd * 0.8], [L, (Math.random() - 0.5) * Wd * 0.6],
+      [L * 0.5, Wd * 0.9], [-L * 0.3, Wd], [-L * 0.9, Wd * 0.4], [-L * 0.75, 0]);
+    const rot = Math.random() * Math.PI;
+    return pts.map(([x, y]) => [x * Math.cos(rot) - y * Math.sin(rot), x * Math.sin(rot) + y * Math.cos(rot)]);
+  }
   if (fx === 'goo' || fx === 'snow') {
     /* a blob: an ellipse with a soft wobble in its radius */
     const ax = 1 + (Math.random() - 0.5) * 0.35, ay = 1 + (Math.random() - 0.5) * 0.35;
@@ -311,6 +344,17 @@ function bakeChips(tex, fx) {
   const cv = document.createElement('canvas'); cv.width = fw; cv.height = fh;
   const g = cv.getContext('2d', { willReadFrequently: true });
   try { g.drawImage(src, Math.round(fr.x), Math.round(fr.y), fw, fh, 0, 0, fw, fh); } catch (e) { return null; }
+  /* bone is thin: a splinter the size of a slime blob was a third of a leg */
+  const sizeK = fx === 'bone' ? 0.5 : 1;
+  return bakeChipsFrom(cv, g, fw, fh, fx, CHIP_SIZES.map((k) => Math.max(2, fh * k * sizeK)), 0.78);
+}
+/* v2.3.2995: the cutting itself, on a canvas already holding the art --
+   the monster's whole frame (above), or a window of a Wheel object's
+   picture round where it was hit (propChips).  `radii` per chip size, in
+   the canvas's pixels; `strict` the share of a chip that must be the art's
+   main colour (a building's wall has windows and trim in it: props ask
+   less). */
+function bakeChipsFrom(cv, g, fw, fh, fx, radii, strict) {
   let px;
   try { px = g.getImageData(0, 0, fw, fh).data; } catch (e) { return null; }
   const A = (x, y) => (x < 0 || y < 0 || x >= fw || y >= fh) ? 0 : px[((y | 0) * fw + (x | 0)) * 4 + 3];
@@ -346,10 +390,8 @@ function bakeChips(tex, fx) {
     return Math.hypot(px[i] - mr, px[i + 1] - mg, px[i + 2] - mb) < 70;
   };
   const out = [];
-  /* bone is thin: a splinter the size of a slime blob was a third of a leg */
-  const sizeK = fx === 'bone' ? 0.5 : 1;
-  for (let si = 0; si < CHIP_SIZES.length; si++) {
-    const r = Math.max(2, fh * CHIP_SIZES[si] * sizeK);
+  for (let si = 0; si < radii.length; si++) {
+    const r = radii[si];
     const row = [];
     for (let v = 0; v < CHIP_VARIANTS; v++) {
      for (let attempt = 0; attempt < 6; attempt++) {
@@ -389,13 +431,13 @@ function bakeChips(tex, fx) {
           if (Math.hypot(d[q] - mr, d[q + 1] - mg, d[q + 2] - mb) < 95) near++;
         }
       } catch (e) { tot = 1; near = 1; }
-      if (tot < 4 || near / tot < (attempt === 5 ? 0.5 : 0.78)) continue;   /* the last try settles for half, so a material never falls back to pixels */
+      if (tot < 4 || near / tot < (attempt === 5 ? Math.min(0.5, strict * 0.65) : strict)) continue;   /* the last try settles for half, so a material never falls back to pixels */
       /* keep only the art's own pixels inside the cut (a thin body's chip can
          cross a gap) -- then a hairline of its own shadow round the edge, so a
          chip still reads against ground its own colour */
       cg.globalCompositeOperation = 'source-atop';
-      cg.lineWidth = fx === 'goo' ? 0.8 : 1;
-      cg.strokeStyle = fx === 'goo' ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.38)';
+      cg.lineWidth = fx === 'goo' || fx === 'leaf' ? 0.8 : 1;
+      cg.strokeStyle = fx === 'goo' || fx === 'leaf' ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.38)';
       cg.stroke();
       cg.globalCompositeOperation = 'source-over';
       const t = Texture.from(c);
@@ -426,6 +468,67 @@ function chipsFor(sb, fx) {
   }
   if (!(fx in ent)) ent[fx] = bakeChips(tex, fx);
   return ent[fx];
+}
+
+/* ═══ v2.3.2995: A PROP'S PIECES ARE CUT FROM ITS OWN PICTURE TOO ═══
+ * Owner: "change the sound if projectiles hit props to be more appropriate
+ * for the type of material ... Also destructive props would be cool."  A hit
+ * on one of the Wheel's objects carries `art` (wheelObjects.wheelPropArt,
+ * filled in by effectsRenderer): its picture and where on it the shot went
+ * in.  The chips are cut from a WINDOW round that point -- a barrel's staves,
+ * an oak's bark, a bush's leaves, the bank's sandstone -- at sizes in world
+ * px (an object's picture can be 5 px or 580 tall; a chip is a chip), at the
+ * picture's own resolution (2 px a game px: the owner's HD pixel art).  Kept
+ * per picture, material and window, the last PROP_CHIP_KEEP of them. */
+const PROP_CHIP_R = {
+  wood: [2.2, 3.2, 4.4], leaf: [2.6, 3.4, 4.4], straw: [1.8, 2.6, 3.4], stone: [2.0, 3.0, 4.2],
+  metal: [1.6, 2.4, 3.2], crystal: [2.0, 3.0, 4.2], ice: [2.0, 3.0, 4.0], coal: [2.0, 2.8, 3.8],
+  soft: [2.4, 3.4, 4.4], snow: [2.2, 3.2, 4.4], goo: [2.2, 3.2, 4.4],
+};
+const PROP_CHIP_KEEP = 40;
+const PROP_CHIP_WIN = 36;      /* picture px: hits this close share their chips */
+const _propChips = new Map();  /* key -> { chips, used } -- least recently used first */
+function propChips(art, fx) {
+  const tex = art && art.tex;
+  const radiiW = PROP_CHIP_R[fx];
+  if (!tex || !tex.source || tex.destroyed || !radiiW || !(art.cs > 0) || typeof document === 'undefined') return null;
+  const key = tex.uid + ':' + fx + ':' + Math.floor(art.u / PROP_CHIP_WIN) + ':' + Math.floor(art.v / PROP_CHIP_WIN);
+  const now = performance.now();
+  if (_propChips.has(key)) { const v = _propChips.get(key); _propChips.delete(key); v.used = now; _propChips.set(key, v); return v.chips; }
+  const src = tex.source.resource, fr = tex.frame, res = tex.source.resolution || 1;
+  if (!src || !fr) return null;
+  const FX = Math.round(fr.x * res), FY = Math.round(fr.y * res), FW = Math.round(fr.width * res), FH = Math.round(fr.height * res);
+  const R = Math.max(12, Math.round(art.R || 24));
+  const x0 = Math.max(0, Math.round(art.u - R)), y0 = Math.max(0, Math.round(art.v - R));
+  const x1 = Math.min(FW, Math.round(art.u + R)), y1 = Math.min(FH, Math.round(art.v + R));
+  const w = x1 - x0, h = y1 - y0;
+  let out = null;
+  if (w >= 6 && h >= 6) {
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    try {
+      g.drawImage(src, FX + x0, FY + y0, w, h, 0, 0, w, h);
+      out = bakeChipsFrom(cv, g, w, h, fx, radiiW.map((r) => Math.max(1.5, r / art.cs)), 0.6);
+    } catch (e) { out = null; }
+  }
+  _propChips.set(key, { chips: out, used: now });
+  /* past the keep, the least recently used go -- but never one a burst may
+     still be drawing (a burst lives BURST_MS): destroying a texture under a
+     live sprite is the "reading 'alphaMode'" crash (CLAUDE.md) */
+  while (_propChips.size > PROP_CHIP_KEEP) {
+    const old = _propChips.keys().next().value;
+    const e = _propChips.get(old);
+    if (now - e.used < BURST_MS + 1000) break;
+    _propChips.delete(old);
+    if (e.chips) for (const row of e.chips) for (const t of row) { try { t.destroy(true); } catch (err) { /* already gone */ } }
+  }
+  return out;
+}
+/** v2.3.2995: let go of every prop chip (leaving the Wheel, after the
+ *  bursts are cleared). */
+export function freePropChips() {
+  for (const e of _propChips.values()) if (e.chips) for (const row of e.chips) for (const t of row) { try { t.destroy(true); } catch (err) { /* already gone */ } }
+  _propChips.clear();
 }
 
 const rnd = Math.random;
@@ -556,6 +659,10 @@ export class HitMaterialFx {
       char: [this.T.charA, this.T.charB],
       ash: [this.T.ashA, this.T.ashB],
       puff: [null, this.T.puff1, this.T.puff2, this.T.puff3, this.T.puff4, this.T.puff5, this.T.puff6, this.T.puff7],
+      /* v2.3.2995 */
+      splS: ['splS0', 'splS1', 'splS2', 'splS3'].map((k) => this.T[k]),
+      splL: ['splL0', 'splL1', 'splL2', 'splL3'].map((k) => this.T[k]),
+      leaf: [this.T.leafA, this.T.leafB],
     };
   }
 
@@ -586,6 +693,7 @@ export class HitMaterialFx {
     p.sz = 1; p.land = L_STOP; p.landed = false; p.landAt = 0; p.life = 0;
     p.r0 = 1; p.r1 = 1; p.flut = 0; p.ramp = null; p.hl = false; p.size = 0;
     p.crumb = false; p.splat = null; p.wob = 0; p.shadow = false; p.u = b.u;
+    p.chip = false;   /* v2.3.2995: a flake drawn as a chip of the art (a leaf, straw) */
     return p;
   }
   /* launch: an angle on the ground, a ground speed, and an upward speed */
@@ -843,6 +951,208 @@ export class HitMaterialFx {
     }
   }
 
+  /* ════════ v2.3.2995: what the Wheel's objects are made of ════════
+     (data/wheelMaterials.js).  Each is thrown through the same physics as a
+     monster's pieces, and -- when the object's picture is to hand -- drawn as
+     chips cut from it (propChips); `p.size` picks the chip, the pixel art
+     here is only the fallback. */
+
+  _wood(b, P, now) {
+    const tint = b.tint || 0x8b5e3c;
+    const n = cnt(6, P);
+    for (let i = 0; i < n; i++) {
+      const p = this._take(b, now);
+      const r = rnd() + ((b.crit || b.big) ? 0.25 : 0);
+      p.size = r < 0.45 ? 0 : r < 0.85 ? 1 : 2;
+      p.frames = p.size === 2 ? this._frames.splL : this._frames.splS;
+      p.tint = tint; p.spin = 9 + rnd() * 9;
+      this._launch(p, P.w === 'arrow' && i === 0 ? backAng(P) : sprayAng(P), (1.2 + rnd() * 2.4) * P.spd, (1.2 + rnd() * 2.0) * P.lift);
+      /* light and stiff: one bounce, a short skid */
+      p.g = 0.3; p.drag = 0.99; p.e = 0.3; p.bnc = 1; p.fr = 0.78; p.land = L_BOUNCE; p.shadow = true;
+    }
+    /* sawdust */
+    for (let i = 0, nd = cnt(3, P); i < nd; i++) {
+      const p = this._take(b, now);
+      p.kind = K_DUST;
+      this._launch(p, P.w === 'arrow' ? backAng(P) : sprayAng(P), (0.4 + rnd() * 1.1) * P.spd, 0.3 + rnd() * 0.6);
+      p.g = 0.006; p.drag = 0.9; p.life = 600 + rnd() * 600;
+      p.r0 = 1; p.r1 = 2 + ((rnd() * 3) | 0); p.tint = mixHex(tint, 0xffffff, 0.5); p.alpha = 0.75;
+    }
+    if (P.w === 'bolt') {
+      /* dry wood catches: sparks, a flake or two of char, a thread of smoke */
+      for (let i = 0; i < 3; i++) this._ember(b, P, now, FIRE, 0.9);
+      for (let i = 0; i < 2; i++) {
+        const p = this._take(b, now);
+        p.kind = K_FLAKE; p.frames = this._frames.char; p.spin = 6;
+        this._launch(p, sprayAng(P), (0.6 + rnd() * 1.2) * P.spd, (0.8 + rnd() * 1.4) * P.lift);
+        p.g = 0.05; p.drag = 0.93; p.flut = 0.35; p.land = L_STOP; p.fr = 0.6;
+      }
+      this._steam(b, P, now, 0x4a423d, 0.45);
+    }
+  }
+
+  _leaf(b, P, now) {
+    const tint = b.tint || 0x4f8a3a;
+    const n = cnt(8, P);
+    for (let i = 0; i < n; i++) {
+      const p = this._take(b, now);
+      p.kind = K_FLAKE; p.chip = true;
+      const r = rnd();
+      p.size = r < 0.45 ? 0 : r < 0.85 ? 1 : 2;
+      p.frames = this._frames.leaf; p.tint = tint; p.spin = 3 + rnd() * 4;
+      this._launch(p, P.w === 'arrow' && i < 2 ? backAng(P) : sprayAng(P), (0.7 + rnd() * 1.8) * P.spd, (0.9 + rnd() * 1.6) * P.lift);
+      /* a leaf sails: it hardly falls, it drifts and turns over */
+      p.g = 0.035; p.drag = 0.93; p.flut = 0.45; p.land = L_STOP; p.fr = 0.5; p.shadow = true;
+    }
+    if (P.w === 'bolt') {
+      for (let i = 0; i < 3; i++) this._ember(b, P, now, FIRE, 0.8);
+      this._steam(b, P, now, 0x5a534b, 0.4);
+    }
+  }
+
+  _straw(b, P, now) {
+    const tint = b.tint || 0xd8b45a;
+    const n = cnt(9, P);
+    for (let i = 0; i < n; i++) {
+      const p = this._take(b, now);
+      p.kind = K_FLAKE; p.chip = true;
+      p.size = rnd() < 0.6 ? 0 : 1;
+      p.frames = this._frames.splS; p.tint = tint; p.spin = 4 + rnd() * 5;
+      this._launch(p, P.w === 'arrow' && i < 2 ? backAng(P) : sprayAng(P), (0.8 + rnd() * 2.0) * P.spd, (1.0 + rnd() * 1.6) * P.lift);
+      p.g = 0.05; p.drag = 0.94; p.flut = 0.35; p.land = L_STOP; p.fr = 0.55; p.shadow = true;
+    }
+    for (let i = 0, nd = cnt(2, P); i < nd; i++) {
+      const p = this._take(b, now);
+      p.kind = K_DUST;
+      this._launch(p, sprayAng(P), (0.4 + rnd() * 1.0) * P.spd, 0.3 + rnd() * 0.5);
+      p.g = 0.005; p.drag = 0.9; p.life = 700 + rnd() * 600;
+      p.r0 = 1; p.r1 = 3 + ((rnd() * 2) | 0); p.tint = mixHex(tint, 0xffffff, 0.45); p.alpha = 0.7;
+    }
+    if (P.w === 'bolt') { for (let i = 0; i < 4; i++) this._ember(b, P, now, FIRE, 0.9); this._steam(b, P, now, 0x5a534b, 0.45); }
+  }
+
+  _metal(b, P, now) {
+    const tint = b.tint || 0x4a4f57;
+    /* steel on iron: sparks, lots, fast and short */
+    const ns = cnt(P.w === 'bolt' ? 5 : 7, P) + 2;
+    for (let i = 0; i < ns; i++) this._ember(b, P, now, SPARK, 1.7);
+    /* a flake of rust or paint, clattering */
+    for (let i = 0, n = cnt(2, P); i < n; i++) {
+      const p = this._take(b, now);
+      p.size = rnd() < 0.7 ? 0 : 1;
+      p.tex = p.size ? this.T.stoneM : this.T.stoneS; p.tint = mixHex(tint, 0x000000, 0.2);
+      this._launch(p, sprayAng(P), (1.4 + rnd() * 2.2) * P.spd, (1.2 + rnd() * 1.8) * P.lift);
+      p.g = 0.38; p.drag = 0.995; p.e = 0.5; p.bnc = 2; p.fr = 0.82; p.land = L_BOUNCE; p.shadow = true;
+    }
+    if (P.w === 'bolt') this._steam(b, P, now, 0x5a5650, 0.35);
+  }
+
+  /* crystal and ice: glassy shards that ring and skitter, and the glints off
+     them; ice throws a little frost powder too */
+  _glass(b, P, now, ice) {
+    const T = this.T;
+    const tint = b.tint || (ice ? 0xbfe3f5 : 0x9a7fe0);
+    for (let i = 0, n = cnt(5, P); i < n; i++) {
+      const p = this._take(b, now);
+      const r = rnd() + ((b.crit || b.big) ? 0.25 : 0);
+      p.size = r < 0.5 ? 0 : r < 0.85 ? 1 : 2;
+      p.tex = p.size === 0 ? T.stoneS : p.size === 1 ? T.stoneM : T.stoneL;
+      p.tint = tint;
+      this._launch(p, sprayAng(P), (1.4 + rnd() * 2.6) * P.spd, (1.2 + rnd() * 2.2) * P.lift);
+      p.g = 0.36; p.drag = 0.995; p.e = 0.48; p.bnc = 2; p.fr = 0.84; p.land = L_BOUNCE; p.shadow = true;
+    }
+    for (let i = 0, n = cnt(5, P); i < n; i++) {
+      const p = this._take(b, now);
+      p.kind = K_GLINT;
+      this._launch(p, sprayAng(P), (0.6 + rnd() * 1.8) * P.spd, 0.4 + rnd() * 1.4);
+      p.g = 0.02; p.drag = 0.92; p.life = 300 + rnd() * 500; p.tint = pick([0xffffff, mixHex(tint, 0xffffff, 0.6)]);
+    }
+    if (ice) {
+      for (let i = 0, n = cnt(3, P); i < n; i++) {
+        const p = this._take(b, now);
+        p.kind = K_DUST;
+        this._launch(p, sprayAng(P), (0.5 + rnd() * 1.4) * P.spd, 0.3 + rnd() * 0.8);
+        p.g = 0.008; p.drag = 0.9; p.life = 600 + rnd() * 600;
+        p.r0 = 1; p.r1 = 2 + ((rnd() * 3) | 0); p.tint = pick([0xffffff, 0xeaf6ff]); p.alpha = 0.85;
+      }
+    }
+    if (P.w === 'bolt' && P.elem !== 'frost') this._steam(b, P, now, STEAM, ice ? 0.55 : 0.3);
+  }
+
+  _coal(b, P, now) {
+    this._stone(b, P, now);
+    for (let i = 0, n = cnt(3, P); i < n; i++) {
+      const p = this._take(b, now);
+      p.kind = K_DUST;
+      this._launch(p, sprayAng(P), (0.5 + rnd() * 1.2) * P.spd, 0.3 + rnd() * 0.6);
+      p.g = 0.004; p.drag = 0.9; p.life = 800 + rnd() * 700;
+      p.r0 = 1; p.r1 = 3 + ((rnd() * 2) | 0); p.tint = pick([0x3a3a3c, 0x2b2b2e, 0x4a4846]); p.alpha = 0.8;
+    }
+  }
+
+  /* a toadstool, a cactus, a giant flower: soft flesh -- a puff of spores
+     or pollen, and a few soft pieces that do not bounce */
+  _soft(b, P, now) {
+    const tint = b.tint || 0x8fbf5a;
+    for (let i = 0, n = cnt(6, P); i < n; i++) {
+      const p = this._take(b, now);
+      p.kind = K_DUST;
+      this._launch(p, sprayAng(P), (0.4 + rnd() * 1.3) * P.spd, 0.4 + rnd() * 0.8);
+      p.g = -0.004; p.drag = 0.9; p.life = 900 + rnd() * 700; p.flut = 0.15;
+      p.r0 = 1; p.r1 = 3 + ((rnd() * 4) | 0); p.tint = mixHex(tint, 0xffffff, 0.35); p.alpha = 0.8;
+    }
+    for (let i = 0, n = cnt(3, P); i < n; i++) {
+      const p = this._take(b, now);
+      p.size = rnd() < 0.6 ? 0 : 1;
+      p.tex = p.size ? this.T.gooM : this.T.gooS; p.tint = tint;
+      this._launch(p, sprayAng(P), (1.0 + rnd() * 1.8) * P.spd, (0.9 + rnd() * 1.4) * P.lift);
+      p.g = 0.28; p.drag = 0.99; p.land = L_STOP; p.fr = 0.6; p.shadow = true;
+    }
+  }
+
+  /* A tree's crown lets go when its trunk is hit (`b.crown`, from the
+     picture: { cx, z0, z1, hw }): leaves sail down, a pine sheds snow, a
+     burnt tree its char, a slime tree drips. */
+  _canopy(b, P, now) {
+    const T = this.T;
+    const cr = b.crown || { cx: b.ex, z0: 50, z1: 140, hw: 34 };
+    const kind = b.canopy || 'leaf';
+    const n = kind === 'leaf' ? cnt(7, P) + 2 : kind === 'slime' ? cnt(3, P) + 1 : cnt(5, P) + 1;
+    for (let i = 0; i < n; i++) {
+      const p = this._take(b, now);
+      p.x = cr.cx + (rnd() * 2 - 1) * cr.hw;
+      p.y = b.gy + gauss() * 12 - rnd() * 6;
+      p.z = cr.z0 + rnd() * (cr.z1 - cr.z0);
+      p.vx = gauss() * 0.35; p.vy = gauss() * 0.15; p.vz = 0.1 + rnd() * 0.3;
+      if (kind === 'snow') {
+        p.size = rnd() < 0.6 ? 0 : 1;
+        p.tex = p.size ? T.snowM : T.snowS;
+        p.g = 0.22; p.drag = 0.985; p.fr = 0.7; p.land = L_CRUMBLE; p.shadow = true;
+      } else if (kind === 'char') {
+        p.kind = K_FLAKE; p.frames = this._frames.char; p.spin = 5 + rnd() * 4;
+        p.g = 0.035; p.drag = 0.94; p.flut = 0.4; p.land = L_STOP; p.fr = 0.55;
+      } else if (kind === 'slime') {
+        p.kind = K_DROP; p.size = rnd() < 0.6 ? 0 : 1; p.tint = 0x7fd45a; p.hl = true;
+        p.vx *= 0.3; p.vz = 0;
+        p.g = 0.26; p.drag = 0.99; p.land = L_SPLAT; p.shadow = true;
+      } else {
+        p.kind = K_FLAKE; p.chip = true; p.size = rnd() < 0.5 ? 0 : rnd() < 0.8 ? 1 : 2;
+        p.frames = this._frames.leaf; p.tint = b.tint || 0x4f8a3a; p.spin = 3 + rnd() * 4;
+        p.g = 0.03; p.drag = 0.94; p.flut = 0.55; p.land = L_STOP; p.fr = 0.5; p.shadow = true;
+      }
+    }
+    if (kind === 'snow') {
+      for (let i = 0; i < 3; i++) {
+        const p = this._take(b, now);
+        p.kind = K_DUST;
+        p.x = cr.cx + (rnd() * 2 - 1) * cr.hw; p.y = b.gy + gauss() * 8; p.z = cr.z0 + rnd() * (cr.z1 - cr.z0) * 0.6;
+        p.vx = gauss() * 0.3; p.vy = 0; p.vz = -0.2;
+        p.g = 0.004; p.drag = 0.95; p.life = 900 + rnd() * 700;
+        p.r0 = 1; p.r1 = 3 + ((rnd() * 3) | 0); p.tint = 0xffffff; p.alpha = 0.85;
+      }
+    }
+  }
+
   /* One hit's burst.  `b` is the queue record (combatHelpers.spawnHitDebris). */
   _burst(b, S, now) {
     const gy = Number.isFinite(b.gy) ? b.gy : (Number.isFinite(b.y) ? b.y + (b.h || 20) : 0);
@@ -889,6 +1199,22 @@ export class HitMaterialFx {
         }
       }
     }
+    /* v2.3.2995: one of the Wheel's objects: its pieces cut from its own
+       picture where the blow landed (`art`, wheelObjects.wheelPropArt) --
+       and a tree's crown, from where its leaves hang (`art.crown`) */
+    if (!rec.chips && b.art && b.art.tex) {
+      rec.soft = true;
+      const cfx = rec.fx === 'canopy' ? (b.canopy === 'leaf' ? 'leaf' : null) : rec.fx;
+      let ch = null;
+      if (cfx) { try { ch = propChips(b.art, cfx); } catch (e) { ch = null; } }
+      if (ch) { rec.chips = ch; rec.cs = b.art.cs; rec.chipTint = 0xffffff; }
+    }
+    if (rec.fx === 'canopy') {
+      rec.canopy = b.canopy || 'leaf';
+      rec.crown = (b.art && b.art.crown) || null;
+      rec.tint = b.tint;
+      if (rec.crown) { rec.ex = rec.crown.cx; rec.ey = gy; rec.ez = rec.crown.z1; }
+    }
     const P = profileFor(rec);
     /* v2.3.2843: a PROP's burst (combatHelpers.spawnPropDebris, v2.3.2730) is
        the same material thrown SUBTLY -- a rock is hit far more often than it
@@ -903,6 +1229,16 @@ export class HitMaterialFx {
       case 'bone': this._bone(rec, P, now); break;
       case 'stone': this._stone(rec, P, now); break;
       case 'ember': this._emberMat(rec, P, now); break;
+      /* v2.3.2995: the Wheel's objects (data/wheelMaterials.js) */
+      case 'wood': this._wood(rec, P, now); break;
+      case 'leaf': this._leaf(rec, P, now); break;
+      case 'straw': this._straw(rec, P, now); break;
+      case 'metal': this._metal(rec, P, now); break;
+      case 'crystal': this._glass(rec, P, now, false); break;
+      case 'ice': this._glass(rec, P, now, true); break;
+      case 'coal': this._coal(rec, P, now); break;
+      case 'soft': this._soft(rec, P, now); break;
+      case 'canopy': this._canopy(rec, P, now); break;
       default: this._goo(rec, P, now);
     }
     /* a sword's sheet leaves the blade along a line, not from one point:
@@ -1101,13 +1437,21 @@ export class HitMaterialFx {
         sh.alpha = 0.3 * clamp(1 - p.z / 60, 0.25, 1) * fade;
       }
       /* ═══ v2.3.2929: a chip of the monster's own art ═══ */
-      if (b.chips && (p.kind === K_CHUNK || p.kind === K_DROP)) {
+      if (b.chips && (p.kind === K_CHUNK || p.kind === K_DROP || (p.kind === K_FLAKE && p.chip))) {
         const row = b.chips[Math.min(b.chips.length - 1, p.size | 0)];
         const chip = row[((p.ph * 1000) | 0) % row.length];
         const cs = b.cs;
         const sp = side.body.take(chip);
         sp.x = p.x; sp.y = p.y - p.z;
-        if (b.fx === 'goo') {
+        if (p.kind === K_FLAKE) {
+          /* v2.3.2995: a leaf or a straw turns over as it sails down, and
+             lies still where it lands */
+          if (p.landed) { sp.rotation = p.ph * 1.7; sp.scale.set(cs, cs * 0.8); }
+          else {
+            sp.rotation = p.ph * 1.7 + Math.sin(age * 0.004 * p.spin + p.ph) * 0.9;
+            sp.scale.set(cs * Math.cos(age * 0.0035 * p.spin + p.ph), cs);
+          }
+        } else if (b.fx === 'goo') {
           if (p.landed) {
             /* a drop lands as a puddle of the slime itself, and wobbles once */
             const w = p.wob ? clamp((now - p.wob) / 170, 0, 1) : 1;

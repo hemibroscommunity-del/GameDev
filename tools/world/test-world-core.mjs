@@ -2122,5 +2122,48 @@ console.log("the buildings' life (v2.3.2983)");
   ok(`...and every one of the ${checked} spots is on its picture as the game has it: each smoke on a chimney's top, each lamp, spark and glint on the building`, checked > 60 && off.length === 0, off);
 }
 
+/* ── v2.3.2995: what every object is made of ──
+   Owner, 2026-10-03: "change the sound if projectiles hit props to be more
+   appropriate for the type of material it is ... destructive props would be
+   cool".  src/data/wheelMaterials.js names each catalog object's material
+   and how many hits it takes; an object added to the catalog without one
+   would ring and break as stone (its fallback), so this fails until it has
+   its own. */
+console.log('what the objects are made of (v2.3.2995)');
+{
+  const { WHEEL_MATERIALS, MATERIALS, wheelMaterialOf } = await import('../../src/data/wheelMaterials.js');
+  const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
+  const cat = objectCatalog();
+  const missing = cat.filter((e) => !Object.prototype.hasOwnProperty.call(WHEEL_MATERIALS, e.id)).map((e) => e.id);
+  const extra = Object.keys(WHEEL_MATERIALS).filter((id) => !cat.some((e) => e.id === id));
+  ok(`every one of the ${cat.length} catalog objects has a material, and nothing else does`, !missing.length && !extra.length, { missing, extra });
+  const bad = Object.entries(WHEEL_MATERIALS).filter(([, m]) => !MATERIALS[m.mat] || !(m.hp >= 1) || (m.canopy && !['leaf', 'snow', 'char', 'slime'].includes(m.canopy))).map(([id]) => id);
+  ok('...each a known material, at least one hit deep, any crown a known kind', !bad.length, bad);
+  const bld = cat.filter((e) => e.kind === 'building');
+  ok(`...the ${bld.length} buildings each 20+ hits and heavy; the trees each a crown`,
+    bld.every((e) => wheelMaterialOf(e.id).hp >= 20 && wheelMaterialOf(e.id).big)
+    && ['oak', 'orchard', 'pine', 'birch', 'deadtree', 'palm', 'slimetree', 'mangrove', 'jungletree', 'wildfruit'].every((id) => wheelMaterialOf(id).canopy),
+    bld.filter((e) => !(wheelMaterialOf(e.id).hp >= 20)).map((e) => e.id));
+  const fx = new Set(Object.values(MATERIALS).map((m) => m.fx)), snd = new Set(Object.values(MATERIALS).map((m) => m.sound));
+  /* the recipes and the sounds they name exist (hitMaterialFx's switch, BT_AUDIO.PROP_SOUNDS) */
+  const fs = await import('node:fs');
+  const hfx = fs.readFileSync(new URL('../../src/rendering/hitMaterialFx.js', import.meta.url), 'utf8');
+  const gd = fs.readFileSync(new URL('../../src/data/gameDisplay.js', import.meta.url), 'utf8');
+  const noFx = [...fx].filter((f) => !hfx.includes(`case '${f}':`));
+  const soundsAt = gd.indexOf('BT_AUDIO.PROP_SOUNDS = {');
+  const soundsBlock = soundsAt >= 0 ? gd.slice(soundsAt, gd.indexOf('\n};', soundsAt)) : '';
+  const noSnd = [...snd].filter((m) => !new RegExp(`\\n  ${m}: \\{`).test(soundsBlock));
+  ok('...every material has its pieces (hitMaterialFx) and its sounds (BT_AUDIO.PROP_SOUNDS)', !noFx.length && !noSnd.length, { noFx, noSnd });
+  /* every sample a prop sound names is one the game loads: the manifest, or
+     the Wheel's own footstep clips */
+  const { FOOTSTEP_CLIPS } = await import('../../src/data/footstepClips.js');
+  const clipKeys = new Set(Object.values(FOOTSTEP_CLIPS).map((c) => c.key));
+  const manAt = gd.indexOf('BT_AUDIO.SFX_MANIFEST = {');
+  const manBlock = gd.slice(manAt, gd.indexOf('\n};', manAt));
+  const named = [...new Set([...soundsBlock.matchAll(/\['([a-z0-9-]+)', [0-9.]+, [0-9.]+, [0-9.]+/g)].map((m) => m[1]))];
+  const unknown = named.filter((k) => !clipKeys.has(k) && !manBlock.includes(`'${k}':`));
+  ok(`...and every one of the ${named.length} samples they play is one the game loads`, named.length > 10 && !unknown.length, unknown);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

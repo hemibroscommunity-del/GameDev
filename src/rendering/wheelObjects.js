@@ -34,11 +34,24 @@
  *             the walk test through worldProps.zoneBlockers -- what you can
  *             see is what stops you, and a page still loading stops nobody.
  */
-import { Sprite, Assets, Container } from 'pixi.js';
+/* v2.3.2995: AND THEY TAKE HITS.  An object shakes when a shot or a blade
+ * lands on it (a tree sways), breaks into shards of its own picture after
+ * enough of them (wheelShatter.js) -- its footprint gone from the walk test
+ * while it is broken -- and fades back in, mended, a few minutes later
+ * (src/game/wheelBreak.js keeps the count and the clock).  What a hit throws
+ * is cut from the picture where it landed (wheelPropArt, for hitMaterialFx),
+ * a bolt's burn mark is the picture's own pixels scorched (wheelScorch), and
+ * the arrows and marks left in an object are drawn where it stands
+ * (wheelPropRec, for effectsRenderer's prop marks).
+ */
+import { Sprite, Assets, Container, Texture, Rectangle, CanvasSource } from 'pixi.js';
 import { wheelInfo, wheelObjectStats, wheelOnStop, wheelLifeOn } from '../game/wheelTrial.js';
 import { BuildingLife, hasLife, wheelLifeWarm, wheelLifeFree, wheelLifeReady } from './wheelLife.js';
 import { setZoneBlockerHook } from '../data/worldProps.js';
 import { freeWheelNpcArt } from './npcSprites.js';
+import { tickWheelBreak, drainWheelEvents, isWheelBroken, resetWheelBreak, onWheelBreak, wheelObjectKind, isBuilding } from '../game/wheelBreak.js';
+import { WheelShatter, framePx } from './wheelShatter.js';
+import { materialInfo } from '../data/wheelMaterials.js';
 
 const BASE = '/world/objects/';
 const CACHE_PREFIX = 'wheel-object/';
@@ -52,6 +65,7 @@ const MAX_LOADING = 2;
 const BLOCK_R = 640;         /* footprints within this of the player go to the walk test */
 const BLOCK_MOVE = 96;       /* ...made again when the player has moved this far */
 const PAGE_WAIT_MS = 9000;   /* the way in waits at most this long for its pages */
+const FADE_IN_MS = 1600;     /* v2.3.2995: a mended object fading back in */
 
 /* The numbers for the trial's readout and the QA scenario live in
    wheelTrial.js (wheelObjectStats), which the readout can read without pixi. */
@@ -230,6 +244,16 @@ export class WheelObjects {
     /* v2.3.2983: the buildings' life (wheelLife.js), unless `?nolife` */
     this.life = wheelLifeOn();
     this._lifeT = null;
+    /* v2.3.2995: hits, breaks and mendings */
+    this.shatter = new WheelShatter(layer);
+    this._shakes = new Map();       /* object index -> { t0, frac, tree, building, big } */
+    this._fadeIn = new Map();       /* object index -> when it began to fade back in */
+    this._breakT = null;
+    this._offBreak = onWheelBreak((type, oi) => {
+      /* gone from the walk test and the arrows' path in the same call */
+      if (type === 'break') this._blockers = this._blockers.filter((b) => b.oi !== oi);
+      else this._blockAt = null;
+    });
     _live = this;
   }
 
@@ -239,6 +263,10 @@ export class WheelObjects {
     const ix = index();
     if (!ix) { this._clearSprites(); this._blockers = []; return; }
     const now = performance.now();
+    /* v2.3.2995: what was hit, broken and mended since last frame */
+    tickWheelBreak(S, Date.now());
+    const evs = drainWheelEvents();
+    if (evs) for (const ev of evs) { try { this._event(ev, ix, S, now); } catch (e) { /* one object's trouble is its own */ } }
     /* the camera's speed, for loading ahead (wheelGround.js) */
     const jumped = this._lastCx != null && Math.abs(cx - this._lastCx) + Math.abs(cy - this._lastCy) > 400;
     if (this._lastT != null && !jumped) {
@@ -275,6 +303,8 @@ export class WheelObjects {
     each(ix, vx0 - ix.maxHalfW, vy0, vx1 + ix.maxHalfW, vy1 + ix.maxH, (i) => {
       const x = ix.o.x[i], y = ix.o.y[i], hw = ix.reach[i];
       if (x + hw < vx0 || x - hw > vx1 || y < vy0 || y - ix.h[i] > vy1) return;
+      /* v2.3.2995: broken, it is its shards (wheelShatter.js) until mended */
+      if (isWheelBroken(i)) return;
       seen.add(i);
       if (this.sprites.has(i)) return;
       const rec = _pages.get(ix.page[i]);
@@ -310,6 +340,8 @@ export class WheelObjects {
       try { s.destroy({ children: true }); } catch (e) { /* gone */ }
     }
     if (this._late.size > 2000) this._late.clear();
+    /* v2.3.2995: shaking from a hit, fading back in mended, and the shards */
+    this._motion(ix, now);
     /* v2.3.2983: the buildings' life, for the ones drawn */
     if (this.life) {
       const dt = this._lifeT != null ? Math.min(0.1, (now - this._lifeT) / 1000) : 0;
@@ -338,8 +370,11 @@ export class WheelObjects {
       each(ix, P.x - BLOCK_R - ix.maxHalfW, P.y - BLOCK_R, P.x + BLOCK_R + ix.maxHalfW, P.y + BLOCK_R + ix.maxH, (i) => {
         const rec = _pages.get(ix.page[i]);
         if (!rec || rec.state !== 'ready') return;
+        if (isWheelBroken(i)) return;      /* v2.3.2995: rubble stops nobody */
         for (let b = o.boxOf[i]; b < o.boxOf[i + 1]; b++) {
-          out.push({ x0: o.boxes[b * 4], y0: o.boxes[b * 4 + 1], x1: o.boxes[b * 4 + 2], y1: o.boxes[b * 4 + 3], id: o.kinds[o.kind[i]] });
+          /* v2.3.2995: + `oi`, which object: a hit on it is that object's
+             (wheelBreak.js), not every one of its kind's */
+          out.push({ x0: o.boxes[b * 4], y0: o.boxes[b * 4 + 1], x1: o.boxes[b * 4 + 2], y1: o.boxes[b * 4 + 3], id: o.kinds[o.kind[i]], oi: i });
         }
       });
       this._blockers = out;
@@ -357,6 +392,79 @@ export class WheelObjects {
 
   /* the walk test's footprints, now (worldProps.zoneBlockers) */
   blockers() { return this._blockers; }
+
+  /* ── v2.3.2995: hits, breaks and mendings (wheelBreak.js) ── */
+  _event(ev, ix, S, now) {
+    const i = ev.oi;
+    if (i == null || i < 0 || i >= ix.n) return;
+    const k = wheelObjectKind(i);
+    if (ev.type === 'hit') {
+      this._shakes.set(i, { t0: now, frac: ev.frac || 0, tree: !!(k && k.canopy),
+        building: !!(k && isBuilding(k.id)), big: !!(k && k.big) });
+      return;
+    }
+    if (ev.type === 'break') {
+      this._shakes.delete(i);
+      this._fadeIn.delete(i);
+      const s = this.sprites.get(i);
+      if (s) { this.sprites.delete(i); try { s.destroy({ children: true }); } catch (e) { /* gone */ } }
+      const tex = texOf(ix, i);
+      const o = ix.o;
+      let depth = 12;
+      if (o.boxOf) for (let b = o.boxOf[i]; b < o.boxOf[i + 1]; b++) depth = Math.max(depth, o.boxes[b * 4 + 3] - o.boxes[b * 4 + 1]);
+      const info = materialInfo(k && k.mat);
+      if (tex) {
+        this.shatter.add(i, tex, { x: o.x[i], y: o.y[i], ax: ix.ax[i], ks: ix.scl[i], flip: !!o.flip[i],
+          hitX: ev.x, hitY: ev.y, ang: ev.ang, weapon: ev.weapon, as: ev.as, depth, dust: dustTint(info.tint) });
+      }
+      /* ...and a burst of what it is made of, thrown all round its foot */
+      if (S) {
+        if (!S._debrisBursts) S._debrisBursts = [];
+        const h = Math.min(ix.h[i] * 0.4, 70);
+        S._debrisBursts.push({ monsterId: 'wobj:' + i + ':b', kind: info.fx, tint: info.tint,
+          x: o.x[i], y: o.y[i] - h, gy: o.y[i], h, ang: Number.isFinite(ev.ang) ? ev.ang : -Math.PI / 2,
+          t0: Date.now(), weapon: 'bolt', big: true, hitX: o.x[i], hitY: o.y[i] - h, prop: true, oi: i, mat: k && k.mat });
+      }
+      this._blockers = this._blockers.filter((b) => b.oi !== i);
+      return;
+    }
+    if (ev.type === 'repair') {
+      this.shatter.remove(i);
+      this._fadeIn.set(i, now);
+      this._blockAt = null;
+    }
+  }
+
+  _motion(ix, now) {
+    const o = ix.o;
+    for (const [i, sh] of this._shakes) {
+      const s = this.sprites.get(i);
+      const age = now - sh.t0;
+      const dur = sh.tree ? 700 : sh.building ? 220 : 280;
+      if (!s || s.destroyed || age >= dur) {
+        if (s && !s.destroyed) { s.x = o.x[i]; s.rotation = 0; }
+        this._shakes.delete(i);
+        continue;
+      }
+      const k = 1 - age / dur, harder = 1 + sh.frac * 0.8;
+      if (sh.tree) {
+        /* a tree rocks on its roots, its crown swinging a few px */
+        s.rotation = Math.sin(age * 0.021) * 0.014 * harder * k * k;
+      } else {
+        const A = sh.building ? 0.8 : sh.big ? 1.3 : 2.2;
+        s.x = o.x[i] + Math.sin(age * 0.16) * A * harder * k;
+      }
+    }
+    for (const [i, t0] of this._fadeIn) {
+      const a = Math.min(1, (now - t0) / FADE_IN_MS);
+      const s = this.sprites.get(i);
+      if (s && !s.destroyed) s.alpha = a;
+      if (a >= 1) this._fadeIn.delete(i);
+    }
+    const dt = this._breakT != null ? now - this._breakT : 16.667;
+    this._breakT = now;
+    this.shatter.update(dt);
+  }
 
   _dropPage(ix, k) {
     /* its sprites first: drop the reference, then the texture (CLAUDE.md) */
@@ -379,11 +487,158 @@ export class WheelObjects {
     this._clearSprites();
     this._blockers = [];
     if (this._offHook) { this._offHook(); this._offHook = null; }
+    /* v2.3.2995: the shards and the count go with the Wheel: everything is
+       whole again next time */
+    if (this._offBreak) { this._offBreak(); this._offBreak = null; }
+    try { this.shatter.destroy(); } catch (e) { /* gone */ }
+    this._shakes.clear(); this._fadeIn.clear();
+    resetWheelBreak();
     if (_live === this) _live = null;
     wheelObjectsFree();
   }
 }
 let _live = null;
+
+/* ═══ v2.3.2995: AN OBJECT'S PICTURE, FOR WHAT A HIT DOES TO IT ═══ */
+/* object i's picture, if its page is in */
+function texOf(ix, i) {
+  const rec = _pages.get(ix.page[i]);
+  if (!rec || rec.state !== 'ready' || !rec.sheet || !rec.sheet.textures) return null;
+  const t = rec.sheet.textures[ix.frame[i]];
+  return t && t.source && !t.destroyed ? t : null;
+}
+/* the material's colour, paled for the dust it raises */
+function dustTint(c) {
+  const r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+  const m = (v) => Math.round(v + (220 - v) * 0.55);
+  return (m(r) << 16) | (m(g) << 8) | m(b);
+}
+/* a world point -> object i's picture, in the picture's own pixels */
+function toPic(ix, i, tex, x, y) {
+  const fp = framePx(tex);
+  if (!fp) return null;
+  const ks = ix.scl[i], flip = !!ix.o.flip[i];
+  const cs = ks / fp.res, sx = flip ? -cs : cs;
+  return { fp, cs, sx, flip, u: (x - ix.o.x[i]) / sx + ix.ax[i] * fp.w, v: (y - ix.o.y[i]) / cs + fp.h };
+}
+
+/** Where object `oi` stands, for the marks drawn on it (effectsRenderer):
+ *  { id, x, y, blockD, drawnX } -- drawnX where it is drawn this frame,
+ *  shaking and all -- or null when it is not in the Wheel's objects or is
+ *  broken. */
+export function wheelPropRec(oi) {
+  const ix = _idx;
+  if (!ix || oi == null || oi < 0 || oi >= ix.n || isWheelBroken(oi)) return null;
+  const o = ix.o;
+  const s = _live && _live.sprites.get(oi);
+  let d = 0;
+  if (o.boxOf) for (let b = o.boxOf[oi]; b < o.boxOf[oi + 1]; b++) d = Math.max(d, o.boxes[b * 4 + 3] - o.boxes[b * 4 + 1]);
+  return { id: 'wobj:' + oi, oi, x: o.x[oi], y: o.y[oi], blockD: d, drawnX: s && !s.destroyed ? s.x : o.x[oi], drawn: !!(s && !s.destroyed) };
+}
+
+/** The picture a hit on object `oi` at (x, y) cuts its pieces from
+ *  (hitMaterialFx's chips): { tex, u, v (the point, in the picture's own
+ *  pixels), cs (world px per picture pixel), R (how far round it to cut) }.
+ *  `crown`: the tree's crown instead -- its middle, and { cx, z0, z1, hw }
+ *  for where the falling leaves start.  Null without the picture. */
+export function wheelPropArt(oi, x, y, crown) {
+  const ix = _idx;
+  if (!ix || oi == null || oi < 0 || oi >= ix.n) return null;
+  const tex = texOf(ix, oi);
+  if (!tex) return null;
+  const p = toPic(ix, oi, tex, x, y);
+  if (!p) return null;
+  const W = p.fp.w, H = p.fp.h;
+  if (crown) {
+    /* a crown is the top of the picture: its middle across, a third down */
+    const cu = W * 0.5, cv = H * 0.3;
+    const cx = ix.o.x[oi] + (cu - ix.ax[oi] * W) * p.sx;
+    return { tex, u: cu, v: cv, cs: p.cs, R: Math.min(W, H) * 0.22,
+      crown: { cx, z0: H * 0.42 * p.cs, z1: H * 0.9 * p.cs, hw: W * 0.34 * p.cs } };
+  }
+  return { tex, u: Math.max(0, Math.min(W - 1, p.u)), v: Math.max(0, Math.min(H - 1, p.v)), cs: p.cs, R: Math.max(10, 9 / p.cs) };
+}
+
+/* ── a bolt's mark: the picture's own pixels, burnt ── */
+/** Let go of a mark's pixels -- effectsRenderer, when the mark goes (its
+ *  sprites first: the marks own their pixels, never the objects' pages, so
+ *  leaving the Wheel frees them with the marks, in the same frame). */
+export function freeWheelScorch(mark) {
+  if (!mark || !mark.source) return;
+  try { mark.tex.destroy(false); } catch (e) { /* gone */ }
+  try { mark.glow.destroy(false); } catch (e) { /* gone */ }
+  try { mark.source.destroy(); } catch (e) { /* gone */ }
+}
+/**
+ * The mark a bolt leaves on object `oi` at (x, y), `r` world px across its
+ * middle: the picture's own pixels there, burnt (or frosted, or stained --
+ * `style`), never spilling past the picture's edge, as { tex, glow, source,
+ * x, y (where its middle goes), sx, sy (its scale) }; `glow` is the same
+ * shape in white, for the heat that fades off it.  Null without the picture.
+ */
+export function wheelScorch(oi, x, y, r, style) {
+  const ix = _idx;
+  if (!ix || oi == null || oi < 0 || oi >= ix.n || typeof document === 'undefined') return null;
+  const tex = texOf(ix, oi);
+  if (!tex) return null;
+  const p = toPic(ix, oi, tex, x, y);
+  if (!p) return null;
+  const src = tex.source.resource;
+  const W = p.fp.w, H = p.fp.h;
+  const R = Math.max(4, Math.round(r / p.cs));
+  const S = 2 * R + 1;
+  const u0 = Math.round(p.u) - R, v0 = Math.round(p.v) - R;
+  const cu0 = Math.max(0, u0), cv0 = Math.max(0, v0), cu1 = Math.min(W, u0 + S), cv1 = Math.min(H, v0 + S);
+  if (cu1 - cu0 < 2 || cv1 - cv0 < 2) return null;
+  const c = document.createElement('canvas'); c.width = S * 2; c.height = S;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  try { g.drawImage(src, p.fp.x + cu0, p.fp.y + cv0, cu1 - cu0, cv1 - cv0, cu0 - u0, cv0 - v0, cu1 - cu0, cv1 - cv0); } catch (e) { return null; }
+  let img;
+  try { img = g.getImageData(0, 0, S, S); } catch (e) { return null; }
+  const d = img.data;
+  const glow = g.createImageData(S, S), gd = glow.data;
+  const ph = Math.random() * 6.28, ph2 = Math.random() * 6.28;
+  let any = 0;
+  for (let py = 0; py < S; py++) {
+    for (let px = 0; px < S; px++) {
+      const q = (py * S + px) * 4;
+      const a = d[q + 3];
+      if (a < 8) { d[q + 3] = 0; continue; }
+      const dx = px - R, dy = py - R, ang = Math.atan2(dy, dx);
+      /* a ragged rim, and a speckle in it */
+      const rim = 1 + 0.2 * Math.sin(3 * ang + ph) + 0.1 * Math.sin(7 * ang + ph2);
+      const hsh = ((px * 73856093) ^ (py * 19349663) ^ R) & 255;
+      const dd = Math.hypot(dx, dy) / (R * rim) + (hsh / 255 - 0.5) * 0.18;
+      const k = Math.max(0, Math.min(1, (1 - dd) / 0.55));
+      if (k <= 0) { d[q + 3] = 0; continue; }
+      const r0 = d[q], g0 = d[q + 1], b0 = d[q + 2];
+      const lum = (r0 * 77 + g0 * 150 + b0 * 29) >> 8;
+      let tr, tg, tb, mix;
+      if (style === 'frost') { tr = 236; tg = 246; tb = 255; mix = 0.72 * k; }
+      else if (style === 'wet') { tr = r0 * 0.55; tg = g0 * 0.6; tb = b0 * 0.7 + 20; mix = 0.7 * k; }
+      else if (style === 'stain') { tr = 64 + lum * 0.2; tg = 104 + lum * 0.25; tb = 34 + lum * 0.1; mix = 0.6 * k; }
+      else { tr = 16 + lum * 0.2; tg = 11 + lum * 0.14; tb = 8 + lum * 0.1; mix = 0.86 * k; }
+      d[q] = r0 + (tr - r0) * mix; d[q + 1] = g0 + (tg - g0) * mix; d[q + 2] = b0 + (tb - b0) * mix;
+      d[q + 3] = a * Math.min(1, k * 1.7);
+      if (!style || style === 'burn') {
+        const hot = k * k;
+        gd[q] = 255; gd[q + 1] = 255; gd[q + 2] = 255; gd[q + 3] = a * hot;
+      }
+      any++;
+    }
+  }
+  if (!any) return null;
+  g.putImageData(img, 0, 0);
+  g.putImageData(glow, S, 0);
+  const source = new CanvasSource({ resource: c, width: S * 2, height: S, resolution: 1, scaleMode: 'linear' });
+  const mk = { source,
+    tex: new Texture({ source, frame: new Rectangle(0, 0, S, S) }),
+    glow: new Texture({ source, frame: new Rectangle(S, 0, S, S) }),
+    x: ix.o.x[oi] + (u0 + S / 2 - ix.ax[oi] * W) * p.sx,
+    y: ix.o.y[oi] + (v0 + S / 2 - H) * p.cs,
+    sx: p.sx, sy: p.cs };
+  return mk;
+}
 
 /* QA probe, house style: what is drawn and loaded, and what stops you. */
 if (typeof window !== 'undefined') {
@@ -411,6 +666,14 @@ if (typeof window !== 'undefined') {
       return { layer: s2.parent ? s2.parent.label : null, x: s2.x, y: s2.y, w: Math.abs(pic.width), h: pic.height,
         ax: pic.anchor.x, flip: pic.scale.x < 0, life: s2._life ? s2._life.count() : null };
     },
+    /* v2.3.2995: the broken objects' shards, and an object's shake */
+    shards: () => (_live ? _live.shatter.probe() : []),
+    shatterStats: () => (_live ? { ..._live.shatter.stats } : null),
+    shaking: (i) => !!(_live && _live._shakes.has(i)),
+    fading: (i) => (_live && _live._fadeIn.has(i) ? (() => { const s = _live.sprites.get(i); return s ? +s.alpha.toFixed(2) : null; })() : null),
+    drawn: (i) => !!(_live && _live.sprites.has(i)),
+    /* the footprints the walk test has now, with their object */
+    blockers: () => (_live ? _live._blockers.map((b) => ({ ...b })) : []),
     /* the sprite sheets in memory now, by name */
     pagesLoaded: () => {
       const ix = _idx;

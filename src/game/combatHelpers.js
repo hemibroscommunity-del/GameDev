@@ -11,6 +11,7 @@
 import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY, monsterTorsoY, zonePlayerScale, TILE } from '@/data/index.js';   /* v2.3.2845: + the torso a shot is aimed at, and the size it is drawn */
 import { hitMaterialOf, hitFxTintOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard; v2.3.2844: goo in the drawn colour */
 import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3.2730: what a prop is made of, and where a swing meets one */
+import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: the Wheel's objects take hits, break, and are mended */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
 
@@ -779,6 +780,31 @@ export function spawnPropDebris(S, hit) {
   });
 }
 
+/* ═══ v2.3.2995: WHAT A HIT LEAVES IN ONE OF THE WHEEL'S OBJECTS ═══
+   Owner: "It would be cool if there were burn marks from magic or arrows
+   stuck in it if using bow."  An arrow that sticks in one of them now STAYS
+   in it -- the old 2 s was a rock's, when nothing on the map could hold one
+   -- until this long has passed or the object breaks; a bolt leaves its
+   mark there (effectsRenderer, the object's own pixels burnt:
+   wheelObjects.wheelScorch) for SCORCH_MS.  The mark is the bolt's element:
+   fire and lightning and plain magic burn, frost leaves rime, water a wet
+   stain, venom and flora a green one, wind and stone nothing at all. */
+export const STUCK_ARROW_MS = 90000;
+export const SCORCH_MS = 60000;
+export function scorchStyle(elem) {
+  if (elem === 'frost') return 'frost';
+  if (elem === 'water') return 'wet';
+  if (elem === 'venom' || elem === 'flora') return 'stain';
+  if (elem === 'wind' || elem === 'stone') return null;
+  return 'burn';
+}
+/* the heat that glows off a burn for its first moments: the element's own
+   colour when it has one (a CSS '#rrggbb'), else ember orange */
+export function scorchGlow(color) {
+  if (typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) return parseInt(color.slice(1), 16);
+  return 0xff8a2a;
+}
+
 /* v2.3.2730: and what it SOUNDS like -- the same material mixer a monster hit
    goes through (BT_AUDIO.swordHit, v2.3.2452), so a rock rings like a rock
    monster and a bench cracks like wood.  Snow takes the snowball thud, which
@@ -896,6 +922,18 @@ export function propSwingHit(S, px, py, ang, reach, halfArc) {
   if (!c) return null;
   var dir = Math.atan2(c.y - py, c.x - px);
   var y = c.y - PROP_BLADE_H;
+  /* v2.3.2995: one of the Wheel's objects -- its own material's sound and
+     pieces, and a blow toward breaking it (wheelBreak.js); the cut stays on
+     it longer, as its arrows do */
+  if (c.box && c.box.oi != null) {
+    var wr = strikeWheelObject(S, { oi: c.box.oi, x: c.x, y: y, gy: c.y, ang: dir, weapon: 'sword', vol: 0.35 });
+    if (wr && !wr.broke && c.face !== 'n') {
+      var wtilt = ((_propSlashFlip++ & 1) ? 1 : -1) * (0.38 + Math.random() * 0.14);
+      markProp(S, { kind: 'slash', id: c.id, oi: c.box.oi, x: c.x, y: y, gy: c.y, face: c.face,
+        ang: dir + Math.PI / 2 + wtilt, ttl: 20000 });
+    }
+    return c;
+  }
   spawnPropDebris(S, { id: c.id, x: c.x, y: y, gy: c.y, ang: dir, weapon: 'sword' });
   propImpactSound(c.id, 0.35);
   if (c.face !== 'n') {

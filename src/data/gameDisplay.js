@@ -2918,6 +2918,10 @@ BT_AUDIO.SFX_MANIFEST = {
      "great" cut-down sound; wired into the extraction reward in
      lifeSkillRewards.js. */
   'tree-fall':     '/audio/tree-fall.mp3',
+  /* v2.3.2995: a single deep wooden THUNK (Pixabay, CREDITS.md -- it sat in
+     public/audio unregistered): an arrow going into a tree, a cart, a
+     building's boards (BT_AUDIO.PROP_SOUNDS.wood, below) */
+  'wood-chop':     '/audio/wood-chop.mp3',
   /* ═══ v2.3.2490: THE COIN PICKUP, AT LAST A SOUND ═══
      Picking up gold has been SILENT since v2.3.1103, when the owner
      removed every procedurally-synthesised sound ("worse than nothing") by
@@ -3263,6 +3267,138 @@ BT_AUDIO._armorHitToggle = 0;
 /* v2.3.1108: fallbackKey lets ranged hits keep their own splat when unarmoured
    (e.g. 'slime-projectile-hit') while still clanging when armoured. Defaults to
    the melee 'monster-hit'. */
+/* ═══ v2.3.2995: A PROP SOUNDS LIKE WHAT IT IS MADE OF ═══
+ *
+ * Owner: "change the sound if projectiles hit props to be more appropriate
+ * for the type of material it is you already have access to different
+ * sounds."  Every hit on a prop went through swordHit's three-way mixer,
+ * where a prop the table did not know was stone -- so an arrow in a barrel,
+ * a tree or a bush rang like a sword on a rock.  Now each material has its
+ * own, made only of recordings the game already has (procedural sound is out:
+ * the owner's v2.3.1103 "worse than nothing"):
+ *
+ *   wood     the owner's hatchet strikes (axe-chop, two of them) for a light
+ *            thing; the deep wood-chop thunk under it for a heavy one (a
+ *            tree, a cart, a building)
+ *   stone    the owner's pickaxe on stone (mine-strike, two strikes)
+ *   metal    the armour clangs, cut short so a lamp post does not ring on
+ *   leaf     a rustle (the Wheel's grass footstep) over a soft thup
+ *   straw    the same, the thup louder
+ *   snow     the snowball thud the snowman owns
+ *   ice      the Wheel's ice footstep's crunch, a high pick-clink in it
+ *   crystal  the sword clang pitched up, which rings like glass
+ *   coal     a dull pick strike in gravel
+ *   soft     the fleshy monster-hit thud: toadstools, cacti, giant flowers
+ *
+ * and a BREAK of its own (propBreak): a tree's fall, a stone thing's rubble
+ * (the skeleton's bones-crumble, pitched down, is stones tumbling), a metal
+ * crash, the snowman bursting -- its layers held so their PEAKS together stay
+ * under full scale (there is no limiter on the bus; the hatchet and the
+ * pickaxe are all peak).  Layers are [key, offset s, duration s, gain,
+ * rate, delay s]; the GAIN brings each slice to the loudness of sword-hit3,
+ * the hit mixer's reference (HIT_KEY_GAIN, above) -- measured, the mean of
+ * the plain and the A-weighted peak-50ms RMS of each slice, because the
+ * recordings lie 25x apart (the grass step's 0.016 to the armour's 0.43)
+ * and a phone's speaker hears the A-weighted half.  The Wheel's footstep
+ * clips are only loaded in the Wheel, which is where its objects are; a
+ * layer whose sample is not in plays nothing, and a hit with nothing at
+ * all falls back to the old stone clang. */
+BT_AUDIO.PROP_SOUNDS = {
+  wood: {
+    hit: [['axe-chop', 0.13, 0.3, 2.1], ['axe-chop', 1.135, 0.3, 1.7]],
+    big: [['wood-chop', 0.06, 0.38, 0.36, 1]], bigLayer: ['axe-chop', 0.13, 0.25, 1.6, 1],
+    brk: [['tree-fall', 0, 0.7, 0.45, 1.3], ['axe-chop', 1.135, 0.3, 1.2, 0.9, 0.02]],
+    tree: [['tree-fall', 0, 2, 0.5, 1]],
+    building: [['tree-fall', 0, 2, 0.5, 0.82], ['shield-bash', 0, 0.72, 0.4, 0.8, 0.05], ['skeleton-death', 0, 1.3, 0.45, 0.7, 0.3]],
+  },
+  stone: {
+    hit: [['mine-strike', 0.06, 0.4, 0.72], ['mine-strike', 0.58, 0.45, 0.54]],
+    brk: [['mine-strike', 0.58, 0.45, 0.4, 0.78], ['skeleton-death', 0, 1.3, 0.45, 0.75, 0.04]],
+    building: [['tree-fall', 1.1, 0.9, 0.42, 0.72], ['skeleton-death', 0, 1.3, 0.38, 0.62, 0.08], ['mine-strike', 0.06, 0.4, 0.28, 0.7, 0.02]],
+  },
+  metal: {
+    hit: [['armor-hit-1', 0.12, 0.42, 0.25], ['armor-hit-2', 0.06, 0.42, 0.25]],
+    brk: [['armor-hit-2', 0.06, 0.9, 0.28, 0.74], ['armor-hit-1', 0.12, 0.7, 0.24, 0.92, 0.09], ['skeleton-death', 0, 1.3, 0.35, 1.2, 0.05]],
+  },
+  leaf: {
+    hit: [['step-grass', 0.145, 0.53, 6.2]], layer: ['step-wood', 0.145, 0.25, 2.2, 1.2],
+    brk: [['step-grass', 0.145, 0.53, 5, 0.85], ['step-grass', 0.145, 0.53, 4, 1.15, 0.12], ['step-wood', 0.145, 0.32, 2.5, 0.9]],
+  },
+  straw: {
+    hit: [['step-grass', 0.145, 0.53, 5.4, 0.9]], layer: ['step-wood', 0.145, 0.3, 3.6, 1],
+    brk: [['step-grass', 0.145, 0.53, 5, 0.8], ['step-grass', 0.145, 0.53, 4, 1.05, 0.1], ['shield-bash', 0, 0.5, 0.35, 1.25]],
+  },
+  snow: {
+    hit: [['snowman-hit', 0.03, 0.27, 0.72]],
+    brk: [['snowman-death', 0.13, 1.5, 0.55, 1.05]],
+  },
+  ice: {
+    hit: [['step-ice', 0.145, 0.39, 4.1], ['step-ice', 0.607, 0.34, 4.1]], layer: ['mine-strike', 0.06, 0.3, 0.4, 1.5],
+    brk: [['skeleton-death', 0, 1.3, 0.45, 1.45], ['sword-hit2', 0, 0.3, 0.4, 1.3, 0.03], ['step-ice', 1.016, 0.35, 1.6, 0.9, 0.08]],
+  },
+  crystal: {
+    hit: [['sword-hit2', 0, 0.3, 0.67, 1.3]], layer: ['mine-strike', 0.06, 0.3, 0.4, 1.4],
+    brk: [['skeleton-death', 0, 1.3, 0.45, 1.5], ['sword-hit2', 0, 0.3, 0.45, 1.15], ['sword-hit2', 0, 0.3, 0.38, 1.45, 0.07]],
+  },
+  coal: {
+    hit: [['mine-strike', 0.06, 0.4, 0.6, 0.8]], layer: ['step-gravel', 0.145, 0.4, 3, 0.9],
+    brk: [['skeleton-death', 0, 1.3, 0.42, 0.7], ['step-gravel', 0.145, 0.53, 3.5, 0.8], ['mine-strike', 0.58, 0.45, 0.3, 0.7, 0.05]],
+  },
+  soft: {
+    hit: [['monster-hit', 0, 0.21, 3, 1.1]],
+    brk: [['slime-death', 0, 1.2, 0.18, 1.1]],
+  },
+};
+BT_AUDIO._propHitN = 0;
+/* One layer.  Returns whether its sample was in to play. */
+BT_AUDIO._propLayer = function (L, vol, rateK) {
+  if (!L || !this._samples || !this._samples[L[0]]) return false;
+  this.play(L[0], { offset: L[1], duration: L[2], vol: vol * this.HIT_GAIN * L[3],
+    rate: (L[4] || 1) * (rateK || 1) * (1 + (Math.random() - 0.5) * 0.06), delay: L[5] || 0 });
+  return true;
+};
+/* What the last prop sound was, for the tests (mp-wheelbreak). */
+BT_AUDIO._noteProp = function (what, mat, key) {
+  this._lastProp = { what: what, mat: mat, key: key, at: Date.now() };
+  if (!this._propCounts) this._propCounts = Object.create(null);
+  var k = what + ':' + mat;
+  this._propCounts[k] = (this._propCounts[k] || 0) + 1;
+};
+/** A hit on a prop made of `mat` (data/wheelMaterials.js MATERIALS).
+ *  opts: vol (an arrow's 0.32, as before), big (a heavy thing: the deeper
+ *  sound, a little lower). */
+BT_AUDIO.propHit = function (mat, opts) {
+  var S = this.PROP_SOUNDS[mat] || this.PROP_SOUNDS.stone;
+  var o = opts || {};
+  var vol = o.vol != null ? o.vol : 0.32;
+  var big = !!o.big;
+  var alts = (big && S.big) || S.hit;
+  var L = alts[this._propHitN++ % alts.length];
+  var rateK = big ? 0.9 : 1.05;
+  var played = this._propLayer(L, vol, rateK);
+  if (big && S.bigLayer) this._propLayer(S.bigLayer, vol, rateK);
+  if (S.layer) played = this._propLayer(S.layer, vol, rateK) || played;
+  if (!played) {
+    /* nothing of this material's is in yet: the old stone clang, so a hit
+       is never silent */
+    this.swordHit({ vol: vol }, 'stone');
+    this._noteProp('hit', mat, 'sword-hit2');
+    return;
+  }
+  this._noteProp('hit', mat, L[0]);
+};
+/** The prop breaking.  `as`: 'building' | 'tree' | 'big' | 'small' -- a
+ *  building collapses, a tree falls, anything else breaks. */
+BT_AUDIO.propBreak = function (mat, as, opts) {
+  var S = this.PROP_SOUNDS[mat] || this.PROP_SOUNDS.stone;
+  var vol = (opts && opts.vol != null) ? opts.vol : 0.7;
+  var layers = (as === 'building' && S.building) || (as === 'tree' && S.tree) || S.brk;
+  var rateK = as === 'small' ? 1.08 : as === 'big' ? 0.92 : 1;
+  var any = false;
+  for (var i = 0; i < layers.length; i++) any = this._propLayer(layers[i], vol, rateK) || any;
+  if (!any) this.play('tree-fall', { vol: 0.5 });
+  this._noteProp('break', mat, layers[0] ? layers[0][0] : null);
+};
 BT_AUDIO.monsterHitHero = function (armored, opts, fallbackKey) {
   if (armored && this._samples && (this._samples['armor-hit-1'] || this._samples['armor-hit-2'])) {
     var two = (this._armorHitToggle++ & 1);
@@ -4007,9 +4143,14 @@ BT_AUDIO.play = function (key, opts) {
        silence off a hit sample. Web Audio start(when, offset, duration). */
     var _off = (opts && opts.offset) || 0;
     var _dur = (opts && opts.duration != null) ? opts.duration : null;
-    if (_dur != null) src.start(0, _off, _dur);
-    else if (_off) src.start(0, _off);
-    else src.start(0);
+    /* v2.3.2995: `delay` (seconds) starts it a beat later, on the audio
+       clock -- the layers of a breaking prop (BT_AUDIO.propBreak) land one
+       after another rather than all on one frame */
+    var _dly = (opts && opts.delay > 0) ? Math.min(2, opts.delay) : 0;
+    var _when = _dly ? this.ctx.currentTime + _dly : 0;
+    if (_dur != null) src.start(_when, _off, _dur);
+    else if (_off) src.start(_when, _off);
+    else src.start(_when);
     /* ═══ v2.3.2126: LET GO OF THE SOUND WHEN IT HAS FINISHED ═══
      *
      * Owner, on the demo: "during demo gameplay slowed down significantly
@@ -4059,7 +4200,7 @@ BT_AUDIO.play = function (key, opts) {
        schedule. */
     try {
       var _len = (_dur != null) ? _dur : Math.max(0, (buf.duration || 0) - _off);
-      var _ms = ((_len / (rate || 1)) * 1000) + 400;
+      var _ms = ((_len / (rate || 1)) * 1000) + 400 + _dly * 1000;
       if (isFinite(_ms) && _ms > 0) setTimeout(_release, Math.min(_ms, 60000));
       else setTimeout(_release, 2000);
     } catch (e) { setTimeout(_release, 2000); }

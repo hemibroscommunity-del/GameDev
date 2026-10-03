@@ -10,7 +10,8 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { zoneLeavesPrints } from '@/rendering/footprintSprites.js'; /* v2.3.2654 */
 import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2730: a peer's shot stops at a prop on your screen too */
-import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap */
+import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap, STUCK_ARROW_MS, SCORCH_MS, scorchStyle } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap; v2.3.2995 what stays in the Wheel's objects */
+import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: a peer's shot hits the Wheel's objects on your screen too */
 import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2731 */
 import { BOW_VOLLEY, LONE_BURN_MS } from '@/game/bowVolley.js';   /* v2.3.2849: how long a peer's special stands burning */
 /* v2.3.2730: how far up a prop's face a PEER's shot marks it -- see the remote
@@ -323,19 +324,40 @@ export function updateVisualSystems(S) {
                    which reads as a miss that planted.  Yours hit at the bow
                    grip, ~30px up; this is that height, give or take a hand. */
                 var _rpY = _rpHit.y - REMOTE_SHOT_H;
-                spawnPropDebris(S, { id: _rpId, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
-                  ang: rp.ang + Math.PI, weapon: rp.isStaff ? 'bolt' : 'arrow' });
-                propImpactSound(_rpId, 0.22);   /* someone else's shot: quieter than your own */
+                /* v2.3.2995: one of the Wheel's objects takes it as it takes
+                   yours -- its material, its shake, a hit toward breaking it --
+                   so two players shooting one barrel both see it go */
+                var _rpOi = (_rpHit.box && _rpHit.box.oi != null) ? _rpHit.box.oi : null;
+                var _rpFace = boxFace(_rpHit.box, _rpHit.x, _rpHit.y);
+                var _rpW = null;
+                if (_rpOi != null) {
+                  _rpW = strikeWheelObject(S, { oi: _rpOi, x: _rpHit.x, y: _rpY, gy: _rpHit.y, ang: rp.ang + Math.PI,
+                    weapon: rp.isStaff ? 'bolt' : 'arrow', special: !!rp.isSpecial, vol: 0.22, peer: true });
+                } else {
+                  spawnPropDebris(S, { id: _rpId, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
+                    ang: rp.ang + Math.PI, weapon: rp.isStaff ? 'bolt' : 'arrow' });
+                  propImpactSound(_rpId, 0.22);   /* someone else's shot: quieter than your own */
+                }
                 if (rp.isStaff) {
                   orbCrashFx(S, _rpHit.x, _rpY, rp.isSpecial ? '#f5c542' : '#a78bfa');
+                  /* v2.3.2995: its mark, as yours leaves one (a peer's bolt
+                     carries no element here: a plain burn) */
+                  if (_rpW && !_rpW.broke && _rpFace !== 'n') {
+                    markProp(S, { kind: 'scorch', id: _rpId, oi: _rpOi, x: _rpHit.x, y: _rpY, gy: _rpHit.y, face: _rpFace,
+                      r: rp.isSpecial ? 18 : 11, style: scorchStyle(null), glow: rp.isSpecial ? 0xf5c542 : null, ttl: SCORCH_MS });
+                  }
+                } else if (_rpW && _rpW.broke) {
+                  /* it broke what it hit: through the pieces (v2.3.2995) */
+                  return true;
                 } else if (!rp.isSpecial && arrowSnaps(rp.ownerId, rp.shotTs)) {
                   /* v2.3.2731: the same one-in-eight snap the shooter rolled --
                      same id, same shot timestamp, same answer (arrowSnap.js) */
                   queueArrowSnap(S, _rpHit.x, _rpY, _rpHit.y, rp.ang, 0.18);
                 } else {
-                  markProp(S, { kind: 'arrow', id: _rpId, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
-                    face: boxFace(_rpHit.box, _rpHit.x, _rpHit.y), ang: rp.ang,
-                    ttl: rp.isSpecial ? (rp.volley ? BOW_VOLLEY.BURN_MS : LONE_BURN_MS) : 2000, special: !!rp.isSpecial });   /* v2.3.2849: a volley's 2.5 s */
+                  markProp(S, { kind: 'arrow', id: _rpId, oi: _rpOi, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
+                    face: _rpFace, ang: rp.ang,
+                    /* v2.3.2995: a plain arrow stays in one of the Wheel's objects */
+                    ttl: rp.isSpecial ? (rp.volley ? BOW_VOLLEY.BURN_MS : LONE_BURN_MS) : (_rpOi != null ? STUCK_ARROW_MS : 2000), special: !!rp.isSpecial });   /* v2.3.2849: a volley's 2.5 s */
                 }
               }
               return false;
