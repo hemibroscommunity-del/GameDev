@@ -163,5 +163,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await Q.page.waitForTimeout(1000);
   still = await lives(Q);
   stillB = still.near.filter((o) => BUILDING_LIFE[o.id]);
+  /* v2.3.3000: what the second player saw, for when it saw nothing */
+  const qs = await Q.page.evaluate(() => {
+    const S = window._gameState.current, W = window.__btWheelObjects;
+    return { zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y), loading: !!S._zoneLoading,
+      objects: W ? { drawn: W.stats.drawn, pages: W.stats.pages, loading: W.stats.loading, placed: W.stats.placed } : null,
+      near: W ? W.near(S.player.x, S.player.y, 1400).length : -1 };
+  });
+  console.log(`    nolife: ${JSON.stringify({ zq, ...qs, withSprites: still.near.length, buildings: stillB.length })}`);
   rec.ok(`with ?nolife the ${stillB.length} buildings round the arrival are plain pictures, no life`, WHEELISH(zq) && stillB.length >= 3 && stillB.every((o) => o.s.life == null) && !still.stats.alive, { ids: stillB.map((o) => o.id), alive: still.stats.alive });
 }
