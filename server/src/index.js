@@ -3445,7 +3445,11 @@ export class GameRoom {
           // v2.3.1154: × Endurance-grid Conditioning (+1%/pt, cap +50%)
           // — the successor to the retired restoration mult, deleted
           // v2.3.1155 (it was ×1.0 for every live player since v2.3.910).
-          const stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stEndMult) + this._conditioningFlat(ps)); // v2.3.1345: flat regen add
+          let stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stEndMult) + this._conditioningFlat(ps)); // v2.3.1345: flat regen add
+          /* v2.3.3013: soaked by a fishman's hit, it refills at SOAK.REGEN_MULT
+             (monsterstatus.js) -- exactly the line above when dry */
+          const stSoak = this._soakRegenMult(ps, now);
+          if (stSoak !== 1) stHeal = Math.max(1, Math.round(stHeal * stSoak));
           const beforeSt = ps.stamina;
           ps.stamina = Math.min(ps.maxStamina, ps.stamina + stHeal);
           if (ps.stamina !== beforeSt) changed = true;

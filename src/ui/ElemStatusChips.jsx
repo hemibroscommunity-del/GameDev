@@ -4,8 +4,10 @@
  *
  * The snowman's chill, the fire goblin's burn and the blue slime's hold
  * (game/elemHits.js), each a chip with its own icon -- the snowflake, the
- * flame, the slime -- and the seconds left.  The gust is a shove, over before
- * a chip could say so; its icon rides the hit's number instead.
+ * flame, the slime -- and the seconds left; since v2.3.3013 the rock
+ * monster's daze, the fishman's soak and the Mire's poison too.  The gust is
+ * a shove, over before a chip could say so; its icon rides the hit's number
+ * instead.
  *
  * ITS OWN CLOCK, which is why it is a component and not three more rows in
  * BroTown's buff chips: that row redraws only when BroTown does, which is
@@ -21,6 +23,12 @@ const ROWS = [
   { key: '_chillUntil', img: ELEM_ICON_SRC['elem-frost'], label: 'Chilled', color: '#9fd8ff' },
   { key: '_burnUntil', img: ELEM_ICON_SRC['elem-flame'], label: 'Burning', color: '#ff9a3c' },
   { key: '_stuckUntil', img: ELEM_ICON_SRC.slime, label: 'Stuck', color: '#8be36a' },
+  /* v2.3.3013: the rock monster's daze, the fishman's soak, the Mire's
+     poison (the storm's crackle is over before a chip could say so, as the
+     gust's shove is: its icon rides the number) */
+  { key: '_dazeUntil', img: ELEM_ICON_SRC['elem-stone'], label: 'Dazed', color: '#e9d27a' },
+  { key: '_soakUntil', img: ELEM_ICON_SRC['elem-water'], label: 'Soaked', color: '#5fb8ff' },
+  { key: '_poisonUntil', img: ELEM_ICON_SRC['elem-venom'], label: 'Poisoned', color: '#a6e24a' },
 ];
 
 function readChips(S, now) {

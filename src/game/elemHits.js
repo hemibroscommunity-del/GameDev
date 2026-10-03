@@ -24,6 +24,22 @@
  * effectsRenderer draws the look (frost at the feet, goo, flames, the wind);
  * gameEvents.js puts the element's icon on the number.  No imports, so the
  * server's mirror-audit.test.mjs can read CHILL_MULT and the tables here.
+ *
+ * ═══ v2.3.3013: AND THE OTHER FOUR ═══
+ * "stone stuns briefly; storm shocks nearby players; water slows stamina
+ * refill; venom poisons over time" -- the owner: "Yes continue working on
+ * those items":
+ *
+ *   daze   (stone, the rock monster)  no walk, swing, roll or shield  S._dazeUntil
+ *   shock  (storm, the Storm Peaks')  the crackle; the arcs the worker
+ *                                     sent to whoever stood near      S._shockUntil
+ *   soak   (water, the fishman)       the worker refills your stamina
+ *                                     slower; the drips are a look    S._soakUntil
+ *   poison (venom, the Mire's)        the worker's ticks; a look      S._poisonUntil
+ *
+ * The daze is carried out like the hold: elemMoveMult() is 0, and
+ * combatHelpers.dazeRefused() turns down a swing, a special, an ability, a
+ * roll and the shield, saying "Dazed!".
  */
 
 /* The walk while chilled.  MIRROR: server/src/monsterstatus.js CHILL.MULT
@@ -39,6 +55,11 @@ export const ELEM_LOOK = {
   /* the owner's "slime for floral damage": the slime's own splat, not the
      leaf of the element icons */
   flora: { icon: 'slime', color: '#8be36a' },
+  /* v2.3.3013 */
+  stone: { icon: 'elem-stone', color: '#c9b48a' },
+  storm: { icon: 'elem-storm', color: '#f5e663' },
+  water: { icon: 'elem-water', color: '#5fb8ff' },
+  venom: { icon: 'elem-venom', color: '#a6e24a' },
 };
 
 /* Where each icon is, for effectsRenderer's popup icons and the status chips.
@@ -48,11 +69,16 @@ export const ELEM_ICON_SRC = {
   'elem-flame': '/icons/ui/elem-flame.webp',
   'elem-wind': '/icons/ui/elem-wind.webp',
   slime: '/icons/monsters/slime-remnants.webp',
+  /* v2.3.3013 */
+  'elem-stone': '/icons/ui/elem-stone.webp',
+  'elem-storm': '/icons/ui/elem-storm.webp',
+  'elem-water': '/icons/ui/elem-water.webp',
+  'elem-venom': '/icons/ui/elem-venom.webp',
 };
 
 /* The statuses this client carries out.  MIRROR: the values of
    server/src/monsterstatus.js ELEM_HITS (mirror-audit.test.mjs). */
-export const ELEM_STATUSES = ['chill', 'burn', 'gust', 'stuck'];
+export const ELEM_STATUSES = ['chill', 'burn', 'gust', 'stuck', 'daze', 'shock', 'soak', 'poison'];
 
 /* Nothing the wire says lasts longer than this, or shoves further. */
 const MAX_ST_MS = 5000;
@@ -71,6 +97,20 @@ export function isBurnTick(p) {
 }
 
 /**
+ * v2.3.3013: damage the worker resolved that is NOT a blow -- a burn's tick,
+ * the fire trail's, a poison's, or a storm's arc from someone near you.  No
+ * flinch, no camera kick, no blood, no armour clang: 'burn', 'poison' or
+ * 'shock' (what it sounds and sparkles like), else null.
+ */
+export function tickKind(p) {
+  if (!p) return null;
+  if (isBurnTick(p)) return 'burn';
+  if (p.ability === 'poison') return 'poison';
+  if (p.ability === 'shock') return 'shock';
+  return null;
+}
+
+/**
  * A monster_attack on YOU said `st`: carry it out.  Returns the status name it
  * applied, or null.  `who` is the player record to mark when it is a peer's
  * (their look only -- a peer's movement is their own client's).
@@ -84,6 +124,18 @@ export function applyElemHit(S, p, now, who) {
   if (p.st === 'chill') R._chillUntil = Math.max(R._chillUntil || 0, t + ms);
   else if (p.st === 'stuck') R._stuckUntil = Math.max(R._stuckUntil || 0, t + ms);
   else if (p.st === 'burn') R._burnUntil = Math.max(R._burnUntil || 0, t + ms);
+  /* v2.3.3013 */
+  else if (p.st === 'daze') R._dazeUntil = Math.max(R._dazeUntil || 0, t + ms);
+  else if (p.st === 'soak') R._soakUntil = Math.max(R._soakUntil || 0, t + ms);
+  else if (p.st === 'poison') R._poisonUntil = Math.max(R._poisonUntil || 0, t + ms);
+  else if (p.st === 'shock') {
+    R._shockUntil = Math.max(R._shockUntil || 0, t + ms);
+    R._shockAt = t;
+    /* an arc from the player it struck first (the worker's attackerX/Y), or
+       none when it struck you yourself */
+    const fx = Number(p.attackerX), fy = Number(p.attackerY);
+    R._shockFrom = (p.ability === 'shock' && isFinite(fx) && isFinite(fy)) ? { x: fx, y: fy } : null;
+  }
   else if (p.st === 'gust') {
     const kb = p.kb;
     if (!Array.isArray(kb) || kb.length !== 2) return null;
@@ -99,10 +151,11 @@ export function applyElemHit(S, p, now, who) {
   return p.st;
 }
 
-/** The walk's multiplier right now: 0 held, CHILL_MULT chilled, else 1. */
+/** The walk's multiplier right now: 0 held or dazed, CHILL_MULT chilled, else 1. */
 export function elemMoveMult(S, now) {
   if (!S) return 1;
   if (S._stuckUntil && now < S._stuckUntil) return 0;
+  if (S._dazeUntil && now < S._dazeUntil) return 0;   /* v2.3.3013 */
   if (S._chillUntil && now < S._chillUntil) return CHILL_MULT;
   return 1;
 }
@@ -110,6 +163,11 @@ export function elemMoveMult(S, now) {
 /** Held in place by a slime right now? */
 export function isStuck(S, now) {
   return !!(S && S._stuckUntil && (typeof now === 'number' ? now : Date.now()) < S._stuckUntil);
+}
+
+/** v2.3.3013: dazed by a rock monster right now? */
+export function isDazed(S, now) {
+  return !!(S && S._dazeUntil && (typeof now === 'number' ? now : Date.now()) < S._dazeUntil);
 }
 
 /**
@@ -132,4 +190,5 @@ export function gustStep(S, now) {
 export function clearElemStatuses(S) {
   if (!S) return;
   S._chillUntil = 0; S._stuckUntil = 0; S._burnUntil = 0; S._gust = null;
+  S._dazeUntil = 0; S._shockUntil = 0; S._shockFrom = null; S._soakUntil = 0; S._poisonUntil = 0;   /* v2.3.3013 */
 }

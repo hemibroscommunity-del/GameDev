@@ -631,7 +631,26 @@ remnant to migrate server-side, not a mode to preserve.
       every pair of 192 was 1.0 of the tick's 1.27 ms, now 0.26 ms in all;
       every other zone keeps the old loop; `wheeldeep: false` the kill switch;
     - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§8,
-      `mp-wheeldeep`.)
+      `mp-wheeldeep`.
+  - Since v2.3.3013 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
+    stuns briefly; storm shocks nearby players; water slows stamina refill;
+    venom poisons over time", the owner: "Yes continue working on those
+    items" (server/src/monsterstatus.js, client src/game/elemHits.js):
+    - stone (rock monsters) DAZE 0.5 s: no walk, swing, roll or shield
+      (`combatHelpers.dazeRefused` beside `swimRefused`, and the auto-attack
+      loop), 2.5 s before another; stars round the head;
+    - storm (Storm Peaks slimes) SHOCK: the hit arcs to every other player
+      within 150 px (nearest 4), half its damage each, elemental, under a
+      15% max-HP rail, never onto the safe ground or a harvester -- each arc
+      that player's own monster_attack `ability: 'shock'` (`_shockArcs`);
+    - water (fishmen) SOAK 4 s: the regen tick refills stamina at 0.4
+      (`_soakRegenMult`; exactly 1 when dry);
+    - venom (wisps, lurkers) POISON: the burn's machinery in its own Map
+      (`_poisons`, `_igniteDot`/`_tickDots`/`_dotTick`), five ticks of 12%;
+    - looks, chips (Dazed/Soaked/Poisoned), icons `elem-stone/storm/water/
+      venom`, sounds sliced from recordings already here (ELEM_SOUNDS);
+      `elemhits: false` still stops them all; `monsterstatus` §10-13,
+      `mp-elemhits`: docs/specs/monster-statuses.md "The other four".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
