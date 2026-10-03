@@ -5048,3 +5048,32 @@ return, the respawn).
 any render error. Its first version pressed Space to fight, which is the
 DODGE (`desktopControls.js`): a test that swings sends `monster_damage`, as
 mp-capekill does.
+
+
+## 127. A ground grid read at the body's centre stops your waist, not your boots (v2.3.2999)
+
+**Plausible:** "isSolid reads the walk grid at S.player, which is where the
+player is." True for a grid made in the same space as S.player: town's rock
+ring bakes the feet offset in (`townRimFor`, v2.3.2896), and the old zones'
+painted masks were drawn for the body.
+
+**Wrong** for a grid that is the ground's own. The Wheel's walk bits are the
+plan's water, cell for cell, and S.player.y is the body's centre,
+playerGroundDy (52 px) above the boots. Walking south into a river, the boots
+went ~45 px in before the waist met the water; walking north, they stopped 52
+px short of the bank. It went unseen because no scenario walked up to water.
+The elevation study found it: a terrace's face is the same kind of wall
+(docs/ELEVATION-PLAN.md).
+
+**The fix:** the grid says which space it is in. The Wheel's `lazyGrid`
+answers `atFeet: true`, and isSolid and nudgeSpawnToWalkable read it at
+`py + playerGroundDy`, the never-trap rule included, so "already inside" still
+means your boots. Not a shift of rows inside the grid: the offset is 2.17
+rows, and the quest trail's route finder draws on the ground, so it must keep
+reading the ground. A grid with the offset baked in (town) has no flag and is
+read as before. It is the walk-grid twin of v2.3.2748's "a prop stops your
+feet, not just your waist" (propFeetBlocked).
+
+**How to see it:** `mp-wheelshore` walks into a river's north bank and a
+pond's south bank. Before the fix it read +45 px (in the water) and -52 px
+(short of the bank); after, -7.5 and 0.

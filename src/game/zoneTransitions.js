@@ -32,6 +32,7 @@ import { wheelSpawnTick, wheelSpawnPass, wheelCommonsGate } from '@/game/wheelHo
 import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel' */
 import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
 import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2859: town's NPCs + buildings load and free with town */
+import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2999: the Wheel's grid is read at your boots */
 
 /* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
  *
@@ -141,8 +142,13 @@ function nudgeSpawnToWalkable(S, zoneId, zone) {
   if (!grid || !grid.length || !grid[0] || !grid[0].length) return;
   var gh = grid.length, gw = grid[0].length;
   var mw = zone.w * TILE, mh = zone.h * TILE;
+  /* v2.3.2999: the Wheel's grid is the ground's own (wheelTrial.js lazyGrid,
+     `atFeet`), so the landing is found for your BOOTS, playerGroundDy below
+     the body's centre, and the body put that far above the cell -- as
+     isSolid reads it.  Every other grid is read at the centre, as before. */
+  var fdy = grid.atFeet ? playerGroundDy(zoneId, P.x, P.y) : 0;
   var gx = Math.max(0, Math.min(gw - 1, Math.floor(P.x * gw / mw)));
-  var gy = Math.max(0, Math.min(gh - 1, Math.floor(P.y * gh / mh)));
+  var gy = Math.max(0, Math.min(gh - 1, Math.floor((P.y + fdy) * gh / mh)));
   var open = function (x, y) { return y >= 0 && y < gh && x >= 0 && x < gw && grid[y][x] !== false; };
   /* The block that has to be open around the landing cell — the movement
      hitbox (20x20, hs=10 in BroTown.jsx) spans several grid cells including
@@ -183,13 +189,13 @@ function nudgeSpawnToWalkable(S, zoneId, zone) {
     }
     if (best) {
       P.x = (best.x + 0.5) * (mw / gw);
-      P.y = (best.y + 0.5) * (mh / gh);
+      P.y = (best.y + 0.5) * (mh / gh) - fdy;
       return;
     }
   }
   if (fallback) {
     P.x = (fallback.x + 0.5) * (mw / gw);
-    P.y = (fallback.y + 0.5) * (mh / gh);
+    P.y = (fallback.y + 0.5) * (mh / gh) - fdy;
   }
 }
 

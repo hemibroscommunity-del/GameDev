@@ -56,7 +56,7 @@ import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 import { wheelMap, whereWords } from './wheelmap.js';
 import { stepOf, cleanSteps } from './footsteps.js';
-import { placeObjects, mayorSpot, objectFootprints } from './placing.js';
+import { placeObjects, mayorSpot, objectFootprints, placingOpts } from './placing.js';
 
 const TILE = PIXEL.groundTile;                                    /* 1024 px a swatch */
 /* v2.3.2982: the plan this worker lays -- the plan itself, or the big-town
@@ -244,7 +244,8 @@ async function init(m) {
      once, from the blueprint, and handed to the game, which draws the ones
      near you and stops you at their footprints (src/rendering/wheelObjects.js) */
   const tp0 = performance.now();
-  const objects = placeObjects(PLAN, full);
+  /* v2.3.2999: `?placing=2`, placing v2 (placing.js PLACING v2) */
+  const objects = placeObjects(PLAN, full, placingOpts(m && m.search));
   objects.placeMs = Math.round(performance.now() - tp0);
   objects.mayor = mayorSpot(PLAN, full);
   W = { bp, mm, reg: full.reg, tier: full.tier, regionIds: full.regionIds, map };

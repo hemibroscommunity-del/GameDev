@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* ═══ v2.3.2975: A PICTURE OF THE WHEEL WITH ITS OBJECTS ═══
  *
- *   node tools/world/render-wheel-objects.mjs [--at town|x,y] [--size 2400x2000] [--px 1.5] [--feet] [--out file.png]
+ *   node tools/world/render-wheel-objects.mjs [--at town|x,y] [--size 2400x2000] [--px 1.5] [--feet] [--placing 2] [--out file.png]
  *
  * The ground from the game's own swatches (public/world/ground/) and every
  * object placed there (public/tools/world/core/placing.js) drawn from the
@@ -40,7 +40,8 @@ const PLAN = BIG == null ? BASE_PLAN : bigTownPlan(BIG);
 const bp = buildBlueprint(PLAN);
 const mm = materialMap(PLAN, bp);
 const WPA = PLAN.worldPxPerArtPx;
-const placed = placeObjects(PLAN, bp);
+/* v2.3.2999: `--placing 2`, placing v2 (the `?placing=2` preview) */
+const placed = placeObjects(PLAN, bp, Number(arg('--placing', '1')) === 2 ? { v: 2 } : {});
 const mayor = mayorSpot(PLAN, bp);
 let at = arg('--at', 'town');
 let cx, cy;

@@ -51,7 +51,8 @@ import { setZoneBlockerHook } from '../data/worldProps.js';
 import { freeWheelNpcArt } from './npcSprites.js';
 import { tickWheelBreak, drainWheelEvents, isWheelBroken, resetWheelBreak, onWheelBreak, wheelObjectKind, isBuilding } from '../game/wheelBreak.js';
 import { WheelShatter, framePx } from './wheelShatter.js';
-import { materialInfo } from '../data/wheelMaterials.js';
+import { materialInfo, wheelMaterialOf } from '../data/wheelMaterials.js';
+import { playerGroundDy } from './systems/entityRenderer.js';   /* v2.3.2999: where your boots are, for a tree you stand behind */
 
 const BASE = '/world/objects/';
 const CACHE_PREFIX = 'wheel-object/';
@@ -66,6 +67,21 @@ const BLOCK_R = 640;         /* footprints within this of the player go to the w
 const BLOCK_MOVE = 96;       /* ...made again when the player has moved this far */
 const PAGE_WAIT_MS = 9000;   /* the way in waits at most this long for its pages */
 const FADE_IN_MS = 1600;     /* v2.3.2995: a mended object fading back in */
+/* ═══ v2.3.2999: A TREE YOU ARE BEHIND GOES SEE-THROUGH ═══
+   Placing v2's woods are thick (placing.js PLACING v2), and in one the bro
+   vanished under the canopy -- mp-placing2's jungle picture.  So a tree
+   (anything with a crown, wheelMaterials.js `canopy`) whose crown covers
+   you while you stand behind its foot eases to SEE_ALPHA, and back when you
+   step out: Stardew's rule.  Buildings stay solid (the roof drawn over you
+   is the owner's, v2.3.2975).  With placing v2 (`?placing=2`) or `?fade`;
+   `?nofade` never. */
+const SEE_ALPHA = 0.42, SEE_MS = 110;
+const CANOPY_FADE = (() => {
+  try {
+    const q = window.location.search || '';
+    return /(^|[?&])(placing=2|fade)(=|&|$)/.test(q) && !/(^|[?&])nofade(=|&|$)/.test(q);
+  } catch (e) { return false; }
+})();
 
 /* The numbers for the trial's readout and the QA scenario live in
    wheelTrial.js (wheelObjectStats), which the readout can read without pixi. */
@@ -128,6 +144,9 @@ function index() {
   wheelObjectStats.placed = placed;
   wheelObjectStats.pagesOf = pageNames.length;
   wheelObjectStats.placeMs = o.placeMs != null ? o.placeMs : null;
+  /* v2.3.2999: which placing made them (placing.js PLACING, or PLACING_V2
+     with `?placing=2`) */
+  wheelObjectStats.version = o.version || null;
   _idx = { src: o, o, n, cols, rows, start: count, items, page, w, h, ax, reach, scl, frame, maxH, maxHalfW, pageNames, pageMB,
     sheets: man.atlases.map((a) => BASE + a.sheet) };
   return _idx;
@@ -342,6 +361,8 @@ export class WheelObjects {
     if (this._late.size > 2000) this._late.clear();
     /* v2.3.2995: shaking from a hit, fading back in mended, and the shards */
     this._motion(ix, now);
+    /* v2.3.2999: ...and a tree you stand behind, see-through */
+    this._seeThrough(ix, S, now);
     /* v2.3.2983: the buildings' life, for the ones drawn */
     if (this.life) {
       const dt = this._lifeT != null ? Math.min(0.1, (now - this._lifeT) / 1000) : 0;
@@ -458,12 +479,50 @@ export class WheelObjects {
     for (const [i, t0] of this._fadeIn) {
       const a = Math.min(1, (now - t0) / FADE_IN_MS);
       const s = this.sprites.get(i);
-      if (s && !s.destroyed) s.alpha = a;
-      if (a >= 1) this._fadeIn.delete(i);
+      /* v2.3.2999: with the see-through trees on, _seeThrough sets the
+         alpha from both (it would undo this one); without, as before */
+      if (s && !s.destroyed) { if (CANOPY_FADE) s._mendA = a; else s.alpha = a; }
+      if (a >= 1) { this._fadeIn.delete(i); if (s && !s.destroyed && CANOPY_FADE) s._mendA = 1; }
     }
     const dt = this._breakT != null ? now - this._breakT : 16.667;
     this._breakT = now;
     this.shatter.update(dt);
+  }
+
+  _seeThrough(ix, S, now) {
+    /* off (no `?placing=2` or `?fade`): nothing to do, every frame */
+    if (!CANOPY_FADE) return;
+    const dt = this._seeT != null ? now - this._seeT : 16.667;
+    this._seeT = now;
+    const P = S && S.player;
+    let fy = null, px = 0, bodyH = 100;
+    if (P) {
+      px = P.x;
+      fy = P.y + (playerGroundDy(S.currentZone, P.x, P.y) || 0);
+      if (S._bodyDrawH > 20) bodyH = S._bodyDrawH;
+    }
+    const k = Math.min(1, dt / SEE_MS);
+    let seeing = 0;
+    for (const [i, s] of this.sprites) {
+      if (s.destroyed) continue;
+      let see = s._see == null ? 1 : s._see;
+      let want = 1;
+      if (fy != null) {
+        if (s._crown == null) { const m = wheelMaterialOf(ix.o.kinds[ix.o.kind[i]]); s._crown = !!(m && m.canopy); }
+        if (s._crown) {
+          const x = ix.o.x[i], y = ix.o.y[i], h = ix.h[i], hw = ix.reach[i] * 0.8;
+          /* behind its foot, under its crown, and the crown over your body */
+          if (fy < y - 4 && fy > y - h + 20 && Math.abs(px - x) < hw + 14 && fy - bodyH < y - h * 0.35) want = SEE_ALPHA;
+        }
+      }
+      see += (want - see) * k;
+      if (Math.abs(see - want) < 0.01) see = want;
+      s._see = see;
+      if (see < 1) seeing++;
+      const a = (s._mendA == null ? 1 : s._mendA) * see;
+      if (s.alpha !== a) s.alpha = a;
+    }
+    wheelObjectStats.seeThrough = seeing;
   }
 
   _dropPage(ix, k) {
@@ -664,7 +723,9 @@ if (typeof window !== 'undefined') {
       /* (v2.3.2983: a building with life is a Container; its picture is `_pic`) */
       const pic = s2._pic || s2;
       return { layer: s2.parent ? s2.parent.label : null, x: s2.x, y: s2.y, w: Math.abs(pic.width), h: pic.height,
-        ax: pic.anchor.x, flip: pic.scale.x < 0, life: s2._life ? s2._life.count() : null };
+        ax: pic.anchor.x, flip: pic.scale.x < 0, life: s2._life ? s2._life.count() : null,
+        /* v2.3.2999: see-through while you stand behind it */
+        alpha: +s2.alpha.toFixed(3), crown: !!s2._crown };
     },
     /* v2.3.2995: the broken objects' shards, and an object's shake */
     shards: () => (_live ? _live.shatter.probe() : []),

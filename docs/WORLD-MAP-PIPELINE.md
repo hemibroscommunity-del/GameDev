@@ -2800,7 +2800,10 @@ town's stairs as usual.
   the smoothing never shows a join.
 - **Where you cannot walk** is worked out from the same blurred share of
   water the shore is drawn from, so you stop where the water starts, give or
-  take the shore's ragged edge (about 12 game px).
+  take the shore's ragged edge (about 12 game px). Since v2.3.2999 it is your
+  BOOTS that stop there: the grid is read where they are (`atFeet`), not at
+  the body's centre 52 px above them, which let a walk south take them ~45 px
+  into a river and stopped a walk north 52 px short (`mp-wheelshore`).
 - **It is careful with memory.** The worker keeps a dozen swatches unpacked,
   as palette numbers (1 MB each rather than 4). The walk grid is kept as bits
   (400 KB, where plain rows would be ~26 MB on an iPhone), and the World

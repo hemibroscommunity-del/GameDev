@@ -150,8 +150,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   phase = 'nolife';
   const Q = await H.newPlayer(browser, { name: 'Stillness', wsPort, webPort, viewport: PHONE, touch: true, query: 'trial=wheel&nolife' });
   const zq = await wayIn(Q);
-  await Q.page.waitForTimeout(2500);
-  const still = await lives(Q);
-  const stillB = still.near.filter((o) => BUILDING_LIFE[o.id]);
+  /* v2.3.2999: until the buildings round the arrival are drawn, not a fixed
+     2.5 s -- the view 25% further out (v2.3.2997) loads more pages on the way
+     in, and a busy machine drew none in time: "0 buildings" was the wait */
+  let still = null, stillB = [];
+  for (let i = 0; i < 30; i++) {
+    await Q.page.waitForTimeout(500);
+    still = await lives(Q);
+    stillB = still.near.filter((o) => BUILDING_LIFE[o.id]);
+    if (stillB.length >= 3) break;
+  }
+  await Q.page.waitForTimeout(1000);
+  still = await lives(Q);
+  stillB = still.near.filter((o) => BUILDING_LIFE[o.id]);
   rec.ok(`with ?nolife the ${stillB.length} buildings round the arrival are plain pictures, no life`, WHEELISH(zq) && stillB.length >= 3 && stillB.every((o) => o.s.life == null) && !still.stats.alive, { ids: stillB.map((o) => o.id), alive: still.stats.alive });
 }

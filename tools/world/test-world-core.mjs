@@ -2168,5 +2168,119 @@ console.log('what the objects are made of (v2.3.2995)');
   ok(`...and every one of the ${named.length} samples they play is one the game loads`, named.length > 10 && !unknown.length, unknown);
 }
 
+/* ═══ v2.3.2999: PLACING v2, THE `?placing=2` PREVIEW ═══
+   Owner, 2026-10-03: "work throughout the night on studying object placement
+   in the game's maps and what a good distribution is" (docs/OBJECT-
+   PLACEMENT-STUDY.md, tools/world/study-placement.mjs).  The land's own
+   scatter in woods and clearings, groups, undergrowth, clear roads and camps
+   -- and every rule v1 keeps, kept. */
+console.log('placing v2, the ?placing=2 preview (v2.3.2999)');
+{
+  const { placeObjects, footprintOf, campBands, placingOpts, PLACING, PLACING_V2 } = await import('../../public/tools/world/core/placing.js');
+  const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
+  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns.js');
+  const WPA = PLAN.worldPxPerArtPx, cellG = bp.scale * WPA;
+  ok('the switch: `placing=2` is v2, anything else the placing as it is',
+    placingOpts('?trial=wheel&placing=2').v === 2 && placingOpts('?placing=2').v === 2 && !placingOpts('?placing=3').v && !placingOpts('?placing=20').v
+      && !placingOpts('?trial=wheel').v && !placingOpts('').v && !placingOpts(null).v);
+  const t0 = Date.now();
+  const V = placeObjects(PLAN, bp, { v: 2 });
+  const ms = Date.now() - t0;
+  const V1 = placeObjects(PLAN, bp);
+  const Vb = placeObjects(PLAN, buildBlueprint(PLAN), { v: 2 });
+  const sameArr = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  ok(`v2 places the Wheel (${V.n} things, ${ms} ms; v1 ${V1.n}), the same every time, and says so`,
+    V.version === PLACING_V2 && V1.version === PLACING && V.n > 8000 && V.n < 1.3 * V1.n && ms < 6000 && ['kind', 'piece', 'flip', 'x', 'y'].every((k) => sameArr(V[k], Vb[k])), { n: V.n, v1: V1.n, ms });
+  const cat = objectCatalog(), byId = Object.fromEntries(cat.map((e) => [e.id, e]));
+  const idOf = (i) => V.kinds[V.kind[i]];
+  const cellOfG = (x, y) => Math.floor(y / cellG) * bp.w + Math.floor(x / cellG);
+  const clsAtG = (x, y) => bp.cls[cellOfG(x, y)];
+  const regAtG = (x, y) => bp.regionIds[bp.reg[cellOfG(x, y)]];
+  const free = (c) => c === C.ground || c === C.obstacle;
+  const wild = new Set(cat.filter((e) => e.kind === 'nature').map((e) => e.id));
+  /* the town, the fences and the oases are v1's own: the same in both */
+  const notWild = (P) => { const o = []; for (let i = 0; i < P.n; i++) if (!wild.has(P.kinds[P.kind[i]]) || P.kinds[P.kind[i]] === 'palm' || regAtG(P.x[i], P.y[i]) === 'town') o.push(P.kinds[P.kind[i]] + '@' + P.x[i] + ',' + P.y[i]); return o.sort().join('|'); };
+  ok('...the town, its furniture, the fences and the oases\' palms exactly as v1 places them', notWild(V) === notWild(V1));
+  const sizeOf = (e) => (e.fit === 'w' ? { w: e.size, h: e.size / (e.ar || 1) } : { w: e.size * (e.ar || 1), h: e.size });
+  const bad = [], wrong = [], cover = [];
+  const NOCOVER = new Set(['path', 'street', 'rail', 'bridge', 'boardwalk', 'plaza', 'lot', 'landmark', 'gate'].map((k) => C[k]).filter((v) => v != null));
+  const { mask: core } = campBands(PLAN, bp);
+  for (let i = 0; i < V.n; i++) {
+    const id = idOf(i);
+    if (!wild.has(id)) continue;
+    const x = V.x[i], y = V.y[i], c = clsAtG(x, y);
+    if (!free(c)) bad.push([id, CLASS_IDS[c]]);
+    if (regAtG(x, y) !== byId[id].group) wrong.push([id, regAtG(x, y)]);
+    const { w, h } = sizeOf(byId[id]);
+    if (h >= 160 && id !== 'palm') {
+      let hit = 0;
+      for (const u of [-0.4, 0, 0.4]) for (const v of [-0.85, -0.6, -0.35]) { const q = cellOfG(x + u * w, y + v * h); if (NOCOVER.has(bp.cls[q]) || core[q] || bp.regionIds[bp.reg[q]] === 'town') hit++; }
+      if (hit > 1) cover.push(id + '@' + x + ',' + y);
+    }
+  }
+  ok('...nothing wild on a road, water, a plot, a camp, a landmark or a gate, and each land only its own', !bad.length && !wrong.length, { bad: bad.slice(0, 5), wrong: wrong.slice(0, 5) });
+  ok('...and no tall picture covers a road, a plot, a landmark or a camp\'s middle (seen from the south, a tree below a road stood in it)', !cover.length, cover.slice(0, 6));
+  /* the camps: the bake's own bands (placing.js derives them from the plan,
+     before anything is placed -- the bake places first, so reading it back
+     would go round in a circle) */
+  const cb = campBands(PLAN, bp);
+  const bandsOk = Object.entries(WHEEL_SPAWNS).every(([id, sp]) => cb.bands[id] && cb.bands[id].anchor[0] === sp.anchor[0] && cb.bands[id].anchor[1] === sp.anchor[1]
+    && Math.round(cb.bands[id].r0) === sp.band[0] && Math.round(cb.bands[id].r1) === sp.band[1] && sp.points.every(([x, y]) => cb.mask[cellOfG(x, y)]));
+  ok('the camps v2 keeps clear are exactly where the worker\'s monsters stand (bake-wheel-spawns.mjs: every anchor, band and place)', bandsOk);
+  /* clearer: tall things in the camps against the land round them */
+  const tallIn = (P) => {
+    let inCamp = 0, all = 0, cells = 0;
+    const camps = new Set(Object.keys(WHEEL_SPAWNS));
+    for (let c = 0; c < bp.w * bp.h; c++) if (cb.mask[c]) cells++;
+    let land = 0;
+    for (let c = 0; c < bp.w * bp.h; c++) if (camps.has(bp.regionIds[bp.reg[c]]) && free(bp.cls[c])) land++;
+    for (let i = 0; i < P.n; i++) {
+      const id = P.kinds[P.kind[i]], e = byId[id];
+      if (!e || e.kind !== 'nature' || sizeOf(e).h < 170 || id === 'palm' || !camps.has(regAtG(P.x[i], P.y[i]))) continue;
+      all++;
+      if (cb.mask[cellOfG(P.x[i], P.y[i])]) inCamp++;
+    }
+    return (inCamp / cells) / (all / land);
+  };
+  const c1 = tallIn(V1), c2 = tallIn(V);
+  ok(`the camps are clearings: tall things there ${c2.toFixed(2)} of the lands' own (v1 ${c1.toFixed(2)})`, c2 < 0.4 && c2 < c1 / 2, { v1: c1, v2: c2 });
+  /* spacing: no two tall trunks closer than their crowns allow */
+  const talls = [];
+  for (let i = 0; i < V.n; i++) { const e = byId[idOf(i)]; if (e && e.kind === 'nature' && sizeOf(e).h >= 170 && idOf(i) !== 'palm' && !['icespire'].includes(idOf(i))) talls.push([V.x[i], V.y[i], sizeOf(e).w]); }
+  const TB = 256, th = new Map();
+  talls.forEach((t, k) => { const key = Math.floor(t[1] / TB) * 1000 + Math.floor(t[0] / TB); (th.get(key) || th.set(key, []).get(key)).push(k); });
+  let close = 0;
+  talls.forEach((t, k) => {
+    for (let j = Math.floor((t[1] - 160) / TB); j <= Math.floor((t[1] + 160) / TB); j++) for (let i = Math.floor((t[0] - 160) / TB); i <= Math.floor((t[0] + 160) / TB); i++) for (const m of th.get(j * 1000 + i) || []) {
+      if (m <= k) continue;
+      const o = talls[m];
+      if (Math.hypot(o[0] - t[0], o[1] - t[1]) < 0.41 * Math.max(t[2], o[2])) close++;
+    }
+  });
+  ok(`no two tall things closer than their crowns allow (Matern II, 0.42 x the wider's width): ${close} pairs of ${talls.length}`, close === 0 && talls.length > 1500, { close, talls: talls.length });
+  /* tight gaps between footprints (catalog sizes): 20-36 game px, where the
+     feet (BroTown hs 10) catch -- v2 leaves almost none */
+  const gaps = (P) => {
+    const boxes = [];
+    for (let i = 0; i < P.n; i++) { const id = P.kinds[P.kind[i]], e = byId[id]; if (!e || e.kind === 'building') continue; const { w, h } = sizeOf(e); for (const b of footprintOf(id, e.kind, P.x[i], P.y[i], w, h)) boxes.push(b); }
+    const FB = 128, fh = new Map();
+    boxes.forEach((b, k) => { for (let j = Math.floor(b.y0 / FB); j <= Math.floor(b.y1 / FB); j++) for (let i = Math.floor(b.x0 / FB); i <= Math.floor(b.x1 / FB); i++) { const key = j * 1000 + i; (fh.get(key) || fh.set(key, []).get(key)).push(k); } });
+    let tight = 0;
+    const seen = new Set();
+    boxes.forEach((a, ka) => {
+      for (let j = Math.floor((a.y0 - 40) / FB); j <= Math.floor((a.y1 + 40) / FB); j++) for (let i = Math.floor((a.x0 - 40) / FB); i <= Math.floor((a.x1 + 40) / FB); i++) for (const kb of fh.get(j * 1000 + i) || []) {
+        if (kb <= ka || seen.has(ka * 1e6 + kb)) continue;
+        seen.add(ka * 1e6 + kb);
+        const b = boxes[kb], gx = Math.max(b.x0 - a.x1, a.x0 - b.x1), gy = Math.max(b.y0 - a.y1, a.y0 - b.y1);
+        const gap = gy < 0 && gx > 0 ? gx : gx < 0 && gy > 0 ? gy : null;
+        if (gap != null && gap >= 20 && gap < 36) tight++;
+      }
+    });
+    return tight;
+  };
+  const g1 = gaps(V1), g2 = gaps(V);
+  ok(`gaps the feet catch in (20-36 px between two footprints): ${g2}, v1 ${g1}`, g2 < g1 / 3, { v1: g1, v2: g2 });
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

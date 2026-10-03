@@ -456,7 +456,34 @@ remnant to migrate server-side, not a mode to preserve.
       was; the wider view holds up to ~2x the ground pieces standing (how
       the view sits on the 192 px grid), +15 MB at worst;
     - `mp-zoomout`: WORLD-MAP-PIPELINE "1.15x, and the whole view 25%
-      further out".)
+      further out".
+  - Since v2.3.2999 the OBJECT PLACEMENT STUDY -- the owner: "work
+    throughout the night on studying object placement in the game's maps and
+    what a good distribution is" -- docs/OBJECT-PLACEMENT-STUDY.md (and
+    docs/research/OBJECT-PLACEMENT-RESEARCH.md):
+    - `tools/world/study-placement.mjs [--placing 2]` measures the Wheel's
+      spread (per screen, Clark-Evans, groves, cover, roads, camps, twins,
+      pockets and the gaps the feet catch in) and draws a density map;
+    - today's placing has no woods (tall things about random, the plan's
+      clumps one tree each), polka-dot rocks, cluttered camps, 467 gaps that
+      catch the feet;
+    - PLACING v2 behind `?placing=2` (placing.js `natureV2`): a woods field
+      (glades, open, woods), a Matern-II hard core by hashed priority
+      (`hardCore`), nothing tall covering a road or a camp, camps as framed
+      clearings (`campBands`, held to the bake), groups (piles, scatters,
+      fairy rings, wall lines), undergrowth, drifts, no gap under 40 px, no
+      twins -- the town, fences and oases exactly v1's; and see-through trees
+      (wheelObjects.js `_seeThrough`, with `?placing=2` or `?fade`); costs
+      ~0.5 s more placing on the way in; making it default means re-baking
+      the monsters' places; `mp-placing2`, test-world-core "placing v2";
+    - and the ELEVATION PLAN, docs/ELEVATION-PLAN.md (research in
+      docs/research/ELEVATION-RESEARCH.md): terraces drawn on the flat map,
+      the first step a raised knoll behind `?elev`, the owner's choices;
+    - and the WATER STOPS YOUR BOOTS, found by that study: the Wheel's walk
+      grid answers `atFeet` (wheelTrial.js lazyGrid), so isSolid and
+      nudgeSpawnToWalkable read it playerGroundDy below the body's centre --
+      read at the centre, a walk south put the boots ~45 px into a river and
+      a walk north stopped them 52 px short: TRAPS §127, `mp-wheelshore`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
@@ -505,10 +532,10 @@ remnant to migrate server-side, not a mode to preserve.
   Never read it as evidence a feature exists; work from
   `docs/DEPTH-ROADMAP.md`, which costs it against the actual renderer.
   (Dynamic occlusion WAS the headline example here and no longer is —
-  it shipped v2.3.2633–2635, `src/rendering/depthSort.js`. The still-
-  missing one is a near-camera FOREGROUND layer: `WORLD_LAYER_NAMES` has
-  no foreground entry, so edge-cropped framing art cannot be drawn at
-  all — roadmap item 5.)
+  it shipped v2.3.2633–2635, `src/rendering/depthSort.js`. So did the
+  near-camera FOREGROUND layer this note used to call missing (roadmap
+  item 5): `'foreground'` in `WORLD_LAYER_NAMES`, v2.3.2655 -- corrected
+  v2.3.2999, found by the elevation study, docs/ELEVATION-PLAN.md.)
 
 The server previously lived in a separate `brotown-server` repo, now
 archived. Do not push there or build patches against it.

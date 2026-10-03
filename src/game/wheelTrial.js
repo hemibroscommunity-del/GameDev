@@ -91,9 +91,11 @@ export const wheelObjectStats = {
   lateDraws: 0,     /* objects that came on screen before their page */
   blockers: 0,      /* footprints the walk test is looking at */
   placeMs: null,    /* the worker's placing */
+  version: null,    /* v2.3.2999: which placing (PLACING, or PLACING_V2 with `?placing=2`) */
   warmMs: null,     /* the way in's wait for the pages round the arrival */
   alive: 0,         /* v2.3.2983: buildings drawn with their life (smoke, lamps...) */
   lifeMs: null,     /* ...and what moving it costs a frame, smoothed */
+  seeThrough: 0,    /* v2.3.2999: trees see-through because you stand behind them (`?placing=2`/`?fade`) */
 };
 export function wheelObjectsInfo() { return _info ? _info.objects || null : null; }
 /* `?noobjects` in the address leaves the Wheel bare, as before v2.3.2975 --
@@ -332,7 +334,16 @@ export function wheelStop() {
 /* What isSolid(), nudgeSpawnToWalkable() and the trail's route finder read:
    `grid.length` rows, `grid[y][x]` false where you cannot walk.  A row is
    made from the bits when first read and the last ROW_KEEP kept -- every
-   reader only ever looks at the rows round the player. */
+   reader only ever looks at the rows round the player.
+
+   v2.3.2999: `grid.atFeet` is true.  These are the GROUND's own cells (where
+   the plan's water is), not where a body's centre may go, so a reader that
+   tests a character reads them where its BOOTS are: S.player.y is the body's
+   centre, playerGroundDy (52 px) above them.  Read at the centre, walking
+   south put your boots ~45 px into the water before you stopped, and walking
+   north stopped you 52 px short of a shore.  Town's grid bakes the same
+   offset into its rim instead (spriteSheets.js townRimFor), so it has no flag
+   and is read as it always was. */
 function lazyGrid(bits, cols, rows) {
   const made = new Map();
   const rowAt = (y) => {
@@ -347,6 +358,7 @@ function lazyGrid(bits, cols, rows) {
   return new Proxy([], {
     get(t, key) {
       if (key === 'length') return rows;
+      if (key === 'atFeet') return true;
       if (typeof key === 'string' && key !== '') {
         const y = +key;
         if (y >= 0 && y < rows && y === Math.floor(y)) return rowAt(y);
