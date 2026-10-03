@@ -22,6 +22,7 @@ import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup, swimRefused /* v2.3.3012 */ } from '@/game/combatHelpers.js';
 import { climbOut } from '@/game/wheelSwim.js';   /* v2.3.3012: a seat on the bank ends a swim */
+import { jumpAirborne } from '@/game/jump.js';     /* v2.3.3014 */
 import { MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915 */
 /* v2.3.849: fly a harvested-resource icon from its world node into the
    bottom-left inventory.  DOM-only (appended to document.body, like the
@@ -96,6 +97,9 @@ export function startExtraction(S, node, skill, extra) {
        onto the bank to work it.  A chop or a cook has no seat, and only
        your head is out of the water: refused like a swing, "Swimming!". */
     if (skill !== 'fishing' && skill !== 'mining' && swimRefused(S)) return;
+    /* v2.3.3014: and nothing is started in the air -- a tap mid-jump waits
+       for you to come down (quietly: you will be in a moment) */
+    if (jumpAirborne(S, Date.now())) return;
     /* v2.3.854: mining lines the character up with the vein the same way
        fishing lines up with the pond.  Seat the player above the ore so the
        pickaxe strike (the baked rock in the south 'mine' sheet, centered

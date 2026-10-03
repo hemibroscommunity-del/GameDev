@@ -47,6 +47,7 @@ import { zonePlayerScale, ZONES } from '@/data/zones.js';
 import { GROUND_GRID, GROUND_COLORS } from '@/data/groundColors.js';   /* v2.3.2825: the ground's own colour, baked */
 import { deathCrumble } from './deathCrumble.js';
 import { frameBounds } from './gearSheets.js';   /* v2.3.2870: a cropped monster's whole-cell box */
+import { jumpActive } from '@/game/jump.js';     /* v2.3.3014: no steps in the air, a puff where you land */
 
 const rgbHex = (r, g, b) => ((Math.max(0, Math.min(255, Math.round(r * 255))) << 16)
   | (Math.max(0, Math.min(255, Math.round(g * 255))) << 8)
@@ -294,6 +295,7 @@ export class WorldFx {
         prints: this._prints.filter((p) => p.visible).length,
         puffs: this._puffs.filter((p) => p.visible).length,
         lastDust: this._lastDust || null,   /* v2.3.2825: {ground, puff} of the last step */
+        landDust: this._landDust || null,   /* v2.3.3014: where your last jump came down, and its puffs */
         drops: this._drops.filter((p) => p.visible).length,
         splats: this._splats.filter((p) => p.visible).length,
         lastBlood: this._lastBlood || null,
@@ -697,8 +699,14 @@ export class WorldFx {
     if (color != null && fxTex('print') && this.groundLayer) {
       const seen = this._seenWalkers || (this._seenWalkers = new Set());
       seen.clear();
+      /* v2.3.3014: a jumper leaves nothing in the air, and a little ring of
+         dust where it lands (game/jump.js; Date.now(), the jump's clock) */
+      const tNow = Date.now();
       if (S.player && !(S.rpg && S.rpg.hp <= 0)) {
-        this._walk('me', S.player.x, S.player.y + feetDy(S, S.player.x, S.player.y), color, now, S.currentZone);
+        const mx = S.player.x, my = S.player.y + feetDy(S, S.player.x, S.player.y);
+        if (!this._airborne('me', !!S._jump && jumpActive(S._jump, tNow), mx, my, color, now, S.currentZone)) {
+          this._walk('me', mx, my, color, now, S.currentZone);
+        }
         seen.add('me');
       }
       if (S.others) {
@@ -706,7 +714,10 @@ export class WorldFx {
           const o = S.others[id];
           if (!o || o._isDead) continue;
           const ox = o.renderX != null ? o.renderX : o.x, oy = o.renderY != null ? o.renderY : o.y;
-          this._walk(id, ox, oy + feetDy(S, ox, oy), color, now, S.currentZone);
+          const fy = oy + feetDy(S, ox, oy);
+          if (!this._airborne(id, !!o._jump && jumpActive(o._jump, tNow), ox, fy, color, now, S.currentZone)) {
+            this._walk(id, ox, fy, color, now, S.currentZone);
+          }
           seen.add(id);
         }
       }
@@ -738,6 +749,33 @@ export class WorldFx {
       p.scale.set(p._s * (0.55 + t * 0.8));
       p.alpha = PUFF_ALPHA * (1 - t) * (1 - t * 0.3);
     }
+  }
+
+  /* v2.3.3014: in the air no print and no puff -- the walker is carried
+     along so the first step after the landing is not a stride from the
+     take-off -- and on the frame it lands, a ring of puffs round the boots
+     (nothing on water: the water has its splash).  True while in the air. */
+  _airborne(key, air, x, y, color, now, zone) {
+    const set = this._inAir || (this._inAir = new Set());
+    if (air) {
+      const w = this._walkers.get(key);
+      if (w) { w.x = x; w.y = y; } else this._walkers.set(key, { x, y, side: 1 });
+      set.add(key);
+      return true;
+    }
+    if (!set.has(key)) return false;
+    set.delete(key);
+    const ground = isWheelTrialZone(zone) ? wheelGroundColor(x, y) : groundColorAt(zone, x, y);
+    if (ground === -1) return false;
+    const puffC = ground != null ? dustOf(ground) : color;
+    const n = 6, a0 = Math.random() * Math.PI;
+    for (let i = 0; i < n; i++) {
+      const a = a0 + (i / n) * Math.PI * 2;
+      const ux = Math.cos(a), uy = Math.sin(a) * 0.55;
+      this._spawnPuff(x + ux * 7, y + uy * 7, puffC, now, ux * 1.2, uy * 1.2);
+    }
+    if (key === 'me') this._landDust = { x: Math.round(x), y: Math.round(y), n, at: now };
+    return false;
   }
 
   _walk(key, x, y, color, now, zone) {

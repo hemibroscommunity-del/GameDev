@@ -10,6 +10,7 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { zoneLeavesPrints, printsAt } from '@/rendering/footprintSprites.js'; /* v2.3.2654; v2.3.3000: + where the ground takes them */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3000: prints are where the boots are */
+import { jumpActive } from '@/game/jump.js';   /* v2.3.3014: no prints in the air */
 import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2730: a peer's shot stops at a prop on your screen too */
 import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap, STUCK_ARROW_MS, SCORCH_MS, scorchStyle } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap; v2.3.2995 what stays in the Wheel's objects */
 import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: a peer's shot hits the Wheel's objects on your screen too */
@@ -106,9 +107,12 @@ export function updateVisualSystems(S) {
         /* v2.3.3000: in the Wheel only on its snow (printsAt): off it the
            anchor is let go, so the first print back on the snow is not dropped
            where you left it */
-        var _pOn = _fIsMoving && zoneLeavesPrints(S.currentZone)
+        /* v2.3.3014: in the air no print, and the trail starts again where you
+           land rather than joining the take-off to the landing */
+        var _fAir = !!S._jump && jumpActive(S._jump, Date.now());
+        var _pOn = _fIsMoving && !_fAir && zoneLeavesPrints(S.currentZone)
           && printsAt(S.currentZone, S.player.x, S.player.y + playerGroundDy(S.currentZone, S.player.x, S.player.y));
-        if (_fIsMoving && zoneLeavesPrints(S.currentZone) && !_pOn) S._printLast = null;
+        if ((_fIsMoving && zoneLeavesPrints(S.currentZone) && !_pOn) || _fAir) S._printLast = null;
         if (_pOn) {
           var _pLast = S._printLast;
           if (!_pLast) { S._printLast = { x: S.player.x, y: S.player.y }; }
@@ -171,6 +175,7 @@ export function updateVisualSystems(S) {
             var _qStep = (_qRoll && typeof _qRoll.walk === 'boolean') ? _qRoll.walk
               : !!_qo && (Math.abs(_qo._vx || 0) > 0.01 || Math.abs(_qo._vy || 0) > 0.01);
             var _qWalk = !!_qo && !_qo._isDead && _qStep
+              && !(_qo._jump && jumpActive(_qo._jump, Date.now()))   /* v2.3.3014: none in the air */
               && (_qo.zone || _qo.z || 'town') === S.currentZone
               && isFinite(_qx) && isFinite(_qy)
               /* v2.3.3000: on the ground that takes prints (the Wheel's snow) */

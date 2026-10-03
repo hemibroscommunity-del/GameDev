@@ -400,7 +400,7 @@ remnant to migrate server-side, not a mode to preserve.
   - A respawn now nulls `S.npcs` like every zone change. It used to carry the
     Wheel's Mayor into today's town, where the townsfolk never spawned.
   - Not there yet, so not in the game: monsters past levels 1-5, dungeons.
-    (Gathering came in v2.3.3012, the last bullet below.)
+    (Gathering came in v2.3.3012, a bullet below.)
   - The QA harness gives every scenario `trial=off&nospawn` unless it passes
     `world: 'wheel'` (`nospawn` alone when its query names a trial).
   - `mp-questline`, CI's "playable", plays in the Wheel. `mp-wheelhome`
@@ -640,7 +640,29 @@ remnant to migrate server-side, not a mode to preserve.
       node its next step needs (questRoute.js `_wheelGatherPoint`, a step's
       `node`); the Wheel's nodes drop at the flip to town;
     - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,
-      `mp-wheelnodes`: docs/specs/wheel-resources.md.)
+      `mp-wheelnodes`: docs/specs/wheel-resources.md.
+  - Since v2.3.3014 you can JUMP -- the owner: "start working on real
+    jumping. Might be able to just use the jog directions instead of a custom
+    jump animation", its button "beneath the right joystick":
+    - your POSITION never leaves the ground (the worker sees a walk); the
+      body is drawn up to `JUMP_PEAK` 34 px for `JUMP_MS` 560 holding one
+      leaping frame of the jog (`JUMP_FRAME`), lifted by
+      `src/rendering/jumpFx.js` after the depth pass, and `figureFeetY` adds
+      the lift back -- sorted, shadowed and standing on the ground;
+    - REAL: low Wheel objects (`JUMP_OVER` in `src/game/jump.js`: fences,
+      walls, barrels, crates, benches, rocks, bushes...) don't stop the feet
+      while high enough, only if the way you go carries you out before you
+      come down (`overLow`, judged on what the frame really moves,
+      `S._frameMs`); everything else blocks in the air; momentum when you let
+      go of the stick;
+    - JUMP button under the attack disc (`jumpAnchor`, JumpButton.jsx, fires
+      on the press), X on a keyboard; no jump swimming, rolling, held, stunned
+      or harvesting; in the air a swing, roll, shield, ability or second jump
+      is refused quietly (`airRefused` beside `swimRefused`); no water check,
+      steps, dust or prints mid-air, a step and a dust ring on landing;
+    - other players: a `player_jump` relay (no worker change), `other._jump`;
+    - test-world-core "jumping", `mp-jump` (`?jumpms=` for a slow machine):
+      docs/specs/jumping.md.  Not yet: jumping over attacks (the worker's).)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

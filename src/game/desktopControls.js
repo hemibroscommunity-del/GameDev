@@ -13,6 +13,7 @@
    S is stateRef.current; S.keys feeds the movement code that stayed in
    the game loop. */
 import { BT_AUDIO, getNpcQuest } from '@/data/index.js';
+import { triggerJump } from '@/game/jumpActions.js';   /* v2.3.3014: X jumps */
 
 export function setupDesktopControls(S, deps) {
   var triggerContextualDodge = deps.triggerContextualDodge,
@@ -63,6 +64,17 @@ export function setupDesktopControls(S, deps) {
           ang = dirs[S.player.dir] || 0;
         }
         triggerContextualDodge(S, _R1, ang);
+        return;
+      }
+
+      /* ═══ v2.3.3014: X — JUMP ═══
+         Space is the dodge roll, Shift the sprint, so the jump needs its own
+         key under the left hand: X, beside them on the bottom row (and a
+         controller's jump button).  Held does nothing more -- one press, one
+         jump (game/jumpActions.js; the touch button is JumpButton.jsx). */
+      if (e.code === 'KeyX' && !e.repeat) {
+        e.preventDefault();
+        triggerJump(S);
         return;
       }
 

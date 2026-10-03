@@ -13,6 +13,7 @@ import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/ef
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
+import { JumpFx } from './jumpFx.js';                 /* v2.3.3014: a jumper is drawn in the air */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
 import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
@@ -180,6 +181,7 @@ export async function initPixiRenderer(canvas) {
   const worldFx = new WorldFx(layers, app);
   const worldLife = new WorldLife(layers);
   const swimFx = new SwimFx(layers);   /* v2.3.3003 */
+  const jumpFx = new JumpFx();          /* v2.3.3014 */
   worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
   /* v2.3.2986: the stat scene's hero swings in frames photographed off the
@@ -485,6 +487,11 @@ export async function initPixiRenderer(canvas) {
        before the lights, which then cast nothing for it. */
     try { swimFx.update(S, entityRenderer, now); }
     catch (e) { if (!update._swimErr) { update._swimErr = true; console.error('[pixi-render] swimFx threw', e && e.message, e && e.stack); } }
+    /* ═══ v2.3.3014: JUMPERS, AFTER THE SWIMMERS ═══
+       Sorted where they stand, then drawn lifted (jumpFx.js), before the
+       lights, which cast their shadows on the ground under them. */
+    try { jumpFx.update(S, entityRenderer); }
+    catch (e) { if (!update._jumpErr) { update._jumpErr = true; console.error('[pixi-render] jumpFx threw', e && e.message, e && e.stack); } }
     /* v2.3.2710: light and shine, LAST of the world passes: a shadow copies
        each figure's pieces where they are THIS frame, so it runs after
        everything that moves them -- the entity pass, the stand-ins placed by

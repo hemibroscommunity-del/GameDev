@@ -32,6 +32,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 import { applyElemHit, elemLook, isBurnTick } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element */
 import { echoHitSfx, heroHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's */
+import { peerJump } from '@/game/jump.js'; /* v2.3.3014: another player's jump */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
@@ -1827,6 +1828,21 @@ export function processGameEvent(type, payload, S, deps) {
                 if (payload.kind !== 'retreat_shot') {
                   _reconcileFacing(S.others[payload.id], payload.angle);
                 }
+              }
+              break;
+            }
+          case 'player_jump':
+            {
+              /* ═══ v2.3.3014: ANOTHER PLAYER JUMPED ═══
+                 (game/jumpActions.js triggerJump.)  Their body is drawn lifted
+                 over THEIR jump's window, holding the same leaping frame of
+                 the jog yours does (entityRenderer, rendering/jumpFx.js), from
+                 when the relay lands here -- a beat after they took off, as a
+                 roll is.  The numbers are clamped (jump.js peerJump): a forged
+                 or garbled one must not hang a figure in the air.  Their
+                 position streams as for any move; this is only the picture. */
+              if (payload.id && _peerInZone(S, payload.id)) {
+                S.others[payload.id]._jump = peerJump(payload, Date.now());
               }
               break;
             }
