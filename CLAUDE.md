@@ -326,7 +326,8 @@ remnant to migrate server-side, not a mode to preserve.
   `tools/world/add-ground-pictures.mjs` (the Ground Studio run headless, its
   download MERGED into public/world/ground/, `made` changing only when a
   tile is replaced), a look with no picture borrowing one (`WATER_STANDIN`:
-  rivers and ponds the shallows' until fresh water is made), the shallows a
+  rivers and ponds the shallows' until fresh water is made -- made since
+  v2.3.2993, the owner's two Fresh pictures sent in chat), the shallows a
   ~5-cell shelf (`shoreSampler`: each cell of open sea's distance to the
   nearest that is not, rivers and ponds counting as shore, exact to
   `SHORE_CAP` so pieces meet), and the water's look reading only the

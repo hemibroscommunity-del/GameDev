@@ -474,6 +474,17 @@
       "madeFrom": "clear, shallow sea water over pale sand: light turquoise water through which the sandy bottom and a few small pebbles show, with small, soft glints of light scattered all over"
     },
     {
+      "id": "fresh",
+      "name": "Fresh water",
+      "group": "water",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "brief": "clear, calm fresh water in blue-green, with a hint of the dark bed showing through, a few small rings and glints of light scattered all over",
+      "madeFrom": "clear, calm fresh water in blue-green, with a hint of the dark bed showing through, a few small rings and glints of light scattered all over"
+    },
+    {
       "id": "border-ember-frost",
       "name": "Flame Fields and Frost Ridge",
       "group": "borders",

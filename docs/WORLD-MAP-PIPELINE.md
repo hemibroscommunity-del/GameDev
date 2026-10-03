@@ -1809,6 +1809,15 @@ Again I don't see anywhere to add water in the ground studio"*
   rivers, ponds and oasis pools take the shallows' clear water, never the
   plan's flat blue beside two real pictures; the sea and the shallows stand
   in for each other the same way.
+- **Since v2.3.2993 fresh water is the owner's own.** They sent two pictures
+  in chat: *"here's the missing water I didn't want to rezip everything that
+  included older stuff"*. Both went in the same way, as Fresh water A and B
+  (`fresh:A=… fresh:B=…`). The rivers, ponds and oasis pools are drawn from
+  them now, the stand-in only for a look still unmade. That includes the
+  four ponds and the Sweetwater River in the safe commons, where the
+  starting fish are planned. `mp-wheelwater` checks the river by the Mill
+  Bridge shows them, not the shallows: 79,508 px in its own colours, 1 in
+  the shallows'.
 - **The shallows are a shelf, not a line.** About `SHALLOW_CELLS` 5 cells
   (120 game px) out from the shore, the outer line wandering `SHALLOW_WANDER`
   2.6 cells either way, in a broad sweep with a finer fray. Until now they
