@@ -1145,3 +1145,36 @@ monster too."
 and elemental collisions stay out, as they do from the DPS row. The
 `infopop` / `freshpoints` combat-card failures noted above are still
 pre-existing and untouched.
+
+## Points waiting make two tabs glow (v2.3.3004)
+
+Owner, 2026-10-03: "when you level up make the character tab do a light
+flashing effect and the points section light flashing effect until all points
+are spent."
+
+- **What glows:** the dashboard's Character tab (`NavRail`, the `hero` button)
+  and the Points tab of the Character sheet (`HeroExpanded`, section `Build`).
+  Nothing else; the lane cells inside already carry `bt-build-flash` for *where*
+  to spend.
+- **When:** while `unspentPointsTotal(R) > 0` — the lane pool plus the shared
+  pool, the same number as the gold count badge on both tabs. A level-up mints
+  points, so the glow starts with it; the spend that takes the last point puts it
+  out, with the badge. Points carried over from an earlier session still glow,
+  because "until all points are spent" is the rule. It keeps glowing while the
+  sheet and the Points section are open.
+- **How:** `.bt-pts-glow` (game.css), an inset layer in each tab: a gold ring, a
+  soft inner glow and a 24% wash, with only its **opacity** animating
+  (0.18 → 1 → 0.18 over 1.6s), so the compositor runs it and a glow left on for
+  a whole session does not repaint every frame. No CSS filter (the iOS grain rule). It sits
+  under the count badge and takes no touches. Reduced motion holds it lit at
+  0.7.
+- **Sideways:** the dashboard's Character tab glows whenever the dashboard is
+  open. At rest the tabs are folded away behind the ▴ chip, so nothing glows
+  there. Lighting the chip itself would be a one-line follow-up if wanted.
+
+`mp-pointsglow` pins it: nothing on a new bro; a real level-up (the dev kit's
+levels, through the worker's own `_prog3AwardXp`) lights the Character tab, and
+its opacity really moves; a real tap still opens the sheet; only the Points tab
+glows there, and it stays lit with the section open; sideways too; reduced
+motion lit and still; and spending every point with `prog3_allocate` (the
+Points screen's own wire message) puts both out, with the badge.
