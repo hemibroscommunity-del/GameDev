@@ -118,6 +118,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(2000);
   await tap(P, 'Close');
   await P.page.waitForTimeout(600);
+  /* v2.3.3013: the Wheel's next stretches have monsters now (levels 6-20),
+     and one stands 6 px from FROST: a level-8 snowman killed the stepper
+     mid-walk, and the respawn took it home through today's town, so every
+     check after the walk read the wrong place.  This is a test of footsteps,
+     not of a fight: the operator's god mode (server/src/devtools.js) lands
+     nothing on the stepper -- no damage, so no status either */
+  const myId = await H.readState(P, (S) => S.myId);
+  await H.devOp(wsPort, 'vitals', myId, { god: true, godMinutes: 20 });
   /* a real gesture: the audio context is born in one */
   await P.page.touchscreen.tap(195, 300);
   await P.page.waitForTimeout(400);
