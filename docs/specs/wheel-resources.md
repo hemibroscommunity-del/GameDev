@@ -239,7 +239,7 @@ do.
     a strike from another zone is refused;
   - the wire carries `home` only in the Wheel; `caps.wheelnodes`; the kill
     switch.
-- `mp-wheelnodes` (phone, real worker), 30 assertions:
+- `mp-wheelnodes` (phone, real worker), 29-30 assertions:
   - none drawn without tools, and none marked on the minimap;
   - the road goes to the nearest fishing spot, then to a tree;
   - six minnows swim where the ground is drawn as water, and the seat is dry
@@ -257,6 +257,17 @@ do.
   - the nodes drop at the flip to town;
   - no page errors.
   - Pictures: `wheelnodes-{fish,fish-close,minimap,blacksteel,iron,iron-close}.png`.
+  - v2.3.3016: its long walks could stall, on main as well. The walker
+    checks the worker's idea of where it stands every four hops and steps
+    back to it when they differ; on this box's slow frames the last hop had
+    often not reached the worker yet, so the walker stepped back, the worker
+    then took the hop, and the two chased each other 200 px each way. After
+    two minutes without a tap or a key the page logged the angler out as
+    away, and the minnow was never paid. Now the walker steps back only to a
+    place the worker still holds a beat later, and presses Control (which
+    does nothing in the game) every 20 s, as `mp-wheelseats` does. 29
+    assertions on the re-baked places: the "softwood tree near the iron vein"
+    check runs only when one is in view there.
 - `mp-wheelseats` (v2.3.3013, phone, real worker): every one of the 34 fishing
   spots, walked to: the spot and its school's middle in drawn water, the seat
   open land with the boots dry and fewer than four looks wet; where the shore
