@@ -148,6 +148,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
 
   phase = 'nolife';
+  /* v2.3.3001: the first player is done -- close it, so the second is not
+     drawing the Wheel's shadows (v2.3.3000) on a CPU shared with a whole
+     second game: on the headless renderer two of them at once drew no
+     buildings round the second's arrival in 16 s */
+  await P.ctx.close().catch(() => {});
   const Q = await H.newPlayer(browser, { name: 'Stillness', wsPort, webPort, viewport: PHONE, touch: true, query: 'trial=wheel&nolife' });
   const zq = await wayIn(Q);
   /* v2.3.2999: until the buildings round the arrival are drawn, not a fixed

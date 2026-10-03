@@ -495,7 +495,10 @@ remnant to migrate server-side, not a mode to preserve.
       freed sheet clears every shadow pool first (shadows.js
       `releaseShadowTextures`);
     - objects shaded toward their foot (formShade), trees and bushes swaying
-      with their foot held (worldLife `_updateWheelSway`), the air and dust
+      with their foot held (worldLife `_updateWheelSway`; since v2.3.3001 a
+      strong gust shakes a leaf, a fleck of snow or a flake of char off a
+      tree by its `canopy`, `CROWN_BITS`, as the old map's pines shed
+      needles; QA's `__btGustAll`), the air and dust
       by land (worldFx `airHere`, the worker's catalog carrying each ground's
       `color`), snow prints on the Wheel's snow (footprintSprites `printsAt`)
       and every print drawn at the boots (`fdy`);

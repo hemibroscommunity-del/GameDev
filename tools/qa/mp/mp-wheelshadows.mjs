@@ -13,7 +13,8 @@
  *      and on, as mp-worldshadow);
  *   3. every object is shaded toward its foot (formShade), and the trees and
  *      bushes sway in the wind (worldLife.js _updateWheelSway) with their foot
- *      held still;
+ *      held still -- and (v2.3.3001) a strong gust shakes a fleck of snow off
+ *      Frost Ridge's pines and birches, as the old map's pines shed needles;
  *   4. the shade, the air and the dust follow the land: Frost Ridge's shadows
  *      ease to its blue, snow hangs in its air, and walking its snow leaves
  *      prints at the boots; the commons kicks up dust the colour of its grass;
@@ -166,7 +167,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4. Frost Ridge: a pine's shadow on the snow, its blue, the wind,
         snow in the air, prints in the snow ── */
   const frost = await SPOT('frost', 2);
-  let fr = null, side = null, sway = null;
+  let fr = null, side = null, sway = null, bits = null;
   if (frost) {
     await H.hopTo(P, frost.x, frost.y, { tries: 200 });
     await settle(60);
@@ -216,6 +217,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { id: o.id, range: v.length ? +(Math.max(...skews) - Math.min(...skews)).toFixed(4) : 0, footMoved: v.length ? +Math.max(...v.map((q) => Math.hypot(q.x - v[0].x, q.y - v[0].y))).toFixed(2) : 0 };
       }) };
     }
+    /* v2.3.3001: a strong gust shakes a fleck of snow off a pine or a birch.
+       A real one passes a tree ~1% of the time, so every tree is put in one
+       (window.__btGustAll, QA's) for up to 8 s, until a fleck has fallen */
+    const bitsNow = () => P.page.evaluate(() => {
+      const l = window.__btWorldLife && window.__btWorldLife();
+      return { bits: l && l.wheelBits ? Object.assign({}, l.wheelBits) : {}, falling: l ? l.needles : 0 };
+    });
+    const b0 = await bitsNow();
+    let b1 = b0;
+    await P.page.evaluate(() => { window.__btGustAll = true; });
+    for (let k = 0; k < 16; k++) {
+      await P.page.waitForTimeout(500);
+      b1 = await bitsNow();
+      if ((b1.bits.snow || 0) > (b0.bits.snow || 0)) break;
+    }
+    await P.page.evaluate(() => { delete window.__btGustAll; });
+    bits = { before: b0.bits, after: b1.bits, falling: b1.falling };
     const p2 = await probe(P);
     const fx = await P.page.evaluate(() => (window.__btWorldFx ? window.__btWorldFx() : null));
     /* prints: a spot of snow in view, by the game's own ground under it */
@@ -274,6 +292,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!side && drop(side.shade) > 0.08 && Math.abs(drop(side.lit)) < 0.03, side);
   rec.ok(`the trees and bushes sway in the wind, their foot held still (${sway ? sway.moved.map((m) => `${m.id} ${m.range}`).join(', ') : 'none in view'})`,
     !!sway && sway.wheelSway > 0 && sway.moved.some((m) => m.range > 0.003) && sway.moved.every((m) => m.footMoved < 0.5), sway);
+  rec.ok(`...and a strong gust shakes snow off them (${bits ? (bits.after.snow || 0) - (bits.before.snow || 0) : 0} flecks, ${bits ? bits.falling : 0} falling)`,
+    !!bits && (bits.after.snow || 0) > (bits.before.snow || 0), bits);
   rec.ok(`in Frost Ridge the shadows take its blue (${fr && fr.light ? `${fr.light.region} #${(fr.light.color >>> 0).toString(16)}` : '?'})`,
     !!(fr && fr.light && fr.light.region === 'frost' && Math.abs(((fr.light.color >> 16) & 255) - 0x1a) <= 3 && Math.abs((fr.light.color & 255) - 0x52) <= 3), fr && fr.light);
   rec.ok(`...snow hangs in its air (${fr && fr.motes ? `${fr.motes.kind}, ${fr.motes.n} flakes` : '?'})`, !!(fr && fr.motes && fr.motes.kind === 'snow' && fr.motes.n > 0), fr && fr.motes);

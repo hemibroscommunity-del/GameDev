@@ -197,7 +197,12 @@ never come.
   clip lies inside one of its steps (re-cutting the clips fails it).
 - `node tools/qa/mp/mp-hitsound.mjs` (needs `dist/`): the routing of every
   voice, whole, outside the Wheel and cold; every voice and ball rendered for
-  real through Web Audio for clipping and level.
+  real through Web Audio for clipping and level. The level is measured the
+  same way as the tables were tuned: the mean of the plain and the A-weighted
+  loudness (an A-weighting filter in the render). Plain loudness alone counts
+  a thud's bass at full weight, though a phone's speaker barely makes it. By
+  that measure the snowman's own thud, the sound he has always made, comes out
+  1.5x sword-hit3.
 - `tools/qa/mp/run.mjs hitvoices`: every Wheel monster against sword, arrow
   and bolt through the real hit paths; the snowman one hit; the echoes; the
   balls on you, your shield and the ground; the blow for a ball.

@@ -3008,6 +3008,14 @@ What it does now:
 - **The wind.** Trees and bushes sway (`worldLife.js _updateWheelSway`), the
   same springs and rolling gusts as the old map's trees. Each leans from its
   foot, which stays put, and its shadow sways with it.
+  - Since v2.3.3001 a strong gust also shakes a bit of a tree's crown loose,
+    as the old map's pines shed needles, at the same rate (`CROWN_BITS`, by
+    the tree's `canopy` in `wheelMaterials.js`). A leafy tree drops a leaf,
+    a pine or a birch a fleck of its snow, and a burnt tree a flake of char.
+    A slime tree's goo stays put; it drips only when the trunk is hit.
+    A strong gust reaches a given tree about 1% of the time, so this is a
+    now-and-then thing. The test sets `window.__btGustAll` to put every tree
+    in one at once.
 - **The air and the dust by land** (`worldFx.js airHere`):
   - snow drifts in Frost Ridge's air, embers over the Flame Fields, sand on
     the dunes, spores in the swamp, pollen in the green;
@@ -3037,6 +3045,7 @@ Switches: `?lightfx=0` (all shadows), `?shade=0` (the shading).
 - a pine's shadow darkening the snow below and right of it, with its sunlit
   left untouched;
 - the shading, and the sway with the foot held;
+- a gust shaking snow off Frost Ridge's trees (v2.3.3001);
 - Frost Ridge's blue shade, its snow in the air, and prints at the boots;
 - dust the colour of the ground;
 - a long walk across the lands with no page error.

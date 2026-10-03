@@ -249,6 +249,20 @@ const SWAY = {
   shrub:  { f0: 0.9,  zeta: 0.2,  lean: 0.9,  turb: 0.9,  gust: 2.2, max: 4.5 },
   canopy: { f0: 0.3,  zeta: 0.28, lean: 0.2,  turb: 0.28, gust: 0.55, max: 1.2 },
 };
+
+/* ═══ v2.3.3001: WHAT A GUST SHAKES LOOSE OF A WHEEL TREE ═══
+   The old map's trees let a needle go when a strong gust went through them
+   (_updateTrees, _updatePropSway); the Wheel's swayed (v2.3.3000) and kept
+   every one.  Each now lets go of what its crown is made of
+   (wheelMaterials.js `canopy`): a leaf, a fleck of the snow on a pine or a
+   birch, a flake of char off a burnt tree.  A slime tree's goo hangs on --
+   it drips when the trunk is HIT (hitMaterialFx), not in the wind.  Through
+   the old map's needle pool and its fall, so they tumble and fade alike. */
+const CROWN_BITS = {
+  leaf: { tex: 'needle', tints: [0x2f5a2c, 0x4d7f3a], sx: 1.6, sy: 1.3 },
+  snow: { tex: 'dot', tints: [0xffffff, 0xe6f2ff], sx: 0.65, sy: 0.65 },
+  char: { tex: 'needle', tints: [0x3b3632, 0x5a524b], sx: 1.5, sy: 1.3 },
+};
 /* Which props sway, and how (the rocks and the ice do not). */
 const PROP_SWAY = Object.create(null);
 /* v2.3.2894: frost's pines and shrubs are gone (three snowbanks, which do not sway) */
@@ -316,6 +330,7 @@ export class WorldLife {
     this._riders = new Map();            /* prop id -> building rider */
     this._ore = new Map();               /* ore sprite -> rider */
     this._npc = new WeakMap();           /* npc figure -> { sx, sy, lx, ly, still } */
+    this._wheelBits = Object.create(null);   /* v2.3.3001: crown -> bits a gust shook loose, for the probe */
     this._probe = null;
     /* the FX textures are minted on the loading screen, after this is built,
        so a pool names its texture and looks it up when it hands one out */
@@ -514,15 +529,25 @@ export class WorldLife {
      not drawn, so it is not stepped either. */
   _updateWheelSway(t, dt, wind, calm, probe) {
     let n = 0;
-    forEachWheelSwayer((spr, kind, x, y) => {
+    /* QA (mp-wheelshadows): every tree in a strong gust at once -- a real
+       one passes a given tree ~1% of the time */
+    const gustAll = typeof window !== 'undefined' && window.__btGustAll === true;
+    forEachWheelSwayer((spr, kind, x, y, crown) => {
       if (calm) { if (spr.skew.x !== 0) spr.skew.x = 0; return; }
       const st = this._spring(spr, x, y);
       const th = this._swayStep(kind, st, x, y, t, dt, wind);
       spr.skew.x = -th;
       n++;
+      /* v2.3.3001: a strong gust shakes a bit of its crown loose, at the old
+         map's rate (_updateTrees) */
+      if (own(CROWN_BITS, crown) && (gustAll || st.gust > 0.75) && Math.random() < dt * 0.18) {
+        this._dropNeedles(spr, 1, wind, CROWN_BITS[crown]);
+        this._wheelBits[crown] = (this._wheelBits[crown] || 0) + 1;
+      }
       if (probe.sway.length < 24) probe.sway.push({ kind: 'wheel-' + kind, id: null, x: Math.round(x), y: Math.round(y), deg: +(th / DEG).toFixed(2), gust: +st.gust.toFixed(2), footDy: +(spr.y - y).toFixed(2) });
     });
     probe.wheelSway = n;
+    probe.wheelBits = this._wheelBits;
   }
 
   _updatePropSway(S, t, dt, wind, er, calm, probe) {
@@ -570,10 +595,12 @@ export class WorldLife {
     }
   }
 
-  _dropNeedles(spr, n, wind) {
+  /* `look` (v2.3.3001): a Wheel tree's crown (CROWN_BITS); the old map's
+     pine needle without one */
+  _dropNeedles(spr, n, wind, look) {
     const w = Math.abs(spr.width), h = Math.abs(spr.height);
     for (let i = 0; i < n; i++) {
-      const s = this._take(this._needles);
+      const s = this._take(this._needles);   /* hands it back as a needle */
       s._life = {
         x: spr.x + (Math.random() - 0.5) * w * 0.55,
         y: spr.y - h * (0.3 + Math.random() * 0.5),
@@ -583,8 +610,15 @@ export class WorldLife {
         rot: Math.random() * Math.PI, spin: (Math.random() - 0.5) * 5,
         ph: Math.random() * TAU,
       };
-      s.tint = Math.random() < 0.5 ? 0x2f5a2c : 0x4d7f3a;
-      s.scale.set(1.6, 1.3);
+      if (look) {
+        const tex = FX[look.tex];
+        if (tex && s.texture !== tex) s.texture = tex;
+        s.tint = look.tints[Math.random() < 0.5 ? 0 : 1];
+        s.scale.set(look.sx, look.sy);
+      } else {
+        s.tint = Math.random() < 0.5 ? 0x2f5a2c : 0x4d7f3a;
+        s.scale.set(1.6, 1.3);
+      }
       s.visible = true;
     }
   }

@@ -21,7 +21,9 @@
  *      Audio (an OfflineAudioContext, the same slices, rates, delays, gains and
  *      fades the game plays) at the arrow's 0.6, the loudest call: no clipping
  *      (there is no limiter), and each within reach of sword-hit3 at the same
- *      level -- the reference every hit has been tuned against since v2.3.2452.
+ *      level -- the reference every hit has been tuned against since v2.3.2452,
+ *      measured the way the tables were tuned: the mean of the plain and the
+ *      A-weighted (by ear) loudness.
  *      The monster balls' breaks (SHOT_SOUNDS) on you, likewise.
  *   3. PRELOAD -- loadCriticalSfx() actually decodes the combat-critical
  *      samples, so the first swing of a cold session is not the one that
@@ -150,44 +152,67 @@ try {
       const r = await fetch(urlOf(k));
       bufs[k] = await dec.decodeAudioData(await r.arrayBuffer());
     }
+    /* v2.3.3001: LOUDNESS THE WAY THE TABLES WERE TUNED -- the PROP_SOUNDS
+       method (gameDisplay.js): the mean of the PLAIN and the A-WEIGHTED
+       loudest-50-ms RMS, each against sword-hit3's.  Plain RMS alone counts
+       a thud's bass, most of which a phone's speaker never makes, at full
+       weight: by it the snowman's own thud -- the very sound he has made
+       since v2.3.1124, `fb` here -- is 1.5x sword-hit3, where the ear-
+       weighted half puts it level.  A-weighting at 48 kHz in three sections
+       (bilinear; -19.1 dB at 100 Hz, 0 at 1 kHz, -30.3 at 50 Hz). */
+    const AW = [
+      [[0.234300592866472, 0.468601185732944, 0.234300592866472], [1, -0.224558458059779, 0.0126066252715464]],
+      [[1, -2, 1], [1, -1.89387049472307, 0.895159769094662]],
+      [[1, -2, 1], [1, -1.99461445599302, 0.994621707014084]],
+    ];
+    const loudest = (ch) => {
+      const w = Math.floor(SR * 0.05);
+      let s = 0, best = 0;
+      for (let i = 0; i < ch.length; i++) {
+        s += ch[i] * ch[i];
+        if (i >= w) s -= ch[i - w] * ch[i - w];
+        if (i >= w - 1 && s > best) best = s;
+      }
+      return Math.sqrt(Math.max(0, best) / w);
+    };
     const render = async (layers, vol, hg) => {
-      const oc = new OfflineAudioContext(2, Math.ceil(SR * 1.4), SR);
-      for (const L of layers) {
-        const src = oc.createBufferSource();
-        src.buffer = bufs[L[0]];
-        const rate = L[4] || 1;
-        src.playbackRate.value = rate;
-        const g = oc.createGain();
-        const v = vol * hg * L[3];
-        g.gain.value = v;
-        src.connect(g); g.connect(oc.destination);
-        const when = L[5] || 0;
-        if (L[2] > 0) src.start(when, L[1] || 0, L[2]); else src.start(when, L[1] || 0);
-        if (L[6] > 0 && L[2] > 0) {
-          const real = L[2] / rate;
-          g.gain.setValueAtTime(v, when + Math.max(0, real - L[6]));
-          g.gain.linearRampToValueAtTime(0, when + real);
+      /* mono, as the measurement scripts fold a stereo file; channel 0 plain,
+         and the same mix through the A-weighting into a second context */
+      const once = async (aw) => {
+        const oc = new OfflineAudioContext(1, Math.ceil(SR * 1.4), SR);
+        let bus = oc.destination;
+        if (aw) {
+          for (let i = AW.length - 1; i >= 0; i--) { const f = oc.createIIRFilter(AW[i][0], AW[i][1]); f.connect(bus); bus = f; }
         }
-      }
-      const out = await oc.startRendering();
-      let peak = 0, best = 0;
-      const w = Math.floor(SR * 0.02);
-      for (let c = 0; c < out.numberOfChannels; c++) {
-        const ch = out.getChannelData(c);
-        for (let i = 0; i < ch.length; i += w) {
-          let s = 0, n = 0;
-          for (let j = i; j < i + w && j < ch.length; j++) { s += ch[j] * ch[j]; n++; if (Math.abs(ch[j]) > peak) peak = Math.abs(ch[j]); }
-          const rms = Math.sqrt(s / Math.max(1, n));
-          if (rms > best) best = rms;
+        for (const L of layers) {
+          const src = oc.createBufferSource();
+          src.buffer = bufs[L[0]];
+          const rate = L[4] || 1;
+          src.playbackRate.value = rate;
+          const g = oc.createGain();
+          const v = vol * hg * L[3];
+          g.gain.value = v;
+          src.connect(g); g.connect(bus);
+          const when = L[5] || 0;
+          if (L[2] > 0) src.start(when, L[1] || 0, L[2]); else src.start(when, L[1] || 0);
+          if (L[6] > 0 && L[2] > 0) {
+            const real = L[2] / rate;
+            g.gain.setValueAtTime(v, when + Math.max(0, real - L[6]));
+            g.gain.linearRampToValueAtTime(0, when + real);
+          }
         }
-      }
-      return { peak, rms: best };
+        return (await oc.startRendering()).getChannelData(0);
+      };
+      const plain = await once(false);
+      let peak = 0;
+      for (let i = 0; i < plain.length; i++) if (Math.abs(plain[i]) > peak) peak = Math.abs(plain[i]);
+      return { peak, rms: loudest(plain), arms: loudest(await once(true)) };
     };
     const ref = await render([['sword-hit3', 0, 0, 1]], 0.6, A.HIT_GAIN);
     const res = [];
     for (const t of tables) {
       const r = await render(t.layers, t.vol, t.hg);
-      res.push({ name: t.name, shot: !!t.shot, peak: r.peak, ratio: r.rms / ref.rms });
+      res.push({ name: t.name, shot: !!t.shot, peak: r.peak, ratio: 0.5 * (r.rms / ref.rms + r.arms / ref.arms), plain: r.rms / ref.rms, ear: r.arms / ref.arms });
     }
     return { ref, res };
   });
@@ -195,10 +220,10 @@ try {
   for (const r of lvl.res) {
     ok(r.peak < 0.95, `${r.name}: no clipping at ${r.shot ? 'full, on you' : "the arrow's 0.6"} (peak ${r.peak.toFixed(2)})`);
     if (!r.shot) {
-      ok(r.ratio > 0.7 && r.ratio < 1.45, `${r.name}: level-matched to sword-hit3 (${r.ratio.toFixed(2)}x)`);
+      ok(r.ratio > 0.7 && r.ratio < 1.45, `${r.name}: level-matched to sword-hit3 (${r.ratio.toFixed(2)}x: plain ${r.plain.toFixed(2)}, by ear ${r.ear.toFixed(2)})`);
     } else {
       /* a ball on you sits at or under a blow: measured 0.55-0.98 of it */
-      ok(r.ratio > 0.3 && r.ratio < 1.15, `${r.name}: at or under a blow's level (${r.ratio.toFixed(2)}x sword-hit3 at 0.6)`);
+      ok(r.ratio > 0.3 && r.ratio < 1.15, `${r.name}: at or under a blow's level (${r.ratio.toFixed(2)}x sword-hit3 at 0.6: plain ${r.plain.toFixed(2)}, by ear ${r.ear.toFixed(2)})`);
     }
   }
 

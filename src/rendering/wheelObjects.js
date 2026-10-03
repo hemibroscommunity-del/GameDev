@@ -656,7 +656,9 @@ function swayKindOf(id) {
   if (m && m.canopy) return m.canopy === 'snow' || m.canopy === 'char' ? 'pine' : 'tree';
   return SHRUBS.has(id) ? 'shrub' : null;
 }
-/** fn(sprite, kind, footX, footY) for each drawn object that sways. */
+/** fn(sprite, kind, footX, footY, crown) for each drawn object that sways.
+ *  v2.3.3001: `crown` is a tree's canopy ('leaf', 'snow', 'char', 'slime'),
+ *  null for a shrub -- what a gust shakes loose of it (worldLife). */
 export function forEachWheelSwayer(fn) {
   const live = _live, ix = _idx;
   if (!live || live.dead || !ix || !live.sprites.size) return;
@@ -664,8 +666,13 @@ export function forEachWheelSwayer(fn) {
   for (const [i, s] of live.sprites) {
     if (!s || s.destroyed || s._pic) continue;   /* a building with life never sways */
     let kind = s._swayKind;
-    if (kind === undefined) kind = s._swayKind = swayKindOf(o.kinds[o.kind[i]]);
-    if (kind) fn(s, kind, o.x[i], o.y[i]);
+    if (kind === undefined) {
+      const id = o.kinds[o.kind[i]];
+      kind = s._swayKind = swayKindOf(id);
+      const m = kind ? wheelMaterialOf(id) : null;
+      s._swayCrown = (m && m.canopy) || null;
+    }
+    if (kind) fn(s, kind, o.x[i], o.y[i], s._swayCrown);
   }
 }
 
