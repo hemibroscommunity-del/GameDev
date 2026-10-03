@@ -13,6 +13,7 @@
    S is stateRef.current; S.keys feeds the movement code that stayed in
    the game loop. */
 import { BT_AUDIO, getNpcQuest } from '@/data/index.js';
+import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E at a Wheel dungeon's mouth */
 
 export function setupDesktopControls(S, deps) {
   var triggerContextualDodge = deps.triggerContextualDodge,
@@ -103,6 +104,11 @@ export function setupDesktopControls(S, deps) {
         /* 2b. Dungeon Workshop */
         if (S._nearWorkshop) {
           _desktopOpenWorkshop();
+          return;
+        }
+        /* 2b2. v2.3.3016: a Wheel dungeon's mouth (game/wheelDungeons.js) */
+        if (S._nearWheelDoor) {
+          enterWheelDungeon(S, S._nearWheelDoor.id);
           return;
         }
         /* 2c. Pet House */

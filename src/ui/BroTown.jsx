@@ -459,6 +459,7 @@ import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h jo
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
 import { isWheelTrialZone, footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown */
+import { wheelDoorAt, enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 
@@ -1566,6 +1567,11 @@ export var BroTown = function BroTown(_ref0) {
     _useState42 = _slicedToArray(_useState41, 2),
     showDungeonCreator = _useState42[0],
     setShowDungeonCreator = _useState42[1];
+  /* v2.3.3016: the Wheel dungeon mouth you stand at (its land's id), for the
+     Enter button -- synced from the game loop twice a second, as nearBuilding */
+  var _useStateWD = useState(null),
+    nearWheelDoor = _useStateWD[0],
+    setNearWheelDoor = _useStateWD[1];
   var _useState43 = useState(false),
     _useState44 = _slicedToArray(_useState43, 2),
     showLeaderboard = _useState44[0],
@@ -5328,6 +5334,8 @@ export var BroTown = function BroTown(_ref0) {
         } else {
           S._nearWorkshop = false;
         }
+        /* v2.3.3016: a Wheel dungeon's mouth (game/wheelDungeons.js) */
+        S._nearWheelDoor = wheelDoorAt(S);
 
         /* §PET — Pet House proximity on farm */
         if (S.currentZone === 'farm_home' && ZONES.farm_home._petHouse) {
@@ -7709,6 +7717,11 @@ export var BroTown = function BroTown(_ref0) {
       var nb = S.nearBuilding;
       setNearBuilding(function (prev) {
         return prev === nb ? prev : nb;
+      });
+      /* v2.3.3016: and the Wheel dungeon mouth you stand at */
+      var nwd = S._nearWheelDoor && !S._serverDungeon ? S._nearWheelDoor.id : null;
+      setNearWheelDoor(function (prev) {
+        return prev === nwd ? prev : nwd;
       });
       /* Update player list */
       var list = Object.entries(S.others).map(function (_ref27) {
@@ -12907,7 +12920,41 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 11,
       marginRight: 4
     }
-  }, "E"), "\uD83C\uDFD7\uFE0F Dungeon Workshop"), ((_stateRef$current54 = stateRef.current) === null || _stateRef$current54 === void 0 ? void 0 : _stateRef$current54._nearPetHouse) && !showPetHouse && /*#__PURE__*/React.createElement("button", {
+  }, "E"), "\uD83C\uDFD7\uFE0F Dungeon Workshop"), nearWheelDoor && !((_stateRef$current53 = stateRef.current) !== null && _stateRef$current53 !== void 0 && _stateRef$current53._serverDungeon) && /*#__PURE__*/React.createElement("button", {
+    /* ═══ v2.3.3016: THE WHEEL'S DUNGEONS ═══
+       At a land's landmark -- the Great Cave, the Foundry Dome, the Buried
+       City -- this opens the dungeon behind it (game/wheelDungeons.js), the
+       Workshop's button's place and shape in the land's own light. */
+    className: "bt-interact-prompt",
+    "data-wheel-door": nearWheelDoor,
+    style: {
+      /* the interact prompt's own slot, above the band and below the two
+         joystick discs -- NOT the Workshop's `bottom: 140`, which sits on
+         the sprint button beside the left disc (v2.3.3006) -- riding the
+         sheet as the controls do (ShieldButton.jsx ctlBottom), and nudged
+         right of the bell beside the left disc */
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 24px)',
+      left: 'calc(50% + 24px)',
+      background: 'rgba(28,92,120,.9)',
+      border: '1px solid rgba(160,230,255,.55)'
+    },
+    onClick: function onClick(e) {
+      e.preventDefault();
+      enterWheelDungeon(stateRef.current, nearWheelDoor);
+    },
+    onTouchStart: function onTouchStart(e) {
+      e.preventDefault();
+      enterWheelDungeon(stateRef.current, nearWheelDoor);
+    }
+  }, stateRef.current._isDesktop && /*#__PURE__*/React.createElement("kbd", {
+    style: {
+      background: 'rgba(255,255,255,.2)',
+      padding: '1px 5px',
+      borderRadius: 3,
+      fontSize: 11,
+      marginRight: 4
+    }
+  }, "E"), "\u2694\uFE0F Enter " + ((stateRef.current._nearWheelDoor && stateRef.current._nearWheelDoor.name) || 'the dungeon')), ((_stateRef$current54 = stateRef.current) === null || _stateRef$current54 === void 0 ? void 0 : _stateRef$current54._nearPetHouse) && !showPetHouse && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     style: {
       bottom: mktMode !== 'orders' && (_stateRef$current55 = stateRef.current) !== null && _stateRef$current55 !== void 0 && _stateRef$current55._nearWorkshop ? 175 : 140,
@@ -13054,6 +13101,11 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     var R = S === null || S === void 0 ? void 0 : S.rpg;
     if (!R || (S === null || S === void 0 ? void 0 : S.currentZone) === 'town') return null;
+    /* v2.3.3016: not in a zone of other zones' monsters -- the Wheel, or one
+       of its dungeons, whose arena carries its land's element: the Great
+       Cave is "stone", and the old Deep Hollows' torch and echo came up over
+       the controls there, for a darkness the arena does not have */
+    if (ZONES[S.currentZone] && ZONES[S.currentZone].homes) return null;
     var zElem = (_ZONES$S$currentZone14 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone14 === void 0 ? void 0 : _ZONES$S$currentZone14.element;
     var inv = R.inventory || {};
     var buttons = [];

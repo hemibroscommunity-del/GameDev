@@ -119,3 +119,12 @@ export const WHEEL_NODES = {
   mist: [['o', 18180, 23604, 6], ['t', 20196, 25284, 6], ['o', 18612, 25380, 6], ['t', 19812, 24204, 6], ['o', 18684, 22692, 6], ['t', 19380, 24972, 6], ['f', 20100, 25140, 6], ['f', 17460, 23460, 6], ['o', 16500, 25044, 11], ['t', 19068, 27108, 11], ['o', 17196, 26820, 11], ['t', 18324, 25596, 11], ['o', 15300, 24276, 11], ['t', 17172, 24108, 11], ['f', 16524, 24444, 11], ['f', 15684, 25212, 11]],
   verdant: [['o', 17772, 22380, 6], ['t', 18468, 20292, 6], ['o', 17388, 20364, 6], ['t', 16908, 22860, 6], ['o', 18540, 21780, 6], ['t', 17868, 20796, 6], ['f', 18036, 20028, 6], ['o', 15492, 20172, 11], ['t', 15636, 24108, 11], ['o', 16644, 22356, 11], ['t', 14892, 22860, 11], ['o', 14796, 21324, 11], ['t', 16692, 20100, 11]],
 };
+
+/* v2.3.3016: the dungeons' mouths (server/src/wheeldungeon.js): per land
+ * whose landmark is one, its name, its tier and that tier's levels, where it
+ * stands, and the way back out, a step from it on open ground. */
+export const WHEEL_DOORS = {
+  sky: { name: "the Buried City", tier: 9, levels: [41, 45], at: [30184, 13964], back: [30184, 14114] },
+  hollows: { name: "the Great Cave", tier: 6, levels: [26, 30], at: [29901, 22368], back: [29901, 22518] },
+  thunder: { name: "the Foundry Dome", tier: 6, levels: [26, 30], at: [28052, 26831], back: [28052, 26981] },
+};

@@ -22,6 +22,7 @@
 import { BT_AUDIO, ZONES, TILE, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
 import { releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone */
 import { wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: and you come back in the Wheel's Brotown */
+import { dropDungeonZone } from '@/game/wheelDungeons.js'; /* v2.3.3016: a dungeon's synthetic zone, dropped after its art is released */
 
 /**
  * Put the player back on their feet in `zone`.  Idempotent enough to call
@@ -37,9 +38,13 @@ export function applyLocalRespawn(S, zone) {
      would suppress the local wave engine and pin the synthetic ZONES
      entry). */
   if (S._serverDungeon) {
-    if (ZONES[S._serverDungeon] && ZONES[S._serverDungeon]._instance) delete ZONES[S._serverDungeon];
+    /* v2.3.3016: its synthetic entry goes once the art release below has read
+       it -- a Wheel dungeon's monsters' looks are found through its `homes`
+       (game/wheelDungeons.js dropDungeonZone) */
+    dropDungeonZone(S._serverDungeon);
     S._serverDungeon = null;
   }
+  S._dungeonBack = null;   /* v2.3.3016: a death comes back to the Wheel's town, not the mouth */
   S._inDungeon = false;
   S._inCustomDungeon = false;
   S._customDungeonConfig = null;

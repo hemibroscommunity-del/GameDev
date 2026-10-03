@@ -66,6 +66,7 @@ import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
 import { sprintMethods } from './sprint.js'; /* v2.3.3006: sprint -- stamina for 1.33x the walk */
+import { wheelDungeonMethods } from './wheeldungeon.js'; /* v2.3.3016: the Wheel's dungeons, behind its landmarks */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
@@ -5737,6 +5738,7 @@ Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
 Object.assign(GameRoom.prototype, sprintMethods); /* v2.3.3006 */
+Object.assign(GameRoom.prototype, wheelDungeonMethods); /* v2.3.3016 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.
 Object.assign(GameRoom.prototype, abilityMethods);

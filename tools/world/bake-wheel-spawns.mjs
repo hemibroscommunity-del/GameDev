@@ -45,6 +45,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const OUT = path.join(ROOT, 'server/src/wheelspawns.js');
 
 /* The rules, in game px. */
+/* v2.3.3016: the way back out of a dungeon, tried in turn round its mouth
+   (game px): south first -- you come out walking down the screen -- then the
+   sides, then north */
+export const DOOR_BACK = [[0, 150], [0, 210], [150, 60], [-150, 60], [0, -150]];
+
 export const SPAWN_RULES = Object.freeze({
   bandFrom: 350,       /* the band starts this far past the commons' edge on the axis... */
   bandTo: 1350,        /* ...and ends this far past it, or where the land's first stage does */
@@ -293,7 +298,32 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
   const walk = walkBits(bp, materialMap(plan, bp));
   const blocked = (i) => !!(walk[i >> 3] & (1 << (i & 7)));
   const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR, blocked }, NODE_RULES);
-  return { spawns: out, nodes, hash: bp.hash, world: [Math.round(bp.w * cellG), Math.round(bp.h * cellG)], centre: [Math.round(cxG), Math.round(cyG)],
+  /* ═══ v2.3.3016: THE DUNGEONS' MOUTHS ═══
+     Each land's landmark (layout.js pass 8: the Great Cave, the Foundry
+     Dome, the Buried City) is the way into its dungeon (server/src/
+     wheeldungeon.js): where it stands, in the game px the client's own map
+     of the Wheel names it at (wheelmap.js `game`), its tier's levels, and
+     the way back out -- the first of a few steps round the mouth, south
+     first, that is open ground by the game's walk grid and clear of every
+     placed object.  A landmark placed by `at` (the commons' Prospector's
+     Circle) has no tier and is no dungeon. */
+  const doors = Object.create(null);
+  for (const p of bp.pois || []) {
+    if (p.kind !== 'landmark' || !p.region) continue;
+    const lm = plan.regions[p.region] && plan.regions[p.region].landmark;
+    if (!lm || !(lm.tier > 0)) continue;
+    const x = Math.round((p.x - bp.x0) * WPA), y = Math.round((p.y - bp.y0) * WPA);
+    let back = null;
+    for (const [dx, dy] of DOOR_BACK) {
+      const bx = x + dx, by = y + dy;
+      const ci = Math.floor(by / cellG) * bp.w + Math.floor(bx / cellG);
+      if (ci < 0 || ci >= n || blocked(ci) || HAZ.has(bp.cls[ci]) || nearObject(bx, by, 40)) continue;
+      back = [bx, by];
+      break;
+    }
+    doors[p.region] = { name: lm.name, tier: lm.tier, levels: W.levels(lm.tier), at: [x, y], back: back || [x, y + DOOR_BACK[0][1]] };
+  }
+  return { spawns: out, nodes, doors, hash: bp.hash, world: [Math.round(bp.w * cellG), Math.round(bp.h * cellG)], centre: [Math.round(cxG), Math.round(cyG)],
     safeR };
 }
 
@@ -581,6 +611,13 @@ ${lines.join('\n')}
  * (+52, +9 to the boots) is dry ground. */
 export const WHEEL_NODES = {
 ${Object.entries(b.nodes || {}).map(([id, list]) => `  ${id}: [${list.map((p) => `['${p[0]}', ${p[1]}, ${p[2]}, ${p[3]}]`).join(', ')}],`).join('\n')}
+};
+
+/* v2.3.3016: the dungeons' mouths (server/src/wheeldungeon.js): per land
+ * whose landmark is one, its name, its tier and that tier's levels, where it
+ * stands, and the way back out, a step from it on open ground. */
+export const WHEEL_DOORS = {
+${Object.entries(b.doors || {}).map(([id, d]) => `  ${id}: { name: ${JSON.stringify(d.name)}, tier: ${d.tier}, levels: [${d.levels.join(', ')}], at: [${d.at.join(', ')}], back: [${d.back.join(', ')}] },`).join('\n')}
 };
 `;
 }

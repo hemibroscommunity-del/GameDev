@@ -501,6 +501,8 @@ import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_IN
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
 import { wheelNodeView, WheelFish } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
+import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
+import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
@@ -9612,6 +9614,13 @@ export class EffectsRenderer {
       if (!this._wheelFish) this._wheelFish = new WheelFish(this.lootLayer);
       this._wheelFish.update(_wheelSpots || [], now);
     }
+    /* v2.3.3016: the Wheel's dungeon mouths at its landmarks (wheelDoors.js)
+       -- and, anywhere else or against a worker that opens none, none */
+    const _doors = (S.currentZone === 'wheel' && wheelDungeonsSupported(S)) ? wheelDungeonDoors() : null;
+    if (_doors || (this._wheelDoors && this._wheelDoors.size)) {
+      if (!this._wheelDoors) this._wheelDoors = new WheelDoors(this.lootLayer);
+      this._wheelDoors.update(_doors || [], S, now);
+    }
     this._drawGatherHpBar(S, nodes, now);   /* v2.3.2956 */
     this._advanceOreBreaks(now);
     this._advanceItemPops(now);
@@ -14296,6 +14305,7 @@ export class EffectsRenderer {
     }
     this.nodeGfx.clear();
     if (this._wheelFish) this._wheelFish.clear();   /* v2.3.3012 */
+    if (this._wheelDoors) this._wheelDoors.clear();   /* v2.3.3016 */
     this.flashOverlay.clear();
     this.atmosphereGfx.clear();
     for (const t of this.dmgTexts) t.destroy();

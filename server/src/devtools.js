@@ -307,6 +307,30 @@ export const devToolsMethods = {
     };
   },
 
+  /* ═══ v2.3.3016: END THE WAVE YOU STAND IN ═══
+     For the QA scenario of the Wheel's dungeons (mp-wheeldungeon): three
+     waves and a boss of a land's monsters take a real fight minutes a run on
+     a test box drawing a few frames a second.  Every live monster of the
+     dungeon the player stands in dies where it is -- no kill credit, no loot:
+     the run's own tick (dungeon.js _tickDungeons) brings the next wave, the
+     boss or the clear exactly as a fight would.  ADMIN_KEY-gated like every
+     dev op; nothing outside a dungeon: a player in no instance gets ok:false. */
+  _devClearWave(playerId) {
+    const ps = this.playerState[playerId];
+    const z = ps && ps.z;
+    if (!z || !/^dungeon:/.test(z) || !Array.isArray(this.monsters[z])) return { ok: false, error: 'not in a dungeon' };
+    let cleared = 0;
+    for (const m of this.monsters[z]) {
+      if (!m.alive) continue;
+      m.alive = false;
+      m.hp = 0;
+      m.respawnAt = 0;
+      this._markMonsterDirty(z, m.id);
+      cleared++;
+    }
+    return { ok: true, zone: z, cleared };
+  },
+
   /* Routed from _adminFetch, so auth, the fail-closed 404 and the audit log
      are all inherited rather than re-implemented.  Returns null when the
      path is not ours, so the caller falls through to its own 404. */
@@ -330,6 +354,7 @@ export const devToolsMethods = {
     else if (path === '/dev/kit') result = this._devKit(playerId, body);
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId);   /* v2.3.2277 */
+    else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

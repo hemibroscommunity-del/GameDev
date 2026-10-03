@@ -41,6 +41,7 @@
  * present player count 1.0/1.6/2.2/3.0 (GDD §55.7 party scaling). */
 
 import { ARCHETYPES, MONSTER_HP_CURVE, monsterHpFlat } from './data.js';
+import { WHEEL_DUNGEON } from './wheeldungeon.js';   /* v2.3.3016: the Wheel's dungeons */
 
 export const DUNGEONS = {
   MAX_WAVES: 10,        // client caps at 10 by level; hard server ceiling
@@ -239,13 +240,26 @@ export const dungeonMethods = {
     if (this._dungeons.size >= DUNGEONS.MAX_INSTANCES) {
       return this._dungeonError(session.id, 'room-full', 'Too many dungeons running — try again soon');
     }
-    const cfg = this._dungeonSanitizeConfig((payload && payload.config) || payload, ps);
+    /* v2.3.3016: a start at one of the Wheel's mouths names only the mouth
+       (`entrance`): the config is the worker's own, the land's monsters at
+       the place's level (wheeldungeon.js), and the run remembers the way
+       back out.  Otherwise the Workshop's config, clamped as ever. */
+    let cfg, back = null;
+    if (payload && typeof payload.entrance === 'string') {
+      const w = this._wheelDungeonConfig(ps, payload.entrance);
+      if (w.error) return this._dungeonError(session.id, w.error[0], w.error[1]);
+      cfg = w.cfg;
+      back = w.back;
+    } else {
+      cfg = this._dungeonSanitizeConfig((payload && payload.config) || payload, ps);
+    }
     const id = crypto.randomUUID().slice(0, 8);
     const zone = 'dungeon:' + id;
     const inst = {
       id, zone, ownerId: session.id, cfg,
       wave: 1, state: 'active', bossSpawned: false,
       createdAt: Date.now(), emptySince: 0, doneAt: 0,
+      ...(back ? { back } : {}),
     };
     this._dungeons.set(id, inst);
     // Pre-populate BEFORE replying: the client zone-changes into the
@@ -254,7 +268,7 @@ export const dungeonMethods = {
     // lazy-"spawn" the empty unknown-zone list instead).
     this.monsters[zone] = [];
     this._dungeonSpawnWave(inst);
-    this._dungeonSend(session.id, { type: 'dungeon_started', payload: { zone, cfg, wave: 1 } });
+    this._dungeonSend(session.id, { type: 'dungeon_started', payload: { zone, cfg, wave: 1, ...(back ? { back } : {}) } });
     // v2.3.1218 (item D follow-up): leader-initiated group entry -- if the
     // starter leads a party, pull their co-located members into the same
     // instance so a party runs the dungeon together (instances are shared
@@ -285,7 +299,10 @@ export const dungeonMethods = {
       const mps = this.playerState[pid];
       if (!mps || mps.dead || mps.dying || mps.disconnected) continue;
       if (mps.z !== fromZone) continue;
-      this._dungeonSend(pid, { type: 'dungeon_started', payload: { zone: inst.zone, cfg: inst.cfg, wave: 1 } });
+      /* v2.3.3016: the Wheel is one zone across 43,008 px -- a member there
+         comes in only from beside the mouth */
+      if (inst.back && !(Math.hypot((mps.x || 0) - (ownerPs.x || 0), (mps.y || 0) - (ownerPs.y || 0)) <= WHEEL_DUNGEON.PARTY_R)) continue;
+      this._dungeonSend(pid, { type: 'dungeon_started', payload: { zone: inst.zone, cfg: inst.cfg, wave: 1, ...(inst.back ? { back: inst.back } : {}) } });
       pulled++;
     }
     return pulled;
@@ -332,6 +349,8 @@ export const dungeonMethods = {
   _dungeonSpawnWave(inst) {
     const list = this.monsters[inst.zone];
     if (!list) return;
+    /* v2.3.3016: a Wheel dungeon's waves are its land's own (wheeldungeon.js) */
+    if (inst.cfg.home) return this._wheelDungeonWave(inst);
     let n = 0;
     for (const g of inst.cfg.monsters) {
       for (let i = 0; i < g.count; i++) {
@@ -362,7 +381,12 @@ export const dungeonMethods = {
     if (!list) return;
     const present = this._dungeonZonePlayers(inst.zone).length;
     const scale = DUNGEONS.PARTY_HP_SCALE[Math.max(0, Math.min(present - 1, DUNGEONS.PARTY_HP_SCALE.length - 1))];
-    const m = this._dungeonMonster(inst, inst.cfg.bossArchetype, inst.cfg.monsterLevel + 5, inst.cfg.element, 'boss');
+    /* v2.3.3016: a Wheel dungeon's boss is its land's strongest kind
+       (wheeldungeon.js), scaled and armed below as any */
+    const m = inst.cfg.home
+      ? this._wheelDungeonBossBody(inst)
+      : this._dungeonMonster(inst, inst.cfg.bossArchetype, inst.cfg.monsterLevel + 5, inst.cfg.element, 'boss');
+    if (!m) return;
     // v2.3.1346: the flat +100 HP bump applies AFTER the boss/party
     // multipliers -- "all monsters get +100", not +100 x8 amplified.
     const hpFlat = monsterHpFlat(m.level); /* v2.3.1364: level-aware — must match the flat added at spawn */
@@ -716,6 +740,11 @@ export const dungeonMethods = {
          the zone the moment you walk in -- "it just noticed you" is a
          TRANSITION, and a transition needs a previous value. See tick.js. */
       tg: m.targetId || null,
+      /* v2.3.3016: a Wheel dungeon's monsters say their land and look, as
+         the Wheel's do in the shared snapshot (spawnscale.js
+         _zoneSnapshotWire) -- only on those, so a Workshop run's wire is
+         byte for byte what it was */
+      ...(m.home ? { home: m.home, variant: m.variant || null } : {}),
     }));
     for (const [ws, s] of this.sessions) {
       const ps = s.id && this.playerState[s.id];

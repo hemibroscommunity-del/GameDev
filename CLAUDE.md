@@ -699,7 +699,53 @@ remnant to migrate server-side, not a mode to preserve.
     - a foot plant STEPPED OVER between two draws counts now
       (`_jogPlantCrossed`): a page drawing a few frames a second rarely
       landed on one, and lost its footsteps and dust;
-    - `sprint` §10, `mp-sprintpeer`: docs/specs/sprint.md "Seen and heard".)
+    - `sprint` §10, `mp-sprintpeer`: docs/specs/sprint.md "Seen and heard".
+  - Since v2.3.3016 DUNGEONS IN THE WHEEL -- offered "Dungeons in the Wheel
+    ... the other big missing piece", the owner: "Yes continue working on
+    those items":
+    - a land's LANDMARK is its dungeon's mouth: the Great Cave (hollows,
+      levels 26-30), the Foundry Dome (thunder, 26-30), the Buried City (sky,
+      41-45) -- `WHEEL_DUNGEON.LANDS` in `server/src/wheeldungeon.js`; the
+      other five lands have no landmark on their spokes yet;
+    - where each stands and the way back out are BAKED with the monsters'
+      places (`WHEEL_DOORS`, bake-wheel-spawns.mjs); the client finds the
+      mouths in the worker's own map (`wheelMapInfo().places`), only WHICH
+      lands in `src/data/wheelDungeons.js` (mirror-audit);
+    - each mouth drawn in code until it has a picture
+      (`src/rendering/wheelDoors.js`), "⚔️ Enter the Great Cave" within 200
+      px (or E); `dungeon_start` sends `{ entrance }` and nothing else, the
+      worker judging the rest within 260 px (`_wheelDungeonConfig`);
+    - inside: dungeon.js's instance, its waves the land's own spawn list
+      built by `_makeZoneMonster` with `home` (their looks, shards, quests),
+      the boss its last kind five levels up; the level the place's top but
+      never above yours; its looks loaded behind the loading screen
+      (`loadLandLooks`) and the arena's zone given the land as `homes`;
+    - the ARENA is its own, not the Workshop's (`wheelArenaMap`): 36 x 52
+      (`WHEEL_ARENA` = `WHEEL_DUNGEON.WIDTH/HEIGHT`, mirror-audited) so an
+      upright phone keeps the Wheel's character size -- the Workshop's 28 x 22
+      was zoomed in to fill the screen, the bro 2.5x -- its way out in the
+      last floor row on a 3-row bottom wall (a door IN the bottom row is never
+      stepped on: `_FOOT_MARGIN` 80), deaf 2.5 s after you arrive; floored
+      with the land's own ground picture (`WHEEL_DUNGEON_FLOOR`: hollows-4,
+      thunder-2, sky-3; tileRenderer.js `_rebuildFloorPic`, mipmapped, walls
+      in code), loaded behind the screen at the Wheel's `?v=` address and
+      freed a beat after you leave; no old zone tools (the Deep Hollows'
+      torch) in a zone with `homes`;
+    - found by its phone test: leaving the Wheel for an arena freed the
+      thorn shambler's look, which IS the rock monster's module -- the Great
+      Cave's monsters undrawn and the renderer throwing on destroyed
+      textures; `unloadVariantSprites(keys, keep)` keeps any module a kept
+      look draws from; and a zone with no `palette` (every dungeon arena,
+      the Workshop's too) threw in `getTileHexColor`, so no floor drew;
+    - out (cleared, or its door) through today's town and down the stairs,
+      arriving at the mouth (`leaveWheelDungeon`, `setWheelArrival`); a
+      party member comes in only from within 600 px of the mouth;
+    - `caps.wheeldungeons`, kill switch `wheeldungeons: false`; the QA op
+      `clearwave`; `wheeldungeon` suite, `mp-wheeldungeon`:
+      docs/specs/wheel-dungeons.md.
+    - Found on the way: the Wheel's buildings have NO DOORS yet -- the
+      forge, the bank, the shop and the farm (the Dungeon Workshop) are
+      unreachable from the Wheel.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
