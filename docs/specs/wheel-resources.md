@@ -10,7 +10,7 @@ areas showing fish swimming around in the water"*.
 
 Since the Wheel became the world (v2.3.2990) there was nothing to gather in
 it, so Mayor Bro's two trade quests, *Learn a Trade* and *Rock Bottom*, could
-not be finished. Now the Wheel grows **141 resource nodes** in three bands:
+not be finished. Now the Wheel grows **140 resource nodes** in three bands:
 
 | Where | Levels | Gathering tier | Ore | Wood | Fish |
 |---|---|---|---|---|---|
@@ -31,12 +31,16 @@ planned.
 - **Black steel, hardwood and trout** in levels 11–20, farther out: three veins
   and three trees in each land.
 - **Every land has fishing** (the owner: *"Make all 8 have fishing spots"*).
-  Clownfish swim in seven lands' levels 1–10 and trout in seven lands'
-  levels 11–20. The two gaps are geography, not rules:
+  Clownfish swim in six lands' levels 1–10 and trout in seven lands'
+  levels 11–20. The three gaps are geography, not rules:
   - the Hollows' levels 1–10 have no water a line can reach;
+  - the Electric Foundry's coast at 1–10 has no dry seat: its one spot
+    there had the angler's boots on drawn water, and the next is too far
+    in;
   - the Verdant Wilds' shores at 11–20 have their water on the wrong side
     (below, "Fishing spots").
-  The Hollows have trout, and the Verdant Wilds clownfish.
+  The Hollows and the Electric Foundry have trout, and the Verdant Wilds
+  clownfish.
 - **Each tier looks like itself.** An iron vein's flecks are rust red; a black
   steel vein is dark slate with blue-black metal; copper keeps its gold-flecked
   look. Softwood trees are paler and yellower than pines, hardwood darker and
@@ -52,6 +56,12 @@ planned.
   four cells wide and three tall, where its fish swim. The angler sits on dry
   ground two cells east of it. Nothing tall stands in front of him, or in
   front of a vein or tree.
+- **Swimming (v2.3.3003) and the resources.** The water a spot's fish swim in
+  is water you can swim in too. A swimmer who taps a fishing spot climbs out
+  onto its seat and fishes from there, and the same for a vein, as fishing and
+  mining always seat you and every Wheel seat is baked onto dry ground. A tree
+  or a campfire has no seat, so chopping or cooking from the water is refused
+  with "Swimming!", like a swing (`lifeSkillRewards.js` `startExtraction`).
 - **As anywhere, a node needs its tool** (axe, pole, pickaxe). Without the
   tool it is not drawn.
 - **The minimap shows them** (the owner: *"Show nodes on minimap"*). Each
@@ -117,8 +127,17 @@ For each area (the commons, then each land) and each band:
   - a 4 × 3 patch of water from three cells west of it to its own cell, one
     row up and down (its fish swim there, `wheelNodes.js` `SWIM_*`);
   - the cell east of it, which the line crosses;
-  - two dry, clear cells under the angler's seat (`FISH_SEAT_DX/DY`, 52 px
-    east).
+  - dry, clear ground under the angler's seat (`FISH_SEAT_DX/DY`, 52 px
+    east): the boots' cell, the one east of it and the one below it (the
+    boots stand 3 px above that cell's edge). Each is ground by the plan and
+    by the game's own walk grid, which counts a land cell mostly ringed by
+    water as water: since swimming (v2.3.3003) that is water you swim in.
+
+  A survey of all 33 seats in the game, the ground as it is drawn, found
+  three with the angler's boots on drawn water and one on a land cell the
+  walk grid counts as water. The rule above fixes all four: a second survey
+  of the 32 left found every pair of boots dry. It cost the Electric
+  Foundry its levels 1–10 spot.
 
   The first bake asked for a perfectly straight five-row north–south shore,
   which wandering or east–west coasts never have. The Wind Dunes, the Storm
@@ -163,8 +182,9 @@ snapshot is byte-identical.
   trees), `ORE_BREAK_TINT` and `ORE_ICON_TIER_TEX` (the break). They were made
   by `tools/make_tier_art.py` (gradient maps of the existing art, as
   `make_bar_icons.py` makes the bars).
-- The walk test skips a fishing spot's pond ellipse in the Wheel: its water
-  already stops you, and the ellipse would only take a bite out of the bank.
+- The walk test skips a fishing spot's pond ellipse in the Wheel: you swim in
+  its water (or, with `?noswim`, the water stops you anyway), and the ellipse
+  would only take a bite out of the bank.
 - Walking up to town drops the Wheel's nodes **on the frame the zone flips**
   (`zoneTransitions.js`, as the monsters are). Before, they stayed until town's
   snapshot came in: drawn, reach-tested and walked into, at the Wheel's
@@ -198,11 +218,16 @@ do.
     a strike from another zone is refused;
   - the wire carries `home` only in the Wheel; `caps.wheelnodes`; the kill
     switch.
-- `mp-wheelnodes` (phone, real worker), 26 assertions:
+- `mp-wheelnodes` (phone, real worker), 30 assertions:
   - none drawn without tools, and none marked on the minimap;
   - the road goes to the nearest fishing spot, then to a tree;
-  - six minnows swim where the game's own walk test says is water, and the
-    seat is dry;
+  - six minnows swim where the ground is drawn as water, and the seat is dry
+    ground: its cell is land, the walk test opens it, and at most one of a
+    swimmer's five looks round the boots is wet, so one who climbs out there
+    is out of the water;
+  - a swimmer beside the spot who taps it is seated on the bank, fishing, and
+    swimming no more;
+  - a tree tapped while swimming is not chopped, and "Swimming!" says why;
   - the minimap marks every live node in its reach once the tools are in;
   - a black steel greatsword is drawn in the Black Steel metal;
   - tapping and the gesture pay a minnow, and the fish go;

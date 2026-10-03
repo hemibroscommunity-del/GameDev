@@ -20,7 +20,8 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.19
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
-import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { pushDmgPopup, swimRefused /* v2.3.3012 */ } from '@/game/combatHelpers.js';
+import { climbOut } from '@/game/wheelSwim.js';   /* v2.3.3012: a seat on the bank ends a swim */
 import { MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915 */
 /* v2.3.849: fly a harvested-resource icon from its world node into the
    bottom-left inventory.  DOM-only (appended to document.body, like the
@@ -89,6 +90,12 @@ function _flyResourceToInventory(S, wx, wy, iconUrl, opts) {
 
 export function startExtraction(S, node, skill, extra) {
     if (!S || !node) return;
+    /* v2.3.3012: the Wheel's resources stand by water you can swim in
+       (v2.3.3003).  Fishing and mining SEAT you (below), and every Wheel
+       seat is baked onto dry ground, so a swimmer who taps one climbs out
+       onto the bank to work it.  A chop or a cook has no seat, and only
+       your head is out of the water: refused like a swing, "Swimming!". */
+    if (skill !== 'fishing' && skill !== 'mining' && swimRefused(S)) return;
     /* v2.3.854: mining lines the character up with the vein the same way
        fishing lines up with the pond.  Seat the player above the ore so the
        pickaxe strike (the baked rock in the south 'mine' sheet, centered
@@ -115,6 +122,12 @@ export function startExtraction(S, node, skill, extra) {
       S.player.x = node.x + FISH_SEAT_DX;   /* 52, v2.3.2915: named, as mining's */
       S.player.y = node.y + FISH_SEAT_DY;   /* -43 */
       S.player.vx = 0; S.player.vy = 0;
+    }
+    /* v2.3.3012: seated on the bank is out of the water, with the drip of
+       climbing out (wheelSwim.climbOut: the drawn shore can lie a few px
+       into a seat, and the look round the boots would keep you swimming) */
+    if ((skill === 'fishing' || skill === 'mining') && S.player && climbOut(S, Date.now())) {
+      try { if (BT_AUDIO.swimSplash) BT_AUDIO.swimSplash('out'); } catch (e) {}
     }
     /* One extraction at a time -- tapping a new node cancels the old. */
     if (S._extraction) S._extraction = null;

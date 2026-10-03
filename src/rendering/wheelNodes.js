@@ -33,6 +33,7 @@
  */
 import { Container, Graphics } from 'pixi.js';
 import { zoneHomes } from '@/data/zones.js';
+import { wheelWaterAt } from '@/game/wheelTrial.js';   /* the ground as drawn: a fish over the bank dives */
 
 /* Past the view's half-diagonal, how far a node's ANCHOR may be and still be
    drawn.  A tree's art stands up to ~195 world px above its anchor and ~60
@@ -163,6 +164,7 @@ export class WheelFish {
         ph: look.school ? h0 * 6.283 - i * 0.62 : h1 * 6.283,
         w: (look.school ? 1 : (0.75 + 0.5 * h2)) * look.speed * (look.school || i % 2 === 0 ? dir : -dir),
         wob: 0.5 + h2,
+        vis: 1,
       });
     }
     this.layer.addChildAt(c, 0);
@@ -197,6 +199,17 @@ export class WheelFish {
         /* the tail's beat, as a squeeze across the body */
         f.g.scale.set(1, 1 + 0.14 * Math.sin(t * 13 * s.look.speed + i * 2.3));
         f.sh.x = x + 2; f.sh.y = y + 5; f.sh.rotation = rot;
+        /* over ground DRAWN as land, the fish dives out of sight and comes
+           up again past it: the bake keeps a spot's water four cells by
+           three (bake-wheel-spawns.mjs SPOT_SIDE), but the drawn shore
+           wanders a few px off the plan's cells, and a school's edge can
+           cross it (a survey of all 32 spots as drawn: one school's edge).
+           Not yet laid (null): as it was. */
+        const wet = wheelWaterAt(s.c.x + x, s.c.y + y);
+        f.vis += ((wet === false ? 0 : 1) - f.vis) * 0.18;
+        f.g.alpha = s.look.alpha * f.vis;
+        f.sh.alpha = f.vis;
+        f.g.visible = f.sh.visible = f.vis > 0.02;
       }
       /* rings where a fish rises: two, half a beat apart, each at its own
          place in the circle, opening and fading */
@@ -221,7 +234,8 @@ export class WheelFish {
     }
     if (typeof window !== 'undefined' && window.__btProbe) {
       const out = [];
-      for (const [node, s] of this.spots) out.push({ id: node.id, x: node.x, y: node.y, tier: node.gatherLvl || 1, fish: s.fish.length });
+      for (const [node, s] of this.spots) out.push({ id: node.id, x: node.x, y: node.y, tier: node.gatherLvl || 1, fish: s.fish.length,
+        dived: s.fish.filter((f) => f.vis < 0.5).length });
       window.__btWheelFish = out;
     }
   }

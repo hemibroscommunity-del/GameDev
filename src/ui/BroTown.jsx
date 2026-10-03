@@ -638,10 +638,11 @@ function nodeBlockEllipse(S, n) {
   if (n.respawnAt && Date.now() < n.respawnAt) return null;
   var art = NODE_ART[n.nodeType];
   if (!art) return null;          /* campfire and anything new: walkable */
-  /* v2.3.3012: the Wheel's fishing spots stand in its real water, which its
-     walk grid already keeps you out of -- the pond's ellipse would only take
-     a bite out of the bank beside it (it reaches ~33 px east of the spot,
-     where the shore and the angler's seat are). */
+  /* v2.3.3012: the Wheel's fishing spots stand in its real water -- water
+     you swim in (v2.3.3003), its fish under you, or with ?noswim a wall the
+     walk grid already keeps -- so the pond's ellipse would only take a bite
+     out of the bank beside it (it reaches ~33 px east of the spot, where
+     the shore and the angler's seat are). */
   if (n.nodeType === 'fishSpot' && zoneHomes(S.currentZone)) return null;
   var b = nodeWorldBox(S, n);
   if (!b) return null;

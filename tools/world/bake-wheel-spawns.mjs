@@ -32,6 +32,7 @@ import { wheelInfo, axisDist } from '../../public/tools/world/core/wheel.js';
 import { gridInfo } from '../../public/tools/world/core/grid.js';
 import { placeObjects, footprintOf } from '../../public/tools/world/core/placing.js';
 import { objectCatalog } from '../../public/tools/objects/catalog.js';
+import { materialMap, walkBits } from '../../public/tools/world/core/ground.js';   /* v2.3.3012: the game's own walk grid */
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.join(ROOT, 'server/src/wheelspawns.js');
@@ -201,7 +202,16 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
     safeR = Math.max(safeR, Math.hypot(x, y) + cellG * 0.71);
   }
   safeR = Math.ceil(safeR + rules.safeMargin);
-  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR }, NODE_RULES);
+  /* v2.3.3012: the walk grid the game's ground worker hands the client
+     (ground-worker.js init): a cell is a wall where its water, blurred two
+     cells, is half or more -- so a land cell in a narrow spit or a cove's
+     corner is a wall (and, since v2.3.3003's swimming, water to swim in) though
+     the plan calls it ground.  A harvest seat must be ground the game agrees
+     is ground: the first survey of the seats as drawn found one such, the
+     angler sat in a pond. */
+  const walk = walkBits(bp, materialMap(plan, bp));
+  const blocked = (i) => !!(walk[i >> 3] & (1 << (i & 7)));
+  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR, blocked }, NODE_RULES);
   return { spawns: out, nodes, hash: bp.hash, world: [Math.round(bp.w * cellG), Math.round(bp.h * cellG)], centre: [Math.round(cxG), Math.round(cyG)],
     safeR };
 }
@@ -263,6 +273,7 @@ export const NODE_RULES = Object.freeze({
 
 export function bakeWheelNodes(ctx, rules = NODE_RULES) {
   const { bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns, safeR } = ctx;
+  const blocked = ctx.blocked || (() => false);
   /* nothing standing in front of the node's own picture, or of the bro working
      it (a body's box, 44 x 64, over his boots) -- `art` [half-width, height]
      of each kind's picture over its anchor (effectsRenderer NODE_SPRITE_HEIGHT_BASE,
@@ -318,10 +329,20 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
      shore with three rows of water to the west of a dry cell will do, the
      angler's body standing over the water behind him as a 3/4 view draws
      it.  The fish swim inside the block (src/rendering/wheelNodes.js
-     SWIM_*). */
+     SWIM_*).
+     v2.3.3012, after v2.3.3003's swimming: the seat's boots stand 3 px above
+     the cell BELOW the seat (9 px under the spot's middle, 21 into a 24 px
+     cell), so that cell is dry ground too -- a survey of the 33 seats in the
+     game, the ground as drawn (wheelSwim's five looks round the boots),
+     found three with the boots themselves on drawn water.  And every seat
+     cell is ground by the game's own walk grid (`blocked`, above): the
+     fourth stood on a land cell the grid counts as water, ringed by it.  It
+     cost the Electric Foundry its levels 1-10 spot, whose only seat was one
+     of the three; the next survey, of the 32 left, found every pair of
+     boots dry. */
   const SPOT_SIDE = [[1, 0]];
   for (let dy = -1; dy <= 1; dy++) for (let dx = -3; dx <= 0; dx++) SPOT_SIDE.push([dx, dy]);
-  const SEAT_SIDE = [[0, 0], [1, 0]];
+  const SEAT_SIDE = [[0, 0], [1, 0], [0, 1]];
   const monsterPts = [];
   for (const s of Object.values(spawns)) for (const p of s.points) monsterPts.push(p);
   const clearOfMonsters = (x, y) => monsterPts.every((p) => Math.hypot(p[0] - x, p[1] - y) >= rules.clearMonster);
@@ -344,7 +365,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
       && !(safeR > 0 && Math.hypot(gameX(i % bp.w) - cxG, gameY((i / bp.w) | 0) - cyG) < safeR + cellG);
   const dryClear = (x, y, band, rid, side = ALL) => {
     const j = cellAt(x, y);
-    return j >= 0 && DRY.has(bp.cls[j]) && inBand(j, band, rid) && around(j, side, (k) => !WATER.has(bp.cls[k]))
+    return j >= 0 && DRY.has(bp.cls[j]) && inBand(j, band, rid) && around(j, side, (k) => !WATER.has(bp.cls[k]) && !blocked(k))
       && !nearObject(x, y, rules.clearSeat);
   };
   /* nearest the centre first (the commons), or farthest-first from the

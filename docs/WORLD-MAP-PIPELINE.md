@@ -2267,7 +2267,7 @@ cost, the forge's sparks, the Hotel's life going over you with its roof,
 > areas ... 'black steel' in like level 10+ areas and have its own ore to
 > mine. Same principle for fishing and wood cutting too."*
 
-141 nodes, baked with the monsters' places (`WHEEL_NODES` in
+140 nodes, baked with the monsters' places (`WHEEL_NODES` in
 `server/src/wheelspawns.js`, by `tools/world/bake-wheel-spawns.mjs`
 `bakeWheelNodes`):
 
@@ -2277,7 +2277,9 @@ cost, the forge's sparks, the Hotel's life going over you with its roof,
 
 Fishing spots are in the real ponds, river and sea: a patch of water west of
 each, the angler on dry ground two cells east. Every land has fishing (owner:
-*"Make all 8 have fishing spots"*), seven of eight at each tier. Their fish
+*"Make all 8 have fishing spots"*): six of eight at levels 1–10, seven at
+11–20. The angler's seat is dry by the game's own walk grid, and so is the
+cell under his boots. Their fish
 are drawn in code swimming there (`src/rendering/wheelNodes.js` `WheelFish`),
 not a pond picture. Nothing tall stands in front of a node or of the one
 working it. Only the nodes near the view are drawn, and the Wheel's minimap

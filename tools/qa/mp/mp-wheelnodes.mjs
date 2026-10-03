@@ -17,9 +17,10 @@
  *   2. the gold road of "Learn a Trade" (life_1) leads to the NEAREST fishing
  *      spot (it led nowhere in the Wheel before);
  *   3. at a fishing spot by town there are FISH, in the water: the spot and
- *      everywhere they swim is water by the game's own walk test, and the
+ *      everywhere they swim is water as the ground is DRAWN, and the
  *      angler's seat is dry ground -- the ground the player sees, not the
- *      bake's own idea of it;
+ *      bake's own idea of it -- and (v2.3.3003's swimming came in beside
+ *      this) a swimmer who taps the spot climbs out onto that seat to fish;
  *   4. tapping the spot fishes it, the worker pays a minnow, the spot's fish
  *      are gone while it is fished out -- and the road moves on to a tree;
  *   5. only the nodes near the view are drawn (~130 over the Wheel): the far
@@ -33,7 +34,8 @@
  * And, v2.3.3012's follow-ups (owner: "Make the black steel black.  Show
  * nodes on minimap."): the minimap marks every live resource in its reach
  * once the tools are in the bag (and none before), and a black steel blade is
- * drawn in the Black Steel metal.
+ * drawn in the Black Steel metal.  And no chop from the water: a tree tapped
+ * while swimming is refused, "Swimming!", like a swing.
  * Pictures: tools/qa/mp/out/wheelnodes-{fish,fish-close,minimap,blacksteel,
  * iron,iron-close}.png.
  */
@@ -46,9 +48,7 @@ const PHONE = { width: 390, height: 844 };
    north of a vein, and the angler's own seat for a fishing spot
    (FISH_SEAT_DX/DY, 52/-43).  Not mp-gatherhits' (50, -40): 3 px lower puts
    the boots on the line to the cell below the seat, which the bake does not
-   promise is dry, and the walk test answers "open" everywhere while you stand
-   in something solid (so you can walk out) -- the water check read nothing
-   but dry land from there. */
+   promise is dry. */
 const STAND = { oreVein: [0, -70], tree: [0, -130], fishSpot: [52, -43] };
 const SKILL = { oreVein: 'mining', tree: 'woodcutting', fishSpot: 'fishing' };
 const RES = { oreVein: 'ore_', tree: 'wood_', fishSpot: 'fish_' };
@@ -137,25 +137,42 @@ async function body({ P, wsPort, rec, OUT, errors }) {
 
   /* ── 3. the fish, in the water ── */
   const sx = spot.x + STAND.fishSpot[0], sy = spot.y + STAND.fishSpot[1];
-  await H.hopTo(P, sx, sy, { tries: 200 });
+  await travel(P, wsPort, myId, sx, sy);
   const fish = await H.waitFor(P, () => window.__btWheelFish || [], (a) => Array.isArray(a) && a.length > 0, { timeout: 8000, label: 'fish drawn' }).catch(() => []);
   const mine = (fish || []).find((f) => f.id === spot.id);
   rec.ok('at the spot there are fish: a school of six minnows', !!mine && mine.fish === 6, { mine, fish });
+  /* the ground under the spot laid (null until its piece is) */
+  for (let i = 0; i < 40; i++) {
+    const laid = await P.page.evaluate(({ x, y }) => window.__btSwimAt && window.__btSwimAt(x, y).water != null && window.__btSwimAt(x + 52, y + 9).water != null, spot);
+    if (laid) break;
+    await P.page.waitForTimeout(250);
+  }
   const water = await P.page.evaluate(({ x, y }) => {
-    /* __btIsSolid takes a body's centre and reads the ground at its boots,
-       52 px below (mp-wheelshore) -- so ask about a ground point g with g-52 */
-    const at = (gx, gy) => window.__btIsSolid(gx, gy - 52);
+    /* v2.3.3012, after v2.3.3003: the walk test OPENS the water you can swim
+       in now, so "water" is the ground DRAWN there (__btSwimAt's `water`,
+       what a swimmer's head sinks by), and the seat is ground you stand on:
+       its plan cell land (`swim` false), open to the walk test at the boots
+       (__btIsSolid takes a body's centre, the boots 52 px below), and no
+       more than SWIM_OUT (1) of a swimmer's five looks round the boots
+       (wheelSwim.js SWIM_PROBES) drawn wet -- so one who climbs out there
+       is out, not still swimming on the bank */
+    const at = (gx, gy) => window.__btSwimAt(gx, gy);
     /* the school's circle and a fish's half-length round it (wheelNodes.js
        SWIM_*): x-30 +/- 39, y +/- 31 */
     const swim = [[-30, 0], [-69, 0], [9, 0], [-30, -31], [-30, 31], [-55, -16], [-55, 16], [-5, -16], [-5, 16]];
+    const sx = x + 52, sy = y + 9;
+    const looks = [[0, 0], [-9, 0], [9, 0], [0, -6], [0, 6]];
     return {
-      spot: at(x, y),
-      swim: swim.map(([dx, dy]) => at(x + dx, y + dy)),
-      seat: at(x + 52, y + 9),
+      spot: at(x, y).water,
+      swim: swim.map(([dx, dy]) => at(x + dx, y + dy).water),
+      seatLand: at(sx, sy).swim === false,
+      seatOpen: window.__btIsSolid(sx, sy - 52) === false,
+      seatWet: looks.filter(([dx, dy]) => at(sx + dx, sy + dy).water === true).length,
     };
   }, spot);
-  rec.ok('...where they swim is water by the game\'s own walk test, and the angler\'s seat is dry ground',
-    water.spot === true && water.swim.every(Boolean) && water.seat === false, water);
+  console.log(`    water at ${spot.id}: ${JSON.stringify(water)}`);
+  rec.ok('...where they swim is drawn as water, and the angler\'s seat is dry ground to stand on (at most one of a swimmer\'s five looks wet)',
+    water.spot === true && water.swim.every((w) => w === true) && water.seatLand && water.seatOpen && water.seatWet <= 1, water);
   await closeTalk(P);
   await P.page.waitForTimeout(600);
   await P.page.screenshot({ path: join(OUT, 'wheelnodes-fish.png') });
@@ -166,6 +183,29 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     return { x: Math.max(0, sx - 130), y: Math.max(0, sy - 110), width: 260, height: 200 };
   }, spot);
   await P.page.screenshot({ path: join(OUT, 'wheelnodes-fish-close.png'), clip }).catch(() => {});
+
+  /* ── v2.3.3012 + v2.3.3003: a swimmer who taps the spot climbs out onto its
+     bank to fish (startExtraction SEATS the angler, and every Wheel seat is
+     baked dry) -- in the spot's own patch of water, west of it, boots
+     (-50, +10) off it: the patch is four cells west of the spot and a cell
+     either side ── */
+  const feetDy = await P.page.evaluate(() => { const S = window._gameState.current, g = window.__btPlayerGround ? window.__btPlayerGround() : null; return g ? g.y - S.player.y : 52; });
+  await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0; },
+    { x: spot.x - 50, y: spot.y + 10 - feetDy });
+  const wading = await H.waitFor(P, (S) => !!(S._wheelSwim && S._wheelSwim.on), (v) => v === true, { timeout: 6000, label: 'swimming by the spot' }).catch(() => false);
+  rec.ok('in the water beside the spot you swim (guard)', wading === true, { feetDy });
+  if (wading === true) {
+    const started = await tapNode(P, spot.id, (S) => !!S._extraction);
+    await P.page.waitForTimeout(900);
+    const out = await P.page.evaluate(({ x, y }) => {
+      const S = window._gameState.current, ex = S._extraction;
+      return { skill: ex ? ex.skill : null, swimming: !!(S._wheelSwim && S._wheelSwim.on),
+        dx: Math.round(S.player.x - x), dy: Math.round(S.player.y - y) };
+    }, spot);
+    rec.ok('...and tapping it climbs you out onto its bank: fishing from the dry seat, swimming no more',
+      started && out.skill === 'fishing' && !out.swimming && out.dx === 52 && out.dy === -43, out);
+    await P.page.evaluate(() => { window._gameState.current._extraction = null; });
+  }
 
   /* ── v2.3.3012: the resources on the minimap (owner: "Show nodes on minimap") ── */
   const mini = await P.page.evaluate(() => {
@@ -219,12 +259,42 @@ async function body({ P, wsPort, rec, OUT, errors }) {
         const S = window._gameState.current, p = S.player, dx = p.x - x, dy = p.y - y, d = Math.hypot(dx, dy) || 1;
         return { x: x + (dx / d) * 260, y: y + (dy / d) * 260 };
       }, tree);
-      await H.hopTo(P, away.x, away.y, { tries: 20 });
+      await travel(P, wsPort, myId, away.x, away.y);
       tree = await nearest('tree');
     }
     const road2 = await H.waitFor(P, () => (window.__btMinimap && window.__btMinimap.quest) || null, (q) => !!q && typeof q.x === 'number', { timeout: 8000, label: 'the road on' }).catch(() => null);
     rec.ok('with a fish in the bag, the road moves on to the nearest tree (the quest\'s next step)',
       !!road2 && !!tree && road2.x === Math.round(tree.x) && road2.y === Math.round(tree.y), { road2, tree });
+    /* v2.3.3012: no chop from the water -- a woodcutter has no seat to climb
+       out to, and only your head is out of it.  Trees grow 72 px clear of
+       water, so a bank whose tree is in reach of a swimmer is rare: the
+       swim is switched on here, on this page, held (its clock set ahead so
+       the frame's own look does not flip it back), and the tree tapped. */
+    if (tree) {
+      await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0; },
+        { x: tree.x + STAND.tree[0], y: tree.y + STAND.tree[1] });
+      await P.page.waitForTimeout(500);
+      const n0 = await P.page.evaluate(() => {
+        const S = window._gameState.current;
+        S._wheelSwim = Object.assign(S._wheelSwim || {}, { on: true, at: Date.now() + 60000, noteAt: 0 });
+        return S.dmgNumbers.filter((p) => p.text === 'Swimming!').length;
+      });
+      const chopped = await tapNode(P, tree.id, (S) => !!S._extraction, 2);
+      const said = await P.page.evaluate((k) => {
+        const S = window._gameState.current;
+        const n = S.dmgNumbers.filter((p) => p.text === 'Swimming!').length - k;
+        if (S._wheelSwim) { S._wheelSwim.on = false; S._wheelSwim.at = 0; }
+        return n;
+      }, n0);
+      /* the control: the same tap out of the water starts the chop -- so the
+         one above reached the tree and was refused there, not lost on the way */
+      await P.page.waitForTimeout(400);
+      const control = await tapNode(P, tree.id, (S) => !!S._extraction, 3);
+      const skill = await H.readState(P, (S) => (S._extraction ? S._extraction.skill : null));
+      await P.page.evaluate(() => { window._gameState.current._extraction = null; });
+      rec.ok('a tree tapped while swimming is not chopped: "Swimming!", as a swing is -- and the same tap on dry land chops it',
+        chopped === false && said >= 1 && control === true && skill === 'woodcutting', { chopped, said, control, skill });
+    }
   }
 
   /* ── 5. only the nodes near the view are drawn ── */
@@ -257,7 +327,8 @@ async function body({ P, wsPort, rec, OUT, errors }) {
   if (iron) {
     /* to the vein's side, so the picture shows it beside the bro rather than
        under him (he stands on its north edge to mine, as everywhere) */
-    await H.hopTo(P, iron.x + 90, iron.y + 20, { tries: 260 });
+    const there = await travel(P, wsPort, myId, iron.x + 90, iron.y + 20);
+    rec.ok('to the iron vein, the worker agreeing where you are (guard)', there === true, { there });
     await P.page.waitForTimeout(900);
     const look = await P.page.evaluate((id) => {
       const S = window._gameState.current;
@@ -328,6 +399,55 @@ async function closeTalk(P) {
   }
 }
 
+/* A long walk the way mp-gatherhits walks, H.hopTo's 100 px a hop, but
+   checked against the worker every four hops.  Two hops can reach the worker
+   in one burst, the second inside its move bound's 80 px (movement.js: 500 px
+   a second since the last move, + 80) and refused; past ~110 px behind it can
+   never catch up while the hops go on, and the 1 s idle keepalive keeps its
+   clock short after -- the strike then lands "out-of-range" from where the
+   worker last let you be (the first run on these places: 1,941 px).  So when
+   it falls behind, step back to where it has you, as its broadcast would put
+   a real client, and go on from there. */
+async function travel(P, wsPort, myId, tx, ty) {
+  for (let leg = 0; leg < 300; leg++) {
+    const a = await H.adminPlayer(wsPort, myId).catch(() => null);
+    const L = (a && a.live) || {};
+    const c = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+    if (typeof L.x === 'number' && Math.hypot(L.x - c.x, L.y - c.y) > 60) {
+      await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0; }, { x: L.x, y: L.y });
+      await P.page.waitForTimeout(500);
+      continue;
+    }
+    if (Math.hypot(tx - c.x, ty - c.y) < 6) return true;
+    await H.hopTo(P, tx, ty, { tries: 4 });
+  }
+  return false;
+}
+
+/* A finger's tap on the node's picture, as a player taps a resource, up to
+   `tries` times until `done(S)` -- whether it ever was (mp-gatherhits' tap). */
+async function tapNode(P, id, done, tries = 6) {
+  for (let i = 0; i < tries; i++) {
+    await P.page.evaluate((nid) => {
+      const S = window._gameState.current;
+      const n = (S.gatherNodes || []).find((g) => g.id === nid);
+      if (!n) return;
+      const cv = document.querySelector('canvas');
+      const rc = cv.getBoundingClientRect();
+      const x = rc.left + (n.x - S.camera.x) * (S._worldScaleX || 1);
+      const y = rc.top + (n.y - 24 - S.camera.y) * (S._worldScaleY || 1);
+      const mk = (t) => new TouchEvent(t, { bubbles: true, cancelable: true,
+        touches: t === 'touchend' ? [] : [new Touch({ identifier: 77, target: cv, clientX: x, clientY: y })],
+        changedTouches: [new Touch({ identifier: 77, target: cv, clientX: x, clientY: y })] });
+      cv.dispatchEvent(mk('touchstart'));
+      cv.dispatchEvent(mk('touchend'));
+    }, id);
+    await P.page.waitForTimeout(300);
+    if (await H.readState(P, done)) return true;
+  }
+  return false;
+}
+
 /* Tap the node from where a player stands to work it, play the gesture, and
    ask the worker what it paid.  mp-gatherhits' tap and gesture, unchanged.
    `want` is the inventory key expected (else any of the kind's prefix). */
@@ -340,25 +460,8 @@ async function harvest(P, wsPort, myId, rec, type, node, want) {
     S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0;
     S._monstersStash = S.monsters; S.monsters = [];
   }, { x: node.x + STAND[type][0], y: node.y + STAND[type][1] });
-  let started = null;
-  for (let i = 0; i < 6 && started !== skill; i++) {
-    await P.page.evaluate((id) => {
-      const S = window._gameState.current;
-      const n = (S.gatherNodes || []).find((g) => g.id === id);
-      if (!n) return;
-      const cv = document.querySelector('canvas');
-      const rc = cv.getBoundingClientRect();
-      const x = rc.left + (n.x - S.camera.x) * (S._worldScaleX || 1);
-      const y = rc.top + (n.y - 24 - S.camera.y) * (S._worldScaleY || 1);
-      const mk = (t) => new TouchEvent(t, { bubbles: true, cancelable: true,
-        touches: t === 'touchend' ? [] : [new Touch({ identifier: 77, target: cv, clientX: x, clientY: y })],
-        changedTouches: [new Touch({ identifier: 77, target: cv, clientX: x, clientY: y })] });
-      cv.dispatchEvent(mk('touchstart'));
-      cv.dispatchEvent(mk('touchend'));
-    }, node.id);
-    await P.page.waitForTimeout(300);
-    started = await H.readState(P, (S) => (S._extraction ? S._extraction.skill : null));
-  }
+  await tapNode(P, node.id, (S) => !!S._extraction);
+  const started = await H.readState(P, (S) => (S._extraction ? S._extraction.skill : null));
   rec.ok(`${skill}: tapping the Wheel's ${type} starts the harvest (guard)`, started === skill, { started, node });
   if (started !== skill) return false;
   const opened = await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null), (v) => v === 'ready',
@@ -412,8 +515,11 @@ async function harvest(P, wsPort, myId, rec, type, node, want) {
     if (got > 0) break;
     await P.page.waitForTimeout(400);
   }
+  /* the worker's own word on the strike when it did not pay (admin.js
+     lastStrike: 'paid', or the gate that refused it) */
+  const why = got > 0 ? null : await H.adminPlayer(wsPort, myId).then((a) => { const L = (a && a.live) || {}; return { lastStrike: L.lastStrike || (a && a.lastStrike) || null, at: { zone: L.zone, x: L.x, y: L.y, dead: L.dead }, hitPlan: L.hitPlan || null, ex: L.ex || null }; }).catch(() => null);
   rec.ok(`${skill}: the worker pays ${want || RES[type] + '*'} for the Wheel's node`, got > 0,
-    { got, want, keys: Object.keys(inv || {}).filter((k) => k.indexOf(RES[type]) === 0) });
+    { got, want, keys: Object.keys(inv || {}).filter((k) => k.indexOf(RES[type]) === 0), node: { id: node.id, x: node.x, y: node.y }, why });
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     if (S._monstersStash) { S.monsters = S._monstersStash; S._monstersStash = null; }
