@@ -51,12 +51,7 @@ function frameData(tex) {
     g.drawImage(src, Math.round(fr.x), Math.round(fr.y), w, h, 0, 0, w, h);
     px = g.getImageData(0, 0, w, h).data;
   } catch (e) { return null; }
-  const a = new Uint8Array(w * h), l = new Uint8Array(w * h);
-  for (let i = 0, j = 0; j < a.length; i += 4, j++) {
-    a[j] = px[i + 3];
-    l[j] = (px[i] * 77 + px[i + 1] * 150 + px[i + 2] * 29) >> 8;
-  }
-  fd = { w, h, a, l };
+  fd = frameDataOf(w, h, px);
   _frames.set(key, fd);
   if (_frames.size > FRAME_CACHE) _frames.delete(_frames.keys().next().value);
   return fd;
@@ -109,6 +104,48 @@ function track(from, to, u, v, R) {
   return best;
 }
 
+/* ═══ v2.3.2991: THE PIN'S TWO MOVES, ON PLAIN FRAME DATA ═══
+   Lifted out of pinnedArrow unchanged so the stat scene's slime -- a DOM
+   strip of the very same art -- pins its arrows by the same rules: in along
+   the flight line until the art is solid, a texel and a half deeper; then,
+   frame to frame, the patch round the pin followed and snapped back onto
+   art.  pinnedArrow is their other caller, so the two cannot drift.
+   `fd` is { w, h, a, l } (alpha and brightness per texel, frameDataOf). */
+export function pinEntry(fd, u, v, du, dv) {
+  let hit = null;
+  const reach = Math.max(12, Math.round(fd.h * 0.35));
+  for (let s = 0; s <= reach && !hit; s++) {
+    const x = u + du * s, y = v + dv * s;
+    if (solid(fd, x, y)) hit = [Math.round(x), Math.round(y)];
+  }
+  if (!hit) hit = nearestSolid(fd, u, v, Math.max(10, Math.round(fd.h * 0.3)));
+  if (!hit) return null;
+  /* a little way INTO the art, so the shaft's cut end is not on the rim */
+  const deeper = [hit[0] + Math.round(du * 1.5), hit[1] + Math.round(dv * 1.5)];
+  return solid(fd, deeper[0], deeper[1]) ? deeper : hit;
+}
+export function pinCarry(from, to, u, v) {
+  let nu = u, nv = v;
+  if (from) {
+    const R = Math.max(5, Math.min(18, Math.round(to.h * 0.09)));
+    const t = track(from, to, u, v, R);
+    if (t) { nu = t[0]; nv = t[1]; }
+  }
+  const on = nearestSolid(to, nu, nv, Math.max(6, Math.round(to.h * 0.12)));
+  if (on) { nu = on[0]; nv = on[1]; }
+  return [nu, nv];
+}
+/* frame data from raw RGBA (a canvas's getImageData), for callers that hold
+   pixels rather than a Pixi texture */
+export function frameDataOf(w, h, px) {
+  const a = new Uint8Array(w * h), l = new Uint8Array(w * h);
+  for (let i = 0, j = 0; j < a.length; i += 4, j++) {
+    a[j] = px[i + 3];
+    l[j] = (px[i] * 77 + px[i + 1] * 150 + px[i + 2] * 29) >> 8;
+  }
+  return { w, h, a, l };
+}
+
 /* texel (u, v) of `tex` -> the sprite's local space */
 function texelToLocal(body, tex, u, v) {
   const ow = (tex.orig && tex.orig.width) || tex.frame.width, oh = (tex.orig && tex.orig.height) || tex.frame.height;
@@ -143,32 +180,14 @@ export function pinnedArrow(sa, body, layer, wx, wy) {
     const dwx = Math.cos(sa.ang), dwy = Math.sin(sa.ang);
     let du = inv.a * dwx + inv.c * dwy, dv = inv.b * dwx + inv.d * dwy;
     const dl = Math.hypot(du, dv) || 1; du /= dl; dv /= dl;
-    let hit = null;
-    const reach = Math.max(12, Math.round(fd.h * 0.35));
-    for (let s = 0; s <= reach && !hit; s++) {
-      const x = u + du * s, y = v + dv * s;
-      if (solid(fd, x, y)) hit = [Math.round(x), Math.round(y)];
-    }
-    if (!hit) hit = nearestSolid(fd, u, v, Math.max(10, Math.round(fd.h * 0.3)));
+    const hit = pinEntry(fd, u, v, du, dv);
     if (!hit) return null;
-    /* a little way INTO the art, so the shaft's cut end is not on the rim */
-    const deeper = [hit[0] + Math.round(du * 1.5), hit[1] + Math.round(dv * 1.5)];
-    pin = sa._pin = { tex, u: solid(fd, deeper[0], deeper[1]) ? deeper[0] : hit[0], v: solid(fd, deeper[0], deeper[1]) ? deeper[1] : hit[1], flip: flipNow };
+    pin = sa._pin = { tex, u: hit[0], v: hit[1], flip: flipNow };
   } else if (pin.tex !== tex) {
-    /* the frame changed: carry the pin with the art */
-    const from = frameData(pin.tex);
-    let nu = pin.u, nv = pin.v;
-    if (from) {
-      const R = Math.max(5, Math.min(18, Math.round(fd.h * 0.09)));
-      const t = track(from, fd, pin.u, pin.v, R);
-      if (t) { nu = t[0]; nv = t[1]; }
-    } else {
-      /* the old frame fell out of the cache: same texel, scaled if the frame size changed */
-      nu = pin.u; nv = pin.v;
-    }
-    const on = nearestSolid(fd, nu, nv, Math.max(6, Math.round(fd.h * 0.12)));
-    if (on) { nu = on[0]; nv = on[1]; }
-    pin.tex = tex; pin.u = nu; pin.v = nv;
+    /* the frame changed: carry the pin with the art (the old frame may have
+       fallen out of the cache: then the same texel, snapped back onto art) */
+    const nxt = pinCarry(frameData(pin.tex), fd, pin.u, pin.v);
+    pin.tex = tex; pin.u = nxt[0]; pin.v = nxt[1];
   }
   const [lx, ly] = texelToLocal(body, tex, pin.u, pin.v);
   const x = _M.a * lx + _M.c * ly + _M.tx, y = _M.b * lx + _M.d * ly + _M.ty;

@@ -1608,10 +1608,16 @@ export const HeroExpanded = () => {
                   /* v2.3.2592: only when a scene exists for the stat — StatDemo
                      returns null otherwise, and the popup would still reserve
                      the scene's margin around nothing. */
+                  /* v2.3.2979: the scene SIMULATES the fight now (owner: "real
+                     simulation of the hits against a slime monster"), so it
+                     needs the character and the lane, not just the picture of
+                     them -- statSim.js fights the slime with exactly the build
+                     the rows above describe, and the stepper's n. */
                   demo: STAT_DEMO_KEYS.includes(st.key)
                     ? <StatDemo stat={st.key} iconSrc={st.iconSrc}
                         weapon={R ? (st.atk ? weaponForCat(R, laneCat) : getActiveWeapon(R)) : null}
-                        shield={!!(R && R.shield)} />
+                        shield={!!(R && R.shield)}
+                        rpg={R} cat={st.atk ? laneCat : null} />
                     : null,
                   rows: first.rows, capped: first.capped,
                   rowsFor: (n) => rowsFor(n).rows,

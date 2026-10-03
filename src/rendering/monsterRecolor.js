@@ -100,7 +100,7 @@ function loadImg(url) {
    target rather than washed past it), then every pixel becomes target scaled
    by how bright it was.  One reference for the WHOLE sheet, not per frame, so
    the colour cannot drift between animation frames. */
-function retintToCanvas(img, rgb) {
+export function retintToCanvas(img, rgb) {   /* v2.3.2979: exported -- statDemoPreload bakes the stat scene's blue slime with it */
   const cv = document.createElement('canvas');
   cv.width = img.naturalWidth || img.width;
   cv.height = img.naturalHeight || img.height;
