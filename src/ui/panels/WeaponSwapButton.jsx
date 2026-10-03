@@ -4,7 +4,7 @@ import { nextWeaponSlot, ownedWeaponSlots } from '@/game/weaponSlots.js';
 import { wpnIconSrc, GHOST_SRC, weaponDisplayName } from '@/ui/mobile/sheet/equipModel.js';
 import { EDGE_GUARD_PX } from './ShieldButton.jsx';
 
-/* ═══ v2.3.3003: THE WEAPON IN YOUR HAND, UNDER THE MOVEMENT STICK ═══
+/* ═══ v2.3.3005: THE WEAPON IN YOUR HAND, UNDER THE MOVEMENT STICK ═══
  *
  * Owner: "Add a little icon of current equipped weapon in bottom left above
  * dashboard but beneath left joystick.  If you tap on it it switches to the

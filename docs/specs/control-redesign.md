@@ -1369,7 +1369,7 @@ is refused and nothing shows. **Not fixed** — those handlers predate this work
 The band dodge above is vertical and does not address a card that is beside the
 joystick rather than above it. Still the onboarding layout's to fix.
 
-## 13. The weapon button under the movement stick (v2.3.3003)
+## 13. The weapon button under the movement stick (v2.3.3005)
 
 Owner, 2026-10-03:
 

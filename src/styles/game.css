@@ -4328,7 +4328,7 @@ body:has(.bt-pcard) [data-coach]{display:none}
   .bt-joystick-zone { display:none !important; }
   .bt-desktop-hide { display:none !important; }
 }
-/* ═══ v2.3.3003: THE WEAPON BUTTON TAKES THE CORNER; THE BELL STEPS RIGHT ═══
+/* ═══ v2.3.3005: THE WEAPON BUTTON TAKES THE CORNER; THE BELL STEPS RIGHT ═══
    WeaponSwapButton.jsx (owner: "a little icon of current equipped weapon in
    bottom left above dashboard but beneath left joystick").  The bell
    (WorldChatFeed) adds this to its left edge: 58px = the button's 18px start

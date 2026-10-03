@@ -1,4 +1,4 @@
-/* ═══ mp-weaponswap (v2.3.3003): THE WEAPON BUTTON UNDER THE MOVEMENT STICK ═══
+/* ═══ mp-weaponswap (v2.3.3005): THE WEAPON BUTTON UNDER THE MOVEMENT STICK ═══
  *
  * Owner: "Add a little icon of current equipped weapon in bottom left above
  * dashboard but beneath left joystick.  If you tap on it it switches to the
