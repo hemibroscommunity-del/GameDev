@@ -40,6 +40,8 @@
  */
 import { Container, Sprite, Texture, RenderTexture, NineSliceSprite } from 'pixi.js';
 import { dayPhase, lightingAt, windAt, zoneHasSky } from '@/game/timeOfDay.js';
+import { isWheelTrialZone } from '@/game/worldTrial.js';          /* v2.3.3000: the Wheel's air by its lands */
+import { wheelHere, wheelGroundAt } from '@/game/wheelTrial.js';
 import { fxTex, SOFTBOX_EDGE } from './worldFxTextures.js';
 import { zonePlayerScale, ZONES } from '@/data/zones.js';
 import { GROUND_GRID, GROUND_COLORS } from '@/data/groundColors.js';   /* v2.3.2825: the ground's own colour, baked */
@@ -69,6 +71,35 @@ ZONE_AIR.hollows   = { dust: 0xb6ab9c };
 ZONE_AIR.shadow    = { dust: 0x8a8196 };
 ZONE_AIR.worldview = { dust: 0xcdb98a };   /* v2.3.2825: the overworld had no dust at all */
 const airOf = (z) => (z && Object.prototype.hasOwnProperty.call(ZONE_AIR, z) ? ZONE_AIR[z] : null);
+/* ═══ v2.3.3000: THE WHEEL'S AIR IS ITS LANDS' ═══
+   Owner: "I liked the old shadows (and any other visual effect enhancements?)
+   of the old map put that on this wheel world too".  Each old zone had its
+   air -- snow falling in Frost Ridge, embers over the Flame Fields, sand on
+   the dunes' wind, spores in the swamp, pollen in the green -- and its dust,
+   keyed by the zone id; the Wheel is one zone, 'wheel', with no row, so it
+   had none of it.  Its lands are the old zones (plan.js regions use the same
+   ids), so the air is read off the land under you: the commons is the
+   meadow, the town is town's, the water caves stay wet (no dust).  The
+   motes and the dust change as you cross into another land. */
+const WHEEL_AIR_OF = Object.assign(Object.create(null), { commons: 'meadow' });
+function airHere(S) {
+  const z = S && S.currentZone;
+  if (!isWheelTrialZone(z)) return airOf(z);
+  const P = S.player;
+  const here = P ? wheelHere(P.x, P.y) : null;
+  const r = (here && here.region) || 'commons';
+  return airOf(WHEEL_AIR_OF[r] || r);
+}
+/* ...and the dust is the colour of the swatch under the foot (the worker's
+   catalog carries each one's plan colour), -1 on water, null when the piece
+   under you is not laid yet (the land's colour then). */
+function wheelGroundColor(x, y) {
+  const g = wheelGroundAt(x, y);
+  if (!g) return null;
+  if (g.water) return -1;
+  const c = g.color;
+  return c && c.length >= 3 ? ((c[0] << 16) | (c[1] << 8) | c[2]) : null;
+}
 
 /* ═══ v2.3.2717: THE PROPS' OWN LIGHTS ═══
    Owner: "light up the props that are in town and in zone areas."  At night
@@ -374,7 +405,7 @@ export class WorldFx {
     /* cloud shadows: sky zones, by day, sliding with the wind */
     const glow = this._L;
     const dayK = (sky && !this._calm) ? Math.max(0, 1 - glow.lamp * 1.6) * Math.min(1, (glow.mul[0] + glow.mul[1] + glow.mul[2]) / 3 / 0.9) : 0;
-    const air = airOf(S.currentZone);
+    const air = airHere(S);   /* v2.3.3000: the Wheel's by its land */
     for (let i = 0; i < this._clouds.length; i++) {
       const c = this._clouds[i];
       if (dayK < 0.02 || !fxTex('cloud' + i)) { c.visible = false; continue; }
@@ -571,7 +602,7 @@ export class WorldFx {
 
   /* ─────────────────────────── the air ─────────────────────────── */
   _updateAir(S, cam, now, dt, wind) {
-    const air = airOf(S.currentZone);
+    const air = airHere(S);   /* v2.3.3000: the Wheel's by its land */
     const L = this._L || { lamp: 0 };
     const sky = zoneHasSky(S.currentZone, S);
     const night = sky && L.lamp > 0.4;
@@ -661,7 +692,7 @@ export class WorldFx {
 
   /* ─────────────────────────── dust ─────────────────────────── */
   _updateDust(S, now, dt, wind) {
-    const air = airOf(S.currentZone);
+    const air = airHere(S);   /* v2.3.3000: the Wheel's by its land */
     const color = air && air.dust;
     if (color != null && fxTex('print') && this.groundLayer) {
       const seen = this._seenWalkers || (this._seenWalkers = new Set());
@@ -726,7 +757,7 @@ export class WorldFx {
        and on town's warm cobble the prints simply were not there. */
     /* v2.3.2825: the colour of THIS spot of ground (the zone's colour where
        no grid exists); water kicks up nothing. */
-    const ground = groundColorAt(zone, w.x, w.y);
+    const ground = isWheelTrialZone(zone) ? wheelGroundColor(w.x, w.y) : groundColorAt(zone, w.x, w.y);
     if (ground === -1) { w.x = x; w.y = y; return; }
     const printC = ground != null ? shade(ground, 0.62) : shade(color, 0.58);
     const puffC = ground != null ? dustOf(ground) : color;

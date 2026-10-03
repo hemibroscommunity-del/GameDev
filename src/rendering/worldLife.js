@@ -66,6 +66,7 @@ import { PROP_LIGHTS } from './worldFx.js';
 import { SHADE, formShadeOn } from './formShade.js';
 import { readArtBottoms } from './propGround.js';
 import { npcArtUrl } from './npcSprites.js';
+import { forEachWheelSwayer } from './wheelObjects.js';   /* v2.3.3000: the Wheel's trees and bushes sway */
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
@@ -421,6 +422,7 @@ export class WorldLife {
     const probe = { calm, t: +t.toFixed(2), wind: +wind.speed.toFixed(1), sway: [], parts: [], riders: [], smoke: 0, sparks: 0, glints: 0, glows: 0, streaks: 0, needles: 0, breathing: [], lootGlints: 0, oreGlints: 0 };
     this._cam = cam || null;
     try { this._updateTrees(S, t, dt, wind, fx, calm, now, probe); } catch (e) { this._err('trees', e); }
+    try { this._updateWheelSway(t, dt, wind, calm, probe); } catch (e) { this._err('wheelsway', e); }
     try { this._updatePropSway(S, t, dt, wind, er, calm, probe); } catch (e) { this._err('props', e); }
     try { this._updateCanopies(S, t, dt, wind, er, calm, probe); } catch (e) { this._err('canopy', e); }
     try { this._updateBuildings(S, t, dt, wind, er, calm, lamp, probe); } catch (e) { this._err('buildings', e); }
@@ -499,6 +501,28 @@ export class WorldLife {
          published so a test can hold it to "never moves" */
       if (probe.sway.length < 24) probe.sway.push({ kind: 'tree', id: n.id != null ? String(n.id) : null, x: Math.round(n.x), y: Math.round(n.y), deg: +(th / DEG).toFixed(2), gust: +st.gust.toFixed(2), chopAt: n._lifeChopAt || 0, shiver: +st.shiver.toFixed(2), footDy: +(spr.y - n.y).toFixed(2) });
     }
+  }
+
+  /* ═══ v2.3.3000: THE WHEEL'S TREES AND BUSHES SWAY TOO ═══
+     The same spring and the same wind as the old map's trees above, on each
+     Wheel object wheelObjects says sways (forEachWheelSwayer).  Its sprite is
+     anchored at its foot, so the skew leans its top and never moves the
+     ground point -- the depth sort, the walk test's footprint and its
+     shadow's pivot stay where they are, and the shadow, cast from the
+     sprite's own transform, sways with it.  A hit's shake (wheelObjects
+     _motion) rotates the same sprite on top; the two add.  Off screen it is
+     not drawn, so it is not stepped either. */
+  _updateWheelSway(t, dt, wind, calm, probe) {
+    let n = 0;
+    forEachWheelSwayer((spr, kind, x, y) => {
+      if (calm) { if (spr.skew.x !== 0) spr.skew.x = 0; return; }
+      const st = this._spring(spr, x, y);
+      const th = this._swayStep(kind, st, x, y, t, dt, wind);
+      spr.skew.x = -th;
+      n++;
+      if (probe.sway.length < 24) probe.sway.push({ kind: 'wheel-' + kind, id: null, x: Math.round(x), y: Math.round(y), deg: +(th / DEG).toFixed(2), gust: +st.gust.toFixed(2), footDy: +(spr.y - y).toFixed(2) });
+    });
+    probe.wheelSway = n;
   }
 
   _updatePropSway(S, t, dt, wind, er, calm, probe) {

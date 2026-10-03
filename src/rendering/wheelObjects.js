@@ -53,6 +53,9 @@ import { tickWheelBreak, drainWheelEvents, isWheelBroken, resetWheelBreak, onWhe
 import { WheelShatter, framePx } from './wheelShatter.js';
 import { materialInfo, wheelMaterialOf } from '../data/wheelMaterials.js';
 import { playerGroundDy } from './systems/entityRenderer.js';   /* v2.3.2999: where your boots are, for a tree you stand behind */
+import { releaseShadowTextures } from './lightfx/shadows.js';   /* v2.3.3000: a freed sheet leaves no shadow behind */
+import { WHEEL_SUN } from './lightfx/zoneLight.js';             /* v2.3.3000: how far a shadow reaches */
+import { SHADE } from './formShade.js';                         /* v2.3.3000: shaded toward the ground, as the old props */
 
 const BASE = '/world/objects/';
 const CACHE_PREFIX = 'wheel-object/';
@@ -201,7 +204,12 @@ function dropPage(ix, k) {
   const rec = _pages.get(k);
   if (!rec) return;
   _pages.delete(k);
-  if (rec.state === 'ready') Assets.unload(ix.sheets[k]).catch(() => {});
+  /* v2.3.3000: the shadows cast from its pictures let go of them first --
+     a pooled shadow piece only hides (lightfx/shadows.js
+     releaseShadowTextures).  Before the objects' own update and the
+     shadows' in the same frame, so the ones still wanted are placed again
+     before anything is drawn. */
+  if (rec.state === 'ready') { releaseShadowTextures(); Assets.unload(ix.sheets[k]).catch(() => {}); }
 }
 let _gen = 0;
 
@@ -319,16 +327,25 @@ export class WheelObjects {
     const vx0 = cx - DRAW_MARGIN, vx1 = cx + viewW + DRAW_MARGIN, vy0 = cy - DRAW_MARGIN, vy1 = cy + viewH + DRAW_MARGIN;
     const seen = this._seen || (this._seen = new Set());
     seen.clear();
-    each(ix, vx0 - ix.maxHalfW, vy0, vx1 + ix.maxHalfW, vy1 + ix.maxH, (i) => {
-      const x = ix.o.x[i], y = ix.o.y[i], hw = ix.reach[i];
-      if (x + hw < vx0 || x - hw > vx1 || y < vy0 || y - ix.h[i] > vy1) return;
+    /* v2.3.3000: ...or whose SHADOW can.  The sun is upper left
+       (lightfx/zoneLight.js WHEEL_SUN), so a thing's shadow reaches lx x its
+       height to the right of it and ly x its height below its foot: a tall
+       pine just off the top or the left edge of the screen still darkens
+       the ground on it, and drawn only once its picture came on, its shadow
+       would pop in at the edge. */
+    const SLX = WHEEL_SUN.lx, SLY = WHEEL_SUN.ly;
+    each(ix, vx0 - ix.maxHalfW - SLX * ix.maxH, vy0 - SLY * ix.maxH, vx1 + ix.maxHalfW, vy1 + ix.maxH, (i) => {
+      const x = ix.o.x[i], y = ix.o.y[i], hw = ix.reach[i], h = ix.h[i];
+      if (x + hw + SLX * h < vx0 || x - hw > vx1 || y + SLY * h < vy0 || y - h > vy1) return;
       /* v2.3.2995: broken, it is its shards (wheelShatter.js) until mended */
       if (isWheelBroken(i)) return;
       seen.add(i);
       if (this.sprites.has(i)) return;
       const rec = _pages.get(ix.page[i]);
       if (!rec || rec.state !== 'ready') {
-        if (!jumped && !this._late.has(i)) { this._late.add(i); wheelObjectStats.lateDraws++; }
+        /* (late only if its PICTURE was due on screen, not just its shadow) */
+        const pictureIn = !(x + hw < vx0 || y < vy0);
+        if (pictureIn && !jumped && !this._late.has(i)) { this._late.add(i); wheelObjectStats.lateDraws++; }
         return;
       }
       const tex = rec.sheet && rec.sheet.textures && rec.sheet.textures[ix.frame[i]];
@@ -339,6 +356,14 @@ export class WheelObjects {
       /* v2.3.2983: a building with life is its picture and its life over it,
          one Container at its foot, so the depth pass moves them together */
       const id = ix.o.kinds[ix.o.kind[i]];
+      /* ═══ v2.3.3000: SHADED TOWARD THE GROUND, AS THE OLD PROPS WERE ═══
+         The old map's props were drawn a little darker and cooler toward
+         their base (formShade.js, v2.3.2767: light from above, no texture,
+         no pass); the Wheel's 13,000 never were, and stood flat beside the
+         shaded figures.  Snow things take the near-neutral snow shade
+         (v2.3.2893: a lilac snowbank was the owner's complaint). */
+      const mat = wheelMaterialOf(id);
+      pic._vShade = mat && (mat.canopy === 'snow' || mat.mat === 'snow' || mat.mat === 'ice' || /snow|frost|ice/.test(id)) ? SHADE.propSnow : SHADE.prop;
       let s = pic;
       if (this.life && wheelLifeReady() && hasLife(id)) {
         s = new Container();
@@ -558,6 +583,92 @@ export class WheelObjects {
 }
 let _live = null;
 
+/* ═══ v2.3.3000: WHAT THE WHEEL'S OBJECTS CAST ═══
+ * Owner: "I liked the old shadows ... put that on this wheel world too".  The
+ * old map's props cast along their map's sun (lightfx/casters.js, v2.3.2749);
+ * the Wheel's objects were never in that list.  The same two kinds:
+ *
+ *   a BILLBOARD -- a tree, a rock, a barrel, a fence -- is one projection of
+ *     its picture, pivoted on the middle of its footprint (a tree's trunk, a
+ *     rock's base), so it swings with a hit's shake and fades with nothing:
+ *     a see-through tree (v2.3.2999) keeps its whole shadow;
+ *   a BUILDING casts column by column (shadows.js placeDepth): its front wall
+ *     from its foot, its roof from its footprint's back edge.  Its art is
+ *     drawn square-on, so every column's base is the foot (`bottoms: null`);
+ *     the picture is anchored at (its foot across, 1), and a building with
+ *     life is a Container, so the column model is handed a stand-in at the
+ *     picture's own middle and bottom.
+ *
+ * Into `out` (collectCasters' list), one caster per object drawn this frame;
+ * the caster objects are kept on the sprites, so a frame allocates nothing.
+ * Nothing at all outside the Wheel. */
+export function wheelObjectCasters(out) {
+  const live = _live;
+  if (!live || live.dead || !live.sprites.size) return;
+  const ix = _idx;
+  if (!ix) return;
+  const o = ix.o;
+  for (const [i, s] of live.sprites) {
+    if (!s || s.destroyed || !s.visible) continue;
+    const pic = s._pic || s;
+    const tex = pic.texture;
+    if (!tex || tex.destroyed || !tex.source || tex.source.destroyed) continue;
+    let c = s._caster;
+    if (isBuilding(o.kinds[o.kind[i]])) {
+      if (!c) {
+        let back = Infinity;
+        for (let b = o.boxOf[i]; b < o.boxOf[i + 1]; b++) back = Math.min(back, o.boxes[b * 4 + 1]);
+        c = s._caster = { key: 'w:' + i, depth: { spr: { texture: null, x: 0, y: 0, scale: { x: 1, y: 1 } }, g: { base: 0, bottoms: null },
+          back: Number.isFinite(back) ? back : o.y[i] - ix.h[i] * 0.5, pieces: null }, alive: true };
+      }
+      const d = c.depth, sp = d.spr, sx = pic.scale.x, sy = pic.scale.y;
+      /* (a building with life: its picture sits inside the Container) */
+      const ox = s._pic ? s.x + pic.x : s.x, oy = s._pic ? s.y + pic.y : s.y;
+      sp.texture = tex;
+      sp.x = ox + (0.5 - pic.anchor.x) * tex.frame.width * sx;
+      sp.y = oy;
+      sp.scale.x = sx; sp.scale.y = sy;
+      d.g.base = sp.y;
+      out.push(c);
+      continue;
+    }
+    if (!c) {
+      let y0 = Infinity, y1 = -Infinity;
+      for (let b = o.boxOf[i]; b < o.boxOf[i + 1]; b++) { y0 = Math.min(y0, o.boxes[b * 4 + 1]); y1 = Math.max(y1, o.boxes[b * 4 + 3]); }
+      c = s._caster = { key: 'w:' + i, px: 0, py: 0, dy: Number.isFinite(y0) ? (y0 + y1) / 2 - o.y[i] : 0, sprites: [pic], alive: true, noHold: true };
+    }
+    c.px = s.x; c.py = o.y[i] + c.dy;
+    c.sprites[0] = pic;
+    out.push(c);
+  }
+}
+
+/* ═══ v2.3.3000: WHAT SWAYS IN THE WIND ═══
+ * The old map's trees swayed (worldLife.js, v2.3.2811: a spring each, gusts
+ * that roll across a stand); the Wheel's only moved when hit.  Each drawn
+ * tree and leafy plant is handed to worldLife's wind here: a broadleaf as a
+ * `tree`, a snow-laden pine (and the stiff dead tree) as a `pine`, a bush, a
+ * fern, a sage tuft or a tall flower as a `shrub`.  Stone, metal, buildings,
+ * stumps and props stand still.  The kind is worked out once a sprite. */
+const SHRUBS = new Set(['bush', 'flowers', 'frostbush', 'sage', 'fern', 'giantflower']);
+function swayKindOf(id) {
+  const m = wheelMaterialOf(id);
+  if (m && m.canopy) return m.canopy === 'snow' || m.canopy === 'char' ? 'pine' : 'tree';
+  return SHRUBS.has(id) ? 'shrub' : null;
+}
+/** fn(sprite, kind, footX, footY) for each drawn object that sways. */
+export function forEachWheelSwayer(fn) {
+  const live = _live, ix = _idx;
+  if (!live || live.dead || !ix || !live.sprites.size) return;
+  const o = ix.o;
+  for (const [i, s] of live.sprites) {
+    if (!s || s.destroyed || s._pic) continue;   /* a building with life never sways */
+    let kind = s._swayKind;
+    if (kind === undefined) kind = s._swayKind = swayKindOf(o.kinds[o.kind[i]]);
+    if (kind) fn(s, kind, o.x[i], o.y[i]);
+  }
+}
+
 /* ═══ v2.3.2995: AN OBJECT'S PICTURE, FOR WHAT A HIT DOES TO IT ═══ */
 /* object i's picture, if its page is in */
 function texOf(ix, i) {
@@ -725,7 +836,9 @@ if (typeof window !== 'undefined') {
       return { layer: s2.parent ? s2.parent.label : null, x: s2.x, y: s2.y, w: Math.abs(pic.width), h: pic.height,
         ax: pic.anchor.x, flip: pic.scale.x < 0, life: s2._life ? s2._life.count() : null,
         /* v2.3.2999: see-through while you stand behind it */
-        alpha: +s2.alpha.toFixed(3), crown: !!s2._crown };
+        alpha: +s2.alpha.toFixed(3), crown: !!s2._crown,
+        /* v2.3.3000: shaded toward the ground, swaying in the wind, casting */
+        shade: !!pic._vShade, skew: +pic.skew.x.toFixed(4), sway: s2._swayKind || null };
     },
     /* v2.3.2995: the broken objects' shards, and an object's shake */
     shards: () => (_live ? _live.shatter.probe() : []),
