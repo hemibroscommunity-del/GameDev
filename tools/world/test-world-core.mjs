@@ -2501,6 +2501,19 @@ console.log('swimming (v2.3.3003)');
   ok(`a teleport into the water (a way in) swims at once, with no splash: '${tIn}'`, tIn === 'landed' && W8.isWheelSwimming(S));
   S.player.y = 300; const tOut = W8.updateWheelSwim(S, t += 16, true, 52, waterAt);
   ok('...and out of it (a respawn after drowning in a pond) stands at once, with no drip', tOut === null && !W8.isWheelSwimming(S));
+  /* v2.3.3012: seated on the bank (fishing, mining) is out of the water, even
+     where the drawn shore lies a few px into the seat */
+  S.player.y = 1400; W8.updateWheelSwim(S, t += 16, true, 52, waterAt);
+  /* the boots at y 1003 on a shore wet west of x -4 and south of y 1008:
+     two of the five looks wet, so a swimmer stays one there */
+  const shore = (x, y) => (x < -4 && y >= 1000) || y >= 1008;
+  for (const y of [1220, 1040, 951]) { S.player.y = y; W8.updateWheelSwim(S, t += 16, true, 52, shore); }
+  const stillIn = W8.isWheelSwimming(S) && W8.wetProbes(shore, 0, 1003) === 2;
+  const was = W8.climbOut(S, t);
+  const evs3 = [];
+  for (let i = 0; i < 30; i++) evs3.push(W8.updateWheelSwim(S, t += 16, true, 52, shore));
+  ok('seated on a bank whose drawn shore reaches the boots: climbOut ends the swim, and it stays ended (back in only at four wet)',
+    stillIn && was === true && !W8.isWheelSwimming(S) && evs3.every((e) => e === null) && W8.climbOut(S, t) === false, { stillIn, was, evs3: evs3.filter(Boolean) });
   /* leaving the Wheel lets it all go */
   W8.updateWheelSwim(S, t += 16, false, 52, waterAt);
   ok('outside the Wheel there is no swimming at all', S._wheelSwim === null && !W8.isWheelSwimming(S));
