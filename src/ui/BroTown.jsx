@@ -350,6 +350,7 @@ import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
 import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
 import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
+import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
@@ -4778,6 +4779,30 @@ export var BroTown = function BroTown(_ref0) {
           if (Math.abs(dx) > Math.abs(dy)) P.dir = dx > 0 ? 'right' : 'left';else P.dir = dy > 0 ? 'down' : 'up';
         }
 
+        /* ═══ v2.3.3003: SWIMMING IN THE WHEEL ═══
+           Owner: "add swimming and just use the characters head poking out
+           of the water plus code effects to make it look like swimming and
+           change the movement behavior".  Before the walk, so this frame's
+           step is taken at this frame's answer (game/wheelSwim.js).  Going in
+           drops the shield and ends an attack in flight, as raising the
+           shield does (shieldToggle.raiseShieldToggle): only your head is out
+           of the water.  The sounds are recordings already in the game. */
+        var _swEv = updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
+          playerGroundDy(S.currentZone, P.x, P.y));
+        if (_swEv === 'in' || _swEv === 'landed') {
+          dropShield(S, 'swim');
+          S.autoAttack = false;
+          S.isSwinging = false;
+          S._swingSfxPending = false;
+          S._aiming = false;
+          S._bowShotAt = 0;
+          if (_swEv === 'in') { try { if (BT_AUDIO.swimSplash) BT_AUDIO.swimSplash('in'); } catch (e) { /* audio is best-effort */ } }
+        } else if (_swEv === 'out') {
+          try { if (BT_AUDIO.swimSplash) BT_AUDIO.swimSplash('out'); } catch (e) { /* audio is best-effort */ }
+        } else if (_swEv === 'stroke') {
+          try { if (BT_AUDIO.swimStroke) BT_AUDIO.swimStroke(); } catch (e) { /* audio is best-effort */ }
+        }
+
         /* §14 Terrain feel — tile under player affects movement */
         var footTile = (_S$map$Math$floor$Mat = (_S$map2 = S.map) === null || _S$map2 === void 0 || (_S$map2 = _S$map2[Math.floor(P.y / TILE)]) === null || _S$map2 === void 0 ? void 0 : _S$map2[Math.floor(P.x / TILE)]) !== null && _S$map$Math$floor$Mat !== void 0 ? _S$map$Math$floor$Mat : 0;
         var terrainMult = 1.0;
@@ -4859,6 +4884,7 @@ export var BroTown = function BroTown(_ref0) {
         var _dsc = zoneDepthScale(S.currentZone, S.player.y, TILE);
         if (_dsc != null) vistaSpeedMult = Math.max(0.2, _dsc / ((_vz.depth && _vz.depth.near) || 1));
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
+        finalSpd *= wheelSwimMult(S);   /* v2.3.3003: the Wheel's water, in strokes (1 on land) */
         /* v2.3.1405: per-zone loading gate — while a zone's assets warm
            behind the loading overlay (zoneTransitions.js), freeze the
            player at the hub exit so the proximity trigger stays armed and
@@ -4878,6 +4904,14 @@ export var BroTown = function BroTown(_ref0) {
            this loop is what fires bow and staff shots — gating only the tap
            handlers would have left ranged builds shooting mid-chop. */
         if (S._extraction) S.autoAttack = false;
+        /* v2.3.3003: ...nor while you swim -- the held attack lets go, and
+           says why (monsterCombat's engaged swing is held off by the same
+           test) */
+        if (S.autoAttack && isWheelSwimming(S)) {
+          S.autoAttack = false;
+          var _swn = swimNote(S, Date.now());
+          if (_swn) pushDmgPopup(S, _swn.x, _swn.y, SWIM_NOTE, SWIM_NOTE_COLOR, { ts: Date.now() + 1 });
+        }
         /* ═══ v2.3.2246: A LOCK MAKES MOVEMENT TARGET-RELATIVE ═══
            Owner: "Player movement (backwards, left, right) should revolve
            around the targeted monster so if you move backwards you should be
@@ -4915,6 +4949,12 @@ export var BroTown = function BroTown(_ref0) {
            than folded into finalSpd above — finalSpd is also read by the ice
            slide's blend below, which is a RATIO between the drive and the
            carried velocity and would be wrong if scaled twice. */
+        /* v2.3.3003: in the water you glide -- your way through it eased
+           toward the stick, never faster than it (wheelSwim.swimGlide) */
+        if (S._wheelSwim && S._wheelSwim.on) {
+          var _gl = swimGlide(S, dx, dy, S._dtScale || 1, [0, 0]);
+          dx = _gl[0]; dy = _gl[1];
+        }
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
         var ny = P.y + dy * _step;

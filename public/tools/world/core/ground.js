@@ -27,6 +27,7 @@
  *   swatchesUnder(...)    which swatches a rectangle's ground can use;
  *   blendsUnder(...)      ...and which blend pictures (v2.3.2951);
  *   walkBits(...)         where you cannot walk (the sea, rivers, lakes);
+ *   swimBits(...)         ...and of those, where you can swim (v2.3.3003);
  *   overviewPixels(...)   the whole map, small, in the plan's colours.
  *
  * ── HOW TWO SWATCHES MEET ──
@@ -1951,6 +1952,80 @@ export function walkBits(bp, mm) {
      laid over the water, and a one-cell bridge across a wide river sat in a
      share of water well over half */
   for (let i = 0; i < n; i++) if (f[i] >= 0.5 && !(mm.built && mm.built[mm.mat[i]])) bits[i >> 3] |= 1 << (i & 7);
+  return bits;
+}
+
+/* ═══ v2.3.3003: WHERE YOU CAN SWIM ═══
+   Owner: "add swimming and just use the characters head poking out of the
+   water plus code effects to make it look like swimming and change the
+   movement behavior".  One bit a blueprint cell, set on the cells walkBits
+   stops you at that you may swim in instead:
+     - every river, pond, lake and oasis -- the FRESH water;
+     - the sea's SHALLOWS, the shelf waterLook draws in the lighter blue,
+       worked out the same way at each cell's middle: the shore's distance
+       (cells, capped at SHORE_CAP; land and fresh water count as shore)
+       plus SHALLOW_WANDER of the same noise, against SHALLOW_CELLS, with
+       composeGround's seed -- so you swim out to the line you see;
+     - and a land cell walkBits counts as water (the shore's blur): the
+       foam at the water's edge.
+   The OPEN SEA past the shelf stays a wall.  It is what keeps the spokes
+   apart, and swimming across it would pass every pass and gate the plan
+   lays.  `walk` is walkBits' answer when the caller has it already; `seed`
+   is (plan.seed | 0) + 900, composeGround's. */
+export function swimBits(bp, mm, seed, walk) {
+  const w = bp.w, h = bp.h, n = w * h, S = bp.scale, water = mm.water, mat = mm.mat, fresh = mm.fresh;
+  const blocked = walk || walkBits(bp, mm);
+  /* every cell's distance to the nearest that is not open sea, as
+     shoreSampler works it out round a rectangle -- here for the whole map,
+     once (two sweeps, ~13 MB for a moment) */
+  const D = new Float32Array(n);
+  const FAR = 1e6, DG = Math.SQRT2;
+  for (let i = 0; i < n; i++) D[i] = mat[i] !== water || (fresh[i >> 3] >> (i & 7)) & 1 ? 0 : FAR;
+  /* (only distances under SHORE_CAP matter, so a sweep stops carrying one
+     past it -- most of the map is open sea and is left at FAR) */
+  const CAP = SHORE_CAP + 1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    let v = D[i];
+    if (v === 0) continue;
+    let u;
+    if (x > 0 && (u = D[i - 1] + 1) < v) v = u;
+    if (y > 0) {
+      if ((u = D[i - w] + 1) < v) v = u;
+      if (x > 0 && (u = D[i - w - 1] + DG) < v) v = u;
+      if (x < w - 1 && (u = D[i - w + 1] + DG) < v) v = u;
+    }
+    D[i] = v < CAP ? v : FAR;
+  }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) {
+    const i = y * w + x;
+    let v = D[i];
+    if (v === 0) continue;
+    let u;
+    if (x < w - 1 && (u = D[i + 1] + 1) < v) v = u;
+    if (y < h - 1) {
+      if ((u = D[i + w] + 1) < v) v = u;
+      if (x < w - 1 && (u = D[i + w + 1] + DG) < v) v = u;
+      if (x > 0 && (u = D[i + w - 1] + DG) < v) v = u;
+    }
+    D[i] = v < CAP ? v : FAR;
+  }
+  const bits = new Uint8Array((n + 7) >> 3);
+  /* the noise can move the line SHALLOW_WANDER either way, so nearer than
+     SHALLOW_CELLS - SHALLOW_WANDER is always shallows and SHALLOW_CELLS +
+     SHALLOW_WANDER or more never: only the band between asks the noise */
+  const SURE = SHALLOW_CELLS - SHALLOW_WANDER, NEVER = SHALLOW_CELLS + SHALLOW_WANDER;
+  for (let i = 0; i < n; i++) {
+    if (!(blocked[i >> 3] & (1 << (i & 7)))) continue;
+    const d = Math.min(SHORE_CAP, D[i]);
+    let ok = d < SURE;
+    if (!ok && d < NEVER) {
+      const ax = bp.x0 + ((i % w) + 0.5) * S, ay = bp.y0 + (((i / w) | 0) + 0.5) * S;
+      const nz = valueNoise(ax * 0.0045, ay * 0.0045, seed + 47) * 0.7 + valueNoise(ax * 0.03, ay * 0.03, seed + 53) * 0.3;
+      ok = d + SHALLOW_WANDER * nz < SHALLOW_CELLS;
+    }
+    if (ok) bits[i >> 3] |= 1 << (i & 7);
+  }
   return bits;
 }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
+import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no special in the water */
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
 import { ctlBottom, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: back to the RIGHT disc, in the shared diagonal cluster above it */
 
@@ -148,6 +149,7 @@ export function specialButtonLive(S, perimeterPx) {
      player to break their own block by accident). */
   if (S._shieldUp) return false;
   if (S._extraction) return false;
+  if (isWheelSwimming(S)) return false;   /* v2.3.3003: only your head is out of the water */
   if (S.lockedTarget && S.lockedTarget.ref) return true;
   if (S.lastDamageTaken && Date.now() - S.lastDamageTaken < 5000) return true;
   const P = S.player;

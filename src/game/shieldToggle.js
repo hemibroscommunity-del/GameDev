@@ -21,7 +21,8 @@
  */
 import { BT_AUDIO } from '@/data/index.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js';
-import { lockAimPoint } from '@/game/combatHelpers.js';
+import { lockAimPoint, swimRefused /* v2.3.3003 */ } from '@/game/combatHelpers.js';
+import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no button in the water */
 import { targetCandidates } from '@/game/targeting.js'; /* v2.3.2472: the nearest-monster fallback below */
 
 /* Where the shield should point: at the locked target if there is one (the
@@ -74,6 +75,8 @@ export function raiseShieldToggle(S) {
   if (S._shieldCdUntil && now < S._shieldCdUntil) return false;
   if (!S.rpg.shield) return false;
   if (S._shieldUp) return true;
+  /* v2.3.3003: no block in the water -- only your head is out of it */
+  if (swimRefused(S)) return false;
   /* ═══ v2.3.2246: RAISING THE SHIELD CANCELS THE ATTACK ═══
      Owner: "you can both swing and block at the same time. That is not
      right."  playerActions/monsterCombat refuse to START an attack while the
@@ -137,6 +140,7 @@ export function toggleShield(S) {
    and a button that refuses is worse than no button. */
 export function shieldButtonLive(S, perimeterPx) {
   if (!S || !S.rpg || !S.rpg.shield) return false;
+  if (isWheelSwimming(S)) return false;   /* v2.3.3003: no block in the water */
   /* ═══ v2.3.2472: THE BUTTON COMES BACK FOR BOW AND STAFF ═══
      Owner decision D8, reversing v2.3.2446 ("When you use bow or staff there
      should be no shield button") four days later, and reversing all three of

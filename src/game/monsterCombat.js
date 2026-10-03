@@ -53,6 +53,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: a hit sounds like the monster's material */
+import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 
@@ -1515,7 +1516,9 @@ export function updateMonsterCombat(S, deps) {
              its ceiling, and every ms here is latency on a held attack.  Raise
              it if a flick still leads; lower it if the hold feels sticky. */
           var _flickWait = S._atkPressAt && (Date.now() - S._atkPressAt) < ATK_PRESS_GRACE_MS;
-          if ((S.autoAttack || _engSwing) && !_flickWait && !S._shieldUp && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
+          /* v2.3.3003: and not while you swim -- only your head is out of
+             the water (game/wheelSwim.js; BroTown lets go of a held attack) */
+          if ((S.autoAttack || _engSwing) && !_flickWait && !S._shieldUp && !isWheelSwimming(S) && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;

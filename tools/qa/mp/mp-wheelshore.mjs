@@ -73,7 +73,12 @@ const SHORES = (P) => P.page.evaluate(({ run }) => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Shorewalk', wsPort, webPort, world: 'wheel' });
+  /* v2.3.3003: with `noswim` -- swimming opens the rivers and ponds (and the
+     sea's shallows), so the shores near town are no longer walls; the rule
+     this checks, that a wall of water meets the BOOTS, holds for the open
+     sea and for every drop of water with swimming off (mp-wheelswim checks
+     the open sea's line with it on) */
+  const P = await H.newPlayer(browser, { name: 'Shorewalk', wsPort, webPort, world: 'wheel', query: 'noswim' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   await H.enterWorld(P);

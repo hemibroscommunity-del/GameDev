@@ -14,6 +14,7 @@ import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3
 import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: the Wheel's objects take hits, break, and are mended */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
+import { isWheelSwimming, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: no fighting while you swim */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -652,6 +653,19 @@ function clearSwingHitFlags(S) {
    where the handler restores hp on a timeout but holds the animation. */
 export function isPlayerDead(S) {
   return !!(S && (S._dying || (S.rpg && S.rpg.hp <= 0)));
+}
+
+/* ═══ v2.3.3003: NOTHING OF THIS IN THE WATER ═══
+   Swimming in the Wheel (game/wheelSwim.js), only your head is out of the
+   water: no swing, special, burst, ability, roll or block.  True when
+   refused, having said "Swimming!" over your head -- not more often than
+   wheelSwim's NOTE_MS, so a held button does not stack them.  Next to
+   isPlayerDead because it is the same kind of gate on the same paths. */
+export function swimRefused(S) {
+  if (!isWheelSwimming(S)) return false;
+  var at = swimNote(S, Date.now());
+  if (at) pushDmgPopup(S, at.x, at.y, SWIM_NOTE, SWIM_NOTE_COLOR, { ts: Date.now() + 1 });
+  return true;
 }
 
 /* ═══ v2.3.1702: THE WORKER OWNS PLAYER HP IN SERVER ZONES ═══

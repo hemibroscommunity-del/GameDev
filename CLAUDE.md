@@ -532,7 +532,34 @@ remnant to migrate server-side, not a mode to preserve.
       silence; levels measured against sword-hit3 (0.92-1.10, peaks <= 0.66;
       there is no limiter on the bus);
     - test-world-core "hits sound like what they hit", `mp-hitsound`,
-      `mp-hitvoices`, `mp-wheelbreak`: docs/specs/material-hit-sounds.md.)
+      `mp-hitvoices`, `mp-wheelbreak`: docs/specs/material-hit-sounds.md.
+  - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
+    just use the characters head poking out of the water plus code effects
+    to make it look like swimming and change the movement behavior":
+    - every river, pond, lake and oasis and the sea's SHALLOWS; the OPEN SEA
+      past them stays a wall (it keeps the spokes apart) -- ground.js
+      `swimBits`, from the shallows' own distance and noise, sent by the
+      worker as `walk.swim` and opened by wheelTrial.js lazyGrid; a bridge's
+      deck is walked on, so a swimmer can climb onto one from its side;
+    - swimming is the ground DRAWN under your boots being water
+      (`src/game/wheelSwim.js`: five looks, in at 4 wet, out at 1; a teleport
+      flips it silently, `JUMP_PX`); 0.55 of your walk in strokes
+      (`SWIM_MULT`, `STROKE_MS`, `SWIM_SURGE`) and a GLIDE that replaces the
+      step, never adds to it (`swimGlide`); no swing, special, burst,
+      ability, roll or shield (`combatHelpers.swimRefused`, "Swimming!"),
+      a held attack lets go, the special and shield buttons hide;
+    - the LOOK: `src/rendering/swimFx.js`, after the depth pass, sinks the
+      figure to its neck (`figureSwimLine`, measured off the body sheets) and
+      cuts it there with a mask; foam ring, the head's shade, the body dark
+      under the surface, ripples (crest and trough), wake, stroke splashes;
+      peers by the same test at their boots; `_swimK` keeps a swimmer out of
+      lightfx's shadows and glints;
+    - SOUNDS from the fishing recordings in SFX_MANIFEST (`SWIM_STROKES`,
+      `SWIM_SPLASH`), footsteps silent ('swim'); footstepSurface now reads
+      the ground at the BOOTS;
+    - the worker knows nothing of it (monsters follow you in); `?noswim`
+      puts the water back as walls; mp-wheelshore runs with it;
+    - test-world-core "swimming", `mp-wheelswim`: docs/specs/wheel-swimming.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

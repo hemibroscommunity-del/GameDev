@@ -55,6 +55,7 @@
 import { ZONES } from '../data/zones.js';
 import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/effects.js';
 import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo, wheelObjectStats, wheelObjectsInfo, wheelObjectsOn, wheelBigTown } from './wheelTrial.js';
+import { swimFeet } from './wheelSwim.js';   /* v2.3.3003: the footstep's ground is at your boots, and the water's while you swim */
 import { setAlwaysDay } from './timeOfDay.js';
 import { wheelArtStats } from '../rendering/wheelMonsterArt.js';   /* v2.3.2989: the monsters' looks, loaded as you walk toward them */
 
@@ -347,9 +348,15 @@ const STEPS_WAIT_MS = 5000;
    overlay lifts: a portrait phone shows about 585 x 1270 game px */
 const WARM_OBJECTS_X = 420, WARM_OBJECTS_Y = 720;
 let _lastSurface = null;
+/* v2.3.3003: read at your BOOTS (wheelSwim.js keeps where they were looked
+   at this frame; the body's centre, ~52 px above them, heard the ground a
+   step ahead walking north), and 'swim' while you swim: BT_AUDIO.footstep
+   is silent for it, the strokes have their own clock (wheelSwim.js). */
 export function footstepSurface(S) {
   if (!S || !S.player || !isWheelTrialZone(S.currentZone)) return null;
-  const s = wheelStepAt(S.player.x, S.player.y);
+  const f = swimFeet(S);
+  if (f && f.on) return 'swim';
+  const s = f ? wheelStepAt(f.x, f.y) : wheelStepAt(S.player.x, S.player.y);
   if (s) _lastSurface = s;
   return s || _lastSurface;
 }

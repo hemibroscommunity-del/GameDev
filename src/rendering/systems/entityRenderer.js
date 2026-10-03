@@ -5302,6 +5302,29 @@ export function nominalStandFigure(dir) {
   const s = bodyDirScale('stand', d) * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT;
   return { bodyH: (rows.feet - rows.crown + 1) * s, footDy: (rows.feet - BODY_CELL_MID) * s };
 }
+/* ═══ v2.3.3003: A SWIMMER'S WATERLINE ═══
+   Swimming in the Wheel (game/wheelSwim.js, rendering/swimFx.js) only the
+   head is out of the water: the figure is sunk until this row is at the
+   water's surface and cut off below it.  The row is the middle of the NECK
+   -- the whole head and its hat above it, the shoulders under -- measured
+   off the bare body sheets the way BODY_ROWS is (256-frame units): each
+   standing sheet's narrowest run between the jaw and the shoulders, and the
+   jog's the median of its frames plus two (its body bobs; the head bobs in
+   the water with it).  Returned in the figure's own units, like
+   _feetOffsetUnits, with its feet and crown for the same frame. */
+const NECK_ROWS = {
+  stand: { south: 83, east: 82, north: 84, northeast: 79, southwest: 80 },
+  jog: { south: 80, east: 92, north: 72, northeast: 82, southwest: 76 },
+};
+export function figureSwimLine(display) {
+  const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
+  const dir = (display && display._animDir) || 'south';
+  const rows = bodyRows(pose, dir);
+  const necks = NECK_ROWS[pose];
+  const neck = necks[dir] != null ? necks[dir] : necks.south;
+  const k = bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
+  return { water: (neck - BODY_CELL_MID) * k, feet: (rows.feet - BODY_CELL_MID) * k, crown: (rows.crown - BODY_CELL_MID) * k };
+}
 /* v2.3.2710: where a player figure (yours or a peer's) actually touches the
    ground, in its layer's space.  The body is centred on its frame, so the
    feet are this offset BELOW display.y, not at it -- a cast shadow pivoted on

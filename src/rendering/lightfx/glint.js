@@ -426,7 +426,8 @@ export class GlintSystem {
     this._bodies.clear();
     const pd = er && er.playerDisplay;
     const rpg = S && S.rpg;
-    if (pd && !pd.destroyed && rpg) {
+    /* v2.3.3003: no shine on armour under the water (swimFx.js) */
+    if (pd && !pd.destroyed && rpg && !(pd._swimK > 0)) {
       const melee = (rpg.activeSlot || 'melee') === 'melee';
       const w = melee ? rpg.weapon : null;
       const wm = w ? weaponMaterial(w.type, w.gearBase) : null;
@@ -475,7 +476,7 @@ export class GlintSystem {
     if (er && er.otherPlayerDisplays && others) {
       for (const [id, d] of er.otherPlayerDisplays) {
         const o = others[id];
-        if (!d || d.destroyed || !o || (o.zone || o.z || 'town') !== zone) continue;
+        if (!d || d.destroyed || !o || (o.zone || o.z || 'town') !== zone || d._swimK > 0) continue;   /* v2.3.3003 */
         const sw = fx && fx._remoteSwordSprites && fx._remoteSwordSprites.get(id);
         /* v2.3.2887: their bow shot and their chop / cook / fire figure draw
            the armour on sprites of their own, as the swing does -- the shine

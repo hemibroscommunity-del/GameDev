@@ -3058,6 +3058,40 @@ Still to do, if wanted:
 - swinging signs and waving flags on the Wheel's buildings;
 - a banner as you enter each land.
 
+### Swimming (v2.3.3003)
+
+> Owner, 2026-10-03: *"I'm thinking you can add swimming and just use the
+> characters head poking out of the water plus code effects to make it look
+> like swimming and change the movement behavior"*.
+
+**Where you can swim:** every river, pond, lake and oasis, and the sea's
+shallows (the lighter shelf round each coast).
+
+**Where you can't:** the open sea past the shallows is still a wall. It keeps
+the spokes apart, and swimming across it would skip every pass and gate.
+
+How it is built:
+
+- `ground.js` `swimBits` works out where you can swim from the same distance
+  and noise that draw the shallows, so you swim out to the line you see.
+- The worker sends it as `walk.swim`, and the walk grid opens those cells.
+- You are swimming while the ground drawn under your boots is water.
+
+What changes while you swim:
+
+- **Speed:** 0.55 of your walk, in strokes.
+- **Glide:** you ease in, and drift on when you let go.
+- **No fighting:** no attacks, abilities, roll or shield. "Swimming!" says why.
+- **The look:** you are a head in the water. The figure is sunk to its neck
+  and cut there, with a foam ring, ripples, a wake, your body dark under the
+  surface, and splashes for the arms.
+- **Sound:** strokes, a splash going in and a drip coming out, all from the
+  fishing recordings already in the game.
+
+Other players are drawn swimming too. `?noswim` closes every drop of water
+again. Details are in `docs/specs/wheel-swimming.md`; tests are `mp-wheelswim`
+and test-world-core "swimming".
+
 ### On a slow connection (v2.3.2959)
 
 > Owner, 2026-10-01, walking the Wheel on a phone with their own 96 tiles in
