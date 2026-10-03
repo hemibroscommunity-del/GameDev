@@ -113,6 +113,37 @@ export function wheelOnStop(fn) {
   _stopFns.add(fn);
   return () => { _stopFns.delete(fn); };
 }
+/* ═══ v2.3.3003: SWIMMING ═══
+   Owner: "add swimming and just use the characters head poking out of the
+   water plus code effects to make it look like swimming and change the
+   movement behavior".  The rivers, ponds and lakes and the sea's shallows
+   are open to walk into (the walk grid below), and you SWIM there
+   (game/wheelSwim.js; the look, rendering/swimFx.js); the open sea past
+   the shallows stays a wall (ground.js swimBits).  `?noswim` in the
+   address puts the water back as it was: every drop of it a wall. */
+export function wheelSwimOn() {
+  try { return !/(^|[?&])noswim(=|&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+}
+/* Is the plan's cell at (x, y) water you can swim in (not land, not open
+   sea)?  false outside the Wheel's worker, or with `?noswim`. */
+export function wheelSwimCell(x, y) {
+  const info = _info;
+  const swim = info && info.walk && info.walk.swim;
+  if (!swim || !wheelSwimOn()) return false;
+  const cell = info.worldW / info.walk.cols;
+  const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
+  if (cx < 0 || cy < 0 || cx >= info.walk.cols || cy >= info.walk.rows) return false;
+  const k = cy * info.walk.cols + cx;
+  return !!(swim[k >> 3] & (1 << (k & 7)));
+}
+/* Is the ground DRAWN at (x, y) water (the piece laid there, every 3 game
+   px: wheelGroundAt)?  true / false, or null where no piece is laid yet --
+   the swimmer then stays as they were.  The pictures decide, not the cells,
+   so the head sinks where the water's edge is drawn. */
+export function wheelWaterAt(x, y) {
+  const c = wheelGroundAt(x, y);
+  return c ? !!c.water : null;
+}
 export function wheelWalkGrid() { return _grid; }
 export function wheelOverview() { return _overview; }
 export function wheelRunning() { return !!_w; }
@@ -165,7 +196,7 @@ function onMessage(m, resolveInit, rejectInit) {
   if (m.type === 'error' && m.id == null) { wheelStats.error = m.message; rejectInit(new Error(m.message)); return; }
   if (m.type === 'ready') {
     _info = m;
-    _grid = lazyGrid(m.walk.bits, m.walk.cols, m.walk.rows);
+    _grid = lazyGrid(m.walk.bits, m.walk.cols, m.walk.rows, wheelSwimOn() ? m.walk.swim : null);
     _overview = overviewCanvas(m.overview);
     wheelStats.planMs = m.planMs;
     wheelStats.swatchMs = m.swatchMs;
@@ -344,13 +375,20 @@ export function wheelStop() {
    north stopped you 52 px short of a shore.  Town's grid bakes the same
    offset into its rim instead (spriteSheets.js townRimFor), so it has no flag
    and is read as it always was. */
-function lazyGrid(bits, cols, rows) {
+/* v2.3.3003: `swim`, ground.js swimBits -- the water you may swim in is
+   open to walk into like land (wheelSwim.js makes it swimming); the open
+   sea stays shut.  null (`?noswim`, or a worker before it): every drop of
+   water a wall, as before. */
+function lazyGrid(bits, cols, rows, swim) {
   const made = new Map();
   const rowAt = (y) => {
     let r = made.get(y);
     if (r) return r;
     r = new Array(cols);
-    for (let x = 0, k = y * cols; x < cols; x++, k++) r[x] = !(bits[k >> 3] & (1 << (k & 7)));
+    for (let x = 0, k = y * cols; x < cols; x++, k++) {
+      const m = 1 << (k & 7);
+      r[x] = !(bits[k >> 3] & m) || !!(swim && (swim[k >> 3] & m));
+    }
     made.set(y, r);
     if (made.size > ROW_KEEP) made.delete(made.keys().next().value);
     return r;

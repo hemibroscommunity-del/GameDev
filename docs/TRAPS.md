@@ -5116,3 +5116,34 @@ passes), or a late piece faded in so it reads as a reveal. Not a bigger
 **How to see it:** mp-wheeltrial's "...ahead of you: at a brisk walk few
 pieces are on screen before they are laid", its legs' `popIns`, `loads` and
 `sumMs` (worker ms) in the log.
+
+
+## 129. A hue test on a near-black pixel says whatever it likes (v2.3.3010)
+
+**Plausible:** "Tell skin from trousers from shoes by HUE -- the angle between
+a pixel's colour and each sampled reference (`score` = (p.T)^2/|T|^2, the
+ghost-hand blend's test since v2.3.620). Brightness cancels out, so a hand in
+shadow and a hand in light read the same, which is the point."
+
+**Wrong** at both ends of the brightness range, measured on the east jog
+under greaves alone (`mp-greaveslegs`, `_legsOnlyClamp` in maskedBake.js):
+
+- **Near-black:** the body's outline pixel (7,2,0) has a "hue" made of
+  rounding. It pointed nearer the skin reference (198,127,72) than the
+  trousers (82,80,58) or the shoes (65,66,59), so the outline round the
+  trousers was kept as an ARM and poked out 9 px. Nothing darker than a third
+  of the player's own skin brightness is tested now; the outline is the arm's
+  only when it lies within 2 px of real skin.
+- **Pale:** a knuckle's highlight (211,165,123) lines up with the olive
+  trousers' hue a hair better than with skin (0.9944 against 0.9873), so a
+  12 px piece of the fist was taken as trousers and erased. Skin is now also
+  whatever is NEAREST skin in plain RGB distance and within 0.98 of its hue.
+
+**The rule:** never classify by hue alone. Floor the brightness relative to
+the reference before reading hue, and let plain colour distance break the
+cases hue cannot. The ghost-hand blend still uses the old test; it is gated
+to the full set and the waist band, where it has not misbehaved.
+
+**How to see it:** `window.__btLegsPeek('jog', 'east', true)` lists the
+pixels it counts as plain legs left outside the greaves (`seen`), with their
+colours. Before the floor: 9 a frame in frames 10 and 24, all near-black.

@@ -400,7 +400,7 @@ remnant to migrate server-side, not a mode to preserve.
   - A respawn now nulls `S.npcs` like every zone change. It used to carry the
     Wheel's Mayor into today's town, where the townsfolk never spawned.
   - Not there yet, so not in the game: monsters past levels 1-5, dungeons.
-    (Gathering came in v2.3.3007, the last bullet below.)
+    (Gathering came in v2.3.3007, a bullet below.)
   - The QA harness gives every scenario `trial=off&nospawn` unless it passes
     `world: 'wheel'` (`nospawn` alone when its query names a trial).
   - `mp-questline`, CI's "playable", plays in the Wheel. `mp-wheelhome`
@@ -533,6 +533,58 @@ remnant to migrate server-side, not a mode to preserve.
       there is no limiter on the bus);
     - test-world-core "hits sound like what they hit", `mp-hitsound`,
       `mp-hitvoices`, `mp-wheelbreak`: docs/specs/material-hit-sounds.md.
+  - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
+    just use the characters head poking out of the water plus code effects
+    to make it look like swimming and change the movement behavior":
+    - every river, pond, lake and oasis and the sea's SHALLOWS; the OPEN SEA
+      past them stays a wall (it keeps the spokes apart) -- ground.js
+      `swimBits`, from the shallows' own distance and noise, sent by the
+      worker as `walk.swim` and opened by wheelTrial.js lazyGrid; a bridge's
+      deck is walked on, so a swimmer can climb onto one from its side;
+    - swimming is the ground DRAWN under your boots being water
+      (`src/game/wheelSwim.js`: five looks, in at 4 wet, out at 1; a teleport
+      flips it silently, `JUMP_PX`); 0.55 of your walk in strokes
+      (`SWIM_MULT`, `STROKE_MS`, `SWIM_SURGE`) and a GLIDE that replaces the
+      step, never adds to it (`swimGlide`); no swing, special, burst,
+      ability, roll or shield (`combatHelpers.swimRefused`, "Swimming!"),
+      a held attack lets go, the special and shield buttons hide;
+    - the LOOK: `src/rendering/swimFx.js`, after the depth pass, sinks the
+      figure to its neck (`figureSwimLine`, measured off the body sheets) and
+      cuts it there with a mask; foam ring, the head's shade, the body dark
+      under the surface, ripples (crest and trough), wake, stroke splashes;
+      peers by the same test at their boots; `_swimK` keeps a swimmer out of
+      lightfx's shadows and glints;
+    - SOUNDS from the fishing recordings in SFX_MANIFEST (`SWIM_STROKES`,
+      `SWIM_SPLASH`), footsteps silent ('swim'); footstepSurface now reads
+      the ground at the BOOTS;
+    - the worker knows nothing of it (monsters follow you in); `?noswim`
+      puts the water back as walls; mp-wheelshore runs with it;
+    - test-world-core "swimming", `mp-wheelswim`: docs/specs/wheel-swimming.md.
+  - Since v2.3.3006 you can SPRINT, everywhere -- the owner: "a sprint button
+    by the left joystick that drains down stamina but makes you run about
+    33% faster until it drains out. Maybe just to the right of the left
+    joystick":
+    - a TAP on the winged-boot button (`src/ui/panels/SprintButton.jsx`,
+      placed by `sprintAnchor` in ShieldButton.jsx, drawn by TouchControls)
+      or SHIFT held; 1.33x the walk while moving (`SPRINT_MULT`), the jog
+      loop as much quicker, 11 stamina a second, none while standing;
+    - it ends at zero, on a tap, standing still 0.7 s (2 s before the first
+      step), the shield, an attack, the water, death or a zone change; 5
+      stamina to start one (`src/game/sprint.js`, no imports, node-tested);
+    - the WORKER bills it (`server/src/sprint.js`): a sprinting move carries
+      `sp: 1` -- no new message type -- and is judged at 1.33x the bound
+      (movement.js `_sprintK`) and paid for (`_sprintPay`: the time since the
+      move before, when THAT was a paid step too -- the client's rest packet
+      and keepalives end a run, so standing is never billed; never "a long gap
+      is a pause", which let a few-frames-a-second phone sprint free), the
+      regen held 1 s after; 1.5 s of wide bound after the last paid step; the client's
+      drain is a prediction the echo overwrites; `caps.sprint` gates the
+      client, `sprint: false` is the kill switch;
+    - Shift is the sprint now: a letter's keyup clears both cases and a
+      window blur lets every key go (desktopControls.js), and the QA
+      keep-alive key is Control;
+    - `sprint` suite (47 checks, the client's rules too), mirror-audit,
+      `mp-sprint`: docs/specs/sprint.md.
   - Since v2.3.3007 the WHEEL GROWS RESOURCES -- the owner: "Add harvestable
     resources back to the wheel", "Copper can be in the safe areas around
     town. Iron can be in lvl 1 monster areas ... 'black steel' in like level
@@ -558,7 +610,34 @@ remnant to migrate server-side, not a mode to preserve.
       node its next step needs (questRoute.js `_wheelGatherPoint`, a step's
       `node`); the Wheel's nodes drop at the flip to town;
     - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,
-      `mp-wheelnodes`: docs/specs/wheel-resources.md.)
+      `mp-wheelnodes`: docs/specs/wheel-resources.md.
+  - Since v2.3.3008 the Points window's MAX MP has its before/after scene,
+    "the only one missing one": both lanes cast specials at one block of
+    mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
+    longer, with "Max MP" and "Specials on a full bar" lines
+    (`specialsOnABar`); `statsim` suite §7, `mp-statdemo`.
+  - Since v2.3.3009 the Wheel's TOP BAR says where you are -- the owner:
+    "Put the 'brotown safe' and other location indicators in place of the
+    'the wheel lvl 1-2' on the top bar" -- the land over its stage and
+    levels or "safe" in gold (ZoneHeader.jsx `wheelWhere`, the last answer
+    kept), nothing printed under the minimap any more (its probe keeps
+    `words`), and the minimap wears a 7 px slate-and-brass FRAME, opaque
+    (`FRAME` in wheelMinimap.js): WORLD-MAP-PIPELINE "Where you are, on the
+    top bar"; `mp-wheelmap`, `mp-wheelhome`.
+  - Since v2.3.3010 GREAVES ALONE HIDE THE PLAIN LEGS -- the owner: "the
+    legs underneath near the shoes poke out during east jog. You can just
+    remove the plain clothes legs beneath": maskedBake.js `_legsOnlyClamp`
+    (jog and stand, legs worn without the chest) keeps, from the greaves' top
+    row down, only the plates' silhouette, the waistband V between the thigh
+    plates and the arms (skin by hue AND plain colour distance, nothing
+    darker than a third of the skin -- TRAPS §129); enclosed windows turn
+    under-armour shadow; the full set is untouched; `mp-greaveslegs`
+    (`window.__btLegsPeek`), src/belt-harness.html `?wear=legs&pose=&tint=&clamp=off`.
+  - Since v2.3.3011 the view is ANOTHER 25% further out -- the owner: "If it
+    is already zoom it out another 25%" -- `VIEW_OUT` 0.64 (0.8 x 0.8) in
+    worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard
+    folded, ~40 with it up (37 was "too small", v2.3.2249); `?zoom=0.8` is
+    the view before; WORLD-MAP-PIPELINE "And another 25%", `mp-zoomout`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

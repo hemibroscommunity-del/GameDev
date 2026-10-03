@@ -10,6 +10,11 @@
  * and the old town back for a tab):
  *   1. the world is drawn at VIEW_OUT (0.8) of the scale it was, so the view
  *      takes in 1.25x the world each way, and the bro is drawn 0.8 the size;
+ *
+ * v2.3.3011, the owner: "If it is already zoom it out another 25%" -- so
+ * VIEW_OUT is 0.64, and the "was" here is the view this step left
+ * (`?zoom=0.8`, still with the old town, `bigtown=1.5`, for check 2): the
+ * same 0.8 of the scale, 1.25x the view, 0.8 the bro, one step further out.
  *   2. the town's buildings are drawn 1.15x their pictures (1.5x before),
  *      all 17 of them standing;
  *   3. the ground under the wider view is laid before the overlay lifts and
@@ -72,7 +77,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const o of man.objects) { pictureW[o.id] = o.pieces.map((p) => p.gameW); isBuilding[o.id] = o.kind === 'building'; }
 
   const got = {};
-  for (const [tag, query, K] of [['now', '', 1.15], ['was', 'zoom=1&bigtown=1.5', 1.5]]) {
+  /* v2.3.3011: 'was' is the view before this step, 0.8 (v2.3.2997) */
+  const WAS_OUT = 0.8, STEP = 0.8;
+  for (const [tag, query, K] of [['now', '', 1.15], ['was', `zoom=${WAS_OUT}&bigtown=1.5`, 1.5]]) {
     const P = await H.newPlayer(browser, { name: tag === 'now' ? 'Wideview' : 'Oldview', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query });
     const errors = [];
     P.page.on('pageerror', (e) => errors.push(String(e && e.message || e).slice(0, 200)));
@@ -81,7 +88,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* real input now and then: the client logs an idle player out after two
        minutes (mp-elemhits) */
     let alive = true;
-    const keep = (async () => { while (alive) { await P.page.keyboard.press('Shift').catch(() => {}); await P.page.waitForTimeout(20000); } })();
+    const keep = (async () => { while (alive) { await P.page.keyboard.press('Control').catch(() => {}); await P.page.waitForTimeout(20000); } })();
 
     const first = await settle(P, 120);
     /* standing a while: the pieces the zone gate laid ahead and this view
@@ -112,20 +119,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     alive = false;
     await keep.catch(() => {});
-    got[tag] = { arrival, land, bs, off, errors };
+    got[tag] = { first, arrival, land, bs, off, errors };
     await P.ctx.close().catch(() => {});
   }
 
   const now = got.now, was = got.was;
   /* 1. the scale and the view */
   const ratio = now.arrival.scale / was.arrival.scale;
-  rec.ok(`the world is drawn at 0.8 the scale it was (${was.arrival.scale} -> ${now.arrival.scale}, x${ratio.toFixed(3)})`,
-    Math.abs(ratio - 0.8) < 0.01, { now: now.arrival.scale, was: was.arrival.scale });
+  rec.ok(`the world is drawn at ${STEP} the scale it was (${was.arrival.scale} -> ${now.arrival.scale}, x${ratio.toFixed(3)})`,
+    Math.abs(ratio - STEP) < 0.01, { now: now.arrival.scale, was: was.arrival.scale });
   const wv = now.arrival.view && was.arrival.view ? now.arrival.view.W / was.arrival.view.W : 0;
-  rec.ok(`...so the view takes in 1.25x the world each way (${was.arrival.view && was.arrival.view.W} -> ${now.arrival.view && now.arrival.view.W} world px across)`,
-    Math.abs(wv - 1.25) < 0.02 && now.arrival.view.viewOut === 0.8 && was.arrival.view.viewOut === 1, { now: now.arrival.view, was: was.arrival.view });
-  rec.ok(`...and the bro is drawn 0.8 the size (${was.arrival.bodyCss} -> ${now.arrival.bodyCss} CSS px)`,
-    now.arrival.bodyCss > 0 && was.arrival.bodyCss > 0 && Math.abs(now.arrival.bodyCss / was.arrival.bodyCss - 0.8) < 0.02,
+  rec.ok(`...so the view takes in ${(1 / STEP).toFixed(2)}x the world each way (${was.arrival.view && was.arrival.view.W} -> ${now.arrival.view && now.arrival.view.W} world px across; VIEW_OUT ${was.arrival.view && was.arrival.view.viewOut} -> ${now.arrival.view && now.arrival.view.viewOut})`,
+    Math.abs(wv - 1 / STEP) < 0.02 && Math.abs(now.arrival.view.viewOut - WAS_OUT * STEP) < 1e-9 && was.arrival.view.viewOut === WAS_OUT, { now: now.arrival.view, was: was.arrival.view });
+  rec.ok(`...and the bro is drawn ${STEP} the size (${was.arrival.bodyCss} -> ${now.arrival.bodyCss} CSS px)`,
+    now.arrival.bodyCss > 0 && was.arrival.bodyCss > 0 && Math.abs(now.arrival.bodyCss / was.arrival.bodyCss - STEP) < 0.02,
     { now: now.arrival.bodyCss, was: was.arrival.bodyCss });
   /* 2. the buildings */
   rec.ok(`the town's buildings are drawn 1.15x their pictures (${now.bs.length} near the arrival) -- and 1.5x in the old town (${was.bs.length})`,
@@ -135,6 +142,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the ground under the wider view is laid, at the arrival and out on the land, nothing in flight and no piece failed',
     now.arrival.ground && now.arrival.ground.loading === 0 && !now.arrival.ground.failures
       && now.land.ground && now.land.ground.loading === 0 && !now.land.ground.failures, { arrival: now.arrival.ground, land: now.land.ground });
+  /* v2.3.3011: ...and laid BEFORE the overlay lifts: the box laid round
+     the arrival follows the view (worldTrial.js preloadWheel), so nothing
+     pops in on the way in -- with the old fixed box the 0.64 view had 26 */
+  rec.ok(`the ground round the arrival is laid before the overlay lifts: no piece pops in on the way in (${now.first.ground && now.first.ground.popIns} now, ${was.first.ground && was.first.ground.popIns} before)`,
+    !!now.first.ground && now.first.ground.popIns === 0 && !!was.first.ground && was.first.ground.popIns === 0, { now: now.first.ground, was: was.first.ground });
   /* 4. what it costs */
   const mb = (a) => (a && a.ground ? (a.ground.resident * a.ground.pieceBytes) / 1048576 : 0);
   const costAt = (k) => ({

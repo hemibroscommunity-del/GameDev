@@ -198,7 +198,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let stopAlive = false;
   (async () => {
     while (!stopAlive) {
-      await B.page.keyboard.press('Shift').catch(() => {});
+      await B.page.keyboard.press('Control').catch(() => {});
       for (let i = 0; i < 10 && !stopAlive; i++) await B.page.waitForTimeout(500).catch(() => {});
     }
   })();

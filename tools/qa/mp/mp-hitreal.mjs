@@ -546,11 +546,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      So: a real keystroke, on a loop, for as long as the run lasts.  It is the
      same remedy mp-hitmatrix uses to keep its duel target present, and it is
      honest -- a human standing there testing weapons has a thumb on the glass.
-     Shift, because it is real input to the window and nothing in the game. */
+     Control, because it is real input to the window and nothing in the game
+     (Shift was, until v2.3.3006 made it the sprint). */
   let stopAlive = false;
   (async () => {
     while (!stopAlive) {
-      await P.page.keyboard.press('Shift').catch(() => {});
+      await P.page.keyboard.press('Control').catch(() => {});
       for (let i = 0; i < 40 && !stopAlive; i++) await P.page.waitForTimeout(500).catch(() => {});
     }
   })();

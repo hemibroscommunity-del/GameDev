@@ -1,5 +1,6 @@
 import React from 'react';
 import { RBTN, LBTN } from './ShieldButton.jsx'; /* v2.3.2472: LBTN -- the left disc's geometry, shared with SpecialButton */
+import { SprintButton } from './SprintButton.jsx'; /* v2.3.3006 */
 
 /* ═══ v2.3.2264: THE DISC SAYS "HOT", IT DOES NOT SAY "OFF" ═══
  * Owner, on v2.3.2263's see-through button: "the disc that holds the attack
@@ -113,7 +114,10 @@ export function TouchControls(props) {
     className: "bt-desktop-hide",
     'data-joyzone': 'R',
     style: { position: 'fixed', right: 0, top: 0, width: '50%', height: 'calc(100% - var(--sheet-h, var(--dash-h)))' /* v2.3.1307: zones end above the OPEN sheet so movement works with menus open */, zIndex: 6, touchAction: 'none', background: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }
-  }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
+  }), /* v2.3.3006: the sprint button, right of the movement disc (SprintButton.jsx).
+     Rendered here, with the stick it belongs to, after the zones it sits on:
+     it swallows its own touches, so the walk and the roll beneath never see
+     a tap on it. */ React.createElement(SprintButton, { stateRef: stateRef, isLandscape: isLandscape }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-zone",
     ref: lWrapRef,
     'data-disc': 'L',

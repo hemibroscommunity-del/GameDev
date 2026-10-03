@@ -65,6 +65,7 @@ import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily che
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
+import { sprintMethods } from './sprint.js'; /* v2.3.3006: sprint -- stamina for 1.33x the walk */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
@@ -3421,7 +3422,9 @@ export class GameRoom {
             ps._guardBrokenUntil = Date.now() + this.GUARD_BREAK_MS;
             changed = true;
           }
-        } else if (ps.stamina < ps.maxStamina) {
+        } else if (ps.stamina < ps.maxStamina && !this._sprintHoldsRegen(ps, now)) {
+          /* v2.3.3006: ...and not while sprinting (sprint.js): a sprint that
+             refilled as it drained would never end */
           const stAmuletMult = 1 + (ps.amuletStaminaRegen || 0) / 100;
           // Phase 2 of the T1/T2 spec: Endurance multiplies stamina regen.
           const stEndMult = 1 + (ps.endurance || 0) * 0.002;
@@ -3482,7 +3485,10 @@ export class GameRoom {
          watched the whole sequence rather than the end state. */
       if (inHub && !ps._arenaMatch && !ps.blocking
           && !(ps._guardBrokenUntil && Date.now() < ps._guardBrokenUntil)) {
-        if (typeof ps.maxStamina === 'number' && typeof ps.stamina === 'number' && ps.stamina < ps.maxStamina) {
+        /* v2.3.3006: not the stamina while sprinting -- the drain must win
+           here too, as it does over a held shield */
+        if (typeof ps.maxStamina === 'number' && typeof ps.stamina === 'number' && ps.stamina < ps.maxStamina
+            && !this._sprintHoldsRegen(ps, now)) {
           const beforeSt2 = ps.stamina;
           ps.stamina = Math.min(ps.maxStamina, ps.stamina + Math.max(1, Math.ceil(ps.maxStamina * 0.10)));
           if (ps.stamina !== beforeSt2) changed = true;
@@ -5712,6 +5718,7 @@ Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
+Object.assign(GameRoom.prototype, sprintMethods); /* v2.3.3006 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.
 Object.assign(GameRoom.prototype, abilityMethods);

@@ -222,6 +222,10 @@ export const movementMethods = {
       ps.lastMoveAt = undefined;
       return;
     }
+    /* v2.3.3006: is this move a sprint step the worker pays for (sprint.js)?
+       Asked of every move, so a zone change or a first move never leaves an
+       earlier step's mark to be billed. */
+    const _sprintK = typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1;
     if (!zoneChanged && !firstMove
         && typeof ps.x === 'number' && typeof ps.y === 'number') {
       const dt = Math.max(0.001, (_now - ps.lastMoveAt) / 1000);
@@ -269,7 +273,15 @@ export const movementMethods = {
          -- spent as it is used, gone after GUST.ALLOW_MS.  Nothing on the
          wire can raise it. */
       const _gust = typeof this._gustAllowance === 'function' ? this._gustAllowance(ps, _now) : 0;
-      const maxDist = 500 * _spdCap * _moveMult * dt + 80 + _gust;
+      /* ═══ v2.3.3006: ...AND FOR A SPRINT THE WORKER IS PAYING FOR ═══
+         Owner: "a sprint button ... that drains down stamina but makes you
+         run about 33% faster until it drains out".  _sprintK above is
+         SPRINT.MULT only for a move marked `sp: 1` that sprint.js allows
+         (stamina left, not blocking, not switched off) -- whose stamina it
+         then bills below -- and for GRACE_MS after the last one, so a client
+         running a beat past the worker's zero is not rubber-banded.  Nothing
+         else on the wire can raise it. */
+      const maxDist = 500 * _spdCap * _moveMult * _sprintK * dt + 80 + _gust;
       const dx = msg.x - ps.x;
       const dy = msg.y - ps.y;
       if (dx * dx + dy * dy > maxDist * maxDist) {
@@ -332,7 +344,11 @@ export const movementMethods = {
     // budget above is rejected like any other teleport, and the player
     // stays put in the zone they were already in.
     if (accept) {
+      /* v2.3.3006: how far this move took the player, for the sprint's bill */
+      const _stepPx = (!zoneChanged && typeof ps.x === 'number' && typeof ps.y === 'number')
+        ? Math.sqrt((msg.x - ps.x) * (msg.x - ps.x) + (msg.y - ps.y) * (msg.y - ps.y)) : 0;
       ps.x = msg.x; ps.y = msg.y;
+      if (ps._sprintStep && typeof this._sprintPay === 'function') this._sprintPay(ps, _stepPx, _now, session.id);
       /* v2.3.1107: accept any DEFINED d/f, not just truthy -- today
          both are non-empty strings so `||` worked, but a future
          numeric encoding (0 = north) would silently stop relaying.

@@ -7,7 +7,8 @@
  * On a phone viewport, against a real worker, the game as a player gets it
  * (no switches in the address):
  *   1. a new character arrives in the Wheel's Brotown, by its town square,
- *      without walking a step; the zone says "The Wheel", and no test readout
+ *      without walking a step; the top bar says "Brotown / safe" (v2.3.3009:
+ *      it said "The Wheel"), and no test readout
  *      is on screen;
  *   2. until they have spoken to Mayor Bro they stay on the safe commons:
  *      walking out stops at its edge, with the banner;
@@ -85,12 +86,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const shown = await P.page.evaluate(() => {
     const h = document.getElementById('bt-world-trial');
     const t = document.querySelector('.bt-zone-header__title');
-    return { readout: !!(h && h.style.display !== 'none'), title: t ? t.textContent : null };
+    /* v2.3.3009: the place and its gold line, the bar's two lines in the Wheel */
+    const pl = document.querySelector('[data-zone-place]'), sb = document.querySelector('[data-zone-sub]');
+    return { readout: !!(h && h.style.display !== 'none'), title: t ? t.textContent : null,
+      place: pl ? pl.textContent : null, sub: sb ? sb.textContent : null };
   });
   rec.ok(`a new character starts in the Wheel's Brotown, by its town square, without walking a step (${zones.join(' -> ')}, ${((Date.now() - t0) / 1000).toFixed(1)} s, ${r(a)} px from the middle)`,
     a.zone === 'wheel' && zones[0] === 'town' && r(a) < 600, { zones, a });
-  rec.ok(`...the zone says "The Wheel", and no test readout is on screen ("${shown.title}")`,
-    !!shown.title && /The Wheel/.test(shown.title) && !/trial/i.test(shown.title) && !shown.readout, shown);
+  /* v2.3.3009: the owner: "Put the 'brotown safe' and other location
+     indicators in place of the 'the wheel lvl 1-2' on the top bar" */
+  rec.ok(`...the top bar says where he is, "${shown.place}" over "${shown.sub}" (not "The Wheel (Lv1-2)"), and no test readout is on screen`,
+    shown.place === 'Brotown' && shown.sub === 'safe' && !/The Wheel|Lv1-2|trial/i.test(shown.title || '') && !shown.readout, shown);
 
   /* ── 8a. the way to the Mayor, before a word with him ── */
   const w0 = await way(P);

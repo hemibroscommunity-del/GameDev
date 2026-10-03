@@ -157,6 +157,7 @@ const CAP_GATES = [
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
   'trade2Weapons', 'weaponDrops', 'whisper', 'zoneDepth' /* v2.3.2790 */, 'bowvolley' /* v2.3.2848 */, 'dailyChest' /* v2.3.2820 */, 'smelting' /* v2.3.2822 */, 'whirlWindup' /* v2.3.2824 */, 'gatherhits' /* v2.3.2956 */,
   'wheelmonsters' /* v2.3.2978: lower case, a kill switch */,
+  'sprint' /* v2.3.3006: lower case, a kill switch */,
   'wheelnodes' /* v2.3.3007: lower case, a kill switch */,
 ];
 
@@ -185,6 +186,7 @@ const CAP_NOTES = {
   gatherhits: 'gathering hits — a rock, tree or pond has HP that your swings knock off (1 to your skill level each) before the gesture; without it: the old timer (v2.3.2956)',
   bowvolley: 'the bow special as three white-hot arrows, two-thirds of a special each, a 2.5 s burn, no blast (v2.3.2849; without it: one arrow, its 4 s burn and the blast)',
   wheelmonsters: 'monsters in the Wheel (?trial=wheel): each land\'s own at the inner end of its spoke (v2.3.2978; without it: the Wheel has none)',
+  sprint: 'the sprint button right of the movement stick (and Shift): a third faster while your stamina lasts (v2.3.3006; without it: no button, everyone walks)',
   wheelnodes: 'resources in the Wheel: copper, pine and fish round town, iron and softwood at levels 1-10, black steel and hardwood at 11-20 (v2.3.3007; without it: nothing to gather there)',
 };
 

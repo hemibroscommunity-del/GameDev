@@ -34,6 +34,8 @@ import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3
 import { GATHER_HITS as SRV_GATHER_HITS } from '../src/gathering.js'; /* v2.3.2956 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
 import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC } from '../../src/game/elemHits.js'; /* v2.3.2996 */
+import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
+import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
 import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes } from '../../src/data/gameSystems.js'; /* v2.3.2956 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
@@ -1394,6 +1396,22 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const pubDir = fileURLToPath(new URL('../../public/', import.meta.url));
   const missing = Object.values(CLIENT_ELEM_ICON_SRC).filter((u) => { try { readFileSync(join(pubDir, u.replace(/^\//, ''))); return false; } catch (e) { return true; } });
   check('elem hits: every element icon is in public/', missing.length === 0, missing);
+}
+
+// ── v2.3.3006: the sprint (server sprint.js, client game/sprint.js).  The
+// worker bills the stamina and widens its bound; the client moves you and
+// predicts the bar between echoes.  Off by one number and either the bound
+// rubber-bands every sprint (client faster than the worker allows) or the
+// bar the client draws runs out at a different moment from the worker's.
+{
+  check('sprint: the same speed on both sides (SPRINT.MULT = SPRINT_MULT)',
+    SRV_SPRINT.MULT === CLIENT_SPRINT_MULT, { srv: SRV_SPRINT.MULT, cli: CLIENT_SPRINT_MULT });
+  check('sprint: the same drain on both sides (SPRINT.DRAIN_PER_S = SPRINT_DRAIN_PER_S)',
+    SRV_SPRINT.DRAIN_PER_S === CLIENT_SPRINT_DRAIN, { srv: SRV_SPRINT.DRAIN_PER_S, cli: CLIENT_SPRINT_DRAIN });
+  check('sprint: the same stamina to start one (SPRINT.MIN_START = SPRINT_MIN_START)',
+    SRV_SPRINT.MIN_START === CLIENT_SPRINT_MIN_START, { srv: SRV_SPRINT.MIN_START, cli: CLIENT_SPRINT_MIN_START });
+  check('sprint: the regen is held off for as long on both sides (REGEN_PAUSE_MS)',
+    SRV_SPRINT.REGEN_PAUSE_MS === CLIENT_SPRINT_REGEN_PAUSE, { srv: SRV_SPRINT.REGEN_PAUSE_MS, cli: CLIENT_SPRINT_REGEN_PAUSE });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

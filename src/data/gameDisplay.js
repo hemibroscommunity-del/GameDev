@@ -2266,6 +2266,9 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   },
   footstep: function footstep(armored, surface) {
     if (!this.ctx || this.muted) return;
+    /* v2.3.3003: no steps while you swim -- the strokes have their own clock
+       (game/wheelSwim.js -> swimStroke below) */
+    if (surface === 'swim') { this._noteStep('swim', 'swim', null, -1); return; }
     /* ═══ v2.3.2967: EACH GROUND ITS OWN STEP ═══
        Owner: "give each ground type its own footstep sound.  Grass sounds
        like walking through grass, walking through rocks sounds like walking
@@ -3692,6 +3695,56 @@ BT_AUDIO.shotHit = function (style, how, k) {
   }
   this._noteShot(style, how, keys, vol);
 };
+/* ═══ v2.3.3003: SWIMMING'S SOUNDS ═══
+   Owner: "add swimming ... and change the movement behavior".  Strokes in
+   place of steps, a splash going in and a drip coming out -- from the fishing
+   recordings already in the game (SFX_MANIFEST, so everyone has them; nothing
+   new, nothing synthesised): two slices of the fish thrashing on the hook and
+   the lure's plop for the strokes, the catch's splash going in, the plop
+   coming out.  Each slice's gain brings it to footstep-v3's loudness (both
+   measured the PROP_SOUNDS way: the loudest 50 ms, plain and A-weighted), so
+   SWIM_STEP_VOL is a bare step's own level; the splash in is twice it.
+   Layers as _playLayer's: [key, offset, duration (0 = to the end), gain,
+   rate, delay, fade].  game/wheelSwim.js keeps the strokes' clock; BroTown
+   plays these from what it reports. */
+BT_AUDIO.SWIM_SAMPLES = ['fish-on-hook', 'lure-drop', 'catch-splash'];
+BT_AUDIO.SWIM_STROKES = [
+  ['fish-on-hook', 0.375, 0.16, 0.8, 1, 0, 0.05],
+  ['fish-on-hook', 1.465, 0.12, 0.66, 1, 0, 0.04],
+  ['lure-drop', 0, 0, 1.43, 0.85],
+];
+BT_AUDIO.SWIM_SPLASH = {
+  in: [['catch-splash', 0, 0.45, 0.26, 1, 0, 0.1]],
+  out: [['lure-drop', 0, 0, 1.43, 1.1]],
+};
+BT_AUDIO.SWIM_STEP_VOL = 0.15;
+/* What the last swimming sound was, for the tests (mp-wheelswim). */
+BT_AUDIO._noteSwim = function (what, key, played) {
+  this._lastSwim = { what: what, key: key, played: !!played, at: Date.now() };
+  if (!this._swimCounts) this._swimCounts = Object.create(null);
+  this._swimCounts[what] = (this._swimCounts[what] || 0) + 1;
+};
+/** One stroke: one of SWIM_STROKES at random, never the same twice running. */
+BT_AUDIO.swimStroke = function () {
+  if (!this.ctx || this.muted) return;
+  var n = this.SWIM_STROKES.length;
+  var k = Math.floor(Math.random() * n);
+  if (n > 1 && k === this._lastStrokeI) k = (k + 1) % n;
+  this._lastStrokeI = k;
+  var L = this.SWIM_STROKES[k];
+  var h = this._playLayer(L, this.SWIM_STEP_VOL * (0.9 + Math.random() * 0.2), 1 + (Math.random() - 0.5) * 0.08, 1);
+  this._noteSwim('stroke', L[0], h);
+};
+/** Into the water ('in') or out of it ('out'). */
+BT_AUDIO.swimSplash = function (how) {
+  if (!this.ctx || this.muted) return;
+  var w = how === 'out' ? 'out' : 'in';
+  var S = this.SWIM_SPLASH[w];
+  var vol = this.SWIM_STEP_VOL * (w === 'in' ? 2 : 1);
+  var any = false;
+  for (var i = 0; i < S.length; i++) any = !!this._playLayer(S[i], vol, 1 + (Math.random() - 0.5) * 0.06, 1) || any;
+  this._noteSwim(w, S[0][0], any);
+};
 /* What the last monster blow on YOU sounded like, for the tests: `ball` when
    it was a ball's, softened (game/hitSounds.heroHitSfx). */
 BT_AUDIO._noteHero = function (armored, ball, vol) {
@@ -3813,6 +3866,13 @@ BT_AUDIO.loadGroundSteps = function () {
   this._groundStepsWanted = true;
   if (!this.ctx) return Promise.resolve();
   var self = this, jobs = [], seen = Object.create(null);
+  /* v2.3.3003: and swimming's (the manifest's own, so they stay on the way
+     out: every zone's fishing uses them) -- asked here too, so a quick walk
+     into a river before the manifest is through is not silent */
+  for (var w = 0; w < this.SWIM_SAMPLES.length; w++) {
+    var wk = this.SWIM_SAMPLES[w], wu = this.SFX_MANIFEST[wk];
+    if (wu) jobs.push(this.loadSample(wk, wu));
+  }
   for (var s in FOOTSTEP_CLIPS) {
     var c = FOOTSTEP_CLIPS[s];
     if (seen[c.key]) continue;

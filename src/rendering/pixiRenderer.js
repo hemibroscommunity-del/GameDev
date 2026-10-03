@@ -12,6 +12,7 @@ import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewar
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
+import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
 import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
@@ -178,6 +179,7 @@ export async function initPixiRenderer(canvas) {
      crumbling corpse needs the renderer to photograph the body it replaces. */
   const worldFx = new WorldFx(layers, app);
   const worldLife = new WorldLife(layers);
+  const swimFx = new SwimFx(layers);   /* v2.3.3003 */
   worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
   /* v2.3.2986: the stat scene's hero swings in frames photographed off the
@@ -477,6 +479,12 @@ export async function initPixiRenderer(canvas) {
       applyDepthBuckets(layers.entities, layers.gatherNodesFront, _pgy, _pgx);
     }
     catch (e) { if (!update._depthErr) { update._depthErr = true; console.error('[pixi-render] depth sort threw', e && e.message); } }
+    /* ═══ v2.3.3003: SWIMMERS, AFTER THE DEPTH PASS ═══
+       A swimmer is sorted where it swims (its boots, which the pass above
+       read), then sunk to the waterline and cut there (swimFx.js) -- and
+       before the lights, which then cast nothing for it. */
+    try { swimFx.update(S, entityRenderer, now); }
+    catch (e) { if (!update._swimErr) { update._swimErr = true; console.error('[pixi-render] swimFx threw', e && e.message, e && e.stack); } }
     /* v2.3.2710: light and shine, LAST of the world passes: a shadow copies
        each figure's pieces where they are THIS frame, so it runs after
        everything that moves them -- the entity pass, the stand-ins placed by

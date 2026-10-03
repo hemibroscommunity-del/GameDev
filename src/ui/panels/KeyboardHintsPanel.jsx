@@ -28,7 +28,10 @@ import React from 'react';
    ability.  They are listed unconditionally, unlocked or not: the label
    teaches the key, and pressing it before level 4/8 floats the reason. */
 const KEYS = [
-  ['WASD', 'Move'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'],
+  /* v2.3.3006: Shift, held -- the sprint (game/sprint.js); listed beside the
+     move it speeds up.  The touch button's twin, so it is listed on the
+     same terms as the rest: always, and the worker decides the rest. */
+  ['WASD', 'Move'], ['Shift', 'Sprint'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'],
   ['E', 'Interact'], ['Q', 'Shield'], ['Q+E', 'Bash'], ['R', 'Whirl'],
   ['Tab', 'Swap'], ['F', 'Special'],
   /* v2.3.1734: G — Element Burst.  Listed on the same terms v2.3.1733 set

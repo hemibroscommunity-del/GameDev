@@ -2085,6 +2085,30 @@ for everything by default (make both changes)"*.
   cost, and pictures of each (`zoomout-{now,was}-{arrival,square,land}.png`).
   test-world-core checks the switch and the plan.
 
+### And another 25% (v2.3.3011)
+
+Owner, 2026-10-03: *"Also on main is the game map zoomed out 25% already? If
+not do it. If it is already zoom it out another 25%"*. It was (v2.3.2997), so:
+
+- **`VIEW_OUT` is 0.64** (0.8 × 0.8). Wherever the map has room, the world is
+  drawn at 0.8 the scale it was again, and the view takes in 1.25x the world
+  each way: 1.56x the view before v2.3.2997.
+- **The bro is 0.8 the size again.** On the QA phone that is about 67 → 54
+  CSS px with the dashboard folded, and about 50 → 40 with it up. The owner
+  once called 37 px "too small" (v2.3.2249), so this is the first thing to
+  look at on a phone. `?zoom=0.8` brings the view before this step back for a
+  tab, and `?zoom=1` the one before that.
+- **Nothing else needed moving.** The ground's pieces and the Wheel's objects
+  are laid and drawn for the view's own size. The worker sends the monsters
+  within 2,400 px and their looks load at 2,600 px; the wider view reaches
+  about 920 px from its middle to a corner.
+- **The no-void floor still holds.** Today's town (2,176 x 1,760) still has
+  room, so `mp-figscale` reads town at `VIEW_OUT` the scale of a combat zone
+  as before.
+- **Tests:** `mp-zoomout` now compares the default against `?zoom=0.8`
+  (with the old town, for its building check): the scale ×0.8, the view ×1.25
+  across, the bro ×0.8, the ground laid, what the wider view costs.
+
 ## The objects take hits (v2.3.2995)
 
 Owner, 2026-10-03: *"change the sound if projectiles hit props to be more
@@ -2987,6 +3011,40 @@ caught it). The trial's own readout steps aside while the map is open.
   enchanter's mark, and a render error on the way through the World View),
   so those three were failing before it.
 
+### Where you are, on the top bar; the minimap framed (v2.3.3009)
+
+Owner, 2026-10-03: *"Put the 'brotown safe' and other location indicators in
+place of the 'the wheel lvl 1-2' on the top bar. It'll free up more room
+around the minimap. Also give the minimap thicker borders so it's not
+confused with game screen area"*.
+
+- **The top bar says where you are** in the Wheel
+  (`src/ui/mobile/ZoneHeader.jsx`, `wheelWhere`). It shows the same words the
+  minimap printed under its box, in two lines: the land (or "Brotown"), and
+  under it in gold its stage and levels, or "safe". "The Wheel (Lv1-2)" is
+  gone; the whole world is the Wheel, and the levels belong to each land.
+  - The last answer is kept while the next is on its way, and out on the open
+    sea, where there is no land to name, so the bar never blinks.
+  - Each line keeps its own "…", so a long stage name loses its tail, never
+    the land's name.
+  - Everywhere else the title is `zoneTitle`'s as before (the zone banner
+    docks into it).
+- **Nothing is printed under the minimap any more.** Its probe still carries
+  the words (`__btMinimap.words`).
+- **The minimap wears a thick frame**, 7 px (`FRAME` in `wheelMinimap.js`):
+  - a dark keyline outside;
+  - a slate band, the bars' own panel colour, with a lighter lip top and left;
+  - the brass line it always had, inside the band;
+  - a faint dark line where the map begins.
+
+  It is drawn over the map's edge, so the box stays 132 px and the map stays
+  centred in it. The box is opaque now (it was 0.92). The quest star waits
+  inside the frame (`QUEST_EDGE` 16), and the expand mark moved in with it.
+- **Tests:** `mp-wheelmap` reads both lines on the top bar (whole, inside the
+  bar), in the town and out on Frost Ridge. It checks nothing is printed
+  under the box, and reads the frame's slate band and brass line off the
+  screen. `mp-wheelhome` reads "Brotown" over "safe" on the way in.
+
 ### Always daylight, for now (v2.3.2963)
 
 > Owner, 2026-10-01, after one visit came out very dark just past the game's
@@ -3090,6 +3148,40 @@ Still to do, if wanted:
 - glints on the water and the lava's glow, found from the ground;
 - swinging signs and waving flags on the Wheel's buildings;
 - a banner as you enter each land.
+
+### Swimming (v2.3.3003)
+
+> Owner, 2026-10-03: *"I'm thinking you can add swimming and just use the
+> characters head poking out of the water plus code effects to make it look
+> like swimming and change the movement behavior"*.
+
+**Where you can swim:** every river, pond, lake and oasis, and the sea's
+shallows (the lighter shelf round each coast).
+
+**Where you can't:** the open sea past the shallows is still a wall. It keeps
+the spokes apart, and swimming across it would skip every pass and gate.
+
+How it is built:
+
+- `ground.js` `swimBits` works out where you can swim from the same distance
+  and noise that draw the shallows, so you swim out to the line you see.
+- The worker sends it as `walk.swim`, and the walk grid opens those cells.
+- You are swimming while the ground drawn under your boots is water.
+
+What changes while you swim:
+
+- **Speed:** 0.55 of your walk, in strokes.
+- **Glide:** you ease in, and drift on when you let go.
+- **No fighting:** no attacks, abilities, roll or shield. "Swimming!" says why.
+- **The look:** you are a head in the water. The figure is sunk to its neck
+  and cut there, with a foam ring, ripples, a wake, your body dark under the
+  surface, and splashes for the arms.
+- **Sound:** strokes, a splash going in and a drip coming out, all from the
+  fishing recordings already in the game.
+
+Other players are drawn swimming too. `?noswim` closes every drop of water
+again. Details are in `docs/specs/wheel-swimming.md`; tests are `mp-wheelswim`
+and test-world-core "swimming".
 
 ### On a slow connection (v2.3.2959)
 

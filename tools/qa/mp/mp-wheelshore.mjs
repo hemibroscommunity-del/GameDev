@@ -73,13 +73,18 @@ const SHORES = (P) => P.page.evaluate(({ run }) => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Shorewalk', wsPort, webPort, world: 'wheel' });
+  /* v2.3.3003: with `noswim` -- swimming opens the rivers and ponds (and the
+     sea's shallows), so the shores near town are no longer walls; the rule
+     this checks, that a wall of water meets the BOOTS, holds for the open
+     sea and for every drop of water with swimming off (mp-wheelswim checks
+     the open sea's line with it on) */
+  const P = await H.newPlayer(browser, { name: 'Shorewalk', wsPort, webPort, world: 'wheel', query: 'noswim' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   await H.enterWorld(P);
   const myId = await H.readState(P, (S) => S.myId);
   let alive = true;
-  const keep = (async () => { while (alive) { await P.page.keyboard.press('Shift').catch(() => {}); await P.page.waitForTimeout(20000); } })();
+  const keep = (async () => { while (alive) { await P.page.keyboard.press('Control').catch(() => {}); await P.page.waitForTimeout(20000); } })();
   const inWheel = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading, grid: !!(S._tiledWalkable && S._tiledWalkable.wheel && S._tiledWalkable.wheel.length) }),
     (v) => v.zone === 'wheel' && !v.loading && v.grid, { timeout: 90000, label: 'into the Wheel' }).catch(() => null);
   rec.ok('in the Wheel, its walk grid there (guard)', !!inWheel, inWheel);

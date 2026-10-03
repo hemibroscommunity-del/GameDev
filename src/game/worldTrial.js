@@ -55,6 +55,7 @@
 import { ZONES } from '../data/zones.js';
 import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/effects.js';
 import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo, wheelObjectStats, wheelObjectsInfo, wheelObjectsOn, wheelBigTown } from './wheelTrial.js';
+import { swimFeet } from './wheelSwim.js';   /* v2.3.3003: the footstep's ground is at your boots, and the water's while you swim */
 import { setAlwaysDay } from './timeOfDay.js';
 import { wheelArtStats } from '../rendering/wheelMonsterArt.js';   /* v2.3.2989: the monsters' looks, loaded as you walk toward them */
 
@@ -313,6 +314,25 @@ async function preloadWheel() {
   const steps = loadGroundSteps();
   const info = await wheelStart();
   if (info.arrival) setExits(exitBeside(info.arrival), info.arrival, 'west');
+  /* v2.3.3011: as much round the arrival as the view will really show.  The
+     box was fixed for a portrait phone's view before VIEW_OUT (about 585 x
+     1270 game px), and the view is 774 x 1600 at 0.64 -- the ground past the
+     box popped in after the overlay lifted (26 pieces at the arrival,
+     mp-zoomout).  Read from the canvas as it is now (worldViewport, imported
+     here and not at the top: this module must load in Node), plus the
+     ground's own MARGIN past the view; never less than the old box. */
+  let half = null;
+  try {
+    const { worldViewport } = await import('./worldViewport.js');
+    const c = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas');
+    const v = c ? worldViewport(c, 'wheel') : null;
+    if (v && v.W > 0 && v.H > 0) half = { x: v.W / 2, y: v.H / 2 };
+  } catch (e) { half = null; }
+  const warmX = Math.max(360, half ? Math.ceil(half.x + WARM_PAD) : 0);
+  const warmY = Math.max(620, half ? Math.ceil(half.y + WARM_PAD) : 0);
+  const objX = Math.max(WARM_OBJECTS_X, half ? Math.ceil(half.x + WARM_PAD) : 0);
+  const objY = Math.max(WARM_OBJECTS_Y, half ? Math.ceil(half.y + WARM_PAD) : 0);
+  wheelStats.warm = { x: warmX, y: warmY };   /* QA: the box laid before the overlay lifts */
   /* v2.3.2975: and the sprite sheets of the objects round the arrival --
      the town's buildings and props -- so the town is standing when the
      overlay lifts, loading WHILE the worker lays the first screen of ground
@@ -325,10 +345,10 @@ async function preloadWheel() {
       /* ...and Mayor Bro's own copy of his picture: town's is freed a beat
          after you leave town (npcSprites.js loadWheelNpcArt) */
       const ns = await import('../rendering/npcSprites.js');
-      await Promise.all([wheelObjectsOn() ? wo.wheelObjectsWarm(WORLDVIEW_ARRIVAL.x, WORLDVIEW_ARRIVAL.y, WARM_OBJECTS_X, WARM_OBJECTS_Y) : null, ns.loadWheelNpcArt()]);
+      await Promise.all([wheelObjectsOn() ? wo.wheelObjectsWarm(WORLDVIEW_ARRIVAL.x, WORLDVIEW_ARRIVAL.y, objX, objY) : null, ns.loadWheelNpcArt()]);
     } catch (e) { /* no objects: the ground alone, as before */ }
   })();
-  await wheelWarm(WORLDVIEW_ARRIVAL.x, WORLDVIEW_ARRIVAL.y, 360, 620);
+  await wheelWarm(WORLDVIEW_ARRIVAL.x, WORLDVIEW_ARRIVAL.y, warmX, warmY);
   await objects;
   await Promise.race([steps, new Promise((r) => setTimeout(r, STEPS_WAIT_MS))]);
   _ready = true;
@@ -346,10 +366,18 @@ const STEPS_WAIT_MS = 5000;
    below for tall pictures) the objects' sheets are loaded before the
    overlay lifts: a portrait phone shows about 585 x 1270 game px */
 const WARM_OBJECTS_X = 420, WARM_OBJECTS_Y = 720;
+/* v2.3.3011: past the view's half, the ground's own MARGIN (wheelGround.js) */
+const WARM_PAD = 96;
 let _lastSurface = null;
+/* v2.3.3003: read at your BOOTS (wheelSwim.js keeps where they were looked
+   at this frame; the body's centre, ~52 px above them, heard the ground a
+   step ahead walking north), and 'swim' while you swim: BT_AUDIO.footstep
+   is silent for it, the strokes have their own clock (wheelSwim.js). */
 export function footstepSurface(S) {
   if (!S || !S.player || !isWheelTrialZone(S.currentZone)) return null;
-  const s = wheelStepAt(S.player.x, S.player.y);
+  const f = swimFeet(S);
+  if (f && f.on) return 'swim';
+  const s = f ? wheelStepAt(f.x, f.y) : wheelStepAt(S.player.x, S.player.y);
   if (s) _lastSurface = s;
   return s || _lastSurface;
 }
