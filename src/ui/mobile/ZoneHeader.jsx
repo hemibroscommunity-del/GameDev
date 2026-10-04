@@ -6,6 +6,7 @@ import { calm as lifeCalm } from './dash/bagLife.js'; /* v2.3.2815: the purse's 
 import { dayPhase, lightingAt, zoneHasSky } from '../../game/timeOfDay.js'; /* v2.3.2892: the hour beside the zone name */
 import { wheelHere } from '../../game/wheelTrial.js'; /* v2.3.3009: where you are in the Wheel, in words */
 import { ZONES } from '../../data/zones.js'; /* v2.3.3009: the Wheel's name, before its first words come */
+import { landLook } from '../../data/wheelLands.js'; /* v2.3.3024: each land's element icon and colour */
 
 /* ═══ v2.3.2892: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
    Owner: "Add a time of day icon next to current map name."  The hour is
@@ -151,8 +152,18 @@ function wheelWhere(S, last) {
   let h = null;
   try { h = wheelHere(S.player.x, S.player.y); } catch (e) { h = null; }
   const w = h && h.words;
-  if (w && w.title) last.current = { title: w.title, sub: w.sub || '' };
+  if (w && w.title) last.current = { title: w.title, sub: w.sub || '', region: h.region || null };
   return last.current;
+}
+
+/* v2.3.3024: the land's name in its own colour, lifted toward white so it
+   reads on the dark bar (src/data/wheelLands.js), beside its element's icon --
+   the owner: "elemental zones need something more obvious that the player is
+   in that elemental zone".  Brotown and the commons keep the plain title. */
+function landTint(hex, k = 0.42) {
+  const v = parseInt(String(hex).slice(1), 16);
+  const f = (c) => Math.round(c + (255 - c) * k);
+  return `rgb(${f((v >> 16) & 255)}, ${f((v >> 8) & 255)}, ${f(v & 255)})`;
 }
 
 export const ZoneHeader = ({ onExit }) => {
@@ -276,7 +287,12 @@ export const ZoneHeader = ({ onExit }) => {
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         >{where
           /* v2.3.3009: the Wheel's words, two lines -- as the minimap had them */
-          ? <><span className="bt-zone-header__place" data-zone-place="1">{where.title}</span>
+          ? <><span className="bt-zone-header__place" data-zone-place="1"
+                data-zone-land={where.region || ''}
+                style={landLook(where.region) && landLook(where.region).element ? { color: landTint(landLook(where.region).color) } : undefined}>
+                {landLook(where.region) && landLook(where.region).icon
+                  ? <img className="bt-zone-header__elem" src={landLook(where.region).icon} alt="" width="16" height="16" draggable="false" />
+                  : null}{where.title}</span>
               {where.sub ? <span className="bt-zone-header__sub" data-zone-sub="1">{where.sub}</span> : null}</>
           : (S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'The Wheel') : zoneTitle(S))}</div>
         </div>

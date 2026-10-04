@@ -52,10 +52,10 @@
  *                                   and tier there, and in words for the map)
  *   anything that fails          -> { type: 'error', id, message }
  */
-import { PLAN as BASE_PLAN, bigTownPlan, bigTownScale } from '../plan.js';
+import { PLAN as BASE_PLAN, planFor } from '../plan.js';
 import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
-import { materialMap, composeGround, swatchesUnder, walkBits, swimBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder, waterRivers, wavesOn } from './ground.js';
+import { materialMap, composeGround, swatchesUnder, walkBits, swimBits, overviewPixels, overviewLands, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder, waterRivers, wavesOn, calmWater, WATER_SWATCHES } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 import { wheelMap, whereWords } from './wheelmap.js';
@@ -219,6 +219,12 @@ function prefetchRound(i, j) {
 }
 
 const post = (msg, transfer) => self.postMessage(msg, transfer || []);
+/* v2.3.3021: the water pictures calmed so far, and the time it took; and
+   the calm pictures themselves, kept apart from `decoded` (which lets
+   pictures go as you walk), so none is worked out twice: four at most, the
+   water's A and B versions, 1 MB each */
+const calmStats = { n: 0, ms: 0 };
+const calmed = new Map();
 let queue = Promise.resolve();
 self.onmessage = (ev) => {
   const m = ev.data || {};
@@ -237,7 +243,8 @@ async function handle(m) {
 
 async function init(m) {
   const t0 = performance.now();
-  PLAN = bigTownPlan(bigTownScale(m && m.search));
+  /* v2.3.3022: the standard plan, or the one `?bigtown` asks for (plan.js planFor) */
+  PLAN = planFor(m && m.search);
   const g = gridInfo(PLAN);
   const full = buildBlueprint(PLAN);
   const mm = materialMap(PLAN, full);
@@ -249,6 +256,8 @@ async function init(m) {
      with composeGround's seed, so you swim out to the line that is drawn */
   const swim = swimBits(bp, mm, (PLAN.seed | 0) + 900, bits);
   const ov = overviewPixels(bp, mm, OVERVIEW_CELLS);
+  /* v2.3.3024: and the land under each of its pixels, for the flat colours */
+  const ovLands = overviewLands(bp, mm, full.reg, OVERVIEW_CELLS);
   /* v2.3.2966: the map the minimap and the world map draw (wheelmap.js),
      and each cell's region and tier, kept for "where am I" (6 MB) */
   const map = wheelMap(PLAN, full);
@@ -263,7 +272,11 @@ async function init(m) {
   W = { bp, mm, reg: full.reg, tier: full.tier, regionIds: full.regionIds, map,
     /* v2.3.3019: the rivers' lines, for the way each piece's water runs, and
        whether to lay the water's fields at all (`?nowaves` keeps it still) */
-    rivers: waterRivers(PLAN, full), waves: wavesOn(m && m.search) };
+    rivers: waterRivers(PLAN, full), waves: wavesOn(m && m.search),
+    /* v2.3.3021: and whether to take the light's frozen web out of the water
+       pictures (ground.js CALM WATER) -- only where the game says it draws
+       the water moving (WebGL2, not `?nowaves`), whose web of light moves */
+    calm: wavesOn(m && m.search) && !!(m && m.moving) };
   const t1 = performance.now();
   const objMan = objectsManifest();
   await findSwatches(mm, edgePiecesOn(m && m.search), blendsOn(m && m.search));
@@ -289,6 +302,9 @@ async function init(m) {
     worldW: bp.w * bp.scale * WPA, worldH: bp.h * bp.scale * WPA,
     walk: { cols: bp.w, rows: bp.h, bits, swim },
     overview: ov,
+    /* v2.3.3024: the land under each overview pixel (index into `regionIds`,
+       255 water), for the minimap's and world map's flat land colours */
+    overviewLands: { w: ovLands.w, h: ovLands.h, data: ovLands.data, ids: full.regionIds.slice() },
     chunk: { artPx: CHUNK, gamePx: CHUNK * WPA, px: CHUNK * K, apronPx: APRON * K, cols: Math.ceil(bp.w * bp.scale / CHUNK), rows: Math.ceil(bp.h * bp.scale / CHUNK),
       under: CHUNK / UNDER },
     arrival: { x: Math.round((ax - bp.x0) * WPA), y: Math.round((ay - bp.y0) * WPA) },
@@ -304,9 +320,12 @@ async function init(m) {
     /* v2.3.2975: the objects, as placing.js gives them (typed arrays, moved
        not copied) */
     objects,
-    /* v2.3.2982: the big-town preview's building size (1 without it) */
+    /* v2.3.2982: the big-town preview's building size (1 without it) --
+       v2.3.3022: the size the town is LAID for, and its pictures' own
+       (plan.js bigTownPlan: 1.5 and 1.15 as standard) */
     bigTown: PLAN.bigTown || 1,
-  }, [bits.buffer, ov.data.buffer, objects.kind.buffer, objects.piece.buffer, objects.flip.buffer, objects.x.buffer, objects.y.buffer,
+    buildings: (PLAN.town && PLAN.town.buildingScale) || 1,
+  }, [bits.buffer, ov.data.buffer, ovLands.data.buffer, objects.kind.buffer, objects.piece.buffer, objects.flip.buffer, objects.x.buffer, objects.y.buffer,
     objects.boxOf.buffer, objects.boxes.buffer]);
 }
 
@@ -457,6 +476,11 @@ async function tileOf(id, ver, wait) {
     chase(k);
     return null;
   }
+  /* v2.3.3021: a water picture calmed before (and let go from `decoded`
+     since, as you walked inland): the same file, so the same calm picture --
+     never worked out twice */
+  const wasCalmed = calmed.get(k);
+  if (wasCalmed && wasCalmed.blob === blob) { decoded.set(k, wasCalmed.tile); return wasCalmed.tile; }
   let tile = null;
   try {
     const bm = await createImageBitmap(blob);
@@ -474,6 +498,15 @@ async function tileOf(id, ver, wait) {
        is a see-through pixel's, so 255 at most); a game picture made on the
        old shared palette has fewer, and comes out the same */
     tile = indexed(d, TILE, coloursOf(d, 255) || s.pal);
+    /* v2.3.3021: a water picture without its frozen web of light, where the
+       game draws its own, moving (ground.js CALM WATER) */
+    if (W && W.calm && WATER_SWATCHES.includes(id) && tile.idx) {
+      const tc = performance.now();
+      tile = calmWater(tile);
+      calmStats.n++;
+      calmStats.ms += Math.round(performance.now() - tc);
+      calmed.set(k, { blob, tile });
+    }
   } catch (e) {
     failed.add(k);               /* this browser cannot unpack it: plan colour, and the readout says so */
     return null;
@@ -567,7 +600,9 @@ async function chunk(m) {
     ms: Math.round(performance.now() - t0), unpacked: decoded.size, unreadable: failed.size,
     /* v2.3.2959: laid without some of its pictures (lay it again later), and
        how the downloads stand */
-    partial: lacking.size > 0, lacking: [...lacking], downloading: dlJobs.size, dlFails }, moved);
+    partial: lacking.size > 0, lacking: [...lacking], downloading: dlJobs.size, dlFails,
+    /* v2.3.3021: the water pictures calmed (ground.js CALM WATER) */
+    calm: W.calm ? { n: calmStats.n, ms: calmStats.ms } : null }, moved);
 }
 
 /* v2.3.2967: the swatch DRAWN under the piece's own square (not its apron),

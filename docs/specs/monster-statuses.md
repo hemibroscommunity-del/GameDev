@@ -224,6 +224,25 @@ down.
 - **The number's icon.** The element's icon replaces the heart (gameEvents.js).
   The icons load at start with the other popup icons (effectsRenderer
   `POPUP_ICON_SRC`).
+- **Since v2.3.3026, as big as the sword's, over your head.** The owner:
+  *"when monsters damage you I want the damage numbers as large as they
+  usually are and with the elemental icon after the damage number similar to
+  how the sword has sword icon if melee damage, arrow icon if bow damage"*.
+  - **The size.** The number was always the same 21 px as one you deal. But
+    it spawned at your body's y - 20, on your face and white shirt, under the
+    swing and the monster's plate. Now it spawns over your band (your name
+    plate or HP bar, whichever is up) the way a number you deal spawns over
+    the monster's bar: `combatHelpers heroPopupY` / `peerPopupY`, 34 world px
+    over the band's top. "Blocked!" and a player's hits on you too.
+  - **The icon.** The weapon marks are tight pixel art, 95-98% of their
+    picture. The element badges and the heart are painted with a margin
+    (64-83%), so drawn to the same height the snowflake read 14 px beside
+    the sword's 20. Each is cut to its own opaque box as it loads
+    (`_tightPopupIcon`, alpha > 16), so it is drawn as tall as the number
+    with the sword's gap. The slime's splat is no wider than 1.5x that. The
+    HUD chips keep the whole picture.
+  - **No "-0".** A dodge the worker rolled now says "Dodged". A hit that did
+    nothing else (the arrival grace) says nothing.
 - **A burn's tick** (and the fire trail's) is fire on you, not a blow. It
   carries the flame and flame-coloured sparks, and plays a sizzle. It has no
   flinch, no camera kick, no blood and no armour clang.

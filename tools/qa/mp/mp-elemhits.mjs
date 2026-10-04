@@ -307,6 +307,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     more('elem-frost') >= 1 && more('elem-wind') >= 1 && more('slime') >= 1 && more('heart') >= 1, { i0, i1 });
   rec.ok(`icons: ...and the stone (${more('elem-stone')}), the storm (${more('elem-storm')}), the water (${more('elem-water')}) and the venom (${more('elem-venom')}) on theirs (v2.3.3014)`,
     ['elem-stone', 'elem-storm', 'elem-water', 'elem-venom'].every((k) => more(k) >= 1), { i0, i1 });
+  /* v2.3.3026, owner: "when monsters damage you I want the damage numbers as
+     large as they usually are and with the elemental icon after the damage
+     number similar to how the sword has sword icon if melee damage, arrow
+     icon if bow damage" -- each mark cut to its own opaque box and drawn as
+     tall as the number, as the sword is (the badges' margins had drawn the
+     snowflake about 14 px beside the sword's 20), the slime's splat no wider
+     than 1.5x that; and the number spawned over your head's band, as a number
+     you deal is over the monster's bar -- not on your face (it was y - 20) */
+  {
+    const taken = await P.page.evaluate(() => (window.__btTakenPops ? JSON.parse(JSON.stringify(window.__btTakenPops)) : null)) || {};
+    const MARKS = ['elem-frost', 'elem-flame', 'elem-wind', 'elem-stone', 'elem-storm', 'elem-water', 'elem-venom', 'heart'];
+    const tall = (t) => !!t && !!t.tight && Math.abs(t.h - Math.min(t.font, 22)) < 0.6;
+    const sl = taken.slime;
+    const slimeOk = !!sl && !!sl.tight && sl.w <= 1.5 * Math.min(sl.font, 22) + 0.6;
+    const overHead = MARKS.every((k) => taken[k] && taken[k].band != null && taken[k].y < taken[k].band);
+    const fr = taken['elem-frost'] || {};
+    rec.ok(`numbers taken: every element's mark is cut to its own size and drawn as tall as the number (the snowflake ${fr.h} px for a ${fr.font} px number, the slime's splat ${sl ? sl.w : '?'} px wide), and each number spawned over your head (${fr.band != null ? Math.round(fr.band - fr.y) : '?'} world px over the band's top), not on your face`,
+      MARKS.every((k) => tall(taken[k])) && slimeOk && overHead, taken);
+  }
 
   /* 6. the chips */
   await clearStatuses(P);

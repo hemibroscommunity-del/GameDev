@@ -149,6 +149,7 @@ import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal,
   hasGatherTool,
   gatherSkillForNodeType /* v2.3.3018: which skill's picture the attack disc shows at a resource */ } from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
+import { waitForWheelArrival } from '@/game/wheelHome.js';   /* v2.3.3025: the loading screen waits for the way in */
 /* v2.3.1593: mayorWelcomeSeen dropped — its only caller was the greeting
    trigger the owner asked to remove.  MayorGreeting itself stays imported
    because the (now unreachable) render branch below still references it. */
@@ -808,6 +809,7 @@ export var BroTown = function BroTown(_ref0) {
      never sees the armour->unarmoured flicker on first turn. */
   var introWaitRef = useRef(null);
   var introServerRef = useRef(null);   /* v2.3.2439: the server gate the loading screen awaits beside the assets */
+  var introWorldRef = useRef(null);    /* v2.3.3025: ...and the arrival in the Wheel's Brotown (wheelHome.js) */
   /* v2.3.831: the splash theme Audio lives in a ref (not a per-effect
      local) so it survives the splash->loading-screen transition and the
      IntroVideo can crossfade it into the town ambience. */
@@ -10427,9 +10429,16 @@ export var BroTown = function BroTown(_ref0) {
        veils the world on every road that has no loading screen (?debug=1
        here, the resume below) and on a dropped socket.  See serverReady.js. */
     introServerRef.current = waitForServerReady();
+    /* v2.3.3025: and the way in, which runs through today's town -- one
+       loading screen from the tap to the Wheel's square (wheelHome.js) */
+    introWorldRef.current = waitForWheelArrival(function () { return stateRef.current; }, introServerRef.current);
     installWorldHold();
     kickSfxAtGate(introWaitRef.current);
     holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
+    /* v2.3.3025: the clip is the loading screen from this instant: no zone
+       veil over it (game.css body.bt-intro-up), not even on the frame before
+       IntroVideo mounts -- it takes the class away when it lifts */
+    if (!_skipIntro) { try { document.body.classList.add('bt-intro-up'); window.__btIntroUpAt = Date.now(); } catch (e) {} }
     if (!_skipIntro) setShowIntro(true);
     else {
       /* v2.3.831: no IntroVideo to hand the theme off, so stop it here;
@@ -10698,6 +10707,7 @@ export var BroTown = function BroTown(_ref0) {
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
     waitForServer: introServerRef.current,   /* v2.3.2439 */
+    waitForWorld: introWorldRef.current,     /* v2.3.3025 */
     themeAudio: themeAudioRef,
     /* v2.3.1219: when the loading intro fades, greet a brand-new player with
        the Mayor's welcome (once per browser).  Returning players — whose
@@ -10714,6 +10724,9 @@ export var BroTown = function BroTown(_ref0) {
          correct (the overlay is covering it), and after it a dark canvas is
          the bug the owner reported. */
       try { if (stateRef.current) stateRef.current.__introLiftedAt = Date.now(); } catch (e) {}
+      /* v2.3.3025: and WHERE -- the way in now arrives before the screen lifts
+         (mp-wheelhome reads it) */
+      try { if (stateRef.current) stateRef.current.__introLiftedZone = stateRef.current.currentZone; } catch (e) {}
       /* v2.3.2121 (owner: "first time upon joining the game you get a message
          about welcome to bro town and find the mayor"): here, because this is
          the instant the world becomes visible — the same beat the v2.3.1593

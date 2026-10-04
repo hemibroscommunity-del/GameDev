@@ -426,6 +426,9 @@ async function body({ P, wsPort, rec }) {
           await new Promise((res) => requestAnimationFrame(res));
           await new Promise((res) => requestAnimationFrame(res));
           out.atReady.bar = window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null;
+          /* v2.3.3027: and what the band over the head shows instead */
+          out.atReady.plate = window.__btResourceBars ? window.__btResourceBars.plateVisible : null;
+          out.atReady.hpA = window.__btHpReads ? window.__btHpReads.barA : null;
           break;
         }
         await new Promise((res) => requestAnimationFrame(res));
@@ -542,6 +545,21 @@ async function body({ P, wsPort, rec }) {
     r.ok(`${skill}: at ready the node reads 0, its bar shows 0 and CALLS for the gesture (the old head bar's flash)`,
       !!tr.atReady && tr.atReady.hp === 0 && !!tr.atReady.bar && tr.atReady.bar.show === true && tr.atReady.bar.hp === 0
         && tr.atReady.bar.frac === 0 && tr.atReady.bar.ready === true && tr.atReady.bar.call === true, tr.atReady);
+    /* v2.3.3027, owner: "Ticks for the resource extraction is too hard to
+       see. You can make it as large as the normal hp bar and just hide the
+       player name plate and health bar during extraction" -- the bar is over
+       the gatherer's head (the miner and the angler are you; the lumberjack
+       and the cook stand-ins), about 143 world px over the boots at a flat
+       zone's scale, at the HP bar's 76 x 22, and the plate and your own HP bar
+       are put away while it is */
+    {
+      const b = (tr.atReady && tr.atReady.bar) || {};
+      const zs = (b.scale || 0) / 1.25, over = b.feet != null ? b.feet - b.y : NaN;
+      r.ok(`${skill}: ...the bar is over the ${skill === 'woodcutting' ? 'lumberjack\'s' : skill === 'cooking' ? 'cook\'s' : 'gatherer\'s'} head (${Math.round(over)} world px over the boots), at the HP bar's size (${b.w} x ${b.h}), the name plate and the HP bar put away`,
+        b.big === true && Math.abs(b.w - 76 * b.scale) < 0.6 && Math.abs(b.h - 22 * b.scale) < 0.6
+          && over > 120 * zs && over < 170 * zs && tr.atReady.plate === false && tr.atReady.hpA === 0,
+        { bar: b, over, plate: tr.atReady && tr.atReady.plate, hpA: tr.atReady && tr.atReady.hpA });
+    }
 
     /* 5. the gesture still pays */
     const res = await gestureAndPay(type, invBefore, r, skill);

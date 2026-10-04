@@ -50,9 +50,10 @@
  * are drawn once from numbers.
  */
 import { Container, Graphics, Sprite, Texture, CanvasSource } from 'pixi.js';
-import { wheelOverview, wheelMapInfo, wheelHere } from '@/game/wheelTrial.js';
+import { wheelOverviewLands, wheelMapInfo, wheelHere } from '@/game/wheelTrial.js';
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
+import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 
 export const WHEEL_BOX = 132;      /* CSS px a side */
 export const WHEEL_WINDOW = 3200;  /* game px across the box: about three zones */
@@ -86,6 +87,17 @@ const C_NODE = {
   fishSpot: { 1: 0xd6e8f5, 6: 0xff8a3a, 11: 0xc4b46a },
 };
 const NODE_PX = 10;
+/* ═══ v2.3.3023: THE WAY HOME ═══
+   Owner, 2026-10-04: "Right now the world feels hard to navigate without
+   losing your sense of position relative to the town center."  The box shows
+   about 1,400 game px round you, so Brotown's square left it at the town's
+   own gates and nothing on screen said where town was.  Now, whenever town is
+   off the box, a HOME BADGE rides the box's inner edge on the line from you
+   to the town's centre -- the house on a dark disc, a point on its outer
+   side aimed at town -- the way the quest's star rides it (v2.3.2990).  When
+   the quest's own way leads to Mayor Bro, in town, the star says it, and the
+   badge stands aside. */
+const HOME_R = 10, HOME_ICON_PX = 13, C_HOME = 0xf4f0e7, C_HOME_BG = 0x0b161b, C_HOME_RING = 0xd8aa58;
 
 export class WheelMinimap {
   constructor(hudLayer, icons, dotTex) {
@@ -142,6 +154,21 @@ export class WheelMinimap {
       .moveTo(ex + 2, ey + 2).lineTo(ex + 5, ey + 5).moveTo(ex + 10, ey + 10).lineTo(ex + 7, ey + 7)
       .stroke({ width: 1.5, color: C_FRAME, cap: 'round', join: 'round' });
     this.root.addChild(border, expand);
+    /* v2.3.3023: the way home (THE WAY HOME, above) -- over the frame, as the
+       badge rides its inner edge */
+    this.home = new Container();
+    this.home.label = 'wheel-minimap-home';
+    this.homeDisc = new Graphics();
+    this.homeDisc.circle(0, 0, HOME_R).fill({ color: C_HOME_BG, alpha: 0.88 }).stroke({ width: 1.5, color: C_HOME_RING });
+    this.homePoint = new Graphics();
+    this.homePoint.poly([HOME_R + 5.5, 0, HOME_R - 1, -4.5, HOME_R - 1, 4.5]).fill(C_HOME_RING).stroke({ width: 1, color: C_HOME_BG });
+    this.homeIcon = new Sprite(this.icons.house || this.dotTex);
+    this.homeIcon.anchor.set(0.5);
+    this.homeIcon.width = HOME_ICON_PX; this.homeIcon.height = HOME_ICON_PX;
+    this.homeIcon.tint = C_HOME;
+    this.home.addChild(this.homePoint, this.homeDisc, this.homeIcon);
+    this.home.visible = false;
+    this.root.addChild(this.home);
 
     /* v2.3.3009: the words that were printed under the box are the top
        bar's now (ZoneHeader.jsx wheelWhere) */
@@ -188,15 +215,20 @@ export class WheelMinimap {
 
   _placeUnder(map) {
     if (this.under) return;
-    const c = wheelOverview();
+    /* v2.3.3024: each land one flat colour (wheelTrial.js landsCanvas; the
+       owner: "There might need to be flat colors on the minimap to help
+       orient you to what elemental zone you're in") */
+    const c = wheelOverviewLands();
     if (!c || !c.width) return;
     /* a fresh source, as wheelGround.js makes its own (never Texture.from
        a canvas: that one is cached by the canvas and shared) */
     const tex = new Texture({ source: new CanvasSource({ resource: c, width: c.width, height: c.height, resolution: 1, scaleMode: 'linear' }) });
     const s = new Sprite(tex);
     s.width = map.worldW * SCALE; s.height = map.worldH * SCALE;
-    /* a touch darker than the ground, so every mark on it reads */
-    s.tint = 0xb4b4b4;
+    /* a touch darker than the ground, so every mark on it reads --
+       v2.3.3024: the flat land colours a lighter touch (they are mid-tones
+       already) */
+    s.tint = 0xdadada;
     this.pan.addChildAt(s, 0);
     this.under = s;
   }
@@ -290,6 +322,38 @@ export class WheelMinimap {
       this._mark((pbx + dx * t - this.pan.x) / SCALE, (pby + dy * t - this.pan.y) / SCALE, 'star', C_QUEST_STAR, QUEST_STAR_PX);
     }
     for (let i = this.used; i < this.pool.length; i++) this.pool[i].visible = false;
+    /* v2.3.3023: the way home -- when the town's centre is off the box, its
+       badge on the box's inner edge, on the line from you to it (the quest's
+       clamp, a badge's width further in), its point aimed at town; aside
+       while the quest's star leads to Mayor Bro, who stands there */
+    let home = null;
+    {
+      const T = map.hub.town;
+      const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
+      const dx = (T.x - P.x) * SCALE, dy = (T.y - P.y) * SCALE;
+      const lo = QUEST_EDGE + 1, hi = WHEEL_BOX - QUEST_EDGE - 1;
+      let t = 1;
+      if (dx > 0) t = Math.min(t, (hi - pbx) / dx); else if (dx < 0) t = Math.min(t, (lo - pbx) / dx);
+      if (dy > 0) t = Math.min(t, (hi - pby) / dy); else if (dy < 0) t = Math.min(t, (lo - pby) / dy);
+      t = Math.max(0, t);
+      const mayor = !!(quest && quest.npc === 'Mayor Bro');
+      const show = t < 1 && !mayor && Math.hypot(dx, dy) > 1;
+      this.home.visible = show;
+      if (show) {
+        let hx = pbx + dx * t, hy = pby + dy * t;
+        /* clear of the "tap me" mark in the bottom-left corner: slid along
+           the edge it rides, away from the corner */
+        const ex1 = FRAME + 5 + 14 + HOME_R + 2, ey0 = WHEEL_BOX - FRAME - 17 - 2 - HOME_R - 2;
+        if (hx < ex1 && hy > ey0) {
+          if (hy >= hi - 0.5) hx = ex1; else hy = ey0;
+        }
+        this.home.x = Math.round(hx);
+        this.home.y = Math.round(hy);
+        this.homePoint.rotation = Math.atan2(T.y * SCALE + this.pan.y - hy, T.x * SCALE + this.pan.x - hx);
+      }
+      const deg = Math.round(((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360);
+      home = { edge: t < 1, shown: show, x: show ? this.home.x : null, y: show ? this.home.y : null, deg, dist: Math.round(Math.hypot(T.x - P.x, T.y - P.y)), aside: mayor && t < 1 };
+    }
     const f = FACING_SECTORS.indexOf(S._renderFacing || 'south');
     this.player.x = P.x * SCALE; this.player.y = P.y * SCALE;
     this.player.rotation = f >= 0 ? f * Math.PI / 4 + Math.PI / 2 : 0;
@@ -298,6 +362,10 @@ export class WheelMinimap {
        bar printing them (ZoneHeader.jsx asks wheelHere itself) */
     const here = wheelHere(P.x, P.y);
     const w = here && here.words;
+    /* v2.3.3024: crossing into an elemental land plays its banner
+       (zoneBannerOverlay.js noteWheelLand; this frame is the one that asks
+       where you are every frame) */
+    try { noteWheelLand(here ? here.region : null, w ? w.title : null, S); } catch (e) { /* never breaks the frame */ }
 
     /* the box's place on the page, for the button that opens the world map */
     try {
@@ -318,6 +386,10 @@ export class WheelMinimap {
         nodes: nodeMarks,   /* v2.3.3012: the resources marked */
         frame: FRAME, label: false,   /* v2.3.3009: the frame's width; nothing printed under the box */
         quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road } : null,
+        /* v2.3.3023: the way home: whether town is off the box, whether its
+           badge shows (and where, in the box), town's bearing from you
+           (degrees, 0 east, 90 south) and how far, game px */
+        home,
       };
     } catch (e) { /* never breaks the frame */ }
   }

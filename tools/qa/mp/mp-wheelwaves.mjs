@@ -218,6 +218,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const hud = await hudAt(P);
   rec.ok(`the trial readout says the water is moving ("${(hud.split('\n').find((l) => l.startsWith('water')) || '').trim()}")`,
     /water {3}moving · \d+ pieces/.test(hud), hud.split('\n'));
+  /* v2.3.3021, the owner: "The water has a honeycomb pattern that needs to
+     change to mimic water movement" -- the worker took the frozen web of
+     light out of the water pictures it laid here (ground.js CALM WATER), and
+     the shader draws its own, moving, at its standard brightness */
+  const calm = await P.page.evaluate(() => { const st = window.__btWorldTrial.stats; return st.calm ? { ...st.calm } : null; });
+  rec.ok(`the water pictures laid here have their frozen web of light taken out (${calm ? calm.n : 0} calmed, ${calm ? calm.ms : '?'} ms in the worker), and the moving web is drawn (brightness ${pc.caustics})`,
+    !!calm && calm.n >= 2 && pc.caustics === 1, { calm, caustics: pc.caustics });
 
   /* ── 3. on the water only ── */
   await hold(P, 100);
@@ -293,7 +300,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await settle(Q);
   const pq = await probe(Q);
   const hq = await Q.page.evaluate(() => { const el = document.getElementById('bt-world-trial'); return el ? el.textContent : ''; });
-  rec.ok('with ?nowaves the water is still: no fields laid, nothing drawn, and the readout says so', WHEELISH(zq) && pq.meshes === 0 && pq.made === 0 && !pq.on
-    && /water {3}still \(switched off\)/.test(hq), { pq, hud: hq.split('\n') });
+  /* v2.3.3021: ...and keeps the pictures as made, their web of light in them */
+  const cq = await Q.page.evaluate(() => { const st = window.__btWorldTrial.stats; return st.calm ? { ...st.calm } : null; });
+  rec.ok('with ?nowaves the water is still: no fields laid, nothing drawn, the pictures as made (none calmed), and the readout says so', WHEELISH(zq) && pq.meshes === 0 && pq.made === 0 && !pq.on
+    && /water {3}still \(switched off\)/.test(hq) && !cq, { pq, cq, hud: hq.split('\n') });
   await Q.ctx.close();
 }

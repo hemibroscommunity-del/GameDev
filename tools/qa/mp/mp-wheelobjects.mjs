@@ -266,13 +266,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (let y = 0; y < S.map.length; y++) { const row = S.map[y]; const x = row.indexOf(8); if (x >= 0) return { tx: x, ty: y }; }
     return null;
   });
-  await H.hopTo(P, exit.tx * 32 + 16 + 40, exit.ty * 32 + 16, { tries: 160 });
+  /* v2.3.3028: in two legs, as mp-wheelnodes walks it -- a long stride to
+     beside the marker, then onto its reach.  One 100 px stride from the
+     dunes' oasis (~9,500 px out) ran out of tries on two of three runs and
+     stood in the Wheel ("back": "wheel"), on this branch and the live code's
+     alike; where the walk ended is in the record if it ever does again. */
+  if (exit) {
+    await H.hopTo(P, exit.tx * 32 + 16 + 200, exit.ty * 32 + 16, { step: 200, tries: 260 });
+    /* ...and onto the marker's reach, holding still while its gate loads and
+       stopping the moment the zone flips: hopTo walks on in town's own
+       coordinates, and (1080, 2000) there is town's stairs -- it armed a trip
+       straight back into the Wheel ("loading": "wheel"), which keeps the
+       Wheel's sheets, the failure this check had on the live code too */
+    for (let i = 0; i < 40; i++) {
+      const done = await P.page.evaluate(({ x, y }) => {
+        const S = window._gameState.current;
+        if (S.currentZone === 'town') return true;
+        if (S._zoneLoading) return false;
+        const dx = x - S.player.x, dy = y - S.player.y, d = Math.hypot(dx, dy);
+        if (d < 6) { S.player.vx = 0; S.player.vy = 0; return false; }
+        const k = Math.min(100, d);
+        S.player.x += (dx / d) * k; S.player.y += (dy / d) * k;
+        return false;
+      }, { x: exit.tx * 32 + 16 + 40, y: exit.ty * 32 + 16 });
+      if (done) break;
+      await P.page.waitForTimeout(260);
+    }
+  }
+  const walkEnd = await H.readState(P, (S) => ({ zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y),
+    loading: S._zoneLoading ? S._zoneLoading.toZone || true : null }));
   const back = await waitZone(P, 'town', 40, 700);
-  await P.page.waitForTimeout(1500);
-  const after = await P.page.evaluate(() => ({ pages: window.__btWheelObjects.pagesLoaded(), stats: { ...window.__btWheelObjects.stats },
-    cached: Object.keys((window.PIXI_ASSETS_CACHE || {})).length }));
+  /* v2.3.3025: the Wheel lingers WHEEL_LINGER_MS (5 s, worldTrial.js) after
+     you leave before it stops and lets its sheets go -- a walk back down the
+     stairs inside that keeps it all -- and this read at 1.5 s, so it failed
+     on main too since the linger came in.  Read once it has had its time,
+     up to 15 s on this box. */
+  let after = null;
+  for (let i = 0; i < 30; i++) {
+    await P.page.waitForTimeout(500);
+    after = await P.page.evaluate(() => ({ pages: window.__btWheelObjects.pagesLoaded(), stats: { ...window.__btWheelObjects.stats },
+      cached: Object.keys((window.PIXI_ASSETS_CACHE || {})).length }));
+    if (after.pages.length === 0 && after.stats.drawn === 0) break;
+  }
   rec.ok('back in town every one of the Wheel\'s sprite sheets is let go, and nothing of it is drawn',
-    back === 'town' && after.pages.length === 0 && after.stats.drawn === 0 && after.stats.pages === 0, { back, after });
+    back === 'town' && after.pages.length === 0 && after.stats.drawn === 0 && after.stats.pages === 0, { back, exit, walkEnd, after });
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
   if (renderThrew()) console.log('   first render throw:', renderThrew().slice(0, 1500));
 }

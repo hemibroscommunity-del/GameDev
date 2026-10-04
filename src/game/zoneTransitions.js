@@ -29,7 +29,7 @@ import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-n
 import { preloadZoneAssets, freeZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate; v2.3.2272: and its exit half */
 import { syncWorldTrial, trialZoneFor, takeWheelArrival } from '@/game/worldTrial.js'; /* v2.3.2932: the world trial; v2.3.2978: + the Wheel's own zone; v2.3.3016: + the arrival at a dungeon's mouth */
 import { leaveWheelDungeon } from '@/game/wheelDungeons.js'; /* v2.3.3016: a Wheel dungeon's door leads back to its mouth */
-import { wheelSpawnTick, wheelSpawnPass, wheelCommonsGate } from '@/game/wheelHome.js'; /* v2.3.2990: you start in the Wheel's Brotown */
+import { wheelSpawnTick, wheelSpawnPass, wheelCommonsGate, wheelTripVeiled } from '@/game/wheelHome.js'; /* v2.3.2990: you start in the Wheel's Brotown; v2.3.3025: under one veil */
 import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel' */
 import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
 import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2859: town's NPCs + buildings load and free with town */
@@ -212,6 +212,13 @@ var _zoneLoadEl = null;
    way in waits on the land's monsters' looks behind this same screen */
 export function showZoneLoadingOverlay(name) {
   if (typeof document === 'undefined') return;
+  /* v2.3.3025: the veil hides under the ocean clip while body.bt-intro-up
+     (game.css) -- and only while the clip is really there, so a class left
+     behind by a clip that never mounted can never hide a veil for good */
+  try {
+    if (document.body.classList.contains('bt-intro-up') && !document.querySelector('.bt-intro')
+        && Date.now() - (window.__btIntroUpAt || 0) > 5000) document.body.classList.remove('bt-intro-up');
+  } catch (e) {}
   try {
     if (!_zoneLoadEl) {
       _zoneLoadEl = document.createElement('div');
@@ -225,7 +232,16 @@ export function showZoneLoadingOverlay(name) {
       document.body.appendChild(_zoneLoadEl);
     }
     var nameEl = _zoneLoadEl.querySelector('.bt-zone-loading-name');
-    if (nameEl) nameEl.textContent = name || '';
+    if (nameEl && nameEl.textContent !== (name || '')) {
+      nameEl.textContent = name || '';
+      /* v2.3.3025: QA (mp-wheelhome) -- every name the veil said, and whether
+         the ocean clip was over it (one loading screen on the way in) */
+      if (window.__btProbe) {
+        var _vl = window.__btVeilLog || (window.__btVeilLog = []);
+        _vl.push({ name: name || '', underIntro: document.body.classList.contains('bt-intro-up'), at: Date.now() });
+        if (_vl.length > 40) _vl.shift();
+      }
+    }
   } catch (e) {}
 }
 export function hideZoneLoadingOverlay() {
@@ -260,17 +276,45 @@ export function hideZoneLoadingOverlay() {
  * stays resident: returning to worldview is still unveiled. */
 var _townFreeTimer = null;
 function _townArtReady() { return townSceneryReady() && isZoneMapResident('town'); }
+/* ═══ v2.3.3025: ON THE WAY TO THE WHEEL, ONE VEIL, NEVER LIFTED ON TOWN ═══
+   (wheelHome.js wheelTripVeiled).  While the trip to the Wheel's Brotown is
+   wanted, today's town is a stop nobody should see: the veil says the
+   Wheel's name from the first frame and stays up whatever town's art does,
+   until the stairs' gate (below) has loaded the Wheel and lifts it there.
+   And no veil comes down here while a gate is loading somewhere else
+   (S._zoneLoading): that race -- town's art finishing first and taking the
+   gate's veil with it -- showed today's town, frozen on the stairs. */
+function _wheelVeilName() { return (ZONES.wheel && ZONES.wheel.name) || 'The Wheel'; }
+/* The veil up NOW, for a way in that has just put you in today's town
+   (respawn.js after a death, wheelDungeons.js out of a dungeon) -- before the
+   frame that would otherwise paint town once before syncTownScenery ran. */
+export function veilWheelTrip(S) {
+  if (!wheelTripVeiled(S)) return;
+  S._wheelTripVeil = true;
+  showZoneLoadingOverlay(_wheelVeilName());
+}
+function _liftTownVeil(S) {
+  S._townArtHold = null;
+  S._wheelTripVeil = false;
+  if (!S._zoneLoading) hideZoneLoadingOverlay();
+}
 function syncTownScenery(S) {
   var hold = S._townArtHold;
+  var trip = wheelTripVeiled(S);
   if (S.currentZone === 'town') {
+    if (trip && !S._wheelTripVeil) {
+      S._wheelTripVeil = true;
+      showZoneLoadingOverlay(_wheelVeilName());
+    }
     if (_townArtReady()) {
-      if (hold) { S._townArtHold = null; hideZoneLoadingOverlay(); }
+      if (trip) return;                                   /* v2.3.3025: held for the Wheel */
+      if (hold || S._wheelTripVeil) _liftTownVeil(S);
       return;
     }
     if (!hold) {
       var h = { t: Date.now(), done: false };
       S._townArtHold = h;
-      showZoneLoadingOverlay((ZONES.town && ZONES.town.name) || 'Town');
+      showZoneLoadingOverlay(trip ? _wheelVeilName() : ((ZONES.town && ZONES.town.name) || 'Town'));
       /* The same 15s cap the hub gate races: a hung fetch costs the player
          emoji NPCs, never a frozen screen. */
       Promise.race([
@@ -282,10 +326,13 @@ function syncTownScenery(S) {
       ]).then(function () { h.done = true; });
       return;
     }
-    if (hold.done || Date.now() - hold.t > 20000) { S._townArtHold = null; hideZoneLoadingOverlay(); }
+    if (hold.done || Date.now() - hold.t > 20000) {
+      if (trip) { S._townArtHold = null; return; }        /* v2.3.3025: held for the Wheel */
+      _liftTownVeil(S);
+    }
     return;
   }
-  if (hold) { S._townArtHold = null; hideZoneLoadingOverlay(); }
+  if (hold || S._wheelTripVeil) _liftTownVeil(S);
   if (_townFreeTimer || townSceneryLoading()) return;
   if (!townSceneryReady() && !isZoneMapResident('town')) return;
   if (S._zoneLoading && S._zoneLoading.toZone === 'town') return;

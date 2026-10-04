@@ -1923,6 +1923,38 @@ says "moving", or "still" and why.
 The details, switches and probes are in docs/specs/moving-water.md. Tests:
 test-world-core "the water moves", `mp-wheelwaves`.
 
+### The honeycomb taken out, and a web of light that moves (v2.3.3021)
+
+> Owner, 2026-10-04: *"The water has a honeycomb pattern that needs to change
+> to mimic water movement. Is that something I should get from chatGPT or you
+> do it using code?"*
+
+Code. The honeycomb is in all three of the owner's water pictures: ChatGPT drew
+the light the surface throws on the bottom (caustics) as a web of light lines
+round rounded cells. That light never holds still in real water, and held
+still it reads as a pool's tiled floor. A new picture would hold still too.
+
+- **The game's ground worker takes the web out** of each water picture, once
+  (`calmWater`, ground.js CALM WATER):
+  - it finds what is lighter than the water round it (a grey opening at half
+    size);
+  - it fills it from the colours round it, on the picture's own colours;
+  - it keeps the tile seamless.
+  - Only where the game draws the water moving: `?nowaves` keeps the pictures
+    as made.
+- **The shader draws its own web, moving** (wheelWater.js CAUSTICS):
+  - round cells that swell, shrink and re-form, their lines curving, stretches
+    of it fading out and back;
+  - one cell size, so it runs on unbroken from the shallows into the sea;
+  - brightest in the shallows, faint and broken on the open sea, none on a
+    running river.
+- **Switches:** `?caustics=k`, 0 to 2, sets its brightness (0: none).
+- **Cost:** about 140 ms a picture in the worker (Node), four pictures,
+  once a session.
+- **Tests:** test-world-core "the water's frozen web of light taken out";
+  `mp-wheelwaves` checks the pictures were calmed, and that `?nowaves` calms
+  none.
+
 ## Oases in the Wind Dunes (v2.3.2981)
 
 Owner, 2026-10-02: *"The palm trees don't belong in the desert unless they
@@ -2142,6 +2174,44 @@ for everything by default (make both changes)"*.
   1.15x their pictures (1.5x under the old switches), the ground laid, the
   cost, and pictures of each (`zoomout-{now,was}-{arrival,square,land}.png`).
   test-world-core checks the switch and the plan.
+
+### The town laid roomier: 1.5x round 1.15x buildings (v2.3.3022)
+
+> Owner, 2026-10-04: *"The town center's buildings feel too squished together.
+> I think brotown itself might need to be bigger to accommodate."*
+
+The pictures' size and the town's layout were one number (`bigTownPlan(k)`).
+They are two now: `bigTownPlan(k, pictures)`.
+
+- **The standard town** is `PLAN = bigTownPlan(TOWN, BUILDINGS)`:
+  - laid as the 1.5x town (`TOWN` 1.5): its plots, square, walks and gaps;
+  - its buildings drawn 1.15x (`BUILDINGS`), as before.
+- **What changes:**
+  - All 17 buildings stand, Market Row two a side.
+  - The closest two pictures, the Town Hall and the Hotel, go from 4 to 103
+    game px apart.
+  - Market Row's neighbours go from 78 to 228 game px apart.
+  - The town has 49% more ground.
+  - The gates are at 1,226 art px (Main Street) and 1,455 (Market Row).
+  - A plot bigger than its building is just more yard: the plots never stopped
+    the feet.
+- **The limit.** 1.5 is the most the town can take east-west: its west gate
+  stands just short of the Sweetwater River. Bigger means moving the river's
+  commons points, or growing the hub, which moves every land.
+- **Fixed on the way:**
+  - The town's arches, signposts, yard scatter and the Old Roads' fences stood
+    at the plan's old gate (1,050). At 1.15 the east signpost stood inside the
+    Assay Office. Each now stands at its own street's gate (`townGates`).
+  - The Old Mill's empty plot was pushed out past the west gate and half into
+    the river. It now stands whole on the far bank by the Mill Bridge
+    (`MILL_NEAR_GATE`, `MILL_FAR_X`).
+- **Re-baked:**
+  - the monsters, the dungeons' doors and the safe ground: unchanged;
+  - the commons' ore, trees and fishing spots: moved round the bigger town.
+- **Switches:** `?bigtown=1.15` is the town before (laid and drawn 1.15).
+  The trial readout says "buildings x1.15 (17 of 17) · town x1.5".
+- **Tests:** test-world-core "the town laid roomier": the gates, the gap
+  between pictures, the arches and signposts, and the mill.
 
 ### And another 25% (v2.3.3011)
 
@@ -2831,9 +2901,10 @@ What a player gets now, with nothing added to the address:
     `ZONES.wheel.safeR`, a copy of `WHEEL_SAFE_R` that test-world-core checks.
   - It is v2.3.1676's gate, which kept you in today's town without him, moved
     to where the town is now.
-- **Today's town is still there**, through the glowing marker just west of
+- ~~**Today's town is still there**, through the glowing marker just west of
   where you land, with its shops and townsfolk. Its stairs bring you back to
-  the Wheel.
+  the Wheel.~~ Since v2.3.3025 there is **no marker back to today's town**
+  ("One loading screen, and no way back", below).
 - **The quest's way works in the Wheel** (`src/game/questRoute.js`). The gold
   road and a star on the Wheel's minimap both point the same way. Since
   v2.3.2992 the road is drawn on the minimap only, from you to the star. The
@@ -2876,6 +2947,8 @@ What a player gets now, with nothing added to the address:
   back, for testing or if something goes wrong.
 - `?trial=wheel` and `?trial=world` work as before.
 - `?nospawn` starts you in today's town, as before.
+- `?wayback` (v2.3.3025) puts the marker back to today's town in the Wheel,
+  for tests (`?nospawn` keeps it too).
 
 **Tests:**
 
@@ -2889,6 +2962,88 @@ What a player gets now, with nothing added to the address:
 - Every other scenario keeps today's world. The harness gives them
   `trial=off&nospawn` unless they ask for the Wheel (`world: 'wheel'`), or
   `nospawn` when they name a trial themselves.
+
+### One loading screen, and no way back (v2.3.3025)
+
+> Owner, 2026-10-04: *"players are starting in the old town and getting
+> routed to the wheel on the loading screen. Also there still a portal to
+> the old town. Disable that. Also sometimes the loading screen of the ocean
+> is too small before it fits the right screen size."*
+
+**What they saw.** The way in still runs through today's town for a moment
+(the client starts every session there; the worker's respawn names it), and
+it showed:
+
+- the ocean clip, then up to two dark veils over it: "Entering Town" while
+  today's town's pictures loaded, then "Entering The Wheel" for the stairs;
+- if town's pictures came first, its veil lifted on today's town, frozen on
+  the stairs, until the Wheel's began. A death and a dungeon's way out did the
+  same.
+
+**Now, one loading screen** (`src/game/wheelHome.js`, `zoneTransitions.js`
+`syncTownScenery`, `src/ui/IntroVideo.jsx`):
+
+- **The ocean clip waits for the arrival.** It waited for the pictures and the
+  server; now it also waits until you stand in the Wheel's Brotown (its "world
+  gate", `waitForWheelArrival`, at most 30 s after the server's gate).
+- **No veil is painted over the clip** while it is up (`body.bt-intro-up` in
+  game.css). Behind it the trip runs as before.
+- **While the trip is wanted, the veil says "Entering The Wheel"** from the
+  first frame, whatever town's pictures are doing, and is never lifted on
+  today's town. The stairs' gate takes the same veil over and lifts it in the
+  Wheel. No veil comes down while a gate is loading another zone (that race
+  was the frozen-on-the-stairs look).
+- **A death and a dungeon's way out** raise that veil the moment they put you
+  in today's town (`veilWheelTrip`, `respawn.js`, `wheelDungeons.js`), so town
+  is never painted on the way back either.
+- A trip that has not happened in 30 s (a worker that never answers) lets go
+  of the veil, so nothing waits on it for ever.
+
+**No way back to today's town.** The marker four tiles west of where you land
+is gone (`worldTrial.js` `setExits(null, …)`), and with it its tiles, beams,
+"Town" label, hub exit and the quest road's fall-back to it. Today's town is
+now only a stop on the way in, after a death and out of a dungeon. Its shops,
+forge, bank and auction house can't be reached until the Wheel's own
+buildings get doors. `?wayback` (and `?nospawn`) bring the marker back for
+tests.
+
+**...and its doors no longer count for quests (v2.3.3029).** Mayor Bro's
+"Visit 3 buildings in town" (mayor_1) is offered only while three doors exist
+(`needsDoor: 3`, gameSystems.js `anyBuildingDoor`). Today's town's forge, bank
+and auction house still counted after the marker went, so every player who
+reached it in the Wheel was handed an errand nothing could finish -- and the
+Mayor offers his quests one at a time, so "Into the Wild" (mayor_2) and the
+rest never came. Now `worldTrial.js` closes today's town while the Wheel is
+home with no way back (`setClosedDoorZones(['town'])`) and its doors are not
+counted: mayor_1 hides itself (a save already holding it is passed over too)
+and the Mayor offers mayor_2. The worker takes any known quest from nothing,
+so it needs no change. When the Wheel's own buildings get doors (or the road
+comes back) the errand returns by itself. `server/test/tutorial.test.mjs` §9.
+
+**The ocean screen's size.** The `<video>` had no size of its own until its
+first frame decoded (a video's default is 300 x 150). The box round it leaned
+on `inset`, which iPhones before iOS 14.5 don't know. So the beach could come
+up small and then jump to full size. Now:
+
+- the clip fills the screen on explicit edges and states its shape up front
+  (`width`/`height` 400 x 736);
+- its first frame shows as a still at once
+  (`public/intro/loading-ashore-poster.webp`, 26 KB, cut from the clip);
+- the warm-up while you make your character loads this clip and still
+  (`characterCreatorEffects.js`). It used to warm `brotown-intro.mp4`, which
+  left the game at v2.3.822, so the clip was always cold.
+
+**Tests:**
+
+- `mp-wheelhome`:
+  - the clip lifts with you already in the Wheel, and every veil behind it
+    said "The Wheel" under the clip;
+  - after a death, every look at today's town had "The Wheel" veil over it;
+  - there is no marker, no exit and no star back to today's town.
+- `mp-wheelnodes` asks for `?wayback` for its last step (up to town, the
+  Wheel's nodes dropped at the flip).
+- The harness waits up to 60 s for the clip to lift (the Wheel loads behind
+  it on this box's software renderer).
 
 ## The Wheel trial: your own swatches under your feet (v2.3.2943)
 
@@ -3133,6 +3288,77 @@ confused with game screen area"*.
   under the box, and reads the frame's slate band and brass line off the
   screen. `mp-wheelhome` reads "Brotown" over "safe" on the way in.
 
+### The way home: Brotown's badge on the minimap's edge (v2.3.3023)
+
+> Owner, 2026-10-04: *"Right now the world feels hard to navigate without
+> losing your sense of position relative to the town center."*
+
+The box shows about 1,400 game px round you, so Brotown's square left it at
+the town's own gates, and nothing on screen said where town was.
+
+- **Now:** whenever the town's centre is off the box, a **home badge** rides
+  the box's inner edge on the line from you to town. It is the house on a
+  dark disc with a brass ring, and a brass point aimed at town.
+- It works the way the quest's star rides the edge (`wheelMinimap.js`, THE
+  WAY HOME), and slides clear of the expand mark.
+- While the quest's own way leads to Mayor Bro, who stands in town, the star
+  says it and the badge stands aside.
+- **Probe:** `__btMinimap.home`: off the box or not, shown or not, where in
+  the box, town's bearing and distance.
+- **Tests:** `mp-wheelmap` checks there is no badge in town. Out on Frost
+  Ridge it checks the badge points south-east, and reads its house, ring and
+  disc off the screen.
+
+### Which land you are in: its colour, its icon, its banner (v2.3.3024)
+
+> Owner, 2026-10-04: *"There might need to be flat colors on the minimap to
+> help orient you to what elemental zone you're in"* and *"I'm also thinking
+> elemental zones need something more obvious that the player is in that
+> elemental zone."*
+
+One table says each land's look: `src/data/wheelLands.js`
+(`WHEEL_LAND_LOOK`). It gives each land one flat mid-tone, far apart round
+the colour wheel, and its element's icon (the icons the hits already use):
+
+| Land | Colour | Element |
+|---|---|---|
+| Frost Ridge | ice blue `#7fbfe0` | frost |
+| Flame Fields | ember red `#d85a36` | flame |
+| Wind Dunes | sand gold `#d9b452` | wind |
+| Stone Hollows | stone brown `#94806a` | stone |
+| Electric Foundry | violet `#8a72e0` | storm |
+| Water Caves | teal `#2fa3b6` | water |
+| Poison Forest | purple `#a052c0` | venom |
+| Verdant Wilds | green `#4fae47` | flora |
+
+Brotown and the commons have a colour and no element.
+
+- **The minimap and the world map** paint each land its one flat colour. The
+  ground worker posts a small picture of which land each spot belongs to
+  (`ground.js overviewLands`, water left out), and `wheelTrial.js
+  landsCanvas` colours it. The roads, river, camps and skulls stay on top.
+- **The top bar** puts the land's element icon before its name, and writes the
+  name in the land's colour, lifted toward white so it reads on the dark bar
+  (`ZoneHeader.jsx`).
+- **A banner as you cross into a land** (`zoneBannerOverlay.js
+  noteWheelLand`). You must have been in the new land 600 ms, so walking along
+  a border doesn't flicker banners, and a land's banner comes back no sooner
+  than any zone's.
+  - Frost Ridge, the Flame Fields, the Wind Dunes and the Verdant Wilds play
+    the owner's own banner art, with the element's icon and the name in the
+    land's colour.
+  - The other four play the plaque alone, with the icon and the name. Their
+    art isn't drawn yet, and none is borrowed.
+  - It docks into the top bar, which says the same.
+  - The four strips load behind the Wheel's loading screen and go when you
+    leave it.
+- **Probes:** `__btZoneBanner.land()` (the land watched, the land shown) and
+  `.onScreen()`.
+- **Tests:** `mp-wheelmap` walks onto Frost Ridge and checks:
+  - the frost icon and the name's colour on the top bar;
+  - the banner shown;
+  - the minimap's ice blue round you (57% of the box).
+
 ### Always daylight, for now (v2.3.2963)
 
 > Owner, 2026-10-01, after one visit came out very dark just past the game's
@@ -3175,7 +3401,10 @@ What it does now:
   faint under the swamp's haze. It eases over about a second as you cross.
   You, other players, the townsfolk and the monsters cast again.
 - **Every object casts** (`wheelObjectCasters` in `wheelObjects.js`):
-  - trees, rocks and props as one flattened copy, pivoted on their footprint;
+  - trees as one flattened copy, pivoted on their footprint;
+  - since v2.3.3028 everything else that stands (rocks, barrels, crates,
+    driftwood, bushes, fences) column by column, each column from its own
+    base (below);
   - buildings column by column, the front wall from its foot and the roof
     from the back of its footprint, as the old town's did.
 
@@ -3233,9 +3462,56 @@ Pictures, off and on: `tools/qa/mp/out/wheelshadows-*.png`.
 
 Still to do, if wanted:
 
-- glints on the water and the lava's glow, found from the ground;
+- glints on the water and the lava's glow, found from the ground (the water
+  has moved since v2.3.3019);
 - swinging signs and waving flags on the Wheel's buildings;
-- a banner as you enter each land.
+- ~~a banner as you enter each land~~ since v2.3.3024.
+
+#### A low thing's shadow starts at its own base (v2.3.3028)
+
+> Owner, 2026-10-04: *"Sea level props have shadows that appear to be floating
+> off the ground a bit. Shadows not connecting to the prop."*
+
+**Why they floated.** A billboard's one flattened copy was pivoted on the
+middle of its footprint. The footprint reaches back from the foot a share of
+the picture's height (`placing.js` FOOT: 0.4 of a rock, a barrel, a crate or
+driftwood, 0.35 of a bush), so a low thing's shadow began 11 to 20 game px up
+its picture. The bottom of the picture, its front base, cast up toward the
+sun, hidden behind it. Measured off the sheets:
+
+- on 57 of the 109 low pictures nothing at all fell under the front base;
+- the shadow reached a median 23% of what one cast from the base would.
+
+The sea's rocks and driftwood showed it most.
+
+**Now** (`wheelObjectCasters`, `shadows.js placeDepth`):
+
+- Everything but a tree casts **column by column**, as a building does. Each
+  column of the picture stands on its own base: the lowest solid pixel of that
+  column (`propGround.js readArtBottoms`, read once a picture, at most four a
+  frame).
+- A base is never further back than the footprint's middle (`floor`), where
+  the one copy pivoted before. So a fence's rail, a bench's seat or a sign
+  casts from there and not from mid-air.
+- A tree keeps its one copy: its footprint is a fixed 12 to 24 px under a crown
+  hundreds tall, its trunk hides the pivot, and it sways.
+- Until its picture is read, a thing casts as before.
+- Bushes' shadows no longer sway with the bush. The sway is a few px at the
+  top, and the base stays put.
+
+**What it costs:** one small mesh a low thing instead of one sprite, and one
+read of each picture's columns, kept with the picture (freed with its sheet).
+
+**Tested by `mp-wheelshadows`:**
+
+- a low thing on Frost Ridge casts column by column from its art's lowest
+  pixel;
+- the ground a quarter of its height below and right of its foot darkens with
+  the shadows on, and darkens more than the old pivot made it (QA
+  `__btWheelCastBoard` puts the old one back for the comparison);
+- `__btWheelObjects.caster(i)` says how object i casts.
+
+Pictures: `wheelshadows-low-before.png` / `-after.png`.
 
 ### Swimming (v2.3.3003)
 

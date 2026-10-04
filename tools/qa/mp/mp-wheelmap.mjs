@@ -20,6 +20,11 @@
  *      the land, its stage and the levels there;
  *   5. back in town the Wheel's box and the button are gone, today's back.
  *
+ * v2.3.3023, the owner: "the world feels hard to navigate without losing your
+ * sense of position relative to the town center" -- 2 checks there is no home
+ * badge in town, and 4 that out on Frost Ridge the badge rides the box's edge
+ * toward town (south-east), drawn on the screen.
+ *
  * v2.3.3009, the owner: "Put the 'brotown safe' and other location
  * indicators in place of the 'the wheel lvl 1-2' on the top bar. It'll free
  * up more room around the minimap. Also give the minimap thicker borders so
@@ -125,6 +130,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('in the Wheel the minimap is the Wheel\'s own, two and a half times bigger, in the same corner', WHEELISH(zone) && m && m.wheel === true && m.box === 132 && m.rootX === PHONE.width - 132, { zone, m });
   rec.ok('...showing the land under it, and the roads, river and railway, the camps, passes and gates', m && m.under && m.routes >= 30 && m.places >= 60, m && { under: m.under, routes: m.routes, places: m.places });
   rec.ok('...about three zones across, centred on you', m && m.window === 3200 && Math.abs(m.playerBoxX - 66) < 2 && Math.abs(m.playerBoxY - 66) < 2, m && { x: m.playerBoxX, y: m.playerBoxY });
+  /* v2.3.3023: in town, town is on the box: no home badge */
+  rec.ok('...and in town no home badge: the town is on the box', m && m.home && m.home.edge === false && m.home.shown === false, m && m.home);
   /* v2.3.3009: the words are the top bar's now, in place of "The Wheel (Lv1-2)" */
   let tb = null;
   for (let i = 0; i < 10; i++) { tb = await bar(P); if (barHolds(tb, 'Brotown', /^safe$/)) break; await P.page.waitForTimeout(300); }
@@ -209,6 +216,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the cross closes it, and the minimap\'s button is back', !closed.map && closed.btn, closed);
 
   /* ── 4. out onto Frost Ridge: the words follow you ── */
+  /* v2.3.3025: untouchable for the walk out (as mp-firefight's): a level-1
+     QA bro standing among the levels 6-10 died there on a slow run, and the
+     checks after it read the respawn's veil (0% ice, then no minimap) */
+  try {
+    const myId = await H.readState(P, (S) => S.myId);
+    await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 5 });
+  } catch (e) { /* a dev op missing on this worker: the walk as before */ }
   const frost = { x: 18464, y: 18464 };   /* the north-west spoke, its second tier: levels 6-10 */
   await H.hopTo(P, frost.x, frost.y, { tries: 80 });
   let fw = null;
@@ -222,7 +236,71 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`walking out onto Frost Ridge, the top bar says so: the land, its stage and the levels there ("${fb && fb.place && fb.place.text}" over "${fb && fb.sub && fb.sub.text}", whole)`,
     fw.words && fw.words.title === 'Frost Ridge' && /the thaw line · Lv 6–10/.test(fw.words.sub) && barHolds(fb, 'Frost Ridge', /the thaw line · Lv 6–10/), { fb, words: fw.words });
   await shot(P, '04-frost');
-
+  /* v2.3.3024, owner: "There might need to be flat colors on the minimap to
+     help orient you to what elemental zone you're in" and "elemental zones
+     need something more obvious that the player is in that elemental zone":
+     the minimap paints Frost Ridge its one ice blue; the top bar puts the
+     frost icon before the land's name, the name in the land's colour; and
+     crossing into it played its banner (the owner's frost art, the icon and
+     the name) */
+  const look = await P.page.evaluate(() => {
+    const pl = document.querySelector('[data-zone-place]');
+    const ic = pl && pl.querySelector('img.bt-zone-header__elem');
+    const zb = window.__btZoneBanner;
+    return { land: pl ? pl.getAttribute('data-zone-land') : null, icon: ic ? ic.getAttribute('src') : null, color: pl ? getComputedStyle(pl).color : null,
+      bannerAt: zb ? zb.shownAt('frost') : 0, banner: zb && zb.onScreen ? zb.onScreen() : null, watch: zb && zb.land ? zb.land() : null };
+  });
+  rec.ok(`...and the top bar marks the land: the frost icon before "Frost Ridge", the name in the land's own colour (${look.color})`,
+    look.land === 'frost' && /elem-frost\.webp$/.test(look.icon || '') && !!look.color && look.color !== 'rgb(247, 242, 231)', look);
+  rec.ok(`...and crossing into Frost Ridge played its banner (${look.banner ? `"${look.banner.text}"${look.banner.plain ? ', plain' : ', the owner\'s frost art'}` : 'shown ' + (look.bannerAt ? 'and docked' : 'never')})`,
+    look.bannerAt > 0 && look.watch && look.watch.shown === 'frost', look);
+  {
+    /* the minimap's land here is the land's one flat colour: ice blue round
+       you, read off the screen (wheelLands.js frost #7fbfe0 under the box's
+       0xdadada tint: about 108, 163, 191) */
+    const r = await P.page.evaluate(() => window.__btWheelMini);
+    const { decodePNG } = await import('../../world/png.mjs');
+    const png = decodePNG(await P.page.screenshot({ clip: { x: r.left + 20, y: r.top + 20, width: r.w - 40, height: r.h - 40 } }));
+    let ice = 0;
+    for (let i = 0; i < png.width * png.height; i++) {
+      const R = png.data[4 * i], G = png.data[4 * i + 1], B = png.data[4 * i + 2];
+      if (Math.abs(R - 108) < 14 && Math.abs(G - 163) < 14 && Math.abs(B - 191) < 14) ice++;
+    }
+    const share = ice / (png.width * png.height);
+    rec.ok(`...and the minimap paints Frost Ridge one flat ice blue (${Math.round(share * 100)}% of the box round you)`, share > 0.25, { share });
+  }
+  /* v2.3.3023, owner: "the world feels hard to navigate without losing your
+     sense of position relative to the town center" -- out on Frost Ridge
+     (north-west of town) the town is off the box, and its badge rides the
+     box's edge toward it: south-east, the bottom right of the box -- drawn
+     there (its white house and brass ring read off the screen) */
+  /* read where it is NOW (fw is from the arrival, seconds ago), once no
+     banner is on screen -- a land's banner spans a phone's width, and its
+     right ornament reaches over the box's bottom corner while it plays */
+  for (let i = 0; i < 24; i++) {
+    const pl = await P.page.evaluate(() => (window.__btZoneBanner && window.__btZoneBanner.playing ? window.__btZoneBanner.playing() : null));
+    if (!pl) break;
+    await P.page.waitForTimeout(250);
+  }
+  const now4 = (await mini(P)) || {};
+  const hm = now4.home || fw.home || {};
+  await shot(P, '04b-home');
+  let badge = null;
+  if (hm.shown) {
+    const r = await P.page.evaluate(() => window.__btWheelMini);
+    const { decodePNG } = await import('../../world/png.mjs');
+    const png = decodePNG(await P.page.screenshot({ clip: { x: r.left + hm.x - 12, y: r.top + hm.y - 12, width: 24, height: 24 } }));
+    let white = 0, brass = 0, dark = 0;
+    for (let i = 0; i < png.width * png.height; i++) {
+      const R = png.data[4 * i], G = png.data[4 * i + 1], B = png.data[4 * i + 2];
+      if (R > 215 && G > 210 && B > 200) white++;
+      else if (R > 170 && G > 130 && G < 200 && B < 130) brass++;
+      else if (R < 40 && G < 45 && B < 50) dark++;
+    }
+    badge = { white, brass, dark, px: png.width * png.height };
+  }
+  rec.ok(`...and out there, town off the box, its HOME BADGE rides the box's edge toward it: town ${hm.deg} degrees from you (south-east), ${hm.dist} game px away, the badge at (${hm.x}, ${hm.y}) in the box, drawn (${badge ? `${badge.white} white, ${badge.brass} brass, ${badge.dark} dark px` : 'not shown'})`,
+    hm.edge === true && hm.shown === true && hm.deg >= 30 && hm.deg <= 60 && hm.x > 66 && hm.y > 66 && !!badge && badge.white >= 8 && badge.brass >= 6 && badge.dark >= 20, { home: hm, badge, quest: now4.quest || null });
   /* ── 5. home: today's minimap again ── */
   const exit = await P.page.evaluate(() => {
     const S = window._gameState.current;

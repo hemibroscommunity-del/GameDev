@@ -43,6 +43,54 @@ export function wantWheelSpawn(S) {
   if (!S) return;
   S._spawnToWheel = wheelIsHome();
   S._spawnSince = 0;
+  S._spawnAskedAt = Date.now();   /* v2.3.3025: the veil's clock (wheelTripVeiled) */
+}
+
+/* ═══ v2.3.3025: ONE LOADING SCREEN, AND TODAY'S TOWN NEVER SEEN ═══
+   Owner, 2026-10-04: "players are starting in the old town and getting
+   routed to the wheel on the loading screen."  They were: the trip below is
+   a walk down today's town's stairs, and on the way it could show two dark
+   veils over the ocean clip -- "Entering Town" (town's art, zoneTransitions
+   syncTownScenery) then "Entering The Wheel" (the stairs' gate) -- and when
+   town's art came first, the town veil lifted on today's town, frozen on the
+   stairs, until the Wheel's began.  Now:
+     - while the trip is wanted, the town veil says the Wheel's name and is
+       never lifted on today's town; the stairs' gate takes the same veil over
+       and lifts it in the Wheel (zoneTransitions syncTownScenery);
+     - the ocean clip waits for the arrival as it waits for the art and the
+       server (IntroVideo's world gate, waitForWheelArrival below), and while
+       it is up no zone veil is painted over it (game.css bt-intro-up): one
+       loading screen, from the tap to the Wheel's square;
+   on the way in, after a death and out of a dungeon alike.  A trip that has
+   not happened in TRIP_VEIL_MS (a worker that never answers) lets go of the
+   veil, so nothing waits on it forever. */
+const TRIP_VEIL_MS = 30000;
+/** Is the trip to the Wheel's Brotown wanted, from today's town, now? */
+export function wheelTripVeiled(S) {
+  return !!(S && S._spawnToWheel && S.currentZone === 'town'
+    && Date.now() - (S._spawnAskedAt || 0) < TRIP_VEIL_MS);
+}
+/** Has the way in arrived where it was going (or is there no trip)? */
+export function wheelArrived(S) {
+  if (!wheelIsHome()) return true;
+  if (!S || S._wheelSpawnInit !== true) return false;   /* the first frame has not run */
+  if (S._spawnToWheel && Date.now() - (S._spawnAskedAt || 0) >= TRIP_VEIL_MS) return true;
+  return !S._spawnToWheel && !S._zoneLoading;
+}
+/** For the loading screen: resolves once wheelArrived, polled -- counted from
+ *  `after` (the server's gate: the trip cannot start before the caps), and
+ *  never later than capMs past it. */
+export function waitForWheelArrival(getS, after, capMs = TRIP_VEIL_MS) {
+  return Promise.resolve(after).catch(() => {}).then(() => new Promise((res) => {
+    const t0 = Date.now();
+    const tick = () => {
+      let S = null;
+      try { S = getS(); } catch (e) { /* not mounted yet */ }
+      if (wheelArrived(S) || Date.now() - t0 > capMs) { res(); return; }
+      setTimeout(tick, 120);
+    };
+    tick();
+  }));
 }
 
 /* Is this exit the spawn trip's way through (its gates let it pass)? */

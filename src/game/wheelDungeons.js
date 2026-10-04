@@ -33,7 +33,7 @@ import { TILE, ZONES, BT_AUDIO, updateZoneDimensions, generateZoneMap } from '@/
 import { wheelMapInfo } from './wheelTrial.js';
 import { setWheelArrival } from './worldTrial.js';
 import { wantWheelSpawn } from './wheelHome.js';
-import { releaseLeftZoneArt, clearZoneLocalFx } from './zoneTransitions.js';
+import { releaseLeftZoneArt, clearZoneLocalFx, veilWheelTrip } from './zoneTransitions.js';
 import { WHEEL_DUNGEON_HOMES, DOOR_R, WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR, WHEEL_ARENA } from '@/data/wheelDungeons.js';
 
 /* the table -- which lands, the button's reach, each mouth's light, each
@@ -229,6 +229,7 @@ export function leaveWheelDungeon(S) {
   }
   S._zoneWipe = Date.now();
   wantWheelSpawn(S);
+  veilWheelTrip(S);   /* v2.3.3025: today's town never painted on the way back */
   if (S.channel && S.player) {
     try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: 'town', vx: 0, vy: 0 } }); } catch (e) { /* the next move carries it */ }
   }

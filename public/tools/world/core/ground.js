@@ -1954,6 +1954,193 @@ function shoreDistances(omat, OEW, OEH, water, FW, K, RW, RH) {
   return out;
 }
 
+/* ═══ v2.3.3021: CALM WATER -- the pictures' frozen light taken out ═══
+   Owner, 2026-10-04: "The water has a honeycomb pattern that needs to change
+   to mimic water movement.  Is that something I should get from chatGPT or
+   you do it using code?"  ChatGPT drew, into all three water pictures, the
+   light the surface throws onto the bottom (caustics): a web of light lines
+   round rounded cells.  Light like that never holds still, and held still it
+   reads as a honeycomb -- a pool's tiled floor -- however the picture under
+   it sways (the v2.3.3019 swell).  No picture can move, so the game's worker
+   takes the web OUT of each water picture, and the game draws its own web of
+   light, which does (src/rendering/wheelWater.js, CAUSTICS).  Only where the
+   water is drawn moving: the worker is told (`moving`, wheelTrial.js), and
+   `?nowaves` or a phone without WebGL2 keeps the pictures as made.
+   - it is all worked out at HALF SIZE (2 x 2 px to one), the lines being 4
+     px wide and more: a quarter of the work, about 100 ms a picture in Node
+     (at full size 470), and the result laid back at full size;
+   - the WEB is what is lighter than the water round it.  A grey OPENING of
+     the picture's lightness -- the darkest within CALM_R half px each way,
+     then the lightest of those -- keeps every light shape wider than that
+     square (21 px) and loses the thin light lines; a half px more than
+     CALM_T levels lighter than its opening is web, and so is every half px
+     touching one (a line's glow);
+   - each web px is FILLED from the water round it: the colours of the half
+     px that are not web, smoothed (CALM_PASSES box blurs of CALM_BOX half
+     px each way, about a 7 px Gaussian), divided by how much of that
+     smoothing found water that is not web, then put on the nearest colour
+     the picture ITSELF uses outside its web.  The cells, the darker depths
+     and the picture's own colours stay; nothing new is invented;
+   - every step WRAPS round the tile's edges, so a picture seamless before is
+     seamless after (test-world-core shifts a tile by an even number of px
+     and checks its calm shifts with it, to the last px).
+   Once a picture: the worker keeps the calm picture in place of the one it
+   came from. */
+export const CALM_R = 5, CALM_T = 5, CALM_BOX = 3, CALM_PASSES = 3;
+export function calmWater(tile) {
+  if (!tile || !tile.idx || !tile.pal || tile.w % 2 || tile.h % 2) return tile;
+  const { w, h, idx, pal } = tile;
+  const hw = w >> 1, hh = h >> 1, hn = hw * hh, np = Math.min(255, Math.floor(pal.length / 3));
+  /* each colour's lightness (EDGE_CLEAR, a see-through px, never a colour:
+     dark, so it is never web) */
+  const lumP = new Uint8Array(256);
+  for (let i = 0; i < np; i++) lumP[i] = Math.round(0.299 * pal[3 * i] + 0.587 * pal[3 * i + 1] + 0.114 * pal[3 * i + 2]);
+  lumP[EDGE_CLEAR] = 0;
+  const L = new Uint8Array(hn);
+  for (let y = 0; y < hh; y++) {
+    for (let x = 0, p = 2 * y * w; x < hw; x++, p += 2) L[y * hw + x] = (lumP[idx[p]] + lumP[idx[p + 1]] + lumP[idx[p + w]] + lumP[idx[p + w + 1]] + 2) >> 2;
+  }
+  /* the opening: the darkest within CALM_R, then the lightest of those */
+  const op = slide2(slide2(L, hw, hh, CALM_R, true), hw, hh, CALM_R, false);
+  const lit = new Uint8Array(hn);
+  for (let q = 0; q < hn; q++) lit[q] = L[q] - op[q] > CALM_T ? 1 : 0;
+  /* ...and every half px touching one: the lightest of the 3 x 3 round it */
+  const web = slide2(lit, hw, hh, 1, false);
+  /* the colours the picture uses outside its web, and the half px that are
+     not web, for the smoothing */
+  const allowed = new Uint8Array(256);
+  /* whole numbers, summed and never divided until the end (Float64 holds
+     them exactly), so the smoothing is the same wherever a row starts: the
+     calm of a shifted picture is the shifted calm, to the last px */
+  const R = new Float64Array(hn), G = new Float64Array(hn), B = new Float64Array(hn), K = new Float64Array(hn);
+  let webPx = 0;
+  for (let y = 0; y < hh; y++) {
+    for (let x = 0; x < hw; x++) {
+      const q = y * hw + x;
+      if (web[q]) { webPx++; continue; }
+      const p = 2 * y * w + 2 * x;
+      let r = 0, g = 0, b = 0, c = 0;
+      for (let k = 0; k < 4; k++) {
+        const i = idx[p + (k & 1) + (k >> 1) * w];
+        if (i === EDGE_CLEAR || i >= np) continue;
+        allowed[i] = 1;
+        r += pal[3 * i]; g += pal[3 * i + 1]; b += pal[3 * i + 2]; c++;
+      }
+      if (c) { R[q] = r; G[q] = g; B[q] = b; K[q] = c; }
+    }
+  }
+  if (!webPx) return tile;
+  const ok = [];
+  for (let i = 0; i < np; i++) if (allowed[i]) ok.push(i);
+  if (!ok.length) return tile;
+  for (const ch of [R, G, B, K]) boxWrap2(ch, hw, hh, CALM_BOX, CALM_PASSES);
+  /* the nearest allowed colour to a colour taken 4 levels a step (the
+     middle of its step: the answer is the step's, whichever px asks first) */
+  const near = new Map();
+  const nearest = (r, g, b) => {
+    const key = ((r >> 2) << 12) | ((g >> 2) << 6) | (b >> 2);
+    let v = near.get(key);
+    if (v !== undefined) return v;
+    const cr = (r >> 2) * 4 + 2, cg = (g >> 2) * 4 + 2, cb = (b >> 2) * 4 + 2;
+    let bd = Infinity;
+    for (const i of ok) {
+      const dr = pal[3 * i] - cr, dg = pal[3 * i + 1] - cg, db = pal[3 * i + 2] - cb;
+      const d = dr * dr * 3 + dg * dg * 4 + db * db * 2;
+      if (d < bd) { bd = d; v = i; }
+    }
+    near.set(key, v);
+    return v;
+  };
+  const out = new Uint8Array(idx);
+  for (let y = 0; y < hh; y++) {
+    for (let x = 0; x < hw; x++) {
+      const q = y * hw + x;
+      if (!web[q]) continue;
+      const k = K[q];
+      let v;
+      if (k > 0) {
+        v = nearest(Math.round(R[q] / k), Math.round(G[q] / k), Math.round(B[q] / k));
+      } else {
+        /* web all round (a wide knot of light): the allowed colour as light
+           as the opening there */
+        let bd = 1e9;
+        v = ok[0];
+        for (const i of ok) { const d = Math.abs(lumP[i] - op[q]); if (d < bd) { bd = d; v = i; } }
+      }
+      const p = 2 * y * w + 2 * x;
+      for (let k = 0; k < 4; k++) { const pp = p + (k & 1) + (k >> 1) * w; if (idx[pp] !== EDGE_CLEAR) out[pp] = v; }
+    }
+  }
+  return Object.assign({}, tile, { idx: out, calm: { web: webPx / hn } });
+}
+/* the darkest (`least`) or lightest within r px each way, wrapping round the
+   tile's edges: along the rows, then -- the picture turned on its side --
+   along the columns as rows, each a van Herk / Gil-Werman pass (three looks
+   a px whatever r is) */
+function slide2(src, w, h, r, least) {
+  return turned(slideRows(turned(slideRows(src, w, h, r, least), w, h), h, w, r, least), h, w);
+}
+function slideRows(src, w, h, r, least) {
+  const out = new Uint8Array(w * h);
+  const k = 2 * r + 1, m = w + 2 * r;
+  const ext = new Uint8Array(m), g = new Uint8Array(m), hh = new Uint8Array(m);
+  for (let y = 0; y < h; y++) {
+    const o = y * w;
+    /* the row with r px of its other end at each end */
+    ext.set(src.subarray(o + w - r, o + w), 0);
+    ext.set(src.subarray(o, o + w), r);
+    ext.set(src.subarray(o, o + r), r + w);
+    if (least) {
+      for (let i = 0; i < m; i++) { const e = ext[i]; g[i] = i % k === 0 || g[i - 1] > e ? e : g[i - 1]; }
+      for (let i = m - 1; i >= 0; i--) { const e = ext[i]; hh[i] = i === m - 1 || i % k === k - 1 || hh[i + 1] > e ? e : hh[i + 1]; }
+      for (let i = 0; i < w; i++) { const a = hh[i], b = g[i + 2 * r]; out[o + i] = a < b ? a : b; }
+    } else {
+      for (let i = 0; i < m; i++) { const e = ext[i]; g[i] = i % k === 0 || g[i - 1] < e ? e : g[i - 1]; }
+      for (let i = m - 1; i >= 0; i--) { const e = ext[i]; hh[i] = i === m - 1 || i % k === k - 1 || hh[i + 1] < e ? e : hh[i + 1]; }
+      for (let i = 0; i < w; i++) { const a = hh[i], b = g[i + 2 * r]; out[o + i] = a > b ? a : b; }
+    }
+  }
+  return out;
+}
+/* a w x h picture turned on its side (h x w), 32 px squares at a time */
+function turned(a, w, h) {
+  const out = new a.constructor(w * h);
+  for (let y0 = 0; y0 < h; y0 += 32) {
+    for (let x0 = 0; x0 < w; x0 += 32) {
+      const y1 = Math.min(h, y0 + 32), x1 = Math.min(w, x0 + 32);
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) out[x * h + y] = a[y * w + x];
+    }
+  }
+  return out;
+}
+/* `passes` box SUMS of r px each way (a blur, never divided: whole numbers
+   stay whole, and exact), wrapping round the tile's edges, written back
+   into `a`: along the rows, then the columns as rows (a separable filter:
+   the order does not matter) */
+function boxWrap2(a, w, h, r, passes) {
+  boxRows(a, w, h, r, passes);
+  const t = turned(a, w, h);
+  boxRows(t, h, w, r, passes);
+  a.set(turned(t, h, w));
+}
+function boxRows(a, w, h, r, passes) {
+  const ext = new Float64Array(w + 2 * r);
+  for (let y = 0; y < h; y++) {
+    const o = y * w;
+    for (let k = 0; k < passes; k++) {
+      ext.set(a.subarray(o + w - r, o + w), 0);
+      ext.set(a.subarray(o, o + w), r);
+      ext.set(a.subarray(o, o + r), r + w);
+      let s = 0;
+      for (let j = 0; j < 2 * r + 1; j++) s += ext[j];
+      for (let i = 0; i < w; i++) {
+        a[o + i] = s;
+        if (i + 1 < w) s += ext[i + 2 * r + 1] - ext[i];
+      }
+    }
+  }
+}
+
 /* v2.3.2947: can any two swatches that meet with an edge (edgeRecipe) lie
    within this art px rectangle, `M` cells more all round (the blur's reach)?
    A pure function of the cells, so every rectangle over a place answers the
@@ -2277,6 +2464,24 @@ export function swimBits(bp, mm, seed, walk) {
 /* The whole map, one pixel per `k` x `k` cells, in the plan's own colours
    and the deep sea: the game's blurry underlay for ground still being laid,
    and its Map panel.  RGBA. */
+/* v2.3.3024: which LAND each overview pixel lies in -- its region's index
+   in `regionIds` (town, commons, frost, ember ...), or 255 on water -- the
+   same pixel overviewPixels reads, so the minimap and the world map can
+   paint each elemental land one flat colour (the owner: "There might need to
+   be flat colors on the minimap to help orient you to what elemental zone
+   you're in"), the water as it is drawn */
+export function overviewLands(bp, mm, reg, k = 4) {
+  const w = Math.ceil(bp.w / k), h = Math.ceil(bp.h / k);
+  const data = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const by = Math.min(bp.h - 1, y * k + (k >> 1));
+    for (let x = 0; x < w; x++) {
+      const bx = Math.min(bp.w - 1, x * k + (k >> 1)), c = by * bp.w + bx;
+      data[y * w + x] = mm.mat[c] === mm.water ? 255 : Math.min(254, reg[c]);
+    }
+  }
+  return { w, h, data };
+}
 export function overviewPixels(bp, mm, k = 4) {
   const w = Math.ceil(bp.w / k), h = Math.ceil(bp.h / k);
   const cols = mm.ids.map((id, q) => (q === mm.water ? WATER_RGB.deep : mm.catalog[q].color));

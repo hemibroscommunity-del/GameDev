@@ -25,10 +25,25 @@ in every phase (below).
   hit, between 1 and your level in that skill. Level 1 always hits for 1.
 - The node wears **the monster's health bar** (same art, white ghost trail,
   damage flash, the HP number in the middle), and it drops with every hit. It
-  hangs **over the crown** of a tree and **under** a rock, a pond or the
-  campfire, so it is never near your head, where your own HP bar is the same
-  art. It appears the moment the worker's plan does (one round trip, well
-  inside the first swing).
+  appears the moment the worker's plan does (one round trip, well inside the
+  first swing).
+  - ~~It hangs **over the crown** of a tree and **under** a rock, a pond or the
+    campfire, so it is never near your head, where your own HP bar is the
+    same art.~~
+  - **Since v2.3.3027 it is over the gatherer's head, as large as your HP
+    bar.** The owner: *"Ticks for the resource extraction is too hard to see.
+    You can make it as large as the normal hp bar and just hide the player
+    name plate and health bar during extraction."* While the harvest is open
+    (`waiting` or `ready`, and not over a corpse), your name plate and HP bar
+    step off the band over your head (`entityRenderer selfGathering`). The
+    node's bar takes their place at your HP bar's 76 x 22, against the
+    monster's 44 x 13, with its number in your HP number's type
+    (`drawNodeHpBar` `big`).
+    - The miner and the angler are your own figure (`S._selfBand`).
+    - The lumberjack and the cook stand in for it with your figure hidden, so
+      the band is put over the stand-in's boots (`bandOverBoots`, at
+      `chopStandInSpot` / `cookStandInSpot`).
+    - The plate and the bar come back the frame the harvest ends.
 - The ring on the right button steps up with each hit instead of creeping on
   a timer. **There is no bar over your head any more** — the node's bar
   replaced it (owner, second message).
@@ -170,7 +185,7 @@ for the corpse like every other harvest visual.
 | Plan in, hits landed, timer fallback | `src/game/lifeSkillRewards.js` (`applyGatherHits`, `tickGatherHits`) |
 | Hits before the window check | `src/ui/BroTown.jsx` (extraction tick) |
 | Chunked meter (the ring; the node's bar reads it too) | `src/game/gesturePose.js` (`extractionMeter01`) |
-| The node's HP bar: hits, timer drain, the call at ready | `src/rendering/systems/entityRenderer.js` (`drawNodeHpBar`, the art) + `effectsRenderer.js` (`_drawGatherHpBar` / `_nodeHpBarAt`, the place and the phase) |
+| The node's HP bar: hits, timer drain, the call at ready | `src/rendering/systems/entityRenderer.js` (`drawNodeHpBar`, the art; v2.3.3027 `big`, `selfGathering`, `bandOverBoots`, `S._selfBand`) + `effectsRenderer.js` (`_drawGatherHpBar` / `_gatherBand` / `_nodeHpBarAt`, the place and the phase) |
 | A cook's grease on its hits | `src/rendering/systems/effectsRenderer.js` (`_updateExtractionCue`, the grease beat) |
 | Swing timing | `src/data/gameSystems.js` (`GATHER_SWING`, `gatherHitTimes`) |
 | The bar over the head | removed: `_drawWindupBar` and `window.__btWindupBar` are gone |

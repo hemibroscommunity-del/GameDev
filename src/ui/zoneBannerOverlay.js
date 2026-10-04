@@ -66,6 +66,7 @@ import {
 import { zoneBannerReady, zoneBannerResident } from '../rendering/zoneBannerPreload.js';
 import { zoneTitle } from './mobile/zoneTitle.js';
 import { prefersReducedMotion } from './mobile/sheet/motion.js';
+import { landLook } from '../data/wheelLands.js';   /* v2.3.3024: the Wheel's lands */
 
 /* ONE element, ever.  This is what makes stacked banners impossible rather
    than merely unlikely: a second entry reuses it and cancels whatever the
@@ -158,10 +159,17 @@ function hide() {
  *   - this zone already showed its banner within ZONE_BANNER_REPEAT_MS, or
  *   - there is no header rail to dock into (pre-game, or a torn-down tree).
  */
-export function playZoneBanner(zoneId, S) {
-  const strip = bannerStripFor(zoneId);
-  if (!strip) { hide(); return false; }
-  if (!zoneBannerReady(zoneId)) { hide(); return false; }
+export function playZoneBanner(zoneId, S, opts = {}) {
+  /* v2.3.3024: `opts` -- the Wheel's lands (noteWheelLand, below): `title`
+     the land's name in place of zoneTitle's, `icon` its element's icon before
+     the name, `color` the name's colour, and `plain` -- a land with no art of
+     the owner's plays the PLAQUE alone, its name and icon, no ornaments
+     (nothing borrowed: the rule above stands), and one whose art is not warm
+     does too */
+  const art = bannerStripFor(zoneId);
+  const strip = art && zoneBannerReady(zoneId) ? art : null;
+  const plain = !strip && !!opts.plain;
+  if (!strip && !plain) { hide(); return false; }
   if (typeof document === 'undefined') return false;
   if (!titleRect()) { hide(); return false; }
 
@@ -180,7 +188,42 @@ export function playZoneBanner(zoneId, S) {
   const plaque = _el.querySelector('.bt-zone-banner__plaque');
   const nameEl = _el.querySelector('.bt-zone-banner__name');
   const orns = _el.querySelectorAll('.bt-zone-banner__orn');
-  nameEl.textContent = zoneTitle(S);
+  nameEl.textContent = opts.title || zoneTitle(S);
+  /* v2.3.3024: the land's element icon before its name, the name in its colour */
+  if (opts.icon) {
+    const ic = document.createElement('img');
+    ic.className = 'bt-zone-banner__icon';
+    ic.src = opts.icon; ic.alt = ''; ic.width = 22; ic.height = 22; ic.draggable = false;
+    nameEl.insertBefore(ic, nameEl.firstChild);
+  }
+  if (opts.color) nameEl.style.color = opts.color;
+  if (plain) {
+    /* the plaque alone: in, named, docked -- the same clock, no beats */
+    _el.classList.add('is-plain');
+    if (reduced) {
+      _el.classList.add('is-static');
+      _el.classList.add('is-in');
+      at(900, () => { if (_playing === zoneId) { _el.classList.add('is-out'); } });
+      at(900 + 260, () => { if (_playing === zoneId) { pulseTitle(); hide(); } });
+      return true;
+    }
+    requestAnimationFrame(() => { if (_el) _el.classList.add('is-in'); });
+    at(ZONE_BANNER_NAME_AT, () => { if (_playing === zoneId) _el.classList.add('is-named'); });
+    at(ZONE_BANNER_PLAY_MS + LAND_HOLD_MS, () => {
+      if (_playing !== zoneId || !_el) return;
+      const r = titleRect();
+      const br = plaque.getBoundingClientRect();
+      if (!r || !br.width) { hide(); return; }
+      const dx = (r.left + r.width / 2) - (br.left + br.width / 2);
+      const dy = (r.top + r.height / 2) - (br.top + br.height / 2);
+      const sc = Math.max(0.28, Math.min(1, r.width / br.width));
+      plaque.style.transform = `translate(${dx}px, ${dy}px) scale(${sc})`;
+      _el.classList.add('is-docking');
+      pulseTitle();
+    });
+    at(ZONE_BANNER_PLAY_MS + LAND_HOLD_MS + ZONE_BANNER_DOCK_MS, () => { if (_playing === zoneId) hide(); });
+    return true;
+  }
 
   /* The ornament boxes are sized in CSS px from the strip's own cell, scaled by
      --bt-zb-scale so one number moves the whole assembly per breakpoint.  The
@@ -285,10 +328,50 @@ export function noteZoneEntered(zoneId, S) {
   return playZoneBanner(zoneId, S);
 }
 
+/* ═══ v2.3.3024: THE WHEEL'S LANDS GET THE BANNER TOO ═══
+ *
+ * Owner, 2026-10-04: "I'm also thinking elemental zones need something more
+ * obvious that the player is in that elemental zone."  The Wheel is one zone,
+ * so walking from the commons into Frost Ridge was never a zone change and
+ * never played a banner.  Now the land under you is watched (the minimap's
+ * frame asks, wheelMinimap.js), and crossing into an ELEMENTAL land plays its
+ * banner: the owner's ornaments for the four lands they drew (Frost Ridge,
+ * Flame Fields, Wind Dunes, Verdant Wilds), the plaque alone for the other
+ * four -- and on every one the element's icon before the land's name, in the
+ * land's colour (src/data/wheelLands.js), docking into the top bar, which says
+ * the same.  The town and the commons play none.
+ *
+ * You must have been in the new land LAND_DWELL_MS, so a walk along a border
+ * does not flicker banners, and a land's banner comes back no sooner than
+ * ZONE_BANNER_REPEAT_MS (as every zone's).  The four art strips load behind
+ * the Wheel's own loading screen (preloadAnimations.js preloadZoneAssets) and
+ * go when you leave it -- never on first sight (the preloading LAW).  The
+ * plain plaque holds LAND_HOLD_MS longer before it docks, having no beats. */
+export const LAND_DWELL_MS = 600;
+export const LAND_HOLD_MS = 350;
+const _wl = { cur: null, since: 0, shown: null };
+export function noteWheelLand(region, title, S) {
+  if (!S || S.currentZone !== 'wheel' || !region) { if (!S || S.currentZone !== 'wheel') { _wl.cur = null; _wl.shown = null; } return false; }
+  const now = Date.now();
+  if (region !== _wl.cur) { _wl.cur = region; _wl.since = now; return false; }
+  if (region === _wl.shown || now - _wl.since < LAND_DWELL_MS) return false;
+  _wl.shown = region;
+  const look = landLook(region);
+  if (!look || !look.element || !title) return false;
+  return playZoneBanner(region, S, { title, plain: true, icon: look.icon, color: landNameColor(look.color) });
+}
+/* the land's colour lifted toward white, to read on the dark plaque (as the
+   top bar's, ZoneHeader.jsx landTint) */
+function landNameColor(hex, k = 0.42) {
+  const v = parseInt(String(hex).slice(1), 16);
+  const f = (c) => Math.round(c + (255 - c) * k);
+  return `rgb(${f((v >> 16) & 255)}, ${f((v >> 8) & 255)}, ${f(v & 255)})`;
+}
+
 /** For rigs and teardown. */
 export function hideZoneBanner() { hide(); }
 export function zoneBannerPlaying() { return _playing; }
-export function resetZoneBannerHistory() { _lastShown.clear(); _lastZone = undefined; }
+export function resetZoneBannerHistory() { _lastShown.clear(); _lastZone = undefined; _wl.cur = null; _wl.shown = null; }
 
 /* ═══ v2.3.2596: THE RIG HANDLE ═══
  * House style (cf. window.__btRoster, window.__btProbe): one read-only handle
@@ -307,6 +390,13 @@ try {
       shownAt: (z) => _lastShown.get(z) || 0,
       beatLog: () => _beatLog.slice(),
       reset: resetZoneBannerHistory,
+      /* v2.3.3024: the Wheel's land watch, and what the banner on screen says */
+      land: () => ({ cur: _wl.cur, shown: _wl.shown }),
+      onScreen: () => {
+        if (!_el) return null;
+        const n = _el.querySelector('.bt-zone-banner__name'), ic = _el.querySelector('.bt-zone-banner__icon');
+        return { text: n ? n.textContent : '', plain: _el.classList.contains('is-plain'), icon: ic ? ic.getAttribute('src') : null, color: n ? n.style.color : '' };
+      },
     };
   }
 } catch (e) { /* a debug handle must never be the thing that breaks the page */ }

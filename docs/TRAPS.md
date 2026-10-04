@@ -5244,3 +5244,29 @@ with main the same way: a scenario first in a fresh run on both
   step cap (`S._dtScale` 3, 7.5 px a frame): the page draws about two frames
   a second by the river there, and its 80 px guard needs eleven frames in
   those 2.4 s.
+
+## 133. `window.BT_AUDIO` looks never set, so "half the game's sounds are dead" (v2.3.3023)
+
+**The plausible move.** `grep -rn "window.BT_AUDIO ="` finds nothing, while a
+dozen call sites (your footsteps in entityRenderer, the mining and chopping
+strikes and the cooking, reeling and river loops in effectsRenderer, the Wheel's
+ground footstep clips in worldTrial.js, the plain slime's splat) read
+`window.BT_AUDIO`. An automated audit on 2026-10-04 concluded every one of
+them was silent and proposed an import at each site as "Priority 0".
+
+**Why it is wrong.** BroTown.jsx puts every data export on the window at once,
+`Object.assign(globalThis, DATA)` (line ~492), and `BT_AUDIO` is one of them.
+Checked in the built game in Chromium: `typeof window.BT_AUDIO` is `'object'`,
+next to `BT_ACHIEVEMENTS` and `BT_API_BASE`. Those sounds play.
+
+**What is true.** `BT_AUDIO.beep()` has been an empty function since v2.3.1103:
+the owner removed every synthesised sound. So the events that only called it
+are silent: `collect`, `deathBoom`, `npcChat`, `enterBuilding`, `chatSend`,
+the old `levelUp`, about 300 calls. The real list of missing sounds is
+`docs/SOUND-GAPS.md`.
+
+**The rule.** Before calling a global "never set", search for the bulk
+assignments too (`Object.assign(globalThis`, `Object.assign(window`), or ask
+the built page (`typeof window.X`). Importing `BT_AUDIO` where it is used is
+still the better style for new code (effectsRenderer does, line 7), but it is
+not a fix for silence.

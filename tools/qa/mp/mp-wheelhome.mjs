@@ -16,8 +16,9 @@
  *      walk out onto a land;
  *   4. dying out there brings them back in the Wheel's Brotown, not today's
  *      town;
- *   5. the marker beside where they land still leads to today's town, and
- *      they stay there;
+ *   5. v2.3.3025, the owner: "there still a portal to the old town. Disable
+ *      that." -- there is no marker beside where they land any more (it led
+ *      to today's town, where they stayed);
  *   6. `?trial=off` is today's town and the old World View, as before;
  *   7. no page errors;
  *   8. the quest's way works there (src/game/questRoute.js): the minimap's
@@ -27,6 +28,11 @@
  *      (the owner: "just rely on the gold road on the minimap"); and a death
  *      there no longer leaves today's town with the Wheel's npc list
  *      (src/game/respawn.js).
+ *   9. v2.3.3025, the owner: "players are starting in the old town and
+ *      getting routed to the wheel on the loading screen" -- the way in is ONE
+ *      loading screen: the ocean clip lifts with them already in the Wheel,
+ *      and every veil behind it said "The Wheel", never "Town"; and the way
+ *      back from a death shows "The Wheel" over today's town the whole time.
  */
 import * as H from './harness.mjs';
 
@@ -39,7 +45,9 @@ const at = (P) => P.page.evaluate(() => {
   /* in today's town: is any npc standing off its map (the Wheel's list, carried over)? */
   const townW = S.currentZone === 'town' && S.map && S.map[0] ? S.map[0].length * 32 : 0;
   const npcs = Array.isArray(S.npcs) ? S.npcs : [];
-  return { zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y), loading: !!S._zoneLoading,
+  /* v2.3.3025: the veil over the screen, and what it says */
+  const vl = document.querySelector('.bt-zone-loading .bt-zone-loading-name');
+  return { veil: vl ? vl.textContent : null, zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y), loading: !!S._zoneLoading,
     dying: !!S._dying, gateHits: S._wheelGateHits || 0, tut1: !!(S.rpg && S.rpg._quests && S.rpg._quests.tut_1),
     npcN: npcs.length, npcFar: townW > 0 && npcs.some((n) => n && n.x > townW) };
 });
@@ -92,7 +100,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       place: pl ? pl.textContent : null, sub: sb ? sb.textContent : null };
   });
   rec.ok(`a new character starts in the Wheel's Brotown, by its town square, without walking a step (${zones.join(' -> ')}, ${((Date.now() - t0) / 1000).toFixed(1)} s, ${r(a)} px from the middle)`,
-    a.zone === 'wheel' && zones[0] === 'town' && r(a) < 600, { zones, a });
+    a.zone === 'wheel' && r(a) < 600, { zones, a });
+  /* v2.3.3025: ONE loading screen -- the ocean clip waited for the arrival
+     (IntroVideo's world gate), and every zone veil the way in raised behind
+     it said the Wheel's name and was under the clip */
+  {
+    const w9 = await P.page.evaluate(() => ({ lifted: window._gameState.current.__introLiftedZone || null, veils: (window.__btVeilLog || []).slice() }));
+    rec.ok(`...behind ONE loading screen: the ocean clip lifted with them already in the Wheel (${w9.lifted}), and the veils behind it said ${JSON.stringify(Array.from(new Set(w9.veils.map((v) => v.name))))}, never "Town"`,
+      w9.lifted === 'wheel' && w9.veils.every((v) => v.name === 'The Wheel' && v.underIntro), w9);
+  }
   /* v2.3.3009: the owner: "Put the 'brotown safe' and other location
      indicators in place of the 'the wheel lvl 1-2' on the top bar" */
   rec.ok(`...the top bar says where he is, "${shown.place}" over "${shown.sub}" (not "The Wheel (Lv1-2)"), and no test readout is on screen`,
@@ -176,7 +192,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (let i = 0; i < 240; i++) {
       after = await at(P);
       if (!back.length || back[back.length - 1] !== after.zone) back.push(after.zone);
-      if (after.zone === 'town') townSeen.push({ npcN: after.npcN, npcFar: after.npcFar });
+      if (after.zone === 'town') townSeen.push({ npcN: after.npcN, npcFar: after.npcFar, veil: after.veil });
       if (WHEELISH(after.zone) && !after.loading && !after.dying && back.includes('town')) break;
       await P.page.waitForTimeout(500);
     }
@@ -187,23 +203,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     died && !!after && after.zone === 'wheel' && r(after) < 600, { died, back, after });
   rec.ok(`...and on the way through, today's town has its own townsfolk, not the Wheel's Mayor at the Wheel's coordinates (${townSeen.length} looks)`,
     townSeen.length > 0 && !townSeen.some((t) => t.npcFar), townSeen);
+  /* v2.3.3025: ...and nobody sees it: "The Wheel" over it every look */
+  rec.ok(`...and today's town is never on screen on the way: the veil over it said "The Wheel" every time we looked (${townSeen.filter((t) => t.veil === 'The Wheel').length} of ${townSeen.length})`,
+    townSeen.length > 0 && townSeen.every((t) => t.veil === 'The Wheel'), townSeen);
 
-  /* ── 5. the marker to today's town ── */
+  /* ── 5. no marker to today's town (v2.3.3025, the owner: "there still a
+        portal to the old town. Disable that.") -- none on the Wheel's map,
+        none in its exits, and the quest's way never stars one ── */
   const exit = await P.page.evaluate(() => {
     const S = window._gameState.current;
-    for (let y = 0; y < S.map.length; y++) { const row = S.map[y]; const x = row.indexOf(8); if (x >= 0) return { tx: x, ty: y }; }
-    return null;
+    let tile = null;
+    for (let y = 0; y < S.map.length && !tile; y++) { const row = S.map[y]; const x = row.indexOf(8); if (x >= 0) tile = { tx: x, ty: y }; }
+    const ex = (window._gameFns && window._gameFns.WORLDVIEW_EXITS) || null;
+    const mini = window.__btMinimap || null;
+    return { zone: S.currentZone, tile, exits: Array.isArray(ex) ? ex.map((e) => e.zoneId) : null, star: mini && mini.quest ? mini.quest.zoneId || null : null };
   });
-  let inTown = null;
-  if (exit) {
-    await H.hopTo(P, exit.tx * 32 + 16 + 200, exit.ty * 32 + 16, { step: 200, tries: 60 });
-    await H.hopTo(P, exit.tx * 32 + 16 + 40, exit.ty * 32 + 16, { tries: 20 });
-    for (let i = 0; i < 60; i++) { inTown = await at(P); if (inTown.zone === 'town' && !inTown.loading) break; await P.page.waitForTimeout(500); }
-    await P.page.waitForTimeout(5000);
-    inTown = await at(P);
-  }
-  rec.ok("the marker beside where they land still leads to today's town -- and they stay there",
-    !!exit && !!inTown && inTown.zone === 'town', { exit, inTown });
+  rec.ok(`there is no way back to today's town from the Wheel: no marker on its map, no exit (${JSON.stringify(exit.exits)}), and the quest's star is not on one`,
+    exit.zone === 'wheel' && !exit.tile && (exit.exits === null || exit.exits.length === 0) && exit.star !== 'town', exit);
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
 
   /* ── 6. ?trial=off ── */

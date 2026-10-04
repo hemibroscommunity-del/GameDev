@@ -7308,10 +7308,33 @@ export function questObjectiveDone(quest, S, rpgFallback) {
  * things the proximity scan reads (propsForZone + p.action), so the day a door
  * ships the quest comes back with it and nobody has to remember this function.
  * Memoised: both inputs are module constants, and this is called from the
- * per-frame NPC loop through getNpcQuest.
+ * per-frame NPC loop through getNpcQuest.  (v2.3.3029: and the zones closed by
+ * setClosedDoorZones, which empties the memo.)
  */
 var _doorCache = null;
 var _doorCount = 0;
+/* ═══ v2.3.3029: A DOOR YOU CANNOT WALK TO IS NOT A DOOR ═══
+ * Owner, 2026-10-04: "there still a portal to the old town. Disable that."
+ * With that marker gone (worldTrial.js, v2.3.3025) today's town is a stop on
+ * the way into the Wheel, never a place you walk to -- so its forge, bank and
+ * auction house are still in WORLD_PROPS, still placed, and out of reach.
+ * Counted, they kept mayor_1 ("Visit 3 buildings in town") OFFERED to every
+ * player the Wheel's Mayor Bro reached it with, an errand nothing in the world
+ * can finish, and getNpcQuest stops at an active quest -- so mayor_2 and
+ * mayor_3 behind it were never offered again: the very wall the guard above
+ * was written for, put back by closing a road rather than removing a door.
+ * worldTrial.js names the zones it closes (today's town, while the Wheel is
+ * home and there is no way back), and their doors are not counted: mayor_1
+ * hides itself, the Mayor offers mayor_2, and the day the Wheel's own
+ * buildings get doors -- or the road comes back -- it is offered again.
+ * (The worker takes any known quest from nothing; mayor_1 is no prerequisite
+ * there.) */
+var _closedDoorZones = null;
+/** Zones whose doors cannot be reached this session (null: none). */
+export function setClosedDoorZones(zones) {
+  _closedDoorZones = zones && zones.length ? zones.slice() : null;
+  _doorCache = null;
+}
 /** Is there a live, enterable door in the world?  `action` narrows it to one
  *  building (the Farm, say); a NUMBER asks whether at least that many distinct
  *  doors exist; true/undefined asks whether ANY door does.
@@ -7344,6 +7367,8 @@ function anyBuildingDoor(action) {
          lives in there, and reading the raw array would report doors the
          renderer and the proximity scan both agree do not exist. */
       if (propsForZone(p.zone).indexOf(p) < 0) continue;
+      /* v2.3.3029: in a zone the player cannot walk to (setClosedDoorZones) */
+      if (_closedDoorZones && _closedDoorZones.indexOf(p.zone) >= 0) continue;
       if (!_doorCache[p.action]) _doorCount++;   /* DISTINCT buildings */
       _doorCache[p.action] = true;
       _doorCache['*'] = true;

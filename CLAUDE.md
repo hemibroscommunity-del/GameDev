@@ -845,7 +845,99 @@ remnant to migrate server-side, not a mode to preserve.
     grit was the HD pictures drawn smaller than their own pixels: 0.76
     device px a picture px on a 3x phone at 0.64, so they crawled as the
     view slid; 0.91 now. `?zoom=0.64` is the view before; `mp-zoomout`:
-    WORLD-MAP-PIPELINE "Back in a little".)
+    WORLD-MAP-PIPELINE "Back in a little".
+  - Since v2.3.3021 the water's HONEYCOMB IS GONE and its light MOVES -- the
+    owner: "The water has a honeycomb pattern that needs to change to mimic
+    water movement. Is that something I should get from chatGPT or you do it
+    using code?":
+    - the honeycomb was ChatGPT's web of light (caustics) in all three water
+      pictures; still, it read as a pool's tiled floor;
+    - the ground worker takes it out of each water picture once (`calmWater`,
+      ground.js CALM WATER): a grey opening at half size finds it, it is
+      filled from the colours round it on the picture's own colours, wrapping
+      so the tile stays seamless; only when the game says it draws the water
+      moving (`moving` on init, `setWheelWaterMoves`), so `?nowaves` and no
+      WebGL2 keep the pictures as made;
+    - the shader draws its own web, moving (wheelWater.js CAUSTICS): round
+      cells (nearest over next-nearest distance, not F2 - F1) that swell and
+      re-form, curving and breaking, one 42 game px cell size, faint and broken
+      on the open sea, none on a running river; `?caustics=k` (0-2);
+    - test-world-core "the water's frozen web of light taken out", `mp-wheelwaves`:
+      docs/specs/moving-water.md.
+  - Since v2.3.3022 the TOWN IS LAID ROOMIER -- the owner: "The town center's
+    buildings feel too squished together. I think brotown itself might need
+    to be bigger to accommodate":
+    - `bigTownPlan(k, pictures)`; `PLAN = bigTownPlan(TOWN, BUILDINGS)`, laid
+      1.5 round pictures drawn 1.15: the Town Hall and Hotel 4 -> 103 game px
+      apart, Market Row 78 -> 228, the gates at 1,226 / 1,455; 1.5 is the most
+      east-west before the Sweetwater; `planFor(search)` in the worker,
+      `?bigtown=1.15` the town before; the readout "· town x1.5";
+    - the arches, signposts, yard scatter and fences at each street's own gate
+      (`townGates`; at 1.15 a signpost stood inside the Assay Office); the Old
+      Mill whole on the far bank (`MILL_NEAR_GATE`, `MILL_FAR_X`);
+    - re-baked: only the commons' ore, trees and fishing spots moved;
+    - test-world-core "the town laid roomier": WORLD-MAP-PIPELINE "The town
+      laid roomier".
+  - Since v2.3.3023 the WAY HOME is on the minimap -- the owner: "the world
+    feels hard to navigate without losing your sense of position relative to
+    the town center": when town is off the box, a home badge (the house on a
+    dark disc, a brass point at town) rides the box's edge toward it, as the
+    quest star does, clear of the expand mark, aside while the star leads to
+    Mayor Bro; `__btMinimap.home`; `mp-wheelmap`: WORLD-MAP-PIPELINE "The way
+    home".
+  - Since v2.3.3024 EACH LAND IS OBVIOUS -- the owner: "flat colors on the
+    minimap to help orient you to what elemental zone you're in", "elemental
+    zones need something more obvious": `src/data/wheelLands.js` (a flat
+    colour and the element's icon a land); the minimap and world map paint
+    each land its colour (`overviewLands`, `landsCanvas`); the top bar puts the
+    icon before the land's name, in its colour; crossing into a land plays its
+    banner (`noteWheelLand`: the owner's art for frost, ember, sky, verdant,
+    the plaque alone for the other four, nothing borrowed); and the river's
+    streaks are softer ("too harsh in the river over the bridge"):
+    WORLD-MAP-PIPELINE "Which land you are in", `mp-wheelmap`.
+  - Since v2.3.3025 ONE LOADING SCREEN AND NO WAY BACK -- the owner: "players
+    are starting in the old town and getting routed to the wheel on the
+    loading screen. Also there still a portal to the old town. Disable that.
+    Also sometimes the loading screen of the ocean is too small":
+    - the ocean clip waits for the arrival in the Wheel (IntroVideo's world
+      gate, `waitForWheelArrival`), and no zone veil is painted over it
+      (`body.bt-intro-up`);
+    - while the trip is wanted the veil says "The Wheel" and is never lifted on
+      today's town (`wheelTripVeiled`, syncTownScenery), raised the moment a
+      death or a dungeon's way out puts you there (`veilWheelTrip`);
+    - no marker back to today's town (`setExits(null)`; `?wayback` or
+      `?nospawn` for tests) -- its shops, forge, bank and auction house are
+      unreachable until the Wheel's buildings get doors;
+    - the clip fills its screen on explicit edges, says its shape (400 x 736)
+      and shows its first frame as a poster (`loading-ashore-poster.webp`);
+      the creator's warm-up warms it (it warmed a clip gone since v2.3.822);
+    - `mp-wheelhome`: WORLD-MAP-PIPELINE "One loading screen, and no way back".
+    - Since v2.3.3029 those doors no longer count for quests: worldTrial.js
+      closes today's town (`setClosedDoorZones`) and gameSystems.js
+      `anyBuildingDoor` skips its doors, so mayor_1 ("Visit 3 buildings in
+      town") hides itself and the Mayor offers mayor_2 -- counted, it was an
+      errand nothing could finish, and it stopped his chain (tutorial §9).
+  - Since v2.3.3026 A HIT ON YOU READS LIKE ONE YOU DEAL -- the owner: "damage
+    numbers as large as they usually are and with the elemental icon after
+    the damage number similar to how the sword has sword icon": spawned over
+    your band (`heroPopupY`/`peerPopupY`, was your face), the element badges
+    and the heart cut to their own opaque box as they load (`_tightPopupIcon`)
+    so they draw as tall as the number; a rolled dodge says "Dodged", no "-0";
+    docs/specs/monster-statuses.md, `mp-elemhits`.
+  - Since v2.3.3027 THE HARVEST'S BAR IS OVER YOUR HEAD, AS BIG AS YOUR HP BAR
+    -- the owner: "Ticks for the resource extraction is too hard to see ...
+    hide the player name plate and health bar during extraction":
+    `selfGathering` puts the plate and the HP bar away, `drawNodeHpBar` `big`
+    (76 x 22, your HP number's type) at `S._selfBand` or over a stand-in's
+    boots (`bandOverBoots`); docs/specs/gathering-hits.md, `mp-wheelnodes`,
+    `mp-gatherhits`.
+  - Since v2.3.3028 A LOW THING'S SHADOW STARTS AT ITS BASE -- the owner: "Sea
+    level props have shadows that appear to be floating off the ground":
+    everything but a tree casts column by column (shadows.js `placeDepth`,
+    its new `floor`), each column from its picture's lowest pixel
+    (`readArtBottoms`), never further back than the footprint's middle; QA
+    `__btWheelCastBoard`, `__btWheelObjects.caster(i)`; WORLD-MAP-PIPELINE "A
+    low thing's shadow starts at its own base", `mp-wheelshadows`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

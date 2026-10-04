@@ -2073,7 +2073,7 @@ console.log('the oases (v2.3.2981)');
    buildings twice the size, drawn so; without it nothing changes. */
 console.log('the big-town preview (v2.3.2982)');
 {
-  const { bigTownPlan, bigTownScale, BIG_TOWN_MAX, BUILDINGS } = await import('../../public/tools/world/plan.js');
+  const { bigTownPlan, bigTownScale, planFor, BIG_TOWN_MAX, BUILDINGS, TOWN } = await import('../../public/tools/world/plan.js');
   const { townPlan, townGates } = await import('../../public/tools/world/core/layout.js');
   const { placeObjects, objectFootprints, mayorSpot } = await import('../../public/tools/world/core/placing.js');
   const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
@@ -2082,10 +2082,15 @@ console.log('the big-town preview (v2.3.2982)');
      the switch, the plan itself IS the standard town; `bigtown=1` the old one.
      v2.3.2997, owner: "Change buildings from 1.5x to 1.15x" -- the standard
      is 1.15x, and `bigtown=1.5` shows the 1.5x town to compare */
-  ok('the switch: `bigtown` is twice the size, `bigtown=1.5` one and a half, at most BIG_TOWN_MAX, `bigtown=1` the town as it was, and without it the standard 1.15x -- the plan itself',
+  /* v2.3.3022, owner: "The town center's buildings feel too squished
+     together" -- the standard town LAID at TOWN, 1.5, its pictures DRAWN at
+     BUILDINGS, 1.15; `bigtown=1.15` the town before, laid and drawn 1.15 */
+  ok('the switch: `bigtown` is twice the size, `bigtown=1.5` one and a half, at most BIG_TOWN_MAX, `bigtown=1` the town as it was, `bigtown=1.15` the town before v2.3.3022, and without it the standard -- the plan itself, laid 1.5x round 1.15x buildings',
     bigTownScale('?trial=wheel&bigtown') === 2 && bigTownScale('?trial=wheel&bigtown=1.5') === 1.5 && bigTownScale('?bigtown=9') === BIG_TOWN_MAX &&
-    bigTownScale('?trial=wheel') === BUILDINGS && bigTownScale('?trial=wheel&bigtownish') === BUILDINGS && bigTownScale('?bigtown=1') === 1 &&
-    BUILDINGS === 1.15 && bigTownPlan(BUILDINGS) === PLAN && PLAN.town.buildingScale === 1.15 && PLAN.bigTown === 1.15 &&
+    bigTownScale('?trial=wheel') === null && bigTownScale('?trial=wheel&bigtownish') === null && bigTownScale('?bigtown=1') === 1 &&
+    planFor('?trial=wheel') === PLAN && planFor('') === PLAN && planFor('?bigtown=1') === bigTownPlan(1) &&
+    BUILDINGS === 1.15 && TOWN === 1.5 && bigTownPlan(TOWN, BUILDINGS) === PLAN && PLAN.town.buildingScale === 1.15 && PLAN.bigTown === 1.5 &&
+    planFor('?bigtown=1.15').town.buildingScale === 1.15 && planFor('?bigtown=1.15').bigTown === 1.15 &&
     bigTownPlan(1.5) !== PLAN && bigTownPlan(1.5).town.buildingScale === 1.5 &&
     bigTownPlan(1) !== PLAN && bigTownPlan(1).town.gateNS === undefined && bigTownPlan(1).town.lot.perSideRow === undefined && !bigTownPlan(1).town.buildingScale);
   const BP = bigTownPlan(2), bbp = buildBlueprint(BP), BO = placeObjects(BP, bbp), T2 = BP.town, tp2 = townPlan(T2);
@@ -2179,6 +2184,84 @@ console.log('the big-town preview (v2.3.2982)');
   ok('...the town in the commons, no river, railway or pond in it; the railway leaving from the moved depot; the river with its three bridges',
     beyond15 === 0 && wet15 === 0 && rail0[0] * step15 > G15.ew && !!dep15 && (dep15.x0 + dep15.x1) / 2 - g15.cx > G15.ew
     && (b15.decks || []).filter((d) => d.kind === 'bridge').length === 3, { beyond15, wet15, rail0, gate: G15.ew, bridges: (b15.decks || []).filter((d) => d.kind === 'bridge').map((d) => d.road) });
+}
+
+/* ── v2.3.3022: the town laid roomier ──
+   Owner, 2026-10-04: "The town center's buildings feel too squished
+   together. I think brotown itself might need to be bigger to accommodate."
+   The standard town is laid as the 1.5x town (plan.js TOWN) and its
+   buildings drawn 1.15x (BUILDINGS), as before: room between them. */
+console.log('the town laid roomier (v2.3.3022)');
+{
+  const { bigTownPlan, TOWN, BUILDINGS, MILL_FAR_X } = await import('../../public/tools/world/plan.js');
+  const { townGates } = await import('../../public/tools/world/core/layout.js');
+  const { placeObjects, objectFootprints } = await import('../../public/tools/world/core/placing.js');
+  const fs = await import('node:fs');
+  const man = JSON.parse(fs.readFileSync(new URL('../../public/world/objects/manifest.json', import.meta.url), 'utf8'));
+  const pieceOf = Object.fromEntries(man.objects.map((o) => [o.id, o.pieces]));
+  const isBuilding = new Set(man.objects.filter((o) => o.kind === 'building').map((o) => o.id));
+  /* each building's PICTURE, a rectangle in game px (its foot at x, y) */
+  const pictures = (O) => {
+    const out = [];
+    for (let i = 0; i < O.n; i++) {
+      const id = O.kinds[O.kind[i]], ks = O.kindScale[O.kind[i]];
+      const pcs = pieceOf[id];
+      if (!pcs || !isBuilding.has(id)) continue;
+      const pc = pcs[O.piece[i]] || pcs[0];
+      const x0 = O.x[i] - (pc.foot[0] / 2) * ks, y0 = O.y[i] - (pc.foot[1] / 2) * ks;
+      out.push({ id, x0, y0, x1: x0 + pc.gameW * ks, y1: y0 + pc.gameH * ks });
+    }
+    return out;
+  };
+  const gap = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
+  const tightest = (pics) => {
+    let best = { d: Infinity };
+    for (let i = 0; i < pics.length; i++) for (let j = i + 1; j < pics.length; j++) {
+      const d = gap(pics[i], pics[j]);
+      if (d < best.d) best = { d, a: pics[i].id, b: pics[j].id };
+    }
+    return best;
+  };
+  const bp15 = buildBlueprint(PLAN), O = placeObjects(PLAN, bp15);
+  const before = bigTownPlan(BUILDINGS), bpB = buildBlueprint(before), OB = placeObjects(before, bpB);
+  const now = pictures(O), was = pictures(OB);
+  const tN = tightest(now), tB = tightest(was);
+  const pair = (pics, a, b) => gap(pics.find((p) => p.id === a), pics.find((p) => p.id === b));
+  const hallHotel = [pair(was, 'townhall', 'hotel'), pair(now, 'townhall', 'hotel')];
+  ok(`the standard town is laid ${TOWN}x round ${BUILDINGS}x buildings, all ${O.buildings} of ${O.buildingsOf} standing, the gates at ${townGates(PLAN.town).ns} and ${townGates(PLAN.town).ew} art px`,
+    PLAN.bigTown === 1.5 && PLAN.town.buildingScale === 1.15 && O.buildings === 17 && O.buildingsOf === 17 && now.length === 17
+    && townGates(PLAN.town).ns === 1226 && townGates(PLAN.town).ew === 1455, { gates: townGates(PLAN.town) });
+  ok(`room between the buildings: the closest two pictures ${Math.round(tN.d)} game px apart (${tN.a} and ${tN.b}; laid 1.15x it was ${Math.round(tB.d)}, ${tB.a} and ${tB.b}), the Town Hall and the Hotel ${Math.round(hallHotel[0])} -> ${Math.round(hallHotel[1])}`,
+    tN.d >= 60 && tB.d < 20 && hallHotel[1] >= 90, { tN, tB, hallHotel });
+  /* the gates and signposts at each street's own gate (they stood at the
+     plan's old 1,050: at 1.15 the east signpost in the Assay Office), none
+     inside a building's footprint */
+  const fp = objectFootprints(O, man), boxes = [];
+  for (let i = 0; i < O.n; i++) {
+    const id = O.kinds[O.kind[i]];
+    if (!isBuilding.has(id)) continue;
+    for (let b = fp.boxOf[i]; b < fp.boxOf[i + 1]; b++) boxes.push([fp.boxes[4 * b], fp.boxes[4 * b + 1], fp.boxes[4 * b + 2], fp.boxes[4 * b + 3]]);
+  }
+  const signs = [], arches = [];
+  for (let i = 0; i < O.n; i++) {
+    const id = O.kinds[O.kind[i]];
+    if (id === 'signpost') signs.push([O.x[i], O.y[i]]);
+    if (id === 'gate') arches.push([O.x[i], O.y[i]]);
+  }
+  const inside = signs.filter(([x, y]) => boxes.some((b) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]));
+  const WPAt = PLAN.worldPxPerArtPx, cx = 21504, gNS = townGates(PLAN.town).ns * WPAt;
+  ok(`the town's arches and signposts at its own gates: ${arches.length} arches ${arches.map(([x, y]) => Math.round(Math.abs(y - cx))).join(' / ')} game px out (the gate ${gNS}), ${signs.length} signposts, none inside a building`,
+    arches.length === 2 && arches.every(([, y]) => Math.abs(Math.abs(y - cx) - gNS) < 60) && signs.length === 4 && inside.length === 0, { arches, inside });
+  /* the Old Mill: on the river's near bank when the town leaves room, else
+     whole on the far bank -- never in the river */
+  const mill = bp15.lots.find((l) => l.id === 'mill');
+  const cnt = { lot: 0, river: 0, all: 0 };
+  for (let y = mill.y0; y < mill.y1; y += bp15.scale) for (let x = mill.x0; x < mill.x1; x += bp15.scale) {
+    const c = Math.floor((y - bp15.y0) / bp15.scale) * bp15.w + Math.floor((x - bp15.x0) / bp15.scale);
+    cnt.all++; if (bp15.cls[c] === C.lot) cnt.lot++; if (bp15.cls[c] === C.river) cnt.river++;
+  }
+  ok(`the Old Mill stands whole on the far bank by the Mill Bridge (${cnt.lot} of its ${cnt.all} cells its plot, ${cnt.river} in the river)`,
+    PLAN.places.find((p) => p.id === 'mill').at[0] === MILL_FAR_X && cnt.river === 0 && cnt.lot >= cnt.all * 0.6, cnt);
 }
 
 /* ── v2.3.2983: the buildings' life ──
@@ -2843,6 +2926,70 @@ console.log('the water moves (v2.3.3019)');
   const cap = +((/amp = min\(min\(amp, .*\), ([0-9.]+)\);/.exec(fragSrc) || [])[1]);
   ok(`the water's swell never reads past a piece's picture: at most ${cap} game px away, and the worker lays ${apron} art px (${apron * WPA} game px) past each edge, as this test does`,
     apron === AP && cap > 0 && cap + 0.25 <= apron * WPA, { apron, cap });
+}
+
+/* v2.3.3021: the owner, "The water has a honeycomb pattern that needs to
+   change to mimic water movement": the light's web ChatGPT drew into the
+   water pictures comes out (ground.js CALM WATER), and the game draws its
+   own, moving (wheelWater.js CAUSTICS) */
+console.log("the water's frozen web of light taken out (v2.3.3021)");
+{
+  const { calmWater } = await import('../../public/tools/world/core/ground.js');
+  const { decodePNG } = await import('./png.mjs');
+  const { readFileSync } = await import('node:fs');
+  /* the game's own water pictures, as the worker keeps them: a number a px
+     into the picture's own colours */
+  const tileOf = (name) => {
+    const { width: w, height: h, data } = decodePNG(readFileSync(new URL(`../../public/world/ground/${name}.png`, import.meta.url)));
+    const at = new Map(), pal = [], idx = new Uint8Array(w * h);
+    for (let p = 0; p < w * h; p++) {
+      const key = (data[4 * p] << 16) | (data[4 * p + 1] << 8) | data[4 * p + 2];
+      let v = at.get(key);
+      if (v === undefined) { v = pal.length / 3; at.set(key, v); pal.push(data[4 * p], data[4 * p + 1], data[4 * p + 2]); }
+      idx[p] = v;
+    }
+    return { w, h, idx, pal: Uint8Array.from(pal) };
+  };
+  const lum = (t, p) => { const q = t.idx[p]; return 0.299 * t.pal[3 * q] + 0.587 * t.pal[3 * q + 1] + 0.114 * t.pal[3 * q + 2]; };
+  const at = (t, f) => { const a = []; for (let p = 0; p < t.w * t.h; p += 3) a.push(lum(t, p)); a.sort((x, y) => x - y); return a[Math.floor(f * (a.length - 1))]; };
+  const roll = (t, dx, dy) => { const o = new Uint8Array(t.idx.length); for (let y = 0; y < t.h; y++) for (let x = 0; x < t.w; x++) o[((y + dy) % t.h) * t.w + ((x + dx) % t.w)] = t.idx[y * t.w + x]; return { ...t, idx: o }; };
+  const rows = [];
+  let slowest = 0;
+  for (const name of ['sea-A', 'shallows-A', 'fresh-A', 'fresh-B']) {
+    const t = tileOf(name);
+    const t0 = performance.now();
+    const c = calmWater(t);
+    slowest = Math.max(slowest, performance.now() - t0);
+    let changed = 0, newColours = 0;
+    const kept = new Set();
+    for (let p = 0; p < t.idx.length; p++) if (c.idx[p] === t.idx[p]) kept.add(t.idx[p]);
+    for (let p = 0; p < t.idx.length; p++) if (c.idx[p] !== t.idx[p]) { changed++; if (!kept.has(c.idx[p])) newColours++; }
+    const r1 = calmWater(roll(t, 300, 214)), r2 = roll(c, 300, 214);
+    let shifted = 0;
+    for (let p = 0; p < r1.idx.length; p++) if (r1.idx[p] !== r2.idx[p]) shifted++;
+    rows.push({ name, web: c.calm ? c.calm.web : 0, changed: changed / t.idx.length, newColours, p50: [at(t, 0.5), at(c, 0.5)], p97: [at(t, 0.97), at(c, 0.97)], shifted, pal: c.pal === t.pal });
+  }
+  const pc = (v) => Math.round(v * 100) + '%';
+  ok(`the web is found in each of the game's four water pictures: ${rows.map((r) => `${r.name} ${pc(r.web)}`).join(', ')} of it, with its glow`,
+    rows.every((r) => r.web > 0.2 && r.web < 0.85), rows);
+  ok(`and taken out: the lightest 3% of each picture ${rows.map((r) => `${Math.round(r.p97[0])} -> ${Math.round(r.p97[1])}`).join(', ')}, the middle unmoved (${rows.map((r) => `${Math.round(r.p50[0])} -> ${Math.round(r.p50[1])}`).join(', ')})`,
+    rows.every((r) => r.p97[0] - r.p97[1] >= 25 && Math.abs(r.p50[0] - r.p50[1]) <= 8), rows);
+  ok(`filled from the water round it in the picture's OWN colours: every px changed (${rows.map((r) => pc(r.changed)).join(', ')}) takes a colour the picture uses outside its web, and the colour list is the picture's`,
+    rows.every((r) => r.newColours === 0 && r.pal && r.changed > 0.1), rows);
+  ok(`a picture seamless before is seamless after: the calm of a picture shifted (300, 214) px is the calm shifted, to the last px (${rows.map((r) => r.shifted).join(', ')} px differ)`,
+    rows.every((r) => r.shifted === 0), rows);
+  ok(`once a picture, and quick: ${Math.round(slowest)} ms at the slowest in Node`, slowest < 600, { slowest });
+  /* the worker calms only the water's pictures, only where the game draws
+     its web, told so by the game */
+  const workerSrc = readFileSync(new URL('../../public/tools/world/core/ground-worker.js', import.meta.url), 'utf8');
+  const trialSrc = readFileSync(new URL('../../src/game/wheelTrial.js', import.meta.url), 'utf8');
+  const waterSrc = readFileSync(new URL('../../src/rendering/wheelWater.js', import.meta.url), 'utf8');
+  ok("only where the game draws the water moving: the worker calms a water picture when told `moving` (and not `?nowaves`), the game tells it so from WebGL2 and the address",
+    /calm: wavesOn\(m && m\.search\) && !!\(m && m\.moving\)/.test(workerSrc) && /W && W\.calm && WATER_SWATCHES\.includes\(id\)/.test(workerSrc)
+    && /postMessage\(\{ type: 'init', search, moving: _waterMoves \}\)/.test(trialSrc) && /setWheelWaterMoves\(wavesOn\(\) && webgl2\(\)\)/.test(waterSrc), {});
+  ok("and the game draws its own web of light, moving: round cells (the nearest point's distance over the next's), on every water but a running river, `?caustics=k` its brightness",
+    /float cellEdge\(vec2 p, float t\)/.test(waterSrc) && /return f1 \/ max\(f2, 1e-4\);/.test(waterSrc) && /uniform float uCaustics;/.test(waterSrc)
+    && /\(1\.0 - smoothstep\(0\.02, 0\.10, sp\)\)/.test(waterSrc) && /caustics=\(\[0-9\.\]\+\)/.test(waterSrc), {});
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
