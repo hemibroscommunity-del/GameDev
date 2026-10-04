@@ -163,6 +163,12 @@ if (typeof window !== 'undefined') {
 export async function initPixiRenderer(canvas) {
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
   _appRef = app;
+  /* v2.3.3017: QA (mp-glrestore): the picture blanked to the canvas's own
+     colour, as the owner's iPhone showed it, for the black-screen watchdog to
+     find.  Nothing in the game calls this. */
+  /* (its contents hidden, not the stage: a hidden stage skips the frame, clear
+     and all, and the canvas goes see-through instead of to its colour) */
+  if (typeof window !== 'undefined') window.__btBlankStage = (on) => { try { for (const c of app.stage.children) c.visible = !on; } catch (e) { /* torn down */ } };
   /* v2.3.704: let the equip-change re-prewarm GPU-upload its fresh bakes
      (the intro-time uploadBakedTextures only covered the spawn loadout). */
   registerPrewarmRenderer(app.renderer);

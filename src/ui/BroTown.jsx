@@ -258,6 +258,7 @@ import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 import { QuestCoach } from './mobile/QuestCoach.jsx';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
+import { CANVAS_BG } from '@/rendering/pixiApp.js';   /* v2.3.3017: the watchdog reads the canvas's own colour as dark */
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
 import { markAlive } from '@/debug/crashTrap.js';   /* v2.3.3017: a page that dies open is reported by the next one */
@@ -7573,6 +7574,20 @@ export var BroTown = function BroTown(_ref0) {
     if (showNameModal || showLogin || bootPhase !== null) return;
     /* v2.3.777: tiny world-canvas readback -> % of pixels brighter than
        near-black.  Cheap (32x18) and only every 5s. */
+    /* ═══ v2.3.3017: LIT IS NEITHER BLACK NOR THE CANVAS'S OWN COLOUR ═══
+       The owner's black screen, fighting fire goblins on an iPhone: the world
+       gone to the canvas's navy (CANVAS_BG, 13/11/24 -- the owner's
+       screenshot read 12/11/23) with only the sword in the bro's hand drawn --
+       the GPU's pictures of the body, the ground and the minimap blank, the
+       one loaded from a file still there.  The navy's channels sum to 48, past this watchdog's
+       old line of 30, so every pixel of it counted as LIT: no strike, no
+       rebuild, no reload, nothing in the crash log, the screen dark for good.
+       A pixel is lit now only if it is clear of black AND of that colour. */
+    var _BG_R = (CANVAS_BG >> 16) & 255, _BG_G = (CANVAS_BG >> 8) & 255, _BG_B = CANVAS_BG & 255;
+    function _wdLitPx(r, g, b) {
+      return r + g + b > 30 && Math.abs(r - _BG_R) + Math.abs(g - _BG_G) + Math.abs(b - _BG_B) > 24;
+    }
+    window.__btLitPx = _wdLitPx;   /* QA (mp-glrestore): the same rule */
     function _sampleLit() {
       try {
         var cv = canvasRef.current;
@@ -7594,7 +7609,7 @@ export var BroTown = function BroTown(_ref0) {
         var d2 = g2.getImageData(0, 0, 32, 18).data;
         var lit = 0;
         for (var i2 = 0; i2 < d2.length; i2 += 4) {
-          if (d2[i2] + d2[i2 + 1] + d2[i2 + 2] > 30) lit++;
+          if (_wdLitPx(d2[i2], d2[i2 + 1], d2[i2 + 2])) lit++;
         }
         return Math.round(100 * lit / (32 * 18));
       } catch (e) { return -1; }
@@ -7736,6 +7751,12 @@ export var BroTown = function BroTown(_ref0) {
         }
         if (document.visibilityState === 'visible') {
           requestAnimationFrame(function () {
+            /* v2.3.3017: no judging where the canvas's own colour is MEANT to
+               show -- under the loading screen, or behind a zone's veil or the
+               wait for the server (both .bt-zone-loading), while what is next
+               is laid: it reads as dark now (_wdLitPx), and was always lit */
+            if (!S.__introLiftedAt || S._zoneLoading || S._netHold || S._townArtHold
+                || document.querySelector('.bt-zone-loading')) return;
             var _pctWd = _sampleLit();
             if (_pctWd < 0) return;
             /* v2.3.1721: the world has rendered at least once — from here the

@@ -772,6 +772,18 @@ remnant to migrate server-side, not a mode to preserve.
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:
+    - then their SCREENSHOT: the world the canvas's own clear colour
+      (`CANVAS_BG` 0x0d0b18, pixiApp.js) with only the bro's sword drawn --
+      an iOS graphics reset keeps what was loaded from a file and blanks what
+      the game drew on the GPU (body, ground, minimap). The black-screen
+      watchdog counted that navy as LIT (its channels sum to 48, its line was
+      30): no strike, rebuild or reload, ever. Now lit = clear of black AND
+      of `CANVAS_BG` (BroTown.jsx `_wdLitPx`), nothing judged before the
+      loading screen lifts or behind a veil; two strikes (10 s) rebuild, four
+      reload. TRAPS §130, `mp-glrestore` (`__btBlankStage`: the stage's
+      CONTENTS hidden -- a hidden stage skips its clear and goes see-through;
+      Chromium's WEBGL_lose_context restores everything, so it cannot make
+      the reset itself);
     - an `app.render` throw (pixiRenderer.js) goes into the crash log at once,
       and 90 in a row rebuild the renderer, as an update() throw's always did
       (renderFrame.js) -- it was caught and only printed, so a world that
