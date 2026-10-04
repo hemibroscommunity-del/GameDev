@@ -26,6 +26,10 @@ over it.
 |---|---|
 | ![empty](btnskin-after-empty.webp) | ![ghost](btnskin-after-ghost.webp) |
 
+| In the air after a jump (Jump lit, under the attack button) |
+|---|
+| ![jump](btnskin-after-jump.webp) |
+
 ## Every button in every state
 
 The owner's button sheet, drawn by the game's own code
