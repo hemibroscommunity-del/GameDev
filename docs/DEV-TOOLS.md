@@ -114,6 +114,23 @@ Notes for anyone extending it:
 - Ports are OS-assigned per run, and the worker is spawned detached and
   killed by process group. Both exist because a leaked wrangler used to
   poison the next run before a single assertion ran.
+- **The pictures draw a fallback font** (v2.3.3030). The game loads
+  Source Sans 3 from Google Fonts, and the scenarios' browser does not
+  trust this sandbox proxy's certificate (`net::ERR_CERT_AUTHORITY_INVALID`),
+  so every word in a scenario's screenshot is DejaVu Sans, about 30% wider:
+  text that fits on a phone looks cramped, and a width check measures the
+  wrong font. Before taking pictures for the owner, install the real one:
+  curl the TTF links from `fonts.googleapis.com/css2?family=Source+Sans+3:...`
+  (a plain user agent gets TTFs) into `~/.local/share/fonts` and run
+  `fc-cache -f`. A family whose `@font-face` never loaded matches an
+  installed font of that name. (`tools/qa/quest-sheet-shot.mjs` opens its
+  harness pages with `ignoreHTTPSErrors`, which lets the stylesheet load.)
+- **A screenshot waits for the game's next frame** (v2.3.3030). On the
+  software renderer at dpr 3 a frame takes most of a second, and
+  `page.screenshot` came back 2.5-3 s after it was called, so anything on
+  screen for about 2 s (a banner, a confirmation) was gone from the picture.
+  mp-questwin's `shot()` holds the page's `requestAnimationFrame` while it
+  shoots, which brings it to about 1.3 s.
 
 ## `public/tools/draw.html` — the prize draw (v2.3.2030)
 

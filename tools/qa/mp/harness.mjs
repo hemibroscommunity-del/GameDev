@@ -1437,7 +1437,24 @@ export function wireCounts(P) {
  * guess: 'offer' when the offer panel is up, 'dialogue' if it ran out of
  * clicks still talking, or null if nothing opened at all.
  */
+/* ═══ v2.3.3030: THE CLAIM'S CONFIRMATION IS A MOMENT, NOT A SURFACE ═══
+ * After a claim the window turns into "Rewards claimed!" for ~1.9 s (the
+ * owner's mockup: "shows what was received ... animate to inventory/HUD")
+ * before he offers his next quest.  It carries neither `.bt-qoffer` nor
+ * `.bt-npcdlg` on purpose -- nothing on it is to be acted on -- so the
+ * helpers below wait it out rather than reading it as "nothing open". */
+export async function waitClaimedDone(P, { timeout = 5000 } = {}) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    const up = await P.page.evaluate(() => !!document.querySelector('[data-qw-stage="done"]')).catch(() => false);
+    if (!up) return true;
+    await P.page.waitForTimeout(150);
+  }
+  return false;
+}
+
 export async function advanceNpcDialogue(P, { max = 12, onChunk = null } = {}) {
+  await waitClaimedDone(P);
   for (let i = 0; i < max; i++) {
     const where = await P.page.evaluate(() => {
       if (document.querySelector('.bt-qoffer')) return 'offer';
@@ -1579,7 +1596,8 @@ export async function approachNpc(P, id = 'mayor_bro') {
   return npcDialogueOpen(P);
 }
 
-export function npcDialogueOpen(P) {
+export async function npcDialogueOpen(P) {
+  await waitClaimedDone(P);   /* v2.3.3030: see waitClaimedDone */
   return P.page.evaluate(() => !!document.querySelector('.bt-npcdlg, .bt-qoffer'));
 }
 
