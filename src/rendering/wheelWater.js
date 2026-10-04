@@ -349,17 +349,25 @@ void main(void)
         vec2 a1 = vec2(dot(p1, dir), dot(p1, nrm));
         vec2 a2 = vec2(dot(p2, dir), dot(p2, nrm));
         float w1 = 1.0 - abs(2.0 * t1 - 1.0);
-        float st = step(0.7, vn(a1 * vec2(0.06, 0.38))) * w1 + step(0.7, vn(a2 * vec2(0.06, 0.38))) * (1.0 - w1);
+        /* v2.3.3024: softer -- the owner: "The water streaks are too harsh
+           in the river over the bridge".  Fewer streaks (the noise's top
+           fifth, was its top third), each a line and a faint edge, at about
+           half the light; the flecks half as many and fainter */
+        float n1 = vn(a1 * vec2(0.06, 0.38));
+        float n2 = vn(a2 * vec2(0.06, 0.38));
+        float s1 = step(0.80, n1) + 0.4 * step(0.73, n1) * step(n1, 0.80);
+        float s2 = step(0.80, n2) + 0.4 * step(0.73, n2) * step(n2, 0.80);
+        float st = s1 * w1 + s2 * (1.0 - w1);
         vec2 fsz = vec2(11.0, 4.0);
         vec2 fc1 = floor(a1 / fsz);
         vec2 fc2 = floor(a2 / fsz);
         vec2 fo1 = abs(a1 - (fc1 + 0.5) * fsz);
         vec2 fo2 = abs(a2 - (fc2 + 0.5) * fsz);
-        float fl = step(h12(fc1 + 5.5), 0.22) * step(fo1.x, 0.75) * step(fo1.y, 0.3) * w1
-                 + step(h12(fc2 + 5.5), 0.22) * step(fo2.x, 0.75) * step(fo2.y, 0.3) * (1.0 - w1);
+        float fl = step(h12(fc1 + 5.5), 0.11) * step(fo1.x, 0.75) * step(fo1.y, 0.3) * w1
+                 + step(h12(fc2 + 5.5), 0.11) * step(fo2.x, 0.75) * step(fo2.y, 0.3) * (1.0 - w1);
         float g = min(1.0, sp * 1.5);
-        light += st * 0.38 * g;
-        foam += fl * 0.7 * g * step(1.5, dq);
+        light += st * 0.2 * g;
+        foam += fl * 0.45 * g * step(1.5, dq);
     }
 
     /* RINGS: on still fresh water (ponds, lakes, oases), now and then a ring

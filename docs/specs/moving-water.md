@@ -102,7 +102,7 @@ cell search per water px, the cost of a few more texture reads.
 | Sea, shallows, still fresh water | **Crests**: short bowed lines of light come up, stretch, drift a few px downwind and go, in staggered rows, each in its own time. |
 | The sea's coasts | **Surf**: a line of foam rides in from about 9 game px out, quicker as it comes, with a wash of thin foam behind it. It lands; the shore's foam flares and lets go; a thinner line draws back out as the next comes in. Each stretch of coast gets its wave in its own turn, never all at once, and each wave's line is broken into different lengths. |
 | River and pond banks | The same lapping, smaller and softer. |
-| The Sweetwater River | **Flow**: streaks of light and flecks of foam run down the river the way it flows (source to sea), quicker mid-channel and upstream, dying away at its mouth. Its swell rides downstream too. |
+| The Sweetwater River | **Flow**: streaks of light and flecks of foam run down the river the way it flows (source to sea), quicker mid-channel and upstream, dying away at its mouth. Its swell rides downstream too. v2.3.3024 (the owner: *"The water streaks are too harsh in the river over the bridge"*): fewer streaks (the noise's top fifth, was its top third), each a line and a faint edge, at about half the light (0.2, was 0.38); the flecks half as many and fainter. |
 | Ponds, lakes, oases | **Rings**: now and then a ring opens where something rose, with a second after it. |
 | The open sea | **Whitecaps**: a short dash of white now and then, carried a few px downwind. |
 

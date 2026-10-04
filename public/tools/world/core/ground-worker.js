@@ -55,7 +55,7 @@
 import { PLAN as BASE_PLAN, planFor } from '../plan.js';
 import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
-import { materialMap, composeGround, swatchesUnder, walkBits, swimBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder, waterRivers, wavesOn, calmWater, WATER_SWATCHES } from './ground.js';
+import { materialMap, composeGround, swatchesUnder, walkBits, swimBits, overviewPixels, overviewLands, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder, waterRivers, wavesOn, calmWater, WATER_SWATCHES } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 import { wheelMap, whereWords } from './wheelmap.js';
@@ -256,6 +256,8 @@ async function init(m) {
      with composeGround's seed, so you swim out to the line that is drawn */
   const swim = swimBits(bp, mm, (PLAN.seed | 0) + 900, bits);
   const ov = overviewPixels(bp, mm, OVERVIEW_CELLS);
+  /* v2.3.3024: and the land under each of its pixels, for the flat colours */
+  const ovLands = overviewLands(bp, mm, full.reg, OVERVIEW_CELLS);
   /* v2.3.2966: the map the minimap and the world map draw (wheelmap.js),
      and each cell's region and tier, kept for "where am I" (6 MB) */
   const map = wheelMap(PLAN, full);
@@ -300,6 +302,9 @@ async function init(m) {
     worldW: bp.w * bp.scale * WPA, worldH: bp.h * bp.scale * WPA,
     walk: { cols: bp.w, rows: bp.h, bits, swim },
     overview: ov,
+    /* v2.3.3024: the land under each overview pixel (index into `regionIds`,
+       255 water), for the minimap's and world map's flat land colours */
+    overviewLands: { w: ovLands.w, h: ovLands.h, data: ovLands.data, ids: full.regionIds.slice() },
     chunk: { artPx: CHUNK, gamePx: CHUNK * WPA, px: CHUNK * K, apronPx: APRON * K, cols: Math.ceil(bp.w * bp.scale / CHUNK), rows: Math.ceil(bp.h * bp.scale / CHUNK),
       under: CHUNK / UNDER },
     arrival: { x: Math.round((ax - bp.x0) * WPA), y: Math.round((ay - bp.y0) * WPA) },
@@ -320,7 +325,7 @@ async function init(m) {
        (plan.js bigTownPlan: 1.5 and 1.15 as standard) */
     bigTown: PLAN.bigTown || 1,
     buildings: (PLAN.town && PLAN.town.buildingScale) || 1,
-  }, [bits.buffer, ov.data.buffer, objects.kind.buffer, objects.piece.buffer, objects.flip.buffer, objects.x.buffer, objects.y.buffer,
+  }, [bits.buffer, ov.data.buffer, ovLands.data.buffer, objects.kind.buffer, objects.piece.buffer, objects.flip.buffer, objects.x.buffer, objects.y.buffer,
     objects.boxOf.buffer, objects.boxes.buffer]);
 }
 

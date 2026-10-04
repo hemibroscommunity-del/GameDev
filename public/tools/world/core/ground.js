@@ -2464,6 +2464,24 @@ export function swimBits(bp, mm, seed, walk) {
 /* The whole map, one pixel per `k` x `k` cells, in the plan's own colours
    and the deep sea: the game's blurry underlay for ground still being laid,
    and its Map panel.  RGBA. */
+/* v2.3.3024: which LAND each overview pixel lies in -- its region's index
+   in `regionIds` (town, commons, frost, ember ...), or 255 on water -- the
+   same pixel overviewPixels reads, so the minimap and the world map can
+   paint each elemental land one flat colour (the owner: "There might need to
+   be flat colors on the minimap to help orient you to what elemental zone
+   you're in"), the water as it is drawn */
+export function overviewLands(bp, mm, reg, k = 4) {
+  const w = Math.ceil(bp.w / k), h = Math.ceil(bp.h / k);
+  const data = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const by = Math.min(bp.h - 1, y * k + (k >> 1));
+    for (let x = 0; x < w; x++) {
+      const bx = Math.min(bp.w - 1, x * k + (k >> 1)), c = by * bp.w + bx;
+      data[y * w + x] = mm.mat[c] === mm.water ? 255 : Math.min(254, reg[c]);
+    }
+  }
+  return { w, h, data };
+}
 export function overviewPixels(bp, mm, k = 4) {
   const w = Math.ceil(bp.w / k), h = Math.ceil(bp.h / k);
   const cols = mm.ids.map((id, q) => (q === mm.water ? WATER_RGB.deep : mm.catalog[q].color));

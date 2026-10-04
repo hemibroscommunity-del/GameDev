@@ -30,7 +30,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isWheelTrialZone } from '../game/worldTrial.js';
-import { wheelMapInfo, wheelOverview, wheelHere } from '../game/wheelTrial.js';
+import { wheelMapInfo, wheelOverviewLands, wheelHere } from '../game/wheelTrial.js';
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 const ZOOM_MAX = 12;
@@ -271,8 +271,9 @@ function draw(g, w, h, dpr, map, V, P, facing, t) {
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.fillStyle = '#16324A';
   g.fillRect(0, 0, w, h);
-  /* the land, in its own ground colours, a touch darker for the labels */
-  const ov = wheelOverview();
+  /* the land, a touch darker for the labels -- v2.3.3024: each land one
+     flat colour, as on the minimap (wheelTrial.js landsCanvas) */
+  const ov = wheelOverviewLands();
   if (ov && ov.width) {
     g.imageSmoothingEnabled = true;
     g.drawImage(ov, X(0), Y(0), map.worldW * k, map.worldH * k);

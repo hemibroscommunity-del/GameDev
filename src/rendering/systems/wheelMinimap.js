@@ -50,9 +50,10 @@
  * are drawn once from numbers.
  */
 import { Container, Graphics, Sprite, Texture, CanvasSource } from 'pixi.js';
-import { wheelOverview, wheelMapInfo, wheelHere } from '@/game/wheelTrial.js';
+import { wheelOverviewLands, wheelMapInfo, wheelHere } from '@/game/wheelTrial.js';
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
+import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 
 export const WHEEL_BOX = 132;      /* CSS px a side */
 export const WHEEL_WINDOW = 3200;  /* game px across the box: about three zones */
@@ -214,15 +215,20 @@ export class WheelMinimap {
 
   _placeUnder(map) {
     if (this.under) return;
-    const c = wheelOverview();
+    /* v2.3.3024: each land one flat colour (wheelTrial.js landsCanvas; the
+       owner: "There might need to be flat colors on the minimap to help
+       orient you to what elemental zone you're in") */
+    const c = wheelOverviewLands();
     if (!c || !c.width) return;
     /* a fresh source, as wheelGround.js makes its own (never Texture.from
        a canvas: that one is cached by the canvas and shared) */
     const tex = new Texture({ source: new CanvasSource({ resource: c, width: c.width, height: c.height, resolution: 1, scaleMode: 'linear' }) });
     const s = new Sprite(tex);
     s.width = map.worldW * SCALE; s.height = map.worldH * SCALE;
-    /* a touch darker than the ground, so every mark on it reads */
-    s.tint = 0xb4b4b4;
+    /* a touch darker than the ground, so every mark on it reads --
+       v2.3.3024: the flat land colours a lighter touch (they are mid-tones
+       already) */
+    s.tint = 0xdadada;
     this.pan.addChildAt(s, 0);
     this.under = s;
   }
@@ -356,6 +362,10 @@ export class WheelMinimap {
        bar printing them (ZoneHeader.jsx asks wheelHere itself) */
     const here = wheelHere(P.x, P.y);
     const w = here && here.words;
+    /* v2.3.3024: crossing into an elemental land plays its banner
+       (zoneBannerOverlay.js noteWheelLand; this frame is the one that asks
+       where you are every frame) */
+    try { noteWheelLand(here ? here.region : null, w ? w.title : null, S); } catch (e) { /* never breaks the frame */ }
 
     /* the box's place on the page, for the button that opens the world map */
     try {

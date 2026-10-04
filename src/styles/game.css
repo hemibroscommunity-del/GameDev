@@ -1588,6 +1588,10 @@ body:has(.bt-pcard) [data-coach]{display:none}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bt-zone-header__sub{margin-top:1px;color:#EAC675;
   font:650 11.5px/1.1 'Source Sans 3',sans-serif;letter-spacing:.03em}
+/* v2.3.3024: an elemental land's icon before its name (the name in the land's
+   own colour, ZoneHeader.jsx landTint) -- no filters over the canvas (TRAPS §42) */
+.bt-zone-header__elem{display:inline-block;width:16px;height:16px;margin:0 4px 0 0;
+  vertical-align:-3px;pointer-events:none}
 /* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
    holds the old 38px so the title stays centred on the SCREEN while the
    purse is narrow, which is the property the spacer existed for. */
@@ -5765,6 +5769,10 @@ html[data-orient="landscape"] .bt-dashboard{
                   calc(var(--zb-strip-h) * var(--zb-orn-h) / var(--zb-cell-h));
   opacity:0;transition:opacity var(--zb-in-ms) ease-out, transform 260ms ease-in;
 }
+/* v2.3.3024: a Wheel land's banner -- its element's icon before the name,
+   and the plaque alone for a land with no art of the owner's */
+.bt-zone-banner__icon{display:inline-block;width:22px;height:22px;margin:0 6px 0 0;vertical-align:-5px}
+.bt-zone-banner.is-plain .bt-zone-banner__orn{display:none}
 .bt-zone-banner__orn--l{left:0}
 .bt-zone-banner__orn--r{right:0}
 .bt-zone-banner.is-in .bt-zone-banner__plaque{opacity:1;transform:translateY(0) scale(1)}

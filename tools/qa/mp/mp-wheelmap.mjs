@@ -229,6 +229,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`walking out onto Frost Ridge, the top bar says so: the land, its stage and the levels there ("${fb && fb.place && fb.place.text}" over "${fb && fb.sub && fb.sub.text}", whole)`,
     fw.words && fw.words.title === 'Frost Ridge' && /the thaw line · Lv 6–10/.test(fw.words.sub) && barHolds(fb, 'Frost Ridge', /the thaw line · Lv 6–10/), { fb, words: fw.words });
   await shot(P, '04-frost');
+  /* v2.3.3024, owner: "There might need to be flat colors on the minimap to
+     help orient you to what elemental zone you're in" and "elemental zones
+     need something more obvious that the player is in that elemental zone":
+     the minimap paints Frost Ridge its one ice blue; the top bar puts the
+     frost icon before the land's name, the name in the land's colour; and
+     crossing into it played its banner (the owner's frost art, the icon and
+     the name) */
+  const look = await P.page.evaluate(() => {
+    const pl = document.querySelector('[data-zone-place]');
+    const ic = pl && pl.querySelector('img.bt-zone-header__elem');
+    const zb = window.__btZoneBanner;
+    return { land: pl ? pl.getAttribute('data-zone-land') : null, icon: ic ? ic.getAttribute('src') : null, color: pl ? getComputedStyle(pl).color : null,
+      bannerAt: zb ? zb.shownAt('frost') : 0, banner: zb && zb.onScreen ? zb.onScreen() : null, watch: zb && zb.land ? zb.land() : null };
+  });
+  rec.ok(`...and the top bar marks the land: the frost icon before "Frost Ridge", the name in the land's own colour (${look.color})`,
+    look.land === 'frost' && /elem-frost\.webp$/.test(look.icon || '') && !!look.color && look.color !== 'rgb(247, 242, 231)', look);
+  rec.ok(`...and crossing into Frost Ridge played its banner (${look.banner ? `"${look.banner.text}"${look.banner.plain ? ', plain' : ', the owner\'s frost art'}` : 'shown ' + (look.bannerAt ? 'and docked' : 'never')})`,
+    look.bannerAt > 0 && look.watch && look.watch.shown === 'frost', look);
+  {
+    /* the minimap's land here is the land's one flat colour: ice blue round
+       you, read off the screen (wheelLands.js frost #7fbfe0 under the box's
+       0xdadada tint: about 108, 163, 191) */
+    const r = await P.page.evaluate(() => window.__btWheelMini);
+    const { decodePNG } = await import('../../world/png.mjs');
+    const png = decodePNG(await P.page.screenshot({ clip: { x: r.left + 20, y: r.top + 20, width: r.w - 40, height: r.h - 40 } }));
+    let ice = 0;
+    for (let i = 0; i < png.width * png.height; i++) {
+      const R = png.data[4 * i], G = png.data[4 * i + 1], B = png.data[4 * i + 2];
+      if (Math.abs(R - 108) < 14 && Math.abs(G - 163) < 14 && Math.abs(B - 191) < 14) ice++;
+    }
+    const share = ice / (png.width * png.height);
+    rec.ok(`...and the minimap paints Frost Ridge one flat ice blue (${Math.round(share * 100)}% of the box round you)`, share > 0.25, { share });
+  }
   /* v2.3.3023, owner: "the world feels hard to navigate without losing your
      sense of position relative to the town center" -- out on Frost Ridge
      (north-west of town) the town is off the box, and its badge rides the

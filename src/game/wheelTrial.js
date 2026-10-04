@@ -27,6 +27,8 @@
 /* Served as-is from public/, never bundled: it imports the World Builder's
    own modules, which live there too. */
 const WORKER_URL = '/tools/world/core/ground-worker.js';
+import { landLook, hexRgb } from '../data/wheelLands.js';   /* v2.3.3024: each land's flat colour */
+
 const ROW_KEEP = 160;          /* walk-grid rows kept made, ~14 KB each on iPhone */
 const UNDER_KEEP = 160;        /* v2.3.2967: pieces whose ground-underfoot is kept, 4 KB each */
 
@@ -35,6 +37,7 @@ let _initP = null;
 let _info = null;
 let _grid = null;
 let _overview = null;
+let _overviewLands = null;     /* v2.3.3024: the same, each land one flat colour */
 let _seq = 0;
 const _pending = new Map();    /* request id -> { resolve, reject } */
 const _warm = new Map();       /* "i,j" -> a piece laid ahead by the zone gate, not yet shown */
@@ -147,6 +150,10 @@ export function wheelWaterAt(x, y) {
 }
 export function wheelWalkGrid() { return _grid; }
 export function wheelOverview() { return _overview; }
+/* v2.3.3024: the Wheel's overview with each land one flat colour, its water
+   as drawn (src/data/wheelLands.js; null before the worker is ready, or when
+   it sent no lands, then wheelOverview) -- for the minimap and the world map */
+export function wheelOverviewLands() { return _overviewLands || _overview; }
 export function wheelRunning() { return !!_w; }
 /* which swatches were found, and where: { id: 'studio' | 'game' } */
 export function wheelMade() { return _info ? _info.made : null; }
@@ -213,6 +220,7 @@ function onMessage(m, resolveInit, rejectInit) {
     _info = m;
     _grid = lazyGrid(m.walk.bits, m.walk.cols, m.walk.rows, wheelSwimOn() ? m.walk.swim : null);
     _overview = overviewCanvas(m.overview);
+    _overviewLands = landsCanvas(m.overview, m.overviewLands);
     wheelStats.planMs = m.planMs;
     wheelStats.swatchMs = m.swatchMs;
     wheelStats.pieceBytes = (m.chunk.px + 2 * m.chunk.apronPx) ** 2 * 4;
@@ -369,6 +377,7 @@ export function wheelStop() {
   _info = null;
   _grid = null;
   if (_overview) { _overview.width = _overview.height = 0; _overview = null; }
+  if (_overviewLands) { _overviewLands.width = _overviewLands.height = 0; _overviewLands = null; }
   for (const p of _pending.values()) p.reject(new Error('stopped'));
   _pending.clear();
   _warm.clear();
@@ -423,6 +432,28 @@ function lazyGrid(bits, cols, rows, swim) {
   });
 }
 
+/* ═══ v2.3.3024: THE LANDS IN FLAT COLOURS ═══
+   Owner: "There might need to be flat colors on the minimap to help orient
+   you to what elemental zone you're in".  The worker's overview pixel by
+   pixel, each LAND's pixel its land's one colour (src/data/wheelLands.js:
+   ice blue Frost Ridge, flame Flame Fields ...; the commons and the town
+   their own), the water as the overview draws it, anything else (a realm
+   past a gate) as the overview draws it too. */
+function landsCanvas(ov, lands) {
+  if (typeof document === 'undefined' || !ov || !lands || !lands.data || lands.w !== ov.w || lands.h !== ov.h) return null;
+  const rgbOf = (lands.ids || []).map((id) => { const l = landLook(id); return l ? hexRgb(l.color) : null; });
+  const src = new Uint8ClampedArray(ov.data.buffer), out = new Uint8ClampedArray(src.length);
+  for (let i = 0, n = ov.w * ov.h; i < n; i++) {
+    const r = lands.data[i] === 255 ? null : rgbOf[lands.data[i]];
+    const o = i * 4;
+    if (r) { out[o] = r[0]; out[o + 1] = r[1]; out[o + 2] = r[2]; } else { out[o] = src[o]; out[o + 1] = src[o + 1]; out[o + 2] = src[o + 2]; }
+    out[o + 3] = 255;
+  }
+  const c = document.createElement('canvas');
+  c.width = ov.w; c.height = ov.h;
+  c.getContext('2d').putImageData(new ImageData(out, ov.w, ov.h), 0, 0);
+  return c;
+}
 function overviewCanvas(ov) {
   if (typeof document === 'undefined' || !ov) return null;
   const c = document.createElement('canvas');

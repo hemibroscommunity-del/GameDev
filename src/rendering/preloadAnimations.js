@@ -58,6 +58,8 @@ import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.26
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
+import { bannerStripFor } from '../data/zoneBanner.js';   /* v2.3.3024: which of the Wheel's lands have banner art */
+import { WHEEL_LANDS } from '../data/wheelLands.js';      /* v2.3.3024 */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
 import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buildings' swinging and waving pieces */
 
@@ -74,6 +76,10 @@ import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buil
    everywhere], fx, traits, fullset).  CLAUDE.md's preloading LAW is
    amended: these load during the per-zone loading SCREEN (awaited, no
    in-play first-use hitch) — compliant in spirit. */
+/* v2.3.3024: the Wheel's lands with banner art of the owner's (zoneBanner.js
+   ZONE_BANNER_THEME, keyed by the same ids as the plan's lands) */
+function wheelBannerLands() { return WHEEL_LANDS.filter((l) => !!bannerStripFor(l)); }
+
 export async function preloadZoneAssets(zoneId) {
   const tasks = [];
   /* map texture (self-heals via tileRenderer if missing, but we await it
@@ -123,6 +129,12 @@ export async function preloadZoneAssets(zoneId) {
      the first beat never waits on a fetch.  Resolves instantly for the ten
      zones that have no banner.  See zoneBannerPreload.js. */
   tasks.push(Promise.resolve(preloadZoneBanner(zoneId)).catch(() => {}));
+  /* v2.3.3024: and in the Wheel, the banners of the lands the owner drew art
+     for (Frost Ridge, Flame Fields, Wind Dunes, Verdant Wilds) -- crossing
+     into a land plays its banner (zoneBannerOverlay.js noteWheelLand) and is
+     not a zone change, so their strips load HERE, behind the Wheel's own
+     loading screen, and go when you leave it (freeZoneAssets, below) */
+  if (zoneId === 'wheel') for (const land of wheelBannerLands()) tasks.push(Promise.resolve(preloadZoneBanner(land)).catch(() => {}));
   /* ═══ v2.3.2651: the zone's DECOR PROPS ═══
      HERE rather than in preloadWorldAnimations for the same reason as the
      banner above: frost's six masses are ~2.4MB of decoded RGBA that mean
@@ -242,6 +254,12 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
      does. */
   let bannersFreed = [];
   try { bannersFreed = freeZoneBanner(fromZoneId, toZoneId); } catch (e) { /* a strip that will not release is a leak, not a crash */ }
+  /* v2.3.3024: leaving the Wheel lets its lands' banner strips go too */
+  if (fromZoneId === 'wheel' && toZoneId !== 'wheel') {
+    for (const land of wheelBannerLands()) {
+      try { bannersFreed = bannersFreed.concat(freeZoneBanner(land, toZoneId)); } catch (e) { /* a leak, not a crash */ }
+    }
+  }
   /* v2.3.2651: and the decor props. Same subtraction as the sheets above -- a
      sprite the destination also uses stays -- which is a no-op today (only
      frost has decor) and will not be on the day a reusable-neutral piece is
