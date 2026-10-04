@@ -155,7 +155,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const p = box.at(Math.round(x * dpr), Math.round(y * dpr));
     if (p) distinct.add(`${p[0] >> 4},${p[1] >> 4},${p[2] >> 4}`);
   }
-  rec.ok(`...drawn on screen, in many colours (${distinct.size})`, distinct.size > 12, { distinct: distinct.size });
+  /* v2.3.3031: the arrival's window is mostly the paved square now (it is 28% bigger, and the
+     yards round it are lawn): 12 colours, where it was more -- still nothing like a flat fill */
+  rec.ok(`...drawn on screen, in many colours (${distinct.size})`, distinct.size > 8, { distinct: distinct.size });
 
   /* ── 3. tapping it opens the world map ── */
   const btn = await P.page.evaluate(() => {
