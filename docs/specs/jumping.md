@@ -46,8 +46,8 @@
   quietly, because you're down again before a note could be read. A held attack
   just goes on after you land. Jumping lowers a raised shield, as a roll does.
 - **When you can't jump:** while swimming (the button isn't drawn; climb out
-  first), dead, rolling, dashing, held by a slime's goo, stunned, harvesting, on
-  the sled, or for 0.12 s after landing.
+  first), dead, rolling, dashing, held by a slime's goo, dazed by a rock
+  monster, stunned, harvesting, on the sled, or for 0.12 s after landing.
 - **Other players see it.** Your jump is relayed, and on their screens your
   body rises with the same held frame.
 

@@ -14,7 +14,7 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { jumpRefusal, startJump, endJump, jumpActive, JUMP_MS, JUMP_PEAK } from '@/game/jump.js';
 import { dropShield } from '@/game/shieldToggle.js';
-import { isStuck } from '@/game/elemHits.js';
+import { isStuck, isDazed } from '@/game/elemHits.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { footstepSurface } from '@/game/worldTrial.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js';
@@ -60,6 +60,7 @@ export function triggerJump(S) {
   var why = jumpRefusal(S, now, {
     stunned: !!(S._playerStunUntil && now < S._playerStunUntil),
     stuck: isStuck(S, now),
+    dazed: isDazed(S, now),
   });
   S._jumpWhy = why;
   if (why) return false;

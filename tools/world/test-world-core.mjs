@@ -2600,7 +2600,7 @@ console.log('jumping (v2.3.3017)');
   ok('...nor rolling, dashing, swimming, harvesting, held by goo, stunned, frozen on a pickup or on the sled',
     why((S) => { S._dodgeRoll = {}; }) === 'rolling' && why((S) => { S._bashDash = {}; }) === 'dashing'
     && why((S) => { S._wheelSwim = { on: true }; }) === 'swimming' && why((S) => { S._wheelSwim = { on: false }; }) === null
-    && why((S) => { S._extraction = {}; }) === 'harvesting' && why(() => {}, { stuck: true }) === 'stuck' && why(() => {}, { stunned: true }) === 'stunned'
+    && why((S) => { S._extraction = {}; }) === 'harvesting' && why(() => {}, { stuck: true }) === 'stuck' && why(() => {}, { stunned: true }) === 'stunned' && why(() => {}, { dazed: true }) === 'dazed'
     && why((S) => { S._lootFreezeUntil = now + 100; }) === 'busy' && why((S) => { S._sled = {}; }) === 'busy');
   const SJ = S0();
   const jj = J.startJump(SJ, now, 3, 4);

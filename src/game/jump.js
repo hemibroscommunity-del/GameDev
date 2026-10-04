@@ -123,6 +123,7 @@ export function jumpRefusal(S, now, extra) {
   if (S._jumpLandAt && now - S._jumpLandAt < JUMP_REST_MS) return 'landing';
   if (extra && extra.stunned) return 'stunned';
   if (extra && extra.stuck) return 'stuck';
+  if (extra && extra.dazed) return 'dazed';   /* v2.3.3017: a rock monster's daze (#781's elemHits.js), as the roll waits for it */
   if (S._dodgeRoll) return 'rolling';
   if (S._bashDash) return 'dashing';
   if (S._wheelSwim && S._wheelSwim.on) return 'swimming';
