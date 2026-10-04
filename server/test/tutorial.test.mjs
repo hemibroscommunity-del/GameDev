@@ -679,6 +679,30 @@ const sess = { id: 'bp_t' };
   C.setClosedDoorZones(null);
   check('road open again: the guard says what it said before (the memo was emptied)',
     C.questReachable(m1) === open0, { now: C.questReachable(m1), before: open0 });
+  /* v2.3.3030: "Push to main. Then after that add doors." -- the Wheel's
+     Brotown opens the forge, the bank, the farm and the rest, so while it is
+     the world they are doors (setWheelDoorsOpen, gameSystems.js), counted by
+     the action each opens.  Closed town + no Wheel doors is the wall v2.3.3029
+     closed; with them the quest is back by itself, and mayor_3 finds its Farm. */
+  const m3 = C.QUEST_CHAINS.mayor_3;
+  C.setClosedDoorZones(['town']);
+  C.setWheelDoorsOpen(false);
+  const bare = [C.questReachable(m1), C.questReachable(m3)];
+  C.setWheelDoorsOpen(true);
+  const withWheel = C.getNpcQuest(rpgAt(), 'Mayor Bro');
+  check('the Wheel\'s doors count: with today\'s town shut, mayor_1 is offered again (twelve doors, three wanted) and mayor_3 finds its Farm',
+    bare[0] === false && C.questReachable(m1) === true && C.questReachable(m3) === true
+      && withWheel && withWheel.quest === m1 && bare[1] === false,
+    { bare, now: [C.questReachable(m1), C.questReachable(m3)], offered: withWheel && withWheel.quest && withWheel.quest.id });
+  const doorTable = (await import('../../src/data/wheelBuildingDoors.js')).WHEEL_BUILDING_DOORS;
+  const opened = Object.values(doorTable);
+  check('...every one of the twelve buildings the old town opened has a door in the Wheel',
+    C.BUILDINGS.length === 12 && C.BUILDINGS.every((b) => opened.includes(b.id)) && opened.length === 12,
+    { buildings: C.BUILDINGS.map((b) => b.id), opened });
+  C.setWheelDoorsOpen(false);
+  check('...and with them off again, shut town and no doors hides mayor_1 once more',
+    C.questReachable(m1) === false, C.questReachable(m1));
+  C.setClosedDoorZones(null);
   /* the worker never asks for mayor_1 first: any known quest is taken from
      nothing (section 2 leans on the same rule) */
   ps._quests = Object.create(null);

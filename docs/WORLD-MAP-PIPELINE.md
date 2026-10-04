@@ -3045,6 +3045,57 @@ up small and then jump to full size. Now:
 - The harness waits up to 60 s for the clip to lift (the Wheel loads behind
   it on this box's software renderer).
 
+### The buildings have doors (v2.3.3030)
+
+> Owner, 2026-10-04: *"Push to main. Then after that add doors."*
+
+**Why.** With the portal to today's town gone (v2.3.3025) the forge, the bank,
+the shops and the auction house could not be reached. The Wheel's Brotown had
+seventeen buildings with pictures and footprints and nothing behind them.
+
+**Now twelve of them open today's own building** (docs/specs/wheel-doors.md):
+stand at the foot of a building's steps and a button says **Enter** over the
+name on its sign; a tap (or E) opens the old town's own panel -- forge,
+woodworker, gem cutter, saloon (the party panel), gambling den, cookhouse,
+Feed & Seed (the farm panel), Land Office (travel to your farm), bank, Assay
+Office (the enchanter), General Store (the market), auction house. Nothing
+inside changed; the server settles it all as before.
+
+- **Where: the worker.** `placing.js` `doorSpots(plan, bp, placed)` reads the
+  placed objects -- a building is placed with its foot on its plot's door --
+  and `ground-worker.js` ships `objects.doors` (17 entries) once the pictures
+  are known. A building with no picture has no door.
+- **What: a table.** `src/data/wheelBuildingDoors.js`, plot id -> the
+  `TOWN_BUILDINGS` id it opens, read by test-world-core against the plan's own
+  `today` words (a mirror).
+- **When: the nearest door to your boots** within 140 px
+  (`src/game/wheelTownDoors.js`), set by BroTown's proximity scan as
+  `S.nearBuilding` -- the old town's own variable, so the E key,
+  `enterBuilding`, the visit count and the saved visits are untouched. The
+  button is "Enter" over the name, small, in the stretch between the bell and
+  the JUMP button (a one-line pill with the sign's long names ran under it).
+- **Shut doors.** The Sheriff's Office, Hotel, Post Office & Telegraph and Guild
+  Hall (the plan's "(new: ...)" plots) show their name and "Shut for now" in a
+  caption that is not a button. The Town Hall shows nothing (Mayor Bro).
+- **Diego keeps the General Store**, west of its steps, facing the street,
+  still. Only his south strip is loaded, cropped, as the Wheel's own copy
+  behind the loading overlay (~0.4 MB); his window opens within 90 px of him, not
+  at the store's door.
+- **Quests.** `setWheelDoorsOpen` (gameSystems.js, set with the zones
+  worldTrial.js closes) counts the twelve actions the Wheel opens, so
+  mayor_1 ("Visit 3 buildings") and mayor_3 (its Farm) are offered again --
+  v2.3.3029 hid them while the Wheel had no doors.
+- **The farm.** The Land Office and Feed & Seed both send you to your farm
+  (`rememberFarmTrip`); its gate leads back out to the Wheel at the door you
+  left by, behind "Entering The Wheel", today's town only a stop (as for a
+  death or a dungeon's way out).
+
+**Tests.** `mp-wheeldoors` (11 checks on a phone with a real worker),
+test-world-core "the buildings' doors" (10), `tutorial.test.mjs` §9.
+
+**Still shut.** The sheriff's, hotel, post office and guild hall have nothing
+to open; the blacksmith, Ace and Lil Bro are still only in today's town.
+
 ## The Wheel trial: your own swatches under your feet (v2.3.2943)
 
 > Owner, 2026-09-29, after the swatches came out sharp: *"I want to continue

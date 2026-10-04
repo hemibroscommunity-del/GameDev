@@ -9,6 +9,7 @@ import { TILE } from './constants.js';
 import { ZONES } from './zones.js';
 import { ELEMENTS } from './elements.js';
 import { TOWN_BUILDINGS } from './buildings.js';
+import { WHEEL_BUILDING_DOORS } from './wheelBuildingDoors.js'; /* v2.3.3030: the Wheel's doors count for the quests that need one */
 /* v2.3.1972: the props ARE the doors — see questReachable below.  worldProps
    imports nothing, so this cannot make a cycle. */
 import { WORLD_PROPS, propsForZone } from './worldProps.js';
@@ -7335,6 +7336,27 @@ export function setClosedDoorZones(zones) {
   _closedDoorZones = zones && zones.length ? zones.slice() : null;
   _doorCache = null;
 }
+/* ═══ v2.3.3030: THE WHEEL'S BUILDINGS HAVE DOORS ═══
+ * Owner, 2026-10-04: "Push to main. Then after that add doors."  The Wheel's
+ * Brotown now opens the forge, the bank, the farm and the rest
+ * (src/data/wheelBuildingDoors.js, game/wheelTownDoors.js), so while the
+ * Wheel is the world they are doors again: counted here by the ACTION each
+ * opens, exactly as the old town's props are, so mayor_1 ("Visit 3
+ * buildings") comes back by itself and mayor_3 finds its Farm.  Set by
+ * worldTrial.js with the zones it closes; null (the default) counts none. */
+var _wheelDoorActions = null;
+export function setWheelDoorsOpen(on) {
+  if (!on) _wheelDoorActions = null;
+  else {
+    _wheelDoorActions = [];
+    for (var _wk in WHEEL_BUILDING_DOORS) {
+      if (!Object.prototype.hasOwnProperty.call(WHEEL_BUILDING_DOORS, _wk)) continue;
+      var _wb = BUILDINGS.find(function (b) { return b.id === WHEEL_BUILDING_DOORS[_wk]; });
+      if (_wb) _wheelDoorActions.push(_wb.action || _wb.id);
+    }
+  }
+  _doorCache = null;
+}
 /** Is there a live, enterable door in the world?  `action` narrows it to one
  *  building (the Farm, say); a NUMBER asks whether at least that many distinct
  *  doors exist; true/undefined asks whether ANY door does.
@@ -7372,6 +7394,15 @@ function anyBuildingDoor(action) {
       if (!_doorCache[p.action]) _doorCount++;   /* DISTINCT buildings */
       _doorCache[p.action] = true;
       _doorCache['*'] = true;
+    }
+    /* v2.3.3030: and the Wheel's, by the action each opens */
+    if (_wheelDoorActions) {
+      for (var _wi = 0; _wi < _wheelDoorActions.length; _wi++) {
+        var _wa = _wheelDoorActions[_wi];
+        if (!_doorCache[_wa]) _doorCount++;
+        _doorCache[_wa] = true;
+        _doorCache['*'] = true;
+      }
     }
   }
   if (typeof action === 'number') return _doorCount >= action;

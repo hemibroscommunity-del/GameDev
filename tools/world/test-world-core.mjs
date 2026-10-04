@@ -2992,5 +2992,84 @@ console.log("the water's frozen web of light taken out (v2.3.3021)");
     && /\(1\.0 - smoothstep\(0\.02, 0\.10, sp\)\)/.test(waterSrc) && /caustics=\(\[0-9\.\]\+\)/.test(waterSrc), {});
 }
 
+/* ── v2.3.3030: the Wheel's buildings have doors ──
+   Owner, 2026-10-04: "Push to main. Then after that add doors." */
+console.log("the buildings' doors (v2.3.3030)");
+{
+  const { placeObjects, doorSpots, objectFootprints } = await import('../../public/tools/world/core/placing.js');
+  const { WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_DOOR_REACH, WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js');
+  const { TOWN_BUILDINGS } = await import('../../src/data/buildings.js');
+  const fs = await import('node:fs');
+  const WPA = PLAN.worldPxPerArtPx;
+  const dbp = buildBlueprint(PLAN);
+  const placed = placeObjects(PLAN, dbp);
+  const man = JSON.parse(fs.readFileSync(new URL('../../public/world/objects/manifest.json', import.meta.url), 'utf8'));
+  const foot = objectFootprints(placed, man);
+  placed.present = foot.present;
+  const doors = doorSpots(PLAN, dbp, placed);
+  const lots = dbp.lots.filter((l) => l.town && l.foot);
+  const byDoor = Object.fromEntries(doors.map((d) => [d.id, d]));
+  ok(`every standing building has a door, ${doors.length} of ${lots.length}, at the foot of its steps exactly as the building is placed`,
+    lots.length === 17 && doors.length === 17 && lots.every((l) => {
+      const d = byDoor[l.id];
+      return d && d.name === l.name
+        && Math.abs(d.x - Math.round((l.foot.x - dbp.x0) * WPA * 2) / 2) < 1e-6 && Math.abs(d.y - Math.round((l.foot.y - dbp.y0) * WPA * 2) / 2) < 1e-6;
+    }), doors.map((d) => d.id));
+  const noBank = objectFootprints(placed, { ...man, objects: man.objects.filter((o) => o.id !== 'bank') });
+  const doorsNoBank = doorSpots(PLAN, dbp, { ...placed, present: noBank.present });
+  ok('...and a building with no picture has no door (nothing is drawn to walk up to)',
+    doorsNoBank.length === 16 && !doorsNoBank.some((d) => d.id === 'bank'), doorsNoBank.length);
+  const lotIds = new Set(lots.map((l) => l.id));
+  const todayOf = Object.fromEntries(lots.map((l) => [l.id, l.today]));
+  const tbIds = TOWN_BUILDINGS.map((b) => b.id);
+  const openIds = Object.keys(WHEEL_BUILDING_DOORS), closedIds = WHEEL_SHUT_DOORS.slice();
+  ok('what opens at each door is the plan\'s own: every plot of the table is a plot of the town, and its value is what the plan says the plot is `today`, a building of today\'s town',
+    openIds.length === 12 && openIds.every((k) => lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k])),
+    openIds.filter((k) => !(lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k]))));
+  ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for: the Town Hall (Mayor Bro) and four shut ones that say so',
+    new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 12 && tbIds.every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
+    && closedIds.length === 4 && closedIds.every((k) => lotIds.has(k) && !openIds.includes(k) && /^\(new:/.test(todayOf[k]))
+    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id)).map((l) => l.id).join() === 'townhall',
+    { closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id)).map((l) => l.id) });
+  /* the doors are far enough apart that the nearest simply wins */
+  let minGap = Infinity;
+  for (const a of doors) for (const b of doors) if (a !== b) minGap = Math.min(minGap, Math.hypot(a.x - b.x, a.y - b.y));
+  ok(`the doors are ${Math.round(minGap)} px apart at the closest, more than two reaches (${WHEEL_DOOR_REACH} px), so the nearest never has a rival`, minGap > 2 * WHEEL_DOOR_REACH, minGap);
+  /* you can stand at every door: the ground below its steps, where the boots
+     go, is on the town's ground and in no footprint */
+  const boxes = [];
+  for (let i = 0; i < placed.n; i++) for (let b = foot.boxOf[i]; b < foot.boxOf[i + 1]; b++) boxes.push([foot.boxes[b * 4], foot.boxes[b * 4 + 1], foot.boxes[b * 4 + 2], foot.boxes[b * 4 + 3], placed.kinds[placed.kind[i]]]);
+  const hit = (x, y, m = 0) => boxes.filter((q) => x > q[0] - m && x < q[2] + m && y > q[1] - m && y < q[3] + m).map((q) => q[4]);
+  const cellG = (x, y) => Math.floor(y / WPA / dbp.scale) * dbp.w + Math.floor(x / WPA / dbp.scale);
+  const blocked = doors.filter((d) => hit(d.x, d.y + 30, 10).length > 0 || dbp.regionIds[dbp.reg[cellG(d.x, d.y + 30)]] !== 'town');
+  ok('every door can be stood at: the boots 30 px below the steps (and a body\'s half width round them) are in no footprint, on the town\'s ground',
+    blocked.length === 0, blocked.map((d) => [d.id, hit(d.x, d.y + 30, 10)]));
+  /* Diego keeps the General Store */
+  const sp = WHEEL_TOWNSFOLK.map((f) => ({ f, d: byDoor[f.door] })).map(({ f, d }) => ({ name: f.name, x: d.x + f.dx, y: d.y + f.dy, d }));
+  ok('Diego has a door to stand beside, in front of the porch, in no footprint with room round him, on the town\'s ground',
+    sp.length === 1 && sp[0].name === 'Diego' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
+    sp.map((q) => [q.name, hit(q.x, q.y, 24)]));
+  /* ...and standing at the General Store's door does not open his window by
+     itself: it opens within 90 px of him from your middle, ~52 px above your boots */
+  const dg = sp[0];
+  const atDoor = Math.hypot(dg.d.x - dg.x, (dg.d.y - 52) - dg.y);
+  ok(`...far enough off that standing at the door is ${Math.round(atDoor)} px from him, past the 90 px his window opens at, and near enough that he stays the store's (${Math.round(Math.hypot(dg.d.x - dg.x, dg.d.y - dg.y))} px)`,
+    atDoor > 100 && Math.hypot(dg.d.x - dg.x, dg.d.y - dg.y) < 160, atDoor);
+  /* the worker ships them, the game reads them, the scan uses them */
+  const readSrc = (u) => fs.readFileSync(new URL(u, import.meta.url), 'utf8');
+  const workerSrc2 = readSrc('../../public/tools/world/core/ground-worker.js');
+  const doorsSrc = readSrc('../../src/game/wheelTownDoors.js');
+  const townSrc = readSrc('../../src/ui/BroTown.jsx');
+  const sysSrc = readSrc('../../src/data/gameSystems.js');
+  const trialSrc2 = readSrc('../../src/game/worldTrial.js');
+  const zoneSrc = readSrc('../../src/game/zoneTransitions.js');
+  ok('the worker ships `objects.doors` after the pictures are known, the game reads them from the worker\'s answer, and BroTown\'s scan sets S.nearBuilding from the nearest',
+    /objects\.doors = doorSpots\(PLAN, full, objects\)/.test(workerSrc2) && workerSrc2.indexOf('objects.present = foot.present') < workerSrc2.indexOf('objects.doors = doorSpots')
+    && /info && info\.doors/.test(doorsSrc) && /wheelTownDoorAt\(S\)/.test(townSrc) && /S\.nearBuilding = _wtd\.index/.test(townSrc), {});
+  ok('...the quests that need a door count the Wheel\'s while it is the world (worldTrial.js sets them with the zones it closes), and the farm\'s gate leads back out to the Wheel',
+    /setWheelDoorsOpen\(mode === 'wheel' && wheelObjectsOn\(\)\)/.test(trialSrc2) && /_wheelDoorActions/.test(sysSrc)
+    && /_farmOut = \(_leftZone === 'farm_home' && S\._farmBack && wheelIsHome\(\)\)/.test(zoneSrc) && /rememberFarmTrip\(S2\)/.test(townSrc), {});
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -852,6 +852,36 @@ export function mayorSpot(plan, bp) {
   return { x: (hall.foot.x + 70 * bk - bp.x0) * WPA, y: (hall.foot.y + 20 - bp.y0) * WPA };
 }
 
+/* ═══ v2.3.3030: THE BUILDINGS' DOORS ═══
+   Owner, 2026-10-04: "Push to main. Then after that add doors." -- the
+   Wheel's buildings had pictures and footprints and nothing behind them, so
+   the forge, the bank, the shops and the auction house were out of reach
+   once the old town's portal went (v2.3.3025).
+
+   A building is placed with its FOOT -- the bottom of its steps -- on its
+   plot's door (layout.js: the middle of the plot's south edge), so a door
+   is simply where that building stands.  Read from the PLACED objects rather
+   than worked out again from the plots, so it can never differ from what is
+   drawn, and only for a building that has a picture (`placed.present`, from
+   objectFootprints, when it is known): no picture, nothing to walk up to.
+   Which building the game opens there is the client's table (src/data/
+   wheelBuildingDoors.js, keyed by these ids); this only says where.
+   [{ id: the plot's id, name: its name, x, y }] in game px, as mayorSpot. */
+export function doorSpots(plan, bp, placed) {
+  const out = [];
+  if (!placed || !placed.kinds || !placed.n) return out;
+  const firstOf = new Int32Array(placed.kinds.length).fill(-1);
+  for (let i = 0; i < placed.n; i++) { const k = placed.kind[i]; if (firstOf[k] < 0) firstOf[k] = i; }
+  for (const l of bp.lots) {
+    if (!l.town || !l.foot) continue;
+    const k = placed.kinds.indexOf(l.id);
+    if (k < 0 || firstOf[k] < 0) continue;
+    if (placed.present && !placed.present[k]) continue;
+    out.push({ id: l.id, name: l.name, x: placed.x[firstOf[k]], y: placed.y[firstOf[k]] });
+  }
+  return out;
+}
+
 /* The ground each object stops you on, from its picture's size in the
    game's manifest (public/world/objects/manifest.json, the Object Studio's
    "Download for the game"), and which kinds have a picture at all -- an

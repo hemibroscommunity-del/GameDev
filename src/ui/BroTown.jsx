@@ -467,6 +467,8 @@ import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1
 import { isWheelTrialZone, footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown */
 import { wheelDoorAt, enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
+import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
+import { WHEEL_TOWNSFOLK } from '@/data/wheelBuildingDoors.js';   /* v2.3.3030: the Wheel's buildings have doors */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
@@ -779,11 +781,28 @@ function _spawnWheelNpcs() {
   var info = wheelObjectsInfo();
   var spot = info && info.mayor;
   if (!spot) return null;
-  return NPC_DATA.filter(function (n) { return n.name === 'Mayor Bro'; })
+  var out = NPC_DATA.filter(function (n) { return n.name === 'Mayor Bro'; })
     .map(function (npc) {
       return _objectSpread(_objectSpread({}, npc), { x: spot.x, y: spot.y, spawnX: spot.x, spawnY: spot.y,
         renderX: spot.x, renderY: spot.y, targetX: spot.x, targetY: spot.y });
     });
+  /* ═══ v2.3.3030: DIEGO KEEPS THE GENERAL STORE ═══
+     "Push to main. Then after that add doors." -- the Wheel's General Store
+     has its door now (game/wheelTownDoors.js), and the shopkeeper who buys
+     your loot stands beside its steps (src/data/wheelBuildingDoors.js
+     WHEEL_TOWNSFOLK): tap him or walk up and his window opens, as in the old
+     town.  Only where the store stands (a door the worker found). */
+  var doors = wheelTownDoors();
+  WHEEL_TOWNSFOLK.forEach(function (f) {
+    var door = doors.filter(function (d) { return d.id === f.door; })[0];
+    if (!door) return;
+    NPC_DATA.filter(function (n) { return n.name === f.name; }).forEach(function (npc) {
+      var nx = door.x + f.dx, ny = door.y + f.dy;
+      out.push(_objectSpread(_objectSpread({}, npc), { x: nx, y: ny, spawnX: nx, spawnY: ny,
+        renderX: nx, renderY: ny, targetX: nx, targetY: ny, pathRadius: 0 }));
+    });
+  });
+  return out;
 }
 /* the zones townsfolk stand in: today's town, and the Wheel's Brotown */
 function _npcZone(z) { return z === 'town' || isWheelTrialZone(z); }
@@ -1579,6 +1598,16 @@ export var BroTown = function BroTown(_ref0) {
   var _useStateWD = useState(null),
     nearWheelDoor = _useStateWD[0],
     setNearWheelDoor = _useStateWD[1];
+  /* v2.3.3030: the Wheel's building door you stand at, for the Enter button
+     (its name on the sign: the button says "Enter SALOON", not the old town's
+     "TAVERN") and, for a plot with nothing behind it yet, the id of the shut
+     door -- both synced twice a second with nearBuilding */
+  var _useStateWB = useState(null),
+    nearDoorLabel = _useStateWB[0],
+    setNearDoorLabel = _useStateWB[1];
+  var _useStateWS = useState(null),
+    nearShutDoor = _useStateWS[0],
+    setNearShutDoor = _useStateWS[1];
   var _useState43 = useState(false),
     _useState44 = _slicedToArray(_useState43, 2),
     showLeaderboard = _useState44[0],
@@ -5360,12 +5389,30 @@ export var BroTown = function BroTown(_ref0) {
         var pTileX = Math.floor(P.x / TILE);
         var pTileY = Math.floor(P.y / TILE);
         S.nearBuilding = null;
+        S._nearWheelBuilding = null;
         var _doorProp = buildingPropNear(S.currentZone, P.x, P.y, 95);
         if (_doorProp) {
           var _bIdx = BUILDINGS.findIndex(function (b) {
             return (b.action || b.id) === _doorProp.action;
           });
           if (_bIdx >= 0) S.nearBuilding = _bIdx;
+        }
+        /* ═══ v2.3.3030: THE WHEEL'S BUILDINGS HAVE DOORS ═══
+           Owner, 2026-10-04: "Push to main. Then after that add doors."  In
+           the Wheel there are no door PROPS (those are the old town's); the
+           ground worker says where each building's door is, and
+           game/wheelTownDoors.js picks the one your boots stand at.  It sets
+           S.nearBuilding to the same BUILDINGS index a prop would, so the
+           Enter button, the E key, enterBuilding, the "visit 3 buildings"
+           count and the saved visits are all the old town's own -- and the
+           door's name goes to S._nearWheelBuilding for the button.  A plot
+           with nothing behind it yet comes back `closed` and only says so. */
+        if (S.nearBuilding === null) {
+          var _wtd = wheelTownDoorAt(S);
+          if (_wtd) {
+            S._nearWheelBuilding = _wtd;
+            if (_wtd.index >= 0) S.nearBuilding = _wtd.index;
+          }
         }
 
         /* ═══ PERSONAL FARM — house proximity sleep prompt ═══ */
@@ -7840,6 +7887,16 @@ export var BroTown = function BroTown(_ref0) {
       var nb = S.nearBuilding;
       setNearBuilding(function (prev) {
         return prev === nb ? prev : nb;
+      });
+      /* v2.3.3030: and the Wheel's building door you stand at (game/wheelTownDoors.js) */
+      var nwb = S._nearWheelBuilding || null;
+      var nwbLabel = nwb && nwb.index >= 0 ? nwb.label : null;
+      setNearDoorLabel(function (prev) {
+        return prev === nwbLabel ? prev : nwbLabel;
+      });
+      var nwbShut = nwb && nwb.index < 0 ? nwb.id : null;
+      setNearShutDoor(function (prev) {
+        return prev === nwbShut ? prev : nwbShut;
       });
       /* v2.3.3016: and the Wheel dungeon mouth you stand at */
       var nwd = S._nearWheelDoor && !S._serverDungeon ? S._nearWheelDoor.id : null;
@@ -11423,6 +11480,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect-card",
+    "data-building-panel": buildingPanel /* v2.3.3030: which building's panel is open (mp-wheeldoors) */,
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
@@ -11635,6 +11693,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1406: farm map is per-zone-loaded now and this warp bypasses
          the hub-exit gate — kick the load so the ground paints promptly. */
       import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
+      rememberFarmTrip(S2);   /* v2.3.3030: from the Wheel, the gate leads back out where you stood */
       S2.currentZone = 'farm_home';
       S2.map = generateZoneMap('farm_home');
       var fz = ZONES.farm_home;
@@ -12938,6 +12997,13 @@ export var BroTown = function BroTown(_ref0) {
        (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
     buildingPanel === null && nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
+    /* v2.3.3030: a Wheel door's name is the name on its sign -- GENERAL STORE,
+       AUCTION HOUSE -- longer than the old town's labels, and a one-line pill
+       that long ran under the JUMP button (v2.3.3017) at the right of the
+       band.  So: the word "Enter" over the name, in the free stretch between
+       the bell and the jump button (centred a little left of the prompt's
+       usual slot), never wider than that stretch. */
+    style: nearDoorLabel ? { left: 'calc(50% - 10px)', display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', lineHeight: 1.15, textAlign: 'left' } : undefined,
     /* ═══ v2.3.2617: ONE CLICK, NOT touchstart + THE MOUSEDOWN THAT FOLLOWS ═══
        This opened on `onTouchStart` AND `onMouseDown`, and on a phone BOTH
        fire for one finger: React 18 registers touchstart PASSIVELY, so the
@@ -12992,7 +13058,41 @@ export var BroTown = function BroTown(_ref0) {
       verticalAlign: '-3px',
       marginRight: 3
     }
-  }) : BUILDINGS[nearBuilding].icon, " Enter ", BUILDINGS[nearBuilding].label), ((_stateRef$current52 = stateRef.current) === null || _stateRef$current52 === void 0 ? void 0 : _stateRef$current52._nearHouse) && /*#__PURE__*/React.createElement("button", {
+  }) : BUILDINGS[nearBuilding].icon, nearDoorLabel ? /*#__PURE__*/React.createElement("span", {
+    style: { display: 'block' }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: { display: 'block', fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase', opacity: .7 }
+  }, " Enter "), /*#__PURE__*/React.createElement("span", {
+    style: { display: 'block' }
+  }, nearDoorLabel)) : " Enter ", nearDoorLabel ? null : BUILDINGS[nearBuilding].label), nearShutDoor && buildingPanel === null && /*#__PURE__*/React.createElement("div", {
+    /* ═══ v2.3.3030: A SHUT DOOR SAYS SO ═══
+       The Wheel's Town Hall has Mayor Bro; four plots have no building behind
+       them yet (the sheriff's, the hotel, the post office, the guild hall --
+       plan.js "(new: ...)").  Standing at one says it is shut, quietly, so a
+       player does not take the door for broken.  Not a button: nothing to
+       press, and it takes no touch. */
+    className: "bt-interact-prompt",
+    "data-wheel-shut-door": nearShutDoor,
+    style: {
+      pointerEvents: 'none',
+      animation: 'none',
+      cursor: 'default',
+      whiteSpace: 'normal',
+      textAlign: 'center',
+      left: 'calc(50% - 10px)',
+      maxWidth: 164,
+      padding: '6px 10px',
+      lineHeight: 1.25,
+      background: 'rgba(17,25,29,.88)',
+      borderColor: 'rgba(255,255,255,.3)',
+      color: 'rgba(255,255,255,.82)',
+      fontWeight: 600
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { fontWeight: 800 }
+  }, (stateRef.current._nearWheelBuilding && stateRef.current._nearWheelBuilding.name) || 'Closed'), /*#__PURE__*/React.createElement("div", {
+    style: { fontSize: 11, opacity: .85 }
+  }, "Shut for now")), ((_stateRef$current52 = stateRef.current) === null || _stateRef$current52 === void 0 ? void 0 : _stateRef$current52._nearHouse) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     style: {
       bottom: 140,

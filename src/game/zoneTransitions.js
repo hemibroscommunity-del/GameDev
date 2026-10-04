@@ -27,9 +27,9 @@ import { _typeof } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
 import { preloadZoneAssets, freeZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate; v2.3.2272: and its exit half */
-import { syncWorldTrial, trialZoneFor, takeWheelArrival } from '@/game/worldTrial.js'; /* v2.3.2932: the world trial; v2.3.2978: + the Wheel's own zone; v2.3.3016: + the arrival at a dungeon's mouth */
+import { syncWorldTrial, trialZoneFor, takeWheelArrival, setWheelArrival, wheelIsHome } from '@/game/worldTrial.js'; /* v2.3.2932: the world trial; v2.3.2978: + the Wheel's own zone; v2.3.3016: + the arrival at a dungeon's mouth */
 import { leaveWheelDungeon } from '@/game/wheelDungeons.js'; /* v2.3.3016: a Wheel dungeon's door leads back to its mouth */
-import { wheelSpawnTick, wheelSpawnPass, wheelCommonsGate, wheelTripVeiled } from '@/game/wheelHome.js'; /* v2.3.2990: you start in the Wheel's Brotown; v2.3.3025: under one veil */
+import { wheelSpawnTick, wheelSpawnPass, wheelCommonsGate, wheelTripVeiled, wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: you start in the Wheel's Brotown; v2.3.3025: under one veil */
 import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel' */
 import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
 import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2859: town's NPCs + buildings load and free with town */
@@ -1189,6 +1189,16 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           if (_czNearReturn) {
             var _leftZone = S.currentZone; /* v2.3.1405: free its ~4MB map on exit (below) */
             var _retHub = isWorldViewZone(S._enteredFromHub) ? S._enteredFromHub : 'town'; /* v2.3.859; v2.3.2978: either name */
+            /* ═══ v2.3.3030: THE FARM'S GATE LEADS BACK TO THE WHEEL ═══
+               The Land Office and Feed & Seed in the Wheel's Brotown (game/
+               wheelTownDoors.js rememberFarmTrip) send you to your farm from
+               where you stood.  Today's town is no longer a place you walk
+               to (v2.3.3025), so the gate out does not leave you in it: it is
+               a stop on the way, as a death's and a dungeon's way back are --
+               down its stairs at once under one veil, arriving at the door
+               you went in by. */
+            var _farmOut = (_leftZone === 'farm_home' && S._farmBack && wheelIsHome()) ? S._farmBack : null;
+            S._farmBack = null;
             S.currentZone = _retHub;
             updateZoneDimensions(_retHub);
             BT_AUDIO.startZoneAmbient(_retHub);
@@ -1243,7 +1253,8 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             nudgeSpawnToWalkable(S, _retHub, twn2);
             S._enteredFromDir = null;
             S._enteredFromExit = null;
-            pushDmgPopup(S, P.x, P.y - 40, isWorldViewZone(_retHub) ? 'World View' : 'Town', '#5b52ff');
+            if (_farmOut) { setWheelArrival(_farmOut); wantWheelSpawn(S); }   /* v2.3.3030 */
+            pushDmgPopup(S, P.x, P.y - 40, _farmOut ? 'The Wheel' : (isWorldViewZone(_retHub) ? 'World View' : 'Town'), '#5b52ff');
             S.npcs = null;
             S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
@@ -1282,6 +1293,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             /* v2.3.2272: same on the way back to a hub.  A hub needs no
                variants, so this releases the whole spoke's art. */
             _freeLeftZoneAssets(_leftZone, _retHub);
+            if (_farmOut) veilWheelTrip(S);   /* v2.3.3030: today's town never painted on the way */
           }
         }
 
