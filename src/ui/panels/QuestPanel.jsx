@@ -9,6 +9,13 @@ import { questObjectiveDone } from '@/data/index.js'; /* v2.3.1914 */
    split rather than restyled. */
 import { NpcDialogue } from './NpcDialogue.jsx';
 import { QuestOfferPanel } from './QuestOfferPanel.jsx';
+import { QuestSkillChip } from './questArt.jsx'; /* v2.3.3030: the owner's skill chips */
+
+/* v2.3.3030: how long the claim's confirmation ("Rewards claimed!") stays
+   before he offers his next quest -- long enough for the coins and the items
+   to land (game/questFly.js: ~1.5 s for the last), short enough that the
+   next thing he says is not waited for.  A tap goes on at once. */
+export var QUEST_CLAIMED_MS = 1900;
 
 /* v2.3.1681 (owner: "Add thumbnail of mayor bro's profile picture in quest
    dialog box and also thumbnail of the quest items (sword and shield)").
@@ -71,96 +78,29 @@ import { QuestOfferPanel } from './QuestOfferPanel.jsx';
  * more, so a taller reward banner is not free here.  The payout and the
  * instruction share ONE row rather than stacking, and the group's bottom
  * margin comes down to pay for the card padding — net ~+8px. */
-function XpChooser(props) {
+/* ═══ v2.3.3030: THE CHOICE ON THE OWNER'S GREEN PANEL, WITH THEIR CHIPS ═══
+   Owner's mockup of the new quest windows: "PUT 30 WEAPON XP INTO -- Melee /
+   Bow / Magic", each a chip with its weapon drawn in, the chosen one in a gold
+   ring with a check.  The panel is the owner's green one (the v2.3.1795 green
+   wash said "reward" in the same colour), the chips are theirs
+   (questArt.jsx QuestSkillChip), and the +XP still breathes three times as
+   it appears (.bt-xp-payout).  What the QA suite measures is kept:
+   `data-xp-caption` on the instruction (13px, never ellipsised -- it wraps
+   rather than truncating), `data-xp-skill` on each button with its label as
+   the button's own text node, 14px, on one line, 44px tall at least. */
+export function XpChooser(props) {
   var xp = props.xp, xpCat = props.xpCat, setXpCat = props.setXpCat;
-  return React.createElement("div", {
-    style: {
-      marginTop: 2, marginBottom: 8,
-      /* ═══ v2.3.1795: THE PAYOUT CARD IS GREEN ═══
-         Owner: "Maybe breathing effect text for the plus xp and a green
-         coloured modal or something."
-         The surface underneath was the plain raised slate every actionable
-         group in this panel uses, so the one card that HANDS YOU SOMETHING
-         looked like the ones that merely describe the job.  Green is already
-         this UI's word for a gain — the XP number here, the QUEST COMPLETED!
-         banner, the Positive token — so tinting the surface with it says
-         "reward" in a colour the player has been taught, rather than
-         introducing an accent (Lantern Slate's do-not-drift list forbids new
-         ones).  A WASH, not a fill: the slate still shows through, so the
-         brass selection on the buttons below stays the brightest thing in
-         the card and keeps reading as the choice you are making. */
-      background: 'linear-gradient(180deg, rgba(97,176,107,.16), rgba(97,176,107,.05)), #2B3940',
-      border: '1px solid rgba(97,176,107,.34)',
-      borderRadius: 10,
-      padding: '8px 9px 9px',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08), 0 6px 14px rgba(5,8,10,.18)',
-    },
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      /* v2.3.2154: 7 -> 9. At 11px the caption read as a footnote and the gap
-         did not matter; at 13px it sits shoulder to shoulder with the payout
-         and "+70 XPCHOOSE WHERE TO TRAIN IT" runs together. 11 was the first
-         try and it cost 2px more than the row had -- the caption carries an
-         ellipsis, so it paid for the gap by truncating to "...TRAIN I…", which
-         is a worse outcome than the small type it replaced. 9, with the
-         letter-spacing trimmed a notch below, buys the separation and keeps
-         the whole sentence. mp-questxp asserts BOTH, so the next size bump
-         cannot quietly spend the sentence again. */
-      display: 'flex', alignItems: 'baseline', gap: 9,
-      marginBottom: 6, minWidth: 0,
-    },
-  }, /*#__PURE__*/React.createElement("span", {
-    /* v2.3.1795: breathes three times as the payout appears, then rests —
-       see .bt-xp-payout in game.css for why it is finite rather than ambient. */
-    className: 'bt-xp-payout',
-    style: { fontSize: 17, fontWeight: 700, color: '#61B06B', flex: 'none', lineHeight: 1 },
-  }, '+' + xp + ' XP'), /*#__PURE__*/React.createElement("span", {
-    /* v2.3.2154: a stable hook. This span and the three buttons below have no
-       id of their own, and a size is only a size if something measures it. */
-    'data-xp-caption': '',
-    style: {
-      /* v2.3.2154 (owner: "Make the 'choose where to train it' font size and
-         icon labels larger"). 11 -> 13, and the muted grey lifts with it: this
-         line is the INSTRUCTION for the only decision on the screen, and at
-         11px in 55% white it read as a footnote to the XP number beside it. It
-         keeps its ellipsis, so a narrow phone truncates rather than reflowing
-         the row the payout sits on. */
-      fontSize: 13, fontWeight: 600, letterSpacing: '.04em',
-      textTransform: 'uppercase', color: 'rgba(238,242,235,.72)',
-      minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-    },
-  }, 'choose where to train it')), /*#__PURE__*/React.createElement("div", {
-    style: { display: 'flex', gap: 5 },
-  }, PROG3_SKILL_META.map(function (sk) {
-    var on = xpCat === sk.key;
-    return /*#__PURE__*/React.createElement("button", {
-      key: sk.key,
-      'data-xp-skill': sk.key,     /* v2.3.2154: see the caption's note */
-      'aria-pressed': on,
-      onClick: function onClick(e) { e.stopPropagation(); setXpCat(sk.key); },
-      style: {
-        flex: '1 1 0', minWidth: 0, minHeight: 44,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-        background: on ? 'rgba(216,168,95,.18)' : 'transparent',
-        border: '1px solid ' + (on ? '#D8A85F' : 'rgba(238,242,235,.18)'),
-        borderRadius: 10,
-        color: on ? '#D8A85F' : '#EEF2EB',
-        /* v2.3.2154: 12 -> 14 on the label, 18 -> 22 on the icon below.
-           These three buttons are where the quest's XP actually goes, and
-           Melee / Bow / Magic were set two sizes under the panel's own body
-           text. Both move together on purpose: enlarging the label alone
-           leaves an icon that reads as a bullet point beside it.
-           `nowrap` because this is a three-across row on a 390px phone, and
-           bigger type is exactly how a label starts wrapping -- mp-questxp
-           measures the rendered line count rather than trusting that. */
-        fontFamily: 'inherit', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap',
-        cursor: 'pointer', touchAction: 'manipulation',
-      },
-    }, /*#__PURE__*/React.createElement("img", {
-      src: sk.iconSrc, alt: "", draggable: false,
-      style: { width: 22, height: 22, objectFit: 'contain', flex: 'none', pointerEvents: 'none' },
-    }), sk.label);
-  })));
+  return React.createElement("div", { className: 'bt-qw-green' },
+    React.createElement("div", { className: 'bt-qw-green-head' },
+      React.createElement("b", { className: 'bt-xp-payout' }, '+' + xp + ' XP'),
+      ' ',
+      React.createElement("span", { 'data-xp-caption': '' }, 'Choose where to train it')),
+    React.createElement("div", { className: 'bt-qw-chips' }, PROG3_SKILL_META.map(function (sk) {
+      return React.createElement(QuestSkillChip, {
+        key: sk.key, skill: sk.key, label: sk.label, selected: xpCat === sk.key,
+        onClick: function () { setXpCat(sk.key); },
+      });
+    })));
 }
 
 /* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) — panel
@@ -279,7 +219,39 @@ export function QuestPanel(props) {
      Every other scenario missed it by CLOSING the panel after accepting —
      mp-questloop now stays put, which is what a player does. */
   var _subject = questPanel.quest.id + ':' + questPanel.status;
-  React.useEffect(function () { setStage('talk'); }, [_subject]);
+  /* ═══ v2.3.3030: THE CLAIM'S CONFIRMATION, THEN HIS NEXT QUEST ═══
+     Owner's mockup: after the claim, a window that "shows what was received"
+     while "items and XP animate to inventory/HUD".  So a claim no longer
+     re-opens on his next quest at once: turnInQuest pays (and predicts) as
+     it always did and hands back the next panel, the window becomes the
+     confirmation (QuestOfferPanel `claimed`), and QUEST_CLAIMED_MS later --
+     or at a tap -- the next panel opens, the v2.3.1713 behaviour, one beat
+     later.  `_claimRef` is also the once-only latch: a second tap, or the
+     third of mp-questloop's triple click, finds a claim in flight and does
+     nothing, so nothing can be sent twice. */
+  var _claimedState = React.useState(null),
+    claimed = _claimedState[0],
+    setClaimed = _claimedState[1];
+  var _claimRef = React.useRef(null);
+  var _finishClaim = function () {
+    var c = _claimRef.current;
+    if (!c) return;
+    if (c.timer) clearTimeout(c.timer);
+    _claimRef.current = null;
+    setQuestPanel(c.next || null);
+  };
+  React.useEffect(function () {
+    setStage('talk');
+    /* a change of subject from anywhere else ends a confirmation without
+       opening what it was going to open */
+    setClaimed(null);
+    var c = _claimRef.current;
+    if (c && c.timer) clearTimeout(c.timer);
+    _claimRef.current = null;
+  }, [_subject]);
+  React.useEffect(function () {
+    return function () { var c = _claimRef.current; if (c && c.timer) clearTimeout(c.timer); };
+  }, []);
 
   var _isOffer = questPanel.status === 'available';
   /* v2.3.1914: the LIVE rpg, not the React snapshot — see questObjectiveDone.
@@ -311,6 +283,15 @@ export function QuestPanel(props) {
       lockScrim: !_isOffer && _canTurnIn,
       onClose: function () { return _closeQuestPanel(); },
       onDone: function () {
+        /* v2.3.3030: nothing to choose (no XP, or no prog3 to place it in) --
+           the mockup's AUTO REWARD: no window at all, the rewards paid at
+           once, the banner with its laurel check, the coins and items flying
+           straight to the HUD (turnInQuest `auto`), and his next quest. */
+        if (!_isOffer && _canTurnIn && !_needsXpChoice) {
+          turnInQuest(stateRef.current, questPanel,
+            { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, undefined, { auto: true });
+          return;
+        }
         if (_hasDecision) setStage('act');
         else _closeQuestPanel();
       },
@@ -329,6 +310,8 @@ export function QuestPanel(props) {
       : null,
     confirmClass: _isOffer ? null : 'bt-quest-turnin',
     confirmDisabled: !_isOffer && _needsXpChoice && !xpCat,
+    claimed: !_isOffer ? claimed : null,
+    onClaimedDone: _finishClaim,
     onClose: function () { return _closeQuestPanel(); },
     onConfirm: function () {
       if (_isOffer) {
@@ -336,8 +319,14 @@ export function QuestPanel(props) {
           { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
         return;
       }
-      turnInQuest(stateRef.current, questPanel,
-        { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, xpCat);
+      if (_claimRef.current) return;
+      /* v2.3.3030: paid now, his next quest after the confirmation (above);
+         `compact` puts the QUEST COMPLETE! banner at the top of the screen,
+         clear of the confirmation window */
+      var _next = turnInQuest(stateRef.current, questPanel,
+        { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, xpCat, { deferNext: true, compact: true });
+      _claimRef.current = { next: _next, timer: setTimeout(_finishClaim, QUEST_CLAIMED_MS) };
+      setClaimed({ xpCat: xpCat });
     },
   });
 }

@@ -56,7 +56,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
         text: (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim(),
         z: Number(cs.zIndex),
         pointerEvents: cs.pointerEvents,
-        modalOpen: !!document.querySelector('.bt-npcdlg, .bt-qoffer'),
+        /* v2.3.3030: + the claim's confirmation window, which carries
+           neither class on purpose (QuestOfferPanel's note) */
+        modalOpen: !!document.querySelector('.bt-npcdlg, .bt-qoffer, [data-qw-stage="done"]'),
+        /* v2.3.3030: the number above only means "above" in ONE stacking
+           context.  Inside .brotown-wrap (position:fixed, its own context)
+           the banner's 71 never beat the body-portaled scrim's 44 -- the
+           banner drew UNDER the dialogue and this compared 71 > 44 and
+           passed.  So: is it out of the wrap, a sibling of the scrim? */
+        inWrap: !!el.closest('.brotown-wrap'),
         modalZ: modal ? Number(getComputedStyle(modal).zIndex) : null,
         w: Math.round(r.width),
         t: Date.now(),
@@ -131,6 +139,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...while the dialogue is still open, and stacked above it',
     !!acc && acc.modalOpen === true && typeof acc.modalZ === 'number' && acc.z > acc.modalZ,
     acc && { z: acc.z, modalZ: acc.modalZ, modalOpen: acc.modalOpen });
+  rec.ok('...in the same stacking context as the dialogue, so its z-index is a fact (v2.3.3030)',
+    !!acc && acc.inWrap === false, acc && { inWrap: acc.inWrap });
   /* A full-bleed overlay that swallowed taps would make the dialogue feel
      broken for two seconds — and the next tap after accepting is a real
      button underneath it. */
@@ -178,13 +188,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const afterTurnIn = await banners();
   const done = afterTurnIn.find((b) => b.kind === 'completed');
-  rec.ok('turning a quest in raises a QUEST COMPLETED! banner',
-    !!done && /QUEST COMPLETED!/.test(done.text), afterTurnIn.map((b) => b.kind));
+  /* v2.3.3030: the owner's mockup reads QUEST COMPLETE!, and the reward as
+     the coin and XP figures ("+25 Gold"), not the old "+25g" */
+  rec.ok('turning a quest in raises a QUEST COMPLETE! banner',
+    !!done && /QUEST COMPLETE/.test(done.text), afterTurnIn.map((b) => b.kind));
   rec.ok('...carrying the reward it just paid',
-    !!done && /\+\d+g/i.test(done.text), done && done.text);
-  rec.ok('...over the dialogue, which re-opens on the next quest',
-    !!done && done.modalOpen === true && done.z > done.modalZ,
-    done && { z: done.z, modalZ: done.modalZ, modalOpen: done.modalOpen });
+    !!done && /\+\d+\s*g/i.test(done.text), done && done.text);
+  rec.ok('...over the claim\'s window (its confirmation, then his next quest)',
+    !!done && done.modalOpen === true && done.z > done.modalZ && done.inWrap === false,
+    done && { z: done.z, modalZ: done.modalZ, modalOpen: done.modalOpen, inWrap: done.inWrap });
 
   /* v2.3.1746 — owner: "play this sound upon quest completion." */
   const sfx = await P.page.evaluate(() => (window.__sfx || []).slice());

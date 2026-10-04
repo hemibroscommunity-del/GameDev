@@ -6013,3 +6013,204 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
   box-shadow:0 0 0 2px rgba(214,224,229,.42),inset 0 0 0 1px rgba(8,12,15,.6),inset 0 0 0 5px rgba(214,224,229,.07)}
 .bt-joystick-base>.bt-joystick-knob{background:radial-gradient(circle at 38% 30%,#B3BAC0 0%,#7D858C 34%,#4C5359 74%,#30353A 100%);
   box-shadow:0 0 0 1.5px rgba(8,12,15,.88),inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 0 rgba(0,0,0,.25),0 2px 0 rgba(0,0,0,.25)}
+
+/* ═══ v2.3.3030: THE QUEST WINDOWS IN THE OWNER'S PAINTED ART ═══
+   Owner: "Add these for the new quest windows" -- three sheets of frames,
+   buttons and ornaments (cut into public/ui/quest/ by
+   tools/ui/cut-quest-art.sh) and a mockup of the flow: a banner in the world,
+   a window only when there is a choice, a confirmation, rewards flying home.
+   The pieces are in src/ui/panels/questArt.jsx; every size below is a share
+   of --qw (the window's width) or of the piece's own box, so the painted
+   corners keep their shape on any phone.  No filter anywhere (TRAPS §42);
+   motion is transform and opacity, and finite (Lantern Slate's Motion rule).
+   docs/LANTERN-SLATE-SPEC.md, seventh exception. ── */
+.bt-qw{--qw:min(92vw,384px);--qs:.5;position:relative;width:var(--qw);max-width:100%;box-sizing:border-box;color:#F4EFE2;
+  font-family:'Source Sans 3',system-ui,sans-serif;text-align:center}
+.bt-qw-bg{position:absolute;inset:0;pointer-events:none}
+/* the old card's own look (.bt-qoffer, kept on the window as the QA hook
+   it has always been) gives way to the frame */
+.bt-qw.bt-qoffer{max-width:none;background:none;border:0;border-radius:0;box-shadow:none;padding:0;display:block}
+/* the frame's ten pieces (cut-quest-art.sh): corners 100 wide and 150 / 130
+   tall, the crest 280 wide and the top band 100 tall, the bottom band 75, the
+   side edges 40 -- each times --qs; the bands and the fill stretch */
+.bt-qw-f{position:absolute;display:block;user-select:none;-webkit-user-drag:none}
+.bt-qw-f-tl{left:0;top:0;width:calc(100px * var(--qs));height:calc(150px * var(--qs))}
+.bt-qw-f-tr{right:0;top:0;width:calc(100px * var(--qs));height:calc(150px * var(--qs))}
+.bt-qw-f-tc{left:calc(50% - 140px * var(--qs));top:0;width:calc(280px * var(--qs));height:calc(100px * var(--qs))}
+.bt-qw-f-tfl{left:calc(99px * var(--qs));width:calc(50% - 238px * var(--qs));top:0;height:calc(100px * var(--qs))}
+.bt-qw-f-tfr{right:calc(99px * var(--qs));width:calc(50% - 238px * var(--qs));top:0;height:calc(100px * var(--qs))}
+.bt-qw-f-ml{left:0;top:calc(150px * var(--qs));width:calc(40px * var(--qs));height:calc(100% - 280px * var(--qs))}
+.bt-qw-f-mr{right:0;top:calc(150px * var(--qs));width:calc(40px * var(--qs));height:calc(100% - 280px * var(--qs))}
+.bt-qw-f-mc{left:calc(39px * var(--qs));width:calc(100% - 78px * var(--qs));top:calc(99px * var(--qs));height:calc(100% - 173px * var(--qs))}
+.bt-qw-f-bl{left:0;bottom:0;width:calc(100px * var(--qs));height:calc(130px * var(--qs))}
+.bt-qw-f-br{right:0;bottom:0;width:calc(100px * var(--qs));height:calc(130px * var(--qs))}
+.bt-qw-f-bf{left:calc(99px * var(--qs));width:calc(100% - 198px * var(--qs));bottom:0;height:calc(75px * var(--qs))}
+/* inside the frame's gold line: below the crest, clear of the side bands */
+.bt-qw-body{position:relative;padding:calc(118px * var(--qs)) calc(58px * var(--qs)) calc(86px * var(--qs));
+  display:flex;flex-direction:column;align-items:stretch;gap:10px}
+.bt-qw-col{display:flex;flex-direction:column;align-items:stretch;gap:10px;min-width:0}
+.bt-qw-x{position:absolute;top:calc(138px * var(--qs));right:calc(40px * var(--qs));z-index:2;
+  width:40px;height:40px;padding:0;border:0;background:none;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.bt-qw-x-img{width:100%;height:100%;display:block;pointer-events:none}
+.bt-qw-x:active .bt-qw-x-img{transform:scale(.92)}
+.bt-qw-kicker{font-size:12px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#E9B54F}
+.bt-qw-desc{font-size:14px;line-height:1.45;color:#C9D3D0;padding:0 4px}
+/* "Not now": the quiet way out of an offer, under the gold button */
+.bt-qw-later{display:block;width:100%;min-height:40px;margin-top:-2px;padding:6px 10px;border:0;background:none;cursor:pointer;
+  font-family:inherit;font-size:14px;font-weight:700;color:#AEB9B6;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.bt-qw-later:active{color:#E3E9E7}
+/* the confirmation: the world (and the purse and dashboard the rewards fly
+   to) shows through more than under a decision */
+.bt-npcdlg-scrim.bt-qw-scrim--done{background:rgba(4,7,9,.36);cursor:pointer;
+  /* the claim's banner is at the top meanwhile (.bt-qw-plate--top): the
+     window centres in the space under it */
+  padding-top:calc(env(safe-area-inset-top, 0px) + 160px)}
+.bt-qw-groups{display:flex;flex-direction:column;gap:10px}
+/* the banner's place: its centre (see QuestBannerLayer) */
+.bt-qw-plate{top:24%}
+.bt-qw-plate--top{top:calc(env(safe-area-inset-top, 0px) + 104px)}
+.bt-qw-done-wrap{display:contents}
+.bt-qw-title{font-size:25px;font-weight:800;line-height:1.1;color:#FFF8E8;text-wrap:balance;margin-top:-4px;padding:0 36px;
+  text-shadow:0 2px 0 rgba(0,0,0,.45)}
+.bt-qw-pay{display:flex;justify-content:center;align-items:center;gap:16px;font-size:17px;font-weight:800;line-height:1}
+.bt-qw-pay--small{font-size:14px;gap:12px}
+.bt-qw-pay>span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.bt-qw-gold{color:#FFD45C}
+.bt-qw-xp{color:#9BE07F}
+.bt-qw-payicon{width:1.35em;height:1.35em;object-fit:contain;flex:none}
+/* a caption between two short gold hairlines */
+.bt-qw-cap{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#D9E1DD}
+.bt-qw-cap::before,.bt-qw-cap::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(233,181,79,0),rgba(233,181,79,.7),rgba(233,181,79,0))}
+.bt-qw-items{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.bt-qw-item{display:flex;flex-direction:column;align-items:center;gap:3px;width:min(31%, 118px)}
+.bt-qw-items--3 .bt-qw-item{width:min(29%, 104px)}
+.bt-qw-slot{position:relative;width:100%;aspect-ratio:268/257;background:url(/ui/quest/slot.webp) center/100% 100% no-repeat}
+.bt-qw-slot--glow{background-image:url(/ui/quest/slot-glow.webp)}
+/* the item inside the slot's frame (216x203 at 26,27 of the canvas) */
+.bt-qw-slot-icon{position:absolute;left:18%;top:18%;width:64%;height:64%;object-fit:contain;pointer-events:none}
+.bt-qw-item-name{font-size:14px;font-weight:700;line-height:1.15;color:#FFF8E8}
+/* the colour is the game's quality hue (QUALITY_COLOR), set inline */
+.bt-qw-item-rarity{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#A9B4B1;margin-top:-2px}
+/* the green panel the XP choice sits on: the owner's, stretched by its
+   middle only (its corners are in the outer 6% each way) */
+.bt-qw-green{position:relative;padding:8px 2px 6px;border:solid transparent;border-width:10px 12px;
+  border-image:url(/ui/quest/green.webp) 40 50 fill / 10px 12px stretch;margin:2px -6px 0}
+.bt-qw-green-head{display:flex;align-items:baseline;justify-content:center;flex-wrap:wrap;column-gap:8px;margin:-6px 0 8px;font-size:13px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;color:#E3ECE5}
+.bt-qw-green-head b{font-size:17px;letter-spacing:.02em;color:#9BE07F}
+.bt-qw-chips{display:flex;justify-content:center;gap:0;margin:0 -6px}
+/* a chip's canvas is 482x198 with its frame at 22,32 (426x144): the margin
+   is where the selected ring's glow and check go */
+.bt-qw-chip{position:relative;z-index:0;flex:1 1 0;min-width:0;aspect-ratio:482/198;min-height:44px;border:0;background:none;cursor:pointer;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;color:#F4EFE2;font-family:inherit;
+  /* the label sits right of the owner's divider (at 37% of the chip): two
+     empty spacers, 37% and 9% of the chip, and the text node centred between
+     them -- padding in % would be a share of the ROW, not of the chip */
+  display:flex;align-items:center;justify-content:center;padding:0;font-size:14px;font-weight:800;white-space:nowrap;line-height:1.1}
+.bt-qw-chip::before{content:'';flex:0 0 37%}
+.bt-qw-chip::after{content:'';flex:0 0 9%}
+/* z -1 inside the chip's own stacking context: under its text node, which
+   is in flow and would otherwise paint beneath these positioned pictures */
+.bt-qw-chip-art,.bt-qw-chip-ring{position:absolute;inset:0;z-index:-1;width:100%;height:100%;display:block;object-fit:contain;pointer-events:none}
+.bt-qw-chip--on{color:#FFE08A}
+.bt-qw-chip:active .bt-qw-chip-art,.bt-qw-chip:active .bt-qw-chip-ring{transform:scale(.96)}
+/* the claim button: canvas 1133x222, the bar 1085x174 at 24,24 */
+.bt-qw-claim{position:relative;display:block;width:100%;aspect-ratio:1133/222;min-height:48px;padding:0;border:0;background:none;cursor:pointer;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;font-family:inherit;margin-top:2px;
+  /* the button's OWN colour, not only its label's: a <button> does not
+     inherit colour (the UA's buttontext), and mp-layer reads the button */
+  color:#FFD86B}
+.bt-qw-claim[aria-disabled="true"]{color:#9AA4A6}
+.bt-qw-claim-art,.bt-qw-claim-glow{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.bt-qw-claim-glow{opacity:0;transition:opacity 120ms linear}
+.bt-qw-claim:active .bt-qw-claim-glow,.bt-qw-claim[data-pressed="1"] .bt-qw-claim-glow{opacity:1}
+.bt-qw-claim-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900;
+  /* capitals by small-caps, not text-transform: the DOM keeps "Claim
+     Rewards" in its own case, which is what the quest tests read */
+  letter-spacing:.12em;font-variant-caps:all-small-caps;color:inherit;text-shadow:0 2px 0 rgba(0,0,0,.55);pointer-events:none}
+.bt-qw-claim[aria-disabled="true"]{cursor:default}
+.bt-qw-claim[aria-disabled="true"] .bt-qw-claim-label{text-shadow:none}
+/* "Rewards claimed!": the green panel, the round check, two sparkles */
+.bt-qw-claimed{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;min-height:54px;margin-top:2px}
+.bt-qw-claimed-art{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.bt-qw-claimed-check{position:relative;width:34px;height:34px;flex:none}
+.bt-qw-claimed-label{position:relative;font-size:17px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#F3FFE9;
+  text-shadow:0 2px 0 rgba(0,0,0,.45)}
+.bt-qw-spark{position:absolute;pointer-events:none;opacity:0}
+.bt-qw-claimed .bt-qw-spark{width:30px;top:-6px;animation:bt-qw-twinkle 1.6s ease-out 2}
+.bt-qw-spark--a{left:8%}
+.bt-qw-spark--b{right:8%;animation-delay:.35s!important}
+.bt-qw-xpline{display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:800;color:#9BE07F}
+.bt-qw-xpline img{width:26px;height:26px;object-fit:contain}
+@keyframes bt-qw-twinkle{0%{opacity:0;transform:scale(.6)}30%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.15)}}
+
+/* ── the banner in the world ── */
+.bt-qw-banner{--qb:min(88vw,360px);position:relative;width:var(--qb);aspect-ratio:724/262;color:#F4EFE2;text-align:center;
+  font-family:'Source Sans 3',system-ui,sans-serif;pointer-events:none}
+.bt-qw-banner--compact{--qb:min(74vw,290px)}
+.bt-qw-banner--accepted{aspect-ratio:720/156;--qb:min(92vw,380px)}
+.bt-qw-banner--reward{aspect-ratio:720/200}
+.bt-qw-banner-art{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* the text sits under the crest: rows 92-238 of 262 (the glowing one),
+   72-140 of 156 (the thin one), 74-186 of 200 (the flat one) */
+.bt-qw-banner-text{position:absolute;left:9%;right:9%;top:33%;bottom:7%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.bt-qw-banner--accepted .bt-qw-banner-text{top:48%;bottom:8%;left:12%;right:12%;gap:0}
+.bt-qw-banner--reward .bt-qw-banner-text{top:37%;bottom:10%;left:12%;right:12%;gap:0}
+.bt-qw-banner-head{font-size:calc(var(--qb) * 0.076);font-weight:900;line-height:1;letter-spacing:.03em;text-transform:uppercase;color:#FFD45C;
+  text-shadow:0 2px 0 #3A2406,0 0 1px #3A2406,0 3px 6px rgba(0,0,0,.55);white-space:nowrap}
+.bt-qw-banner-title{font-size:calc(var(--qb) * 0.052);font-weight:800;line-height:1.25;color:#FFF8E8;text-shadow:0 2px 0 rgba(0,0,0,.5);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-qw-banner .bt-qw-pay{margin-top:1px;font-size:calc(var(--qb) * 0.044);text-shadow:0 2px 0 rgba(0,0,0,.5)}
+.bt-qw-banner--accepted .bt-qw-banner-head{color:#FFE7A3;font-size:calc(var(--qb) * 0.05)}
+.bt-qw-banner--accepted .bt-qw-banner-title{font-size:calc(var(--qb) * 0.04);line-height:1.15}
+
+.bt-qw-banner--reward .bt-qw-banner-head{color:#FFE7A3;font-size:calc(var(--qb) * 0.06)}
+.bt-qw-banner--reward .bt-qw-banner-title{font-size:calc(var(--qb) * 0.044);line-height:1.15}
+.bt-qw-banner-sub{font-size:calc(var(--qb) * 0.04);font-weight:700;color:rgba(244,240,231,.8);text-shadow:0 2px 0 rgba(0,0,0,.5);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* the crest's burst and the sparkles: once, as it arrives */
+.bt-qw-burst{position:absolute;left:50%;top:-12%;width:40%;transform:translateX(-50%) scale(.6);opacity:0;pointer-events:none;
+  animation:bt-qw-burst 1.5s ease-out 1 forwards}
+
+.bt-qw-banner-badge{position:absolute;left:50%;top:-26%;width:21%;transform:translateX(-50%);pointer-events:none;
+  animation:bt-qw-pop .45s cubic-bezier(.2,1.6,.4,1) 1 both}
+
+.bt-qw-banner .bt-qw-spark{width:16%;animation:bt-qw-twinkle 1.4s ease-out 2}
+.bt-qw-spark--l{left:-3%;top:-14%}
+.bt-qw-spark--r{right:-2%;top:-6%;animation-delay:.3s!important}
+@keyframes bt-qw-burst{0%{opacity:0;transform:translateX(-50%) scale(.6) rotate(0)}25%{opacity:.95}100%{opacity:0;transform:translateX(-50%) scale(1.25) rotate(25deg)}}
+@keyframes bt-qw-pop{0%{opacity:0;transform:translateX(-50%) scale(.4)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
+/* the banner arriving and leaving (BroTown's queue decides when) */
+.bt-qw-banner-in{animation:bt-qw-arrive .42s cubic-bezier(.2,1.3,.4,1) 1 both}
+@keyframes bt-qw-arrive{0%{opacity:0;transform:translateY(-14px) scale(.9)}100%{opacity:1;transform:none}}
+
+/* a reward flying home (questFly.js): one picture, transform and opacity */
+.bt-qw-fly{position:fixed;left:0;top:0;z-index:1200;pointer-events:none;will-change:transform,opacity;object-fit:contain}
+.bt-qw-landed{animation:bt-qw-landed .5s ease-out 1}
+@keyframes bt-qw-landed{0%{transform:scale(1)}35%{transform:scale(1.18)}100%{transform:scale(1)}}
+/* SIDEWAYS: the ornaments smaller and the window in two columns, so the
+   claim is never below the fold of a 390px-tall screen */
+@media (orientation: landscape) and (max-height: 560px){
+  .bt-qw{--qw:min(94vw,700px);--qs:.36}
+  .bt-qw-body{flex-direction:row;align-items:flex-start;gap:16px}
+  .bt-qw-body>.bt-qw-col{flex:1 1 0}
+  .bt-qw-title{font-size:21px}
+  .bt-qw-col--b{align-self:center}
+  /* the X has the top right corner to itself */
+  .bt-qw--reward .bt-qw-col--b{padding-top:30px}
+  /* the offer's two moments side by side, the items a size down */
+  .bt-qw-groups{flex-direction:row;gap:12px}
+  .bt-qw-groups>.bt-qoffer-group{flex:1 1 0;min-width:0}
+  .bt-qw-item{width:min(44%,84px)}
+  .bt-qw-item-name{font-size:12px}
+  /* the banners smaller and higher, the confirmation under the claim's */
+  .bt-qw-banner{--qb:min(48vw,310px)}
+  .bt-qw-banner--compact{--qb:min(30vw,210px)}
+  .bt-qw-plate{top:calc(env(safe-area-inset-top, 0px) + 76px)}
+  .bt-qw-plate--top{top:calc(env(safe-area-inset-top, 0px) + 42px)}
+  .bt-npcdlg-scrim.bt-qw-scrim--done{padding-top:84px}
+}
+@media (prefers-reduced-motion: reduce){
+  .bt-qw-burst,.bt-qw-spark,.bt-qw-banner-in,.bt-qw-banner-badge,.bt-qw-landed{animation:none}
+  .bt-qw-burst,.bt-qw-spark{opacity:0}
+}

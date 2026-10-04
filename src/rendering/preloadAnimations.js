@@ -57,6 +57,7 @@ import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
+import { preloadQuestArt } from './questArtPreload.js'; /* v2.3.3030: the quest windows' painted art (the owner's sheets) */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 import { bannerStripFor } from '../data/zoneBanner.js';   /* v2.3.3024: which of the Wheel's lands have banner art */
 import { WHEEL_LANDS } from '../data/wheelLands.js';      /* v2.3.3024 */
@@ -401,6 +402,12 @@ export async function preloadWorldAnimations() {
        shield.  GLOBAL: the controls are on screen everywhere.  See
        controlsPreload.js for why none of them was already warm. */
     controls: preloadControls(),
+    /* ═══ v2.3.3030: the quest windows' painted art ═══
+       DOM images (the owner's sheets, cut into public/ui/quest/): the framed
+       window, the banners, the chips, slots, buttons, sparkles.  GLOBAL: the
+       first quest is offered in town minutes after the intro lifts.  See
+       questArtPreload.js for why none of them was already warm. */
+    questArt: preloadQuestArt(),
     /* v2.3.2771: the rare-drop icons on a monster's loot pile (lootIcons.js)
        -- a rare drop is the moment a blank first frame would be seen */
     lootIcons: preloadLootIcons(),

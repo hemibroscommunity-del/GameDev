@@ -1,5 +1,8 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { PROG3_SKILL_META } from '@/data/prog3.js';
+import { QuestFrame, QuestCloseX, QuestPay, QuestCaption, QuestSlot, QuestClaimButton, QuestClaimed, QUEST_COIN } from './questArt.jsx';
+import { flyQuestRewards } from '@/game/questFly.js';
 
 /* ═══ v2.3.1820: THE DECISION, ON ITS OWN SCREEN ═══
  *
@@ -24,26 +27,88 @@ import { createPortal } from 'react-dom';
  * have already had answered once.
  */
 
-/* Bigger than the old 40px chip: this screen exists to show the items, so
-   they are the largest thing on it after the title. */
-function ItemChip({ item }) {
+/* ═══ v2.3.3030: BOTH MOMENTS IN THE OWNER'S PAINTED FRAME, AND A THIRD ═══
+ *
+ * Owner, with three sheets of art and a mockup of the flow: "Add these for
+ * the new quest windows."  The window is the owner's framed navy panel with
+ * the crest (questArt.jsx QuestFrame), each reward in its painted slot and
+ * drawn larger, the payout as the HUD's own coin and XP, the claim the
+ * owner's gold bar (grey until it can be pressed), the close the round X.
+ * Accept and claim stay ONE component in one frame, for the reason above.
+ *
+ * And the mockup's third step, the CLAIM CONFIRMATION: once you claim, the
+ * window says what you got -- "Rewards claimed!", the slots glowing, where
+ * the XP went -- while the coins fly into the purse and the items into the
+ * bag (game/questFly.js), and a moment later he offers his next quest
+ * (QuestPanel times it; a tap goes straight on).  It is drawn WITHOUT the
+ * `.bt-qoffer` class, deliberately: every scenario and harness helper reads
+ * `.bt-qoffer` as "an offer is on screen, act on it", and a confirmation is a
+ * moment to look at, not a surface to act on (`data-qw-stage="done"`).
+ *
+ * The contracts the QA suite reads stay where they were: `.bt-qoffer`,
+ * `.bt-qoffer-kicker`, `.bt-qoffer-title`, `.bt-qoffer-pay`, `[data-gives]`
+ * with its caption first, `.bt-qoffer-go`, `.bt-quest-turnin`,
+ * `[data-tut="qoffer-confirm"]` with aria-disabled, `[data-qa="dlg-close"]`
+ * and its aria-label, and the words "Accept Quest", "Claim Rewards", "Quest
+ * Complete", "For finishing “…”". */
+
+/* v2.3.3030: the items of one moment, each in its slot.  Three or more get a
+   size down so they still sit on one row. */
+function Items({ list, glow }) {
   return (
-    <div className="bt-qoffer-chip">
-      <img
-        src={item.icon}
-        alt={item.label || ''}
-        draggable={false}
-        className="bt-qoffer-chipimg"
-        /* A missing file removes the whole chip rather than leaving a broken
-           image where a reward should be. */
-        onError={(e) => {
-          const box = e.currentTarget.parentNode;
-          if (box && box.parentNode) box.parentNode.removeChild(box);
-        }}
-      />
-      <div className="bt-qoffer-chiplabel">{item.label || ''}</div>
+    <div className={'bt-qw-items' + (list.length >= 3 ? ' bt-qw-items--3' : '')}>
+      {list.map((it, n) => <QuestSlot key={n} item={it} glow={glow} />)}
     </div>
   );
+}
+
+/* v2.3.3030: the claim's confirmation (see the header). */
+function Claimed(props) {
+  const { quest, claimed, gold, xp, items, onDone } = props;
+  const winRef = React.useRef(null);
+  const skill = claimed && claimed.xpCat
+    ? PROG3_SKILL_META.find((s) => s.key === claimed.xpCat) : null;
+  /* the flights leave from where the reward is drawn, a beat after the
+     window has turned into the confirmation */
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      const w = winRef.current;
+      if (!w) return;
+      const goldEl = w.querySelector('[data-qw-gold] img') || w.querySelector('[data-qw-gold]');
+      const slots = [...w.querySelectorAll('.bt-qw-slot-icon')];
+      flyQuestRewards({
+        gold, goldFrom: goldEl, goldSrc: QUEST_COIN,
+        items: slots.map((el) => ({ el, src: el.getAttribute('src') })),
+      });
+    }, 260);
+    return () => clearTimeout(t);
+  }, []);
+  return createPortal((
+    /* the scrim lighter than the decision's: the purse and the dashboard the
+       rewards fly to are under it, and should be seen to catch them */
+    <div className="bt-npcdlg-scrim bt-noselect bt-qw-scrim--done" onClick={(e) => { e.stopPropagation(); onDone && onDone(); }}>
+      <div ref={winRef} className="bt-qw-done-wrap" data-qw-stage="done">
+        <QuestFrame className="bt-qw--done" onClick={(e) => { e.stopPropagation(); onDone && onDone(); }}>
+          <div className="bt-qw-col bt-qw-col--a">
+            <div className="bt-qw-kicker">Quest Complete</div>
+            <div className="bt-qw-title">{quest && quest.title}</div>
+            <QuestPay gold={gold} xp={xp} />
+            {items.length > 0 && <QuestCaption>Your rewards</QuestCaption>}
+            {items.length > 0 && <Items list={items} glow />}
+          </div>
+          <div className="bt-qw-col bt-qw-col--b">
+            {skill && xp ? (
+              <div className="bt-qw-xpline" data-qw-xpline={skill.key}>
+                <img src={skill.iconSrc} alt="" draggable={false} />
+                {'+' + xp + ' XP to ' + skill.label}
+              </div>
+            ) : null}
+            <QuestClaimed>Rewards claimed!</QuestClaimed>
+          </div>
+        </QuestFrame>
+      </div>
+    </div>
+  ), document.body);
 }
 
 export const QuestOfferPanel = (props) => {
@@ -60,6 +125,9 @@ export const QuestOfferPanel = (props) => {
        The caption is owner-facing copy and will change again; the class is
        the contract. */
     extra, confirmClass, confirmDisabled,
+    /* v2.3.3030: set once the claim is made -- the window becomes the
+       confirmation ({ xpCat }), and `onClaimedDone` moves on at once. */
+    claimed, onClaimedDone,
   } = props;
   const offering = mode !== 'reward';
   const all = (quest && quest.gives || []).filter((g) => g && g.icon);
@@ -79,11 +147,15 @@ export const QuestOfferPanel = (props) => {
      With both groups on screen at once, "for finishing this quest" is
      ambiguous the moment he has a second one queued behind it — and the
      name is the thing that makes the promise concrete. */
-  const finishing = `For finishing \u201C${(quest && quest.title) || 'this quest'}\u201D`;
+  const finishing = `For finishing “${(quest && quest.title) || 'this quest'}”`;
   const groups = offering
     ? [['accept', 'He hands you now', nowItems], ['complete', finishing, endItems]]
       .filter(([, , list]) => list.length > 0)
     : [['complete', finishing, endItems]].filter(([, , list]) => list.length > 0);
+
+  if (claimed) {
+    return <Claimed quest={quest} claimed={claimed} gold={gold} xp={xp} items={endItems} onDone={onClaimedDone} />;
+  }
 
   /* ═══ v2.3.1827: PORTALED, OR THE DASHBOARD EATS THE BUTTON ═══
      `.brotown-wrap` is position:fixed and therefore its own stacking
@@ -113,100 +185,77 @@ export const QuestOfferPanel = (props) => {
        note there. This panel portals into document.body too, so it inherits
        nothing from .brotown-wrap and needs its own declaration. */
     <div className="bt-npcdlg-scrim bt-noselect" onClick={offering ? onClose : undefined}>
-      <div className="bt-qoffer" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+      <QuestFrame className={'bt-qoffer bt-qw--' + (offering ? 'offer' : 'reward')} onClick={(e) => e.stopPropagation()}>
         {!offering && (
           /* v2.3.2289: the deliberate exit that replaces the accidental one.
              Making the backdrop inert without this would leave the one screen
              you reach by finishing a quest with no way out but claiming, and a
              modal you cannot leave is a worse bug than the one being fixed. A
              44px corner control is not something a thumb aimed at the button
-             below lands on by mistake, which was the whole complaint. */
-          <button
-            type="button"
-            data-qa="dlg-close"
-            aria-label="Close. Your reward stays waiting for you."
-            onClick={(e) => { e.stopPropagation(); onClose && onClose(); }}
-            style={{
-              position: 'absolute', top: 0, right: 0, width: 44, height: 44,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'transparent', border: 'none', color: '#8D9B98',
-              fontSize: 14, lineHeight: 1, cursor: 'pointer', padding: 0,
-            }}
-          >
-            {/* v2.3.2289: an SVG cross, NOT a "✕" character.  A text glyph here
-                lands inside the card's textContent, and half a dozen quest
-                scenarios read that text to check what Mayor Bro is saying --
-                they started matching "✕ MAYOR BRO ..." and failed on wording
-                that had not changed.  An icon has no text node, so the card
-                still reads as exactly the words in it. */}
-            <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true" focusable="false">
-              <path d="M2 2 L11 11 M11 2 L2 11" stroke="currentColor" strokeWidth="1.6"
-                strokeLinecap="round" fill="none" />
-            </svg>
-          </button>
+             below lands on by mistake, which was the whole complaint.
+             v2.3.3030: the owner's round X.  Still a picture, not a "✕"
+             character (v2.3.2289: a text glyph lands in the card's text, which
+             the quest scenarios read). */
+          <QuestCloseX qa="dlg-close" label="Close. Your reward stays waiting for you." onClick={() => onClose && onClose()} />
         )}
-        <div className="bt-qoffer-kicker">{offering ? 'New Quest' : 'Quest Complete'}</div>
-        <div className="bt-qoffer-title">{quest && quest.title}</div>
+        <div className="bt-qw-col bt-qw-col--a">
+          <div className="bt-qoffer-kicker bt-qw-kicker">{offering ? 'New Quest' : 'Quest Complete'}</div>
+          <div className="bt-qoffer-title bt-qw-title">{quest && quest.title}</div>
 
-        {/* The errand itself, on the accept screen only — on the reward screen
-            you have just done it, and repeating it there reads as a task you
-            still owe. */}
-        {offering && quest && quest.desc && (
-          <div className="bt-qoffer-desc">{quest.desc}</div>
-        )}
-
-        {groups.map(([when, caption, list]) => (
-          /* data-gives is the QA hook the old card carried — a caption is
-             prose and gets reworded; which group a bow is under is the fact
-             worth pinning. */
-          <div className="bt-qoffer-group" data-gives={when} key={when}>
-            <div className="bt-qoffer-caption">{caption}</div>
-            <div className="bt-qoffer-items">
-              {list.map((it, n) => <ItemChip key={n} item={it} />)}
-            </div>
-          </div>
-        ))}
-
-        {/* Gold and XP are numbers rather than art, so they sit apart from the
-            chips instead of being faked into the same row. */}
-        {!offering && (gold || xp) ? (
-          <div className="bt-qoffer-pay">
-            {gold ? <span className="bt-qoffer-gold">+{gold} gold</span> : null}
-            {xp ? <span className="bt-qoffer-xp">+{xp} XP</span> : null}
-          </div>
-        ) : null}
-
-        {extra || null}
-
-        <div className="bt-qoffer-actions">
-          <button
-            type="button"
-            className={'button-primary bt-qoffer-go' + (confirmClass ? ' ' + confirmClass : '')}
-            data-tut="qoffer-confirm"
-            aria-disabled={!!confirmDisabled}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (confirmDisabled) return;
-              onConfirm && onConfirm();
-            }}
-            style={confirmDisabled ? { background: '#293B41', color: '#F4F0E7', boxShadow: 'inset 0 0 0 1px #D8A85F' } : null}
-          >
-            {offering ? 'Accept Quest' : 'Claim Reward'}
-          </button>
-          {/* Only the OFFER is declinable.  A finished quest's reward is
-              already earned, so a "not now" there is a way to lose track of
-              payment you are owed. */}
-          {offering && (
-            <button
-              type="button"
-              className="bt-cc-btn bt-qoffer-later"
-              onClick={(e) => { e.stopPropagation(); onClose && onClose(); }}
-            >
-              Not now
-            </button>
+          {/* The errand itself, on the accept screen only — on the reward screen
+              you have just done it, and repeating it there reads as a task you
+              still owe. */}
+          {offering && quest && quest.desc && (
+            <div className="bt-qoffer-desc bt-qw-desc">{quest.desc}</div>
           )}
+
+          {/* Gold and XP are numbers rather than art, so they sit apart from the
+              items instead of being faked into the same row.  v2.3.3030: under
+              the title, with the HUD's own coin and XP pictures. */}
+          {!offering && (gold || xp) ? <QuestPay className="bt-qoffer-pay" gold={gold} xp={xp} /> : null}
+
+          {/* v2.3.3030: the two moments side by side on a sideways phone
+              (game.css), one above the other upright */}
+          <div className="bt-qw-groups">
+            {groups.map(([when, caption, list]) => (
+              /* data-gives is the QA hook the old card carried — a caption is
+                 prose and gets reworded; which group a bow is under is the fact
+                 worth pinning.  Its caption stays its FIRST child. */
+              <div className="bt-qoffer-group" data-gives={when} key={when}>
+                <QuestCaption className="bt-qoffer-caption">{caption}</QuestCaption>
+                <Items list={list} />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+
+        <div className="bt-qw-col bt-qw-col--b">
+          {extra || null}
+
+          <div className="bt-qoffer-actions">
+            <QuestClaimButton
+              className={'bt-qoffer-go' + (confirmClass ? ' ' + confirmClass : '')}
+              tut="qoffer-confirm"
+              disabled={!!confirmDisabled}
+              onClick={() => { onConfirm && onConfirm(); }}
+            >
+              {offering ? 'Accept Quest' : 'Claim Rewards'}
+            </QuestClaimButton>
+            {/* Only the OFFER is declinable.  A finished quest's reward is
+                already earned, so a "not now" there is a way to lose track of
+                payment you are owed. */}
+            {offering && (
+              <button
+                type="button"
+                className="bt-qoffer-later bt-qw-later"
+                onClick={(e) => { e.stopPropagation(); onClose && onClose(); }}
+              >
+                Not now
+              </button>
+            )}
+          </div>
+        </div>
+      </QuestFrame>
     </div>
   ), document.body);
 };
