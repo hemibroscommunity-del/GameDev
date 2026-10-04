@@ -1,0 +1,100 @@
+<!doctype html>
+<!-- v2.3.3018: the touch controls' skin, every button in every state, on the
+     two grounds the game draws most (grass and dark stone) -- the owner's
+     button-state sheet, drawn by the game's own code.  Driven by
+     tools/qa/controls-sheet-shot.mjs; not linked from the game. -->
+<html>
+<head><meta charset="utf-8"><title>controls harness</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{margin:0;font-family:'Source Sans 3',system-ui,sans-serif;color:#F7F2E7;background:#10181D}
+  .sheet{display:grid;grid-template-columns:120px repeat(5,96px);gap:14px 10px;padding:18px 18px 22px;align-items:center;justify-items:center}
+  .sheet.stone{background:radial-gradient(circle at 30% 20%,#3a2f3a 0%,#231c24 55%,#151116 100%)}
+  .sheet.grass{background:repeating-linear-gradient(45deg,#4f7a35 0 6px,#5b8a3c 6px 12px)}
+  .lab{justify-self:start;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#DDE3E1;text-shadow:0 1px 2px #000}
+  .hd{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B9C1BF;text-shadow:0 1px 2px #000}
+  .cell{position:relative}
+  .none{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#96A2A0;text-align:center;line-height:1.3;text-shadow:0 1px 2px #000}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import './styles/game.css';
+import { Skin, TornadoIcon, StarburstIcon, BashIcon, NovaIcon, JumpIcon, PaintedIcon, ICON_URL } from './ui/panels/controlSkin.jsx';
+
+const h = React.createElement;
+const STATES = ['normal', 'pressed', 'cooldown', 'ready', 'disabled'];
+
+function cell(size, tone, state, icon, extra) {
+  const pressed = state === 'pressed';
+  const st = pressed ? 'normal' : state;
+  const grey = st === 'cooldown' || st === 'disabled';
+  return h('div', {
+    className: 'cell', 'data-pressed': pressed ? '1' : undefined,
+    style: { width: size, height: size },
+  }, h(Skin, Object.assign({ size, tone, state: st, progress: st === 'cooldown' ? 0.38 : null }, extra || {}), icon(size, grey)));
+}
+
+/* the same sizes the buttons themselves use (TouchControls rIcon, and each
+   button's own share of its size) */
+/* ═══ THE ATTACK BUTTON HAS NO COOLDOWN ═══
+   Owner, on the first version of this sheet: "No cooldown for base attack
+   though".  The mockup's sheet used Attack as its example of all five states,
+   and the first cut of this page copied that; the game's attack button has no
+   cooldown, and never draws the arc.  So its row is drawn with the disc's OWN
+   states, through the very rules game.css gives the disc (a .bt-rjoy-base
+   wrapper carrying the data-rstate BroTown's resolver stamps), at the
+   opacities the resolver stamps:  lit (Normal), pressed, hot (Ready /
+   Charged: a monster in reach, the face see-through), idle (Disabled: painted
+   for a moment with nothing to press, the 0.5 rung) -- and, on a row of its
+   own, ghost (a monster under it: the outline). */
+const ATTACK = { normal: 'lit', pressed: 'lit', ready: 'hot', disabled: 'idle', ghost: 'ghost' };
+function attackCell(state) {
+  const rs = ATTACK[state];
+  if (!rs) return h('div', { className: 'none' }, 'no', h('br'), 'cooldown');
+  return h('div', {
+    className: 'cell bt-rjoy-base', 'data-rstate': rs, 'data-ricon': 'melee',
+    'data-pressed': state === 'pressed' ? '1' : undefined,
+    style: { width: 96, height: 96, opacity: rs === 'idle' ? 0.5 : 1 },
+  }, h(Skin, { size: 96, tone: 'ember', faceProps: { style: { opacity: rs === 'hot' ? 0.45 : (rs === 'ghost' ? 0.08 : 1) } } },
+    h(PaintedIcon, { src: ICON_URL.melee, size: 58, dim: rs === 'ghost' })));
+}
+
+const ROWS = [
+  ['Whirl', 48, 'slate', (s, g) => h(TornadoIcon, { size: Math.round(s * 0.7), grey: g })],
+  ['Spec', 48, 'slate', (s, g) => h(StarburstIcon, { size: Math.round(s * 0.7), grey: g })],
+  ['Block', 45, 'slate', (s, g) => h(PaintedIcon, { src: ICON_URL.shield, size: Math.round(s * 0.62), dim: g, pixelated: true })],
+  ['Bash', 48, 'slate', (s, g) => h(BashIcon, { size: Math.round(s * 0.7), grey: g })],
+  ['Jump', 48, 'slate', (s, g) => h(JumpIcon, { size: Math.round(s * 0.62), grey: g })],
+  ['Sprint', 48, 'slate', (s, g) => h(PaintedIcon, { src: ICON_URL.boot, size: Math.round(s * 0.7), dim: g })],
+  ['Burst', 46, 'slate', (s, g) => h(NovaIcon, { size: Math.round(s * 0.62), grey: g, color: '#E8642C' })],
+];
+
+function Sheet({ ground }) {
+  const kids = [h('div', { key: 'c', className: 'hd' }, ground)];
+  STATES.forEach((s) => kids.push(h('div', { key: 'h' + s, className: 'hd' }, s)));
+  /* a row: its label, then five cells (padded, so the next row starts on its own line) */
+  const row = (name, cells) => {
+    kids.push(h('div', { key: name, className: 'lab' }, name));
+    for (let i = 0; i < 5; i++) kids.push(h('div', { key: name + i }, cells[i] || null));
+  };
+  row('Attack', STATES.map(attackCell));
+  ROWS.forEach(([name, size, tone, icon]) => {
+    row(name, STATES.map((s) => cell(size, s === 'ready' && name === 'Block' ? 'warm' : tone, s, icon)));
+  });
+  /* the sprint ring as its stamina meter, two thirds left */
+  const sprintIcon = ROWS.find((r) => r[0] === 'Sprint')[3];
+  row('Sprint 66%', [cell(48, 'slate', 'normal', sprintIcon, { meter: 0.66 }), cell(48, 'warm', 'on', sprintIcon, { meter: 0.66 })]);
+  /* the attack button with a monster under it (in the Ready column: it is a fight) */
+  row('Attack, monster under it', [null, null, null, attackCell('ghost')]);
+  return h('div', { className: 'sheet ' + ground }, kids);
+}
+
+createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(Sheet, { ground: 'stone' }), h(Sheet, { ground: 'grass' })));
+window.__sheetReady = true;
+</script>
+</body>
+</html>

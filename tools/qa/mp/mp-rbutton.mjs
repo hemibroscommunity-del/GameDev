@@ -102,6 +102,14 @@ const discVis = (P, side) => P.page.evaluate((side) => {
   };
 }, side);
 
+/* v2.3.3018: the shield button's skin state (controlSkin) and its glow. */
+const shieldSkin = (P) => P.page.evaluate(() => {
+  const sk = document.querySelector('[data-shield] .bt-skin');
+  if (!sk) return null;
+  const g = sk.querySelector('.bt-skin-glow');
+  return { state: sk.getAttribute('data-state'), glow: g ? Number(getComputedStyle(g).opacity) : null };
+});
+
 /* v2.3.2246: the shield button's thumbnail, as the browser resolves it. */
 const shieldIcon = (P) => P.page.evaluate(() => {
   const img = document.querySelector('[data-shield] img');
@@ -206,7 +214,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const rodVsDisc = await P.page.evaluate(() => {
     const disc = document.querySelector('.bt-joystick-base') || document.querySelector('[data-disc="L"] > div');
     const zone = document.querySelector('[data-disc="L"]');
-    const rod = zone ? [...zone.querySelectorAll('div')].find((d) => /joystick\/stick/.test(d.style.backgroundImage || '')) : null;
+    /* v2.3.3018: the rod is a CSS groove now (the owner's mockup), found by
+       its hook; it was found by its sprite's URL. */
+    const rod = zone ? (zone.querySelector('[data-rod="L"]')
+      || [...zone.querySelectorAll('div')].find((d) => /joystick\/stick/.test(d.style.backgroundImage || ''))) : null;
     if (!rod) return { err: 'no rod' };
     const src = disc || zone;
     return {
@@ -343,6 +354,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   /* ── v2.3.2246: the thumbnail has to READ while the toggle is OFF ── */
   const iconDown = await shieldIcon(P);
+  const skinDown = await shieldSkin(P);
   rec.ok('the shield button carries a real, loaded thumbnail',
     !!iconDown && iconDown.complete === true && iconDown.nw > 0 && iconDown.w > 8, iconDown);
   /* The bug, exactly: `filter: brightness(0) opacity(.55)` painted the sprite
@@ -358,9 +370,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const up = await st(P);
   rec.ok('one tap raises the shield', up.shield === true, up);
   const iconUp = await shieldIcon(P);
-  rec.ok('...and the lit state is the same sprite with no filter either, just brighter',
-    !!iconUp && (iconUp.filter === 'none' || !iconUp.filter) && iconUp.opacity > iconDown.opacity,
-    { iconUp, iconDown });
+  const skinUp = await shieldSkin(P);
+  /* v2.3.3018: the owner's mockup draws the OFF state with the picture at
+     full strength on a gold ring, so "up" is no longer "the icon brighter"
+     -- it is the skin's ON state: the warm face, the lit ring, the glow. */
+  rec.ok('...and the lit state is the same sprite with no filter either, the button itself lit',
+    !!iconUp && (iconUp.filter === 'none' || !iconUp.filter) && iconUp.opacity >= iconDown.opacity
+      && !!skinUp && skinUp.state === 'on' && skinUp.glow > 0.5 && !!skinDown && skinDown.state !== 'on' && skinDown.glow < 0.5,   /* the glow eases over 180ms */
+    { iconUp, iconDown, skinUp, skinDown });
   rec.ok('...pointing at the locked target (same body-centre aim as the swing)',
     typeof up.ang === 'number' && Math.abs(up.ang - wantAim) < 0.12, { ang: up.ang, wantAim });
   rec.ok('...and the button did not start an auto-attack under it', up.autoAttack === false, up);

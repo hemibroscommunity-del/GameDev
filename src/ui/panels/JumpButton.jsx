@@ -3,6 +3,7 @@ import { jumpAnchor, ctlBottom } from './ShieldButton.jsx';
 import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
+import { Skin, JumpIcon, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
  *
@@ -22,9 +23,11 @@ import { isWheelSwimming } from '@/game/wheelSwim.js';
  *
  * WHAT IT SHOWS: an arrow up and the word JUMP, the Lantern Slate rest look
  * (slate, brass rim) of the sprint and shield buttons, lit warm while you are
- * in the air.  Not drawn while you swim (you cannot jump out of the water --
- * climb out first) or dead.  A keyboard jumps with X (desktopControls.js),
- * and this button hides with the other touch controls (bt-desktop-hide). */
+ * in the air.  (v2.3.3018: the owner's mockup's blue arrow on the gold ring,
+ * and no word -- see the render below.)  Not drawn while you swim (you cannot
+ * jump out of the water -- climb out first) or dead.  A keyboard jumps with X
+ * (desktopControls.js), and this button hides with the other touch controls
+ * (bt-desktop-hide). */
 
 /* How often the view is read (re-rendered only when it changes). */
 const POLL_MS = 80;
@@ -89,11 +92,13 @@ export function JumpButton(props) {
   };
   var onTouchStart = function (e) {
     e.preventDefault(); e.stopPropagation();
+    pressOn(e);   /* v2.3.3018: the sheet's Pressed */
     press();
   };
   var stop = function (e) { e.stopPropagation(); };
   var onTouchEnd = function (e) {
     e.preventDefault(); e.stopPropagation();
+    pressOff(e);
     lastTouchEndRef.current = Date.now();
   };
   /* A mouse (a touch laptop, a desktop browser in a phone-sized window): a
@@ -105,8 +110,10 @@ export function JumpButton(props) {
   };
 
   var air = view.air;
-  var arrow = Math.round(size * 0.36);
-  var font = size >= 52 ? 9.5 : 8.5;   /* the sprint button's measured sizes */
+  /* ═══ v2.3.3018: THE MOCKUP'S JUMP ═══
+     The owner's mockup draws this button as a bold blue arrow on a gold-ringed
+     button, and no word (controlSkin, as every control): Normal on the ground,
+     the sheet's Ready / Charged on the warm face while you are in the air. */
   return React.createElement('div', {
     className: 'bt-desktop-hide bt-jump-btn',
     'data-jump': air ? 'air' : 'ground',
@@ -116,9 +123,10 @@ export function JumpButton(props) {
     onTouchStart: onTouchStart,
     onTouchMove: stop,
     onTouchEnd: onTouchEnd,
-    onTouchCancel: stop,
-    onMouseDown: onMouseDown,
-    onMouseUp: function (e) { e.preventDefault(); e.stopPropagation(); },
+    onTouchCancel: function (e) { e.stopPropagation(); pressOff(e); },
+    onMouseDown: function (e) { pressOn(e); onMouseDown(e); },
+    onMouseUp: function (e) { e.preventDefault(); e.stopPropagation(); pressOff(e); },
+    onMouseLeave: pressOff,
     onContextMenu: function (e) { e.preventDefault(); },
     style: {
       position: 'fixed',
@@ -131,38 +139,6 @@ export function JumpButton(props) {
       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
   },
-  React.createElement('div', {
-    style: {
-      position: 'absolute', inset: 0, borderRadius: '50%',
-      /* Lantern Slate: raised slate at rest, the warm fill in the air; the
-         brass rim either way.  No filter (the iOS grain over the canvas,
-         CLAUDE.md). */
-      background: air
-        ? 'radial-gradient(circle, #6B5326 0%, #3A2C13 100%)'
-        : 'radial-gradient(circle, #34444B 0%, #202C32 100%)',
-      border: '2px solid ' + (air ? '#F0C878' : '#D8A85F'),
-      boxSizing: 'border-box',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)',
-      pointerEvents: 'none',
-    },
-  }),
-  /* an arrow up, drawn (nothing to load) */
-  React.createElement('svg', {
-    viewBox: '0 0 24 24', width: arrow, height: arrow,
-    style: { position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -88%)', pointerEvents: 'none' },
-  },
-  React.createElement('path', {
-    d: 'M12 3 L21 13 L15.5 13 L15.5 21 L8.5 21 L8.5 13 L3 13 Z',
-    fill: air ? '#F7F2E7' : '#E9DFC8', stroke: '#0b161b', strokeWidth: 1.4, strokeLinejoin: 'round',
-  })),
-  React.createElement('span', {
-    'data-jump-label': '1',
-    style: {
-      position: 'absolute', left: '50%', top: '50%',
-      transform: 'translate(-50%, ' + Math.round(size * 0.08) + 'px)',
-      fontSize: font, fontWeight: 800, letterSpacing: '0.02em', lineHeight: 1,
-      whiteSpace: 'nowrap',
-      color: air ? '#F7F2E7' : '#B9C1BF', pointerEvents: 'none',
-    },
-  }, 'JUMP'));
+  React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal' },
+    React.createElement(JumpIcon, { size: Math.round(size * 0.62) })));
 }

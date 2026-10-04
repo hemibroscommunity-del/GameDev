@@ -52,7 +52,7 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
-import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash */
+import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
@@ -146,7 +146,8 @@ import { pageIsPinchZoomed } from '@/data/joinGate.js';   /* v2.3.2388 */
    NPC_DATA is empty. */
 import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal,
   toDisplayDamage, /* v2.3.2520: the display damage scale */
-  hasGatherTool } from '@/data/index.js';
+  hasGatherTool,
+  gatherSkillForNodeType /* v2.3.3018: which skill's picture the attack disc shows at a resource */ } from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
 /* v2.3.1593: mayorWelcomeSeen dropped — its only caller was the greeting
    trigger the owner asked to remove.  MayorGreeting itself stays imported
@@ -5534,6 +5535,27 @@ export var BroTown = function BroTown(_ref0) {
             else if (_harvestCtx) _want = 'HARVEST';
             else _want = 'ATTACK';
             if (_lbl.textContent !== _want) _lbl.textContent = _want;
+            /* ═══ v2.3.3018: THE PICTURE SAYS IT; THE WORD SHOWS ONLY AS AN INSTRUCTION ═══
+               The owner's mockup puts a picture on every control and a word on
+               none (TouchControls' header).  So beside the word, the same
+               three facts pick the picture: the weapon in your hand to attack
+               (its Character-sheet picture -- an empty slot is fists, which
+               swing like the sword), the resource's skill to harvest (the
+               campfire is cooking), and NONE during a harvest, where the cue's
+               mini tool is the picture and the word (WAIT, CHOP ...) is what
+               to do.  Attribute writes, compared against the DOM like every
+               stamp here, so a re-render heals on the next frame. */
+            var _icWant;
+            if (_ex) _icWant = 'none';
+            else if (_harvestCtx) _icWant = (S._nearNode === S._campfire) ? 'cooking' : gatherSkillForNodeType(S._nearNode.nodeType);
+            else {
+              var _slotNow = (S.rpg && S.rpg.activeSlot) || 'melee';
+              _icWant = (_slotNow === 'ranged' || _slotNow === 'staff') ? _slotNow : 'melee';
+            }
+            var _rdI = rJoyRef.current;
+            if (_rdI && _rdI.getAttribute('data-ricon') !== _icWant) _rdI.setAttribute('data-ricon', _icWant);
+            var _showWant = _ex ? '1' : '0';
+            if (_lbl.getAttribute('data-show') !== _showWant) _lbl.setAttribute('data-show', _showWant);
           }
           /* ═══ v2.3.2760: THE CUE -- A MINI TOOL, STILL AND FLASHING UNTIL YOU MOVE ═══
              Owner: "before the player performs the gesture the starting spot of
@@ -5806,8 +5828,10 @@ export var BroTown = function BroTown(_ref0) {
              NOT background-color: base.webp is opaque, so a fill would paint
              under the sprite and never be seen. */
           /* v2.3.2260: LIT is context-only (see the three-way note above) -- a
-             disc lit by recency would promise a press that does nothing. */
-          var _lit = _rLitCtx && !discHeld('R');
+             disc lit by recency would promise a press that does nothing.
+             v2.3.3018: the `_lit` flag that lived here (lit context minus an
+             onboarding hold) fed only the brass border, which went with the
+             skin; data-rstate below reads _rLitCtx and _ghost directly. */
           var _hot = _rLitCtx && (_cands.length || _lockHeld) && !_ex && !_harvestCtx;
           /* The press ladder still owns the dip while a thumb is down (0.92,
              v2.3.1236), so the resolver must not fight it every frame -- it
@@ -5908,24 +5932,40 @@ export var BroTown = function BroTown(_ref0) {
           var _bodyWant = _ghost ? '0.08' : (_hot ? '0.45' : '1');
           var _rb = rBodyRef.current;
           if (_rb && _rb.style.opacity !== _bodyWant) _rb.style.opacity = _bodyWant;
-          var _bgWant = _hot ? RBTN_BODY_BG_HOT : RBTN_BODY_BG;
-          if (_rb && _rb.style.backgroundImage !== _bgWant) _rb.style.backgroundImage = _bgWant;
-          /* The knob is a separate sprite sitting in the middle of that face --
-             i.e. the part actually over the play area -- so it takes both
-             treatments too, or only the rim of the button is see-through. */
+          /* ═══ v2.3.3018: THE LOOK IS AN ATTRIBUTE NOW ═══
+             The disc wears controlSkin (the owner's mockup): a gold ring round
+             a brown face, the picture on the knob.  Its four looks -- idle
+             (painted, nothing to press), lit, hot, ghost -- are one attribute
+             game.css follows, in place of the sprite swap and the brass border
+             these lines stamped (TouchControls' header has the table).  The
+             attribute also reads back exactly as written, which the gradient
+             strings never did: the DOM re-spells a stamped gradient, so their
+             compare never matched and they were rewritten every frame.
+             The fades stay inline stamps: the face (above) and now the knob,
+             which carries the PICTURE -- it fades only for the ghost, because
+             in a fight the picture is what you read the button by (v2.3.2263's
+             "still read ATTACK on it", with a sword where the word was). */
           var _rk2 = rKnobRef.current;
-          var _kbgWant = _hot ? RKNOB_BG_HOT : RKNOB_BG;
-          if (_rk2 && _rk2.style.opacity !== _bodyWant) _rk2.style.opacity = _bodyWant;
-          if (_rk2 && _rk2.style.backgroundImage !== _kbgWant) _rk2.style.backgroundImage = _kbgWant;
+          var _knobWant = _ghost ? '0.45' : '1';
+          if (_rk2 && _rk2.style.opacity !== _knobWant) _rk2.style.opacity = _knobWant;
           /* v2.3.2472: ...and an outline needs an OUTLINE.  A ghosted disc keeps
-             its brass edge even in the frames the lit rule would have hidden it,
-             or the control would vanish entirely rather than going see-through. */
-          var _bcWant = (_lit || _ghost) ? (_hot ? '#EAC675' : '#D8AA58') : 'transparent';
-          if (_rd && _rd.style.borderColor !== _bcWant) _rd.style.borderColor = _bcWant;
-          var _bsWant = (_lit || _ghost)
-            ? (_hot ? '0 0 0 3px rgba(234,198,117,.22)' : '0 0 0 2px rgba(216,170,88,.16)')
-            : 'none';
-          if (_rd && _rd.style.boxShadow !== _bsWant) _rd.style.boxShadow = _bsWant;
+             its lit ring even in the frames the lit rule would have hidden it,
+             or the control would vanish entirely rather than going see-through.
+             v2.3.3018: idle is the 0.5 rung exactly (!_rLitCtx: painted by
+             recency alone, nothing to press), so it wears the sheet's
+             Disabled.  An onboarding hold with nothing in reach -- the coach
+             teaching the button in town -- is full strength and pressable but
+             never wore the brass border (it excluded the hold); it wears
+             Normal, not the grey, or the coach would ring a button that looks
+             switched off. */
+          var _stWant = _ghost ? 'ghost' : (!_rLitCtx ? 'idle' : (_hot ? 'hot' : 'lit'));
+          if (_rd && _rd.getAttribute('data-rstate') !== _stWant) _rd.setAttribute('data-rstate', _stWant);
+          /* The sheet's Pressed: a thumb on this side (the same fact the 0.92
+             step of the opacity ladder reads). */
+          var _prWant = rJoyActive.current ? '1' : null;
+          if (_rd && _rd.getAttribute('data-pressed') !== _prWant) {
+            if (_prWant) _rd.setAttribute('data-pressed', _prWant); else _rd.removeAttribute('data-pressed');
+          }
           var _lw = lWrapRef.current;
           var _lWant = _lOn ? '1' : '0';
           if (_lw && _lw.style.opacity !== _lWant) _lw.style.opacity = _lWant;
@@ -8908,8 +8948,12 @@ export var BroTown = function BroTown(_ref0) {
     var clampDist = Math.min(dist, maxR);
     var angle = Math.atan2(rawDy, rawDx);
     if (rKnobRef.current) {
-      rKnobRef.current.style.transform = 'translate(calc(-50% + ' + (Math.cos(angle) * clampDist)
-        + 'px), calc(-50% + ' + (Math.sin(angle) * clampDist) + 'px))';
+      /* v2.3.3018: the knob is the button's PICTURE now (a 58px sword where
+         the 42px dome was), so it travels RKNOB_TRAVEL of the rod's reach --
+         the full reach put the picture's edge past the gold ring. */
+      var _kt = clampDist * RKNOB_TRAVEL;
+      rKnobRef.current.style.transform = 'translate(calc(-50% + ' + (Math.cos(angle) * _kt)
+        + 'px), calc(-50% + ' + (Math.sin(angle) * _kt) + 'px))';
     }
     if (rStickRef.current) {
       rStickRef.current.style.width = clampDist + 'px';

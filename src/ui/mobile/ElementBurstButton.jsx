@@ -4,6 +4,7 @@ import { playIsLandscape } from './playViewport.js';
 import { PROG3, burstRefusal, burstWeapon } from '@/data/prog3.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { elementBurst } from '@/game/playerActions.js';
+import { Skin, NovaIcon, pressOn, pressOff, useReadyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.1734: ELEMENT BURST BUTTON (COMBAT-OVERHAUL-PLAN PR 6) ═══
  *
@@ -67,7 +68,8 @@ import { elementBurst } from '@/game/playerActions.js';
  */
 
 const SIZE = 46;
-const FADE_MS = 180;
+/* (v2.3.3018: FADE_MS, the 180ms opacity fade between ready and not, went
+   with the fade -- the skin's states change colour, not opacity.) */
 
 export const ElementBurstButton = () => {
   const [, force] = useState(0);
@@ -92,6 +94,9 @@ export const ElementBurstButton = () => {
 
   const S = (typeof window !== 'undefined' && window._gameState) ? window._gameState.current : null;
   const R = S && S.rpg;
+  /* v2.3.3018: above the early returns (a hook) -- the glow swells once when
+     the cooldown's arc closes. */
+  const flash = useReadyFlash(!!(S && PROG3.BURST_CD_MS - (Date.now() - (S._lastBurstAt || 0)) > 0));
   if (!R) return null;
 
   const wpn = burstWeapon(R);   /* NOT getActiveWeapon — see burstWeapon's note */
@@ -144,12 +149,24 @@ export const ElementBurstButton = () => {
   const press = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    pressOn(e);   /* v2.3.3018: the sheet's Pressed */
     if (!ready) return;
     elementBurst(S);
   };
   /* A release and a slide are classified too -- see above. */
-  const swallowEnd = (e) => { e.preventDefault(); e.stopPropagation(); };
+  const swallowEnd = (e) => { e.preventDefault(); e.stopPropagation(); pressOff(e); };
   const swallowMove = (e) => { e.stopPropagation(); };
+
+  /* ═══ v2.3.3018: THE NOVA ON THE MOCKUP'S BUTTON ═══
+     The owner's mockup gives every control a gold-ringed button.  The nova
+     this button fires is still its picture, in the weapon's element colour
+     (which is still how a player learns the two are connected); the ring is
+     the skin's gold, and the states are the sheet's:
+       ready          Normal
+       cooling down   Cooldown -- dark, the nova grey, a blue arc closing (the
+                      dark sweep it replaces drew the same fraction)
+       no mana        Disabled (the one refusal that keeps it on screen) */
+  const skinState = cdLeft > 0 ? 'cooldown' : (refusal ? 'disabled' : 'normal');
 
   return (
     <div
@@ -157,6 +174,9 @@ export const ElementBurstButton = () => {
       onTouchStart={press}
       onMouseDown={press}
       onTouchEnd={swallowEnd}
+      onTouchCancel={pressOff}
+      onMouseUp={pressOff}
+      onMouseLeave={pressOff}
       onTouchMove={swallowMove}
       onContextMenu={(e) => e.preventDefault()}
       role="button"
@@ -166,6 +186,7 @@ export const ElementBurstButton = () => {
          click over a fight is wrong. */
       data-uisfx="off"
       aria-label="Element Burst"
+      data-ready={ready ? '1' : '0'}
       style={{
         position: 'fixed',
         bottom: bottomVal,
@@ -174,43 +195,18 @@ export const ElementBurstButton = () => {
         height: SIZE,
         zIndex: 31,
         borderRadius: '50%',
-        background: 'rgba(15, 19, 30, 0.82)',
-        border: '2px solid ' + color,
-        opacity: ready ? 1 : 0.45,
-        transition: 'opacity ' + FADE_MS + 'ms linear',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         touchAction: 'none',
         WebkitTapHighlightColor: 'transparent',
         userSelect: 'none',
       }}
     >
-      <svg viewBox={'0 0 ' + SIZE + ' ' + SIZE} width={SIZE} height={SIZE} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      <Skin size={SIZE} tone="slate" state={skinState}
+        progress={cdLeft > 0 ? 1 - cdFrac : null}
+        flash={flash && skinState === 'normal'}>
         {/* The nova the button fires, drawn as the button: a filled core
             with two rings at the ratio the ability actually uses. */}
-        <circle cx={SIZE / 2} cy={SIZE / 2} r={7} fill={color} opacity={ready ? 0.95 : 0.6} />
-        <circle cx={SIZE / 2} cy={SIZE / 2} r={12} fill="none" stroke={color} strokeWidth={1.5} opacity={0.65} />
-        <circle cx={SIZE / 2} cy={SIZE / 2} r={17} fill="none" stroke={color} strokeWidth={1} opacity={0.35} />
-        {cdFrac > 0 && (
-          /* Cooldown sweep on the rim — the same clockwise-from-12
-             dasharray idiom as the charge pie, INCLUDING its fixed-point
-             formatting: tiny fractions stringify in exponent notation
-             (9.4e-7), which some SVG parsers reject, and an invalid
-             dasharray falls back to a SOLID stroke (v2.3.10 incident). */
-          <circle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
-            r={(SIZE - 6) / 2}
-            fill="none"
-            stroke="rgba(0,0,0,0.62)"
-            strokeWidth={4}
-            strokeLinecap="butt"
-            strokeDasharray={(cdFrac * (Math.PI * (SIZE - 6))).toFixed(2) + ' ' + (Math.PI * (SIZE - 6)).toFixed(2)}
-            transform={'rotate(-90 ' + (SIZE / 2) + ' ' + (SIZE / 2) + ')'}
-          />
-        )}
-      </svg>
+        <NovaIcon size={Math.round(SIZE * 0.62)} color={color} grey={skinState !== 'normal'} />
+      </Skin>
     </div>
   );
 };

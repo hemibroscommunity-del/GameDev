@@ -5176,8 +5176,37 @@ goes see-through, which both rules call dark) -- the owner's screen; within
 two strikes the watchdog asks for a rebuild. Chromium can't make the iOS reset
 itself: `WEBGL_lose_context` there gives the whole world back.
 
+## 131. `preventDefault()` in a React `onTouchStart` does nothing, so a tap also clicks (v2.3.3018)
 
-## 131. A Wheel scenario fails late in a long run that passes on its own (v2.3.3019)
+**Plausible:** "The button acts on touchstart and calls `e.preventDefault()`
+there, so the browser will not follow the tap with its emulated mouse events.
+`onMouseDown` on the same element is safe -- it is only the desktop's door."
+
+**Wrong.** react-dom 18 registers `touchstart`, `touchmove` and `wheel` at its
+root as PASSIVE listeners (react-dom.development.js: `isPassiveListener =
+true` for exactly those three), so a `preventDefault()` inside a React
+`onTouchStart` is ignored -- Chrome says so in the console ("Unable to
+preventDefault inside passive event listener invocation").  A tap that nothing
+cancels is then followed by the emulated `mousedown` / `mouseup` / `click`,
+and an `onMouseDown` that runs the same handler runs it TWICE.
+
+The Block button (ShieldButton.jsx) was exactly that: `onTouchStart: press,
+onMouseDown: press`, no `onTouchEnd`.  A real finger raised the shield on
+touchstart and the emulated mousedown lowered it again -- one tap, up and
+down, nothing to see.  Every scenario that tapped it dispatched a bare
+`TouchEvent` (`window.__touch`), which no browser follows with mouse events,
+so the suite was green.  `mp-btnskin` was the first to tap it with a real
+finger (CDP `Input.dispatchTouchEvent`) and found it.
+
+**The rule:** cancel the emulated mouse events in `onTouchEnd` -- touchend is
+NOT passive in React, so its `preventDefault()` works -- the way SpecialButton,
+AbilityButtons, ElementBurstButton, SprintButton and WeaponSwapButton already
+do.  Or listen with `addEventListener(..., { passive: false })` yourself, as
+BroTown's disc and zones do.  And test a touch control with a REAL touch: a
+dispatched event neither hit-tests (§67) nor brings the mouse events behind it.
+
+
+## 132. A Wheel scenario fails late in a long run that passes on its own (v2.3.3019)
 
 **Plausible:** "One `node tools/qa/mp/run.mjs a b c d e f g h` runs every
 scenario with a fresh player in a fresh browser context, so a scenario's

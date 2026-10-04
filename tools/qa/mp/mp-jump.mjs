@@ -9,7 +9,8 @@
  * a phone-sized TOUCH page against a real worker:
  *   1. the JUMP button is centred under the attack disc, 44 px or more, clear
  *      of the disc, the dashboard and every other control, its word inside --
- *      upright and sideways;
+ *      upright and sideways (v2.3.3018: its arrow inside the gold ring, the
+ *      word gone for the owner's mockup);
  *   2. a press lifts the body by the jump's height and holds the jog's leaping
  *      frame for the way it faces, while the feet the depth pass and the
  *      shadows read stay on the ground (the shadow's pivot does not rise);
@@ -47,7 +48,10 @@ const LAYOUT = (P) => P.page.evaluate(() => {
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
   const btn = document.querySelector('[data-jump]');
   const disc = document.querySelector('[data-disc="R"]');
-  const lab = btn && btn.querySelector('[data-jump-label]');
+  /* v2.3.3018: the owner's mockup draws Jump as the blue arrow alone -- the
+     word went -- so what has to sit inside the ring is the PICTURE */
+  const lab = btn && btn.querySelector('[data-icon="jump"]');
+  const ringEl = btn && btn.querySelector('.bt-skin-ringc');
   const dashH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || 0;
   const others = [];
   if (btn) {
@@ -61,7 +65,8 @@ const LAYOUT = (P) => P.page.evaluate(() => {
       others.push({ cls: String(el.className || '').slice(0, 40), aria: el.getAttribute('aria-label'), ...r(el) });
     }
   }
-  return { btn: r(btn), disc: r(disc), label: r(lab), vw: innerWidth, vh: innerHeight, dashH, others };
+  return { btn: r(btn), disc: r(disc), label: r(lab), ring: ringEl ? +ringEl.getAttribute('stroke-width') : null,
+    vw: innerWidth, vh: innerHeight, dashH, others };
 });
 const overlap = (a, b) => !!a && !!b && a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
 
@@ -164,15 +169,20 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
     const cx = (L.btn.l + L.btn.r) / 2, dcx = (L.disc.l + L.disc.r) / 2;
     const hits = L.others.filter((o) => overlap(L.btn, o));
     const bandTop = L.vh - L.dashH;
-    const inside = !!L.label && L.label.l >= L.btn.l && L.label.r <= L.btn.r && L.label.t >= L.btn.t && L.label.b <= L.btn.b;
+    /* v2.3.3018: the arrow, centred and no wider than the face inside the
+       gold ring (mp-sprint's test of its boot) -- the word it replaced had to
+       sit inside the button's box */
+    const face = L.btn.w - 2 * (L.ring || 4);
+    const picOff = L.label ? Math.hypot((L.label.l + L.label.r) / 2 - cx, (L.label.t + L.label.b) / 2 - (L.btn.t + L.btn.b) / 2) : null;
+    const inside = !!L.label && L.label.w <= face + 0.5 && L.label.h <= face + 0.5 && picOff <= 1;
     return {
       ok: L.btn.w >= 44 && L.btn.h >= 44 && Math.abs(cx - dcx) <= 2 && L.btn.t >= L.disc.b + 2 && L.btn.b <= bandTop - 8 && hits.length === 0 && inside,
       size: Math.round(L.btn.w), centreOff: +(cx - dcx).toFixed(1), belowDisc: Math.round(L.btn.t - L.disc.b), aboveBand: Math.round(bandTop - L.btn.b),
-      hits, inside,
+      hits, inside, pic: L.label ? { w: Math.round(L.label.w), face: Math.round(face), off: +picOff.toFixed(1) } : null,
     };
   };
   const l1 = lay(L1);
-  rec.ok(`upright, JUMP is centred under the attack disc (${l1.centreOff} px), ${l1.belowDisc} px below it and ${l1.aboveBand} px above the dashboard, ${l1.size} px, on no other control, its word inside`, l1.ok, l1);
+  rec.ok(`upright, JUMP is centred under the attack disc (${l1.centreOff} px), ${l1.belowDisc} px below it and ${l1.aboveBand} px above the dashboard, ${l1.size} px, on no other control, its arrow inside the ring`, l1.ok, l1);
   if (L1.btn) await shot(P, 'layout', { x: Math.max(0, L1.btn.l - 120), y: Math.max(0, L1.disc ? L1.disc.t - 20 : L1.btn.t - 160), width: 250, height: Math.min(380, L1.vh - Math.max(0, L1.disc ? L1.disc.t - 20 : L1.btn.t - 160)) });
 
   /* ── 2. a jump, where both players arrived ──

@@ -47,7 +47,10 @@ const LAYOUT = (P) => P.page.evaluate(() => {
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
   const btn = document.querySelector('[data-sprint]');
   const disc = document.querySelector('.bt-joystick-zone');
-  const lab = btn && btn.querySelector('[data-sprint-label]');
+  /* v2.3.3018: the owner's mockup draws Sprint as the boot alone -- the word
+     went -- so what has to sit inside the ring is the PICTURE */
+  const lab = btn && btn.querySelector('[data-icon="boot"]');
+  const ringEl = btn && btn.querySelector('.bt-skin-ringc');
   const others = [];
   if (btn) {
     for (const el of document.querySelectorAll('body *')) {
@@ -60,7 +63,8 @@ const LAYOUT = (P) => P.page.evaluate(() => {
       others.push({ tag: el.tagName, cls: String(el.className || '').slice(0, 40), aria: el.getAttribute('aria-label'), ...r(el) });
     }
   }
-  return { vw: innerWidth, vh: innerHeight, btn: r(btn), label: r(lab), state: btn ? btn.getAttribute('data-sprint') : null, disc: r(disc), others };
+  return { vw: innerWidth, vh: innerHeight, btn: r(btn), label: r(lab), ring: ringEl ? +ringEl.getAttribute('stroke-width') : null,
+    state: btn ? btn.getAttribute('data-sprint') : null, disc: r(disc), others };
 });
 const overlaps = (a, b, pad) => a.l < b.r + pad && a.r > b.l - pad && a.t < b.b + pad && a.b > b.t - pad;
 
@@ -77,13 +81,20 @@ function checkLayout(rec, L, label) {
   rec.ok(`${label}: in the movement half of the screen (right edge ${b.r.toFixed(0)} of ${L.vw / 2})`, b.r <= L.vw / 2, { r: b.r, half: L.vw / 2 });
   rec.ok(`${label}: on no other control (${L.others.length} checked)`, hit.length === 0, hit);
   /* the word inside the rim (3 px) at every corner of its box: the first cut
-     lost the S and the T to the circle's edge */
+     lost the S and the T to the circle's edge.
+     v2.3.3018: the word went for the boot (the owner's mockup), so the
+     picture is what must sit inside the ring: centred on the button, and no
+     wider than the face inside the ring (a picture's transparent corners are
+     not the picture, so its box's CORNERS are not the test the word's were). */
   const lb = L.label;
   if (lb) {
-    const cx = (b.l + b.r) / 2, cy = (b.t + b.b) / 2, rin = b.w / 2 - 3;
-    const far = Math.max(...[[lb.l, lb.t], [lb.r, lb.t], [lb.l, lb.b], [lb.r, lb.b]].map(([x, y]) => Math.hypot(x - cx, y - cy)));
-    rec.ok(`${label}: the word SPRINT fits inside the rim (its farthest corner ${far.toFixed(1)} px from the middle, the rim at ${rin})`, far <= rin + 0.5, { label: lb, far, rin });
-  } else rec.ok(`${label}: the word SPRINT is drawn`, false, null);
+    const cx = (b.l + b.r) / 2, cy = (b.t + b.b) / 2;
+    const ring = L.ring || 4;
+    const face = b.w - 2 * ring;
+    const off = Math.hypot((lb.l + lb.r) / 2 - cx, (lb.t + lb.b) / 2 - cy);
+    rec.ok(`${label}: the boot sits in the middle, inside the ring (${lb.w.toFixed(0)} px wide in a ${face.toFixed(0)} px face, ${off.toFixed(1)} px off centre)`,
+      lb.w <= face + 0.5 && lb.h <= face + 0.5 && off <= 1, { pic: lb, face, off });
+  } else rec.ok(`${label}: the boot is drawn`, false, null);
 }
 
 /* A straight lane east, `len` px of open land under the boots, nothing

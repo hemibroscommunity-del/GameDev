@@ -63,7 +63,14 @@ const vis = (P, side) => P.page.evaluate((side) => {
     opacity: +Number(cs.opacity).toFixed(2),
     painted: Number(cs.opacity) > 0.5,
     pressable: ics ? ics.pointerEvents === 'auto' : null,
-    lit: ics ? ics.borderColor !== 'rgba(0, 0, 0, 0)' && ics.borderColor !== 'transparent' : null,
+    /* v2.3.3018: lit is the skin's state now (the owner's mockup: a gold
+       ring, no brass border) -- BroTown's resolver stamps data-rstate, and
+       anything but 'idle' is a disc a press would do something with.  The
+       left stick has no lit state; its border read is kept for it. */
+    lit: ics ? (side === 'R'
+      ? (['lit', 'hot', 'ghost'].indexOf(inner.getAttribute('data-rstate')) >= 0)
+      : (ics.borderColor !== 'rgba(0, 0, 0, 0)' && ics.borderColor !== 'transparent')) : null,
+    rstate: inner && side === 'R' ? inner.getAttribute('data-rstate') : undefined,
   };
 }, side);
 
