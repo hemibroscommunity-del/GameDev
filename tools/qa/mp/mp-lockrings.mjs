@@ -216,19 +216,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const btn = await P.page.evaluate(() => {
     const disc = document.querySelector('.bt-rjoy-base');
     if (!disc) return null;
-    const body = disc.querySelector('div[style*="border-radius: 50%"]') || disc.firstElementChild;
+    /* v2.3.3018: the painted layer is the skin's FACE now (the owner's
+       mockup: a gold ring round a brown face, a sword on it), found by its
+       hook rather than by an inline style; the PICTURE on the knob is what
+       stays at full strength, where the label did. */
+    const body = disc.querySelector('[data-rbody]') || disc.querySelector('div[style*="border-radius: 50%"]') || disc.firstElementChild;
     const label = Array.from(disc.children).find((c) => (c.textContent || '').trim() === 'ATTACK');
+    const knob = disc.querySelector('.bt-rjoy-knob');
     const cs = (el) => (el ? getComputedStyle(el) : null);
     return {
       discOpacity: +getComputedStyle(disc).opacity,
       bodyOpacity: body ? +getComputedStyle(body).opacity : null,
-      bodyHasSprite: !!(body && /base\.webp/.test(getComputedStyle(body).backgroundImage || '')),
+      bodyIsFace: !!(body && body.classList.contains('bt-skin-face')),
       labelText: label ? label.textContent.trim() : null,
       labelOpacity: label ? +getComputedStyle(label).opacity : null,
+      knobOpacity: knob ? +getComputedStyle(knob).opacity : null,
+      ricon: disc.getAttribute('data-ricon'),
+      rstate: disc.getAttribute('data-rstate'),
       pointerEvents: getComputedStyle(disc).pointerEvents,
       wrapOpacity: +getComputedStyle(disc.parentElement).opacity,
-      /* v2.3.2264: the warm wash.  Two background layers means the gradient is
-         painted over the sprite; one means bare metal. */
+      /* v2.3.2264: the warm wash.  v2.3.3018: the hot face's own amber
+         gradient (game.css .bt-rjoy-base[data-rstate="hot"]). */
       bodyBg: body ? getComputedStyle(body).backgroundImage : null,
       bodyRect: body ? (() => { const r = body.getBoundingClientRect();
         return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; })() : null,
@@ -310,10 +318,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    attack button: ' + JSON.stringify(btn));
   rec.ok('the attack button is up, lit and pressable with monsters in play (guard)',
     !!btn && btn.wrapOpacity === 1 && btn.discOpacity === 1 && btn.pointerEvents === 'auto', btn);
-  rec.ok(`...its painted metal is see-through, so it stops covering the monster (${btn && btn.bodyOpacity})`,
-    !!btn && btn.bodyHasSprite === true && btn.bodyOpacity > 0.2 && btn.bodyOpacity < 0.7, btn);
-  rec.ok('...and the LABEL is not faded with it, which is what v2.3.2251 asked for',
-    !!btn && btn.labelText === 'ATTACK' && btn.labelOpacity === 1, btn);
+  rec.ok(`...its painted face is see-through, so it stops covering the monster (${btn && btn.bodyOpacity})`,
+    !!btn && btn.bodyIsFace === true && btn.bodyOpacity > 0.2 && btn.bodyOpacity < 0.7, btn);
+  /* v2.3.3018: the owner's mockup puts a PICTURE where the word was, so the
+     v2.3.2251 rule ("font hard to see") is now about the picture: the sword
+     is not faded with the face.  The label still names the button ATTACK in
+     the DOM; it shows only as a gesture's caption (TouchControls). */
+  rec.ok('...and the PICTURE is not faded with it (v2.3.2251, with a sword where the word was)',
+    !!btn && btn.knobOpacity === 1 && btn.ricon === 'melee', btn);
+  rec.ok('...and the label still names it ATTACK', !!btn && btn.labelText === 'ATTACK', btn);
   /* ═══ v2.3.2264: SEE-THROUGH MUST NOT READ AS DISABLED ═══
      Owner: "The problem is implying the button is inactive when it's partially
      transparent.  Maybe only during combat it changes color (like to orange)
@@ -321,8 +334,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      AND warm -- and the warm half has to be absent when there is nothing to
      fight, or it stops meaning anything. */
   rec.ok('...and the see-through disc is WARM, not greyed, so it reads as live',
-    !!btn && /linear-gradient/.test(btn.bodyBg || '') && /214,\s*138,\s*60/.test(btn.bodyBg || ''),
-    { bodyBg: btn && btn.bodyBg });
+    !!btn && btn.rstate === 'hot' && /199,\s*128,\s*63/.test(btn.bodyBg || ''),
+    { rstate: btn && btn.rstate, bodyBg: btn && btn.bodyBg });
   if (btn && btn.bodyRect) {
     await P.page.screenshot({ path: `${out}/button-hot.png`,
       clip: { x: btn.bodyRect.x - 6, y: btn.bodyRect.y - 6, width: btn.bodyRect.w + 12, height: btn.bodyRect.h + 12 } });
@@ -354,7 +367,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      same file that documents it. */
   const btnCold = await P.page.evaluate(() => new Promise((resolve) => {
     const disc = document.querySelector('.bt-rjoy-base');
-    const body = disc && (disc.querySelector('div[style*="border-radius: 50%"]') || disc.firstElementChild);
+    const body = disc && (disc.querySelector('[data-rbody]') || disc.querySelector('div[style*="border-radius: 50%"]') || disc.firstElementChild);
     if (!body) return resolve(null);
     const t0 = Date.now();
     let last = null, stable = 0;
@@ -364,13 +377,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       last = o;
       if (stable >= 3 || Date.now() - t0 > 3000) {
         clearInterval(iv);
-        resolve({ opacity: o, bg: getComputedStyle(body).backgroundImage, settledMs: Date.now() - t0 });
+        resolve({ opacity: o, bg: getComputedStyle(body).backgroundImage, rstate: disc.getAttribute('data-rstate'), settledMs: Date.now() - t0 });
       }
     }, 60);
   }));
   console.log('    attack button, nothing to fight: ' + JSON.stringify(btnCold));
-  rec.ok('with nothing to fight the disc is opaque metal again, so the warm state MEANS something',
-    !!cold && !!btnCold && btnCold.opacity === 1 && !/linear-gradient/.test(btnCold.bg || ''), btnCold);
+  rec.ok('with nothing to fight the disc is opaque again and not warm, so the warm state MEANS something',
+    !!cold && !!btnCold && btnCold.opacity === 1 && btnCold.rstate !== 'hot' && !/199,\s*128,\s*63/.test(btnCold.bg || ''), btnCold);
   console.log('    expected, in CSS px: target chip 19 wide x 11 tall (screen-'
     + 'measured, so the zoom does not change it), candidate ellipse rx '
     + (34 * (state.scaleX || 1)).toFixed(1) + ' ry ' + (34 * 0.38 * (state.scaleY || 1)).toFixed(1));

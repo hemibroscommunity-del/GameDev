@@ -3,6 +3,21 @@ import { ABILITY_META } from '@/data/index.js';
 import { abilityStatus, castAbility } from '@/game/abilities.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
 import { ctlColumn, ctlBottom, CTL_SLOT, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: both buttons are on the RIGHT again -- Bash in the column (slot 0), Whirlwind in the cluster above the disc */
+import { Skin, TornadoIcon, BashIcon, pressOn, pressOff, readyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
+
+/* ═══ v2.3.3018: A PICTURE EACH, IN THE MOCKUP'S FIVE STATES ═══
+   Owner: "Make the on screen buttons look more like the improved mockup."
+   Whirlwind is the mockup's whirlwind (it wore the 🌀 emoji, which every phone
+   draws differently) and Shield Bash the wood shield with the blow's burst
+   behind it, both on controlSkin's gold-ringed button; the words (Whirl, Bash,
+   "3s") are gone, as on every control in the mockup.
+     ready          Normal
+     cooling down   Cooldown: dark, the picture grey, a blue arc closing round
+                    the ring -- the conic wedge it replaces drew the same
+                    fraction -- and the glow swells once as it closes
+     cannot cast    Disabled (no stamina, or no weapon for it: the 0.45 wash
+                    the missing-weapon case wore since v2.3.1733)
+   Press feedback while the finger is down (data-pressed). */
 
 /* ═══ v2.3.2574: BOTH BUTTONS ARE BACK ON THE RIGHT ═══
    Owner, correcting the message v2.3.2562 was built from: "Spec and swirl need
@@ -84,6 +99,10 @@ export function AbilityButtons(props) {
      reads as motion, slow enough to be free next to the game loop. */
   var _tick = React.useState(0);
   var setTick = _tick[1];
+  /* v2.3.3018: per-button "a cooldown just ended" bookkeeping (readyFlash) --
+     one map, not a hook per button, because how many buttons render changes. */
+  var flashRef = React.useRef(null);
+  if (!flashRef.current) flashRef.current = Object.create(null);
   React.useEffect(function () {
     var id = setInterval(function () { setTick(function (v) { return (v + 1) % 1000000; }); }, 200);
     /* ═══ v2.3.2252: THE SHIELD MOVES THIS BUTTON, SO IT MUST NOT WAIT ═══
@@ -189,6 +208,12 @@ export function AbilityButtons(props) {
     var ready = st.cdLeft <= 0 && st.afford && st.equipped && st.engaged !== false;
     var anchor = anchorOf(kind);
     var size = anchor.size;
+    /* v2.3.3018: the skin's state -- see the header.  A cooldown wins over
+       "cannot cast": it is the one with a clock to watch. */
+    var skinState = st.cdLeft > 0 ? 'cooldown' : (ready ? 'normal' : 'disabled');
+    var grey = skinState !== 'normal';
+    var flash = readyFlash(flashRef.current, kind, st.cdLeft > 0, Date.now()) && skinState === 'normal';
+    var iconSize = Math.round(size * 0.7);
     return React.createElement('div', {
       key: kind,
       className: 'bt-desktop-hide',
@@ -208,6 +233,7 @@ export function AbilityButtons(props) {
       onTouchStart: function (e) {
         e.preventDefault();
         e.stopPropagation();
+        pressOn(e);   /* v2.3.3018: the sheet's Pressed */
         try { castAbility(stateRef.current, kind); } catch (err) {}
       },
       /* ═══ v2.3.2562: THE RELEASE AND THE DRAG ARE STOPPED TOO ═══
@@ -225,7 +251,11 @@ export function AbilityButtons(props) {
          the same leak is worse: touchstart there begins a WALK and a swipe
          dodges, and lM/lE are bound to WINDOW (BroTown ~9345), so a leak would
          not even need the zone element in the propagation path. */
-      onTouchEnd: function (e) { e.preventDefault(); e.stopPropagation(); },
+      onTouchEnd: function (e) { e.preventDefault(); e.stopPropagation(); pressOff(e); },
+      onTouchCancel: pressOff,
+      onMouseDown: pressOn,
+      onMouseUp: pressOff,
+      onMouseLeave: pressOff,
       onTouchMove: function (e) { e.stopPropagation(); },
       onClick: function (e) {
         e.preventDefault();
@@ -248,44 +278,23 @@ export function AbilityButtons(props) {
         touchAction: 'none',
         WebkitUserSelect: 'none',
         userSelect: 'none',
-        /* Lantern Slate: raised actionable surface, brass edge when live. */
-        background: ready
-          ? 'radial-gradient(circle, #34444B 0%, #202C32 100%)'
-          : 'radial-gradient(circle, #1A2429 0%, #141C21 100%)',
-        border: '2px solid ' + (ready ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-        boxShadow: ready ? 'inset 0 1px 0 rgba(255,255,255,.08)' : 'none',
-        /* The 0.45 "you cannot use this yet" wash the missing-weapon case has
-           used since v2.3.1733.  v2.3.2542 extended it to the engagement rule;
-           v2.3.2561 hides that case instead, so in practice this is the
-           missing-weapon wash again -- the `engaged` term is kept for the same
-           reason as the one in `ready` above. */
-        opacity: (st.equipped && st.engaged !== false) ? 1 : 0.45,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'column',
-        lineHeight: 1,
+        /* v2.3.3018: no fill, border or fade here any more -- the skin below
+           draws every state, including the missing-weapon wash (Disabled)
+           that this element's 0.45 opacity was since v2.3.1733.  The button's
+           own opacity stays 1 so its picture is never fainter than its ring.
+           No filter/drop-shadow anywhere: those composite as grainy static
+           over the WebGL canvas on iOS (v2.3.1236). */
       },
+      /* The ability's name, for anything reading the page (the button shows a
+         picture and no word). */
+      'aria-label': meta.label,
     },
-    /* Cooldown sweep — a conic wedge that unwinds, masked to a ring so the
-       glyph stays readable.  No filter/drop-shadow: those composite as
-       grainy static over the WebGL canvas on iOS (v2.3.1236). */
-    st.cdFrac > 0 && React.createElement('div', {
-      style: {
-        position: 'absolute', inset: 0, borderRadius: '50%',
-        background: 'conic-gradient(from -90deg, rgba(0,0,0,.55) 0deg, rgba(0,0,0,.55) '
-          + Math.round(st.cdFrac * 360) + 'deg, transparent ' + Math.round(st.cdFrac * 360) + 'deg)',
-        pointerEvents: 'none',
-      },
-    }),
-    React.createElement('span', {
-      style: { fontSize: isLandscape ? 20 : 18, pointerEvents: 'none' },
-    }, meta.glyph),
-    React.createElement('span', {
-      style: {
-        fontSize: 11, fontWeight: 700, letterSpacing: '.04em',
-        color: ready ? '#F7F2E7' : '#687575', pointerEvents: 'none', marginTop: 2,
-      },
-    }, st.cdLeft > 0 ? (Math.ceil(st.cdLeft / 1000) + 's') : meta.label));
+    React.createElement(Skin, {
+      size: size, tone: 'slate', state: skinState,
+      progress: st.cdLeft > 0 ? 1 - st.cdFrac : null,
+      flash: flash,
+    }, kind === 'whirl'
+      ? React.createElement(TornadoIcon, { size: iconSize, grey: grey })
+      : React.createElement(BashIcon, { size: iconSize, grey: grey })));
   }));
 }

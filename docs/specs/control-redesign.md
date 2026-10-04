@@ -1436,3 +1436,111 @@ above the band, clear of the guard, the bell beside it on one line), what it
 shows, sword → bow → staff → sword with the picture following and no walk or
 lock, a drag not swapping, one weapon shaking, empty hands, above an open sheet,
 sideways, and the open feed beside it.
+
+## 14. The buttons' new look — the owner's mockup (v2.3.3018)
+
+Owner, 2026-10-04, with two pictures — a mockup of the play screen split
+CURRENT / IMPROVED, and a sheet of every button in five states:
+
+> Make the on screen buttons look more like the improved mockup
+
+Nothing in this pass moves a button or changes what a press does (one
+exception, the Block tap below, is a bug fix). It is the LOOK, in one place:
+`src/ui/panels/controlSkin.jsx` (the skin and the pictures) and the `.bt-skin`
+rules at the end of game.css, worn by every control.
+
+**What the mockup changes, and how.**
+
+| Control | Before | Now |
+|---|---|---|
+| Attack disc | grey metal sprite, dome knob, the word ATTACK | gold ring, brown face, the weapon in your hand's picture (sword / bow / staff); a resource's skill picture to harvest; the cue's mini tool during a harvest |
+| Spec | slate disc, ✶ and SPEC / "2s" | gold ring, a starburst |
+| Whirl | slate disc, the 🌀 emoji and Whirl / "3s" | gold ring, a whirlwind (SVG — the emoji was a different picture on every phone) |
+| Shield Bash | the 🛡️ emoji and Bash | gold ring, the wood shield with the blow's burst behind it |
+| Block | slate disc, shield at 0.6, BLOCK / UP | gold ring, the shield at full strength |
+| Jump (v2.3.3017) | slate disc, an arrow and JUMP | gold ring, the mockup's blue arrow (`JumpIcon`); lit on the warm face while you are in the air |
+| Sprint | slate disc, boot and SPRINT, a 3px stamina rim | gold ring, the boot alone; the gold ring itself is the stamina, its spent share dark |
+| Element Burst | element-coloured border and nova | gold ring, the nova in the weapon's element colour |
+| Weapon button | rounded square, brass hairline | round, gold ring (a quiet slate ring with one weapon) |
+| Movement stick | metal ring sprite, dome knob, metal rod | dark see-through well, pale rim, four arrows, grey thumb, a groove for a rod |
+
+Around the attack disc, two faint arcs — the mockup's "orbit" — tie the
+cluster together; they are drawn in the disc's corner box and come and go with
+it.
+
+**The five states, everywhere the same** (`data-state` on `.bt-skin`):
+
+| State | Looks like | Means |
+|---|---|---|
+| Normal | gold ring, the picture in colour | ready |
+| Pressed | pushed in (0.94), darker ring and face | a finger is on it (`data-pressed`, written on the button by the touch handlers) |
+| Cooldown | dark ring and face, the picture grey, a sky-blue arc closing round the ring | the 1.5s special, the abilities' cooldowns, the burst, the shield's stamina lockout; the glow swells once when the arc closes. **Never the attack button** — the base attack has no cooldown (owner: "No cooldown for base attack though", on the first state sheet, which had copied the mockup's Attack example) |
+| Ready / Charged | the ring lit, a warm halo, two sparkles | the bow's held special (with AIM under the star), the shield UP and the sprint ON (on the warm face), and the attack disc while a monster is in play |
+| Disabled | all grey | no mana, no stamina, no weapon for it; the attack disc painted for a moment with nothing to press |
+
+The attack disc has no cooldown state; its states are the resolver's (`data-rstate`): `idle`
+(Disabled), `lit` (Normal), `hot` (Ready / Charged — the owner's v2.3.2264 "only
+during combat it changes color (like to orange) keeping its transparency"),
+`ghost` (a monster under it: the face nearly gone, the ring and a faded picture
+left as its outline). The face still fades to 0.45 in a fight and 0.08 over a
+monster (v2.3.2263 / v2.3.2472); the ring is a hollow SVG stroke so the faded
+face shows the world, not gold (the first cut drew the ring as a filled disc,
+which mp-btnskin's ghost picture caught).
+
+**The Jump button.** The mockup's CURRENT half was drawn from a build with
+the JUMP button of the real-jumping work in it (PR #782, `JumpButton.jsx`,
+centred under the attack disc — still on its branch when this work began), and
+its IMPROVED half makes it a bold blue up arrow on the gold ring. #782 landed
+first, so this work gave it the skin: `Skin` round controlSkin's `JumpIcon`,
+Normal on the ground and `on` (the warm face, lit) while you are in the air,
+and JUMP gone from its face; `mp-jump` now checks the arrow sits inside the
+ring where it checked the word, and `mp-btnskin` taps it with a real finger.
+Block (not in the mockup: it shows only in a fight, with a shield) keeps the
+shield's picture.
+
+**Found by testing it with a real finger: one tap on Block toggled the shield
+twice.** React registers `touchstart` passive, so the button's
+`preventDefault()` there did nothing, and the browser's emulated mousedown
+after the tap ran the toggle again — up, then straight back down. Block now
+cancels the emulated mouse events in `onTouchEnd`, as every other control here
+already did (TRAPS §131). Every earlier scenario dispatched a bare TouchEvent,
+which brings no mouse events, so nothing caught it.
+
+**No filter, anywhere.** The greyed pictures of the mockup's Cooldown and
+Disabled states are not `grayscale()`: the SVG pictures switch to a grey
+palette and the painted ones (sword, boot, shield) dim with opacity on the grey
+face. The glow is a radial gradient; the ring's bevel a gradient defined once on
+the page (`ensureSkinDefs`). The iOS grain rule (TRAPS §42) holds in every
+state; `mp-btnskin` asserts it.
+
+**The pictures are on the loading screen** (`controlsPreload.js`, the LAW):
+the attack disc keeps all seven of its pictures in the DOM and shows one by an
+attribute, so each would otherwise decode the first time it is painted — the
+first fight with a bow, the first tree.
+
+**Judgement calls, for review.**
+
+- *The words are gone.* The mockup has none, and the design law already says
+  "icons, not words". Kept only where a word is an instruction: AIM on the
+  bow's held special, and WAIT / PUMP / CHOP / REEL / FLIP during a harvest
+  (a small pill on the disc). The cooldown's "2s" became the arc.
+- *The attack disc glows in a fight.* Ready / Charged is how the owner's
+  "changes color during combat" reads in the mockup's language; the halo stops
+  at the ring so it never covers the face.
+- *The weapon button turned round.* It was a rounded square matched to the
+  notification bell beside it; it is a control, and every control in the
+  mockup is round. The bell (a readout, part of the chat feed) is unchanged.
+- *The special's faint ring on the attack disc is gone.* It was drawn only
+  when the component happened to re-render, so it showed a stale sweep or
+  nothing, and the Special button has drawn the same clock every 200ms since
+  v2.3.2542.
+- *Sizes and places are unchanged* — the mockup's cluster is drawn tighter
+  than the game's, but every distance in ShieldButton.jsx was argued out with
+  the owner (§12.7) and none of them was in this ask.
+
+`mp-btnskin` checks all of it on a phone in a fight — every control in the
+skin, no filter, pictures and no words, each state, a real finger's Pressed and
+Block — and writes the pictures (`tools/qa/mp/out/btnskin-*.png`). The
+mockup's button sheet, drawn by the game's own code, is
+`src/controls-harness.html` (`npx vite`, then `/controls-harness.html`;
+`node tools/qa/controls-sheet-shot.mjs` saves it).

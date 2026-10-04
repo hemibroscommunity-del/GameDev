@@ -201,9 +201,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const dx = m.x - P2.x, dy = m.y - P2.y;
       if (dx * dx + dy * dy <= 220 * 220) near++;
     });
-    return { label: ((document.querySelector('.bt-rjoy-base') || {}).textContent || '').trim(),
+    const disc = document.querySelector('.bt-rjoy-base');
+    return { label: ((disc || {}).textContent || '').trim(),
       monstersInPerimeter: near, harvestCtx: !!S._btnHarvest,
-      near: S._nearNode ? S._nearNode.id : null };
+      near: S._nearNode ? S._nearNode.id : null,
+      /* v2.3.3018: the PICTURE the button shows (the owner's mockup: a
+         picture, not a word) -- the attack's weapon or the resource's skill */
+      ricon: disc ? disc.getAttribute('data-ricon') : null };
   });
   console.log('    with monsters about: ' + JSON.stringify(withMon));
   if (withMon.monstersInPerimeter > 0) {
@@ -219,14 +223,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S._monstersStash = S.monsters;
     S.monsters = [];
     S.lockedTarget = null;
-    setTimeout(() => resolve({
-      label: ((document.querySelector('.bt-rjoy-base') || {}).textContent || '').trim(),
-      harvestCtx: !!S._btnHarvest, near: S._nearNode ? S._nearNode.id : null,
-    }), 500);
+    setTimeout(() => {
+      const disc = document.querySelector('.bt-rjoy-base');
+      const shown = disc ? [...disc.querySelectorAll('.bt-rjoy-icon')].filter((i) => getComputedStyle(i).display !== 'none') : [];
+      resolve({
+        label: ((disc || {}).textContent || '').trim(),
+        harvestCtx: !!S._btnHarvest, near: S._nearNode ? S._nearNode.id : null,
+        ricon: disc ? disc.getAttribute('data-ricon') : null,   /* v2.3.3018 */
+        shown: shown.map((i) => i.getAttribute('data-ricon-img')),
+        decoded: shown.every((i) => i.complete && i.naturalWidth > 0),
+      });
+    }, 500);
   }));
   console.log('    with the field cleared: ' + JSON.stringify(noMon));
   rec.ok('...and with nothing to fight the same button offers the HARVEST again',
     /harvest/i.test(noMon.label) && noMon.harvestCtx === true, noMon);
+  /* v2.3.3018: and SHOWS it -- the skill's own picture (an axe on a log for a
+     tree), the only one of the disc's pictures on, decoded */
+  rec.ok(`...and wears the ${wantSkill} picture, alone and decoded (it showed ${withMon.ricon} with a monster about)`,
+    noMon.ricon === wantSkill && noMon.shown.join() === wantSkill && noMon.decoded === true, { noMon, before: withMon.ricon });
   /* THE TAP IS TAKEN WHILE THE FIELD IS STILL CLEAR, and that is a fixture
      decision worth writing down rather than a dodge.  Monsters keep priority
      on the TAP as well as on the button -- the canvas hit-tests monsters first

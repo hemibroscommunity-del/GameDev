@@ -3,6 +3,7 @@ import { getActiveWeapon } from '@/data/index.js';
 import { nextWeaponSlot, ownedWeaponSlots } from '@/game/weaponSlots.js';
 import { wpnIconSrc, GHOST_SRC, weaponDisplayName } from '@/ui/mobile/sheet/equipModel.js';
 import { EDGE_GUARD_PX } from './ShieldButton.jsx';
+import { Skin } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.3005: THE WEAPON IN YOUR HAND, UNDER THE MOVEMENT STICK ═══
  *
@@ -259,19 +260,19 @@ export function WeaponSwapButton(props) {
       boxSizing: 'border-box',
       width: face,
       height: face,
-      borderRadius: 10,
-      /* The bell's own surface (WorldChatFeed's shut recipe), so the corner
-         reads as one row of chrome.  The edge is BRASS when a tap will do
-         something -- Lantern Slate's "this is live" -- and the bell's neutral
-         hairline when it will not. */
-      background: 'rgba(13,22,27,.86)',
-      border: '1px solid ' + (view.canSwap ? 'rgba(216,170,88,.7)' : 'rgba(229,237,233,.26)'),
+      /* The bell's own surface (WorldChatFeed's shut recipe) until v2.3.3018,
+         when the owner's mockup made every control a round gold-ringed
+         button: the ring is GOLD when a tap will do something and a quiet
+         slate when it will not (one weapon), which is the same "this is live"
+         rule the brass edge carried. */
+      borderRadius: '50%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       pointerEvents: 'none',
     },
   },
+  React.createElement(Skin, { size: face, tone: 'slate', state: view.canSwap ? 'normal' : 'quiet' }),
   React.createElement('img', {
     key: 'icon-' + view.src + '-' + (anim && anim.kind === 'in' ? anim.n : 0),
     className: 'bt-wpn-icon' + (anim && anim.kind === 'in' ? ' bt-wpn-icon--in' : ''),
@@ -279,6 +280,7 @@ export function WeaponSwapButton(props) {
     alt: '',
     draggable: false,
     style: {
+      position: 'relative',   /* v2.3.3018: over the skin */
       width: icon,
       height: icon,
       marginTop: many ? -5 : 0,
@@ -296,7 +298,7 @@ export function WeaponSwapButton(props) {
       position: 'absolute',
       left: 0,
       right: 0,
-      bottom: 4,
+      bottom: 6,   /* v2.3.3018: inside the round face's ring (it was 4 in the square chip) */
       display: 'flex',
       justifyContent: 'center',
       gap: 3,

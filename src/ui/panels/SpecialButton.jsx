@@ -4,6 +4,7 @@ import { specialAttack } from '@/game/playerActions.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no special in the water */
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
 import { ctlBottom, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: back to the RIGHT disc, in the shared diagonal cluster above it */
+import { Skin, StarburstIcon, SkinTag, pressOn, pressOff, useReadyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.2542: A SPECIAL ATTACK BUTTON, ORBITING THE ATTACK DISC ═══
  *
@@ -180,6 +181,9 @@ export function SpecialButton(props) {
   }, [setTick]);
 
   var S = stateRef && stateRef.current;
+  /* v2.3.3018: the cooldown's end, read here ABOVE the early returns (a hook)
+     -- the glow swells once when the arc closes. */
+  var flash = useReadyFlash(!!(S && SPECIAL_CD_MS - (Date.now() - (S._lastSwipe || 0)) > 0));
   if (!S || !S.rpg) return null;
 
   /* QA probe, house style (__btShieldBtn, __btMonHit): why the button is or is
@@ -220,9 +224,26 @@ export function SpecialButton(props) {
        beneath from reading the same finger as a lock-on, a swing or an aim. */
     e.preventDefault();
     e.stopPropagation();
+    pressOn(e);   /* v2.3.3018: the sheet's Pressed, while the finger is down */
     try { specialAttack(stateRef.current); } catch (err) { /* refusals float their own popup */ }
     setTick(function (v) { return v + 1; });
   };
+
+  /* ═══ v2.3.3018: THE MOCKUP'S STARBURST, IN ITS FIVE STATES ═══
+     The ✶ character and the SPEC / "2s" words are gone for the owner's
+     mockup: a starburst on a gold-ringed button (controlSkin).
+       ready to fire      Normal
+       cooling down       Cooldown -- dark, the star grey, a blue arc closing
+                          round the ring (the "2s" it replaces is the same 1.5s
+                          clock), and the glow swells once when it closes
+       not enough mana    Disabled -- all grey (it was a 0.55 fade)
+       the bow is holding Ready / Charged -- the ring lit and glowing, with
+       your swipe         AIM under the star (v2.3.2543: the state is the
+                          button's, and AIM is the one word that tells you what
+                          to do about it -- move the line onto something)
+     A cooldown wins over no-mana: the arc is the one with a clock on it. */
+  var skinState = queued ? 'ready' : (cdLeft > 0 ? 'cooldown' : (!afford ? 'disabled' : 'normal'));
+  var grey = skinState === 'cooldown' || skinState === 'disabled';
 
   return React.createElement('div', {
     className: 'bt-desktop-hide',
@@ -233,7 +254,10 @@ export function SpecialButton(props) {
        classifies every release on that side, forwards a short one to the canvas
        as a lock-on click (v2.3.816) and runs the flick test that fires the
        special a SECOND time. */
-    onTouchEnd: function (e) { e.preventDefault(); e.stopPropagation(); },
+    onTouchEnd: function (e) { e.preventDefault(); e.stopPropagation(); pressOff(e); },
+    onTouchCancel: pressOff,
+    onMouseUp: pressOff,
+    onMouseLeave: pressOff,
     onTouchMove: function (e) { e.stopPropagation(); },
     onContextMenu: function (e) { e.preventDefault(); },
     style: {
@@ -246,51 +270,20 @@ export function SpecialButton(props) {
       zIndex: 31,
       touchAction: 'none',
       pointerEvents: 'auto',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-      /* Lantern Slate, matching the shield and ability buttons: raised slate
-         with a brass edge while it will do something.  No CSS filter at any
-         state -- a filter on a DOM overlay compositing over the WebGL canvas
-         is the documented iOS grain hazard (v2.3.948, v2.3.1236). */
-      /* v2.3.2543: a held swipe reads as the LIT slate with a full brass rim --
-         the same two tokens the ready state already uses, turned up rather
-         than a new colour, so the button says "your press landed and is
-         waiting" without introducing a third visual language to learn.  Still
-         no CSS filter at any state: a filter on a DOM overlay compositing over
-         the WebGL canvas is the documented iOS grain hazard (v2.3.948,
-         v2.3.1236), and a pulsing one would be the same hazard in motion. */
-      background: (ready || queued)
-        ? 'radial-gradient(circle, #34444B 0%, #202C32 100%)'
-        : 'radial-gradient(circle, #1A2429 0%, #141C21 100%)',
-      border: (queued ? '3px solid #F0C878' : '2px solid ' + (ready ? '#D8A85F' : 'rgba(238,242,235,.14)')),
-      boxShadow: queued
-        ? 'inset 0 0 0 1px rgba(240,200,120,.35), inset 0 1px 0 rgba(255,255,255,.10)'
-        : (ready ? 'inset 0 1px 0 rgba(255,255,255,.08)' : 'none'),
-      opacity: afford ? 1 : 0.55,
+      /* No CSS filter at any state -- a filter on a DOM overlay compositing
+         over the WebGL canvas is the documented iOS grain hazard (v2.3.948,
+         v2.3.1236); the skin draws every state without one. */
       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
   },
-  /* Cooldown sweep, the same conic wedge AbilityButtons uses. */
-  cdFrac > 0 && React.createElement('div', {
-    style: {
-      position: 'absolute', inset: 0, borderRadius: '50%',
-      background: 'conic-gradient(from -90deg, rgba(0,0,0,.55) 0deg, rgba(0,0,0,.55) '
-        + Math.round(cdFrac * 360) + 'deg, transparent ' + Math.round(cdFrac * 360) + 'deg)',
-      pointerEvents: 'none',
-    },
-  }),
-  React.createElement('span', {
-    style: { fontSize: isLandscape ? 20 : 18, pointerEvents: 'none' },
-  }, '✶'),
-  React.createElement('span', {
-    style: {
-      fontSize: 11, fontWeight: 700, letterSpacing: '.04em', marginTop: 2,
-      color: queued ? '#F0C878' : (ready ? '#F7F2E7' : '#687575'), pointerEvents: 'none',
-    },
-  },
+  React.createElement(Skin, {
+    size: size, tone: 'slate', state: skinState,
+    progress: cdLeft > 0 ? 1 - cdFrac : null,
+    flash: flash && skinState === 'normal',
+  }, React.createElement(StarburstIcon, { size: Math.round(size * 0.7), grey: grey })),
   /* v2.3.2543: AIM, because that is the ACTION the state is asking for -- the
      shot goes the moment the line touches something, so the one useful thing
      the player can do with this information is move the line.  'QUEUED' would
      name the machinery instead, which is what the popup did. */
-  queued ? 'AIM' : (cdLeft > 0 ? (Math.ceil(cdLeft / 1000) + 's') : 'SPEC')));
+  queued ? React.createElement(SkinTag, null, 'AIM') : null);
 }

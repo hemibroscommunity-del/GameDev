@@ -3,6 +3,7 @@ import { sprintAnchor, ctlBottom } from './ShieldButton.jsx';
 import { sprintSupported, sprintArmed, isSprinting, toggleSprint, SPRINT_MIN_START } from '@/game/sprint.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { Skin, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.3006: THE SPRINT BUTTON, RIGHT OF THE MOVEMENT STICK ═══
  *
@@ -19,7 +20,8 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
  * WHERE: sprintAnchor (ShieldButton.jsx), level with the disc's centre and
  * LCTL_GAP right of it -- in the one patch beside the disc nothing else uses.
  *
- * WHAT IT SHOWS:
+ * WHAT IT SHOWS (v2.3.3018: in the owner's mockup's look -- see the note by
+ * the render; the word went and the rim is the gold ring):
  *   - the winged boot (the game's own "move speed" picture, unused until now)
  *     and the word SPRINT under it, small, inside the rim;
  *   - a RIM that is the stamina you have: lit round the edge for what is
@@ -46,7 +48,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
  * On a keyboard, Shift is the sprint (held, not tapped: BroTown passes it to
  * updateSprint), and this button is hidden with the other touch controls
  * (bt-desktop-hide). */
-const ICON = '/icons/ui/hero/move-speed.webp?v=2.3.3006';
+const ICON = ICON_URL.boot;   /* v2.3.3018: one copy of the URL, in controlSkin */
 
 /* A tap is a release within this far of the press, inside this long -- the
    weapon button's numbers; nothing else listens to this patch. */
@@ -148,12 +150,14 @@ export function SprintButton(props) {
   };
   var onTouchStart = function (e) {
     e.preventDefault(); e.stopPropagation();
+    pressOn(e);   /* v2.3.3018: the sheet's Pressed */
     var t = e.changedTouches && e.changedTouches[0];
     touchRef.current = t ? { x: t.clientX, y: t.clientY, at: Date.now(), id: t.identifier } : null;
   };
   var onTouchMove = function (e) { e.stopPropagation(); };
   var onTouchEnd = function (e) {
     e.preventDefault(); e.stopPropagation();
+    pressOff(e);
     lastTouchEndRef.current = Date.now();
     var st = touchRef.current;
     touchRef.current = null;
@@ -165,12 +169,13 @@ export function SprintButton(props) {
     var dx = t.clientX - st.x, dy = t.clientY - st.y;
     if (dx * dx + dy * dy <= TAP_SLOP_PX * TAP_SLOP_PX && Date.now() - st.at <= TAP_MAX_MS) tap();
   };
-  var onTouchCancel = function (e) { e.stopPropagation(); touchRef.current = null; };
+  var onTouchCancel = function (e) { e.stopPropagation(); pressOff(e); touchRef.current = null; };
   /* A mouse (a touch laptop, a desktop browser in a phone-sized window): a
      click is a tap, but not the echo of a touch that was already one. */
-  var onMouseDown = function (e) { e.preventDefault(); e.stopPropagation(); mouseDownRef.current = true; };
+  var onMouseDown = function (e) { e.preventDefault(); e.stopPropagation(); pressOn(e); mouseDownRef.current = true; };
   var onMouseUp = function (e) {
     e.preventDefault(); e.stopPropagation();
+    pressOff(e);
     var pressed = mouseDownRef.current;
     mouseDownRef.current = false;
     /* pressed here, and not a touch's echo */
@@ -179,19 +184,23 @@ export function SprintButton(props) {
   };
 
   var on = view.on;
-  /* THE RIM IS THE STAMINA.  A 3px ring round the edge, lit for the stamina
-     you have and dark for what is spent, takes the place of the brass border
-     the shield button has: the owner's "until it drains out", drawn as the
-     button's own edge running down.  (A ring INSIDE a border, the first cut,
-     ate the ends of the word: measured at 390, "SPRINT" lost its S and T.) */
-  var RIM = 3;
-  var r = (size - RIM) / 2;
-  var circ = 2 * Math.PI * r;
+  /* THE RIM IS THE STAMINA.  A ring round the edge, lit for the stamina you
+     have and dark for what is spent: the owner's "until it drains out", drawn
+     as the button's own edge running down.
+     ═══ v2.3.3018: THE MOCKUP'S BOOT, ON THE MOCKUP'S BUTTON ═══
+     The owner's mockup draws Sprint as the winged boot alone on a gold-ringed
+     button.  So the word SPRINT is gone, the boot is bigger, and the rim is
+     the skin's GOLD ring itself running down (controlSkin's `meter`: the spent
+     share goes dark) -- the same meter, now on the ring the mockup gives every
+     control.
+       off       Normal
+       on        the sheet's Ready / Charged on the warm face -- lit, glowing:
+                 the latched state, as the shield's UP
+       tired     Disabled (it was a 0.45 fade) -- a tap is refused, shakes
+                 and says "Not enough energy!" */
   var lit = Math.max(0, Math.min(1, view.frac));
-  /* the icon above the middle and the word just below it, both inside the
-     rim at the height they sit (mp-sprint measures the word's corners) */
-  var icon = Math.round(size * 0.46);
-  var font = size >= 52 ? 9.5 : 8.5;   /* measured: 9 px bold was 37 px wide, half a px past the rim at 48 */
+  var skinState = on ? 'on' : (view.tired ? 'disabled' : 'normal');
+  var icon = Math.round(size * 0.7);
 
   return React.createElement('div', {
     className: 'bt-desktop-hide bt-sprint-btn',
@@ -221,57 +230,13 @@ export function SprintButton(props) {
   React.createElement('div', {
     key: 'face' + nope,
     className: nope ? 'bt-sprint-nope' : undefined,
-    style: {
-      position: 'absolute', inset: 0, borderRadius: '50%',
-      /* Lantern Slate, the shield button's two looks: raised slate at rest;
-         the warm fill when ON.  No filter at any time (the iOS grain over
-         the canvas, CLAUDE.md). */
-      background: on
-        ? 'radial-gradient(circle, #6B5326 0%, #3A2C13 100%)'
-        : 'radial-gradient(circle, #34444B 0%, #202C32 100%)',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)',
-      opacity: view.tired ? 0.45 : 1,
-      transition: 'opacity 120ms linear',
-      pointerEvents: 'none',
-    },
+    'data-rim': fmt(lit),   /* the stamina the rim shows, for anything reading the page */
+    style: { position: 'absolute', inset: 0, borderRadius: '50%', pointerEvents: 'none' },
   },
-  /* The rim.  The charge pie's dasharray idiom, fixed-point formatted -- a
-     tiny fraction in exponent notation (9.4e-7) is an invalid dasharray,
-     which falls back to a SOLID stroke (the v2.3.10 incident). */
-  React.createElement('svg', {
-    viewBox: '0 0 ' + size + ' ' + size, width: size, height: size,
-    style: { position: 'absolute', left: 0, top: 0, pointerEvents: 'none' },
-  },
-  React.createElement('circle', {
-    cx: size / 2, cy: size / 2, r: r, fill: 'none',
-    stroke: on ? 'rgba(58,44,19,.95)' : 'rgba(238,242,235,.14)', strokeWidth: RIM,
-  }),
-  lit > 0.001 ? React.createElement('circle', {
-    'data-rim': fmt(lit),
-    cx: size / 2, cy: size / 2, r: r, fill: 'none',
-    stroke: on ? '#F0C878' : '#D8A85F', strokeWidth: RIM,
-    strokeLinecap: 'butt',
-    strokeDasharray: fmt(lit * circ) + ' ' + fmt(circ),
-    transform: 'rotate(-90 ' + (size / 2) + ' ' + (size / 2) + ')',
-  }) : null),
-  React.createElement('img', {
-    src: ICON, alt: '', draggable: false,
-    style: {
-      position: 'absolute', left: '50%', top: '50%',
-      width: icon, height: icon,
-      transform: 'translate(-50%, -80%)',
-      imageRendering: 'pixelated', pointerEvents: 'none',
-      opacity: on ? 1 : 0.85,
-    },
-  }),
-  React.createElement('span', {
-    'data-sprint-label': '1',
-    style: {
-      position: 'absolute', left: '50%', top: '50%',
-      transform: 'translate(-50%, ' + Math.round(size * 0.04) + 'px)',
-      fontSize: font, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1,
-      whiteSpace: 'nowrap',
-      color: on ? '#F7F2E7' : '#B9C1BF', pointerEvents: 'none',
-    },
-  }, 'SPRINT')));
+  /* No filter at any time (the iOS grain over the canvas, CLAUDE.md); the
+     skin's meter keeps the charge pie's fixed-point dasharray (the v2.3.10
+     incident). */
+  React.createElement(Skin, {
+    size: size, tone: on ? 'warm' : 'slate', state: skinState, meter: lit,
+  }, React.createElement(PaintedIcon, { src: ICON, name: 'boot', size: icon, dim: view.tired }))));
 }
