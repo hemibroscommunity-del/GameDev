@@ -33,7 +33,7 @@
  *   { type: 'init', search }     -> { type: 'ready', ... } (see init below;
  *                                   v2.3.2975: `objects`, where every object stands --
  *                                   core/placing.js -- and `objects.mayor`, Mayor Bro's spot;
- *                                   v2.3.3030: `objects.doors`, each standing building's door;
+ *                                   v2.3.3031: `objects.doors`, each standing building's door;
  *                                   v2.3.2947: `edges`, the grounds with edge pieces;
  *                                   v2.3.2951: `blends`, the pairs with a blend;
  *                                   v2.3.2948: `search`, the page's address query:
@@ -287,7 +287,7 @@ async function init(m) {
   objects.manifest = await objMan;
   const foot = objectFootprints(objects, objects.manifest);
   objects.present = foot.present; objects.boxOf = foot.boxOf; objects.boxes = foot.boxes;
-  /* v2.3.3030: and the doors of the buildings that have a picture
+  /* v2.3.3031: and the doors of the buildings that have a picture
      (placing.js doorSpots) -- what the game opens at each is its table's
      (src/data/wheelBuildingDoors.js) */
   objects.doors = doorSpots(PLAN, full, objects);

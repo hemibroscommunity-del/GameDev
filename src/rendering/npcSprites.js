@@ -119,7 +119,7 @@ function walkStripSources(n) {
 /* npcId -> dir -> [Texture]. Object.create(null) because the keys are ids and
    direction names out of a data table (CLAUDE.md rule 4). */
 const _walk = Object.create(null);
-/* v2.3.3030: the Wheel's own copy of a walker's frames (loadWheelNpcArt),
+/* v2.3.3031: the Wheel's own copy of a walker's frames (loadWheelNpcArt),
    id -> dir -> [Texture], read after town's */
 const _wheelWalk = Object.create(null);
 
@@ -137,7 +137,7 @@ function _sliceStrip(tex, frames) {
  *  loaded). Callers fall back to the static `sprite`, so a missing strip is a
  *  standing NPC rather than an invisible one. */
 export function getNpcWalkFrame(npcId, dir, frameIdx) {
-  /* v2.3.3030: town's strips, else the Wheel's own copy (below) */
+  /* v2.3.3031: town's strips, else the Wheel's own copy (below) */
   const byDir = _walk[npcId];
   const wd = _wheelWalk[npcId];
   const set = (byDir && byDir[dir]) || (wd && wd[dir]);
@@ -177,7 +177,7 @@ export function propFrameCount(propId) {
 /** Does this NPC have walk art at all? Lets the renderer decide once. */
 export function hasNpcWalk(npcId) {
   const byDir = _walk[npcId];
-  const wd = _wheelWalk[npcId];   /* v2.3.3030: or the Wheel's copy */
+  const wd = _wheelWalk[npcId];   /* v2.3.3031: or the Wheel's copy */
   return !!((byDir && Object.keys(byDir).length) || (wd && Object.keys(wd).length));
 }
 
@@ -364,7 +364,7 @@ export function freeTownScenery() {
    its loading overlay (worldTrial.preloadWheel), and getNpcTexture prefers
    it; it is let go when the Wheel's worker stops (wheelObjects.js).  Just
    him: nobody else stands in the Wheel yet.
-   v2.3.3030: and Diego, at the General Store now that its door opens
+   v2.3.3031: and Diego, at the General Store now that its door opens
    (BroTown.jsx _spawnWheelNpcs) -- a walker in town, a man who stands at his
    counter here, so of his eight strips of four frames only the SOUTH one is
    loaded (cropped, like town's): he faces the street.  Nobody else yet: the

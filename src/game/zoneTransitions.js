@@ -1189,7 +1189,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           if (_czNearReturn) {
             var _leftZone = S.currentZone; /* v2.3.1405: free its ~4MB map on exit (below) */
             var _retHub = isWorldViewZone(S._enteredFromHub) ? S._enteredFromHub : 'town'; /* v2.3.859; v2.3.2978: either name */
-            /* ═══ v2.3.3030: THE FARM'S GATE LEADS BACK TO THE WHEEL ═══
+            /* ═══ v2.3.3031: THE FARM'S GATE LEADS BACK TO THE WHEEL ═══
                The Land Office and Feed & Seed in the Wheel's Brotown (game/
                wheelTownDoors.js rememberFarmTrip) send you to your farm from
                where you stood.  Today's town is no longer a place you walk
@@ -1253,7 +1253,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             nudgeSpawnToWalkable(S, _retHub, twn2);
             S._enteredFromDir = null;
             S._enteredFromExit = null;
-            if (_farmOut) { setWheelArrival(_farmOut); wantWheelSpawn(S); }   /* v2.3.3030 */
+            if (_farmOut) { setWheelArrival(_farmOut); wantWheelSpawn(S); }   /* v2.3.3031 */
             pushDmgPopup(S, P.x, P.y - 40, _farmOut ? 'The Wheel' : (isWorldViewZone(_retHub) ? 'World View' : 'Town'), '#5b52ff');
             S.npcs = null;
             S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
@@ -1293,7 +1293,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             /* v2.3.2272: same on the way back to a hub.  A hub needs no
                variants, so this releases the whole spoke's art. */
             _freeLeftZoneAssets(_leftZone, _retHub);
-            if (_farmOut) veilWheelTrip(S);   /* v2.3.3030: today's town never painted on the way */
+            if (_farmOut) veilWheelTrip(S);   /* v2.3.3031: today's town never painted on the way */
           }
         }
 

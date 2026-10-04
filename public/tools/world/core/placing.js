@@ -852,7 +852,7 @@ export function mayorSpot(plan, bp) {
   return { x: (hall.foot.x + 70 * bk - bp.x0) * WPA, y: (hall.foot.y + 20 - bp.y0) * WPA };
 }
 
-/* ═══ v2.3.3030: THE BUILDINGS' DOORS ═══
+/* ═══ v2.3.3031: THE BUILDINGS' DOORS ═══
    Owner, 2026-10-04: "Push to main. Then after that add doors." -- the
    Wheel's buildings had pictures and footprints and nothing behind them, so
    the forge, the bank, the shops and the auction house were out of reach

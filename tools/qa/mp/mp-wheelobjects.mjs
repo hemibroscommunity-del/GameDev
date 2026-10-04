@@ -127,7 +127,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const m = (S.npcs || []).find((n) => n.name === 'Mayor Bro');
     return { spot, m: m ? { x: m.x, y: m.y } : null, others: (S.npcs || []).map((n) => n.name) };
   });
-  /* (v2.3.3030: and Diego keeps the General Store now that it has a door --
+  /* (v2.3.3031: and Diego keeps the General Store now that it has a door --
      mp-wheeldoors looks at him; here only that the town holds the two) */
   rec.ok('Mayor Bro stands beside the Town Hall\'s steps (with Diego at the General Store, the only townsfolk in the Wheel)',
     !!mayor.spot && !!mayor.m && Math.hypot(mayor.m.x - mayor.spot.x, mayor.m.y - mayor.spot.y) < 4

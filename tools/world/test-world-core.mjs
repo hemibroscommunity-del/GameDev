@@ -2992,9 +2992,9 @@ console.log("the water's frozen web of light taken out (v2.3.3021)");
     && /\(1\.0 - smoothstep\(0\.02, 0\.10, sp\)\)/.test(waterSrc) && /caustics=\(\[0-9\.\]\+\)/.test(waterSrc), {});
 }
 
-/* ── v2.3.3030: the Wheel's buildings have doors ──
+/* ── v2.3.3031: the Wheel's buildings have doors ──
    Owner, 2026-10-04: "Push to main. Then after that add doors." */
-console.log("the buildings' doors (v2.3.3030)");
+console.log("the buildings' doors (v2.3.3031)");
 {
   const { placeObjects, doorSpots, objectFootprints } = await import('../../public/tools/world/core/placing.js');
   const { WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_DOOR_REACH, WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js');
