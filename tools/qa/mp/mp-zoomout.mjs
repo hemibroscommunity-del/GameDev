@@ -15,8 +15,15 @@
  * VIEW_OUT is 0.64, and the "was" here is the view this step left
  * (`?zoom=0.8`, still with the old town, `bigtown=1.5`, for check 2): the
  * same 0.8 of the scale, 1.25x the view, 0.8 the bro, one step further out.
- *   2. the town's buildings are drawn 1.15x their pictures (1.5x before),
- *      all 17 of them standing;
+ *
+ * v2.3.3020, the owner: "the framerate looks a bit gritty ... If you need to
+ * make things a little more zoomed in to fix that's fine.  I think char 64
+ * pixels tall was probably best" -- so VIEW_OUT is 0.77 and the "was" is
+ * 0.64 (`?zoom=0.64`, today's town in both): the scale x1.203, the view
+ * 0.83x across, and the bro 64 CSS px on this phone with the dashboard
+ * folded (check 1b), each picture px ~0.91 device px on a 3x phone again.
+ *   2. the town's buildings are drawn 1.15x their pictures (1.5x before;
+ *      since v2.3.3020 the same town at both zooms), all 17 standing;
  *   3. the ground under the wider view is laid before the overlay lifts and
  *      nothing is missing on screen once it settles;
  *   4. what the wider view costs: ground pieces and object pages in memory,
@@ -77,9 +84,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const o of man.objects) { pictureW[o.id] = o.pieces.map((p) => p.gameW); isBuilding[o.id] = o.kind === 'building'; }
 
   const got = {};
-  /* v2.3.3011: 'was' is the view before this step, 0.8 (v2.3.2997) */
-  const WAS_OUT = 0.8, STEP = 0.8;
-  for (const [tag, query, K] of [['now', '', 1.15], ['was', `zoom=${WAS_OUT}&bigtown=1.5`, 1.5]]) {
+  /* v2.3.3011: 'was' is the view before this step, 0.8 (v2.3.2997).
+     v2.3.3020: back in a little, 0.64 -> 0.77, the town the same in both */
+  const WAS_OUT = 0.64, NOW_OUT = 0.77, STEP = NOW_OUT / WAS_OUT;
+  for (const [tag, query, K] of [['now', '', 1.15], ['was', `zoom=${WAS_OUT}`, 1.15]]) {
     const P = await H.newPlayer(browser, { name: tag === 'now' ? 'Wideview' : 'Oldview', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query });
     const errors = [];
     P.page.on('pageerror', (e) => errors.push(String(e && e.message || e).slice(0, 200)));
@@ -126,16 +134,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const now = got.now, was = got.was;
   /* 1. the scale and the view */
   const ratio = now.arrival.scale / was.arrival.scale;
-  rec.ok(`the world is drawn at ${STEP} the scale it was (${was.arrival.scale} -> ${now.arrival.scale}, x${ratio.toFixed(3)})`,
+  rec.ok(`the world is drawn at ${STEP.toFixed(3)} the scale it was (${was.arrival.scale} -> ${now.arrival.scale}, x${ratio.toFixed(3)})`,
     Math.abs(ratio - STEP) < 0.01, { now: now.arrival.scale, was: was.arrival.scale });
   const wv = now.arrival.view && was.arrival.view ? now.arrival.view.W / was.arrival.view.W : 0;
   rec.ok(`...so the view takes in ${(1 / STEP).toFixed(2)}x the world each way (${was.arrival.view && was.arrival.view.W} -> ${now.arrival.view && now.arrival.view.W} world px across; VIEW_OUT ${was.arrival.view && was.arrival.view.viewOut} -> ${now.arrival.view && now.arrival.view.viewOut})`,
-    Math.abs(wv - 1 / STEP) < 0.02 && Math.abs(now.arrival.view.viewOut - WAS_OUT * STEP) < 1e-9 && was.arrival.view.viewOut === WAS_OUT, { now: now.arrival.view, was: was.arrival.view });
-  rec.ok(`...and the bro is drawn ${STEP} the size (${was.arrival.bodyCss} -> ${now.arrival.bodyCss} CSS px)`,
+    Math.abs(wv - 1 / STEP) < 0.02 && Math.abs(now.arrival.view.viewOut - NOW_OUT) < 1e-9 && was.arrival.view.viewOut === WAS_OUT, { now: now.arrival.view, was: was.arrival.view });
+  rec.ok(`...and the bro is drawn ${STEP.toFixed(3)} the size (${was.arrival.bodyCss} -> ${now.arrival.bodyCss} CSS px)`,
     now.arrival.bodyCss > 0 && was.arrival.bodyCss > 0 && Math.abs(now.arrival.bodyCss / was.arrival.bodyCss - STEP) < 0.02,
     { now: now.arrival.bodyCss, was: was.arrival.bodyCss });
+  /* 1b. v2.3.3020: the owner's "char 64 pixels tall", on this phone with the
+     dashboard folded -- and so each picture px about one device px on a 3x
+     phone (1.5 x the scale), where 0.64 had it at three quarters */
+  const dpp = (a) => +(1.5 * a.arrival.scale).toFixed(3);
+  rec.ok(`...the bro ${now.arrival.bodyCss} CSS px tall, the owner's 64 (each picture px ${dpp(now)} device px on a 3x phone, ${dpp(was)} before)`,
+    now.arrival.bodyCss >= 63 && now.arrival.bodyCss <= 65.5 && dpp(now) >= 0.88, { bodyCss: now.arrival.bodyCss, dpp: dpp(now), was: dpp(was) });
   /* 2. the buildings */
-  rec.ok(`the town's buildings are drawn 1.15x their pictures (${now.bs.length} near the arrival) -- and 1.5x in the old town (${was.bs.length})`,
+  rec.ok(`the town's buildings are drawn 1.15x their pictures at either zoom (${now.bs.length} near the arrival, ${was.bs.length} before)`,
     now.bs.length >= 4 && !now.off.length && was.bs.length >= 2 && !was.off.length,
     { now: now.bs.slice(0, 6), offNow: now.off, offWas: was.off });
   /* 3. the ground */

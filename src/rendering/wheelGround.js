@@ -33,12 +33,13 @@
  * v2.3.2942), and this draws them the same way.  Each piece is laid one art
  * px (3 ground px) past its edges and shows half a game px of that, so the
  * smoothing at a join reads the true neighbour and pieces overlap by a hair
- * instead of leaving one.
+ * instead of leaving one.  (v2.3.3019: three art px, for the water's swell,
+ * which reads the picture up to 4 game px away; still half a game px shown.)
  */
 import { Container, Sprite, Texture, Rectangle, BufferImageSource, CanvasSource } from 'pixi.js';
 import { wheelInfo, wheelStart, wheelChunk, wheelIsWarm, wheelDropWarm, wheelOverview, wheelStats, wheelOnGot } from '../game/wheelTrial.js';
 import { worldTrialLeft } from '../game/worldTrial.js';
-import { WheelWater } from './wheelWater.js';   /* v2.3.3017: the water moves */
+import { WheelWater } from './wheelWater.js';   /* v2.3.3019: the water moves */
 
 const MAX_IN_FLIGHT = 3;
 const MARGIN = 96;
@@ -60,7 +61,7 @@ export class WheelGround {
     this.root = new Container();
     this.root.label = 'wheelGround';
     parent.addChild(this.root);
-    /* v2.3.3017: the pieces in a container of their own, so the water's
+    /* v2.3.3019: the pieces in a container of their own, so the water's
        motion over them (wheelWater.js) stays above every piece laid later */
     this.pieceRoot = new Container();
     this.pieceRoot.label = 'wheelGroundPieces';

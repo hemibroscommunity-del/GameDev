@@ -191,8 +191,35 @@ export const FIGURE_SCALE_FLOOR = 0.50;
  * so that is the first thing to look at on his phone.  Nothing else moves:
  * the ground and the Wheel's objects follow the view's own size, monster
  * looks load 2,600 px out and the worker sends 2,400 px, both well past the
- * view's ~920 px corner.  `?zoom=0.8` is the view before this. */
-export const VIEW_OUT_DEFAULT = 0.64;
+ * view's ~920 px corner.  `?zoom=0.8` is the view before this.
+ *
+ * ═══ v2.3.3020: BACK IN A LITTLE -- THE BRO 64 PX TALL ═══
+ * Owner, 2026-10-04: "the game is doing a thing where the framerate looks a
+ * bit gritty I think from the scale change and it's happened before.  If you
+ * need to make things a little more zoomed in to fix that's fine.  I think
+ * char 64 pixels tall was probably best".
+ *
+ * The grit is the pictures drawn SMALLER THAN THEIR OWN PIXELS.  Everything
+ * the Wheel draws -- its ground, its objects, the bro himself -- is HD pixel
+ * art at 2 picture px a game px (WORLD-BIBLE §6, "the phone's own
+ * sharpness").  On a 3x phone a picture px is 1.5 x scale device px: at 0.64
+ * (scale ~0.50) that is ~0.76, so every screen px is a blend of one picture
+ * px and a third of the next, and which third changes with every sub-pixel
+ * step of the camera.  Fine detail sparkles and crawls as the view slides --
+ * the "gritty" motion, and the "soft and gritty" of the 1.5 grid
+ * (v2.3.2942) and of v2.3.2247's zoom-out before it.  Measured on the
+ * owner's own ground pictures (bilinear, no mip chain, as the game draws
+ * them), the frame-to-frame flicker against the true picture: 1.14 at 0.76
+ * device px a picture px, 0.85 at 0.91 -- and the wider view also drew
+ * ~1.4x the ground and objects of this one every frame.
+ *
+ * 0.77 puts the bro at 64 CSS px on the QA phone with the dashboard folded
+ * (scale 0.606: 0.91 device px a picture px on a 3x phone), the yardstick
+ * every zoom note above uses; on the owner's Pro Max, folded, ~68 px (0.96
+ * device px a picture px).  With the dashboard up the canvas is shorter and
+ * the reference-zone floor draws him smaller, ~48 px on the QA phone.
+ * `?zoom=0.64` is the view before this (mp-zoomout). */
+export const VIEW_OUT_DEFAULT = 0.77;
 function readViewOut() {
   try {
     const m = /(?:^|[?&])zoom=([0-9.]+)(?:&|$)/.exec((typeof window !== 'undefined' && window.location && window.location.search) || '');

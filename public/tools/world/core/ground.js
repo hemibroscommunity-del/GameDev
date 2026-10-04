@@ -1705,14 +1705,14 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
   /* v2.3.2951: the blends laid here, with their pixel counts (the Ground
      Studio says which are in view) */
   const blendsLaid = blendKeys.map((key, n) => ({ key, px: blendPx[n] })).filter((b) => b.px > 0);
-  /* v2.3.3017: the water's MOTION, when asked for -- the game's worker asks,
+  /* v2.3.3019: the water's MOTION, when asked for -- the game's worker asks,
      the studios do not (WATER THAT MOVES, below) */
   const waterField = opts.waterField ? waterFieldOf(bp, mm, seed, omat, OEW, OEH, FW, K, X0, Y0, RW, RH, shoreAt, opts.waterField) : null;
   if (opts.withMaterials === false) return { w: OW, h: OH, data, scale: K, blendsLaid, waterField };
   return { w: OW, h: OH, data, mat, scale: K, blendsLaid, waterField };
 }
 
-/* ═══ v2.3.3017: WATER THAT MOVES ═══
+/* ═══ v2.3.3019: WATER THAT MOVES ═══
    Owner, 2026-10-04: "Does the water move yet" -- it did not: the Wheel's
    water was the owner's still pictures ("Moving water ... is a later
    round") -- then, offered glints and slow lines of light drifting across

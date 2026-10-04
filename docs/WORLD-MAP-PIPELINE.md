@@ -1775,7 +1775,7 @@ cut), and no footstep row (nobody walks on water).
   floating), nothing running one way (`NO_DIRECTION`), in the HD pixel style
   and matched to the style key.
 - **Moving water** (waves, a drift on the river) is a later round: these are
-  still pictures. (Since v2.3.3017 the game moves them: "The water moves"
+  still pictures. (Since v2.3.3019 the game moves them: "The water moves"
   below.)
 
 Tests: test-world-core "the water's pictures" (the studio's group and no
@@ -1866,7 +1866,7 @@ pictures fetched, a coast drawn from them, the river from the shallows', no
 errors); the Ground Studio's browser test (3 more: the jump row, the "in the
 game" chips, `#water`).
 
-## The water moves (v2.3.3017)
+## The water moves (v2.3.3019)
 
 > Owner, 2026-10-04: *"Does the water move yet"*. Offered glints and slow
 > lines of light drifting across the water, the white foam lapping in and out
@@ -1876,18 +1876,30 @@ game" chips, `#water`).
 The owner's water pictures stay as they are. The game moves them, on the GPU
 (`src/rendering/wheelWater.js`), over each piece of ground that has water:
 
-- **The picture ripples.** Each water px is drawn from a px or so away, the
-  offset wandering slowly, so the pictures' own lines of light sway. There is
-  none at the shore, so no sand is pulled into the water. On the river the
-  ripples ride downstream. (The first try drew lines of light of its own over
-  the pictures, and beside the owner's they read as scribbles.)
-- **Surf** on the sea's coasts: a line of foam rides in, breaks into the
-  shore's own foam line, which brightens and lets go, and a thinner line draws
-  back out. Each stretch of coast gets its wave in its own turn. River and pond
-  banks lap too, small and soft.
-- **Glints**, a cross of light that flashes and goes; **streaks** running
-  down the Sweetwater the way it flows (source to sea); **rings** opening on
-  ponds, lakes and oases; and **whitecaps** now and then on the open sea.
+- **The picture swells.** Each water px is drawn from up to 3 game px away,
+  along three waves of different length crossing different ways, so the
+  pictures' own lines of light sway and stretch. The offset never reaches the
+  shore, so no sand is pulled into the water. On the river the swell rides
+  downstream. (The first try drew lines of light of its own over the
+  pictures, and beside the owner's they read as scribbles.)
+- **Surf** on the sea's coasts: a line of foam rides in with a wash behind
+  it, lands, the shore's foam flares and lets go, and a thinner line draws
+  back out. Each stretch of coast gets its wave in its own turn. River and
+  pond banks lap too, smaller and softer.
+- **Sparkles**, a star of light that flashes and goes; **crests**, short bowed
+  lines of light that come up, drift and go; **streaks and flecks of foam**
+  running down the Sweetwater the way it flows (source to sea); **rings**
+  opening on ponds, lakes and oases; and **whitecaps** now and then on the
+  open sea.
+
+**Sized for a phone.** The first cut swayed the pictures one game px and drew
+its lines one game px wide, and the owner, on a phone: *"I don't see the
+water moving."* A game px there is under two device px, a tenth of a
+millimetre. So the swell is now up to 3 game px, every line 2–3 picture px
+thick (the surf's nearly 4), and each sparkle has a 3 x 3 px heart. All but
+the swell is drawn a picture px at a time, so it is pixel art at the
+pictures' own grain. The ground pieces' apron is 3 art px now (`APRON` in
+`ground-worker.js`, was 1), so the swell never reads past a piece's picture.
 
 It knows where the water is from a **field** the ground worker lays with
 each piece (`ground.js` WATER THAT MOVES, `composeGround`'s `waterField`
@@ -1901,10 +1913,12 @@ px and holds:
   line).
 
 Pieces laid apart agree texel for texel. A piece of open sea with no shore in
-reach shares one 1 x 1 texture. The worker pays about 6 ms more per coast
-piece; the GPU, about 66 KB per piece with water. The program is built behind
+reach shares one 1 x 1 texture. The worker pays about 3–6 ms more per coast
+piece; the GPU, about 70 KB per piece with water. The program is built behind
 the Wheel's loading screen. It is WebGL2 only; elsewhere the water stays
-still. `?nowaves` keeps it still.
+still. `?nowaves` keeps it still, and `?waves=1.5` makes it half as strong
+again (0.25 to 3). The trial readout (`?trialhud`) has a **water** line that
+says "moving", or "still" and why.
 
 The details, switches and probes are in docs/specs/moving-water.md. Tests:
 test-world-core "the water moves", `mp-wheelwaves`.
@@ -2152,6 +2166,34 @@ not do it. If it is already zoom it out another 25%"*. It was (v2.3.2997), so:
 - **Tests:** `mp-zoomout` now compares the default against `?zoom=0.8`
   (with the old town, for its building check): the scale ×0.8, the view ×1.25
   across, the bro ×0.8, the ground laid, what the wider view costs.
+
+### Back in a little: the bro 64 px tall (v2.3.3020)
+
+Owner, 2026-10-04: *"the game is doing a thing where the framerate looks a bit
+gritty I think from the scale change and it's happened before. If you need to
+make things a little more zoomed in to fix that's fine. I think char 64 pixels
+tall was probably best"*.
+
+- **What the grit was.** Everything the Wheel draws (its ground, its objects,
+  the bro) is HD pixel art at 2 picture px a game px, about the phone's own
+  sharpness. On a 3x phone a picture px is 1.5 x the scale in device px. At
+  `VIEW_OUT` 0.64 (scale ~0.50) that is ~0.76: every screen px is a blend of
+  one picture px and part of the next, and which part changes with every
+  small step of the camera. So fine detail sparkles and crawls as the view
+  slides. The same thing made the 1.5 grid "soft and gritty" (v2.3.2942).
+  Measured on the owner's own ground pictures, drawn as the game draws them,
+  the frame-to-frame flicker is 1.14 at 0.76 device px a picture px and 0.85
+  at 0.91.
+- **`VIEW_OUT` is 0.77.** On the QA phone with the dashboard folded the bro
+  is 64 CSS px tall (scale 0.606), each picture px 0.91 device px on a 3x
+  phone. On the owner's Pro Max, folded, about 68 px. With the dashboard up
+  the canvas is shorter and he is drawn smaller (about 48 px on the QA phone).
+- **Less to draw.** The view takes in 0.83x the world each way (0.69x the
+  area), so fewer ground pieces and objects every frame.
+- `?zoom=0.64` brings the view before this back for a tab.
+- **Tests:** `mp-zoomout` compares the default against `?zoom=0.64`: the
+  scale x1.203, the view 0.83x across, the bro 64 CSS px, the ground laid,
+  what the view costs.
 
 ## The objects take hits (v2.3.2995)
 

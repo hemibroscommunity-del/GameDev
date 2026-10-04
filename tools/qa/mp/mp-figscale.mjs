@@ -209,7 +209,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ v2.3.2997: ...AND NOW TOWN IS VIEW_OUT OF IT ═══
      Owner, 2026-10-03: "about 25% more zoomed out for everything by
      default".  worldViewport multiplies the character-size floors by
-     VIEW_OUT (0.8; 0.64 since v2.3.3011) and leaves each zone's no-void floor alone, so town --
+     VIEW_OUT (0.8; 0.64 since v2.3.3011, 0.77 since v2.3.3020) and leaves each zone's no-void floor alone, so town --
      1664x1760, room to spare -- is drawn at 0.8 the scale, while a 32x32
      combat zone, whose map is exactly the screen already, keeps its own (the
      old lands are closed; the Wheel, where everyone is, has room).  So the

@@ -2569,19 +2569,19 @@ console.log('swimming (v2.3.3003)');
   ok('swimming\'s sounds are recordings already in the game (the fishing ones in SFX_MANIFEST)', keys.every((k) => new RegExp(`'${k}':\\s*'/sfx/`).test(gd)) && /BT_AUDIO\.SWIM_SAMPLES = \['fish-on-hook', 'lure-drop', 'catch-splash'\]/.test(gd));
 }
 
-/* ── v2.3.3017: the water moves ──
+/* ── v2.3.3019: the water moves ──
    Owner, 2026-10-04: "Does the water move yet" -- then "Yes" to glints and
    lines of light drifting across it, the foam lapping in and out at the
    shore and a gentle drift down the rivers.  The ground worker lays a FIELD
    with each piece (ground.js, WATER THAT MOVES) that the game's shader reads
    (src/rendering/wheelWater.js): how far from the shore as drawn, which
    water, which way a river runs. */
-console.log('the water moves (v2.3.3017)');
+console.log('the water moves (v2.3.3019)');
 {
   const { waterRivers, wavesOn, WF_CAP, WF_DIST, WF_KIND } = await import('../../public/tools/world/core/ground.js');
   const { readFileSync } = await import('node:fs');
   const mmF = materialMap(PLAN, bp);
-  const WPA = PLAN.worldPxPerArtPx, K = 3, CH = 128, AP = 1;
+  const WPA = PLAN.worldPxPerArtPx, K = 3, CH = 128, AP = 3;   /* v2.3.3019: the apron 3 art px, for the swell */
   const rivers = waterRivers(PLAN, bp);
   /* the game's piece over a game px (ground-worker.js: CHUNK, APRON) */
   const pieceAt = (i, j) => ({ i, j, x: bp.x0 + i * CH - AP, y: bp.y0 + j * CH - AP, w: CH + 2 * AP, h: CH + 2 * AP });
@@ -2667,8 +2667,8 @@ console.log('the water moves (v2.3.3017)');
   for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
     const A = block.get(`${di},${dj}`), E = block.get(`${di + 1},${dj}`), S2 = block.get(`${di},${dj + 1}`);
     if (!A || !A.data) continue;
-    if (E && E.data) for (let y = 0; y < A.h; y++) for (const c of [0, 1]) for (let ch = 0; ch < 4; ch++) { cmpE++; if (A.data[(y * A.w + CH + c) * 4 + ch] !== E.data[(y * E.w + c) * 4 + ch]) seamE++; }
-    if (S2 && S2.data) for (let x = 0; x < A.w; x++) for (const c of [0, 1]) for (let ch = 0; ch < 4; ch++) { cmpS++; if (A.data[((CH + c) * A.w + x) * 4 + ch] !== S2.data[(c * S2.w + x) * 4 + ch]) seamS++; }
+    if (E && E.data) for (let y = 0; y < A.h; y++) for (let c = 0; c < 2 * AP; c++) for (let ch = 0; ch < 4; ch++) { cmpE++; if (A.data[(y * A.w + CH + c) * 4 + ch] !== E.data[(y * E.w + c) * 4 + ch]) seamE++; }
+    if (S2 && S2.data) for (let x = 0; x < A.w; x++) for (let c = 0; c < 2 * AP; c++) for (let ch = 0; ch < 4; ch++) { cmpS++; if (A.data[((CH + c) * A.w + x) * 4 + ch] !== S2.data[(c * S2.w + x) * 4 + ch]) seamS++; }
   }
   ok(`pieces laid apart meet with no seam: the shared texels east (${cmpE}) and south (${cmpS}) agree`, cmpE > 0 && cmpS > 0 && seamE === 0 && seamS === 0, { seamE, seamS, cmpE, cmpS });
 
@@ -2727,10 +2727,18 @@ console.log('the water moves (v2.3.3017)');
   /* the shader reads the field as it is written */
   const fragSrc = readFileSync(new URL('../../src/rendering/wheelWater.js', import.meta.url), 'utf8');
   const dScale = 255 / (2 * WF_DIST);
-  ok(`the game's shader decodes the field as ground.js writes it: distance x ${dScale} game px, fresh / shallows / sea by ${Object.values(WF_KIND).join(' / ')}, the flow about 128`,
+  ok(`the game's shader decodes the field as ground.js writes it: distance x ${dScale} game px, fresh / shallows / sea by ${WF_KIND.fresh} / ${WF_KIND.shallows} / ${WF_KIND.sea}, the flow about 128`,
     fragSrc.includes(`f.r * ${dScale}`) && /1\.0 - smoothstep\(0\.42, 0\.58, f\.g\)/.test(fragSrc) && /smoothstep\(0\.76, 0\.92, f\.g\)/.test(fragSrc)
     && WF_KIND.fresh / 255 < 0.42 && WF_KIND.shallows / 255 > 0.58 && WF_KIND.shallows / 255 < 0.76 && WF_KIND.sea / 255 > 0.92
     && fragSrc.includes('(f.ba * 255.0 - 128.0) / 127.0'), { dScale });
+  /* the swell reads the picture up to its cap away, which at a piece's edge
+     is the apron: the worker's apron must hold it (with 1 art px, the first
+     cut's, a bigger swell read past the picture's edge) */
+  const workerSrc = readFileSync(new URL('../../public/tools/world/core/ground-worker.js', import.meta.url), 'utf8');
+  const apron = +((/const APRON = (\d+);/.exec(workerSrc) || [])[1]);
+  const cap = +((/amp = min\(min\(amp, .*\), ([0-9.]+)\);/.exec(fragSrc) || [])[1]);
+  ok(`the water's swell never reads past a piece's picture: at most ${cap} game px away, and the worker lays ${apron} art px (${apron * WPA} game px) past each edge, as this test does`,
+    apron === AP && cap > 0 && cap + 0.25 <= apron * WPA, { apron, cap });
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

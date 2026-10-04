@@ -43,7 +43,7 @@
  *   { type: 'chunk', id, i, j }  -> { type: 'chunk', id, i, j, w, h, data, ms, under, wf }
  *                                   (v2.3.2967: `under`, the swatch DRAWN at every
  *                                   UNDER art px of the piece, for the footsteps;
- *                                   v2.3.3017: `wf`, the piece's WATER FIELD -- how
+ *                                   v2.3.3019: `wf`, the piece's WATER FIELD -- how
  *                                   far from the shore, which water, which way a
  *                                   river runs -- for the water's motion, or null:
  *                                   ground.js WATER THAT MOVES)
@@ -69,7 +69,11 @@ let PLAN = BASE_PLAN;
 const K = Math.round(PLAN.worldPxPerArtPx / PIXEL.gamePxPerArtPx); /* 3 ground px a plan art px: 2 a game px */
 const WPA = PLAN.worldPxPerArtPx;                                 /* 1.5 game px a plan art px */
 const CHUNK = 128;          /* plan art px a piece: 192 game px, 384 ground px */
-const APRON = 1;            /* art px laid past each edge, so smooth scaling reads the true neighbour at a join */
+const APRON = 3;            /* art px laid past each edge, so smooth scaling reads the true neighbour at a join.
+                               v2.3.3019: 3, was 1 -- the water's swell (rendering/wheelWater.js) draws
+                               each water px from up to 4 game px away, and at a piece's edge that is
+                               the apron: with 1 (1.5 game px) it would read past the picture's edge.
+                               6% more ground laid and kept a piece. */
 const UNDER = 2;            /* v2.3.2967: art px (3 game px) a byte of a piece's `under` -- 4 KB a piece */
 const OVERVIEW_CELLS = 4;   /* blueprint cells an overview pixel */
 const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too; v2.3.2951: and blends -- the town's busiest piece needs about 13) */
@@ -257,7 +261,7 @@ async function init(m) {
   objects.placeMs = Math.round(performance.now() - tp0);
   objects.mayor = mayorSpot(PLAN, full);
   W = { bp, mm, reg: full.reg, tier: full.tier, regionIds: full.regionIds, map,
-    /* v2.3.3017: the rivers' lines, for the way each piece's water runs, and
+    /* v2.3.3019: the rivers' lines, for the way each piece's water runs, and
        whether to lay the water's fields at all (`?nowaves` keeps it still) */
     rivers: waterRivers(PLAN, full), waves: wavesOn(m && m.search) };
   const t1 = performance.now();
@@ -552,7 +556,7 @@ async function chunk(m) {
     const t = await tileOf(k, 'M', wait);
     if (t) blends[k] = t;
   }
-  /* v2.3.3017: and the piece's water field, for the water's motion */
+  /* v2.3.3019: and the piece's water field, for the water's motion */
   const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, blends, waterField: W.waves ? { rivers: W.rivers } : null });
   const under = underOf(out.mat, out.w);
   trim(keep);

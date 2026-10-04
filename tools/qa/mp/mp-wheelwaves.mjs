@@ -1,4 +1,4 @@
-/* ═══ THE WHEEL'S WATER MOVES (v2.3.3017) ═══
+/* ═══ THE WHEEL'S WATER MOVES (v2.3.3019) ═══
  *
  * Owner, 2026-10-04: "Does the water move yet" -- then, offered glints and
  * slow lines of light drifting across the water, the foam lapping in and out
@@ -211,7 +211,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await settle(P);
   const pc = await probe(P);
   rec.ok(`at a coast the pieces with water are drawn moving (${pc.meshes}: ${pc.fields} with a field of their own, ${pc.uniform} of open sea sharing one; ${(pc.fieldBytes / 1048576).toFixed(2)} MB)`,
-    pc.meshes >= 3 && pc.fields >= 2 && pc.fieldBytes <= pc.fields * 130 * 130 * 4, pc);
+    pc.meshes >= 3 && pc.fields >= 2 && pc.fieldBytes <= pc.fields * 134 * 134 * 4, pc);
+  /* the readout says so, for a phone screenshot (the owner, on the first
+     cut: "I don't see the water moving") */
+  const hudAt = (Q) => Q.page.evaluate(() => { const el = document.getElementById('bt-world-trial'); return el ? el.textContent : ''; });
+  const hud = await hudAt(P);
+  rec.ok(`the trial readout says the water is moving ("${(hud.split('\n').find((l) => l.startsWith('water')) || '').trim()}")`,
+    /water {3}moving · \d+ pieces/.test(hud), hud.split('\n'));
 
   /* ── 3. on the water only ── */
   await hold(P, 100);
@@ -231,9 +237,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await strength(P, 1);
   rec.ok(`the water moves: of ${mv.whole} px of it, ${pct(mv.changed, mv.whole)}% change in 1.5 s with the motion, ${pct(mv0.changed, mv0.whole)}% with its strength at 0`,
     /* (a coast is mostly the deep sea's picture, dark and quiet: a px moved
-       there often changes by less than the 10 levels counted -- 8% of them
-       did when this was written, the river's 43%) */
-    !mv.error && mv.whole > 2000 && mv.changed > 0.04 * mv.whole && mv0.changed <= 0.002 * mv0.whole, { mv, mv0 });
+       there often changes by less than the 10 levels counted.  The first cut,
+       which the owner could not see moving on a phone, changed 8% of them
+       here and 43% of the river's; the swell up to 3 game px, 30% and 63%) */
+    !mv.error && mv.whole > 2000 && mv.changed > 0.15 * mv.whole && mv0.changed <= 0.002 * mv0.whole, { mv, mv0 });
 
   /* what it costs a frame here (the sandbox draws WebGL in SOFTWARE, so the
      numbers say nothing of a phone's GPU -- only that it is not a cliff) */
@@ -257,7 +264,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const ra = await audit(P);
   await grab(P, shotPath('river'));
   rec.ok(`the Sweetwater River runs: ${pr.flowing} of its pieces carry a flow, ${pct(rv.changed, rv.whole)}% of its px change in 1.2 s, and of the ${ra.drawn} px drawn ${ra.off} lie off the water`,
-    pr.flowing >= 1 && !rv.error && rv.whole > 500 && rv.changed > 0.2 * rv.whole && !ra.error && ra.off <= Math.max(3, ra.drawn * 0.002), { pr, rv, ra });
+    pr.flowing >= 1 && !rv.error && rv.whole > 500 && rv.changed > 0.35 * rv.whole && !ra.error && ra.off <= Math.max(3, ra.drawn * 0.002), { pr, rv, ra });
   await gif(P, join(OUT, 'wheelwaves-river.gif'), 300, 36, 0.15, crop);
   await hold(P, null);
 
@@ -285,6 +292,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.hopTo(Q, COAST.x, COAST.y, { tries: 120 });
   await settle(Q);
   const pq = await probe(Q);
-  rec.ok('with ?nowaves the water is still: no fields laid, nothing drawn', WHEELISH(zq) && pq.meshes === 0 && pq.made === 0 && !pq.on, pq);
+  const hq = await Q.page.evaluate(() => { const el = document.getElementById('bt-world-trial'); return el ? el.textContent : ''; });
+  rec.ok('with ?nowaves the water is still: no fields laid, nothing drawn, and the readout says so', WHEELISH(zq) && pq.meshes === 0 && pq.made === 0 && !pq.on
+    && /water {3}still \(switched off\)/.test(hq), { pq, hud: hq.split('\n') });
   await Q.ctx.close();
 }
