@@ -21,7 +21,7 @@
  */
 import { BT_AUDIO } from '@/data/index.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js';
-import { lockAimPoint, swimRefused /* v2.3.3003 */, airRefused /* v2.3.3014 */ } from '@/game/combatHelpers.js';
+import { lockAimPoint, swimRefused /* v2.3.3003 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no button in the water */
 import { targetCandidates } from '@/game/targeting.js'; /* v2.3.2472: the nearest-monster fallback below */
 
@@ -77,7 +77,7 @@ export function raiseShieldToggle(S) {
   if (S._shieldUp) return true;
   /* v2.3.3003: no block in the water -- only your head is out of it */
   if (swimRefused(S)) return false;
-  if (airRefused(S)) return false;   /* v2.3.3014: not mid-jump */
+  if (airRefused(S)) return false;   /* v2.3.3017: not mid-jump */
   /* ═══ v2.3.2246: RAISING THE SHIELD CANCELS THE ATTACK ═══
      Owner: "you can both swing and block at the same time. That is not
      right."  playerActions/monsterCombat refuse to START an attack while the

@@ -353,8 +353,8 @@ import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2
 import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { updateSprint, sprintMult, sprintHoldsRegen } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard) */
-import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3014: jumping (the button under ATTACK, X on a keyboard) */
-import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3014: ...and the low things it clears */
+import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (the button under ATTACK, X on a keyboard) */
+import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
@@ -4314,7 +4314,7 @@ export var BroTown = function BroTown(_ref0) {
       if (!bx || !bx.length) return false;
       var fdy = playerGroundDy(S.currentZone, px, py);
       var fy = py + fdy, cfy = curY + fdy;
-      /* ═══ v2.3.3014: IN THE AIR, THE LOW THINGS YOU WILL CLEAR ═══
+      /* ═══ v2.3.3017: IN THE AIR, THE LOW THINGS YOU WILL CLEAR ═══
          A fence, a barrel, a crate, a bush... (game/jump.js JUMP_OVER, the
          Wheel's objects carry their catalog id) does not stop your feet while
          you are high enough AND the way you are going takes them out of its
@@ -4379,7 +4379,7 @@ export var BroTown = function BroTown(_ref0) {
            keeps the step inside the worker's move cap.  The floor stops a zero
            or negative delta (first frame, clock skew) from freezing movement. */
         S._dtScale = Math.max(0.2, Math.min(3, (_perfDelta || 16.667) / 16.667));
-        /* v2.3.3014: and how long the frame really was -- past the 3-frame cap a
+        /* v2.3.3017: and how long the frame really was -- past the 3-frame cap a
            step covers less ground than the clock moved, and a jump's crossing
            rule must count what it covers (propFeetBlocked) */
         S._frameMs = _perfDelta > 0 ? _perfDelta : 16.667;
@@ -4821,7 +4821,7 @@ export var BroTown = function BroTown(_ref0) {
            drops the shield and ends an attack in flight, as raising the
            shield does (shieldToggle.raiseShieldToggle): only your head is out
            of the water.  The sounds are recordings already in the game. */
-        /* ═══ v2.3.3014: THE JUMP, BEFORE THE WATER ═══
+        /* ═══ v2.3.3017: THE JUMP, BEFORE THE WATER ═══
            Its time up (or cut short by a death or a zone change), you touch
            down here (game/jumpActions.js); in the air the water is not looked
            at at all -- you fly over a stream rather than splash into it and
@@ -4845,7 +4845,7 @@ export var BroTown = function BroTown(_ref0) {
         } else if (_swEv === 'stroke') {
           try { if (BT_AUDIO.swimStroke) BT_AUDIO.swimStroke(); } catch (e) { /* audio is best-effort */ }
         }
-        /* v2.3.3014: the touch-down's step (none in the water: its splash) */
+        /* v2.3.3017: the touch-down's step (none in the water: its splash) */
         if (_jLanded) landJump(S);
 
         /* ═══ v2.3.3006: THE SPRINT ═══
@@ -5024,7 +5024,7 @@ export var BroTown = function BroTown(_ref0) {
           var _gl = swimGlide(S, dx, dy, S._dtScale || 1, [0, 0]);
           dx = _gl[0]; dy = _gl[1];
         }
-        /* v2.3.3014: in the air you keep going the way you took off when
+        /* v2.3.3017: in the air you keep going the way you took off when
            you let go of the stick (and steer when you hold it) -- you cannot
            stop half way over a fence.  No faster than the walk, so nothing
            the worker's move bound has not already seen. */
@@ -7068,7 +7068,7 @@ export var BroTown = function BroTown(_ref0) {
            told the worker where you landed was the 1 s keepalive, so for up to
            a second it kept you where the hit found you -- and a monster's next
            swing is measured from there.  mp-elemhits caught it 46 px apart. */
-        /* v2.3.3014: + a jump, which can carry you with no thumb on the stick */
+        /* v2.3.3017: + a jump, which can carry you with no thumb on the stick */
         var isMoving = dx || dy || S._dodgeRoll || S._bashDash || S._gust || S._jump;
         /* v2.3.396: also broadcast when the facing changes while standing
            (turning to aim without moving) so remote clients see the turn --

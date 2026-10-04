@@ -4,7 +4,7 @@ import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 
-/* ═══ v2.3.3014: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
+/* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
  *
  * Owner, 2026-10-03: "start working on real jumping", the button "beneath
  * the right joystick" (jumpAnchor in ShieldButton.jsx says where and why).

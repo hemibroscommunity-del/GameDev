@@ -1,4 +1,4 @@
-/* ═══ JUMPING (v2.3.3014) ═══
+/* ═══ JUMPING (v2.3.3017) ═══
  *
  * Owner, 2026-10-03: "start working on real jumping.  Might be able to just
  * use the jog directions instead of a custom jump animation", its button

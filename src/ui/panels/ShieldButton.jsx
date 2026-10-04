@@ -347,7 +347,7 @@ export function sprintAnchor(isLandscape) {
   };
 }
 
-/* ═══ v2.3.3014: JUMP, BENEATH THE ATTACK DISC ═══
+/* ═══ v2.3.3017: JUMP, BENEATH THE ATTACK DISC ═══
  *
  * Owner: "Where should a 'jump' button go?  I'm thinking just make the right
  * joystick button be jump or put it beneath the right joystick", and of the
@@ -491,7 +491,7 @@ export function combatBandTopPx(isLandscape) {
   var c = ctlColumn(isLandscape);
   var blk = blockAnchor(isLandscape);
   var spr = sprintAnchor(isLandscape);   /* v2.3.3006 */
-  var jmp = jumpAnchor(isLandscape);     /* v2.3.3014 */
+  var jmp = jumpAnchor(isLandscape);     /* v2.3.3017 */
   var discR = isLandscape ? RBTN.wLand : RBTN.w;
   var discL = isLandscape ? LBTN.wLand : LBTN.w;
   /* ═══ v2.3.2574: EVERY SLOT, STILL -- INCLUDING THE ONES THAT MOVED ═══
@@ -510,7 +510,7 @@ export function combatBandTopPx(isLandscape) {
     c.bottomPx(CTL_SLOT.bash) + c.size,        /* Shield Bash */
     blk.bottomPx + blk.size,                   /* Block */
     spr.bottomPx + spr.size,                   /* Sprint, right of the movement disc (v2.3.3006) */
-    jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3014) */
+    jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */
     RBTN.bottom + discR,                       /* the attack disc */
     LBTN.bottom + discL);                      /* the movement disc */
 }

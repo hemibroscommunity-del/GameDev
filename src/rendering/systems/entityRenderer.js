@@ -94,7 +94,7 @@ import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel) */
 import { sprintMult } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker */
-import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3014: a jump holds a leaping frame of the jog */
+import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
@@ -5425,7 +5425,7 @@ export function figureSwimLine(display) {
    feet are this offset BELOW display.y, not at it -- a cast shadow pivoted on
    display.y would hang in the air at the figure's waist (lightfx/casters.js). */
 export function figureFeetY(display) {
-  /* v2.3.3014: a figure in the middle of a jump is drawn lifted
+  /* v2.3.3017: a figure in the middle of a jump is drawn lifted
      (rendering/jumpFx.js, after the depth pass) and its FEET are still on
      the ground -- where it is sorted, where its shadow falls (so the gap
      between body and shadow is the height) and where it stands.  Added back
@@ -10789,7 +10789,7 @@ export class EntityRenderer {
          no duration (the roller's window is elastic), so this plays at the
          cycleMs default. */
       const _rDodge = other._dodgeRoll || null;
-      /* v2.3.3014: their jump (the `player_jump` relay, game events), drawn as
+      /* v2.3.3017: their jump (the `player_jump` relay, game events), drawn as
          yours is: the leaping frame of the jog, held, lifted by jumpFx.js */
       const _rJump = other._jump && jumpActive(other._jump, now) ? other._jump : null;
       const pose = _rexBodyPose
@@ -10821,7 +10821,7 @@ export class EntityRenderer {
           frameIdx = Math.floor((now / cycleMs('jog', dir, _arm)) * fc) % fc;
           /* v2.3.1367: cycle phase for native-count fullset playback. */
           _rJogPhase = ((now / cycleMs('jog', dir, _arm)) % 1 + 1) % 1;
-          /* v2.3.3014: mid-jump, the leaping frame, held (as the local branch) */
+          /* v2.3.3017: mid-jump, the leaping frame, held (as the local branch) */
           if (_rJump) { frameIdx = jumpFrame(dir, fc); _rJogPhase = (frameIdx + 0.5) / fc; }
         } else if (pose === 'hit') {
           const hitT = (now - (other._hitFlash || 0)) / 250;
@@ -12234,7 +12234,7 @@ export class EntityRenderer {
        to _facingAngle mid-slew; the probe below now says so in one word. */
     S._renderFacing = facing;
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
-    /* v2.3.3014: in the air (game/jump.js) the body holds one leaping frame of
+    /* v2.3.3017: in the air (game/jump.js) the body holds one leaping frame of
        the jog for the way it faces -- the owner's "just use the jog
        directions" -- above the hit-react (as the roll is: the jump is what the
        body is doing) and whether or not it moves: a standing jump still
@@ -12401,7 +12401,7 @@ export class EntityRenderer {
            native-frame-count fullset sheets (east: 25f vs 28f body). */
         _jogPhase = ((_jt / effectiveCycle) % 1 + 1) % 1;
         if (isMovingBackward) _jogPhase = 1 - _jogPhase;
-        /* v2.3.3014: mid-jump, the leaping frame, held (game/jump.js
+        /* v2.3.3017: mid-jump, the leaping frame, held (game/jump.js
            JUMP_FRAME), and the armour at the same place in its own loop.  No
            footstep: the plant test below sees no new frame, and the jump's
            take-off and touch-down have their own (jumpActions.js). */

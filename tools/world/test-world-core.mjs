@@ -2525,13 +2525,13 @@ console.log('swimming (v2.3.3003)');
   ok('swimming\'s sounds are recordings already in the game (the fishing ones in SFX_MANIFEST)', keys.every((k) => new RegExp(`'${k}':\\s*'/sfx/`).test(gd)) && /BT_AUDIO\.SWIM_SAMPLES = \['fish-on-hook', 'lure-drop', 'catch-splash'\]/.test(gd));
 }
 
-/* ── v2.3.3014: jumping's rules (src/game/jump.js) ──
+/* ── v2.3.3017: jumping's rules (src/game/jump.js) ──
    Owner: "start working on real jumping.  Might be able to just use the jog
    directions instead of a custom jump animation".  The arc, the window in
    which low things are cleared, when a jump may start, that the feet only
    pass over a low thing they will be out of before coming down, and that the
    list of what is cleared is the catalog's low things. */
-console.log('jumping (v2.3.3014)');
+console.log('jumping (v2.3.3017)');
 {
   const J = await import('../../src/game/jump.js');
   ok('the arc: on the ground at take-off and touch-down, the whole peak half way',

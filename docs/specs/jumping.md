@@ -1,4 +1,4 @@
-# Jumping (v2.3.3014)
+# Jumping (v2.3.3017)
 
 > *"Start working on real jumping. Might be able to just use the jog
 > directions instead of a custom jump animation."* — the owner, 2026-10-03.

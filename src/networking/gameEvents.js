@@ -32,7 +32,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 import { applyElemHit, elemLook, isBurnTick } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element */
 import { echoHitSfx, heroHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's */
-import { peerJump } from '@/game/jump.js'; /* v2.3.3014: another player's jump */
+import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
@@ -1833,7 +1833,7 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'player_jump':
             {
-              /* ═══ v2.3.3014: ANOTHER PLAYER JUMPED ═══
+              /* ═══ v2.3.3017: ANOTHER PLAYER JUMPED ═══
                  (game/jumpActions.js triggerJump.)  Their body is drawn lifted
                  over THEIR jump's window, holding the same leaping frame of
                  the jog yours does (entityRenderer, rendering/jumpFx.js), from

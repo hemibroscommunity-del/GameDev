@@ -1,4 +1,4 @@
-/* ═══ v2.3.3014: TAKING OFF AND TOUCHING DOWN ═══
+/* ═══ v2.3.3017: TAKING OFF AND TOUCHING DOWN ═══
  *
  * game/jump.js has the rules (pure, node-tested); this is the part that
  * touches the game: the button (ui/panels/JumpButton.jsx) and the X key

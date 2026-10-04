@@ -641,7 +641,7 @@ remnant to migrate server-side, not a mode to preserve.
       `node`); the Wheel's nodes drop at the flip to town;
     - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,
       `mp-wheelnodes`: docs/specs/wheel-resources.md.
-  - Since v2.3.3014 you can JUMP -- the owner: "start working on real
+  - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":
     - your POSITION never leaves the ground (the worker sees a walk); the

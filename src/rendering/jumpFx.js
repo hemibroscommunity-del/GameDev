@@ -1,4 +1,4 @@
-/* ═══ v2.3.3014: A JUMPER IS DRAWN IN THE AIR ═══
+/* ═══ v2.3.3017: A JUMPER IS DRAWN IN THE AIR ═══
  *
  * Owner, 2026-10-03: "start working on real jumping.  Might be able to just
  * use the jog directions instead of a custom jump animation".

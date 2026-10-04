@@ -47,7 +47,7 @@ import { zonePlayerScale, ZONES } from '@/data/zones.js';
 import { GROUND_GRID, GROUND_COLORS } from '@/data/groundColors.js';   /* v2.3.2825: the ground's own colour, baked */
 import { deathCrumble } from './deathCrumble.js';
 import { frameBounds } from './gearSheets.js';   /* v2.3.2870: a cropped monster's whole-cell box */
-import { jumpActive } from '@/game/jump.js';     /* v2.3.3014: no steps in the air, a puff where you land */
+import { jumpActive } from '@/game/jump.js';     /* v2.3.3017: no steps in the air, a puff where you land */
 
 const rgbHex = (r, g, b) => ((Math.max(0, Math.min(255, Math.round(r * 255))) << 16)
   | (Math.max(0, Math.min(255, Math.round(g * 255))) << 8)
@@ -295,7 +295,7 @@ export class WorldFx {
         prints: this._prints.filter((p) => p.visible).length,
         puffs: this._puffs.filter((p) => p.visible).length,
         lastDust: this._lastDust || null,   /* v2.3.2825: {ground, puff} of the last step */
-        landDust: this._landDust || null,   /* v2.3.3014: where your last jump came down, and its puffs */
+        landDust: this._landDust || null,   /* v2.3.3017: where your last jump came down, and its puffs */
         drops: this._drops.filter((p) => p.visible).length,
         splats: this._splats.filter((p) => p.visible).length,
         lastBlood: this._lastBlood || null,
@@ -699,7 +699,7 @@ export class WorldFx {
     if (color != null && fxTex('print') && this.groundLayer) {
       const seen = this._seenWalkers || (this._seenWalkers = new Set());
       seen.clear();
-      /* v2.3.3014: a jumper leaves nothing in the air, and a little ring of
+      /* v2.3.3017: a jumper leaves nothing in the air, and a little ring of
          dust where it lands (game/jump.js; Date.now(), the jump's clock) */
       const tNow = Date.now();
       if (S.player && !(S.rpg && S.rpg.hp <= 0)) {
@@ -751,7 +751,7 @@ export class WorldFx {
     }
   }
 
-  /* v2.3.3014: in the air no print and no puff -- the walker is carried
+  /* v2.3.3017: in the air no print and no puff -- the walker is carried
      along so the first step after the landing is not a stride from the
      take-off -- and on the frame it lands, a ring of puffs round the boots
      (nothing on water: the water has its splash).  True while in the air. */

@@ -84,7 +84,7 @@ const rects = (P) => P.page.evaluate(() => {
        inferred; it only renders for an enchanted weapon at level 6+, so on this
        fixture it is expected to be absent and the row below says so. */
     burst: one('.bt-burst-btn'),
-    /* v2.3.3014: the JUMP button, centred under the attack disc in Block's
+    /* v2.3.3017: the JUMP button, centred under the attack disc in Block's
        band (JumpButton.jsx, jumpAnchor) -- measured against Block here, the
        one fixture where the shield is up and Block is drawn */
     jump: one('[data-jump]'),
@@ -250,7 +250,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     rec.ok(`${tag}: the bash button sits clear of the attack disc (no overlap on either axis)`,
       clear, { bash: r.bash, attack: r.attack });
   }
-  /* ═══ v2.3.3014: JUMP, UNDER THE DISC, BESIDE BLOCK ═══
+  /* ═══ v2.3.3017: JUMP, UNDER THE DISC, BESIDE BLOCK ═══
      The same band as Block, the disc's half-width between them: clear of
      the disc above, of Block to its left, of Bash, and of the dashboard. */
   if (r.jump && r.jump.shown) {
