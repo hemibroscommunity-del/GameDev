@@ -679,7 +679,7 @@ const sess = { id: 'bp_t' };
   C.setClosedDoorZones(null);
   check('road open again: the guard says what it said before (the memo was emptied)',
     C.questReachable(m1) === open0, { now: C.questReachable(m1), before: open0 });
-  /* v2.3.3031: "Push to main. Then after that add doors." -- the Wheel's
+  /* v2.3.3032: "Push to main. Then after that add doors." -- the Wheel's
      Brotown opens the forge, the bank, the farm and the rest, so while it is
      the world they are doors (setWheelDoorsOpen, gameSystems.js), counted by
      the action each opens.  Closed town + no Wheel doors is the wall v2.3.3029

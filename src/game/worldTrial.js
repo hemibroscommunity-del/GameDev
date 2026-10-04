@@ -57,7 +57,7 @@ import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/e
 import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo, wheelObjectStats, wheelObjectsInfo, wheelObjectsOn, wheelBigTown, wheelBuildingScale } from './wheelTrial.js';
 import { swimFeet } from './wheelSwim.js';   /* v2.3.3003: the footstep's ground is at your boots, and the water's while you swim */
 import { setAlwaysDay } from './timeOfDay.js';
-import { setClosedDoorZones, setWheelDoorsOpen } from '../data/gameSystems.js';   /* v2.3.3029: today's town's doors, out of reach with no way back; v2.3.3031: and the Wheel's own */
+import { setClosedDoorZones, setWheelDoorsOpen } from '../data/gameSystems.js';   /* v2.3.3029: today's town's doors, out of reach with no way back; v2.3.3032: and the Wheel's own */
 import { wheelArtStats } from '../rendering/wheelMonsterArt.js';   /* v2.3.2989: the monsters' looks, loaded as you walk toward them */
 
 export const WORLD_TRIAL_ZONE = 'worldview';
@@ -211,7 +211,7 @@ export function applyWorldTrial() {
      so a quest that needs them (mayor_1, "Visit 3 buildings in town") hides
      itself instead of walling the Mayor's chain (gameSystems.js anyBuildingDoor) */
   setClosedDoorZones(mode === 'wheel' && !wheelWayBack() ? ['town'] : null);
-  /* v2.3.3031: ...and the Wheel's own buildings are doors (game/wheelTownDoors.js,
+  /* v2.3.3032: ...and the Wheel's own buildings are doors (game/wheelTownDoors.js,
      src/data/wheelBuildingDoors.js), so the quests that need one come back
      with them -- unless `?noobjects` leaves the town bare */
   setWheelDoorsOpen(mode === 'wheel' && wheelObjectsOn());

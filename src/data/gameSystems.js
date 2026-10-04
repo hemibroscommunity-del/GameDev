@@ -9,7 +9,7 @@ import { TILE } from './constants.js';
 import { ZONES } from './zones.js';
 import { ELEMENTS } from './elements.js';
 import { TOWN_BUILDINGS } from './buildings.js';
-import { WHEEL_BUILDING_DOORS } from './wheelBuildingDoors.js'; /* v2.3.3031: the Wheel's doors count for the quests that need one */
+import { WHEEL_BUILDING_DOORS } from './wheelBuildingDoors.js'; /* v2.3.3032: the Wheel's doors count for the quests that need one */
 /* v2.3.1972: the props ARE the doors — see questReachable below.  worldProps
    imports nothing, so this cannot make a cycle. */
 import { WORLD_PROPS, propsForZone } from './worldProps.js';
@@ -7336,7 +7336,7 @@ export function setClosedDoorZones(zones) {
   _closedDoorZones = zones && zones.length ? zones.slice() : null;
   _doorCache = null;
 }
-/* ═══ v2.3.3031: THE WHEEL'S BUILDINGS HAVE DOORS ═══
+/* ═══ v2.3.3032: THE WHEEL'S BUILDINGS HAVE DOORS ═══
  * Owner, 2026-10-04: "Push to main. Then after that add doors."  The Wheel's
  * Brotown now opens the forge, the bank, the farm and the rest
  * (src/data/wheelBuildingDoors.js, game/wheelTownDoors.js), so while the
@@ -7395,7 +7395,7 @@ function anyBuildingDoor(action) {
       _doorCache[p.action] = true;
       _doorCache['*'] = true;
     }
-    /* v2.3.3031: and the Wheel's, by the action each opens */
+    /* v2.3.3032: and the Wheel's, by the action each opens */
     if (_wheelDoorActions) {
       for (var _wi = 0; _wi < _wheelDoorActions.length; _wi++) {
         var _wa = _wheelDoorActions[_wi];

@@ -745,7 +745,7 @@ remnant to migrate server-side, not a mode to preserve.
       docs/specs/wheel-dungeons.md.
     - Found on the way: the Wheel's buildings have NO DOORS yet -- the
       forge, the bank, the shop and the farm (the Dungeon Workshop) are
-      unreachable from the Wheel. (They have doors since v2.3.3031, below.)
+      unreachable from the Wheel. (They have doors since v2.3.3032, below.)
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":
@@ -907,7 +907,7 @@ remnant to migrate server-side, not a mode to preserve.
       death or a dungeon's way out puts you there (`veilWheelTrip`);
     - no marker back to today's town (`setExits(null)`; `?wayback` or
       `?nospawn` for tests) -- its shops, forge, bank and auction house are
-      unreachable until the Wheel's buildings get doors (v2.3.3031: they do);
+      unreachable until the Wheel's buildings get doors (v2.3.3032: they do);
     - the clip fills its screen on explicit edges, says its shape (400 x 736)
       and shows its first frame as a poster (`loading-ashore-poster.webp`);
       the creator's warm-up warms it (it warmed a clip gone since v2.3.822);
@@ -938,7 +938,7 @@ remnant to migrate server-side, not a mode to preserve.
     (`readArtBottoms`), never further back than the footprint's middle; QA
     `__btWheelCastBoard`, `__btWheelObjects.caster(i)`; WORLD-MAP-PIPELINE "A
     low thing's shadow starts at its own base", `mp-wheelshadows`.
-  - Since v2.3.3031 THE WHEEL'S BUILDINGS HAVE DOORS -- the owner: "Push to
+  - Since v2.3.3032 THE WHEEL'S BUILDINGS HAVE DOORS -- the owner: "Push to
     main. Then after that add doors.":
     - twelve of the seventeen open today's own building (the same panels, the
       server settling everything as before): stand at the foot of a

@@ -3045,7 +3045,7 @@ up small and then jump to full size. Now:
 - The harness waits up to 60 s for the clip to lift (the Wheel loads behind
   it on this box's software renderer).
 
-### The buildings have doors (v2.3.3031)
+### The buildings have doors (v2.3.3032)
 
 > Owner, 2026-10-04: *"Push to main. Then after that add doors."*
 

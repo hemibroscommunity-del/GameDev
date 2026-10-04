@@ -469,7 +469,7 @@ import { isWheelTrialZone, footstepSurface } from '@/game/worldTrial.js';   /* v
 import { wheelDoorAt, enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
-import { WHEEL_TOWNSFOLK } from '@/data/wheelBuildingDoors.js';   /* v2.3.3031: the Wheel's buildings have doors */
+import { WHEEL_TOWNSFOLK } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
@@ -787,7 +787,7 @@ function _spawnWheelNpcs() {
       return _objectSpread(_objectSpread({}, npc), { x: spot.x, y: spot.y, spawnX: spot.x, spawnY: spot.y,
         renderX: spot.x, renderY: spot.y, targetX: spot.x, targetY: spot.y });
     });
-  /* ═══ v2.3.3031: DIEGO KEEPS THE GENERAL STORE ═══
+  /* ═══ v2.3.3032: DIEGO KEEPS THE GENERAL STORE ═══
      "Push to main. Then after that add doors." -- the Wheel's General Store
      has its door now (game/wheelTownDoors.js), and the shopkeeper who buys
      your loot stands beside its steps (src/data/wheelBuildingDoors.js
@@ -1599,7 +1599,7 @@ export var BroTown = function BroTown(_ref0) {
   var _useStateWD = useState(null),
     nearWheelDoor = _useStateWD[0],
     setNearWheelDoor = _useStateWD[1];
-  /* v2.3.3031: the Wheel's building door you stand at, for the Enter button
+  /* v2.3.3032: the Wheel's building door you stand at, for the Enter button
      (its name on the sign: the button says "Enter SALOON", not the old town's
      "TAVERN") and, for a plot with nothing behind it yet, the id of the shut
      door -- both synced twice a second with nearBuilding */
@@ -5398,7 +5398,7 @@ export var BroTown = function BroTown(_ref0) {
           });
           if (_bIdx >= 0) S.nearBuilding = _bIdx;
         }
-        /* ═══ v2.3.3031: THE WHEEL'S BUILDINGS HAVE DOORS ═══
+        /* ═══ v2.3.3032: THE WHEEL'S BUILDINGS HAVE DOORS ═══
            Owner, 2026-10-04: "Push to main. Then after that add doors."  In
            the Wheel there are no door PROPS (those are the old town's); the
            ground worker says where each building's door is, and
@@ -7889,7 +7889,7 @@ export var BroTown = function BroTown(_ref0) {
       setNearBuilding(function (prev) {
         return prev === nb ? prev : nb;
       });
-      /* v2.3.3031: and the Wheel's building door you stand at (game/wheelTownDoors.js) */
+      /* v2.3.3032: and the Wheel's building door you stand at (game/wheelTownDoors.js) */
       var nwb = S._nearWheelBuilding || null;
       var nwbLabel = nwb && nwb.index >= 0 ? nwb.label : null;
       setNearDoorLabel(function (prev) {
@@ -11481,7 +11481,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect-card",
-    "data-building-panel": buildingPanel /* v2.3.3031: which building's panel is open (mp-wheeldoors) */,
+    "data-building-panel": buildingPanel /* v2.3.3032: which building's panel is open (mp-wheeldoors) */,
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
@@ -11694,7 +11694,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1406: farm map is per-zone-loaded now and this warp bypasses
          the hub-exit gate — kick the load so the ground paints promptly. */
       import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
-      rememberFarmTrip(S2);   /* v2.3.3031: from the Wheel, the gate leads back out where you stood */
+      rememberFarmTrip(S2);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood */
       S2.currentZone = 'farm_home';
       S2.map = generateZoneMap('farm_home');
       var fz = ZONES.farm_home;
@@ -13004,7 +13004,7 @@ export var BroTown = function BroTown(_ref0) {
        (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
     buildingPanel === null && nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
-    /* v2.3.3031: a Wheel door's name is the name on its sign -- GENERAL STORE,
+    /* v2.3.3032: a Wheel door's name is the name on its sign -- GENERAL STORE,
        AUCTION HOUSE -- longer than the old town's labels, and a one-line pill
        that long ran under the JUMP button (v2.3.3017) at the right of the
        band.  So: the word "Enter" over the name, in the free stretch between
@@ -13072,7 +13072,7 @@ export var BroTown = function BroTown(_ref0) {
   }, " Enter "), /*#__PURE__*/React.createElement("span", {
     style: { display: 'block' }
   }, nearDoorLabel)) : " Enter ", nearDoorLabel ? null : BUILDINGS[nearBuilding].label), nearShutDoor && buildingPanel === null && /*#__PURE__*/React.createElement("div", {
-    /* ═══ v2.3.3031: A SHUT DOOR SAYS SO ═══
+    /* ═══ v2.3.3032: A SHUT DOOR SAYS SO ═══
        The Wheel's Town Hall has Mayor Bro; four plots have no building behind
        them yet (the sheriff's, the hotel, the post office, the guild hall --
        plan.js "(new: ...)").  Standing at one says it is shut, quietly, so a
