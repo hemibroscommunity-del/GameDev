@@ -5147,3 +5147,32 @@ to the full set and the waist band, where it has not misbehaved.
 **How to see it:** `window.__btLegsPeek('jog', 'east', true)` lists the
 pixels it counts as plain legs left outside the greaves (`seen`), with their
 colours. Before the floor: 9 a frame in frames 10 and 24, all near-black.
+
+## 130. `preventDefault()` in a React `onTouchStart` does nothing, so a tap also clicks (v2.3.3018)
+
+**Plausible:** "The button acts on touchstart and calls `e.preventDefault()`
+there, so the browser will not follow the tap with its emulated mouse events.
+`onMouseDown` on the same element is safe -- it is only the desktop's door."
+
+**Wrong.** react-dom 18 registers `touchstart`, `touchmove` and `wheel` at its
+root as PASSIVE listeners (react-dom.development.js: `isPassiveListener =
+true` for exactly those three), so a `preventDefault()` inside a React
+`onTouchStart` is ignored -- Chrome says so in the console ("Unable to
+preventDefault inside passive event listener invocation").  A tap that nothing
+cancels is then followed by the emulated `mousedown` / `mouseup` / `click`,
+and an `onMouseDown` that runs the same handler runs it TWICE.
+
+The Block button (ShieldButton.jsx) was exactly that: `onTouchStart: press,
+onMouseDown: press`, no `onTouchEnd`.  A real finger raised the shield on
+touchstart and the emulated mousedown lowered it again -- one tap, up and
+down, nothing to see.  Every scenario that tapped it dispatched a bare
+`TouchEvent` (`window.__touch`), which no browser follows with mouse events,
+so the suite was green.  `mp-btnskin` was the first to tap it with a real
+finger (CDP `Input.dispatchTouchEvent`) and found it.
+
+**The rule:** cancel the emulated mouse events in `onTouchEnd` -- touchend is
+NOT passive in React, so its `preventDefault()` works -- the way SpecialButton,
+AbilityButtons, ElementBurstButton, SprintButton and WeaponSwapButton already
+do.  Or listen with `addEventListener(..., { passive: false })` yourself, as
+BroTown's disc and zones do.  And test a touch control with a REAL touch: a
+dispatched event neither hit-tests (§67) nor brings the mouse events behind it.

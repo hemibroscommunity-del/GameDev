@@ -1,6 +1,7 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX } from '@/data/index.js';
 import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
+import { Skin, PaintedIcon, ICON_URL, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
  *
@@ -35,7 +36,11 @@ import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
  * (rZoneRef, z6) and a tap that fell through it would forward a lock-on click
  * to the canvas.
  */
-const SHIELD_SPRITE = '/sprites/shields/wood-shield-front.png?v=2.3.1875';
+const SHIELD_SPRITE = ICON_URL.shield;   /* v2.3.3018: one copy of the URL, in controlSkin */
+/* How long the shield stays out of reach after the stamina ran it down
+   (BroTown's `_shieldCdUntil = now + 2000`), so the cooldown arc can say how
+   far through it is. */
+const SHIELD_CD_MS = 2000;
 
 /* The disc's geometry, shared with TouchControls (right:50, bottom:+70,
    96/108 wide since v2.3.2242). */
@@ -503,6 +508,9 @@ export function ShieldButton(props) {
   }, [setTick]);
 
   var S = stateRef && stateRef.current;
+  /* v2.3.3018: above the early returns (a hook) -- the glow swells once when
+     the shield's cooldown runs out. */
+  var flash = useReadyFlash(!!(S && S._shieldCdUntil && Date.now() < S._shieldCdUntil));
   if (!S || !S.rpg) return null;
   var live = shieldButtonLive(S, TARGET_PERIMETER_PX);
   /* QA probe (house style: __btMonHit, __btCoach): why the button is or is
@@ -530,15 +538,49 @@ export function ShieldButton(props) {
   var right = anchor.right;
   var press = function (e) {
     e.preventDefault(); e.stopPropagation();
+    pressOn(e);   /* v2.3.3018: the sheet's Pressed */
     try { toggleShield(stateRef.current); } catch (err) { /* refusal is silent-safe */ }
     setTick(function (v) { return v + 1; });
   };
 
+  /* ═══ v2.3.3018: THE MOCKUP'S LOOK, THE SHIELD'S OWN PICTURE ═══
+     The owner's mockup has no Block button in it (it only shows in a fight,
+     with a shield); the up arrow under its attack button is the JUMP button
+     of the real-jumping work (PR #782), and controlSkin has its picture
+     (JumpIcon).  Block takes the mockup's look with the shield's picture:
+       down          Normal -- the gold ring, the shield at full strength (it
+                     was 0.6 against the slate; the ring now says "live")
+       UP            the sheet's Ready / Charged, on the warm face: lit ring,
+                     glow -- the latched state, plain from across the screen
+       cooling down  Cooldown -- after the stamina ran it down, a blue arc
+                     closing over SHIELD_CD_MS (it was a 0.45 fade)
+     and no word (BLOCK / UP), like every control in the mockup. */
+  var cdLeft = onCd ? Math.max(0, S._shieldCdUntil - Date.now()) : 0;
+  var skinState = on ? 'on' : (onCd ? 'cooldown' : 'normal');
+
   return React.createElement('div', {
     className: 'bt-desktop-hide',
     'data-shield': on ? 'up' : 'down',
+    'aria-label': on ? 'Shield up' : 'Block',
     onTouchStart: press,
     onMouseDown: press,
+    /* ═══ v2.3.3018: A REAL TAP TOGGLED THE SHIELD TWICE ═══
+       React registers touchstart PASSIVE at its root (react-dom 18:
+       touchstart, touchmove and wheel), so press()'s preventDefault above is
+       ignored -- and a tap that nothing cancels is followed by the browser's
+       emulated mousedown, which runs press() again: up, then straight back
+       down.  Found by mp-btnskin, the first scenario to tap this button with
+       a REAL finger (CDP); every other one dispatches a bare TouchEvent,
+       which no browser follows with mouse events.  touchend is not passive,
+       so cancelling it here stops the emulated mouse events -- the guard
+       Special, Whirl/Bash, Element Burst, Sprint and the weapon button
+       already carry.  Not stopped from bubbling: nothing on this side needs
+       to stop hearing a release, and lE/rE/bE ignore a touch that is not
+       theirs. */
+    onTouchEnd: function (e) { e.preventDefault(); pressOff(e); },
+    onTouchCancel: pressOff,
+    onMouseUp: pressOff,
+    onMouseLeave: pressOff,
     onContextMenu: function (e) { e.preventDefault(); },
     style: {
       position: 'fixed',
@@ -547,26 +589,22 @@ export function ShieldButton(props) {
       width: size, height: size, borderRadius: '50%',
       zIndex: 31,
       touchAction: 'none',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-      /* Lantern Slate, matching the ability buttons: raised slate, brass
-         edge while it will do something; the warm accent-fill when it is UP. */
-      background: on
-        ? 'radial-gradient(circle, #6B5326 0%, #3A2C13 100%)'
-        : 'radial-gradient(circle, #34444B 0%, #202C32 100%)',
-      border: '2px solid ' + (on ? '#F0C878' : onCd ? 'rgba(238,242,235,.14)' : '#D8A85F'),
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)',
-      opacity: onCd ? 0.45 : 1,
-      transition: 'opacity 120ms linear',
       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
   },
-  React.createElement('img', {
-    src: SHIELD_SPRITE, alt: '', draggable: false,
-    style: {
-      width: Math.round(size * 0.56), height: Math.round(size * 0.56),
-      imageRendering: 'pixelated', pointerEvents: 'none',
-      /* ═══ v2.3.2246: THE ICON WAS PAINTED BLACK ON BLACK ═══
+  React.createElement(Skin, {
+    size: size, tone: on ? 'warm' : 'slate', state: skinState,
+    progress: onCd ? 1 - Math.min(1, cdLeft / SHIELD_CD_MS) : null,
+    flash: flash && skinState === 'normal',
+  },
+  React.createElement(PaintedIcon, {
+    src: SHIELD_SPRITE, name: 'shield', pixelated: true,
+    size: Math.round(size * 0.62), dim: onCd,
+  })));
+}
+
+/* v2.3.2246's note on the icon, kept with the button it was written for:
+      ═══ v2.3.2246: THE ICON WAS PAINTED BLACK ON BLACK ═══
          Owner: "Block button appears without an thumbnail icon until you
          actually tap block."  Exactly what the code did: the idle style was
          `filter: brightness(0) opacity(0.55)`, which forces EVERY pixel of
@@ -584,14 +622,7 @@ export function ShieldButton(props) {
          charge pie, v2.3.1236's joystick bases, CLAUDE.md's standing note).
          So: no filter at any time, and the OFF state is the real shield art
          at 0.6 against the slate fill, against the lit brass ring and warm
-         fill of the ON state. */
-      opacity: on ? 1 : 0.6,
-    },
-  }),
-  React.createElement('span', {
-    style: {
-      fontSize: 11, fontWeight: 700, letterSpacing: '.04em', marginTop: 1,
-      color: on ? '#F7F2E7' : '#B9C1BF', pointerEvents: 'none',
-    },
-  }, on ? 'UP' : 'BLOCK'));
-}
+         fill of the ON state.
+   v2.3.3018: still no filter at any time.  The OFF state is the shield at
+   full strength now, because the gold ring round it is what says "live"; the
+   ON state is told by the ring, the glow and the warm face (see above). */

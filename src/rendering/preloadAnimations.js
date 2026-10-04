@@ -56,6 +56,7 @@ import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
+import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
 import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buildings' swinging and waving pieces */
@@ -376,6 +377,12 @@ export async function preloadWorldAnimations() {
        the pan strip), GLOBAL: every gathering zone and the town campfire use
        them.  See gestureCuePreload.js for why none of them was already warm. */
     gestureCue: preloadGestureCue(),
+    /* ═══ v2.3.3018: the touch controls' pictures ═══
+       DOM images on every touch button (the owner's mockup: a picture, not a
+       word): the attack disc's weapon and skill pictures, the boot, the
+       shield.  GLOBAL: the controls are on screen everywhere.  See
+       controlsPreload.js for why none of them was already warm. */
+    controls: preloadControls(),
     /* v2.3.2771: the rare-drop icons on a monster's loot pile (lootIcons.js)
        -- a rare drop is the moment a blank first frame would be seen */
     lootIcons: preloadLootIcons(),

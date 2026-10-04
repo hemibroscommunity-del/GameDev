@@ -5879,3 +5879,113 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 @media (prefers-reduced-motion: reduce){
   .bt-sprint-nope{animation:none}
 }
+
+/* ═══ v2.3.3018: THE CONTROLS' SKIN (src/ui/panels/controlSkin.jsx) ═══
+   The owner's mockup: every touch control a round button with a thick,
+   bevelled gold ring and a dark face, a picture instead of a word, in five
+   states -- Normal, Pressed, Cooldown, Ready / Charged, Disabled.  One set of
+   rules for every button, keyed by data attributes the components write:
+     data-tone   slate (the small buttons) | ember (the attack disc) | warm
+                 (a toggle that is on)
+     data-state  normal | cooldown | disabled | ready | on | quiet
+     data-flash  a cooldown just ended: the glow swells once
+     [data-pressed="1"] on the button itself while a finger is down.
+   The ring is a hollow SVG stroke painted by a gradient defined once on the
+   page (controlSkin ensureSkinDefs) -- hollow, so a face that fades (the
+   attack disc over a monster) shows the world, not gold.  Gradients and
+   zero-blur edges ONLY: no filter, no backdrop-filter, no mask, no blurred
+   shadow -- a filter on a DOM overlay over the WebGL canvas is the documented
+   iOS grain (v2.3.948, v2.3.1236, TRAPS §42), and the glow is a radial
+   gradient for the same reason. */
+.bt-skin{position:absolute;inset:0;border-radius:50%;pointer-events:none;--glow-in:56%;
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1)}
+.bt-skin>span,.bt-skin>svg{position:absolute;pointer-events:none}
+/* the halo: clear inside the button, warm just outside its ring */
+.bt-skin-glow{inset:-36%;border-radius:50%;opacity:0;
+  background:radial-gradient(closest-side,rgba(255,200,90,0) 0,rgba(255,200,90,0) var(--glow-in),rgba(255,214,120,.78) calc(var(--glow-in) + 3%),rgba(255,176,64,.40) calc(var(--glow-in) + 16%),rgba(255,150,40,0) 100%);
+  transition:opacity 180ms linear}
+.bt-skin-face{inset:var(--ring);border-radius:50%;
+  background:radial-gradient(circle at 50% 34%,#3C4C57 0%,#27343D 46%,#151D23 100%);
+  box-shadow:inset 0 2px 0 rgba(0,0,0,.3)}
+.bt-skin-face::after{content:'';position:absolute;inset:0;border-radius:50%;background:rgba(4,6,8,.28);opacity:0;transition:opacity 90ms linear}
+.bt-skin-sheen{inset:var(--ring);border-radius:50%;
+  background:radial-gradient(ellipse 76% 46% at 50% 8%,rgba(255,255,255,.24) 0%,rgba(255,255,255,.08) 56%,rgba(255,255,255,0) 76%)}
+.bt-skin-arcs{left:0;top:0}
+.bt-skin-ringc{stroke:url(#btSkinGold) #E6AE52}
+.bt-skin-edge{stroke:rgba(20,11,3,.92)}
+.bt-skin-bevel-hi{stroke:rgba(255,251,228,.62)}
+.bt-skin-icon{left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;line-height:0}
+.bt-skin-svg{display:block;overflow:visible}
+/* tones */
+.bt-skin[data-tone="ember"] .bt-skin-face{background:radial-gradient(circle at 50% 32%,#9A643B 0%,#73462A 44%,#43271A 100%)}
+.bt-skin[data-tone="warm"] .bt-skin-face{background:radial-gradient(circle at 50% 34%,#7E5E28 0%,#5B431C 50%,#30230E 100%)}
+/* states: the sheet's Cooldown (dark, a blue arc on the ring) and Disabled
+   (all grey) -- the pictures grey themselves (controlSkin.jsx) */
+.bt-skin[data-state="cooldown"] .bt-skin-ringc{stroke:url(#btSkinDim) #464B50}
+.bt-skin[data-state="cooldown"] .bt-skin-face{background:radial-gradient(circle at 50% 34%,#252C32 0%,#181E23 54%,#0D1114 100%)}
+.bt-skin[data-state="cooldown"] .bt-skin-bevel-hi{stroke:rgba(255,255,255,.18)}
+.bt-skin[data-state="disabled"] .bt-skin-ringc{stroke:url(#btSkinGrey) #8A9095}
+.bt-skin[data-state="disabled"] .bt-skin-face{background:radial-gradient(circle at 50% 34%,#464B4F 0%,#323639 54%,#1E2123 100%)}
+.bt-skin[data-state="disabled"] .bt-skin-sheen{opacity:.45}
+/* A quiet ring: the control shows something but a tap has nowhere to go (the
+   weapon button with one weapon) -- not Disabled, which says "you cannot". */
+.bt-skin[data-state="quiet"] .bt-skin-ringc{stroke:url(#btSkinQuiet) #545B63}
+.bt-skin[data-state="quiet"] .bt-skin-bevel-hi{stroke:rgba(255,255,255,.22)}
+/* Ready / Charged, and a toggle that is ON: the ring lit, the glow round it */
+.bt-skin[data-state="ready"] .bt-skin-glow,.bt-skin[data-state="on"] .bt-skin-glow{opacity:1}
+.bt-skin[data-state="ready"] .bt-skin-ringc,.bt-skin[data-state="on"] .bt-skin-ringc{stroke:url(#btSkinLit) #F8BF55}
+/* Pressed: pushed in and darker, whatever state it was in */
+[data-pressed="1"] .bt-skin{transform:scale(.94)}
+[data-pressed="1"] .bt-skin[data-state] .bt-skin-ringc{stroke:url(#btSkinPress) #B67C35}
+[data-pressed="1"] .bt-skin .bt-skin-face::after{opacity:1}
+[data-pressed="1"] .bt-skin .bt-skin-sheen{opacity:.35}
+/* A cooldown that ends says so once (useReadyFlash) */
+@keyframes bt-skin-flash{0%{opacity:0}28%{opacity:1}100%{opacity:0}}
+.bt-skin[data-flash="1"] .bt-skin-glow{animation:bt-skin-flash 700ms ease-out 1}
+@media (prefers-reduced-motion: reduce){
+  .bt-skin,.bt-skin-face::after{transition:none}
+  .bt-skin[data-flash="1"] .bt-skin-glow{animation:none}
+}
+/* A word on a button only where it is an instruction (SkinTag: the bow's
+   held special says AIM).  A pill low on the face, so it reads over the
+   picture and the ring alike. */
+.bt-skin-tag{position:absolute;left:50%;bottom:-3px;transform:translateX(-50%);z-index:2;padding:1px 5px 2px;border-radius:999px;
+  background:rgba(12,16,20,.86);box-shadow:0 0 0 1px rgba(240,200,120,.55);color:#F0C878;
+  font-size:10px;line-height:1.1;font-weight:700;letter-spacing:.06em;white-space:nowrap;pointer-events:none}
+/* ── the attack disc (TouchControls): its state is BroTown's resolver's ──
+   data-rstate  idle (painted for a moment, nothing to press: the sheet's
+                Disabled) | lit (Normal) | hot (a monster in play: Ready /
+                Charged, the face warm -- the owner's "during combat it changes
+                color (like to orange) keeping its transparency", v2.3.2264) |
+                ghost (a monster under it: the outline only, v2.3.2472)
+   data-ricon   which picture the knob shows (RDISC_ICONS), or none
+   The face's OPACITY is still the resolver's inline stamp (1 / .45 / .08). */
+.bt-rjoy-base .bt-skin{--glow-in:70%}
+.bt-rjoy-base .bt-skin-face{transition:opacity .18s ease}
+.bt-rjoy-base .bt-skin-glow{inset:-20%}
+.bt-rjoy-base[data-rstate="idle"] .bt-skin-ringc{stroke:url(#btSkinGrey) #8A9095}
+.bt-rjoy-base[data-rstate="idle"] .bt-skin-face{background:radial-gradient(circle at 50% 32%,#4A4F53 0%,#35393C 52%,#1F2224 100%)}
+.bt-rjoy-base[data-rstate="hot"] .bt-skin-face{background:radial-gradient(circle at 50% 32%,#C7803F 0%,#985A2C 44%,#5B3018 100%)}
+.bt-rjoy-base[data-rstate="hot"] .bt-skin-ringc,.bt-rjoy-base[data-rstate="ghost"] .bt-skin-ringc{stroke:url(#btSkinLit) #F8BF55}
+.bt-rjoy-base[data-rstate="hot"] .bt-skin-glow{opacity:1}
+.bt-rjoy-base[data-rstate="ghost"] .bt-skin-sheen{opacity:0}
+.bt-rjoy-base[data-pressed="1"] .bt-skin .bt-skin-ringc{stroke:url(#btSkinPress) #B67C35}
+.bt-rjoy-icon{display:none}
+.bt-rjoy-base[data-ricon="melee"] .bt-rjoy-icon[data-ricon-img="melee"],
+.bt-rjoy-base[data-ricon="ranged"] .bt-rjoy-icon[data-ricon-img="ranged"],
+.bt-rjoy-base[data-ricon="staff"] .bt-rjoy-icon[data-ricon-img="staff"],
+.bt-rjoy-base[data-ricon="mining"] .bt-rjoy-icon[data-ricon-img="mining"],
+.bt-rjoy-base[data-ricon="woodcutting"] .bt-rjoy-icon[data-ricon-img="woodcutting"],
+.bt-rjoy-base[data-ricon="fishing"] .bt-rjoy-icon[data-ricon-img="fishing"],
+.bt-rjoy-base[data-ricon="cooking"] .bt-rjoy-icon[data-ricon-img="cooking"]{display:block}
+/* the label is the button's name; a caption only while a gesture is asked for */
+.bt-rjoy-label{transition:opacity 120ms linear}
+.bt-rjoy-label[data-show="0"]{opacity:0}
+/* the knob's travel groove (both sticks): a dark channel with a warm edge */
+[data-rod]{border-radius:999px;background:linear-gradient(180deg,rgba(8,11,14,.55) 0%,rgba(20,26,31,.42) 100%);box-shadow:inset 0 0 0 1px rgba(240,200,120,.28)}
+/* ── the movement stick: the mockup's dark well, pale rim, four arrows, grey
+   thumb (was the metal base.webp / knob.webp sprites) ── */
+.bt-joystick-base{background:radial-gradient(circle,rgba(17,25,29,.34) 0%,rgba(17,25,29,.48) 62%,rgba(12,18,22,.62) 100%);
+  box-shadow:0 0 0 2px rgba(214,224,229,.42),inset 0 0 0 1px rgba(8,12,15,.6),inset 0 0 0 5px rgba(214,224,229,.07)}
+.bt-joystick-base>.bt-joystick-knob{background:radial-gradient(circle at 38% 30%,#B3BAC0 0%,#7D858C 34%,#4C5359 74%,#30353A 100%);
+  box-shadow:0 0 0 1.5px rgba(8,12,15,.88),inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 0 rgba(0,0,0,.25),0 2px 0 rgba(0,0,0,.25)}

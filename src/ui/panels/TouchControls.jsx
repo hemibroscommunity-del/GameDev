@@ -1,6 +1,49 @@
 import React from 'react';
 import { RBTN, LBTN } from './ShieldButton.jsx'; /* v2.3.2472: LBTN -- the left disc's geometry, shared with SpecialButton */
 import { SprintButton } from './SprintButton.jsx'; /* v2.3.3006 */
+import { Skin, RDISC_ICONS } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control */
+
+/* ═══ v2.3.3018: THE ATTACK DISC IS A GOLD-RINGED BUTTON WITH A PICTURE ═══
+ * Owner: "Make the on screen buttons look more like the improved mockup."
+ * The mockup's attack control is a round button, a thick gold ring round a
+ * warm brown face, a SWORD in the middle and no word.  So:
+ *
+ *   - the painted metal (base.webp) and the dome knob (knob.webp) are gone
+ *     for controlSkin's ring and face ("ember" tone);
+ *   - the picture says what a press does, stamped per frame by BroTown's
+ *     resolver beside the label it already stamps (`data-ricon` on the disc):
+ *     the weapon in your hand's own Character-sheet picture (sword, bow,
+ *     staff) to attack, the skill's picture to harvest (pickaxe on ore, axe
+ *     on a log, rod, pan) -- and nothing while a harvest runs, when the mini
+ *     tool of the gesture cue is the picture (v2.3.2760: "a second, bigger
+ *     tool animating behind it was the same object twice");
+ *   - the LABEL stays in the DOM with the same words (ATTACK, HARVEST, CHOP,
+ *     REEL ...): it is the control's name to anything reading the page, and
+ *     it is shown only as a small caption while a gesture is asked for (WAIT /
+ *     PUMP / CHOP / REEL / FLIP), where the word is an instruction rather than
+ *     a name -- `data-show` on it, BroTown's to stamp;
+ *   - the picture rides the KNOB, so a drag to aim moves the sword the way the
+ *     dome used to move (RKNOB_TRAVEL keeps it inside the ring).
+ *
+ * THE FOUR STATES THE RESOLVER ALREADY HAD, IN THE MOCKUP'S WORDS
+ * (`data-rstate`, game.css):
+ *   idle   painted for a moment after input, nothing to press -- the sheet's
+ *          Disabled (grey), at the 0.5 the joystick socket always wore;
+ *   lit    something to press (a resource, a plain swing) -- Normal;
+ *   hot    a monster in play -- Ready / Charged: the ring lit and glowing and
+ *          the face gone warm, which is the owner's own v2.3.2264 ask ("only
+ *          during combat it changes color (like to orange) keeping its
+ *          transparency") in the mockup's language -- the FACE still fades to
+ *          0.45 so you see the monster through it (v2.3.2263), the ring and
+ *          the picture stay at full strength;
+ *   ghost  a monster under it -- the face nearly gone (0.08), the ring and a
+ *          faded picture left as the outline (v2.3.2472).
+ * Pressed is the thumb on it (`data-pressed`), whatever the state.
+ *
+ * The v2.3.2264 note below is kept as the record of why the disc goes warm;
+ * the WASH it describes (an amber gradient layered over base.webp) went with
+ * the sprite, and the two strings BroTown swapped went with it. */
+export const RKNOB_TRAVEL = 0.6;
 
 /* ═══ v2.3.2264: THE DISC SAYS "HOT", IT DOES NOT SAY "OFF" ═══
  * Owner, on v2.3.2263's see-through button: "the disc that holds the attack
@@ -29,21 +72,41 @@ import { SprintButton } from './SprintButton.jsx'; /* v2.3.3006 */
  * marks in the combat language, where brass #D8A85F means "in reach" and red
  * #FF3C3C means "attacking".  The disc is neither: it is the button those two
  * are about. */
-const RBTN_WASH = 'linear-gradient(rgba(214,138,60,0.62), rgba(214,138,60,0.62)), ';
-const RBTN_SPRITE = 'url(/sprites/joystick/base.webp?v=2.3.102)';
-export const RBTN_BODY_BG = RBTN_SPRITE;
-export const RBTN_BODY_BG_HOT = RBTN_WASH + RBTN_SPRITE;
-/* ...AND THE KNOB IS PART OF THE SAME FACE.  Rendered from base.webp's dark
-   well, the knob is a SEPARATE 42px sprite at zIndex 1, so v2.3.2263's fade
-   reached the metal ring and stopped at the dome in the middle of it -- which
-   is the half of the button actually sitting over the play area.  Measured off
-   the first render of the wash: the outer metal came back (185,127,75), warm
-   and see-through, and the knob (93,91,89), neutral and solid, in the same
-   frame.  It takes the same two treatments, or "the button is transparent now"
-   is only true of its rim. */
-const RKNOB_SPRITE = 'url(/sprites/joystick/knob.webp?v=2.3.102)';
-export const RKNOB_BG = RKNOB_SPRITE;
-export const RKNOB_BG_HOT = RBTN_WASH + RKNOB_SPRITE;
+/* (v2.3.3018: the wash was `linear-gradient(rgba(214,138,60,0.62) ...)` over
+   base.webp -- #D68A3C, the renderer's warm world mark.  The hot face in
+   game.css is drawn round the same amber.)
+   ...AND THE KNOB WAS PART OF THE SAME FACE.  Rendered from base.webp's dark
+   well, the knob was a SEPARATE 42px sprite at zIndex 1, so v2.3.2263's fade
+   reached the metal ring and stopped at the dome in the middle of it.  That
+   lesson carries over to the new knob, which is the PICTURE: it takes the
+   ghost fade with the face (BroTown's resolver), or "the button is
+   see-through now" would stop at the sword. */
+
+/* v2.3.3018: the orbit's two arcs, in clock degrees (0 = twelve o'clock,
+   clockwise): one down the left side between Block (~7:30) and Whirl (~11),
+   one round the right below Spec (~12:30).  PAD px outside the ring. */
+const ORBIT_PAD = 9;
+const ORBIT_ARCS = [[208, 302], [58, 128]];
+function OrbitArcs(props) {
+  var size = props.size;
+  var box = size + ORBIT_PAD * 4;
+  var c = box / 2;
+  var r = size / 2 + ORBIT_PAD;
+  var pt = function (deg) {
+    var a = deg * Math.PI / 180;
+    return (c + Math.sin(a) * r).toFixed(2) + ' ' + (c - Math.cos(a) * r).toFixed(2);
+  };
+  var d = ORBIT_ARCS.map(function (a) {
+    return 'M' + pt(a[0]) + ' A' + r + ' ' + r + ' 0 0 1 ' + pt(a[1]);
+  }).join(' ');
+  return React.createElement('svg', {
+    className: 'bt-rjoy-orbit', 'aria-hidden': 'true',
+    viewBox: '0 0 ' + box + ' ' + box, width: box, height: box,
+    style: { position: 'absolute', left: -ORBIT_PAD * 2, top: -ORBIT_PAD * 2, pointerEvents: 'none', overflow: 'visible' },
+  },
+  React.createElement('path', { d: d, fill: 'none', stroke: 'rgba(8,11,14,.5)', strokeWidth: 4, strokeLinecap: 'round' }),
+  React.createElement('path', { d: d, fill: 'none', stroke: 'rgba(240,200,120,.22)', strokeWidth: 1.4, strokeLinecap: 'round' }));
+}
 
 /* === TouchControls — the left joystick + the contextual right BUTTON === */
 /* v2.3.890: extracted verbatim from the floating-joystick sibling run
@@ -102,8 +165,10 @@ export function TouchControls(props) {
     lWrapRef = props.lWrapRef,   /* v2.3.2246: the left disc's corner box — the visibility gate */
     rWrapRef = props.rWrapRef,   /* v2.3.2246: the right button's corner box — ditto */
     isLandscape = props.isLandscape;
-  var _stateRef$current65;
   var discW = isLandscape ? RBTN.wLand : RBTN.w;
+  /* v2.3.3018: the picture on the attack disc -- about two thirds of the face
+     inside the ring, the mockup's sword. */
+  var rIcon = isLandscape ? 64 : 58;
   return /*#__PURE__*/React.createElement(React.Fragment, null, React.createElement("div", {
     ref: lZoneRef,
     className: "bt-desktop-hide",
@@ -175,21 +240,25 @@ export function TouchControls(props) {
       opacity: 0.5,
       pointerEvents: 'none',
       transition: 'opacity 0.12s ease',
-      /* v2.3.99: sprite-backed base.  Overrides the rgba bg + border in
-         game.css with the metal-ring + center-hole art the user uploaded.
-         No overflow:hidden -- the stick + knob layer on top and don't
-         need clipping, the sprite art handles its own rim. */
-      backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
+      /* v2.3.99: sprite-backed base (the metal ring + center hole the user
+         uploaded).  v2.3.3018: the owner's mockup instead -- a dark see-through
+         well, a pale rim and four small arrows, drawn in game.css
+         (.bt-joystick-base) and the arrows' SVG below.  No overflow:hidden --
+         the stick + knob layer on top and don't need clipping. */
       /* v2.3.1236: drop-shadow filter REMOVED (here + the siblings
          below).  A CSS drop-shadow/filter on a DOM overlay compositing over
          the WebGL canvas produces grainy "static" on iOS -- the documented
          next suspect in CLAUDE.md's charge-pie history, and the same fix
          SpecialChargePie itself got in v2.3.948. */
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /* v2.3.3018: the mockup's four arrows, one at each edge of the well. */
+  React.createElement("svg", {
+    className: 'bt-joystick-arrows', viewBox: '0 0 100 100', 'aria-hidden': 'true',
+    style: { position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' },
+  }, React.createElement('path', {
+    d: 'M50 6.5 L44 13.5 L56 13.5 Z M50 93.5 L44 86.5 L56 86.5 Z M6.5 50 L13.5 44 L13.5 56 Z M93.5 50 L86.5 44 L86.5 56 Z',
+    fill: 'rgba(232,238,241,.72)', stroke: 'rgba(8,12,15,.55)', strokeWidth: 1.2, strokeLinejoin: 'round',
+  })), /*#__PURE__*/React.createElement("div", {
     /* Analog "stick" — anchored at joystick centre, grows toward the
        knob when dragged.  transform-origin at left-centre so rotation
        pivots at the disc centre; width set dynamically by
@@ -197,19 +266,18 @@ export function TouchControls(props) {
        so the rod reads thicker relative to the outer ring (user
        request: "knob + rod much larger relative to the outer ring"). */
     ref: lStickRef,
+    /* v2.3.3018: the rod is a CSS groove now (game.css [data-rod]), and this
+       is how a test finds it -- it used to find it by its sprite's URL. */
+    'data-rod': 'L',
     style: {
       position: 'absolute',
       left: '50%',
       top: '50%',
       width: 0,
-      height: 33,
-      marginTop: -16,
+      height: 16,
+      marginTop: -8,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
-      backgroundImage: 'url(/sprites/joystick/stick.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
@@ -219,15 +287,11 @@ export function TouchControls(props) {
     ref: knobRef,
     style: {
       zIndex: 1,
-      /* v2.3.100: sprite-backed knob.  Size override below + the
-         CSS .bt-joystick-knob 24->44 px bump in game.css makes the
-         knob much larger relative to the outer ring (user request). */
+      /* v2.3.100: the knob much larger relative to the outer ring (user
+         request).  v2.3.3018: the mockup's grey thumb, drawn in game.css
+         (.bt-joystick-base > .bt-joystick-knob) instead of knob.webp. */
       width: isLandscape ? 48 : 42,
       height: isLandscape ? 48 : 42,
-      backgroundImage: 'url(/sprites/joystick/knob.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
     }
   }), /*#__PURE__*/React.createElement("div", {
     /* Left-joystick weapon-swap preview overlay (v2.3.97).  Hidden by
@@ -284,7 +348,13 @@ export function TouchControls(props) {
       width: discW,
       height: discW
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /* ═══ v2.3.3018: THE ORBIT ═══
+     The mockup draws a faint track round the attack button, broken where the
+     buttons that orbit it sit -- Block low on the left, Whirl and Spec above
+     -- so the cluster reads as ONE control with satellites rather than five
+     loose circles.  Two arcs, behind the disc, in the wrap so they come and go
+     with it; never a touch target. */
+  React.createElement(OrbitArcs, { size: discW }), /*#__PURE__*/React.createElement("div", {
     ref: rJoyRef,
     className: "bt-rjoy-base",
     'data-rbutton': '1',
@@ -312,7 +382,7 @@ export function TouchControls(props) {
          it (an orientation change) is corrected on the next one. */
       pointerEvents: 'none',
       touchAction: 'none',
-      transition: 'opacity 0.12s ease, border-color 0.18s ease, box-shadow 0.18s ease',
+      transition: 'opacity 0.12s ease',
       /* ═══ v2.3.2251: SOMETHING TO LIGHT ═══
          Owner: "The attack button isn't lit up when it becomes available
          (font hard to see)."  Availability changed exactly two things -- the
@@ -327,20 +397,27 @@ export function TouchControls(props) {
          to 2px would nudge the layout every time the button woke up.
          And the lit state is carried on the BORDER and a shadow, never on
          background-color: base.webp is opaque edge to edge, so a background
-         fill paints underneath the sprite and is never seen. */
+         fill paints underneath the sprite and is never seen.
+         v2.3.3018: the lit state is the skin's GOLD RING now, keyed by the
+         resolver's `data-rstate` (game.css) -- an attribute, which a
+         stylesheet can follow without the inline-vs-sheet fight above, and
+         which reads back exactly as written (a stamped gradient string comes
+         back from the DOM re-spelled, so a compare against it never matched
+         and the old stamp rewrote it every frame).  No border at all: a brass
+         edge outside the gold ring was a second ring. */
       boxSizing: 'border-box',
       borderRadius: '50%',
-      border: '2px solid transparent',
       /* v2.3.2263: the painted metal moved to its own child (rBodyRef, just
-         below) so it can go see-through on its own.  Nothing else about the
-         disc did: the lit border and its shadow are still declared here and
-         still stamped inline by BroTown's resolver. */
+         below) so it can go see-through on its own.  v2.3.3018: that child is
+         the skin's FACE; the ring and the picture are siblings above it. */
       WebkitUserSelect: 'none',
       userSelect: 'none',
       WebkitTouchCallout: 'none',
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    /* ═══ v2.3.2263: THE BUTTON STOPS HIDING WHAT YOU ARE FIGHTING ═══
+  }, /* v2.3.3018: the ring, the face (rBodyRef -- still the layer the resolver
+     fades) and the glow, from the one skin every control wears. */
+  React.createElement(Skin, { size: discW, tone: 'ember', faceRef: rBodyRef, faceProps: { 'data-rbody': '1' } }),
+  /* ═══ v2.3.2263: THE BUTTON STOPS HIDING WHAT YOU ARE FIGHTING ═══
        Owner: "Attack button sometimes covers monster (not sure best way to
        deal with it maybe 50% transparency during active combat?)"
 
@@ -362,50 +439,15 @@ export function TouchControls(props) {
        strength: you can see the monster through the button and still read
        ATTACK on it.  zIndex 0 keeps it under the label (3) and the tool cue
        (2), and pointerEvents none keeps the touch target on the parent, so
-       nothing about WHERE the button can be pressed changes. */
-    ref: rBodyRef,
-    style: {
-      position: 'absolute',
-      inset: 0,
-      borderRadius: '50%',
-      zIndex: 0,
-      pointerEvents: 'none',
-      opacity: 1,
-      transition: 'opacity 0.18s ease, background-image 0.18s ease',
-      backgroundImage: RBTN_BODY_BG,
-      /* Two values each, so the wash layer is sized and placed like the sprite
-         when the resolver swaps in the two-layer stack. */
-      backgroundSize: '100% 100%, 100% 100%',
-      backgroundRepeat: 'no-repeat, no-repeat',
-      backgroundPosition: 'center, center',
-    }
-  }), /*#__PURE__*/React.createElement("svg", {
-    style: {
-      position: 'absolute',
-      inset: 0,
-      width: '100%',
-      height: '100%',
-      transform: 'rotate(-90deg)',
-      pointerEvents: 'none',
-      zIndex: 1
-    }
-  }, function (_stateRef$current65) {
-    var lastSwipe = ((_stateRef$current65 = stateRef.current) === null || _stateRef$current65 === void 0 ? void 0 : _stateRef$current65._lastSwipe) || 0;
-    var cd = 1500;
-    var elapsed = Date.now() - lastSwipe;
-    var pct = Math.min(1, elapsed / cd);
-    if (pct < 1) return React.createElement('circle', {
-      cx: '50%',
-      cy: '50%',
-      r: '28%',
-      fill: 'none',
-      stroke: pct > 0.8 ? 'rgba(180,255,180,.3)' : 'rgba(255,255,255,.15)',
-      strokeWidth: 2,
-      strokeLinecap: 'round',
-      strokeDasharray: "".concat(Math.PI * 2 * 28 / 100 * pct * 100, " 999")
-    });
-    return null;
-  }()),
+       nothing about WHERE the button can be pressed changes.
+       (v2.3.3018: the layer is the skin's face, just above, and what stays at
+       full strength over it is the ring and the PICTURE -- you can see the
+       monster through the button and still see the sword on it.) */
+  /* v2.3.3018: the special-charge ring that sat here (r=28%, kept on purpose
+     at v2.3.2242) is gone.  It was drawn only when this component happened to
+     re-render, never per frame, so it showed a stale sweep or nothing; the
+     Special button beside the disc has drawn the same 1.5s clock every 200ms
+     since v2.3.2542, and a faint white circle across the sword was noise. */
   /* ═══ v2.3.2258: THE ROD AND THE KNOB COME BACK ═══
      Owner: "I want both joysticks back and restore the previous behavior right
      joystick for auto attack and rotation.  BUT I also want the right joystick
@@ -420,49 +462,52 @@ export function TouchControls(props) {
 
      They sit UNDER the label / cue / ring (zIndex 0 and 1 against their 1 and
      2) because the contextual half is still the face of this control -- a
-     HARVEST press must never look like a stick mid-throw. */
+     HARVEST press must never look like a stick mid-throw.
+     v2.3.3018: same two elements, new look -- the rod a gold groove (game.css
+     [data-rod]) and the knob the button's PICTURE, which a drag pulls toward
+     the aim (RKNOB_TRAVEL of the rod's reach, so it stays inside the ring). */
   /*#__PURE__*/React.createElement("div", {
     ref: rStickRef,
+    'data-rod': 'R',
     style: {
       position: 'absolute',
       left: '50%',
       top: '50%',
       width: 0,
-      height: 33,
-      marginTop: -16,
+      height: 16,
+      marginTop: -8,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
-      backgroundImage: 'url(/sprites/joystick/stick.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
     }
   }), /*#__PURE__*/React.createElement("div", {
-    className: "bt-joystick-knob",
+    className: "bt-joystick-knob bt-rjoy-knob",
     ref: rKnobRef,
     style: {
       zIndex: 1,
-      width: isLandscape ? 48 : 42,
-      height: isLandscape ? 48 : 42,
+      width: rIcon,
+      height: rIcon,
       position: 'absolute',
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      /* v2.3.2264: fades and warms with the disc it sits in -- see RKNOB_BG. */
+      /* v2.3.2264: fades with the disc it sits in.  v2.3.3018: only for the
+         ghost (the resolver) -- the picture is what you read the button by. */
       opacity: 1,
-      transition: 'opacity 0.18s ease, background-image 0.18s ease',
-      backgroundImage: RKNOB_BG,
-      backgroundSize: '100% 100%, 100% 100%',
-      backgroundRepeat: 'no-repeat, no-repeat',
-      backgroundPosition: 'center, center',
+      transition: 'opacity 0.18s ease',
       pointerEvents: 'none',
       /* No filter: a drop-shadow over the WebGL canvas is the documented iOS
          "static" (v2.3.1236, CLAUDE.md). */
     }
-  }), /*#__PURE__*/React.createElement("svg", {
+  }, RDISC_ICONS.map(function (ic) {
+    return React.createElement('img', {
+      key: ic[0], className: 'bt-rjoy-icon', 'data-ricon-img': ic[0],
+      src: ic[1], alt: '', draggable: false, width: rIcon, height: rIcon,
+      style: { width: rIcon, height: rIcon, objectFit: 'contain', pointerEvents: 'none' },
+    });
+  })), /*#__PURE__*/React.createElement("svg", {
     /* ═══ v2.3.2245: THE HARVEST RING ═══
        Owner: "The gesture cues will be on the right button."  A second ring
        inside the rim (the special-charge ring above is at r=28%): during
@@ -482,31 +527,36 @@ export function TouchControls(props) {
      v2.3.2245 (rCueRef) is gone -- the cue below is a mini tool now, and a
      second, bigger tool animating behind it was the same object twice. */
   /*#__PURE__*/React.createElement("div", {
-    /* v2.3.2242: THE LABEL.  Centred in the well; BroTown's loop stamps
-       the text so it can change with context without a React render.
-       Lantern Slate caption type: 10/700 uppercase, warm-white on the
-       dark well, one text-shadow so it holds up over the metal ring. */
+    /* v2.3.2242: THE LABEL.  BroTown's loop stamps the text so it can change
+       with context without a React render.
+       v2.3.3018: the PICTURE is the button's face now (the mockup has no
+       words on any control), so the label is the button's NAME -- in the DOM
+       with the same words, for anything that reads the page -- and it SHOWS
+       only as a caption while a harvest asks for a gesture (WAIT, PUMP, CHOP,
+       REEL, FLIP), where the word is an instruction: BroTown stamps
+       `data-show`.  A pill rather than bare text, so it reads over the cue's
+       track and the brown face alike. */
     ref: rLabelRef,
+    className: 'bt-rjoy-label',
+    'data-show': '0',
     style: {
       position: 'absolute',
-      inset: 0,
-      display: 'flex',
-      alignItems: 'flex-end',      /* v2.3.2245: sits low so the tool frame above it stays clear */
-      justifyContent: 'center',
-      paddingBottom: isLandscape ? 14 : 12,
+      left: '50%',
+      bottom: isLandscape ? 13 : 11,
+      transform: 'translateX(-50%)',
+      padding: '1px 6px 2px',
+      borderRadius: 999,
+      background: 'rgba(12,16,20,.74)',
+      whiteSpace: 'nowrap',
       boxSizing: 'border-box',
       pointerEvents: 'none',
       zIndex: 3,
-      /* v2.3.2251: the other half of "font hard to see".  11px is the caption
-         step -- the smallest type anywhere in the game -- sitting on a busy
-         painted sprite at 0.5 opacity, which is how a 700-weight label in the
-         lightest ink still read as faint.  Up one step, and the shadow becomes
-         a real dark halo rather than a 1px drop, so the glyphs keep their edge
-         over the bright plate of base.webp as well as over its dark socket. */
-      fontSize: isLandscape ? 14 : 13,
+      /* v2.3.2251: "font hard to see" -- a real dark halo, not a 1px drop. */
+      fontSize: isLandscape ? 12 : 11,
+      lineHeight: 1.1,
       fontWeight: 700,
       color: '#F7F2E7',
-      textShadow: '0 1px 2px rgba(0,0,0,.9), 0 0 4px rgba(0,0,0,.75)',
+      textShadow: '0 1px 2px rgba(0,0,0,.9)',
       letterSpacing: '0.08em',
       textTransform: 'uppercase',
     }

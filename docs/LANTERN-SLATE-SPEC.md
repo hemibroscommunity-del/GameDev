@@ -259,6 +259,11 @@ Same neutral language, higher opacity. No blur anywhere.
 - Joysticks: outer 104px `rgba(17,25,29,.28)` + 1px
   `rgba(247,242,231,.18)`; thumb 46px `rgba(17,25,29,.48)`; whole
   control .62 opacity at rest, .92 engaged. No texture.
+  - **v2.3.3018 — the owner's mockup.** The movement stick is a dark
+    see-through well, a pale rim, four small arrows and a grey thumb, in CSS
+    (it was the metal `base.webp` / `knob.webp` sprites since v2.3.99); the
+    right control is a gold-ringed button with a picture. See the sixth
+    documented exception at the end of this file.
   - **v2.3.2246 — CONTEXTUAL, ABOVE THE LADDER.** Owner: "Hide the
     joystick overlays. Just show the left joystick when you're moving
     the character. Just show the right contextual button when there's
@@ -453,3 +458,45 @@ dock whose Party / Trade buttons carry a gold border and Duel a red one
 stronger divider, brighter borders, bigger icons"). Brass stays an accent
 there, as everywhere: a border and a glow, never a filled slab. It is the same
 card family, so it is the same exception, not a sixth.
+
+**Sixth documented exception (v2.3.3018): the touch controls' gold rings and
+pictures.** Every on-screen touch control -- the attack disc, Spec, Whirl,
+Block, Shield Bash, Sprint, Element Burst, the weapon button, and Jump when
+the real-jumping work lands -- is a round
+button with a thick, bevelled GOLD ring round a dark face (the attack disc's
+face warm brown), carrying a picture and no word, and the movement stick is a
+dark see-through well with four arrows and a grey thumb. By the letter of this
+document that is wrong twice over: brass "is never a default border color",
+and the Bible's "no giant gold borders". It is here because the owner drew it:
+a mockup of the play screen in two halves, CURRENT and IMPROVED, with a sheet of
+every button in five states (Normal, Pressed, Cooldown, Ready / Charged,
+Disabled) and the words "Make the on screen buttons look more like the improved
+mockup".
+
+It stays licensed only while it stays bounded:
+
+- **The touch controls only** -- the round buttons over the world and the two
+  sticks. Not the dashboard, the toolbar, the panels or the world cards; a
+  "consistency" pass that carries the gold ring inward is the drift this list
+  exists to stop.
+- **One skin, in one place**: `src/ui/panels/controlSkin.jsx` and the
+  `.bt-skin` rules in game.css. No control draws its own ring.
+- **CSS gradients and an SVG stroke, nothing baked, nothing filtered**: the
+  ring's bevel is a gradient the stroke paints with, the glow is a radial
+  gradient, the greyed pictures are a grey palette (SVG) or opacity (painted
+  icons) -- never `filter`, `backdrop-filter` or `mask`, the iOS-over-WebGL
+  rule this document already carries.
+- **The states are the mockup's and mean one thing each**: Cooldown is the
+  only place the sheet's sky blue (`#5CC0F5`, a clock, not the mana blue)
+  appears; the glow is Ready / Charged and the two latched toggles (the shield
+  up, the sprint on), plus a one-shot swell when a cooldown ends -- the "finite
+  alert" the Motion section allows, never a pulse that keeps going.
+- **Words only as instructions**: the bow's held special says AIM, a harvest's
+  gesture says WAIT / PUMP / CHOP / REEL / FLIP. Every other label is gone
+  from the face (the attack disc keeps its word in the DOM, unseen, as its
+  name).
+
+`docs/specs/control-redesign.md` §14 has the state table and the judgement
+calls; `src/controls-harness.html` draws every button in every state (the
+owner's sheet, in the game's own code), and `mp-btnskin` checks them in a fight
+on a phone.
