@@ -66,9 +66,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Angler', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
+  /* v2.3.3016: real input on a loop.  The walker moves by writing its
+     position, which no input listener hears, and a page logs itself out
+     after two minutes without a tap or a key (BroTown.jsx IDLE_LOGOUT_MS):
+     the worker forgot the angler mid-walk and never paid the minnow -- every
+     step after it waiting on a player who was gone.  Control does nothing in
+     the game (mp-wheelseats' keep-alive). */
+  let stopAlive = false;
+  (async () => {
+    while (!stopAlive) {
+      await P.page.keyboard.press('Control').catch(() => {});
+      for (let i = 0; i < 40 && !stopAlive; i++) await P.page.waitForTimeout(500).catch(() => {});
+    }
+  })();
   try {
     await body({ P, wsPort, rec, OUT, errors });
   } finally {
+    stopAlive = true;
     await P.ctx.close().catch(() => {});
   }
 }
@@ -407,15 +421,33 @@ async function closeTalk(P) {
    clock short after -- the strike then lands "out-of-range" from where the
    worker last let you be (the first run on these places: 1,941 px).  So when
    it falls behind, step back to where it has you, as its broadcast would put
-   a real client, and go on from there. */
+   a real client, and go on from there.
+   v2.3.3016: ...but only to a place the worker still holds a beat later.  On
+   this box's ~400 ms frames the last hop often has not gone out when the
+   worker is asked, so a worker merely a hop BEHIND read as one that had
+   refused it -- and the step back went out after the hop did: the worker
+   took the hop, then the step back, and the two chased each other 200 px
+   each way, leg after leg (measured on main and on this branch alike), until
+   the page's two idle minutes logged the angler out mid-walk. */
 async function travel(P, wsPort, myId, tx, ty) {
-  for (let leg = 0; leg < 300; leg++) {
+  const worker = async () => {
     const a = await H.adminPlayer(wsPort, myId).catch(() => null);
-    const L = (a && a.live) || {};
-    const c = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-    if (typeof L.x === 'number' && Math.hypot(L.x - c.x, L.y - c.y) > 60) {
-      await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0; }, { x: L.x, y: L.y });
-      await P.page.waitForTimeout(500);
+    return (a && a.live) || {};
+  };
+  const here = () => H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+  const apart = (L, c) => typeof L.x === 'number' && Math.hypot(L.x - c.x, L.y - c.y) > 60;
+  for (let leg = 0; leg < 300; leg++) {
+    const L = await worker();
+    const c = await here();
+    if (apart(L, c)) {
+      /* a beat (two of this box's frames) for the last hop to arrive */
+      await P.page.waitForTimeout(900);
+      const L2 = await worker();
+      const c2 = await here();
+      if (apart(L2, c2) && Math.hypot(L2.x - L.x, L2.y - L.y) < 2) {
+        await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0; }, { x: L2.x, y: L2.y });
+        await P.page.waitForTimeout(500);
+      }
       continue;
     }
     if (Math.hypot(tx - c.x, ty - c.y) < 6) return true;

@@ -5,7 +5,7 @@
  * The Tiled .tmx path and the procedural colored-rectangle path remain as
  * fallbacks for zones with neither.
  */
-import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Assets } from 'pixi.js';
+import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Assets, TilingSprite } from 'pixi.js'; /* v2.3.3016: + TilingSprite, a Wheel dungeon's floor */
 import { TILE } from '@/data/constants.js';
 import { ZONES, isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: + either name of the World View */
 import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from '@/data/effects.js';
@@ -228,7 +228,10 @@ const TILE_COLORS_BASE = {
 
 function getTileHexColor(tile, zoneId) {
   const zone = ZONES[zoneId];
-  if (!zone) return TILE_COLORS_BASE[tile] || 0x2d5a1e;
+  /* v2.3.3016: a dungeon's synthetic zone (gameEvents.js dungeon_started) is
+     made with no `palette`, and `zone.palette.ground` threw on every rebuild
+     of one -- the floor never drew, a Workshop run's included */
+  if (!zone || !zone.palette) return TILE_COLORS_BASE[tile] || 0x2d5a1e;
   if (tile === 0) return cssToHex(zone.palette.ground);
   if (tile === 1) return cssToHex(zone.palette.path);
   return TILE_COLORS_BASE[tile] || cssToHex(zone.palette.ground);
@@ -372,6 +375,9 @@ export class TileRenderer {
        free.  removeChildren() only detaches; the sprite object (and its
        texture ref) would linger until GC otherwise. */
     if (this._imageSprite) { try { this._imageSprite.destroy(); } catch (e) { /* ignore */ } this._imageSprite = null; }
+    /* v2.3.3016: and a Wheel dungeon's floor (its land's ground picture, freed
+       a beat after you leave -- game/wheelDungeons.js dropDungeonZone) */
+    if (this._floorSprite) { try { this._floorSprite.destroy(); } catch (e) { /* ignore */ } this._floorSprite = null; }
     /* v2.3.2932: and the world trial's streamed ground, which frees every
        piece it holds -- the same "drop the reference on the way out" rule. */
     if (this._chunkGround) { try { this._chunkGround.destroy(); } catch (e) { /* ignore */ } this._chunkGround = null; }
@@ -668,6 +674,13 @@ export class TileRenderer {
        zone is.  ChunkGround keeps only the pieces round the camera; update()
        below drives it.  Ahead of the image path on purpose: the World View
        still HAS an image (the vista), and it must not be drawn under this. */
+    /* v2.3.3016: a Wheel dungeon's arena, floored with its land's own ground */
+    if (zone && zone.floorPic) {
+      this._renderedTiled = true;   /* nothing for update() to retry */
+      this._isImageZone = true;     /* painted ground: its way out glows "obvious" */
+      this._rebuildFloorPic(map, zone, rows, cols);
+      return;
+    }
     if (isWorldTrialZone(zoneId)) {
       this._renderedTiled = true;
       this._isImageZone = true;
@@ -993,6 +1006,72 @@ export class TileRenderer {
   }
 
   /** Original procedural rebuild for zones without sprite assets. */
+  /* ═══ v2.3.3016: AN ARENA FLOORED WITH ITS LAND'S OWN GROUND ═══
+     A Wheel dungeon (game/wheelDungeons.js) names one of its land's ground
+     pictures -- the Great Cave the Stone Hollows' deep cave stone, the
+     Foundry Dome the Electric Foundry's iron plates, the Buried City the Wind
+     Dunes' red sandstone (data/wheelDungeons.js WHEEL_DUNGEON_FLOOR) --
+     loaded behind the dungeon's loading screen.  It is tiled across the arena
+     at the Wheel's own size (a swatch is 512 game px, its picture 1024), and
+     the walls are drawn over it in code: the floor's darkest shade, a lit
+     edge where floor meets wall and a shadow cast onto the floor beside it.
+     The way out is the exit glow update() already draws over tile 9.  With
+     no picture (a load that failed) the floor is the land's flat colour. */
+  _rebuildFloorPic(map, zone, rows, cols) {
+    const W = cols * TILE, H = rows * TILE;
+    const tex = Assets.cache.get(zone.floorPic);
+    if (tex && !tex.destroyed && tex.source) {
+      /* linear and mipmapped: on a phone a picture pixel is a quarter of a
+         screen pixel or less, and nearest sampling would sparkle as you walk */
+      try {
+        tex.source.scaleMode = 'linear';
+        if (!tex.source.autoGenerateMipmaps) { tex.source.autoGenerateMipmaps = true; tex.source.updateMipmaps(); }
+      } catch (e) { /* filtering only */ }
+      const floor = new TilingSprite({ texture: tex, width: W, height: H });
+      floor.tileScale.set(zone.floorScale || 0.5);
+      floor.label = 'arenaFloor';
+      this.tileContainer.addChild(floor);
+      this._floorSprite = floor;
+    } else {
+      const flat = new Graphics();
+      flat.rect(0, 0, W, H).fill({ color: this._bgColor });
+      this.tileContainer.addChild(flat);
+    }
+    const wall = zone.wallColor != null ? zone.wallColor : 0x111316;
+    const edge = zone.edgeColor != null ? zone.edgeColor : 0x3a3f46;
+    const isWall = (r, c) => r < 0 || c < 0 || r >= rows || c >= cols || map[r]?.[c] === 7;
+    const gfx = new Graphics();
+    gfx.label = 'arenaWalls';
+    /* the shadow the walls cast onto the floor beside them */
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (isWall(r, c)) continue;
+        const x = c * TILE, y = r * TILE;
+        if (isWall(r - 1, c)) gfx.rect(x, y, TILE, 14).fill({ color: 0x000000, alpha: 0.38 });
+        if (isWall(r, c - 1)) gfx.rect(x, y, 8, TILE).fill({ color: 0x000000, alpha: 0.26 });
+        if (isWall(r, c + 1)) gfx.rect(x + TILE - 8, y, 8, TILE).fill({ color: 0x000000, alpha: 0.26 });
+        if (isWall(r + 1, c)) gfx.rect(x, y + TILE - 5, TILE, 5).fill({ color: 0x000000, alpha: 0.18 });
+      }
+    }
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (!isWall(r, c)) continue;
+        const x = c * TILE, y = r * TILE;
+        gfx.rect(x, y, TILE, TILE).fill({ color: wall });
+        /* the lip where the wall meets the floor, catching the light */
+        if (!isWall(r + 1, c)) gfx.rect(x, y + TILE - 4, TILE, 4).fill({ color: edge });
+        if (!isWall(r - 1, c)) gfx.rect(x, y, TILE, 3).fill({ color: edge, alpha: 0.6 });
+        if (!isWall(r, c + 1)) gfx.rect(x + TILE - 3, y, 3, TILE).fill({ color: edge, alpha: 0.7 });
+        if (!isWall(r, c - 1)) gfx.rect(x, y, 3, TILE).fill({ color: edge, alpha: 0.7 });
+      }
+    }
+    this.tileContainer.addChild(gfx);
+    /* QA (mp-wheeldungeon), armed by the harness only */
+    if (typeof window !== 'undefined' && window.__btProbe) {
+      window.__btArenaFloor = { pic: zone.floorPic, drawn: !!this._floorSprite, w: W, h: H };
+    }
+  }
+
   _rebuildProcedural(map, zoneId, rows, cols, zone) {
     // Use a single Graphics object for procedural tiles
     const gfx = new Graphics();

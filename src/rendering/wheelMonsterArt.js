@@ -153,6 +153,23 @@ function lateFree(k) {
   freeLook(k, new Set());
 }
 
+/* ═══ v2.3.3016: A WHEEL DUNGEON'S MONSTERS, LOADED BEFORE YOU STEP IN ═══
+   A dungeon behind one of the Wheel's mouths is that land's own monsters
+   (server/src/wheeldungeon.js), every one of them within a screen of you the
+   moment you arrive -- no walk to load them on.  So, as the law has it for any
+   zone but the Wheel itself, every look the land's monsters wear is loaded
+   behind the dungeon's loading screen first (gameEvents.js dungeon_started).
+   Inside, the arena's synthetic zone has the land as its `homes`, so this
+   module keeps them there as in the Wheel, and freeZoneAssets lets them go on
+   the way out. */
+export function loadLandLooks(home) {
+  const ks = new Set();
+  for (const k of variantsForZone(home)) for (const q of looksOf(k)) ks.add(q);
+  if (home === 'frost') ks.add('snowman');
+  return Promise.all([...ks].map((k) => Promise.resolve().then(() => loadLook(k)).catch(() => null)))
+    .then(() => [...ks]);
+}
+
 /* Leaving the Wheel: forget what was loaded here (freeZoneAssets lets all
    of it go, a beat later, as for any zone) and let the lazy kick back on. */
 export function wheelArtReset() {

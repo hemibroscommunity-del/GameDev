@@ -201,13 +201,98 @@ These are the client's alone:
 
   Pictures are in `tools/qa/mp/out/sprint-*.png`.
 
+## Seen and heard (v2.3.3015)
+
+> Offered next: *"Sprint polish: other players' legs at sprint pace, a dust
+> puff, a sprint sound"*. The owner: *"Yes continue working on those items"*.
+
+### What the player sees and hears
+
+- **Other players' legs keep up.** When someone near you sprints, their run
+  animation plays 1.33 times quicker, as your own does. When they walk again,
+  it slows back down. The stride carries on from where it was, so their legs
+  never jump a frame at the change.
+- **Dust at the feet.** Every footfall of a sprint kicks up a small puff
+  thrown back against the run:
+  - **yours** in the colour of the ground under your boots: white on snow,
+    pale blue on ice, tan on sand, green and brown on grass, grey on gravel
+    and stone, brown on mud, dirt and wood (`SPRINT_DUST` in
+    `game/sprint.js`, by the footstep sound's ground). Away from the Wheel,
+    the dirt's;
+  - **another player's** in the dirt's colour. Only your own client knows
+    the ground under your own boots.
+- **A push-off.** A sprint's first stride plays a short rush of air and a
+  bigger puff (7 motes against a footfall's 4). The sound is the special
+  attack's swipe, slowed a touch and quieter, under the footsteps that follow
+  (`BT_AUDIO.sprintPush`). It is a recording already in the game.
+
+### How the others know
+
+- **The server says who sprints.** The tick's player carries **`spr: 1`**
+  while the server paid that player a sprint step in the last 600 ms
+  (`SPRINT.WIRE_MS`, `_sprintWire` in `server/src/sprint.js`).
+  - It is never the client's own word. A marked move the server did not pay
+    for (no stamina, sprint switched off) says nothing.
+  - 600 ms covers a slow phone's moves, which can arrive ~400 ms apart. Without
+    that margin, a peer's legs would flick between paces at every gap.
+  - **Walking, the key is absent**, so a walking player's data is byte for
+    byte what it was. A client reads "absent" as walking, which is also what
+    an old server's data means. No caps flag is needed in either deploy order:
+    an old client ignores the key, and a new client against an old server
+    sees everyone walk, as before.
+- **`spr`, not `sp`.** The move message's sprint mark is `sp: 1`
+  (v2.3.3006). But in a player's DATA, `sp` is the **shirt pattern**: on
+  `join`, the `track` relay and `state_sync`'s players. A peer update read
+  through `peerCosmetics.js` would take a 1 for a pattern. So the tick uses
+  its own key.
+- The client keeps it as `other._sp` (`wsClient.js`). The renderer plays that
+  peer's jog loop `SPRINT_MULT` quicker (`_updateOtherPlayers`).
+
+### A footfall stepped over still counts
+
+- Footsteps (and now the dust) fire on each direction's **foot-plant
+  frames**. Until now they fired only when the drawn frame **landed** on
+  one.
+  - At 60 frames a second that is every plant, because the jog moves at most
+    one frame a draw.
+  - A page drawing a few frames a second steps over most of them. The test
+    machine draws ~4, and the runner's own dust counted **0**.
+  - A busy phone does the same, and so does a sprint's quicker stride.
+- Now the renderer walks every frame passed since the frame last changed, the
+  way the loop runs (backward when you backpedal), and counts a plant in
+  any of them (`_jogPlantCrossed` in `entityRenderer.js`).
+  - This only applies when that change was less than one loop ago. A longer
+    gap is a pause or a hidden tab, and only the frame landed on counts, as
+    before.
+  - At one frame a draw it is exactly the old test.
+
+### Tests
+
+- **`server/test/sprint.test.mjs` §10** (9 checks):
+  - the flag's 600 ms;
+  - sprinting the server says so, and 600 ms after the last paid step it no
+    longer does;
+  - an unpaid marked move says nothing;
+  - **the real tick to a second player**: `spr: 1` while sprinting, with no
+    `sp` key; walking, no `spr` either;
+  - the client's push-off fires on a sprint's first moving frame and only
+    then;
+  - dust is the ground's colour, thrown back against the run, and an unknown
+    ground's is the dirt's.
+- **`mp-sprintpeer`** (new, 6 checks). Two real players against a real
+  server, in the Wheel's Brotown:
+  - the runner's first stride pushes off;
+  - every footfall of the sprint kicks up dust (12 puffs in ~2.5 s at the
+    test machine's few frames a second);
+  - the watcher's client hears `spr` and plays the runner's legs **1.33x**
+    quicker (677 ms against 900), with dust at their feet;
+  - walking again, the runner's copy walks too (900 ms);
+  - no page errors.
+  - Picture: `tools/qa/mp/out/sprintpeer-watcher.png`.
+- **`mp-sprint`** still passes, 23/23.
+
 ## Not done (could come next)
 
-- **Other players' legs** play at the walking pace when they sprint. They
-  cover the ground faster, so they look a little smooth-footed. Telling peers
-  would need a field on the move relay.
-- **No sound or dust** at the feet. Any sound would come from recordings
-  already in the game.
 - **Stamina use is shared.** The sprint and the abilities spend the same bar,
   so a long sprint before a fight leaves less for Shield Bash and Whirlwind.
   That is by design, but it is the first thing to tune if it feels harsh.

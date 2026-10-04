@@ -159,6 +159,7 @@ const CAP_GATES = [
   'wheelmonsters' /* v2.3.2978: lower case, a kill switch */,
   'sprint' /* v2.3.3006: lower case, a kill switch */,
   'wheelnodes' /* v2.3.3012: lower case, a kill switch */,
+  'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -188,6 +189,7 @@ const CAP_NOTES = {
   wheelmonsters: 'monsters in the Wheel (?trial=wheel): each land\'s own at the inner end of its spoke (v2.3.2978; without it: the Wheel has none)',
   sprint: 'the sprint button right of the movement stick (and Shift): a third faster while your stamina lasts (v2.3.3006; without it: no button, everyone walks)',
   wheelnodes: 'resources in the Wheel: copper, pine and fish round town, iron and softwood at levels 1-10, black steel and hardwood at 11-20 (v2.3.3012; without it: nothing to gather there)',
+  wheeldungeons: 'dungeons in the Wheel: the Great Cave, the Foundry Dome and the Buried City open at their landmarks (v2.3.3016; without it: no mouths, no Enter button)',
 };
 
 export const DevPanel = ({ onClose }) => {

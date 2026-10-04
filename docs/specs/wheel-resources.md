@@ -10,7 +10,7 @@ areas showing fish swimming around in the water"*.
 
 Since the Wheel became the world (v2.3.2990) there was nothing to gather in
 it, so Mayor Bro's two trade quests, *Learn a Trade* and *Rock Bottom*, could
-not be finished. Now the Wheel grows **140 resource nodes** in three bands:
+not be finished. Now the Wheel grows **142 resource nodes** (140 until v2.3.3013, below) in three bands:
 
 | Where | Levels | Gathering tier | Ore | Wood | Fish |
 |---|---|---|---|---|---|
@@ -139,6 +139,27 @@ For each area (the commons, then each land) and each band:
   of the 32 left found every pair of boots dry. It cost the Electric
   Foundry its levels 1–10 spot.
 
+- **v2.3.3013: clear of the next stretches' monsters too.** Every land's
+  levels 6–20 got monsters of their own the same day (docs/specs/
+  wheel-monsters.md "Past level 5"), so a node keeps its 300 px from those
+  places as well (`monsterPts` in the bake takes each land's `deeper`
+  places). Before, 24 nodes stood inside that distance of one.
+  - The bake places nodes one after another, so moving those moved 84 of
+    the 140. The count per land, kind and tier is unchanged, except that the
+    Water Caves and the Mist Marsh each gained a levels 1–10 fishing spot:
+    **142** in all, 34 of them fishing spots.
+  - The seat survey is a scenario now, **`mp-wheelseats`**. It walks to every
+    fishing spot on a phone and reads the ground as drawn. All 34 pass: every
+    spot and its school's middle are in water, and every seat is open land
+    with the angler's boots dry and fewer than four of a swimmer's five looks
+    wet, so a seated angler stays out of the water.
+  - It also prints where the drawn shore brushes a seat's edge or a school's
+    rim. Two commons spots, unchanged since v2.3.3012, show it:
+    `wn-commons-19`'s seat has two of its five looks on water (the boots
+    themselves dry), and one rim point of `wn-commons-12`'s school is on the
+    bank. That is a look, not a fault, and it is reported rather than
+    asserted.
+
   The first bake asked for a perfectly straight five-row north–south shore,
   which wandering or east–west coasts never have. The Wind Dunes, the Storm
   Peaks and the Verdant Wilds had no spot at all. Spots are in fresh water in
@@ -218,7 +239,7 @@ do.
     a strike from another zone is refused;
   - the wire carries `home` only in the Wheel; `caps.wheelnodes`; the kill
     switch.
-- `mp-wheelnodes` (phone, real worker), 30 assertions:
+- `mp-wheelnodes` (phone, real worker), 29-30 assertions:
   - none drawn without tools, and none marked on the minimap;
   - the road goes to the nearest fishing spot, then to a tree;
   - six minnows swim where the ground is drawn as water, and the seat is dry
@@ -236,6 +257,21 @@ do.
   - the nodes drop at the flip to town;
   - no page errors.
   - Pictures: `wheelnodes-{fish,fish-close,minimap,blacksteel,iron,iron-close}.png`.
+  - v2.3.3016: its long walks could stall, on main as well. The walker
+    checks the worker's idea of where it stands every four hops and steps
+    back to it when they differ; on this box's slow frames the last hop had
+    often not reached the worker yet, so the walker stepped back, the worker
+    then took the hop, and the two chased each other 200 px each way. After
+    two minutes without a tap or a key the page logged the angler out as
+    away, and the minnow was never paid. Now the walker steps back only to a
+    place the worker still holds a beat later, and presses Control (which
+    does nothing in the game) every 20 s, as `mp-wheelseats` does. 29
+    assertions on the re-baked places: the "softwood tree near the iron vein"
+    check runs only when one is in view there.
+- `mp-wheelseats` (v2.3.3013, phone, real worker): every one of the 34 fishing
+  spots, walked to: the spot and its school's middle in drawn water, the seat
+  open land with the boots dry and fewer than four looks wet; where the shore
+  brushes an edge, printed.
 - `test-world-core` checks the bake is current; `mp-questline` (CI's
   "playable") still passes in the Wheel.
 

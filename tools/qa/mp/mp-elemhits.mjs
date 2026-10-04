@@ -23,6 +23,19 @@
  *      snap-back), a blue slime holds you.
  *   C. No page errors.
  * Pictures in tools/qa/mp/out/elemhits-*.png.
+ *
+ * v2.3.3014, the other four ("stone stuns briefly; storm shocks nearby
+ * players; water slows stamina refill; venom poisons over time" -- the owner:
+ * "Yes continue working on those items"):
+ *   A. the daze stops your walk, your roll and your swing ("Dazed!"), then
+ *      lets go; a storm's crackle on you, and its arc from someone near you
+ *      drawn from them, with no flinch and its own crackle; a poison's tick
+ *      with the venom icon and no flinch; the soak's, the daze's and the
+ *      poison's chips; the four icons on their numbers; the four looks;
+ *   B. a rock monster dazes you, a Storm Peaks slime crackles on you, a
+ *      fishman soaks you -- and the worker refills your stamina at under 60%
+ *      of its dry pace while you are -- and a wisp poisons you, its ticks
+ *      coming with the venom icon.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -67,6 +80,7 @@ const elemLog = (P) => P.page.evaluate(() => (window.__btElemLog || []).slice())
 const clearStatuses = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   S._chillUntil = 0; S._stuckUntil = 0; S._burnUntil = 0; S._gust = null; S._gustAt = 0;
+  S._dazeUntil = 0; S._shockUntil = 0; S._shockFrom = null; S._soakUntil = 0; S._poisonUntil = 0;   /* v2.3.3014 */
 });
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -217,6 +231,61 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`burn: a tick's number carries the flame (${(tick.icons['elem-flame'] || 0) - (before.icons['elem-flame'] || 0)} drawn), with no flinch and no shove of the camera, and sizzles (${tick.sound})`,
     (tick.icons['elem-flame'] || 0) >= (before.icons['elem-flame'] || 0) + 2 && !tick.flash && !tick.punch && tick.sound === 'burnTick', tick);
 
+  /* ── v2.3.3014: the other four, through the same dispatcher ── */
+  /* 4b. the daze: no walk, no roll, no swing -- "Dazed!" -- then free */
+  await clearStatuses(P);
+  const dz = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    window.__btDispatch({ type: 'monster_attack', payload: { monsterId: 'qa-elem', targetId: S.myId, dmg: 4, dmgTaken: 4, zone: S.currentZone,
+      attackerX: S.player.x + 24, attackerY: S.player.y, ability: 'qa', elem: 'stone', st: 'daze', stMs: 4000 } });
+    const st0 = S.rpg ? S.rpg.stamina : null;
+    const pops0 = (S.dmgNumbers || []).filter((d) => d.text === 'Dazed!').length;
+    S._dazeNoteAt = 0;
+    window._gameFns.contextualDodge(0);
+    const popsRoll = (S.dmgNumbers || []).filter((d) => d.text === 'Dazed!').length;
+    S._dazeNoteAt = 0;
+    const sw0 = S.swingTimer;
+    window._gameFns.swingAttack();
+    const popsSwing = (S.dmgNumbers || []).filter((d) => d.text === 'Dazed!').length;
+    return { left: (S._dazeUntil || 0) - Date.now(), rolled: !!S._dodgeRoll, swung: S.swingTimer !== sw0,
+      stamina: [st0, S.rpg ? S.rpg.stamina : null], pops: [pops0, popsRoll, popsSwing] };
+  });
+  const dHeld = await walk(P, 500, 1, 0);
+  await H.waitFor(P, (S) => (S._dazeUntil || 0) - Date.now(), (v) => v < 0, { timeout: 8000, label: 'the daze to end' });
+  const dFree = await walk(P, 500, -1, 0);
+  rec.ok(`daze: no walk while it lasts (${Math.round(dHeld.d)} px in half a second), then free (${Math.round(dFree.d)} px)`,
+    dz.left > 0 && dHeld.d < 1 && dFree.d > 10, { dz, dHeld, dFree });
+  rec.ok('daze: ...no roll and no swing either: each says "Dazed!" and spends nothing',
+    !dz.rolled && !dz.swung && dz.pops[1] === dz.pops[0] + 1 && dz.pops[2] === dz.pops[1] + 1 && dz.stamina[0] === dz.stamina[1], dz);
+  await H.hopTo(P, home0.x, home0.y, { step: 60, gap: 260, tries: 10 });
+
+  /* 4c. the storm: its crackle on you (a blow), and an arc off someone near
+     you (a tick: no flinch), drawn from them */
+  await clearStatuses(P);
+  const sk = await hitMe(P, { elem: 'storm', st: 'shock', stMs: 2000 });
+  const sk1 = await H.readState(P, (S) => ({ until: S._shockUntil || 0, from: S._shockFrom || null }));
+  await P.page.evaluate(() => { const S = window._gameState.current; S._hitFlash = 0; S._camPunch = null; });
+  const fromX = await H.readState(P, (S) => S.player.x + 110);
+  await hitMe(P, { ability: 'shock', elem: 'storm', st: 'shock', stMs: 2000, dmg: 3, dmgTaken: 3, attackerX: fromX });
+  await P.page.waitForTimeout(200);
+  const arc = await H.readState(P, (S) => ({ flash: S._hitFlash || 0, punch: S._camPunch ? S._camPunch.ts : 0, from: S._shockFrom || null,
+    sound: window.BT_AUDIO && window.BT_AUDIO._lastElemSound, drawn: Object.assign({}, window.__btElemFxDrawn || {}) }));
+  rec.ok(`shock: the crackle on you when it struck you (no arc to draw: it started with you)`, sk1.until > sk.now + 1500 && !sk1.from, sk1);
+  rec.ok(`shock: an arc off someone near you is drawn from where they stand (${arc.from && Math.round(arc.from.x - fromX)} px off), with no flinch and no shove of the camera, and crackles (${arc.sound})`,
+    !!arc.from && Math.abs(arc.from.x - fromX) < 1 && !arc.flash && !arc.punch && arc.sound === 'shockTick' && (arc.drawn.arc || 0) > 0, arc);
+
+  /* 4d. the venom: a blow that poisons, then a tick with the venom icon */
+  await clearStatuses(P);
+  const pv0 = await H.readState(P, (S) => ({ icons: Object.assign({}, window.__btPopupIconsDrawn || {}) }));
+  const pz = await hitMe(P, { elem: 'venom', st: 'poison', stMs: 5000 });
+  await P.page.evaluate(() => { const S = window._gameState.current; S._hitFlash = 0; S._camPunch = null; });
+  await hitMe(P, { ability: 'poison', elem: 'venom', dmg: 2, dmgTaken: 2 });
+  await P.page.waitForTimeout(250);
+  const ptk = await H.readState(P, (S) => ({ flash: S._hitFlash || 0, punch: S._camPunch ? S._camPunch.ts : 0, until: S._poisonUntil || 0,
+    sound: window.BT_AUDIO && window.BT_AUDIO._lastElemSound, icons: Object.assign({}, window.__btPopupIconsDrawn || {}) }));
+  rec.ok(`poison: the blow poisons you, and a tick's number carries the venom (${(ptk.icons['elem-venom'] || 0) - (pv0.icons['elem-venom'] || 0)} drawn), with no flinch, bubbling (${ptk.sound})`,
+    pz.now && ptk.until > pz.now + 4000 && (ptk.icons['elem-venom'] || 0) >= (pv0.icons['elem-venom'] || 0) + 2 && !ptk.flash && !ptk.punch && ptk.sound === 'poisonTick', ptk);
+
   /* 5. every element's icon on its number */
   await clearStatuses(P);
   const i0 = await icons(P);
@@ -226,28 +295,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(120);
   await hitMe(P, { elem: 'flora' });
   await P.page.waitForTimeout(120);
+  for (const e of ['stone', 'storm', 'water', 'venom']) {   /* v2.3.3014 */
+    await hitMe(P, { elem: e });
+    await P.page.waitForTimeout(120);
+  }
   await hitMe(P, {});
   await P.page.waitForTimeout(250);
   const i1 = await icons(P);
   const more = (k) => (i1[k] || 0) - (i0[k] || 0);
   rec.ok(`icons: the snowflake (${more('elem-frost')}), the wind (${more('elem-wind')}) and the slime (${more('slime')}) on their numbers, the heart on a plain one (${more('heart')})`,
     more('elem-frost') >= 1 && more('elem-wind') >= 1 && more('slime') >= 1 && more('heart') >= 1, { i0, i1 });
+  rec.ok(`icons: ...and the stone (${more('elem-stone')}), the storm (${more('elem-storm')}), the water (${more('elem-water')}) and the venom (${more('elem-venom')}) on theirs (v2.3.3014)`,
+    ['elem-stone', 'elem-storm', 'elem-water', 'elem-venom'].every((k) => more(k) >= 1), { i0, i1 });
 
   /* 6. the chips */
   await clearStatuses(P);
   await hitMe(P, { elem: 'frost', st: 'chill', stMs: 5000 });
   await hitMe(P, { elem: 'flame', st: 'burn', stMs: 5000 });
   await hitMe(P, { elem: 'flora', st: 'stuck', stMs: 5000 });
+  /* v2.3.3014 */
+  await hitMe(P, { elem: 'stone', st: 'daze', stMs: 5000 });
+  await hitMe(P, { elem: 'water', st: 'soak', stMs: 5000 });
+  await hitMe(P, { elem: 'venom', st: 'poison', stMs: 5000 });
   /* any player_state re-renders the HUD; nudge one */
   await walk(P, 120, 0, 1);
   await P.page.waitForTimeout(400);
-  const chips = await P.page.evaluate(() => Array.from(document.querySelectorAll('img')).filter((im) => /elem-frost|elem-flame|slime-remnants/.test(im.getAttribute('src') || '')).map((im) => {
+  const chips = await P.page.evaluate(() => Array.from(document.querySelectorAll('img')).filter((im) => /elem-frost|elem-flame|slime-remnants|elem-stone|elem-water|elem-venom/.test(im.getAttribute('src') || '')).map((im) => {
     const r = im.getBoundingClientRect();
     return { alt: im.alt, w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y), visible: r.width > 0 && r.height > 0 };
   }));
   await shot(P, 'a6-all');
   rec.ok(`chips: the chill, the burn and the hold each show in the HUD with its icon (${chips.map((c) => c.alt).join(', ')})`,
     ['Chilled', 'Burning', 'Stuck'].every((a) => chips.some((c) => c.alt === a && c.visible)), chips);
+  rec.ok('chips: ...and the daze, the soak and the poison (v2.3.3014)',
+    ['Dazed', 'Soaked', 'Poisoned'].every((a) => chips.some((c) => c.alt === a && c.visible)), chips);
   await clearStatuses(P);
   await H.devOp(wsPort, 'vitals', myId, { heal: true });
 
@@ -290,10 +371,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(500);
     await shot(P, 'look-gust');
     await P.page.evaluate(() => clearInterval(window.__qaGustHold));
+    /* v2.3.3014: the other four */
+    await look('daze', { elem: 'stone', st: 'daze', stMs: 4000 }, 400);
+    await look('shock', { elem: 'storm', st: 'shock', stMs: 4000 }, 300);
+    await look('soak', { elem: 'water', st: 'soak', stMs: 4000 }, 700);
+    await look('poison', { elem: 'venom', st: 'poison', stMs: 4000 }, 700);
     await clearStatuses(P);
     const drawn = await P.page.evaluate(() => Object.assign({}, window.__btElemFxDrawn || {}));
     rec.ok(`looks: each is drawn round you (frames: chill ${drawn.chill || 0}, stuck ${drawn.stuck || 0}, burn ${drawn.burn || 0}, gust ${drawn.gust || 0}) -- pictures look-*.png`,
       drawn.chill > 0 && drawn.stuck > 0 && drawn.burn > 0 && drawn.gust > 0, drawn);
+    rec.ok(`looks: ...and the daze's stars, the storm's crackle, the soak's drips, the poison's bubbles (frames: ${drawn.daze || 0}, ${drawn.shock || 0}, ${drawn.soak || 0}, ${drawn.poison || 0})`,
+      drawn.daze > 0 && drawn.shock > 0 && drawn.soak > 0 && drawn.poison > 0, drawn);
   }
 
   /* ── B. the real thing ── */
@@ -308,6 +396,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { home: 'ember', st: 'burn', name: 'a fire goblin' },
     { home: 'frost', st: 'chill', name: 'a snowman' },
     { home: 'verdant', st: 'stuck', name: 'a blue slime' },
+    /* v2.3.3014: on round the wheel, south-west to east */
+    { home: 'mist', st: 'poison', name: 'a wisp' },
+    { home: 'tidal', st: 'soak', name: 'a fishman' },
+    { home: 'thunder', st: 'shock', name: 'a Storm Peaks slime' },
+    { home: 'hollows', st: 'daze', name: 'a rock monster' },
   ];
   const CENTRE = [21504, 21504];
   const settle = async () => {
@@ -337,7 +430,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return m ? { id: m.id, x: m.x, y: m.y } : null;
     }, L.home);
     if (!target) { rec.ok(`real: ${L.name} to meet`, false, { home: L.home }); continue; }
-    const n0 = (await elemLog(P)).length;
+    /* v2.3.3014: what came in since now, by the time on each entry -- the
+       log keeps its last 60, so by the fifth land an index into it no longer
+       moves (it read the Tidal Coast's hits as none) */
+    const n0 = await P.page.evaluate(() => Date.now());
+    const since = (log) => log.filter((e) => e.at >= n0);
     await H.hopTo(P, target.x, target.y + 36, { step: 100, gap: 260, tries: 90 });
     let got = null;
     for (let i = 0; i < 80 && !got; i++) {
@@ -348,7 +445,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return x ? { x: x.x, y: x.y, alive: x.alive !== false && x.hp > 0 } : null;
       }, target.id);
       if (m && m.alive && i % 4 === 3) await H.hopTo(P, m.x, m.y + 36, { step: 60, gap: 200, tries: 4 });
-      const log = (await elemLog(P)).slice(n0);
+      const log = since(await elemLog(P));
       got = log.find((e) => e.st === L.st && String(e.monsterId).indexOf('wm-' + L.home) === 0) || null;
       if (!got) await P.page.waitForTimeout(250);
     }
@@ -372,10 +469,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
       let ticks = [];
       for (let i = 0; i < 16 && ticks.length < 1; i++) {
         await P.page.waitForTimeout(250);
-        ticks = (await elemLog(P)).slice(n0).filter((e) => e.ability === 'burn' && e.elem === 'flame');
+        ticks = since(await elemLog(P)).filter((e) => e.ability === 'burn' && e.elem === 'flame');
       }
       rec.ok(`real: ${L.name} sets you burning (${got.stMs} ms), and its ticks come with the flame (${ticks.length} so far, ${ticks.map((t) => t.dmgTaken).join('/')} hp)`,
         got.stMs === 3000 && ticks.length >= 1 && ticks.every((t) => t.dmgTaken > 0), { got, ticks });
+    } else if (got && L.st === 'poison') {
+      /* v2.3.3014: its ticks, as the burn's */
+      await shot(P, 'b-' + L.st);
+      let ticks = [];
+      for (let i = 0; i < 16 && ticks.length < 1; i++) {
+        await P.page.waitForTimeout(250);
+        ticks = since(await elemLog(P)).filter((e) => e.ability === 'poison' && e.elem === 'venom');
+      }
+      rec.ok(`real: ${L.name} poisons you (${got.stMs} ms), and its ticks come with the venom (${ticks.length} so far)`,
+        got.stMs === 5000 && ticks.length >= 1 && ticks.every((t) => typeof t.dmgTaken === 'number'), { got, ticks });
+    } else if (got && L.st === 'soak') {
+      /* v2.3.3014: soaked, the worker refills your stamina slower -- read off
+         its own echoes, from 20 (the dev op heals you too): first where you
+         stand, the fishmen's next hits keeping you soaked; then dry, out of
+         their reach on the commons' safe ground once the soak has run out */
+      await shot(P, 'b-' + L.st);
+      const refill = async () => {
+        await H.devOp(wsPort, 'vitals', myId, { stamina: 20 });
+        await P.page.waitForTimeout(400);
+        const a = await H.readState(P, (S) => (S.rpg ? S.rpg.stamina : null));
+        await P.page.waitForTimeout(2000);
+        const b = await H.readState(P, (S) => ({ st: S.rpg ? S.rpg.stamina : null, wet: (S._soakUntil || 0) > Date.now() }));
+        return { a, b: b.st, wet: b.wet, gain: b.st - a };
+      };
+      const soaked = await refill();
+      const here0 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+      const ux0 = here0.x - CENTRE[0], uy0 = here0.y - CENTRE[1], ul0 = Math.hypot(ux0, uy0) || 1;
+      await H.hopTo(P, CENTRE[0] + ux0 / ul0 * 2700, CENTRE[1] + uy0 / ul0 * 2700, { step: 100, gap: 260, tries: 20 });
+      const wet = await H.readState(P, (S) => (S._soakUntil || 0) - Date.now());
+      await P.page.waitForTimeout(Math.max(0, wet + 300));
+      const dry = await refill();
+      rec.ok(`real: ${L.name} soaks you (${got.stMs} ms), and soaked the worker refills your stamina slower (+${soaked.gain} in 2 s soaked, +${dry.gain} dry)`,
+        got.stMs === 4000 && soaked.wet && !dry.wet && dry.gain > 0 && soaked.gain >= 0 && soaked.gain < dry.gain * 0.6, { got, soaked, dry });
+    } else if (got && (L.st === 'shock' || L.st === 'daze')) {
+      /* v2.3.3014: the crackle (alone, nobody to arc to) and the daze */
+      const now2 = await H.readState(P, (S) => ({ shock: S._shockUntil || 0, daze: S._dazeUntil || 0, from: S._shockFrom || null, t: Date.now() }));
+      await shot(P, 'b-' + L.st);
+      const until = L.st === 'shock' ? now2.shock : now2.daze;
+      rec.ok(`real: ${L.name}'s hit ${L.st === 'shock' ? 'crackles on you (alone: nobody near to arc to)' : 'dazes you'} (${got.stMs} ms, the ${got.elem} icon)`,
+        got.stMs === (L.st === 'shock' ? 450 : 500) && until >= got.at + got.stMs - 50 && (L.st !== 'shock' || !now2.from), { got, now2 });
     } else if (got) {
       const now = await H.readState(P, (S) => ({ chill: S._chillUntil || 0, stuck: S._stuckUntil || 0, t: Date.now() }));
       await shot(P, 'b-' + L.st);
@@ -383,7 +520,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`real: ${L.name}'s hit ${L.st === 'chill' ? 'chills you' : 'holds you in place'} (${got.stMs} ms, the ${got.elem} icon)`,
         got.stMs === (L.st === 'chill' ? 1000 : 700) && until >= got.at + got.stMs - 50, { got, now });
     } else {
-      const log = (await elemLog(P)).slice(n0);
+      const log = since(await elemLog(P));
       const me = await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y), hp: S.rpg && S.rpg.hp, zone: S.currentZone }));
       const sv = await H.serverPlayer(wsPort, myId).catch((e) => ({ err: String(e) }));
       const net = await P.page.evaluate(() => {

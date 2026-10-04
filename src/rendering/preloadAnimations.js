@@ -206,7 +206,9 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
   const drop = [];
   for (const key of going) if (!keeping.has(key)) drop.push(key);
   const tasks = [];
-  if (drop.length) tasks.push(Promise.resolve(unloadVariantSprites(drop)).catch(() => []));
+  /* v2.3.3016: and `keeping`, so a module the destination's looks share with
+     a dropped one stays (unloadVariantSprites) */
+  if (drop.length) tasks.push(Promise.resolve(unloadVariantSprites(drop, keeping)).catch(() => []));
   /* v2.3.2978: the snowman's sheets go with any zone he stands in (the Wheel's
      frost spoke too), and stay for one he also stands in */
   const _snowIn = (z) => z === 'frost' || (zoneHomes(z) || []).includes('frost');

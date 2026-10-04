@@ -1,4 +1,4 @@
-# The Wheel's monsters — each land's at its inner end (v2.3.2978)
+# The Wheel's monsters — each land's at its inner end (v2.3.2978), and past level 5 (v2.3.3013)
 
 Owner, 2026-10-02: "can you place the monsters where they belong in their
 zones (on the ends closest to the central map)?"
@@ -229,10 +229,87 @@ Owner, 2026-10-02: *"Yes only load as you walk towards it."*
   still swings with this box's load (42 before this change at v2.3.2983, 59
   at v2.3.2985, 43 after), as noted above.
 
+## Past level 5 (v2.3.3013)
+
+Asked *"monsters past level 5 ... levels 6–20 in all eight lands (up to the
+first pass)"*, the owner, 2026-10-03: *"Yes continue working on those items."*
+
+Each land's first stage, "the thaw line" on Frost Ridge and so on, runs levels
+1–20, one **stretch** (a tier: one zone of walking, five levels) at a time,
+and the top bar names the stretch you stand in ("Frost Ridge / the thaw line ·
+Lv 11–15"). Only the first stretch had monsters. Now the next three do too.
+
+- **Who:** each land's own spawn list again, per stretch: the same
+  archetypes, counts, skins and element (six snowmen a stretch on Frost Ridge,
+  four wisps and two lurkers in the Mire, ...). 8 lands × 3 stretches × 6 =
+  **144 more, 192 in all**. Ids `wm-<home>-t<tier>-<k>`. The first stretch's
+  48 are exactly as they were (places, levels, ids) and first in the list.
+- **Their levels:** the stretch's own: 6–10, 11–15, 16–20, by how far out a
+  monster stands in its stretch's band (inner end lowest), as the first
+  stretch's go by depth. The first stretch keeps levels 1–2, the owner's
+  directive for starting zones (server/src/data.js, v2.3.1160).
+- **Their stats** come from the one copy of the math: `_makeZoneMonster` is
+  given the level (`atLevel`, its new last argument; omitted everywhere else,
+  so every other monster is built exactly as before). A level-20 snowman: 143
+  HP (67 at level 1), hits for 31 (14), pays 24 XP (10) and more gold, and the
+  weapon-drop roll's own cubic level curve (0.074% against 0.05%). The level
+  also sets the **edge** (v2.3.2680): your Dodge, Defense and Resist fade to
+  nothing against a monster five levels above you, and your Power against it.
+- **Rewards:** the home's, as for the first stretch (`_rewardZone`): its
+  shard, its weapon roll, quest kill credit.
+- **Where they stand:** baked like the first stretch's
+  (`tools/world/bake-wheel-spawns.mjs`, `SPAWN_RULES.deep`), into
+  `WHEEL_SPAWNS[home].deeper`: `{ tier, levels, band, points }` per stretch,
+  12 places each, 6 used. A place is open ground of its land **on that very
+  tier**, within 420 px of the axis, `clearTier` 120 px from land of any other
+  tier (the tiers' edges wander, tierWarp), so a monster and its 180 px wander
+  stay among the levels the top bar says there; `clearPlace` 360 px in a
+  straight line from a camp's plot (the waystation at level 20); and the first
+  stretch's clearances from water, cliffs, lava, roads and objects.
+- **Kill switch:** `wheeldeep: false` in liveflags leaves a Wheel spawned after
+  it with the first stretch's 48 alone. `wheelmonsters: false` still empties
+  it.
+- **The client** shows such a monster's own level. `applyZoneVariant`
+  (monsterVariants.js) clamped every monster's level to its zone's range, and
+  for a Wheel monster that is its home's 1–2, so a level-18 snowman read
+  "Lv 2" on a calm plate. A monster carrying `home` is no longer clamped. The
+  renderer's probe (`__btMonsterSprite(id).plate`) reports the plate's level
+  and band.
+- **Deploy order:** no new cap. A new client against an old worker sees the 48
+  as before. An old client against a new worker sees all 192, the deeper ones
+  wearing "Lv 2" (the clamp) until it reloads: cosmetic, since the worker
+  decides every hit.
+
+### What it costs
+
+- **The worker's tick.** The monster-to-monster separation pass checked every
+  pair: with 192 that is 18,336 pairs a tick, and it was 1.0 of the 1.27 ms the
+  whole monster tick took with them (measured, 45 ticks a second). In the
+  Wheel it is now a sweep along x (`_wheelSeparate`, wheelzone.js): the same
+  push for every pair within 22 px, found by sorting, never more than the few
+  neighbours within 22 px in x. The whole tick with 192: 0.26 ms (0.19 ms with
+  the old 48 and the old pass). Every other zone runs the old loop unchanged.
+  Without the pass the rest of the tick is about 1 µs a monster, so the 768 a
+  full spoke would hold (levels 1–80) would cost about 1.1 ms a tick; a
+  "sleep when no player is near" rule is the next step if that ever matters.
+- **The way in.** The Wheel's `zone_state` carries every monster, now 192:
+  43 KB once, on the way in or after a respawn (about 11 KB before). The ticks
+  after it still carry only the monsters within 2,400 px.
+- **The phone.** Nothing new to load: a stretch's monsters wear their land's
+  looks, which load as you walk toward them (below). From Brotown's square all
+  192 are far off screen and none is drawn.
+- **The resources keep clear of them.** The Wheel's resources (v2.3.3012,
+  docs/specs/wheel-resources.md) stand at least 300 px from every monster
+  place. Their bake took only the first stretch's places until the two came
+  together; it takes each land's `deeper` ones too now, which moved 84 of the
+  nodes and added two fishing spots (142 in all).
+
 ## Not in this round
 
-- Monsters deeper down the spokes (levels 6–80): today's zones have only their
-  first five levels' worth of monsters.
+- Monsters past level 20 (levels 21–80, the land's next three stages): the
+  same bake and spawn, one more entry in `SPAWN_RULES.deep.tiers` each; first
+  the tick's cost above, and the owner's word on new kinds of monster deeper
+  in (today every stretch is its land's own one or two kinds).
 - Fishing from the Wheel's water (planned: its own round, after this).
 - PvP, resource nodes, dungeons in the Wheel.
 
@@ -251,7 +328,21 @@ Owner, 2026-10-02: *"Yes only load as you walk towards it."*
   stage, 150 px apart, inside nothing that stands there (the game's own
   footprints); the safe circle holds all of the commons and the town and stops
   at least 100 px short of every place.
-- `tools/qa/mp/mp-wheelmonsters.mjs` (10, phone viewport, real worker): the
+- `tools/qa/mp/mp-wheelmonsters.mjs` (13, phone viewport, real worker): the
   way in, all 48 with their homes and skins, at the inner ends, drawn from
   live art at Frost Ridge and the Flame Fields, a kill that pays, the way
   home with the list cleared and the art let go, no page or render errors.
+  Since v2.3.3013 its "48" is the first stretch's, of 192.
+- **v2.3.3013:** the `wheelzone` suite's §1b (the deeper stretches: 144, per
+  land and stretch the home's spawn list, at the stretch's levels by depth,
+  both ends of every stretch, the stretches outward in order, every stat what
+  the home zone builds at that level, the home's shard, the weapon roll's
+  level curve), §4b (`wheeldeep: false`), §3 (192 in the `zone_state`, under
+  64 KB) and §9 (the sweep: the push, what it leaves alone, a knot of 12 opened
+  as the loop opens it, the tick using it); test-world-core's deeper places
+  (on the very tier, `clearTier` inside it, 150 px apart, inside nothing,
+  360 px from a camp, the first stretch untouched); and
+  `tools/qa/mp/mp-wheeldeep.mjs` (7): 192 on the client, the deeper ones at
+  their own levels, the top bar on Frost Ridge's third stretch, its snowmen
+  drawn with plates reading their levels on the danger border, a level-13
+  snowman killed for its 17 XP (a first-stretch one pays 11).

@@ -609,7 +609,14 @@ export function hitShapeOf(archOrType) {
 export function applyZoneVariant(monster, zoneId) {
   if (!monster || !zoneId) return monster;
   const zone = ZONES[zoneId];
-  if (zone && Array.isArray(zone.level) && zone.level.length === 2 && typeof monster.level === 'number') {
+  /* v2.3.3013: ...but never a Wheel monster's (it carries `home`).  It is
+     skinned by its home zone (zoneId here IS that home), and the home's range
+     is the old zone's levels 1-2; the worker sets each Wheel monster's level by
+     the stretch of its land it stands in, 6-20 past the first
+     (server/src/wheelzone.js), and that is the level its stats were built at.
+     Clamped, a level-18 snowman showed "Lv 2" and a calm nameplate. */
+  const fromWheel = typeof monster.home === 'string';
+  if (!fromWheel && zone && Array.isArray(zone.level) && zone.level.length === 2 && typeof monster.level === 'number') {
     const minLv = zone.level[0];
     const maxLv = zone.level[1];
     if (maxLv > 0 && monster.level > maxLv) monster.level = maxLv;

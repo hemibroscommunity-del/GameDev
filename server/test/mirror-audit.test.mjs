@@ -20,6 +20,7 @@
  * The variant-map and speed exemptions are SELF-PRUNING: each asserts
  * the divergence still exists, so when someone closes it server-side
  * the exemption fails loudly and gets deleted instead of rotting.   */
+import { existsSync } from 'node:fs'; /* v2.3.3016: a Wheel dungeon's floor picture is in the game */
 import * as SRV from '../src/data.js';
 import { GameRoom } from '../src/index.js';
 /* v2.3.1734: the prog3 constant mirror the plan already claimed was
@@ -35,6 +36,8 @@ import { GATHER_HITS as SRV_GATHER_HITS } from '../src/gathering.js'; /* v2.3.29
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
 import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC } from '../../src/game/elemHits.js'; /* v2.3.2996 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
+import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
+import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
 import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes } from '../../src/data/gameSystems.js'; /* v2.3.2956 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
@@ -1412,6 +1415,31 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     SRV_SPRINT.MIN_START === CLIENT_SPRINT_MIN_START, { srv: SRV_SPRINT.MIN_START, cli: CLIENT_SPRINT_MIN_START });
   check('sprint: the regen is held off for as long on both sides (REGEN_PAUSE_MS)',
     SRV_SPRINT.REGEN_PAUSE_MS === CLIENT_SPRINT_REGEN_PAUSE, { srv: SRV_SPRINT.REGEN_PAUSE_MS, cli: CLIENT_SPRINT_REGEN_PAUSE });
+}
+
+// ── v2.3.3016: the Wheel's dungeons (server wheeldungeon.js, client
+// data/wheelDungeons.js).  The client offers a mouth only for a land the
+// worker opens -- one more on the client is a button the worker refuses, one
+// fewer a dungeon nobody can reach -- and offers it nearer than the worker's
+// own reach, so a tap at the button's edge is never refused for drift.
+{
+  check('wheel dungeons: the same lands on both sides (WHEEL_DUNGEON.LANDS = WHEEL_DUNGEON_HOMES)',
+    JSON.stringify(Object.keys(SRV_WHEEL_DUNGEON.LANDS).sort()) === JSON.stringify(CLIENT_WHEEL_DUNGEON_HOMES.slice().sort()),
+    { srv: Object.keys(SRV_WHEEL_DUNGEON.LANDS), cli: CLIENT_WHEEL_DUNGEON_HOMES });
+  check('wheel dungeons: the button comes up nearer than the worker\'s reach (DOOR_R < WHEEL_DUNGEON.DOOR_R)',
+    CLIENT_DOOR_R + 40 <= SRV_WHEEL_DUNGEON.DOOR_R, { cli: CLIENT_DOOR_R, srv: SRV_WHEEL_DUNGEON.DOOR_R });
+  check('wheel dungeons: every land opened has a mouth\'s light', CLIENT_WHEEL_DUNGEON_HOMES.every((h) => !!CLIENT_WHEEL_DOOR_LOOK[h]));
+  /* ...and a floor, a ground picture of its land that is in the game */
+  check('wheel dungeons: every land opened has a floor, one of its own ground pictures, in the game',
+    CLIENT_WHEEL_DUNGEON_HOMES.every((h) => {
+      const f = CLIENT_WHEEL_DUNGEON_FLOOR[h];
+      return !!f && typeof f.pic === 'string' && f.pic.indexOf(h + '-') === 0
+        && existsSync(new URL('../../public/world/ground/' + f.pic + '-A.png', import.meta.url));
+    }), CLIENT_WHEEL_DUNGEON_FLOOR);
+  /* the arena the client lays out is the one the worker places monsters in */
+  check('wheel dungeons: the arena\'s size (WHEEL_ARENA = WHEEL_DUNGEON.WIDTH x HEIGHT)',
+    CLIENT_WHEEL_ARENA.W === SRV_WHEEL_DUNGEON.WIDTH && CLIENT_WHEEL_ARENA.H === SRV_WHEEL_DUNGEON.HEIGHT,
+    { cli: CLIENT_WHEEL_ARENA, srv: { W: SRV_WHEEL_DUNGEON.WIDTH, H: SRV_WHEEL_DUNGEON.HEIGHT } });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

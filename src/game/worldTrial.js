@@ -277,6 +277,33 @@ export function chunkWorldSize() {
   return m ? m.worldW / m.cols : BAKED.worldW / 20;
 }
 
+/* ═══ v2.3.3016: ONE TRIP INTO THE WHEEL THAT LANDS ELSEWHERE ═══
+   The Wheel's one way in is town's stairs, and they land you in its town
+   square (WORLDVIEW_ARRIVAL).  Coming back out of a Wheel dungeon the trip is
+   the same -- and lands at the mouth you went in by (game/wheelDungeons.js
+   leaveWheelDungeon): the way in warms the ground and the objects round that
+   point instead (preloadWheel), and the arrival takes it, once
+   (zoneTransitions.js, takeWheelArrival).  A point nobody took within
+   ARRIVE_TTL_MS -- the trip never came: a death in town on the way, or
+   `?nospawn` -- is forgotten, so a later walk down the stairs lands in the
+   square as ever. */
+const ARRIVE_TTL_MS = 60000;
+let _arriveAt = null;
+export function setWheelArrival(p) {
+  _arriveAt = (p && isFinite(p.x) && isFinite(p.y)) ? { x: Number(p.x), y: Number(p.y), t: Date.now() } : null;
+}
+function arriveLive() {
+  if (_arriveAt && Date.now() - _arriveAt.t > ARRIVE_TTL_MS) _arriveAt = null;
+  return _arriveAt;
+}
+/** The arrival this trip lands at, once (null: the town square). */
+export function takeWheelArrival() {
+  const a = arriveLive();
+  _arriveAt = null;
+  return a ? { x: a.x, y: a.y } : null;
+}
+function arrivalPoint() { return arriveLive() || WORLDVIEW_ARRIVAL; }
+
 /* The per-zone gate's half of the trial (preloadAnimations.preloadZoneAssets):
    the manifest, the blurry whole-island underlay, and every piece the first
    screen round the arrival point needs.  Awaited behind the ordinary zone
@@ -333,6 +360,9 @@ async function preloadWheel() {
   const objX = Math.max(WARM_OBJECTS_X, half ? Math.ceil(half.x + WARM_PAD) : 0);
   const objY = Math.max(WARM_OBJECTS_Y, half ? Math.ceil(half.y + WARM_PAD) : 0);
   wheelStats.warm = { x: warmX, y: warmY };   /* QA: the box laid before the overlay lifts */
+  /* v2.3.3016: round where this trip lands -- the town square, or the mouth
+     of the Wheel dungeon you are coming out of (setWheelArrival) */
+  const at = arrivalPoint();
   /* v2.3.2975: and the sprite sheets of the objects round the arrival --
      the town's buildings and props -- so the town is standing when the
      overlay lifts, loading WHILE the worker lays the first screen of ground
@@ -345,10 +375,10 @@ async function preloadWheel() {
       /* ...and Mayor Bro's own copy of his picture: town's is freed a beat
          after you leave town (npcSprites.js loadWheelNpcArt) */
       const ns = await import('../rendering/npcSprites.js');
-      await Promise.all([wheelObjectsOn() ? wo.wheelObjectsWarm(WORLDVIEW_ARRIVAL.x, WORLDVIEW_ARRIVAL.y, objX, objY) : null, ns.loadWheelNpcArt()]);
+      await Promise.all([wheelObjectsOn() ? wo.wheelObjectsWarm(at.x, at.y, objX, objY) : null, ns.loadWheelNpcArt()]);
     } catch (e) { /* no objects: the ground alone, as before */ }
   })();
-  await wheelWarm(WORLDVIEW_ARRIVAL.x, WORLDVIEW_ARRIVAL.y, warmX, warmY);
+  await wheelWarm(at.x, at.y, warmX, warmY);
   await objects;
   await Promise.race([steps, new Promise((r) => setTimeout(r, STEPS_WAIT_MS))]);
   _ready = true;

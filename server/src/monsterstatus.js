@@ -16,11 +16,22 @@
  *   wind   the mummies      GUST   shoved GUST.PX straight away from it
  *   flora  the blue slime   STUCK  held in place for STUCK.MS
  *
- * The other four elements (stone, storm, water, venom) carry nothing yet: the
- * owner's "Etc" is theirs to choose, and an effect nobody asked for is a
- * balance change smuggled in with a feature.  Nor are they named on the wire:
- * only these four are, so an element's icon on a hit always means "this did
- * something".
+ * The other four elements (stone, storm, water, venom) carried nothing at
+ * first: the owner's "Etc" was theirs to choose.  ═══ v2.3.3014: THEY DO NOW ═══
+ * Offered "stone stuns briefly; storm shocks nearby players; water slows
+ * stamina refill; venom poisons over time", the owner: "Yes continue working
+ * on those items" --
+ *
+ *   stone  the rock monsters    DAZE    no walk, swing, roll or shield for DAZE.MS
+ *   storm  the Storm Peaks'     SHOCK   the hit arcs to every other player within
+ *          slimes                       SHOCK.R of you, SHOCK.PCT of it each
+ *   water  the fishmen          SOAK    your stamina refills at SOAK.REGEN_MULT
+ *                                       for SOAK.MS (index.js, the regen tick)
+ *   venom  the wisps, the       POISON  POISON.TICKS ticks of damage, the burn's
+ *          bog lurkers                  machinery, slower and longer
+ *
+ * Still only the elements that do something are named on the wire, so an
+ * element's icon on a hit always means "this did something".
  *
  * WHO OWNS WHAT.  The SERVER decides every status: whether the hit landed
  * (not dodged, not blocked, more than 0 damage -- a graced or shielded hit
@@ -74,6 +85,11 @@ export const ELEM_HITS = Object.freeze({
   flame: 'burn',
   wind: 'gust',
   flora: 'stuck',
+  /* v2.3.3014 */
+  stone: 'daze',
+  storm: 'shock',
+  water: 'soak',
+  venom: 'poison',
 });
 
 /* "slowing down for a second" */
@@ -117,12 +133,66 @@ export const STUCK = Object.freeze({
   IMMUNE_MS: 2000,
 });
 
+/* v2.3.3014: "stone stuns briefly".  Shorter than the slime's hold, and more:
+   no walk, no swing, no roll, no shield (the client's to carry out, as the
+   hold is: src/game/elemHits.js, combatHelpers.dazeRefused) -- stars round
+   your head.  The Hollows' rock monsters come in sixes and hit hard, so the
+   window after it before another is longer than the hold's. */
+export const DAZE = Object.freeze({
+  MS: 500,
+  IMMUNE_MS: 2500,
+});
+
+/* v2.3.3014: "storm shocks nearby players".  A landed hit arcs from you to
+   every other player within R px (the nearest MAX_ARCS of them), PCT of the
+   monster's damage each, priced as elemental (Resist reads it, Dodge does
+   not), never more than MAX_HP_PCT of their max HP -- the burn's no-one-shot
+   rail.  Alone, it is the crackle round you (MS, the look's length); in a
+   crowd it says spread out. */
+export const SHOCK = Object.freeze({
+  R: 150,
+  PCT: 0.5,
+  MAX_HP_PCT: 0.15,
+  MAX_ARCS: 4,
+  MS: 450,
+});
+
+/* v2.3.3014: "water slows stamina refill".  Soaked for MS (each hit starts it
+   again), your stamina refills at REGEN_MULT of its pace -- the sprint, the
+   roll and the shield all draw on it.  The worker's regen tick reads it
+   (_soakRegenMult); the client draws the drips and the chip. */
+export const SOAK = Object.freeze({
+  MS: 4000,
+  REGEN_MULT: 0.4,
+});
+
+/* v2.3.3014: "venom poisons over time".  The burn's machinery (one a player,
+   refreshed by the next hit, never stacked, put out by the same things), but
+   slower and longer: five ticks, a second apart, 12% of the hit each -- the
+   burn's 60% of a hit again, spread over five seconds instead of three. */
+export const POISON = Object.freeze({
+  TICKS: 5,
+  EVERY_MS: 1000,
+  PCT: 0.12,
+  MAX_HP_PCT: 0.08,
+});
+
+/* The two damage-over-time statuses, each in its own Map keyed by player id
+   (client-supplied at join: a Map, never a plain {} -- the '__proto__' rule).
+   `ability` is what its ticks say on the wire (the v2.3.2235 bypass), `elem`
+   their icon. */
+const DOTS = Object.freeze({
+  burn: Object.freeze({ map: '_burns', cfg: BURN, ability: 'burn', elem: 'flame' }),
+  poison: Object.freeze({ map: '_poisons', cfg: POISON, ability: 'poison', elem: 'venom' }),
+});
+
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
 export const monsterStatusMethods = {
   /* The element a monster's hit carries, when it carries one that does
-     something: 'frost' | 'flame' | 'wind' | 'flora', else null.  Server-
-     authored (`m.element`), checked against the table all the same. */
+     something: 'frost' | 'flame' | 'wind' | 'flora' (and since v2.3.3014
+     'stone' | 'storm' | 'water' | 'venom'), else null.  Server-authored
+     (`m.element`), checked against the table all the same. */
   _elemHitOf(m) {
     const e = m && m.element;
     return own(ELEM_HITS, e) ? e : null;
@@ -170,8 +240,86 @@ export const monsterStatusMethods = {
         ps._stuckImmuneUntil = t + STUCK.MS + STUCK.IMMUNE_MS;
         out.st = st; out.stMs = STUCK.MS;
       }
+    } else if (st === 'daze') {
+      /* v2.3.3014: the stun, with its window after (STUCK's rule) */
+      if (!(t < (ps._dazeImmuneUntil || 0))) {
+        ps._dazeUntil = t + DAZE.MS;
+        ps._dazeImmuneUntil = t + DAZE.MS + DAZE.IMMUNE_MS;
+        out.st = st; out.stMs = DAZE.MS;
+      }
+    } else if (st === 'shock') {
+      /* v2.3.3014: the crackle on you, and the arcs to whoever stands near */
+      const n = this._shockArcs(zoneId, m, pid, ps, t);
+      out.st = st; out.stMs = SHOCK.MS;
+      if (n > 0) out.arcs = n;
+    } else if (st === 'soak') {
+      ps._soakUntil = t + SOAK.MS;
+      out.st = st; out.stMs = SOAK.MS;
+    } else if (st === 'poison') {
+      this._igniteDot('poison', zoneId, m, pid, t);
+      out.st = st; out.stMs = POISON.TICKS * POISON.EVERY_MS;
     }
     return out;
+  },
+
+  /* ═══ v2.3.3014: THE STORM'S ARCS ═══
+     From the player a storm monster just struck (`ps`) to every other player
+     standing within SHOCK.R of them -- the nearest SHOCK.MAX_ARCS, ties by id
+     so it is the same on every run.  Not the dead, the dying, the
+     disconnected, a harvester (the v2.3.1704 shield) or anyone on the Wheel's
+     safe ground (no monster damage lands there).  Each takes PCT of the
+     monster's damage, elemental, under the no-one-shot rail, announced as its
+     own monster_attack `ability: 'shock'` from where the struck player stands
+     (attackerX/Y: the arc's start, and the bypass past the client's range
+     filter, as the burn's ticks have it).  Returns how many it reached. */
+  _shockArcs(zoneId, m, pid, ps, now) {
+    if (!ps || typeof ps.x !== 'number' || typeof ps.y !== 'number') return 0;
+    const r2 = SHOCK.R * SHOCK.R;
+    const near = [];
+    for (const oid of Object.keys(this.playerState)) {
+      if (oid === pid) continue;
+      const o = this.playerState[oid];
+      if (!o || o.z !== zoneId || o.dead || o.dying || o.disconnected || !(o.hp > 0)) continue;
+      if (typeof o.x !== 'number' || typeof o.y !== 'number') continue;
+      const dx = o.x - ps.x, dy = o.y - ps.y, d2 = dx * dx + dy * dy;
+      if (d2 > r2) continue;
+      if (zoneId === WHEEL_ZONE && this._wheelSafeAt && this._wheelSafeAt(o.x, o.y)) continue;
+      if (this._extractionShielded && this._extractionShielded(oid, now)) continue;
+      near.push({ oid, o, d2 });
+    }
+    near.sort((a, b) => a.d2 - b.d2 || (a.oid < b.oid ? -1 : a.oid > b.oid ? 1 : 0));
+    let n = 0;
+    for (const { oid, o } of near.slice(0, SHOCK.MAX_ARCS)) {
+      const raw = Math.max(1, Math.min(Math.round((m.dmg || 0) * SHOCK.PCT), Math.floor((o.maxHp || 100) * SHOCK.MAX_HP_PCT)));
+      const res = this._applyDamage(o, raw, false, { elemental: true, attackerLevel: m.level });
+      if (!res.dodged) this._trackMonsterDamage(o, m.id, res.graced ? (res.dmgIntent || 0) : res.dmgTaken);
+      const landed = res.dmgTaken > 0;
+      this.eventBuffer.push({
+        type: 'monster_attack',
+        payload: {
+          monsterId: m.id, targetId: oid, dmg: raw, dmgTaken: res.dmgTaken,
+          dodged: res.dodged, lastStand: res.lastStand || undefined,
+          secondWind: res.secondWind || undefined,
+          zone: zoneId,
+          /* the arc comes from the player it struck first */
+          attackerX: ps.x, attackerY: ps.y,
+          ability: 'shock',
+          elem: 'storm',
+          ...(landed ? { st: 'shock', stMs: SHOCK.MS } : {}),
+        },
+      });
+      this._saveRpgVitals(oid, o);
+      this._queuePlayerStateFlush(oid);
+      if (o.hp <= 0 && !o.dying) this._handlePlayerDeath(o, oid, 'monster:' + m.id);
+      n++;
+    }
+    return n;
+  },
+
+  /* v2.3.3014: the regen tick's stamina multiplier (index.js): SOAK.REGEN_MULT
+     while soaked, else exactly 1. */
+  _soakRegenMult(ps, now) {
+    return ps && ps._soakUntil && now < ps._soakUntil ? SOAK.REGEN_MULT : 1;
   },
 
   /* The gust's shove, [dx, dy] in whole px: straight away from the monster
@@ -205,37 +353,51 @@ export const monsterStatusMethods = {
      restarts the count but not the clock, so a goblin swinging faster than a
      tick cannot hold the next tick off for ever. */
   _igniteBurn(zoneId, m, pid, now) {
-    if (!this._burns) this._burns = new Map();
-    const per = Math.max(1, Math.round((m.dmg || 0) * BURN.PCT));
-    const b = this._burns.get(pid);
+    return this._igniteDot('burn', zoneId, m, pid, now);
+  },
+
+  /* v2.3.3014: the burn's rule for either damage-over-time status (DOTS):
+     the burn, and the venom's poison in its own Map. */
+  _igniteDot(kind, zoneId, m, pid, now) {
+    const D = DOTS[kind], C = D.cfg;
+    if (!this[D.map]) this[D.map] = new Map();
+    const per = Math.max(1, Math.round((m.dmg || 0) * C.PCT));
+    const b = this[D.map].get(pid);
     if (b && b.zone === zoneId) {
-      b.left = BURN.TICKS;
+      b.left = C.TICKS;
       b.dmg = Math.max(b.dmg, per);
       b.mid = m.id; b.lvl = m.level;
       return b;
     }
-    const nb = { zone: zoneId, mid: m.id, lvl: m.level, dmg: per, left: BURN.TICKS, next: now + BURN.EVERY_MS };
-    this._burns.set(pid, nb);
+    const nb = { zone: zoneId, mid: m.id, lvl: m.level, dmg: per, left: C.TICKS, next: now + C.EVERY_MS };
+    this[D.map].set(pid, nb);
     return nb;
   },
 
   /* Once a tick (tick.js): every burn whose next tick is due.  Burns that
      can no longer land -- the player gone, dead, in another zone, or on the
      Wheel's safe ground -- are put out here rather than wherever that
-     happened, so nothing else has to remember them. */
+     happened, so nothing else has to remember them.  v2.3.3014: and every
+     poison, by the same rules (the name stays: tick.js calls it). */
   _tickMonsterBurns(now) {
-    const burns = this._burns;
-    if (!burns || burns.size === 0) return;
-    for (const [pid, b] of burns) {
+    this._tickDots('burn', now);
+    this._tickDots('poison', now);
+  },
+
+  _tickDots(kind, now) {
+    const D = DOTS[kind], C = D.cfg;
+    const dots = this[D.map];
+    if (!dots || dots.size === 0) return;
+    for (const [pid, b] of dots) {
       const ps = this.playerState[pid];
-      if (!ps || ps.dead || ps.dying || ps.disconnected || ps.z !== b.zone || !(ps.hp > 0)) { burns.delete(pid); continue; }
-      if (b.zone === WHEEL_ZONE && this._wheelSafeAt && this._wheelSafeAt(ps.x, ps.y)) { burns.delete(pid); continue; }
+      if (!ps || ps.dead || ps.dying || ps.disconnected || ps.z !== b.zone || !(ps.hp > 0)) { dots.delete(pid); continue; }
+      if (b.zone === WHEEL_ZONE && this._wheelSafeAt && this._wheelSafeAt(ps.x, ps.y)) { dots.delete(pid); continue; }
       if (now < b.next) continue;
-      b.next = now + BURN.EVERY_MS;
+      b.next = now + C.EVERY_MS;
       b.left--;
       /* the harvester takes no monster damage (v2.3.1704): the tick passes */
-      if (!(this._extractionShielded && this._extractionShielded(pid, now))) this._burnTick(pid, ps, b);
-      if (b.left <= 0 || !this.playerState[pid] || ps.dying || ps.dead) burns.delete(pid);
+      if (!(this._extractionShielded && this._extractionShielded(pid, now))) this._dotTick(kind, pid, ps, b);
+      if (b.left <= 0 || !this.playerState[pid] || ps.dying || ps.dead) dots.delete(pid);
     }
   },
 
@@ -244,7 +406,13 @@ export const monsterStatusMethods = {
      kill credit to the goblin who lit it, the monster_attack, the vitals save
      and the death check. */
   _burnTick(pid, ps, b) {
-    const raw = Math.min(b.dmg, Math.max(1, Math.floor((ps.maxHp || 100) * BURN.MAX_HP_PCT)));
+    return this._dotTick('burn', pid, ps, b);
+  },
+
+  /* v2.3.3014: ...and of a poison, its own ability and icon */
+  _dotTick(kind, pid, ps, b) {
+    const D = DOTS[kind], C = D.cfg;
+    const raw = Math.min(b.dmg, Math.max(1, Math.floor((ps.maxHp || 100) * C.MAX_HP_PCT)));
     const res = this._applyDamage(ps, raw, false, { elemental: true, attackerLevel: b.lvl });
     if (!res.dodged) this._trackMonsterDamage(ps, b.mid, res.graced ? (res.dmgIntent || 0) : res.dmgTaken);
     this.eventBuffer.push({
@@ -260,8 +428,8 @@ export const monsterStatusMethods = {
         /* v2.3.2235's bypass: the goblin may be dead or across the map by the
            time his fire bites, and without it the number is dropped by the
            handler's first filter */
-        ability: 'burn',
-        elem: 'flame',
+        ability: D.ability,
+        elem: D.elem,
       },
     });
     this._saveRpgVitals(pid, ps);
