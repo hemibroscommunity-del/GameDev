@@ -17,12 +17,11 @@ import React from 'react';
  *
  * So the look lives HERE, once, and every button wears it: SprintButton,
  * SpecialButton, AbilityButtons, ShieldButton, ElementBurstButton,
- * WeaponSwapButton and the attack disc in TouchControls (and the Jump button
- * of the real-jumping work, JumpIcon below, when it lands).  Seven files each
- * drawing their own ring is how they came to look like seven different kits
- * (four slate radial gradients, one sprite, one rounded square, one emoji
- * glyph) -- the same reason ShieldButton.jsx keeps every control's LAYOUT in
- * one place.  Nothing here moves a button or changes what a press does.
+ * WeaponSwapButton, JumpButton (v2.3.3017's, JumpIcon below) and the attack
+ * disc in TouchControls.  Seven files each drawing their own ring is how they
+ * came to look like seven different kits (four slate radial gradients, one
+ * sprite, one rounded square, one emoji glyph) -- the same reason
+ * ShieldButton.jsx keeps every control's LAYOUT in one place.  Nothing here moves a button or changes what a press does.
  *
  * ═══ HOW IT IS DRAWN, AND WHAT IT MUST NEVER USE ═══
  * Stacked spans with CSS gradients for the face, the sheen and the glow
@@ -391,10 +390,9 @@ export function BashIcon(props) {
   }));
 }
 
-/* Jump: the mockup's bold blue arrow, pointing up.  For the JUMP button of the
-   real-jumping work (PR #782, JumpButton.jsx), which draws its own arrow and
-   word today; whichever of the two lands second gives it the skin --
-   `Skin` round a `JumpIcon`, state 'on' while you are in the air. */
+/* Jump: the mockup's bold blue arrow, pointing up -- the JUMP button of the
+   real-jumping work (v2.3.3017, JumpButton.jsx): `Skin` round a `JumpIcon`,
+   state 'on' while you are in the air. */
 var ARROW = {
   lit: { line: '#0A2142', body: '#3A9DF0', hi: '#C4EEFF', shade: '#1F5FC4' },
   grey: { line: '#15181B', body: '#7A8085', hi: '#C0C4C8', shade: '#5B6166' },

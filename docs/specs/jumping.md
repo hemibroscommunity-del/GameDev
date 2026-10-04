@@ -9,7 +9,10 @@
 - **A JUMP button under the attack disc.** It's centred beneath the disc, at
   Block's height, so the thumb slides straight down off ATTACK. Block is in the
   same band but left of the disc, about 28 px clear. Pressing it jumps at once:
-  it fires on the press, not the release.
+  it fires on the press, not the release. Since v2.3.3018 it wears the owner's
+  mockup's look like every touch control: a gold ring round the blue up arrow,
+  no word, lit on a warm face while you are in the air
+  (`docs/specs/control-redesign.md` §14).
 - **X on a keyboard.** Space is already the dodge roll and Shift the sprint, so
   the jump is X, under the left hand. The key hints list it.
 - **The jump.** For 0.56 s the body rises up to 68 world px (about a bro's own

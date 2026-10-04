@@ -573,8 +573,9 @@ export function ShieldButton(props) {
   /* ═══ v2.3.3018: THE MOCKUP'S LOOK, THE SHIELD'S OWN PICTURE ═══
      The owner's mockup has no Block button in it (it only shows in a fight,
      with a shield); the up arrow under its attack button is the JUMP button
-     of the real-jumping work (PR #782), and controlSkin has its picture
-     (JumpIcon).  Block takes the mockup's look with the shield's picture:
+     of the real-jumping work (v2.3.3017, JumpButton.jsx), which wears
+     controlSkin's JumpIcon.  Block takes the mockup's look with the shield's
+     picture:
        down          Normal -- the gold ring, the shield at full strength (it
                      was 0.6 against the slate; the ring now says "live")
        UP            the sheet's Ready / Charged, on the warm face: lit ring,

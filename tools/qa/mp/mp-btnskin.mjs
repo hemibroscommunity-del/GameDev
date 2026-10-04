@@ -5,8 +5,9 @@
  *
  * On a phone, in a fight, with every control on screen:
  *   1. EVERY control wears the skin: the attack disc, Spec, Whirl, Block,
- *      Shield Bash, Sprint, the weapon button, Element Burst -- a gold ring
- *      (a gradient), and the movement stick its dark well with four arrows.
+ *      Shield Bash, Sprint, Jump (v2.3.3017's), the weapon button, Element
+ *      Burst -- a gold ring (a gradient), and the movement stick its dark
+ *      well with four arrows.
  *   2. NO CSS filter or backdrop-filter anywhere in any of them, in any state
  *      (the iOS grain over the WebGL canvas, TRAPS §42).
  *   3. A PICTURE, NOT A WORD: each shows its picture, decoded, and no visible
@@ -15,8 +16,8 @@
  *   4. The attack disc in a fight is Ready / Charged (hot): the face
  *      see-through, the sword at full strength; with a bow it shows the bow.
  *   5. The mockup's states: Cooldown (a blue arc, the picture grey), Disabled
- *      (no mana, no stamina), the toggles ON (shield up, sprint on) lit and
- *      glowing, Pressed under a real finger (pushed in).
+ *      (no mana, no stamina), the toggles ON (shield up, sprint on) and Jump
+ *      in the air lit and glowing, Pressed under a real finger (pushed in).
  *   6. A monster under the disc ghosts it to its outline.
  * Pictures of each state for the owner, portrait and sideways, in
  * tools/qa/mp/out/btnskin-*.png.  BTNSKIN_TAG=before (with QA_DIST pointed at
@@ -46,6 +47,7 @@ async function fingerDown(P, x, y, id = 1) {
 const CONTROLS = {
   disc: '.bt-rjoy-base', special: '[data-special]', whirl: '[data-ability="whirl"]', bash: '[data-ability="bash"]',
   block: '[data-shield]', sprint: '[data-sprint]', weapon: '[data-weapon-chip]', burst: '.bt-burst-btn',
+  jump: '[data-jump]',   /* v2.3.3017's JUMP, beneath the disc */
 };
 
 const look = (P) => P.page.evaluate((CONTROLS) => {
@@ -190,6 +192,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const P = await H.newPlayer(browser, {
     name: 'Skinner', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 3,
+    /* a jump long enough to read in the air on a page drawing a few frames a
+       second (mp-jump's habit; 560 ms in the game) */
+    query: 'jumpms=1800',
   });
   /* Closed at the end, whatever happens: a 3x phone page left running keeps
      drawing the game in the background, and every scenario after it starves
@@ -220,7 +225,7 @@ async function body(P, rec) {
   await thumb.release();
   console.log('    BTNSKIN fight: ' + JSON.stringify(A));
 
-  const named = ['disc', 'special', 'whirl', 'block', 'sprint', 'weapon', 'burst'];
+  const named = ['disc', 'special', 'whirl', 'block', 'sprint', 'weapon', 'burst', 'jump'];
   for (const k of named) {
     const c = A[k];
     rec.ok(`${k}: on screen in the fight (guard)`, !!(c && c.shown), c);
@@ -242,8 +247,9 @@ async function body(P, rec) {
     A.disc && A.disc.label === 'ATTACK' && A.disc.labelOp === 0, A.disc && { label: A.disc.label, op: A.disc.labelOp });
   rec.ok('...the glow is lit round it', A.disc && A.disc.glowOp === 1, A.disc && A.disc.glowOp);
   rec.ok('...and the orbit is drawn round it', A.disc && A.disc.orbit, A.disc);
-  rec.ok('Spec, Whirl, Block, Sprint are Normal when ready', ['special', 'whirl', 'block', 'sprint'].every((k) => A[k] && A[k].state === 'normal'),
-    ['special', 'whirl', 'block', 'sprint'].map((k) => A[k] && A[k].state));
+  rec.ok('Spec, Whirl, Block, Sprint, Jump are Normal when ready', ['special', 'whirl', 'block', 'sprint', 'jump'].every((k) => A[k] && A[k].state === 'normal'),
+    ['special', 'whirl', 'block', 'sprint', 'jump'].map((k) => A[k] && A[k].state));
+  rec.ok('Jump\'s picture is the mockup\'s blue arrow', A.jump && A.jump.svgs.join() === 'jump', A.jump && A.jump.svgs);
 
   /* ── 5: the mockup's other states ── */
   const flags = () => P.page.evaluate(() => {
@@ -350,6 +356,33 @@ async function body(P, rec) {
     D.special && D.special.pressed === '1' && /matrix\(0\.9/.test(D.special.skinTf || ''), D.special && { p: D.special.pressed, tf: D.special.skinTf });
   rec.ok('...and lets go when the finger does', D2.special && D2.special.pressed == null, D2.special && D2.special.pressed);
 
+  /* Jump (v2.3.3017's button): a real tap takes off -- in the air it is lit
+     on the warm face like the toggles (the sheet's Ready / Charged), and back
+     on the ground it is Normal again */
+  await tapCentre(P, '[data-jump]');
+  /* Held in the air while it is read and photographed, as the cooldowns are
+     above: the first run's guard, read after the picture, found the jump over
+     (a 3x screenshot here outlasts even ?jumpms=1800's). */
+  const jb = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (S._jump) window.__qaPin(S._jump, 't0', () => Date.now() - 300);
+    return window.__btJumpBtn && window.__btJumpBtn();
+  });
+  await P.page.waitForTimeout(250);
+  await settle(P);
+  const J = await look(P);
+  await shot(P, 'jump');
+  await P.page.evaluate(() => window.__qaUnpin());
+  console.log('    BTNSKIN jump: ' + JSON.stringify(J.jump) + ' ' + JSON.stringify(jb));
+  rec.ok('one real tap on Jump takes off (guard)', !!(jb && jb.air), jb);
+  rec.ok('in the air Jump is lit: the warm face, the ring lit, the glow', J.jump && J.jump.state === 'on' && J.jump.tone === 'warm' && J.jump.glowOp === 1, J.jump);
+  rec.ok('...still the arrow, no word, no filter', J.jump && J.jump.svgs.join() === 'jump' && J.jump.words.length === 0 && J.jump.filtered.length === 0, J.jump);
+  await H.waitFor(P, () => window.__btJumpBtn().air, (v) => v === false, { timeout: 4000, label: 'down again' }).catch(() => null);
+  await P.page.waitForTimeout(250);
+  await settle(P);
+  const J2 = await look(P);
+  rec.ok('...and on the ground again it is Normal', J2.jump && J2.jump.state === 'normal' && J2.jump.tone === 'slate', J2.jump && { st: J2.jump.state, tone: J2.jump.tone });
+
   /* a bow in hand: the disc shows the bow */
   await P.page.evaluate((BOW) => {
     const S = window._gameState.current;
@@ -391,7 +424,7 @@ async function body(P, rec) {
   await P.page.waitForTimeout(1500);
   const L = await look(P);
   await P.page.screenshot({ path: `${OUT}/btnskin-${TAG}-sideways.png` });
-  rec.ok('sideways: the controls still wear the skin', ['disc', 'special', 'block', 'sprint'].every((k) => L[k] && L[k].state), ['disc', 'special', 'block', 'sprint'].map((k) => L[k] && L[k].state));
+  rec.ok('sideways: the controls still wear the skin', ['disc', 'special', 'block', 'sprint', 'jump'].every((k) => L[k] && L[k].state), ['disc', 'special', 'block', 'sprint', 'jump'].map((k) => L[k] && L[k].state));
   rec.ok('sideways: still no filter anywhere', named.every((k) => !L[k] || L[k].filtered.length === 0), named.map((k) => L[k] && L[k].filtered));
 
   rec.ok('no page errors through all of it', errs.length === 0, errs);

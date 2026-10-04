@@ -1458,7 +1458,7 @@ rules at the end of game.css, worn by every control.
 | Whirl | slate disc, the 🌀 emoji and Whirl / "3s" | gold ring, a whirlwind (SVG — the emoji was a different picture on every phone) |
 | Shield Bash | the 🛡️ emoji and Bash | gold ring, the wood shield with the blow's burst behind it |
 | Block | slate disc, shield at 0.6, BLOCK / UP | gold ring, the shield at full strength |
-| Jump (PR #782) | slate disc, an arrow and JUMP | gold ring, the mockup's blue arrow (`JumpIcon`) — when #782 and this meet |
+| Jump (v2.3.3017) | slate disc, an arrow and JUMP | gold ring, the mockup's blue arrow (`JumpIcon`); lit on the warm face while you are in the air |
 | Sprint | slate disc, boot and SPRINT, a 3px stamina rim | gold ring, the boot alone; the gold ring itself is the stamina, its spent share dark |
 | Element Burst | element-coloured border and nova | gold ring, the nova in the weapon's element colour |
 | Weapon button | rounded square, brass hairline | round, gold ring (a quiet slate ring with one weapon) |
@@ -1489,20 +1489,21 @@ which mp-btnskin's ghost picture caught).
 
 **The Jump button.** The mockup's CURRENT half was drawn from a build with
 the JUMP button of the real-jumping work in it (PR #782, `JumpButton.jsx`,
-centred under the attack disc — not on `main` when this was written), and its
-IMPROVED half makes it a bold blue up arrow on the gold ring. The picture is
-ready (`controlSkin`'s `JumpIcon`, and a Jump row on the harness sheet); the
-button itself is #782's, so whichever of the two lands second gives it the
-skin — `Skin` round a `JumpIcon`, state `on` while you are in the air — and
-takes JUMP off its face. Block (not in the mockup: it shows only in a fight,
-with a shield) keeps the shield's picture.
+centred under the attack disc — still on its branch when this work began), and
+its IMPROVED half makes it a bold blue up arrow on the gold ring. #782 landed
+first, so this work gave it the skin: `Skin` round controlSkin's `JumpIcon`,
+Normal on the ground and `on` (the warm face, lit) while you are in the air,
+and JUMP gone from its face; `mp-jump` now checks the arrow sits inside the
+ring where it checked the word, and `mp-btnskin` taps it with a real finger.
+Block (not in the mockup: it shows only in a fight, with a shield) keeps the
+shield's picture.
 
 **Found by testing it with a real finger: one tap on Block toggled the shield
 twice.** React registers `touchstart` passive, so the button's
 `preventDefault()` there did nothing, and the browser's emulated mousedown
 after the tap ran the toggle again — up, then straight back down. Block now
 cancels the emulated mouse events in `onTouchEnd`, as every other control here
-already did (TRAPS §130). Every earlier scenario dispatched a bare TouchEvent,
+already did (TRAPS §131). Every earlier scenario dispatched a bare TouchEvent,
 which brings no mouse events, so nothing caught it.
 
 **No filter, anywhere.** The greyed pictures of the mockup's Cooldown and

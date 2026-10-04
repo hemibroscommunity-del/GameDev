@@ -461,9 +461,9 @@ card family, so it is the same exception, not a sixth.
 
 **Sixth documented exception (v2.3.3018): the touch controls' gold rings and
 pictures.** Every on-screen touch control -- the attack disc, Spec, Whirl,
-Block, Shield Bash, Sprint, Element Burst, the weapon button, and Jump when
-the real-jumping work lands -- is a round
-button with a thick, bevelled GOLD ring round a dark face (the attack disc's
+Block, Shield Bash, Sprint, Element Burst, the weapon button, and Jump (the
+real-jumping work's, v2.3.3017) -- is a round button with a thick, bevelled
+GOLD ring round a dark face (the attack disc's
 face warm brown), carrying a picture and no word, and the movement stick is a
 dark see-through well with four arrows and a grey thumb. By the letter of this
 document that is wrong twice over: brass "is never a default border color",
