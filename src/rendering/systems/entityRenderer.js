@@ -94,6 +94,7 @@ import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel) */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
+import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
@@ -5450,7 +5451,14 @@ export function figureSwimLine(display) {
    feet are this offset BELOW display.y, not at it -- a cast shadow pivoted on
    display.y would hang in the air at the figure's waist (lightfx/casters.js). */
 export function figureFeetY(display) {
-  return display.y + _feetOffsetUnits(display) * display.scale.y;
+  /* v2.3.3017: a figure in the middle of a jump is drawn lifted
+     (rendering/jumpFx.js, after the depth pass) and its FEET are still on
+     the ground -- where it is sorted, where its shadow falls (so the gap
+     between body and shadow is the height) and where it stands.  Added back
+     only while the y is still the one jumpFx left (the swim's rule,
+     swimFx.js): the entity pass may have set a fresh y since. */
+  const lift = display._jumpY != null && display.y === display._jumpY ? (display._jumpLift || 0) : 0;
+  return display.y + lift + _feetOffsetUnits(display) * display.scale.y;
 }
 /* ═══ v2.3.2748: THE SAME DROP, FOR CODE THAT HAS NO FIGURE IN HAND ═══
    How far below a player's POSITION (S.player.y, a peer's y) their boots are
@@ -10816,9 +10824,12 @@ export class EntityRenderer {
          no duration (the roller's window is elastic), so this plays at the
          cycleMs default. */
       const _rDodge = other._dodgeRoll || null;
+      /* v2.3.3017: their jump (the `player_jump` relay, game events), drawn as
+         yours is: the leaping frame of the jog, held, lifted by jumpFx.js */
+      const _rJump = other._jump && jumpActive(other._jump, now) ? other._jump : null;
       const pose = _rexBodyPose
         ? _rexBodyPose
-        : (_rDodge ? 'dodge' : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand')));
+        : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'))));
       const spritesAvailable = hasPose(pose) || hasPose('stand');
       let useSprite = false;
       if (!_rexStandIn && spritesAvailable) {
@@ -10862,10 +10873,13 @@ export class EntityRenderer {
           frameIdx = Math.floor((_rT / _rCyc) * fc) % fc;
           /* v2.3.1367: cycle phase for native-count fullset playback. */
           _rJogPhase = ((_rT / _rCyc) % 1 + 1) % 1;
+          /* v2.3.3017: mid-jump, the leaping frame, held (as the local branch);
+             no footfall dust in the air */
+          if (_rJump) { frameIdx = jumpFrame(dir, fc); _rJogPhase = (frameIdx + 0.5) / fc; }
           /* ...and kicks up dust at each footfall of it, on its own foot-plant
              frames (the ground's colour is yours to look up only under your
              own boots: a peer's is the dirt's) */
-          if (display._prevJogFrame !== frameIdx) {
+          if (!_rJump && display._prevJogFrame !== frameIdx) {
             if (other._sp && _jogPlantCrossed(JOG_FOOT_FRAMES[dir] || JOG_FOOT_FRAMES.south, display._prevJogFrame, frameIdx, fc, false,
                 now - (display._prevJogAt || 0), _rCyc)) {
               const _ox = other.renderX || other.x || 0, _oy = other.renderY || other.y || 0;
@@ -12294,6 +12308,12 @@ export class EntityRenderer {
        to _facingAngle mid-slew; the probe below now says so in one word. */
     S._renderFacing = facing;
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
+    /* v2.3.3017: in the air (game/jump.js) the body holds one leaping frame of
+       the jog for the way it faces -- the owner's "just use the jog
+       directions" -- above the hit-react (as the roll is: the jump is what the
+       body is doing) and whether or not it moves: a standing jump still
+       leaps. */
+    const jumping = !!S._jump && jumpActive(S._jump, now);
     /* v2.3.188: pickup pose during the loot-pickup freeze.  Takes
        priority over hit because the freeze already blocks combat.
        v2.3.236: attack pose plays through the 250 ms swing window —
@@ -12353,9 +12373,11 @@ export class EntityRenderer {
               ? 'fish'
               : (dodging
                   ? 'dodge'
-                  : (isHit
-                      ? 'hit'
-                      : ((isMoving && !_blockPlanted) ? 'jog' : 'stand')))));
+                  : (jumping
+                      ? 'jog'
+                      : (isHit
+                          ? 'hit'
+                          : ((isMoving && !_blockPlanted) ? 'jog' : 'stand'))))));
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
@@ -12417,6 +12439,7 @@ export class EntityRenderer {
       const spriteBody = display._spriteBody;
       let frameIdx = 0;
       let _jogPhase = null;  /* v2.3.1367: cycle phase 0..1 for native-count fullset playback */
+      if (pose !== 'jog') display._jogAir = false;   /* v2.3.3017: landed standing (the jog branch's touch-down rule) */
       if (pose === 'jog') {
         /* Per-direction frame count — sheets vary 24-34 frames.  During
            an attack or shield (movement slowed 50% by gameplay), play
@@ -12453,6 +12476,26 @@ export class EntityRenderer {
            native-frame-count fullset sheets (east: 25f vs 28f body). */
         _jogPhase = ((_jt / effectiveCycle) % 1 + 1) % 1;
         if (isMovingBackward) _jogPhase = 1 - _jogPhase;
+        /* v2.3.3017: mid-jump, the leaping frame, held (game/jump.js
+           JUMP_FRAME), and the armour at the same place in its own loop.  No
+           footstep: the plant test below sees no new frame, and the jump's
+           take-off and touch-down have their own (jumpActions.js). */
+        if (jumping) {
+          frameIdx = jumpFrame(dir, fc);
+          _jogPhase = (frameIdx + 0.5) / fc;
+          display._prevJogFrame = frameIdx;
+          display._prevJogAt = now;
+          display._jogAir = true;
+        } else if (display._jogAir) {
+          /* the touch-down frame: the loop picks up where the clock says, and
+             the plants it passed in the air were not steps (v2.3.3015's
+             _jogPlantCrossed counts any plant passed within a stride) -- the
+             landing's step is the jump's own (jumpActions.js landJump) */
+          display._jogAir = false;
+          display._prevJogFrame = frameIdx;
+          display._prevJogAt = now;
+        }
+        display._jumpFrameIdx = jumping ? frameIdx : null;   /* QA (__btJumpFx) */
         /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each
            direction's jog loop, so the sound lands exactly when a foot hits the
            ground -- a fixed timer never lined up because the per-direction

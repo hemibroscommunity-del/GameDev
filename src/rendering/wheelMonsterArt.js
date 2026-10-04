@@ -29,7 +29,7 @@
  * is drawn from global art: nothing to load, always ready.
  */
 import { MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js';
-import { zoneHomes } from '../data/zones.js';
+import { zoneHomes, wheelLandAt } from '../data/zones.js';   /* v2.3.3017: + which land you are on */
 import { VARIANT_SPRITES, unloadVariantSprites, setVariantKicks } from './monsterVariantSprites.js';
 import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js';
 import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
@@ -47,6 +47,38 @@ export const LOAD_R = 2600;
    you walk along a land's edge) */
 export const FREE_R = 3600;
 export const FREE_AFTER = 10000;
+/* ═══ v2.3.3017: YOUR OWN LAND'S LOOKS, AND ANOTHER'S ONLY WHEN IT IS CLOSE ═══
+   Owner, 2026-10-04: "I was fighting fire goblins and my screen went black."
+   Measured on a phone-sized page (mp-wheelmem): the spokes' inner ends are
+   ~1,630 px from their neighbours' across the water, so at the Flame Fields'
+   LOAD_R reached into Frost Ridge and the Wind Dunes and four looks were
+   held -- the fire goblin's, the mummy's, the skeleton's and the snowman's,
+   ~57 MB of the asset cache's 239 -- within a few MB of the ~250 MB at which
+   iPhone Safari kills a tab (docs/WORLD-MAP-PIPELINE.md), for monsters that
+   cannot reach you: the open sea is a wall, and none chases that far.
+   So a monster of the land you are on (zones.js wheelLandAt: your direction
+   from the Wheel's middle) still has its look loaded within LOAD_R, as you
+   walk toward it; another land's only inside foreignBox -- the screen's own
+   box round you, each half grown by NEAR_LEAD of walking (NEAR_MIN at least):
+   a phone held upright sees far up and down and little sideways, and the
+   neighbouring lands lie to the sides (the half-diagonal, its first cut, was
+   1,589 px on the test phone against their ~1,630) -- which is as
+   near as you get without walking into that land, where it is yours.  Kept
+   to KEEP_EXTRA further, for FREE_AFTER, so a look does not come and go
+   along a land's edge. */
+export const NEAR_MIN = 1000;
+export const NEAR_LEAD = 700;
+const KEEP_EXTRA = 600;
+
+/* where another land's monster must be for its look to load: within this
+   many world px of you across and up-and-down -- the screen's half-width and
+   half-height (S._viewW/_viewH, the world px the renderer shows) plus a walk */
+export function foreignBox(S) {
+  const w = S && S._viewW, h = S && S._viewH;
+  const hw = w > 0 ? w / 2 : 400, hh = h > 0 ? h / 2 : 800;
+  const k = (v) => Math.min(LOAD_R, Math.max(NEAR_MIN, v + NEAR_LEAD));
+  return [k(hw), k(hh)];
+}
 const TICK_MS = 250;
 
 export const wheelArtStats = {
@@ -58,6 +90,8 @@ export const wheelArtStats = {
   maxMs: 0,
   waiting: 0,      /* monsters in view not drawn yet, their look not ready (the renderer's count) */
   waitedMs: 0,     /* the longest any such wait has lasted (ms) */
+  land: null,      /* v2.3.3017: the land you are on (wheelLandAt) */
+  near: null,      /* ...and how near another land's monster must be, [across, up-and-down] (foreignBox) */
 };
 
 let _zone = null;       /* the zone this is running for, or null */
@@ -198,15 +232,28 @@ export function wheelArtTick(S, monsters, now) {
   _lastTick = now;
   const p = S.player;
   if (!p) return;
+  /* v2.3.3017: your land's within LOAD_R, another's only near (see NEAR_MIN);
+     a zone that is not the Wheel (a dungeon's arena) has no lands: all its own */
+  const mine = wheelLandAt(zone, p.x, p.y);
+  const [bx, by] = foreignBox(S);
   const near = new Set(), keep = new Set();
   for (const m of monsters || []) {
     if (!m) continue;
     const ks = looksOf(m.archetype || m.type);
     if (!ks.length) continue;
-    const dx = m.x - p.x, dy = m.y - p.y, d2 = dx * dx + dy * dy;
-    if (d2 < LOAD_R * LOAD_R) for (const k of ks) near.add(k);
-    if (d2 < FREE_R * FREE_R) for (const k of ks) keep.add(k);
+    const dx = m.x - p.x, dy = m.y - p.y;
+    if (!mine || !m.home || m.home === mine) {
+      const d2 = dx * dx + dy * dy;
+      if (d2 < LOAD_R * LOAD_R) for (const k of ks) near.add(k);
+      if (d2 < FREE_R * FREE_R) for (const k of ks) keep.add(k);
+    } else {
+      const ax = Math.abs(dx), ay = Math.abs(dy);
+      if (ax < bx && ay < by) for (const k of ks) near.add(k);
+      if (ax < bx + KEEP_EXTRA && ay < by + KEEP_EXTRA) for (const k of ks) keep.add(k);
+    }
   }
+  wheelArtStats.land = mine;
+  wheelArtStats.near = [Math.round(bx), Math.round(by)];
   for (const k of near) want(k, now);
   for (const [k, e] of _looks) {
     if (keep.has(k)) { e.lastNear = now; continue; }

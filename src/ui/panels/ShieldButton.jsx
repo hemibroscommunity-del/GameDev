@@ -347,6 +347,31 @@ export function sprintAnchor(isLandscape) {
   };
 }
 
+/* ═══ v2.3.3017: JUMP, BENEATH THE ATTACK DISC ═══
+ *
+ * Owner: "Where should a 'jump' button go?  I'm thinking just make the right
+ * joystick button be jump or put it beneath the right joystick", and of the
+ * answer (beneath it, not on it: the disc already taps, drags, flicks and
+ * harvests), "start working on real jumping" (JumpButton.jsx).
+ *
+ * CENTRED UNDER THE DISC, one CTL_GAP below its bottom edge -- the band D9
+ * emptied, at Block's height.  The thumb slides straight down off ATTACK.
+ * Block is in the same band but in ctlColumn, left of the disc: 28 px of clear
+ * air between the two at 390 (31 sideways), and the disc's own half-width is
+ * what keeps them apart at every width, as the disc's height keeps Block from
+ * Special.  It stays above the dashboard band by construction (RBTN.bottom 70,
+ * a button at most 54, the gap 4: 12 px to spare at the least), and mp-jump
+ * measures the real boxes rather than trusting this arithmetic. */
+export function jumpAnchor(isLandscape) {
+  var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
+  var discW = isLandscape ? RBTN.wLand : RBTN.w;
+  return {
+    size: size,
+    right: RBTN.right + Math.round((discW - size) / 2),
+    bottomPx: RBTN.bottom - size - CTL_GAP,
+  };
+}
+
 /* ═══ v2.3.2574: THE RIGHT CLUSTER -- SPECIAL AND WHIRLWIND, ABOVE THE DISC ═══
  *
  * Owner: "Spec and swirl need to be on the right joystick.  It was put on the
@@ -466,6 +491,7 @@ export function combatBandTopPx(isLandscape) {
   var c = ctlColumn(isLandscape);
   var blk = blockAnchor(isLandscape);
   var spr = sprintAnchor(isLandscape);   /* v2.3.3006 */
+  var jmp = jumpAnchor(isLandscape);     /* v2.3.3017 */
   var discR = isLandscape ? RBTN.wLand : RBTN.w;
   var discL = isLandscape ? LBTN.wLand : LBTN.w;
   /* ═══ v2.3.2574: EVERY SLOT, STILL -- INCLUDING THE ONES THAT MOVED ═══
@@ -484,6 +510,7 @@ export function combatBandTopPx(isLandscape) {
     c.bottomPx(CTL_SLOT.bash) + c.size,        /* Shield Bash */
     blk.bottomPx + blk.size,                   /* Block */
     spr.bottomPx + spr.size,                   /* Sprint, right of the movement disc (v2.3.3006) */
+    jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */
     RBTN.bottom + discR,                       /* the attack disc */
     LBTN.bottom + discL);                      /* the movement disc */
 }

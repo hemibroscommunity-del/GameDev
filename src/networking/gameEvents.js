@@ -32,6 +32,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 import { applyElemHit, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks */
 import { echoHitSfx, heroHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's */
+import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
@@ -1906,6 +1907,21 @@ export function processGameEvent(type, payload, S, deps) {
                 if (payload.kind !== 'retreat_shot') {
                   _reconcileFacing(S.others[payload.id], payload.angle);
                 }
+              }
+              break;
+            }
+          case 'player_jump':
+            {
+              /* ═══ v2.3.3017: ANOTHER PLAYER JUMPED ═══
+                 (game/jumpActions.js triggerJump.)  Their body is drawn lifted
+                 over THEIR jump's window, holding the same leaping frame of
+                 the jog yours does (entityRenderer, rendering/jumpFx.js), from
+                 when the relay lands here -- a beat after they took off, as a
+                 roll is.  The numbers are clamped (jump.js peerJump): a forged
+                 or garbled one must not hang a figure in the air.  Their
+                 position streams as for any move; this is only the picture. */
+              if (payload.id && _peerInZone(S, payload.id)) {
+                S.others[payload.id]._jump = peerJump(payload, Date.now());
               }
               break;
             }
