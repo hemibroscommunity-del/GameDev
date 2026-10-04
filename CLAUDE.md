@@ -938,6 +938,32 @@ remnant to migrate server-side, not a mode to preserve.
     (`readArtBottoms`), never further back than the footprint's middle; QA
     `__btWheelCastBoard`, `__btWheelObjects.caster(i)`; WORLD-MAP-PIPELINE "A
     low thing's shadow starts at its own base", `mp-wheelshadows`.
+  - Since v2.3.3031 BROTOWN IS A DESIGNED PLACE -- the owner passing on a
+    reviewer's look at the 1.5x town zoomed out: "the center reads as one huge
+    tan clearing ... think of it as individual streets, plazas and lots. Once
+    the green is allowed back between those pieces ..." (plan.js `design`, the
+    standard plan's only; `?plaintown` is the standard size without it):
+    - the town's open ground is the commons' GRASS except an earth apron round
+      each plot and a worn verge along every street (layout.js `townSurfaces`,
+      ground.js materialMap): only the picture changed, the region, classes,
+      walk grid and baked places did not; a street is laid exactly on its cells,
+      so grass at its edge was a ruler line -- hence the verge; 30% of the
+      town's earth is grass again;
+    - the square 28% bigger (300 -> 384 art px a half) and paved under the Town
+      Hall, the Hall drawn 18% bigger (`hallScale`), the gates at 1,326 / 1,447;
+    - districts (north civic and trades, east the mine side, south the strip,
+      west the farm road) and plots off their rows (`design.lots`, `dx`/`dy`);
+    - the town's grounds (placing.js `townGrounds`): gardens on the lawns, the
+      old grove and the mine side's ore yard and the farm side's hay, runs of
+      fence and hedge on the town's edge, a wagon yard inside every gate; the
+      commons' scatter thinned 25% within 336 px of the town (`HALO`, v1 only);
+    - ONE pond, Bro Pond (plan.js `ponds`), where four stray puddles were;
+    - re-baked: only the commons' ore, trees and fishing spots moved;
+    - test-world-core "the designed town" (it flood-fills the town from the
+      arrival: every door, gate and Mayor Bro reachable), QA `mp-wheelobjects`
+      (the oasis check fails on main too); WORLD-MAP-PIPELINE "The town as a
+      designed place" says what was not done (roofs, new landmarks' pictures,
+      a creek) and why.
   - Since v2.3.3032 THE WHEEL'S BUILDINGS HAVE DOORS -- the owner: "Push to
     main. Then after that add doors.":
     - twelve of the seventeen open today's own building (the same panels, the

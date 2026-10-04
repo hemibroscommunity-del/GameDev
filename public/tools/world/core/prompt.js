@@ -103,9 +103,14 @@ function townLines(plan, g, rect, cov) {
     const hall = cov.lots.find((l) => l.id === (T.hallLot && T.hallLot.id));
     out.push(`The town square (${K.plaza.colorName}) is ${where(plaza.cx, plaza.cy)}${hall ? `, with the empty plot for the ${hall.name} (${K.lot.colorName}) at its centre` : ''}.`);
   }
+  /* (v2.3.3031: not a road that forks off another -- the town's gate stands
+     only 18 art px short of where the Frost Trail leaves the North Road, and
+     the nearest start was the trail's) */
+  const forks = (r) => (plan.roads || []).some((o) => o !== r && o.pts.some((q) => q[0] === r.pts[0][0] && q[1] === r.pts[0][1]));
   const roadAt = (x, y) => {
     let best = null, bd = Infinity;
     for (const r of plan.roads || []) {
+      if (forks(r)) continue;
       const dx = r.pts[0][0] * g.P - x, dy = r.pts[0][1] * g.P - y, d = dx * dx + dy * dy;
       if (d < bd) { bd = d; best = r; }
     }

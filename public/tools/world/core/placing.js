@@ -50,13 +50,13 @@
  * Each object's FOOTPRINT, the ground it stops you on, is footprintOf(id,
  * its picture's game size), worked out where the pictures are known.
  */
-import { C, townPlan, townGates } from './layout.js';
+import { C, townPlan, townGates, townSurfaces, townCellBox, TOWN_SURF } from './layout.js';
 import { hash2, fbm } from './rng.js';
 import { gridInfo } from './grid.js';
 import { wheelInfo } from './wheel.js';
 import { objectCatalog } from '../../objects/catalog.js';
 
-export const PLACING = 'v2.3.2981';
+export const PLACING = 'v2.3.3031';
 
 /* ── how much ground each object stops you on ──
    Shares of its picture's game size: `w` of its width, centred on its foot,
@@ -186,6 +186,17 @@ const LAYERS = [
   { id: 'mid', step: 92, inClump: 0.18, open: 0.08, clear: 1, gapBig: 46 },
   { id: 'small', step: 68, inClump: 0.1, open: 0.11, clear: 1, gapBig: 34 },
 ];
+/* ═══ v2.3.3031: A CLEAN HALO ROUND THE TOWN ═══
+   Owner, passing on a reviewer: "Immediately outside town, reduce the amount
+   of random foliage by maybe 20-30%.  Then concentrate trees, rocks and
+   flowers into clusters farther away.  A cleaner 'halo' around BroTown will
+   make the silhouette of the settlement much stronger from this distance."
+   The commons' scatter (below) is thinned within `cells` blueprint cells (24
+   game px each) of the town's edge: to `floor` of its chance by `near` cells,
+   back to all of it at `cells` -- so the thinning is a fade, not a ring, and
+   what the fade leaves out the clumps beyond it keep.  Plans without the
+   designed town (`town.lawn`) have no halo. */
+const HALO = { cells: 14, near: 3, floor: 0.5 };
 /* how wide a stretch of open ground goes bare, and how strongly: the scatter
    comes in drifts and clearings, not an even sprinkle */
 const DRIFT = 1 / 1400, DRIFT_SEED = 9113;
@@ -378,22 +389,32 @@ function townDressing(T, tp) {
   for (const sx of [-1, 1]) {
     add('lamp', sx * (S - 8), T.row + 8, sx < 0 ? 0 : 1);
     add('lamp', sx * (hw + 12), -(S - 10), sx < 0 ? 1 : 0);
+    /* v2.3.3031: the designed town's square is 28% bigger -- the lamps carry on round it, and a
+       bench either side further down the walk to the hall's steps */
+    if (T.lawn) {
+      add('lamp', sx * (S - 8), -(T.row + 8), sx < 0 ? 1 : 0);
+      add('bench', sx * (S - 130), hd + 150, sx < 0 ? 0 : 1);
+    }
   }
-  /* Main Street: both edges, beside each plot's side wall */
+  /* Main Street: both edges, beside each plot's side wall.  (v2.3.3031: each
+     side by its OWN plots -- they stand off their rows now) */
   const L = T.lot, ex = T.main + 8;
   for (const l of tp.lots) {
     if (l.arm !== 'north' && l.arm !== 'south') continue;
-    if (l.side !== 'east') continue;
-    const y = l.foot.y - L.d * 0.55;
-    add('lamp', ex, y, 0);
-    add('lamp', -ex, y, 1);
+    add('lamp', l.side === 'east' ? ex : -ex, l.foot.y - L.d * 0.55, l.side === 'east' ? 0 : 1);
   }
-  /* Market Row: the north edge at every gap between plots, and past the
-     last; the south edge between the plots behind it */
-  const gaps = [];
-  for (const l of tp.lots) if (l.arm === 'east' && l.side === 'north') gaps.push(l.x0 - L.gap / 2, l.x1 + L.gap / 2);
-  for (const gx of [...new Set(gaps.map((v) => Math.round(v)))]) {
-    for (const sx of [-1, 1]) add('lamp', sx * gx, -(T.row + 6), gx % 2 ? 0 : 1);
+  /* Market Row: the north edge at every gap between plots (v2.3.3031: the
+     middle of the gap each arm really has, the plots standing off their
+     rows), and past the last; the south edge between the plots behind it */
+  for (const sx of [-1, 1]) {
+    const ps = tp.lots.filter((l) => l.arm === (sx > 0 ? 'east' : 'west') && l.side === 'north').sort((a, b) => sx * (a.x0 + a.x1) - sx * (b.x0 + b.x1));
+    const inner = (l) => (sx > 0 ? l.x0 : -l.x1), outer = (l) => (sx > 0 ? l.x1 : -l.x0);
+    const xs = [];
+    ps.forEach((l, k) => {
+      if (k === 0) xs.push(inner(l) - L.gap / 2);
+      xs.push(ps[k + 1] ? (outer(l) + inner(ps[k + 1])) / 2 : outer(l) + L.gap / 2);
+    });
+    for (const ax of xs) add('lamp', sx * ax, -(T.row + 6), Math.round(ax) % 2 ? 0 : 1);
   }
   for (const sx of [-1, 1]) add('lamp', sx * (tp.rowEnd + 30), T.row + 10, 1);
   /* the town gate over Main Street at both ends (square-on across a
@@ -409,6 +430,16 @@ function townDressing(T, tp) {
   add('signpost', -(T.main + 44), G.ns - 30, 1);
   add('signpost', G.ew - 40, -(T.row + 28), 0);
   add('signpost', -(G.ew - 40), T.row + 64, 1);
+  /* v2.3.3031: a wagon yard inside each gate -- hitching rails and a trough
+     on the grass beside the street, so a way in reads as a place you arrive
+     at (marked `yard`: kept on the town's ground, like the cart) */
+  if (T.lawn) {
+    const wagon = (id, x, y, piece) => out.push({ id, x, y, piece, yard: true });
+    wagon('hitch', -(T.main + 100), -(G.ns - 215), 0); wagon('trough', T.main + 104, -(G.ns - 250), 0);
+    wagon('hitch', T.main + 100, G.ns - 190, 1); wagon('trough', -(T.main + 104), G.ns - 225, 1);
+    wagon('hitch', G.ew - 215, -(T.row + 104), 0); wagon('trough', G.ew - 250, T.row + 104, 0);
+    wagon('hitch', -(G.ew - 215), T.row + 104, 1); wagon('trough', -(G.ew - 250), -(T.row + 104), 1);
+  }
   /* the yards behind the Back Lane: the farm end's hay and the store's cart
      (v2.3.2997: marked `yard`, so placeObjects keeps them on the town's
      ground -- see there) */
@@ -443,6 +474,205 @@ const DOOR_PROPS = {
   store: [['crate', -112, 18, 1], ['barrel', 112, 16, 0]],
   auction: [['crate', 110, 18, 3]],
 };
+
+/* Two sweeps of a city-block distance over a field `A` (a blueprint cell each, BW wide) whose zero
+   cells are the seeds and whose others start at their cap, within the cells of `b` ({x0, x1, y0,
+   y1}: the town and what is round it, so the work is not all 3.2 million cells of the Wheel). */
+function sweepBox(A, BW, BH, b) {
+  for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) {
+    const i = y * BW + x;
+    let v = A[i];
+    if (!v) continue;
+    if (x > 0 && A[i - 1] + 1 < v) v = A[i - 1] + 1;
+    if (y > 0 && A[i - BW] + 1 < v) v = A[i - BW] + 1;
+    A[i] = v;
+  }
+  for (let y = b.y1; y >= b.y0; y--) for (let x = b.x1; x >= b.x0; x--) {
+    const i = y * BW + x;
+    let v = A[i];
+    if (!v) continue;
+    if (x < BW - 1 && A[i + 1] + 1 < v) v = A[i + 1] + 1;
+    if (y < BH - 1 && A[i + BW] + 1 < v) v = A[i + BW] + 1;
+    A[i] = v;
+  }
+  return A;
+}
+
+/* ═══ v2.3.3031: THE TOWN'S GROUNDS ═══
+   Owner, 2026-10-04, passing on a reviewer's look at the town zoomed out:
+   "make the town edge irregular but intentional ... short fence sections,
+   rocks, trees, hitching rails ... make the entrances especially clear",
+   "reduce the amount of random foliage [just outside] ... concentrate
+   trees, rocks and flowers into clusters farther away", "add 2-3 large
+   zoom-readable landmarks".  Once the town's open ground is lawn (layout.js
+   townSurfaces) it needs what a lawn in a town has, and nothing wild may
+   stand in the town (the commons' scatter skips it), so this is the town's
+   own, worked out the same way as the rest -- from the blueprint, by hashed
+   lattice, never by how many came before:
+
+     GARDENS   a tree here and there (orchards mostly, an oak where there is
+               room), bushes, flowers and a stone, thin: the green is for
+               walking and for being seen from far off;
+     THE GROVE half a dozen oaks and a bench on the east back lawn, the one big
+               green thing in the middle of the town -- a landmark at any zoom;
+     THE YARDS the mine side's ore yard (a cart, coal and crates) at the end
+               of the east lawn, the farm side's (hay, a trough) at the west;
+     THE EDGE  where the town's ground meets the commons, short fence
+               sections along its run, bushes, rocks and a haystack between,
+               gaps between them: a boundary you can read that is not a wall.
+
+   A tall thing never covers a street, a walk, a plot, the square or a
+   door (`crownOk`, as the commons' big things keep off the town), and what
+   stands on a lawn stands inside it, a cell or two from the dirt.  Needs
+   `surf`, the town's surfaces: a plan without them has no lawns. */
+/* what the town's own grounds put out that is not the town's furniture
+   (test-world-core allows exactly these in the town, besides it): trees,
+   bushes, flowers and stones on the lawns and the edge, a haystack, the ore
+   yard's cart and coal */
+export const TOWN_GARDEN = Object.freeze(['oak', 'orchard', 'bush', 'flowers', 'stone', 'haystack', 'minecart', 'coal']);
+const GROUNDS = {
+  step: 150,                       /* game px: a lattice cell of the gardens' scatter */
+  tree: 0.3, bush: 0.12, flower: 0.18, stone: 0.06,    /* the chance of each in a lattice cell */
+  /* the edge: a lattice of `cells` x `cells` blueprint cells, one candidate in each that has a
+     boundary cell; where slow noise along the edge is above `fenceRun` a fence run (each
+     candidate a section, `fenceFill` of them), below `hedgeRun` a hedge (bushes, `hedgeFill`),
+     between them the open edge: a stone, a haystack or a bush now and then */
+  rim: { cells: 6, fenceRun: 0.1, fenceFill: 0.85, hedgeRun: -0.12, hedgeFill: 0.8, stone: 0.12, hay: 0.04, bush: 0.1, clearRoad: 5 },
+};
+function townGrounds(X) {
+  const { plan, bp, T, surf, g, WPA, cellOf, cellPx, BW, BH, N, townR, byId, nearFoot, put, seed, counts } = X;
+  const gx = (ax) => (g.cx + ax - bp.x0) * WPA, gy = (ay) => (g.cy + ay - bp.y0) * WPA;
+  const sizeOf = (id) => { const e = byId[id]; return e ? (e.fit === 'w' ? { w: e.size, h: e.size / (e.ar || 1) } : { w: e.size * (e.ar || 1), h: e.size }) : { w: 40, h: 40 }; };
+  const note = (id) => { counts[id] = (counts[id] || 0) + 1; };
+  const box = townCellBox(plan, bp, 4);
+  const sweep = (A) => sweepBox(A, BW, BH, box);
+  /* how far inside a lawn each cell is, in cells (to 8) */
+  const D = new Uint8Array(N);
+  for (let y = box.y0; y <= box.y1; y++) for (let x = box.x0; x <= box.x1; x++) { const i = y * BW + x; D[i] = surf[i] === TOWN_SURF.grass && bp.cls[i] === C.ground ? 8 : 0; }
+  sweep(D);
+  const lawn = (x, y, k) => { const c = cellOf(x, y); return c >= 0 && D[c] >= k; };
+  const BAD = new Uint8Array(32);
+  for (const k of ['street', 'plaza', 'lot', 'path', 'bridge', 'boardwalk', 'rail', 'river', 'water', 'ocean', 'landmark', 'gate']) BAD[C[k]] = 1;
+  /* a tall picture covers the ground north of its foot: none of that may be a street, a walk, a
+     plot, the square's paving or water -- 9 points of its lower two thirds */
+  const crownOk = (x, y, w, h) => {
+    for (const u of [-0.4, 0, 0.4]) for (const v of [-0.9, -0.6, -0.3]) {
+      const c = cellOf(x + u * w, y + v * h);
+      if (c < 0 || BAD[bp.cls[c]] || surf[c] === TOWN_SURF.paving) return false;
+    }
+    return true;
+  };
+  /* one thing, at (ax, ay) art px or the nearest place to it on the lawn where it fits (a
+     spiral of eight ways out, no sin or cos: the plan must come out the same on every device) */
+  const TRIES = [[0, 0]];
+  for (let r = 12; r <= 132; r += 12) for (const [u, v] of [[1, 0], [0, 1], [-1, 0], [0, -1], [0.7, 0.7], [-0.7, 0.7], [-0.7, -0.7], [0.7, -0.7]]) TRIES.push([u * r, v * r]);
+  const stand = (id, ax, ay, piece, o = {}) => {
+    const e = byId[id];
+    if (!e) return false;
+    const { w, h } = sizeOf(id), tall = h >= 160;
+    for (const [u, v] of TRIES) {
+      const x = Math.round(gx(ax + u) * 2) / 2, y = Math.round(gy(ay + v) * 2) / 2;
+      if (!lawn(x, y, o.d != null ? o.d : tall ? 3 : 2)) continue;
+      if (tall && !crownOk(x, y, w, h)) continue;
+      if (nearFoot(x, y, o.gap != null ? o.gap : 28)) continue;
+      put(id, x, y, piece, !!o.flip, o.r || 16);
+      note(id);
+      return true;
+    }
+    return false;
+  };
+  const G = townGates(T), end = X.tp.rowEnd;
+
+  /* ── the old grove, the ore yard and the farm yard (art px from the centre) ── */
+  [[600, 300, 0, 0], [706, 316, 1, 1], [812, 300, 0, 1], [650, 262, 1, 0], [760, 268, 0, 0], [866, 262, 1, 1]].forEach(([ax, ay, p, f]) => stand('oak', ax, ay, p, { flip: !!f, r: 26, gap: 40 }));
+  stand('bench', 730, 232, 1); stand('flowers', 620, 236, 0); stand('flowers', 820, 226, 1); stand('bush', 906, 300, 0);
+  const ay0 = 190;
+  stand('minecart', end - 175, ay0 + 30, 0, { r: 22 });
+  stand('coal', end - 70, ay0 + 10, 0); stand('coal', end - 255, ay0 - 40, 1);
+  stand('crate', end - 20, ay0 - 40, 0); stand('crate', end + 20, ay0 - 14, 2); stand('barrel', end - 105, ay0 - 50, 0); stand('barrel', end - 135, ay0 + 76, 1);
+  stand('stone', end - 215, ay0 + 70, 1); stand('stone', end - 300, ay0 - 8, 2);
+  stand('haystack', -(end - 250), ay0 + 14, 0, { r: 22 }); stand('haystack', -(end - 120), ay0 + 34, 1, { r: 22 });
+  stand('haybale', -(end - 330), ay0 - 40, 1); stand('haybale', -(end - 190), ay0 - 36, 3); stand('haybale', -(end - 60), ay0 - 30, 0);
+  stand('trough', -(end - 40), ay0 + 80, 0); stand('hitch', -(end - 300), ay0 + 70, 1);
+
+  /* ── gardens: a tree here and there, bushes, flowers, a stone ── */
+  const ext = Math.max(G.ns, G.ew) + T.yard + 60, st = GROUNDS.step, gs = seed + 5171;
+  const i0 = Math.floor(gx(-ext) / st), i1 = Math.ceil(gx(ext) / st), j0 = Math.floor(gy(-ext) / st), j1 = Math.ceil(gy(ext) / st);
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    const x = Math.round((i + 0.15 + 0.7 * hash2(i, j, gs)) * st * 2) / 2, y = Math.round((j + 0.15 + 0.7 * hash2(i, j, gs + 1)) * st * 2) / 2;
+    const c = cellOf(x, y);
+    if (c < 0 || bp.reg[c] !== townR || D[c] < 2) continue;
+    const pick = hash2(i, j, gs + 2);
+    const id = pick < GROUNDS.tree ? (hash2(i, j, gs + 3) < 0.72 ? 'orchard' : 'oak')
+      : pick < GROUNDS.tree + GROUNDS.bush ? 'bush'
+      : pick < GROUNDS.tree + GROUNDS.bush + GROUNDS.flower ? 'flowers'
+      : pick < GROUNDS.tree + GROUNDS.bush + GROUNDS.flower + GROUNDS.stone ? 'stone' : null;
+    const e = id && byId[id];
+    if (!e) continue;
+    const { w, h } = sizeOf(id), tall = h >= 160;
+    if (tall && (D[c] < 2 || !crownOk(x, y, w, h) || nearFoot(x, y, 70))) continue;
+    if (!tall && nearFoot(x, y, 26)) continue;
+    put(id, x, y, Math.floor(hash2(i, j, gs + 4) * (e.count || 1)), !NO_FLIP.has(id) && hash2(i, j, gs + 5) < 0.5, tall ? 22 : 12);
+    note(id);
+  }
+
+  /* ── the edge: where the town's own ground meets the commons ── */
+  const Rm = GROUNDS.rim, rs = seed + 5231;
+  /* how far every cell is from a road leaving the town, a bridge or the railway (cells, to 12): the
+     old roads have their own fences, and the town's edge leaves them their gap */
+  const RD = new Uint8Array(N).fill(12);
+  for (let y = box.y0; y <= box.y1; y++) for (let x = box.x0; x <= box.x1; x++) { const i = y * BW + x, k = bp.cls[i]; if (k === C.path || k === C.bridge || k === C.rail) RD[i] = 0; }
+  sweep(RD);
+  const outside = (k) => bp.reg[k] !== townR && bp.cls[k] !== C.ocean && bp.cls[k] !== C.river && bp.cls[k] !== C.water;
+  const fenceH = byId['fence-down'] ? byId['fence-down'].size : 170;
+  const bx0 = Math.floor(gx(-ext) / cellPx), bx1 = Math.ceil(gx(ext) / cellPx), by0 = Math.floor(gy(-ext) / cellPx), by1 = Math.ceil(gy(ext) / cellPx);
+  const K = Rm.cells;
+  for (let lj = Math.floor(by0 / K); lj <= Math.floor(by1 / K); lj++) for (let li = Math.floor(bx0 / K); li <= Math.floor(bx1 / K); li++) {
+    let best = -1, bestH = 2;
+    for (let dy = 0; dy < K; dy++) for (let dx = 0; dx < K; dx++) {
+      const bx = li * K + dx, by = lj * K + dy;
+      if (bx < 1 || by < 1 || bx >= BW - 1 || by >= BH - 1) continue;
+      const i = by * BW + bx;
+      if (bp.reg[i] !== townR || D[i] < 1 || RD[i] < Rm.clearRoad) continue;
+      if (!(outside(i - 1) || outside(i + 1) || outside(i - BW) || outside(i + BW))) continue;
+      const h = hash2(bx, by, rs);
+      if (h < bestH) { bestH = h; best = i; }
+    }
+    if (best < 0) continue;
+    const bx = best % BW, by = (best / BW) | 0;
+    /* which way is out: from the commons' land cells within two cells */
+    let nx = 0, ny = 0;
+    for (let v = -2; v <= 2; v++) for (let u = -2; u <= 2; u++) {
+      const xx = bx + u, yy = by + v;
+      if (xx < 0 || yy < 0 || xx >= BW || yy >= BH) continue;
+      if (outside(yy * BW + xx)) { nx += u; ny += v; }
+    }
+    if (!nx && !ny) continue;
+    const x = Math.round((bx + 0.5) * cellPx * 2) / 2, y = Math.round((by + 0.5) * cellPx * 2) / 2;
+    const m = hash2(bx, by, rs + 1);
+    const flip = hash2(bx, by, rs + 2) < 0.5;
+    /* the run it is in, from slow noise along the edge: a stretch of fence, a stretch of hedge
+       (bushes close together), or the open edge with a stone or a haystack now and then --
+       so the boundary is made of RUNS with gaps between them, not scattered pieces */
+    const run = fbm(x / 800, y / 800, rs + 9, 2);
+    const nl = Math.sqrt(nx * nx + ny * ny), ux = Math.abs(nx) / nl, uy = Math.abs(ny) / nl;
+    const diagonal = Math.min(ux, uy) > 0.5;
+    if (run > Rm.fenceRun && !diagonal && m < Rm.fenceFill) {
+      /* a split-rail section along the edge: the edge runs up and down when the way out is sideways */
+      const vertical = ux >= uy;
+      const fx = x, fy = vertical ? y + fenceH * 0.4 : y;
+      if (!lawn(fx, fy, 1) || !lawn(fx, vertical ? fy - fenceH * 0.8 : fy, 1)) continue;
+      if (nearFoot(fx, fy, 14)) continue;
+      put(vertical ? 'fence-down' : 'fence', fx, fy, Math.floor(hash2(bx, by, rs + 3) * 3), false, 20);
+      note(vertical ? 'fence-down' : 'fence');
+    } else {
+      const id = run < Rm.hedgeRun ? (m < Rm.hedgeFill ? 'bush' : null) : m < Rm.stone ? 'stone' : m < Rm.stone + Rm.hay ? 'haystack' : m < Rm.stone + Rm.hay + Rm.bush ? 'bush' : null;
+      if (!id || !byId[id] || D[best] < 2 || nearFoot(x, y, id === 'bush' && run < Rm.hedgeRun ? 14 : 30)) continue;
+      put(id, x, y, Math.floor(hash2(bx, by, rs + 4) * (byId[id].count || 1)), !NO_FLIP.has(id) && flip, id === 'haystack' ? 22 : 12);
+      note(id);
+    }
+  }
+}
 
 /* ── the work ── */
 
@@ -534,6 +764,7 @@ export function placeObjects(plan, bp, opts = {}) {
   };
 
   const out = { kind: [], piece: [], flip: [], x: [], y: [] };
+  const counts = Object.create(null);
   const put = (id, x, y, piece, flip, r = 30) => {
     const e = byId[id];
     if (!e) return false;
@@ -548,6 +779,9 @@ export function placeObjects(plan, bp, opts = {}) {
 
   /* ── 1. the buildings, and what stands at their doors ── */
   const T = plan.town;
+  /* v2.3.3031: the designed town's ground -- which of its open cells are
+     lawn (layout.js townSurfaces); null for a plan without `town.lawn` */
+  const surf = T && T.lawn ? townSurfaces(plan, bp) : null;
   /* v2.3.2982: the big-town preview's buildings are drawn `bk` times the
      size (plan.js bigTownPlan), so what stands beside a porch stands that
      much further out */
@@ -599,6 +833,8 @@ export function placeObjects(plan, bp, opts = {}) {
       const ax = (i + 0.2 + 0.6 * hash2(i, j, ys)) * step, ay = (j + 0.2 + 0.6 * hash2(i, j, ys + 1)) * step;
       const x = gx(ax), y = gy(ay), c = cellOf(x, y);
       if (c < 0 || bp.reg[c] !== townR || bp.cls[c] !== C.ground) continue;
+      /* (v2.3.3031: barrels, crates and bales stand in the earth yards, not on the lawns between them) */
+      if (surf && surf[c] === TOWN_SURF.grass) continue;
       /* clear of the streets, walks and the square by a step */
       let nearStreet = false;
       for (const [u, v] of [[-30, 0], [30, 0], [0, -30], [0, 30]]) {
@@ -614,6 +850,8 @@ export function placeObjects(plan, bp, opts = {}) {
       put(id, x, y, Math.floor(hash2(i, j, ys + 4) * 4), false);
     }
   }
+  /* ── 2b. v2.3.3031: the town's gardens, its two yards, the old grove and its edge ── */
+  if (T && surf) townGrounds({ plan, bp, T, tp: townPlan(T), surf, g, WPA, cellOf, cellPx, BW, BH, N, townR, byId, nearFoot, put, seed, counts });
   const placedTown = out.kind.length;
 
   /* ── 3. the commons' fences and fields, along the four Old Roads ── */
@@ -667,7 +905,6 @@ export function placeObjects(plan, bp, opts = {}) {
     }
     return false;
   };
-  const counts = Object.create(null);
 
   /* ── 4. v2.3.2981: THE OASES ──
      Owner, 2026-10-02: "The palm trees don't belong in the desert unless
@@ -764,6 +1001,19 @@ export function placeObjects(plan, bp, opts = {}) {
 
   /* ── 5. nature: each land's big, middle and small things ── */
   const weightAt = (w, stage) => (Array.isArray(w) ? w[Math.max(0, Math.min(3, stage))] : w);
+  /* v2.3.3031: how far every cell is from the town's edge (cells), for the halo */
+  let haloD = null;
+  if (surf) {
+    haloD = new Uint8Array(N).fill(HALO.cells + 1);
+    const hb = townCellBox(plan, bp, HALO.cells + 2);
+    for (let y = hb.y0; y <= hb.y1; y++) for (let x = hb.x0; x <= hb.x1; x++) { const i = y * BW + x; if (bp.reg[i] === townR) haloD[i] = 0; }
+    sweepBox(haloD, BW, BH, hb);
+  }
+  const haloK = (c) => {
+    if (!haloD || haloD[c] > HALO.cells) return 1;
+    const t = Math.max(0, Math.min(1, (haloD[c] - HALO.near) / (HALO.cells - HALO.near)));
+    return HALO.floor + (1 - HALO.floor) * t * t * (3 - 2 * t);
+  };
   /* v2.3.2999: `?placing=2`, the woods, groups and undergrowth of PLACING v2 */
   if (opts.v === 2) natureV2({ plan, bp, seed, cellOf, cellPx, BW, BH, N, worldW, worldH, clear, wet, byId, landOf, townR, commonsR, coversTown, nearOasis, nearFoot, put, counts });
   else for (const L of LAYERS) {
@@ -791,7 +1041,7 @@ export function placeObjects(plan, bp, opts = {}) {
       /* open ground in drifts and clearings */
       const drift = 0.5 + 0.5 * fbm(x * DRIFT, y * DRIFT, ls + DRIFT_SEED, 2);
       const dense = (land.dense && land.dense[L.id]) || 1;
-      const chance = clump ? Math.min(1, L.inClump * Math.sqrt(dense)) : L.open * dense * (0.25 + 1.5 * drift * drift);
+      const chance = (clump ? Math.min(1, L.inClump * Math.sqrt(dense)) : L.open * dense * (0.25 + 1.5 * drift * drift)) * (land === LANDS.commons ? haloK(c) : 1);
       if (hash2(i, j, ls + 2) >= chance) continue;
       const stage = r === commonsR ? 0 : Math.max(0, bp.band[c]);
       const shore = land.shore ? wet[c] <= 3 : false;
@@ -826,7 +1076,11 @@ export function placeObjects(plan, bp, opts = {}) {
   /* v2.3.2982: how many times its picture's size each kind is drawn -- the
      big-town preview's buildings bigger, everything else as made */
   const kindScale = new Float32Array(kinds.length).fill(1);
-  if (bk !== 1) cat.forEach((e, k) => { if (e.kind === 'building') kindScale[k] = bk; });
+  /* v2.3.3031: the Town Hall drawn `hallScale` bigger than the rest ("Town
+     Hall could also be about 15-20% larger than normal buildings so you
+     instantly know 'this is the center'") */
+  const hs = (T && T.hallScale) || 1, hallId = T && T.hallLot && T.hallLot.id;
+  if (bk !== 1 || hs !== 1) cat.forEach((e, k) => { if (e.kind === 'building') kindScale[k] = bk * (e.id === hallId ? hs : 1); });
   const res = {
     version: opts.v === 2 ? PLACING_V2 : PLACING, kinds, kindScale, n, worldW, worldH,
     /* v2.3.2982: the buildings standing, of the catalog's (the big-town
@@ -847,8 +1101,9 @@ export function mayorSpot(plan, bp) {
   const hall = bp.lots.find((l) => l.id === (plan.town && plan.town.hallLot && plan.town.hallLot.id));
   if (!hall || !hall.foot) return null;
   const WPA = plan.worldPxPerArtPx;
-  /* (v2.3.2982: beside a bigger Town Hall's wider steps in the big-town preview) */
-  const bk = plan.town.buildingScale || 1;
+  /* (v2.3.2982: beside a bigger Town Hall's wider steps in the big-town preview;
+     v2.3.3031: and in the designed town, whose hall is drawn bigger still) */
+  const bk = (plan.town.buildingScale || 1) * (plan.town.hallScale || 1);
   return { x: (hall.foot.x + 70 * bk - bp.x0) * WPA, y: (hall.foot.y + 20 - bp.y0) * WPA };
 }
 

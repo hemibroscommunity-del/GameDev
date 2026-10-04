@@ -525,6 +525,11 @@ The ends of town have characters:
 Every building the game has today has a plot, and four plots are spare for
 systems that exist without a building (duels, mail, clans) or might (an inn).
 
+*(v2.3.3031: the standard town takes this proposal further -- the districts,
+and the plots off their rows, are `design.lots` in plan.js, and its plot
+numbers are not the table's: see docs/WORLD-MAP-PIPELINE.md "The town as a
+designed place".  plan.js wins, as ever.)*
+
 | Arm | Side | Plot | Takes today's | Plot (art px from the centre) | Door |
 |---|---|---|---|---|---|
 | square | — | Town Hall | mayor (NPC) | -140,-80 → 140,80 | 0,80 |
