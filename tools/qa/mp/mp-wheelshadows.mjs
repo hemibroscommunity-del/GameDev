@@ -167,7 +167,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4. Frost Ridge: a pine's shadow on the snow, its blue, the wind,
         snow in the air, prints in the snow ── */
   const frost = await SPOT('frost', 2);
-  let fr = null, side = null, sway = null, bits = null;
+  let fr = null, side = null, sway = null, bits = null, lowSide = null;
   if (frost) {
     await H.hopTo(P, frost.x, frost.y, { tries: 200 });
     await settle(60);
@@ -196,6 +196,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await setWorld(P, true); await frames(P, 4);
       const on = H.decodePng(await P.page.screenshot({ path: join(OUT, 'wheelshadows-tree-on.png') }));
       side = { obj: c, shade: { off: meanLum(off, box(shade)), on: meanLum(on, box(shade)) }, lit: { off: meanLum(off, box(lit)), on: meanLum(on, box(lit)) } };
+      break;
+    }
+    /* ── 4b. v2.3.3028, owner: "Sea level props have shadows that appear to
+          be floating off the ground a bit. Shadows not connecting to the
+          prop." -- a low thing (a snow rock, a bush) casts column by column
+          from its own base now, so the ground just below and right of its
+          foot, a quarter of its height out, is in its shadow; the billboard
+          before it pivoted the shadow 11-20 px up the picture and left that
+          ground lit.  Measured three ways at the one spot: no world shadows,
+          the column model, and the old billboard (QA __btWheelCastBoard).
+          Still air (as above), so nothing drifts through the box. ── */
+    const lowPick = await P.page.evaluate(() => {
+      const S = window._gameState.current, W = window.__btWheelObjects;
+      const all = W.near(S.player.x, S.player.y, 800);
+      /* one with a footprint: a walk-through thing (a frost bush, flowers)
+         has none, pivoted at its foot all along, and was never the trouble */
+      return all.filter((o) => o.h >= 34 && o.h <= 120 && o.w >= 28 && W.sprite(o.i) && W.caster(o.i) && W.caster(o.i).model === 'cols'
+          && W.caster(o.i).floor < W.caster(o.i).foot - 6
+          && Math.hypot(o.x - S.player.x, o.y - S.player.y) > 140)
+        .map((o) => ({ i: o.i, id: o.id, x: o.x, y: o.y, h: o.h, w: o.w, c: W.caster(o.i),
+          crowd: all.filter((q) => q.i !== o.i && q.h > 16 && Math.abs(q.x - o.x) < 220 && q.y < o.y + 90 && q.y > o.y - 320).length }))
+        .sort((a, b) => a.crowd - b.crowd || b.h - a.h).slice(0, 8);
+    });
+    for (const c of lowPick) {
+      const at = await toScreen(P, c.x + 0.25 * c.h, c.y + 0.18 * c.h);
+      const half = Math.max(2.5, 0.06 * c.h * at.k);
+      const bx = { x: at.x - half, y: at.y - half, w: 2 * half, h: 2 * half };
+      if (bx.x < 12 || bx.y < 70 || bx.x + bx.w > PHONE.width - 12 || bx.y + bx.h > PHONE.height - 130) continue;
+      const tl = await toScreen(P, c.x - 0.75 * c.w, c.y - 1.15 * c.h), br = await toScreen(P, c.x + 0.75 * c.w + 0.5 * c.h, c.y + 0.5 * c.h);
+      const clip = { x: Math.max(0, tl.x), y: Math.max(0, tl.y), width: Math.min(PHONE.width, br.x) - Math.max(0, tl.x), height: Math.min(PHONE.height, br.y) - Math.max(0, tl.y) };
+      await setWorld(P, false); await frames(P, 4);
+      const off = meanLum(H.decodePng(await P.page.screenshot()), bx);
+      await setWorld(P, true); await frames(P, 6);
+      const on = meanLum(H.decodePng(await P.page.screenshot()), bx);
+      await P.page.screenshot({ path: join(OUT, 'wheelshadows-low-after.png'), clip }).catch(() => {});
+      await P.page.evaluate(() => { window.__btWheelCastBoard = true; }); await frames(P, 4);
+      const board = meanLum(H.decodePng(await P.page.screenshot()), bx);
+      await P.page.screenshot({ path: join(OUT, 'wheelshadows-low-before.png'), clip }).catch(() => {});
+      await P.page.evaluate(() => { window.__btWheelCastBoard = false; }); await frames(P, 4);
+      lowSide = { obj: c, off, on, board };
       break;
     }
     /* the wind back on (the harness stills it for pixel tests) */
@@ -290,6 +330,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const drop = (q) => (q && q.off > 0 ? 1 - q.on / q.off : 0);
   rec.ok(`a tree's shadow falls below and right of its foot (${side ? `${side.obj.id}: the snow there ${(drop(side.shade) * 100).toFixed(1)}% darker` : 'no tree in view'}), not on its sunlit left (${side ? (drop(side.lit) * 100).toFixed(1) : '?'}%)`,
     !!side && drop(side.shade) > 0.08 && Math.abs(drop(side.lit)) < 0.03, side);
+  /* v2.3.3028: a low thing's shadow starts at its own base */
+  {
+    const L = lowSide, c = L && L.obj && L.obj.c;
+    const dNew = L ? 1 - L.on / L.off : 0, dOld = L ? 1 - L.board / L.off : 0;
+    rec.ok(`a low thing's shadow starts at its own base (${L ? `${L.obj.id}, ${Math.round(L.obj.h)} px tall: the ground a quarter of its height below-right of its foot ${(dNew * 100).toFixed(1)}% darker, where the old pivot left it ${(dOld * 100).toFixed(1)}%` : 'no low thing in view'}), cast column by column from the lowest pixel of each, the footprint's middle the furthest back`,
+      !!L && c && c.model === 'cols' && c.lowest != null && Math.abs(c.lowest - c.foot) < 2.5 && c.floor < c.foot && dNew > 0.06 && dNew > dOld + 0.04, L);
+  }
   rec.ok(`the trees and bushes sway in the wind, their foot held still (${sway ? sway.moved.map((m) => `${m.id} ${m.range}`).join(', ') : 'none in view'})`,
     !!sway && sway.wheelSway > 0 && sway.moved.some((m) => m.range > 0.003) && sway.moved.every((m) => m.footMoved < 0.5), sway);
   rec.ok(`...and a strong gust shakes snow off them (${bits ? (bits.after.snow || 0) - (bits.before.snow || 0) : 0} flecks, ${bits ? bits.falling : 0} falling)`,

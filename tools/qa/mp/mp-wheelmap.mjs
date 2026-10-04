@@ -267,7 +267,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
      (north-west of town) the town is off the box, and its badge rides the
      box's edge toward it: south-east, the bottom right of the box -- drawn
      there (its white house and brass ring read off the screen) */
-  const hm = fw.home || {};
+  /* read where it is NOW (fw is from the arrival, seconds ago), once no
+     banner is on screen -- a land's banner spans a phone's width, and its
+     right ornament reaches over the box's bottom corner while it plays */
+  for (let i = 0; i < 24; i++) {
+    const pl = await P.page.evaluate(() => (window.__btZoneBanner && window.__btZoneBanner.playing ? window.__btZoneBanner.playing() : null));
+    if (!pl) break;
+    await P.page.waitForTimeout(250);
+  }
+  const now4 = (await mini(P)) || {};
+  const hm = now4.home || fw.home || {};
+  await shot(P, '04b-home');
   let badge = null;
   if (hm.shown) {
     const r = await P.page.evaluate(() => window.__btWheelMini);
@@ -283,7 +293,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     badge = { white, brass, dark, px: png.width * png.height };
   }
   rec.ok(`...and out there, town off the box, its HOME BADGE rides the box's edge toward it: town ${hm.deg} degrees from you (south-east), ${hm.dist} game px away, the badge at (${hm.x}, ${hm.y}) in the box, drawn (${badge ? `${badge.white} white, ${badge.brass} brass, ${badge.dark} dark px` : 'not shown'})`,
-    hm.edge === true && hm.shown === true && hm.deg >= 30 && hm.deg <= 60 && hm.x > 66 && hm.y > 66 && !!badge && badge.white >= 8 && badge.brass >= 6 && badge.dark >= 20, { home: hm, badge });
+    hm.edge === true && hm.shown === true && hm.deg >= 30 && hm.deg <= 60 && hm.x > 66 && hm.y > 66 && !!badge && badge.white >= 8 && badge.brass >= 6 && badge.dark >= 20, { home: hm, badge, quest: now4.quest || null });
   /* ── 5. home: today's minimap again ── */
   const exit = await P.page.evaluate(() => {
     const S = window._gameState.current;

@@ -610,9 +610,11 @@ function _hpFillTexFor(holder, frac) {
   return holder._hpFillTex;
 }
 
-/* v2.3.2956: the node HP bar's four display objects (drawNodeHpBar), named
-   once rather than per frame. */
-const NODE_HPBAR_PARTS = ['_nbFrame', '_nbFill', '_nbFx', '_nbText'];
+/* v2.3.2956: the node HP bar's display objects (drawNodeHpBar), named once
+   rather than per frame.  v2.3.3027: five -- the number in YOUR HP number's
+   type for the bar at your HP bar's size (`big`), kept beside the small one so
+   neither re-renders its text on the switch. */
+const NODE_HPBAR_PARTS = ['_nbFrame', '_nbFill', '_nbFx', '_nbText', '_nbTextBig'];
 function _nodeHpBarHide(holder) {
   if (holder._nbFrame.alpha !== 0) {
     for (let i = 0; i < NODE_HPBAR_PARTS.length; i++) holder[NODE_HPBAR_PARTS[i]].alpha = 0;
@@ -667,6 +669,8 @@ export function drawNodeHpBar(layer, holder, bar) {
     holder._nbFx = new Graphics();
     holder._nbText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
     holder._nbText.anchor.set(0.5, 0.5);
+    holder._nbTextBig = new Text({ text: '', style: PLAYER_HP_NUM_STYLE });
+    holder._nbTextBig.anchor.set(0.5, 0.5);
     if (holder._hpFillTex) holder._hpFillTex.destroy(false);   /* the cropped view only; the art is shared */
     holder._hpFillTex = null; holder._hpFillTexW = 0;
     for (let i = 0; i < parts.length; i++) holder[parts[i]].alpha = 0;
@@ -693,10 +697,15 @@ export function drawNodeHpBar(layer, holder, bar) {
      reducing").  Re-appended only when something has landed above it, which
      happens once per harvest, not per frame. */
   const kids = layer.children;
-  if (kids[kids.length - 1] !== holder._nbText) for (const k of parts) layer.addChild(holder[k]);
+  if (kids[kids.length - 1] !== holder[parts[parts.length - 1]]) for (const k of parts) layer.addChild(holder[k]);
   const f01 = Math.max(0, Math.min(1, frac));
   const k = bar.scale > 0 ? bar.scale : 1;
-  const W = MONSTER_HPBAR_W * k, H = MONSTER_HPBAR_H * k;
+  /* v2.3.3027: `big` -- the bar over your head while you gather, at YOUR HP
+     bar's size (76 x 22 to the monster's 44 x 13) and with your HP number's
+     type, the owner's "as large as the normal hp bar" */
+  const big = !!bar.big;
+  const W = (big ? PLAYER_HPBAR_W : MONSTER_HPBAR_W) * k, H = (big ? PLAYER_HPBAR_H : MONSTER_HPBAR_H) * k;
+  holder._nbW = W; holder._nbH = H;   /* for the QA probe (__btNodeHpBar) */
   const { x, y, now } = bar;
   const fr = holder._nbFrame;
   if (fr.texture !== frameTex) fr.texture = frameTex;
@@ -740,11 +749,14 @@ export function drawNodeHpBar(layer, holder, bar) {
      wash into snow or sand at its dimmest. */
   if (bar.call) {
     const pulse = 0.5 + 0.5 * Math.sin(now / 140);
-    const halo = 2.4 * k;
+    const hk = big ? k * (PLAYER_HPBAR_H / MONSTER_HPBAR_H) : k;   /* the halo in step with the bar */
+    const halo = 2.4 * hk;
     fx.roundRect(x - W / 2 - halo, y - H / 2 - halo, W + 2 * halo, H + 2 * halo, H / 2 + halo);
-    fx.stroke({ width: Math.max(1.5, 2 * k), color: 0xF0C878, alpha: 0.35 + 0.6 * pulse });
+    fx.stroke({ width: Math.max(1.5, 2 * hk), color: 0xF0C878, alpha: 0.35 + 0.6 * pulse });
   }
-  const txt = holder._nbText;
+  const txt = big ? holder._nbTextBig : holder._nbText;
+  const other = big ? holder._nbText : holder._nbTextBig;
+  if (other.alpha !== 0) other.alpha = 0;
   if (bar.hp == null) { txt.alpha = 0; return; }   /* the timer: nothing was hit, so no number */
   const str = String(Math.max(0, Math.round(bar.hp)));
   if (txt.text !== str) txt.text = str;
@@ -5475,6 +5487,28 @@ export function figureFeetY(display) {
 const _STAND_SOUTH = { _animPose: 'stand', _animDir: 'south' };
 export function playerGroundDy(zoneId, x, y) {
   return _feetOffsetUnits(_STAND_SOUTH) * zonePlayerScale(zoneId, x, y, TILE) * PLAYER_SIZE_MULT;
+}
+/* ═══ v2.3.3027: WHILE YOU GATHER, THE BAND OVER YOUR HEAD IS THE HARVEST'S ═══
+   Owner, 2026-10-04: "Ticks for the resource extraction is too hard to see.
+   You can make it as large as the normal hp bar and just hide the player name
+   plate and health bar during extraction."  So while the harvest is open
+   (`waiting` or `ready`, and not over a corpse: the death hold keeps the
+   extraction alive under it, v2.3.2281) the name plate and your HP bar step
+   off the band over your head, and the node's bar takes it at your HP bar's
+   size (effectsRenderer _drawGatherHpBar, drawNodeHpBar `big`).  The plate
+   and the bar come back the frame the harvest ends -- the bar only if your HP
+   moved inside its usual hold, as ever (v2.3.1682). */
+export function selfGathering(S) {
+  const ex = S && S._extraction;
+  return !!(ex && (ex.status === 'waiting' || ex.status === 'ready')) && !selfCorpseUp(S);
+}
+/* The band's centre over a figure that is not your display -- the lumberjack
+   and the cook stand-ins, which stand with their boots at (x, bootsY) and hide
+   the display while they work (_chopHide) -- at the height the band is over
+   your own head: your boots, up to your centre, up to PLAYER_BAND_Y. */
+export function bandOverBoots(x, bootsY, zoneScale) {
+  const zs = zoneScale || 1;
+  return { x, y: bootsY - standFootDy(zs) + PLAYER_BAND_Y * PLAYER_SIZE_MULT * zs, scale: PLAYER_SIZE_MULT * zs, feet: bootsY };
 }
 function _applyBuildScale(display, pscale, heightId, frameId) {
   const b = buildScale(heightId, frameId);
@@ -14564,6 +14598,9 @@ export class EntityRenderer {
          because that fade lands on a tiny residual rather than exactly zero
          -- a plate that waited for a true 0 would never come back. */
       if (_barA > 0.01) display._namePill.visible = false;
+      /* v2.3.3027: and while you gather the harvest's bar has the band
+         (selfGathering, above) */
+      else if (selfGathering(S)) display._namePill.visible = false;
     }
     /* ═══ v2.3.2760: WHERE THE BAND LINE'S TOP IS, FOR THE HARVEST BAR ═══
        The harvest wind-up bar (effectsRenderer _drawWindupBar) goes "above the
@@ -14581,6 +14618,19 @@ export class EntityRenderer {
         ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
       S._selfBandTopY = display.visible
         ? display.y + (PLAYER_BAND_Y - _bandHalf) * Math.abs(display.scale.y || 1) : null;
+      /* v2.3.3027: and the band's CENTRE and the scale it is drawn at, for
+         the harvest's bar, which takes the band while you gather
+         (effectsRenderer _drawGatherHpBar).  Through the ui layer, which
+         undoes your build's stretch, as the HP bar it stands in for is.  One
+         object, rewritten: this runs every frame. */
+      const _b = S._selfBand || (S._selfBand = { on: false, x: 0, y: 0, scale: 1, feet: 0 });
+      const _ui = display._uiLayer;
+      const _k = (display.scale ? display.scale.y : 1) * (_ui && _ui.scale ? _ui.scale.y : 1);
+      _b.on = !!display.visible;
+      _b.x = display.x;
+      _b.y = display.y + PLAYER_BAND_Y * _k;
+      _b.scale = Math.abs(_k) || 1;
+      _b.feet = typeof S._bodyFootY === 'number' ? S._bodyFootY : display.y;   /* for the probe: how far over the boots */
     }
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED
@@ -15805,7 +15855,10 @@ export class EntityRenderer {
       const hpTargetAlpha = (stillHealing || sinceHpEvent < HOLD_MS) ? 1 : 0;
       const hpA = (ring.alpha != null) ? ring.alpha : 0;
       const hpDelta = hpTargetAlpha - hpA;
-      const hpNewAlpha = hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));
+      /* v2.3.3027: off at once while you gather -- the harvest's bar is drawn
+         in this very spot at this very size (selfGathering), and a fade
+         would draw the two numbers through each other for 300 ms */
+      const hpNewAlpha = selfGathering(S) ? 0 : hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));
       ring.alpha = hpNewAlpha;
       heartText.alpha = hpNewAlpha;
       /* v2.3.1472: maxText is retired (see below) — no fade to drive. */
@@ -15933,6 +15986,7 @@ export class EntityRenderer {
           drawnMax: maxText.visible ? maxText.text : null,   /* retired v2.3.1472 */
           expect: String(toDisplayHp(hpCur)), expectMax: String(toDisplayHp(hpMax)),
           k: DISPLAY_SCALE_K,
+          barA: +hpNewAlpha.toFixed(3),   /* v2.3.3027: 0 while you gather */
         };
       }
     }

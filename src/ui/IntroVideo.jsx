@@ -20,7 +20,21 @@ import { getServerReadyState, serverHoldText } from '@/networking/serverReady.js
 const MIN_MS = 3000;     // minimum clip display before we even consider fading
 const FADE_MS = 1000;    // opacity fade duration
 
-export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) => {
+/* ═══ v2.3.3025: THE CLIP'S OWN SHAPE FROM THE FIRST FRAME ═══
+   Owner, 2026-10-04: "sometimes the loading screen of the ocean is too small
+   before it fits the right screen size."  The <video> carried no size of its
+   own: until the clip's first frame had decoded it had none (a video's
+   default is 300 x 150), and the box round it leaned on `inset`, which an
+   older iPhone does not know -- so the beach could come up small and jump.
+   Now the video fills its screen absolutely (game.css, explicit edges), says
+   its shape up front (width/height 400 x 736, the clip's), and shows its own
+   first frame as a picture (POSTER) from the moment it mounts -- a still of
+   the same beach, cut from the clip, so there is nothing to jump to. */
+const POSTER = '/intro/loading-ashore-poster.webp';
+export const INTRO_CLIP = '/intro/loading-ashore.mp4';
+export const INTRO_POSTER = POSTER;
+
+export const IntroVideo = ({ onComplete, waitFor, waitForServer, waitForWorld, themeAudio }) => {
   const [fading, setFading] = useState(false);
   const [waiting, setWaiting] = useState(false);   // assets still loading past MIN_MS
   /* ═══ v2.3.2439: THE SECOND GATE, AND IT HAS NO CAP ═══
@@ -45,6 +59,7 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) =
   const finishedRef = useRef(false);
   const minDoneRef = useRef(false);
   const readyRef = useRef(false);
+  const worldRef = useRef(false);   /* v2.3.3025: the world gate (below) */
   /* maybeFinish lives inside the mount effect (it closes over `cancelled`),
      and the video's error handler is outside it.  The ref is the seam. */
   const maybeFinishRef = useRef(null);
@@ -52,6 +67,7 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) =
   const finish = () => {
     if (finishedRef.current) return;
     finishedRef.current = true;
+    try { document.body.classList.remove('bt-intro-up'); } catch (e) {}   /* v2.3.3025 */
     /* v2.3.1866 probe: WHO took the loading screen down, and when.  Chasing
        the owner's black screen, the overlay was measured coming off in under
        a second against a 3000ms floor — which is either this finish() running
@@ -97,10 +113,14 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) =
       window.__btIntro = window.__btIntro || [];
       window.__btIntro.push({ ev: 'mount', at: Date.now(), hasWaitFor: !!waitFor });
     } catch (e) {}
+    /* v2.3.3025: while this is up it is THE loading screen -- no zone veil is
+       painted over it (game.css body.bt-intro-up), whatever the way in does
+       behind it (wheelHome.js) */
+    try { document.body.classList.add('bt-intro-up'); } catch (e) {}
     let cancelled = false;
     const maybeFinish = () => {
       if (cancelled || finishedRef.current) return;
-      if (minDoneRef.current && readyRef.current && serverRef.current) {
+      if (minDoneRef.current && readyRef.current && serverRef.current && worldRef.current) {
         setWaiting(false);
         beginTransition();
         setFading(true);
@@ -129,6 +149,18 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) =
       setHoldMsg('');
       maybeFinish();
     });
+    /* ═══ v2.3.3025: THE WORLD GATE ═══
+       The way in to the Wheel's Brotown runs through today's town (the
+       client starts every session there, wheelHome.js), and this screen came
+       off when the art and the server were ready -- mid-trip.  So it holds
+       for the arrival too: one loading screen from the tap to the Wheel's
+       square.  Its own cap lives in waitForWheelArrival (30 s past the
+       server's gate); a missing prop resolves at once, as the others. */
+    Promise.resolve(waitForWorld).catch(() => {}).then(() => {
+      if (cancelled) return;
+      worldRef.current = true;
+      maybeFinish();
+    });
     /* While the server gate holds, say so.  Polled rather than subscribed:
        the message also depends on how long we have been waiting, and half a
        second is well inside how fast a person reads a loading screen. */
@@ -151,6 +183,7 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) =
       clearTimeout(minTimer);
       clearTimeout(hardCap);
       clearInterval(statusTimer);   /* v2.3.2439 */
+      try { document.body.classList.remove('bt-intro-up'); } catch (e) {}   /* v2.3.3025 */
     };
   }, []);
 
@@ -188,7 +221,12 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) =
            visually completed (owner playtest: "shows it load all the way
            then replays it loading halfway"). The clip now plays once and
            holds its final (bar-full) frame while the asset gate resolves. */
-        src="/intro/loading-ashore.mp4"
+        src={INTRO_CLIP}
+        /* v2.3.3025: its shape and its first frame before a byte of it has
+           decoded (POSTER, above) */
+        poster={POSTER}
+        width={400}
+        height={736}
         autoPlay
         muted
         playsInline

@@ -268,9 +268,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await H.hopTo(P, exit.tx * 32 + 16 + 40, exit.ty * 32 + 16, { tries: 160 });
   const back = await waitZone(P, 'town', 40, 700);
-  await P.page.waitForTimeout(1500);
-  const after = await P.page.evaluate(() => ({ pages: window.__btWheelObjects.pagesLoaded(), stats: { ...window.__btWheelObjects.stats },
-    cached: Object.keys((window.PIXI_ASSETS_CACHE || {})).length }));
+  /* v2.3.3025: the Wheel lingers WHEEL_LINGER_MS (5 s, worldTrial.js) after
+     you leave before it stops and lets its sheets go -- a walk back down the
+     stairs inside that keeps it all -- and this read at 1.5 s, so it failed
+     on main too since the linger came in.  Read once it has had its time,
+     up to 15 s on this box. */
+  let after = null;
+  for (let i = 0; i < 30; i++) {
+    await P.page.waitForTimeout(500);
+    after = await P.page.evaluate(() => ({ pages: window.__btWheelObjects.pagesLoaded(), stats: { ...window.__btWheelObjects.stats },
+      cached: Object.keys((window.PIXI_ASSETS_CACHE || {})).length }));
+    if (after.pages.length === 0 && after.stats.drawn === 0) break;
+  }
   rec.ok('back in town every one of the Wheel\'s sprite sheets is let go, and nothing of it is drawn',
     back === 'town' && after.pages.length === 0 && after.stats.drawn === 0 && after.stats.pages === 0, { back, after });
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));

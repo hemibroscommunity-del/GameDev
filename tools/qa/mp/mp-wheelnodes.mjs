@@ -63,7 +63,7 @@ const sumPrefix = (inv, pre) => Object.keys(inv || {}).filter((k) => k.indexOf(p
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Angler', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel' });
+  const P = await H.newPlayer(browser, { name: 'Angler', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: 'wayback' /* v2.3.3025: its way back up to town, step 7 */ });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   /* v2.3.3016: real input on a loop.  The walker moves by writing its
@@ -366,7 +366,9 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     await harvest(P, wsPort, myId, rec, 'oreVein', iron, 'ore_iron_ore');
   }
 
-  /* ── 7. up to town: the Wheel's nodes go at the flip ── */
+  /* ── 7. up to town: the Wheel's nodes go at the flip ──
+     v2.3.3025: the marker back to today's town is QA's only (`?wayback`,
+     worldTrial.js wheelWayBack) -- this scenario asks for it below */
   await P.page.evaluate(() => {
     window.__qaFlip = null;
     const tick = () => {
@@ -500,6 +502,27 @@ async function harvest(P, wsPort, myId, rec, type, node, want) {
     { timeout: 70000, label: 'the window opens' }).catch(() => null);
   rec.ok(`${skill}: the hits run down and the gesture window opens (guard)`, opened === 'ready', { opened });
   if (opened !== 'ready') return false;
+  /* v2.3.3027, owner: "Ticks for the resource extraction is too hard to see.
+     You can make it as large as the normal hp bar and just hide the player
+     name plate and health bar during extraction" -- the node's bar is over
+     your head at the HP bar's size, where the plate and the HP bar were */
+  const band = await P.page.evaluate(async () => {
+    await new Promise((res) => requestAnimationFrame(res));
+    await new Promise((res) => requestAnimationFrame(res));
+    const S = window._gameState.current;
+    const b = window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : {};
+    return { bar: b, px: S.player.x, plate: window.__btResourceBars ? window.__btResourceBars.plateVisible : null,
+      hpA: window.__btHpReads ? window.__btHpReads.barA : null };
+  });
+  {
+    const b = band.bar || {};
+    const zs = (b.scale || 0) / 1.25, over = b.feet != null ? b.feet - b.y : NaN;
+    rec.ok(`${skill}: while you gather its bar is over your head (${Math.round(over)} world px over the boots), as large as your HP bar (${b.w} x ${b.h}), and your name plate and HP bar are put away`,
+      b.show === true && b.big === true && Math.abs(b.w - 76 * b.scale) < 0.6 && Math.abs(b.h - 22 * b.scale) < 0.6
+        && Math.abs(b.x - band.px) < 2 && over > 120 * zs && over < 170 * zs && band.plate === false && band.hpA === 0,
+      { bar: b, over, px: band.px, plate: band.plate, hpA: band.hpA });
+    if (type === 'oreVein') await P.page.screenshot({ path: join(H.REPO, 'tools/qa/mp/out/wheelnodes-gatherbar.png') }).catch(() => {});
+  }
   const cue = await P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest().cue : null));
   /* The gesture's moves 16 ms apart, in ONE uninterrupted run on the page's
      thread.  The meter's clock counts only gaps under 200 ms between moves

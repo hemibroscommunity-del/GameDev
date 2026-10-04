@@ -493,8 +493,11 @@ export async function enterWorld(P, timeout = 90000) {
      Measured: the element is gone by ~4s.  Waited for, not slept through,
      with a generous ceiling and a catch — a scenario that genuinely has
      no intro must not hang here. */
+  /* v2.3.3025: and in the Wheel the clip holds until the way in has arrived
+     in its Brotown (IntroVideo's world gate, wheelHome.js), which on this
+     box's software renderer can take most of a minute */
   await page.waitForFunction(() => document.querySelectorAll('video').length === 0,
-    null, { timeout: 15000, polling: 200 }).catch(() => {});
+    null, { timeout: 60000, polling: 200 }).catch(() => {});
   return page.evaluate(() => {
     const S = window._gameState.current;
     return { myId: S.myId, zone: S.currentZone };

@@ -243,7 +243,14 @@ export class ShadowSystem {
      (it only moves when its zone does).  The pieces are MeshSimple sharing
      the building's own texture, in the same filtered layer as the figures,
      so a figure standing in a building's shadow darkens nothing twice. */
-  placeDepth(spr, g, back, lx, ly, pieces) {
+  /* v2.3.3028: `floor` -- the Wheel's low things cast through this too, each
+     column a billboard on its OWN base (back = Infinity: the column's top
+     stands on its base), and `floor` is how far back a base may be read:
+     the middle of the thing's footprint, where it pivoted before -- so a
+     rail, a seat or a sign, whose column's lowest pixel is high in the
+     picture, casts from there and not from mid-air.  Absent for a building,
+     which is unchanged. */
+  placeDepth(spr, g, back, lx, ly, pieces, floor) {
     const tex = spr.texture;
     if (!usableTexture(tex) || !g) return false;
     const COLS = 16;
@@ -274,7 +281,8 @@ export class ShadowSystem {
     for (let i = 0; i <= COLS; i++) {
       const u = i / COLS;
       const x = spr.x + (u - 0.5) * fw * sx;           /* a mirrored prop maps mirrored */
-      const f = profileAtU(g, u);                      /* this TEXTURE column's base, off the art */
+      const f0 = profileAtU(g, u);                     /* this TEXTURE column's base, off the art */
+      const f = floor != null && f0 < floor ? floor : f0;   /* v2.3.3028: never further back than `floor` */
       const b = Math.min(back, f);
       /* the ground under a pixel at y moves from f (base row) to b (frame
          top), linearly; its height is ground - y; its shadow is ground +
@@ -416,10 +424,10 @@ export class ShadowSystem {
         /* v2.3.2749: a building -- see placeDepth.  v2.3.2817: with the
            pieces cut out of it (see _placePieces) */
         this._lastPieces = 0;
-        if (this.placeDepth(cs.depth.spr, cs.depth.g, cs.depth.back, lx, ly, cs.depth.pieces)) {
+        if (this.placeDepth(cs.depth.spr, cs.depth.g, cs.depth.back, lx, ly, cs.depth.pieces, cs.depth.floor)) {
           const np = this._lastPieces;
           st.casters++; st.pieces += 1 + np; st.lifePieces += np; st.keys.push(cs.key);
-          if (st.list.length < 16) st.list.push({ key: cs.key, px: cs.depth.spr.x, py: cs.depth.back, pieces: 1 + np });
+          if (st.list.length < 16) st.list.push({ key: cs.key, px: cs.depth.spr.x, py: Number.isFinite(cs.depth.back) ? cs.depth.back : cs.depth.g.base, pieces: 1 + np });
         }
         continue;
       }

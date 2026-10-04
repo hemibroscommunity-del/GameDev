@@ -275,7 +275,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandOverBoots /* v2.3.3027: the band over the lumberjack and the cook */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
@@ -884,10 +884,49 @@ const POPUP_ICON_SRC = Object.assign({ crit: '/icons/ui/hero/crit.webp', heart: 
    Bounded retry (v2.3.1305 pattern, 2s/6s + cache-bust) so a flake
    self-heals; the popup renderer already no-ops the icon until the
    texture resolves. */
+/* ═══ v2.3.3026: THE ELEMENT'S MARK AS BIG AS THE SWORD'S ═══
+   Owner, 2026-10-04: "when monsters damage you I want the damage numbers as
+   large as they usually are and with the elemental icon after the damage
+   number similar to how the sword has sword icon if melee damage, arrow icon
+   if bow damage".  Every mark is drawn to the number's height -- but the
+   weapon marks are tight pixel art (their opaque part 95-98% of the picture),
+   while the element badges and the heart are painted with a margin round them
+   (64-83%), so the snowflake read 14 px tall beside the sword's 20, and sat a
+   margin further from its number.  Those are cut to their own opaque box
+   (alpha > 16) as they load -- measured off the picture, so a redrawn icon
+   stays right -- and then drawn at the sword's height, the sword's gap after
+   the number.  The DOM chips (ElemStatusChips) keep the whole picture. */
+const TIGHT_POPUP_ICONS = new Set(['heart'].concat(Object.keys(ELEM_ICON_SRC)));
+function _tightPopupIcon(tex) {
+  try {
+    const src = tex && tex.source;
+    const img = src && src.resource;
+    const w = src && (src.pixelWidth || src.width), h = src && (src.pixelHeight || src.height);
+    if (!img || !(w > 0) || !(h > 0) || w > 1024 || h > 1024 || typeof document === 'undefined') return tex;
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0, w, h);
+    const d = g.getImageData(0, 0, w, h).data;
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) {
+      const row = y * w * 4;
+      for (let x = 0; x < w; x++) {
+        if (d[row + x * 4 + 3] > 16) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+    }
+    cv.width = cv.height = 0;
+    if (x1 < x0 || y1 < y0) return tex;
+    const r = src.resolution || 1;
+    const cut = new Texture({ source: src, frame: new Rectangle(x0 / r, y0 / r, (x1 - x0 + 1) / r, (y1 - y0 + 1) / r) });
+    cut._tight = [x0, y0, x1 - x0 + 1, y1 - y0 + 1];   /* for the QA probe */
+    return cut;
+  } catch (e) { return tex; }   /* the whole picture, as before */
+}
 function _loadPopupIcon(k, attempt) {
   const bust = attempt > 0 ? '&r=' + attempt : '';
   return _fxLoad((POPUP_ICON_SRC[k] || ('/icons/popups/' + k + '.webp')) + '?v=2.3.2201' + bust)
-    .then((tex) => { POPUP_ICONS[k] = tex; })
+    .then((tex) => { POPUP_ICONS[k] = TIGHT_POPUP_ICONS.has(k) ? _tightPopupIcon(tex) : tex; })
     .catch(() => {
       if (attempt < 2) {
         return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
@@ -4677,7 +4716,11 @@ export class EffectsRenderer {
              little past it, which is what "much larger" asks for; every
              other icon keeps the cap it has always had. */
           const targetH = dmg.crit ? Math.round(fontSize * 1.15) : Math.min(fontSize, 22);
-          icon.scale.set(targetH / tex.height);
+          /* v2.3.3026: a mark cut to its own box (_tightPopupIcon) can be
+             wide -- the slime's splat is 1.9 to 1 -- so no wider than 1.5x
+             the height, which the round badges never reach */
+          const _wide = TIGHT_POPUP_ICONS.has(iconKey) ? (targetH * 1.5) / tex.width : Infinity;
+          icon.scale.set(Math.min(targetH / tex.height, _wide));
           this.dmgLayer.addChild(icon);
           dmg._pixiIcon = icon;
           /* v2.3.2996: QA -- which icons the numbers were actually drawn with
@@ -4685,6 +4728,13 @@ export class EffectsRenderer {
           if (typeof window !== 'undefined' && window.__btProbe) {
             const _pi = window.__btPopupIconsDrawn || (window.__btPopupIconsDrawn = Object.create(null));
             _pi[iconKey] = (_pi[iconKey] || 0) + 1;
+            /* v2.3.3026: and how big, cut or not, for a hit taken -- the last
+               of each mark: its drawn height beside the number's font */
+            if (dmg.taken) {
+              const _ps = window.__btTakenPops || (window.__btTakenPops = Object.create(null));
+              _ps[iconKey] = { h: +icon.height.toFixed(2), w: +icon.width.toFixed(2), font: fontSize, tight: tex._tight || null,
+                y: +dmg.y.toFixed(1), py: S.player ? +S.player.y.toFixed(1) : null, band: S._selfBandTopY != null ? +S._selfBandTopY.toFixed(1) : null };
+            }
           }
         }
         /* Optional muted-gray suffix Text drawn on the same line as the
@@ -9662,6 +9712,24 @@ export class EffectsRenderer {
           : { show: true, hp: null, maxHp: 1, frac: 1 - m.windup, smooth: true };
         bar.call = m.idle;
         bar.x = at.x; bar.y = at.y; bar.scale = at.scale; bar.now = now;
+        /* ═══ v2.3.3027: OVER YOUR HEAD, AT YOUR HP BAR'S SIZE ═══
+           Owner, 2026-10-04: "Ticks for the resource extraction is too hard
+           to see. You can make it as large as the normal hp bar and just
+           hide the player name plate and health bar during extraction."
+           The node's bar now takes the band over your head -- where the
+           name plate and your HP bar are, both stepped aside while you
+           gather (entityRenderer selfGathering) -- at your HP bar's size,
+           76 x 22 to the monster's 44 x 13, its number in your HP number's
+           type.  v2.3.2956 kept it at the node because a bar that size by
+           the face would read as yours; with yours put away, that is the
+           place the eye already goes.  The miner and the angler are your
+           own display (S._selfBand, written by _updatePlayer); the
+           lumberjack and the cook are stand-ins with your display hidden,
+           so the band is put over THEIR boots (bandOverBoots), from the
+           same spot they are drawn at.  Only where neither can be said (no
+           band yet) does the bar stay at the node, small, as before. */
+        const band = this._gatherBand(S, ex, node);
+        if (band) { bar.x = band.x; bar.y = band.y; bar.scale = band.scale; bar.big = true; bar.feet = band.feet; }
       }
     }
     drawNodeHpBar(this.gestureLayer, this._nodeHpBar, bar);
@@ -9674,13 +9742,40 @@ export class EffectsRenderer {
           hp: bar.hp, maxHp: h ? bar.maxHp : null, frac: +(h ? bar.hp / bar.maxHp : bar.frac).toFixed(3),
           windup: +m.windup.toFixed(3), ready: m.ready, call: !!bar.call,
           x: +bar.x.toFixed(1), y: +bar.y.toFixed(1), scale: +bar.scale.toFixed(3),
-          shown: h ? h.shown : null, of: h ? h.plan.length : null };
+          shown: h ? h.shown : null, of: h ? h.plan.length : null,
+          /* v2.3.3027: over the gatherer's head at your HP bar's size: its
+             drawn size, and the boots of the figure under it */
+          big: !!bar.big, w: +(this._nodeHpBar._nbW || 0).toFixed(1), h: +(this._nodeHpBar._nbH || 0).toFixed(1),
+          feet: bar.feet != null ? +bar.feet.toFixed(1) : null };
         this._nodeHpBarUp = true;
       } else if (this._nodeHpBarUp !== false) {
         window.__btNodeHpBar = { show: false };
         this._nodeHpBarUp = false;
       }
     }
+  }
+
+  /* v2.3.3027: where the band over the gatherer's head is this frame (see
+     _drawGatherHpBar), or null: the miner's and the angler's from your own
+     display, the lumberjack's and the cook's over the stand-in's boots, at
+     the spot its placer draws it (chopStandInSpot, the side by where you
+     stand, as the chopper picks it; cookStandInSpot). */
+  _gatherBand(S, ex, node) {
+    const skill = ex && ex.skill;
+    if (skill === 'mining' || skill === 'fishing') {
+      const b = S._selfBand;
+      return b && b.on ? b : null;
+    }
+    if (skill === 'woodcutting' && node) {
+      const px = (S.player && typeof S.player.x === 'number') ? S.player.x : node.x;
+      const sp = chopStandInSpot(S.currentZone, node, node.x >= px ? 1 : -1);
+      return bandOverBoots(sp.x, sp.y, sp.pscale);
+    }
+    if (skill === 'cooking' && node) {
+      const sp = cookStandInSpot(S.currentZone, node);
+      return bandOverBoots(sp.x, sp.y, sp.pscale);
+    }
+    return null;
   }
 
   /* Where a node's bar goes: the gathering nodes' from their art

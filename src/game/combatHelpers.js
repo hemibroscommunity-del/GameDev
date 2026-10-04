@@ -631,6 +631,34 @@ function monsterPopupY(m, fallback) {
   return y + Math.min(off, POPUP_NO_STAMP_Y);
 }
 
+/* ═══ v2.3.3026: A HIT ON YOU POPS OVER YOUR HEAD, AS ONE ON A MONSTER DOES ═══
+   Owner, 2026-10-04: "when monsters damage you I want the damage numbers as
+   large as they usually are and with the elemental icon after the damage
+   number similar to how the sword has sword icon if melee damage, arrow icon
+   if bow damage".  The number was the same 21 px as the ones you deal -- but
+   it spawned at y - 20, on your own face and shirt: white digits on the
+   white tee and the skin, under the swing, under the monster's plate, and at
+   40 px a second it needed most of its life to climb clear of your head.  A
+   number you deal spawns POPUP_BAR_CLEAR (34) over the TOP of the monster's
+   bar, in clear air (monsterPopupY).  So a number taken now does the same
+   over YOUR band -- the name plate or your HP bar, whichever is up, its top
+   published every frame as S._selfBandTopY (a peer's as other._bandTopY) --
+   and the icon after it is cut to its own size (effectsRenderer
+   _tightPopupIcon).  Where no band is up (a lumberjack or cook stand-in has
+   the display hidden) it falls back to about where the band would be. */
+var HERO_POPUP_CLEAR = 34;     /* entityRenderer's POPUP_BAR_CLEAR */
+var HERO_POPUP_NO_BAND = -136; /* the band's top (-102) at a flat zone's scale, less the clear */
+function heroPopupY(S) {
+  var top = S ? S._selfBandTopY : null;
+  if (typeof top === 'number' && isFinite(top)) return top - HERO_POPUP_CLEAR;
+  return ((S && S.player && S.player.y) || 0) + HERO_POPUP_NO_BAND;
+}
+function peerPopupY(o) {
+  var top = o ? o._bandTopY : null;
+  if (typeof top === 'number' && isFinite(top)) return top - HERO_POPUP_CLEAR;
+  return ((o && o.y) || 0) + HERO_POPUP_NO_BAND;
+}
+
 /* v2.3.1421: clear the per-swing melee dedup flags on every entity.
    Called at every swing START (manual tap, auto-swing, and the sword
    SPECIAL).  Previously the flags only cleared 450ms after a swing
@@ -1038,6 +1066,8 @@ export {
   clearSwingHitFlags,
   pushDmgPopup,
   monsterPopupY,
+  heroPopupY,   /* v2.3.3026 */
+  peerPopupY,   /* v2.3.3026 */
   BUILD_LABELS,
   BUILD_ICONS,
   peerDmgKey,

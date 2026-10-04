@@ -56,6 +56,7 @@ import { playerGroundDy } from './systems/entityRenderer.js';   /* v2.3.2999: wh
 import { releaseShadowTextures } from './lightfx/shadows.js';   /* v2.3.3000: a freed sheet leaves no shadow behind */
 import { WHEEL_SUN } from './lightfx/zoneLight.js';             /* v2.3.3000: how far a shadow reaches */
 import { SHADE } from './formShade.js';                         /* v2.3.3000: shaded toward the ground, as the old props */
+import { readArtBottoms } from './propGround.js';               /* v2.3.3028: where each column of a picture meets the ground */
 
 const BASE = '/world/objects/';
 const CACHE_PREFIX = 'wheel-object/';
@@ -602,12 +603,49 @@ let _live = null;
  * Into `out` (collectCasters' list), one caster per object drawn this frame;
  * the caster objects are kept on the sprites, so a frame allocates nothing.
  * Nothing at all outside the Wheel. */
+/* ═══ v2.3.3028: A LOW THING'S SHADOW STARTS AT ITS OWN BASE ═══
+ * Owner, 2026-10-04: "Sea level props have shadows that appear to be floating
+ * off the ground a bit. Shadows not connecting to the prop."  A billboard's
+ * one projection is pivoted on the MIDDLE of its footprint, and the footprint
+ * reaches back from the foot a share of the picture's height (placing.js
+ * FOOT: 0.4 of a rock, a barrel, a crate, driftwood; 0.35 of a bush) -- so a
+ * low thing's shadow began 11-20 game px up its picture, and the bottom of the
+ * picture, its front base, cast up toward the sun, hidden behind it.  On 57 of
+ * the 109 low pictures nothing at all fell under the front base, and a shadow
+ * reached a median 23% of what one from the base would (measured off the
+ * sheets).  The sea's rocks and driftwood showed it most.
+ *
+ * So everything but a tree now casts COLUMN BY COLUMN, as a building does
+ * (shadows.js placeDepth), each column a billboard on its OWN base -- the
+ * lowest solid pixel of that column of the picture (propGround
+ * readArtBottoms, read once a picture, a few a frame) -- but never further
+ * back than the footprint's middle, where it pivoted before, so a fence's
+ * rail, a bench's seat or a sign casts from there and not from mid-air.  A
+ * tree keeps its billboard: its footprint is a fixed 12-24 px under a crown
+ * hundreds tall, its trunk hides the pivot, and it sways (the column model
+ * does not).  Until its picture is read, a thing casts as before. */
+const _bottoms = new WeakMap();   /* texture -> Float32Array, or null where it cannot be read */
+const BOTTOMS_A_FRAME = 4;
+let _castFrame = 0, _bottomsLeft = 0;
+function bottomsOf(tex) {
+  const b = _bottoms.get(tex);
+  if (b !== undefined) return b;
+  if (_bottomsLeft <= 0) return undefined;   /* a later frame */
+  _bottomsLeft--;
+  const r = readArtBottoms(tex) || null;
+  _bottoms.set(tex, r);
+  return r;
+}
 export function wheelObjectCasters(out) {
   const live = _live;
   if (!live || live.dead || !live.sprites.size) return;
   const ix = _idx;
   if (!ix) return;
   const o = ix.o;
+  _castFrame++; _bottomsLeft = BOTTOMS_A_FRAME;
+  /* QA (mp-wheelshadows): the billboard for everything, as before v2.3.3028,
+     to measure the two side by side */
+  const board = typeof window !== 'undefined' && window.__btWheelCastBoard === true;
   for (const [i, s] of live.sprites) {
     if (!s || s.destroyed || !s.visible) continue;
     const pic = s._pic || s;
@@ -635,8 +673,31 @@ export function wheelObjectCasters(out) {
     if (!c) {
       let y0 = Infinity, y1 = -Infinity;
       for (let b = o.boxOf[i]; b < o.boxOf[i + 1]; b++) { y0 = Math.min(y0, o.boxes[b * 4 + 1]); y1 = Math.max(y1, o.boxes[b * 4 + 3]); }
-      c = s._caster = { key: 'w:' + i, px: 0, py: 0, dy: Number.isFinite(y0) ? (y0 + y1) / 2 - o.y[i] : 0, sprites: [pic], alive: true, noHold: true };
+      const mat = wheelMaterialOf(o.kinds[o.kind[i]]);
+      c = s._caster = { key: 'w:' + i, px: 0, py: 0, dy: Number.isFinite(y0) ? (y0 + y1) / 2 - o.y[i] : 0, sprites: [pic], alive: true, noHold: true,
+        /* v2.3.3028: all but a tree cast column by column (above) */
+        cols: (mat && mat.canopy) ? null : { spr: { texture: null, x: 0, y: 0, scale: { x: 1, y: 1 } },
+          g: { base: 0, bottoms: null, fh: 0, sy: 1 }, back: Infinity, pieces: null, floor: 0 },
+        depth: null };
     }
+    if (c.cols && !board) {
+      const bot = bottomsOf(tex);
+      if (bot) {
+        const d = c.cols, sp = d.spr, sx = pic.scale.x, sy = pic.scale.y;
+        const ox = s._pic ? s.x + pic.x : s.x, oy = s._pic ? s.y + pic.y : s.y;
+        const fw = tex.frame.width, fh = tex.frame.height;
+        sp.texture = tex;
+        sp.x = ox + (0.5 - pic.anchor.x) * fw * sx;      /* the column model's anchor is (0.5, 1) */
+        sp.y = oy + (1 - pic.anchor.y) * fh * sy;
+        sp.scale.x = sx; sp.scale.y = sy;
+        d.g.base = sp.y; d.g.bottoms = bot; d.g.fh = fh; d.g.sy = sy;
+        d.floor = o.y[i] + c.dy;                          /* the footprint's middle: no base further back */
+        c.depth = d;
+        out.push(c);
+        continue;
+      }
+      c.depth = null;   /* not read yet (or unreadable): the billboard, as before */
+    } else if (c.cols) c.depth = null;
     c.px = s.x; c.py = o.y[i] + c.dy;
     c.sprites[0] = pic;
     out.push(c);
@@ -846,6 +907,21 @@ if (typeof window !== 'undefined') {
         alpha: +s2.alpha.toFixed(3), crown: !!s2._crown,
         /* v2.3.3000: shaded toward the ground, swaying in the wind, casting */
         shade: !!pic._vShade, skew: +pic.skew.x.toFixed(4), sway: s2._swayKind || null };
+    },
+    /* v2.3.3028: how object i casts: a tree's billboard ('board'), or
+       column by column ('cols') on its own base -- the frame's foot, the
+       lowest base any column was read at, and the floor no base may be
+       further back than (the footprint's middle) */
+    caster: (i) => {
+      const s2 = _live && _live.sprites.get(i);
+      const c = s2 && s2._caster;
+      if (!c) return null;
+      if (!c.cols) return { model: c.depth ? 'building' : 'board', pivot: +(c.py || 0).toFixed(1) };
+      const d = c.cols, b = d.g.bottoms;
+      let low = -Infinity, n = 0;
+      if (b) for (let k = 0; k < b.length; k++) if (b[k] >= 0) { n++; low = Math.max(low, d.g.base - (1 - b[k]) * d.g.fh * d.g.sy); }
+      return { model: c.depth ? 'cols' : 'waiting', foot: +d.g.base.toFixed(1), lowest: n ? +low.toFixed(1) : null,
+        floor: +d.floor.toFixed(1), columns: b ? b.length : 0, solid: n };
     },
     /* v2.3.2995: the broken objects' shards, and an object's shake */
     shards: () => (_live ? _live.shatter.probe() : []),

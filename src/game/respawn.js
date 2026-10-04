@@ -20,7 +20,7 @@
    drifting apart would be a half-respawn, which is worse than either. */
 
 import { BT_AUDIO, ZONES, TILE, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
-import { releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone */
+import { releaseLeftZoneArt, veilWheelTrip } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone; v2.3.3025: under one veil */
 import { wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: and you come back in the Wheel's Brotown */
 import { dropDungeonZone } from '@/game/wheelDungeons.js'; /* v2.3.3016: a dungeon's synthetic zone, dropped after its art is released */
 
@@ -83,7 +83,7 @@ export function applyLocalRespawn(S, zone) {
   /* v2.3.2990: the worker brings you back in today's town; from there you
      are taken down its stairs into the Wheel's Brotown, where you start
      (wheelHome.js) */
-  if (S.currentZone === 'town') wantWheelSpawn(S);
+  if (S.currentZone === 'town') { wantWheelSpawn(S); veilWheelTrip(S); }   /* v2.3.3025: today's town never painted on the way */
   /* Tell the server our new position + zone + dead=false.  Other clients
      clear our _isDead via the broadcast. */
   if (S.channel && S.player) {

@@ -94,6 +94,20 @@ let _mode = null;             /* 'world' (the baked island) or 'wheel' */
    down the stairs themselves -- and `_hudOn` shows the readout only to a
    tester (an address naming `trial=`, or `trialhud`), never to a player. */
 let _spawnOff = false;
+/* ═══ v2.3.3025: NO WAY BACK TO TODAY'S TOWN ═══
+   Owner, 2026-10-04: "there still a portal to the old town. Disable that."
+   The marker four tiles west of where you land in the Wheel (setExits) is
+   gone: the Wheel is the world, and today's town is a stop on the way in, on
+   the way back from a death and out of a dungeon -- never a place you walk
+   to.  Kept for the two roads that walk the stairs themselves and come back
+   up them: `?nospawn` (QA's old road, which starts in today's town) and
+   `?wayback` (QA's way out of a Wheel it started in, mp-wheelnodes), as the
+   edge pieces and the blends were put away with a switch.  With it went, by
+   construction, its tiles and beams, its "Town" label, its hub exit and the
+   quest road's fall-back to it (questRoute.js _routeOne). */
+let _wayBack = false;
+/* the marker back to today's town: QA only since v2.3.3025 (above) */
+export function wheelWayBack() { return _spawnOff || _wayBack; }
 let _hudOn = false;
 let _wheelAwayAt = 0;
 let _manifest = null;
@@ -166,6 +180,7 @@ export function applyWorldTrial() {
   try {
     const q = new URLSearchParams(window.location.search);
     _spawnOff = q.has('nospawn');
+    _wayBack = q.has('wayback');   /* v2.3.3025 */
     _hudOn = q.has('trial') || q.has('trialhud');
   } catch (e) { /* no URL: a player's defaults */ }
   _on = true;
@@ -189,7 +204,7 @@ export function applyWorldTrial() {
   delete z.atmosphere;
   /* the sea, for anything drawn before a piece arrives */
   z.palette = { ground: mode === 'wheel' ? '#1c467e' : '#123a63', path: '#c9a36a', accent: '#86b94f' };
-  if (mode === 'wheel') setExits(exitBeside(WHEEL.arrival), WHEEL.arrival, 'west');
+  if (mode === 'wheel') setExits(wheelWayBack() ? exitBeside(WHEEL.arrival) : null, WHEEL.arrival, 'west');   /* v2.3.3025: no way back */
   else setExits(BAKED.townExit, BAKED.arrival);
   COMING_SOON_MARKS.length = 0;
   /* QA probe, house style (cf. __btZoneLabels): the live numbers the readout
@@ -220,7 +235,8 @@ function exitBeside(a) {
 
 function setExits(exit, arrival, dir = 'north') {
   WORLDVIEW_EXITS.length = 0;
-  WORLDVIEW_EXITS.push({ zoneId: 'town', tx: exit.tx, ty: exit.ty, dir, label: 'Town', color: '#cdb27a' });
+  /* v2.3.3025: `exit` null -- the Wheel's arrival with no marker beside it */
+  if (exit) WORLDVIEW_EXITS.push({ zoneId: 'town', tx: exit.tx, ty: exit.ty, dir, label: 'Town', color: '#cdb27a' });
   WORLDVIEW_ARRIVAL.x = arrival.x;
   WORLDVIEW_ARRIVAL.y = arrival.y;
 }
@@ -340,7 +356,7 @@ async function preloadWheel() {
      holding it up past STEPS_WAIT_MS: a step whose clip is late plays dirt */
   const steps = loadGroundSteps();
   const info = await wheelStart();
-  if (info.arrival) setExits(exitBeside(info.arrival), info.arrival, 'west');
+  if (info.arrival) setExits(wheelWayBack() ? exitBeside(info.arrival) : null, info.arrival, 'west');   /* v2.3.3025: no way back */
   /* v2.3.3011: as much round the arrival as the view will really show.  The
      box was fixed for a portrait phone's view before VIEW_OUT (about 585 x
      1270 game px), and the view is 774 x 1600 at 0.64 (644 x 1330 at

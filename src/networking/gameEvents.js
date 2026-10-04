@@ -40,7 +40,7 @@ import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } fr
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, heroPopupY, peerPopupY /* v2.3.3026: a hit on you pops over your head */, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
@@ -2607,7 +2607,7 @@ export function processGameEvent(type, payload, S, deps) {
                     var _rx = rOther.renderX != null ? rOther.renderX : rOther.x, _ry = rOther.renderY != null ? rOther.renderY : rOther.y;
                     queueBlood(S, _rx || 0, _ry || 0, _bx, _by, _bdmg / Math.max(1, rOther.rpgMaxHp || 100));
                   }
-                  pushDmgPopup(S, rOther.x || 0, (rOther.y || 0) - 20, '-' + toDisplayDamage(payload.dmg || 0), '#ff5e6c', _rLook ? { iconKey: _rLook.icon } : undefined);   /* v2.3.2520: display scale; v2.3.2996: + the element's icon */
+                  pushDmgPopup(S, rOther.x || 0, peerPopupY(rOther), '-' + toDisplayDamage(payload.dmg || 0), '#ff5e6c', _rLook ? { iconKey: _rLook.icon, taken: true } : { taken: true });   /* v2.3.2520: display scale; v2.3.2996: + the element's icon; v2.3.3026: over their head, not on their face (combatHelpers peerPopupY) */
                 }
                 break;
               }
@@ -2754,7 +2754,7 @@ export function processGameEvent(type, payload, S, deps) {
                    A worker-confirmed block is the better evidence. */
                 if (!R2._questFlags) R2._questFlags = {};
                 R2._questFlags.blocksLanded = (R2._questFlags.blocksLanded || 0) + 1;
-                pushDmgPopup(S, S.player.x, S.player.y - 20, 'Blocked!', '#60a5fa');
+                pushDmgPopup(S, S.player.x, heroPopupY(S), 'Blocked!', '#60a5fa');   /* v2.3.3026: over your head, where the hit's number would be */
                 var _staminaDrainBlock = typeof payload.staminaDrain === 'number' ? payload.staminaDrain : 15;
                 if (_staminaDrainBlock > 0) {
                   /* v2.3.1686 (owner: "I see negative numbers during blocks.
@@ -2933,7 +2933,22 @@ export function processGameEvent(type, payload, S, deps) {
                  loss-of-HP intent reads instantly. */
               /* v2.3.2996: the element's icon in the heart's place -- the
                  owner's "fire icon as the damage type" (game/elemHits.js). */
-              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + toDisplayDamage(Math.ceil(dmgTaken2)), '#ff5e6c', { iconKey: _elLook ? _elLook.icon : 'heart' });   /* v2.3.2520: display scale */
+              /* ═══ v2.3.3026: OVER YOUR HEAD, ITS ICON AS BIG AS THE SWORD ═══
+                 Owner: "when monsters damage you I want the damage numbers
+                 as large as they usually are and with the elemental icon
+                 after the damage number similar to how the sword has sword
+                 icon if melee damage, arrow icon if bow damage".  Spawned
+                 over your band as a number you deal is over the monster's
+                 (combatHelpers heroPopupY -- it was y - 20, your face), the
+                 element's icon cut to its own size (effectsRenderer
+                 _tightPopupIcon).  And no "-0": a dodge the worker rolled
+                 says "Dodged", as a peer's does (pvp_hit), and a hit that
+                 did nothing else (the arrival grace) says nothing. */
+              if (payload.dodged && !(Math.ceil(dmgTaken2) > 0)) {
+                pushDmgPopup(S, S.player.x, heroPopupY(S), 'Dodged', '#9ca3af', { taken: true });
+              } else if (Math.ceil(dmgTaken2) > 0 || _elSt) {
+                pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + toDisplayDamage(Math.ceil(dmgTaken2)), '#ff5e6c', { iconKey: _elLook ? _elLook.icon : 'heart', taken: true });   /* v2.3.2520: display scale */
+              }
               /* v2.3.1137: Second Wind — the worker healed us right after
                  this hit (defense channel, 10s cooldown); green popup.
                  The authoritative hp arrives via player_state as usual. */
@@ -3446,7 +3461,7 @@ export function processGameEvent(type, payload, S, deps) {
                  new authoritative value.  Death is driven by the server's
                  player_died event. */
               if (window.__dmgLog) try { console.log('[dmg] net-pvp_hit', { amt: Math.ceil(dmgTaken), attacker: payload.attacker, blocked: payload.blocked }); } catch (e) {}
-              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + toDisplayDamage(Math.ceil(dmgTaken)), payload.blocked ? '#607D8B' : '#ff5e6c');   /* v2.3.2520: display scale */
+              pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + toDisplayDamage(Math.ceil(dmgTaken)), payload.blocked ? '#607D8B' : '#ff5e6c', { taken: true });   /* v2.3.2520: display scale; v2.3.3026: over your head (heroPopupY) */
               /* v2.3.1137: Second Wind fires in PvP too (see server
                  _applyDamage); mirror the green heal popup here. */
               /* v2.3.1314: Last Stand — the killing blow left us at 1 HP. */
@@ -3536,7 +3551,7 @@ export function processGameEvent(type, payload, S, deps) {
                  the new authoritative value.  Death is driven by the
                  server's player_died event. */
               if (window.__dmgLog) try { console.log('[dmg] net-player_attack', { amt: Math.ceil(_dmgTaken), attacker: payload.id, isCrit: isCrit }); } catch (e) {}
-              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + toDisplayDamage(Math.ceil(_dmgTaken)), '#ff5e6c');   /* v2.3.2520: display scale */
+              pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + toDisplayDamage(Math.ceil(_dmgTaken)), '#ff5e6c', { taken: true });   /* v2.3.2520: display scale; v2.3.3026: over your head (heroPopupY) */
               for (var _hp = 0; _hp < 6; _hp++) S.hitParticles.push({
                 x: S.player.x,
                 y: S.player.y,

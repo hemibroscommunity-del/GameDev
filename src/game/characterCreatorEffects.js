@@ -496,12 +496,20 @@ export function wireSplashPrewarm(showNameModal, introWarmRef) {
   var t = setTimeout(function () {
     try { prewarmBaseSheets(); } catch (e) {}
     try {
+      /* v2.3.3025: the clip the loading screen PLAYS -- this warmed
+         brotown-intro.mp4, which left the game at v2.3.822, so the clip was
+         always cold and its first frame late (the owner's "loading screen of
+         the ocean is too small before it fits").  And its first frame as a
+         picture, the <video>'s poster (IntroVideo.jsx). */
       var v = document.createElement('video');
       v.preload = 'auto';
       v.muted = true;
-      v.src = '/intro/brotown-intro.mp4';
+      v.src = '/intro/loading-ashore.mp4';
       v.load();
       introWarmRef.current = v;
+      var poster = new Image();
+      poster.src = '/intro/loading-ashore-poster.webp';
+      v._poster = poster;
     } catch (e) {}
   }, 2500);
   return function () { clearTimeout(t); };
