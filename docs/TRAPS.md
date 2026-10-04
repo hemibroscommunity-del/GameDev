@@ -5271,7 +5271,28 @@ the built page (`typeof window.X`). Importing `BT_AUDIO` where it is used is
 still the better style for new code (effectsRenderer does, line 7), but it is
 not a fix for silence.
 
-## 134. Letting the grass into the town: it meets every street along a ruler line (v2.3.3031)
+## 134. Two z-index numbers prove an order only inside one stacking context (v2.3.3030)
+
+**Plausible:** "The quest banner is z 71 and the quest window's scrim is z 44,
+so the banner is over the window. mp-questbanner reads both computed z-indexes
+and asserts 71 > 44."
+
+**Wrong.** The banner was a child of `.brotown-wrap`, which is position:fixed
+and so its own stacking context (§20). Inside it, z 71 only orders the banner
+among the wrap's own children. The wrap itself sits at the root's level, under
+the body-portaled scrim at z 44. So the turn-in's QUEST COMPLETED! drew
+**under** the dark scrim of the very dialogue it announced, and the
+level-up burst (z 70, also in the wrap) too. The test compared two numbers
+from different contexts and passed against a banner nobody could see clearly.
+
+**The rule:** before comparing z-indexes, put both elements in the same
+stacking context; anything that must be over a body portal is a body portal
+too (QuestBannerLayer.jsx). And test the context, not just the numbers:
+mp-questbanner now asserts the banner is not inside `.brotown-wrap`. A hit
+test cannot do it for a `pointer-events:none` overlay, because
+`elementFromPoint` skips it.
+
+## 135. Letting the grass into the town: it meets every street along a ruler line (v2.3.3031)
 
 **The plausible move.** The owner asked for the green back between the town's
 blocks. The ground is laid by `materialMap`, so make the town's open cells the

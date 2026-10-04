@@ -1,0 +1,70 @@
+<!doctype html>
+<!-- v2.3.3030: the quest windows in the owner's painted art, drawn by the
+     game's own components (QuestOfferPanel, XpChooser, QuestBannerLayer) with
+     the real first quest's data -- one state per load, as each window covers
+     the screen: ?state=offer|choose|chosen|done|banner|compact|auto|accepted|reward
+     Driven by tools/qa/quest-sheet-shot.mjs; not linked from the game. -->
+<html>
+<head><meta charset="utf-8"><title>quest harness</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,700&display=swap">
+<style>
+  /* a stand-in for the world behind the window: sandy town ground */
+  body{margin:0;min-height:100vh;font-family:'Source Sans 3',system-ui,sans-serif;color:#F7F2E7;
+    background:repeating-linear-gradient(35deg,#b38a52 0 14px,#a37d48 14px 28px)}
+  .hud{position:fixed;top:0;left:0;right:0;height:50px;background:rgba(14,22,27,.92);display:flex;align-items:center;justify-content:flex-end;padding:0 12px}
+  .hud [data-purse]{display:flex;gap:4px;align-items:center;font-weight:800;color:#F1C24F}
+  .hud img{width:18px;height:18px}
+  .dash{position:fixed;left:0;right:0;bottom:0;height:52px;background:rgba(14,22,27,.94);display:flex;align-items:center;padding:0 6px}
+  .dash [data-dash-fold]{width:60px;height:40px;border:1px solid #D8A85F;border-radius:9px;color:#F4F0E7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+</style>
+</head>
+<body>
+<div class="hud"><span data-purse="1"><img src="/icons/ui/cur-gold.webp" alt="">201</span></div>
+<div class="dash"><span data-dash-fold="min">OPEN</span></div>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import './styles/game.css';
+import { QuestOfferPanel } from './ui/panels/QuestOfferPanel.jsx';
+import { XpChooser } from './ui/panels/QuestPanel.jsx';
+import { QuestBannerLayer } from './ui/panels/QuestBannerLayer.jsx';
+import { QUEST_CHAINS } from './data/gameSystems.js';
+
+const h = React.createElement;
+const q = new URLSearchParams(location.search);
+const state = q.get('state') || 'choose';
+const quest = QUEST_CHAINS.tut_1;
+const gold = quest.reward.gold, xp = quest.reward.xp;
+
+function App() {
+  const [cat, setCat] = React.useState(state === 'chosen' || state === 'done' ? 'bow' : null);
+  if (['banner', 'compact', 'auto', 'accepted', 'reward'].includes(state)) {
+    const msg = {
+      banner: { kind: 'completed', title: quest.title, gold, xp },
+      compact: { kind: 'completed', title: quest.title, gold, xp, compact: true },
+      auto: { kind: 'completed', title: 'Gather Copper', gold: 40, xp: 0, auto: true },
+      accepted: { kind: 'accepted', title: 'Frost Bite' },
+      reward: { kind: 'reward', title: 'Copper Greaves', sub: 'In your bag — equip it on your legs' },
+    }[state];
+    return h(QuestBannerLayer, { msg: Object.assign({ ts: Date.now() }, msg), holdMs: 600000 });
+  }
+  const panel = h(QuestOfferPanel, {
+    mode: state === 'offer' ? 'offer' : 'reward', quest, gold, xp,
+    extra: state === 'offer' ? null : h(XpChooser, { xp, xpCat: cat, setXpCat: setCat }),
+    confirmClass: state === 'offer' ? null : 'bt-quest-turnin',
+    confirmDisabled: state !== 'offer' && !cat,
+    claimed: state === 'done' ? { xpCat: 'bow' } : null,
+    onClaimedDone: () => {}, onClose: () => {}, onConfirm: () => {},
+  });
+  /* the claim's confirmation comes with its banner at the top, as in the game */
+  if (state === 'done') return h(React.Fragment, null, panel,
+    h(QuestBannerLayer, { msg: { kind: 'completed', title: quest.title, gold, xp, compact: true, ts: Date.now() }, holdMs: 600000 }));
+  return panel;
+}
+createRoot(document.getElementById('root')).render(h(App));
+setTimeout(() => { window.__sheetReady = true; }, 50);
+</script>
+</body>
+</html>

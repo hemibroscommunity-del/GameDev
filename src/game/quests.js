@@ -15,6 +15,7 @@ import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx'; /* v2.3.1874: quest XP flies to its skill card */
+import { flyQuestRewards } from '@/game/questFly.js'; /* v2.3.3030: the coins and items fly home */
 export function acceptQuest(S, questPanel, deps) {
   var setRpgState = deps.setRpgState,
     setQuestPanel = deps.setQuestPanel;
@@ -71,12 +72,37 @@ export function acceptQuest(S, questPanel, deps) {
    rather than from render.  Wrapped because a missing bridge must never
    cost the player their quest: the state transitions above have already
    run and been sent by the time we get here. */
-export function showQuestBanner(kind, title, sub) {
+/* v2.3.3030: `extra` rides along on the message -- the reward's gold and xp
+   (the owner's banner draws them as the HUD's coin and XP figures, see
+   QuestBannerLayer.jsx), `compact` (the claim's confirmation window is up:
+   the thin banner, at the top) and `auto` (nothing was chosen: the laurel
+   check on its crest).  The queue and hold times read only kind and ts. */
+export function showQuestBanner(kind, title, sub, extra) {
   try {
     if (typeof window !== 'undefined' && window._setQuestMsg) {
-      window._setQuestMsg({ kind: kind, title: title || '', sub: sub || '', ts: Date.now() });
+      window._setQuestMsg(Object.assign({}, extra || {}, { kind: kind, title: title || '', sub: sub || '', ts: Date.now() }));
     }
   } catch (e) {}
+}
+
+/* v2.3.3030: the auto reward's flights leave from the banner itself -- there
+   is no window to throw them from -- once it is drawn (QuestBannerLayer). */
+function flyFromBanner(quest) {
+  try {
+    if (typeof document === 'undefined' || !quest) return;
+    setTimeout(function () {
+      var b = document.querySelector('.bt-quest-banner[data-quest-banner="completed"]');
+      if (!b) return;
+      var art = b.querySelector('.bt-qw-banner-art') || b;
+      var goldEl = b.querySelector('[data-qw-gold] img') || b.querySelector('[data-qw-gold]') || art;
+      flyQuestRewards({
+        gold: (quest.reward && quest.reward.gold) || 0,
+        goldFrom: goldEl,
+        items: (quest.gives || []).filter(function (g) { return g && g.icon && g.when === 'complete'; })
+          .map(function (g) { return { el: art, src: g.icon }; }),
+      });
+    }, 420);
+  } catch (e) { /* feedback only */ }
 }
 
 /* v2.3.1685: `xpCat` — which trained skill this turn-in's XP goes into
@@ -84,7 +110,12 @@ export function showQuestBanner(kind, title, sub) {
    (QuestPanel's XpChooser). Optional so any caller for a quest that pays no
    XP, or a pre-prog3 character, can keep omitting it; the worker only
    requires it when it would otherwise have XP with nowhere to put it. */
-export function turnInQuest(S, questPanel, deps, xpCat) {
+/* v2.3.3030: `opts` -- { deferNext } hands his next panel back instead of
+   opening it (QuestPanel opens it after the claim's confirmation), { compact,
+   auto } choose the banner (see showQuestBanner).  Returns the next panel
+   (or null when his chain is done) either way. */
+export function turnInQuest(S, questPanel, deps, xpCat, opts) {
+  var o = opts || {};
   var setRpgState = deps.setRpgState,
     setQuestPanel = deps.setQuestPanel;
   var R = S.rpg;
@@ -179,7 +210,10 @@ export function turnInQuest(S, questPanel, deps, xpCat) {
      hand-in (v2.3.1713 below). */
   showQuestBanner('completed', questPanel.quest.title,
     '+' + questPanel.quest.reward.gold + 'g'
-    + (questPanel.quest.reward.xp ? '  ·  +' + questPanel.quest.reward.xp + ' XP' : ''));
+    + (questPanel.quest.reward.xp ? '  ·  +' + questPanel.quest.reward.xp + ' XP' : ''),
+    { gold: questPanel.quest.reward.gold || 0, xp: questPanel.quest.reward.xp || 0,
+      compact: !!o.compact, auto: !!o.auto });
+  if (o.auto) flyFromBanner(questPanel.quest);
   /* ═══ v2.3.1713: THE DIALOGUE SURVIVES THE HAND-IN ═══
      Owner: "make it so that turning in the quest after completion launches
      the quest dialog window (same behavior as when you first begin a quest)."
@@ -199,12 +233,12 @@ export function turnInQuest(S, questPanel, deps, xpCat) {
      Only close when the lookup comes back empty — his chain is genuinely
      finished, and an empty screen is then the truth rather than a dead end. */
   var _nextFromGiver = getNpcQuest(R, questPanel.npc);
-  if (_nextFromGiver) {
-    setQuestPanel(_objectSpread(_objectSpread({}, questPanel), {}, {
+  var _nextPanel = _nextFromGiver
+    ? _objectSpread(_objectSpread({}, questPanel), {}, {
       quest: _nextFromGiver.quest,
       status: _nextFromGiver.status
-    }));
-  } else {
-    setQuestPanel(null);
-  }
+    })
+    : null;
+  if (!o.deferNext) setQuestPanel(_nextPanel);
+  return _nextPanel;
 }

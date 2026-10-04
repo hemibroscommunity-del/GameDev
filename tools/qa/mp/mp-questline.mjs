@@ -506,7 +506,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      component that never renders the div at all. */
   const domBanners = await P.page.evaluate(() => (window.__lineBanners || []).slice());
   rec.ok('banners reach the SCREEN, not just the setter (guard)',
-    domBanners.some((b) => b.kind === 'completed' && /QUEST COMPLETED!/.test(b.text)),
+    /* v2.3.3030: the owner's mockup reads QUEST COMPLETE! */
+    domBanners.some((b) => b.kind === 'completed' && /QUEST COMPLETE/.test(b.text)),
     domBanners.map((b) => b.kind));
   const lvlCalls = await P.page.evaluate(() => (window.__lvlCalls || []).slice());
   /* Guard: "no warnings were raised" is vacuously true if the hook was never

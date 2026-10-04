@@ -33,6 +33,7 @@ import { SkillsPanel } from './panels/SkillsPanel.jsx';
 import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 /* v2.3.870: quest panel extraction (logic already in @/game/quests.js). */
 import { QuestPanel } from './panels/QuestPanel.jsx';
+import { QuestBannerLayer } from './panels/QuestBannerLayer.jsx'; /* v2.3.3030: the quest banners in the owner's art */
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
 import { TradePanel } from './panels/TradePanel.jsx';
 import { TradeWindowPanel } from './panels/TradeWindowPanel.jsx';
@@ -11923,7 +11924,13 @@ export var BroTown = function BroTown(_ref0) {
      that ate that tap would make the dialogue feel broken for two seconds.
      Sits at 26% height — above the centred card's middle, and clear of the
      level-up banner at 55%, so both are legible together. */
-  questMsg && Date.now() - questMsg.ts < questMsgMs(questMsg.kind) && /*#__PURE__*/React.createElement("div", {
+  /* v2.3.3030: every banner but the first-join WELCOME is drawn by
+     QuestBannerLayer -- the owner's green banners, portaled to the body so it
+     is over the quest window's scrim and not under it (see the note there).
+     The plate below is the welcome's alone now. */
+  questMsg && Date.now() - questMsg.ts < questMsgMs(questMsg.kind) && questMsg.kind !== 'welcome'
+    && React.createElement(QuestBannerLayer, { msg: questMsg, holdMs: questMsgMs(questMsg.kind) }),
+  questMsg && Date.now() - questMsg.ts < questMsgMs(questMsg.kind) && questMsg.kind === 'welcome' && /*#__PURE__*/React.createElement("div", {
     className: "bt-quest-banner",
     "data-quest-banner": questMsg.kind,
     style: {

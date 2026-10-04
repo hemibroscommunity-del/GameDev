@@ -2297,7 +2297,7 @@ staggered plots); the barrel/crate/bale scatter keeps to the earth yards.
   --at town --size 5000x4400 --px 3.2` (the whole town; `--px 1` at 700x1400 is
   a phone's screen; `--px 8 --size 9000x7500` the commons; `--plaintown` the
   one without the design). Look at a seam at `--px 0.5` too, not only at 3
-  (TRAPS 134).
+  (TRAPS 135).
 - **Cost:** ~100 ms more placing and ~50 ms more laying the map, in the ground
   worker behind the loading screen; 168 objects stand in the town (79 before).
 - **Tests:** test-world-core "the designed town": the design and `?plaintown`,
