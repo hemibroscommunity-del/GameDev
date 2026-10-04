@@ -40,9 +40,13 @@
  *                                   it says `edgepieces` -- ground.js, EDGE_PIECES;
  *                                   v2.3.2955: and blends only when it says
  *                                   `blends` -- ground.js, BLENDS)
- *   { type: 'chunk', id, i, j }  -> { type: 'chunk', id, i, j, w, h, data, ms, under }
+ *   { type: 'chunk', id, i, j }  -> { type: 'chunk', id, i, j, w, h, data, ms, under, wf }
  *                                   (v2.3.2967: `under`, the swatch DRAWN at every
- *                                   UNDER art px of the piece, for the footsteps)
+ *                                   UNDER art px of the piece, for the footsteps;
+ *                                   v2.3.3019: `wf`, the piece's WATER FIELD -- how
+ *                                   far from the shore, which water, which way a
+ *                                   river runs -- for the water's motion, or null:
+ *                                   ground.js WATER THAT MOVES)
  *   { type: 'where', id, x, y }  -> { type: 'where', id, q, reg, tier, words }
  *                                   (answered at once; v2.3.2966: the region
  *                                   and tier there, and in words for the map)
@@ -51,7 +55,7 @@
 import { PLAN as BASE_PLAN, bigTownPlan, bigTownScale } from '../plan.js';
 import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
-import { materialMap, composeGround, swatchesUnder, walkBits, swimBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder } from './ground.js';
+import { materialMap, composeGround, swatchesUnder, walkBits, swimBits, overviewPixels, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder, waterRivers, wavesOn } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 import { wheelMap, whereWords } from './wheelmap.js';
@@ -65,7 +69,11 @@ let PLAN = BASE_PLAN;
 const K = Math.round(PLAN.worldPxPerArtPx / PIXEL.gamePxPerArtPx); /* 3 ground px a plan art px: 2 a game px */
 const WPA = PLAN.worldPxPerArtPx;                                 /* 1.5 game px a plan art px */
 const CHUNK = 128;          /* plan art px a piece: 192 game px, 384 ground px */
-const APRON = 1;            /* art px laid past each edge, so smooth scaling reads the true neighbour at a join */
+const APRON = 3;            /* art px laid past each edge, so smooth scaling reads the true neighbour at a join.
+                               v2.3.3019: 3, was 1 -- the water's swell (rendering/wheelWater.js) draws
+                               each water px from up to 4 game px away, and at a piece's edge that is
+                               the apron: with 1 (1.5 game px) it would read past the picture's edge.
+                               6% more ground laid and kept a piece. */
 const UNDER = 2;            /* v2.3.2967: art px (3 game px) a byte of a piece's `under` -- 4 KB a piece */
 const OVERVIEW_CELLS = 4;   /* blueprint cells an overview pixel */
 const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too; v2.3.2951: and blends -- the town's busiest piece needs about 13) */
@@ -252,7 +260,10 @@ async function init(m) {
   const objects = placeObjects(PLAN, full, placingOpts(m && m.search));
   objects.placeMs = Math.round(performance.now() - tp0);
   objects.mayor = mayorSpot(PLAN, full);
-  W = { bp, mm, reg: full.reg, tier: full.tier, regionIds: full.regionIds, map };
+  W = { bp, mm, reg: full.reg, tier: full.tier, regionIds: full.regionIds, map,
+    /* v2.3.3019: the rivers' lines, for the way each piece's water runs, and
+       whether to lay the water's fields at all (`?nowaves` keeps it still) */
+    rivers: waterRivers(PLAN, full), waves: wavesOn(m && m.search) };
   const t1 = performance.now();
   const objMan = objectsManifest();
   await findSwatches(mm, edgePiecesOn(m && m.search), blendsOn(m && m.search));
@@ -545,14 +556,18 @@ async function chunk(m) {
     const t = await tileOf(k, 'M', wait);
     if (t) blends[k] = t;
   }
-  const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, blends });
+  /* v2.3.3019: and the piece's water field, for the water's motion */
+  const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, blends, waterField: W.waves ? { rivers: W.rivers } : null });
   const under = underOf(out.mat, out.w);
   trim(keep);
-  post({ type: 'chunk', id: m.id, i: m.i, j: m.j, w: out.w, h: out.h, data: out.data, under,
+  const wf = out.waterField || null;
+  const moved = [out.data.buffer, under.buffer];
+  if (wf && wf.data) moved.push(wf.data.buffer);
+  post({ type: 'chunk', id: m.id, i: m.i, j: m.j, w: out.w, h: out.h, data: out.data, under, wf,
     ms: Math.round(performance.now() - t0), unpacked: decoded.size, unreadable: failed.size,
     /* v2.3.2959: laid without some of its pictures (lay it again later), and
        how the downloads stand */
-    partial: lacking.size > 0, lacking: [...lacking], downloading: dlJobs.size, dlFails }, [out.data.buffer, under.buffer]);
+    partial: lacking.size > 0, lacking: [...lacking], downloading: dlJobs.size, dlFails }, moved);
 }
 
 /* v2.3.2967: the swatch DRAWN under the piece's own square (not its apron),

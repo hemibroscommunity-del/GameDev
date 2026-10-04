@@ -33,11 +33,13 @@
  * v2.3.2942), and this draws them the same way.  Each piece is laid one art
  * px (3 ground px) past its edges and shows half a game px of that, so the
  * smoothing at a join reads the true neighbour and pieces overlap by a hair
- * instead of leaving one.
+ * instead of leaving one.  (v2.3.3019: three art px, for the water's swell,
+ * which reads the picture up to 4 game px away; still half a game px shown.)
  */
 import { Container, Sprite, Texture, Rectangle, BufferImageSource, CanvasSource } from 'pixi.js';
 import { wheelInfo, wheelStart, wheelChunk, wheelIsWarm, wheelDropWarm, wheelOverview, wheelStats, wheelOnGot } from '../game/wheelTrial.js';
 import { worldTrialLeft } from '../game/worldTrial.js';
+import { WheelWater } from './wheelWater.js';   /* v2.3.3019: the water moves */
 
 const MAX_IN_FLIGHT = 3;
 const MARGIN = 96;
@@ -59,6 +61,12 @@ export class WheelGround {
     this.root = new Container();
     this.root.label = 'wheelGround';
     parent.addChild(this.root);
+    /* v2.3.3019: the pieces in a container of their own, so the water's
+       motion over them (wheelWater.js) stays above every piece laid later */
+    this.pieceRoot = new Container();
+    this.pieceRoot.label = 'wheelGroundPieces';
+    this.root.addChild(this.pieceRoot);
+    this.water = WheelWater.on() ? new WheelWater(this.root) : null;
     this.under = null;
     this.pieces = new Map();   /* "i,j" -> { i, j, sprite, ready, popped } */
     this.inFlight = 0;
@@ -90,7 +98,7 @@ export class WheelGround {
     const tex = new Texture({ source: new CanvasSource({ resource: c, width: c.width, height: c.height, resolution: 1, scaleMode: 'linear' }) });
     const s = new Sprite(tex);
     s.x = 0; s.y = 0; s.width = info.worldW; s.height = info.worldH;
-    this.root.addChildAt(s, 0);
+    this.pieceRoot.addChildAt(s, 0);
     this.under = s;
   }
 
@@ -110,6 +118,7 @@ export class WheelGround {
     }
     this._lastCx = cx; this._lastCy = cy; this._lastT = now;
     this._placeUnder(info);
+    if (this.water) this.water.tick(now);
     const cs = info.chunk.gamePx, C = info.chunk.cols, R = info.chunk.rows;
     const clampI = (v) => Math.max(0, Math.min(C - 1, v));
     const clampJ = (v) => Math.max(0, Math.min(R - 1, v));
@@ -182,6 +191,7 @@ export class WheelGround {
       if (this.dead || this.pieces.get(key) !== rec) return;
       rec.sprite = this._sprite(m, info, i, j);
       rec.ready = true;
+      if (this.water) this.water.set(key, i, j, m.wf, info, rec.sprite.texture);
       this._short(rec, m);
     }).catch(() => {
       if (!warm) this.inFlight--;
@@ -201,7 +211,7 @@ export class WheelGround {
     const s = new Sprite(tex);
     s.x = i * cs - half; s.y = j * cs - half;
     s.width = cs + 2 * half; s.height = cs + 2 * half;
-    this.root.addChild(s);
+    this.pieceRoot.addChild(s);
     return s;
   }
 
@@ -222,6 +232,8 @@ export class WheelGround {
       if (this.dead || this.pieces.get(key) !== rec) return;
       const old = rec.sprite;
       rec.sprite = this._sprite(m, info, rec.i, rec.j);
+      /* (the water moves the new picture before the old one goes) */
+      if (this.water) this.water.set(key, rec.i, rec.j, m.wf, info, rec.sprite.texture);
       if (old) { try { old.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ } }
       wheelStats.relaid++;
       if (!m.partial) wheelStats.mended++;
@@ -237,6 +249,7 @@ export class WheelGround {
 
   _free(key, rec) {
     this.pieces.delete(key);
+    if (this.water) this.water.drop(key);
     if (rec.sprite) {
       /* the texture is this piece's alone: destroy it with its source, which
          lets go of the GPU copy and the colours */
@@ -250,6 +263,7 @@ export class WheelGround {
     this.dead = true;
     if (this._offGot) { this._offGot(); this._offGot = null; }
     for (const [key, rec] of [...this.pieces]) this._free(key, rec);
+    if (this.water) { this.water.destroy(); this.water = null; }
     if (this.under) { try { this.under.destroy({ texture: true, textureSource: true }); } catch (e) { /* ignore */ } this.under = null; }
     try { this.root.destroy(); } catch (e) { /* ignore */ }
     wheelStats.resident = 0;

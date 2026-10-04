@@ -1705,8 +1705,253 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
   /* v2.3.2951: the blends laid here, with their pixel counts (the Ground
      Studio says which are in view) */
   const blendsLaid = blendKeys.map((key, n) => ({ key, px: blendPx[n] })).filter((b) => b.px > 0);
-  if (opts.withMaterials === false) return { w: OW, h: OH, data, scale: K, blendsLaid };
-  return { w: OW, h: OH, data, mat, scale: K, blendsLaid };
+  /* v2.3.3019: the water's MOTION, when asked for -- the game's worker asks,
+     the studios do not (WATER THAT MOVES, below) */
+  const waterField = opts.waterField ? waterFieldOf(bp, mm, seed, omat, OEW, OEH, FW, K, X0, Y0, RW, RH, shoreAt, opts.waterField) : null;
+  if (opts.withMaterials === false) return { w: OW, h: OH, data, scale: K, blendsLaid, waterField };
+  return { w: OW, h: OH, data, mat, scale: K, blendsLaid, waterField };
+}
+
+/* ═══ v2.3.3019: WATER THAT MOVES ═══
+   Owner, 2026-10-04: "Does the water move yet" -- it did not: the Wheel's
+   water was the owner's still pictures ("Moving water ... is a later
+   round") -- then, offered glints and slow lines of light drifting across
+   it, the foam lapping in and out at the shore and a gentle drift down the
+   rivers: "Yes".
+   The water stays the owner's pictures.  The motion is drawn over them by
+   the game, on the GPU (src/rendering/wheelWater.js), from a small FIELD
+   laid here with each piece: one texel an art px (1.5 game px) of the
+   rectangle, its apron included, so the GPU's smoothing reads the true
+   neighbour at a join, as the piece's own picture does --
+     R    how far the texel's middle lies from the nearest px that is NOT
+          water: the shore as DRAWN (land, a bridge's deck, a rock), not the
+          plan's cells.  In output px x WF_DIST, to WF_CAP output px (10 game
+          px); 0 on land.  Exact -- a Euclidean distance transform over the
+          worked-out area, whose margin FW is wider than WF_CAP -- so two
+          pieces laid apart agree on every texel they share.
+     G    which water, as waterLook picks its PICTURE there (WF_KIND) -- and
+          on land beside it the water's, so the smoothing never reads a
+          coast as a strip of some other water.
+     B,A  which way and how fast a river runs there, 128 still: along the
+          plan's river from its source to its mouth (waterRivers).  Ponds,
+          lakes and oases lie still.
+   No water in the rectangle: no field (null).  Open sea all alike with no
+   land within reach: `uniform`, its four numbers, and no texels at all. */
+export const WF_CAP = 20, WF_DIST = 12;
+export const WF_KIND = { sea: 255, shallows: 170, fresh: 85 };
+/* `?nowaves` in the address keeps the water still, as it was before (the
+   worker then lays no fields, and the game draws no motion) */
+export function wavesOn(search) {
+  return !/(^|[?&])nowaves(=|&|$)/.test(typeof search === 'string' ? search : '');
+}
+/* the rivers, from the blueprint's routes (art px, source to mouth), with
+   how wide each runs from its source to its end (plan.rivers' `width`) */
+export function waterRivers(plan, full) {
+  const out = [];
+  for (const r of (full && full.routes) || []) {
+    if (r.kind !== 'river' || !r.pts || r.pts.length < 2) continue;
+    const rv = (plan.rivers || []).find((q) => q.id === r.id) || {};
+    const wd = rv.width || [40, 40];
+    const pts = new Float32Array(r.pts.length * 2);
+    r.pts.forEach((p, k) => { pts[2 * k] = p[0]; pts[2 * k + 1] = p[1]; });
+    out.push({ id: r.id, pts, half0: wd[0] / 2, half1: wd[1] / 2 });
+  }
+  return out;
+}
+/* how far past its drawn half-width (art px) a river's flow still reaches:
+   its banks wander with noise, and the field's smoothing needs a texel more */
+const WF_BANK = 18;
+/* the last art px before its mouth, over which a river's flow dies away
+   into the sea it joins */
+const WF_MOUTH = 160;
+/* how many texels onto the land the water's kind is carried (the GPU's
+   smoothing reads one); the worked-out area's margin, FW output px, must
+   hold WF_SPREAD + 1 texels more round the rectangle (21 >= 4 x 3) */
+const WF_SPREAD = 3;
+
+function waterFieldOf(bp, mm, seed, omat, OEW, OEH, FW, K, X0, Y0, RW, RH, shoreAt, wf) {
+  const water = mm.water, h = K >> 1, n = RW * RH;
+  /* the texels' middles: water or not, as drawn */
+  const isW = new Uint8Array(n);
+  let nW = 0;
+  for (let fy = 0; fy < RH; fy++) {
+    const row = (FW + fy * K + h) * OEW + FW + h;
+    for (let fx = 0; fx < RW; fx++) if (omat[row + fx * K] === water) { isW[fy * RW + fx] = 1; nW++; }
+  }
+  if (!nW) return null;
+  let land = false;
+  for (let o = 0; o < omat.length && !land; o++) land = omat[o] !== water;
+  const cap = Math.min(WF_CAP, FW - 1);
+  const dist = land ? shoreDistances(omat, OEW, OEH, water, FW, K, RW, RH) : null;
+  /* which water each texel shows (the picture waterLook picks there) --
+     worked out WF_SPREAD texels past the rectangle too, so the land's share
+     below is the same whichever piece it is worked out in */
+  const sh = shoreAt || shoreSampler(bp, mm, X0, Y0, RW, RH);
+  const XE = WF_SPREAD + 1, EWd = RW + 2 * XE, EHd = RH + 2 * XE, nE = EWd * EHd;
+  const kindE = new Uint8Array(nE);
+  const counts = { sea: 0, shallows: 0, fresh: 0 };
+  for (let ey = 0; ey < EHd; ey++) {
+    const fy = ey - XE, row = (FW + fy * K + h) * OEW + FW + h;
+    for (let ex = 0; ex < EWd; ex++) {
+      const fx = ex - XE;
+      if (omat[row + fx * K] !== water) continue;
+      const ax = X0 + fx, ay = Y0 + fy;
+      const k = waterLook(bp, mm, ax, ay, sh(ax, ay), seed);
+      kindE[ey * EWd + ex] = WF_KIND[k];
+      if (fx >= 0 && fy >= 0 && fx < RW && fy < RH) counts[k]++;
+    }
+  }
+  /* on land, the kind of the water beside it -- WF_SPREAD texels in, a pass
+     a texel, each pass from a copy so it spreads evenly every way */
+  if (nW < n || land) {
+    const tmp = new Uint8Array(nE);
+    for (let pass = 0; pass < WF_SPREAD; pass++) {
+      tmp.set(kindE);
+      for (let i = 0; i < nE; i++) {
+        if (tmp[i]) continue;
+        const x = i % EWd;
+        const k = (x > 0 && tmp[i - 1]) || (x < EWd - 1 && tmp[i + 1]) || (i >= EWd && tmp[i - EWd]) || (i + EWd < nE && tmp[i + EWd]) || 0;
+        if (k) kindE[i] = k;
+      }
+    }
+  }
+  const kind = new Uint8Array(n);
+  for (let fy = 0; fy < RH; fy++) kind.set(kindE.subarray((fy + XE) * EWd + XE, (fy + XE) * EWd + XE + RW), fy * RW);
+  /* the rivers' flow, on fresh water only */
+  const flowX = new Float32Array(n), flowY = new Float32Array(n);
+  let flowing = 0;
+  if (counts.fresh && wf.rivers && wf.rivers.length) {
+    for (const rv of wf.rivers) flowing += riverFlow(rv, X0, Y0, RW, RH, isW, kind, flowX, flowY);
+  }
+  if (!land && !flowing) {
+    const k0 = kind[0];
+    let same = true;
+    for (let i = 1; i < n && same; i++) same = kind[i] === k0;
+    if (same) return { w: RW, h: RH, data: null, uniform: [cap * WF_DIST, k0, 128, 128], counts, flowing: 0 };
+  }
+  const data = new Uint8Array(n * 4);
+  for (let i = 0; i < n; i++) {
+    const o = i * 4;
+    data[o] = isW[i] ? Math.max(1, Math.round(Math.min(dist ? dist[i] : cap, cap) * WF_DIST)) : 0;
+    data[o + 1] = kind[i];
+    data[o + 2] = Math.max(1, Math.min(255, Math.round(128 + 127 * flowX[i])));
+    data[o + 3] = Math.max(1, Math.min(255, Math.round(128 + 127 * flowY[i])));
+  }
+  return { w: RW, h: RH, data, uniform: null, counts, flowing };
+}
+
+/* One river's flow over the field's fresh texels: the way its line runs
+   at the nearest point (smoothed between the line's corners, so the flow
+   bends with the river and never turns at a corner), fastest mid-channel
+   and upstream, dying away over its last WF_MOUTH art px into the sea.
+   Returns how many texels it moves. */
+function riverFlow(rv, X0, Y0, RW, RH, isW, kind, flowX, flowY) {
+  const P = rv.pts, m = P.length >> 1;
+  if (m < 2) return 0;
+  const reach = Math.max(rv.half0, rv.half1) + WF_BANK;
+  /* only the stretches whose box comes within reach of the rectangle */
+  const segs = [];
+  for (let k = 0; k < m - 1; k++) {
+    const ax = P[2 * k], ay = P[2 * k + 1], bx = P[2 * k + 2], by = P[2 * k + 3];
+    if (Math.max(ax, bx) < X0 - reach || Math.min(ax, bx) > X0 + RW + reach || Math.max(ay, by) < Y0 - reach || Math.min(ay, by) > Y0 + RH + reach) continue;
+    segs.push(k);
+  }
+  if (!segs.length) return 0;
+  /* the length along the line to each corner, and the line's way at each */
+  const L = new Float64Array(m);
+  for (let k = 1; k < m; k++) L[k] = L[k - 1] + Math.hypot(P[2 * k] - P[2 * k - 2], P[2 * k + 1] - P[2 * k - 1]);
+  const T = L[m - 1] || 1;
+  const tan = (k) => {
+    const a = Math.max(0, k - 1), b = Math.min(m - 1, k + 1);
+    const dx = P[2 * b] - P[2 * a], dy = P[2 * b + 1] - P[2 * a + 1], l = Math.hypot(dx, dy) || 1;
+    return [dx / l, dy / l];
+  };
+  let moved = 0;
+  for (let fy = 0; fy < RH; fy++) for (let fx = 0; fx < RW; fx++) {
+    const i = fy * RW + fx;
+    if (!isW[i] || kind[i] !== WF_KIND.fresh) continue;
+    const x = X0 + fx + 0.5, y = Y0 + fy + 0.5;
+    let best = Infinity, bk = -1, bu = 0;
+    for (const k of segs) {
+      const ax = P[2 * k], ay = P[2 * k + 1], dx = P[2 * k + 2] - ax, dy = P[2 * k + 3] - ay;
+      const ll = dx * dx + dy * dy || 1;
+      const u = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / ll));
+      const ex = ax + dx * u - x, ey = ay + dy * u - y, d2 = ex * ex + ey * ey;
+      if (d2 < best) { best = d2; bk = k; bu = u; }
+    }
+    if (bk < 0) continue;
+    const d = Math.sqrt(best);
+    const along = L[bk] + (L[bk + 1] - L[bk]) * bu, t = along / T;
+    const half = rv.half0 + (rv.half1 - rv.half0) * t;
+    if (d > half + WF_BANK) continue;
+    /* (a texel already moved by a nearer river keeps its own) */
+    if (flowX[i] || flowY[i]) continue;
+    const t0 = tan(bk), t1 = tan(bk + 1);
+    let tx = t0[0] + (t1[0] - t0[0]) * bu, ty = t0[1] + (t1[1] - t0[1]) * bu;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl; ty /= tl;
+    /* mid-channel 1, the banks half; meltwater upstream a little quicker;
+       nothing left of it at the mouth */
+    const bank = 1 - 0.5 * Math.min(1, Math.max(0, (d - 0.45 * half) / (0.55 * half + WF_BANK)));
+    const s = bank * (1 - 0.3 * t) * Math.min(1, (T - along) / WF_MOUTH);
+    if (s <= 0.02) continue;
+    flowX[i] = tx * s; flowY[i] = ty * s;
+    moved++;
+  }
+  return moved;
+}
+
+/* The distance (output px) from each texel's middle to the nearest px that
+   is not water: an exact Euclidean distance transform (Felzenszwalb and
+   Huttenlocher, "Distance Transforms of Sampled Functions").  Down each
+   column of the worked-out area it is only how far the nearest land is up
+   or down that column -- two plain scans, no parabolas -- kept for the rows
+   the texels' middles lie on; then the true transform along those rows
+   alone.  The area runs FW px past the rectangle, more than WF_CAP, so any
+   distance under the cap is the same whichever rectangle it is worked out
+   in. */
+const EDT_FAR = 1e20;
+function edt1(f, n, d, v, z) {
+  let k = 0;
+  v[0] = 0; z[0] = -EDT_FAR; z[1] = EDT_FAR;
+  for (let q = 1; q < n; q++) {
+    const fq = f[q] + q * q;
+    let s = (fq - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+    while (s <= z[k]) { k--; s = (fq - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); }
+    k++; v[k] = q; z[k] = s; z[k + 1] = EDT_FAR;
+  }
+  k = 0;
+  for (let q = 0; q < n; q++) {
+    while (z[k + 1] < q) k++;
+    const r = q - v[k];
+    d[q] = r * r + f[v[k]];
+  }
+}
+function shoreDistances(omat, OEW, OEH, water, FW, K, RW, RH) {
+  const h = K >> 1, FAR_ROW = 1 << 20;
+  /* squared distance to the nearest land up or down its own column, at the
+     texels' rows only */
+  const col = new Float64Array(RH * OEW), up = new Int32Array(OEH);
+  for (let x = 0; x < OEW; x++) {
+    let last = -FAR_ROW;
+    for (let y = 0; y < OEH; y++) { if (omat[y * OEW + x] !== water) last = y; up[y] = y - last; }
+    let next = 2 * FAR_ROW;
+    for (let y = OEH - 1; y >= 0; y--) {
+      if (omat[y * OEW + x] !== water) next = y;
+      const r = y - FW - h;
+      if (r < 0 || r % K || r >= RH * K) continue;
+      const dy = Math.min(up[y], next - y);
+      col[(r / K) * OEW + x] = dy >= FAR_ROW ? EDT_FAR : dy * dy;
+    }
+  }
+  const f = new Float64Array(OEW), dd = new Float64Array(OEW), v = new Int32Array(OEW), z = new Float64Array(OEW + 1);
+  const out = new Float32Array(RW * RH);
+  for (let fy = 0; fy < RH; fy++) {
+    f.set(col.subarray(fy * OEW, fy * OEW + OEW));
+    edt1(f, OEW, dd, v, z);
+    for (let fx = 0; fx < RW; fx++) out[fy * RW + fx] = Math.sqrt(dd[FW + fx * K + h]);
+  }
+  return out;
 }
 
 /* v2.3.2947: can any two swatches that meet with an edge (edgeRecipe) lie

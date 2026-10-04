@@ -804,7 +804,48 @@ remnant to migrate server-side, not a mode to preserve.
       (the watchdog's lit sample taken in an animation frame -- from a timer
       a WebGL canvas reads black -- and screenshots measured), `mp-wheelmem`
       measures the walk out (the cache, and every texture WebGL allocates, by
-      a shim on its calls).)
+      a shim on its calls).
+  - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
+    then "Yes" to glints and lines of light, the foam lapping at the shore and
+    a drift down the rivers:
+    - the owner's pictures stay; `src/rendering/wheelWater.js` (`WheelWater`,
+      owned by WheelGround, whose pieces are now in `pieceRoot` so the water
+      stays on top) draws one quad a piece with water: the picture SWELLS
+      (each water px drawn from up to 3 game px away along three crossing
+      waves, never as far as the shore, riding downstream on the river), surf
+      riding in with a wash and the shore's foam flaring, sparkles, crests of
+      light, streaks and flecks down the Sweetwater the way it flows, rings on
+      still fresh water, whitecaps -- all but the swell a PICTURE px at a
+      time; lines of light of its own read as scribbles beside the owner's;
+    - SIZED FOR A PHONE: the first cut (a 1 game px sway and 1 game px lines,
+      under two device px) the owner could not see: "I don't see the water
+      moving"; lines are 2-4 picture px thick now, and the ground pieces'
+      apron is 3 art px (`APRON` in ground-worker.js, was 1) so the swell
+      never reads past a piece's picture -- test-world-core checks the two;
+    - from a FIELD the ground worker lays with each piece (ground.js WATER
+      THAT MOVES, `composeGround`'s `waterField`, the game's worker only): R the
+      distance to the shore AS DRAWN, exact (an EDT over the worked-out
+      margin, `WF_CAP` 10 game px), G the water's kind as `waterLook` picks
+      its picture (`WF_KIND`, carried `WF_SPREAD` texels onto the land), B/A
+      the river's way (`waterRivers`); a texel an art px, sharing the piece
+      picture's texture coordinates; open sea with no shore in reach is
+      `uniform`, one shared 1x1 texture; ~6 ms more a coast piece;
+    - WebGL2 only, `highp`; built behind the Wheel's overlay
+      (`prewarmWheelWater` in preloadWheel: a program compiles the first time
+      it is drawn); `?nowaves` keeps it still (no fields laid), `?waves=k`
+      sets its strength (0.25-3); the trial readout's "water" line says
+      moving, or still and why; `window.__btWaves` (probe, off/on, strength,
+      hold);
+    - test-world-core "the water moves", `mp-wheelwaves`:
+      docs/specs/moving-water.md.
+  - Since v2.3.3020 the view is BACK IN A LITTLE, the bro 64 px tall -- the
+    owner: "the framerate looks a bit gritty I think from the scale change
+    ... I think char 64 pixels tall was probably best": `VIEW_OUT` 0.77 in
+    worldViewport.js (scale 0.606 on the QA phone, dashboard folded). The
+    grit was the HD pictures drawn smaller than their own pixels: 0.76
+    device px a picture px on a 3x phone at 0.64, so they crawled as the
+    view slid; 0.91 now. `?zoom=0.64` is the view before; `mp-zoomout`:
+    WORLD-MAP-PIPELINE "Back in a little".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

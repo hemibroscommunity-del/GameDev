@@ -343,9 +343,10 @@ async function preloadWheel() {
   if (info.arrival) setExits(exitBeside(info.arrival), info.arrival, 'west');
   /* v2.3.3011: as much round the arrival as the view will really show.  The
      box was fixed for a portrait phone's view before VIEW_OUT (about 585 x
-     1270 game px), and the view is 774 x 1600 at 0.64 -- the ground past the
-     box popped in after the overlay lifted (26 pieces at the arrival,
-     mp-zoomout).  Read from the canvas as it is now (worldViewport, imported
+     1270 game px), and the view is 774 x 1600 at 0.64 (644 x 1330 at
+     v2.3.3020's 0.77) -- the ground past the box popped in after the
+     overlay lifted (26 pieces at the arrival, mp-zoomout).  Read from the
+     canvas as it is now (worldViewport, imported
      here and not at the top: this module must load in Node), plus the
      ground's own MARGIN past the view; never less than the old box. */
   let half = null;
@@ -377,6 +378,10 @@ async function preloadWheel() {
       const ns = await import('../rendering/npcSprites.js');
       await Promise.all([wheelObjectsOn() ? wo.wheelObjectsWarm(at.x, at.y, objX, objY) : null, ns.loadWheelNpcArt()]);
     } catch (e) { /* no objects: the ground alone, as before */ }
+    /* v2.3.3019: and the moving water's program, built here, behind the
+       overlay, not in the frame the first water comes on screen (a program
+       is compiled the first time it is drawn: rendering/wheelWater.js) */
+    try { (await import('../rendering/wheelWater.js')).prewarmWheelWater(); } catch (e) { /* still water */ }
   })();
   await wheelWarm(at.x, at.y, warmX, warmY);
   await objects;
@@ -501,6 +506,17 @@ function drawHud(show, S) {
     'pop-ins ' + s.popIns + ' · ' + (s.bytes / 1048576).toFixed(1) + ' MB in';
 }
 
+/* v2.3.3019: the water's line of the readout.  Read off wheelWater.js's own
+   probe: that module is pixi's, and this one must load in Node. */
+function wavesLine() {
+  const w = typeof window !== 'undefined' && window.__btWaves ? window.__btWaves.probe() : null;
+  if (!w) return '';
+  if (!w.on) return 'water   still (switched off)\n';
+  if (!w.webgl2) return 'water   still (no WebGL2 here)\n';
+  if (w.ok === false) return 'water   still (did not build here)\n';
+  return 'water   moving · ' + w.meshes + ' pieces' + (w.flowing ? ' · ' + w.flowing + ' flowing' : '') + '\n';
+}
+
 /* v2.3.2943: the Wheel's readout -- short lines, it sits on a phone's edge. */
 function wheelHud(S) {
   const s = wheelStats;
@@ -545,6 +561,9 @@ function wheelHud(S) {
        waited for its look, the longest wait */
     (S && S.currentZone === 'wheel' ? 'monsters ' + wheelArtStats.ready + ' looks' + (wheelArtStats.loading ? ' +' + wheelArtStats.loading : '') +
       ' · ' + wheelArtStats.loads + ' loaded · ' + wheelArtStats.frees + ' let go' + (wheelArtStats.waitedMs ? ' · waited ' + wheelArtStats.waitedMs + ' ms' : '') + '\n' : '') +
+    /* v2.3.3019: the water's motion -- moving, over how many pieces, or still
+       and why (the owner, on the first cut: "I don't see the water moving") */
+    wavesLine() +
     'here    ' + (here ? here.name.slice(0, 34) + (here.water ? '' : here.made ? ' ✓' : ' (not made)') : '…') +
     /* only when something went wrong: what, so a phone screenshot says it */
     (s.failures ? '\nfailed  ' + s.failures + ': ' + String(s.lastFailure || '').slice(0, 40) : '');
