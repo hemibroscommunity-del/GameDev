@@ -3,6 +3,7 @@ import { BT_AUDIO, RESOURCE_TIERS, TILE, ZONES, ZONE_RESOURCES, addLifeSkillXp, 
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { rememberFarmTrip } from '@/game/wheelTownDoors.js'; /* v2.3.3032: from the Wheel, the farm's gate leads back out where you stood */
 /* === FarmPanel — buildingPanel === 'farm' sub-panel === */
 /* v2.3.877: extracted verbatim from the buildingPanel === 'farm'
    clause in BroTown.jsx (the farm plot manager: plant/harvest crops,
@@ -105,6 +106,7 @@ export function FarmPanel(props) {
              load now so the ground paints instead of flashing black;
              tileRenderer's cache-miss self-heal is the backstop. */
           import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
+          rememberFarmTrip(S2);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood */
           S2.currentZone = 'farm_home';
           updateZoneDimensions('farm_home');
           S2.map = generateZoneMap('farm_home');

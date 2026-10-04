@@ -119,6 +119,9 @@ function walkStripSources(n) {
 /* npcId -> dir -> [Texture]. Object.create(null) because the keys are ids and
    direction names out of a data table (CLAUDE.md rule 4). */
 const _walk = Object.create(null);
+/* v2.3.3032: the Wheel's own copy of a walker's frames (loadWheelNpcArt),
+   id -> dir -> [Texture], read after town's */
+const _wheelWalk = Object.create(null);
 
 function _sliceStrip(tex, frames) {
   const out = [];
@@ -134,8 +137,10 @@ function _sliceStrip(tex, frames) {
  *  loaded). Callers fall back to the static `sprite`, so a missing strip is a
  *  standing NPC rather than an invisible one. */
 export function getNpcWalkFrame(npcId, dir, frameIdx) {
+  /* v2.3.3032: town's strips, else the Wheel's own copy (below) */
   const byDir = _walk[npcId];
-  const set = byDir && byDir[dir];
+  const wd = _wheelWalk[npcId];
+  const set = (byDir && byDir[dir]) || (wd && wd[dir]);
   if (!set || !set.length) return null;
   return set[((frameIdx % set.length) + set.length) % set.length];
 }
@@ -172,7 +177,8 @@ export function propFrameCount(propId) {
 /** Does this NPC have walk art at all? Lets the renderer decide once. */
 export function hasNpcWalk(npcId) {
   const byDir = _walk[npcId];
-  return !!(byDir && Object.keys(byDir).length);
+  const wd = _wheelWalk[npcId];   /* v2.3.3032: or the Wheel's copy */
+  return !!((byDir && Object.keys(byDir).length) || (wd && Object.keys(wd).length));
 }
 
 export function loadNpcSprites() {
@@ -357,31 +363,55 @@ export function freeTownScenery() {
    own copy -- its own file request, its own texture, its own bundle -- behind
    its loading overlay (worldTrial.preloadWheel), and getNpcTexture prefers
    it; it is let go when the Wheel's worker stops (wheelObjects.js).  Just
-   him: nobody else stands in the Wheel yet. */
+   him: nobody else stands in the Wheel yet.
+   v2.3.3032: and Diego, at the General Store now that its door opens
+   (BroTown.jsx _spawnWheelNpcs) -- a walker in town, a man who stands at his
+   counter here, so of his eight strips of four frames only the SOUTH one is
+   loaded (cropped, like town's): he faces the street.  Nobody else yet: the
+   blacksmith, Ace and Lil Bro stay in today's town. */
 const WHEEL_NPC_BUNDLE = 'wheel-npcs';
 const _wheelTex = Object.create(null);
 let _wheelArt = null;
 export function wheelNpcSources() {
   return (NPC_DATA || []).filter((n) => n && n.name === 'Mayor Bro' && n.sprite).map((n) => n.sprite);
 }
+/** The walkers the Wheel shows, and the one strip of each it loads:
+    [{ id, dir, src, frames }]. */
+export function wheelWalkSources() {
+  return (NPC_DATA || []).filter((n) => n && n.name === 'Diego' && n.walk && n.walk.base && Array.isArray(n.walk.dirs) && n.walk.dirs.indexOf('south') >= 0)
+    .map((n) => ({ id: n.id, dir: 'south', src: n.walk.base + 'south.webp', frames: n.walk.frames || 4 }));
+}
 export function loadWheelNpcArt() {
   if (_wheelArt) return _wheelArt.p;
-  const run = { p: null };
-  run.p = Promise.allSettled(wheelNpcSources().map((src) => Promise.resolve(
-    loadTracked(WHEEL_NPC_BUNDLE, npcArtUrl(src) + (npcArtUrl(src).indexOf('?') >= 0 ? '&' : '?') + 'wheel=1'),
-  ).then((tex) => {
-    if (!tex || _wheelArt !== run) return;
-    if (tex.source) { try { tex.source.scaleMode = 'nearest'; } catch (e) { /* older pixi */ } }
-    _wheelTex[src] = tex;
-  })));
+  const run = { p: null, crops: [] };
+  run.p = Promise.allSettled([
+    ...wheelNpcSources().map((src) => Promise.resolve(
+      loadTracked(WHEEL_NPC_BUNDLE, npcArtUrl(src) + (npcArtUrl(src).indexOf('?') >= 0 ? '&' : '?') + 'wheel=1'),
+    ).then((tex) => {
+      if (!tex || _wheelArt !== run) return;
+      if (tex.source) { try { tex.source.scaleMode = 'nearest'; } catch (e) { /* older pixi */ } }
+      _wheelTex[src] = tex;
+    })),
+    ...wheelWalkSources().map((w) => loadCroppedStrip(npcArtUrl(w.src), w.frames).then((frames) => {
+      const src = frames && frames[0] && frames[0].source;
+      if (!src) return;
+      if (_wheelArt !== run) { _releaseCrops([{ src, frames }]); return; }   /* freed while loading */
+      try { src.scaleMode = 'nearest'; } catch (e) { /* older pixi */ }
+      run.crops.push({ src, frames });
+      (_wheelWalk[w.id] || (_wheelWalk[w.id] = Object.create(null)))[w.dir] = frames;
+    })),
+  ]);
   _wheelArt = run;
   return run.p;
 }
 export function freeWheelNpcArt() {
   if (!_wheelArt) return;
+  const run = _wheelArt;
   _wheelArt = null;
   /* out of the lookup first, then the textures (see freeZoneDecor) */
   for (const k of Object.keys(_wheelTex)) delete _wheelTex[k];
+  for (const k of Object.keys(_wheelWalk)) delete _wheelWalk[k];
+  _releaseCrops(run.crops.splice(0));
   unloadBundle(WHEEL_NPC_BUNDLE).catch(() => 0);
 }
 

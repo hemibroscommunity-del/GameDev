@@ -745,7 +745,7 @@ remnant to migrate server-side, not a mode to preserve.
       docs/specs/wheel-dungeons.md.
     - Found on the way: the Wheel's buildings have NO DOORS yet -- the
       forge, the bank, the shop and the farm (the Dungeon Workshop) are
-      unreachable from the Wheel.
+      unreachable from the Wheel. (They have doors since v2.3.3032, below.)
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":
@@ -907,7 +907,7 @@ remnant to migrate server-side, not a mode to preserve.
       death or a dungeon's way out puts you there (`veilWheelTrip`);
     - no marker back to today's town (`setExits(null)`; `?wayback` or
       `?nospawn` for tests) -- its shops, forge, bank and auction house are
-      unreachable until the Wheel's buildings get doors;
+      unreachable until the Wheel's buildings get doors (v2.3.3032: they do);
     - the clip fills its screen on explicit edges, says its shape (400 x 736)
       and shows its first frame as a poster (`loading-ashore-poster.webp`);
       the creator's warm-up warms it (it warmed a clip gone since v2.3.822);
@@ -963,7 +963,47 @@ remnant to migrate server-side, not a mode to preserve.
       arrival: every door, gate and Mayor Bro reachable), QA `mp-wheelobjects`
       (the oasis check fails on main too); WORLD-MAP-PIPELINE "The town as a
       designed place" says what was not done (roofs, new landmarks' pictures,
-      a creek) and why.)
+      a creek) and why.
+  - Since v2.3.3032 THE WHEEL'S BUILDINGS HAVE DOORS -- the owner: "Push to
+    main. Then after that add doors.":
+    - twelve of the seventeen open today's own building (the same panels, the
+      server settling everything as before): stand at the foot of a
+      building's steps, your BOOTS within 140 px, and a small button says
+      "Enter" over the NAME ON ITS SIGN (SALOON, not the old TAVERN); a tap or
+      E opens the forge, woodworker, gem cutter, saloon's party panel, gambling
+      den, cookhouse, Feed & Seed's farm panel, the Land Office's trip to your
+      farm, the bank, the Assay Office's enchanter, the General Store's market
+      or the auction house;
+    - where: the ground worker's `objects.doors` (placing.js `doorSpots`: a
+      building is placed with its foot on its plot's door, so a door is where
+      the building stands; none for a building with no picture); what opens:
+      `src/data/wheelBuildingDoors.js` (plot -> TOWN_BUILDINGS id, mirrored to
+      the plan's `today` words by test-world-core); when:
+      `src/game/wheelTownDoors.js` `wheelTownDoorAt`, which BroTown's scan
+      turns into the old town's own `S.nearBuilding`, so the E key,
+      `enterBuilding`, the visit count and the saved visits are untouched;
+    - the Enter button is "Enter" over the name, small, in the stretch between
+      the bell and the JUMP button (a one-line pill with the signs' long names
+      ran under the jump button); the Sheriff's Office, Hotel, Post Office and
+      Guild Hall (the plan's "(new: ...)" plots) show their name and "Shut for
+      now" in a caption that is not a button, the Town Hall shows nothing
+      (Mayor Bro);
+    - quests: `setWheelDoorsOpen` (gameSystems.js, set by worldTrial.js) counts
+      the twelve actions, so mayor_1 "Visit 3 buildings" and mayor_3 (the Farm)
+      are offered again -- v2.3.3029 hid them while the Wheel had no doors;
+    - Diego keeps the General Store (BroTown.jsx `_spawnWheelNpcs`,
+      `WHEEL_TOWNSFOLK`): west of its steps, still, facing the street, his
+      window opening within 90 px of HIM and not at the store's door; only his
+      south strip is loaded, cropped (npcSprites.js `wheelWalkSources`), as the
+      Wheel's own copy behind the loading overlay. The blacksmith, Ace and
+      Lil Bro stay in today's town;
+    - the farm: the Land Office and Feed & Seed both send you there
+      (`rememberFarmTrip`), and its gate leads back out to the Wheel at the
+      door you left by -- the dungeon's way back (`setWheelArrival`,
+      `wantWheelSpawn`, `veilWheelTrip`), today's town only a stop;
+    - `mp-wheeldoors`, test-world-core "the buildings' doors",
+      `tutorial.test.mjs` §9: docs/specs/wheel-doors.md, WORLD-MAP-PIPELINE
+      "The buildings have doors".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

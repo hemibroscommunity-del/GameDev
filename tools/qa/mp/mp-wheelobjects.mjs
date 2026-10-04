@@ -127,8 +127,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const m = (S.npcs || []).find((n) => n.name === 'Mayor Bro');
     return { spot, m: m ? { x: m.x, y: m.y } : null, others: (S.npcs || []).map((n) => n.name) };
   });
-  rec.ok('Mayor Bro stands beside the Town Hall\'s steps (the only townsperson in the Wheel)',
-    !!mayor.spot && !!mayor.m && Math.hypot(mayor.m.x - mayor.spot.x, mayor.m.y - mayor.spot.y) < 4 && mayor.others.length === 1, mayor);
+  /* (v2.3.3032: and Diego keeps the General Store now that it has a door --
+     mp-wheeldoors looks at him; here only that the town holds the two) */
+  rec.ok('Mayor Bro stands beside the Town Hall\'s steps (with Diego at the General Store, the only townsfolk in the Wheel)',
+    !!mayor.spot && !!mayor.m && Math.hypot(mayor.m.x - mayor.spot.x, mayor.m.y - mayor.spot.y) < 4
+      && mayor.others.length === 2 && mayor.others.includes('Mayor Bro') && mayor.others.includes('Diego'), mayor);
   if (mayor.m) {
     await H.hopTo(P, mayor.m.x + 10, mayor.m.y + 30, { tries: 30 });
     await P.page.waitForTimeout(1200);
