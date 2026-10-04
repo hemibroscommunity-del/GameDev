@@ -643,5 +643,49 @@ const sess = { id: 'bp_t' };
     hit.dodged || (hit.dmgTaken >= 1 && hit.dmgTaken < 100), hit);
 }
 
+// ── 9. v2.3.3029: NO ROAD TO TODAY'S TOWN, NO "VISIT 3 BUILDINGS" ──
+{
+  /* Owner, 2026-10-04: "there still a portal to the old town. Disable that."
+     With the marker gone (worldTrial.js, v2.3.3025) today's town's forge, bank
+     and auction house are out of reach -- and still counted, they kept mayor_1
+     ("Visit 3 buildings in town") offered to every player who got that far:
+     an errand nothing could finish, which stops getNpcQuest, so mayor_2 and
+     mayor_3 were never offered again.  worldTrial.js closes the zone
+     (setClosedDoorZones), and the client's guard stops counting its doors.
+     Relative where it can be: the road OPEN must give back whatever the
+     guard said before, so this holds however many doors town has. */
+  const C = await import('../../src/data/gameSystems.js');
+  const m1 = C.QUEST_CHAINS.mayor_1;
+  const ahead = Object.create(null);
+  for (const [qid, q] of Object.entries(C.QUEST_CHAINS)) {
+    if (qid === 'mayor_1') break;
+    if (q.npc === 'Mayor Bro') ahead[qid] = C.QUEST_STATUS.turnedIn;
+  }
+  const rpgAt = (extra) => ({ _quests: Object.assign(Object.create(null), ahead, extra || {}) });
+  C.setClosedDoorZones(null);
+  const open0 = C.questReachable(m1);
+  check('road open: today\'s town\'s three doors count, so mayor_1 is offered after the arc',
+    open0 === true && (C.getNpcQuest(rpgAt(), 'Mayor Bro') || {}).quest === m1,
+    { reachable: open0, offered: ((C.getNpcQuest(rpgAt(), 'Mayor Bro') || {}).quest || {}).id });
+  C.setClosedDoorZones(['town']);
+  const shut = C.getNpcQuest(rpgAt(), 'Mayor Bro');
+  check('road closed: mayor_1 hides itself and the Mayor offers mayor_2',
+    C.questReachable(m1) === false && shut && shut.quest === C.QUEST_CHAINS.mayor_2
+      && shut.status === C.QUEST_STATUS.available,
+    { offered: shut && shut.quest && shut.quest.id, status: shut && shut.status });
+  const stuck = C.getNpcQuest(rpgAt({ mayor_1: C.QUEST_STATUS.active }), 'Mayor Bro');
+  check('...and a save already holding mayor_1 active is passed over to mayor_2',
+    stuck && stuck.quest === C.QUEST_CHAINS.mayor_2, stuck && stuck.quest && stuck.quest.id);
+  C.setClosedDoorZones(null);
+  check('road open again: the guard says what it said before (the memo was emptied)',
+    C.questReachable(m1) === open0, { now: C.questReachable(m1), before: open0 });
+  /* the worker never asks for mayor_1 first: any known quest is taken from
+     nothing (section 2 leans on the same rule) */
+  ps._quests = Object.create(null);
+  await room._handleQuestAccept(sess, { questId: 'mayor_2' });
+  check('the worker takes mayor_2 with no mayor_1 behind it',
+    ps._quests.mayor_2 === 'active' && !('mayor_1' in ps._quests), ps._quests);
+}
+
 console.log(failures === 0 ? '\ntutorial: ALL PASS' : `\ntutorial: ${failures} FAILURE(S)`);
 if (failures > 0) process.exit(1);

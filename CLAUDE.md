@@ -912,6 +912,11 @@ remnant to migrate server-side, not a mode to preserve.
       and shows its first frame as a poster (`loading-ashore-poster.webp`);
       the creator's warm-up warms it (it warmed a clip gone since v2.3.822);
     - `mp-wheelhome`: WORLD-MAP-PIPELINE "One loading screen, and no way back".
+    - Since v2.3.3029 those doors no longer count for quests: worldTrial.js
+      closes today's town (`setClosedDoorZones`) and gameSystems.js
+      `anyBuildingDoor` skips its doors, so mayor_1 ("Visit 3 buildings in
+      town") hides itself and the Mayor offers mayor_2 -- counted, it was an
+      errand nothing could finish, and it stopped his chain (tutorial §9).
   - Since v2.3.3026 A HIT ON YOU READS LIKE ONE YOU DEAL -- the owner: "damage
     numbers as large as they usually are and with the elemental icon after
     the damage number similar to how the sword has sword icon": spawned over

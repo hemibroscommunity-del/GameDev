@@ -3007,6 +3007,19 @@ forge, bank and auction house can't be reached until the Wheel's own
 buildings get doors. `?wayback` (and `?nospawn`) bring the marker back for
 tests.
 
+**...and its doors no longer count for quests (v2.3.3029).** Mayor Bro's
+"Visit 3 buildings in town" (mayor_1) is offered only while three doors exist
+(`needsDoor: 3`, gameSystems.js `anyBuildingDoor`). Today's town's forge, bank
+and auction house still counted after the marker went, so every player who
+reached it in the Wheel was handed an errand nothing could finish -- and the
+Mayor offers his quests one at a time, so "Into the Wild" (mayor_2) and the
+rest never came. Now `worldTrial.js` closes today's town while the Wheel is
+home with no way back (`setClosedDoorZones(['town'])`) and its doors are not
+counted: mayor_1 hides itself (a save already holding it is passed over too)
+and the Mayor offers mayor_2. The worker takes any known quest from nothing,
+so it needs no change. When the Wheel's own buildings get doors (or the road
+comes back) the errand returns by itself. `server/test/tutorial.test.mjs` §9.
+
 **The ocean screen's size.** The `<video>` had no size of its own until its
 first frame decoded (a video's default is 300 x 150). The box round it leaned
 on `inset`, which iPhones before iOS 14.5 don't know. So the beach could come
@@ -3312,10 +3325,10 @@ the colour wheel, and its element's icon (the icons the hits already use):
 | Frost Ridge | ice blue `#7fbfe0` | frost |
 | Flame Fields | ember red `#d85a36` | flame |
 | Wind Dunes | sand gold `#d9b452` | wind |
-| Rock Hollows | stone brown `#94806a` | stone |
-| Storm Peaks | violet `#8a72e0` | storm |
-| Tidal Coast | teal `#2fa3b6` | water |
-| the Mire | purple `#a052c0` | venom |
+| Stone Hollows | stone brown `#94806a` | stone |
+| Electric Foundry | violet `#8a72e0` | storm |
+| Water Caves | teal `#2fa3b6` | water |
+| Poison Forest | purple `#a052c0` | venom |
 | Verdant Wilds | green `#4fae47` | flora |
 
 Brotown and the commons have a colour and no element.
