@@ -28,7 +28,8 @@ its intent backwards, and left the trait picker (v2.3.2358) and the name
 cluster (v2.3.2359) dressed as field kit on a title card.
 
 The boundary is the door. Once the world is on screen, this document is in
-force with no exceptions beyond the four documented below. Before that, the
+force with no exceptions beyond the ones documented below (seven, since
+v2.3.3030's quest windows). Before that, the
 title flow's own gold vocabulary applies — and it stays there: the creator's
 gold is scoped to `.bt-cc-*` and `.bt-login-*`, and nothing in it is a
 shared token that could drift inward.
@@ -500,3 +501,42 @@ It stays licensed only while it stays bounded:
 calls; `src/controls-harness.html` draws every button in every state (the
 owner's sheet, in the game's own code), and `mp-btnskin` checks them in a fight
 on a phone.
+
+**Seventh documented exception (v2.3.3030): the quest windows' painted art.**
+The quest windows -- the NEW QUEST offer, the CLAIM window, the claim's
+"Rewards claimed!" confirmation -- and the quest banners (QUEST ACCEPTED!,
+QUEST COMPLETE!, QUEST REWARD) are drawn with the owner's own painted
+pictures: a navy panel in a gold frame with a laurel-and-star crest and gold
+corner ornaments, glowing green banners, a gold bar for the button (grey while
+it cannot be pressed), the weapon chips in a gold ring when chosen, painted
+item slots, the round X, laurel checks and sparkles. By the letter of this
+document that is wrong several times over: a painted bitmap surface instead of
+the slate tokens, brass as a frame, ornament ("no nested ornamental cards"),
+and a glow. It is here because the owner drew it: three sheets of frames,
+buttons and ornaments and a mockup of the flow, with "Add these for the new
+quest windows."
+
+It stays licensed only while it stays bounded:
+
+- **The quest windows and the quest banners only.** Not the NPC's dialogue
+  box, the dashboard, the sheets, the toolbar or any other modal; a
+  consistency pass that carries the frame elsewhere is the drift this list
+  exists to stop.
+- **The owner's pictures, cut by one script, drawn in one place**:
+  `tools/ui/cut-quest-art.sh` cuts the sheets (kept in `tools/ui/quest-art/`)
+  into `public/ui/quest/`, and `src/ui/panels/questArt.jsx` with the `.bt-qw`
+  rules in game.css is the only thing that draws them. Nothing repaints them
+  in CSS.
+- **Painted, never filtered**: the glows and sparkles are the owner's
+  pictures, motion is transform and opacity and finite (a banner's burst and
+  sparkles play once as it arrives; the coins fly once), and `filter`,
+  `backdrop-filter` and `mask` appear nowhere in them -- the
+  iOS-over-WebGL rule.
+- **The meanings stay the game's**: green is the reward (the banners, the XP,
+  "Rewards claimed!"), the gold bar is the one thing to press, grey is
+  "not yet", the gold ring is the choice made. Rarity, when a reward has one,
+  is the game's own quality ladder (rare / elite / godly), never a new colour.
+
+`docs/specs/quest-windows.md` has the flow, the pieces and the judgement
+calls; `src/quest-harness.html` draws every window and banner in the game's own
+components, and `mp-questwin` walks the first quest through them on a phone.
