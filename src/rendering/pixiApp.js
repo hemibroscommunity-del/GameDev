@@ -373,6 +373,12 @@ function buildScene(app) {
  * WebGL only -- throws on failure so the caller's retry/backoff handles it.
  * @param {HTMLCanvasElement} canvas - Existing canvas element to render into
  */
+/* v2.3.3017: the colour the canvas clears to, where nothing is drawn -- what a
+   world that has stopped drawing shows.  The black-screen watchdog
+   (BroTown.jsx _wdLitPx) reads it as dark: its sum, 48, passed the old
+   near-black line of 30, so a screen of nothing else counted as lit. */
+export const CANVAS_BG = 0x0d0b18;
+
 export async function createPixiApp(canvas) {
   /* v2.3.1383: without a webglcontextlost preventDefault the browser never
      even ATTEMPTS a context restore — the canvas just dies.  iOS Safari
@@ -396,7 +402,7 @@ export async function createPixiApp(canvas) {
     canvas: canvas,
     width: canvas.clientWidth || (canvas.width / dpr),
     height: canvas.clientHeight || (canvas.height / dpr),
-    background: 0x0d0b18,
+    background: CANVAS_BG,
     antialias: false,
     resolution: dpr,
     autoDensity: true,

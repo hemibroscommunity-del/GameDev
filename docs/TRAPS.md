@@ -5148,7 +5148,35 @@ to the full set and the waist band, where it has not misbehaved.
 pixels it counts as plain legs left outside the greaves (`seen`), with their
 colours. Before the floor: 9 a frame in frames 10 and 24, all near-black.
 
-## 130. `preventDefault()` in a React `onTouchStart` does nothing, so a tap also clicks (v2.3.3018)
+## 130. "Black" judged by a near-black line misses the canvas's own colour (v2.3.3017)
+
+**Plausible:** "The black-screen watchdog (BroTown.jsx) samples the world
+canvas 32 x 18 every 5 s and counts a pixel lit when its channels sum past
+30. A lost context samples as 0, a dark world as a few percent: two dark
+strikes rebuild the renderer, four reload the page."
+
+**Wrong** for the black screen the owner actually got (an iPhone, fighting
+fire goblins, 2026-10-04): the world gone to the canvas's own clear colour,
+`CANVAS_BG` 0x0d0b18 (their screenshot read 12/11/23), with only the sword in
+the bro's hand drawn -- an iOS graphics reset gives back what was loaded from
+a file and blanks what the game drew on the GPU (the baked body, the ground,
+the minimap). That navy sums to 48. Every pixel of it counted as LIT: no
+strike, no rebuild, no reload, nothing in the crash feed, the screen dark for
+good while the HUD went on working. The old rule read it 100% lit
+(`mp-glrestore`).
+
+**The rule:** a pixel is lit only if it is clear of black AND of the canvas's
+clear colour (`_wdLitPx`). And nothing is judged where that colour is MEANT to
+show -- before the loading screen lifts, or behind a zone's veil or the wait
+for the server -- or a slow zone would be "rebuilt" mid-load.
+
+**How to see it:** `window.__btBlankStage(true)` hides the stage's contents
+(not the stage: a hidden stage skips the frame and its clear, and the canvas
+goes see-through, which both rules call dark) -- the owner's screen; within
+two strikes the watchdog asks for a rebuild. Chromium can't make the iOS reset
+itself: `WEBGL_lose_context` there gives the whole world back.
+
+## 131. `preventDefault()` in a React `onTouchStart` does nothing, so a tap also clicks (v2.3.3018)
 
 **Plausible:** "The button acts on touchstart and calls `e.preventDefault()`
 there, so the browser will not follow the tap with its emulated mouse events.

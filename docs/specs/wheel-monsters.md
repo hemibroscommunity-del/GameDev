@@ -207,6 +207,23 @@ Owner, 2026-10-02: *"Yes only load as you walk towards it."*
   monsters has been within `FREE_R` 3,600 px for `FREE_AFTER` 10 s is let go;
   a sprite module two looks share (rockmonster and thornShambler, fishman and
   bogLurker) is kept while either is.
+- **Only your own land's (v2.3.3017).** The owner, 2026-10-04: *"I was
+  fighting fire goblins and my screen went black."* The spokes' inner ends
+  are ~1,630 px from their neighbours' across the water, so at the Flame
+  Fields `LOAD_R` reached Frost Ridge and the Wind Dunes, and four looks were
+  held: the fire goblin's, the mummy's, the skeleton's and the snowman's,
+  ~57 MB of the asset cache's 239 (mp-wheelmem), within a few MB of the
+  ~250 MB at which iPhone Safari kills a tab. Now `LOAD_R` and `FREE_R` are
+  for the monsters of the land you are on (`wheelLandAt` in
+  `src/data/zones.js`: the land whose anchor is nearest in direction from the
+  Wheel's middle). Another land's look loads only when one of its monsters is
+  inside `foreignBox`: the screen's own box round you, each half grown by
+  `NEAR_LEAD` 700 px (`NEAR_MIN` 1,000 at least). A phone held upright sees far
+  up and down and little sideways, and the neighbouring lands lie to the
+  sides; the first cut used the half-diagonal, 1,589 px on the test phone
+  against their ~1,630. That's as near as you get without walking into that
+  land, where its monsters are yours. It's kept to 600 px further.
+  test-world-core "which land a Wheel point is on".
 - **From Brotown's square none is near** (the nearest is ~2,800 px): the
   Wheel arrives with no monster looks at all. `preloadZoneAssets('wheel')`
   loads none of them (nor the snowman's); leaving lets everything go, as

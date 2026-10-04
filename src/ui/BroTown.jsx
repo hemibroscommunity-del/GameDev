@@ -259,8 +259,10 @@ import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 import { QuestCoach } from './mobile/QuestCoach.jsx';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
+import { CANVAS_BG } from '@/rendering/pixiApp.js';   /* v2.3.3017: the watchdog reads the canvas's own colour as dark */
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
+import { markAlive } from '@/debug/crashTrap.js';   /* v2.3.3017: a page that dies open is reported by the next one */
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 report gate */
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
@@ -354,6 +356,8 @@ import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2
 import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
+import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (the button under ATTACK, X on a keyboard) */
+import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
@@ -4319,9 +4323,29 @@ export var BroTown = function BroTown(_ref0) {
       if (!bx || !bx.length) return false;
       var fdy = playerGroundDy(S.currentZone, px, py);
       var fy = py + fdy, cfy = curY + fdy;
+      /* ═══ v2.3.3017: IN THE AIR, THE LOW THINGS YOU WILL CLEAR ═══
+         A fence, a barrel, a crate, a bush... (game/jump.js JUMP_OVER, the
+         Wheel's objects carry their catalog id) does not stop your feet while
+         you are high enough AND the way you are going takes them out of its
+         footprint before you come down (overLow) -- so a jump clears it and
+         never lands in it.  The way you are going is this frame's walk,
+         P.vx/vy (px a 60 fps frame, set just before the walk tests). */
+      var _air = S._jump && jumpAirborne(S, Date.now()) ? S._jump : null;
+      var _airNow = 0, _avx = 0, _avy = 0;
+      if (_air) {
+        _airNow = Date.now();
+        /* px a 60 fps frame -> px a ms, as THIS frame moves you: dtScale over
+           the frame's real length (0.06 at any rate until the 3-frame cap; a
+           slower frame than that covers less ground than the clock moved, and
+           a crossing judged on the clock would come down inside the fence) */
+        var _pxMs = (S._dtScale || 1) / (S._frameMs > 0 ? S._frameMs : 16.667);
+        _avx = ((S.player && S.player.vx) || 0) * _pxMs;
+        _avy = ((S.player && S.player.vy) || 0) * _pxMs;
+      }
       for (var i = 0; i < bx.length; i++) {
         var b = bx[i];
         if (px + h <= b.x0 || px - h >= b.x1 || fy + h <= b.y0 || fy - h >= b.y1) continue;
+        if (_air && overLow(b, _air, _airNow, h, px, fy, _avx, _avy)) continue;
         var inNow = !(curX + h <= b.x0 || curX - h >= b.x1 || cfy + h <= b.y0 || cfy - h >= b.y1);
         if (!inNow) return true;
         if (_boxDepth(px, fy, b, h) > _boxDepth(curX, cfy, b, h)) return true;
@@ -4364,6 +4388,10 @@ export var BroTown = function BroTown(_ref0) {
            keeps the step inside the worker's move cap.  The floor stops a zero
            or negative delta (first frame, clock skew) from freezing movement. */
         S._dtScale = Math.max(0.2, Math.min(3, (_perfDelta || 16.667) / 16.667));
+        /* v2.3.3017: and how long the frame really was -- past the 3-frame cap a
+           step covers less ground than the clock moved, and a jump's crossing
+           rule must count what it covers (propFeetBlocked) */
+        S._frameMs = _perfDelta > 0 ? _perfDelta : 16.667;
         if (_perfDelta > 20) {
           S._perf.totalSlow++;
           if (_perfDelta > S._perf.worstMs) {
@@ -4802,7 +4830,16 @@ export var BroTown = function BroTown(_ref0) {
            drops the shield and ends an attack in flight, as raising the
            shield does (shieldToggle.raiseShieldToggle): only your head is out
            of the water.  The sounds are recordings already in the game. */
-        var _swEv = updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
+        /* ═══ v2.3.3017: THE JUMP, BEFORE THE WATER ═══
+           Its time up (or cut short by a death or a zone change), you touch
+           down here (game/jumpActions.js); in the air the water is not looked
+           at at all -- you fly over a stream rather than splash into it and
+           out again -- so a landing IN the water is decided below on the
+           same frame, with the water's own splash. */
+        var _jNow = Date.now();
+        var _jLanded = tickJump(S, _jNow, _playerDead);
+        var _inAir = !!S._jump;
+        var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
         if (_swEv === 'in' || _swEv === 'landed') {
           dropShield(S, 'swim');
@@ -4817,6 +4854,8 @@ export var BroTown = function BroTown(_ref0) {
         } else if (_swEv === 'stroke') {
           try { if (BT_AUDIO.swimStroke) BT_AUDIO.swimStroke(); } catch (e) { /* audio is best-effort */ }
         }
+        /* v2.3.3017: the touch-down's step (none in the water: its splash) */
+        if (_jLanded) landJump(S);
 
         /* ═══ v2.3.3006: THE SPRINT ═══
            Owner: "a sprint button by the left joystick that drains down
@@ -5002,6 +5041,14 @@ export var BroTown = function BroTown(_ref0) {
         if (S._wheelSwim && S._wheelSwim.on) {
           var _gl = swimGlide(S, dx, dy, S._dtScale || 1, [0, 0]);
           dx = _gl[0]; dy = _gl[1];
+        }
+        /* v2.3.3017: in the air you keep going the way you took off when
+           you let go of the stick (and steer when you hold it) -- you cannot
+           stop half way over a fence.  No faster than the walk, so nothing
+           the worker's move bound has not already seen. */
+        if (_inAir && S._jump && !_realStunned && !_playerLootFrozen
+            && Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
+          dx = S._jump.dx || 0; dy = S._jump.dy || 0;
         }
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
@@ -7080,7 +7127,8 @@ export var BroTown = function BroTown(_ref0) {
            told the worker where you landed was the 1 s keepalive, so for up to
            a second it kept you where the hit found you -- and a monster's next
            swing is measured from there.  mp-elemhits caught it 46 px apart. */
-        var isMoving = dx || dy || S._dodgeRoll || S._bashDash || S._gust;
+        /* v2.3.3017: + a jump, which can carry you with no thumb on the stick */
+        var isMoving = dx || dy || S._dodgeRoll || S._bashDash || S._gust || S._jump;
         /* v2.3.396: also broadcast when the facing changes while standing
            (turning to aim without moving) so remote clients see the turn --
            the move payload now carries the true rendered facing (f). */
@@ -7566,6 +7614,20 @@ export var BroTown = function BroTown(_ref0) {
     if (showNameModal || showLogin || bootPhase !== null) return;
     /* v2.3.777: tiny world-canvas readback -> % of pixels brighter than
        near-black.  Cheap (32x18) and only every 5s. */
+    /* ═══ v2.3.3017: LIT IS NEITHER BLACK NOR THE CANVAS'S OWN COLOUR ═══
+       The owner's black screen, fighting fire goblins on an iPhone: the world
+       gone to the canvas's navy (CANVAS_BG, 13/11/24 -- the owner's
+       screenshot read 12/11/23) with only the sword in the bro's hand drawn --
+       the GPU's pictures of the body, the ground and the minimap blank, the
+       one loaded from a file still there.  The navy's channels sum to 48, past this watchdog's
+       old line of 30, so every pixel of it counted as LIT: no strike, no
+       rebuild, no reload, nothing in the crash log, the screen dark for good.
+       A pixel is lit now only if it is clear of black AND of that colour. */
+    var _BG_R = (CANVAS_BG >> 16) & 255, _BG_G = (CANVAS_BG >> 8) & 255, _BG_B = CANVAS_BG & 255;
+    function _wdLitPx(r, g, b) {
+      return r + g + b > 30 && Math.abs(r - _BG_R) + Math.abs(g - _BG_G) + Math.abs(b - _BG_B) > 24;
+    }
+    window.__btLitPx = _wdLitPx;   /* QA (mp-glrestore): the same rule */
     function _sampleLit() {
       try {
         var cv = canvasRef.current;
@@ -7587,7 +7649,7 @@ export var BroTown = function BroTown(_ref0) {
         var d2 = g2.getImageData(0, 0, 32, 18).data;
         var lit = 0;
         for (var i2 = 0; i2 < d2.length; i2 += 4) {
-          if (d2[i2] + d2[i2 + 1] + d2[i2 + 2] > 30) lit++;
+          if (_wdLitPx(d2[i2], d2[i2 + 1], d2[i2 + 2])) lit++;
         }
         return Math.round(100 * lit / (32 * 18));
       } catch (e) { return -1; }
@@ -7650,6 +7712,19 @@ export var BroTown = function BroTown(_ref0) {
          5 min so a server-side black screen can't loop the page. */
       var _nowWd = Date.now();
       if (!S.__wdArmedAt) S.__wdArmedAt = _nowWd; /* grace for first bake */
+      /* ═══ v2.3.3017: ALIVE, AND WHERE ═══
+         Every 5 s: where you are and what the textures come to, kept so that
+         if iPhone Safari kills this page outright (no error, no event: the
+         owner's black screen fighting fire goblins) the next page can say so
+         (debug/crashTrap.js markAlive).  __btTex walks the asset cache, so
+         only at that pace. */
+      if (S.player && (!S.__aliveAt || _nowWd - S.__aliveAt >= 5000)) {
+        S.__aliveAt = _nowWd;
+        try {
+          var _txA = window.__btTex ? window.__btTex() : null;
+          markAlive({ zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y), hp: S.rpg ? S.rpg.hp : null, mb: _txA ? _txA.mb : null });
+        } catch (eA) { /* telemetry never breaks the game */ }
+      }
       /* ═══ v2.3.1721: A FIRST JOIN DOES NOT WAIT OUT THE MID-SESSION CADENCE ═══
          Owner: "sometimes upon first joining the game after the loading screen
          it's black."  The watchdog above already recovers this -- but on its
@@ -7716,6 +7791,12 @@ export var BroTown = function BroTown(_ref0) {
         }
         if (document.visibilityState === 'visible') {
           requestAnimationFrame(function () {
+            /* v2.3.3017: no judging where the canvas's own colour is MEANT to
+               show -- under the loading screen, or behind a zone's veil or the
+               wait for the server (both .bt-zone-loading), while what is next
+               is laid: it reads as dark now (_wdLitPx), and was always lit */
+            if (!S.__introLiftedAt || S._zoneLoading || S._netHold || S._townArtHold
+                || document.querySelector('.bt-zone-loading')) return;
             var _pctWd = _sampleLit();
             if (_pctWd < 0) return;
             /* v2.3.1721: the world has rendered at least once — from here the

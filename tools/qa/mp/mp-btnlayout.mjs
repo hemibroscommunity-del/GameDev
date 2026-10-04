@@ -84,6 +84,10 @@ const rects = (P) => P.page.evaluate(() => {
        inferred; it only renders for an enchanted weapon at level 6+, so on this
        fixture it is expected to be absent and the row below says so. */
     burst: one('.bt-burst-btn'),
+    /* v2.3.3017: the JUMP button, centred under the attack disc in Block's
+       band (JumpButton.jsx, jumpAnchor) -- measured against Block here, the
+       one fixture where the shield is up and Block is drawn */
+    jump: one('[data-jump]'),
   };
 });
 
@@ -245,6 +249,19 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
       || r.bash.top >= r.attack.bottom + gap;
     rec.ok(`${tag}: the bash button sits clear of the attack disc (no overlap on either axis)`,
       clear, { bash: r.bash, attack: r.attack });
+  }
+  /* ═══ v2.3.3017: JUMP, UNDER THE DISC, BESIDE BLOCK ═══
+     The same band as Block, the disc's half-width between them: clear of
+     the disc above, of Block to its left, of Bash, and of the dashboard. */
+  if (r.jump && r.jump.shown) {
+    const clearOf = (o) => !o || !o.shown || r.jump.right <= o.left || r.jump.left >= o.right || r.jump.bottom <= o.top || r.jump.top >= o.bottom;
+    if (r.dashTop != null) rec.ok(`${tag}: the jump button sits clear of the dashboard (bottom ${r.jump.bottom} vs dash top ${r.dashTop})`, r.jump.bottom <= r.dashTop, { jump: r.jump, dashTop: r.dashTop });
+    if (r.attack && r.attack.shown) rec.ok(`${tag}: ...and under the attack disc, not on it (top ${r.jump.top} vs disc bottom ${r.attack.bottom})`, r.jump.top >= r.attack.bottom, { jump: r.jump, attack: r.attack });
+    if (r.shield && r.shield.shown) {
+      const gap = r.shield.right <= r.jump.left ? r.jump.left - r.shield.right : null;
+      rec.ok(`${tag}: ...with ${gap}px of clear air from Block to its left, so a thumb on one is not on the other`, gap != null && gap >= 20, { jump: r.jump, shield: r.shield });
+    }
+    rec.ok(`${tag}: ...and overlapping neither Bash nor Special`, clearOf(r.bash) && clearOf(r.special), { jump: r.jump, bash: r.bash, special: r.special });
   }
   /* ...and they do not overlap each other. */
   if (r.bash && r.shield && r.bash.shown && r.shield.shown) {

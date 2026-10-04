@@ -15,6 +15,7 @@ import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: the Wh
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
 import { isWheelSwimming, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: no fighting while you swim */
+import { jumpAirborne } from '@/game/jump.js';   /* v2.3.3017: nor in the air */
 import { isDazed } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
@@ -669,6 +670,15 @@ export function swimRefused(S) {
   return true;
 }
 
+/* ═══ v2.3.3017: ...NOR IN THE AIR ═══
+   A jump (game/jump.js) is half a second with only the body drawn lifted.
+   The swing, the shot, the shield, the roll and the abilities are drawn on
+   the ground -- their stand-ins plant on your feet -- so they wait for the
+   landing.  Refused QUIETLY, unlike the water's "Swimming!": you are down
+   again before a note could be read, and a held attack simply goes on. */
+export function airRefused(S) {
+  return jumpAirborne(S, Date.now());
+}
 /* ═══ v2.3.3014: NOTHING OF THIS WHILE DAZED ═══
    "stone stuns briefly": a rock monster's landed hit leaves you dazed for
    half a second (server/src/monsterstatus.js DAZE, carried out here as the
