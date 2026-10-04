@@ -199,8 +199,16 @@ export function townPlan(T) {
   const verge = T.boardwalks ? Math.max(L.verge, T.boardwalk) : L.verge;
   const porch = T.boardwalks ? Math.max(L.porch, T.boardwalk) : L.porch;
   const lots = [], fronts = [];
+  /* v2.3.3031: a plot may stand off the line its row keeps -- `dx` along the
+     street (+ east), `dy` toward or away from it (+ south) -- so a street is
+     not a ruler line of identical plots ("break the perfect rows slightly ...
+     even 10-20% variation will make it feel built over time").  The plan's
+     lots say it (plan.js `design.lots`, the standard plan's); a front walk
+     or a door walk joins a door that stands off its street back to it. */
   const lot = (o, x0, x1, footY) => {
-    const r = { ...o, x0, x1, y0: footY - L.d, y1: footY, foot: { x: (x0 + x1) / 2, y: footY } };
+    const { dx = 0, dy = 0, ...rest } = o;
+    x0 += dx; x1 += dx; footY += dy;
+    const r = { ...rest, x0, x1, y0: footY - L.d, y1: footY, foot: { x: (x0 + x1) / 2, y: footY } };
     /* v2.3.2949/2960: a plan that lays boardwalks puts one along each door */
     r.walk = { x0, x1, y0: footY, y1: footY + T.boardwalk };
     lots.push(r);
@@ -221,16 +229,20 @@ export function townPlan(T) {
         if (arm === 'north' || arm === 'south') {
           const [x0, x1] = side === 'west' ? [-far, -near] : [near, far];
           const footY = arm === 'north' ? yN0 - k * step : yS0 + k * step;
-          lot(base, x0, x1, footY);
+          const r = lot(base, x0, x1, footY);
           /* its front walk, from Main Street to its door -- the first ones
-             south open onto the Back Lane, the first ones north the square */
+             south open onto the Back Lane, the first ones north the square.
+             (v2.3.3031: to the door where it stands, `dy`, off the row) */
           if (k > 0 || arm === 'south') {
-            if (!(arm === 'south' && k === 0)) fronts.push({ x0: side === 'west' ? -far : T.main, x1: side === 'west' ? -T.main : far, y0: footY, y1: footY + L.walk });
+            if (!(arm === 'south' && k === 0)) fronts.push({ x0: side === 'west' ? -far : T.main, x1: side === 'west' ? -T.main : far, y0: r.foot.y, y1: r.foot.y + L.walk });
           }
         } else {
           const a0 = rowAt(k), [x0, x1] = arm === 'west' ? [-(a0 + L.w), -a0] : [a0, a0 + L.w];
-          rowEnd = Math.max(rowEnd, a0 + L.w);
-          lot(base, x0, x1, side === 'north' ? -(T.row + porch) : yS0);
+          const r = lot(base, x0, x1, side === 'north' ? -(T.row + porch) : yS0);
+          rowEnd = Math.max(rowEnd, arm === 'west' ? -r.x0 : r.x1);
+          /* v2.3.3031: a north-side plot set back from Market Row (`dy` < 0)
+             keeps a walk from its door to the street, as a front walk does */
+          if (side === 'north' && r.foot.y < -(T.row + porch) - 1) fronts.push({ x0: r.foot.x - 55, x1: r.foot.x + 55, y0: r.foot.y, y1: -T.row, door: true });
         }
       });
     }
@@ -319,6 +331,109 @@ function inWobblyRect(dx, dy, r, E, nseed, ox, oy, reach) {
    by the World Bible's lot table. */
 export function townLots(T) {
   return townPlan(T).lots;
+}
+
+/* ═══ v2.3.3031: BROTOWN'S GROUND, BY BLOCKS ═══
+   Owner, 2026-10-04, passing on a reviewer's look at the 1.5x town zoomed
+   out: "the center reads as one huge tan clearing with buildings placed on
+   it, rather than a designed town with streets, districts, and landmarks ...
+   don't think of the brown area as 'town ground'; think of it as individual
+   streets, plazas and lots.  Once the green is allowed back between those
+   pieces, I think this view will improve dramatically."
+
+   The town's region is still the same big rectangles (placing, the safe
+   ground, the bake and the minimap all read it), and every cell of it that
+   was not a street, a plaza or a plot was the one tan `town-yard` earth.  Now
+   (plan.js `town.lawn`) the open ground is the commons' GRASS, except where
+   it is next to something built:
+
+     apron   earth `apron` art px round each plot -- its yard -- the edge
+             wandering by `wobble` over `wave`;
+     verge   earth `verge` art px (a little less, wandering by `vwobble`) along
+             every street, walk and lane: a street is laid exactly on its
+             cells (ground.js builtLookup), so grass reaching its edge would
+             meet it along a ruler line, where a worn verge of earth meets
+             the grass raggedly, grass over earth in its own tufts;
+
+   The square is paved under the Town Hall too.  Only the PICTURE changes:
+   the classes, the walk grid, the regions and the footprints are what they
+   were, so nothing baked moves.  A plan with no `town.lawn` is laid exactly
+   as before.
+
+   Per cell of the town: 0 = as before, 1 = the commons' grass, 2 = the
+   square's paving, 3 = earth on the commons' ground just outside the town
+   where a street's end reaches past its wandering edge.  Deterministic, no
+   Math.sin / pow (rng.js). */
+export const TOWN_SURF = Object.freeze({ keep: 0, grass: 1, paving: 2, earth: 3 });
+/* The blueprint cells the town can be in, `extra` cells beyond: the town's
+   gates, its yard and the most its edge wanders (a box, so the work that
+   only concerns the town and what is round it does not sweep all 3.2 million
+   cells of the Wheel). */
+export function townCellBox(plan, bp, extra = 0) {
+  const T = plan.town, g = gridInfo(plan), G = townGates(T), S = bp.scale;
+  const E = { ...TOWN_EDGE, ...(T.edge || {}) };
+  const ext = Math.max(G.ns, G.ew) + T.yard + edgeReach(E) + 80;
+  const cx = (g.cx - bp.x0) / S, ext2 = ext / S + extra;
+  return { x0: Math.max(0, Math.floor(cx - ext2)), x1: Math.min(bp.w - 1, Math.ceil(cx + ext2)),
+    y0: Math.max(0, Math.floor((g.cy - bp.y0) / S - ext2)), y1: Math.min(bp.h - 1, Math.ceil((g.cy - bp.y0) / S + ext2)) };
+}
+/* (the ground and the placing both ask, for the same blueprint: laid once) */
+const SURF_CACHE = new WeakMap();
+export function townSurfaces(plan, bp) {
+  const T = plan.town, L = T && T.lawn;
+  if (!L) return null;
+  const hit = SURF_CACHE.get(bp);
+  if (hit && hit.plan === plan) return hit.out;
+  const g = gridInfo(plan), S = bp.scale, BW = bp.w, BH = bp.h;
+  const townR = bp.regionIds.indexOf('town'), commonsR = bp.regionIds.indexOf('commons');
+  if (townR < 0) return null;
+  const out = new Uint8Array(BW * BH);
+  const tp = townPlan(T), G = townGates(T);
+  const lots = tp.lots.map((l) => [l.x0, l.y0, l.x1, l.y1]);
+  const hall = tp.lots.find((l) => T.hallLot && l.id === T.hallLot.id);
+  /* every street, front walk and lane, as rectangles (art px from the centre) */
+  const streets = [[-T.main, -G.ns, T.main, G.ns], [-G.ew, -T.row, G.ew, T.row], ...tp.fronts.map((f) => [f.x0, f.y0, f.x1, f.y1])];
+  const seed = ((plan.seed | 0) + 3030) | 0;
+  const apron = L.apron != null ? L.apron : 40, wob = L.wobble != null ? L.wobble : 24, wave = L.wave || 130;
+  const verge = L.verge != null ? L.verge : 18, vwob = L.vwobble != null ? L.vwobble : 14;
+  /* how far (art px) a point is from the nearest of some rectangles, 0 inside one */
+  const nearest = (ax, ay, rects) => {
+    let d = Infinity;
+    for (const r of rects) {
+      const dx = Math.max(r[0] - ax, 0, ax - r[2]), dy = Math.max(r[1] - ay, 0, ay - r[3]);
+      const q = dx * dx + dy * dy;
+      if (q < d) d = q;
+    }
+    return Math.sqrt(d);
+  };
+  const box = townCellBox(plan, bp);
+  for (let by = box.y0; by <= box.y1; by++) {
+    const ay = bp.y0 + (by + 0.5) * S - g.cy;
+    for (let bx = box.x0; bx <= box.x1; bx++) {
+      const i = by * BW + bx;
+      if (bp.reg[i] !== townR) {
+        /* a street's end can reach past the town's wandering edge (the gates, the front walks'
+           ends): the commons' ground beside it gets the verge too, or grass would meet it
+           along a ruler line there */
+        if (bp.reg[i] === commonsR && bp.cls[i] === C.ground) {
+          const ax2 = bp.x0 + (bx + 0.5) * S - g.cx, n2b = 0.5 + 0.5 * fbm(ax2 / (wave * 0.7) + 9.1, ay / (wave * 0.7) - 4.3, seed + 5, 2);
+          if (nearest(ax2, ay, streets) <= verge + vwob * n2b) out[i] = TOWN_SURF.earth;
+        }
+        continue;
+      }
+      const c = bp.cls[i], ax = bp.x0 + (bx + 0.5) * S - g.cx;
+      if (c === C.ground) {
+        const n1 = 0.5 + 0.5 * fbm(ax / wave, ay / wave, seed, 2), n2 = 0.5 + 0.5 * fbm(ax / (wave * 0.7) + 9.1, ay / (wave * 0.7) - 4.3, seed + 5, 2);
+        /* next to a street: its worn verge, always */
+        if (nearest(ax, ay, streets) <= verge + vwob * n2) continue;
+        if (nearest(ax, ay, lots) > apron + wob * n1) out[i] = TOWN_SURF.grass;
+      } else if (c === C.lot) {
+        if (hall && ax >= hall.x0 && ax < hall.x1 && ay >= hall.y0 && ay < hall.y1) out[i] = TOWN_SURF.paving;
+      }
+    }
+  }
+  SURF_CACHE.set(bp, { plan, out });
+  return out;
 }
 
 export function buildBlueprint(plan) {
@@ -595,6 +710,14 @@ export function buildBlueprint(plan) {
       stampDisc(cellX(p[0]), cellY(p[1]), half / S, C.river, landAt, null);
     });
     routes.push({ kind: 'river', id: rv.id, name: rv.name, pts: thin(pts.slice(0, end), 4) });
+  }
+
+  /* ── pass 3b: v2.3.3031: the ponds the plan puts where it wants them
+     (plan.ponds), before the roads, which keep clear of them ── */
+  for (const pd of plan.ponds || []) {
+    const [px, py] = toArt(pd.at);
+    stampBlob(cellX(px), cellY(py), pd.r / S, C.water, (c) => c === C.ground || c === C.obstacle, seed + strSeed(pd.id));
+    pois.push({ kind: 'pond', id: pd.id, name: pd.name, paint: pd.paint || '', x: px, y: py, r: pd.r });
   }
 
   /* ── pass 4: the roads, and a bridge wherever one meets a river ── */

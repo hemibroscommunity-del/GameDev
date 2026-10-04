@@ -2213,6 +2213,122 @@ They are two now: `bigTownPlan(k, pictures)`.
 - **Tests:** test-world-core "the town laid roomier": the gates, the gap
   between pictures, the arches and signposts, and the mill.
 
+### The town as a designed place (v2.3.3031)
+
+> Owner, 2026-10-04, passing on a reviewer's look at the 1.5x town zoomed out:
+> *"The 'after' version is the better base ... The main issue now is that,
+> zoomed out, the center reads as one huge tan clearing with buildings placed
+> on it, rather than a designed town with streets, districts, and landmarks
+> ... Don't think of the brown area as 'town ground'; think of it as
+> individual streets, plazas and lots. Once the green is allowed back between
+> those pieces, I think this view will improve dramatically."* -- "Can you do
+> this?"
+
+Before and after, the same view (`--at town --size 5000x4400 --px 3.2`, the left
+from main): `docs/world/brotown-designed-town.png`.
+
+Ten points; what each became (`design` in plan.js, the standard plan's only):
+
+1. **A centre.** The square is 28% bigger than the plots' scale gives it (300
+   -> 384 art px a half, `squareK`), the Town Hall is DRAWN 18% bigger than the
+   other buildings (`hallScale`, placing.js `kindScale`; Mayor Bro stands
+   beside its wider steps), the paving runs under the hall too, and the lamps
+   and benches carry on round the bigger square.
+2. **Streets and blocks, the green let back in.** The town's region and classes
+   are untouched (placing, the safe ground, the bake and the minimap read
+   them): only the PICTURE changed (`townSurfaces`, layout.js; `town.lawn`):
+   - open ground is the commons' grass, except an earth APRON round each plot
+     (40 art px, wandering by 26) and a worn VERGE along every street, walk and
+     lane (18, by 14);
+   - **why the verge:** a street is laid exactly on its cells (ground.js
+     `builtLookup`), so grass reaching its edge met it along a ruler line (seen
+     zoomed in); a verge of earth meets the grass raggedly, grass over earth
+     in its own tufts. It also goes on the commons' ground just outside the
+     town where a street's end reaches past the town's wandering edge
+     (`TOWN_SURF.earth`).
+3. **Districts.** North: the civic front of the square (Guild Hall, Post
+   Office) and the smithy and woodworker's yard by the gate. East, the mine
+   side: Bank, Assay Office, Gem Cutter, Auction House. South, the strip:
+   Saloon, Hotel, Gambling Den, the Sheriff at its far end. West, the farm
+   road: Cookhouse, Feed & Seed, General Store, Land Office (`design.lots`).
+4. **The edge, and the way in.** Where the town's ground meets the commons:
+   runs of split-rail fence and of hedge (bushes), with a stone or a haystack
+   between and gaps where the roads leave (`townGrounds`, placing.js); a wagon
+   yard (hitching rails and a trough) inside each of the four gates. Every
+   other fence along the old roads is the commons' own, as before.
+5. **A clean halo.** The commons' scatter is thinned within 14 cells (336 game
+   px) of the town's edge, to half its chance at 3 cells (`HALO`): 25% fewer
+   in that band, 41% in its inner half, and exactly as before beyond. v1
+   only: the `?placing=2` preview has no halo.
+6. **One body of water.** The four stray ponds are gone from the commons;
+   `ponds` in plan.js puts BRO POND where it is wanted -- south-west, between
+   the South Road and the Bog Trail, 627 game px across -- clear of every road
+   and of the town at any size the previews show (2x). No creek yet (below).
+7. **Roofs and silhouettes** are pictures: not here (below).
+8. **Rows broken.** The plots stand off their rows by `dx` and `dy` (art px)
+   in `design.lots`; a plot set back from Market Row gets its own walk to the
+   street (`fronts` with `door`), a ring-2 plot's front walk follows its door.
+   Market Row's outer plots only move IN: its farthest plot sets the gates,
+   and the west gate stands just short of the river (gates 1326 / 1447 art px;
+   were 1226 / 1455).
+9. **Landmarks you know the town by from afar.** The old grove (six oaks) on
+   the east back lawn, the mine side's ore yard (a mine cart, coal and crates)
+   at the end of the same lawn, the farm side's hay at the west end; the
+   gates, the statue on the Town Hall's porch and the pond as they were.
+10. **25-35% of the brown back to grass.** Measured (test-world-core): the
+    town's earth (street + yard) fell 30%, to 63% of the town; lawn is 25% of
+    it, paving 12%.
+
+Also: gardens (an orchard or an oak where there is room on a lawn, bushes,
+flowers, a stone), each standing a cell inside its lawn and never covering a
+street, a walk, a plot or the paving (`crownOk`); the street lamps follow each
+side's own plots (they stood by the row's grid, and twinned beside the
+staggered plots); the barrel/crate/bale scatter keeps to the earth yards.
+
+- **Nothing baked moved but the commons' ore, trees and fishing spots.** The
+  monsters, the dungeons' doors and the safe ground are what they were
+  (tools/world/bake-wheel-spawns.mjs re-run); the commons' spots are now on
+  Bro Pond's shore and the Sweetwater.
+- **Switches.** `?plaintown`: the standard size without any of this (the tan
+  clearing, the plain square, plots in their rows; the ponds are the plan's
+  either way) to look at the two side by side. `?bigtown=k` previews are the
+  towns they were.
+- **Look at it without a phone:** `node tools/world/render-wheel-objects.mjs
+  --at town --size 5000x4400 --px 3.2` (the whole town; `--px 1` at 700x1400 is
+  a phone's screen; `--px 8 --size 9000x7500` the commons; `--plaintown` the
+  one without the design). Look at a seam at `--px 0.5` too, not only at 3
+  (TRAPS 135).
+- **Cost:** ~100 ms more placing and ~50 ms more laying the map, in the ground
+  worker behind the loading screen; 168 objects stand in the town (79 before).
+- **Tests:** test-world-core "the designed town": the design and `?plaintown`,
+  the square and the hall, the share of brown, no grass touching a street,
+  the districts, plots off their rows with every door still open, one pond,
+  gardens on lawns, wagon yards, the landmarks, the edge, the halo, and a
+  flood-fill from where you arrive to every door, gate and Mayor Bro round
+  every fence and tree. QA, a real browser on a local worker: `questline` (CI's
+  "playable", 99 of 99), `wheelhome`, `bigtown`, `wheelmap` (its "many colours"
+  guard now asks for more than 8 where it asked for more than 12: the arrival's
+  window is mostly the paved square, and 12 is still no flat fill),
+  `placing2`, `mp-wheelseats` (all 34 fishing spots walked to), and
+  `mp-wheelobjects` (12 of 13 here and on main alike: the oasis's palms are not
+  drawn on this machine either way).
+- **Not in this round, and why:** (7) roof colour and silhouette are the
+  buildings' PICTURES (each building already has its tell -- the Town Hall's
+  clock tower, the Bank's columns, the Saloon's balcony, the Auction House's
+  bell tower, the smithy's chimney, the Guild Hall's roof -- but "avoid making them
+  all similar rectangles" is a redraw); the zoom-readable water tower, mine
+  entrance and giant statue need pictures made in the Object Studio; a
+  creek from the Sweetwater to the pond would cross the Bog Trail (a fourth
+  bridge); alleys between plots (they stand 9-60 art px apart now, too close for a
+  lane); a bigger corner lot. The plaza kit the owner showed (flagstone tiles, curbs, a
+  round medallion, planters, lamps, bench, fences, gate pillars): its flat
+  pieces want a path for flat things in the Wheel's object renderer
+  (`wheelObjects.js` draws everything depth-sorted by its feet in `entities`,
+  so a flat tile would be drawn over you whenever you stood north of its
+  bottom edge; the world has a `groundDetails` layer under the shadows), and
+  every object needs the Object Studio's steps first; its props are in the
+  catalog already, in another look.
+
 ### And another 25% (v2.3.3011)
 
 Owner, 2026-10-03: *"Also on main is the game map zoomed out 25% already? If

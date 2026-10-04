@@ -92,7 +92,7 @@
  */
 import { valueNoise, fbm, hash2 } from './rng.js';
 import { gridInfo } from './grid.js';
-import { C, hexToRgb } from './layout.js';
+import { C, hexToRgb, townSurfaces, TOWN_SURF } from './layout.js';
 import { axisDist } from './wheel.js';
 
 /* the id of the sea and every other water: one material, all of it (the walk
@@ -420,7 +420,7 @@ export function groundCatalog(plan) {
   add({ id: 'commons', group: 'hub', name: R.commons.name, brief: R.commons.stages[0].ground,
     where: 'the safe common land round the town', color: hexToRgb(R.commons.ground) });
   add({ id: 'town-yard', group: 'hub', name: 'Brotown yards', brief: 'packed earth with patchy short grass and a few pebbles',
-    where: "the town's yards, and the ground under every building plot and camp", color: hexToRgb(R.town.ground) });
+    where: "the yards round the town's building plots (v2.3.3031: the open ground between them is the commons' grass) and the ground under every plot and camp", color: hexToRgb(R.town.ground) });
   add({ id: 'street', group: 'hub', name: 'Main Street', brief: 'hard-packed dirt street, trodden smooth and a little darker in soft patches, with a few scattered pebbles and wisps of straw lying every which way',
     where: "Brotown's streets", color: hexToRgb(K.street.color), revised: 'v2.3.2944' });
   /* v2.3.2949: boards that run one way -- the one swatch that may, because
@@ -500,6 +500,8 @@ export function materialMap(plan, bp) {
      commons -1, then 0..3), averaged over a wide neighbourhood, is the
      smooth coordinate the patches are cut from (landStage below). */
   const stageAt = landStage(bp, isWater, reg);
+  /* v2.3.3031: the town's grass between its blocks and its paved cross */
+  const surf = townSurfaces(plan, bp);
   for (let by = 0; by < bp.h; by++) {
     const y = (bp.y0 + (by + 0.5) * S - g.cy) / P;
     for (let bx = 0; bx < bp.w; bx++) {
@@ -507,6 +509,8 @@ export function materialMap(plan, bp) {
       let m;
       if (isWater[c]) m = water;
       else if (c === C.lava) m = index.lava;
+      else if (surf && surf[i] === TOWN_SURF.earth) m = index['town-yard'];
+      else if (rid === 'town' && surf && surf[i]) m = surf[i] === TOWN_SURF.grass ? index.commons : index.plaza;
       else if (rid === 'town') m = c === C.street ? index.street : c === C.boardwalk ? index.boardwalk : c === C.plaza ? index.plaza : index['town-yard'];
       else if (c === C.path) m = index.road;
       else if (c === C.bridge) m = index.boardwalk;

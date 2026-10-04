@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* ═══ v2.3.2975: A PICTURE OF THE WHEEL WITH ITS OBJECTS ═══
  *
- *   node tools/world/render-wheel-objects.mjs [--at town|x,y] [--size 2400x2000] [--px 1.5] [--feet] [--placing 2] [--out file.png]
+ *   node tools/world/render-wheel-objects.mjs [--at town|x,y] [--size 2400x2000] [--px 1.5] [--feet] [--placing 2] [--plaintown] [--out file.png]
  *
  * The ground from the game's own swatches (public/world/ground/) and every
  * object placed there (public/tools/world/core/placing.js) drawn from the
@@ -14,7 +14,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { PLAN as BASE_PLAN, bigTownPlan } from '../../public/tools/world/plan.js';
+import { PLAN as BASE_PLAN, PLAIN, bigTownPlan } from '../../public/tools/world/plan.js';
 import { buildBlueprint } from '../../public/tools/world/core/layout.js';
 import { materialMap, composeGround, swatchesUnder } from '../../public/tools/world/core/ground.js';
 import { placeObjects, footprintOf, mayorSpot } from '../../public/tools/world/core/placing.js';
@@ -35,7 +35,9 @@ const FEET = process.argv.includes('--feet');
    (plan.js PLAN, BUILDINGS 1.15) -- not bigTownPlan(1), the town as written,
    which this drew by default after v2.3.2994 made a bigger town standard */
 const BIG = process.argv.includes('--bigtown') ? Number(arg('--bigtown', '2')) || 2 : null;
-const PLAN = BIG == null ? BASE_PLAN : bigTownPlan(BIG);
+/* v2.3.3031: `--plaintown`, the standard size without the designed town (plan.js
+   PLAIN, the game's `?plaintown`) -- to put a picture of it beside the designed one */
+const PLAN = BIG == null ? (process.argv.includes('--plaintown') ? PLAIN : BASE_PLAN) : bigTownPlan(BIG);
 
 const bp = buildBlueprint(PLAN);
 const mm = materialMap(PLAN, bp);

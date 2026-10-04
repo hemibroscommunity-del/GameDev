@@ -277,6 +277,73 @@ const BASE_PLAN = {
        side stayed a ruler line a few px either way.  (core/layout.js
        townEdgeAt; the same for the plots out in the country, `places`.) */
     edge: { amp: 60, wave: 300, amp2: 30, wave2: 110, amp3: 12, wave3: 45 },
+    /* v2.3.3031: THE DESIGNED TOWN.  Only the standard plan takes these
+       (bigTownPlan(TOWN, BUILDINGS)); the previews (`?bigtown=k`) keep the
+       town they show.  Owner, passing on a reviewer's look at the 1.5x town
+       zoomed out: "a designed town with streets, districts, and landmarks
+       ... don't think of the brown area as 'town ground'; think of it as
+       individual streets, plazas and lots".
+         lawn     the town's GROUND BY BLOCKS (core/ground.js townSurfaces):
+                  its open ground is the commons' grass, except an earth
+                  `apron` art px round each plot (the edge wandering by
+                  `wobble` over `wave`) and a worn `verge` along every
+                  street; the square is paved under the Town Hall.  None:
+                  every open cell the one tan yard earth, as before.
+         squareK  the square this much bigger than the plots' scale gives it
+                  ("enlarge the square roughly 25-35%")
+         hallScale the Town Hall's picture drawn this much bigger than the
+                  other buildings' (placing.js kindScale)
+         lots     THE DISTRICTS.  Each arm of the town is a neighbourhood with
+                  its own business (the old `lots`, below, spread them about),
+                  and the plots stand a little off their rows -- `dx` along
+                  the street, `dy` off it, art px -- so no street is a ruler
+                  line of identical doors.  (Owner, passing on a reviewer:
+                  "cluster buildings into little districts instead of evenly
+                  distributing them ... civic around the centre; Bank /
+                  Auction / Assay toward the mine-facing side; Saloon / Hotel
+                  / Gambling together; Cookhouse / General Store / Feed &
+                  Seed together; Sheriff slightly separated".)
+                    NORTH  the civic front of the square -- the Guild Hall and
+                           the Post Office -- with the smithy and the
+                           woodworker's yard out by the gate;
+                    EAST   the mine side, the way the railway leaves: the Bank,
+                           the Assay Office, the Gem Cutter, the Auction House;
+                    SOUTH  the strip: the Saloon, the Hotel and the Gambling
+                           Den, the Sheriff at its far end by the gate;
+                    WEST   the farm road: the Cookhouse, the Feed & Seed, the
+                           General Store and the Land Office.
+                  Each list is nearest the square first.  The outer plots of
+                  Market Row only ever move IN: its farthest plot sets the
+                  gates, and the west gate stands just short of the river. */
+    design: {
+      lawn: { apron: 40, wobble: 26, wave: 130, verge: 18, vwobble: 14 }, squareK: 1.28, hallScale: 1.18,
+      lots: {
+        north: {
+          west: [{ id: 'guildhall', name: 'Guild Hall', today: '(new: clans and guilds)', dx: -18 },
+                 { id: 'blacksmith', name: 'Blacksmith', today: 'blacksmith', dx: -34, dy: -50 }],
+          east: [{ id: 'post', name: 'Post Office & Telegraph', today: '(new: mail and offline inbox)', dx: 14 },
+                 { id: 'woodworker', name: 'Woodworker', today: 'woodworker', dx: 28, dy: 30 }],
+        },
+        south: {
+          west: [{ id: 'saloon', name: 'Saloon', today: 'party', dx: -22 },
+                 { id: 'gambling', name: 'Gambling Den', today: 'gambler', dx: -40, dy: 16 }],
+          east: [{ id: 'hotel', name: 'Hotel', today: '(new: rest, respawn)', dx: 12 },
+                 { id: 'sheriff', name: "Sheriff's Office", today: '(new: duels, arena sign-up, bounties)', dx: 34, dy: -30 }],
+        },
+        west: {
+          north: [{ id: 'cookhouse', name: 'Cookhouse', today: 'cooking', dx: 14, dy: -28 },
+                  { id: 'feedseed', name: 'Feed & Seed', today: 'farm', dx: 24, dy: -62 }],
+          south: [{ id: 'landoffice', name: 'Land Office', today: 'farmhome', dx: 10 },
+                  { id: 'store', name: 'General Store', today: 'marketplace', dx: 8 }],
+        },
+        east: {
+          north: [{ id: 'bank', name: 'Bank', today: 'bank', dx: 20, dy: -18 },
+                  { id: 'assay', name: 'Assay Office', today: 'enchanting', dx: -12, dy: -48 }],
+          south: [{ id: 'gemcutter', name: 'Gem Cutter', today: 'gemcutter', dx: 12 },
+                  { id: 'auction', name: 'Auction House', today: 'auctionhouse', dx: -22 }],
+        },
+      },
+    },
     hallLot: { id: 'townhall', name: 'Town Hall', today: 'mayor (NPC)' },
     lots: {
       north: {
@@ -312,6 +379,18 @@ const BASE_PLAN = {
     west: { name: 'the Mill Bridge', paint: 'a wide wooden bridge of heavy timbers with low rails, strong enough for ore wagons' },
     'bog-trail': { name: 'the Snake Bridge', paint: 'a rickety plank bridge on crooked stilts, green with slime' },
   },
+
+  /* ── PONDS: one body of water, put where it is wanted ──
+     v2.3.3031: Bro Pond, in the south-west of the commons between the South
+     Road and the Bog Trail -- the one big pond of the commons (r art px; at
+     in squares from the centre), a place to fish and swim and a mark you
+     know the town by, where there were four stray puddles.  It keeps clear
+     of the roads (the Bog Trail runs 120 art px west of its edge, the South
+     Road 600 east) and of the town -- the 2x preview's too (the core suite:
+     no pond in the town at any size it shows up to 2x). */
+  ponds: [
+    { id: 'bro-pond', name: 'Bro Pond', at: [-1.30, 1.90], r: 200, paint: 'a wide clear pond with reeds, flat stones and a wooden fishing jetty' },
+  ],
 
   /* ── PLACES: empty plots for sprites added later ──
      `at` in squares; `size` [w, h] art px, or `r` for a round plot.  The
@@ -383,9 +462,13 @@ const BASE_PLAN = {
          spoke's level 1 starts at its edge. */
       landmark: { name: "Prospector's Circle", at: [-1.2, -1.15], color: '#c8c8c8', colorName: 'light grey', r: 140,
                   paint: 'a ring of eight weathered standing stones on a grassy knoll, around a round, flat stone slab carved with an eight-spoked wheel' },
+      /* v2.3.3031: no scatter of stray ponds -- four puddles round the town,
+         each alone ("the bright blue patches currently look a little like
+         isolated decorative puddles ... one recognizable body of water is
+         stronger than several unrelated blue spots"): the commons' water is
+         the Sweetwater River and Bro Pond (`ponds`, below) */
       features: [
         { class: 'obstacle', density: 5, r: [22, 50] },
-        { class: 'water', density: 0.5, r: [70, 150] },
       ],
     },
     frost: {
@@ -1009,9 +1092,13 @@ export function bigTownScale(search) {
   return Number.isFinite(k) && k > 0 ? Math.max(1, Math.min(BIG_TOWN_MAX, k)) : 2;
 }
 /* v2.3.3022: the plan the address asks for -- PLAN without `bigtown` (the
-   town laid at TOWN, its pictures at BUILDINGS), else bigTownPlan(k) */
+   town laid at TOWN, its pictures at BUILDINGS), else bigTownPlan(k).
+   v2.3.3031: `plaintown` the standard size without the designed town (PLAIN):
+   the town's one tan clearing, plain square and plots in their rows, to look
+   at it beside the designed one */
 export function planFor(search) {
   const k = bigTownScale(search);
+  if (k == null && /(?:^|[?&])plaintown(?:&|$)/.test(search || '')) return PLAIN;
   return k == null ? PLAN : bigTownPlan(k);
 }
 
@@ -1025,14 +1112,21 @@ export function planFor(search) {
    water and the objects' own footprints), so a plot bigger than its
    building is more yard round it.  The standard: laid TOWN, drawn
    BUILDINGS. */
-export function bigTownPlan(k, pictures = k) {
+export function bigTownPlan(k, pictures = k, design = true) {
   if (!(k > 1)) return BASE_PLAN;
-  if (k === TOWN && pictures === BUILDINGS && _standard) return _standard;
+  if (k === TOWN && pictures === BUILDINGS && design && _standard) return _standard;
   const T = BASE_PLAN.town, L = T.lot;
   const grow = (v) => Math.round(v * k), half = (v) => Math.round((v * (1 + k)) / 2);
   const lot = { ...L, w: grow(L.w), d: grow(L.d), tall: grow(L.tall), walk: half(L.walk), gap: half(L.gap), perSideRow: k > TWO_A_SIDE_MAX ? 1 : L.perSide };
-  /* v2.3.2994: and its edge on the grass its own noise (BIG_TOWN_EDGE_SEED) */
-  const town = { ...T, square: half(T.square), hall: { w: grow(T.hall.w), d: grow(T.hall.d) }, lot, buildingScale: pictures,
+  /* v2.3.3031: the designed town (`design`, above) is the standard plan's
+     only: the square grown past the plots' scale by `squareK`, the Town
+     Hall's picture bigger, the districts and the plots off their rows, the
+     open ground grass between the blocks.  `design` false lays the standard
+     size without it (`?plaintown`, planFor), the town as v2.3.3029 had it. */
+  const D = design && k === TOWN && pictures === BUILDINGS ? T.design : null;
+  const town = { ...T, square: Math.round(half(T.square) * (D ? D.squareK : 1)), hall: { w: grow(T.hall.w), d: grow(T.hall.d) }, lot, buildingScale: pictures,
+    lots: D ? D.lots : T.lots, lawn: D ? D.lawn : null, hallScale: D ? D.hallScale : 1,
+    /* v2.3.2994: and its edge on the grass its own noise (BIG_TOWN_EDGE_SEED) */
     edge: { ...(T.edge || {}), seed: BIG_TOWN_EDGE_SEED } };
   /* the gates: past the last door on each street (Main Street's last front
      walks; Market Row's last plot), and the town's ground behind it */
@@ -1117,3 +1211,5 @@ export const TOWN = 1.5;
 let _standard = null;
 export const PLAN = bigTownPlan(TOWN, BUILDINGS);
 _standard = PLAN;
+/* v2.3.3031: ...the same, without the designed town (`?plaintown`) */
+export const PLAIN = bigTownPlan(TOWN, BUILDINGS, false);

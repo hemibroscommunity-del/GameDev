@@ -5291,3 +5291,33 @@ too (QuestBannerLayer.jsx). And test the context, not just the numbers:
 mp-questbanner now asserts the banner is not inside `.brotown-wrap`. A hit
 test cannot do it for a `pointer-events:none` overlay, because
 `elementFromPoint` skips it.
+
+## 135. Letting the grass into the town: it meets every street along a ruler line (v2.3.3031)
+
+**The plausible move.** The owner asked for the green back between the town's
+blocks. The ground is laid by `materialMap`, so make the town's open cells the
+commons' grass (`TOWN_SURF.grass`) wherever no plot is near, render it, see a
+town in a meadow. At the size of the whole-town picture (3 game px a pixel) it
+looked right.
+
+**Why it is wrong.** Zoomed to the game's own sharpness (`render-wheel-objects.mjs
+--px 0.5`, two picture px a game px) every street edge against grass was a
+perfectly straight, hard line: a street is a BUILT surface, laid exactly on its
+cells (ground.js `builtLookup`, v2.3.2945), so nothing reaches over its edge --
+not the grass's tufts, not a mix. The same went for a paved stub where a
+street left the square (the first try gave Main Street and Market Row a pale
+`promenade` out of the square): it ended against the plain street along a
+straight cut. The old tan clearing hid all of it: earth against earth mixes.
+
+**What is true.** A built surface only looks natural against a ground that mixes
+with it. So the grass keeps off the streets by a worn VERGE of earth (18 art px,
+wandering by 14: `town.lawn.verge`), and the grass meets THAT, grass over earth
+in its own tufts. The same ground just outside the town's wandering edge needs
+the verge too, where a street's end reaches past it (`TOWN_SURF.earth`). A paved
+stub is not worth having: the square's own edge is the one straight line a made
+place may have.
+
+**The rule.** After any change to which ground lies beside a street, the
+square or a bridge, look at it at 0.5 game px a pixel, not only at 3. The suite
+holds it (test-world-core "grass touches none of its street cells"); the
+picture is what finds the next kind of seam.
