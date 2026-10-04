@@ -33,6 +33,14 @@
  *   rings    on still fresh water (ponds, lakes, oases), now and then a ring
  *            opening where something rose, a second after it
  *   caps     out on the open sea, a short whitecap now and then
+ *   caustics v2.3.3021: the web of light the surface throws on the bottom,
+ *            MOVING -- round cells swelling, shrinking and re-forming, their
+ *            lines bending and breaking -- in place of the web ChatGPT drew
+ *            into all three pictures, which held still read as a honeycomb
+ *            (the owner: "The water has a honeycomb pattern that needs to
+ *            change to mimic water movement").  The ground worker takes that
+ *            one out of the pictures (ground.js CALM WATER) wherever this
+ *            draws, and only there; `?caustics=k` (0 to 2) sets its brightness
  *
  * SIZED FOR A PHONE.  The first cut swayed the pictures a game px and drew
  * its foam and glints a game px wide, and the owner, on a phone: "I don't see
@@ -61,11 +69,13 @@
  * iOS 15 gives version 2); on anything else the water stays still, as before.
  *
  * Switches: `?nowaves` in the address keeps it still (the worker then lays
- * no fields at all), `?waves=1.5` makes it half as strong again (0.25 to 3),
- * `window.__btWaves.off()` live.  Probe: `window.__btWaves.probe()`; the
+ * no fields at all, and keeps the pictures' own web of light), `?waves=1.5`
+ * makes it half as strong again (0.25 to 3), `?caustics=0.5` the moving web
+ * half as bright (0 to 2; 0 none), `window.__btWaves.off()` live.  Probe: `window.__btWaves.probe()`; the
  * trial readout (`?trialhud`) says "water moving" or why it is still.
  */
 import { Container, Mesh, MeshGeometry, Shader, GlProgram, UniformGroup, Texture, BufferImageSource, Rectangle } from 'pixi.js';
+import { setWheelWaterMoves } from '../game/wheelTrial.js';
 
 const VERT = `
 in vec2 aPosition;
@@ -100,6 +110,7 @@ uniform sampler2D uPiece;
 uniform float uTime;
 uniform float uStrength;
 uniform float uUvPerPx;
+uniform float uCaustics;
 
 float h12(vec2 p)
 {
@@ -128,6 +139,31 @@ float vn(vec2 p)
 vec2 vn2(vec2 p)
 {
     return vec2(vn(p), vn(p + vec2(19.19, 7.73))) * 2.0 - 1.0;
+}
+/* CAUSTICS (v2.3.3021): a cell's point, circling on its own clock */
+vec2 cpt(vec2 c, float t)
+{
+    vec2 r = h22(c + 3.71);
+    float a = 6.2832 * r.x + t * (0.45 + 0.5 * r.y);
+    return c + 0.5 + 0.30 * vec2(cos(a), sin(a * 1.13 + r.y * 3.0));
+}
+/* how near p lies to the line between two cells: the nearest point's
+   distance over the next nearest's -- 1 on the line.  Its lines of equal
+   value round a point are circles (Apollonius), so the cells come out ROUND,
+   as the light on a bottom does, not the straight-sided cells of the usual
+   cellular noise (F2 - F1), a honeycomb again */
+float cellEdge(vec2 p, float t)
+{
+    vec2 c = floor(p);
+    float f1 = 9.0;
+    float f2 = 9.0;
+    for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+            float d = distance(p, cpt(c + vec2(float(i), float(j)), t));
+            if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) { f2 = d; }
+        }
+    }
+    return f1 / max(f2, 1e-4);
 }
 /* how far from the drawn shore, in game px (ground.js: R = output px x 12,
    two output px a game px), at a world point near this fragment */
@@ -192,6 +228,31 @@ void main(void)
     float dq = shoreAt(Pa);
     float light = 0.0;
     float foam = 0.0;
+
+    /* CAUSTICS (v2.3.3021): the light the surface's ripples throw on the
+       bottom -- the web the owner's pictures held still, which read as a
+       honeycomb ("needs to change to mimic water movement"), taken out of
+       them by the ground worker (ground.js CALM WATER) and drawn here
+       MOVING: round cells that swell, shrink and re-form, each cell's point
+       circling on its own clock, their lines bent by a slow warp and a
+       quicker wobble so they curve, and stretches of web fading out and back
+       as a slow noise drifts over them -- never a whole honeycomb at once.
+       One size of cell everywhere (42 game px), so the web runs on unbroken
+       where the shallows meet the sea: brightest in the shallows, a little
+       less on fresh water, on the open sea faint and in pieces (light fades
+       with depth: a whole web out there read as cracked glass), none on a
+       running river (its streaks and flecks, below).  Two shades
+       a picture px, as the pictures drew theirs: a line and its glow. */
+    float cg = (0.09 * sea + 0.46 * shallow + 0.38 * fresh) * (1.0 - smoothstep(0.02, 0.10, sp)) * uCaustics * min(k, 1.25);
+    if (cg > 0.0) {
+        vec2 p = Pa / 42.0;
+        vec2 bend = vec2(vn(p * 0.45 + vec2(t * 0.05, 0.0)), vn(p * 0.45 + vec2(19.19, 7.73 - t * 0.04))) * 2.0 - 1.0;
+        vec2 wob = vec2(vn(p * 2.1 + vec2(t * 0.21 + 5.1, 0.0)), vn(p * 2.1 + vec2(11.3, -t * 0.17))) * 2.0 - 1.0;
+        float q = cellEdge(p + 0.30 * bend + 0.07 * wob, t);
+        float web = step(0.90, q) + 0.45 * step(0.80, q) * step(q, 0.90);
+        float brk = smoothstep(0.30 + 0.18 * sea, 0.70 + 0.10 * sea, vn(p * 0.9 + vec2(t * 0.10 + 3.3, -t * 0.06)));
+        col = mix(col, vec3(0.86, 0.98, 1.0), clamp(web * brk * cg, 0.0, 0.9));
+    }
 
     /* SPARKLES: one cell in three or so holds one, which flashes now and
        then -- a 3 x 3 px heart, arms that grow to 4 game px and the X's
@@ -365,11 +426,22 @@ function wavesStrength() {
   } catch (e) { /* no address */ }
   return 1;
 }
+/* v2.3.3021: `?caustics=k` -- the moving web of light k times as bright,
+   0 to 2 (1 by default; 0 leaves the water calm, with no web at all) */
+function causticsStrength() {
+  try {
+    const m = /(?:^|[?&])caustics=([0-9.]+)(?:&|$)/.exec(window.location.search || '');
+    const k = m ? Number(m[1]) : NaN;
+    if (Number.isFinite(k)) return Math.max(0, Math.min(2, k));
+  } catch (e) { /* no address */ }
+  return 1;
+}
 /* one clock and one strength for every piece's water */
 const _uni = new UniformGroup({
   uTime: { value: 0, type: 'f32' },
   uStrength: { value: wavesStrength(), type: 'f32' },
   uUvPerPx: { value: 1 / 195, type: 'f32' },
+  uCaustics: { value: causticsStrength(), type: 'f32' },
 });
 /* the clock wraps every TIME_WRAP seconds: highp floats keep a thousandth
    of a second up there, and the wrap is a single frame of jump in two hours */
@@ -384,7 +456,13 @@ const _stats = { meshes: 0, fields: 0, uniform: 0, flowing: 0, fieldBytes: 0, ma
 
 /** The renderer, from initPixiRenderer: what builds the program, and says
  *  whether this is WebGL2. */
-export function setWheelWaterRenderer(r) { _renderer = r || null; }
+export function setWheelWaterRenderer(r) {
+  _renderer = r || null;
+  /* v2.3.3021: and the Wheel's ground worker, started later, whether the
+     water is drawn moving here: it then takes the frozen web of light out of
+     the water pictures (ground.js CALM WATER), as the web is drawn here */
+  setWheelWaterMoves(wavesOn() && webgl2());
+}
 
 /** `?nowaves` in the address keeps the water still (the ground worker reads
  *  the same word: ground.js wavesOn). */
@@ -557,10 +635,12 @@ export class WheelWater {
    strength (0 draws the pictures still, through the same quads) */
 if (typeof window !== 'undefined') {
   window.__btWaves = {
-    probe: () => ({ ..._stats, ok: _ok, webgl2: webgl2(), on: wavesOn() && !_liveOff, strength: _uni.uniforms.uStrength, time: _uni.uniforms.uTime }),
+    probe: () => ({ ..._stats, ok: _ok, webgl2: webgl2(), on: wavesOn() && !_liveOff, strength: _uni.uniforms.uStrength, caustics: _uni.uniforms.uCaustics, time: _uni.uniforms.uTime }),
     off: () => { _liveOff = true; },
     on: () => { _liveOff = false; },
     strength: (k) => { _uni.uniforms.uStrength = Math.max(0, Math.min(4, +k || 0)); },
+    /* v2.3.3021: the moving web of light alone, 0 to 2 */
+    caustics: (k) => { _uni.uniforms.uCaustics = Math.max(0, Math.min(2, +k || 0)); },
     /* hold the clock (pictures of one moment); null lets it run */
     hold: (sec) => { _held = sec == null ? null : +sec; },
     /* the water layer ALONE over a world rectangle, as RGBA px at `res` px a

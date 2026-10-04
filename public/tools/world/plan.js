@@ -979,6 +979,10 @@ export const SPOKES = Object.keys(BASE_PLAN.regions).filter((k) => BASE_PLAN.reg
  * gates.  The monsters stand where they stood: the lands are the same.
  */
 export const BIG_TOWN_MAX = 2.5;
+/* v2.3.3022: the Old Mill on the river's near bank while the town's west
+   gate is within this (art px; its west side then clear of the bank by 12),
+   else whole on the far bank, its middle here (squares from the centre) */
+export const MILL_NEAR_GATE = 1231, MILL_FAR_X = -2.23;
 /* v2.3.2985, owner: "Let me try 1.5 size for buildings. Does that fit?"  It
    does: Market Row keeps its TWO plots a side -- all 17 buildings -- up to
    1.5x, the town then reaching 1,455 art px from the centre, 95 short of
@@ -993,28 +997,42 @@ export const TWO_A_SIDE_MAX = 1.5;
    384 game px (the old town's: 18%, 336).  test-world-core measures it. */
 export const BIG_TOWN_EDGE_SEED = 16;
 
-/* The building size the address asks for: `bigtown` alone is 2, `bigtown=k`
-   is k (1 to BIG_TOWN_MAX); BUILDINGS without it (1.5 from v2.3.2994, 1.15
-   since v2.3.2997) -- `bigtown=1` is the town as it was, the pictures at
-   their own size, and `bigtown=1.5` the 1.5x town to compare. */
+/* The town size the address asks for: `bigtown` alone is 2, `bigtown=k`
+   is k (1 to BIG_TOWN_MAX), the town and its pictures both k; null without
+   it, the standard PLAN (planFor, below) -- `bigtown=1` is the town as it
+   was, the pictures at their own size, `bigtown=1.15` the town before
+   v2.3.3022 (laid and drawn 1.15), and `bigtown=1.5` the 1.5x town. */
 export function bigTownScale(search) {
   const m = /(?:^|[?&])bigtown(?:=([0-9.]*))?(?:&|$)/.exec(search || '');
-  if (!m) return BUILDINGS;
+  if (!m) return null;
   const k = m[1] ? Number(m[1]) : 2;
   return Number.isFinite(k) && k > 0 ? Math.max(1, Math.min(BIG_TOWN_MAX, k)) : 2;
+}
+/* v2.3.3022: the plan the address asks for -- PLAN without `bigtown` (the
+   town laid at TOWN, its pictures at BUILDINGS), else bigTownPlan(k) */
+export function planFor(search) {
+  const k = bigTownScale(search);
+  return k == null ? PLAN : bigTownPlan(k);
 }
 
 /* The plan with the town laid for buildings `k` times the size, or the plan
    as written when k is 1.  v2.3.2994: from the plan as written (BASE_PLAN),
-   and the standard size (BUILDINGS) is always the one PLAN, below. */
-export function bigTownPlan(k) {
+   and the standard size (BUILDINGS) is always the one PLAN, below.
+   v2.3.3022: `pictures`, the buildings' own size, may be smaller than the
+   town laid for them (`k`): every plot, the square, the walks and the gaps
+   as for k, the pictures drawn at `pictures` -- room round each building.
+   The plots are only yard (ground.js walkBits: what stops the feet is the
+   water and the objects' own footprints), so a plot bigger than its
+   building is more yard round it.  The standard: laid TOWN, drawn
+   BUILDINGS. */
+export function bigTownPlan(k, pictures = k) {
   if (!(k > 1)) return BASE_PLAN;
-  if (k === BUILDINGS && _standard) return _standard;
+  if (k === TOWN && pictures === BUILDINGS && _standard) return _standard;
   const T = BASE_PLAN.town, L = T.lot;
   const grow = (v) => Math.round(v * k), half = (v) => Math.round((v * (1 + k)) / 2);
   const lot = { ...L, w: grow(L.w), d: grow(L.d), tall: grow(L.tall), walk: half(L.walk), gap: half(L.gap), perSideRow: k > TWO_A_SIDE_MAX ? 1 : L.perSide };
   /* v2.3.2994: and its edge on the grass its own noise (BIG_TOWN_EDGE_SEED) */
-  const town = { ...T, square: half(T.square), hall: { w: grow(T.hall.w), d: grow(T.hall.d) }, lot, buildingScale: k,
+  const town = { ...T, square: half(T.square), hall: { w: grow(T.hall.w), d: grow(T.hall.d) }, lot, buildingScale: pictures,
     edge: { ...(T.edge || {}), seed: BIG_TOWN_EDGE_SEED } };
   /* the gates: past the last door on each street (Main Street's last front
      walks; Market Row's last plot), and the town's ground behind it */
@@ -1033,7 +1051,15 @@ export function bigTownPlan(k) {
     at[axis] = Math.sign(at[axis]) * (Math.abs(at[axis]) + (g - T.gate) / step);
     return { ...pl, at };
   };
-  const places = BASE_ROUTES.places.map((pl) => (pl.id === 'depot' || pl.id === 'mill' ? out(pl, 0, town.gateEW) : pl));
+  /* v2.3.3022: ...but the mill never INTO the Sweetwater.  It stands on the
+     river's near (east) bank while it fits there, its west side clear of
+     the bank (about -1,512 art px by the Mill Bridge); a town whose west
+     gate passes MILL_NEAR_GATE leaves it no room, and the push took it half
+     into the river (lot cells are never laid on the river: the town laid
+     1.5 kept 124 px of it on the far bank, 26 in the water).  So past that
+     it stands whole on the FAR bank, by the bridge's west end (MILL_FAR_X) */
+  const millAt = (pl) => (town.gateEW > MILL_NEAR_GATE ? { ...pl, at: [MILL_FAR_X, pl.at[1]] } : out(pl, 0, town.gateEW));
+  const places = BASE_ROUTES.places.map((pl) => (pl.id === 'mill' ? millAt(pl) : pl.id === 'depot' ? out(pl, 0, town.gateEW) : pl));
   const P = { ...BASE_PLAN, town, bigTown: k, wheel: { ...BASE_PLAN.wheel },
     roads: BASE_ROUTES.roads.slice(), rivers: BASE_ROUTES.rivers.slice(), rails: BASE_ROUTES.rails.slice(), places };
   layWheel(P);
@@ -1068,7 +1094,26 @@ export function bigTownPlan(k) {
  * commons' grass at this size, now finds town ground (placing.js, `yard`).
  * `?bigtown=1.5` still shows the 1.5x town.
  */
+/* ═══ v2.3.3022: ...AND THE TOWN LAID ROOMIER, 1.5x ROUND 1.15x BUILDINGS ═══
+ *
+ * Owner, 2026-10-04: "The town center's buildings feel too squished
+ * together. I think brotown itself might need to be bigger to accommodate."
+ * At 1.15 the Hotel's roof reached the Town Hall's door line (4 game px
+ * apart), Market Row's neighbours stood 78 game px apart and the walks were
+ * 65 art px.  So the town is LAID at TOWN, 1.5 -- the plots, the square,
+ * the walks and the gaps of the 1.5x town, all 17 buildings, Market Row two
+ * a side -- and its pictures DRAWN at BUILDINGS, 1.15, as before: the Town
+ * Hall and the Hotel 103 game px apart, Market Row's neighbours 228, Main
+ * Street's 338-392, the town 49% more ground.  1.5 is the most the town
+ * can take east-west: its west gate at 1,455 art px stands just short of
+ * the Sweetwater River.  The gates at 1,226 (Main Street) and 1,455 (Market
+ * Row); the monsters, the dungeons' doors and the safe ground where they
+ * were; the commons' ore, trees and fishing spots re-baked round the bigger
+ * town (tools/world/bake-wheel-spawns.mjs).  `?bigtown=1.15` is the town
+ * before (laid and drawn 1.15).
+ */
 export const BUILDINGS = 1.15;
+export const TOWN = 1.5;
 let _standard = null;
-export const PLAN = bigTownPlan(BUILDINGS);
+export const PLAN = bigTownPlan(TOWN, BUILDINGS);
 _standard = PLAN;

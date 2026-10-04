@@ -1923,6 +1923,38 @@ says "moving", or "still" and why.
 The details, switches and probes are in docs/specs/moving-water.md. Tests:
 test-world-core "the water moves", `mp-wheelwaves`.
 
+### The honeycomb taken out, and a web of light that moves (v2.3.3021)
+
+> Owner, 2026-10-04: *"The water has a honeycomb pattern that needs to change
+> to mimic water movement. Is that something I should get from chatGPT or you
+> do it using code?"*
+
+Code. The honeycomb is in all three of the owner's water pictures: ChatGPT drew
+the light the surface throws on the bottom (caustics) as a web of light lines
+round rounded cells. That light never holds still in real water, and held
+still it reads as a pool's tiled floor. A new picture would hold still too.
+
+- **The game's ground worker takes the web out** of each water picture, once
+  (`calmWater`, ground.js CALM WATER):
+  - it finds what is lighter than the water round it (a grey opening at half
+    size);
+  - it fills it from the colours round it, on the picture's own colours;
+  - it keeps the tile seamless.
+  - Only where the game draws the water moving: `?nowaves` keeps the pictures
+    as made.
+- **The shader draws its own web, moving** (wheelWater.js CAUSTICS):
+  - round cells that swell, shrink and re-form, their lines curving, stretches
+    of it fading out and back;
+  - one cell size, so it runs on unbroken from the shallows into the sea;
+  - brightest in the shallows, faint and broken on the open sea, none on a
+    running river.
+- **Switches:** `?caustics=k`, 0 to 2, sets its brightness (0: none).
+- **Cost:** about 140 ms a picture in the worker (Node), four pictures,
+  once a session.
+- **Tests:** test-world-core "the water's frozen web of light taken out";
+  `mp-wheelwaves` checks the pictures were calmed, and that `?nowaves` calms
+  none.
+
 ## Oases in the Wind Dunes (v2.3.2981)
 
 Owner, 2026-10-02: *"The palm trees don't belong in the desert unless they
@@ -2142,6 +2174,44 @@ for everything by default (make both changes)"*.
   1.15x their pictures (1.5x under the old switches), the ground laid, the
   cost, and pictures of each (`zoomout-{now,was}-{arrival,square,land}.png`).
   test-world-core checks the switch and the plan.
+
+### The town laid roomier: 1.5x round 1.15x buildings (v2.3.3022)
+
+> Owner, 2026-10-04: *"The town center's buildings feel too squished together.
+> I think brotown itself might need to be bigger to accommodate."*
+
+The pictures' size and the town's layout were one number (`bigTownPlan(k)`).
+They are two now: `bigTownPlan(k, pictures)`.
+
+- **The standard town** is `PLAN = bigTownPlan(TOWN, BUILDINGS)`:
+  - laid as the 1.5x town (`TOWN` 1.5): its plots, square, walks and gaps;
+  - its buildings drawn 1.15x (`BUILDINGS`), as before.
+- **What changes:**
+  - All 17 buildings stand, Market Row two a side.
+  - The closest two pictures, the Town Hall and the Hotel, go from 4 to 103
+    game px apart.
+  - Market Row's neighbours go from 78 to 228 game px apart.
+  - The town has 49% more ground.
+  - The gates are at 1,226 art px (Main Street) and 1,455 (Market Row).
+  - A plot bigger than its building is just more yard: the plots never stopped
+    the feet.
+- **The limit.** 1.5 is the most the town can take east-west: its west gate
+  stands just short of the Sweetwater River. Bigger means moving the river's
+  commons points, or growing the hub, which moves every land.
+- **Fixed on the way:**
+  - The town's arches, signposts, yard scatter and the Old Roads' fences stood
+    at the plan's old gate (1,050). At 1.15 the east signpost stood inside the
+    Assay Office. Each now stands at its own street's gate (`townGates`).
+  - The Old Mill's empty plot was pushed out past the west gate and half into
+    the river. It now stands whole on the far bank by the Mill Bridge
+    (`MILL_NEAR_GATE`, `MILL_FAR_X`).
+- **Re-baked:**
+  - the monsters, the dungeons' doors and the safe ground: unchanged;
+  - the commons' ore, trees and fishing spots: moved round the bigger town.
+- **Switches:** `?bigtown=1.15` is the town before (laid and drawn 1.15).
+  The trial readout says "buildings x1.15 (17 of 17) · town x1.5".
+- **Tests:** test-world-core "the town laid roomier": the gates, the gap
+  between pictures, the arches and signposts, and the mill.
 
 ### And another 25% (v2.3.3011)
 
@@ -3132,6 +3202,27 @@ confused with game screen area"*.
   bar), in the town and out on Frost Ridge. It checks nothing is printed
   under the box, and reads the frame's slate band and brass line off the
   screen. `mp-wheelhome` reads "Brotown" over "safe" on the way in.
+
+### The way home: Brotown's badge on the minimap's edge (v2.3.3023)
+
+> Owner, 2026-10-04: *"Right now the world feels hard to navigate without
+> losing your sense of position relative to the town center."*
+
+The box shows about 1,400 game px round you, so Brotown's square left it at
+the town's own gates, and nothing on screen said where town was.
+
+- **Now:** whenever the town's centre is off the box, a **home badge** rides
+  the box's inner edge on the line from you to town. It is the house on a
+  dark disc with a brass ring, and a brass point aimed at town.
+- It works the way the quest's star rides the edge (`wheelMinimap.js`, THE
+  WAY HOME), and slides clear of the expand mark.
+- While the quest's own way leads to Mayor Bro, who stands in town, the star
+  says it and the badge stands aside.
+- **Probe:** `__btMinimap.home`: off the box or not, shown or not, where in
+  the box, town's bearing and distance.
+- **Tests:** `mp-wheelmap` checks there is no badge in town. Out on Frost
+  Ridge it checks the badge points south-east, and reads its house, ring and
+  disc off the screen.
 
 ### Always daylight, for now (v2.3.2963)
 

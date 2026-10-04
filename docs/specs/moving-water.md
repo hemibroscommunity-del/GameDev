@@ -1,4 +1,4 @@
-# The Wheel's water moves (v2.3.3019)
+# The Wheel's water moves (v2.3.3019, v2.3.3021)
 
 > Owner, 2026-10-04: *"Does the water move yet"*. Offered *"glints and slow
 > lines of light drifting across the water; the white foam lapping in and out
@@ -33,10 +33,70 @@ px, the pictures' own pixel). So it is pixel art at the pictures' own grain,
 about one device px a px on the owner's phone, and its edges do not crawl as
 the view slides.
 
+## The honeycomb taken out, and a web of light that moves (v2.3.3021)
+
+> Owner, 2026-10-04: *"The water has a honeycomb pattern that needs to change
+> to mimic water movement. Is that something I should get from chatGPT or you
+> do it using code?"*
+
+**Code, not ChatGPT.** The honeycomb is in the pictures themselves. ChatGPT
+drew, into all three water pictures, the light the surface throws onto the
+bottom (caustics): a web of light lines round rounded cells. Real light like
+that never holds still, and held still it reads as a honeycomb (a pool's
+tiled floor), however the picture under it sways. No picture can move, so a
+new picture from ChatGPT would have the same trouble. So the game does it in
+two steps:
+
+1. **The web comes out of the pictures** (`calmWater`, ground.js CALM WATER),
+   in the game's ground worker, once a picture:
+   - worked out at half size (2 x 2 px to one): the lines are 4 px wide and more;
+   - the web is what is lighter than the water round it: a grey *opening* of
+     the picture's lightness (the darkest within `CALM_R` 5 half px, then the
+     lightest of those) keeps every light shape wider than that square and
+     loses the thin lines; a half px more than `CALM_T` 5 levels lighter than
+     its opening is web, and so is every half px touching one (a line's glow);
+   - each web px is filled from the water round it: the colours of the half px
+     that are not web, smoothed (three box sums of `CALM_BOX` 3 half px, about
+     a 7 px Gaussian, in whole numbers), divided by how much of the smoothing
+     found water that is not web, then put on the nearest colour the picture
+     itself uses outside its web. The cells, the darker depths and the
+     picture's own colours stay; nothing new is invented;
+   - every step wraps round the tile's edges, so a picture seamless before is
+     seamless after.
+   - Only where the water is drawn moving: the game tells the worker
+     (`moving` on init, from `setWheelWaterMoves`: WebGL2 and not `?nowaves`).
+     `?nowaves`, or a phone without WebGL2, keeps the pictures as made.
+   - The Ground Studio still shows the pictures as made: the calm is the game's.
+2. **The shader draws its own web, moving** (wheelWater.js CAUSTICS):
+   - round cells that swell, shrink and re-form: each cell's point circles on
+     its own clock, and the line is where the nearest point's distance over
+     the next nearest's is near 1. Its lines of equal value round a point are
+     circles (Apollonius), so the cells come out round, like the pictures',
+     not the straight-sided cells of the usual cellular noise (F2 - F1),
+     which would be a honeycomb again;
+   - the lines bent by a slow warp and a quicker wobble, so they curve;
+   - stretches of web fading out and back as a slow noise drifts over them,
+     so it is never a whole honeycomb at once;
+   - one size of cell everywhere (42 game px), so the web runs on unbroken where
+     the shallows meet the sea;
+   - brightest in the shallows, a little less on fresh water, on the open sea
+     faint and in pieces (a whole web out there read as cracked glass), and
+     none on a running river (its streaks and flecks);
+   - two shades a picture px, as the pictures drew theirs: a line and its glow,
+     in a pale cyan-white.
+   - `?caustics=k` sets its brightness (0 to 2, 1 by default; 0 leaves the
+     water calm with no web), `window.__btWaves.caustics(k)` live.
+
+**Cost.** About 140 ms a picture in Node and 400 ms in this sandbox's busy
+Chromium worker. Off the main thread, once a session, when the first piece
+with that water is laid (four pictures in all). On the GPU the web is a 3 x 3
+cell search per water px, the cost of a few more texture reads.
+
 ## What you see
 
 | Where | What moves |
 |---|---|
+| Sea, shallows, ponds, lakes, oases | **Caustics** (v2.3.3021): a web of light that moves and re-forms, round cells swelling and shrinking, stretches of it fading out and back. In place of the still web the pictures had (taken out of them). |
 | All water | **Swell**: the picture itself sways and stretches as swells pass under it. Each water px is drawn from up to 3 game px away, along three waves of different length crossing different ways, with a slow noise bending their fronts so they never line up into a grid. The offset never reaches the shore (0.9 of the way at most), so no sand is pulled into the water. |
 | All water | **Sparkles**: here and there a star of light flashes and goes. |
 | Sea, shallows, still fresh water | **Crests**: short bowed lines of light come up, stretch, drift a few px downwind and go, in staggered rows, each in its own time. |
@@ -154,6 +214,15 @@ the shader's cap.
   - the cost;
   - the shader decoding the field exactly as ground.js writes it;
   - the swell's reach held by the worker's apron.
+- **test-world-core** "the water's frozen web of light taken out (v2.3.3021)",
+  7 checks, on the game's own four water pictures:
+  - the web found in each: 38% (sea), 71% (shallows), 58% and 60% (fresh);
+  - taken out: the lightest 3% of each picture 117 -> 74, 229 -> 168,
+    181 -> 139, 183 -> 142, the middle unmoved;
+  - every px changed takes a colour the picture uses outside its web;
+  - seamless: the calm of a shifted picture is the calm shifted, 0 px differ;
+  - quick enough (under 600 ms a picture in Node);
+  - the worker calms only when told `moving`, and the shader draws round cells.
 - **mp-wheelwaves** (phone viewport, real worker):
   - the program built behind the loading screen, and linked (WebGL2);
   - at a coast, 24 quads: 15 with a field of their own, 9 of open sea
@@ -169,7 +238,11 @@ the shader's cap.
     the effect is not a cliff;
   - the river carrying a flow on 18 pieces, and nothing drawn off its water;
   - every field let go back in town;
-  - `?nowaves` still: no fields laid, nothing drawn, and the readout saying
-    so;
+  - v2.3.3021: the water pictures laid at the coast calmed in the worker (4),
+    the moving web drawn at its standard brightness; with the calm pictures
+    20.7% of the coast's water px change in 1.5 s (30.8% before: less of the
+    picture to sway, the web moving instead);
+  - `?nowaves` still: no fields laid, nothing drawn, the pictures as made
+    (none calmed), and the readout saying so;
   - no page errors;
   - GIFs of the coast and the river in `tools/qa/mp/out/`.

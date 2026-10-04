@@ -50,7 +50,7 @@
  * Each object's FOOTPRINT, the ground it stops you on, is footprintOf(id,
  * its picture's game size), worked out where the pictures are known.
  */
-import { C, townPlan } from './layout.js';
+import { C, townPlan, townGates } from './layout.js';
 import { hash2, fbm } from './rng.js';
 import { gridInfo } from './grid.js';
 import { wheelInfo } from './wheel.js';
@@ -398,13 +398,17 @@ function townDressing(T, tp) {
   for (const sx of [-1, 1]) add('lamp', sx * (tp.rowEnd + 30), T.row + 10, 1);
   /* the town gate over Main Street at both ends (square-on across a
      north-south street; Market Row's ends get signposts -- a gate seen
-     side-on is a picture nobody drew) */
-  add('gate', 0, -(T.gate - 24), 0);
-  add('gate', 0, T.gate - 6, 0);
-  add('signpost', T.main + 44, -(T.gate - 80), 0);
-  add('signpost', -(T.main + 44), T.gate - 30, 1);
-  add('signpost', T.gate - 40, -(T.row + 28), 0);
-  add('signpost', -(T.gate - 40), T.row + 64, 1);
+     side-on is a picture nobody drew).  v2.3.3022: each at ITS street's
+     gate (layout.js townGates) -- they stood at the plan's old 1,050,
+     inside a bigger town: at 1.15 the east signpost stood in the Assay
+     Office's footprint, behind it; at 1.5 the arches 176 art px in */
+  const G = townGates(T);
+  add('gate', 0, -(G.ns - 24), 0);
+  add('gate', 0, G.ns - 6, 0);
+  add('signpost', T.main + 44, -(G.ns - 80), 0);
+  add('signpost', -(T.main + 44), G.ns - 30, 1);
+  add('signpost', G.ew - 40, -(T.row + 28), 0);
+  add('signpost', -(G.ew - 40), T.row + 64, 1);
   /* the yards behind the Back Lane: the farm end's hay and the store's cart
      (v2.3.2997: marked `yard`, so placeObjects keeps them on the town's
      ground -- see there) */
@@ -589,7 +593,7 @@ export function placeObjects(plan, bp, opts = {}) {
     const ys = seed + 311, step = 150, tl = T.lot;
     const lotsArt = townLots.map((l) => ({ x0: l.x0 - g.cx, x1: l.x1 - g.cx, fx: l.foot.x - g.cx, fy: l.foot.y - g.cy,
       tall: l.id === T.hallLot.id ? T.hall.d * 2.2 : tl.tall }));
-    const ext = T.gate + T.yard;
+    const TG = townGates(T), ext = Math.max(TG.ns, TG.ew) + T.yard;   /* v2.3.3022: the town's own gates */
     for (let j = Math.floor(-ext / step); j <= Math.ceil(ext / step); j++) for (let i = Math.floor(-ext / step); i <= Math.ceil(ext / step); i++) {
       if (hash2(i, j, ys + 2) >= 0.3) continue;
       const ax = (i + 0.2 + 0.6 * hash2(i, j, ys)) * step, ay = (j + 0.2 + 0.6 * hash2(i, j, ys + 1)) * step;
@@ -616,7 +620,8 @@ export function placeObjects(plan, bp, opts = {}) {
   const fences = [];
   const fenceH = byId['fence-down'] ? byId['fence-down'].size : 170, fenceW = byId.fence ? byId.fence.size : 160;
   if (T) {
-    const run = 900, off = 74, start = T.gate + 70;     /* art px */
+    /* v2.3.3022: from each road's own gate (layout.js townGates) */
+    const run = 900, off = 74, FG = townGates(T);     /* art px */
     const okFence = (x, y) => {
       const c = cellOf(x, y);
       return c >= 0 && bp.reg[c] === commonsR && clear[c] >= 1 && !KEEP_CLEAR[bp.cls[c]];
@@ -624,6 +629,7 @@ export function placeObjects(plan, bp, opts = {}) {
     for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
       const along = dy !== 0;                           /* a north-south road: fences up and down */
       const step = (along ? fenceH * 0.8 : fenceW * 0.92) / WPA;
+      const start = (along ? FG.ns : FG.ew) + 70;
       let k = 0;
       for (let a = start; a < start + run; a += step, k++) {
         if (k % 6 === 5) continue;                      /* a way into the field */

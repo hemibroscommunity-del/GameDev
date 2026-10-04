@@ -56,6 +56,7 @@ export const wheelStats = {
   popIns: 0,           /* came on screen before its ground was laid */
   pieceBytes: 0,       /* the colours of one piece */
   unpacked: 0,         /* swatch pictures unpacked in the worker now */
+  calm: null,          /* v2.3.3021: { n, ms }, water pictures calmed (ground.js CALM WATER) */
   unreadable: 0,       /* swatch pictures this browser could not unpack (drawn in plan colour) */
   /* v2.3.2959: the downloads (ground-worker.js, DOWNLOADS THAT CANNOT STOP THE
      GROUND) -- pictures on their way now, tries that failed and will be made
@@ -159,6 +160,17 @@ export function wheelBlends() { return _info && _info.blends ? _info.blends : []
 /* v2.3.2982: the big-town preview's building size (`?trial=wheel&bigtown`,
    public/tools/world/plan.js bigTownPlan): 1 without it */
 export function wheelBigTown() { return _info && _info.bigTown > 1 ? _info.bigTown : 1; }
+/* v2.3.3022: and the buildings' own size, which may be smaller than the town
+   laid for them (plan.js: the town laid 1.5, its pictures drawn 1.15) */
+export function wheelBuildingScale() { return _info && _info.buildings > 1 ? _info.buildings : wheelBigTown(); }
+
+/* v2.3.3021: does this device draw the Wheel's water moving (WebGL2, not
+   `?nowaves`)?  Said by rendering/wheelWater.js as the renderer is made --
+   long before the Wheel's worker starts -- and handed to the worker, which
+   then takes the frozen web of light out of the water pictures (the game's
+   web moves).  Never said (Node, a tool): the pictures as made. */
+let _waterMoves = false;
+export function setWheelWaterMoves(on) { _waterMoves = !!on; }
 
 /* Start the worker (once) and build the plan.  Resolves with its 'ready'
    message; rejects, and leaves the trial on flat sea, if this browser cannot
@@ -184,7 +196,10 @@ export function wheelStart() {
        v2.3.2955: and `?trial=wheel&blends` the blends, put away too */
     let search = '';
     try { search = window.location.search || ''; } catch (e) { /* no page */ }
-    w.postMessage({ type: 'init', search });
+    /* v2.3.3021: and whether the game draws the water moving here, so the
+       worker takes the frozen web of light out of the water pictures
+       (ground.js CALM WATER; setWheelWaterMoves, from wheelWater.js) */
+    w.postMessage({ type: 'init', search, moving: _waterMoves });
   });
   _initP.catch((e) => { wheelStats.error = String((e && e.message) || e); });
   return _initP;
@@ -259,6 +274,8 @@ export function wheelChunk(i, j, relay) {
     wheelStats.unreadable = m.unreadable || 0;
     wheelStats.downloading = m.downloading || 0;
     wheelStats.dlFails = m.dlFails || 0;
+    /* v2.3.3021: the water pictures calmed so far (ground.js CALM WATER) */
+    if (m.calm) wheelStats.calm = m.calm;
     return m;
   }, (e) => {
     /* 'stopped' is the worker being let go on the way out, not a failure */

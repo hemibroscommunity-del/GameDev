@@ -845,7 +845,46 @@ remnant to migrate server-side, not a mode to preserve.
     grit was the HD pictures drawn smaller than their own pixels: 0.76
     device px a picture px on a 3x phone at 0.64, so they crawled as the
     view slid; 0.91 now. `?zoom=0.64` is the view before; `mp-zoomout`:
-    WORLD-MAP-PIPELINE "Back in a little".)
+    WORLD-MAP-PIPELINE "Back in a little".
+  - Since v2.3.3021 the water's HONEYCOMB IS GONE and its light MOVES -- the
+    owner: "The water has a honeycomb pattern that needs to change to mimic
+    water movement. Is that something I should get from chatGPT or you do it
+    using code?":
+    - the honeycomb was ChatGPT's web of light (caustics) in all three water
+      pictures; still, it read as a pool's tiled floor;
+    - the ground worker takes it out of each water picture once (`calmWater`,
+      ground.js CALM WATER): a grey opening at half size finds it, it is
+      filled from the colours round it on the picture's own colours, wrapping
+      so the tile stays seamless; only when the game says it draws the water
+      moving (`moving` on init, `setWheelWaterMoves`), so `?nowaves` and no
+      WebGL2 keep the pictures as made;
+    - the shader draws its own web, moving (wheelWater.js CAUSTICS): round
+      cells (nearest over next-nearest distance, not F2 - F1) that swell and
+      re-form, curving and breaking, one 42 game px cell size, faint and broken
+      on the open sea, none on a running river; `?caustics=k` (0-2);
+    - test-world-core "the water's frozen web of light taken out", `mp-wheelwaves`:
+      docs/specs/moving-water.md.
+  - Since v2.3.3022 the TOWN IS LAID ROOMIER -- the owner: "The town center's
+    buildings feel too squished together. I think brotown itself might need
+    to be bigger to accommodate":
+    - `bigTownPlan(k, pictures)`; `PLAN = bigTownPlan(TOWN, BUILDINGS)`, laid
+      1.5 round pictures drawn 1.15: the Town Hall and Hotel 4 -> 103 game px
+      apart, Market Row 78 -> 228, the gates at 1,226 / 1,455; 1.5 is the most
+      east-west before the Sweetwater; `planFor(search)` in the worker,
+      `?bigtown=1.15` the town before; the readout "· town x1.5";
+    - the arches, signposts, yard scatter and fences at each street's own gate
+      (`townGates`; at 1.15 a signpost stood inside the Assay Office); the Old
+      Mill whole on the far bank (`MILL_NEAR_GATE`, `MILL_FAR_X`);
+    - re-baked: only the commons' ore, trees and fishing spots moved;
+    - test-world-core "the town laid roomier": WORLD-MAP-PIPELINE "The town
+      laid roomier".
+  - Since v2.3.3023 the WAY HOME is on the minimap -- the owner: "the world
+    feels hard to navigate without losing your sense of position relative to
+    the town center": when town is off the box, a home badge (the house on a
+    dark disc, a brass point at town) rides the box's edge toward it, as the
+    quest star does, clear of the expand mark, aside while the star leads to
+    Mayor Bro; `__btMinimap.home`; `mp-wheelmap`: WORLD-MAP-PIPELINE "The way
+    home".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

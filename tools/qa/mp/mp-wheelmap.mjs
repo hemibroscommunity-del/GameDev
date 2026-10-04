@@ -20,6 +20,11 @@
  *      the land, its stage and the levels there;
  *   5. back in town the Wheel's box and the button are gone, today's back.
  *
+ * v2.3.3023, the owner: "the world feels hard to navigate without losing your
+ * sense of position relative to the town center" -- 2 checks there is no home
+ * badge in town, and 4 that out on Frost Ridge the badge rides the box's edge
+ * toward town (south-east), drawn on the screen.
+ *
  * v2.3.3009, the owner: "Put the 'brotown safe' and other location
  * indicators in place of the 'the wheel lvl 1-2' on the top bar. It'll free
  * up more room around the minimap. Also give the minimap thicker borders so
@@ -125,6 +130,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('in the Wheel the minimap is the Wheel\'s own, two and a half times bigger, in the same corner', WHEELISH(zone) && m && m.wheel === true && m.box === 132 && m.rootX === PHONE.width - 132, { zone, m });
   rec.ok('...showing the land under it, and the roads, river and railway, the camps, passes and gates', m && m.under && m.routes >= 30 && m.places >= 60, m && { under: m.under, routes: m.routes, places: m.places });
   rec.ok('...about three zones across, centred on you', m && m.window === 3200 && Math.abs(m.playerBoxX - 66) < 2 && Math.abs(m.playerBoxY - 66) < 2, m && { x: m.playerBoxX, y: m.playerBoxY });
+  /* v2.3.3023: in town, town is on the box: no home badge */
+  rec.ok('...and in town no home badge: the town is on the box', m && m.home && m.home.edge === false && m.home.shown === false, m && m.home);
   /* v2.3.3009: the words are the top bar's now, in place of "The Wheel (Lv1-2)" */
   let tb = null;
   for (let i = 0; i < 10; i++) { tb = await bar(P); if (barHolds(tb, 'Brotown', /^safe$/)) break; await P.page.waitForTimeout(300); }
@@ -222,7 +229,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`walking out onto Frost Ridge, the top bar says so: the land, its stage and the levels there ("${fb && fb.place && fb.place.text}" over "${fb && fb.sub && fb.sub.text}", whole)`,
     fw.words && fw.words.title === 'Frost Ridge' && /the thaw line · Lv 6–10/.test(fw.words.sub) && barHolds(fb, 'Frost Ridge', /the thaw line · Lv 6–10/), { fb, words: fw.words });
   await shot(P, '04-frost');
-
+  /* v2.3.3023, owner: "the world feels hard to navigate without losing your
+     sense of position relative to the town center" -- out on Frost Ridge
+     (north-west of town) the town is off the box, and its badge rides the
+     box's edge toward it: south-east, the bottom right of the box -- drawn
+     there (its white house and brass ring read off the screen) */
+  const hm = fw.home || {};
+  let badge = null;
+  if (hm.shown) {
+    const r = await P.page.evaluate(() => window.__btWheelMini);
+    const { decodePNG } = await import('../../world/png.mjs');
+    const png = decodePNG(await P.page.screenshot({ clip: { x: r.left + hm.x - 12, y: r.top + hm.y - 12, width: 24, height: 24 } }));
+    let white = 0, brass = 0, dark = 0;
+    for (let i = 0; i < png.width * png.height; i++) {
+      const R = png.data[4 * i], G = png.data[4 * i + 1], B = png.data[4 * i + 2];
+      if (R > 215 && G > 210 && B > 200) white++;
+      else if (R > 170 && G > 130 && G < 200 && B < 130) brass++;
+      else if (R < 40 && G < 45 && B < 50) dark++;
+    }
+    badge = { white, brass, dark, px: png.width * png.height };
+  }
+  rec.ok(`...and out there, town off the box, its HOME BADGE rides the box's edge toward it: town ${hm.deg} degrees from you (south-east), ${hm.dist} game px away, the badge at (${hm.x}, ${hm.y}) in the box, drawn (${badge ? `${badge.white} white, ${badge.brass} brass, ${badge.dark} dark px` : 'not shown'})`,
+    hm.edge === true && hm.shown === true && hm.deg >= 30 && hm.deg <= 60 && hm.x > 66 && hm.y > 66 && !!badge && badge.white >= 8 && badge.brass >= 6 && badge.dark >= 20, { home: hm, badge });
   /* ── 5. home: today's minimap again ── */
   const exit = await P.page.evaluate(() => {
     const S = window._gameState.current;
