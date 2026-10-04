@@ -273,7 +273,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
      alike; where the walk ended is in the record if it ever does again. */
   if (exit) {
     await H.hopTo(P, exit.tx * 32 + 16 + 200, exit.ty * 32 + 16, { step: 200, tries: 260 });
-    await H.hopTo(P, exit.tx * 32 + 16 + 40, exit.ty * 32 + 16, { tries: 20 });
+    /* ...and onto the marker's reach, holding still while its gate loads and
+       stopping the moment the zone flips: hopTo walks on in town's own
+       coordinates, and (1080, 2000) there is town's stairs -- it armed a trip
+       straight back into the Wheel ("loading": "wheel"), which keeps the
+       Wheel's sheets, the failure this check had on the live code too */
+    for (let i = 0; i < 40; i++) {
+      const done = await P.page.evaluate(({ x, y }) => {
+        const S = window._gameState.current;
+        if (S.currentZone === 'town') return true;
+        if (S._zoneLoading) return false;
+        const dx = x - S.player.x, dy = y - S.player.y, d = Math.hypot(dx, dy);
+        if (d < 6) { S.player.vx = 0; S.player.vy = 0; return false; }
+        const k = Math.min(100, d);
+        S.player.x += (dx / d) * k; S.player.y += (dy / d) * k;
+        return false;
+      }, { x: exit.tx * 32 + 16 + 40, y: exit.ty * 32 + 16 });
+      if (done) break;
+      await P.page.waitForTimeout(260);
+    }
   }
   const walkEnd = await H.readState(P, (S) => ({ zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y),
     loading: S._zoneLoading ? S._zoneLoading.toZone || true : null }));
