@@ -266,7 +266,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (let y = 0; y < S.map.length; y++) { const row = S.map[y]; const x = row.indexOf(8); if (x >= 0) return { tx: x, ty: y }; }
     return null;
   });
-  await H.hopTo(P, exit.tx * 32 + 16 + 40, exit.ty * 32 + 16, { tries: 160 });
+  /* v2.3.3028: in two legs, as mp-wheelnodes walks it -- a long stride to
+     beside the marker, then onto its reach.  One 100 px stride from the
+     dunes' oasis (~9,500 px out) ran out of tries on two of three runs and
+     stood in the Wheel ("back": "wheel"), on this branch and the live code's
+     alike; where the walk ended is in the record if it ever does again. */
+  if (exit) {
+    await H.hopTo(P, exit.tx * 32 + 16 + 200, exit.ty * 32 + 16, { step: 200, tries: 260 });
+    await H.hopTo(P, exit.tx * 32 + 16 + 40, exit.ty * 32 + 16, { tries: 20 });
+  }
+  const walkEnd = await H.readState(P, (S) => ({ zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y),
+    loading: S._zoneLoading ? S._zoneLoading.toZone || true : null }));
   const back = await waitZone(P, 'town', 40, 700);
   /* v2.3.3025: the Wheel lingers WHEEL_LINGER_MS (5 s, worldTrial.js) after
      you leave before it stops and lets its sheets go -- a walk back down the
@@ -281,7 +291,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (after.pages.length === 0 && after.stats.drawn === 0) break;
   }
   rec.ok('back in town every one of the Wheel\'s sprite sheets is let go, and nothing of it is drawn',
-    back === 'town' && after.pages.length === 0 && after.stats.drawn === 0 && after.stats.pages === 0, { back, after });
+    back === 'town' && after.pages.length === 0 && after.stats.drawn === 0 && after.stats.pages === 0, { back, exit, walkEnd, after });
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
   if (renderThrew()) console.log('   first render throw:', renderThrew().slice(0, 1500));
 }
