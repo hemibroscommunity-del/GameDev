@@ -209,12 +209,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
           Still air (as above), so nothing drifts through the box. ── */
     const lowPick = await P.page.evaluate(() => {
       const S = window._gameState.current, W = window.__btWheelObjects;
-      const all = W.near(S.player.x, S.player.y, 800);
+      const all = W.near(S.player.x, S.player.y, 900);
+      /* nothing else drawn over the spot or over the thing itself: a pine in
+         front (its foot well below the crowd box, its crown over the rock)
+         hid a snow rock and the spot both, and the spot read the pine's
+         needles in every mode (0.0% each).  Boxes from the drawn sprites,
+         anchored at their foot, with a margin. */
+      const boxOf = (q) => {
+        const s = W.sprite(q.i);
+        if (!s) return null;
+        const x0 = s.x - s.ax * s.w;
+        return { i: q.i, x0, x1: x0 + s.w, y0: s.y - s.h, y1: s.y + 0.12 * s.h };
+      };
+      const boxes = all.map(boxOf).filter(Boolean);
+      const clearOf = (o) => {
+        const px = o.x + 0.25 * o.h, py = o.y + 0.18 * o.h, cy = o.y - o.h / 2;
+        return !boxes.some((b) => b.i !== o.i && ((px > b.x0 - 8 && px < b.x1 + 8 && py > b.y0 - 8 && py < b.y1 + 8)
+          || (b.y1 > o.y && o.x > b.x0 && o.x < b.x1 && cy > b.y0 && cy < b.y1)));
+      };
       /* one with a footprint: a walk-through thing (a frost bush, flowers)
          has none, pivoted at its foot all along, and was never the trouble */
       return all.filter((o) => o.h >= 34 && o.h <= 120 && o.w >= 28 && W.sprite(o.i) && W.caster(o.i) && W.caster(o.i).model === 'cols'
           && W.caster(o.i).floor < W.caster(o.i).foot - 6
-          && Math.hypot(o.x - S.player.x, o.y - S.player.y) > 140)
+          && Math.hypot(o.x - S.player.x, o.y - S.player.y) > 140 && clearOf(o))
         .map((o) => ({ i: o.i, id: o.id, x: o.x, y: o.y, h: o.h, w: o.w, c: W.caster(o.i),
           crowd: all.filter((q) => q.i !== o.i && q.h > 16 && Math.abs(q.x - o.x) < 220 && q.y < o.y + 90 && q.y > o.y - 320).length }))
         .sort((a, b) => a.crowd - b.crowd || b.h - a.h).slice(0, 8);
