@@ -216,6 +216,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the cross closes it, and the minimap\'s button is back', !closed.map && closed.btn, closed);
 
   /* ── 4. out onto Frost Ridge: the words follow you ── */
+  /* v2.3.3025: untouchable for the walk out (as mp-firefight's): a level-1
+     QA bro standing among the levels 6-10 died there on a slow run, and the
+     checks after it read the respawn's veil (0% ice, then no minimap) */
+  try {
+    const myId = await H.readState(P, (S) => S.myId);
+    await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 5 });
+  } catch (e) { /* a dev op missing on this worker: the walk as before */ }
   const frost = { x: 18464, y: 18464 };   /* the north-west spoke, its second tier: levels 6-10 */
   await H.hopTo(P, frost.x, frost.y, { tries: 80 });
   let fw = null;
