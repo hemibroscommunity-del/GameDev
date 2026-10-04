@@ -13,6 +13,7 @@ import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/ef
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
+import { setWheelWaterRenderer } from './wheelWater.js'; /* v2.3.3017: the Wheel's water moves */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
 import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
@@ -190,6 +191,7 @@ export async function initPixiRenderer(canvas) {
   setFighterEffects(effectsRenderer, entityRenderer);
   setMonsterDeathRenderer(app.renderer);   /* v2.3.2913: measures each body once for the cuts */
   setArrowWoundRenderer(app.renderer);     /* v2.3.2923: bakes a stuck shaft at its monster's resolution */
+  setWheelWaterRenderer(app.renderer);     /* v2.3.3017: builds the moving water's program behind the Wheel's loading screen */
   /* v2.3.2710: shadows cast by each map's own sun, and metal that catches the
      light (rendering/lightfx).  Off unless the switch is on -- see lightFx.js. */
   const lightFx = new LightFx(layers, worldContainer);

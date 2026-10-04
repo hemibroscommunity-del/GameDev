@@ -745,7 +745,32 @@ remnant to migrate server-side, not a mode to preserve.
       docs/specs/wheel-dungeons.md.
     - Found on the way: the Wheel's buildings have NO DOORS yet -- the
       forge, the bank, the shop and the farm (the Dungeon Workshop) are
-      unreachable from the Wheel.)
+      unreachable from the Wheel.
+  - Since v2.3.3017 THE WATER MOVES -- the owner: "Does the water move yet",
+    then "Yes" to glints and lines of light, the foam lapping at the shore and
+    a drift down the rivers:
+    - the owner's pictures stay; `src/rendering/wheelWater.js` (`WheelWater`,
+      owned by WheelGround, whose pieces are now in `pieceRoot` so the water
+      stays on top) draws one quad a piece with water: the picture RIPPLES
+      (each water px drawn from a px or so away, none at the shore, riding
+      downstream on the river), surf riding in and the shore's foam lapping,
+      glints, streaks down the Sweetwater the way it flows, rings on still
+      fresh water, whitecaps -- all but the ripple a game px at a time; lines
+      of light of its own read as scribbles beside the owner's;
+    - from a FIELD the ground worker lays with each piece (ground.js WATER
+      THAT MOVES, `composeGround`'s `waterField`, the game's worker only): R the
+      distance to the shore AS DRAWN, exact (an EDT over the worked-out
+      margin, `WF_CAP` 10 game px), G the water's kind as `waterLook` picks
+      its picture (`WF_KIND`, carried `WF_SPREAD` texels onto the land), B/A
+      the river's way (`waterRivers`); a texel an art px, sharing the piece
+      picture's texture coordinates; open sea with no shore in reach is
+      `uniform`, one shared 1x1 texture; ~6 ms more a coast piece;
+    - WebGL2 only, `highp`; built behind the Wheel's overlay
+      (`prewarmWheelWater` in preloadWheel: a program compiles the first time
+      it is drawn); `?nowaves` keeps it still (no fields laid);
+      `window.__btWaves` (probe, off/on, strength, hold);
+    - test-world-core "the water moves", `mp-wheelwaves`:
+      docs/specs/moving-water.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

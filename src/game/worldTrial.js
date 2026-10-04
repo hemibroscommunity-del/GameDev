@@ -377,6 +377,10 @@ async function preloadWheel() {
       const ns = await import('../rendering/npcSprites.js');
       await Promise.all([wheelObjectsOn() ? wo.wheelObjectsWarm(at.x, at.y, objX, objY) : null, ns.loadWheelNpcArt()]);
     } catch (e) { /* no objects: the ground alone, as before */ }
+    /* v2.3.3017: and the moving water's program, built here, behind the
+       overlay, not in the frame the first water comes on screen (a program
+       is compiled the first time it is drawn: rendering/wheelWater.js) */
+    try { (await import('../rendering/wheelWater.js')).prewarmWheelWater(); } catch (e) { /* still water */ }
   })();
   await wheelWarm(at.x, at.y, warmX, warmY);
   await objects;

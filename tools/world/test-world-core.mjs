@@ -2569,5 +2569,169 @@ console.log('swimming (v2.3.3003)');
   ok('swimming\'s sounds are recordings already in the game (the fishing ones in SFX_MANIFEST)', keys.every((k) => new RegExp(`'${k}':\\s*'/sfx/`).test(gd)) && /BT_AUDIO\.SWIM_SAMPLES = \['fish-on-hook', 'lure-drop', 'catch-splash'\]/.test(gd));
 }
 
+/* ── v2.3.3017: the water moves ──
+   Owner, 2026-10-04: "Does the water move yet" -- then "Yes" to glints and
+   lines of light drifting across it, the foam lapping in and out at the
+   shore and a gentle drift down the rivers.  The ground worker lays a FIELD
+   with each piece (ground.js, WATER THAT MOVES) that the game's shader reads
+   (src/rendering/wheelWater.js): how far from the shore as drawn, which
+   water, which way a river runs. */
+console.log('the water moves (v2.3.3017)');
+{
+  const { waterRivers, wavesOn, WF_CAP, WF_DIST, WF_KIND } = await import('../../public/tools/world/core/ground.js');
+  const { readFileSync } = await import('node:fs');
+  const mmF = materialMap(PLAN, bp);
+  const WPA = PLAN.worldPxPerArtPx, K = 3, CH = 128, AP = 1;
+  const rivers = waterRivers(PLAN, bp);
+  /* the game's piece over a game px (ground-worker.js: CHUNK, APRON) */
+  const pieceAt = (i, j) => ({ i, j, x: bp.x0 + i * CH - AP, y: bp.y0 + j * CH - AP, w: CH + 2 * AP, h: CH + 2 * AP });
+  const pieceOf = (gx, gy) => pieceAt(Math.floor(gx / (CH * WPA)), Math.floor(gy / (CH * WPA)));
+  const solid = (r, gg, b) => { const T = 16, t = { w: T, h: T, data: new Uint8ClampedArray(T * T * 4) }; for (let i = 0; i < T * T; i++) t.data.set([r, gg, b, 255], i * 4); return t; };
+  const wtiles = { sea: { A: solid(200, 0, 0) }, shallows: { A: solid(0, 200, 0) }, fresh: { A: solid(0, 0, 200) } };
+  const lay = (r, opts = {}) => composeGround(PLAN, bp, mmF, r, wtiles, { scale: K, waterField: { rivers }, ...opts });
+  const isWaterQ = (q) => mmF.ids[q] === 'water';
+
+  const sw = rivers.find((r) => r.id === 'sweetwater');
+  ok(`the rivers' lines come from the blueprint, source to mouth: the Sweetwater, ${sw ? sw.pts.length / 2 : 0} points, ${sw && sw.half0} to ${sw && sw.half1} art px either side`,
+    rivers.length === 1 && !!sw && sw.pts.length / 2 > 50 && sw.half0 === 17 && sw.half1 === 52, rivers.map((r) => r.id));
+  ok('`?nowaves` keeps the water still (the worker lays no fields); anything else moves it',
+    !wavesOn('?nowaves') && !wavesOn('?trial=wheel&nowaves') && !wavesOn('?nowaves=1') && wavesOn('') && wavesOn('?trial=wheel') && wavesOn('?nowavesx') && wavesOn(undefined));
+
+  /* a coast: of the pieces round mp-wheelwaves' spot, the one most evenly
+     land and water */
+  let coast = null, best = -1;
+  const block = new Map();
+  for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+    const r0 = pieceOf(25199, 15874);
+    const r = pieceAt(r0.i + di, r0.j + dj);
+    const out = lay(r);
+    const f = out.waterField;
+    block.set(`${di},${dj}`, f);
+    if (!f || !f.data) continue;
+    let w = 0;
+    for (let k = 0; k < f.w * f.h; k++) if (f.data[k * 4]) w++;
+    const even = Math.min(w, f.w * f.h - w);
+    if (even > best) { best = even; coast = { r, out }; }
+  }
+  const plain = composeGround(PLAN, bp, mmF, coast.r, wtiles, { scale: K });
+  let same = plain.data.length === coast.out.data.length;
+  for (let k = 0; k < plain.data.length && same; k++) same = plain.data[k] === coast.out.data[k];
+  ok('only when asked (the studios never ask): without it no field, and with it the picture is the same to the last px',
+    plain.waterField === null && same && !!coast.out.waterField);
+  const F = coast.out.waterField, n = F.w * F.h;
+  let landR = 0, wetLow = 0, top = 0;
+  for (let k = 0; k < n; k++) {
+    const R = F.data[k * 4];
+    const fx = k % F.w, fy = (k / F.w) | 0, q = coast.out.mat[(fy * K + 1) * coast.out.w + fx * K + 1];
+    if (!isWaterQ(q) && R !== 0) landR++;
+    if (isWaterQ(q) && R < WF_DIST) wetLow++;
+    top = Math.max(top, R);
+  }
+  ok(`a coast's field: a texel an art px, the apron too (${F.w} x ${F.h}); 0 on land, at least one output px out on the water, ${WF_CAP} output px at most`,
+    F.w === CH + 2 * AP && F.h === CH + 2 * AP && landR === 0 && wetLow === 0 && top === WF_CAP * WF_DIST, { landR, wetLow, top, best });
+  /* the distance is the drawn shore's, exactly: against a brute-force search
+     of the piece's own px, for every water texel whose search stays inside it */
+  let checked = 0, wrong = 0;
+  const OW = coast.out.w;
+  for (let fy = 8; fy < F.h - 8; fy++) for (let fx = 8; fx < F.w - 8; fx++) {
+    const k = fy * F.w + fx, cx = fx * K + 1, cy = fy * K + 1;
+    if (!isWaterQ(coast.out.mat[cy * OW + cx])) continue;
+    let d2 = Infinity;
+    for (let y = cy - 21; y <= cy + 21; y++) for (let x = cx - 21; x <= cx + 21; x++) {
+      if (isWaterQ(coast.out.mat[y * OW + x])) continue;
+      const e = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+      if (e < d2) d2 = e;
+    }
+    const want = Math.max(1, Math.round(Math.min(Math.sqrt(d2), WF_CAP) * WF_DIST));
+    checked++;
+    if (F.data[k * 4] !== want) wrong++;
+  }
+  ok(`...how far from the shore AS DRAWN, exactly: ${checked} water texels against a search of the piece's own px, ${wrong} wrong`,
+    checked > 2000 && wrong === 0, { checked, wrong });
+  /* which water: the picture laid at the texel's middle */
+  const kindOfPx = (o) => { const d = coast.out.data; return d[o] === 200 && !d[o + 1] && !d[o + 2] ? WF_KIND.sea : !d[o] && d[o + 1] === 200 && !d[o + 2] ? WF_KIND.shallows : !d[o] && !d[o + 1] && d[o + 2] === 200 ? WF_KIND.fresh : 0; };
+  let kc = 0, kw = 0, shoreKind = 0, shoreLand = 0;
+  const kinds = new Set();
+  for (let k = 0; k < n; k++) {
+    const fx = k % F.w, fy = (k / F.w) | 0, o = ((fy * K + 1) * OW + fx * K + 1) * 4;
+    const want = kindOfPx(o);
+    if (F.data[k * 4] && want) { kc++; kinds.add(want); if (F.data[k * 4 + 1] !== want) kw++; }
+    if (!F.data[k * 4] && fx > 0 && fx < F.w - 1 && (F.data[(k - 1) * 4] || F.data[(k + 1) * 4])) { shoreLand++; if (F.data[k * 4 + 1]) shoreKind++; }
+  }
+  ok(`...which water each texel shows, the picture's own (${kc} checked, ${kw} wrong; ${[...kinds].length} kinds on this coast), and the land beside it the water's (${shoreKind} of ${shoreLand})`,
+    kc > 2000 && kw === 0 && kinds.size >= 2 && shoreLand > 0 && shoreKind === shoreLand, { kc, kw, kinds: [...kinds], shoreKind, shoreLand });
+  /* two pieces laid apart agree on the texels they share (each piece's apron
+     is its neighbour's edge): every pair side by side in the block round the
+     coast that both have texels */
+  let seamE = 0, seamS = 0, cmpE = 0, cmpS = 0;
+  for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+    const A = block.get(`${di},${dj}`), E = block.get(`${di + 1},${dj}`), S2 = block.get(`${di},${dj + 1}`);
+    if (!A || !A.data) continue;
+    if (E && E.data) for (let y = 0; y < A.h; y++) for (const c of [0, 1]) for (let ch = 0; ch < 4; ch++) { cmpE++; if (A.data[(y * A.w + CH + c) * 4 + ch] !== E.data[(y * E.w + c) * 4 + ch]) seamE++; }
+    if (S2 && S2.data) for (let x = 0; x < A.w; x++) for (const c of [0, 1]) for (let ch = 0; ch < 4; ch++) { cmpS++; if (A.data[((CH + c) * A.w + x) * 4 + ch] !== S2.data[(c * S2.w + x) * 4 + ch]) seamS++; }
+  }
+  ok(`pieces laid apart meet with no seam: the shared texels east (${cmpE}) and south (${cmpS}) agree`, cmpE > 0 && cmpS > 0 && seamE === 0 && seamS === 0, { seamE, seamS, cmpE, cmpS });
+
+  /* the river by the Mill Bridge runs, the way the river goes */
+  const river = lay(pieceOf(19177, 21504)).waterField;
+  const P = sw.pts, m = P.length >> 1;
+  let flowing = 0, notFresh = 0, down = 0;
+  for (let k = 0; k < river.w * river.h; k++) {
+    const B = river.data[k * 4 + 2], A = river.data[k * 4 + 3];
+    if (B === 128 && A === 128) continue;
+    flowing++;
+    if (river.data[k * 4 + 1] !== WF_KIND.fresh || !river.data[k * 4]) notFresh++;
+    const r = pieceOf(19177, 21504), ax = r.x + (k % river.w) + 0.5, ay = r.y + ((k / river.w) | 0) + 0.5;
+    let bd = Infinity, bt = null;
+    for (let s = 0; s < m - 1; s++) {
+      const x0 = P[2 * s], y0 = P[2 * s + 1], dx = P[2 * s + 2] - x0, dy = P[2 * s + 3] - y0, ll = dx * dx + dy * dy || 1;
+      const u = Math.max(0, Math.min(1, ((ax - x0) * dx + (ay - y0) * dy) / ll));
+      const e = (x0 + dx * u - ax) ** 2 + (y0 + dy * u - ay) ** 2;
+      if (e < bd) { bd = e; bt = [dx / Math.sqrt(ll), dy / Math.sqrt(ll)]; }
+    }
+    const fxv = (B - 128) / 127, fyv = (A - 128) / 127, fl = Math.hypot(fxv, fyv) || 1;
+    if ((fxv * bt[0] + fyv * bt[1]) / fl > 0.6) down++;
+  }
+  ok(`the Sweetwater runs by the Mill Bridge: ${flowing} texels of it flowing, all fresh water, ${down} of them down the river's own line (to its mouth)`,
+    river.flowing === flowing && flowing > 1000 && notFresh === 0 && down >= flowing * 0.99, { flowing, notFresh, down });
+  /* still water lies still: a fresh pool far from the river */
+  const cellG = bp.scale * WPA, far2 = 1200 * 1200;
+  let pool = null;
+  for (let c = 0; c < bp.w * bp.h && !pool; c += 7) {
+    if (bp.cls[c] !== C.water || !((mmF.fresh[c >> 3] >> (c & 7)) & 1)) continue;
+    const gx = ((c % bp.w) + 0.5) * cellG, gy = (((c / bp.w) | 0) + 0.5) * cellG;
+    let near = false;
+    for (let s = 0; s < m && !near; s += 4) near = ((P[2 * s] - bp.x0) * WPA - gx) ** 2 + ((P[2 * s + 1] - bp.y0) * WPA - gy) ** 2 < far2;
+    if (!near) pool = { gx, gy };
+  }
+  const still = pool ? lay(pieceOf(pool.gx, pool.gy)).waterField : null;
+  ok(`a pool far from the river lies still: fresh water (${still ? still.counts.fresh : 0} texels) and none of it flowing`,
+    !!still && still.counts.fresh > 20 && still.flowing === 0, pool);
+  /* no water, no field; open sea with no shore in reach, four numbers */
+  const town = lay(pieceOf(21504, 21504)).waterField;
+  const [ccx, ccy] = art([0, 0]);
+  const ang = Math.atan2(W.spokes[0].uy + W.spokes[1].uy, W.spokes[0].ux + W.spokes[1].ux);
+  let open = null;
+  for (let r = 4000; r < 14000 && !open; r += 64) {
+    const ax = ccx + Math.cos(ang) * r, ay = ccy + Math.sin(ang) * r;
+    const f = lay(pieceOf((ax - bp.x0) * WPA, (ay - bp.y0) * WPA)).waterField;
+    if (f && f.uniform) open = f;
+  }
+  ok(`a piece with no water has no field; one of open sea, no shore in reach, is four numbers and no texels (${open ? open.uniform.join(', ') : 'none found'})`,
+    town === null && !!open && open.data === null && open.uniform.join() === [WF_CAP * WF_DIST, WF_KIND.sea, 128, 128].join(), { town: !!town });
+  /* what it costs the worker a piece (the quickest of five each way: the
+     machine's other work only ever adds) */
+  const time = (opts) => { let b = Infinity; for (let k = 0; k < 5; k++) { const t0 = performance.now(); composeGround(PLAN, bp, mmF, coast.r, wtiles, { scale: K, ...opts }); b = Math.min(b, performance.now() - t0); } return b; };
+  time({}); const tPlain = time({}), tField = time({ waterField: { rivers } });
+  ok(`the field costs the worker little: a coast piece ${tPlain.toFixed(1)} ms without, ${tField.toFixed(1)} ms with`, tField < tPlain * 1.35 + 4, { tPlain, tField });
+  /* the shader reads the field as it is written */
+  const fragSrc = readFileSync(new URL('../../src/rendering/wheelWater.js', import.meta.url), 'utf8');
+  const dScale = 255 / (2 * WF_DIST);
+  ok(`the game's shader decodes the field as ground.js writes it: distance x ${dScale} game px, fresh / shallows / sea by ${Object.values(WF_KIND).join(' / ')}, the flow about 128`,
+    fragSrc.includes(`f.r * ${dScale}`) && /1\.0 - smoothstep\(0\.42, 0\.58, f\.g\)/.test(fragSrc) && /smoothstep\(0\.76, 0\.92, f\.g\)/.test(fragSrc)
+    && WF_KIND.fresh / 255 < 0.42 && WF_KIND.shallows / 255 > 0.58 && WF_KIND.shallows / 255 < 0.76 && WF_KIND.sea / 255 > 0.92
+    && fragSrc.includes('(f.ba * 255.0 - 128.0) / 127.0'), { dScale });
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

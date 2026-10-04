@@ -1775,7 +1775,8 @@ cut), and no footstep row (nobody walks on water).
   floating), nothing running one way (`NO_DIRECTION`), in the HD pixel style
   and matched to the style key.
 - **Moving water** (waves, a drift on the river) is a later round: these are
-  still pictures.
+  still pictures. (Since v2.3.3017 the game moves them: "The water moves"
+  below.)
 
 Tests: test-world-core "the water's pictures" (the studio's group and no
 footstep, the prompt, `swatchesUnder` asks for them under water, the flat
@@ -1864,6 +1865,49 @@ the whole one); `mp-wheelwater` (4, phone viewport, real worker: both
 pictures fetched, a coast drawn from them, the river from the shallows', no
 errors); the Ground Studio's browser test (3 more: the jump row, the "in the
 game" chips, `#water`).
+
+## The water moves (v2.3.3017)
+
+> Owner, 2026-10-04: *"Does the water move yet"*. Offered glints and slow
+> lines of light drifting across the water, the white foam lapping in and out
+> at the shore and a gentle drift down the rivers, all drawn in code:
+> *"Yes"*.
+
+The owner's water pictures stay as they are. The game moves them, on the GPU
+(`src/rendering/wheelWater.js`), over each piece of ground that has water:
+
+- **The picture ripples.** Each water px is drawn from a px or so away, the
+  offset wandering slowly, so the pictures' own lines of light sway. There is
+  none at the shore, so no sand is pulled into the water. On the river the
+  ripples ride downstream. (The first try drew lines of light of its own over
+  the pictures, and beside the owner's they read as scribbles.)
+- **Surf** on the sea's coasts: a line of foam rides in, breaks into the
+  shore's own foam line, which brightens and lets go, and a thinner line draws
+  back out. Each stretch of coast gets its wave in its own turn. River and pond
+  banks lap too, small and soft.
+- **Glints**, a cross of light that flashes and goes; **streaks** running
+  down the Sweetwater the way it flows (source to sea); **rings** opening on
+  ponds, lakes and oases; and **whitecaps** now and then on the open sea.
+
+It knows where the water is from a **field** the ground worker lays with
+each piece (`ground.js` WATER THAT MOVES, `composeGround`'s `waterField`
+option, asked for only by the game's worker). The field has one texel per art
+px and holds:
+
+- how far the spot is from the shore **as drawn**, exactly (a Euclidean
+  distance transform over the worked-out area);
+- which water the picture there is;
+- which way the river runs (`waterRivers`, from the blueprint's own river
+  line).
+
+Pieces laid apart agree texel for texel. A piece of open sea with no shore in
+reach shares one 1 x 1 texture. The worker pays about 6 ms more per coast
+piece; the GPU, about 66 KB per piece with water. The program is built behind
+the Wheel's loading screen. It is WebGL2 only; elsewhere the water stays
+still. `?nowaves` keeps it still.
+
+The details, switches and probes are in docs/specs/moving-water.md. Tests:
+test-world-core "the water moves", `mp-wheelwaves`.
 
 ## Oases in the Wind Dunes (v2.3.2981)
 
