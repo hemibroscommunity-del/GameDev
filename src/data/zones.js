@@ -436,6 +436,26 @@ export function zoneHomes(zoneId) {
   const z = Object.prototype.hasOwnProperty.call(ZONES, zoneId) ? ZONES[zoneId] : null;
   return z && Array.isArray(z.homes) ? z.homes : null;
 }
+/* v2.3.3017: which land's spoke a Wheel point is on -- the land whose anchor
+   (ZONES.wheel.lands) lies nearest in direction from the Wheel's middle, the
+   spokes being 45 degrees apart.  Everywhere has one, the commons included
+   (it is only a direction); null outside the Wheel.  For the monsters' looks
+   (rendering/wheelMonsterArt.js): your own land's load as you walk toward
+   them, another land's only when one of its monsters is really near. */
+export function wheelLandAt(zoneId, x, y) {
+  const z = zoneId === 'wheel' ? ZONES.wheel : null;
+  if (!z || !z.lands || typeof x !== 'number' || typeof y !== 'number') return null;
+  const c = (z.w * 32) / 2;   /* TILE: the Wheel's middle, 21504 */
+  const a = Math.atan2(y - c, x - c);
+  let best = null, bd = Infinity;
+  for (const k in z.lands) {
+    const p = z.lands[k];
+    let d = Math.abs(Math.atan2(p[1] - c, p[0] - c) - a);
+    if (d > Math.PI) d = 2 * Math.PI - d;
+    if (d < bd) { bd = d; best = k; }
+  }
+  return best;
+}
 
 export function setZoneDepthLive(on) { _depthLive = !!on; }
 function _previewOn(name) {

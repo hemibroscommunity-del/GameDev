@@ -31,7 +31,12 @@ function read() {
    kinds) + per-session rate-limited server-side, so a strike storm can't
    flood storage.  Telemetry must NEVER throw into the game. */
 const _SID = Math.random().toString(36).slice(2, 10);
-const _IMMEDIATE = new Set(['error', 'rejection', 'CONTEXT_LOST', 'pixi-init-failed', 'auto-reload', 'prior']);
+const _IMMEDIATE = new Set(['error', 'rejection', 'CONTEXT_LOST', 'pixi-init-failed', 'auto-reload', 'prior', 'pixi-render-err', 'killed']);
+/* v2.3.3017: kinds that are kept in the ring but never send it by themselves
+   -- context for the next real event, not events: a tab switch ('resume'),
+   a death ('died': was a black screen right after one the respawn's veils?),
+   a page iOS let go of in the background ('evicted', see markAlive) */
+const _QUIET = new Set(['resume', 'died', 'evicted']);
 let _flushTimer = null;
 let _flushAt = 0;
 let _lastSentLen = -1;
@@ -87,8 +92,79 @@ export function recordCrash(kind, msg) {
   try { console.error('[bt-crash]', kind, msg); } catch (e) { /* ignore */ }
   /* v2.3.782: upload (debounced).  'resume' alone is routine tab-switch
      noise and doesn't trigger a send -- it still rides along in the ring
-     buffer whenever a real event flushes. */
-  if (kind !== 'resume') _scheduleFlush(kind);
+     buffer whenever a real event flushes.  v2.3.3017: nor a death (_QUIET). */
+  if (!_QUIET.has(kind)) _scheduleFlush(kind);
+}
+
+/* ═══ v2.3.3017: A PAGE THAT DIED WITHOUT CLOSING ═══
+   Owner, 2026-10-04: "I was fighting fire goblins and my screen went black."
+   Nothing reached the crash feed.  The likeliest death leaves nothing to
+   catch: iPhone Safari kills a tab that holds too much (about 250 MB of
+   textures, docs/WORLD-MAP-PIPELINE.md) -- no error, no event, and a fresh
+   preview origin has an empty ring for the next page to send.
+
+   So the game marks the page alive every few seconds (markAlive, from
+   BroTown's watchdog timer), with where it was and what the textures came
+   to, and a page that closes properly takes the mark away (pagehide).  A
+   mark still there when the next page starts, with no page answering for it
+   (_checkLastAlive), is a page that died open: recorded as 'killed', with
+   its last zone, place, hp and textures -- or, if it was in the background,
+   'evicted' (iOS lets those go too; quiet).  Telemetry must never throw into
+   the game. */
+const ALIVE_KEY = 'bt-alive';
+const ALIVE_EVERY_MS = 5000;
+let _aliveAt = 0;
+let _aliveChan = null;
+/* Two tabs share one origin (and one identity, by design: CLAUDE.md), so a
+   mark another tab is still refreshing is not a death.  Each mark carries its
+   page's _SID, every page answers a ping for its own over this channel, and
+   only a mark nobody answers for is reported. */
+function _chan() {
+  if (_aliveChan !== null) return _aliveChan;
+  try { _aliveChan = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bt-alive') : false; } catch (e) { _aliveChan = false; }
+  return _aliveChan;
+}
+export function markAlive(info) {
+  try {
+    const now = Date.now();
+    if (now - _aliveAt < ALIVE_EVERY_MS) return;
+    _aliveAt = now;
+    localStorage.setItem(ALIVE_KEY, JSON.stringify(Object.assign({ sid: _SID, t: now, vis: document.visibilityState }, info || {})));
+  } catch (e) { /* storage unavailable */ }
+}
+/* this page's own mark, if the key holds it (another tab may have written last) */
+function _ownMark(fn) {
+  try {
+    const raw = localStorage.getItem(ALIVE_KEY);
+    const a = raw ? JSON.parse(raw) : null;
+    if (a && a.sid === _SID) fn(a);
+  } catch (e) { /* ignore */ }
+}
+/* At start: the mark left by the last page that marked itself, if it is not
+   answering for it -- a page that died open. */
+function _checkLastAlive() {
+  let last = null;
+  try { const raw = localStorage.getItem(ALIVE_KEY); last = raw ? JSON.parse(raw) : null; } catch (e) { last = null; }
+  if (!last || typeof last.t !== 'number' || last.sid === _SID || Date.now() - last.t > 15 * 60 * 1000) return;
+  const report = () => {
+    const ago = Math.round((Date.now() - last.t) / 1000);
+    const hidden = last.vis === 'hidden';
+    recordCrash(hidden ? 'evicted' : 'killed', `the last page stopped without closing ${ago}s before this one, `
+      + `${hidden ? 'in the background' : 'ON SCREEN'}: zone ${last.zone || '?'} at ${last.x},${last.y}, hp ${last.hp}, `
+      + `${last.mb != null ? last.mb + ' MB of textures' : 'textures unknown'}`);
+    try {
+      const raw = localStorage.getItem(ALIVE_KEY);
+      const a = raw ? JSON.parse(raw) : null;
+      if (a && a.sid === last.sid) localStorage.removeItem(ALIVE_KEY);
+    } catch (e) { /* ignore */ }
+  };
+  const ch = _chan();
+  if (!ch) { report(); return; }
+  let alive = false;
+  const onMsg = (ev) => { if (ev && ev.data && ev.data.pong === last.sid) alive = true; };
+  ch.addEventListener('message', onMsg);
+  try { ch.postMessage({ ping: last.sid }); } catch (e) { /* ignore */ }
+  setTimeout(() => { ch.removeEventListener('message', onMsg); if (!alive) report(); }, 700);
 }
 
 function banner(text) {
@@ -108,6 +184,20 @@ function banner(text) {
 }
 
 export function installCrashTrap() {
+  /* v2.3.3017: answer for this page's alive mark, take it away on a proper
+     close, say when it goes to the background -- and look at the last
+     page's (see markAlive) */
+  try {
+    const ch = _chan();
+    if (ch) ch.addEventListener('message', (ev) => { if (ev && ev.data && ev.data.ping === _SID) { try { ch.postMessage({ pong: _SID }); } catch (e) { /* ignore */ } } });
+  } catch (e) { /* ignore */ }
+  window.addEventListener('pagehide', () => _ownMark(() => localStorage.removeItem(ALIVE_KEY)));
+  document.addEventListener('visibilitychange', () => _ownMark((a) => {
+    a.vis = document.visibilityState;
+    a.t = Date.now();
+    localStorage.setItem(ALIVE_KEY, JSON.stringify(a));
+  }));
+  _checkLastAlive();
   window.addEventListener('error', (e) => {
     recordCrash('error', (e.message || 'unknown') + (e.filename ? ` @ ${e.filename}:${e.lineno}` : ''));
   });

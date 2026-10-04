@@ -200,6 +200,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 5 });
   const snow = await drawnNear('frost');
   await shot(P, 'frost');
+  /* v2.3.3017: read here, on Frost Ridge -- the looks are by land now
+     (wheelMonsterArt.js foreignBox), so on the Flame Fields the snowman's
+     is let go behind you */
+  const artFrost = await P.page.evaluate(() => (window.__btWheelArt ? window.__btWheelArt() : null));
   const snowDrawn = snow.filter((m) => m.sprite && m.sprite.visible && m.sprite.texAlive);
   rec.ok(`on Frost Ridge's inner end the snowmen are drawn from live art (${snowDrawn.length} of ${snow.length} bodies)`,
     snow.length === 6 && snowDrawn.length >= 1 && snow.filter((m) => m.sprite).every((m) => m.sprite.texAlive), snow.map((m) => m.sprite));
@@ -215,7 +219,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      and how long the longest wait lasted) */
   const art2 = await P.page.evaluate(() => (window.__btWheelArt ? window.__btWheelArt() : null));
   rec.ok(`walking out to Frost Ridge and the Flame Fields, their looks loaded on the way, before any of their monsters was on screen (${art2 && art2.loads} loaded, the slowest in ${art2 && art2.maxMs} ms; the longest a monster in view waited: ${art2 && art2.waitedMs} ms)`,
-    !!art2 && art2.looks.snowman === 'ready' && art2.looks.fireGoblin === 'ready' && art2.waitedMs === 0 && !!memWalk && memWalk.monsters > mem0.monsters + 3, { art2, memWalk });
+    !!artFrost && artFrost.looks.snowman === 'ready' && artFrost.land === 'frost'
+      && !!art2 && art2.looks.fireGoblin === 'ready' && art2.land === 'ember' && art2.waitedMs === 0 && !!memWalk && memWalk.monsters > mem0.monsters + 3, { artFrost, art2, memWalk });
+  /* v2.3.3017: ...and on the Flame Fields only its own: the Wind Dunes'
+     mummies and skeletons, ~1,600 px off across the water, are not loaded
+     (the owner's black screen: four looks were held there, ~57 MB) */
+  rec.ok(`...and on the Flame Fields only the land's own look is wanted: not the Wind Dunes' mummy and skeleton across the water (looks: ${art2 ? Object.keys(art2.looks).join(', ') : '?'}; another land's load within ${art2 && art2.near ? art2.near.join(' x ') : '?'} px of you, across x up-and-down)`,
+    !!art2 && !art2.looks.mummy && !art2.looks.skeleton && !!art2.near && art2.near[0] >= 1000 && art2.near[1] >= 1000, art2);
   /* ── 5. a fight ── */
   phase = 'the fight';
   /* v2.3.2996: and mortal again, at full health, for a fight that answers back */

@@ -31,6 +31,7 @@ import { figureSwimLine } from './systems/entityRenderer.js';
 import { isWheelTrialZone } from '../game/worldTrial.js';
 import { wheelWaterAt, wheelSwimOn, wheelSwimCell } from '../game/wheelTrial.js';
 import { wetProbes, swimNext, isWheelSwimming, STROKE_MS, SWIM_MULT, JUMP_PX } from '../game/wheelSwim.js';
+import { jumpActive } from '../game/jump.js';   /* v2.3.3017: a player in the air is not in the water */
 
 const SINK_MS = 320;          /* wading in: on land to only a head */
 const RISE_MS = 240;          /* and climbing out */
@@ -148,7 +149,11 @@ export class SwimFx {
             this._unsink(d);
             continue;
           }
-          swimmers += this._figure(st, d, this._peerOn(st, d, now), now, dt, null);
+          /* v2.3.3017: over the water in a jump (jumpFx.js) is not in it --
+             their own client does not look at the water in the air either
+             (BroTown); a landing in it is judged from the next frame */
+          const air = !!(o._jump && jumpActive(o._jump, Date.now()));
+          swimmers += this._figure(st, d, air ? false : this._peerOn(st, d, now), now, dt, null);
         }
       }
     }

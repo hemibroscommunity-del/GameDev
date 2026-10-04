@@ -2569,5 +2569,109 @@ console.log('swimming (v2.3.3003)');
   ok('swimming\'s sounds are recordings already in the game (the fishing ones in SFX_MANIFEST)', keys.every((k) => new RegExp(`'${k}':\\s*'/sfx/`).test(gd)) && /BT_AUDIO\.SWIM_SAMPLES = \['fish-on-hook', 'lure-drop', 'catch-splash'\]/.test(gd));
 }
 
+/* ── v2.3.3017: jumping's rules (src/game/jump.js) ──
+   Owner: "start working on real jumping.  Might be able to just use the jog
+   directions instead of a custom jump animation".  The arc, the window in
+   which low things are cleared, when a jump may start, that the feet only
+   pass over a low thing they will be out of before coming down, and that the
+   list of what is cleared is the catalog's low things. */
+console.log('jumping (v2.3.3017)');
+{
+  const J = await import('../../src/game/jump.js');
+  ok('the arc: on the ground at take-off and touch-down, the whole peak half way',
+    J.jumpLiftAt(0) === 0 && J.jumpLiftAt(1) === 0 && J.jumpLiftAt(0.5) === 1 && J.jumpLiftAt(0.25) === 0.75 && J.jumpLiftAt(-1) === 0 && J.jumpLiftAt(2) === 0);
+  const t0 = 10000;
+  const j = { t0, dur: J.JUMP_MS, peak: J.JUMP_PEAK };
+  ok(`in the air for ${J.JUMP_MS} ms, ${J.JUMP_PEAK} px up at the top`,
+    !J.jumpActive(j, t0 - 1) && J.jumpActive(j, t0) && J.jumpActive(j, t0 + J.JUMP_MS - 1) && !J.jumpActive(j, t0 + J.JUMP_MS)
+    && Math.abs(J.jumpHeight(j, t0 + J.JUMP_MS / 2) - J.JUMP_PEAK) < 1e-9 && J.jumpHeight(j, t0) === 0);
+  const from = t0 + J.CLEAR_FROM * J.JUMP_MS, to = t0 + J.CLEAR_TO * J.JUMP_MS;
+  ok(`low things are cleared from ${Math.round(J.CLEAR_FROM * J.JUMP_MS)} to ${Math.round(J.CLEAR_TO * J.JUMP_MS)} ms, while the lift is ${J.JUMP_CLEAR} of the peak or more`,
+    J.clearMsLeft(j, from - 2) === 0 && J.clearMsLeft(j, from + 1) > 0 && J.clearMsLeft(j, to + 1) === 0
+    && Math.abs(J.jumpLiftAt(J.CLEAR_FROM) - J.JUMP_CLEAR) < 1e-9 && Math.abs(J.clearMsLeft(j, t0 + J.JUMP_MS / 2) - (to - (t0 + J.JUMP_MS / 2))) < 1e-6);
+  /* when a jump may start */
+  const S0 = () => ({ player: { x: 0, y: 0 }, rpg: { hp: 50 } });
+  const now = 50000;
+  const why = (mut, extra) => { const S = S0(); mut(S); return J.jumpRefusal(S, now, extra || {}); };
+  ok('a jump starts from standing; not dead, not in the air, not a beat after landing',
+    why(() => {}) === null && why((S) => { S.rpg.hp = 0; }) === 'dead' && why((S) => { S._dying = true; }) === 'dead'
+    && why((S) => { S._jump = { t0: now - 100, dur: J.JUMP_MS }; }) === 'airborne'
+    && why((S) => { S._jumpLandAt = now - 50; }) === 'landing' && why((S) => { S._jumpLandAt = now - J.JUMP_REST_MS - 1; }) === null);
+  ok('...nor rolling, dashing, swimming, harvesting, held by goo, stunned, frozen on a pickup or on the sled',
+    why((S) => { S._dodgeRoll = {}; }) === 'rolling' && why((S) => { S._bashDash = {}; }) === 'dashing'
+    && why((S) => { S._wheelSwim = { on: true }; }) === 'swimming' && why((S) => { S._wheelSwim = { on: false }; }) === null
+    && why((S) => { S._extraction = {}; }) === 'harvesting' && why(() => {}, { stuck: true }) === 'stuck' && why(() => {}, { stunned: true }) === 'stunned' && why(() => {}, { dazed: true }) === 'dazed'
+    && why((S) => { S._lootFreezeUntil = now + 100; }) === 'busy' && why((S) => { S._sled = {}; }) === 'busy');
+  const SJ = S0();
+  const jj = J.startJump(SJ, now, 3, 4);
+  ok('take-off keeps the stick as the way you go on in the air, never longer than a full push',
+    SJ._jump === jj && Math.abs(Math.hypot(jj.dx, jj.dy) - 1) < 1e-9 && Math.abs(jj.dx - 0.6) < 1e-9 && J.jumpAirborne(SJ, now + 10)
+    && (J.startJump(SJ, now, 0.3, 0), SJ._jump.dx === 0.3));
+  J.endJump(SJ, now + 600);
+  ok('...and touching down clears it and starts the rest', SJ._jump === null && SJ._jumpLandAt === now + 600 && J.jumpRefusal(SJ, now + 650, {}) === 'landing');
+  /* the crossing rule: a fence across your way, 160 wide and 12 deep, feet half 10 */
+  const fence = { x0: -80, y0: -6, x1: 80, y1: 6, id: 'fence' };
+  const mid = { t0, dur: J.JUMP_MS, peak: J.JUMP_PEAK };
+  const tm = t0 + J.JUMP_MS / 2;   /* the top: ~(CLEAR_TO - 0.5) x 560 = ~206 ms of clearing left */
+  /* going south at a walk (2.5 px a frame = 0.15 px a ms), the feet's top edge just into it */
+  ok('a fence is cleared going straight over it: out before you come down',
+    J.crossMs(fence, 10, 0, -15, 0, 0.15) < J.clearMsLeft(mid, tm) && J.overLow(fence, mid, tm, 10, 0, -15, 0, 0.15));
+  ok('...but not running along it (out of its 160 px too late), nor late in the jump, nor on the ground',
+    !J.overLow(fence, mid, tm, 10, -70, 0, 0.15, 0)
+    && !J.overLow(fence, mid, to - 5, 10, 0, -15, 0, 0.15)
+    && !J.overLow(fence, mid, t0 + 10, 10, 0, -15, 0, 0.15) && !J.overLow(fence, null, tm, 10, 0, -15, 0, 0.15));
+  ok('...and standing still in the air over it is never out: refused',
+    J.crossMs(fence, 10, 0, 0, 0, 0) === Infinity && !J.overLow(fence, mid, tm, 10, 0, 0, 0, 0));
+  ok('a tree, a boulder or a building is never cleared, whatever the jump',
+    ['oak', 'pine', 'boulder', 'cart', 'saloon', 'haystack'].every((id) => !J.overLow({ ...fence, id }, mid, tm, 10, 0, -15, 0, 0.15)));
+  /* what is cleared is the catalog's low things */
+  const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
+  const { footprintOf } = await import('../../public/tools/world/core/placing.js');
+  const cat = objectCatalog(), byId = Object.fromEntries(cat.map((e) => [e.id, e]));
+  const drawnH = (o) => (o.fit === 'w' ? o.size / (o.ar || 1) : o.size);
+  const footed = (o) => footprintOf(o.id, o.kind, 0, 0, o.fit === 'w' ? o.size : o.size * (o.ar || 1), drawnH(o)).length > 0;
+  const missing = [...J.JUMP_OVER, ...J.JUMP_NOT].filter((id) => !byId[id]);
+  ok(`every id a jump clears (${J.JUMP_OVER.size}) or leaves (${J.JUMP_NOT.size}) is in the catalog`, missing.length === 0, missing);
+  const lowUnlisted = cat.filter((o) => footed(o) && drawnH(o) <= 81 && !J.JUMP_OVER.has(o.id) && !J.JUMP_NOT.has(o.id)).map((o) => o.id);
+  ok('every low thing with a footprint (81 px or less as drawn) is cleared or named as not', lowUnlisted.length === 0, lowUnlisted);
+  const tallListed = [...J.JUMP_OVER].filter((id) => byId[id] && drawnH(byId[id]) > 70 && id !== 'fence-down');
+  ok('nothing taller than 70 px is cleared but the north-south fence (a fence drawn up the picture)', tallListed.length === 0
+    && byId['fence-down'] && byId['fence'] && drawnH(byId['fence']) <= 70, tallListed);
+  const { WHEEL_MATERIALS } = await import('../../src/data/wheelMaterials.js');
+  const bigListed = [...J.JUMP_OVER].filter((id) => WHEEL_MATERIALS[id] && (WHEEL_MATERIALS[id].big || WHEEL_MATERIALS[id].canopy));
+  ok('...and nothing big or with a crown', bigListed.length === 0, bigListed);
+  /* the frames held, and another player's jump clamped */
+  ok('the held leaping frame is inside each jog sheet (east 28, north 23, northeast 24, south 26, southwest 20)',
+    J.jumpFrame('east', 28) === 1 && J.jumpFrame('north', 23) === 8 && J.jumpFrame('northeast', 24) === 4 && J.jumpFrame('south', 26) === 7
+    && J.jumpFrame('southwest', 20) === 6 && J.jumpFrame('west', 28) === 0 && J.jumpFrame('east', 1) === 0);
+  const pj = J.peerJump({ dur: 99999, peak: -5 }, 7), pk = J.peerJump({ dur: 'x', peak: 1e9 }, 7), pg = J.peerJump({ dur: 400, peak: 30 }, 7);
+  ok('another player\'s jump: their numbers clamped, a garbled one the usual jump',
+    pj.dur === 900 && pj.peak === J.JUMP_PEAK && pk.dur === J.JUMP_MS && pk.peak === 120 && pg.dur === 400 && pg.peak === 30 && pg.t0 === 7);
+}
+
+/* ── v2.3.3017: which land a Wheel point is on (src/data/zones.js wheelLandAt) ──
+   Owner, 2026-10-04: "I was fighting fire goblins and my screen went black."
+   The monsters' looks load for your own land as you walk toward them, and
+   for another land's only near (rendering/wheelMonsterArt.js): at the Flame
+   Fields LOAD_R had reached across the water for three more. */
+{
+  console.log('which land a Wheel point is on (v2.3.3017)');
+  const { ZONES, wheelLandAt } = await import('../../src/data/zones.js');
+  const L = ZONES.wheel.lands, C = 21504;
+  const own = Object.keys(L).every((k) => wheelLandAt('wheel', L[k][0], L[k][1]) === k);
+  ok('every land\'s anchor is on its own land', own, Object.keys(L).map((k) => [k, wheelLandAt('wheel', L[k][0], L[k][1])]));
+  /* out along a spoke, past its anchor, and a little toward a neighbour */
+  const out = (k, f, tilt) => { const a = Math.atan2(L[k][1] - C, L[k][0] - C) + tilt; const r = Math.hypot(L[k][0] - C, L[k][1] - C) * f; return wheelLandAt('wheel', C + Math.cos(a) * r, C + Math.sin(a) * r); };
+  ok('...out along its spoke, and up to 22 degrees toward a neighbour, still its own; past that, the neighbour\'s',
+    out('ember', 2.5, 0) === 'ember' && out('ember', 1, 0.38) === 'ember' && out('ember', 1, -0.38) === 'ember'
+    && out('ember', 1, 0.41) === 'sky' && out('ember', 1, -0.41) === 'frost', [out('ember', 1, 0.41), out('ember', 1, -0.41)]);
+  /* the fire goblins and their nearest neighbours across the water */
+  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns.js');
+  const lands = (h) => WHEEL_SPAWNS[h].points.map((p) => wheelLandAt('wheel', p[0], p[1]));
+  ok('...and every land\'s first monsters stand on it', Object.keys(WHEEL_SPAWNS).every((h) => lands(h).every((l) => l === h)),
+    Object.keys(WHEEL_SPAWNS).map((h) => [h, [...new Set(lands(h))]]));
+  ok('...outside the Wheel there are no lands', wheelLandAt('town', 100, 100) === null && wheelLandAt('wheel', NaN, 1) === null);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

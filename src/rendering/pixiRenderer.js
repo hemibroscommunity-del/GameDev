@@ -13,6 +13,7 @@ import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/ef
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
+import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
 import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
@@ -38,6 +39,7 @@ import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets } from 'pixi.js';
 import { markStandIns } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
 import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
+import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
    On iOS, ImageBitmaps are GPU-backed: the memory purge that kills the WebGL
@@ -161,6 +163,12 @@ if (typeof window !== 'undefined') {
 export async function initPixiRenderer(canvas) {
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
   _appRef = app;
+  /* v2.3.3017: QA (mp-glrestore): the picture blanked to the canvas's own
+     colour, as the owner's iPhone showed it, for the black-screen watchdog to
+     find.  Nothing in the game calls this. */
+  /* (its contents hidden, not the stage: a hidden stage skips the frame, clear
+     and all, and the canvas goes see-through instead of to its colour) */
+  if (typeof window !== 'undefined') window.__btBlankStage = (on) => { try { for (const c of app.stage.children) c.visible = !on; } catch (e) { /* torn down */ } };
   /* v2.3.704: let the equip-change re-prewarm GPU-upload its fresh bakes
      (the intro-time uploadBakedTextures only covered the spawn loadout). */
   registerPrewarmRenderer(app.renderer);
@@ -180,6 +188,7 @@ export async function initPixiRenderer(canvas) {
   const worldFx = new WorldFx(layers, app);
   const worldLife = new WorldLife(layers);
   const swimFx = new SwimFx(layers);   /* v2.3.3003 */
+  const jumpFx = new JumpFx();          /* v2.3.3017 */
   worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
   /* v2.3.2986: the stat scene's hero swings in frames photographed off the
@@ -485,6 +494,11 @@ export async function initPixiRenderer(canvas) {
        before the lights, which then cast nothing for it. */
     try { swimFx.update(S, entityRenderer, now); }
     catch (e) { if (!update._swimErr) { update._swimErr = true; console.error('[pixi-render] swimFx threw', e && e.message, e && e.stack); } }
+    /* ═══ v2.3.3017: JUMPERS, AFTER THE SWIMMERS ═══
+       Sorted where they stand, then drawn lifted (jumpFx.js), before the
+       lights, which cast their shadows on the ground under them. */
+    try { jumpFx.update(S, entityRenderer); }
+    catch (e) { if (!update._jumpErr) { update._jumpErr = true; console.error('[pixi-render] jumpFx threw', e && e.message, e && e.stack); } }
     /* v2.3.2710: light and shine, LAST of the world passes: a shadow copies
        each figure's pieces where they are THIS frame, so it runs after
        everything that moves them -- the entity pass, the stand-ins placed by
@@ -502,8 +516,9 @@ export async function initPixiRenderer(canvas) {
     update._lastStages.fpsMs = _t4 - _t3;
 
     // Manual render
-    try { app.render(); }
+    try { app.render(); update._renderStreak = 0; }
     catch (e) {
+      update._renderStreak = (update._renderStreak || 0) + 1;
       if (!update._renderErr) {
         update._renderErr = true;
         /* v2.3.2975: and WHAT it tripped on -- "reading 'alphaMode'" is a
@@ -526,6 +541,20 @@ export async function initPixiRenderer(canvas) {
           walk(app.stage, 0);
         } catch (e2) { dead = ['(walk failed)']; }
         console.error('[pixi-render] app.render threw', e && e.message, JSON.stringify(dead), e && e.stack);
+        /* ═══ v2.3.3017: ...AND INTO THE CRASH LOG ═══
+           This throw is caught here, so it never reached the frame's own
+           catch (game/renderFrame.js): a world that stopped drawing at this
+           line -- a sprite on a freed picture, every frame -- stayed dark
+           with nothing in the field telemetry and no rebuild.  Found looking
+           for the owner's black screen fighting fire goblins (2026-10-04),
+           which left no trace at all. */
+        try { recordCrash('pixi-render-err', String((e && e.message) || e).slice(0, 160) + ' | dead: ' + JSON.stringify(dead).slice(0, 300)); } catch (e3) { /* never */ }
+      }
+      /* ...and rebuilt, as a throwing update() is (renderFrame.js): 90 frames
+         in a row (~1.5 s of a dark world) -> one rebuild, a fresh renderer
+         drawing from what is alive */
+      if (update._renderStreak === 90 && typeof window !== 'undefined' && window._rebuildRenderer) {
+        try { window._rebuildRenderer('app.render threw 90 consecutive frames'); } catch (e4) { /* never */ }
       }
     }
     const _t5 = performance.now();
