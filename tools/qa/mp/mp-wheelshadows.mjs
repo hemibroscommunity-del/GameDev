@@ -164,10 +164,97 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.screenshot({ path: join(OUT, `wheelshadows-${tag}-on.png`) });
   }
 
+  /* ── 3b. v2.3.3028, owner: "Sea level props have shadows that appear to
+        be floating off the ground a bit. Shadows not connecting to the
+        prop." -- a low thing with a footprint (a bench, a crate, a barrel, a
+        rock) casts column by column from its own base now, so the strip of
+        ground under its base is in its shadow; the billboard before it
+        pivoted 11-20 px up the picture and left most of that strip lit.
+        Measured on the strip -- from the base line down a third of the
+        thing's height, from its left edge to its right plus a third (where
+        this sun throws it) -- as the share of it the shadow darkens, with
+        the world's shadows off, on, and on the old billboard (QA
+        __btWheelCastBoard), in still air.  One NOTHING ELSE IS DRAWN OVER
+        (a pine's crown hid a snow rock and its ground both), walked to and
+        stood south of, round the arrival: plain ground, where a shadow
+        shows.  A single spot a quarter of the height out missed a rounded
+        rock's shadow, whose middle columns end above the frame's foot.
+        Measured off a town bench's pictures: 35-46% of the strip, the old
+        pivot 21-28%. ── */
+  let lowSide = null;
+  {
+    const lowCands = await P.page.evaluate(() => {
+      const S = window._gameState.current, W = window.__btWheelObjects;
+      const all = W.near(S.player.x, S.player.y, 1600);
+      /* nothing else drawn over the strip or the thing: boxes from the
+         drawn sprites, anchored at their foot, else from the placing */
+      const boxes = all.map((q) => {
+        const s = W.sprite(q.i);
+        if (s) { const x0 = s.x - s.ax * s.w; return { i: q.i, x0, x1: x0 + s.w, y0: s.y - s.h, y1: s.y + 0.12 * s.h }; }
+        return { i: q.i, x0: q.x - q.w / 2 - 6, x1: q.x + q.w / 2 + 6, y0: q.y - q.h - 6, y1: q.y + 0.12 * q.h + 6 };
+      });
+      const clearOf = (o) => !boxes.some((b) => b.i !== o.i && b.x1 > o.x - 0.5 * o.w - 6 && b.x0 < o.x + 0.5 * o.w + 0.35 * o.h + 6
+        && b.y1 > o.y - o.h && b.y0 < o.y + 0.34 * o.h + 6);
+      return all.filter((o) => o.h >= 30 && o.h <= 120 && o.w >= 24 && clearOf(o))
+        .map((o) => ({ i: o.i, id: o.id, x: o.x, y: o.y, h: o.h, w: o.w, d: Math.round(Math.hypot(o.x - S.player.x, o.y - S.player.y)) }))
+        .sort((a, b) => a.d - b.d).slice(0, 12);
+    });
+    const darkShare = (A, B, box) => {
+      const k = A.width / PHONE.width;
+      let n = 0, d = 0;
+      for (let y = Math.max(0, Math.round(box.y * k)); y < Math.min(A.height, Math.round((box.y + box.h) * k)); y++) {
+        for (let x = Math.max(0, Math.round(box.x * k)); x < Math.min(A.width, Math.round((box.x + box.w) * k)); x++) {
+          const p = A.at(x, y), q = B.at(x, y);
+          n++;
+          if ((0.299 * p[0] + 0.587 * p[1] + 0.114 * p[2]) - (0.299 * q[0] + 0.587 * q[1] + 0.114 * q[2]) > 10) d++;
+        }
+      }
+      return n ? d / n : 0;
+    };
+    for (const c0 of lowCands) {
+      /* south of it and a little left: it sits up-screen of you, its strip
+         clear of your figure and your own shadow */
+      if (!(await H.hopTo(P, c0.x - 30, c0.y + 150, { tries: 60 }))) continue;
+      await P.page.waitForTimeout(1500);
+      let c = null;
+      for (let k = 0; k < 8 && !c; k++) {
+        await frames(P, 4);
+        c = await P.page.evaluate((c0) => {
+          const W = window.__btWheelObjects;
+          const cast = W.caster(c0.i);
+          /* one with a footprint: a walk-through thing (a frost bush,
+             flowers) has none, pivoted at its foot all along, and was never
+             the trouble */
+          if (!W.sprite(c0.i) || !cast || cast.model !== 'cols' || !(cast.floor < cast.foot - 6)) return null;
+          return { ...c0, c: cast };
+        }, c0);
+      }
+      if (!c) continue;
+      const tl = await toScreen(P, c.x - 0.5 * c.w, c.y - 0.04 * c.h), br = await toScreen(P, c.x + 0.5 * c.w + 0.35 * c.h, c.y + 0.34 * c.h);
+      const strip = { x: tl.x, y: tl.y, w: br.x - tl.x, h: br.y - tl.y };
+      if (strip.x < 12 || strip.y < 70 || strip.x + strip.w > PHONE.width - 12 || strip.y + strip.h > PHONE.height - 130) continue;
+      const ctl = await toScreen(P, c.x - c.w, c.y - 1.1 * c.h), cbr = await toScreen(P, c.x + c.w + 0.8 * c.h, c.y + 0.6 * c.h);
+      const clip = { x: Math.max(0, ctl.x), y: Math.max(0, ctl.y), width: Math.min(PHONE.width, cbr.x) - Math.max(0, ctl.x), height: Math.min(PHONE.height, cbr.y) - Math.max(0, ctl.y) };
+      await setWorld(P, false); await frames(P, 6);
+      const off = H.decodePng(await P.page.screenshot());
+      await P.page.screenshot({ path: join(OUT, 'wheelshadows-low-off.png'), clip }).catch(() => {});
+      await setWorld(P, true); await frames(P, 6);
+      const on = H.decodePng(await P.page.screenshot());
+      await P.page.screenshot({ path: join(OUT, 'wheelshadows-low-after.png'), clip }).catch(() => {});
+      await P.page.evaluate(() => { window.__btWheelCastBoard = true; }); await frames(P, 6);
+      const board = H.decodePng(await P.page.screenshot());
+      await P.page.screenshot({ path: join(OUT, 'wheelshadows-low-before.png'), clip }).catch(() => {});
+      await P.page.evaluate(() => { window.__btWheelCastBoard = false; }); await frames(P, 4);
+      lowSide = { obj: c, on: +darkShare(off, on, strip).toFixed(3), board: +darkShare(off, board, strip).toFixed(3), tried: lowCands.length };
+      break;
+    }
+    if (!lowSide) lowSide = { obj: null, tried: lowCands.length, cands: lowCands.slice(0, 4) };
+  }
+
   /* ── 4. Frost Ridge: a pine's shadow on the snow, its blue, the wind,
         snow in the air, prints in the snow ── */
   const frost = await SPOT('frost', 2);
-  let fr = null, side = null, sway = null, bits = null, lowSide = null;
+  let fr = null, side = null, sway = null, bits = null;
   if (frost) {
     await H.hopTo(P, frost.x, frost.y, { tries: 200 });
     await settle(60);
@@ -198,99 +285,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
       side = { obj: c, shade: { off: meanLum(off, box(shade)), on: meanLum(on, box(shade)) }, lit: { off: meanLum(off, box(lit)), on: meanLum(on, box(lit)) } };
       break;
     }
-    /* ── 4b. v2.3.3028, owner: "Sea level props have shadows that appear to
-          be floating off the ground a bit. Shadows not connecting to the
-          prop." -- a low thing (a snow rock, a bush) casts column by column
-          from its own base now, so the ground just below and right of its
-          foot, a quarter of its height out, is in its shadow; the billboard
-          before it pivoted the shadow 11-20 px up the picture and left that
-          ground lit.  Measured three ways at the one spot: no world shadows,
-          the column model, and the old billboard (QA __btWheelCastBoard).
-          Still air (as above), so nothing drifts through the box.
-          ONE NOTHING ELSE IS DRAWN OVER: a pine in front (its foot well below,
-          its crown over the rock) hid a snow rock and the spot both, and the
-          spot read the pine's needles in every mode (0.0% each); round the
-          step-4 spot, Frost Ridge's woods left none clear in view.  So the
-          nearest clear one within 2,600 px is walked to -- stood south of it,
-          up-screen of you -- checked again against the sprites as drawn, and
-          measured there; then back to the step-4 spot for the wind and snow. ── */
-    const here0 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-    const lowCands = await P.page.evaluate(() => {
-      const S = window._gameState.current, W = window.__btWheelObjects;
-      const all = W.near(S.player.x, S.player.y, 2600);
-      /* nothing else drawn over the spot or the thing: boxes from the
-         drawn sprites, anchored at their foot, else from the placing */
-      const boxes = all.map((q) => {
-        const s = W.sprite(q.i);
-        if (s) { const x0 = s.x - s.ax * s.w; return { i: q.i, x0, x1: x0 + s.w, y0: s.y - s.h, y1: s.y + 0.12 * s.h }; }
-        return { i: q.i, x0: q.x - q.w / 2 - 6, x1: q.x + q.w / 2 + 6, y0: q.y - q.h - 6, y1: q.y + 0.12 * q.h + 6 };
-      });
-      const clearOf = (o) => {
-        const px = o.x + 0.25 * o.h, py = o.y + 0.18 * o.h, cy = o.y - o.h / 2;
-        return !boxes.some((b) => b.i !== o.i && ((px > b.x0 - 8 && px < b.x1 + 8 && py > b.y0 - 8 && py < b.y1 + 8)
-          || (b.y1 > o.y && o.x > b.x0 && o.x < b.x1 && cy > b.y0 && cy < b.y1)));
-      };
-      return all.filter((o) => o.h >= 34 && o.h <= 120 && o.w >= 28 && clearOf(o))
-        .map((o) => ({ i: o.i, id: o.id, x: o.x, y: o.y, h: o.h, w: o.w, d: Math.round(Math.hypot(o.x - S.player.x, o.y - S.player.y)) }))
-        .sort((a, b) => a.d - b.d).slice(0, 12);
-    });
-    for (const c0 of lowCands) {
-      /* south of it and a little left: it sits up-screen of you, its shadow
-         side (right and down) clear of your figure and your own shadow */
-      if (!(await H.hopTo(P, c0.x - 40, c0.y + 170, { tries: 60 }))) continue;
-      await P.page.waitForTimeout(1500);
-      let c = null;
-      for (let k = 0; k < 8 && !c; k++) {
-        await frames(P, 4);
-        c = await P.page.evaluate((c0) => {
-          const S = window._gameState.current, W = window.__btWheelObjects;
-          const cast = W.caster(c0.i);
-          /* one with a footprint: a walk-through thing (a frost bush,
-             flowers) has none, pivoted at its foot all along, and was never
-             the trouble */
-          if (!W.sprite(c0.i) || !cast || cast.model !== 'cols' || !(cast.floor < cast.foot - 6)) return null;
-          const all = W.near(c0.x, c0.y, 700);
-          /* nothing else drawn over the spot or the thing: boxes from the
-             drawn sprites, anchored at their foot, else from the placing */
-          const boxes = all.map((q) => {
-            const s = W.sprite(q.i);
-            if (s) { const x0 = s.x - s.ax * s.w; return { i: q.i, x0, x1: x0 + s.w, y0: s.y - s.h, y1: s.y + 0.12 * s.h }; }
-            return { i: q.i, x0: q.x - q.w / 2 - 6, x1: q.x + q.w / 2 + 6, y0: q.y - q.h - 6, y1: q.y + 0.12 * q.h + 6 };
-          });
-          const clearOf = (o) => {
-            const px = o.x + 0.25 * o.h, py = o.y + 0.18 * o.h, cy = o.y - o.h / 2;
-            return !boxes.some((b) => b.i !== o.i && ((px > b.x0 - 8 && px < b.x1 + 8 && py > b.y0 - 8 && py < b.y1 + 8)
-              || (b.y1 > o.y && o.x > b.x0 && o.x < b.x1 && cy > b.y0 && cy < b.y1)));
-          };
-          if (!clearOf(c0)) return { covered: true };
-          return { ...c0, c: cast, from: { x: Math.round(S.player.x), y: Math.round(S.player.y) },
-            crowd: all.filter((q) => q.i !== c0.i && q.h > 16 && Math.abs(q.x - c0.x) < 220 && q.y < c0.y + 90 && q.y > c0.y - 320).length };
-        }, c0);
-        if (c && c.covered) break;
-      }
-      if (!c || c.covered) continue;
-      const at = await toScreen(P, c.x + 0.25 * c.h, c.y + 0.18 * c.h);
-      const half = Math.max(2.5, 0.06 * c.h * at.k);
-      const bx = { x: at.x - half, y: at.y - half, w: 2 * half, h: 2 * half };
-      if (bx.x < 12 || bx.y < 70 || bx.x + bx.w > PHONE.width - 12 || bx.y + bx.h > PHONE.height - 130) continue;
-      const tl = await toScreen(P, c.x - 0.75 * c.w, c.y - 1.15 * c.h), br = await toScreen(P, c.x + 0.75 * c.w + 0.5 * c.h, c.y + 0.5 * c.h);
-      const clip = { x: Math.max(0, tl.x), y: Math.max(0, tl.y), width: Math.min(PHONE.width, br.x) - Math.max(0, tl.x), height: Math.min(PHONE.height, br.y) - Math.max(0, tl.y) };
-      await setWorld(P, false); await frames(P, 4);
-      const off = meanLum(H.decodePng(await P.page.screenshot()), bx);
-      await setWorld(P, true); await frames(P, 6);
-      const on = meanLum(H.decodePng(await P.page.screenshot()), bx);
-      await P.page.screenshot({ path: join(OUT, 'wheelshadows-low-after.png'), clip }).catch(() => {});
-      await P.page.evaluate(() => { window.__btWheelCastBoard = true; }); await frames(P, 4);
-      const board = meanLum(H.decodePng(await P.page.screenshot()), bx);
-      await P.page.screenshot({ path: join(OUT, 'wheelshadows-low-before.png'), clip }).catch(() => {});
-      await P.page.evaluate(() => { window.__btWheelCastBoard = false; }); await frames(P, 4);
-      lowSide = { obj: c, off, on, board, tried: lowCands.length };
-      break;
-    }
-    if (!lowSide) lowSide = { obj: null, tried: lowCands.length, cands: lowCands.slice(0, 4) };
-    /* back where step 4 stood, for the wind and the snow below */
-    await H.hopTo(P, here0.x, here0.y, { tries: 80 });
-    await P.page.waitForTimeout(1200);
     /* the wind back on (the harness stills it for pixel tests) */
     await P.page.evaluate(() => { window.__btAmbienceOff = false; });
     await P.page.waitForTimeout(1200);
@@ -386,9 +380,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3028: a low thing's shadow starts at its own base */
   {
     const L = lowSide && lowSide.obj ? lowSide : null, c = L && L.obj.c;
-    const dNew = L ? 1 - L.on / L.off : 0, dOld = L ? 1 - L.board / L.off : 0;
-    rec.ok(`a low thing's shadow starts at its own base (${L ? `${L.obj.id}, ${Math.round(L.obj.h)} px tall: the ground a quarter of its height below-right of its foot ${(dNew * 100).toFixed(1)}% darker, where the old pivot left it ${(dOld * 100).toFixed(1)}%` : 'no low thing in view'}), cast column by column from the lowest pixel of each, the footprint's middle the furthest back`,
-      !!L && c && c.model === 'cols' && c.lowest != null && Math.abs(c.lowest - c.foot) < 2.5 && c.floor < c.foot && dNew > 0.06 && dNew > dOld + 0.04, lowSide);
+    rec.ok(`a low thing's shadow starts at its own base (${L ? `${L.obj.id}, ${Math.round(L.obj.h)} px tall: ${(L.on * 100).toFixed(0)}% of the ground strip under its base in its shadow, where the old pivot shaded ${(L.board * 100).toFixed(0)}%` : 'no low thing in view'}), cast column by column from the lowest pixel of each, the footprint's middle the furthest back`,
+      !!L && c && c.model === 'cols' && c.lowest != null && Math.abs(c.lowest - c.foot) < 2.5 && c.floor < c.foot && L.on > 0.15 && L.on > L.board * 1.25, lowSide);
   }
   rec.ok(`the trees and bushes sway in the wind, their foot held still (${sway ? sway.moved.map((m) => `${m.id} ${m.range}`).join(', ') : 'none in view'})`,
     !!sway && sway.wheelSway > 0 && sway.moved.some((m) => m.range > 0.003) && sway.moved.every((m) => m.footMoved < 0.5), sway);
