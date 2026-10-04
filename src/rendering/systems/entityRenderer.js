@@ -12439,6 +12439,7 @@ export class EntityRenderer {
       const spriteBody = display._spriteBody;
       let frameIdx = 0;
       let _jogPhase = null;  /* v2.3.1367: cycle phase 0..1 for native-count fullset playback */
+      if (pose !== 'jog') display._jogAir = false;   /* v2.3.3017: landed standing (the jog branch's touch-down rule) */
       if (pose === 'jog') {
         /* Per-direction frame count — sheets vary 24-34 frames.  During
            an attack or shield (movement slowed 50% by gameplay), play
@@ -12483,6 +12484,16 @@ export class EntityRenderer {
           frameIdx = jumpFrame(dir, fc);
           _jogPhase = (frameIdx + 0.5) / fc;
           display._prevJogFrame = frameIdx;
+          display._prevJogAt = now;
+          display._jogAir = true;
+        } else if (display._jogAir) {
+          /* the touch-down frame: the loop picks up where the clock says, and
+             the plants it passed in the air were not steps (v2.3.3015's
+             _jogPlantCrossed counts any plant passed within a stride) -- the
+             landing's step is the jump's own (jumpActions.js landJump) */
+          display._jogAir = false;
+          display._prevJogFrame = frameIdx;
+          display._prevJogAt = now;
         }
         display._jumpFrameIdx = jumping ? frameIdx : null;   /* QA (__btJumpFx) */
         /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each

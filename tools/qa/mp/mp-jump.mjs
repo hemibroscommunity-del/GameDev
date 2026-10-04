@@ -35,7 +35,7 @@ import { join } from 'node:path';
 const PHONE = { width: 390, height: 844 };
 const SIDEWAYS = { width: 844, height: 390 };
 const AIR_MS = 1800;      /* ?jumpms= */
-const PEAK = 34;          /* JUMP_PEAK (game/jump.js) */
+const PEAK = 68;          /* JUMP_PEAK (game/jump.js) */
 const HS = 10;            /* the walk box's half-width (hs in BroTown.jsx) */
 const FRAME = { east: 1, north: 8, northeast: 4, south: 7, southwest: 6 };   /* JUMP_FRAME */
 const OVER = ['fence'];   /* a long straight one, easiest to cross square-on */

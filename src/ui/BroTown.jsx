@@ -260,6 +260,7 @@ import { QuestCoach } from './mobile/QuestCoach.jsx';
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
+import { markAlive } from '@/debug/crashTrap.js';   /* v2.3.3017: a page that dies open is reported by the next one */
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 report gate */
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
@@ -7656,6 +7657,19 @@ export var BroTown = function BroTown(_ref0) {
          5 min so a server-side black screen can't loop the page. */
       var _nowWd = Date.now();
       if (!S.__wdArmedAt) S.__wdArmedAt = _nowWd; /* grace for first bake */
+      /* ═══ v2.3.3017: ALIVE, AND WHERE ═══
+         Every 5 s: where you are and what the textures come to, kept so that
+         if iPhone Safari kills this page outright (no error, no event: the
+         owner's black screen fighting fire goblins) the next page can say so
+         (debug/crashTrap.js markAlive).  __btTex walks the asset cache, so
+         only at that pace. */
+      if (S.player && (!S.__aliveAt || _nowWd - S.__aliveAt >= 5000)) {
+        S.__aliveAt = _nowWd;
+        try {
+          var _txA = window.__btTex ? window.__btTex() : null;
+          markAlive({ zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y), hp: S.rpg ? S.rpg.hp : null, mb: _txA ? _txA.mb : null });
+        } catch (eA) { /* telemetry never breaks the game */ }
+      }
       /* ═══ v2.3.1721: A FIRST JOIN DOES NOT WAIT OUT THE MID-SESSION CADENCE ═══
          Owner: "sometimes upon first joining the game after the loading screen
          it's black."  The watchdog above already recovers this -- but on its

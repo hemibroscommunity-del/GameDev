@@ -2646,7 +2646,31 @@ console.log('jumping (v2.3.3017)');
     && J.jumpFrame('southwest', 20) === 6 && J.jumpFrame('west', 28) === 0 && J.jumpFrame('east', 1) === 0);
   const pj = J.peerJump({ dur: 99999, peak: -5 }, 7), pk = J.peerJump({ dur: 'x', peak: 1e9 }, 7), pg = J.peerJump({ dur: 400, peak: 30 }, 7);
   ok('another player\'s jump: their numbers clamped, a garbled one the usual jump',
-    pj.dur === 900 && pj.peak === J.JUMP_PEAK && pk.dur === J.JUMP_MS && pk.peak === 60 && pg.dur === 400 && pg.peak === 30 && pg.t0 === 7);
+    pj.dur === 900 && pj.peak === J.JUMP_PEAK && pk.dur === J.JUMP_MS && pk.peak === 120 && pg.dur === 400 && pg.peak === 30 && pg.t0 === 7);
+}
+
+/* ── v2.3.3017: which land a Wheel point is on (src/data/zones.js wheelLandAt) ──
+   Owner, 2026-10-04: "I was fighting fire goblins and my screen went black."
+   The monsters' looks load for your own land as you walk toward them, and
+   for another land's only near (rendering/wheelMonsterArt.js): at the Flame
+   Fields LOAD_R had reached across the water for three more. */
+{
+  console.log('which land a Wheel point is on (v2.3.3017)');
+  const { ZONES, wheelLandAt } = await import('../../src/data/zones.js');
+  const L = ZONES.wheel.lands, C = 21504;
+  const own = Object.keys(L).every((k) => wheelLandAt('wheel', L[k][0], L[k][1]) === k);
+  ok('every land\'s anchor is on its own land', own, Object.keys(L).map((k) => [k, wheelLandAt('wheel', L[k][0], L[k][1])]));
+  /* out along a spoke, past its anchor, and a little toward a neighbour */
+  const out = (k, f, tilt) => { const a = Math.atan2(L[k][1] - C, L[k][0] - C) + tilt; const r = Math.hypot(L[k][0] - C, L[k][1] - C) * f; return wheelLandAt('wheel', C + Math.cos(a) * r, C + Math.sin(a) * r); };
+  ok('...out along its spoke, and up to 22 degrees toward a neighbour, still its own; past that, the neighbour\'s',
+    out('ember', 2.5, 0) === 'ember' && out('ember', 1, 0.38) === 'ember' && out('ember', 1, -0.38) === 'ember'
+    && out('ember', 1, 0.41) === 'sky' && out('ember', 1, -0.41) === 'frost', [out('ember', 1, 0.41), out('ember', 1, -0.41)]);
+  /* the fire goblins and their nearest neighbours across the water */
+  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns.js');
+  const lands = (h) => WHEEL_SPAWNS[h].points.map((p) => wheelLandAt('wheel', p[0], p[1]));
+  ok('...and every land\'s first monsters stand on it', Object.keys(WHEEL_SPAWNS).every((h) => lands(h).every((l) => l === h)),
+    Object.keys(WHEEL_SPAWNS).map((h) => [h, [...new Set(lands(h))]]));
+  ok('...outside the Wheel there are no lands', wheelLandAt('town', 100, 100) === null && wheelLandAt('wheel', NaN, 1) === null);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

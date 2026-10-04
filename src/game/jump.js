@@ -29,9 +29,14 @@
  * it, rendering/jumpFx.js draws it. */
 
 /* how long you are in the air, and how high you go at the top (world px; a
-   bro is ~66 tall at the Wheel's scale, so about half his height) */
+   bro is ~66 tall at the Wheel's scale, so about his own height).  68 is
+   twice the first cut's 34 -- the owner, having tried it: "I'd also like it
+   if the jump were about 2x as high".  The time in the air is the same, so
+   the window for clearing low things is too: only the picture rises higher,
+   and the things it clears (JUMP_OVER, 70 px tall or less) are now about as
+   tall as the jump. */
 export const JUMP_MS = 560;
-export const JUMP_PEAK = 34;
+export const JUMP_PEAK = 68;
 /* low things are cleared while the lift is at least this share of the peak:
    the middle ~74% of the jump, from ~70 ms after take-off to ~70 ms before
    touching down */
@@ -187,6 +192,6 @@ export function peerJump(payload, now) {
   return {
     t0: now,
     dur: isFinite(dur) && dur > 0 ? Math.max(200, Math.min(900, dur)) : JUMP_MS,
-    peak: isFinite(peak) && peak > 0 ? Math.max(8, Math.min(60, peak)) : JUMP_PEAK,
+    peak: isFinite(peak) && peak > 0 ? Math.max(8, Math.min(120, peak)) : JUMP_PEAK,   /* room above JUMP_PEAK 68 */
   };
 }

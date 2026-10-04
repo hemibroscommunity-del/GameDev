@@ -39,6 +39,7 @@ import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets } from 'pixi.js';
 import { markStandIns } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
 import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
+import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
    On iOS, ImageBitmaps are GPU-backed: the memory purge that kills the WebGL
@@ -509,8 +510,9 @@ export async function initPixiRenderer(canvas) {
     update._lastStages.fpsMs = _t4 - _t3;
 
     // Manual render
-    try { app.render(); }
+    try { app.render(); update._renderStreak = 0; }
     catch (e) {
+      update._renderStreak = (update._renderStreak || 0) + 1;
       if (!update._renderErr) {
         update._renderErr = true;
         /* v2.3.2975: and WHAT it tripped on -- "reading 'alphaMode'" is a
@@ -533,6 +535,20 @@ export async function initPixiRenderer(canvas) {
           walk(app.stage, 0);
         } catch (e2) { dead = ['(walk failed)']; }
         console.error('[pixi-render] app.render threw', e && e.message, JSON.stringify(dead), e && e.stack);
+        /* ═══ v2.3.3017: ...AND INTO THE CRASH LOG ═══
+           This throw is caught here, so it never reached the frame's own
+           catch (game/renderFrame.js): a world that stopped drawing at this
+           line -- a sprite on a freed picture, every frame -- stayed dark
+           with nothing in the field telemetry and no rebuild.  Found looking
+           for the owner's black screen fighting fire goblins (2026-10-04),
+           which left no trace at all. */
+        try { recordCrash('pixi-render-err', String((e && e.message) || e).slice(0, 160) + ' | dead: ' + JSON.stringify(dead).slice(0, 300)); } catch (e3) { /* never */ }
+      }
+      /* ...and rebuilt, as a throwing update() is (renderFrame.js): 90 frames
+         in a row (~1.5 s of a dark world) -> one rebuild, a fresh renderer
+         drawing from what is alive */
+      if (update._renderStreak === 90 && typeof window !== 'undefined' && window._rebuildRenderer) {
+        try { window._rebuildRenderer('app.render threw 90 consecutive frames'); } catch (e4) { /* never */ }
       }
     }
     const _t5 = performance.now();

@@ -2270,6 +2270,13 @@ export function setupWebSocket(ctx) {
               S.screenShake = 10;
               pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
               BT_AUDIO.deathBoom();
+              /* v2.3.3017: a breadcrumb in the crash log, sent only with the
+                 next real event (debug/crashTrap.js _QUIET): a black screen
+                 reported right after a death was the respawn's veils */
+              try {
+                var _dz = S.currentZone, _dx = Math.round(S.player.x), _dy = Math.round(S.player.y);
+                import('../debug/crashTrap.js').then(function (ct) { ct.recordCrash('died', _dz + ' at ' + _dx + ',' + _dy); }).catch(function () {});
+              } catch (e) { /* telemetry never breaks the game */ }
               /* Tell the room we died so remote clients render a dead
                  pose at our last position.  Server already knows. */
               if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });

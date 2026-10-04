@@ -750,7 +750,8 @@ remnant to migrate server-side, not a mode to preserve.
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":
     - your POSITION never leaves the ground (the worker sees a walk); the
-      body is drawn up to `JUMP_PEAK` 34 px for `JUMP_MS` 560 holding one
+      body is drawn up to `JUMP_PEAK` 68 px (a bro's height; the owner's "about
+      2x as high" of the first 34) for `JUMP_MS` 560 holding one
       leaping frame of the jog (`JUMP_FRAME`), lifted by
       `src/rendering/jumpFx.js` after the depth pass, and `figureFeetY` adds
       the lift back -- sorted, shadowed and standing on the ground;
@@ -767,7 +768,31 @@ remnant to migrate server-side, not a mode to preserve.
       steps, dust or prints mid-air, a step and a dust ring on landing;
     - other players: a `player_jump` relay (no worker change), `other._jump`;
     - test-world-core "jumping", `mp-jump` (`?jumpms=` for a slow machine):
-      docs/specs/jumping.md.  Not yet: jumping over attacks (the worker's).)
+      docs/specs/jumping.md.  Not yet: jumping over attacks (the worker's).
+  - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
+    preview: "I was fighting fire goblins and my screen went black", and the
+    crash feed had nothing:
+    - an `app.render` throw (pixiRenderer.js) goes into the crash log at once,
+      and 90 in a row rebuild the renderer, as an update() throw's always did
+      (renderFrame.js) -- it was caught and only printed, so a world that
+      stopped drawing there stayed dark with no report and no rebuild;
+    - a page iPhone Safari kills outright is reported by the next one
+      (crashTrap.js `markAlive`: `bt-alive` every 5 s from the watchdog's
+      timer, taken away on pagehide; 'killed' on screen, 'evicted' in the
+      background, with zone, place, hp and the asset cache's MB);
+    - a death is a quiet breadcrumb ('died', sent only with a real event);
+    - the Wheel's monster looks load by land (the looks clause, Conventions):
+      ~37 MB less at the Flame Fields' inner end, whose walk out had peaked
+      at 239 MB of the cache against the ~250 MB a tab dies at;
+    - the preview it happened on ran the old client against #781's worker,
+      which drew level 6-20 fire goblins "Lv 2" (#781's monsterVariants.js
+      fixes it): a sudden death and the respawn's two dark veils ("Entering
+      Town", "Entering The Wheel", 92% black) are the other likely story;
+    - `mp-firefight` fights a land's monsters on a phone watching the screen
+      (the watchdog's lit sample taken in an animation frame -- from a timer
+      a WebGL canvas reads black -- and screenshots measured), `mp-wheelmem`
+      measures the walk out (the cache, and every texture WebGL allocates, by
+      a shim on its calls).)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
@@ -987,7 +1012,12 @@ Two protocol versions coexist; both must keep working:
     (the Wheel) the monsters' looks are NOT loaded behind the overlay: each
     monster type's look loads when one wearing it is within 2,600 px and
     goes once none has been within 3,600 px for 10 s
-    (`src/rendering/wheelMonsterArt.js`). The law's intent is kept by a
+    (`src/rendering/wheelMonsterArt.js`) -- since v2.3.3017 only for the
+    land you are on (`wheelLandAt`, your direction from the middle); another
+    land's inside the screen's box grown 700 px a side (`foreignBox`, 1,000 at
+    least): the spokes' inner ends are ~1,630 px apart across the water, and
+    at the Flame Fields four looks (~57 MB) were held, near iPhone Safari's
+    ~250 MB, where the owner's screen went black. The law's intent is kept by a
     harder rule in its place: there a monster whose look is not ready is
     NOT DRAWN AT ALL -- never in a stand-in body -- and holds no display,
     and the lazy first-sighting kick is off (`setVariantKicks`). The Wheel

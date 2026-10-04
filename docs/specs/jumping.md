@@ -12,11 +12,13 @@
   it fires on the press, not the release.
 - **X on a keyboard.** Space is already the dodge roll and Shift the sprint, so
   the jump is X, under the left hand. The key hints list it.
-- **The jump.** For 0.56 s the body rises up to 34 world px (about half a bro)
-  and comes back down on a smooth arc. It holds one leaping frame of the jog for
-  the way you face (one knee up, the other leg trailing): the owner's "jog
-  directions", not a new animation. The weapon, cape and name plate rise with
-  it.
+- **The jump.** For 0.56 s the body rises up to 68 world px (about a bro's own
+  height) and comes back down on a smooth arc. The first cut went half as high;
+  the owner, having tried it: *"I'd also like it if the jump were about 2x as
+  high"*. The time in the air didn't change, so what it clears didn't either.
+  It holds one leaping frame of the jog for the way you face (one knee up, the
+  other leg trailing): the owner's "jog directions", not a new animation. The
+  weapon, cape and name plate rise with it.
 - **The shadow stays on the ground.** In daylight (always, in the Wheel) the
   sun shadow is cast from where you stand, so it slides away from the body as
   you rise. The gap is the height.
@@ -54,7 +56,7 @@
 The idea: **your position never leaves the ground.** Only the picture does.
 
 - **The rules** (`src/game/jump.js`, pure, no imports): `JUMP_MS` 560, `JUMP_PEAK`
-  34, the arc `4t(1-t)`.
+  68, the arc `4t(1-t)`.
   - Low things are cleared while the lift is at least `JUMP_CLEAR` (0.45) of the
     peak, from about 72 ms to 488 ms.
   - `JUMP_OVER` is the catalog ids that are cleared. `JUMP_NOT` names the low
