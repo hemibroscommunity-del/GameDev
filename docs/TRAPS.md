@@ -5175,3 +5175,43 @@ for the server -- or a slow zone would be "rebuilt" mid-load.
 goes see-through, which both rules call dark) -- the owner's screen; within
 two strikes the watchdog asks for a rebuild. Chromium can't make the iOS reset
 itself: `WEBGL_lose_context` there gives the whole world back.
+
+
+## 131. A Wheel scenario fails late in a long run that passes on its own (v2.3.3019)
+
+**Plausible:** "One `node tools/qa/mp/run.mjs a b c d e f g h` runs every
+scenario with a fresh player in a fresh browser context, so a scenario's
+result does not depend on where it falls in the list. Eight failures in the
+sixth and seventh scenarios of a batch mean the change broke them."
+
+**Wrong**, measured on 2026-10-04 with the same builds, one scenario a run
+against several in one:
+
+| scenario | in a batch | alone |
+|---|---|---|
+| `mp-wheelhome`, this branch | 6th of 8: 9 failed, 816 s, the way in 25 s | 16 passed, 196 s, the way in 8.3 s |
+| `mp-wheelwaves`, this branch | 7th of 8: never got into the Wheel | 10 passed |
+| `mp-wheelhome`, main | 1st of 3: 16 passed, 193 s | |
+| `mp-wheeltrial`, main | 3rd of 3: never got into the Wheel | 32 of 33 (the §128 check) |
+
+The contexts are fresh but the browser, its software GPU process and the local
+worker are not: each Wheel scenario leaves the page slower than it found it,
+and by the sixth the town's clicks time out, the way in takes three times as
+long and a hop to the stairs gives up. Main does it too.
+
+**The rule:** a Wheel scenario that fails late in a long run is run again on
+its own before it is called a regression; run them a few at a time. Compare
+with main the same way: a scenario first in a fresh run on both
+(`git worktree add <dir> origin/main`, `node_modules` and
+`server/node_modules` symlinked in, `npx vite build` there, then its own
+`run.mjs`).
+
+**Two that fail alone, on main as here (2026-10-04):**
+- `mp-wheeltrial`'s "...at a brisk walk few pieces are on screen before they
+  are laid": main 173 late, this branch 138 (§128: the worker's ~80 ms a
+  piece on this machine is the limit, and the closer view needs fewer).
+- `mp-wheelshore`'s "he walked there": main and this branch both move exactly
+  38 px in its 2.4 s hold, north and south alike. That is five frames at the
+  step cap (`S._dtScale` 3, 7.5 px a frame): the page draws about two frames
+  a second by the river there, and its 80 px guard needs eleven frames in
+  those 2.4 s.
