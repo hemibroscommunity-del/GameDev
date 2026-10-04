@@ -275,6 +275,10 @@ async function body(P, rec) {
   rec.ok('the special cooling down: Cooldown, a blue arc', B.special && B.special.state === 'cooldown' && B.special.arc, B.special);
   rec.ok('the whirlwind cooling down: Cooldown, a blue arc', B.whirl && B.whirl.state === 'cooldown' && B.whirl.arc, B.whirl);
   rec.ok('Element Burst cooling down: Cooldown, a blue arc', B.burst && B.burst.state === 'cooldown' && B.burst.arc, B.burst);
+  /* Owner: "No cooldown for base attack though" -- the mockup's sheet used
+     Attack as its example of a cooldown, and the base attack has none. */
+  rec.ok('...while the ATTACK button, with everything round it cooling down, shows no cooldown (the base attack has none)',
+    B.disc && B.disc.shown && !B.disc.arc && B.disc.state !== 'cooldown' && B.disc.rstate === 'hot', B.disc && { arc: B.disc.arc, state: B.disc.state, rstate: B.disc.rstate });
   rec.ok('...and still no words on any of them', ['special', 'whirl', 'sprint', 'burst'].every((k) => !B[k] || B[k].words.length === 0),
     ['special', 'whirl', 'sprint', 'burst'].map((k) => B[k] && B[k].words));
   await P.page.evaluate(() => { const S = window._gameState.current; S._lastSwipe = 0; S._abilCd = {}; S._lastBurstAt = 0; });

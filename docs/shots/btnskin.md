@@ -30,7 +30,10 @@ over it.
 
 The owner's button sheet, drawn by the game's own code
 (`src/controls-harness.html`, saved by `node tools/qa/controls-sheet-shot.mjs`).
-The Jump row is ready for the real-jumping work (PR #782).
+The Attack row is the attack button's own states, drawn through the game's
+disc rules: it has **no cooldown** (the base attack has none; the mockup's
+sheet had used Attack as its example). The Jump row is ready for the
+real-jumping work (PR #782).
 
 ![sheet](btnskin-sheet.webp)
 

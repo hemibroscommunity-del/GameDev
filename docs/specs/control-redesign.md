@@ -1474,11 +1474,11 @@ it.
 |---|---|---|
 | Normal | gold ring, the picture in colour | ready |
 | Pressed | pushed in (0.94), darker ring and face | a finger is on it (`data-pressed`, written on the button by the touch handlers) |
-| Cooldown | dark ring and face, the picture grey, a sky-blue arc closing round the ring | the 1.5s special, the abilities' cooldowns, the burst, the shield's stamina lockout; the glow swells once when the arc closes |
+| Cooldown | dark ring and face, the picture grey, a sky-blue arc closing round the ring | the 1.5s special, the abilities' cooldowns, the burst, the shield's stamina lockout; the glow swells once when the arc closes. **Never the attack button** — the base attack has no cooldown (owner: "No cooldown for base attack though", on the first state sheet, which had copied the mockup's Attack example) |
 | Ready / Charged | the ring lit, a warm halo, two sparkles | the bow's held special (with AIM under the star), the shield UP and the sprint ON (on the warm face), and the attack disc while a monster is in play |
 | Disabled | all grey | no mana, no stamina, no weapon for it; the attack disc painted for a moment with nothing to press |
 
-The attack disc's states are the resolver's (`data-rstate`): `idle`
+The attack disc has no cooldown state; its states are the resolver's (`data-rstate`): `idle`
 (Disabled), `lit` (Normal), `hot` (Ready / Charged — the owner's v2.3.2264 "only
 during combat it changes color (like to orange) keeping its transparency"),
 `ghost` (a monster under it: the face nearly gone, the ring and a faded picture

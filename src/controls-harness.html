@@ -14,6 +14,7 @@
   .lab{justify-self:start;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#DDE3E1;text-shadow:0 1px 2px #000}
   .hd{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B9C1BF;text-shadow:0 1px 2px #000}
   .cell{position:relative}
+  .none{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#96A2A0;text-align:center;line-height:1.3;text-shadow:0 1px 2px #000}
 </style>
 </head>
 <body>
@@ -39,8 +40,30 @@ function cell(size, tone, state, icon, extra) {
 
 /* the same sizes the buttons themselves use (TouchControls rIcon, and each
    button's own share of its size) */
+/* ═══ THE ATTACK BUTTON HAS NO COOLDOWN ═══
+   Owner, on the first version of this sheet: "No cooldown for base attack
+   though".  The mockup's sheet used Attack as its example of all five states,
+   and the first cut of this page copied that; the game's attack button has no
+   cooldown, and never draws the arc.  So its row is drawn with the disc's OWN
+   states, through the very rules game.css gives the disc (a .bt-rjoy-base
+   wrapper carrying the data-rstate BroTown's resolver stamps), at the
+   opacities the resolver stamps:  lit (Normal), pressed, hot (Ready /
+   Charged: a monster in reach, the face see-through), idle (Disabled: painted
+   for a moment with nothing to press, the 0.5 rung) -- and, on a row of its
+   own, ghost (a monster under it: the outline). */
+const ATTACK = { normal: 'lit', pressed: 'lit', ready: 'hot', disabled: 'idle', ghost: 'ghost' };
+function attackCell(state) {
+  const rs = ATTACK[state];
+  if (!rs) return h('div', { className: 'none' }, 'no', h('br'), 'cooldown');
+  return h('div', {
+    className: 'cell bt-rjoy-base', 'data-rstate': rs, 'data-ricon': 'melee',
+    'data-pressed': state === 'pressed' ? '1' : undefined,
+    style: { width: 96, height: 96, opacity: rs === 'idle' ? 0.5 : 1 },
+  }, h(Skin, { size: 96, tone: 'ember', faceProps: { style: { opacity: rs === 'hot' ? 0.45 : (rs === 'ghost' ? 0.08 : 1) } } },
+    h(PaintedIcon, { src: ICON_URL.melee, size: 58, dim: rs === 'ghost' })));
+}
+
 const ROWS = [
-  ['Attack', 96, 'ember', (s, g) => h(PaintedIcon, { src: ICON_URL.melee, size: 58, dim: g })],
   ['Whirl', 48, 'slate', (s, g) => h(TornadoIcon, { size: Math.round(s * 0.7), grey: g })],
   ['Spec', 48, 'slate', (s, g) => h(StarburstIcon, { size: Math.round(s * 0.7), grey: g })],
   ['Block', 45, 'slate', (s, g) => h(PaintedIcon, { src: ICON_URL.shield, size: Math.round(s * 0.62), dim: g, pixelated: true })],
@@ -53,15 +76,20 @@ const ROWS = [
 function Sheet({ ground }) {
   const kids = [h('div', { key: 'c', className: 'hd' }, ground)];
   STATES.forEach((s) => kids.push(h('div', { key: 'h' + s, className: 'hd' }, s)));
-  ROWS.forEach(([name, size, tone, icon]) => {
+  /* a row: its label, then five cells (padded, so the next row starts on its own line) */
+  const row = (name, cells) => {
     kids.push(h('div', { key: name, className: 'lab' }, name));
-    STATES.forEach((s) => kids.push(h('div', { key: name + s }, cell(size, s === 'ready' && name === 'Block' ? 'warm' : tone, s, icon))));
+    for (let i = 0; i < 5; i++) kids.push(h('div', { key: name + i }, cells[i] || null));
+  };
+  row('Attack', STATES.map(attackCell));
+  ROWS.forEach(([name, size, tone, icon]) => {
+    row(name, STATES.map((s) => cell(size, s === 'ready' && name === 'Block' ? 'warm' : tone, s, icon)));
   });
   /* the sprint ring as its stamina meter, two thirds left */
-  kids.push(h('div', { key: 'm', className: 'lab' }, 'Sprint 66%'));
   const sprintIcon = ROWS.find((r) => r[0] === 'Sprint')[3];
-  kids.push(h('div', { key: 'm1' }, cell(48, 'slate', 'normal', sprintIcon, { meter: 0.66 })));
-  kids.push(h('div', { key: 'm2' }, cell(48, 'warm', 'on', sprintIcon, { meter: 0.66 })));
+  row('Sprint 66%', [cell(48, 'slate', 'normal', sprintIcon, { meter: 0.66 }), cell(48, 'warm', 'on', sprintIcon, { meter: 0.66 })]);
+  /* the attack button with a monster under it (in the Ready column: it is a fight) */
+  row('Attack, monster under it', [null, null, null, attackCell('ghost')]);
   return h('div', { className: 'sheet ' + ground }, kids);
 }
 
