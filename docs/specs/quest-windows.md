@@ -70,6 +70,11 @@ draws them.
   state change swaps a picture and nothing moves.
 - **The slot frame** is the slot's CSS background, not an `<img>`: the only
   picture in a reward is the reward (mp-questui counts them).
+- **A banner's words** sit under its crest and inside its bottom gold line,
+  both measured off the picture (game.css `.bt-qw-banner-text`, the rows in
+  its comment), and their sizes are shares of the banner's width. The first
+  cut ran the text block to the line itself, and in the game's own font the
+  thin banner's title and the flat one's last line sat on it.
 
 **Sideways** (`orientation: landscape` and `max-height: 560px`), each window
 is two columns:

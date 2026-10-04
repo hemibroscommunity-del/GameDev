@@ -112,7 +112,38 @@ async function body(P, wsPort, rec) {
   await P.page.waitForTimeout(1500);
   const myId = await H.readState(P, (S) => S.myId);
   const srv = () => H.adminPlayer(wsPort, myId).then((a) => (a && a.rpg) || null).catch(() => null);
-  const shot = (name) => P.page.screenshot({ path: `${OUT}/questwin-${TAG}-${name}.png` }).catch(() => {});
+  /* A picture waits for a new frame, and on this box's software renderer the
+     game's own frame takes most of a second at 3x: shots came back 2.5-3 s
+     after they were asked for, and the short moments (QUEST ACCEPTED!'s 2.2 s,
+     the confirmation's 1.9 s) were gone from them, before and after alike.
+     So the game's frames are held while the picture is taken (the page's own
+     requestAnimationFrame; Playwright's scripts run in a world of their own):
+     the window, its CSS motion and the canvas's last frame are what it shows,
+     and the held frames run the moment it is done. */
+  const shot = async (name) => {
+    const t0 = Date.now();
+    await P.page.evaluate(() => {
+      const w = window;
+      if (w.__qwHeld) return;
+      w.__qwHeld = [];
+      w.__qwRaf = w.requestAnimationFrame;
+      w.requestAnimationFrame = (cb) => { w.__qwHeld.push(cb); return 0; };
+    }).catch(() => {});
+    await P.page.waitForTimeout(60);   /* the frame in flight finishes and asks for its next */
+    try {
+      await P.page.screenshot({ path: `${OUT}/questwin-${TAG}-${name}.png` }).catch(() => {});
+    } finally {
+      await P.page.evaluate(() => {
+        const w = window;
+        const held = w.__qwHeld;
+        if (!held) return;
+        w.requestAnimationFrame = w.__qwRaf;
+        w.__qwHeld = null;
+        held.forEach((cb) => w.requestAnimationFrame(cb));
+      }).catch(() => {});
+    }
+    console.log('    QUESTWIN shot ' + name + ': ' + (Date.now() - t0) + ' ms');
+  };
 
   /* every banner, sampled the moment it is inserted (mp-questbanner's way) */
   await P.page.evaluate(() => {
@@ -183,7 +214,11 @@ async function body(P, wsPort, rec) {
   /* ── 2. accept ── */
   const accepted = await tap(P, '[data-tut="qoffer-confirm"]');
   rec.ok('a finger on Accept Quest (guard)', accepted);
-  await P.page.waitForTimeout(700);
+  /* soon: QUEST ACCEPTED! holds 2.2 s, and on this box's software renderer a
+     3x screenshot can take a second to come back -- at 700 ms the picture
+     missed it, before and after alike (the check below samples it as it is
+     inserted, so it never depended on the picture) */
+  await P.page.waitForTimeout(320);
   await shot('accepted');
   const bA = (await P.page.evaluate(() => window.__qw.slice())).find((b) => b.kind === 'accepted');
   console.log('    QUESTWIN accepted banner: ' + JSON.stringify(bA));

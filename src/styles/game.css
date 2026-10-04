@@ -6151,21 +6151,26 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 .bt-qw-banner--accepted{aspect-ratio:720/156;--qb:min(92vw,380px)}
 .bt-qw-banner--reward{aspect-ratio:720/200}
 .bt-qw-banner-art{position:absolute;inset:0;width:100%;height:100%;display:block}
-/* the text sits under the crest: rows 92-238 of 262 (the glowing one),
-   72-140 of 156 (the thin one), 74-186 of 200 (the flat one) */
-.bt-qw-banner-text{position:absolute;left:9%;right:9%;top:33%;bottom:7%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
-.bt-qw-banner--accepted .bt-qw-banner-text{top:48%;bottom:8%;left:12%;right:12%;gap:0}
-.bt-qw-banner--reward .bt-qw-banner-text{top:37%;bottom:10%;left:12%;right:12%;gap:0}
+/* the text sits under the crest and inside the bottom gold line, measured off
+   the pictures: rows 90-236 of 262 (the glowing one: its line is at 241),
+   76-133 of 156 (the thin one: its crest's tip reaches 81 at the middle, so
+   the words' capitals start below it, and its line is at 136), 72-177 of 200
+   (the flat one: 181) -- the first cut ran to the line itself, and in the
+   game's own font the thin one's title and the flat one's last line sat ON it */
+.bt-qw-banner-text{position:absolute;left:9%;right:9%;top:34.4%;bottom:10%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.bt-qw-banner--accepted .bt-qw-banner-text{top:48.5%;bottom:14.3%;left:12%;right:12%;gap:0}
+.bt-qw-banner--reward .bt-qw-banner-text{top:36%;bottom:11.5%;left:12%;right:12%;gap:0}
 .bt-qw-banner-head{font-size:calc(var(--qb) * 0.076);font-weight:900;line-height:1;letter-spacing:.03em;text-transform:uppercase;color:#FFD45C;
   text-shadow:0 2px 0 #3A2406,0 0 1px #3A2406,0 3px 6px rgba(0,0,0,.55);white-space:nowrap}
 .bt-qw-banner-title{font-size:calc(var(--qb) * 0.052);font-weight:800;line-height:1.25;color:#FFF8E8;text-shadow:0 2px 0 rgba(0,0,0,.5);
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bt-qw-banner .bt-qw-pay{margin-top:1px;font-size:calc(var(--qb) * 0.044);text-shadow:0 2px 0 rgba(0,0,0,.5)}
-.bt-qw-banner--accepted .bt-qw-banner-head{color:#FFE7A3;font-size:calc(var(--qb) * 0.05)}
-.bt-qw-banner--accepted .bt-qw-banner-title{font-size:calc(var(--qb) * 0.04);line-height:1.15}
+.bt-qw-banner--accepted .bt-qw-banner-head{color:#FFE7A3;font-size:calc(var(--qb) * 0.044)}
+.bt-qw-banner--accepted .bt-qw-banner-title{font-size:calc(var(--qb) * 0.034);line-height:1.05}
 
-.bt-qw-banner--reward .bt-qw-banner-head{color:#FFE7A3;font-size:calc(var(--qb) * 0.06)}
-.bt-qw-banner--reward .bt-qw-banner-title{font-size:calc(var(--qb) * 0.044);line-height:1.15}
+.bt-qw-banner--reward .bt-qw-banner-head{color:#FFE7A3;font-size:calc(var(--qb) * 0.054)}
+.bt-qw-banner--reward .bt-qw-banner-title{font-size:calc(var(--qb) * 0.04);line-height:1.1}
+.bt-qw-banner--reward .bt-qw-banner-sub{font-size:calc(var(--qb) * 0.034);line-height:1.15}
 .bt-qw-banner-sub{font-size:calc(var(--qb) * 0.04);font-weight:700;color:rgba(244,240,231,.8);text-shadow:0 2px 0 rgba(0,0,0,.5);
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* the crest's burst and the sparkles: once, as it arrives */
@@ -6206,6 +6211,10 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
   /* the banners smaller and higher, the confirmation under the claim's */
   .bt-qw-banner{--qb:min(48vw,310px)}
   .bt-qw-banner--compact{--qb:min(30vw,210px)}
+  /* the thin one and the flat one are short: at 310 px their smallest line
+     was under 11 px */
+  .bt-qw-banner--accepted{--qb:min(52vw,360px)}
+  .bt-qw-banner--reward{--qb:min(50vw,340px)}
   .bt-qw-plate{top:calc(env(safe-area-inset-top, 0px) + 76px)}
   .bt-qw-plate--top{top:calc(env(safe-area-inset-top, 0px) + 42px)}
   .bt-npcdlg-scrim.bt-qw-scrim--done{padding-top:84px}
