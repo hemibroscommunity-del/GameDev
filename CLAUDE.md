@@ -1028,7 +1028,29 @@ remnant to migrate server-side, not a mode to preserve.
     - `mp-dmgsize` (20 checks on a phone: sizes, marks, gaps, a hit on you,
       stacks, a kill's XP and gold, the words), mp-elemhits and mp-critpreview
       read the scaled cap; TRAPS §136 (emptying `S.dmgNumbers` leaves its Texts
-      drawn): docs/specs/damage-number-size.md.)
+      drawn): docs/specs/damage-number-size.md.
+  - Since v2.3.3034 A LOST CONNECTION IS NOTICED, AND NOTHING THE WORKER
+    SETTLES IS LOST TO IT -- the owner: "Logs aren't going to the inventory
+    after getting chopped, and points in point stat allocation menu weren't
+    getting allocated ... screen had gone black then came back from low
+    memory":
+    - measured (`mp-recoverpay`): every way back from a black screen (the
+      rebuild, the reload, a context restore) settled fine; an IDLE LOGOUT (the
+      world plays on behind its banner) and a DEAD PIPE (the socket reads OPEN
+      and carries nothing) lost every chop and spend -- the harvest fell to the
+      timer bar with no numbers, its log still flown to the bag;
+    - wsClient `_aliveTimer`: 15 s with no frame (`DEAD_PIPE_MS`), or 7 s after
+      a settled send with none (`SETTLE_SILENT_MS`), and the socket is rejoined
+      (`_forceRejoin`, v2.3.778's resume-resync surgery); a strike nothing
+      answered, or with no socket to carry it, goes again after the rejoin
+      (`_holdForRejoin`: strikes only, a node pays once; never a spend);
+    - an idle logout comes back on the first touch or key (`_armComeBack`),
+      and a thumb held on the stick is input (`S.stickX || S.stickY` stamps
+      `_lastInputAt`: two minutes of walking used to log you out);
+    - `combatHelpers.offlineRefused`: no harvest or cook while the socket is
+      not live ("Reconnecting…"), the Points window's Spend greyed with the
+      reason, and `channelShim.reconnectNow()` bringing the session back;
+    - TRAPS §138: docs/specs/dead-connection.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

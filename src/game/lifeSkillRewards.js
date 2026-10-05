@@ -20,7 +20,7 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.19
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
-import { pushDmgPopup, swimRefused /* v2.3.3012 */ } from '@/game/combatHelpers.js';
+import { pushDmgPopup, swimRefused /* v2.3.3012 */, offlineRefused /* v2.3.3034 */ } from '@/game/combatHelpers.js';
 import { climbOut } from '@/game/wheelSwim.js';   /* v2.3.3012: a seat on the bank ends a swim */
 import { jumpAirborne } from '@/game/jump.js';     /* v2.3.3017 */
 import { MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915 */
@@ -100,6 +100,14 @@ export function startExtraction(S, node, skill, extra) {
     /* v2.3.3017: and nothing is started in the air -- a tap mid-jump waits
        for you to come down (quietly: you will be in a moment) */
     if (jumpAirborne(S, Date.now())) return;
+    /* v2.3.3034: and nothing the worker pays for is started while it cannot
+       hear you (combatHelpers offlineRefused: "Reconnecting...", and the
+       session brought back) -- its hits would never be asked for, the bar
+       would drain on the timer with no numbers, and the strike at the end
+       would go nowhere.  A node the worker does not own (a dungeon's, an
+       old worker's) needs no socket and is left alone; a cook is always
+       the worker's (cook_request). */
+    if ((S._serverGatherNodes || skill === 'cooking') && offlineRefused(S)) return;
     /* v2.3.854: mining lines the character up with the vein the same way
        fishing lines up with the pond.  Seat the player above the ore so the
        pickaxe strike (the baked rock in the south 'mine' sheet, centered
