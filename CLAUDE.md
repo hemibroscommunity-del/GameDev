@@ -1004,6 +1004,53 @@ remnant to migrate server-side, not a mode to preserve.
     - `mp-wheeldoors`, test-world-core "the buildings' doors",
       `tutorial.test.mjs` §9: docs/specs/wheel-doors.md, WORLD-MAP-PIPELINE
       "The buildings have doors".
+  - Since v2.3.3033 DAMAGE NUMBERS ARE 1.75x BIGGER -- the owner: "Damage
+    numbers for players and monsters needs to be about anywhere from 1.5-2x
+    bigger":
+    - effectsRenderer `DMG_SCALE` 1.75, the middle of the ask (`?dmgscale=1.5`
+      .. `2`, 1 to 3, for a tab): every DAMAGE number -- a hit you deal, a crit,
+      a hit on you or on a teammate, a tick, a gathering hit -- is drawn at that
+      times its old 21 / 38 world px (`isDamagePopup`: it has a digit, does not
+      start with "+", and is a hit taken, carries a weapon / crit / heart /
+      element mark, or is a plain number); "Blocked!", "Dodged", "+30 XP",
+      "+25 G", a heal's "+12" and every word keep 21 px, so a kill's number is
+      the biggest thing over the monster and its XP and gold read under it;
+    - what depends on the size follows it: the crit still 1.8x the plain one,
+      the 22 px mark cap and the gap after the digits x the scale, the stroke
+      and halo of classic Text, the stacking (26 px at two 21 px numbers is
+      26/21 of their average font, its window with it), the climb (40 -> 70 px
+      a second, so hits 0.7 s apart do not touch), and the spawn height -- the
+      centre lifted 0.9 of the extra size (`DMG_LIFT`) so the bigger glyph keeps
+      the air over the bar the old one had;
+    - the glyph atlas is baked at 128 px, not 100 (`DMG_BMP_BAKE_PX`): the
+      biggest crit was enlarged 1.33x from its bake, now 1.04x, for +0.7 MB of
+      6 -- a bake is a DENSITY knob, never a size one (TRAPS §137);
+    - `mp-dmgsize` (20 checks on a phone: sizes, marks, gaps, a hit on you,
+      stacks, a kill's XP and gold, the words), mp-elemhits and mp-critpreview
+      read the scaled cap; TRAPS §136 (emptying `S.dmgNumbers` leaves its Texts
+      drawn): docs/specs/damage-number-size.md.
+  - Since v2.3.3034 A LOST CONNECTION IS NOTICED, AND NOTHING THE WORKER
+    SETTLES IS LOST TO IT -- the owner: "Logs aren't going to the inventory
+    after getting chopped, and points in point stat allocation menu weren't
+    getting allocated ... screen had gone black then came back from low
+    memory":
+    - measured (`mp-recoverpay`): every way back from a black screen (the
+      rebuild, the reload, a context restore) settled fine; an IDLE LOGOUT (the
+      world plays on behind its banner) and a DEAD PIPE (the socket reads OPEN
+      and carries nothing) lost every chop and spend -- the harvest fell to the
+      timer bar with no numbers, its log still flown to the bag;
+    - wsClient `_aliveTimer`: 15 s with no frame (`DEAD_PIPE_MS`), or 7 s after
+      a settled send with none (`SETTLE_SILENT_MS`), and the socket is rejoined
+      (`_forceRejoin`, v2.3.778's resume-resync surgery); a strike nothing
+      answered, or with no socket to carry it, goes again after the rejoin
+      (`_holdForRejoin`: strikes only, a node pays once; never a spend);
+    - an idle logout comes back on the first touch or key (`_armComeBack`),
+      and a thumb held on the stick is input (`S.stickX || S.stickY` stamps
+      `_lastInputAt`: two minutes of walking used to log you out);
+    - `combatHelpers.offlineRefused`: no harvest or cook while the socket is
+      not live ("Reconnecting…"), the Points window's Spend greyed with the
+      reason, and `channelShim.reconnectNow()` bringing the session back;
+    - TRAPS §138: docs/specs/dead-connection.md.
   - Since v2.3.3035 THE HARVEST'S BAR IS GREEN, OVER THE RESOURCE, AND READS
     "7/10" -- the owner: "I want resource harvesting bar to be green and to
     appear above the resource, not the player head. It should also list the

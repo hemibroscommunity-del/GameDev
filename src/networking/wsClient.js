@@ -332,6 +332,8 @@ export function setupWebSocket(ctx) {
            anyway.  Cheap, and true of any close that beats the open. */
         if (ws.readyState !== 1) return;
         S._realtimeStatus = 'connected';
+        _lastInboundAt = Date.now();   /* v2.3.3034: a fresh socket gets a fresh window */
+        _settleSentAt = 0;
         reconnectDelay = 1000;
         /* ═══ v2.3.2523: THE GEAR-STASH SEED IS BUDGETED, NOT JUST CAPPED ═══
            The worker DROPS an inbound frame over MAX_INBOUND_BYTES (16 KB)
@@ -610,6 +612,10 @@ export function setupWebSocket(ctx) {
         setChatLog(_toConsumableArray(S.chatLog));
       };
       ws.onmessage = function (evt) {
+        /* v2.3.3034: any frame at all says the pipe is alive (_aliveTimer) */
+        _lastInboundAt = Date.now();
+        _settleSentAt = 0;
+        if (_lastStrike) _lastStrike.answered = true;
         var _wsStart = performance.now();
         var msg;
         try {
@@ -1138,6 +1144,15 @@ export function setupWebSocket(ctx) {
                  exact moment the "world is full" screen stops being true.
                  Idempotent — a no-op on every ordinary join. */
               _roomFullCleared();
+              /* v2.3.3034: we are in again -- an idle or superseded banner is
+                 no longer true, and a strike that had no socket to carry it
+                 goes now (_holdForRejoin).  Only into a world the game will
+                 show: a not-ready sync is asked again in a few seconds. */
+              if (!S._netHold) {
+                _disarmComeBack();
+                try { var _rb = document.getElementById('bt-resume-banner'); if (_rb) _rb.remove(); } catch (e) {}
+                _flushHeldForRejoin();
+              }
               /* ═══ v2.3.1814: WEAR YOUR OWN FACE ═══
                  The character's name and look are stored against the identity
                  now (caps.charLock), and the worker echoes them here.  This is
@@ -3444,6 +3459,7 @@ export function setupWebSocket(ctx) {
         if ((event && event.code === 4006) || (event && event.reason === 'idle timeout')) {
           S._realtimeStatus = 'idle';
           showResumeBanner('You were away, so your character logged out.', "I'm back");
+          _armComeBack();   /* v2.3.3034: the next touch is "I'm back" */
           return;
         }
         if (event && event.reason === 'superseded by reconnect') {
@@ -3495,13 +3511,10 @@ export function setupWebSocket(ctx) {
         var _btn = document.createElement('button');
         _btn.textContent = label;
         _btn.style.cssText = 'margin-left:8px;padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:#3dd497;color:#08231a;font-weight:700;cursor:pointer;';
-        _btn.onclick = function () {
-          _el.remove();
-          /* clear the AFK clock first, or the idle check would hang up
-             again on its very next frame. */
-          try { stateRef.current._lastInputAt = Date.now(); } catch (e) {}
-          connect();
-        };
+        /* v2.3.3034: _comeBack -- the banner away, the AFK clock cleared, and
+           a connect only if none is under way: the touch that pressed this
+           button has already brought an idle player back (_armComeBack). */
+        _btn.onclick = function () { _comeBack(); };
         _el.appendChild(_btn);
         document.body.appendChild(_el);
       } catch (e) { /* DOM unavailable */ }
@@ -3528,7 +3541,158 @@ export function setupWebSocket(ctx) {
     var RESYNC_AWAY_MS = 5000;
     var _hiddenAt = 0;
     var _lastAliveAt = Date.now();
-    var _aliveTimer = setInterval(function () { _lastAliveAt = Date.now(); }, 1000);
+    /* ═══ v2.3.3034: A SOCKET THAT SAYS OPEN AND CARRIES NOTHING ═══
+       Owner, 2026-10-05: "Logs aren't going to the inventory after getting
+       chopped, and points in point stat allocation menu weren't getting
+       allocated.  It was a game where screen had gone black then came back
+       from low memory" -- and the harvest bar had no numbers, which is the
+       bar of a harvest whose hits the worker never sent.  Every recovery from
+       a black screen was measured settling chops and spends correctly
+       (tools/qa/mp/mp-recoverpay.mjs A-C); what does not is a connection that
+       is gone while the game plays on.  One way is a dead pipe: the network
+       under the socket dropped (a phone starved of memory, a frozen page) and
+       nobody told it, so readyState stays OPEN, every send vanishes and
+       nothing comes in -- and nothing here ever noticed.  Measured: 20 s into
+       one the page still read "connected" and lost a chop and a point.
+       The worker pings every ~3 s (tick.js _tickPingAndAfk), so silence is
+       evidence: DEAD_PIPE_MS of it while we are visible and running, or
+       SETTLE_SILENT_MS after an action the worker settles (a strike, a spend:
+       their answer would be on its way), and the socket is dead -- rejoined
+       the way a long freeze is (_forceRejoin).  Our OWN freeze is not its
+       silence: a gap in this 1 s timer gives the socket a fresh window. */
+    var DEAD_PIPE_MS = 15000;
+    var SETTLE_SILENT_MS = 7000;
+    var _lastInboundAt = Date.now();
+    var _settleSentAt = 0;
+    /* the last node_strike, and whether ANYTHING came in after it was sent:
+       replayed after a rejoin if nothing did (it went down the dead pipe; a
+       strike the worker DID get answers itself -- paid, or refused -- and a
+       node is paid once, so a replay of one it got is refused as
+       node-already-dead).  `answered` is its own flag, not a comparison with
+       _lastInboundAt, because our own freeze moves that clock (below). */
+    var _lastStrike = null;
+    var _heldForRejoin = [];
+    var _aliveTimer = setInterval(function () {
+      var now = Date.now();
+      var gap = now - _lastAliveAt;
+      _lastAliveAt = now;
+      /* We were frozen, not the socket: whatever it carried while we were
+         stopped is queued for us, so its silence is counted from now -- and
+         an action waiting on an answer waits its full window from now too
+         (never erased: a strike sent just before a freeze is exactly the one
+         that can go down a pipe the freeze broke). */
+      if (gap > 3000) { _lastInboundAt = now; if (_settleSentAt) _settleSentAt = now; return; }
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (!ws || ws.readyState !== 1 || S._realtimeStatus !== 'connected') return;
+      var silent = now - _lastInboundAt;
+      var why = silent > DEAD_PIPE_MS ? 'silent ' + Math.round(silent / 1000) + 's'
+        : (_settleSentAt && now - _settleSentAt > SETTLE_SILENT_MS)
+          ? 'no answer ' + Math.round((now - _settleSentAt) / 1000) + 's after a settled action' : null;
+      if (why) _forceRejoin('dead-pipe', why);
+    }, 1000);
+    /* v2.3.3034: the v2.3.778 resume-resync surgery, shared with the dead
+       pipe: detach the handlers BEFORE closing, so neither scheduleReconnect
+       nor a late server 'superseded by reconnect' close can fire on the old
+       socket, and connect fresh -- the rejoin's state_sync is the whole
+       world again, with zero server changes. */
+    function _forceRejoin(tag, why) {
+      try {
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash(tag, why + ', forcing rejoin');
+        }).catch(function () {});
+      } catch (e) {}
+      var _replay = tag === 'dead-pipe' && !!_lastStrike && !_lastStrike.answered
+        && Date.now() - _lastStrike.at < 60000;
+      if (_replay) _holdForRejoin(_lastStrike.msg);
+      /* QA probe (mp-recoverpay): each dead pipe noticed -- an event, so a
+         push here costs nothing on a page where it never happens */
+      if (tag === 'dead-pipe') {
+        try { (window.__btDeadPipes || (window.__btDeadPipes = [])).push({ at: Date.now(), why: why, replay: _replay }); } catch (e) {}
+      }
+      _lastStrike = null;
+      _settleSentAt = 0;
+      var _oldWs = ws;
+      ws = null;
+      try {
+        if (_oldWs) {
+          _oldWs.onclose = null;
+          _oldWs.onmessage = null;
+          _oldWs.onerror = null;
+          _oldWs.close(1000, tag === 'dead-pipe' ? 'dead pipe' : 'resume resync');
+        }
+      } catch (e) {}
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectDelay = 1000;
+      try { connect(); } catch (e) {}
+    }
+    /* v2.3.3034: a strike with no socket to carry it (an idle logout the
+       player is coming back from, a rejoin under way) waits for the next
+       state_sync instead of vanishing -- the worker pays a strike it has no
+       extraction record for (gathering.js: "permissive on missing extraction
+       state"), from where the rejoin put you, which is where you stood.
+       Strikes only: a node is paid once, so one that also got through is
+       refused, never paid twice.  A point spend is NOT held -- each one
+       spends a point, and one that did get through would spend two. */
+    function _holdForRejoin(msg) {
+      if (!msg) return;
+      var now = Date.now();
+      _heldForRejoin = _heldForRejoin.filter(function (h) { return now - h.at < 60000; });
+      if (_heldForRejoin.length >= 4) _heldForRejoin.shift();
+      _heldForRejoin.push({ msg: msg, at: now });
+    }
+    function _flushHeldForRejoin() {
+      if (!_heldForRejoin.length || !ws || ws.readyState !== 1) return;
+      var now = Date.now();
+      var held = _heldForRejoin;
+      _heldForRejoin = [];
+      for (var i = 0; i < held.length; i++) {
+        if (now - held[i].at >= 60000) continue;
+        try { ws.send(JSON.stringify(held[i].msg)); } catch (e) {}
+      }
+    }
+    /* ═══ v2.3.3034: BACK FROM AN IDLE LOGOUT ON THE FIRST TOUCH ═══
+       The idle logout (v2.3.1913) hangs up after two minutes without a touch
+       -- and the game PLAYS ON behind its banner: no veil, the world still
+       drawn, a harvest still swung (on the timer, its plan never asked for),
+       its log still flown to the bag, every spend sent to nothing.  A black
+       screen waited out for two minutes is exactly that.  The banner's "I'm
+       back" is still there, but any touch or key now IS "I'm back": the
+       abandoned tab the logout exists for never touches anything, so it
+       stays out (mp-afk), and a player who does is in again within a second
+       instead of playing a world that no longer answers. */
+    var _comeBackArmed = false;
+    function _onComeBackInput() { _comeBack(); }
+    function _armComeBack() {
+      if (_comeBackArmed || typeof window === 'undefined') return;
+      _comeBackArmed = true;
+      try {
+        window.addEventListener('pointerdown', _onComeBackInput, { passive: true, capture: true });
+        window.addEventListener('touchstart', _onComeBackInput, { passive: true, capture: true });
+        window.addEventListener('keydown', _onComeBackInput, { passive: true, capture: true });
+      } catch (e) {}
+    }
+    function _disarmComeBack() {
+      if (!_comeBackArmed || typeof window === 'undefined') return;
+      _comeBackArmed = false;
+      try {
+        window.removeEventListener('pointerdown', _onComeBackInput, { capture: true });
+        window.removeEventListener('touchstart', _onComeBackInput, { capture: true });
+        window.removeEventListener('keydown', _onComeBackInput, { capture: true });
+      } catch (e) {}
+    }
+    function _comeBack() {
+      _disarmComeBack();
+      try { var _b = document.getElementById('bt-resume-banner'); if (_b) _b.remove(); } catch (e) {}
+      /* clear the AFK clock first, or the idle check would hang up again on
+         its very next frame */
+      try { stateRef.current._lastInputAt = Date.now(); } catch (e) {}
+      /* one socket at a time: the banner's own button and the touch that
+         pressed it both land here */
+      if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectDelay = 1000;
+      try { connect(); } catch (e) {}
+    }
     function _resumeRecover(tag) {
       try {
         import('../debug/crashTrap.js').then(function (ct) {
@@ -3557,23 +3721,9 @@ export function setupWebSocket(ctx) {
              state_sync (complete zone monster list) with zero server
              changes.  Detach handlers BEFORE closing so neither
              scheduleReconnect nor a late server 'superseded by reconnect'
-             close can fire on the old socket. */
-          try {
-            import('../debug/crashTrap.js').then(function (ct) {
-              ct.recordCrash('resume-resync', tag + ' away ' + Math.round(_awayMs / 1000) + 's, forcing rejoin');
-            }).catch(function () {});
-          } catch (e) {}
-          var _oldWs = ws;
-          ws = null;
-          try {
-            _oldWs.onclose = null;
-            _oldWs.onmessage = null;
-            _oldWs.onerror = null;
-            _oldWs.close(1000, 'resume resync');
-          } catch (e) {}
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          reconnectDelay = 1000;
-          try { connect(); } catch (e) {}
+             close can fire on the old socket.  (v2.3.3034: that surgery is
+             _forceRejoin now, shared with the dead pipe.) */
+          _forceRejoin('resume-resync', tag + ' away ' + Math.round(_awayMs / 1000) + 's');
         }
         /* readyState 0 (CONNECTING): a connect is already in flight. */
         _hiddenAt = 0;
@@ -3825,9 +3975,28 @@ export function setupWebSocket(ctx) {
         _batchTimer = null;
       }
     }
+    /* v2.3.3034: the actions the WORKER settles and answers -- a strike is
+       paid (player_state, harvest_credit) or refused, a spend acked, a start
+       answered with its hits.  The dead-pipe watch (_aliveTimer) holds one of
+       these to SETTLE_SILENT_MS: silence after it means nothing is listening. */
+    var SETTLED_SENDS = { node_strike: 1, extraction_start: 1, prog3_allocate: 1, stat_allocate: 1, cook_request: 1 };
     var channelShim = {
       send: function send(msg) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          /* v2.3.3034: a finished harvest is not dropped on the floor while
+             we are out (see _holdForRejoin), and the player who just
+             finished one is back: bring the session back for them. */
+          if (msg && msg.type === 'node_strike' && S._realtimeStatus !== 'superseded'
+              && S._realtimeStatus !== 'frozen' && S._realtimeStatus !== 'rejected') {
+            _holdForRejoin(msg);
+            try { channelShim.reconnectNow(); } catch (e) {}
+          }
+          return;
+        }
+        if (msg && SETTLED_SENDS[msg.type] === 1) {
+          if (!_settleSentAt) _settleSentAt = Date.now();
+          if (msg.type === 'node_strike') _lastStrike = { msg: msg, at: Date.now(), answered: false };
+        }
         /* Direct message types — sent immediately to server, not as broadcast events */
         if (msg.type === 'monster_damage') {
           ws.send(JSON.stringify(msg));
@@ -4210,6 +4379,28 @@ export function setupWebSocket(ctx) {
         reconnectDelay = 1000;
         try { connect(); } catch (e) {}
       },
+      /* v2.3.3034: for an action the WORKER settles, refused because the
+         socket is not live (combatHelpers offlineRefused, the Points spend):
+         get back in if that is ours to do, and say which case this is so the
+         refusal can say it.
+           'elsewhere'    another window has this character (superseded) --
+                          taking it back is the banner's button, never a tap
+                          on a tree;
+           'stopped'      frozen, rejected, a reset: nothing to come back to;
+           'reconnecting' a connect is under way now (an idle logout comes
+                          back exactly as its banner would bring it). */
+      reconnectNow: function reconnectNow() {
+        var st = S._realtimeStatus;
+        if (st === 'superseded') return 'elsewhere';
+        if (st === 'frozen' || st === 'rejected' || S._characterReset || S._joinRejectedFatal) return 'stopped';
+        if (st === 'idle') { _comeBack(); return 'reconnecting'; }
+        if (st === 'full') return 'reconnecting';   /* the queue screen is up and retrying */
+        if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return 'reconnecting';
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectDelay = 1000;
+        try { connect(); } catch (e) {}
+        return 'reconnecting';
+      },
       /* v2.3.1913: LOG OUT AN IDLE CHARACTER.  Owner: "Sometimes I login
          to the game and see characters I played in separate window hours
          ago just idle.  Game should be logging out characters after 2
@@ -4246,6 +4437,7 @@ export function setupWebSocket(ctx) {
         } catch (e) {}
         if (reconnectTimer) clearTimeout(reconnectTimer);
         showResumeBanner('You were away, so your character logged out.', "I'm back");
+        _armComeBack();   /* v2.3.3034: the next touch is "I'm back" */
       }
     };
     S.channel = channelShim;
@@ -4260,6 +4452,7 @@ export function setupWebSocket(ctx) {
          flags), the next refusal paints it again. */
       hideRoomFull();
       clearInterval(_aliveTimer); /* v2.3.778 resync heartbeat */
+      _disarmComeBack();   /* v2.3.3034 */
       if (ws) {
         try {
           ws.close();
