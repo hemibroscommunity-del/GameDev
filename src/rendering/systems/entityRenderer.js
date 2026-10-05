@@ -131,7 +131,7 @@ const SKULL_RED_TINT = 0xff5e6c;
    the DOM dashboard also uses -- reuse the same `?v=` cache key so
    the browser hits the warm cache instead of issuing a fresh request. */
 const HUD_BAR_VER = '2.3.68';
-const _hudBarTex = { hp: null, mp: null, stam: null, barFrame: null, barFull: null };
+const _hudBarTex = { hp: null, mp: null, stam: null, barFrame: null, barFull: null, nodeFull: null };
 let _hudBarLoadStarted = false;
 function _ensureHudBarTextures() {
   if (_hudBarLoadStarted) return;
@@ -158,6 +158,10 @@ function _ensureHudBarTextures() {
      drain logic is reused unchanged. */
   Assets.load('/ui/bars/hp-frame.png?v=2.3.1273').then(t => { _hudBarTex.barFrame = t; }).catch(() => {});
   Assets.load('/ui/bars/hp-full.png?v=2.3.1273').then(t => { _hudBarTex.barFull = t; }).catch(() => {});
+  /* v2.3.3035: the harvest bar's GREEN fill -- the same art with its red
+     turned green (tools/ui/green-node-bar.sh).  Loaded beside the red one, on
+     the HUD's first frame, so it is in long before any harvest. */
+  Assets.load('/ui/bars/node-full-green.png?v=2.3.3035').then(t => { _hudBarTex.nodeFull = t; }).catch(() => {});
 }
 
 /* v2.3.1273: shared geometry for the owner's bar art.  The red fill
@@ -182,6 +186,9 @@ const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
 const NOTICE_MS = 1100;
 const PLAYER_HPBAR_W = 76;
 const PLAYER_HPBAR_H = Math.round(PLAYER_HPBAR_W * HPBAR_ASPECT);   /* 22 */
+/* v2.3.3035: the harvest's bar is drawn at this size over the resource, and
+   effectsRenderer hangs it by its half height (_nodeHpBarAt) */
+export const HPBAR_BIG_H = PLAYER_HPBAR_H;
 const HPBAR_FLASH_MS = 160;   /* white flash on damage */
 /* v2.3.1638: world-space gap between the TOP EDGE of a monster's HP bar
    and the centre of a damage popup spawned over it.  Must clear the two
@@ -593,18 +600,22 @@ function _drawQuestBadge(g, fill) {
    math disagrees, rendering the full art at the wrong width.  A fresh
    Texture sets orig = frame and everything stays consistent; it is a
    tiny view object over the SHARED source, not a GPU upload. */
-function _hpFillTexFor(holder, frac) {
-  const base = _hudBarTex.barFull;
+/* v2.3.3035: `fill` -- which full bar to crop: the red HP fill by default,
+   the node bar's green (drawNodeHpBar).  The crop is re-made when the art
+   changes too, so a holder never shows a crop of the other colour. */
+function _hpFillTexFor(holder, frac, fill) {
+  const base = fill || _hudBarTex.barFull;
   if (!base) return null;
   const f = Math.max(0.001, Math.min(1, frac));
   const w = Math.max(1, Math.round(base.width * f));
-  if (!holder._hpFillTex || holder._hpFillTexW !== w) {
+  if (!holder._hpFillTex || holder._hpFillTexW !== w || holder._hpFillTexSrc !== base) {
     const old = holder._hpFillTex;
     holder._hpFillTex = new Texture({
       source: base.source,
       frame: new Rectangle(0, 0, w, base.height),
     });
     holder._hpFillTexW = w;
+    holder._hpFillTexSrc = base;
     if (old) old.destroy(false);
   }
   return holder._hpFillTex;
@@ -643,8 +654,10 @@ function _nodeHpBarHide(holder) {
    replace that"), it took over that bar's other two jobs as well:
      `smooth`  the harvest is on the old TIMER (an old worker, the kill
                switch, a plan that never came): `frac` drains with the clock
-               and there is no number, because nothing was hit -- and no ghost
-               or flash, which would fire on every frame of a drain;
+               -- and no ghost or flash, which would fire on every frame of a
+               drain.  (Its number: none until v2.3.3035, the node's HP worn
+               down with the clock since -- the owner's "the bar has no
+               numbers" was this bar.);
      `call`    the window is open and nobody is gesturing: the empty bar
                pulses in a gold halo, the old bar's flash, because a frozen
                character over a still bar reads as a game that has stopped
@@ -711,7 +724,11 @@ export function drawNodeHpBar(layer, holder, bar) {
   if (fr.texture !== frameTex) fr.texture = frameTex;
   fr.width = W; fr.height = H; fr.x = x; fr.y = y; fr.alpha = 1;
   const fill = holder._nbFill;
-  const fillTex = f01 > 0 ? _hpFillTexFor(holder, f01) : null;
+  /* v2.3.3035, owner: "I want resource harvesting bar to be green" -- the
+     node's own fill, not the HP bar's red (that one is yours and the
+     monsters'); the red only until the green has loaded, on the first frames */
+  const fillTex = f01 > 0 ? _hpFillTexFor(holder, f01, _hudBarTex.nodeFull) : null;
+  if (fillTex) holder._nbGreen = !!_hudBarTex.nodeFull && holder._hpFillTexSrc === _hudBarTex.nodeFull;   /* for the QA probe */
   if (fillTex) {
     if (fill.texture !== fillTex) fill.texture = fillTex;
     fill.width = Math.max(1, W * f01); fill.height = H;
@@ -757,11 +774,18 @@ export function drawNodeHpBar(layer, holder, bar) {
   const txt = big ? holder._nbTextBig : holder._nbText;
   const other = big ? holder._nbText : holder._nbTextBig;
   if (other.alpha !== 0) other.alpha = 0;
-  if (bar.hp == null) { txt.alpha = 0; return; }   /* the timer: nothing was hit, so no number */
-  const str = String(Math.max(0, Math.round(bar.hp)));
+  if (bar.hp == null) { txt.alpha = 0; return; }
+  /* v2.3.3035, owner: "It should also list the numbers on the bar" -- what is
+     left and what there was, "7/10", the way a monster's is read.  Fitted to
+     the bar's inside: a high tier's "120/120" is narrowed, never spilled. */
+  const str = Math.max(0, Math.round(bar.hp)) + (bar.maxHp > 0 ? '/' + Math.round(bar.maxHp) : '');
   if (txt.text !== str) txt.text = str;
-  if (txt.scale.x !== k) txt.scale.set(k);
+  let tk = k;
+  const inside = W * HPBAR_IN_W * 0.92;
+  if (txt.width > 0 && txt.scale.x > 0 && (txt.width / txt.scale.x) * k > inside) tk = inside / (txt.width / txt.scale.x);
+  if (txt.scale.x !== tk) txt.scale.set(tk);
   txt.x = x; txt.y = y; txt.alpha = 1;
+  holder._nbStr = str;   /* for the QA probe (__btNodeHpBar) */
 }
 
 /* v2.3.261 (Bro-NFT Phase 4): trait textures for the local player's
@@ -5502,13 +5526,13 @@ export function selfGathering(S) {
   const ex = S && S._extraction;
   return !!(ex && (ex.status === 'waiting' || ex.status === 'ready')) && !selfCorpseUp(S);
 }
-/* The band's centre over a figure that is not your display -- the lumberjack
-   and the cook stand-ins, which stand with their boots at (x, bootsY) and hide
-   the display while they work (_chopHide) -- at the height the band is over
-   your own head: your boots, up to your centre, up to PLAYER_BAND_Y. */
-export function bandOverBoots(x, bootsY, zoneScale) {
-  const zs = zoneScale || 1;
-  return { x, y: bootsY - standFootDy(zs) + PLAYER_BAND_Y * PLAYER_SIZE_MULT * zs, scale: PLAYER_SIZE_MULT * zs, feet: bootsY };
+/* v2.3.3035: the scale the band over a figure is drawn at, in a zone of
+   perspective `zoneScale` -- the harvest's bar is drawn at it at the resource,
+   "as large as the normal hp bar" (v2.3.3027) wherever it hangs.  (v2.3.3027's
+   bandOverBoots, the band over a stand-in's boots, went with the bar over the
+   head.) */
+export function bandScale(zoneScale) {
+  return PLAYER_SIZE_MULT * (zoneScale || 1);
 }
 function _applyBuildScale(display, pscale, heightId, frameId) {
   const b = buildScale(heightId, frameId);
@@ -14618,19 +14642,9 @@ export class EntityRenderer {
         ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
       S._selfBandTopY = display.visible
         ? display.y + (PLAYER_BAND_Y - _bandHalf) * Math.abs(display.scale.y || 1) : null;
-      /* v2.3.3027: and the band's CENTRE and the scale it is drawn at, for
-         the harvest's bar, which takes the band while you gather
-         (effectsRenderer _drawGatherHpBar).  Through the ui layer, which
-         undoes your build's stretch, as the HP bar it stands in for is.  One
-         object, rewritten: this runs every frame. */
-      const _b = S._selfBand || (S._selfBand = { on: false, x: 0, y: 0, scale: 1, feet: 0 });
-      const _ui = display._uiLayer;
-      const _k = (display.scale ? display.scale.y : 1) * (_ui && _ui.scale ? _ui.scale.y : 1);
-      _b.on = !!display.visible;
-      _b.x = display.x;
-      _b.y = display.y + PLAYER_BAND_Y * _k;
-      _b.scale = Math.abs(_k) || 1;
-      _b.feet = typeof S._bodyFootY === 'number' ? S._bodyFootY : display.y;   /* for the probe: how far over the boots */
+      /* v2.3.3027 published the band's centre here too (S._selfBand), for the
+         harvest's bar over your head; v2.3.3035 put that bar over the
+         resource, so nothing reads it and it is gone. */
     }
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED

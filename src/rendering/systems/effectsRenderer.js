@@ -264,7 +264,7 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
                               feet; 32 is ~43% and still reads at phone size. */
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHp /* v2.3.3035: a timer harvest's bar reads the node's HP */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
@@ -275,7 +275,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandOverBoots /* v2.3.3027: the band over the lumberjack and the cook */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
@@ -500,7 +500,7 @@ import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
-import { wheelNodeView, WheelFish } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
+import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar over a spot's school */ } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
 import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
@@ -1743,23 +1743,35 @@ const NODE_ART_BASE = { tree: 0.839, oreVein: 0.737 };
 /* v2.3.2956: where a node's HP bar hangs, as a fraction of its frame --
    measured off the same webps' alpha (>40): the pine's crown tops out at
    0.103, the ore's rock bottoms out at its ground line (NODE_ART_BASE), the
-   pond's water at 0.686.  `edge` says which side of that line the bar goes:
-   over the CROWN for a tree (the chopper stands at the trunk) and UNDER the
-   rock and the pond (the miner and the angler are above them).  Never near
-   the head -- the player's own HP bar is the same art, right there.  `gap`
-   is the clear space between that line and the bar; the rock's is wider
-   because the miner's boots hang just below the ore's base (measured on the
-   mp-gatherhits capture: a 4 px gap let them clip the bar's number). */
+   pond's water at 0.686.  It went over the CROWN for a tree and UNDER the
+   rock and the pond (the miner and the angler are above them).  (Superseded,
+   below: v2.3.3027 took it over your head, v2.3.3035 over the resource.) */
+/* ═══ v2.3.3035: ABOVE EVERY RESOURCE ═══
+   Owner, 2026-10-05: "I want resource harvesting bar to be green and to appear
+   above the resource, not the player head."  So it hangs over the TOP of each
+   one's art -- the crown (0.103, unchanged), the rock (0.223) and the pond's
+   water (0.349), measured off the same webps' alpha (>50%; the iron and black
+   steel veins' 418 px art has the copper one's proportions, 0.223 / 0.737) --
+   `gap` world px clear of it, at your HP bar's size (v2.3.3027).  `f` is the
+   art's top, the bar goes above it -- except the ROCK's, which SITS on it,
+   its centre `sit` world px under the art's top: the miner stands right
+   behind his rock (MINE_SEAT_DY), only his head and shoulders over it, and a
+   bar above the rock was drawn over exactly those (measured on the
+   mp-wheelnodes capture: the pick's tip was all of him that showed). */
 const NODE_HPBAR_AT = {
-  tree:     { f: 0.103, edge: -1, gap: 4 },
-  oreVein:  { f: 0.737, edge: 1, gap: 10 },
-  fishSpot: { f: 0.686, edge: 1, gap: 4 },
+  tree:     { f: 0.103, gap: 4 },
+  oreVein:  { f: 0.223, gap: 4, sit: 12 },
+  fishSpot: { f: 0.349, gap: 4 },
 };
-/* ...and a cook's, under the campfire (owner: "Make it appear for cooking
-   too").  The fire's (x, y) is its GROUND point (CampfireFx, v2.3.2846) and
-   the cook plants his boots at +8 below it (cookStandInSpot), so the bar's top
-   goes `gap` world px under the ground point, scaled by the zone's
-   perspective like the fire and the cook themselves. */
+/* ...and a cook's, UNDER the campfire (owner: "Make it appear for cooking
+   too").  The one resource whose bar is not over it (v2.3.3035): the cook
+   leans right over his fire, the pan in the flames (cookStandInSpot, 11.5
+   world px off its middle), so over the fire IS over his head -- measured on
+   the mp-gatherhits capture, the bar sat on his hair.  Under it is the fire's
+   alone.  The fire's (x, y) is its GROUND point (CampfireFx, v2.3.2846) and
+   the cook plants his boots at +8 below it, so the bar's top goes `gap` world
+   px under the ground point, scaled by the zone's perspective like the fire
+   and the cook themselves. */
 const CAMPFIRE_HPBAR_GAP = 14;
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   _fxLoad(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
@@ -2296,6 +2308,9 @@ export class EffectsRenderer {
     this.groundArrowLayer = layers.groundLoot || layers.projectiles;
     this.telegraphLayer = layers.telegraphs;
     this.overlayLayer = layers.overlayWorld;
+    /* v2.3.3035: the world's last layer, for the harvest's bar alone
+       (pixiApp WORLD_LAYER_NAMES 'worldUi') */
+    this.worldUiLayer = layers.worldUi || layers.overlayWorld;
     this.hudLayer = layers.hud;
 
     // Pooled graphics
@@ -9697,56 +9712,62 @@ export class EffectsRenderer {
     if (!this._nodeHpBar) this._nodeHpBar = {};
     const ex = S._extraction;
     const h = ex ? ex.hits : null;
-    let bar = null, m = null;
+    let bar = null, m = null, at = null;
     /* Not over a corpse: the death hold keeps S._extraction alive until the
        respawn's zone change, and every other harvest visual already steps
        aside for it (v2.3.2281, _updateExtractionCue's _selfCorpse return). */
     if (!this._selfCorpse && ex && (ex.status === 'waiting' || ex.status === 'ready') && (!h || h.plan)) {
       const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
         : nodes.find((n) => n.id === ex.nodeId && n.alive);
-      const at = node ? this._nodeHpBarAt(S, node) : null;
+      /* ═══ v2.3.3035: GREEN, OVER THE RESOURCE, WITH ITS NUMBERS ═══
+         Owner, 2026-10-05: "I want resource harvesting bar to be green and
+         to appear above the resource, not the player head.  It should also
+         list the numbers on the bar right now the bar has no numbers."
+         v2.3.3027 put it over your head at your HP bar's size; the SIZE
+         stays (the owner's "as large as the normal hp bar"), the place is
+         the resource's own top (NODE_HPBAR_AT, _nodeHpBarAt), the fill green
+         (drawNodeHpBar) and the number "7/10".  The name plate and your HP
+         bar stay put away while you gather, as v2.3.3027 asked.
+         The bar with no numbers was a harvest on the old TIMER -- the one a
+         harvest falls back to when the worker never sends its hits, which is
+         what a dead connection looks like (v2.3.3034).  It now reads the
+         node's HP too, worn down with the clock: the bar is the node's HP
+         either way. */
+      at = node ? this._nodeHpBarAt(S, node) : null;
       m = at ? extractionMeter01(ex, Date.now()) : null;
       if (m) {
+        const timerMax = gatherNodeHp((node && node.gatherLvl) || 1);
         bar = h
           ? { show: true, hp: h.hp, maxHp: h.maxHp }
-          : { show: true, hp: null, maxHp: 1, frac: 1 - m.windup, smooth: true };
+          : { show: true, hp: Math.ceil((1 - m.windup) * timerMax - 1e-9), maxHp: timerMax, frac: 1 - m.windup, smooth: true };
         bar.call = m.idle;
-        bar.x = at.x; bar.y = at.y; bar.scale = at.scale; bar.now = now;
-        /* ═══ v2.3.3027: OVER YOUR HEAD, AT YOUR HP BAR'S SIZE ═══
-           Owner, 2026-10-04: "Ticks for the resource extraction is too hard
-           to see. You can make it as large as the normal hp bar and just
-           hide the player name plate and health bar during extraction."
-           The node's bar now takes the band over your head -- where the
-           name plate and your HP bar are, both stepped aside while you
-           gather (entityRenderer selfGathering) -- at your HP bar's size,
-           76 x 22 to the monster's 44 x 13, its number in your HP number's
-           type.  v2.3.2956 kept it at the node because a bar that size by
-           the face would read as yours; with yours put away, that is the
-           place the eye already goes.  The miner and the angler are your
-           own display (S._selfBand, written by _updatePlayer); the
-           lumberjack and the cook are stand-ins with your display hidden,
-           so the band is put over THEIR boots (bandOverBoots), from the
-           same spot they are drawn at.  Only where neither can be said (no
-           band yet) does the bar stay at the node, small, as before. */
-        const band = this._gatherBand(S, ex, node);
-        if (band) { bar.x = band.x; bar.y = band.y; bar.scale = band.scale; bar.big = true; bar.feet = band.feet; }
+        bar.x = at.x; bar.y = at.y; bar.scale = at.scale; bar.now = now; bar.big = true;
       }
     }
-    drawNodeHpBar(this.gestureLayer, this._nodeHpBar, bar);
+    /* v2.3.3035: on the world's own last layer, worldUi, not gestureFront.
+       The rock you mine is promoted to overlayWorld (v2.3.854: it covers the
+       rock baked into the swing), so with the bar sitting on the rock's top
+       the rock was drawn over its own bar -- the first capture showed "7/"
+       and stone; and in overlayWorld itself the rock still came out on top
+       now and then (pixiApp.js 'worldUi').  The bar is UI, and UI is never
+       covered by scenery: here it is over the promoted rock, the canopy and
+       the night's light. */
+    drawNodeHpBar(this.worldUiLayer || this.gestureLayer, this._nodeHpBar, bar);
     /* QA probe: what the bar is showing, which an anti-aliased 44px bar in a
        screenshot cannot be asked.  Written while the bar is up, and once when
        it goes down -- not every idle frame. */
     if (typeof window !== 'undefined') {
       if (bar) {
         window.__btNodeHpBar = { show: true, mode: h ? 'hits' : 'timer', skill: ex.skill,
-          hp: bar.hp, maxHp: h ? bar.maxHp : null, frac: +(h ? bar.hp / bar.maxHp : bar.frac).toFixed(3),
+          hp: bar.hp, maxHp: bar.maxHp, frac: +(h ? bar.hp / bar.maxHp : bar.frac).toFixed(3),
           windup: +m.windup.toFixed(3), ready: m.ready, call: !!bar.call,
           x: +bar.x.toFixed(1), y: +bar.y.toFixed(1), scale: +bar.scale.toFixed(3),
           shown: h ? h.shown : null, of: h ? h.plan.length : null,
-          /* v2.3.3027: over the gatherer's head at your HP bar's size: its
-             drawn size, and the boots of the figure under it */
           big: !!bar.big, w: +(this._nodeHpBar._nbW || 0).toFixed(1), h: +(this._nodeHpBar._nbH || 0).toFixed(1),
-          feet: bar.feet != null ? +bar.feet.toFixed(1) : null };
+          /* v2.3.3035: the words on it, its fill, and the top of the
+             resource's art it hangs over (world y) */
+          text: this._nodeHpBar._nbStr || null, green: !!this._nodeHpBar._nbGreen,
+          artTop: at.artTop != null ? +at.artTop.toFixed(1) : null, nodeY: +at.nodeY.toFixed(1), sit: !!at.sit, under: !!at.under };
         this._nodeHpBarUp = true;
       } else if (this._nodeHpBarUp !== false) {
         window.__btNodeHpBar = { show: false };
@@ -9755,44 +9776,32 @@ export class EffectsRenderer {
     }
   }
 
-  /* v2.3.3027: where the band over the gatherer's head is this frame (see
-     _drawGatherHpBar), or null: the miner's and the angler's from your own
-     display, the lumberjack's and the cook's over the stand-in's boots, at
-     the spot its placer draws it (chopStandInSpot, the side by where you
-     stand, as the chopper picks it; cookStandInSpot). */
-  _gatherBand(S, ex, node) {
-    const skill = ex && ex.skill;
-    if (skill === 'mining' || skill === 'fishing') {
-      const b = S._selfBand;
-      return b && b.on ? b : null;
-    }
-    if (skill === 'woodcutting' && node) {
-      const px = (S.player && typeof S.player.x === 'number') ? S.player.x : node.x;
-      const sp = chopStandInSpot(S.currentZone, node, node.x >= px ? 1 : -1);
-      return bandOverBoots(sp.x, sp.y, sp.pscale);
-    }
-    if (skill === 'cooking' && node) {
-      const sp = cookStandInSpot(S.currentZone, node);
-      return bandOverBoots(sp.x, sp.y, sp.pscale);
-    }
-    return null;
-  }
-
-  /* Where a node's bar goes: the gathering nodes' from their art
-     (NODE_HPBAR_AT), the campfire's under its ground point.  The bar's centre,
-     in world px, and the scale it is drawn at.  Not cached: one call per frame
-     while a harvest is up, and the fire can be re-lit elsewhere. */
+  /* Where a node's bar goes: over the top of the resource's art (v2.3.3035;
+     NODE_HPBAR_AT), the campfire's under it.  The bar's centre, in
+     world px, the scale it is drawn at -- your HP bar's, bandScale, at the
+     zone's perspective there -- and the art's top it hangs over.  Not cached:
+     one call per frame while a harvest is up, and the fire can be re-lit
+     elsewhere. */
   _nodeHpBarAt(S, node) {
+    const zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
+    const scale = bandScale(zs);
+    const halfH = (HPBAR_BIG_H / 2) * scale;
     if (node.nodeType === 'campfire') {
-      const zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
-      return { x: node.x, y: node.y + (CAMPFIRE_HPBAR_GAP + 6.5) * zs, scale: zs };   /* 6.5 = half the bar's 13 px */
+      return { x: node.x, y: node.y + CAMPFIRE_HPBAR_GAP * zs + halfH, scale, artTop: null, nodeY: node.y, under: true };
+    }
+    /* in the Wheel a fishing spot is its school of fish, no pond picture
+       (v2.3.3012): over the school */
+    if (node.nodeType === 'fishSpot' && wheelNodeView(S)) {
+      const f = wheelFishTop(node);
+      return { x: f.x, y: f.top - NODE_HPBAR_AT.fishSpot.gap - halfH, scale, artTop: f.top, nodeY: node.y };
     }
     const at = NODE_HPBAR_AT[node.nodeType];
     if (!at) return null;
     const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
     const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
     const frameTop = node.y - (NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5) * targetH;
-    return { x: node.x, y: frameTop + at.f * targetH + at.edge * (at.gap + 6.5), scale: 1 };
+    const top = frameTop + at.f * targetH;
+    return { x: node.x, y: at.sit != null ? top + at.sit : top - at.gap - halfH, scale, artTop: top, nodeY: node.y, sit: at.sit != null };
   }
 
   /* v2.3.2844: the snowman's per-hit plume is retired (tombstone near the old

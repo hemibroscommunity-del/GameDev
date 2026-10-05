@@ -98,6 +98,15 @@ const lookFor = (lvl) => FISH_LOOK[lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1];
 const SWIM_DX = -30;
 const SWIM_RX = 26, SWIM_RY = 18;
 
+/* v2.3.3035: the top of a spot's school, where the harvest's bar hangs over
+   it (effectsRenderer _nodeHpBarAt; owner: "appear above the resource") --
+   in the Wheel a spot is its fish, with no pond picture to measure: the
+   school's centre, and the top of its circle less a fish's half length. */
+export function wheelFishTop(node) {
+  const look = lookFor((node && node.gatherLvl) || 1);
+  return { x: node.x + SWIM_DX, top: node.y - SWIM_RY - look.len / 2 };
+}
+
 /* a stable 0..1 from a few numbers, so a spot's fish are the same every visit */
 function hash01(a, b, c) {
   const s = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719) * 43758.5453;

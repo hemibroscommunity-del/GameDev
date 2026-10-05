@@ -1003,7 +1003,28 @@ remnant to migrate server-side, not a mode to preserve.
       `wantWheelSpawn`, `veilWheelTrip`), today's town only a stop;
     - `mp-wheeldoors`, test-world-core "the buildings' doors",
       `tutorial.test.mjs` §9: docs/specs/wheel-doors.md, WORLD-MAP-PIPELINE
-      "The buildings have doors".)
+      "The buildings have doors".
+  - Since v2.3.3035 THE HARVEST'S BAR IS GREEN, OVER THE RESOURCE, AND READS
+    "7/10" -- the owner: "I want resource harvesting bar to be green and to
+    appear above the resource, not the player head. It should also list the
+    numbers on the bar right now the bar has no numbers":
+    - over the top of each resource's art (effectsRenderer `NODE_HPBAR_AT`,
+      `_nodeHpBarAt`): the crown, a pond's water, a Wheel fishing spot's school
+      (`wheelFishTop`) -- ON the rock's top (`sit`: the miner stands right
+      behind it, his head and shoulders were under a bar above it), and still
+      UNDER the campfire (the cook leans over it: above it is his head);
+    - still your HP bar's size (v2.3.3027, `bandScale`), your name plate and HP
+      bar still put away while you gather; v2.3.3027's `_gatherBand` is gone;
+    - on a world layer of its own, the last (`worldUi`, pixiApp.js): the rock
+      you mine is promoted to `overlayWorld`, and in that layer it still came
+      out over the bar now and then, re-appended or not;
+    - green: the HP fill's art with its red turned green
+      (`public/ui/bars/node-full-green.png`, `tools/ui/green-node-bar.sh`);
+    - "hp/max", fitted inside; the timer's bar (a harvest whose hits never
+      came: the owner's "no numbers") reads the node's HP worn down with it;
+    - `mp-gatherhits` (its gesture's moves no longer yield to this box's slow
+      frames: every harvest there failed on main) and `mp-wheelnodes`:
+      docs/specs/gathering-hits.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
