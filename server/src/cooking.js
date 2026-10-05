@@ -17,6 +17,18 @@ import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, manaSurgePerTick } from './dat
 import { PROG3 } from './prog3.js';        /* v2.3.2062: the special's mana cost */
 import { REGEN_TICKS } from './tick.js';   /* v2.3.2062: the regen cadence */
 
+/* v2.3.3036: _cookRateOk's cooks a minute, 20 -> 45.  20 ("one per 3 s ...
+   well above legit play") held while the pan's gesture alone took 4.8 s or
+   more; the owner's "reduce resource extraction time during gesture by 75%"
+   took it to 1.5 s, floor 1.2 s, and a cook has no walk between fish -- a
+   quick, honest cook comes round in ~2 s, and nothing honest beats
+   60000 / HONEST_CYCLE_MIN_MS = 39.7 a minute (gathering.js HONEST_CYCLE: a
+   cook's hits ride the same plan, lead and settle as a harvest's).  A cook
+   past the limit is DROPPED, the fish kept and the client snapped back, so
+   it must never fire on a hand.  COOK_FLOOR_MS (the gap between two cooks,
+   below) goes 1.2 s -> 0.9 s with it. */
+export const COOK_PER_MIN = 45;
+
 export const cookingMethods = {
   // ═══ Eating cooked fish (server-authoritative HP heal) ═══
   //
@@ -550,11 +562,13 @@ export const cookingMethods = {
   // Excess requests are dropped WITHOUT consuming the fish, and we
   // echo player_state so the client's optimistic local outcome snaps
   // back to the authoritative inventory.
+  // v2.3.3036: 45/min since the gesture is a quarter of what it was --
+  // see COOK_PER_MIN.
   _cookRateOk(ps) {
     const now = Date.now();
     if (!Array.isArray(ps._cookHistory)) ps._cookHistory = [];
     ps._cookHistory = ps._cookHistory.filter((t) => (now - t) < 60000);
-    if (ps._cookHistory.length >= 20) return false;
+    if (ps._cookHistory.length >= COOK_PER_MIN) return false;
     ps._cookHistory.push(now);
     return true;
   },
@@ -584,7 +598,7 @@ export const cookingMethods = {
     // than the minigame's own open delay.  Dropped WITHOUT consuming
     // (same snap-back posture as the rate limit).  ps._lastCookAt is
     // in-memory only (like _lastGambleAt -- NOT persisted; _cookHistory
-    // rides the rpg blob and still binds at 20/min across reconnects,
+    // rides the rpg blob and still binds at COOK_PER_MIN across reconnects,
     // so cycling the WS to reset the floor's anchor buys at most one
     // instant cook per reconnect).
     // v2.3.1432 (owner: "the minnow still isn't cooking"): the floor
@@ -596,8 +610,15 @@ export const cookingMethods = {
     // cook cycle (wind-up alone is >=2s), still blocks instant-convert
     // scripts, immune to level/tier desync.  The 20/min rate limit and
     // botfp caps stay as the real farming bounds.
+    // v2.3.3036: 1200 -> 900.  With the pan's gesture a quarter of what it
+    // was (COOK_PER_MIN above), the quickest honest cook comes round in
+    // 1.51 s plus the tap (gathering.js HONEST_CYCLE_MIN_MS), and two
+    // requests can ARRIVE closer than they were sent -- a phone network's
+    // jitter -- so 1.2 s was 0.3 s from dropping a real cook.  900 ms
+    // leaves 0.6 s and still stops an instant convert; COOK_PER_MIN is the
+    // bound on the rate.
     const nowCk = Date.now();
-    const COOK_FLOOR_MS = 1200;
+    const COOK_FLOOR_MS = 900;
     if (ps._lastCookAt && (nowCk - ps._lastCookAt) < COOK_FLOOR_MS) {
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);

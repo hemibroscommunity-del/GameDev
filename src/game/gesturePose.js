@@ -54,7 +54,8 @@
  *    finishes in ~3s and a slow one takes longer -- with a floor
  *    (GESTURE_FLOOR_MS of actual motion), so no amount of scribbling finishes
  *    in under ~2.4s.  (v2.3.2761: DOUBLED at the owner's word -- ~6s, floor
- *    ~4.8s.  The numbers below are the live ones.)
+ *    ~4.8s.  v2.3.3036: a QUARTER of that at the owner's word -- ~1.5s, floor
+ *    ~1.2s.  The numbers below are the live ones.)
  */
 
 /* ═══ THE STROKES ═══
@@ -86,11 +87,23 @@ export const STROKE_SPAN_PX = 38;
    GESTURE_TARGET_MS of work at this pace, i.e. TARGET / QUICK cycles. */
 export const GESTURE_QUICK_CYCLE_MS = { mining: 420, woodcutting: 420, fishing: 480, cooking: 500 };
 /* v2.3.2761 (owner, after playing it: "Double the amount of time it takes to
-   complete the gesture"): 3000 -> 6000, and the floor with it, 2400 -> 4800. */
-export const GESTURE_TARGET_MS = 6000;
+   complete the gesture"): 3000 -> 6000, and the floor with it, 2400 -> 4800.
+   v2.3.3036 (owner, 2026-10-05: "reduce resource extraction time during
+   gesture by 75%"): 6000 -> 1500, and the floor with it, 4800 -> 1200 -- a
+   quarter of the time, half of v2.3.2760's first 3000.  At a quick pace that
+   is 3.6 pumps of the pick or chops of the axe, 3.1 turns of the reel and 3
+   flips of the pan (gestureTargetCycles).  The grade moves with it
+   (ExtractionSwipeLayer gradeGesture).  A harvest or a cook can now come round
+   about three times as fast, so the worker's bounds sized for "several
+   seconds a minigame" were re-derived in the same change: the perfect-claim
+   limit (gathering.js HARVEST_PERFECT_PER_MIN), the cook rate limit
+   (cooking.js COOK_PER_MIN) and the hourly caps (botfp.js HARVEST_HOUR_CAP,
+   COOK_HOUR_CAP) -- the worker never holds the gesture's length itself, only
+   the wind-up's hits before it. */
+export const GESTURE_TARGET_MS = 1500;
 /* The floor: the meter can never run ahead of GESTURE_FLOOR_MS of real motion,
-   so a frantic (or synthetic) scribble still takes ~4.8s. */
-export const GESTURE_FLOOR_MS = 4800;
+   so a frantic (or synthetic) scribble still takes ~1.2s. */
+export const GESTURE_FLOOR_MS = 1200;
 /* The display chase's cap -- a smoother, not a speed limit (see 3. above). */
 export const GESTURE_MAX_CYCLE_MS = { mining: 240, woodcutting: 240, fishing: 220, cooking: 260 };
 

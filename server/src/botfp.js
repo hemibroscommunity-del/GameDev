@@ -120,10 +120,40 @@ export const BOTFP = {
   // zones could reach 9 x 180 = 1620/h at BASE density, so 810 still clips
   // the multi-zone tourist by half.
   // Whoever changes SPAWN_SCALE.NODE_MAX owns this number next.
-  HARVEST_HOUR_CAP: 810,
+  //
+  // v2.3.3036: 810 -> 2400, and the derivation changes kind, because SUPPLY
+  // stopped being the bound.  In the Wheel (v2.3.3012) a skill has 34-54
+  // nodes, each back in 20 s -- more than anyone can reach -- so what limits
+  // a player is how fast one harvest comes round: the wind-up's hits, the
+  // gesture, the walk to the next.  While the gesture alone took 4.8 s or
+  // more, that held an honest player well under 810 (a greedy route round
+  // the baked nodes, always the nearest live one: ~350-520 an hour at
+  // 150-585 px/s).  The owner's "reduce resource extraction time during
+  // gesture by 75%" made it 1.5 s, floor 1.2 s, and the same route then
+  // reaches ~500-1,000 trees or ore and ~800-1,400 fish an hour (200-585
+  // px/s, 1.5-2.5 s a node) -- over 810, where the cap would withhold a real
+  // angler's fish.
+  // So the cap is the bound no honest client can beat whatever the map:
+  // 3600000 / HONEST_CYCLE_MIN_MS (gathering.js, 1,510 ms) = 2,384 an hour,
+  // as if every node were at hand and every one fell to a single hit.
+  // node-respawn §3c holds it there.
+  // What it costs: a modified client that skips the gesture takes ~1,200-
+  // 1,600 an hour on the same route at the worker's 500 px/s bound, under
+  // 2400 -- in the Wheel this cap no longer clips the solo bot, as nothing
+  // that only counts can now tell it from the quickest hand.  The old zones
+  // (closed, ?trial=off) keep the 540/h supply ceiling above, so it opens
+  // nothing there.  The bound that would clip it is the worker holding the
+  // gesture's floor itself (a strike no sooner than the wind-up + settle +
+  // GESTURE_FLOOR_MS after the start), which it does not do yet.
+  HARVEST_HOUR_CAP: 2400,
   // Sustained human cooking ≈ 450/h (one ~8s minigame each incl. open
   // delay); the only prior bound was _cookRateOk's 20/min = 1200/h.
-  COOK_HOUR_CAP: 700,
+  // v2.3.3036: 700 -> 2400, the harvest cap's derivation: a cook has no walk
+  // between fish, and with the pan's gesture a quarter of what it was a quick
+  // cook comes round in ~2 s, 1.51 s at the least -- 2,384 an hour.  Under
+  // cooking.js COOK_PER_MIN's 45 a minute (2,700 an hour), so a script
+  // sitting on that limit is still clipped past the hour's 2,400th cook.
+  COOK_HOUR_CAP: 2400,
   // ── plumbing ──
   PUT_MIN_MS: 30000,             // botstat: put throttle (flags flush immediately)
   MAP_CAP: 128, MAP_EVICT_TO: 96,

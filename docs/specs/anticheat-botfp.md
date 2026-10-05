@@ -49,6 +49,23 @@ the `_extractionMissing` posture — old clients never punished):
 
 ## Economic hourly caps (ANTICHEAT-SPEC §6 — the approved clamps)
 
+- **Since v2.3.3036 both are 2,400/hour** (harvests per skill, and cooks),
+  and the derivation changed kind: the owner's *"reduce resource extraction
+  time during gesture by 75%"* took the gesture from 6 s to 1.5 s (floor
+  1.2 s), and in the Wheel supply no longer bounds a player (34–54 nodes a
+  skill, each back in 20 s) — how fast one harvest comes round does. A
+  greedy route round the baked nodes reaches ~800–1,400 fish an hour with the
+  new gesture (200–585 px/s), over the old 810. So each cap is the hour no
+  honest client can beat whatever the map: `3600000 / HONEST_CYCLE_MIN_MS`
+  (`gathering.js`: hit lead 90 + settle 220 + gesture floor 1,200 = 1,510 ms)
+  = 2,384, as if every node were at hand and fell to one hit
+  (`node-respawn.test.mjs` §3c). The cost: a modified client that skips the
+  gesture takes ~1,200–1,600 an hour on the same route, so in the Wheel the
+  cap no longer clips a solo bot. What would is the worker holding the
+  gesture's floor itself, which it does not yet. The per-minute limits moved
+  with it: perfect claims 10 → 45 a minute, cooks 20 → 45, the gap between
+  cooks 1.2 → 0.9 s (`docs/specs/gesture-cue.md` "v2.3.3036").
+  The two entries below are the history.
 - Gathering: **810/hour/skill** (v2.3.1983; was 270). The number is
   derived, never picked: world supply per skill per zone is
   `nodes x 3600/respawnSeconds`, and the cap sits 50% above it so it can

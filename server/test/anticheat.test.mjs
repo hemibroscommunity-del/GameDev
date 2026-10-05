@@ -7,7 +7,8 @@
  *      dead attackers can't fire, blocked hits deal 0.
  *   3. stats_update: T1 stats clamp to the per-level cap, T2 stats cap
  *      at 99, client-pushed maxHp is ignored, armor tierMult clamps.
- *   4. Harvest "perfect" rate limit: 10/min, excess downgrades to good.
+ *   4. Harvest "perfect" rate limit: 10/min, excess downgrades to good
+ *      (45/min since v2.3.3036, the gesture a quarter of what it was).
  *   5. Loot pickup gates: recipient, range, zone, dead, double-claim,
  *      contribution shares, first-picker inventory.
  *
@@ -21,6 +22,8 @@
  */
 import { GameRoom, CHAT_RELAY } from '../src/index.js';
 import { DRAWING_KEYS } from '../src/join.js';   /* v2.3.2445: assert the gate's own set, not a copy of it */
+import { HARVEST_PERFECT_PER_MIN, HONEST_CYCLE_MIN_MS } from '../src/gathering.js'; /* v2.3.3036 */
+import { COOK_PER_MIN } from '../src/cooking.js';                                   /* v2.3.3036 */
 
 /* v2.3.2445: driven off the gate, so a drawing key added tomorrow is covered
    the day it is added rather than the day somebody notices it was missed. */
@@ -281,14 +284,19 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
 }
 
 // ── 4. Harvest "perfect" rate limit (10/min, excess -> good) ──
+// v2.3.3036: HARVEST_PERFECT_PER_MIN (45) -- the owner's 75% shorter gesture
+// brings a quick, honest hand round in ~2 s, so the limit is held above the
+// fastest an honest harvest can come round (gathering.js HONEST_CYCLE).
 {
   const ps = { _perfectHistory: [] };
   let perfects = 0;
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < HARVEST_PERFECT_PER_MIN + 2; i++) {
     if (room._ratedHarvestAccuracy(ps, 'perfect') === 'perfect') perfects++;
   }
-  check('harvest: only 10 perfect claims per minute accepted', perfects === 10, perfects);
-  check('harvest: 11th+ claim downgrades to good', room._ratedHarvestAccuracy(ps, 'perfect') === 'good');
+  check(`harvest: only ${HARVEST_PERFECT_PER_MIN} perfect claims per minute accepted`, perfects === HARVEST_PERFECT_PER_MIN, perfects);
+  check('harvest: the claim past the limit downgrades to good', room._ratedHarvestAccuracy(ps, 'perfect') === 'good');
+  check(`harvest: the limit never fires on an honest hand (${HARVEST_PERFECT_PER_MIN}/min > 60000 / ${HONEST_CYCLE_MIN_MS} ms = ${(60000 / HONEST_CYCLE_MIN_MS).toFixed(1)}/min)`,
+    HARVEST_PERFECT_PER_MIN > 60000 / HONEST_CYCLE_MIN_MS, { limit: HARVEST_PERFECT_PER_MIN, honestMs: HONEST_CYCLE_MIN_MS });
   check('harvest: non-perfect claims pass through untouched', room._ratedHarvestAccuracy(ps, 'good') === 'good'
     && room._ratedHarvestAccuracy(ps, undefined) === 'ok');
 }
@@ -426,17 +434,22 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
 // (which would otherwise drop everything after the first instant
 // request -- covered in lifeskills-economy §3a) doesn't mask the
 // 20/min limit under test here.
+// v2.3.3036: COOK_PER_MIN (45), held above the fastest an honest cook can
+// come round with the owner's 75% shorter gesture (gathering.js HONEST_CYCLE).
 {
   const ps = room.playerState.pz;
-  ps.inventory = { fish_minnow: 30 };
+  const N = COOK_PER_MIN;
+  ps.inventory = { fish_minnow: N + 10 };
   ps._cookHistory = [];
   const wsZ = [...room.sessions.entries()].find(([, s]) => s.id === 'pz')[0];
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < N + 5; i++) {
     ps._lastCookAt = 0; // isolate the rate limit from the v2.3.1167 floor
     await room.webSocketMessage(wsZ, JSON.stringify({ type: 'cook_request', payload: { fishKey: 'fish_minnow', kind: 'cooked' } }));
   }
-  check('cook: only 20 requests per minute consume fish', ps.inventory.fish_minnow === 10, ps.inventory.fish_minnow);
-  check('cook: cooked output matches the 20 accepted', ps.inventory.cooked_fish_minnow === 20, ps.inventory.cooked_fish_minnow);
+  check(`cook: only ${N} requests per minute consume fish`, ps.inventory.fish_minnow === 10, ps.inventory.fish_minnow);
+  check(`cook: cooked output matches the ${N} accepted`, ps.inventory.cooked_fish_minnow === N, ps.inventory.cooked_fish_minnow);
+  check(`cook: the limit never fires on an honest hand (${N}/min > 60000 / ${HONEST_CYCLE_MIN_MS} ms = ${(60000 / HONEST_CYCLE_MIN_MS).toFixed(1)}/min)`,
+    N > 60000 / HONEST_CYCLE_MIN_MS, { limit: N, honestMs: HONEST_CYCLE_MIN_MS });
 
   // History persists via _saveRpg so cycling the WS connection can't
   // reset the 60-second window (same posture as _perfectHistory).
@@ -446,7 +459,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   await room._saveRpg('pz', ps);
   room.state.storage.put = origPut;
   check('cook: rate-limit history persisted in the rpg blob',
-    saved && Array.isArray(saved._cookHistory) && saved._cookHistory.length === 20,
+    saved && Array.isArray(saved._cookHistory) && saved._cookHistory.length === N,
     saved && saved._cookHistory && saved._cookHistory.length);
 }
 
