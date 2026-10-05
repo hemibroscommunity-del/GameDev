@@ -122,6 +122,17 @@ const WORLD_LAYER_NAMES = [
      world. */
   'glows',
   'damageNumbers', 'overlayWorld',
+  /* ═══ v2.3.3035: A BAR NOTHING IN THE WORLD MAY COVER ═══
+     The harvest's bar (effectsRenderer _drawGatherHpBar) sits ON the rock you
+     mine, and that rock is promoted into `overlayWorld` while you mine
+     (v2.3.854: it covers the rock baked into the swing).  The bar first went
+     into overlayWorld after it, re-appended to the end on every frame -- and
+     the capture still showed the rock over it: traced, the bar was moved to
+     the end each frame and the rock was after it again by the next, though
+     nothing re-added the rock, so something else reorders that layer.  A
+     layer of its own, last in the world, holds nothing else and so has nothing
+     to be put under. */
+  'worldUi',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
 export const LAYER_NAMES = [...WORLD_LAYER_NAMES, ...SCREEN_LAYER_NAMES];
