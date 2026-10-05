@@ -1003,7 +1003,23 @@ remnant to migrate server-side, not a mode to preserve.
       `wantWheelSpawn`, `veilWheelTrip`), today's town only a stop;
     - `mp-wheeldoors`, test-world-core "the buildings' doors",
       `tutorial.test.mjs` §9: docs/specs/wheel-doors.md, WORLD-MAP-PIPELINE
-      "The buildings have doors".)
+      "The buildings have doors".
+  - Since v2.3.3036 THE HARVEST'S GESTURE IS A QUARTER AS LONG -- the owner:
+    "reduce resource extraction time during gesture by 75%":
+    - gesturePose.js `GESTURE_TARGET_MS` 6000 -> 1500, `GESTURE_FLOOR_MS`
+      4800 -> 1200 (3.6 pumps or chops, 3.1 turns, 3 flips at a quick pace);
+      the grade moves with it; the wind-up's hits are unchanged;
+    - the WORKER'S SPEED LIMITS MOVED WITH IT, each derived from the fastest an
+      honest harvest or cook comes round, 1,510 ms (gathering.js
+      `HONEST_CYCLE`: hit lead + settle + the gesture's floor, pinned to the
+      client's by mirror-audit): perfect claims 10 -> 45 a minute
+      (`HARVEST_PERFECT_PER_MIN`), cooks 20 -> 45 (`COOK_PER_MIN`), the gap
+      between cooks 1.2 -> 0.9 s, botfp's hour caps 810 / 700 -> 2,400 --
+      in the Wheel supply no longer bounds a player, and a quick angler would
+      have lost fish to 810; the worker still never times the gesture, so a
+      modified client skipping it is no longer clipped by the hour cap there;
+    - `node-respawn` §3c, `anticheat` §4/§7: docs/specs/gesture-cue.md
+      "v2.3.3036".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

@@ -32,14 +32,15 @@ import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_AR
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
-import { GATHER_HITS as SRV_GATHER_HITS } from '../src/gathering.js'; /* v2.3.2956 */
+import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
 import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC } from '../../src/game/elemHits.js'; /* v2.3.2996 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
-import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes } from '../../src/data/gameSystems.js'; /* v2.3.2956 */
+import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
+import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -1350,6 +1351,15 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('gather hits: the client schedules hits one swing apart, on the blow, after the lead',
     times.length === 4 && times.every((t, i) => i === 0 || t - times[i - 1] === 650)
       && ((times[0] % 650) + 650) % 650 === 186 && times[0] >= 1000000 + 90 && times[0] < 1000000 + 90 + 650, times);
+  /* v2.3.3036: the worker's speed bounds (gathering.js HARVEST_PERFECT_PER_MIN,
+     cooking.js COOK_PER_MIN, botfp's hour caps) are derived from the fastest
+     an honest client can come round -- its hit lead, its settle and its
+     gesture's floor of real motion.  A shorter gesture on the client with the
+     worker's copy left behind would have them fire on real players. */
+  check('gather hits: the worker\'s honest cycle is the client\'s (GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS, gesturePose GESTURE_FLOOR_MS)',
+    SRV_HONEST_CYCLE.LEAD_MS === CLIENT_GATHER_HIT_LEAD_MS && SRV_HONEST_CYCLE.SETTLE_MS === CLIENT_GATHER_HIT_SETTLE_MS
+      && SRV_HONEST_CYCLE.GESTURE_FLOOR_MS === CLIENT_GESTURE_FLOOR_MS,
+    { srv: SRV_HONEST_CYCLE, cli: { lead: CLIENT_GATHER_HIT_LEAD_MS, settle: CLIENT_GATHER_HIT_SETTLE_MS, floor: CLIENT_GESTURE_FLOOR_MS } });
 
   const sprites = readFileSync(new URL('../../src/rendering/playerSprites.js', import.meta.url), 'utf8');
   const fx = readFileSync(new URL('../../src/rendering/systems/effectsRenderer.js', import.meta.url), 'utf8');

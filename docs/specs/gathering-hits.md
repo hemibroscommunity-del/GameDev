@@ -80,7 +80,7 @@ in every phase (below).
 | Level 1, first tier | 10 hits: ~6.5 s on a rock (the old timer was 4 s), ~5.4 s on a tree |
 | Average hits on 10 HP | level 1: 10 · 2: 6.9 · 3: 5.3 · 5: 3.8 · 10: 2.4 (10% one-shot) · 20: 1.6 (55% one-shot) |
 | `MAX_HITS` | 40: a bound no live node can reach. A far-under-levelled player on a future high tier would otherwise get a plan hundreds of hits long; the 40th hit takes whatever is left. |
-| Resources per hour | unchanged in kind: one node per skill per zone and a 20 s respawn still set the ceiling, so the anti-bot hour cap (`HARVEST_HOUR_CAP`) needs no change. |
+| Resources per hour | unchanged in kind: one node per skill per zone and a 20 s respawn still set the ceiling, so the anti-bot hour cap (`HARVEST_HOUR_CAP`) needs no change. (v2.3.3036: in the Wheel the gesture, not supply, is the bound; with it a quarter of what it was the cap is 2,400, `docs/specs/gesture-cue.md`.) |
 
 All of it lives in `GATHER_HITS` (`server/src/gathering.js`) and its client
 mirror `GATHER_SWING` / `gatherNodeHp` (`src/data/gameSystems.js`).

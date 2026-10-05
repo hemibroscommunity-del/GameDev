@@ -18,6 +18,10 @@
  *   2. one node of each gathering type per zone, in both tables
  *   3. the physical harvest ceiling stays under HARVEST_HOUR_CAP
  *   3b. (v2.3.1983) population scaling does not move the SOLO ceiling
+ *   3c. (v2.3.3036) no honest hand can reach either hour cap: the gesture
+ *       went to a quarter (the owner's "reduce resource extraction time during
+ *       gesture by 75%"), and in the Wheel supply no longer bounds a player --
+ *       the fastest an honest harvest or cook comes round does
  *   4. respawn timers are actually the quick ones, and sane
  */
 import { ZONES as SERVER_ZONES } from '../src/data.js';
@@ -25,6 +29,7 @@ import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
 import { GameRoom } from '../src/index.js';
 import { BOTFP } from '../src/botfp.js';
 import { SPAWN_SCALE } from '../src/spawnscale.js';
+import { HONEST_CYCLE_MIN_MS } from '../src/gathering.js';   /* v2.3.3036 */
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -185,6 +190,23 @@ const wilderness = Object.keys(SERVER_ZONES);
     room._scaledNodeCap('meadow', crowdNeeded, cfg.oreCt) === SPAWN_SCALE.NODE_MAX
     && room._scaledNodeCap('meadow', crowdNeeded - 1, cfg.oreCt) < SPAWN_SCALE.NODE_MAX,
     { crowdNeeded, at: room._scaledNodeCap('meadow', crowdNeeded, cfg.oreCt) });
+}
+
+// ── 3c. v2.3.3036: THE QUICKEST HONEST HAND ─────────────────────────────
+{
+  /* The ceilings above are SUPPLY: what the nodes can give.  In the Wheel a
+     skill has 34-54 nodes, so supply is past anyone's reach and the bound is
+     how fast one harvest comes round -- the plan's round trip, the first hit's
+     lead, the hits, the settle and the gesture's floor of real motion
+     (gathering.js HONEST_CYCLE, pinned to the client's by mirror-audit).
+     Each hour cap must sit at or above an hour of that, as if every node were
+     at hand and fell to one hit, or it withholds a quick player's grants: the
+     owner's "Logs aren't going to the inventory", made by the anticheat. */
+  const honestPerHour = 3600000 / HONEST_CYCLE_MIN_MS;
+  check(`ceiling: no honest harvester reaches HARVEST_HOUR_CAP (${BOTFP.HARVEST_HOUR_CAP} >= 3600000 / ${HONEST_CYCLE_MIN_MS} ms = ${Math.round(honestPerHour)}/h)`,
+    BOTFP.HARVEST_HOUR_CAP >= honestPerHour, { cap: BOTFP.HARVEST_HOUR_CAP, honestPerHour, honestMs: HONEST_CYCLE_MIN_MS });
+  check(`ceiling: no honest cook reaches COOK_HOUR_CAP (${BOTFP.COOK_HOUR_CAP} >= ${Math.round(honestPerHour)}/h)`,
+    BOTFP.COOK_HOUR_CAP >= honestPerHour, { cap: BOTFP.COOK_HOUR_CAP, honestPerHour });
 }
 
 // ── 4. Respawn timers ───────────────────────────────────────────────────
