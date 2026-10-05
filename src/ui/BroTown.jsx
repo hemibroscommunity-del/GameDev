@@ -8326,7 +8326,6 @@ export var BroTown = function BroTown(_ref0) {
      harvested from the right button.  A tap on bare ground still unlocks. */
 
   var _desktopGather = useCallback(function () {
-    var _R$lifeSkills;
     var S = stateRef.current,
       /* v2.3.1448: the E key keeps working on PROXIMITY (desktop has no
          "touch the resource" gesture in the thumb sense) — the tapped
@@ -8335,13 +8334,10 @@ export var BroTown = function BroTown(_ref0) {
       R = S.rpg;
     if (!node || !node.alive || !R) return;
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-    var skillName = node.skill || 'mining';
-    var skillLvl = ((_R$lifeSkills = R.lifeSkills) === null || _R$lifeSkills === void 0 || (_R$lifeSkills = _R$lifeSkills[skillName]) === null || _R$lifeSkills === void 0 ? void 0 : _R$lifeSkills.level) || 1;
-    if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
-      pushDmgPopup(S, node.x, node.y - 15, 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl, '#D95C54');
-      BT_AUDIO.beep(200, 0.05, 0.08, 'square');
-      return;
-    }
+    /* v2.3.3038: the level gate lives in startExtraction now (gatherNeed,
+       src/data/lifeSkills.js) -- one door for the tap, the button and this
+       key, and only while the worker enforces it.  The `if (false)` copy
+       that stood here, which printed the TIER as the level, is gone. */
     /* v2.3.229: modal minigames replaced by the windowed-swipe
        extraction loop. _startExtraction sets up the state machine;
        the game-tick (search _extraction) drives waiting -> ready ->

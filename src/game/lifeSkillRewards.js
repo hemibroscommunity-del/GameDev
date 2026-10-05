@@ -24,6 +24,7 @@ import { pushDmgPopup, swimRefused /* v2.3.3012 */, offlineRefused /* v2.3.3034 
 import { climbOut } from '@/game/wheelSwim.js';   /* v2.3.3012: a seat on the bank ends a swim */
 import { jumpAirborne } from '@/game/jump.js';     /* v2.3.3017 */
 import { MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915 */
+import { gatherNeed } from '@/data/lifeSkills.js';   /* v2.3.3038: a resource's level is a real requirement */
 /* v2.3.849: fly a harvested-resource icon from its world node into the
    bottom-left inventory.  DOM-only (appended to document.body, like the
    resume spinner) so it floats above the canvas/HUD and animates on the
@@ -108,6 +109,23 @@ export function startExtraction(S, node, skill, extra) {
        old worker's) needs no socket and is left alone; a cook is always
        the worker's (cook_request). */
     if ((S._serverGatherNodes || skill === 'cooking') && offlineRefused(S)) return;
+    /* v2.3.3038: a resource's skill level is a real requirement now (owner:
+       "black steel now requires a mining level of at least 5 ... Fishing
+       clownfish required fishing level 5"; GATHER_REQ_LVL, src/data/
+       lifeSkills.js).  Said here, before the player is moved onto a seat or a
+       byte is sent -- the tap, the harvest button and the E key all come
+       through this one door -- and only against a worker that enforces it
+       (gatherNeed reads caps.gatherreq), so an old worker's level-1 rules
+       are never stricter on this side than on its own. */
+    if (skill !== 'cooking') {
+      var _need = gatherNeed(S, node);
+      if (_need && !_need.ok) {
+        var _skLabel = _need.skill.charAt(0).toUpperCase() + _need.skill.slice(1);
+        pushDmgPopup(S, node.x, node.y - 15, 'Need ' + _skLabel + ' Lv ' + _need.need, '#D95C54');
+        try { BT_AUDIO.beep(200, 0.05, 0.08, 'square'); } catch (e) {}
+        return;
+      }
+    }
     /* v2.3.854: mining lines the character up with the vein the same way
        fishing lines up with the pond.  Seat the player above the ore so the
        pickaxe strike (the baked rock in the south 'mine' sheet, centered
@@ -581,7 +599,13 @@ function applyMiningReward(S, node, result, deps) {
       return;
     }
     var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
-    BT_AUDIO.beep(700, 0.04, 0.07, 'square');
+    /* v2.3.3040: the beep that stood here has played nothing since
+       v2.3.1103 (gameDisplay.js beep), so a finished vein was silent.  The
+       sound is the rock CRACKING now ('ore-crack', the owner's "cracking
+       sound when the ore splits"), played on the frame it splits
+       (effectsRenderer _advanceOreBreaks) -- this stamp says the break is
+       YOURS, heard full; a peer's vein cracks softer. */
+    node._selfMinedAt = Date.now();
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
     /* v2.3.1430 (owner): the ore's bag icon pops out of the vein and flies

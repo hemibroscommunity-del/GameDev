@@ -47,6 +47,7 @@
 import { GameRoom } from '../src/index.js';
 import { ZONES, VALID_ZONE_IDS, BLACKSMITH_TIERS, WOODWORKING_TIERS } from '../src/data.js';
 import { WHEEL_ZONE, WHEEL } from '../src/wheelzone.js';
+import { gatherReqLvl } from '../src/gathering.js';   /* v2.3.3038 */
 import { WHEEL_SPAWNS, WHEEL_NODES, WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns.js';
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
 
@@ -551,8 +552,48 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     && !Object.keys(ps.inventory).some((k) => k === 'shard_wheel' || k === 'shard_commons'),
     { shardAsked, inv: ps.inventory });
   const black = nodes.find((n) => n.nodeType === 'oreVein' && n.tierLvl === 11);
+  /* v2.3.3038: black steel asks Mining 5 (GATHER_REQ_LVL) -- at 4 the worker
+     plans nothing and pays nothing, and the vein is left standing */
+  ps.lifeSkills.mining = { level: 4, xp: 0 };
   await harvest(black);
-  check('harvest: a levels 11-20 vein pays black steel ore', (ps.inventory.ore_black_steel_ore || 0) >= 1, ps.inventory);
+  check('level gate: black steel at Mining 4 pays nothing and leaves the vein up',
+    !(ps.inventory.ore_black_steel_ore > 0) && black.alive === true && ps.lifeSkills.mining.xp === 0,
+    { inv: ps.inventory, alive: black.alive, ls: ps.lifeSkills.mining });
+  check('level gate: and the refusal says why', (room._lastStrikeFor('wa') || {}).why === 'skill-too-low'
+    && room._lastStrikeFor('wa').need === 5 && room._lastStrikeFor('wa').have === 4, room._lastStrikeFor('wa'));
+  check('level gate: no extraction record was planned for it', !room.extractions.wa || room.extractions.wa.nodeId !== black.id);
+  ps.lifeSkills.mining = { level: 5, xp: 0 };
+  await harvest(black);
+  check('harvest: a levels 11-20 vein pays black steel ore at Mining 5', (ps.inventory.ore_black_steel_ore || 0) >= 1, ps.inventory);
+  /* iron asks nothing: the owner's "copper and iron where you can mine both" */
+  ps.lifeSkills.mining = { level: 1, xp: 0 };
+  const ironBefore = ps.inventory.ore_iron_ore || 0;
+  await harvest(iron);
+  check('level gate: iron still mines at Mining 1', (ps.inventory.ore_iron_ore || 0) > ironBefore, ps.inventory);
+  /* clownfish asks Fishing 5, the owner's other named cell */
+  const clown = nodes.find((n) => n.nodeType === 'fishSpot' && n.tierLvl === 6);
+  ps.lifeSkills.fishing = { level: 4, xp: 0 };
+  await harvest(clown);
+  check('level gate: a clownfish spot at Fishing 4 pays nothing', !(ps.inventory.fish_clownfish > 0) && clown.alive === true
+    && (room._lastStrikeFor('wa') || {}).why === 'skill-too-low', { inv: ps.inventory, last: room._lastStrikeFor('wa') });
+  ps.lifeSkills.fishing = { level: 5, xp: 0 };
+  await harvest(clown);
+  check('level gate: and at Fishing 5 it pays a clownfish', (ps.inventory.fish_clownfish || 0) >= 1, ps.inventory);
+  /* the kill switch lifts it */
+  const keepGate = room._liveFlags;
+  room._liveFlags = { ...(keepGate || {}), gatherreq: false };
+  ps.lifeSkills.mining = { level: 1, xp: 0 };
+  const blackBefore = ps.inventory.ore_black_steel_ore || 0;
+  await harvest(black);
+  check('level gate: gatherreq:false lifts it -- black steel at Mining 1 again', (ps.inventory.ore_black_steel_ore || 0) > blackBefore, ps.inventory);
+  room._liveFlags = keepGate;
+  /* the table: the owner's three cells, and the rule for the rest */
+  check('level gate: the table -- copper 1, iron 1, black steel 5; minnow 1, clownfish 5; trout, hardwood 10; pine 1, softwood 5',
+    gatherReqLvl('oreVein', 1) === 1 && gatherReqLvl('oreVein', 6) === 1 && gatherReqLvl('oreVein', 11) === 5
+    && gatherReqLvl('fishSpot', 1) === 1 && gatherReqLvl('fishSpot', 6) === 5 && gatherReqLvl('fishSpot', 11) === 10
+    && gatherReqLvl('tree', 1) === 1 && gatherReqLvl('tree', 6) === 5 && gatherReqLvl('tree', 11) === 10);
+  check('level gate: a forged type or tier asks nothing and walks no prototype',
+    gatherReqLvl('__proto__', 11) === 1 && gatherReqLvl('constructor', 6) === 1 && gatherReqLvl('oreVein', '__proto__') === 1 && gatherReqLvl('oreVein', 999) === 1);
   room._rollHarvestShard = keepRoll;
   /* a strike from the vein's own spot in another zone is refused: a node is
      its zone's, and the Wheel's ids are not anyone else's */

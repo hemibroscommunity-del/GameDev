@@ -641,6 +641,23 @@ remnant to migrate server-side, not a mode to preserve.
       `node`); the Wheel's nodes drop at the flip to town;
     - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,
       `mp-wheelnodes`: docs/specs/wheel-resources.md.
+    - since v2.3.3038 a resource's LEVEL IS A REAL REQUIREMENT (owner: "black
+      steel now requires a mining level of at least 5 ... Fishing clownfish
+      required fishing level 5", "in levels of 5"): `GATHER_REQ_LVL`
+      (server/src/gathering.js, mirrored in src/data/lifeSkills.js, pinned by
+      mirror-audit) -- copper/iron 1, black steel 5; minnow 1, clownfish 5,
+      trout 10; pine 1, softwood 5, hardwood 10 -- keyed by type and TIER, not
+      the tier itself; the worker refuses extraction_start and node_strike
+      below it ('skill-too-low'), the client refuses first in startExtraction
+      ("Need Mining Lv 5", `gatherNeed`), the quest's road skips locked nodes;
+      `caps.gatherreq`, kill switch `gatherreq: false`;
+    - since v2.3.3040 every resource you hold the tool for wears a LABEL
+      (src/rendering/nodeLabels.js): the bag's hatchet/pickaxe/rod picture
+      (preloaded), its bag name and the level it asks, red while yours is
+      below, 20 CSS px at any zoom, over the crown/rock/school, hidden while
+      its harvest bar is up; the old emoji, tier dot and 7 px tips are gone;
+      and a vein CRACKS on its split frame (`ore-crack`, cut from the unused
+      extract-success.mp4); `mp-nodelabels`.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":

@@ -160,6 +160,7 @@ const CAP_GATES = [
   'sprint' /* v2.3.3006: lower case, a kill switch */,
   'wheelnodes' /* v2.3.3012: lower case, a kill switch */,
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
+  'gatherreq' /* v2.3.3038: lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

@@ -275,6 +275,85 @@ do.
 - `test-world-core` checks the bake is current; `mp-questline` (CI's
   "playable") still passes in the Wheel.
 
+## Level requirements (v2.3.3038)
+
+Owner, 2026-10-05: *"I'll change tier level requirements in levels of 5. So
+with the exception of copper and iron where you can mine both, black steel now
+requires a mining level of at least 5. Fishing clownfish required fishing
+level 5. I haven't thought the rest out yet, game is still a demo."*
+
+Until now a node's tier only made it slower to work (more hit points, a
+longer legacy timer). The client's own check had been switched off
+(`if (false)` in BroTown.jsx) and the worker had none. Now the level is a
+real requirement:
+
+| | Tier 1 | Tier 6 | Tier 11 |
+|---|---|---|---|
+| Mining | copper **1** | iron **1** | black steel **5** |
+| Fishing | minnow **1** | clownfish **5** | trout **10** |
+| Woodcutting | pine **1** | softwood **5** | hardwood **10** |
+
+The owner named black steel, copper/iron and clownfish. Trout and the wood
+follow the same "levels of 5" rule and are the owner's to change: one table,
+`GATHER_REQ_LVL` in `server/src/gathering.js`, mirrored in
+`src/data/lifeSkills.js` and pinned together by `mirror-audit.test.mjs`. It is
+keyed by node type and tier and is deliberately not the tier itself: the tier
+names the item, its art, its hit points, its XP and the baked places, none of
+which moved.
+
+- **The worker** refuses `extraction_start` (no hit plan) and `node_strike`
+  (the paying call, refused before the node is spent, recorded as
+  `skill-too-low` with `need` and `have` for the operator view). The skill is
+  the node's own, never the message's.
+- **The client** refuses in `startExtraction` before it seats you or sends a
+  byte: "Need Mining Lv 5" and the refusal beep. The tap, the harvest button
+  and the E key all come through there. The quest's gold road skips a node
+  you cannot work yet (`questRoute.js` `_wheelGatherPoint`).
+- **The ladders** (Skills' "next unlock", the Encyclopedia) print the level a
+  resource asks (`gatherLadderLvl`), not its tier number.
+- **Deploy order.** `caps.gatherreq`: the client refuses and draws a required
+  level only against a worker that enforces one. An old worker keeps every
+  resource at level 1, and so does the client against it. An old client against
+  a new worker simply tries and is refused by the worker without a word.
+- **Kill switch.** `gatherreq: false` in liveflags un-advertises the cap and
+  lifts the worker's gate: every resource is level 1 again, no deploy.
+
+Tests: `wheelzone` §8 (black steel refused at Mining 4 with the vein left up
+and the reason recorded, paid at 5; iron at Mining 1; clownfish refused at
+Fishing 4 and paid at 5; the kill switch; the table; forged types and tiers),
+`mirror-audit` "gather levels".
+
+## The label over each resource, and the ore's crack (v2.3.3040)
+
+Owner: *"Add hatchet icon above trees you can chop. Add pickaxe icon above ore
+you can mine with its name and level. Same with fish and tree resources to
+harvest. Add cracking sound when the ore splits when user completes the
+gesture."*
+
+- **The label** (`src/rendering/nodeLabels.js`): a small dark pill over every
+  resource you hold the tool for, holding the TOOL that works it (the bag's
+  own hatchet, pickaxe and rod pictures, shrunk to 64 px and preloaded at the
+  loading gate), WHAT it gives (Copper Ore, Pine Log, Minnow) and the LEVEL it
+  asks, the level red (and the pill's edge) while yours is below it. It is
+  sized on the SCREEN, 20 CSS px tall at any zoom, like the monsters' name
+  plates. It stands over the crown, the rock and the school of fish, and steps
+  aside while the green harvest bar is up over that node, or while another
+  player is seated at it.
+- **Retired:** the tool emoji, the grey tier dot and the three 7 px proximity
+  tips that stood there, sized for the 6–12 px resources of before v2.3.1275.
+  The ore's stand-here mark is drawn over the pill when they would touch; the
+  spot you stand on did not move.
+- **The crack** (`public/sfx/mining/ore-crack.mp3`, `'ore-crack'` in
+  `SFX_MANIFEST`): the rock splitting open in the game's own unused mining
+  clip, played on the frame the break strip splits the rock, about 350 ms
+  after the gesture. Yours plays at full voice. Another player's vein, which
+  breaks on your screen too, plays softer and fades out by 1,400 px. Before
+  this a finished vein was silent: its only cue was a `beep()`, which has
+  played nothing since v2.3.1103.
+
+Tests: `mp-wheelnodes` (a fishing spot's held display is its label now),
+`mp-harvestbar`.
+
 ## Not in this round
 
 - The world map (the overlay a tap on the minimap opens) shows no nodes.
