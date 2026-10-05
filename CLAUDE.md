@@ -1003,7 +1003,32 @@ remnant to migrate server-side, not a mode to preserve.
       `wantWheelSpawn`, `veilWheelTrip`), today's town only a stop;
     - `mp-wheeldoors`, test-world-core "the buildings' doors",
       `tutorial.test.mjs` §9: docs/specs/wheel-doors.md, WORLD-MAP-PIPELINE
-      "The buildings have doors".)
+      "The buildings have doors".
+  - Since v2.3.3033 DAMAGE NUMBERS ARE 1.75x BIGGER -- the owner: "Damage
+    numbers for players and monsters needs to be about anywhere from 1.5-2x
+    bigger":
+    - effectsRenderer `DMG_SCALE` 1.75, the middle of the ask (`?dmgscale=1.5`
+      .. `2`, 1 to 3, for a tab): every DAMAGE number -- a hit you deal, a crit,
+      a hit on you or on a teammate, a tick, a gathering hit -- is drawn at that
+      times its old 21 / 38 world px (`isDamagePopup`: it has a digit, does not
+      start with "+", and is a hit taken, carries a weapon / crit / heart /
+      element mark, or is a plain number); "Blocked!", "Dodged", "+30 XP",
+      "+25 G", a heal's "+12" and every word keep 21 px, so a kill's number is
+      the biggest thing over the monster and its XP and gold read under it;
+    - what depends on the size follows it: the crit still 1.8x the plain one,
+      the 22 px mark cap and the gap after the digits x the scale, the stroke
+      and halo of classic Text, the stacking (26 px at two 21 px numbers is
+      26/21 of their average font, its window with it), the climb (40 -> 70 px
+      a second, so hits 0.7 s apart do not touch), and the spawn height -- the
+      centre lifted 0.9 of the extra size (`DMG_LIFT`) so the bigger glyph keeps
+      the air over the bar the old one had;
+    - the glyph atlas is baked at 128 px, not 100 (`DMG_BMP_BAKE_PX`): the
+      biggest crit was enlarged 1.33x from its bake, now 1.04x, for +0.7 MB of
+      6 -- a bake is a DENSITY knob, never a size one (TRAPS §137);
+    - `mp-dmgsize` (20 checks on a phone: sizes, marks, gaps, a hit on you,
+      stacks, a kill's XP and gold, the words), mp-elemhits and mp-critpreview
+      read the scaled cap; TRAPS §136 (emptying `S.dmgNumbers` leaves its Texts
+      drawn): docs/specs/damage-number-size.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
