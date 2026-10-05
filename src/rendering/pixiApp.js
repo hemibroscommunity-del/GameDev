@@ -349,6 +349,89 @@ function buildScene(app) {
     };
   }
 
+  /* ═══ v2.3.3037: EVERY PICTURE ON THE GPU, NAMED ═══
+   * __btTex counts Pixi's asset CACHE -- pictures loaded from a file.  The
+   * GPU holds more than that: the Wheel's ground pieces, the baked bodies, the
+   * shadows' and the minimap's render textures, text, canvases.  This lists
+   * everything the renderer has uploaded (GlTextureSystem.managedTextures),
+   * what it is (a picture from a file, a canvas, or a render texture drawn on
+   * the GPU -- the ones an iOS graphics reset blanks), its decoded size (x 4/3
+   * with mipmaps), and how long since it was last drawn.  Probe only, house
+   * style: nothing in the game calls it. */
+  if (typeof window !== 'undefined') {
+    /* every source the GPU holds or the asset cache keeps, for the audit's
+       thumbnails (mp-gpuaudit QA_GA_THUMBS) */
+    window.__btGpuTexSources = function () {
+      const out = [];
+      try { for (const s of (app.renderer.texture.managedTextures || [])) out.push(s); } catch (e) { /* none */ }
+      try {
+        const map = Cache && (Cache._cache || Cache.cache);
+        if (map && typeof map.forEach === 'function') map.forEach((v) => {
+          const src = v && (v.source || (v.uid && v.resource !== undefined ? v : null));
+          if (src) out.push(src);
+        });
+      } catch (e) { /* none */ }
+      return out;
+    };
+    window.__btGpuTex = function (top) {
+      try {
+        const r = app.renderer;
+        const list = (r && r.texture && r.texture.managedTextures) || [];
+        const now = r && r.gc ? r.gc.now : performance.now();
+        const kindOf = (s) => {
+          const res = s.resource;
+          if (!res) return 'render';
+          if (typeof ImageBitmap !== 'undefined' && res instanceof ImageBitmap) return 'file';
+          if (typeof HTMLImageElement !== 'undefined' && res instanceof HTMLImageElement) return 'file';
+          if (typeof HTMLCanvasElement !== 'undefined' && res instanceof HTMLCanvasElement) return 'canvas';
+          if (typeof OffscreenCanvas !== 'undefined' && res instanceof OffscreenCanvas) return 'canvas';
+          if (ArrayBuffer.isView(res)) return 'buffer';
+          return 'other';
+        };
+        const rows = [];
+        const byKind = {};
+        let bytes = 0;
+        for (const s of list) {
+          if (!s || s.destroyed) continue;
+          const w = s.pixelWidth || 0, h = s.pixelHeight || 0;
+          const mip = !!(s.autoGenerateMipmaps || s.mipLevelCount > 1);
+          const b = w * h * 4 * (mip ? 4 / 3 : 1);
+          const kind = kindOf(s);
+          bytes += b;
+          byKind[kind] = (byKind[kind] || 0) + b;
+          rows.push({ label: String(s.label || '').replace(/^https?:\/\/[^/]+/, '').split('?')[0], kind, w, h, mip,
+            mb: +(b / 1048576).toFixed(2), idleS: s._gcLastUsed >= 0 ? Math.round((now - s._gcLastUsed) / 1000) : null });
+        }
+        rows.sort((a, b) => b.mb - a.mb);
+        const mbOf = (o) => { const m = {}; for (const k in o) m[k] = +(o[k] / 1048576).toFixed(1); return m; };
+        const cv = r && r.canvas;
+        /* and what the asset cache holds that the GPU does NOT: decoded (a
+           canvas's pixels are kept whatever happens) and never drawn */
+        const onGpu = new Set(list);
+        const idle = {};
+        let idleBytes = 0;
+        try {
+          const map = Cache && (Cache._cache || Cache.cache);
+          const seen = new Set();
+          if (map && typeof map.forEach === 'function') map.forEach((v) => {
+            const src = v && (v.source || (v.uid && v.resource !== undefined ? v : null));
+            if (!src || src.destroyed || seen.has(src.uid) || onGpu.has(src)) return;
+            seen.add(src.uid);
+            const b = (src.pixelWidth || 0) * (src.pixelHeight || 0) * 4;
+            idleBytes += b;
+            const k = kindOf(src) + ' ' + (String(src.label || '').replace(/^https?:\/\/[^/]+/, '').split('?')[0].split('/').slice(0, 5).join('/') || ((src.pixelWidth || 0) + 'x' + (src.pixelHeight || 0)));
+            idle[k] = (idle[k] || 0) + b;
+          });
+        } catch (e) { /* a private map that moved: the rest still stands */ }
+        const idleTop = Object.entries(idle).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k, b]) => [k, +(b / 1048576).toFixed(2)]);
+        return { n: rows.length, mb: +(bytes / 1048576).toFixed(1), byKind: mbOf(byKind),
+          canvas: cv ? [cv.width, cv.height, +((cv.width * cv.height * 4) / 1048576).toFixed(1)] : null,
+          cacheNotOnGpu: { mb: +(idleBytes / 1048576).toFixed(1), top: idleTop },
+          list: rows.slice(0, top || 400) };
+      } catch (e) { return { err: String(e && e.message || e) }; }
+    };
+  }
+
   const layers = {};
   for (const name of WORLD_LAYER_NAMES) {
     const layer = new Container();

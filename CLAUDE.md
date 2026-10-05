@@ -1088,7 +1088,22 @@ remnant to migrate server-side, not a mode to preserve.
       have lost fish to 810; the worker still never times the gesture, so a
       modified client skipping it is no longer clipped by the hour cap there;
     - `node-respawn` §3c, `anticheat` §4/§7: docs/specs/gesture-cue.md
-      "v2.3.3036".)
+      "v2.3.3036".
+  - Since v2.3.3037 TODAY'S TOWN'S ART IS NOT LOADED FOR THE STOP ON THE WAY TO
+    THE WHEEL -- the owner: "are there any quick wins when it comes to freeing
+    up memory? It happens too often that the screen goes black":
+    - `mp-gpuaudit` (and `window.__btGpuTex()`, pixiApp.js) names what the GPU
+      holds and what the asset cache keeps undrawn, with the peaks on the way in
+      and on a death's trip; `QA_GA_THUMBS=N` pictures the unnamed canvases;
+    - the way in, a death, a dungeon's way out and the farm's all stop in
+      today's town under one veil, and each loaded its NPCs and buildings (35 MB
+      decoded) and its map (11.3 MB) for nobody: now `townSkippedOnTheWay()`
+      (wheelHome.js) keeps them off the loading screen, the login splash's
+      warm-up, syncTownScenery and the tileRenderer's map fetch; a trip that
+      lets go loads town as before; the way in's GPU peak 114 -> 88 MB (no
+      spike over where it settles), the cache's 184 -> 172; mp-gpuaudit fails
+      if either trip holds the map;
+    - the bigger wins and what each costs: docs/specs/memory-in-the-wheel.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

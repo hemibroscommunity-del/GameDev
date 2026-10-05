@@ -306,6 +306,20 @@ function syncTownScenery(S) {
       S._wheelTripVeil = true;
       showZoneLoadingOverlay(_wheelVeilName());
     }
+    /* ═══ v2.3.3037: ...AND NOTHING OF TODAY'S TOWN IS LOADED FOR IT ═══
+       Owner, 2026-10-05: "are there any quick wins when it comes to freeing
+       up memory? It happens too often that the screen goes black".  On the
+       way to the Wheel today's town is a stop nobody sees (the veil above
+       never lifts on it), yet this loaded all of its art for the stop -- its
+       NPCs and buildings (35 MB decoded) and its map (11.3 MB, the largest
+       picture in the game) -- at every death, on top of everything the
+       Wheel held, and freed it all a beat after the stairs.  Not any more:
+       while the trip is wanted nothing is fetched (and the gate does not
+       fetch it on the way in either: preloadAnimations, pixiRenderer,
+       tileRenderer).  If the trip lets go (TRIP_VEIL_MS: a worker that never
+       answers), `trip` goes false and the ordinary path below loads town
+       behind its own veil, as before. */
+    if (trip && !_townArtReady()) return;
     if (_townArtReady()) {
       if (trip) return;                                   /* v2.3.3025: held for the Wheel */
       if (hold || S._wheelTripVeil) _liftTownVeil(S);
