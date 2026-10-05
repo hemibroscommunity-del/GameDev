@@ -267,7 +267,7 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
   await send(wsH, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked', taps: [] });
   const recH = room._botfp.get('bp_bot_h');
   check('cook: tapless cooked counted for burn-in review', recH.counters.taplessCooks === 1, recH.counters);
-  recH.hour.bySkill.cooking = 700;
+  recH.hour.bySkill.cooking = BOTFP.COOK_HOUR_CAP;   /* v2.3.3036: the cap, not a copy of it (700 -> 2400) */
   const fishBefore = psH.inventory.fish_minnow;
   await send(wsH, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked', taps: [], swipeFp: humanFp() });
   check('cook: over-cap cook dropped WITHOUT consuming the fish',

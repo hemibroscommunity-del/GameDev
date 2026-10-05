@@ -264,7 +264,7 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
                               feet; 32 is ~43% and still reads at phone size. */
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHp /* v2.3.3035: a timer harvest's bar reads the node's HP */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
@@ -275,7 +275,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandOverBoots /* v2.3.3027: the band over the lumberjack and the cook */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
@@ -500,7 +500,7 @@ import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
-import { wheelNodeView, WheelFish } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
+import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar over a spot's school */ } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
 import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
@@ -851,6 +851,64 @@ const FIRE_GEAR_REG = {
    Crit stat on the Hero screen, so a player learns one symbol, not two. */
 const DMG_FONT_PX = 21;
 const DMG_CRIT_FONT_PX = 38;
+/* ═══ v2.3.3033: DAMAGE NUMBERS ARE 1.75x BIGGER ═══
+   Owner, 2026-10-04: "Damage numbers for players and monsters needs to be
+   about anywhere from 1.5-2x bigger".  The two sizes above are WORLD pixels,
+   and the Wheel draws the world at about 0.6 of a CSS pixel each (the bro 64
+   px tall), so a plain hit read 13 CSS px beside a character five times its
+   height.
+
+   1.75 is the middle of what was asked for, applied to EVERY damage number --
+   a hit you deal (and a crit), a hit on you, a teammate's blow, a tick of
+   burn or poison -- so their sizes keep every relation v2.3.2211 and v2.3.3026
+   set: the crit still 1.8x the plain one, each mark as tall as its number (the
+   22 px cap scales too), the element badge cut to its own box.  What is NOT a
+   damage number keeps its size: "Blocked!", "Dodged", "+30 XP", "+25 G", a
+   heal's "+12" and every word are DMG_FONT_PX as ever, so a kill's number is
+   the biggest thing over the monster and its XP and gold read under it.
+
+   `?dmgscale=1.5` .. `?dmgscale=2` (1 .. 3) tries another size in a tab, the way
+   `?zoom=` does, so nobody waits for a build to see 1.5 or 2.  Where it is
+   applied -- the size, the lift that keeps the bigger glyph's bottom edge off
+   the bar, the stacking, the climb, the mark -- is the mint in
+   `_updateDamageNumbers` ("HOW BIG, AND HOW HIGH"). */
+function readDmgScale() {
+  try {
+    const q = new URLSearchParams(window.location.search).get('dmgscale');
+    const v = q == null ? NaN : parseFloat(q);
+    if (isFinite(v)) return Math.min(3, Math.max(1, v));
+  } catch (e) { /* no window: the default */ }
+  return 1.75;
+}
+export const DMG_SCALE = readDmgScale();
+if (typeof window !== 'undefined') window.__btDmgScale = DMG_SCALE;   /* QA: mp-dmgsize */
+/* Each number spawns its CENTRE a fixed 34 px over the band (entityRenderer
+   POPUP_BAR_CLEAR, combatHelpers HERO_POPUP_CLEAR), which was worked out for a
+   21 px number whose spawn pop (1.6x) reaches 16.8 px below its centre (v2.3.1638).
+   A bigger glyph reaches further, so its centre is lifted by this much of the
+   extra size -- 0.9 puts the popped glyph's bottom edge exactly as far over the
+   bar as the old number's was, for a plain hit and for a crit alike. */
+const DMG_LIFT = 0.9;
+/* Marks that say "this number is a hit": the weapons, the heart and the elements
+   (the XP and gold marks belong to pay-outs). */
+const DMG_MARK_ICONS = new Set(['sword', 'arrow', 'spell', 'crit', 'heart'].concat(Object.keys(ELEM_ICON_SRC)));
+/* The renderer's own "plain damage number" (v2.3.103's white override): an
+   optional non-letter prefix, an optional dash, digits -- and here also a
+   trailing symbol, as in "-12 🌵" (thorns). */
+const DMG_PLAIN_RE = /^[^A-Za-z+]*-?\d+[^A-Za-z\d]*$/;
+/* Is this popup a damage number (drawn DMG_SCALE x) or a notice (drawn as it
+   was)?  Needs a digit, so "Dodged" and "Blocked!" -- which carry `taken` -- are
+   words; never a pay-out or a heal, which start with "+".  Then: a hit on
+   someone, a number carrying a weapon, crit or element mark (every real crit
+   does -- the bare `crit` flag is also how BroTown's pushNpcMsg makes a NOTE big
+   and wiggly, and a note stays a note), or a plain number. */
+function isDamagePopup(dmg, t) {
+  if (typeof t !== 'string') t = String(t == null ? '' : t);   /* a site may push a bare number */
+  if (!/\d/.test(t) || t.charAt(0) === '+') return false;
+  if (dmg.taken) return true;
+  if (dmg.iconKey && DMG_MARK_ICONS.has(dmg.iconKey)) return true;
+  return DMG_PLAIN_RE.test(t);
+}
 /* v2.3.2212 (owner: "change the damage color to a light yellow when it's a
    crit").  Was the gold #f5c542 / amber #fbbf24 pair -- two shades for one
    event, and both close enough to the game's general gold accent (level-ups,
@@ -1743,23 +1801,40 @@ const NODE_ART_BASE = { tree: 0.839, oreVein: 0.737 };
 /* v2.3.2956: where a node's HP bar hangs, as a fraction of its frame --
    measured off the same webps' alpha (>40): the pine's crown tops out at
    0.103, the ore's rock bottoms out at its ground line (NODE_ART_BASE), the
-   pond's water at 0.686.  `edge` says which side of that line the bar goes:
-   over the CROWN for a tree (the chopper stands at the trunk) and UNDER the
-   rock and the pond (the miner and the angler are above them).  Never near
-   the head -- the player's own HP bar is the same art, right there.  `gap`
-   is the clear space between that line and the bar; the rock's is wider
-   because the miner's boots hang just below the ore's base (measured on the
-   mp-gatherhits capture: a 4 px gap let them clip the bar's number). */
+   pond's water at 0.686.  It went over the CROWN for a tree and UNDER the
+   rock and the pond (the miner and the angler are above them).  (Superseded,
+   below: v2.3.3027 took it over your head, v2.3.3035 over the resource.) */
+/* ═══ v2.3.3035: ABOVE EVERY RESOURCE ═══
+   Owner, 2026-10-05: "I want resource harvesting bar to be green and to appear
+   above the resource, not the player head."  So it hangs over the TOP of each
+   one's art -- the crown (0.103, unchanged) and the pond's water (0.349),
+   measured off the same webps' alpha (>50%) -- `gap` world px clear of it, at
+   your HP bar's size (v2.3.3027).  `f` is the art's top, the bar goes above
+   it.  Not the ROCK's: the miner stands right behind his rock (MINE_SEAT_DY),
+   only his head and shoulders over it, and a bar above the rock was drawn over
+   exactly those (measured on the mp-wheelnodes capture: the pick's tip was all
+   of him that showed).
+   This version's first cut sat it ON the rock's top, the one place over the
+   rock that was not the miner; the owner, seeing it: "For mining you can put
+   the bar beneath the ore".  So the rock's goes UNDER it, as v2.3.2956 had it
+   -- `f` its ground line (NODE_ART_BASE's 0.737; the iron and black steel
+   veins' 418 px art has the copper one's proportions), `under` the bar below
+   that line, `gap` 10 (v2.3.2956's: the miner's boots hang just below the
+   ore's base, and a 4 px gap let them clip the number). */
 const NODE_HPBAR_AT = {
-  tree:     { f: 0.103, edge: -1, gap: 4 },
-  oreVein:  { f: 0.737, edge: 1, gap: 10 },
-  fishSpot: { f: 0.686, edge: 1, gap: 4 },
+  tree:     { f: 0.103, gap: 4 },
+  oreVein:  { f: 0.737, gap: 10, under: true },
+  fishSpot: { f: 0.349, gap: 4 },
 };
-/* ...and a cook's, under the campfire (owner: "Make it appear for cooking
-   too").  The fire's (x, y) is its GROUND point (CampfireFx, v2.3.2846) and
-   the cook plants his boots at +8 below it (cookStandInSpot), so the bar's top
-   goes `gap` world px under the ground point, scaled by the zone's
-   perspective like the fire and the cook themselves. */
+/* ...and a cook's, UNDER the campfire (owner: "Make it appear for cooking
+   too").  The one resource whose bar is not over it (v2.3.3035): the cook
+   leans right over his fire, the pan in the flames (cookStandInSpot, 11.5
+   world px off its middle), so over the fire IS over his head -- measured on
+   the mp-gatherhits capture, the bar sat on his hair.  Under it is the fire's
+   alone.  The fire's (x, y) is its GROUND point (CampfireFx, v2.3.2846) and
+   the cook plants his boots at +8 below it, so the bar's top goes `gap` world
+   px under the ground point, scaled by the zone's perspective like the fire
+   and the cook themselves. */
 const CAMPFIRE_HPBAR_GAP = 14;
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   _fxLoad(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
@@ -1857,12 +1932,14 @@ _fxLoad('/icons/ore/ore-copper.webp').then((tex) => {
    sites.  The PNG stays in public/ so bringing it back is a revert, not a
    re-commission. */
 
+/* the outline of a classic-Text number at DMG_FONT_PX; a damage number scales it (v2.3.3033) */
+const DMG_STROKE_PX = 3;
 const DMG_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 14,
   fontWeight: '800',
   fill: '#ffffff',
-  stroke: { color: '#000000', width: 3 },
+  stroke: { color: '#000000', width: DMG_STROKE_PX },
   align: 'center',
 });
 
@@ -1904,7 +1981,17 @@ const DMG_BMP_FONT = 'bt-dmg-digits';
    px) — crisp on every device, no DPR games.  Stroke 14 keeps the
    classic DMG_STYLE outline ratio (3/21 = 14/100 ≈ 0.14; the old bake's
    6/28 = 0.21 was 50% heavier, part of the mud). */
-const DMG_BMP_BAKE_PX = 100;
+/* ═══ v2.3.3033: 128, FOR THE BIGGER NUMBERS ═══
+   A crit is 66.5 world px now (DMG_SCALE 1.75 x 38), drawn at ~0.6 of a CSS
+   px a world px on a 3x phone with its +-10% wiggle: up to 133 device px,
+   which the 100 px bake had to ENLARGE 1.33x (soft edges on the heaviest
+   number in the game).  128 draws it at 1.04x.  Only the glyphs' density
+   changes -- pixi stores the pages at resolution bake/100 and lays text out
+   the same -- and measured, the atlas grows 6.0 -> 6.7 MB (its pages shrink
+   to 400 x 400 as the bake grows, 11 of them against 6).  160 would be
+   11.3 MB and 200 8.8 MB, for density nothing is drawn at.  The outline keeps
+   its 14/100 ratio. */
+const DMG_BMP_BAKE_PX = 128;
 let _dmgBmpReady = false;
 try {
   BitmapFont.install({
@@ -1914,7 +2001,7 @@ try {
       fontSize: DMG_BMP_BAKE_PX,
       fontWeight: '800',
       fill: '#ffffff',
-      stroke: { color: '#000000', width: 14 },
+      stroke: { color: '#000000', width: 14 * DMG_BMP_BAKE_PX / 100 },
     },
     chars: [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'],
   });
@@ -2296,6 +2383,9 @@ export class EffectsRenderer {
     this.groundArrowLayer = layers.groundLoot || layers.projectiles;
     this.telegraphLayer = layers.telegraphs;
     this.overlayLayer = layers.overlayWorld;
+    /* v2.3.3035: the world's last layer, for the harvest's bar alone
+       (pixiApp WORLD_LAYER_NAMES 'worldUi') */
+    this.worldUiLayer = layers.worldUi || layers.overlayWorld;
     this.hudLayer = layers.hud;
 
     // Pooled graphics
@@ -4578,6 +4668,18 @@ export class EffectsRenderer {
         } else if (/^\+\d+\s*G$/.test(t)) {
           displayColor = '#f5c542';
         }
+        /* ═══ v2.3.3033: HOW BIG, AND HOW HIGH ═══
+           A damage number is DMG_SCALE x its old size (see DMG_SCALE); a
+           notice keeps DMG_FONT_PX.  Its centre is lifted by DMG_LIFT of the
+           extra height, so the bigger glyph keeps the air under it that the
+           old one had over the bar.  Both are stamped on the record: the
+           stacking below, the icon's cap and gap and the QA probe read them. */
+        const k = isDamagePopup(dmg, t) ? DMG_SCALE : 1;
+        const baseFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
+        const fontSize = baseFontSize * k;
+        dmg._k = k;
+        dmg._fs = fontSize;
+        dmg._lift = (fontSize - baseFontSize) * DMG_LIFT;
         /* Anti-overlap: separate a new popup from nearby live ones so
            kill-shot popups (damage, XP, gold spawned in one frame at
            slightly different Y) don't visually overlap. We compute a
@@ -4608,7 +4710,15 @@ export class EffectsRenderer {
            starting point, and no future clearance bump can be eaten. */
         const SPACING = 26;
         let highestY = Infinity;
+        let highestSp = SPACING;
         let hasNeighbor = false;
+        /* v2.3.3033: where THIS popup spawns once lifted, and (below) how far
+           apart two popups must be for their sizes: 26 px was a 21 px number's
+           line (26/21 of its font), so two of any size keep that same share of
+           their average font -- 26 at 21 + 21, 46 at 37 + 37, 64 at a crit over
+           a plain hit -- and the window that finds a neighbour grows with it
+           (50 px at 26, so a stack is still three deep in one frame). */
+        const myY = dmg.y - dmg._lift;
         /* v2.3.1347: the neighbor scan is O(n) per NEW popup (O(n²) in a
            burst). Past ~40 live popups the field is dense chaos where
            stacking placement is unreadable anyway — skip the scan and
@@ -4617,24 +4727,23 @@ export class EffectsRenderer {
           if (j === i) continue;
           const o = numbers[j];
           if (!o._pixiText || o._pixiText.destroyed) continue;
-          if (Math.abs(o.x - dmg.x) > 60) continue;
+          const pairSp = Math.max(SPACING, (fontSize + (o._fs || DMG_FONT_PX)) / 2 * (SPACING / DMG_FONT_PX));
+          if (Math.abs(o.x - dmg.x) > 60 * Math.max(1, pairSp / SPACING)) continue;
           const oAge = (now - o.ts) / 1000;
           if (oAge > 0.6) continue;
-          const oY = o.y + (o._stackOffset || 0) - oAge * 40;
-          if (Math.abs(oY - dmg.y) > 50) continue;
+          const oY = o.y + (o._stackOffset || 0) - (o._lift || 0) - oAge * (typeof o.rise === 'number' ? o.rise : 40 * (o._k || 1));
+          if (Math.abs(oY - myY) > 50 * Math.max(1, pairSp / SPACING)) continue;
           hasNeighbor = true;
-          if (oY < highestY) highestY = oY;
+          if (oY < highestY) { highestY = oY; highestSp = pairSp; }
         }
         /* Clamp to <= 0: a neighbour sitting BELOW this popup's spawn
            would otherwise push the offset positive and re-open the exact
            hole this fix closes. */
-        dmg._stackOffset = hasNeighbor ? Math.min(0, (highestY - SPACING) - dmg.y) : 0;
-        const baseFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
+        dmg._stackOffset = hasNeighbor ? Math.min(0, (highestY - highestSp) - myY) : 0;
         /* Special-attack hits used to render at 2x to read as "heavy", but
            that crowded the screen and hid the normal-hit cadence. They now
            match normal size and instead get a bright outer glow (see
            dropShadow below) to mark them as specials. */
-        const fontSize = baseFontSize;
         /* v2.3.1357: plain popups (no emoji, no special halo, chars inside
            the baked set) assemble from the pre-baked glyph atlas instead of
            rasterizing a fresh canvas — the pack-fight frame killer.  Tint
@@ -4666,11 +4775,12 @@ export class EffectsRenderer {
           const textStyle = { ...baseStyle, fontSize, fill: displayColor };
           if (dmg.special) {
             /* distance:0 + high blur = even halo on all sides. Warm yellow
-               matches the special-projectile yellow halo. */
+               matches the special-projectile yellow halo.  v2.3.3033: blur
+               follows the number's size, as the stroke below does. */
             textStyle.dropShadow = {
               color: '#ffe066',
               alpha: 0.95,
-              blur: 8,
+              blur: 8 * k,
               distance: 0,
               angle: 0,
             };
@@ -4683,11 +4793,14 @@ export class EffectsRenderer {
              overrides. Set fill and fontSize explicitly to guarantee they apply. */
           text.style.fill = displayColor;
           text.style.fontSize = fontSize;
+          /* v2.3.3033: DMG_STYLE's outline is 3 px on a 21 px number (the
+             glyph atlas bakes the same ratio); a bigger number keeps it. */
+          if (k !== 1 && baseStyle === DMG_STYLE) text.style.stroke = { color: '#000000', width: DMG_STROKE_PX * k };
           if (dmg.special) {
             text.style.dropShadow = {
               color: '#ffe066',
               alpha: 0.95,
-              blur: 8,
+              blur: 8 * k,
               distance: 0,
               angle: 0,
             };
@@ -4715,7 +4828,10 @@ export class EffectsRenderer {
              comparison.  A crit's mark now scales WITH its number and a
              little past it, which is what "much larger" asks for; every
              other icon keeps the cap it has always had. */
-          const targetH = dmg.crit ? Math.round(fontSize * 1.15) : Math.min(fontSize, 22);
+          /* v2.3.3033: ...and the 22 px cap is a 21 px number's, so it scales
+             with the number (DMG_SCALE x), or a bigger number would leave its
+             mark small beside it. */
+          const targetH = dmg.crit ? Math.round(fontSize * 1.15) : Math.min(fontSize, 22 * k);
           /* v2.3.3026: a mark cut to its own box (_tightPopupIcon) can be
              wide -- the slime's splat is 1.9 to 1 -- so no wider than 1.5x
              the height, which the round badges never reach */
@@ -4732,7 +4848,7 @@ export class EffectsRenderer {
                of each mark: its drawn height beside the number's font */
             if (dmg.taken) {
               const _ps = window.__btTakenPops || (window.__btTakenPops = Object.create(null));
-              _ps[iconKey] = { h: +icon.height.toFixed(2), w: +icon.width.toFixed(2), font: fontSize, tight: tex._tight || null,
+              _ps[iconKey] = { h: +icon.height.toFixed(2), w: +icon.width.toFixed(2), font: fontSize, cap: 22 * k, tight: tex._tight || null,
                 y: +dmg.y.toFixed(1), py: S.player ? +S.player.y.toFixed(1) : null, band: S._selfBandTopY != null ? +S._selfBandTopY.toFixed(1) : null };
             }
           }
@@ -4764,8 +4880,11 @@ export class EffectsRenderer {
          belongs to.  A popup that asks for a longer life almost always wants
          a slower climb with it, so `rise` sits next to `ttl` at the push
          site.  Unset behaves exactly as before. */
-      const rise = (typeof dmg.rise === 'number') ? dmg.rise : 40;
-      text.y = dmg.y + (dmg._stackOffset || 0) - age * rise;
+      /* v2.3.3033: ...and a damage number climbs DMG_SCALE x as fast: two hits 0.7 s
+         apart were 28 px apart for a 14 px digit, and at 1.75x the size would have
+         been 28 px for a 26 px one -- touching.  Scaled, they keep their gap. */
+      const rise = (typeof dmg.rise === 'number') ? dmg.rise : 40 * (dmg._k || 1);
+      text.y = dmg.y + (dmg._stackOffset || 0) - (dmg._lift || 0) - age * rise;   /* v2.3.3033: lifted by the bigger glyph's extra half height */
       /* Fade over 80% of ttl so longer-lived popups (kill messages with
          ttl=2.5) actually stay visible, not invisible most of their life. */
       text.alpha = Math.max(0, 1 - age / (ttl * 0.8));
@@ -4790,7 +4909,7 @@ export class EffectsRenderer {
            floor still let the magic icon clip the last digit on
            fire-goblin hits ("32" reading as "3[magic]").  Stroked text
            extends a few px past text.width on iOS canvas rendering. */
-        const _iconGap = Math.max(10, (dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX) * 0.35);
+        const _iconGap = Math.max(10, (dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX) * 0.35) * (dmg._k || 1);   /* v2.3.3033: x the number's scale */
         dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
@@ -9697,56 +9816,65 @@ export class EffectsRenderer {
     if (!this._nodeHpBar) this._nodeHpBar = {};
     const ex = S._extraction;
     const h = ex ? ex.hits : null;
-    let bar = null, m = null;
+    let bar = null, m = null, at = null;
     /* Not over a corpse: the death hold keeps S._extraction alive until the
        respawn's zone change, and every other harvest visual already steps
        aside for it (v2.3.2281, _updateExtractionCue's _selfCorpse return). */
     if (!this._selfCorpse && ex && (ex.status === 'waiting' || ex.status === 'ready') && (!h || h.plan)) {
       const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
         : nodes.find((n) => n.id === ex.nodeId && n.alive);
-      const at = node ? this._nodeHpBarAt(S, node) : null;
+      /* ═══ v2.3.3035: GREEN, OVER THE RESOURCE, WITH ITS NUMBERS ═══
+         Owner, 2026-10-05: "I want resource harvesting bar to be green and
+         to appear above the resource, not the player head.  It should also
+         list the numbers on the bar right now the bar has no numbers."
+         v2.3.3027 put it over your head at your HP bar's size; the SIZE
+         stays (the owner's "as large as the normal hp bar"), the place is
+         the resource's own top (NODE_HPBAR_AT, _nodeHpBarAt), the fill green
+         (drawNodeHpBar) and the number "7/10".  The name plate and your HP
+         bar stay put away while you gather, as v2.3.3027 asked.
+         The bar with no numbers was a harvest on the old TIMER -- the one a
+         harvest falls back to when the worker never sends its hits, which is
+         what a dead connection looks like (v2.3.3034).  It now reads the
+         node's HP too, worn down with the clock: the bar is the node's HP
+         either way. */
+      at = node ? this._nodeHpBarAt(S, node) : null;
       m = at ? extractionMeter01(ex, Date.now()) : null;
       if (m) {
+        const timerMax = gatherNodeHp((node && node.gatherLvl) || 1);
         bar = h
           ? { show: true, hp: h.hp, maxHp: h.maxHp }
-          : { show: true, hp: null, maxHp: 1, frac: 1 - m.windup, smooth: true };
+          : { show: true, hp: Math.ceil((1 - m.windup) * timerMax - 1e-9), maxHp: timerMax, frac: 1 - m.windup, smooth: true };
         bar.call = m.idle;
-        bar.x = at.x; bar.y = at.y; bar.scale = at.scale; bar.now = now;
-        /* ═══ v2.3.3027: OVER YOUR HEAD, AT YOUR HP BAR'S SIZE ═══
-           Owner, 2026-10-04: "Ticks for the resource extraction is too hard
-           to see. You can make it as large as the normal hp bar and just
-           hide the player name plate and health bar during extraction."
-           The node's bar now takes the band over your head -- where the
-           name plate and your HP bar are, both stepped aside while you
-           gather (entityRenderer selfGathering) -- at your HP bar's size,
-           76 x 22 to the monster's 44 x 13, its number in your HP number's
-           type.  v2.3.2956 kept it at the node because a bar that size by
-           the face would read as yours; with yours put away, that is the
-           place the eye already goes.  The miner and the angler are your
-           own display (S._selfBand, written by _updatePlayer); the
-           lumberjack and the cook are stand-ins with your display hidden,
-           so the band is put over THEIR boots (bandOverBoots), from the
-           same spot they are drawn at.  Only where neither can be said (no
-           band yet) does the bar stay at the node, small, as before. */
-        const band = this._gatherBand(S, ex, node);
-        if (band) { bar.x = band.x; bar.y = band.y; bar.scale = band.scale; bar.big = true; bar.feet = band.feet; }
+        bar.x = at.x; bar.y = at.y; bar.scale = at.scale; bar.now = now; bar.big = true;
       }
     }
-    drawNodeHpBar(this.gestureLayer, this._nodeHpBar, bar);
+    /* v2.3.3035: on the world's own last layer, worldUi, not gestureFront.
+       The rock you mine is promoted to overlayWorld (v2.3.854: it covers the
+       rock baked into the swing), so with the bar sitting on the rock's top
+       the rock was drawn over its own bar -- the first capture showed "7/"
+       and stone; and in overlayWorld itself the rock still came out on top
+       now and then (pixiApp.js 'worldUi').  The bar is UI, and UI is never
+       covered by scenery: here it is over the promoted rock, the canopy and
+       the night's light. */
+    drawNodeHpBar(this.worldUiLayer || this.gestureLayer, this._nodeHpBar, bar);
     /* QA probe: what the bar is showing, which an anti-aliased 44px bar in a
        screenshot cannot be asked.  Written while the bar is up, and once when
        it goes down -- not every idle frame. */
     if (typeof window !== 'undefined') {
       if (bar) {
         window.__btNodeHpBar = { show: true, mode: h ? 'hits' : 'timer', skill: ex.skill,
-          hp: bar.hp, maxHp: h ? bar.maxHp : null, frac: +(h ? bar.hp / bar.maxHp : bar.frac).toFixed(3),
+          hp: bar.hp, maxHp: bar.maxHp, frac: +(h ? bar.hp / bar.maxHp : bar.frac).toFixed(3),
           windup: +m.windup.toFixed(3), ready: m.ready, call: !!bar.call,
           x: +bar.x.toFixed(1), y: +bar.y.toFixed(1), scale: +bar.scale.toFixed(3),
           shown: h ? h.shown : null, of: h ? h.plan.length : null,
-          /* v2.3.3027: over the gatherer's head at your HP bar's size: its
-             drawn size, and the boots of the figure under it */
           big: !!bar.big, w: +(this._nodeHpBar._nbW || 0).toFixed(1), h: +(this._nodeHpBar._nbH || 0).toFixed(1),
-          feet: bar.feet != null ? +bar.feet.toFixed(1) : null };
+          /* v2.3.3035: the words on it, its fill, and the top of the
+             resource's art it hangs over (world y) */
+          text: this._nodeHpBar._nbStr || null, green: !!this._nodeHpBar._nbGreen,
+          artTop: at.artTop != null ? +at.artTop.toFixed(1) : null, nodeY: +at.nodeY.toFixed(1), under: !!at.under,
+          /* and, for a bar UNDER its resource (the rock, the fire), the
+             art's ground line it hangs below */
+          artBase: at.artBase != null ? +at.artBase.toFixed(1) : null };
         this._nodeHpBarUp = true;
       } else if (this._nodeHpBarUp !== false) {
         window.__btNodeHpBar = { show: false };
@@ -9755,44 +9883,35 @@ export class EffectsRenderer {
     }
   }
 
-  /* v2.3.3027: where the band over the gatherer's head is this frame (see
-     _drawGatherHpBar), or null: the miner's and the angler's from your own
-     display, the lumberjack's and the cook's over the stand-in's boots, at
-     the spot its placer draws it (chopStandInSpot, the side by where you
-     stand, as the chopper picks it; cookStandInSpot). */
-  _gatherBand(S, ex, node) {
-    const skill = ex && ex.skill;
-    if (skill === 'mining' || skill === 'fishing') {
-      const b = S._selfBand;
-      return b && b.on ? b : null;
-    }
-    if (skill === 'woodcutting' && node) {
-      const px = (S.player && typeof S.player.x === 'number') ? S.player.x : node.x;
-      const sp = chopStandInSpot(S.currentZone, node, node.x >= px ? 1 : -1);
-      return bandOverBoots(sp.x, sp.y, sp.pscale);
-    }
-    if (skill === 'cooking' && node) {
-      const sp = cookStandInSpot(S.currentZone, node);
-      return bandOverBoots(sp.x, sp.y, sp.pscale);
-    }
-    return null;
-  }
-
-  /* Where a node's bar goes: the gathering nodes' from their art
-     (NODE_HPBAR_AT), the campfire's under its ground point.  The bar's centre,
-     in world px, and the scale it is drawn at.  Not cached: one call per frame
+  /* Where a node's bar goes: over the top of the resource's art (v2.3.3035;
+     NODE_HPBAR_AT), the rock's and the campfire's under them.
+     The bar's centre, in world px, the scale it is drawn at -- your HP bar's,
+     bandScale, at the zone's perspective there -- and the art's top it hangs
+     over or the ground line it hangs under.  Not cached: one call per frame
      while a harvest is up, and the fire can be re-lit elsewhere. */
   _nodeHpBarAt(S, node) {
+    const zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
+    const scale = bandScale(zs);
+    const halfH = (HPBAR_BIG_H / 2) * scale;
     if (node.nodeType === 'campfire') {
-      const zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
-      return { x: node.x, y: node.y + (CAMPFIRE_HPBAR_GAP + 6.5) * zs, scale: zs };   /* 6.5 = half the bar's 13 px */
+      return { x: node.x, y: node.y + CAMPFIRE_HPBAR_GAP * zs + halfH, scale, artTop: null, artBase: node.y, nodeY: node.y, under: true };
+    }
+    /* in the Wheel a fishing spot is its school of fish, no pond picture
+       (v2.3.3012): over the school */
+    if (node.nodeType === 'fishSpot' && wheelNodeView(S)) {
+      const f = wheelFishTop(node);
+      return { x: f.x, y: f.top - NODE_HPBAR_AT.fishSpot.gap - halfH, scale, artTop: f.top, nodeY: node.y };
     }
     const at = NODE_HPBAR_AT[node.nodeType];
     if (!at) return null;
     const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
     const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
     const frameTop = node.y - (NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5) * targetH;
-    return { x: node.x, y: frameTop + at.f * targetH + at.edge * (at.gap + 6.5), scale: 1 };
+    const line = frameTop + at.f * targetH;
+    /* `under` hangs it below the art's ground line (the rock's), the rest
+       above the art's top */
+    if (at.under) return { x: node.x, y: line + at.gap + halfH, scale, artTop: null, artBase: line, nodeY: node.y, under: true };
+    return { x: node.x, y: line - at.gap - halfH, scale, artTop: line, artBase: null, nodeY: node.y };
   }
 
   /* v2.3.2844: the snowman's per-hit plume is retired (tombstone near the old

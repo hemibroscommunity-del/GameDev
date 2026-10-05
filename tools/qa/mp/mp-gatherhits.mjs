@@ -38,7 +38,10 @@
  *   C. the kill switch thrown mid-session through the real admin route: the
  *      worker answers `off` and the client is on the timer at once.
  * A and the cook's own no-answer case also hold the node's bar to the timer:
- * it drains with the clock and shows no number.
+ * it drains with the clock (since v2.3.3035 reading the node's HP worn down
+ * with it, "7/10" -- it showed no number, the owner's "the bar has no
+ * numbers").  And (v2.3.3035) the bar is green, at the resource: over the
+ * crown and the pond, under the rock and the fire.
  * Screenshots: tools/qa/mp/out/gatherhits-<skill>-hits.png, mid-run, for a
  * human to look at -- a 44px bar and a white "1" are exactly what an
  * assertion passes on while looking wrong. */
@@ -296,16 +299,27 @@ async function body({ P, wsPort, rec }) {
     r.ok(`${label}: the gesture window opens (guard)`, opened === 'ready', { opened });
     if (opened !== 'ready') return { cancelled: false };
     const cue = await P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest().cue : null));
-    const g = await P.page.evaluate(async ([sk, cx, cy]) => {
+    /* v2.3.3035: the moves 16 ms apart in ONE uninterrupted run on the page's
+       thread, as mp-wheelnodes plays them (v2.3.3012).  The meter's clock
+       counts only gaps under 200 ms between moves (ExtractionSwipeLayer
+       activeMs), and since the Wheel's water and the wider view a frame of
+       this box's software renderer is ~200-400 ms: moves that yield between
+       them (the sleep(16) this loop had) land a frame apart, and the meter
+       sat at 0.7-0.96 for the whole 60 s -- every harvest here failed on
+       main, the game itself being fine (mp-recoverpay, mp-wheelnodes pay).
+       A phone draws a frame in ~16 ms; holding the thread for the stroke is
+       the phone's cadence, not a shortcut through the gesture. */
+    const g = await P.page.evaluate(([sk, cx, cy]) => {
       const S = window._gameState.current;
       const ev = (t, x, y) => window.dispatchEvent(new PointerEvent(t, { pointerId: 9, clientX: x, clientY: y,
         pointerType: 'touch', bubbles: true, cancelable: true, isPrimary: true }));
-      const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
       const zone0 = S.currentZone;
       ev('pointerdown', cx, cy);
       const t0 = performance.now();
-      let step = 0, lastProg = 0;
-      while (performance.now() - t0 < 60000) {
+      let step = 0, lastProg = 0, next = t0;
+      while (performance.now() - t0 < 12000) {
+        while (performance.now() < next) { /* the phone's 16 ms */ }
+        next += 16;
         let x = cx, y = cy;
         if (sk === 'fishing') {
           const a = step * (Math.PI / 6);
@@ -316,7 +330,6 @@ async function body({ P, wsPort, rec }) {
         }
         ev('pointermove', x, y);
         step++;
-        await sleep(16);
         const ex = S._extraction;
         if (ex) lastProg = ex.progress || 0;
         if (!ex || ex.status !== 'ready') break;
@@ -426,6 +439,8 @@ async function body({ P, wsPort, rec }) {
           await new Promise((res) => requestAnimationFrame(res));
           await new Promise((res) => requestAnimationFrame(res));
           out.atReady.bar = window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null;
+          /* v2.3.3035: where the resource stands, for the bar over it */
+          out.atReady.nodeX = ex.nodeRef ? ex.nodeRef.x : null;
           /* v2.3.3027: and what the band over the head shows instead */
           out.atReady.plate = window.__btResourceBars ? window.__btResourceBars.plateVisible : null;
           out.atReady.hpA = window.__btHpReads ? window.__btHpReads.barA : null;
@@ -545,20 +560,24 @@ async function body({ P, wsPort, rec }) {
     r.ok(`${skill}: at ready the node reads 0, its bar shows 0 and CALLS for the gesture (the old head bar's flash)`,
       !!tr.atReady && tr.atReady.hp === 0 && !!tr.atReady.bar && tr.atReady.bar.show === true && tr.atReady.bar.hp === 0
         && tr.atReady.bar.frac === 0 && tr.atReady.bar.ready === true && tr.atReady.bar.call === true, tr.atReady);
-    /* v2.3.3027, owner: "Ticks for the resource extraction is too hard to
-       see. You can make it as large as the normal hp bar and just hide the
-       player name plate and health bar during extraction" -- the bar is over
-       the gatherer's head (the miner and the angler are you; the lumberjack
-       and the cook stand-ins), about 143 world px over the boots at a flat
-       zone's scale, at the HP bar's 76 x 22, and the plate and your own HP bar
-       are put away while it is */
+    /* v2.3.3035, owner: "I want resource harvesting bar to be green and to
+       appear above the resource, not the player head.  It should also list
+       the numbers on the bar" -- the bar hangs over the TOP of the resource's
+       art (its bottom edge a few world px clear of it, centred on it), at the
+       HP bar's 76 x 22 (v2.3.3027's size), its fill the green, reading
+       "0/<its HP>" at ready; your name plate and HP bar still put away while
+       you gather (v2.3.3027).  And the owner: "For mining you can put the
+       bar beneath the ore" -- the rock's, like the fire's, hangs UNDER its
+       art's ground line, its top a few world px below it. */
     {
       const b = (tr.atReady && tr.atReady.bar) || {};
-      const zs = (b.scale || 0) / 1.25, over = b.feet != null ? b.feet - b.y : NaN;
-      r.ok(`${skill}: ...the bar is over the ${skill === 'woodcutting' ? 'lumberjack\'s' : skill === 'cooking' ? 'cook\'s' : 'gatherer\'s'} head (${Math.round(over)} world px over the boots), at the HP bar's size (${b.w} x ${b.h}), the name plate and the HP bar put away`,
+      const clear = b.artTop != null ? b.artTop - (b.y + b.h / 2) : NaN;
+      const below = b.artBase != null ? (b.y - b.h / 2) - b.artBase : NaN;
+      r.ok(`${skill}: ...the bar is at the ${type === 'campfire' ? 'fire' : type === 'oreVein' ? 'rock' : type === 'tree' ? 'tree' : 'pond'} (${b.under ? 'under it, ' + (type === 'campfire' ? 'the cook leaning over it' : 'clear of the miner behind it') + ', its top ' + Math.round(below) + ' world px under the ground line' : 'its bottom ' + Math.round(clear) + ' world px over the art\'s top'}), green, at the HP bar's size (${b.w} x ${b.h}), reading "${b.text}"; the name plate and the HP bar put away`,
         b.big === true && Math.abs(b.w - 76 * b.scale) < 0.6 && Math.abs(b.h - 22 * b.scale) < 0.6
-          && over > 120 * zs && over < 170 * zs && tr.atReady.plate === false && tr.atReady.hpA === 0,
-        { bar: b, over, plate: tr.atReady && tr.atReady.plate, hpA: tr.atReady && tr.atReady.hpA });
+          && (b.under ? below > 0 && below < 24 && (type === 'campfire' || type === 'oreVein') : clear > 0 && clear < 12) && Math.abs(b.x - tr.atReady.nodeX) < 1 && b.green === true
+          && b.text === '0/' + tr.hp && tr.atReady.plate === false && tr.atReady.hpA === 0,
+        { bar: b, clear, below, nodeX: tr.atReady && tr.atReady.nodeX, plate: tr.atReady && tr.atReady.plate, hpA: tr.atReady && tr.atReady.hpA });
     }
 
     /* 5. the gesture still pays */
@@ -622,8 +641,9 @@ async function body({ P, wsPort, rec }) {
     const wire1 = (await H.wireCounts(P)).extraction_start || 0;
     r.ok('no answer (cook): ...and does NOT re-declare it (one start on the wire: the worker keeps no cook record to re-stamp)',
       wire1 - wire0 === 1, { sent: wire1 - wire0 });
-    r.ok('no answer (cook): the fire\'s bar drains on the timer, with no number (nothing was hit)',
-      !!b1 && !!b2 && b1.mode === 'timer' && b2.mode === 'timer' && b1.hp == null && b2.hp == null && b2.frac < b1.frac,
+    r.ok('no answer (cook): the fire\'s bar drains on the timer, its number worn down with it (v2.3.3035: "7/10", the node\'s HP)',
+      !!b1 && !!b2 && b1.mode === 'timer' && b2.mode === 'timer' && b2.frac < b1.frac
+        && /^[0-9]+[/][0-9]+$/.test(b1.text || '') && b1.maxHp > 0 && b2.hp <= b1.hp && b1.text === b1.hp + '/' + b1.maxHp,
       { b1, b2 });
     const res = await gestureAndPay('campfire', invBefore, r, 'no answer (cook)');
     await unstash();
@@ -675,8 +695,9 @@ async function body({ P, wsPort, rec }) {
     const b1 = await P.page.evaluate(() => (window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null));
     await P.page.waitForTimeout(600);
     const b2 = await P.page.evaluate(() => (window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null));
-    r.ok('no answer: the node\'s bar drains on the timer, with no number (nothing was hit)',
-      !!b1 && !!b2 && b1.mode === 'timer' && b2.mode === 'timer' && b1.hp == null && b2.hp == null && b2.frac < b1.frac,
+    r.ok('no answer: the node\'s bar drains on the timer, its number worn down with it (v2.3.3035: "7/10", the node\'s HP)',
+      !!b1 && !!b2 && b1.mode === 'timer' && b2.mode === 'timer' && b2.frac < b1.frac
+        && /^[0-9]+[/][0-9]+$/.test(b1.text || '') && b1.maxHp > 0 && b2.hp <= b1.hp && b1.text === b1.hp + '/' + b1.maxHp,
       { b1, b2 });
     const res = await gestureAndPay(pick.type, invBefore, r, 'no answer');
     await unstash();

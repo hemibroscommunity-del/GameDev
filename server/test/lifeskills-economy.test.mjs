@@ -15,7 +15,8 @@
  *       removes the stash entry; out-of-range/negative idx no-ops.
  *   3.  cook_request: consumes exactly one raw fish; 'cooked' mints
  *       cooked_<fish> + 40 cooking XP, 'burnt' mints burnt_dust; the
- *       20/min rate limit drops the request WITHOUT consuming.
+ *       20/min rate limit drops the request WITHOUT consuming
+ *       (COOK_PER_MIN, 45/min, since v2.3.3036).
  *   3a. cook physics floor (v2.3.1167): consecutive cooks below the
  *       minigame's own open-window minimum are dropped without
  *       consuming; a full-window gap cooks normally.
@@ -40,6 +41,7 @@
  * via webSocketMessage); never starts startTickLoop. */
 import { GameRoom } from '../src/index.js';
 import { BLACKSMITH_TIERS, COOKING_RECIPES, SHOP_ITEMS } from '../src/data.js';
+import { COOK_PER_MIN } from '../src/cooking.js'; /* v2.3.3036 */
 
 function makeState() {
   const store = new Map();
@@ -181,8 +183,10 @@ check('cook: burnt outcome mints burnt_dust, no XP',
   ps.inventory);
 // Rate limit: 20 in the rolling minute -> the 21st is dropped WITHOUT
 // consuming (the fish stockpile conversion throttle, v2.3.1104).
+// v2.3.3036: COOK_PER_MIN (45) in the minute -> the 46th, the gesture a
+// quarter of what it was (cooking.js).
 ps.inventory = { fish_minnow: 1 };
-ps._cookHistory = Array.from({ length: 20 }, () => Date.now());
+ps._cookHistory = Array.from({ length: COOK_PER_MIN }, () => Date.now());
 ps._lastCookAt = Date.now() - 60000;
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
 check('cook: rate limit drops the request without consuming the fish',
@@ -192,40 +196,49 @@ ps._cookHistory = [];
 
 // ── 3a. cook physics floor (v2.3.1167): a cook can't complete faster
 // than the minigame's own open window ──
-ps.inventory = { fish_minnow: 3 };
+ps.inventory = { fish_minnow: 4 };
 ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
 ps._cookHistory = [];
 ps._lastCookAt = 0;
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
-check('floor: first cook lands normally', ps.inventory.fish_minnow === 2, ps.inventory);
+check('floor: first cook lands normally', ps.inventory.fish_minnow === 3, ps.inventory);
 // Immediate follow-up: humanly impossible (window is >= ~1.7s even at
 // max skill) -> dropped WITHOUT consuming, no XP.
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
 check('floor: instant second cook is dropped without consuming',
-  ps.inventory.fish_minnow === 2 && ps.inventory.cooked_fish_minnow === 1
+  ps.inventory.fish_minnow === 3 && ps.inventory.cooked_fish_minnow === 1
   && ps.lifeSkills.cooking.xp === 200,
   { inv: ps.inventory, xp: ps.lifeSkills.cooking.xp });
-// A sub-floor gap (1s < the 1200ms flat floor) still fails even with
-// an empty rate-limit history.
+// A sub-floor gap (0.6s < the 900ms flat floor; 1s < 1200ms until
+// v2.3.3036) still fails even with an empty rate-limit history.
+ps._cookHistory = [];
+ps._lastCookAt = Date.now() - 600;
+await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
+check('floor: 0.6s-gap cook is dropped (below the flat 900ms floor)',
+  ps.inventory.fish_minnow === 3, ps.inventory);
+// v2.3.3036: the owner's 75% shorter gesture brings the quickest honest
+// cook round in 1.51 s (gathering.js HONEST_CYCLE_MIN_MS), and a phone
+// network's jitter can land two requests closer than they were sent -- so
+// the floor is 900 ms, and a 1s gap, which 1200 ms dropped, lands.
 ps._cookHistory = [];
 ps._lastCookAt = Date.now() - 1000;
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
-check('floor: 1s-gap cook is dropped (below the flat 1200ms floor)',
-  ps.inventory.fish_minnow === 2, ps.inventory);
+check('floor: 1s-gap cook lands (v2.3.3036: 900ms floor, under the quickest honest cook less jitter)',
+  ps.inventory.fish_minnow === 2 && ps.inventory.cooked_fish_minnow === 2, ps.inventory);
 // v2.3.1432: a 1.4s gap used to be eaten by the lvl-1 minnow curve
 // floor (~3.4s) -- the owner's "minnow still isn't cooking" class of
-// silent drop.  With the flat 1200ms floor it lands.
+// silent drop.  With the flat floor it lands.
 ps._cookHistory = [];
 ps._lastCookAt = Date.now() - 1400;
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
 check('floor: 1.4s-gap cook lands (v2.3.1432 flat floor; curve floor ate this)',
-  ps.inventory.fish_minnow === 1 && ps.inventory.cooked_fish_minnow === 2, ps.inventory);
+  ps.inventory.fish_minnow === 1 && ps.inventory.cooked_fish_minnow === 3, ps.inventory);
 // Backdated well past the floor -> accepted.
 ps._cookHistory = [];
 ps._lastCookAt = Date.now() - 10000;
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
 check('floor: full-gap cook cooks normally (last fish key deleted at 0)',
-  ps.inventory.fish_minnow === undefined && ps.inventory.cooked_fish_minnow === 3, ps.inventory);
+  ps.inventory.fish_minnow === undefined && ps.inventory.cooked_fish_minnow === 4, ps.inventory);
 // v2.3.1432: cooking a fish the server blob does NOT hold used to be a
 // SILENT return -- the client's optimistic celebration played and no
 // correction ever arrived.  Now the drop echoes player_state so the

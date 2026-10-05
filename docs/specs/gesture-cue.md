@@ -65,6 +65,45 @@ with screenshots of each stage). Regression: `mp-harvest`, `mp-chopyield`,
 
 ---
 
+## v2.3.3036 — a quarter of the time
+
+> "Also reduce resource extraction time during gesture by 75%"
+
+* **A quarter as long:** `GESTURE_TARGET_MS` 6000 → 1500, `GESTURE_FLOOR_MS`
+  4800 → 1200 (half of v2.3.2760's first 3000 / 2400). At a quick pace that is
+  3.6 pumps of the pick or chops of the axe, 3.1 turns of the reel, 3 flips of
+  the pan. The grade moves with it: perfect is ≤ 1.8 s of motion and ≤ 2.25 s
+  overall, good ≤ 3.5 s. The wind-up's hits before the gesture are unchanged.
+* **The worker's speed limits moved with it.** The worker never times the
+  gesture, but four of its limits were sized for "several seconds a
+  minigame", and with a 1.5 s gesture a quick, honest hand reaches them, each
+  failing silently (the owner's "Logs aren't going to the inventory", made
+  by the server). They are now derived from the fastest an honest harvest or
+  cook can come round — the hit lead (90 ms), the settle (220 ms) and the
+  gesture's floor (1,200 ms): 1,510 ms, 39.7 a minute, 2,384 an hour
+  (`gathering.js` `HONEST_CYCLE`, pinned to the client's by `mirror-audit`):
+
+  | Limit | Was | Now | What it does past the limit |
+  |---|---|---|---|
+  | perfect claims a minute (`HARVEST_PERFECT_PER_MIN`) | 10 | 45 | the harvest is graded good, half the yield |
+  | cooks a minute (`cooking.js` `COOK_PER_MIN`) | 20 | 45 | the cook is dropped, the fish kept |
+  | gap between two cooks (`COOK_FLOOR_MS`) | 1.2 s | 0.9 s | the cook is dropped (jitter can land two requests 0.3 s closer than they were sent) |
+  | harvests an hour, per skill (`botfp.js` `HARVEST_HOUR_CAP`) | 810 | 2,400 | the grant is withheld |
+  | cooks an hour (`COOK_HOUR_CAP`) | 700 | 2,400 | the cook is dropped |
+
+  In the Wheel supply no longer bounds a player (34–54 nodes a skill, each
+  back in 20 s): a greedy route round the baked nodes, always the nearest live
+  one, takes ~350–520 an hour at the old gesture and ~500–1,000 trees or ore
+  and ~800–1,400 fish at the new one (200–585 px/s), so 810 would have
+  withheld a quick angler's fish. What it costs: a modified client that skips
+  the gesture takes ~1,200–1,600 an hour on the same route, under 2,400, so
+  the hour cap no longer clips a solo bot there. The bound that would is the
+  worker holding the gesture's floor itself (no strike sooner than the wind-up
+  + settle + 1.2 s after the start), which it does not do yet.
+  `node-respawn` §3c, `anticheat` §4 and §7, `lifeskills-economy` §3/§3a.
+
+---
+
 ## v2.3.2761 — the owner's second pass
 
 > "Double the amount of time it takes to complete the gesture. Play sound

@@ -125,6 +125,11 @@ Notes for anyone extending it:
   `fc-cache -f`. A family whose `@font-face` never loaded matches an
   installed font of that name. (`tools/qa/quest-sheet-shot.mjs` opens its
   harness pages with `ignoreHTTPSErrors`, which lets the stylesheet load.)
+- **`pkill -f workerd` inside a command that mentions `workerd` kills that
+  command's own shell** (v2.3.3033). `-f` matches the whole command line, which
+  includes the text of the `bash -c` you are typing, so the shell dies (exit 144)
+  before or after the real work, with no output. Put the cleanup in a script file
+  (the QA wrapper `each.sh` does) or match by pid.
 - **A screenshot waits for the game's next frame** (v2.3.3030). On the
   software renderer at dpr 3 a frame takes most of a second, and
   `page.screenshot` came back 2.5-3 s after it was called, so anything on

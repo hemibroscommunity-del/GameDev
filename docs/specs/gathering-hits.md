@@ -30,20 +30,46 @@ in every phase (below).
   - ~~It hangs **over the crown** of a tree and **under** a rock, a pond or the
     campfire, so it is never near your head, where your own HP bar is the
     same art.~~
-  - **Since v2.3.3027 it is over the gatherer's head, as large as your HP
-    bar.** The owner: *"Ticks for the resource extraction is too hard to see.
+  - ~~Since v2.3.3027 it is over the gatherer's head, as large as your HP
+    bar.~~ The owner: *"Ticks for the resource extraction is too hard to see.
     You can make it as large as the normal hp bar and just hide the player
     name plate and health bar during extraction."* While the harvest is open
     (`waiting` or `ready`, and not over a corpse), your name plate and HP bar
     step off the band over your head (`entityRenderer selfGathering`). The
-    node's bar takes their place at your HP bar's 76 x 22, against the
-    monster's 44 x 13, with its number in your HP number's type
-    (`drawNodeHpBar` `big`).
-    - The miner and the angler are your own figure (`S._selfBand`).
-    - The lumberjack and the cook stand in for it with your figure hidden, so
-      the band is put over the stand-in's boots (`bandOverBoots`, at
-      `chopStandInSpot` / `cookStandInSpot`).
-    - The plate and the bar come back the frame the harvest ends.
+    node's bar is drawn at your HP bar's 76 x 22, against the monster's
+    44 x 13, with its number in your HP number's type (`drawNodeHpBar` `big`).
+    The SIZE and the plate put away still hold; the place is below.
+  - **Since v2.3.3035 it is GREEN, over the RESOURCE, and reads "7/10".** The
+    owner: *"I want resource harvesting bar to be green and to appear above
+    the resource, not the player head. It should also list the numbers on the
+    bar right now the bar has no numbers."*
+    - It hangs over the top of the resource's own art, 4 world px clear of it
+      (`effectsRenderer` `NODE_HPBAR_AT`, `_nodeHpBarAt`): the tree's crown
+      (0.103 of its frame) and a pond picture's water (0.349). In the Wheel a
+      fishing spot has no pond picture, only its fish, so the bar is over the
+      school (`wheelNodes.js` `wheelFishTop`). The rock's is UNDER it (below).
+    - The CAMPFIRE's stays under the fire, where it was: the cook leans right
+      over his fire with the pan in the flames, so over the fire is over his
+      head (the first capture had the bar on his hair).
+    - Its fill is the HP bar's art with the red turned green
+      (`public/ui/bars/node-full-green.png`, made by
+      `tools/ui/green-node-bar.sh`); your HP bar and the monsters' stay red.
+    - The number is what is left and what there was, `7/10`, narrowed to fit
+      a long one inside the bar.
+    - It is drawn on a world layer of its own, the last one (`worldUi` in
+      `pixiApp.js` `WORLD_LAYER_NAMES`), so nothing in the world covers it: the
+      rock you mine is promoted to `overlayWorld` (v2.3.854), and inside that
+      layer the rock still came out over the bar now and then, though the bar
+      was re-appended to its end on every frame.
+    - The ROCK's bar hangs UNDER it, its top 10 world px below the rock's
+      ground line (0.737 of its frame, `NODE_ART_BASE`; the iron and black
+      steel veins have the copper one's proportions), as v2.3.2956 had it: the
+      miner stands right behind his rock, only his head and shoulders over
+      it, and a bar above the rock covered exactly those (the first capture
+      showed nothing of him but the pick's tip). This version's first cut sat
+      the bar on the rock's top; the owner, seeing it: *"For mining you can
+      put the bar beneath the ore."* The probe (`window.__btNodeHpBar`) says
+      `under` and gives the line it hangs below, `artBase`.
 - The ring on the right button steps up with each hit instead of creeping on
   a timer. **There is no bar over your head any more** — the node's bar
   replaced it (owner, second message).
@@ -64,10 +90,15 @@ in every phase (below).
   **grease pop** — the pan's one beat — with its number over the pan. The
   grease used to pop on its own 650 ms clock through the wind-up; in a cook
   with hits it pops on the hits instead, at the same pace, so the number and
-  the pop are one event. The bar hangs under the fire.
+  the pop are one event. The bar hangs under the fire (still, v2.3.3035:
+  over it would be over the cook's head).
 - On the old timer (see "the ways back" below) the node's bar still shows,
-  draining smoothly with the clock and with **no number**, because nothing
-  was hit.
+  draining smoothly with the clock. ~~With no number, because nothing was
+  hit.~~ Since v2.3.3035 it reads the node's HP worn down with the clock
+  (`gatherNodeHp` of its tier, the HP a plan would have brought): the owner's
+  "the bar has no numbers" was this bar. A harvest falls back to it when the
+  worker never answers, which is what a dead connection looks like
+  (v2.3.3034, docs/specs/dead-connection.md).
 
 ## Numbers
 
@@ -80,7 +111,7 @@ in every phase (below).
 | Level 1, first tier | 10 hits: ~6.5 s on a rock (the old timer was 4 s), ~5.4 s on a tree |
 | Average hits on 10 HP | level 1: 10 · 2: 6.9 · 3: 5.3 · 5: 3.8 · 10: 2.4 (10% one-shot) · 20: 1.6 (55% one-shot) |
 | `MAX_HITS` | 40: a bound no live node can reach. A far-under-levelled player on a future high tier would otherwise get a plan hundreds of hits long; the 40th hit takes whatever is left. |
-| Resources per hour | unchanged in kind: one node per skill per zone and a 20 s respawn still set the ceiling, so the anti-bot hour cap (`HARVEST_HOUR_CAP`) needs no change. |
+| Resources per hour | unchanged in kind: one node per skill per zone and a 20 s respawn still set the ceiling, so the anti-bot hour cap (`HARVEST_HOUR_CAP`) needs no change. (v2.3.3036: in the Wheel the gesture, not supply, is the bound; with it a quarter of what it was the cap is 2,400, `docs/specs/gesture-cue.md`.) |
 
 All of it lives in `GATHER_HITS` (`server/src/gathering.js`) and its client
 mirror `GATHER_SWING` / `gatherNodeHp` (`src/data/gameSystems.js`).
@@ -185,7 +216,7 @@ for the corpse like every other harvest visual.
 | Plan in, hits landed, timer fallback | `src/game/lifeSkillRewards.js` (`applyGatherHits`, `tickGatherHits`) |
 | Hits before the window check | `src/ui/BroTown.jsx` (extraction tick) |
 | Chunked meter (the ring; the node's bar reads it too) | `src/game/gesturePose.js` (`extractionMeter01`) |
-| The node's HP bar: hits, timer drain, the call at ready | `src/rendering/systems/entityRenderer.js` (`drawNodeHpBar`, the art; v2.3.3027 `big`, `selfGathering`, `bandOverBoots`, `S._selfBand`) + `effectsRenderer.js` (`_drawGatherHpBar` / `_gatherBand` / `_nodeHpBarAt`, the place and the phase) |
+| The node's HP bar: hits, timer drain, the call at ready | `src/rendering/systems/entityRenderer.js` (`drawNodeHpBar`, the art; v2.3.3027 `big`, `selfGathering`; v2.3.3035 the green fill `_hudBarTex.nodeFull`, `bandScale`, the "7/10") + `effectsRenderer.js` (`_drawGatherHpBar` / `_nodeHpBarAt`, the place and the phase; v2.3.3027's `_gatherBand` over the head is gone) |
 | A cook's grease on its hits | `src/rendering/systems/effectsRenderer.js` (`_updateExtractionCue`, the grease beat) |
 | Swing timing | `src/data/gameSystems.js` (`GATHER_SWING`, `gatherHitTimes`) |
 | The bar over the head | removed: `_drawWindupBar` and `window.__btWindupBar` are gone |

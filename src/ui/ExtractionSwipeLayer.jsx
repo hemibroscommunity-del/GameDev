@@ -49,7 +49,8 @@ import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, GESTURE_TARGET_MS, ge
  * The per-skill rep rules described at the top (1 rep per pump / stroke /
  * turn, one flip = cooked) are gone: the meter counts CYCLES of the motion
  * against gestureTargetCycles (3s at a quick pace, floored at 2.4s of real
- * motion), and one stroke tracker drives both the meter and the pose -- see
+ * motion; 1.5s and 1.2s since v2.3.3036, gesturePose.js GESTURE_TARGET_MS and
+ * GESTURE_FLOOR_MS), and one stroke tracker drives both the meter and the pose -- see
  * stepStroke, docs/specs/gesture-cue.md and TRAPS §107.
  */
 
@@ -150,8 +151,10 @@ function pathHash(samples) {
    handful of reps (3 pumps, 1.5 turns, a single flip), which a quick thumb
    finished in about a second.  It now counts CYCLES of the motion -- a pump
    down and back, a chop across and back, a flip up and down, a turn of the
-   reel -- against gestureTargetCycles (3s at a quick pace, gesturePose.js),
-   continuously, so the bar moves with the hand rather than in steps. */
+   reel -- against gestureTargetCycles (3s at a quick pace, gesturePose.js;
+   1.5s since v2.3.3036, the owner's "reduce resource extraction time during
+   gesture by 75%"), continuously, so the bar moves with the hand rather than
+   in steps. */
 function repsTargetFor(skill) {
   return gestureTargetCycles(skill);
 }
@@ -171,7 +174,9 @@ function cyclesFromGesture(skill, g) {
    filled; with the meter now a set amount of work by design, it is how
    QUICKLY and how STEADILY the player kept the motion going -- measured
    against GESTURE_TARGET_MS, so a retune of the meter carries the grade with
-   it (v2.3.2761: the owner doubled the target and these moved with it):
+   it (v2.3.2761: the owner doubled the target and these moved with it;
+   v2.3.3036: a quarter of it, so perfect is <= 1.8s of motion and 2.25s
+   overall, good <= 3.5s):
      perfect  a quick pace held through (<= 1.2x the target of motion, 1.5x
               overall) by a hand that looks human (the v2.3.229 entropy floor);
      good     a steady pace (<= 2.33x overall);

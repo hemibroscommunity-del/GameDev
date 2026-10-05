@@ -77,6 +77,41 @@ export const GATHER_HITS = {
   SEQ_MAX: 1e9,
 };
 
+/* ═══ v2.3.3036: THE FASTEST AN HONEST HARVEST OR COOK CAN COME ROUND ═══
+ *
+ * Owner, 2026-10-05: "reduce resource extraction time during gesture by 75%".
+ * The gesture went from 6 s to 1.5 s (src/game/gesturePose.js
+ * GESTURE_TARGET_MS), its floor of real motion from 4.8 s to 1.2 s
+ * (GESTURE_FLOOR_MS).  The worker never holds the gesture's length -- only
+ * the wind-up's hits before it (openDelayBase, _handleNodeStrike's
+ * too-early) -- but four of its bounds were sized for "several seconds a
+ * minigame" and would now fire on a quick, honest hand, each one silently:
+ * the perfect-claim limit below (yield halved), cooking.js COOK_PER_MIN (the
+ * cook dropped) and botfp.js HARVEST_HOUR_CAP / COOK_HOUR_CAP (the grant
+ * withheld) -- the owner's "Logs aren't going to the inventory", made by the
+ * server.  So each is now derived from the one number an honest client
+ * cannot beat:
+ *
+ *   the plan's round trip (>= 0) + GATHER_HIT_LEAD_MS + (hits - 1) swings
+ *   (>= 0) + GATHER_HIT_SETTLE_MS + GESTURE_FLOOR_MS of real motion
+ *   = 90 + 220 + 1200 = 1,510 ms at the least, harvest or cook alike
+ *
+ * (src/data/gameSystems.js and gesturePose.js; mirror-audit pins these to the
+ * client's, and node-respawn §3c / anticheat §4 and §7 hold every bound above
+ * what this allows: 39.7 a minute, 2,384 an hour).  A modified client can of
+ * course skip the gesture, and these clip it only where it would go past the
+ * quickest hand: on the Wheel's spread-out nodes it does not (what that costs:
+ * botfp.js HARVEST_HOUR_CAP).  Whoever shortens the gesture or the settle owns
+ * these. */
+export const HONEST_CYCLE = { LEAD_MS: 90, SETTLE_MS: 220, GESTURE_FLOOR_MS: 1200 };
+export const HONEST_CYCLE_MIN_MS = HONEST_CYCLE.LEAD_MS + HONEST_CYCLE.SETTLE_MS + HONEST_CYCLE.GESTURE_FLOOR_MS;
+/* Slice 18's perfect claims a minute (_ratedHarvestAccuracy).  v2.3.3036:
+   10 -> 45.  10 was "1 every 6 sec, well above the realistic minigame
+   cadence" when the gesture alone took 4.8 s or more (~9.5 a minute at the
+   most); a 1.5 s gesture brings a quick hand round in ~2 s, and nothing
+   honest beats 60000 / HONEST_CYCLE_MIN_MS = 39.7. */
+export const HARVEST_PERFECT_PER_MIN = 45;
+
 export const gatheringMethods = {
   // ═══ Gather nodes (trees / fish spots / ore veins) ═══
   //
@@ -288,13 +323,15 @@ export const gatheringMethods = {
   // 10/min = 1 every 6 sec, well above the realistic minigame
   // cadence for legit play (each fishing / mining / wood-chop
   // minigame takes several seconds + walk-to-next-node time).
+  // v2.3.3036: 45/min since the gesture is a quarter of what it was --
+  // see HARVEST_PERFECT_PER_MIN.
   _ratedHarvestAccuracy(ps, claimed) {
     if (claimed !== 'perfect') return claimed || 'ok';
     const now = Date.now();
     if (!Array.isArray(ps._perfectHistory)) ps._perfectHistory = [];
     // Prune entries older than 60 sec.
     ps._perfectHistory = ps._perfectHistory.filter((t) => (now - t) < 60000);
-    if (ps._perfectHistory.length >= 10) {
+    if (ps._perfectHistory.length >= HARVEST_PERFECT_PER_MIN) {
       return 'good'; // cap exceeded
     }
     ps._perfectHistory.push(now);
@@ -738,7 +775,8 @@ export const gatheringMethods = {
    *  that, so the gesture cannot open before (hits - 1) swings have passed
    *  since this record was stamped.  That is the bound -- no jitter, the dice
    *  already vary it.  The gesture that follows needs GESTURE_FLOOR_MS of
-   *  real motion on top, so an honest strike is never near the edge. */
+   *  real motion on top (1.2 s since v2.3.3036, HONEST_CYCLE), so an honest
+   *  strike is never near the edge. */
   _planGatherHits(session, ps, n, rec, seq) {
     const hitSkill = this._harvestSkillName(n.nodeType);
     if (this._gatherHitsOff() || !Object.prototype.hasOwnProperty.call(GATHER_HITS.MS, hitSkill)) {

@@ -29,7 +29,9 @@ consuming the fish and echoing `player_state` to snap the client back:
 
 1. `fishKey` must be a `fish_*` string.
 2. **Rate limit** (v2.3.1104): 20 cooks per rolling minute
-   (`_cookRateOk`, in-memory `ps._cookHistory`).
+   (`_cookRateOk`, in-memory `ps._cookHistory`). Since v2.3.3036 45
+   (`COOK_PER_MIN`): the pan's gesture is a quarter of what it was, and the
+   quickest honest cook comes round in 1.51 s (39.7 a minute).
 3. **Anti-bot** (v2.3.1146): `_botfpOnCook` hourly cap + flip-gesture
    fingerprint replay/presence bookkeeping (botfp.js, caps-gated).
 4. **Physics floor** (v2.3.1167): consecutive cooks must be at least
@@ -39,7 +41,10 @@ consuming the fish and echoing `player_state` to snap the client back:
    `_saveRpg` field list), so the first cook after a join/deploy is
    always allowed; cycling the connection to reset the anchor buys at
    most one instant cook per reconnect, and the persisted
-   `_cookHistory` rate limit still binds at 20/min.
+   `_cookHistory` rate limit still binds at 20/min. (Since v2.3.1432 the
+   floor is a flat `COOK_FLOOR_MS`, 1,200 ms; since v2.3.3036 900 ms, under
+   the quickest honest cook less a phone network's jitter, and the rate
+   limit 45/min.)
 5. Player must hold the raw fish; exactly one is consumed.
 6. `kind === 'cooked'` mints `cooked_<fishKey>` +8 cooking XP;
    anything else mints `burnt_dust`.
