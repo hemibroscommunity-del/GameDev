@@ -5,8 +5,11 @@ resource, not the player head. It should also list the numbers on the bar right
 now the bar has no numbers."*
 
 Taken by `node tools/qa/mp/run.mjs harvestbar` on a 390 x 844 phone (3x) in the
-Wheel, on the commons by Brotown, a beat after a hit lands. "Before" is the same
-scenario run against main's build (`QA_DIST=<main's dist>`).
+Wheel, on the commons by Brotown, between two hits. "Before" is the same scenario
+run against main's build (`QA_DIST=<main's dist>`). The test machine draws about
+two frames a second, about as fast as the hits come, so for the picture only the
+hits still to come are paused a few seconds: that lets the bar be caught at rest,
+as a phone shows it between hits, instead of white with the flash of a hit.
 
 ## Chopping a tree
 
