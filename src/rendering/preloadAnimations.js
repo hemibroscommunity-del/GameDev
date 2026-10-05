@@ -41,6 +41,7 @@ import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { mintWorldFxTextures } from './worldFxTextures.js';   /* v2.3.2712 */
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
 import { isWorldTrialZone, preloadWorldTrial } from '../game/worldTrial.js'; /* v2.3.2932 */
+import { townSkippedOnTheWay } from '../game/wheelHome.js'; /* v2.3.3037: today's town is a stop on the way to the Wheel */
 import { effectsAnimationsReady, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit; v2.3.2844: minus the retired snowman plume */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
 import { preloadTraits, preloadBroBadge } from './systems/entityRenderer.js'; /* v2.3.2345: + the verified-Bro plate badge */
@@ -356,7 +357,13 @@ export async function preloadWorldAnimations() {
        start, and freed a beat after you leave (zoneTransitions
        syncTownScenery).  npcArt above keeps what can be seen away from
        town: the dialogue portraits and Ace's coin strips. */
-    townScenery: loadTownScenery(),
+    /* v2.3.3037: ...unless today's town is only the stop on the way to the
+       Wheel (wheelHome.js townSkippedOnTheWay), where nobody sees it: 35 MB
+       decoded that the way in loaded and freed again a beat after the stairs,
+       on top of the Wheel's own art (the owner's black screens).  The farm,
+       a dungeon's way out and a death pass through the same stop, and
+       zoneTransitions syncTownScenery does not load it for them either. */
+    townScenery: townSkippedOnTheWay() ? Promise.resolve() : loadTownScenery(),
     /* v2.3.2345: the verified-Bro badge on the name plate.  One 64px webp,
        GLOBAL: a badged player can stand in any zone, so there is no zone to
        scope it to.  Registered HERE because the renderer's lookup is

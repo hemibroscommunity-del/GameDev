@@ -31,7 +31,7 @@
  */
 import { TILE, ZONES, TOWN_EXITS } from '../data/index.js';
 import { isWorldViewZone } from '../data/zones.js';
-import { wheelIsHome } from './worldTrial.js';
+import { wheelIsHome, wheelWayBack } from './worldTrial.js';
 
 /* a beat in the world before the trip, so the arrival settles first */
 const SPAWN_SETTLE_MS = 400;
@@ -92,6 +92,18 @@ export function waitForWheelArrival(getS, after, capMs = TRIP_VEIL_MS) {
     tick();
   }));
 }
+
+/* ═══ v2.3.3037: TODAY'S TOWN IS A STOP, SO ITS ART IS NOT LOADED ═══
+   Owner, 2026-10-05: "are there any quick wins when it comes to freeing up
+   memory? It happens too often that the screen goes black".  Does this tab
+   take the trip to the Wheel's Brotown, so that today's town -- a stop under
+   one veil, on the way in, after a death and out of a dungeon -- is never on
+   screen?  Then nothing of it needs loading: its NPCs and buildings (35 MB
+   decoded), its map (11.3 MB).  Static for the tab (the trial flag and the
+   URL: `?nospawn` and `?wayback` keep today's town), so the loading screen
+   can ask it before there is any state; whether a trip is under way NOW is
+   wheelTripVeiled's. */
+export function townSkippedOnTheWay() { return wheelIsHome() && !wheelWayBack(); }
 
 /* Is this exit the spawn trip's way through (its gates let it pass)? */
 export function wheelSpawnPass(S, toZone) {

@@ -7,6 +7,7 @@ import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass
 import { TileRenderer } from './systems/tileRenderer.js';
 import { WheelObjects } from './wheelObjects.js'; /* v2.3.2975: the Wheel's buildings, trees, rocks and props */
 import { isWheelTrialZone } from '../game/worldTrial.js';
+import { townSkippedOnTheWay } from '../game/wheelHome.js';   /* v2.3.3037: today's town is a stop on the way to the Wheel */
 import { wheelObjectsOn } from '../game/wheelTrial.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
@@ -75,8 +76,12 @@ export function preloadPlayerAssets() {
     /* v2.3.1022: hold the intro until the starting-zone (town) map is in the
        Assets cache -> no black-ground flash on join.  Warmed early at modal
        time, so this is a cached/in-flight await (~0ms) unless the network is
-       genuinely slow. */
-    preloadStartZoneMap('town'),
+       genuinely slow.
+       v2.3.3037: not when today's town is only the stop on the way to the
+       Wheel (wheelHome.js townSkippedOnTheWay): the intro then waits for the
+       arrival in the Wheel, not for town, and the 11.3 MB map was decoded to
+       be freed a beat after the stairs. */
+    townSkippedOnTheWay() ? null : preloadStartZoneMap('town'),
     /* v2.3.1022: warm the swing/bowshot gear sheets (network-only, parallel)
        so the first armored attack doesn't cold-load mid-combat. */
     preloadCombatGear(),

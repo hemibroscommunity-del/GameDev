@@ -15,6 +15,7 @@ import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } 
 import { ChunkGround } from '../chunkGround.js';            /* v2.3.2932: the world trial's streamed ground */
 import { WheelGround } from '../wheelGround.js';            /* v2.3.2943: ...and the Wheel's, laid on the phone */
 import { isWorldTrialZone, worldTrialMode } from '@/game/worldTrial.js';
+import { townSkippedOnTheWay, wheelTripVeiled } from '@/game/wheelHome.js'; /* v2.3.3037: no map for today's town on the way to the Wheel */
 import { PORTAL_BEAM } from '../fxStrips.js'; /* v2.3.2070: the light shaft over a zone exit */
 
 const ZONE_LABEL_STYLE = new TextStyle({
@@ -363,6 +364,23 @@ export class TileRenderer {
     this._reloadedZones = {};
   }
 
+  /* The image zone's map into its sprite once it has loaded (the race fix
+     below: the preload still in flight when the zone is entered).  v2.3.3037:
+     its own method, so a map put off for today's town can be fetched later. */
+  _loadMapInto(imageUrl, sprite, w, h, reload) {
+    const loadP = reload
+      ? Promise.resolve().then(() => Assets.unload(imageUrl)).catch(() => {}).then(() => Assets.load(imageUrl))
+      : Assets.load(imageUrl);
+    loadP.then((loaded) => {
+      if (loaded && !sprite.destroyed) {
+        if (loaded.source) loaded.source.scaleMode = 'nearest';
+        sprite.texture = loaded;
+        sprite.width = w;
+        sprite.height = h;
+      }
+    }).catch(() => {});
+  }
+
   rebuild(app, map, zoneId) {
     this.currentZone = zoneId;
     this.currentMap = map;
@@ -375,6 +393,7 @@ export class TileRenderer {
        free.  removeChildren() only detaches; the sprite object (and its
        texture ref) would linger until GC otherwise. */
     if (this._imageSprite) { try { this._imageSprite.destroy(); } catch (e) { /* ignore */ } this._imageSprite = null; }
+    this._deferredMap = null;   /* v2.3.3037: a map put off for the stop (below) is not this zone's */
     /* v2.3.3016: and a Wheel dungeon's floor (its land's ground picture, freed
        a beat after you leave -- game/wheelDungeons.js dropDungeonZone) */
     if (this._floorSprite) { try { this._floorSprite.destroy(); } catch (e) { /* ignore */ } this._floorSprite = null; }
@@ -818,19 +837,18 @@ export class TileRenderer {
          Texture.EMPTY (blank).  Kick off the load and swap the
          texture in when it resolves so the player sees the image. */
       if (!cachedTex) {
-        const w = this._mapW;
-        const h = this._mapH;
-        const loadP = reload
-          ? Promise.resolve().then(() => Assets.unload(imageUrl)).catch(() => {}).then(() => Assets.load(imageUrl))
-          : Assets.load(imageUrl);
-        loadP.then((loaded) => {
-          if (loaded && !sprite.destroyed) {
-            if (loaded.source) loaded.source.scaleMode = 'nearest';
-            sprite.texture = loaded;
-            sprite.width = w;
-            sprite.height = h;
-          }
-        }).catch(() => {});
+        /* ═══ v2.3.3037: NOT FOR TODAY'S TOWN ON THE WAY TO THE WHEEL ═══
+           A stop under one veil that nobody sees (wheelHome.js
+           townSkippedOnTheWay): fetching its 11.3 MB map here, the largest
+           picture in the game, put it on top of everything the Wheel held at
+           every death, to be freed a beat after the stairs (the owner's black
+           screens).  It is put off instead, and update() fetches it if the
+           trip lets go and town is shown after all. */
+        if (zoneId === 'town' && townSkippedOnTheWay()) {
+          this._deferredMap = { imageUrl, sprite, w: this._mapW, h: this._mapH, reload };
+        } else {
+          this._loadMapInto(imageUrl, sprite, this._mapW, this._mapH, reload);
+        }
       }
       return;
     }
@@ -1125,6 +1143,16 @@ export class TileRenderer {
   }
 
   update(cx, cy, viewW, viewH, S) {
+    /* v2.3.3037: today's town's map, put off while it was only the stop on
+       the way to the Wheel (rebuild), fetched once town is to be SEEN -- the
+       trip let go (a worker that never answered: wheelHome.js TRIP_VEIL_MS)
+       or was never wanted.  Not before the first game tick has asked for the
+       trip (_wheelSpawnInit). */
+    if (this._deferredMap && S && S.currentZone === 'town' && S._wheelSpawnInit === true && !wheelTripVeiled(S)) {
+      const d = this._deferredMap;
+      this._deferredMap = null;
+      if (!d.sprite.destroyed) this._loadMapInto(d.imageUrl, d.sprite, d.w, d.h, d.reload);
+    }
     /* v2.3.2932: stream the trial's ground round the camera (null otherwise) */
     if (this._chunkGround) this._chunkGround.update(cx, cy, viewW, viewH);
     /* Auto-refresh when a Tiled map finishes loading AFTER the

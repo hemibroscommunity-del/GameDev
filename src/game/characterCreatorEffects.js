@@ -9,6 +9,7 @@ import { shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
 import { onArtChange } from '@/rendering/traits/playerArt.js';   /* v2.3.1938; v2.3.1940 renamed — it covers pants and tattoos too */
 import { onPatternChange } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { heightMul, PORTRAIT_FIT } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
+import { townSkippedOnTheWay } from '@/game/wheelHome.js';   /* v2.3.3037: today's town is a stop on the way to the Wheel */
 
 /* === characterCreatorEffects — effect bodies for the character creator ===
    v2.3.897: extracted verbatim from three BroTown.jsx useEffects (the
@@ -484,7 +485,11 @@ export function wireSplashPrewarm(showNameModal, introWarmRef) {
      small PNG and is the direct fix for the black-world-on-join flash, so it
      gets a head start (well before the ≥3s intro dismiss) without competing
      meaningfully with the welcome theme art. */
-  try { import('@/rendering/tiledMaps.js').then((m) => m.preloadStartZoneMap('town')).catch(function () {}); } catch (e) {}
+  /* v2.3.3037: ...unless today's town is only the stop on the way to the
+     Wheel (wheelHome.js townSkippedOnTheWay): the join lands in the Wheel, so
+     there is no town ground to flash, and this was the last thing loading its
+     11.3 MB map on the way in (mp-gpuaudit found it). */
+  try { if (!townSkippedOnTheWay()) import('@/rendering/tiledMaps.js').then((m) => m.preloadStartZoneMap('town')).catch(function () {}); } catch (e) {}
   /* v2.3.1023: warm the trait thumbnails (hair/hat/beard/shirt) up front so the
      customizer's category tiles appear instantly instead of fetching on tab
      open.  Cheap now that the thumbs are shrunk to 128px (~191KB total). */
