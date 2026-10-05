@@ -5322,6 +5322,55 @@ square or a bridge, look at it at 0.5 game px a pixel, not only at 3. The suite
 holds it (test-world-core "grass touches none of its street cells"); the
 picture is what finds the next kind of seam.
 
+## 136. Emptying `S.dmgNumbers` to reset a test leaves its numbers drawn (v2.3.3033)
+
+**The plausible move.** A scenario that wants a clean slate before the next
+popup writes `S.dmgNumbers.length = 0` or `S.dmgNumbers = []` (mp-dmgicon,
+mp-firetrail and mp-burstdmg all do). The list is empty, the next check reads
+only its own numbers, and every assertion passes.
+
+**Why it is wrong.** The list holds the records, but each number's drawn Pixi
+Text is a child of the damage layer, and the ONLY thing that destroys it is the
+renderer's age pass walking the list (effectsRenderer `_updateDamageNumbers`,
+"the one sanctioned destroy path"). Drop the record and its Text stays on the
+screen at the last place it was drawn, forever, at the alpha it had. In mp-dmgsize's
+first pictures the "before" shots showed faint "12" and "41" ghosts hanging over
+the town hall steps from the section before; the assertions were all fine.
+A second way to read nothing: the real hit numbers (1.5 s life) were gone before
+a screenshot on this box's software renderer (2-3 frames a second, a 3x shot
+takes over a second) had been taken.
+
+**What is true.** Age them out instead -- `d.ts = 0` makes the renderer destroy
+the Text on its next frame (pushDmgPopup's own budget does exactly this) -- and
+wait until the list is empty. For a picture, give the test numbers `ttl: 12,
+rise: 0` so they sit where they spawned.
+
+**The rule.** Clear popups by aging them (mp-dmgsize's `clearPops`), never by
+emptying the list; and look at the picture, because a leak like this never fails
+an assertion.
+
+## 137. A glyph atlas bake is a density knob, not a size knob (v2.3.3033)
+
+**The plausible move.** The damage numbers are drawn 1.75x bigger, so "bake the
+atlas bigger" sounds like it must change the layout (`DMG_BMP_BAKE_PX` 100 -> 128
+reads like a 28% larger font), and the 1.5 MB-per-page cost sounds like a
+reason to leave it.
+
+**Why it is wrong, both ways.** Pixi's `BitmapFont.install` stores each page at
+resolution `bake / 100`, and lays text out in units of a 100 px font, so a
+number's drawn size does not move at all when the bake does -- only how many
+texture pixels sit under each drawn pixel. Measured (`BitmapFontManager.install`
+at 100 / 128 / 160 / 200 with the damage font's 67 characters): 6.0 / 6.7 / 11.3 /
+8.8 MB, because the pages SHRINK (512 -> 400 -> 320 -> 256 px square) as the
+bake grows and there are more of them. And a bake smaller than the drawn size
+enlarges glyphs: a crit at 66.5 world px on a 3x phone at 0.6 is 120-133 device
+px, so the old 100 px bake blew it up 1.33x (soft outline); 128 draws it at 1.04x.
+
+**The rule.** Pick the bake from the LARGEST glyph drawn (world px x view scale
+x device pixel ratio x the wiggle), measure the pages it costs before deciding,
+and keep the outline at 14/100 of it. Layout checks (text widths, gaps) are the
+proof that a bake change moved nothing.
+
 ## 138. "The black screen broke the harvest", so fix the recovery (v2.3.3034)
 
 **The plausible move.** The owner's chops stopped paying and their points stopped

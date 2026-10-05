@@ -851,6 +851,64 @@ const FIRE_GEAR_REG = {
    Crit stat on the Hero screen, so a player learns one symbol, not two. */
 const DMG_FONT_PX = 21;
 const DMG_CRIT_FONT_PX = 38;
+/* ═══ v2.3.3033: DAMAGE NUMBERS ARE 1.75x BIGGER ═══
+   Owner, 2026-10-04: "Damage numbers for players and monsters needs to be
+   about anywhere from 1.5-2x bigger".  The two sizes above are WORLD pixels,
+   and the Wheel draws the world at about 0.6 of a CSS pixel each (the bro 64
+   px tall), so a plain hit read 13 CSS px beside a character five times its
+   height.
+
+   1.75 is the middle of what was asked for, applied to EVERY damage number --
+   a hit you deal (and a crit), a hit on you, a teammate's blow, a tick of
+   burn or poison -- so their sizes keep every relation v2.3.2211 and v2.3.3026
+   set: the crit still 1.8x the plain one, each mark as tall as its number (the
+   22 px cap scales too), the element badge cut to its own box.  What is NOT a
+   damage number keeps its size: "Blocked!", "Dodged", "+30 XP", "+25 G", a
+   heal's "+12" and every word are DMG_FONT_PX as ever, so a kill's number is
+   the biggest thing over the monster and its XP and gold read under it.
+
+   `?dmgscale=1.5` .. `?dmgscale=2` (1 .. 3) tries another size in a tab, the way
+   `?zoom=` does, so nobody waits for a build to see 1.5 or 2.  Where it is
+   applied -- the size, the lift that keeps the bigger glyph's bottom edge off
+   the bar, the stacking, the climb, the mark -- is the mint in
+   `_updateDamageNumbers` ("HOW BIG, AND HOW HIGH"). */
+function readDmgScale() {
+  try {
+    const q = new URLSearchParams(window.location.search).get('dmgscale');
+    const v = q == null ? NaN : parseFloat(q);
+    if (isFinite(v)) return Math.min(3, Math.max(1, v));
+  } catch (e) { /* no window: the default */ }
+  return 1.75;
+}
+export const DMG_SCALE = readDmgScale();
+if (typeof window !== 'undefined') window.__btDmgScale = DMG_SCALE;   /* QA: mp-dmgsize */
+/* Each number spawns its CENTRE a fixed 34 px over the band (entityRenderer
+   POPUP_BAR_CLEAR, combatHelpers HERO_POPUP_CLEAR), which was worked out for a
+   21 px number whose spawn pop (1.6x) reaches 16.8 px below its centre (v2.3.1638).
+   A bigger glyph reaches further, so its centre is lifted by this much of the
+   extra size -- 0.9 puts the popped glyph's bottom edge exactly as far over the
+   bar as the old number's was, for a plain hit and for a crit alike. */
+const DMG_LIFT = 0.9;
+/* Marks that say "this number is a hit": the weapons, the heart and the elements
+   (the XP and gold marks belong to pay-outs). */
+const DMG_MARK_ICONS = new Set(['sword', 'arrow', 'spell', 'crit', 'heart'].concat(Object.keys(ELEM_ICON_SRC)));
+/* The renderer's own "plain damage number" (v2.3.103's white override): an
+   optional non-letter prefix, an optional dash, digits -- and here also a
+   trailing symbol, as in "-12 🌵" (thorns). */
+const DMG_PLAIN_RE = /^[^A-Za-z+]*-?\d+[^A-Za-z\d]*$/;
+/* Is this popup a damage number (drawn DMG_SCALE x) or a notice (drawn as it
+   was)?  Needs a digit, so "Dodged" and "Blocked!" -- which carry `taken` -- are
+   words; never a pay-out or a heal, which start with "+".  Then: a hit on
+   someone, a number carrying a weapon, crit or element mark (every real crit
+   does -- the bare `crit` flag is also how BroTown's pushNpcMsg makes a NOTE big
+   and wiggly, and a note stays a note), or a plain number. */
+function isDamagePopup(dmg, t) {
+  if (typeof t !== 'string') t = String(t == null ? '' : t);   /* a site may push a bare number */
+  if (!/\d/.test(t) || t.charAt(0) === '+') return false;
+  if (dmg.taken) return true;
+  if (dmg.iconKey && DMG_MARK_ICONS.has(dmg.iconKey)) return true;
+  return DMG_PLAIN_RE.test(t);
+}
 /* v2.3.2212 (owner: "change the damage color to a light yellow when it's a
    crit").  Was the gold #f5c542 / amber #fbbf24 pair -- two shades for one
    event, and both close enough to the game's general gold accent (level-ups,
@@ -1857,12 +1915,14 @@ _fxLoad('/icons/ore/ore-copper.webp').then((tex) => {
    sites.  The PNG stays in public/ so bringing it back is a revert, not a
    re-commission. */
 
+/* the outline of a classic-Text number at DMG_FONT_PX; a damage number scales it (v2.3.3033) */
+const DMG_STROKE_PX = 3;
 const DMG_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 14,
   fontWeight: '800',
   fill: '#ffffff',
-  stroke: { color: '#000000', width: 3 },
+  stroke: { color: '#000000', width: DMG_STROKE_PX },
   align: 'center',
 });
 
@@ -1904,7 +1964,17 @@ const DMG_BMP_FONT = 'bt-dmg-digits';
    px) — crisp on every device, no DPR games.  Stroke 14 keeps the
    classic DMG_STYLE outline ratio (3/21 = 14/100 ≈ 0.14; the old bake's
    6/28 = 0.21 was 50% heavier, part of the mud). */
-const DMG_BMP_BAKE_PX = 100;
+/* ═══ v2.3.3033: 128, FOR THE BIGGER NUMBERS ═══
+   A crit is 66.5 world px now (DMG_SCALE 1.75 x 38), drawn at ~0.6 of a CSS
+   px a world px on a 3x phone with its +-10% wiggle: up to 133 device px,
+   which the 100 px bake had to ENLARGE 1.33x (soft edges on the heaviest
+   number in the game).  128 draws it at 1.04x.  Only the glyphs' density
+   changes -- pixi stores the pages at resolution bake/100 and lays text out
+   the same -- and measured, the atlas grows 6.0 -> 6.7 MB (its pages shrink
+   to 400 x 400 as the bake grows, 11 of them against 6).  160 would be
+   11.3 MB and 200 8.8 MB, for density nothing is drawn at.  The outline keeps
+   its 14/100 ratio. */
+const DMG_BMP_BAKE_PX = 128;
 let _dmgBmpReady = false;
 try {
   BitmapFont.install({
@@ -1914,7 +1984,7 @@ try {
       fontSize: DMG_BMP_BAKE_PX,
       fontWeight: '800',
       fill: '#ffffff',
-      stroke: { color: '#000000', width: 14 },
+      stroke: { color: '#000000', width: 14 * DMG_BMP_BAKE_PX / 100 },
     },
     chars: [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'],
   });
@@ -4578,6 +4648,18 @@ export class EffectsRenderer {
         } else if (/^\+\d+\s*G$/.test(t)) {
           displayColor = '#f5c542';
         }
+        /* ═══ v2.3.3033: HOW BIG, AND HOW HIGH ═══
+           A damage number is DMG_SCALE x its old size (see DMG_SCALE); a
+           notice keeps DMG_FONT_PX.  Its centre is lifted by DMG_LIFT of the
+           extra height, so the bigger glyph keeps the air under it that the
+           old one had over the bar.  Both are stamped on the record: the
+           stacking below, the icon's cap and gap and the QA probe read them. */
+        const k = isDamagePopup(dmg, t) ? DMG_SCALE : 1;
+        const baseFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
+        const fontSize = baseFontSize * k;
+        dmg._k = k;
+        dmg._fs = fontSize;
+        dmg._lift = (fontSize - baseFontSize) * DMG_LIFT;
         /* Anti-overlap: separate a new popup from nearby live ones so
            kill-shot popups (damage, XP, gold spawned in one frame at
            slightly different Y) don't visually overlap. We compute a
@@ -4608,7 +4690,15 @@ export class EffectsRenderer {
            starting point, and no future clearance bump can be eaten. */
         const SPACING = 26;
         let highestY = Infinity;
+        let highestSp = SPACING;
         let hasNeighbor = false;
+        /* v2.3.3033: where THIS popup spawns once lifted, and (below) how far
+           apart two popups must be for their sizes: 26 px was a 21 px number's
+           line (26/21 of its font), so two of any size keep that same share of
+           their average font -- 26 at 21 + 21, 46 at 37 + 37, 64 at a crit over
+           a plain hit -- and the window that finds a neighbour grows with it
+           (50 px at 26, so a stack is still three deep in one frame). */
+        const myY = dmg.y - dmg._lift;
         /* v2.3.1347: the neighbor scan is O(n) per NEW popup (O(n²) in a
            burst). Past ~40 live popups the field is dense chaos where
            stacking placement is unreadable anyway — skip the scan and
@@ -4617,24 +4707,23 @@ export class EffectsRenderer {
           if (j === i) continue;
           const o = numbers[j];
           if (!o._pixiText || o._pixiText.destroyed) continue;
-          if (Math.abs(o.x - dmg.x) > 60) continue;
+          const pairSp = Math.max(SPACING, (fontSize + (o._fs || DMG_FONT_PX)) / 2 * (SPACING / DMG_FONT_PX));
+          if (Math.abs(o.x - dmg.x) > 60 * Math.max(1, pairSp / SPACING)) continue;
           const oAge = (now - o.ts) / 1000;
           if (oAge > 0.6) continue;
-          const oY = o.y + (o._stackOffset || 0) - oAge * 40;
-          if (Math.abs(oY - dmg.y) > 50) continue;
+          const oY = o.y + (o._stackOffset || 0) - (o._lift || 0) - oAge * (typeof o.rise === 'number' ? o.rise : 40 * (o._k || 1));
+          if (Math.abs(oY - myY) > 50 * Math.max(1, pairSp / SPACING)) continue;
           hasNeighbor = true;
-          if (oY < highestY) highestY = oY;
+          if (oY < highestY) { highestY = oY; highestSp = pairSp; }
         }
         /* Clamp to <= 0: a neighbour sitting BELOW this popup's spawn
            would otherwise push the offset positive and re-open the exact
            hole this fix closes. */
-        dmg._stackOffset = hasNeighbor ? Math.min(0, (highestY - SPACING) - dmg.y) : 0;
-        const baseFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
+        dmg._stackOffset = hasNeighbor ? Math.min(0, (highestY - highestSp) - myY) : 0;
         /* Special-attack hits used to render at 2x to read as "heavy", but
            that crowded the screen and hid the normal-hit cadence. They now
            match normal size and instead get a bright outer glow (see
            dropShadow below) to mark them as specials. */
-        const fontSize = baseFontSize;
         /* v2.3.1357: plain popups (no emoji, no special halo, chars inside
            the baked set) assemble from the pre-baked glyph atlas instead of
            rasterizing a fresh canvas — the pack-fight frame killer.  Tint
@@ -4666,11 +4755,12 @@ export class EffectsRenderer {
           const textStyle = { ...baseStyle, fontSize, fill: displayColor };
           if (dmg.special) {
             /* distance:0 + high blur = even halo on all sides. Warm yellow
-               matches the special-projectile yellow halo. */
+               matches the special-projectile yellow halo.  v2.3.3033: blur
+               follows the number's size, as the stroke below does. */
             textStyle.dropShadow = {
               color: '#ffe066',
               alpha: 0.95,
-              blur: 8,
+              blur: 8 * k,
               distance: 0,
               angle: 0,
             };
@@ -4683,11 +4773,14 @@ export class EffectsRenderer {
              overrides. Set fill and fontSize explicitly to guarantee they apply. */
           text.style.fill = displayColor;
           text.style.fontSize = fontSize;
+          /* v2.3.3033: DMG_STYLE's outline is 3 px on a 21 px number (the
+             glyph atlas bakes the same ratio); a bigger number keeps it. */
+          if (k !== 1 && baseStyle === DMG_STYLE) text.style.stroke = { color: '#000000', width: DMG_STROKE_PX * k };
           if (dmg.special) {
             text.style.dropShadow = {
               color: '#ffe066',
               alpha: 0.95,
-              blur: 8,
+              blur: 8 * k,
               distance: 0,
               angle: 0,
             };
@@ -4715,7 +4808,10 @@ export class EffectsRenderer {
              comparison.  A crit's mark now scales WITH its number and a
              little past it, which is what "much larger" asks for; every
              other icon keeps the cap it has always had. */
-          const targetH = dmg.crit ? Math.round(fontSize * 1.15) : Math.min(fontSize, 22);
+          /* v2.3.3033: ...and the 22 px cap is a 21 px number's, so it scales
+             with the number (DMG_SCALE x), or a bigger number would leave its
+             mark small beside it. */
+          const targetH = dmg.crit ? Math.round(fontSize * 1.15) : Math.min(fontSize, 22 * k);
           /* v2.3.3026: a mark cut to its own box (_tightPopupIcon) can be
              wide -- the slime's splat is 1.9 to 1 -- so no wider than 1.5x
              the height, which the round badges never reach */
@@ -4732,7 +4828,7 @@ export class EffectsRenderer {
                of each mark: its drawn height beside the number's font */
             if (dmg.taken) {
               const _ps = window.__btTakenPops || (window.__btTakenPops = Object.create(null));
-              _ps[iconKey] = { h: +icon.height.toFixed(2), w: +icon.width.toFixed(2), font: fontSize, tight: tex._tight || null,
+              _ps[iconKey] = { h: +icon.height.toFixed(2), w: +icon.width.toFixed(2), font: fontSize, cap: 22 * k, tight: tex._tight || null,
                 y: +dmg.y.toFixed(1), py: S.player ? +S.player.y.toFixed(1) : null, band: S._selfBandTopY != null ? +S._selfBandTopY.toFixed(1) : null };
             }
           }
@@ -4764,8 +4860,11 @@ export class EffectsRenderer {
          belongs to.  A popup that asks for a longer life almost always wants
          a slower climb with it, so `rise` sits next to `ttl` at the push
          site.  Unset behaves exactly as before. */
-      const rise = (typeof dmg.rise === 'number') ? dmg.rise : 40;
-      text.y = dmg.y + (dmg._stackOffset || 0) - age * rise;
+      /* v2.3.3033: ...and a damage number climbs DMG_SCALE x as fast: two hits 0.7 s
+         apart were 28 px apart for a 14 px digit, and at 1.75x the size would have
+         been 28 px for a 26 px one -- touching.  Scaled, they keep their gap. */
+      const rise = (typeof dmg.rise === 'number') ? dmg.rise : 40 * (dmg._k || 1);
+      text.y = dmg.y + (dmg._stackOffset || 0) - (dmg._lift || 0) - age * rise;   /* v2.3.3033: lifted by the bigger glyph's extra half height */
       /* Fade over 80% of ttl so longer-lived popups (kill messages with
          ttl=2.5) actually stay visible, not invisible most of their life. */
       text.alpha = Math.max(0, 1 - age / (ttl * 0.8));
@@ -4790,7 +4889,7 @@ export class EffectsRenderer {
            floor still let the magic icon clip the last digit on
            fire-goblin hits ("32" reading as "3[magic]").  Stroked text
            extends a few px past text.width on iOS canvas rendering. */
-        const _iconGap = Math.max(10, (dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX) * 0.35);
+        const _iconGap = Math.max(10, (dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX) * 0.35) * (dmg._k || 1);   /* v2.3.3033: x the number's scale */
         dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
