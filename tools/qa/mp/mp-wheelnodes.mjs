@@ -502,25 +502,35 @@ async function harvest(P, wsPort, myId, rec, type, node, want) {
     { timeout: 70000, label: 'the window opens' }).catch(() => null);
   rec.ok(`${skill}: the hits run down and the gesture window opens (guard)`, opened === 'ready', { opened });
   if (opened !== 'ready') return false;
-  /* v2.3.3027, owner: "Ticks for the resource extraction is too hard to see.
-     You can make it as large as the normal hp bar and just hide the player
-     name plate and health bar during extraction" -- the node's bar is over
-     your head at the HP bar's size, where the plate and the HP bar were */
+  /* v2.3.3035, owner: "I want resource harvesting bar to be green and to
+     appear above the resource, not the player head.  It should also list the
+     numbers on the bar" -- over the top of the resource's art, green, at your
+     HP bar's size (v2.3.3027), "0/<HP>" now the hits are done; your name
+     plate and HP bar still put away while you gather */
   const band = await P.page.evaluate(async () => {
     await new Promise((res) => requestAnimationFrame(res));
     await new Promise((res) => requestAnimationFrame(res));
     const S = window._gameState.current;
+    const ex = S._extraction;
     const b = window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : {};
-    return { bar: b, px: S.player.x, plate: window.__btResourceBars ? window.__btResourceBars.plateVisible : null,
+    return { bar: b, nodeX: ex && ex.nodeRef ? ex.nodeRef.x : null, hp: ex && ex.hits ? ex.hits.maxHp : null,
+      plate: window.__btResourceBars ? window.__btResourceBars.plateVisible : null,
       hpA: window.__btHpReads ? window.__btHpReads.barA : null };
   });
   {
     const b = band.bar || {};
-    const zs = (b.scale || 0) / 1.25, over = b.feet != null ? b.feet - b.y : NaN;
-    rec.ok(`${skill}: while you gather its bar is over your head (${Math.round(over)} world px over the boots), as large as your HP bar (${b.w} x ${b.h}), and your name plate and HP bar are put away`,
+    const clear = b.artTop != null ? b.artTop - (b.y + b.h / 2) : NaN;
+    /* the owner: "For mining you can put the bar beneath the ore" --
+       the rock's hangs under its ground line, clear of the miner behind it */
+    const below = b.artBase != null ? (b.y - b.h / 2) - b.artBase : NaN;
+    rec.ok(`${skill}: while you gather its bar is ${type === 'oreVein' ? 'under the rock' : type === 'tree' ? 'over the tree' : 'over the spot'} (${b.under ? 'its top ' + Math.round(below) + ' world px under the rock\'s ground line, clear of the miner behind it' : 'its bottom ' + Math.round(clear) + ' world px over the art\'s top'}), green, as large as your HP bar (${b.w} x ${b.h}), reading "${b.text}", and your name plate and HP bar are put away`,
       b.show === true && b.big === true && Math.abs(b.w - 76 * b.scale) < 0.6 && Math.abs(b.h - 22 * b.scale) < 0.6
-        && Math.abs(b.x - band.px) < 2 && over > 120 * zs && over < 170 * zs && band.plate === false && band.hpA === 0,
-      { bar: b, over, px: band.px, plate: band.plate, hpA: band.hpA });
+        /* a Wheel fishing spot is its school, swimming 30 px west of the
+           spot's anchor (wheelNodes.js SWIM_DX): the bar is over the fish */
+        && (type === 'oreVein' ? b.under === true && below > 0 && below < 16 : clear > 0 && clear < 12) && Math.abs(b.x - (band.nodeX + (type === 'fishSpot' ? -30 : 0))) < 1
+        && b.green === true && b.text === '0/' + band.hp
+        && band.plate === false && band.hpA === 0,
+      { bar: b, clear, below, nodeX: band.nodeX, hp: band.hp, plate: band.plate, hpA: band.hpA });
     if (type === 'oreVein') await P.page.screenshot({ path: join(H.REPO, 'tools/qa/mp/out/wheelnodes-gatherbar.png') }).catch(() => {});
   }
   const cue = await P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest().cue : null));

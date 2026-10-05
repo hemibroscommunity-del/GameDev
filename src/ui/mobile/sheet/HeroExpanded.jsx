@@ -1450,8 +1450,23 @@ export const HeroExpanded = () => {
               const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
               const avail = st.atk ? laneAvail(cat) : sharedAvail;
+              /* ═══ v2.3.3034: NOT WHILE THE WORKER CANNOT HEAR YOU ═══
+                 Owner: "points in point stat allocation menu weren't getting
+                 allocated" -- the session's socket was gone (an idle logout,
+                 a dead pipe) and Spend closed this window and sent each point
+                 to nothing.  Asked when the window opens (a tap, so the
+                 reconnect it starts is the player's): the button stays and
+                 says why, as it does for a capped stat, and the session is
+                 brought back so the next tap spends. */
+              const S0 = getState();
+              const ch0 = S0 && S0.channel;
+              const offline = !!(ch0 && typeof ch0.isLive === 'function' && !ch0.isLive());
+              let offlineWhy = null;
+              if (offline) { try { offlineWhy = ch0.reconnectNow ? ch0.reconnectNow() : 'reconnecting'; } catch (_e) { offlineWhy = 'reconnecting'; } }
               return {
-                blocked: avail <= 0
+                blocked: offline
+                  ? (offlineWhy === 'elsewhere' ? 'This character is playing in another window.' : 'Reconnecting to the server. Try again in a moment.')
+                  : avail <= 0
                   ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'unspent'} points to spend.`
                   : pts >= cap ? `${st.label} is already at its cap.` : null,
                 /* ═══ v2.3.2695: SPEND SEVERAL AT ONCE ═══
@@ -1472,6 +1487,12 @@ export const HeroExpanded = () => {
                   const S2 = getState();
                   const R2 = S2 && S2.rpg;
                   if (!S2 || !S2.channel) return;
+                  /* v2.3.3034: gone since the window opened -- send nothing
+                     into nothing; bring the session back instead */
+                  if (typeof S2.channel.isLive === 'function' && !S2.channel.isLive()) {
+                    try { if (S2.channel.reconnectNow) S2.channel.reconnectNow(); } catch (_e) { /* best effort */ }
+                    return;
+                  }
                   const count = Math.max(1, Math.floor(Number(n) || 1));
                   for (let i = 0; i < count; i++) {
                     S2.channel.send({

@@ -107,8 +107,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       white(drawn.norm.tint) || white(String(drawn.norm.fill || '')), drawn.norm);
     rec.ok('the crit number is drawn much larger than an ordinary one',
       drawn.crit.h >= drawn.norm.h * 1.5, { crit: drawn.crit.h, norm: drawn.norm.h });
-    rec.ok('...and its icon is larger than the 22px every other popup caps at',
-      drawn.crit.iconH > 22, { critIcon: drawn.crit.iconH, normIcon: drawn.norm.iconH });
+    /* v2.3.3033: the 22 px cap scales with a damage number (x1.75), so "larger than the cap" is
+       asked of the plain hit's own mark, which sits at the cap */
+    rec.ok('...and its icon is larger than the one every other popup caps at',
+      drawn.crit.iconH > Math.max(22, drawn.norm.iconH), { critIcon: drawn.crit.iconH, normIcon: drawn.norm.iconH });
   }
 
   await P.ctx.close().catch(() => {});
