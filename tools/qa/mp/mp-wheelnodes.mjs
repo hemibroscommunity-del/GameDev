@@ -520,14 +520,17 @@ async function harvest(P, wsPort, myId, rec, type, node, want) {
   {
     const b = band.bar || {};
     const clear = b.artTop != null ? b.artTop - (b.y + b.h / 2) : NaN;
-    rec.ok(`${skill}: while you gather its bar is over the ${type === 'oreVein' ? 'rock' : type === 'tree' ? 'tree' : 'spot'} (${b.sit ? 'sitting on its top, clear of the miner behind it' : 'its bottom ' + Math.round(clear) + ' world px over the art\'s top'}), green, as large as your HP bar (${b.w} x ${b.h}), reading "${b.text}", and your name plate and HP bar are put away`,
+    /* the owner: "For mining you can put the bar beneath the ore" --
+       the rock's hangs under its ground line, clear of the miner behind it */
+    const below = b.artBase != null ? (b.y - b.h / 2) - b.artBase : NaN;
+    rec.ok(`${skill}: while you gather its bar is ${type === 'oreVein' ? 'under the rock' : type === 'tree' ? 'over the tree' : 'over the spot'} (${b.under ? 'its top ' + Math.round(below) + ' world px under the rock\'s ground line, clear of the miner behind it' : 'its bottom ' + Math.round(clear) + ' world px over the art\'s top'}), green, as large as your HP bar (${b.w} x ${b.h}), reading "${b.text}", and your name plate and HP bar are put away`,
       b.show === true && b.big === true && Math.abs(b.w - 76 * b.scale) < 0.6 && Math.abs(b.h - 22 * b.scale) < 0.6
         /* a Wheel fishing spot is its school, swimming 30 px west of the
            spot's anchor (wheelNodes.js SWIM_DX): the bar is over the fish */
-        && (b.sit ? Math.abs(b.y - (b.artTop + 12)) < 1 : clear > 0 && clear < 12) && Math.abs(b.x - (band.nodeX + (type === 'fishSpot' ? -30 : 0))) < 1
+        && (type === 'oreVein' ? b.under === true && below > 0 && below < 16 : clear > 0 && clear < 12) && Math.abs(b.x - (band.nodeX + (type === 'fishSpot' ? -30 : 0))) < 1
         && b.green === true && b.text === '0/' + band.hp
         && band.plate === false && band.hpA === 0,
-      { bar: b, clear, nodeX: band.nodeX, hp: band.hp, plate: band.plate, hpA: band.hpA });
+      { bar: b, clear, below, nodeX: band.nodeX, hp: band.hp, plate: band.plate, hpA: band.hpA });
     if (type === 'oreVein') await P.page.screenshot({ path: join(H.REPO, 'tools/qa/mp/out/wheelnodes-gatherbar.png') }).catch(() => {});
   }
   const cue = await P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest().cue : null));

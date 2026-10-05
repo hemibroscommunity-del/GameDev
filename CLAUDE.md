@@ -1010,9 +1010,10 @@ remnant to migrate server-side, not a mode to preserve.
     numbers on the bar right now the bar has no numbers":
     - over the top of each resource's art (effectsRenderer `NODE_HPBAR_AT`,
       `_nodeHpBarAt`): the crown, a pond's water, a Wheel fishing spot's school
-      (`wheelFishTop`) -- ON the rock's top (`sit`: the miner stands right
-      behind it, his head and shoulders were under a bar above it), and still
-      UNDER the campfire (the cook leans over it: above it is his head);
+      (`wheelFishTop`) -- and UNDER the rock (`under`, the owner: "For mining
+      you can put the bar beneath the ore"; the miner stands right behind it,
+      his head and shoulders were under a bar above it) and still under the
+      campfire (the cook leans over it: above it is his head);
     - still your HP bar's size (v2.3.3027, `bandScale`), your name plate and HP
       bar still put away while you gather; v2.3.3027's `_gatherBand` is gone;
     - on a world layer of its own, the last (`worldUi`, pixiApp.js): the rock

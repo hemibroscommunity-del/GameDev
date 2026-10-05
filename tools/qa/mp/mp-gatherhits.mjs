@@ -41,7 +41,7 @@
  * it drains with the clock (since v2.3.3035 reading the node's HP worn down
  * with it, "7/10" -- it showed no number, the owner's "the bar has no
  * numbers").  And (v2.3.3035) the bar is green, at the resource: over the
- * crown and the pond, on the rock's top, under the fire.
+ * crown and the pond, under the rock and the fire.
  * Screenshots: tools/qa/mp/out/gatherhits-<skill>-hits.png, mid-run, for a
  * human to look at -- a 44px bar and a white "1" are exactly what an
  * assertion passes on while looking wrong. */
@@ -566,15 +566,18 @@ async function body({ P, wsPort, rec }) {
        art (its bottom edge a few world px clear of it, centred on it), at the
        HP bar's 76 x 22 (v2.3.3027's size), its fill the green, reading
        "0/<its HP>" at ready; your name plate and HP bar still put away while
-       you gather (v2.3.3027) */
+       you gather (v2.3.3027).  And the owner: "For mining you can put the
+       bar beneath the ore" -- the rock's, like the fire's, hangs UNDER its
+       art's ground line, its top a few world px below it. */
     {
       const b = (tr.atReady && tr.atReady.bar) || {};
       const clear = b.artTop != null ? b.artTop - (b.y + b.h / 2) : NaN;
-      r.ok(`${skill}: ...the bar is at the ${type === 'campfire' ? 'fire' : type === 'oreVein' ? 'rock' : type === 'tree' ? 'tree' : 'pond'} (${b.under ? 'under it, the cook leaning over it' : b.sit ? 'sitting on its top, clear of the miner behind it' : 'its bottom ' + Math.round(clear) + ' world px over the art\'s top'}), green, at the HP bar's size (${b.w} x ${b.h}), reading "${b.text}"; the name plate and the HP bar put away`,
+      const below = b.artBase != null ? (b.y - b.h / 2) - b.artBase : NaN;
+      r.ok(`${skill}: ...the bar is at the ${type === 'campfire' ? 'fire' : type === 'oreVein' ? 'rock' : type === 'tree' ? 'tree' : 'pond'} (${b.under ? 'under it, ' + (type === 'campfire' ? 'the cook leaning over it' : 'clear of the miner behind it') + ', its top ' + Math.round(below) + ' world px under the ground line' : 'its bottom ' + Math.round(clear) + ' world px over the art\'s top'}), green, at the HP bar's size (${b.w} x ${b.h}), reading "${b.text}"; the name plate and the HP bar put away`,
         b.big === true && Math.abs(b.w - 76 * b.scale) < 0.6 && Math.abs(b.h - 22 * b.scale) < 0.6
-          && (b.under ? b.y - b.h / 2 > b.nodeY : b.sit ? Math.abs(b.y - (b.artTop + 12)) < 1 : clear > 0 && clear < 12) && Math.abs(b.x - tr.atReady.nodeX) < 1 && b.green === true
+          && (b.under ? below > 0 && below < 24 && (type === 'campfire' || type === 'oreVein') : clear > 0 && clear < 12) && Math.abs(b.x - tr.atReady.nodeX) < 1 && b.green === true
           && b.text === '0/' + tr.hp && tr.atReady.plate === false && tr.atReady.hpA === 0,
-        { bar: b, clear, nodeX: tr.atReady && tr.atReady.nodeX, plate: tr.atReady && tr.atReady.plate, hpA: tr.atReady && tr.atReady.hpA });
+        { bar: b, clear, below, nodeX: tr.atReady && tr.atReady.nodeX, plate: tr.atReady && tr.atReady.plate, hpA: tr.atReady && tr.atReady.hpA });
     }
 
     /* 5. the gesture still pays */

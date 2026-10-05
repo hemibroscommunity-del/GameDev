@@ -8,9 +8,10 @@
  * minnow spot on the commons: walk up, tap, and while the hits land --
  *   1. the bar is up on the worker's hits, reading "<hp>/<its HP>", its fill
  *      the green one;
- *   2. it is at the RESOURCE: over the crown, sitting on the rock's top (the
- *      miner stands right behind it), over the spot's school -- centred on it,
- *      and far from where v2.3.3027 put it, over your head;
+ *   2. it is at the RESOURCE: over the crown, under the rock (the
+ *      owner: "For mining you can put the bar beneath the ore" -- the miner
+ *      stands right behind it), over the spot's school -- centred on it, and
+ *      far from where v2.3.3027 put it, over your head;
  *   3. at ready it reads "0/<HP>", and the gesture still finishes and the
  *      worker pays.
  * Pictures mid-hits: tools/qa/mp/out/harvestbar-<tag>-<skill>.png, <tag> from
@@ -212,10 +213,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!mid && b.show === true && b.mode === 'hits' && b.green === true && b.text === bar.hp + '/' + bar.max && bar.hp < bar.max,
         { mid, bar: b });
       const clear = b.artTop != null ? b.artTop - (b.y + b.h / 2) : NaN;
+      /* the owner: "For mining you can put the bar beneath the ore" --
+         the rock's hangs under its ground line */
+      const below = b.artBase != null ? (b.y - b.h / 2) - b.artBase : NaN;
       const wantX = bar.node ? bar.node.x + (type === 'fishSpot' ? -30 : 0) : NaN;
-      rec.ok(`${skill}: ...at the resource (${b.sit ? 'sitting on its top' : 'its bottom ' + Math.round(clear) + ' world px over the top of its art'}), centred on it`,
-        Math.abs(b.x - wantX) < 1 && (b.sit ? Math.abs(b.y - (b.artTop + 12)) < 1 : clear > 0 && clear < 12),
-        { bar: b, clear, wantX });
+      rec.ok(`${skill}: ...at the resource (${b.under ? 'its top ' + Math.round(below) + ' world px under the rock\'s ground line' : 'its bottom ' + Math.round(clear) + ' world px over the top of its art'}), centred on it`,
+        Math.abs(b.x - wantX) < 1 && (type === 'oreVein' ? b.under === true && below > 0 && below < 16 : clear > 0 && clear < 12),
+        { bar: b, clear, below, wantX });
       /* and not over your head, where v2.3.3027 had it (~143 world px over
          your boots): the miner and the angler are you, so the bar's bottom
          must not be up over your head, ~50 world px over your centre.  The

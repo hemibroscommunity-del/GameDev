@@ -45,11 +45,9 @@ in every phase (below).
     bar right now the bar has no numbers."*
     - It hangs over the top of the resource's own art, 4 world px clear of it
       (`effectsRenderer` `NODE_HPBAR_AT`, `_nodeHpBarAt`): the tree's crown
-      (0.103 of its frame), a pond picture's water (0.349), and the rock's top
-      (0.223; the iron and black steel veins have the copper one's
-      proportions), which it sits on (below). In
-      the Wheel a fishing spot has no pond picture, only its fish, so the bar
-      is over the school (`wheelNodes.js` `wheelFishTop`).
+      (0.103 of its frame) and a pond picture's water (0.349). In the Wheel a
+      fishing spot has no pond picture, only its fish, so the bar is over the
+      school (`wheelNodes.js` `wheelFishTop`). The rock's is UNDER it (below).
     - The CAMPFIRE's stays under the fire, where it was: the cook leans right
       over his fire with the pan in the flames, so over the fire is over his
       head (the first capture had the bar on his hair).
@@ -63,10 +61,15 @@ in every phase (below).
       rock you mine is promoted to `overlayWorld` (v2.3.854), and inside that
       layer the rock still came out over the bar now and then, though the bar
       was re-appended to its end on every frame.
-    - The ROCK's bar sits on its top instead (its centre 12 world px under
-      the art's top): the miner stands right behind his rock, only his head
-      and shoulders over it, and a bar above the rock covered exactly those
-      (the first capture showed nothing of him but the pick's tip).
+    - The ROCK's bar hangs UNDER it, its top 10 world px below the rock's
+      ground line (0.737 of its frame, `NODE_ART_BASE`; the iron and black
+      steel veins have the copper one's proportions), as v2.3.2956 had it: the
+      miner stands right behind his rock, only his head and shoulders over
+      it, and a bar above the rock covered exactly those (the first capture
+      showed nothing of him but the pick's tip). This version's first cut sat
+      the bar on the rock's top; the owner, seeing it: *"For mining you can
+      put the bar beneath the ore."* The probe (`window.__btNodeHpBar`) says
+      `under` and gives the line it hangs below, `artBase`.
 - The ring on the right button steps up with each hit instead of creeping on
   a timer. **There is no bar over your head any more** — the node's bar
   replaced it (owner, second message).

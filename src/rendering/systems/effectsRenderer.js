@@ -1749,18 +1749,23 @@ const NODE_ART_BASE = { tree: 0.839, oreVein: 0.737 };
 /* ═══ v2.3.3035: ABOVE EVERY RESOURCE ═══
    Owner, 2026-10-05: "I want resource harvesting bar to be green and to appear
    above the resource, not the player head."  So it hangs over the TOP of each
-   one's art -- the crown (0.103, unchanged), the rock (0.223) and the pond's
-   water (0.349), measured off the same webps' alpha (>50%; the iron and black
-   steel veins' 418 px art has the copper one's proportions, 0.223 / 0.737) --
-   `gap` world px clear of it, at your HP bar's size (v2.3.3027).  `f` is the
-   art's top, the bar goes above it -- except the ROCK's, which SITS on it,
-   its centre `sit` world px under the art's top: the miner stands right
-   behind his rock (MINE_SEAT_DY), only his head and shoulders over it, and a
-   bar above the rock was drawn over exactly those (measured on the
-   mp-wheelnodes capture: the pick's tip was all of him that showed). */
+   one's art -- the crown (0.103, unchanged) and the pond's water (0.349),
+   measured off the same webps' alpha (>50%) -- `gap` world px clear of it, at
+   your HP bar's size (v2.3.3027).  `f` is the art's top, the bar goes above
+   it.  Not the ROCK's: the miner stands right behind his rock (MINE_SEAT_DY),
+   only his head and shoulders over it, and a bar above the rock was drawn over
+   exactly those (measured on the mp-wheelnodes capture: the pick's tip was all
+   of him that showed).
+   This version's first cut sat it ON the rock's top, the one place over the
+   rock that was not the miner; the owner, seeing it: "For mining you can put
+   the bar beneath the ore".  So the rock's goes UNDER it, as v2.3.2956 had it
+   -- `f` its ground line (NODE_ART_BASE's 0.737; the iron and black steel
+   veins' 418 px art has the copper one's proportions), `under` the bar below
+   that line, `gap` 10 (v2.3.2956's: the miner's boots hang just below the
+   ore's base, and a 4 px gap let them clip the number). */
 const NODE_HPBAR_AT = {
   tree:     { f: 0.103, gap: 4 },
-  oreVein:  { f: 0.223, gap: 4, sit: 12 },
+  oreVein:  { f: 0.737, gap: 10, under: true },
   fishSpot: { f: 0.349, gap: 4 },
 };
 /* ...and a cook's, UNDER the campfire (owner: "Make it appear for cooking
@@ -9767,7 +9772,10 @@ export class EffectsRenderer {
           /* v2.3.3035: the words on it, its fill, and the top of the
              resource's art it hangs over (world y) */
           text: this._nodeHpBar._nbStr || null, green: !!this._nodeHpBar._nbGreen,
-          artTop: at.artTop != null ? +at.artTop.toFixed(1) : null, nodeY: +at.nodeY.toFixed(1), sit: !!at.sit, under: !!at.under };
+          artTop: at.artTop != null ? +at.artTop.toFixed(1) : null, nodeY: +at.nodeY.toFixed(1), under: !!at.under,
+          /* and, for a bar UNDER its resource (the rock, the fire), the
+             art's ground line it hangs below */
+          artBase: at.artBase != null ? +at.artBase.toFixed(1) : null };
         this._nodeHpBarUp = true;
       } else if (this._nodeHpBarUp !== false) {
         window.__btNodeHpBar = { show: false };
@@ -9777,17 +9785,17 @@ export class EffectsRenderer {
   }
 
   /* Where a node's bar goes: over the top of the resource's art (v2.3.3035;
-     NODE_HPBAR_AT), the campfire's under it.  The bar's centre, in
-     world px, the scale it is drawn at -- your HP bar's, bandScale, at the
-     zone's perspective there -- and the art's top it hangs over.  Not cached:
-     one call per frame while a harvest is up, and the fire can be re-lit
-     elsewhere. */
+     NODE_HPBAR_AT), the rock's and the campfire's under them.
+     The bar's centre, in world px, the scale it is drawn at -- your HP bar's,
+     bandScale, at the zone's perspective there -- and the art's top it hangs
+     over or the ground line it hangs under.  Not cached: one call per frame
+     while a harvest is up, and the fire can be re-lit elsewhere. */
   _nodeHpBarAt(S, node) {
     const zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
     const scale = bandScale(zs);
     const halfH = (HPBAR_BIG_H / 2) * scale;
     if (node.nodeType === 'campfire') {
-      return { x: node.x, y: node.y + CAMPFIRE_HPBAR_GAP * zs + halfH, scale, artTop: null, nodeY: node.y, under: true };
+      return { x: node.x, y: node.y + CAMPFIRE_HPBAR_GAP * zs + halfH, scale, artTop: null, artBase: node.y, nodeY: node.y, under: true };
     }
     /* in the Wheel a fishing spot is its school of fish, no pond picture
        (v2.3.3012): over the school */
@@ -9800,8 +9808,11 @@ export class EffectsRenderer {
     const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
     const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
     const frameTop = node.y - (NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5) * targetH;
-    const top = frameTop + at.f * targetH;
-    return { x: node.x, y: at.sit != null ? top + at.sit : top - at.gap - halfH, scale, artTop: top, nodeY: node.y, sit: at.sit != null };
+    const line = frameTop + at.f * targetH;
+    /* `under` hangs it below the art's ground line (the rock's), the rest
+       above the art's top */
+    if (at.under) return { x: node.x, y: line + at.gap + halfH, scale, artTop: null, artBase: line, nodeY: node.y, under: true };
+    return { x: node.x, y: line - at.gap - halfH, scale, artTop: line, artBase: null, nodeY: node.y };
   }
 
   /* v2.3.2844: the snowman's per-hit plume is retired (tombstone near the old

@@ -22,7 +22,8 @@ Over the crown, clear of the lumberjack. Before, it was over his head.
 ## Mining a rock
 
 The miner stands right behind the rock he works, so a bar over the rock would sit
-on his head and shoulders. It sits on the rock's top instead.
+on his head and shoulders. It hangs under the rock instead (the owner: *"For
+mining you can put the bar beneath the ore"*).
 
 | Before | After |
 |---|---|
