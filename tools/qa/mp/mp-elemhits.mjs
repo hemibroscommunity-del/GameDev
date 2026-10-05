@@ -318,9 +318,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   {
     const taken = await P.page.evaluate(() => (window.__btTakenPops ? JSON.parse(JSON.stringify(window.__btTakenPops)) : null)) || {};
     const MARKS = ['elem-frost', 'elem-flame', 'elem-wind', 'elem-stone', 'elem-storm', 'elem-water', 'elem-venom', 'heart'];
-    const tall = (t) => !!t && !!t.tight && Math.abs(t.h - Math.min(t.font, 22)) < 0.6;
+    /* v2.3.3033: the cap on a mark is 22 px at the old size and scales with a damage number (the probe says it) */
+    const capOf = (t) => (t && t.cap) || 22;
+    const tall = (t) => !!t && !!t.tight && Math.abs(t.h - Math.min(t.font, capOf(t))) < 0.6;
     const sl = taken.slime;
-    const slimeOk = !!sl && !!sl.tight && sl.w <= 1.5 * Math.min(sl.font, 22) + 0.6;
+    const slimeOk = !!sl && !!sl.tight && sl.w <= 1.5 * Math.min(sl.font, capOf(sl)) + 0.6;
     const overHead = MARKS.every((k) => taken[k] && taken[k].band != null && taken[k].y < taken[k].band);
     const fr = taken['elem-frost'] || {};
     rec.ok(`numbers taken: every element's mark is cut to its own size and drawn as tall as the number (the snowflake ${fr.h} px for a ${fr.font} px number, the slime's splat ${sl ? sl.w : '?'} px wide), and each number spawned over your head (${fr.band != null ? Math.round(fr.band - fr.y) : '?'} world px over the band's top), not on your face`,
