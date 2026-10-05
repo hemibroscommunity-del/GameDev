@@ -5321,3 +5321,35 @@ place may have.
 square or a bridge, look at it at 0.5 game px a pixel, not only at 3. The suite
 holds it (test-world-core "grass touches none of its street cells"); the
 picture is what finds the next kind of seam.
+
+## 138. "The black screen broke the harvest", so fix the recovery (v2.3.3034)
+
+**The plausible move.** The owner's chops stopped paying and their points stopped
+spending "in a game where screen had gone black then came back from low memory".
+The black-screen recovery is the obvious suspect: the watchdog rebuilds the
+renderer in place, or reloads the page, and something in there must leave the
+harvest or the Points window broken. So you read `_rebuildRenderer` and the
+auto-rejoin road for a missing re-init.
+
+**Why it is wrong.** Measured, all three ways back from a black screen settle a
+chop and a spend correctly: the rebuild, the recovery reload and a lost-and-
+restored graphics context (`mp-recoverpay` A-C, on main's own build). What loses
+both is the CONNECTION being gone while the game plays on. That happens two ways:
+the idle logout, which leaves the world running behind a banner, and a dead pipe,
+where the socket reads OPEN and carries nothing. The black screen is only how the
+owner got there: two minutes waited out in front of a dark screen is an idle
+logout. Every server-settled send is then dropped by the channel shim, or lost
+down the pipe, and the client still flies the log into the bag.
+
+**What is true.** "It stopped working after X" is evidence about WHEN, not about
+what broke. The tell here was in the third report: "the bar has no numbers" is
+the bar of a harvest whose hits never came back, i.e. the worker never heard the
+start. The question to ask was "did the worker hear it?" (`lastStrike`, the
+operator view), not "what did the recovery do?".
+
+**The rule.** For any "the server stopped doing X" report, test the connection
+states, not only the event the player names: an idle logout, a superseded
+window, a dead pipe (`mp-recoverpay`'s relay can make one). And a client that
+keeps playing without a live socket is the bug, wherever the socket went:
+nothing the worker settles may be started, or silently dropped, while it cannot
+hear you (`offlineRefused`, `_holdForRejoin`).

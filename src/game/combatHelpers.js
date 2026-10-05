@@ -698,6 +698,32 @@ export function swimRefused(S) {
   return true;
 }
 
+/* ═══ v2.3.3034: NOTHING THE WORKER SETTLES WHILE IT CANNOT HEAR YOU ═══
+   Owner: "Logs aren't going to the inventory after getting chopped, and
+   points in point stat allocation menu weren't getting allocated" -- the
+   session's socket was gone (an idle logout behind its banner, a dead pipe)
+   and the game played on: a harvest swung on the timer because its hits were
+   never asked for, its log flown to the bag, a point "spent" into nothing.
+   The channel brings the session back (wsClient reconnectNow) and this says
+   so over your head; the caller does not start what only the worker can
+   finish.  True when refused.  Against a client with no live socket at all
+   (no channel, or one too old to say) nothing is refused: the legacy local
+   paths stay what they were. */
+export var OFFLINE_NOTE = 'Reconnecting…';
+export var ELSEWHERE_NOTE = 'Playing in another window';
+export function offlineRefused(S) {
+  var ch = S && S.channel;
+  if (!ch || typeof ch.isLive !== 'function' || ch.isLive()) return false;
+  var why = 'reconnecting';
+  try { if (typeof ch.reconnectNow === 'function') why = ch.reconnectNow(); } catch (e) { /* the note still shows */ }
+  var now = Date.now();
+  if (S.player && (!S._offlineNoteAt || now - S._offlineNoteAt > 1500)) {
+    S._offlineNoteAt = now;
+    pushDmgPopup(S, S.player.x, S.player.y - 44, why === 'elsewhere' ? ELSEWHERE_NOTE : OFFLINE_NOTE, '#e9d27a', { ts: now + 1 });
+  }
+  return true;
+}
+
 /* ═══ v2.3.3017: ...NOR IN THE AIR ═══
    A jump (game/jump.js) is half a second with only the body drawn lifted.
    The swing, the shot, the shield, the roll and the abilities are drawn on

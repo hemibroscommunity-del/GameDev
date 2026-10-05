@@ -4833,6 +4833,14 @@ export var BroTown = function BroTown(_ref0) {
            Death also freezes — no walking around as a corpse. */
         var dx = (_realStunned || _playerDead || _playerLootFrozen) ? 0 : S.stickX,
           dy = (_realStunned || _playerDead || _playerLootFrozen) ? 0 : S.stickY;
+        /* ═══ v2.3.3034: A THUMB HELD ON THE STICK IS A PLAYER ═══
+           The idle clock (_lastInputAt, IDLE_LOGOUT_MS) is stamped by a
+           touchstart / pointerdown / keydown, and a thumb that pressed the
+           stick once and is still steering fires none of them -- so two
+           minutes of walking across the Wheel logged you out mid-stride, and
+           the game played on behind the banner with nothing settling (a
+           key held down repeats its keydown; the stick has no repeat). */
+        if (S.stickX || S.stickY) S._lastInputAt = Date.now();
         /* Keyboard overrides if no stick input — same gating:
            real stuns + death + loot-pickup freeze block, hit-react lockout does not. */
         if (!_realStunned && !_playerDead && !_playerLootFrozen && dx === 0 && dy === 0) {
