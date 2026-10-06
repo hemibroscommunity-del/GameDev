@@ -44,6 +44,9 @@ import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
 import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */ } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
 import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
+import { LIFE_SKILL_XP_BASE as SRV_LIFE_SKILL_XP_BASE } from '../src/gathering.js'; /* v2.3.3090 */
+import { LIFE_SKILL_XP_BASE as CLIENT_LIFE_SKILL_XP_BASE, skillXpRequired as clientSkillXpRequired } from '../../src/data/items.js'; /* v2.3.3090 */
+import { LIFE_SKILL_XP as CLIENT_LIFE_SKILL_XP } from '../../src/data/lifeSkills.js'; /* v2.3.3090 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058 */
 import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
@@ -1505,6 +1508,26 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     ['woodcutting', 'fishing', 'mining', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'farming', 'trapping'].every((k) => d[k] && d[k].level === 1), d);
   const old = clientMigrateLifeSkills({ mining: { level: 0, xp: 300 }, fishing: { level: 3, xp: 10 } });
   check('life-skill levels: a stored 0 heals to 1 (XP kept), a real level is left alone', old.mining.level === 1 && old.mining.xp === 300 && old.fishing.level === 3, { mining: old.mining, fishing: old.fishing });
+}
+
+// ── v2.3.3090: LIFE SKILLS LEVEL HALF AS FAST, on both sides ──
+// The owner's "Yes" to slower life skills doubled what every level costs (the
+// curve's base 500 -> 1000).  The worker's _lifeSkillXpThreshold decides the
+// level; the client's two copies of the curve draw the bar (skillXpRequired,
+// LIFE_SKILL_XP) and predict the level-up banner.  One base, every level.
+{
+  const room = Object.create(GameRoom.prototype);
+  check('life-skill curve: the same base on both sides (LIFE_SKILL_XP_BASE)', SRV_LIFE_SKILL_XP_BASE === CLIENT_LIFE_SKILL_XP_BASE,
+    { srv: SRV_LIFE_SKILL_XP_BASE, cli: CLIENT_LIFE_SKILL_XP_BASE });
+  let off = null;
+  for (let L = 1; L <= 100; L++) {
+    const srv = room._lifeSkillXpThreshold(L);
+    if (srv !== clientSkillXpRequired(L) || srv !== CLIENT_LIFE_SKILL_XP(L)) { off = { L, srv, items: clientSkillXpRequired(L), lifeSkills: CLIENT_LIFE_SKILL_XP(L) }; break; }
+  }
+  check('life-skill curve: every level 1-100 costs the same on the worker and in both client copies', off === null, off);
+  /* the owner's decision, pinned: a level costs twice what it did */
+  check('life-skill curve: twice the old price -- 1,000 XP for level 2, 1,080 for 3',
+    room._lifeSkillXpThreshold(1) === 1000 && room._lifeSkillXpThreshold(2) === 1080, [room._lifeSkillXpThreshold(1), room._lifeSkillXpThreshold(2)]);
 }
 
 // ── GATHER LEVELS: the level over a node is the level the worker asks ──
