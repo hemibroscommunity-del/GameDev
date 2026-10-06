@@ -18,6 +18,26 @@ import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E a
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace opens his coin flip */
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 
+/**
+ * v2.3.3105: what runInteract would do here, for the right stick's picture
+ * (BroTown's resolver): 'door' (a building, a hall, the Workshop, a dungeon's
+ * mouth, the Pet House), 'sleep' (the farm's bed), 'gather' (a resource --
+ * the stick's own harvest owns that), 'talk' (a character), or null.  The same
+ * order as runInteract -- `{ npcFirst: true }` is the right stick's, the
+ * character before the door.
+ */
+export function interactKind(S, opts) {
+  if (!S) return null;
+  if (opts && opts.npcFirst && S._nearNpc) return 'talk';   /* the right stick's order (runInteract) */
+  if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) return 'door';
+  if (S._nearHouse) return 'sleep';
+  if (S._nearWorkshop || S._nearWheelDoor || S._nearPetHouse) return 'door';
+  var gn = S._nearNode || S._proxNode;
+  if (gn && gn.alive) return 'gather';
+  if (S._nearNpc) return 'talk';
+  return null;
+}
+
 export function setupDesktopControls(S, deps) {
   var triggerContextualDodge = deps.triggerContextualDodge,
     _desktopEnterBuilding = deps._desktopEnterBuilding,
@@ -39,6 +59,89 @@ export function setupDesktopControls(S, deps) {
     toggleKbHints = deps.toggleKbHints,   /* v2.3.1715 */
     _desktopShieldBash = deps._desktopShieldBash, /* v2.3.1733 */
     _desktopWhirlwind = deps._desktopWhirlwind;   /* v2.3.1733 */
+    /* ═══ v2.3.3105: THE INTERACT CHAIN, SHARED WITH THE RIGHT STICK ═══
+       The owner: "I'd like the right joystick button to have an icon that
+       represents the action like this current jump, the sword for attack,
+       etc. so maybe chat bubble for speaking [to NPCs], door for entering
+       door".  What E does beside a door, a bed, a dungeon's mouth or a
+       character is what a tap on the stick does there now (BroTown's rE asks
+       S._interactNow), and interactKind() below names it for the stick's
+       picture -- one chain, so the picture can never promise one thing and
+       the tap do another.  Returns true when it did something. */
+    /* 4. The character beside you -- his quest, Ace's flip, Diego's shop, or
+       "has nothing for you right now" (v2.3.3105: its own function, so the
+       right stick can ask for it first) */
+    var runTalk = function runTalk() {
+      if (!S._nearNpc) return false;
+      var npc = S._nearNpc;
+      var npcQ = typeof getNpcQuest === 'function' ? getNpcQuest(S.rpg, npc.name) : null;
+      if (npcQ) {
+        _desktopNpcQuest(npc, npcQ);
+        return true;
+      }
+      /* v2.3.3067: the same answers a TAP gives (BroTown.jsx tapNpcAtCss):
+         Ace's coin flip and Diego's shop.  E said "has nothing for you"
+         to both, and Ace's flip has no other door -- he stands in the
+         Wheel's Brotown now (WHEEL_TOWNSFOLK), where a keyboard plays too. */
+      if (npc.flip) {
+        try { aceFlipBus.setStake(0); aceFlipBus.setOpen(true); } catch (_e) { /* display-only */ }
+        return true;
+      }
+      if (npc.shop) {
+        S._npcProxLatch = { npc: npc, ready: false };   /* as the tap: closing it beside him does not reopen it */
+        try { shopBus.setOpen(true); } catch (_e) { /* display-only */ }
+        return true;
+      }
+      /* v2.3.1717: he is right there and has nothing left.  Say so — a
+         giver whose chain is finished used to go completely inert, which
+         is indistinguishable from a broken NPC. */
+      if (deps.pushNpcMsg) deps.pushNpcMsg(npc.name + ' has nothing for you right now');
+      return true;
+    };
+    var runInteract = function runInteract(opts) {
+      /* the right stick asks for the character FIRST (opts.npcFirst): a door
+         has its own Enter button, and Ace and Diego stand by theirs, so door
+         first would never let the stick's tap reach them */
+      if (opts && opts.npcFirst && S._nearNpc && runTalk()) return true;
+      /* 1. Building (v2.3.3066: or a Wheel hall's door) */
+      if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) {
+        _desktopEnterBuilding();
+        return true;
+      }
+      /* 2. Sleep at house */
+      if (S._nearHouse) {
+        _desktopSleep();
+        return true;
+      }
+      /* 2b. Dungeon Workshop */
+      if (S._nearWorkshop) {
+        _desktopOpenWorkshop();
+        return true;
+      }
+      /* 2b2. v2.3.3016: a Wheel dungeon's mouth (game/wheelDungeons.js) */
+      if (S._nearWheelDoor) {
+        enterWheelDungeon(S, S._nearWheelDoor.id);
+        return true;
+      }
+      /* 2c. Pet House */
+      if (S._nearPetHouse) {
+        setShowPetHouse(true);
+        BT_AUDIO.enterBuilding();
+        return true;
+      }
+      /* 3. Gather node.  v2.3.1448: the shell now only opens on a TAP
+         (S._nearNode), but the desktop E key keeps its proximity
+         behaviour — S._proxNode is the closest resource in reach. */
+      var _gn = S._nearNode || S._proxNode;
+      if (_gn && _gn.alive) {
+        _desktopGather();
+        return true;
+      }
+      /* 4. Nearby NPC — open quest dialog */
+      if (S._nearNpc && runTalk()) return true;
+      return false;
+    };
+    S._interactNow = runInteract;
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */
     S._isDesktop = window.matchMedia('(pointer:fine)').matches;
     var onKeyDown = function onKeyDown(e) {
@@ -105,67 +208,10 @@ export function setupDesktopControls(S, deps) {
           _desktopShieldBash();
           return;
         }
-        /* 1. Building (v2.3.3066: or a Wheel hall's door) */
-        if (S.nearBuilding !== null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) {
-          _desktopEnterBuilding();
-          return;
-        }
-        /* 2. Sleep at house */
-        if (S._nearHouse) {
-          _desktopSleep();
-          return;
-        }
-        /* 2b. Dungeon Workshop */
-        if (S._nearWorkshop) {
-          _desktopOpenWorkshop();
-          return;
-        }
-        /* 2b2. v2.3.3016: a Wheel dungeon's mouth (game/wheelDungeons.js) */
-        if (S._nearWheelDoor) {
-          enterWheelDungeon(S, S._nearWheelDoor.id);
-          return;
-        }
-        /* 2c. Pet House */
-        if (S._nearPetHouse) {
-          setShowPetHouse(true);
-          BT_AUDIO.enterBuilding();
-          return;
-        }
-        /* 3. Gather node.  v2.3.1448: the shell now only opens on a TAP
-           (S._nearNode), but the desktop E key keeps its proximity
-           behaviour — S._proxNode is the closest resource in reach. */
-        var _gn = S._nearNode || S._proxNode;
-        if (_gn && _gn.alive) {
-          _desktopGather();
-          return;
-        }
-        /* 4. Nearby NPC — open quest dialog */
-        if (S._nearNpc) {
-          var npc = S._nearNpc;
-          var npcQ = typeof getNpcQuest === 'function' ? getNpcQuest(S.rpg, npc.name) : null;
-          if (npcQ) {
-            _desktopNpcQuest(npc, npcQ);
-            return;
-          }
-          /* v2.3.3067: the same answers a TAP gives (BroTown.jsx tapNpcAtCss):
-             Ace's coin flip and Diego's shop.  E said "has nothing for you"
-             to both, and Ace's flip has no other door -- he stands in the
-             Wheel's Brotown now (WHEEL_TOWNSFOLK), where a keyboard plays too. */
-          if (npc.flip) {
-            try { aceFlipBus.setStake(0); aceFlipBus.setOpen(true); } catch (_e) { /* display-only */ }
-            return;
-          }
-          if (npc.shop) {
-            S._npcProxLatch = { npc: npc, ready: false };   /* as the tap: closing it beside him does not reopen it */
-            try { shopBus.setOpen(true); } catch (_e) { /* display-only */ }
-            return;
-          }
-          /* v2.3.1717: he is right there and has nothing left.  Say so — a
-             giver whose chain is finished used to go completely inert, which
-             is indistinguishable from a broken NPC. */
-          if (deps.pushNpcMsg) deps.pushNpcMsg(npc.name + ' has nothing for you right now');
-          return;
-        }
+        /* 1-4. v2.3.3105: the interact chain lives in runInteract (below), so
+           the right stick's tap -- which wears its picture -- runs the very
+           same one */
+        if (runInteract()) return;
         /* v2.3.1717: NOT in range, but close enough that the player plainly
            MEANT this NPC.  E used to return in silence here, and a judge on a
            fresh character read that as "the mayor is broken" rather than

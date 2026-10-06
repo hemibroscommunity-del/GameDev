@@ -588,6 +588,12 @@ remnant to migrate server-side, not a mode to preserve.
       keep-alive key is Control;
     - `sprint` suite (47 checks, the client's rules too), mirror-audit,
       `mp-sprint`: docs/specs/sprint.md.
+    - since v2.3.3106 the button is JUST NORTH OF THE ATTACK DISC (the owner:
+      "near the right joystick instead of the left maybe just north of it",
+      then "Above, fights move up"): `sprintAnchor` centres it over the disc,
+      or sideways steps it left of the Wheel's minimap (`SPRINT_MAP_CLEAR`);
+      `rightCluster` puts Special and Whirlwind a row above it upright and
+      beside it sideways, half a button clear; mp-sprint, mp-abilslot.
   - Since v2.3.3008 the Points window's MAX MP has its before/after scene,
     "the only one missing one": both lanes cast specials at one block of
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
@@ -930,6 +936,32 @@ remnant to migrate server-side, not a mode to preserve.
     - other players: a `player_jump` relay (no worker change), `other._jump`;
     - test-world-core "jumping", `mp-jump` (`?jumpms=` for a slow machine):
       docs/specs/jumping.md.  Not yet: jumping over attacks (the worker's).
+    - since v2.3.3105 a TAP ON THE RIGHT STICK JUMPS, the button put away (the
+      owner: "prioritize other contextual uses for the tap instead of jump
+      first if any apply"): only a tap the world's "empty space" line got
+      (`S._tapEmptySeq`) with no job on the right side (`rightTapBusy` in
+      src/game/tapJump.js: a harvest, the disc pressable, a lock) jumps;
+      `?jumpbtn` brings the button back; `mp-tapjump`; and beside a PROP a tap
+      jumps too (the owner: "a tap should jump" there, a hold attacks): with no
+      job the tap window and the first swing's wait are `TAP_JUMP_MAX_MS` 320
+      (`S._atkHoldUntil`, `?tapms=`), a swing meets a prop at the BOOTS
+      (propSwingHit + `playerGroundDy`; it never landed north of you), and the
+      stick shows the owner's JUMP arrow, see-through over the disc as it is,
+      whenever a tap would jump (`data-ricon="jump"`,
+      `public/ui/controls/jump-glyph.webp` cut off their button -- the whole
+      button was "way too intense"; painted at rest, never pressable);
+      `mp-tapprop`; and the stick's picture is the TAP'S ACT (the owner: "chat
+      bubble for speaking [to NPCs], door for entering door"): a bubble beside
+      a character, a door at steps/halls/dungeon mouths, the moon at the
+      farm's bed, the WEAPON IN YOUR HAND when it attacks (its bag picture
+      in its metal, controlSkin `weaponDiscIcon`; and WHILE you attack --
+      a hold, a drag, a swing or shot and 1.2 s after, tapJump.js
+      `attackingNow`; on the lit disc in a fight the picture follows the
+      thumb, `rKnobFollow`, the look only), else JUMP -- the tap runs
+      the E key's own chain
+      (desktopControls `runInteract` via `S._interactNow`, `interactKind`,
+      the character first for the stick: `npcFirst`), SVGs in
+      `public/ui/controls/`; `mp-tapact`.
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:
