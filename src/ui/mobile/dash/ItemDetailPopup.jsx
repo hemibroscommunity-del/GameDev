@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-equip tick */
 import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
+import { dishFor } from '@/data/dishes.js';   /* v2.3.3105: the Cookhouse's meals and brews */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -156,6 +157,11 @@ function resolveTarget(target) {
     const SR = getState();
     const isTicket = isTicketKey(key);
     const isPotion = isPotionKey(key);            /* v2.3.2127 */
+    /* v2.3.3105: a Cookhouse dish -- a meal is eaten, a brew drunk.  Both are
+       the worker's (cooking.js), and an OLD worker eats or drinks neither, so
+       both buttons need caps.meals (read directly: caps-audit). */
+    const dish = dishFor(key);
+    const mealsOn = !!(SR && SR._serverCaps && SR._serverCaps.meals);
     const isCape = isCapeItemKey(key);
     const isChest = isChestKey(key);              /* v2.3.2820 */
     if (isTicket) info = 'Open it to claim your cape';
@@ -169,6 +175,8 @@ function resolveTarget(target) {
       info = capeIsWorn() ? 'Worn — a contest prize' : 'A contest prize, in your bag';
     }
     else if (isCookedFish) info = '+' + toDisplayDamage(calcDisplayHeal(SR && SR.rpg, key)) + ' HP when eaten';   /* v2.3.2520: display scale */
+    /* v2.3.3105: what eating or drinking it does, and the one-of-each rule */
+    else if (dish) info = dish.desc + (dish.slot === 'meal' ? ' · replaces your meal' : ' · replaces your brew');
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
     else if (isLog) info = 'Light a campfire to cook at';
@@ -196,7 +204,7 @@ function resolveTarget(target) {
          through an alias so the caps-audit can see the gate. */
       actions: {
         light: isLog && count > 0,
-        eat: isCookedFish && count > 0,
+        eat: (isCookedFish && count > 0) || (!!dish && dish.slot === 'meal' && count > 0 && mealsOn),
         open: isTicket && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
         /* v2.3.2109: gated on the same cap as the redeem -- against an old
@@ -220,7 +228,8 @@ function resolveTarget(target) {
         openChest: isChest && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.dailyChest),
         drink: isPotion && count > 0
-          && !!(SR && SR._serverCaps && SR._serverCaps.potionBag),
+          && !!(SR && SR._serverCaps && SR._serverCaps.potionBag)
+          && (!dish || mealsOn),   /* v2.3.3105: a brew needs a worker that drinks it */
         /* v2.3.2476: Sell -- put this up in the auction house at your own
            price.  Gated on the store cap (storeApi.storeEnabled reads
            _serverCaps.store) because an older worker has no /api/store

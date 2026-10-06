@@ -329,11 +329,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
          count badge. A number on a thing he can never run out of is a lie,
          and it is also how you would tell a staple that had been mistakenly
          dropped into the finite pile. */
-      staples: ['whetstone', 'manaShard', 'swiftDraught'].map((k) => {
+      /* v2.3.3105: his staples are the cooked minnow and the stamina salts
+         (server data.js DIEGO_SHELF); the three tonics are brewed at the
+         Cookhouse now and are NOT on his shelf. */
+      staples: ['cookedMinnow', 'staminaSalts'].map((k) => {
         const el = document.querySelector(`[data-shop-bro="${k}"]`);
         return { k, on: !!el, count: el && el.querySelector('.bt-item-qty')
           ? +el.querySelector('.bt-item-qty').textContent : null };
-      }) };
+      }),
+      tonics: ['whetstone', 'manaShard', 'swiftDraught'].filter((k) => document.querySelector(`[data-shop-bro="${k}"]`)) };
   });
   rec.ok('he starts with cooked fish on his shelf', seed2.slot, seed2);
   rec.ok('...with a real count, not "always in stock" -- it is a pile that runs out',
@@ -344,8 +348,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Owner: "These potions should be purchasable there." This used to assert
      the opposite -- that the consumables were gone -- which was right while
      they were unbuyable and useless. They are neither now. */
-  rec.ok('...alongside the potions, which he always has',
+  rec.ok('...alongside his two staples, which he always has',
     seed2.staples.every((x) => x.on), seed2.staples);
+  rec.ok('...and none of the three tonics -- they are brewed at the Cookhouse now (v2.3.3105)',
+    seed2.tonics.length === 0, seed2.tonics);
   rec.ok('...and THOSE carry no count, because a staple cannot run out '
        + '(the fish can, and does)',
     seed2.staples.every((x) => x.count === null) && seed2.count > 0,

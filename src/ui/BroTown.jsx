@@ -8777,6 +8777,26 @@ export var BroTown = function BroTown(_ref0) {
       var R = S && S.rpg;
       if (!R || !R.inventory) return;
       if ((R.inventory[key] || 0) <= 0) return;
+      /* ═══ v2.3.3105: A MEAL FROM THE COOKHOUSE ═══
+         Not a heal: half an hour of an effect in the meal slot, which the
+         worker applies and echoes (_buffs) -- so no "HP full", no heal to
+         predict, and nothing drawn but the bite.  The bag predicts the one
+         taken; the echo is the truth (rule 20).  Only offered at all on a
+         worker with caps.meals (ItemDetailPopup). */
+      var _meal = DATA.dishFor(key);
+      if (_meal) {
+        if (_meal.slot !== 'meal') return;
+        R.inventory[key] -= 1;
+        if (R.inventory[key] <= 0) delete R.inventory[key];
+        if (S.channel) {
+          try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
+        }
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Ate ' + _meal.name, '#D8A94D');
+        try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
+        setRpgState(_objectSpread({}, R));
+        try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
+        return;
+      }
       var maxHp = R.maxHp || 100;
       if ((R.hp || 0) >= maxHp) {
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'HP full', '#B9C1BF');
@@ -12412,6 +12432,9 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];
+    /* v2.3.3105: a meal or brew lasts half an hour now, and "1800s" is not a
+       time anyone reads -- minutes from a minute up, seconds below it. */
+    var _btime = function (sec) { return sec >= 60 ? Math.ceil(sec / 60) + 'm' : sec + 's'; };
     if (S._cursedUntil && Date.now() < S._cursedUntil) {
       var rem = Math.ceil((S._cursedUntil - Date.now()) / 1000);
       effects.push({
@@ -12444,7 +12467,7 @@ export var BroTown = function BroTown(_ref0) {
         icon: '⚔️',
         label: 'Dmg+',
         color: '#ea580c',
-        time: _rem2 + 's',
+        time: _btime(_rem2),
         desc: _dmul2 >= 2 ? 'x' + (Math.round(_dmul2 * 100) / 100) : '+' + Math.round((_dmul2 - 1) * 100) + '%'
       });
     }
@@ -12457,7 +12480,7 @@ export var BroTown = function BroTown(_ref0) {
         icon: '\u{1F4A0}',
         label: 'Mana',
         color: '#4F8FDE',
-        time: _rem6 + 's',
+        time: _btime(_rem6),
         desc: Number(S._manaFlat) > 0 ? 'Surge' : '+30%'
       });
     }
@@ -12467,8 +12490,8 @@ export var BroTown = function BroTown(_ref0) {
         icon: '💚',
         label: 'Regen',
         color: '#59BF91',
-        time: _rem3 + 's',
-        desc: 'HP/s'
+        time: _btime(_rem3),
+        desc: 'x2 rest'   /* v2.3.3105: the Herb Bread doubles the out-of-combat healing (server index.js) */
       });
     }
     if (S._resistBuff && Date.now() < S._resistBuff) {
@@ -12477,8 +12500,8 @@ export var BroTown = function BroTown(_ref0) {
         icon: '🛡️',
         label: 'Resist',
         color: '#60a5fa',
-        time: _rem4 + 's',
-        desc: '-15%'
+        time: _btime(_rem4),
+        desc: '-5%'   /* v2.3.3105: what the worker takes off (combat.js x0.95); it said -15% */
       });
     }
     if (S._spdBuff && Date.now() < S._spdBuff) {
@@ -12493,7 +12516,7 @@ export var BroTown = function BroTown(_ref0) {
         icon: '💨',
         label: 'Speed',
         color: '#D8A94D',
-        time: _rem5 + 's',
+        time: _btime(_rem5),
         desc: _smul5 >= 1.5 ? 'x' + (Math.round(_smul5 * 100) / 100)
           : '+' + Math.round((_smul5 - 1) * 100) + '%'
       });
@@ -13557,8 +13580,14 @@ export var BroTown = function BroTown(_ref0) {
     /* Find best cookable recipe the player can make */
     var cookLvl = ((_R$lifeSkills6 = R.lifeSkills) === null || _R$lifeSkills6 === void 0 || (_R$lifeSkills6 = _R$lifeSkills6.cooking) === null || _R$lifeSkills6 === void 0 ? void 0 : _R$lifeSkills6.level) || 1;
     var inv = R.inventory || {};
+    /* v2.3.3105: on a worker with caps.meals a cook MAKES the dish, and the
+       field's one button cooks MEALS only -- it picks for you, and picking the
+       last recipe would now brew a tonic out of herbs you meant for bread.
+       Brews are made at the Cookhouse.  An old worker keeps the old three. */
+    var _fieldMeals = !!(S._serverCaps && S._serverCaps.meals);
     var available = COOKING_RECIPES.filter(function (r) {
       if (cookLvl < r.cookLvl) return false;
+      if (_fieldMeals ? !(DATA.dishFor(r.makes) && DATA.dishFor(r.makes).slot === 'meal') : !r.buff) return false;
       return Object.entries(r.ingredients).every(function (_ref230) {
         var _ref231 = _slicedToArray(_ref230, 2),
           type = _ref231[0],
@@ -13597,7 +13626,7 @@ export var BroTown = function BroTown(_ref0) {
         if (S.channel) {
           var _recipeIdx = COOKING_RECIPES.indexOf(best);
           if (_recipeIdx >= 0) {
-            try { S.channel.send({ type: 'cook_recipe', payload: { recipeIdx: _recipeIdx } }); } catch (e2) {}
+            try { S.channel.send({ type: 'cook_recipe', payload: _fieldMeals ? { recipeIdx: _recipeIdx, carry: true } : { recipeIdx: _recipeIdx } }); } catch (e2) {}
           }
         }
         /* Consume ingredients */
@@ -13614,17 +13643,23 @@ export var BroTown = function BroTown(_ref0) {
             if (R.inventory[k] <= 0) delete R.inventory[k];
           });
         });
+        /* v2.3.3105: the meal goes in the bag (the worker echoes it); the old
+           instant buff is predicted only in front of an old worker. */
+        if (_fieldMeals && best.makes) {
+          if (!R.inventory) R.inventory = {};
+          R.inventory[best.makes] = (Math.floor(Number(R.inventory[best.makes]) || 0)) + 1;
+        }
         /* Apply buff */
-        var dur = (best.duration || 0) * 1000;
-        if (best.buff === 'heal') R.hp = Math.min(R.maxHp, R.hp + best.power);
-        if (best.buff === 'regen') S._regenBuff = Date.now() + dur;
-        if (best.buff === 'resist') S._resistBuff = Date.now() + dur;
+        var dur = _fieldMeals ? 0 : (best.duration || 0) * 1000;
+        if (!_fieldMeals && best.buff === 'heal') R.hp = Math.min(R.maxHp, R.hp + best.power);
+        if (!_fieldMeals && best.buff === 'regen') S._regenBuff = Date.now() + dur;
+        if (!_fieldMeals && best.buff === 'resist') S._resistBuff = Date.now() + dur;
         /* v2.3.2058: cleared with the timer -- a meal states its own
              magnitude (the 1.20 fallback), it must not inherit a Fury
              Tonic's x2 that is still ticking. Mirrors the server's
              `delete ps._buffs.damageMul` in cooking.js. */
-        if (best.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
-        if (best.buff === 'all') {
+        if (!_fieldMeals && best.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
+        if (!_fieldMeals && best.buff === 'all') {
           S._dmgBuffMul = 0;   /* v2.3.2058: see above */
           S._spdBuffMul = 0;   /* v2.3.2062: nor a Swift Draught's x1.5 */
           S._dmgBuff = Date.now() + dur;
@@ -13633,7 +13668,7 @@ export var BroTown = function BroTown(_ref0) {
           S._manaBuff = Date.now() + dur;
         }
         addLifeSkillXp(R.lifeSkills, 'cooking', best.tier * 25);
-        pushDmgPopup(S, S.player.x, S.player.y - 30, best.name + '!', '#ea580c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, _fieldMeals ? '+1 ' + best.name : best.name + '!', '#ea580c');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {

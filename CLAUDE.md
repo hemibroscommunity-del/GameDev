@@ -1424,7 +1424,22 @@ remnant to migrate server-side, not a mode to preserve.
       (err 'newer') -- a phase that changes the record bumps it, or a
       rollback rewrites beds of crops it never heard of as grass;
     - the dev op `farmripe` ("Ripen my farm now" in the dev panel); `farm`
-      suite, `mp-farm`: docs/specs/farm.md.)
+      suite, `mp-farm`: docs/specs/farm.md.
+  - Since v2.3.3105 MEALS AND BREWS YOU CARRY -- the plan's Phase 2a:
+    - a cook with `carry` (caps.meals) puts the recipe's `makes` in the bag
+      (cooking.js); `eat_request` takes `meal_*`, `potion_drink` `brew_*`
+      (data.js `DISHES`, mirrored in src/data/dishes.js); an old client's
+      cook is the dish made and used at once;
+    - ONE MEAL AND ONE BREW: `_clearBuffSlot` clears a slot whole, its
+      magnitudes with its timers; damage is only ever a brew (combat.js's
+      ceiling was sized at one x2 brew); meals last 30 min;
+    - Diego's tonics are BREWED (recipes 3-5), off his shelf (`DIEGO_SHELF`)
+      and still never bought back; a dish is worth its herbs to him;
+    - the Herb Bread doubles the out-of-combat healing (`HERB_REGEN_MULT`),
+      never mid-fight; meals and cooked fish file under the bag's Consumable
+      chip (no sixth chip: one per slot column);
+    - kill switch `meals: false`; `meals` suite, `mp-meals`:
+      docs/specs/meals.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

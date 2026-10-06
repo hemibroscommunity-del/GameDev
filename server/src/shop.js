@@ -46,7 +46,7 @@
  * player_state echo is the tiebreaker (handoff rule 20).
  */
 
-import { SHOP_ITEMS } from './data.js';   /* v2.3.2063: his staple shelf */
+import { SHOP_ITEMS, DIEGO_SHELF, COOKING_RECIPES, DISHES } from './data.js';   /* v2.3.2063: his staple shelf; v2.3.3105: his shelf is DIEGO_SHELF */
 import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3102: seeds, crops and compost */
 
 /* ═══ v2.3.2063: THE THINGS HE ALWAYS HAS ═══
@@ -71,15 +71,39 @@ import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3102: seeds, crops and com
  * at a time (owner: "Only 1 effect active at a time though") -- so a stack of
  * five would charge for five and give you one. The quantity stepper is hidden
  * for staples in the drawer for the same reason. */
+/* v2.3.3105: the shelf is DIEGO_SHELF (data.js), not the whole of SHOP_ITEMS:
+   the three tonics are brewed at the Cookhouse now and he no longer sells
+   them (the farming plan's "Diego keeps his staples and loses his tonics"). */
 export function shopStaples() {
-  return Object.keys(SHOP_ITEMS).map((id) => ({
+  return DIEGO_SHELF.filter((id) => Object.prototype.hasOwnProperty.call(SHOP_ITEMS, id)).map((id) => ({
     key: id,
     cost: Math.max(1, Math.floor(SHOP_ITEMS[id].cost)),
   }));
 }
 export function isShopStaple(key) {
+  return typeof key === 'string' && DIEGO_SHELF.includes(key) && Object.prototype.hasOwnProperty.call(SHOP_ITEMS, key);
+}
+/* v2.3.3105: ...and what he never BUYS is still every SHOP_ITEMS key.  The
+   tonics left his shelf, not his rule: a bottle sold into the pile would turn
+   up for sale on it again, the shelf he just stopped selling them on, and his
+   pile pricing would make a brewer's three herbs worth more as a bottle sold
+   to him than as herbs -- a faucet the farm would open.  They trade between
+   players (the auction house, a trade) instead. */
+export function isShopPotion(key) {
   return typeof key === 'string' && Object.prototype.hasOwnProperty.call(SHOP_ITEMS, key);
 }
+
+/* v2.3.3105: what he pays for a Cookhouse dish: the herbs it was made from,
+   never more -- the sum of its ingredients' own bases (FARM_SHOP_BASE).
+   Cooking adds use, Cooking XP and a thing you can trade, not coins from him;
+   above that sum, every cook would be a small faucet at his counter. */
+export const DISH_SHOP_BASE = Object.freeze(COOKING_RECIPES.reduce((m, r) => {
+  if (!r || !r.makes || !Object.prototype.hasOwnProperty.call(DISHES, r.makes)) return m;
+  let sum = 0;
+  for (const [k, n] of Object.entries(r.ingredients || {})) sum += (FARM_SHOP_BASE[k] || 0) * n;
+  if (sum > 0) m[r.makes] = sum;
+  return m;
+}, {}));
 
 export const SHOP = {
   /* Coins he pays for the FIRST unit of something he has none of, before the
@@ -149,6 +173,8 @@ export const SHOP = {
        the plan's value (docs/FARMING-PLAN.md), a carrot 8 and a Cloudpetal 40,
        and his pile's decay does the rest. */
     ...FARM_SHOP_BASE,
+    /* v2.3.3105: the Cookhouse's dishes, at their herbs' worth (DISH_SHOP_BASE). */
+    ...DISH_SHOP_BASE,
   },
   BASE_DEFAULT: 20,
   /* He buys at half his asking price before decay -- the ordinary shopkeeper
@@ -301,7 +327,7 @@ export const shopMethods = {
       for (const k of keys.slice(0, 60)) {
         if (typeof k !== 'string' || !k || k.length > 64) continue;
         if (seen[k] || stock[k]) continue;      /* held keys are listed below */
-        if (isShopStaple(k)) continue;         /* v2.3.2063: already on the shelf above */
+        if (isShopPotion(k)) continue;         /* v2.3.2063: already on the shelf above; v2.3.3105: or a potion he never buys */
         seen[k] = 1;
         items.push({ key: k, qty: 0, buy: this._shopBuyPrice(k, 0),
           base: this._shopBuyPrice(k, 0),
@@ -370,6 +396,10 @@ export const shopMethods = {
       return { ok: true, key, qty: take, mode,
         total: this._shopSellPrice(key) * take, settled: true };
     }
+    /* v2.3.3105: a sell quote for something he will not buy is nothing --
+       before, it priced a staple (and now would a tonic) as if he would, and
+       the drawer offered a Sell button the sale then refused. */
+    if (isShopPotion(key)) return { ok: true, key, qty: 0, mode: 'sell', total: 0, settled: true };
     let held = stock[key] || 0;
     let total = 0, n = 0;
     for (let i = 0; i < want; i++) {
@@ -392,6 +422,9 @@ export const shopMethods = {
        printer; and a staple sold INTO the pile would then be listed twice on
        his shelf, once as a staple and once as stock. */
     if (isShopStaple(key)) return { ok: false, error: "He only sells those" };
+    /* v2.3.3105: the tonics are off his shelf and still not bought back
+       (isShopPotion above). */
+    if (isShopPotion(key)) return { ok: false, error: "He doesn't buy tonics" };
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
     if (!ps.inventory) ps.inventory = {};

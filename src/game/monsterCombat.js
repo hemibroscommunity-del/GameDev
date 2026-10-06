@@ -781,7 +781,7 @@ export function updateMonsterCombat(S, deps) {
                   var shielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y); /* v2.3.1705: directional */
                   var rawDmg = Math.max(1, m.dmg);
                   /* §18.1 Food buff — resist reduces incoming damage */
-                  if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.85));
+                  if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.95));   /* v2.3.3105: the Root Stew's real 5% (server combat.js x0.95); this said 15% */
                   /* §4 Amulet elemental resistance */
                   if (((_R6$_amuletBonus3 = _R6._amuletBonus) === null || _R6$_amuletBonus3 === void 0 ? void 0 : _R6$_amuletBonus3.stat) === 'elemResist') rawDmg = Math.max(1, Math.floor(rawDmg * (1 - _R6._amuletBonus.value / 100)));
                   /* Shield gear — flat defense reduction */

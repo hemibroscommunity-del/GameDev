@@ -243,7 +243,12 @@ export function ShopkeeperPanel() {
   const liveQuote = (quote && selKey && quote.key === selKey && quote.qty === clamped
     && quote.mode === (selSide === 'bro' ? 'buy' : 'sell')) ? quote : null;
   const tooPoor = selSide === 'bro' && liveQuote && coins < liveQuote.total;
-  const canAct = !!liveQuote && selMax >= 1 && !tooPoor && !shopBus.busy;
+  /* v2.3.3105: his sell quote is 0 for anything he will not buy -- his own
+     staples, the tonics (brewed at the Cookhouse now, never bought back), or
+     a pile already full -- and the button says so instead of a "…" that
+     looks like it is still loading. */
+  const wontBuy = selSide === 'bag' && !!quote && quote.key === selKey && quote.mode === 'sell' && quote.qty === 0;
+  const canAct = !!liveQuote && selMax >= 1 && !tooPoor && !wontBuy && !shopBus.busy;
 
   const act = () => {
     if (!canAct) return;
@@ -406,8 +411,11 @@ export function ShopkeeperPanel() {
                 {/* v2.3.2063: "Bro has 0" is not a fact about a staple -- he
                     cannot run out of them. What matters instead is that
                     drinking it replaces whatever you are running. */}
+                {/* v2.3.3105: his staples are the two instant items now (the
+                    tonics are brewed at the Cookhouse), and neither replaces a
+                    running effect -- the line said they did. */}
                 {selStaple
-                  ? <span data-shop-staple="">Always in stock · replaces any effect</span>
+                  ? <span data-shop-staple="">Always in stock</span>
                   : <>
                       <span data-shop-brohas={broHas(selKey)}>Bro has {broHas(selKey)}</span>
                       {' · '}
@@ -451,6 +459,7 @@ export function ShopkeeperPanel() {
               {/* The total is his answer for THIS stack, so it already accounts
                   for the decay across the units -- it is not qty x unit. */}
               {tooPoor ? 'Not enough gold'
+                : wontBuy ? 'He won\'t buy'
                 : (selSide === 'bro' ? 'BUY ' : 'SELL ')
                   + (liveQuote ? liveQuote.total + 'g' : '…')}
             </button>
