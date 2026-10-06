@@ -291,6 +291,38 @@ These are the client's alone:
   - Picture: `tools/qa/mp/out/sprintpeer-watcher.png`.
 - **`mp-sprint`** still passes, 23/23.
 
+## v2.3.3086: the button moves over the attack disc
+
+The owner: "I think it also makes sense to put the sprint button near the
+right joystick instead of the left maybe just north of it", and, asked what
+to do where Special and Whirlwind pop up above the disc in a fight, "Above,
+fights move up".
+
+- **Where:** `sprintAnchor` (ShieldButton.jsx). Upright, it is centred over
+  the attack disc, 10px clear of its top.
+  - Sideways it would lie under the Wheel's minimap, which ends 34px above
+    the disc on a 390px-tall screen. So there its right edge is
+    `SPRINT_MAP_CLEAR` (the minimap's 132px and 8) in from the screen's edge:
+    still at the disc's top, up and to its left.
+- **Sprint never moves; the fight buttons make room** (`rightCluster`):
+  - Upright, Special and Whirlwind sit a row higher, half a button over
+    Sprint. Whirlwind's top is 322px above the band at 390x844, where it was
+    250.
+  - Sideways, they stand left of Sprint at its height, half a button clear.
+    Whirlwind's top stays at 272, under the 283 limit for "up among the
+    health bars", and both are clear of the minimap (Special lay under it
+    before). Their left edge is 356px from the right edge, which is 23px over
+    the screen's middle on a 667px-wide phone held sideways.
+- The button now lies on the attack half ([data-joyzone="R"]). It swallows its
+  own touches as before, so a tap on it never aims, swings or jumps
+  (mp-sprint checks this).
+- The coach card that dodges the combat band rises with it
+  (`combatBandTopPx`).
+- Tests: `mp-sprint` (layout upright and sideways, nothing leaks into the
+  attack half) and `mp-abilslot` (Sprint over the disc, half a button to
+  Special and Whirlwind, the pair above it upright and beside it sideways):
+  159/159.
+
 ## Not done (could come next)
 
 - **Stamina use is shared.** The sprint and the abilities spend the same bar,

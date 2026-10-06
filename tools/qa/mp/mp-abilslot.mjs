@@ -123,6 +123,9 @@ const boxes = (P) => P.page.evaluate(() => {
        its own and look exactly like a weapon rule working. */
     lock: !!(S && S.lockedTarget && S.lockedTarget.ref),
     shield: b('[data-shield]'), special: b('[data-special]'),
+    /* v2.3.3086: Sprint, just north of the attack disc -- the cluster makes
+       room round it */
+    sprint: b('[data-sprint]'),
     ljoy: b('.bt-joystick-base'),
     /* v2.3.2562: the attack disc as MEASURED, not derived.  The derived form
        below hangs off the dashboard band, and sideways there is no band
@@ -524,9 +527,44 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
        A threshold that fails a correct build is worse than no threshold. */
     const CEILING = 283;
     const aboveBand = (g.dashTop || h) - d.whirl.y;
-    rec.ok(`${tag}: ...and the upper button stays under the ceiling v2.3.2542 set for "up among the `
-      + `health bars" -- ${aboveBand}px above the band, limit ${CEILING}px`,
-      aboveBand <= CEILING, { aboveBand, ceiling: CEILING, whirlTop: d.whirl.y, vh: h, dashTop: g.dashTop });
+    /* v2.3.3086: the ceiling is a 390px-TALL screen's (that is where v2.3.2542
+       met the health bars), so it is held sideways.  Upright the cluster moved
+       a row up for Sprint (322px at 390x844, with ~450px more screen above
+       it): reported there, not held to a sideways number. */
+    if (h <= 500) {
+      rec.ok(`${tag}: ...and the upper button stays under the ceiling v2.3.2542 set for "up among the `
+        + `health bars" -- ${aboveBand}px above the band, limit ${CEILING}px`,
+        aboveBand <= CEILING, { aboveBand, ceiling: CEILING, whirlTop: d.whirl.y, vh: h, dashTop: g.dashTop });
+    } else {
+      console.log(`    ${tag}: Whirlwind's top ${aboveBand}px above the band, ${d.whirl.y}px from the screen's top`);
+    }
+    /* ═══ v2.3.3086: SPRINT OVER THE DISC, THE PAIR ROUND IT ═══
+       The owner: "put the sprint button near the right joystick ... maybe just
+       north of it", and "Above, fights move up". */
+    if (d.sprint && d.attack) {
+      const sdx = d.sprint.cx - d.attack.cx;
+      /* sideways it steps left of centre, clear of the Wheel's minimap */
+      rec.ok(`${tag}: Sprint sits over the attack disc, ${h <= 500 ? 'up and to its left' : 'centred'} (${sdx}px off), clear of its top (${d.attack.y - d.sprint.b2}px)`,
+        (h <= 500 ? sdx <= 0 && d.sprint.r2 > d.attack.x : Math.abs(sdx) <= 2) && d.sprint.b2 <= d.attack.y - 6, { sprint: d.sprint, attack: d.attack });
+      for (const [nm, box] of [['Special', d.special], ['Whirlwind', d.whirl]]) {
+        const ax = Math.max(0, Math.max(box.x - d.sprint.r2, d.sprint.x - box.r2));
+        const ay = Math.max(0, Math.max(box.y - d.sprint.b2, d.sprint.y - box.b2));
+        const air = Math.round(Math.hypot(ax, ay));
+        rec.ok(`${tag}: ...and ${nm} keeps half a button of air from it -- ${air}px (floor ${Math.round(d.sprint.h / 2)}px)`,
+          air >= Math.round(d.sprint.h / 2) - 1, { air, sprint: d.sprint, other: box });
+      }
+      if (h <= 500) {
+        rec.ok(`${tag}: sideways, the pair stands LEFT of Sprint (special right ${d.special.r2} <= sprint left ${d.sprint.x})`,
+          d.special.r2 <= d.sprint.x, { special: d.special, sprint: d.sprint });
+      } else {
+        rec.ok(`${tag}: upright, the pair is a row ABOVE Sprint (special bottom ${d.special.b2} <= sprint top ${d.sprint.y})`,
+          d.special.b2 <= d.sprint.y, { special: d.special, sprint: d.sprint });
+      }
+    } else if (!d.sprint) {
+      rec.ok(`${tag}: Sprint is drawn`, false, { sprint: d.sprint });
+    } else {
+      rec.skip(`${tag}: the Sprint-vs-attack-disc rows`, 'the disc had faded out of the DOM when the shot was taken');
+    }
   }
 
   /* ═══ v2.3.2563: THE iOS EDGE GUARD MUST NOT EAT PART OF A BUTTON ═══

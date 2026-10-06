@@ -17,8 +17,10 @@ import { Skin, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.js
  * rules, server/src/sprint.js the bill).  This file only draws and turns it
  * on and off.
  *
- * WHERE: sprintAnchor (ShieldButton.jsx), level with the disc's centre and
- * LCTL_GAP right of it -- in the one patch beside the disc nothing else uses.
+ * WHERE: sprintAnchor (ShieldButton.jsx).  v2.3.3086: just north of the
+ * ATTACK disc (the owner: "put the sprint button near the right joystick
+ * instead of the left maybe just north of it"), Special and Whirlwind moving
+ * up or aside for it in a fight -- it was right of the movement disc.
  *
  * WHAT IT SHOWS (v2.3.3018: in the owner's mockup's look -- see the note by
  * the render; the word went and the rim is the gold ring):
@@ -38,8 +40,9 @@ import { Skin, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.js
  * would snap every sprint back), while you swim (no sprinting in the water,
  * like the special and shield buttons), or dead.
  *
- * IT MUST SWALLOW ITS OWN TOUCHES.  It sits on [data-joyzone="L"] (z6), where
- * a touchstart begins a walk and a quick release dodges.  Every touch event
+ * IT MUST SWALLOW ITS OWN TOUCHES.  It sits on [data-joyzone="R"] (z6) since
+ * v2.3.3086, where a touchstart aims and attacks and a tap may jump (it sat on
+ * the "L" zone, where a touchstart begins a walk and a quick release dodges).  Every touch event
  * is stopped here, and it toggles on a real TAP -- a release near where it
  * began, soon enough -- so a thumb that lands on it while starting to walk
  * does not switch the sprint.  The weapon button under the stick works the
@@ -218,7 +221,7 @@ export function SprintButton(props) {
     onContextMenu: function (e) { e.preventDefault(); },
     style: {
       position: 'fixed',
-      left: anchor.leftPx,
+      right: anchor.right,   /* v2.3.3086: over the attack disc */
       bottom: ctlBottom(anchor.bottomPx),
       width: size, height: size,
       zIndex: 31,

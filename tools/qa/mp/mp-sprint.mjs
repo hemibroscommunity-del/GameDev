@@ -6,11 +6,13 @@
  *
  * A real player against a real worker, in the Wheel as players get it, on a
  * phone-sized TOUCH page:
- *   1. the button is just right of the movement stick, level with its centre,
- *      44 px or more, in the movement half, on no other control, the word
- *      SPRINT inside its rim -- upright and sideways;
- *   2. a TAP turns it on and off, and the tap is only that: no roll, no walk
- *      (the stick's half of the screen is under it);
+ *   1. the button is just north of the ATTACK disc, centred over it (v2.3.3086,
+ *      the owner: "near the right joystick instead of the left maybe just
+ *      north of it"; it was right of the movement stick), 44 px or more, in
+ *      the attack half, on no other control, its boot inside its rim --
+ *      upright and sideways;
+ *   2. a TAP turns it on and off, and the tap is only that: no roll, no walk,
+ *      no swing, aim or jump (the attack half of the screen is under it);
  *   3. sprinting he runs SPRINT_MULT (1.33) times his walk, over the same
  *      ground, and his legs keep up (the jog loop 1.33 times quicker);
  *   4. the WORKER bills it: every sprinting move it gets is a paid step,
@@ -46,7 +48,9 @@ const DRAIN = 11;         /* SPRINT_DRAIN_PER_S */
 const LAYOUT = (P) => P.page.evaluate(() => {
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
   const btn = document.querySelector('[data-sprint]');
-  const disc = document.querySelector('.bt-joystick-zone');
+  const stick = document.querySelector('.bt-joystick-zone');
+  /* v2.3.3086: the button is over the ATTACK disc now */
+  const disc = document.querySelector('.bt-rjoy-base');
   /* v2.3.3018: the owner's mockup draws Sprint as the boot alone -- the word
      went -- so what has to sit inside the ring is the PICTURE */
   const lab = btn && btn.querySelector('[data-icon="boot"]');
@@ -64,21 +68,26 @@ const LAYOUT = (P) => P.page.evaluate(() => {
     }
   }
   return { vw: innerWidth, vh: innerHeight, btn: r(btn), label: r(lab), ring: ringEl ? +ringEl.getAttribute('stroke-width') : null,
-    state: btn ? btn.getAttribute('data-sprint') : null, disc: r(disc), others };
+    state: btn ? btn.getAttribute('data-sprint') : null, disc: r(disc), stick: r(stick), others };
 });
 const overlaps = (a, b, pad) => a.l < b.r + pad && a.r > b.l - pad && a.t < b.b + pad && a.b > b.t - pad;
 
 function checkLayout(rec, L, label) {
   const b = L.btn, d = L.disc;
   if (!b || !d) { rec.ok(`${label}: the sprint button is drawn`, false, L); return; }
-  const gap = b.l - d.r;
-  const dy = (b.t + b.b) / 2 - (d.t + d.b) / 2;
+  const gap = d.t - b.b;
+  const dx = (b.l + b.r) / 2 - (d.l + d.r) / 2;
   const hit = L.others.filter((o) => overlaps(b, o, 2));
-  console.log(`    ${label}: ${JSON.stringify({ btn: b, disc: d, gap: +gap.toFixed(1), dy: +dy.toFixed(1), vw: L.vw, others: L.others.length, hit })}`);
-  rec.ok(`${label}: just right of the movement stick (${gap.toFixed(0)} px clear of it), level with its centre (${dy.toFixed(1)} px off)`,
-    gap >= 8 && gap <= 14 && Math.abs(dy) <= 2, { gap, dy });
+  console.log(`    ${label}: ${JSON.stringify({ btn: b, disc: d, gap: +gap.toFixed(1), dx: +dx.toFixed(1), vw: L.vw, others: L.others.length, hit })}`);
+  /* sideways it steps left, clear of the Wheel's minimap (sprintAnchor's
+     SPRINT_MAP_CLEAR): still over the disc's top, up and to its left */
+  const side = L.vw > L.vh;
+  rec.ok(side
+    ? `${label}: just north of the attack disc (${gap.toFixed(0)} px clear of its top), up and to its left, clear of the minimap (${dx.toFixed(1)} px left of centre, right edge ${b.r.toFixed(0)} over the disc's ${d.l.toFixed(0)}-${d.r.toFixed(0)})`
+    : `${label}: just north of the attack disc (${gap.toFixed(0)} px clear of its top), centred over it (${dx.toFixed(1)} px off)`,
+    gap >= 8 && gap <= 14 && (side ? dx <= 0 && b.r > d.l : Math.abs(dx) <= 2), { gap, dx });
   rec.ok(`${label}: a thumb's size (${b.w}x${b.h}, Apple's 44 at least)`, b.w >= 44 && b.h >= 44, b);
-  rec.ok(`${label}: in the movement half of the screen (right edge ${b.r.toFixed(0)} of ${L.vw / 2})`, b.r <= L.vw / 2, { r: b.r, half: L.vw / 2 });
+  rec.ok(`${label}: in the attack half of the screen (left edge ${b.l.toFixed(0)} of ${L.vw / 2})`, b.l >= L.vw / 2, { l: b.l, half: L.vw / 2 });
   rec.ok(`${label}: on no other control (${L.others.length} checked)`, hit.length === 0, hit);
   /* the word inside the rim (3 px) at every corner of its box: the first cut
      lost the S and the T to the circle's edge.
@@ -139,7 +148,8 @@ const sprintState = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   const b = window.__btSprintBtn ? window.__btSprintBtn() : null;
   return { x: S.player.x, y: S.player.y, vx: S.player.vx || 0, roll: !!S._dodgeRoll, stick: Math.hypot(S.stickX || 0, S.stickY || 0),
-    st: S.rpg ? S.rpg.stamina : null, btn: b, jog: window.__btJogCyc || null };
+    st: S.rpg ? S.rpg.stamina : null, btn: b, jog: window.__btJogCyc || null,
+    aim: !!S._aiming, auto: !!S.autoAttack, jumps: S._jumpCount || 0 /* v2.3.3086: the attack half is under it now */ };
 });
 
 /* hold `key`, sampling every ~100 ms for `ms` (or until `until`); `each`
@@ -205,7 +215,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const on = await sprintState(P);
     const L2 = await LAYOUT(P);
     rec.ok('a tap turns it on (lit)', !!(on.btn && on.btn.armed) && L2.state === 'on', { btn: on.btn, state: L2.state });
-    rec.ok('...and is only a tap: no roll, no walk from the stick underneath', !on.roll && on.stick === 0, on);
+    rec.ok('...and is only a tap: no roll, no walk, no aim, swing or jump from the attack half underneath',
+      !on.roll && on.stick === 0 && !on.aim && !on.auto && on.jumps === 0, on);
     await P.page.touchscreen.tap(c.x, c.y);
     await P.page.waitForTimeout(250);
     const off = await sprintState(P);
@@ -316,7 +327,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const L = await LAYOUT(P);
     const b = centre(L.btn);
     const cdp = await P.ctx.newCDPSession(P.page);
-    const stick = { id: 1, x: L.disc.l + 30, y: L.disc.b - 20 };
+    const stick = { id: 1, x: L.stick.l + 30, y: L.stick.b - 20 };
     const held = { id: 1, x: stick.x + 40, y: stick.y };
     const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map((q) => ({ x: q.x, y: q.y, id: q.id })) });
     await touch('touchStart', [stick]);
@@ -334,7 +345,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const L2 = await LAYOUT(P);
     const disc = await P.page.evaluate(() => { const d = document.querySelector('.bt-joystick-zone'); return d ? +getComputedStyle(d).opacity : null; });
     await P.page.screenshot({ path: join(OUT, 'sprint-phone.png') });
-    await P.page.screenshot({ path: join(OUT, 'sprint-closeup.png'), clip: { x: 0, y: Math.max(0, L.disc.t - 70), width: 200, height: 200 } });
+    await P.page.screenshot({ path: join(OUT, 'sprint-closeup.png'), clip: { x: Math.max(0, L.btn.l - 100), y: Math.max(0, L.btn.t - 60), width: Math.min(200, L.vw - Math.max(0, L.btn.l - 100)), height: 260 } });
     await touch('touchEnd', [held]);
     const wv2 = walk2.filter((q) => q.vx > 0 && !(q.btn && q.btn.running)).map((q) => q.vx);
     const rv2 = run2.filter((q) => q.vx > 0 && q.btn && q.btn.running).map((q) => q.vx);
