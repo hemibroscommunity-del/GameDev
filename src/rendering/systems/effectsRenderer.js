@@ -5777,7 +5777,8 @@ export class EffectsRenderer {
       if (glow.tint !== fx.ramp[1]) glow.tint = fx.ramp[1];
       /* v2.3.2842: softer on the big bolt -- at 1.7x the same additive copy
          washed the painted bolt out to a white blob on light ground. */
-      glow.alpha = alpha * (p.big ? 0.08 + 0.2 * _sw : 0.15 + 0.35 * _sw);
+      /* v2.3.3043: softer again at 2.55x (was 0.08 + 0.2), the same washing-out */
+      glow.alpha = alpha * (p.big ? 0.06 + 0.15 * _sw : 0.15 + 0.35 * _sw);
       glow.visible = true;
     }
     liveSet.add(p);

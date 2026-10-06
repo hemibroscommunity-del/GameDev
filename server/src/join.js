@@ -13,7 +13,7 @@
  * (the deploy-order safety surface -- see docs/WIRE-PROTOCOL.md).
  * The switch case now delegates: `await this._handleJoin(...)`. */
 
-import { healLifeSkills } from './migrations.js';
+import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */ } from './migrations.js';
 import { t2ReplayFlat } from './data.js';
 import { prog3FromLegacy } from './prog3.js';
 
@@ -721,6 +721,7 @@ export const joinMethods = {
         this.playerState[msg.id].coins = stored.coins || 0;
         this.playerState[msg.id].inventory = stored.inventory || {};
         this.playerState[msg.id].lifeSkills = stored.lifeSkills || {};
+        healLifeSkillLevels(this.playerState[msg.id]);   /* v2.3.3041: a stored level 0 reads 1 (migrations.js) */
         this.playerState[msg.id].level = stored.level || 1;
         this.playerState[msg.id].xp = stored.xp || 0;
         this.playerState[msg.id].unspentT2 = stored.unspentT2 || 0;
@@ -858,6 +859,7 @@ export const joinMethods = {
         // heals.  healLifeSkills mutates in place; cheap no-op
         // on clean payloads.
         healLifeSkills(this.playerState[msg.id]);
+        healLifeSkillLevels(this.playerState[msg.id]);   /* v2.3.3041 */
         this.playerState[msg.id].level = Math.max(1, Math.min(BOOTSTRAP_LEVEL_CAP,
           (msg.data && typeof msg.data.rpgLevel === 'number') ? Math.floor(msg.data.rpgLevel) : 1));
         this.playerState[msg.id].xp = Math.max(0, Math.min(BOOTSTRAP_XP_CAP,
