@@ -76,6 +76,9 @@ await join(ws, PID);
 const P = room.playerState[PID];
 const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
 check('caps.meals is advertised', !!sync && sync.caps.meals === true, sync && sync.caps && sync.caps.meals);
+/* v2.3.3105 (review of the potato's phase): and HOW MANY recipes it cooks --
+   the phone offers a row, and Eat or Drink on its dish, only below this. */
+check('caps.cookRows says how many recipes this worker cooks', !!sync && sync.caps.cookRows === COOKING_RECIPES.length, sync && sync.caps && sync.caps.cookRows);
 P.lifeSkills.cooking = { level: 10, xp: 0 };
 P.inventory = Object.assign(P.inventory || {}, { herb_firebloom: 20, herb_rock_vine: 10, herb_cloudpetal: 10 });
 P._buffs = {};
@@ -353,6 +356,33 @@ P._buffs = {};
   await send(ws2, 'potion_drink', { invKey: 'brew_firebloom_tea' });
   const drank = ws2.sent.filter((m) => m.type === 'player_state' && m.payload && m.payload.inventory && m.payload._buffs);
   check('...and a brew it does not hold (the phone drew its effect too)', drank.length === 1, ws2.sent.map((m) => m.type));
+  /* A newer page on an older worker (a rollback; review of the potato's
+     phase): a row, a dish or a brew this worker has never heard of. */
+  await send(ws2, 'cook_recipe', { recipeIdx: COOKING_RECIPES.length, carry: true });
+  check('...and a recipe row this worker has not got', echoed(ws2).length === 1, ws2.sent.map((m) => m.type));
+  await send(ws2, 'eat_request', { invKey: 'meal_from_a_newer_worker' });
+  check('...and a meal it has never heard of', echoed(ws2).length === 1, ws2.sent.map((m) => m.type));
+  await send(ws2, 'potion_drink', { invKey: 'brew_from_a_newer_worker' });
+  check('...and a brew it has never heard of', echoed(ws2).length === 1, ws2.sent.map((m) => m.type));
+  Q.inventory.cooked_fish_trout = 1;
+  Q._arenaMatch = 'tq';
+  await send(ws2, 'eat_request', { invKey: 'cooked_fish_trout' });
+  check('...and a cooked fish refused in an arena match (it was silent)', echoed(ws2).length === 1 && Q.inventory.cooked_fish_trout === 1, ws2.sent.map((m) => m.type));
+  delete Q._arenaMatch;
+}
+
+// ── 12b. a rollback from the potato's phase keeps a running pie whole ──
+{
+  /* This worker cooks no pie, but the next one does: its {xp, xpMul} must
+     survive a save here (BUFF_MAGNITUDES), and a meal eaten here replaces it
+     (MEAL_BUFF_KEYS) -- it showed as a second meal otherwise (review). */
+  P._buffs = { xp: now() + 20 * 60000, xpMul: 1.1 };
+  room._pruneBuffs(P);
+  check('a running pie\'s strength survives a save on this worker', P._buffs.xpMul === 1.1 && P._buffs.xp > now(), P._buffs);
+  P.inventory.meal_root_stew = 1;
+  await send(ws, 'eat_request', { invKey: 'meal_root_stew' });
+  check('...and a meal eaten here replaces it, strength and all', room._buffActive(P, 'resist') && P._buffs.xp === undefined && P._buffs.xpMul === undefined, P._buffs);
+  P._buffs = {};
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall meals checks passed');

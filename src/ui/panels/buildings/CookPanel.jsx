@@ -52,6 +52,15 @@ export function CookPanel(props) {
     var S = stateRef && stateRef.current;
     return !!(S && S._serverCaps && S._serverCaps.meals);
   };
+  /* v2.3.3105: HOW MANY recipes the worker cooks (caps.cookRows): a newer
+     page in front of an older worker -- a rollback -- offered rows that
+     worker has not got, and their cooks vanished (review).  A worker from
+     before it cooks the three old rows the old way. */
+  var _cookRows = function () {
+    var S = stateRef && stateRef.current;
+    var n = S && S._serverCaps && S._serverCaps.cookRows;
+    return typeof n === 'number' ? n : 3;
+  };
   /* v2.3.1232: shared Lantern Slate style fragments (styles only). */
   var LS_HEAD = {
     fontSize: 11,
@@ -513,6 +522,7 @@ export function CookPanel(props) {
        brewed tonics are not offered there at all. */
     var mealsOn = _mealsOn();
     if (!mealsOn && !recipe.buff) return null;
+    if (mealsOn && ri >= _cookRows()) return null;
     var dish = dishFor(recipe.makes);
     var cookLvl = ((_rpgState$lifeSkills17 = rpgState.lifeSkills) === null || _rpgState$lifeSkills17 === void 0 || (_rpgState$lifeSkills17 = _rpgState$lifeSkills17.cooking) === null || _rpgState$lifeSkills17 === void 0 ? void 0 : _rpgState$lifeSkills17.level) || 1;
     var canCook = cookLvl >= recipe.cookLvl;

@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-equip tick */
+import { BT_AUDIO, COOKING_RECIPES } from '@/data/index.js'; /* v2.3.2637: ui-equip tick; v2.3.3105: the recipe rows (caps.cookRows) */
 import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3105: the Cookhouse's meals and brews */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
@@ -169,7 +169,11 @@ function resolveTarget(target) {
        food already in it (cooking.js _mealsOff) -- gating on true hid Eat and
        Drink from everyone who joined while it was thrown (found by the
        review). */
-    const dishesKnown = !!(SR && SR._serverCaps && typeof SR._serverCaps.meals !== 'undefined');
+    /* ...and only a dish whose recipe the worker has (caps.cookRows): an older
+       worker, after a rollback, ignores a newer dish's Eat (review). */
+    const dishRow = dish ? COOKING_RECIPES.findIndex((r) => r.makes === key) : -1;
+    const cookRows = SR && SR._serverCaps && typeof SR._serverCaps.cookRows === 'number' ? SR._serverCaps.cookRows : 3;
+    const dishesKnown = !!(SR && SR._serverCaps && typeof SR._serverCaps.meals !== 'undefined') && dishRow >= 0 && dishRow < cookRows;
     const isCape = isCapeItemKey(key);
     const isChest = isChestKey(key);              /* v2.3.2820 */
     if (isTicket) info = 'Open it to claim your cape';

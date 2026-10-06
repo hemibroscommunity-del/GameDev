@@ -111,6 +111,14 @@ and their two dishes.
 - **Deploy order** (rule 19):
   - The client sends `carry` and stops predicting a buff only when
     `caps.meals` is advertised.
+  - **`caps.cookRows`** says how many recipes the worker cooks. The Cookhouse
+    and the campfire offer a row, and the bag offers Eat or Drink on its dish,
+    only below that number. `caps.meals` alone could not say it: every later
+    worker advertises it too, and a newer page in front of an older worker (a
+    rollback) offered rows that worker had not got, whose cooks vanished (the
+    `caps.gems` lesson, TRAPS §9; found reviewing the potato's phase). It is a
+    number that only grows, never a kill switch. Without it, only the old
+    three rows.
   - In front of an old worker it cooks the old way, which that worker applies
     itself; the brewed tonics are hidden (it has no recipe 3–5). The bag offers
     Eat on a meal and Drink on a brew only under `caps.meals`.
@@ -126,7 +134,14 @@ and their two dishes.
   bag, the skills or HP, and the effects (`persistence.js`
   `_resendPlayerState`). A v2 client only gets the fields that changed, and a
   refusal changes nothing, so a plain echo would send nothing and leave the
-  phone's guess on screen.
+  phone's guess on screen. That includes a recipe row, a meal or a brew this
+  worker has never heard of, and a cooked fish refused in an arena match (it
+  was silent before).
+- **A rollback from the next phase keeps a running pie whole.** This worker
+  cooks no Pumpkin Pie, but its meal slot owns the pie's `xp` and `xpMul`, and
+  `BUFF_MAGNITUDES` keeps `xpMul` through a save. A rollback onto it no longer
+  prunes the pie's strength as an expired timer, and a meal eaten here
+  replaces the pie.
 
 ## On the phone
 
