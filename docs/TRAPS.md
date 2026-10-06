@@ -69,6 +69,13 @@ Recurred THREE times in one day: duel.away v2.3.1175, party meta
 v2.3.1185, amulet tiers v2.3.1192 (table lookups need
 `hasOwnProperty.call`, not truthiness). Use `Object.create(null)` or
 `Map`; `tools/dev/precheck.mjs` check 6 warns on the pattern.
+**Worse when the VALUE is an object:** copying a parsed frame key by key
+onto a plain `{}` (`out[k] = data[k]`) is not a no-op for `'__proto__'`
+-- JSON.parse makes it an own key, and the copy SETS `out`'s prototype to
+the sender's object, so every key the copy left out reads through it
+again. The first cut of v2.3.3104's claims-free join copy did exactly
+this, and its review bought 1,999 coins and 392,500 from Diego through
+it; the copy is `Object.create(null)` now (`_withoutRpgClaims`, join.js).
 **Receipt:** CLAUDE.md AI-session protocol; `docs/DEV-TOOLS.md`.
 
 ## 7. Treating the GDD / ARCHITECTURE.md as build specs

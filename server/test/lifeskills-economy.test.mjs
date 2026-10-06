@@ -500,11 +500,16 @@ check('harvest: strike with NO extraction state still harvests (legacy posture) 
   await room.webSocketMessage(wsN, JSON.stringify({ type: 'join', id: 'bp_ls_lv0', name: 'L0', phrase: 'p-bp_ls_lv0',
     data: { x: -100000, y: -100000, z: 'town', rpgLifeSkills: { mining: { level: 0, xp: 120 }, fishing: { level: 4, xp: 7 }, cooking: { level: 0, xp: 0 } } } }));
   const pN = room.playerState['bp_ls_lv0'];
-  check('level 0: a first join\'s level-0 skills heal to 1, their XP kept, a real level untouched',
-    !!pN && pN.lifeSkills.mining.level === 1 && pN.lifeSkills.mining.xp === 120 && pN.lifeSkills.cooking.level === 1 && pN.lifeSkills.fishing.level === 4,
+  /* v2.3.3104: a first join takes NO life skills from the payload (join.js:
+     a new character starts from the server's defaults) -- the level-0
+     claim, the XP and the "real" level 4 alike; every skill is the client's
+     own new character's, level 1 with no XP.  The heal this section is
+     about still matters for a record ON FILE, below. */
+  check('level 0: a first join takes none of the payload\'s skills: all level 1, no XP',
+    !!pN && pN.lifeSkills.mining.level === 1 && pN.lifeSkills.mining.xp === 0 && pN.lifeSkills.cooking.level === 1 && pN.lifeSkills.fishing.level === 1 && pN.lifeSkills.fishing.xp === 0,
     pN && pN.lifeSkills);
   /* v2.3.3090: the first level costs 1000 (was 500: life skills level half as fast) */
-  const r = room._addLifeSkillXp(pN, 'mining', 880);
+  const r = room._addLifeSkillXp(pN, 'mining', 1000);
   check('level 0: ...and its first level-up is 1 -> 2 (1000 XP)', r.leveled === true && r.newLevel === 2 && pN.lifeSkills.mining.xp === 0, { r, ls: pN.lifeSkills.mining });
   /* a record already on file with a 0 heals on the next join too */
   room._saveRpg('bp_ls_lv0', pN);

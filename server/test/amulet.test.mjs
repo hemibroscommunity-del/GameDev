@@ -100,16 +100,24 @@ const forge = (ws, payload) =>
 const lastPlayerState = (ws) => [...ws.sent].reverse().find((m) => m.type === 'player_state');
 const realRandom = Math.random;
 
-// ── 1. join ingestion: capture + clamp on first connect ──
+// ── 1. join ingestion: a first connect takes no claimed ledger ──
+/* v2.3.3104: it used to CAPTURE the claim (clamped to 250 nuggets / 50
+   bars).  A first join now takes nothing from the payload (join.js: a new
+   character starts from the server's defaults), so a new character holds
+   no gold -- the honest and the forged claim alike.  The clamps still
+   bound what they are handed, asserted directly. */
 const ws = fakeWs('a');
 await join(ws, 'bp_am_p', { rpgGoldNuggets: 12, rpgGoldBars: 3 });
 const ps = room.playerState['bp_am_p'];
-check('first connect captures the claimed ledger', ps.goldNuggets === 12 && ps.goldBars === 3, { n: ps.goldNuggets, b: ps.goldBars });
+check('a first connect takes no claimed ledger (a new character has no gold)', ps.goldNuggets === 0 && ps.goldBars === 0, { n: ps.goldNuggets, b: ps.goldBars });
 
 const wsCheat = fakeWs('cheat');
 await join(wsCheat, 'bp_am_cheat', { rpgGoldNuggets: 999999, rpgGoldBars: 999999 });
 const psCheat = room.playerState['bp_am_cheat'];
-check('first-connect ledger claim is clamped', psCheat.goldNuggets === 250 && psCheat.goldBars === 50, { n: psCheat.goldNuggets, b: psCheat.goldBars });
+check('...nor a forged one', psCheat.goldNuggets === 0 && psCheat.goldBars === 0, { n: psCheat.goldNuggets, b: psCheat.goldBars });
+check('the ledger clamps still bound a claim (250 nuggets, 50 bars)',
+  room._amuletClampNuggets(999999) === 250 && room._amuletClampBars(999999) === 50 && room._amuletClampNuggets(12) === 12,
+  { n: room._amuletClampNuggets(999999), b: room._amuletClampBars(999999) });
 
 // caps advertisement (deploy-order gate, rule 19)
 {
@@ -359,19 +367,19 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
 
 // ── 12. join adoption: whitelist + clamp + one-time capture ──
 {
+  const forgedGems = {
+    raw_flame: 3, polished_frost: 999999, // legit-shaped, huge value clamps
+    raw_bogus: 5, coins_hack: 12, polished_nuclear: 7, // junk keys drop
+    raw_storm: -4, polished_wind: 'NaNny', // non-positive / NaN drop
+  };
   const wsg = fakeWs('g1');
-  await join(wsg, 'bp_gem_p', {
-    rpgLifeSkills: { gems: {
-      raw_flame: 3, polished_frost: 999999, // legit-shaped, huge value clamps
-      raw_bogus: 5, coins_hack: 12, polished_nuclear: 7, // junk keys drop
-      raw_storm: -4, polished_wind: 'NaNny', // non-positive / NaN drop
-    } },
-  });
+  await join(wsg, 'bp_gem_p', { rpgLifeSkills: { gems: forgedGems } });
   const psg = room.playerState['bp_gem_p'];
-  check('first connect whitelists + clamps the claimed gems map',
-    psg.lifeSkills.gems.raw_flame === 3 && psg.lifeSkills.gems.polished_frost === 200
-    && Object.keys(psg.lifeSkills.gems).length === 2,
-    psg.lifeSkills.gems);
+  /* v2.3.3104: a first connect takes no gems from the payload (join.js: a
+     new character starts from the server's defaults) -- and is stamped, so
+     no later join adopts any either. */
+  check('a first connect takes no claimed gems',
+    Object.keys(psg.lifeSkills.gems || {}).length === 0, psg.lifeSkills.gems);
   check('first connect stamps gemsCaptured into the stored record',
     psg.gemsCaptured === true && state._store.get('rpg:bp_gem_p').gemsCaptured === true,
     state._store.get('rpg:bp_gem_p').gemsCaptured);
@@ -380,18 +388,24 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   await join(wsg2, 'bp_gem_p', { rpgLifeSkills: { gems: { raw_flame: 200, polished_light: 200 } } });
   const psg2 = room.playerState['bp_gem_p'];
   check('reconnect ignores the gems claim (stored wins, gemsCaptured stamped)',
-    psg2.lifeSkills.gems.raw_flame === 3 && !psg2.lifeSkills.gems.polished_light,
+    !psg2.lifeSkills.gems.raw_flame && !psg2.lifeSkills.gems.polished_light,
     psg2.lifeSkills.gems);
   // pre-slice stored record (no stamp) max-merges the claim ONCE --
   // max, not add: the stored map already holds what the original
-  // bootstrap captured, adding would double-count it.
+  // bootstrap captured, adding would double-count it.  The claim goes
+  // through the whitelist and the clamp on the way in.
   const rec = state._store.get('rpg:bp_gem_p');
   delete rec.gemsCaptured; // simulate a record written before v2.3.1198
+  rec.lifeSkills.gems = { raw_flame: 3 };   // what that record already held
   const wsg3 = fakeWs('g3');
-  await join(wsg3, 'bp_gem_p', { rpgLifeSkills: { gems: { raw_flame: 2, polished_water: 4 } } });
+  await join(wsg3, 'bp_gem_p', { rpgLifeSkills: { gems: { ...forgedGems, raw_flame: 2, polished_water: 4 } } });
   const psg3 = room.playerState['bp_gem_p'];
   check('pre-slice stored record max-merges the claim once (server-earned counts never shrink)',
     psg3.lifeSkills.gems.raw_flame === 3 && psg3.lifeSkills.gems.polished_water === 4,
+    psg3.lifeSkills.gems);
+  check('...through the whitelist and the clamp (junk keys dropped, 999999 held to 200)',
+    psg3.lifeSkills.gems.polished_frost === 200 && !('raw_bogus' in psg3.lifeSkills.gems) && !('coins_hack' in psg3.lifeSkills.gems)
+      && !('raw_storm' in psg3.lifeSkills.gems) && !('polished_wind' in psg3.lifeSkills.gems),
     psg3.lifeSkills.gems);
   // caps advertisement (deploy-order gate, rule 19) -- narrow flag, NOT
   // amuletForge: a v2.3.1192 worker advertises amuletForge but has no

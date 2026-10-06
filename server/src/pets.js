@@ -24,14 +24,15 @@
  *
  * Pets were cosmetic + client-side economy only (their loot-vacuum
  * coins were always stomped by the echo), so the join-time adoption
- * below is deliberately forgiving: when the server has no pets on
- * record and the client brought some, adopt a SANITIZED copy (cap 6,
- * whitelisted fields).  Forgery ceiling: six cosmetic pets -- since
- * v2.3.1200 an active pet also widens the owner's loot-pickup radius
- * to PETS.VACUUM_RANGE (the vacuum is economically real now; see
- * _handleLootPickup in index.js), which is the deliberate feature,
- * not a leak: the wider radius only reaches piles the player is
- * already a recipient of.
+ * below was deliberately forgiving: when the server had no pets on
+ * record and the client brought some, it adopted a SANITIZED copy (cap
+ * 6, whitelisted fields).  v2.3.3104: no longer -- the join reads no
+ * pets from the payload at all (_petsAdoptOnJoin below); it only
+ * sanitizes the list the server holds.  Since v2.3.1200 an active pet
+ * also widens the owner's loot-pickup radius to PETS.VACUUM_RANGE (the
+ * vacuum is economically real; see _handleLootPickup in index.js),
+ * which is the deliberate feature, not a leak: the wider radius only
+ * reaches piles the player is already a recipient of.
  *
  * Validation order matters: every rejection happens BEFORE the trap
  * is consumed -- only a real roll spends it. */
@@ -101,26 +102,23 @@ export const petMethods = {
     return out;
   },
 
-  /* Join hook.  Two jobs: (a) sanitize whatever pets the server
-   * already holds (old bootstraps took rpgLifeSkills wholesale with
-   * zero field validation); (b) one-time legacy adoption -- players
-   * whose captures only ever lived client-side get them onto the
-   * server record, sanitized, IF the server has none (a non-empty
-   * server list always wins; it's the authoritative history). */
-  _petsAdoptOnJoin(ps, data) {
+  /* Join hook.  Sanitize whatever pets the server already holds (old
+   * bootstraps took rpgLifeSkills wholesale with zero field validation).
+   *
+   * v2.3.3104: and nothing else.  Job (b) was a "one-time legacy
+   * adoption" -- a player whose captures lived only client-side got them
+   * onto the record IF the server held none -- but it was not one-time:
+   * nothing stamped it, so EVERY join of a player with no pets took up to
+   * six level-100 pets from the payload, the claim of a browser.  Captures
+   * have been the worker's since this file (pet_capture); there is no
+   * client-side history left to adopt.  Found beside the first-join fix
+   * (join.js: a new character starts from the server's defaults). */
+  _petsAdoptOnJoin(ps) {
     if (!ps) return;
     if (!ps.lifeSkills) ps.lifeSkills = {};
     const held = ps.lifeSkills.pets;
     if (Array.isArray(held) && held.length > 0) {
       ps.lifeSkills.pets = this._sanitizePets(held);
-      if ((ps.lifeSkills.activePet === null || ps.lifeSkills.activePet === undefined) && ps.lifeSkills.pets.length > 0) {
-        ps.lifeSkills.activePet = 0;
-      }
-      return;
-    }
-    const clientPets = data && data.rpgLifeSkills && Array.isArray(data.rpgLifeSkills.pets) ? data.rpgLifeSkills.pets : null;
-    if (clientPets && clientPets.length > 0) {
-      ps.lifeSkills.pets = this._sanitizePets(clientPets);
       if ((ps.lifeSkills.activePet === null || ps.lifeSkills.activePet === undefined) && ps.lifeSkills.pets.length > 0) {
         ps.lifeSkills.activePet = 0;
       }

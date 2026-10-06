@@ -66,11 +66,19 @@ function check(name, cond, detail) {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
-async function join(roomRef, ws, id, data) {
+/* v2.3.3104: every character this suite joins is ON FILE.  A first join
+   takes no claims at all (join.js: a new character starts from the
+   server's defaults), and the stash merge tested here is what a character
+   on file meets on every later join -- so, unless `opts.fresh`, a minimal
+   record is put on file first (straight into the store: §4's put throws).
+   The pre-v2.3.3104 suite joined brand-new ids and relied on the first
+   join reading the claim. */
+async function join(roomRef, ws, id, data, opts) {
   roomRef.sessions.set(ws, { id: null, name: 'T', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
   // Pre-settle the daily reward so credits don't shift blob contents
   // mid-assert (the suite convention since v2.3.1149).
   await roomRef.state.storage.put('cadence:login:' + id, { period: roomRef._cadencePeriodDaily(), streak: 1, ts: Date.now() });
+  if (!(opts && opts.fresh) && !roomRef.state._store.has('rpg:' + id)) roomRef.state._store.set('rpg:' + id, { coins: 0, inventory: {}, lifeSkills: {} });
   await roomRef.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T-' + id, phrase: 'p-' + id, data: { x: -100000, y: -100000, z: 'town', ...(data || {}) } }));
 }
 
@@ -122,8 +130,21 @@ const clientClaim = () => ({
   check('_loadRpg on a migrated blob costs ZERO writes', state._counts.rpgPuts === 0);
 }
 
-// ── 2. adoption on first join, and survival of the fixed field list ──
+// ── 2. adoption by a record that predates the slice, and survival of the
+// fixed field list ──
 {
+  /* v2.3.3104: a FIRST join adopts nothing -- a new character starts from
+     the server's defaults (join.js), with every stash empty and the stamp
+     set (there was nothing to capture). */
+  {
+    const wsN = fakeWs('fresh');
+    await join(room, wsN, 'bp_gs_fresh', clientClaim(), { fresh: true });
+    const pf = room.playerState['bp_gs_fresh'];
+    check('a first join adopts none of the claimed stashes',
+      GEAR_STASH_FIELDS.every((f) => Array.isArray(pf[f]) && pf[f].length === 0), GEAR_STASH_FIELDS.map((f) => pf[f] && pf[f].length));
+  }
+  /* The adoption itself is what a character ON FILE meets (the helper
+     above puts one on file). */
   const ws = fakeWs('adopt');
   await join(room, ws, 'bp_gs_a', clientClaim());
   const ps = room.playerState['bp_gs_a'];
@@ -202,7 +223,10 @@ const clientClaim = () => ({
   const wsC = fakeWs('crashA');
   await join(roomC, wsC, 'bp_gs_crash', clientClaim());
   check('crash sim: the in-memory adoption happened', roomC.playerState['bp_gs_crash'].armorStash.length === 3);
-  check('crash sim: NOTHING reached storage -- neither stash nor stamp', !crashStore.has('rpg:bp_gs_crash'));
+  /* v2.3.3104: the character is on file (the join helper), so "nothing
+     reached storage" means its record still holds no stash and no stamp. */
+  check('crash sim: NOTHING reached storage -- neither stash nor stamp',
+    ((crashStore.get('rpg:bp_gs_crash') || {}).armorStash || []).length === 0 && !(crashStore.get('rpg:bp_gs_crash') || {}).gearStashCaptured, crashStore.get('rpg:bp_gs_crash'));
 
   /* Storage recovers; the player reconnects into a fresh room. */
   const healedState = makeState(crashStore);

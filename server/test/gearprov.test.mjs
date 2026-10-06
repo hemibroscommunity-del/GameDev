@@ -70,9 +70,16 @@ const room = new GameRoom(state, mockEnv);
    see the note on the gear-lock stub in section 4b. */
 const _realWsBySessionId = room._wsBySessionId.bind(room);
 
-async function join(roomRef, ws, id, data) {
+/* v2.3.3104: the characters this suite joins are ON FILE.  A first join
+   takes no claims at all (join.js: a new character starts from the
+   server's defaults), and the claims tested here -- worn pieces resolved,
+   stash entries merged -- are what a character on file meets on every
+   later join.  So, unless `opts.fresh`, a minimal record is put on file
+   first (straight into the store). */
+async function join(roomRef, ws, id, data, opts) {
   roomRef.sessions.set(ws, { id: null, name: 'T', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
   await roomRef.state.storage.put('cadence:login:' + id, { period: roomRef._cadencePeriodDaily(), streak: 1, ts: Date.now() });
+  if (!(opts && opts.fresh) && !roomRef.state._store.has('rpg:' + id)) roomRef.state._store.set('rpg:' + id, { coins: 0, inventory: {}, lifeSkills: {} });
   await roomRef.webSocketMessage(ws, JSON.stringify({
     type: 'join', id, name: 'T-' + id, phrase: 'p-' + id,
     data: { x: -100000, y: -100000, z: 'town', ...(data || {}) },
@@ -531,7 +538,14 @@ let amuletGid = null;
   const PID5 = 'bp_prov_e';
   const wsE = fakeWs('E');
   /* A veteran arriving with a wardrobe nobody can prove -- the state of
-     every existing character on the day this ships. */
+     every existing character on the day this ships.
+     v2.3.3104: a veteran is a character ON FILE.  A first join now takes no
+     gear from the payload at all (join.js: a new character starts from the
+     server's defaults), so the worn pieces are on the record, and the
+     stashes are the claim a pre-slice record adopts once (gearstash.js). */
+  await state.storage.put('rpg:' + PID5, { coins: 0, inventory: {}, lifeSkills: {},
+    armor: { name: 'Elite Copper Torso', mat: 'copper', tierMult: 2, quality: 'elite' },
+    shield: { name: 'Pine Shield', gearBase: 'wood', tierMult: 1 } });
   await join(room, wsE, PID5, {
     rpgArmor: { name: 'Elite Copper Torso', mat: 'copper', tierMult: 2, quality: 'elite' },
     rpgShield: { name: 'Pine Shield', gearBase: 'wood', tierMult: 1 },
@@ -1062,17 +1076,17 @@ let amuletGid = null;
   check('...and still snapshots the old blob, as it always did',
     [...state._store.keys()].some((k) => k.startsWith('rpgsnap:' + PIDR + ':prereset-')));
 
-  /* The second tab hands the old wardrobe back.  It is NOT refused -- the
-     player keeps what they claim, per the legacy decision -- but it can no
-     longer come back provable. */
+  /* The second tab hands the old wardrobe back.  v2.3.3104: and gets
+     nothing for it.  The restarted character has no record, so this is its
+     FIRST join, which takes no claims at all (join.js: a new character
+     starts from the server's defaults) -- stronger than v2.3.2537's "it
+     comes back legacy, not minted". */
   const wsR2 = fakeWs('R2');
   await join(room, wsR2, PIDR, {
     rpgArmorStash: [{ name: 'Copper Torso', mat: 'copper', tierMult: 1, gid }],
-  });
-  const back = (room.playerState[PIDR].armorStash || [])[0];
-  check('a stale tab can still hand the old wardrobe back...', !!back && back.name === 'Copper Torso', back);
-  check('...but it comes back LEGACY, not minted, on the fresh character',
-    back.prov === PROV_LEGACY && !back.gid, back);
+  }, { fresh: true });
+  const back = room.playerState[PIDR].armorStash || [];
+  check('a stale tab can no longer hand the old wardrobe to the restarted character', back.length === 0, back);
   check('...and the fresh character starts with an empty record book',
     room._gearProvOf(PIDR).list.length === 0, room._gearProvOf(PIDR));
 }

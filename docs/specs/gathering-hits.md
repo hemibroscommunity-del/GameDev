@@ -295,3 +295,7 @@ one ends in a paid harvest (checked live by `mp-gatherhits`):
   fix is a sanitizer for the whole bootstrap `lifeSkills` (levels, pets, gems),
   which is its own change and needs an owner decision on the cap for migrating
   single-player veterans, so it is not folded in here.
+  - **Closed in v2.3.3104** (owner: "Yes fix all of your recommended fixes.
+    Game is still a demo."): a first join takes no claim at all, and a new
+    character's skills are the client's own defaults (`freshLifeSkills`); the
+    pets ingest is gone too. `docs/specs/fresh-start.md`.

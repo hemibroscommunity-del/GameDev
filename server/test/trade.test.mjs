@@ -16,6 +16,7 @@
  *   7. Sender disconnect before accept -> reject, no crash.
  */
 import { GameRoom } from '../src/index.js';
+import { NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.3104: a new character's purse */
 import { TRADE_OFFER_TTL } from '../src/trade.js'; // v2.3.1622 (§9 sweep)
 
 function makeState() {
@@ -126,7 +127,7 @@ await room.webSocketMessage(wsC, JSON.stringify({ type: 'trade_offer', payload: 
 await room.webSocketMessage(wsD, JSON.stringify({ type: 'trade_accept', payload: { target: 'bp_tr_carol' } }));
 const relayed = room.eventBuffer.filter((e) => e.type === 'trade_accept');
 check('relay path settles and annotates', relayed.length === 1 && relayed[0].payload.settled === true
-  && room.playerState['bp_tr_carol'].coins === 0 && room.playerState['bp_tr_dave'].coins === 30,
+  && room.playerState['bp_tr_carol'].coins === 0 && room.playerState['bp_tr_dave'].coins === NEW_CHARACTER_COINS + 30,   /* v2.3.3104: Dave starts with the new purse */
   { relayed: relayed.length, c: room.playerState['bp_tr_carol'].coins, d: room.playerState['bp_tr_dave'].coins });
 
 // ── 9. v2.3.1622: pending offers expire, and the key is bounded ──

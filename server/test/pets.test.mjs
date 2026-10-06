@@ -168,18 +168,45 @@ await capture(ws, dm.id);
 Math.random = realRandom;
 check('dungeon capture leaves respawnAt 0 (noRespawn)', dm.alive === false && dm.respawnAt === 0 && ps.lifeSkills.pets.length === 2, dm.respawnAt);
 
-// ── 7. join adoption + sanitization ──
+// ── 7. pets are the worker's: a join never adopts the payload's ──
+/* v2.3.3104: this section used to ADOPT a forged list on join (capped at
+   6, sanitized) whenever the server held no pets -- on every join, not
+   once, since nothing stamped it.  Captures are the worker's (§1-§6), so
+   the payload's list is now read by nothing: not on a first join (a new
+   character starts from the server's defaults, join.js) and not on any
+   later one.  What the server HOLDS is still sanitized on join. */
 const forged = new Array(7).fill(0).map((_, i) => ({ archetype: i === 0 ? 'dragon_god' : 'fodder', level: 9999, name: 'x'.repeat(99), element: 'nuclear', personality: 'evil', emoji: 'e'.repeat(99), color: 'javascript:alert(1)' }));
 const ws2 = fakeWs('adopt');
 await join(ws2, 'bp_pet_new', { rpgLifeSkills: { pets: forged, activePet: null, trapping: { level: 1, xp: 0 } } });
 const ps2 = room.playerState['bp_pet_new'];
-const adopted = ps2.lifeSkills.pets;
-check('forged join list capped at 6 and sanitized', adopted.length === 6 && adopted[0].archetype === 'fodder' && adopted.every((p) => p.level === 100 && p.name.length <= 24 && p.element === null && ['playful', 'lazy', 'curious', 'anxious', 'bold'].includes(p.personality) && /^#/.test(p.color)), adopted[0]);
-check('adoption sets activePet', ps2.lifeSkills.activePet === 0, ps2.lifeSkills.activePet);
-// server-held list beats the client's on later joins
-const ws3 = fakeWs('rejoin');
-await join(ws3, 'bp_pet_new', { rpgLifeSkills: { pets: [{ archetype: 'brute', level: 50 }] } });
-check('non-empty server list wins over client on rejoin', room.playerState['bp_pet_new'].lifeSkills.pets.length === 6, room.playerState['bp_pet_new'].lifeSkills.pets.length);
+check('a first join adopts no pets from the payload', Array.isArray(ps2.lifeSkills.pets) && ps2.lifeSkills.pets.length === 0, ps2.lifeSkills.pets);
+check('...and no active pet', ps2.lifeSkills.activePet === null, ps2.lifeSkills.activePet);
+const wsMid = fakeWs('rejoin');
+room.sessions.delete(ws2);
+await join(wsMid, 'bp_pet_new', { rpgLifeSkills: { pets: forged } });
+check('a later join of a player with no pets adopts none either', room.playerState['bp_pet_new'].lifeSkills.pets.length === 0, room.playerState['bp_pet_new'].lifeSkills.pets.length);
+/* The held list: a record on file carrying junk pets (as old bootstraps
+   stored them) is sanitized on its next join -- the same seven forged pets
+   the adoption used to be tested with, so every bound it proved is still
+   proved where it still runs.  ws3 is the socket §9 uses. */
+{
+  const rec = state._store.get('rpg:bp_pet_new');
+  rec.lifeSkills.pets = forged.map((p) => ({ ...p }));
+  rec.lifeSkills.activePet = null;
+  await state.storage.put('rpg:bp_pet_new', rec);
+  room.sessions.delete(wsMid);
+  delete room.playerState['bp_pet_new'];
+}
+const ws3 = fakeWs('held');
+await join(ws3, 'bp_pet_new', {});
+{
+  const held = room.playerState['bp_pet_new'].lifeSkills.pets;
+  check('pets the server already holds are sanitized on join: capped at 6, an unknown kind made fodder, each one bounded',
+    held.length === 6 && held[0].archetype === 'fodder'
+      && held.every((p) => p.level === 100 && p.name.length <= 24 && p.element === null && p.emoji.length <= 8
+        && ['playful', 'lazy', 'curious', 'anxious', 'bold'].includes(p.personality) && /^#/.test(p.color)), held[0]);
+  check('...and the first is made the active one', room.playerState['bp_pet_new'].lifeSkills.activePet === 0, room.playerState['bp_pet_new'].lifeSkills.activePet);
+}
 
 // ── 8. forged pet_capture_result denied ──
 room.eventBuffer.length = 0;

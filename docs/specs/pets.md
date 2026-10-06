@@ -78,23 +78,26 @@ stomped — pure theatre. It now routes through the REAL loot path:
   `noRespawn` — a captured wave member counts as cleared). No loot,
   no XP/gold shares, no quest credit: a capture is not a kill.
 
-## Join-time sanitization + legacy adoption
+## Join-time sanitization (the legacy adoption is gone, v2.3.3104)
 
 `_petsAdoptOnJoin` runs at every join:
 
 - Sanitizes whatever pets the server already holds (old bootstraps
   took `rpgLifeSkills` wholesale, unvalidated).
-- One-time adoption: if the server has **no** pets on record and the
-  client brought some, the sanitized list is adopted — existing
-  players keep their client-side captures. A non-empty server list
-  always wins.
+- **No adoption.** Until v2.3.3104, a player with **no** pets on record
+  who brought some had the sanitized list adopted. It was meant to be
+  one-time, but nothing stamped it: every join of a player with no pets
+  took up to six level-100 pets from what the browser said. Captures
+  have been the worker's since this system shipped, so there is nothing
+  client-side left to adopt. A new character's first join reads no
+  `rpg*` field at all (`docs/specs/fresh-start.md`).
 - `_sanitizePets`: cap 6; archetype whitelisted against `ARCHETYPES`
   (else fodder), level 1..100, element whitelisted, name ≤24 chars,
   emoji ≤8, personality whitelisted, color must be a hex literal,
-  ids regenerated. **Forgery ceiling: six cosmetic pets** — since
-  v2.3.1200 an active pet also widens the owner's loot-pickup radius
-  to `PETS.VACUUM_RANGE` (that's the feature, not a leak: the wider
-  radius only reaches piles the player is already a recipient of).
+  ids regenerated. Since v2.3.1200 an active pet also widens the
+  owner's loot-pickup radius to `PETS.VACUUM_RANGE` (that's the
+  feature, not a leak: the wider radius only reaches piles the player
+  is already a recipient of).
 
 ## Attach points for successors
 

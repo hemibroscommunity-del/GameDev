@@ -122,11 +122,11 @@ const legacyBlob = () => ({
     rpgCoins: 50,
   });
   const ps = room.playerState['bp_mig_b'];
-  // activePet may legitimately be a NUMBER afterwards (the pet ingest
-  // defaults it to index 0 when pets exist); the corruption signature
-  // is an object-typed activePet, and that must be gone.
-  check('bootstrap ingest healed the corrupted join payload in place',
-    Array.isArray(ps.lifeSkills.pets) && ps.lifeSkills.pets.length === 1 && typeof ps.lifeSkills.activePet !== 'object',
+  /* v2.3.3104: stronger than healed -- a first join takes nothing from the
+     payload (join.js), so the corruption never reaches the fresh blob:
+     pets an empty ARRAY, no active pet, the client's own new character. */
+  check('a first join\'s corrupted payload never reaches the fresh blob',
+    Array.isArray(ps.lifeSkills.pets) && ps.lifeSkills.pets.length === 0 && ps.lifeSkills.activePet === null && ps.lifeSkills.fishing.level === 1,
     ps.lifeSkills);
   await room._saveRpg('bp_mig_b', ps);
   const saved = state._store.get('rpg:bp_mig_b');
@@ -219,8 +219,10 @@ const legacyBlob = () => ({
   const wsT = fakeWs('t2r');
   await join(wsT, 'bp_mig_t2', { rpgFerocity: 999, rpgInfluence: 50, rpgVitality: 5 });
   const psT = room.playerState['bp_mig_t2'];
-  check('join payload no longer re-injects retired stats (T1 still lands)',
-    psT.ferocity === undefined && psT.influence === undefined && psT.vitality === 5,
+  /* v2.3.3104: and nor does T1 any more -- a first join takes no stat from
+     the payload (join.js), so the claimed vitality 5 is 0 too. */
+  check('join payload no longer re-injects retired stats (nor, on a first join, T1)',
+    psT.ferocity === undefined && psT.influence === undefined && psT.vitality === 0,
     { f: psT.ferocity, i: psT.influence, v: psT.vitality });
   await room._saveRpg('bp_mig_t2', psT);
   const savedT = state._store.get('rpg:bp_mig_t2');
