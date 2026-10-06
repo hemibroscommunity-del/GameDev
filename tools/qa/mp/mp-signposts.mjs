@@ -10,7 +10,7 @@
  *   3. at each gate, its two plates fade in over the signpost: the land
  *      straight on down that road first, then the land whose trail forks off
  *      it -- each named as the map names it, with its icon, its arrow
- *      pointing the way the land lies, and (v2.3.3080) the levels its land
+ *      pointing the way the land lies, and (v2.3.3089) the levels its land
  *      holds, "Lv 1–20";
  *   4. walking away, they fade out and go;
  *   5. no page errors.
@@ -102,7 +102,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const want = WANT[gate];
       const names = d ? d.plates.map((pl) => pl.name) : [];
-      /* v2.3.3080: and each ends in the levels its land holds ("Lv 1–20") */
+      /* v2.3.3089: and each ends in the levels its land holds ("Lv 1–20") */
       const okPlates = !!d && d.plates.length === 2 && d.plates.every((pl, k) => pl.land === want[k] && pl.name === PLAN.regions[want[k]].name && pl.icon
         && angDiff(pl.rot, DIR[want[k]]) < 0.02 && pl.lv === landLevelsText()) && d.plates[0].y < d.plates[1].y;
       rec.ok(`${gate} gate: its plates fade in -- "${names.join('" over "')}" -- each with its icon, its arrow the way the land lies and "${landLevelsText()}"`,

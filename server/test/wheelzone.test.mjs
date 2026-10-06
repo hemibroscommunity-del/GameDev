@@ -41,7 +41,7 @@
  *      by the one copy of the stat math, on the tier's baked places; the first
  *      tier's 48 exactly as they were, and first in the list.
  *  4b. `wheeldeep: false` leaves a Wheel spawned after it with those 48.
- *  4c. v2.3.3084: `wheelpast20: false` leaves it with the first stage alone
+ *  4c. v2.3.3093: `wheelpast20: false` leaves it with the first stage alone
  *      (levels 1-20, 192): the second stage, tiers 5-8, levels 21-40, is the
  *      bake's (SPAWN_RULES.deep.tiers) and §1b's.
  *   9. THE SEPARATION SWEEP: the Wheel keeps its monsters apart as every zone
@@ -52,8 +52,8 @@ import { ZONES, VALID_ZONE_IDS, BLACKSMITH_TIERS, WOODWORKING_TIERS } from '../s
 import { WHEEL_ZONE, WHEEL } from '../src/wheelzone.js';
 import { gatherReqLvl } from '../src/gathering.js';   /* v2.3.3038 */
 import { WHEEL_SPAWNS, WHEEL_NODES, WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns.js';
-import { WHEEL_STAGE_LOOKS, wheelStageLook, wheelStageOf } from '../../src/data/wheelStageLooks.js';   /* v2.3.3084 */
-import { ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';   /* v2.3.3084: the look the game gives a monster */
+import { WHEEL_STAGE_LOOKS, wheelStageLook, wheelStageOf } from '../../src/data/wheelStageLooks.js';   /* v2.3.3093 */
+import { ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';   /* v2.3.3093: the look the game gives a monster */
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
 
 const mockState = {
@@ -130,7 +130,7 @@ const first = wheel.filter((m) => !m.tier);
 // ── 1b. THE DEEPER STRETCHES (v2.3.3013) ─────────────────────────────────
 const deep = wheel.filter((m) => m.tier);
 {
-  /* v2.3.3084: and the second stage, tiers 5-8 (levels 21-40) */
+  /* v2.3.3093: and the second stage, tiers 5-8 (levels 21-40) */
   const TIERS = { 2: [6, 10], 3: [11, 15], 4: [16, 20], 5: [21, 25], 6: [26, 30], 7: [31, 35], 8: [36, 40] };
   const TS = [2, 3, 4, 5, 6, 7, 8];
   const want = WHEEL.HOMES.reduce((n, h) => n + TS.length * ZONES[h].spawns.reduce((t, s) => t + s.count, 0), 0);
@@ -152,7 +152,7 @@ const deep = wheel.filter((m) => m.tier);
     }
   }
   check('deeper: per land and stretch, its home\'s spawn list -- archetypes, counts, element, skin', built, why);
-  /* v2.3.3084: the second stage's placeholders -- the game draws every one in
+  /* v2.3.3093: the second stage's placeholders -- the game draws every one in
      its stage's colour under its own name (src/data/wheelStageLooks.js), the
      look the client gives it (its skin, else its archetype) a named row, never
      the "Dire" stand-in */
@@ -185,7 +185,7 @@ const deep = wheel.filter((m) => m.tier);
   for (const h of WHEEL.HOMES) {
     const r = (t) => deep.filter((m) => m.home === h && m.tier === t).map((m) => Math.hypot(m.x - CENTRE[0], m.y - CENTRE[1]));
     const t1 = first.filter((m) => m.home === h).map((m) => Math.hypot(m.x - CENTRE[0], m.y - CENTRE[1]));
-    /* v2.3.3084: the first stretch, then every one of the seven after it */
+    /* v2.3.3093: the first stretch, then every one of the seven after it */
     const chain = [t1].concat(TS.map(r));
     for (let i = 1; i < chain.length; i++) if (!(Math.max(...chain[i - 1]) < Math.min(...chain[i]))) outward = false;
   }
@@ -259,14 +259,14 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   check('wire: moving into the Wheel is accepted (a zone a client may name)', room.playerState.wa.z === WHEEL_ZONE && VALID_ZONE_IDS.has(WHEEL_ZONE), room.playerState.wa.z);
   /* v2.3.3013: all 192, the deeper ones each with its own level (the client
      shows it: monsterVariants.js applyZoneVariant) and nothing new.
-     v2.3.3084: 384 with the second stage */
+     v2.3.3093: 384 with the second stage */
   check(`wire: one zone_state with all ${wheel.length}, each saying its home and its skin, and its own level`,
     zs.length === 1 && zs[0].zone === WHEEL_ZONE && zs[0].monsters.length === wheel.length && wheel.length === 384
     && zs[0].monsters.every((m) => WHEEL.HOMES.includes(m.home) && 'variant' in m && typeof m.x === 'number')
     && zs[0].monsters.every((m) => m.level === wheel.find((q) => q.id === m.id).level && !('tier' in m)),
     zs.length && { n: zs[0].monsters.length, first: zs[0].monsters[0] });
   const bytes = zs.length ? JSON.stringify(zs[0]).length : 0;
-  /* v2.3.3084: ~103 KB with the second stage's 192 (about half that before):
+  /* v2.3.3093: ~103 KB with the second stage's 192 (about half that before):
      sent once, on the way in.  The budget doubled with the monsters; the next stage should
      send only the monsters in reach here too (tick.js _wheelInterest) rather
      than double it again. */
@@ -309,7 +309,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   const only = room._spawnZoneMonsters(WHEEL_ZONE);
   check('kill switch: `wheeldeep: false` leaves a Wheel spawned after it with the first stretch\'s 48, exactly',
     only.length === 48 && only.every((m, i) => !m.tier && m.id === first[i].id && m.level === first[i].level && m.x === first[i].x), only.length);
-  /* v2.3.3084: 4c. `wheelpast20: false` -- the first stage's alone (levels 1-20) */
+  /* v2.3.3093: 4c. `wheelpast20: false` -- the first stage's alone (levels 1-20) */
   room._liveFlags = { ...(keep || {}), wheelpast20: false };
   const stage1 = room._spawnZoneMonsters(WHEEL_ZONE);
   const want1 = wheel.filter((m) => !m.tier || m.tier <= WHEEL.FIRST_STAGE_TIERS);
@@ -601,7 +601,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     && lands.every((n) => n.home === area(n) && WHEEL.HOMES.includes(n.home) && n.tierLvl !== 1 && R(n) >= WHEEL_SAFE_R));
   check('nodes: and catches fish in some land at each of its tiers (clownfish, trout)',
     [6, 11].every((t) => lands.some((n) => n.nodeType === 'fishSpot' && n.tierLvl === t)));
-  /* v2.3.3085: the second stage's (levels 21-40) */
+  /* v2.3.3094: the second stage's (levels 21-40) */
   check('nodes: every land grows titanium and obsidian ore, cedar and maple past level 20',
     WHEEL.HOMES.every((h) => [16, 21].every((t) => ['oreVein', 'tree'].every((k) =>
       lands.some((n) => n.home === h && n.nodeType === k && n.tierLvl === t)))));
@@ -629,7 +629,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     'oreVein 1': 'ore_copper_ore', 'oreVein 6': 'ore_iron_ore', 'oreVein 11': 'ore_black_steel_ore',
     'tree 1': 'wood_pine_log', 'tree 6': 'wood_softwood', 'tree 11': 'wood_hardwood',
     'fishSpot 1': 'fish_minnow', 'fishSpot 6': 'fish_clownfish', 'fishSpot 11': 'fish_trout',
-    /* v2.3.3085 */
+    /* v2.3.3094 */
     'oreVein 16': 'ore_titanium_ore', 'oreVein 21': 'ore_obsidian_ore',
     'tree 16': 'wood_cedar_wood', 'tree 21': 'wood_maple_wood',
     'fishSpot 16': 'fish_salmon', 'fishSpot 21': 'fish_pike',
@@ -643,7 +643,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     BLACKSMITH_TIERS.steel);
   check('nodes: and each wood what its bow tier is made from',
     ['pine', 'softwood', 'hardwood', 'cedar', 'maple'].every((k, i) => 'wood_' + WOODWORKING_TIERS[k].wood === room._harvestInvKey('tree', [1, 6, 11, 16, 21][i])));
-  /* v2.3.3085: and the second stage's ores, the forge's next two metals */
+  /* v2.3.3094: and the second stage's ores, the forge's next two metals */
   check('nodes: titanium and obsidian ore are what the titanium and obsidian tiers forge from',
     'ore_' + BLACKSMITH_TIERS.titanium.oreName + '_ore' === room._harvestInvKey('oreVein', 16)
     && 'ore_' + BLACKSMITH_TIERS.obsidian.oreName + '_ore' === room._harvestInvKey('oreVein', 21));
@@ -799,7 +799,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   const k0 = minD(knot()), kS = minD(swept), kL = minD(looped);
   check(`sweep: a knot of 12 opens in a second of ticks as the loop opens it (closest pair ${k0.toFixed(1)} px -> ${kS.toFixed(1)} swept, ${kL.toFixed(1)} looped)`,
     kS >= 20 && kL >= 20, { k0, kS, kL });
-  /* what it is for: the whole monster tick with the Wheel's 384 (v2.3.3084; 192 before) */
+  /* what it is for: the whole monster tick with the Wheel's 384 (v2.3.3093; 192 before) */
   const r2 = new GameRoom(mockState, mockEnv);
   const ms = r2._ensureZoneMonsters(WHEEL_ZONE);
   r2.playerState.bench = { id: 'bench', z: WHEEL_ZONE, x: CENTRE[0], y: CENTRE[1] + 300, hp: 100, maxHp: 100 };

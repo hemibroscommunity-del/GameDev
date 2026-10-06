@@ -23,7 +23,7 @@
  *
  * v2.3.3013: the lands' next three stretches have monsters too (levels 6-20,
  * mp-wheeldeep), 192 in all; what this scenario says of "each land's six" is
- * said of the first stretch's, the ones at the inner end.  v2.3.3084: and the
+ * said of the first stretch's, the ones at the inner end.  v2.3.3093: and the
  * second stage's four (levels 21-40, mp-wheelpast20), 384 in all.
  */
 import * as H from './harness.mjs';

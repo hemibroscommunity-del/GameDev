@@ -8,7 +8,7 @@
  *
  * On a phone viewport, against a real worker, the game as a player gets it:
  *   1. the Wheel holds every land's monsters in its first four stretches: 192,
- *      24 a land, the first stretch's 48 at levels 1-2 as before (v2.3.3084:
+ *      24 a land, the first stretch's 48 at levels 1-2 as before (v2.3.3093:
  *      and its next four, levels 21-40 -- 384, 48 a land; mp-wheelpast20 walks
  *      out to them);
  *   2. each deeper one carries its stretch's level on the client too -- 6-10,
@@ -26,7 +26,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
-const TIERS = { 2: [6, 10], 3: [11, 15], 4: [16, 20], 5: [21, 25], 6: [26, 30], 7: [31, 35], 8: [36, 40] };   /* v2.3.3084: + the second stage */
+const TIERS = { 2: [6, 10], 3: [11, 15], 4: [16, 20], 5: [21, 25], 6: [26, 30], 7: [31, 35], 8: [36, 40] };   /* v2.3.3093: + the second stage */
 const tierOf = (id) => { const m = /-t(\d+)-\d+$/.exec(id); return m ? +m[1] : 1; };
 
 /* the monsters the client holds, with what the renderer drew for each */

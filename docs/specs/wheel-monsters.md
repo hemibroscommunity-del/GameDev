@@ -389,7 +389,7 @@ Tests: `wheelzone` §5d. A shot from the commons makes the monster:
 `wheelpursue: false` restores the shelter. §5b's "nobody in the commons is a
 target" checks are unchanged.
 
-## Past level 20: the second stage (v2.3.3084)
+## Past level 20: the second stage (v2.3.3093)
 
 > The owner: *"build the world past level 20 (levels 21–40 in each land with
 > their own monsters and resources) You can just recolor existing monsters for
@@ -491,7 +491,7 @@ the first pass and its camp at 20, out to the camp at 40.
   their own levels, the top bar on Frost Ridge's third stretch, its snowmen
   drawn with plates reading their levels on the danger border, a level-13
   snowman killed for its 17 XP (a first-stretch one pays 11).
-- **v2.3.3084, the second stage:**
+- **v2.3.3093, the second stage:**
   - the `wheelzone` suite:
     - §1b over all seven stretches (336 and 384, levels to 40, the outward
       chain);

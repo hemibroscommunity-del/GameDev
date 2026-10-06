@@ -15,7 +15,7 @@
  * SIGNPOST_SHOW_FADE: the owner wants the screen quiet ("I just don't want
  * the screen to be too busy with text").
  *
- * v2.3.3080: and each plate ends in the levels its land holds, "Lv 1–20"
+ * v2.3.3089: and each plate ends in the levels its land holds, "Lv 1–20"
  * (WHEEL_LAND_LEVELS), the owner's yes to "Show levels on the signposts?".
  *
  * The eight icons are loaded behind the Wheel's own loading screen
@@ -33,7 +33,7 @@ import { WHEEL_GATE_ROADS, gateOf, SIGNPOST_TOWN_R, SIGNPOST_SHOW_R, SIGNPOST_SH
 const ICON_PX = 64;                   /* the icons' canvas, px a side */
 const PLATE_H = 40, PLATE_R = 9, PAD_L = 10, PAD_R = 14, GAP = 7, STACK = 7;
 const ARROW_W = 22, ICON_W = 28, NAME_PX = 22;
-/* v2.3.3080: the levels the land holds, after its name ("Lv 1–20"): smaller,
+/* v2.3.3089: the levels the land holds, after its name ("Lv 1–20"): smaller,
    in the plate's brass, so the land's name stays what you read first */
 const LEVEL_PX = 17, LEVEL_GAP = 12, C_LEVEL = 0xe3cf98;
 const ABOVE = 168;                    /* world px from the post's foot to the lower plate's bottom: over its picture (~150 tall) */

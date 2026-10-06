@@ -679,7 +679,7 @@ remnant to migrate server-side, not a mode to preserve.
       its harvest bar is up; the old emoji, tier dot and 7 px tips are gone;
       and a vein CRACKS on its split frame (`ore-crack`, cut from the unused
       extract-success.mp4); `mp-nodelabels`;
-    - since v2.3.3085 PAST LEVEL 20 TOO (the owner: "levels 21-40 in each
+    - since v2.3.3094 PAST LEVEL 20 TOO (the owner: "levels 21-40 in each
       land with their own monsters and resources"): tier 16 at levels 21-30
       (titanium ore, cedar, salmon) and tier 21 at 31-40 (obsidian ore,
       maple, pike) -- the bake's `deep`/`deeper` bands, 259 nodes;
@@ -723,7 +723,7 @@ remnant to migrate server-side, not a mode to preserve.
       checks them against the ground as drawn (docs/specs/wheel-resources.md);
     - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§9,
       `mp-wheeldeep`.
-    - since v2.3.3084 PAST LEVEL 20 TOO -- the owner: "build the world past
+    - since v2.3.3093 PAST LEVEL 20 TOO -- the owner: "build the world past
       level 20 (levels 21-40 in each land with their own monsters and
       resources) You can just recolor existing monsters for now":
       `SPAWN_RULES.deep.tiers` 2..8, so every land's second stage (tiers 5-8,
@@ -1280,7 +1280,7 @@ remnant to migrate server-side, not a mode to preserve.
     (`WHEEL_GATE_ROADS`, src/data/wheelSignposts.js, checked against the
     plan's roads), an arrow the way it lies, its element icon and its name in
     its colour; world-sized, on monsterUi (src/rendering/wheelSignposts.js,
-    drawn by effectsRenderer); since v2.3.3080 each plate ends in the levels
+    drawn by effectsRenderer); since v2.3.3089 each plate ends in the levels
     its land holds, "Lv 1–20" (`WHEEL_LAND_LEVELS`; the owner's "Yes" to
     levels though every land reads the same; mirror-audit holds it to the
     deepest stretch baked in wheelspawns.js); the eight

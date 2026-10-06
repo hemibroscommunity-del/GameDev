@@ -1,4 +1,4 @@
-/* ═══ PAST LEVEL 20: EVERY LAND'S SECOND STAGE (v2.3.3084) ═══
+/* ═══ PAST LEVEL 20: EVERY LAND'S SECOND STAGE (v2.3.3093) ═══
  *
  * The owner: "build the world past level 20 (levels 21-40 in each land with
  * their own monsters and resources) You can just recolor existing monsters for
@@ -13,7 +13,7 @@
  *      art in the stage's icy blue (a sprite tint: src/data/wheelStageLooks.js)
  *      and named so on their plates, with their own levels;
  *   4. a first-stage snowman is still white and still a Snowman;
- *   5. (v2.3.3085) the second stage's resources: a titanium vein there, named
+ *   5. (v2.3.3094) the second stage's resources: a titanium vein there, named
  *      and asking Mining 10, drawn from its own picture, its label grey for a
  *      miner short of it; cedar beside it;
  *   6. no page errors, and no render errors.
@@ -122,7 +122,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`a level ${near4.map((m) => m.level).join('/')} snowman, back inside the first stage, is still white and still a "Snowman"`,
     near4.length >= 1 && near4.every((m) => m.sprite.baseTint === 0xffffff && m.sprite.plate.name === 'Snowman'), near4.map((m) => m.sprite));
 
-  /* ── 5. v2.3.3085: the second stage's resources ── */
+  /* ── 5. v2.3.3094: the second stage's resources ── */
   phase = 'the resources';
   const nodesHere = () => P.page.evaluate(() => {
     const S = window._gameState.current;

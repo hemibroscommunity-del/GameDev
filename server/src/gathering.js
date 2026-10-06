@@ -144,7 +144,7 @@ export const HARVEST_PERFECT_PER_MIN = 45;
  * un-advertises caps.gatherreq -- the client stops refusing -- and lifts the
  * worker's gate, so every resource is harvestable at level 1 again with no
  * deploy. */
-/* v2.3.3085: + the second stage's two tiers, five levels a tier as the owner
+/* v2.3.3094: + the second stage's two tiers, five levels a tier as the owner
    set the first ("in levels of 5"): titanium Mining 10, obsidian 15; salmon
    and cedar 15, pike and maple 20. */
 export const GATHER_REQ_LVL = {
@@ -326,7 +326,7 @@ export const gatheringMethods = {
        mine"), which BLACKSMITH_TIERS.steel consumes (data.js oreName
        'black_steel': ore_black_steel_ore).  Client mirror: src/data/
        lifeSkills.js FISHING_TIERS / WOODCUTTING_TIERS / MINING_TIERS. */
-    /* v2.3.3085: and the fourth and fifth, which the Wheel's second stage
+    /* v2.3.3094: and the fourth and fifth, which the Wheel's second stage
        grows (levels 21-30 and 31-40): cedar and maple (WOODWORKING_TIERS
        cedar / maple's wood), salmon and pike, and TITANIUM and OBSIDIAN ORE,
        the forge's next two metals (BLACKSMITH_TIERS titanium / obsidian:

@@ -17,7 +17,7 @@ gold flecks, the icon's orange copper) and its rock (the vein's grey, the
 icon's teal malachite) each get their own.
 
     python3 tools/make_tier_art.py          (the first stage's: iron, black steel, softwood, hardwood)
-    python3 tools/make_tier_art.py past20   (v2.3.3085, the second stage's: titanium, obsidian,
+    python3 tools/make_tier_art.py past20   (v2.3.3094, the second stage's: titanium, obsidian,
                                              cedar, maple, salmon, pike)
 
 writes
@@ -107,7 +107,7 @@ def icon_wood(wood):
     return pick
 
 
-# v2.3.3085: the second stage's (the Wheel's levels 21-40): titanium and
+# v2.3.3094: the second stage's (the Wheel's levels 21-40): titanium and
 # obsidian ore (the forge's next metals), cedar and maple, salmon and pike
 TITANIUM = [(0.00, (16, 18, 24)), (0.30, (72, 80, 94)), (0.55, (132, 144, 162)), (0.80, (198, 210, 226)), (1.00, (246, 250, 255))]
 OBSIDIAN = [(0.00, (6, 4, 12)), (0.30, (32, 18, 52)), (0.55, (74, 42, 116)), (0.80, (146, 104, 206)), (1.00, (224, 204, 255))]
@@ -139,7 +139,7 @@ def cooked(meat):
 
 
 def past20():
-    """v2.3.3085: only the second stage's pictures (python3 tools/make_tier_art.py past20)"""
+    """v2.3.3094: only the second stage's pictures (python3 tools/make_tier_art.py past20)"""
     base = Image.open(SPRITES + 'ore-vein-627.webp').convert('RGBA')
     for name, pick in (('titanium', vein(TITANIUM, IRONSTONE)), ('obsidian', vein(OBSIDIAN, DARKROCK))):
         out = remap(base, pick).resize((418, 418), Image.LANCZOS)

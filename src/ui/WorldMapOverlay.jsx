@@ -60,7 +60,7 @@ const AT = { landSub: 1.5, stage: 2.2, commons: 1.8, gateName: 1.6, camp: 3, pas
   /* v2.3.3057: the details that come in as you zoom */
   others: 1.5, tier: 2.6, node: 3, monster: 3, bridge: 3.6, tierLv: 4.2, town: 6, otherName: 6 };
 /* v2.3.3057: the resources' tints, the minimap's (wheelMinimap.js C_NODE) */
-const NODE_TINT = {   /* v2.3.3085: + 16, 21, the second stage's */
+const NODE_TINT = {   /* v2.3.3094: + 16, 21, the second stage's */
   oreVein: { 1: '#E08A45', 6: '#C65F45', 11: '#8E9AB8', 16: '#C8D0DC', 21: '#7A55B5' },
   tree: { 1: '#58B85A', 6: '#C6DC6C', 11: '#A08C52', 16: '#C0786A', 21: '#F09A40' },
   fishSpot: { 1: '#D6E8F5', 6: '#FF8A3A', 11: '#C4B46A', 16: '#F09080', 21: '#8AAA50' },
@@ -378,7 +378,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       if (!n || !n.alive || !NODE_TINT[n.nodeType]) continue;
       const x = X(n.x), y = Y(n.y);
       if (!onScreen(x, y)) continue;
-      const lvl = n.gatherLvl || 1, tier = lvl >= 21 ? 21 : lvl >= 16 ? 16 : lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1;   /* v2.3.3085: + 16, 21 */
+      const lvl = n.gatherLvl || 1, tier = lvl >= 21 ? 21 : lvl >= 16 ? 16 : lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1;   /* v2.3.3094: + 16, 21 */
       let tool = true;
       try { tool = hasGatherTool(S.rpg || null, n.nodeType); } catch (e) { tool = true; }
       g.globalAlpha = tool ? 1 : 0.45;

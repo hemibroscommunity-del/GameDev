@@ -82,11 +82,11 @@ const FISH_LOOK = {
   1:  { n: 6, len: 16, body: 0xb7c7d4, back: 0x3a5163, alpha: 0.92, school: true, speed: 1.1 },   /* minnows */
   6:  { n: 3, len: 19, body: 0xff7d1f, back: 0xb84a10, alpha: 0.95, bands: 0xfffaf2, speed: 0.85 }, /* clownfish */
   11: { n: 3, len: 25, body: 0x8f8a52, back: 0x4f4a2c, alpha: 0.95, spots: 0x2e2a18, speed: 0.6 },  /* trout */
-  /* v2.3.3085: the second stage's (levels 21-40): a pink salmon, a long olive pike */
+  /* v2.3.3094: the second stage's (levels 21-40): a pink salmon, a long olive pike */
   16: { n: 3, len: 27, body: 0xf08a78, back: 0x8a3c34, alpha: 0.95, spots: 0x5a2420, speed: 0.6 },   /* salmon */
   21: { n: 2, len: 31, body: 0x7a9a4a, back: 0x34461e, alpha: 0.95, spots: 0xd8e0a0, speed: 0.5 },   /* pike */
 };
-const lookFor = (lvl) => FISH_LOOK[lvl >= 21 ? 21 : lvl >= 16 ? 16 : lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1];   /* v2.3.3085: + 16, 21 */
+const lookFor = (lvl) => FISH_LOOK[lvl >= 21 ? 21 : lvl >= 16 ? 16 : lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1];   /* v2.3.3094: + 16, 21 */
 
 /* Where the fish swim, from the spot's anchor (where the line lands).  The
    bake guarantees water in a block west of the spot -- three cells west of it

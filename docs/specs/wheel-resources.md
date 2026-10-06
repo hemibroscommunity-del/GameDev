@@ -17,10 +17,10 @@ not be finished. Now the Wheel grows **142 resource nodes** (140 until v2.3.3013
 | The safe ground round Brotown (the commons) | — | 1 | copper | pine log | minnow |
 | Each land's first two stages | 1–10 | 6 | **iron** | softwood | clownfish |
 | Each land's next two stages, up to the first pass | 11–20 | 11 | **black steel** | hardwood | trout |
-| Past the first pass (v2.3.3085) | 21–30 | 16 | **titanium** | cedar | salmon |
-| ...out to the camp at 40 (v2.3.3085) | 31–40 | 21 | **obsidian** | maple | pike |
+| Past the first pass (v2.3.3094) | 21–30 | 16 | **titanium** | cedar | salmon |
+| ...out to the camp at 40 (v2.3.3094) | 31–40 | 21 | **obsidian** | maple | pike |
 
-Since v2.3.3085 the second stage grows its own too: see "Past level 20"
+Since v2.3.3094 the second stage grows its own too: see "Past level 20"
 below. 259 nodes in all.
 
 ## What the player sees
@@ -415,7 +415,7 @@ Tests (`mp-nodelabels`):
   sent, and the try ends by itself.
 - Picture: `nodelabels-try.png`.
 
-## Past level 20 (v2.3.3085)
+## Past level 20 (v2.3.3094)
 
 > The owner: *"build the world past level 20 (levels 21–40 in each land with
 > their own monsters and resources)"*.
