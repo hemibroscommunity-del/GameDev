@@ -501,6 +501,7 @@ import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_IN
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
 import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar over a spot's school */ } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
+import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNameNode } from '../nodeLabels.js';   /* v2.3.3040: the tool, the name and the level over a resource; v2.3.3059: words for the nearest only */
 import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
@@ -1826,6 +1827,11 @@ const NODE_HPBAR_AT = {
   oreVein:  { f: 0.737, gap: 10, under: true },
   fishSpot: { f: 0.349, gap: 4 },
 };
+/* v2.3.3040: the TOP of each resource's art, as a fraction of its frame, for
+   the label over it (_nodeLabelAt): the crown and the pond's water as above,
+   and the rock's top (alpha >50% off ore-vein-627; the iron and black steel
+   veins' 418 px art has its proportions, 93/418). */
+const NODE_LABEL_TOP = { tree: 0.103, oreVein: 0.223, fishSpot: 0.349 };
 /* ...and a cook's, UNDER the campfire (owner: "Make it appear for cooking
    too").  The one resource whose bar is not over it (v2.3.3035): the cook
    leans right over his fire, the pan in the flames (cookStandInSpot, 11.5
@@ -2386,6 +2392,10 @@ export class EffectsRenderer {
     /* v2.3.3035: the world's last layer, for the harvest's bar alone
        (pixiApp WORLD_LAYER_NAMES 'worldUi') */
     this.worldUiLayer = layers.worldUi || layers.overlayWorld;
+    /* v2.3.3040: the resources' labels (nodeLabels.js) -- the monsters' name
+       plates' layer: over the trees and rocks and what walks among them,
+       under your own bro and the damage numbers */
+    this.nodeUiLayer = layers.monsterUi || layers.gatherNodes;
     this.hudLayer = layers.hud;
 
     // Pooled graphics
@@ -4886,8 +4896,14 @@ export class EffectsRenderer {
       const rise = (typeof dmg.rise === 'number') ? dmg.rise : 40 * (dmg._k || 1);
       text.y = dmg.y + (dmg._stackOffset || 0) - (dmg._lift || 0) - age * rise;   /* v2.3.3033: lifted by the bigger glyph's extra half height */
       /* Fade over 80% of ttl so longer-lived popups (kill messages with
-         ttl=2.5) actually stay visible, not invisible most of their life. */
-      text.alpha = Math.max(0, 1 - age / (ttl * 0.8));
+         ttl=2.5) actually stay visible, not invisible most of their life.
+         v2.3.3059: `hold` (s) -- full strength that long, then the fade over
+         what is left: a message that must read through a whole action (a
+         locked resource's "Requires Fishing Lv 5", lifeSkillRewards.js) was
+         half gone by its middle on the linear fade. */
+      text.alpha = (typeof dmg.hold === 'number' && dmg.hold > 0 && ttl > dmg.hold)
+        ? (age < dmg.hold ? 1 : Math.max(0, 1 - (age - dmg.hold) / (ttl - dmg.hold)))
+        : Math.max(0, 1 - age / (ttl * 0.8));
       /* Spawn pop: scale 1.6 -> 1.0 over 120ms (ease-out) so the number
          visibly punches in on the first hit, then settles. Crit wiggle
          layers on top after the pop has decayed. */
@@ -9416,12 +9432,16 @@ export class EffectsRenderer {
       if (obj.parent) obj.parent.removeChild(obj);
       obj.destroy();
     };
+    /* v2.3.3040: the tier dot, the emoji and the tips are no longer made
+       (nodeLabels.js replaces them); their kills stay for a node that still
+       holds one from before a hot reload */
     kill(node._pixiTier);
     kill(node._pixiEmoji);
     kill(node._pixiTip1);
     kill(node._pixiTip2);
     kill(node._pixiTip3);
     kill(node._pixiSprite);
+    killNodeLabel(node);   /* v2.3.3040 */
     node._pixiTier = node._pixiEmoji = node._pixiTip1 = node._pixiTip2 = node._pixiTip3 = node._pixiSprite = null;
   }
 
@@ -9509,6 +9529,11 @@ export class EffectsRenderer {
     /* Player position for proximity-tooltip distance test. */
     const px = S.player ? S.player.x : 0;
     const py = S.player ? S.player.y : 0;
+    /* v2.3.3059: the one resource whose label says its name and level -- the
+       nearest drawn to you (nodeLabels.js nodeNameNode); the rest show their
+       tool alone (owner: "I just don't want the screen to be too busy with
+       text") */
+    const _nameNode = nodeNameNode(S, nodes);
 
     for (const node of nodes) {
       if (!node.alive) {
@@ -9548,12 +9573,18 @@ export class EffectsRenderer {
           const onSpot = sd2 < MINE_SPOT_R * MINE_SPOT_R;
           const col = onSpot ? 0x3dd497 : 0xffe27a;
           const r1 = 6 + 1.5 * Math.sin(now / 160);
-          gfx.moveTo(sx - r1, sy); gfx.lineTo(sx + r1, sy);
-          gfx.moveTo(sx, sy - r1); gfx.lineTo(sx, sy + r1);
+          /* v2.3.3040: drawn clear of the rock's label (nodeLabels.js), which
+             stands over the rock where this mark used to be alone -- lifted
+             over the pill when they would touch.  Only the drawing moves: the
+             spot you stand on (sx, sy, and BroTown's oreStandSpot) does not. */
+          const _lab = this._nodeLabelAt(S, node);
+          const dy = _lab ? Math.min(sy, _lab.y - nodeLabelWorldH(S) - 11) : sy;
+          gfx.moveTo(sx - r1, dy); gfx.lineTo(sx + r1, dy);
+          gfx.moveTo(sx, dy - r1); gfx.lineTo(sx, dy + r1);
           gfx.stroke({ color: col, width: 1.5, alpha: 0.5 + 0.4 * tw });
-          gfx.circle(sx, sy, 1.6);
+          gfx.circle(sx, dy, 1.6);
           gfx.fill({ color: col, alpha: 0.7 + 0.3 * tw });
-          gfx.circle(sx, sy, 9);
+          gfx.circle(sx, dy, 9);
           gfx.stroke({ color: col, width: 1, alpha: 0.22 + 0.22 * tw });
         }
       }
@@ -9703,79 +9734,17 @@ export class EffectsRenderer {
         gfx.fill({ color: 0x3dd497 });
       }
 
-      /* Tier badge — small dot to the upper-right with the gatherLvl
-         number on top.  Always visible so the player can see which
-         resources are higher level at a glance. */
-      const tierColor = '#8B9695' /* v2.3.1233: Lantern common grey (was navy-palette #8890b8) */;   // RESOURCE_TIERS lookup happens in BroTown.jsx; default ok
-      gfx.circle(node.x + 10 + tierStep * 2, node.y - 8, 4);
-      gfx.fill({ color: cssToHex(tierColor), alpha: 0.9 });
-      if (!node._pixiTier || node._pixiTier.destroyed) {
-        node._pixiTier = new Text({
-          text: '',
-          style: { fontFamily: 'Source Sans 3, sans-serif', fontSize: 8, fontWeight: '700',
-                   fill: '#ffffff', align: 'center' },
-        });
-        node._pixiTier.anchor.set(0.5, 0.5);
-        this.nodeLayer.addChild(node._pixiTier);
-      }
-      const tierStr = String(tierLvl);
-      if (node._pixiTier.text !== tierStr) node._pixiTier.text = tierStr;
-      node._pixiTier.x = node.x + 10 + tierStep * 2;
-      node._pixiTier.y = node.y - 7;
-
-      /* Emoji label above the node — node.emoji set by gameplay code. */
-      if (node.emoji) {
-        if (!node._pixiEmoji || node._pixiEmoji.destroyed) {
-          node._pixiEmoji = new Text({
-            text: node.emoji,
-            style: { ...LABEL_STYLE_EMOJI, fontSize: 8 + tierStep * 2 },
-          });
-          node._pixiEmoji.anchor.set(0.5, 1);
-          this.nodeLayer.addChild(node._pixiEmoji);
-        }
-        if (node._pixiEmoji.text !== node.emoji) node._pixiEmoji.text = node.emoji;
-        node._pixiEmoji.x = node.x;
-        node._pixiEmoji.y = node.y - (10 + tierStep * 3);
-      }
-
-      /* Proximity tooltip — 3 lines of info shown when player is
-         within 50 units.  Shown/hidden via .visible to avoid the
-         per-frame Text construction cost. */
-      const dx = px - node.x, dy = py - node.y;
-      const near = dx * dx + dy * dy < 50 * 50;
-      if (near) {
-        const skill = node.skill || 'mining';
-        const skillLabel = skill.charAt(0).toUpperCase() + skill.slice(1);
-        const skillLvl = (S.rpg && S.rpg.lifeSkills && S.rpg.lifeSkills[skill]?.level) || 1;
-        const verb = skill === 'woodcutting' ? 'Chop' : skill === 'fishing' ? 'Fish' : 'Mine';
-
-        const yBase = node.y + 38 + tierStep * 2;
-        const ensureTip = (key, text, color, dy) => {
-          let t = node[key];
-          if (!t || t.destroyed) {
-            t = new Text({
-              text: '',
-              style: { fontFamily: 'Source Sans 3, sans-serif', fontSize: 7, fontWeight: '700',
-                       fill: color, align: 'center' },
-            });
-            t.anchor.set(0.5, 0);
-            this.nodeLayer.addChild(t);
-            node[key] = t;
-          }
-          if (t.text !== text) t.text = text;
-          t.style.fill = color;
-          t.x = node.x;
-          t.y = yBase + dy;
-          t.visible = true;
-        };
-        ensureTip('_pixiTip1', node.spotName || node.name || '', '#ffffffb3', 0);
-        ensureTip('_pixiTip2', `${node.name || ''} (Lv${tierLvl})`, '#ffffff80', 8);
-        ensureTip('_pixiTip3', `${verb} (${skillLabel} Lv${skillLvl})`, '#3dd497', 16);
-      } else {
-        if (node._pixiTip1) node._pixiTip1.visible = false;
-        if (node._pixiTip2) node._pixiTip2.visible = false;
-        if (node._pixiTip3) node._pixiTip3.visible = false;
-      }
+      /* ═══ v2.3.3040: THE RESOURCE'S LABEL (nodeLabels.js) ═══
+         The tool that works it, what it gives and the level it asks, over
+         its art -- the owner's "pickaxe icon above ore you can mine with its
+         name and level ... Same with fish and tree".  It replaces the tool
+         emoji, the grey tier dot and the three 7 px proximity tips that
+         stood here: sized for the 6-12 px resources of before v2.3.1275,
+         they sat at the art's foot at ~6 CSS px, and the dot printed the
+         tier, not a level.  Hidden while the green harvest bar is up over
+         this node -- yours, or a peer working it (the bar's place, and the
+         miner seated over the rock). */
+      updateNodeLabel(this.nodeUiLayer, node, S, this._nodeLabelAt(S, node), node === _nameNode);
     }
 
     /* v2.3.3012: the Wheel's fish -- and, anywhere else, none (an empty list
@@ -9792,7 +9761,7 @@ export class EffectsRenderer {
       this._wheelDoors.update(_doors || [], S, now);
     }
     this._drawGatherHpBar(S, nodes, now);   /* v2.3.2956 */
-    this._advanceOreBreaks(now);
+    this._advanceOreBreaks(now, S);   /* v2.3.3040: + S, a peer's crack fades with your distance */
     this._advanceItemPops(now);
   }
 
@@ -9882,6 +9851,33 @@ export class EffectsRenderer {
         this._nodeHpBarUp = false;
       }
     }
+  }
+
+  /* ═══ v2.3.3040: WHERE A RESOURCE'S LABEL STANDS (nodeLabels.js) ═══
+     The world point its pill's FOOT sits on, NODE_LABEL_GAP over the top of
+     the resource's art: the tree's crown and the pond's water (NODE_HPBAR_AT's
+     own fractions), the school of fish in the Wheel (wheelFishTop), and the
+     ROCK's top -- 0.223 of its frame, measured off the same webp's alpha as
+     NODE_ART_BASE.  Null hides it: while the harvest's own bar is up over
+     this node (yours, waiting or ready) and while a peer is seated at it, who
+     sits over the rock and casts over the school (_peerWork). */
+  _nodeLabelAt(S, node) {
+    if (!node || !node.alive) return null;
+    const ex = S._extraction;
+    if (ex && (ex.status === 'waiting' || ex.status === 'ready')
+      && (ex.nodeRef === node || (ex.nodeId != null && ex.nodeId === node.id))) return null;
+    const pw = this._peerWork;
+    if (pw && (pw.mine.has(node) || pw.fish.some((f) => f.node === node))) return null;
+    if (node.nodeType === 'fishSpot' && wheelNodeView(S)) {
+      const f = wheelFishTop(node);
+      return { x: f.x, y: f.top - NODE_LABEL_GAP };
+    }
+    const top = NODE_LABEL_TOP[node.nodeType];
+    if (top == null) return null;
+    const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
+    const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
+    const frameTop = node.y - (NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5) * targetH;
+    return { x: node.x, y: frameTop + top * targetH - NODE_LABEL_GAP };
   }
 
   /* Where a node's bar goes: over the top of the resource's art (v2.3.3035;
@@ -10118,7 +10114,10 @@ export class EffectsRenderer {
        its own ore pops out (the strip is the copper vein's) */
     if (ORE_BREAK_TINT[tierLvl]) sp.tint = ORE_BREAK_TINT[tierLvl];
     this.nodeLayer.addChild(sp);
-    this._oreBreaks.push({ sp, startedAt: now, x: node.x, y: node.y, popped: false, icon: ORE_ICON_TIER_TEX[tierLvl] || null });
+    /* v2.3.3040: whose break it is, for the crack's loudness (_advanceOreBreaks):
+       yours (applyMiningReward stamps the node as it pays) or a peer's */
+    const self = !!(node._selfMinedAt && Date.now() - node._selfMinedAt < 3000);
+    this._oreBreaks.push({ sp, startedAt: now, x: node.x, y: node.y, popped: false, icon: ORE_ICON_TIER_TEX[tierLvl] || null, self });
   }
 
   /* A small icon that floats up out of a position and fades — "collected". */
@@ -10155,7 +10154,7 @@ export class EffectsRenderer {
 
   /* Advance + retire active ore-break animations.  Plays each strip once,
      holds the final "split halves" frame for a short beat, then disposes. */
-  _advanceOreBreaks(now) {
+  _advanceOreBreaks(now, S) {
     const list = this._oreBreaks;
     if (!list || !list.length || !ORE_BREAK_TEX) return;
     const HOLD_MS = 250;
@@ -10177,6 +10176,25 @@ export class EffectsRenderer {
       if (!fx.popped && idx >= ORE_BREAK_SPLIT_FRAME) {
         fx.popped = true;
         this._spawnItemPopup(fx.icon || ORE_ICON_TEX, fx.x, fx.y - 6, now);
+        /* ═══ v2.3.3040: ...AND IT CRACKS ═══
+           Owner: "Add cracking sound when the ore splits when user completes
+           the gesture."  On this frame, the one the rock visibly splits on
+           (~350 ms after the gesture lands), not at the gesture: the sound
+           and the picture are one event.  Yours at full voice; a peer's
+           vein, which breaks the same way on your screen, softer and fading
+           with distance, so a busy quarry is a texture rather than a din. */
+        try {
+          let vol = 0.72;
+          if (!fx.self) {
+            const P = S && S.player;
+            const d = P ? Math.hypot(P.x - fx.x, P.y - fx.y) : 0;
+            vol = d > 1400 ? 0 : 0.3 * (1 - d / 1400);
+          }
+          if (vol > 0.02) BT_AUDIO.play('ore-crack', { vol, pitchVar: 0.06 });
+          if (typeof window !== 'undefined' && window.__btProbe) {
+            (window.__btOreCracks || (window.__btOreCracks = [])).push({ at: Date.now(), self: !!fx.self, vol: +vol.toFixed(3) });
+          }
+        } catch (e) { /* a sound never breaks the frame */ }
       }
     }
   }

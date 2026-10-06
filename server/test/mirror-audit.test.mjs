@@ -32,7 +32,8 @@ import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_AR
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
-import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036 */
+import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
+import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl } from '../../src/data/lifeSkills.js'; /* v2.3.3038 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
 import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC } from '../../src/game/elemHits.js'; /* v2.3.2996 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
@@ -1489,6 +1490,29 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     ['woodcutting', 'fishing', 'mining', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'farming', 'trapping'].every((k) => d[k] && d[k].level === 1), d);
   const old = clientMigrateLifeSkills({ mining: { level: 0, xp: 300 }, fishing: { level: 3, xp: 10 } });
   check('life-skill levels: a stored 0 heals to 1 (XP kept), a real level is left alone', old.mining.level === 1 && old.mining.xp === 300 && old.fishing.level === 3, { mining: old.mining, fishing: old.fishing });
+}
+
+// ── GATHER LEVELS: the level over a node is the level the worker asks ──
+// v2.3.3038.  The client refuses ("Need Mining Lv 5") and draws the level
+// from its copy; the worker refuses extraction_start and node_strike from its
+// own.  A drift is a node that says Lv 5 and is refused at 5, or a refusal the
+// client never warned of.
+{
+  const flat = (t) => JSON.stringify(Object.keys(t).sort().map((k) => [k, Object.keys(t[k]).sort().map((l) => [l, t[k][l]])]));
+  check('gather levels: the same table on both sides (GATHER_REQ_LVL)', flat(SRV_GATHER_REQ_LVL) === flat(CLIENT_GATHER_REQ_LVL),
+    { srv: SRV_GATHER_REQ_LVL, cli: CLIENT_GATHER_REQ_LVL });
+  let bad = null;
+  for (const t of ['oreVein', 'tree', 'fishSpot', 'campfire', '__proto__', 'constructor']) {
+    for (const l of [0, 1, 6, 11, 16, 99, '6', null, '__proto__']) {
+      if (srvGatherReqLvl(t, l) !== clientGatherReqLvl(t, l)) { bad = { t, l, srv: srvGatherReqLvl(t, l), cli: clientGatherReqLvl(t, l) }; break; }
+    }
+    if (bad) break;
+  }
+  check('gather levels: and the same answer for every type and tier, forged ones included', bad === null, bad);
+  /* the owner's named cells, so a "tidy-up" of the table can't quietly move them */
+  check('gather levels: black steel Mining 5, copper and iron 1, clownfish Fishing 5',
+    clientGatherReqLvl('oreVein', 11) === 5 && clientGatherReqLvl('oreVein', 1) === 1 && clientGatherReqLvl('oreVein', 6) === 1
+    && clientGatherReqLvl('fishSpot', 6) === 5);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

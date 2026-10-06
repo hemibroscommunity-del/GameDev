@@ -2818,6 +2818,14 @@ BT_AUDIO.SFX_MANIFEST = {
      fish-reel: 5s steady reel loop while the fishing crank is turning. */
   'footstep-v3':      '/sfx/footstep/footstep-v3.mp3',
   'mine-strike':      '/sfx/mining/mine-strike.mp3',
+  /* v2.3.3040: the ore SPLITTING when a mining gesture completes (owner: "Add
+     cracking sound when the ore splits when user completes the gesture") --
+     the third crack of the game's own mining clip, public/minigames/mining/
+     extract-success.mp4 (2.24-2.96 s, the rock splitting open), mono, loudness
+     -16 LUFS.  Played on the break strip's split frame (effectsRenderer
+     _advanceOreBreaks).  Until now a finished vein was silent: its only cue
+     was a beep(), which has played nothing since v2.3.1103 (SOUND-GAPS). */
+  'ore-crack':        '/sfx/mining/ore-crack.mp3',
   'pan-sizzle':       '/sfx/cooking/pan-sizzle.mp3',
   'fish-reel':        '/sfx/fishing/fish-reel.mp3',
   /* v2.3.1427 (owner sounds, round 2):
