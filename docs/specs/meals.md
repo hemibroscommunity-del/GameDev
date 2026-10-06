@@ -1,4 +1,4 @@
-# Meals and brews you carry (v2.3.3105, v2.3.3106)
+# Meals and brews you carry (v2.3.3114, v2.3.3115)
 
 > Owner, 2026-10-06: *"Not sure what benefit farming will provide. Maybe
 > temporary stat boosts, required quest items and selling for gold. I might
@@ -7,9 +7,9 @@
 
 This is the plan's **Phase 2**. Phase 1 (`docs/specs/farm.md`) grows the
 herbs; this makes them worth growing.
-- **2a (v2.3.3105):** carried meals and brews, one of each at once, and Diego's
+- **2a (v2.3.3114):** carried meals and brews, one of each at once, and Diego's
   tonics brewed from herbs.
-- **2b (v2.3.3106):** the potato and the pumpkin (`docs/specs/farm.md`), and
+- **2b (v2.3.3115):** the potato and the pumpkin (`docs/specs/farm.md`), and
   their two dishes, the Garden Stew and the Pumpkin Pie.
 
 ## What changes for a player
@@ -207,7 +207,7 @@ herbs; this makes them worth growing.
   - `farm` §11: the bread's new healing, the stew beside the tea, a carried
     cook.
   - `mirror-audit` §4/§4b: recipes by what they make, the client's old-worker
-    effects pinned to v2.3.3102's, `DISHES` both ways, no damage meal, the
+    effects pinned to v2.3.3111's, `DISHES` both ways, no damage meal, the
     shelf.
 - Phone (`tools/qa/mp`):
   - `mp-meals` (new) covers:

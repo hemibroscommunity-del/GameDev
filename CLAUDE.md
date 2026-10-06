@@ -1497,7 +1497,7 @@ remnant to migrate server-side, not a mode to preserve.
       an older worker rows it had not got (TRAPS §9);
     - kill switch `meals: false` (caps.meals false, not absent: the bag keeps
       Eat and Drink); `meals` suite, `mp-meals`: docs/specs/meals.md;
-    - since v2.3.3106 (2b) the POTATO (Farming 5, yields 3 -- fertilized 4 or
+    - since v2.3.3115 (2b) the POTATO (Farming 5, yields 3 -- fertilized 4 or
       5) and the PUMPKIN (Farming 10, 22 h watered), `FARM.V` 2; the GARDEN
       STEW heals 150 at once (`slot: 'now'`, no slot, refused in an arena),
       the PUMPKIN PIE is a meal of +10% combat XP (`_buffs.xpMul`, read

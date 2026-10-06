@@ -85,7 +85,7 @@ export const FARM = {
      of a crop it had never heard of became grass, for good (the review
      showed it on a copy; the owner: "Yes fix all of your recommended
      fixes").  Not mirrored on the client: the window never reads it.
-     v2.3.3106: 2 -- the potato and the pumpkin.  A worker at 1 has never
+     v2.3.3115: 2 -- the potato and the pumpkin.  A worker at 1 has never
      heard of either, and would have turned their beds into grass.  A record
      is stamped with the version its CONTENT needs (_farmShape: the highest
      crop `v` among its planted beds), not this number: stamping every record
@@ -130,7 +130,7 @@ export const FARM = {
     firebloom:  { name: 'Firebloom',  seed: 'seed_firebloom',  item: 'herb_firebloom',  lvl: 1,  price: 5,  mins: 40,   yield: 2, xp: 50,  base: 16 },
     rock_vine:  { name: 'Rock Vine',  seed: 'seed_rock_vine',  item: 'herb_rock_vine',  lvl: 5,  price: 10, mins: 320,  yield: 2, xp: 120, base: 30 },
     cloudpetal: { name: 'Cloudpetal', seed: 'seed_cloudpetal', item: 'herb_cloudpetal', lvl: 10, price: 15, mins: 640,  yield: 2, xp: 180, base: 40 },
-    /* v2.3.3106: the plan's two food crops (docs/FARMING-PLAN.md, "Six starter
+    /* v2.3.3115: the plan's two food crops (docs/FARMING-PLAN.md, "Six starter
        crops"), for the Garden Stew and the Pumpkin Pie (data.js DISHES).  The
        potato is the one crop that yields 3 -- fertilized, 4 or 5 (farmYield's
        chance at the half).  The pumpkin is the long one: 22 hours watered,
@@ -144,7 +144,7 @@ export const FARM = {
   },
 };
 
-/* v2.3.3106: the crops this worker grows, in the order they came (FARM.CROPS'
+/* v2.3.3115: the crops this worker grows, in the order they came (FARM.CROPS'
    own).  caps.farmCrops is how many: the Feed & Seed window offers a crop only
    below it, as the Cookhouse offers a recipe below caps.cookRows -- caps.farm
    alone let a newer page offer an older worker's farm seeds it could not sell
@@ -170,7 +170,7 @@ export function farmGrowMs(crop, watered) {
 /* What one bed pays.  A fractional fertilized yield (a 3-crop bed would
    give 4.5) is the whole part plus a chance at one more, so the AVERAGE is
    exactly FEED_YIELD -- the four starter crops all yield 2, so 3 exactly.
-   v2.3.3106: the potato yields 3, so its fertilized bed pays 4 or 5. */
+   v2.3.3115: the potato yields 3, so its fertilized bed pays 4 or 5. */
 export function farmYield(crop, fed, rand = Math.random) {
   if (!fed) return crop.yield;
   const q = crop.yield * FARM.FEED_YIELD;
@@ -215,7 +215,7 @@ export const farmMethods = {
     return { v: 1, beds: FARM.FREE_BEDS, plots };
   },
 
-  /* v2.3.3106: the record version these beds need -- the highest crop `v`
+  /* v2.3.3115: the record version these beds need -- the highest crop `v`
      planted in them (FARM.V's note).  A farm of the first four crops is a 1,
      which every farm worker reads. */
   _farmShape(plots) {
@@ -322,7 +322,7 @@ export const farmMethods = {
      record's put is ISSUED first and _saveRpg's in the same synchronous run,
      no await between -- see the header. */
   _farmCommit(pid, ps, rec) {
-    /* v2.3.3106: stamped by what the beds hold NOW -- a plant of a potato
+    /* v2.3.3115: stamped by what the beds hold NOW -- a plant of a potato
        makes this record a 2, its harvest a 1 again (_farmShape). */
     rec.v = this._farmShape(rec.plots);
     const p = this.state.storage.put('farm:' + pid, rec);

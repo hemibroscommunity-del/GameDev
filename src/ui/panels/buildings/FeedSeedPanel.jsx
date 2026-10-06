@@ -187,7 +187,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   const last = farmBus.last;
 
   const unlocked = (id) => lvl >= FARM.CROPS[id].lvl;
-  /* v2.3.3106: only the crops THIS worker grows (caps.farmCrops counts them,
+  /* v2.3.3115: only the crops THIS worker grows (caps.farmCrops counts them,
      in the order they came -- FARM.CROPS' own).  A newer page offered an
      older worker's farm the potato and the pumpkin, and the buy hung on "No
      answer yet" (review).  A farm worker from before it grows the first four. */

@@ -26,7 +26,7 @@ export const DISHES = {
     slot: 'brew', buff: 'damage', power: 0.20, duration: 1800,
     name: 'Firebloom Tea', look: '\uD83C\uDF75', desc: '+20% damage, 30 min'
   },
-  /* v2.3.3106: the potato and the pumpkin's dishes.  The stew is eaten at once
+  /* v2.3.3115: the potato and the pumpkin's dishes.  The stew is eaten at once
      (slot 'now': a heal, like a cooked fish); the pie is a meal. */
   meal_garden_stew: {
     slot: 'now', buff: 'heal', power: 150,

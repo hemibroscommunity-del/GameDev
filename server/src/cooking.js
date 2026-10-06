@@ -20,8 +20,8 @@ import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, manaSurge
    apart from it.  `rest` is the Herb Bread's; `regen` is the bread's timer
    from before (v2.3.3111, 60 s), cleared with the meal slot and read by
    nothing here (data.js DISHES says why the bread moved off it). */
-const MEAL_BUFF_KEYS = ['rest', 'regen', 'resist', 'xp', 'xpMul'];   /* v2.3.3106: + the Pumpkin Pie's xp and its strength (a 2a worker owns them too, for a rollback) */
-/* v2.3.3105: how many recipes a worker before caps.meals had (Herb Bread, Root
+const MEAL_BUFF_KEYS = ['rest', 'regen', 'resist', 'xp', 'xpMul'];   /* v2.3.3115: + the Pumpkin Pie's xp and its strength (a 2a worker owns them too, for a rollback) */
+/* v2.3.3114: how many recipes a worker before caps.meals had (Herb Bread, Root
    Stew, Firebloom Tea) -- the only ones an old client can cook, the old
    (instant) way, and the only ones that still cook with `meals: false`. */
 const OLD_RECIPES = 3;
@@ -91,7 +91,7 @@ export const cookingMethods = {
        refusal uses nothing.  A brew is DRUNK (potion_drink), never eaten. */
     const meal = this._getDish(invKey);
     if (meal) {
-      if (meal.slot !== 'meal' && meal.slot !== 'now') return;   /* v2.3.3106: + a dish eaten at once */
+      if (meal.slot !== 'meal' && meal.slot !== 'now') return;   /* v2.3.3115: + a dish eaten at once */
       const ps = this.playerState[session.id];
       if (!ps) return;
       /* v2.3.3114: the phone took one out of its bag already -- a refusal
@@ -515,7 +515,7 @@ export const cookingMethods = {
      a dish it cannot apply (nothing is used up then). */
   _applyDish(ps, dish) {
     if (!ps || !dish) return false;
-    /* v2.3.3106: a dish eaten at once (slot 'now', the Garden Stew) is a
+    /* v2.3.3115: a dish eaten at once (slot 'now', the Garden Stew) is a
        heal, the cooked fish's way: plus the HP grid's Recovery, capped at max
        HP, refused in an arena match (GDD §43) -- and it touches no slot. */
     if (dish.slot === 'now') {
@@ -533,12 +533,12 @@ export const cookingMethods = {
     if (dish.buff === 'rest') ps._buffs.rest = endsAt;
     else if (dish.buff === 'resist') ps._buffs.resist = endsAt;
     else if (dish.buff === 'xp') {
-      /* v2.3.3106: the Pumpkin Pie -- its strength rides with its timer, read
+      /* v2.3.3115: the Pumpkin Pie -- its strength rides with its timer, read
          by prog3.js _prog3AwardXp, bounded there (BUFF_MAGNITUDES keeps it). */
       if (Number.isFinite(dish.power) && dish.power > 0 && dish.power <= 1) ps._buffs.xpMul = 1 + dish.power;
       ps._buffs.xp = endsAt;
     } else {
-      /* The dish's own `power` is its magnitude (v2.3.3102); combat.js bounds
+      /* The dish's own `power` is its magnitude (v2.3.3111); combat.js bounds
          damageMul to 1..4 and falls back to x1.20 without one. */
       if (Number.isFinite(dish.power) && dish.power > 0 && dish.power <= 3) ps._buffs.damageMul = 1 + dish.power;
       ps._buffs.damage = endsAt;

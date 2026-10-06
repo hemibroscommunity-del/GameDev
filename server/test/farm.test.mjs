@@ -106,7 +106,7 @@ const C = FARM.CROPS;
 {
   const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('caps.farm is advertised', !!sync && sync.caps.farm === true);
-  /* v2.3.3106 (review): and HOW MANY crops this worker grows, in the order
+  /* v2.3.3115 (review): and HOW MANY crops this worker grows, in the order
      they came -- the window offers a crop only below it. */
   check('caps.farmCrops says how many crops this worker grows', !!sync && sync.caps.farmCrops === FARM_CROP_IDS.length
     && FARM_CROP_IDS.join(',') === Object.keys(FARM.CROPS).join(','), sync && sync.caps.farmCrops);
@@ -218,7 +218,7 @@ const C = FARM.CROPS;
   check('...and the XP is per bed (2 x ' + C.carrot.xp + ')', h2.did.xp === 2 * C.carrot.xp, h2.did);
   check('the yield rule: 2 dry, 3 fertilized, for every 2-crop bed',
     Object.values(C).filter((c) => c.yield === 2).every((c) => farmYield(c, false) === 2 && farmYield(c, true) === 3));
-  /* v2.3.3106: the potato yields 3, so a fertilized bed is 4.5 -- paid as 4
+  /* v2.3.3115: the potato yields 3, so a fertilized bed is 4.5 -- paid as 4
      or 5 by chance, the average exactly x1.5. */
   check('...and the potato: 3 dry, 4 or 5 fertilized, averaging 4.5',
     farmYield(C.potato, false) === 3 && farmYield(C.potato, true, () => 0.99) === 4 && farmYield(C.potato, true, () => 0) === 5
@@ -516,12 +516,12 @@ function ws2Ref() {
   check('...no join notice is sent from it', !wsN2.sent.some((m) => m.type === 'farm_state'));
   check('...and storage holds the newer record exactly as it was', JSON.stringify(st._store.get('farm:' + PN)) === before);
   const deed = st._store.get('farm:bp_farm_r');   /* §13's free deed, made after the restart */
-  /* v2.3.3106 (review): a record says the shape its BEDS need -- a deed of
+  /* v2.3.3115 (review): a record says the shape its BEDS need -- a deed of
      rough beds is a 1, which every farm worker reads. */
   check('a fresh deed says it is a 1 (nothing in it needs more)', !!deed && deed.v === 1, deed && deed.v);
 }
 
-// ── 15. v2.3.3106: a record's version is what its beds HOLD (review) ──
+// ── 15. v2.3.3115: a record's version is what its beds HOLD (review) ──
 {
   /* Stamping FARM.V on every write closed every farm touched under this
      worker after a rollback, a carrot-only one included.  Now a potato or a
@@ -550,7 +550,7 @@ function ws2Ref() {
   check('...and with the potato harvested it is a 1 again', sv().v === 1 && sv().plots[0].crop === 'carrot', sv());
 }
 
-// ── 16. v2.3.3106: every seed costs at least a coin a crop (review) ──
+// ── 16. v2.3.3115: every seed costs at least a coin a crop (review) ──
 {
   /* farm.js's own rule, so Diego (half of `base`, falling) is never a
      faucet once his pile is full: the plan's "Every seed costs at least one

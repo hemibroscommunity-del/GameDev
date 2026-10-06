@@ -1058,7 +1058,7 @@ export const COOKING_RECIPES = [{
   makes: 'swiftDraught',
   desc: 'Run 1.5x as fast for 3 min'
 }, {
-  /* v2.3.3106: the potato and the pumpkin's dishes */
+  /* v2.3.3115: the potato and the pumpkin's dishes */
   name: 'Garden Stew',
   tier: 2,
   ingredients: {
@@ -1084,7 +1084,7 @@ export const COOKING_RECIPES = [{
    the bag can read it without this whole file; re-exported here, where the
    recipes that make them are, and where mirror-audit looks. */
 export { DISHES, dishFor } from './dishes.js';
-import { dishFor as _dishFor } from './dishes.js';   /* v2.3.3106: calcDisplayHeal */
+import { dishFor as _dishFor } from './dishes.js';   /* v2.3.3115: calcDisplayHeal */
 
 /* §18 Fish Healing — fish must be COOKED via minigame to become edible */
 /* Raw fish → cooking minigame → cooked fish (heals) or burnt fish (wasted) */
@@ -5719,7 +5719,7 @@ export function calcDisplayDps(rpg, wpn) {
    both key shapes resolve the same tier).  The player_state echo
    after eat_request is the truth; this is prediction/labeling only. */
 export function calcDisplayHeal(rpg, invKey) {
-  /* v2.3.3106: a dish eaten at once (the Garden Stew) heals its own amount,
+  /* v2.3.3115: a dish eaten at once (the Garden Stew) heals its own amount,
      the worker's cooking.js _applyDish -- plus the same Recovery. */
   var _dish = _dishFor(invKey);
   if (_dish && _dish.buff === 'heal') return Math.ceil(_dish.power) + getRecoveryFlat(rpg);

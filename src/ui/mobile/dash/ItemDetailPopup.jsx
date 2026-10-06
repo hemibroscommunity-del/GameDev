@@ -187,8 +187,8 @@ function resolveTarget(target) {
       info = capeIsWorn() ? 'Worn — a contest prize' : 'A contest prize, in your bag';
     }
     else if (isCookedFish) info = '+' + toDisplayDamage(calcDisplayHeal(SR && SR.rpg, key)) + ' HP when eaten';   /* v2.3.2520: display scale */
-    /* v2.3.3105: what eating or drinking it does, and the one-of-each rule.
-       v2.3.3106: a dish eaten at once (the Garden Stew) is a heal, said the
+    /* v2.3.3114: what eating or drinking it does, and the one-of-each rule.
+       v2.3.3115: a dish eaten at once (the Garden Stew) is a heal, said the
        cooked fish's way. */
     else if (dish && dish.buff === 'heal') info = '+' + toDisplayDamage(calcDisplayHeal(SR && SR.rpg, key)) + ' HP when eaten';
     else if (dish) info = dish.desc + (dish.slot === 'meal' ? ' · replaces your meal' : ' · replaces your brew');

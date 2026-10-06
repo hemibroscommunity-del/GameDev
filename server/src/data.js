@@ -462,7 +462,7 @@ export const COOKING_RECIPES = [
       { ingredients: { herb_firebloom: 3 },                          tier: 3, cookLvl: 10, makes: 'whetstone' },
       { ingredients: { herb_rock_vine: 2 },                          tier: 3, cookLvl: 5,  makes: 'manaShard' },
       { ingredients: { herb_cloudpetal: 2 },                         tier: 3, cookLvl: 5,  makes: 'swiftDraught' },
-      /* v2.3.3106: the two food crops' dishes (FARM.CROPS potato, pumpkin). */
+      /* v2.3.3115: the two food crops' dishes (FARM.CROPS potato, pumpkin). */
       { ingredients: { crop_carrot: 2, crop_potato: 1 },             tier: 2, cookLvl: 4,  makes: 'meal_garden_stew' },
       { ingredients: { crop_pumpkin: 1, crop_potato: 2 },            tier: 3, cookLvl: 8,  makes: 'meal_pumpkin_pie' },
     ];
@@ -491,7 +491,7 @@ export const DISHES = {
       meal_herb_bread:    { slot: 'meal', buff: 'rest',   power: 2,    duration: 1800 },
       meal_root_stew:     { slot: 'meal', buff: 'resist', power: 0.05, duration: 1800 },
       brew_firebloom_tea: { slot: 'brew', buff: 'damage', power: 0.20, duration: 1800 },
-      /* v2.3.3106: the Garden Stew is eaten like a cooked fish -- 150 HP at
+      /* v2.3.3115: the Garden Stew is eaten like a cooked fish -- 150 HP at
          once (slot 'now': no slot, it replaces nothing), refused in an arena
          match like every heal.  The Pumpkin Pie is a meal: +10% of the combat
          XP a fight pays (prog3.js _prog3AwardXp), never a quest's flat XP. */

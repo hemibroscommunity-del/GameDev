@@ -385,7 +385,7 @@ P._buffs = {};
   P._buffs = {};
 }
 
-// ── 10. v2.3.3106: the Garden Stew -- 150 HP at once, no slot ──
+// ── 10. v2.3.3115: the Garden Stew -- 150 HP at once, no slot ──
 {
   P._buffs = {};
   P.lifeSkills.cooking = { level: 3, xp: 0 };
@@ -417,7 +417,7 @@ P._buffs = {};
   check('...and it is eaten, never drunk', P.inventory.meal_garden_stew === 1, P.inventory.meal_garden_stew);
 }
 
-// ── 11. v2.3.3106: the Pumpkin Pie -- +10% combat XP, a meal ──
+// ── 11. v2.3.3115: the Pumpkin Pie -- +10% combat XP, a meal ──
 {
   P._buffs = {};
   P.inventory.crop_pumpkin = 1; P.inventory.crop_potato = 2;
