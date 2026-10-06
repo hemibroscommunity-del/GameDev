@@ -55,6 +55,8 @@ import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the ques
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
+import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and its music */
+import { BT_AUDIO } from '@/data/gameDisplay.js';
 
 export const WHEEL_BOX = 132;      /* CSS px a side */
 export const WHEEL_WINDOW = 3200;  /* game px across the box: about three zones */
@@ -369,6 +371,8 @@ export class WheelMinimap {
     try { noteWheelLand(here ? here.region : null, w ? w.title : null, S); } catch (e) { /* never breaks the frame */ }
     /* v2.3.3058: and No man's land's banner and lines (src/game/noMansLand.js) */
     try { noteNoMansLand(S); } catch (e) { /* never breaks the frame */ }
+    /* v2.3.3064: ...and its music (game/wheelMusic.js) */
+    try { noteWheelMusic(here, S, BT_AUDIO); } catch (e) { /* sound only */ }
 
     /* the box's place on the page, for the button that opens the world map */
     try {

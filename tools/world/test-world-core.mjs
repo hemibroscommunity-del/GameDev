@@ -3299,5 +3299,66 @@ console.log('the gate signposts (v2.3.3062)');
     SG.gateOf(0, -10) === 'north' && SG.gateOf(10, 2) === 'east' && SG.gateOf(-3, 9) === 'south' && SG.gateOf(-9, 3) === 'west');
 }
 
+/* ── v2.3.3064: the lands' music (src/game/wheelMusic.js) ──
+   The owner's "Continue building recommended": each land of the Wheel its own
+   music as you cross into it, the town's on the safe ground, with a lean toward
+   the land so a fight on the line does not flip it. */
+console.log('the lands\' music (v2.3.3064)');
+{
+  const fs = await import('node:fs');
+  const M = await import('../../src/game/wheelMusic.js');
+  const { WHEEL_LANDS, WHEEL_LAND_LOOK } = await import('../../src/data/wheelLands.js');
+  ok('the safe ground plays the town\'s, a land is its own id, the sea and anything unknown nothing',
+    M.wheelMusicKey('town') === 'town' && M.wheelMusicKey('commons') === 'town' && WHEEL_LANDS.every((l) => M.wheelMusicKey(l) === l)
+      && Object.keys(WHEEL_LAND_LOOK).every((k) => !!M.wheelMusicKey(k))
+      && M.wheelMusicKey('sea') === null && M.wheelMusicKey(null) === null && M.wheelMusicKey('__proto__') === null && M.wheelMusicKey('toString') === null);
+  const fakeAudio = (cur) => ({ wheelLandMusic: true, _currentZoneAmbient: cur, calls: [],
+    startZoneAmbient(k) { this.calls.push(k); this._currentZoneAmbient = k; } });
+  const S = { currentZone: 'wheel' };
+  const at = (region, fresh = true) => ({ region, fresh });
+  const step = (A, region, t, fresh) => M.noteWheelMusic(at(region, fresh), S, A, t);
+  M.resetWheelMusic();
+  const A = fakeAudio('town');
+  ok('arriving, an answer for another cell decides nothing (the worker lingers after you leave: its last answer can be where you died)',
+    step(A, 'frost', 1000, false) === null && A.calls.length === 0);
+  ok('...the first answer for where you stand decides at once', step(A, 'frost', 1010) === 'frost' && A.calls.join() === 'frost');
+  step(A, 'commons', 2000);
+  ok('a step back onto the commons keeps the land\'s music for MUSIC_HOME_MS', step(A, 'commons', 2000 + M.MUSIC_HOME_MS - 1) === null && A._currentZoneAmbient === 'frost');
+  step(A, 'frost', 7000);
+  step(A, 'commons', 8000);
+  ok('...a step back into the land starts that count again', step(A, 'commons', 8000 + M.MUSIC_HOME_MS - 1) === null);
+  ok('...and MUSIC_HOME_MS on the safe ground brings the town\'s back', step(A, 'commons', 8000 + M.MUSIC_HOME_MS) === 'town');
+  const t1 = 50000;
+  step(A, 'ember', t1);
+  ok('into a land: its music after MUSIC_INTO_LAND_MS, not before', step(A, 'ember', t1 + M.MUSIC_INTO_LAND_MS - 1) === null
+    && step(A, 'ember', t1 + M.MUSIC_INTO_LAND_MS) === 'ember' && M.MUSIC_INTO_LAND_MS < M.MUSIC_HOME_MS);
+  ok('...a visit once settled goes on an answer a cell behind (as you walk)', step(A, 'sky', t1 + 5000, false) === null
+    && step(A, 'sky', t1 + 5000 + M.MUSIC_INTO_LAND_MS, false) === 'sky');
+  ok('the sea keeps what plays', step(A, 'sea', t1 + 90000) === null && A._currentZoneAmbient === 'sky');
+  A._currentZoneAmbient = 'town';
+  ok('anything else changing the music while you stand in a land is put right on the next frame', step(A, 'sky', t1 + 100000) === 'sky');
+  ok('outside the Wheel nothing, and the next arrival decides at once',
+    M.noteWheelMusic(at('frost'), { currentZone: 'town' }, A, t1 + 100001) === null && step(A, 'frost', t1 + 100002) === 'frost');
+  M.resetWheelMusic();
+  const off = fakeAudio('wheel');
+  off.wheelLandMusic = false;
+  ok('`?nolandmusic` (BT_AUDIO.wheelLandMusic false): it does nothing', step(off, 'frost', 1) === null && off.calls.length === 0);
+  M.resetWheelMusic();
+  const gd = fs.readFileSync(new URL('../../src/data/gameDisplay.js', import.meta.url), 'utf8');
+  const music = (k) => (new RegExp(`\\n    ${k}: '/audio/music/([a-z-]+\\.mp3)`).exec(gd) || [])[1] || null;
+  ok(`the four lands the owner made music for play it -- frost ${music('frost')}, ember ${music('ember')}, sky ${music('sky')}, verdant ${music('verdant')} (the meadow's ${music('meadow')}) -- and Brotown ${music('town')}`,
+    music('frost') === 'frost.mp3' && music('ember') === 'fire.mp3' && music('sky') === 'desert.mp3' && music('verdant') === 'forest.mp3'
+      && music('verdant') === music('meadow') && music('town') === 'village.mp3');
+  ok('...the other four have no track of their own yet, so the game\'s theme plays there',
+    ['hollows', 'thunder', 'tidal', 'mist'].every((k) => music(k) === null));
+  ok('the Wheel itself asks for nothing while the lands choose, the address can turn it off, and a zone\'s ambience is let go when you leave it',
+    /if \(zoneId === 'wheel' && this\.wheelLandMusic\) return;/.test(gd) && /wheelLandMusic: !\(typeof location/.test(gd) && /nolandmusic/.test(gd)
+      && /delete this\._samples\[_prevAmb\]/.test(gd));
+  const mini = fs.readFileSync(new URL('../../src/rendering/systems/wheelMinimap.js', import.meta.url), 'utf8');
+  const trial = fs.readFileSync(new URL('../../src/game/wheelTrial.js', import.meta.url), 'utf8');
+  ok('the minimap\'s frame asks, with where you are, beside the banner; wheelHere says whether its answer is for the cell you are in',
+    /noteWheelMusic\(here, S, BT_AUDIO\)/.test(mini) && /fresh: _here\.x === cx && _here\.y === cy/.test(trial));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

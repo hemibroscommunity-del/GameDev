@@ -1256,7 +1256,29 @@ remnant to migrate server-side, not a mode to preserve.
     drawn by effectsRenderer); no levels (every land starts at 1); the eight
     icons drawn down to 64 px behind the Wheel's loading screen and let go on
     leaving; `mp-signposts`, test-world-core "the gate signposts":
-    docs/specs/gate-signposts.md.)
+    docs/specs/gate-signposts.md.
+  - Since v2.3.3064 EACH LAND HAS ITS OWN MUSIC -- the owner, on the
+    recommendations for finding your way round: "Continue building
+    recommended":
+    - the Wheel is one zone, so one track played everywhere in it: the town's
+      after a login (the loading screen's hand-over asks for it once you are
+      in), the game's theme after a death, a dungeon or the farm;
+    - now `src/game/wheelMusic.js` picks it by the land under you
+      (`wheelHere(...).region`, asked by the minimap's frame beside the land
+      banner): Brotown and the commons the town's, frost/ember/sky their own,
+      the Verdant Wilds forest.mp3 (`ZONE_MUSIC.verdant`, the meadow's url),
+      the other four the theme until a track is put under their id;
+    - into a land after 1.2 s, home only after 8 s on the safe ground (a fight
+      on the line steps back and forth), a visit's first choice at once on a
+      `fresh` answer; `startZoneAmbient('wheel')` keeps what plays;
+    - the dunes' wind is let go on leaving (it was kept for the session);
+      `_zoneAsks` keeps the last 16 asks for `window.__btLandMusic`;
+      `?nolandmusic` is the Wheel as it was; world.mp3 NOT used for the four
+      (~25 MB more, the owner's call);
+    - window.BT_AUDIO IS set -- BroTown's `Object.assign(globalThis, ...)` of
+      the data index -- despite the effectsRenderer comment saying it never is;
+    - test-world-core "the lands' music", `mp-landmusic`:
+      docs/specs/wheel-land-music.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
