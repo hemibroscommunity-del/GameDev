@@ -223,7 +223,7 @@ export function createDefaultCompStats() {
   };
 }
 
-/* v2.3.3081: what a life skill's first level costs, the curve's base -- 1000,
+/* v2.3.3090: what a life skill's first level costs, the curve's base -- 1000,
    was 500: asked "Should life-skill XP slow down like combat XP?", the owner
    said "Yes", so every level costs twice the XP and life skills level half as
    fast, every action's pay and popup unchanged.  The worker's

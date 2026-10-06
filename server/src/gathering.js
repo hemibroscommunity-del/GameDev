@@ -161,7 +161,7 @@ export function gatherReqLvl(nodeType, tierLvl) {
   return Math.max(1, Math.floor(Number(need) || 1));
 }
 
-/* ═══ v2.3.3081: LIFE SKILLS LEVEL HALF AS FAST, LIKE COMBAT ═══
+/* ═══ v2.3.3090: LIFE SKILLS LEVEL HALF AS FAST, LIKE COMBAT ═══
  * Asked "Should life-skill XP slow down like combat XP?" (combat levels came
  * half as fast in v2.3.3054), the owner said "Yes".  Every level of every life
  * skill now costs TWICE the XP it did: the curve's base 500 -> 1000, its
@@ -469,7 +469,7 @@ export const gatheringMethods = {
 
   // lifeSkill level-up threshold curve.  Mirrors LIFE_SKILL_XP on the
   // client (lifeSkills.js): ceil(LIFE_SKILL_XP_BASE * 1.08^(level - 1)) --
-  // 1000 since v2.3.3081 (was 500: the owner's "Yes" to slower life skills).
+  // 1000 since v2.3.3090 (was 500: the owner's "Yes" to slower life skills).
   _lifeSkillXpThreshold(level) {
     return Math.ceil(LIFE_SKILL_XP_BASE * Math.pow(1.08, (level || 1) - 1));
   },

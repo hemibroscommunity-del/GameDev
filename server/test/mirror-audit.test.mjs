@@ -42,9 +42,9 @@ import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOO
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
 import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */ } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
 import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
-import { LIFE_SKILL_XP_BASE as SRV_LIFE_SKILL_XP_BASE } from '../src/gathering.js'; /* v2.3.3081 */
-import { LIFE_SKILL_XP_BASE as CLIENT_LIFE_SKILL_XP_BASE, skillXpRequired as clientSkillXpRequired } from '../../src/data/items.js'; /* v2.3.3081 */
-import { LIFE_SKILL_XP as CLIENT_LIFE_SKILL_XP } from '../../src/data/lifeSkills.js'; /* v2.3.3081 */
+import { LIFE_SKILL_XP_BASE as SRV_LIFE_SKILL_XP_BASE } from '../src/gathering.js'; /* v2.3.3090 */
+import { LIFE_SKILL_XP_BASE as CLIENT_LIFE_SKILL_XP_BASE, skillXpRequired as clientSkillXpRequired } from '../../src/data/items.js'; /* v2.3.3090 */
+import { LIFE_SKILL_XP as CLIENT_LIFE_SKILL_XP } from '../../src/data/lifeSkills.js'; /* v2.3.3090 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058 */
 import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
@@ -1495,7 +1495,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('life-skill levels: a stored 0 heals to 1 (XP kept), a real level is left alone', old.mining.level === 1 && old.mining.xp === 300 && old.fishing.level === 3, { mining: old.mining, fishing: old.fishing });
 }
 
-// ── v2.3.3081: LIFE SKILLS LEVEL HALF AS FAST, on both sides ──
+// ── v2.3.3090: LIFE SKILLS LEVEL HALF AS FAST, on both sides ──
 // The owner's "Yes" to slower life skills doubled what every level costs (the
 // curve's base 500 -> 1000).  The worker's _lifeSkillXpThreshold decides the
 // level; the client's two copies of the curve draw the bar (skillXpRequired,

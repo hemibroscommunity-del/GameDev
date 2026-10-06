@@ -1,4 +1,4 @@
-# Levels come half as fast, and monsters grow with their level (v2.3.3054, v2.3.3055, life skills v2.3.3081)
+# Levels come half as fast, and monsters grow with their level (v2.3.3054, v2.3.3055, life skills v2.3.3090)
 
 From the owner's notes of 2026-10-05:
 
@@ -30,7 +30,7 @@ also too quick").
   purpose ("Lifeskills xp is far too slow", twice: v2.3.1435, v2.3.1765).
   Asked afterwards, they chose to slow them too: see the next section.
 
-## Life skills come half as fast too (v2.3.3081)
+## Life skills come half as fast too (v2.3.3090)
 
 Asked *"Should life-skill XP slow down like combat XP?"*, the owner said
 *"Yes"*.
@@ -135,7 +135,7 @@ pays half what it did, as asked.
 
 ## Tests
 
-- Life skills (v2.3.3081):
+- Life skills (v2.3.3090):
   - `mirror-audit`, "life-skill curve" (3 checks);
   - `lifeskills-economy` and `smelting`, moved to the new prices (1,000 XP
     for a first level; 1,600 smelting XP is level 2 now, not 3);

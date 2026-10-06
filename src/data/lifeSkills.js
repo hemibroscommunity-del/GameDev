@@ -5,7 +5,7 @@ import { flavorName, flavorSpotName } from './elements.js';
 import { ZONE_RESOURCES, LIFE_SKILL_XP_BASE } from './items.js';
 
 /* ═══ LIFE SKILLS — §18 ═══ */
-/* v2.3.3081: on LIFE_SKILL_XP_BASE (items.js), 1000 -- twice the old 500 */
+/* v2.3.3090: on LIFE_SKILL_XP_BASE (items.js), 1000 -- twice the old 500 */
 export const LIFE_SKILL_XP = (level) => Math.ceil(LIFE_SKILL_XP_BASE * Math.pow(1.08, level - 1));
 export const LIFE_SKILLS = ['woodcutting', 'fishing', 'mining', 'farming', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'trapping'];
 
