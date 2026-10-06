@@ -590,6 +590,24 @@ remnant to migrate server-side, not a mode to preserve.
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
     longer, with "Max MP" and "Specials on a full bar" lines
     (`specialsOnABar`); `statsim` suite §7, `mp-statdemo`.
+  - Since v2.3.3050-v2.3.3053 THE HERO SHEET, from the owner's notes of
+    2026-10-05 (docs/specs/hero-sheet-pills.md):
+    - the spend window's MAX HP / Stamina / Max Mana row reads the POOL'S new
+      total as its bar shows it, not the points' raw bonus ("48hp for 6
+      points" when the bar became 37): `statPreview.js` `POOL_STAT`,
+      `pooled`, `poolShown`, shared with the scene; `statsim` §9;
+    - the points grid FOLLOWS THE HELD WEAPON: a change of weapon brings it
+      back (`heldCatRef`), the window's tabs aim only the window;
+    - the per-weapon and character point bubbles BREATHE while points wait
+      (game.css `bt-pts-bubble`, transform and opacity only);
+    - the Equipment tab's stats are PILLS, the owner's mockup: picture, name,
+      value; OFFENSE gold with DPS beside its heading, PLAYER blue, the
+      vitals as filled pills -- fourteen stats where there were seven, each
+      read by the Points tab's own reader (`heroStatPills.js`); upright, the
+      left column is the figure, the gear and PLAYER, the right the vitals and
+      OFFENSE; the tab SCROLLS again with the bottom fade on (fourteen
+      readable pills cannot fit the ~150 px window); the eighth LANTERN-SLATE
+      exception; `mp-charfit` (three phone sizes), `mp-prog3`.
   - Since v2.3.3009 the Wheel's TOP BAR says where you are -- the owner:
     "Put the 'brotown safe' and other location indicators in place of the
     'the wheel lvl 1-2' on the top bar" -- the land over its stage and

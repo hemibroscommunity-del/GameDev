@@ -88,32 +88,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
      clipped) while letting the layout be whatever the owner last drew. */
   await H.openDest(P, 'Character');
   await P.page.waitForTimeout(700);
+  /* v2.3.3053: the stats are PILLS now (owner mockup) -- an icon, the name,
+     the value -- found by their data-pill key; the seven became fourteen. */
   const armourCell = await P.page.evaluate(() => {
-    /* A stat row is a div of exactly two spans: label, then value. */
-    const rows = [...document.querySelectorAll('div')].filter((d) =>
-      d.children.length === 2 && d.children[0].tagName === 'SPAN' && d.children[1].tagName === 'SPAN');
-    const row = rows.find((d) => (d.children[0].textContent || '').trim() === 'Armor');
-    if (!row) return { err: 'no ARMOR row on the character sheet',
-      sawRows: rows.map((d) => (d.children[0].textContent || '').trim()).slice(0, 20) };
-    /* row -> the group's list wrapper -> the group column -> the two-column
-       block that holds Offense and Defense together. */
-    const block = row.parentElement.parentElement.parentElement;
-    const statRows = rows.filter((d) => block.contains(d));
-    const over = statRows
-      .flatMap((d) => [...d.children])
-      .filter((t) => t.scrollWidth > t.clientWidth + 1)
+    const row = document.querySelector('[data-pill="armor"]');
+    if (!row) return { err: 'no ARMOR pill on the character sheet',
+      saw: [...document.querySelectorAll('[data-pill]')].map((d) => d.getAttribute('data-pill')) };
+    const pills = [...document.querySelectorAll('[data-pill]')];
+    const over = pills
+      .flatMap((d) => [...d.querySelectorAll('span')])
+      .filter((t) => !t.children.length && t.scrollWidth > t.clientWidth + 1)
       .map((t) => t.textContent.trim());
+    const groups = [...document.querySelectorAll('[data-pillgroup="offense"], [data-pillgroup="player"]')];
     return {
-      value: (row.children[1].textContent || '').trim(),
-      cells: statRows.length,
-      gridOverflowX: block.scrollWidth - block.clientWidth,
+      value: (row.lastElementChild && row.lastElementChild.textContent || '').trim(),
+      cells: pills.length,
+      gridOverflowX: Math.max(0, ...groups.map((g) => g.scrollWidth - g.clientWidth)),
       clipped: over,
     };
   });
-  rec.ok('the character sheet shows an ARMOR row with a real percentage',
+  rec.ok('the character sheet shows an ARMOR pill with a real percentage',
     !armourCell.err && /^\d+(\.\d)?%$/.test(String(armourCell.value || '')), armourCell);
-  rec.ok('...and all seven stats still fit their column, uncropped',
-    !armourCell.err && armourCell.cells === 7
+  rec.ok('...and all fourteen stat pills (DPS + 7 + 6) fit their column, uncropped',
+    !armourCell.err && armourCell.cells === 14
     && armourCell.gridOverflowX <= 1 && armourCell.clipped.length === 0, armourCell);
 
   /* ── the Build tab renders the allocation screen ──
