@@ -5,7 +5,8 @@
  */
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
-import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
@@ -286,7 +287,8 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAULT_SKIN_TARGET, bodyArtSeg, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings; v2.3.2856: + the split bake (the cook's drawings on a layer) */
 import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
-import { getGearFrame, packTrimmed, registerGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
+import { getGearFrame, packTrimmed, registerGearSource, unregisterGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips; v2.3.3074: + its release */
+import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074: a canvas-made texture let go of for good (TRAPS §139) */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
@@ -497,6 +499,7 @@ import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask */
+import { setStandInMaker, ensureStandIn, standInStarted, standInReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
@@ -1513,6 +1516,11 @@ export function ensureSnowballBurstTex() {
 /* v2.3.2844: ONE sheet now -- the snowman's ice-burst plume is retired (see
    the tombstone where IMPACT_TEX was), so only the thrown ball's burst is left
    to hand back.  The name stays: it is the frost zone's exit hook. */
+/* v2.3.3071 QA (mp-burstfree): load and hand back the frost impact art on
+   demand, to free it in the middle of a burst as leaving the frost land can */
+if (typeof window !== 'undefined') {
+  window.__btFrostImpactTex = { ensure: () => ensureSnowballBurstTex(), free: () => freeFrostImpactTex() };
+}
 export async function freeFrostImpactTex() {
   const { Assets } = await import('pixi.js');
   const drop = (arr) => {
@@ -2006,20 +2014,91 @@ const DMG_BMP_FONT = 'bt-dmg-digits';
    its 14/100 ratio. */
 const DMG_BMP_BAKE_PX = 128;
 let _dmgBmpReady = false;
-try {
+/* v2.3.3088: the install is a function, run again for a rebuilt renderer once
+   the pages' canvases have been let go of (prewarmDmgFontPipe, gpuOnly.js). */
+const DMG_BMP_CHARS = [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'];
+function _installDmgFont(family) {
   BitmapFont.install({
     name: DMG_BMP_FONT,
     style: {
-      fontFamily: 'Source Sans 3, sans-serif',
+      fontFamily: family || 'Source Sans 3, sans-serif',
       fontSize: DMG_BMP_BAKE_PX,
       fontWeight: '800',
       fill: '#ffffff',
       stroke: { color: '#000000', width: 14 * DMG_BMP_BAKE_PX / 100 },
     },
-    chars: [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'],
+    chars: DMG_BMP_CHARS,
   });
+  /* BitmapFont.install hands nothing back; the font is in Pixi's cache */
+  return Cache.has(DMG_BMP_FONT + '-bitmap') ? Cache.get(DMG_BMP_FONT + '-bitmap') : null;
+}
+/* v2.3.3088: WHICH FACE THE ATLAS WAS DRAWN IN.  The install runs as this
+   module loads -- before the page's web fonts have arrived (index.html loads
+   them display=swap), so the glyphs are normally the browser's own sans-serif,
+   the next family in the list.  A rebuilt renderer's install, later, could
+   find Source Sans 3 there and draw other glyphs.  So the first install's
+   advance widths are kept as its face's fingerprint, and a re-install that
+   does not match them is made again in the generic face (_reinstallDmgFont). */
+let _dmgFontSig = null;
+function _dmgSig(font) {
+  const c = font && font.chars;
+  if (!c) return null;
+  let out = '';
+  for (const k of Object.keys(c).sort()) out += k + ':' + c[k].xAdvance + ',';
+  return out;
+}
+try {
+  _dmgFontSig = _dmgSig(_installDmgFont());
   _dmgBmpReady = true;
 } catch (e) { /* fallback: classic Text path below */ }
+if (typeof window !== 'undefined') {
+  /* QA (mp-gpuonly): the font's face fingerprint, the first install's and
+     now's, and its pages (Textures) */
+  window.__btDmgFont = () => {
+    const f = Cache.has(DMG_BMP_FONT + '-bitmap') ? Cache.get(DMG_BMP_FONT + '-bitmap') : null;
+    return { first: _dmgFontSig, now: _dmgSig(f), pages: f && f.pages ? f.pages.map((p) => p.texture) : [] };
+  };
+}
+function _reinstallDmgFont() {
+  const key = DMG_BMP_FONT + '-bitmap';
+  for (const fam of ['Source Sans 3, sans-serif', 'sans-serif']) {
+    if (Cache.has(key)) Cache.remove(key);
+    const font = _installDmgFont(fam);
+    _dmgLog('attempt ' + fam + (_dmgSig(font) === _dmgFontSig ? ' matches' : ' differs'), null);
+    if (!_dmgFontSig || _dmgSig(font) === _dmgFontSig) return true;
+    /* drawn in another face: never shown, let go of, and the next tried */
+    try { font.destroy(); } catch (e) { /* best-effort */ }
+  }
+  /* neither face draws what the first install drew: the page's own, as the
+     first install would have drawn it now */
+  if (Cache.has(key)) Cache.remove(key);
+  _installDmgFont();
+  return false;
+}
+/* ═══ v2.3.3088: THE FONT'S PAGES ON THE GRAPHICS CHIP ONLY ═══
+   The owner's yes to "character art kept only on the graphics chip".  The
+   eleven 512 x 512 pages (11 MB) are drawn once, at install, and never again:
+   every number the atlas draws is made of the characters it was installed
+   with (DMG_BMP_RE), so Pixi's ensureCharacters finds nothing to add.  Once
+   the prewarm below has put them on the GPU their canvases are emptied
+   (gpuOnly.js).  A renderer that has never drawn them -- a black screen's
+   rebuild -- would upload the empty canvases, so for one the font is
+   installed afresh, drawn, and let go of again: _dmgPagesGone names the
+   renderer that has them (initPixiRenderer asks dmgFontNeedsRebuild).  The
+   warm-up runs more than once for one renderer (the loading screen's); only
+   another renderer re-installs. */
+let _dmgPagesGone = null;   /* the renderer the pages were let go of on, once they were */
+export function dmgFontNeedsRebuild(renderer) { return _dmgBmpReady && !!_dmgPagesGone && _dmgPagesGone !== renderer; }
+function _letGoOfDmgPages(renderer) {
+  const font = Cache.has(DMG_BMP_FONT + '-bitmap') ? Cache.get(DMG_BMP_FONT + '-bitmap') : null;
+  const pages = font && font.pages;
+  if (!pages || !pages.length) return;
+  /* any page let go of means another renderer needs the font afresh */
+  for (const pg of pages) {
+    if (keepOnGpuOnly(renderer, pg && pg.texture && pg.texture.source)) _dmgPagesGone = renderer;
+  }
+  _dmgLog('let go', renderer);
+}
 /* Plain popups the atlas can render: digits/letters/space and + - . ! */
 const DMG_BMP_RE = /^[0-9A-Za-z+\-. !]+$/;
 
@@ -2035,9 +2114,25 @@ const DMG_BMP_RE = /^[0-9A-Za-z+\-. !]+$/;
    intro overlay is still up, so combat never pays (or crashes on)
    that init.  Any failure here permanently downgrades popups to the
    classic Text path — same visuals, pre-1357 cost. */
+const _dmgLog = (what, renderer) => {   /* QA: mp-gpuonly reads it, when it asked */
+  try { if (typeof window !== 'undefined' && Array.isArray(window.__btDmgFontLog)) window.__btDmgFontLog.push({ what, uid: renderer ? renderer.uid : null, gone: _dmgPagesGone ? _dmgPagesGone.uid : null, t: Date.now() }); } catch (e) { /* QA only */ }
+};
 export function prewarmDmgFontPipe(renderer) {
+  _dmgLog('prewarm', renderer);
   if (!renderer) return;
   if (_dmgBmpReady) {
+    /* v2.3.3088: a rebuilt renderer gets the font afresh (its pages' canvases
+       were let go of once the first renderer had them).  The old font is not
+       destroyed: a number made before the rebuild may still point at its pages,
+       and their canvases are already empty.  Removed from the cache first, or
+       Pixi warns that the name is taken. */
+    if (dmgFontNeedsRebuild(renderer)) {
+      _dmgLog('reinstall', renderer);
+      try {
+        _reinstallDmgFont();
+        _dmgPagesGone = null;
+      } catch (e) { _dmgBmpReady = false; return; }
+    }
     let bt = null;
     try {
       bt = new BitmapText({
@@ -2050,6 +2145,8 @@ export function prewarmDmgFontPipe(renderer) {
       _dmgBmpReady = false; /* pipe is broken here — never touch it in combat */
     }
     if (bt) { try { bt.destroy(); } catch (e) { /* best-effort */ } }
+    /* v2.3.3088: on the GPU now -- its pages' canvases let go of (above) */
+    if (_dmgBmpReady) { try { _letGoOfDmgPages(renderer); } catch (e) { /* the canvases simply stay */ } }
   }
   /* v2.3.1363: also warm the CLASSIC Text popup pipe — owner still felt
      a hitch on the first hit taken.  Early hits mint classic-Text popups
@@ -2199,7 +2296,7 @@ function _twinWouldDiffer(art, dir) {
   return ['pants', 'tattoo', 'tattooFace', 'tattooArm']
     .some((k) => artHasInk(a[k]) && !artIsSymmetric(a[k]));
 }
-function _trimBakeCache(cache) {
+function _trimBakeCache(cache, owner) {
   while (cache.size > REMOTE_BAKE_CACHE_MAX) {
     const k0 = cache.keys().next().value;
     const old = cache.get(k0);
@@ -2211,7 +2308,9 @@ function _trimBakeCache(cache) {
     try {
       const src = old && old[0] && old[0].source;
       for (let i = 0; i < old.length; i++) { try { old[i].destroy(false); } catch (e) { /* already gone */ } }
-      if (src && !src.destroyed) src.destroy();
+      /* v2.3.3074: the whole release -- src.destroy() alone left the canvas in
+         Pixi's Cache for good (TRAPS §139) -- and off the owner's list */
+      if (src) { if (owner) owner.delete(src); releaseCanvasSource(src); }
     } catch (e) { /* a cache entry that will not free is still evicted */ }
   }
 }
@@ -2340,6 +2439,34 @@ function applySquash(sp, sq, rot = 0) {
 
 export class EffectsRenderer {
   constructor(layers) {
+    /* ═══ v2.3.3074: WHAT THIS RENDERER BAKES, AND WHAT IT LISTENS TO ═══
+       A black screen's recovery builds a whole new renderer
+       (BroTown _rebuildRenderer) and used to leave this one behind with
+       everything it had baked: its eleven skin / drawing listeners kept it
+       alive (and kept re-baking for it on every change), the bakes stayed in
+       Pixi's Cache under their canvases, and through _captureRenderer it held
+       the OLD WebGL renderer and the old game canvas too -- measured ~90 MB a
+       rebuild, 303 MB of cache after three (mp-bakeleak, TRAPS §139).
+       `_bakes` is every canvas-backed source this instance made (each frame
+       array goes through _own); `_offs` the listeners' unsubscribes.
+       destroy() lets go of both. */
+    this._bakes = new Set();
+    this._offs = [];
+    this._destroyed = false;
+    this._layers = layers;   /* v2.3.3074: walked by _letGo, so no sprite keeps a released source */
+    /* v2.3.3074 QA (mp-bakeleak): how many bakes this renderer owns, and
+       whether any strip it DRAWS from points at a released source -- what a
+       release of the wrong (new) array would look like (TRAPS §49).  Set once
+       per renderer, not per frame; a rebuild's new one replaces it. */
+    if (typeof window !== 'undefined') {
+      window.__btFxBakes = () => {
+        let strips = 0, deadInUse = 0;
+        const look = (a) => { const src = a && a[0] && a[0].source; if (!src) return; strips++; if (src.destroyed) deadInUse++; };
+        for (const rec of this._bodyStrips || []) { if (rec.target) { look(rec.target[rec.dir]); look(rec.target[rec.dir + '|m']); } }
+        for (const k of ['_chopSkinFrames', '_chopLeglessSkinFrames', '_cookFrames', '_cookLeglessFrames', '_fireFrames']) look(this[k]);
+        return { owned: this._bakes.size, strips, deadInUse, destroyed: this._destroyed };
+      };
+    }
     this.particleLayer = layers.particles;
     this.dmgLayer = layers.damageNumbers;
     this.atmosphereLayer = layers.atmosphere;
@@ -2755,6 +2882,9 @@ export class EffectsRenderer {
        0..11 aliased to the first played frame, so every index the peer row
        and the local fallback use is still valid. */
     const _cropChop = (tex, url, key, arr) => {
+      /* v2.3.3074: let go of while it loaded -- a rebuild's new renderer
+         crops its own; only the full image is unloaded, as below */
+      if (this._destroyed) { try { Assets.unload(url); } catch (e) { /* gone */ } return; }
       const FW = 240, FH = 220, FROM = 12, COUNT = 12;
       const img = tex.source && tex.source.resource;
       const n = Math.max(1, Math.round(tex.width / FW));
@@ -2771,14 +2901,11 @@ export class EffectsRenderer {
       /* v2.3.2775: the peer copy is cropped like every stand-in bake
          (_sliceStandIn); the 24-slot aliasing below is unchanged.  _chopSrc
          stays whole -- it is what a skin change re-bakes from. */
-      const played = _sliceStandIn(peer, FW, FH, COUNT, 'chopPeer|' + key);
+      const played = this._own(_sliceStandIn(peer, FW, FH, COUNT, 'chopPeer|' + key));   /* v2.3.3074: owned */
       for (let i = 0; i < n; i++) arr.push(played[Math.max(0, i - FROM)]);
       try { Assets.unload(url); } catch (e) { /* the crops are what draw now */ }
     };
     const _CHOP_URL = '/sprites/skills/chop-strip.webp?v=2.3.1469';
-    const _chopBody = _fxLoad(_CHOP_URL).then((tex) => {
-      _cropChop(tex, _CHOP_URL, 'body', this._chopFrames);   /* v2.3.2500 / v2.3.2761 */
-    }).catch((err) => console.warn('[chop-strip] load failed', err));
     /* v2.3.1468: legs-erased lumberjack, swapped in while leg armour is
        equipped — the cook-strip-legless pattern (v2.3.1114).  The
        regenerated greaves art's stances don't pixel-match the body's,
@@ -2787,9 +2914,22 @@ export class EffectsRenderer {
        (owner).  With the legless body the armor legs ARE the legs. */
     this._chopLeglessFrames = [];
     const _CHOP_LL_URL = '/sprites/skills/chop-strip-legless.webp?v=2.3.1469';
-    const _chopLegless = _fxLoad(_CHOP_LL_URL).then((tex) => {
-      _cropChop(tex, _CHOP_LL_URL, 'legless', this._chopLeglessFrames);   /* v2.3.2500 / v2.3.2761 */
-    }).catch((err) => console.warn('[chop-strip-legless] load failed', err));
+    /* ═══ v2.3.3077: MADE WHEN FIRST WANTED, NOT ON THE LOADING SCREEN ═══
+       The owner's yes to the memory plan's "gathering poses built the first
+       time you gather".  Both strips load, crop (_cropChop) and take your
+       skin (_bakeChopStrips) the first time a tree is in reach with the axe,
+       a chop starts, or another player near you chops -- rendering/standIns.js
+       and _standInTriggers.  Until then nothing of the lumberjack is held, and
+       a chop never hides the body for a figure that is not there yet
+       (entityRenderer _chopHide). */
+    this._makeChop = () => {
+      this._chopFrames.length = 0;
+      this._chopLeglessFrames.length = 0;
+      return Promise.all([
+        Assets.load(_CHOP_URL).then((tex) => { _cropChop(tex, _CHOP_URL, 'body', this._chopFrames); }),        /* v2.3.2500 / v2.3.2761 */
+        Assets.load(_CHOP_LL_URL).then((tex) => { _cropChop(tex, _CHOP_LL_URL, 'legless', this._chopLeglessFrames); }),
+      ]).then(() => { this._bakeChopStrips(); return this._chopFrames.length > 0; });
+    };
     /* v2.3.2500: the two arrays above stay RAW on purpose -- they are what a
        PEER's lumberjack is drawn from (the SPEC table in
        _updateRemoteExtraction), and a peer must not wear your complexion.  YOUR
@@ -2798,7 +2938,7 @@ export class EffectsRenderer {
     this._chopLeglessSkinFrames = [];
     this._chopSkinFramesFlip = null;          /* v2.3.2855: the pre-flipped twins -- see _bakeChopStrips */
     this._chopLeglessSkinFramesFlip = null;
-    this._loadChopSkinStrips(_chopBody, _chopLegless);
+    this._loadChopSkinStrips();
 
     /* v2.3.1131: gear layers for the woodcutting chopper (mirror of the cook
        stand-in).  Shirt / leg-armour / chest-plate drawn over the lumberjack when
@@ -2932,6 +3072,10 @@ export class EffectsRenderer {
        showed the artist's orange. */
     this._fireFrames = [];
     this._loadFireStrips();
+    /* v2.3.3077: how each gathering pose is made, for rendering/standIns.js --
+       a new renderer (a black screen's rebuild) starts every pose over */
+    setStandInMaker((kind) => (kind === 'chop' ? this._makeChop() : kind === 'cook' ? this._makeCook()
+      : kind === 'fire' ? this._makeFire() : Promise.resolve(false)));
 
     /* v2.3.910: sword-swing stand-in — the owner-supplied swing animation plays
        at the player during a melee swing (same self-contained stand-in pattern
@@ -3062,6 +3206,7 @@ export class EffectsRenderer {
          feetY/crown maths valid.  No-op for any sheet already >= cfg.fh, so the
          not-yet-downscaled facings (e.g. sword-north) pass straight through. */
       _loadImg(url + '?v=' + SWORD_ART_VERSION).then((rawImg) => {
+        if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go while it loaded */
         const img = upscaleToFrameHeight(rawImg, cfg.fh);
         const w = img.naturalWidth || img.width;
         const n = Math.max(1, Math.round(w / cfg.fw));
@@ -3070,7 +3215,7 @@ export class EffectsRenderer {
            is 3% of its strip: 9.6 MB of upscaled sword-south / sword-east that
            was almost all empty.  Readers place a Sprite (`place`), so the frame
            box is unchanged. */
-        for (const t of _sliceStandIn(img, cfg.fw, cfg.fh, n, 'sword-' + dir + '|' + url.split('/').pop())) target[dir].push(t);
+        for (const t of this._own(_sliceStandIn(img, cfg.fw, cfg.fh, n, 'sword-' + dir + '|' + url.split('/').pop()))) target[dir].push(t);
       }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
     };
     /* v2.3.975: the attack stand-ins must show the PLAYER'S customized body
@@ -3107,9 +3252,13 @@ export class EffectsRenderer {
        the question. */
     /* (v2.3.2863: _twinWouldDiffer lives at module scope now -- a peer's
        swing and bow bakes ask the same question.) */
+    /* v2.3.3074: returns the frame arrays the bake REPLACED (for the caller to
+       let go of -- _rebakeBodies does, all at once), null when it baked nothing */
     this._bakeBodyStrip = (rec) => {
+      if (this._destroyed) return null;
       const img = this._bodyImgCache[rec.url];
-      if (!img) return;
+      if (!img) return null;
+      const _was = [rec.target[rec.dir], rec.target[rec.dir + '|m']];
       /* ═══ v2.3.1788: the attack stand-ins wear the WALKING skin ═══
          Owner's block-arm work exposed this, but it is a bug on its own and
          has been shipped for a long time: the bro changes complexion every
@@ -3198,7 +3347,7 @@ export class EffectsRenderer {
       };
       const _plain = _bake(false);
       const cv = _plain.cv;
-      const arr = _plain.arr;
+      const arr = this._own(_plain.arr);   /* v2.3.3074 */
       rec.target[rec.dir] = arr;
       /* ═══ THE MIRRORED TWIN, AND ONLY WHEN IT CAN BE SEEN ═══
          Three of the eight facings are drawn by flipping a base-dir sheet
@@ -3232,7 +3381,7 @@ export class EffectsRenderer {
          anchor phases -- provable per tile, not worth proving here, and being
          wrong means a garment that reads backwards. */
       rec.target[rec.dir + '|m'] = (_art && rec.mirrored && _twinWouldDiffer(_art, rec.dir))
-        ? _bake(true).arr : null;
+        ? this._own(_bake(true).arr) : null;   /* v2.3.3074: owned */
       /* v2.3.1788 QA probe: the mean skin RGB of the BAKED sheet, so
          mp-standinskin can assert the stand-ins land on the same palette as
          the walking body.  Measuring the baked canvas is the only honest
@@ -3299,6 +3448,7 @@ export class EffectsRenderer {
          as the figure it is composited onto — one skin change, one rebake,
          both stay in step. */
       if (rec.target === this._bowBodyFrames) registerBowBodyFrames(rec.dir, arr);
+      return _was;
     };
     /* Which base directions this family ever draws flipped -- read off the
        facing map itself rather than restated, so a new facing cannot arrive
@@ -3316,13 +3466,24 @@ export class EffectsRenderer {
       _loadImg(url + '?v=' + ver).then((img) => { this._bodyImgCache[url] = img; this._bakeBodyStrip(rec); })
         .catch((err) => console.warn('[body ' + dir + '] load failed', err));
     };
-    this._rebakeBodies = () => { for (const rec of this._bodyStrips) this._bakeBodyStrip(rec); };
-    onSkinChange(this._rebakeBodies); onPantsChange(this._rebakeBodies); onShoesChange(this._rebakeBodies);
+    /* ═══ v2.3.3074: A REBAKE LETS GO OF WHAT IT REPLACED ═══
+       Every skin, trouser, shoe or pattern change and every committed stroke in
+       the designer (artOps saveDoc -> setArt) re-bakes all of these strips, and
+       the old ones were simply overwritten: their canvases stayed in Pixi's
+       Cache for good.  Measured 11.5 MB a stroke, 92 MB for eight (TRAPS
+       §139).  They go now, once the new set is in place, in one pass. */
+    this._rebakeBodies = () => {
+      if (this._destroyed) return;
+      const was = [];
+      for (const rec of this._bodyStrips) { const w = this._bakeBodyStrip(rec); if (w) was.push(...w); }
+      this._letGo(was);
+    };
+    this._offs.push(onSkinChange(this._rebakeBodies), onPantsChange(this._rebakeBodies), onShoesChange(this._rebakeBodies));
     /* v2.3.2429: and when a DRAWING or a pattern changes, for the same reason
        the three above exist -- these strips are baked once and sampled for the
        rest of the session, so without this a tattoo drawn mid-session appears
        on the walking body immediately and never on a swing or a block. */
-    onArtChange(this._rebakeBodies); onPatternChange(this._rebakeBodies);
+    this._offs.push(onArtChange(this._rebakeBodies), onPatternChange(this._rebakeBodies));   /* v2.3.3074: kept, so destroy() can unsubscribe */
     for (const dir of Object.keys(this._swordCfg)) {
       const cfg = this._swordCfg[dir];
       /* ═══ v2.3.2353: THE FALLBACKS ARE NOT LOADED WHEN NOTHING CAN REACH THEM ═══
@@ -3676,31 +3837,59 @@ export class EffectsRenderer {
    * PRELOADING IS LAW (CLAUDE.md): the bake is pushed onto _fxPreload, the
    * list _fxLoad feeds and effectsAnimationsReady() awaits, so the intro gate
    * holds for the RECOLOURED textures rather than baking mid-chop. */
-  _loadChopSkinStrips(bodyLoad, leglessLoad) {
-    /* The BAKE goes on the gate, not just the downloads: _fxLoad already
-       registered the two fetches, but effectsAnimationsReady() settling on
-       those says only that the art arrived.  Pushing this says the recoloured
-       textures exist before the intro overlay lifts, which is what the law
-       actually asks for (CLAUDE.md) -- the same reason _loadCookStrips pushes
-       its bake rather than relying on its loads. */
-    _fxPreload.push(Promise.all([bodyLoad, leglessLoad])
-      .then(() => { this._bakeChopStrips(); })
-      .catch((err) => console.warn('[chop-strip skin] bake failed', err)));
+  /* ═══ v2.3.3077: WHEN EACH GATHERING POSE IS FIRST WANTED ═══
+     Four times a second: the lumberjack when a tree is in reach (S._nearNode
+     offers it only to a player holding the axe for it) or a chop starts; the
+     cook when a campfire is lit or in reach, or a cook starts; the
+     fire-lighter when a log is in the bag (a tap on one lights a fire,
+     firemakingBus) or a light starts; and any of them when another player
+     near you does that one (their relayed harvest, other._ex).  Idempotent:
+     a pose made or on its way is not asked again (rendering/standIns.js). */
+  _standInTriggers(S, now) {
+    if (!S || now - (this._standInAt || 0) < 250) return;
+    this._standInAt = now;
+    const nn = S._nearNode;
+    if (nn) {
+      if (nn.nodeType === 'tree') ensureStandIn('chop', 'a tree in reach');
+      else if (nn === S._campfire || nn.nodeType === 'campfire') ensureStandIn('cook', 'a campfire in reach');
+    }
+    const ex = S._extraction;
+    if (ex && ex.skill === 'woodcutting') ensureStandIn('chop', 'chopping');
+    else if (ex && ex.skill === 'cooking') ensureStandIn('cook', 'cooking');
+    if (S._campfire && S._campfire.alive) ensureStandIn('cook', 'a campfire lit');
+    if (S._firemaking) ensureStandIn('fire', 'lighting a fire');
+    else if (!standInStarted('fire')) {
+      const inv = S.rpg && S.rpg.inventory;
+      if (inv) for (const k in inv) { if (k.indexOf('wood_') === 0 && inv[k] > 0) { ensureStandIn('fire', 'a log in the bag'); break; } }
+    }
+    const others = S.others;
+    if (others) for (const id in others) {
+      const x = others[id] && others[id]._ex;
+      if (x === 'chop' || x === 'cook' || x === 'fire') ensureStandIn(x, 'another player');
+    }
+  }
+
+  _loadChopSkinStrips() {
+    /* v2.3.3077: the bake is no longer on the loading screen's gate: it runs
+       when the lumberjack is first wanted (this._makeChop, rendering/standIns.js),
+       the owner's yes to "gathering poses built the first time you gather".
+       The two re-bakes below are safe before that: _bakeChopStrips returns at
+       once while the crops it reads (_chopSrc) do not exist. */
     /* The character menu can change the skin mid-session; rebake exactly as
        the cook and the fire-lighter do -- but from the images already in hand,
        so this one costs no network at all. */
-    onSkinChange(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } });
+    this._offs.push(onSkinChange(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } }));   /* v2.3.3074: kept for destroy() */
     /* v2.3.2855: and when one of the three drawings the lumberjack carries
        changes.  The designer commits every STROKE through setArt, so this waits
        for the strokes to stop rather than rebaking both strips per stroke; the
        figure is not on screen while you draw.  Other canvases (shirt, trousers)
        are not stamped on this figure and are ignored. */
     let _chopArtT = 0;
-    onArtChange((id) => {
+    this._offs.push(onArtChange((id) => {
       if (id !== 'tattoo' && id !== 'tattooFace' && id !== 'tattooArm') return;
       clearTimeout(_chopArtT);
       _chopArtT = setTimeout(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } }, 400);
-    });
+    }), () => clearTimeout(_chopArtT));   /* v2.3.3074: kept for destroy(), and the pending rebake with it */
   }
 
   /* ═══ v2.3.2855: THE LUMBERJACK CARRIES YOUR DRAWINGS ═══
@@ -3730,6 +3919,7 @@ export class EffectsRenderer {
    * own mirror image.  2.5 MB per strip, so a player whose drawings are
    * symmetric (the designer's Mirror tool) or blank pays nothing. */
   _bakeChopStrips() {
+    if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go */
     const bodyImg = this._chopSrc && this._chopSrc.body;
     const leglessImg = this._chopSrc && this._chopSrc.legless;
     if (!bodyImg || !leglessImg) return;   /* a failed load: the raw art still draws */
@@ -3756,9 +3946,9 @@ export class EffectsRenderer {
       /* v2.3.2775: cropped (_sliceStandIn), the full bake kept only until the
          probe below has read it. */
       const _plain = _bakeChopStrip(img, _keyMask, skinT, _art ? { ..._art, mirror: false } : null, key, true);
-      this[key] = _plain.arr;
+      this[key] = this._own(_plain.arr);   /* v2.3.3074: owned */
       this[key + 'Flip'] = _twin
-        ? _bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false).arr : null;   /* v2.3.2855: see above */
+        ? this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false).arr) : null;   /* v2.3.2855: see above */
       /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
          bow bakes publish -- see _probeStandInSkin. */
       _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', _plain.cv);
@@ -3771,7 +3961,7 @@ export class EffectsRenderer {
       /* Nothing may keep holding it: a hidden sprite with a destroyed source
          crashes the frame it is next shown (CLAUDE.md, v2.3.2651). */
       if (sp && sp.texture && sp.texture.source === src) sp.texture = Texture.EMPTY;
-      try { src.destroy(); } catch (e) { /* already gone */ }
+      this._release(src);   /* v2.3.3074: the whole release (TRAPS §139) */
     }
   }
 
@@ -3822,9 +4012,10 @@ export class EffectsRenderer {
     const skinT = skinTarget(o.skin) || DEFAULT_SKIN_TARGET;
     setTimeout(() => {
       this._peerChopPending = false;
+      if (this._destroyed) return;   /* v2.3.3074 */
       try {
         const baked = _bakeChopStrip(img, _chopKeyMask(img), skinT, { ...art, mirror: m }, null, false);
-        cache.set(key, { arr: baked.arr, used: now });
+        cache.set(key, { arr: this._own(baked.arr), used: now });   /* v2.3.3074: owned */
       } catch (e) { /* the shared figure keeps drawing */ }
     }, 0);
     return null;
@@ -3843,7 +4034,7 @@ export class EffectsRenderer {
         if (ent.chop && ent.chop.texture && ent.chop.texture.source === src) ent.chop.texture = Texture.EMPTY;
       }
     }
-    try { src.destroy(); } catch (err) { /* already gone */ }
+    this._release(src);   /* v2.3.3074: the whole release (TRAPS §139) */
   }
 
   /* ═══ v2.3.1710: THE COOK WEARS THE PLAYER'S SKIN ═══
@@ -3870,20 +4061,25 @@ export class EffectsRenderer {
    * Nothing here is lazy: a first-cook hitch would be the regression TRAPS #12
    * describes. */
   _loadCookStrips() {
-    _fxPreload.push(this._fetchAndBakeCook());
+    /* v2.3.3077: made when first wanted (rendering/standIns.js), not on the
+       loading screen's gate -- the owner's yes to "gathering poses built the
+       first time you gather".  The re-bakes below run only for a cook that
+       has been asked for (_fetchAndBakeCook says so): before that the first
+       make bakes with whatever skin and drawings are current. */
+    this._makeCook = () => this._fetchAndBakeCook().then(() => this._cookFrames.length > 0);
     /* The character menu can change the skin mid-session, so rebake on it the
        way the sword/bow stand-ins do (_rebakeBodies, v2.3.975). */
-    onSkinChange(() => { this._fetchAndBakeCook(); });
+    this._offs.push(onSkinChange(() => { this._fetchAndBakeCook(); }));   /* v2.3.3074: kept for destroy() */
     /* v2.3.2856: and the drawings' layer when one of the three drawings the
        cook carries changes -- once the strokes stop, as the lumberjack does
        (the designer commits every stroke; the cook is not on screen while you
        draw).  Only the layer is rebuilt: the figure under it has not changed. */
     let _cookArtT = 0;
-    onArtChange((id) => {
+    this._offs.push(onArtChange((id) => {
       if (id !== 'tattoo' && id !== 'tattooFace' && id !== 'tattooArm') return;
       clearTimeout(_cookArtT);
       _cookArtT = setTimeout(() => { this._fetchAndBakeCook(true); }, 400);
-    });
+    }), () => clearTimeout(_cookArtT));   /* v2.3.3074 */
   }
 
   /* Fetch both cook sheets, bake the player's skin in, and let the decoded
@@ -3897,6 +4093,10 @@ export class EffectsRenderer {
      cache serves from disk, and it happens behind the character menu — never
      mid-play, so the preloading LAW is not in tension with it. */
   _fetchAndBakeCook(inkOnly) {
+    /* v2.3.3077: a skin or drawing change re-bakes the cook only once he has
+       been asked for (rendering/standIns.js) -- before that his first make
+       bakes with whatever is current */
+    if (!standInStarted('cook')) return Promise.resolve();
     return Promise.all([
       _loadStandInImg(COOK_URL.body),
       _loadStandInImg(COOK_URL.legless),
@@ -3930,6 +4130,7 @@ export class EffectsRenderer {
    * drawing change does not change the figure, and the bake has to run in full
    * anyway (the drawings are shaded by the skin under them). */
   _bakeCookStrips(bodyImg, leglessImg, inkOnly) {
+    if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go */
     /* skinTarget() returns null for the 'default' pick, which for the PLAYER
        sheets means "the art is already this colour".  It is not true of this
        painting, so default falls back to the explicit tan — that is the whole
@@ -3946,7 +4147,7 @@ export class EffectsRenderer {
       const n = Math.max(1, Math.round(cv.width / FW));
       if (!inkOnly) {
         _old.push(this[key]);
-        const arr = _sliceStandIn(cv, FW, FH, n, key, true);   /* v2.3.2775: cropped; released after the probe */
+        const arr = this._own(_sliceStandIn(cv, FW, FH, n, key, true));   /* v2.3.2775: cropped; released after the probe; v2.3.3074: owned */
         this[key] = arr;
         _probeStandInSkin('/sprites/skills/cook' + (key === '_cookFrames' ? '' : '-legless') + '-strip.webp', cv);   /* v2.3.2500 */
         if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
@@ -3954,7 +4155,7 @@ export class EffectsRenderer {
         cv.width = 0; cv.height = 0;
       }
       _old.push(this[key + 'Ink']);
-      this[key + 'Ink'] = ink ? _sliceStandIn(ink, FW, FH, n, key + 'Ink', false) : null;
+      this[key + 'Ink'] = ink ? this._own(_sliceStandIn(ink, FW, FH, n, key + 'Ink', false)) : null;   /* v2.3.3074: owned */
     }
     /* v2.3.2856: the textures these replace, released once nothing draws them
        -- a rebake follows every pause while you draw, so leaving each old pair
@@ -3968,7 +4169,7 @@ export class EffectsRenderer {
       const src = arr && arr[0] && arr[0].source;
       if (!src) continue;
       for (const sp of _sprites) if (sp && sp.texture && sp.texture.source === src) sp.texture = Texture.EMPTY;
-      try { src.destroy(); } catch (e) { /* already gone */ }
+      this._release(src);   /* v2.3.3074: the whole release (TRAPS §139) */
     }
   }
 
@@ -4015,10 +4216,11 @@ export class EffectsRenderer {
     pending[kind] = true;
     const skinT = skinTarget(o.skin) || DEFAULT_SKIN_TARGET;
     _loadStandInImg(spec.url(variant)).then((img) => {
+      if (this._destroyed) return;   /* v2.3.3074 */
       const { cv, ink } = spec.bake(img, skinT, { ...art, mirror: false });
       const n = Math.max(1, Math.round(cv.width / spec.fw));
       cv.width = 0; cv.height = 0;   /* the figure is the shared one; only the layer is kept */
-      cache.set(key, { arr: ink ? _sliceStandIn(ink, spec.fw, spec.fh, n, null, false) : [], used: now });
+      cache.set(key, { arr: ink ? this._own(_sliceStandIn(ink, spec.fw, spec.fh, n, null, false)) : [], used: now });   /* v2.3.3074: owned */
     }).catch(() => { /* the shared figure keeps drawing, bare */ })
       .then(() => { pending[kind] = false; });
     return null;
@@ -4038,7 +4240,7 @@ export class EffectsRenderer {
         if (ent[slot] && ent[slot].texture && ent[slot].texture.source === src) ent[slot].texture = Texture.EMPTY;
       }
     }
-    try { src.destroy(); } catch (err) { /* already gone */ }
+    this._release(src);   /* v2.3.3074: the whole release (TRAPS §139) */
   }
 
   /* ═══ v2.3.1713: THE FIRE-LIGHTER WEARS THE PLAYER'S SKIN ═══
@@ -4077,18 +4279,19 @@ export class EffectsRenderer {
    * same list _fxLoad feeds — so the intro gate waits for the RECOLOURED
    * textures, not for a raw download it would then have to re-bake mid-play. */
   _loadFireStrips() {
-    _fxPreload.push(this._fetchAndBakeFire());
+    /* v2.3.3077: made when first wanted, as the cook is (_loadCookStrips). */
+    this._makeFire = () => this._fetchAndBakeFire().then(() => this._fireFrames.length > 0);
     /* The character menu can change the skin mid-session; rebake exactly as the
        cook does (_loadCookStrips, v2.3.1710). */
-    onSkinChange(() => { this._fetchAndBakeFire(); });
+    this._offs.push(onSkinChange(() => { this._fetchAndBakeFire(); }));   /* v2.3.3074: kept for destroy() */
     /* v2.3.2858: and the drawings' layer, once the strokes stop -- the cook's
        rule (_loadCookStrips); only the layer is rebuilt. */
     let _fireArtT = 0;
-    onArtChange((id) => {
+    this._offs.push(onArtChange((id) => {
       if (id !== 'tattoo' && id !== 'tattooFace' && id !== 'tattooArm') return;
       clearTimeout(_fireArtT);
       _fireArtT = setTimeout(() => { this._fetchAndBakeFire(true); }, 400);
-    });
+    }), () => clearTimeout(_fireArtT));   /* v2.3.3074 */
   }
 
   /* Fetch the fire body strip, bake the player's skin in, and let the decoded
@@ -4097,12 +4300,15 @@ export class EffectsRenderer {
      spriteScale.js).  A rebake re-fetches from the HTTP cache and only ever
      happens behind the character menu, never mid-play. */
   _fetchAndBakeFire(inkOnly) {
+    /* v2.3.3077: the cook's rule (_fetchAndBakeCook) */
+    if (!standInStarted('fire')) return Promise.resolve();
     /* v2.3.1715: cache-bust.  The file KEPT its name through the 29-frame ->
        8-frame replacement (so every reference and the preload registration
        stay put), which means a browser holding the old 4669x220 image would
        slice it at the new 384 width into 12 nonsense frames.  The query (in
        FIRE_URL) is what makes the swap safe. */
     return _loadStandInImg(FIRE_URL).then((img) => {
+      if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go */
       /* skinTarget() returns null for the 'default' pick, which means "the art
          is already this colour" — true of the PLAYER sheets, not of this
          painting, so default falls back to the explicit tan.  That is the whole
@@ -4118,7 +4324,7 @@ export class EffectsRenderer {
       const _old = [];
       if (!inkOnly) {
         _old.push(this._fireFrames);
-        const arr = _sliceStandIn(cv, FIRE_FW, FIRE_FH, n, '_fireFrames', true);   /* v2.3.2775: cropped; released after the probe */
+        const arr = this._own(_sliceStandIn(cv, FIRE_FW, FIRE_FH, n, '_fireFrames', true));   /* v2.3.2775: cropped; released after the probe; v2.3.3074: owned */
         this._fireFrames = arr;
         _probeStandInSkin('/sprites/skills/firemaking-strip.webp', cv, FIRE_SKIN_OPTS);   /* v2.3.2500: measured through the bake's own window -- see _probeStandInSkin */
         if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
@@ -4126,7 +4332,7 @@ export class EffectsRenderer {
         cv.width = 0; cv.height = 0;
       }
       _old.push(this._fireFramesInk);
-      this._fireFramesInk = ink ? _sliceStandIn(ink, FIRE_FW, FIRE_FH, n, '_fireFramesInk', false) : null;
+      this._fireFramesInk = ink ? this._own(_sliceStandIn(ink, FIRE_FW, FIRE_FH, n, '_fireFramesInk', false)) : null;   /* v2.3.3074: owned */
       /* v2.3.2858: the replaced textures, released as the cook's are (see
          _bakeCookStrips) -- a skin change used to leave the old strip to
          Pixi's idle collector, and a drawing change now rebakes too.  Other
@@ -4137,7 +4343,7 @@ export class EffectsRenderer {
         const src = arr && arr[0] && arr[0].source;
         if (!src) continue;
         for (const sp of _sprites) if (sp && sp.texture && sp.texture.source === src) sp.texture = Texture.EMPTY;
-        try { src.destroy(); } catch (e) { /* already gone */ }
+        this._release(src);   /* v2.3.3074: the whole release (TRAPS §139) */
       }
     }).catch((err) => console.warn('[firemaking-strip] load failed', err));
   }
@@ -4240,6 +4446,7 @@ export class EffectsRenderer {
     this._updateArrowSnaps(S, now);     /* v2.3.2731: one arrow in eight breaks on what it hits */
     try { this._shotFx.tick(S, now); } catch (e) { /* v2.3.2732: monster shots are drawing only */ }
     this._updateCampfire(S, now);
+    try { this._standInTriggers(S, now); } catch (e) { /* v2.3.3077: a pose not made yet draws the body instead */ }
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
     this._updateBowShot(S, now);
@@ -9999,6 +10206,13 @@ export class EffectsRenderer {
     }
   }
 
+  /* v2.3.3071 QA probe (house style, see arrowBlastProbe): the snowball
+     bursts playing, and whether their frames are loaded */
+  snowballBurstProbe() {
+    const l = this._snowballBursts || [];
+    return { playing: l.length, loaded: SNOWBALL_BURST.frames.length, inLayer: l.filter((f) => f.sp && !f.sp.destroyed && !!f.sp.parent).length };
+  }
+
   /* QA probe (house style, see arrowBlastProbe). */
   slimeShockwaveProbe() {
     const l = this._slimeWaves || [];
@@ -10030,10 +10244,20 @@ export class EffectsRenderer {
     }
     const list = this._snowballBursts;
     if (!list || !list.length) return;
+    /* ═══ v2.3.3071: ITS PICTURE HANDED BACK WHILE IT PLAYED ═══
+       freeFrostImpactTex (leaving the frost zone, or the Wheel's frost land:
+       wheelMonsterArt) destroys these frames whether or not a burst is still
+       on screen with one -- and the next frame drew a destroyed texture:
+       app.render threw ("addressModeU" of null) every frame until the burst
+       ran out, up to 420 ms of frames not drawn.  Found by mp-zombietex's
+       render check on a tour of the Wheel's lands.  The frames are freed
+       between two frames (that function awaits), so retiring the bursts here,
+       before the render, is in time. */
+    const framesGone = !SNOWBALL_BURST.frames.length;
     for (let i = list.length - 1; i >= 0; i--) {
       const fx = list[i];
       const t = now - fx.startedAt;
-      if (t >= SNOWBALL_BURST_MS || fx.sp.destroyed) {
+      if (t >= SNOWBALL_BURST_MS || fx.sp.destroyed || framesGone || (fx.sp.texture && fx.sp.texture.destroyed)) {
         if (!fx.sp.destroyed) {
           if (fx.sp.parent) fx.sp.parent.removeChild(fx.sp);
           fx.sp.destroy();
@@ -11081,7 +11305,7 @@ export class EffectsRenderer {
     if (this.fireLegsSprite) this.fireLegsSprite.visible = false;
     if (this.fireChestSprite) this.fireChestSprite.visible = false;
     const fm = S && S._firemaking;
-    if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length) return;
+    if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length || !standInReady('fire')) return;   /* v2.3.3077: drawn once made whole (rendering/standIns.js) */
     if (this._selfCorpse) return;   /* v2.3.2281 */
     if (fm.doneAt && now > fm.doneAt) return;
     /* v2.3.1435 (owner): 1.75x (88 -> 154).  v2.3.1715: FRAME_MS 55 -> 200 with
@@ -11335,7 +11559,7 @@ export class EffectsRenderer {
       if (code !== 'chop' && code !== 'cook' && code !== 'fire') continue;
       if ((o.zone || o.z || 'town') !== zone) continue;
       const spec = SPEC[code];
-      if (!spec.frames || !spec.frames.length) continue;
+      if (!spec.frames || !spec.frames.length || !standInReady(code)) continue;   /* v2.3.3077: drawn once made whole, as the body is hidden (entityRenderer _rexStandIn) */
       let ent = pool.get(id);
       if (!ent) { ent = {}; pool.set(id, ent); }
       let sp = ent[code];
@@ -11789,11 +12013,13 @@ export class EffectsRenderer {
         const im = new Image();
         im.onload = () => res(im); im.onerror = rej; im.src = _url;
       }).then((img) => {
+        if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go while it loaded */
         const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
         const n = _twin ? _twin.frames : Math.max(1, Math.round(W / fw));
         const w = _twin ? Math.round(W / n) : fw;
         const packed = packTrimmed(img, w, H, n);
         const src = Texture.from(packed ? packed.canvas : img).source;
+        this._bakes.add(src);   /* v2.3.3074: owned -- the cropped canvas, or the Image made for it just above */
         src.scaleMode = 'linear';
         /* v2.3.2887: the file it was cut from, as gearSheets labels the
            walking layers (v2.3.2750) -- the packed canvas has no URL of its
@@ -11815,6 +12041,15 @@ export class EffectsRenderer {
         }
         registerGearSource(src);
         this._gearStrips[key] = arr;
+        /* ═══ v2.3.3088: ON THE GRAPHICS CHIP ONLY ═══
+           The owner's yes to "character art kept only on the graphics chip".
+           These layers are only ever drawn, and each effects renderer cuts its
+           own -- a rebuilt one starts with an empty _gearStrips -- so the
+           packed canvas is let go of once the strip is uploaded, now rather
+           than at its first draw (gpuOnly.js; uploadGearTextures did it behind
+           the loading screen for the ones loaded then).  13.9 MB of canvases
+           for a new player's shirt in the Wheel. */
+        keepOnGpuOnly(this._captureRenderer, src);
       }).catch(() => { this._gearStrips[key] = []; });
       _fxPreload.push(_p);
       return null;
@@ -11921,9 +12156,9 @@ export class EffectsRenderer {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
         null, cfg.fh, null, null, _pa.art, cfg.fw);   /* v2.3.2863: see _peerStandInArt */
       const n = Math.max(1, Math.round(cv.width / cfg.fw));
-      arr = _sliceStandIn(cv, cfg.fw, cfg.fh, n, null);   /* v2.3.2775: cropped, one per peer combo */
+      arr = this._own(_sliceStandIn(cv, cfg.fw, cfg.fh, n, null));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned */
       this._remoteBodyCache.set(key, arr);
-      _trimBakeCache(this._remoteBodyCache);
+      _trimBakeCache(this._remoteBodyCache, this._bakes);
       return arr;
     } catch (e) { return null; }
   }
@@ -11952,9 +12187,9 @@ export class EffectsRenderer {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
         null, _fh, null, null, _pa.art, _fw);   /* v2.3.2863 */
       const n = Math.max(1, Math.round(cv.width / _fw));
-      arr = _sliceStandIn(cv, _fw, _fh, n, null);   /* v2.3.2775: cropped, one per peer combo */
+      arr = this._own(_sliceStandIn(cv, _fw, _fh, n, null));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned */
       this._remoteSheetCache.set(key, arr);
-      _trimBakeCache(this._remoteSheetCache);
+      _trimBakeCache(this._remoteSheetCache, this._bakes);
       return arr;
     } catch (e) { return null; }
   }
@@ -13641,6 +13876,88 @@ export class EffectsRenderer {
   /** v2.3.2986: the renderer the capture above photographs with (pixiRenderer). */
   setCaptureRenderer(renderer) { this._captureRenderer = renderer || null; }
 
+  /* ═══ v2.3.3074: OWNING A BAKE, AND LETTING ONE GO ═══
+     _own(frames): this renderer made these (a stand-in bake through
+     _sliceStandIn), so destroy() releases them.  Returns the array.
+     _release(src): one bake let go of for good -- GPU copy, Pixi's Cache entry
+     and canvas (releaseCanvasSource, TRAPS §139) -- once the caller has
+     pointed its sprites away from it.
+     _letGo(arrays): the same for frame arrays a re-bake replaced, after
+     pointing EVERY sprite on this renderer's layers that still shows one of
+     them at Texture.EMPTY (a hidden sprite left holding a destroyed source
+     throws in the frame it is next shown, CLAUDE.md v2.3.2651).  A re-bake is
+     a menu action (a skin pick, a stroke in the designer), so walking the
+     layers once for it costs nothing anyone can feel. */
+  _own(arr) {
+    const src = arr && arr[0] && arr[0].source;
+    if (src) this._bakes.add(src);
+    return arr;
+  }
+  _release(src) {
+    if (!src) return;
+    this._bakes.delete(src);
+    unregisterGearSource(src);
+    releaseCanvasSource(src);
+  }
+  _letGo(arrs) {
+    const srcs = new Set();
+    for (const a of arrs) { const src = a && a[0] && a[0].source; if (src && !src.destroyed) srcs.add(src); }
+    if (!srcs.size) return;
+    const seen = new Set();
+    const walk = (c) => {
+      if (!c || seen.has(c)) return;
+      seen.add(c);
+      const t = c.texture;
+      if (t && t.source && srcs.has(t.source)) c.texture = Texture.EMPTY;
+      const kids = c.children;
+      if (kids) for (let i = 0; i < kids.length; i++) walk(kids[i]);
+    };
+    try { for (const k in this._layers) walk(this._layers[k]); } catch (e) { /* a torn-down layer */ }
+    for (const src of srcs) this._release(src);
+  }
+
+  /* ═══ v2.3.3074: A RENDERER THAT IS GONE LETS GO OF EVERYTHING IT MADE ═══
+     pixiRenderer.destroy() calls this when a black screen's recovery
+     (BroTown _rebuildRenderer) or a remount replaces the renderer.  clear()
+     only empties what a ZONE change drops; this also
+       - unsubscribes the eleven skin / drawing listeners, which kept this
+         renderer alive and re-baking for it on every change;
+       - releases every canvas-backed source it baked (_bakes);
+       - zeroes the canvases it keeps beside them (the lumberjack's intact
+         crops) and drops its caches;
+       - lets go of the WebGL renderer it photographs with (_captureRenderer):
+         that one reference kept the OLD renderer, its context and its canvas
+         alive after every rebuild (a heap snapshot after one: two
+         WebGLRenderers, the old one held only through here).
+     Measured before: ~90 MB left behind per rebuild (mp-bakeleak, TRAPS §139).
+     The stage it drew on is destroyed right after (app.destroy), so nothing is
+     left to draw a released source.  A QA probe on window that still points
+     at this object holds a shell. */
+  destroy() {
+    if (this._destroyed) return;
+    this._destroyed = true;
+    for (const off of this._offs) { try { off(); } catch (e) { /* already off */ } }
+    this._offs = [];
+    try { this.clear(); } catch (e) { /* a half-built renderer */ }
+    for (const src of this._bakes) { unregisterGearSource(src); releaseCanvasSource(src); }
+    this._bakes.clear();
+    for (const k in (this._chopSrc || {})) {
+      const c = this._chopSrc[k];
+      try { if (c && c.getContext) { c.width = 0; c.height = 0; } } catch (e) { /* gone */ }
+    }
+    this._chopSrc = Object.create(null);
+    this._bodyImgCache = {};
+    this._bodyStrips = [];
+    this._gearStrips = {};
+    if (this._remoteBodyCache) this._remoteBodyCache.clear();
+    if (this._remoteSheetCache) this._remoteSheetCache.clear();
+    if (this._peerChopBakes) this._peerChopBakes.clear();
+    for (const k in (this._peerInks || {})) { const c = this._peerInks[k]; if (c && c.clear) c.clear(); }
+    if (this._remoteSkillSprites) this._remoteSkillSprites.clear();
+    this._captureRenderer = null;
+    this._layers = null;
+  }
+
   /* ═══ v2.3.2991: THE WORLD'S EFFECTS, FILMED FOR THE STAT SCENE ═══
    *
    * Owner, after the swing, the roll and the jog: "Also special attacks need
@@ -14128,7 +14445,7 @@ export class EffectsRenderer {
     /* Chopper animation beside the tree (woodcutting only): stands on the
        player's side, faces the trunk (source faces right -> flip when the
        tree is on the player's LEFT). */
-    if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
+    if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length && standInReady('chop')) {   /* v2.3.3077: drawn once made whole */
       const CHOP_H = CHOP_STANDIN_H;   // v2.3.2273: see the constant -- shared with the peer figure's SPEC row so the two can no longer drift.
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
       /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --
@@ -14371,7 +14688,7 @@ export class EffectsRenderer {
     /* v2.3.853: cook character at the campfire during the whole cook (waiting
        + ready), the chopper's sibling.  Stands just left of the fire so the
        pan (extends right) sits over the flames. */
-    if (cookingCue && this.cookSprite && this._cookFrames.length) {
+    if (cookingCue && this.cookSprite && this._cookFrames.length && standInReady('cook')) {   /* v2.3.3077: drawn once made whole */
       /* v2.3.1710 (owner: "While Cooking character is too large (about 25%)"):
          82 -> 62.  v2.3.1429 doubled 41 -> 82 on an owner request and overshot.
          The number is measurable, not taste: the drawn height of the AVATAR is

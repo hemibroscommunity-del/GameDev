@@ -108,6 +108,7 @@ import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /
 const _staffTipOut = { x: 0, y: 0 };
 import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop; v2.3.2893 + snow props */
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
+import { standInReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -10896,7 +10897,10 @@ export class EntityRenderer {
          effectsRenderer (_updateRemoteExtraction), so the whole body container
          is hidden while one is active (mirrors the local player's _chopHide). */
       const _rex = other._ex || null;
-      const _rexStandIn = _rex === 'chop' || _rex === 'cook' || _rex === 'fire';
+      /* v2.3.3077: once the stand-in is made (rendering/standIns.js) -- until
+         then the peer is drawn as they stand, never hidden for a figure that
+         is not there yet */
+      const _rexStandIn = (_rex === 'chop' || _rex === 'cook' || _rex === 'fire') && standInReady(_rex);
       const _rexBodyPose = _rex === 'mine' ? 'mine' : _rex === 'fish' ? 'fish' : null;
       if (display.visible === _rexStandIn) display.visible = !_rexStandIn;
       /* v2.3.1534: remote dodge roll.  other._dodgeRoll is already set from
@@ -11829,8 +11833,13 @@ export class EntityRenderer {
        the player).
        v2.3.1713: _exSkill is now computed at the top of this method (the
        body's LAYER depends on it too) — one read, same value. */
-    const _chopHide = _exSkill === 'woodcutting' || _exSkill === 'cooking' || !!S._firemaking;
+    /* v2.3.3077: ...but only once the stand-in is made: the gathering poses
+       are made the first time each can be wanted (rendering/standIns.js), and
+       a body hidden for a figure not there yet would be an empty spot. */
+    const _chopHide = (_exSkill === 'woodcutting' && standInReady('chop')) || (_exSkill === 'cooking' && standInReady('cook'))
+      || (!!S._firemaking && standInReady('fire'));
     display.visible = !_chopHide;
+    S._standInBody = _chopHide;   /* v2.3.3077 QA: the body is put away for a gathering pose (mp-gatherposes) */
     display.x = P.x;
     /* v2.3.1476 (owner: "move the stone that comes with the mining
        animation like another 8 pixels up ... it sits a little beneath

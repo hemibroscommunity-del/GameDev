@@ -5,7 +5,33 @@
 import { watchContextLoss } from '../debug/crashTrap.js';
 import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2770 */
 import { SHADE } from './formShade.js';
-import { Application, Cache, Container } from 'pixi.js';
+import { Application, Cache, Container, TextureSource } from 'pixi.js';
+
+/* ═══ v2.3.3069: A DESTROYED TEXTURE LETS GO OF ITS PIXELS ═══
+   TextureSource.destroy() nulls its `resource` -- but Pixi also keeps the
+   constructor's whole `options` object (this.options = options), resource and
+   all, and nothing ever clears it.  That only matters if something still points
+   at the destroyed source, and Pixi does: a pooled Batch keeps the up to 32
+   sources of its last frame in its BatchTextureArray until it is reused, a
+   sprite drawn and then hidden keeps its texture in its per-renderer draw data
+   (BatchableSprite) -- the shadows' pools are full of those -- and so do the
+   render group's meshes.  Measured (a heap snapshot, phone-sized page, a tour
+   of four lands and home): 43 destroyed sources still alive, 22.6 MB of the
+   pictures they were made from held through `options` -- the Wheel's object
+   sheets freed as you walk (commons-1.png 6.1 MB, sky-1.png 5.5, ember-1.png
+   3.5, buildings-16.png 2.2), loaded again when you came back beside the
+   copy still held, and canvases.  Pixi never reads `options.resource` back
+   (nothing in pixi.js does), so on destroy it goes too: a source still pointed
+   at then costs its few hundred bytes, not its picture.  mp-zombietex. */
+if (TextureSource && TextureSource.prototype && !TextureSource.prototype.__btLetsGo) {
+  const destroy = TextureSource.prototype.destroy;
+  TextureSource.prototype.destroy = function () {
+    const r = destroy.apply(this, arguments);
+    try { if (this.options) this.options.resource = null; } catch (e) { /* frozen options: nothing held there */ }
+    return r;
+  };
+  TextureSource.prototype.__btLetsGo = true;
+}
 
 /**
  * Layer names in render order (back to front).
@@ -163,6 +189,25 @@ function buildScene(app) {
   const screenContainer = new Container();
   screenContainer.label = 'screen';
   app.stage.addChild(screenContainer);
+
+  /* ═══ v2.3.3079: THE WORLD AND THE SCREEN ARE RENDER GROUPS ═══
+     The owner's yes to "smoother frames (Pixi render groups) -- occasional
+     1-px shift, not byte-identical".  The camera is the world container's own
+     x / y / scale (pixiRenderer), so every frame it moves, Pixi used to work
+     out every world object's place on screen again on the CPU, and any of the
+     ~25 changes a frame makes to the scene (effects added, pooled sprites
+     shown and hidden, the depth sort's moves) rebuilt the draw list of the
+     WHOLE scene, the HUD's ~216 containers included (docs/MEMORY-PLAN.md,
+     frame time).  As render groups, a world object keeps its place in the
+     world and the camera is applied to it on the GPU, and a change in the
+     world rebuilds only the world's list, a change on the screen only the
+     screen's.  The camera on the GPU is in 32-bit floats, so an edge can land
+     a pixel over now and then -- the shift the owner accepted.
+     `?norendergroups` is the scene as it was, to compare. */
+  if (!(typeof location !== 'undefined' && /[?&]norendergroups\b/.test(location.search || ''))) {
+    worldContainer.isRenderGroup = true;
+    screenContainer.isRenderGroup = true;
+  }
 
   /* ═══ v2.3.2271: HOW MANY THINGS ARE IN THE SCENE ═══
    * Owner: "the game slows down after playing for a while (like an accumulated
@@ -380,7 +425,9 @@ function buildScene(app) {
         const now = r && r.gc ? r.gc.now : performance.now();
         const kindOf = (s) => {
           const res = s.resource;
-          if (!res) return 'render';
+          /* v2.3.3076: a buffer that let go of its colours once uploaded (the
+             Wheel's ground, wheelGround.js _toGpu) is still a buffer */
+          if (!res) return s.uploadMethodId === 'buffer' ? 'buffer' : 'render';
           if (typeof ImageBitmap !== 'undefined' && res instanceof ImageBitmap) return 'file';
           if (typeof HTMLImageElement !== 'undefined' && res instanceof HTMLImageElement) return 'file';
           if (typeof HTMLCanvasElement !== 'undefined' && res instanceof HTMLCanvasElement) return 'canvas';
@@ -473,6 +520,36 @@ function buildScene(app) {
    near-black line of 30, so a screen of nothing else counted as lit. */
 export const CANVAS_BG = 0x0d0b18;
 
+/* ═══ v2.3.3072: THE SCREEN HAS NO DEPTH BUFFER ═══
+   Pixi asks for the canvas's WebGL context with a stencil buffer (its masks:
+   the swimmer cut at the neck) and says nothing of depth, and WebGL's default
+   is a depth buffer too: one more full-screen buffer behind the picture that
+   nothing reads -- no code here or in Pixi's 2D drawing turns DEPTH_TEST on.
+   iPhone Safari makes the two one packed depth + stencil buffer (WebKit's
+   WebGLDefaultFramebuffer: DEPTH24_STENCIL8, on Metal 32-bit float depth and
+   8-bit stencil); asked for stencil alone it makes STENCIL_INDEX8, a byte a
+   pixel.  At 1170 x 2532 that is ~11 MB less on the GPU (~20 if the packed
+   format is stored 8 bytes a pixel), and one clear less a frame.  Chrome
+   keeps a packed buffer whatever is asked, so nothing changes there.  Not a
+   pixel changes anywhere: with DEPTH_TEST off the depth buffer is never read
+   (mp-nodepth checks it stays off through a fight, a swim and a rebuild).
+   Only Pixi's own getContext on this canvas is changed, and only while the
+   app is made; `?depthbuf` in the address keeps the depth buffer, to compare. */
+function withoutDepthBuffer(canvas) {
+  try {
+    if (/(^|[?&])depthbuf(=|&|$)/.test(window.location.search || '')) return () => {};
+    if (!canvas || typeof canvas.getContext !== 'function' || Object.prototype.hasOwnProperty.call(canvas, 'getContext')) return () => {};
+    const own = canvas.getContext;
+    canvas.getContext = function (type, attrs) {
+      if ((type === 'webgl2' || type === 'webgl') && attrs && typeof attrs === 'object') attrs = Object.assign({}, attrs, { depth: false });
+      return own.apply(this, [type, attrs].concat(Array.prototype.slice.call(arguments, 2)));
+    };
+    return () => { try { delete canvas.getContext; } catch (e) { /* the prototype's again */ } };
+  } catch (e) {
+    return () => {};
+  }
+}
+
 export async function createPixiApp(canvas) {
   /* v2.3.1383: without a webglcontextlost preventDefault the browser never
      even ATTEMPTS a context restore — the canvas just dies.  iOS Safari
@@ -525,7 +602,12 @@ export async function createPixiApp(canvas) {
   // canvas renderer even on first boot.
   try {
     const app = new Application();
-    await app.init({ ...initOpts, preference: 'webgl' });
+    const putBack = withoutDepthBuffer(canvas);   /* v2.3.3072 */
+    try {
+      await app.init({ ...initOpts, preference: 'webgl' });
+    } finally {
+      putBack();
+    }
     /* v2.3.763: record WebGL context loss -- prime suspect for the reported
        mid-fight black canvas on iPhone. */
     watchContextLoss(canvas);

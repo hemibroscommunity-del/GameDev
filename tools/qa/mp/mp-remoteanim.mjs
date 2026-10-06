@@ -26,6 +26,13 @@ import * as H from './harness.mjs';
 export async function run({ browser, wsPort, webPort, rec }) {
   const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Watcher', nameB: 'Lighter' });
   const bId = await H.readState(B, (S) => S.myId);
+  /* v2.3.3077: a pose is made the first time it can be wanted
+     (rendering/standIns.js) -- for a watcher, when another player near them
+     starts one, so the very first sighting draws that player as they stand.
+     This reads the frames of a 0.5 s light from its first, so the watcher's
+     poses are asked for first. */
+  await A.page.evaluate(() => Promise.all(['chop', 'cook', 'fire']
+    .map((k) => (window.__btStandInMake ? window.__btStandInMake(k) : null)))).catch(() => {});
 
   await B.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
