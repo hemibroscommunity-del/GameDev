@@ -685,7 +685,7 @@ remnant to migrate server-side, not a mode to preserve.
       make armour?", the owner: "Yes": iron and black steel bars smelt too
       (Smithing 5 and 10, `SMELT.RECIPES`, icons by `tools/make_bar_icons.py
       iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso or
-      greaves (4 bars each since v2.3.3110) in each metal -- copper Smithing 1, iron 5, black
+      greaves (4 bars each since v2.3.3126) in each metal -- copper Smithing 1, iron 5, black
       steel 10 (`server/src/armorforge.js` `ARMOR_FORGE.RECIPES`, mirrored by
       items.js `ARMOR_FORGE_RECIPES`): the drop's own piece `{name, mat, slot,
       tierMult, quality}` on the armour ladder (1/2/3, no gearBase or type),
@@ -694,7 +694,7 @@ remnant to migrate server-side, not a mode to preserve.
       rows at last (gearVariants.js); `caps.armorforge`, kill switch
       `armorforge: false`; `armorforge` suite, `mp-armorforge`:
       docs/specs/armor-forge.md.
-    - since v2.3.3110 FOUR BARS A PIECE, AND SALVAGE -- the owner: "all items
+    - since v2.3.3126 FOUR BARS A PIECE, AND SALVAGE -- the owner: "all items
       like iron armor, bronze armor, etc should be salvageable at the
       blacksmith for 50% of the bars it took to make them ... chest, legs, and
       sword each take 4 bars ... If you salvage them you get 2 bars back", and

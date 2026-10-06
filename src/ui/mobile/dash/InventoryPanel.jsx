@@ -29,7 +29,7 @@ import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the sho
 import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the trade */
 import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
 import { DAILY_CHEST_ICON } from '@/rendering/chestPreload.js';   /* v2.3.2820 */
-import { SALVAGE, essenceKey, essenceName, essenceIcon } from '@/data/salvage.js';   /* v2.3.3110: the essences */
+import { SALVAGE, essenceKey, essenceName, essenceIcon } from '@/data/salvage.js';   /* v2.3.3126: the essences */
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: the box trap's picture */
 
 // Light heuristic — classify an inventory key into one of the four
@@ -214,7 +214,7 @@ export const thumbFor = (key) => {
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
   if (BAR_THUMBS[k])                return BAR_THUMBS[k];   /* v2.3.2822 */
-  /* v2.3.3110: an essence (salvage.js) -- its grade's glowing orb with its
+  /* v2.3.3126: an essence (salvage.js) -- its grade's glowing orb with its
      metal's bar, tools/make_essence_icons.py */
   if (k.startsWith('essence_') && essenceIcon(k)) return essenceIcon(k) + ITEMS_V;
   if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
@@ -273,7 +273,7 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   bar_black_steel: 'Black Steel Bar',   /* v2.3.3092: prettyName would say "Bar Black Steel" */
   trap_box: 'Box Trap',         /* v2.3.3120: one log at the Woodworker (server trapping.js); prettyName would say "Trap Box" */
 });
-/* v2.3.3110: the nine essences salvage leaves (data/salvage.js): "Rare Iron
+/* v2.3.3126: the nine essences salvage leaves (data/salvage.js): "Rare Iron
    Essence", not "Essence Rare Iron" out of the key.  Written from the table,
    so a metal added there is named here without a line of its own. */
 for (const g of SALVAGE.ESSENCE_GRADES) {

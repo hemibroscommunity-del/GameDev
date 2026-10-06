@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-equip tick */
 import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
-import { essenceInfo } from '@/data/salvage.js';   /* v2.3.3110: what an essence does */
+import { essenceInfo } from '@/data/salvage.js';   /* v2.3.3126: what an essence does */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -182,7 +182,7 @@ function resolveTarget(target) {
     /* v2.3.3092: and where a bar goes -- the Blacksmith's Armor tab */
     else if (SMELT_RECIPES[key] && SR && SR._serverCaps && SR._serverCaps.armorforge) info = 'Forge into armor at the Blacksmith';
     else if (SMELT_RECIPES[key]) info = 'Smelted from ' + SMELT_RECIPES[key].oreCost + ' ' + SMELT_RECIPES[key].oreName;
-    /* v2.3.3110: an essence -- where it is used, and on what */
+    /* v2.3.3126: an essence -- where it is used, and on what */
     else if (essenceInfo(key) && SR && SR._serverCaps && SR._serverCaps.salvage) info = essenceInfo(key);
     else if (count > 0) info = 'Quantity: ' + count;
     return {

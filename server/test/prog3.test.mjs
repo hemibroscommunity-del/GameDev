@@ -568,7 +568,7 @@ const psA = room.playerState.pa;
   const tier = BLACKSMITH_TIERS[tierKey];
   psA.lifeSkills = { blacksmithing: { level: 99, xp: 0 } };
   psA.coins = 100000;
-  /* v2.3.3110: tier 1 (copper) is forged from its bars now (data.js
+  /* v2.3.3126: tier 1 (copper) is forged from its bars now (data.js
      BLACKSMITH_TIERS `bar`), every tier past black steel still from ore */
   psA.inventory = { [tier.bar || ('ore_' + tier.oreName + '_ore')]: 999 };
   psA.weapon = null; psA.weaponStash = [];

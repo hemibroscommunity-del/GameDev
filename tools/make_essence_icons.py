@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3110: the essence bag icons, one per grade and metal, drawn in code.
+"""v2.3.3126: the essence bag icons, one per grade and metal, drawn in code.
 
 Owner, 2026-10-06: "if you salvage the rare, elite, and godly armor you can get
 back that tier's 'essence' and use it on whatever same tier armor or weapon you

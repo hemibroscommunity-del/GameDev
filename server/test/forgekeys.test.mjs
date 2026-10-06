@@ -64,7 +64,7 @@ check('the gatherer yields keys at all (guard)', obtainable.size >= 4, [...obtai
 check('...including the first log and the first ore (guard)',
   obtainable.has('wood_pine_log') && obtainable.has('ore_copper_ore'), [...obtainable]);
 
-/* The resolver under test, in the shape gear.js uses it.  v2.3.3110: a
+/* The resolver under test, in the shape gear.js uses it.  v2.3.3126: a
    tier forged from bars names its bar first (data.js BLACKSMITH_TIERS
    copper / iron / steel, salvage.js). */
 const keyFor = (tier) => (tier.bar ? tier.bar : tier.wood ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore'));

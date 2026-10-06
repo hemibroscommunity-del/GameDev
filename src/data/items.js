@@ -38,7 +38,7 @@ export const SMELT_RECIPES = {
    ARMOR_FORGE.RECIPES (mirror-audit pins every field); the worker settles every
    forge from its own copy, this one only draws the Armour tab's rows.  `mat` is
    the metal's material id (materialTints.js), `slot` the gear slot.
-   v2.3.3110: four bars a piece (salvage.js gives two back). */
+   v2.3.3126: four bars a piece (salvage.js gives two back). */
 export const ARMOR_FORGE_RECIPES = {
   copper_torso: { bar: 'bar_copper', bars: 4, slot: 'armor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 800, name: 'Copper Torso' },
   copper_greaves: { bar: 'bar_copper', bars: 4, slot: 'legsArmor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 800, name: 'Copper Greaves' },

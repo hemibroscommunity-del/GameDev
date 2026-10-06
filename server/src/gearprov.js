@@ -841,7 +841,7 @@ export const gearProvMethods = {
     return { piece, row: { id: row.id, slot: row.slot, src: row.src, at: row.at, p: row.p } };
   },
 
-  /* ═══ v2.3.3110: A RECORDED PIECE TAKES A NEW GRADE (an essence, salvage.js) ═══
+  /* ═══ v2.3.3126: A RECORDED PIECE TAKES A NEW GRADE (an essence, salvage.js) ═══
      The row IS the piece (every inbound path rebuilds from `row.p`, header
      point 1), so the grade is changed THERE, and on the server's own stash
      entry carrying the same id where there is one -- the client changes its

@@ -122,7 +122,7 @@ export const SHOP = {
        is priced above the five ore it cost (5 x 40 = 200) -- smelting before
        selling is worth a little, never a loss. */
     bar_: 240,
-    /* v2.3.3110: the essences salvaging a Rare, Elite or Godly piece leaves
+    /* v2.3.3126: the essences salvaging a Rare, Elite or Godly piece leaves
        (salvage.js).  Each turns a plain piece of its metal into its grade --
        a rare weapon hits 1.3x, an elite 1.75x, a godly 5x (data.js
        QUALITY_GRADES) -- and he SELLS what he buys, so a low price here would

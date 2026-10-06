@@ -1,4 +1,4 @@
-/* ═══ v2.3.3110: SALVAGE'S RECEIPTS, ON THE GAME'S SIDE ═══
+/* ═══ v2.3.3126: SALVAGE'S RECEIPTS, ON THE GAME'S SIDE ═══
  *
  * The worker settles every salvage and every essence (server/src/salvage.js)
  * and answers `smith_salvage_result` / `essence_result`.  This module does the

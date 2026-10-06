@@ -10,8 +10,8 @@ import { metalIconPath, weaponMaterial } from '@/rendering/traits/materialTints.
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
-import { SALVAGE, GRADE_LABEL, armourMetal, weaponMetal, weaponSig, parseEssenceKey, essenceKey, essenceName, essenceIcon, gradeRank } from '@/data/salvage.js'; /* v2.3.3110 */
-import { salvageBus, salvageReasonText } from '@/game/salvage.js'; /* v2.3.3110 */
+import { SALVAGE, GRADE_LABEL, armourMetal, weaponMetal, weaponSig, parseEssenceKey, essenceKey, essenceName, essenceIcon, gradeRank } from '@/data/salvage.js'; /* v2.3.3126 */
+import { salvageBus, salvageReasonText } from '@/game/salvage.js'; /* v2.3.3126 */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -25,7 +25,7 @@ import { salvageBus, salvageReasonText } from '@/game/salvage.js'; /* v2.3.3110 
  *     icon and HAVE/NEED, green when you have it, red when you don't.  A lock
  *     is a chip that names the one thing missing ("Smithing 6").
  *   - One job per tab: Smelt, Forge, Armor (v2.3.3092), Upgrade, Amulet,
- *     Salvage (v2.3.3110).  The
+ *     Salvage (v2.3.3126).  The
  *     old panel stacked all of them in one scroll with a paragraph above each.
  *   - Only what the WORKER settles.  The old panel also offered Reforge, the
  *     legacy "Harden" affix, shield forging and Salvage -- all four ran only
@@ -46,7 +46,7 @@ import { salvageBus, salvageReasonText } from '@/game/salvage.js'; /* v2.3.3110 
  * Test hooks: data-smithy-tab, data-smelt-*, data-forge-row / data-forge-go,
  * data-armor-row / data-armor-go (v2.3.3092), data-harden-go, data-amulet-row,
  * data-salvage-row / data-salvage-go / data-essence-row / data-essence-go /
- * data-salvage-said (v2.3.3110). */
+ * data-salvage-said (v2.3.3126). */
 
 const C = {
   sheet: '#1E2E34', well: '#111E23', raised: '#293B41', card: '#24363C',
@@ -147,7 +147,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
     (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: 'Armor', icon: '/icons/items/chest-plate-copper.webp' + ITEMS_V },
     (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: 'Upgrade', icon: GEM },
     (S._serverCaps && S._serverCaps.amuletForge) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
-    /* v2.3.3110: salvage for bars, and the grades' essences (server salvage.js) */
+    /* v2.3.3126: salvage for bars, and the grades' essences (server salvage.js) */
     (S._serverCaps && S._serverCaps.salvage) && { id: 'salvage', label: 'Salvage', icon: essenceIcon('essence_rare_iron') + ITEMS_V },
   ].filter(Boolean);
   const [tab, setTabState] = React.useState(() => (S._smithyTab && tabs.some((t) => t.id === S._smithyTab)) ? S._smithyTab : tabs[0].id);
@@ -307,7 +307,7 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
       )}
       {shown.map((key) => {
         const bt = BLACKSMITH_TIERS[key];
-        /* v2.3.3110: copper, iron and black steel are forged from four bars */
+        /* v2.3.3126: copper, iron and black steel are forged from four bars */
         const resKey = bt.bar ? bt.bar : bt.wood ? 'wood_' + bt.wood : 'ore_' + bt.oreName + '_ore';
         const resNeed = bt.bar ? bt.bars : bt.oreCost;
         const have = Math.floor(inv[resKey] || 0);
@@ -496,7 +496,7 @@ function AmuletTab({ S, R, coins, lvl, ask, busy }) {
 }
 
 /* ── Salvage: carried copper, iron and black steel back into bars, and the
-   grades' essences (server salvage.js, v2.3.3110) ──
+   grades' essences (server salvage.js, v2.3.3126) ──
    The owner: "salvageable at the blacksmith for 50% of the bars it took to
    make them ... If you salvage them you get 2 bars back", and a Rare, Elite or
    Godly piece's "essence ... use it on whatever same tier armor or weapon you

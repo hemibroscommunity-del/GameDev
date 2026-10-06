@@ -46,7 +46,7 @@ export const ARMOR_FORGE = Object.freeze({
      Smithing 1, 5 and 10: the owner's "levels of 5", the bars' own gates
      (each metal's armour opens with its bar).  XP is 200 / 300 / 400 a bar
      used -- half what smelting that bar paid.
-     v2.3.3110: FOUR bars a piece, torso and greaves alike (was five and
+     v2.3.3126: FOUR bars a piece, torso and greaves alike (was five and
      three) -- the owner: "maybe chest, legs, and sword each take 4 bars to
      make (5 ore makes 1 bar).  If you salvage them you get 2 bars back"
      (salvage.js).  The XP moves with the bars (800 / 1,200 / 1,600). */

@@ -34,8 +34,8 @@ import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
-import * as SRV_SALVAGE from '../src/salvage.js'; /* v2.3.3110 */
-import * as CLIENT_SALVAGE from '../../src/data/salvage.js'; /* v2.3.3110 */
+import * as SRV_SALVAGE from '../src/salvage.js'; /* v2.3.3126 */
+import * as CLIENT_SALVAGE from '../../src/data/salvage.js'; /* v2.3.3126 */
 import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
 import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl } from '../../src/data/lifeSkills.js'; /* v2.3.3038 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
@@ -1381,7 +1381,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     Object.values(SRV_ARMOR_FORGE.RECIPES).every((r) => r.minLvl >= SRV_SMELT.RECIPES[r.bar].minLvl));
 }
 
-// ── SALVAGE AND ESSENCES (v2.3.3110) ──
+// ── SALVAGE AND ESSENCES (v2.3.3126) ──
 // The Blacksmith's Salvage tab draws the rows the worker will accept and sends
 // a weapon's signature the worker re-derives; an essence's name in the bag is
 // parsed from its key.  So the table and every helper must agree exactly.

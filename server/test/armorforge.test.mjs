@@ -3,7 +3,7 @@
  * Asked "Should smelted bars make armour?", the owner said "Yes".
  *
  *   1. caps.armorforge is advertised, under a name the liveflags route takes.
- *   2. A copper torso: exactly four copper bars taken (v2.3.3110: four a
+ *   2. A copper torso: exactly four copper bars taken (v2.3.3126: four a
  *      piece, the owner's "chest, legs, and sword each take 4 bars"), the piece minted into
  *      the ledger (src 'forge') with its id, metal, slot, step and a rolled
  *      grade -- and NO gearBase or type, which would move it off the armor
