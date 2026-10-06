@@ -498,6 +498,7 @@ import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask */
+import { setStandInMaker, ensureStandIn, standInStarted, standInReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
@@ -2810,9 +2811,6 @@ export class EffectsRenderer {
       try { Assets.unload(url); } catch (e) { /* the crops are what draw now */ }
     };
     const _CHOP_URL = '/sprites/skills/chop-strip.webp?v=2.3.1469';
-    const _chopBody = _fxLoad(_CHOP_URL).then((tex) => {
-      _cropChop(tex, _CHOP_URL, 'body', this._chopFrames);   /* v2.3.2500 / v2.3.2761 */
-    }).catch((err) => console.warn('[chop-strip] load failed', err));
     /* v2.3.1468: legs-erased lumberjack, swapped in while leg armour is
        equipped — the cook-strip-legless pattern (v2.3.1114).  The
        regenerated greaves art's stances don't pixel-match the body's,
@@ -2821,9 +2819,22 @@ export class EffectsRenderer {
        (owner).  With the legless body the armor legs ARE the legs. */
     this._chopLeglessFrames = [];
     const _CHOP_LL_URL = '/sprites/skills/chop-strip-legless.webp?v=2.3.1469';
-    const _chopLegless = _fxLoad(_CHOP_LL_URL).then((tex) => {
-      _cropChop(tex, _CHOP_LL_URL, 'legless', this._chopLeglessFrames);   /* v2.3.2500 / v2.3.2761 */
-    }).catch((err) => console.warn('[chop-strip-legless] load failed', err));
+    /* ═══ v2.3.3077: MADE WHEN FIRST WANTED, NOT ON THE LOADING SCREEN ═══
+       The owner's yes to the memory plan's "gathering poses built the first
+       time you gather".  Both strips load, crop (_cropChop) and take your
+       skin (_bakeChopStrips) the first time a tree is in reach with the axe,
+       a chop starts, or another player near you chops -- rendering/standIns.js
+       and _standInTriggers.  Until then nothing of the lumberjack is held, and
+       a chop never hides the body for a figure that is not there yet
+       (entityRenderer _chopHide). */
+    this._makeChop = () => {
+      this._chopFrames.length = 0;
+      this._chopLeglessFrames.length = 0;
+      return Promise.all([
+        Assets.load(_CHOP_URL).then((tex) => { _cropChop(tex, _CHOP_URL, 'body', this._chopFrames); }),        /* v2.3.2500 / v2.3.2761 */
+        Assets.load(_CHOP_LL_URL).then((tex) => { _cropChop(tex, _CHOP_LL_URL, 'legless', this._chopLeglessFrames); }),
+      ]).then(() => { this._bakeChopStrips(); return this._chopFrames.length > 0; });
+    };
     /* v2.3.2500: the two arrays above stay RAW on purpose -- they are what a
        PEER's lumberjack is drawn from (the SPEC table in
        _updateRemoteExtraction), and a peer must not wear your complexion.  YOUR
@@ -2832,7 +2843,7 @@ export class EffectsRenderer {
     this._chopLeglessSkinFrames = [];
     this._chopSkinFramesFlip = null;          /* v2.3.2855: the pre-flipped twins -- see _bakeChopStrips */
     this._chopLeglessSkinFramesFlip = null;
-    this._loadChopSkinStrips(_chopBody, _chopLegless);
+    this._loadChopSkinStrips();
 
     /* v2.3.1131: gear layers for the woodcutting chopper (mirror of the cook
        stand-in).  Shirt / leg-armour / chest-plate drawn over the lumberjack when
@@ -2966,6 +2977,10 @@ export class EffectsRenderer {
        showed the artist's orange. */
     this._fireFrames = [];
     this._loadFireStrips();
+    /* v2.3.3077: how each gathering pose is made, for rendering/standIns.js --
+       a new renderer (a black screen's rebuild) starts every pose over */
+    setStandInMaker((kind) => (kind === 'chop' ? this._makeChop() : kind === 'cook' ? this._makeCook()
+      : kind === 'fire' ? this._makeFire() : Promise.resolve(false)));
 
     /* v2.3.910: sword-swing stand-in — the owner-supplied swing animation plays
        at the player during a melee swing (same self-contained stand-in pattern
@@ -3727,16 +3742,44 @@ export class EffectsRenderer {
    * PRELOADING IS LAW (CLAUDE.md): the bake is pushed onto _fxPreload, the
    * list _fxLoad feeds and effectsAnimationsReady() awaits, so the intro gate
    * holds for the RECOLOURED textures rather than baking mid-chop. */
-  _loadChopSkinStrips(bodyLoad, leglessLoad) {
-    /* The BAKE goes on the gate, not just the downloads: _fxLoad already
-       registered the two fetches, but effectsAnimationsReady() settling on
-       those says only that the art arrived.  Pushing this says the recoloured
-       textures exist before the intro overlay lifts, which is what the law
-       actually asks for (CLAUDE.md) -- the same reason _loadCookStrips pushes
-       its bake rather than relying on its loads. */
-    _fxPreload.push(Promise.all([bodyLoad, leglessLoad])
-      .then(() => { this._bakeChopStrips(); })
-      .catch((err) => console.warn('[chop-strip skin] bake failed', err)));
+  /* ═══ v2.3.3077: WHEN EACH GATHERING POSE IS FIRST WANTED ═══
+     Four times a second: the lumberjack when a tree is in reach (S._nearNode
+     offers it only to a player holding the axe for it) or a chop starts; the
+     cook when a campfire is lit or in reach, or a cook starts; the
+     fire-lighter when a log is in the bag (a tap on one lights a fire,
+     firemakingBus) or a light starts; and any of them when another player
+     near you does that one (their relayed harvest, other._ex).  Idempotent:
+     a pose made or on its way is not asked again (rendering/standIns.js). */
+  _standInTriggers(S, now) {
+    if (!S || now - (this._standInAt || 0) < 250) return;
+    this._standInAt = now;
+    const nn = S._nearNode;
+    if (nn) {
+      if (nn.nodeType === 'tree') ensureStandIn('chop', 'a tree in reach');
+      else if (nn === S._campfire || nn.nodeType === 'campfire') ensureStandIn('cook', 'a campfire in reach');
+    }
+    const ex = S._extraction;
+    if (ex && ex.skill === 'woodcutting') ensureStandIn('chop', 'chopping');
+    else if (ex && ex.skill === 'cooking') ensureStandIn('cook', 'cooking');
+    if (S._campfire && S._campfire.alive) ensureStandIn('cook', 'a campfire lit');
+    if (S._firemaking) ensureStandIn('fire', 'lighting a fire');
+    else if (!standInStarted('fire')) {
+      const inv = S.rpg && S.rpg.inventory;
+      if (inv) for (const k in inv) { if (k.indexOf('wood_') === 0 && inv[k] > 0) { ensureStandIn('fire', 'a log in the bag'); break; } }
+    }
+    const others = S.others;
+    if (others) for (const id in others) {
+      const x = others[id] && others[id]._ex;
+      if (x === 'chop' || x === 'cook' || x === 'fire') ensureStandIn(x, 'another player');
+    }
+  }
+
+  _loadChopSkinStrips() {
+    /* v2.3.3077: the bake is no longer on the loading screen's gate: it runs
+       when the lumberjack is first wanted (this._makeChop, rendering/standIns.js),
+       the owner's yes to "gathering poses built the first time you gather".
+       The two re-bakes below are safe before that: _bakeChopStrips returns at
+       once while the crops it reads (_chopSrc) do not exist. */
     /* The character menu can change the skin mid-session; rebake exactly as
        the cook and the fire-lighter do -- but from the images already in hand,
        so this one costs no network at all. */
@@ -3923,7 +3966,12 @@ export class EffectsRenderer {
    * Nothing here is lazy: a first-cook hitch would be the regression TRAPS #12
    * describes. */
   _loadCookStrips() {
-    _fxPreload.push(this._fetchAndBakeCook());
+    /* v2.3.3077: made when first wanted (rendering/standIns.js), not on the
+       loading screen's gate -- the owner's yes to "gathering poses built the
+       first time you gather".  The re-bakes below run only for a cook that
+       has been asked for (_fetchAndBakeCook says so): before that the first
+       make bakes with whatever skin and drawings are current. */
+    this._makeCook = () => this._fetchAndBakeCook().then(() => this._cookFrames.length > 0);
     /* The character menu can change the skin mid-session, so rebake on it the
        way the sword/bow stand-ins do (_rebakeBodies, v2.3.975). */
     this._offs.push(onSkinChange(() => { this._fetchAndBakeCook(); }));   /* v2.3.3074: kept for destroy() */
@@ -3950,6 +3998,10 @@ export class EffectsRenderer {
      cache serves from disk, and it happens behind the character menu — never
      mid-play, so the preloading LAW is not in tension with it. */
   _fetchAndBakeCook(inkOnly) {
+    /* v2.3.3077: a skin or drawing change re-bakes the cook only once he has
+       been asked for (rendering/standIns.js) -- before that his first make
+       bakes with whatever is current */
+    if (!standInStarted('cook')) return Promise.resolve();
     return Promise.all([
       _loadStandInImg(COOK_URL.body),
       _loadStandInImg(COOK_URL.legless),
@@ -4132,7 +4184,8 @@ export class EffectsRenderer {
    * same list _fxLoad feeds — so the intro gate waits for the RECOLOURED
    * textures, not for a raw download it would then have to re-bake mid-play. */
   _loadFireStrips() {
-    _fxPreload.push(this._fetchAndBakeFire());
+    /* v2.3.3077: made when first wanted, as the cook is (_loadCookStrips). */
+    this._makeFire = () => this._fetchAndBakeFire().then(() => this._fireFrames.length > 0);
     /* The character menu can change the skin mid-session; rebake exactly as the
        cook does (_loadCookStrips, v2.3.1710). */
     this._offs.push(onSkinChange(() => { this._fetchAndBakeFire(); }));   /* v2.3.3074: kept for destroy() */
@@ -4152,6 +4205,8 @@ export class EffectsRenderer {
      spriteScale.js).  A rebake re-fetches from the HTTP cache and only ever
      happens behind the character menu, never mid-play. */
   _fetchAndBakeFire(inkOnly) {
+    /* v2.3.3077: the cook's rule (_fetchAndBakeCook) */
+    if (!standInStarted('fire')) return Promise.resolve();
     /* v2.3.1715: cache-bust.  The file KEPT its name through the 29-frame ->
        8-frame replacement (so every reference and the preload registration
        stay put), which means a browser holding the old 4669x220 image would
@@ -4296,6 +4351,7 @@ export class EffectsRenderer {
     this._updateArrowSnaps(S, now);     /* v2.3.2731: one arrow in eight breaks on what it hits */
     try { this._shotFx.tick(S, now); } catch (e) { /* v2.3.2732: monster shots are drawing only */ }
     this._updateCampfire(S, now);
+    try { this._standInTriggers(S, now); } catch (e) { /* v2.3.3077: a pose not made yet draws the body instead */ }
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
     this._updateBowShot(S, now);
@@ -11152,7 +11208,7 @@ export class EffectsRenderer {
     if (this.fireLegsSprite) this.fireLegsSprite.visible = false;
     if (this.fireChestSprite) this.fireChestSprite.visible = false;
     const fm = S && S._firemaking;
-    if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length) return;
+    if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length || !standInReady('fire')) return;   /* v2.3.3077: drawn once made whole (rendering/standIns.js) */
     if (this._selfCorpse) return;   /* v2.3.2281 */
     if (fm.doneAt && now > fm.doneAt) return;
     /* v2.3.1435 (owner): 1.75x (88 -> 154).  v2.3.1715: FRAME_MS 55 -> 200 with
@@ -11406,7 +11462,7 @@ export class EffectsRenderer {
       if (code !== 'chop' && code !== 'cook' && code !== 'fire') continue;
       if ((o.zone || o.z || 'town') !== zone) continue;
       const spec = SPEC[code];
-      if (!spec.frames || !spec.frames.length) continue;
+      if (!spec.frames || !spec.frames.length || !standInReady(code)) continue;   /* v2.3.3077: drawn once made whole, as the body is hidden (entityRenderer _rexStandIn) */
       let ent = pool.get(id);
       if (!ent) { ent = {}; pool.set(id, ent); }
       let sp = ent[code];
@@ -14283,7 +14339,7 @@ export class EffectsRenderer {
     /* Chopper animation beside the tree (woodcutting only): stands on the
        player's side, faces the trunk (source faces right -> flip when the
        tree is on the player's LEFT). */
-    if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
+    if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length && standInReady('chop')) {   /* v2.3.3077: drawn once made whole */
       const CHOP_H = CHOP_STANDIN_H;   // v2.3.2273: see the constant -- shared with the peer figure's SPEC row so the two can no longer drift.
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
       /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --
@@ -14526,7 +14582,7 @@ export class EffectsRenderer {
     /* v2.3.853: cook character at the campfire during the whole cook (waiting
        + ready), the chopper's sibling.  Stands just left of the fire so the
        pan (extends right) sits over the flames. */
-    if (cookingCue && this.cookSprite && this._cookFrames.length) {
+    if (cookingCue && this.cookSprite && this._cookFrames.length && standInReady('cook')) {   /* v2.3.3077: drawn once made whole */
       /* v2.3.1710 (owner: "While Cooking character is too large (about 25%)"):
          82 -> 62.  v2.3.1429 doubled 41 -> 82 on an owner request and overshot.
          The number is measurable, not taste: the drawn height of the AVATAR is

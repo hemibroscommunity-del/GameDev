@@ -1317,6 +1317,40 @@ export async function initPixiRenderer(canvas) {
         peers: (e._peerInks && e._peerInks.fire) ? e._peerInks.fire.size : 0,
       };
     },
+    /* v2.3.3077: what each gathering pose holds right now -- the pictures
+       behind its frames, each counted once (w x h x 4).  Nothing until the
+       pose is first wanted (rendering/standIns.js); mp-gatherposes. */
+    standInPictures: () => {
+      const e = effectsRenderer;
+      const seen = new Set();
+      const grab = (v, out, depth) => {
+        if (!v || depth > 3) return;
+        if (v.source && v.source.resource) { out.add(v.source.resource); return; }
+        if (typeof v.width === 'number' && typeof v.height === 'number' && v.width && !Array.isArray(v)) { out.add(v); return; }
+        if (Array.isArray(v)) { for (const x of v) grab(x, out, depth + 1); return; }
+        if (v instanceof Map) { for (const x of v.values()) grab(x, out, depth + 1); return; }
+        if (typeof v === 'object') for (const k in v) grab(v[k], out, depth + 1);
+      };
+      const tally = (names) => {
+        const all = new Set();
+        for (const k of names) grab(e[k], all, 0);
+        let b = 0, n = 0;
+        for (const r of all) {
+          if (seen.has(r)) continue;
+          seen.add(r);
+          const w = r.width | 0, h = r.height | 0;
+          if (!w || !h) continue;
+          b += w * h * 4; n++;
+        }
+        return { mb: +(b / 1048576).toFixed(1), n };
+      };
+      return {
+        chop: tally(['_chopSrc', '_chopFrames', '_chopLeglessFrames', '_chopSkinFrames', '_chopLeglessSkinFrames',
+          '_chopSkinFramesFlip', '_chopLeglessSkinFramesFlip']),
+        cook: tally(['_cookFrames', '_cookLeglessFrames', '_cookFramesInk', '_cookLeglessFramesInk']),
+        fire: tally(['_fireFrames', '_fireFramesInk']),
+      };
+    },
     /* v2.3.138: dispose a single loot pile by direct object reference.
        Local SP pickups don't always set lootId (legacy melee/bow/DoT
        push paths) so disposeLootById can't reach them. The pickup
