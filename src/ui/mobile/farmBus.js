@@ -34,11 +34,11 @@ export const farmBus = {
   view: null,
   /* worker clock minus this phone's clock, ms. */
   offset: 0,
-  /* v2.3.3109: today's order board (server farmorders.js) --
+  /* v2.3.3118: today's order board (server farmorders.js) --
      {day, resetsAt, list: [{id, key, n, gold, xp, done, gone?}]} -- or null
      before the worker has sent one (or with the board switched off). */
   orders: null,
-  /* v2.3.3109 (review): whether the worker has SAID what the board is -- a
+  /* v2.3.3118 (review): whether the worker has SAID what the board is -- a
      board, or none (switched off, or a newer worker's record).  With `orders`
      null the window tells "not asked yet" from "closed" by this; it used to
      show "…" for both, forever. */
@@ -61,7 +61,7 @@ export const farmBus = {
       this.view = { beds: payload.beds, plots: payload.plots };
       if (Number.isFinite(payload.now)) this.offset = payload.now - Date.now();
     }
-    /* v2.3.3109: the board rides farm_open's answer (null with it switched
+    /* v2.3.3118: the board rides farm_open's answer (null with it switched
        off) and every delivery's; a bed action's answer has no `orders` key
        and leaves it be. */
     if (Object.prototype.hasOwnProperty.call(payload, 'orders')) {
@@ -92,7 +92,7 @@ export const farmBus = {
   buy(S, item, count) {
     return this._out(S, 'buy', () => S.channel.send({ type: 'farm_buy', payload: { item, count } }));
   },
-  /* v2.3.3109: deliver one of today's orders.  The day and id ride along as
+  /* v2.3.3118: deliver one of today's orders.  The day and id ride along as
      a check: a board that turned over at midnight under an open window is
      refused, not delivered from a different order (farmorders.js).  Safe to
      repeat: a delivered order is refused the second time. */
@@ -110,7 +110,7 @@ export const farmBus = {
     this.pending = { op, at };
     this.rev += 1;
     emit();
-    /* v2.3.3109 (review): a delivery waits as long as a buy, and its silence
+    /* v2.3.3118 (review): a delivery waits as long as a buy, and its silence
        asks the worker for the board instead of waking Deliver: after 4 s a
        second tap went out, the late first answer said "Order delivered" and
        the second's then said "Already delivered" in red.  The board's answer

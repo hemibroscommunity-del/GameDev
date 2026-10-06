@@ -409,7 +409,7 @@ export const persistenceMethods = {
        and the beds were bought with them.  The next open hands out the free
        deed again. */
     try { await this.state.storage.delete('farm:' + pid); } catch (e) { /* best-effort, as above */ }
-    /* v2.3.3109: today's order board (`farmorders:<pid>`, farmorders.js) is
+    /* v2.3.3118: today's order board (`farmorders:<pid>`, farmorders.js) is
        KEPT, as the guild claims are.  Its done flags are the day's limit: the
        first cut deleted it here, and one player id could deliver the day's
        three orders again after every restart (review).  The restarted

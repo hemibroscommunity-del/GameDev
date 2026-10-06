@@ -5,7 +5,7 @@ import { farmBus } from '@/ui/mobile/farmBus.js';
 import { FARM_ERR_TEXT, farmItemName } from '@/game/farmFeedback.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
-import { ITEM_NAMES, iconFor, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3109: the order board names and draws goods as the bag does */
+import { ITEM_NAMES, iconFor, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3118: the order board names and draws goods as the bag does */
 
 /* ═══ v2.3.3111: THE FEED & SEED, A REAL FARM ═══
  *
@@ -35,7 +35,7 @@ import { ITEM_NAMES, iconFor, thumbFor } from '@/ui/mobile/dash/InventoryPanel.j
  * Test hooks: data-farm, data-farm-tab, data-farm-tool, data-farm-seed,
  * data-bed / data-bed-state, data-farm-all, data-farm-buy, data-farm-status,
  * data-farm-visit; window.__btFarm (the bus).
- * v2.3.3109: data-farm-orders, data-farm-order={slot} / data-farm-order-done,
+ * v2.3.3118: data-farm-orders, data-farm-order={slot} / data-farm-order-done,
  * data-farm-deliver={slot}, data-farm-orders-reset. */
 
 const C = {
@@ -185,7 +185,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
 
   const view = farmBus.view;
   const now = farmBus.serverNow();
-  /* v2.3.3109 (review): yesterday's board, past midnight by the worker's
+  /* v2.3.3118 (review): yesterday's board, past midnight by the worker's
      clock -- its Deliver stays dark while the new one is asked for. */
   const boardOld = !!(farmBus.orders && now >= farmBus.orders.resetsAt);
   const plots = view ? view.plots : [];
@@ -198,11 +198,11 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
      older worker's farm the potato and the pumpkin, and the buy hung on "No
      answer yet" (review).  A farm worker from before it grows the first four. */
   const grownCount = S._serverCaps && typeof S._serverCaps.farmCrops === 'number' ? S._serverCaps.farmCrops : 4;
-  /* v2.3.3109: the order board, only on a worker that has one (caps.farmorders;
+  /* v2.3.3118: the order board, only on a worker that has one (caps.farmorders;
      an older worker has no case for farm_order and would rebroadcast it). */
   const ordersOn = !!(S._serverCaps && S._serverCaps.farmorders);
   const board = ordersOn ? farmBus.orders : null;
-  /* v2.3.3109 (review): the board asks for itself.  At midnight, with the
+  /* v2.3.3118 (review): the board asks for itself.  At midnight, with the
      window open, it asks for the new day's board -- "New orders in 0m" stood
      beside yesterday's until a refused tap or a reopen; and the Orders tab
      with no board yet asks once (a page that rejoined a worker with the
@@ -307,7 +307,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
     if (d.op === 'harvest' && d.items) {
       status = { text: Object.keys(d.items).map((k) => '+' + d.items[k] + ' ' + farmItemName(k)).join(' · ') + (d.xp ? ' · +' + d.xp + ' XP' : ''), color: C.good };
     } else if (d.op === 'buy') status = { text: '+' + d.n + ' ' + farmItemName(d.item), color: C.good };
-    else if (d.op === 'order') status = { text: 'Delivered · +' + d.gold + ' gold · +' + d.xp + ' XP', color: C.good };   /* v2.3.3109 */
+    else if (d.op === 'order') status = { text: 'Delivered · +' + d.gold + ' gold · +' + d.xp + ' XP', color: C.good };   /* v2.3.3118 */
     else {
       const verb = { dig: 'Dug', plant: 'Planted', water: 'Watered', feed: 'Fertilized' }[d.op] || 'Done';
       status = { text: verb + ' ' + d.n + (d.n === 1 ? ' bed' : ' beds') + (last.err ? ' · ' + (FARM_ERR_TEXT[last.err] || '') : ''), color: last.err ? C.brass : C.sub };
@@ -455,14 +455,14 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
           </div>
         )}
 
-        {/* ═══ v2.3.3109: THE ORDER BOARD (server farmorders.js) ═══
+        {/* ═══ v2.3.3118: THE ORDER BOARD (server farmorders.js) ═══
             Three orders a day, each the worker's: what it wants, what it
             pays, whether it is done.  Deliver is lit only when the bag holds
             enough -- the worker checks again and takes the goods itself. */}
         {!closed && tab === 'orders' && (
           <div data-farm-orders="1" data-farm-orders-old={boardOld ? 1 : 0}>
             {!board ? (
-              /* v2.3.3109 (review): closed, failed or on its way -- this was "…"
+              /* v2.3.3118 (review): closed, failed or on its way -- this was "…"
                  for all three, forever (farmBus.ordersSeen). */
               <div data-farm-status={farmBus.ordersSeen ? 'orders-closed' : 'loading'} style={{ padding: '28px 0', textAlign: 'center', color: C.mute, fontSize: 13 }}>
                 {farmBus.ordersSeen ? (

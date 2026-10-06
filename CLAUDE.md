@@ -1535,7 +1535,7 @@ remnant to migrate server-side, not a mode to preserve.
       own bite back, "Eat again in Ns", on `caps.pvpheal` from the hits it
       saw, never the duel flag, which outlives duels; kill switch `pvpheal:
       false`); `fightfood` suite, `mp-fightfood`: docs/specs/fight-food.md;
-    - since v2.3.3109 the FEED & SEED'S ORDER BOARD -- the income half of the
+    - since v2.3.3118 the FEED & SEED'S ORDER BOARD -- the income half of the
       owner's purpose: an Orders tab, three orders a day per player
       (`server/src/farmorders.js` `FARM_ORDERS.POOL`, append-only), drawn once
       a UTC day from what their Farming and Cooking levels can make, seeded by

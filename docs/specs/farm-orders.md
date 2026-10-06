@@ -1,4 +1,4 @@
-# The Feed & Seed's order board (v2.3.3109)
+# The Feed & Seed's order board (v2.3.3118)
 
 The owner, on what farming is for: *"Farming needs a purpose. I think the best
 purpose it can serve are temporary buffs (boss fights, PvP, dueling, etc) and
@@ -9,7 +9,7 @@ The buff half is docs/specs/fight-food.md. This is the income half.
 ## Why a board
 
 Diego buys crops, but his price falls as his pile grows (shop.js), so he is a
-trickle that dries up. He buys no dish at all since v2.3.3107. The farming
+trickle that dries up. He buys no dish at all since v2.3.3116. The farming
 plan (docs/FARMING-PLAN.md, "What farming pays") named the dependable
 source: an order board at the Feed & Seed, three orders a day, each for gold
 and Farming XP.
@@ -209,7 +209,7 @@ this list.
 
 - **A brand-new character's levels and bag come from the join message**
   (join.js), so the draw's "what you can make yourself" is only as true as
-  that first join. #830 (v2.3.3104, a new character starts from the server's
+  that first join. #830 (v2.3.3113, a new character starts from the server's
   defaults) closes it.
 - **Diego buys with no place or fight check** (shop.js `shop_sell`), as the
   board did before its fight gate. Crops and fish sold to him mid-fight are

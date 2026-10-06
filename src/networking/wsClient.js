@@ -4182,7 +4182,7 @@ export function setupWebSocket(ctx) {
         /* v2.3.3111: the farm (FarmPanel's Feed & Seed window) -> farm.js.
            Without these three lines the window would ask and never hear back
            -- TRAPS #18, the allowlist's one way to fail silently. */
-        /* v2.3.3109: + farm_order, the Feed & Seed's order board (farmorders.js). */
+        /* v2.3.3118: + farm_order, the Feed & Seed's order board (farmorders.js). */
         if (msg.type === 'farm_open' || msg.type === 'farm_act' || msg.type === 'farm_buy' || msg.type === 'farm_order') {
           ws.send(JSON.stringify(msg));
           return;
