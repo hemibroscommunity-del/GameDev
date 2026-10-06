@@ -133,6 +133,8 @@ import { CookPanel } from './panels/buildings/CookPanel.jsx';
 import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
 import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
+import { WheelHallPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls */
+import { ClanInviteCard } from './panels/ClanInviteCard.jsx';            /* v2.3.3066: a clan invite you can take up */
 import { StorePanel } from './panels/buildings/StorePanel.jsx';   /* v2.3.2476: the auction house */
 import { StoreToast } from './mobile/StoreToast.jsx';   /* v2.3.2476: "your thing sold" */
 import { WorldMapOverlay } from './WorldMapOverlay.jsx';  /* v2.3.2966: the Wheel's labelled world map */
@@ -470,7 +472,7 @@ import { isWheelTrialZone, footstepSurface } from '@/game/worldTrial.js';   /* v
 import { wheelDoorAt, enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
-import { WHEEL_TOWNSFOLK } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors */
+import { WHEEL_TOWNSFOLK, WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 
@@ -1611,6 +1613,16 @@ export var BroTown = function BroTown(_ref0) {
   var _useStateWS = useState(null),
     nearShutDoor = _useStateWS[0],
     setNearShutDoor = _useStateWS[1];
+  /* v2.3.3066: the Wheel hall whose door you stand at (data/wheelBuildingDoors.js
+     WHEEL_HALL_DOORS: the Guild Hall, the Post Office, the Sheriff's Office),
+     and a clan invite waiting for an answer (ClanInviteCard) -- both synced
+     with nearBuilding */
+  var _useStateWH = useState(null),
+    nearHall = _useStateWH[0],
+    setNearHall = _useStateWH[1];
+  var _useStateCI = useState(null),
+    clanInvite = _useStateCI[0],
+    setClanInvite = _useStateCI[1];
   var _useState43 = useState(false),
     _useState44 = _slicedToArray(_useState43, 2),
     showLeaderboard = _useState44[0],
@@ -7913,13 +7925,23 @@ export var BroTown = function BroTown(_ref0) {
       });
       /* v2.3.3032: and the Wheel's building door you stand at (game/wheelTownDoors.js) */
       var nwb = S._nearWheelBuilding || null;
-      var nwbLabel = nwb && nwb.index >= 0 ? nwb.label : null;
+      var nwbLabel = nwb && (nwb.index >= 0 || nwb.hall) ? nwb.label : null;
       setNearDoorLabel(function (prev) {
         return prev === nwbLabel ? prev : nwbLabel;
       });
-      var nwbShut = nwb && nwb.index < 0 ? nwb.id : null;
+      var nwbShut = nwb && nwb.index < 0 && !nwb.hall ? nwb.id : null;
       setNearShutDoor(function (prev) {
         return prev === nwbShut ? prev : nwbShut;
+      });
+      /* v2.3.3066: a hall's door, and a clan invite still live (the worker
+         keeps one 120 s, server/src/clans.js) for someone in no clan */
+      var nwbHall = nwb && nwb.hall ? nwb.hall : null;
+      setNearHall(function (prev) {
+        return prev === nwbHall ? prev : nwbHall;
+      });
+      var _ci = S._pendingClanInvite && !S._clanData && Date.now() - S._pendingClanInvite.ts < 120000 ? S._pendingClanInvite : null;
+      setClanInvite(function (prev) {
+        return prev === _ci ? prev : _ci;
       });
       /* v2.3.3016: and the Wheel dungeon mouth you stand at */
       var nwd = S._nearWheelDoor && !S._serverDungeon ? S._nearWheelDoor.id : null;
@@ -8228,6 +8250,11 @@ export var BroTown = function BroTown(_ref0) {
       clan:         function () { setShowClanPanel(function (v) { return !v; }); },
       social:       function () { setShowSocialPanel(function (v) { return !v; }); },
       chat:         function () { setChatOpen(function (v) { return !v; }); },
+      /* v2.3.3066: OPEN, not toggle -- the dashboard's Clan and Guild pages
+         call these from a button ("Make a clan", "Open the guild window"),
+         and a toggle pressed while the window is already up would shut it */
+      clanOpen:     function () { setShowClanPanel(true); },
+      guildOpen:    function () { setShowGuildPanel(true); },
     };
     return function () { delete window.__broLegacyUI; };
   }, []);
@@ -11588,7 +11615,17 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "\u2715"), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
+  }, "\u2715"), /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
+       opens the panel that does the work and closes the hall */
+  (buildingPanel === 'guildhall' || buildingPanel === 'post' || buildingPanel === 'sheriff') && /*#__PURE__*/React.createElement(WheelHallPanel, {
+    hall: buildingPanel,
+    stateRef: stateRef,
+    onClan: function onClan() { setBuildingPanel(null); setShowClanPanel(true); },
+    onGuild: function onGuild() { setBuildingPanel(null); setShowGuildPanel(true); },
+    onMessages: function onMessages() { setBuildingPanel(null); dashboardPanelBus.open('social'); },
+    onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); },
+    onArena: function onArena() { setBuildingPanel('party'); }
+  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 8,
@@ -11802,7 +11839,7 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
+  }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), /* v2.3.3066: a clan invite raises its own card (ClanInviteCard) */ clanInvite && !duelRequest && /*#__PURE__*/React.createElement(ClanInviteCard, { stateRef: stateRef, invite: clanInvite, onDone: function onDone() { setClanInvite(null); } }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
    prototype era -- the step machine ran all along, only the display was
    gated, so veterans' bt_tutorial already reads 7/10 and never see it) */
   /* v2.3.1235: §6 — the banner yields to every blocking decision
@@ -13092,8 +13129,11 @@ export var BroTown = function BroTown(_ref0) {
        tapped, so it stops rendering. Walking away and back re-arms it
        normally -- nearBuilding is untouched, which keeps the desktop E key
        (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
-    buildingPanel === null && nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
+    buildingPanel === null && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
+    /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
+       Sheriff's Office): the same button, its own picture and name */
+    "data-enter-hall": nearBuilding === null ? nearHall : undefined,
     /* v2.3.3032: a Wheel door's name is the name on its sign -- GENERAL STORE,
        AUCTION HOUSE -- longer than the old town's labels, and a one-line pill
        that long ran under the JUMP button (v2.3.3017) at the right of the
@@ -13142,10 +13182,10 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 11,
       marginRight: 4
     }
-  }, "E"), BUILDINGS[nearBuilding].iconSrc ? /*#__PURE__*/React.createElement("img", {
+  }, "E"), (nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon) ? /*#__PURE__*/React.createElement("img", {
     /* v2.3.1224: UI Bible building icon (bldg-*) in the enter prompt;
        falls back to the emoji when iconSrc is absent. */
-    src: BUILDINGS[nearBuilding].iconSrc,
+    src: nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon,
     alt: "",
     draggable: false,
     style: {
@@ -13155,13 +13195,13 @@ export var BroTown = function BroTown(_ref0) {
       verticalAlign: '-3px',
       marginRight: 3
     }
-  }) : BUILDINGS[nearBuilding].icon, nearDoorLabel ? /*#__PURE__*/React.createElement("span", {
+  }) : nearBuilding !== null ? BUILDINGS[nearBuilding].icon : WHEEL_HALLS[nearHall].emoji, nearDoorLabel ? /*#__PURE__*/React.createElement("span", {
     style: { display: 'block' }
   }, /*#__PURE__*/React.createElement("span", {
     style: { display: 'block', fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase', opacity: .7 }
   }, " Enter "), /*#__PURE__*/React.createElement("span", {
     style: { display: 'block' }
-  }, nearDoorLabel)) : " Enter ", nearDoorLabel ? null : BUILDINGS[nearBuilding].label), nearShutDoor && buildingPanel === null && /*#__PURE__*/React.createElement("div", {
+  }, nearDoorLabel)) : " Enter ", nearDoorLabel ? null : nearBuilding !== null ? BUILDINGS[nearBuilding].label : WHEEL_HALLS[nearHall].title), nearShutDoor && buildingPanel === null && /*#__PURE__*/React.createElement("div", {
     /* ═══ v2.3.3032: A SHUT DOOR SAYS SO ═══
        The Wheel's Town Hall has Mayor Bro; four plots have no building behind
        them yet (the sheriff's, the hotel, the post office, the guild hall --

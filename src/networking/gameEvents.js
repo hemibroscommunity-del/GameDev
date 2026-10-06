@@ -33,6 +33,7 @@ import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown 
 import { applyElemHit, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks */
 import { echoHitSfx, heroHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
+import { recordMail } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
@@ -1549,6 +1550,10 @@ export function processGameEvent(type, payload, S, deps) {
               for (var _ie = 0; _ie < _inbEntries.length; _ie++) {
                 var _e = _inbEntries[_ie] || {};
                 var _ep = _e.payload || {};
+                /* v2.3.3066: and the Wheel's Post Office keeps it -- every
+                   delivery of this visit, the daily reward and what drained
+                   at the join included (game/postOffice.js) */
+                try { recordMail(S, _e); } catch (_me) { /* the mail is paid either way */ }
                 /* v2.3.2037 (owner: "remove the 25 gold message").  The daily
                    login reward is 25 gold (CADENCE.DAILY_BASE_GOLD) and it
                    rides _creditPlayer like any other delivery, so it printed
@@ -3190,7 +3195,10 @@ export function processGameEvent(type, payload, S, deps) {
                   clanTag: payload.clanTag || '?',
                   ts: Date.now()
                 };
-                pushDmgPopup(S, S.player.x, S.player.y - 40, '[' + S._pendingClanInvite.clanTag + '] clan invite! (open Clans)', '#a78bfa');
+                /* v2.3.3066: "(open Clans)" pointed at a panel nothing in play
+                   opened, so no invite could be taken up; the invite now raises
+                   its own card (ui/panels/ClanInviteCard.jsx, BroTown's sync). */
+                pushDmgPopup(S, S.player.x, S.player.y - 40, '[' + S._pendingClanInvite.clanTag + '] clan invite!', '#a78bfa');
                 BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
               }
               break;

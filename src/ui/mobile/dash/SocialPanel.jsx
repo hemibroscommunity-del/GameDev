@@ -155,7 +155,7 @@ export const SocialPanel = () => {
   };
 
   return (
-    <div style={{ ...panelStyle, paddingBottom: 24 }}>
+    <div data-dash-social="" style={{ ...panelStyle, paddingBottom: 24 }}>
       {/* Header: online count · Add Friend · ••• (Blocked overflow). */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <span style={{ flex: 1, fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.text2 }}>

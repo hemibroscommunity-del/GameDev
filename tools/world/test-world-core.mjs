@@ -3179,7 +3179,7 @@ console.log("the water's frozen web of light taken out (v2.3.3021)");
 console.log("the buildings' doors (v2.3.3032)");
 {
   const { placeObjects, doorSpots, objectFootprints } = await import('../../public/tools/world/core/placing.js');
-  const { WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_DOOR_REACH, WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js');
+  const { WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_DOOR_REACH, WHEEL_TOWNSFOLK, WHEEL_HALL_DOORS, WHEEL_HALLS } = await import('../../src/data/wheelBuildingDoors.js');
   const { TOWN_BUILDINGS } = await import('../../src/data/buildings.js');
   const fs = await import('node:fs');
   const WPA = PLAN.worldPxPerArtPx;
@@ -3204,15 +3204,40 @@ console.log("the buildings' doors (v2.3.3032)");
   const lotIds = new Set(lots.map((l) => l.id));
   const todayOf = Object.fromEntries(lots.map((l) => [l.id, l.today]));
   const tbIds = TOWN_BUILDINGS.map((b) => b.id);
-  const openIds = Object.keys(WHEEL_BUILDING_DOORS), closedIds = WHEEL_SHUT_DOORS.slice();
+  const openIds = Object.keys(WHEEL_BUILDING_DOORS), closedIds = WHEEL_SHUT_DOORS.slice(), hallIds = Object.keys(WHEEL_HALL_DOORS);
   ok('what opens at each door is the plan\'s own: every plot of the table is a plot of the town, and its value is what the plan says the plot is `today`, a building of today\'s town',
     openIds.length === 12 && openIds.every((k) => lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k])),
     openIds.filter((k) => !(lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k]))));
-  ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for: the Town Hall (Mayor Bro) and four shut ones that say so',
+  /* v2.3.3066: three of the four "(new: ...)" plots open halls of the
+     Wheel's own (the Guild Hall, the Post Office, the Sheriff's Office), the
+     Hotel stays shut */
+  const actions = TOWN_BUILDINGS.map((b) => b.action || b.id).concat(['farmhome']);
+  ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for: the Town Hall (Mayor Bro), three halls of the Wheel\'s own and one shut that says so',
     new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 12 && tbIds.every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
-    && closedIds.length === 4 && closedIds.every((k) => lotIds.has(k) && !openIds.includes(k) && /^\(new:/.test(todayOf[k]))
-    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id)).map((l) => l.id).join() === 'townhall',
-    { closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id)).map((l) => l.id) });
+    && hallIds.length === 3 && closedIds.length === 1
+    && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k) && /^\(new:/.test(todayOf[k]))
+    && !hallIds.some((k) => closedIds.includes(k))
+    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id).join() === 'townhall',
+    { halls: hallIds, closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id) });
+  ok('...each hall has its window\'s name and picture, and opens a panel of its own, never one of today\'s buildings\' (no `buildingPanel` value twice)',
+    hallIds.every((k) => { const h = WHEEL_HALLS[WHEEL_HALL_DOORS[k]]; return h && h.title && h.sub && /^\/icons\/ui\/.+\.webp$/.test(h.icon); })
+    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 3 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
+  {
+    const PO = await import('../../src/game/postOffice.js');
+    const S = {};
+    for (let i = 0; i < PO.MAIL_KEEP + 5; i++) PO.recordMail(S, { kind: 'gold', source: 'market', note: `sale ${i}`, payload: { amount: i } }, 1000 + i);
+    const daily = PO.mailLine({ kind: 'item', source: 'daily', payload: { invKey: 'chest_daily' } });
+    ok('the Post Office keeps a visit\'s mail: each delivery a line (gold, an item by its words, the daily chest), the newest first, MAIL_KEEP at most',
+      S._mail.length === PO.MAIL_KEEP && PO.mailList(S)[0].note === `sale ${PO.MAIL_KEEP + 4}` && PO.mailList(S)[0].what === `+${PO.MAIL_KEEP + 4} gold`
+        && PO.mailLine({ kind: 'item', payload: { invKey: 'ore_black_steel_ore', count: 3 } }).what === '3× Black steel ore'
+        && PO.itemWords('log_pine') === 'Pine log' && PO.itemWords('fish_minnow') === 'Minnow'
+        && daily.what === 'A daily chest' && daily.note === 'Daily reward'
+        && PO.mailLine({ kind: 'weapon', payload: { weapon: { name: 'Greatsword' } } }).what === 'Greatsword'
+        && PO.mailAge(0, 30000) === 'just now' && PO.mailAge(0, 5 * 60000) === '5 min ago' && PO.mailAge(0, 2 * 3600000) === '2 h ago', S._mail.slice(-2));
+    const evSrc = fs.readFileSync(new URL('../../src/networking/gameEvents.js', import.meta.url), 'utf8');
+    ok('...from every inbox_delivered entry, before the daily reward\'s quiet branch', evSrc.indexOf('recordMail(S, _e)') > 0
+      && evSrc.indexOf('recordMail(S, _e)') < evSrc.indexOf("if (_e.source === 'daily')"), {});
+  }
   /* the doors are far enough apart that the nearest simply wins */
   let minGap = Infinity;
   for (const a of doors) for (const b of doors) if (a !== b) minGap = Math.min(minGap, Math.hypot(a.x - b.x, a.y - b.y));

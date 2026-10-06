@@ -1285,7 +1285,40 @@ remnant to migrate server-side, not a mode to preserve.
     the minimap's frame wears a brass N on a slate bead in the middle of its
     top band (wheelMinimap.js NORTH, `__btMinimap.north`), and the world map a
     44 px compass at its top left (`[data-world-map-north]`, no taps);
-    `mp-north`: docs/specs/wheel-north.md.)
+    `mp-north`: docs/specs/wheel-north.md.
+  - Since v2.3.3066 THE GUILD HALL, THE POST OFFICE AND THE SHERIFF'S OFFICE
+    OPEN -- the owner: "keep going with pragmatic enhancements":
+    - three of the four "(new: ...)" plots open onto systems the game already
+      has (`WHEEL_HALL_DOORS`/`WHEEL_HALLS` in wheelBuildingDoors.js, a door's
+      `hall` in wheelTownDoors.js, `src/ui/panels/buildings/WheelHallPanel.jsx`,
+      the same Enter button and E): the Guild Hall your clan (ClanPanel) and the
+      skill guilds (GuildPanel), the Post Office your mail and friends'
+      messages (the Social panel), the Sheriff's Office the player list (a duel
+      starts from a player's card) and the arena's sign-up; the Hotel stays
+      shut -- its rest is the farm bed's, client-only, so it opens when the
+      worker can pay for a rest;
+    - NO CLAN COULD BE MADE, RUN OR JOINED before: ClanPanel and GuildPanel
+      were opened only by the hidden MenuBar and the replaced wheel menu, and a
+      clan invite's only Accept was in ClanPanel; now an invite raises its own
+      card wherever you are (`src/ui/panels/ClanInviteCard.jsx`, like a duel
+      challenge), as the worker keeps one only 120 s (`CLANS.INVITE_TTL`);
+    - the DASHBOARD'S Clan page showed a player with no clan developer code
+      (`window.__broLegacyUI?.clan?.()`), and its Guild page and the More
+      line read `rpg.guild` / `S._guild`, set by nothing ("not joined" to
+      everyone): now Make a clan / Open the clan window, every skill guild's
+      rank by its life skill (`guildRanks`, `bestGuildRank` in
+      dash/GuildPanel.jsx), each opening the real window (`openGameWindow`,
+      `__broLegacyUI.clanOpen` / `guildOpen`);
+    - the mail: every `inbox_delivered` entry, the daily reward's included, is
+      kept for the visit in `S._mail` (`src/game/postOffice.js` `recordMail`,
+      `MAIL_KEEP` 30) -- what drained at your join is "what came while you were
+      away"; nothing new on the wire, nothing stored;
+    - halls are not building visits (mayor_1 counts the twelve);
+    - docs/ART-WISHLIST.md: what art and sound the game could use next, each
+      with a prompt to paste (the buildings' insides, land banners, dungeon
+      mouths, the four lands' music);
+    - test-world-core "the buildings' doors", `mp-wheelhalls`, `mp-wheeldoors`:
+      docs/specs/wheel-halls.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
