@@ -13,6 +13,7 @@
  *   6. The bar has its picture in the bag.
  */
 import * as H from './harness.mjs';
+import { skillXpRequired } from '../../../src/data/items.js'; /* v2.3.3090: the game's own life-skill curve */
 
 const shot = (P, name) => P.page.screenshot({ path: `tools/qa/mp/out/smelt-${name}.png` }).catch(() => {});
 const put = (P, x, y) => P.page.evaluate(({ px, py }) => {
@@ -25,10 +26,11 @@ const bag = (P) => H.readState(P, (S) => {
   return { ore: inv.ore_copper_ore || 0, bar: inv.bar_copper || 0, lvl: bs.level || 0, xp: bs.xp || 0 };
 });
 /* Total XP ever earned at a level/xp pair, on the shared curve
-   (ceil(500 * 1.08^(L-1)) per level), so a level-up mid-test still compares. */
+   (skillXpRequired per level: 1000 * 1.08^(L-1) since v2.3.3090), so a
+   level-up mid-test still compares. */
 const totalXp = (b) => {
   let t = b.xp;
-  for (let L = 1; L < (b.lvl || 1); L++) t += Math.ceil(500 * Math.pow(1.08, L - 1));
+  for (let L = 1; L < (b.lvl || 1); L++) t += skillXpRequired(L);
   return t;
 };
 const waitBag = (P, pred, ms = 6000) => P.page.waitForFunction((src) => {

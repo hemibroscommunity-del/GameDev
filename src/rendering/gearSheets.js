@@ -20,6 +20,7 @@ import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
 import { upscaleToFrameHeight, antialiasUpscaledCanvas, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1110 upscale; v2.3.1341 AA; v2.3.1408 fullset display-downscale */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { gearArt, gearArtSafe } from './gearVariants.js'; /* v2.3.1757: recoloured sets share their donor's sheets */
+import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -635,7 +636,8 @@ function touchArt(k) {
     if (!key.startsWith(pre)) continue;
     const entry = _sheets[key];
     if (Array.isArray(entry) && entry[0] && entry[0].source) {
-      try { entry[0].source.destroy(); } catch (e) { /* already gone */ }
+      /* v2.3.3074: the whole release, Cache entry and canvas too (TRAPS §139) */
+      releaseCanvasSource(entry[0].source);
     }
     delete _sheets[key];
   }
@@ -728,6 +730,9 @@ export function preloadFullsetFigures() {
    gone. */
 const _extraSources = new Set();
 export function registerGearSource(source) { if (source) _extraSources.add(source); }
+/* v2.3.3074: and its way out -- a strip released (a renderer rebuilt, its
+   bakes let go) must not stay in the upload list, holding its canvas. */
+export function unregisterGearSource(source) { if (source) _extraSources.delete(source); }
 
 export function getLoadedGearSources() {
   const sources = new Set(_extraSources);

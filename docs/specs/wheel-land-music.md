@@ -38,6 +38,10 @@ it is the longest track you have, and it takes about 25 MB more of the phone's
 memory than the theme does. Memory is what turns the screen black. Say the word
 and it is a four-line change.
 
+**Decided, 2026-10-06:** asked *"Use world.mp3 for the four lands without
+music?"*, the owner said *"No"*. The four keep the theme until each has a track
+of its own (the music list in `docs/ART-WISHLIST.md`).
+
 ## When it changes
 
 - **Into a land:** its music starts **1.2 s** after you cross in. The land's

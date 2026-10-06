@@ -16,7 +16,9 @@ Which ramp a pixel takes is decided by its HUE -- the ore's metal (the vein's
 gold flecks, the icon's orange copper) and its rock (the vein's grey, the
 icon's teal malachite) each get their own.
 
-    python3 tools/make_tier_art.py
+    python3 tools/make_tier_art.py          (the first stage's: iron, black steel, softwood, hardwood)
+    python3 tools/make_tier_art.py past20   (v2.3.3094, the second stage's: titanium, obsidian,
+                                             cedar, maple, salmon, pike)
 
 writes
     public/sprites/world/ore-vein-iron-418.webp          the iron vein (tier 6)
@@ -105,6 +107,67 @@ def icon_wood(wood):
     return pick
 
 
+# v2.3.3094: the second stage's (the Wheel's levels 21-40): titanium and
+# obsidian ore (the forge's next metals), cedar and maple, salmon and pike
+TITANIUM = [(0.00, (16, 18, 24)), (0.30, (72, 80, 94)), (0.55, (132, 144, 162)), (0.80, (198, 210, 226)), (1.00, (246, 250, 255))]
+OBSIDIAN = [(0.00, (6, 4, 12)), (0.30, (32, 18, 52)), (0.55, (74, 42, 116)), (0.80, (146, 104, 206)), (1.00, (224, 204, 255))]
+DARKROCK = [(0.00, (6, 6, 8)), (0.30, (24, 22, 28)), (0.50, (40, 38, 46)), (0.70, (64, 60, 72)), (1.00, (124, 120, 134))]
+CEDAR = [(0.00, (36, 12, 8)), (0.30, (112, 46, 30)), (0.55, (172, 86, 62)), (0.80, (216, 140, 112)), (1.00, (246, 206, 186))]
+MAPLE = [(0.00, (40, 20, 6)), (0.30, (132, 70, 20)), (0.55, (202, 120, 40)), (0.80, (238, 176, 96)), (1.00, (255, 230, 180))]
+SALMON = [(0.00, (34, 14, 14)), (0.30, (124, 56, 50)), (0.55, (204, 104, 90)), (0.80, (242, 160, 140)), (1.00, (255, 226, 214))]
+PIKE = [(0.00, (10, 16, 8)), (0.30, (48, 68, 30)), (0.55, (98, 124, 58)), (0.80, (162, 182, 102)), (1.00, (226, 236, 182))]
+COOKED_SALMON = [(0.00, (40, 14, 8)), (0.30, (140, 60, 36)), (0.55, (216, 112, 76)), (0.80, (246, 168, 126)), (1.00, (255, 230, 200))]
+COOKED_PIKE = [(0.00, (36, 26, 14)), (0.30, (120, 96, 60)), (0.55, (196, 170, 120)), (0.80, (234, 216, 176)), (1.00, (255, 248, 228))]
+
+
+def fish(body):
+    """a fish icon's body (everything coloured) to `body`; its near-grey
+    outline and highlights kept"""
+    def pick(hd, s, l):
+        return body if s > 0.12 else None
+    return pick
+
+
+def cooked(meat):
+    """cooked-trout's fillet (warm hues) to `meat`; the plate, greens and
+    lemon kept"""
+    def pick(hd, s, l):
+        if (hd <= 40 or hd >= 345) and s > 0.2:
+            return meat
+        return None
+    return pick
+
+
+def past20():
+    """v2.3.3094: only the second stage's pictures (python3 tools/make_tier_art.py past20)"""
+    base = Image.open(SPRITES + 'ore-vein-627.webp').convert('RGBA')
+    for name, pick in (('titanium', vein(TITANIUM, IRONSTONE)), ('obsidian', vein(OBSIDIAN, DARKROCK))):
+        out = remap(base, pick).resize((418, 418), Image.LANCZOS)
+        path = SPRITES + 'ore-vein-' + name + '-418.webp'
+        out.save(path, 'WEBP', quality=90, method=6)
+        print('wrote', path)
+    ore = Image.open(ICONS + 'ore-copper.webp').convert('RGBA')
+    for name, pick in (('titanium', icon_ore(TITANIUM, IRONSTONE)), ('obsidian', icon_ore(OBSIDIAN, DARKROCK))):
+        path = ICONS + 'ore-' + name + '.webp'
+        remap(ore, pick).save(path, 'WEBP', quality=90, method=6)
+        print('wrote', path)
+    log = Image.open(ICONS + 'wood-log.webp').convert('RGBA')
+    for name, stops in (('cedar', CEDAR), ('maple', MAPLE)):
+        path = ICONS + 'wood-' + name + '.webp'
+        remap(log, icon_wood(stops)).save(path, 'WEBP', quality=90, method=6)
+        print('wrote', path)
+    trout = Image.open(ICONS + 'fish-trout.webp').convert('RGBA')
+    for name, stops in (('salmon', SALMON), ('pike', PIKE)):
+        path = ICONS + 'fish-' + name + '.webp'
+        remap(trout, fish(stops)).save(path, 'WEBP', quality=90, method=6)
+        print('wrote', path)
+    dish = Image.open(ICONS + 'cooked-trout.webp').convert('RGBA')
+    for name, stops in (('salmon', COOKED_SALMON), ('pike', COOKED_PIKE)):
+        path = ICONS + 'cooked-' + name + '.webp'
+        remap(dish, cooked(stops)).save(path, 'WEBP', quality=90, method=6)
+        print('wrote', path)
+
+
 def main():
     base = Image.open(SPRITES + 'ore-vein-627.webp').convert('RGBA')
     for name, pick in (('iron', vein(RUST, None)), ('black-steel', vein(GUNMETAL, SLATE))):
@@ -125,4 +188,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    if sys.argv[1:] == ['past20']:
+        past20()
+    else:
+        main()

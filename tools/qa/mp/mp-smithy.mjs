@@ -77,7 +77,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 1. Layout ── */
   const tabs = await P.page.$$eval('[data-smithy-tab]', (b) => b.map((x) => x.getAttribute('data-smithy-tab')));
-  rec.ok('four tabs: Smelt, Forge, Upgrade, Amulet', tabs.join(',') === 'smelt,forge,upgrade,amulet', tabs);
+  /* v2.3.3092: + Armor, bars into armor (armorforge.js) */
+  rec.ok('five tabs: Smelt, Forge, Armor, Upgrade, Amulet', tabs.join(',') === 'smelt,forge,armor,upgrade,amulet', tabs);
   const geo = await P.page.evaluate(() => {
     const c = document.querySelector('.bt-inspect-card').getBoundingClientRect();
     const el = document.querySelector('.bt-inspect-card');

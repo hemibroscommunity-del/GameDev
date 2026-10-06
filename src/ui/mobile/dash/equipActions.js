@@ -15,6 +15,7 @@ import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: one gate, every
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { recalcDerived, WEAPON_STASH_MAX, canEquipItem, getEquipReqLabel } from '../../../data/gameSystems.js'; /* v2.3.2664: + the armour Defense gate */
 import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.2123: say why a refusal happened */
+import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns the arm */
 
 function persist(R) {
   try { if (typeof window !== 'undefined') localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -119,6 +120,7 @@ export function unequipShieldDirect() {
   R.shieldStash.push(R.shield);
   R.shield = null;
   persist(R);
+  syncShieldWorn(S);   /* v2.3.3091: so No man's land knows it is a spare now */
 }
 
 /* Direct stats_update push — these flows mutate S.rpg without going

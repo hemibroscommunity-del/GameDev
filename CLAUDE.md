@@ -45,6 +45,9 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/LANTERN-SLATE-SPEC.md` (the UI visual system — colors, depth,
   components; supersedes UI-BIBLE Part 2, v2.3.1227),
   `docs/DEPTH-ROADMAP.md` (the costed depth work, code-aware),
+  `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
+  only textures -- what leaked, and the order of the memory work with each
+  item's status, v2.3.3075; `mp-memledger` measures it),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),
@@ -659,6 +662,19 @@ remnant to migrate server-side, not a mode to preserve.
       `node`); the Wheel's nodes drop at the flip to town;
     - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,
       `mp-wheelnodes`: docs/specs/wheel-resources.md.
+    - since v2.3.3092 SMELTED BARS MAKE ARMOR -- asked "Should smelted bars
+      make armour?", the owner: "Yes": iron and black steel bars smelt too
+      (Smithing 5 and 10, `SMELT.RECIPES`, icons by `tools/make_bar_icons.py
+      iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso (5
+      bars) or greaves (3) in each metal -- copper Smithing 1, iron 5, black
+      steel 10 (`server/src/armorforge.js` `ARMOR_FORGE.RECIPES`, mirrored by
+      items.js `ARMOR_FORGE_RECIPES`): the drop's own piece `{name, mat, slot,
+      tierMult, quality}` on the armour ladder (1/2/3, no gearBase or type),
+      minted into the ledger (src 'forge'), into the bag by
+      `forge_armor_result` (wsClient `_applyLootCredit`); black steel's art
+      rows at last (gearVariants.js); `caps.armorforge`, kill switch
+      `armorforge: false`; `armorforge` suite, `mp-armorforge`:
+      docs/specs/armor-forge.md.
     - since v2.3.3038 a resource's LEVEL IS A REAL REQUIREMENT (owner: "black
       steel now requires a mining level of at least 5 ... Fishing clownfish
       required fishing level 5", "in levels of 5"): `GATHER_REQ_LVL`
@@ -676,6 +692,15 @@ remnant to migrate server-side, not a mode to preserve.
       its harvest bar is up; the old emoji, tier dot and 7 px tips are gone;
       and a vein CRACKS on its split frame (`ore-crack`, cut from the unused
       extract-success.mp4); `mp-nodelabels`;
+    - since v2.3.3094 PAST LEVEL 20 TOO (the owner: "levels 21-40 in each
+      land with their own monsters and resources"): tier 16 at levels 21-30
+      (titanium ore, cedar, salmon) and tier 21 at 31-40 (obsidian ore,
+      maple, pike) -- the bake's `deep`/`deeper` bands, 259 nodes;
+      `GATHER_REQ_LVL` 16/21 (Mining 10/15, Woodcutting and Fishing 15/20);
+      titanium and obsidian ARE the forge's next metals' ores, cedar and maple
+      the bow bench's woods; client `MINING_TIERS` 16/21 renamed to match (36
+      is Diamond Ore now); art from `tools/make_tier_art.py past20`; every
+      three-tier table five: wheel-resources.md "Past level 20";
     - since v2.3.3059 the labels are QUIETER and a locked node can be TRIED --
       the owner: "show zeroes popping as they try to harvest ... a grayed out
       icon ... I just don't want the screen to be too busy with text": every
@@ -711,6 +736,21 @@ remnant to migrate server-side, not a mode to preserve.
       checks them against the ground as drawn (docs/specs/wheel-resources.md);
     - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§9,
       `mp-wheeldeep`.
+    - since v2.3.3093 PAST LEVEL 20 TOO -- the owner: "build the world past
+      level 20 (levels 21-40 in each land with their own monsters and
+      resources) You can just recolor existing monsters for now":
+      `SPAWN_RULES.deep.tiers` 2..8, so every land's second stage (tiers 5-8,
+      levels 21-40, past the first pass) has its spawn list per tier -- 384
+      monsters, ~103 KB of `zone_state` on the way in; the game draws them in
+      the stage's colour and name (`src/data/wheelStageLooks.js`: Glacier
+      Snowman, Cinder Goblin, Gilded Mummy, Amethyst Golem, Storm Slime, Coral
+      Fishman, Spectral Wisp, Shade Lurker, Jade Slime), a SPRITE TINT that
+      REPLACES the look's own (no memory: a baked recolour would sit beside
+      the first stage's look, ~50 MB at the Flame Fields), through
+      entityRenderer's `wheelStageTint` / `wheelStageName`; a dungeon's
+      monsters past 20 wear it too; kill switch `wheelpast20: false`; the
+      signposts read "Lv 1–40"; `wheelzone` §1b/§4c, `mp-wheelpast20`:
+      wheel-monsters.md "Past level 20".
     - since v2.3.3055 a monster's level MEANS SOMETHING -- the owner: "lvl 7
       killing lvl 17 slimes easily": the +100 flat HP was the same at every
       level (a Lv17 slime 118 HP, a Lv3 109); it now GROWS 10% a level from
@@ -723,7 +763,13 @@ remnant to migrate server-side, not a mode to preserve.
       it by about 50%": `PROG3.XP_PER_DMG` 0.4 -> 0.2 and every quest's xp
       halved on both sides (ceil); life skills untouched (the owner's 25x):
       docs/specs/pace-and-difficulty.md, `zones` / `mirror-audit` /
-      `dungeon` suites.
+      `dungeon` suites; and since v2.3.3090 LIFE SKILLS COME HALF AS FAST TOO
+      -- asked "Should life-skill XP slow down like combat XP?", the owner:
+      "Yes": every level costs twice the XP (`LIFE_SKILL_XP_BASE` 500 -> 1000,
+      gathering.js `_lifeSkillXpThreshold` and items.js, read by
+      `skillXpRequired` and `LIFE_SKILL_XP`), every action's pay and "+n XP"
+      unchanged, no level lost (the bar reads half as far along);
+      mirror-audit "life-skill curve": pace-and-difficulty.md "Life skills".
   - Since v2.3.3014 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
     stuns briefly; storm shocks nearby players; water slows stamina refill;
     venom poisons over time", the owner: "Yes continue working on those
@@ -844,7 +890,19 @@ remnant to migrate server-side, not a mode to preserve.
       a RED skull's death takes everything worn too, every shield, and the
       gold; `nml_loss` tells the game exactly what went;
     - `caps.nomansland`, kill switch `nomansland: false`; dev vitals take
-      `hp`; `nomansland` suite (51), `mp-nomansland` (15, two screens).
+      `hp`; `nomansland` suite (51), `mp-nomansland` (15, two screens);
+    - since v2.3.3091 SPARE SHIELDS GO TOO -- asked "Shields and outfits in no
+      man's land?", the owner: "Yes": the game reports the shield on its arm
+      (`shield_wear` {gid | sig | none}, src/game/shieldWear.js, on every
+      change, every join and a new shield into the bag), and the worker keeps
+      `ps.shield` as the shield WORN and `ps.shieldStash` the carried
+      (server/src/shieldwear.js: only a piece it holds for you, nothing
+      described, a copy never added twice); an ordinary loss takes the spare
+      shields by the armour's rule once `ps._shieldKnown` (runtime only);
+      outfits stay -- the wardrobe is the T-shirt and the plate's look, nothing
+      to take; `caps.shieldwear`, kill switch `shieldwear: false`; the three
+      no-man's-land mirror-audit checks run again (a merge had put them after
+      the suite's process.exit): no-mans-land.md "The shield on your arm".
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":
@@ -1279,7 +1337,10 @@ remnant to migrate server-side, not a mode to preserve.
     (`WHEEL_GATE_ROADS`, src/data/wheelSignposts.js, checked against the
     plan's roads), an arrow the way it lies, its element icon and its name in
     its colour; world-sized, on monsterUi (src/rendering/wheelSignposts.js,
-    drawn by effectsRenderer); no levels (every land starts at 1); the eight
+    drawn by effectsRenderer); since v2.3.3089 each plate ends in the levels
+    its land holds, "Lv 1–20" (`WHEEL_LAND_LEVELS`; the owner's "Yes" to
+    levels though every land reads the same; mirror-audit holds it to the
+    deepest stretch baked in wheelspawns.js); the eight
     icons drawn down to 64 px behind the Wheel's loading screen and let go on
     leaving; `mp-signposts`, test-world-core "the gate signposts":
     docs/specs/gate-signposts.md.
@@ -1300,7 +1361,7 @@ remnant to migrate server-side, not a mode to preserve.
     - the dunes' wind is let go on leaving (it was kept for the session);
       `_zoneAsks` keeps the last 16 asks for `window.__btLandMusic`;
       `?nolandmusic` is the Wheel as it was; world.mp3 NOT used for the four
-      (~25 MB more, the owner's call);
+      (~25 MB more; asked, the owner said "No", 2026-10-06);
     - window.BT_AUDIO IS set -- BroTown's `Object.assign(globalThis, ...)` of
       the data index -- despite the effectsRenderer comment saying it never is;
     - test-world-core "the lands' music", `mp-landmusic`:
@@ -1531,6 +1592,10 @@ Two protocol versions coexist; both must keep working:
   (owner directive, 2026-07-16 — no live players, CI speed wins) and
   run only via workflow_dispatch on demand. Primary platform is
   **iPhone Safari** — test touch controls, not just desktop.
+  Two phone scenarios DO run on every PR, each an owner call: `playable`
+  (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
+  (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
+  budgeted").
 
 ## Conventions
 
@@ -1591,6 +1656,45 @@ Two protocol versions coexist; both must keep working:
     arrives with no monster looks (~176 MB of textures, was 241). This
     clause is the Wheel's only: every other zone still awaits its monsters'
     art behind its overlay.
+- **MEMORY IS BUDGETED (owner directive 2026-10-06, v2.3.3101).** The black
+  screens are iPhone Safari running out of memory. The memory work of
+  v2.3.3068-v2.3.3088 (docs/MEMORY-PLAN.md) halved what the page holds, and
+  the owner asked how a new feature would be kept from giving it back -- "Yes
+  all 3": this rule, a budget checked on every PR, and the land tour on a
+  button. In any change that adds art, sound or anything it makes:
+  - ART is freed when you leave where it is used (the zone-asset exception
+    above; its display drops the texture on the way out). A destroyed texture
+    really lets go of its picture since v2.3.3069 (pixiApp.js).
+  - A picture the game DRAWS ITSELF (a recolour, a cut-out, a bake on a
+    canvas) is held twice: the canvas, and its copy on the graphics chip. When
+    nothing reads the canvas back and a rebuilt renderer makes it again for
+    itself, empty it once uploaded with `keepOnGpuOnly`
+    (src/rendering/gpuOnly.js; its header says when that is safe -- the
+    walking gear sheets are not: drawGearFrame reads them).
+  - MUSIC, and any sound longer than a few seconds, plays through the music
+    deck (BT_AUDIO's zone and global music, streamed from its file since
+    v2.3.3073) -- never SFX_MANIFEST, which decodes the whole file into memory
+    and keeps it there.
+  - Anything made per zone change, per land, per fight, per dungeon or per
+    renderer rebuild is DESTROYED when it goes; a cache has a cap (an LRU),
+    never "until the page closes".
+  - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
+    the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
+    home again, three times. Each kind of memory's highest reading must stay
+    within its line in `tools/qa/mp/memory-budget.mjs`, and the third trip must
+    end where the second did. Over a line? First find what the change holds
+    (the failure names the line; `tools/qa/mp/out/membudget.json` has every
+    stop and the biggest canvases; `mp-gpuaudit` names the textures). If the
+    feature really needs the memory, raise THAT line in the same PR and say in
+    the PR body, in plain words, how many MB and why -- the owner reads it
+    there. NEVER raise a line silently, or to turn a red check green without
+    saying so. Lowering a line after a saving locks the saving in.
+  - THE TOUR: `mp-memledger` (all eight lands twice, ~6 min) runs from a button
+    -- GitHub, Actions, "Memory", Run workflow -- after any big feature, or
+    locally with `node tools/qa/mp/run.mjs memledger`.
+  - The preloading law above still stands. Moving a load off the loading
+    screen to save memory is the owner's call, as #822's gathering poses were,
+    never a quiet "fix".
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.

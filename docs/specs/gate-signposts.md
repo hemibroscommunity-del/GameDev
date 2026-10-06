@@ -1,4 +1,4 @@
-# Brotown's signposts say where their roads go (v2.3.3062)
+# Brotown's signposts say where their roads go (v2.3.3062, levels v2.3.3089)
 
 > Owner, 2026-10-06, on the recommendations for finding your way round the
 > Wheel: *"Continue building recommended."* Signposts naming the lands were
@@ -29,9 +29,16 @@ road takes you there.
 - **Its name**, in the land's colour lifted toward white, as the top bar and
   the banner print it. The names come from the worker's map, so they never
   disagree with the minimap.
-
-**No levels.** Every land starts at level 1 at its near end, so all eight
-plates would read the same.
+- **The levels its land holds** (since v2.3.3089), after the name in the
+  plate's brass: **Lv 1–20**, from the first stretch past the commons to the
+  last before the first pass.
+  - Asked *"Show levels on the signposts?"*, the owner said *"Yes"*, though
+    every land starts at level 1 at its near end, so all eight plates read the
+    same. They say how far the road's land goes.
+  - The number is `WHEEL_LAND_LEVELS` in `src/data/wheelSignposts.js`.
+    `mirror-audit` holds it to the worker's own monsters: the deepest stretch
+    baked into `server/src/wheelspawns.js`. When the lands grow past level 20,
+    that stretch moves the plates too, or the suite fails.
 
 The plates are dark slate with a brass rim, the Lantern Slate look of the
 game's other plates. They sit just above the signpost's picture.
@@ -68,6 +75,8 @@ game's other plates. They sit just above the signpost's picture.
 
 ## Tests
 
+- `server/test/mirror-audit.test.mjs`, "signposts" (2 checks): every land's
+  monsters reach the same top level, and the plates' levels are that.
 - `tools/world/test-world-core.mjs`, "the gate signposts" (4 checks):
   - placing puts exactly four signposts in the town, one at each gate;
   - every land is named once, its own compass road's land first;
@@ -78,7 +87,7 @@ game's other plates. They sit just above the signpost's picture.
   - the four found and the eight icons loaded;
   - nothing up from the square;
   - at each gate both plates fade in, named as the map names them, each with
-    its icon and its arrow pointing the right way;
+    its icon, its arrow pointing the right way and "Lv 1–20";
   - they go when you walk away;
   - no page errors.
 
