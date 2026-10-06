@@ -20,7 +20,7 @@ import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, manaSurge
    apart from it.  `rest` is the Herb Bread's; `regen` is the bread's timer
    from before (v2.3.3102, 60 s), cleared with the meal slot and read by
    nothing here (data.js DISHES says why the bread moved off it). */
-const MEAL_BUFF_KEYS = ['rest', 'regen', 'resist', 'xp', 'xpMul'];   /* v2.3.3106: + the Pumpkin Pie's xp and its strength */
+const MEAL_BUFF_KEYS = ['rest', 'regen', 'resist', 'xp', 'xpMul'];   /* v2.3.3106: + the Pumpkin Pie's xp and its strength (a 2a worker owns them too, for a rollback) */
 /* v2.3.3105: how many recipes a worker before caps.meals had (Herb Bread, Root
    Stew, Firebloom Tea) -- the only ones an old client can cook, the old
    (instant) way, and the only ones that still cook with `meals: false`. */
@@ -108,18 +108,24 @@ export const cookingMethods = {
       if (ws) this._sendPlayerState(ws, session.id);
       return;
     }
+    /* v2.3.3105: every refusal below the phone may have predicted is RESENT
+       -- the bag and the HP, which a v2 delta of nothing would never send:
+       a dish this worker does not know (a newer page's, after a rollback),
+       and the cooked fish's own refusals, silent until now (review). */
+    const refuseEat = () => { const w = this._wsBySessionId(session.id); if (w) this._resendPlayerState(w, session.id, ['inventory', 'hp', '_buffs']); };
+    if (/^(meal|brew)_/.test(invKey)) { if (this.playerState[session.id]) refuseEat(); return; }
     // Only cooked_fish_* keys are edible this slice; raw fish goes
     // through cook_request first.
     if (!invKey.startsWith('cooked_fish_')) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
-    if (ps._arenaMatch) return; // v2.3.1126: no healing during an arena match (GDD §43)
+    if (ps.dying || ps.dead || ps.disconnected) { refuseEat(); return; }
+    if (ps._arenaMatch) { refuseEat(); return; } // v2.3.1126: no healing during an arena match (GDD §43)
     if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above
-    if ((ps.inventory[invKey] || 0) <= 0) return;
+    if ((ps.inventory[invKey] || 0) <= 0) { refuseEat(); return; }
     // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
     const heal = Math.ceil(this._fishHealAmount(invKey)) + this._recoveryFlat(ps); // v2.3.1345: flat recovery bonus
-    if (heal <= 0) return;
+    if (heal <= 0) { refuseEat(); return; }
     // Decrement inventory + apply heal.  Heal is "wasted" if at max;
     // we still consume the item to match client semantics (the click
     // handler returns early at full, but a race-condition cheater
@@ -227,7 +233,15 @@ export const cookingMethods = {
     const dish = this._getDish(invKey);          /* own-property gated */
     if (dish && dish.slot !== 'brew') return;
     const item = dish ? null : this._getShopItem(invKey);      /* own-property gated */
-    if (!dish && !item) return;
+    if (!dish && !item) {
+      /* v2.3.3105: a brew this worker does not know (a newer page's, after a
+         rollback) is resent, so the bottle the phone took comes back. */
+      if (/^brew_/.test(invKey) && this.playerState[session.id]) {
+        const w = this._wsBySessionId(session.id);
+        if (w) this._resendPlayerState(w, session.id, ['inventory', 'hp', '_buffs']);
+      }
+      return;
+    }
     const ps = this.playerState[session.id];
     if (!ps) return;
     /* v2.3.3105: the phone took the bottle out of its bag and drew its effect
@@ -316,9 +330,17 @@ export const cookingMethods = {
     if (!session || !session.id) return;
     const { recipeIdx } = payload || {};
     const recipe = this._getCookingRecipe(recipeIdx);
-    if (!recipe) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
+    /* v2.3.3105: a row this worker has not got is refused and RESENT too: a
+       newer page, rolled back onto this worker, offers its newer rows (it is
+       told how many there are, caps.cookRows, but a page from before that is
+       not), and predicts the dish into its bag (review). */
+    if (!recipe) {
+      const w = this._wsBySessionId(session.id);
+      if (w) this._resendPlayerState(w, session.id, ['inventory', 'lifeSkills', '_buffs']);
+      return;
+    }
     if (ps.dying || ps.dead || ps.disconnected) return;
     if (!ps.inventory) ps.inventory = {}; // proto-ok: recipe-index path; inventory keys server-validated
     /* ═══ v2.3.3102: THE RECIPE'S COOKING LEVEL IS THE WORKER'S GATE ═══

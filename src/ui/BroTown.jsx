@@ -13600,8 +13600,11 @@ export var BroTown = function BroTown(_ref0) {
        last recipe would now brew a tonic out of herbs you meant for bread.
        Brews are made at the Cookhouse.  An old worker keeps the old three. */
     var _fieldMeals = !!(S._serverCaps && S._serverCaps.meals);
-    var available = COOKING_RECIPES.filter(function (r) {
+    /* ...and only rows the worker has (caps.cookRows, CookPanel's rule) */
+    var _fieldRows = S._serverCaps && typeof S._serverCaps.cookRows === 'number' ? S._serverCaps.cookRows : 3;
+    var available = COOKING_RECIPES.filter(function (r, ri) {
       if (cookLvl < r.cookLvl) return false;
+      if (_fieldMeals && ri >= _fieldRows) return false;
       if (_fieldMeals ? !(DATA.dishFor(r.makes) && (DATA.dishFor(r.makes).slot === 'meal' || DATA.dishFor(r.makes).slot === 'now')) : !r.buff) return false;
       return Object.entries(r.ingredients).every(function (_ref230) {
         var _ref231 = _slicedToArray(_ref230, 2),

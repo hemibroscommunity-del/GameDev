@@ -1442,7 +1442,10 @@ remnant to migrate server-side, not a mode to preserve.
       cooked fish file under the bag's Consumable chip (no sixth chip: one per
       slot column);
     - every refused cook, meal or drink is RESENT (`_resendPlayerState`: a v2
-      delta of nothing sends nothing);
+      delta of nothing sends nothing), a row or dish the worker never heard of
+      included; `caps.cookRows` (how many recipes it cooks) gates every recipe
+      row and the Eat/Drink on its dish -- `meals` alone let a newer page offer
+      an older worker rows it had not got (TRAPS §9);
     - kill switch `meals: false` (caps.meals false, not absent: the bag keeps
       Eat and Drink); `meals` suite, `mp-meals`: docs/specs/meals.md;
     - since v2.3.3106 (2b) the POTATO (Farming 5, yields 3 -- fertilized 4 or
