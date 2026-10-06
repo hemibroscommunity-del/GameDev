@@ -106,7 +106,7 @@ Memory spent on nothing:
 | The ~5 MB-a-lap canvas growth on the land tour | flat after #802 (monster recolours released properly) | #802 |
 | A destroyed texture lets go of its picture even where Pixi still points at it (pooled batches, hidden sprites' draw data) | after a tour of four lands: 22-35 MB of freed object sheets, canvases and ground held -> 0 (`mp-zombietex`) | #810, v2.3.3069 |
 | Freed on close: the world map's canvas (11.3 MB an open at 3x, held until the next GC) | five opens: 3 dead canvases, 31.4 MB -> 0 (`mp-worldmapfree`) | #812, v2.3.3070 |
-| Freed on close: the loading clip's warm-up copy | ~2-3 MB; rubble's scratch canvases are locals the GC takes | |
+| Freed on close: the loading clip's warm-up copy | a hidden `<video>` of `loading-ashore.mp4` (a 0.6 MB file) and its poster, held for the session by BroTown's `_introWarmRef` -- only on a session that shows the welcome; ~1-3 MB on a phone at most; rubble's scratch canvases are locals the GC takes | small; not done on its own |
 | A snowball burst playing when the frost art is handed back (found on the way: app.render threw until the burst ended) | retired before the frame draws (`mp-burstfree`) | #813, v2.3.3071 |
 
 **Phase 2 -- stop paying for what nobody sees or hears.**
@@ -159,24 +159,31 @@ switches.
 
 ## All of it together (2026-10-06)
 
-#802, #803, #806, #808 and #810 merged into one local build and measured
-with `mp-memledger` (a phone, two laps of the eight lands, back in Brotown):
+All eight -- #802, #803, #806, #808, #810, #812, #813 and #814 -- merged into
+one local build (they merge in any order without a conflict) and measured with
+`mp-memledger` (a phone, two laps of the eight lands, back in Brotown):
 
 | | main (lap 1 -> lap 2) | all together (lap 1 -> lap 2) |
 |---|---|---|
 | 2D canvases | 122.9 -> 127.5 MB, growing ~5 MB a lap | 118.3 -> 118.3 MB, flat |
 | the page's ArrayBuffers | 44.2 -> 49.1 MB, growing ~5 MB a lap | 10.9 -> 10.9 MB, flat |
 | on arrival, ArrayBuffers | 43.4 MB | 10.1 MB |
-| JS heap | 28.1 -> 29.5 MB | 27.9 -> 29.4 MB |
+| JS heap | 28.1 -> 29.5 MB | 28.0 -> 29.4 MB |
 | asset cache | 172.1 -> 172.1 MB | 172.1 -> 172.1 MB |
 
 ...plus what these counters cannot see: the freed pictures #810 lets go of
 (22-35 MB after a four-land tour), each black screen's recovery no longer
-leaving ~50 MB of art behind (#802), and the watchdog's 11 MB copy and frame
-wait every 5 s gone (#808).  On the combined build `groundcopy`, `wdsample`
-and `bakeleak` pass, and `zombietex`'s own checks do; its render check
-tripped once, on a snowball burst drawn after the frost art was freed -- a
-race on main, fixed in #813.
+leaving ~50 MB of art behind (#802), the world map's canvases (#812), the
+watchdog's 11 MB copy and frame wait every 5 s gone (#808), and the screen's
+depth buffer (#814, ~11 MB of GPU memory on an iPhone).
+
+Every PR's own scenario on that one build: `memledger` 7/7, `zombietex` 5/5
+(0 MB held, against 22-35 on main), `groundcopy` 8/8 (the GPU's ground
+identical to the worker's, to the pixel, none kept by the page), `wdsample`
+8/8 (2.3 ms against 28.2 ms and the frame's wait), `burstfree` 6/6,
+`worldmapfree` 5/5, `nodepth` 12/12, `bakeleak` 9/9 -- 61 of 61.  (Before
+#813 the combined build's `zombietex` tripped once on a snowball burst drawn
+after the frost art was freed: a race on main, fixed there.)
 
 ## How we know it worked
 
