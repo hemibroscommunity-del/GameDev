@@ -3917,6 +3917,7 @@ export function setupWebSocket(ctx) {
        server-truth renderer, so a 33ms batch delay would make every
        stage/confirm click feel laggy. */
     'trade2_open', 'trade2_set', 'trade2_ready', 'trade2_confirm', 'trade2_cancel', 'trade2_stage_weapon', 'trade2_unstage_weapon', /* v2.3.1754: trade2_ready — TRAPS #18, the third leg */
+    'trade2_pets', /* v2.3.3122: the trade window's pet lane (trade2.js _handleTrade2Pets) */
     /* v2.3.1185: party commands -- same server-truth-renderer posture
        as trade2; invite/accept clicks should not sit in a batch. */
     'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat',

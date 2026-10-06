@@ -250,6 +250,33 @@ export function petXpView(pet, trapLvl) {
   return { capped: false, frac: need > 0 ? xp / need : 0, xp, need, words: xp + ' / ' + need + ' XP' };
 }
 
+/* ═══ v2.3.3122: PETS CHANGE HANDS (Phase 3) ═══
+ * The worker decides (server/src/petbook.js _petSellable); the phone says
+ * which of your pets may go and why the others may not, so a button never
+ * offers what the worker would refuse.  PET_TRADE_MAX is PETBOOK.TRADE_MAX
+ * (mirror-audit). */
+export const PET_TRADE_MAX = 4;
+function _waitWords(ms) {
+  const m = Math.ceil(ms / 60000);
+  return m < 60 ? m + ' min' : Math.ceil(m / 60) + ' h';
+}
+/** {ok, why, words}: may this pet change hands now? */
+export function petTradeView(pet, activeId, now) {
+  if (!pet || !pet.id) return { ok: false, why: 'no-pet', words: '' };
+  if (pet.legacy) return { ok: false, why: 'legacy', words: 'An old pet: it stays with you' };
+  if (activeId && pet.id === activeId) return { ok: false, why: 'active', words: 'Put it away to trade or sell it' };
+  const left = (Number(pet.tradeAfter) || 0) - (Number(now) || Date.now());
+  if (left > 0) return { ok: false, why: 'too-new', words: 'Tradeable in ' + _waitWords(left) };
+  return { ok: true, why: null, words: 'Can be traded or sold' };
+}
+/** A delivered pet in a line of the mail ("Snowball, a Snowling Lv 4"). */
+export function petMailWords(pet) {
+  if (!pet || typeof pet !== 'object') return 'a pet';
+  const kind = petKindName(pet.kind, pet.stage);
+  const nm = typeof pet.name === 'string' && pet.name ? worldSafeText(pet.name) + ', a ' : 'a ';
+  return nm + kind + ' Lv ' + Math.max(1, Math.floor(Number(pet.lv) || 1));
+}
+
 /* ═══ A NAME — the worker's rule exactly (server/src/petbook.js) ═══
  * 2-16 letters, numbers, spaces, hyphens or apostrophes; no emoji (an emoji in
  * the world's outlined text is a known iPhone Safari crash). */
@@ -284,4 +311,10 @@ export const TRAP_WORDS = Object.freeze({
   'no-pet': 'That pet is not yours',
   'bad-name': 'Names are 2-16 letters, numbers or spaces',
   confirm: 'Tap again to confirm',
+  /* v2.3.3122: pets changing hands (petbook.js _petSellable, trade2.js) */
+  legacy: 'An old pet stays with you',
+  active: 'Put it away first',
+  'too-new': 'A new pet can be traded a day after its catch',
+  'pets-max': 'At most 4 pets in one trade',
+  'pet-gone': 'That pet can no longer be traded',
 });

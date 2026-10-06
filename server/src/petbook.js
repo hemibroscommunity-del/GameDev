@@ -73,7 +73,26 @@ export const PETBOOK = Object.freeze({
   XP_SHARE: 0.1,
   XP_BASE: 25,
   XP_GROWTH: 1.08,
+  /* v2.3.3122: TRADING (Phase 3).  At most this many pets a side in one
+     trade window. */
+  TRADE_MAX: 4,
 });
+
+/** What a buyer is shown of a pet (a trade window, a listing): never the
+ *  record's whole object.  `owners` and `caughtBy` are its story. */
+export function petPublic(p) {
+  if (!p || typeof p !== 'object') return null;
+  return {
+    id: typeof p.id === 'string' ? p.id : '',
+    kind: typeof p.kind === 'string' && has(PET_KINDS, p.kind) ? p.kind : 'dewdrop',
+    stage: Math.max(1, Math.floor(Number(p.stage) || 1)),
+    gold: p.gold === true,
+    size: Math.round((Number(p.size) || 1) * 100) / 100,
+    name: typeof p.name === 'string' ? p.name : null,
+    lv: Math.max(1, Math.floor(Number(p.lv) || 1)),
+    owners: Math.max(1, Math.floor(Number(p.owners) || 1)),
+  };
+}
 
 /** XP a pet at `lv` needs for its next level. */
 export function petXpToNext(lv) {
@@ -179,7 +198,7 @@ const int = (v, lo, hi, dflt) => {
    only by the worker, so this is a guard against a future bug, not against a
    player -- and so it keeps a pet whenever it can, never drops one for a bad
    field: a lost pet is worse than a defaulted one. */
-function cleanPet(p, now) {
+export function cleanPet(p, now) {
   if (!p || typeof p !== 'object' || typeof p.id !== 'string' || !PET_ID_RE.test(p.id)) return null;
   const kind = (typeof p.kind === 'string' && has(PET_KINDS, p.kind)) ? p.kind : 'dewdrop';
   const at = int(p.at, 0, now + 60000, now);
@@ -488,6 +507,80 @@ export const petbookMethods = {
     const key = journalKey(petKindOf(m) || 'dewdrop', petStageOf(m.level));
     const j = book.rec.journal[key];
     return j ? j.tries : 0;
+  },
+
+  /* ═══ v2.3.3122: PETS CHANGE HANDS (Phase 3, docs/PET-TRAPPING-PLAN.md) ═══
+     The trade window (trade2.js), the auction house (store.js) and the mail
+     (inbox.js `pet`) all move a pet through these three, and nothing else
+     writes a pet into a record but a catch.
+
+       _petSellable  may this pet leave its owner now?  It must be theirs,
+                     not out with them (the plan: "the pet that's out with
+                     you can't be listed"), not an old pet moved in from the
+                     browser years (`legacy`: usable, never tradeable, like
+                     gear with no provenance row), and a day past its catch
+                     (`tradeAfter`, the plan's 24-hour hold).
+       _petbookTake  out of its owner's record, written at once.
+       _petbookGive  into a record, written at once; false when the record
+                     is not loaded or the collection is full, so the caller
+                     keeps it -- the mail stays queued ("collection full ->
+                     stays in the mail", the plan).  A pet whose id is
+                     already there is not added twice.
+
+     `pettrade: false` in liveflags stops new trades and listings
+     (_petSellable answers 'off'); a pet already on its way -- a sale's
+     delivery, a refund, the mail -- still arrives. */
+  _petTradeOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'pettrade') && !f.pettrade);
+  },
+
+  _petSellable(pid, petId, now) {
+    if (this._petTradeOff()) return { ok: false, why: 'off' };
+    const book = this._petbookOf(pid);
+    if (!book || book.locked || !book.rec) return { ok: false, why: 'pets-unavailable' };
+    const pet = typeof petId === 'string' ? book.rec.list.find((p) => p.id === petId) : null;
+    if (!pet) return { ok: false, why: 'no-pet' };
+    if (pet.legacy) return { ok: false, why: 'legacy' };
+    if (book.rec.active === pet.id) return { ok: false, why: 'active' };
+    const t = Number(now) || Date.now();
+    if (t < (Number(pet.tradeAfter) || 0)) return { ok: false, why: 'too-new', until: pet.tradeAfter };
+    return { ok: true, pet };
+  },
+
+  /* Places left in a player's collection (0 when it is not loaded). */
+  _petbookRoom(pid) {
+    const book = this._petbookOf(pid);
+    if (!book || book.locked || !book.rec) return 0;
+    return Math.max(0, book.rec.cap - book.rec.list.length);
+  },
+
+  _petbookTake(pid, petId) {
+    const book = this._petbookOf(pid);
+    if (!book || book.locked || !book.rec) return null;
+    const i = book.rec.list.findIndex((p) => p.id === petId);
+    if (i < 0) return null;
+    const pet = book.rec.list.splice(i, 1)[0];
+    if (book.rec.active === pet.id) book.rec.active = null;
+    this._petbookSave(pid, book);
+    this._petbookSend(pid, { op: 'gone', id: pet.id });
+    return pet;
+  },
+
+  /* `from`: who it comes from -- a pet coming back to its own owner (a
+     listing that did not sell) is not one more owner. */
+  _petbookGive(pid, raw, from, now) {
+    const book = this._petbookOf(pid);
+    if (!book || book.locked || !book.rec) return false;
+    const pet = cleanPet(raw, Number(now) || Date.now());
+    if (!pet) return true;   /* malformed: consumed, never wedging the mail (it cannot be ours) */
+    if (book.rec.list.some((p) => p.id === pet.id)) return true;   /* already here: never twice */
+    if (book.rec.list.length >= book.rec.cap) return false;
+    if (typeof from === 'string' && from && from !== pid) pet.owners = Math.min(1e6, (pet.owners || 1) + 1);
+    book.rec.list.push(pet);
+    this._petbookSave(pid, book);
+    this._petbookSend(pid, { op: 'arrived', id: pet.id });
+    return true;
   },
 
   /* ═══ THE PETS PAGE: set active, name, release ═══

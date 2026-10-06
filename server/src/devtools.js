@@ -366,6 +366,26 @@ export const devToolsMethods = {
     if (b.level != null) { const L = clampInt(b.level, 1, 120); ps.lifeSkills.trapping = { level: L, xp: 0 }; out.level = L; }
     if (b.traps != null) { const n = clampInt(b.traps, 0, 999); if (n > 0) ps.inventory.trap_box = n; else delete ps.inventory.trap_box; out.traps = n; }
     if (b.logs != null) { const n = clampInt(b.logs, 0, 999); if (n > 0) ps.inventory.wood_pine_log = n; else delete ps.inventory.wood_pine_log; out.logs = n; }
+    /* v2.3.3122: `pet: {home, level, tradeable}` -- a pet in the record as a
+       catch makes one (petbook.js _petbookAddCatch), for the trading phone
+       test (mp-pettrade); `tradeable` puts its catch a day back, past the
+       24-hour hold.  The admin key's, like every lever here. */
+    if (b.pet && typeof b.pet === 'object') {
+      const home = typeof b.pet.home === 'string' ? b.pet.home : 'frost';
+      const lvl = clampInt(b.pet.level || 1, 1, 100);
+      const T = Math.max(lvl, (ps.lifeSkills.trapping && ps.lifeSkills.trapping.level) || 1);
+      const made = this._petbookAddCatch(playerId, ps, { home, level: lvl, arch: 'snowman' }, T, Date.now());
+      if (!made) { out.ok = false; out.error = 'the pets record is not loaded'; }
+      else {
+        if (b.pet.tradeable) {
+          const book = this._petbookOf(playerId);
+          const rp = book && book.rec.list.find((q) => q.id === made.id);
+          if (rp) { rp.tradeAfter = Date.now() - 1000; this._petbookSave(playerId, book); }
+        }
+        this._petbookSend(playerId);
+        out.pet = made.id;
+      }
+    }
     if (b.next === 'catch' || b.next === 'miss') {
       if (!(this._trapForced instanceof Map)) this._trapForced = new Map();
       this._trapForced.set(playerId, b.next);

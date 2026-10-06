@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
-import { petDisplayName, petKindName, petEffectiveLevel, cleanPetName, PET_NAME, PET_BIG_AT, PET_KINDS, worldSafeText, petKindOfOld, petXpView } from '@/data/trapping.js';
+import { petDisplayName, petKindName, petEffectiveLevel, cleanPetName, PET_NAME, PET_BIG_AT, PET_KINDS, worldSafeText, petKindOfOld, petXpView, petTradeView, TRAP_WORDS } from '@/data/trapping.js';
+import { storePetsEnabled, storeListPet } from '@/ui/storeApi.js';   /* v2.3.3122: sell a pet at the auction house */
 import { petbookOn, petList, activePet, sendPetActive, sendPetName, sendPetRelease } from '@/game/petBook.js';
 import { trapLevel, petlevelsOn } from '@/game/trapping.js';
 import { ZONES } from '@/data/zones.js';
@@ -91,6 +92,11 @@ export const PetsPanel = () => {
   const [renaming, setRenaming] = useState('');
   const [naming, setNaming] = useState(false);
   const [releaseAsk, setReleaseAsk] = useState(null);
+  /* v2.3.3122: selling one (pet trading, Phase 3) */
+  const [selling, setSelling] = useState(null);
+  const [price, setPrice] = useState('');
+  const [sellMsg, setSellMsg] = useState(null);
+  const [sellBusy, setSellBusy] = useState(false);
   useEffect(() => {
     let lastRev = -1;
     const id = setInterval(() => {
@@ -128,6 +134,11 @@ export const PetsPanel = () => {
           </div>
         </div>
       </div>
+      {sellMsg && sellMsg.ok && !selling ? (
+        <div data-pet-listed="1" style={{ fontSize: 12, color: '#7EE0A8', padding: '6px 10px', background: COL.well, borderRadius: 10, marginBottom: 8 }}>
+          {sellMsg.text}. It waits at the Auction House until it sells, and comes back if it does not.
+        </div>
+      ) : null}
       {unavailable ? (
         <div style={{ fontSize: 13, color: COL.text2, padding: 12, background: COL.well, borderRadius: 10 }}>Your pets are not ready yet. Try again after you rejoin.</div>
       ) : list.length === 0 ? (
@@ -145,7 +156,7 @@ export const PetsPanel = () => {
         const isOpen = open === p.id;
         const clean = cleanPetName(renaming);
         return (
-          <div key={p.id} data-pet-row={p.id} onClick={() => { setOpen(isOpen ? null : p.id); setNaming(false); setReleaseAsk(null); setRenaming(''); }}
+          <div key={p.id} data-pet-row={p.id} onClick={() => { setOpen(isOpen ? null : p.id); setNaming(false); setReleaseAsk(null); setRenaming(''); setSelling(null); setSellMsg(null); }}
             style={{ background: isOut ? COL.accentFill : COL.slot, border: '1px solid ' + (isOut ? COL.edgeWarm : COL.border), borderRadius: 12,
               padding: '8px 10px', marginBottom: 6, cursor: 'pointer' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -189,6 +200,44 @@ export const PetsPanel = () => {
                   </div>
                 )}
                 {naming && renaming && !clean ? <div style={{ fontSize: 11, color: '#E59A94', marginTop: 4 }}>2-16 letters, numbers, spaces, - or '</div> : null}
+                {/* ═══ v2.3.3122: TRADE AND SELL ═══
+                    Whether this pet may change hands now, in words (the
+                    worker's rule, data/trapping.js petTradeView), and -- when
+                    it may -- putting it up at the auction house for a price.
+                    The worker takes it out of the record and holds it in the
+                    listing; it comes back if it does not sell.  Trading one
+                    is in the trade window (its pet lane). */}
+                {p.kind && (() => {
+                  const tv = petTradeView(p, book && book.active, Date.now());
+                  const sellOn = storePetsEnabled();
+                  const pr = Math.floor(Number(price) || 0);
+                  return (
+                    <div data-pet-trade={tv.ok ? 'ok' : tv.why} style={{ marginTop: 8 }}>
+                      <div style={{ fontSize: 11, color: tv.ok ? '#7EE0A8' : COL.muted }}>{tv.words}</div>
+                      {tv.ok && sellOn && selling !== p.id && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                          <Btn on data-pet-sell={p.id} onClick={() => { setSelling(p.id); setPrice(''); setSellMsg(null); }}>Sell at the Auction House</Btn>
+                        </div>
+                      )}
+                      {tv.ok && sellOn && selling === p.id && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
+                          <input data-pet-price={p.id} value={price} inputMode="numeric" pattern="[0-9]*" placeholder="Price in gold"
+                            onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, '').slice(0, 9))}
+                            style={{ flex: 1, minWidth: 0, minHeight: 40, padding: '0 10px', borderRadius: 10, fontSize: 16, fontFamily: 'inherit',
+                              background: COL.well, color: COL.text, border: '1px solid ' + COL.borderStrong }} />
+                          <Btn on={pr >= 1 && !sellBusy} primary data-pet-list={p.id} onClick={async () => {
+                            setSellBusy(true);
+                            const r = await storeListPet(p.id, pr);
+                            setSellBusy(false);
+                            if (r && r.ok) { setSellMsg({ ok: true, text: 'Listed for ' + pr + ' gold' }); setSelling(null); setOpen(null); }
+                            else setSellMsg({ ok: false, text: (r && r.reason && TRAP_WORDS[r.reason]) || (r && r.error) || 'Not listed' });
+                          }}>List</Btn>
+                        </div>
+                      )}
+                      {sellMsg && selling === p.id ? <div style={{ fontSize: 11, marginTop: 4, color: sellMsg.ok ? '#7EE0A8' : '#E59A94' }}>{sellMsg.text}</div> : null}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

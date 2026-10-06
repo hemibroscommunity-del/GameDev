@@ -42,6 +42,8 @@
  * forge.  Scope v1: inventory items + gold only (weapons trade through
  * the marketplace's escrowed listings -- deliberate; see spec). */
 
+import { PETBOOK, petPublic } from './petbook.js';   /* v2.3.3122: the pet lane */
+
 export const TRADE2 = {
   INVITE_TTL: 60000,    // open-toward-you offer lifetime
   SESSION_TTL: 300000,  // idle session lifetime (any action refreshes)
@@ -83,8 +85,22 @@ export const trade2Methods = {
       ready: s.ready || {}, changedAt: s.changedAt || 0, changedBy: s.changedBy || null,
       stage: (s.ready && s.ready[s.a] && s.ready[s.b]) ? 'review' : 'offer',
       weapons: { [s.a]: wpn(s.a), [s.b]: wpn(s.b) },
+      /* v2.3.3122: each side's staged pets, read off its owner's record now
+         (petPublic: what a buyer is shown); one gone from it shows `missing`,
+         and the commit refuses it. */
+      pets: { [s.a]: this._t2PetsWire(s, s.a), [s.b]: this._t2PetsWire(s, s.b) },
       state: s.state,
     };
+  },
+
+  _t2PetsWire(s, pid) {
+    const ids = (s.pets && Array.isArray(s.pets[pid])) ? s.pets[pid] : [];
+    const book = this._petbookOf ? this._petbookOf(pid) : null;
+    const list = (book && book.rec && Array.isArray(book.rec.list)) ? book.rec.list : [];
+    return ids.map((id) => {
+      const p = list.find((q) => q.id === id);
+      return p ? petPublic(p) : { id, missing: true };
+    });
   },
 
   _t2Broadcast(s, extra) {
@@ -237,6 +253,23 @@ export const trade2Methods = {
         if (this._invCount(side.ps, k) < v) return this._t2Cancel(s, 'insufficient:' + side.id);
       }
     }
+    /* v2.3.3122: the pets, checked again with everything else, before
+       anything moves: still each side's to trade, and room on each side for
+       what it receives less what it gives. */
+    const petsOf = (pid) => (s.pets && Array.isArray(s.pets[pid])) ? s.pets[pid] : [];
+    if (petsOf(s.a).length || petsOf(s.b).length) {
+      const nowP = Date.now();
+      for (const side of sides) {
+        for (const id of petsOf(side.id)) {
+          if (!this._petSellable(side.id, id, nowP).ok) return this._t2Cancel(s, 'pet-gone:' + side.id);
+        }
+      }
+      for (const side of sides) {
+        if (this._petbookRoom(side.id) + petsOf(side.id).length < petsOf(side.getsFrom).length) {
+          return this._t2Cancel(s, 'pets-full:' + side.id);
+        }
+      }
+    }
     // Debit BOTH synchronously before any credit -- atomicity.
     for (const side of sides) {
       if (side.gives._gold) side.ps.coins -= side.gives._gold;
@@ -245,6 +278,24 @@ export const trade2Methods = {
         side.ps.inventory[k] = this._invCount(side.ps, k) - v;
         if (side.ps.inventory[k] <= 0) delete side.ps.inventory[k];
       }
+    }
+    /* v2.3.3122: ...and the pets move, all out then all in, in this same
+       synchronous run (see the pet lane's note).  `late` holds one that
+       could not go in -- impossible after the room check above, but never
+       lost: it goes by mail below, opId-idempotent. */
+    const late = [];
+    if (petsOf(s.a).length || petsOf(s.b).length) {
+      const moving = [];
+      for (const side of sides) {
+        for (const id of petsOf(side.id)) {
+          const pet = this._petbookTake(side.id, id);
+          if (pet) moving.push({ from: side.id, to: side.getsFrom, pet });
+        }
+      }
+      for (const mv of moving) {
+        if (!this._petbookGive(mv.to, mv.pet, mv.from)) late.push(mv);
+      }
+      s.petsMoved = moving.map((mv) => ({ from: mv.from, to: mv.to, pet: petPublic(mv.pet) }));
     }
     s.state = 'done';
     this._trades2.delete(s.id);
@@ -284,7 +335,14 @@ export const trade2Methods = {
         }
       }
     }
-    this._t2Broadcast(s, { settled: true });
+    for (const mv of late) {
+      await this._creditPlayer(mv.to, {
+        opId: 'trade2:' + s.id + ':pet:' + mv.pet.id,
+        source: 'trade', kind: 'pet', payload: { pet: mv.pet, from: mv.from },
+        note: 'trade with ' + (mv.from === s.a ? s.aName : s.bName),
+      });
+    }
+    this._t2Broadcast(s, { settled: true, petsMoved: s.petsMoved || [] });
   },
 
   /* ═══ v2.3.2289: A DECLINED INVITE HAS TO REACH THE INVITER ═══
@@ -369,6 +427,50 @@ export const trade2Methods = {
         if (now - s.ts > TRADE2.SESSION_TTL) this._t2Cancel(s, 'expired');
       }
     }
+  },
+
+  /* ═══ v2.3.3122: THE PET LANE (pet trading, docs/PET-TRAPPING-PLAN.md) ═══
+   *
+   * trade2_pets {ids}: the pets YOU offer, wholesale (like trade2_set), at
+   * most PETBOOK.TRADE_MAX.  Each must be yours to trade now
+   * (petbook.js _petSellable: not out with you, not an old pet, a day past
+   * its catch); one that is not refuses the whole set and says why.
+   *
+   * VALIDATE-AT-COMMIT, NOT ESCROW (handoff rule 7).  A staged pet stays in
+   * its owner's record: it is named by an id that never changes, so there is
+   * nothing to pin down the way a stash weapon's index is pinned by
+   * trade2wpn:, and a deploy mid-trade loses nothing.  At the commit every
+   * staged pet is checked again (released, set out with you, listed in the
+   * meantime: the trade is cancelled), each side must have room for what it
+   * receives less what it gives, and then the pets MOVE -- all out of their
+   * records, then all into the others' -- in the same synchronous run as
+   * the items' and the gold's debits, before the first await: one atomic
+   * batch of writes (the plan: "A trade moves the pet between two records in
+   * one synchronous run, with no await between the two writes").  A change
+   * resets both readies and confirms, as every other edit does. */
+  _handleTrade2Pets(session, payload) {
+    const s = this._t2SessionFor(session.id);
+    if (!s) return;
+    const raw = payload && Array.isArray(payload.ids) ? payload.ids : null;
+    if (!raw) return;
+    const ids = [];
+    for (const id of raw.slice(0, 16)) if (typeof id === 'string' && id.length <= 64 && ids.indexOf(id) < 0) ids.push(id);
+    const refuse = (reason) => this._t2Send(session.id, 'trade2_state', Object.assign(this._t2Wire(s), { reason }));
+    if (ids.length > PETBOOK.TRADE_MAX) return refuse('pets-max');
+    const now = Date.now();
+    for (const id of ids) {
+      const ok = this._petSellable(session.id, id, now);
+      if (!ok.ok) return refuse('pet:' + ok.why);
+    }
+    if (!s.pets) s.pets = { [s.a]: [], [s.b]: [] }; // proto-ok: player-keyed (both validated live at open)
+    s.pets[session.id] = ids;
+    s.confirmed[s.a] = false;
+    s.confirmed[s.b] = false;
+    if (s.ready) { s.ready[s.a] = false; s.ready[s.b] = false; }
+    s.changedAt = now;
+    s.changedBy = session.id;
+    s.ts = now;
+    this._t2Broadcast(s);
   },
 
   /* ═══ v2.3.1213: weapon lane (handoff item E) ═══

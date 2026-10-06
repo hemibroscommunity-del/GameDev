@@ -1485,7 +1485,16 @@ remnant to migrate server-side, not a mode to preserve.
       `_questObjectiveMet`), gold and box traps, no XP to place; his line waits
       on tut_1 (`after`), walking past him never stops you for his progress
       (`quietProgress`), and a tap once it is done opens the Pets page; caps
-      `petlevels` / `beastmaster`; `trapping` §16-17, `mp-beastmaster`.)
+      `petlevels` / `beastmaster`; `trapping` §16-17, `mp-beastmaster`;
+    - since v2.3.3122 (Phase 3) PETS CHANGE HANDS: the trade window's pet lane
+      (`trade2_pets`, validate-at-commit: a staged pet stays in its record and
+      moves at the commit with the other debits, all out then all in), the
+      auction house's `kind: 'pet'` (escrowed in the listing, listed from the
+      Pets page) and the `pet` mail kind (STAYS QUEUED when the collection is
+      full; the join loads `pets:` BEFORE the mail drains); the gate is
+      `_petSellable` -- not out with you, not `legacy`, a day past its catch;
+      a new owner is one more `owners`; cap `pettrade`; `pettrade` suite,
+      `mp-pettrade`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

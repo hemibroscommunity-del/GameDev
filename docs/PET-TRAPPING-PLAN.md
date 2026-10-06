@@ -17,7 +17,7 @@ players catch creatures. The research report behind it is
 every source, are in that folder; start with its README. Every choice is now
 made; the full list is near the end.
 
-**Built:** Phase 1, v2.3.3120; Phase 2, v2.3.3121 (`docs/specs/trapping.md`).
+**Built:** Phase 1, v2.3.3120; Phase 2, v2.3.3121; Phase 3, v2.3.3122 (`docs/specs/trapping.md`). One change from the plan in Phase 3: the trade window checks a pet at the commit instead of holding it in storage while the window is open (see the spec's "Trading pets").
 
 ## What you decided (2026-10-06)
 

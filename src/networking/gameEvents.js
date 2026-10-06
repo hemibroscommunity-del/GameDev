@@ -50,6 +50,7 @@ import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
+import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
 
 /* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
  *
@@ -1646,6 +1647,7 @@ export function processGameEvent(type, payload, S, deps) {
                   : _e.kind === 'item' ? (_ep.count || 1) + '× ' + (_ep.invKey || 'item')
                   : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')
                   : _e.kind === 'gear' ? ((_ep.piece && _ep.piece.name) || 'a piece of gear')
+                  : _e.kind === 'pet' ? petMailWords(_ep.pet)   /* v2.3.3122: a pet (store, trade, the mail) */
                   : 'a delivery';
                 S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-50)), [{
                   id: 'inbox-' + Date.now() + '-' + _ie,
@@ -4034,6 +4036,9 @@ export function processGameEvent(type, payload, S, deps) {
                   received: (payload.offers && payload.offers[_t2OtherId]) || {},
                   sentWeapons: (payload.weapons && payload.weapons[S.myId]) || [],
                   receivedWeapons: (payload.weapons && payload.weapons[_t2OtherId]) || [],
+                  /* v2.3.3122: the pets that moved (trade2.js petsMoved), each way */
+                  sentPets: (Array.isArray(payload.petsMoved) ? payload.petsMoved : []).filter(function (m) { return m && m.from === S.myId; }).map(function (m) { return m.pet; }),
+                  receivedPets: (Array.isArray(payload.petsMoved) ? payload.petsMoved : []).filter(function (m) { return m && m.to === S.myId; }).map(function (m) { return m.pet; }),
                   otherName: payload.a === S.myId ? (payload.bName || 'Trader') : (payload.aName || 'Trader'),
                   /* v2.3.2294: and their ID, so the receipt can draw their
                      PORTRAIT and not just their name. The 'done' snapshot is
@@ -4084,7 +4089,7 @@ export function processGameEvent(type, payload, S, deps) {
                    session surviving a failed commit) — out of scope.
                    Every other cancel reason keeps the legacy
                    clear-window + world-popup behavior. */
-                var _t2SettleFail = !!(payload.reason && String(payload.reason).indexOf('insufficient') === 0);
+                var _t2SettleFail = !!(payload.reason && /^(insufficient|pet-gone|pets-full)/.test(String(payload.reason)));   /* v2.3.3122: + the pet lane's */
                 if (_t2SettleFail) {
                   setTrade2({ state: 'failed', reason: payload.reason, ts: Date.now() });
                 } else {

@@ -5194,6 +5194,13 @@ export class GameRoom {
       case 'trade2_unstage_weapon':
         if (session.id) await this._handleTrade2UnstageWeapon(session, msg.payload || msg);
         break;
+      case 'trade2_pets':
+        /* v2.3.3122: the pet lane -- the pets YOU offer, by id (trade2.js
+           _handleTrade2Pets).  Explicit case so a forged one meets
+           validation, never the rebroadcast branch; gated client-side on
+           caps.pettrade. */
+        if (session.id) this._handleTrade2Pets(session, msg.payload || msg);
+        break;
 
       case 'party_invite':
         // v2.3.1185: party roster (party.js).  Explicit cases so forged

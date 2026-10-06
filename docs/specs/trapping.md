@@ -1,4 +1,4 @@
-# Pet trapping: arm a trap, then kill it (v2.3.3120, Phase 2 v2.3.3121)
+# Pet trapping: arm a trap, then kill it (v2.3.3120, Phase 2 v2.3.3121, Phase 3 v2.3.3122)
 
 The plan, with every choice the owner made, is `docs/PET-TRAPPING-PLAN.md`.
 This spec says what is built and how it works. Code is the truth where the two
@@ -145,6 +145,37 @@ dormant Kai chain keys on that name (`getNpcQuest`).
   One 256 × 256 picture, ~0.25 MB decoded, loaded with the Wheel's cast behind
   its loading screen and never in today's town (`wheelOnly`).
 
+## Trading pets (Phase 3, v2.3.3122)
+
+Pets change hands three ways, each through a system that already moves things
+of value, and nothing writes a pet into a record but a catch and these:
+
+- **The gate** (`server/src/petbook.js` `_petSellable`): the pet must be yours,
+  not out with you ("the pet that's out with you can't be listed"), not an old
+  pet moved in from the browser years (`legacy`: usable, never tradeable), and a
+  day past its catch (`tradeAfter`). The Pets page says which of yours may go
+  and why the others may not (`src/data/trapping.js` `petTradeView`).
+- **The trade window** (`trade2.js`, `trade2_pets {ids}`, at most 4 a side):
+  validate-at-commit. A staged pet stays in its owner's record until both
+  accept; then it is checked again and all the pets move, out then in, in one
+  synchronous run with the trade's other debits. A pet released, taken out or
+  listed meanwhile, or no room on the other side, cancels the whole trade with
+  nothing moved. See `docs/specs/trading.md`, "Pet lane".
+- **The auction house** (`store.js` `kind: 'pet'`), listed from the Pets page:
+  escrowed in the listing record; bought, taken down or expired, it goes on
+  through the same paths as every listing. See `docs/specs/auction-house.md`,
+  "Pet listings".
+- **The mail** (`inbox.js` `pet`): a buyer with a full collection, or a seller
+  offline when a listing ends, gets the pet in the mail. It STAYS QUEUED while
+  there is no room (an unknown kind used to be consumed and lost) and lands at
+  the next join, which loads the pets record before it drains the mail. The
+  Post Office shows it ("Snowball the Snowling, Lv 4").
+- A pet keeps its id, name, level, XP and story; the new owner is one more
+  owner (`owners`), and a seller taking an unsold pet back is not. Its journal
+  entry stays with whoever caught it.
+- Kill switch `pettrade: false` (`caps.pettrade`): no new trade or listing; a pet
+  already on its way still arrives.
+
 ## Where you can trap
 
 Only the Wheel's own monsters (`home`, zone `wheel`): never in a dungeon, never
@@ -167,6 +198,7 @@ roll that happens stays honest).
 | phone → worker | `pet_name` | `{id, name}` |
 | phone → worker | `pet_release` | `{id, confirm: true}` |
 | worker → phone | `pets_state` | the record `{v, cap, active, list, journal}` (+ `op`, `id`, `error`), or `{unavailable: true}` |
+| phone → worker | `trade2_pets` | `{ids}` (v2.3.3122: the pets you offer in the trade window, at most 4) |
 
 Every worker-sent type is in `PRIVILEGED_EVENTS`; every phone-sent type has an
 explicit router case and a channel-shim line. `pet_capture` (the old 20% capture)
@@ -185,6 +217,8 @@ All lower case; each read in the handler from `_liveFlags` (TRAPS §117):
   setting active and releasing; pets stay, catches still land, the vacuum works.
 - `caps.petlevels` (v2.3.3121): pets earn XP. `petlevels: false` stops it; levels
   earned stay.
+- `caps.pettrade` (v2.3.3122): the trade window's pet lane, pet listings and
+  the Pets page's Sell. `pettrade: false` refuses new ones; deliveries continue.
 - `caps.beastmaster` (v2.3.3121): Beastmaster Bro stands by the Woodworker.
   `beastmaster: false` un-advertises him (a joining phone does not spawn him);
   quests already active still count and hand in.
@@ -246,7 +280,14 @@ kill pays in combat XP), sets up a catch without a hundred kills. `POST
 /api/admin/dev/quests` takes `except` (a quest-id prefix left alone: `beast_`).
 They are the admin key's, like every dev op: no socket message.
 
+- Phase 3: `server/test/pettrade.test.mjs` (51 checks: the gate, the trade
+  window's lane at full collections and when a pet goes meanwhile, a
+  disconnect, the auction house's list / buy / take-down / expiry, a full
+  buyer's mail landing at the next join, never twice, `__proto__`) and
+  `tools/qa/mp/mp-pettrade.mjs` (14 checks on two phones: the Pets page, the
+  trade window's lane, review and receipt, a listing bought at the auction
+  house). The test kit's `/dev/trapping` takes `pet: {home, level, tradeable}`.
+
 ## Not built yet (later phases of the plan)
 
-Trading pets (Phase 3); the land wards, other players seeing your pet, more Pet
-House space (Phase 4).
+The land wards, other players seeing your pet, more Pet House space (Phase 4).

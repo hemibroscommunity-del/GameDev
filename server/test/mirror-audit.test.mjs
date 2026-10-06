@@ -59,7 +59,8 @@ import { PET_KINDS as SRV_PET_KINDS, PET_NAME as SRV_PET_NAME, cleanPetName as s
 import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp as clientTrapRollXp, trapCatchXp as clientTrapCatchXp,
   PET_KINDS as CLIENT_PET_KINDS, PET_NAME as CLIENT_PET_NAME, cleanPetName as clientCleanPetName, petKindOfMonster as clientPetKindOf,
   PET_BIG_AT as CLIENT_PET_BIG_AT, TRAP_WORDS as CLIENT_TRAP_WORDS,
-  PET_XP as CLIENT_PET_XP, petXpToNext as clientPetXpToNext, petGainXp as clientPetGainXp } from '../../src/data/trapping.js';
+  PET_XP as CLIENT_PET_XP, petXpToNext as clientPetXpToNext, petGainXp as clientPetGainXp,
+  PET_TRADE_MAX as CLIENT_PET_TRADE_MAX } from '../../src/data/trapping.js';
 import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -1663,6 +1664,12 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     if (JSON.stringify(srvPetGainXp(lv, xp, gain, cap)) !== JSON.stringify(clientPetGainXp(lv, xp, gain, cap))) xpOff.push([lv, xp, gain, cap]);
   }
   check('pets: the same XP to the next level at every level to 120, and the same levelling to the Trapping cap', xpOff.length === 0, xpOff);
+  /* v2.3.3122: the trade window's pet limit the phone shows is the worker's */
+  check('pets: the same pets-a-trade limit (PETBOOK.TRADE_MAX)', CLIENT_PET_TRADE_MAX === SRV_PETBOOK.TRADE_MAX, { client: CLIENT_PET_TRADE_MAX, server: SRV_PETBOOK.TRADE_MAX });
+  /* ...and every refusal of a pet changing hands has words on the phone */
+  const tradeCodes = ['legacy', 'active', 'too-new', 'pets-max', 'pet-gone', 'pets-full', 'no-pet', 'off', 'pets-unavailable'];
+  check('pets: every trading refusal the worker sends has words on the phone', tradeCodes.every((c) => typeof CLIENT_TRAP_WORDS[c] === 'string' && CLIENT_TRAP_WORDS[c].length > 0),
+    tradeCodes.filter((c) => !CLIENT_TRAP_WORDS[c]));
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
