@@ -43,6 +43,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => { for (const el of document.querySelectorAll('button[aria-label="Close"], button[aria-label="Dismiss"]')) try { el.click(); } catch (e) {} });
   /* the tutorial coach card sits over the lower half of a phone screen */
   await P.page.addStyleTag({ content: '[data-coach],[data-coach-card],[data-coach-ring]{display:none!important}' });
+  /* v2.3.3077: the fire-lighter and the cook are made the first time each can
+     be wanted (rendering/standIns.js) -- for a player, a log in the bag; this
+     writes the light's record straight, with no log, so they are asked for */
+  await P.page.evaluate(() => Promise.all(['fire', 'cook']
+    .map((k) => (window.__btStandInMake ? window.__btStandInMake(k) : null)))).catch(() => {});
   const hook = await P.page.evaluate(() => typeof window.__btCampfire === 'function');
   rec.ok('the campfire probe is on the page (guard)', hook);
   /* A 45 s fire, watched in seconds: Playwright's clock keeps time FLOWING
