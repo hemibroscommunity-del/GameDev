@@ -473,6 +473,36 @@ function buildScene(app) {
    near-black line of 30, so a screen of nothing else counted as lit. */
 export const CANVAS_BG = 0x0d0b18;
 
+/* ═══ v2.3.3072: THE SCREEN HAS NO DEPTH BUFFER ═══
+   Pixi asks for the canvas's WebGL context with a stencil buffer (its masks:
+   the swimmer cut at the neck) and says nothing of depth, and WebGL's default
+   is a depth buffer too: one more full-screen buffer behind the picture that
+   nothing reads -- no code here or in Pixi's 2D drawing turns DEPTH_TEST on.
+   iPhone Safari makes the two one packed depth + stencil buffer (WebKit's
+   WebGLDefaultFramebuffer: DEPTH24_STENCIL8, on Metal 32-bit float depth and
+   8-bit stencil); asked for stencil alone it makes STENCIL_INDEX8, a byte a
+   pixel.  At 1170 x 2532 that is ~11 MB less on the GPU (~20 if the packed
+   format is stored 8 bytes a pixel), and one clear less a frame.  Chrome
+   keeps a packed buffer whatever is asked, so nothing changes there.  Not a
+   pixel changes anywhere: with DEPTH_TEST off the depth buffer is never read
+   (mp-nodepth checks it stays off through a fight, a swim and a rebuild).
+   Only Pixi's own getContext on this canvas is changed, and only while the
+   app is made; `?depthbuf` in the address keeps the depth buffer, to compare. */
+function withoutDepthBuffer(canvas) {
+  try {
+    if (/(^|[?&])depthbuf(=|&|$)/.test(window.location.search || '')) return () => {};
+    if (!canvas || typeof canvas.getContext !== 'function' || Object.prototype.hasOwnProperty.call(canvas, 'getContext')) return () => {};
+    const own = canvas.getContext;
+    canvas.getContext = function (type, attrs) {
+      if ((type === 'webgl2' || type === 'webgl') && attrs && typeof attrs === 'object') attrs = Object.assign({}, attrs, { depth: false });
+      return own.apply(this, [type, attrs].concat(Array.prototype.slice.call(arguments, 2)));
+    };
+    return () => { try { delete canvas.getContext; } catch (e) { /* the prototype's again */ } };
+  } catch (e) {
+    return () => {};
+  }
+}
+
 export async function createPixiApp(canvas) {
   /* v2.3.1383: without a webglcontextlost preventDefault the browser never
      even ATTEMPTS a context restore — the canvas just dies.  iOS Safari
@@ -525,7 +555,12 @@ export async function createPixiApp(canvas) {
   // canvas renderer even on first boot.
   try {
     const app = new Application();
-    await app.init({ ...initOpts, preference: 'webgl' });
+    const putBack = withoutDepthBuffer(canvas);   /* v2.3.3072 */
+    try {
+      await app.init({ ...initOpts, preference: 'webgl' });
+    } finally {
+      putBack();
+    }
     /* v2.3.763: record WebGL context loss -- prime suspect for the reported
        mid-fight black canvas on iPhone. */
     watchContextLoss(canvas);
