@@ -90,10 +90,15 @@ const SKELETON_REMNANTS_THUMB = `/icons/items/remnants-skeleton.webp${ITEMS_V}`;
 const FISH_THUMBS = {
   fish_clownfish: `/icons/items/fish-clownfish.webp${ITEMS_V}`,
   fish_trout: `/icons/items/fish-trout.webp${ITEMS_V}`, /* v2.3.1325: trout finally has its own art */
+  /* v2.3.3085: the Wheel's levels 21-40 (tools/make_tier_art.py past20) */
+  fish_salmon: `/icons/items/fish-salmon.webp${ITEMS_V}`,
+  fish_pike: `/icons/items/fish-pike.webp${ITEMS_V}`,
 };
 const COOKED_FISH_THUMBS = {
   cooked_fish_clownfish: `/icons/items/cooked-clownfish.webp${ITEMS_V}`,
   cooked_fish_trout: `/icons/items/cooked-trout.webp${ITEMS_V}`,
+  cooked_fish_salmon: `/icons/items/cooked-salmon.webp${ITEMS_V}`,   /* v2.3.3085 */
+  cooked_fish_pike: `/icons/items/cooked-pike.webp${ITEMS_V}`,
 };
 const FISH_THUMB_DEFAULT = `/icons/items/fish-minnow.webp${ITEMS_V}`;
 const COOKED_FISH_THUMB_DEFAULT = `/icons/items/cooked-minnow.webp${ITEMS_V}`;
@@ -104,12 +109,18 @@ export const ORE_THUMBS = {  /* v2.3.2822: exported for the Smelting rows */
      tools/make_tier_art.py */
   ore_iron_ore: `/icons/items/ore-iron.webp${ITEMS_V}`,
   ore_black_steel_ore: `/icons/items/ore-black-steel.webp${ITEMS_V}`,
+  /* v2.3.3085: and titanium (levels 21-30) and obsidian (31-40), the forge's
+     next two metals */
+  ore_titanium_ore: `/icons/items/ore-titanium.webp${ITEMS_V}`,
+  ore_obsidian_ore: `/icons/items/ore-obsidian.webp${ITEMS_V}`,
 };
 /* v2.3.3012: and softwood and hardwood, the log recoloured the same way; the
    pine log (and any wood not listed) keeps the one log picture */
 const WOOD_THUMBS = {
   wood_softwood: `/icons/items/wood-softwood.webp${ITEMS_V}`,
   wood_hardwood: `/icons/items/wood-hardwood.webp${ITEMS_V}`,
+  wood_cedar_wood: `/icons/items/wood-cedar.webp${ITEMS_V}`,   /* v2.3.3085 */
+  wood_maple_wood: `/icons/items/wood-maple.webp${ITEMS_V}`,
 };
 const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
 /* v2.3.2822: smelted bars (server smelting.js).  One painted grey ingot, the

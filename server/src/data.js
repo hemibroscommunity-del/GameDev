@@ -425,6 +425,8 @@ export const FISH_TIERS = [
       { lvl: 1,  name: 'minnow' },
       { lvl: 6,  name: 'clownfish' },
       { lvl: 11, name: 'trout' },
+      { lvl: 16, name: 'salmon' },   /* v2.3.3085: the Wheel's levels 21-30 */
+      { lvl: 21, name: 'pike' },     /* v2.3.3085: ...and 31-40 */
     ];
 
 export const COOKING_RECIPES = [

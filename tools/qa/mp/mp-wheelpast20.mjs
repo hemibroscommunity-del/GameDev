@@ -13,7 +13,10 @@
  *      art in the stage's icy blue (a sprite tint: src/data/wheelStageLooks.js)
  *      and named so on their plates, with their own levels;
  *   4. a first-stage snowman is still white and still a Snowman;
- *   5. no page errors, and no render errors.
+ *   5. (v2.3.3085) the second stage's resources: a titanium vein there, named
+ *      and asking Mining 10, drawn from its own picture, its label grey for a
+ *      miner short of it; cedar beside it;
+ *   6. no page errors, and no render errors.
  * Pictures in tools/qa/mp/out/wheelpast20-*.png.
  */
 import * as H from './harness.mjs';
@@ -118,6 +121,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot(P, 'frost-16-20');
   rec.ok(`a level ${near4.map((m) => m.level).join('/')} snowman, back inside the first stage, is still white and still a "Snowman"`,
     near4.length >= 1 && near4.every((m) => m.sprite.baseTint === 0xffffff && m.sprite.plate.name === 'Snowman'), near4.map((m) => m.sprite));
+
+  /* ── 5. v2.3.3085: the second stage's resources ── */
+  phase = 'the resources';
+  const nodesHere = () => P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return (S.gatherNodes || []).filter((n) => n && n.alive !== false && (n.gatherLvl === 16 || n.gatherLvl === 21)).map((n) => {
+      const sp = n._pixiSprite && !n._pixiSprite.destroyed ? n._pixiSprite : null;
+      const tex = sp && sp.texture;
+      const L = n._pixiLabel && !n._pixiLabel.destroyed ? n._pixiLabel : null;
+      const p = L && L._nl;
+      return { id: n.id, type: n.nodeType, tier: n.gatherLvl, name: n.name, req: n.reqLvl, x: n.x, y: n.y,
+        d: Math.round(Math.hypot(n.x - S.player.x, n.y - S.player.y)),
+        tex: tex ? String((tex.source && tex.source.label) || tex.label || '') : null, tint: sp ? sp.tint : null,
+        label: p ? { text: p.name.text, lv: p.lv.text, gray: !!p.gray, words: !!(p.name.visible && p.lv.visible) } : null };
+    });
+  });
+  /* the tools first: a resource is drawn and labelled for a player who holds
+     its tool (mp-nodelabels' way in) */
+  for (const k of ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe']) await H.grant(wsPort, myId, 'item', { invKey: k, count: 1 }).catch(() => {});
+  await H.waitFor(P, (S) => ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe'].filter((k) => ((S.rpg || {}).inventory || {})[k] > 0).length,
+    (n) => n === 3, { timeout: 20000, label: 'the tools' }).catch(() => 0);
+  const frostVeins = (await import(H.REPO + '/server/src/wheelspawns.js')).WHEEL_NODES.frost.filter((q) => q[0] === 'o' && q[3] === 16);
+  const v0 = frostVeins.sort((a, b) => Math.hypot(a[1] - mid.x, a[2] - mid.y) - Math.hypot(b[1] - mid.x, b[2] - mid.y))[0];
+  let vein = null, here = [];
+  if (v0) {
+    await H.hopTo(P, v0[1] + 70, v0[2] + 40, { step: 100, gap: 260, tries: 220 });
+    for (let i = 0; i < 20; i++) {
+      await P.page.waitForTimeout(500);
+      here = await nodesHere();
+      vein = here.filter((n) => n.type === 'oreVein' && n.tier === 16).sort((a, b) => a.d - b.d)[0] || null;
+      if (vein && vein.label && vein.label.words && vein.tex) break;
+    }
+  }
+  await shot(P, 'titanium');
+  rec.ok(`a titanium vein past level 20: "${vein && vein.name}", asking Mining ${vein && vein.req}, drawn from its own picture (${vein && vein.tex})`,
+    !!vein && vein.name === 'Titanium Ore' && vein.req === 10 && /titanium/.test(vein.tex || ''), { vein, n: here.length });
+  rec.ok(`...its label says so -- "${vein && vein.label && vein.label.text}" "${vein && vein.label && vein.label.lv}", grey for a miner short of it`,
+    !!vein && !!vein.label && vein.label.text === 'Titanium Ore' && /10/.test(vein.label.lv) && vein.label.gray === true, vein && vein.label);
+  const kinds = [...new Set(here.map((n) => `${n.name} (${n.type}, tier ${n.tier}, Lv ${n.req})`))];
+  rec.ok(`...and the second stage's others grow there too: ${kinds.join(', ')}`,
+    here.some((n) => n.type === 'tree' && n.tier === 16 && n.name === 'Cedar Wood' && n.req === 15), kinds);
 
   await H.devOp(wsPort, 'vitals', myId, { heal: true, god: false });
   stopAlive = true;

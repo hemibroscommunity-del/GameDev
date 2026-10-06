@@ -17,9 +17,11 @@ not be finished. Now the Wheel grows **142 resource nodes** (140 until v2.3.3013
 | The safe ground round Brotown (the commons) | — | 1 | copper | pine log | minnow |
 | Each land's first two stages | 1–10 | 6 | **iron** | softwood | clownfish |
 | Each land's next two stages, up to the first pass | 11–20 | 11 | **black steel** | hardwood | trout |
+| Past the first pass (v2.3.3085) | 21–30 | 16 | **titanium** | cedar | salmon |
+| ...out to the camp at 40 (v2.3.3085) | 31–40 | 21 | **obsidian** | maple | pike |
 
-Past level 20 (the first pass) the next tiers will grow once they are
-planned.
+Since v2.3.3085 the second stage grows its own too: see "Past level 20"
+below. 259 nodes in all.
 
 ## What the player sees
 
@@ -413,10 +415,71 @@ Tests (`mp-nodelabels`):
   sent, and the try ends by itself.
 - Picture: `nodelabels-try.png`.
 
+## Past level 20 (v2.3.3085)
+
+> The owner: *"build the world past level 20 (levels 21–40 in each land with
+> their own monsters and resources)"*.
+
+Each land's second stage grows two tiers of its own, as the first stage does:
+
+| Tier | Levels | Ore | Wood | Fish | Needs |
+|---|---|---|---|---|---|
+| 16 | 21–30 | Titanium Ore | Cedar Wood | Salmon | Mining 10, Woodcutting 15, Fishing 15 |
+| 21 | 31–40 | Obsidian Ore | Maple Wood | Pike | Mining 15, Woodcutting 20, Fishing 20 |
+
+- **Five levels a tier.** The requirements carry on the owner's steps ("in
+  levels of 5"), each kind from where its first stage left off (black steel
+  Mining 5, trout and hardwood 10). The table is `GATHER_REQ_LVL`, mirrored and
+  pinned by mirror-audit.
+- **What they make.**
+  - Titanium and obsidian are the forge's next two metals: `BLACKSMITH_TIERS`
+    titanium (Smithing 21) and obsidian (26) forge from exactly
+    `ore_titanium_ore` and `ore_obsidian_ore`.
+  - Cedar and maple are the bow bench's (`WOODWORKING_TIERS` cedar and maple).
+  - Salmon and pike cook like any fish (`FISH_TIERS`, healing 220 and 260).
+  - The client's `MINING_TIERS` 16 and 21 were "Crystal Ore" and "Gold Ore",
+    which grew nowhere, and are renamed to match. Its old "Obsidian" at 36
+    became "Diamond Ore", the forge's tier there, so there is one obsidian.
+- **Where.** The bake's `NODE_RULES` has two more bands, `deep` (tiers 5–6)
+  and `deeper` (7–8): three veins, three trees and two fishing spots a land,
+  by the same rules as the first stage's.
+  - +117 nodes, 259 in all.
+  - The richer the tier, the farther out it grows (`wheelzone` §8 checks the
+    median distances).
+- **Fishing is thinner out here.** The fallback takes any water, as before, and
+  still finds none in two places: the Stone Hollows have no water a line can
+  reach in either tier, and the Verdant Wilds have none in tier 21.
+- **Pictures**, from the art the first stage's came from
+  (`python3 tools/make_tier_art.py past20`):
+  - titanium and obsidian veins at 418 px (1.4 MB decoded more, loaded at the
+    intro gate with the others);
+  - their bag ore;
+  - cedar and maple logs;
+  - salmon and pike, raw and cooked.
+  - Trees take a tint (`NODE_TIER_TINT`: cedar red-brown, maple autumn).
+  - The fish in the water are drawn in code (`FISH_LOOK`: a pink salmon, a
+    long olive pike).
+  - Every table that knew three tiers knows five: the minimap's and the world
+    map's node tints, the bag's thumbnails, the fly-to-bag icons, the cook's
+    raw icon, the campfire's fish order and the trade window's emoji.
+- **The bake's "nothing in front" check** sizes a tier-21 node's picture
+  1.30× (effectsRenderer draws by `ceil(tier / 10)`), where a tier-11's is
+  1.15×.
+- **Tests:**
+  - `wheelzone` §8: every land grows tiers 16 and 21 veins and trees; salmon
+    and pike somewhere; farther out by tier; each tier's own item name; the
+    forge's titanium and obsidian and the bench's cedar and maple are the items
+    these nodes pay.
+  - `mirror-audit`: the level table, `FISH_TIERS` and the harvest XP across
+    every wood tier.
+  - `mp-wheelpast20`: a titanium vein on Frost Ridge's second stage, named,
+    asking Mining 10, drawn from its own picture, its label grey for a miner
+    short of it, and cedar, salmon, obsidian, maple and pike around it.
+
 ## Not in this round
 
 - The world map (the overlay a tap on the minimap opens) shows no nodes.
-- Tiers past 20 (titanium, cedar, …) are not placed.
+- Tiers past 40 (levels 41–80) are not placed.
 - Two lands' bands have no fishing of their tier:
   - The Hollows at 1–10 have no water a line can reach.
   - The Verdant Wilds at 11–20 have shores whose water lies east of the

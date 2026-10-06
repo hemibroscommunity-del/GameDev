@@ -84,10 +84,12 @@ const FACING_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'nort
    hardwood), the fish in the water (silver minnows, orange clownfish, olive
    trout).  Small: they sit under the bros, monsters and the quest's star. */
 const NODE_ICON = { oreVein: 'ore', tree: 'tree', fishSpot: 'fish' };
+/* v2.3.3085: + the second stage's: titanium and obsidian, cedar and maple,
+   salmon and pike */
 const C_NODE = {
-  oreVein: { 1: 0xe08a45, 6: 0xc65f45, 11: 0x8e9ab8 },
-  tree: { 1: 0x58b85a, 6: 0xc6dc6c, 11: 0xa08c52 },
-  fishSpot: { 1: 0xd6e8f5, 6: 0xff8a3a, 11: 0xc4b46a },
+  oreVein: { 1: 0xe08a45, 6: 0xc65f45, 11: 0x8e9ab8, 16: 0xc8d0dc, 21: 0x7a55b5 },
+  tree: { 1: 0x58b85a, 6: 0xc6dc6c, 11: 0xa08c52, 16: 0xc0786a, 21: 0xf09a40 },
+  fishSpot: { 1: 0xd6e8f5, 6: 0xff8a3a, 11: 0xc4b46a, 16: 0xf09080, 21: 0x8aaa50 },
 };
 const NODE_PX = 10;
 /* ═══ v2.3.3023: THE WAY HOME ═══
@@ -311,7 +313,7 @@ export class WheelMinimap {
       if (!n || !n.alive || !NODE_ICON[n.nodeType]) continue;
       if (Math.abs(n.x - P.x) > reach || Math.abs(n.y - P.y) > reach) continue;
       if (!hasGatherTool(S.rpg || null, n.nodeType)) continue;
-      const lvl = n.gatherLvl || 1, tier = lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1;
+      const lvl = n.gatherLvl || 1, tier = lvl >= 21 ? 21 : lvl >= 16 ? 16 : lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1;   /* v2.3.3085: + 16, 21 */
       this._mark(n.x, n.y, NODE_ICON[n.nodeType], C_NODE[n.nodeType][tier], NODE_PX);
       nodeMarks++;
     }

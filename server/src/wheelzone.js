@@ -134,7 +134,8 @@ export const WHEEL = Object.freeze({
   /* v2.3.3084: the tiers of a land's first stage (levels 1-20); the
      `wheelpast20` switch keeps the Wheel to them */
   FIRST_STAGE_TIERS: 4,
-  NODE_TIERS: Object.freeze([1, 6, 11]),
+  /* v2.3.3085: + 16 and 21, the second stage's (levels 21-30, 31-40) */
+  NODE_TIERS: Object.freeze([1, 6, 11, 16, 21]),
 });
 
 export const wheelzoneMethods = {

@@ -585,6 +585,8 @@ function applyFishingReward(S, node, result, deps) {
     var _fishIcon = ({
       fish_clownfish: '/icons/items/fish-clownfish.webp?v=2.3.1452',
       fish_trout: '/icons/items/fish-trout.webp?v=2.3.1452',
+      fish_salmon: '/icons/items/fish-salmon.webp?v=2.3.3085',   /* v2.3.3085: the Wheel's levels 21-40 */
+      fish_pike: '/icons/items/fish-pike.webp?v=2.3.3085',
     })[_fishKey] || '/icons/items/fish-minnow.webp?v=2.3.1452';
     _flyResourceToInventory(S, node.x, node.y - 4, _fishIcon, { pop: true });
     setRpgState(_objectSpread({}, R));
@@ -611,6 +613,8 @@ function applyWoodReward(S, node, result, deps) {
     var _woodIcon = ({
       6: '/icons/items/wood-softwood.webp?v=2.3.1774',
       11: '/icons/items/wood-hardwood.webp?v=2.3.1774',
+      16: '/icons/items/wood-cedar.webp?v=2.3.3085',   /* v2.3.3085 */
+      21: '/icons/items/wood-maple.webp?v=2.3.3085',
     })[node.gatherLvl] || '/icons/items/wood-log.webp?v=2.3.1452';
     _flyResourceToInventory(S, node.x, node.y - 60, _woodIcon, { pop: true });
     /* When the server owns gather-node state, tell it about the harvest so
@@ -704,6 +708,8 @@ function applyMiningReward(S, node, result, deps) {
     var _oreIcon = ({
       6: '/icons/items/ore-iron.webp?v=2.3.1774',
       11: '/icons/items/ore-black-steel.webp?v=2.3.1774',
+      16: '/icons/items/ore-titanium.webp?v=2.3.3085',   /* v2.3.3085 */
+      21: '/icons/items/ore-obsidian.webp?v=2.3.3085',
     })[node.gatherLvl] || '/icons/items/ore-copper.webp?v=2.3.1452';
     _flyResourceToInventory(S, node.x, node.y - 40, _oreIcon, { pop: true });
     /* When the server owns gather-node state, tell it about the harvest so

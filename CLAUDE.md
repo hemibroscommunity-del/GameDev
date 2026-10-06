@@ -676,6 +676,15 @@ remnant to migrate server-side, not a mode to preserve.
       its harvest bar is up; the old emoji, tier dot and 7 px tips are gone;
       and a vein CRACKS on its split frame (`ore-crack`, cut from the unused
       extract-success.mp4); `mp-nodelabels`;
+    - since v2.3.3085 PAST LEVEL 20 TOO (the owner: "levels 21-40 in each
+      land with their own monsters and resources"): tier 16 at levels 21-30
+      (titanium ore, cedar, salmon) and tier 21 at 31-40 (obsidian ore,
+      maple, pike) -- the bake's `deep`/`deeper` bands, 259 nodes;
+      `GATHER_REQ_LVL` 16/21 (Mining 10/15, Woodcutting and Fishing 15/20);
+      titanium and obsidian ARE the forge's next metals' ores, cedar and maple
+      the bow bench's woods; client `MINING_TIERS` 16/21 renamed to match (36
+      is Diamond Ore now); art from `tools/make_tier_art.py past20`; every
+      three-tier table five: wheel-resources.md "Past level 20";
     - since v2.3.3059 the labels are QUIETER and a locked node can be TRIED --
       the owner: "show zeroes popping as they try to harvest ... a grayed out
       icon ... I just don't want the screen to be too busy with text": every

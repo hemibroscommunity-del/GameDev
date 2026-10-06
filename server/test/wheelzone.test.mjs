@@ -601,14 +601,20 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     && lands.every((n) => n.home === area(n) && WHEEL.HOMES.includes(n.home) && n.tierLvl !== 1 && R(n) >= WHEEL_SAFE_R));
   check('nodes: and catches fish in some land at each of its tiers (clownfish, trout)',
     [6, 11].every((t) => lands.some((n) => n.nodeType === 'fishSpot' && n.tierLvl === t)));
+  /* v2.3.3085: the second stage's (levels 21-40) */
+  check('nodes: every land grows titanium and obsidian ore, cedar and maple past level 20',
+    WHEEL.HOMES.every((h) => [16, 21].every((t) => ['oreVein', 'tree'].every((k) =>
+      lands.some((n) => n.home === h && n.nodeType === k && n.tierLvl === t)))));
+  check('nodes: and catches salmon and pike in some land',
+    [16, 21].every((t) => lands.some((n) => n.nodeType === 'fishSpot' && n.tierLvl === t)));
   /* the owner: "Make all 8 have fishing spots" */
   check('nodes: every one of the eight lands has fishing',
     WHEEL.HOMES.every((h) => lands.some((n) => n.home === h && n.nodeType === 'fishSpot')),
     Object.fromEntries(WHEEL.HOMES.map((h) => [h, lands.filter((n) => n.home === h && n.nodeType === 'fishSpot').length])));
   /* "the higher lvl resources will be progressively more distant" */
   const med = (t) => { const r = nodes.filter((n) => n.tierLvl === t).map(R).sort((a, b) => a - b); return r[r.length >> 1]; };
-  check('nodes: the richer the tier, the farther from town it grows', med(1) < med(6) && med(6) < med(11),
-    { 1: Math.round(med(1)), 6: Math.round(med(6)), 11: Math.round(med(11)) });
+  check('nodes: the richer the tier, the farther from town it grows', med(1) < med(6) && med(6) < med(11) && med(11) < med(16) && med(16) < med(21),
+    { 1: Math.round(med(1)), 6: Math.round(med(6)), 11: Math.round(med(11)), 16: Math.round(med(16)), 21: Math.round(med(21)) });
   /* the bake keeps nodes apart, across lands too (two lands' bands meet) */
   let close = Infinity;
   for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++)
@@ -623,6 +629,10 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     'oreVein 1': 'ore_copper_ore', 'oreVein 6': 'ore_iron_ore', 'oreVein 11': 'ore_black_steel_ore',
     'tree 1': 'wood_pine_log', 'tree 6': 'wood_softwood', 'tree 11': 'wood_hardwood',
     'fishSpot 1': 'fish_minnow', 'fishSpot 6': 'fish_clownfish', 'fishSpot 11': 'fish_trout',
+    /* v2.3.3085 */
+    'oreVein 16': 'ore_titanium_ore', 'oreVein 21': 'ore_obsidian_ore',
+    'tree 16': 'wood_cedar_wood', 'tree 21': 'wood_maple_wood',
+    'fishSpot 16': 'fish_salmon', 'fishSpot 21': 'fish_pike',
   };
   const got = Object.fromEntries(Object.keys(names).map((k) => { const [t, l] = k.split(' '); return [k, room._harvestInvKey(t, Number(l))]; }));
   check('nodes: each tier\'s harvest has its own name', Object.keys(names).every((k) => got[k] === names[k]), got);
@@ -632,7 +642,11 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     && 'ore_' + BLACKSMITH_TIERS.copper.oreName + '_ore' === room._harvestInvKey('oreVein', 1),
     BLACKSMITH_TIERS.steel);
   check('nodes: and each wood what its bow tier is made from',
-    ['pine', 'softwood', 'hardwood'].every((k, i) => 'wood_' + WOODWORKING_TIERS[k].wood === room._harvestInvKey('tree', [1, 6, 11][i])));
+    ['pine', 'softwood', 'hardwood', 'cedar', 'maple'].every((k, i) => 'wood_' + WOODWORKING_TIERS[k].wood === room._harvestInvKey('tree', [1, 6, 11, 16, 21][i])));
+  /* v2.3.3085: and the second stage's ores, the forge's next two metals */
+  check('nodes: titanium and obsidian ore are what the titanium and obsidian tiers forge from',
+    'ore_' + BLACKSMITH_TIERS.titanium.oreName + '_ore' === room._harvestInvKey('oreVein', 16)
+    && 'ore_' + BLACKSMITH_TIERS.obsidian.oreName + '_ore' === room._harvestInvKey('oreVein', 21));
 
   /* a harvest, end to end, in the Wheel */
   const ps = room.playerState.wa;

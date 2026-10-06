@@ -346,9 +346,11 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
  *   commons  round town          tier 1   copper ore, pine, minnow
  *   near     levels 1-10         tier 6   iron ore, softwood, clownfish
  *   far      levels 11-20        tier 11  black steel ore, hardwood, trout
+ *   deep     levels 21-30        tier 16  titanium ore, cedar, salmon      (v2.3.3085)
+ *   deeper   levels 31-40        tier 21  obsidian ore, maple, pike        (v2.3.3085)
  *
- * "far" stops at level 20, where the first pass is: past it the next tiers
- * (titanium, cedar, ...) will grow, once they are planned.
+ * "far" stopped at level 20, where the first pass is; since v2.3.3085 the
+ * second stage grows its own past it, out to level 40.
  *
  * LAND NODES (ore veins, trees) stand on open ground (`C.ground`) of their
  * band, clear of water, roads, the town, every placed object and every
@@ -372,6 +374,13 @@ export const NODE_RULES = Object.freeze({
     Object.freeze({ id: 'commons', tiers: Object.freeze([0]), tierLvl: 1, ore: 6, tree: 6, fish: 10, order: 'near' }),
     Object.freeze({ id: 'near', tiers: Object.freeze([1, 2]), tierLvl: 6, ore: 3, tree: 3, fish: 2, order: 'spread' }),
     Object.freeze({ id: 'far', tiers: Object.freeze([3, 4]), tierLvl: 11, ore: 3, tree: 3, fish: 2, order: 'spread' }),
+    /* v2.3.3085: the second stage (the owner: "levels 21-40 in each land with
+       their own monsters and resources"): titanium, cedar and salmon at
+       levels 21-30, obsidian, maple and pike at 31-40 (gathering.js
+       _harvestNameForTier) -- each a tier of its own as the first stage's
+       are, and the same three, three and two a land */
+    Object.freeze({ id: 'deep', tiers: Object.freeze([5, 6]), tierLvl: 16, ore: 3, tree: 3, fish: 2, order: 'spread' }),
+    Object.freeze({ id: 'deeper', tiers: Object.freeze([7, 8]), tierLvl: 21, ore: 3, tree: 3, fish: 2, order: 'spread' }),
   ]),
   apart: 360,           /* between two of a band's ore veins and trees */
   fishApart: 240,       /* between two fishing spots */
@@ -394,13 +403,16 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
      of each kind's picture over its anchor (effectsRenderer NODE_SPRITE_HEIGHT_BASE,
      at a tier-11's 1.15x) */
   const ART = { o: [52, 118], t: [62, 196] };
-  const hidden = (x, y, kind) => {
+  /* v2.3.3085: `k`, how much bigger than a tier-11's this node's picture is
+     drawn: effectsRenderer scales by ceil(tier / 10) -- 1.15x at tiers 11-20,
+     1.30x at 21 */
+  const hidden = (x, y, kind, k = 1) => {
     if (!coveredAt) return false;
     if (kind === 'f') {
       const bx = x + rules.fishSeat[0], by = y + rules.fishSeat[1];
       return coveredAt(bx - 22, bx + 22, by - 64, by, by);
     }
-    const [hw, h] = ART[kind];
+    const hw = ART[kind][0] * k, h = ART[kind][1] * k;
     if (coveredAt(x - hw, x + hw, y - h, y, y)) return true;
     if (kind === 'o') {
       const bx = x + rules.mineSeat[0], by = y + rules.mineSeat[1];
@@ -534,7 +546,8 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
         if (nearObject(x, y, rules.clearObject) || !clearOfMonsters(x, y) || !clearOfNodes(x, y, false)) continue;
         if (!dryClear(x + rules.mineSeat[0], y + rules.mineSeat[1], band, area.rid)) continue;
         /* hidden as either kind: which it becomes is decided after the pick */
-        if (hidden(x, y, 'o') || hidden(x, y, 't')) continue;
+        const artK = band.tierLvl >= 21 ? 1.30 / 1.15 : 1;   /* v2.3.3085 */
+        if (hidden(x, y, 'o', artK) || hidden(x, y, 't', artK)) continue;
         land.push({ x, y, r: Math.hypot(x - cxG, y - cyG) });
       }
       const placedLand = pick(land, band.ore + band.tree, rules.apart, band.order);

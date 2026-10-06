@@ -8425,7 +8425,7 @@ export var BroTown = function BroTown(_ref0) {
        the lowest-tier raw fish cooks first (minnow -> clownfish ->
        trout; unknown species last), a deterministic order the player
        can reason about. */
-    var _fishOrder = { fish_minnow: 1, fish_clownfish: 6, fish_trout: 11 };
+    var _fishOrder = { fish_minnow: 1, fish_clownfish: 6, fish_trout: 11, fish_salmon: 16, fish_pike: 21 };   /* v2.3.3085: + salmon, pike */
     var fishKey = Object.keys(R.inventory).filter(function (k) {
       return k.indexOf('fish_') === 0 && R.inventory[k] > 0;
     }).sort(function (a, b) { return (_fishOrder[a] || 99) - (_fishOrder[b] || 99); })[0];
