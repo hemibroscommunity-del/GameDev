@@ -10,7 +10,7 @@
  *
  * Two real players against a real worker, out on a land's Lv 6-10 ring:
  *   1. each is told: the banner ("No man's land 1"), a line in the chat, and
- *      (v2.3.3105) the skull badge centred just above the dashboard, the top
+ *      (v2.3.3107) the skull badge centred just above the dashboard, the top
  *      bar naming the stage again;
  *   2. the raider taps the wanderer: the tap AIMS (S.lockedTarget, `nml`) and
  *      opens no card;
@@ -23,7 +23,7 @@
  *      game told the worker its arm is bare (shield_wear), so the quest's
  *      Pine Shield in its bag is a spare; the bag's minnows lie in a pile
  *      that is the raider's;
- *   3b. (v2.3.3105) the raider's badge wears their red skull, and a tap on it
+ *   3b. (v2.3.3107) the raider's badge wears their red skull, and a tap on it
  *      opens what No man's land means, with the skull's minutes left;
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/nomansland-*.png.

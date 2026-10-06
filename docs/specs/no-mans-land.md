@@ -44,7 +44,7 @@ Each land's rings of five levels, from Lv 6–10 outward:
   that the line is shorter.
 - **A new ring:** a line in the chat with the new number.
 - **Leaving:** *"You left No man's land. Players can no longer attack you."*
-- **The badge (v2.3.3105):** a red skull and the number, centred at the bottom
+- **The badge (v2.3.3107):** a red skull and the number, centred at the bottom
   of the play area just above the dashboard. The owner: *"make the skull level
   (no mans land) appear above the center of the dashboard (should be bottom
   center of playable screen area) instead of the top bar. If you tap it it
@@ -58,7 +58,7 @@ Each land's rings of five levels, from Lv 6–10 outward:
   - While it is up it sets `--nml-lift` on the page, and the interact prompts
     above the band (a dungeon's mouth stands in No man's land) step up over it.
   - `src/ui/mobile/NmlBadge.jsx`, polled every 250 ms like ElemStatusChips.
-- **The top bar** names the stage again. From v2.3.3058 to v2.3.3105 its
+- **The top bar** names the stage again. From v2.3.3058 to v2.3.3107 its
   second line turned red and read "☠ No man's land 1 · Lv 6–10".
 - A banner waits until you have stood 0.6 s in a new ring, so walking along a
   line does not flicker.

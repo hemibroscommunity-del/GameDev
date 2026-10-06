@@ -293,7 +293,7 @@ export const ZoneHeader = ({ onExit }) => {
                 {landLook(where.region) && landLook(where.region).icon
                   ? <img className="bt-zone-header__elem" src={landLook(where.region).icon} alt="" width="16" height="16" draggable="false" />
                   : null}{where.title}</span>
-              {/* v2.3.3058 put No man's land here, in red; v2.3.3105 moved it
+              {/* v2.3.3058 put No man's land here, in red; v2.3.3107 moved it
                   to its own badge over the middle of the dashboard (the owner:
                   "appear above the center of the dashboard ... instead of the
                   top bar", ui/mobile/NmlBadge.jsx), so the bar names the stage */}
