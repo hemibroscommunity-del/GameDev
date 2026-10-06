@@ -15,6 +15,33 @@ There are two kinds, in two styles:
 - **If one piece comes out wrong,** ask for the whole sheet again with that piece fixed. Don't mix pieces from different chats: they won't match.
 - **Already in the game,** so not asked for: the tonic bottles (Fury Tonic, Mana Draught, Swift Draught, Stamina), cooked fish, and the fences, well, water trough, hay, carts, barrels and crates a farm map can borrow.
 
+## Start here: the sixteen crops (v2.3.3110)
+
+The owner: *"The main focus is just getting a good variety of crops to grow."*
+One square sheet of all sixteen crops, as bag icons: the six the farm grew
+before and the ten added in v2.3.3110. Attach your bag-icon reference picture.
+
+```text
+Square image: a sprite sheet of 16 crop icons for a 2D action RPG, in a 4×4 grid read like a page (each row left to right, rows top to bottom). Each icon sits centered in its own equal square cell, fills about three quarters of it, and touches nothing else. Every crop is shown freshly harvested.
+
+Row 1: carrots (three orange carrots with feathery green tops, tied with twine) · potatoes (two plump brown potatoes) · pumpkin (round, ribbed, orange, curly green stem) · wheat (a sheaf of golden wheat tied with twine)
+Row 2: corn (a yellow ear of corn, green husk peeled back) · tomatoes (two ripe red tomatoes on a short vine) · cabbage (a round, leafy green cabbage) · strawberries (three red strawberries with green tops)
+Row 3: firebloom (three flowers whose red, orange and yellow petals curl like flames) · rock vine (a coiled grey-green vine with pebble-like leaves and dusky blue berries) · cloudpetal (a puff of white blossoms tipped with sky blue, like a little cloud) · frostberry (a sprig of round, icy pale-blue berries dusted with frost)
+Row 4: thunder pepper (a crooked bright-yellow chili with dark blue lightning zigzags) · dewmelon (a round melon with a glassy sea-green rind beaded with water drops) · gloomcap (three toadstools with dark teal caps and pale spots) · heartroot (a plump, heart-shaped red root with a white tip, like a big radish, with green leaves)
+
+Style: exactly the attached reference: glossy hand-painted item icons, clean dark outline, soft shading, small bright highlights, lit from the upper left, slight three-quarter view. All 16 the same size and weight so they read as one set, each easy to recognise at fingertip size.
+
+No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta or pink. Do not copy the reference's items or background.
+```
+
+- **Why these colours:** no purple or beet-red anywhere. The cut-out treats
+  magenta's hue as background, so the gloomcap is teal, not purple, and the
+  heartroot is a radish red, not a beet's.
+- **The sheets below** came first and cover only the first six crops. Sheet
+  2's first two rows are this sheet's crops again; its third row (the basket,
+  the seed pouch and the deed) is still wanted. Seed packets and growth stages
+  for the ten new crops come later.
+
 ## Bag icons
 
 ### Sheet 1: seeds and farm tools

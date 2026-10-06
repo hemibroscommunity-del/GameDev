@@ -143,15 +143,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await tap('[data-farm-buy="compost"][data-farm-buy-n="1"]');
     let b2 = b1;
     for (let i = 0; i < 30 && !(b2.inv.compost >= 1); i++) { await A.page.waitForTimeout(200); b2 = await bag(); }
-    const locked = await A.page.evaluate(() => { const b = document.querySelector('[data-farm-buy="seed_cloudpetal"][data-farm-buy-n="1"]'); return b ? b.disabled : null; });
+    /* v2.3.3110: the crops still to open sit in one line a level, with no
+       buy button -- Cloudpetal among Farming 10's. */
+    const shop = await A.page.evaluate(() => ({
+      rows: Array.from(document.querySelectorAll('[data-farm-row]')).map((r) => r.getAttribute('data-farm-row')),
+      locked: Array.from(document.querySelectorAll('[data-farm-locked]')).map((l) => ({ lvl: Number(l.getAttribute('data-farm-locked')),
+        crops: Array.from(l.querySelectorAll('[data-farm-locked-crop]')).map((c) => c.getAttribute('data-farm-locked-crop')) })),
+      cloudBuy: !!document.querySelector('[data-farm-buy="seed_cloudpetal"]'),
+    }));
+    const cloudLocked = shop.locked.some((l) => l.lvl === 10 && l.crops.includes('cloudpetal'));
     rec.ok(`the Seeds tab sells 5 carrot seeds for 10 coins and a bag of compost for 4 (${b0.coins} -> ${b2.coins}), the worker's bag says so; Cloudpetal (Farming 10) cannot be bought`,
-      b1.inv.seed_carrot === 5 && b2.inv.compost === 1 && b2.coins === b0.coins - 14 && locked === true, { b0, b2, locked });
+      b1.inv.seed_carrot === 5 && b2.inv.compost === 1 && b2.coins === b0.coins - 14 && !shop.cloudBuy && cloudLocked, { b0, b2, shop });
+    /* v2.3.3110: sixteen crops -- at Farming 1 it sells the four that open
+       there, then compost, and lists the other twelve by the level they
+       open at. */
+    const want1 = ['seed_carrot', 'seed_wheat', 'seed_firebloom', 'seed_strawberry', 'compost'];
+    const wantLocked = [
+      { lvl: 5, crops: ['tomato', 'potato', 'frostberry', 'rock_vine'] },
+      { lvl: 10, crops: ['corn', 'cabbage', 'cloudpetal', 'dewmelon', 'pumpkin'] },
+      { lvl: 15, crops: ['thunder_pepper', 'gloomcap'] },
+      { lvl: 20, crops: ['heartroot'] },
+    ];
+    rec.ok(`...at Farming 1 it sells carrot, wheat, firebloom and strawberry seeds and compost (${shop.rows.join(', ')}), and lists the other twelve crops under the level they open at`,
+      JSON.stringify(shop.rows) === JSON.stringify(want1) && JSON.stringify(shop.locked) === JSON.stringify(wantLocked), shop);
 
     /* ── 4. the tool follows the farm: Plant, and Plant all ── */
     await tap('[data-farm-tab="beds"]');
     const v4a = await until((v) => v.tool === 'plant', 3000);
     /* the pick that mp-farm's first run caught: three dug, three grass, seeds
        in the bag -- the tool must be Plant, not Dig */
+    /* v2.3.3110: the Plant tool offers only seeds in the bag -- carrots. */
+    const chips = await A.page.evaluate(() => Array.from(document.querySelectorAll('[data-farm-seed]')).map((c) => c.getAttribute('data-farm-seed')));
+    rec.ok(`the Plant tool offers only the seeds in the bag (${chips.join(', ')}), not sixteen chips`, JSON.stringify(chips) === JSON.stringify(['carrot']), chips);
     await tap('[data-farm-seed="carrot"]');
     await A.page.waitForTimeout(200);
     await tap('[data-farm-all]');

@@ -222,6 +222,8 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   });
   const CROP_IDS = Object.keys(FARM.CROPS);
   const crops = FARM_CROP_ORDER.filter((id) => CROP_IDS.indexOf(id) < grownCount);
+  /* v2.3.3110: the Farming levels that still have crops to open, lowest first. */
+  const lockedLevels = Array.from(new Set(crops.filter((id) => !unlocked(id)).map((id) => FARM.CROPS[id].lvl))).sort((a, b) => a - b);
   const seedCount = (id) => Math.floor(inv[FARM.CROPS[id].seed] || 0);
   const seed = seedPick && unlocked(seedPick) ? seedPick
     : (crops.find((id) => unlocked(id) && seedCount(id) > 0) || 'carrot');
@@ -381,10 +383,13 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                   );
                 })}
               </div>
-              {/* which seed the Plant tool sows */}
+              {/* which seed the Plant tool sows.  v2.3.3110: only the seeds you
+                  can plant -- open to your level and in the bag (and the one
+                  chosen) -- as sixteen crops made a wall of chips, most of
+                  them locked; the Seeds tab says what opens when. */}
               {tool === 'plant' && (
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
-                  {crops.map((id) => {
+                  {crops.filter((id) => unlocked(id) && (seedCount(id) > 0 || id === seed)).map((id) => {
                     const c = FARM.CROPS[id];
                     const open = unlocked(id);
                     const on = open && id === seed;
@@ -427,12 +432,11 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
               <Chip icon={COIN} color={C.brass}>{coins}</Chip>
             </div>
-            {crops.map((id) => {
+            {crops.filter(unlocked).map((id) => {
               const c = FARM.CROPS[id];
-              const open = unlocked(id);
               return (
                 <ShopRow key={id} item={c.seed} look={c.look} name={c.name} have={seedCount(id)} price={c.price}
-                  coins={coins} locked={open ? null : 'Farming ' + c.lvl} pending={pending}
+                  coins={coins} locked={null} pending={pending}
                   onBuy={(n) => farmBus.buy(S, c.seed, n)}>
                   <Chip>{'⏱ ' + farmTimeLeft(farmGrowMs(c, false))}</Chip>
                   <Chip color={C.water}>{FARM_LOOK.water + ' ' + farmTimeLeft(farmGrowMs(c, true))}</Chip>
@@ -446,6 +450,19 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
               coins={coins} pending={pending} onBuy={(n) => farmBus.buy(S, FARM.COMPOST, n)}>
               <Chip color={C.good}>+50% harvest</Chip>
             </ShopRow>
+            {/* v2.3.3110: the crops still to come, one line a level -- twelve
+                locked rows stood between a new farmer and the compost. */}
+            {lockedLevels.map((l) => (
+              <div key={l} data-farm-locked={l} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '8px 0',
+                borderTop: `1px solid ${C.line}`, fontSize: 12, color: C.sub }}>
+                <span style={{ fontWeight: 800, color: C.mute }}>{'🔒 Farming ' + l}</span>
+                {crops.filter((id) => FARM.CROPS[id].lvl === l).map((id) => (
+                  <span key={id} data-farm-locked-crop={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    <Glyph g={FARM.CROPS[id].look} size={14} />{FARM.CROPS[id].name}
+                  </span>
+                ))}
+              </div>
+            ))}
             {/* v2.3.3102: every answer to a buy -- and its silence: a timeout
                 said nothing here, so the buttons just woke up again and invited a
                 second purchase of something the worker may already have sold. */}

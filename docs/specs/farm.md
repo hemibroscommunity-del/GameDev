@@ -50,6 +50,16 @@ Office's paid land, and visits from friends are Phases 3 and 4.
 | Cloudpetal (`herb_cloudpetal`) | 10 | 15 | 10 h 40 m / 8 h | 2 / 3 | 180 | 40 |
 | Potato (`crop_potato`), v2.3.3106 | 5 | 6 | 2 h 40 m / 2 h | 3 / 4 or 5 | 90 | 12 |
 | Pumpkin (`crop_pumpkin`), v2.3.3106 | 10 | 25 | 29 h 20 m / 22 h | 2 / 3 | 320 | 60 |
+| Wheat (`crop_wheat`), v2.3.3110 | 1 | 3 | 20 m / 15 m | 3 / 4 or 5 | 35 | 6 |
+| Strawberry (`crop_strawberry`), v2.3.3110 | 1 | 4 | 1 h / 45 m | 3 / 4 or 5 | 60 | 10 |
+| Tomato (`crop_tomato`), v2.3.3110 | 5 | 5 | 1 h 40 m / 1 h 15 m | 3 / 4 or 5 | 75 | 11 |
+| Frostberry (`herb_frostberry`), v2.3.3110 | 5 | 8 | 4 h / 3 h | 2 / 3 | 110 | 26 |
+| Corn (`crop_corn`), v2.3.3110 | 10 | 9 | 5 h / 3 h 45 m | 2 / 3 | 125 | 28 |
+| Cabbage (`crop_cabbage`), v2.3.3110 | 10 | 11 | 7 h / 5 h 15 m | 2 / 3 | 150 | 34 |
+| Dewmelon (`herb_dewmelon`), v2.3.3110 | 10 | 18 | 15 h / 11 h 15 m | 2 / 3 | 220 | 48 |
+| Thunder Pepper (`herb_thunder_pepper`), v2.3.3110 | 15 | 12 | 9 h / 6 h 45 m | 3 / 4 or 5 | 200 | 30 |
+| Gloomcap (`herb_gloomcap`), v2.3.3110 | 15 | 20 | 18 h / 13 h 30 m | 2 / 3 | 270 | 55 |
+| Heartroot (`herb_heartroot`), v2.3.3110 | 20 | 28 | 24 h / 18 h | 2 / 3 | 340 | 70 |
 
 - **Seeds** are `seed_<crop>`. **Compost** is `compost`.
 - **Where the table lives:** the worker's copy is `server/src/farm.js` `FARM`.
@@ -60,6 +70,38 @@ Office's paid land, and visits from friends are Phases 3 and 4.
   neither bought nor planted.
 - **The three herbs are the exact keys the Cookhouse's recipes already asked
   for**, which nothing in the game made until now.
+
+### The sixteen crops (v2.3.3110)
+
+The owner: *"The main focus is just getting a good variety of crops to grow.
+Then the next step is deciding what each one does."* So ten more, appended to
+the table:
+
+- **Five everyday crops** (`crop_*`): wheat, strawberry, tomato, corn and
+  cabbage. Quick to middling, cheap, the makings of everyday meals.
+- **Five magic crops** (`herb_*`, beside firebloom, rock vine and cloudpetal),
+  one for each land that had none: frostberry (frost), dewmelon (water),
+  thunder pepper (storm), gloomcap (venom) and heartroot (flora). Slower,
+  worth more, opening up to Farming 20.
+- **What each one cooks into is the owner's next decision.** Until then they
+  grow, pay Farming XP, sell to Diego and trade. The suggestion on the table:
+  the everyday crops become everyday meals (health, stamina, XP), and each
+  land's magic crop a meal against its monsters' hits (frostberry the chill,
+  thunder pepper the shock, dewmelon the soak, gloomcap the poison, heartroot
+  the vine hold, rock vine the daze, cloudpetal the gusts, firebloom the
+  burns).
+- **The numbers follow the first six:** a bed's worth to Diego is about
+  7 × mins^0.38 coins, its XP about 9 × mins^0.48, a little more at the higher
+  levels; every seed costs at least a coin a crop.
+- **The art:** glyphs until the owner's crop sheet is made (the 16-crop
+  prompt, docs/art/FARM-ART-PROMPTS.md). 🍠 stands in for the heartroot, as no
+  radish or beet glyph is drawn by every phone.
+- **The window:** the Seeds tab sells the crops open to your level and folds
+  the rest into one line a level ("🔒 Farming 15: 🌶️ Thunder Pepper, 🍄
+  Gloomcap"), and the Plant tool offers only the seeds you hold -- sixteen
+  chips, most of them locked, stood between a new farmer and the beds. The
+  trade window names and draws farm goods by the same table ("Wheat Seeds",
+  not "📦 seed wheat").
 
 ### Diego and the farm's goods
 
@@ -107,7 +149,8 @@ would have paid 10 coins for a 2-coin seed.
 ARCHITECTURE-HANDOFF's storage-key table.
 
 - **`v` is the record's shape** (`FARM.V`: 1, then 2 since v2.3.3106 added
-  the potato and the pumpkin). A worker refuses a record
+  the potato and the pumpkin, then 3 since v2.3.3110 added the ten new
+  crops). A worker refuses a record
   newer than it knows whole: opening, any action and the dev op answer
   `err: 'newer'`, the join says nothing, and nothing is read into it or
   written back.
@@ -258,6 +301,10 @@ The crops, seeds and compost are emoji until the art exists:
     the free deed;
   - §14: a newer worker's record (`v` past `FARM.V`) is refused by opening,
     every action, the join and the dev op, and storage keeps it exactly.
+  - §17 (v2.3.3110): sixteen crops, the ten new ones appended and each a 3;
+    levels of 5 up to 20 (heartroot not sold at Farming 19, sold at 20); and
+    EVERY crop bought at its price, planted, stamped with its version, ripe
+    at its time, harvested for its yield and XP, and valued by Diego.
 - **The Cookhouse's levels:** potions, shop and lifeskills-economy cook at the
   level each recipe asks; lifeskills-economy refuses one below it.
 - **Mirror:** mirror-audit's "THE FARM".

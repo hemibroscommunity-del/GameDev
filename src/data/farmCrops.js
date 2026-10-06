@@ -26,11 +26,32 @@ export const FARM = {
     /* v2.3.3106: the two food crops */
     potato:     { name: 'Potato',     seed: 'seed_potato',     item: 'crop_potato',     lvl: 5,  price: 6,  mins: 160,  yield: 3, xp: 90,  base: 12, look: '🥔' },
     pumpkin:    { name: 'Pumpkin',    seed: 'seed_pumpkin',    item: 'crop_pumpkin',    lvl: 10, price: 25, mins: 1760, yield: 2, xp: 320, base: 60, look: '🎃' },
+    /* v2.3.3110: ten more, the owner's "good variety of crops to grow" --
+       appended in the worker's order (caps.farmCrops counts them).  Glyphs
+       until the crop sheet is made (docs/art/FARM-ART-PROMPTS.md); 🍠 for the
+       heartroot, as there is no radish or beet that every phone draws. */
+    wheat:          { name: 'Wheat',          seed: 'seed_wheat',          item: 'crop_wheat',          lvl: 1,  price: 3,  mins: 20,   yield: 3, xp: 35,  base: 6,  look: '🌾' },
+    strawberry:     { name: 'Strawberry',     seed: 'seed_strawberry',     item: 'crop_strawberry',     lvl: 1,  price: 4,  mins: 60,   yield: 3, xp: 60,  base: 10, look: '🍓' },
+    tomato:         { name: 'Tomato',         seed: 'seed_tomato',         item: 'crop_tomato',         lvl: 5,  price: 5,  mins: 100,  yield: 3, xp: 75,  base: 11, look: '🍅' },
+    frostberry:     { name: 'Frostberry',     seed: 'seed_frostberry',     item: 'herb_frostberry',     lvl: 5,  price: 8,  mins: 240,  yield: 2, xp: 110, base: 26, look: '🫐' },
+    corn:           { name: 'Corn',           seed: 'seed_corn',           item: 'crop_corn',           lvl: 10, price: 9,  mins: 300,  yield: 2, xp: 125, base: 28, look: '🌽' },
+    cabbage:        { name: 'Cabbage',        seed: 'seed_cabbage',        item: 'crop_cabbage',        lvl: 10, price: 11, mins: 420,  yield: 2, xp: 150, base: 34, look: '🥬' },
+    dewmelon:       { name: 'Dewmelon',       seed: 'seed_dewmelon',       item: 'herb_dewmelon',       lvl: 10, price: 18, mins: 900,  yield: 2, xp: 220, base: 48, look: '🍈' },
+    thunder_pepper: { name: 'Thunder Pepper', seed: 'seed_thunder_pepper', item: 'herb_thunder_pepper', lvl: 15, price: 12, mins: 540,  yield: 3, xp: 200, base: 30, look: '🌶️' },
+    gloomcap:       { name: 'Gloomcap',       seed: 'seed_gloomcap',       item: 'herb_gloomcap',       lvl: 15, price: 20, mins: 1080, yield: 2, xp: 270, base: 55, look: '🍄' },
+    heartroot:      { name: 'Heartroot',      seed: 'seed_heartroot',      item: 'herb_heartroot',      lvl: 20, price: 28, mins: 1440, yield: 2, xp: 340, base: 70, look: '🍠' },
   },
 };
 
-/* The order the window lists them in: by the level they open at. */
-export const FARM_CROP_ORDER = ['carrot', 'firebloom', 'potato', 'rock_vine', 'cloudpetal', 'pumpkin'];
+/* The order the window lists them in: by the level they open at, then the
+   quickest first (v2.3.3110: sixteen). */
+export const FARM_CROP_ORDER = [
+  'carrot', 'wheat', 'firebloom', 'strawberry',
+  'tomato', 'potato', 'frostberry', 'rock_vine',
+  'corn', 'cabbage', 'cloudpetal', 'dewmelon', 'pumpkin',
+  'thunder_pepper', 'gloomcap',
+  'heartroot',
+];
 
 /* Glyphs for the things that are not crops. */
 export const FARM_LOOK = {
