@@ -548,7 +548,7 @@ const NPC_WALK_PX_PER_FRAME = 6.5;
 const QUEST_BADGE_R = 16;
 /** Three concentric rings, drawn outside in.  `fill` carries the state
  *  (gold = quest to offer, green = ready to turn in). */
-function _drawQuestBadge(g, fill) {
+function _drawQuestBadge(g, fill, check) {
   g.clear();
   /* Dark hairline first: without it the white ring dissolves into the town's
      pale cobblestones, which is the exact background the owner reported the
@@ -560,6 +560,16 @@ function _drawQuestBadge(g, fill) {
   g.fill({ color: 0xFFFFFF });
   g.circle(0, 0, QUEST_BADGE_R - 5.5);
   g.fill({ color: fill });
+  /* ═══ v2.3.3047: THE CHECK, DRAWN ═══
+     Owner: "a green checkmark above his head (not emoji)".  Two strokes of
+     the same path -- a dark one under, a white one over -- so it holds on the
+     green the way the glyphs' dark-on-gold does, at any size, with no font. */
+  if (check) {
+    g.moveTo(-5.5, 0.5).lineTo(-1.5, 4.5).lineTo(6, -4.5);
+    g.stroke({ width: 5, color: 0x1A1207, alpha: 0.85, cap: 'round', join: 'round' });
+    g.moveTo(-5.5, 0.5).lineTo(-1.5, 4.5).lineTo(6, -4.5);
+    g.stroke({ width: 3, color: 0xFFFFFF, cap: 'round', join: 'round' });
+  }
 }
 
 /* ═══ v2.3.2632: THE ELLIPSE GROUND SHADOWS ARE GONE ═══
@@ -7345,7 +7355,8 @@ function createPlayerDisplay() {
      _updatePlayer — never rebuilt per frame.  Rendered even though the
      local nameplate is hidden: this is the "am I flagged?" indicator
      the ThreatIncomingPanel copy promises. */
-  const skullText = new Text({ text: '\u{1F480}', style: { fontSize: 13 } });
+  /* v2.3.3058: 13 -> 18 px, over the band now (see the per-frame placing) */
+  const skullText = new Text({ text: '\u{1F480}', style: { fontSize: 18 } });
   skullText.anchor.set(0.5, 1);
   skullText.visible = false;
   skullText.y = -52;
@@ -7730,7 +7741,8 @@ function createOtherPlayerDisplay() {
      docs/specs/threats.md "Skull rendering").  One Text per display,
      driven by a change-cache in _updateOtherPlayers; never rebuilt per
      frame (the v2.3.1185 party-marker budget). */
-  const skullText = new Text({ text: '\u{1F480}', style: { fontSize: 13 } });
+  /* v2.3.3058: 13 -> 18 px, over the band now (see the per-frame placing) */
+  const skullText = new Text({ text: '\u{1F480}', style: { fontSize: 18 } });
   skullText.anchor.set(0.5, 1);
   skullText.visible = false;
   skullText.y = -58;
@@ -11687,7 +11699,12 @@ export class EntityRenderer {
         display._skullText.visible = !!_skullPhase;
         if (_skullPhase) display._skullText.tint = _skullPhase === 'red' ? SKULL_RED_TINT : 0xffffff;
       }
-      if (_skullPhase) display._skullText.y = -58 + bobY;
+      /* v2.3.3058: over this peer's band, not behind their plate (the self
+         skull's note) -- the line other._bandTopY measures below */
+      if (_skullPhase) {
+        const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+        display._skullText.y = Math.round(PEER_HPBAR_Y - _sbh - 2) + bobY;
+      }
     }
 
     for (const [id, display] of this.otherPlayerDisplays) {
@@ -14660,7 +14677,14 @@ export class EntityRenderer {
         display._skullText.visible = !!_selfSkull;
         if (_selfSkull) display._skullText.tint = _selfSkull === 'red' ? SKULL_RED_TINT : 0xffffff;
       }
-      if (_selfSkull) display._skullText.y = -52 + bobY;
+      /* v2.3.3058: OVER the band (the name plate, or the HP bar in its place),
+         not behind it -- the plate moved over the head (v2.3.2571) and left this
+         at its old -52, half hidden under the name.  No man's land's "a red
+         skull above their head" is the first use that needs it seen. */
+      if (_selfSkull) {
+        const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+        display._skullText.y = Math.round(PLAYER_BAND_Y - _sbh - 2) + bobY;
+      }
     }
 
     // Death / invuln
@@ -15542,8 +15566,9 @@ export class EntityRenderer {
       }
       }
 
-      /* Quest marker — `npc._questMarker` is '❗' (available) or '❓'
-         (turn-in) or null.  Pulses vertically when visible. */
+      /* Quest marker — `npc._questMarker` is '❗' (available), '❔' (accepted,
+         waiting on you; v2.3.3047) or '❓' (turn-in) or null.  Pulses
+         vertically when visible, except while waiting. */
       const qm = display._questMarker;
       const qmStr = npc._questMarker || '';
       if (qmStr) {
@@ -15557,11 +15582,20 @@ export class EntityRenderer {
              would arrive in its own red/blue regardless of the badge under it.
              Drawing plain ASCII instead is what makes the dark-on-gold
              contrast actually happen. */
-          display._qmGlyph.text = qmStr === '❓' ? '?' : '!';
+          /* v2.3.3047 (owner: "gray question mark" while he waits for your
+             items, "a green checkmark ... (not emoji)" when you have them):
+             '❗' offer, gold "!"; '❔' waiting, a GREY disc with a white "?";
+             '❓' ready, a GREEN disc with a drawn check and no glyph. */
+          const _ready = qmStr === '❓', _wait = qmStr === '❔';
+          display._qmGlyph.text = _ready ? '' : _wait ? '?' : '!';
+          display._qmGlyph.style.fill = _wait ? '#FFFFFF' : '#2A1B06';
+          display._qmGlyph.visible = !_ready;
           _drawQuestBadge(display._qmBadge,
-            qmStr === '❗' ? 0xFFC93C : qmStr === '❓' ? 0xFFE58A : 0x4BD98A);
+            _ready ? 0x4BD98A : _wait ? 0x8B9695 : 0xFFC93C, _ready);
         }
-        const pulse = Math.sin(now / 300) * 3;
+        /* v2.3.3047: waiting holds still -- the bob says "come here", and
+           there is nothing to come for yet */
+        const pulse = qmStr === '❔' ? 0 : Math.sin(now / 300) * 3;
         qm.y = (qm._baseY !== undefined ? qm._baseY : -36) + pulse;
         qm.visible = true;
       } else if (qm.visible) {

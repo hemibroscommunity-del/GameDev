@@ -3526,6 +3526,58 @@ Brotown and the commons have a colour and no element.
   - the banner shown;
   - the minimap's ice blue round you (57% of the box).
 
+### Zoom in, and there is more to see (v2.3.3057)
+
+> Owner, 2026-10-05: *"Make it so if you tap the minimap and zoom in you can
+> see more details."*
+
+The world map (`src/ui/WorldMapOverlay.jsx`) zooms **twice as far**, 28
+where it stopped at 12. At 28 a building is about 100 CSS px on a phone.
+What the minimap already knew and the map did not draw now comes in as the
+room grows. The zoom each detail appears at is in `AT`:
+
+| From zoom | What appears |
+|---|---|
+| always | **the quest's gold road and star**, the minimap's own (`questRoutePoint`), so the map answers "where do I go" at a glance |
+| 1.5 | the other bros (green dots), named from 6 |
+| 2.6 | each land's **level bands**: a tick across the spoke wherever five levels begin |
+| 3 | the **resources** (ore, trees, fish) where they grow, tinted by tier as on the minimap, faint where you have no tool for them; and the **monsters** near you |
+| 3.6 | the bridges and **Bro Pond**, named |
+| 4.2 | "Lv 6–10" written in each band |
+| 6 | in town, **every building at its door, named** (`wheelTownDoors`); a shut one dim, with "shut for now" under it |
+
+- Every new label goes through the same "only where it clears the ones
+  before it" rule as the old ones, so a crowded spot drops a name rather
+  than piling them up.
+- The key along the bottom names the new marks: quest, bro, monster, ore,
+  tree, fish.
+- **Where the bands come from:** the worker's map facts
+  (`public/tools/world/core/wheelmap.js`) now give each land its `ticks`,
+  the point on the spoke where every tier of five levels begins, from the
+  commons' edge outward. They also give `spokeHalf`, the spoke's half-width,
+  which sets how long a tick is drawn, and the ponds as places. That adds
+  about 2 KB to the facts (8 lands x 17 points), still under the 40 KB the
+  test allows.
+- **Nothing new is loaded.** Everything drawn is either already in the
+  worker's facts or in the game's state: `S.monsters`, `S.others`, the
+  baked resources, the quest and the doors.
+- **Probe:** `window.__btWorldMap.more` counts what was drawn this frame:
+  `ticks`, `nodes`, `others`, `monsters`, `quest`, `buildings`, `bridges`,
+  `ponds`, `tierLabels`.
+
+**Tested.**
+
+- `test-world-core.mjs`, "wheel map": 17 ticks a land (16 tiers and the
+  end), each further out than the one before, and Bro Pond named.
+- `mp-wheelmap` (28 checks), zoomed in on you:
+  - the gold road and star;
+  - 139 resources and 122 band ticks drawn;
+  - at zoom 10.5, ten of the town's buildings named;
+  - the zoom reaching 28.
+- That scenario clears every quest first (to pass the Mayor's gate), so it
+  puts the first quest back on the page's own copy of your quests for that
+  one look, then takes it off again.
+
 ### Always daylight, for now (v2.3.2963)
 
 > Owner, 2026-10-01, after one visit came out very dark just past the game's

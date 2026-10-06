@@ -21,7 +21,7 @@
  * would read as "no quest is active".
  */
 import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */ } from '@/data/gameSystems.js';
-import { hasGatherTool } from '@/data/lifeSkills.js';   /* v2.3.3012: never lead to a node that is not drawn */
+import { hasGatherTool, gatherNeed /* v2.3.3038 */ } from '@/data/lifeSkills.js';   /* v2.3.3012: never lead to a node that is not drawn */
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
 import { ZONES, isWorldViewZone, zoneHomes } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel'; v2.3.2990: its lands */
@@ -418,6 +418,12 @@ function _wheelGatherPoint(rpg, S) {
   let best = null, bestD = Infinity;
   for (const n of ((S && S.gatherNodes) || [])) {
     if (!n || n.nodeType !== want || !n.alive) continue;
+    /* v2.3.3038: nor to one the player's level cannot harvest yet (black
+       steel below Mining 5, clownfish below Fishing 5): the nearest fishing
+       spot past the commons is a clownfish's, and the road would have led a
+       new player to a "Need Fishing Lv 5" when minnows swim nearer home. */
+    const _need = gatherNeed(S, n);
+    if (_need && !_need.ok) continue;
     const d = Math.hypot(n.x - P.x, n.y - P.y);
     if (d < bestD) { bestD = d; best = n; }
   }

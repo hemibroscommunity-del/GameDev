@@ -106,7 +106,17 @@ export const PROG3 = {
      factor it sped killing up — the two dials are one system and moving
      either alone regresses the other.  See the pacing note on
      DMG_PER_LEVEL for the measured checkpoints. */
-  XP_PER_DMG: 0.4,                   // was the legacy WEAPON_XP_PER_DMG's 1.0
+  /* ═══ v2.3.3054: 0.4 -> 0.2, AND THE QUEST TABLE HALVED WITH IT ═══
+     Owner, 2026-10-05: "The leveling seems a bit off, like it's too quick to
+     gain levels.  Maybe slow it by about 50%."  Combat levels come from two
+     places and v2.3.1727 moved both for the same complaint, so both halve
+     again: this (every fight's XP, a kill paying 0.2 x the monster's HP) and
+     every quest's xp (server/src/data.js QUEST_REWARDS and the client's
+     QUEST_CHAINS, ceil(xp / 2), pinned by mirror-audit §5).  The level curve
+     (prog3XpRequired) is untouched, so nobody's saved level or bar moves.
+     Life skills are NOT changed here: the owner raised their XP 25x on
+     purpose ("far too slow", twice). */
+  XP_PER_DMG: 0.2,                   // was 0.4 (v2.3.1727), and 1.0 before that
   /* ═══ v2.3.2199: THREE POINTS PER LEVEL (owner, 2026-09-01) ═══
    * "Each level up gives the character 3 points to spend instead of 1."
    * One constant, four readers: the level-up mint (_prog3AwardXp), the

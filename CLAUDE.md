@@ -590,6 +590,24 @@ remnant to migrate server-side, not a mode to preserve.
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
     longer, with "Max MP" and "Specials on a full bar" lines
     (`specialsOnABar`); `statsim` suite §7, `mp-statdemo`.
+  - Since v2.3.3050-v2.3.3053 THE HERO SHEET, from the owner's notes of
+    2026-10-05 (docs/specs/hero-sheet-pills.md):
+    - the spend window's MAX HP / Stamina / Max Mana row reads the POOL'S new
+      total as its bar shows it, not the points' raw bonus ("48hp for 6
+      points" when the bar became 37): `statPreview.js` `POOL_STAT`,
+      `pooled`, `poolShown`, shared with the scene; `statsim` §9;
+    - the points grid FOLLOWS THE HELD WEAPON: a change of weapon brings it
+      back (`heldCatRef`), the window's tabs aim only the window;
+    - the per-weapon and character point bubbles BREATHE while points wait
+      (game.css `bt-pts-bubble`, transform and opacity only);
+    - the Equipment tab's stats are PILLS, the owner's mockup: picture, name,
+      value; OFFENSE gold with DPS beside its heading, PLAYER blue, the
+      vitals as filled pills -- fourteen stats where there were seven, each
+      read by the Points tab's own reader (`heroStatPills.js`); upright, the
+      left column is the figure, the gear and PLAYER, the right the vitals and
+      OFFENSE; the tab SCROLLS again with the bottom fade on (fourteen
+      readable pills cannot fit the ~150 px window); the eighth LANTERN-SLATE
+      exception; `mp-charfit` (three phone sizes), `mp-prog3`.
   - Since v2.3.3009 the Wheel's TOP BAR says where you are -- the owner:
     "Put the 'brotown safe' and other location indicators in place of the
     'the wheel lvl 1-2' on the top bar" -- the land over its stage and
@@ -641,6 +659,34 @@ remnant to migrate server-side, not a mode to preserve.
       `node`); the Wheel's nodes drop at the flip to town;
     - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,
       `mp-wheelnodes`: docs/specs/wheel-resources.md.
+    - since v2.3.3038 a resource's LEVEL IS A REAL REQUIREMENT (owner: "black
+      steel now requires a mining level of at least 5 ... Fishing clownfish
+      required fishing level 5", "in levels of 5"): `GATHER_REQ_LVL`
+      (server/src/gathering.js, mirrored in src/data/lifeSkills.js, pinned by
+      mirror-audit) -- copper/iron 1, black steel 5; minnow 1, clownfish 5,
+      trout 10; pine 1, softwood 5, hardwood 10 -- keyed by type and TIER, not
+      the tier itself; the worker refuses extraction_start and node_strike
+      below it ('skill-too-low'), the client never asks for one (`gatherNeed`;
+      since v2.3.3059 a TRY, below), the quest's road skips locked nodes;
+      `caps.gatherreq`, kill switch `gatherreq: false`;
+    - since v2.3.3040 every resource you hold the tool for wears a LABEL
+      (src/rendering/nodeLabels.js): the bag's hatchet/pickaxe/rod picture
+      (preloaded), its bag name and the level it asks, red while yours is
+      below, 20 CSS px at any zoom, over the crown/rock/school, hidden while
+      its harvest bar is up; the old emoji, tier dot and 7 px tips are gone;
+      and a vein CRACKS on its split frame (`ore-crack`, cut from the unused
+      extract-success.mp4); `mp-nodelabels`;
+    - since v2.3.3059 the labels are QUIETER and a locked node can be TRIED --
+      the owner: "show zeroes popping as they try to harvest ... a grayed out
+      icon ... I just don't want the screen to be too busy with text": every
+      node shows its tool alone on a dark disc, GREY when your level is short
+      (`NODE_LABEL_ICONS_GRAY`, greyed at load, no filter), and only the
+      nearest within 260 px (`nodeNameNode`) says its name and level; a tap,
+      the button or E on a locked node seats you and swings three times, a 0
+      off it on each blow and "Requires Fishing Lv 5" over it, then ends by
+      itself (lifeSkillRewards.js `_startLockedTry`, `ex.locked`) -- NOTHING
+      is sent to the worker; `__btLockedTries`; docs/specs/wheel-resources.md
+      "Quieter labels, a grey tool, and a try you can watch fail".
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -665,6 +711,19 @@ remnant to migrate server-side, not a mode to preserve.
       checks them against the ground as drawn (docs/specs/wheel-resources.md);
     - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§9,
       `mp-wheeldeep`.
+    - since v2.3.3055 a monster's level MEANS SOMETHING -- the owner: "lvl 7
+      killing lvl 17 slimes easily": the +100 flat HP was the same at every
+      level (a Lv17 slime 118 HP, a Lv3 109); it now GROWS 10% a level from
+      Lv3 (`MONSTER_HP_CURVE.flatRamp`, `monsterHpFlat`: Lv7 147, Lv17 380,
+      Lv30 1,311) and damage 6.5% a level (`MONSTER_DMG_CURVE`, was three
+      inline 1.045s); Lv1-2 unchanged; mirrored in gameSystems.js
+      (`createMonster`, the Points scene's monster); the retired T2
+      yardstick frozen (`t2BenchFlat`); a Lv7 now loses to a Lv17 slime;
+      and since v2.3.3054 COMBAT LEVELS COME HALF AS FAST -- the owner: "slow
+      it by about 50%": `PROG3.XP_PER_DMG` 0.4 -> 0.2 and every quest's xp
+      halved on both sides (ceil); life skills untouched (the owner's 25x):
+      docs/specs/pace-and-difficulty.md, `zones` / `mirror-audit` /
+      `dungeon` suites.
   - Since v2.3.3014 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
     stuns briefly; storm shocks nearby players; water slows stamina refill;
     venom poisons over time", the owner: "Yes continue working on those
@@ -700,6 +759,20 @@ remnant to migrate server-side, not a mode to preserve.
       (`_jogPlantCrossed`): a page drawing a few frames a second rarely
       landed on one, and lost its footsteps and dust;
     - `sprint` §10, `mp-sprintpeer`: docs/specs/sprint.md "Seen and heard".
+  - Since v2.3.3056 A MONSTER YOU HURT FOLLOWS YOU ONTO SAFE GROUND -- the
+    owner: "make it so monsters can still chase you out of their zones.  I was
+    sitting in a safe zone just sniping mummies with magic and they couldn't
+    attack": the safe ground shelters everyone except from a monster they
+    PROVOKED (wheelzone.js `_wheelProvokedBy`: hurt it this life,
+    `m.dmgByPlayer`, and dealt damage within `WHEEL.PROVOKE_MS` 10 s,
+    `ps._lastDealtAt`, cleared on respawn); `_wheelSheltered` replaces the bare
+    `_wheelSafeAt` at every gate -- the sticky target, the aggro scan, the hit
+    choke point, telegraph.js's lunge/slam/burst and basic swing (now ABOVE
+    the block branch), the storm arcs, burns/poisons, and burning ground (not
+    gated before); a pursuit reaches `WHEEL.PURSUE_LEASH` 1,800 from home;
+    bystanders who never hurt it take nothing; kill switch `wheelpursue:
+    false`; server only: docs/specs/wheel-monsters.md "Provoked from the safe
+    ground", `wheelzone` §5d.
   - Since v2.3.3016 DUNGEONS IN THE WHEEL -- offered "Dungeons in the Wheel
     ... the other big missing piece", the owner: "Yes continue working on
     those items":
@@ -746,6 +819,32 @@ remnant to migrate server-side, not a mode to preserve.
     - Found on the way: the Wheel's buildings have NO DOORS yet -- the
       forge, the bank, the shop and the farm (the Dungeon Workshop) are
       unreachable from the Wheel. (They have doors since v2.3.3032, below.)
+  - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
+    notification when you cross into zones with lvl 6+ monsters. It'll start
+    at 1. This means any other player 1 level above or below you can attack
+    you ..." (docs/specs/no-mans-land.md):
+    - each land's Lv 6-10 ring is No man's land 1, the next 2, out to 15
+      (`server/src/nomansland.js`, `src/data/noMansLandRings.js`,
+      mirror-audit); the banner, a chat line, and the top bar's red "☠ No
+      man's land 1 · Lv 6–10" in the stage name's place;
+    - two players may fight when both stand in it, their `ps.level`s at most
+      the LOWER of their two numbers apart, not one party -- `_nmlAllowed`,
+      asked by `_pvpAllowed` before `OPEN_PVP`, which stays off elsewhere;
+      a tap AIMS (`nmlCanAttack`, the lock's `nml`; tapping them again keeps
+      it, empty ground lets go, and it lets go when the rule stops allowing);
+    - a hit gives the attacker a RED skull, the one hit a WHITE one, 20
+      minutes each of time ONLINE, reset per hit; hitting back the one who
+      whitened you is no red; `nml_state:<pid>`, `nml_skull`, the tick's
+      `sk`; every threat skull now drawn above the name plate, 18 px;
+    - a death under the rule: the bag's items in a pile that is the KILLER's,
+      spare weapons and spare armour/legs credited to them (`nmlloot:`, with
+      the provenance row), the ids forfeited; worn gear, tools, quest items,
+      shields, outfits and gold kept -- a stash copy of WORN armour, shields and
+      outfits cannot be told from spares by the worker (storegear.js §2);
+      a RED skull's death takes everything worn too, every shield, and the
+      gold; `nml_loss` tells the game exactly what went;
+    - `caps.nomansland`, kill switch `nomansland: false`; dev vitals take
+      `hp`; `nomansland` suite (51), `mp-nomansland` (15, two screens).
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":
@@ -895,6 +994,15 @@ remnant to migrate server-side, not a mode to preserve.
     the plaque alone for the other four, nothing borrowed); and the river's
     streaks are softer ("too harsh in the river over the bridge"):
     WORLD-MAP-PIPELINE "Which land you are in", `mp-wheelmap`.
+  - Since v2.3.3057 the WORLD MAP SHOWS MORE AS YOU ZOOM -- the owner: "Make
+    it so if you tap the minimap and zoom in you can see more details":
+    ZOOM_MAX 28 (was 12), and by zoom (`AT` in WorldMapOverlay.jsx) the
+    quest's gold road and star (always, `questRoutePoint`), the other bros,
+    each land's level bands (wheelmap.js `ticks`, `spokeHalf`), the resources
+    tinted by tier and the monsters near you, the bridges and Bro Pond, and
+    in town every building named at its door (`wheelTownDoors`, a shut one
+    dim); `__btWorldMap.more` counts them: WORLD-MAP-PIPELINE "Zoom in, and
+    there is more to see", `mp-wheelmap`.
   - Since v2.3.3025 ONE LOADING SCREEN AND NO WAY BACK -- the owner: "players
     are starting in the old town and getting routed to the wheel on the
     loading screen. Also there still a portal to the old town. Disable that.
@@ -917,6 +1025,16 @@ remnant to migrate server-side, not a mode to preserve.
       `anyBuildingDoor` skips its doors, so mayor_1 ("Visit 3 buildings in
       town") hides itself and the Mayor offers mayor_2 -- counted, it was an
       errand nothing could finish, and it stopped his chain (tutorial §9).
+    - Since v2.3.3047-v2.3.3049 THE FIRST QUEST GUIDES YOU
+      (docs/specs/quest-guidance.md): a giver's badge is '❗' offer (gold "!"),
+      '❔' accepted and waiting (a GREY "?", still) or '❓' ready (a GREEN disc
+      with a DRAWN check, no glyph) -- all done wears nothing; the pinned quest
+      card leads with the quest picture, then the painted check
+      (`QUEST_ART.check`) when `questObjectiveDone`; and gearFlash.js lights
+      OPEN on a folded band, then the sword AND shield tiles (`data-gear`),
+      then the bow AND staff after the hand-in, each until its slot is filled,
+      tut_1 accepted to tut_2 handed in (`data-flash`, game.css
+      `bt-gear-flash`) -- `mp-questguide`.
   - Since v2.3.3026 A HIT ON YOU READS LIKE ONE YOU DEAL -- the owner: "damage
     numbers as large as they usually are and with the elemental icon after
     the damage number similar to how the sword has sword icon": spawned over
@@ -1104,6 +1222,70 @@ remnant to migrate server-side, not a mode to preserve.
       spike over where it settles), the cache's 184 -> 172; mp-gpuaudit fails
       if either trip holds the map;
     - the bigger wins and what each costs: docs/specs/memory-in-the-wheel.md.
+  - Since v2.3.3039-v2.3.3046 SEVEN FIXES FROM THE OWNER'S NOTES
+    (docs/specs/notes-2026-10-05-fixes.md):
+    - the Wheel's player-facing name is BROTOWN (`ZONES.wheel.name`; every
+      loading veil says "Entering BroTown"; `wheel` stays the id);
+    - a LIFE SKILL IS NEVER LEVEL 0: the client levels with the worker's
+      arithmetic (`awardSkillXp` `level || 1`), new skills start at 1 and a
+      stored 0 heals to 1 on both sides (`healLifeSkillLevels`) -- the banner
+      said "Level 1" for a level the worker made 2;
+    - a DEATH is heard and felt: `playerDeath()` from recordings (it was beeps,
+      silent since v2.3.1103), a shake of 18, the dark flash and a kick away
+      from the killer; the killing blow's number and clang are no longer
+      dropped;
+    - the staff special is 50% bigger, drawn and hit-tested
+      (`STAFF_BIG_BOLT_SCALE` 2.55);
+    - a floral hit shows the LEAF (`elem-flora`), not the slime's splat;
+    - the daily chest plays its own sounds on its own frames (the lid on
+      frame 4, the coins as they rise), the coin credit `quiet`;
+    - a crash's reload never opens the CREATOR: entering the world strips
+      `?create=1` / `login` / `noresume`, and a `?create=1` on a key already in
+      the roster is stale (`__btBootRoute` 'create-stale'); and the monster
+      hit-chip cache no longer destroys textures a live burst draws (LRU,
+      `BURST_MS` + 1 s), scratch canvases are released at once and the
+      arrow-pin cache is held to 6 MB -- `mp-createflag`.
+  - Since v2.3.3062 BROTOWN'S SIGNPOSTS SAY WHERE THEIR ROADS GO -- the
+    owner, on the recommendations for finding your way round: "Continue
+    building recommended": the four gate signposts (placing.js, boards blank
+    by the catalog's word) each show two plates when you are within 640 px --
+    the land straight on and the land whose trail forks off that road
+    (`WHEEL_GATE_ROADS`, src/data/wheelSignposts.js, checked against the
+    plan's roads), an arrow the way it lies, its element icon and its name in
+    its colour; world-sized, on monsterUi (src/rendering/wheelSignposts.js,
+    drawn by effectsRenderer); no levels (every land starts at 1); the eight
+    icons drawn down to 64 px behind the Wheel's loading screen and let go on
+    leaving; `mp-signposts`, test-world-core "the gate signposts":
+    docs/specs/gate-signposts.md.
+  - Since v2.3.3064 EACH LAND HAS ITS OWN MUSIC -- the owner, on the
+    recommendations for finding your way round: "Continue building
+    recommended":
+    - the Wheel is one zone, so one track played everywhere in it: the town's
+      after a login (the loading screen's hand-over asks for it once you are
+      in), the game's theme after a death, a dungeon or the farm;
+    - now `src/game/wheelMusic.js` picks it by the land under you
+      (`wheelHere(...).region`, asked by the minimap's frame beside the land
+      banner): Brotown and the commons the town's, frost/ember/sky their own,
+      the Verdant Wilds forest.mp3 (`ZONE_MUSIC.verdant`, the meadow's url),
+      the other four the theme until a track is put under their id;
+    - into a land after 1.2 s, home only after 8 s on the safe ground (a fight
+      on the line steps back and forth), a visit's first choice at once on a
+      `fresh` answer; `startZoneAmbient('wheel')` keeps what plays;
+    - the dunes' wind is let go on leaving (it was kept for the session);
+      `_zoneAsks` keeps the last 16 asks for `window.__btLandMusic`;
+      `?nolandmusic` is the Wheel as it was; world.mp3 NOT used for the four
+      (~25 MB more, the owner's call);
+    - window.BT_AUDIO IS set -- BroTown's `Object.assign(globalThis, ...)` of
+      the data index -- despite the effectsRenderer comment saying it never is;
+    - test-world-core "the lands' music", `mp-landmusic`:
+      docs/specs/wheel-land-music.md.
+  - Since v2.3.3065 NORTH IS MARKED ON BOTH MAPS -- the owner, on the
+    recommendations for finding your way round: "Continue building
+    recommended": neither map ever turns, and nothing said up is north;
+    the minimap's frame wears a brass N on a slate bead in the middle of its
+    top band (wheelMinimap.js NORTH, `__btMinimap.north`), and the world map a
+    44 px compass at its top left (`[data-world-map-north]`, no taps);
+    `mp-north`: docs/specs/wheel-north.md.
   - Since v2.3.3066 THE GUILD HALL, THE POST OFFICE AND THE SHERIFF'S OFFICE
     OPEN -- the owner: "keep going with pragmatic enhancements":
     - three of the four "(new: ...)" plots open onto systems the game already

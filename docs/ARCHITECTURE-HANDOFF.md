@@ -70,6 +70,7 @@ extended.
    | `arena_stake:<tid>:<mid>:<pid>` | escrowed sponsorship stake | sponsorship.md |
    | `guild_claims:<pid>` | `{skillKey: completedCount}` quest-ladder claims | guild-quests.md |
    | `gearlock:<pid>` | guard gear-lock expiry timestamp | threats.md |
+   | `nml_state:<pid>` | `{red, white, whiteBy, forfeit}` — No man's land (v2.3.3058): the skulls' time LEFT in ms (it counts down only while the player is connected, so it is time in the game, not on the clock), who gave the white one, and the ids of gear pieces forfeited by a death there, refused if a client offers them again on join. Deleted when all three are empty | no-mans-land.md |
    | `bounty:<pid>` | `{amount, by, ts}` escrowed Call-Guards fine on this head, paid to the killer | threats.md |
    | `trade2wpn:<pid>:<seq>` | `{pid, sid, seq, weapon, ts}` weapon escrowed into a live trade window | trading.md |
    | `harden_ledger:<pid>` | last 50 hardening attempts (§17.5) | hardening.md |

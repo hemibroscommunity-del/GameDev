@@ -306,8 +306,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      three orbs' rolls, so no longer a multiple of 3) */
   rec.ok(`...whose damage lands as one number (hp ${big.hp0} -> ${big.hp1}, bolt dmg ${big.dmg})`,
     big.hp0 != null && big.hp1 != null && big.dmg > 0 && big.hp0 - big.hp1 === big.dmg, big);
-  rec.ok(`...drawn 1.7x the basic bolt (sprite scale ${big.scale})`,
-    typeof big.scale === 'number' && Math.abs(big.scale / 0.18 - 1.7) < 0.12, big);
+  rec.ok(`...drawn 2.55x the basic bolt (sprite scale ${big.scale}; v2.3.3043: 1.7 x1.5)`,
+    typeof big.scale === 'number' && Math.abs(big.scale / 0.18 - 2.55) < 0.18, big);
   rec.ok(`...off a heavier kick than the basic cast (peak ${r1(big.kick * 180 / Math.PI)} deg)`,
     big.kick * 180 / Math.PI > 18, big);
   rec.ok(`...and bursting big where it touches the slime (${big.crash ? r1(big.mx - big.crash.x) : '-'} px short of its centre)`,
@@ -392,7 +392,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const pb = await bigSeen;
   console.log('    peer big bolt: ' + JSON.stringify(pb));
   rec.ok('the watcher draws the caster\'s special as their big bolt, with the heavy release',
-    pb.big === 1 && typeof pb.scale === 'number' && Math.abs(pb.scale / 0.18 - 1.7) < 0.12 && pb.heavy, pb);
+    pb.big === 1 && typeof pb.scale === 'number' && Math.abs(pb.scale / 0.18 - 2.55) < 0.18 && pb.heavy, pb);   /* v2.3.3043: 2.55x */
   await A.ctx.close().catch(() => {});
   await B.ctx.close().catch(() => {});
 }

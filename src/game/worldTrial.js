@@ -188,7 +188,7 @@ export function applyWorldTrial() {
   _mode = mode;
   const z = ZONES[WORLD_TRIAL_ZONE];
   const size = mode === 'wheel' ? WHEEL : BAKED;
-  z.name = mode === 'wheel' ? 'The Wheel' : 'World Trial';
+  z.name = mode === 'wheel' ? 'BroTown' /* v2.3.3039: the name players see (zones.js) */ : 'World Trial';
   z.w = Math.round(size.worldW / TILE);
   z.h = Math.round(size.worldH / TILE);
   /* v2.3.2943: 1344 x 1344 tiles for the Wheel, and every one of them 0 but

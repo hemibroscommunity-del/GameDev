@@ -32,6 +32,51 @@ export const RESOURCE_TIERS = {
   20: { gatherLvl: 96, label: 'Transcendent',  color: '#F1C40F' },
 };
 
+/* ═══ v2.3.3038: A RESOURCE'S SKILL LEVEL IS A REAL REQUIREMENT ═══
+   Owner: "black steel now requires a mining level of at least 5 ... Fishing
+   clownfish required fishing level 5" ("in levels of 5", copper and iron both
+   open at 1).  Keyed by node type and TIER (the .lvl below), and deliberately
+   not the tier itself: the tier names the item, its art, HP and XP.  A tier
+   not in a row needs level 1.  Mirror of server/src/gathering.js
+   GATHER_REQ_LVL, pinned by mirror-audit.test.mjs; the worker enforces it
+   (extraction_start, node_strike) only while it advertises caps.gatherreq. */
+export const GATHER_REQ_LVL = {
+  oreVein:  { 1: 1, 6: 1, 11: 5 },
+  fishSpot: { 1: 1, 6: 5, 11: 10 },
+  tree:     { 1: 1, 6: 5, 11: 10 },
+};
+
+export function gatherReqLvl(nodeType, tierLvl) {
+  const has = Object.prototype.hasOwnProperty;
+  const row = has.call(GATHER_REQ_LVL, nodeType) ? GATHER_REQ_LVL[nodeType] : null;
+  const t = Math.max(1, Math.floor(Number(tierLvl) || 1));
+  const need = (row && has.call(row, t)) ? row[t] : 1;
+  return Math.max(1, Math.floor(Number(need) || 1));
+}
+
+/* v2.3.3038: the level to PRINT for a tier on a ladder (Skills' "next
+   unlock", the Encyclopedia): its requirement where one is set, else the tier
+   number as before -- the tiers past the third grow nowhere yet, and "Lv 1"
+   on a Crystal Ore nobody can find would be a promise the world can't keep. */
+export function gatherLadderLvl(nodeType, tierLvl) {
+  const has = Object.prototype.hasOwnProperty;
+  const row = has.call(GATHER_REQ_LVL, nodeType) ? GATHER_REQ_LVL[nodeType] : null;
+  return (row && has.call(row, tierLvl)) ? row[tierLvl] : tierLvl;
+}
+
+/* v2.3.3038: the level a node asks of THIS player, and whether they have it.
+   `null` when nothing is asked (the worker does not enforce a requirement --
+   no caps.gatherreq -- or the node needs level 1), so a caller can draw and
+   refuse only what the worker would refuse. */
+export function gatherNeed(S, node) {
+  if (!node || !(S && S._serverCaps && S._serverCaps.gatherreq)) return null;
+  const need = node.reqLvl || gatherReqLvl(node.nodeType, node.gatherLvl);
+  if (need <= 1) return null;
+  const skill = node.skill || (node.nodeType === 'tree' ? 'woodcutting' : node.nodeType === 'fishSpot' ? 'fishing' : 'mining');
+  const have = (S.rpg && S.rpg.lifeSkills && S.rpg.lifeSkills[skill] && S.rpg.lifeSkills[skill].level) || 1;
+  return { need, have, skill, ok: have >= need };
+}
+
 /* ═══ NODE TIER DEFINITIONS ═══ */
 /* lvl drives which depth bucket each tier spawns in via getNodeTierForDepth.
    Shallow range is [1, 10] so Minnow (1) and Clownfish (6) are both
@@ -164,6 +209,7 @@ export function createGatherNode(zoneId, depth, x, y, nodeType, forcedTierLvl) {
     spotName: flavoredSpot,
     baseName: tier.name,
     gatherLvl: tier.lvl,
+    reqLvl: gatherReqLvl(nodeType || 'oreVein', tier.lvl),   /* v2.3.3038 */
     color: nodeType === 'tree' ? tier.canopyColor : nodeType === 'fishSpot' ? '#3498DB' : tier.streakColor,
     emoji: nodeType === 'tree' ? '🪓' : nodeType === 'fishSpot' ? '🎣' : '⛏️',
     hp: tier.hp, maxHp: tier.hp,

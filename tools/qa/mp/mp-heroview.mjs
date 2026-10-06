@@ -319,14 +319,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
         })[0] || null;
       const title = leaf(/greatsword|copper/i);
       const change = leaf(/^change$/i);
-      const statK = leaf(/^(dmg|damage|armou?r|block)$/i);
       const fig = document.querySelector('canvas[aria-label="Your character"]');
       const slot = document.querySelector('[role="button"][aria-label="Legs"]');
-      if (!title || !statK) return { found: false };
+      if (!title) return { found: false };
       const bw = (el) => parseFloat(getComputedStyle(el).borderTopWidth) || 0;
       let f = title.parentElement;
       for (let i = 0; i < 6 && f; i++, f = f.parentElement) if (bw(f) >= 1) break;
       if (!f || bw(f) < 1) return { found: false, noBorderAncestor: true };
+      /* v2.3.3053: the stat is looked for INSIDE the card's frame.  The sheet
+         itself says "Damage" and "Armor" too now (the stat pills, which stay
+         on screen beside and below the card), and the first of those in the
+         document is the PLAYER column's Armor pill -- "not inside the frame"
+         about a pill that was never the card's. */
+      const statK = [...f.querySelectorAll('span, div, button')].filter((el) => {
+        const t = (el.textContent || '').trim();
+        return t && t.length < 40 && /^(dmg|damage|armou?r|block)$/i.test(t) && el.children.length === 0;
+      })[0] || leaf(/^(dmg|damage|armou?r|block)$/i);
+      if (!statK) return { found: false };
       const fr = f.getBoundingClientRect();
       const inside = (el) => {
         const r = el.getBoundingClientRect();

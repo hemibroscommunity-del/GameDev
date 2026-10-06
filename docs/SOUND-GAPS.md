@@ -79,7 +79,8 @@ calls nothing.
 | Town ambience | music only | a town-crowd recording (new) | |
 | The buildings' life (forge sparks, smoke) | none | an occasional `mine-strike` clink by the forge | `src/rendering/wheelLife.js` |
 | An object mended | none | a soft `wood-chop` knock | `src/game/wheelBreak.js:180` |
-| Mining success / miss | silent | the two unused videos `public/minigames/mining/extract-success.mp4` and `extract-fail.mp4` have sound to cut, or a slowed `skeleton-death` (rubble) | `src/game/lifeSkillRewards.js:571-576` |
+| Mining success | **done v2.3.3040**: `ore-crack`, the third crack of `extract-success.mp4`, played on the break strip's split frame | `effectsRenderer.js` `_advanceOreBreaks` |
+| Mining miss | silent | `extract-fail.mp4` has sound to cut, or a slowed `skeleton-death` (rubble) | `src/game/lifeSkillRewards.js` `applyMiningReward` |
 | Burnt cooking | none | a `pan-sizzle` slice + `flip-lose` | `lifeSkillRewards.js:677` |
 | Starting a harvest | silent | a single `mine-strike` or `axe-chop` | `lifeSkillRewards.js:208` |
 | Node used up / grows back | silent / none | a soft pop | `wsClient.js:2321`, `src/rendering/wheelNodes.js` |

@@ -32,18 +32,23 @@ import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_AR
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
-import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036 */
+import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
+import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl } from '../../src/data/lifeSkills.js'; /* v2.3.3038 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
 import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC } from '../../src/game/elemHits.js'; /* v2.3.2996 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
-import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
+import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */ } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
 import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
+import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058 */
+import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
+import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
+  MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
   ARMOR_DR, /* v2.3.2664: the armour grades' ceiling lifts */
@@ -118,6 +123,15 @@ const room = Object.create(GameRoom.prototype);
 {
   const bad = Object.keys(SRV.MONSTER_HP_CURVE).filter((f) => SRV.MONSTER_HP_CURVE[f] !== MONSTER_HP_CURVE[f]);
   check('MONSTER_HP_CURVE identical (a drifted curve desyncs every kill-time expectation)', bad.length === 0, bad);
+}
+/* v2.3.3055: the damage curve and the GROWING flat -- the Points window's
+   scene fights the client's createMonster, so its numbers are these */
+{
+  const bad = Object.keys(SRV.MONSTER_DMG_CURVE).filter((f) => SRV.MONSTER_DMG_CURVE[f] !== MONSTER_DMG_CURVE[f]);
+  check('MONSTER_DMG_CURVE identical', bad.length === 0 && Object.keys(MONSTER_DMG_CURVE).length === Object.keys(SRV.MONSTER_DMG_CURVE).length, bad);
+  const flats = [];
+  for (let L = 1; L <= 100; L++) if (SRV.monsterHpFlat(L) !== clientMonsterHpFlat(L)) flats.push({ L, server: SRV.monsterHpFlat(L), client: clientMonsterHpFlat(L) });
+  check('monsterHpFlat identical at every level 1-100', flats.length === 0, flats.slice(0, 5));
 }
 
 // ── 3. FISH_TIERS: level gates + names (server name is the client
@@ -1452,5 +1466,71 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { cli: CLIENT_WHEEL_ARENA, srv: { W: SRV_WHEEL_DUNGEON.WIDTH, H: SRV_WHEEL_DUNGEON.HEIGHT } });
 }
 
+// ── LIFE-SKILL LEVELS: the banner says the level the worker makes ──
+// v2.3.3041.  The client predicts a harvest's level-up (awardSkillXp) and
+// fires the banner from it; the worker's _addLifeSkillXp is the truth.  They
+// disagreed from level 0 (463 XP to 1 here, 500 to 2 there), so the banner
+// said "Level 1" for a level the worker made 2.  Same arithmetic, every start.
+{
+  const room = Object.create(GameRoom.prototype);
+  let bad = null;
+  for (const start of [0, 1, 2, 5, 19]) {
+    for (const xp of [1, 100, 463, 499, 500, 540, 1000, 2254, 9999]) {
+      const cli = { s: { level: start, xp: 0 } };
+      clientAwardSkillXp(cli, 's', xp);
+      const ps = { lifeSkills: { s: { level: start, xp: 0 } } };
+      room._addLifeSkillXp(ps, 's', xp);
+      if (cli.s.level !== ps.lifeSkills.s.level || cli.s.xp !== ps.lifeSkills.s.xp) { bad = { start, xp, cli: cli.s, srv: ps.lifeSkills.s }; break; }
+    }
+    if (bad) break;
+  }
+  check('life-skill levels: the client\'s predicted level-up is the worker\'s, from every start level (0 included)', bad === null, bad);
+  const d = clientDefaultLifeSkills();
+  check('life-skill levels: a new character\'s skills start at level 1, never 0',
+    ['woodcutting', 'fishing', 'mining', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'farming', 'trapping'].every((k) => d[k] && d[k].level === 1), d);
+  const old = clientMigrateLifeSkills({ mining: { level: 0, xp: 300 }, fishing: { level: 3, xp: 10 } });
+  check('life-skill levels: a stored 0 heals to 1 (XP kept), a real level is left alone', old.mining.level === 1 && old.mining.xp === 300 && old.fishing.level === 3, { mining: old.mining, fishing: old.fishing });
+}
+
+// ── GATHER LEVELS: the level over a node is the level the worker asks ──
+// v2.3.3038.  The client refuses ("Need Mining Lv 5") and draws the level
+// from its copy; the worker refuses extraction_start and node_strike from its
+// own.  A drift is a node that says Lv 5 and is refused at 5, or a refusal the
+// client never warned of.
+{
+  const flat = (t) => JSON.stringify(Object.keys(t).sort().map((k) => [k, Object.keys(t[k]).sort().map((l) => [l, t[k][l]])]));
+  check('gather levels: the same table on both sides (GATHER_REQ_LVL)', flat(SRV_GATHER_REQ_LVL) === flat(CLIENT_GATHER_REQ_LVL),
+    { srv: SRV_GATHER_REQ_LVL, cli: CLIENT_GATHER_REQ_LVL });
+  let bad = null;
+  for (const t of ['oreVein', 'tree', 'fishSpot', 'campfire', '__proto__', 'constructor']) {
+    for (const l of [0, 1, 6, 11, 16, 99, '6', null, '__proto__']) {
+      if (srvGatherReqLvl(t, l) !== clientGatherReqLvl(t, l)) { bad = { t, l, srv: srvGatherReqLvl(t, l), cli: clientGatherReqLvl(t, l) }; break; }
+    }
+    if (bad) break;
+  }
+  check('gather levels: and the same answer for every type and tier, forged ones included', bad === null, bad);
+  /* the owner's named cells, so a "tidy-up" of the table can't quietly move them */
+  check('gather levels: black steel Mining 5, copper and iron 1, clownfish Fishing 5',
+    clientGatherReqLvl('oreVein', 11) === 5 && clientGatherReqLvl('oreVein', 1) === 1 && clientGatherReqLvl('oreVein', 6) === 1
+    && clientGatherReqLvl('fishSpot', 6) === 5);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
-process.exit(failures === 0 ? 0 : 1);
+process.exit(failures === 0 ? 0 : 1)
+// ── v2.3.3058: No man's land's rings (server nomansland.js, client
+// game/noMansLand.js).  The banner, the top bar and the tap's aim are the
+// game's; every hit is the worker's -- one ring apart, and a player standing
+// on the line would be told they are safe while they are being hit.
+{
+  const keys = ['HUB', 'TIER', 'TIERS', 'LEVELS_PER_TIER', 'FIRST_TIER', 'SKULL_MS'];
+  const bad = keys.filter((k) => SRV_NML[k] !== CLIENT_NML[k]);
+  check('no man\'s land: the same rings and skull time on both sides', bad.length === 0, bad);
+  check('no man\'s land: the same centre (WHEEL_CENTRE)', CLIENT_NML_CENTRE[0] === SRV_WHEEL_CENTRE[0] && CLIENT_NML_CENTRE[1] === SRV_WHEEL_CENTRE[1], { cli: CLIENT_NML_CENTRE, srv: SRV_WHEEL_CENTRE });
+  const off = [];
+  for (let r = 0; r < 20000; r += 97) {
+    const x = SRV_WHEEL_CENTRE[0] + r, y = SRV_WHEEL_CENTRE[1] + r * 0.3;
+    if (srvNmlLevelAt('wheel', x, y) !== clientNmlLevelAt('wheel', x, y)) off.push({ r, srv: srvNmlLevelAt('wheel', x, y), cli: clientNmlLevelAt('wheel', x, y) });
+  }
+  check('no man\'s land: the same level at every spot out to the gates', off.length === 0, off.slice(0, 4));
+}
+;
