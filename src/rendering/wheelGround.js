@@ -21,7 +21,7 @@
  * and up to ~48 on the move (mp-wheeltrial): 16-30 MB of colours.  That is
  * the price of the sharpness, and the readout shows it;
  * the way to a quarter of it is pieces kept as palette numbers and coloured
- * on the GPU (docs/WORLD-MAP-PIPELINE.md, the Wheel trial).  (v2.3.3063: the
+ * on the GPU (docs/WORLD-MAP-PIPELINE.md, the Wheel trial).  (v2.3.3076: the
  * colours are on the GPU only -- the page's copy goes once a piece is
  * uploaded, _toGpu below.)  Under them lies
  * the whole Wheel, small, in the plan's colours, so a piece still being laid
@@ -58,7 +58,7 @@ const AHEAD_MAX = 480;
    long after arriving, rather than held until the worker stops. */
 const WARM_KEEP_MS = 3000;
 
-/* v2.3.3063: a piece's colours, let go of.  Both of a source's holds: its
+/* v2.3.3076: a piece's colours, let go of.  Both of a source's holds: its
    `resource`, and the constructor's `options`, which Pixi keeps whole
    (TextureSource: this.options = options; nothing reads it back for a buffer)
    -- with the first gone the second still held every piece's colours, and a
@@ -71,7 +71,7 @@ function letGoOfColours(src) {
 }
 
 export class WheelGround {
-  /* v2.3.3063: `app`, the Pixi application (tileRenderer's), to put each
+  /* v2.3.3076: `app`, the Pixi application (tileRenderer's), to put each
      piece on the GPU as it is placed (_toGpu) */
   constructor(parent, app) {
     this._app = app || null;
@@ -205,7 +205,7 @@ export class WheelGround {
     wheelChunk(i, j).then((m) => {
       if (!warm) this.inFlight--;
       /* freed, or the whole ground torn down, while it was being laid --
-         v2.3.3063: or its renderer gone (_orphaned) */
+         v2.3.3076: or its renderer gone (_orphaned) */
       if (this.dead || this._orphaned() || this.pieces.get(key) !== rec) return;
       rec.sprite = this._sprite(m, info, i, j);
       rec.ready = true;
@@ -234,7 +234,7 @@ export class WheelGround {
     return s;
   }
 
-  /* v2.3.3063: the renderer this ground was made for is gone (Pixi's
+  /* v2.3.3076: the renderer this ground was made for is gone (Pixi's
      Application.destroy nulls `renderer`): a black screen's rebuild made a new
      one, with a ground of its own.  A piece the worker brings this one now is
      drawn by nothing and could not be uploaded (_toGpu), so it is not placed
@@ -242,7 +242,7 @@ export class WheelGround {
      held it (mp-groundcopy: two a rebuild, the pieces in flight). */
   _orphaned() { return !!this._app && !this._app.renderer; }
 
-  /* ═══ v2.3.3063: THE PIECE'S COLOURS LIVE ON THE GPU ONLY ═══
+  /* ═══ v2.3.3076: THE PIECE'S COLOURS LIVE ON THE GPU ONLY ═══
      A piece was kept twice: on the GPU, where it is drawn from, and in the
      page as its texture's source (m.data, 402 x 402 colours, 0.62 MB) -- 54
      pieces standing, 34 MB, and more on the move (docs/MEMORY-PLAN.md).  Pixi
@@ -293,7 +293,7 @@ export class WheelGround {
       if (old) {
         const was = old.texture && old.texture.source;
         try { old.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
-        letGoOfColours(was);   /* v2.3.3063 */
+        letGoOfColours(was);   /* v2.3.3076 */
       }
       wheelStats.relaid++;
       if (!m.partial) wheelStats.mended++;
@@ -315,7 +315,7 @@ export class WheelGround {
          lets go of the GPU copy and the colours */
       const src = rec.sprite.texture && rec.sprite.texture.source;
       try { rec.sprite.destroy({ texture: true, textureSource: true }); } catch (e) { /* already gone */ }
-      letGoOfColours(src);   /* v2.3.3063: a piece that kept its own (_toGpu) */
+      letGoOfColours(src);   /* v2.3.3076: a piece that kept its own (_toGpu) */
       rec.sprite = null;
     }
   }

@@ -1,4 +1,4 @@
-/* ═══ THE WHEEL'S GROUND IS KEPT ON THE GPU ONLY (v2.3.3063) ═══
+/* ═══ THE WHEEL'S GROUND IS KEPT ON THE GPU ONLY (v2.3.3076) ═══
  *
  * docs/MEMORY-PLAN.md, measured in the Wheel's Brotown on main: every piece of
  * ground the worker lays (402 x 402 colours, 0.62 MB) was kept twice -- once on
