@@ -225,8 +225,13 @@ one.inventory = Object.assign(Object.create(null), one.inventory,
 room._handleCookRecipe({ id: 'only' }, { recipeIdx: allIdx });
 check('eating a cooked meal ends the potion that was running',
   !room._buffActive(one, 'mana') && one._buffs.manaFlat === undefined, one._buffs);
+/* v2.3.3083: the meal now STATES its strength -- 1 + its recipe's power,
+   Firebloom Tea's x1.20 (cooking.js) -- where it used to leave damageMul
+   unset and lean on the combat reader's 1.20 default.  Same number; the
+   point of this check is unchanged: not the tonic's x2. */
+const mealMul = 1 + (await import('../src/data.js')).COOKING_RECIPES[allIdx].power;
 check('...and the meal is what is running now, at ITS strength not the potion\'s',
-  room._buffActive(one, 'damage') && one._buffs.damageMul === undefined, one._buffs);
+  room._buffActive(one, 'damage') && one._buffs.damageMul === mealMul && mealMul !== 2.0, one._buffs);
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

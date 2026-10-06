@@ -430,7 +430,7 @@ export const FISH_TIERS = [
 export const COOKING_RECIPES = [
       { ingredients: { herb_firebloom: 1 },                          buff: 'regen',  power: 0.02, duration: 60, tier: 1 },
       { ingredients: { herb_rock_vine: 1, herb_cloudpetal: 1 },      buff: 'resist', power: 0.05, duration: 60, tier: 1 },
-      { ingredients: { herb_firebloom: 2 },                          buff: 'damage', power: 0.05, duration: 90, tier: 2 },
+      { ingredients: { herb_firebloom: 2 },                          buff: 'damage', power: 0.20, duration: 90, tier: 2 },   /* v2.3.3083: 0.05 -> 0.20, what the worker always applied (cooking.js) */
     ];
 
 /* ═══ v2.3.2062: WHAT "CONSTANTLY" IS WORTH, IN NUMBERS ═══

@@ -47,6 +47,7 @@
  */
 
 import { SHOP_ITEMS } from './data.js';   /* v2.3.2063: his staple shelf */
+import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3083: seeds, crops and compost */
 
 /* ═══ v2.3.2063: THE THINGS HE ALWAYS HAS ═══
  *
@@ -140,6 +141,14 @@ export const SHOP = {
        cannot disagree about what a slime is worth while they both exist. */
     slime: 14, bat: 16, skeleton: 22, crab: 16, golem: 40,
     logs: 20, rawfish: 20, cookedfish: 34, rarefish: 90,
+    /* v2.3.3083: everything the farm sells or grows (farm.js FARM_SHOP_BASE).
+       Without these every farm key fell to BASE_DEFAULT and he paid 10 for a
+       2-coin seed -- buy at the Feed & Seed, sell to him, repeat: a faucet the
+       size of a tap.  A seed is worth its Feed & Seed price and compost its
+       own, so his half-price spread makes reselling one a loss; a crop is worth
+       the plan's value (docs/FARMING-PLAN.md), a carrot 8 and a Cloudpetal 40,
+       and his pile's decay does the rest. */
+    ...FARM_SHOP_BASE,
   },
   BASE_DEFAULT: 20,
   /* He buys at half his asking price before decay -- the ordinary shopkeeper

@@ -1115,6 +1115,13 @@ input{font-family:inherit}
   .bt-pts-bubble{animation:none}
   .bt-pts-bubble::before{animation:none;opacity:.8}
 }
+/* v2.3.3083: a ripe crop in the Feed & Seed window bobs (FeedSeedPanel.jsx),
+   so a farm with something to harvest reads as one at a glance.  Transform
+   only, like the point bubble above. */
+@keyframes bt-farm-ripe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.06)}}
+@media (prefers-reduced-motion: reduce){
+  [data-bed-state="ripe"] span{animation:none !important}
+}
 /* v2.3.2599: THE POINT-LANDED ORB IS RETIRED.  Owner: "Remove the small circle
    icon to the left of the plus sign."  It was v2.3.2329's answer to "when you
    spend combat points it's kind of ambiguous whether it took effect or not" —

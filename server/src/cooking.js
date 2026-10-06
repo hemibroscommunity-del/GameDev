@@ -321,6 +321,14 @@ export const cookingMethods = {
          potion's multiplier -- a cooked fish quietly worth double. Every
          writer of _buffs.damage must state its own magnitude. */
       delete ps._buffs.damageMul;
+      /* v2.3.3083: ...and the recipe's own `power` IS that magnitude.  Firebloom
+         Tea's card said "+5% dmg" over a table row of power 0.05 while this
+         branch ignored the row and the combat reader fell back to the cooked-
+         food x1.20 -- three numbers, two of them wrong.  It could not be cooked
+         until the farm grew Firebloom (farm.js), so nobody ever drank the
+         difference; the row now says 0.20, the card +20%, and this reads it,
+         so they cannot drift apart again (combat.js bounds damageMul 1..4). */
+      if (Number.isFinite(recipe.power) && recipe.power > 0 && recipe.power <= 3) ps._buffs.damageMul = 1 + recipe.power;
       ps._buffs.damage = endsAt;
     } else if (recipe.buff === 'all') {
       // 'all' buff sets all four sub-buffs.  Mirrors the client at

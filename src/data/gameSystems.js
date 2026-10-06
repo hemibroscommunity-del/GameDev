@@ -1009,10 +1009,10 @@ export const COOKING_RECIPES = [{
     herb_firebloom: 2
   },
   buff: 'damage',
-  power: 0.05,
+  power: 0.20,   /* v2.3.3083: was 0.05 under a "+5% dmg" card while the worker paid +20% (cooking.js reads this now) */
   duration: 90,
   cookLvl: 6,
-  desc: '+5% dmg for 90s'
+  desc: '+20% dmg for 90s'
 }];
 
 /* §18 Fish Healing — fish must be COOKED via minigame to become edible */

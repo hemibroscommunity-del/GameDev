@@ -338,6 +338,30 @@ export const devToolsMethods = {
     return { ok: true, zone: z, cleared };
   },
 
+  /* v2.3.3083: RIPEN MY FARM.  A Cloudpetal takes eight real hours, so
+     neither the owner nor a phone test could ever see a harvest without
+     waiting for one.  Every planted bed of this player's farm (farm.js) is
+     made ripe NOW -- its readyAt set to the worker's clock -- and the farm is
+     re-sent if they are online.  Nothing else moves: no crop is planted, no
+     item is paid; the harvest still goes through the worker's own handler.
+     The kit's posture (header): an operator HTTP call behind ADMIN_KEY, never
+     a socket message a client could say. */
+  async _devFarmRipe(playerId) {
+    const stored = await this.state.storage.get('farm:' + playerId);
+    /* ok with nothing done, not a 404: the panel reads every 404 as "is that
+       character online?", which is not the question here. */
+    if (!stored) return { ok: true, ripened: 0, note: 'no farm yet' };
+    const rec = this._farmHeal(stored);
+    const now = Date.now();
+    let ripened = 0;
+    for (const p of rec.plots) {
+      if (p.s === 'planted' && p.readyAt > now) { p.readyAt = now; ripened++; }
+    }
+    await this.state.storage.put('farm:' + playerId, rec);
+    this._farmSend(playerId, this._farmView(rec, now));
+    return { ok: true, ripened };
+  },
+
   /* Routed from _adminFetch, so auth, the fail-closed 404 and the audit log
      are all inherited rather than re-implemented.  Returns null when the
      path is not ours, so the caller falls through to its own 404. */
@@ -362,6 +386,7 @@ export const devToolsMethods = {
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId);   /* v2.3.2277 */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
+    else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3083 */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

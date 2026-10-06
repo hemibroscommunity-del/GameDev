@@ -1333,7 +1333,27 @@ remnant to migrate server-side, not a mode to preserve.
       strips cropped, single pictures for the rest, behind the Wheel's loading
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
-      docs/specs/wheel-doors.md.)
+      docs/specs/wheel-doors.md.
+  - Since v2.3.3083 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
+    similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
+    water", then, on the research (docs/FARMING-PLAN.md, its Phase 1): "Good.
+    Go ahead and build it":
+    - the WORKER owns it (`server/src/farm.js`, storage `farm:<pid>`): a free
+      deed of six beds; dig, plant, then optional water (ready 25% sooner) and
+      compost (harvest x1.5), then harvest; ripe when the worker's clock
+      passes `readyAt`, never ticked, so crops grow offline and nothing
+      withers; carrot, Firebloom, Rock Vine, Cloudpetal (`FARM.CROPS`, mirrored
+      in src/data/farmCrops.js, pinned by mirror-audit); Farming XP only at
+      harvest; seeds and compost sold in the window; Diego values every farm
+      key so reselling a seed is a loss (`FARM_SHOP_BASE`);
+    - the window is `FeedSeedPanel.jsx`: pick a tool (it follows the farm until
+      you do), tap a bed or drag across several -- one message -- gated on
+      `caps.farm` (kill switch `farm: false`); without it FarmPanel keeps the
+      old browser-only plots (`LegacyFarmPanel`), which never kept anything;
+    - Herb Bread finally HEALS (2% max HP a second; its `regen` timer was never
+      read) and Firebloom Tea's card says its real +20%;
+    - the dev op `farmripe` ("Ripen my farm now" in the dev panel); `farm`
+      suite, `mp-farm`: docs/specs/farm.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

@@ -4088,6 +4088,13 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.3083: the farm (FarmPanel's Feed & Seed window) -> farm.js.
+           Without these three lines the window would ask and never hear back
+           -- TRAPS #18, the allowlist's one way to fail silently. */
+        if (msg.type === 'farm_open' || msg.type === 'farm_act' || msg.type === 'farm_buy') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'potion_drink') {
           ws.send(JSON.stringify(msg));
           return;
