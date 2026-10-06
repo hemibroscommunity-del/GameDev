@@ -170,6 +170,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
+import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 
 /* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
@@ -374,6 +375,11 @@ export const CHAT_RELAY = {
 // v2.3.1151: exported so test/wire-audit.test.mjs can verify every
 // server-emitted type is registered here (rule 13's mechanical check).
 export const PRIVILEGED_EVENTS = new Set([
+  /* v2.3.3058: No man's land (nomansland.js) -- your own skulls' time left,
+     and what a death there took.  Forged, one would paint a red skull on an
+     innocent player's own screen and the other would make a game clear its
+     bag of things the worker never took. */
+  'nml_skull', 'nml_loss',
   /* v2.3.2820: the daily chest's result (dailychest.js) -- it names a prize,
      so a forged one would put a fake jackpot on another player's screen. */
   'chest_opened',
@@ -2903,6 +2909,11 @@ export class GameRoom {
       const until = this._pvpConsent.get(this._pvpPairKey(attackerId, targetId));
       if (until && until > Date.now()) return true;
     }
+    /* v2.3.3058: No man's land -- the Wheel's lands past their first tier,
+       players within its level of each other (nomansland.js).  ABOVE the
+       master switch on purpose: v2.3.1917's "remove the option to kill other
+       players for now" still holds everywhere else. */
+    if (this._nmlAllowed && this._nmlAllowed(attackerId, targetId)) return true;
     if (!this.OPEN_PVP) return false;   /* v2.3.1917 */
     if (zc && zc.lawless) {
       /* Compared by party ID, not object identity: _partyByPlayer stores the
@@ -3178,6 +3189,12 @@ export class GameRoom {
        consume ps._deathShield rather than re-testing the clock, so they can
        never disagree about which items this death was allowed to take. */
     ps._deathShield = this._deathRecoveryShield(ps);
+    /* v2.3.3058: No man's land (nomansland.js) -- a kill under its rule takes
+       the bag (its items, spare weapons, spare armour), a red skull everything;
+       what it took is already gone when this returns, and the pile below goes
+       to the killer for its owner window (or, for a red skull with no killer,
+       to anyone at once). */
+    const _nml = _duelKill ? null : _hook('nml', () => this._nmlOnDeath(ps, playerId, cause));
     if (!_duelKill) {
       // Spawn a pickable death pile at the death location carrying the
       // player's entire general inventory (mummy remains, fish, wood,
@@ -3185,7 +3202,7 @@ export class GameRoom {
       // armor / shield / amulet) and weaponStash are NOT included.
       // Anyone in the zone can pick the pile up; despawns after 60 s.
       // Spawn BEFORE the inventory wipe so we capture the items.
-      _hook('deathPile', () => this._spawnDeathPile(ps, playerId));
+      _hook('deathPile', () => this._spawnDeathPile(ps, playerId, _nml && _nml.pile));
       /* v2.3.1688: the gathering TOOLS survive (see _keepGatherTools).  They
          are equipment held in the bag for storage reasons, not loot — losing
          them to a death silently ends woodcutting/fishing/mining for good.
@@ -4051,7 +4068,11 @@ export class GameRoom {
     return keep;
   }
 
-  _spawnDeathPile(ps, playerId) {
+  /* v2.3.3058: `opts` (No man's land, nomansland.js _nmlOnDeath): who the
+     pile is for during its owner window, whose name it carries, and when
+     that window ends -- the killer's, or nobody's at all.  Absent, the pile
+     is the dead player's own, as it always was. */
+  _spawnDeathPile(ps, playerId, opts) {
     if (!ps || !ps.inventory) return null;
     const items = [];
     /* v2.3.1688: the gathering tools are NOT loot.  They stay in the bag
@@ -4088,15 +4109,15 @@ export class GameRoom {
       // after DEATH_PILE_OWNER_MS the server-side _handleLootPickup
       // and client-side recipient gate both flip to free-for-all so
       // anyone in zone may claim (driven by ownerOnlyUntil + isDeathDrop).
-      recipients: [playerId],
+      recipients: opts && Array.isArray(opts.recipients) ? opts.recipients.slice(0, 4) : [playerId],
       shares: {}, // proto-ok: player-keyed; join ids gate-hardened v2.3.1202
-      killerName: ownerName,
+      killerName: opts && typeof opts.ownerName === 'string' ? opts.ownerName : ownerName,
       ts: Date.now(),
       inventoryClaimed: false,
       claimedBy: {}, // proto-ok: player-keyed; join ids gate-hardened v2.3.1202
       isDeathDrop: true,
       deathItems: items,
-      ownerOnlyUntil: Date.now() + this.DEATH_PILE_OWNER_MS,
+      ownerOnlyUntil: opts && typeof opts.ownerOnlyUntil === 'number' ? opts.ownerOnlyUntil : Date.now() + this.DEATH_PILE_OWNER_MS,
       expiry: Date.now() + this.DEATH_PILE_TOTAL_MS,
     };
     if (!this.loot[zone]) this.loot[zone] = [];
@@ -5806,3 +5827,4 @@ Object.assign(GameRoom.prototype, arrowBlastMethods); /* v2.3.2279 */
 // v2.3.1983: population-scaled spawns -- see spawnscale.js.
 Object.assign(GameRoom.prototype, spawnScaleMethods);
 Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
+Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */

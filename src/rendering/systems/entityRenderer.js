@@ -7345,7 +7345,8 @@ function createPlayerDisplay() {
      _updatePlayer — never rebuilt per frame.  Rendered even though the
      local nameplate is hidden: this is the "am I flagged?" indicator
      the ThreatIncomingPanel copy promises. */
-  const skullText = new Text({ text: '\u{1F480}', style: { fontSize: 13 } });
+  /* v2.3.3058: 13 -> 18 px, over the band now (see the per-frame placing) */
+  const skullText = new Text({ text: '\u{1F480}', style: { fontSize: 18 } });
   skullText.anchor.set(0.5, 1);
   skullText.visible = false;
   skullText.y = -52;
@@ -7730,7 +7731,8 @@ function createOtherPlayerDisplay() {
      docs/specs/threats.md "Skull rendering").  One Text per display,
      driven by a change-cache in _updateOtherPlayers; never rebuilt per
      frame (the v2.3.1185 party-marker budget). */
-  const skullText = new Text({ text: '\u{1F480}', style: { fontSize: 13 } });
+  /* v2.3.3058: 13 -> 18 px, over the band now (see the per-frame placing) */
+  const skullText = new Text({ text: '\u{1F480}', style: { fontSize: 18 } });
   skullText.anchor.set(0.5, 1);
   skullText.visible = false;
   skullText.y = -58;
@@ -11687,7 +11689,12 @@ export class EntityRenderer {
         display._skullText.visible = !!_skullPhase;
         if (_skullPhase) display._skullText.tint = _skullPhase === 'red' ? SKULL_RED_TINT : 0xffffff;
       }
-      if (_skullPhase) display._skullText.y = -58 + bobY;
+      /* v2.3.3058: over this peer's band, not behind their plate (the self
+         skull's note) -- the line other._bandTopY measures below */
+      if (_skullPhase) {
+        const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+        display._skullText.y = Math.round(PEER_HPBAR_Y - _sbh - 2) + bobY;
+      }
     }
 
     for (const [id, display] of this.otherPlayerDisplays) {
@@ -14660,7 +14667,14 @@ export class EntityRenderer {
         display._skullText.visible = !!_selfSkull;
         if (_selfSkull) display._skullText.tint = _selfSkull === 'red' ? SKULL_RED_TINT : 0xffffff;
       }
-      if (_selfSkull) display._skullText.y = -52 + bobY;
+      /* v2.3.3058: OVER the band (the name plate, or the HP bar in its place),
+         not behind it -- the plate moved over the head (v2.3.2571) and left this
+         at its old -52, half hidden under the name.  No man's land's "a red
+         skull above their head" is the first use that needs it seen. */
+      if (_selfSkull) {
+        const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+        display._skullText.y = Math.round(PLAYER_BAND_Y - _sbh - 2) + bobY;
+      }
     }
 
     // Death / invuln

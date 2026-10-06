@@ -746,6 +746,32 @@ remnant to migrate server-side, not a mode to preserve.
     - Found on the way: the Wheel's buildings have NO DOORS yet -- the
       forge, the bank, the shop and the farm (the Dungeon Workshop) are
       unreachable from the Wheel. (They have doors since v2.3.3032, below.)
+  - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
+    notification when you cross into zones with lvl 6+ monsters. It'll start
+    at 1. This means any other player 1 level above or below you can attack
+    you ..." (docs/specs/no-mans-land.md):
+    - each land's Lv 6-10 ring is No man's land 1, the next 2, out to 15
+      (`server/src/nomansland.js`, `src/data/noMansLandRings.js`,
+      mirror-audit); the banner, a chat line, and the top bar's red "☠ No
+      man's land 1 · Lv 6–10" in the stage name's place;
+    - two players may fight when both stand in it, their `ps.level`s at most
+      the LOWER of their two numbers apart, not one party -- `_nmlAllowed`,
+      asked by `_pvpAllowed` before `OPEN_PVP`, which stays off elsewhere;
+      a tap AIMS (`nmlCanAttack`, the lock's `nml`; tapping them again keeps
+      it, empty ground lets go, and it lets go when the rule stops allowing);
+    - a hit gives the attacker a RED skull, the one hit a WHITE one, 20
+      minutes each of time ONLINE, reset per hit; hitting back the one who
+      whitened you is no red; `nml_state:<pid>`, `nml_skull`, the tick's
+      `sk`; every threat skull now drawn above the name plate, 18 px;
+    - a death under the rule: the bag's items in a pile that is the KILLER's,
+      spare weapons and spare armour/legs credited to them (`nmlloot:`, with
+      the provenance row), the ids forfeited; worn gear, tools, quest items,
+      shields, outfits and gold kept -- a stash copy of WORN armour, shields and
+      outfits cannot be told from spares by the worker (storegear.js §2);
+      a RED skull's death takes everything worn too, every shield, and the
+      gold; `nml_loss` tells the game exactly what went;
+    - `caps.nomansland`, kill switch `nomansland: false`; dev vitals take
+      `hp`; `nomansland` suite (51), `mp-nomansland` (15, two screens).
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":
