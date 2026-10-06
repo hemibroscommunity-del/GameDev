@@ -1481,7 +1481,21 @@ remnant to migrate server-side, not a mode to preserve.
       (cooking.js `_pvpHealWait`, `_pvpAt` / `_healAt` in memory; the page
       holds its own bite back, "Eat again in Ns", only on `caps.pvpheal`;
       kill switch `pvpheal: false`); `fightfood` suite, `mp-fightfood`:
-      docs/specs/fight-food.md.)
+      docs/specs/fight-food.md;
+    - since v2.3.3109 the FEED & SEED'S ORDER BOARD -- the income half of the
+      owner's purpose: an Orders tab, three orders a day per player
+      (`server/src/farmorders.js` `FARM_ORDERS.POOL`, append-only), drawn once
+      a UTC day from what their Farming and Cooking levels can make, seeded by
+      (pid, day) and stored as `farmorders:<pid>` {day, ids, done}; a delivery
+      (`farm_order {slot, day, id}`, the day and id only a check -- a board
+      that turned over under an open window is 'order-stale', never another
+      order) takes the goods and pays gold and Farming XP on the live player,
+      the board's put and `_saveRpg` in one synchronous run, the board first;
+      `farm_open` carries the board (null when off); every order pays more
+      than Diego's opening price for its goods; ~150 gold a day new, 450 at
+      most; `caps.farmorders`, kill switch `farmorders: false`; a restart
+      deletes the board; `farmorders` suite, `mp-farmorders`:
+      docs/specs/farm-orders.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

@@ -5,6 +5,7 @@ import { farmBus } from '@/ui/mobile/farmBus.js';
 import { FARM_ERR_TEXT, farmItemName } from '@/game/farmFeedback.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
+import { ITEM_NAMES, iconFor, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3109: the order board names and draws goods as the bag does */
 
 /* ═══ v2.3.3102: THE FEED & SEED, A REAL FARM ═══
  *
@@ -33,7 +34,9 @@ import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
  *
  * Test hooks: data-farm, data-farm-tab, data-farm-tool, data-farm-seed,
  * data-bed / data-bed-state, data-farm-all, data-farm-buy, data-farm-status,
- * data-farm-visit; window.__btFarm (the bus). */
+ * data-farm-visit; window.__btFarm (the bus).
+ * v2.3.3109: data-farm-orders, data-farm-order={slot} / data-farm-order-done,
+ * data-farm-deliver={slot}, data-farm-orders-reset. */
 
 const C = {
   sheet: '#1E2E34', well: '#111E23', raised: '#293B41', card: '#24363C',
@@ -192,6 +195,10 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
      older worker's farm the potato and the pumpkin, and the buy hung on "No
      answer yet" (review).  A farm worker from before it grows the first four. */
   const grownCount = S._serverCaps && typeof S._serverCaps.farmCrops === 'number' ? S._serverCaps.farmCrops : 4;
+  /* v2.3.3109: the order board, only on a worker that has one (caps.farmorders;
+     an older worker has no case for farm_order and would rebroadcast it). */
+  const ordersOn = !!(S._serverCaps && S._serverCaps.farmorders);
+  const board = ordersOn ? farmBus.orders : null;
   const CROP_IDS = Object.keys(FARM.CROPS);
   const crops = FARM_CROP_ORDER.filter((id) => CROP_IDS.indexOf(id) < grownCount);
   const seedCount = (id) => Math.floor(inv[FARM.CROPS[id].seed] || 0);
@@ -279,6 +286,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
     if (d.op === 'harvest' && d.items) {
       status = { text: Object.keys(d.items).map((k) => '+' + d.items[k] + ' ' + farmItemName(k)).join(' · ') + (d.xp ? ' · +' + d.xp + ' XP' : ''), color: C.good };
     } else if (d.op === 'buy') status = { text: '+' + d.n + ' ' + farmItemName(d.item), color: C.good };
+    else if (d.op === 'order') status = { text: 'Delivered · +' + d.gold + ' gold · +' + d.xp + ' XP', color: C.good };   /* v2.3.3109 */
     else {
       const verb = { dig: 'Dug', plant: 'Planted', water: 'Watered', feed: 'Fertilized' }[d.op] || 'Done';
       status = { text: verb + ' ' + d.n + (d.n === 1 ? ' bed' : ' beds') + (last.err ? ' · ' + (FARM_ERR_TEXT[last.err] || '') : ''), color: last.err ? C.brass : C.sub };
@@ -303,7 +311,8 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
       </div>
       {/* tabs */}
       {!closed && <div style={{ display: 'flex', gap: 3, margin: '0 12px 10px', padding: 3, borderRadius: 10, background: C.well }}>
-        {[{ id: 'beds', label: 'Beds', g: FARM_LOOK.sprout }, { id: 'seeds', label: 'Seeds', g: FARM_LOOK.seed }].map((t) => (
+        {[{ id: 'beds', label: 'Beds', g: FARM_LOOK.sprout }, { id: 'seeds', label: 'Seeds', g: FARM_LOOK.seed }]
+          .concat(ordersOn ? [{ id: 'orders', label: 'Orders', g: '\uD83D\uDCDC' }] : []).map((t) => (
           <button key={t.id} data-farm-tab={t.id} onClick={() => setTab(t.id)}
             style={{ flex: 1, minHeight: 44, border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -422,6 +431,66 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
             {status && last && ((last.did && last.did.op === 'buy') || last.op === 'buy' || last.err === 'off') ? (
               <div data-farm-status="1" style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: status.color }}>{status.text}</div>
             ) : null}
+          </div>
+        )}
+
+        {/* ═══ v2.3.3109: THE ORDER BOARD (server farmorders.js) ═══
+            Three orders a day, each the worker's: what it wants, what it
+            pays, whether it is done.  Deliver is lit only when the bag holds
+            enough -- the worker checks again and takes the goods itself. */}
+        {!closed && tab === 'orders' && (
+          <div data-farm-orders="1">
+            {!board ? (
+              <div data-farm-status="loading" style={{ padding: '28px 0', textAlign: 'center', color: C.mute, fontSize: 13 }}>…</div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.sub }}>Today's orders</span>
+                  <Chip icon={COIN} color={C.brass}>{coins}</Chip>
+                </div>
+                {board.list.map((o, i) => {
+                  if (o.gone) {
+                    return (
+                      <div key={i} data-farm-order={i} style={{ padding: '10px 0', borderTop: `1px solid ${C.line}`, fontSize: 12, color: C.faint }}>
+                        {FARM_ERR_TEXT['order-gone']}
+                      </div>
+                    );
+                  }
+                  const have = Math.floor(inv[o.key] || 0);
+                  const can = !o.done && !pending && have >= o.n;
+                  return (
+                    <div key={i} data-farm-order={i} data-farm-order-done={o.done ? 1 : 0}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${C.line}` }}>
+                      {thumbFor(o.key) ? <Icon src={thumbFor(o.key)} size={26} /> : <Glyph g={iconFor(o.key)} size={26} />}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: o.done ? C.mute : C.text }}>
+                          {o.n + ' × ' + (ITEM_NAMES[o.key] || 'Goods')}
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+                          <Chip color={have >= o.n ? C.good : C.sub}>{'You have ' + have}</Chip>
+                          <Chip icon={COIN} color={C.brass}>{'+' + o.gold}</Chip>
+                          <Chip icon={XP} color="#9FD3F0">{'+' + o.xp}</Chip>
+                        </div>
+                      </div>
+                      {o.done ? (
+                        <span style={{ fontSize: 12, fontWeight: 800, color: C.good, minWidth: 76, textAlign: 'center' }}>Delivered ✓</span>
+                      ) : (
+                        <button data-farm-deliver={i} disabled={!can} onClick={() => farmBus.order(S, i)}
+                          style={{ ...btn(can), minHeight: 44, minWidth: 76, padding: '0 10px', fontSize: 12 }}>
+                          Deliver
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                <div data-farm-orders-reset="1" style={{ marginTop: 8, fontSize: 12, color: C.mute }}>
+                  {'New orders in ' + farmTimeLeft(Math.max(0, board.resetsAt - now))}
+                </div>
+                {status && last && ((last.did && last.did.op === 'order') || last.op === 'order') ? (
+                  <div data-farm-status="1" style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: status.color }}>{status.text}</div>
+                ) : null}
+              </>
+            )}
           </div>
         )}
 

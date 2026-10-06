@@ -34,6 +34,10 @@ export const farmBus = {
   view: null,
   /* worker clock minus this phone's clock, ms. */
   offset: 0,
+  /* v2.3.3109: today's order board (server farmorders.js) --
+     {day, resetsAt, list: [{id, key, n, gold, xp, done, gone?}]} -- or null
+     before the worker has sent one (or with the board switched off). */
+  orders: null,
   /* {op, at} while a request is out. */
   pending: null,
   /* The last answer: {did, err, op, at} (op: what it answered). */
@@ -51,6 +55,13 @@ export const farmBus = {
     if (Array.isArray(payload.plots) && typeof payload.beds === 'number') {
       this.view = { beds: payload.beds, plots: payload.plots };
       if (Number.isFinite(payload.now)) this.offset = payload.now - Date.now();
+    }
+    /* v2.3.3109: the board rides farm_open's answer (null with it switched
+       off) and every delivery's; a bed action's answer has no `orders` key
+       and leaves it be. */
+    if (Object.prototype.hasOwnProperty.call(payload, 'orders')) {
+      const b = payload.orders;
+      this.orders = b && typeof b === 'object' && Array.isArray(b.list) ? b : null;
     }
     if (!payload.login) {
       const op = (payload.did && payload.did.op) || (this.pending && this.pending.op) || null;
@@ -74,6 +85,16 @@ export const farmBus = {
   },
   buy(S, item, count) {
     return this._out(S, 'buy', () => S.channel.send({ type: 'farm_buy', payload: { item, count } }));
+  },
+  /* v2.3.3109: deliver one of today's orders.  The day and id ride along as
+     a check: a board that turned over at midnight under an open window is
+     refused, not delivered from a different order (farmorders.js).  Safe to
+     repeat: a delivered order is refused the second time. */
+  order(S, slot) {
+    const b = this.orders;
+    const o = b && b.list && b.list[slot];
+    if (!o || !o.id || o.done) return false;
+    return this._out(S, 'order', () => S.channel.send({ type: 'farm_order', payload: { slot, day: b.day, id: o.id } }));
   },
 
   _out(S, op, fire) {
@@ -106,7 +127,7 @@ export const farmBus = {
 
   /* A new session (a re-login as someone else) starts with no farm. */
   reset() {
-    this.view = null; this.offset = 0; this.pending = null; this.last = null;
+    this.view = null; this.offset = 0; this.pending = null; this.last = null; this.orders = null;
     this.rev += 1;
     emit();
   },

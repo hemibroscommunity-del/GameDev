@@ -4110,7 +4110,7 @@ export function setupWebSocket(ctx) {
        answer yet" (farmBus.js).  One the worker ignores (a script's junk)
        raises no false alarm: any frame clears the watch, and the worker
        pings every ~3 s. */
-    var SETTLED_SENDS = { node_strike: 1, extraction_start: 1, prog3_allocate: 1, stat_allocate: 1, cook_request: 1, farm_open: 1, farm_act: 1, farm_buy: 1 };
+    var SETTLED_SENDS = { node_strike: 1, extraction_start: 1, prog3_allocate: 1, stat_allocate: 1, cook_request: 1, farm_open: 1, farm_act: 1, farm_buy: 1, farm_order: 1 };
     var channelShim = {
       send: function send(msg) {
         if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -4170,7 +4170,8 @@ export function setupWebSocket(ctx) {
         /* v2.3.3102: the farm (FarmPanel's Feed & Seed window) -> farm.js.
            Without these three lines the window would ask and never hear back
            -- TRAPS #18, the allowlist's one way to fail silently. */
-        if (msg.type === 'farm_open' || msg.type === 'farm_act' || msg.type === 'farm_buy') {
+        /* v2.3.3109: + farm_order, the Feed & Seed's order board (farmorders.js). */
+        if (msg.type === 'farm_open' || msg.type === 'farm_act' || msg.type === 'farm_buy' || msg.type === 'farm_order') {
           ws.send(JSON.stringify(msg));
           return;
         }
