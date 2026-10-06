@@ -92,6 +92,7 @@
  * to PRIVILEGED_EVENTS. */
 
 import { SHOP_ITEMS } from './data.js';
+import { petPublic } from './petbook.js';   /* v2.3.3122: pet listings (what a buyer is shown) */
 /* v2.3.2531: gear listings live in storegear.js and every gear behaviour
    is a METHOD on the room, so this module imports nothing from it at all
    (v2.3.2551 dropped the last import, `isGearField`, when the duplicate
@@ -213,7 +214,7 @@ export const storeMethods = {
 
   _stLabel(rec) {
     const n = (rec.disp && rec.disp.name) || 'item';
-    if (rec.kind === 'weapon' || rec.kind === 'gear') return n;
+    if (rec.kind === 'weapon' || rec.kind === 'gear' || rec.kind === 'pet') return n;   /* v2.3.3122: + pet */
     return rec.qty > 1 ? rec.qty + 'x ' + n : n;
   },
 
@@ -243,7 +244,21 @@ export const storeMethods = {
        unsellable, never refused.  That is the deploy-order answer for the
        listings already resting on the shelf when this ships. */
     if (rec.kind === 'gear') return { kind: 'gear', payload: { field: rec.gearField, piece: rec.gear, row: rec.gearRow || null } };
+    /* v2.3.3122: a PET (pet trading, Phase 3).  The record's whole pet, its
+       id unchanged, and who it comes from: a buyer is one more owner, the
+       seller taking an unsold pet back is not (petbook.js _petbookGive).  A
+       full collection keeps it in the mail (inbox.js `pet`). */
+    if (rec.kind === 'pet') return { kind: 'pet', payload: { pet: rec.pet, from: rec.sellerId } };
     return { kind: 'item', payload: { invKey: rec.invKey, count: rec.qty } };
+  },
+
+  /* v2.3.3122: what a pet listing shows -- the pet as a buyer may see it
+     (petbook.js petPublic: kind, stage, golden, size, name, level, owners),
+     and a name for the sale's notes.  Its own name, else its kind's. */
+  _stPetDisplay(pet) {
+    const pub = petPublic(pet) || { kind: 'dewdrop', stage: 1, lv: 1 };
+    const kindName = pub.kind.charAt(0).toUpperCase() + pub.kind.slice(1);
+    return { name: pub.name || kindName, pet: pub };
   },
 
   /* The public view of a listing.  The escrowed weapon BLOB never goes on
@@ -587,7 +602,7 @@ export const storeMethods = {
        `storeGear: false` into the `liveflags` key stops the offer AND,
        here, stops the acceptance: a client that kept its button would
        still be refused. */
-    if (kind !== 'item' && kind !== 'weapon' && kind !== 'gear') return { ok: false, settled: true, error: 'Invalid kind' };
+    if (kind !== 'item' && kind !== 'weapon' && kind !== 'gear' && kind !== 'pet') return { ok: false, settled: true, error: 'Invalid kind' };   /* v2.3.3122: + pet */
     if (kind === 'gear' && this._stGearOff()) {
       return { ok: false, settled: true, error: 'Gear cannot be listed right now' };
     }
@@ -603,6 +618,7 @@ export const storeMethods = {
     const escrowOp = 'store:' + id + ':esc';
     let invKey = null; let weapon = null; let qty = 1;
     let gear = null; let gearField = null; let gearRow = null;   /* v2.3.2531; row v2.3.2551 */
+    let pet = null;   /* v2.3.3122 */
 
     if (kind === 'item') {
       const k = typeof body.invKey === 'string' ? body.invKey : '';
@@ -664,6 +680,24 @@ export const storeMethods = {
       gearRow = got.row;
     }
 
+    /* ═══ v2.3.3122: A PET (pet trading, docs/PET-TRAPPING-PLAN.md) ═══
+       Named by its id, which never changes; the gate is the pets record's
+       (petbook.js _petSellable): yours, not out with you, not an old pet,
+       a day past its catch -- the plan's "The pet must be owned, not active,
+       past `tradeAfter`, and not in another trade".  Escrowed at placement
+       (rule 7: value at rest lives in storage): taken out of the record
+       here, synchronously, and held in this listing until it sells, is
+       taken down, or expires -- every one of which hands it on through
+       _stGoodsCredit, so it travels the same markers and wake-time rebuild
+       as every other listing. */
+    if (kind === 'pet') {
+      const petId = typeof body.petId === 'string' ? body.petId : '';
+      const may = this._petSellable(playerId, petId, Date.now());
+      if (!may.ok) return { ok: false, settled: true, reason: may.why, error: 'That pet cannot be sold (' + may.why + ')' };
+      pet = this._petbookTake(playerId, petId);
+      if (!pet) return { ok: false, settled: true, reason: 'no-pet', error: 'That pet cannot be sold (no-pet)' };
+    }
+
     const now = Date.now();
     const rec = {
       id,
@@ -691,11 +725,17 @@ export const storeMethods = {
          -- no second recovery mechanism, and no `escrowed: true` flag that
          could strand a piece forever if a listing record went missing. */
       gearRow,
-      qty: (kind === 'weapon' || kind === 'gear') ? 1 : qty,
+      /* v2.3.3122: the escrowed pet, whole (its id, story and level go with
+         it); never on the wire -- _stPublic ships `disp` */
+      pet,
+      qty: (kind === 'weapon' || kind === 'gear' || kind === 'pet') ? 1 : qty,
       cat: kind === 'weapon' ? 'weapon'
         : kind === 'gear' ? this._stGearCategory()
+        : kind === 'pet' ? 'pet'
         : this._stCategory(invKey),
-      disp: kind === 'gear' ? this._stGearDisplay(gearField, gear) : this._stDisplay(kind, invKey, weapon),
+      disp: kind === 'gear' ? this._stGearDisplay(gearField, gear)
+        : kind === 'pet' ? this._stPetDisplay(pet)
+        : this._stDisplay(kind, invKey, weapon),
       askPrice: p,
       createdAt: now,
       expiresAt: now + STORE.LISTING_EXPIRY,

@@ -710,6 +710,37 @@ export const QUEST_REWARDS = {
                objective:{type:'collect', invPrefix:'ore_', count:5, consume:true},
                item:{kind:'armor', name:"Copper Torso", mat:'copper', tierMult:1.0}},
 
+      /* ═══ v2.3.3121: BEASTMASTER BRO -- the trapping line ═══
+         docs/PET-TRAPPING-PLAN.md, Phase 2: "A Beastmaster beside the
+         Woodworker with a short quest line the server checks: make traps, arm
+         traps, reach Trapping 6", and "A `catch` quest goal".  Every step is
+         checked HERE, by four objective types of trapping's own (quests.js
+         _questObjectiveMet):
+           traps_made  box traps made at the Woodworker (trapping.js
+                       _handleMakeTraps credits the count made);
+           trap_roll   traps SPRUNG -- one a roll at a kill (_trapRollOnKill):
+                       an arm alone costs nothing and proves nothing;
+           skill       a life skill's level, read at the hand-in;
+           catch       a pet caught (_trapRollOnKill, on the catch).
+         The counters live in _questKills beside the kill quests', counted only
+         while the quest is active.  No combat XP (xp 0): no Melee/Bow/Magic
+         to choose at the hand-in; they pay gold and box traps.  beast_1 hands
+         over the three pine logs its traps are made from.  Mirrored by
+         QUEST_CHAINS in src/data/gameSystems.js (mirror-audit). */
+      beast_1:    {gold:40,  xp:0, next:'beast_2',
+                   objective:{type:'traps_made', count:3},
+                   grantOnAccept:[{kind:'inv', key:'wood_pine_log', n:3}],
+                   item:{kind:'inv', key:'trap_box', n:2}},
+      beast_2:    {gold:100, xp:0, next:'beast_3',
+                   objective:{type:'trap_roll', count:5},
+                   item:{kind:'inv', key:'trap_box', n:5}},
+      beast_3:    {gold:250, xp:0, next:'beast_4',
+                   objective:{type:'skill', skill:'trapping', level:6},
+                   item:{kind:'inv', key:'trap_box', n:10}},
+      beast_4:    {gold:500, xp:0, next:null,
+                   objective:{type:'catch', count:1},
+                   item:{kind:'inv', key:'trap_box', n:15}},
+
       mayor_1:    {gold:50,  xp:10,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:28,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
       mayor_3:    {gold:300, xp:70, next:null},

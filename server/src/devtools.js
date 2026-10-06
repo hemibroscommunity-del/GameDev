@@ -221,14 +221,18 @@ export const devToolsMethods = {
    * worth of gear into a live shared economy from a debug button is a
    * different feature with different consequences.  /dev/kit is the one that
    * hands out equipment, and it says so. */
-  _devFinishQuests(playerId) {
+  _devFinishQuests(playerId, body) {
     const t = this._devTarget(playerId);
     if (!t) return { ok: false, error: 'player not online' };
     const ps = t.ps;
     if (!ps._quests) ps._quests = Object.create(null);   /* rule 4 */
     const table = this._QUEST_REWARDS_DATA();
     const finished = [];
+    /* v2.3.3121: `except`, a quest-id prefix left as it is -- 'beast_' keeps
+       Beastmaster Bro's line for mp-beastmaster to play from its start */
+    const except = body && typeof body.except === 'string' && body.except ? body.except : null;
     for (const qid of Object.keys(table)) {
+      if (except && qid.startsWith(except)) continue;
       if (ps._quests[qid] === 'turnedIn') continue;
       ps._quests[qid] = 'turnedIn';
       finished.push(qid);
@@ -338,6 +342,89 @@ export const devToolsMethods = {
     return { ok: true, zone: z, cleared };
   },
 
+  /* ═══ v2.3.3120: PET TRAPPING'S TEST LEVERS (trapping.js) ═══
+     At 1% at best, looking at a catch means a hundred kills -- so, for the
+     owner's test kit and the QA scenario (mp-trapping), the levers a catch
+     needs, on this same admin-key surface (no new socket message):
+       level   set the player's Trapping level (1-120);
+       traps   set the box traps in the bag; logs: pine logs, for the Traps tab;
+       next    'catch' or 'miss': the player's NEXT roll is that, whatever the
+               odds (in memory, one roll, gone on a deploy -- trapping.js
+               `_trapForced`); never stored, never on the wire;
+       kill    a monster id in the player's zone: killed with all of its damage
+               the player's, through the real kill path (_resolveMonsterKill), so
+               the trap springs exactly as a real kill springs it. */
+  _devTrapping(playerId, body) {
+    const t = this._devTarget(playerId);
+    if (!t) return { ok: false, error: 'player not online' };
+    const ps = t.ps;
+    const b = body || {};
+    const out = { ok: true };
+    const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(Number(v) || 0)));
+    if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
+    if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
+    if (b.level != null) { const L = clampInt(b.level, 1, 120); ps.lifeSkills.trapping = { level: L, xp: 0 }; out.level = L; }
+    if (b.traps != null) { const n = clampInt(b.traps, 0, 999); if (n > 0) ps.inventory.trap_box = n; else delete ps.inventory.trap_box; out.traps = n; }
+    if (b.logs != null) { const n = clampInt(b.logs, 0, 999); if (n > 0) ps.inventory.wood_pine_log = n; else delete ps.inventory.wood_pine_log; out.logs = n; }
+    /* v2.3.3123: `look: {gold, size}` -- the NEXT pet made (a catch, or the
+       `pet` lever below) comes out golden and/or this size, for the reveal's
+       phone test (mp-petsmatter) and the owner's own look at one.  Never set
+       by play and never stored, like `next`. */
+    if (b.look && typeof b.look === 'object') {
+      if (!(this._petLookForced instanceof Map)) this._petLookForced = new Map();
+      const lk = {};
+      if (typeof b.look.gold === 'boolean') lk.gold = b.look.gold;
+      if (b.look.size != null && Number.isFinite(Number(b.look.size))) lk.size = Number(b.look.size);
+      this._petLookForced.set(playerId, lk);
+      out.look = lk;
+    }
+    /* v2.3.3122: `pet: {home, level, tradeable}` -- a pet in the record as a
+       catch makes one (petbook.js _petbookAddCatch), for the trading phone
+       test (mp-pettrade); `tradeable` puts its catch a day back, past the
+       24-hour hold.  The admin key's, like every lever here. */
+    if (b.pet && typeof b.pet === 'object') {
+      const home = typeof b.pet.home === 'string' ? b.pet.home : 'frost';
+      const lvl = clampInt(b.pet.level || 1, 1, 100);
+      const T = Math.max(lvl, (ps.lifeSkills.trapping && ps.lifeSkills.trapping.level) || 1);
+      const made = this._petbookAddCatch(playerId, ps, { home, level: lvl, arch: 'snowman' }, T, Date.now());
+      if (!made) { out.ok = false; out.error = 'the pets record is not loaded'; }
+      else {
+        if (b.pet.tradeable) {
+          const book = this._petbookOf(playerId);
+          const rp = book && book.rec.list.find((q) => q.id === made.id);
+          if (rp) { rp.tradeAfter = Date.now() - 1000; this._petbookSave(playerId, book); }
+        }
+        this._petbookSend(playerId);
+        out.pet = made.id;
+      }
+    }
+    if (b.next === 'catch' || b.next === 'miss') {
+      if (!(this._trapForced instanceof Map)) this._trapForced = new Map();
+      this._trapForced.set(playerId, b.next);
+      out.next = b.next;
+    }
+    if (typeof b.kill === 'string' && b.kill) {
+      const m = (this.monsters[ps.z] || []).find((x) => x && x.id === b.kill);
+      if (!m || !m.alive) { out.ok = false; out.error = 'no such live monster in your zone'; }
+      else {
+        /* v2.3.3121: `xp`, what this one kill pays in combat XP -- a pet's
+           level-up (a tenth of it) in one kill rather than twenty-five
+           (mp-beastmaster).  Put back after, unless the death is deferred (a
+           slime's swell pays at its blast). */
+        const keepXp = m.xp;
+        if (b.xp != null) m.xp = clampInt(b.xp, 1, 1000000);
+        m.dmgByPlayer = Object.create(null);
+        m.dmgByPlayer[playerId] = m.maxHp || 1;
+        m.hp = 0;
+        this._resolveMonsterKill(ps.z, m, playerId, ps, 'dev');
+        if (b.xp != null && !(m._burstUntil > Date.now())) m.xp = keepXp;
+        out.killed = m.id;
+      }
+    }
+    this._devPush(playerId, ps);
+    return out;
+  },
+
   /* Routed from _adminFetch, so auth, the fail-closed 404 and the audit log
      are all inherited rather than re-implemented.  Returns null when the
      path is not ours, so the caller falls through to its own 404. */
@@ -360,9 +447,10 @@ export const devToolsMethods = {
     if (path === '/dev/unlock') result = this._devUnlockZones(playerId);
     else if (path === '/dev/kit') result = this._devKit(playerId, body);
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
-    else if (path === '/dev/quests') result = this._devFinishQuests(playerId);   /* v2.3.2277 */
+    else if (path === '/dev/quests') result = this._devFinishQuests(playerId, body);   /* v2.3.2277; v2.3.3121: + except */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
     else if (path === '/dev/daily') result = await this._drDev(playerId, body);   /* v2.3.3109: stars, bonus spins, a quest's count */
+    else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3120 */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

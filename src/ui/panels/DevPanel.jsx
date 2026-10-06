@@ -151,7 +151,7 @@ const CAP_GATES = [
   'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'broVerify',
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
-  'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
+  'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3shared' /* v2.3.2592 */, 'prog3rel' /* v2.3.2680 */, 'gearq' /* v2.3.2664 */, 'prog3x', 'questTrack', 'sponsor', 'store',
   'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeChat' /* v2.3.2621 */, 'storeOffer' /* v2.3.2623 */,
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
@@ -166,6 +166,15 @@ const CAP_GATES = [
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
   'dailyspin' /* v2.3.3109: the Gambling Den's free daily spin -- lower case, a kill switch */,
   'dailyquests' /* v2.3.3109: daily quests + the season -- lower case, a kill switch */,
+  'trapping' /* v2.3.3120: arm a trap, then kill it -- lower case, a kill switch */,
+  'trapcraft' /* v2.3.3120: box traps at the Woodworker -- lower case, a kill switch */,
+  'petbook' /* v2.3.3120: the pets record and the Pets page -- lower case, a kill switch */,
+  'petlevels' /* v2.3.3121: pets earn XP while out with you -- lower case, a kill switch */,
+  'beastmaster' /* v2.3.3121: Beastmaster Bro and his quests -- lower case, a kill switch */,
+  'pettrade' /* v2.3.3122: pets in trades, the auction house and the mail -- lower case, a kill switch */,
+  'petwards' /* v2.3.3123: the land ward of the pet out with you -- lower case, a kill switch */,
+  'petshow' /* v2.3.3123: the others see your pet -- lower case, a kill switch */,
+  'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

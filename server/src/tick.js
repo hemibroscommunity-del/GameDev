@@ -330,6 +330,9 @@ export const tickMethods = {
       const seq = this.tickSeq++;
       const ts = Date.now();
 
+      /* v2.3.3123: the others' pets (petbook.js _petWireRefresh), unless
+         `petshow: false` -- read once a tick, not once a player */
+      const petShow = !(this._petShowOff && this._petShowOff());
       const playerWire = (ps) => ({
         x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy,
         f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs, ex: ps.ex,
@@ -347,6 +350,14 @@ export const tickMethods = {
         /* v2.3.3058: No man's land's skull, 'r' or 'w' (nomansland.js);
            absent with none, so everyone else's wire is unchanged */
         ...(ps._nml && (ps._nml.red > 0 || ps._nml.white > 0) ? { sk: ps._nml.red > 0 ? 'r' : 'w' } : {}),
+        /* v2.3.3123: the pet out with them, 'kind.stage.gold.size.lv'
+           (petbook.js petWireOf), so everyone else draws it beside them;
+           absent with none, so a player with no pet's wire is unchanged.
+           `pw`, NOT `pt` -- in a PLAYER's data `pt` is the pants (join, the
+           track relay, peerCosmetics.js), the same trap `spr` avoids with
+           `sp` -- and not `pet`, the old client-relayed one the profile card
+           reads. */
+        ...(petShow && ps._petWire ? { pw: ps._petWire } : {}),
       });
 
       // Dirty players bucketed by the zone they are standing in, so a
