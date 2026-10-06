@@ -154,8 +154,9 @@ const sigOf = (p) => (p && typeof p === 'object' ? [p.name, p.gearBase, p.tierMu
  *
  *  A bag loss names each piece it took ({field, gid} or, for a piece with no
  *  id, {field, sig}) and only those leave your lists: the worker takes the
- *  spare weapons and the spare armour and legs it can tell from what you
- *  wear, and no shield and no outfit piece (server/src/nomansland.js says
+ *  spare weapons and the spare armour, legs and (v2.3.3082, once this game
+ *  has told it which is on your arm: game/shieldWear.js) shields it can tell
+ *  from what you wear, and no outfit piece (server/src/nomansland.js says
  *  why), so clearing whole lists here would throw away what it left you --
  *  and the next join would bring it back from the worker's copy anyway. */
 export function applyNmlLoss(S, payload, save) {
@@ -181,5 +182,5 @@ export function applyNmlLoss(S, payload, save) {
   const who = payload.by ? payload.by : 'your death';
   nmlSay(S, payload.red
     ? `☠ ${payload.by ? payload.by + ' killed you while you carried a red skull' : 'You died with a red skull'}: you lost everything you carried and wore, and your gold.`
-    : `☠ ${who} took your bag in No man's land: its items, your spare weapons and your spare armour. What you wear is still yours.`);
+    : `☠ ${who} took your bag in No man's land: its items and your spare weapons, armour and shields. What you wear is still yours.`);
 }

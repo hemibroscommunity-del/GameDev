@@ -1540,8 +1540,8 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     && clientGatherReqLvl('fishSpot', 6) === 5);
 }
 
-console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
-process.exit(failures === 0 ? 0 : 1)
+// v2.3.3082: this block sat AFTER the process.exit below (a merge put it
+// there), so its three checks never ran -- moved back above it.
 // ── v2.3.3058: No man's land's rings (server nomansland.js, client
 // game/noMansLand.js).  The banner, the top bar and the tap's aim are the
 // game's; every hit is the worker's -- one ring apart, and a player standing
@@ -1558,4 +1558,6 @@ process.exit(failures === 0 ? 0 : 1)
   }
   check('no man\'s land: the same level at every spot out to the gates', off.length === 0, off.slice(0, 4));
 }
-;
+
+console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
+process.exit(failures === 0 ? 0 : 1);

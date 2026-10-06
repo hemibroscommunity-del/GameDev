@@ -20,6 +20,7 @@ import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the 
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
+import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3082: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
@@ -1180,6 +1181,11 @@ export function setupWebSocket(ctx) {
                  restored from storage if the link is still fresh.  Server-owned
                  — the client never writes it, it only renders from it. */
               if (S.rpg) S.rpg._bro = msg.bro || null;
+              /* v2.3.3082: and which shield is on the arm (server/src/
+                 shieldwear.js) -- the worker restored its last record, and the
+                 bag here is the truth about the arm.  Only against a worker
+                 that advertises caps.shieldwear (game/shieldWear.js). */
+              try { syncShieldWorn(S); } catch (e) { /* the next change reports it */ }
               /* v2.3.1178: this session's private token for the
                  mutating HTTP economy endpoints (market place/cancel,
                  arena join/leave). Sent as the x-bt-auth header by
@@ -2047,10 +2053,21 @@ export function setupWebSocket(ctx) {
                     sh.tierMult == null ? '' : sh.tierMult, sh.tier || ''].join('|');
                 };
                 var _wantSig = _shSig(_svShield);
+                /* v2.3.3082: a recorded piece is also known by its id -- the
+                   echo now carries the shield WORN (shieldwear.js), and the
+                   same piece must never come back as a second one */
+                var _wantGid = typeof _svShield.gid === 'string' && _svShield.gid ? _svShield.gid : null;
+                var _sameSh = function (sh) {
+                  return !!sh && ((_wantGid && sh.gid === _wantGid) || _shSig(sh) === _wantSig);
+                };
                 if (!Array.isArray(S.rpg.shieldStash)) S.rpg.shieldStash = [];
-                var _held = _shSig(S.rpg.shield) === _wantSig
-                  || S.rpg.shieldStash.some(function (sh) { return _shSig(sh) === _wantSig; });
-                if (!_held) S.rpg.shieldStash.push(_svShield);
+                var _held = _sameSh(S.rpg.shield) || S.rpg.shieldStash.some(_sameSh);
+                if (!_held) {
+                  S.rpg.shieldStash.push(_svShield);
+                  /* v2.3.3082: a new one is in the BAG here, so say what the
+                     arm really holds -- the worker has it on the arm */
+                  try { syncShieldWorn(S); } catch (e) { /* the next change reports it */ }
+                }
               }
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
               /* v2.3.1697: adopt the worker's legs piece.  ps.legsArmor has
@@ -4115,6 +4132,12 @@ export function setupWebSocket(ctx) {
         /* v2.3.3083: Forge armor from bars (SmithyPanel's Armor tab) ->
            armorforge.js.  TRAPS #18: without this the request never leaves. */
         if (msg.type === 'forge_armor') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.3082: the shield on the arm (game/shieldWear.js) -> shieldwear.js.
+           TRAPS #18: without this line the report never leaves the browser. */
+        if (msg.type === 'shield_wear') {
           ws.send(JSON.stringify(msg));
           return;
         }
