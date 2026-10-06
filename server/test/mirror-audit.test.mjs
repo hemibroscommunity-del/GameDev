@@ -39,7 +39,7 @@ import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
-import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
+import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */ } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
 import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058 */
@@ -47,6 +47,7 @@ import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.j
 import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
+  MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
   ARMOR_DR, /* v2.3.2664: the armour grades' ceiling lifts */
@@ -121,6 +122,15 @@ const room = Object.create(GameRoom.prototype);
 {
   const bad = Object.keys(SRV.MONSTER_HP_CURVE).filter((f) => SRV.MONSTER_HP_CURVE[f] !== MONSTER_HP_CURVE[f]);
   check('MONSTER_HP_CURVE identical (a drifted curve desyncs every kill-time expectation)', bad.length === 0, bad);
+}
+/* v2.3.3055: the damage curve and the GROWING flat -- the Points window's
+   scene fights the client's createMonster, so its numbers are these */
+{
+  const bad = Object.keys(SRV.MONSTER_DMG_CURVE).filter((f) => SRV.MONSTER_DMG_CURVE[f] !== MONSTER_DMG_CURVE[f]);
+  check('MONSTER_DMG_CURVE identical', bad.length === 0 && Object.keys(MONSTER_DMG_CURVE).length === Object.keys(SRV.MONSTER_DMG_CURVE).length, bad);
+  const flats = [];
+  for (let L = 1; L <= 100; L++) if (SRV.monsterHpFlat(L) !== clientMonsterHpFlat(L)) flats.push({ L, server: SRV.monsterHpFlat(L), client: clientMonsterHpFlat(L) });
+  check('monsterHpFlat identical at every level 1-100', flats.length === 0, flats.slice(0, 5));
 }
 
 // ── 3. FISH_TIERS: level gates + names (server name is the client
@@ -1453,6 +1463,32 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('wheel dungeons: the arena\'s size (WHEEL_ARENA = WHEEL_DUNGEON.WIDTH x HEIGHT)',
     CLIENT_WHEEL_ARENA.W === SRV_WHEEL_DUNGEON.WIDTH && CLIENT_WHEEL_ARENA.H === SRV_WHEEL_DUNGEON.HEIGHT,
     { cli: CLIENT_WHEEL_ARENA, srv: { W: SRV_WHEEL_DUNGEON.WIDTH, H: SRV_WHEEL_DUNGEON.HEIGHT } });
+}
+
+// ── LIFE-SKILL LEVELS: the banner says the level the worker makes ──
+// v2.3.3041.  The client predicts a harvest's level-up (awardSkillXp) and
+// fires the banner from it; the worker's _addLifeSkillXp is the truth.  They
+// disagreed from level 0 (463 XP to 1 here, 500 to 2 there), so the banner
+// said "Level 1" for a level the worker made 2.  Same arithmetic, every start.
+{
+  const room = Object.create(GameRoom.prototype);
+  let bad = null;
+  for (const start of [0, 1, 2, 5, 19]) {
+    for (const xp of [1, 100, 463, 499, 500, 540, 1000, 2254, 9999]) {
+      const cli = { s: { level: start, xp: 0 } };
+      clientAwardSkillXp(cli, 's', xp);
+      const ps = { lifeSkills: { s: { level: start, xp: 0 } } };
+      room._addLifeSkillXp(ps, 's', xp);
+      if (cli.s.level !== ps.lifeSkills.s.level || cli.s.xp !== ps.lifeSkills.s.xp) { bad = { start, xp, cli: cli.s, srv: ps.lifeSkills.s }; break; }
+    }
+    if (bad) break;
+  }
+  check('life-skill levels: the client\'s predicted level-up is the worker\'s, from every start level (0 included)', bad === null, bad);
+  const d = clientDefaultLifeSkills();
+  check('life-skill levels: a new character\'s skills start at level 1, never 0',
+    ['woodcutting', 'fishing', 'mining', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'farming', 'trapping'].every((k) => d[k] && d[k].level === 1), d);
+  const old = clientMigrateLifeSkills({ mining: { level: 0, xp: 300 }, fishing: { level: 3, xp: 10 } });
+  check('life-skill levels: a stored 0 heals to 1 (XP kept), a real level is left alone', old.mining.level === 1 && old.mining.xp === 300 && old.fishing.level === 3, { mining: old.mining, fishing: old.fishing });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

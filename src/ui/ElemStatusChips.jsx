@@ -22,7 +22,7 @@ import { ELEM_ICON_SRC } from '@/game/elemHits.js';
 const ROWS = [
   { key: '_chillUntil', img: ELEM_ICON_SRC['elem-frost'], label: 'Chilled', color: '#9fd8ff' },
   { key: '_burnUntil', img: ELEM_ICON_SRC['elem-flame'], label: 'Burning', color: '#ff9a3c' },
-  { key: '_stuckUntil', img: ELEM_ICON_SRC.slime, label: 'Stuck', color: '#8be36a' },
+  { key: '_stuckUntil', img: ELEM_ICON_SRC['elem-flora'], label: 'Stuck', color: '#8be36a' },   /* v2.3.3044: the leaf, not the slime's splat */
   /* v2.3.3014: the rock monster's daze, the fishman's soak, the Mire's
      poison (the storm's crackle is over before a chip could say so, as the
      gust's shove is: its icon rides the number) */

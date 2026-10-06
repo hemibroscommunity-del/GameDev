@@ -1485,7 +1485,10 @@ export function setupWebSocket(ctx) {
               var _cp = msg.payload && msg.payload.prize;
               if (_cp) {
                 try {
-                  if (_cp.kind === 'coins' && _cp.coins > 0) _applyLootCredit({ coins: _cp.coins }, S);
+                  /* v2.3.3045: `quiet` -- the chest's own window plays its coins
+                     when they rise out of it (ChestReveal), not here, where the
+                     worker's answer lands while the chest is still shaking shut */
+                  if (_cp.kind === 'coins' && _cp.coins > 0) _applyLootCredit({ coins: _cp.coins, quiet: true }, S);
                   else if (_cp.kind === 'armor' && _cp.piece) _applyLootCredit({ armor: [_cp.piece] }, S);
                 } catch (_ce) { /* the reveal still shows */ }
                 try { chestRevealBus.prize(_cp); } catch (_re) {}
@@ -2302,9 +2305,36 @@ export function setupWebSocket(ctx) {
                   life: 1.0, color: ['#ff5e6c', '#cc2233', '#ff8888'][Math.floor(Math.random() * 3)], size: 2 + Math.random() * 3
                 });
               }
-              S.screenShake = 10;
+              /* ═══ v2.3.3042: A DEATH YOU FEEL AND HEAR ═══
+                 Owner: "Death sound effect and screen shake didn't take
+                 effect when character died."  This is the one death path a
+                 player on the worker takes, and all three of its cues were
+                 too weak to notice: the sound was deathBoom(), built of
+                 beep()s, which have played nothing since v2.3.1103; the
+                 shake was 10 px of jitter that decays x0.85 a frame (1-2 px
+                 within ~150 ms); and the dark flash the old local paths set
+                 (S._deathFlash, effectsRenderer) was never set here.  Now:
+                 playerDeath() from real recordings (gameDisplay.js), a shake
+                 of 18, the 500 ms flash, and the camera knocked AWAY from
+                 the monster that killed you -- the cause names it.  (The
+                 killing blow's own number and clang are let through too:
+                 gameEvents.js monster_attack.) */
+              S.screenShake = Math.max(S.screenShake || 0, 18);
+              S._deathFlash = Date.now();
+              try {
+                var _dCause = msg.payload && msg.payload.cause;
+                var _dKid = (typeof _dCause === 'string' && _dCause.indexOf('monster:') === 0) ? _dCause.slice(8) : null;
+                var _dKm = (_dKid && S.monsters) ? S.monsters.find(function (mm) { return mm && mm.id === _dKid; }) : null;
+                if (_dKm && typeof _dKm.x === 'number') {
+                  var _dAng = Math.atan2(S.player.y - _dKm.y, S.player.x - _dKm.x);
+                  S._camPunch = { dx: Math.cos(_dAng) * 16, dy: Math.sin(_dAng) * 16, ts: Date.now() };
+                }
+              } catch (e) { /* a camera kick never breaks the death */ }
               pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
-              BT_AUDIO.deathBoom();
+              BT_AUDIO.playerDeath();
+              if (typeof window !== 'undefined' && window.__btProbe) {
+                window.__btLastDeath = { at: Date.now(), shake: S.screenShake, flash: S._deathFlash, punch: S._camPunch ? { dx: +S._camPunch.dx.toFixed(1), dy: +S._camPunch.dy.toFixed(1) } : null, cause: (msg.payload && msg.payload.cause) || null };
+              }
               /* v2.3.3017: a breadcrumb in the crash log, sent only with the
                  next real event (debug/crashTrap.js _QUIET): a black screen
                  reported right after a death was the respawn's veils */
@@ -3053,7 +3083,9 @@ export function setupWebSocket(ctx) {
              the function: a shard-only or skull-only credit is not a coin
              sound, and a 0-coin share should not click.  Pet credits ring
              too -- the coins landed either way. */
-          try { BT_AUDIO.play('coin-pickup', { vol: 0.45 }); } catch (_ce) {}
+          /* v2.3.3045: unless the caller plays it in time with its own
+             picture (the daily chest: ChestReveal, on the coins' rise) */
+          if (!payload.quiet) { try { BT_AUDIO.play('coin-pickup', { vol: 0.45 }); } catch (_ce) {} }
           /* v2.3.2545: dev probe, house style (cf. window.__btLootSprites) and
              gated on the harness's __btProbe flag so a real player never pays
              for it.  tools/qa/mp/mp-lootcue.mjs counts this, which is what
@@ -3062,7 +3094,7 @@ export function setupWebSocket(ctx) {
              the one property that must hold if the cue is ever moved off the
              worker's confirmation. */
           try {
-            if (typeof window !== 'undefined' && window.__btProbe) {
+            if (typeof window !== 'undefined' && window.__btProbe && !payload.quiet) {   /* v2.3.3045: only a chime that played */
               window.__btCoinSfx = (window.__btCoinSfx || 0) + 1;
             }
           } catch (_pe) {}

@@ -590,6 +590,24 @@ remnant to migrate server-side, not a mode to preserve.
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
     longer, with "Max MP" and "Specials on a full bar" lines
     (`specialsOnABar`); `statsim` suite §7, `mp-statdemo`.
+  - Since v2.3.3050-v2.3.3053 THE HERO SHEET, from the owner's notes of
+    2026-10-05 (docs/specs/hero-sheet-pills.md):
+    - the spend window's MAX HP / Stamina / Max Mana row reads the POOL'S new
+      total as its bar shows it, not the points' raw bonus ("48hp for 6
+      points" when the bar became 37): `statPreview.js` `POOL_STAT`,
+      `pooled`, `poolShown`, shared with the scene; `statsim` §9;
+    - the points grid FOLLOWS THE HELD WEAPON: a change of weapon brings it
+      back (`heldCatRef`), the window's tabs aim only the window;
+    - the per-weapon and character point bubbles BREATHE while points wait
+      (game.css `bt-pts-bubble`, transform and opacity only);
+    - the Equipment tab's stats are PILLS, the owner's mockup: picture, name,
+      value; OFFENSE gold with DPS beside its heading, PLAYER blue, the
+      vitals as filled pills -- fourteen stats where there were seven, each
+      read by the Points tab's own reader (`heroStatPills.js`); upright, the
+      left column is the figure, the gear and PLAYER, the right the vitals and
+      OFFENSE; the tab SCROLLS again with the bottom fade on (fourteen
+      readable pills cannot fit the ~150 px window); the eighth LANTERN-SLATE
+      exception; `mp-charfit` (three phone sizes), `mp-prog3`.
   - Since v2.3.3009 the Wheel's TOP BAR says where you are -- the owner:
     "Put the 'brotown safe' and other location indicators in place of the
     'the wheel lvl 1-2' on the top bar" -- the land over its stage and
@@ -665,6 +683,19 @@ remnant to migrate server-side, not a mode to preserve.
       checks them against the ground as drawn (docs/specs/wheel-resources.md);
     - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§9,
       `mp-wheeldeep`.
+    - since v2.3.3055 a monster's level MEANS SOMETHING -- the owner: "lvl 7
+      killing lvl 17 slimes easily": the +100 flat HP was the same at every
+      level (a Lv17 slime 118 HP, a Lv3 109); it now GROWS 10% a level from
+      Lv3 (`MONSTER_HP_CURVE.flatRamp`, `monsterHpFlat`: Lv7 147, Lv17 380,
+      Lv30 1,311) and damage 6.5% a level (`MONSTER_DMG_CURVE`, was three
+      inline 1.045s); Lv1-2 unchanged; mirrored in gameSystems.js
+      (`createMonster`, the Points scene's monster); the retired T2
+      yardstick frozen (`t2BenchFlat`); a Lv7 now loses to a Lv17 slime;
+      and since v2.3.3054 COMBAT LEVELS COME HALF AS FAST -- the owner: "slow
+      it by about 50%": `PROG3.XP_PER_DMG` 0.4 -> 0.2 and every quest's xp
+      halved on both sides (ceil); life skills untouched (the owner's 25x):
+      docs/specs/pace-and-difficulty.md, `zones` / `mirror-audit` /
+      `dungeon` suites.
   - Since v2.3.3014 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
     stuns briefly; storm shocks nearby players; water slows stamina refill;
     venom poisons over time", the owner: "Yes continue working on those
@@ -700,6 +731,20 @@ remnant to migrate server-side, not a mode to preserve.
       (`_jogPlantCrossed`): a page drawing a few frames a second rarely
       landed on one, and lost its footsteps and dust;
     - `sprint` §10, `mp-sprintpeer`: docs/specs/sprint.md "Seen and heard".
+  - Since v2.3.3056 A MONSTER YOU HURT FOLLOWS YOU ONTO SAFE GROUND -- the
+    owner: "make it so monsters can still chase you out of their zones.  I was
+    sitting in a safe zone just sniping mummies with magic and they couldn't
+    attack": the safe ground shelters everyone except from a monster they
+    PROVOKED (wheelzone.js `_wheelProvokedBy`: hurt it this life,
+    `m.dmgByPlayer`, and dealt damage within `WHEEL.PROVOKE_MS` 10 s,
+    `ps._lastDealtAt`, cleared on respawn); `_wheelSheltered` replaces the bare
+    `_wheelSafeAt` at every gate -- the sticky target, the aggro scan, the hit
+    choke point, telegraph.js's lunge/slam/burst and basic swing (now ABOVE
+    the block branch), the storm arcs, burns/poisons, and burning ground (not
+    gated before); a pursuit reaches `WHEEL.PURSUE_LEASH` 1,800 from home;
+    bystanders who never hurt it take nothing; kill switch `wheelpursue:
+    false`; server only: docs/specs/wheel-monsters.md "Provoked from the safe
+    ground", `wheelzone` §5d.
   - Since v2.3.3016 DUNGEONS IN THE WHEEL -- offered "Dungeons in the Wheel
     ... the other big missing piece", the owner: "Yes continue working on
     those items":
@@ -921,6 +966,15 @@ remnant to migrate server-side, not a mode to preserve.
     the plaque alone for the other four, nothing borrowed); and the river's
     streaks are softer ("too harsh in the river over the bridge"):
     WORLD-MAP-PIPELINE "Which land you are in", `mp-wheelmap`.
+  - Since v2.3.3057 the WORLD MAP SHOWS MORE AS YOU ZOOM -- the owner: "Make
+    it so if you tap the minimap and zoom in you can see more details":
+    ZOOM_MAX 28 (was 12), and by zoom (`AT` in WorldMapOverlay.jsx) the
+    quest's gold road and star (always, `questRoutePoint`), the other bros,
+    each land's level bands (wheelmap.js `ticks`, `spokeHalf`), the resources
+    tinted by tier and the monsters near you, the bridges and Bro Pond, and
+    in town every building named at its door (`wheelTownDoors`, a shut one
+    dim); `__btWorldMap.more` counts them: WORLD-MAP-PIPELINE "Zoom in, and
+    there is more to see", `mp-wheelmap`.
   - Since v2.3.3025 ONE LOADING SCREEN AND NO WAY BACK -- the owner: "players
     are starting in the old town and getting routed to the wheel on the
     loading screen. Also there still a portal to the old town. Disable that.
@@ -943,6 +997,16 @@ remnant to migrate server-side, not a mode to preserve.
       `anyBuildingDoor` skips its doors, so mayor_1 ("Visit 3 buildings in
       town") hides itself and the Mayor offers mayor_2 -- counted, it was an
       errand nothing could finish, and it stopped his chain (tutorial §9).
+    - Since v2.3.3047-v2.3.3049 THE FIRST QUEST GUIDES YOU
+      (docs/specs/quest-guidance.md): a giver's badge is '❗' offer (gold "!"),
+      '❔' accepted and waiting (a GREY "?", still) or '❓' ready (a GREEN disc
+      with a DRAWN check, no glyph) -- all done wears nothing; the pinned quest
+      card leads with the quest picture, then the painted check
+      (`QUEST_ART.check`) when `questObjectiveDone`; and gearFlash.js lights
+      OPEN on a folded band, then the sword AND shield tiles (`data-gear`),
+      then the bow AND staff after the hand-in, each until its slot is filled,
+      tut_1 accepted to tut_2 handed in (`data-flash`, game.css
+      `bt-gear-flash`) -- `mp-questguide`.
   - Since v2.3.3026 A HIT ON YOU READS LIKE ONE YOU DEAL -- the owner: "damage
     numbers as large as they usually are and with the elemental icon after
     the damage number similar to how the sword has sword icon": spawned over
@@ -1129,7 +1193,30 @@ remnant to migrate server-side, not a mode to preserve.
       lets go loads town as before; the way in's GPU peak 114 -> 88 MB (no
       spike over where it settles), the cache's 184 -> 172; mp-gpuaudit fails
       if either trip holds the map;
-    - the bigger wins and what each costs: docs/specs/memory-in-the-wheel.md.)
+    - the bigger wins and what each costs: docs/specs/memory-in-the-wheel.md.
+  - Since v2.3.3039-v2.3.3046 SEVEN FIXES FROM THE OWNER'S NOTES
+    (docs/specs/notes-2026-10-05-fixes.md):
+    - the Wheel's player-facing name is BROTOWN (`ZONES.wheel.name`; every
+      loading veil says "Entering BroTown"; `wheel` stays the id);
+    - a LIFE SKILL IS NEVER LEVEL 0: the client levels with the worker's
+      arithmetic (`awardSkillXp` `level || 1`), new skills start at 1 and a
+      stored 0 heals to 1 on both sides (`healLifeSkillLevels`) -- the banner
+      said "Level 1" for a level the worker made 2;
+    - a DEATH is heard and felt: `playerDeath()` from recordings (it was beeps,
+      silent since v2.3.1103), a shake of 18, the dark flash and a kick away
+      from the killer; the killing blow's number and clang are no longer
+      dropped;
+    - the staff special is 50% bigger, drawn and hit-tested
+      (`STAFF_BIG_BOLT_SCALE` 2.55);
+    - a floral hit shows the LEAF (`elem-flora`), not the slime's splat;
+    - the daily chest plays its own sounds on its own frames (the lid on
+      frame 4, the coins as they rise), the coin credit `quiet`;
+    - a crash's reload never opens the CREATOR: entering the world strips
+      `?create=1` / `login` / `noresume`, and a `?create=1` on a key already in
+      the roster is stale (`__btBootRoute` 'create-stale'); and the monster
+      hit-chip cache no longer destroys textures a live burst draws (LRU,
+      `BURST_MS` + 1 s), scratch canvases are released at once and the
+      arrow-pin cache is held to 6 MB -- `mp-createflag`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

@@ -303,7 +303,7 @@ export const ZoneHeader = ({ onExit }) => {
                 ? <span className="bt-zone-header__sub" data-zone-sub="1" data-zone-nml={nmlLvl} style={{ color: NML_RED }}>
                     {`☠ No man's land ${nmlLvl}`}{(/Lv \d+[–-]\d+/.exec(where.sub || '') || [''])[0] ? ` · ${(/Lv \d+[–-]\d+/.exec(where.sub || '') || [''])[0]}` : ''}</span>
                 : (where.sub ? <span className="bt-zone-header__sub" data-zone-sub="1">{where.sub}</span> : null)}</>
-          : (S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'The Wheel') : zoneTitle(S))}</div>
+          : (S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'BroTown' /* v2.3.3039 */) : zoneTitle(S))}</div>
         </div>
         {/* ═══ v2.3.2320: THE PURSE LIVES HERE NOW ═══
             Owner: "Move gold amount display to very top right on the top bar

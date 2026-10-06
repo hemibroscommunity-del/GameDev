@@ -1334,6 +1334,12 @@ console.log('wheel map');
     JSON.stringify(whereWords(m, 'frost', 2)) === JSON.stringify({ title: 'Frost Ridge', sub: 'the thaw line · Lv 6–10' }) &&
     whereWords(m, 'ember', 16).sub === 'the volcano flanks · Lv 76–80' && whereWords(m, 'town', 0).title === 'Brotown' && /safe/.test(whereWords(m, 'commons', 0).sub),
     [whereWords(m, 'frost', 2), whereWords(m, 'ember', 16)]);
+  /* v2.3.3057: the world map's level bands and Bro Pond */
+  ok(`...each land's level bands: a tick where every tier of five levels begins, from the commons' edge outward (${m.lands[0].ticks.length / 2} a land), the spoke ${m.spokeHalf * 2} px wide; and Bro Pond named`,
+    m.spokeHalf > 1000 && m.lands.every((l) => l.ticks.length === (m.tiers + 1) * 2 && l.ticks.every((v) => v >= 0 && v <= m.worldW)
+      && l.ticks.every((v, i) => i < 2 || i % 2 || Math.hypot(l.ticks[i] - c, l.ticks[i + 1] - c) > Math.hypot(l.ticks[i - 2] - c, l.ticks[i - 1] - c)))
+      && m.places.some((p) => p.kind === 'pond' && /Bro Pond/.test(p.name)),
+    { spokeHalf: m.spokeHalf, ticks: m.lands[0].ticks.slice(0, 6) });
   ok('...small enough to post to the game once (under 40 KB)', JSON.stringify(m).length < 40000, JSON.stringify(m).length);
 }
 

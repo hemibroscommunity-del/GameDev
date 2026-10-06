@@ -1068,48 +1068,48 @@ export function createDefaultLifeSkills() {
   return {
     /* Harvesting skills */
     woodcutting: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     fishing: {
       /* v2.3.224: back to 0 -- tier progression is now the canonical
          path. New players must train fishing to unlock higher-tier
          fish spots. */
-      level: 0,
+      level: 1,
       xp: 0
     },
     mining: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     /* Processing skills */
     cooking: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     blacksmithing: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     woodworking: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     gemCutting: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     enchanting: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     /* Utility skills */
     farming: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     trapping: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     /* Inventories */
@@ -1147,29 +1147,29 @@ export function migrateLifeSkills(sk) {
     };
     sk.gathering = null;
   }
-  /* Ensure all new skills exist (start at 0 to match createDefaultLifeSkills). */
+  /* Ensure all new skills exist (v2.3.3041: at 1, as createDefaultLifeSkills -- the worker reads 0 as 1). */
   if (!sk.woodcutting) sk.woodcutting = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.fishing) sk.fishing = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.mining) sk.mining = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.blacksmithing) sk.blacksmithing = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.woodworking) sk.woodworking = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.gemCutting) sk.gemCutting = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.gems) sk.gems = {};
@@ -1177,6 +1177,14 @@ export function migrateLifeSkills(sk) {
   if (!sk.farmPlots) sk.farmPlots = {};
   if (!sk.dungeonClears) sk.dungeonClears = {};
   if (!sk.pets) sk.pets = [];
+  /* v2.3.3041: heal a stored level 0 to 1 -- the worker already reads 0 as 1
+     (`level || 1`), so a skill that showed "Lv 0" and then levelled to 2 now
+     reads Lv 1 and levels to 2, the banner saying the level it really is */
+  var _ls = ['woodcutting', 'fishing', 'mining', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'farming', 'trapping'];
+  for (var _i = 0; _i < _ls.length; _i++) {
+    var _s = sk[_ls[_i]];
+    if (_s && typeof _s === 'object' && !(Number(_s.level) >= 1)) _s.level = 1;
+  }
   return sk;
 }
 
@@ -2192,9 +2200,20 @@ export function awardSkillXp(skills, skillName, amount) {
   if (!skill) return false;
   skill.xp += amount;
   var leveled = false;
-  while (skill.xp >= skillXpRequired(skill.level)) {
-    skill.xp -= skillXpRequired(skill.level);
-    skill.level++;
+  /* ═══ v2.3.3041: THE SAME ARITHMETIC AS THE WORKER, LEVEL 0 INCLUDED ═══
+     Owner: "The level up notification shows the wrong skill level (shows
+     level 1 was you level up from 1 to 2)."  A new skill starts at level 0
+     here (createDefaultLifeSkills) and the worker's _addLifeSkillXp reads it
+     as 1 (`level || 1`): its first level costs 500 there and lands on 2.  This
+     loop charged skillXpRequired(0) = 463 and landed on 1 -- so the banner,
+     which fires from THIS prediction, said "Level 1" while the worker made it
+     2, and the echo that followed could even roll the bar back and fire a
+     second "Level 1" on the next harvest.  `level || 1` on both sides now
+     (mirror-audit "life-skill levels" pins the pair), and migrateLifeSkills
+     heals a stored 0 to 1, so a new skill reads Lv 1 and first levels to 2. */
+  while (skill.xp >= skillXpRequired(skill.level || 1)) {
+    skill.xp -= skillXpRequired(skill.level || 1);
+    skill.level = (skill.level || 1) + 1;
     leveled = true;
   }
   return leveled;
@@ -2898,7 +2917,18 @@ export const STAFF_RANGE_PX = 675;
    number (combat.js), inside the same special lane that admitted the three
    orbs.  Gated on caps.bigorb: against an older worker the special stays the
    three-orb volley, because that worker would read one bolt as one orb. */
-export const STAFF_BIG_BOLT_SCALE = 1.7;
+/* ═══ v2.3.3043: 50% BIGGER ═══
+   Owner: "Increase the special magic projectile sprite size by 50%."  1.7 ->
+   2.55.  One number on purpose, as above: the bolt is drawn this much bigger
+   AND hit-tested this much bigger (projectiles.js PROJ_BODY.magicBig), so the
+   bolt you see is still the bolt that connects -- a bigger picture over the
+   old capsule would visibly pass through a monster's edge without touching
+   it.  Client-only either way: the worker never simulates a projectile, and
+   the burst's 90 px reach is its own.  Its halo, core and trail grow with it
+   (staffCastFx.js BIG_HALO, the core, the trail's spread), and its additive
+   glow is softer still (effectsRenderer), the 1.7x one having already washed
+   out to white on light ground. */
+export const STAFF_BIG_BOLT_SCALE = 2.55;
 export const STAFF_BIG_BOLT_ORBS = 3;
 /* ═══ v2.3.2849: ...AND IT IS ONE BIG ROLL, THEN IT EXPLODES ═══
    Owner, on rebalancing the specials: the staff should do the most damage to
@@ -3128,8 +3158,8 @@ export function t2BenchStats(B) {
      ramps 1.045/1.025/1.018), so the benchmark can't drift from what
      actually spawns. */
   return {
-    hp: Math.ceil(monsterStat(MONSTER_HP_CURVE.base, B, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame)) + monsterHpFlat(B),
-    dmg: Math.ceil(monsterStat(12, B, 1.045, 1.025, 1.018)),
+    hp: Math.ceil(monsterStat(MONSTER_HP_CURVE.base, B, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame)) + t2BenchFlat(B), /* v2.3.3055: frozen */
+    dmg: Math.ceil(monsterStat(12, B, 1.045, 1.025, 1.018)), /* the pre-v2.3.3055 ramp, frozen with it */
   };
 }
 /* The one tuning table.  ref 'hp' = fraction of benchmark sentinel HP
@@ -4901,15 +4931,27 @@ export function discoverZone(zoneId) {
    server/src/data.js MONSTER_HP_CURVE (keep in sync), and IMPORTED by
    tools/balance-sim.mjs (which previously hardcoded a copy that could
    drift).  Damage/XP/gold curves are untouched (BF-1 is HP-only). */
-export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025, flat: 100, flatLow: 50, flatLowMaxLvl: 2 }; /* v2.3.1346: owner — every monster +100 HP flat.  v2.3.1364: owner — Lv1-2 monsters carry 50 LESS of it (flatLow) so starter fights don't feel spongy */
+export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025, flat: 100, flatLow: 50, flatLowMaxLvl: 2,
+  flatRamp: 1.10, flatPlateau: 1.035, flatEndgame: 1.025 }; /* v2.3.1346: owner — every monster +100 HP flat.  v2.3.1364: owner — Lv1-2 monsters carry 50 LESS of it (flatLow) so starter fights don't feel spongy.  v2.3.3055: the flat GROWS from Lv3 — the reasoning is on the SERVER copy (server/src/data.js) */
+/* v2.3.3055: the damage curve, centralized beside the HP one (mirror of
+   server/src/data.js MONSTER_DMG_CURVE; 1.065 was 1.045). */
+export const MONSTER_DMG_CURVE = { base: 12, ramp: 1.065, plateau: 1.025, endgame: 1.018 };
 
 /* v2.3.1364: level-aware flat HP term.  Use this instead of reading
    MONSTER_HP_CURVE.flat directly at spawn sites — Lv1-2 gets flatLow.
    MIRRORED in server/src/data.js monsterHpFlat (keep in sync). */
 export function monsterHpFlat(level) {
-  return level <= (MONSTER_HP_CURVE.flatLowMaxLvl || 0)
-    ? (MONSTER_HP_CURVE.flatLow || 0)
-    : (MONSTER_HP_CURVE.flat || 0);
+  var low = MONSTER_HP_CURVE.flatLowMaxLvl || 0;
+  if (level <= low) return MONSTER_HP_CURVE.flatLow || 0;
+  var flat = MONSTER_HP_CURVE.flat || 0;
+  if (!MONSTER_HP_CURVE.flatRamp) return flat;
+  /* v2.3.3055: `flat` at the first level past flatLow, growing from there */
+  return monsterStat(flat, level - low, MONSTER_HP_CURVE.flatRamp, MONSTER_HP_CURVE.flatPlateau, MONSTER_HP_CURVE.flatEndgame);
+}
+/* v2.3.3055: the retired T2 yardstick keeps its pre-growth flat (mirror of
+   server/src/data.js t2BenchFlat). */
+export function t2BenchFlat(level) {
+  return level <= (MONSTER_HP_CURVE.flatLowMaxLvl || 0) ? (MONSTER_HP_CURVE.flatLow || 0) : (MONSTER_HP_CURVE.flat || 0);
 }
 
 export function monsterStat(base, level, rRamp, rPlateau, rEndgame) {
@@ -5003,7 +5045,7 @@ export function createMonster(id, archetype, level, x, y, element) {
   var a = ARCHETYPES[archetype];
   // baseline-10 rescale: 60 ÷ 4.8; curve constants centralized v2.3.1140 (BF-1)
   var baseHp = monsterStat(MONSTER_HP_CURVE.base, level, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
-  var baseDmg = monsterStat(12, level, 1.045, 1.025, 1.018);
+  var baseDmg = monsterStat(MONSTER_DMG_CURVE.base, level, MONSTER_DMG_CURVE.ramp, MONSTER_DMG_CURVE.plateau, MONSTER_DMG_CURVE.endgame); /* v2.3.3055 */
   var baseXp = monsterStat(10, level, 1.045, 1.025, 1.018);
   var baseGold = monsterStat(5, level, 1.035, 1.020, 1.015);
   return {
@@ -6381,7 +6423,7 @@ export const QUEST_CHAINS = {
     id: 'tut_1', npc: 'Mayor Bro', title: 'Cold Reception',
     desc: 'Bring 4 Snowman Remnants from Frost Ridge.',
     check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
-    reward: { gold: 25, xp: 30 },
+    reward: { gold: 25, xp: 15 },
     next: 'tut_2',
     gives: [
       /* great-sword, not sword: weaponType 'sword' at wood tier is the
@@ -6443,7 +6485,7 @@ export const QUEST_CHAINS = {
     id: 'tut_2', npc: 'Mayor Bro', title: 'Into the Blue',
     desc: 'Bring 6 Slime Remnants from the Verdant Wilds.',
     check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 6; },
-    reward: { gold: 60, xp: 70 },
+    reward: { gold: 60, xp: 35 },
     next: 'tut_3',
     /* v2.3.1692: the staff moved to tut_1 — this step pays gold + xp. */
     dialogue: {
@@ -6470,7 +6512,7 @@ export const QUEST_CHAINS = {
     id: 'tut_3', npc: 'Mayor Bro', title: 'Bad Wind',
     desc: 'Bring 5 Skeleton Remnants from the Wind Dunes.',
     check: function (rpg) { return ((rpg.inventory || {})['skeleton-remnants'] || 0) >= 5; },
-    reward: { gold: 150, xp: 105 },
+    reward: { gold: 150, xp: 53 },
     next: 'tut_4',
     dialogue: {
       start: 'Mummies out in the Wind Dunes. Hit them hard enough and the wrappings come off — what is underneath is faster. Five sets of bones.',
@@ -6489,7 +6531,7 @@ export const QUEST_CHAINS = {
        armor will be iron").  Mirrors server/src/data.js exactly — this row is
        only the client's PREVIEW of the server's reward, and a one-sided edit
        here promises armour the worker will not hand over. */
-    reward: { gold: 400, xp: 210, item: "Copper Greaves" }, /* v2.3.1692 (owner): legs, not chest */
+    reward: { gold: 400, xp: 105, item: "Copper Greaves" }, /* v2.3.1692 (owner): legs, not chest */
     next: null,
     gives: [{ when: 'complete', icon: '/icons/items/greaves-copper.webp', label: "Copper Greaves" }],
     dialogue: {
@@ -6570,7 +6612,7 @@ export const QUEST_CHAINS = {
       { label: 'Bring the 2 cooked fish to Mayor Bro in town',
         done: function () { return false; } },
     ],
-    reward: { gold: 60, xp: 55, item: 'Pickaxe' },
+    reward: { gold: 60, xp: 28, item: 'Pickaxe' },
     next: 'life_2',
     /* No axe or pickaxe art exists in /icons/items, so those two go
        unillustrated rather than borrowing a picture of something else. */
@@ -6607,7 +6649,7 @@ export const QUEST_CHAINS = {
        when:'complete' chip really has a server-side reward.item behind it, so
        a one-sided edit here fails loudly instead of promising armour nobody
        will hand over. */
-    reward: { gold: 200, xp: 140, item: 'Copper Torso' }, /* v2.3.1758: copper is tier one */
+    reward: { gold: 200, xp: 70, item: 'Copper Torso' }, /* v2.3.1758: copper is tier one */
     next: null,
     gives: [
       { when: 'complete', icon: '/icons/items/chest-plate-copper.webp', label: 'Copper Torso' },
@@ -6645,7 +6687,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 50,
-      xp: 20
+      xp: 10
     },
     next: 'mayor_2',
     unlocks: 'zone_exits',
@@ -6667,7 +6709,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 100,
-      xp: 55
+      xp: 28
     },
     next: 'mayor_3',
     unlocks: 'skill_cap_10',
@@ -6703,7 +6745,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 300,
-      xp: 140
+      xp: 70
     },
     next: null,
     unlocks: 'skill_cap_50',
@@ -6725,7 +6767,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 25,
-      xp: 15
+      xp: 8
     },
     next: 'trader_2',
     unlocks: 'marketplace',
@@ -6747,7 +6789,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 75,
-      xp: 35
+      xp: 18
     },
     next: 'trader_3',
     unlocks: 'farming',
@@ -6768,7 +6810,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 150,
-      xp: 70
+      xp: 35
     },
     next: null,
     unlocks: 'cooking_buffs',
@@ -6790,7 +6832,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 50,
-      xp: 30
+      xp: 15
     },
     next: 'enchant_2',
     unlocks: 'enchanting',
@@ -6811,7 +6853,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 200,
-      xp: 105
+      xp: 53
     },
     next: 'enchant_3',
     unlocks: 'gem_cutting',
@@ -6832,7 +6874,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 500,
-      xp: 210
+      xp: 105
     },
     next: null,
     unlocks: 'amulet_shield_gems',
@@ -6855,7 +6897,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 100,
-      xp: 55
+      xp: 28
     },
     next: 'scout_2',
     unlocks: 'zone_mechanics',
@@ -6877,7 +6919,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 200,
-      xp: 105
+      xp: 53
     },
     next: null,
     unlocks: 'deep_access',
@@ -6904,7 +6946,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 60,
-      xp: 30
+      xp: 15
     },
     next: 'bron_2',
     unlocks: 'blacksmith',
@@ -6925,7 +6967,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 120,
-      xp: 55
+      xp: 28
     },
     next: 'bron_3',
     unlocks: 'woodworker_reforge',
@@ -6946,7 +6988,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 200,
-      xp: 105
+      xp: 53
     },
     next: 'bron_4',
     unlocks: 'hardening',
@@ -6967,7 +7009,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 400,
-      xp: 175
+      xp: 88
     },
     next: null,
     unlocks: 'shield_craft_salvage',
@@ -6989,7 +7031,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 40,
-      xp: 20
+      xp: 10
     },
     next: 'luna_2',
     unlocks: 'field_cooking',
@@ -7011,7 +7053,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 100,
-      xp: 50
+      xp: 25
     },
     next: 'luna_3',
     unlocks: 'shield_equip',
@@ -7033,7 +7075,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 250,
-      xp: 125
+      xp: 63
     },
     next: null,
     unlocks: 'amulet_craft',
@@ -7056,7 +7098,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 80,
-      xp: 40
+      xp: 20
     },
     next: 'kai_2',
     unlocks: 'pet_combat',
@@ -7078,7 +7120,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 200,
-      xp: 85
+      xp: 43
     },
     next: 'kai_3',
     unlocks: 'pet_loot_upgrade',
@@ -7100,7 +7142,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 350,
-      xp: 140
+      xp: 70
     },
     next: null,
     unlocks: 'trapping_cap_50',
@@ -7123,7 +7165,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 100,
-      xp: 55
+      xp: 28
     },
     next: 'ash_2',
     unlocks: 'reforge_expanded',
@@ -7145,7 +7187,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 250,
-      xp: 125
+      xp: 63
     },
     next: 'ash_3',
     unlocks: 'skill_cap_100',
@@ -7166,7 +7208,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 500,
-      xp: 245
+      xp: 123
     },
     next: 'ash_4',
     unlocks: null,
@@ -7188,7 +7230,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 800,
-      xp: 350
+      xp: 175
     },
     next: null,
     unlocks: null,
