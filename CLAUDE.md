@@ -1474,7 +1474,7 @@ remnant to migrate server-side, not a mode to preserve.
       rollback rewrites beds of crops it never heard of as grass;
     - the dev op `farmripe` ("Ripen my farm now" in the dev panel); `farm`
       suite, `mp-farm`: docs/specs/farm.md.
-  - Since v2.3.3105 MEALS AND BREWS YOU CARRY -- the plan's Phase 2a:
+  - Since v2.3.3114 MEALS AND BREWS YOU CARRY -- the plan's Phase 2a:
     - a cook with `carry` (caps.meals) puts the recipe's `makes` in the bag
       (cooking.js); `eat_request` takes `meal_*`, `potion_drink` `brew_*`
       (data.js `DISHES`, mirrored in src/data/dishes.js); an old client's
@@ -1487,7 +1487,7 @@ remnant to migrate server-side, not a mode to preserve.
       a dish's own pile paid more than its herbs' fuller ones);
     - the Herb Bread doubles the out-of-combat healing (`HERB_REGEN_MULT`),
       never mid-fight, on its own `_buffs.rest` timer -- NEVER `regen`, which
-      v2.3.3102 reads as 2% a second mid-fight (a rollback's trap); meals and
+      v2.3.3111 reads as 2% a second mid-fight (a rollback's trap); meals and
       cooked fish file under the bag's Consumable chip (no sixth chip: one per
       slot column);
     - every refused cook, meal or drink is RESENT (`_resendPlayerState`: a v2

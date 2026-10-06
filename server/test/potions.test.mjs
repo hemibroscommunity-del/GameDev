@@ -48,7 +48,7 @@ function check(name, cond, detail) {
 const room = new GameRoom(makeState(), mockEnv);
 const TICK_MS = REGEN_TICKS * room.TICK_RATE;
 
-/* v2.3.3105: a potion is DRUNK FROM THE BAG.  These used to buy-and-apply in
+/* v2.3.3114: a potion is DRUNK FROM THE BAG.  These used to buy-and-apply in
    one go through the vendor building's shop_purchase; the tonics are brewed at
    the Cookhouse now and no longer on sale (data.js DIEGO_SHELF), so a bottle is
    put in the bag and drunk through the real potion_drink handler -- the effect
@@ -198,7 +198,7 @@ room._handleMove(sess, ws, { type: 'move', x: 1000 + 2000, y: 1000, z: 'meadow' 
 check('an absurd stored speed multiplier does not open the cap', rp.x === 1000, { x: rp.x });
 
 /* ═══════════════ ONE BREW AT A TIME ═══════════════
-   Owner: "Only 1 effect active at a time though."  v2.3.3105: one MEAL and one
+   Owner: "Only 1 effect active at a time though."  v2.3.3114: one MEAL and one
    BREW (the farming plan) -- the three tonics are brews, so this rule holds
    between them exactly as it did; a meal now runs beside a brew (below).
 
@@ -238,14 +238,14 @@ one.inventory = Object.assign(Object.create(null), one.inventory,
 room._handleCookRecipe({ id: 'only' }, { recipeIdx: teaIdx });
 check('the Firebloom Tea ends the potion that was running (both are brews)',
   !room._buffActive(one, 'mana') && one._buffs.manaFlat === undefined, one._buffs);
-/* v2.3.3102: the tea STATES its strength -- 1 + its power, x1.20 -- where it
+/* v2.3.3111: the tea STATES its strength -- 1 + its power, x1.20 -- where it
    used to leave damageMul unset and lean on the combat reader's 1.20 default.
    The point of this check is unchanged: not the tonic's x2. */
 const teaMul = 1 + DISHES.brew_firebloom_tea.power;
 check('...and the tea is what is running now, at ITS strength not the potion\'s',
   room._buffActive(one, 'damage') && one._buffs.damageMul === teaMul && teaMul !== 2.0, one._buffs);
 
-/* ═══════════════ A MEAL RUNS BESIDE A BREW (v2.3.3105) ═══════════════ */
+/* ═══════════════ A MEAL RUNS BESIDE A BREW (v2.3.3114) ═══════════════ */
 one.inventory.meal_root_stew = 1;
 room._handleEatRequest({ id: 'only' }, { invKey: 'meal_root_stew' });
 check('eating a Root Stew leaves the brew running',

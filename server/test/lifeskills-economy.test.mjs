@@ -335,7 +335,7 @@ check('firemaking: a __proto__ key is refused and leaves the prototype alone',
   Object.prototype.wood_oak === undefined && ({}).__proto__ === Object.prototype);
 
 // ── 4. cook_recipe (dry-run-then-consume) ──
-const R0 = COOKING_RECIPES[0]; // { herb_firebloom: 1 } -> the bread's `rest` timer (v2.3.3105)
+const R0 = COOKING_RECIPES[0]; // { herb_firebloom: 1 } -> the bread's `rest` timer (v2.3.3114)
 ps.inventory = { herb_firebloom: 2 };
 ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
 ps._buffs = {};

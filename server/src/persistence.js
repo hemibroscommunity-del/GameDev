@@ -42,7 +42,7 @@ const BUFF_MAGNITUDES = {
   damageMul: 'damage',   /* v2.3.2058: the Fury Tonic's x2 */
   spdMul: 'spd',         /* v2.3.2062: the Swift Draught's x1.5 */
   manaFlat: 'mana',      /* v2.3.2062: the Mana Draught's per-tick regen floor */
-  /* v2.3.3105: the Pumpkin Pie's +XP (a meal of the potato's phase).  This
+  /* v2.3.3114: the Pumpkin Pie's +XP (a meal of the potato's phase).  This
      worker reads no pie, but kept here so a rollback to it does not prune a
      running pie's strength as an expired timer -- the phone then said +10%
      while the worker paid nothing (review of that phase). */
@@ -600,7 +600,7 @@ export const persistenceMethods = {
     } catch (e) {}
   },
 
-  /* ═══ v2.3.3105: A REFUSAL'S ECHO HAS TO BE SENT ═══
+  /* ═══ v2.3.3114: A REFUSAL'S ECHO HAS TO BE SENT ═══
    * A refused action changes nothing on the worker -- and the v2 delta above
    * sends only what changed, so the echo a refusal sends to snap a client's
    * prediction back (the dish it drew in the bag, the herbs it took out, the

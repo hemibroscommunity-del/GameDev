@@ -29,7 +29,7 @@ import {
   ARCHETYPES, ZONES,
   MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
   MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
-  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3105: the Herb Bread's regen mult */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3114: the Herb Bread's regen mult */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -175,7 +175,7 @@ import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.29
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
-/* v2.3.3105: the Herb Bread's out-of-combat healing multiplier, read once
+/* v2.3.3114: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
 
@@ -3433,13 +3433,13 @@ export class GameRoom {
           /* ROUND, not ceil: at 1% a ceil turns every maxHp above 100 into
              2 hp/tick (a level-3 prog3 character has 106), which is nearly
              double the intended pace for no reason anyone could see.
-             v2.3.3105: the HERB BREAD is this trickle, faster -- its meal
+             v2.3.3114: the HERB BREAD is this trickle, faster -- its meal
              doubles it (DISHES.meal_herb_bread.power) for half an hour.  It was
-             2% of max HP a second in or out of a fight for 60 s (v2.3.3102,
+             2% of max HP a second in or out of a fight for 60 s (v2.3.3111,
              below until now); as a meal you carry for thirty minutes that would
              be a full bar every fifty seconds mid-fight, so it is the plan's
              "out-of-combat healing twice as fast" instead -- read off its own
-             timer, `rest`: v2.3.3102 reads `regen` the old way, so a rollback
+             timer, `rest`: v2.3.3111 reads `regen` the old way, so a rollback
              to it must not find a half-hour one there (data.js DISHES). */
           const _herb = this._buffActive(ps, 'rest') ? HERB_REGEN_MULT : 1;
           const heal = Math.max(1, Math.round(ps.maxHp * this.SPOKE_REGEN_PCT * _herb));
@@ -3448,8 +3448,8 @@ export class GameRoom {
           if (ps.hp !== beforeHp) changed = true;
         }
       }
-      /* v2.3.3102 made HERB BREAD heal at all: its recipe always wrote a
-         `regen` timer that nothing on the worker read.  v2.3.3105 moved that
+      /* v2.3.3111 made HERB BREAD heal at all: its recipe always wrote a
+         `regen` timer that nothing on the worker read.  v2.3.3114 moved that
          reader into the out-of-combat trickle above (a meal now lasts half an
          hour) under the bread's own `rest` timer, so it is read in exactly one
          place and `regen` in none. */

@@ -22,7 +22,7 @@
  *   9. The rate limit drops a script; the kill switch refuses and
  *      un-advertises.
  *  10. Diego: selling a seed or compost you just bought is always a loss.
- *  11. The Cookhouse: Herb Bread heals (v2.3.3105: twice the out-of-combat
+ *  11. The Cookhouse: Herb Bread heals (v2.3.3114: twice the out-of-combat
  *      trickle, for half an hour), Firebloom Tea is +20% damage as its card
  *      says, both cook from farm herbs -- and a cook with `carry` puts the
  *      dish in the bag to eat later; a meal runs beside a brew.
@@ -341,12 +341,12 @@ function ws2Ref() {
   P.inventory.herb_firebloom = 3;
   P.inventory.herb_rock_vine = 1;
   P.inventory.herb_cloudpetal = 1;
-  /* Herb Bread (index 0): 1 Firebloom -> its `rest` timer (v2.3.3105) */
+  /* Herb Bread (index 0): 1 Firebloom -> its `rest` timer (v2.3.3114) */
   wsB.sent.length = 0;
   await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 0 } }));
   await settle();
   check('Herb Bread cooks from one farm Firebloom', P.inventory.herb_firebloom === 2 && room._buffActive(P, 'rest'), { inv: P.inventory, buffs: P._buffs });
-  /* v2.3.3105: an OLD client's cook (no `carry`) is the meal at once, and a
+  /* v2.3.3114: an OLD client's cook (no `carry`) is the meal at once, and a
      meal lasts half an hour now. */
   check('...a meal: half an hour', P._buffs.rest > Date.now() + 29 * 60000, P._buffs);
   P.z = 'wheel';               /* a combat zone, not a hub */
@@ -367,7 +367,7 @@ function ws2Ref() {
   P._lastDealtAt = Date.now() - 10000;
   room._tickPlayerRegen();
   check('...which is the bread: with no buff, the plain trickle', P.hp === 100 + plain, P.hp);
-  /* v2.3.3102: the recipe's Cooking level is the WORKER's gate, not only the
+  /* v2.3.3111: the recipe's Cooking level is the WORKER's gate, not only the
      window's: at Cooking 1 the Tea (Cooking 6) is refused, nothing is used,
      and the bag is echoed so a predicted cook snaps back. */
   P.lifeSkills.cooking = { level: 1, xp: 0 };
@@ -389,10 +389,10 @@ function ws2Ref() {
   /* Root Stew (index 1): Rock Vine + Cloudpetal -> resist */
   await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 1 } }));
   await settle();
-  check('Root Stew cooks from a Rock Vine and a Cloudpetal, and runs BESIDE the tea (v2.3.3105: one meal and one brew)', room._buffActive(P, 'resist')
+  check('Root Stew cooks from a Rock Vine and a Cloudpetal, and runs BESIDE the tea (v2.3.3114: one meal and one brew)', room._buffActive(P, 'resist')
     && room._buffActive(P, 'damage') && P._buffs.damageMul === 1.2 && !P.inventory.herb_rock_vine && !P.inventory.herb_cloudpetal, P._buffs);
 
-  /* ═══ v2.3.3105: A COOK WITH `carry` PUTS THE DISH IN THE BAG ═══ */
+  /* ═══ v2.3.3114: A COOK WITH `carry` PUTS THE DISH IN THE BAG ═══ */
   P._buffs = {};
   P.inventory.herb_firebloom = 1;
   const xp0 = P.lifeSkills.cooking.xp;

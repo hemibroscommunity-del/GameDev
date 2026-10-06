@@ -189,7 +189,7 @@ ARCHITECTURE-HANDOFF's storage-key table.
   `_tickPlayerRegen` now pays **2% of max HP a second** while it runs, in or
   out of a fight, which is what its card always said. It does not apply in a
   hub, where the 10% top-off is faster, or in an arena match or a duel.
-  - **Changed in v2.3.3105** (`docs/specs/meals.md`): a carried meal lasts
+  - **Changed in v2.3.3114** (`docs/specs/meals.md`): a carried meal lasts
     half an hour, so the bread now doubles the out-of-combat healing instead,
     and never heals mid-fight.
 - **The recipes' Cooking levels are the worker's gate** (`cooking.js`
@@ -265,7 +265,7 @@ The crops, seeds and compost are emoji until the art exists:
 
 - **Phase 2:**
   - Meals and brews you carry, and Diego's three tonics brewed from herbs and
-    taken off his shelf: done in v2.3.3105, `docs/specs/meals.md`.
+    taken off his shelf: done in v2.3.3114, `docs/specs/meals.md`.
   - Potatoes and pumpkins: Phase 2b.
 - **Phase 3:** your own farm to walk on (`farm:<id>` zones), the Land Office's
   free deed and paid land (500 → 7,500 coins, up to 25 beds), Mayor Bro's farm
