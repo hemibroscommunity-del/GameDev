@@ -28,8 +28,8 @@ its intent backwards, and left the trait picker (v2.3.2358) and the name
 cluster (v2.3.2359) dressed as field kit on a title card.
 
 The boundary is the door. Once the world is on screen, this document is in
-force with no exceptions beyond the ones documented below (seven, since
-v2.3.3030's quest windows). Before that, the
+force with no exceptions beyond the ones documented below (eight, since
+v2.3.3053's stat pills). Before that, the
 title flow's own gold vocabulary applies — and it stays there: the creator's
 gold is scoped to `.bt-cc-*` and `.bt-login-*`, and nothing in it is a
 shared token that could drift inward.
@@ -540,3 +540,28 @@ It stays licensed only while it stays bounded:
 `docs/specs/quest-windows.md` has the flow, the pieces and the judgement
 calls; `src/quest-harness.html` draws every window and banner in the game's own
 components, and `mp-questwin` walks the first quest through them on a phone.
+
+**Eighth documented exception (v2.3.3053): the hero sheet's stat pills.** On
+the character sheet's Equipment tab every stat is a rounded pill with its
+picture, its name and its value, outlined in GOLD for OFFENSE (DPS in a pill
+beside the heading) and in BLUE for PLAYER, and the three vitals are pills
+filled with their own colours. By the letter of this document the gold is
+wrong ("brass is never a default border color"), and a pill per stat is close
+to the "nested cards" the do-not-drift list forbids. It is here because the
+owner drew it: a mockup of the tab with "Add pill design for hero equipment
+menu stats."
+
+It stays licensed only while it stays bounded:
+
+- **The hero sheet's Equipment tab only** (`HeroExpanded.jsx` `statPill`,
+  `pillHead`, `vitalPill`). Not the Points tab's cells, the item card, the
+  dashboard's band or any other panel.
+- **The two group colours mean the group**: gold is OFFENSE and blue is
+  PLAYER (`heroStatPills.js` `HERO_PILL_TONE`, the brass and the mana/info blue
+  already in this document; no new hue). Neither means "selected" there.
+- **CSS only**: a 1.5 px border, the well's own dark fill and a hairline
+  catch-light. No glow, no filter, no baked frame, and the pictures are the
+  game's own stat icons.
+
+`docs/specs/hero-sheet-pills.md` has the layout, the fourteen stats and where
+each value comes from; `mp-charfit` checks the fit on three phone sizes.

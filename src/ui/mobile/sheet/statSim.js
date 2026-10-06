@@ -63,7 +63,7 @@ import {
   combatHitBase, weaponVarBand, CRIT_ANCHOR_MULT, STAFF_BIG_BOLT_BAND,
   calcCritChance, calcCritMult, weaponCritStatFor, weaponCritFlatFor,
   toDisplayHitDamage, toDisplayDamage, toDisplayHp, DISPLAY_SCALE_K,
-  createMonster, recalcDerived, getArmorDrPct, STATUS_DEFS, calcMoveSpeed,
+  createMonster, getArmorDrPct, STATUS_DEFS, calcMoveSpeed,
   meleeRangeMult, bowRangeMult, staffRangeMult, GS_OUTER_RADIUS, BOW_RANGE_PX, STAFF_RANGE_PX,
 } from '../../../data/gameSystems.js';
 import {
@@ -77,7 +77,7 @@ import { ELEMENTS } from '../../../data/elements.js';
 import { getAmuletBonus } from '../../../data/items.js';
 import { rpgBlockSize } from '../../../data/abilities.js';
 import { BOW_VOLLEY } from '../../../game/bowVolley.js';
-import { withPoints, statCapped } from './statPreview.js';
+import { withPoints, statCapped, pooled, derivedInPlace } from './statPreview.js';   /* v2.3.3050: + the pools' arithmetic */
 
 /* ── the worker's constants this scene needs and the client had no copy of ──
    Each is a server literal; statsim.test.mjs reads the worker's own value
@@ -330,18 +330,12 @@ export function burstOf(R) {
 /* The derived pools a point changes (max HP, max stamina, the stamina block
    count), read through recalcDerived on a COPY -- the same mirror of the
    worker's _prog3Recompute every echo is measured against.  The live
-   character is never touched. */
-function pooled(R) {
-  if (!R) return R;
-  let c;
-  try { c = JSON.parse(JSON.stringify(R)); } catch (e) { return R; }
-  return derived(c);
-}
-/* ...and on a copy the caller already owns, in place. */
-function derived(c) {
-  if (c && prog3Live(c)) { try { recalcDerived(c); } catch (e) { /* keep the copy as it was */ } }
-  return c;
-}
+   character is never touched.
+   v2.3.3050: the two helpers live in statPreview.js now (pooled,
+   derivedInPlace), where the window's Max HP row reads them too -- one copy of
+   "what does a pool point do", so the window and this scene cannot say 48 and
+   37 about the same six points again. */
+const derived = derivedInPlace;
 
 /* ── a pass: the fight ────────────────────────────────────────────────── */
 /* Beats are {t, k, ...} with t in ms from the start of the pass:

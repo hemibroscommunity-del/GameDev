@@ -40,7 +40,7 @@
  * Boss HP scales by cfg.bossMultiplier (server-clamped 2..8) and by
  * present player count 1.0/1.6/2.2/3.0 (GDD §55.7 party scaling). */
 
-import { ARCHETYPES, MONSTER_HP_CURVE, monsterHpFlat } from './data.js';
+import { ARCHETYPES, MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */ } from './data.js';
 import { WHEEL_DUNGEON } from './wheeldungeon.js';   /* v2.3.3016: the Wheel's dungeons */
 
 export const DUNGEONS = {
@@ -318,7 +318,7 @@ export const dungeonMethods = {
     // HP curve centralized v2.3.1140 (BF-1) -- keeps dungeon monsters on
     // the same flattened ramp as world spawns.
     const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
-    const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
+    const baseDmg = this._monsterStat(MONSTER_DMG_CURVE.base, lvl, MONSTER_DMG_CURVE.ramp, MONSTER_DMG_CURVE.plateau, MONSTER_DMG_CURVE.endgame); /* v2.3.3055: 1.065 ramp (data.js) */
     const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
     const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);
     // Same placement box as the legacy client spawner: upper half of

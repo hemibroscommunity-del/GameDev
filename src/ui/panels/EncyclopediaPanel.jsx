@@ -1,5 +1,6 @@
 import React from 'react';
 import { ARCHETYPES, BLACKSMITH_TIERS, COLLISION_TABLE, COOKING_RECIPES, EFFECTIVENESS, ELEMENTS, FISHING_TIERS, MINING_TIERS, WOODCUTTING_TIERS, WOODWORKING_TIERS, ZONES, discoveredCollisions, discoveredMaterials, discoveredMonsters, visitedZones } from '@/data/index.js';
+import { gatherLadderLvl } from '@/data/lifeSkills.js';   /* v2.3.3038: the level a resource asks, not its tier */
 import { _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 /* ═══ EncyclopediaPanel — discovery compendium (monsters/materials/etc.) ═══ */
@@ -478,7 +479,7 @@ export function EncyclopediaPanel(props) {
         color: '#8D9B98',
         marginLeft: 2
       }
-    }, "Lv", t.lvl));
+    }, "Lv", gatherLadderLvl('oreVein', t.lvl)));
   })), /*#__PURE__*/React.createElement("div", {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 6
@@ -501,7 +502,7 @@ export function EncyclopediaPanel(props) {
         color: '#8D9B98',
         marginLeft: 2
       }
-    }, "Lv", t.lvl));
+    }, "Lv", gatherLadderLvl('tree', t.lvl)));
   })), /*#__PURE__*/React.createElement("div", {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 6
@@ -524,7 +525,7 @@ export function EncyclopediaPanel(props) {
         color: '#8D9B98',
         marginLeft: 2
       }
-    }, "Lv", t.lvl));
+    }, "Lv", gatherLadderLvl('fishSpot', t.lvl)));
   })), /*#__PURE__*/React.createElement("div", {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 6

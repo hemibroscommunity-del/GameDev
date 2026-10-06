@@ -75,7 +75,12 @@ export const ZONES = {
      the trial's look and exits at boot, as it gives 'worldview' them.
      MIRROR: server/src/data.js VALID_ZONE_IDS (zones.test.mjs). */
   wheel: {
-    id: 'wheel', name: 'The Wheel', w: 1344, h: 1344,
+    /* v2.3.3039: the name players see -- every loading screen ("Entering
+       BroTown"), a friend's whereabouts, the world map's title -- is BroTown
+       (owner: "Instead of 'the Wheel' on the loading screen just call it
+       'BroTown'").  `wheel` stays the zone's id, and the Wheel its name in
+       code and docs. */
+    id: 'wheel', name: 'BroTown', w: 1344, h: 1344,
     element: null, level: [1, 2], music: 'town', safe: false,
     palette: { ground: '#1c467e', path: '#c9a36a', accent: '#86b94f' },
     spawns: [],

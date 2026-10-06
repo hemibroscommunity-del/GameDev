@@ -58,8 +58,8 @@ export const SkillsPanel = () => {
   /* ── In-panel detail view (same sheet height, back chip returns) ── */
   if (detailKey) {
     const sd = SKILL_ROSTER.find(s => s.key === detailKey) || SKILL_ROSTER[0];
-    const sk = ls[sd.key] || { level: 0, xp: 0 };
-    const lvl = sk.level || 0;
+    const sk = ls[sd.key] || { level: 1, xp: 0 };
+    const lvl = sk.level || 1;   /* v2.3.3041: a skill is never level 0 (the worker reads 0 as 1) */
     const need = Math.max(1, skillXpRequired(lvl));
     const xp = Math.floor(sk.xp || 0);
     const pct = Math.min(100, (xp / need) * 100);
@@ -124,7 +124,7 @@ export const SkillsPanel = () => {
      view (one tap away); all ten skills + both labels clear the fold. */
   const pill = (sd) => {
     const sk = ls[sd.key] || { level: 0, xp: 0 };
-    const need = Math.max(1, skillXpRequired(sk.level));
+    const need = Math.max(1, skillXpRequired(sk.level || 1));   /* v2.3.3041: the worker's price */
     const pct = Math.min(100, ((sk.xp || 0) / need) * 100);
     return (
       <button key={sd.key} data-skill={sd.key}
@@ -158,7 +158,7 @@ export const SkillsPanel = () => {
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
         }}>{sd.name}</span>
         <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
-          Lv {sk.level || 0}
+          Lv {sk.level || 1}
         </span>
         {/* thin XP line along the pill's bottom edge: green = progress,
             dark = zero (same signals as the compact tiles). */}

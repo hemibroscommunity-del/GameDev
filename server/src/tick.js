@@ -206,6 +206,8 @@ export const tickMethods = {
       // v2.3.1129: unanswered threat countdowns expire as "ignored"
       // (consent pair granted, both sides notified).
       guard('threats', () => this._tickThreats(Date.now()));
+      /* v2.3.3058: No man's land's skulls count down in the game's time */
+      guard('nml', () => this._tickNml(Date.now()));
 
       // v2.3.1149: global cadence settlement -- rate-limited to one
       // storage read per ~60s per DO lifetime (the _opPruneMaybe
@@ -337,6 +339,9 @@ export const tickMethods = {
            pattern (join, the track relay, state_sync's players), and a peer
            update read through peerCosmetics.js would take a 1 for one. */
         ...(this._sprintWire(ps, ts) ? { spr: 1 } : {}),
+        /* v2.3.3058: No man's land's skull, 'r' or 'w' (nomansland.js);
+           absent with none, so everyone else's wire is unchanged */
+        ...(ps._nml && (ps._nml.red > 0 || ps._nml.white > 0) ? { sk: ps._nml.red > 0 ? 'r' : 'w' } : {}),
       });
 
       // Dirty players bucketed by the zone they are standing in, so a
