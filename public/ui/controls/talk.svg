@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- v2.3.3087: the right stick's TALK picture, in the style of the owner's JUMP arrow -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C9D4F2"/></linearGradient></defs>
+  <path d="M22 18 H78 Q90 18 90 30 V58 Q90 70 78 70 H48 L30 86 L33 70 H22 Q10 70 10 58 V30 Q10 18 22 18 Z"
+        fill="url(#g)" stroke="#16191E" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="32" cy="44" r="6.5" fill="#2A3140"/>
+  <circle cx="50" cy="44" r="6.5" fill="#2A3140"/>
+  <circle cx="68" cy="44" r="6.5" fill="#2A3140"/>
+</svg>

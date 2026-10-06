@@ -61,6 +61,16 @@ export function rightTapBusy(S, now) {
 }
 
 /**
+ * v2.3.3087: the right stick's picture (and the tap's act) for what the E
+ * key's chain would do here (desktopControls interactKind): a door, the bed,
+ * a character -- else the jump.  A resource is the stick's own harvest, so it
+ * is not one of these.
+ */
+export function tapActIcon(kind) {
+  return (kind === 'door' || kind === 'talk' || kind === 'sleep') ? kind : 'jump';
+}
+
+/**
  * `?jumpbtn` brings back v2.3.3017's button under the attack disc (for a tab,
  * and the QA scenarios that measure it).  A tap still jumps with it on.
  */

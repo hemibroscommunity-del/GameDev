@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  tapact: () => import('./mp-tapact.mjs'), /* v2.3.3087: the right stick shows what a tap does and the tap does it -- a DOOR at the bank's steps (the bank opens), a speech BUBBLE beside Ace (his coin flip opens), the JUMP arrow with nothing about (a jump) */
   tapprop: () => import('./mp-tapprop.mjs'), /* v2.3.3087: beside a prop a tap on the right stick jumps (zone, disc, or on the prop) and a hold toward it swings and lands blows; the stick wears the JUMP picture while a tap would jump, the weapon under a lock */
   tapjump: () => import('./mp-tapjump.mjs'), /* v2.3.3087: a tap on the right stick jumps when nothing else wants it -- the old button gone; an empty tap jumps; a lock lets go, a busy disc, a drag and a tap on yourself do not jump */
   createflag: () => import('./mp-createflag.mjs'), /* v2.3.3046: a crash's reload never lands a player in the creator -- once in the world the address carries no ?create=1; reloaded from an old tab's ?create=1 with a character on the key, the flag reads stale and the ordinary road is taken; a new key with the flag still gets the creator */

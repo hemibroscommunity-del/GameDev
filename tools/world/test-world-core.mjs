@@ -2932,6 +2932,17 @@ console.log('the tap that jumps (v2.3.3087)');
       && /if \(S\._atkHoldUntil && Date\.now\(\) < S\._atkHoldUntil\) _flickWait = true;/.test(fs.readFileSync(new URL('../../src/game/monsterCombat.js', import.meta.url), 'utf8')));
   ok('a swing meets a prop at the swinger\'s boots (playerGroundDy), not the chest',
     /py = py \+ playerGroundDy\(S\.currentZone, px, py\);\s*var c = propSwingContact/.test(fs.readFileSync(new URL('../../src/game/combatHelpers.js', import.meta.url), 'utf8')));
+  ok('the stick\'s picture names the tap\'s act: a door, the bed, a character, else the jump (a resource is the stick\'s own harvest)',
+    TJ.tapActIcon('door') === 'door' && TJ.tapActIcon('talk') === 'talk' && TJ.tapActIcon('sleep') === 'sleep'
+      && TJ.tapActIcon('gather') === 'jump' && TJ.tapActIcon(null) === 'jump');
+  {
+    const dc = fs.readFileSync(new URL('../../src/game/desktopControls.js', import.meta.url), 'utf8');
+    ok('...from the E key\'s own chain, the character first for the stick (a door has its own Enter button), and the tap runs that chain',
+      /if \(opts && opts\.npcFirst && S\._nearNpc\) return 'talk';/.test(dc) && /if \(opts && opts\.npcFirst && S\._nearNpc && runTalk\(\)\) return true;/.test(dc)
+        && /if \(runInteract\(\)\) return;/.test(dc)
+        && /interactKind\(S, \{ npcFirst: true \}\)/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8'))
+        && /_tjS\._interactNow\(\{ npcFirst: true \}\)/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8')));
+  }
   ok('the old button only with ?jumpbtn', TJ.jumpButtonWanted('?jumpbtn') && TJ.jumpButtonWanted('?a=1&jumpbtn=1')
     && !TJ.jumpButtonWanted('') && !TJ.jumpButtonWanted('?jumpbtnx'));
   const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');

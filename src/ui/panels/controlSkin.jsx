@@ -296,6 +296,13 @@ export const RDISC_ICONS = [
      the owner: the whole button on the stick was "way too intense ... it
      should just be a semi transparent overlay on the existing disc" */
   ['jump', '/ui/controls/jump-glyph.webp?v=2.3.3087'],
+  /* v2.3.3087: and what a tap does instead beside a character, at a door or
+     at the farm's bed (desktopControls interactKind) -- the owner: "chat
+     bubble for speaking [to NPCs], door for entering door"; drawn in the
+     JUMP arrow's white-and-outline style */
+  ['talk', '/ui/controls/talk.svg?v=2.3.3087'],
+  ['door', '/ui/controls/door.svg?v=2.3.3087'],
+  ['sleep', '/ui/controls/sleep.svg?v=2.3.3087'],
 ];
 
 var TORNADO = {

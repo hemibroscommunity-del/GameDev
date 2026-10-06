@@ -218,6 +218,12 @@ export var QUEST_MSG_WELCOME_MS = 9000;
  *
  * `check` is quest-authored and runs every frame, so it is wrapped — a throw
  * here would take the whole render loop down over a cosmetic re-open. */
+/* v2.3.3087: the right stick's picture -- and the tap's act -- when it has no
+   fight or harvest to do: a speech bubble beside a character, a door at a
+   building's steps, the moon at the farm's bed, else the jump (tapJump.js
+   tapActIcon; desktopControls interactKind, the character before the door) */
+function _tapActIcon(S) { return tapActIcon(interactKind(S, { npcFirst: true })); }
+
 function _npcQuestReady(S, npcQ) {
   if (!npcQ || npcQ.status !== 'active') return false;
   /* v2.3.1914: the shared implementation, so the opener and the panel it
@@ -362,7 +368,8 @@ import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a s
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3087: a tap on the right stick) */
-import { rightTapBusy, tapJumpMaxMs } from '@/game/tapJump.js';   /* v2.3.3087: a tap jumps only when nothing else wants it */
+import { rightTapBusy, tapJumpMaxMs, tapActIcon } from '@/game/tapJump.js';   /* v2.3.3087: a tap jumps only when nothing else wants it */
+import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3087: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -5641,7 +5648,12 @@ export var BroTown = function BroTown(_ref0) {
             else if (_harvestCtx) _icWant = (S._nearNode === S._campfire) ? 'cooking' : gatherSkillForNodeType(S._nearNode.nodeType);
             /* v2.3.3087: the owner's JUMP button while a tap would jump (the
                same test the tap asks, game/tapJump.js) */
-            else if (_tapJumps) _icWant = 'jump';
+            /* v2.3.3087: ...or what the tap does here instead: a speech bubble
+               beside a character, a door at a building's steps (a hall, a
+               dungeon's mouth), the moon at the farm's bed -- the owner's
+               "an icon that represents the action" (desktopControls
+               interactKind, the E key's own chain) */
+            else if (_tapJumps) _icWant = _tapActIcon(S);
             else {
               var _slotNow = (S.rpg && S.rpg.activeSlot) || 'melee';
               _icWant = (_slotNow === 'ranged' || _slotNow === 'staff') ? _slotNow : 'melee';
@@ -5861,7 +5873,7 @@ export var BroTown = function BroTown(_ref0) {
           var _rCtx = (S._rBtnLiveUntil || 0) > _now2;
           var _rPressCtx = (S._rBtnPressUntil || 0) > _now2;
           var _rRecent = (S._rJoyLiveUntil || 0) > _now2;
-          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R') || _tapJumps;   /* v2.3.3087: the JUMP face at rest */
+          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R') || _tapJumps;   /* v2.3.3087: the tap's picture (JUMP, talk, a door) at rest */
           var _rPressable = _rPressCtx || discHeld('R');
           var _rLitCtx = _rCtx || discHeld('R');
           /* Two facts, ANDed, because either one alone can get stuck: the
@@ -9874,7 +9886,18 @@ export var BroTown = function BroTown(_ref0) {
            branches above, which return before this.  triggerJump keeps its
            own refusals (swimming, rolling, in the air...). */
         if (_tjFree && _tjS && (_tjS._tapEmptySeq || 0) > _tjSeq) {
-          try { if (triggerJump(_tjS)) _tjS._tapJumps = (_tjS._tapJumps || 0) + 1; } catch (err) { /* a jump is never worth a broken tap */ }
+          /* ═══ v2.3.3087: ...UNLESS THERE IS A DOOR OR A CHARACTER RIGHT HERE ═══
+             The owner: "an icon that represents the action ... chat bubble for
+             speaking [to NPCs], door for entering door".  The stick wears that
+             picture (_tapActIcon), and the tap does it: the E key's own chain
+             (desktopControls runInteract) -- a building, a hall, a dungeon's
+             mouth, the farm's bed, then the character beside you. */
+          var _tjAct = _tapActIcon(_tjS);
+          if (_tjAct !== 'jump' && typeof _tjS._interactNow === 'function') {
+            try { if (_tjS._interactNow({ npcFirst: true })) _tjS._tapActs = (_tjS._tapActs || 0) + 1; } catch (err) { /* the door's own refusals speak */ }
+          } else {
+            try { if (triggerJump(_tjS)) _tjS._tapJumps = (_tjS._tapJumps || 0) + 1; } catch (err) { /* a jump is never worth a broken tap */ }
+          }
         }
       }
     };

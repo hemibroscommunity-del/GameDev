@@ -200,6 +200,28 @@ joystick".
     what jumps.
   - The weapon or harvest picture is back whenever the stick has a job, and
     while the coach's ATTACK lesson holds the disc.
+- **The stick's picture is the tap's act.** The owner: "I'd like the right
+  joystick button to have an icon that represents the action like this
+  current jump, the sword for attack, etc. so maybe chat bubble for speaking
+  [to NPCs], door for entering door".
+  - With no fight or harvest on the stick, a tap now does what the E key does
+    there, and the stick shows it (`tapActIcon`, desktopControls
+    `interactKind`):
+    - a speech BUBBLE beside a character (their quest, Ace's flip, Diego's
+      shop);
+    - a DOOR at a building's steps, a hall, a dungeon's mouth, the Workshop
+      or the Pet House;
+    - the MOON at the farm's bed;
+    - else the JUMP arrow.
+  - The E key's chain is now one function, `runInteract`, shared through
+    `S._interactNow`, so the picture and the tap cannot disagree.
+  - The stick asks for the character FIRST (`npcFirst`). Ace and Diego stand
+    by their doors, and a door has its own Enter button. The E key keeps its
+    own order, door first.
+  - The three pictures are SVGs in the JUMP arrow's white-and-outline style
+    (`public/ui/controls/{talk,door,sleep}.svg`), see-through at 0.7 like it.
+  - `mp-tapact` (10 checks): the door at the bank opens the bank, the bubble
+    beside Ace opens his flip, the arrow on the open commons jumps.
 - **The orbit is gone.** v2.3.3018's two faint arcs round the attack button
   (TouchControls `OrbitArcs`, from the mockup) went with the owner's "remove
   the strange lines to the left and right of the button". mp-btnskin now

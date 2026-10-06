@@ -882,7 +882,13 @@ remnant to migrate server-side, not a mode to preserve.
       whenever a tap would jump (`data-ricon="jump"`,
       `public/ui/controls/jump-glyph.webp` cut off their button -- the whole
       button was "way too intense"; painted at rest, never pressable);
-      `mp-tapprop`.
+      `mp-tapprop`; and the stick's picture is the TAP'S ACT (the owner: "chat
+      bubble for speaking [to NPCs], door for entering door"): a bubble beside
+      a character, a door at steps/halls/dungeon mouths, the moon at the
+      farm's bed, else JUMP -- the tap runs the E key's own chain
+      (desktopControls `runInteract` via `S._interactNow`, `interactKind`,
+      the character first for the stick: `npcFirst`), SVGs in
+      `public/ui/controls/`; `mp-tapact`.
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:
