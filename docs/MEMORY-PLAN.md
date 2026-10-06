@@ -110,9 +110,9 @@ Memory spent on nothing:
 
 | Item | Saves | Status |
 |---|---|---|
-| Decoded sounds kept across the audio rebuild after an app switch | a 50-90 MB spike per return | |
-| The ground's CPU copy dropped once uploaded (re-laid after a graphics reset) | 34 MB, 56 sprinting | |
-| The damage-number font's atlas trimmed | 5-10 MB | |
+| Decoded sounds kept across the audio rebuild after an app switch | a 50-90 MB spike per return | needs an iPhone: the spec lets a buffer outlive its context (`_rebuildContext` drops them as "decoded against the dead context"), but this is the path that brings sound back after another app took it, and only a real iPhone can say a kept buffer still plays there |
+| The ground's CPU copy dropped once uploaded (re-laid after a graphics reset) | 33 MB standing, 52 after a walk, 62 after a rebuild (page ArrayBuffers 53 -> 20 MB) | #806, v2.3.3063 |
+| The damage-number font's atlas trimmed | 5-10 MB | not a clean win: its letters draw words ("Blocked!", "+30 XP"), so a smaller set sends some to the slower canvas text; its canvases are what a rebuilt renderer uploads it from |
 | Wheel objects loaded by their own size, not the largest building's; their sheets cached for good | 4 MB, fewer downloads | |
 | Small: the chopper's spare copy, the worker's caches, sounds decoded twice, idle bake worker | 25-35 MB | |
 
