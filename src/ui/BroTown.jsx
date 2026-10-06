@@ -55,6 +55,7 @@ import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
+import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the attack disc wears the weapon in your hand */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
@@ -218,6 +219,12 @@ export var QUEST_MSG_WELCOME_MS = 9000;
  *
  * `check` is quest-authored and runs every frame, so it is wrapped — a throw
  * here would take the whole render loop down over a cosmetic re-open. */
+/* v2.3.3105: the right stick's picture -- and the tap's act -- when it has no
+   fight or harvest to do: a speech bubble beside a character, a door at a
+   building's steps, the moon at the farm's bed, else the jump (tapJump.js
+   tapActIcon; desktopControls interactKind, the character before the door) */
+function _tapActIcon(S) { return tapActIcon(interactKind(S, { npcFirst: true })); }
+
 function _npcQuestReady(S, npcQ) {
   if (!npcQ || npcQ.status !== 'active') return false;
   /* v2.3.1914: the shared implementation, so the opener and the panel it
@@ -361,8 +368,11 @@ import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2
 import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
-import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (the button under ATTACK, X on a keyboard) */
+import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
+import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it */
+import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
+import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
@@ -5603,6 +5613,24 @@ export var BroTown = function BroTown(_ref0) {
           }
           var _harvestCtx = !!(S._nearNode && !_lockHeld && !_monNear);
           S._btnHarvest = _harvestCtx;
+          /* ═══ v2.3.3105: WHEN A TAP WOULD JUMP, THE STICK SAYS SO ═══
+             The owner, with their JUMP button picture: shown "on the right
+             joystick" whenever a tap would jump.  Not while you harvest or
+             stand at a resource, not while the right side has a job
+             (rightTapBusy: a monster in the perimeter, a lock), not in the
+             water (no jumping there).  It also keeps the stick PAINTED at rest
+             (below), at the disc's own 0.5 rest with the arrow over it (the
+             owner: "a semi transparent overlay on the existing disc"): the
+             jump is always there to be had, as v2.3.3017's button always was --
+             painted only, never pressable, so a thumb on it still reaches the
+             stick's own zone, which is what jumps. */
+          var _tapJumps = !_ex && !_harvestCtx && !rightTapBusy(S, Date.now()) && !(S._wheelSwim && S._wheelSwim.on)
+            && !!(S.rpg && !(typeof S.rpg.hp === 'number' && S.rpg.hp <= 0))
+            /* the coach's ATTACK lesson holds the disc up as the button it
+               teaches (and a press on a held disc swings): the weapon, then */
+            && !discHeld('R')
+            /* ...and never while you ATTACK: the weapon then (attackingNow) */
+            && !attackingNow(S, !!rJoyActive.current, Date.now());
           if (_lbl) {
             var _want;
             if (_ex) _want = (_ex.status === 'ready') ? ({ mining: 'PUMP', woodcutting: 'CHOP', fishing: 'REEL', cooking: 'FLIP' }[_ex.skill] || 'GO') : 'WAIT';
@@ -5622,9 +5650,22 @@ export var BroTown = function BroTown(_ref0) {
             var _icWant;
             if (_ex) _icWant = 'none';
             else if (_harvestCtx) _icWant = (S._nearNode === S._campfire) ? 'cooking' : gatherSkillForNodeType(S._nearNode.nodeType);
+            /* v2.3.3105: the owner's JUMP button while a tap would jump (the
+               same test the tap asks, game/tapJump.js) */
+            /* v2.3.3105: ...or what the tap does here instead: a speech bubble
+               beside a character, a door at a building's steps (a hall, a
+               dungeon's mouth), the moon at the farm's bed -- the owner's
+               "an icon that represents the action" (desktopControls
+               interactKind, the E key's own chain) */
+            else if (_tapJumps) _icWant = _tapActIcon(S);
             else {
+              /* v2.3.3105: the weapon in that slot, its bag picture -- the
+                 owner: "when attacking it should show the weapon type
+                 depending on what weapon is used" (controlSkin weaponDiscIcon) */
               var _slotNow = (S.rpg && S.rpg.activeSlot) || 'melee';
-              _icWant = (_slotNow === 'ranged' || _slotNow === 'staff') ? _slotNow : 'melee';
+              var _wNow = !S.rpg ? null : _slotNow === 'ranged' ? S.rpg.rangedWeapon
+                : _slotNow === 'staff' ? S.rpg.staffWeapon : S.rpg.weapon;
+              _icWant = weaponDiscIcon(_slotNow, _wNow);
             }
             var _rdI = rJoyRef.current;
             if (_rdI && _rdI.getAttribute('data-ricon') !== _icWant) _rdI.setAttribute('data-ricon', _icWant);
@@ -5841,7 +5882,7 @@ export var BroTown = function BroTown(_ref0) {
           var _rCtx = (S._rBtnLiveUntil || 0) > _now2;
           var _rPressCtx = (S._rBtnPressUntil || 0) > _now2;
           var _rRecent = (S._rJoyLiveUntil || 0) > _now2;
-          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R');
+          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R') || _tapJumps;   /* v2.3.3105: the tap's picture (JUMP, talk, a door) at rest */
           var _rPressable = _rPressCtx || discHeld('R');
           var _rLitCtx = _rCtx || discHeld('R');
           /* Two facts, ANDed, because either one alone can get stuck: the
@@ -8777,14 +8818,14 @@ export var BroTown = function BroTown(_ref0) {
       var R = S && S.rpg;
       if (!R || !R.inventory) return;
       if ((R.inventory[key] || 0) <= 0) return;
-      /* ═══ v2.3.3105: A MEAL FROM THE COOKHOUSE ═══
+      /* ═══ v2.3.3114: A MEAL FROM THE COOKHOUSE ═══
          Not a heal: half an hour of an effect in the meal slot, which the
          worker applies and echoes (_buffs) -- so no "HP full", no heal to
          predict, and nothing drawn but the bite.  The bag predicts the one
          taken; the echo is the truth (rule 20).  Only offered at all on a
          worker with caps.meals (ItemDetailPopup). */
       var _meal = DATA.dishFor(key);
-      /* v2.3.3106: a dish eaten AT ONCE (the Garden Stew) is a heal, so it
+      /* v2.3.3115: a dish eaten AT ONCE (the Garden Stew) is a heal, so it
          takes the cooked fish's road below -- "HP full", the predicted heal. */
       if (_meal && _meal.buff !== 'heal') {
         if (_meal.slot !== 'meal') return;
@@ -8837,7 +8878,7 @@ export var BroTown = function BroTown(_ref0) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + toDisplayDamage(actual) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
-      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + (_meal ? _meal.name : 'cooked fish'), '#D8A94D');   /* v2.3.3106: or the stew */
+      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + (_meal ? _meal.name : 'cooked fish'), '#D8A94D');   /* v2.3.3115: or the stew */
       try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -9019,7 +9060,7 @@ export var BroTown = function BroTown(_ref0) {
      (taken back off it by the owner at v2.3.2542).  The right control's pair of
      taps is deliberately unbound -- see the note at handleRBtnPress. */
   var lJoyPreviewRef = useRef(null);
-  var rTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
+  var rTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false, busy: false /* v2.3.3105 */ });
   var lTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
   /* v2.3.2242: rShieldGesture / rPreviewTimer / rJoyPreviewRef / shieldJoyRef /
      shieldTouchId / shieldJoyActive are gone with the double-tap-hold gesture.
@@ -9235,9 +9276,11 @@ export var BroTown = function BroTown(_ref0) {
      where its own press started).  One copy, because two would drift, and the
      4-way `_facing` quantisation in particular is the kind of thing that gets
      re-typed slightly differently and then disagrees with the renderer. */
-  var rJoyAim = useCallback(function (clientX, clientY, originX, originY) {
+  /* v2.3.3105: the knob and rod follow the thumb -- split out of rJoyAim so
+     the DISC's press can move its picture too (bM), without aiming. */
+  var rKnobFollow = useCallback(function (clientX, clientY, originX, originY) {
     var base = rJoyRef.current;
-    if (!base) return;
+    if (!base) return null;
     var rect = base.getBoundingClientRect();
     var bcx = (originX != null) ? originX : (rect.left + rect.width / 2);
     var bcy = (originY != null) ? originY : (rect.top + rect.height / 2);
@@ -9270,6 +9313,12 @@ export var BroTown = function BroTown(_ref0) {
       var _rodOp = (base && base.style && base.style.opacity) || '0.92';
       rStickRef.current.style.opacity = clampDist > 4 ? _rodOp : '0';
     }
+    return { dist: dist, angle: angle };
+  }, []);
+  var rJoyAim = useCallback(function (clientX, clientY, originX, originY) {
+    var f = rKnobFollow(clientX, clientY, originX, originY);
+    if (!f) return;
+    var dist = f.dist, angle = f.angle;
     var S = stateRef.current;
     if (!S || dist <= 8) return;
     var dirs = [['right', 0], ['down', Math.PI / 2], ['left', Math.PI], ['up', -Math.PI / 2]];
@@ -9327,6 +9376,7 @@ export var BroTown = function BroTown(_ref0) {
        inside it is not a flick and never will be, so its shot is released
        here rather than made to serve out a delay it cannot use. */
     S._atkPressAt = 0;
+    S._atkHoldUntil = 0;   /* v2.3.3105 */
     S.autoAttack = false;
     setAutoAttack(false);
     S._aiming = false;
@@ -9880,6 +9930,19 @@ export var BroTown = function BroTown(_ref0) {
       rts.startX = t.clientX;
       rts.startY = t.clientY;
       rts.moved = false;
+      /* v2.3.3105: a tap that BEGAN with a job on this side (a monster in the
+         perimeter, a resource in reach, a lock) is never a jump, even if the
+         job is gone by the release (game/tapJump.js). */
+      rts.busy = rightTapBusy(stateRef.current, rts.startAt);
+      /* ═══ v2.3.3105: ...AND WITH NO JOB, A PRESS WAITS TO SEE IF IT IS A TAP ═══
+         The owner: "it needs priority near props instead of attack. If players
+         want to attack props they can still hold the right joystick towards it
+         but a tap should jump."  A thumb's tap is often longer than the 200 ms
+         the first swing waits (ATK_PRESS_GRACE_MS), so beside a barrel a tap
+         swung and chopped it.  With no job on this side the first swing waits
+         TAP_JUMP_MAX_MS: a release inside it is a tap (a jump), a hold past it
+         or a drag (rM lets go of the wait) attacks as before. */
+      if (!rts.busy && stateRef.current) stateRef.current._atkHoldUntil = rts.startAt + tapJumpMaxMs();
       /* Same press the disc makes -- auto-attack on, and the automatic target
          promoted to a deliberate one (v2.3.2252's "first tap commits").  For a
          bow or staff the promotion is a no-op by construction: autoAcquires is
@@ -9910,6 +9973,8 @@ export var BroTown = function BroTown(_ref0) {
         var dys = t.clientY - rts2.startY;
         if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) {
           rts2.moved = true;
+          /* v2.3.3105: a drag aims and attacks now -- not a tap, so no wait */
+          if (stateRef.current) stateRef.current._atkHoldUntil = 0;
           /* v2.3.2542: v2.3.2271's "a DRAG is not half of a double tap" reset
              (`_rTapAt = 0`) stood here.  It has nothing left to protect -- this
              surface no longer classifies a pair of taps at all -- and the flag
@@ -10002,7 +10067,15 @@ export var BroTown = function BroTown(_ref0) {
          no pair to recognise (see handleRBtnPress) no press is ever eaten, so
          EVERY short tap forwards again, which is what it did before v2.3.2269
          and is what tap-to-lock wants. */
-      if (!rts3.moved && (endT - rts3.startAt) < TAP_MAX_DURATION_MS) {
+      /* v2.3.3105: with no job on this side a tap may last TAP_JUMP_MAX_MS
+         (a relaxed thumb's), the first swing waiting as long (rS) */
+      if (!rts3.moved && (endT - rts3.startAt) < (rts3.busy ? TAP_MAX_DURATION_MS : tapJumpMaxMs())) {
+        /* v2.3.3105: whether a jump may have this tap (game/tapJump.js) is
+           read BEFORE the forward -- the forward's empty-space branch drops
+           the lock, and a tap that let go of a lock has had its use. */
+        var _tjS = stateRef.current;
+        var _tjFree = !!_tjS && !rts3.busy && !rightTapBusy(_tjS, endT);
+        var _tjSeq = _tjS ? (_tjS._tapEmptySeq || 0) : 0;
         /* v2.3.816: a tap on the combat side forwards a synthetic click to
            the canvas so the existing tap-to-lock-on-target logic (monsters /
            NPCs / players / empty-space unlock) keeps working now that the
@@ -10012,6 +10085,29 @@ export var BroTown = function BroTown(_ref0) {
             canvasRef.current.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: t.clientX, clientY: t.clientY }));
           }
         } catch (err) {}
+        /* ═══ v2.3.3105: ...AND A TAP NOTHING ELSE WANTED IS A JUMP ═══
+           Owner: "Try moving jump as tap on right joystick but prioritize
+           other contextual uses for the tap instead of jump first if any
+           apply."  The click above runs synchronously and bumps _tapEmptySeq
+           only on its last line, "tap on empty space" -- so a monster, a
+           character, another player or a resource under the thumb has
+           already taken the tap, as have the harvest / NPC / self-chat
+           branches above, which return before this.  triggerJump keeps its
+           own refusals (swimming, rolling, in the air...). */
+        if (_tjFree && _tjS && (_tjS._tapEmptySeq || 0) > _tjSeq) {
+          /* ═══ v2.3.3105: ...UNLESS THERE IS A DOOR OR A CHARACTER RIGHT HERE ═══
+             The owner: "an icon that represents the action ... chat bubble for
+             speaking [to NPCs], door for entering door".  The stick wears that
+             picture (_tapActIcon), and the tap does it: the E key's own chain
+             (desktopControls runInteract) -- a building, a hall, a dungeon's
+             mouth, the farm's bed, then the character beside you. */
+          var _tjAct = _tapActIcon(_tjS);
+          if (_tjAct !== 'jump' && typeof _tjS._interactNow === 'function') {
+            try { if (_tjS._interactNow({ npcFirst: true })) _tjS._tapActs = (_tjS._tapActs || 0) + 1; } catch (err) { /* the door's own refusals speak */ }
+          } else {
+            try { if (triggerJump(_tjS)) _tjS._tapJumps = (_tjS._tapJumps || 0) + 1; } catch (err) { /* a jump is never worth a broken tap */ }
+          }
+        }
       }
     };
 
@@ -10137,6 +10233,16 @@ export var BroTown = function BroTown(_ref0) {
             }
           }
         }
+        /* ═══ v2.3.3105: ...AND ITS PICTURE FOLLOWS THE THUMB ═══
+           The owner: "when I'm in combat the icon doesn't move to the edge of
+           the disc like it does when I'm not in combat just attacking towards
+           something".  In a fight the thumb lands on the DISC, which does not
+           steer (below), so its weapon picture sat dead centre while the same
+           drag on the stick slid it to the rim.  The picture and the rod now
+           follow this press too, from where it started -- the look only: no
+           aim and no autoAttack, so the flick (the special) is judged exactly
+           as before.  handleRBtnRelease puts them back on the release. */
+        if (!bSwipe.toShield && !bSwipe.harvest) rKnobFollow(t.clientX, t.clientY, bSwipe.sx, bSwipe.sy);
         /* ═══ v2.3.2258: AND IT IS A JOYSTICK AGAIN ═══
            Owner: "I want both joysticks back and restore the previous behavior
            right joystick for auto attack and rotation.  BUT I also want the
@@ -11689,6 +11795,9 @@ export var BroTown = function BroTown(_ref0) {
          click-to-harvest there alongside the E key -- welcome, and the reach
          and tool gates are the same ones the button uses. */
       if (_tapHarvestAtCss(cssX, cssY)) return;
+      /* v2.3.3105: counted, so the right stick's release knows its forwarded
+         tap reached here and nothing above took it -- a jump's cue (rE) */
+      S._tapEmptySeq = (S._tapEmptySeq || 0) + 1;
       /* Tap on empty space = unlock */
       S.lockedTarget = null;
     }
@@ -12434,7 +12543,7 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];
-    /* v2.3.3105: a meal or brew lasts half an hour now, and "1800s" is not a
+    /* v2.3.3114: a meal or brew lasts half an hour now, and "1800s" is not a
        time anyone reads -- minutes from a minute up, seconds below it. */
     var _btime = function (sec) { return sec >= 60 ? Math.ceil(sec / 60) + 'm' : sec + 's'; };
     if (S._cursedUntil && Date.now() < S._cursedUntil) {
@@ -12493,7 +12602,7 @@ export var BroTown = function BroTown(_ref0) {
         label: 'Regen',
         color: '#59BF91',
         time: _btime(_rem3),
-        desc: 'x2 rest'   /* v2.3.3105: the Herb Bread doubles the out-of-combat healing (server index.js) */
+        desc: 'x2 rest'   /* v2.3.3114: the Herb Bread doubles the out-of-combat healing (server index.js) */
       });
     }
     if (S._resistBuff && Date.now() < S._resistBuff) {
@@ -12503,10 +12612,10 @@ export var BroTown = function BroTown(_ref0) {
         label: 'Resist',
         color: '#60a5fa',
         time: _btime(_rem4),
-        desc: '-5%'   /* v2.3.3105: what the worker takes off (combat.js x0.95); it said -15% */
+        desc: '-5%'   /* v2.3.3114: what the worker takes off (combat.js x0.95); it said -15% */
       });
     }
-    /* v2.3.3106: the Pumpkin Pie's +10% combat XP (the worker's _buffs.xp,
+    /* v2.3.3115: the Pumpkin Pie's +10% combat XP (the worker's _buffs.xp,
        mirrored by wsClient) -- only while its strength is one the worker pays
        (prog3.js reads xpMul in (1, 2]): a pie whose strength an older worker
        pruned, after a rollback, said "+10%" while nothing was paid (review). */
@@ -13314,7 +13423,10 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
+  /* v2.3.3107: No man's land's skull and number over the middle of the band;
+     a tap says what it means (the owner: "instead of the top bar") */
+  React.createElement(NmlBadge, { stateRef: stateRef }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
      RETIRED -- both the "Open Shop" prompt and the ShopPanel it opened.
      Shopkeeper Bro does this job now, and does it server-side: the old
      panel credited coins and edited the bag in the CLIENT and then told
@@ -13520,7 +13632,7 @@ export var BroTown = function BroTown(_ref0) {
          the sprint button beside the left disc (v2.3.3006) -- riding the
          sheet as the controls do (ShieldButton.jsx ctlBottom), and nudged
          right of the bell beside the left disc */
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 24px)',
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 24px + var(--nml-lift, 0px))',   /* v2.3.3107: over No man's land's badge */
       left: 'calc(50% + 24px)',
       background: 'rgba(28,92,120,.9)',
       border: '1px solid rgba(160,230,255,.55)'
@@ -13597,7 +13709,7 @@ export var BroTown = function BroTown(_ref0) {
     /* Find best cookable recipe the player can make */
     var cookLvl = ((_R$lifeSkills6 = R.lifeSkills) === null || _R$lifeSkills6 === void 0 || (_R$lifeSkills6 = _R$lifeSkills6.cooking) === null || _R$lifeSkills6 === void 0 ? void 0 : _R$lifeSkills6.level) || 1;
     var inv = R.inventory || {};
-    /* v2.3.3105: on a worker with caps.meals a cook MAKES the dish, and the
+    /* v2.3.3114: on a worker with caps.meals a cook MAKES the dish, and the
        field's one button cooks MEALS only -- it picks for you, and picking the
        last recipe would now brew a tonic out of herbs you meant for bread.
        Brews are made at the Cookhouse.  An old worker keeps the old three. */
@@ -13663,7 +13775,7 @@ export var BroTown = function BroTown(_ref0) {
             if (R.inventory[k] <= 0) delete R.inventory[k];
           });
         });
-        /* v2.3.3105: the meal goes in the bag (the worker echoes it); the old
+        /* v2.3.3114: the meal goes in the bag (the worker echoes it); the old
            instant buff is predicted only in front of an old worker. */
         if (_fieldMeals && best.makes) {
           if (!R.inventory) R.inventory = {};

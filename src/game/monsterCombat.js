@@ -781,7 +781,7 @@ export function updateMonsterCombat(S, deps) {
                   var shielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y); /* v2.3.1705: directional */
                   var rawDmg = Math.max(1, m.dmg);
                   /* §18.1 Food buff — resist reduces incoming damage */
-                  if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.95));   /* v2.3.3105: the Root Stew's real 5% (server combat.js x0.95); this said 15% */
+                  if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.95));   /* v2.3.3114: the Root Stew's real 5% (server combat.js x0.95); this said 15% */
                   /* §4 Amulet elemental resistance */
                   if (((_R6$_amuletBonus3 = _R6._amuletBonus) === null || _R6$_amuletBonus3 === void 0 ? void 0 : _R6$_amuletBonus3.stat) === 'elemResist') rawDmg = Math.max(1, Math.floor(rawDmg * (1 - _R6._amuletBonus.value / 100)));
                   /* Shield gear — flat defense reduction */
@@ -1518,6 +1518,9 @@ export function updateMonsterCombat(S, deps) {
              its ceiling, and every ms here is latency on a held attack.  Raise
              it if a flick still leads; lower it if the hold feels sticky. */
           var _flickWait = S._atkPressAt && (Date.now() - S._atkPressAt) < ATK_PRESS_GRACE_MS;
+          /* v2.3.3105: and with no job on the right side, the first swing waits
+             to see whether the press is a tap -- a jump (game/tapJump.js) */
+          if (S._atkHoldUntil && Date.now() < S._atkHoldUntil) _flickWait = true;
           /* v2.3.3003: and not while you swim -- only your head is out of
              the water (game/wheelSwim.js; BroTown lets go of a held attack).
              v2.3.3014: nor dazed (game/elemHits.js): this loop fires the

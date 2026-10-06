@@ -1,0 +1,42 @@
+
+=== Power points: none; typical gear (one tier per 5 skill levels); fodder HP (brute ~+2..8%) ===
+weapon | monster | skill L where mean basic hit >= 20% of max HP | L where P(window landed, basic only) < 50% | L where P(one-shot basic) >= 50% | L where P(one-shot special) >= 50%
+greatsword | Lv2 (tier 1, the 1-5 band; spawns are Lv1-2) | 1 | 5 | 17 | 5
+greatsword | Lv8 (tier 2, 6-10) | 10 | 17 | 35 | 17
+greatsword | Lv15 (tier 3, 11-15) | 20 | 26 | 53 | 26
+greatsword | Lv20 (tier 4, 16-20) | 25 | 35 | >60 | 35
+greatsword | Lv30 (tier 6, 21-40 stage) | 41 | >60 | >60 | >60
+greatsword | Lv40 (tier 8) | >60 | >60 | >60 | >60
+bow | Lv2 (tier 1, the 1-5 band; spawns are Lv1-2) | 3 | 8 | 20 | 1
+bow | Lv8 (tier 2, 6-10) | 15 | 17 | 53 | 12
+bow | Lv15 (tier 3, 11-15) | 24 | 27 | >60 | 20
+bow | Lv20 (tier 4, 16-20) | 30 | 54 | >60 | 28
+bow | Lv30 (tier 6, 21-40 stage) | >60 | >60 | >60 | >60
+bow | Lv40 (tier 8) | >60 | >60 | >60 | >60
+staff | Lv2 (tier 1, the 1-5 band; spawns are Lv1-2) | 1 | 4 | 15 | 1
+staff | Lv8 (tier 2, 6-10) | 7 | 15 | 30 | 4
+staff | Lv15 (tier 3, 11-15) | 15 | 25 | 56 | 10
+staff | Lv20 (tier 4, 16-20) | 21 | 34 | >60 | 15
+staff | Lv30 (tier 6, 21-40 stage) | 43 | >60 | >60 | 30
+staff | Lv40 (tier 8) | >60 | >60 | >60 | 44
+
+=== Power points: all lane points (3/level, capped 2xL); typical gear (one tier per 5 skill levels); fodder HP (brute ~+2..8%) ===
+weapon | monster | skill L where mean basic hit >= 20% of max HP | L where P(window landed, basic only) < 50% | L where P(one-shot basic) >= 50% | L where P(one-shot special) >= 50%
+greatsword | Lv2 (tier 1, the 1-5 band; spawns are Lv1-2) | 1 | 2 | 10 | 2
+greatsword | Lv8 (tier 2, 6-10) | 7 | 10 | 25 | 10
+greatsword | Lv15 (tier 3, 11-15) | 13 | 18 | 35 | 18
+greatsword | Lv20 (tier 4, 16-20) | 18 | 25 | 43 | 25
+greatsword | Lv30 (tier 6, 21-40 stage) | 30 | 40 | >60 | 40
+greatsword | Lv40 (tier 8) | 40 | 60 | >60 | 59
+bow | Lv2 (tier 1, the 1-5 band; spawns are Lv1-2) | 2 | 4 | 14 | 1
+bow | Lv8 (tier 2, 6-10) | 8 | 14 | 30 | 7
+bow | Lv15 (tier 3, 11-15) | 15 | 21 | 52 | 14
+bow | Lv20 (tier 4, 16-20) | 20 | 30 | >60 | 20
+bow | Lv30 (tier 6, 21-40 stage) | 41 | 54 | >60 | 33
+bow | Lv40 (tier 8) | >60 | >60 | >60 | 57
+staff | Lv2 (tier 1, the 1-5 band; spawns are Lv1-2) | 1 | 2 | 8 | 1
+staff | Lv8 (tier 2, 6-10) | 5 | 10 | 20 | 4
+staff | Lv15 (tier 3, 11-15) | 11 | 16 | 30 | 10
+staff | Lv20 (tier 4, 16-20) | 16 | 24 | 45 | 15
+staff | Lv30 (tier 6, 21-40 stage) | 27 | 48 | >60 | 26
+staff | Lv40 (tier 8) | 37 | >60 | >60 | 36

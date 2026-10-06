@@ -62,6 +62,9 @@ const vis = (P, side) => P.page.evaluate((side) => {
   return {
     opacity: +Number(cs.opacity).toFixed(2),
     painted: Number(cs.opacity) > 0.5,
+    /* v2.3.3105: what the right stick's face shows ('jump' while a tap would
+       jump: the owner's JUMP button, painted at rest) */
+    icon: side === 'R' && inner ? inner.getAttribute('data-ricon') : null,
     pressable: ics ? ics.pointerEvents === 'auto' : null,
     /* v2.3.3018: lit is the skin's state now (the owner's mockup: a gold
        ring, no brass border) -- BroTown's resolver stamps data-rstate, and
@@ -121,8 +124,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(FADE_MS + SETTLE + 400);
     const idle = { L: await vis(P, 'L'), R: await vis(P, 'R') };
     console.log(`    ${slot} idle: ${JSON.stringify(idle)}`);
-    rec.ok(`${slot}: with no input and no context BOTH sticks are off screen (guard)`,
-      idle.L && idle.R && !idle.L.painted && !idle.R.painted, idle);
+    /* v2.3.3105: ...except the right stick's JUMP face.  The owner, with
+       their JUMP button picture, of where it goes: "On the right joystick",
+       shown whenever a tap would jump -- which with no input and no context is
+       now.  Painted, never lit, never pressable (the next row): it is a
+       picture of what the stick's zone does, not a button that takes the tap. */
+    rec.ok(`${slot}: with no input and no context the movement stick is off screen and the right one shows only its JUMP face (guard)`,
+      idle.L && idle.R && !idle.L.painted && idle.R.painted && idle.R.icon === 'jump' && !idle.R.lit, idle);
     /* The bug this replaces, stated as its own assertion: the right disc used
        to be pinned live for ranged on every frame, so it was painted here AND
        taking touches -- which is what swallowed the aim. */
@@ -157,8 +165,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(FADE_MS / 2 + SETTLE + 300);
       const gone = await vis(P, side);
       console.log(`    ${slot} ${side} after ${FADE_MS}ms: ${JSON.stringify(gone)}`);
-      rec.ok(`${slot}: ...and it has faded out by ${FADE_MS}ms of no input (${gone && gone.opacity})`,
-        gone && !gone.painted, gone);
+      /* v2.3.3105: the right one "fades" back to its JUMP face, not to nothing */
+      if (side === 'R') {
+        rec.ok(`${slot}: ...and by ${FADE_MS}ms of no input it is back to its JUMP face (${gone && gone.icon}), unlit`,
+          gone && gone.painted && gone.icon === 'jump' && !gone.lit && gone.pressable === false, gone);
+      } else {
+        rec.ok(`${slot}: ...and it has faded out by ${FADE_MS}ms of no input (${gone && gone.opacity})`,
+          gone && !gone.painted, gone);
+      }
     }
   }
 

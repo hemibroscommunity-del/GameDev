@@ -66,7 +66,7 @@ const advertised = new Map(); // flag -> [file:line]
   lines.forEach((line, i) => {
     const m0 = line.match(/\bcaps:\s*\{(.*)/);
     if (!m0) return;
-    /* v2.3.3105: or the COUNT of a server table (`cookRows:
+    /* v2.3.3114: or the COUNT of a server table (`cookRows:
        COOKING_RECIPES.length`): a capability that is a number -- how many
        recipes this worker cooks.  Only an UPPER_CASE table's .length, so
        prose in the literal's comments ("part: 2") is never read as a flag. */
