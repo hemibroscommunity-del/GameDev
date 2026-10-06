@@ -192,6 +192,30 @@ identical to the worker's, to the pixel, none kept by the page), `wdsample`
 #813 the combined build's `zombietex` tripped once on a snowball burst drawn
 after the frost art was freed: a race on main, fixed there.)
 
+### And all twelve (2026-10-06, later)
+
+With the owner's five yeses in -- #815, #822, #824 and #826 added to the eight
+above -- one local build of all twelve on today's main (they merge in any
+order) against today's main, `mp-memledger` again (a phone, arrival, then two
+laps of the eight lands back to Brotown):
+
+| | main (arrival -> lap 2) | all twelve (arrival -> lap 2) |
+|---|---|---|
+| 2D canvases | 118.0 -> 128.5 MB, growing | **66.2 -> 67.7 MB, flat** |
+| decoded sound | 88.8 -> 90.9 MB | **26.0 -> 28.0 MB** (#815) |
+| the page's ArrayBuffers | 43.5 -> 49.1 MB, growing | **10.2 -> 11.0 MB, flat** |
+| JS heap | 21.8 -> 30.2 MB | 21.7 -> 30.1 MB |
+| asset cache | 173.5 MB | **151.5 MB** |
+| textures on the GPU | 103.8 -> 116.0 MB | 103.8 -> 129.5 MB |
+
+What the page holds outside the GPU after the two laps -- canvases, sound,
+buffers and heap -- is ~299 MB on main and ~137 MB with all twelve, ~160 MB
+less, and the asset cache 22 MB less besides.  The GPU's count is ~13 MB
+higher after the laps: the pictures #824 keeps on the chip only stay there
+(the font's pages among them, which main's GPU collector would unload when
+idle and upload again from the page's copy), where main holds them in the
+page instead.  `memledger` 7/7 on the combined build.
+
 ## How we know it worked
 
 Per PR: the numbers above, before and after, and its scenario.  In the field:
