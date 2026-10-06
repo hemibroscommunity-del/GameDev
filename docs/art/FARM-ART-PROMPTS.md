@@ -5,7 +5,7 @@ Everything the farm needs drawn, as sprite sheets you can make in ChatGPT and se
 There are two kinds, in two styles:
 
 - **Bag icons (sheets 1-3), needed now.** The bag, the Feed & Seed window and the Cookhouse show emoji where these go. They match the painted icons the bag already uses.
-- **The farm you walk on (sheets 4-6 and the Barn), for later.** They are for the farm map, the next big farming step. They follow the world's HD pixel-art rules (docs/WORLD-BIBLE.md §6), like every Object Studio picture.
+- **The farm you walk on (sheets 4-6, the Barn, the Farmhouse and the Dungeon Workshop).** They are for the farm you walk around on (in the game since v2.3.3124: docs/specs/farm-walk.md). They follow the world's HD pixel-art rules (docs/WORLD-BIBLE.md §6), like every Object Studio picture.
 
 ## How
 
@@ -100,9 +100,11 @@ No text, letters or numbers anywhere. No frames, borders, tiles or cell lines, a
 Attached are some of the game's own item icons. Match their style, outline, colours and finish exactly, but do not copy the items themselves or their background.
 ```
 
-## The farm you walk on (later)
+## The farm you walk on
 
-For the farm map, where your beds and crops stand in the world: four growth stages for each crop, the beds under them, a few farm things, and a barn.
+For the farm map, where your beds and crops stand in the world: four growth stages for each crop, the beds under them, a few farm things, and its buildings. Sheets 4-6 and the Barn are in the game (v2.3.3124). The **Farmhouse** and the **Dungeon Workshop** are still to make: until they come, a haystack stands in as your bed ("Sleep in the hay") and a notice board as the Workshop.
+
+The farm's GROUND needs no picture: the game lays it from your own Ground Studio pictures (the commons' grass, the yards' packed earth, Main Street's dirt), so it matches BroTown. One ChatGPT picture of a whole farm would come out far below the game's level of detail.
 
 ### Sheet 4: crops growing (carrot, firebloom, potato)
 
@@ -192,6 +194,56 @@ The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading,
 Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
 
 Attached is the game's style key. Match its pixel size, colours, shading and the way it draws each material exactly, but do not copy its tiles. Scale: a person standing here would be about one fifth as tall as this picture. The building is about three times as wide as a person is tall, so it fills about three fifths of the picture's width. Its door is a little taller than a person, and each storey is about one and a half times as tall as a person.
+```
+
+### The Farmhouse
+
+- **In the game:** your bed for the night on your farm (the haystack stands in until it comes). A building always gets a picture of its own: two in one chat blend together.
+- **Attach:** your style key.
+
+```text
+A square picture of ONE building for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros: the Farmhouse, which stands on a player's own farm, where they sleep.
+
+A cosy one-storey farmhouse of whitewashed boards with barn-red trim and a green tin roof, a fieldstone chimney with no smoke, and a front porch under the roof's overhang held up by two log posts. On the porch: a rocking chair, a welcome mat, a lantern hung by the door and a pair of muddy boots. Two windows with barn-red shutters, one with a window box of flowers. The bro touches, big and easy to read: a horseshoe nailed over the door for luck, and a barbell leaning by the steps.
+
+One big, simple sign over the porch reads "HOME" in chunky capital letters, easy to read at a glance. No other words, letters or numbers anywhere.
+
+Two wide wooden steps lead up to the door. The steps are part of the building.
+
+Drawn square-on, its front facing us straight: we see the whole front, and the roof from above at a steep angle, and no side walls. Every upright line runs straight up the picture. The whole building fits in the picture with plenty of background all round, nothing cut off. It stands on nothing: no ground, grass, path, fence or shadow under or around it.
+
+Built by Bros: solid, handsome, well-made frontier architecture underneath, with the personality in what was added later -- things bolted on, bragged about, or patched after an adventure went wrong. Nothing is new: proud repairs and adventure dents everywhere. One or two big jokes, big enough to read on a phone, rather than many small ones. Clutter only at the sides and on the roof, never on the ramp in front of the door, where people walk.
+
+The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink. No border.
+
+Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
+
+Attached is the game's style key. Match its pixel size, colours, shading and the way it draws each material exactly, but do not copy its tiles. Scale: a person standing here would be about one fifth as tall as this picture. The building is about two and a half times as wide as a person is tall, so it fills about half of the picture's width. Its door is a little taller than a person.
+```
+
+### The Dungeon Workshop
+
+- **In the game:** on your farm, a shed where you design and build your own dungeons (the notice board stands in until it comes). A building always gets a picture of its own.
+- **Attach:** your style key.
+
+```text
+A square picture of ONE building for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros: the Dungeon Workshop, which stands on a player's own farm, a shed where Bros design and build their own dungeons.
+
+A sturdy workshop shed of rough-sawn planks on a fieldstone footing, with a shallow-pitched roof of tarred boards and a big wooden double door with iron strap hinges. A lean-to on one side shelters a workbench with a vice, hand saws and hammers on a pegboard, and on the bench a small wooden model of a dungeon tower. Rolled blueprints in a barrel, a stack of crates, and a lantern on a hook. The bro touches, big and easy to read: a dented iron padlock hanging open, and a proud patch nailed over a hole.
+
+One big, simple sign over the door reads "WORKSHOP" in chunky capital letters, easy to read at a glance. No other words, letters or numbers anywhere.
+
+A short ramp of packed earth leads up to the door. The ramp is part of the building.
+
+Drawn square-on, its front facing us straight: we see the whole front, and the roof from above at a steep angle, and no side walls. Every upright line runs straight up the picture. The whole building fits in the picture with plenty of background all round, nothing cut off. It stands on nothing: no ground, grass, path, fence or shadow under or around it.
+
+Built by Bros: solid, handsome, well-made frontier architecture underneath, with the personality in what was added later -- things bolted on, bragged about, or patched after an adventure went wrong. Nothing is new: proud repairs and adventure dents everywhere. One or two big jokes, big enough to read on a phone, rather than many small ones. Clutter only at the sides and on the roof, never on the ramp in front of the door, where people walk.
+
+The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink. No border.
+
+Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
+
+Attached is the game's style key. Match its pixel size, colours, shading and the way it draws each material exactly, but do not copy its tiles. Scale: a person standing here would be about one fifth as tall as this picture. The building is about two and a half times as wide as a person is tall, so it fills about half of the picture's width. Its door is a little taller than a person.
 ```
 
 ## Where the words come from

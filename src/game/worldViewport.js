@@ -345,6 +345,9 @@ export function worldViewport(canvas, zoneId) {
      is smaller than the reference (farm_home keeps its 0.82).  That one cannot
      be brought DOWN to the reference without drawing the tray, so farm_home
      stays the odd zone out; nothing can be done about that from here.
+     (v2.3.3124: it was done from the map instead -- the farm you walk is
+     1024 x 1408, src/data/farmLayout.js, more world than an upright phone
+     wants either way, so it draws at the character size like any zone.)
 
      FIGURE_SCALE_FLOOR stays underneath as the short-phone case: below a ~512
      CSS canvas the reference term drops under 0.50 and the flat floor is what

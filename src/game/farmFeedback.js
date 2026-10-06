@@ -15,6 +15,9 @@ import { BT_AUDIO } from '@/data/index.js';
 import { FARM, FARM_LOOK, farmCropOfSeed, farmCropOfItem } from '@/data/farmCrops.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
+import { _flyResourceToInventory } from '@/game/lifeSkillRewards.js';   /* v2.3.3124: the crop flies to the bag */
+import { FARM_BEDS } from '@/data/farmLayout.js';
+import { farmArtUrl } from '@/rendering/farmWorld.js';
 
 const GOOD = '#59BF91';
 const XP_GOLD = '#D8A94D';
@@ -96,7 +99,8 @@ export function farmFeedback(S, payload, deps) {
     const news = ripe > toldRipe;
     toldRipe = ripe;
     if (news && S) {
-      const text = FARM_LOOK.harvest + ' ' + ripe + (ripe === 1 ? ' bed is' : ' beds are') + ' ready at the Feed & Seed';
+      /* v2.3.3124: on your farm -- the beds are worked where they lie now */
+      const text = FARM_LOOK.harvest + ' ' + ripe + (ripe === 1 ? ' bed is' : ' beds are') + ' ready on your farm';
       try {
         S.chatLog = (S.chatLog || []).slice(-50).concat([{ id: 'farm-' + Date.now(), name: '', text, ts: Date.now() }]);
         if (deps && deps.setChatLog) deps.setChatLog(S.chatLog.slice());
@@ -112,6 +116,22 @@ export function farmFeedback(S, payload, deps) {
     const fx = SOUND[did.op];
     if (fx) fx();
     if (did.op === 'harvest' && did.items) {
+      /* ═══ v2.3.3124: THE CROP JUMPS OUT OF ITS BED AND INTO THE BAG ═══
+         On your farm, from the bed you just pulled it from (farmWalk.js
+         S._farmLastStep), in the owner's own ripe picture -- the fish's way
+         out of the water (lifeSkillRewards v2.3.1429, `pop`). */
+      const ls = S && S._farmLastStep;
+      const bed = ls && ls.step === 'harvest' && Date.now() - ls.at < 8000 && S.currentZone === 'farm_home' ? FARM_BEDS[ls.bed] : null;
+      if (bed) {
+        let k = 0;
+        for (const key of Object.keys(did.items)) {
+          const cropId = farmCropOfItem(key);
+          if (!cropId) continue;
+          const at = { x: bed.x + bed.w / 2, y: bed.y + 20 };
+          setTimeout(() => { try { _flyResourceToInventory(S, at.x, at.y, farmArtUrl(cropId + '-ripe'), { pop: true }); } catch (e) { /* visual */ } }, k * 160);
+          k += 1;
+        }
+      }
       let dy = 34;
       for (const key of Object.keys(did.items)) {
         say(S, dy, '+' + did.items[key] + ' ' + farmItemName(key), GOOD);

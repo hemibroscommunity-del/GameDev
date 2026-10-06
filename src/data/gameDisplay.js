@@ -20,6 +20,7 @@ import { ZONES, isWorldViewZone } from './zones.js'; /* v2.3.2978: + either name
 import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
+import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3124: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
 function _defineProperty(e, r, t) { return (r in e) ? Object.defineProperty(e, r, { value: t, enumerable: true, configurable: true, writable: true }) : e[r] = t, e; }
@@ -768,102 +769,29 @@ export function generateZoneMap(zoneId) {
       }
     });
   } else if (zoneId === 'farm_home') {
-    /* ═══ PERSONAL FARM — house, plots, garden, path to exit ═══ */
-    /* Grass everywhere */
-    for (var _y5 = 0; _y5 < H; _y5++) for (var _x4 = 0; _x4 < W; _x4++) map[_y5][_x4] = 0;
-
-    /* Path from entrance (south) to house (north-center) */
-    for (var _y6 = 3; _y6 < H; _y6++) {
-      map[_y6][MX] = 1;
-      map[_y6][MX + 1] = 1;
-    }
-
-    /* House — 5x4 building tiles in upper area */
-    var hx = MX - 2,
-      hy = 3;
-    for (var _dy3 = 0; _dy3 < 4; _dy3++) for (var _dx3 = 0; _dx3 < 5; _dx3++) map[hy + _dy3][hx + _dx3] = 3;
-    /* House door — walkable path tile at center bottom */
-    map[hy + 3][MX] = 1;
-    map[hy + 3][MX + 1] = 1;
-
-    /* Farm plots — 3x2 grid of sand tiles (tilled soil) on the left */
-    for (var _py = 0; _py < 3; _py++) for (var _px = 0; _px < 4; _px++) {
-      var fx = 3 + _px,
-        fy = 10 + _py * 3;
-      for (var _dy4 = 0; _dy4 < 2; _dy4++) for (var _dx4 = 0; _dx4 < 3; _dx4++) {
-        if (fy + _dy4 < H && fx + _dx4 < W) map[fy + _dy4][fx + _dx4] = 6;
-      }
-    }
-
-    /* Garden — flower tiles on the right */
-    for (var gy = 10; gy < 18; gy++) for (var gx = W - 8; gx < W - 3; gx++) {
-      if (Math.random() < 0.6) map[gy][gx] = 5;
-    }
-
-    /* Fence border — trees around edges */
-    for (var _x5 = 0; _x5 < W; _x5++) {
-      map[0][_x5] = 4;
-      map[1][_x5] = 4;
-      map[H - 1][_x5] = 4;
-    }
-    for (var _y7 = 0; _y7 < H; _y7++) {
-      map[_y7][0] = 4;
-      map[_y7][1] = 4;
-      map[_y7][W - 1] = 4;
-      map[_y7][W - 2] = 4;
-    }
-
-    /* Return exit at bottom */
-    map[H - 1][MX] = 9;
-    map[H - 1][MX + 1] = 9;
-    map[H - 2][MX] = 1;
-    map[H - 2][MX + 1] = 1;
-
-    /* Water feature — small pond */
-    for (var _dy5 = -1; _dy5 <= 1; _dy5++) for (var _dx5 = -2; _dx5 <= 2; _dx5++) {
-      var px2 = W - 6 + _dx5,
-        py2 = 6 + _dy5;
-      if (px2 > 1 && px2 < W - 2 && py2 > 1 && py2 < H - 2 && _dx5 * _dx5 + _dy5 * _dy5 * 2 < 6) map[py2][px2] = 2;
-    }
-
-    /* Store house location for sleep mechanic */
-    ZONES.farm_home._house = {
-      x: (hx + 2) * TILE,
-      y: (hy + 2) * TILE,
-      w: 5 * TILE,
-      h: 4 * TILE
-    };
-
-    /* §DNG — Dungeon Workshop building (right side of farm) */
-    var dwx = W - 8,
-      dwy = 10;
-    for (var _dy6 = 0; _dy6 < 3; _dy6++) for (var _dx6 = 0; _dx6 < 4; _dx6++) map[dwy + _dy6][dwx + _dx6] = 7;
-    /* Door at center bottom */
-    map[dwy + 2][dwx + 1] = 1;
-    map[dwy + 2][dwx + 2] = 1;
-    ZONES.farm_home._workshop = {
-      x: (dwx + 2) * TILE,
-      y: (dwy + 1) * TILE,
-      w: 4 * TILE,
-      h: 3 * TILE
-    };
-
-    /* §PET — Pet House (left side of farm, below plots) */
-    var phx = 3,
-      phy = 19;
-    for (var _dy7 = 0; _dy7 < 3; _dy7++) for (var _dx7 = 0; _dx7 < 4; _dx7++) map[phy + _dy7][phx + _dx7] = 7;
-    map[phy + 2][phx + 1] = 1;
-    map[phy + 2][phx + 2] = 1; /* door */
-    /* Pet pen — fenced grass area next to pet house */
-    for (var _dy8 = 0; _dy8 < 3; _dy8++) for (var _dx8 = 0; _dx8 < 5; _dx8++) {
-      if (phy + _dy8 < H - 1 && phx + 5 + _dx8 < W - 2) map[phy + _dy8][phx + 5 + _dx8] = 5; /* flower/grass pen */
-    }
-    ZONES.farm_home._petHouse = {
-      x: (phx + 2) * TILE,
-      y: (phy + 1) * TILE,
-      w: 4 * TILE,
-      h: 3 * TILE
-    };
+    /* ═══ v2.3.3124: YOUR FARM, THE FARM YOU WALK ═══
+       The owner: "I want your character to be able to walk around on the
+       farm" -- and of the old cave grotto, "This map isn't suited for a
+       farm".  Everything the farm IS lives in src/data/farmLayout.js: its
+       ground is a picture (tiledMaps.js), its barn, props, trees and beds are
+       drawn and stop your boots in rendering/farmWorld.js.  This grid's only
+       jobs are the gate out -- tile 9, the way out zoneTransitions reads --
+       and the three places the old farm kept: your bed for the night, the
+       Dungeon Workshop and the Pet House.  Everything else is 0: the old
+       decorative tiles changed your walking speed (BroTown footTile: a path
+       x1.1, the plots x0.7) on ground that no longer looks like them. */
+    for (var _fy0 = 0; _fy0 < H; _fy0++) for (var _fx0 = 0; _fx0 < W; _fx0++) map[_fy0][_fx0] = 0;
+    var _fgx0 = Math.floor((FARM_GATE.x - FARM_GATE.halfW + 16) / TILE),
+      _fgx1 = Math.floor((FARM_GATE.x + FARM_GATE.halfW - 16) / TILE);
+    for (var _fgx = _fgx0; _fgx <= _fgx1; _fgx++) if (_fgx >= 0 && _fgx < W) map[H - 1][_fgx] = 9;
+    /* the three places, as the rectangles BroTown's proximity tests read --
+       {x, y, w, h} round each spot's FOOT, and those tests compare your
+       body's centre (52 px above your boots) padded by a tile or two, so the
+       box is lifted by that much */
+    var _fspot = function (sp) { return { x: sp.x - sp.r * 0.6, y: sp.y - 52 - sp.r * 0.7, w: sp.r * 1.2, h: sp.r * 0.7 }; };
+    ZONES.farm_home._house = _fspot(FARM_SPOTS.sleep);
+    ZONES.farm_home._workshop = _fspot(FARM_SPOTS.workshop);
+    ZONES.farm_home._petHouse = _fspot(FARM_SPOTS.petHouse);
   } else {
     /* ═══ COMBAT ZONE — single entrance (south), dungeon at far north ═══ */
     var elem = zone.element;

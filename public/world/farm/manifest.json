@@ -1,0 +1,921 @@
+{
+ "tool": "add-farm-art",
+ "version": 1,
+ "gamePxPerArtPx": 0.5,
+ "bedGame": 100,
+ "sprites": {
+  "carrot-sprout": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 53,
+   "h": 43,
+   "gameW": 26.5,
+   "gameH": 21.5,
+   "foot": [
+    27,
+    43
+   ]
+  },
+  "carrot-young": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 140,
+   "h": 107,
+   "gameW": 70,
+   "gameH": 53.5,
+   "foot": [
+    70,
+    107
+   ]
+  },
+  "carrot-grown": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 158,
+   "h": 144,
+   "gameW": 79,
+   "gameH": 72,
+   "foot": [
+    79,
+    144
+   ]
+  },
+  "carrot-ripe": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 188,
+   "h": 173,
+   "gameW": 94,
+   "gameH": 86.5,
+   "foot": [
+    94,
+    173
+   ]
+  },
+  "potato-sprout": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 84,
+   "h": 58,
+   "gameW": 42,
+   "gameH": 29,
+   "foot": [
+    42,
+    58
+   ]
+  },
+  "potato-young": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 142,
+   "h": 135,
+   "gameW": 71,
+   "gameH": 67.5,
+   "foot": [
+    71,
+    135
+   ]
+  },
+  "potato-grown": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 170,
+   "h": 162,
+   "gameW": 85,
+   "gameH": 81,
+   "foot": [
+    85,
+    162
+   ]
+  },
+  "potato-ripe": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 180,
+   "h": 165,
+   "gameW": 90,
+   "gameH": 82.5,
+   "foot": [
+    90,
+    165
+   ]
+  },
+  "pumpkin-sprout": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 119,
+   "h": 64,
+   "gameW": 59.5,
+   "gameH": 32,
+   "foot": [
+    60,
+    64
+   ]
+  },
+  "pumpkin-young": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 154,
+   "h": 127,
+   "gameW": 77,
+   "gameH": 63.5,
+   "foot": [
+    77,
+    127
+   ]
+  },
+  "pumpkin-grown": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 183,
+   "h": 147,
+   "gameW": 91.5,
+   "gameH": 73.5,
+   "foot": [
+    92,
+    147
+   ]
+  },
+  "pumpkin-ripe": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 215,
+   "h": 172,
+   "gameW": 107.5,
+   "gameH": 86,
+   "foot": [
+    108,
+    172
+   ]
+  },
+  "cabbage-sprout": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 91,
+   "h": 60,
+   "gameW": 45.5,
+   "gameH": 30,
+   "foot": [
+    46,
+    60
+   ]
+  },
+  "cabbage-young": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 151,
+   "h": 118,
+   "gameW": 75.5,
+   "gameH": 59,
+   "foot": [
+    76,
+    118
+   ]
+  },
+  "cabbage-grown": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 185,
+   "h": 148,
+   "gameW": 92.5,
+   "gameH": 74,
+   "foot": [
+    93,
+    148
+   ]
+  },
+  "cabbage-ripe": {
+   "sheet": "crops-a",
+   "kind": "crop",
+   "w": 183,
+   "h": 168,
+   "gameW": 91.5,
+   "gameH": 84,
+   "foot": [
+    92,
+    168
+   ]
+  },
+  "wheat-sprout": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 78,
+   "h": 45,
+   "gameW": 39,
+   "gameH": 22.5,
+   "foot": [
+    39,
+    45
+   ]
+  },
+  "wheat-young": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 100,
+   "h": 95,
+   "gameW": 50,
+   "gameH": 47.5,
+   "foot": [
+    50,
+    95
+   ]
+  },
+  "wheat-grown": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 144,
+   "h": 136,
+   "gameW": 72,
+   "gameH": 68,
+   "foot": [
+    72,
+    136
+   ]
+  },
+  "wheat-ripe": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 178,
+   "h": 169,
+   "gameW": 89,
+   "gameH": 84.5,
+   "foot": [
+    89,
+    169
+   ]
+  },
+  "corn-sprout": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 108,
+   "h": 68,
+   "gameW": 54,
+   "gameH": 34,
+   "foot": [
+    54,
+    68
+   ]
+  },
+  "corn-young": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 117,
+   "h": 141,
+   "gameW": 58.5,
+   "gameH": 70.5,
+   "foot": [
+    59,
+    141
+   ]
+  },
+  "corn-grown": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 152,
+   "h": 198,
+   "gameW": 76,
+   "gameH": 99,
+   "foot": [
+    76,
+    198
+   ]
+  },
+  "corn-ripe": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 165,
+   "h": 221,
+   "gameW": 82.5,
+   "gameH": 110.5,
+   "foot": [
+    83,
+    221
+   ]
+  },
+  "tomato-sprout": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 73,
+   "h": 52,
+   "gameW": 36.5,
+   "gameH": 26,
+   "foot": [
+    37,
+    52
+   ]
+  },
+  "tomato-young": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 126,
+   "h": 126,
+   "gameW": 63,
+   "gameH": 63,
+   "foot": [
+    63,
+    126
+   ]
+  },
+  "tomato-grown": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 160,
+   "h": 157,
+   "gameW": 80,
+   "gameH": 78.5,
+   "foot": [
+    80,
+    157
+   ]
+  },
+  "tomato-ripe": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 172,
+   "h": 169,
+   "gameW": 86,
+   "gameH": 84.5,
+   "foot": [
+    86,
+    169
+   ]
+  },
+  "strawberry-sprout": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 79,
+   "h": 43,
+   "gameW": 39.5,
+   "gameH": 21.5,
+   "foot": [
+    40,
+    43
+   ]
+  },
+  "strawberry-young": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 116,
+   "h": 96,
+   "gameW": 58,
+   "gameH": 48,
+   "foot": [
+    58,
+    96
+   ]
+  },
+  "strawberry-grown": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 153,
+   "h": 112,
+   "gameW": 76.5,
+   "gameH": 56,
+   "foot": [
+    77,
+    112
+   ]
+  },
+  "strawberry-ripe": {
+   "sheet": "crops-b",
+   "kind": "crop",
+   "w": 173,
+   "h": 133,
+   "gameW": 86.5,
+   "gameH": 66.5,
+   "foot": [
+    87,
+    133
+   ]
+  },
+  "firebloom-sprout": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 66,
+   "h": 55,
+   "gameW": 33,
+   "gameH": 27.5,
+   "foot": [
+    33,
+    55
+   ]
+  },
+  "firebloom-young": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 126,
+   "h": 128,
+   "gameW": 63,
+   "gameH": 64,
+   "foot": [
+    63,
+    128
+   ]
+  },
+  "firebloom-grown": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 136,
+   "h": 158,
+   "gameW": 68,
+   "gameH": 79,
+   "foot": [
+    68,
+    158
+   ]
+  },
+  "firebloom-ripe": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 199,
+   "h": 196,
+   "gameW": 99.5,
+   "gameH": 98,
+   "foot": [
+    100,
+    196
+   ]
+  },
+  "rock_vine-sprout": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 83,
+   "h": 87,
+   "gameW": 41.5,
+   "gameH": 43.5,
+   "foot": [
+    42,
+    87
+   ]
+  },
+  "rock_vine-young": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 142,
+   "h": 114,
+   "gameW": 71,
+   "gameH": 57,
+   "foot": [
+    71,
+    114
+   ]
+  },
+  "rock_vine-grown": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 163,
+   "h": 151,
+   "gameW": 81.5,
+   "gameH": 75.5,
+   "foot": [
+    82,
+    151
+   ]
+  },
+  "rock_vine-ripe": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 200,
+   "h": 172,
+   "gameW": 100,
+   "gameH": 86,
+   "foot": [
+    100,
+    172
+   ]
+  },
+  "cloudpetal-sprout": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 75,
+   "h": 62,
+   "gameW": 37.5,
+   "gameH": 31,
+   "foot": [
+    38,
+    62
+   ]
+  },
+  "cloudpetal-young": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 128,
+   "h": 133,
+   "gameW": 64,
+   "gameH": 66.5,
+   "foot": [
+    64,
+    133
+   ]
+  },
+  "cloudpetal-grown": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 155,
+   "h": 161,
+   "gameW": 77.5,
+   "gameH": 80.5,
+   "foot": [
+    78,
+    161
+   ]
+  },
+  "cloudpetal-ripe": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 203,
+   "h": 190,
+   "gameW": 101.5,
+   "gameH": 95,
+   "foot": [
+    102,
+    190
+   ]
+  },
+  "frostberry-sprout": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 83,
+   "h": 68,
+   "gameW": 41.5,
+   "gameH": 34,
+   "foot": [
+    42,
+    68
+   ]
+  },
+  "frostberry-young": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 138,
+   "h": 127,
+   "gameW": 69,
+   "gameH": 63.5,
+   "foot": [
+    69,
+    127
+   ]
+  },
+  "frostberry-grown": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 162,
+   "h": 137,
+   "gameW": 81,
+   "gameH": 68.5,
+   "foot": [
+    81,
+    137
+   ]
+  },
+  "frostberry-ripe": {
+   "sheet": "crops-c",
+   "kind": "crop",
+   "w": 202,
+   "h": 157,
+   "gameW": 101,
+   "gameH": 78.5,
+   "foot": [
+    101,
+    157
+   ]
+  },
+  "thunder_pepper-sprout": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 77,
+   "h": 51,
+   "gameW": 38.5,
+   "gameH": 25.5,
+   "foot": [
+    39,
+    51
+   ]
+  },
+  "thunder_pepper-young": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 110,
+   "h": 95,
+   "gameW": 55,
+   "gameH": 47.5,
+   "foot": [
+    55,
+    95
+   ]
+  },
+  "thunder_pepper-grown": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 141,
+   "h": 137,
+   "gameW": 70.5,
+   "gameH": 68.5,
+   "foot": [
+    71,
+    137
+   ]
+  },
+  "thunder_pepper-ripe": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 195,
+   "h": 166,
+   "gameW": 97.5,
+   "gameH": 83,
+   "foot": [
+    98,
+    166
+   ]
+  },
+  "dewmelon-sprout": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 74,
+   "h": 50,
+   "gameW": 37,
+   "gameH": 25,
+   "foot": [
+    37,
+    50
+   ]
+  },
+  "dewmelon-young": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 148,
+   "h": 101,
+   "gameW": 74,
+   "gameH": 50.5,
+   "foot": [
+    74,
+    101
+   ]
+  },
+  "dewmelon-grown": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 200,
+   "h": 151,
+   "gameW": 100,
+   "gameH": 75.5,
+   "foot": [
+    100,
+    151
+   ]
+  },
+  "dewmelon-ripe": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 219,
+   "h": 179,
+   "gameW": 109.5,
+   "gameH": 89.5,
+   "foot": [
+    110,
+    179
+   ]
+  },
+  "gloomcap-sprout": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 66,
+   "h": 55,
+   "gameW": 33,
+   "gameH": 27.5,
+   "foot": [
+    33,
+    55
+   ]
+  },
+  "gloomcap-young": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 101,
+   "h": 98,
+   "gameW": 50.5,
+   "gameH": 49,
+   "foot": [
+    51,
+    98
+   ]
+  },
+  "gloomcap-grown": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 152,
+   "h": 130,
+   "gameW": 76,
+   "gameH": 65,
+   "foot": [
+    76,
+    130
+   ]
+  },
+  "gloomcap-ripe": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 202,
+   "h": 188,
+   "gameW": 101,
+   "gameH": 94,
+   "foot": [
+    101,
+    188
+   ]
+  },
+  "heartroot-sprout": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 82,
+   "h": 58,
+   "gameW": 41,
+   "gameH": 29,
+   "foot": [
+    41,
+    58
+   ]
+  },
+  "heartroot-young": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 137,
+   "h": 100,
+   "gameW": 68.5,
+   "gameH": 50,
+   "foot": [
+    69,
+    100
+   ]
+  },
+  "heartroot-grown": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 177,
+   "h": 147,
+   "gameW": 88.5,
+   "gameH": 73.5,
+   "foot": [
+    89,
+    147
+   ]
+  },
+  "heartroot-ripe": {
+   "sheet": "crops-d",
+   "kind": "crop",
+   "w": 216,
+   "h": 187,
+   "gameW": 108,
+   "gameH": 93.5,
+   "foot": [
+    108,
+    187
+   ]
+  },
+  "bed-dug": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 195,
+   "h": 144,
+   "gameW": 97.5,
+   "gameH": 72,
+   "foot": [
+    98,
+    72
+   ]
+  },
+  "bed-wet": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 198,
+   "h": 146,
+   "gameW": 99,
+   "gameH": 73,
+   "foot": [
+    99,
+    73
+   ]
+  },
+  "bed-fed": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 206,
+   "h": 146,
+   "gameW": 103,
+   "gameH": 73,
+   "foot": [
+    103,
+    73
+   ]
+  },
+  "bed-wetfed": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 202,
+   "h": 144,
+   "gameW": 101,
+   "gameH": 72,
+   "foot": [
+    101,
+    72
+   ]
+  },
+  "plot": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 219,
+   "h": 174,
+   "gameW": 109.5,
+   "gameH": 87,
+   "foot": [
+    110,
+    87
+   ]
+  },
+  "sale-sign": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 104,
+   "h": 159,
+   "gameW": 52,
+   "gameH": 79.5,
+   "foot": [
+    52,
+    159
+   ]
+  },
+  "scarecrow": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 210,
+   "h": 234,
+   "gameW": 105,
+   "gameH": 117,
+   "foot": [
+    105,
+    234
+   ]
+  },
+  "compost-bin": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 212,
+   "h": 192,
+   "gameW": 106,
+   "gameH": 96,
+   "foot": [
+    106,
+    192
+   ]
+  },
+  "tool-rack": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 219,
+   "h": 190,
+   "gameW": 109.5,
+   "gameH": 95,
+   "foot": [
+    110,
+    190
+   ]
+  },
+  "wheelbarrow": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 344,
+   "h": 195,
+   "gameW": 172,
+   "gameH": 97.5,
+   "foot": [
+    172,
+    195
+   ]
+  },
+  "seed-sacks": {
+   "sheet": "beds",
+   "kind": "prop",
+   "w": 274,
+   "h": 169,
+   "gameW": 137,
+   "gameH": 84.5,
+   "foot": [
+    137,
+    169
+   ]
+  },
+  "barn": {
+   "sheet": "barn",
+   "kind": "building",
+   "w": 772,
+   "h": 896,
+   "gameW": 386,
+   "gameH": 448,
+   "foot": [
+    386,
+    896
+   ]
+  }
+ },
+ "made": "2026-10-06T20:38:21.449Z"
+}

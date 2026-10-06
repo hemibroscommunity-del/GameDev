@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  farm: () => import('./mp-farm.mjs'), /* v2.3.3111: the farm on a phone -- Enter at the Feed & Seed opens the worker's farm (six beds of grass, the tool on Dig); one finger across three beds digs them in one message; the Seeds tab sells carrot seeds and compost for the worker's coins; the tool moves to Plant, Plant all sows; Water re-times a bed 8 -> 6 min, Feed composts it; ripened by the dev op, Harvest all pays 7 carrots and 75 Farming XP, the worker's bag agreeing; reopened, the farm is the worker's; pictures */
+  farm: () => import('./mp-farm.mjs'), /* v2.3.3111 + v2.3.3124: the Feed & Seed on a phone -- Enter opens it on its Seeds tab, no beds or tools in it any more (they are worked on your farm: mp-farmwalk), Visit Your Farm at the top and a line saying how your beds are doing; the Seeds tab sells carrot seeds and compost for the worker's coins, the twelve crops still to open under their levels, the owner's pictures; the line follows the worker's farm (3 growing, 3 ready to harvest in green, 6 to plant after the harvest, the worker's bag holding the 6 carrots); reopened it is the worker's; switched off, a joiner gets the window closed and nothing is sent */
   tapact: () => import('./mp-tapact.mjs'), /* v2.3.3105: the right stick shows what a tap does and the tap does it -- a DOOR at the bank's steps (the bank opens), a speech BUBBLE beside Ace (his coin flip opens), the JUMP arrow with nothing about (a jump) */
   tapprop: () => import('./mp-tapprop.mjs'), /* v2.3.3105: beside a prop a tap on the right stick jumps (zone, disc, or on the prop) and a hold toward it swings and lands blows; the stick wears the JUMP picture while a tap would jump, the weapon under a lock */
   tapjump: () => import('./mp-tapjump.mjs'), /* v2.3.3105: a tap on the right stick jumps when nothing else wants it -- the old button gone; an empty tap jumps; a lock lets go, a busy disc, a drag and a tap on yourself do not jump */
@@ -287,6 +287,7 @@ const SCENARIOS = {
   meals: () => import('./mp-meals.mjs'), /* v2.3.3114: the Cookhouse cooks into the bag; eat a meal, drink a brew beside it; Diego's two staples */
   fightfood: () => import('./mp-fightfood.mjs'), /* v2.3.3117: in a duel the worker puts the brew on (nb:1), a special swing says so, one bite at a time */
   farmorders: () => import('./mp-farmorders.mjs'), /* v2.3.3118: the Feed & Seed's order board -- three a day, delivered from the bag for gold and Farming XP */
+  farmwalk: () => import('./mp-farmwalk.mjs'), /* v2.3.3124: the farm you walk -- onto it under its loading screen, a bed's step by E, the right stick's tap and a tap on the bed, kneeling as the fire-lighter does (no log), the timer and the next step over every bed, the carrot to the bag, the barn's wall, the gate out */
   drops: () => import('./mp-drops.mjs'), /* v2.3.1924: iron pieces to the bag, the gem to the glass */
   drillback: () => import('./mp-drillback.mjs'), /* v2.3.1922: the drill back-chip is not under the gold, and is paid for once */
   bootstall: () => import('./mp-bootstall.mjs'), /* v2.3.1921: a worker that never answers must not strand the login door */

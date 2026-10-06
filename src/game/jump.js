@@ -127,9 +127,9 @@ export function jumpRefusal(S, now, extra) {
   if (S._dodgeRoll) return 'rolling';
   if (S._bashDash) return 'dashing';
   if (S._wheelSwim && S._wheelSwim.on) return 'swimming';
-  if (S._extraction || S._firemaking) return 'harvesting';
+  if (S._extraction || S._firemaking || S._farmWork) return 'harvesting';   /* v2.3.3124: kneeling at a bed too */
   if (S._lootFreezeUntil && now < S._lootFreezeUntil) return 'busy';
-  if (S._sled || S._zoneLoading || S._netHold || S._townArtHold) return 'busy';
+  if (S._sled || S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) return 'busy';   /* v2.3.3124: + the farm's hold */
   return null;
 }
 

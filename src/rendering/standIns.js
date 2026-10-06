@@ -28,7 +28,10 @@ const RETRY_MS = 15000;     /* a failed make is tried again after this */
 let _gen = 0;
 let _make = null;
 const _st = Object.create(null);
-function fresh() { for (const k of KINDS) _st[k] = { state: 'idle', at: 0, ms: null, why: null }; }
+/* v2.3.3124: whether the farmer's kneel was baked with the fire-lighter
+   (effectsRenderer FARM_MOUND_URL) -- the body hides for it only when it was */
+let _farmKneel = false;
+function fresh() { for (const k of KINDS) _st[k] = { state: 'idle', at: 0, ms: null, why: null }; _farmKneel = false; }
 fresh();
 
 /** The effects renderer's maker: (kind) => Promise<boolean> (true when its
@@ -89,3 +92,10 @@ if (typeof window !== 'undefined') {
     return out;
   };
 }
+
+/** v2.3.3124: the farmer's kneel is baked with the fire-lighter
+ *  (effectsRenderer _fetchAndBakeFire).  Set by the bake; a new renderer
+ *  starts it over (setStandInMaker). */
+export function setFarmKneelReady(v) { _farmKneel = !!v; }
+/** Can the farmer kneel?  The fire-lighter made, with the farmer's frames. */
+export function farmKneelReady() { return _farmKneel && standInReady('fire'); }

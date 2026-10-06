@@ -266,6 +266,7 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHp /* v2.3.3035: a timer harvest's bar reads the node's HP */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
+import { farmWorkFrame } from '@/game/farmWork.js';   /* v2.3.3124: the farmer's kneel, frame by frame */
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
@@ -499,7 +500,7 @@ import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask */
-import { setStandInMaker, ensureStandIn, standInStarted, standInReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted */
+import { setStandInMaker, ensureStandIn, standInStarted, standInReady, setFarmKneelReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
@@ -568,9 +569,36 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
    table).  One strip, no legless twin.  FIRE_KEEP_BOXES puts the fist's
    islands back into the figure for everybody, drawings or not. */
 const FIRE_URL = '/sprites/skills/firemaking-strip.webp?v=2.3.1715';
+/* ═══ v2.3.3124: THE FARMER KNEELS AS THE FIRE-LIGHTER DOES ═══
+   The owner: "you can use the firemaking animation for all of that" -- dig,
+   plant, water, fertilize and harvest on the farm you walk (game/farmWork.js).
+   The strip's first three frames are the farmer's -- standing, kneeling,
+   leaning in -- but they paint a log in front of the figure, which is no
+   thing to dig with.  So each bake also makes its own copy of those three
+   with a mound of dug earth (tools/make_farm_mound.py, the owner's bed's own
+   browns) drawn over the log: AFTER the skin is baked in, so its browns are
+   never taken for skin, and the hands resting on the log go into the earth.
+   The shirt, armour, hat and drawings are the fire-lighter's own for frames
+   0-2, so the farmer wears all of them.  ~0.2 MB, packed like the rest. */
+const FARM_MOUND_URL = '/sprites/skills/farm-mound.png?v=2.3.3124';
+const FARM_MOUND_AT = [86, 366];   /* its top-left in a 384x512 cell: over the log (x 99..277, y 387..461) */
+const FARM_KNEEL_FRAMES = 3;
 function _bakeFireSplit(img, skinT, art) {
   return recolorStandInSkinSplit(img, skinT, FIRE_FH, { ...FIRE_SKIN_OPTS, frameW: FIRE_FW,
     keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS });
+}
+/* v2.3.3124: the farmer's three frames from a baked fire canvas -- the mound
+   drawn over the log, or (the drawings' layer, `punch`) cut out of it, so a
+   drawing on a hand does not float on the earth the hand went into. */
+function _farmKneelCanvas(src, mound, punch) {
+  const c = document.createElement('canvas');
+  c.width = FIRE_FW * FARM_KNEEL_FRAMES; c.height = FIRE_FH;
+  const g = c.getContext('2d');
+  g.drawImage(src, 0, 0, c.width, FIRE_FH, 0, 0, c.width, FIRE_FH);
+  if (punch) g.globalCompositeOperation = 'destination-out';
+  for (let k = 0; k < FARM_KNEEL_FRAMES; k++) g.drawImage(mound, k * FIRE_FW + FARM_MOUND_AT[0], FARM_MOUND_AT[1]);
+  g.globalCompositeOperation = 'source-over';
+  return c;
 }
 /* The drawn-peer layers, per figure (_peerStandInInk): the strip a variant
    loads, its frame size and the split bake.  The cook's variant is its legless
@@ -3071,6 +3099,8 @@ export class EffectsRenderer {
        shirt go back to defaults").  It used to be a plain _fxLoad, so it always
        showed the artist's orange. */
     this._fireFrames = [];
+    this._farmFrames = [];        /* v2.3.3124: the farmer's kneel (FARM_MOUND_URL) */
+    this._farmFramesInk = null;
     this._loadFireStrips();
     /* v2.3.3077: how each gathering pose is made, for rendering/standIns.js --
        a new renderer (a black screen's rebuild) starts every pose over */
@@ -3858,6 +3888,7 @@ export class EffectsRenderer {
     else if (ex && ex.skill === 'cooking') ensureStandIn('cook', 'cooking');
     if (S._campfire && S._campfire.alive) ensureStandIn('cook', 'a campfire lit');
     if (S._firemaking) ensureStandIn('fire', 'lighting a fire');
+    else if (S._farmWork || S.currentZone === 'farm_home') ensureStandIn('fire', 'the farm');   /* v2.3.3124: the farmer's kneel is baked with it */
     else if (!standInStarted('fire')) {
       const inv = S.rpg && S.rpg.inventory;
       if (inv) for (const k in inv) { if (k.indexOf('wood_') === 0 && inv[k] > 0) { ensureStandIn('fire', 'a log in the bag'); break; } }
@@ -4307,7 +4338,10 @@ export class EffectsRenderer {
        stay put), which means a browser holding the old 4669x220 image would
        slice it at the new 384 width into 12 nonsense frames.  The query (in
        FIRE_URL) is what makes the swap safe. */
-    return _loadStandInImg(FIRE_URL).then((img) => {
+    /* v2.3.3124: and the farmer's mound with it.  A mound that fails to load
+       costs only the farmer's kneel (farmKneelReady: the body stays drawn),
+       never the fire-lighter. */
+    return Promise.all([_loadStandInImg(FIRE_URL), _loadStandInImg(FARM_MOUND_URL).catch(() => null)]).then(([img, mound]) => {
       if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go */
       /* skinTarget() returns null for the 'default' pick, which means "the art
          is already this colour" — true of the PLAYER sheets, not of this
@@ -4323,6 +4357,11 @@ export class EffectsRenderer {
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
       const _old = [];
       if (!inkOnly) {
+        /* v2.3.3124: the farmer's three first -- the slicer below lets the
+           baked canvas go */
+        _old.push(this._farmFrames);
+        this._farmFrames = mound && n >= FARM_KNEEL_FRAMES
+          ? this._own(_sliceStandIn(_farmKneelCanvas(cv, mound, false), FIRE_FW, FIRE_FH, FARM_KNEEL_FRAMES, '_farmFrames', false)) : [];
         _old.push(this._fireFrames);
         const arr = this._own(_sliceStandIn(cv, FIRE_FW, FIRE_FH, n, '_fireFrames', true));   /* v2.3.2775: cropped; released after the probe; v2.3.3074: owned */
         this._fireFrames = arr;
@@ -4331,8 +4370,14 @@ export class EffectsRenderer {
       } else {
         cv.width = 0; cv.height = 0;
       }
+      /* v2.3.3124: the farmer's drawings' layer, before the slicer below lets
+         the fire's go */
+      _old.push(this._farmFramesInk);
+      this._farmFramesInk = ink && mound && n >= FARM_KNEEL_FRAMES
+        ? this._own(_sliceStandIn(_farmKneelCanvas(ink, mound, true), FIRE_FW, FIRE_FH, FARM_KNEEL_FRAMES, '_farmFramesInk', false)) : null;
       _old.push(this._fireFramesInk);
       this._fireFramesInk = ink ? this._own(_sliceStandIn(ink, FIRE_FW, FIRE_FH, n, '_fireFramesInk', false)) : null;   /* v2.3.3074: owned */
+      setFarmKneelReady(this._farmFrames.length > 0);
       /* v2.3.2858: the replaced textures, released as the cook's are (see
          _bakeCookStrips) -- a skin change used to leave the old strip to
          Pixi's idle collector, and a drawing change now rebakes too.  Other
@@ -11304,8 +11349,12 @@ export class EffectsRenderer {
        campfire when the light finishes or the player dies mid-light. */
     if (this.fireLegsSprite) this.fireLegsSprite.visible = false;
     if (this.fireChestSprite) this.fireChestSprite.visible = false;
-    const fm = S && S._firemaking;
-    if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length || !standInReady('fire')) return;   /* v2.3.3077: drawn once made whole (rendering/standIns.js) */
+    const fm = S && (S._firemaking || S._farmWork);
+    /* v2.3.3124: the farmer kneels in the fire-lighter's place, on its own
+       three frames (the log under a mound of earth) and its own clock */
+    const farm = !!(S && !S._firemaking && S._farmWork);
+    const frames = farm ? this._farmFrames : this._fireFrames;
+    if (!fm || !S.player || !this.fireSprite || !frames || !frames.length || !standInReady('fire')) return;   /* v2.3.3077: drawn once made whole (rendering/standIns.js) */
     if (this._selfCorpse) return;   /* v2.3.2281 */
     if (fm.doneAt && now > fm.doneAt) return;
     /* v2.3.1435 (owner): 1.75x (88 -> 154).  v2.3.1715: FRAME_MS 55 -> 200 with
@@ -11321,9 +11370,10 @@ export class EffectsRenderer {
        reads as a freeze rather than a faster animation. */
     const FH = 154, FRAME_MS = FIRE_FRAME_MS;
     const elapsed = now - (fm.startedAt || now);
-    const fi = Math.min(this._fireFrames.length - 1, Math.floor(elapsed / FRAME_MS));
+    const fi = farm ? Math.min(frames.length - 1, farmWorkFrame(elapsed, (fm.doneAt || 0) - (fm.startedAt || 0)))
+      : Math.min(this._fireFrames.length - 1, Math.floor(elapsed / FRAME_MS));
     const sp = this.fireSprite;
-    sp.texture = this._fireFrames[fi];
+    sp.texture = frames[fi];
     /* ═══ v2.3.2287: THE TERM THE PEER COPY GOT AND THIS ONE NEVER DID ═══
        Owner: "I think when you start fires in worldview you're also gigantic."
        v2.3.1574 fixed this for OTHER players, with the sentence "the stand-in
@@ -11352,12 +11402,15 @@ export class EffectsRenderer {
         x: sp.x, y: sp.y, gearScaleY: _fc ? _fc.scale.y : null,
         /* v2.3.2846: where the figure's boots land (FIRE_FEET_ROW) */
         bootsY: +(sp.y - (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y).toFixed(2),
+        /* v2.3.3124: the farmer's kneel (mp-farmwalk) -- which strip, which frame */
+        farm, frame: fi, farmFrames: this._farmFrames.length,
       });
     }
     sp.visible = true;
     /* v2.3.2858: your drawings' layer, on the same frame with the figure's
        exact transform (see _fetchAndBakeFire). */
-    const _fInk = this._fireFramesInk && this._fireFramesInk[fi];
+    const _fInkArr = farm ? this._farmFramesInk : this._fireFramesInk;   /* v2.3.3124 */
+    const _fInk = _fInkArr && _fInkArr[fi];
     const fsp = this.fireInkSprite;
     if (fsp) {
       if (_fInk) {

@@ -392,7 +392,10 @@ export const ZONES = {
      was despawned long before (NPC_DATA emptied), leaving the zone
      unreachable; owner confirmed removal 2026-06-12. */
   farm_home: {
-    id: 'farm_home', name: 'Your Farm', w: 30, h: 25,
+    /* v2.3.3124: 32 x 44 tiles (1024 x 1408), src/data/farmLayout.js FARM_ZONE --
+       tall enough that the view keeps the Wheel's size and scrolls (a zone
+       shorter than the view is drawn whole, zoomed in: worldViewport.js) */
+    id: 'farm_home', name: 'Your Farm', w: 32, h: 44,
     element: null, secondary: null, level: [0, 0], music: 'town', safe: true, personal: true,
     palette: { ground: '#4a7a3a', path: '#9a8a60', accent: '#5a9a40' },
     spawns: [],

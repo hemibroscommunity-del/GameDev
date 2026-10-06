@@ -6040,7 +6040,13 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 /* v2.3.3105: ...and the tap's other acts, the same way (talk, door, the bed) */
 .bt-rjoy-base[data-ricon="talk"] .bt-rjoy-icon[data-ricon-img="talk"],
 .bt-rjoy-base[data-ricon="door"] .bt-rjoy-icon[data-ricon-img="door"],
-.bt-rjoy-base[data-ricon="sleep"] .bt-rjoy-icon[data-ricon-img="sleep"]{display:block;opacity:.7}
+.bt-rjoy-base[data-ricon="sleep"] .bt-rjoy-icon[data-ricon-img="sleep"],
+/* v2.3.3124: ...and a bed's next step on your farm (controlSkin RDISC_ICONS) */
+.bt-rjoy-base[data-ricon="farm-dig"] .bt-rjoy-icon[data-ricon-img="farm-dig"],
+.bt-rjoy-base[data-ricon="farm-plant"] .bt-rjoy-icon[data-ricon-img="farm-plant"],
+.bt-rjoy-base[data-ricon="farm-water"] .bt-rjoy-icon[data-ricon-img="farm-water"],
+.bt-rjoy-base[data-ricon="farm-feed"] .bt-rjoy-icon[data-ricon-img="farm-feed"],
+.bt-rjoy-base[data-ricon="farm-harvest"] .bt-rjoy-icon[data-ricon-img="farm-harvest"]{display:block;opacity:.7}
 /* the label is the button's name; a caption only while a gesture is asked for */
 .bt-rjoy-label{transition:opacity 120ms linear}
 .bt-rjoy-label[data-show="0"]{opacity:0}

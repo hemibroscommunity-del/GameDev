@@ -329,6 +329,15 @@ export const RDISC_ICONS = [
   ['talk', '/ui/controls/talk.svg?v=2.3.3105'],
   ['door', '/ui/controls/door.svg?v=2.3.3105'],
   ['sleep', '/ui/controls/sleep.svg?v=2.3.3105'],
+  /* v2.3.3124: and at a bed on your farm, its next step (game/farmWalk.js;
+     desktopControls interactKind 'farm-<step>') -- the owner: "You dig, you
+     water, you fertilize, etc." -- a spade, a sprout, a watering can, a sack
+     of compost and a basket, in the same white-and-outline style */
+  ['farm-dig', '/ui/controls/farm-dig.svg?v=2.3.3124'],
+  ['farm-plant', '/ui/controls/farm-plant.svg?v=2.3.3124'],
+  ['farm-water', '/ui/controls/farm-water.svg?v=2.3.3124'],
+  ['farm-feed', '/ui/controls/farm-feed.svg?v=2.3.3124'],
+  ['farm-harvest', '/ui/controls/farm-harvest.svg?v=2.3.3124'],
   /* v2.3.3105: while the tap ATTACKS, the weapon in your hand -- the owner:
      "when attacking it should show the weapon type depending on what weapon
      is used".  The bag's own pictures (InventoryPanel's thumb: a sword or a

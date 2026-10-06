@@ -26,6 +26,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { FARM_GATE } from '../../../src/data/farmLayout.js';   /* v2.3.3124: the farm you walk */
 
 const PHONE = { width: 390, height: 844 };
 
@@ -113,18 +114,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     return r;
   };
-  /* out by the farm's gate (row 24, columns 15-16 of 30 x 25): hop toward it
-     and STOP the moment the zone is not the farm -- a hop loop that carried on
-     into the next zone walked the player off toward the farm's coordinates */
+  /* out by the farm's gate (v2.3.3124: the farm you walk, data/farmLayout.js
+     FARM_GATE -- the exit tiles under its gate in the bottom row of 32 x 44):
+     hop toward it and STOP the moment the zone is not the farm -- a hop loop
+     that carried on into the next zone walked the player off toward the
+     farm's coordinates */
   const leaveFarm = async () => {
     for (let i = 0; i < 90; i++) {
-      const moved = await P.page.evaluate(() => {
+      const moved = await P.page.evaluate((g) => {
         const S = window._gameState.current;
         if (S.currentZone !== 'farm_home' || S._zoneLoading) return false;
-        const dx = 16 * 32 - S.player.x, dy = 23 * 32 - S.player.y, d = Math.hypot(dx, dy);
+        const dx = g.x - S.player.x, dy = g.y - S.player.y, d = Math.hypot(dx, dy);
         if (d > 6) { const k = Math.min(60, d); S.player.x += (dx / d) * k; S.player.y += (dy / d) * k; }
         return true;
-      });
+      }, { x: FARM_GATE.x, y: 1376 - 52 });
       if (!moved) return;
       await P.page.waitForTimeout(260);
     }
