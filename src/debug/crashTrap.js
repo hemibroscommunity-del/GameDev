@@ -80,7 +80,33 @@ function _scheduleFlush(kind) {
   } catch (e) { /* ignore */ }
 }
 
+/* ═══ v2.3.3075: WHAT THE PAGE HELD WHEN IT WENT DARK ═══
+   docs/MEMORY-PLAN.md: the renderer's own recovery from a black screen left
+   ~90 MB behind it every time (v2.3.3074 fixed it), so the next black screen
+   was likelier -- and nothing in the crash feed could have shown that.  Now a
+   report of the screen going (a lost context, a rebuild, a render throw, the
+   recovery reload) carries how long the page had been up, how many rebuilds
+   it had been through, and what it held: the asset cache (__btTex, decoded)
+   and the sound decoded (BT_AUDIO.decodedMB).  The alive mark carries the
+   same, so a page iOS killed reports its own.  Cheap: both sums walk a few
+   hundred entries, and only at these moments and every 5 s for the mark. */
+const _upSince = Date.now();
+let _rebuilds = 0;
+const _MEM_KINDS = new Set(['CONTEXT_LOST', 'gl-context-lost', 'gl-rebuild', 'pixi-render-err', 'auto-reload']);
+function _memNow(withTex) {
+  const out = { up: Math.round((Date.now() - _upSince) / 60000), rb: _rebuilds, tex: null, snd: null };
+  if (withTex) { try { const t = window.__btTex && window.__btTex(); if (t) out.tex = t.mb; } catch (e) { /* no renderer yet */ } }
+  try { const A = window.BT_AUDIO; const d = A && A.decodedMB && A.decodedMB(); if (d) out.snd = d.mb; } catch (e) { /* no audio yet */ }
+  return out;
+}
+function _memWords(m) {
+  return `${m.up} min up, ${m.rb} rebuild${m.rb === 1 ? '' : 's'}, `
+    + `${m.tex != null ? m.tex + ' MB of textures' : 'textures unknown'}, ${m.snd != null ? m.snd + ' MB of sound' : 'sound unknown'}`;
+}
+
 export function recordCrash(kind, msg) {
+  if (kind === 'gl-rebuild') _rebuilds++;
+  if (_MEM_KINDS.has(kind)) { try { msg = String(msg) + ' [' + _memWords(_memNow(true)) + ']'; } catch (e) { /* the report still goes */ } }
   try {
     const log = read();
     log.push({ t: new Date().toISOString(), kind, msg: String(msg).slice(0, 500) });
@@ -129,7 +155,11 @@ export function markAlive(info) {
     const now = Date.now();
     if (now - _aliveAt < ALIVE_EVERY_MS) return;
     _aliveAt = now;
-    localStorage.setItem(ALIVE_KEY, JSON.stringify(Object.assign({ sid: _SID, t: now, vis: document.visibilityState }, info || {})));
+    /* v2.3.3075: + up, rb and snd (see _memNow): what a page iOS killed held.
+       The textures come in `info` already (BroTown's watchdog reads __btTex
+       for it), so they are not walked a second time here. */
+    const m = _memNow(false);
+    localStorage.setItem(ALIVE_KEY, JSON.stringify(Object.assign({ sid: _SID, t: now, vis: document.visibilityState, up: m.up, rb: m.rb, snd: m.snd }, info || {})));
   } catch (e) { /* storage unavailable */ }
 }
 /* this page's own mark, if the key holds it (another tab may have written last) */
@@ -151,7 +181,9 @@ function _checkLastAlive() {
     const hidden = last.vis === 'hidden';
     recordCrash(hidden ? 'evicted' : 'killed', `the last page stopped without closing ${ago}s before this one, `
       + `${hidden ? 'in the background' : 'ON SCREEN'}: zone ${last.zone || '?'} at ${last.x},${last.y}, hp ${last.hp}, `
-      + `${last.mb != null ? last.mb + ' MB of textures' : 'textures unknown'}`);
+      + `${last.mb != null ? last.mb + ' MB of textures' : 'textures unknown'}`
+      /* v2.3.3075: and what else it held (marks from older pages lack them) */
+      + (last.up != null ? `, ${last.up} min up, ${last.rb || 0} rebuild(s), ${last.snd != null ? last.snd + ' MB of sound' : 'sound unknown'}` : ''));
     try {
       const raw = localStorage.getItem(ALIVE_KEY);
       const a = raw ? JSON.parse(raw) : null;
