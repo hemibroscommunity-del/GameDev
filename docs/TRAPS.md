@@ -5402,3 +5402,45 @@ window, a dead pipe (`mp-recoverpay`'s relay can make one). And a client that
 keeps playing without a live socket is the bug, wherever the socket went:
 nothing the worker settles may be started, or silently dropped, while it cannot
 hear you (`offlineRefused`, `_holdForRejoin`).
+
+## 139. "Destroy the texture's source and its memory is gone" (v2.3.3074)
+
+**The plausible move.** A baked strip -- a recoloured stand-in, a trait colour,
+a monster's look -- is made with `Texture.from(canvas)` and later replaced or
+let go of. Every frame shares one `TextureSource`, so you release it with
+`frames[0].source.destroy()`: the GPU copy goes, `source.resource` is nulled,
+`__btTex` (which skips destroyed sources) stops counting it. Done.
+
+**Why it is wrong.** `Texture.from(canvas)` parks a Texture in Pixi's Cache with
+the CANVAS ITSELF as the key (pixi `textureFrom.mjs` `resourceToTexture`), and
+that entry leaves only when THAT Texture is destroyed -- not its source. So the
+Cache kept every released canvas, pixels and all, for the life of the page,
+invisible to `__btTex`. Measured on main (mp-bakeleak): a stroke in the
+character designer re-bakes the sword / bow stand-ins and left 11.5 MB behind
+each time (92 MB for eight); and a tour of the Wheel's eight lands, whose
+monster looks are recoloured and let go of land by land, left ~5 MB of
+canvases behind a lap (back in Brotown: 127.7 -> 132.2 -> 137.8 MB; with the
+release below, 127.7 -> 129.1 -> 129.1).
+
+**And the bigger case of the same shape: a renderer "destroyed" by a rebuild.**
+The black-screen recovery (`_rebuildRenderer`) builds a new renderer and calls
+the old one's `destroy()`, which cleared some lists and kept everything else:
+the effects renderer's eleven skin / drawing listeners (never unsubscribed) kept
+it alive, re-baking for it on every change; the Wheel's ground was never
+destroyed (`tileRenderer.destroy`), and the module's 'got' listeners held it;
+and Pixi's own render-target system leaves a "destroy" listener on every render
+texture it drew into, so the global TexturePool held the OLD WebGLRenderer, its
+context and its canvas. Measured on main: the asset cache 172 -> 200 -> 252 ->
+303 MB over three rebuilds -- every black screen made the next one likelier --
+and since each dead renderer still listened, a stroke after three rebuilds was
+baked four times over: eight strokes then added 580 MB.
+Heap snapshots of an UNMINIFIED build (`vite build --minify false`, served with
+`QA_DIST`) named every holder; reading the code had found half of them.
+
+**The rule.** Let go of a canvas-made texture with `releaseCanvasSource`
+(`src/rendering/releaseCanvasTexture.js`): destroy the source, take the canvas
+out of the Cache, zero the canvas -- after pointing every sprite away from it.
+A renderer object's `destroy()` must undo what its constructor subscribed to and
+release what it baked, not only what a zone change clears. And "it is freed"
+is a claim about what still REACHES the object, so prove it with a count after
+a forced GC (mp-bakeleak), not by reading the release.

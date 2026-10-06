@@ -38,7 +38,7 @@ import { preloadGear, drawGearFrame } from './gearSheets.js';
 import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
-import { Assets } from 'pixi.js';
+import { Assets, TextureSource } from 'pixi.js';   /* v2.3.3074: + TextureSource (destroy, below) */
 import { markStandIns } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
 import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
 import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
@@ -600,10 +600,36 @@ export async function initPixiRenderer(canvas) {
     if (wheelObjects) { try { wheelObjects.destroy(); } catch (e) { /* ignore */ } wheelObjects = null; }
     tileRenderer.destroy();
     entityRenderer.clear();
-    effectsRenderer.clear();
+    /* v2.3.3074: destroy, not clear -- clear() is a zone change's; a renderer
+       that is going (a black screen's rebuild) must let go of its bakes, its
+       listeners and the WebGL renderer it held, or every rebuild left ~90 MB
+       behind (TRAPS §139, mp-bakeleak) */
+    try { effectsRenderer.destroy(); } catch (e) { /* ignore */ }
     lightFx.clear();   /* v2.3.2710 */
     try { minimap.destroy(); } catch (e) {}
     if (fpsOverlay) fpsOverlay.destroy();
+    /* ═══ v2.3.3074: CUT THE OLD RENDERER LOOSE FROM TEXTURES THAT OUTLIVE IT ═══
+       Pixi's render-target system subscribes to every texture it renders into
+       (RenderTargetSystem._initRenderTarget: `renderSurface.once("destroy",
+       ...)`, a closure over the system) and its own destroy() never takes
+       those off.  So a render texture that outlives this renderer -- Pixi's
+       global TexturePool (the filters' scratch textures), a module's own baked
+       render texture -- kept the OLD WebGL renderer reachable, with its context
+       and its full-screen canvas: a heap snapshot after two rebuilds held three
+       WebGLRenderers, and each rebuild kept another 10.8 MB 1170x2418 canvas
+       (mp-bakeleak, TRAPS §139).  A PURE render texture (a TextureSource with
+       nothing behind it) has no other "destroy" listener in Pixi or in this
+       game -- the Assets loader's and the canvas helper's sit on sources that
+       have a resource -- so on those the listeners all come off.  Done before
+       app.destroy, which empties the map this walks. */
+    try {
+      const hash = app.renderer && app.renderer.renderTarget && app.renderer.renderTarget._renderSurfaceToRenderTargetHash;
+      if (hash) {
+        for (const surface of hash.keys()) {
+          if (surface instanceof TextureSource && !surface.destroyed && surface.resource == null) surface.off('destroy');
+        }
+      }
+    } catch (e) { /* a pixi without the map: nothing to cut */ }
     app.destroy(false, { children: true });
   }
 
