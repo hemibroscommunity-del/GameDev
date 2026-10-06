@@ -625,6 +625,19 @@ remnant to migrate server-side, not a mode to preserve.
     `words`), and the minimap wears a 7 px slate-and-brass FRAME, opaque
     (`FRAME` in wheelMinimap.js): WORLD-MAP-PIPELINE "Where you are, on the
     top bar"; `mp-wheelmap`, `mp-wheelhome`.
+    Since v2.3.3108 the words are back UNDER THE MINIMAP, on a NAME PLATE --
+    the owner: "move the zone name and level band beneath the minimap but I
+    want to reduce the size of the minimap to make room for it", choosing the
+    shorter rectangle: the box stays 132 x 132, the map's window ends at
+    `MAP_BOT` 92 and the frame's slate runs on below as the plate (Pixi, so
+    it layers with the box): the land's element icon (the signposts'
+    textures, `landIconTexture`) and name in its colour, fitted down to the
+    11 px floor, over the level band in gold or "safe" at home (No man's land
+    is its own badge, v2.3.3107); the stage's name did not fit and stays on
+    the world map;
+    the top bar says "BroTown"; a land's banner docks into the plate
+    (`window.__btWheelPlate`, zoneBannerOverlay.js titleRect); the probe's
+    `plate`: WORLD-MAP-PIPELINE "The name plate under the minimap".
   - Since v2.3.3010 GREAVES ALONE HIDE THE PLAIN LEGS -- the owner: "the
     legs underneath near the shoes poke out during east jog. You can just
     remove the plain clothes legs beneath": maskedBake.js `_legsOnlyClamp`
