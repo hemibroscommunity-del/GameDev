@@ -212,6 +212,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
   w = await wm(P);
   rec.ok('the target button brings you back', meHit === 'button' && w && Math.abs(w.cx - ARRIVAL.x) < 200 && Math.abs(w.cy - ARRIVAL.y) < 200, { meHit, at: w && [w.cx, w.cy] });
+  /* v2.3.3057 (owner: "if you tap the minimap and zoom in you can see more
+     details"): what comes in as you zoom.  "Finish all quests" (above, to
+     pass the Mayor's gate) left no quest to lead to, so the first one is put
+     back on this page's own copy of your quests for the look -- the map is
+     drawn every frame from it -- and taken off again after */
+  const hadQuests = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (!S || !S.rpg) return null;
+    const was = S.rpg._quests || {};
+    S.rpg._quests = Object.assign({}, was, { tut_1: 'active' });
+    return JSON.stringify(was);
+  });
+  await P.page.waitForTimeout(500);
+  w = await wm(P);
+  await P.page.evaluate((was) => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.rpg && was) S.rpg._quests = JSON.parse(was);
+  }, hadQuests);
+  rec.ok(`zoomed in on you: the quest's gold road and star (to ${w && w.more && w.more.quest ? `${w.more.quest.x},${w.more.quest.y}` : '-'}), the resources where they grow (${w && w.more && w.more.nodes}) and each land's level bands (${w && w.more && w.more.ticks} ticks)`,
+    !!w && !!w.more && !!w.more.quest && w.more.nodes >= 3 && w.more.ticks >= 4, w && w.more);
+  for (let i = 0; i < 2; i++) await P.page.evaluate(() => document.querySelector('[data-world-map-zoom-in]').click());
+  await P.page.waitForTimeout(500);
+  w = await wm(P);
+  rec.ok(`...and closer still, the town's buildings by name (${w && w.more && w.more.buildings} named at zoom ${w && w.zoom && w.zoom.toFixed(1)})`,
+    !!w && w.zoom >= 6 && w.more && w.more.buildings >= 5, w && { zoom: w.zoom, more: w.more });
+  await shot(P, '03b-town');
+  for (let i = 0; i < 6; i++) await P.page.evaluate(() => document.querySelector('[data-world-map-zoom-in]').click());
+  await P.page.waitForTimeout(500);
+  w = await wm(P);
+  rec.ok(`...zooming as far as 28 (${w && w.zoom && w.zoom.toFixed(1)}), twice the old 12`, !!w && w.zoom > 27.9, w && w.zoom);
   await P.page.evaluate(() => document.querySelector('[data-world-map-close]').click());
   await P.page.waitForTimeout(700);
   const closed = await P.page.evaluate(() => ({ map: !!document.querySelector('[data-world-map]'), btn: !!document.querySelector('[data-world-map-open]') }));

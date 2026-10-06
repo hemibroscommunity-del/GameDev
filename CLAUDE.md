@@ -895,6 +895,15 @@ remnant to migrate server-side, not a mode to preserve.
     the plaque alone for the other four, nothing borrowed); and the river's
     streaks are softer ("too harsh in the river over the bridge"):
     WORLD-MAP-PIPELINE "Which land you are in", `mp-wheelmap`.
+  - Since v2.3.3057 the WORLD MAP SHOWS MORE AS YOU ZOOM -- the owner: "Make
+    it so if you tap the minimap and zoom in you can see more details":
+    ZOOM_MAX 28 (was 12), and by zoom (`AT` in WorldMapOverlay.jsx) the
+    quest's gold road and star (always, `questRoutePoint`), the other bros,
+    each land's level bands (wheelmap.js `ticks`, `spokeHalf`), the resources
+    tinted by tier and the monsters near you, the bridges and Bro Pond, and
+    in town every building named at its door (`wheelTownDoors`, a shut one
+    dim); `__btWorldMap.more` counts them: WORLD-MAP-PIPELINE "Zoom in, and
+    there is more to see", `mp-wheelmap`.
   - Since v2.3.3025 ONE LOADING SCREEN AND NO WAY BACK -- the owner: "players
     are starting in the old town and getting routed to the wheel on the
     loading screen. Also there still a portal to the old town. Disable that.

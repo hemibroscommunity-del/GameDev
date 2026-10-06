@@ -26,16 +26,45 @@
  * it never disagrees with the ground under your feet.  Nothing is loaded.
  *
  * QA: window.__btWorldMap (tools/qa/mp/mp-wheelmap.mjs).
+ *
+ * ═══ v2.3.3057: ZOOM IN, AND THERE IS MORE TO SEE ═══
+ * Owner, 2026-10-05: "Make it so if you tap the minimap and zoom in you can
+ * see more details."  It zooms twice as far (ZOOM_MAX 28: a building ~100
+ * CSS px on a phone), and what the minimap knows and the map did not draw
+ * comes in as the room grows (AT):
+ *   - always: the quest's gold road and star (questRoutePoint, as the
+ *     minimap's), so the map answers "where do I go" at a glance;
+ *   - the other bros, then the monsters near you (S.others, S.monsters);
+ *   - each land's LEVEL BANDS -- a tick across the spoke every five levels,
+ *     then "Lv 6–10" in each band (the worker's `ticks`, wheelmap.js);
+ *   - the resources: ore, trees and fish where they grow, tinted by tier as on
+ *     the minimap, faint where you have no tool for them;
+ *   - the bridges and Bro Pond, named;
+ *   - in town, every building at its door, named (wheelTownDoors), a shut one
+ *     dim and marked "shut".
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isWheelTrialZone } from '../game/worldTrial.js';
 import { wheelMapInfo, wheelOverviewLands, wheelHere } from '../game/wheelTrial.js';
+import { questRoutePoint } from '../game/questRoute.js';          /* v2.3.3057: the quest's way, as the minimap's */
+import { wheelTownDoors } from '../game/wheelTownDoors.js';       /* v2.3.3057: the buildings, named */
+import { hasGatherTool } from '../data/lifeSkills.js';            /* v2.3.3057: faint where you have no tool */
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
-const ZOOM_MAX = 12;
+/* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
+const ZOOM_MAX = 28;
 /* what is labelled from which zoom (1 = the whole Wheel on screen) */
-const AT = { landSub: 1.5, stage: 2.2, commons: 1.8, gateName: 1.6, camp: 3, pass: 3, site: 3.6, road: 4.6 };
+const AT = { landSub: 1.5, stage: 2.2, commons: 1.8, gateName: 1.6, camp: 3, pass: 3, site: 3.6, road: 4.6,
+  /* v2.3.3057: the details that come in as you zoom */
+  others: 1.5, tier: 2.6, node: 3, monster: 3, bridge: 3.6, tierLv: 4.2, town: 6, otherName: 6 };
+/* v2.3.3057: the resources' tints, the minimap's (wheelMinimap.js C_NODE) */
+const NODE_TINT = {
+  oreVein: { 1: '#E08A45', 6: '#C65F45', 11: '#8E9AB8' },
+  tree: { 1: '#58B85A', 6: '#C6DC6C', 11: '#A08C52' },
+  fishSpot: { 1: '#D6E8F5', 6: '#FF8A3A', 11: '#C4B46A' },
+};
+const C_STAR = '#F5CE3C', C_OTHER = '#58B97B', C_MONSTER = '#E35D5B';
 const INK = '#F4F0E7', BRASS = '#EAC675', HALO = 'rgba(11,22,27,0.92)';
 const KIND = {
   camp: { color: '#EAC675', label: 'camp' },
@@ -120,10 +149,12 @@ function WorldMap({ stateRef, onClose }) {
       const P = S && S.player;
       const pk = P ? `${Math.round(P.x)},${Math.round(P.y)},${S._renderFacing}` : '';
       /* the ring pulses: a few frames a second is plenty */
+      /* (v2.3.3057: the bros and monsters move too -- this 120 ms beat
+         redraws them with the ring) */
       if (!dirty.current && pk === lastP && t - last < 120) return;
       lastP = pk; last = t; dirty.current = false;
       const { w, h, dpr } = size();
-      const out = draw(cv.getContext('2d'), w, h, dpr, map, V, P, S && S._renderFacing, t);
+      const out = draw(cv.getContext('2d'), w, h, dpr, map, V, P, S && S._renderFacing, t, S);
       const here = P ? wheelHere(P.x, P.y) : null;
       const words = here && here.words ? `${here.words.title}${here.words.sub ? ` · ${here.words.sub}` : ''}` : '';
       setWhere((o) => (o === words ? o : words));
@@ -241,7 +272,13 @@ function WorldMap({ stateRef, onClose }) {
           <Key shape="dot" color={KIND.landmark.color}>landmark</Key>
           <Key shape="line" color="#F2E4C2">road</Key>
           <Key shape="line" color="#5AAEE8">river</Key>
-          {zoomShown < AT.camp ? <span style={{ color: '#B6C1BE' }}>Zoom in for more names</span> : null}
+          <Key shape="star" color={C_STAR}>quest</Key>
+          {zoomShown >= AT.others ? <Key shape="dot" color={C_OTHER}>bro</Key> : null}
+          {zoomShown >= AT.monster ? <Key shape="dot" color={C_MONSTER}>monster</Key> : null}
+          {zoomShown >= AT.node ? <Key shape="dot" color="#E08A45">ore</Key> : null}
+          {zoomShown >= AT.node ? <Key shape="dot" color="#58B85A">tree</Key> : null}
+          {zoomShown >= AT.node ? <Key shape="dot" color="#D6E8F5">fish</Key> : null}
+          {zoomShown < AT.camp ? <span style={{ color: '#B6C1BE' }}>Zoom in for more</span> : null}
         </div>
       </div>
     </div>
@@ -254,6 +291,7 @@ function Key({ shape, color, children }) {
   if (shape === 'diamond') Object.assign(s, { transform: 'rotate(45deg) scale(.8)' });
   if (shape === 'tri') Object.assign(s, { background: 'none', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: `9px solid ${color}` });
   if (shape === 'line') Object.assign(s, { height: 3, width: 12, borderRadius: 2, verticalAlign: 2 });
+  if (shape === 'star') return <span style={{ whiteSpace: 'nowrap' }}><span style={{ color, marginRight: 3, fontSize: 12, lineHeight: 1 }}>★</span>{children}</span>;
   return <span style={{ whiteSpace: 'nowrap' }}><span style={s} />{children}</span>;
 }
 
@@ -265,7 +303,7 @@ function clampView(V, map) {
 }
 
 /* ── drawing ── */
-function draw(g, w, h, dpr, map, V, P, facing, t) {
+function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   const k = baseScale(w, h, map) * V.zoom, z = V.zoom;
   const X = (x) => (x - V.cx) * k + w / 2, Y = (y) => (y - V.cy) * k + h / 2;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -298,6 +336,82 @@ function draw(g, w, h, dpr, map, V, P, facing, t) {
   line((r) => r.kind === 'rail', Math.max(1, lw * 0.6), 'rgba(43,35,32,0.9)', [4, 3]);
   line((r) => r.kind === 'road' && !r.trunk, Math.max(1, lw * 0.7), 'rgba(230,213,174,0.85)');
   line((r) => r.kind === 'road' && r.trunk, lw, 'rgba(242,228,194,0.95)');
+
+  /* ── v2.3.3057: the details, under every label ── */
+  const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, bridges: 0, ponds: 0, tierLabels: 0 };
+  const onScreen = (x, y, pad = 30) => x > -pad && y > -pad && x < w + pad && y < h + pad;
+  /* each land's level bands: a tick across the spoke every five levels */
+  if (z >= AT.tier && map.spokeHalf) {
+    g.beginPath();
+    for (const L of map.lands) {
+      const T = L.ticks || [];
+      for (let i = 2; i + 1 < T.length; i += 2) {   /* the first is the commons' edge */
+        const hx = -L.uy * map.spokeHalf, hy = L.ux * map.spokeHalf;
+        const x0 = X(T[i] - hx), y0 = Y(T[i + 1] - hy), x1 = X(T[i] + hx), y1 = Y(T[i + 1] + hy);
+        if (!onScreen(x0, y0, w) && !onScreen(x1, y1, w)) continue;
+        g.moveTo(x0, y0); g.lineTo(x1, y1);
+        more.ticks++;
+      }
+    }
+    g.lineWidth = 1; g.strokeStyle = 'rgba(244,240,231,0.32)'; g.setLineDash([5, 4]); g.stroke(); g.setLineDash([]);
+  }
+  /* the resources, where they grow: tinted by tier, faint without the tool */
+  if (z >= AT.node && S && Array.isArray(S.gatherNodes)) {
+    const r = Math.max(3, Math.min(7, 2 + z * 0.25));
+    for (const n of S.gatherNodes) {
+      if (!n || !n.alive || !NODE_TINT[n.nodeType]) continue;
+      const x = X(n.x), y = Y(n.y);
+      if (!onScreen(x, y)) continue;
+      const lvl = n.gatherLvl || 1, tier = lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1;
+      let tool = true;
+      try { tool = hasGatherTool(S.rpg || null, n.nodeType); } catch (e) { tool = true; }
+      g.globalAlpha = tool ? 1 : 0.45;
+      g.beginPath();
+      if (n.nodeType === 'oreVein') { g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); }
+      else if (n.nodeType === 'fishSpot') g.ellipse(x, y, r * 1.2, r * 0.75, 0, 0, Math.PI * 2);
+      else g.arc(x, y, r, 0, Math.PI * 2);
+      g.fillStyle = NODE_TINT[n.nodeType][tier]; g.fill();
+      g.lineWidth = 1.2; g.strokeStyle = HALO; g.stroke();
+      g.globalAlpha = 1;
+      more.nodes++;
+    }
+  }
+  /* the monsters near you (the only ones you are told about), then the bros */
+  if (z >= AT.monster && S && Array.isArray(S.monsters)) {
+    for (const m of S.monsters) {
+      if (!m || m.alive === false || m.dead || (m.hp != null && m.hp <= 0)) continue;
+      const x = X(m.x), y = Y(m.y);
+      if (!onScreen(x, y)) continue;
+      g.beginPath(); g.arc(x, y, 3.5, 0, Math.PI * 2);
+      g.fillStyle = C_MONSTER; g.fill(); g.lineWidth = 1; g.strokeStyle = HALO; g.stroke();
+      more.monsters++;
+    }
+  }
+  const othersAt = [];
+  if (z >= AT.others && S && S.others) {
+    for (const id in S.others) {
+      const o = S.others[id];
+      if (!o || (o.zone || o.z) !== S.currentZone || typeof o.x !== 'number') continue;
+      const x = X(o.x), y = Y(o.y);
+      if (!onScreen(x, y)) continue;
+      g.beginPath(); g.arc(x, y, 4.5, 0, Math.PI * 2);
+      g.fillStyle = C_OTHER; g.fill(); g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
+      othersAt.push({ x, y, name: o.name || '' });
+      more.others++;
+    }
+  }
+  /* the quest's way: the gold road from you to its star, cased dark */
+  let quest = null;
+  try { quest = S ? questRoutePoint(S.currentZone, S.rpg || null, S) : null; } catch (e) { quest = null; }
+  if (quest && P && isFinite(quest.x) && isFinite(quest.y)) {
+    const px = X(P.x), py = Y(P.y), qx = X(quest.x), qy = Y(quest.y);
+    g.beginPath(); g.moveTo(px, py); g.lineTo(qx, qy);
+    g.lineCap = 'round';
+    g.lineWidth = 6; g.strokeStyle = 'rgba(11,22,27,0.55)'; g.stroke();
+    g.lineWidth = 3; g.strokeStyle = C_STAR; g.setLineDash([9, 6]); g.stroke(); g.setLineDash([]);
+    starAt(g, qx, qy, 9);
+    more.quest = { x: Math.round(quest.x), y: Math.round(quest.y) };
+  }
 
   /* labels: placed in order of importance, each only where it clears the
      ones before it */
@@ -357,6 +471,19 @@ function draw(g, w, h, dpr, map, V, P, facing, t) {
     placed.push([px - 18, py - 18, px + 18, py + 18]);
     label(px, py + 12, ['You'], { size: 11, below: true, force: true, color: BRASS });
   }
+  /* v2.3.3057: the quest's star keeps its own room */
+  if (more.quest) { const qx = X(more.quest.x), qy = Y(more.quest.y); placed.push([qx - 11, qy - 11, qx + 11, qy + 11]); }
+  /* v2.3.3057: in town, every building at its door, named (a shut one dim) */
+  if (z >= AT.town) {
+    let doors = [];
+    try { doors = wheelTownDoors(); } catch (e) { doors = []; }
+    for (const d of doors) {
+      const x = X(d.x), y = Y(d.y);
+      if (!onScreen(x, y, 60)) continue;
+      houseAt(g, x, y - 9, d.closed ? '#8D9B98' : '#E6D5AE');
+      if (label(x, y - 2, d.closed ? [d.name, 'shut for now'] : [d.name], { size: 11, below: true, weight: 700, color: d.closed ? '#B6C1BE' : INK, subColor: '#8D9B98', subSize: 9.5 })) more.buildings++;
+    }
+  }
   /* the town */
   const T = map.hub.town;
   g.fillStyle = INK; g.fillRect(X(T.x) - 5, Y(T.y) - 5, 10, 10);
@@ -402,6 +529,34 @@ function draw(g, w, h, dpr, map, V, P, facing, t) {
       if (label(x, y + 7, [p.name], { size: 11, below: true, weight: 600, color: '#CFF2DE' })) counts.sites++;
     }
   }
+  /* v2.3.3057: the bridges and the ponds, named */
+  if (z >= AT.bridge) {
+    for (const p of map.places) {
+      if (p.kind !== 'bridge' && p.kind !== 'pond') continue;
+      const x = X(p.x), y = Y(p.y);
+      if (!onScreen(x, y)) continue;
+      if (p.kind === 'bridge') {
+        g.fillStyle = '#C9A46A'; g.fillRect(x - 6, y - 3, 12, 6);
+        g.lineWidth = 1.2; g.strokeStyle = HALO; g.strokeRect(x - 6, y - 3, 12, 6);
+        if (label(x, y + 6, [p.name.replace(/^the /, '').replace(/^a bridge$/, 'Bridge')], { size: 10.5, below: true, weight: 600, color: '#F2E4C2' })) more.bridges++;
+      } else if (label(x, y, [p.name], { size: 11, weight: 700, color: '#BFE3FF' })) more.ponds++;
+    }
+  }
+  /* v2.3.3057: the bros' names, close in */
+  if (z >= AT.otherName) for (const o of othersAt) if (o.name) label(o.x, o.y + 7, [o.name], { size: 10.5, below: true, weight: 600, color: '#BFF0C8' });
+  /* v2.3.3057: "Lv 6–10" in each band, the last thing placed (any label
+     above wins its room) */
+  if (z >= AT.tierLv) {
+    for (const L of map.lands) {
+      const T = L.ticks || [];
+      for (let i = 0; i + 3 < T.length; i += 2) {
+        const t = i / 2 + 1, x = X((T[i] + T[i + 2]) / 2), y = Y((T[i + 1] + T[i + 3]) / 2);
+        if (!onScreen(x, y)) continue;
+        const lo = (t - 1) * (map.levelsPerTier || 5) + 1, hi = t * (map.levelsPerTier || 5);
+        if (label(x, y, [`Lv ${lo}–${hi}`], { size: 10.5, weight: 700, color: '#EAC675' })) more.tierLabels++;
+      }
+    }
+  }
   /* the roads' names, along each at its middle */
   if (z >= AT.road) {
     for (const r of map.routes) {
@@ -423,5 +578,25 @@ function draw(g, w, h, dpr, map, V, P, facing, t) {
       counts.roads++;
     }
   }
-  return { labels: counts, k };
+  return { labels: counts, k, more };
+}
+
+/* v2.3.3057: a five-pointed star, the quest's (the minimap's gold) */
+function starAt(g, x, y, r) {
+  g.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r;
+    const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
+    if (i) g.lineTo(px, py); else g.moveTo(px, py);
+  }
+  g.closePath();
+  g.fillStyle = C_STAR; g.fill(); g.lineWidth = 1.6; g.strokeStyle = HALO; g.stroke();
+}
+/* v2.3.3057: a little house, a building's mark in town */
+function houseAt(g, x, y, color) {
+  g.beginPath();
+  g.moveTo(x - 6, y - 1); g.lineTo(x, y - 7); g.lineTo(x + 6, y - 1);
+  g.lineTo(x + 5, y - 1); g.lineTo(x + 5, y + 5); g.lineTo(x - 5, y + 5); g.lineTo(x - 5, y - 1);
+  g.closePath();
+  g.fillStyle = color; g.fill(); g.lineWidth = 1.4; g.strokeStyle = HALO; g.stroke();
 }
