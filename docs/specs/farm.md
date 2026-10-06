@@ -118,6 +118,18 @@ ARCHITECTURE-HANDOFF's storage-key table.
     owner said yes to the guard (2026-10-06).
   - **A phase that adds a crop, a field or a state to the record must bump
     `FARM.V`.** A rollback then costs a farm visit, never a bed.
+  - **A record is stamped with what its beds HOLD** (`_farmShape`, at every
+    write): the highest `v` of the crops planted in it. A farm of the first
+    four crops is a 1 that every farm worker reads; a potato or a pumpkin
+    makes it a 2 while it grows, and its harvest a 1 again. Stamping `FARM.V`
+    on every write (v2.3.3106 at first) closed every farm touched under the
+    new worker after a rollback, carrot-only ones included (found by the
+    review). `FARM.V` is the highest crop `v`; farm.test pins both.
+- **`caps.farmCrops`** says how many crops the worker grows, in the order they
+  came (`FARM_CROP_IDS`, append-only). The window offers a crop's seeds and
+  planting only below it: `caps.farm` alone let a newer page offer an older
+  worker the potato and the pumpkin, and the buy hung on "No answer yet"
+  (TRAPS §9). Without it, the first four.
 
 - It is never a field on the rpg blob (rule 1).
 - It is one record rather than a key per bed, so each action writes one row.
@@ -268,9 +280,10 @@ The crops, seeds and compost are emoji until the art exists:
 
 - **Phase 2:** done. Meals and brews you carry, and Diego's three tonics
   brewed from herbs, in v2.3.3105; the potato, the pumpkin and their dishes in
-  v2.3.3106 (`docs/specs/meals.md`). The record is `FARM.V` 2 since then: a
-  rollback to a v1 worker refuses a farm it would otherwise have turned to
-  grass wherever a potato or a pumpkin grew.
+  v2.3.3106 (`docs/specs/meals.md`). A record holding a potato or a pumpkin
+  is a 2 since then: a rollback to a v1 worker refuses that farm, which it
+  would otherwise have turned to grass where they grew, and reads every other
+  farm as before.
 - **Phase 3:** your own farm to walk on (`farm:<id>` zones), the Land Office's
   free deed and paid land (500 → 7,500 coins, up to 25 beds), Mayor Bro's farm
   errand.

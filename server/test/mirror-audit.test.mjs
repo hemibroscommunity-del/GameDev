@@ -1401,6 +1401,11 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('farm: same crops on both sides', keys(SRV_FARM.CROPS) === keys(CLIENT_FARM.CROPS),
     { srv: keys(SRV_FARM.CROPS), cli: keys(CLIENT_FARM.CROPS) });
   check('farm: the window lists every crop once', CLIENT_FARM_ORDER.slice().sort().join(',') === keys(SRV_FARM.CROPS), CLIENT_FARM_ORDER);
+  /* v2.3.3106: and in the SAME ORDER they came -- caps.farmCrops is a count
+     of the worker's crops in that order, and the window counts its own. */
+  check('farm: the crops come in the same order on both sides (caps.farmCrops counts them)',
+    Object.keys(SRV_FARM.CROPS).join(',') === Object.keys(CLIENT_FARM.CROPS).join(','),
+    { srv: Object.keys(SRV_FARM.CROPS), cli: Object.keys(CLIENT_FARM.CROPS) });
   for (const k of ['FREE_BEDS', 'MAX_BEDS', 'WATER_TIME', 'FEED_YIELD', 'COMPOST', 'COMPOST_PRICE', 'BUY_MAX']) {
     check('farm: ' + k + ' matches', SRV_FARM[k] === CLIENT_FARM[k], { srv: SRV_FARM[k], cli: CLIENT_FARM[k] });
   }

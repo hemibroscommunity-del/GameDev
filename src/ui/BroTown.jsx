@@ -12507,16 +12507,18 @@ export var BroTown = function BroTown(_ref0) {
       });
     }
     /* v2.3.3106: the Pumpkin Pie's +10% combat XP (the worker's _buffs.xp,
-       mirrored by wsClient) */
-    if (S._xpBuff && Date.now() < S._xpBuff) {
+       mirrored by wsClient) -- only while its strength is one the worker pays
+       (prog3.js reads xpMul in (1, 2]): a pie whose strength an older worker
+       pruned, after a rollback, said "+10%" while nothing was paid (review). */
+    var _xm = Number(S._xpBuffMul);
+    if (S._xpBuff && Date.now() < S._xpBuff && _xm > 1 && _xm <= 2) {
       var _remXp = Math.ceil((S._xpBuff - Date.now()) / 1000);
-      var _xm = Number(S._xpBuffMul);
       effects.push({
         icon: '\uD83E\uDD67',
         label: 'XP+',
         color: '#C99A3C',
         time: _btime(_remXp),
-        desc: '+' + Math.round(((_xm > 1 && _xm <= 2) ? _xm - 1 : 0.1) * 100) + '% XP'
+        desc: '+' + Math.round((_xm - 1) * 100) + '% XP'
       });
     }
     if (S._spdBuff && Date.now() < S._spdBuff) {

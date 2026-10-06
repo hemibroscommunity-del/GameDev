@@ -407,6 +407,11 @@ P._buffs = {};
   await send(ws, 'eat_request', { invKey: 'meal_garden_stew' });
   check('...eaten, it heals 150 (+ Recovery ' + rec + ') at once', P.hp === 100 + 150 + rec && !P.inventory.meal_garden_stew, { hp: P.hp, rec });
   check('...and touches neither slot: the stew\'s meal and the tea run on', JSON.stringify(P._buffs) === b0, { before: b0, after: P._buffs });
+  /* review: the cap was untested (the stew above is eaten at 100 of 400) */
+  P.inventory.meal_garden_stew = 1;
+  P.hp = P.maxHp - 20;
+  await send(ws, 'eat_request', { invKey: 'meal_garden_stew' });
+  check('...and never heals past max HP', P.hp === P.maxHp && !P.inventory.meal_garden_stew, { hp: P.hp, max: P.maxHp });
   P.inventory.meal_garden_stew = 1;
   await send(ws, 'potion_drink', { invKey: 'meal_garden_stew' });
   check('...and it is eaten, never drunk', P.inventory.meal_garden_stew === 1, P.inventory.meal_garden_stew);
@@ -426,7 +431,8 @@ P._buffs = {};
   await send(ws, 'eat_request', { invKey: 'meal_herb_bread' });
   await send(ws, 'potion_drink', { invKey: 'whetstone' });
   await send(ws, 'eat_request', { invKey: 'meal_pumpkin_pie' });
-  check('eating it runs +10% XP for half an hour', room._buffActive(P, 'xp') && P._buffs.xpMul === 1.1 && P._buffs.xp > now() + 29 * 60000, P._buffs);
+  check('eating it runs +10% XP for half an hour', room._buffActive(P, 'xp') && P._buffs.xpMul === 1.1
+    && P._buffs.xp > now() + 29 * 60000 && P._buffs.xp <= now() + 30 * 60000, P._buffs);
   check('...replacing the bread (both meals) and leaving the tonic (a brew)', !room._buffActive(P, 'rest') && room._buffActive(P, 'damage') && P._buffs.damageMul === 2, P._buffs);
   room._pruneBuffs(P);
   check('...and its strength survives a save (BUFF_MAGNITUDES)', P._buffs.xpMul === 1.1, P._buffs);
@@ -445,7 +451,19 @@ P._buffs = {};
     P._buffs.xpMul = 9999;
     check('...and a forged stored strength is ignored, not applied', Math.abs(gain() - without) < 1e-9, sk.xp);
     P._buffs.xpMul = 1.1;
+    /* review: an expired pie whose strength is still stored (until the next
+       save prunes it) was never tested */
+    const savedXp = P._buffs.xp;
+    P._buffs.xp = now() - 1;
+    check('...and an expired pie pays nothing, its strength still stored', Math.abs(gain() - without) < 1e-9, P._buffs);
+    P._buffs.xp = savedXp;
   }
+  /* review: only the pie replacing the bread was tested, never a meal after
+     the pie -- the slot's xp/xpMul could be dropped with every suite green */
+  P.inventory.meal_herb_bread = 1;
+  await send(ws, 'eat_request', { invKey: 'meal_herb_bread' });
+  check('a bread eaten after the pie replaces it, strength and all (one meal)', room._buffActive(P, 'rest')
+    && !room._buffActive(P, 'xp') && P._buffs.xpMul === undefined, P._buffs);
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall meals checks passed');

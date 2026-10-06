@@ -36,7 +36,7 @@
  *      rollback to this worker never rewrites beds it does not know.
  */
 import { GameRoom } from '../src/index.js';
-import { FARM, farmGrowMs, farmYield, FARM_SHOP_BASE } from '../src/farm.js';
+import { FARM, farmGrowMs, farmYield, FARM_SHOP_BASE, FARM_CROP_IDS } from '../src/farm.js';
 
 function makeState() {
   const store = new Map();
@@ -106,6 +106,10 @@ const C = FARM.CROPS;
 {
   const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('caps.farm is advertised', !!sync && sync.caps.farm === true);
+  /* v2.3.3106 (review): and HOW MANY crops this worker grows, in the order
+     they came -- the window offers a crop only below it. */
+  check('caps.farmCrops says how many crops this worker grows', !!sync && sync.caps.farmCrops === FARM_CROP_IDS.length
+    && FARM_CROP_IDS.join(',') === Object.keys(FARM.CROPS).join(','), sync && sync.caps.farmCrops);
   check('a player who never farmed is sent no farm on join', !ws.sent.some((m) => m.type === 'farm_state'));
   const v = await farm(ws, 'farm_open', {});
   check('opening the window hands out the free deed: six beds, all rough',
@@ -512,7 +516,47 @@ function ws2Ref() {
   check('...no join notice is sent from it', !wsN2.sent.some((m) => m.type === 'farm_state'));
   check('...and storage holds the newer record exactly as it was', JSON.stringify(st._store.get('farm:' + PN)) === before);
   const deed = st._store.get('farm:bp_farm_r');   /* §13's free deed, made after the restart */
-  check('this worker\'s own records say which shape they are (v ' + FARM.V + ')', stored().v === FARM.V && !!deed && deed.v === FARM.V, { a: stored().v, deed: deed && deed.v });
+  /* v2.3.3106 (review): a record says the shape its BEDS need -- a deed of
+     rough beds is a 1, which every farm worker reads. */
+  check('a fresh deed says it is a 1 (nothing in it needs more)', !!deed && deed.v === 1, deed && deed.v);
+}
+
+// ── 15. v2.3.3106: a record's version is what its beds HOLD (review) ──
+{
+  /* Stamping FARM.V on every write closed every farm touched under this
+     worker after a rollback, a carrot-only one included.  Now a potato or a
+     pumpkin makes a record a 2 while it grows, and its harvest a 1 again. */
+  const vs = Object.values(FARM.CROPS).map((c) => Math.floor(Number(c.v) || 1));
+  check('FARM.V is the highest crop version, and the potato and the pumpkin are the 2s',
+    FARM.V === Math.max(...vs) && C.potato.v === 2 && C.pumpkin.v === 2
+    && ['carrot', 'firebloom', 'rock_vine', 'cloudpetal'].every((id) => (C[id].v || 1) === 1), { V: FARM.V, vs });
+  const PV = 'bp_farm_v';
+  const wsV = fakeWs();
+  await join(wsV, PV);
+  resetRate();
+  const P = room.playerState[PV];
+  P.lifeSkills.farming = { level: 10, xp: 0 };
+  P.inventory = Object.assign(P.inventory || {}, { seed_carrot: 2, seed_potato: 2 });
+  const sv = () => st._store.get('farm:' + PV);
+  await farm(wsV, 'farm_open', {});
+  await act(wsV, 'dig', [0, 1]);
+  await act(wsV, 'plant', [0], 'carrot');
+  check('a farm of carrots is stored as a 1', sv().v === 1, sv());
+  await act(wsV, 'plant', [1], 'potato');
+  check('...a potato planted makes it a 2 (an older worker refuses it whole)', sv().v === 2, sv());
+  await room._devFarmRipe(PV);
+  check('...ripening it keeps it a 2', sv().v === 2, sv().v);
+  await act(wsV, 'harvest', [1]);
+  check('...and with the potato harvested it is a 1 again', sv().v === 1 && sv().plots[0].crop === 'carrot', sv());
+}
+
+// ── 16. v2.3.3106: every seed costs at least a coin a crop (review) ──
+{
+  /* farm.js's own rule, so Diego (half of `base`, falling) is never a
+     faucet once his pile is full: the plan's "Every seed costs at least one
+     coin per crop it normally yields". */
+  const cheap = Object.entries(FARM.CROPS).filter(([, c]) => c.price < c.yield);
+  check('no seed costs less than a coin per crop it yields', cheap.length === 0, cheap.map(([id]) => id));
 }
 
 Date.now = realNow;

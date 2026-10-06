@@ -191,11 +191,14 @@ herbs; this makes them worth growing.
   - a v2 client's refused cook, meal and drink, each resent;
   - forged keys;
   - a save;
-  - (2b) the Garden Stew: its level, its heal with Recovery, the arena refusal,
+  - (2b) the Garden Stew: its level, its heal (Recovery, which is 0 for every
+    prog3 player today, is added like the fish's), its cap at max HP, the
+    arena refusal,
     no slot touched, never drunk;
-  - (2b) the Pumpkin Pie: its level, the meal slot, its strength through a
-    save, +10% on a fight's XP and none on a flat award, and a forged strength
-    ignored.
+  - (2b) the Pumpkin Pie: its level, the meal slot both ways (a meal after
+    it replaces it), its half hour (no longer), its strength through a save,
+    +10% on a fight's XP and none on a flat award or after it expires, and a
+    forged strength ignored.
 
   Every rule, broken on purpose, fails it.
 - Updated:
