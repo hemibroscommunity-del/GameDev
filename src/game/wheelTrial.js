@@ -329,8 +329,12 @@ export function wheelHere(x, y) {
   }
   if (!_here) return null;
   const c = info.catalog[_here.q];
+  /* v2.3.3060: `fresh` -- the answer is for the cell you are in, not the last
+     one asked (the land music's first word on a visit, game/wheelMusic.js:
+     the worker lingers after you leave, so its last answer can be where you
+     died) */
   return c ? { id: c.id, name: c.name, water: _here.q === info.water, made: info.made[c.id] || null,
-    region: _here.region, tier: _here.tier, words: _here.words } : null;
+    region: _here.region, tier: _here.tier, words: _here.words, fresh: _here.x === cx && _here.y === cy } : null;
 }
 
 /* ═══ v2.3.2967: THE GROUND UNDER YOUR FEET, for the footstep sound ═══
