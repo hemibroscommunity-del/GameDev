@@ -109,40 +109,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.grant(wsPort, id, 'gold', { amount: 500 });
   await P.page.waitForTimeout(1000);
 
-  /* ── 1. HIS SHELF: THE TWO STAPLES ──
-     Owner: "These potions should be purchasable there." Bro, not the vendor
-     building -- which is why this drives his drawer and not a door.
-     v2.3.3105: the farming plan takes the three tonics off his shelf the day
-     the farm brews them (server data.js DIEGO_SHELF), so his staples are the
-     cooked minnow and the stamina salts, and the draughts below come from the
-     Cookhouse -- granted here as a brewed bottle would arrive. */
+  /* ── 1. HIS SHELF: NOTHING TO DRINK (v2.3.3107) ──
+     Owner, v2.3.2063: "These potions should be purchasable there" -- Bro, not
+     the vendor building.  v2.3.3105: the farming plan took the three tonics off
+     his shelf the day the farm brewed them; v2.3.3107: the last two went too,
+     owner: "Remove all of Diego's potions. I want food and drink to come
+     exclusively from farming and recipes."  So every bottle below arrives as a
+     brewed one would (the Cookhouse's carried cook), by the server's own
+     credit, and is drunk from the bag. */
   const openBro = async () => {
     await P.page.evaluate(() => window.__broShopBus.setOpen(true));
     for (let i = 0; i < 40; i++) {
       const ready = await P.page.evaluate(() =>
-        !!document.querySelector('[data-shop-bro="staminaSalts"]'));
+        !!(document.querySelector('[data-shop-empty]') || document.querySelector('[data-shop-shelf]')));
       if (ready) return true;
       await P.page.waitForTimeout(150);
     }
     return false;
   };
-  rec.ok('his staples are on Shopkeeper Bro\'s shelf', await openBro(), null);
-
-  const shelf = await P.page.evaluate(() => {
-    const ids = [...document.querySelectorAll('[data-shop-bro]')]
-      .map((e) => e.getAttribute('data-shop-bro'));
-    const slot = document.querySelector('[data-shop-bro="staminaSalts"]');
-    const price = slot && slot.parentElement && slot.parentElement.lastElementChild.textContent.trim();
-    const badge = slot && slot.querySelector('.bt-item-qty');
-    return { ids, price, badge: badge ? badge.textContent : null };
-  });
-  rec.ok('...priced under the slot like everything else on it',
-    /^\d+g$/.test(shelf.price || ''), shelf);
-  /* A count on a thing he cannot run out of would be a lie. */
-  rec.ok('...with no count badge, because a staple never runs out',
-    shelf.badge === null, shelf);
-  rec.ok('...and no tonic among them -- they are brewed at the Cookhouse now (v2.3.3105)',
-    !shelf.ids.includes('swiftDraught') && !shelf.ids.includes('manaShard') && !shelf.ids.includes('whetstone'), shelf);
+  rec.ok('Shopkeeper Bro\'s window opens', await openBro(), null);
+  const shelf = await P.page.evaluate(() => ({
+    ids: [...document.querySelectorAll('[data-shop-bro]')].map((e) => e.getAttribute('data-shop-bro')),
+    staple: !!document.querySelector('[data-shop-staple]') }));
+  rec.ok('...and no potion is on his shelf: no staple, no tonic (v2.3.3107)',
+    !shelf.staple && !shelf.ids.some((k) => ['cookedMinnow', 'staminaSalts', 'whetstone', 'manaShard', 'swiftDraught'].includes(k)), shelf);
 
   /* ═══ v2.3.2127: BUYING IS HALF OF IT NOW ═══
      Owner: "Also work on putting a potions to inventory after buying." A
@@ -213,37 +203,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const before = await sprint(P);
   rec.ok(`the control sprint covers ground (${before} px/frame)`, before > 4, { before });
 
-  /* A staple, bought through his drawer: the buying half of this scenario. */
-  await openBro();
-  await P.page.click('[data-shop-bro="staminaSalts"]');
-  await P.page.waitForTimeout(900);
-  const deal = await P.page.evaluate(() => {
-    const act = document.querySelector('[data-shop-act]');
-    return { side: act && act.getAttribute('data-shop-act'),
-      label: act && act.textContent.trim(),
-      total: act && act.getAttribute('data-shop-total'),
-      stepper: !!document.querySelector('[data-shop-plus]'),
-      staple: !!document.querySelector('[data-shop-staple]') };
-  });
-  rec.ok('tapping it offers a BUY at a real price', deal.side === 'bro' && +deal.total > 0, deal);
-  /* Quantity on an effect could only mean "charge me five times, run it
-     once", so the stepper was gone rather than disabled.
-     v2.3.2127: and it is back, because five BOTTLES stack perfectly well --
-     you drink them one at a time. It is still marked a staple (no decay,
-     never runs out), which is the half that did not change. */
-  rec.ok('...as a staple, and with the quantity stepper back now they stack',
-    deal.staple, deal);
-
-  const c0 = await coins(P);
-  await P.page.click('[data-shop-act]');
-  await P.page.waitForTimeout(1800);
-  rec.ok('Stamina Salts can be bought from him', (await coins(P)) < c0,
-    { before: c0, after: await coins(P) });
-  await P.page.evaluate(() => window.__broShopBus.setOpen(false));
-  await P.page.waitForTimeout(500);
-  /* v2.3.2127: it is a bottle now -- it has to reach the bag. */
+  /* v2.3.3107: the Stamina Tonic (the old salts' key) is brewed from carrots
+     now -- it arrives as a brewed bottle would, and lands in the BAG. */
+  await H.grant(wsPort, id, 'item', { invKey: 'staminaSalts', count: 1 });
+  await P.page.waitForTimeout(1500);
   const salts = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).staminaSalts || 0);
-  rec.ok('...and it lands in the BAG rather than firing at the counter', salts >= 1, { salts });
+  rec.ok('a Stamina Tonic bottle is in the bag (as brewed at the Cookhouse)', salts >= 1, { salts });
   /* v2.3.3105: the Swift Draught is brewed now -- it arrives as a brewed
      bottle would, by the server's own credit, and is drunk from the bag. */
   await H.grant(wsPort, id, 'item', { invKey: 'swiftDraught', count: 1 });
@@ -417,10 +382,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     withPotion.paid > sober.paid, { withPotion, sober });
   await C.ctx.close();
 
-  /* His shelf, open, for the record: staples lead and the pile follows, so
-     what the artifact shows is the order a player actually sees. */
+  /* His shelf, open, for the record (v2.3.3107: bare of anything to drink). */
   await openBro();
-  await P.page.click('[data-shop-bro="staminaSalts"]').catch(() => {});
   await P.page.waitForTimeout(900);
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/potions.png' }).catch(() => {});
   const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));

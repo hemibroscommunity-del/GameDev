@@ -1456,7 +1456,15 @@ remnant to migrate server-side, not a mode to preserve.
       `BUFF_MAGNITUDES` keeps it); a farm record is stamped with what its beds
       HOLD (`_farmShape`: a potato or pumpkin makes it a 2), and
       `caps.farmCrops` (how many crops the worker grows, `FARM_CROP_IDS`
-      append-only) gates the Feed & Seed's crops, as `cookRows` the recipes.)
+      append-only) gates the Feed & Seed's crops, as `cookRows` the recipes;
+    - since v2.3.3107 DIEGO SELLS NO FOOD OR DRINK -- the owner: "Remove all
+      of Diego's potions. I want food and drink to come exclusively from
+      farming and recipes": `DIEGO_SHELF` is EMPTY (mirror-audit holds it),
+      the Stamina Salts' key is brewed from two carrots (recipe row 8, the
+      bag's "Stamina Tonic"), he neither buys nor sells cooked food
+      (`isCookedFood`; raw fish and crops he still buys), a new world's pile
+      starts empty, and the daily chest's 10 fish are RAW minnows; the farm's
+      art prompts are `docs/art/FARM-ART-PROMPTS.md`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

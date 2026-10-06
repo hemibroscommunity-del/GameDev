@@ -306,56 +306,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && vClosed.bandBag.l === before.bandBag.l,
     { before: before.bandBag, after: vClosed.bandBag });
 
-  /* ══ WHAT HE STARTS WITH (v2.3.2053) ══
-     Owner: the consumables go; he starts with a few cooked fish instead. This
-     is stock, not a staple -- it has a real count and it can run out. */
-  const seed = await A.page.evaluate(() => {
-    const slot = document.querySelector('[data-shop-bro="cooked_fish_trout"]');
-    const gone = ['whetstone', 'antidote', 'trap_basic']
-      .filter((k) => document.querySelector(`[data-shop-bro="${k}"]`));
-    const badge = slot && slot.querySelector('.bt-item-qty');
-    return { slot: !!slot, count: badge ? +badge.textContent : null, gone };
-  });
+  /* ══ WHAT HE STARTS WITH (v2.3.2053; v2.3.3107: nothing to eat or drink) ══
+     He started with six cooked trout and, from v2.3.2063, sold the potions as
+     staples.  v2.3.3107, owner: "Remove all of Diego's potions. I want food
+     and drink to come exclusively from farming and recipes" -- so no cooked
+     fish from nowhere, no staple, no tonic.  What he holds is what players
+     sold him (the remnants above). */
+  const seed = await A.page.evaluate(() => ({ slot: !!document.querySelector('[data-shop-bro="cooked_fish_trout"]') }));
   await openShop(A);
   await A.page.waitForTimeout(1200);
   const seed2 = await A.page.evaluate(() => {
-    const slot = document.querySelector('[data-shop-bro="cooked_fish_trout"]');
-    const badge = slot && slot.querySelector('.bt-item-qty');
-    const price = slot && slot.parentElement
-      && slot.parentElement.lastElementChild.textContent.trim();
-    return { slot: !!slot, count: badge ? +badge.textContent : null, price,
-      /* v2.3.2063: the potions are BACK on his shelf, at the owner's
-         request, but as STAPLES -- so what is checked is that they carry no
-         count badge. A number on a thing he can never run out of is a lie,
-         and it is also how you would tell a staple that had been mistakenly
-         dropped into the finite pile. */
-      /* v2.3.3105: his staples are the cooked minnow and the stamina salts
-         (server data.js DIEGO_SHELF); the three tonics are brewed at the
-         Cookhouse now and are NOT on his shelf. */
-      staples: ['cookedMinnow', 'staminaSalts'].map((k) => {
-        const el = document.querySelector(`[data-shop-bro="${k}"]`);
-        return { k, on: !!el, count: el && el.querySelector('.bt-item-qty')
-          ? +el.querySelector('.bt-item-qty').textContent : null };
-      }),
-      tonics: ['whetstone', 'manaShard', 'swiftDraught'].filter((k) => document.querySelector(`[data-shop-bro="${k}"]`)) };
+    const ids = [...document.querySelectorAll('[data-shop-bro]')].map((e) => e.getAttribute('data-shop-bro'));
+    return { ids,
+      food: ids.filter((k) => /^cooked|^meal_|^brew_/.test(k)
+        || ['cookedMinnow', 'staminaSalts', 'whetstone', 'manaShard', 'swiftDraught'].includes(k)),
+      staple: !!document.querySelector('[data-shop-staple]') };
   });
-  rec.ok('he starts with cooked fish on his shelf', seed2.slot, seed2);
-  rec.ok('...with a real count, not "always in stock" -- it is a pile that runs out',
-    seed2.count > 0, seed2);
-  rec.ok('...priced under the slot, so you know what it costs before tapping it',
-    /^\d+g$/.test(seed2.price || ''), seed2);
-  /* ═══ v2.3.2063: THE POTIONS ARE ON HIS SHELF NOW ═══
-     Owner: "These potions should be purchasable there." This used to assert
-     the opposite -- that the consumables were gone -- which was right while
-     they were unbuyable and useless. They are neither now. */
-  rec.ok('...alongside his two staples, which he always has',
-    seed2.staples.every((x) => x.on), seed2.staples);
-  rec.ok('...and none of the three tonics -- they are brewed at the Cookhouse now (v2.3.3105)',
-    seed2.tonics.length === 0, seed2.tonics);
-  rec.ok('...and THOSE carry no count, because a staple cannot run out '
-       + '(the fish can, and does)',
-    seed2.staples.every((x) => x.count === null) && seed2.count > 0,
-    { staples: seed2.staples, fish: seed2.count });
+  rec.ok('his shelf holds nothing to eat or drink: no cooked fish, no staple, no tonic (v2.3.3107)',
+    seed2.food.length === 0 && !seed2.staple, seed2);
+  rec.ok('...and still what players sold him (the remnants), so it is his real stock',
+    seed2.ids.includes(KEY), seed2.ids);
   rec.ok('(the drawer was shut a moment ago, so that shelf really did redraw)',
     seed.slot === false, seed);
 

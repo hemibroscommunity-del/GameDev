@@ -137,9 +137,12 @@ if (!PREMIX) {
   psA10.hp = 10; psA10.maxHp = 100;
   room._tickPlayerRegen();
   check('town HP regen gated during an arena match', psA10.hp === 10, psA10.hp);
+  /* v2.3.3107: the minnow is no longer sold (shop_purchase sells nothing:
+     data.js DIEGO_SHELF), so the gate is tested where a minnow still is: a
+     bottle drunk from the bag. */
   psA10.inventory = { cookedMinnow: 1 };
-  await room.webSocketMessage(wss.a, JSON.stringify({ type: 'shop_purchase', payload: { itemId: 'cookedMinnow' } }));
-  check('shop healFish gated during an arena match', psA10.hp === 10, psA10.hp);
+  await room.webSocketMessage(wss.a, JSON.stringify({ type: 'potion_drink', payload: { invKey: 'cookedMinnow' } }));
+  check('a carried healFish is gated during an arena match (and kept)', psA10.hp === 10 && psA10.inventory.cookedMinnow === 1, { hp: psA10.hp, inv: psA10.inventory });
 }
 
 // ── 4. server-resolved kill crowns the 2-bracket champion ──

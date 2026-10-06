@@ -104,9 +104,19 @@ export function isShopPotion(key) {
 export function isCookhouseDish(key) {
   return typeof key === 'string' && Object.prototype.hasOwnProperty.call(DISHES, key);
 }
-/* What he neither buys nor sells out of his pile: the tonics and the dishes. */
+/* v2.3.3107: ...and no COOKED FOOD at all.  Owner: "I want food and drink to
+   come exclusively from farming and recipes."  A cooked fish he bought would
+   go back on his shelf, food from his counter; and the six cooked trout every
+   world's pile started with (SEED, below) came from nowhere.  So cooked fish
+   go the dishes' way -- eaten, given, or sold on the auction house.  He still
+   buys the RAW fish (fish_), as he buys the crops. */
+export function isCookedFood(key) {
+  return typeof key === 'string' && /^cooked/i.test(key);
+}
+/* What he neither buys nor sells out of his pile: the tonics, the dishes and
+   cooked food -- since v2.3.3107, everything you eat or drink. */
 function heWontTrade(key) {
-  return isShopPotion(key) || isCookhouseDish(key);
+  return isShopPotion(key) || isCookhouseDish(key) || isCookedFood(key);
 }
 
 export const SHOP = {
@@ -227,7 +237,10 @@ export const SHOP = {
    * Written ONCE, on the first read of a world that has never had a pile. A
    * pile that has been emptied is a written record of {}, which is not the
    * same as no record -- so clearing him out does not quietly restock him. */
-  SEED: { cooked_fish_trout: 6 },
+  /* v2.3.3107: nothing.  Food comes only from farming and recipes (owner,
+     isCookedFood above), and a world's pile that already took its six trout
+     keeps them out of sight: heWontTrade lists and sells no cooked fish. */
+  SEED: {},
 };
 
 export const shopMethods = {
@@ -433,8 +446,9 @@ export const shopMethods = {
     if (isShopStaple(key)) return { ok: false, error: "He only sells those" };
     /* v2.3.3105: the tonics are off his shelf and still not bought back
        (isShopPotion above). */
-    if (isShopPotion(key)) return { ok: false, error: "He doesn't buy tonics" };
-    if (isCookhouseDish(key)) return { ok: false, error: "He doesn't buy meals or brews" };
+    /* v2.3.3107: one answer for all of it -- since then, nothing you eat or
+       drink (heWontTrade). */
+    if (heWontTrade(key)) return { ok: false, error: "He doesn't buy food or drink" };
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
     if (!ps.inventory) ps.inventory = {};
@@ -518,7 +532,7 @@ export const shopMethods = {
        is not one of his staples is not for sale -- not even out of a pile that
        took some in before the staples existed. */
     if (isShopPotion(key)) return { ok: false, error: "He doesn't sell tonics any more" };
-    if (isCookhouseDish(key)) return { ok: false, error: "He hasn't got any" };
+    if (isCookhouseDish(key) || isCookedFood(key)) return { ok: false, error: "He hasn't got any" };
     const stock = await this._shopStock();
     const held = stock[key] || 0;
     if (held <= 0) return { ok: false, error: "He hasn't got any" };

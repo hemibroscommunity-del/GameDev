@@ -7,7 +7,7 @@
  *
  *   1. The day's login pays ONE chest into the bag, not gold, once per day.
  *   2. Opening takes the chest and pays exactly one prize, of each kind:
- *      coins (never below the old daily gold), 10 cooked fish, a rare gem,
+ *      coins (never below the old daily gold), 10 raw minnows (v2.3.3107; cooked until then), a rare gem,
  *      a piece of armour with a rolled quality and a provenance id.
  *   3. It cannot be opened without a chest, with a junk key, or twice on a
  *      replayed opId.
@@ -101,10 +101,13 @@ const giveChest = () => { ps2().inventory.daily_chest = (ps2().inventory.daily_c
   check('...the top coin roll is the old gold x1.6 (40 on day 1)', hi && hi.payload.prize.coins === 40, hi && hi.payload);
 
   giveChest(); force(0.80);                        /* 78..86 -> fish */
-  const f0 = ps2().inventory.cooked_fish_minnow || 0;
+  const f0 = ps2().inventory.fish_minnow || 0;
+  const c0 = ps2().inventory.cooked_fish_minnow || 0;
   const fr = await open(ws);
-  check('FISH: 10 cooked fish land in the bag', fr && fr.payload.prize.kind === 'fish'
-    && (ps2().inventory.cooked_fish_minnow || 0) - f0 === 10, fr && fr.payload);
+  /* v2.3.3107: RAW minnows (owner: food and drink only from farming and
+     recipes) -- and not one cooked fish from nowhere. */
+  check('FISH: 10 raw minnows land in the bag, to cook -- no cooked fish', fr && fr.payload.prize.kind === 'fish'
+    && (ps2().inventory.fish_minnow || 0) - f0 === 10 && (ps2().inventory.cooked_fish_minnow || 0) === c0, fr && fr.payload);
 
   giveChest(); force(0.90);                        /* 86..94 -> gem */
   const g0 = ps2().inventory.rare_gem || 0;

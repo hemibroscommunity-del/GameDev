@@ -241,7 +241,7 @@ export function VendorPanel(props) {
       }, "The market is not open on this world yet. It arrives with the next server update."),
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, marginTop: 12, lineHeight: 1.5 }
-      }, "Potions and supplies are on Shopkeeper Bro's shelf, out in the plaza.")));
+      }, "Meals and drinks are cooked at the Cookhouse, from what the farm grows.")));   /* v2.3.3107: Diego sells no food or drink */
 }
 
 /* ═══ v2.3.2618: THE SHELF THAT USED TO BE DRAWN HERE ═══
@@ -253,7 +253,7 @@ export function VendorPanel(props) {
  * them from there. Nothing imports this -- it is a record, deliberately. */
 export const SHOP_STOCK = [
   { id: 'cookedMinnow', name: 'Cooked Minnow', icon: '\uD83D\uDC1F', cost: 8, desc: 'Heals 23 HP (pre-cooked)', effect: 'healFish', power: 23 },
-  { id: 'staminaSalts', art: '/icons/items/potion-stamina.webp', name: 'Stamina Salts', icon: '\u26A1', cost: 12, desc: 'Restore 60 Stamina', effect: 'stamina' },
+  { id: 'staminaSalts', art: '/icons/items/potion-stamina.webp', name: 'Stamina Tonic', icon: '\u26A1', cost: 12, desc: 'Restore 60 Stamina', effect: 'stamina' },
   { id: 'manaShard', art: '/icons/items/potion-mana.webp', name: 'Mana Draught', icon: '\uD83D\uDCA0', cost: 30, desc: 'Cast specials nonstop for 3 min', effect: 'manaSurge' },
   { id: 'swiftDraught', art: '/icons/items/potion-antidote.webp', name: 'Swift Draught', icon: '\uD83C\uDF3F', cost: 30, desc: '1.5x run speed for 3 min', effect: 'spdBuff' },
   { id: 'whetstone', art: '/icons/items/potion-fury.webp', name: 'Fury Tonic', icon: '\uD83E\uDDEA', cost: 35, desc: 'Double damage for 3 min', effect: 'dmgBuff' },

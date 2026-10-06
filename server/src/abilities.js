@@ -302,10 +302,11 @@ export const STAM_ABILITIES = {
  *
  *                   WHY NOT THE STAMINA POOL, which three rounds of this change
  *                   tried to make into the bound and could not.  The pool is
- *                   REFILLABLE BY DESIGN: staminaSalts is a shop item (12 coins
- *                   for 60 stamina, cooking.js _applyShopItem) reachable from
- *                   inside a combat zone with no cooldown, by purchase or by
- *                   drinking from the bag.  That is a feature, not a hole.  A
+ *                   REFILLABLE BY DESIGN: staminaSalts is a bottle (60 stamina,
+ *                   cooking.js _applyShopItem; 12 coins at the shop until
+ *                   v2.3.3107, brewed from two carrots since) drunk from the
+ *                   bag inside a combat zone with no cooldown.  That is a
+ *                   feature, not a hole.  A
  *                   quantity a player is MEANT to be able to top up cannot rate-
  *                   limit anything that spends it, so every "the pool bounds the
  *                   sustain" sentence written here was false the moment it was
