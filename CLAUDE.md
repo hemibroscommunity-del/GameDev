@@ -1566,6 +1566,10 @@ Two protocol versions coexist; both must keep working:
   (owner directive, 2026-07-16 — no live players, CI speed wins) and
   run only via workflow_dispatch on demand. Primary platform is
   **iPhone Safari** — test touch controls, not just desktop.
+  Two phone scenarios DO run on every PR, each an owner call: `playable`
+  (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
+  (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
+  budgeted").
 
 ## Conventions
 
@@ -1626,6 +1630,45 @@ Two protocol versions coexist; both must keep working:
     arrives with no monster looks (~176 MB of textures, was 241). This
     clause is the Wheel's only: every other zone still awaits its monsters'
     art behind its overlay.
+- **MEMORY IS BUDGETED (owner directive 2026-10-06, v2.3.3101).** The black
+  screens are iPhone Safari running out of memory. The memory work of
+  v2.3.3068-v2.3.3088 (docs/MEMORY-PLAN.md) halved what the page holds, and
+  the owner asked how a new feature would be kept from giving it back -- "Yes
+  all 3": this rule, a budget checked on every PR, and the land tour on a
+  button. In any change that adds art, sound or anything it makes:
+  - ART is freed when you leave where it is used (the zone-asset exception
+    above; its display drops the texture on the way out). A destroyed texture
+    really lets go of its picture since v2.3.3069 (pixiApp.js).
+  - A picture the game DRAWS ITSELF (a recolour, a cut-out, a bake on a
+    canvas) is held twice: the canvas, and its copy on the graphics chip. When
+    nothing reads the canvas back and a rebuilt renderer makes it again for
+    itself, empty it once uploaded with `keepOnGpuOnly`
+    (src/rendering/gpuOnly.js; its header says when that is safe -- the
+    walking gear sheets are not: drawGearFrame reads them).
+  - MUSIC, and any sound longer than a few seconds, plays through the music
+    deck (BT_AUDIO's zone and global music, streamed from its file since
+    v2.3.3073) -- never SFX_MANIFEST, which decodes the whole file into memory
+    and keeps it there.
+  - Anything made per zone change, per land, per fight, per dungeon or per
+    renderer rebuild is DESTROYED when it goes; a cache has a cap (an LRU),
+    never "until the page closes".
+  - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
+    the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
+    home again, three times. Each kind of memory's highest reading must stay
+    within its line in `tools/qa/mp/memory-budget.mjs`, and the third trip must
+    end where the second did. Over a line? First find what the change holds
+    (the failure names the line; `tools/qa/mp/out/membudget.json` has every
+    stop and the biggest canvases; `mp-gpuaudit` names the textures). If the
+    feature really needs the memory, raise THAT line in the same PR and say in
+    the PR body, in plain words, how many MB and why -- the owner reads it
+    there. NEVER raise a line silently, or to turn a red check green without
+    saying so. Lowering a line after a saving locks the saving in.
+  - THE TOUR: `mp-memledger` (all eight lands twice, ~6 min) runs from a button
+    -- GitHub, Actions, "Memory", Run workflow -- after any big feature, or
+    locally with `node tools/qa/mp/run.mjs memledger`.
+  - The preloading law above still stands. Moving a load off the loading
+    screen to save memory is the owner's call, as #822's gathering poses were,
+    never a quiet "fix".
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.

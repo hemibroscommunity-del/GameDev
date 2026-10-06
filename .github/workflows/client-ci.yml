@@ -41,6 +41,10 @@
 # that actually bit us, and a five-minute PR gate that people respect beats
 # a twenty-minute one they learn to skip.  The rest stay on
 # workflow_dispatch.
+#
+# v2.3.3101 (owner call, 2026-10-06, "Yes all 3"): a second scenario runs on
+# every PR -- the memory budget, mp-membudget -- in its own workflow,
+# memory.yml, so it runs beside `playable` and art-only changes trigger it.
 name: Client CI
 on:
   workflow_dispatch:
