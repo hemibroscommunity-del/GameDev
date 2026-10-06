@@ -171,6 +171,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
+import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 
 /* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
@@ -5043,6 +5044,13 @@ export class GameRoom {
         if (session.id) this._handleSmeltBar(session, msg.payload || msg);
         break;
 
+      case 'shield_wear':
+        /* v2.3.3091: the shield on the arm (shieldwear.js) -- one the worker
+           already holds for this player, named by id or signature; the arm's
+           and the bag's lists move, nothing is described or minted. */
+        if (session.id) this._handleShieldWear(session, msg.payload || msg);
+        break;
+
       case 'cape_redeem':
         /* v2.3.2026: the player tapped Open on a golden ticket in the bag.
            The client never consumes it or grants the cape -- see the
@@ -5836,3 +5844,4 @@ Object.assign(GameRoom.prototype, arrowBlastMethods); /* v2.3.2279 */
 Object.assign(GameRoom.prototype, spawnScaleMethods);
 Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
 Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
+Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */
