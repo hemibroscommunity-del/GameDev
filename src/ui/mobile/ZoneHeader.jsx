@@ -131,10 +131,10 @@ const V = '?v=2.3.1333c'; /* v2.3.1333c: bigger logout glyph */
    of "how a zone is named" is exactly the pair that stays identical for a year
    and then diverges, at which point the flourish turns into different words. */
 
-/* ═══ v2.3.3009 -> v2.3.3106: WHERE YOU ARE IN THE WHEEL ═══
+/* ═══ v2.3.3009 -> v2.3.3108: WHERE YOU ARE IN THE WHEEL ═══
    From v2.3.3009 this bar said it, two lines: the land (its icon and colour,
    v2.3.3024) over its stage and levels, or No man's land in red (v2.3.3058).
-   v2.3.3106 moved them back under the minimap, on its name plate -- the owner:
+   v2.3.3108 moved them back under the minimap, on its name plate -- the owner:
    "move the zone name and level band beneath the minimap" -- so in the Wheel
    the bar names the world, "BroTown", and a land's banner docks into the plate
    (rendering/systems/wheelMinimap.js, zoneBannerOverlay.js titleRect). */

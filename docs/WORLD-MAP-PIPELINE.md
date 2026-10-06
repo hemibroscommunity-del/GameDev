@@ -3455,7 +3455,7 @@ confused with game screen area"*.
   under the box, and reads the frame's slate band and brass line off the
   screen. `mp-wheelhome` reads "Brotown" over "safe" on the way in.
 
-### The name plate under the minimap (v2.3.3106)
+### The name plate under the minimap (v2.3.3108)
 
 The owner: *"move the zone name and level band beneath the minimap but I want
 to reduce the size of the minimap to make room for it (rather than enlargen it
@@ -3470,7 +3470,8 @@ banner, they chose the shorter rectangle.
   - the land's element icon and its name in the land's colour, as the top bar
     had them (v2.3.3024);
   - the level band in gold ("Lv 6–10"), "safe" in town, "safe, no monsters" on
-    the commons, or "☠ No man's land 1" in red.
+    the commons. No man's land has its own skull badge over the dashboard
+    (v2.3.3107), so the plate keeps the level band there too.
 - **The stage's name ("the thaw line") did not fit.** The plate is 124 px
   across and text may not go under 11 px (mp-textfloor's floor). "the overgrown
   orchards · Lv 26–30" is about 170 px at 11 px, so the stage stays on the world

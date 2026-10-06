@@ -45,7 +45,7 @@
  *     gold road on the minimap of where to go".  The road on the ground is put
  *     away (questTrailStyle.js GROUND_PATH), so this is the way now.
  *
- *   - v2.3.3106: and SAYS WHERE YOU ARE AGAIN, on a NAME PLATE under the map
+ *   - v2.3.3108: and SAYS WHERE YOU ARE AGAIN, on a NAME PLATE under the map
  *     -- the owner: "move the zone name and level band beneath the minimap but
  *     I want to reduce the size of the minimap to make room for it (rather
  *     than enlargen it further)", choosing the shorter rectangle.  The box
@@ -70,12 +70,11 @@ import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land
 import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
 import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and its music */
 import { BT_AUDIO } from '@/data/gameDisplay.js';
-import { landLook } from '@/data/wheelLands.js';           /* v2.3.3106: the plate's land colour */
-import { nmlHere, NML_RED } from '@/game/noMansLand.js';   /* v2.3.3106: the plate says No man's land, in red */
-import { landIconTexture, holdLandIcons, releaseLandIcons } from '../wheelSignposts.js';   /* v2.3.3106: the plate's icon */
+import { landLook } from '@/data/wheelLands.js';           /* v2.3.3108: the plate's land colour */
+import { landIconTexture, holdLandIcons, releaseLandIcons } from '../wheelSignposts.js';   /* v2.3.3108: the plate's icon */
 
-export const WHEEL_BOX = 132;      /* CSS px a side (v2.3.3106: across; and tall, the plate included) */
-/* v2.3.3106: THE NAME PLATE (the header's note).  The map's window ends
+export const WHEEL_BOX = 132;      /* CSS px a side (v2.3.3108: across; and tall, the plate included) */
+/* v2.3.3108: THE NAME PLATE (the header's note).  The map's window ends
    MAP_BOT px down the box (was the box's own 132 - FRAME); the plate is the
    frame's slate below it, PLATE_PAD in from the box's sides and bottom. */
 export const WHEEL_H = WHEEL_BOX;
@@ -138,7 +137,7 @@ const HOME_R = 10, HOME_ICON_PX = 13, C_HOME = 0xf4f0e7, C_HOME_BG = 0x0b161b, C
    tip under it. */
 const NORTH_R = 6.5, NORTH_Y = FRAME / 2, NORTH_FONT = 9, NORTH_UP = NORTH_R - NORTH_Y;
 
-/* v2.3.3106: the land's colour lifted toward white to read on the dark plate,
+/* v2.3.3108: the land's colour lifted toward white to read on the dark plate,
    as the top bar had it (ZoneHeader.jsx landTint, k 0.42) */
 function landTintHex(hex, k = 0.42) {
   const v = parseInt(String(hex).slice(1), 16);
@@ -165,7 +164,7 @@ export class WheelMinimap {
     this.root.addChild(this.clip);
     this.pan = new Container();
     this.clip.addChild(this.pan);
-    /* v2.3.3106: the map's window only -- the plate below is the frame's */
+    /* v2.3.3108: the map's window only -- the plate below is the frame's */
     const mask = new Graphics().roundRect(0, 0, WHEEL_BOX, MAP_BOT + R_IN, R_BOX).fill(0xffffff);
     this.root.addChild(mask);
     this.clip.mask = mask;
@@ -183,7 +182,7 @@ export class WheelMinimap {
        ring FRAME px wide drawn over the map's edge -- the slate band with a
        lighter top-left lip, a dark keyline outside and in, and the brass line
        just inside it -- so the box reads as a panel, not a hole in the world */
-    /* v2.3.3106: the box is B across and WHEEL_H tall; the map's window
+    /* v2.3.3108: the box is B across and WHEEL_H tall; the map's window
        (the cut) ends at MAP_BOT and the slate runs on below it as the plate */
     const B = WHEEL_BOX, H = WHEEL_H, IN = B - 2 * FRAME, MH = MAP_BOT - FRAME;
     const border = new Graphics();
@@ -202,7 +201,7 @@ export class WheelMinimap {
     /* the "tap me" mark: two corner arrows, bottom left (v2.3.3009: inside
        the frame) */
     const expand = new Graphics();
-    const ex = FRAME + 5, ey = MAP_BOT - 17;   /* v2.3.3106: the map's corner (was the box's) */
+    const ex = FRAME + 5, ey = MAP_BOT - 17;   /* v2.3.3108: the map's corner (was the box's) */
     expand.roundRect(ex - 2, ey - 2, 16, 16, 4).fill({ color: 0x0b161b, alpha: 0.7 });
     expand.moveTo(ex + 2, ey + 6).lineTo(ex + 2, ey + 2).lineTo(ex + 6, ey + 2)
       .moveTo(ex + 10, ey + 6).lineTo(ex + 10, ey + 10).lineTo(ex + 6, ey + 10)
@@ -242,7 +241,7 @@ export class WheelMinimap {
     this.root.addChild(this.home);
 
     /* v2.3.3009: the words that were printed under the box went to the top
-       bar (ZoneHeader.jsx wheelWhere) -- and v2.3.3106 brought them back, on
+       bar (ZoneHeader.jsx wheelWhere) -- and v2.3.3108 brought them back, on
        the plate: the land's icon and name, then the level band */
     const tRes = Math.min(4, Math.max(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1));
     this.plate = new Container();
@@ -282,11 +281,13 @@ export class WheelMinimap {
     try { if (window.__btWheelPlate) window.__btWheelPlate = null; } catch (e) { /* no page */ }
   }
 
-  /* v2.3.3106: the name plate's two lines, redrawn only when they change.
+  /* v2.3.3108: the name plate's two lines, redrawn only when they change.
      `w` the worker's words for the spot under you ({title, sub}), kept while
      you are over open water (no land, no words) so the plate never blinks;
-     `region` its land; `nml` No man's land's number here (0 if not). */
-  _plate(w, region, nml) {
+     `region` its land.  No man's land is its own badge over the dashboard's
+     middle (v2.3.3107, ui/mobile/NmlBadge.jsx), so the plate keeps the
+     level band there too. */
+  _plate(w, region) {
     if (w && w.title) this._lastWords = { title: w.title, sub: w.sub || '', region: region || null };
     const at = this._lastWords;
     const look = at ? landLook(at.region) : null;
@@ -296,8 +297,6 @@ export class WheelMinimap {
     let sub = at ? at.sub : '';
     const lv = /Lv \d+[–-]\d+/.exec(sub);
     if (lv) sub = lv[0];
-    const red = nml > 0;
-    if (red) sub = `☠ No man's land ${nml}`;
     const key = at ? `${at.title}|${sub}|${at.region}|${icon ? 1 : 0}` : '';
     if (key === this._plateKey) return this._plateOut;
     this._plateKey = key;
@@ -306,7 +305,7 @@ export class WheelMinimap {
     T.text = at ? at.title : '';
     T.style.fill = look && look.element ? landTintHex(look.color) : C_TITLE;
     U.text = sub;
-    U.style.fill = red ? NML_RED : C_SUB;
+    U.style.fill = C_SUB;
     I.visible = !!icon;
     if (icon) { I.texture = icon; I.width = ICON_PX; I.height = ICON_PX; }
     /* fit: a long name ("Electric Foundry") steps down to the 11 px floor,
@@ -323,7 +322,7 @@ export class WheelMinimap {
     I.x = Math.round(x0); I.y = Math.round(y1);
     T.x = Math.round(x0 + iconW); T.y = Math.round(y1);
     U.x = Math.round(P.x + P.w / 2); U.y = Math.round(y2);
-    this._plateOut = { title: T.text, sub: U.text, land: at ? at.region : null, icon: !!icon, red,
+    this._plateOut = { title: T.text, sub: U.text, land: at ? at.region : null, icon: !!icon, red: false,
       color: '#' + Number(T.style.fill).toString(16).padStart(6, '0'),
       titlePx: px, subPx: SUB_PX, squeezed: T.scale.x < 1 || U.scale.x < 1,
       fits: rowW <= avail + 0.5 && U.width <= avail + 0.5, y: P.y, h: P.h };
@@ -407,7 +406,7 @@ export class WheelMinimap {
 
     /* centred on you, held at the world's edge like the camera */
     const spanW = map.worldW * SCALE, spanH = map.worldH * SCALE;
-    /* v2.3.3106: centred in the map's window, above the plate */
+    /* v2.3.3108: centred in the map's window, above the plate */
     const winMidY = (FRAME + MAP_BOT) / 2;
     this.pan.x = Math.max(WHEEL_BOX - spanW, Math.min(0, WHEEL_BOX / 2 - P.x * SCALE));
     this.pan.y = Math.max(MAP_BOT - spanH, Math.min(0, winMidY - P.y * SCALE));
@@ -449,7 +448,7 @@ export class WheelMinimap {
     if (quest) {
       const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
       const dx = quest.x * SCALE + this.pan.x - pbx, dy = quest.y * SCALE + this.pan.y - pby;
-      const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE, hiY = MAP_BOT - (QUEST_EDGE - FRAME);   /* v2.3.3106: the map's bottom */
+      const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE, hiY = MAP_BOT - (QUEST_EDGE - FRAME);   /* v2.3.3108: the map's bottom */
       let t = 1;
       if (dx > 0) t = Math.min(t, (hi - pbx) / dx); else if (dx < 0) t = Math.min(t, (lo - pbx) / dx);
       if (dy > 0) t = Math.min(t, (hiY - pby) / dy); else if (dy < 0) t = Math.min(t, (lo - pby) / dy);
@@ -478,7 +477,7 @@ export class WheelMinimap {
       const T = map.hub.town;
       const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
       const dx = (T.x - P.x) * SCALE, dy = (T.y - P.y) * SCALE;
-      const lo = QUEST_EDGE + 1, hi = WHEEL_BOX - QUEST_EDGE - 1, hiY = MAP_BOT - (QUEST_EDGE - FRAME) - 1;   /* v2.3.3106 */
+      const lo = QUEST_EDGE + 1, hi = WHEEL_BOX - QUEST_EDGE - 1, hiY = MAP_BOT - (QUEST_EDGE - FRAME) - 1;   /* v2.3.3108 */
       let t = 1;
       if (dx > 0) t = Math.min(t, (hi - pbx) / dx); else if (dx < 0) t = Math.min(t, (lo - pbx) / dx);
       if (dy > 0) t = Math.min(t, (hiY - pby) / dy); else if (dy < 0) t = Math.min(t, (lo - pby) / dy);
@@ -490,7 +489,7 @@ export class WheelMinimap {
         let hx = pbx + dx * t, hy = pby + dy * t;
         /* clear of the "tap me" mark in the bottom-left corner: slid along
            the edge it rides, away from the corner */
-        const ex1 = FRAME + 5 + 14 + HOME_R + 2, ey0 = MAP_BOT - 17 - 2 - HOME_R - 2;   /* v2.3.3106: the map's corner */
+        const ex1 = FRAME + 5 + 14 + HOME_R + 2, ey0 = MAP_BOT - 17 - 2 - HOME_R - 2;   /* v2.3.3108: the map's corner */
         if (hx < ex1 && hy > ey0) {
           if (hy >= hiY - 0.5) hx = ex1; else hy = ey0;
         }
@@ -505,14 +504,12 @@ export class WheelMinimap {
     this.player.x = P.x * SCALE; this.player.y = P.y * SCALE;
     this.player.rotation = f >= 0 ? f * Math.PI / 4 + Math.PI / 2 : 0;
 
-    /* where you are, in words: v2.3.3106 on the plate again (the top bar had
+    /* where you are, in words: v2.3.3108 on the plate again (the top bar had
        them from v2.3.3009) */
     const here = wheelHere(P.x, P.y);
     const w = here && here.words;
-    let nml = 0;
-    try { nml = nmlHere(S); } catch (e) { nml = 0; }
     let plate = null;
-    try { plate = this._plate(w, here ? here.region : null, nml); } catch (e) { plate = null; }
+    try { plate = this._plate(w, here ? here.region : null); } catch (e) { plate = null; }
     /* v2.3.3024: crossing into an elemental land plays its banner
        (zoneBannerOverlay.js noteWheelLand; this frame is the one that asks
        where you are every frame) */
@@ -529,7 +526,7 @@ export class WheelMinimap {
         this._rectFor = rk;
         const c = (canvas || document.querySelector('canvas')).getBoundingClientRect();
         this._rect = { left: Math.round(c.left + this.root.x), top: Math.round(c.top + this.root.y), w: WHEEL_BOX, h: WHEEL_H };
-        /* v2.3.3106: the plate's own box, where a land's banner docks */
+        /* v2.3.3108: the plate's own box, where a land's banner docks */
         const pb = this._plateBox;
         this._plateRect = { left: this._rect.left + pb.x, top: this._rect.top + pb.y, width: pb.w, height: pb.h };
       }
@@ -544,7 +541,7 @@ export class WheelMinimap {
         routes: map.routes.length, places: map.places.length, words: w ? { ...w } : null,
         nodes: nodeMarks,   /* v2.3.3012: the resources marked */
         frame: FRAME, label: false,   /* v2.3.3009: the frame's width; nothing printed under the box */
-        /* v2.3.3106: the map's window ends here, and the plate's two lines */
+        /* v2.3.3108: the map's window ends here, and the plate's two lines */
         h: WHEEL_H, mapBottom: MAP_BOT, plate: plate ? { ...plate, rect: this._plateRect || null } : null,
         quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road } : null,
         /* v2.3.3023: the way home: whether town is off the box, whether its

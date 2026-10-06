@@ -119,7 +119,7 @@ function build() {
 /** The dock target's live box, or null if the header is not on screen. */
 function titleRect() {
   try {
-    /* v2.3.3106: in the Wheel, where you are is on the minimap's name plate
+    /* v2.3.3108: in the Wheel, where you are is on the minimap's name plate
        (wheelMinimap.js publishes its box while it is drawn), so a land's
        banner lands there */
     const p = typeof window !== 'undefined' ? window.__btWheelPlate : null;

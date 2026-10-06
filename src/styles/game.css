@@ -1055,7 +1055,8 @@ input{font-family:inherit}
   font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;
   -webkit-tap-highlight-color:transparent}
 .bt-emote-btn:active{background:rgba(216,168,95,.4);transform:scale(.9)}
-.bt-interact-prompt{position:fixed;left:calc(50% + 10px);bottom:calc(var(--dash-h) + 24px);transform:translateX(-50%);z-index:35;
+/* v2.3.3107: + --nml-lift, set while No man's land's badge holds the band's middle (NmlBadge.jsx) */
+.bt-interact-prompt{position:fixed;left:calc(50% + 10px);bottom:calc(var(--dash-h) + 24px + var(--nml-lift, 0px));transform:translateX(-50%);z-index:35;
   padding:8px 18px;background:rgba(17,25,29,.94);border:1.5px solid var(--pop);border-radius:10px;
   color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
   animation:promptPulse 1.5s ease-in-out infinite;
@@ -6022,6 +6023,24 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 .bt-rjoy-base[data-ricon="woodcutting"] .bt-rjoy-icon[data-ricon-img="woodcutting"],
 .bt-rjoy-base[data-ricon="fishing"] .bt-rjoy-icon[data-ricon-img="fishing"],
 .bt-rjoy-base[data-ricon="cooking"] .bt-rjoy-icon[data-ricon-img="cooking"]{display:block}
+/* v2.3.3105: the weapon in your hand, its bag picture (controlSkin weaponDiscIcon) */
+.bt-rjoy-base[data-ricon="w-sword"] .bt-rjoy-icon[data-ricon-img="w-sword"],
+.bt-rjoy-base[data-ricon="w-sword-copper"] .bt-rjoy-icon[data-ricon-img="w-sword-copper"],
+.bt-rjoy-base[data-ricon="w-sword-iron"] .bt-rjoy-icon[data-ricon-img="w-sword-iron"],
+.bt-rjoy-base[data-ricon="w-sword-blacksteel"] .bt-rjoy-icon[data-ricon-img="w-sword-blacksteel"],
+.bt-rjoy-base[data-ricon="w-great-sword"] .bt-rjoy-icon[data-ricon-img="w-great-sword"],
+.bt-rjoy-base[data-ricon="w-great-sword-copper"] .bt-rjoy-icon[data-ricon-img="w-great-sword-copper"],
+.bt-rjoy-base[data-ricon="w-great-sword-iron"] .bt-rjoy-icon[data-ricon-img="w-great-sword-iron"],
+.bt-rjoy-base[data-ricon="w-great-sword-blacksteel"] .bt-rjoy-icon[data-ricon-img="w-great-sword-blacksteel"],
+.bt-rjoy-base[data-ricon="w-bow"] .bt-rjoy-icon[data-ricon-img="w-bow"],
+.bt-rjoy-base[data-ricon="w-staff"] .bt-rjoy-icon[data-ricon-img="w-staff"]{display:block}
+/* v2.3.3105: the JUMP arrow over the disc as it is, see-through -- the owner:
+   "a semi transparent overlay on the existing disc" (controlSkin RDISC_ICONS) */
+.bt-rjoy-base[data-ricon="jump"] .bt-rjoy-icon[data-ricon-img="jump"]{display:block;opacity:.7}
+/* v2.3.3105: ...and the tap's other acts, the same way (talk, door, the bed) */
+.bt-rjoy-base[data-ricon="talk"] .bt-rjoy-icon[data-ricon-img="talk"],
+.bt-rjoy-base[data-ricon="door"] .bt-rjoy-icon[data-ricon-img="door"],
+.bt-rjoy-base[data-ricon="sleep"] .bt-rjoy-icon[data-ricon-img="sleep"]{display:block;opacity:.7}
 /* the label is the button's name; a caption only while a gesture is asked for */
 .bt-rjoy-label{transition:opacity 120ms linear}
 .bt-rjoy-label[data-show="0"]{opacity:0}

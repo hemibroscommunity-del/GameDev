@@ -65,7 +65,7 @@ const tap = (P, text) => P.page.evaluate((t) => {
 const mini = (P) => P.page.evaluate(() => (window.__btMinimap ? JSON.parse(JSON.stringify(window.__btMinimap)) : null));
 const wm = (P) => P.page.evaluate(() => (window.__btWorldMap ? JSON.parse(JSON.stringify(window.__btWorldMap)) : null));
 /* v2.3.3009: the top bar's words in the Wheel (ZoneHeader.jsx wheelWhere) --
-   v2.3.3106: the minimap's NAME PLATE's (wheelMinimap.js _plate): the place,
+   v2.3.3108: the minimap's NAME PLATE's (wheelMinimap.js _plate): the place,
    the gold line under it, and whether each fits whole; `text` is the top bar,
    which says "BroTown" in the Wheel now */
 const bar = (P) => P.page.evaluate(() => {
@@ -138,14 +138,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   rec.ok('in the Wheel the minimap is the Wheel\'s own, two and a half times bigger, in the same corner', WHEELISH(zone) && m && m.wheel === true && m.box === 132 && m.rootX === PHONE.width - 132, { zone, m });
   rec.ok('...showing the land under it, and the roads, river and railway, the camps, passes and gates', m && m.under && m.routes >= 30 && m.places >= 60, m && { under: m.under, routes: m.routes, places: m.places });
-  /* v2.3.3106: centred in the map's window, which ends at mapBottom above the plate */
+  /* v2.3.3108: centred in the map's window, which ends at mapBottom above the plate */
   const winMidY = m ? (m.frame + m.mapBottom) / 2 : 0;
   rec.ok(`...about three zones across, centred on you in the map's window (above the name plate, ${m && m.mapBottom} px down a ${m && m.h} px box)`,
     m && m.window === 3200 && m.h === 132 && m.mapBottom > 80 && m.mapBottom < 100 && Math.abs(m.playerBoxX - 66) < 2 && Math.abs(m.playerBoxY - winMidY) < 2, m && { x: m.playerBoxX, y: m.playerBoxY, winMidY });
   /* v2.3.3023: in town, town is on the box: no home badge */
   rec.ok('...and in town no home badge: the town is on the box', m && m.home && m.home.edge === false && m.home.shown === false, m && m.home);
   /* v2.3.3009: the words were the top bar's, in place of "The Wheel (Lv1-2)" --
-     v2.3.3106: the minimap's plate's (the owner: "move the zone name and
+     v2.3.3108: the minimap's plate's (the owner: "move the zone name and
      level band beneath the minimap") */
   let tb = null;
   for (let i = 0; i < 10; i++) { tb = await bar(P); if (barHolds(tb, 'Brotown', /^safe$/)) break; await P.page.waitForTimeout(300); }
@@ -160,7 +160,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      inside it (read halfway down, where no corner rounds it) */
   const px = (x, y) => box.at(Math.round(x * dpr), Math.round(y * dpr));
   const like = (p, hex, tol) => !!p && Math.abs(p[0] - ((hex >> 16) & 255)) <= tol && Math.abs(p[1] - ((hex >> 8) & 255)) <= tol && Math.abs(p[2] - (hex & 255)) <= tol;
-  const midY = m.topInset + Math.round(m.mapBottom / 2);   /* v2.3.3106: halfway down the map's window */
+  const midY = m.topInset + Math.round(m.mapBottom / 2);   /* v2.3.3108: halfway down the map's window */
   const frame = { band: m.frame, left: px(m.rootX + 4, midY), right: px(PHONE.width - 4, midY), brassL: px(m.rootX + 6, midY), brassR: px(PHONE.width - 6, midY) };
   rec.ok(`the minimap wears a thick frame (${m.frame} px): a slate band down both sides, the colour of the bars, and the brass line inside it`,
     m.frame >= 6 && like(frame.left, 0x202c32, 14) && like(frame.right, 0x202c32, 14) && like(frame.brassL, 0xd8aa58, 40) && like(frame.brassR, 0xd8aa58, 40), frame);
@@ -172,7 +172,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3031: the arrival's window is mostly the paved square now (it is 28% bigger, and the
      yards round it are lawn): 12 colours, where it was more -- still nothing like a flat fill */
   rec.ok(`...drawn on screen, in many colours (${distinct.size})`, distinct.size > 8, { distinct: distinct.size });
-  /* v2.3.3106: and the plate is drawn under it: its dark well, with lettering
+  /* v2.3.3108: and the plate is drawn under it: its dark well, with lettering
      on it (light pixels among the dark) */
   {
     const r = tb && tb.plate && tb.plate.rect;
@@ -294,9 +294,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      second line says so, in red, in the stage name's place: "☠ No man's land
      1 · Lv 6–10" (ZoneHeader.jsx; src/game/noMansLand.js).  The words under
      it (wheelHere) still name the stage. */
-  /* v2.3.3106: the plate's line is the level band alone (the stage's name did
-     not fit), or No man's land */
-  const FROST_SUB = /^(Lv 6–10|☠ No man's land 1)$/;
+  /* v2.3.3108: the plate's line is the level band alone (the stage's name did
+     not fit) -- in No man's land too, which has its own badge (v2.3.3107) */
+  const FROST_SUB = /^Lv 6–10$/;
   for (let i = 0; i < 10; i++) { fb = await bar(P); if (barHolds(fb, 'Frost Ridge', FROST_SUB)) break; await P.page.waitForTimeout(300); }
   rec.ok(`walking out onto Frost Ridge, the name plate says so: the land and the levels there ("${fb && fb.place && fb.place.text}" over "${fb && fb.sub && fb.sub.text}", whole)`,
     fw.words && fw.words.title === 'Frost Ridge' && /the thaw line · Lv 6–10/.test(fw.words.sub) && barHolds(fb, 'Frost Ridge', FROST_SUB), { fb, words: fw.words });
@@ -308,7 +308,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      frost icon before the land's name, the name in the land's colour; and
      crossing into it played its banner (the owner's frost art, the icon and
      the name) */
-  /* v2.3.3106: on the minimap's name plate now (wheelMinimap.js _plate) */
+  /* v2.3.3108: on the minimap's name plate now (wheelMinimap.js _plate) */
   const look = await P.page.evaluate(() => {
     const pl = window.__btMinimap && window.__btMinimap.plate;
     const zb = window.__btZoneBanner;
@@ -325,7 +325,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        0xdadada tint: about 108, 163, 191) */
     const r = await P.page.evaluate(() => window.__btWheelMini);
     const { decodePNG } = await import('../../world/png.mjs');
-    /* v2.3.3106: the map's window only, above the name plate */
+    /* v2.3.3108: the map's window only, above the name plate */
     const mb = await P.page.evaluate(() => (window.__btMinimap && window.__btMinimap.mapBottom) || 92);
     const png = decodePNG(await P.page.screenshot({ clip: { x: r.left + 20, y: r.top + 20, width: r.w - 40, height: mb - 30 } }));
     let ice = 0;

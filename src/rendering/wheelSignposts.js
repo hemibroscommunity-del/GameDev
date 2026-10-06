@@ -87,7 +87,7 @@ export function freeSignpostIcons() {
   }
 }
 export function signpostIconsLoaded() { return Object.keys(_icons).length; }
-/* v2.3.3106: the minimap's name plate wears the same icon before the land's
+/* v2.3.3108: the minimap's name plate wears the same icon before the land's
    name (wheelMinimap.js) -- the texture, or null while it is not loaded;
    `holder.clear()` is called before the icons go, as the plates' is */
 export function landIconTexture(land) { return (land && _icons[land]) || null; }

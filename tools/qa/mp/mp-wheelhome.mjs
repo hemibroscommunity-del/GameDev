@@ -95,7 +95,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const h = document.getElementById('bt-world-trial');
     const t = document.querySelector('.bt-zone-header__title');
     /* v2.3.3009: the place and its gold line, the bar's two lines in the Wheel --
-       v2.3.3106: the minimap's name plate's (wheelMinimap.js _plate) */
+       v2.3.3108: the minimap's name plate's (wheelMinimap.js _plate) */
     const pl = window.__btMinimap && window.__btMinimap.plate;
     return { readout: !!(h && h.style.display !== 'none'), title: t ? t.textContent : null,
       place: pl ? pl.title : null, sub: pl ? pl.sub : null };

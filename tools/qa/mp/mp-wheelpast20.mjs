@@ -90,7 +90,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (near.length && near.every((m) => m.sprite && m.sprite.texAlive && m.sprite.plate)) break;
   }
   await shot(P, 'frost-21-25');
-  /* v2.3.3106: the minimap's name plate says where (wheelMinimap.js _plate) */
+  /* v2.3.3108: the minimap's name plate says where (wheelMinimap.js _plate) */
   const bar = await P.page.evaluate(() => {
     const pl = window.__btMinimap && window.__btMinimap.plate;
     return { place: pl ? pl.title : null, sub: pl ? pl.sub : null };
