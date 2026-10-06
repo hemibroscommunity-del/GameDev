@@ -844,7 +844,19 @@ remnant to migrate server-side, not a mode to preserve.
       a RED skull's death takes everything worn too, every shield, and the
       gold; `nml_loss` tells the game exactly what went;
     - `caps.nomansland`, kill switch `nomansland: false`; dev vitals take
-      `hp`; `nomansland` suite (51), `mp-nomansland` (15, two screens).
+      `hp`; `nomansland` suite (51), `mp-nomansland` (15, two screens);
+    - since v2.3.3082 SPARE SHIELDS GO TOO -- asked "Shields and outfits in no
+      man's land?", the owner: "Yes": the game reports the shield on its arm
+      (`shield_wear` {gid | sig | none}, src/game/shieldWear.js, on every
+      change, every join and a new shield into the bag), and the worker keeps
+      `ps.shield` as the shield WORN and `ps.shieldStash` the carried
+      (server/src/shieldwear.js: only a piece it holds for you, nothing
+      described, a copy never added twice); an ordinary loss takes the spare
+      shields by the armour's rule once `ps._shieldKnown` (runtime only);
+      outfits stay -- the wardrobe is the T-shirt and the plate's look, nothing
+      to take; `caps.shieldwear`, kill switch `shieldwear: false`; the three
+      no-man's-land mirror-audit checks run again (a merge had put them after
+      the suite's process.exit): no-mans-land.md "The shield on your arm".
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":

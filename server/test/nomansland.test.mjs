@@ -241,7 +241,7 @@ const ps = (k) => room.playerState[ids[k]];
     && !(A.armorStash || []).some((g) => g && g.gid === wornPlate.gid)
     && (room._gearProvOf(ids.b) || { list: [] }).list.some((r) => r.id === wornPlate.gid), { b: B.armorStash, forfeit: B._nml.forfeit });
   check('...nor a stash copy with no id that matches what B wears (greaves)', (B.legsStash || []).length === 1, B.legsStash);
-  check('...no shield is taken (no shield equip message: a worn one cannot be told from a spare), and no outfit piece',
+  check('...no shield is taken (B\'s game never said which shield is on its arm, shield_wear: a worn one cannot be told from a spare), and no outfit piece',
     (B.shieldStash || []).length === 1 && (A.shieldStash || []).length === aShield0 && (B.gearStash || []).length === 1 && (A.gearStash || []).length === aGear0,
     { bShields: B.shieldStash, aShields: (A.shieldStash || []).length, bGear: B.gearStash });
   const loss = msgs(ws.b, 'nml_loss').pop();
@@ -342,6 +342,99 @@ const ps = (k) => room.playerState[ids[k]];
   await join(wsE, 'bp_nml_e', 'NmlE');
   const sync = wsE.sent.find((m) => m.type === 'state_sync');
   check('caps.nomansland is advertised', !!sync && !!sync.caps && sync.caps.nomansland === true, sync && sync.caps && sync.caps.nomansland);
+}
+
+// ── 9. v2.3.3082: the shield on the arm (shieldwear.js), and the spares ─────
+// The owner's "Yes" to "Shields and outfits in no man's land?": the game
+// says which shield it wears (shield_wear), ps.shield is the one WORN and
+// ps.shieldStash the spares -- and a loss under the rule takes the spares.
+{
+  const idF = 'bp_nml_f', wsF = fakeWs('f');
+  await join(wsF, idF, 'NmlF');
+  const F = room.playerState[idF];
+  const sF = room.sessions.get(wsF);
+  const rec = (p) => room._gearProvRecord(idF, 'shield', p, 'test');
+  const P = rec({ name: 'Pine Shield', gearBase: 'wood', tierMult: 1, tier: 'common' });
+  const S1 = rec({ name: 'Copper Shield', gearBase: 'copper', tierMult: 2, tier: 'common' });
+  const L = { name: 'Old Buckler', gearBase: 'wood', tierMult: 1, tier: 'common' };   /* from before the ledger: no id */
+  const sigL = 'Old Buckler|wood|1|common';
+  const setUp = () => { F.shield = P; F.shieldStash = [S1, { ...L }, { ...P }]; F._shieldKnown = undefined; };
+  setUp();
+  const gids = () => (F.shieldStash || []).map((p) => p.gid || p.name);
+  check('shield_wear: the caps advertise it (caps.shieldwear)', (wsF.sent.find((m) => m.type === 'state_sync') || { caps: {} }).caps.shieldwear === true);
+  check('...a game too old to say leaves the arm unknown', F._shieldKnown === undefined);
+  await room.webSocketMessage(wsF, JSON.stringify({ type: 'shield_wear', payload: { gid: P.gid } }));
+  check('...the router hears it: the shield already on the arm -- nothing moves, the arm is known',
+    F.shield === P && F._shieldKnown === true && JSON.stringify(gids()) === JSON.stringify([S1.gid, 'Old Buckler', P.gid]), gids());
+  let r = room._handleShieldWear(sF, { gid: S1.gid });
+  check('...a spare by its id goes on the arm, its one copy leaves the bag, and the one worn goes in -- unless a copy is already there (no second Pine Shield)',
+    r === 'worn' && F.shield.gid === S1.gid && JSON.stringify(gids()) === JSON.stringify(['Old Buckler', P.gid]), { r, worn: F.shield, bag: gids() });
+  r = room._handleShieldWear(sF, { sig: sigL });
+  check('...a piece with no id, by its signature', r === 'worn' && F.shield.name === 'Old Buckler' && !F.shield.gid
+    && JSON.stringify(gids()) === JSON.stringify([P.gid, S1.gid]), { r, worn: F.shield, bag: gids() });
+  r = room._handleShieldWear(sF, { none: true });
+  check('...nothing on the arm: the shield goes into the bag', r === 'none' && F.shield === null
+    && JSON.stringify(gids()) === JSON.stringify([P.gid, S1.gid, 'Old Buckler']), { r, bag: gids() });
+  const before = JSON.stringify(gids());
+  r = room._handleShieldWear(sF, { gid: 'g_not_mine' });
+  check('...a shield the worker does not hold for you: nothing moves, and the arm is unknown again',
+    r === 'unknown' && F.shield === null && JSON.stringify(gids()) === before && F._shieldKnown === false, { r, known: F._shieldKnown });
+  const junk = [{ gid: '__proto__' }, { gid: 'constructor' }, { gid: 'x'.repeat(41) }, { sig: '' }, { gid: 5 }, {}, null, 'none'];
+  const outs = junk.map((p) => room._handleShieldWear(sF, p));
+  check('...junk names nothing: an inherited name, a too-long id, an empty or a wrong-typed one, no payload',
+    outs.every((o) => o === null || o === 'unknown') && F.shield === null && JSON.stringify(gids()) === before, outs);
+  /* another player's shield, by its id: not yours */
+  const theirs = room._gearProvRecord(ids.a, 'shield', { name: 'Iron Shield', gearBase: 'iron', tierMult: 3, tier: 'common' }, 'test');
+  check('...another player\'s shield, by its id, is not yours', room._handleShieldWear(sF, { gid: theirs.gid }) === 'unknown' && F.shield === null);
+  F.shieldStash = [];
+  r = room._handleShieldWear(sF, { gid: P.gid });
+  check('...a piece your ledger holds though no list does is yours, by its id', r === 'worn' && F.shield && F.shield.gid === P.gid, { r, worn: F.shield });
+
+  /* the death under the rule, the arm known: the spares go, the worn one and its stale copy stay */
+  const A = ps('a');
+  setUp();
+  room._handleShieldWear(sF, { gid: P.gid });
+  place(A, at(RING(2)), 7); place(F, at(RING(2) + 60), 7);
+  F._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
+  A._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
+  F.inventory = {};
+  F.weaponStash = [];
+  F.armorStash = [];
+  F.legsStash = [];
+  const aSh0 = (A.shieldStash || []).length;
+  F.hp = 1;
+  wsF.sent.length = 0;
+  room._pvpHitLanes && room._pvpHitLanes.clear();
+  await attack(ws.a, A, idF, F);
+  await settle();
+  check('a loss under the rule, the arm known: killed', F.dying === true, { hp: F.hp });
+  check('...the spare shields go to the killer -- the recorded one with its provenance row, the old one too',
+    (A.shieldStash || []).length === aSh0 + 2 && A.shieldStash.some((p) => p && p.gid === S1.gid) && A.shieldStash.some((p) => p && p.name === 'Old Buckler')
+    && (room._gearProvOf(ids.a) || { list: [] }).list.some((row) => row.id === S1.gid) && F._nml.forfeit.indexOf(S1.gid) >= 0,
+    { a: (A.shieldStash || []).map((p) => p.gid || p.name), forfeit: F._nml.forfeit });
+  check('...the shield on the arm stays, and so does its stale copy in the bag (same id): the killer gets no second Pine Shield',
+    !!F.shield && F.shield.gid === P.gid && (F.shieldStash || []).length === 1 && F.shieldStash[0].gid === P.gid
+    && !(A.shieldStash || []).some((p) => p && p.gid === P.gid) && F._nml.forfeit.indexOf(P.gid) < 0, { worn: F.shield, bag: gids() });
+  const lossF = msgs(wsF, 'nml_loss').pop();
+  const shGear = lossF ? lossF.payload.gear.filter((g) => g.field === 'shieldStash') : [];
+  check('...and the game is told which two went (nml_loss: one by its id, one by its signature)',
+    shGear.length === 2 && shGear.some((g) => g.gid === S1.gid) && shGear.some((g) => !g.gid && g.sig === sigL), lossF && lossF.payload);
+
+  /* the kill switch: reports ignored, and a loss takes no shield again */
+  F.dying = false; F.dead = false; F.hp = F.maxHp;
+  const keep = room._liveFlags;
+  room._liveFlags = { ...(keep || {}), shieldwear: false };
+  F.shield = P; F.shieldStash = [S1]; F._shieldKnown = true;
+  check('kill switch: shieldwear:false ignores the report', room._handleShieldWear(sF, { none: true }) === null && F.shield === P);
+  F._nmlLastHitBy = ids.a; F._nmlLastHitAt = Date.now();
+  F._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
+  room._nmlOnDeath(F, idF, 'pvp:' + ids.a);
+  check('...and a loss under the rule takes no shield', (F.shieldStash || []).length === 1 && F.shieldStash[0].gid === S1.gid, gids());
+  const wsG = fakeWs('g');
+  await join(wsG, 'bp_nml_g', 'NmlG');
+  const syncG = wsG.sent.find((m) => m.type === 'state_sync');
+  check('...and the next join is told it is off', !!syncG && syncG.caps.shieldwear === false, syncG && syncG.caps.shieldwear);
+  room._liveFlags = keep;
 }
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }

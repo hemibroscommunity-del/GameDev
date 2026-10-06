@@ -159,6 +159,7 @@ const CAP_GATES = [
   'wheelmonsters' /* v2.3.2978: lower case, a kill switch */,
   'sprint' /* v2.3.3006: lower case, a kill switch */,
   'wheelnodes' /* v2.3.3012: lower case, a kill switch */,
+  'shieldwear' /* v2.3.3082: the shield on the arm -- lower case, a kill switch */,
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
