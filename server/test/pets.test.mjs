@@ -169,7 +169,7 @@ Math.random = realRandom;
 check('dungeon capture leaves respawnAt 0 (noRespawn)', dm.alive === false && dm.respawnAt === 0 && ps.lifeSkills.pets.length === 2, dm.respawnAt);
 
 // ── 7. pets are the worker's: a join never adopts the payload's ──
-/* v2.3.3104: this section used to ADOPT a forged list on join (capped at
+/* v2.3.3113: this section used to ADOPT a forged list on join (capped at
    6, sanitized) whenever the server held no pets -- on every join, not
    once, since nothing stamped it.  Captures are the worker's (§1-§6), so
    the payload's list is now read by nothing: not on a first join (a new

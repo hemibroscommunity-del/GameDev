@@ -13,7 +13,7 @@
  * (the deploy-order safety surface -- see docs/WIRE-PROTOCOL.md).
  * The switch case now delegates: `await this._handleJoin(...)`. */
 
-import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */, freshLifeSkills /* v2.3.3104 */ } from './migrations.js';
+import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */, freshLifeSkills /* v2.3.3113 */ } from './migrations.js';
 import { t2ReplayFlat } from './data.js';
 import { prog3FromLegacy } from './prog3.js';
 
@@ -198,7 +198,7 @@ export function sanitizeDisplayName(v) {
  * the explicit ingest in _handleJoin (stored-wins on every reconnect).
  * Anchored + capitalised so a crafted 'rpg' or 'rpgo' can't sneak in. */
 const JOIN_RPG_PREFIX_RE = /^rpg[A-Z][A-Za-z0-9]*$/;
-/* ═══ v2.3.3104: A NEW CHARACTER'S STARTING PURSE ═══
+/* ═══ v2.3.3113: A NEW CHARACTER'S STARTING PURSE ═══
  * The coins the client's own new character holds (gameSystems.js
  * createDefaultRpg; mirror-audit pins the two).  The first join no longer
  * takes `rpgCoins` from the payload (_handleJoin), so the worker says it. */
@@ -712,10 +712,10 @@ export const joinMethods = {
     /* Load (or bootstrap) the player's server-authoritative
        coins + inventory.  Stored entry wins; if there's no
        record yet, the character is NEW and starts from the
-       server's own defaults (v2.3.3104, below), persisted so
+       server's own defaults (v2.3.3113, below), persisted so
        every later connect uses the stored value. */
     {
-      /* ═══ v2.3.3104: A FAILED READ IS NOT A NEW CHARACTER ═══
+      /* ═══ v2.3.3113: A FAILED READ IS NOT A NEW CHARACTER ═══
          _loadRpg answered null for a read that threw as well as for no
          record, and this join took both as a brand-new character and SAVED
          the bootstrap over the real record.  Harmless-ish while the
@@ -744,7 +744,7 @@ export const joinMethods = {
         this.sessions.delete(ws);
         return;
       }
-      /* ═══ v2.3.3104: A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS ═══
+      /* ═══ v2.3.3113: A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS ═══
          Owner, on the farm's review: "Yes fix all of your recommended
          fixes.  Game is still a demo."  The first-join bootstrap below used
          to take the character from the join payload, capped: 2,000 coins,
@@ -923,7 +923,7 @@ export const joinMethods = {
           _kc++;
         }
 
-        /* v2.3.3104: no claim reaches here any more (the rpg* fields were
+        /* v2.3.3113: no claim reaches here any more (the rpg* fields were
            dropped above), so these land on the client's own new character:
            NEW_CHARACTER_COINS and the default life skills, the rest zero or
            empty.  The caps stay as the second line. */
@@ -1344,7 +1344,7 @@ export const joinMethods = {
     if (this.playerState[msg.id] && this._nmlSkullOf(this.playerState[msg.id])) this._nmlSend(msg.id, this.playerState[msg.id]);
     // v2.3.1130: sanitize server-held pets + one-time adoption of
     // legacy client-side captures (see pets.js header).
-    this._petsAdoptOnJoin(this.playerState[msg.id]);   /* v2.3.3104: the held list only -- never the payload's (pets.js) */
+    this._petsAdoptOnJoin(this.playerState[msg.id]);   /* v2.3.3113: the held list only -- never the payload's (pets.js) */
     // v2.3.1125: authoritative clan tag -- the registry overrides
     // whatever the client stuffed in its cosmetics (msg.data is the
     // same object session.data / playerState spread / player_join

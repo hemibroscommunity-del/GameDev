@@ -45,7 +45,7 @@ const BUFF_MAGNITUDES = {
 };
 
 export const persistenceMethods = {
-  /* v2.3.3104: `opts.throwOnError` -- a join must tell a read that FAILED
+  /* v2.3.3113: `opts.throwOnError` -- a join must tell a read that FAILED
      from a character that does not exist yet (join.js).  Every other
      caller keeps the old answer: null either way. */
   async _loadRpg(playerId, opts) {

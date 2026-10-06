@@ -2838,7 +2838,7 @@ export class GameRoom {
   // client overwriting R.coins locally gets stomped on the next sync.
   //
   // Bootstrap: a player's first connection to this DO has no state yet.
-  // Since v2.3.3104 that character starts from the server's own defaults
+  // Since v2.3.3113 that character starts from the server's own defaults
   // (join.js, docs/specs/fresh-start.md), never from the join payload's
   // rpgCoins/rpgInventory; after that the stored record is the source.
 

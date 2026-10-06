@@ -26,7 +26,7 @@
  * coins were always stomped by the echo), so the join-time adoption
  * below was deliberately forgiving: when the server had no pets on
  * record and the client brought some, it adopted a SANITIZED copy (cap
- * 6, whitelisted fields).  v2.3.3104: no longer -- the join reads no
+ * 6, whitelisted fields).  v2.3.3113: no longer -- the join reads no
  * pets from the payload at all (_petsAdoptOnJoin below); it only
  * sanitizes the list the server holds.  Since v2.3.1200 an active pet
  * also widens the owner's loot-pickup radius to PETS.VACUUM_RANGE (the
@@ -105,7 +105,7 @@ export const petMethods = {
   /* Join hook.  Sanitize whatever pets the server already holds (old
    * bootstraps took rpgLifeSkills wholesale with zero field validation).
    *
-   * v2.3.3104: and nothing else.  Job (b) was a "one-time legacy
+   * v2.3.3113: and nothing else.  Job (b) was a "one-time legacy
    * adoption" -- a player whose captures lived only client-side got them
    * onto the record IF the server held none -- but it was not one-time:
    * nothing stamped it, so EVERY join of a player with no pets took up to

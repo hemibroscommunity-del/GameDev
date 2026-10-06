@@ -70,7 +70,7 @@ const room = new GameRoom(state, mockEnv);
    see the note on the gear-lock stub in section 4b. */
 const _realWsBySessionId = room._wsBySessionId.bind(room);
 
-/* v2.3.3104: the characters this suite joins are ON FILE.  A first join
+/* v2.3.3113: the characters this suite joins are ON FILE.  A first join
    takes no claims at all (join.js: a new character starts from the
    server's defaults), and the claims tested here -- worn pieces resolved,
    stash entries merged -- are what a character on file meets on every
@@ -539,7 +539,7 @@ let amuletGid = null;
   const wsE = fakeWs('E');
   /* A veteran arriving with a wardrobe nobody can prove -- the state of
      every existing character on the day this ships.
-     v2.3.3104: a veteran is a character ON FILE.  A first join now takes no
+     v2.3.3113: a veteran is a character ON FILE.  A first join now takes no
      gear from the payload at all (join.js: a new character starts from the
      server's defaults), so the worn pieces are on the record, and the
      stashes are the claim a pre-slice record adopts once (gearstash.js). */
@@ -1076,7 +1076,7 @@ let amuletGid = null;
   check('...and still snapshots the old blob, as it always did',
     [...state._store.keys()].some((k) => k.startsWith('rpgsnap:' + PIDR + ':prereset-')));
 
-  /* The second tab hands the old wardrobe back.  v2.3.3104: and gets
+  /* The second tab hands the old wardrobe back.  v2.3.3113: and gets
      nothing for it.  The restarted character has no record, so this is its
      FIRST join, which takes no claims at all (join.js: a new character
      starts from the server's defaults) -- stronger than v2.3.2537's "it
