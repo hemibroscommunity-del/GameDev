@@ -41,7 +41,27 @@
  * after a rollback) shows as gone and cannot be delivered -- tomorrow's
  * board replaces it, nothing is lost.
  *
- * STORAGE (rule 2): `farmorders:<pid>` {day, ids: [id x3], done: [0|1 x3]}.
+ * STORAGE (rule 2): `farmorders:<pid>` {v, day, ids: [id x3], done: [0|1 x3]}.
+ * v2.3.3109 (review): the record CARRIES ITS SHAPE (`v`, the farm's FARM.V
+ * rule) and is read FAIL-CLOSED.  Its `done` flags are the only thing that
+ * stops a second payment, so a record this worker cannot read is never a
+ * free delivery: a newer worker's (`v` above V) closes the board for the
+ * day and is never written over; today's record in a shape it cannot read
+ * delivers nothing; a done flag that is not exactly 0 reads as done.  And a
+ * board is never replaced by an EARLIER day's: a worker clock that steps
+ * back across midnight (a room moved to another machine) keeps the later
+ * board instead of re-opening the day before.
+ *
+ * NOT IN A FIGHT WITH A PLAYER (v2.3.3109, review): a delivery within
+ * PVP_HEAL.WINDOW_MS of a hit between players, or in a duel, is refused
+ * ('order-fight').  In No man's land a player losing a fight could
+ * otherwise turn the bag's goods into gold, which a white skull's death
+ * keeps, just before the killer's pile would have taken them.
+ *
+ * A CHARACTER RESTART KEEPS TODAY'S BOARD (v2.3.3109, review), as the guild
+ * claims are kept: its done flags are the day's limit, and deleting them let
+ * one player id deliver the day's three orders again after every restart.
+ * The restarted character sees the old board until midnight, then its own.
  *
  * DEPLOY ORDER (rule 19): caps.farmorders gates the window's Orders tab and
  * every farm_order send -- an older worker has no case for it and would
@@ -50,7 +70,13 @@
  *
  * Spec: docs/specs/farm-orders.md.  Suite: server/test/farmorders.test.mjs. */
 
+import { PVP_HEAL } from './data.js';
+
 export const FARM_ORDERS = {
+  /* The record's shape.  A change to it bumps this; an older worker then
+     refuses the record whole instead of reading its delivered orders as
+     undelivered (the farm's FARM.V, v2.3.3102). */
+  V: 1,
   PER_DAY: 3,
   /* What a board is drawn from.  `key` is the bag key asked for (a crop, an
      herb, a dish or the Stamina Tonic, all made from what the farm grows),
@@ -133,24 +159,43 @@ export const farmOrderMethods = {
   },
 
   /* Today's board for this player: the stored one when it is today's,
-     otherwise a fresh draw (`fresh`, to be written by the caller).  A stored
-     board is healed to PER_DAY string ids and 0/1 flags -- only the worker
-     writes it, but a board that cannot be read is never a free delivery. */
+     otherwise a fresh draw (`fresh`, to be written by the caller).  Read
+     FAIL-CLOSED (v2.3.3109, review; header): `newer` when the record is a
+     newer worker's (no board, nothing written); today's record in a shape
+     this worker cannot read delivers nothing; a done flag that is not
+     exactly 0 reads as done; and a stored day LATER than today's is kept,
+     never replaced by an earlier day's draw. */
   async _farmOrdersLoad(pid, ps, now) {
-    const day = this._cadencePeriodDaily(now);
+    const today = this._cadencePeriodDaily(now);
     const stored = await this.state.storage.get('farmorders:' + pid);
-    if (stored && typeof stored === 'object' && stored.day === day && Array.isArray(stored.ids)) {
-      const ids = [];
-      const done = [];
-      for (let i = 0; i < FARM_ORDERS.PER_DAY; i++) {
-        const id = stored.ids[i];
-        ids.push(typeof id === 'string' ? id : '');
-        done.push(Array.isArray(stored.done) && stored.done[i] === 1 ? 1 : 0);
+    if (stored && typeof stored === 'object') {
+      const v = Number(stored.v);
+      if (Number.isFinite(v) && v > FARM_ORDERS.V) return { rec: null, fresh: false, newer: true };
+      const sd = stored.day;
+      if (typeof sd === 'number' && Number.isFinite(sd) && sd >= today) {
+        const okIds = Array.isArray(stored.ids);
+        const okDone = Array.isArray(stored.done);
+        const ids = [];
+        const done = [];
+        for (let i = 0; i < FARM_ORDERS.PER_DAY; i++) {
+          const id = okIds ? stored.ids[i] : null;
+          ids.push(typeof id === 'string' ? id : '');
+          done.push(okDone && stored.done[i] === 0 ? 0 : 1);
+        }
+        return { rec: { v: FARM_ORDERS.V, day: sd, ids, done }, fresh: false, newer: false };
       }
-      return { rec: { day, ids, done }, fresh: false };
     }
-    const ids = drawFarmOrders(pid, day, skillLvl(ps, 'farming'), skillLvl(ps, 'cooking'));
-    return { rec: { day, ids, done: ids.map(() => 0) }, fresh: true };
+    const ids = drawFarmOrders(pid, today, skillLvl(ps, 'farming'), skillLvl(ps, 'cooking'));
+    return { rec: { v: FARM_ORDERS.V, day: today, ids, done: ids.map(() => 0) }, fresh: true, newer: false };
+  },
+
+  /* v2.3.3109 (review): in a fight with a player -- a duel, or a hit between
+     players within PVP_HEAL.WINDOW_MS (cooking.js's clock, _pvpHealClocks,
+     stamped by every PvP exchange). */
+  _farmOrderInFight(pid, now) {
+    if (this._duelFor && this._duelFor(pid)) return true;
+    const c = this._pvpHealClocks ? this._pvpHealClocks.get(pid) : null;
+    return !!(c && typeof c.pvpAt === 'number' && now - c.pvpAt < PVP_HEAL.WINDOW_MS);
   },
 
   /* What the window is sent: each order as the worker knows it, and when the
@@ -173,10 +218,12 @@ export const farmOrderMethods = {
   },
 
   /* For farm_open: today's board, written the first time it is drawn so it
-     stays put for the day.  Null when the board is switched off. */
+     stays put for the day.  Null when the board is switched off, or when
+     the record is a newer worker's (the board is closed, never overwritten). */
   async _farmOrdersForOpen(pid, ps, now) {
     if (this._farmOrdersOff()) return null;
-    const { rec, fresh } = await this._farmOrdersLoad(pid, ps, now);
+    const { rec, fresh, newer } = await this._farmOrdersLoad(pid, ps, now);
+    if (newer) return null;
     if (fresh) this._farmOrdersPut(pid, rec);
     return this._farmOrdersView(rec, now);
   },
@@ -188,12 +235,16 @@ export const farmOrderMethods = {
     const ps = this._farmPs(session);
     if (!ps) return null;
     const pid = session.id;
-    if (this._farmOff() || this._farmOrdersOff()) { this._farmSend(pid, { err: 'off', did: { op: 'order', n: 0 } }); return null; }
+    /* `orders: null` with it (v2.3.3109, review): the window drops the board
+       it was showing and says the board is closed -- a page keeps the caps
+       it joined with, so a switch thrown mid-session left Deliver lit. */
+    if (this._farmOff() || this._farmOrdersOff()) { this._farmSend(pid, { err: 'off', orders: null, did: { op: 'order', n: 0 } }); return null; }
     if (!this._farmRateOk(pid)) return null;
     const slot = payload && payload.slot;
     if (!Number.isInteger(slot) || slot < 0 || slot >= FARM_ORDERS.PER_DAY) return null;
     const now = Date.now();
-    const { rec, fresh } = await this._farmOrdersLoad(pid, ps, now);
+    const { rec, fresh, newer } = await this._farmOrdersLoad(pid, ps, now);
+    if (newer) { this._farmSend(pid, { err: 'newer', orders: null, did: { op: 'order', n: 0, slot } }); return null; }
     const refuse = (err) => {
       if (fresh) this._farmOrdersPut(pid, rec);
       const ans = { orders: this._farmOrdersView(rec, now), err, did: { op: 'order', n: 0, slot } };
@@ -204,9 +255,19 @@ export const farmOrderMethods = {
     const o = farmOrderById(rec.ids[slot]);
     if (!o) return refuse('order-gone');
     if (rec.done[slot]) return refuse('order-done');
+    if (this._farmOrderInFight(pid, now)) return refuse('order-fight');
     /* proto-ok: o.key is a POOL key (this file's own table), never the wire's */
     const have = Math.floor(Number(ps.inventory[o.key]) || 0);
-    if (have < o.n) return refuse('order-short');
+    if (have < o.n) {
+      /* v2.3.3109 (review): an honest page lights Deliver only when ITS bag
+         holds enough, so a short answer means its bag is wrong (a cook the
+         worker never heard, its dish drawn in the bag anyway).  The bag goes
+         again -- a v2 echo of nothing that changed sends nothing (cooking.js,
+         v2.3.3105). */
+      const w = this._wsBySessionId(pid);
+      if (w && this._resendPlayerState) this._resendPlayerState(w, pid, ['inventory']);
+      return refuse('order-short');
+    }
 
     /* The order turns BEFORE anything is paid, and nothing between the pay
        and the writes can throw except the XP, which is last and caught

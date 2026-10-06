@@ -38,6 +38,11 @@ export const farmBus = {
      {day, resetsAt, list: [{id, key, n, gold, xp, done, gone?}]} -- or null
      before the worker has sent one (or with the board switched off). */
   orders: null,
+  /* v2.3.3109 (review): whether the worker has SAID what the board is -- a
+     board, or none (switched off, or a newer worker's record).  With `orders`
+     null the window tells "not asked yet" from "closed" by this; it used to
+     show "…" for both, forever. */
+  ordersSeen: false,
   /* {op, at} while a request is out. */
   pending: null,
   /* The last answer: {did, err, op, at} (op: what it answered). */
@@ -62,6 +67,7 @@ export const farmBus = {
     if (Object.prototype.hasOwnProperty.call(payload, 'orders')) {
       const b = payload.orders;
       this.orders = b && typeof b === 'object' && Array.isArray(b.list) ? b : null;
+      this.ordersSeen = true;
     }
     if (!payload.login) {
       const op = (payload.did && payload.did.op) || (this.pending && this.pending.op) || null;
@@ -104,14 +110,21 @@ export const farmBus = {
     this.pending = { op, at };
     this.rev += 1;
     emit();
+    /* v2.3.3109 (review): a delivery waits as long as a buy, and its silence
+       asks the worker for the board instead of waking Deliver: after 4 s a
+       second tap went out, the late first answer said "Order delivered" and
+       the second's then said "Already delivered" in red.  The board's answer
+       says what is done (the worker's done flag never pays twice). */
+    const slow = op === 'buy' || op === 'order';
     setTimeout(() => {
       if (this.pending && this.pending.at === at) {
         this.pending = null;
-        this.last = { did: null, err: op === 'buy' ? 'timeout-buy' : 'timeout', op, at: Date.now() };
+        this.last = { did: null, err: op === 'buy' ? 'timeout-buy' : op === 'order' ? 'timeout-order' : 'timeout', op, at: Date.now() };
         this.rev += 1;
         emit();
+        if (op === 'order') this.open(S);
       }
-    }, op === 'buy' ? FARM_BUY_ANSWER_MS : FARM_ANSWER_MS);
+    }, slow ? FARM_BUY_ANSWER_MS : FARM_ANSWER_MS);
     return true;
   },
 
@@ -127,7 +140,7 @@ export const farmBus = {
 
   /* A new session (a re-login as someone else) starts with no farm. */
   reset() {
-    this.view = null; this.offset = 0; this.pending = null; this.last = null; this.orders = null;
+    this.view = null; this.offset = 0; this.pending = null; this.last = null; this.orders = null; this.ordersSeen = false;
     this.rev += 1;
     emit();
   },

@@ -185,6 +185,9 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
 
   const view = farmBus.view;
   const now = farmBus.serverNow();
+  /* v2.3.3109 (review): yesterday's board, past midnight by the worker's
+     clock -- its Deliver stays dark while the new one is asked for. */
+  const boardOld = !!(farmBus.orders && now >= farmBus.orders.resetsAt);
   const plots = view ? view.plots : [];
   const pending = !!farmBus.pending;
   const last = farmBus.last;
@@ -199,6 +202,24 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
      an older worker has no case for farm_order and would rebroadcast it). */
   const ordersOn = !!(S._serverCaps && S._serverCaps.farmorders);
   const board = ordersOn ? farmBus.orders : null;
+  /* v2.3.3109 (review): the board asks for itself.  At midnight, with the
+     window open, it asks for the new day's board -- "New orders in 0m" stood
+     beside yesterday's until a refused tap or a reopen; and the Orders tab
+     with no board yet asks once (a page that rejoined a worker with the
+     board after it opened, its first ask answered by one without). */
+  const askedReset = React.useRef(0);
+  const askedBoard = React.useRef(false);
+  React.useEffect(() => {
+    if (closed || !ordersOn || farmBus.pending) return;
+    const b = farmBus.orders;
+    if (b && farmBus.serverNow() >= b.resetsAt && askedReset.current !== b.resetsAt) {
+      askedReset.current = b.resetsAt;
+      farmBus.open(S);
+    } else if (!b && !farmBus.ordersSeen && tab === 'orders' && !askedBoard.current) {
+      askedBoard.current = true;
+      farmBus.open(S);
+    }
+  });
   const CROP_IDS = Object.keys(FARM.CROPS);
   const crops = FARM_CROP_ORDER.filter((id) => CROP_IDS.indexOf(id) < grownCount);
   const seedCount = (id) => Math.floor(inv[FARM.CROPS[id].seed] || 0);
@@ -439,9 +460,20 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
             pays, whether it is done.  Deliver is lit only when the bag holds
             enough -- the worker checks again and takes the goods itself. */}
         {!closed && tab === 'orders' && (
-          <div data-farm-orders="1">
+          <div data-farm-orders="1" data-farm-orders-old={boardOld ? 1 : 0}>
             {!board ? (
-              <div data-farm-status="loading" style={{ padding: '28px 0', textAlign: 'center', color: C.mute, fontSize: 13 }}>…</div>
+              /* v2.3.3109 (review): closed, failed or on its way -- this was "…"
+                 for all three, forever (farmBus.ordersSeen). */
+              <div data-farm-status={farmBus.ordersSeen ? 'orders-closed' : 'loading'} style={{ padding: '28px 0', textAlign: 'center', color: C.mute, fontSize: 13 }}>
+                {farmBus.ordersSeen ? (
+                  <div style={{ color: C.text, fontWeight: 800 }}>{FARM_ERR_TEXT['orders-closed']}</div>
+                ) : last && last.err && last.op === 'open' && !pending ? (
+                  <>
+                    <div style={{ color: C.bad, marginBottom: 10 }}>{FARM_ERR_TEXT[last.err] || 'Could not'}</div>
+                    {last.err !== 'off' && last.err !== 'newer' && <button onClick={() => farmBus.open(S)} style={{ ...btn(true), minHeight: 44, padding: '0 18px' }}>Try again</button>}
+                  </>
+                ) : 'Opening the orders…'}
+              </div>
             ) : (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -457,7 +489,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                     );
                   }
                   const have = Math.floor(inv[o.key] || 0);
-                  const can = !o.done && !pending && have >= o.n;
+                  const can = !o.done && !pending && !boardOld && have >= o.n;
                   return (
                     <div key={i} data-farm-order={i} data-farm-order-done={o.done ? 1 : 0}
                       style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${C.line}` }}>
@@ -484,8 +516,11 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                   );
                 })}
                 <div data-farm-orders-reset="1" style={{ marginTop: 8, fontSize: 12, color: C.mute }}>
-                  {'New orders in ' + farmTimeLeft(Math.max(0, board.resetsAt - now))}
+                  {boardOld ? 'New orders are on their way…' : 'New orders in ' + farmTimeLeft(Math.max(0, board.resetsAt - now))}
                 </div>
+                {boardOld && last && last.err && last.op === 'open' && !pending && last.err !== 'off' && last.err !== 'newer' ? (
+                  <button onClick={() => farmBus.open(S)} style={{ ...btn(true), minHeight: 44, padding: '0 18px', marginTop: 6 }}>Try again</button>
+                ) : null}
                 {status && last && ((last.did && last.did.op === 'order') || last.op === 'order') ? (
                   <div data-farm-status="1" style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: status.color }}>{status.text}</div>
                 ) : null}

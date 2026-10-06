@@ -14,25 +14,40 @@
  *      order, a bad slot -- each changing nothing, each answered.
  *   4. A new UTC day draws a new board; levels gained mid-day do not change
  *      today's.
- *   5. One batch: the board's put and the save are issued together, the board
- *      first.
+ *   5. One batch: the board's put and the save are issued in ONE synchronous
+ *      run (no await between), the board first.
  *   6. The kill switch (`farmorders: false`) and the farm's own.
- *   7. A restart deletes the board.
+ *   7. A restart KEEPS the board (its done flags are the day's limit).
+ *   v2.3.3109 (review): the record read fail-closed and stamped `v`, a later
+ *   day never replaced by an earlier one, no delivery in a fight with a
+ *   player, a short bag resent, the shared rate budget, and every bad slot
+ *   answered with nothing at all.
  */
 import { GameRoom } from '../src/index.js';
 import { FARM_ORDERS, drawFarmOrders, farmOrderById, farmOrdersResetAt } from '../src/farmorders.js';
 import { FARM, FARM_SHOP_BASE } from '../src/farm.js';
 import { COOKING_RECIPES, DISHES, SHOP_ITEMS } from '../src/data.js';
 
+/* v2.3.3109 (review): each put is tagged with the synchronous run it was
+   issued in -- a microtask moves the run on, so two puts with no await
+   between them share a tag (what Cloudflare commits as one batch). */
 function makeState() {
   const store = new Map();
   const puts = [];
+  const runs = [];
+  let run = 0;
+  let armed = false;
   return {
     _store: store,
     _puts: puts,
+    _runs: runs,
     storage: {
       get: async (k) => store.get(k),
-      put: async (k, v) => { puts.push(k); store.set(k, JSON.parse(JSON.stringify(v))); },
+      put: async (k, v) => {
+        if (!armed) { armed = true; queueMicrotask(() => { run += 1; armed = false; }); }
+        puts.push(k); runs.push(run);
+        store.set(k, JSON.parse(JSON.stringify(v)));
+      },
       list: async (opts) => {
         const out = new Map();
         for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, v);
@@ -159,7 +174,7 @@ const P = room.playerState[PID];
   check('...the drawn board, each order as the worker knows it', JSON.stringify(fs.orders.list.map((o) => o.id)) === JSON.stringify(want)
     && fs.orders.list.every((o) => { const p = farmOrderById(o.id); return p && o.key === p.key && o.n === p.n && o.gold === p.gold && o.xp === p.xp && o.done === 0; }), fs.orders.list);
   const stored = st._store.get('farmorders:' + PID);
-  check('...and written the first time it is drawn', !!stored && stored.day === today && JSON.stringify(stored.ids) === JSON.stringify(want), stored);
+  check('...and written the first time it is drawn, stamped with its shape', !!stored && stored.day === today && JSON.stringify(stored.ids) === JSON.stringify(want) && stored.v === FARM_ORDERS.V, stored);
   /* Levels gained mid-day do not redraw today's board. */
   level(P, 'farming', 10); level(P, 'cooking', 8);
   await send(ws, 'farm_open', {});
@@ -183,6 +198,7 @@ let today = room._cadencePeriodDaily(Date.now());
   let fs = farmState(ws);
   check('one short of the order: refused, "order-short"', fs && fs.err === 'order-short' && fs.did && fs.did.n === 0, fs);
   check('...the bag, the gold and the XP untouched', P.inventory[o0.key] === o0.n - 1 && P.coins === coins0 && (P.lifeSkills.farming.xp || 0) === xp0);
+  check('...and the bag sent again (the phone thought it had enough)', ws.sent.some((m) => m.type === 'player_state' && m.payload && m.payload.inventory && m.payload.inventory[o0.key] === o0.n - 1), ws.sent.map((m) => m.type));
 
   /* Enough, plus some. */
   P.inventory[o0.key] = o0.n + 2;
@@ -221,13 +237,16 @@ let today = room._cadencePeriodDaily(Date.now());
   await send(ws, 'farm_order', { slot: 1, day: today });
   check('...or no order at all', farmState(ws).err === 'order-stale' && P.coins === c2);
 
-  /* Bad slots: nothing at all. */
-  for (const slot of [-1, 3, 1.5, '0', null, '__proto__', 1e9]) {
+  /* Bad slots: nothing at all -- not even an answer (the slot guard, not the
+     id check, turns them away). */
+  const answered = [];
+  for (const slot of [-1, 3, 1.5, '0', '1', null, '__proto__', 1e9, [1]]) {
     ws.sent.length = 0;
     await room.webSocketMessage(ws, JSON.stringify({ type: 'farm_order', payload: { slot, day: today, id: o1.id } }));
     await settle();
+    if (ws.sent.some((m) => m.type === 'farm_state')) answered.push(slot);
   }
-  check('a slot that is not 0, 1 or 2 is not an order (nothing paid)', P.coins === c2 && P.inventory[o1.key] === o1.n);
+  check('a slot that is not 0, 1 or 2 is not an order: nothing paid, nothing answered', P.coins === c2 && P.inventory[o1.key] === o1.n && answered.length === 0, answered);
 
   /* A gone order (an id this worker does not know): shown gone, never paid. */
   const rec = st._store.get('farmorders:' + PID);
@@ -238,12 +257,63 @@ let today = room._cadencePeriodDaily(Date.now());
   await send(ws, 'farm_order', { slot: 2, day: today, id: 'from_a_newer_worker' });
   check('...and cannot be delivered', farmState(ws).err === 'order-gone' && P.coins === c2, farmState(ws));
 
-  /* The board on the books is healed, never trusted. */
-  st._store.set('farmorders:' + PID, { day: today, ids: [o0.id, 7, null], done: [1, 'yes', 2] });
+  /* v2.3.3109 (review): the board on the books is read FAIL-CLOSED -- its
+     done flags are the only thing between a delivery and a second pay. */
+  const odd = { v: 1, day: today, ids: [o0.id, o1.id, 7], done: [0, 'yes', 2] };
+  st._store.set('farmorders:' + PID, odd);
   await send(ws, 'farm_open', {});
-  const healed = board();
-  check('a garbled board reads as ids or gone, done only when exactly 1', healed.list[0].done === 1 && healed.list[1].gone === 1 && healed.list[1].done === 0 && healed.list[2].done === 0, healed.list);
+  let healed = board();
+  check('a done flag that is not exactly 0 reads as DONE; an id that is not a string is gone',
+    healed.list[0].done === 0 && healed.list[1].done === 1 && healed.list[2].gone === 1 && healed.list[2].done === 1, healed.list);
+  P.inventory[o1.key] = o1.n;
+  await send(ws, 'farm_order', { slot: 1, day: today, id: o1.id });
+  check('...so it cannot be delivered again', farmState(ws).err === 'order-done' && P.coins === c2 && P.inventory[o1.key] === o1.n, farmState(ws));
+  check('...and the record is left as it was (never rewritten as undelivered)', JSON.stringify(st._store.get('farmorders:' + PID)) === JSON.stringify(odd));
+  const shapeless = { v: 1, day: today, slots: [{ id: o1.id, done: 1 }] };
+  st._store.set('farmorders:' + PID, shapeless);
+  await send(ws, 'farm_open', {});
+  healed = board();
+  check('today\'s record in a shape this worker cannot read delivers nothing', healed.day === today && healed.list.every((x) => x.gone === 1 && x.done === 1), healed.list);
+  check('...and is not drawn over', JSON.stringify(st._store.get('farmorders:' + PID)) === JSON.stringify(shapeless));
+  const newer = { v: FARM_ORDERS.V + 1, day: String(today), list: [{ id: o1.id, done: Date.now() }] };
+  st._store.set('farmorders:' + PID, newer);
+  await send(ws, 'farm_open', {});
+  fs = farmState(ws);
+  check('a newer worker\'s record: no board (orders null), the farm still answers', Object.prototype.hasOwnProperty.call(fs, 'orders') && fs.orders === null && Array.isArray(fs.plots), fs);
+  await send(ws, 'farm_order', { slot: 1, day: today, id: o1.id });
+  fs = farmState(ws);
+  check('...a delivery against it is refused "newer", nothing paid', fs.err === 'newer' && fs.orders === null && P.coins === c2 && P.inventory[o1.key] === o1.n, fs);
+  check('...and the newer record is never written over', JSON.stringify(st._store.get('farmorders:' + PID)) === JSON.stringify(newer));
+  /* A worker clock that steps back across midnight keeps the later board. */
+  const tmrw = room._cadencePeriodDaily(Date.now() + 86400000);
+  const later = { v: 1, day: tmrw, ids: [o0.id, o1.id, o0.id], done: [1, 1, 0] };
+  st._store.set('farmorders:' + PID, later);
+  await send(ws, 'farm_open', {});
+  check('a board dated LATER than the worker\'s today is kept, never replaced by an earlier day\'s', board().day === tmrw && board().list[0].done === 1 && JSON.stringify(st._store.get('farmorders:' + PID)) === JSON.stringify(later), board());
+  await send(ws, 'farm_order', { slot: 1, day: tmrw, id: o1.id });
+  check('...its delivered orders stay delivered', farmState(ws).err === 'order-done' && P.coins === c2, farmState(ws));
   st._store.set('farmorders:' + PID, rec);
+}
+
+// ── 3b. not in a fight with a player ──
+{
+  await send(ws, 'farm_open', {});
+  const slot = board().list.findIndex((x) => !x.done && !x.gone);
+  const o = farmOrderById(board().list[slot].id);
+  P.inventory[o.key] = o.n;
+  const c = P.coins;
+  room._notePvpExchange(PID, 'bp_someone', Date.now());
+  await send(ws, 'farm_order', { slot, day: today, id: o.id });
+  check('within 10 s of a hit between players: refused "order-fight", nothing taken or paid', farmState(ws).err === 'order-fight' && P.coins === c && P.inventory[o.key] === o.n, farmState(ws));
+  const realDuel = room._duelFor;
+  room._duelFor = (id) => (id === PID ? { status: 'active', a: PID, b: 'bp_someone' } : null);
+  skew += 10001;
+  await send(ws, 'farm_order', { slot, day: today, id: o.id });
+  check('...and in a duel', farmState(ws).err === 'order-fight' && P.coins === c, farmState(ws));
+  room._duelFor = realDuel;
+  await send(ws, 'farm_order', { slot, day: today, id: o.id });
+  check('...and delivered once the fight is over', farmState(ws).did && farmState(ws).did.n === 1 && P.coins === c + o.gold, farmState(ws));
+  today = room._cadencePeriodDaily(Date.now());
 }
 
 // ── 4. a new day ──
@@ -275,27 +345,34 @@ let today = room._cadencePeriodDaily(Date.now());
 {
   const o = farmOrderById(board().list[1].id);
   P.inventory[o.key] = o.n;
-  st._puts.length = 0;
+  st._puts.length = 0; st._runs.length = 0;
   /* Count the puts issued in the delivery's own synchronous run. */
   let issued = null;
   const origSave = room._saveRpg.bind(room);
   room._saveRpg = (pid, ps) => { if (issued === null) issued = st._puts.slice(); return origSave(pid, ps); };
   await send(ws, 'farm_order', { slot: 1, day: today, id: o.id });
   room._saveRpg = origSave;
+  check('a delivery (guard)', farmState(ws).did && farmState(ws).did.n === 1, farmState(ws));
   check('the board\'s put is issued before the save (a crash loses a pay, never pays twice)',
     Array.isArray(issued) && issued[issued.length - 1] === 'farmorders:' + PID, issued);
+  const ib = st._puts.lastIndexOf('farmorders:' + PID);
+  const ir = st._puts.lastIndexOf('rpg:' + PID);
+  check('...and both in ONE synchronous run, no await between (one batch, rule 8)', ib >= 0 && ir > ib && st._runs[ib] === st._runs[ir], { puts: st._puts, runs: st._runs });
 }
 
 // ── 6. the kill switches ──
 {
   room._liveFlags = Object.assign({}, room._liveFlags || {}, { farmorders: false });
   await send(ws, 'farm_open', {});
-  check('farmorders:false -- farm_open sends the farm without a board', Array.isArray(farmState(ws).plots) && !farmState(ws).orders);
+  let fs = farmState(ws);
+  check('farmorders:false -- farm_open sends the farm with the board as null (the window drops the one it showed)',
+    Array.isArray(fs.plots) && Object.prototype.hasOwnProperty.call(fs, 'orders') && fs.orders === null, fs);
   const o = farmOrderById(st._store.get('farmorders:' + PID).ids[2]);
   if (o) P.inventory[o.key] = o.n;
   const c = P.coins;
   await send(ws, 'farm_order', { slot: 2, day: today, id: o ? o.id : '' });
-  check('...and refuses a delivery with "off", nothing paid', farmState(ws).err === 'off' && P.coins === c, farmState(ws));
+  fs = farmState(ws);
+  check('...and refuses a delivery with "off" and the board null, nothing paid', fs.err === 'off' && Object.prototype.hasOwnProperty.call(fs, 'orders') && fs.orders === null && P.coins === c, fs);
   const ws2 = fakeWs();
   await join(ws2, 'bp_orders_b');
   const sync = ws2.sent.find((m) => m.type === 'state_sync' && m.caps);
@@ -307,11 +384,25 @@ let today = room._cadencePeriodDaily(Date.now());
   delete room._liveFlags.farm;
 }
 
-// ── 7. a restart takes the board ──
+// ── 6b. the farm's shared rate budget ──
 {
-  check('the board is on the books (guard)', !!st._store.get('farmorders:' + PID));
+  room._farmRate = new Map();
+  let answers = 0;
+  const id0 = st._store.get('farmorders:' + PID).ids[0];
+  for (let i = 0; i < FARM.MSG_PER_MIN + 1; i++) {
+    await send(ws, 'farm_order', { slot: 0, day: today, id: id0 });
+    if (ws.sent.some((m) => m.type === 'farm_state')) answers += 1;
+  }
+  check(`farm_order counts in the farm's ${FARM.MSG_PER_MIN} a minute: the next one goes unanswered`, answers === FARM.MSG_PER_MIN, answers);
+  room._farmRate = new Map();
+}
+
+// ── 7. a restart keeps the board ──
+{
+  const before = JSON.stringify(st._store.get('farmorders:' + PID));
+  check('the board is on the books, an order delivered (guard)', !!st._store.get('farmorders:' + PID) && st._store.get('farmorders:' + PID).done.some((d) => d === 1));
   await room._resetCharacterData(PID);
-  check('a character restart deletes the board (drawn for the old levels)', !st._store.get('farmorders:' + PID));
+  check('a character restart KEEPS today\'s board, its delivered orders delivered (the day\'s limit)', JSON.stringify(st._store.get('farmorders:' + PID)) === before, st._store.get('farmorders:' + PID));
 }
 
 // ── 8. the phone can name and draw every order ──

@@ -36,6 +36,9 @@ export const FARM_ERR_TEXT = {
   'order-done': 'Already delivered',
   'order-stale': 'New orders are up',
   'order-gone': 'That order is gone',
+  'order-fight': 'Not while fighting',   /* v2.3.3109 (review): no deliveries in a fight with a player */
+  'timeout-order': 'No answer yet. Checking the board',   /* v2.3.3109 (review): farmBus asks for the board */
+  'orders-closed': 'The order board is closed for now',
 };
 
 /* A bag key's name as the farm says it: "Carrot", "Carrot Seeds", "Compost".
