@@ -351,6 +351,8 @@ export const devToolsMethods = {
     /* ok with nothing done, not a 404: the panel reads every 404 as "is that
        character online?", which is not the question here. */
     if (!stored) return { ok: true, ripened: 0, note: 'no farm yet' };
+    /* v2.3.3095: never rewrite a newer worker's record (farm.js FARM.V) */
+    if (this._farmNewer(stored)) return { ok: true, ripened: 0, note: 'farm record from a newer worker' };
     const rec = this._farmHeal(stored);
     const now = Date.now();
     let ripened = 0;

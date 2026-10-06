@@ -29,6 +29,9 @@
  *      the XP throw after the crops were paid, so one bed paid on every
  *      message.  It heals at the join, and a throw costs only the XP.
  *  13. A character restart takes the farm with it.
+ *  14. A record from a newer worker (FARM.V) is refused whole: nothing
+ *      opened, acted on, announced or ripened, and storage untouched -- a
+ *      rollback to this worker never rewrites beds it does not know.
  */
 import { GameRoom } from '../src/index.js';
 import { FARM, farmGrowMs, farmYield, FARM_SHOP_BASE } from '../src/farm.js';
@@ -449,6 +452,35 @@ function ws2Ref() {
   const v = await farm(wsR2, 'farm_open', {});
   check('...and the Feed & Seed hands out the free deed again: six rough beds', !!v && v.beds === FARM.FREE_BEDS
     && v.plots.length === FARM.FREE_BEDS && v.plots.every((p) => p.s === 'rough'), v);
+}
+
+// ── 14. a newer worker's record is left alone (v2.3.3095, review) ──
+{
+  const PN = 'bp_farm_n';
+  const wsN = fakeWs();
+  await join(wsN, PN);
+  resetRate();
+  const future = { v: FARM.V + 1, beds: 8, helpers: ['bp_friend'], plots: [
+    { s: 'planted', crop: 'potato', plantedAt: Date.now() - 3600000, readyAt: Date.now() - 1, water: 1, feed: 1, quality: 2 },
+    { s: 'rough' }, { s: 'tilled' }, { s: 'rough' }, { s: 'rough' }, { s: 'rough' }, { s: 'rough' }, { s: 'rough' },
+  ] };
+  await room.state.storage.put('farm:' + PN, future);
+  const before = JSON.stringify(st._store.get('farm:' + PN));
+  const o = await farm(wsN, 'farm_open', {});
+  check('a record from a newer worker: opening the window answers err newer, with no beds', !!o && o.err === 'newer' && !o.plots, o);
+  const a = await act(wsN, 'dig', [1]);
+  const h = await act(wsN, 'harvest', [0]);
+  check('...a dig and a harvest are refused the same way', !!a && a.err === 'newer' && !!h && h.err === 'newer', { a, h });
+  check('...nothing paid', !room.playerState[PN].inventory.crop_potato, room.playerState[PN].inventory);
+  const r = await room._devFarmRipe(PN);
+  check('...the dev op ripens nothing', r.ok === true && r.ripened === 0, r);
+  const wsN2 = fakeWs();
+  room.sessions.delete(wsN);
+  await join(wsN2, PN);
+  check('...no join notice is sent from it', !wsN2.sent.some((m) => m.type === 'farm_state'));
+  check('...and storage holds the newer record exactly as it was', JSON.stringify(st._store.get('farm:' + PN)) === before);
+  const deed = st._store.get('farm:bp_farm_r');   /* §13's free deed, made after the restart */
+  check('this worker\'s own records say which shape they are (v ' + FARM.V + ')', stored().v === FARM.V && !!deed && deed.v === FARM.V, { a: stored().v, deed: deed && deed.v });
 }
 
 Date.now = realNow;

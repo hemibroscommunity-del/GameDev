@@ -320,7 +320,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
               {last && last.err ? (
                 <>
                   <div style={{ color: C.bad, marginBottom: 10 }}>{FARM_ERR_TEXT[last.err] || 'Could not'}</div>
-                  {last.err !== 'off' && <button onClick={() => farmBus.open(S)} style={{ ...btn(true), minHeight: 44, padding: '0 18px' }}>Try again</button>}
+                  {last.err !== 'off' && last.err !== 'newer' && <button onClick={() => farmBus.open(S)} style={{ ...btn(true), minHeight: 44, padding: '0 18px' }}>Try again</button>}
                 </>
               ) : 'Opening the farm…'}
             </div>

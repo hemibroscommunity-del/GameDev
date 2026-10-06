@@ -1419,7 +1419,10 @@ remnant to migrate server-side, not a mode to preserve.
       the review: a bare-number skill made the XP throw and one bed paid on
       every message; a restart deletes `farm:<pid>`; `farm_state` is handled
       in wsClient's DIRECT switch, never processGameEvent (relayed events
-      reach that, and a pre-farm worker relays a forged one);
+      reach that, and a pre-farm worker relays a forged one); a record
+      carries its shape (`FARM.V`) and a worker refuses a NEWER one whole
+      (err 'newer') -- a phase that changes the record bumps it, or a
+      rollback rewrites beds of crops it never heard of as grass;
     - the dev op `farmripe` ("Ripen my farm now" in the dev panel); `farm`
       suite, `mp-farm`: docs/specs/farm.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,

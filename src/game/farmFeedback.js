@@ -27,6 +27,7 @@ export const FARM_ERR_TEXT = {
   level: 'Farming level too low',
   coins: 'Not enough gold',
   off: 'The farm is closed for now',
+  newer: 'The farm is closed for now',   /* v2.3.3095: the record is a newer worker's (farm.js FARM.V) */
   nothing: 'Nothing to do there',
   timeout: 'No answer, try again',
   'timeout-buy': 'No answer yet. Check your bag',   /* v2.3.3095: a buy is not safe to repeat blind (farmBus.js) */

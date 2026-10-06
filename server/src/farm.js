@@ -66,10 +66,26 @@
  * un-advertises the cap AND answers every farm message with err 'off';
  * beds, seeds and crops are untouched and keep their times.
  *
+ * A NEWER RECORD (v2.3.3095).  Every record says which shape it is
+ * (FARM.V).  A record from a newer worker is refused whole -- err 'newer',
+ * nothing read into it or written back -- so a rollback to this worker can
+ * cost a farm visit but never the beds of a crop it does not know.  A phase
+ * that changes the record must bump FARM.V.
+ *
  * Spec: docs/specs/farm.md.  Suite: server/test/farm.test.mjs.  The crop
  * table is mirrored in src/data/farmCrops.js and pinned by mirror-audit. */
 
 export const FARM = {
+  /* v2.3.3095: the shape of a `farm:<pid>` record this worker reads and
+     writes.  A later phase that adds a crop, a field or a state to the
+     record BUMPS it, and this worker refuses to write a record newer than
+     it knows (err 'newer', read nothing into it, write nothing).  Without
+     that, a Cloudflare rollback to this worker rebuilt a newer record from
+     the fields it knows on the first action and wrote it back: every bed
+     of a crop it had never heard of became grass, for good (the review
+     showed it on a copy; the owner: "Yes fix all of your recommended
+     fixes").  Not mirrored on the client: the window never reads it. */
+  V: 1,
   /* The free deed: six beds, the plan's starter farm. */
   FREE_BEDS: 6,
   /* The most a farm can ever hold (the Land Office's top step, Phase 3) --
@@ -169,7 +185,7 @@ export const farmMethods = {
   _farmNew() {
     const plots = [];
     for (let i = 0; i < FARM.FREE_BEDS; i++) plots.push({ s: 'rough' });
-    return { v: 1, beds: FARM.FREE_BEDS, plots };
+    return { v: FARM.V, beds: FARM.FREE_BEDS, plots };
   },
 
   /* Whatever storage holds, hand back a record every reader can trust: the
@@ -190,12 +206,20 @@ export const farmMethods = {
       }
       plots.push({ s: 'planted', crop: p.crop, plantedAt: p.plantedAt, readyAt: p.readyAt, water: p.water ? 1 : 0, feed: p.feed ? 1 : 0 });
     }
-    return { v: 1, beds, plots };
+    return { v: FARM.V, beds, plots };
+  },
+
+  /* v2.3.3095: written by a newer worker (FARM.V above): never healed, never
+     written, never paid from.  Only the worker writes these records, so `v`
+     is always a number. */
+  _farmNewer(stored) {
+    return !!stored && typeof stored === 'object' && Number.isFinite(stored.v) && stored.v > FARM.V;
   },
 
   async _farmLoad(pid) {
     const stored = await this.state.storage.get('farm:' + pid);
     if (!stored) return { rec: this._farmNew(), fresh: true };
+    if (this._farmNewer(stored)) return { rec: null, fresh: false, newer: true };
     return { rec: this._farmHeal(stored), fresh: false };
   },
 
@@ -270,7 +294,8 @@ export const farmMethods = {
     if (!ps) return null;
     if (this._farmOff()) { this._farmSend(session.id, { err: 'off' }); return null; }
     if (!this._farmRateOk(session.id)) return null;
-    const { rec, fresh } = await this._farmLoad(session.id);
+    const { rec, fresh, newer } = await this._farmLoad(session.id);
+    if (newer) { this._farmSend(session.id, { err: 'newer' }); return null; }
     /* The free deed is written the first time it is opened, so the record
        exists from then on (and a second tab sees the same rough beds). */
     if (fresh) this._farmCommit(session.id, null, rec);
@@ -293,7 +318,8 @@ export const farmMethods = {
     const rawBeds = payload && payload.beds;
     if (!Array.isArray(rawBeds)) return null;
 
-    const { rec } = await this._farmLoad(session.id);
+    const { rec, newer } = await this._farmLoad(session.id);
+    if (newer) { this._farmSend(session.id, { err: 'newer' }); return null; }
     const now = Date.now();
     /* Bed indexes: integers inside this farm, each once, in the order given
        (the order a finger dragged across them -- seeds run out in that
@@ -480,7 +506,7 @@ export const farmMethods = {
     try {
       if (this._farmOff()) return;
       const stored = await this.state.storage.get('farm:' + pid);
-      if (!stored) return;
+      if (!stored || this._farmNewer(stored)) return;
       const view = this._farmView(this._farmHeal(stored), Date.now());
       view.login = true;
       this._farmSend(pid, view);

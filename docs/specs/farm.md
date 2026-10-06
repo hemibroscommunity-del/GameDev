@@ -85,8 +85,9 @@ would have paid 10 coins for a 2-coin seed.
   - plant: also `crop` and `used`;
   - feed: also `used`;
   - harvest: also `items`, `xp`, `leveled`, `fromLevel` and `newLevel`.
-- **`err`:** one of `no-seeds`, `no-compost`, `level`, `coins`, `nothing` or
-  `off`. The client adds `timeout` itself when no answer comes within 4 s,
+- **`err`:** one of `no-seeds`, `no-compost`, `level`, `coins`, `nothing`,
+  `off` or `newer` (the record is a newer worker's: see Storage). The client
+  adds `timeout` itself when no answer comes within 4 s,
   and `timeout-buy` ("No answer yet. Check your bag") after 12 s for a buy.
   - A bed action is safe to send again (the bed guards it); a buy is not, so
     it waits longer and says to look in the bag.
@@ -102,6 +103,18 @@ would have paid 10 coins for a 2-coin seed.
 
 `farm:<pid>` holds `{v, beds, plots}`. It is registered in
 ARCHITECTURE-HANDOFF's storage-key table.
+
+- **`v` is the record's shape** (`FARM.V`, 1). A worker refuses a record
+  newer than it knows whole: opening, any action and the dev op answer
+  `err: 'newer'`, the join says nothing, and nothing is read into it or
+  written back.
+  - Without that, this worker rebuilt a record from the fields it knows
+    (`_farmHeal`) and wrote it back on the next action. So a Cloudflare
+    rollback from a later phase would have turned every bed of a crop it has
+    never heard of into grass, for good. The review showed it on a copy; the
+    owner said yes to the guard (2026-10-06).
+  - **A phase that adds a crop, a field or a state to the record must bump
+    `FARM.V`.** A rollback then costs a farm visit, never a bed.
 
 - It is never a field on the rpg blob (rule 1).
 - It is one record rather than a key per bed, so each action writes one row.
@@ -224,7 +237,9 @@ The crops, seeds and compost are emoji until the art exists:
     heals at the join, a ripe bed pays once however often it is harvested,
     and a harvest whose XP throws still lands once;
   - §13: a character restart deletes the farm, and the fresh character gets
-    the free deed.
+    the free deed;
+  - §14: a newer worker's record (`v` past `FARM.V`) is refused by opening,
+    every action, the join and the dev op, and storage keeps it exactly.
 - **The Cookhouse's levels:** potions, shop and lifeskills-economy cook at the
   level each recipe asks; lifeskills-economy refuses one below it.
 - **Mirror:** mirror-audit's "THE FARM".
@@ -242,19 +257,8 @@ The crops, seeds and compost are emoji until the art exists:
 
 ## Not yet (the plan's later phases)
 
-- **Before any phase adds a crop or a field to `farm:<pid>`:** ship a worker
-  that refuses to write a record newer than it knows, then the change in a
-  later deploy.
-  - This worker rebuilds the record from the fields it knows (`_farmHeal`)
-    and writes that back on the next action. A crop it has never heard of
-    becomes grass, and the record is stamped `v: 1`.
-  - So if a Phase 2 worker were rolled back to this one with the Cloudflare
-    button, the first dig would wipe its potato beds for good. The review
-    showed this on a copy and rated it plausible but unverified: it needs a
-    future phase and a rollback.
-  - The guard (`FARM.V`: refuse with `err 'newer'`, never write) is left to
-    the owner. Shipping it one deploy ahead of the crops means a rollback
-    lands on a worker that has it.
+- **Every later phase that changes `farm:<pid>` bumps `FARM.V`** (see
+  Storage), so a rollback to the worker before it leaves the newer beds alone.
 
 - **Phase 2:** potatoes and pumpkins; meals and brews you carry; Diego's three
   tonics brewed from herbs and taken off his shelf.
