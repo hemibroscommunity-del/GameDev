@@ -49,7 +49,13 @@ Every claim in these three files is cited as path:line, as read on 2026-10-06 at
   - capture at the kill, with a trap armed beforehand;
   - trapping as a skill of its own.
 
-  The plan adopts both, and gives the skill lane its form: dens.
+  The owner chose the first lane only (2026-10-06). On top of it they set:
+  - Trapping level decides which monsters you can catch;
+  - about 1% at best;
+  - traps made from logs;
+  - tradeable pets that level up to their owner's Trapping level.
+
+  The plan follows those choices, and says where they go against the research.
 - `capture_moment.md`: how a capture is decided, and what makes it exciting:
   - Pokémon's formula and shake checks, and Pokémon GO's throws;
   - Palworld, Monster Hunter, Path of Exile, Ark, Black Desert, WoW;

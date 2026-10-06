@@ -1,95 +1,65 @@
-# Pet trapping: two ways to catch a pet, and neither looks at health (v2.3.3105)
+# Pet trapping: arm a trap, then kill it (v2.3.3105)
 
 > Owner, 2026-10-06: *"Research pet trapping mechanics for my game and make a
-> master plan."* And then: *"I don't know if what's already in the game is the
-> best mechanic I made that as an early demo. It also becomes infeasible if
-> you're powerful enough to 1 hit monsters so I need something else."*
+> master plan."* Then: *"I don't know if what's already in the game is the best
+> mechanic I made that as an early demo. It also becomes infeasible if you're
+> powerful enough to 1 hit monsters so I need something else."* And, having read
+> the first plan: *"I like the direction of just 1. I also want something like
+> this: your trapping level governs what level monster you can capture. Catching
+> a pet is a rare activity with very little success rate. The best success rate
+> for the lowest tier monster should be about 1%. And each trap should cost at
+> least 1 wood to make. Pets should be tradable. Your monster can level up but
+> not exceed your trapping level."*
 
 This plan comes from a study of the game's code and of how other games let
-players catch creatures. It follows the research report
+players catch creatures. The research report behind it is
 `docs/research/pet-trapping/other_games_report.md`. The notes behind both, with
 every source, are in that folder; start with its README. Nothing here is built
-yet. It needs your choices, listed near the end.
+yet. A few choices are still yours, listed near the end.
+
+## What you decided (2026-10-06)
+
+- **One way to catch a pet: arm a trap, then kill the monster.** The dens from
+  the first plan are not being built.
+- **Your Trapping level decides the highest-level monster you can catch.**
+- **Catching is rare.** At best about 1%, on the lowest stretch's monsters, and
+  less on deeper ones.
+- **A trap costs at least one log to make.**
+- **Pets can be traded.**
+- **A pet levels up, but never past your Trapping level.**
 
 ## The short answer
 
-**Take capture off the health bar.** Every capture rule that fails a player who
-kills in one hit waits on how much health the creature has left:
+1. **Make box traps** at the Woodworker: one log each.
+2. **Target a monster** and tap **TRAP**. The button shows your true odds, a
+   fraction of a percent to 1%. It's greyed out, saying what level you need,
+   when the monster is above your Trapping level.
+3. **Kill it.** One hit or ten, yours or anyone's. If it dies within about 15
+   seconds, the trap springs: it shakes 0 to 3 times, then nearly always breaks.
+   About once in a hundred tries at best, it snaps shut, and the monster is yours
+   as a pet.
+4. **The kill pays everyone as normal.** XP, gold, loot and quest credit are
+   untouched. Every try pays some Trapping XP, so no try is wasted.
+5. **Your pet** follows you, picks up loot, and levels up as you fight, up to
+   your Trapping level. You can trade it with other players.
 
-- yours (20%);
-- Monster Hunter's;
-- World of Warcraft's battle pets (35%);
-- Path of Exile's old nets.
+Why this works for your problem:
 
-Every rule that never asks about health survives.
-
-So catch pets in two ways, and neither cares how hard you hit:
-
-1. **In a fight: arm a trap, then kill it.**
-   - Target any monster, at any health, and tap TRAP. It's marked for about 12
-     seconds.
-   - If it dies while marked, whoever lands the blow, you get your own roll to
-     keep it. So does every other player who armed it and did at least 5% of its
-     damage.
-   - The kill still pays XP, gold, loot and quest credit to everyone, as now.
-     The pet is extra.
-   - The trap is used up only when you catch something. Every miss makes your
-     next try at that kind easier.
-2. **At a den: set a trap and step back.**
-   - Every land gets dens, marked on the minimap like the resource spots.
-   - Set a box trap, step back, and a young one creeps out to the bait.
-   - Your Trapping level, your trap and your bait set the odds. This is where
-     Trapping becomes a full life skill, like Mining and Fishing.
-
-Both end the same way:
-
-- The server rolls, and the game shows the true odds before you tap.
-- The trap shakes once, twice, three times, then snaps shut or breaks.
-- What you catch becomes a pet, drawn small, that follows you and picks up loot,
-  as pets do today.
-- Later it shields you from its own land's element, grows as you play together,
-  and fills a journal of every land's creatures.
-
-Why two ways, and why these two:
-
-- **Fighters and trappers both get pets**, and neither has to do the other's
-  thing.
-- **The fight lane is Path of Exile's fix for exactly your problem.** Its beast
-  catching first had players lower a beast's health and throw a net within 3
-  seconds. Players didn't like it. When the feature joined the main game in patch
-  3.5.0, it became capture on the kill. On a phone that's one tap. On the server
-  it's one branch in a kill path that already knows who did the damage.
-- **The den lane is RuneScape's Hunter skill**, the best-known trapping skill.
-  Your Hunter level alone decides what you can catch, how many traps you run and
-  your odds, and no fight is involved.
-- **Both are fair in a shared world.**
-  - In a fight, every player who armed the monster and helped gets their own
-    roll. A strong passer-by who finishes your monster adds a helper instead of
-    erasing your chance.
-  - At a den, each young one is drawn only for its trapper.
-- **Both are built from parts the game already has:**
-  - the kill path's damage shares, the same 5% rule that decides who gets gold;
-  - the resource spots' bake, labels, minimap marks and level steps of 5;
-  - the attack button, which already turns into HARVEST next to a resource and
-    can turn into TRAP next to a den;
-  - monsters already ignore a player who's harvesting, so they can ignore one
-    setting a trap;
-  - the Trapping skill's card, icon, guild (the Beastmaster's Lodge) and
-    leaderboard tab, which only lack a way to earn XP.
-- **Both are light on the phone.** Pets are drawn from one small sprite sheet
-  made from the monsters' own art, a few MB. A full monster's art costs 13 to 36
-  MB, and a pet goes everywhere you go.
-
-### The other ways, and why not
-
-| Way | Works when you can one-hit? | Fair with others nearby? | Fits a phone? | Building it | Verdict |
-|---|---|---|---|---|---|
-| **Arm a trap, then kill it** | Yes: the kill is the trigger | Yes: every armed helper rolls | Yes: one tap | Small: a mark on the monster and a branch on the kill path | **Lane 1** |
-| **Dens: set a trap, step back** | Yes: nothing is fought | Yes: each young is its trapper's alone | Yes: tap TRAP, step back, watch | Medium: dens baked like resource spots, and a timeline per trap | **Lane 2** |
-| **A harmless snare you hold for a few seconds** (WoW's 6-second Tame Beast, Black Desert's lasso) | Yes | No: a passer-by's swing can finish it mid-hold | OK | Medium: monsters can't be held in place today | No |
-| **A capture bar that fills as you hit, while it can't die** (Cassette Beasts) | Yes, and power helps | Mixed: it's undying for everyone else meanwhile | OK | Large: every damage path needs an "only down to 1 HP" rule | Maybe later, for bosses |
-| **Eggs that drop from kills** (like MapleStory's familiar cards) | Yes | Yes, if only the killer rolls | Very | Small | Later, as an extra for the farm. Pure-luck drops drew the loudest complaints in the research, and they reward kill-farming bots |
-| **Today's: weaken it to 20%, then trap it** | No (next section) | No: anyone can trap what you wore down | Poor: nothing shows the 20% line | Built, but nobody can reach it | Retire |
+- **How hard you hit never matters.** The kill is the trigger, so one-hit
+  players are fine. Path of Exile made the same fix: its first beast catching
+  had players weaken a beast and throw a net within 3 seconds. Players didn't
+  like it, and when the feature joined the main game in patch 3.5.0 it became
+  capture on the kill.
+- **Nobody can steal your try.** Every player who armed the monster and did at
+  least 5% of its damage gets their own roll. A strong passer-by who finishes
+  your monster helps instead of erasing your chance, and a capture never takes
+  anyone's kill rewards.
+- **It's small to build.** On the server it's one branch in the kill path,
+  which already knows who did the damage. On the phone it's one pop-up button and
+  a little animation drawn in code.
+- **It ties Trapping to the rest of the game.** Woodcutting supplies the logs and
+  the Woodworker makes the traps. Combat brings the monsters, and the market
+  carries the pets.
 
 ## Why the 20% capture has to go
 
@@ -131,9 +101,8 @@ And the rest of today's capture (`server/src/pets.js`, v2.3.1130):
 - **Trapping dead-ends at 6 pets.** There's no way to release one, and a full
   list is refused before any XP (`pets.js:150`).
 - **The odds follow your combat level, not your Trapping level:** −5 points for
-  each level the monster is above you, +0.5 per Trapping level (`pets.js:157-161`).
-- **A miss burns the 20-gold trap.** At the 10% floor a pet costs 10 traps, or
-  200 gold.
+  each level the monster is above you, and +0.5 per Trapping level
+  (`pets.js:157-161`).
 
 ## What exists today, and what to keep
 
@@ -143,14 +112,12 @@ Keep:
   carries straight over.
 - **The loot vacuum.** An active pet picks up loot within 240 px instead of 160,
   checked by the server (v2.3.1200, `docs/specs/pets.md`).
-- **Trapping as a skill:**
-  - its Skills card and icon (`public/icons/ui/skill-trapping.webp`, "a simple
-    box trap with its door propped on a stick");
-  - the card already says "Set traps for small creatures and collect the catch"
-    (`src/ui/mobile/sheet/skillsModel.js:55`), which is the den lane exactly;
-  - the Beastmaster's Lodge, which pays 30 coins at Trapping 5, rising to 2,000
-    at 150 (`server/src/data.js:821-834`);
-  - the leaderboard's Trapping tab.
+- **Trapping as a skill.**
+  - Its Skills card and icon (`public/icons/ui/skill-trapping.webp`, "a simple
+    box trap with its door propped on a stick").
+  - The Beastmaster's Lodge, which pays 30 coins at Trapping 5, rising to 2,000
+    at 150 (`server/src/data.js:821-834`).
+  - The leaderboard's Trapping tab.
 - **The paw-print pets icon** (`public/icons/ui/evt-pets.webp`) and the farm's
   **Pet House with its fenced pen** (`src/data/gameDisplay.js:851-865`).
 
@@ -173,142 +140,130 @@ versions. Anyone who does keeps them: they move into the new record (Phase 1).
 
 ## How it plays
 
-### In a fight: arm a trap, then kill it
+### Making traps
 
-1. Carry a **box trap**. The Feed & Seed sells them.
-2. **Target a monster**, as you do to attack it. A small **TRAP** button pops up
-   with your odds on it, "62%" say. It's a pop-up like the door's "Enter", not a
-   new fixed button.
-3. **Tap it.** A trap mark hangs over the monster for about 12 seconds.
-4. **Kill it**: one hit or ten, yours or anyone's.
-5. Where it falls, **the trap shakes** 1, 2 or 3 times. **Snap**: a card shows
-   your new pet, with "New!" the first time. **Break**: your next try at that
-   kind is easier.
+- **The Woodworker makes box traps**, one log each, from any log you have:
+  - pine (`wood_pine_log`);
+  - softwood (`wood_softwood`);
+  - hardwood (`wood_hardwood`);
+  - cedar (`wood_cedar_wood`);
+  - maple (`wood_maple_wood`).
+
+  They're the logs the Wheel's trees drop (`server/src/gathering.js:347`). A new
+  **Traps** tab at the Woodworker takes up to 50 at a time, and pays a little
+  Woodworking XP.
+- **A box trap is an ordinary bag item** (`trap_box`). You can trade it, sell it
+  and mail it, and it drops when you die, like logs. The 20-gold `basic_trap`
+  that a few old bags still hold counts as one.
+
+### Arming, and the kill
+
+1. **Target a monster**, as you do to attack it. A small **TRAP** button pops
+   up with your odds on it, "0.6%" say, and how many traps you carry. It's a
+   pop-up like the door's "Enter", not a new fixed button.
+2. **Tap it.** A trap mark hangs over the monster for about 15 seconds.
+3. **Kill it.**
+4. Where it falls, **the trap springs.** It shakes 0, 1, 2 or 3 times, then
+   snaps shut (a card shows your new pet) or breaks.
 
 The rules:
 
 - **Who rolls.** Every player who armed the monster and did at least 5% of its
   damage gets their own roll. The 5% is the rule that already decides who gets a
   monster's gold (`server/src/combat.js:1598-1618`). If someone kills it before
-  you've hit it at all, you miss that roll but keep your trap. Arm another.
+  you've hit it at all, you miss that roll and keep your trap. Arm another.
 - **The kill pays as now.** XP, gold, loot and quest credit go to everyone who
   helped. Today's capture cancels all of that (`pets.js:186-196`).
-- **The trap is used up only on a catch**, the way Don't Starve uses bait only
-  when something is caught. A miss costs only time.
-- **One armed monster at a time**, within about 300 px, and only out in the
-  lands. Not on the safe ground, and not in dungeons, which is where the boss
-  hole was.
-- **Trapping XP on every roll**, more for a catch. The amount is fixed per
-  stretch, and less for stretches far below your level.
+- **A trap is used every time it springs**, caught or not. If the mark runs out
+  before the monster dies, the trap stays in your bag. So, at 1% odds, a pet
+  costs about a hundred logs on average.
+- **One armed monster at a time**, within about 300 px (to be tuned for bows and
+  staffs), and only out in the lands: not on the safe ground, and not in
+  dungeons, which is where the boss hole was.
 
-### At a den: set a trap and step back
+### Your Trapping level decides what you can catch
 
-1. Carry a **box trap**. Bait is optional at first, and raises the odds.
-2. Open the minimap. **Dens show as paw prints.** Your quest's gold road can
-   point at the nearest one you can use.
-3. Walk up. The den's **label** shows a trap picture and its Trapping level,
-   grey if yours is short, the way resource labels do.
-4. With no monster close, the attack button reads **TRAP**. Tap it. Your bro
-   kneels and sets the trap, and monsters ignore you while you do, as they do
-   while you harvest.
-5. A **ring** appears round the trap: **step back** past it. While you're inside
-   it, the young won't come out. Step back in later and it ducks into the den
-   again, with nothing lost.
-6. After a few seconds **a young one creeps out**, sniffs the bait and steps in.
-7. **The trap shakes**, then snaps or breaks, as in a fight.
-8. As your level grows, **set traps at more than one den** and walk your own
-   little trap line.
+- **You can arm a trap only on a monster at or below your Trapping level.** A
+  Trapping 12 player can try for anything up to level 12.
+- Above it, the TRAP button is grey and says "Requires Trapping 18". Nothing is
+  sent to the server, like a resource that's above your level (v2.3.3059).
+- The first stretch's monsters are levels 1–2, so a new trapper can start at
+  once. The next stretch opens at Trapping 6.
+- Your combat level plays no part.
 
-An attempt takes about 15–25 seconds. That's slower than a harvest, but you can
-watch two or three traps at once.
+### The odds: rare, and always shown
 
-**Dens:**
+The odds depend on two things only: **which stretch the monster belongs to**,
+and **how far your Trapping level is above the monster's level**. When you first
+reach the monster's level you get half the best chance. It rises evenly to the
+best chance 20 levels above.
 
-- **Two dens in every stretch of every land**, all eight stretches (levels
-  1–40): 128 in all. They're baked with the monsters' places and the resource
-  spots, by the same rules: never on a road, in water or on the safe ground, and
-  at least 300 px from any monster's place
-  (`tools/world/bake-wheel-spawns.mjs:391-482`).
-- Each den is **home to one kind of young**, named on its label.
-- **Deep dens sit among deep monsters.** Your fighting doesn't change the catch,
-  but you still have to get there, and stand guard while you wait.
-- **Below a stretch's Trapping level, a tap plays a locked try**, as a locked
-  resource does (v2.3.3059). The trap goes down, the young sniffs and turns
-  away, and the den says "Requires Trapping 10". Nothing is sent to the server.
-- **Drawn in code** until you make pictures for them (a burrow ringed with the
-  land's stones, snow, sand or moss), the way the dungeon mouths are
-  (`src/rendering/wheelDoors.js`).
+| Stretch | Monster levels | Best chance (Trapping 20+ above) | Tries on average | Chance when just unlocked | Tries on average |
+|---|---|---|---|---|---|
+| 1 | 1–5 | 1% | 100 | 0.5% | 200 |
+| 2 | 6–10 | 0.8% | 125 | 0.4% | 250 |
+| 3 | 11–15 | 0.64% | 156 | 0.32% | 312 |
+| 4 | 16–20 | 0.51% | 195 | 0.26% | 391 |
+| 5 | 21–25 | 0.41% | 244 | 0.2% | 488 |
+| 6 | 26–30 | 0.33% | 305 | 0.16% | 610 |
+| 7 | 31–35 | 0.26% | 381 | 0.13% | 763 |
+| 8 | 36–40 | 0.21% | 477 | 0.1% | 954 |
 
-**Traps and bait:**
+- **Each stretch down is ×0.8 of the one before.** Pokémon Scarlet and Violet do
+  the same: ×0.8 for each five-level band a wild Pokémon sits above what your
+  badges allow. It never slams into a floor, so deep monsters are rarer without
+  being impossible.
+- **The game shows the true number before you tap.** Palworld's capture
+  percentage turned out to be inflated (players' datamining found 49% shown was
+  18.25% real), and Pokémon GO's hidden rates were called "shady".
+- **Luck is lumpy at 1%.** Half of players get a catch within 69 tries, but 1 in
+  8 needs more than 200 and 1 in 150 more than 500. That's why the bad-luck rule
+  below is offered.
 
-- **The box trap is reusable**, like the axe and the rod, and **kept when you
-  die**, like them (`server/src/gathering.js:577-605`).
-- **Traps out at a den at once:** 1 at Trapping 1, 2 at 10, 3 at 20, 4 at 30.
-  RuneScape allows 2 at level 1, rising to 5 at level 80. Optionally, **one more
-  inside No man's land**, as RuneScape gives one more in its PvP Wilderness.
-- **Bait is used up only when a young takes it** (a catch or an escape), never
-  when you set the trap. So lifting a trap, or a server restart, costs nothing.
-  - **Plain bait** from the Feed & Seed, a coin or two.
-  - **Land bait** (Phase 3), cooked at the Cookhouse from two raw fish or crops
-    and one of the land's shards. It adds more to the odds, and the dens at
-    levels 21–40 need it.
-  - **Each kind of young has a favourite.** You find it by trying, and it's then
-    written on that kind's journal page.
+### Bad luck (recommended, your call)
 
-### Trapping levels
-
-Each stretch asks for a Trapping level, in steps of 5 like the resources
-(`server/src/gathering.js:150`). It applies to both lanes: to arm a trap on a
-monster there, or to set one at a den there.
-
-| Stretch | Monster levels | Trapping level |
-|---|---|---|
-| 1 | 1–5 | 1 |
-| 2 | 6–10 | 5 |
-| 3 | 11–15 | 10 |
-| 4 | 16–20 | 15 |
-| 5 | 21–25 | 20 |
-| 6 | 26–30 | 25 |
-| 7 | 31–35 | 30 |
-| 8 | 36–40 | 35 |
-
-### The odds, always shown
-
-- **Your Trapping level against the stretch.** These starting numbers are meant
-  to be tuned:
-  - **At a den:** 45% at the stretch's own level. Each level above adds 1.5
-    points, up to 90%. RuneScape's catches start at about 45–55% at their unlock
-    level and near 90% some 35 levels later.
-  - **On a kill:** 30% at the stretch's level, rising the same way, up to 60%.
-    It's lower because kills come much faster than den visits.
-- **Bonuses:**
-  - **Arm a monster before it has noticed you:** +10 points. The server already
-    knows who each monster is after. Pokémon Legends: Arceus pays ×1.75 for a
-    "back strike" on a Pokémon that hasn't seen you.
-  - **Bait, at a den:** land bait +10, the favourite +20.
-  - **A better trap** (Phase 3): +5 or +10.
-- **Pity.** Every miss in a row on a kind adds 10 points to your next try at that
-  kind, up to 30, and a catch resets it. World of Warcraft's pet traps add 20–30%
-  after each failure.
-- **Never in the odds:** your combat level, your damage, or the creature's
-  health.
-- **The true number, before you tap.** Palworld's capture percentage turned out
-  to be inflated: players' datamining found 49% shown was 18.25% real. Pokémon
-  GO's hidden rates were called "shady". An honest near miss is information; a
-  staged one is manipulation.
+- After **twice the average number of tries** at a kind of monster without a
+  catch, each further miss adds a tenth of your chance until you catch one.
+  - At 1%, that starts at the 200th miss, and each miss after it adds 0.1%.
+  - About 2 players in 100 are still trying at 250 tries, and almost nobody past
+    about 295.
+- A catch resets it.
+- **It never touches the first 200 tries**, so catching stays rare, as you want.
+  It only stops a very unlucky player from quitting.
+- World of Warcraft's battle-pet traps add 20–30% after every failure.
+  RuneScape 3 raises its rare-pet odds once a player's own count passes set
+  multiples of the usual. This is gentler than either.
 
 ### The shakes
 
-The server rolls once and tells your phone how many shakes to show: 3 and a snap
-for a catch, and 0–2 and a break for a miss, with more shakes the closer it was.
-Pokémon's own capture routine works this way: it passes the number of checks the
-ball survived to the animation. The shakes, the snap and the break are drawn in
-code, with no new pictures.
+The server rolls once, as Pokémon does: four hidden checks, each passed with
+the fourth root of your chance. Your phone shows how many passed before the trap
+broke. At 1%:
+
+- about 2 tries in 3 break at once;
+- about 1 in 5 shakes once;
+- about 1 in 15 shakes twice;
+- about 1 in 46 shakes three times and still breaks;
+- 1 in 100 snaps shut.
+
+So a near miss happens often enough to feel exciting, and it's honest every
+time. The shakes, the snap and the break are drawn in code, with no new
+pictures.
+
+### Trapping XP
+
+- **Every roll pays Trapping XP**, caught or not, more for a deeper monster. A
+  catch pays a large bonus.
+- **Monsters far below your Trapping level pay less**, as in RuneScape, where a
+  creature gives fixed XP that matters less as you outgrow it.
+- **Aim:** an hour of trapping should level Trapping about as fast as an hour of
+  woodcutting at the same stretch. This gets tuned in Phase 1 against real rates.
+- Trapping XP is what opens deeper monsters, and the Beastmaster's Lodge starts
+  paying the day it exists.
 
 ### What you catch
 
-From a den you catch a young one, and from a fight the monster itself, tamed.
-Either way it's drawn small and becomes the same pet:
+The monster itself, tamed and drawn small. Names for you to choose:
 
 | Land | Element | Its monsters | Pet (names for you to choose) | At levels 21–40 |
 |---|---|---|---|---|
@@ -324,22 +279,29 @@ Either way it's drawn small and becomes the same pet:
 - **Nine kinds, eighteen with the second stage's colours.** Those are the tints
   the Wheel already uses for monsters past level 20
   (`src/data/wheelStageLooks.js`), so they cost no memory.
-- **Later, a rare golden look of each**, also just a tint. Make it rare enough
-  to chase, but not shiny-hunting rare: a player with two hours a day needs odds
-  nearer 1 in 50 than 1 in 4,000.
-- **Each pet has a size.** Big ones get a badge and a spot on the leaderboard.
+- **Later, a golden look of each**, about 1 catch in 50, also just a tint.
+- **Each pet has a size.** Big ones get a badge.
 
-### Your pets
+### Your pets, and their levels
 
-- **One follows you**, as today. The rest wait in your collection.
-- **Your collection holds 30 to start.** The Pet House holds more for gold, a gold
-  sink, never real money.
+- **A pet starts at the level of the monster you caught.** That's never above
+  your Trapping level, because of the rule above.
+- **It levels up while it's out with you**, from a share of the combat XP you
+  earn, a tenth say.
+- **It stops at your Trapping level.** It starts again when your Trapping level
+  rises, so the way to grow your pets is to trap.
+- **A traded pet above your Trapping level** works at your Trapping level until
+  you catch up, and keeps its own level for when you do (recommended; see the
+  choices below).
+- **A pet's level shows on its card** and grows it a little on screen. Later it
+  sets how strong its ward is (Phase 4).
+- **One follows you**, as today. The rest wait in your collection, which holds
+  30 to start. The Pet House holds more for gold.
 - **Set active, rename and release** from a **Pets page** (More → Pets, with the
   paw-print icon). All of it is done by the server and kept.
-- **Release a spare and it leaves treats** your other pets like (Phase 4), so
-  catching the same kind again is never wasted.
-- **Pets are never lost**: not when you die, and not in No man's land. Old School
-  RuneScape now insures every pet, and its killers never get one.
+- **Pets are never lost**, not when you die, and not in No man's land
+  (recommended). Old School RuneScape insures every pet, and its killers never
+  get one.
 
 ### What pets do
 
@@ -347,8 +309,8 @@ Either way it's drawn small and becomes the same pet:
   sold. Black Desert's looting pets became something grinders "need four or
   five" of, because loot left on the ground is wasted.
 - **Ward** (Phase 4). An active pet from a land takes the edge off that land's
-  monster hits on you. The eight lands and the eight element effects match one
-  to one (`server/src/monsterstatus.js:82-92`):
+  monster hits on you, more as it levels. The eight lands and the eight element
+  effects match one to one (`server/src/monsterstatus.js:82-92`):
   - Snowling: chill
   - Gobling: burn
   - Mumling: gust
@@ -358,76 +320,83 @@ Either way it's drawn small and becomes the same pet:
   - Wisplet and Lurkling: poison
   - Dewdrop: hold
 
-  So you bring a Frost Ridge pet to Frost Ridge. It gives you a reason to
-  collect every land, and it never makes anyone hit harder.
-- **Grows up** (Phase 4). Its bond rises while it's out with you and when you
-  give it treats, with a daily cap. As it does, it gets a little bigger and its
-  ward a little stronger.
-  - There's nothing to feed, nothing that starves and nothing that dies.
-  - Other games removed those care chores (WoW's pet happiness, Ultima Online's
-    pets going wild), and they stay out.
-  - Nothing about a pet fades while you're away, which on a two-hour day is most
-    of the time.
+  It gives you a reason to collect every land, and it never makes anyone hit
+  harder.
+- **No chores.** There's nothing to feed, nothing that starves and nothing that
+  dies. Other games removed those (WoW's pet happiness, Ultima Online's pets
+  going wild).
 - **Pets don't fight.**
-  - A fighting pet is a second monster for the server to run, and it makes pets a
-    must-have in PvP. World of Warcraft's hunter pets pulled monsters off group
+  - A fighting pet is a second monster for the server to run, and it makes pets
+    a must-have in PvP. World of Warcraft's hunter pets pulled monsters off group
     tanks for about 14 years.
   - Today's fake bite goes.
   - If pets ever help in a fight, it should be as an extra on your own hit that
-    the server works out (Phase 6, your call).
+    the server works out (Phase 5, your call).
+
+### Trading
+
+Phase 3. Pets move through the systems that already move valuable things:
+
+- **The trade window**, with the pet held by the server until both sides accept,
+  as weapons are today (`trade2wpn:` in `server/src/trade2.js`);
+- **the auction house**, as a new kind of listing beside items, weapons and gear
+  (`server/src/store.js`);
+- **the mail**, for an auction's buyer, or when your collection is full.
+
+What keeps it safe:
+
+- **A pet is only ever made by the server.** It has an id that never changes and
+  a short story: who caught it, where, when, and each owner since. Nothing a
+  phone says about its pets is ever believed again. Today's join takes up to six
+  pets from the phone (`pets.js:110-128`; #830 removes it).
+- **It moves between two players in one step on the server**, never copied and
+  then deleted. Every pet dupe the research found came through a gifting or bank
+  path: Grow a Garden switched gifting off in June 2025, and Pet Simulator X
+  deleted duped pets.
+- **Armour and shields went this way first.** Gear became tradeable over about
+  ten versions (v2.3.2523–v2.3.2551), with an ownership ledger. Pets get a phase
+  of their own for the same reason.
+- **Optional safeguards** (below): a short hold after a catch before a pet can
+  be traded, and the active pet can't be listed.
 
 ### Fair in a shared world
 
-- **In a fight, every armed helper rolls for themselves.** Nobody can take
-  another player's chance by throwing first or killing first, and nobody loses
-  kill rewards to a capture. World of Warcraft (since 2016), Guild Wars 2 and
-  Pokémon GO's raids all give everyone who helped their own reward.
-- **At a den, your young is yours.** It's drawn only on your screen and only you
-  can catch it. Two players at one den each run their own trap. Nobody can
-  steal it, kill it or crowd you out, and this world is one room, with no other
-  server to hop to when a spot is crowded.
-- **Your trap is yours too.** Other players don't see your den trap at first.
-  A later phase may show traps, but never the young.
-- **No captures on the safe ground or in dungeons.** The dungeon-boss hole goes
-  with the old capture.
+- **Every armed helper rolls for themselves.** Nobody can take another player's
+  chance by throwing first or killing first, and nobody loses kill rewards to a
+  capture. World of Warcraft (since 2016), Guild Wars 2 and Pokémon GO's raids
+  all give everyone who helped their own reward.
+- **No captures on the safe ground or in dungeons.**
 - **No man's land.** Its rings start at the second stretch, so a trapper there
-  can be attacked by players near their level, like anyone.
-  - Bait in the bag drops as bag items do.
-  - The box trap stays, because it's a tool.
-  - Pets never go.
+  can be attacked by players near their level, like anyone. Traps in the bag
+  drop as bag items do. Pets never go (recommended).
 
 ### What it costs and what it pays
 
-- **Gold spent:** box traps (one used per catch in a fight), plain bait, Pet House
-  space, better traps.
-- **Materials used:**
-  - fish, crops (#827), shards and burnt dust (which nothing uses today) go into
-    bait;
-  - wood and bars go into better traps.
-- **Gold earned:** none directly. Pets aren't sold to Diego and aren't traded,
-  at least for now.
-- **XP:** a den catch is worth about two harvests from the same stretch, and a
-  roll in a fight less, since kills come faster. Both get tuned in Phase 1 and 2
-  against real gathering rates. The Beastmaster's Lodge starts paying the day
-  Trapping XP exists.
+- **Logs:** one per try, so about a hundred for a first-stretch pet and several
+  hundred for a deep one. That's steady demand for Woodcutting.
+- **Gold:** none spent on the catch itself. Pets change hands for gold between
+  players, which moves gold rather than making it. Pet House space is a gold
+  sink.
+- **XP:** Trapping XP on every try, and a little Woodworking XP for every trap
+  made.
+- **Time:** at 1%, with a strong player killing several first-stretch monsters a
+  minute, about half an hour per pet on average. That's a rare activity, as you
+  asked, and a pet is worth something because of it.
 
 ### On the phone
 
-- **In a fight:** the TRAP pop-up with its odds, the mark over the monster, and
-  the shakes where it falls.
-- **At a den:** dens on the minimap, their labels, the TRAP word on the attack
-  button, the ring, the young, the shakes.
-- **Everywhere:** the card, the Pets page in More, and the Feed & Seed's counter.
-- **No new fixed button.** Fixed control slots are full. The fight's TRAP is a
-  pop-up, and the den's TRAP lives on the attack button the way HARVEST does. A
-  monster close by still wins the attack button (v2.3.2270).
+- **In a fight:** the TRAP pop-up with its odds, grey when the monster is too
+  high, the mark over the monster, and the shakes where it falls.
+- **At the Woodworker:** the Traps tab.
+- **Everywhere:** the card for a new pet, the Pets page in More, and a count of
+  your tries at each kind.
+- **No new fixed button.** Fixed control slots are full, so TRAP is a pop-up.
 
 ### Art and memory
 
 - **The pet sheet.** A tool makes small walking frames of each of the nine kinds
-  from the monsters' existing art, and the second-stage and golden looks are
-  tints. It's the only new art Phase 1 needs, and it replaces the emoji. Pets,
-  and the young at a den, both draw from it.
+  from the monsters' existing art. The second-stage and golden looks are tints.
+  It's the only new art Phase 1 needs, and it replaces the emoji.
 - **How big.** The target is 1–3 MB on the phone for all nine, loaded as a plain
   picture rather than drawn onto a canvas. The memory budget has about 8.6 MB of
   room in the art cache and 9.6 MB on the graphics chip at its Flame Fields stop
@@ -438,56 +407,73 @@ Either way it's drawn small and becomes the same pet:
   would break the budget at the first stop:
   - a snowman's full look is 13–17.5 MB;
   - a fire goblin's is 30–35 MB;
-  - a mummy's is 36 MB, with its skeleton.
+  - a mummy's is 36 MB with its skeleton.
 
   (`src/rendering/zoneTextures.js:24-26` and `:72-74`,
   `src/rendering/snowmanSprites.js:341-344`.)
-- **Later, from you** (a new ART-WISHLIST section): a picture for each land's
-  den, the box trap, bait icons, and proper pet art if you want chubbier
-  proportions than a shrunk monster.
+- **Later, from you** (a new ART-WISHLIST section): a box-trap icon, and proper
+  pet art if you want chubbier proportions than a shrunk monster.
 
 ## Phases, smallest first
 
-Each phase ships as its own pull request (or a short series), with its test
-suite, a spec and an off switch. Each one makes sense to players even if the next
-one never comes.
+Each phase ships as its own pull request, or a short series, with its own test
+suite, spec and off switch. Each makes sense to players even if the next one
+never comes.
 
-Phase 1 builds on two pull requests that are open now:
+Phase 1 builds on two open pull requests:
 
-- **#830**: a new character no longer brings pets or skill levels from the
-  browser.
-- **#827**: the farm. It fixes a crash in paying life-skill XP, and it rebuilds
-  the Feed & Seed's window, where traps and bait will be sold.
+- **#830** stops a new character bringing pets and skill levels from the
+  browser. That matters more now: a forged Trapping 99 would skip the level rule,
+  and forged pets would be tradeable.
+- **#827** fixes a crash in paying life-skill XP.
 
 | Phase | What players get | Main work | Why in this order |
 |---|---|---|---|
-| **1. Arm a trap, then kill it** | The Feed & Seed sells a box trap. TRAP on a targeted monster, the mark, a roll at the kill for every armed helper, the shakes. A Pets page (set active, rename, release), which the farm's Pet House opens too. Pets drawn from the pet sheet, not an emoji. The old capture, the fake pet bites and the Pet House's Evolve and Enchant go. | Server: `trapping.js` (the arm, and the roll in the kill path), the `pets:<pid>` record with old pets moved in, `caps.trapping` and `trapping: false`, a test suite, `docs/specs/trapping.md`. Phone: the TRAP pop-up, the mark, the shakes, the Pets page, a Traps tab in the Feed & Seed window, and the tool that makes the pet sheet. QA `mp-trapping` on a phone. Two PRs: the server first, then the phone. | The smallest change that fixes the one-hit problem, and it makes pets reachable again. No new art from you. |
-| **2. Dens** | Dens on the minimap, TRAP at a den, the young, the ring, more traps out as you level. | `WHEEL_DENS` baked, each player's den timeline on the server, den drawing, labels, minimap marks. | Makes Trapping a full life skill. |
-| **3. Bait, traps and the Beastmaster** | Land bait from the Cookhouse, better traps from the Woodworker, favourite baits, a Journal of every kind, and a Beastmaster beside the Feed & Seed with a quest line the server checks. | Recipe tables shaped like smelting (`server/src/smelting.js`), a `catch` quest goal on the server, the NPC and his art, the journal. | Depth, once both lanes are proven. |
-| **4. Pets that matter** | The land ward, bond and growing up, treats, golden and Big pets with a reveal, other players seeing your pet, and more Pet House space. | The ward in `monsterstatus.js`, bond counted by the server, the pet in each player's tick record, Pet House space bought with gold. | Makes the collection worth finishing. |
-| **5. While you're away** | Overnight traps at dens: leave one with bait, come back hours later. Mostly common catches (treats, or materials for the forge and Cookhouse), sometimes a young one. Capped per day. Perhaps eggs hatching at the farm. | The farm branch's lazy clock (`readyAt`, checked when you look) and a `traps:<pid>` record. | Suits short sessions and the two-hour day. Pets stay rare while catches stay common, as in RuneScape. |
-| **6. Later, your call** | Trading pets. A featured creature each month in one land. Sheriff's bounties. A pet's helping bite. A capture bar for bosses. Cosmetic pet extras on the supporter pass. | Each its own PR. | Only once the core is loved. |
+| **1. Arm a trap, then kill it** | The Woodworker makes box traps. TRAP on a targeted monster, with true odds and the Trapping-level rule; the mark; a rare roll at the kill for every armed helper; the shakes; Trapping XP on every try. A Pets page (set active, rename, release), which the farm's Pet House opens too. Pets drawn from the pet sheet. The old capture, the fake bites, and Evolve and Enchant go, and the Trapping card's words change. | Server: `trapping.js` (making traps, the arm, the roll in the kill path), the `pets:<pid>` record with lasting ids and levels and old pets moved in, `caps.trapping`, `caps.trapcraft` and `caps.petbook` with their off switches, a test suite, `docs/specs/trapping.md`. Phone: the TRAP pop-up, the mark, the shakes, the Traps tab, the Pets page, and the tool that makes the pet sheet. QA `mp-trapping` on a phone. Two PRs: the server first, then the phone. | The whole loop, with no new art from you. Gives Trapping its first real XP. |
+| **2. Pets level up** | Pets earn XP while out with you, up to your Trapping level, and grow a little. A journal of every kind: your tries, your catches, your biggest. A Beastmaster beside the Woodworker with a short quest line the server checks: make traps, arm traps, reach Trapping 6. | Pet XP gathered in memory and saved with the character, never a write per kill. A `catch` quest goal. The NPC and his art. | Gives every pet a future, and teaches the loop. |
+| **3. Trading** | Pets in the trade window, the auction house and the mail. | A pet lane in the trade window held like weapons; a `pet` listing kind; a `pet` mail kind with "collection full → stays in the mail"; `caps.pettrade` and its switch. | Pets have value once they level. Gear's path shows it needs a phase of its own. |
+| **4. Pets that matter** | The land ward, stronger with level. Golden and Big pets with a reveal. Other players see your pet. More Pet House space. | The ward in `monsterstatus.js`, the pet in each player's tick record, Pet House space bought with gold. | Makes the collection worth finishing. |
+| **5. Later, your call** | A monthly featured monster with better odds for a day. Sheriff's bounties. Eggs at the farm. A pet's helping bite. Cosmetic pet extras on the supporter pass. | Each its own PR. | Only once the core is loved. |
 
-## Decisions only you can make
+## Still to decide
 
 | Decision | Choices | Recommendation |
 |---|---|---|
-| The lanes | both; the fight only; dens only; keep the 20% capture | **Both, the fight first** |
+| When a trap is used | every time it springs; only on a catch | **Every time it springs.** That's what makes a trap's log matter: about 100 logs a pet at 1%. Only on a catch would be one log a pet |
+| Odds on deeper stretches | ×0.8 per stretch (1% down to 0.21%); 1% everywhere; steeper | **×0.8 per stretch** |
+| How your Trapping level helps | half the best chance when unlocked, the best at 20 levels above; the best at once | **Half, rising to the best over 20 levels**, so trapping keeps paying |
+| Bad-luck rule | gentle, after twice the usual tries; none | **Gentle.** It never touches the first 200 tries at 1% |
 | Who rolls in a fight | armed and did 5% of the damage; armed is enough | **Armed and 5%.** It's the gold rule, and stops players arming what others kill |
-| Mark length | about 12 s; longer; shorter | **About 12 s**, tuned in play |
-| Kill odds against den odds | lower on kills (30–60%); the same (45–90%) | **Lower on kills**, since kills come faster |
-| Pet names | the table above, or your own | Yours to name |
-| Old pets | keep them, moved to the new record; start fresh | **Keep them** |
-| Bait | optional at first, needed at levels 21–40; always needed | **Optional at first** |
-| Den traps out at once | 1–4 by level, +1 in No man's land; no extra | **1–4, +1 in No man's land** |
-| Collection size | 30 plus gold expansions; unlimited; 6 | **30 plus expansions** |
-| What pets do | loot, land ward and growing up; also fight; cosmetic only | **Loot, ward, growing up. No fighting** |
+| Mark length | about 15 s; longer; shorter | **About 15 s**, tuned in play |
+| Wood for a trap | any log; the stretch's own log | **Any log**, for now |
+| How pets earn XP | a share of your combat XP while out; only from your catches | **A share of your combat XP**, about a tenth |
+| A traded pet above your Trapping level | works at your level until you catch up; can't be taken | **Works at your level**, so trading stays open |
+| A hold before a new pet can be traded | 24 hours; none | **24 hours.** Slows a bot that catches and sells at once |
 | Can pets be lost | never; in No man's land | **Never** |
-| Trading pets | not now; later, with a ledger and limits | **Not now** |
-| Golden pets | yes, about 1 in 50; rarer; none | **Yes, about 1 in 50** |
-| The $2 supporter pass | cosmetic only; also more collection space | **Cosmetic only.** Space at most, never traps, odds or eggs |
-| Eggs from kills | later at the farm; never | **Later, if wanted** |
-| Others see your den trap | later; never | **Later, and never the young** |
+| Golden pets | about 1 catch in 50; rarer; none | **About 1 in 50** |
+| Collection size | 30 plus gold expansions; unlimited | **30 plus expansions** |
+| Pet names | the table above, or your own | Yours to name |
+| The $2 supporter pass | cosmetic only; also more collection space | **Cosmetic only.** Never traps, odds or pets |
+
+## Where this goes against the research, and how the plan answers it
+
+- **Rare, pure-luck catches drew the loudest complaints the research found.**
+  Ni no Kuni players called its befriending "completely random", and MapleStory
+  players reported 20–60 minutes per familiar card. You want catching rare, so
+  the plan keeps your 1%. It answers the complaint in five ways:
+  - the true odds on the button;
+  - a count of your tries at each kind;
+  - honest near misses in the shakes;
+  - Trapping XP on every try, so no try is wasted;
+  - the gentle bad-luck rule, if you agree to it.
+- **The research suggested keeping wild-caught pets untradeable**, as World of
+  Warcraft does, because markets are where dupes and real-money trading happen.
+  You want them tradeable. The plan makes that safe the way armour and shields
+  were made safe: server-made pets with lasting ids, moved in one step, in a
+  phase of their own, with an optional hold after a catch.
+- **The research suggested using up a trap only on a catch.** Your "each trap
+  costs a log" makes a trap a cost per try. That's a steady pull on Woodcutting,
+  about a hundred logs for a first-stretch pet.
 
 ## For the builder
 
@@ -499,12 +485,13 @@ with receipts, is §5 of
 
 ```
 pets:<pid> = {
-  v: 1, nextId: 7, active: 3, cap: 30, moved: true,
-  list: [ { id: 3, home: 'frost', look: 'snowman', stage: 1, gold: false,
-            size: 1.04, name: 'Snowling', bond: 0,
-            at: 1791273600000, by: 'kill' } ],
-  journal: { 'frost.snowman.1': { n: 3, gold: 0, big: 1.12 } },
-  pity: { 'frost.snowman': 1 }
+  v: 1, cap: 30, active: 'p_7f3a9c', moved: true,
+  list: [ { id: 'p_7f3a9c', home: 'ember', look: 'fireGoblin', stage: 1,
+            gold: false, size: 1.04, name: 'Gobling', lv: 4, xp: 120,
+            at: 1791273600000, caughtBy: '<pid>', owners: 1,
+            tradeAfter: 1791360000000 } ],
+  journal: { 'ember.fireGoblin.1': { tries: 87, n: 1, gold: 0, big: 1.04 } },
+  luck: { 'ember.fireGoblin.1': 0 }
 }
 ```
 
@@ -515,107 +502,112 @@ pets:<pid> = {
     it, as the farm branch does with `FARM.V`.
   - Deleted by `_resetCharacterData`.
   - Not in the daily `rpgsnap:`, which the operator should know.
-- **Ids from the record's own counter**, so they stay put. Today's are made fresh
-  at every join (`pets.js:90`), which rules out addressing a pet by id.
+- **Ids are made by the server and never change.** They're unique across all
+  players, so a pet can be followed from owner to owner. Today's ids are made
+  fresh at every join (`pets.js:90`).
+- **The record is the only proof of ownership.** Only the server writes it; no
+  list from a phone is ever adopted. A trade moves the pet between two records in
+  one synchronous run, with no await between the two writes.
 - **Moved in once** from `lifeSkills.pets` (stamp `moved`), the kind guessed from
-  archetype and element, with `by: 'legacy'`. This assumes #830 has removed the
-  browser's pet import at join. Today that import mints up to six pets on every
-  join of a player who has none (`pets.js:110-128`).
-- **Pity is per kind**, shared by both lanes.
+  archetype and element, with `lv` set to the stored level capped at the
+  player's Trapping level. This assumes #830 has removed the browser's pet import
+  at join.
+- **`tries` and `luck` are kept in memory and saved with the character**, not
+  written on every miss. A few lost counts after a crash are harmless. A catch
+  writes at once.
 
-### Lane 1: the arm and the roll at the kill
+### Making traps
+
+- **`make_traps {log, count}`**, shaped like smelting (`server/src/smelting.js:45-105`):
+  - the log looked up as the table's own key;
+  - `count` clamped to 1–50, then to the logs on hand;
+  - logs taken, `trap_box` given;
+  - a little Woodworking XP;
+  - `_saveRpg`;
+  - a private `make_traps_result`.
+- **A new item key, `trap_box`.** Its prefix keeps the bag from filing it under
+  fish or bows (the bag sorts by name). Wire it into the bag's names and
+  pictures.
+- **One `basic_trap` becomes one `trap_box`** at join, once.
+
+### The arm and the roll at the kill
 
 - **`trap_arm {monsterId}`.** Every gate is checked before anything is marked:
   - the cap and switch;
   - the monster is alive and can take damage (`_monsterDamageable`);
   - it's in `wheel`, not a dungeon zone, and not standing on the safe ground;
   - it's within ~300 px;
-  - the player's Trapping level suits its stretch (`m.tier`, or level 1–5 for the
-    first stretch);
-  - a box trap in the bag;
+  - **its level is at or below the player's Trapping level**;
+  - a `trap_box` in the bag;
   - no other live mark;
   - at most 20 arms a minute.
 
-  Then `m._armedBy` (a `Map` of player id → `{until, unaware}`, `unaware` being
-  `m.targetId !== pid` at the moment of arming) and a private `trap_armed
+  Then `m._armedBy` (a `Map` of player id → `until`) and a private `trap_armed
   {monsterId, until, chance}`.
-- **The roll** sits in `_resolveMonsterKill` before `m.dmgByPlayer` is reset
-  (`server/src/combat.js:1800`). For each armed player whose mark is live and
-  whose share is ≥ 0.05 (the gold rule, `:1598-1618`):
-  - roll, and work out the shakes;
-  - **on a catch:** one write of `pets:` first, then the trap taken from the bag
-    and `_saveRpg`, in one synchronous run;
-  - **on a miss:** the pity is written.
+- **The roll** sits in `_resolveMonsterKill`, before `m.dmgByPlayer` is reset
+  (`server/src/combat.js:1800`). For each armed player whose mark is live, whose
+  share is at least 0.05 (the gold rule, `:1598-1618`), and who still has a
+  trap:
+  - take one `trap_box`;
+  - work out the chance from the odds table, plus `luck`;
+  - roll four checks at the chance's fourth root, which gives the shakes;
+  - **on a catch:** write `pets:` first, then `_saveRpg`, in one synchronous run;
+  - **on a miss:** count it in memory.
 
-  The kill's own payouts are untouched. The respawn path
-  (`server/src/index.js:1880-1932`) must clear `_armedBy`, as it already clears
-  `dmgByPlayer`.
-- **Interplay to keep:** the blue slime's death is deferred by its burst, and
-  replays with the same killer (`combat.js:1563`). The mark must outlive that
-  delay, or be judged at the first, deferred call.
+  Then pay Trapping XP, last, inside a try. The kill's own payouts are untouched.
+- **Clearing the mark.** The respawn path (`server/src/index.js:1880-1932`) must
+  clear `_armedBy`, as it already clears `dmgByPlayer`.
+- **The blue slime's death** is deferred by its burst, and replays with the same
+  killer (`combat.js:1563`). The mark must outlive that delay, or be judged at the
+  first, deferred call.
+- **`_addLifeSkillXp` throws on main** on a skill stored in a broken shape. The
+  farm branch (#827) fixes it, and the farm's "one seed, 270 herbs a minute" bug
+  was exactly this.
+- **Catches per hour are capped** like the harvest cap (`server/src/botfp.js:148`).
 
-### Lane 2: dens
+### Pet XP
 
-- **`WHEEL_DENS`** is baked into `server/src/wheelspawns.js` by
-  `tools/world/bake-wheel-spawns.mjs`: a `bakeWheelDens` beside
-  `bakeWheelNodes`, sharing its rules, giving `{id, home, tier, x, y, look}`. They're
-  sent with the zone's state like the nodes (`server/src/join.js:1457-1462`), so the
-  phone has no copy to drift.
-- **Live den traps live in memory**: a `Map` per player, never `{}` (TRAPS §6),
-  holding `{den, setAt, bait, phase, outAt, inAt}`.
-  - There's no storage, because bait is used only at the outcome, so a deploy
-    just folds traps up (handoff rule 11).
-  - They're settled on the room tick and on the owner's next message (rule 12:
-    no alarms).
-- **The ring.** The young comes out once the owner has been outside the ring
-  (~200 px) for 2 s.
-  - `outAt` is that moment plus 3–9 s, and `inAt` is `outAt` plus 2.5 s.
-  - If the owner is inside the ring at `inAt`, it ducks back, and tries again
-    when they step out.
-- **The roll at `inAt`.**
-  - The chance comes from the table: mirrored on the phone for the label, and
-    pinned by mirror-audit.
-  - It adds pity and the bait still in the bag at that moment, and gives the
-    shakes.
-  - Then one write of `pets:` (the new pet, or the pity after a miss) and
-    `_saveRpg` (bait, XP), in one synchronous run, pet record first.
-- **Every refusal comes before anything is used:** no trap, no free trap slot,
-  too far from the den (~140 px reach), level short, safe ground, swimming,
-  airborne, offline, or dying.
+- **A share of the combat XP each kill pays** to a player with an active pet, in
+  memory (`ps._petXpPending`). It's folded into `pets:` at the next character
+  save, or on disconnect, never written per kill. The audit's warning: rows
+  written per kill were the regen mistake (handoff rule 4).
+- **The level is capped at the owner's Trapping level.** No XP builds up while
+  the pet is at the cap.
 
-### Both lanes
+### Trading (Phase 3)
 
-- **XP last, inside a try**, paid through `_addLifeSkillXp(ps, 'trapping', …)`.
-  On main that throws on a skill stored in a broken shape. The farm branch fixes
-  it, and the farm's "one seed, 270 herbs a minute" bug was exactly this.
-- **Limits:** catches per hour are capped like the harvest cap
-  (`server/src/botfp.js:148`).
-- **Odds as a table**, never a formula spread through the code, so the label on
-  the phone and the server's roll can't drift.
+- **The trade window:** a pet lane held in storage while the trade is open, like
+  the weapon lane (`trade2wpn:<pid>:<seq>`, `server/src/trade2.js:380-487`).
+- **The auction house:** a `pet` kind beside `item`, `weapon` and `gear`
+  (`server/src/store.js`), with a sell check. The pet must be owned, not active,
+  past `tradeAfter`, and not in another trade.
+- **The mail:** a new `pet` arm in `_applyCreditToPs`, refusing when the
+  collection is full so the pet stays queued. Today an unknown kind is silently
+  destroyed (`server/src/inbox.js:287`).
+- **Deterministic opIds** for every payout (opid-audit).
 
 ### Messages
 
 | Direction | Type | Payload | Notes |
 |---|---|---|---|
-| phone → server | `trap_arm` | `{monsterId}` | explicit router case plus a shim passthrough line (TRAPS #18) |
+| phone → server | `make_traps` | `{log, count}` | explicit router case plus a shim passthrough line (TRAPS #18) |
+| server → phone | `make_traps_result` | `{made, log, xp}` | private |
+| phone → server | `trap_arm` | `{monsterId}` | explicit router case plus a shim passthrough line |
 | server → phone | `trap_armed` | `{monsterId, until, chance}` | private |
-| phone → server | `trap_set` | `{den, bait?}` | Phase 2 |
-| phone → server | `trap_lift` | `{den}` | takes a den trap back, nothing used |
-| server → phone | `trap_state` | `{traps: [{den, phase, outAt, inAt}], now}` | private; `now` so the phone counts on the server's clock |
-| server → phone | `trap_result` | `{monsterId or den, caught, shakes, pet?, xp, pity}` | private |
+| server → phone | `trap_result` | `{monsterId, caught, shakes, pet?, xp, tries}` | private |
 | phone → server | `pet_active`, `pet_name`, `pet_release` | `{id}`, `{id, name}`, `{id}` | |
-| server → phone | `pets_state` | the record, without `pity` | private; at join and after each change |
+| server → phone | `pets_state` | the record, without `luck` | private; at join and after each change |
 
 Every server-sent type goes in `PRIVILEGED_EVENTS` (wire-audit checks it).
 `pet_capture` refuses with `retired`, and `pet_capture_result` stays privileged.
 
 ### Caps and switches
 
-- **`caps.trapping`** (both lanes) and **`caps.petbook`** (the record's actions),
-  with **`dens`** added in Phase 2.
+- **`caps.trapping`** (the arm and the roll), **`caps.trapcraft`** (making
+  traps), **`caps.petbook`** (the record's actions), and in Phase 3
+  **`caps.pettrade`**.
   - All lower case.
-  - Each has a handler-side check that reads `_liveFlags`: `_trappingOff()`,
-    `_petbookOff()`, `_densOff()`. That's the smelting shape
+  - Each has a handler-side check reading `_liveFlags`, the smelting shape
     (`server/src/smelting.js:59-62`; TRAPS §117).
   - Today's `caps.pets` has no switch that works: un-advertising it brings back
     the browser's own roll.
@@ -626,26 +618,33 @@ Every server-sent type goes in `PRIVILEGED_EVENTS` (wire-audit checks it).
 
 - **`server/test/trapping.test.mjs`**, on a movable clock:
   - every refusal costs nothing;
-  - the arm's gates, and the mark expiring;
+  - the Trapping-level rule at the boundary (equal allowed, one above refused);
+  - making traps: the count clamp, a forged log key;
+  - the mark expiring, with the trap kept;
   - a roll at a kill landed by someone else;
   - the 5% rule;
   - the kill's payouts unchanged;
-  - the trap used only on a catch;
-  - the unaware bonus;
+  - one trap used per roll;
   - the slime's deferred death;
   - no dungeon or safe-ground arming;
-  - the odds table and pity, with `Math.random` stubbed;
-  - the shakes;
-  - caps and switches;
+  - the odds table at every stretch;
+  - the luck rule;
+  - the shakes' split, with `Math.random` stubbed;
+  - pet XP capped at Trapping level;
   - old pets moving in;
   - release, rename and set active;
-  - `__proto__` as a monster id, a den or a pet id;
-  - in Phase 2, the ring and the den timeline.
-- **Mirror-audit:** the stretch levels, the odds table, and the bait recipes
-  (Phase 3).
-- **QA `mp-trapping` on a phone:** arm a trap, kill, see the shakes, open the Pets
-  page, see the follower drawn from the pet sheet. In Phase 2, walk to a den,
-  TRAP, step back, catch. Plus `mp-membudget` with an active pet out.
+  - `__proto__` as a monster id, a log or a pet id;
+  - in Phase 3: a trade that fails halfway, a full collection, and a pet listed
+    twice.
+- **Mirror-audit:** the odds table, the luck rule and the trap recipe, between
+  server and phone.
+- **QA `mp-trapping` on a phone:**
+  - make traps;
+  - arm one and kill;
+  - see the shakes, with a dev switch forcing a catch;
+  - open the Pets page;
+  - see the follower drawn from the pet sheet;
+  - plus `mp-membudget` with an active pet out.
 
 ## Things found in the code along the way
 
@@ -677,9 +676,13 @@ the audit notes.
     §117).
 11. **Everyone without a pet shows a fake "Frost Fox"** on their profile card
     (`src/ui/panels/playerProfile.js:58`).
-12. **Stale words.** "Need a trap! (Vendor sells them)"
-    (`src/networking/gameEvents.js:4248`), and "No pets yet ... tap 🪤!", which
-    points at the hidden button (`PetHousePanel.jsx:153`).
+12. **Stale words:**
+    - "Need a trap! (Vendor sells them)" (`src/networking/gameEvents.js:4248`);
+    - "No pets yet ... tap 🪤!", which points at the hidden button
+      (`PetHousePanel.jsx:153`);
+    - the Trapping card's "Set traps for small creatures and collect the catch"
+      (`src/ui/mobile/sheet/skillsModel.js:55`), which matches neither today's
+      capture nor this plan.
 13. **The Beastmaster Kai quests are dormant**, and checked by the browser
     (`src/data/gameSystems.js:7088-7154`). Naming any new NPC "Beastmaster Kai"
     would switch them back on as they are (`src/data/gameDisplay.js:5549-5553`).

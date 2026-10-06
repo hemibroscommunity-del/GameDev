@@ -1,10 +1,10 @@
 > **Research report, 2026-10-06 (v2.3.3105).** Built from the four sets of notes
 > beside it, on the owner's "research pet trapping mechanics for my game and make a
 > master plan" and "it also becomes infeasible if you're powerful enough to 1 hit
-> monsters". The plan built from it is `docs/PET-TRAPPING-PLAN.md`, which adopts
-> its two lanes (capture at the kill, and trapping as a skill) and gives the
-> skill lane its form: dens. Kept as written. Code is the source of truth where
-> they differ.
+> monsters". The plan built from it is `docs/PET-TRAPPING-PLAN.md`. It follows
+> this report's first lane, capture at the kill. The owner chose not to build the
+> second, and set rarer odds, traps made from logs and tradeable pets
+> (2026-10-06). Kept as written. Code is the source of truth where they differ.
 
 # Take BroTown's capture off the HP bar
 
