@@ -44,7 +44,7 @@ import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
 import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wheelSignposts.js'; /* v2.3.3089 */
-import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3108 */
+import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3117 */
 import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3089 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
 import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */ } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
@@ -217,7 +217,7 @@ const room = Object.create(GameRoom.prototype);
      the Cooked Minnow, which is a fisher's cooked minnow (cook_request). */
   const unmade = Object.keys(SRV.SHOP_ITEMS).filter((k) => k !== 'cookedMinnow' && !SRV.COOKING_RECIPES.some((r) => r.makes === k));
   check('every bottle Diego sold is brewed at the Cookhouse now', unmade.length === 0, unmade);
-  /* v2.3.3108: one bite at a time in a fight with a player -- the page holds
+  /* v2.3.3117: one bite at a time in a fight with a player -- the page holds
      its own bite back by the worker's numbers (fightFood.js). */
   check('PVP_HEAL mirror: the fight window and the gap between bites',
     CLIENT_PVP_HEAL.WINDOW_MS === SRV.PVP_HEAL.WINDOW_MS && CLIENT_PVP_HEAL.GAP_MS === SRV.PVP_HEAL.GAP_MS,

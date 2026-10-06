@@ -1,9 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BT_AUDIO, COOKING_RECIPES } from '@/data/index.js'; /* v2.3.2637: ui-equip tick; v2.3.3114: the recipe rows (caps.cookRows) */
 import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
-import { dishFor } from '@/data/dishes.js';   /* v2.3.3105: the Cookhouse's meals and brews */
-import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3108: one bite at a time in a fight with a player */
-import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.3108: ...and say how long */
+import { dishFor } from '@/data/dishes.js';   /* v2.3.3114: the Cookhouse's meals and brews */
+import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3117: one bite at a time in a fight with a player */
+import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.3117: ...and say how long */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -1336,7 +1336,7 @@ export const ItemDetailPopup = () => {
      when a client consumes an item the server still holds). */
   const onDrink = () => {
     const S = getState();
-    /* v2.3.3108: the old minnow bottle is a heal at once -- one bite at a
+    /* v2.3.3117: the old minnow bottle is a heal at once -- one bite at a
        time in a fight with a player (fightFood.js), held back and said.  The
        brews are no heal and never wait. */
     if (S && isInstantHeal(target.key, dishFor(target.key))) {

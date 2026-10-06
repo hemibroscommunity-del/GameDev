@@ -1514,7 +1514,7 @@ remnant to migrate server-side, not a mode to preserve.
       (`isCookedFood`; raw fish and crops he still buys), a new world's pile
       starts empty, and the daily chest's 10 fish are RAW minnows; the farm's
       art prompts are `docs/art/FARM-ART-PROMPTS.md`;
-    - since v2.3.3108 FOOD COUNTS IN A FIGHT -- the owner: "Farming needs a
+    - since v2.3.3117 FOOD COUNTS IN A FIGHT -- the owner: "Farming needs a
       purpose ... temporary buffs (boss fights, PvP, dueling, etc)": the
       damage brew is read in ONE place (combat.js `_brewMul`); in a fight
       with a player a claim marked `nb: 1` is the hit WITHOUT the brew and
