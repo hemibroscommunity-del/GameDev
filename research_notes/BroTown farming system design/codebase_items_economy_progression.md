@@ -153,11 +153,66 @@ There are ten life skills on both sides and `farming` is ALREADY one of them (pe
 
 ## Items and inventory
 
-(pending)
+### Takeaway
+There is no central item-definition table for stackables: an item is a lower-case string key in the server-owned map `ps.inventory = { key: qty }`, minted by whichever server code path grants it (harvest, loot, shop, quest, cook), and the client infers its name, category, art and buttons from the key (exact-key tables first, then prefix/regex rules). Equipment is separate (weapon stash 8, gear stash 32, tier tables mirrored and audited). So adding seeds/crops/fertilizer is "pick key families + have the server mint them + teach the bag their name/art/category/action"; a hoe or watering can would follow the gathering-tool pattern (an inventory key that survives death).
+
+### Cited Findings
+**Storage and authority (exists and works).**
+- Stackables live in `ps.inventory` (key -> integer); the client adopts the server's map wholesale from every `player_state` -- `src/networking/wsClient.js:1788-1790` -- so anything credited only on the client (e.g. the legacy FarmPanel's `herb_*`, `src/ui/panels/buildings/FarmPanel.jsx:218-223`) is overwritten by the next echo.
+- Keys are minted server-side by family: harvest `<wood|fish|ore>_<name>` -- `server/src/gathering.js:311-345`; cooked `cooked_<fishKey>` / `burnt_dust` -- `server/src/cooking.js:642-661`; potions by their `SHOP_ITEMS` id -- `server/src/shop.js:449-462`; remnants via remnantInvKey and zone shards `shard_<zone>` -- `server/src/shop.js:110-130` (key families listed in SHOP.BASE comments); quest grants `{kind:'inv', key, n}` -- `server/src/data.js:679-685`; daily chest `daily_chest` -- `server/src/dailychest.js:36-45`; bars `bar_<metal>` -- `server/src/shop.js:121-124`.
+- No stack-size cap or bag-slot cap exists on the server (no such constant in server/src; grep for BAG/STACK/INV caps found only bootstrap limits): a NEW character's client-supplied bag is capped at 100 keys x 50 each and 2,000 coins on first join -- `server/src/join.js:835-851`. Per-action limits exist instead (Diego 100 per action, `server/src/shop.js:169`; auction house qty 1..9,999, `server/src/store.js:139-141`).
+- Weapons live in `ps.weaponStash` (max 8) -- `server/src/index.js:833`; armour/shields/legs/cosmetics/amulets in server gear stashes (cap 32) -- `server/src/gearstash.js:73`.
+- The bank building is a read-only summary of gold and equipped gear (no item storage) -- `src/ui/panels/buildings/BankPanel.jsx:3-8`.
+**Death.** Death wipes the bag except gathering tools and any key that is the objective of a shipped quest (derived from `QUEST_REWARDS`), and drops the rest in a pile the owner alone can loot for 60 s, anyone for 120 s total -- `server/src/gathering.js:538-583`, `server/src/quests.js:72-117`, `server/src/index.js:3212-3218`, `server/src/index.js:4083-4135`, `server/src/index.js:1160-1164`; no pile is made in `town` or `farm_home` (items are simply gone) -- `server/src/index.js:4104-4105`. In No man's land the pile is the killer's -- CLAUDE.md v2.3.3058 bullet.
+**Client presentation (exists and works).**
+- Bag categories are FOUR filters from `classify(key)`: weapon / armor / potion / crafting (default) -- `src/ui/mobile/dash/InventoryPanel.jsx:37-63`; potions are recognised by exact key (`isPotionKey`, derived from `POTION_THUMBS`) or words potion/elixir/tonic/salve/brew/tincture/draught -- `src/ui/mobile/dash/InventoryPanel.jsx:58-60`, `src/ui/mobile/dash/InventoryPanel.jsx:297-303`. There is no "food" category: cooked fish file under crafting.
+- Display names: exact-key `ITEM_NAMES` overrides, else a prettified key -- `src/ui/mobile/dash/InventoryPanel.jsx:237-248`; icons: exact keys then regex families (wood/log/plank, fish, ore, bar_ ...) -- `src/ui/mobile/dash/InventoryPanel.jsx:305-345`.
+- Bag actions by key family: Eat (`cooked_fish_*`), Drink (`SHOP_ITEMS` ids, gated on `caps.potionBag`), Open (ticket/chest), Sell (auction house) -- `src/ui/mobile/dash/ItemDetailPopup.jsx:196-232`.
+**Mirroring.** Stackable keys are not mirrored (they are strings); the data tables that ARE pinned client<->server by `server/test/mirror-audit.test.mjs` include ARCHETYPES, MONSTER_HP_CURVE, FISH_TIERS (§3), COOKING_RECIPES index-aligned (§4), QUEST_REWARDS vs QUEST_CHAINS both directions (§5), BLACKSMITH/WOODWORKING tiers (§6), GUILD_SKILLS/GUILD_QUESTS (§7), SHOP_ITEMS vs VendorPanel (§11), life-skill retune constants (§13), smelting rows, gathering hits, gather levels -- section headers at `server/test/mirror-audit.test.mjs:108-1520`.
+**Selling / trading paths an item gets for free.**
+- Diego buys ANY key at a family price (default 20, half paid, decaying with his pile) -- `server/src/shop.js:109-233`; a new family (e.g. `crop_`) would be priced at BASE_DEFAULT 20 (10 paid at an empty pile) until a `SHOP.BASE` entry is added -- `server/src/shop.js:144`, `server/src/shop.js:206-216`.
+- Auction house (`store.js`): any inventory key of <= 32 characters, qty 1-9,999, price 1-999,999, 10 listings per player, 2,000 world-wide, fixed 7-day expiry, escrowed, no listing fee or sales tax -- `server/src/store.js:100-141`, `server/src/store.js:607-619`.
+- The order-book market (`market.js`) is weapons-only (its bucket key is a weapon taxonomy), 24 h orders, no fee -- `server/src/store.js:3-11`, `server/src/market.js:35-40`.
+- Player trades (`trade2.js`) move stackables and gold between two players -- `server/src/trade2.js:242`.
+**Existing unused farm-flavoured data (stale design / dormant).**
+- `ZONE_RESOURCES` gives every element a `herb`, a `seed` ('Ash Root Seed', 'Ice Cap Seed', 'Kelp Seed' ...) and a `food`/`foodStat` ('Fire Resist'/flameDef, 'Regen Boost'/regen, 'Speed Boost'/speed, 'Defense Boost'/defense ...) -- `src/data/items.js:2-11`; no server file references these seed or food names (grep of server/src for the herb names found only the recipe table). Label: exists but dormant.
+- Herb item glyphs exist for `herb_firebloom`, `herb_rock_vine`, `herb_cloudpetal` -- `src/ui/panels/TradeWindowPanel.jsx:94`.
+
+### Inferences
+- New farm items should be short, prefixed key families (e.g. `seed_<crop>`, `crop_<crop>`, `fert_<kind>`) so: the auction-house 32-character limit holds, Diego can price them by one `SHOP.BASE` prefix, the bag can classify/icon them by prefix, and a quest can ask for a whole family with `invPrefix` (as `cooked_fish_` and `ore_` do).
+- A hoe/watering can should be an inventory key added to the death-kept set (today `_GATHER_TOOL_FOR_SKILL` + quest objectives) or it will be lost on death the way the axe was before v2.3.1688 (`server/src/gathering.js:538-553`).
+- Crops carried in the bag die with the player (pile, 120 s). If crops are meant to be a safe store of value, they need either a farm-side storage (none exists) or to be protected like quest items.
+- The bag needs a "food" (or "produce") category and an Eat action generalised beyond `cooked_fish_*` if crops/meals are consumable.
+
+### Gaps
+- I did not find any per-player cap on total distinct inventory keys after bootstrap; whether a very large bag causes UI or payload problems was not measured.
 
 ## Quests
 
-(pending)
+### Takeaway
+Quest steps are declarative objectives on the server (`QUEST_REWARDS` in server/src/data.js) mirrored by display data on the client (`QUEST_CHAINS` in src/data/gameSystems.js), pinned both directions by mirror-audit §5. Supported verified types are `kill`, `gather` (any node harvest), `collect` (hold N of an exact `invKey` or an `invPrefix` family, optionally `consume`), and a reserved `flag`. "Deliver 10 carrots" is expressible today with zero new code (`collect` + `consume`); "grow a pumpkin" needs a new server-credited counter (a `gather`-like kind such as `harvest_crop`) because flags are not server-owned. No quest requires a potion or other bought consumable; two require cooked fish / ore.
+
+### Cited Findings
+- Objective grammar: `{type:'kill', arch, count, zone}`, `{type:'gather', count}`, `{type:'flag', flag}`, `{type:'collect', invKey|invPrefix, count, consume, zone}`; "flag-type must NOT be wired to server _questFlags writes until flags are server-owned" -- `server/src/data.js:527-538`.
+- Counters: the server is the sole writer of `_questKills`; `_creditQuestObjective(playerId, kind, arch, zone)` increments every active quest whose objective type matches (called from monster kills and harvests) -- `server/src/quests.js:163-192`.
+- Turn-in verifies the objective, then consumes `collect` items if `consume`, then pays gold, XP (into a chosen combat skill for prog3 characters), 5 AP, and item grants -- `server/src/quests.js:194-300`; `QUEST_AP_REWARD` 5 -- `server/src/quests.js:23-24`.
+- `collect` counts an exact key or sums a family prefix -- `server/src/quests.js:33-65`.
+- Every quest objective's items are kept through death, table-wide -- `server/src/quests.js:67-117`.
+- Quests without an objective stay client-trusted -- `server/src/quests.js:13-18`.
+- The live quest table and payouts (gold / xp): tutorial `tut_1` 25/15 (collect 4 `snowman`, grants Copper Great Sword + Pine Shield on accept, Pine Bow + Pine Staff on turn-in), `tut_2` 60/35 (6 `slime-remnants`), `tut_3` 150/53 (5 `skeleton-remnants`), `tut_4` 400/105 (6 `fire-goblin-remnants`, Copper Greaves) -- `server/src/data.js:581-659`; life chain `life_1` 60/28 (2 `cooked_fish_*`, grants axe + pole, pays pickaxe), `life_2` 200/70 (5 `ore_*`, Copper Torso) -- `server/src/data.js:679-708`; mayor 50/10, 100/28 (kill 5), 300/70; trader 25/8, 75/18 (gather 3), 150/35; enchant 50/15, 200/53, 500/105; scout 100/28, 200/53; bron 60/15 ... 400/88; luna 40/10 ... 250/63; kai 80/20 ... 350/70; ash 100/28 ... 800/175 -- `server/src/data.js:711-735`.
+- Quest XP was halved in v2.3.3054 (both tables) -- `docs/specs/pace-and-difficulty.md:16-28`.
+- Client chain entries carry `npc`, `title`, `desc`, a `check(rpg)` display predicate, `reward`, `next`, `unlocks`, `dialogue` -- e.g. `trader_2`/`trader_3` -- `src/data/gameSystems.js:6780-6824`. `trader_3` "Farm to Table" (plant and harvest a crop) is client-trusted (no server objective) and reads the client flag `harvestedCrop` set only by the legacy FarmPanel -- `src/data/gameSystems.js:6806-6824`, `src/ui/panels/buildings/FarmPanel.jsx:225-226`, `server/src/data.js:716`.
+- Guild "quests" are skill-level checkpoints that pay gold + AP per life skill, INCLUDING farming: GUILD_SKILLS lists `farming` -- `server/src/data.js:819-822`; rungs Lv5 30g/10AP, Lv15 80g/25, Lv30 150g/40, Lv50 300g/75, Lv70 500g/150, Lv90 800g/250, Lv100 1,200g/400, Lv150 2,000g/750 -- `server/src/data.js:823-832`; claimed server-side against `ps.lifeSkills[skill].level` -- `server/src/guilds.js:34-61`; the Wheel's Guild Hall opens the guild panel since v2.3.3066 (CLAUDE.md).
+- No quest objective references a potion or bought consumable (the five `SHOP_ITEMS` ids appear in no QUEST_REWARDS objective -- see the potion reference sweep in the Diego section).
+- The quest road in the Wheel points at the nearest node a step needs (`_wheelGatherPoint`, a step's `node`) -- CLAUDE.md v2.3.3012 bullet.
+
+### Inferences
+- "Deliver 10 carrots": `{type:'collect', invKey:'crop_carrot', count:10, consume:true}` in QUEST_REWARDS plus the display entry in QUEST_CHAINS; it works as soon as the server can mint `crop_carrot`. Side effect: every objective key becomes death-protected table-wide, so a common crop used as a quest objective would never drop on death for anyone.
+- "Grow a pumpkin" / "harvest 5 crops": add a new objective kind credited by the server's crop-harvest handler via `_creditQuestObjective(id, 'harvest', cropKey)` (mirrors how `gather` is credited by node harvests); `flag` should not be used (server-owned flags do not exist).
+- The farming guild rungs (30g at Farming 5 ... 2,000g at 150) start paying automatically once the server grants Farming XP -- a free reward ladder already wired.
+
+### Gaps
+- Which NPC chains other than Mayor Bro's are reachable in the Wheel today was not verified (the trader/enchant/scout/bron/luna/kai/ash givers may only exist in the closed old town).
 
 ## Gold economy
 
