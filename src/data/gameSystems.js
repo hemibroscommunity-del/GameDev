@@ -980,7 +980,7 @@ export function createGatheringNodes(zoneId, map) {
 
 /* §18.1 Cooking recipes — combine ingredients into food buffs
  *
- * ═══ v2.3.3105: A RECIPE MAKES SOMETHING YOU CARRY ═══
+ * ═══ v2.3.3114: A RECIPE MAKES SOMETHING YOU CARRY ═══
  * Mirror of server/src/data.js COOKING_RECIPES (mirror-audit, per index: the
  * index is the wire key, so rows are APPENDED, never reordered).  `makes` is
  * the bag item a cook puts in the bag on a worker with caps.meals; what that
@@ -1022,13 +1022,13 @@ export const COOKING_RECIPES = [{
     herb_firebloom: 2
   },
   buff: 'damage',
-  power: 0.20,   /* v2.3.3102: was 0.05 under a "+5% dmg" card while the worker paid +20% (cooking.js reads this now) */
+  power: 0.20,   /* v2.3.3111: was 0.05 under a "+5% dmg" card while the worker paid +20% (cooking.js reads this now) */
   duration: 90,
   cookLvl: 6,
   makes: 'brew_firebloom_tea',
   desc: '+20% dmg for 90s'
 }, {
-  /* v2.3.3105: the three tonics, brewed from the farm's herbs -- Diego no
+  /* v2.3.3114: the three tonics, brewed from the farm's herbs -- Diego no
      longer sells them (server data.js DIEGO_SHELF).  Same bag keys as his
      bottles, so one bought before the change still drinks. */
   name: 'Fury Tonic',
@@ -1080,7 +1080,7 @@ export const COOKING_RECIPES = [{
   desc: '+10% combat XP for 30 min'
 }];
 
-/* v2.3.3105: what a dish does lives in its own small module (dishes.js), so
+/* v2.3.3114: what a dish does lives in its own small module (dishes.js), so
    the bag can read it without this whole file; re-exported here, where the
    recipes that make them are, and where mirror-audit looks. */
 export { DISHES, dishFor } from './dishes.js';

@@ -32,8 +32,8 @@ import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_AR
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
-import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield } from '../src/farm.js'; /* v2.3.3102 */
-import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown } from '../../src/data/farmCrops.js'; /* v2.3.3102 */
+import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield } from '../src/farm.js'; /* v2.3.3111 */
+import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown } from '../../src/data/farmCrops.js'; /* v2.3.3111 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
 import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
@@ -57,7 +57,7 @@ import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.j
 import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
-  DISHES as CLIENT_DISHES, /* v2.3.3105: what a Cookhouse dish does */
+  DISHES as CLIENT_DISHES, /* v2.3.3114: what a Cookhouse dish does */
   MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
@@ -159,21 +159,21 @@ const room = Object.create(GameRoom.prototype);
 // reordering either side changes what players cook) ──
 {
   const bad = [];
-  /* v2.3.3105: compared on what the WORKER reads -- tier, cooking level,
+  /* v2.3.3114: compared on what the WORKER reads -- tier, cooking level,
      ingredients and what it makes.  The client's buff/power/duration on rows
      0-2 are the OLD instant effect, read only in front of an old worker (no
      caps.meals); the new worker's effect is DISHES (§4b). */
   SRV.COOKING_RECIPES.forEach((r, i) => {
     const c = COOKING_RECIPES[i];
-    if (!c || c.tier !== r.tier || c.cookLvl !== r.cookLvl /* v2.3.3102: the worker's gate */
-      || c.makes !== r.makes /* v2.3.3105 */ || JSON.stringify(c.ingredients) !== JSON.stringify(r.ingredients)) {
+    if (!c || c.tier !== r.tier || c.cookLvl !== r.cookLvl /* v2.3.3111: the worker's gate */
+      || c.makes !== r.makes /* v2.3.3114 */ || JSON.stringify(c.ingredients) !== JSON.stringify(r.ingredients)) {
       bad.push({ i, server: r, client: c });
     }
   });
   if (COOKING_RECIPES.length !== SRV.COOKING_RECIPES.length) bad.push({ length: { server: SRV.COOKING_RECIPES.length, client: COOKING_RECIPES.length } });
   check('COOKING_RECIPES per-index mirror (order is the wire format)', bad.length === 0, bad);
-  /* v2.3.3105: ...and those old effect fields are pinned to the worker they
-     describe, frozen here as v2.3.3102's table said them (review: comparing
+  /* v2.3.3114: ...and those old effect fields are pinned to the worker they
+     describe, frozen here as v2.3.3111's table said them (review: comparing
      on what the new worker reads had left them pinned to nothing).  Only the
      first three rows carry one: CookPanel and the campfire offer a row an old
      worker can cook by `recipe.buff`, and that worker has no fourth row. */
@@ -189,10 +189,10 @@ const room = Object.create(GameRoom.prototype);
       legacy.push({ i, client: { buff: c.buff, power: c.power, duration: c.duration }, oldWorker: o || 'none (no buff)' });
     }
   });
-  check('the client\'s old-worker effects match v2.3.3102\'s, on its three rows only', legacy.length === 0, legacy);
+  check('the client\'s old-worker effects match v2.3.3111\'s, on its three rows only', legacy.length === 0, legacy);
 }
 
-// ── 4b. v2.3.3105: DISHES, both directions, and every recipe makes a thing
+// ── 4b. v2.3.3114: DISHES, both directions, and every recipe makes a thing
 // the worker can eat or drink (a dish, or a SHOP_ITEMS bottle) ──
 {
   const bad = [];
@@ -1391,7 +1391,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 }
 
 // ── THE FARM: the Feed & Seed window must promise what the worker settles ──
-// v2.3.3102.  The window draws a seed's price, its time (dry and watered),
+// v2.3.3111.  The window draws a seed's price, its time (dry and watered),
 // its yield (plain and fertilized), its XP and its level lock from the client
 // copy; the worker plants, ripens and pays from its own.  A drift here is a
 // bed that says "6m" while the worker waits 8, or a Buy button that charges

@@ -335,7 +335,7 @@ check('firemaking: a __proto__ key is refused and leaves the prototype alone',
   Object.prototype.wood_oak === undefined && ({}).__proto__ === Object.prototype);
 
 // ── 4. cook_recipe (dry-run-then-consume) ──
-const R0 = COOKING_RECIPES[0]; // { herb_firebloom: 1 } -> the bread's `rest` timer (v2.3.3105)
+const R0 = COOKING_RECIPES[0]; // { herb_firebloom: 1 } -> the bread's `rest` timer (v2.3.3114)
 ps.inventory = { herb_firebloom: 2 };
 ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
 ps._buffs = {};
@@ -346,12 +346,12 @@ check('recipe: ingredient consumed, buff timer set, tier*25 cooking XP',
   { inv: ps.inventory, buffs: ps._buffs, xp: ps.lifeSkills.cooking.xp });
 // Recipe 1 needs rock_vine + cloudpetal; holding only one of the two
 // must consume NEITHER (the dry-run pass).
-ps.lifeSkills.cooking.level = 3;   /* v2.3.3102: Root Stew's level, so the refusal below is the dry run's */
+ps.lifeSkills.cooking.level = 3;   /* v2.3.3111: Root Stew's level, so the refusal below is the dry run's */
 ps.inventory = { herb_rock_vine: 1 };
 const preRecipe = econSnap(ps);
 await send(ws, 'cook_recipe', { recipeIdx: 1 });
 check('recipe: missing one ingredient consumes NOTHING (dry-run rule)', econSnap(ps) === preRecipe);
-/* v2.3.3102: the recipe's Cooking level is the worker's gate (cooking.js) */
+/* v2.3.3111: the recipe's Cooking level is the worker's gate (cooking.js) */
 ps.lifeSkills.cooking.level = 2;
 ps.inventory = { herb_rock_vine: 1, herb_cloudpetal: 1 };
 const preLvl = econSnap(ps);

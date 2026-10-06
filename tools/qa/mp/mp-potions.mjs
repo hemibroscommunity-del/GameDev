@@ -112,7 +112,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 1. HIS SHELF: THE TWO STAPLES ──
      Owner: "These potions should be purchasable there." Bro, not the vendor
      building -- which is why this drives his drawer and not a door.
-     v2.3.3105: the farming plan takes the three tonics off his shelf the day
+     v2.3.3114: the farming plan takes the three tonics off his shelf the day
      the farm brews them (server data.js DIEGO_SHELF), so his staples are the
      cooked minnow and the stamina salts, and the draughts below come from the
      Cookhouse -- granted here as a brewed bottle would arrive. */
@@ -141,7 +141,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* A count on a thing he cannot run out of would be a lie. */
   rec.ok('...with no count badge, because a staple never runs out',
     shelf.badge === null, shelf);
-  rec.ok('...and no tonic among them -- they are brewed at the Cookhouse now (v2.3.3105)',
+  rec.ok('...and no tonic among them -- they are brewed at the Cookhouse now (v2.3.3114)',
     !shelf.ids.includes('swiftDraught') && !shelf.ids.includes('manaShard') && !shelf.ids.includes('whetstone'), shelf);
 
   /* ═══ v2.3.2127: BUYING IS HALF OF IT NOW ═══
@@ -244,7 +244,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.2127: it is a bottle now -- it has to reach the bag. */
   const salts = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).staminaSalts || 0);
   rec.ok('...and it lands in the BAG rather than firing at the counter', salts >= 1, { salts });
-  /* v2.3.3105: the Swift Draught is brewed now -- it arrives as a brewed
+  /* v2.3.3114: the Swift Draught is brewed now -- it arrives as a brewed
      bottle would, by the server's own credit, and is drunk from the bag. */
   await H.grant(wsPort, id, 'item', { invKey: 'swiftDraught', count: 1 });
   await P.page.waitForTimeout(1500);
@@ -305,7 +305,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`three specials really drained the pool server-side (${drained})`,
     drained < 60, { drained });
 
-  /* v2.3.3105: brewed, not bought -- see section 1. */
+  /* v2.3.3114: brewed, not bought -- see section 1. */
   await H.grant(wsPort, id, 'item', { invKey: 'manaShard', count: 1 });
   await P.page.waitForTimeout(1500);
   rec.ok('a Mana Draught bottle is in the bag (as brewed at the Cookhouse)',
@@ -317,7 +317,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     filled > drained + 40, { drained, filled });
 
   /* ── ONE BREW AT A TIME ──
-     Owner: "Only 1 effect active at a time though." v2.3.3105: one meal and
+     Owner: "Only 1 effect active at a time though." v2.3.3114: one meal and
      one brew -- and both draughts are brews, so the Swift Draught that was
      running a moment ago must have ended. */
   const excl = await H.readState(P, (S) => ({

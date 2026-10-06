@@ -1,4 +1,4 @@
-/* MEALS AND BREWS YOU CARRY, ON A PHONE (v2.3.3105).
+/* MEALS AND BREWS YOU CARRY, ON A PHONE (v2.3.3114).
  *
  * The farming plan's Phase 2 (docs/FARMING-PLAN.md, docs/specs/meals.md): the
  * Cookhouse makes things you carry, one meal and one brew may run at once,
@@ -154,7 +154,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const fed = await H.readState(A, (S) => ({ bread: ((S.rpg && S.rpg.inventory) || {}).meal_herb_bread || 0,
       regenMs: S._regenBuff ? S._regenBuff - Date.now() : 0 }));
     rec.ok('its popup has an Eat button and says what it does', ate.tile && ate.btn && !!ate.info, ate);
-    /* v2.3.3105 review: the caption was the category's id, POTION, on a bread */
+    /* v2.3.3114 review: the caption was the category's id, POTION, on a bread */
     rec.ok('...and its caption is the chip\'s word, Consumable (not Potion)', ate.caption === 'Consumable', ate);
     rec.ok('...and eating it runs the meal for half an hour, the bread used up', fed.bread === 0 && fed.regenMs > 28 * 60000 && fed.regenMs <= 30 * 60000, fed);
     const hud1 = await A.page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
@@ -192,7 +192,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForTimeout(250);
     }
     rec.ok('...and offered a Fury Tonic, he says he won\'t buy it (no Sell button to press)', !!act && act.disabled && /won.t buy/i.test(act.label), act);
-    /* v2.3.3105 review: nor a dish -- its own pile paid more than its herbs' */
+    /* v2.3.3114 review: nor a dish -- its own pile paid more than its herbs' */
     await H.grant(wsPort, id, 'item', { invKey: 'meal_herb_bread', count: 1 });
     await A.page.waitForTimeout(1500);
     await A.page.evaluate(() => { try { window.__broShopBus.setSel('meal_herb_bread', 'bag'); } catch (e) {} });

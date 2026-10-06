@@ -1,4 +1,4 @@
-# The farm: real crops at the Feed & Seed (v2.3.3102)
+# The farm: real crops at the Feed & Seed (v2.3.3111)
 
 > Owner, 2026-10-06: *"mechanics similar to the old FarmVille game where you
 > have to wait to harvest and each has a wait time different depending on what
@@ -204,7 +204,7 @@ ARCHITECTURE-HANDOFF's storage-key table.
   `_tickPlayerRegen` now pays **2% of max HP a second** while it runs, in or
   out of a fight, which is what its card always said. It does not apply in a
   hub, where the 10% top-off is faster, or in an arena match or a duel.
-  - **Changed in v2.3.3105** (`docs/specs/meals.md`): a carried meal lasts
+  - **Changed in v2.3.3114** (`docs/specs/meals.md`): a carried meal lasts
     half an hour, so the bread now doubles the out-of-combat healing instead,
     and never heals mid-fight.
 - **The recipes' Cooking levels are the worker's gate** (`cooking.js`

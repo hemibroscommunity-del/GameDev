@@ -29,8 +29,8 @@ import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the sho
 import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the trade */
 import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
 import { DAILY_CHEST_ICON } from '@/rendering/chestPreload.js';   /* v2.3.2820 */
-import { FARM_ITEM_NAMES, farmLookFor } from '@/data/farmCrops.js';   /* v2.3.3102: the farm's goods */
-import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3105: the Cookhouse's meals and brews */
+import { FARM_ITEM_NAMES, farmLookFor } from '@/data/farmCrops.js';   /* v2.3.3111: the farm's goods */
+import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3114: the Cookhouse's meals and brews */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -38,7 +38,7 @@ import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3105: the Cook
 // monster bones, etc.) are crafting materials.
 export const classify = (key) => {
   const k = (key || '').toLowerCase();
-  /* v2.3.3105: FOOD -- cooked fish and the Cookhouse's meals, the things you
+  /* v2.3.3114: FOOD -- cooked fish and the Cookhouse's meals, the things you
      EAT (the farming plan's "a Food filter ... in the bag") -- files under the
      potions' chip, renamed Consumable (bagFilterBus.js says why it is not a
      chip of its own).  First, so a fish named like a weapon is still food.
@@ -269,10 +269,10 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   staminaSalts: 'Stamina Salts',
   daily_chest: 'Daily Chest',   /* v2.3.2820: the daily login reward (server dailychest.js) */
   bar_copper: 'Copper Bar',     /* v2.3.2822: prettyName would say "Bar Copper" (server smelting.js) */
-  /* v2.3.3102: seeds, crops and compost (server farm.js) -- prettyName would
+  /* v2.3.3111: seeds, crops and compost (server farm.js) -- prettyName would
      say "Seed Carrot" and "Herb Firebloom" */
   ...FARM_ITEM_NAMES,
-  /* v2.3.3105: the Cookhouse's dishes (data/dishes.js) -- prettyName would say
+  /* v2.3.3114: the Cookhouse's dishes (data/dishes.js) -- prettyName would say
      "Meal Herb Bread" and "Brew Firebloom Tea" */
   ...DISH_NAMES,
   bar_iron: 'Iron Bar',         /* v2.3.3092 */
@@ -332,7 +332,7 @@ export const isCapeItemKey = (key) => String(key || '').startsWith(CAPE_ITEM_PRE
  * server table, which is what keeps the two from drifting. */
 export const isPotionKey = (key) => Object.prototype.hasOwnProperty.call(
   POTION_THUMBS, String(key || '').toLowerCase())
-  /* v2.3.3105: ...and the Cookhouse's brews, drunk by the same potion_drink
+  /* v2.3.3114: ...and the Cookhouse's brews, drunk by the same potion_drink
      (the worker's _handleDrinkRequest takes DISHES brews too). */
   || !!((dishFor(key) || {}).slot === 'brew');
 
@@ -347,13 +347,13 @@ export const iconFor = (key) => {
      (UI-BIBLE icon prompts) -- the same honest placeholder the ticket had. */
   if (isChestKey(key)) return '\uD83C\uDF81';
   const k = (key || '').toLowerCase();
-  /* v2.3.3102: the farm's goods, by exact key and above the herb pattern
+  /* v2.3.3111: the farm's goods, by exact key and above the herb pattern
      below, which would draw every herb the same leaf -- a seedling for a
      seed, each crop its own glyph, a worm for compost (data/farmCrops.js).
      Glyphs until crop art is made, the daily chest's honest placeholder. */
   const farmLook = farmLookFor(k);
   if (farmLook) return farmLook;
-  /* v2.3.3105: a Cookhouse dish, its own glyph (data/dishes.js) -- a glyph
+  /* v2.3.3114: a Cookhouse dish, its own glyph (data/dishes.js) -- a glyph
      until dish art is made, as the crops have. */
   const dish = dishFor(key);
   if (dish && dish.look) return dish.look;

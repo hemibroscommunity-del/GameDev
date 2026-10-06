@@ -74,7 +74,7 @@ herbs; this makes them worth growing.
   from `DISHES.meal_herb_bread.power`). It never heals mid-fight, in a duel,
   or in an arena match.
   - Its timer is saved as **`rest`**, not `regen`. Phase 1's server
-    (v2.3.3102) reads `regen` as 2% of max HP a second, in a fight too. If
+    (v2.3.3111) reads `regen` as 2% of max HP a second, in a fight too. If
     the game were ever rolled back to it, a half-hour `regen` would have
     healed that fast for up to 30 minutes. Under its own name, a rollback
     simply drops the bread's effect.
