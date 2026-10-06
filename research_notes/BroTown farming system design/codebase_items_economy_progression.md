@@ -63,11 +63,61 @@ Diego sells exactly five "staples" -- one heal food and four bottles -- all read
 
 ## Cooking
 
-(pending)
+### Takeaway
+Server-settled cooking today is (a) raw fish -> cooked fish via a timing/gesture minigame (`cook_request`), and (b) three multi-ingredient "herb" recipes (`cook_recipe`) whose herb ingredients the server never mints -- so the recipe path is real code with no live supply. Cooked fish is the game's main player-made heal (100/140/180 HP); recipes grant short timed buffs through the same `ps._buffs` record the potions use. Crops would slot in most cheaply as new `COOKING_RECIPES` rows (index-addressed, mirrored client/server).
+
+### Cited Findings
+**Fish cooking (exists and works, server-settled).**
+- `cook_request {fishKey, kind}`: consumes one raw `fish_*`, mints `cooked_<fishKey>` (+200 cooking XP) or `burnt_dust` -- `server/src/cooking.js:576-665`; 200 XP is "25x the original" per owner ("Lifeskills xp is far too slow") -- `server/src/cooking.js:645-658`.
+- The outcome is PLAYER TIMING (flip inside the window), which the server deliberately does not roll -- `docs/specs/cooking.md` ("Why the server does NOT roll the outcome"); server bounds cadence instead.
+- Rate limits: `COOK_PER_MIN` 45 -- `server/src/cooking.js:20-30`; `COOK_FLOOR_MS` 900 ms between cooks -- `server/src/cooking.js:620-626`; botfp `COOK_HOUR_CAP` 2,400 -- `server/src/botfp.js:156`; quickest honest cycle 1,510 ms (`HONEST_CYCLE` 90 + 220 + 1,200) -- `server/src/gathering.js:106-113`; gesture target 1,500 ms -- `src/game/gesturePose.js:103`.
+- Eating: `eat_request` heals `ceil(92 + tier.lvl x 8)` + the HP-grid Recovery flat bonus; only `cooked_fish_*` keys are edible; refused in an arena match -- `server/src/cooking.js:47-99`. Minnow 100, clownfish 140, trout 180 (FISH_TIERS lvl 1/6/11 -- `server/src/data.js:424-428`).
+- The cooking spec still says "+8 cooking XP" -- `docs/specs/cooking.md` step 6 -- but the code pays 200 (`server/src/cooking.js:658`); code wins.
+**Multi-ingredient recipes (code exists and works; ingredients never minted = effectively dormant).**
+- Server table (index-addressed; the client sends `recipeIdx`) -- `server/src/data.js:430-434`: Herb Bread (1 `herb_firebloom`) -> `regen` 60 s; Root Stew (`herb_rock_vine` + `herb_cloudpetal`) -> `resist` 60 s; Firebloom Tea (2 `herb_firebloom`) -> `damage` 90 s. Client copy with names, `cookLvl` 1/3/6 and descriptions ("Regen 2%/s for 60s", "5% resist for 60s", "+5% dmg for 90s") -- `src/data/gameSystems.js:981-1015`.
+- Server handler: dry-run all ingredients, consume (exact key or `cooked_`+key only), clear all timed buffs, write the timer, +`tier x 25` cooking XP (NOT the 25x scale) -- `server/src/cooking.js:226-347`. It does NOT check `cookLvl` (the server table has no such field) -- `server/src/data.js:430-434`.
+- Supported effect words in the handler: `heal` (dead data, no recipe uses it), `regen`, `resist`, `damage`, `all` (damage+spd+hp+mana timers) -- `server/src/cooking.js:308-339`.
+- No server code produces any `herb_*` key: the only server hits are the recipe table and a comment (`server/src/data.js:431-433`, `server/src/cooking.js:238-239`); harvest keys are only `wood_`/`fish_`/`ore_` -- `server/src/gathering.js:311-345`. The legacy FarmPanel harvest credits `herb_<name>` CLIENT-side only (`R.inventory[...] +=`, `localStorage`) -- `src/ui/panels/buildings/FarmPanel.jsx:218-231` (exists but client-only; the server's next player_state inventory echo would overwrite it).
+- The client's quest `trader_3` "Farm to Table" (plant and harvest a crop, flag `harvestedCrop`) unlocks "Herb buff recipes ... at the Kitchen" -- `src/data/gameSystems.js:6806-6824`; the server pays it with no objective (client-trusted) -- `trader_3: {gold:150, xp:35, next:null}` -- `server/src/data.js:716`.
+**Where cooking happens.**
+- The Wheel Brotown's Cookhouse door opens TOWN_BUILDINGS `cooking` (`cookhouse: 'cooking'`) -- `src/data/wheelBuildingDoors.js:39`, the KITCHEN building ("Cook food buffs", action `cook`) -- `src/data/buildings.js:15`; its panel lists the fish minigame and the herb recipes, greying a recipe below its `cookLvl` -- `src/ui/panels/buildings/CookPanel.jsx:503-711`.
+- A campfire is lit by burning a `wood_*` log from the bag; the server only consumes the log, the fire itself is a 45 s client-local prop -- `server/src/cooking.js:101-142`.
+- Cooking the bag's best recipe from a campfire prompt also sends `cook_recipe` -- `src/ui/BroTown.jsx:13400-13470`.
+
+### Inferences
+- A crop-based recipe needs: a new row appended to BOTH `COOKING_RECIPES` tables (append only -- the index is the wire id), ingredient keys the server can mint (a server-settled harvest), and an effect word the handler and the readers understand. "Heal" recipes already have a handler branch.
+- Because the recipe XP (`tier x 25`) was deliberately NOT scaled 25x (`server/src/cooking.js:651-657`), a crop recipe pays ~1/8 of a fish cook's 200 XP unless that is changed.
+- Herb items (`herb_firebloom`, `herb_rock_vine`, `herb_cloudpetal`) are an existing, named, iconed ingredient set (`src/ui/panels/TradeWindowPanel.jsx:94`) with zero live source: they are the obvious first crops if the farm becomes server-settled.
+
+### Gaps
+- Whether the owner wants recipe buffs at all (the recipes are pre-Wheel design) is not stated in code.
 
 ## Life skills
 
-(pending)
+### Takeaway
+There are ten life skills on both sides and `farming` is ALREADY one of them (persisted, migrated, leaderboarded, shown in the Skills panel) -- it simply has no server-settled XP source; the only farming XP grant is the legacy client-only FarmPanel. A server-side Farming skill would follow the gathering pattern exactly: a server XP grant through `_addLifeSkillXp`, an optional level gate table like `GATHER_REQ_LVL`, and botfp/rate caps.
+
+### Cited Findings
+- Client list: woodcutting, fishing, mining, farming, cooking, blacksmithing, woodworking, gemCutting, enchanting, trapping -- `src/data/lifeSkills.js:9`; server migration keys, same ten -- `server/src/migrations.js:88`; leaderboard maps `farming` -- `server/src/leaderboard.js:65`; chain score lists it -- `server/src/chainscore.js:60`; Skills panel shows Farming ("Grow ingredients at the farm") under "Utility" -- `src/ui/panels/SkillsPanel.jsx:249-262`; leaderboard tab -- `src/ui/mobile/dash/LeaderboardPanel.jsx:33`.
+- The only farming XP grant is client-side: `addLifeSkillXp(sk, 'farming', p.tier * 20)` in the legacy FarmPanel -- `src/ui/panels/buildings/FarmPanel.jsx:223` (exists but client-only; no server writer -- grep of server/src for 'farming' finds no XP grant).
+- Level curve (both sides, byte-identical): XP to next level = `ceil(500 x 1.08^(level-1))` -- `src/data/lifeSkills.js:8`, `server/src/gathering.js:457-476`. Computed from that formula: 500 XP for L1->2, 1,000 at L10, 2,158 at L20, 21,714 at L50; cumulative to reach L5 = 2,254, L10 = 6,247, L20 = 20,732, L30 = 51,997, L50 = 265,197, L99 = 11,780,929 (arithmetic on the cited formula).
+- Harvest XP = `ceil((tier x 1.5 + 5) x 25) x accuracy` (ok 1.0 / good 1.5 / perfect 2.0) -- `server/src/gathering.js:446-455`, `server/src/gathering.js:360-364`; computed: tier 1 = 163/245/326, tier 6 = 350/525/700, tier 11 = 538/807/1,076. The "x 25" is the owner's 25x ("Lifeskills xp is far too slow", v2.3.1435 + v2.3.1765) -- `server/src/gathering.js:447-452`; `docs/specs/pace-and-difficulty.md:29-33` says life skills were deliberately NOT halved with combat XP.
+- So a level-1 gatherer levels in 2-4 harvests (500 XP / 163-326), and ~20-40 harvests reach Lv 10.
+- Not 25x-scaled, by explicit choice: recipe cooking (`tier x 25`), forge/woodwork crafting, enchanting, gem cutting, trapping -- `server/src/cooking.js:651-657`.
+- Level gates: `GATHER_REQ_LVL` = ore {1:1, 6:1, 11:5}, fish {1:1, 6:5, 11:10}, tree {1:1, 6:5, 11:10} -- `server/src/gathering.js:147-151`, mirrored `src/data/lifeSkills.js:43-47` (mirror-audit pinned); enforced on `extraction_start` and `node_strike` with kill switch `gatherreq: false` -- `server/src/gathering.js:115-146`; a below-level try is a client-only animation that sends nothing (CLAUDE.md v2.3.3059).
+- Tools: one per gathering skill, held as inventory items `woodcutting_axe`, `fishing_pole`, `mining_pickaxe`, granted by quest `life_1` -- `server/src/gathering.js:520-536`, `server/src/data.js:679-685`; "Deliberately NOT applied to farming/cooking/the crafting skills ... Anything absent from this map is ungated" -- `server/src/gathering.js:528-531`. Tools survive death -- `server/src/gathering.js:538-569`.
+- Yield: trees and fish always 1 per harvest; ore 2 on a 'perfect' -- `server/src/gathering.js:347-358`; 'perfect' claims capped at 45/min (`HARVEST_PERFECT_PER_MIN`) -- `server/src/gathering.js:113`, `server/src/gathering.js:366-387`; botfp `HARVEST_HOUR_CAP` 2,400 -- `server/src/botfp.js:148`.
+- Item keys are minted by the server from type + tier: `<wood|fish|ore>_<name>` (e.g. `wood_pine_log`, `fish_minnow`, `ore_black_steel_ore`) -- `server/src/gathering.js:311-345`.
+- Node respawn 20 s -- `server/src/index.js:1038`; harvest open delay base 4,000 ms (+1,200 ms per tier above skill, -250 ms per level below) -- `server/src/index.js:1057`, `server/src/gathering.js:489-500`.
+- Harvest also rolls a 33% elemental shard -- `server/src/gathering.js:478-485` (on the Wheel the node's `home` land's shard; none on the commons -- CLAUDE.md v2.3.3012).
+- A life skill is never level 0 (`healLifeSkillLevels`, both sides) -- CLAUDE.md v2.3.3039-3046 bullet.
+
+### Inferences
+- A Farming skill would reuse: `_addLifeSkillXp(ps, 'farming', xp)` (exists), the persisted `ps.lifeSkills.farming` record (exists), a level-gate table keyed by crop (pattern of `GATHER_REQ_LVL` + mirror-audit), and a botfp-style hourly cap. Because crops are timer-based (not swing-based), the anti-cheat surface is mostly "the server owns the plant time"; harvest XP per crop should be sized against the 163-1,076 per-harvest and 200-per-cook figures above so Farming levels at a similar pace to the other gathering skills.
+- If seeds are gated by Farming level in "levels of 5" like the owner's ore/fish rule, the natural ladder is crop tiers at Farming 1 / 5 / 10 / 15 ...
+
+### Gaps
+- No doc states target hours-to-level for life skills; only the per-action XP and curve exist.
 
 ## Items and inventory
 
