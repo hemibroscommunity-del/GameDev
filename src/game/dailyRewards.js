@@ -24,6 +24,7 @@ import { BT_AUDIO } from '@/data/index.js';
 import { ZONES } from '@/data/zones.js';
 
 let _state = null;
+let _lastSpin = null;   /* { news, at }: the last answer to a spin act, kept apart from `news` */
 let _win = { open: false, tab: 'today', seq: 0 };
 const _listeners = new Set();
 const emit = () => { for (const fn of _listeners) { try { fn(); } catch (e) { /* one dead listener must not starve the rest */ } } };
@@ -31,6 +32,9 @@ const emit = () => { for (const fn of _listeners) { try { fn(); } catch (e) { /*
 export const dailyRewardsBus = {
   /** The worker's last word, or null before the first. */
   get() { return _state; },
+  /** The last answer to a spin act ({news, at}), which a later state's news
+      cannot replace before the wheel reads it. */
+  lastSpin() { return _lastSpin; },
   /** The window: { open, tab, seq }. */
   win() { return _win; },
   openWindow(tab) { _win = { open: true, tab: tab || _win.tab || 'today', seq: _win.seq + 1 }; emit(); },
@@ -65,9 +69,14 @@ function send(type, payload) {
   try { S.channel.send({ type, payload: payload || {} }); return true; } catch (e) { return false; }
 }
 let _spinSeq = 0;
-export function askSpin() {
+/** One act on the daily spin: 'spin' (a new lump sum), 'double' (double or
+    nothing on the pot) or 'collect' (take the pot). */
+export function askSpin(act) {
   const S = gameState();
-  return send('daily_spin', { opId: 'spin:' + ((S && S.myId) || 'me') + ':' + Date.now() + ':' + (++_spinSeq) });
+  return send('daily_spin', {
+    act: act === 'double' || act === 'collect' ? act : 'spin',
+    opId: 'spin:' + ((S && S.myId) || 'me') + ':' + Date.now() + ':' + (++_spinSeq),
+  });
 }
 export function askReroll(i) { return send('daily_reroll', { i }); }
 export function askClaim(tier) { return send('season_claim', tier === 'all' ? { all: true } : { tier }); }
@@ -219,6 +228,10 @@ export function applyRewardsState(S, payload) {
   if (S) S._dailyRewards = _state;
   try { if (typeof window !== 'undefined' && window.__btProbe) (window.__btRewardsLog || (window.__btRewardsLog = [])).push({ at: Date.now(), news: payload.news || null }); } catch (e) { /* probe only */ }
   const n = payload.news;
+  if (n && typeof n === 'object' && n.kind === 'spin') _lastSpin = { news: n, at: _state._at };
+  /* a pot left open was paid at the day's end (the worker's rollover): the
+     coins moved on the echo, and this says why */
+  if (Number(payload.kept) > 0) toastWhenSeen('Your daily spin\'s pot was kept for you: +' + Math.floor(payload.kept).toLocaleString('en-US') + ' coins.');
   if (n && typeof n === 'object') {
     if (n.kind === 'daily') {
       const q = prev && prev.dq && prev.dq.list ? prev.dq.list[n.i] : null;

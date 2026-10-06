@@ -3,19 +3,22 @@
  * Owner, 2026-10-06: a layered daily system (a reward for coming back, daily
  * quests, a season track), then: "Personally I find the login page with the
  * chest intrusive.  I'd rather have it be something like a free daily spin
- * from the gambling building ... the first win has a 50% chance and it
- * continues further spins at a 50% win chance and the rewards double each
- * time."  One real player against a real worker, in the Wheel, on a phone:
+ * from the gambling building", and its twist: "Your first spin is for a lump
+ * sum award ... Then you have the option of spinning it for double or nothing
+ * at 50% odds and that continues on."  One real player against a real
+ * worker, in the Wheel, on a phone:
  *   1. the worker advertises the spin and the quests, and says so on join;
  *   2. NOTHING opens at login -- no chest window (even with the harness's
  *      chest offer allowed), no chest in the bag;
  *   3. at the Gambling Den's door, Enter opens its window with the FREE
- *      DAILY SPIN on top: a wheel, ten prizes each double the last;
- *   4. spinning until the first miss pays EXACTLY the ladder's rung reached
- *      (the coins on the purse), the wheel lands on a slice of the answer's
- *      colour, and the button then says to come back tomorrow;
+ *      DAILY SPIN on top: a prize wheel of eight lump sums, its labels upright;
+ *   4. the free spin lands on the prize slice the worker picked, and that is
+ *      a POT -- nothing paid yet; DOUBLE OR NOTHING turns the wheel to x2 / ✕
+ *      and lands on the answer; a won double then TAKEN pays exactly the
+ *      doubled pot, a lost one pays nothing; then the button counts down to
+ *      tomorrow's free spin;
  *   5. a bonus spin (an operator grant here; in the game, all three daily
- *      quests or the season) starts a fresh run;
+ *      quests or the season) lands a lump sum, and TAKE IT pays it exactly;
  *   6. "Daily quests & season" opens the Daily Rewards window: the streak,
  *      the spin used, three daily quests (the first quest handed in), a reroll
  *      that swaps one; finishing all three pays and banks a bonus spin;
@@ -37,7 +40,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `daily-${name}.png`) }).catch(() => {});
-  const { DAILY, spinPrize } = await import(H.REPO + '/server/src/dailyrewards.js');
+  const { DAILY } = await import(H.REPO + '/server/src/dailyrewards.js');
 
   const P = await H.newPlayer(browser, { name: 'Spinbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, chestOffer: true });
   const errors = [];
@@ -64,7 +67,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const caps = await H.readState(P, (S) => S._serverCaps || {});
     const st0 = await waitFor(state, 15000);
     rec.ok('the worker advertises the free spin and the daily quests, and sends their state on join',
-      caps.dailyspin === true && caps.dailyquests === true && !!st0 && st0.spin.ready === 1 && st0.spin.layers === DAILY.SPIN.LAYERS,
+      caps.dailyspin === true && caps.dailyquests === true && !!st0 && st0.spin.ready === 1 && st0.spin.open === 0
+        && Array.isArray(st0.spin.prizes) && st0.spin.prizes.length === DAILY.SPIN.PRIZES.length,
       { caps: { dailyspin: caps.dailyspin, dailyquests: caps.dailyquests }, spin: st0 && st0.spin });
 
     /* ── 2. nothing at login ── */
@@ -107,62 +111,96 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     const spinBox = await waitFor(() => P.page.evaluate(() => {
       const el = document.querySelector('[data-daily-spin]');
-      if (!el) return null;
+      const wh = document.querySelector('[data-spin-wheel]');
+      if (!el || !wh) return null;
       const r = el.getBoundingClientRect();
-      return { state: el.getAttribute('data-daily-spin'), rungs: document.querySelectorAll('[data-spin-rung]').length,
-        wheel: !!document.querySelector('[data-spin-wheel]'), btn: (document.querySelector('[data-spin-btn]') || {}).textContent || '',
-        w: Math.round(r.width), l: Math.round(r.left), r: Math.round(r.right), vw: window.innerWidth,
-        first: (document.querySelector('[data-spin-rung="1"]') || {}).textContent, last: (document.querySelector('[data-spin-rung="10"]') || {}).textContent };
+      /* every label upright: its own turn and the wheel's add to nothing */
+      const ang = (e) => { const m = getComputedStyle(e).transform; if (!m || m === 'none') return 0; const v = m.match(/matrix\(([^)]+)\)/); if (!v) return 0; const [a, b] = v[1].split(',').map(Number); return Math.atan2(b, a) * 180 / Math.PI; };
+      const wd = ang(wh);
+      const labs = Array.from(wh.querySelectorAll('[data-slab]'));
+      const tilt = labs.map((l) => Math.round(((ang(l) + wd) % 360 + 540) % 360 - 180));
+      return { state: el.getAttribute('data-daily-spin'), face: wh.getAttribute('data-face'), labels: labs.map((l) => l.textContent),
+        tilt, btn: (document.querySelector('[data-spin-btn]') || {}).textContent || '', sub: (document.querySelector('[data-spin-sub]') || {}).textContent || '',
+        w: Math.round(r.width), l: Math.round(r.left), r: Math.round(r.right), vw: window.innerWidth };
     }), 6000);
     await shot(P, 'den-ready');
-    rec.ok('at the Gambling Den, Enter opens its window with the free daily spin on top: a wheel and ten prizes, each double the last',
-      !!den && opened === 'gamble' && !!spinBox && spinBox.state === 'ready' && spinBox.wheel && spinBox.rungs === DAILY.SPIN.LAYERS
-        && /free/i.test(spinBox.btn) && spinBox.first === String(st0.spin.base) && spinBox.l >= 0 && spinBox.r <= spinBox.vw,
-      { den: !!den, opened, spinBox });
+    const ORDER = [0, 4, 1, 5, 2, 6, 3, 7];
+    const short = (n) => (n >= 10000 ? (n / 1000).toFixed(n % 1000 ? 1 : 0).replace(/\.0$/, '') + 'k' : n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n));
+    const wantLabels = ORDER.map((p) => short(st0.spin.prizes[p].c));
+    rec.ok('at the Gambling Den, Enter opens its window with the free daily spin on top: eight lump sums on the wheel, upright, and the odds',
+      !!den && opened === 'gamble' && !!spinBox && spinBox.state === 'ready' && spinBox.face === 'prize'
+        && JSON.stringify(spinBox.labels) === JSON.stringify(wantLabels) && spinBox.tilt.every((t) => Math.abs(t) <= 1)
+        && /free/i.test(spinBox.btn) && /jackpot/i.test(spinBox.sub) && spinBox.l >= 0 && spinBox.r <= spinBox.vw,
+      { den: !!den, opened, spinBox, wantLabels });
 
-    /* ── 4. spin until the first miss ── */
+    /* ── 4. the free spin, then double or nothing ── */
+    const lastLog = () => P.page.evaluate(() => { const l = window.__btSpinLog || []; return l.length ? l[l.length - 1] : null; });
+    const logLen = () => P.page.evaluate(() => (window.__btSpinLog || []).length);
+    const act = async (sel) => {
+      const before = await logLen();
+      const clicked = await P.page.evaluate((q) => { const b = document.querySelector(q); if (!b || b.disabled) return false; b.click(); return true; }, sel);
+      if (!clicked) return null;
+      return waitFor(() => P.page.evaluate((n) => { const l = window.__btSpinLog || []; return l.length > n ? l[l.length - 1] : null; }, before), 12000, 150);
+    };
+    /* where the wheel stopped: the slice under the pointer at the top, and
+       whether every label there still stands upright */
+    const under = () => P.page.evaluate(() => {
+      const el = document.querySelector('[data-spin-wheel]');
+      const ang = (e) => { const m = getComputedStyle(e).transform; if (!m || m === 'none') return 0; const v = m.match(/matrix\(([^)]+)\)/); if (!v) return 0; const [a, b] = v[1].split(',').map(Number); return Math.atan2(b, a) * 180 / Math.PI; };
+      const deg = ang(el);
+      const u = ((360 - ((deg % 360) + 360) % 360) % 360);
+      const tilt = Array.from(el.querySelectorAll('[data-slab]')).map((l) => Math.round(((ang(l) + deg) % 360 + 540) % 360 - 180));
+      return { deg, slice: Math.floor(u / 45), face: el.getAttribute('data-face'), upright: tilt.every((t) => Math.abs(t) <= 1), tilt };
+    });
     const c0 = await coins();
-    const base = st0.spin.base;
-    let wins = 0;
-    let missed = false;
-    const lands = [];
-    for (let s = 0; s < DAILY.SPIN.LAYERS + 2 && !missed; s++) {
-      const before = await P.page.evaluate(() => (window.__btSpinLog || []).length);
-      const clicked = await P.page.evaluate(() => { const b = document.querySelector('[data-spin-btn]'); if (!b || b.disabled) return false; b.click(); return true; });
-      if (!clicked) break;
-      const landed = await waitFor(() => P.page.evaluate((n) => { const l = window.__btSpinLog || []; return l.length > n ? l[l.length - 1] : null; }, before), 12000, 150);
-      if (!landed) break;
-      /* where the wheel stopped: the slice under the pointer at the top */
-      const slice = await P.page.evaluate(() => {
-        const el = document.querySelector('[data-spin-wheel]');
-        const m = getComputedStyle(el).transform;
-        let deg = 0;
-        if (m && m !== 'none') { const v = m.match(/matrix\(([^)]+)\)/); if (v) { const [a, b] = v[1].split(',').map(Number); deg = Math.atan2(b, a) * 180 / Math.PI; } }
-        const under = ((360 - ((deg % 360) + 360) % 360) % 360);
-        return { deg, slice: Math.floor(under / 45) };
-      });
-      lands.push({ won: landed.won, k: landed.k, slice: slice.slice });
-      if (landed.won) wins++; else missed = true;
-      if (s === 0) await shot(P, 'den-after-first');
+    const first = await act('[data-spin-btn]');
+    const u1 = first ? await under() : null;
+    const pot1 = await P.page.evaluate(() => { const e = document.querySelector('[data-spin-pot]'); return e ? +e.getAttribute('data-spin-pot') : null; });
+    const c1 = await coins();
+    await shot(P, 'den-pot');
+    rec.ok('the free spin lands on the prize slice the worker picked, and that lump sum is a POT: shown, nothing paid yet',
+      !!first && first.act === 'spin' && !!u1 && u1.face === 'prize' && ORDER[u1.slice] === first.i && u1.upright
+        && pot1 === first.pot && first.pot === st0.spin.prizes[first.i].c && c1 === c0,
+      { first, u1, pot1, paid: c1 - c0 });
+    const take = await P.page.evaluate(() => ({ take: (document.querySelector('[data-spin-take]') || {}).textContent || '', dbl: (document.querySelector('[data-spin-double]') || {}).textContent || '' }));
+    rec.ok('two choices: Take it, or Double or nothing for twice the pot', /Take/.test(take.take) && /Double or nothing/.test(take.dbl)
+      && take.dbl.includes((first ? first.pot * 2 : 0).toLocaleString('en-US')), take);
+    await P.page.waitForTimeout(500);
+    const dbl = await act('[data-spin-double]');
+    const u2 = dbl ? await under() : null;
+    await shot(P, dbl && dbl.won ? 'den-doubled' : 'den-lost');
+    rec.ok('double or nothing turns the wheel to x2 / ✕ and lands on the answer',
+      !!dbl && dbl.act === 'double' && !!u2 && u2.face === 'double' && (u2.slice % 2 === 0) === !!dbl.won && u2.upright, { dbl, u2 });
+    let paidRun = 0;
+    if (dbl && dbl.won) {
       await P.page.waitForTimeout(500);
+      const tk = await act('[data-spin-take]');
+      paidRun = tk && tk.act === 'collect' ? tk.paid : -1;
     }
     await P.page.waitForTimeout(1200);
-    const c1 = await coins();
+    const c2 = await coins();
     const after = await P.page.evaluate(() => ({ btn: (document.querySelector('[data-spin-btn]') || {}).textContent || '', line: (document.querySelector('[data-spin-line]') || {}).textContent || '',
-      lit: document.querySelectorAll('[data-spin-rung][data-reached="1"]').length }));
+      pot: !!document.querySelector('[data-spin-pot]') }));
     await shot(P, 'den-done');
-    const expected = spinPrize(base, wins);
-    rec.ok(`spinning until the first miss (${wins} win${wins === 1 ? '' : 's'}, then a miss) paid exactly the rung reached: ${expected} coins`,
-      missed && c1 - c0 === expected, { wins, got: c1 - c0, expected, lands });
-    rec.ok('the wheel landed on a WIN slice for each win and a MISS slice for the miss',
-      lands.length > 0 && lands.every((l) => (l.slice % 2 === 0) === !!l.won), lands);
-    rec.ok('after the miss the window says what you kept, lights the rungs reached, and the button counts down to tomorrow\'s free spin',
-      /Next free spin in/i.test(after.btn) && /miss/i.test(after.line) && after.lit === wins, after);
+    const expected = dbl && dbl.won ? first.pot * 2 : 0;
+    rec.ok(dbl && dbl.won
+      ? `the double was won and taken: exactly the doubled pot, ${expected} coins, paid once`
+      : 'the double was lost: the pot is gone and nothing was paid',
+    !!dbl && c2 - c0 === expected && paidRun === expected, { won: dbl && dbl.won, got: c2 - c0, expected, paidRun });
+    rec.ok('then the window says what happened and the button counts down to tomorrow\'s free spin',
+      /Next free spin in/i.test(after.btn) && !after.pot && (dbl && dbl.won ? /\+/.test(after.line) : /Lost it all/.test(after.line)), after);
 
-    /* ── 5. a bonus spin ── */
+    /* ── 5. a bonus spin, taken ── */
     await H.devOp(wsPort, 'daily', id, { spins: 1 });
     const bonusBtn = await waitFor(() => P.page.evaluate(() => { const b = document.querySelector('[data-spin-btn]'); return b && /bonus/i.test(b.textContent) && !b.disabled ? b.textContent : null; }), 6000);
-    rec.ok('a bonus spin offers a fresh run', !!bonusBtn, bonusBtn);
+    const cB = await coins();
+    const bonus = bonusBtn ? await act('[data-spin-btn]') : null;
+    await P.page.waitForTimeout(500);
+    const took = bonus ? await act('[data-spin-take]') : null;
+    await P.page.waitForTimeout(1200);
+    const cB1 = await coins();
+    rec.ok('a bonus spin lands a lump sum, and Take it pays exactly that', !!bonusBtn && !!bonus && bonus.act === 'spin' && !!took
+      && took.paid === bonus.pot && cB1 - cB === bonus.pot, { bonusBtn, bonus, took, got: cB1 - cB });
 
     /* ── 6. the Daily Rewards window ── */
     await H.devOp(wsPort, 'quests', id);   /* the tutorial handed in: the daily quests open */

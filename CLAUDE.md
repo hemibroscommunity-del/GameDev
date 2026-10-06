@@ -1447,15 +1447,20 @@ remnant to migrate server-side, not a mode to preserve.
   - Since v2.3.3109 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
     brief ("a small reward just for logging in, daily quests ... feeding a
     longer progression track"), then: "I find the login page with the chest
-    intrusive ... a free daily spin from the gambling building ... the first
-    win has a 50% chance and it continues further spins at a 50% win chance
-    and the rewards double each time" (server/src/dailyrewards.js):
+    intrusive ... a free daily spin from the gambling building", and its twist:
+    "Your first spin is for a lump sum award ... Then you have the option of
+    spinning it for double or nothing at 50% odds and that continues on"
+    (server/src/dailyrewards.js):
     - the login pays NOTHING (no daily chest, no window; a chest still held
       opens from the bag) and settles a FORGIVING streak (cadence.js: a freeze
       every 7 days, 2 held, spent on a missed day);
     - the FREE DAILY SPIN tops the Gambling Den's window (DailySpin.jsx): a
-      50% coin a rung, ten rungs doubling from 25 (+5 a streak day, to 55),
-      paid as you climb and kept on the first miss; bonus spins start more;
+      prize wheel lands a LUMP SUM (`SPIN.PRIZES`: 25 at 40% ... 10,000 at
+      0.1%, +10% a streak day to +60%) as a POT, then TAKE IT or DOUBLE OR
+      NOTHING at 50% (the wheel turns x2 / ✕), again and again up to the
+      house limit `POT_MAX` 100,000 (paid by itself); the pot is money at
+      rest in the record, paid once a run (`spinpot:<pid>:<run>`), and one
+      left open is paid at the day's end; bonus spins start more;
     - THREE DAILY QUESTS once tut_1 is in (fight, gather with a tool, one
       more; one free reroll from ANY group; paid on completion; all three =
       +1 star and a bonus spin), counted by `_drSignal` at the kill / gather /

@@ -15,6 +15,11 @@
 > continues further spins at a 50% win chance and the rewards double each
 > time."* And: *"You can remove the daily chest and just do the gambling spin
 > like I said."*
+>
+> Then a twist on the spin, after a first cut that climbed a doubling ladder:
+> *"Your first spin is for a lump sum award. You have a rare chance at a high
+> lump sum in gold. Then you have the option of spinning it for double or
+> nothing at 50% odds and that continues on."*
 
 Nothing opens on login. Each of the three layers lives in its own place.
 
@@ -22,23 +27,34 @@ Nothing opens on login. Each of the three layers lives in its own place.
 
 ### 1. The free daily spin, at the Gambling Den
 
-- The top of the Gambling Den's window is a wheel and a ladder of ten prizes.
-  - The wheel has eight slices: four gold **WIN** and four slate **✕**.
-  - The ladder runs 25 → 50 → 100 → … → 12.8k, each prize double the one
-    before.
-- **Spin · free**: the wheel turns while the server rolls, then lands on a
-  slice of the answer's colour.
-  - **A win** lights the next rung and pays it at once. The button becomes
-    **Spin again · 50%**.
-  - **The first miss** ends the run, and you **keep the rung you reached**.
-    That rung was paid as you climbed, so a miss takes nothing back.
-- One free run each UTC day. The button counts down to the next one: "Next
+- The top of the Gambling Den's window is a **prize wheel** of eight lump
+  sums: 25, 50, 100, 200, 400, 1k, 2.5k and the 10k jackpot. Big and small
+  alternate round the wheel. The rare slices are coloured by rarity (teal,
+  blue, purple) and the jackpot is brass. The labels stay upright while it
+  turns.
+- **Spin · free**: the wheel turns while the server rolls, then lands on the
+  prize the server picked. That prize is your **pot**. It isn't paid yet.
+- Then two buttons:
+  - **Take 100** pays the pot and ends the run.
+  - **Double or nothing · 50% for 200**: the wheel turns into the coin's own,
+    half **x2** and half **✕**, and spins again. **x2** doubles the pot. **✕**
+    loses all of it. You can keep doubling until you take it, lose it, or
+    reach the house limit.
+- **The house limit is 100,000 coins.** A pot that can't double again
+  without passing it is paid by itself. A 10k jackpot can double three times,
+  to 80,000. A 25 can double eleven times, to 51,200.
+- **A pot is never lost by walking away.** It stays open if you close the
+  window or log out, and if it's still open when the day ends, it is paid to
+  you then, with a toast: "Your daily spin's pot was kept for you: +400 coins."
+- The odds are printed under the wheel: "Rare: 1 in 25 lands 1,000+, 1 in
+  1,000 the 10,000 jackpot." The slices are drawn the same size, as a
+  fairground wheel's are. The real odds are the server's weights.
+- One free spin each UTC day. The button counts down to the next one: "Next
   free spin in 7h 12m".
 - **Bonus spins** start extra runs. You get them by finishing all three daily
   quests and from the season. The button says "Use a bonus spin (2)".
-- The **login streak** raises the first prize: 25 coins on day 1, +5 a day, up
-  to 55 at a 7-day streak. A run's top prize is 512 × the first, so 12,800 to
-  28,160 coins.
+- The **login streak** raises every prize by 10% a day past the first, up to
+  +60% at a 7-day streak (25 → 40, 10k → 16k).
 - "Daily quests & season ›" opens the Daily Rewards window.
 
 ### 2. The Daily Rewards window, Today tab
@@ -49,7 +65,8 @@ Nothing opens on login. Each of the three layers lives in its own place.
     day doesn't count.
   - A gap longer than your freezes starts the streak again at day 1. That
     costs only the spin's streak bonus; season stars never reset.
-- **The spin's state**: ready, still going, bonus spins to use, or done.
+- **The spin's state**: ready, a pot waiting ("Your pot of 400 coins is
+  waiting"), bonus spins to use, or done.
 - **Three daily quests.** They open once Mayor Bro's first quest (tut_1) is
   handed in, which is when you can first leave the commons.
   - Each has an icon, a count ("7/15"), a bar, and its pay ("100 coins · ★ 1").
@@ -110,7 +127,7 @@ of what normal play earns.
 
 | Layer | Pays | On average |
 |---|---|---|
-| Free spin | 25–55 first rung, ×2 a rung, 10 rungs (top 1 run in 1,024) | base × 11/4 ≈ 69–151 coins a run |
+| Free spin | a lump sum: 25 (40%), 50 (25%), 100 (15%), 200 (10%), 400 (6%), 1,000 (3%), 2,500 (0.9%), 10,000 (0.1%), +10% a streak day to +60% | 144 coins a spin (230 at a 7-day streak); doubling never changes the average |
 | Daily quest | 100 (fight, gather), 120 (fight in a named land), 150 (cook, smelt) | ~300–400 coins a day for all three |
 | All three | +1 ★, +1 bonus spin | — |
 | Season (25 tiers) | 8,600 coins, 14 rare gems, 15 bonus spins, 3 freezes, 15 cooked minnows, 5 iron bars (an iron torso's worth) | ~300 coins a day over 28 days |
@@ -179,7 +196,7 @@ client draws whatever the server sends, so a retune is a server-only change.
 - **The record:** one per player, `daily_rewards:<pid>`. It is registered in
   ARCHITECTURE-HANDOFF rule 2.
   ```
-  { _v, sp: {day, free, open, k, base, run, extra},
+  { _v, sp: {day, free, open, pot, k, i, run, extra},
         dq: {day, list: [{t, p, g, n, d, c}], rr, all},
         se: {s, st, cl: [tier...], ov} }
   ```
@@ -189,12 +206,18 @@ client draws whatever the server sends, so a retune is a server-only change.
   writes it every 30 s and the disconnect handler writes it on the way out,
   the regen-save posture. A deploy can lose a few seconds of counting, never
   a reward.
-- **The spin settles like Ace's coin flip.** One input-gated event rolls,
-  adds the coins, saves, and answers. Nothing is escrowed; handoff rules 7–8.
-  A run's layers are paid as it climbs (layer 1 = base, layer k = base ×
-  2^(k−2)), so a run that reached layer k has paid base × 2^(k−1) in all. The
-  client's `opId` stops a resent tap from spinning twice
+- **The spin settles like Ace's coin flip.** Each act (`spin`, `double`,
+  `collect`) is one input-gated event that rolls, settles, saves and answers;
+  handoff rules 7–8. The client's `opId` stops a resent tap from acting twice
   (`oplog:spinop:<opId>`).
+  - The **pot is money at rest in the record** (`sp.pot`, `sp.open`), so a
+    deploy or a disconnect loses nothing.
+  - It is paid through `_creditPlayer` with one opId per run,
+    `spinpot:<pid>:<run>`, credit first and the run closed after (rule 5). A
+    crash between the two leaves the pot open, and paying it again is the
+    oplog's `dup`, so a run can never pay twice.
+  - `_drRollover` pays a pot still open at the day's end, except while
+    `dailyspin` is switched off: then it waits, open, for the switch.
 - **Quests and the season pay through `_creditPlayer`.** The opIds are
   deterministic: `dq:<pid>:<day>:<slot>` and `season:<pid>:<season>:<tier>:<grant>`.
   A claim and the season-end mail share the second opId, so the same tier can
@@ -232,8 +255,10 @@ settled, or null on a second login the same day.
 - `src/game/dailyRewards.js` holds the server's last state, turns `news` into
   toasts and sounds, and sends the four asks.
 - `src/ui/panels/buildings/DailySpin.jsx` is the spin. It is drawn in code: a
-  conic-gradient wheel and chip rungs, with no art to load and nothing held
-  when shut.
+  conic-gradient wheel with two faces (the prizes, and x2 / ✕), its labels
+  turned back as it turns so they stay upright, with no art to load and
+  nothing held when shut. What it says is held back until the wheel lands, so
+  the words never give the answer away.
 - `src/ui/mobile/DailyRewardsWindow.jsx` is the window. It uses the InfoPopup
   recipe for small screens (the card capped at the screen, only the middle
   scrolling), at z 9250.
@@ -245,17 +270,17 @@ settled, or null on a second login the same day.
 | Direction | Type | Payload | Notes |
 |---|---|---|---|
 | c→s | `rewards_get` | `{}` | answers `rewards_state`; throttled 800 ms |
-| c→s | `daily_spin` | `{opId}` | one spin: starts today's free run, else a bonus run; continues an open one |
+| c→s | `daily_spin` | `{act, opId}` | `act` `spin` (today's free spin, else a bonus spin; refused while a pot is open), `double` (double or nothing on the open pot) or `collect` (take it); no act is a spin |
 | c→s | `daily_reroll` | `{i}` | slot 0–2, exact integer; once a day; not a finished quest |
 | c→s | `season_claim` | `{tier}` or `{all: true}` | exact integer tier, reached and unclaimed |
-| s→c | `rewards_state` | `{now, resetAt, spin, streak, dq, season, news}` | PRIVILEGED; after `player_state` on join, and after every change |
+| s→c | `rewards_state` | `{now, resetAt, spin, streak, dq, season, news, kept?}` | PRIVILEGED; after `player_state` on join, and after every change. `spin` is `{on, ready, open, pot, k, i, canDouble, limit, chance, mult, prizes: [{c, w}], extra}`; `kept` is a pot paid at the day's end |
 | s→c | `daily_progress` | `{i, n, g}` | PRIVILEGED; a quest's count between two states |
 
 `news` kinds:
 
 | Kind | Fields |
 |---|---|
-| `spin` | `won`, `k`, `paid`, `total`, `base`, `open`, `started`, `top`, or `refused` |
+| `spin` | `act`, then for `spin`: `started`, `i`, `lump`, `pot`, `mult`, `jackpot`; for `double`: `won`, `k`, `pot`, `lost`; for `collect`: `paid`, `k`; `paid` and `top` when the house limit paid it; or `refused` (`none`, `open`, `closed`, `limit`) |
 | `daily` | `i`, `t`, `p`, `coins`, `stars`, `all` |
 | `reroll` | `i` |
 | `claim` | `tiers`, `grants` |
@@ -265,7 +290,7 @@ settled, or null on a second login the same day.
 
 All four c→s types are passthrough lines in the client's `channelShim`
 allowlist (TRAPS #18) and explicit router cases in `index.js`. The new
-payouts' `inbox_delivered` sources (`dailyquest`, `season`) stay out of chat.
+payouts' `inbox_delivered` sources (`dailyquest`, `season`, `dailyspin`) stay out of chat.
 The news says it instead, the daily login reward's rule since v2.3.2037.
 
 ## Deploy order and kill switches (rule 19, TRAPS §117)
@@ -285,11 +310,14 @@ The news says it instead, the daily login reward's rule since v2.3.2037.
 
 ## Tests
 
-- **`server/test/dailyrewards.test.mjs`** (~100 checks):
-  - the helpers;
+- **`server/test/dailyrewards.test.mjs`** (122 checks):
+  - the helpers, the prizes' odds and their average;
   - join and caps;
-  - every spin rule: doubling, keep on a miss, once a day, the top, bonus
-    runs, the streak's base, opId replay, cooldown, a new day, the switch;
+  - every spin rule: the lump sum as a pot, a double won and lost, taking it
+    (paid once, even after a crash), once a day, bonus spins, refusals, opId
+    replay, cooldown, the house limit, the streak's bonus, a pot left open at
+    midnight paid (on the next act and on the tick), the switch holding a pot
+    open;
   - the quests: lock, three for the toolless, counting by land/skill, paid
     once, all-three, reroll, junk input, the switch;
   - the season: claim, twice, not reached, junk, all, spin/freeze grants,
@@ -301,11 +329,12 @@ The news says it instead, the daily login reward's rule since v2.3.2037.
   nothing.
 - **`dailychest.test.mjs`:** no chest on login; a held chest still opens, every
   prize.
-- **`mp-dailyrewards`** (phone, 16 checks):
+- **`mp-dailyrewards`** (phone, 18 checks):
   - nothing at login;
-  - the Gambling Den's spin, paying exactly the rung reached and landing on
-    the right colour;
-  - a bonus run;
+  - the Gambling Den's spin: the eight prizes upright, landing on the prize
+    the server picked, the pot unpaid, Double landing on x2 or ✕, and exactly
+    the doubled pot paid (or nothing, when lost);
+  - a bonus spin taken, paying exactly its lump sum;
   - the window's quests, reroll and all-three;
   - the season's claims;
   - sideways fit;

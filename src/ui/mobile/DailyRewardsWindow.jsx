@@ -5,7 +5,7 @@ import { useModalGuard } from './modalGuardBus.js';
 import { tapDismiss, TAP_DISMISS_STYLE } from '../tapDismiss.js';
 import {
   dailyRewardsBus, questsLive, spinLive, askReroll, askClaim, askRewards,
-  questLabel, questIcon, grantLabel, untilText, claimableTiers, nextTier, tierNeed,
+  questLabel, questIcon, grantLabel, untilText, claimableTiers, nextTier, tierNeed, coinsShort,
 } from '@/game/dailyRewards.js';
 
 /* ═══ v2.3.3109: THE DAILY REWARDS WINDOW ═══
@@ -43,13 +43,14 @@ const Star = ({ size }) => (
   <span aria-hidden="true" style={{ color: COL.gold, fontSize: size || 13, lineHeight: 1 }}>★</span>
 );
 
-/* A bonus spin, drawn as the Gambling Den's wheel in small. */
+/* A bonus spin, drawn as the Gambling Den's prize wheel in small (its slices'
+   colours, DailySpin.jsx PRIZE_FILL in its ORDER). */
 const SpinGlyph = ({ size }) => {
   const s = size || 20;
   return (
     <span aria-hidden="true" style={{
       display: 'inline-block', width: s, height: s, borderRadius: '50%', flex: 'none',
-      background: 'conic-gradient(#D8AA58 0 45deg, #27393F 45deg 90deg, #D8AA58 90deg 135deg, #27393F 135deg 180deg, #D8AA58 180deg 225deg, #27393F 225deg 270deg, #D8AA58 270deg 315deg, #27393F 315deg 360deg)',
+      background: 'conic-gradient(#34494F 0 45deg, #2B6A61 45deg 90deg, #27393F 90deg 135deg, #2F5A87 135deg 180deg, #34494F 180deg 225deg, #664A8E 225deg 270deg, #27393F 270deg 315deg, #D8AA58 315deg 360deg)',
       border: '1.5px solid rgba(229,237,233,.35)', boxSizing: 'border-box',
     }} />
   );
@@ -138,6 +139,8 @@ function TodayTab({ st }) {
   const doneN = list.filter((q) => q.d).length;
   const sp = st.spin || {};
   const sk = st.streak || {};
+  /* the wheel's top prize as it pays today (the worker's `spin.prizes`) */
+  const jackpot = Array.isArray(sp.prizes) && sp.prizes.length ? sp.prizes[sp.prizes.length - 1].c : 0;
   return (
     <div>
       {/* the streak */}
@@ -172,12 +175,14 @@ function TodayTab({ st }) {
           <SpinGlyph size={30} />
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: COL.text }}>
-              {sp.ready ? 'Your free spin is ready' : (sp.open ? 'Your spin is still going' : (sp.extra > 0 ? sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's') + ' to use' : 'Today\'s spin is done'))}
+              {sp.open ? 'Your pot of ' + coinsShort(sp.pot) + ' coins is waiting' : (sp.ready ? 'Your free spin is ready' : (sp.extra > 0 ? sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's') + ' to use' : 'Today\'s spin is done'))}
             </span>
             <span style={{ display: 'block', fontSize: 11.5, color: COL.text2, marginTop: 1, lineHeight: 1.35 }}>
-              {sp.ready || sp.open || sp.extra > 0
-                ? 'At the Gambling Den in BroTown. Win ' + sp.base + ' coins, and every win after doubles it.'
-                : 'Next free spin in ' + untilText(st.resetAt, st) + '.'}
+              {sp.open
+                ? 'At the Gambling Den in BroTown: take it, or double or nothing.'
+                : (sp.ready || sp.extra > 0
+                  ? 'At the Gambling Den in BroTown. Spin for a lump sum' + (jackpot ? ', up to the ' + coinsShort(jackpot) + ' jackpot.' : '.')
+                  : 'Next free spin in ' + untilText(st.resetAt, st) + '.')}
             </span>
           </span>
         </div>

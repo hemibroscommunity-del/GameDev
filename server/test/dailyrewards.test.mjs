@@ -4,16 +4,18 @@
  * quests that get people playing, and both feeding a longer progression
  * track like a battle pass" -- then: "I'd rather have it be something like a
  * free daily spin from the gambling building where you can win quite good
- * rewards but it's rare.  Like a layered reward spin system where the first
- * win has a 50% chance and it continues further spins at a 50% win chance
- * and the rewards double each time."
+ * rewards but it's rare" -- and its twist: "Your first spin is for a lump
+ * sum award.  You have a rare chance at a high lump sum in gold.  Then you
+ * have the option of spinning it for double or nothing at 50% odds and that
+ * continues on."
  *
- *   1. The pure helpers: day numbers, seasons, the spin's prizes.
+ *   1. The pure helpers: day numbers, seasons, the spin's prizes and odds.
  *   2. The join: both caps advertised, the state sent after player_state,
  *      nothing paid by the login itself.
- *   3. The free spin: 50% a layer, the prize doubling, paid as you climb,
- *      kept on a miss, once a day, the top, bonus spins, the streak's base,
- *      a replayed opId, the cooldown, a new day, the kill switch.
+ *   3. The free spin: a lump sum as a pot, double or nothing (won, lost),
+ *      take it (paid once), once a day, bonus spins, refusals, a replayed
+ *      opId, the cooldown, the house limit, the streak's bonus, a pot left
+ *      open at midnight PAID, the kill switch holding a pot open.
  *   4. The daily quests: locked until tut_1, three for everyone (fights
  *      only without tools), counted by kind / land / skill, paid once, the
  *      all-three bonus, the reroll, the kill switch, junk input.
@@ -26,7 +28,7 @@
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import {
-  DAILY, dayOf, dayOfPeriod, seasonOf, seasonEndDay, spinBase, spinPrize, tierNeed,
+  DAILY, dayOf, dayOfPeriod, seasonOf, seasonEndDay, spinMult, spinLump, spinPick, tierNeed,
 } from '../src/dailyrewards.js';
 
 function makeState() {
@@ -76,8 +78,14 @@ const send = async (ws, type, payload) => {
 const lastState = (ws) => { const all = ws.sent.filter((m) => m.type === 'rewards_state'); return all.length ? all[all.length - 1].payload : null; };
 /* Force the next rolls of the spin's dice. */
 const force = (...vals) => { let i = 0; room._drRand = () => (i < vals.length ? vals[i++] : 0.99); };
-const WIN = 0.1;
-const MISS = 0.9;
+const PRIZES = DAILY.SPIN.PRIZES;
+const W_TOTAL = PRIZES.reduce((t, p) => t + p.w, 0);
+/* a roll that lands on prize i (the middle of its slice of the weights) */
+const AT = (i) => (PRIZES.slice(0, i).reduce((t, p) => t + p.w, 0) + PRIZES[i].w / 2) / W_TOTAL;
+const HEADS = 0.1;   /* a double won */
+const TAILS = 0.9;   /* a double lost */
+const spinNews = (w) => w.sent.filter((m) => m.type === 'rewards_state' && m.payload.news && m.payload.news.kind === 'spin').map((m) => m.payload.news);
+const paidSpin = (w) => w.sent.filter((m) => m.type === 'inbox_delivered').flatMap((m) => m.payload.entries || []).filter((e) => e.source === 'dailyspin');
 
 // ── 1. The pure helpers ──
 {
@@ -88,11 +96,19 @@ const MISS = 0.9;
   check('everything before the epoch is season 1, and season 1 is 28 days past it',
     seasonOf(E - 400) === 1 && seasonOf(E) === 1 && seasonOf(E + 27) === 1 && seasonOf(E + 28) === 2 && seasonOf(E + 56) === 3);
   check('a season ends 28 days after its start', seasonEndDay(1) === E + 28 && seasonEndDay(2) === E + 56);
-  check('the spin\'s base: 25 at a 1-day streak, +5 a day, capped at 7 days (55)',
-    spinBase(1) === 25 && spinBase(2) === 30 && spinBase(7) === 55 && spinBase(30) === 55 && spinBase(0) === 25);
-  check('the prize doubles each layer', spinPrize(25, 0) === 0 && spinPrize(25, 1) === 25 && spinPrize(25, 2) === 50 && spinPrize(25, 3) === 100
-    && spinPrize(25, DAILY.SPIN.LAYERS) === 25 * Math.pow(2, DAILY.SPIN.LAYERS - 1));
-  check('the spin is the owner\'s coin: 50% a layer', DAILY.SPIN.WIN_CHANCE === 0.5);
+  check('the streak\'s bonus: x1 at a 1-day streak, +10% a day, capped at 7 days (x1.6)',
+    spinMult(1) === 1 && spinMult(2) === 1.1 && spinMult(7) === 1.6 && spinMult(30) === 1.6 && spinMult(0) === 1);
+  check('a lump sum is the prize x the bonus, to the nearest 5', spinLump(25, 1) === 25 && spinLump(25, 1.1) === 30 && spinLump(25, 1.6) === 40
+    && spinLump(10000, 1.6) === 16000 && spinLump(0, 1) === 5);
+  check('the prizes rise, and each has a weight', PRIZES.length === 8 && PRIZES.every((p, i) => p.w > 0 && (i === 0 || p.coins > PRIZES[i - 1].coins)));
+  check('rare and high: the jackpot (10,000) is 1 in 1,000, a thousand or more 1 in 25',
+    PRIZES[7].coins === 10000 && PRIZES[7].w / W_TOTAL === 0.001 && PRIZES.filter((p) => p.coins >= 1000).reduce((t, p) => t + p.w, 0) / W_TOTAL === 0.04);
+  check('spinPick reads the weights', spinPick(0) === 0 && spinPick(AT(3)) === 3 && spinPick(0.9995) === 7 && spinPick(0.99999999) === 7
+    && PRIZES.every((p, i) => spinPick(AT(i)) === i));
+  const ev = PRIZES.reduce((t, p) => t + p.coins * p.w, 0) / W_TOTAL;
+  check('a spin pays 144 on average (the economy\'s size, v2.3.3109)', ev === 144, ev);
+  check('double or nothing is the owner\'s fair coin, under a house limit', DAILY.SPIN.DOUBLE_CHANCE === 0.5
+    && DAILY.SPIN.POT_MAX === 100000 && spinLump(PRIZES[7].coins, spinMult(7)) * 2 <= DAILY.SPIN.POT_MAX);
   check('a tier needs its stars', tierNeed(1) === DAILY.SEASON.STARS_PER_TIER && tierNeed(25) === 25 * DAILY.SEASON.STARS_PER_TIER);
   check('every tier pays something', DAILY.SEASON.TIERS.every((t) => Array.isArray(t) && t.length > 0
     && t.every((g) => ['coins', 'item', 'spin', 'freeze'].includes(g.kind) && g.n > 0)));
@@ -110,106 +126,178 @@ const ps = () => room.playerState['bp_dr_a'];
   const iPs = ws.sent.findIndex((m) => m.type === 'player_state');
   check('rewards_state is sent on join, after player_state', iState > 0 && iPs >= 0 && iState > iPs, { iState, iPs });
   const st = lastState(ws);
-  check('...a free spin is ready, at the base for a 1-day streak',
-    !!st && st.spin.on && st.spin.ready === 1 && st.spin.base === 25 && st.spin.layers === DAILY.SPIN.LAYERS, st && st.spin);
+  check('...a free spin is ready, nothing open, the wheel\'s prizes at a 1-day streak',
+    !!st && st.spin.on && st.spin.ready === 1 && st.spin.open === 0 && st.spin.pot === 0 && st.spin.mult === 1
+    && st.spin.prizes.length === PRIZES.length && st.spin.prizes.every((p, i) => p.c === PRIZES[i].coins && p.w === PRIZES[i].w)
+    && st.spin.limit === DAILY.SPIN.POT_MAX && st.spin.chance === 0.5, st && st.spin);
   check('...the daily quests are locked until the first quest is handed in', !!st && st.dq.locked === true && st.dq.list.length === 0, st && st.dq);
   check('...and the season is the clock\'s', !!st && st.season.s === seasonOf(dayOf(NOW)) && st.season.st === 0 && st.season.tiers.length === DAILY.SEASON.TIERS.length);
   check('the login itself paid nothing', !ws.sent.some((m) => m.type === 'inbox_delivered' && m.payload.entries.some((e) => e.source === 'daily')));
 }
 
-// ── 3. The free spin ──
+// ── 3. The free spin: a lump sum, then double or nothing ──
 {
   const c0 = ps().coins || 0;
-  force(WIN, WIN, MISS);
+  force(AT(2));
   ws.sent.length = 0;
-  await send(ws, 'daily_spin', { opId: 's1' });
+  await send(ws, 'daily_spin', { act: 'spin', opId: 's1' });
   let st = lastState(ws);
-  check('a win pays the base and leaves the run open', !!st && st.news.kind === 'spin' && st.news.won === true && st.news.k === 1
-    && st.news.paid === 25 && st.news.open === 1 && st.news.started === 'free' && ps().coins - c0 === 25, st && st.news);
+  check('the free spin lands on a lump sum (100): the pot, open, nothing paid yet',
+    !!st && st.news.act === 'spin' && st.news.started === 'free' && st.news.i === 2 && st.news.lump === 100 && st.news.pot === 100
+    && st.news.jackpot === false && st.spin.open === 1 && st.spin.pot === 100 && st.spin.i === 2 && st.spin.canDouble === 1
+    && ps().coins === c0 && paidSpin(ws).length === 0, st && { news: st.news, spin: st.spin });
+  check('...and the day\'s free spin put a star on the season', st.season.st === DAILY.SEASON.SPIN_STARS, st.season);
   NOW += 1000;
-  await send(ws, 'daily_spin', { opId: 's2' });
+  force(HEADS);
+  await send(ws, 'daily_spin', { act: 'double', opId: 's2' });
   st = lastState(ws);
-  check('a second win doubles it: 25 more, 50 in all', st.news.won && st.news.k === 2 && st.news.paid === 25 && st.news.total === 50
-    && ps().coins - c0 === 50, st.news);
+  check('double or nothing, won: the pot doubles (200), still nothing paid',
+    st.news.act === 'double' && st.news.won === true && st.news.k === 1 && st.news.pot === 200
+    && st.spin.pot === 200 && st.spin.k === 1 && st.spin.open === 1 && ps().coins === c0, { news: st.news, spin: st.spin });
   NOW += 1000;
-  await send(ws, 'daily_spin', { opId: 's3' });
+  await send(ws, 'daily_spin', { act: 'collect', opId: 's3' });
   st = lastState(ws);
-  check('a miss ends the run and KEEPS what was won', st.news.won === false && st.news.k === 2 && st.news.paid === 0 && st.news.open === 0
-    && ps().coins - c0 === 50, st.news);
-  check('...and today\'s free spin is used', st.spin.ready === 0 && st.spin.open === 0, st.spin);
+  check('take it: the pot is paid and the run is over', st.news.act === 'collect' && st.news.paid === 200 && st.news.k === 1
+    && ps().coins - c0 === 200 && st.spin.open === 0 && st.spin.pot === 0, { news: st.news, got: ps().coins - c0 });
+  const credits = paidSpin(ws);
+  check('...as one credit of source dailyspin (the game keeps it out of chat)', credits.length === 1 && credits[0].payload.amount === 200, credits);
+  check('...and today\'s free spin is used', st.spin.ready === 0, st.spin);
   NOW += 1000;
-  const c1 = ps().coins;
-  force(WIN);
-  await send(ws, 'daily_spin', { opId: 's4' });
-  st = lastState(ws);
-  check('no second free run the same day (and no bonus spin banked)', st.news.refused === 'none' && ps().coins === c1, st.news);
-  check('the day\'s free spin put a star on the season', st.season.st === DAILY.SEASON.SPIN_STARS, st.season);
+  force(AT(0));
+  await send(ws, 'daily_spin', { act: 'spin', opId: 's4' });
+  check('no second free spin the same day (and no bonus spin banked)', lastState(ws).news.refused === 'none' && ps().coins === c0 + 200, lastState(ws).news);
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'collect', opId: 's5' });
+  check('nothing open: Take is refused', lastState(ws).news.refused === 'closed' && ps().coins === c0 + 200, lastState(ws).news);
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'double', opId: 's6' });
+  check('nothing open: Double is refused', lastState(ws).news.refused === 'closed', lastState(ws).news);
+  NOW += 1000;
+  await send(ws, 'daily_spin', { opId: 's7' });
+  check('no act named is a spin', lastState(ws).news.act === 'spin' && lastState(ws).news.refused === 'none', lastState(ws).news);
 }
 {
-  /* a replayed opId spins only once; the cooldown drops a spin too soon */
+  /* a bonus spin, and a double lost */
   const rec = room._drMap().get('bp_dr_a');
-  rec.sp.extra = 2;
-  force(WIN, WIN, WIN);
-  NOW += 1000;
-  ws.sent.length = 0;
-  await send(ws, 'daily_spin', { opId: 'same' });
-  NOW += 1000;
-  await send(ws, 'daily_spin', { opId: 'same' });
-  const spins = ws.sent.filter((m) => m.type === 'rewards_state' && m.payload.news && m.payload.news.kind === 'spin');
-  check('a replayed opId spins once', spins.length === 1 && spins[0].payload.news.started === 'bonus', spins.map((m) => m.payload.news));
-  check('a bonus spin started a run of its own', rec.sp.extra === 1 && rec.sp.open === 1, rec.sp);
-  NOW += 1000;
-  await send(ws, 'daily_spin', { opId: 'real' });   /* a real spin ... */
-  ws.sent.length = 0;
-  NOW += 100;                                        /* ... and one inside the cooldown */
-  await send(ws, 'daily_spin', { opId: 'quick' });
-  check('a spin inside the cooldown is dropped', !ws.sent.some((m) => m.type === 'rewards_state'));
-}
-{
-  /* the top of the ladder */
-  const rec = room._drMap().get('bp_dr_a');
-  rec.sp.open = 0;
   rec.sp.extra = 1;
   const c0 = ps().coins;
-  force(...Array(DAILY.SPIN.LAYERS).fill(WIN));
+  const stars0 = rec.se.st;
+  force(AT(3), HEADS, TAILS);
   ws.sent.length = 0;
-  for (let i = 0; i < DAILY.SPIN.LAYERS; i++) { NOW += 1000; await send(ws, 'daily_spin', { opId: 'top' + i }); }
-  const st = lastState(ws);
-  check('ten wins reach the top: base x 512, and the run is over', st.news.k === DAILY.SPIN.LAYERS && st.news.top === true && st.news.open === 0
-    && ps().coins - c0 === spinPrize(25, DAILY.SPIN.LAYERS), { news: st.news, got: ps().coins - c0 });
   NOW += 1000;
-  await send(ws, 'daily_spin', { opId: 'past-top' });
-  check('...and there is no eleventh layer', lastState(ws).news.refused === 'none');
+  await send(ws, 'daily_spin', { act: 'spin', opId: 'l1' });
+  let st = lastState(ws);
+  check('a bonus spin starts a run of its own (200)', st.news.started === 'bonus' && st.news.pot === 200 && rec.sp.extra === 0, st.news);
+  check('...and puts no star on the season (the free spin\'s alone)', rec.se.st === stars0, rec.se);
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'spin', opId: 'l1b' });
+  check('a new spin while a pot is open is refused (take it or double it first)', lastState(ws).news.refused === 'open' && rec.sp.pot === 200, lastState(ws).news);
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'double', opId: 'l2' });
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'double', opId: 'l3' });
+  st = lastState(ws);
+  check('double or nothing, lost: the pot (400) is gone, nothing paid', st.news.won === false && st.news.lost === 400 && st.news.pot === 0
+    && st.news.k === 1 && st.spin.open === 0 && st.spin.pot === 0 && ps().coins === c0 && paidSpin(ws).length === 0, { news: st.news, spin: st.spin });
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'collect', opId: 'l4' });
+  check('...and there is nothing left to take', lastState(ws).news.refused === 'closed' && ps().coins === c0);
 }
 {
-  /* the streak raises the base; a new day frees the spin and closes an open run */
+  /* a replayed opId acts once; the cooldown drops an act too soon */
+  const rec = room._drMap().get('bp_dr_a');
+  rec.sp.extra = 2;
+  force(AT(0), AT(0));
+  NOW += 1000;
+  ws.sent.length = 0;
+  await send(ws, 'daily_spin', { act: 'spin', opId: 'same' });
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'spin', opId: 'same' });
+  const spins = spinNews(ws);
+  check('a replayed opId acts once', spins.length === 1 && spins[0].started === 'bonus', spins);
+  check('...one bonus spin spent', rec.sp.extra === 1 && rec.sp.open === 1, rec.sp);
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'collect', opId: 'real' });   /* a real act ... */
+  ws.sent.length = 0;
+  NOW += 100;                                                       /* ... and one inside the cooldown */
+  await send(ws, 'daily_spin', { act: 'spin', opId: 'quick' });
+  check('an act inside the cooldown is dropped', !ws.sent.some((m) => m.type === 'rewards_state'));
+}
+{
+  /* the jackpot, and the house limit: a pot that cannot double again is paid by itself */
+  const rec = room._drMap().get('bp_dr_a');
+  rec.sp.open = 0; rec.sp.extra = 1;
+  const c0 = ps().coins;
+  force(AT(7), HEADS, HEADS, HEADS, HEADS, HEADS);
+  ws.sent.length = 0;
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'spin', opId: 'j0' });
+  let st = lastState(ws);
+  check('the jackpot: 10,000, flagged for the window', st.news.jackpot === true && st.news.lump === 10000 && st.spin.open === 1, st.news);
+  let n = 0;
+  while (lastState(ws).spin.open && n < 20) { NOW += 1000; n++; await send(ws, 'daily_spin', { act: 'double', opId: 'j' + n }); }
+  st = lastState(ws);
+  check('three doubles reach 80,000, which cannot double again (160,000 > the limit): paid by itself',
+    n === 3 && st.news.won === true && st.news.top === true && st.news.pot === 80000 && st.news.paid === 80000
+    && ps().coins - c0 === 80000 && st.spin.open === 0, { n, news: st.news, got: ps().coins - c0 });
+  /* a pot over the line can only come from a stored record (the limit
+     lowered by a deploy): it is refused a double, and still taken */
+  rec.sp.open = 1; rec.sp.pot = 60000; rec.sp.k = 0; rec.sp.run = 'big';
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'double', opId: 'j-over' });
+  check('a pot past the limit is refused a double', lastState(ws).news.refused === 'limit' && rec.sp.pot === 60000 && lastState(ws).spin.canDouble === 0, lastState(ws).news);
+  NOW += 1000;
+  const c1 = ps().coins;
+  await send(ws, 'daily_spin', { act: 'collect', opId: 'j-take' });
+  check('...and taken as ever', lastState(ws).news.paid === 60000 && ps().coins - c1 === 60000);
+  /* the same run can never pay twice, whatever the record says (a crash
+     between the credit and the save) */
+  rec.sp.open = 1; rec.sp.pot = 60000; rec.sp.run = 'big';
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'collect', opId: 'j-again' });
+  check('a run pays once: its pot opId is the oplog\'s', lastState(ws).news.paid === 0 && ps().coins - c1 === 60000 && rec.sp.open === 0, lastState(ws).news);
+}
+{
+  /* the streak raises the lump sum; a new day frees the spin and PAYS a pot left open */
   await room._cadenceSet('login', 'bp_dr_a', { period: room._cadencePeriodDaily(NOW), streak: 6, fz: 0 });
   const rec = room._drMap().get('bp_dr_a');
-  rec.sp.open = 1; rec.sp.k = 3; rec.sp.base = 25;   /* a run left open at midnight */
+  rec.sp.open = 1; rec.sp.pot = 400; rec.sp.k = 2; rec.sp.i = 2; rec.sp.run = 'left-open';   /* a pot left open at midnight */
+  const c0 = ps().coins;
   NOW += DAY;
-  force(WIN, MISS);
+  force(AT(1));
   ws.sent.length = 0;
-  await send(ws, 'daily_spin', { opId: 'nextday' });
+  await send(ws, 'daily_spin', { act: 'spin', opId: 'nextday' });
   const st = lastState(ws);
-  check('a new day: the free spin again, the old run closed, the streak advanced (7 days) and the base with it (55)',
-    st.news.started === 'free' && st.news.k === 1 && st.news.base === 55 && st.streak.n === 7, { news: st.news, streak: st.streak });
+  const credits = paidSpin(ws);
+  check('a new day PAYS the pot left open (400), never loses it', credits.length === 1 && credits[0].payload.amount === 400 && ps().coins - c0 === 400, { credits, got: ps().coins - c0 });
+  check('...and the next state says so (kept), once', st.kept === 400 && ws.sent.filter((m) => m.type === 'rewards_state' && m.payload.kept).length === 1, { kept: st.kept });
+  check('...then the free spin again, the streak advanced (7 days) and the lump sum with it (50 x 1.6 = 80)',
+    st.news.started === 'free' && st.news.mult === 1.6 && st.news.pot === 80 && st.streak.n === 7 && st.spin.pot === 80, { news: st.news, streak: st.streak });
+  check('...the wheel shows today\'s prizes (x1.6)', st.spin.mult === 1.6 && st.spin.prizes[0].c === 40 && st.spin.prizes[7].c === 16000, st.spin.prizes);
   check('...a 7-day streak earns a freeze', st.streak.fz === 1, st.streak);
 }
 {
-  /* the kill switch */
+  /* the kill switch: no act at all, and a pot open at the day's end WAITS */
   room._liveFlags = { ...(room._liveFlags || {}), dailyspin: false };
   const rec = room._drMap().get('bp_dr_a');
-  rec.sp.extra = 3; rec.sp.open = 0;
+  rec.sp.extra = 3;
   const c0 = ps().coins;
   ws.sent.length = 0;
   NOW += 1000;
-  await send(ws, 'daily_spin', { opId: 'off' });
-  check('switched off: no spin, nothing paid, the bonus spins wait', !ws.sent.some((m) => m.type === 'rewards_state') && ps().coins === c0 && rec.sp.extra === 3);
+  await send(ws, 'daily_spin', { act: 'collect', opId: 'off' });
+  check('switched off: no act, nothing paid, the bonus spins wait', !ws.sent.some((m) => m.type === 'rewards_state') && ps().coins === c0 && rec.sp.extra === 3);
+  NOW += DAY;
+  await send(ws, 'rewards_get', {});
+  check('...a pot open at the day\'s end is NOT paid while switched off: it waits, open', rec.sp.open === 1 && rec.sp.pot === 80
+    && ps().coins === c0 && lastState(ws).spin.open === 1 && lastState(ws).spin.on === false, { sp: rec.sp, spin: lastState(ws).spin });
   const ws2 = fakeWs();
   await join(ws2, 'bp_dr_off');
   const sync = ws2.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('...and the next join is told the spin is off', !!sync && sync.caps.dailyspin === false);
   room._liveFlags = { ...(room._liveFlags || {}), dailyspin: true };
+  NOW += 1000;
+  await send(ws, 'daily_spin', { act: 'collect', opId: 'back-on' });
+  check('switched back on: the pot that waited is taken as ever', lastState(ws).news.paid === 80 && ps().coins === c0 + 80 && rec.sp.open === 0, lastState(ws).news);
 }
 
 // ── 4. The daily quests ──
@@ -465,6 +553,21 @@ const ps = () => room.playerState['bp_dr_a'];
     { day: rec.dq.day, day0, news: st && st.news });
   const c = await room._cadenceGet('login', 'bp_dr_a');
   check('...and the streak advanced as a login would have', c && c.period === room._cadencePeriodDaily(NOW), c);
+}
+{
+  /* a pot open across midnight, online: the tick's new day pays it */
+  const rec = room._drMap().get('bp_dr_a');
+  rec.sp.open = 1; rec.sp.pot = 250; rec.sp.k = 1; rec.sp.run = 'midnight';
+  const c0 = ps().coins;
+  room.__drLastTick = 0;
+  room._drTick(NOW);
+  NOW += DAY;
+  ws.sent.length = 0;
+  room.__drLastTick = 0;
+  room._drTick(NOW);
+  await settle(); await settle();
+  check('a pot still open at midnight is paid by the new day, online too', ps().coins - c0 === 250 && rec.sp.open === 0 && paidSpin(ws).length === 1
+    && lastState(ws).spin.ready === 1, { got: ps().coins - c0, sp: rec.sp });
 }
 
 // ── 7. The wire ──

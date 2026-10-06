@@ -20,17 +20,23 @@
  *
  * So nothing here opens on login.  Three layers, each found where it lives:
  *
- *   1. THE FREE DAILY SPIN, at the Gambling Den (DAILY.SPIN).  One free run a
- *      UTC day.  Each spin is a coin's chance (WIN_CHANCE 0.5): a win climbs
- *      one LAYER and the prize DOUBLES (base, 2x, 4x ... to LAYERS); the first
- *      miss ends the run and you KEEP the layer you reached -- it was paid as
- *      you climbed, so a miss takes nothing back.  Rare and big at the top
- *      (the top layer is 1 run in 2^LAYERS).  The login STREAK raises the base
- *      (the old chest's "25 + 10 a day, capped at 7" idea, kept), and BONUS
- *      SPINS (extra runs) come from the daily quests and the season.  Settled
- *      like Ace's coin flip (gamble.js): one input-gated event rolls, pays,
- *      saves and answers -- nothing escrowed, nothing for a deploy to lose
- *      (handoff rules 7 and 8).
+ *   1. THE FREE DAILY SPIN, at the Gambling Den (DAILY.SPIN).  One free spin
+ *      a UTC day, and the owner's twist on it (2026-10-06, after a first cut
+ *      that climbed a doubling ladder): "Your first spin is for a lump sum
+ *      award.  You have a rare chance at a high lump sum in gold.  Then you
+ *      have the option of spinning it for double or nothing at 50% odds and
+ *      that continues on."  So the spin lands on a LUMP SUM from PRIZES
+ *      (usually 25-200; 1 in 25 a thousand or more; 1 in 1,000 the 10,000
+ *      jackpot), raised by the login STREAK (+10% a day, to +60% at 7).  That
+ *      is a POT, not yet paid: TAKE IT, or DOUBLE OR NOTHING -- 50% to double
+ *      it, 50% to lose it all -- as often as you dare, until one more double
+ *      would pass the HOUSE LIMIT, POT_MAX (then it is paid by itself).  The pot lives in the record (money at
+ *      rest, rule 7: a deploy loses nothing), and one left open at the day's
+ *      end is PAID then, never lost.  Doubling is a fair coin for x2, so it
+ *      never changes what the spin pays on average -- it only spreads it.
+ *      BONUS SPINS (extra spins) come from the daily quests and the season.
+ *      Each act -- spin, double, take -- is one input-gated event, the shape
+ *      of Ace's coin flip (gamble.js, handoff rule 8).
  *   2. THREE DAILY QUESTS (DAILY.QUESTS), rolled for each player each UTC
  *      day once the first quest is handed in (tut_1: before that you cannot
  *      leave the commons).  One FIGHT, one GATHER when you hold a tool, one
@@ -54,7 +60,7 @@
  * season's stars never reset.
  *
  * STORAGE: ONE key per player, `daily_rewards:<pid>` (handoff rule-2 table):
- *   { _v, sp: {day, free, open, k, base, run, extra},
+ *   { _v, sp: {day, free, open, pot, k, i, run, extra},
  *         dq: {day, list: [{t, p, g, n, d, c}], rr, all},
  *         se: {s, st, cl: [tier...], ov} }
  * Cached in memory while the player is online (`_drMap`), written at once
@@ -67,7 +73,7 @@
  * one can never both pay.
  *
  * WIRE (docs/specs/daily-rewards.md):
- *   client -> worker: rewards_get {} | daily_spin {opId} | daily_reroll {i}
+ *   client -> worker: rewards_get {} | daily_spin {act, opId} | daily_reroll {i}
  *                     | season_claim {tier} or {all: true}
  *   worker -> client: rewards_state {..., news?}  (PRIVILEGED: it names coins)
  *                     daily_progress {i, n}        (PRIVILEGED)
@@ -90,20 +96,34 @@ export const DAILY = {
   TICK_MS: 10000,
 
   SPIN: {
-    WIN_CHANCE: 0.5,     /* owner: "the first win has a 50% chance ... further spins at a 50% win chance" */
-    LAYERS: 10,          /* the top: 1 run in 1,024 gets there */
-    /* layer 1 at a 1-day streak, in coins.  Sized against the economy as it
-       stands (v2.3.3109): a monster drops ~5 gold at level 1 and ~13 at 30,
-       an hour of fighting ~1-2k; the forge's weapon tiers cost 8-120 gold to
-       level 30.  So the first layer is a snack (25), the middle a good day
-       (layer 6: 800, 1 run in 64), and the top a jackpot (12,800 -- 28,160
-       at a 7-day streak, 1 in 1,024): "quite good rewards but it's rare".
-       A run is worth base x (LAYERS + 1) / 4 on average: ~69-151 coins. */
-    BASE: 25,
-    STREAK_STEP: 5,      /* + per streak day ... */
-    STREAK_CAP: 7,       /* ... up to a 7-day streak: 25 -> 55 */
+    /* The lump sums the spin lands on, with their weights out of 1,000.
+       Sized against the economy as it stands (v2.3.3109): a monster drops ~5
+       gold at level 1 and ~13 at 30, an hour of fighting earns ~1-2k, the
+       forge's weapon tiers cost 8-120 gold to level 30.  So most spins are a
+       snack, 1 in 25 is a thousand or more, and 1 in 1,000 is the jackpot:
+       "a rare chance at a high lump sum in gold".  On average 144 coins a
+       spin (230 at a 7-day streak); doubling never changes that average. */
+    PRIZES: Object.freeze([
+      Object.freeze({ coins: 25, w: 400 }),
+      Object.freeze({ coins: 50, w: 250 }),
+      Object.freeze({ coins: 100, w: 150 }),
+      Object.freeze({ coins: 200, w: 100 }),
+      Object.freeze({ coins: 400, w: 60 }),
+      Object.freeze({ coins: 1000, w: 30 }),
+      Object.freeze({ coins: 2500, w: 9 }),
+      Object.freeze({ coins: 10000, w: 1 }),
+    ]),
+    STREAK_PCT: 10,      /* the lump sum +10% per streak day past the first ... */
+    STREAK_CAP: 7,       /* ... up to a 7-day streak: x1.6 */
+    DOUBLE_CHANCE: 0.5,  /* owner: "double or nothing at 50% odds" */
+    /* "and that continues on" -- until one more double would pass the HOUSE
+       LIMIT; a pot that can double no further is paid by itself.  The limit
+       keeps one lucky run from flooding the auction house.  A 10,000 jackpot
+       can still double three times, to 80,000; the everyday 25 eleven
+       times, to 51,200. */
+    POT_MAX: 100000,
     EXTRA_MAX: 20,       /* bonus spins banked at most */
-    COOLDOWN_MS: 450,    /* between two spins (the wheel turns for longer than this) */
+    COOLDOWN_MS: 450,    /* between two acts (the wheel turns for longer than this) */
   },
 
   STREAK: {
@@ -203,14 +223,27 @@ export function seasonOf(day) {
 /** The first day of the season AFTER `s` (its end, exclusive). */
 export function seasonEndDay(s) { return SEASON.EPOCH_DAY + s * SEASON.DAYS; }
 
-/** Layer 1's prize for a login streak of `streak` days. */
-export function spinBase(streak) {
+/** The streak's bonus on the lump sum: x1 on day 1, +10% a day, to x1.6. */
+export function spinMult(streak) {
   const s = Math.max(1, Math.min(SPIN.STREAK_CAP, Math.floor(Number(streak) || 1)));
-  return SPIN.BASE + SPIN.STREAK_STEP * (s - 1);
+  return Math.round(100 + SPIN.STREAK_PCT * (s - 1)) / 100;
 }
 
-/** What a run that reached layer `k` has paid in all (0 for no win). */
-export function spinPrize(base, k) { return k > 0 ? base * Math.pow(2, k - 1) : 0; }
+/** A prize's lump sum at multiplier `mult`, to the nearest 5 coins. */
+export function spinLump(coins, mult) {
+  return Math.max(5, Math.round(((Number(coins) || 0) * (Number(mult) || 1)) / 5) * 5);
+}
+
+/** The prize a roll r in [0, 1) lands on (an index into SPIN.PRIZES). */
+export function spinPick(r) {
+  const total = SPIN.PRIZES.reduce((t, p) => t + p.w, 0);
+  let x = Math.max(0, Math.min(0.9999999, Number(r) || 0)) * total;
+  for (let i = 0; i < SPIN.PRIZES.length; i++) {
+    x -= SPIN.PRIZES[i].w;
+    if (x < 0) return i;
+  }
+  return SPIN.PRIZES.length - 1;
+}
 
 /** The stars tier `t` (1-based) needs. */
 export function tierNeed(t) { return t * SEASON.STARS_PER_TIER; }
@@ -236,7 +269,7 @@ function seeded(seed) {
 function freshRec() {
   return {
     _v: 1,
-    sp: { day: 0, free: 0, open: 0, k: 0, base: 0, run: '', extra: 0 },
+    sp: { day: 0, free: 0, open: 0, pot: 0, k: 0, i: 0, run: '', extra: 0 },
     dq: { day: 0, list: [], rr: 0, all: 0 },
     se: { s: 0, st: 0, cl: [], ov: 0 },
   };
@@ -252,9 +285,10 @@ function healRec(r) {
   const sp = r.sp && typeof r.sp === 'object' ? r.sp : {};
   f.sp = {
     day: int(sp.day, 0, 1e7), free: sp.free ? 1 : 0, open: sp.open ? 1 : 0,
-    k: int(sp.k, 0, SPIN.LAYERS), base: int(sp.base, 0, 1e6),
+    pot: int(sp.pot, 0, SPIN.POT_MAX), k: int(sp.k, 0, 40), i: int(sp.i, 0, SPIN.PRIZES.length - 1),
     run: typeof sp.run === 'string' ? sp.run.slice(0, 40) : '', extra: int(sp.extra, 0, SPIN.EXTRA_MAX),
   };
+  if (!f.sp.pot) f.sp.open = 0;   /* an open run is a pot; no pot, nothing open */
   const dq = r.dq && typeof r.dq === 'object' ? r.dq : {};
   f.dq = {
     day: int(dq.day, 0, 1e7),
@@ -335,8 +369,8 @@ export const dailyRewardsMethods = {
   /* ── the day and the season turning over ── */
 
   /* Brings a record up to `now`: a new season closes the old one (its
-     unclaimed tiers are MAILED, never lost), a new day frees the spin, closes
-     yesterday's open run (its layers are paid already) and rolls the day's
+     unclaimed tiers are MAILED, never lost), a new day frees the spin, PAYS
+     yesterday's pot if it was still open (_spinPay) and rolls the day's
      quests.  Returns true when anything changed. */
   async _drRollover(pid, rec, now) {
     const day = dayOf(now);
@@ -348,7 +382,22 @@ export const dailyRewardsMethods = {
       changed = true;
     }
     if (rec.sp.day !== day) {
-      rec.sp.day = day; rec.sp.free = 0; rec.sp.open = 0; rec.sp.k = 0; rec.sp.base = 0;
+      /* a pot still open when the day ends is PAID, never lost: walking away
+         from the double-or-nothing must not cost what the spin already won.
+         With the spin switched off it is left OPEN instead -- the switch is
+         for a spin gone wrong, and paying a wrong pot is the one thing it
+         must not do; it waits for the switch, then Take or Double as ever. */
+      if (rec.sp.open && rec.sp.pot > 0 && !this._spinOff()) {
+        const kept = await this._spinPay(pid, rec, 'kept at the day\'s end');
+        /* said on the next state (`kept`), apart from its news: the same
+           turn-over may close a season, whose news must not be lost */
+        if (kept > 0) {
+          if (!this.__drKept) this.__drKept = new Map();   /* pid -> coins; rule 4 */
+          this.__drKept.set(pid, kept);
+        }
+      }
+      rec.sp.day = day; rec.sp.free = 0;
+      if (!rec.sp.open) { rec.sp.pot = 0; rec.sp.k = 0; }
       changed = true;
     }
     if (rec.dq.day !== day) {
@@ -418,6 +467,7 @@ export const dailyRewardsMethods = {
       this._drMap().delete(pid);
       this._drDirtyMap().delete(pid);
       if (this.__drNews) this.__drNews.delete(pid);
+      if (this.__drKept) this.__drKept.delete(pid);
     };
     if (!this._drDirtyMap().has(pid)) { forget(); return null; }
     return this._drSave(pid).catch(() => { /* the counting is all that is at stake */ }).then(forget);
@@ -461,6 +511,34 @@ export const dailyRewardsMethods = {
     }
   },
 
+  /* Pays the open pot, once.  The credit goes FIRST and the run is closed
+     after it (rule 5): a crash between the two leaves the pot open, and the
+     next pay of the same run is the oplog's 'dup' -- never a second payout,
+     whatever was doubled in between.  `_creditPlayer` lands the coins on a
+     player who is here (the player_state echo carries them) and mails them
+     to one who is not.  Returns the coins paid (0 for none). */
+  async _spinPay(pid, rec, why) {
+    const sp = rec.sp;
+    const amount = Math.max(0, Math.floor(sp.pot || 0));
+    if (!sp.open || !(amount > 0)) return 0;
+    const r = await this._creditPlayer(pid, {
+      opId: 'spinpot:' + pid + ':' + (sp.run || 'x'),
+      source: 'dailyspin', kind: 'gold', payload: { amount },
+      note: 'Daily spin' + (why ? ' (' + why + ')' : ''),
+    });
+    sp.open = 0;
+    return r === 'dup' ? 0 : amount;
+  },
+
+  /* One act on the daily spin, the shape of Ace's flip (gamble.js): checked,
+     rolled and settled in one input-gated event, the answer one
+     rewards_state.  `act`:
+       'spin'    a new run: the day's free spin, else a bonus spin.  It lands
+                 on a lump sum (PRIZES, x the streak's spinMult) -- the pot.
+       'double'  double or nothing on the open pot: 50% it doubles, 50% it is
+                 gone.  A pot that cannot double again (POT_MAX) is paid.
+       'collect' take the open pot.
+     A refused act still answers (news.refused) so the game never waits. */
   async _handleDailySpin(session, payload) {
     if (!session || !session.id) return;
     if (this._spinOff()) return;
@@ -473,48 +551,53 @@ export const dailyRewardsMethods = {
        client with no spins left could have the worker read storage and answer
        as fast as it can send */
     ps._lastDailySpinAt = now;
+    const act = payload && (payload.act === 'double' || payload.act === 'collect') ? payload.act : 'spin';
     const opId = payload && typeof payload.opId === 'string' && payload.opId.length <= 96 ? payload.opId : null;
     if (opId && await this._opSeen('spinop:' + opId)) return;
     const rec = await this._drLoad(pid);
     if (!rec || !this.playerState[pid]) return;
     if (rec.sp.day !== dayOf(now)) {
-      /* the first act of a new day: the streak advances first */
+      /* the first act of a new day: the streak advances first (and a pot
+         left open yesterday is paid by the rollover) */
       await this._cadenceLoginReward(pid, now);
       await this._drRollover(pid, rec, now);
     }
     const sp = rec.sp;
-    let started = null;
-    if (!sp.open) {
+    let news;
+    if (act === 'spin') {
+      if (sp.open) { await this._drSendState(pid, { kind: 'spin', act, refused: 'open' }); return; }
+      let started;
       if (!sp.free) { sp.free = 1; started = 'free'; }
       else if (sp.extra > 0) { sp.extra -= 1; started = 'bonus'; }
-      else { await this._drSendState(pid, { kind: 'spin', refused: 'none' }); return; }
+      else { await this._drSendState(pid, { kind: 'spin', act, refused: 'none' }); return; }
       const st = await this._drStreak(pid);
-      sp.open = 1; sp.k = 0; sp.base = spinBase(st.n); sp.run = runId();
-    }
-    const won = this._drRand() < SPIN.WIN_CHANCE;
-    let paid = 0;
-    if (won) {
-      sp.k += 1;
-      /* paid as you climb: layer 1 pays the base, every later layer pays the
-         difference to the next doubling, so a run that reached layer k has
-         paid spinPrize(base, k) in all and a miss takes nothing back */
-      paid = spinPrize(sp.base, sp.k) - spinPrize(sp.base, sp.k - 1);
-      if (sp.k >= SPIN.LAYERS) sp.open = 0;   /* the top: the run is over */
+      const mult = spinMult(st.n);
+      const i = spinPick(this._drRand());
+      const lump = spinLump(SPIN.PRIZES[i].coins, mult);
+      sp.open = 1; sp.pot = lump; sp.k = 0; sp.i = i; sp.run = runId();
+      if (started === 'free' && !this._dqOff()) this._seAddStars(rec, SEASON.SPIN_STARS);
+      news = { kind: 'spin', act, started, i, lump, pot: lump, mult, jackpot: i === SPIN.PRIZES.length - 1 };
+      if (lump * 2 > SPIN.POT_MAX) { news.paid = await this._spinPay(pid, rec, 'the house limit'); news.top = true; }
+    } else if (act === 'double') {
+      if (!sp.open || !(sp.pot > 0)) { await this._drSendState(pid, { kind: 'spin', act, refused: 'closed' }); return; }
+      if (sp.pot * 2 > SPIN.POT_MAX) { await this._drSendState(pid, { kind: 'spin', act, refused: 'limit' }); return; }
+      const won = this._drRand() < SPIN.DOUBLE_CHANCE;
+      if (won) {
+        sp.pot *= 2; sp.k += 1;
+        news = { kind: 'spin', act, won: true, k: sp.k, pot: sp.pot };
+        if (sp.pot * 2 > SPIN.POT_MAX) { news.paid = await this._spinPay(pid, rec, 'the house limit'); news.top = true; }
+      } else {
+        news = { kind: 'spin', act, won: false, k: sp.k, lost: sp.pot, pot: 0 };
+        sp.open = 0; sp.pot = 0;
+      }
     } else {
-      sp.open = 0;
+      if (!sp.open || !(sp.pot > 0)) { await this._drSendState(pid, { kind: 'spin', act, refused: 'closed' }); return; }
+      const pot = sp.pot;
+      news = { kind: 'spin', act, k: sp.k, pot, paid: await this._spinPay(pid, rec, null) };
     }
-    if (paid > 0) {
-      ps.coins = (ps.coins || 0) + paid;
-      this._saveRpg(pid, ps);
-      this._queuePlayerStateFlush(pid);
-    }
-    if (started === 'free' && !this._dqOff()) this._seAddStars(rec, SEASON.SPIN_STARS);
     if (opId) await this._opStamp('spinop:' + opId);
     await this._drSave(pid);
-    await this._drSendState(pid, {
-      kind: 'spin', won, k: sp.k, paid, total: spinPrize(sp.base, sp.k),
-      base: sp.base, open: sp.open, started, top: sp.k >= SPIN.LAYERS,
-    });
+    await this._drSendState(pid, news);
   },
 
   /* ── 2. the daily quests ── */
@@ -863,17 +946,26 @@ export const dailyRewardsMethods = {
       v: 1,
       now,
       resetAt: (day + 1) * DAY_MS,
-      spin: {
-        on: !this._spinOff(),
-        ready: spinToday && sp.free ? 0 : 1,         /* today's free run still to take */
-        open: spinToday ? sp.open : 0,
-        k: spinToday ? sp.k : 0,
-        base: spinToday && sp.open && sp.base ? sp.base : spinBase(st.n),
-        base1: SPIN.BASE,                            /* layer 1 with no streak: what the streak adds is base - base1 */
-        extra: sp.extra,
-        layers: SPIN.LAYERS,
-        chance: SPIN.WIN_CHANCE,
-      },
+      spin: (() => {
+        const mult = spinMult(st.n);
+        const open = sp.open && sp.pot > 0 ? 1 : 0;   /* a pot carries across a day only while the switch is off */
+        return {
+          on: !this._spinOff(),
+          ready: spinToday && sp.free ? 0 : 1,       /* today's free spin still to take */
+          open,
+          pot: open ? sp.pot : 0,
+          k: open ? sp.k : 0,
+          i: open ? sp.i : -1,                       /* the prize the open pot came from (the wheel rests on it) */
+          canDouble: open && sp.pot * 2 <= SPIN.POT_MAX ? 1 : 0,
+          limit: SPIN.POT_MAX,
+          chance: SPIN.DOUBLE_CHANCE,
+          mult,                                      /* the streak's bonus on today's lump sums */
+          /* the wheel's prizes as they pay today, with their weights out of
+             the total (the odds the window prints) */
+          prizes: SPIN.PRIZES.map((p) => ({ c: spinLump(p.coins, mult), w: p.w })),
+          extra: sp.extra,
+        };
+      })(),
       streak: {
         n: st.n, fz: st.fz, fzMax: DAILY.STREAK.FREEZE_MAX, every: DAILY.STREAK.FREEZE_EVERY,
         saved: st.saved, best: st.best, cap: SPIN.STREAK_CAP,
@@ -913,6 +1005,10 @@ export const dailyRewardsMethods = {
       this.__drNews.delete(pid);
     }
     const payload = await this._drState(pid, rec, n);
+    if (this.__drKept && this.__drKept.has(pid)) {
+      payload.kept = this.__drKept.get(pid);
+      this.__drKept.delete(pid);
+    }
     try { ws.send(JSON.stringify({ type: 'rewards_state', payload })); } catch (e) { /* the next one carries it */ }
   },
 };

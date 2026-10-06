@@ -1575,13 +1575,14 @@ export function processGameEvent(type, payload, S, deps) {
                    the server's own ("Daily reward — day 3"). */
                 /* v2.3.3109: the daily rewards' payouts (server dailyrewards.js)
                    -- a finished daily quest's coins, a claimed or season-end
-                   tier's coins and items -- are announced by their own
+                   tier's coins and items, the daily spin's pot taken or kept
+                   at the day's end -- are announced by their own
                    rewards_state news (game/dailyRewards.js: a toast for a
-                   quest, the window itself for a claim), so they stay out of
-                   chat the way the daily login reward has since v2.3.2037.
-                   The coins and items are already applied; the player_state
-                   echo carries them. */
-                if (_e.source === 'dailyquest' || _e.source === 'season') continue;
+                   quest or a kept pot, the window itself for a claim or a
+                   pot taken), so they stay out of chat the way the daily
+                   login reward has since v2.3.2037.  The coins and items are
+                   already applied; the player_state echo carries them. */
+                if (_e.source === 'dailyquest' || _e.source === 'season' || _e.source === 'dailyspin') continue;
                 if (_e.source === 'daily') {
                   try {
                     var _dAmt = (_ep && _ep.amount) || 0;
