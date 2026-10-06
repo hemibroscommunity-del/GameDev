@@ -55,6 +55,7 @@ import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
+import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3087: the attack disc wears the weapon in your hand */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
@@ -5655,8 +5656,13 @@ export var BroTown = function BroTown(_ref0) {
                interactKind, the E key's own chain) */
             else if (_tapJumps) _icWant = _tapActIcon(S);
             else {
+              /* v2.3.3087: the weapon in that slot, its bag picture -- the
+                 owner: "when attacking it should show the weapon type
+                 depending on what weapon is used" (controlSkin weaponDiscIcon) */
               var _slotNow = (S.rpg && S.rpg.activeSlot) || 'melee';
-              _icWant = (_slotNow === 'ranged' || _slotNow === 'staff') ? _slotNow : 'melee';
+              var _wNow = !S.rpg ? null : _slotNow === 'ranged' ? S.rpg.rangedWeapon
+                : _slotNow === 'staff' ? S.rpg.staffWeapon : S.rpg.weapon;
+              _icWant = weaponDiscIcon(_slotNow, _wNow);
             }
             var _rdI = rJoyRef.current;
             if (_rdI && _rdI.getAttribute('data-ricon') !== _icWant) _rdI.setAttribute('data-ricon', _icWant);

@@ -6022,6 +6022,17 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 .bt-rjoy-base[data-ricon="woodcutting"] .bt-rjoy-icon[data-ricon-img="woodcutting"],
 .bt-rjoy-base[data-ricon="fishing"] .bt-rjoy-icon[data-ricon-img="fishing"],
 .bt-rjoy-base[data-ricon="cooking"] .bt-rjoy-icon[data-ricon-img="cooking"]{display:block}
+/* v2.3.3087: the weapon in your hand, its bag picture (controlSkin weaponDiscIcon) */
+.bt-rjoy-base[data-ricon="w-sword"] .bt-rjoy-icon[data-ricon-img="w-sword"],
+.bt-rjoy-base[data-ricon="w-sword-copper"] .bt-rjoy-icon[data-ricon-img="w-sword-copper"],
+.bt-rjoy-base[data-ricon="w-sword-iron"] .bt-rjoy-icon[data-ricon-img="w-sword-iron"],
+.bt-rjoy-base[data-ricon="w-sword-blacksteel"] .bt-rjoy-icon[data-ricon-img="w-sword-blacksteel"],
+.bt-rjoy-base[data-ricon="w-great-sword"] .bt-rjoy-icon[data-ricon-img="w-great-sword"],
+.bt-rjoy-base[data-ricon="w-great-sword-copper"] .bt-rjoy-icon[data-ricon-img="w-great-sword-copper"],
+.bt-rjoy-base[data-ricon="w-great-sword-iron"] .bt-rjoy-icon[data-ricon-img="w-great-sword-iron"],
+.bt-rjoy-base[data-ricon="w-great-sword-blacksteel"] .bt-rjoy-icon[data-ricon-img="w-great-sword-blacksteel"],
+.bt-rjoy-base[data-ricon="w-bow"] .bt-rjoy-icon[data-ricon-img="w-bow"],
+.bt-rjoy-base[data-ricon="w-staff"] .bt-rjoy-icon[data-ricon-img="w-staff"]{display:block}
 /* v2.3.3087: the JUMP arrow over the disc as it is, see-through -- the owner:
    "a semi transparent overlay on the existing disc" (controlSkin RDISC_ICONS) */
 .bt-rjoy-base[data-ricon="jump"] .bt-rjoy-icon[data-ricon-img="jump"]{display:block;opacity:.7}

@@ -325,7 +325,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is not faded with the face.  The label still names the button ATTACK in
      the DOM; it shows only as a gesture's caption (TouchControls). */
   rec.ok('...and the PICTURE is not faded with it (v2.3.2251, with a sword where the word was)',
-    !!btn && btn.knobOpacity === 1 && btn.ricon === 'melee', btn);
+    !!btn && btn.knobOpacity === 1 && /^(melee|w-(great-)?sword)/.test(String(btn.ricon)), btn);   /* v2.3.3087: or the sword in hand's bag picture */
   rec.ok('...and the label still names it ATTACK', !!btn && btn.labelText === 'ATTACK', btn);
   /* ═══ v2.3.2264: SEE-THROUGH MUST NOT READ AS DISABLED ═══
      Owner: "The problem is implying the button is inactive when it's partially

@@ -12,8 +12,14 @@
  *      no jump;
  *   3. out on the commons with nothing about, it shows the JUMP arrow and a
  *      tap jumps;
- *   4. no page errors.
- * Pictures: tools/qa/mp/out/tapact-{door,talk}.png.
+ *   4. while the tap would ATTACK, it wears the weapon in the active slot,
+ *      its bag picture -- an iron greatsword, a copper sword, the bow, the
+ *      staff, the plain sword picture for an empty melee slot -- and lit, in
+ *      a real fight beside a monster (the owner:
+ *      "when attacking it should show the weapon type depending on what
+ *      weapon is used");
+ *   5. no page errors.
+ * Pictures: tools/qa/mp/out/tapact-{door,talk,greatsword}.png.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -133,6 +139,66 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await tapStick(P, 83);
     const j1 = await jumps(P);
     rec.ok(`...and a tap jumps (${j0} -> ${j1})`, j1 === j0 + 1, { j0, j1 });
+
+    /* ── 4. an attack wears the weapon ── */
+    await P.page.waitForTimeout(800);
+    const wear = async (slot, w) => {
+      await P.page.evaluate(({ slot, w }) => {
+        const S = window._gameState.current;
+        if (slot === 'melee') S.rpg.weapon = w; else if (slot === 'ranged') S.rpg.rangedWeapon = w; else S.rpg.staffWeapon = w;
+        S.rpg.activeSlot = slot;
+        S._rBtnPressUntil = Date.now() + 3000;   /* the disc has a job: the tap attacks */
+      }, { slot, w });
+      return H.waitFor(P, () => document.querySelector('.bt-rjoy-base').getAttribute('data-ricon'), (v) => v && v !== 'jump', { timeout: 3000, label: 'the attack face' })
+        .then(async (ic) => ({ ic, shown: await P.page.evaluate((ic) => { const im = document.querySelector(`.bt-rjoy-icon[data-ricon-img="${ic}"]`); return !!im && getComputedStyle(im).display !== 'none' && im.complete && im.naturalWidth > 0; }, ic) }))
+        .catch(() => ({ ic: null, shown: false }));
+    };
+    const cases = [
+      ['melee', { type: 'greatsword', name: 'Iron Greatsword', gearBase: 'iron', dmg: 6 }, 'w-great-sword-iron', 'an iron greatsword'],
+      ['melee', { type: 'sword', name: 'Black Steel Sword', gearBase: 'steel', dmg: 8 }, 'w-sword-blacksteel', 'a black steel sword (its tier key is steel)'],
+      ['melee', { type: 'sword', name: 'Copper Sword', gearBase: 'copper', dmg: 3 }, 'w-sword-copper', 'a copper sword'],
+      ['ranged', { type: 'bow', name: 'Pine Bow', gearBase: 'pine', dmg: 3 }, 'w-bow', 'the bow'],
+      ['staff', { type: 'staff', name: 'Oak Staff', gearBase: 'oak', dmg: 3 }, 'w-staff', 'the staff'],
+      ['melee', null, 'melee', 'nothing in the melee slot (the plain sword picture)'],
+    ];
+    for (const [slot, w, want, words] of cases) {
+      const got = await wear(slot, w);
+      rec.ok(`attacking with ${words}, the stick wears ${want} (${got.ic})`, got.ic === want && got.shown, got);
+    }
+    await P.page.evaluate(() => { window._gameState.current._rBtnPressUntil = 0; });
+
+    /* ── 4b. and in a real fight: walk up to the nearest monster with the iron
+       greatsword in hand -- the disc lights, wearing it ── */
+    /* past the Mayor's gate, so the lands are open (wheelCommonsGate) */
+    await H.devOp(wsPort, 'quests', myId);
+    await P.page.waitForTimeout(1200);
+    await P.page.evaluate(() => { const S = window._gameState.current; S.rpg.weapon = { type: 'greatsword', name: 'Iron Greatsword', gearBase: 'iron', dmg: 6 }; S.rpg.activeSlot = 'melee'; });
+    const mon = await P.page.evaluate(() => {
+      const S = window._gameState.current, p = S.player;
+      let best = null;
+      for (const m of (S.monsters || [])) { if (!m || m.alive === false) continue; const d = Math.hypot(m.x - p.x, m.y - p.y); if (!best || d < best.d) best = { x: m.x, y: m.y, d }; }
+      return best;
+    });
+    rec.ok('a monster to walk up to (guard)', !!mon, mon);
+    if (mon) {
+      const nearest = () => P.page.evaluate(() => {
+        const S = window._gameState.current, p = S.player;
+        let best = null;
+        for (const m of (S.monsters || [])) { if (!m || m.alive === false) continue; const d = Math.hypot(m.x - p.x, m.y - p.y); if (!best || d < best.d) best = { x: m.x, y: m.y, d }; }
+        return best;
+      });
+      let fight = null;
+      await H.hopTo(P, mon.x + 70, mon.y + 10, { step: 100, gap: 260, tries: 160 });
+      for (let k = 0; k < 6 && !fight; k++) {
+        const m = await nearest();   /* they wander: keep up */
+        if (m && m.d > 90) await H.hopTo(P, m.x + 50, m.y + 10, { step: 100, gap: 260, tries: 20 });
+        fight = await H.waitFor(P, () => { const d = document.querySelector('.bt-rjoy-base'); return { ic: d.getAttribute('data-ricon'), st: d.getAttribute('data-rstate') }; },
+          (v) => v.ic === 'w-great-sword-iron' && (v.st === 'hot' || v.st === 'lit'), { timeout: 2500, label: 'the lit disc' }).catch(() => null);
+      }
+      await P.page.screenshot({ path: join(OUT, 'tapact-greatsword.png') }).catch(() => {});
+      rec.ok(`beside a monster the lit disc wears the iron greatsword (${fight ? fight.ic + ' / ' + fight.st : 'no'})`, !!fight, fight || { near: await nearest(),
+        disc: await P.page.evaluate(() => { const d = document.querySelector('.bt-rjoy-base'), S = window._gameState.current; return { ic: d.getAttribute('data-ricon'), st: d.getAttribute('data-rstate'), live: (S._rBtnLiveUntil || 0) - Date.now(), lock: !!S.lockedTarget, zone: S.currentZone }; }) });
+    }
 
     rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {

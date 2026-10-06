@@ -885,7 +885,9 @@ remnant to migrate server-side, not a mode to preserve.
       `mp-tapprop`; and the stick's picture is the TAP'S ACT (the owner: "chat
       bubble for speaking [to NPCs], door for entering door"): a bubble beside
       a character, a door at steps/halls/dungeon mouths, the moon at the
-      farm's bed, else JUMP -- the tap runs the E key's own chain
+      farm's bed, the WEAPON IN YOUR HAND when it attacks (its bag picture
+      in its metal, controlSkin `weaponDiscIcon`), else JUMP -- the tap runs
+      the E key's own chain
       (desktopControls `runInteract` via `S._interactNow`, `interactKind`,
       the character first for the stick: `npcFirst`), SVGs in
       `public/ui/controls/`; `mp-tapact`.

@@ -220,8 +220,18 @@ joystick".
     own order, door first.
   - The three pictures are SVGs in the JUMP arrow's white-and-outline style
     (`public/ui/controls/{talk,door,sleep}.svg`), see-through at 0.7 like it.
-  - `mp-tapact` (10 checks): the door at the bank opens the bank, the bubble
-    beside Ace opens his flip, the arrow on the open commons jumps.
+  - When the tap ATTACKS, the stick wears the WEAPON IN YOUR HAND, its bag
+    picture (controlSkin `weaponDiscIcon`, InventoryPanel's own rule): a sword
+    or a greatsword in its metal (plain, copper, iron, black steel), the bow,
+    the staff. The owner: "when attacking it should show the weapon type
+    depending on what weapon is used". An empty slot keeps the old plain
+    picture. All ten pictures are in the disc from the start and warmed on
+    the loading screen with the rest (controlsPreload), so a weapon swap never
+    waits on a download.
+  - `mp-tapact` (18 checks): the door at the bank opens the bank, the bubble
+    beside Ace opens his flip, the arrow on the open commons jumps, each slot's
+    weapon on the disc, and the lit disc wearing an iron greatsword beside a
+    real monster.
 - **The orbit is gone.** v2.3.3018's two faint arcs round the attack button
   (TouchControls `OrbitArcs`, from the mockup) went with the owner's "remove
   the strange lines to the left and right of the button". mp-btnskin now

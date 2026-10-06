@@ -214,7 +214,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S._rBtnPressUntil = 0;
       return icon;
     });
-    rec.ok(`with a job on the stick (a monster to fight) it shows the weapon again (data-ricon ${busyIcon})`, busyIcon === 'melee', busyIcon);
+    rec.ok(`with a job on the stick (a monster to fight) it shows the weapon again (data-ricon ${busyIcon})`, /^w-sword/.test(String(busyIcon)), busyIcon);   /* v2.3.3087: the sword in hand, its bag picture */
 
     rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {
