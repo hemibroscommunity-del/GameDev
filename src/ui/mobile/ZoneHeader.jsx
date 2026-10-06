@@ -4,10 +4,7 @@ import { rosterCount } from '../../networking/charRoster.js'; /* v2.3.2421 */
 import { zoneTitle } from './zoneTitle.js'; /* v2.3.2596: shared with the zone-entry banner */
 import { calm as lifeCalm } from './dash/bagLife.js'; /* v2.3.2815: the purse's coin flip */
 import { dayPhase, lightingAt, zoneHasSky } from '../../game/timeOfDay.js'; /* v2.3.2892: the hour beside the zone name */
-import { wheelHere } from '../../game/wheelTrial.js'; /* v2.3.3009: where you are in the Wheel, in words */
 import { ZONES } from '../../data/zones.js'; /* v2.3.3009: the Wheel's name, before its first words come */
-import { landLook } from '../../data/wheelLands.js'; /* v2.3.3024: each land's element icon and colour */
-import { nmlHere, NML_RED } from '../../game/noMansLand.js'; /* v2.3.3058: No man's land on the bar */
 
 /* ═══ v2.3.2892: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
    Owner: "Add a time of day icon next to current map name."  The hour is
@@ -134,38 +131,13 @@ const V = '?v=2.3.1333c'; /* v2.3.1333c: bigger logout glyph */
    of "how a zone is named" is exactly the pair that stays identical for a year
    and then diverges, at which point the flourish turns into different words. */
 
-/* ═══ v2.3.3009: IN THE WHEEL, THE BAR SAYS WHERE YOU ARE ═══
-   Owner: "Put the 'brotown safe' and other location indicators in place of
-   the 'the wheel lvl 1-2' on the top bar. It'll free up more room around the
-   minimap."  The words are the ones the Wheel's minimap printed under its box
-   since v2.3.2966 -- the worker's answer for the spot under you (wheelHere ->
-   wheelmap.js whereWords): the land on top, its stage and levels (or "safe")
-   in gold beneath, as they read there.  The minimap no longer prints them.
-   "The Wheel (Lv1-2)" said nothing: the whole world is the Wheel, and its
-   levels are each land's, not 1-2.
-   The last answer is KEPT while the next is on its way and over the open
-   water (no land there, so no words): the bar never blinks back to "The
-   Wheel" as you walk.  Only before the first answer, behind the way-in
-   overlay, does it say that.  Everywhere else the title is zoneTitle's,
-   unchanged (the zone banner docks into this box and reads its text). */
-function wheelWhere(S, last) {
-  if (!S || S.currentZone !== 'wheel' || !S.player) { last.current = null; return null; }
-  let h = null;
-  try { h = wheelHere(S.player.x, S.player.y); } catch (e) { h = null; }
-  const w = h && h.words;
-  if (w && w.title) last.current = { title: w.title, sub: w.sub || '', region: h.region || null };
-  return last.current;
-}
-
-/* v2.3.3024: the land's name in its own colour, lifted toward white so it
-   reads on the dark bar (src/data/wheelLands.js), beside its element's icon --
-   the owner: "elemental zones need something more obvious that the player is
-   in that elemental zone".  Brotown and the commons keep the plain title. */
-function landTint(hex, k = 0.42) {
-  const v = parseInt(String(hex).slice(1), 16);
-  const f = (c) => Math.round(c + (255 - c) * k);
-  return `rgb(${f((v >> 16) & 255)}, ${f((v >> 8) & 255)}, ${f(v & 255)})`;
-}
+/* ═══ v2.3.3009 -> v2.3.3106: WHERE YOU ARE IN THE WHEEL ═══
+   From v2.3.3009 this bar said it, two lines: the land (its icon and colour,
+   v2.3.3024) over its stage and levels, or No man's land in red (v2.3.3058).
+   v2.3.3106 moved them back under the minimap, on its name plate -- the owner:
+   "move the zone name and level band beneath the minimap" -- so in the Wheel
+   the bar names the world, "BroTown", and a land's banner docks into the plate
+   (rendering/systems/wheelMinimap.js, zoneBannerOverlay.js titleRect). */
 
 export const ZoneHeader = ({ onExit }) => {
   const [, force] = useState(0);
@@ -186,7 +158,6 @@ export const ZoneHeader = ({ onExit }) => {
      nothing, because every action it offers is an authenticated HTTP call
      (server/src/devtools.js). */
   const [showDev, setShowDev] = useState(false);
-  const lastWhere = useRef(null);  /* v2.3.3009: the Wheel's last words */
   const goldSeen = useRef(null);   /* v2.3.2815: the purse's coin flip */
   const goldFlips = useRef(0);
   const mountedAt = useRef(Date.now());
@@ -212,9 +183,6 @@ export const ZoneHeader = ({ onExit }) => {
 
   const S = getState();
   if (!S) return null;
-  const where = wheelWhere(S, lastWhere);   /* v2.3.3009 */
-  let nmlLvl = 0;
-  try { nmlLvl = nmlHere(S); } catch (e) { nmlLvl = 0; }   /* v2.3.3058 */
 
   /* v2.3.2320: the same field, read the same way as every other readout in
      the game — `S.rpg.coins`, live, never cached here.  Under protocol v2
@@ -273,7 +241,7 @@ export const ZoneHeader = ({ onExit }) => {
         <div className="bt-zone-header__mid">
         <TodIcon S={S} />
         <div
-          className={where ? 'bt-zone-header__title bt-zone-header__title--where' : 'bt-zone-header__title'}
+          className="bt-zone-header__title"
           /* v2.3.2596: the zone-entry banner's DOCK TARGET.  A data hook rather
              than the class name because the class is a style handle that a
              restyle is free to rename, and the banner measures this box from
@@ -288,22 +256,7 @@ export const ZoneHeader = ({ onExit }) => {
              text, which would cover the panel the moment it opened. */
           onContextMenu={(e) => e.preventDefault()}
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-        >{where
-          /* v2.3.3009: the Wheel's words, two lines -- as the minimap had them */
-          ? <><span className="bt-zone-header__place" data-zone-place="1"
-                data-zone-land={where.region || ''}
-                style={landLook(where.region) && landLook(where.region).element ? { color: landTint(landLook(where.region).color) } : undefined}>
-                {landLook(where.region) && landLook(where.region).icon
-                  ? <img className="bt-zone-header__elem" src={landLook(where.region).icon} alt="" width="16" height="16" draggable="false" />
-                  : null}{where.title}</span>
-              {/* v2.3.3058: in No man's land the sub-line says so, in red, with
-                  the levels (src/game/noMansLand.js) -- the place where you can
-                  be attacked must never read like the rest of the land */}
-              {nmlLvl > 0
-                ? <span className="bt-zone-header__sub" data-zone-sub="1" data-zone-nml={nmlLvl} style={{ color: NML_RED }}>
-                    {`☠ No man's land ${nmlLvl}`}{(/Lv \d+[–-]\d+/.exec(where.sub || '') || [''])[0] ? ` · ${(/Lv \d+[–-]\d+/.exec(where.sub || '') || [''])[0]}` : ''}</span>
-                : (where.sub ? <span className="bt-zone-header__sub" data-zone-sub="1">{where.sub}</span> : null)}</>
-          : (S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'BroTown' /* v2.3.3039 */) : zoneTitle(S))}</div>
+        >{S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'BroTown' /* v2.3.3039 */) : zoneTitle(S)}</div>
         </div>
         {/* ═══ v2.3.2320: THE PURSE LIVES HERE NOW ═══
             Owner: "Move gold amount display to very top right on the top bar

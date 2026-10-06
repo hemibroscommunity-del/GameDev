@@ -87,6 +87,12 @@ export function freeSignpostIcons() {
   }
 }
 export function signpostIconsLoaded() { return Object.keys(_icons).length; }
+/* v2.3.3106: the minimap's name plate wears the same icon before the land's
+   name (wheelMinimap.js) -- the texture, or null while it is not loaded;
+   `holder.clear()` is called before the icons go, as the plates' is */
+export function landIconTexture(land) { return (land && _icons[land]) || null; }
+export function holdLandIcons(holder) { if (holder) _live.add(holder); }
+export function releaseLandIcons(holder) { _live.delete(holder); }
 
 /* ── the signposts: the town's, from the worker's placed objects ── */
 let _found = { src: null, posts: [] };

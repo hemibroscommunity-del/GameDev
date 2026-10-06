@@ -119,6 +119,11 @@ function build() {
 /** The dock target's live box, or null if the header is not on screen. */
 function titleRect() {
   try {
+    /* v2.3.3106: in the Wheel, where you are is on the minimap's name plate
+       (wheelMinimap.js publishes its box while it is drawn), so a land's
+       banner lands there */
+    const p = typeof window !== 'undefined' ? window.__btWheelPlate : null;
+    if (p && p.width > 8 && p.height > 4) return { left: p.left, top: p.top, width: p.width, height: p.height, right: p.left + p.width, bottom: p.top + p.height };
     const t = document.querySelector('[data-zone-title]');
     if (!t) return null;
     const r = t.getBoundingClientRect();

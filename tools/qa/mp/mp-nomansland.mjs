@@ -10,7 +10,7 @@
  *
  * Two real players against a real worker, out on a land's Lv 6-10 ring:
  *   1. each is told: the banner ("No man's land 1"), a line in the chat, and
- *      the top bar's red line ("☠ No man's land 1 · Lv 6–10");
+ *      (v2.3.3106) the minimap's name plate's red line ("☠ No man's land 1");
  *   2. the raider taps the wanderer: the tap AIMS (S.lockedTarget, `nml`) and
  *      opens no card;
  *   3. a swing lands (the worker's HP for the wanderer drops): the raider wears
@@ -224,7 +224,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       t = await P.page.evaluate(() => {
         const S = window._gameState.current;
         const zb = window.__btZoneBanner;
-        const sub = document.querySelector('[data-zone-nml]');
+        /* v2.3.3106: the minimap's name plate (was the top bar's red line) */
+        const pl = window.__btMinimap && window.__btMinimap.plate;
+        const sub = pl && pl.red ? { textContent: pl.sub } : null;
         return {
           lvl: S._nmlLevel || 0,
           banner: zb && zb.shownAt ? zb.shownAt('nml-1') : 0,
@@ -239,8 +241,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   };
   const tA = await told(A), tB = await told(B);
   for (const [who, t] of [['the raider', tA], ['the wanderer', tB]]) {
-    rec.ok(`1. ${who} is told: the banner, the chat ("${t && t.chat[0]}") and the top bar ("${t && t.bar}")`,
-      !!t && t.lvl === 1 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && /☠ No man's land 1 · Lv 6[–-]10/.test(t.bar || ''), t);
+    rec.ok(`1. ${who} is told: the banner, the chat ("${t && t.chat[0]}") and the minimap's name plate, in red ("${t && t.bar}")`,
+      !!t && t.lvl === 1 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && /^☠ No man's land 1$/.test(t.bar || ''), t);
   }
   await shot(A, '1-told');
 
