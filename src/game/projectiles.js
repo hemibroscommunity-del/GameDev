@@ -642,6 +642,7 @@ import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
+import { pvpClaim } from '@/game/fightFood.js'; /* v2.3.3108: a duel claim without the brew, for a worker that adds its own */
 
 /* ═══ v2.3.2217: THE SNOWBALL BURSTS WHERE ITS FLIGHT ENDS ═══
    The thrown ball had no impact at all — it simply stopped existing on the
@@ -2068,6 +2069,9 @@ export function updateArrows(S, deps) {
                   var _pvpDx = _pvpX - P.x, _pvpDy = _pvpY - P.y;
                   var _pvpDist = Math.sqrt(_pvpDx * _pvpDx + _pvpDy * _pvpDy);
                   S._pvpThreat = Date.now() + PVP_THREAT_DURATION;
+                  /* v2.3.3108: the brew it was fired with comes back out for a
+                     worker that puts on its own (fightFood.js pvpClaim). */
+                  var _pvpC = pvpClaim(S, Math.max(1, a.dmg || 1), a.brew);
                   if (S.channel) S.channel.send({
                     type: 'broadcast',
                     event: 'player_attack',
@@ -2081,7 +2085,8 @@ export function updateArrows(S, deps) {
                       angle: Math.atan2(_pvpDy, _pvpDx),
                       /* a.dmg already includes any crit rolled at spawn —
                          critChance 0 so the server can't double-crit it. */
-                      dmgBase: Math.max(1, Math.round(a.dmg || 1)),
+                      dmgBase: Math.max(1, Math.round(_pvpC.dmgBase)),
+                      nb: _pvpC.nb,   /* v2.3.3108: 1 = "the worker adds my brew" */
                       critChance: 0,
                       /* Server measures attacker→target distance and
                          rejects hits past payload.range, so claim the

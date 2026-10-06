@@ -71,6 +71,11 @@ herbs; this makes them worth growing.
 | Garden Stew (`meal_garden_stew`) | at once | 2 Carrot + 1 Potato | 4 | heals **150 HP** | — |
 | Pumpkin Pie (`meal_pumpkin_pie`) | meal | 1 Pumpkin + 2 Potato | 8 | **+10%** combat XP | 30 min |
 
+- **In a fight with another player** (v2.3.3108, docs/specs/fight-food.md):
+  - a damage brew counts on every hit, put on by the worker;
+  - the Root Stew cuts small hits too;
+  - a heal eaten at once (the Garden Stew, a cooked fish) is one bite every
+    15 s while in a duel or just after a hit between players.
 - **Cooking XP** is paid at the cook, tier × 25 (25, 25, 50, 75, 75, 75, 50,
   75, and the Stamina Tonic's 25), as before.
 - **The Garden Stew is eaten at once** (`slot: 'now'`), like a cooked fish: 150

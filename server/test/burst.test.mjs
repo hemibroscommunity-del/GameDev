@@ -368,8 +368,17 @@ const setEligible = () => {
   room._prog3Recompute(ps);
   ps.staffWeapon = { type: 'staff', tierMult: 3.0, element1: 'flame', isVolatile: true };
   ps.activeSlot = 'staff';
-  ps.amulet = { gem: 'flame', tier: 'godly' };
-  ps.buffs = { damage: { until: Date.now() + 60000 } };
+  /* v2.3.3108: 'godly' is no amulet tier (AMULET_TIER_POWER tops out at
+     'mythic'); the server's roll reads no amulet at all, so this is for the
+     reader. */
+  ps.amulet = { gem: 'flame', tier: 'mythic' };
+  /* v2.3.3108: the cooked-food buff, REALLY on.  This said
+     `ps.buffs = { damage: { until } }` -- a key and a shape nothing reads
+     (_buffActive reads ps._buffs[name] as an expiry), so the "every multiplier
+     switched on" stack never had its damage buff at all. */
+  ps._buffs = { damage: Date.now() + 60000 };
+  check('the cooked-food damage buff is really on for this stack (guard)',
+    room._brewMul(ps) === 1.2, room._brewMul(ps));
 
   const cap = room._maxDmgForAttacker(ps, false);
   let worst = 0;
@@ -385,8 +394,37 @@ const setEligible = () => {
   check('...with real headroom left, not by a hair',
     worst < cap * 0.95, { cap, worst, ratio: (worst / cap).toFixed(3) });
 
+  /* ═══ v2.3.3108: A FURY TONIC IN A BURST IS NOT CLIPPED ═══
+     The 1.2 above is the cooked food's.  A brew of its own number -- the
+     Fury Tonic's x2 -- takes the worst roll well past the ordinary ceiling,
+     and before v2.3.3108 burst.js clamped it there: the one brew that should
+     matter in a boss fight lost up to a quarter of every big burst.  Driven
+     through the REAL cast, so the check fails if burst.js stops widening its
+     ceiling by the brew (combat.js _brewMul). */
+  ps._buffs = { damage: Date.now() + 60000, damageMul: 2 };
+  check('the Fury Tonic is on (guard)', room._brewMul(ps) === 2, room._brewMul(ps));
+  const plainCap = room._maxDmgForAttacker(ps, false);
+  const furyTarget = meadow[3];
+  let furyMax = 0, furyHits = 0;
+  for (let i = 0; i < 400; i++) {
+    ps.mana = ps.maxMana; ps._burstCdUntil = 0; ps.activeSlot = 'staff';
+    furyTarget.alive = true; furyTarget.hp = 1e9; furyTarget.maxHp = 1e9; furyTarget.statuses = {};
+    furyTarget.x = ps.x + 10; furyTarget.y = ps.y;
+    const before = furyTarget.hp;
+    cast();
+    const dealt = before - furyTarget.hp;
+    if (dealt > 0) furyHits++;
+    if (dealt > furyMax) furyMax = dealt;
+  }
+  furyTarget.x = -50000; furyTarget.y = -50000;
+  check('the tonic bursts landed (guard)', furyHits === 400, { furyHits });
+  check('a burst under the Fury Tonic lands PAST the ordinary ceiling -- the brew is not clipped',
+    furyMax > plainCap, { furyMax, plainCap });
+  check('...and never past the ceiling widened by exactly the brew',
+    furyMax <= Math.ceil(plainCap * 2), { furyMax, widened: plainCap * 2 });
+
   ps.amulet = null;
-  ps.buffs = {};
+  ps._buffs = {};
   ps.activeSlot = 'melee';
   ps.prog3.sk.staff.level = 1;
   ps.prog3.atk.staff.crit = 0;

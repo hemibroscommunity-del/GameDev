@@ -508,6 +508,25 @@ export const DISHES = {
       meal_pumpkin_pie:   { slot: 'meal', buff: 'xp',     power: 0.10, duration: 1800 },
     };
 
+/* ═══ v2.3.3108: ONE BITE AT A TIME IN A FIGHT WITH A PLAYER ═══
+ * Owner: "Farming needs a purpose. I think the best purpose it can serve are
+ * temporary buffs (boss fights, PvP, dueling, etc)".
+ *
+ * A heal you eat at once -- a Garden Stew, a cooked fish, the old minnow
+ * bottle -- had no limit at all, so a duel was a contest of who carried more
+ * food: three stews in one tap-tap-tap put a player back at full, and the
+ * duel's own rule (no regen in a duel, index.js _tickPlayerRegen) meant
+ * nothing.  So while you are in a duel, or within WINDOW_MS of a hit between
+ * you and another player (either way, cooking.js _pvpHealWait), you may eat
+ * one such heal every GAP_MS -- counted from your last one, wherever you ate
+ * it.  Fighting monsters is untouched, and the half-hour meals and brews are
+ * not heals and are never limited.  Mirrored in src/data/dishes.js
+ * (mirror-audit).  Kill switch `pvpheal: false`. */
+export const PVP_HEAL = Object.freeze({
+  WINDOW_MS: 10000,
+  GAP_MS: 15000,
+});
+
 /* ═══ v2.3.2062: WHAT "CONSTANTLY" IS WORTH, IN NUMBERS ═══
  *
  * A special costs a FLAT PROG3.SPECIAL_MANA_COST (25) and the client gates it

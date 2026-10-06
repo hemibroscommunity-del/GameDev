@@ -58,6 +58,7 @@ import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
+import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3108: the brew, read once and claimed right in a duel */
 
 export function updateMonsterCombat(S, deps) {
   var P = S.player;
@@ -97,10 +98,11 @@ export function updateMonsterCombat(S, deps) {
              (the Fury Tonic's x2). Bounded 1..4 to match the server's read
              in combat.js -- prediction that can outrun the authority just
              produces popups the room then contradicts. */
-          if (S._dmgBuff && Date.now() < S._dmgBuff) {
-            var _dbm = Number(S._dmgBuffMul);
-            pDmg *= (_dbm >= 1 && _dbm <= 4) ? _dbm : 1.20;
-          }
+          /* v2.3.3108: read in one place (fightFood.js brewMulNow, the same
+             rule) and KEPT, so a duel claim can take it back out for a worker
+             that puts its own brew on (pvpClaim). */
+          var _brewK = brewMulNow(S);
+          if (_brewK !== 1) pDmg *= _brewK;
           /* Hexer curse debuff — reduces damage by 30% */
           if (S._cursedUntil && Date.now() < S._cursedUntil) pDmg *= 0.7;
           /* Swarm bleed tick — removed (mosquito damage). Application
@@ -1700,6 +1702,7 @@ export function updateMonsterCombat(S, deps) {
                      calcWeaponDmg as the 0.6x-0.8x range, so no
                      per-projectile multiplier is needed here. */
                   dmg: Math.round(pDmg),
+                  brew: _brewK,   /* v2.3.3108: the brew folded into dmg, for a duel claim (fightFood.js pvpClaim) */
                   /* v2.3.1335 (owner): bow/staff range -25% — staff 90->68
                      ticks (450->340px at 5px/tick); bow 120->90 ticks (the
                      675px plant cap in projectiles.js governs the real reach).
@@ -3015,6 +3018,7 @@ export function updateMonsterCombat(S, deps) {
                 var pvpAngle = pvpLocked ? Math.atan2((S.lockedTarget.ref.y || S.lockedTarget.ref.renderY || P.y) - P.y, (S.lockedTarget.ref.x || S.lockedTarget.ref.renderX || P.x) - P.x) : baseAngle;
                 /* Track threat — attacking a player starts the threat counter */
                 S._pvpThreat = Date.now() + PVP_THREAT_DURATION;
+                var _pvpClaim = pvpClaim(S, pDmg * specialMult2, _brewK);   /* v2.3.3108 */
                 if (S.channel) S.channel.send({
                   type: 'broadcast',
                   event: 'player_attack',
@@ -3023,7 +3027,11 @@ export function updateMonsterCombat(S, deps) {
                     x: P.x,
                     y: P.y,
                     angle: pvpAngle,
-                    dmgBase: pDmg * specialMult2,
+                    /* v2.3.3108: without the brew and `nb: 1` against a worker
+                       with caps.pvpbrew, which multiplies by its own after the
+                       clamp; as before against an older one (fightFood.js). */
+                    dmgBase: _pvpClaim.dmgBase,
+                    nb: _pvpClaim.nb,
                     critChance: critChance,
                     /* v2.3.1135: Longshot stretches PvE flight, but PvP
                        reach is hard-capped at the server's 250px clamp
@@ -3037,7 +3045,13 @@ export function updateMonsterCombat(S, deps) {
                     inDuel: !!S._inDuel,
                     /* v2.3.1302: kind tags the attack for the server's
                        per-kind range clamp.  Old servers ignore it. */
-                    kind: 'melee'
+                    kind: 'melee',
+                    /* v2.3.3108: a special SWING says so, as a special arrow
+                       or bolt always did (projectiles.js).  Without it the
+                       worker held the swing to the ORDINARY ceiling -- a third
+                       of the special's -- and clipped it; every worker reads
+                       the field (combat.js _resolvePvPAttack). */
+                    special: S._specialAttack ? true : undefined
                   }
                 });
               }

@@ -167,6 +167,8 @@ const CAP_GATES = [
   'meals' /* v2.3.3105: meals and brews you carry -- lower case, a kill switch */,
   'cookRows' /* v2.3.3105: how many Cookhouse recipes the worker cooks -- a number, never a switch */,
   'farmCrops' /* v2.3.3106: how many crops the worker grows -- a number, never a switch */,
+  'pvpbrew' /* v2.3.3108: the damage brew in a fight with a player is the worker's -- lower case, a kill switch */,
+  'pvpheal' /* v2.3.3108: one bite at a time in a fight with a player -- lower case, a kill switch */,
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
 ];
 
@@ -202,6 +204,8 @@ const CAP_NOTES = {
   meals: 'meals and brews you carry: the Cookhouse cooks a dish into the bag to eat or drink later, one meal and one brew at a time, and brews the three tonics Diego no longer sells (v2.3.3105; off: a cook is eaten at once instead of carried, nobody can brew a tonic, and dishes already in bags still eat and drink)',
   cookRows: 'how many Cookhouse recipes the worker cooks: the Cookhouse, the campfire and the bag offer only those (v2.3.3105; without it, the old three)',
   farmCrops: 'how many crops the worker grows: the Feed & Seed window offers only those (v2.3.3106; without it, the first four)',
+  pvpbrew: 'damage brews in duels and player fights: every hit (swings, shots, the bow volley, the staff special) gets the Fury Tonic or Firebloom Tea the worker says you drank (v2.3.3108; off: the old claims, where the volley and the staff special never had it)',
+  pvpheal: 'one bite at a time in a duel or a fight with a player: a Garden Stew, cooked fish or minnow bottle every 15 s (v2.3.3108; off: eat as fast as you can tap)',
 };
 
 export const DevPanel = ({ onClose }) => {

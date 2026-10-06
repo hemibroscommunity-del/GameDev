@@ -282,6 +282,7 @@ const SCENARIOS = {
   tattoos: () => import('./mp-tattoos.mjs'), /* v2.3.1949: face + arm tattoos survive both server gates, end to end */
   roster: () => import('./mp-roster.mjs'), /* v2.3.1923: the device's character list — order, delete, the ten cap */
   meals: () => import('./mp-meals.mjs'), /* v2.3.3105: the Cookhouse cooks into the bag; eat a meal, drink a brew beside it; Diego's two staples */
+  fightfood: () => import('./mp-fightfood.mjs'), /* v2.3.3108: in a duel the worker puts the brew on (nb:1), a special swing says so, one bite at a time */
   drops: () => import('./mp-drops.mjs'), /* v2.3.1924: iron pieces to the bag, the gem to the glass */
   drillback: () => import('./mp-drillback.mjs'), /* v2.3.1922: the drill back-chip is not under the gold, and is paid for once */
   bootstall: () => import('./mp-bootstall.mjs'), /* v2.3.1921: a worker that never answers must not strand the login door */

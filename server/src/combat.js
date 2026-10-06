@@ -402,8 +402,16 @@ export const combatMethods = {
     // Resist buff (cooking recipe with buff:'resist', power 0.05 = 5%
     // reduction).  Cooking recipe power values are stored as the
     // fractional reduction; mirror the client's intent here.
+    /* ═══ v2.3.3108: THE ROOT STEW CUTS SMALL HITS TOO ═══
+       This was ceil(dmg x 0.95), and a ceil gives back the whole 5% on any
+       hit under 20: 19 x 0.95 = 18.05, ceil 19 -- the stew did nothing at all
+       against most monsters and every PvP hit (halved by DMG_SCALE).  Now the
+       fraction is a chance: 18.05 is 18, or 19 one time in twenty, so every
+       hit loses exactly 5% on average, at any size.  Floor 1 as before. */
     if (this._buffActive(ps, 'resist')) {
-      dmgTaken = Math.max(1, Math.ceil(dmgTaken * (1 - 0.05)));
+      const _cut = dmgTaken * (1 - 0.05);
+      const _whole = Math.floor(_cut);
+      dmgTaken = Math.max(1, _whole + (Math.random() < _cut - _whole ? 1 : 0));
     }
     // v2.3.1659 (prog3): the allocated `defense` stat is the game's
     // first real mitigation dial — −0.4% damage taken per point, cap
@@ -677,6 +685,37 @@ export const combatMethods = {
     return Math.max(critDmg, rangeTop * CRIT_ANCHOR_MULT);
   },
 
+  /* ═══ v2.3.3108: HOW HARD YOUR BREW MAKES YOU HIT ═══
+   * Owner: "Farming needs a purpose. I think the best purpose it can serve
+   * are temporary buffs (boss fights, PvP, dueling, etc)".
+   *
+   * The damage brew's multiplier, read in ONE place.  It was written inline in
+   * _computeAttackDamage, so the monster roll was the only thing that heard of
+   * it: a duel's hits are claimed by the client and only some of its claims
+   * carried the brew (the swing and the plain shot did, the bow volley and the
+   * staff special never), and the Element Burst clipped a Fury Tonic at the
+   * ordinary ceiling.  Now the roll, the PvP lane (_resolvePvPAttack) and the
+   * burst's ceiling (burst.js) all read this.
+   *
+   * 1.20 is the old cooked-food magnitude and stays the default; a buff with
+   * its own number (the Firebloom Tea's 1.2, the Fury Tonic's 2.0) carries it
+   * as `damageMul`.  Guarded and bounded because it is persisted state -- a
+   * corrupted blob must not become a damage multiplier.  1 with no brew. */
+  _brewMul(ps) {
+    if (!ps || !this._buffActive(ps, 'damage')) return 1;
+    const m = Number(ps._buffs && ps._buffs.damageMul);
+    return (m >= 1 && m <= 4) ? m : 1.20;
+  },
+
+  /* v2.3.3108: the kill switch for the brew in PvP, read the meals' way:
+     `pvpbrew: false` un-advertises caps.pvpbrew, so a new page claims its PvP
+     hits with the brew folded in as before, and the worker stops multiplying
+     the claims of a page that joined while it was on. */
+  _pvpBrewOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'pvpbrew') && !f.pvpbrew);
+  },
+
   _maxDmgForAttacker(ps, isSpecial) {
     if (!ps) return 21; // baseline-10: 100 ÷ 4.8
     const maxWpn = this._maxWeaponDmg(ps, isSpecial);
@@ -905,10 +944,7 @@ export const combatMethods = {
        _buffs.damageMul is set by anything that buffs damage by its own amount
        (the Fury Tonic at 2.0). Guarded and bounded because it is persisted
        state -- a corrupted blob must not become a damage multiplier. */
-    if (this._buffActive(ps, 'damage')) {
-      const _m = Number(ps._buffs && ps._buffs.damageMul);
-      base *= (_m >= 1 && _m <= 4) ? _m : 1.20;
-    }
+    base *= this._brewMul(ps);   /* v2.3.3108: the one reader, shared with PvP and the burst */
     // Crit (calcCritChance + calcCritMult).
     // v2.3.1345 (counter skills): the crit CHANNEL is a deterministic
     // accumulator — "a LUCKY hit every N hits", never streaky.  Power's
@@ -1906,7 +1942,17 @@ export const combatMethods = {
     // the previous level-only formula.  Pass payload.special if the
     // PvP attack is a swipe so the Mind-scaled cap applies.
     const dmgCap = this._maxDmgForAttacker(attackerPs, !!payload.special);
-    const dmgBase = Math.max(1, Math.min(dmgCap, payload.dmgBase || 10));
+    /* ═══ v2.3.3108: THE BREW IS THE WORKER'S, IN A DUEL TOO ═══
+       A page that sees caps.pvpbrew claims its hit WITHOUT its damage brew
+       and says so with `nb: 1`; the worker multiplies the clamped claim by the
+       brew IT holds (_brewMul).  So every attack the brew can make bigger --
+       the swing, the shot, the bow volley, the staff special -- gets it, only
+       while the worker's own timer runs, and AFTER the clamp, so a Fury Tonic
+       is never clipped by a ceiling that was never sized for it.  An old page
+       sends no `nb` and its claim (brew folded in, or not) is honoured as
+       before; `pvpbrew: false` stops the multiplying (_pvpBrewOff). */
+    const _brew = (payload.nb === 1 && !this._pvpBrewOff()) ? this._brewMul(attackerPs) : 1;
+    const dmgBase = Math.max(1, Math.min(dmgCap, payload.dmgBase || 10)) * _brew;
     const critChance = Math.max(0, Math.min(100, payload.critChance || 0));
 
     // Check all players in room for hits
@@ -2033,6 +2079,11 @@ export const combatMethods = {
          _handleMonsterDamage) — otherwise a PvP aggressor in a lawless zone
          out-regenerates the fight they are winning. */
       attackerPs._lastDealtAt = Date.now();
+      /* v2.3.3108: a fight between players, for the eating rule (cooking.js
+         _pvpHealWait): both sides, on every exchange that sends a pvp_hit --
+         the same event the page stamps its own copy from, so the two agree.
+         Memory only (rule 11): a deploy just lets one more bite through. */
+      attackerPs._pvpAt = targetPs._pvpAt = Date.now();
 
       // Build hit event — server-authoritative hp now mirrors via
       // player_state below, but dmgTaken in the payload drives the
