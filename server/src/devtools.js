@@ -264,6 +264,13 @@ export const devToolsMethods = {
       ps.stamina = Math.max(0, Math.min(ps.maxStamina, o.stamina));
       out.stamina = ps.stamina;
     }
+    /* v2.3.3058: an HP level the same way -- a No man's land kill (mp-nomansland)
+       in one blow rather than a dozen.  Never 0: a death is the game's to
+       make, through _handlePlayerDeath, not a number set here. */
+    if (typeof o.hp === 'number' && Number.isFinite(o.hp) && typeof ps.maxHp === 'number') {
+      ps.hp = Math.max(1, Math.min(ps.maxHp, Math.floor(o.hp)));
+      out.hp = ps.hp;
+    }
 
     if (o.god !== undefined) {
       if (o.god) {

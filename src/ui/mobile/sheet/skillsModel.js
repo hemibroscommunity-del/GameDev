@@ -1,4 +1,4 @@
-import { LIFE_SKILLS, FISHING_TIERS, WOODCUTTING_TIERS, MINING_TIERS } from '../../../data/lifeSkills.js';
+import { LIFE_SKILLS, FISHING_TIERS, WOODCUTTING_TIERS, MINING_TIERS, gatherLadderLvl } from '../../../data/lifeSkills.js';
 import { BLACKSMITH_TIERS, WOODWORKING_TIERS, GEM_CUT_TIERS, COOKING_RECIPES } from '../../../data/gameSystems.js';
 
 /* v2.3.1312: normalize the four crafting unlock tables that always
@@ -14,6 +14,16 @@ const _fromMinLvl = (table) => Object.values(table)
 const SMITH_LADDER = _fromMinLvl(BLACKSMITH_TIERS);
 const WOODWORK_LADDER = _fromMinLvl(WOODWORKING_TIERS);
 const GEMCUT_LADDER = _fromMinLvl(GEM_CUT_TIERS);
+/* v2.3.3038: the gather trio's ladders read the level each resource ASKS
+   (GATHER_REQ_LVL: black steel at Mining 5, clownfish at Fishing 5, ...), not
+   its tier number -- "Next: Clownfish at Lv 6" would have been a level early
+   and still wrong. */
+const _gatherLadder = (tiers, nodeType) => tiers
+  .map(t => ({ ...t, lvl: gatherLadderLvl(nodeType, t.lvl) }))
+  .sort((a, b) => a.lvl - b.lvl);
+const WOODCUT_LADDER = _gatherLadder(WOODCUTTING_TIERS, 'tree');
+const FISH_LADDER = _gatherLadder(FISHING_TIERS, 'fishSpot');
+const MINE_LADDER = _gatherLadder(MINING_TIERS, 'oreVein');
 const COOK_LADDER = COOKING_RECIPES
   .map(r => ({ lvl: r.cookLvl, name: r.name }))
   .sort((a, b) => a.lvl - b.lvl);
@@ -38,9 +48,9 @@ const COOK_LADDER = COOKING_RECIPES
      + the farm) and real formula-backed benefit lines only. */
 
 const META = {
-  woodcutting:   { icon: '🪓', name: 'Woodcutting',  iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1224',  group: 'gather',  accent: '#8FBF6A', iconScale: 1.15, tiers: WOODCUTTING_TIERS, tierNoun: (t) => t.tree, where: 'Frost Ridge', passive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Chop trees in the wild — higher-level trees give more XP.' },
-  fishing:       { icon: '🎣', name: 'Fishing',      iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1224',      group: 'gather',  accent: '#5B99DE', iconScale: 1.0,  tiers: FISHING_TIERS,     tierNoun: (t) => t.name, where: 'Starting Meadow', passive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Cast at fishing spots and win the reel minigame.' },
-  mining:        { icon: '⛏',  name: 'Mining',       iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',       group: 'gather',  accent: '#B0885A', iconScale: 1.15, tiers: MINING_TIERS,      tierNoun: (t) => t.name, where: 'Stone Hollows', passive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Break ore veins — deeper zones hold richer ore.' },
+  woodcutting:   { icon: '🪓', name: 'Woodcutting',  iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1224',  group: 'gather',  accent: '#8FBF6A', iconScale: 1.15, tiers: WOODCUT_LADDER, tierNoun: (t) => t.tree, where: 'Frost Ridge', passive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Chop trees in the wild — higher-level trees give more XP.' },
+  fishing:       { icon: '🎣', name: 'Fishing',      iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1224',      group: 'gather',  accent: '#5B99DE', iconScale: 1.0,  tiers: FISH_LADDER,     tierNoun: (t) => t.name, where: 'Starting Meadow', passive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Cast at fishing spots and win the reel minigame.' },
+  mining:        { icon: '⛏',  name: 'Mining',       iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',       group: 'gather',  accent: '#B0885A', iconScale: 1.15, tiers: MINE_LADDER,      tierNoun: (t) => t.name, where: 'Stone Hollows', passive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Break ore veins — deeper zones hold richer ore.' },
   farming:       { icon: '🌾', name: 'Farming',      iconSrc: '/icons/ui/skill-farming.webp?v=2.3.1224',      group: 'gather',  accent: '#D8C05A', iconScale: 1.0,  where: 'Your farm plots', earnHint: 'Plant, tend and harvest crops on your plot.' },
   trapping:      { icon: '🪤', name: 'Trapping',     iconSrc: '/icons/ui/skill-trapping.webp?v=2.3.1224',     group: 'gather',  accent: '#C08A5A', iconScale: 1.0,  earnHint: 'Set traps for small creatures and collect the catch.' },
   cooking:       { icon: '🍳', name: 'Cooking',      iconSrc: '/icons/ui/skill-cooking.webp?v=2.3.1224',      group: 'process', accent: '#E0955A', iconScale: 1.0,  tiers: COOK_LADDER, earnHint: 'Cook raw food at a campfire — perfect timing pays.', passive: (lvl) => `Cook timing window +${Math.min(30, lvl * 0.4).toFixed(1)}%` },

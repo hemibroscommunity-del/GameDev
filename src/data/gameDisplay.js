@@ -1436,6 +1436,13 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        AND the only thing `trackUrl` is ever compared to (_zoneMusicUrl), so
        both sides move together. */
     sky: '/audio/music/desert.mp3?v=2.3.2614',
+    /* v2.3.3064: the Wheel's Verdant Wilds, the flora land, play the old
+       meadow's Floral -- its banner is the owner's verdant one and its land
+       the green one the meadow became.  The SAME url as meadow's, so the two
+       share one decoded buffer (the cache is keyed by url).  The Wheel's
+       other lands are keyed by their own ids here as they get music: frost,
+       ember and sky already were (game/wheelMusic.js). */
+    verdant: '/audio/music/forest.mp3?v=2.3.2614',
   },
   /* ═══ v2.3.1738: PER-ZONE AMBIENCE (owner art) ═══
      Owner: "use this to play as the 'wind' ambient sound effect to play in a
@@ -1456,6 +1463,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   ZONE_AMBIENT: {
     sky: '/audio/ambient/wind-dunes.mp3',
   },
+  /* v2.3.3064: the Wheel's music is its LANDS' (game/wheelMusic.js): the
+     town's on the safe ground, each land's own as you cross into it.  On
+     unless the address says `?nolandmusic`, which is the Wheel as it was --
+     one track everywhere, the game's theme after any trip back. */
+  wheelLandMusic: !(typeof location !== 'undefined' && /[?&]nolandmusic\b/.test(location.search || '')),
   /* NOTE for whoever adds the remaining zones: every ZONES entry also carries a
      `music: '<id>'` field.  It is read NOWHERE — dead early-design remnant, all
      14 of them.  Do NOT "restore" it by wiring this map through it (the doc-trust
@@ -2469,21 +2481,19 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       _this7.beep(784, 0.5, 0.06, 'sine');
     }, 600);
   },
-  /* Whimsical death jingle */playerDeath: function playerDeath() {
-    var _this8 = this;
-    this.beep(400, 0.1, 0.12, 'square');
-    setTimeout(function () {
-      return _this8.beep(350, 0.1, 0.1, 'square');
-    }, 120);
-    setTimeout(function () {
-      return _this8.beep(300, 0.1, 0.08, 'square');
-    }, 240);
-    setTimeout(function () {
-      return _this8.beep(200, 0.2, 0.1, 'triangle');
-    }, 380);
-    setTimeout(function () {
-      return _this8.beep(100, 0.3, 0.08, 'sine');
-    }, 500);
+  /* ═══ v2.3.3042: YOUR DEATH, FROM RECORDINGS ═══
+     Owner: "Death sound effect and screen shake didn't take effect when
+     character died."  This was a five-note beep() jingle, and beep() has
+     played nothing since v2.3.1103 -- so dying was silent (SOUND-GAPS "Your
+     death").  Three layers of recordings already in the game, all in
+     SFX_MANIFEST so they are decoded at the loading gate: the blow (the
+     monster hit, slowed into a heavy thud), the game's own "lost" sting a
+     beat after it, and the bones' rattle when the body crumbles to bone
+     (deathCrumble's burst, 1.08 s after the death). */
+  playerDeath: function playerDeath() {
+    this.play('monster-hit', { vol: 0.95, rate: 0.7 });
+    this.play('flip-lose', { vol: 0.5, rate: 0.92, delay: 0.16 });
+    this.play('skeleton-death', { vol: 0.55, rate: 0.82, delay: 1.08 });
   },
   join: function join() {
     var _this9 = this;
@@ -2504,7 +2514,26 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     return;
   }
 }, "_ambientOsc", null), "_ambientGain", null), "_ambientLfo", null), "_currentZoneAmbient", null), "_ambientOsc2", null), "_ambientGain2", null), "_ambientLfo2", null), "startZoneAmbient", function startZoneAmbient(zoneId) {
+  /* v2.3.3064: the last few asks, for the land-music probe (game/wheelMusic.js
+     __btLandMusic) -- what asked for which music, and what was playing.  The
+     caller's frames only on a test page (window.__btProbe). */
+  try {
+    var _asks = this._zoneAsks || (this._zoneAsks = []);
+    var _ask = { zone: zoneId, at: Date.now(), ctx: !!this.ctx, was: this._currentZoneAmbient || null };
+    if (typeof window !== 'undefined' && window.__btProbe) _ask.from = String(new Error().stack || '').split('\n').slice(2, 5).map(function (l) { return l.trim(); });
+    _asks.push(_ask);
+    if (_asks.length > 16) _asks.shift();
+  } catch (e) {}
   if (!this.ctx || this.muted) return;
+  /* v2.3.3064: THE WHEEL ASKS FOR NOTHING -- its music is its lands'
+     (game/wheelMusic.js), started by the land watch once it knows where you
+     stand.  Arriving keeps what plays: the way in, a death's, a dungeon's and
+     the farm's way back all come through today's town, whose track is the
+     Wheel's Brotown's too.  This used to find no 'wheel' track and bring the
+     game's theme up over the whole Wheel after a death, a dungeon or the farm
+     (after a login the loading screen's hand-over then asked for town's, and
+     that played everywhere instead). */
+  if (zoneId === 'wheel' && this.wheelLandMusic) return;
   if (this._currentZoneAmbient === zoneId) return;
   this._currentZoneAmbient = zoneId;
   /* Crossfade music between zones: fade the previous track to 0 over
@@ -2531,7 +2560,16 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      this function is the choke point they all funnel through, and it already
      early-returns when the zone has not actually changed. */
   var _prevAmb = this._zoneAmbientKey;
-  if (_prevAmb) { try { this.stopSfxLoop(_prevAmb); } catch (e) {} this._zoneAmbientKey = null; }
+  if (_prevAmb) {
+    try { this.stopSfxLoop(_prevAmb); } catch (e) {}
+    this._zoneAmbientKey = null;
+    /* v2.3.3064: and its decoded loop goes with it (the dunes' 28.8 s of wind
+       is ~11 MB of PCM).  The old Wind Dunes were left by a loading screen
+       and seldom; the Wheel's are walked in and out of, and kept it for the
+       session after the first visit.  A source still fading out holds its own
+       reference to the buffer. */
+    delete this._samples[_prevAmb];
+  }
   var _ambUrl = this.ZONE_AMBIENT && this.ZONE_AMBIENT[zoneId];
   if (_ambUrl) {
     var _ambKey = 'zoneamb-' + zoneId;
@@ -2545,6 +2583,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
          otherwise strand a wind loop playing in the next zone. */
       Promise.resolve(this.loadSample(_ambKey, _ambUrl)).then(function () {
         if (_self0._zoneAmbientKey === _ambKey) _self0.startSfxLoop(_ambKey, _self0.ZONE_AMBIENT_VOL, 'music');
+        /* v2.3.3064: landed after you left -- not kept either (above) */
+        else if (!_self0._sampleLoading[_ambKey]) delete _self0._samples[_ambKey];
       }).catch(function () {});
     }
   }
@@ -2835,6 +2875,14 @@ BT_AUDIO.SFX_MANIFEST = {
      fish-reel: 5s steady reel loop while the fishing crank is turning. */
   'footstep-v3':      '/sfx/footstep/footstep-v3.mp3',
   'mine-strike':      '/sfx/mining/mine-strike.mp3',
+  /* v2.3.3040: the ore SPLITTING when a mining gesture completes (owner: "Add
+     cracking sound when the ore splits when user completes the gesture") --
+     the third crack of the game's own mining clip, public/minigames/mining/
+     extract-success.mp4 (2.24-2.96 s, the rock splitting open), mono, loudness
+     -16 LUFS.  Played on the break strip's split frame (effectsRenderer
+     _advanceOreBreaks).  Until now a finished vein was silent: its only cue
+     was a beep(), which has played nothing since v2.3.1103 (SOUND-GAPS). */
+  'ore-crack':        '/sfx/mining/ore-crack.mp3',
   'pan-sizzle':       '/sfx/cooking/pan-sizzle.mp3',
   'fish-reel':        '/sfx/fishing/fish-reel.mp3',
   /* v2.3.1427 (owner sounds, round 2):

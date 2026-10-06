@@ -42,6 +42,7 @@ import { IncomingTradePanel } from './panels/IncomingTradePanel.jsx';
 import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
+import { nmlCanAttack } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land */
 import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
 import { NameModal } from './panels/NameModal.jsx';
 /* v2.3.1814: the login door that now sits in front of the creator.
@@ -132,6 +133,8 @@ import { CookPanel } from './panels/buildings/CookPanel.jsx';
 import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
 import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
+import { WheelHallPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls */
+import { ClanInviteCard } from './panels/ClanInviteCard.jsx';            /* v2.3.3066: a clan invite you can take up */
 import { StorePanel } from './panels/buildings/StorePanel.jsx';   /* v2.3.2476: the auction house */
 import { StoreToast } from './mobile/StoreToast.jsx';   /* v2.3.2476: "your thing sold" */
 import { WorldMapOverlay } from './WorldMapOverlay.jsx';  /* v2.3.2966: the Wheel's labelled world map */
@@ -414,7 +417,7 @@ const {
   getShieldBonus, getShieldStats, getAmuletBonus,
   getSalvageReturns, getAmuletSalvageReturns, gemExtractCost,
   getDungeonCreatorUnlocks, validateCustomDungeon, createDefaultDungeonConfig,
-  hasUnlock, getNpcQuest, npcHasQuestChain, /* v2.3.1773 */
+  hasUnlock, getNpcQuest, /* v2.3.3047: npcHasQuestChain (v2.3.1773) no longer read -- all done wears nothing */
   discoverMonster, discoverMaterial, discoverZone, discoverCollision,
   getGuildRank, getGuildQuest, GUILD_RANKS, GUILD_QUESTS, SKILL_GUILDS,
   meetsStatReq, meetsGearReq, getGearStatReq, STAT_LABELS,
@@ -469,8 +472,9 @@ import { isWheelTrialZone, footstepSurface } from '@/game/worldTrial.js';   /* v
 import { wheelDoorAt, enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
-import { WHEEL_TOWNSFOLK } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors */
+import { WHEEL_TOWNSFOLK, WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
+import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
  * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
@@ -777,7 +781,9 @@ var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
    and takes his quests exactly as in today's town -- the server's quest
    hand-ins never ask which zone you are in (quests.js).  Only him: the
    shopkeeper, the blacksmith, Lil Bro and Ace stay in today's town until
-   their buildings have doors. */
+   their buildings have doors.  (v2.3.3032: Diego came; v2.3.3067: the other
+   three, WHEEL_TOWNSFOLK -- Ace's coin flip opens only on a tap on him, so
+   while he stayed behind it could not be played.) */
 function _spawnWheelNpcs() {
   var info = wheelObjectsInfo();
   var spot = info && info.mayor;
@@ -1609,6 +1615,16 @@ export var BroTown = function BroTown(_ref0) {
   var _useStateWS = useState(null),
     nearShutDoor = _useStateWS[0],
     setNearShutDoor = _useStateWS[1];
+  /* v2.3.3066: the Wheel hall whose door you stand at (data/wheelBuildingDoors.js
+     WHEEL_HALL_DOORS: the Guild Hall, the Post Office, the Sheriff's Office),
+     and a clan invite waiting for an answer (ClanInviteCard) -- both synced
+     with nearBuilding */
+  var _useStateWH = useState(null),
+    nearHall = _useStateWH[0],
+    setNearHall = _useStateWH[1];
+  var _useStateCI = useState(null),
+    clanInvite = _useStateCI[0],
+    setClanInvite = _useStateCI[1];
   var _useState43 = useState(false),
     _useState44 = _slicedToArray(_useState43, 2),
     showLeaderboard = _useState44[0],
@@ -6780,13 +6796,25 @@ export var BroTown = function BroTown(_ref0) {
                  A tick you were never owed is worse than no tick: it says
                  "nothing more here" about a character you have never spoken
                  to. */
-              if (npcHasQuestChain(npc.name)) npc._questMarker = '✅';
+              /* ═══ v2.3.3047: ALL DONE WEARS NOTHING ═══
+                 The '✅' that stood here drew a GREEN badge -- the colour that
+                 now means "you can hand it in" (below).  A finished chain has
+                 nothing to say, so it says nothing. */
             } else if (npcQuest.status === 'available') {
               npc._questMarker = '❗';
             } else if (npcQuest.status === 'active') {
               var _qReady = false;
               try { _qReady = !!(npcQuest.quest.check && npcQuest.quest.check(S.rpg, S)); } catch (_e) { _qReady = false; }
-              if (_qReady) npc._questMarker = '❓';
+              /* ═══ v2.3.3047: WAITING IS A GREY "?", READY A GREEN CHECK ═══
+                 Owner: "When you've accepted a quest from mayor bro and he's
+                 waiting for you to get the items make it turn into a gray
+                 question mark.  When you have all the items make it turn into
+                 a green checkmark above his head (not emoji)."  Waiting wore no
+                 badge at all; ready wore a '?'.  '❔' (waiting) and '❓'
+                 (ready) are the wire values entityRenderer draws: a grey disc
+                 with a white "?", still; a green disc with a check DRAWN in
+                 lines -- no emoji glyph anywhere. */
+              npc._questMarker = _qReady ? '❓' : '❔';
             }
           });
         }
@@ -7899,13 +7927,23 @@ export var BroTown = function BroTown(_ref0) {
       });
       /* v2.3.3032: and the Wheel's building door you stand at (game/wheelTownDoors.js) */
       var nwb = S._nearWheelBuilding || null;
-      var nwbLabel = nwb && nwb.index >= 0 ? nwb.label : null;
+      var nwbLabel = nwb && (nwb.index >= 0 || nwb.hall) ? nwb.label : null;
       setNearDoorLabel(function (prev) {
         return prev === nwbLabel ? prev : nwbLabel;
       });
-      var nwbShut = nwb && nwb.index < 0 ? nwb.id : null;
+      var nwbShut = nwb && nwb.index < 0 && !nwb.hall ? nwb.id : null;
       setNearShutDoor(function (prev) {
         return prev === nwbShut ? prev : nwbShut;
+      });
+      /* v2.3.3066: a hall's door, and a clan invite still live (the worker
+         keeps one 120 s, server/src/clans.js) for someone in no clan */
+      var nwbHall = nwb && nwb.hall ? nwb.hall : null;
+      setNearHall(function (prev) {
+        return prev === nwbHall ? prev : nwbHall;
+      });
+      var _ci = S._pendingClanInvite && !S._clanData && Date.now() - S._pendingClanInvite.ts < 120000 ? S._pendingClanInvite : null;
+      setClanInvite(function (prev) {
+        return prev === _ci ? prev : _ci;
       });
       /* v2.3.3016: and the Wheel dungeon mouth you stand at */
       var nwd = S._nearWheelDoor && !S._serverDungeon ? S._nearWheelDoor.id : null;
@@ -8214,6 +8252,11 @@ export var BroTown = function BroTown(_ref0) {
       clan:         function () { setShowClanPanel(function (v) { return !v; }); },
       social:       function () { setShowSocialPanel(function (v) { return !v; }); },
       chat:         function () { setChatOpen(function (v) { return !v; }); },
+      /* v2.3.3066: OPEN, not toggle -- the dashboard's Clan and Guild pages
+         call these from a button ("Make a clan", "Open the guild window"),
+         and a toggle pressed while the window is already up would shut it */
+      clanOpen:     function () { setShowClanPanel(true); },
+      guildOpen:    function () { setShowGuildPanel(true); },
     };
     return function () { delete window.__broLegacyUI; };
   }, []);
@@ -8326,7 +8369,6 @@ export var BroTown = function BroTown(_ref0) {
      harvested from the right button.  A tap on bare ground still unlocks. */
 
   var _desktopGather = useCallback(function () {
-    var _R$lifeSkills;
     var S = stateRef.current,
       /* v2.3.1448: the E key keeps working on PROXIMITY (desktop has no
          "touch the resource" gesture in the thumb sense) — the tapped
@@ -8335,13 +8377,10 @@ export var BroTown = function BroTown(_ref0) {
       R = S.rpg;
     if (!node || !node.alive || !R) return;
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-    var skillName = node.skill || 'mining';
-    var skillLvl = ((_R$lifeSkills = R.lifeSkills) === null || _R$lifeSkills === void 0 || (_R$lifeSkills = _R$lifeSkills[skillName]) === null || _R$lifeSkills === void 0 ? void 0 : _R$lifeSkills.level) || 1;
-    if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
-      pushDmgPopup(S, node.x, node.y - 15, 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl, '#D95C54');
-      BT_AUDIO.beep(200, 0.05, 0.08, 'square');
-      return;
-    }
+    /* v2.3.3038: the level gate lives in startExtraction now (gatherNeed,
+       src/data/lifeSkills.js) -- one door for the tap, the button and this
+       key, and only while the worker enforces it.  The `if (false)` copy
+       that stood here, which printed the TIER as the level, is gone. */
     /* v2.3.229: modal minigames replaced by the windowed-swipe
        extraction loop. _startExtraction sets up the state machine;
        the game-tick (search _extraction) drives waiting -> ready ->
@@ -10161,6 +10200,26 @@ export var BroTown = function BroTown(_ref0) {
          which would put the player back on the screen they just answered. */
       var _forceCreate = false;
       try { _forceCreate = /[?&]create=1\b/.test(window.location.search); } catch (e) { _forceCreate = false; }
+      /* ═══ v2.3.3046: A KEY THAT ALREADY HAS A CHARACTER IS NOT SENT TO THE CREATOR ═══
+         The flag is set by the door AFTER it mints a fresh key, so a key that
+         is already in this device's roster -- joinTown writes it there the
+         first time it enters the world -- means the flag is left over from
+         the tab's past (the owner's crash: the reload after an iOS memory
+         kill kept the address).  Take it out and go the ordinary road, which
+         sends a returning player to the door with their character on it. */
+      if (_forceCreate) {
+        var _stale = false;
+        try { var _fp = getBtPassphrase(); _stale = !!_fp && inRoster(_fp); } catch (e) { _stale = false; }
+        if (_stale) {
+          _forceCreate = false;
+          try {
+            var _u3 = new URL(window.location.href);
+            _u3.searchParams.delete('create');
+            window.history.replaceState(window.history.state, '', _u3.pathname + _u3.search + _u3.hash);
+          } catch (e) { /* the phase decision below is what matters */ }
+          try { window.__btBootRoute = 'create-stale'; window.__btCreateStale = true; } catch (e) {}
+        }
+      }
       if (_forceCreate) {
         if (alive) setBootPhase('create');
         try { window.__btBootRoute = 'create-forced'; } catch (e) {}
@@ -10476,6 +10535,21 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.init();
     BT_AUDIO.join();
     setShowWelcome(false);
+    /* ═══ v2.3.3046: IN THE WORLD, THE ADDRESS FORGETS HOW YOU GOT HERE ═══
+       Owner: "Game crashed and brought me to trait picker screen."  A page
+       iPhone Safari kills for memory is RELOADED from the address it had --
+       and the door's "Create new character" puts `?create=1` there (v2.3.1861),
+       which only backToMenu ever took away.  So a player who had made a
+       character in that tab and played on was sent, by the reload after a
+       crash, to the boot check's very first road: the creator, before it asks
+       anything.  The routing flags are spent once you are in the world, so
+       they go here: `create`, `login` and `noresume` (a ?guest=1 test tab
+       keeps its own).  history.replaceState, no navigation. */
+    try {
+      var _u2 = new URL(window.location.href), _ch2 = false;
+      ['create', 'login', 'noresume'].forEach(function (k) { if (_u2.searchParams.has(k)) { _u2.searchParams.delete(k); _ch2 = true; } });
+      if (_ch2) window.history.replaceState(window.history.state, '', _u2.pathname + _u2.search + _u2.hash);
+    } catch (e) { /* no URL/history (old webview): nothing to tidy */ }
     /* Skip the 4-second intro overlay when the debug console is open
        (URL `?debug=1`) — the intro at z-index 100 with background:#000
        still obscures most of the viewport and makes diagnostics hard to
@@ -11354,6 +11428,27 @@ export var BroTown = function BroTown(_ref0) {
               _isDuelOpponent = String(_oppId) === String(id);
             }
           } catch (e) { _isDuelOpponent = false; }
+          /* ═══ v2.3.3058: ...OR SOMEONE YOU MAY FIGHT IN NO MAN'S LAND ═══
+             The worker's rule from your side (src/game/noMansLand.js
+             nmlCanAttack): the tap AIMS -- your swings and shots at them
+             become player_attack, which the worker judges -- and opens no
+             card, which mid-fight would cover the screen.  A second tap lets
+             go, as for anyone. */
+          var _nmlFoe = false;
+          try { _nmlFoe = !_isDuelOpponent && nmlCanAttack(S, id); } catch (e) { _nmlFoe = false; }
+          if (_nmlFoe) {
+            /* nml: the lock is No man's land's, so noteNoMansLand lets it go
+               the moment the rule stops allowing the fight.  Tapping them
+               AGAIN keeps it: on a computer the attack IS a click, and a click
+               on the one you fight toggling the lock off made every other
+               swing a plain one (mp-nomansland).  Tap empty ground to let go,
+               as for any lock. */
+            if (!(S.lockedTarget && S.lockedTarget.id === id)) {
+              S.lockedTarget = { type: 'player', id: id, ref: o, nml: true };
+              try { pushDmgPopup(S, o.x, o.y - 70, 'TARGET', '#ff6b5e', { ts: Date.now() }); } catch (e) { /* the reticle says it */ }
+            }
+            return;
+          }
           if (S.lockedTarget && S.lockedTarget.id === id) {
             S.lockedTarget = null;
           } else if (!_isDuelOpponent) {
@@ -11522,7 +11617,17 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "\u2715"), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
+  }, "\u2715"), /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
+       opens the panel that does the work and closes the hall */
+  (buildingPanel === 'guildhall' || buildingPanel === 'post' || buildingPanel === 'sheriff') && /*#__PURE__*/React.createElement(WheelHallPanel, {
+    hall: buildingPanel,
+    stateRef: stateRef,
+    onClan: function onClan() { setBuildingPanel(null); setShowClanPanel(true); },
+    onGuild: function onGuild() { setBuildingPanel(null); setShowGuildPanel(true); },
+    onMessages: function onMessages() { setBuildingPanel(null); dashboardPanelBus.open('social'); },
+    onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); },
+    onArena: function onArena() { setBuildingPanel('party'); }
+  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 8,
@@ -11736,7 +11841,7 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
+  }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), /* v2.3.3066: a clan invite raises its own card (ClanInviteCard) */ clanInvite && !duelRequest && /*#__PURE__*/React.createElement(ClanInviteCard, { stateRef: stateRef, invite: clanInvite, onDone: function onDone() { setClanInvite(null); } }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
    prototype era -- the step machine ran all along, only the display was
    gated, so veterans' bt_tutorial already reads 7/10 and never see it) */
   /* v2.3.1235: §6 — the banner yields to every blocking decision
@@ -12329,9 +12434,25 @@ export var BroTown = function BroTown(_ref0) {
         gap: 6,
         color: done ? '#59BF91' : '#D8A94D'
       }
-    }, /*#__PURE__*/React.createElement("span", {
+    },
+    /* ═══ v2.3.3048: READY IS THE OWNER'S GREEN CHECK ═══
+       Owner: "Make the quest notification turn to a green checkmark if you
+       have everything you need to complete the quest."  The card led with a
+       scroll EMOJI and closed on a small text tick in the title's own green;
+       now it leads with a picture -- the Quests button's scroll while you
+       work, the quest windows' painted check (QUEST_ART.check, preloaded at
+       the gate) once everything is in hand -- the height of the title's line,
+       and it pops once as it turns (game.css bt-quest-hud-ready). */
+    /*#__PURE__*/React.createElement("img", {
+      src: done ? QUEST_ART.check : '/icons/ui/panel-quests.webp',
+      alt: done ? 'Ready to hand in' : 'Quest',
+      draggable: false,
+      'data-quest-hud-mark': done ? 'ready' : 'quest',
+      className: done ? 'bt-quest-hud-ready' : undefined,
+      style: { width: 18, height: 18, flex: '0 0 auto', objectFit: 'contain' }
+    }), /*#__PURE__*/React.createElement("span", {
       style: { flex: 1, minWidth: 0 }
-    }, "\uD83D\uDCDC ", q.title, " ", done ? '✓' : ''),
+    }, q.title),
     /* v2.3.1714: the fold affordance.  Without it a collapsed card is just a
        card that quietly lost its second line, with nothing on screen saying
        the title can be tapped to get it back. */
@@ -13010,8 +13131,11 @@ export var BroTown = function BroTown(_ref0) {
        tapped, so it stops rendering. Walking away and back re-arms it
        normally -- nearBuilding is untouched, which keeps the desktop E key
        (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
-    buildingPanel === null && nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
+    buildingPanel === null && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
+    /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
+       Sheriff's Office): the same button, its own picture and name */
+    "data-enter-hall": nearBuilding === null ? nearHall : undefined,
     /* v2.3.3032: a Wheel door's name is the name on its sign -- GENERAL STORE,
        AUCTION HOUSE -- longer than the old town's labels, and a one-line pill
        that long ran under the JUMP button (v2.3.3017) at the right of the
@@ -13060,10 +13184,10 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 11,
       marginRight: 4
     }
-  }, "E"), BUILDINGS[nearBuilding].iconSrc ? /*#__PURE__*/React.createElement("img", {
+  }, "E"), (nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon) ? /*#__PURE__*/React.createElement("img", {
     /* v2.3.1224: UI Bible building icon (bldg-*) in the enter prompt;
        falls back to the emoji when iconSrc is absent. */
-    src: BUILDINGS[nearBuilding].iconSrc,
+    src: nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon,
     alt: "",
     draggable: false,
     style: {
@@ -13073,13 +13197,13 @@ export var BroTown = function BroTown(_ref0) {
       verticalAlign: '-3px',
       marginRight: 3
     }
-  }) : BUILDINGS[nearBuilding].icon, nearDoorLabel ? /*#__PURE__*/React.createElement("span", {
+  }) : nearBuilding !== null ? BUILDINGS[nearBuilding].icon : WHEEL_HALLS[nearHall].emoji, nearDoorLabel ? /*#__PURE__*/React.createElement("span", {
     style: { display: 'block' }
   }, /*#__PURE__*/React.createElement("span", {
     style: { display: 'block', fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase', opacity: .7 }
   }, " Enter "), /*#__PURE__*/React.createElement("span", {
     style: { display: 'block' }
-  }, nearDoorLabel)) : " Enter ", nearDoorLabel ? null : BUILDINGS[nearBuilding].label), nearShutDoor && buildingPanel === null && /*#__PURE__*/React.createElement("div", {
+  }, nearDoorLabel)) : " Enter ", nearDoorLabel ? null : nearBuilding !== null ? BUILDINGS[nearBuilding].label : WHEEL_HALLS[nearHall].title), nearShutDoor && buildingPanel === null && /*#__PURE__*/React.createElement("div", {
     /* ═══ v2.3.3032: A SHUT DOOR SAYS SO ═══
        The Wheel's Town Hall has Mayor Bro; four plots have no building behind
        them yet (the sheriff's, the hotel, the post office, the guild hall --

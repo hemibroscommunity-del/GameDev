@@ -27,7 +27,7 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
+  MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
   MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
   MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
@@ -170,6 +170,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
+import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 
 /* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
@@ -374,6 +375,11 @@ export const CHAT_RELAY = {
 // v2.3.1151: exported so test/wire-audit.test.mjs can verify every
 // server-emitted type is registered here (rule 13's mechanical check).
 export const PRIVILEGED_EVENTS = new Set([
+  /* v2.3.3058: No man's land (nomansland.js) -- your own skulls' time left,
+     and what a death there took.  Forged, one would paint a red skull on an
+     innocent player's own screen and the other would make a game clear its
+     bag of things the worker never took. */
+  'nml_skull', 'nml_loss',
   /* v2.3.2820: the daily chest's result (dailychest.js) -- it names a prize,
      so a forged one would put a fake jackpot on another player's screen. */
   'chest_opened',
@@ -1515,7 +1521,7 @@ export class GameRoom {
     const a = this._getArchetype(spawn.arch);
     // baseline-10 rescale: 60 ÷ 4.8; HP curve centralized v2.3.1140 (BF-1)
     const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
-    const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
+    const baseDmg = this._monsterStat(MONSTER_DMG_CURVE.base, lvl, MONSTER_DMG_CURVE.ramp, MONSTER_DMG_CURVE.plateau, MONSTER_DMG_CURVE.endgame); /* v2.3.3055: 1.065 ramp (data.js) */
     const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
     const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);
     /* v2.3.1535: a spawn entry may pin its own variant (verdant's single
@@ -1644,7 +1650,9 @@ export class GameRoom {
        town, takes a monster's hit at all -- a swing wound up, or a ball thrown,
        before you stepped onto it included.  Here for the reason the line above
        is: one choke point.  Silent, like the harvester shield (wheelzone.js). */
-    if (zoneId === WHEEL_ZONE && targetPs && this._wheelSafeAt(targetPs.x, targetPs.y)) return;
+    /* v2.3.3056: ...unless they provoked this monster from there (wheelzone.js
+       _wheelSheltered: hurt it, and still fighting) */
+    if (zoneId === WHEEL_ZONE && targetPs && this._wheelSheltered(m, targetId, targetPs.x, targetPs.y, now)) return;
     /* ═══ v2.3.2652: A ROCK IN THE WAY STOPS IT ═══
        Owner: "I would like it if these props could block my and enemy
        attacks."
@@ -2126,7 +2134,8 @@ export class GameRoom {
           const _sticky = playersInZone.find(p => p.id === m._aggroOverrideTarget);
           /* v2.3.2978: ...nor is anyone on the Wheel's safe ground, the commons
              and the town (wheelzone.js _wheelSafeAt) */
-          const stickyP = (_sticky && (_sticky.extracting || (zoneId === WHEEL_ZONE && this._wheelSafeAt(_sticky.x, _sticky.y)))) ? null : _sticky;
+          /* v2.3.3056: ...unless it is the one who provoked it from there */
+          const stickyP = (_sticky && (_sticky.extracting || (zoneId === WHEEL_ZONE && this._wheelSheltered(m, _sticky.id, _sticky.x, _sticky.y, now)))) ? null : _sticky;
           if (stickyP) {
             const dxS = stickyP.x - m.x;
             const dyS = stickyP.y - m.y;
@@ -2145,7 +2154,7 @@ export class GameRoom {
                player in the zone is extracting, `nearest` stays null and the
                monster wanders — which is the whole point. */
             if (p.extracting) continue;
-            if (zoneId === WHEEL_ZONE && this._wheelSafeAt(p.x, p.y)) continue;   /* v2.3.2978: safe ground */
+            if (zoneId === WHEEL_ZONE && this._wheelSheltered(m, p.id, p.x, p.y, now)) continue;   /* v2.3.2978: safe ground; v2.3.3056: unless provoked from it */
             const dx = p.x - m.x;
             const dy = p.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -2233,9 +2242,13 @@ export class GameRoom {
            commons and town are meant to be safe ground (wheelzone.js).  The
            monster falls through to the wander branch below, whose leash
            walks it home. */
+        /* v2.3.3056: ...but a monster PURSUING the one who provoked it
+           (wheelzone.js _wheelProvokedBy) runs to WHEEL.PURSUE_LEASH, and
+           onto the safe ground after them. */
+        const _pursuing = !!(nearest && zoneId === WHEEL_ZONE && this._wheelProvokedBy(m, nearest.id, now));
         if (nearest && zoneId === WHEEL_ZONE
-            && (Math.hypot(m.x - m.spawnX, m.y - m.spawnY) > WHEEL.CHASE_LEASH
-              || this._wheelSafeAt(m.x, m.y))) {   /* ...or it has stepped onto the safe ground */
+            && (Math.hypot(m.x - m.spawnX, m.y - m.spawnY) > (_pursuing ? WHEEL.PURSUE_LEASH : WHEEL.CHASE_LEASH)
+              || (!_pursuing && this._wheelSafeAt(m.x, m.y)))) {   /* ...or it has stepped onto the safe ground */
           nearest = null;
           m._aggroOverrideTarget = null;
           m._aggroOverrideUntil = 0;
@@ -2903,6 +2916,11 @@ export class GameRoom {
       const until = this._pvpConsent.get(this._pvpPairKey(attackerId, targetId));
       if (until && until > Date.now()) return true;
     }
+    /* v2.3.3058: No man's land -- the Wheel's lands past their first tier,
+       players within its level of each other (nomansland.js).  ABOVE the
+       master switch on purpose: v2.3.1917's "remove the option to kill other
+       players for now" still holds everywhere else. */
+    if (this._nmlAllowed && this._nmlAllowed(attackerId, targetId)) return true;
     if (!this.OPEN_PVP) return false;   /* v2.3.1917 */
     if (zc && zc.lawless) {
       /* Compared by party ID, not object identity: _partyByPlayer stores the
@@ -3178,6 +3196,12 @@ export class GameRoom {
        consume ps._deathShield rather than re-testing the clock, so they can
        never disagree about which items this death was allowed to take. */
     ps._deathShield = this._deathRecoveryShield(ps);
+    /* v2.3.3058: No man's land (nomansland.js) -- a kill under its rule takes
+       the bag (its items, spare weapons, spare armour), a red skull everything;
+       what it took is already gone when this returns, and the pile below goes
+       to the killer for its owner window (or, for a red skull with no killer,
+       to anyone at once). */
+    const _nml = _duelKill ? null : _hook('nml', () => this._nmlOnDeath(ps, playerId, cause));
     if (!_duelKill) {
       // Spawn a pickable death pile at the death location carrying the
       // player's entire general inventory (mummy remains, fish, wood,
@@ -3185,7 +3209,7 @@ export class GameRoom {
       // armor / shield / amulet) and weaponStash are NOT included.
       // Anyone in the zone can pick the pile up; despawns after 60 s.
       // Spawn BEFORE the inventory wipe so we capture the items.
-      _hook('deathPile', () => this._spawnDeathPile(ps, playerId));
+      _hook('deathPile', () => this._spawnDeathPile(ps, playerId, _nml && _nml.pile));
       /* v2.3.1688: the gathering TOOLS survive (see _keepGatherTools).  They
          are equipment held in the bag for storage reasons, not loot — losing
          them to a death silently ends woodcutting/fishing/mining for good.
@@ -3245,6 +3269,7 @@ export class GameRoom {
       ps.respawnAt = 0;
       ps.z = 'town';
       ps.lastDamageAt = 0;
+      ps._lastDealtAt = 0; /* v2.3.3056: a respawned player is out of the fight (wheelzone.js _wheelProvokedBy) */
       // Defense-in-depth: wipe again on respawn in case anything
       // re-seeded inventory or dmgFromMonster between death and
       // respawn (e.g., a late monster_attack tick).  Matches the
@@ -4051,7 +4076,11 @@ export class GameRoom {
     return keep;
   }
 
-  _spawnDeathPile(ps, playerId) {
+  /* v2.3.3058: `opts` (No man's land, nomansland.js _nmlOnDeath): who the
+     pile is for during its owner window, whose name it carries, and when
+     that window ends -- the killer's, or nobody's at all.  Absent, the pile
+     is the dead player's own, as it always was. */
+  _spawnDeathPile(ps, playerId, opts) {
     if (!ps || !ps.inventory) return null;
     const items = [];
     /* v2.3.1688: the gathering tools are NOT loot.  They stay in the bag
@@ -4088,15 +4117,15 @@ export class GameRoom {
       // after DEATH_PILE_OWNER_MS the server-side _handleLootPickup
       // and client-side recipient gate both flip to free-for-all so
       // anyone in zone may claim (driven by ownerOnlyUntil + isDeathDrop).
-      recipients: [playerId],
+      recipients: opts && Array.isArray(opts.recipients) ? opts.recipients.slice(0, 4) : [playerId],
       shares: {}, // proto-ok: player-keyed; join ids gate-hardened v2.3.1202
-      killerName: ownerName,
+      killerName: opts && typeof opts.ownerName === 'string' ? opts.ownerName : ownerName,
       ts: Date.now(),
       inventoryClaimed: false,
       claimedBy: {}, // proto-ok: player-keyed; join ids gate-hardened v2.3.1202
       isDeathDrop: true,
       deathItems: items,
-      ownerOnlyUntil: Date.now() + this.DEATH_PILE_OWNER_MS,
+      ownerOnlyUntil: opts && typeof opts.ownerOnlyUntil === 'number' ? opts.ownerOnlyUntil : Date.now() + this.DEATH_PILE_OWNER_MS,
       expiry: Date.now() + this.DEATH_PILE_TOTAL_MS,
     };
     if (!this.loot[zone]) this.loot[zone] = [];
@@ -5806,3 +5835,4 @@ Object.assign(GameRoom.prototype, arrowBlastMethods); /* v2.3.2279 */
 // v2.3.1983: population-scaled spawns -- see spawnscale.js.
 Object.assign(GameRoom.prototype, spawnScaleMethods);
 Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
+Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */

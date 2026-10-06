@@ -23,6 +23,7 @@ import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
 import { NPC_DATA } from '../data/gameDisplay.js';
 import { propSpriteSources, propSpriteSourcesIn, propAnimStrips, zoneDecorSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips; v2.3.2651: + per-zone decor; v2.3.2859: + per-hub split */
 import { loadCroppedStrip } from './gearSheets.js'; /* v2.3.2859: the NPC walk strips load cropped */
+import { WHEEL_TOWNSFOLK } from '../data/wheelBuildingDoors.js'; /* v2.3.3067: who stands in the Wheel's Brotown */
 import { loadTracked, unloadBundle, bundleLoaded } from './zoneTextures.js'; /* v2.3.2651: zone decor is freed on exit like every other per-zone sheet */
 
 /* v2.3.2618: art an NPC's DIALOG needs warm, as opposed to art the world
@@ -367,18 +368,30 @@ export function freeTownScenery() {
    v2.3.3032: and Diego, at the General Store now that its door opens
    (BroTown.jsx _spawnWheelNpcs) -- a walker in town, a man who stands at his
    counter here, so of his eight strips of four frames only the SOUTH one is
-   loaded (cropped, like town's): he faces the street.  Nobody else yet: the
-   blacksmith, Ace and Lil Bro stay in today's town. */
+   loaded (cropped, like town's): he faces the street.
+   v2.3.3067: and the rest of town's cast (WHEEL_TOWNSFOLK): Ace at the
+   Gambling Den, Blacksmith Bro at the forge, Lil Bro on the square -- each
+   walker's south strip, the blacksmith's one picture.  Read off that table,
+   so a name added there is loaded here with nothing else to change. */
 const WHEEL_NPC_BUNDLE = 'wheel-npcs';
 const _wheelTex = Object.create(null);
 let _wheelArt = null;
+/* Mayor Bro and the townsfolk, as NPC_DATA rows */
+function _wheelCast() {
+  const names = ['Mayor Bro'].concat(WHEEL_TOWNSFOLK.map((f) => f.name));
+  return (NPC_DATA || []).filter((n) => n && names.indexOf(n.name) >= 0);
+}
+function _walksSouth(n) {
+  return !!(n.walk && n.walk.base && Array.isArray(n.walk.dirs) && n.walk.dirs.indexOf('south') >= 0);
+}
+/** The Wheel's figures drawn from one picture each (no walk): their files. */
 export function wheelNpcSources() {
-  return (NPC_DATA || []).filter((n) => n && n.name === 'Mayor Bro' && n.sprite).map((n) => n.sprite);
+  return _wheelCast().filter((n) => n.sprite && !_walksSouth(n)).map((n) => n.sprite);
 }
 /** The walkers the Wheel shows, and the one strip of each it loads:
     [{ id, dir, src, frames }]. */
 export function wheelWalkSources() {
-  return (NPC_DATA || []).filter((n) => n && n.name === 'Diego' && n.walk && n.walk.base && Array.isArray(n.walk.dirs) && n.walk.dirs.indexOf('south') >= 0)
+  return _wheelCast().filter(_walksSouth)
     .map((n) => ({ id: n.id, dir: 'south', src: n.walk.base + 'south.webp', frames: n.walk.frames || 4 }));
 }
 export function loadWheelNpcArt() {
@@ -427,6 +440,16 @@ if (typeof window !== 'undefined') {
     return { ready: _townReady, loading: townSceneryLoading(), keys: _townKeys.length,
       walkers: Object.keys(_walk).length, crops: _townCrops.length, cropMb: +(bytes / 1048576).toFixed(2), wholeMb: +(whole / 1048576).toFixed(2),
       bundle: bundleLoaded(TOWN_BUNDLE) };
+  };
+  /* v2.3.3067: the same for the Wheel's own cast (loadWheelNpcArt): what its
+     townsfolk hold, so adding one to WHEEL_TOWNSFOLK says what it costs */
+  window.__btWheelNpcArt = function () {
+    let crop = 0, pics = 0;
+    const run = _wheelArt;
+    for (const c of (run && run.crops) || []) crop += (c.src.pixelWidth || c.src.width || 0) * (c.src.pixelHeight || c.src.height || 0) * 4;
+    for (const k of Object.keys(_wheelTex)) { const t = _wheelTex[k], src = t && t.source; if (src) pics += (src.pixelWidth || src.width || 0) * (src.pixelHeight || src.height || 0) * 4; }
+    return { loaded: !!run, walkers: Object.keys(_wheelWalk), pictures: Object.keys(_wheelTex),
+      cropMb: +(crop / 1048576).toFixed(2), picMb: +(pics / 1048576).toFixed(2), mb: +((crop + pics) / 1048576).toFixed(2) };
   };
 }
 

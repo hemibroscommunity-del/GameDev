@@ -82,6 +82,8 @@
 /* Tuning.  Every number here is grounded in something already shipped:
  * the goblin's own 1.5px/tick walk (= 68 px/s at TICK_RATE 22), the
  * player's 150 px/s default (gameSystems.js SPEED), and the 32px TILE. */
+import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3056: the safe ground's shelter */
+
 export const FIRE_TRAIL = {
   /* Keyed by VARIANT, not archetype: the fire goblin is an ordinary
      `fodder` in ember (index.js _variantForArchInZone), so gating on the
@@ -196,6 +198,11 @@ export const fireTrailMethods = {
          genuinely overlap, so per-patch charging would double the damage
          precisely where the trail is densest. */
       if (now < (this._fireBurnAt[p.id] || 0)) continue;
+      /* v2.3.3056: burning ground on the Wheel's safe ground burns only a
+         player still fighting from it (wheelzone.js _wheelSheltered) --
+         ungated before, so a goblin's last step over the edge could burn
+         someone standing in the commons */
+      if (zoneId === WHEEL_ZONE && this._wheelSheltered && this._wheelSheltered(null, p.id, p.x, p.y, now)) continue;
       let hitIn = null;
       for (let i = 0; i < list.length; i++) {
         const f = list[i];

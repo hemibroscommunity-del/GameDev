@@ -14,10 +14,11 @@
  * tools/world/test-world-core.mjs can read it: it checks every key is a plot
  * of the plan and every value is that plot's own `today`.
  *
- * Five plots have nothing to open yet.  The Town Hall has Mayor Bro on its
- * steps.  The other four are the plan's "(new: ...)" buildings and stand shut,
- * saying so (WHEEL_SHUT_DOORS) instead of leaving a player to wonder whether
- * the door is broken.
+ * Five plots have nothing of today's town to open.  The Town Hall has Mayor
+ * Bro on its steps.  The other four are the plan's "(new: ...)" buildings:
+ * since v2.3.3066 three of them open halls of their own (WHEEL_HALL_DOORS),
+ * and the Hotel stands shut, saying so (WHEEL_SHUT_DOORS) instead of leaving
+ * a player to wonder whether the door is broken.
  */
 
 /* How near a door (game px) the Enter button comes up: from your BOOTS to the
@@ -44,14 +45,49 @@ export const WHEEL_BUILDING_DOORS = {
   auction: 'auctionhouse',
 };
 
-/* The plots with nothing to open yet: the plan's "(new: ...)" buildings --
-   the sheriff's (duels, the arena, bounties), the hotel (a bed and a rest),
-   the post office (mail and your inbox), the guild hall (clans and guilds).
-   Stood at, each shows its name and "Shut for now" (BroTown.jsx) instead of
-   leaving a player to wonder whether the door is broken.  The Town Hall is in
-   neither list: Mayor Bro stands on its steps.  MIRROR: plan.js's own `today`
-   words for these -- test-world-core checks each is a "(new: ...)" plot. */
-export const WHEEL_SHUT_DOORS = ['sheriff', 'hotel', 'post', 'guildhall'];
+/* ═══ v2.3.3066: THREE OF THE NEW BUILDINGS OPEN ═══
+   Asked to "keep going with pragmatic enhancements", the plan's "(new: ...)"
+   buildings were looked at for systems the game ALREADY has to put behind
+   them -- and three had them, one of which was out of reach altogether:
+
+     guildhall  the clan and guild panels (ui/panels/ClanPanel.jsx,
+                GuildPanel.jsx), whole and server-backed, which nothing in
+                play opened any more (MenuBar is hidden, and the wheel menu
+                that called them was replaced): no clan could be made,
+                managed or joined;
+     post       your mail -- every delivery the worker settles (a sale, a
+                refund, a trade's payout, a reward, and all that came while
+                you were away, which drains at your join) -- and messages
+                from friends (the Social panel);
+     sheriff    a duel (the player list: pick someone, then Duel on their
+                card) and the arena's sign-up (the Saloon's panel).
+
+   plot id -> the hall it opens: a `buildingPanel` value of its own, drawn by
+   ui/panels/buildings/WheelHallPanel.jsx.  Not TOWN_BUILDINGS entries --
+   those are today's town's buildings, and a hall is the Wheel's only. */
+export const WHEEL_HALL_DOORS = {
+  guildhall: 'guildhall',
+  post: 'post',
+  sheriff: 'sheriff',
+};
+
+/* What each hall is called and wears: its window's header and the Enter
+   button's picture (icons the clan, guild, mail and duel windows use). */
+export const WHEEL_HALLS = {
+  guildhall: { title: 'Guild Hall', sub: 'Clans and guilds', icon: '/icons/ui/panel-guild.webp', emoji: '🏰' },
+  post: { title: 'Post Office', sub: 'Your mail and messages', icon: '/icons/ui/evt-mail.webp', emoji: '📫' },
+  sheriff: { title: "Sheriff's Office", sub: 'Duels and the arena', icon: '/icons/ui/evt-duel.webp', emoji: '⚔️' },
+};
+
+/* The plot with nothing to open yet: the Hotel ("(new: rest, respawn)") --
+   its rest is the farm bed's, on this device only (no message, nothing the
+   worker settles: the HP it restores is the worker's to give), so it stays
+   shut until the worker can pay it.  Stood at, it shows its name and "Shut
+   for now" (BroTown.jsx) instead of leaving a player to wonder whether the
+   door is broken.  The Town Hall is in no list: Mayor Bro stands on its
+   steps.  MIRROR: plan.js's own `today` words -- test-world-core checks the
+   halls and the shut ones are the four "(new: ...)" plots. */
+export const WHEEL_SHUT_DOORS = ['hotel'];
 
 /* Who stands at which door, besides Mayor Bro (who has the Town Hall's steps,
    placing.js mayorSpot): `dx`, `dy` game px from the door's foot (+x east, +y
@@ -64,4 +100,28 @@ export const WHEEL_SHUT_DOORS = ['sheriff', 'hotel', 'post', 'guildhall'];
    wheelWalkSources).  mp-wheeldoors checks the clearances. */
 export const WHEEL_TOWNSFOLK = [
   { name: 'Diego', door: 'store', dx: -105, dy: 34 },
+  /* ═══ v2.3.3067: THE REST OF TOWN'S CAST ═══
+     Asked to "keep going with pragmatic enhancements": the three townsfolk
+     v2.3.3032 left in today's town, which nobody walks any more -- and one of
+     them was a game.  Ace's coin flip (v2.3.2618, the owner's "triple your
+     money or lose 3x") opens only on a TAP ON ACE (BroTown.jsx tapNpcAtCss,
+     `flip`), so since the Wheel became the world it could not be played at
+     all.  The worker's flip asks nothing about where you are (gamble.js
+     _handleAceFlipRequest), so he only had to stand somewhere.
+
+     Ace: beside the Gambling Den, WEST of its steps, where Diego stands at
+          the store -- the den's barrel and trough are on its east;
+     Blacksmith Bro: EAST of the forge's steps (a barrel west, a crate east,
+          each 193 px out) -- scenery with a hammer, as in today's town;
+     Lil Bro: on the square, 260 px WEST of where you arrive (the Town Hall's
+          door + (0, 108)), on the side away from Mayor Bro, so a new player
+          meets him, as in today's town: 282 px from the hall's door (the
+          nearest), 410 from the Mayor, 110 clear of any footprint.
+     All stand still and face the street (their one strip loaded, south);
+     none opens anything by proximity (only Diego has a proximity window,
+     and only a tap opens Ace's flip).  test-world-core checks each spot's
+     ground; mp-wheelfolk walks to them on a phone. */
+  { name: 'Ace', door: 'gambling', dx: -105, dy: 34 },
+  { name: 'Blacksmith Bro', door: 'blacksmith', dx: 105, dy: 34 },
+  { name: 'Lil Bro', door: 'townhall', dx: -260, dy: 110 },
 ];

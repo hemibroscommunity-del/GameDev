@@ -105,6 +105,13 @@ function voronoi(seeds, w, h) {
  * area }] } -- each shard's box in the canvas and its middle in the frame --
  * or null when the picture cannot be read.
  */
+/* v2.3.3046: let a scratch canvas's pixels go NOW.  iPhone Safari counts every
+   canvas's backing store against one budget and frees a dropped one only when
+   the collector gets round to it; a 570 x 656 palm cut on a phone already near
+   its memory edge (the owner's crash: "killing mummies and destroyed prop")
+   left two of them waiting.  Zero size is the documented way to release it. */
+function freeCanvas(c) { try { if (c) { c.width = 0; c.height = 0; } } catch (e) { /* gone */ } }
+
 function cutPicture(tex, n, hu, hv) {
   const fp = framePx(tex);
   const src = tex && tex.source && tex.source.resource;
@@ -112,7 +119,7 @@ function cutPicture(tex, n, hu, hv) {
   const FW = fp.w, FH = fp.h;
   const pic = document.createElement('canvas'); pic.width = FW; pic.height = FH;
   const pg = pic.getContext('2d');
-  try { pg.drawImage(src, fp.x, fp.y, FW, FH, 0, 0, FW, FH); } catch (e) { return null; }
+  try { pg.drawImage(src, fp.x, fp.y, FW, FH, 0, 0, FW, FH); } catch (e) { freeCanvas(pic); return null; }
   /* where the picture is solid, at a quarter size (seeds and empty cells) */
   const Q = 4, qw = Math.max(1, Math.ceil(FW / Q)), qh = Math.max(1, Math.ceil(FH / Q));
   let alpha;
@@ -121,9 +128,10 @@ function cutPicture(tex, n, hu, hv) {
     const qg = qc.getContext('2d', { willReadFrequently: true });
     qg.drawImage(pic, 0, 0, qw, qh);
     const d = qg.getImageData(0, 0, qw, qh).data;
+    freeCanvas(qc);   /* v2.3.3046 */
     alpha = new Uint8Array(qw * qh);
     for (let i = 0; i < alpha.length; i++) alpha[i] = d[i * 4 + 3];
-  } catch (e) { return null; }
+  } catch (e) { freeCanvas(pic); return null; }
   const solid = (x, y) => { const qx = (x / Q) | 0, qy = (y / Q) | 0; return qx >= 0 && qy >= 0 && qx < qw && qy < qh && alpha[qy * qw + qx] > 120; };
   /* the seeds: on solid art, a third of them crowded round the blow */
   const seeds = [];
@@ -138,7 +146,7 @@ function cutPicture(tex, n, hu, hv) {
     if (x < 0 || y < 0 || x >= FW || y >= FH || !solid(x, y)) continue;
     seeds.push([x, y]);
   }
-  if (seeds.length < 2) return null;
+  if (seeds.length < 2) { freeCanvas(pic); return null; }
   const cells = voronoi(seeds, FW, FH);
   /* each cell's box, kept if any of it is solid */
   const keep = [];
@@ -153,7 +161,7 @@ function cutPicture(tex, n, hu, hv) {
     if (!on) continue;
     keep.push({ poly: c.poly, x0, y0, w: x1 - x0, h: y1 - y0, cx: sx / on, cy: sy / on, area: on * Q * Q });
   }
-  if (!keep.length) return null;
+  if (!keep.length) { freeCanvas(pic); return null; }
   /* pack the boxes into one canvas, tallest first, in shelves */
   keep.sort((a, b) => b.h - a.h);
   const W = Math.min(4096, Math.max(64, Math.ceil(Math.sqrt(keep.reduce((s, k) => s + (k.w + PAD) * (k.h + PAD), 0)) * 1.15)));
@@ -184,6 +192,7 @@ function cutPicture(tex, n, hu, hv) {
     g.restore();
     k.ok = true;
   }
+  freeCanvas(pic);   /* v2.3.3046: the shards are in `can` now */
   return { canvas: can, shards: keep.filter((k) => k.ok), FW, FH, res: fp.res };
 }
 

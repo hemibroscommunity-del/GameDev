@@ -18,7 +18,7 @@
  * now" instead of a door that seems broken.
  */
 import { BUILDINGS } from '@/data/index.js';
-import { WHEEL_DOOR_REACH, WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS } from '@/data/wheelBuildingDoors.js';
+import { WHEEL_DOOR_REACH, WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_HALL_DOORS } from '@/data/wheelBuildingDoors.js';
 import { wheelObjectsInfo } from './wheelTrial.js';
 import { isWheelTrialZone } from './worldTrial.js';
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';
@@ -26,10 +26,11 @@ import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
 let _src = null, _doors = [];
-/** The doors, [{ id, name, label, x, y, index, closed }]: `index` the
-    BUILDINGS entry it opens (-1: none yet), `closed` true for a shut one,
-    `label` the name on the Enter button.  [] before the worker has posted its
-    objects, or with `?noobjects`. */
+/** The doors, [{ id, name, label, x, y, index, hall, closed }]: `index` the
+    BUILDINGS entry it opens (-1: none), `hall` the Wheel's own hall it opens
+    instead (v2.3.3066, WHEEL_HALL_DOORS; null: none), `closed` true for a
+    shut one, `label` the name on the Enter button.  [] before the worker has
+    posted its objects, or with `?noobjects`. */
 export function wheelTownDoors() {
   const info = wheelObjectsInfo();
   const list = info && info.doors;
@@ -45,8 +46,9 @@ export function wheelTownDoors() {
       index = BUILDINGS.findIndex((b) => b.id === bid);
     }
     const name = typeof d.name === 'string' && d.name ? d.name : d.id;
-    _doors.push({ id: d.id, name, label: name.toUpperCase(), x: d.x, y: d.y, index,
-      closed: index < 0 && WHEEL_SHUT_DOORS.indexOf(d.id) >= 0 });
+    const hall = index < 0 && own(WHEEL_HALL_DOORS, d.id) ? WHEEL_HALL_DOORS[d.id] : null;
+    _doors.push({ id: d.id, name, label: name.toUpperCase(), x: d.x, y: d.y, index, hall,
+      closed: index < 0 && !hall && WHEEL_SHUT_DOORS.indexOf(d.id) >= 0 });
   }
   return _doors;
 }
@@ -61,7 +63,7 @@ export function wheelTownDoorAt(S) {
   const by = P.y + playerGroundDy(S.currentZone, P.x, P.y);
   let best = null, bestD = WHEEL_DOOR_REACH * WHEEL_DOOR_REACH;
   for (const d of wheelTownDoors()) {
-    if (d.index < 0 && !d.closed) continue;
+    if (d.index < 0 && !d.hall && !d.closed) continue;
     const dx = d.x - P.x, dy = d.y - by, d2 = dx * dx + dy * dy;
     if (d2 <= bestD) { bestD = d2; best = d; }
   }

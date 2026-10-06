@@ -495,7 +495,11 @@ export const gearStashMethods = {
       /* GEAR_STASH_SEED_KEYS has no amuletStash entry on purpose
          (v2.3.2527 finding 3), so that list simply has no claim to read. */
       const key = GEAR_STASH_SEED_KEYS[f];
-      const raw = (key && md) ? md[key] : undefined;
+      const raw0 = (key && md) ? md[key] : undefined;
+      /* v2.3.3058: a piece forfeited in No man's land (nomansland.js) is not
+         taken back from a client that still offers it -- by its id; the
+         dead player's own game was told to drop it (nml_loss) */
+      const raw = Array.isArray(raw0) && this._nmlForfeited ? raw0.filter((g) => !this._nmlForfeited(ps, g)) : raw0;
       if (Array.isArray(raw)) {
         /* v2.3.2540: v2.3.2527's truncation accounting, kept exactly --
            a claim the CAP cut short must not stamp the capture complete.

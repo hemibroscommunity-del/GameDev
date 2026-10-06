@@ -55,7 +55,9 @@
  */
 export function celebrateLifeSkillLevel(S, skill, toLevel, fromLevel) {
   var to = Math.max(1, Math.floor(toLevel || 1));
-  var from = Math.max(0, Math.floor(fromLevel == null ? to - 1 : fromLevel));
+  /* v2.3.3041: from at least 1 -- a skill is never level 0 (migrateLifeSkills),
+     and a stale 0 must not turn a 1 -> 2 into "+2" */
+  var from = Math.max(1, Math.floor(fromLevel == null ? to - 1 : fromLevel));
   var gained = Math.max(1, to - from);
   var label = String(skill || '').replace(/^./, function (c) { return c.toUpperCase(); });
 

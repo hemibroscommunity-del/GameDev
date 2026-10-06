@@ -242,6 +242,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
        Read against the WORKER's pools (R.prog3.poolBy / .shared), not against
        the client helper that draws them -- a badge that agreed with its own
        formula and not with the server would pass a test of the formula. */
+    /* v2.3.3052: a live bubble breathes (game.css bt-pts-bubble, a transform);
+       its box is measured at rest, so where it SITS is what is asserted */
+    await P.page.addStyleTag({ content: '.bt-pts-bubble{animation:none !important}' }).catch(() => {});
     const badges = () => P.page.evaluate(() => {
       const R = window._gameState && window._gameState.current && window._gameState.current.rpg;
       const p = (R && R.prog3) || {};
@@ -509,14 +512,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && (before.poolBy[k] !== (n.poolBy || {})[k]));
       rec.ok(`${label}: ...and the other weapon lanes did not move`,
         otherMoved.length === 0, { otherMoved, before: before.poolBy, after: n.poolBy });
-      /* the grid behind the window follows the tab, so closing it does not
-         drop you back onto a lane you did not just spend into */
+      /* v2.3.3051 (owner: "show the point distribution based on your active
+         equipped weapon"): the tab aims the WINDOW only -- the grid behind it
+         stays on the weapon in your hand.  (It used to follow the tab, and
+         then sat on that lane until the sheet was closed.) */
       const headNow = await P.page.evaluate(() => {
         const h = document.querySelector('[data-prog3-grid] [data-prog3-lane]');
-        return h ? h.getAttribute('data-prog3-lane') : null;
+        const R = window._gameState.current.rpg || {};
+        const held = R.activeSlot === 'ranged' ? 'bow' : R.activeSlot === 'staff' ? 'staff' : 'sword';
+        const plate = document.querySelector('[data-prog3-grid] [data-prog3-held]');
+        return { lane: h ? h.getAttribute('data-prog3-lane') : null, held, plate: plate ? plate.getAttribute('data-prog3-held') : null };
       });
-      rec.ok(`${label}: ...and the grid is now showing the lane you aimed at`,
-        headNow === laneNow, { want: laneNow, got: headNow });
+      rec.ok(`${label}: ...and the grid still shows the weapon in your hand (${headNow.held}), on its brass plate`,
+        headNow.lane === headNow.held && headNow.plate === headNow.held, { aimed: laneNow, got: headNow });
       /* v2.3.2689: the badge is live -- the spend just made must show up on
          the weapon that paid for it, and only there */
       await P.page.waitForTimeout(300);

@@ -80,6 +80,7 @@
  */
 
 import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js';
+import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3056: the safe ground's shelter, above the block branches */
 
 /* Per-archetype kits.  `radius` is the execute-time hit radius, and it is
    deliberately WIDER than MONSTER_ATTACK_RANGE: a telegraphed attack you
@@ -429,6 +430,12 @@ export const telegraphMethods = {
   _telegraphHitPlayer(zoneId, m, pid, kit) {
     const ps = this.playerState[pid];
     if (!ps || ps.dead || ps.dying) return 0;
+    /* v2.3.3056: the Wheel's safe ground shelters here too, ABOVE the block
+       branch (a parry or a turtle's stamina cost is a hit landing): a lunge,
+       a slam or a blue slime's burst wound up before you stepped on it
+       reached you there, which _monsterStrikePlayer's gate never saw -- and
+       a monster you provoked from it still reaches you (wheelzone.js). */
+    if (zoneId === WHEEL_ZONE && this._wheelSheltered && this._wheelSheltered(m, pid, ps.x, ps.y, Date.now())) return 0;
     if (this._blockArcCovers(ps, m.x, m.y)) {
       /* v2.3.1731: parrying a TELEGRAPHED hit is the marquee case — the
          wind-up is exactly the readable cue a timed block wants, so a
@@ -928,6 +935,10 @@ export const telegraphMethods = {
      them (see the header on why the cycle must not grow). */
   _resolveBasicSwingHit(zoneId, m, targetId, now) {
     const blockerPs = this.playerState[targetId];
+    /* v2.3.3056: sheltered on the safe ground (wheelzone.js) -- checked before
+       the block branch, which charged a sheltered blocker stamina for a swing
+       wound up before they stepped on it */
+    if (zoneId === WHEEL_ZONE && blockerPs && this._wheelSheltered && this._wheelSheltered(m, targetId, blockerPs.x, blockerPs.y, now)) return;
     if (this._blockArcCovers(blockerPs, m.x, m.y)) {
       const _parried = this._parryOpen(blockerPs, now);
       if (_parried) this._applyParry(zoneId, m, targetId, blockerPs, now);
