@@ -5,7 +5,33 @@
 import { watchContextLoss } from '../debug/crashTrap.js';
 import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2770 */
 import { SHADE } from './formShade.js';
-import { Application, Cache, Container } from 'pixi.js';
+import { Application, Cache, Container, TextureSource } from 'pixi.js';
+
+/* ═══ v2.3.3065: A DESTROYED TEXTURE LETS GO OF ITS PIXELS ═══
+   TextureSource.destroy() nulls its `resource` -- but Pixi also keeps the
+   constructor's whole `options` object (this.options = options), resource and
+   all, and nothing ever clears it.  That only matters if something still points
+   at the destroyed source, and Pixi does: a pooled Batch keeps the up to 32
+   sources of its last frame in its BatchTextureArray until it is reused, a
+   sprite drawn and then hidden keeps its texture in its per-renderer draw data
+   (BatchableSprite) -- the shadows' pools are full of those -- and so do the
+   render group's meshes.  Measured (a heap snapshot, phone-sized page, a tour
+   of four lands and home): 43 destroyed sources still alive, 22.6 MB of the
+   pictures they were made from held through `options` -- the Wheel's object
+   sheets freed as you walk (commons-1.png 6.1 MB, sky-1.png 5.5, ember-1.png
+   3.5, buildings-16.png 2.2), loaded again when you came back beside the
+   copy still held, and canvases.  Pixi never reads `options.resource` back
+   (nothing in pixi.js does), so on destroy it goes too: a source still pointed
+   at then costs its few hundred bytes, not its picture.  mp-zombietex. */
+if (TextureSource && TextureSource.prototype && !TextureSource.prototype.__btLetsGo) {
+  const destroy = TextureSource.prototype.destroy;
+  TextureSource.prototype.destroy = function () {
+    const r = destroy.apply(this, arguments);
+    try { if (this.options) this.options.resource = null; } catch (e) { /* frozen options: nothing held there */ }
+    return r;
+  };
+  TextureSource.prototype.__btLetsGo = true;
+}
 
 /**
  * Layer names in render order (back to front).
