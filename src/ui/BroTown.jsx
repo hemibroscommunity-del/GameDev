@@ -8236,6 +8236,11 @@ export var BroTown = function BroTown(_ref0) {
       clan:         function () { setShowClanPanel(function (v) { return !v; }); },
       social:       function () { setShowSocialPanel(function (v) { return !v; }); },
       chat:         function () { setChatOpen(function (v) { return !v; }); },
+      /* v2.3.3066: OPEN, not toggle -- the dashboard's Clan and Guild pages
+         call these from a button ("Make a clan", "Open the guild window"),
+         and a toggle pressed while the window is already up would shut it */
+      clanOpen:     function () { setShowClanPanel(true); },
+      guildOpen:    function () { setShowGuildPanel(true); },
     };
     return function () { delete window.__broLegacyUI; };
   }, []);

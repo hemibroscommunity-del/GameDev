@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { COL, panelStyle, getState } from './common.js';
+import { bestGuildRank } from './GuildPanel.jsx';   /* v2.3.3066: the guild line from the real ranks */
 import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, not the shell's */
 /* v2.3.1641: live status lines for the three destinations re-homed here. */
 import { readyQuestCount } from '../sheet/questModel.js';
@@ -101,8 +102,11 @@ function statusFor(id, S) {
       return c && (c.name || c.tag) ? (c.name || c.tag) : 'Not joined · player clans';
     }
     case 'guild': {
-      const g = R.guild || S?._guild;
-      return g && g.name ? g.name : 'Not joined · profession guilds';
+      /* v2.3.3066: every player is in every skill guild, ranked by the skill's
+         level; `R.guild` / `S._guild`, read here before, is set by nothing, so
+         this said "Not joined" to everyone (dash/GuildPanel.jsx) */
+      const best = bestGuildRank(R);
+      return best ? `${best.rank.title} · ${best.guild.name}` : 'Novice in every skill guild';
     }
     case 'settings': return 'Sound · Controls · Login Key · Feedback · Privacy';   /* v2.3.2820: + volume sliders and the About page */
     /* v2.3.2038: real state, like every line above -- a guest tab genuinely

@@ -11,6 +11,10 @@
  *      Skill guilds; each opens its panel (the clan and guild panels nothing
  *      in play opened before); a clan FOUNDED there (500 gold), the worker
  *      echoing it;
+ *   2b. the dashboard's Clan page (no code on screen; Make a clan opens the
+ *      clan window), its Guild page (your rank in each skill guild, and the
+ *      guild window) and the More page's guild line (your rank, not "Not
+ *      joined");
  *   3. a clan invite: the leader invites the other player, whose screen
  *      raises the invite card wherever they are; Accept, and the worker puts
  *      them in the clan;
@@ -148,6 +152,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`...the hall now names your clan ("${clanRow}"), and Skill guilds opens the guild panel`, g2.open && /\[HALL\]/.test(clanRow || '') && guildOpen, { clanRow, guildOpen });
     await closeCard(A);
 
+    /* ── 2b. the dashboard's Clan and Guild pages (B, in no clan yet) ──
+       The Clan page told a player with no clan to call
+       `window.__broLegacyUI?.clan?.()`; the Guild page read a field nothing
+       sets and said "You haven't joined a guild yet" to everyone. */
+    const dashText = (P, sel) => P.page.evaluate((q) => { const e = document.querySelector(q); return e ? (e.textContent || '').replace(/\s+/g, ' ').trim() : null; }, sel);
+    const dashMode = (P) => P.page.evaluate(() => (window.__broDashPanelBus ? window.__broDashPanelBus.state.mode : null));
+    await B.page.evaluate(() => window.__broDashPanelBus.open('clan'));
+    const dClan = await waitSel(B, '[data-dash-clan="none"]');
+    const dClanText = await dashText(B, '[data-dash-clan]');
+    await shot(B, 'dash-clan');
+    await tap(B, '[data-dash-open-clan]');
+    const dClanWin = await waitSel(B, '[data-panel="clan"]');
+    const dClanMode = await dashMode(B);
+    rec.ok(`the dashboard's Clan page, in no clan: "${dClanText}" -- no code on screen, and Make a clan opens the clan window (the sheet put down: ${dClanMode})`,
+      dClan && !/__broLegacyUI|window\./.test(dClanText || '') && /Make a clan/.test(dClanText || '') && dClanWin && dClanMode === 'bar',
+      { dClan, dClanText, dClanWin, dClanMode });
+    await closeCard(B);
+    await B.page.evaluate(() => window.__broDashPanelBus.open('guild'));
+    const dGuild = await waitSel(B, '[data-dash-guild]');
+    const ranks = await B.page.evaluate(() => Array.from(document.querySelectorAll('[data-dash-guild] [data-guild-rank]')).map((r) => (r.textContent || '').replace(/\s+/g, ' ').trim()));
+    const dGuildText = await dashText(B, '[data-dash-guild]');
+    await shot(B, 'dash-guild');
+    await tap(B, '[data-dash-open-guild]');
+    const dGuildWin = await waitSel(B, '[data-panel="guild"]');
+    rec.ok(`the dashboard's Guild page lists your rank in each of the ${ranks.length} skill guilds (${ranks.slice(0, 2).join('; ')}...), not "You haven't joined a guild yet", and opens the guild window`,
+      dGuild && ranks.length === 10 && ranks.every((t) => /(Novice|Apprentice|Journeyman|Adept|Expert|Master|Legendary|Transcendent)\s*Lv \d+$/.test(t))
+        && !/haven't joined/.test(dGuildText || '') && dGuildWin,
+      { dGuild, ranks, dGuildWin });
+    await closeCard(B);
+    await B.page.evaluate(() => window.__broDashPanelBus.open('more'));
+    await waitSel(B, '[data-more-tile="guild"]');
+    /* the tile's live line is its title (MorePanel statusFor) */
+    const moreGuild = await B.page.evaluate(() => { const e = document.querySelector('[data-more-tile="guild"]'); return e ? e.getAttribute('title') : null; });
+    rec.ok(`...and the More page's Guild line says your rank ("${moreGuild}"), not "Not joined"`,
+      !!moreGuild && !/Not joined/.test(moreGuild) && /(skill guild|Novice|Apprentice|Journeyman|Adept|Expert|Master)/.test(moreGuild), moreGuild);
+    await B.page.evaluate(() => window.__broDashPanelBus.toBar());
+    await B.page.waitForTimeout(400);
+
     /* ── 3. a clan invite, taken up ── */
     await A.page.evaluate((target) => {
       const S = window._gameState.current;
@@ -161,6 +203,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const joined = await H.waitFor(B, (S) => (S._clanData ? S._clanData.tag : null), (v) => v === 'HALL', { timeout: 15000, label: 'joined the clan' }).catch(() => null);
     const cardGone = await B.page.evaluate(() => !document.querySelector('[data-clan-invite]'));
     rec.ok('...Accept, and the worker puts them in the clan (its echo on their screen), the card gone', joined === 'HALL' && cardGone, { joined, cardGone });
+    await B.page.evaluate(() => window.__broDashPanelBus.open('clan'));
+    const dClan2 = await waitSel(B, '[data-dash-clan="HALL"] [data-dash-open-clan]');
+    rec.ok('...and their dashboard\'s Clan page shows the clan, with a way into the clan window', dClan2, { dClan2 });
+    await B.page.evaluate(() => window.__broDashPanelBus.toBar());
+    await B.page.waitForTimeout(400);
 
     /* ── 4. the Sheriff's Office ── */
     const sh = byId.sheriff;

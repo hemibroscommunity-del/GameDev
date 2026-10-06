@@ -1120,6 +1120,13 @@ remnant to migrate server-side, not a mode to preserve.
       clan invite's only Accept was in ClanPanel; now an invite raises its own
       card wherever you are (`src/ui/panels/ClanInviteCard.jsx`, like a duel
       challenge), as the worker keeps one only 120 s (`CLANS.INVITE_TTL`);
+    - the DASHBOARD'S Clan page showed a player with no clan developer code
+      (`window.__broLegacyUI?.clan?.()`), and its Guild page and the More
+      line read `rpg.guild` / `S._guild`, set by nothing ("not joined" to
+      everyone): now Make a clan / Open the clan window, every skill guild's
+      rank by its life skill (`guildRanks`, `bestGuildRank` in
+      dash/GuildPanel.jsx), each opening the real window (`openGameWindow`,
+      `__broLegacyUI.clanOpen` / `guildOpen`);
     - the mail: every `inbox_delivered` entry, the daily reward's included, is
       kept for the visit in `S._mail` (`src/game/postOffice.js` `recordMail`,
       `MAIL_KEEP` 30) -- what drained at your join is "what came while you were

@@ -57,8 +57,8 @@ function header(hall) {
 function row(key, src, emoji, title, sub, onClick, badge) {
   return (
     <button key={key} type="button" data-hall-row={key} onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 56, padding: '10px 12px', textAlign: 'left',
-        background: LS.raised, color: LS.txt1, border: '1px solid ' + LS.borderStrong, borderRadius: 10, cursor: 'pointer', font: 'inherit' }}>
+      style={{ font: 'inherit', display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 56, padding: '10px 12px', textAlign: 'left',
+        background: LS.raised, color: LS.txt1, border: '1px solid ' + LS.borderStrong, borderRadius: 10, cursor: 'pointer' }}>
       {icon(src, emoji, 30)}
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>{title}</span>

@@ -39,6 +39,23 @@ closes the hall.
   - The card goes away once the invite expires or you are in a clan.
   - Tapping the dark backdrop does nothing, as on the duel card, so a stray tap
     cannot answer for you.
+- **The dashboard's Clan and Guild pages were wrong too.**
+  - A player with no clan who opened **More → Clan** read developer code: "use
+    the legacy clan panel (`window.__broLegacyUI?.clan?.()`) to create one".
+    It now says how clans work and has a **Make a clan** button that opens the
+    clan window. A player in a clan gets **Open the clan window** under the
+    members.
+  - **More → Guild** read a field nothing ever sets, so it told everyone
+    "You haven't joined a guild yet", and the More page's line said "Not
+    joined". In fact every player is in every skill guild, ranked by that life
+    skill's level. The page now lists your rank in each of the ten (the same
+    numbers the guild window shows), with **Titles and guild quests** to open
+    the guild window. The More line names your best rank, or "Novice in every
+    skill guild".
+  - Both buttons put the dashboard down to its bar first, so the window is not
+    left under it (`openGameWindow` in `dash/common.js`; BroTown's
+    `window.__broLegacyUI.clanOpen` / `guildOpen`, which open rather than
+    toggle).
 - **The mail was only a chat line.** The worker settles every delivery through
   `_creditPlayer`: a sale, a refund, a trade's payout, a wager coming back, the
   daily reward. A player online gets it at once; otherwise it waits in their
@@ -89,8 +106,12 @@ closes the hall.
     panel no other door opens;
   - the mail rules;
   - every delivery is recorded before the daily reward's quiet branch.
-- `mp-wheelhalls` (14 checks), two players on phones against a real worker:
+- `mp-wheelhalls` (18 checks), two players on phones against a real worker:
   - the Guild Hall's two panels, and a clan founded there with the worker's echo;
+  - the dashboard's Clan page (no code on screen; Make a clan opens the clan
+    window), its Guild page (a rank in each of the ten guilds; the guild
+    window) and the More page's guild line; after joining, the Clan page shows
+    the clan;
   - a clan invite raising its card, and Accept putting the other player in the
     clan;
   - the Sheriff's player list (the other player in it) and the arena;

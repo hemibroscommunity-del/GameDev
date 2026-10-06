@@ -31,7 +31,8 @@ export function ClanInviteCard(props) {
     S._pendingClanInvite = null;
     onDone();
   };
-  var btn = { flex: 1, minHeight: 44, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', font: 'inherit' };
+  /* the font shorthand FIRST: after fontSize/fontWeight it would reset them */
+  var btn = { font: 'inherit', flex: 1, minHeight: 44, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' };
   return createPortal(
     <div className="bt-inspect" data-clan-invite=""
       style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(4,9,12,0.52)' }}

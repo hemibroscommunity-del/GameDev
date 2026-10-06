@@ -1,4 +1,5 @@
-﻿// Shared style + helper module for the in-dashboard panels.
+﻿import { dashboardPanelBus } from '../dashboardPanelBus.js';   /* v2.3.3066: openGameWindow */
+// Shared style + helper module for the in-dashboard panels.
 
 /* v2.3.1227: Lantern Slate (docs/LANTERN-SLATE-SPEC.md) — dark
    mineral charcoal shelf, warm-white text, lantern-brass accent.
@@ -74,6 +75,15 @@ export const QUALITY_LABEL = {
 };
 
 export const getState = () => (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+
+/* v2.3.3066: open one of the game's own windows from a dashboard page --
+   BroTown's window.__broLegacyUI ('clanOpen', 'guildOpen').  The sheet is put
+   down to its bar first, so the window is not left under it. */
+export function openGameWindow(key) {
+  try { dashboardPanelBus.toBar(); } catch (_e) { /* no sheet */ }
+  const ui = typeof window !== 'undefined' ? window.__broLegacyUI : null;
+  if (ui && typeof ui[key] === 'function') ui[key]();
+}
 
 // Common panel container — fills the dashboard's content area below the header.
 // touchAction: 'pan-y' opts back in to vertical scrolling for the inner panel
