@@ -167,8 +167,10 @@ with `mp-memledger` (a phone, two laps of the eight lands, back in Brotown):
 ...plus what these counters cannot see: the freed pictures #810 lets go of
 (22-35 MB after a four-land tour), each black screen's recovery no longer
 leaving ~50 MB of art behind (#802), and the watchdog's 11 MB copy and frame
-wait every 5 s gone (#808).  `zombietex`, `groundcopy`, `wdsample` and
-`bakeleak` all pass on the combined build.
+wait every 5 s gone (#808).  On the combined build `groundcopy`, `wdsample`
+and `bakeleak` pass, and `zombietex`'s own checks do; its render check
+tripped once, on a snowball burst drawn after the frost art was freed -- a
+race on main, fixed in #813.
 
 ## How we know it worked
 
