@@ -55,7 +55,9 @@ Every claim in these three files is cited as path:line, as read on 2026-10-06 at
   - traps made from logs;
   - tradeable pets that level up to their owner's Trapping level.
 
-  The plan follows those choices, and says where they go against the research.
+  Then they took every remaining recommendation except a bad-luck rule: the
+  odds are the same for everyone. The plan follows those choices, and says where
+  they go against the research.
 - `capture_moment.md`: how a capture is decided, and what makes it exciting:
   - Pokémon's formula and shake checks, and Pokémon GO's throws;
   - Palworld, Monster Hunter, Path of Exile, Ark, Black Desert, WoW;

@@ -15,7 +15,7 @@ This plan comes from a study of the game's code and of how other games let
 players catch creatures. The research report behind it is
 `docs/research/pet-trapping/other_games_report.md`. The notes behind both, with
 every source, are in that folder; start with its README. Nothing here is built
-yet. A few choices are still yours, listed near the end.
+yet. Every choice is now made; the full list is near the end.
 
 ## What you decided (2026-10-06)
 
@@ -27,6 +27,18 @@ yet. A few choices are still yours, listed near the end.
 - **A trap costs at least one log to make.**
 - **Pets can be traded.**
 - **A pet levels up, but never past your Trapping level.**
+
+And after reading the second plan: *"Do all the recommended courses of action
+except the mercy rule for people with bad luck. Just leave the odds exactly the
+same for everyone. And yes let people name their pets (as shown in the
+recommended)"*.
+
+- **Every recommendation is taken, except the bad-luck rule.**
+- **The odds never change with luck.** Two players at the same Trapping level,
+  trying the same kind of monster, always have the same chance, however their
+  tries have gone.
+- **The kinds keep the names in the table below** (Snowling, Gobling and the
+  rest), and **each player names their own pet**.
 
 ## The short answer
 
@@ -216,23 +228,22 @@ best chance 20 levels above.
 - **The game shows the true number before you tap.** Palworld's capture
   percentage turned out to be inflated (players' datamining found 49% shown was
   18.25% real), and Pokémon GO's hidden rates were called "shady".
-- **Luck is lumpy at 1%.** Half of players get a catch within 69 tries, but 1 in
-  8 needs more than 200 and 1 in 150 more than 500. That's why the bad-luck rule
-  below is offered.
+- **Nothing else moves them:** not your combat level, your damage, the
+  monster's health, or how your earlier tries went.
 
-### Bad luck (recommended, your call)
+### No bad-luck rule
 
-- After **twice the average number of tries** at a kind of monster without a
-  catch, each further miss adds a tenth of your chance until you catch one.
-  - At 1%, that starts at the 200th miss, and each miss after it adds 0.1%.
-  - About 2 players in 100 are still trying at 250 tries, and almost nobody past
-    about 295.
-- A catch resets it.
-- **It never touches the first 200 tries**, so catching stays rare, as you want.
-  It only stops a very unlucky player from quitting.
-- World of Warcraft's battle-pet traps add 20–30% after every failure.
-  RuneScape 3 raises its rare-pet odds once a player's own count passes set
-  multiples of the usual. This is gentler than either.
+- **Every try has the same chance as the last one.** A run of misses changes
+  nothing (decided 2026-10-06), and the server keeps no count that could tilt
+  the roll.
+- **What that means at 1%:**
+  - half of players get their catch within 69 tries;
+  - 1 in 8 needs more than 200;
+  - 1 in 150 needs more than 500.
+
+  Deeper monsters push those numbers further.
+- **Your tries are counted for you to see, never to change the odds.** The
+  journal (Phase 2) shows your tries and catches at each kind.
 
 ### The shakes
 
@@ -263,9 +274,10 @@ pictures.
 
 ### What you catch
 
-The monster itself, tamed and drawn small. Names for you to choose:
+The monster itself, tamed and drawn small. Each kind goes by the name below
+until its owner gives it one:
 
-| Land | Element | Its monsters | Pet (names for you to choose) | At levels 21–40 |
+| Land | Element | Its monsters | Pet | At levels 21–40 |
 |---|---|---|---|---|
 | Frost Ridge | frost | Snowman | Snowling | Glacier Snowling |
 | Flame Fields | flame | Fire Goblin | Gobling | Cinder Gobling |
@@ -287,21 +299,25 @@ The monster itself, tamed and drawn small. Names for you to choose:
 - **A pet starts at the level of the monster you caught.** That's never above
   your Trapping level, because of the rule above.
 - **It levels up while it's out with you**, from a share of the combat XP you
-  earn, a tenth say.
+  earn, about a tenth.
 - **It stops at your Trapping level.** It starts again when your Trapping level
   rises, so the way to grow your pets is to trap.
 - **A traded pet above your Trapping level** works at your Trapping level until
-  you catch up, and keeps its own level for when you do (recommended; see the
-  choices below).
+  you catch up, and keeps its own level for when you do.
 - **A pet's level shows on its card** and grows it a little on screen. Later it
   sets how strong its ward is (Phase 4).
 - **One follows you**, as today. The rest wait in your collection, which holds
   30 to start. The Pet House holds more for gold.
-- **Set active, rename and release** from a **Pets page** (More → Pets, with the
+- **Name, set active and release** from a **Pets page** (More → Pets, with the
   paw-print icon). All of it is done by the server and kept.
-- **Pets are never lost**, not when you die, and not in No man's land
-  (recommended). Old School RuneScape insures every pet, and its killers never
-  get one.
+- **A name** is 2–16 letters, numbers, spaces, hyphens or apostrophes. The
+  server trims and checks it, close to a clan name's 3–16 characters
+  (`server/src/clans.js:129`).
+  - **No emoji.** An emoji in the world's outlined text is a known iPhone Safari
+    crash (`src/rendering/nodeLabels.js:28`), and pet names will float over pets.
+  - A traded pet keeps its name until its new owner changes it.
+- **Pets are never lost**, not when you die, and not in No man's land. Old School
+  RuneScape insures every pet, and its killers never get one.
 
 ### What pets do
 
@@ -356,8 +372,9 @@ What keeps it safe:
 - **Armour and shields went this way first.** Gear became tradeable over about
   ten versions (v2.3.2523–v2.3.2551), with an ownership ledger. Pets get a phase
   of their own for the same reason.
-- **Optional safeguards** (below): a short hold after a catch before a pet can
-  be traded, and the active pet can't be listed.
+- **Two safeguards:**
+  - a new pet can't be traded for 24 hours after its catch;
+  - the pet that's out with you can't be listed.
 
 ### Fair in a shared world
 
@@ -368,7 +385,7 @@ What keeps it safe:
 - **No captures on the safe ground or in dungeons.**
 - **No man's land.** Its rings start at the second stretch, so a trapper there
   can be attacked by players near their level, like anyone. Traps in the bag
-  drop as bag items do. Pets never go (recommended).
+  drop as bag items do. Pets never go.
 
 ### What it costs and what it pays
 
@@ -429,48 +446,51 @@ Phase 1 builds on two open pull requests:
 
 | Phase | What players get | Main work | Why in this order |
 |---|---|---|---|
-| **1. Arm a trap, then kill it** | The Woodworker makes box traps. TRAP on a targeted monster, with true odds and the Trapping-level rule; the mark; a rare roll at the kill for every armed helper; the shakes; Trapping XP on every try. A Pets page (set active, rename, release), which the farm's Pet House opens too. Pets drawn from the pet sheet. The old capture, the fake bites, and Evolve and Enchant go, and the Trapping card's words change. | Server: `trapping.js` (making traps, the arm, the roll in the kill path), the `pets:<pid>` record with lasting ids and levels and old pets moved in, `caps.trapping`, `caps.trapcraft` and `caps.petbook` with their off switches, a test suite, `docs/specs/trapping.md`. Phone: the TRAP pop-up, the mark, the shakes, the Traps tab, the Pets page, and the tool that makes the pet sheet. QA `mp-trapping` on a phone. Two PRs: the server first, then the phone. | The whole loop, with no new art from you. Gives Trapping its first real XP. |
+| **1. Arm a trap, then kill it** | The Woodworker makes box traps. TRAP on a targeted monster, with true odds and the Trapping-level rule; the mark; a rare roll at the kill for every armed helper; the shakes; Trapping XP on every try. A Pets page (name, set active, release), which the farm's Pet House opens too. Pets drawn from the pet sheet. The old capture, the fake bites, and Evolve and Enchant go, and the Trapping card's words change. | Server: `trapping.js` (making traps, the arm, the roll in the kill path), the `pets:<pid>` record with lasting ids and levels and old pets moved in, `caps.trapping`, `caps.trapcraft` and `caps.petbook` with their off switches, a test suite, `docs/specs/trapping.md`. Phone: the TRAP pop-up, the mark, the shakes, the Traps tab, the Pets page, and the tool that makes the pet sheet. QA `mp-trapping` on a phone. Two PRs: the server first, then the phone. | The whole loop, with no new art from you. Gives Trapping its first real XP. |
 | **2. Pets level up** | Pets earn XP while out with you, up to your Trapping level, and grow a little. A journal of every kind: your tries, your catches, your biggest. A Beastmaster beside the Woodworker with a short quest line the server checks: make traps, arm traps, reach Trapping 6. | Pet XP gathered in memory and saved with the character, never a write per kill. A `catch` quest goal. The NPC and his art. | Gives every pet a future, and teaches the loop. |
 | **3. Trading** | Pets in the trade window, the auction house and the mail. | A pet lane in the trade window held like weapons; a `pet` listing kind; a `pet` mail kind with "collection full → stays in the mail"; `caps.pettrade` and its switch. | Pets have value once they level. Gear's path shows it needs a phase of its own. |
 | **4. Pets that matter** | The land ward, stronger with level. Golden and Big pets with a reveal. Other players see your pet. More Pet House space. | The ward in `monsterstatus.js`, the pet in each player's tick record, Pet House space bought with gold. | Makes the collection worth finishing. |
-| **5. Later, your call** | A monthly featured monster with better odds for a day. Sheriff's bounties. Eggs at the farm. A pet's helping bite. Cosmetic pet extras on the supporter pass. | Each its own PR. | Only once the core is loved. |
+| **5. Later, your call** | A monthly featured-monster day (better odds that day would bend the same-odds rule, so only with your yes). Sheriff's bounties. Eggs at the farm. A pet's helping bite. Cosmetic pet extras on the supporter pass. | Each its own PR. | Only once the core is loved. |
 
-## Still to decide
+## Every choice, as decided (2026-10-06)
 
-| Decision | Choices | Recommendation |
-|---|---|---|
-| When a trap is used | every time it springs; only on a catch | **Every time it springs.** That's what makes a trap's log matter: about 100 logs a pet at 1%. Only on a catch would be one log a pet |
-| Odds on deeper stretches | ×0.8 per stretch (1% down to 0.21%); 1% everywhere; steeper | **×0.8 per stretch** |
-| How your Trapping level helps | half the best chance when unlocked, the best at 20 levels above; the best at once | **Half, rising to the best over 20 levels**, so trapping keeps paying |
-| Bad-luck rule | gentle, after twice the usual tries; none | **Gentle.** It never touches the first 200 tries at 1% |
-| Who rolls in a fight | armed and did 5% of the damage; armed is enough | **Armed and 5%.** It's the gold rule, and stops players arming what others kill |
-| Mark length | about 15 s; longer; shorter | **About 15 s**, tuned in play |
-| Wood for a trap | any log; the stretch's own log | **Any log**, for now |
-| How pets earn XP | a share of your combat XP while out; only from your catches | **A share of your combat XP**, about a tenth |
-| A traded pet above your Trapping level | works at your level until you catch up; can't be taken | **Works at your level**, so trading stays open |
-| A hold before a new pet can be traded | 24 hours; none | **24 hours.** Slows a bot that catches and sells at once |
-| Can pets be lost | never; in No man's land | **Never** |
-| Golden pets | about 1 catch in 50; rarer; none | **About 1 in 50** |
-| Collection size | 30 plus gold expansions; unlimited | **30 plus expansions** |
-| Pet names | the table above, or your own | Yours to name |
-| The $2 supporter pass | cosmetic only; also more collection space | **Cosmetic only.** Never traps, odds or pets |
+| Choice | Decided |
+|---|---|
+| How to catch | Arm a trap, then kill the monster. No dens |
+| Which monsters | Only those at or below your Trapping level |
+| Best odds | 1% on the first stretch, ×0.8 for each deeper stretch, down to 0.21% |
+| How your Trapping level helps | Half the best chance when you reach the monster's level, rising to the best 20 levels above |
+| Bad luck | **No rule.** The odds never change with luck, the same for everyone |
+| When a trap is used | Every time it springs, caught or not. A mark that runs out keeps the trap |
+| A trap | One log of any kind, made at the Woodworker |
+| Who rolls in a fight | Players who armed it and did at least 5% of its damage |
+| Mark length | About 15 seconds, tuned in play |
+| Pet levels | Start at the monster's level, then gain a share of your combat XP while out (about a tenth). Never above your Trapping level |
+| A traded pet above your Trapping level | Works at your level until you catch up |
+| Trading | Yes: the trade window, the auction house and the mail, with a 24-hour hold after a catch |
+| Losing pets | Never, not even in No man's land |
+| Golden pets | About 1 catch in 50 |
+| Collection | 30 to start, more for gold at the Pet House |
+| Names | Each kind as in the table above; each player names their own pet (2–16 letters, numbers and spaces, no emoji) |
+| The $2 supporter pass | Cosmetic only. Never traps, odds or pets |
 
 ## Where this goes against the research, and how the plan answers it
 
 - **Rare, pure-luck catches drew the loudest complaints the research found.**
   Ni no Kuni players called its befriending "completely random", and MapleStory
-  players reported 20–60 minutes per familiar card. You want catching rare, so
-  the plan keeps your 1%. It answers the complaint in five ways:
+  players reported 20–60 minutes per familiar card. You want catching rare and
+  the same for everyone, so the plan keeps your 1% with no bad-luck rule. About
+  1 player in 8 will need more than 200 tries for a first-stretch pet. The plan
+  softens that in four ways:
   - the true odds on the button;
   - a count of your tries at each kind;
   - honest near misses in the shakes;
-  - Trapping XP on every try, so no try is wasted;
-  - the gentle bad-luck rule, if you agree to it.
+  - Trapping XP on every try, so no try is wasted.
 - **The research suggested keeping wild-caught pets untradeable**, as World of
   Warcraft does, because markets are where dupes and real-money trading happen.
   You want them tradeable. The plan makes that safe the way armour and shields
   were made safe: server-made pets with lasting ids, moved in one step, in a
-  phase of their own, with an optional hold after a catch.
+  phase of their own, with a 24-hour hold after a catch.
 - **The research suggested using up a trap only on a catch.** Your "each trap
   costs a log" makes a trap a cost per try. That's a steady pull on Woodcutting,
   about a hundred logs for a first-stretch pet.
@@ -490,8 +510,7 @@ pets:<pid> = {
             gold: false, size: 1.04, name: 'Gobling', lv: 4, xp: 120,
             at: 1791273600000, caughtBy: '<pid>', owners: 1,
             tradeAfter: 1791360000000 } ],
-  journal: { 'ember.fireGoblin.1': { tries: 87, n: 1, gold: 0, big: 1.04 } },
-  luck: { 'ember.fireGoblin.1': 0 }
+  journal: { 'ember.fireGoblin.1': { tries: 87, n: 1, gold: 0, big: 1.04 } }
 }
 ```
 
@@ -512,9 +531,9 @@ pets:<pid> = {
   archetype and element, with `lv` set to the stored level capped at the
   player's Trapping level. This assumes #830 has removed the browser's pet import
   at join.
-- **`tries` and `luck` are kept in memory and saved with the character**, not
-  written on every miss. A few lost counts after a crash are harmless. A catch
-  writes at once.
+- **`tries` is kept in memory and saved with the character**, not written on
+  every miss. It never changes the odds, so a few lost counts after a crash are
+  harmless. A catch writes at once.
 
 ### Making traps
 
@@ -549,7 +568,8 @@ pets:<pid> = {
   share is at least 0.05 (the gold rule, `:1598-1618`), and who still has a
   trap:
   - take one `trap_box`;
-  - work out the chance from the odds table, plus `luck`;
+  - work out the chance from the odds table alone: no adjustment for luck
+    (owner, 2026-10-06);
   - roll four checks at the chance's fourth root, which gives the shakes;
   - **on a catch:** write `pets:` first, then `_saveRpg`, in one synchronous run;
   - **on a miss:** count it in memory.
@@ -595,8 +615,8 @@ pets:<pid> = {
 | phone → server | `trap_arm` | `{monsterId}` | explicit router case plus a shim passthrough line |
 | server → phone | `trap_armed` | `{monsterId, until, chance}` | private |
 | server → phone | `trap_result` | `{monsterId, caught, shakes, pet?, xp, tries}` | private |
-| phone → server | `pet_active`, `pet_name`, `pet_release` | `{id}`, `{id, name}`, `{id}` | |
-| server → phone | `pets_state` | the record, without `luck` | private; at join and after each change |
+| phone → server | `pet_active`, `pet_name`, `pet_release` | `{id}`, `{id, name}`, `{id}` | a name is 2–16 letters, numbers, spaces, `-` or `'`, trimmed by the server; no emoji (an iOS crash in outlined text) |
+| server → phone | `pets_state` | the record | private; at join and after each change |
 
 Every server-sent type goes in `PRIVILEGED_EVENTS` (wire-audit checks it).
 `pet_capture` refuses with `retired`, and `pet_capture_result` stays privileged.
@@ -628,15 +648,16 @@ Every server-sent type goes in `PRIVILEGED_EVENTS` (wire-audit checks it).
   - the slime's deferred death;
   - no dungeon or safe-ground arming;
   - the odds table at every stretch;
-  - the luck rule;
+  - the odds unchanged after a long run of misses;
   - the shakes' split, with `Math.random` stubbed;
   - pet XP capped at Trapping level;
   - old pets moving in;
-  - release, rename and set active;
+  - release, naming and set active;
+  - a name with an emoji, too long, or empty, refused;
   - `__proto__` as a monster id, a log or a pet id;
   - in Phase 3: a trade that fails halfway, a full collection, and a pet listed
     twice.
-- **Mirror-audit:** the odds table, the luck rule and the trap recipe, between
+- **Mirror-audit:** the odds table, the name rule and the trap recipe, between
   server and phone.
 - **QA `mp-trapping` on a phone:**
   - make traps;
