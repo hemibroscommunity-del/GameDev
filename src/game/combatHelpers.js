@@ -16,6 +16,7 @@ import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
 import { isWheelSwimming, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js';   /* v2.3.3017: nor in the air */
+import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3105: a swing meets a prop at the swinger's boots */
 import { isDazed } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
@@ -1015,6 +1016,15 @@ var PROP_BLADE_H = 30;
 var _propSlashFlip = 0;
 export function propSwingHit(S, px, py, ang, reach, halfArc) {
   if (!S) return null;
+  /* ═══ v2.3.3105: FROM THE BOOTS, NOT THE CHEST ═══
+     Both callers pass a player's POSITION, the body's centre (v2.3.2748), and
+     a prop's footprint is on the ground, ~52 px lower (playerGroundDy).  Asked
+     from the chest, a swing at a barrel north of you swept the air above it
+     and never landed -- found by mp-tapprop, the owner having said a player
+     who wants to attack a prop "can still hold the right joystick towards it".
+     Every other ground question already adds the drop (movement, depth,
+     prints, the doors). */
+  if (Number.isFinite(px) && Number.isFinite(py)) py = py + playerGroundDy(S.currentZone, px, py);
   var c = propSwingContact(S.currentZone, px, py, ang, reach, halfArc);
   if (!c) return null;
   var dir = Math.atan2(c.y - py, c.x - px);

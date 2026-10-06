@@ -50,7 +50,7 @@
  * of rolls with every multiplier switched on, so the day someone raises
  * BURST_DMG_MULT past the headroom the suite says so instead of production
  * silently clamping every burst to the cap.
- * v2.3.3108: the damage buff in that sum is the cooked food's 1.2; a brew of
+ * v2.3.3117: the damage buff in that sum is the cooked food's 1.2; a brew of
  * its own number (the Fury Tonic's 2.0) does not fit, so the ceiling is
  * multiplied by the brew the roll carries (combat.js _brewMul) -- and the
  * suite now drinks a real one (its old `ps.buffs` was never read).
@@ -198,7 +198,7 @@ export const burstMethods = {
          ordinary auto-attack ceiling.  See the header for why 1.5x fits
          inside that ceiling by arithmetic rather than by luck. */
       const rolled = this._computeAttackDamage(ps, slot, false, { targetLevel: m.level });  /* v2.3.2680: the edge */
-      /* v2.3.3108: x the brew (combat.js _brewMul), which the roll above
+      /* v2.3.3117: x the brew (combat.js _brewMul), which the roll above
          already carries.  The header's 5.82x fit was worked out at the
          cooked-food x1.2; the Fury Tonic's x2 takes the worst roll to 9.7x,
          past the 7.5x ceiling, so a burst under the tonic was clipped by up

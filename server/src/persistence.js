@@ -42,7 +42,7 @@ const BUFF_MAGNITUDES = {
   damageMul: 'damage',   /* v2.3.2058: the Fury Tonic's x2 */
   spdMul: 'spd',         /* v2.3.2062: the Swift Draught's x1.5 */
   manaFlat: 'mana',      /* v2.3.2062: the Mana Draught's per-tick regen floor */
-  xpMul: 'xp',           /* v2.3.3106: the Pumpkin Pie's +10% combat XP (prog3.js reads it, bounded; a 2a worker keeps it too, for a rollback) */
+  xpMul: 'xp',           /* v2.3.3115: the Pumpkin Pie's +10% combat XP (prog3.js reads it, bounded; a 2a worker keeps it too, for a rollback) */
 };
 
 export const persistenceMethods = {
@@ -399,7 +399,7 @@ export const persistenceMethods = {
        same belt-and-braces argument as the playerState delete below). */
     try { await this.state.storage.delete('gear_prov:' + pid); } catch (e) { /* best-effort, as above */ }
     this._gearProvForget(pid);
-    /* ═══ v2.3.3102: AND THE FARM GOES WITH THE CHARACTER ═══
+    /* ═══ v2.3.3111: AND THE FARM GOES WITH THE CHARACTER ═══
        `farm:<pid>` (farm.js) is keyed by player id too, so without this a
        restarted level-1 character inherited every bed and whatever grew in
        them.  Its first join said "6 beds are ready", and the harvest (which
@@ -409,7 +409,7 @@ export const persistenceMethods = {
        and the beds were bought with them.  The next open hands out the free
        deed again. */
     try { await this.state.storage.delete('farm:' + pid); } catch (e) { /* best-effort, as above */ }
-    /* v2.3.3109: today's order board (`farmorders:<pid>`, farmorders.js) is
+    /* v2.3.3118: today's order board (`farmorders:<pid>`, farmorders.js) is
        KEPT, as the guild claims are.  Its done flags are the day's limit: the
        first cut deleted it here, and one player id could deliver the day's
        three orders again after every restart (review).  The restarted
@@ -601,7 +601,7 @@ export const persistenceMethods = {
     } catch (e) {}
   },
 
-  /* ═══ v2.3.3105: A REFUSAL'S ECHO HAS TO BE SENT ═══
+  /* ═══ v2.3.3114: A REFUSAL'S ECHO HAS TO BE SENT ═══
    * A refused action changes nothing on the worker -- and the v2 delta above
    * sends only what changed, so the echo a refusal sends to snap a client's
    * prediction back (the dish it drew in the bag, the herbs it took out, the

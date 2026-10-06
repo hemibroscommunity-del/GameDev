@@ -19,8 +19,8 @@ import { processGameEvent } from '@/networking/gameEvents.js';
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
-import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3102: the farm, the worker's */
-import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3102 */
+import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3111: the farm, the worker's */
+import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3111 */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
@@ -61,7 +61,7 @@ import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js
 import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3108: the worker's word on a bite it held back */
+import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3117: the worker's word on a bite it held back */
 
 /* ═══ v2.3.2122: A PIECE THE WORKER TAKES OFF YOU GOES IN THE BAG ═══
  *
@@ -1552,7 +1552,7 @@ export function setupWebSocket(ctx) {
             }
           case 'eat_refused':
             {
-              /* v2.3.3108: the worker held a bite back by the one-bite rule
+              /* v2.3.3117: the worker held a bite back by the one-bite rule
                  (cooking.js _pvpHealHeld) -- its clock becomes this page's,
                  and the player is told how long.  The bag and HP come back on
                  the resend that follows.  Here in the direct switch, for
@@ -1563,7 +1563,7 @@ export function setupWebSocket(ctx) {
             }
           case 'farm_state':
             {
-              /* v2.3.3102: the farm (server farm.js) -- the beds, what grows in
+              /* v2.3.3111: the farm (server farm.js) -- the beds, what grows in
                  them and when it is ripe on the WORKER's clock, plus what the
                  last request did (`did`) or why it did nothing (`err`), or,
                  flagged `login`, the farm as it stood when you joined.  Into
@@ -2012,7 +2012,7 @@ export function setupWebSocket(ctx) {
                    as it does on the server. Prediction must agree with the
                    authority or the popups lie. */
                 S._dmgBuffMul = typeof _sb.damageMul === 'number' ? _sb.damageMul : 0;
-                /* v2.3.3105: the Herb Bread's half hour is `rest` on a worker
+                /* v2.3.3114: the Herb Bread's half hour is `rest` on a worker
                    with caps.meals; `regen` is the bread from before it. */
                 if (typeof _sb.rest === 'number') S._regenBuff = _sb.rest;
                 else if (typeof _sb.regen === 'number') S._regenBuff = _sb.regen;
@@ -2031,7 +2031,7 @@ export function setupWebSocket(ctx) {
                 else S._hpBuff = 0;
                 if (typeof _sb.mana === 'number') S._manaBuff = _sb.mana;
                 else S._manaBuff = 0;
-                /* v2.3.3106: the Pumpkin Pie's combat-XP meal, its strength with
+                /* v2.3.3115: the Pumpkin Pie's combat-XP meal, its strength with
                    it -- the same absent-means-off rule (HUD chip only; the
                    worker pays the XP). */
                 S._xpBuff = typeof _sb.xp === 'number' ? _sb.xp : 0;
@@ -4117,7 +4117,7 @@ export function setupWebSocket(ctx) {
        paid (player_state, harvest_credit) or refused, a spend acked, a start
        answered with its hits.  The dead-pipe watch (_aliveTimer) holds one of
        these to SETTLE_SILENT_MS: silence after it means nothing is listening. */
-    /* v2.3.3102: and the farm's three (farm.js answers them), so a pipe that
+    /* v2.3.3111: and the farm's three (farm.js answers them), so a pipe that
        died after a farm tap is rejoined at 7 s, before a buy's 12 s "no
        answer yet" (farmBus.js).  One the worker ignores (a script's junk)
        raises no false alarm: any frame clears the watch, and the worker
@@ -4179,10 +4179,10 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
-        /* v2.3.3102: the farm (FarmPanel's Feed & Seed window) -> farm.js.
+        /* v2.3.3111: the farm (FarmPanel's Feed & Seed window) -> farm.js.
            Without these three lines the window would ask and never hear back
            -- TRAPS #18, the allowlist's one way to fail silently. */
-        /* v2.3.3109: + farm_order, the Feed & Seed's order board (farmorders.js). */
+        /* v2.3.3118: + farm_order, the Feed & Seed's order board (farmorders.js). */
         if (msg.type === 'farm_open' || msg.type === 'farm_act' || msg.type === 'farm_buy' || msg.type === 'farm_order') {
           ws.send(JSON.stringify(msg));
           return;

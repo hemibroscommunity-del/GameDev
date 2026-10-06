@@ -20,7 +20,7 @@
  * old daily gold: the coin prize is the old formula (25 + 10 per streak day,
  * capped at day 7) times a 1.0-1.6 roll, so the streak still pays and a chest
  * that "only" gave coins is still at least what the day used to give.  The
- * rest: 10 fish (raw since v2.3.3107, to cook), a rare gem, or a piece of copper/iron armour whose
+ * rest: 10 fish (raw since v2.3.3116, to cook), a rare gem, or a piece of copper/iron armour whose
  * QUALITY is rolled by the same `_rollWeaponQuality` the monster drops use
  * (normal / rare / elite / godly mean the same thing everywhere).  Armour is
  * minted into the provenance ledger (`_gearProvRecord`, src 'chest') and
@@ -39,7 +39,7 @@ export const CHEST = {
   /* Weights out of 100. */
   PRIZES: [
     { id: 'coins', weight: 78 },
-    /* v2.3.3107: RAW minnows, to cook -- the owner's "10 cooked fish" (above)
+    /* v2.3.3116: RAW minnows, to cook -- the owner's "10 cooked fish" (above)
        met their later rule, "I want food and drink to come exclusively from
        farming and recipes": a chest is neither, so it gives the catch and the
        campfire does the rest.  Same id, count and odds. */

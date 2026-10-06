@@ -1,4 +1,4 @@
-/* ═══ v2.3.3102: THE FARM'S CROPS, THE CLIENT'S COPY ═══
+/* ═══ v2.3.3111: THE FARM'S CROPS, THE CLIENT'S COPY ═══
  *
  * The worker settles every bed from its own table (server/src/farm.js FARM);
  * this copy only lets the Feed & Seed window say what a seed costs, how long
@@ -23,7 +23,7 @@ export const FARM = {
     firebloom:  { name: 'Firebloom',  seed: 'seed_firebloom',  item: 'herb_firebloom',  lvl: 1,  price: 5,  mins: 40,   yield: 2, xp: 50,  base: 16, look: '🌺' },
     rock_vine:  { name: 'Rock Vine',  seed: 'seed_rock_vine',  item: 'herb_rock_vine',  lvl: 5,  price: 10, mins: 320,  yield: 2, xp: 120, base: 30, look: '🌿' },
     cloudpetal: { name: 'Cloudpetal', seed: 'seed_cloudpetal', item: 'herb_cloudpetal', lvl: 10, price: 15, mins: 640,  yield: 2, xp: 180, base: 40, look: '🌸' },
-    /* v2.3.3106: the two food crops */
+    /* v2.3.3115: the two food crops */
     potato:     { name: 'Potato',     seed: 'seed_potato',     item: 'crop_potato',     lvl: 5,  price: 6,  mins: 160,  yield: 3, xp: 90,  base: 12, look: '🥔' },
     pumpkin:    { name: 'Pumpkin',    seed: 'seed_pumpkin',    item: 'crop_pumpkin',    lvl: 10, price: 25, mins: 1760, yield: 2, xp: 320, base: 60, look: '🎃' },
     /* v2.3.3110: ten more, the owner's "good variety of crops to grow" --
@@ -68,7 +68,7 @@ export function farmGrowMs(crop, watered) {
 }
 
 /* What a bed will pay, as the window says it before you harvest.  A whole
-   number when it is one; v2.3.3106: a RANGE when fertilizing gives a fraction
+   number when it is one; v2.3.3115: a RANGE when fertilizing gives a fraction
    -- the potato's 3 x 1.5 is 4.5, and the worker pays 4 or 5 (farmYield), so
    "5" was a promise it broke half the time. */
 export function farmYieldShown(crop, fed) {

@@ -1,4 +1,4 @@
-# Food that counts in a fight (v2.3.3108)
+# Food that counts in a fight (v2.3.3117)
 
 The owner, on what farming is for: *"Farming needs a purpose. I think the best
 purpose it can serve are temporary buffs (boss fights, PvP, dueling, etc) and

@@ -1,4 +1,4 @@
-# The farm: real crops at the Feed & Seed (v2.3.3102)
+# The farm: real crops at the Feed & Seed (v2.3.3111)
 
 > Owner, 2026-10-06: *"mechanics similar to the old FarmVille game where you
 > have to wait to harvest and each has a wait time different depending on what
@@ -165,7 +165,7 @@ ARCHITECTURE-HANDOFF's storage-key table.
     write): the highest `v` of the crops planted in it. A farm of the first
     four crops is a 1 that every farm worker reads; a potato or a pumpkin
     makes it a 2 while it grows, and its harvest a 1 again. Stamping `FARM.V`
-    on every write (v2.3.3106 at first) closed every farm touched under the
+    on every write (v2.3.3115 at first) closed every farm touched under the
     new worker after a rollback, carrot-only ones included (found by the
     review). `FARM.V` is the highest crop `v`; farm.test pins both.
 - **`caps.farmCrops`** says how many crops the worker grows, in the order they
@@ -247,7 +247,7 @@ ARCHITECTURE-HANDOFF's storage-key table.
   `_tickPlayerRegen` now pays **2% of max HP a second** while it runs, in or
   out of a fight, which is what its card always said. It does not apply in a
   hub, where the 10% top-off is faster, or in an arena match or a duel.
-  - **Changed in v2.3.3105** (`docs/specs/meals.md`): a carried meal lasts
+  - **Changed in v2.3.3114** (`docs/specs/meals.md`): a carried meal lasts
     half an hour, so the bread now doubles the out-of-combat healing instead,
     and never heals mid-fight.
 - **The recipes' Cooking levels are the worker's gate** (`cooking.js`
@@ -326,8 +326,8 @@ The crops, seeds and compost are emoji until the art exists:
   Storage), so a rollback to the worker before it leaves the newer beds alone.
 
 - **Phase 2:** done. Meals and brews you carry, and Diego's three tonics
-  brewed from herbs, in v2.3.3105; the potato, the pumpkin and their dishes in
-  v2.3.3106 (`docs/specs/meals.md`). A record holding a potato or a pumpkin
+  brewed from herbs, in v2.3.3114; the potato, the pumpkin and their dishes in
+  v2.3.3115 (`docs/specs/meals.md`). A record holding a potato or a pumpkin
   is a 2 since then: a rollback to a v1 worker refuses that farm, which it
   would otherwise have turned to grass where they grew, and reads every other
   farm as before.

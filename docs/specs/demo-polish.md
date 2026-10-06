@@ -67,7 +67,7 @@ The owner asked: "I'd rather have a loot box that has a high chance of coins but
   | Prize | Weight | Notes |
   |---|---|---|
   | Coins | 78 | The old daily gold (25 + 10 per streak day, capped at day 7) × a 1.0–1.6 roll, so it is never less than the day used to pay. |
-  | 10 raw minnows | 8 | Cooked minnows until v2.3.3107: food and drink come only from farming and recipes now (owner), so the chest gives the catch and the campfire cooks it. |
+  | 10 raw minnows | 8 | Cooked minnows until v2.3.3116: food and drink come only from farming and recipes now (owner), so the chest gives the catch and the campfire cooks it. |
   | Rare gem | 8 | |
   | Armor | 6 | Copper torso or greaves 70%, iron 30%. Quality is rolled by the same `_rollWeaponQuality` as monster drops, and the piece is minted into the provenance ledger with src `'chest'`. |
 

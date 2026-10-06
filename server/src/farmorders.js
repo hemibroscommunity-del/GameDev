@@ -1,4 +1,4 @@
-/* ═══ v2.3.3109: THE FEED & SEED'S ORDER BOARD ═══
+/* ═══ v2.3.3118: THE FEED & SEED'S ORDER BOARD ═══
  *
  * Owner: "Farming needs a purpose. I think the best purpose it can serve are
  * temporary buffs (boss fights, PvP, dueling, etc) and source of income."
@@ -42,7 +42,7 @@
  * board replaces it, nothing is lost.
  *
  * STORAGE (rule 2): `farmorders:<pid>` {v, day, ids: [id x3], done: [0|1 x3]}.
- * v2.3.3109 (review): the record CARRIES ITS SHAPE (`v`, the farm's FARM.V
+ * v2.3.3118 (review): the record CARRIES ITS SHAPE (`v`, the farm's FARM.V
  * rule) and is read FAIL-CLOSED.  Its `done` flags are the only thing that
  * stops a second payment, so a record this worker cannot read is never a
  * free delivery: a newer worker's (`v` above V) closes the board for the
@@ -52,13 +52,13 @@
  * back across midnight (a room moved to another machine) keeps the later
  * board instead of re-opening the day before.
  *
- * NOT IN A FIGHT WITH A PLAYER (v2.3.3109, review): a delivery within
+ * NOT IN A FIGHT WITH A PLAYER (v2.3.3118, review): a delivery within
  * PVP_HEAL.WINDOW_MS of a hit between players, or in a duel, is refused
  * ('order-fight').  In No man's land a player losing a fight could
  * otherwise turn the bag's goods into gold, which a white skull's death
  * keeps, just before the killer's pile would have taken them.
  *
- * A CHARACTER RESTART KEEPS TODAY'S BOARD (v2.3.3109, review), as the guild
+ * A CHARACTER RESTART KEEPS TODAY'S BOARD (v2.3.3118, review), as the guild
  * claims are kept: its done flags are the day's limit, and deleting them let
  * one player id deliver the day's three orders again after every restart.
  * The restarted character sees the old board until midnight, then its own.
@@ -75,7 +75,7 @@ import { PVP_HEAL } from './data.js';
 export const FARM_ORDERS = {
   /* The record's shape.  A change to it bumps this; an older worker then
      refuses the record whole instead of reading its delivered orders as
-     undelivered (the farm's FARM.V, v2.3.3102). */
+     undelivered (the farm's FARM.V, v2.3.3111). */
   V: 1,
   PER_DAY: 3,
   /* What a board is drawn from.  `key` is the bag key asked for (a crop, an
@@ -160,7 +160,7 @@ export const farmOrderMethods = {
 
   /* Today's board for this player: the stored one when it is today's,
      otherwise a fresh draw (`fresh`, to be written by the caller).  Read
-     FAIL-CLOSED (v2.3.3109, review; header): `newer` when the record is a
+     FAIL-CLOSED (v2.3.3118, review; header): `newer` when the record is a
      newer worker's (no board, nothing written); today's record in a shape
      this worker cannot read delivers nothing; a done flag that is not
      exactly 0 reads as done; and a stored day LATER than today's is kept,
@@ -189,7 +189,7 @@ export const farmOrderMethods = {
     return { rec: { v: FARM_ORDERS.V, day: today, ids, done: ids.map(() => 0) }, fresh: true, newer: false };
   },
 
-  /* v2.3.3109 (review): in a fight with a player -- a duel, or a hit between
+  /* v2.3.3118 (review): in a fight with a player -- a duel, or a hit between
      players within PVP_HEAL.WINDOW_MS (cooking.js's clock, _pvpHealClocks,
      stamped by every PvP exchange). */
   _farmOrderInFight(pid, now) {
@@ -235,7 +235,7 @@ export const farmOrderMethods = {
     const ps = this._farmPs(session);
     if (!ps) return null;
     const pid = session.id;
-    /* `orders: null` with it (v2.3.3109, review): the window drops the board
+    /* `orders: null` with it (v2.3.3118, review): the window drops the board
        it was showing and says the board is closed -- a page keeps the caps
        it joined with, so a switch thrown mid-session left Deliver lit. */
     if (this._farmOff() || this._farmOrdersOff()) { this._farmSend(pid, { err: 'off', orders: null, did: { op: 'order', n: 0 } }); return null; }
@@ -259,11 +259,11 @@ export const farmOrderMethods = {
     /* proto-ok: o.key is a POOL key (this file's own table), never the wire's */
     const have = Math.floor(Number(ps.inventory[o.key]) || 0);
     if (have < o.n) {
-      /* v2.3.3109 (review): an honest page lights Deliver only when ITS bag
+      /* v2.3.3118 (review): an honest page lights Deliver only when ITS bag
          holds enough, so a short answer means its bag is wrong (a cook the
          worker never heard, its dish drawn in the bag anyway).  The bag goes
          again -- a v2 echo of nothing that changed sends nothing (cooking.js,
-         v2.3.3105). */
+         v2.3.3114). */
       const w = this._wsBySessionId(pid);
       if (w && this._resendPlayerState) this._resendPlayerState(w, pid, ['inventory']);
       return refuse('order-short');
@@ -271,7 +271,7 @@ export const farmOrderMethods = {
 
     /* The order turns BEFORE anything is paid, and nothing between the pay
        and the writes can throw except the XP, which is last and caught
-       (farm.js's harvest, v2.3.3102). */
+       (farm.js's harvest, v2.3.3111). */
     rec.done[slot] = 1;
     if (have - o.n > 0) ps.inventory[o.key] = have - o.n;
     else delete ps.inventory[o.key];

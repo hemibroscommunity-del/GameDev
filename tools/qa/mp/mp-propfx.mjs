@@ -43,9 +43,17 @@ const RIDGE = { id: 'frost-rock-ridge', x0: 329, x1: 531, y0: 528, y1: 570 };
    y 644) and every other frost footprint. */
 const UNDER = { x: 450, y: 600 };
 /* The town fountain (x 831..1083, y 1426..1521), and a spot 30px under its
-   south face on open cobble. */
+   south face on open cobble.
+   v2.3.3105: a SWING meets a prop from the swinger's BOOTS now (combatHelpers
+   propSwingHit), and a player's position is the body's centre, playerGroundDy
+   (52) above them -- at PLAZA the feet stand 82px off the face, out of the
+   sword's 72 px, and only the old chest-height test let that swing land.  So
+   the swings are made from SWORD_AT, the boots 30px off the face; the shots
+   (from the feet, in ground space, as before) still from PLAZA. */
 const FOUNT = { id: 'fountain', x0: 831, x1: 1083, y0: 1426, y1: 1521 };
 const PLAZA = { x: 957, y: 1551 };
+const BOOTS = 52;
+const SWORD_AT = { x: PLAZA.x, y: PLAZA.y - BOOTS };
 
 /* Record every push onto the two queues this scenario reads, from now on. */
 const wrapQueues = (P) => P.page.evaluate(() => {
@@ -160,11 +168,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await wrapQueues(P);
 
   /* ════════ TOWN: THE SWORD, AND A SECOND PLAYER ════════ */
-  await H.hopTo(P, PLAZA.x, PLAZA.y);
+  await H.hopTo(P, SWORD_AT.x, SWORD_AT.y);
   await P.page.waitForTimeout(700);
   const at = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y, monsters: (S.monsters || []).length }));
-  rec.ok('setup: standing under the fountain, with no monster to steal the swing', Math.abs(at.x - PLAZA.x) < 14
-    && Math.abs(at.y - PLAZA.y) < 14 && at.monsters === 0, at);
+  rec.ok('setup: standing under the fountain, with no monster to steal the swing', Math.abs(at.x - SWORD_AT.x) < 14
+    && Math.abs(at.y - SWORD_AT.y) < 14 && at.monsters === 0, at);
 
   /* ── 1. A SWORD LEAVES A SLASH ── */
   const swing = async (ang) => {
@@ -190,7 +198,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const cut = slashesOn(m3, FOUNT.id);
   rec.ok('sword: the swing ran north, at the fountain (guard)', typeof sw.swingAng === 'number' && Math.sin(sw.swingAng) < -0.9, sw);
   rec.ok('sword: a SLASH is drawn on the fountain\'s south face, square in front, at blade height',
-    cut.length === 1 && cut[0].visible && Math.abs(cut[0].x - PLAZA.x) < 1
+    cut.length === 1 && cut[0].visible && Math.abs(cut[0].x - SWORD_AT.x) < 1
       && cut[0].y < FOUNT.y1 - 20 && cut[0].y > FOUNT.y1 - 40, m3);
   rec.ok('sword: ...cut ACROSS the swing (near level on a face you stand in front of), not along it',
     cut.length === 1 && Math.abs(Math.sin(cut[0].rot)) < 0.6, cut.length ? { rot: cut[0].rot } : null);
@@ -310,6 +318,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && arrowsAfter <= arrowsBefore, { ps, arrowsBefore, arrowsAfter });
 
     await P.page.waitForTimeout(300);
+    /* v2.3.3105: the peer steps up to swing, boots 38px off the face (a swing
+       is measured from the boots now, see SWORD_AT) */
+    await walkTo(Q, QAT.x, QAT.y - BOOTS);
+    for (let i = 0; i < 20; i++) {
+      const o = await H.readState(P, (S) => { const q = S.others && S.others[window.__qaQid]; return q ? (q.renderY != null ? q.renderY : q.y) : null; }).catch(() => null);
+      if (o != null && Math.abs(o - (QAT.y - BOOTS)) < 6) break;
+      await P.page.waitForTimeout(300);
+    }
     const n0 = slashesOn(await marks(P), FOUNT.id).length;
     await P.page.evaluate((qid) => {
       window.__btDispatch({ type: 'player_swing', payload: { id: qid, ts: Date.now(), wpn: 'sword', ang: -Math.PI / 2 } });

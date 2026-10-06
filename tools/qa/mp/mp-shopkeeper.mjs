@@ -306,9 +306,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && vClosed.bandBag.l === before.bandBag.l,
     { before: before.bandBag, after: vClosed.bandBag });
 
-  /* ══ WHAT HE STARTS WITH (v2.3.2053; v2.3.3107: nothing to eat or drink) ══
+  /* ══ WHAT HE STARTS WITH (v2.3.2053; v2.3.3116: nothing to eat or drink) ══
      He started with six cooked trout and, from v2.3.2063, sold the potions as
-     staples.  v2.3.3107, owner: "Remove all of Diego's potions. I want food
+     staples.  v2.3.3116, owner: "Remove all of Diego's potions. I want food
      and drink to come exclusively from farming and recipes" -- so no cooked
      fish from nowhere, no staple, no tonic.  What he holds is what players
      sold him (the remnants above). */
@@ -322,7 +322,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         || ['cookedMinnow', 'staminaSalts', 'whetstone', 'manaShard', 'swiftDraught'].includes(k)),
       staple: !!document.querySelector('[data-shop-staple]') };
   });
-  rec.ok('his shelf holds nothing to eat or drink: no cooked fish, no staple, no tonic (v2.3.3107)',
+  rec.ok('his shelf holds nothing to eat or drink: no cooked fish, no staple, no tonic (v2.3.3116)',
     seed2.food.length === 0 && !seed2.staple, seed2);
   rec.ok('...and still what players sold him (the remnants), so it is his real stock',
     seed2.ids.includes(KEY), seed2.ids);

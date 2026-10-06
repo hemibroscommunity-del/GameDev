@@ -109,10 +109,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.grant(wsPort, id, 'gold', { amount: 500 });
   await P.page.waitForTimeout(1000);
 
-  /* ── 1. HIS SHELF: NOTHING TO DRINK (v2.3.3107) ──
+  /* ── 1. HIS SHELF: NOTHING TO DRINK (v2.3.3116) ──
      Owner, v2.3.2063: "These potions should be purchasable there" -- Bro, not
-     the vendor building.  v2.3.3105: the farming plan took the three tonics off
-     his shelf the day the farm brewed them; v2.3.3107: the last two went too,
+     the vendor building.  v2.3.3114: the farming plan took the three tonics off
+     his shelf the day the farm brewed them; v2.3.3116: the last two went too,
      owner: "Remove all of Diego's potions. I want food and drink to come
      exclusively from farming and recipes."  So every bottle below arrives as a
      brewed one would (the Cookhouse's carried cook), by the server's own
@@ -131,7 +131,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const shelf = await P.page.evaluate(() => ({
     ids: [...document.querySelectorAll('[data-shop-bro]')].map((e) => e.getAttribute('data-shop-bro')),
     staple: !!document.querySelector('[data-shop-staple]') }));
-  rec.ok('...and no potion is on his shelf: no staple, no tonic (v2.3.3107)',
+  rec.ok('...and no potion is on his shelf: no staple, no tonic (v2.3.3116)',
     !shelf.staple && !shelf.ids.some((k) => ['cookedMinnow', 'staminaSalts', 'whetstone', 'manaShard', 'swiftDraught'].includes(k)), shelf);
 
   /* ═══ v2.3.2127: BUYING IS HALF OF IT NOW ═══
@@ -203,13 +203,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const before = await sprint(P);
   rec.ok(`the control sprint covers ground (${before} px/frame)`, before > 4, { before });
 
-  /* v2.3.3107: the Stamina Tonic (the old salts' key) is brewed from carrots
+  /* v2.3.3116: the Stamina Tonic (the old salts' key) is brewed from carrots
      now -- it arrives as a brewed bottle would, and lands in the BAG. */
   await H.grant(wsPort, id, 'item', { invKey: 'staminaSalts', count: 1 });
   await P.page.waitForTimeout(1500);
   const salts = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).staminaSalts || 0);
   rec.ok('a Stamina Tonic bottle is in the bag (as brewed at the Cookhouse)', salts >= 1, { salts });
-  /* v2.3.3105: the Swift Draught is brewed now -- it arrives as a brewed
+  /* v2.3.3114: the Swift Draught is brewed now -- it arrives as a brewed
      bottle would, by the server's own credit, and is drunk from the bag. */
   await H.grant(wsPort, id, 'item', { invKey: 'swiftDraught', count: 1 });
   await P.page.waitForTimeout(1500);
@@ -270,7 +270,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`three specials really drained the pool server-side (${drained})`,
     drained < 60, { drained });
 
-  /* v2.3.3105: brewed, not bought -- see section 1. */
+  /* v2.3.3114: brewed, not bought -- see section 1. */
   await H.grant(wsPort, id, 'item', { invKey: 'manaShard', count: 1 });
   await P.page.waitForTimeout(1500);
   rec.ok('a Mana Draught bottle is in the bag (as brewed at the Cookhouse)',
@@ -282,7 +282,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     filled > drained + 40, { drained, filled });
 
   /* ── ONE BREW AT A TIME ──
-     Owner: "Only 1 effect active at a time though." v2.3.3105: one meal and
+     Owner: "Only 1 effect active at a time though." v2.3.3114: one meal and
      one brew -- and both draughts are brews, so the Swift Draught that was
      running a moment ago must have ended. */
   const excl = await H.readState(P, (S) => ({
@@ -382,7 +382,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     withPotion.paid > sober.paid, { withPotion, sober });
   await C.ctx.close();
 
-  /* His shelf, open, for the record (v2.3.3107: bare of anything to drink). */
+  /* His shelf, open, for the record (v2.3.3116: bare of anything to drink). */
   await openBro();
   await P.page.waitForTimeout(900);
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/potions.png' }).catch(() => {});

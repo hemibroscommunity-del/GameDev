@@ -2914,6 +2914,59 @@ console.log('jumping (v2.3.3017)');
     pj.dur === 900 && pj.peak === J.JUMP_PEAK && pk.dur === J.JUMP_MS && pk.peak === 120 && pg.dur === 400 && pg.peak === 30 && pg.t0 === 7);
 }
 
+/* ── v2.3.3105: a tap on the right stick jumps, last (src/game/tapJump.js) ──
+   Owner: "Try moving jump as tap on right joystick but prioritize other
+   contextual uses for the tap instead of jump first if any apply." */
+console.log('the tap that jumps (v2.3.3105)');
+{
+  const fs = await import('node:fs');
+  const TJ = await import('../../src/game/tapJump.js');
+  const now = 100000;
+  ok('a tap with nothing to do on the right side may jump', TJ.rightTapBusy({}, now) === false);
+  ok('...not while a harvest owns the side, the disc has a job, or a lock waits for an empty tap to let it go',
+    TJ.rightTapBusy({ _extraction: {} }, now) && TJ.rightTapBusy({ _rBtnPressUntil: now + 1 }, now)
+      && TJ.rightTapBusy({ lockedTarget: { type: 'monster' } }, now) && !TJ.rightTapBusy({ _rBtnPressUntil: now }, now)
+      && TJ.rightTapBusy(null, now));
+  ok('with no job on the right side a tap may last TAP_JUMP_MAX_MS (320, past the old 200), and the first swing waits as long',
+    TJ.TAP_JUMP_MAX_MS === 320 && TJ.tapJumpMaxMs() === 320
+      && /if \(S\._atkHoldUntil && Date\.now\(\) < S\._atkHoldUntil\) _flickWait = true;/.test(fs.readFileSync(new URL('../../src/game/monsterCombat.js', import.meta.url), 'utf8')));
+  ok('a swing meets a prop at the swinger\'s boots (playerGroundDy), not the chest',
+    /py = py \+ playerGroundDy\(S\.currentZone, px, py\);\s*var c = propSwingContact/.test(fs.readFileSync(new URL('../../src/game/combatHelpers.js', import.meta.url), 'utf8')));
+  ok('the stick\'s picture names the tap\'s act: a door, the bed, a character, else the jump (a resource is the stick\'s own harvest)',
+    TJ.tapActIcon('door') === 'door' && TJ.tapActIcon('talk') === 'talk' && TJ.tapActIcon('sleep') === 'sleep'
+      && TJ.tapActIcon('gather') === 'jump' && TJ.tapActIcon(null) === 'jump');
+  {
+    const dc = fs.readFileSync(new URL('../../src/game/desktopControls.js', import.meta.url), 'utf8');
+    ok('...from the E key\'s own chain, the character first for the stick (a door has its own Enter button), and the tap runs that chain',
+      /if \(opts && opts\.npcFirst && S\._nearNpc\) return 'talk';/.test(dc) && /if \(opts && opts\.npcFirst && S\._nearNpc && runTalk\(\)\) return true;/.test(dc)
+        && /if \(runInteract\(\)\) return;/.test(dc)
+        && /interactKind\(S, \{ npcFirst: true \}\)/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8'))
+        && /_tjS\._interactNow\(\{ npcFirst: true \}\)/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8')));
+  }
+  ok('while you ATTACK the stick wears the weapon, never the jump: a thumb held past the tap\'s window or dragging, a swing under way, and ATTACK_FACE_MS after the last swing or shot',
+    TJ.attackingNow({ _atkHoldUntil: now + 100 }, true, now) === false
+      && TJ.attackingNow({ _atkHoldUntil: now + 100, _aiming: true }, true, now)
+      && TJ.attackingNow({ _atkHoldUntil: now - 1 }, true, now) && TJ.attackingNow({}, true, now)
+      && TJ.attackingNow({ isSwinging: true }, false, now)
+      && TJ.attackingNow({ swingTimer: now - TJ.ATTACK_FACE_MS + 1 }, false, now)
+      && !TJ.attackingNow({ swingTimer: now - TJ.ATTACK_FACE_MS }, false, now)
+      && !TJ.attackingNow({}, false, now) && !TJ.attackingNow(null, true, now)
+      && /&& !attackingNow\(S, !!rJoyActive\.current, Date\.now\(\)\);/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8')));
+  ok('the old button only with ?jumpbtn', TJ.jumpButtonWanted('?jumpbtn') && TJ.jumpButtonWanted('?a=1&jumpbtn=1')
+    && !TJ.jumpButtonWanted('') && !TJ.jumpButtonWanted('?jumpbtnx'));
+  const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+  const rE = bt.slice(bt.indexOf('var rE = function rE(e)'), bt.indexOf('THE BUTTON.  Press = engage'));
+  const at = (re) => { const m = re.exec(rE); return m ? m.index : -1; };
+  const flick = at(/doSpecialAttack\(\); return;/), res = at(/tapResourceAtClient\(t\.clientX/), npc = at(/tapNpcAtClient\(t\.clientX/),
+    self = at(/openSelfChat\(\)/), fwd = at(/dispatchEvent\(new MouseEvent\('click'/), jump = at(/triggerJump\(_tjS\)/);
+  ok(`the right stick's release tries the flick, a resource, a character, yourself and the forwarded tap BEFORE the jump (${[flick, res, npc, self, fwd, jump].join(' < ')})`,
+    [flick, res, npc, self, fwd, jump].every((v, k, a) => v > 0 && (k === 0 || v > a[k - 1])));
+  ok('...the jump only when the forwarded tap reached "empty space", read before it could drop the lock',
+    /rightTapBusy\(_tjS, endT\)[\s\S]*_tjSeq = [\s\S]*dispatchEvent[\s\S]*_tapEmptySeq \|\| 0\) > _tjSeq/.test(rE)
+      && /S\._tapEmptySeq = \(S\._tapEmptySeq \|\| 0\) \+ 1;\s*\/\* Tap on empty space = unlock \*\/\s*S\.lockedTarget = null;/.test(bt)
+      && /rts\.busy = rightTapBusy\(/.test(bt));
+}
+
 /* ── v2.3.3017: which land a Wheel point is on (src/data/zones.js wheelLandAt) ──
    Owner, 2026-10-04: "I was fighting fire goblins and my screen went black."
    The monsters' looks load for your own land as you walk toward them, and

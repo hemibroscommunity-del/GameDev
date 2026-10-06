@@ -1,4 +1,4 @@
-/* ═══ THE FARM, ON A PHONE (v2.3.3102) ═══
+/* ═══ THE FARM, ON A PHONE (v2.3.3111) ═══
  *
  * Owner: "mechanics similar to the old FarmVille game where you have to wait
  * to harvest and each has a wait time different depending on what it is.
@@ -20,7 +20,7 @@
  *   7. closed and opened again, the farm is the worker's: rough again where it
  *      was harvested;
  *   8. "Visit Your Farm" is still there (mp-wheeldoors walks it);
- *   9. v2.3.3102: switched off (liveflags `farm: false`), a second player who
+ *   9. v2.3.3111: switched off (liveflags `farm: false`), a second player who
  *      joins after gets the window CLOSED -- a card that sends nothing -- not
  *      the old browser-only plots; and no page errors.
  * Pictures: tools/qa/mp/out/farm-*.png.
@@ -237,7 +237,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const visit = await A.page.evaluate(() => { const b = document.querySelector('[data-farm-visit]'); return b ? (b.textContent || '').trim() : null; });
     rec.ok('"Visit Your Farm" is still in the window', visit === 'Visit Your Farm', visit);
 
-    /* ── 9. v2.3.3102: the kill switch.  A tab that joins while `farm: false`
+    /* ── 9. v2.3.3111: the kill switch.  A tab that joins while `farm: false`
        is set gets the window CLOSED -- a card that asks the worker nothing --
        not the old browser-only plots (the review's finding: "No seeds" beside
        beds it could not see).  A second player, so the caps are fresh. ── */
