@@ -406,7 +406,9 @@ function buildScene(app) {
         const now = r && r.gc ? r.gc.now : performance.now();
         const kindOf = (s) => {
           const res = s.resource;
-          if (!res) return 'render';
+          /* v2.3.3076: a buffer that let go of its colours once uploaded (the
+             Wheel's ground, wheelGround.js _toGpu) is still a buffer */
+          if (!res) return s.uploadMethodId === 'buffer' ? 'buffer' : 'render';
           if (typeof ImageBitmap !== 'undefined' && res instanceof ImageBitmap) return 'file';
           if (typeof HTMLImageElement !== 'undefined' && res instanceof HTMLImageElement) return 'file';
           if (typeof HTMLCanvasElement !== 'undefined' && res instanceof HTMLCanvasElement) return 'canvas';
