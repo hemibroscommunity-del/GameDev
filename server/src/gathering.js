@@ -487,7 +487,13 @@ export const gatheringMethods = {
   // local-vs-server level outcomes don't drift.
   _addLifeSkillXp(ps, skill, xpAmt) {
     if (!ps.lifeSkills) ps.lifeSkills = {};
-    if (!ps.lifeSkills[skill]) ps.lifeSkills[skill] = { level: 1, xp: 0 };
+    /* v2.3.3095: anything but an object is a fresh skill.  `!x` caught only
+       the falsy ones, and `s.xp = ...` on `1` or 'x' THREW (strict mode) --
+       the farm's harvest had already paid by then and paid again on every
+       message (farm.js).  The join heals such entries now
+       (migrations.js healLifeSkillLevels); this is the last line. */
+    const cur = ps.lifeSkills[skill];
+    if (!cur || typeof cur !== 'object' || Array.isArray(cur)) ps.lifeSkills[skill] = { level: 1, xp: 0 };
     const s = ps.lifeSkills[skill];
     s.xp = (s.xp || 0) + xpAmt;
     let leveled = false;

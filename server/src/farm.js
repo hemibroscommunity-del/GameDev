@@ -1,4 +1,4 @@
-/* ═══ v2.3.3083: THE FARM, SETTLED BY THE WORKER (Phase 1) ═══
+/* ═══ v2.3.3095: THE FARM, SETTLED BY THE WORKER (Phase 1) ═══
  *
  * Owner, 2026-10-06: "Research how farming can work in my game.  I'm
  * thinking mechanics similar to the old FarmVille game where you have to
@@ -45,9 +45,12 @@
  * record and the player's bag in memory and issues BOTH puts -- the farm
  * record first, then _saveRpg -- with no await between them, so the
  * Durable Object commits them as one batch.  Were they ever split, the farm
- * record going first means a crash can cost a harvest but can never pay
- * one twice (the guild-claims order, guilds.js).  The bed's own state is the
- * replay guard: a resent harvest finds a rough bed and pays nothing.
+ * record going first means a crash could lose a harvest but never pay one
+ * twice (the guild-claims order, guilds.js); a planting could keep its seed,
+ * a few coins, never take two.  The bed's own state is the replay guard: a
+ * resent harvest finds a rough bed and pays nothing -- which holds only
+ * because the bed turns BEFORE anything is paid and nothing between the pay
+ * and the commit can throw (v2.3.3095, the harvest branch).
  *
  * WHAT THE CLIENT MAY SAY.  Bed indexes (clamped, deduplicated) and a crop
  * id looked up with hasOwnProperty, so '__proto__' / 'constructor' resolve to
@@ -215,15 +218,33 @@ export const farmMethods = {
     try { ws.send(JSON.stringify({ type: 'farm_state', payload })); } catch (e) { /* the farm is saved */ }
   },
 
-  /* A fixed one-minute window per player, in memory (a deploy or a reconnect
-     resets it, which buys a script one more minute at most). */
+  /* A fixed one-minute window per player, in memory.  A deploy resets it,
+     which buys a script one more minute at most; a reconnect does not, as it
+     is keyed by player id.  v2.3.3095: windows already over are swept once
+     the map passes 256 players, so it never grows past the farmers of the
+     last minute (it was never pruned, and its comment said a reconnect
+     reset it). */
   _farmRateOk(pid) {
     if (!this._farmRate) this._farmRate = new Map();
     const now = Date.now();
+    if (this._farmRate.size > 256) {
+      for (const [k, w] of this._farmRate) if (now - w.t0 >= 60000) this._farmRate.delete(k);
+    }
     let r = this._farmRate.get(pid);
     if (!r || now - r.t0 >= 60000) { r = { t0: now, n: 0 }; this._farmRate.set(pid, r); }
     r.n += 1;
     return r.n <= FARM.MSG_PER_MIN;
+  },
+
+  /* v2.3.3095: the player's Farming level as a whole number, 1 at least,
+     whatever the record holds -- a first join stores the client's life
+     skills as sent (join.js), so a level could be a string or the skill a
+     bare number.  A string compared with a crop's level was coerced, and a
+     bare number read as 1 by luck. */
+  _farmLevel(ps) {
+    const s = ps.lifeSkills && ps.lifeSkills.farming;
+    const n = Math.floor(Number(s && typeof s === 'object' ? s.level : 1));
+    return Number.isFinite(n) && n >= 1 ? n : 1;
   },
 
   /* Who may farm right now: a live, joined player.  Returns their state. */
@@ -287,7 +308,7 @@ export const farmMethods = {
     }
     if (!beds.length) return null;
 
-    const level = (ps.lifeSkills && ps.lifeSkills.farming && ps.lifeSkills.farming.level) || 1;
+    const level = this._farmLevel(ps);
     const did = { op, n: 0 };
     let err = null;
 
@@ -344,31 +365,53 @@ export const farmMethods = {
         did.used = { [FARM.COMPOST]: did.n };
       }
     } else if (op === 'harvest') {
+      /* v2.3.3095: THE BED FIRST, THEN THE BAG, AND NOTHING BETWEEN THEM AND
+         THE COMMIT THAT CAN THROW.  The first cut paid each bed's crops, then
+         its Farming XP, then turned the bed back to grass.  `_addLifeSkillXp`
+         threw on a life skill stored as a bare number (a first join copied
+         the client's as sent: migrations.js healLifeSkillLevels), so the bed
+         was never turned and _farmCommit never ran, and the router's catch
+         swallowed it all.  The crops stayed in the bag and the bed stayed ripe
+         in storage, so the same bed paid again on every message (review
+         finding: 1 seed, unbounded carrots).  The bed is the replay guard
+         (the header), so it changes before anything is paid, the way
+         gathering's node dies before its strike pays.  The XP comes last,
+         inside a try: if it fails, the harvest loses its XP but is never
+         paid twice. */
       const items = Object.create(null);
-      let xp = 0;
-      const fromLevel = level;
-      let leveled = false;
-      let newLevel = level;
+      const picked = [];
       for (const i of beds) {
         const p = rec.plots[i];
         if (p.s !== 'planted' || now < p.readyAt) continue;
         const crop = FARM.CROPS[p.crop];
         const q = farmYield(crop, !!p.feed);
-        ps.inventory[crop.item] = (Math.floor(Number(ps.inventory[crop.item]) || 0)) + q;
-        items[crop.item] = (items[crop.item] || 0) + q;
-        /* Per bed, not one lump: the level curve is per level (smelting.js). */
-        const res = this._addLifeSkillXp(ps, 'farming', crop.xp);
-        if (res.leveled) leveled = true;
-        newLevel = res.newLevel;
-        xp += crop.xp;
         rec.plots[i] = { s: 'rough' };
+        items[crop.item] = (items[crop.item] || 0) + q;
+        picked.push(crop);
         did.n += 1;
       }
       if (did.n > 0) {
+        for (const k of Object.keys(items)) {
+          ps.inventory[k] = (Math.floor(Number(ps.inventory[k]) || 0)) + items[k];
+        }
+        let xp = 0;
+        let leveled = false;
+        let newLevel = level;
+        try {
+          /* Per bed, not one lump: the level curve is per level (smelting.js). */
+          for (const crop of picked) {
+            const res = this._addLifeSkillXp(ps, 'farming', crop.xp);
+            if (res.leveled) leveled = true;
+            newLevel = res.newLevel;
+            xp += crop.xp;
+          }
+        } catch (e) {
+          console.error('[farm] harvest XP for', session.id, e && e.message);
+        }
         did.items = { ...items };
         did.xp = xp;
         did.leveled = leveled;
-        did.fromLevel = fromLevel;
+        did.fromLevel = level;
         did.newLevel = newLevel;
       }
     }
@@ -409,8 +452,7 @@ export const farmMethods = {
       price = FARM.COMPOST_PRICE;
     } else if (own(SEED_TO_CROP, item)) {
       const crop = FARM.CROPS[SEED_TO_CROP[item]];
-      const level = (ps.lifeSkills && ps.lifeSkills.farming && ps.lifeSkills.farming.level) || 1;
-      if (level < crop.lvl) { this._farmSend(session.id, { err: 'level', did: { op: 'buy', item, n: 0 } }); return null; }
+      if (this._farmLevel(ps) < crop.lvl) { this._farmSend(session.id, { err: 'level', did: { op: 'buy', item, n: 0 } }); return null; }
       price = crop.price;
     } else {
       return null;

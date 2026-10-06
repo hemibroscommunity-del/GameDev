@@ -1,4 +1,4 @@
-# The farm: real crops at the Feed & Seed (v2.3.3083)
+# The farm: real crops at the Feed & Seed (v2.3.3095)
 
 > Owner, 2026-10-06: *"mechanics similar to the old FarmVille game where you
 > have to wait to harvest and each has a wait time different depending on what
@@ -35,6 +35,10 @@ Office's paid land, and visits from friends are Phases 3 and 4.
 - **The free deed:** six beds, created the first time the window opens.
 - On join, if any beds are ripe, the game says so: *"🧺 3 beds are ready at
   the Feed & Seed"*, in the chat log and over your head.
+  - Once a page session, and again only when more beds are ripe than it last
+    said (`farmFeedback.js` `toldRipe`). An iPhone rejoins on nearly every
+    return to the app, and crops never wither, so the first cut repeated it
+    each time.
 
 ## The crops
 
@@ -82,7 +86,12 @@ would have paid 10 coins for a 2-coin seed.
   - feed: also `used`;
   - harvest: also `items`, `xp`, `leveled`, `fromLevel` and `newLevel`.
 - **`err`:** one of `no-seeds`, `no-compost`, `level`, `coins`, `nothing` or
-  `off`. The client adds `timeout` itself when no answer comes within 4 s.
+  `off`. The client adds `timeout` itself when no answer comes within 4 s,
+  and `timeout-buy` ("No answer yet. Check your bag") after 12 s for a buy.
+  - A bed action is safe to send again (the bed guards it); a buy is not, so
+    it waits longer and says to look in the bag.
+  - The three farm sends are in wsClient's `SETTLED_SENDS`, so a socket that
+    died after one is rejoined at 7 s and the bag comes back first.
 - **`now`** is the worker's clock. The client counts down to `readyAt` against
   `Date.now() + (now − arrival)`, never against the phone's own idea of the date
   (`farmBus.serverNow`).
@@ -103,6 +112,9 @@ ARCHITECTURE-HANDOFF's storage-key table.
   - The pattern is the food buffs' `endsAt`.
 - `_farmHeal` turns anything malformed into grass, so a planted bed that cannot
   be read is never a free harvest.
+- **A character restart deletes it** (`persistence.js` `_resetCharacterData`,
+  beside `rpg:` and `gear_prov:`). The beds and crops were bought with the gold
+  and skills a restart resets; the next open hands out the free deed again.
 
 ## Settlement and safety
 
@@ -111,9 +123,23 @@ ARCHITECTURE-HANDOFF's storage-key table.
   and the bag in memory and issues **the farm record's put first, then
   `_saveRpg`**, with no await between. The Durable Object commits them as one
   batch. If they were ever split, putting the farm record first means a crash
-  can cost a harvest but never pay one twice.
+  could lose a harvest but never pay one twice; a planting could keep its
+  seed, never take two.
 - **The bed is the replay guard.** A resent harvest finds grass and pays
-  nothing, so no opId is needed.
+  nothing, so no opId is needed. That holds only because **the bed turns
+  before anything is paid** and nothing between the pay and the commit can
+  throw:
+  - the harvest turns each ripe bed to grass first, then adds the crops to the
+    bag, then pays the Farming XP inside a `try`. A failure there costs the
+    XP, never a second harvest.
+  - The first cut paid each bed and its XP before turning it. A Farming skill
+    stored as a bare number (a first join keeps the client's life skills as
+    sent) made `_addLifeSkillXp` throw. The commit never ran and the router
+    swallowed the error, so one bed paid on every message. The review proved
+    it: one seed, 270 Firebloom a minute.
+  - Such a skill now heals at the join (`migrations.js` `healLifeSkillLevels`:
+    anything but an object becomes a fresh skill) and in `_addLifeSkillXp`
+    itself. The router's catch logs what it caught.
 - **What the client may say:**
   - Bed indexes must be whole numbers inside the farm. The list is
     de-duplicated and only its first 50 entries are read; the room's 16 KB
@@ -132,6 +158,17 @@ ARCHITECTURE-HANDOFF's storage-key table.
     legacy fallback, `LegacyFarmPanel`).
   - **Kill switch:** `farm: false` in liveflags un-advertises the cap and
     answers every farm message with `err: 'off'`. The beds keep their times.
+    - A tab that joins while it is set gets the window **closed**: a card that
+      sends nothing ("The farm is closed for now · Your beds keep growing"),
+      plus Visit Your Farm. The client can tell this from an old worker,
+      because an old worker leaves `farm` out of the caps and the switch sets
+      it to false.
+    - A tab that joined before keeps the window and gets `err: 'off'`.
+    - To turn the farm back on, **delete** the flag; do not set it to `true`.
+      Liveflags survive deploys and rollbacks, and a stored `farm: true`
+      would advertise a farm on a worker rolled back past this one. The window
+      would then send farm messages to a worker that rebroadcasts them to the
+      room.
 
 ## The Cookhouse, now that herbs exist
 
@@ -139,6 +176,14 @@ ARCHITECTURE-HANDOFF's storage-key table.
   `_tickPlayerRegen` now pays **2% of max HP a second** while it runs, in or
   out of a fight, which is what its card always said. It does not apply in a
   hub, where the 10% top-off is faster, or in an arena match or a duel.
+- **The recipes' Cooking levels are the worker's gate** (`cooking.js`
+  `_handleCookRecipe`, `cookLvl` on `data.js`'s rows, pinned by mirror-audit):
+  Root Stew at Cooking 3, Firebloom Tea at Cooking 6.
+  - Before this, only the window locked them. That did not matter while nothing
+    could make the herbs, but the farm grows them.
+  - A refusal uses nothing, ends no running tonic and echoes the bag.
+  - The Tea's +20% reaches monsters only: PvP damage is the client's number,
+    capped by `_maxDmgForAttacker`, which reads no buff.
 - **Firebloom Tea is +20% damage**:
   - its row's `power` is 0.20 on both sides (it was 0.05);
   - the card now says +20%;
@@ -153,14 +198,13 @@ ARCHITECTURE-HANDOFF's storage-key table.
 | File | What |
 |---|---|
 | `src/ui/panels/buildings/FeedSeedPanel.jsx` | The window: **Beds** (five tools, the beds, the status line, "… all") and **Seeds** (buy ×1 / ×5, the times, yields and XP as chips), plus "Visit Your Farm". |
-| `src/ui/panels/buildings/FarmPanel.jsx` | Picks the window: `FeedSeedPanel` with `caps.farm`, `LegacyFarmPanel` (the old one, renamed) without it. |
+| `src/ui/panels/buildings/FarmPanel.jsx` | Picks the window: `FeedSeedPanel` with `caps.farm`; the same window **closed** when the caps say `farm: false` (the kill switch); `LegacyFarmPanel` (the old one, renamed) when the worker has never heard of the farm. |
 | `src/ui/mobile/farmBus.js` | The worker's farm, outside React (`window.__btFarm`), with the clock offset and the in-flight request. |
 | `src/game/farmFeedback.js` | The moment after an answer: popups, sounds (the dirt footstep, the lure's plop, the pickup chime), Farming's level celebration, the join notice. |
 | `src/data/farmCrops.js` | The crop table's client copy, the glyphs, and the bag's names. |
-| `src/networking/gameEvents.js` | `farm_state` → the bus, then the feedback. |
-| `src/networking/wsClient.js` | The three sends' passthrough lines (TRAPS #18). |
+| `src/networking/wsClient.js` | `farm_state` goes to the bus, then the feedback. It is handled in the **direct** switch, beside `smelt_result`, and never in `processGameEvent`, which the room's relayed events reach too. A worker from before the farm does not list `farm_state` as privileged, so it would relay a forged one (a "Farming 99" banner, words the forger chose) to every screen. Also here: the three sends' passthrough lines (TRAPS #18) and their place in `SETTLED_SENDS`. |
 | `src/ui/mobile/dash/InventoryPanel.jsx` | "Carrot Seeds", "Firebloom", "Compost" and their glyphs in the bag. |
-| `src/ui/panels/playerProfile.js` | The Inspect card's "plots ready" counts the worker's farm. |
+| `src/ui/panels/playerProfile.js` | The Inspect card's "plots ready" counts the worker's farm once this tab has heard of it (`farmBus.view`), else the legacy plots. |
 | `src/ui/panels/DevPanel.jsx` | `farm` in CAP_GATES, and **Ripen my farm now**. |
 
 The crops, seeds and compost are emoji until the art exists:
@@ -175,7 +219,14 @@ The crops, seeds and compost are emoji until the art exists:
   - junk indexes and corrupt records;
   - the rate limit and the kill switch;
   - Diego's prices;
-  - the three Cookhouse recipes.
+  - the three Cookhouse recipes, and their refusal below their Cooking levels;
+  - §12: a Farming skill stored as a bare number (or `'x'`, `true`, `[]`)
+    heals at the join, a ripe bed pays once however often it is harvested,
+    and a harvest whose XP throws still lands once;
+  - §13: a character restart deletes the farm, and the fresh character gets
+    the free deed.
+- **The Cookhouse's levels:** potions, shop and lifeskills-economy cook at the
+  level each recipe asks; lifeskills-economy refuses one below it.
 - **Mirror:** mirror-audit's "THE FARM".
 - **On a phone:** `tools/qa/mp/mp-farm.mjs` (`node tools/qa/mp/run.mjs farm`).
   It runs the whole loop in the Wheel against a real worker:
@@ -190,6 +241,20 @@ The crops, seeds and compost are emoji until the art exists:
 - `mp-wheeldoors` still walks "Visit Your Farm".
 
 ## Not yet (the plan's later phases)
+
+- **Before any phase adds a crop or a field to `farm:<pid>`:** ship a worker
+  that refuses to write a record newer than it knows, then the change in a
+  later deploy.
+  - This worker rebuilds the record from the fields it knows (`_farmHeal`)
+    and writes that back on the next action. A crop it has never heard of
+    becomes grass, and the record is stamped `v: 1`.
+  - So if a Phase 2 worker were rolled back to this one with the Cloudflare
+    button, the first dig would wipe its potato beds for good. The review
+    showed this on a copy and rated it plausible but unverified: it needs a
+    future phase and a rollback.
+  - The guard (`FARM.V`: refuse with `err 'newer'`, never write) is left to
+    the owner. Shipping it one deploy ahead of the crops means a rollback
+    lands on a worker that has it.
 
 - **Phase 2:** potatoes and pumpkins; meals and brews you carry; Diego's three
   tonics brewed from herbs and taken off his shelf.

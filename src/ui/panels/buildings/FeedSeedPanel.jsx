@@ -6,7 +6,7 @@ import { FARM_ERR_TEXT, farmItemName } from '@/game/farmFeedback.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
 
-/* ═══ v2.3.3083: THE FEED & SEED, A REAL FARM ═══
+/* ═══ v2.3.3095: THE FEED & SEED, A REAL FARM ═══
  *
  * Owner: "mechanics similar to the old FarmVille game where you have to wait
  * to harvest and each has a wait time different depending on what it is.
@@ -126,7 +126,12 @@ function Bed({ i, p, now, tool, hot }) {
         boxShadow: hot ? `inset 0 0 0 3px ${C.brass}` : ripe ? `inset 0 0 0 2px ${C.good}, 0 0 10px rgba(85,185,138,.45)` : can ? 'inset 0 0 0 2px rgba(216,170,88,.55)' : 'inset 0 0 0 1px rgba(0,0,0,.35)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', WebkitUserSelect: 'none',
       }}>
-      {glyph ? <Glyph g={glyph} size={gSize} style={ripe ? { animation: 'bt-farm-ripe 1.6s ease-in-out infinite', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,.45))' } : { filter: 'drop-shadow(0 1px 1px rgba(0,0,0,.4))' }} /> : null}
+      {/* v2.3.3095: still, and a TEXT shadow.  The first cut bobbed a ripe crop
+          forever and drop-shadowed every glyph: Lantern Slate allows no ambient
+          pulsing (only finite alerts and the Godly sheen), and a CSS filter on
+          the DOM over the WebGL canvas is the iOS grain (TRAPS §42).  The green
+          ring and the "Ready" pill say ripe. */}
+      {glyph ? <Glyph g={glyph} size={gSize} style={{ textShadow: ripe ? '0 2px 2px rgba(0,0,0,.45)' : '0 1px 1px rgba(0,0,0,.4)' }} /> : null}
       {planted && p.water ? <Glyph g={FARM_LOOK.water} size={13} style={{ position: 'absolute', top: 4, left: 5 }} /> : null}
       {planted && p.feed ? <Glyph g={FARM_LOOK.compost} size={13} style={{ position: 'absolute', top: 4, right: 5 }} /> : null}
       {planted && !ripe ? (
@@ -148,7 +153,7 @@ function Bed({ i, p, now, tool, hot }) {
   );
 }
 
-export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel }) {
+export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) {
   const S = stateRef.current || {};
   React.useSyncExternalStore(farmBus.subscribe, farmBus.getSnapshot);
   const R = rpgState || {};
@@ -169,7 +174,10 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel }) {
 
   /* Ask the worker for the beds when the window opens; redraw once a second
      so the time left counts down (the times are the worker's, not ours). */
-  React.useEffect(() => { farmBus.open(S); }, []);
+  /* v2.3.3095: `closed` (FarmPanel: the worker's kill switch) asks nothing --
+     the switch can outlive a rollback to a worker with no farm at all, which
+     would hand a farm_open to the whole room. */
+  React.useEffect(() => { if (!closed) farmBus.open(S); }, []);
   React.useEffect(() => { const t = setInterval(tick, 1000); return () => clearInterval(t); }, []);
 
   const view = farmBus.view;
@@ -287,7 +295,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel }) {
         </div>
       </div>
       {/* tabs */}
-      <div style={{ display: 'flex', gap: 3, margin: '0 12px 10px', padding: 3, borderRadius: 10, background: C.well }}>
+      {!closed && <div style={{ display: 'flex', gap: 3, margin: '0 12px 10px', padding: 3, borderRadius: 10, background: C.well }}>
         {[{ id: 'beds', label: 'Beds', g: FARM_LOOK.sprout }, { id: 'seeds', label: 'Seeds', g: FARM_LOOK.seed }].map((t) => (
           <button key={t.id} data-farm-tab={t.id} onClick={() => setTab(t.id)}
             style={{ flex: 1, minHeight: 44, border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
@@ -297,16 +305,22 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel }) {
             <Glyph g={t.g} size={16} />{t.label}
           </button>
         ))}
-      </div>
+      </div>}
 
       <div style={{ padding: '0 12px 12px' }}>
-        {tab === 'beds' && (
+        {closed && (
+          <div data-farm-status="closed" style={{ padding: '24px 0 8px', textAlign: 'center' }}>
+            <div style={{ color: C.text, fontSize: 14, fontWeight: 800 }}>{FARM_ERR_TEXT.off}</div>
+            <div style={{ color: C.sub, fontSize: 12, marginTop: 6 }}>Your beds keep growing.</div>
+          </div>
+        )}
+        {!closed && tab === 'beds' && (
           !view ? (
             <div data-farm-status="loading" style={{ padding: '28px 0', textAlign: 'center', color: C.mute, fontSize: 13 }}>
               {last && last.err ? (
                 <>
                   <div style={{ color: C.bad, marginBottom: 10 }}>{FARM_ERR_TEXT[last.err] || 'Could not'}</div>
-                  {last.err !== 'off' && <button onClick={() => farmBus.open(S)} style={btn(true)}>Try again</button>}
+                  {last.err !== 'off' && <button onClick={() => farmBus.open(S)} style={{ ...btn(true), minHeight: 44, padding: '0 18px' }}>Try again</button>}
                 </>
               ) : 'Opening the farm…'}
             </div>
@@ -323,7 +337,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel }) {
                         background: on ? C.raised : C.well, boxShadow: on ? `inset 0 0 0 2px ${C.brass}` : 'none',
                         color: on ? C.text : C.sub, fontSize: 11, fontWeight: 800 }}>
                       <Glyph g={t.look} size={20} />{t.label}
-                      <span style={{ position: 'absolute', top: 3, right: 4, fontSize: 10, fontWeight: 800, color: toolCount[t.id] ? C.brass : C.faint, fontVariantNumeric: 'tabular-nums' }}>
+                      <span style={{ position: 'absolute', top: 3, right: 4, fontSize: 11, fontWeight: 800, color: toolCount[t.id] ? C.brass : C.faint, fontVariantNumeric: 'tabular-nums' }}>
                         {toolCount[t.id]}
                       </span>
                     </button>
@@ -339,16 +353,16 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel }) {
                     const on = open && id === seed;
                     return (
                       <button key={id} data-farm-seed={id} disabled={!open} onClick={() => setSeedPick(id)}
-                        style={{ minHeight: 36, padding: '0 9px', borderRadius: 999, border: 'none', fontFamily: 'inherit',
+                        style={{ minHeight: 44, padding: '0 11px', borderRadius: 999, border: 'none', fontFamily: 'inherit',
                           cursor: open ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: 4,
                           background: on ? C.raised : C.well, boxShadow: on ? `inset 0 0 0 2px ${C.brass}` : 'none',
-                          color: open ? C.text : C.faint, fontSize: 12, fontWeight: 800, opacity: open ? 1 : 0.7 }}>
-                        <Glyph g={c.look} size={15} />{open ? '×' + seedCount(id) : 'Lv ' + c.lvl}
+                          color: open ? C.text : C.sub, fontSize: 12, fontWeight: 800 }}>
+                        <Glyph g={c.look} size={15} />{open ? '×' + seedCount(id) : '🔒 Lv ' + c.lvl}
                       </button>
                     );
                   })}
                   {seedCount(seed) <= 0 && (
-                    <button onClick={() => setTab('seeds')} style={{ ...btn(true), minHeight: 36, padding: '0 10px' }}>Buy seeds</button>
+                    <button onClick={() => setTab('seeds')} style={{ ...btn(true), minHeight: 44, padding: '0 12px' }}>Buy seeds</button>
                   )}
                 </div>
               )}
@@ -358,12 +372,12 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel }) {
                   touchAction: 'none', opacity: pending ? 0.75 : 1 }}>
                 {plots.map((p, i) => <Bed key={i} i={i} p={p} now={now} tool={tool} hot={hot.includes(i)} />)}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, minHeight: 36 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, minHeight: 44 }}>
                 <div data-farm-status="1" style={{ flex: 1, fontSize: 12, fontWeight: 700, color: status ? status.color : C.faint, lineHeight: 1.3 }}>
                   {status ? status.text : 'Tap a bed, or drag across them'}
                 </div>
                 <button data-farm-all={tool} disabled={pending || !count(tool)} onClick={() => go(plots.map((_, i) => i))}
-                  style={{ ...btn(!!count(tool) && !pending), minHeight: 36, padding: '0 12px' }}>
+                  style={{ ...btn(!!count(tool) && !pending), minHeight: 44, padding: '0 14px' }}>
                   {TOOLS.find((t) => t.id === tool).label} all
                 </button>
               </div>
@@ -371,7 +385,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel }) {
           )
         )}
 
-        {tab === 'seeds' && (
+        {!closed && tab === 'seeds' && (
           <div data-farm-shop="1">
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
               <Chip icon={COIN} color={C.brass}>{coins}</Chip>
@@ -395,7 +409,10 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel }) {
               coins={coins} pending={pending} onBuy={(n) => farmBus.buy(S, FARM.COMPOST, n)}>
               <Chip color={C.good}>+50% harvest</Chip>
             </ShopRow>
-            {status && (last && last.did && last.did.op === 'buy' || (last && last.err === 'coins')) ? (
+            {/* v2.3.3095: every answer to a buy -- and its silence: a timeout
+                said nothing here, so the buttons just woke up again and invited a
+                second purchase of something the worker may already have sold. */}
+            {status && last && ((last.did && last.did.op === 'buy') || last.op === 'buy' || last.err === 'off') ? (
               <div data-farm-status="1" style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: status.color }}>{status.text}</div>
             ) : null}
           </div>
@@ -422,10 +439,10 @@ function ShopRow({ item, look, name, have, price, coins, locked, pending, onBuy,
           {locked ? <Chip color={C.bad}>{'🔒 ' + locked}</Chip> : children}
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {[1, 5].map((n) => (
           <button key={n} data-farm-buy={item} data-farm-buy-n={n} disabled={!can(n)} onClick={() => onBuy(n)}
-            style={{ ...btn(can(n)), minHeight: 34, padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+            style={{ ...btn(can(n)), minHeight: 44, padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
             {'+' + n} <Icon src={COIN} size={13} />{price * n}
           </button>
         ))}

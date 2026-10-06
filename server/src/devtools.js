@@ -338,7 +338,7 @@ export const devToolsMethods = {
     return { ok: true, zone: z, cleared };
   },
 
-  /* v2.3.3083: RIPEN MY FARM.  A Cloudpetal takes eight real hours, so
+  /* v2.3.3095: RIPEN MY FARM.  A Cloudpetal takes eight real hours, so
      neither the owner nor a phone test could ever see a harvest without
      waiting for one.  Every planted bed of this player's farm (farm.js) is
      made ripe NOW -- its readyAt set to the worker's clock -- and the farm is
@@ -386,7 +386,7 @@ export const devToolsMethods = {
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId);   /* v2.3.2277 */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
-    else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3083 */
+    else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3095 */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

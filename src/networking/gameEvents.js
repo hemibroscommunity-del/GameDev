@@ -15,8 +15,6 @@ import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3
 import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
 import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
-import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3083: the farm, the worker's */
-import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3083 */
 import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
@@ -653,20 +651,6 @@ export function processGameEvent(type, payload, S, deps) {
                 if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lost ' + _aiN + ' items', '#ff5e6c');
                 try { BT_AUDIO.play('flip-lose', { vol: 0.5, duration: 0.7 }); } catch (_l) {}
               }
-              break;
-            }
-          case 'farm_state':
-            {
-              /* v2.3.3083: the farm (server farm.js) -- the beds, what grows in
-                 them and when it is ripe on the WORKER's clock, plus what the
-                 last request did (`did`) or why it did nothing (`err`), or,
-                 flagged `login`, the farm as it stood when you joined.  Into
-                 the bus first (the Feed & Seed window draws it), then the
-                 moment: popups, sounds, the level celebration.  Nothing here
-                 credits anything -- the bag and the XP ride the player_state
-                 that follows (rule 20). */
-              farmBus.apply(payload);
-              farmFeedback(S, payload, { setChatLog: setChatLog });
               break;
             }
           case 'ace_board':

@@ -346,10 +346,17 @@ check('recipe: ingredient consumed, buff timer set, tier*25 cooking XP',
   { inv: ps.inventory, buffs: ps._buffs, xp: ps.lifeSkills.cooking.xp });
 // Recipe 1 needs rock_vine + cloudpetal; holding only one of the two
 // must consume NEITHER (the dry-run pass).
+ps.lifeSkills.cooking.level = 3;   /* v2.3.3095: Root Stew's level, so the refusal below is the dry run's */
 ps.inventory = { herb_rock_vine: 1 };
 const preRecipe = econSnap(ps);
 await send(ws, 'cook_recipe', { recipeIdx: 1 });
 check('recipe: missing one ingredient consumes NOTHING (dry-run rule)', econSnap(ps) === preRecipe);
+/* v2.3.3095: the recipe's Cooking level is the worker's gate (cooking.js) */
+ps.lifeSkills.cooking.level = 2;
+ps.inventory = { herb_rock_vine: 1, herb_cloudpetal: 1 };
+const preLvl = econSnap(ps);
+await send(ws, 'cook_recipe', { recipeIdx: 1 });
+check('recipe: below its Cooking level consumes NOTHING, ingredients or not', econSnap(ps) === preLvl && !(ps._buffs && ps._buffs.resist > Date.now()));
 
 // ── 5. shop_purchase ──
 /* v2.3.2069: this section used to buy a basicTrap, which is no longer on the

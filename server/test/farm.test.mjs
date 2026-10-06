@@ -1,4 +1,4 @@
-/* The farm -- v2.3.3083 (docs/specs/farm.md, docs/FARMING-PLAN.md Phase 1).
+/* The farm -- v2.3.3095 (docs/specs/farm.md, docs/FARMING-PLAN.md Phase 1).
  *
  * Owner: "mechanics similar to the old FarmVille game where you have to wait
  * to harvest and each has a wait time different depending on what it is.
@@ -24,6 +24,11 @@
  *  10. Diego: selling a seed or compost you just bought is always a loss.
  *  11. The Cookhouse: Herb Bread now heals (2% max HP a second), Firebloom
  *      Tea is +20% damage as its card says, and both cook from farm herbs.
+ *  12. The bed turns before anything is paid: a Farming skill stored as a
+ *      bare number (a first join keeps the client's skills as sent) once made
+ *      the XP throw after the crops were paid, so one bed paid on every
+ *      message.  It heals at the join, and a throw costs only the XP.
+ *  13. A character restart takes the farm with it.
  */
 import { GameRoom } from '../src/index.js';
 import { FARM, farmGrowMs, farmYield, FARM_SHOP_BASE } from '../src/farm.js';
@@ -347,6 +352,20 @@ function ws2Ref() {
   P.hp = 100;
   room._tickPlayerRegen();
   check('...which is the bread: with no buff, mid-fight, nothing heals', P.hp === 100, P.hp);
+  /* v2.3.3095: the recipe's Cooking level is the WORKER's gate, not only the
+     window's: at Cooking 1 the Tea (Cooking 6) is refused, nothing is used,
+     and the bag is echoed so a predicted cook snaps back. */
+  P.lifeSkills.cooking = { level: 1, xp: 0 };
+  wsB.sent.length = 0;
+  await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 2 } }));
+  await settle();
+  check('Firebloom Tea is refused below Cooking 6: no buff, no herbs used, no XP, the bag echoed',
+    P.inventory.herb_firebloom === 2 && !room._buffActive(P, 'damage') && P.lifeSkills.cooking.xp === 0
+    && wsB.sent.some((m) => m.type === 'player_state'), { inv: P.inventory, buffs: P._buffs, ck: P.lifeSkills.cooking });
+  await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 1 } }));
+  await settle();
+  check('...and Root Stew below Cooking 3', P.inventory.herb_rock_vine === 1 && P.inventory.herb_cloudpetal === 1 && !room._buffActive(P, 'resist'));
+  P.lifeSkills.cooking = { level: 6, xp: 0 };
   /* Firebloom Tea (index 2): 2 Firebloom -> damage x1.20 */
   await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 2 } }));
   await settle();
@@ -357,6 +376,79 @@ function ws2Ref() {
   await settle();
   check('Root Stew cooks from a Rock Vine and a Cloudpetal (one effect at a time: the tea is gone)', room._buffActive(P, 'resist')
     && !room._buffActive(P, 'damage') && !P.inventory.herb_rock_vine && !P.inventory.herb_cloudpetal, P._buffs);
+}
+
+// ── 12. the bed turns before anything is paid (v2.3.3095, review) ──
+{
+  const PD = 'bp_farm_d';
+  const wsD = fakeWs();
+  room.sessions.set(wsD, baseSession());
+  await room.webSocketMessage(wsD, JSON.stringify({ type: 'join', id: PD, name: 'D', phrase: 'p-' + PD,
+    data: { x: 0, y: 0, z: 'town', rpgCoins: 50, rpgLifeSkills: { farming: 1, mining: 'x', fishing: true, woodcutting: [] } } }));
+  await settle();
+  const pD = room.playerState[PD];
+  check('a first join\'s life skill that is not an object is kept as a fresh skill (1, \'x\', true, [])', !!pD
+    && pD.lifeSkills.farming && pD.lifeSkills.farming.level === 1 && pD.lifeSkills.farming.xp === 0
+    && pD.lifeSkills.mining.level === 1 && pD.lifeSkills.fishing.level === 1
+    && !Array.isArray(pD.lifeSkills.woodcutting) && pD.lifeSkills.woodcutting.level === 1, pD && pD.lifeSkills);
+  /* A record already holding one, from before that heal: the in-memory state
+     the exploit ran on. */
+  pD.lifeSkills.farming = 1;
+  resetRate();
+  await farm(wsD, 'farm_open', {});
+  await buy(wsD, 'seed_carrot', 1);
+  await act(wsD, 'dig', [0]);
+  await act(wsD, 'plant', [0], 'carrot');
+  later(8 * 60000);
+  const h1 = await act(wsD, 'harvest', [0]);
+  const h2 = await act(wsD, 'harvest', [0]);
+  const h3 = await act(wsD, 'harvest', [0]);
+  const rD = st._store.get('rpg:' + PD);
+  check('a bare-number Farming skill: the harvest pays its 2 carrots and its XP, once', !!h1 && h1.did.n === 1
+    && h1.did.items.crop_carrot === 2 && h1.did.xp === C.carrot.xp && pD.lifeSkills.farming.xp === C.carrot.xp, { h1: h1 && h1.did, ls: pD.lifeSkills.farming });
+  check('...a resent harvest finds grass and pays nothing, twice over', !!h2 && h2.did.n === 0 && !!h3 && h3.did.n === 0
+    && pD.inventory.crop_carrot === 2, { h2: h2 && h2.did, h3: h3 && h3.did, inv: pD.inventory });
+  check('...and storage agrees: the bed is grass and the saved bag holds 2', st._store.get('farm:' + PD).plots[0].s === 'rough'
+    && !!rD && rD.inventory.crop_carrot === 2, { bed: st._store.get('farm:' + PD).plots[0], inv: rD && rD.inventory });
+  /* And should paying the XP throw anyway, the harvest still lands once. */
+  pD.inventory.seed_carrot = 1;
+  await act(wsD, 'dig', [0]);
+  await act(wsD, 'plant', [0], 'carrot');
+  later(8 * 60000);
+  const realXp = room._addLifeSkillXp;
+  room._addLifeSkillXp = () => { throw new Error('test: the XP fails'); };
+  const realErr = console.error;
+  console.error = () => {};
+  const t1 = await act(wsD, 'harvest', [0]);
+  const t2 = await act(wsD, 'harvest', [0]);
+  console.error = realErr;
+  room._addLifeSkillXp = realXp;
+  check('if paying the XP throws, the harvest still lands once: the crops, no XP, the bed grass in storage', !!t1 && t1.did.n === 1
+    && t1.did.xp === 0 && !!t2 && t2.did.n === 0 && pD.inventory.crop_carrot === 4
+    && st._store.get('farm:' + PD).plots[0].s === 'rough' && st._store.get('rpg:' + PD).inventory.crop_carrot === 4,
+    { t1: t1 && t1.did, t2: t2 && t2.did, inv: pD.inventory });
+}
+
+// ── 13. a character restart takes the farm with it (v2.3.3095, review) ──
+{
+  const PR = 'bp_farm_r';
+  const wsR = fakeWs();
+  await join(wsR, PR);
+  resetRate();
+  await farm(wsR, 'farm_open', {});
+  room.playerState[PR].inventory.seed_carrot = 2;
+  await act(wsR, 'dig', [0, 1]);
+  await act(wsR, 'plant', [0, 1], 'carrot');
+  check('(a farm with two carrots in the ground)', st._store.get('farm:' + PR).plots[1].s === 'planted');
+  await room._resetCharacterData(PR);
+  check('a character restart deletes farm:<pid> with rpg:<pid>', st._store.get('farm:' + PR) === undefined && st._store.get('rpg:' + PR) === undefined);
+  later(60 * 60000);
+  const wsR2 = fakeWs();
+  await join(wsR2, PR);
+  check('...the fresh character is told of no ripe beds', !wsR2.sent.some((m) => m.type === 'farm_state'));
+  const v = await farm(wsR2, 'farm_open', {});
+  check('...and the Feed & Seed hands out the free deed again: six rough beds', !!v && v.beds === FARM.FREE_BEDS
+    && v.plots.length === FARM.FREE_BEDS && v.plots.every((p) => p.s === 'rough'), v);
 }
 
 Date.now = realNow;

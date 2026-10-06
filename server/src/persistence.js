@@ -398,6 +398,16 @@ export const persistenceMethods = {
        same belt-and-braces argument as the playerState delete below). */
     try { await this.state.storage.delete('gear_prov:' + pid); } catch (e) { /* best-effort, as above */ }
     this._gearProvForget(pid);
+    /* ═══ v2.3.3095: AND THE FARM GOES WITH THE CHARACTER ═══
+       `farm:<pid>` (farm.js) is keyed by player id too, so without this a
+       restarted level-1 character inherited every bed and whatever grew in
+       them.  Its first join said "6 beds are ready", and the harvest (which
+       asks no level) paid a Farming-10 life's Cloudpetals and their XP into
+       a character that is supposed to begin again (review finding).  A
+       restart resets items, gold and skills (docs/specs/character-restart.md),
+       and the beds were bought with them.  The next open hands out the free
+       deed again. */
+    try { await this.state.storage.delete('farm:' + pid); } catch (e) { /* best-effort, as above */ }
     const ws = this._wsBySessionId(pid);
     if (ws) {
       try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}

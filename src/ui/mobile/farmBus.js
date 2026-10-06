@@ -1,9 +1,10 @@
-/* ═══ v2.3.3083: THE FARM'S STATE, OUTSIDE REACT ═══
+/* ═══ v2.3.3095: THE FARM'S STATE, OUTSIDE REACT ═══
  *
  * What the worker last said about this player's farm (server/src/farm.js),
  * for the Feed & Seed window to draw.  Outside the component tree for the
  * aceFlipBus reason: the thing that WRITES it is a WebSocket handler
- * (gameEvents.js 'farm_state'), and the window may not even be open.
+ * (wsClient.js's direct 'farm_state' case), and the window may not even be
+ * open.
  *
  * NOTHING HERE DECIDES ANYTHING.  `view` is only ever the worker's farm_state;
  * the window sends a request and draws the answer.  A bed is ripe when the
@@ -18,6 +19,14 @@ const emit = () => { for (const fn of listeners) fn(); };
    worker drops a message it will not settle (a rate-limited script, a
    farmless old worker), so silence is an answer too. */
 export const FARM_ANSWER_MS = 4000;
+/* v2.3.3095: a BUY waits longer, and its silence is worded "check your bag".
+   Every bed action is guarded by the bed (a resent one does nothing), but a
+   buy is not: after 4 s of a busy room or a stalled phone the buttons woke up
+   saying nothing, and a second tap bought again what the worker had already
+   sold (review finding).  12 s is past the dead-pipe watch's 7 s after a
+   settled send (wsClient SETTLED_SENDS lists the farm's), which rejoins a
+   silent socket and brings the bag's truth back first. */
+export const FARM_BUY_ANSWER_MS = 12000;
 
 export const farmBus = {
   /* {beds, plots:[{s, crop?, plantedAt?, readyAt?, water?, feed?}]} or null
@@ -27,7 +36,7 @@ export const farmBus = {
   offset: 0,
   /* {op, at} while a request is out. */
   pending: null,
-  /* The last answer: {did, err, at}. */
+  /* The last answer: {did, err, op, at} (op: what it answered). */
   last: null,
   /* Bumped on every change; the window's useSyncExternalStore snapshot. */
   rev: 0,
@@ -44,8 +53,9 @@ export const farmBus = {
       if (Number.isFinite(payload.now)) this.offset = payload.now - Date.now();
     }
     if (!payload.login) {
+      const op = (payload.did && payload.did.op) || (this.pending && this.pending.op) || null;
       this.pending = null;
-      this.last = { did: payload.did || null, err: payload.err || null, at: Date.now() };
+      this.last = { did: payload.did || null, err: payload.err || null, op, at: Date.now() };
     }
     this.rev += 1;
     emit();
@@ -76,11 +86,11 @@ export const farmBus = {
     setTimeout(() => {
       if (this.pending && this.pending.at === at) {
         this.pending = null;
-        this.last = { did: null, err: 'timeout', at: Date.now() };
+        this.last = { did: null, err: op === 'buy' ? 'timeout-buy' : 'timeout', op, at: Date.now() };
         this.rev += 1;
         emit();
       }
-    }, FARM_ANSWER_MS);
+    }, op === 'buy' ? FARM_BUY_ANSWER_MS : FARM_ANSWER_MS);
     return true;
   },
 

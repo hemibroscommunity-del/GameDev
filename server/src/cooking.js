@@ -276,6 +276,23 @@ export const cookingMethods = {
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
     if (!ps.inventory) ps.inventory = {}; // proto-ok: recipe-index path; inventory keys server-validated
+    /* ═══ v2.3.3095: THE RECIPE'S COOKING LEVEL IS THE WORKER'S GATE ═══
+       Root Stew asks Cooking 3 and Firebloom Tea Cooking 6, and only the
+       window ever said so (CookPanel.jsx's lock, the campfire's filter): a
+       forged cook_recipe at Cooking 1 was cooked.  Moot while nothing could
+       make the herbs; the farm (farm.js) grows them, so the worker keeps it too
+       (review finding; TRAPS #19: "client-side gates are a picture, never a
+       rule").
+       Checked BEFORE the dry run and _clearTimedBuffs below, so a refusal
+       uses nothing and ends no running tonic.  The bag is echoed, as
+       cook_request's refusals are, so a cook the client predicted snaps
+       back.  An honest client never asks: it has always locked these. */
+    const ck = ps.lifeSkills && Object.prototype.hasOwnProperty.call(ps.lifeSkills, 'cooking') ? ps.lifeSkills.cooking : null;
+    if (((ck && typeof ck === 'object' && Number(ck.level)) || 1) < (recipe.cookLvl || 1)) {
+      const ws = this._wsBySessionId(session.id);
+      if (ws) this._sendPlayerState(ws, session.id);
+      return;
+    }
 
     // First-pass dry-run: confirm ALL ingredients are available
     // before consuming any (so we don't half-consume on a failure).
@@ -321,7 +338,7 @@ export const cookingMethods = {
          potion's multiplier -- a cooked fish quietly worth double. Every
          writer of _buffs.damage must state its own magnitude. */
       delete ps._buffs.damageMul;
-      /* v2.3.3083: ...and the recipe's own `power` IS that magnitude.  Firebloom
+      /* v2.3.3095: ...and the recipe's own `power` IS that magnitude.  Firebloom
          Tea's card said "+5% dmg" over a table row of power 0.05 while this
          branch ignored the row and the combat reader fell back to the cooked-
          food x1.20 -- three numbers, two of them wrong.  It could not be cooked

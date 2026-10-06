@@ -1395,7 +1395,7 @@ remnant to migrate server-side, not a mode to preserve.
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
       docs/specs/wheel-doors.md.
-  - Since v2.3.3083 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
+  - Since v2.3.3095 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
     water", then, on the research (docs/FARMING-PLAN.md, its Phase 1): "Good.
     Go ahead and build it":
@@ -1412,7 +1412,14 @@ remnant to migrate server-side, not a mode to preserve.
       `caps.farm` (kill switch `farm: false`); without it FarmPanel keeps the
       old browser-only plots (`LegacyFarmPanel`), which never kept anything;
     - Herb Bread finally HEALS (2% max HP a second; its `regen` timer was never
-      read) and Firebloom Tea's card says its real +20%;
+      read) and Firebloom Tea's card says its real +20%; the recipes' Cooking
+      levels (Stew 3, Tea 6) are the WORKER's gate now (`cookLvl`, cooking.js);
+    - a harvest turns its bed to grass BEFORE it pays, and a life skill that
+      is not an object heals at the join (`healLifeSkillLevels`) -- found by
+      the review: a bare-number skill made the XP throw and one bed paid on
+      every message; a restart deletes `farm:<pid>`; `farm_state` is handled
+      in wsClient's DIRECT switch, never processGameEvent (relayed events
+      reach that, and a pre-farm worker relays a forged one);
     - the dev op `farmripe` ("Ripen my farm now" in the dev panel); `farm`
       suite, `mp-farm`: docs/specs/farm.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,

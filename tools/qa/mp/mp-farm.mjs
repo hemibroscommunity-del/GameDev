@@ -1,4 +1,4 @@
-/* ═══ THE FARM, ON A PHONE (v2.3.3083) ═══
+/* ═══ THE FARM, ON A PHONE (v2.3.3095) ═══
  *
  * Owner: "mechanics similar to the old FarmVille game where you have to wait
  * to harvest and each has a wait time different depending on what it is.
@@ -14,13 +14,15 @@
  *   5. Water re-times a bed (8 min -> 6 min, a drop in its corner), Fertilize
  *      puts compost on one (a worm), each one tap;
  *   6. ripened by the operator's dev op (a carrot takes real minutes), the
- *      beds bob "Ready" and the tool is Harvest; "Harvest all" pays 7 carrots
+ *      beds read "Ready" and the tool is Harvest; "Harvest all" pays 7 carrots
  *      (3 fertilized + 2 + 2) and 75 Farming XP, settled by the worker -- its
  *      own copy of the bag says so;
  *   7. closed and opened again, the farm is the worker's: rough again where it
  *      was harvested;
- *   8. "Visit Your Farm" is still there (mp-wheeldoors walks it), and no page
- *      errors.
+ *   8. "Visit Your Farm" is still there (mp-wheeldoors walks it);
+ *   9. v2.3.3095: switched off (liveflags `farm: false`), a second player who
+ *      joins after gets the window CLOSED -- a card that sends nothing -- not
+ *      the old browser-only plots; and no page errors.
  * Pictures: tools/qa/mp/out/farm-*.png.
  */
 import * as H from './harness.mjs';
@@ -211,6 +213,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 8. the farm trip, and clean ── */
     const visit = await A.page.evaluate(() => { const b = document.querySelector('[data-farm-visit]'); return b ? (b.textContent || '').trim() : null; });
     rec.ok('"Visit Your Farm" is still in the window', visit === 'Visit Your Farm', visit);
+
+    /* ── 9. v2.3.3095: the kill switch.  A tab that joins while `farm: false`
+       is set gets the window CLOSED -- a card that asks the worker nothing --
+       not the old browser-only plots (the review's finding: "No seeds" beside
+       beds it could not see).  A second player, so the caps are fresh. ── */
+    const admin = async (path, init) => (await (await fetch('http://127.0.0.1:' + wsPort + '/api/admin' + path,
+      Object.assign({ headers: { Authorization: 'Bearer ' + H.ADMIN_KEY } }, init || {}))).json());
+    const flagOff = await admin('/flags', { method: 'POST', headers: { Authorization: 'Bearer ' + H.ADMIN_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'farm', value: false }) });
+    const B = await H.newPlayer(browser, { name: 'Farmbro2', wsPort, webPort, viewport: PHONE, touch: true });
+    B.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
+    try {
+      await H.enterWorld(B);
+      const capsB = await H.readState(B, (S) => S._serverCaps && S._serverCaps.farm);
+      await B.page.evaluate(() => {
+        window.__btFarmSends = 0;
+        const S = window._gameState && window._gameState.current;
+        const ch = S && S.channel;
+        if (ch) { const orig = ch.send.bind(ch); ch.send = (m) => { if (m && /^farm_/.test(String(m.type))) window.__btFarmSends += 1; return orig(m); }; }
+      });
+      await B.page.evaluate(() => { try { window._uiPanels.building('farm'); } catch (e) { /* the check below says */ } });
+      await B.page.waitForTimeout(1500);
+      await shot(B, 'closed');
+      const c = await B.page.evaluate(() => ({
+        closed: !!document.querySelector('[data-farm-status="closed"]'),
+        words: ((document.querySelector('[data-farm-status="closed"]') || {}).textContent || '').trim(),
+        tabs: document.querySelectorAll('[data-farm-tab]').length,
+        visit: !!document.querySelector('[data-farm-visit]'),
+        sends: window.__btFarmSends,
+        pending: !!(window.__btFarm && window.__btFarm.pending),
+        legacy: /No seeds/.test(document.body.textContent || ''),
+      }));
+      rec.ok(`switched off (flag set: ${!!(flagOff && flagOff.ok)}, caps.farm ${capsB}), a tab that joins after gets the window CLOSED ("${c.words}"): no tabs, Visit Your Farm, no old plots, and nothing sent (${c.sends})`,
+        !!(flagOff && flagOff.ok) && capsB === false && c.closed && /closed for now/.test(c.words) && c.tabs === 0 && c.visit && !c.legacy && c.sends === 0 && !c.pending, c);
+    } finally {
+      await admin('/flags?name=farm', { method: 'DELETE' }).catch(() => {});
+      await B.ctx.close().catch(() => {});
+    }
     stopAlive = true;
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 3));
   } finally {

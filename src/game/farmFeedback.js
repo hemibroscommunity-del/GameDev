@@ -1,9 +1,10 @@
-/* ═══ v2.3.3083: WHAT THE FARM SAYS BACK ═══
+/* ═══ v2.3.3095: WHAT THE FARM SAYS BACK ═══
  *
  * The moment after the worker answers a farm request (server/src/farm.js):
  * the words over the player, the sound, the level celebration, and on join
- * the line saying beds are ready.  Called from gameEvents.js 'farm_state'
- * AFTER farmBus has taken the answer, and only ever from it.
+ * the line saying beds are ready.  Called from wsClient.js's direct
+ * 'farm_state' case AFTER farmBus has taken the answer, and only ever from it
+ * -- never from processGameEvent, which the room's relayed events reach too.
  *
  * Feedback only.  The bag, the coins and the Farming XP arrive on the
  * player_state that follows every value-bearing answer (rule 20); nothing
@@ -28,16 +29,33 @@ export const FARM_ERR_TEXT = {
   off: 'The farm is closed for now',
   nothing: 'Nothing to do there',
   timeout: 'No answer, try again',
+  'timeout-buy': 'No answer yet. Check your bag',   /* v2.3.3095: a buy is not safe to repeat blind (farmBus.js) */
 };
 
-/* A bag key's name as the farm says it: "Carrot", "Carrot Seeds", "Compost". */
+/* A bag key's name as the farm says it: "Carrot", "Carrot Seeds", "Compost".
+   v2.3.3095: a key the farm does not know is "Crop" (a newer worker's), never
+   the key itself -- the words over a player are never text a message chose. */
 export function farmItemName(key) {
   if (key === FARM.COMPOST) return 'Compost';
   const s = farmCropOfSeed(key);
   if (s) return FARM.CROPS[s].name + ' Seeds';
   const c = farmCropOfItem(key);
   if (c) return FARM.CROPS[c].name;
-  return String(key || '');
+  return 'Crop';
+}
+
+/* v2.3.3095: how many ripe beds the player has already been told of this
+   page session.  The worker sends the farm on EVERY join (farm.js
+   _farmOnJoin), and an iPhone rejoins on nearly every return to the app, so
+   "3 beds are ready" came back each time for crops that never wither.  Said
+   again only when there is news: more beds ripe than last said.  Any other
+   answer (a harvest, the window opening) brings it down to what is ripe now,
+   so the next ripening is news again. */
+let toldRipe = 0;
+function ripeIn(payload) {
+  if (!Array.isArray(payload.plots)) return null;
+  const now = Number.isFinite(payload.now) ? payload.now : Date.now();
+  return payload.plots.filter((p) => p && p.s === 'planted' && now >= p.readyAt).length;
 }
 
 function play(key, opts) { try { BT_AUDIO.play(key, opts); } catch (e) { /* sound only */ } }
@@ -59,13 +77,15 @@ function say(S, dy, text, color, extra) {
 export function farmFeedback(S, payload, deps) {
   if (!payload || typeof payload !== 'object') return;
 
-  /* On join: say how many beds are ripe, once, in the chat log and over the
-     player.  The farm itself already went into farmBus. */
+  const ripeNow = ripeIn(payload);
+  /* On join: say how many beds are ripe, in the chat log and over the
+     player -- when it is news (toldRipe, above).  The farm itself already
+     went into farmBus. */
   if (payload.login) {
-    const now = Number.isFinite(payload.now) ? payload.now : Date.now();
-    const ripe = Array.isArray(payload.plots)
-      ? payload.plots.filter((p) => p && p.s === 'planted' && now >= p.readyAt).length : 0;
-    if (ripe > 0 && S) {
+    const ripe = ripeNow || 0;
+    const news = ripe > toldRipe;
+    toldRipe = ripe;
+    if (news && S) {
       const text = FARM_LOOK.harvest + ' ' + ripe + (ripe === 1 ? ' bed is' : ' beds are') + ' ready at the Feed & Seed';
       try {
         S.chatLog = (S.chatLog || []).slice(-50).concat([{ id: 'farm-' + Date.now(), name: '', text, ts: Date.now() }]);
@@ -76,6 +96,7 @@ export function farmFeedback(S, payload, deps) {
     return;
   }
 
+  if (ripeNow !== null) toldRipe = Math.min(toldRipe, ripeNow);
   const did = payload.did;
   if (did && did.n > 0) {
     const fx = SOUND[did.op];
@@ -90,6 +111,16 @@ export function farmFeedback(S, payload, deps) {
       if (did.leveled && did.newLevel > did.fromLevel) {
         try { celebrateLifeSkillLevel(S, 'farming', did.newLevel, did.fromLevel); } catch (e) { /* visual */ }
       }
+      /* v2.3.3095: the quest flag the old browser-only window set on a harvest
+         (trader_3, "Plant and harvest a crop"), now on the worker's confirmed
+         one.  Trader Tix is not in the game today, so nothing reads it yet;
+         without it his chain would stall the day he returns.  The client's
+         own flag (rule 18: the worker never writes _questFlags).  Safe only
+         because this runs on the worker's direct answer (wsClient.js). */
+      try {
+        const R = S && S.rpg;
+        if (R) { if (!R._questFlags) R._questFlags = {}; R._questFlags.harvestedCrop = true; }
+      } catch (e) { /* a quest flag never blocks the moment */ }
     } else if (did.op === 'buy') {
       say(S, 34, '+' + did.n + ' ' + farmItemName(did.item), GOOD);
     }
