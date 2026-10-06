@@ -692,6 +692,15 @@ remnant to migrate server-side, not a mode to preserve.
       its harvest bar is up; the old emoji, tier dot and 7 px tips are gone;
       and a vein CRACKS on its split frame (`ore-crack`, cut from the unused
       extract-success.mp4); `mp-nodelabels`;
+    - since v2.3.3094 PAST LEVEL 20 TOO (the owner: "levels 21-40 in each
+      land with their own monsters and resources"): tier 16 at levels 21-30
+      (titanium ore, cedar, salmon) and tier 21 at 31-40 (obsidian ore,
+      maple, pike) -- the bake's `deep`/`deeper` bands, 259 nodes;
+      `GATHER_REQ_LVL` 16/21 (Mining 10/15, Woodcutting and Fishing 15/20);
+      titanium and obsidian ARE the forge's next metals' ores, cedar and maple
+      the bow bench's woods; client `MINING_TIERS` 16/21 renamed to match (36
+      is Diamond Ore now); art from `tools/make_tier_art.py past20`; every
+      three-tier table five: wheel-resources.md "Past level 20";
     - since v2.3.3059 the labels are QUIETER and a locked node can be TRIED --
       the owner: "show zeroes popping as they try to harvest ... a grayed out
       icon ... I just don't want the screen to be too busy with text": every
@@ -727,6 +736,21 @@ remnant to migrate server-side, not a mode to preserve.
       checks them against the ground as drawn (docs/specs/wheel-resources.md);
     - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§9,
       `mp-wheeldeep`.
+    - since v2.3.3093 PAST LEVEL 20 TOO -- the owner: "build the world past
+      level 20 (levels 21-40 in each land with their own monsters and
+      resources) You can just recolor existing monsters for now":
+      `SPAWN_RULES.deep.tiers` 2..8, so every land's second stage (tiers 5-8,
+      levels 21-40, past the first pass) has its spawn list per tier -- 384
+      monsters, ~103 KB of `zone_state` on the way in; the game draws them in
+      the stage's colour and name (`src/data/wheelStageLooks.js`: Glacier
+      Snowman, Cinder Goblin, Gilded Mummy, Amethyst Golem, Storm Slime, Coral
+      Fishman, Spectral Wisp, Shade Lurker, Jade Slime), a SPRITE TINT that
+      REPLACES the look's own (no memory: a baked recolour would sit beside
+      the first stage's look, ~50 MB at the Flame Fields), through
+      entityRenderer's `wheelStageTint` / `wheelStageName`; a dungeon's
+      monsters past 20 wear it too; kill switch `wheelpast20: false`; the
+      signposts read "Lv 1–40"; `wheelzone` §1b/§4c, `mp-wheelpast20`:
+      wheel-monsters.md "Past level 20".
     - since v2.3.3055 a monster's level MEANS SOMETHING -- the owner: "lvl 7
       killing lvl 17 slimes easily": the +100 flat HP was the same at every
       level (a Lv17 slime 118 HP, a Lv3 109); it now GROWS 10% a level from

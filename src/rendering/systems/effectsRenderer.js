@@ -1872,8 +1872,12 @@ Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
    Keyed by the tier's lvl (MINING_TIERS / WOODCUTTING_TIERS); a tier with no
    entry draws as before.  The break strip and the ore that pops out of it
    follow (ORE_BREAK_TINT, ORE_ICON_TIER_TEX). */
+/* v2.3.3094: + the second stage's (the Wheel's levels 21-40): titanium (16)
+   and obsidian (21) veins, cedar and maple trees -- the same two ways, from
+   tools/make_tier_art.py past20 (the two veins 1.4 MB decoded more) */
 const NODE_TIER_SOURCES = {
-  oreVein: { 6: '/sprites/world/ore-vein-iron-418.webp', 11: '/sprites/world/ore-vein-black-steel-418.webp' },
+  oreVein: { 6: '/sprites/world/ore-vein-iron-418.webp', 11: '/sprites/world/ore-vein-black-steel-418.webp',
+    16: '/sprites/world/ore-vein-titanium-418.webp', 21: '/sprites/world/ore-vein-obsidian-418.webp' },
 };
 const NODE_TIER_TEX = { oreVein: {} };
 for (const [kind, byLvl] of Object.entries(NODE_TIER_SOURCES)) {
@@ -1882,10 +1886,11 @@ for (const [kind, byLvl] of Object.entries(NODE_TIER_SOURCES)) {
       .catch((err) => console.warn('[node-tier-sprites] load failed', path, err));
   }
 }
-const NODE_TIER_TINT = { tree: { 6: 0xd8e88a, 11: 0xb09070 } };
-const ORE_BREAK_TINT = { 6: 0xd8a890, 11: 0x5c6478 };
+const NODE_TIER_TINT = { tree: { 6: 0xd8e88a, 11: 0xb09070, 16: 0xc89a8a /* cedar: red-brown */, 21: 0xffa860 /* maple: autumn */ } };
+const ORE_BREAK_TINT = { 6: 0xd8a890, 11: 0x5c6478, 16: 0xc8d0dc /* titanium */, 21: 0x6a4a9a /* obsidian */ };
 const ORE_ICON_TIER_TEX = {};
-for (const [lvl, path] of [[6, '/icons/items/ore-iron.webp'], [11, '/icons/items/ore-black-steel.webp']]) {
+for (const [lvl, path] of [[6, '/icons/items/ore-iron.webp'], [11, '/icons/items/ore-black-steel.webp'],
+  [16, '/icons/items/ore-titanium.webp'], [21, '/icons/items/ore-obsidian.webp']]) {   /* v2.3.3094 */
   _fxLoad(path).then((tex) => { if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TIER_TEX[lvl] = tex; } })
     .catch((err) => console.warn('[ore-icon] load failed', path, err));
 }
@@ -5909,6 +5914,8 @@ export class EffectsRenderer {
     const _rawIcon = ({
       fish_clownfish: '/icons/items/fish-clownfish.webp?v=2.3.1452',
       fish_trout: '/icons/items/fish-trout.webp?v=2.3.1452',
+      fish_salmon: '/icons/items/fish-salmon.webp?v=2.3.3094',   /* v2.3.3094 */
+      fish_pike: '/icons/items/fish-pike.webp?v=2.3.3094',
     })[fishKey] || '/icons/items/fish-minnow.webp?v=2.3.1452';
     let _ft = this._foodIconTex[_rawIcon];
     if (_ft === undefined) {

@@ -88,7 +88,9 @@ import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '../..
 
 const ITEM_EMOJI = {
   fish_minnow: '🐟', fish_clownfish: '🐠', fish_trout: '🎣',
+  fish_salmon: '🐟', fish_pike: '🐟',   /* v2.3.3094 */
   cooked_fish_minnow: '🍤', cooked_fish_clownfish: '🍣', cooked_fish_trout: '🍱',
+  cooked_fish_salmon: '🍣', cooked_fish_pike: '🍱',   /* v2.3.3094 */
   wood_pine: '🪵', wood_oak: '🪵', wood_birch: '🪵',
   ore_copper_ore: '🪨', ore_iron_ore: '⛏️', ore_silver_ore: '🥈',
   herb_firebloom: '🌺', herb_rock_vine: '🌿', herb_cloudpetal: '🌸',

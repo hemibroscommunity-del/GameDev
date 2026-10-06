@@ -47,6 +47,10 @@ function slimeTintFor(variant, state) {
   if (variant && variant.recolor && hasRecoloredState(variant, state)) return 0xffffff;
   return (variant && variant.tint) || 0xffffff;
 }
+/* v2.3.3093: a Wheel monster past level 20 wears its stage's colour in place
+   of its look's own tint (src/data/wheelStageLooks.js) -- a sprite tint, so no
+   memory; every body tint below goes through this, the hit flash aside. */
+import { wheelStageTint, wheelStageName } from '../../data/wheelStageLooks.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount,
   getAttackFrame as getSnowmanAttackFrame, attackFrameCount as snowmanAttackFrameCount, /* v2.3.2215 */
   attackReleaseFrame as snowmanAttackReleaseFrame, /* v2.3.2216 */
@@ -8447,8 +8451,13 @@ export class EntityRenderer {
             plate: (function () {
               const u = d._hpUi;
               if (!u || !u._pillLevel) return null;
-              return { level: u._pillLevel.text, band: u._pillBand || null, shown: !!(u._namePill && u._namePill.visible) };
+              return { level: u._pillLevel.text, band: u._pillBand || null, shown: !!(u._namePill && u._namePill.visible),
+                name: u._pillName ? u._pillName.text : null };   /* v2.3.3093: "Glacier Snowman" past level 20 */
             })(),
+            /* v2.3.3093: the body's tint as drawn, and without the hit flash --
+               so mp-wheelpast20 can read a second-stage monster's stage colour */
+            tint: d._spriteBody.tint,
+            baseTint: d._spriteBody._btBaseTint == null ? null : d._spriteBody._btBaseTint,
           };
         };
       }
@@ -8562,7 +8571,7 @@ export class EntityRenderer {
             sb.scale.x = baseScale;
             sb.scale.y = baseScale;
             sb.y = display._size;
-            sb.tint = (variant && variant.tint) || 0xffffff; /* v2.3.1147 */
+            sb.tint = wheelStageTint(m, (variant && variant.tint) || 0xffffff); /* v2.3.1147; v2.3.3093: the stage's colour */
             sb.visible = true;
             display.x = m.x;
             display.y = m.y;
@@ -8614,7 +8623,7 @@ export class EntityRenderer {
             const _deathAnchor = SLIME_BASE_ROW.death / SLIME_FRAME_PX;
             if (sb.anchor.y !== _deathAnchor) sb.anchor.set(0.5, _deathAnchor);
             sb.y = 0;
-            sb.tint = slimeTintFor(variant, 'death'); /* v2.3.1147; v2.3.1534 */
+            sb.tint = wheelStageTint(m, slimeTintFor(variant, 'death')); /* v2.3.1147; v2.3.1534; v2.3.3093 */
             sb.visible = true;
             display.x = m.x;
             display.y = m.y;
@@ -8654,7 +8663,7 @@ export class EntityRenderer {
             sb.scale.x = baseScale;
             sb.scale.y = baseScale;
             sb.y = display._size;
-            sb.tint = 0xffffff;
+            sb.tint = wheelStageTint(m, 0xffffff);   /* v2.3.3093: the stage's colour (a Glacier Snowman dies blue) */
             sb.visible = true;
             display.x = m.x;
             display.y = m.y;
@@ -9131,9 +9140,10 @@ export class EntityRenderer {
              recomputed from the variant every frame.  No filters
              (per-monster filter = per-monster render target). */
           const _hfV = m._hitFlash && (now - m._hitFlash) < 120;
-          const wantTintV = _hfV ? 0xff8080 : ((variant && variant.tint) || 0xffffff);
+          const _baseTintV = wheelStageTint(m, (variant && variant.tint) || 0xffffff);   /* v2.3.3093: the stage's colour */
+          const wantTintV = _hfV ? 0xff8080 : _baseTintV;
           if (spriteBody.tint !== wantTintV) spriteBody.tint = wantTintV;
-          spriteBody._btBaseTint = (variant && variant.tint) || 0xffffff;   /* v2.3.2929: the tint WITHOUT the hit flash, for hitMaterialFx's own-art chips */
+          spriteBody._btBaseTint = _baseTintV;   /* v2.3.2929: the tint WITHOUT the hit flash, for hitMaterialFx's own-art chips */
           if (!spriteBody.visible) spriteBody.visible = true;
           if (display._body.visible) display._body.visible = false;
         } else {
@@ -9210,9 +9220,10 @@ export class EntityRenderer {
              v2.3.1534: a recoloured variant reports white here — see
              slimeTintFor. */
           const _hfS = m._hitFlash && (now - m._hitFlash) < 120; /* v2.3.2200: see variant branch */
-          const wantTintS = _hfS ? 0xff8080 : slimeTintFor(variant, state);
+          const _baseTintS = wheelStageTint(m, slimeTintFor(variant, state));   /* v2.3.3093 */
+          const wantTintS = _hfS ? 0xff8080 : _baseTintS;
           if (spriteBody.tint !== wantTintS) spriteBody.tint = wantTintS;
-          spriteBody._btBaseTint = slimeTintFor(variant, state);   /* v2.3.2929: see the variant branch */
+          spriteBody._btBaseTint = _baseTintS;   /* v2.3.2929: see the variant branch */
           if (!spriteBody.visible) spriteBody.visible = true;
           if (display._body.visible) display._body.visible = false;
         } else {
@@ -9402,9 +9413,10 @@ export class EntityRenderer {
             if (spriteBody.scale.y !== baseScale) spriteBody.scale.y = baseScale;
             if (spriteBody.y !== size) spriteBody.y = size;
             const _hfN = m._hitFlash && (now - m._hitFlash) < 120; /* v2.3.2200: see variant branch */
-            const wantTintN = _hfN ? 0xff8080 : 0xffffff;
+            const _baseTintN = wheelStageTint(m, 0xffffff);   /* v2.3.3093: a Glacier Snowman's blue */
+            const wantTintN = _hfN ? 0xff8080 : _baseTintN;
             if (spriteBody.tint !== wantTintN) spriteBody.tint = wantTintN;
-            spriteBody._btBaseTint = 0xffffff;   /* v2.3.2929: see the variant branch */
+            spriteBody._btBaseTint = _baseTintN;   /* v2.3.2929: see the variant branch */
             if (!spriteBody.visible) spriteBody.visible = true;
             if (display._body.visible) display._body.visible = false;
           } else {
@@ -9822,7 +9834,7 @@ export class EntityRenderer {
           ? prog3SkillLevel(S.rpg, prog3ActiveCat(S.rpg))
           : ((S.rpg && S.rpg.level) || 1);
         const _plateBand = plateBandFor(m.level, _plateYou);
-        _updateNamePill(_plateUi, monsterDisplayName(m.archetype || m.type),
+        _updateNamePill(_plateUi, wheelStageName(m, monsterDisplayName(m.archetype || m.type)),   /* v2.3.3093: "Glacier Snowman" past level 20 */
           m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand);
         /* ═══ v2.3.2571: THE PLATE SITS WHERE THE BAR SITS ═══
            Centred on `_plateBandY`, the bar's own centre line, so the two
