@@ -231,3 +231,8 @@ two pictures still to come.
   board stand in.
 - More beds from the Land Office's paid land, and friends visiting
   (`docs/FARMING-PLAN.md` Phases 3 and 4).
+- **Everyone's farm is the one zone, `farm_home`**, as it always was: two
+  players on their farms at once see each other walking there, each among
+  their own beds (the beds are drawn from each page's own `farm_state`). A
+  farm of your own -- a zone per player, or the other players hidden there --
+  is the plan's Phase 4 question, with visiting.
