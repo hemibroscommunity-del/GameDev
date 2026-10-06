@@ -1,4 +1,4 @@
-# North on the Wheel's maps (v2.3.3061)
+# North on the Wheel's maps (v2.3.3065)
 
 > Owner, 2026-10-06, on the recommendations for finding your way round the
 > Wheel: *"Continue building recommended."* A north mark on the minimap was
@@ -6,7 +6,7 @@
 
 Neither the Wheel's minimap nor its world map ever turns: up is always north.
 Nothing said so, and the lands are named by where they lie (Frost Ridge in the
-north-west, the Tidal coast in the south, the Flame Fields due north). Now both
+north-west, the Water Caves in the south, the Flame Fields due north). Now both
 maps show which way north is.
 
 ## The minimap

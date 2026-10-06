@@ -1104,7 +1104,7 @@ remnant to migrate server-side, not a mode to preserve.
       spike over where it settles), the cache's 184 -> 172; mp-gpuaudit fails
       if either trip holds the map;
     - the bigger wins and what each costs: docs/specs/memory-in-the-wheel.md.
-  - Since v2.3.3061 NORTH IS MARKED ON BOTH MAPS -- the owner, on the
+  - Since v2.3.3065 NORTH IS MARKED ON BOTH MAPS -- the owner, on the
     recommendations for finding your way round: "Continue building
     recommended": neither map ever turns, and nothing said up is north;
     the minimap's frame wears a brass N on a slate bead in the middle of its

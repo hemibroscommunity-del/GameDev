@@ -227,7 +227,7 @@ function WorldMap({ stateRef, onClose }) {
           onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onWheel={onWheel}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', touchAction: 'none' }}
         />
-        {/* v2.3.3061: north, as on the minimap's frame -- the map never turns */}
+        {/* v2.3.3065: north, as on the minimap's frame -- the map never turns */}
         <svg data-world-map-north="" aria-label="North is up" role="img" viewBox="0 0 44 44" width="44" height="44"
           style={{ position: 'absolute', left: 10, top: 10, pointerEvents: 'none' }}>
           <circle cx="22" cy="22" r="20.5" fill="rgba(17,30,35,0.92)" stroke="rgba(216,170,88,0.55)" strokeWidth="1" />
