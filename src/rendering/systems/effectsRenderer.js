@@ -5,7 +5,8 @@
  */
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
-import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3078: pictures kept on the graphics chip only */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
@@ -2001,20 +2002,91 @@ const DMG_BMP_FONT = 'bt-dmg-digits';
    its 14/100 ratio. */
 const DMG_BMP_BAKE_PX = 128;
 let _dmgBmpReady = false;
-try {
+/* v2.3.3078: the install is a function, run again for a rebuilt renderer once
+   the pages' canvases have been let go of (prewarmDmgFontPipe, gpuOnly.js). */
+const DMG_BMP_CHARS = [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'];
+function _installDmgFont(family) {
   BitmapFont.install({
     name: DMG_BMP_FONT,
     style: {
-      fontFamily: 'Source Sans 3, sans-serif',
+      fontFamily: family || 'Source Sans 3, sans-serif',
       fontSize: DMG_BMP_BAKE_PX,
       fontWeight: '800',
       fill: '#ffffff',
       stroke: { color: '#000000', width: 14 * DMG_BMP_BAKE_PX / 100 },
     },
-    chars: [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'],
+    chars: DMG_BMP_CHARS,
   });
+  /* BitmapFont.install hands nothing back; the font is in Pixi's cache */
+  return Cache.has(DMG_BMP_FONT + '-bitmap') ? Cache.get(DMG_BMP_FONT + '-bitmap') : null;
+}
+/* v2.3.3078: WHICH FACE THE ATLAS WAS DRAWN IN.  The install runs as this
+   module loads -- before the page's web fonts have arrived (index.html loads
+   them display=swap), so the glyphs are normally the browser's own sans-serif,
+   the next family in the list.  A rebuilt renderer's install, later, could
+   find Source Sans 3 there and draw other glyphs.  So the first install's
+   advance widths are kept as its face's fingerprint, and a re-install that
+   does not match them is made again in the generic face (_reinstallDmgFont). */
+let _dmgFontSig = null;
+function _dmgSig(font) {
+  const c = font && font.chars;
+  if (!c) return null;
+  let out = '';
+  for (const k of Object.keys(c).sort()) out += k + ':' + c[k].xAdvance + ',';
+  return out;
+}
+try {
+  _dmgFontSig = _dmgSig(_installDmgFont());
   _dmgBmpReady = true;
 } catch (e) { /* fallback: classic Text path below */ }
+if (typeof window !== 'undefined') {
+  /* QA (mp-gpuonly): the font's face fingerprint, the first install's and
+     now's, and its pages (Textures) */
+  window.__btDmgFont = () => {
+    const f = Cache.has(DMG_BMP_FONT + '-bitmap') ? Cache.get(DMG_BMP_FONT + '-bitmap') : null;
+    return { first: _dmgFontSig, now: _dmgSig(f), pages: f && f.pages ? f.pages.map((p) => p.texture) : [] };
+  };
+}
+function _reinstallDmgFont() {
+  const key = DMG_BMP_FONT + '-bitmap';
+  for (const fam of ['Source Sans 3, sans-serif', 'sans-serif']) {
+    if (Cache.has(key)) Cache.remove(key);
+    const font = _installDmgFont(fam);
+    _dmgLog('attempt ' + fam + (_dmgSig(font) === _dmgFontSig ? ' matches' : ' differs'), null);
+    if (!_dmgFontSig || _dmgSig(font) === _dmgFontSig) return true;
+    /* drawn in another face: never shown, let go of, and the next tried */
+    try { font.destroy(); } catch (e) { /* best-effort */ }
+  }
+  /* neither face draws what the first install drew: the page's own, as the
+     first install would have drawn it now */
+  if (Cache.has(key)) Cache.remove(key);
+  _installDmgFont();
+  return false;
+}
+/* ═══ v2.3.3078: THE FONT'S PAGES ON THE GRAPHICS CHIP ONLY ═══
+   The owner's yes to "character art kept only on the graphics chip".  The
+   eleven 512 x 512 pages (11 MB) are drawn once, at install, and never again:
+   every number the atlas draws is made of the characters it was installed
+   with (DMG_BMP_RE), so Pixi's ensureCharacters finds nothing to add.  Once
+   the prewarm below has put them on the GPU their canvases are emptied
+   (gpuOnly.js).  A renderer that has never drawn them -- a black screen's
+   rebuild -- would upload the empty canvases, so for one the font is
+   installed afresh, drawn, and let go of again: _dmgPagesGone names the
+   renderer that has them (initPixiRenderer asks dmgFontNeedsRebuild).  The
+   warm-up runs more than once for one renderer (the loading screen's); only
+   another renderer re-installs. */
+let _dmgPagesGone = null;   /* the renderer the pages were let go of on, once they were */
+export function dmgFontNeedsRebuild(renderer) { return _dmgBmpReady && !!_dmgPagesGone && _dmgPagesGone !== renderer; }
+function _letGoOfDmgPages(renderer) {
+  const font = Cache.has(DMG_BMP_FONT + '-bitmap') ? Cache.get(DMG_BMP_FONT + '-bitmap') : null;
+  const pages = font && font.pages;
+  if (!pages || !pages.length) return;
+  /* any page let go of means another renderer needs the font afresh */
+  for (const pg of pages) {
+    if (keepOnGpuOnly(renderer, pg && pg.texture && pg.texture.source)) _dmgPagesGone = renderer;
+  }
+  _dmgLog('let go', renderer);
+}
 /* Plain popups the atlas can render: digits/letters/space and + - . ! */
 const DMG_BMP_RE = /^[0-9A-Za-z+\-. !]+$/;
 
@@ -2030,9 +2102,25 @@ const DMG_BMP_RE = /^[0-9A-Za-z+\-. !]+$/;
    intro overlay is still up, so combat never pays (or crashes on)
    that init.  Any failure here permanently downgrades popups to the
    classic Text path — same visuals, pre-1357 cost. */
+const _dmgLog = (what, renderer) => {   /* QA: mp-gpuonly reads it, when it asked */
+  try { if (typeof window !== 'undefined' && Array.isArray(window.__btDmgFontLog)) window.__btDmgFontLog.push({ what, uid: renderer ? renderer.uid : null, gone: _dmgPagesGone ? _dmgPagesGone.uid : null, t: Date.now() }); } catch (e) { /* QA only */ }
+};
 export function prewarmDmgFontPipe(renderer) {
+  _dmgLog('prewarm', renderer);
   if (!renderer) return;
   if (_dmgBmpReady) {
+    /* v2.3.3078: a rebuilt renderer gets the font afresh (its pages' canvases
+       were let go of once the first renderer had them).  The old font is not
+       destroyed: a number made before the rebuild may still point at its pages,
+       and their canvases are already empty.  Removed from the cache first, or
+       Pixi warns that the name is taken. */
+    if (dmgFontNeedsRebuild(renderer)) {
+      _dmgLog('reinstall', renderer);
+      try {
+        _reinstallDmgFont();
+        _dmgPagesGone = null;
+      } catch (e) { _dmgBmpReady = false; return; }
+    }
     let bt = null;
     try {
       bt = new BitmapText({
@@ -2045,6 +2133,8 @@ export function prewarmDmgFontPipe(renderer) {
       _dmgBmpReady = false; /* pipe is broken here — never touch it in combat */
     }
     if (bt) { try { bt.destroy(); } catch (e) { /* best-effort */ } }
+    /* v2.3.3078: on the GPU now -- its pages' canvases let go of (above) */
+    if (_dmgBmpReady) { try { _letGoOfDmgPages(renderer); } catch (e) { /* the canvases simply stay */ } }
   }
   /* v2.3.1363: also warm the CLASSIC Text popup pipe — owner still felt
      a hitch on the first hit taken.  Early hits mint classic-Text popups
@@ -11808,6 +11898,15 @@ export class EffectsRenderer {
         }
         registerGearSource(src);
         this._gearStrips[key] = arr;
+        /* ═══ v2.3.3078: ON THE GRAPHICS CHIP ONLY ═══
+           The owner's yes to "character art kept only on the graphics chip".
+           These layers are only ever drawn, and each effects renderer cuts its
+           own -- a rebuilt one starts with an empty _gearStrips -- so the
+           packed canvas is let go of once the strip is uploaded, now rather
+           than at its first draw (gpuOnly.js; uploadGearTextures did it behind
+           the loading screen for the ones loaded then).  13.9 MB of canvases
+           for a new player's shirt in the Wheel. */
+        keepOnGpuOnly(this._captureRenderer, src);
       }).catch(() => { this._gearStrips[key] = []; });
       _fxPreload.push(_p);
       return null;

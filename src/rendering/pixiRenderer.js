@@ -10,7 +10,7 @@ import { isWheelTrialZone } from '../game/worldTrial.js';
 import { townSkippedOnTheWay } from '../game/wheelHome.js';   /* v2.3.3037: today's town is a stop on the way to the Wheel */
 import { wheelObjectsOn } from '../game/wheelTrial.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
-import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
+import { EffectsRenderer, prewarmDmgFontPipe, dmgFontNeedsRebuild, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
@@ -38,7 +38,7 @@ import { preloadGear, drawGearFrame } from './gearSheets.js';
 import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
-import { Assets } from 'pixi.js';
+import { Assets, Sprite } from 'pixi.js';
 import { markStandIns } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
 import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
 import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
@@ -202,6 +202,12 @@ export async function initPixiRenderer(canvas) {
      rolls and jogs in frames photographed off your own figure. */
   effectsRenderer.setCaptureRenderer(app.renderer);
   entityRenderer.setCaptureRenderer(app.renderer);
+  /* v2.3.3078: a rebuilt renderer (a black screen's recovery) gets the damage
+     numbers' font afresh: the first renderer let go of its pages' canvases
+     once they were on its GPU (gpuOnly.js), and this one has never drawn them.
+     The first load does this at the end of the loading screen instead
+     (preloadPlayerAssets). */
+  if (dmgFontNeedsRebuild(app.renderer)) { try { prewarmDmgFontPipe(app.renderer); } catch (e) { /* numbers fall back to classic Text */ } }
   setFighterEffects(effectsRenderer, entityRenderer);
   setMonsterDeathRenderer(app.renderer);   /* v2.3.2913: measures each body once for the cuts */
   setArrowWoundRenderer(app.renderer);     /* v2.3.2923: bakes a stuck shaft at its monster's resolution */
@@ -1282,6 +1288,24 @@ export async function initPixiRenderer(canvas) {
       if (id == null) return e.fireSprite ? { body: e.fireSprite, ink: e.fireInkSprite || null } : null;
       const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
       return (ent && ent.fire) ? { body: ent.fire, ink: ent.fireInk || null } : null;
+    },
+    /* v2.3.3078 QA (mp-gpuonly): THIS renderer's combat strips, by key -- the
+       module's __btCombatGearFrames names whichever effects renderer cut a
+       strip last, and on main a dead one's listeners still cut (#802) */
+    combatStrips: () => {
+      const g = effectsRenderer._gearStrips || {};
+      const out = {};
+      for (const k in g) { if (Array.isArray(g[k]) && g[k].length) out[k] = g[k]; }
+      return out;
+    },
+    /* ...and a texture as the screen draws it: a Sprite of it drawn into a
+       fresh target and read back.  (extract.pixels on the texture itself
+       attaches its picture to a framebuffer instead, and that changes what
+       Pixi holds for it.) */
+    drawnPixels: (tex) => {
+      const sp = new Sprite(tex);
+      /* at the texture's own resolution: one texel to one pixel, read exact */
+      try { return app.renderer.extract.pixels({ target: sp, resolution: (tex.source && tex.source.resolution) || 1 }); } finally { sp.destroy(); }
     },
     fireInkLayers: () => {
       const e = effectsRenderer;
