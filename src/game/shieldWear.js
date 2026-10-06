@@ -1,4 +1,4 @@
-/* ═══ v2.3.3082: TELL THE WORKER WHICH SHIELD IS ON YOUR ARM ═══
+/* ═══ v2.3.3091: TELL THE WORKER WHICH SHIELD IS ON YOUR ARM ═══
  *
  * Asked "Shields and outfits in no man's land?", the owner said "Yes".  A
  * spare shield stayed in your bag on a No man's land loss because putting a

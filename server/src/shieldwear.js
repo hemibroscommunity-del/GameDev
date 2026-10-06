@@ -1,4 +1,4 @@
-/* ═══ v2.3.3082: THE WORKER LEARNS WHICH SHIELD IS ON YOUR ARM ═══
+/* ═══ v2.3.3091: THE WORKER LEARNS WHICH SHIELD IS ON YOUR ARM ═══
  *
  * Asked "Shields and outfits in no man's land?" -- No man's land's open
  * question (docs/specs/no-mans-land.md, "Decisions for the owner"): a spare

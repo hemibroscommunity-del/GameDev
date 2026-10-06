@@ -848,7 +848,7 @@ remnant to migrate server-side, not a mode to preserve.
       gold; `nml_loss` tells the game exactly what went;
     - `caps.nomansland`, kill switch `nomansland: false`; dev vitals take
       `hp`; `nomansland` suite (51), `mp-nomansland` (15, two screens);
-    - since v2.3.3082 SPARE SHIELDS GO TOO -- asked "Shields and outfits in no
+    - since v2.3.3091 SPARE SHIELDS GO TOO -- asked "Shields and outfits in no
       man's land?", the owner: "Yes": the game reports the shield on its arm
       (`shield_wear` {gid | sig | none}, src/game/shieldWear.js, on every
       change, every join and a new shield into the bag), and the worker keeps

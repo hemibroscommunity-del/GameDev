@@ -1515,7 +1515,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     && clientGatherReqLvl('fishSpot', 6) === 5);
 }
 
-// v2.3.3082: this block sat AFTER the process.exit below (a merge put it
+// v2.3.3091: this block sat AFTER the process.exit below (a merge put it
 // there), so its three checks never ran -- moved back above it.
 // ── v2.3.3058: No man's land's rings (server nomansland.js, client
 // game/noMansLand.js).  The banner, the top bar and the tap's aim are the

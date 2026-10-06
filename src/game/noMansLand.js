@@ -154,7 +154,7 @@ const sigOf = (p) => (p && typeof p === 'object' ? [p.name, p.gearBase, p.tierMu
  *
  *  A bag loss names each piece it took ({field, gid} or, for a piece with no
  *  id, {field, sig}) and only those leave your lists: the worker takes the
- *  spare weapons and the spare armour, legs and (v2.3.3082, once this game
+ *  spare weapons and the spare armour, legs and (v2.3.3091, once this game
  *  has told it which is on your arm: game/shieldWear.js) shields it can tell
  *  from what you wear, and no outfit piece (server/src/nomansland.js says
  *  why), so clearing whole lists here would throw away what it left you --

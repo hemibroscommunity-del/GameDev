@@ -65,7 +65,7 @@
  *     stash copy of the armour on your body (adopted at join, worn since)
  *     and every cosmetic OUTFIT piece.  Taking either would risk the killer
  *     a second copy of something you still wear (storegear.js §2 has the
- *     long version).  SHIELDS joined the spares in v2.3.3082: the game now
+ *     long version).  SHIELDS joined the spares in v2.3.3091: the game now
  *     says which one is on your arm (shieldwear.js), and until it has said
  *     so this session every shield stays, as before.
  *   - a RED-skulled player who dies, however: all of that AND everything
@@ -346,7 +346,7 @@ export const noMansLandMethods = {
          id that matches what you wear is the same question with no id to
          answer it, and is left alone too (taking a real spare is a loss for
          you; giving a stale copy is a second piece for the killer);
-       - shields: since v2.3.3082 the game says which shield is on the arm
+       - shields: since v2.3.3091 the game says which shield is on the arm
          (shieldwear.js, shield_wear), so `ps.shield` is the one WORN and
          `ps.shieldStash` the spares, exactly as for armour -- a bag loss
          takes the spares, with the same stale-copy rule.  Only once the game
@@ -355,7 +355,7 @@ export const noMansLandMethods = {
          (`ps.shield` may still be the old ownership record, quests.js); and
          `shieldwear: false` puts that back too.  A red skull loses them all;
        - cosmetic outfit pieces (gearStash): never -- nothing says which you
-         wear, and (v2.3.3082, asked about shields AND outfits) there is
+         wear, and (v2.3.3091, asked about shields AND outfits) there is
          nothing in them to take: the wardrobe is the T-shirt every player
          may pick (gearCatalog.js GEAR_CATALOG) and the plate's look, which
          follows the armour piece itself -- taken above, as armour.  An
@@ -391,7 +391,7 @@ export const noMansLandMethods = {
         ps[f] = null;
       }
     }
-    /* v2.3.3082: + the spare shields, once the arm is known (shieldwear.js) */
+    /* v2.3.3091: + the spare shields, once the arm is known (shieldwear.js) */
     const shieldsKnown = ps._shieldKnown === true && !(this._shieldWearOff && this._shieldWearOff());
     for (const slot of red ? ['armor', 'legsArmor', 'shield', 'amulet'] : (shieldsKnown ? ['armor', 'legsArmor', 'shield'] : ['armor', 'legsArmor'])) {
       const field = GEAR_PROV_FIELD[slot];
