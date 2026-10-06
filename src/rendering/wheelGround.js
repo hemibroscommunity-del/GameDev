@@ -21,7 +21,9 @@
  * and up to ~48 on the move (mp-wheeltrial): 16-30 MB of colours.  That is
  * the price of the sharpness, and the readout shows it;
  * the way to a quarter of it is pieces kept as palette numbers and coloured
- * on the GPU (docs/WORLD-MAP-PIPELINE.md, the Wheel trial).  Under them lies
+ * on the GPU (docs/WORLD-MAP-PIPELINE.md, the Wheel trial).  (v2.3.3063: the
+ * colours are on the GPU only -- the page's copy goes once a piece is
+ * uploaded, _toGpu below.)  Under them lies
  * the whole Wheel, small, in the plan's colours, so a piece still being laid
  * shows as its colour, not a hole.
  *
@@ -56,8 +58,23 @@ const AHEAD_MAX = 480;
    long after arriving, rather than held until the worker stops. */
 const WARM_KEEP_MS = 3000;
 
+/* v2.3.3063: a piece's colours, let go of.  Both of a source's holds: its
+   `resource`, and the constructor's `options`, which Pixi keeps whole
+   (TextureSource: this.options = options; nothing reads it back for a buffer)
+   -- with the first gone the second still held every piece's colours, and a
+   destroyed source something still points at kept them too (main: 84 pieces'
+   colours alive after a walk with 50 standing; both 0 with this, mp-groundcopy). */
+function letGoOfColours(src) {
+  if (!src) return;
+  src.resource = null;
+  if (src.options) src.options.resource = null;
+}
+
 export class WheelGround {
-  constructor(parent) {
+  /* v2.3.3063: `app`, the Pixi application (tileRenderer's), to put each
+     piece on the GPU as it is placed (_toGpu) */
+  constructor(parent, app) {
+    this._app = app || null;
     this.root = new Container();
     this.root.label = 'wheelGround';
     parent.addChild(this.root);
@@ -187,8 +204,9 @@ export class WheelGround {
     if (!warm) this.inFlight++;
     wheelChunk(i, j).then((m) => {
       if (!warm) this.inFlight--;
-      /* freed, or the whole ground torn down, while it was being laid */
-      if (this.dead || this.pieces.get(key) !== rec) return;
+      /* freed, or the whole ground torn down, while it was being laid --
+         v2.3.3063: or its renderer gone (_orphaned) */
+      if (this.dead || this._orphaned() || this.pieces.get(key) !== rec) return;
       rec.sprite = this._sprite(m, info, i, j);
       rec.ready = true;
       if (this.water) this.water.set(key, i, j, m.wf, info, rec.sprite.texture);
@@ -212,7 +230,45 @@ export class WheelGround {
     s.x = i * cs - half; s.y = j * cs - half;
     s.width = cs + 2 * half; s.height = cs + 2 * half;
     this.pieceRoot.addChild(s);
+    this._toGpu(src);
     return s;
+  }
+
+  /* v2.3.3063: the renderer this ground was made for is gone (Pixi's
+     Application.destroy nulls `renderer`): a black screen's rebuild made a new
+     one, with a ground of its own.  A piece the worker brings this one now is
+     drawn by nothing and could not be uploaded (_toGpu), so it is not placed
+     -- otherwise its colours stayed with this ground for as long as anything
+     held it (mp-groundcopy: two a rebuild, the pieces in flight). */
+  _orphaned() { return !!this._app && !this._app.renderer; }
+
+  /* ═══ v2.3.3063: THE PIECE'S COLOURS LIVE ON THE GPU ONLY ═══
+     A piece was kept twice: on the GPU, where it is drawn from, and in the
+     page as its texture's source (m.data, 402 x 402 colours, 0.62 MB) -- 54
+     pieces standing, 34 MB, and more on the move (docs/MEMORY-PLAN.md).  Pixi
+     reads the source again only to upload the piece a second time: when its
+     size changes (never: a piece is laid once and replaced whole, _relay) or
+     after a lost context.  And the game never draws on a context that came
+     back: every loss is rebuilt, renderer and ground alike, 2.5 s later,
+     restored or not (crashTrap watchContextLoss, v2.3.773 -- render textures
+     do not survive it), and the new WheelGround asks the worker for every
+     piece again.  Pixi's texture GC never unloads a buffer source either
+     (autoGarbageCollect is false but for pictures from a file).  So upload it
+     now, as it is placed (the frame that shows it would anyway), and let go
+     of the colours.  Byte for byte the same on the GPU: mp-groundcopy reads
+     the pieces back and compares them with the worker's own.
+     Kept when there is no renderer to upload with, or its context is lost
+     (an upload there would not count), or the upload throws -- the piece is
+     then uploaded the usual way, from its source, when first drawn. */
+  _toGpu(src) {
+    const r = this._app && this._app.renderer;
+    if (!r || !r.texture || typeof r.texture.initSource !== 'function') return;
+    try {
+      const gl = r.gl;
+      if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
+      r.texture.initSource(src);
+    } catch (e) { return; }
+    letGoOfColours(src);
   }
 
   /* v2.3.2959: which pictures the piece went without, if any */
@@ -229,12 +285,16 @@ export class WheelGround {
     rec.due = false;
     wheelChunk(rec.i, rec.j, true).then((m) => {
       this.relays--;
-      if (this.dead || this.pieces.get(key) !== rec) return;
+      if (this.dead || this._orphaned() || this.pieces.get(key) !== rec) return;
       const old = rec.sprite;
       rec.sprite = this._sprite(m, info, rec.i, rec.j);
       /* (the water moves the new picture before the old one goes) */
       if (this.water) this.water.set(key, rec.i, rec.j, m.wf, info, rec.sprite.texture);
-      if (old) { try { old.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ } }
+      if (old) {
+        const was = old.texture && old.texture.source;
+        try { old.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
+        letGoOfColours(was);   /* v2.3.3063 */
+      }
       wheelStats.relaid++;
       if (!m.partial) wheelStats.mended++;
       /* a 'got' that came while it was being laid again still counts */
@@ -253,7 +313,9 @@ export class WheelGround {
     if (rec.sprite) {
       /* the texture is this piece's alone: destroy it with its source, which
          lets go of the GPU copy and the colours */
+      const src = rec.sprite.texture && rec.sprite.texture.source;
       try { rec.sprite.destroy({ texture: true, textureSource: true }); } catch (e) { /* already gone */ }
+      letGoOfColours(src);   /* v2.3.3063: a piece that kept its own (_toGpu) */
       rec.sprite = null;
     }
   }

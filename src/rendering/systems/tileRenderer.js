@@ -705,7 +705,7 @@ export class TileRenderer {
       this._isImageZone = true;
       /* v2.3.2943: `?trial=wheel` lays its ground from the swatches instead */
       this._chunkGround = worldTrialMode() === 'wheel'
-        ? new WheelGround(this.tileContainer)
+        ? new WheelGround(this.tileContainer, this.app)   /* v2.3.3063: + the app, to upload each piece as it is placed */
         : new ChunkGround(this.tileContainer);
       return;
     }
