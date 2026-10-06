@@ -430,7 +430,7 @@ export const FISH_TIERS = [
       { lvl: 21, name: 'pike' },     /* v2.3.3094: ...and 31-40 */
     ];
 
-/* v2.3.3102: `cookLvl` is the Cooking level a recipe asks -- the window's
+/* v2.3.3111: `cookLvl` is the Cooking level a recipe asks -- the window's
    lock (gameSystems.js) and, now, the worker's gate (cooking.js
    _handleCookRecipe; mirror-audit keeps the two equal).  It only ever held on
    the client, which was moot while nothing could make these herbs; the farm

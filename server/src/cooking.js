@@ -347,7 +347,7 @@ export const cookingMethods = {
     }
     if (ps.dying || ps.dead || ps.disconnected) return;
     if (!ps.inventory) ps.inventory = {}; // proto-ok: recipe-index path; inventory keys server-validated
-    /* ═══ v2.3.3102: THE RECIPE'S COOKING LEVEL IS THE WORKER'S GATE ═══
+    /* ═══ v2.3.3111: THE RECIPE'S COOKING LEVEL IS THE WORKER'S GATE ═══
        Root Stew asks Cooking 3 and Firebloom Tea Cooking 6, and only the
        window ever said so (CookPanel.jsx's lock, the campfire's filter): a
        forged cook_recipe at Cooking 1 was cooked.  Moot while nothing could

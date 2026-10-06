@@ -25,7 +25,7 @@ skills, quests, codex/bestiary caches) resets.
   2. `delete rpg:<pid>` from DO storage. The other records keyed by the
      player id go with it (`_resetCharacterData`): the quest-reward stamps
      (v2.3.2421), the gear record `gear_prov:<pid>` (v2.3.2537) and the
-     farm `farm:<pid>` (v2.3.3102: its beds and crops were bought with the
+     farm `farm:<pid>` (v2.3.3111: its beds and crops were bought with the
      gold and skills that reset; the next visit to the Feed & Seed hands out
      the free deed again). Only `rpg:` is snapshotted.
   3. Ack `character_reset_done` (in `PRIVILEGED_EVENTS` — server-emitted

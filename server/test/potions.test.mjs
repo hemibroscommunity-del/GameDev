@@ -209,7 +209,7 @@ check('an absurd stored speed multiplier does not open the cap', rp.x === 1000, 
 const one = room.playerState.only = {
   z: 'meadow', hp: 100, maxHp: 100, mana: 50, maxMana: 100,
   stamina: 100, maxStamina: 100, coins: 1000,
-  inventory: Object.create(null), lifeSkills: { cooking: { level: 6, xp: 0 } },   /* v2.3.3102: the Tea asks Cooking 6 (cooking.js) */
+  inventory: Object.create(null), lifeSkills: { cooking: { level: 6, xp: 0 } },   /* v2.3.3111: the Tea asks Cooking 6 (cooking.js) */
 };
 drink('only', 'swiftDraught');
 check('the Swift Draught is running (guard)',

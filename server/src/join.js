@@ -1228,7 +1228,7 @@ export const joinMethods = {
        the dialog opens straight onto a filled board instead of an empty one
        that fills a beat later. */
     this._aceBoardSend(msg.id);
-    /* v2.3.3102: the farm, if this player has one -- how many beds are ripe,
+    /* v2.3.3111: the farm, if this player has one -- how many beds are ripe,
        on the worker's clock, so the game can say so without the window being
        opened (farm.js _farmOnJoin; never creates a farm, never throws). */
     await this._farmOnJoin(msg.id);

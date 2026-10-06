@@ -314,9 +314,9 @@ check('...and the multiplier survives a save (it is not an expiring timer)',
    cook (no `carry`) -- the tea is made and drunk at once, in the brew slot,
    so it replaces the tonic. */
 psM.inventory = Object.assign(Object.create(null), psM.inventory, { herb_firebloom: 2 });
-psM.lifeSkills = Object.assign(psM.lifeSkills || {}, { cooking: { level: 6, xp: 0 } });   /* v2.3.3102: the Tea asks Cooking 6 (cooking.js) */
+psM.lifeSkills = Object.assign(psM.lifeSkills || {}, { cooking: { level: 6, xp: 0 } });   /* v2.3.3111: the Tea asks Cooking 6 (cooking.js) */
 room._handleCookRecipe({ id: 'buyer' }, { recipeIdx: 2 });
-/* v2.3.3102: and the herbs went -- the tonic's own damage timer satisfied
+/* v2.3.3111: and the herbs went -- the tonic's own damage timer satisfied
    the first half alone, so a refused cook passed this guard. */
 check('the meal really was cooked (or the next check is vacuous)',
   psM._buffs.damage > Date.now() && !psM.inventory.herb_firebloom, { buffs: psM._buffs, inv: psM.inventory });

@@ -1,4 +1,4 @@
-/* The farm -- v2.3.3102 (docs/specs/farm.md, docs/FARMING-PLAN.md Phase 1).
+/* The farm -- v2.3.3111 (docs/specs/farm.md, docs/FARMING-PLAN.md Phase 1).
  *
  * Owner: "mechanics similar to the old FarmVille game where you have to wait
  * to harvest and each has a wait time different depending on what it is.
@@ -408,7 +408,7 @@ function ws2Ref() {
     && P._buffs.rest > Date.now() + 29 * 60000, { inv: P.inventory, buffs: P._buffs });
 }
 
-// ── 12. the bed turns before anything is paid (v2.3.3102, review) ──
+// ── 12. the bed turns before anything is paid (v2.3.3111, review) ──
 {
   const PD = 'bp_farm_d';
   const wsD = fakeWs();
@@ -459,7 +459,7 @@ function ws2Ref() {
     { t1: t1 && t1.did, t2: t2 && t2.did, inv: pD.inventory });
 }
 
-// ── 13. a character restart takes the farm with it (v2.3.3102, review) ──
+// ── 13. a character restart takes the farm with it (v2.3.3111, review) ──
 {
   const PR = 'bp_farm_r';
   const wsR = fakeWs();
@@ -481,7 +481,7 @@ function ws2Ref() {
     && v.plots.length === FARM.FREE_BEDS && v.plots.every((p) => p.s === 'rough'), v);
 }
 
-// ── 14. a newer worker's record is left alone (v2.3.3102, review) ──
+// ── 14. a newer worker's record is left alone (v2.3.3111, review) ──
 {
   const PN = 'bp_farm_n';
   const wsN = fakeWs();
