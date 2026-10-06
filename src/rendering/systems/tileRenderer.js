@@ -705,7 +705,7 @@ export class TileRenderer {
       this._isImageZone = true;
       /* v2.3.2943: `?trial=wheel` lays its ground from the swatches instead */
       this._chunkGround = worldTrialMode() === 'wheel'
-        ? new WheelGround(this.tileContainer)
+        ? new WheelGround(this.tileContainer, this.app)   /* v2.3.3076: + the app, to upload each piece as it is placed */
         : new ChunkGround(this.tileContainer);
       return;
     }
@@ -1942,6 +1942,13 @@ export class TileRenderer {
 
   destroy() {
     _liveTileRenderers.delete(this);
+    /* v2.3.3074: and the Wheel's streamed ground.  A zone change freed it
+       (rebuild, above); a renderer rebuilt after a black screen did not, and
+       the module's 'got' listeners (wheelTrial _gotFns) kept the old one alive
+       with every piece's pixels and its water: ~30 MB a rebuild (TRAPS §139).
+       `keepTrial`: the player has not LEFT the Wheel -- the new renderer lays
+       the ground again at once -- so its loading gate must not re-arm. */
+    if (this._chunkGround) { try { this._chunkGround.destroy({ keepTrial: true }); } catch (e) { /* ignore */ } this._chunkGround = null; }
     for (const sp of this._portalBeams) { try { sp.destroy(); } catch (e) {} }
     this._portalBeams = [];
     this.portalLayer.removeChildren();
