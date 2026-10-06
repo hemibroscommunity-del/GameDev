@@ -66,6 +66,7 @@ import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 import { playVw, playVh, playIsLandscape } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape */
 import { dashMinBus } from './dashMinBus.js';
+import { startGearFlash } from './gearFlash.js';   /* v2.3.3049: the first quest's gear flashes until it is on */
 import { stampSheetH, unstampSheetH } from './sheetStamp.js'; /* v2.3.2197: one --sheet-h formula, shared with resize() + the watchdog */ /* v2.3.2119: fold the band to the identity row */
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
@@ -565,6 +566,10 @@ const RAIL_ITEMS = [
    states now (files deleted; git history has them). */
 
 export const BottomDashboard = () => {
+  /* v2.3.3049: OPEN, then the sword and the shield (then the bow and the
+     staff) flash until worn -- the owner's first-quest flashes (gearFlash.js).
+     Mounted with the band, which is on screen for the whole of play. */
+  useEffect(() => startGearFlash(() => (typeof window !== 'undefined' && window._gameState) ? window._gameState.current : null), []);
   const [, force] = useState(0);
   const [tooltip, setTooltip] = useState('');
   const dashRef = useRef(null);

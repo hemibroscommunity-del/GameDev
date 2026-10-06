@@ -23,9 +23,9 @@
  * all exactly 0).  A body stat therefore reports no DPS change, which is a
  * real answer to "should I put it here" rather than a gap in the tooltip.
  */
-import { calcDisplayDps, getActiveWeapon, weaponForCat } from '../../../data/gameSystems.js';
+import { calcDisplayDps, getActiveWeapon, weaponForCat, recalcDerived /* v2.3.3050 */, toDisplayHp /* v2.3.3050 */ } from '../../../data/gameSystems.js';
 import { PROG3, PROG3_LEGACY_ATK, PROG3_LINEAR, prog3Pts, prog3AtkPts, prog3IsAtkStat, isProg3XEnabled,
-  isProg3RelEnabled, prog3StatAmount, prog3Curve /* v2.3.2680: the curve */ } from '../../../data/prog3.js';
+  isProg3RelEnabled, prog3StatAmount, prog3Curve /* v2.3.2680: the curve */, prog3Live /* v2.3.3050 */ } from '../../../data/prog3.js';
 
 /* The weapon a DPS readout should speak for.
  *
@@ -101,6 +101,42 @@ export function withPoints(R, stat, cat, n) {
   } catch (e) { return null; }
 }
 
+/* ═══ v2.3.3050: A POOL'S POINT READS AS THE POOL'S NEW TOTAL ═══
+   Owner: "Max hp in the stat confirmation preview window is showing 48hp for
+   6 points but the preview animation shows the character with 37/37 points for
+   HP if allocated those 6 points (I spent the points and it was actually
+   37)."  The window's row printed statTotal -- the POINTS' bonus (6 x 8 = 48)
+   -- and in the worker's raw HP, while the scene beside it (and every bar in
+   the game) shows the TOTAL in display HP: floor(100 + 6 x level + 8 x pts),
+   shown ceil(/5).  A level-6 character: 136 raw (28) now, 184 raw (37) after.
+   So the three pool stats -- Max HP, Stamina, Max Mana -- read the pool
+   itself, through recalcDerived on a COPY (the mirror of the worker's
+   _prog3Recompute every echo is measured against), HP in display units, as
+   the bar does.  `pooled`/`derivedInPlace` moved here from statSim.js so the
+   window and the scene share one copy of the arithmetic. */
+export const POOL_STAT = { hp: 'maxHp', stam: 'maxStamina', mana: 'maxMana' };
+
+/** recalcDerived on a copy the caller already owns, in place. */
+export function derivedInPlace(c) {
+  if (c && prog3Live(c)) { try { recalcDerived(c); } catch (e) { /* keep the copy as it was */ } }
+  return c;
+}
+/** The derived pools of a COPY of R -- the live character is never touched. */
+export function pooled(R) {
+  if (!R) return R;
+  let c;
+  try { c = JSON.parse(JSON.stringify(R)); } catch (e) { return R; }
+  return derivedInPlace(c);
+}
+/** A pool's total as the game SHOWS it: HP in display units (the bars'
+ *  toDisplayHp), stamina and mana as the bars print them. */
+export function poolShown(stat, R) {
+  const key = POOL_STAT[stat];
+  const v = R && key ? Number(R[key]) : NaN;
+  if (!isFinite(v)) return null;
+  return stat === 'hp' ? toDisplayHp(v) : Math.round(v);
+}
+
 /* v2.3.2979: is `stat` already at the most this worker will let it hold?
    (The [+]'s own refusal is prog3StatCap -- the per-level bound -- and the
    window says so; this is the stat's hard ceiling, which is what decides
@@ -156,10 +192,17 @@ export function previewStatPoint(R, stat, cat, n) {
   const dpsNow = wpn ? calcDisplayDps(R, wpn) : null;
   const dpsAfter = wpn ? calcDisplayDps(after, wpn) : null;
 
+  /* v2.3.3050: a pool stat's pair is the POOL, now -> after (above) */
+  const isPool = !isAtk && Object.prototype.hasOwnProperty.call(POOL_STAT, stat);
+  const poolNow = isPool ? poolShown(stat, pooled(R)) : null;
+  const poolAfter = isPool ? poolShown(stat, derivedInPlace(after)) : null;
+  const usePool = isPool && poolNow != null && poolAfter != null;
   return {
     capped,
-    statNow: statTotal(pts, cfg, stat),
-    statAfter: statTotal(pts + step, cfg, stat),
+    statNow: usePool ? poolNow : statTotal(pts, cfg, stat),
+    statAfter: usePool ? poolAfter : statTotal(pts + step, cfg, stat),
+    /* v2.3.3050: true when the pair is a pool's whole total (print it whole) */
+    pool: usePool,
     /* v2.3.2592: LUCK buys two things per point, and a rate cannot answer
        "what will my crit damage BE" any more than it could for the chance —
        so the second half rides along as its own now/after pair, and the ℹ️

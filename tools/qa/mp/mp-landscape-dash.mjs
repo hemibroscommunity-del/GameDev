@@ -462,7 +462,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }).length;
     const text = sh.textContent || '';
     return { scrollFits: sh.scrollWidth <= sh.clientWidth + 1, wide,
-             hasStats: /OFFENSE/i.test(text) && /DEFENSE/i.test(text) && /Damage/.test(text) };
+             hasStats: /OFFENSE/i.test(text) && /PLAYER|DEFENSE/i.test(text) && /Damage/.test(text) }; /* v2.3.3053: PLAYER (owner mockup) */
   });
   rec.ok('the character view fits the skinny column — stacked, nothing clipped sideways',
     !!heroFit && heroFit.scrollFits && heroFit.wide === 0 && heroFit.hasStats, heroFit);

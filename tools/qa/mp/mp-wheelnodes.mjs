@@ -132,16 +132,21 @@ async function body({ P, wsPort, rec, OUT, errors }) {
   console.log(`    frame: ~${frame} ms in the Wheel on this box`);
 
   /* ── 2. the road leads to the nearest fishing spot ── */
-  const nearest = (type) => P.page.evaluate((t) => {
+  /* v2.3.3038: `workable` -- only a node this player's level can harvest
+     (GATHER_REQ_LVL: softwood asks Woodcutting 5), as the quest's road and a
+     tap now both go by it */
+  const nearest = (type, workable) => P.page.evaluate(([t, w]) => {
     const S = window._gameState.current, p = S.player;
+    const lv = (sk) => (((S.rpg || {}).lifeSkills || {})[sk] || {}).level || 1;
     let best = null, d = Infinity;
     for (const n of S.gatherNodes || []) {
       if (n.nodeType !== t || !n.alive) continue;
+      if (w && S._serverCaps && S._serverCaps.gatherreq && (n.reqLvl || 1) > lv(n.skill)) continue;
       const dd = Math.hypot(n.x - p.x, n.y - p.y);
       if (dd < d) { d = dd; best = { id: n.id, x: n.x, y: n.y, tier: n.gatherLvl, d: Math.round(dd) }; }
     }
     return best;
-  }, type);
+  }, [type, !!workable]);
   const road1 = await H.waitFor(P, () => (window.__btMinimap && window.__btMinimap.quest) || null, (q) => !!q && typeof q.x === 'number', { timeout: 10000, label: 'the road' }).catch(() => null);
   const spot = await nearest('fishSpot');
   rec.ok('the gold road of "Learn a Trade" leads to the nearest fishing spot',
@@ -267,17 +272,17 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     /* the road stops within 160 px of the node it leads to (questRoute.js
        GATHER_HERE_R: "you are there"), and a pond's bank may have its tree
        that close -- so step back from it first, if need be */
-    let tree = await nearest('tree');
+    let tree = await nearest('tree', true);
     if (tree && tree.d < 220) {
       const away = await P.page.evaluate(({ x, y }) => {
         const S = window._gameState.current, p = S.player, dx = p.x - x, dy = p.y - y, d = Math.hypot(dx, dy) || 1;
         return { x: x + (dx / d) * 260, y: y + (dy / d) * 260 };
       }, tree);
       await travel(P, wsPort, myId, away.x, away.y);
-      tree = await nearest('tree');
+      tree = await nearest('tree', true);
     }
     const road2 = await H.waitFor(P, () => (window.__btMinimap && window.__btMinimap.quest) || null, (q) => !!q && typeof q.x === 'number', { timeout: 8000, label: 'the road on' }).catch(() => null);
-    rec.ok('with a fish in the bag, the road moves on to the nearest tree (the quest\'s next step)',
+    rec.ok('with a fish in the bag, the road moves on to the nearest tree the player can chop (the quest\'s next step)',
       !!road2 && !!tree && road2.x === Math.round(tree.x) && road2.y === Math.round(tree.y), { road2, tree });
     /* v2.3.3012: no chop from the water -- a woodcutter has no seat to climb
        out to, and only your head is out of it.  Trees grow 72 px clear of
@@ -317,7 +322,9 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     const cx = S.camera.x + S._viewW / 2, cy = S.camera.y + S._viewH / 2;
     const reach = Math.hypot(S._viewW, S._viewH) / 2 + 320 + 400;
     const all = S.gatherNodes || [];
-    const held = all.filter((n) => (n._pixiSprite && !n._pixiSprite.destroyed) || (n._pixiTier && !n._pixiTier.destroyed));
+    /* v2.3.3040: a Wheel fishing spot has no sprite; what it holds now is its
+       label (nodeLabels.js), which replaced the old tier dot (_pixiTier) */
+    const held = all.filter((n) => (n._pixiSprite && !n._pixiSprite.destroyed) || (n._pixiLabel && !n._pixiLabel.destroyed));
     return { total: all.length, held: held.length, far: held.filter((n) => Math.hypot(n.x - cx, n.y - cy) > reach).length, wn: window.__btWheelNodes };
   });
   rec.ok(`only the nodes near the view hold a display (${cull.held} of ${cull.total})`, cull.total > 100 && cull.held > 0 && cull.held < 30 && cull.far === 0, cull);

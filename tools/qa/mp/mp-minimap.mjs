@@ -267,8 +267,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   console.log('    quest npc', JSON.stringify(quest));
   if (quest) {
+    /* v2.3.3047: + questWait, the grey '?' of a quest accepted and waiting */
     rec.ok('an NPC offering work is pinned on the map',
-      (ic.quest || 0) + (ic.questDone || 0) > 0, { census: ic, npc: quest });
+      (ic.quest || 0) + (ic.questDone || 0) + (ic.questWait || 0) > 0, { census: ic, npc: quest });
   }
 
   /* Monsters get the hostile glyph.  Town is safe, so inject one — the

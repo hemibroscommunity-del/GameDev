@@ -33,6 +33,7 @@
  * anyone debugging a first-use hitch) can verify coverage. */
 
 import { preloadLootIcons } from './lootIcons.js'; /* v2.3.2771 */
+import { preloadNodeLabelIcons } from './nodeLabels.js'; /* v2.3.3040 */
 import { preloadDailyChest } from './chestPreload.js'; /* v2.3.2820: the daily chest's claim window */
 import { variantSpritesFor, unloadVariantSprites } from './monsterVariantSprites.js';
 import { loadSlimeSprites } from './slimeSprites.js';
@@ -424,6 +425,10 @@ export async function preloadWorldAnimations() {
     /* v2.3.2771: the rare-drop icons on a monster's loot pile (lootIcons.js)
        -- a rare drop is the moment a blank first frame would be seen */
     lootIcons: preloadLootIcons(),
+    /* v2.3.3040: the tool pictures in the label over every resource
+       (nodeLabels.js) -- the bag's hatchet, pickaxe and rod, shrunk to 64 px:
+       a resource is on screen the moment the intro lifts */
+    nodeLabels: preloadNodeLabelIcons(),
     /* v2.3.2820: the daily chest strip + bag icon -- the claim window opens at
        login, right after the intro lifts (chestPreload.js). */
     dailyChest: preloadDailyChest(),

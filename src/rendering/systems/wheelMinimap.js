@@ -54,6 +54,7 @@ import { wheelOverviewLands, wheelMapInfo, wheelHere } from '@/game/wheelTrial.j
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
+import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
 
 export const WHEEL_BOX = 132;      /* CSS px a side */
 export const WHEEL_WINDOW = 3200;  /* game px across the box: about three zones */
@@ -366,6 +367,8 @@ export class WheelMinimap {
        (zoneBannerOverlay.js noteWheelLand; this frame is the one that asks
        where you are every frame) */
     try { noteWheelLand(here ? here.region : null, w ? w.title : null, S); } catch (e) { /* never breaks the frame */ }
+    /* v2.3.3058: and No man's land's banner and lines (src/game/noMansLand.js) */
+    try { noteNoMansLand(S); } catch (e) { /* never breaks the frame */ }
 
     /* the box's place on the page, for the button that opens the world map */
     try {

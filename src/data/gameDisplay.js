@@ -2463,21 +2463,19 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       _this7.beep(784, 0.5, 0.06, 'sine');
     }, 600);
   },
-  /* Whimsical death jingle */playerDeath: function playerDeath() {
-    var _this8 = this;
-    this.beep(400, 0.1, 0.12, 'square');
-    setTimeout(function () {
-      return _this8.beep(350, 0.1, 0.1, 'square');
-    }, 120);
-    setTimeout(function () {
-      return _this8.beep(300, 0.1, 0.08, 'square');
-    }, 240);
-    setTimeout(function () {
-      return _this8.beep(200, 0.2, 0.1, 'triangle');
-    }, 380);
-    setTimeout(function () {
-      return _this8.beep(100, 0.3, 0.08, 'sine');
-    }, 500);
+  /* ═══ v2.3.3042: YOUR DEATH, FROM RECORDINGS ═══
+     Owner: "Death sound effect and screen shake didn't take effect when
+     character died."  This was a five-note beep() jingle, and beep() has
+     played nothing since v2.3.1103 -- so dying was silent (SOUND-GAPS "Your
+     death").  Three layers of recordings already in the game, all in
+     SFX_MANIFEST so they are decoded at the loading gate: the blow (the
+     monster hit, slowed into a heavy thud), the game's own "lost" sting a
+     beat after it, and the bones' rattle when the body crumbles to bone
+     (deathCrumble's burst, 1.08 s after the death). */
+  playerDeath: function playerDeath() {
+    this.play('monster-hit', { vol: 0.95, rate: 0.7 });
+    this.play('flip-lose', { vol: 0.5, rate: 0.92, delay: 0.16 });
+    this.play('skeleton-death', { vol: 0.55, rate: 0.82, delay: 1.08 });
   },
   join: function join() {
     var _this9 = this;
@@ -2820,6 +2818,14 @@ BT_AUDIO.SFX_MANIFEST = {
      fish-reel: 5s steady reel loop while the fishing crank is turning. */
   'footstep-v3':      '/sfx/footstep/footstep-v3.mp3',
   'mine-strike':      '/sfx/mining/mine-strike.mp3',
+  /* v2.3.3040: the ore SPLITTING when a mining gesture completes (owner: "Add
+     cracking sound when the ore splits when user completes the gesture") --
+     the third crack of the game's own mining clip, public/minigames/mining/
+     extract-success.mp4 (2.24-2.96 s, the rock splitting open), mono, loudness
+     -16 LUFS.  Played on the break strip's split frame (effectsRenderer
+     _advanceOreBreaks).  Until now a finished vein was silent: its only cue
+     was a beep(), which has played nothing since v2.3.1103 (SOUND-GAPS). */
+  'ore-crack':        '/sfx/mining/ore-crack.mp3',
   'pan-sizzle':       '/sfx/cooking/pan-sizzle.mp3',
   'fish-reel':        '/sfx/fishing/fish-reel.mp3',
   /* v2.3.1427 (owner sounds, round 2):
