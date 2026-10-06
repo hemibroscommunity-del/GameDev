@@ -327,28 +327,39 @@ export function leftCluster(isLandscape) {
 /* ═══ v2.3.3006: THE SPRINT BUTTON, RIGHT OF THE MOVEMENT DISC ═══
  *
  * Owner: "a sprint button by the left joystick ... Maybe just to the right of
- * the left joystick" (SprintButton.jsx).
+ * the left joystick" (SprintButton.jsx).  It stood level with the movement
+ * disc's centre, LCTL_GAP clear of its right edge, until v2.3.3106.
  *
- * LEVEL WITH THE DISC'S CENTRE, the thumb's resting height -- the same height
- * Bash takes beside the attack disc (ctlColumn slot 0) -- and LCTL_GAP clear of
- * the disc's right edge.  That patch was empty: Element Burst is ABOVE the disc
- * (leftCluster), the weapon button and the bell are in the band BELOW it.
+ * ═══ v2.3.3106: ...AND NOW JUST NORTH OF THE ATTACK DISC ═══
+ * Owner: "I think it also makes sense to put the sprint button near the right
+ * joystick instead of the left maybe just north of it", and of the clash with
+ * Special and Whirlwind (which pop up above the disc in a fight, where Sprint
+ * is always on screen): "Above, fights move up".
  *
- * IT STAYS IN THE MOVEMENT HALF.  Its right edge lands at 153px in portrait and
- * 178 sideways, inside 50vw even on a 320px phone (160), so unlike ctlColumn
- * there is nothing to squeeze and it never reaches toward the attack controls.
- * Its top edge is under the disc's top, so it does not raise combatBandTopPx's
- * answer (it is listed there anyway: that list is every slot, by rule).
+ * CENTRED OVER THE DISC, RCTL_GAP clear of its top edge -- where the thumb
+ * goes when it leaves ATTACK going up.  SPRINT NEVER MOVES: the right cluster
+ * (Special, Whirlwind) makes room round it instead, a row higher upright and
+ * to its left sideways (rightCluster), and it is laid out the same whether or
+ * not Sprint is drawn (slots are keyed by control, never by what is mounted).
  *
  * The same 44px floor and the same 48/54 size as the clusters. */
+/* SIDEWAYS IT STEPS LEFT, CLEAR OF THE MINIMAP.  Found by mp-sprint: on a
+ * 390px-tall screen the Wheel's minimap (WHEEL_BOX 132 in wheelMinimap.js,
+ * flush with the right edge from 46px down) ends 34px above the disc's top,
+ * so a button centred over the disc lay under it.  Sideways Sprint's right
+ * edge is SPRINT_MAP_CLEAR in from the screen's -- the minimap's width and
+ * 8px -- still at the disc's top, up and to the left of it.  (The Special
+ * button lay under the minimap there before v2.3.3106 too.) */
+export const SPRINT_MAP_CLEAR = 132 + 8;
+
 export function sprintAnchor(isLandscape) {
   var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
-  var discW = isLandscape ? LBTN.wLand : LBTN.w;
-  var discLeft = isLandscape ? LBTN.leftLand : LBTN.left;
+  var discW = isLandscape ? RBTN.wLand : RBTN.w;
+  var centred = RBTN.right + Math.round((discW - size) / 2);
   return {
     size: size,
-    leftPx: discLeft + discW + LCTL_GAP,
-    bottomPx: Math.round(LBTN.bottom + (discW - size) / 2),
+    right: isLandscape ? Math.max(centred, SPRINT_MAP_CLEAR) : centred,
+    bottomPx: RBTN.bottom + discW + RCTL_GAP,
   };
 }
 
@@ -426,21 +437,49 @@ export function jumpAnchor(isLandscape) {
 export const RCTL_GAP = 10;         /* cluster <-> the attack disc */
 export const RCTL_SLOT = { special: 0, whirl: 1 };
 
+/* ═══ v2.3.3106: THE CLUSTER MAKES ROOM FOR SPRINT ═══
+ * Sprint took the place right above the disc (sprintAnchor), so the cluster
+ * moves -- the owner's "Above, fights move up".  Half a button of clear air
+ * from Sprint either way (RCTL_SPRINT_CLEAR), the standard mp-abilslot holds
+ * every pair here to, as a mis-press is a mis-press whichever two it is between:
+ *   UPRIGHT, one row higher: slot 0 sits half a button over Sprint's top
+ *     edge, at the disc's right margin as before, and keeps its diagonal step.
+ *     Whirlwind's top lands 322px above the band at 390 (it was 250), far
+ *     under the top bar and minimap on an 844px-tall screen.
+ *   SIDEWAYS, beside it instead: a row higher would put Whirlwind's top at
+ *     ~360px, past the 283 that v2.3.2542 rejected as "up among the health
+ *     bars" on a 390px-tall screen.  So slot 0 stands LEFT of Sprint, at
+ *     Sprint's height, half a button clear, and steps on leftward and up as
+ *     before: Whirlwind's top at 272, the height this cluster always had --
+ *     and both clear of the minimap, which Special lay under before.  Its
+ *     left edge is 356px from the screen's right edge: inside the attack half
+ *     from a 712px-wide phone up (an 844 has 66px to spare), 23px over the
+ *     middle on a 667 -- a nibble of the movement half's far edge, away from
+ *     the movement disc, which is the price of clearing the minimap. */
+export const RCTL_SPRINT_CLEAR = 0.5;   /* of a button, Sprint <-> slot 0 */
+
 export function rightCluster(isLandscape) {
   var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
-  var discW = isLandscape ? RBTN.wLand : RBTN.w;
-  /* The attack disc's top edge, in the same px-above-the-band units the whole
-     cluster is expressed in. */
-  var discTop = RBTN.bottom + discW;
+  var spr = sprintAnchor(isLandscape);
   var rise = Math.round(size * 0.55);
   var step = size + Math.round(size * LCTL_THUMB_FRAC);
+  var clear = Math.round(size * RCTL_SPRINT_CLEAR);
+  if (isLandscape) {
+    return {
+      size: size,
+      rightPx: function (slot) { return spr.right + spr.size + clear + slot * step; },
+      bottomPx: function (slot) { return Math.round(spr.bottomPx + slot * rise); },
+    };
+  }
+  /* upright: the row over Sprint */
+  var base = spr.bottomPx + spr.size + clear;
   return {
     size: size,
     /* Slot 0 hangs at the disc's own right margin; each slot steps LEFT by a
        full button plus the thumb gap, which is what guarantees the separation
        on the horizontal axis alone. */
     rightPx: function (slot) { return RBTN.right + slot * step; },
-    bottomPx: function (slot) { return Math.round(discTop + RCTL_GAP + slot * rise); },
+    bottomPx: function (slot) { return Math.round(base + slot * rise); },
   };
 }
 
@@ -514,7 +553,7 @@ export function combatBandTopPx(isLandscape) {
     l.bottomPx(LCTL_SLOT.burst) + l.size,      /* Element Burst, over the movement disc */
     c.bottomPx(CTL_SLOT.bash) + c.size,        /* Shield Bash */
     blk.bottomPx + blk.size,                   /* Block */
-    spr.bottomPx + spr.size,                   /* Sprint, right of the movement disc (v2.3.3006) */
+    spr.bottomPx + spr.size,                   /* Sprint, over the attack disc (v2.3.3006; v2.3.3106 moved it) */
     jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */
     RBTN.bottom + discR,                       /* the attack disc */
     LBTN.bottom + discL);                      /* the movement disc */
