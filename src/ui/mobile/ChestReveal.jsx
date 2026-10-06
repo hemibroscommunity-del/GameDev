@@ -27,7 +27,7 @@ import { BT_AUDIO } from '@/data/index.js';   /* v2.3.3045: the chest's sounds, 
  * waiting (the daily reward's announcement -- no chat line, v2.3.2037), and
  * from the bag's Claim button.  "Later" keeps the stack for another time.
  *
- * v2.3.3109: NOT BY ITSELF ANY MORE -- the owner found it intrusive, and the
+ * v2.3.3125: NOT BY ITSELF ANY MORE -- the owner found it intrusive, and the
  * login pays no chest now (the day's reward is the Gambling Den's free spin,
  * DailySpin.jsx).  It opens only from the bag, for a chest still held. */
 const listeners = new Set();
@@ -48,7 +48,7 @@ export const chestRevealBus = {
   show(p) { this.prize(p); },
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 };
-/* v2.3.3109: QA handle -- the very call the bag's Open makes (ItemDetailPopup
+/* v2.3.3125: QA handle -- the very call the bag's Open makes (ItemDetailPopup
    onOpenChest), now the window's only way open (mp-polish). */
 try { if (typeof window !== 'undefined') window.__btChestOpen = (claimNow) => chestRevealBus.open(claimNow !== false); } catch (e) { /* probe only */ }
 
@@ -117,7 +117,7 @@ export const ChestReveal = () => {
   useEffect(() => { warmPrizeIcons(); return chestRevealBus.subscribe(setBus); }, []);
   useEffect(() => () => clearTimers(), []);
 
-  /* ═══ v2.3.3109: NO LOGIN OFFER ANY MORE ═══
+  /* ═══ v2.3.3125: NO LOGIN OFFER ANY MORE ═══
      Owner, 2026-10-06: "Personally I find the login page with the chest
      intrusive ... You can remove the daily chest and just do the gambling
      spin like I said."  The window used to open by itself once per session

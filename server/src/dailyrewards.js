@@ -1,4 +1,4 @@
-/* ═══ v2.3.3109: DAILY REWARDS — a free spin, three daily quests, a season ═══
+/* ═══ v2.3.3125: DAILY REWARDS — a free spin, three daily quests, a season ═══
  *
  * Owner, 2026-10-06, with a brief on what works in top-grossing games: "a
  * layered system: a small reward just for logging in, daily quests that get
@@ -97,7 +97,7 @@ export const DAILY = {
 
   SPIN: {
     /* The lump sums the spin lands on, with their weights out of 1,000.
-       Sized against the economy as it stands (v2.3.3109): a monster drops ~5
+       Sized against the economy as it stands (v2.3.3125): a monster drops ~5
        gold at level 1 and ~13 at 30, an hour of fighting earns ~1-2k, the
        forge's weapon tiers cost 8-120 gold to level 30.  So most spins are a
        snack, 1 in 25 is a thousand or more, and 1 in 1,000 is the jackpot:

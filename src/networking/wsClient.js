@@ -17,7 +17,7 @@
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
-import { applyRewardsState, applyDailyProgress } from '@/game/dailyRewards.js'; /* v2.3.3109: the free spin, daily quests, the season */
+import { applyRewardsState, applyDailyProgress } from '@/game/dailyRewards.js'; /* v2.3.3125: the free spin, daily quests, the season */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
@@ -1490,7 +1490,7 @@ export function setupWebSocket(ctx) {
               if (msg.payload) applyNmlLoss(S, msg.payload, saveRpgSoon);
               break;
             }
-          /* v2.3.3109: the daily rewards (server dailyrewards.js) -- the free
+          /* v2.3.3125: the daily rewards (server dailyrewards.js) -- the free
              spin's result, the day's quests and the season, and a quest's count
              going up.  The worker has already paid; the player_state echo
              carries the coins.  These only feed the panels and the toasts. */
@@ -4167,7 +4167,7 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
-        /* v2.3.3109: the daily rewards' four asks (dailyRewards.js) ->
+        /* v2.3.3125: the daily rewards' four asks (dailyRewards.js) ->
            dailyrewards.js.  TRAPS #18: a type this allowlist does not name never
            leaves the browser, and the Spin button would turn a wheel nothing
            answers. */

@@ -235,7 +235,7 @@ export const tickMethods = {
           this._opPruneMaybe(nowJp).catch(() => {});
           this._metricsMaybe(nowJp).catch(() => {});
         }
-        /* v2.3.3109: the daily quests' counted progress is written here at
+        /* v2.3.3125: the daily quests' counted progress is written here at
            most every 30 s, and a room busy across midnight (UTC) turns its
            players' day over (dailyrewards.js; self-gated to every 10 s, and
            it touches only the records of players online) */

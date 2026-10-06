@@ -1,4 +1,4 @@
-# Daily rewards: a free spin, three daily quests, a season (v2.3.3109)
+# Daily rewards: a free spin, three daily quests, a season (v2.3.3125)
 
 > Owner, 2026-10-06, with a brief on what works in top-grossing games: *"a
 > layered system: a small reward just for logging in, daily quests that get

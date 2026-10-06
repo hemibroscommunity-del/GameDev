@@ -1,4 +1,4 @@
-/* ═══ THE DAILY REWARDS, ON A PHONE (v2.3.3109) ═══
+/* ═══ THE DAILY REWARDS, ON A PHONE (v2.3.3125) ═══
  *
  * Owner, 2026-10-06: a layered daily system (a reward for coming back, daily
  * quests, a season track), then: "Personally I find the login page with the

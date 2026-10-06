@@ -1,4 +1,4 @@
-/* The daily rewards -- v2.3.3109 (server/src/dailyrewards.js).
+/* The daily rewards -- v2.3.3125 (server/src/dailyrewards.js).
  *
  * Owner: "a layered system: a small reward just for logging in, daily
  * quests that get people playing, and both feeding a longer progression
@@ -106,7 +106,7 @@ const paidSpin = (w) => w.sent.filter((m) => m.type === 'inbox_delivered').flatM
   check('spinPick reads the weights', spinPick(0) === 0 && spinPick(AT(3)) === 3 && spinPick(0.9995) === 7 && spinPick(0.99999999) === 7
     && PRIZES.every((p, i) => spinPick(AT(i)) === i));
   const ev = PRIZES.reduce((t, p) => t + p.coins * p.w, 0) / W_TOTAL;
-  check('a spin pays 144 on average (the economy\'s size, v2.3.3109)', ev === 144, ev);
+  check('a spin pays 144 on average (the economy\'s size, v2.3.3125)', ev === 144, ev);
   check('double or nothing is the owner\'s fair coin, under a house limit', DAILY.SPIN.DOUBLE_CHANCE === 0.5
     && DAILY.SPIN.POT_MAX === 100000 && spinLump(PRIZES[7].coins, spinMult(7)) * 2 <= DAILY.SPIN.POT_MAX);
   check('a tier needs its stars', tierNeed(1) === DAILY.SEASON.STARS_PER_TIER && tierNeed(25) === 25 * DAILY.SEASON.STARS_PER_TIER);
