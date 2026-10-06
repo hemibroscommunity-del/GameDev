@@ -15,6 +15,9 @@
  * SIGNPOST_SHOW_FADE: the owner wants the screen quiet ("I just don't want
  * the screen to be too busy with text").
  *
+ * v2.3.3080: and each plate ends in the levels its land holds, "Lv 1–20"
+ * (WHEEL_LAND_LEVELS), the owner's yes to "Show levels on the signposts?".
+ *
  * The eight icons are loaded behind the Wheel's own loading screen
  * (preloadAnimations.js preloadZoneAssets -> loadSignpostIcons) -- the same
  * files the top bar and the banner show, each drawn down to ICON_PX on a
@@ -25,11 +28,14 @@
  */
 import { Container, Graphics, Sprite, Text, TextStyle, Texture, CanvasSource } from 'pixi.js';
 import { WHEEL_LAND_LOOK, WHEEL_LANDS } from '../data/wheelLands.js';
-import { WHEEL_GATE_ROADS, gateOf, SIGNPOST_TOWN_R, SIGNPOST_SHOW_R, SIGNPOST_SHOW_FADE } from '../data/wheelSignposts.js';
+import { WHEEL_GATE_ROADS, gateOf, SIGNPOST_TOWN_R, SIGNPOST_SHOW_R, SIGNPOST_SHOW_FADE, landLevelsText } from '../data/wheelSignposts.js';
 
 const ICON_PX = 64;                   /* the icons' canvas, px a side */
 const PLATE_H = 40, PLATE_R = 9, PAD_L = 10, PAD_R = 14, GAP = 7, STACK = 7;
 const ARROW_W = 22, ICON_W = 28, NAME_PX = 22;
+/* v2.3.3080: the levels the land holds, after its name ("Lv 1–20"): smaller,
+   in the plate's brass, so the land's name stays what you read first */
+const LEVEL_PX = 17, LEVEL_GAP = 12, C_LEVEL = 0xe3cf98;
 const ABOVE = 168;                    /* world px from the post's foot to the lower plate's bottom: over its picture (~150 tall) */
 const C_PLATE = 0x111e23, C_RIM = 0xd8aa58, C_KEY = 0x0b161b, C_ARROW = 0xeac675;
 
@@ -135,23 +141,29 @@ export class WheelSignposts {
       fontFamily: 'Source Sans 3, sans-serif', fontSize: NAME_PX, fontWeight: '800', fill: lift(look.color),
     }) });
     name.anchor.set(0, 0.5);
+    const lv = new Text({ text: landLevelsText(), resolution: 2, style: new TextStyle({
+      fontFamily: 'Source Sans 3, sans-serif', fontSize: LEVEL_PX, fontWeight: '700', fill: C_LEVEL,
+    }) });
+    lv.anchor.set(0, 0.5);
+    lv.y = 1;
     let icon = null;
     if (_icons[land]) {
       icon = new Sprite(_icons[land]);
       icon.anchor.set(0.5);
       icon.width = ICON_W; icon.height = ICON_W;
     }
-    const w = PAD_L + ARROW_W + GAP + (icon ? ICON_W + GAP : 0) + Math.ceil(name.width) + PAD_R;
+    const w = PAD_L + ARROW_W + GAP + (icon ? ICON_W + GAP : 0) + Math.ceil(name.width) + LEVEL_GAP + Math.ceil(lv.width) + PAD_R;
     bg.roundRect(-w / 2 - 1.5, -PLATE_H / 2 - 1.5, w + 3, PLATE_H + 3, PLATE_R + 1.5).fill({ color: C_KEY, alpha: 0.9 })
       .roundRect(-w / 2, -PLATE_H / 2, w, PLATE_H, PLATE_R).fill({ color: C_PLATE, alpha: 0.94 }).stroke({ width: 2, color: C_RIM, alpha: 0.85 });
     let x = -w / 2 + PAD_L;
     arrow.x = x + ARROW_W / 2; x += ARROW_W + GAP;
     if (icon) { icon.x = x + ICON_W / 2; x += ICON_W + GAP; }
-    name.x = x;
+    name.x = x; x += Math.ceil(name.width) + LEVEL_GAP;
+    lv.x = x;
     c.addChild(bg, arrow);
     if (icon) c.addChild(icon);
-    c.addChild(name);
-    c._sp = { land, name: name.text, w, icon: !!icon, rot: arrow.rotation };
+    c.addChild(name, lv);
+    c._sp = { land, name: name.text, lv: lv.text, w, icon: !!icon, rot: arrow.rotation };
     return c;
   }
 
