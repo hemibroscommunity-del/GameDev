@@ -10,7 +10,7 @@
  *   ZONES              <-> src/data/zones.js (level bands MUST match)
  *   FISH_TIERS         <-> src/data/lifeSkills.js FISHING_TIERS
  *   COOKING_RECIPES    <-> src/data/gameSystems.js (index order matters)
- *   DISHES             <-> src/data/gameSystems.js DISHES (v2.3.3105)
+ *   DISHES             <-> src/data/gameSystems.js DISHES (v2.3.3114)
  *   SHOP_ITEMS         <-> src/ui/panels/buildings/VendorPanel.jsx
  *                          (v2.3.1151: pointer fixed -- the vendor table
  *                          moved out of BroTown.jsx in the v2.3.882
@@ -430,12 +430,12 @@ export const FISH_TIERS = [
       { lvl: 21, name: 'pike' },     /* v2.3.3094: ...and 31-40 */
     ];
 
-/* v2.3.3102: `cookLvl` is the Cooking level a recipe asks -- the window's
+/* v2.3.3111: `cookLvl` is the Cooking level a recipe asks -- the window's
    lock (gameSystems.js) and, now, the worker's gate (cooking.js
    _handleCookRecipe; mirror-audit keeps the two equal).  It only ever held on
    the client, which was moot while nothing could make these herbs; the farm
    grows them. */
-/* ═══ v2.3.3105: A RECIPE MAKES SOMETHING YOU CARRY ═══
+/* ═══ v2.3.3114: A RECIPE MAKES SOMETHING YOU CARRY ═══
  * Farming plan, Phase 2 (docs/FARMING-PLAN.md, "What farming pays"): a cook
  * used to apply its buff on the spot; now it puts `makes` in the bag, to eat
  * or drink when you want it, trade, or list on the auction house -- so a
@@ -445,8 +445,8 @@ export const FISH_TIERS = [
  *
  * THE INDEX IS THE WIRE KEY (cook_recipe {recipeIdx}), so rows are APPENDED,
  * never reordered: 0-2 are the original three, 3-5 the tonics Diego no longer
- * sells (DIEGO_SHELF), 6-7 the potato's and pumpkin's dishes (v2.3.3106), 8 the
- * Stamina Tonic (v2.3.3107).  Rows 0-2 have no instant effect of their own any more
+ * sells (DIEGO_SHELF), 6-7 the potato's and pumpkin's dishes (v2.3.3115), 8 the
+ * Stamina Tonic (v2.3.3116).  Rows 0-2 have no instant effect of their own any more
  * -- an OLD client's cook (no `carry`) gets the dish applied at once, which is
  * what it predicted, only longer.  The client's mirror keeps its old
  * buff/power/duration for the one case it still needs them: a new client in
@@ -455,7 +455,7 @@ export const COOKING_RECIPES = [
       { ingredients: { herb_firebloom: 1 },                          tier: 1, cookLvl: 1,  makes: 'meal_herb_bread' },
       { ingredients: { herb_rock_vine: 1, herb_cloudpetal: 1 },      tier: 1, cookLvl: 3,  makes: 'meal_root_stew' },
       { ingredients: { herb_firebloom: 2 },                          tier: 2, cookLvl: 6,  makes: 'brew_firebloom_tea' },
-      /* v2.3.3105: the three tonics, brewed from herbs (the plan's "Diego keeps
+      /* v2.3.3114: the three tonics, brewed from herbs (the plan's "Diego keeps
          his staples and loses his tonics").  The Fury Tonic is the strongest
          thing in the game a player can drink and its herb the cheapest to grow,
          so it asks the most Cooking; the other two ask Cooking 5 and herbs that
@@ -463,10 +463,10 @@ export const COOKING_RECIPES = [
       { ingredients: { herb_firebloom: 3 },                          tier: 3, cookLvl: 10, makes: 'whetstone' },
       { ingredients: { herb_rock_vine: 2 },                          tier: 3, cookLvl: 5,  makes: 'manaShard' },
       { ingredients: { herb_cloudpetal: 2 },                         tier: 3, cookLvl: 5,  makes: 'swiftDraught' },
-      /* v2.3.3106: the two food crops' dishes (FARM.CROPS potato, pumpkin). */
+      /* v2.3.3115: the two food crops' dishes (FARM.CROPS potato, pumpkin). */
       { ingredients: { crop_carrot: 2, crop_potato: 1 },             tier: 2, cookLvl: 4,  makes: 'meal_garden_stew' },
       { ingredients: { crop_pumpkin: 1, crop_potato: 2 },            tier: 3, cookLvl: 8,  makes: 'meal_pumpkin_pie' },
-      /* v2.3.3107: the STAMINA TONIC (the old Stamina Salts' key and effect,
+      /* v2.3.3116: the STAMINA TONIC (the old Stamina Salts' key and effect,
          +60 stamina at once), brewed from two carrots -- owner: "Remove all of
          Diego's potions. I want food and drink to come exclusively from
          farming and recipes."  The cheapest crop and Cooking 1, as the salts
@@ -476,7 +476,7 @@ export const COOKING_RECIPES = [
       { ingredients: { crop_carrot: 2 },                             tier: 1, cookLvl: 1,  makes: 'staminaSalts' },
     ];
 
-/* ═══ v2.3.3105: WHAT A DISH DOES ═══
+/* ═══ v2.3.3114: WHAT A DISH DOES ═══
  * One MEAL and one BREW may run at once (the plan's recommendation, Stardew's
  * food-and-drink rule): eating replaces the meal you had, drinking replaces
  * the brew, and neither touches the other.  It was one effect of any kind
@@ -487,7 +487,7 @@ export const COOKING_RECIPES = [
  * meal on top would cross it (~109%), so no meal raises damage.
  *   meal: half an hour, modest.  The Herb Bread doubles the out-of-combat
  *         healing (`power` is that multiplier, read in index.js's regen tick)
- *         under its OWN timer, `rest` -- never `regen`, which v2.3.3102's
+ *         under its OWN timer, `rest` -- never `regen`, which v2.3.3111's
  *         worker reads as 2% of max HP a second in or out of a fight: a
  *         rollback to it would have read a half-hour bread that way (review);
  *         the Root Stew takes 5% off every hit (combat.js).
@@ -500,7 +500,7 @@ export const DISHES = {
       meal_herb_bread:    { slot: 'meal', buff: 'rest',   power: 2,    duration: 1800 },
       meal_root_stew:     { slot: 'meal', buff: 'resist', power: 0.05, duration: 1800 },
       brew_firebloom_tea: { slot: 'brew', buff: 'damage', power: 0.20, duration: 1800 },
-      /* v2.3.3106: the Garden Stew is eaten like a cooked fish -- 150 HP at
+      /* v2.3.3115: the Garden Stew is eaten like a cooked fish -- 150 HP at
          once (slot 'now': no slot, it replaces nothing), refused in an arena
          match like every heal.  The Pumpkin Pie is a meal: +10% of the combat
          XP a fight pays (prog3.js _prog3AwardXp), never a quest's flat XP. */
@@ -618,7 +618,7 @@ export const SHOP_ITEMS = {
       swiftDraught:  { cost: 30, effect: 'spdBuff', duration: 180, mult: 1.5 },
     };
 
-/* ═══ v2.3.3107: DIEGO SELLS NO FOOD OR DRINK ═══
+/* ═══ v2.3.3116: DIEGO SELLS NO FOOD OR DRINK ═══
  * Owner, 2026-10-06: "Remove all of Diego's potions. I want food and drink to
  * come exclusively from farming and recipes."  So his shelf is EMPTY: the
  * Cooked Minnow and the Stamina Salts come off it as the tonics did.  The
@@ -626,10 +626,10 @@ export const SHOP_ITEMS = {
  * Stamina Tonic); a cooked minnow is what a fisher cooks.  Both stay in
  * SHOP_ITEMS -- a bottle or a fish already in a bag still drinks or eats --
  * and he still buys none of them back (shop.js heWontTrade, which since this
- * version takes in cooked fish too).  The note below is v2.3.3105's, when
+ * version takes in cooked fish too).  The note below is v2.3.3114's, when
  * the two instant items stayed.
  *
- * ═══ v2.3.3105: WHAT DIEGO SELLS IS NOT EVERYTHING HE STOCKS ═══
+ * ═══ v2.3.3114: WHAT DIEGO SELLS IS NOT EVERYTHING HE STOCKS ═══
  * The farming plan's "Diego keeps his staples and loses his tonics": under the
  * one-effect rule a 35-coin bottle of double damage beat anything a farm could
  * grow, so the three tonics come off his shelf the day the farm brews them

@@ -5,7 +5,7 @@ What the game could use from the owner next, each with a prompt ready to paste.
 - Attach what each item lists, and never the bro (docs/WORLD-BIBLE.md §6).
 - Send the result in chat, and a session fits it in: the "In the game" line says where each one goes.
 - Generated from `public/tools/style/bible.js` and the Object Studio's `promptFor` (`public/tools/objects/prompts.js`). The dungeon-entrance prompts are the studio's own.
-- **The farm's art** (seed, crop and dish icons, crops growing, beds and farm things, the Barn) has its own page: `docs/art/FARM-ART-PROMPTS.md`, with `docs/art/bag-icon-style-key.png` to attach to the icon sheets (v2.3.3107).
+- **The farm's art** (seed, crop and dish icons, crops growing, beds and farm things, the Barn) has its own page: `docs/art/FARM-ART-PROMPTS.md`, with `docs/art/bag-icon-style-key.png` to attach to the icon sheets (v2.3.3116).
 
 ## Inside the buildings
 
@@ -559,7 +559,7 @@ Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh
 
 ## The farm
 
-The Feed & Seed's farm (v2.3.3102, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
+The Feed & Seed's farm (v2.3.3111, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
 
 ### Farm goods: six bag icons
 

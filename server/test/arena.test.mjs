@@ -137,7 +137,7 @@ if (!PREMIX) {
   psA10.hp = 10; psA10.maxHp = 100;
   room._tickPlayerRegen();
   check('town HP regen gated during an arena match', psA10.hp === 10, psA10.hp);
-  /* v2.3.3107: the minnow is no longer sold (shop_purchase sells nothing:
+  /* v2.3.3116: the minnow is no longer sold (shop_purchase sells nothing:
      data.js DIEGO_SHELF), so the gate is tested where a minnow still is: a
      bottle drunk from the bag. */
   psA10.inventory = { cookedMinnow: 1 };

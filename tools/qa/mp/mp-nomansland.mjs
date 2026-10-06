@@ -10,7 +10,9 @@
  *
  * Two real players against a real worker, out on a land's Lv 6-10 ring:
  *   1. each is told: the banner ("No man's land 1"), a line in the chat, and
- *      the top bar's red line ("☠ No man's land 1 · Lv 6–10");
+ *      (v2.3.3107) the skull badge centred just above the dashboard, and
+ *      (v2.3.3108) the minimap's name plate showing the level band, the badge
+ *      carrying No man's land;
  *   2. the raider taps the wanderer: the tap AIMS (S.lockedTarget, `nml`) and
  *      opens no card;
  *   3. a swing lands (the worker's HP for the wanderer drops): the raider wears
@@ -22,6 +24,8 @@
  *      game told the worker its arm is bare (shield_wear), so the quest's
  *      Pine Shield in its bag is a spare; the bag's minnows lie in a pile
  *      that is the raider's;
+ *   3b. (v2.3.3107) the raider's badge wears their red skull, and a tap on it
+ *      opens what No man's land means, with the skull's minutes left;
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/nomansland-*.png.
  *
@@ -224,23 +228,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       t = await P.page.evaluate(() => {
         const S = window._gameState.current;
         const zb = window.__btZoneBanner;
-        const sub = document.querySelector('[data-zone-nml]');
+        /* v2.3.3108: the minimap's name plate (wheelMinimap.js _plate) */
+        const pl = window.__btMinimap && window.__btMinimap.plate;
+        const sub = pl ? { textContent: pl.sub, red: !!pl.red } : null;
+        const b = document.querySelector('[data-nml-badge]');
+        const r = b && b.getBoundingClientRect();
+        const band = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-h')) || 0;
         return {
           lvl: S._nmlLevel || 0,
           banner: zb && zb.shownAt ? zb.shownAt('nml-1') : 0,
           chat: (S.chatLog || []).filter((l) => /No man's land 1/.test(l.text || '')).map((l) => l.text),
           bar: sub ? sub.textContent : null,
+          badge: b ? { n: b.getAttribute('data-nml-badge'), text: b.textContent, mid: Math.round(r.left + r.width / 2 - innerWidth / 2),
+            gap: Math.round((innerHeight - band) - r.bottom), h: Math.round(r.height), w: Math.round(r.width) } : null,
         };
       });
-      if (t.lvl === 1 && t.banner > 0 && t.chat.length && t.bar) break;
+      if (t.lvl === 1 && t.banner > 0 && t.chat.length && t.badge) break;
       await P.page.waitForTimeout(400);
     }
     return t;
   };
   const tA = await told(A), tB = await told(B);
   for (const [who, t] of [['the raider', tA], ['the wanderer', tB]]) {
-    rec.ok(`1. ${who} is told: the banner, the chat ("${t && t.chat[0]}") and the top bar ("${t && t.bar}")`,
-      !!t && t.lvl === 1 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && /☠ No man's land 1 · Lv 6[–-]10/.test(t.bar || ''), t);
+    rec.ok(`1. ${who} is told: the banner, the chat ("${t && t.chat[0]}") and the badge (skull ${t && t.badge && t.badge.text}, ${t && t.badge && t.badge.w} px wide)`,
+      !!t && t.lvl === 1 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && !!t.badge && t.badge.n === '1' && /^\s*1\s*$/.test(t.badge.text) && t.badge.w <= 90, t);
+    rec.ok(`1. ...the badge centred on the play area's bottom edge (${t && t.badge && t.badge.mid} px off centre, ${t && t.badge && t.badge.gap} px above the dashboard), a 44 px target`,
+      !!t && !!t.badge && Math.abs(t.badge.mid) <= 2 && t.badge.gap >= 0 && t.badge.gap <= 6 && t.badge.h >= 44, t && t.badge);
+    rec.ok(`1. ...and the minimap's name plate shows the level band, the badge saying No man's land ("${t && t.bar}")`, !!t && t.bar === 'Lv 6–10', t && t.bar);
   }
   await shot(A, '1-told');
 
@@ -291,6 +305,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(1500);
   await shot(A, '3-skulls-raider');
   await shot(B, '3-skulls-wanderer');
+
+  /* ── 3b. the badge: the raider's skull on it, and a tap says what it means ── */
+  await shot(A, '3b-badge');
+  const own = await A.page.evaluate(() => {
+    const b = document.querySelector('[data-nml-badge]');
+    if (!b) return undefined;
+    const o = b.querySelector('[data-nml-own-skull]');
+    b.click();
+    return o ? o.getAttribute('data-nml-own-skull') : null;
+  });
+  await A.page.waitForTimeout(500);
+  await shot(A, '3b-info');
+  const info = own === undefined ? null : await A.page.evaluate((own) => {
+    const cur = window.__btInfoPopup && window.__btInfoPopup.current();
+    const body = document.querySelector('[data-nml-info]');
+    const note = document.querySelector('[data-infopopup-note]');
+    const out = { own, title: cur && cur.title, body: body ? body.textContent : null, note: note ? note.textContent : null };
+    if (window.__btInfoPopup) window.__btInfoPopup.close();
+    return out;
+  }, own);
+  rec.ok(`3b. the raider's badge wears their red skull (${info && info.own})`, !!info && info.own === 'red', info);
+  rec.ok(`3b. a tap on it says what No man's land means ("${info && info.title}"), with the skull's minutes ("${info && info.note}")`,
+    !!info && /No man's land 1/.test(info.title || '') && /attack/.test(info.body || '') && /red skull/.test(info.body || '') && /red skull: \d+ min/.test(info.note || ''), info);
 
   /* ── 4. the killing blow ── */
   const vit = await H.devOp(wsPort, 'vitals', idB, { heal: true, hp: 1 });

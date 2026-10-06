@@ -14,8 +14,8 @@
  * The switch case now delegates: `await this._handleJoin(...)`. */
 
 import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */ } from './migrations.js';
-import { t2ReplayFlat, COOKING_RECIPES } from './data.js';   /* v2.3.3105: caps.cookRows */
-import { FARM_CROP_IDS } from './farm.js';   /* v2.3.3106: caps.farmCrops */
+import { t2ReplayFlat, COOKING_RECIPES } from './data.js';   /* v2.3.3114: caps.cookRows */
+import { FARM_CROP_IDS } from './farm.js';   /* v2.3.3115: caps.farmCrops */
 import { prog3FromLegacy } from './prog3.js';
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
@@ -1229,7 +1229,7 @@ export const joinMethods = {
        the dialog opens straight onto a filled board instead of an empty one
        that fills a beat later. */
     this._aceBoardSend(msg.id);
-    /* v2.3.3102: the farm, if this player has one -- how many beds are ripe,
+    /* v2.3.3111: the farm, if this player has one -- how many beds are ripe,
        on the worker's clock, so the game can say so without the window being
        opened (farm.js _farmOnJoin; never creates a farm, never throws). */
     await this._farmOnJoin(msg.id);
