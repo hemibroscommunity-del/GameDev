@@ -23,6 +23,7 @@ leak on both.
   and each worker's JS heap and ArrayBuffers -- and a tour of the eight lands,
   twice, to see what does not come back.
 - `mp-bakeleak` (v2.3.3074): three renderer rebuilds and eight designer strokes.
+- `mp-membudget` (v2.3.3101): the budget on every PR -- see "Keeping it" below.
 - Heap snapshots of an UNMINIFIED build (`npx vite build --minify false
   --outDir <dir>`, served with `QA_DIST=<dir>`) say WHO holds a leaked object;
   that is how the rebuild leak's holders were found (TRAPS §139).
@@ -215,6 +216,67 @@ higher after the laps: the pictures #824 keeps on the chip only stay there
 (the font's pages among them, which main's GPU collector would unload when
 idle and upload again from the page's copy), where main holds them in the
 page instead.  `memledger` 7/7 on the combined build.
+
+## Keeping it (v2.3.3101)
+
+Owner, 2026-10-06: *"if I add new features going forward how do I know I won't
+ruin the memory saving system?"* -- and, to a budget on every PR, a rule for
+every session and the tour on a button, *"Yes all 3"*:
+
+1. **A budget, checked on every PR** -- `mp-membudget`, the `memory-budget`
+   check (`.github/workflows/memory.yml`, beside `playable`).  A phone in the
+   Wheel's BroTown, at a fight at the Flame Fields' inner end (where the
+   owner's screen went black) and home again, three times.  Each kind of
+   memory's highest reading must stay within its line in
+   `tools/qa/mp/memory-budget.mjs`, and the third trip must end where the
+   second did.  The GPU is also read "a minute later" (Pixi's own collector
+   run on everything not drawn in the last 2 s), which is the figure the
+   trip-over-trip check uses.  The lines, set on main with all twelve:
+
+   | line | what it is | highest of 6 runs | budget |
+   |---|---|---|---|
+   | `artCache` | pictures loaded from files, decoded (at the fight, the monsters' looks in) | 169.4 MB | 178 MB |
+   | `gpu` | textures on the graphics chip, with what was drawn in the last minute | 135.4 MB | 145 MB |
+   | `canvases` | pictures the game draws itself | 89.9 MB | 96 MB |
+   | `sound` | sound decoded into memory | 26.0 MB | 30 MB |
+   | `heap` | the page's JavaScript objects | 27.5 MB | 32 MB |
+   | `buffers` | the page's raw data buffers (~2 MB swings at a fight) | 12.8 MB | 16 MB |
+   | `workers` | the background workers (the ground builder) | 30.5 MB | 36 MB |
+
+   Trip over trip (the third home again against the second) a line may grow
+   by at most: the GPU (settled) and the workers 4 MB, the heap, the art, the
+   canvases and the buffers 3, the sound 1 -- measured: +1.0, +2.0, +0.8 and
+   0 for the rest.  The first two trips fill caches that then hold: the GPU's
+   canvases +2.3 MB on the first and +5.1 on the second (text and hit-chip
+   pages), nothing on the third.
+
+   A feature that really needs more memory raises its line in the same PR and
+   says in the PR, in plain words, how many MB and why; a saving lowers a line
+   and locks itself in.  What it caught, on purpose, on this build:
+   - `?gpucopies` (the canvases v2.3.3088 lets go of, kept): `canvases` 114.7
+     MB against 96 -- red;
+   - `?musicdecode` (the music decoded, as before v2.3.3073): `sound` 88.8 MB
+     against 30 -- red;
+   - the page made to keep one 4 MB canvas after every fight (a scratch run):
+     the third trip ended 4 MB above the second -- red, and by the third fight
+     `canvases` was over its line too;
+   - main as it is: green, six runs out of six, ~3.3 min each.
+
+2. **The rule** -- CLAUDE.md, Conventions, "Memory is budgeted": art freed on
+   leaving, pictures the game draws itself kept on the chip only when nothing
+   reads them back (`keepOnGpuOnly`), long sounds through the music deck,
+   anything made per zone, land, fight or rebuild destroyed when it goes, and
+   how to raise a line.
+
+3. **The tour on a button** -- GitHub, Actions, "Memory", Run workflow: the
+   budget and `mp-memledger` (the eight lands twice), the readings kept as
+   downloadable files (`membudget.json`, `memledger.json`).
+
+What the check does not see: an iPhone's own numbers (it is headless
+Chromium -- the crash feed's memory snapshot is the field's figure); the
+places its trip does not go (dungeons, the farm, the other seven lands -- the
+tour covers the lands); and a screen of a feature's own that the trip never
+opens.
 
 ## How we know it worked
 
