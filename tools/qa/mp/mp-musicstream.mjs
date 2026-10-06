@@ -12,7 +12,8 @@
  *      it is decoded (no music-length AudioBuffer alive), where `?musicdecode`
  *      holds tens of MB of it (the saving, measured);
  *   2. a zone with a track takes the deck (frost.mp3), up to its level; a zone
- *      with none hands it back to the session track; town's again after;
+ *      with none hands it back to the session track; with the Wheel's land
+ *      watch back on (v2.3.3064), Brotown's track again;
  *   3. the track loops at its end and plays on;
  *   4. the mute and the music slider still silence it (the music bus);
  *   5. a rebuilt AudioContext (the iOS recovery path) gets a deck of its own,
@@ -94,16 +95,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
       hp.music === 0 && hp.nm === 0 && d1 && d1.decoded.global === false && d1.decoded.zones === 0 && hb.music >= 20 && bd.stream === false, { hp, hb, bd });
     await B.ctx.close().catch(() => {});
 
-    /* 2 */
-    await P.page.evaluate(() => BT_AUDIO.startZoneAmbient('frost'));
+    /* 2 -- asked for directly.  The Wheel's land watch (game/wheelMusic.js,
+       v2.3.3064) puts the land's own track back on every frame it is not
+       playing, so it is turned off for these asks, as `?nolandmusic` does;
+       mp-landmusic walks the lands with the deck as it is. */
+    await P.page.evaluate(() => { BT_AUDIO.wheelLandMusic = false; BT_AUDIO.startZoneAmbient('frost'); });
     const d2 = await waitDeck(P, (v) => v.cur && /frost\.mp3/.test(v.cur.url) && !v.el.paused && v.gain > 0.03, 8000);
     rec.ok(`a zone with a track takes the deck: ${d2 && d2.cur.url}, up to its level (${d2 && d2.gain})`, !!d2 && d2.zone && /frost\.mp3/.test(d2.zone), d2);
     await P.page.evaluate(() => BT_AUDIO.startZoneAmbient('wheel'));
     const d3 = await waitDeck(P, (v) => v.cur && /login-theme\.mp3/.test(v.cur.url) && !v.el.paused && v.gain > 0.02, 8000);
     rec.ok(`...a zone with none hands it back to the session track: ${d3 && d3.cur.url} (gain ${d3 && d3.gain}, ducked ${d3 && d3.ducked})`, !!d3 && d3.zone === null && d3.ducked === false, d3);
-    await P.page.evaluate(() => BT_AUDIO.startZoneAmbient('town'));
-    const d4 = await waitDeck(P, (v) => v.cur && /village\.mp3/.test(v.cur.url) && !v.el.paused && v.gain > 0.03, 8000);
-    rec.ok(`...and the town's track again: ${d4 && d4.cur.url}`, !!d4, d4);
+    /* the land watch back on: Brotown's track, which it asks for itself */
+    await P.page.evaluate(() => { BT_AUDIO.wheelLandMusic = true; });
+    const d4 = await waitDeck(P, (v) => v.cur && /village\.mp3/.test(v.cur.url) && !v.el.paused && v.gain > 0.03, 12000);
+    rec.ok(`...and with the land watch back on, Brotown's track again: ${d4 && d4.cur.url}`, !!d4, d4);
 
     /* 3 */
     const dur = await waitDeck(P, (v) => v.el && v.el.dur > 0, 8000);
