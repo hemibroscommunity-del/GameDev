@@ -1256,7 +1256,10 @@ remnant to migrate server-side, not a mode to preserve.
     (`WHEEL_GATE_ROADS`, src/data/wheelSignposts.js, checked against the
     plan's roads), an arrow the way it lies, its element icon and its name in
     its colour; world-sized, on monsterUi (src/rendering/wheelSignposts.js,
-    drawn by effectsRenderer); no levels (every land starts at 1); the eight
+    drawn by effectsRenderer); since v2.3.3089 each plate ends in the levels
+    its land holds, "Lv 1–20" (`WHEEL_LAND_LEVELS`; the owner's "Yes" to
+    levels though every land reads the same; mirror-audit holds it to the
+    deepest stretch baked in wheelspawns.js); the eight
     icons drawn down to 64 px behind the Wheel's loading screen and let go on
     leaving; `mp-signposts`, test-world-core "the gate signposts":
     docs/specs/gate-signposts.md.
@@ -1277,7 +1280,7 @@ remnant to migrate server-side, not a mode to preserve.
     - the dunes' wind is let go on leaving (it was kept for the session);
       `_zoneAsks` keeps the last 16 asks for `window.__btLandMusic`;
       `?nolandmusic` is the Wheel as it was; world.mp3 NOT used for the four
-      (~25 MB more, the owner's call);
+      (~25 MB more; asked, the owner said "No", 2026-10-06);
     - window.BT_AUDIO IS set -- BroTown's `Object.assign(globalThis, ...)` of
       the data index -- despite the effectsRenderer comment saying it never is;
     - test-world-core "the lands' music", `mp-landmusic`:
