@@ -487,7 +487,7 @@ export const gatheringMethods = {
   // local-vs-server level outcomes don't drift.
   _addLifeSkillXp(ps, skill, xpAmt) {
     if (!ps.lifeSkills) ps.lifeSkills = {};
-    /* v2.3.3102: anything but an object is a fresh skill.  `!x` caught only
+    /* v2.3.3111: anything but an object is a fresh skill.  `!x` caught only
        the falsy ones, and `s.xp = ...` on `1` or 'x' THREW (strict mode) --
        the farm's harvest had already paid by then and paid again on every
        message (farm.js).  The join heals such entries now

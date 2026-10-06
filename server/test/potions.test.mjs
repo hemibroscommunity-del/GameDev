@@ -197,7 +197,7 @@ check('an absurd stored speed multiplier does not open the cap', rp.x === 1000, 
 const one = room.playerState.only = {
   z: 'meadow', hp: 100, maxHp: 100, mana: 50, maxMana: 100,
   stamina: 100, maxStamina: 100, coins: 1000,
-  inventory: Object.create(null), lifeSkills: { cooking: { level: 6, xp: 0 } },   /* v2.3.3102: the Tea asks Cooking 6 (cooking.js) */
+  inventory: Object.create(null), lifeSkills: { cooking: { level: 6, xp: 0 } },   /* v2.3.3111: the Tea asks Cooking 6 (cooking.js) */
 };
 room._handleShopPurchase({ id: 'only' }, { itemId: 'swiftDraught' });
 check('the Swift Draught is running (guard)',
@@ -225,7 +225,7 @@ one.inventory = Object.assign(Object.create(null), one.inventory,
 room._handleCookRecipe({ id: 'only' }, { recipeIdx: allIdx });
 check('eating a cooked meal ends the potion that was running',
   !room._buffActive(one, 'mana') && one._buffs.manaFlat === undefined, one._buffs);
-/* v2.3.3102: the meal now STATES its strength -- 1 + its recipe's power,
+/* v2.3.3111: the meal now STATES its strength -- 1 + its recipe's power,
    Firebloom Tea's x1.20 (cooking.js) -- where it used to leave damageMul
    unset and lean on the combat reader's 1.20 default.  Same number; the
    point of this check is unchanged: not the tonic's x2. */

@@ -29,7 +29,7 @@ import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the sho
 import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the trade */
 import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
 import { DAILY_CHEST_ICON } from '@/rendering/chestPreload.js';   /* v2.3.2820 */
-import { FARM_ITEM_NAMES, farmLookFor } from '@/data/farmCrops.js';   /* v2.3.3102: the farm's goods */
+import { FARM_ITEM_NAMES, farmLookFor } from '@/data/farmCrops.js';   /* v2.3.3111: the farm's goods */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -262,7 +262,7 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   staminaSalts: 'Stamina Salts',
   daily_chest: 'Daily Chest',   /* v2.3.2820: the daily login reward (server dailychest.js) */
   bar_copper: 'Copper Bar',     /* v2.3.2822: prettyName would say "Bar Copper" (server smelting.js) */
-  /* v2.3.3102: seeds, crops and compost (server farm.js) -- prettyName would
+  /* v2.3.3111: seeds, crops and compost (server farm.js) -- prettyName would
      say "Seed Carrot" and "Herb Firebloom" */
   ...FARM_ITEM_NAMES,
   bar_iron: 'Iron Bar',         /* v2.3.3092 */
@@ -334,7 +334,7 @@ export const iconFor = (key) => {
      (UI-BIBLE icon prompts) -- the same honest placeholder the ticket had. */
   if (isChestKey(key)) return '\uD83C\uDF81';
   const k = (key || '').toLowerCase();
-  /* v2.3.3102: the farm's goods, by exact key and above the herb pattern
+  /* v2.3.3111: the farm's goods, by exact key and above the herb pattern
      below, which would draw every herb the same leaf -- a seedling for a
      seed, each crop its own glyph, a worm for compost (data/farmCrops.js).
      Glyphs until crop art is made, the daily chest's honest placeholder. */
