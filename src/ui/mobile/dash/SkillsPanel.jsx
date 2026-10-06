@@ -8,7 +8,8 @@ import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, n
 /* v2.3.1224: roster corrected to the canonical 10 LIFE_SKILLS (owner
    directive).  v2.3.1286 (nav-system): 3-column card grid on the shared
    roster; XP CURVE FIX — progress uses skillXpRequired (items.js,
-   500·1.08^(level-1)), the exact award curve.
+   500·1.08^(level-1); 1000·1.08^(level-1) since v2.3.3081), the exact award
+   curve.
    v2.3.1312 (owner lifeskills spec):
    - The roster sits under two subtle section labels — GATHERING
      (Woodcutting, Fishing, Mining, Farming, Trapping) and CRAFTING

@@ -87,9 +87,10 @@ const smith = () => (ps().lifeSkills && ps().lifeSkills.blacksmithing) || { leve
   check('smelt-all makes only the bars the ore pays for (23 ore -> 4 bars)',
     ps().inventory.bar_copper === 4 && ps().inventory.ore_copper_ore === 3, ps().inventory);
   check('...and pays XP for EACH bar (4 x ' + R.xp + ')', !!r && r.payload.xp === 4 * R.xp, r && r.payload);
-  /* 1600 XP from level 1: 500 to reach 2, 540 to reach 3 -> level 3 + 560 */
-  check('...which levels Smithing (level 1 -> 3 on 1,600 XP)', smith().level === 3 && smith().xp === 560 && r.payload.leveled === true
-    && r.payload.fromLevel === 1 && r.payload.newLevel === 3, { s: smith(), p: r && r.payload });
+  /* 1600 XP from level 1: 1000 to reach 2 (v2.3.3081: every life-skill level
+     costs twice the XP; it was 500 to 2 and 540 to 3, level 3 + 560) -> level 2 + 600 */
+  check('...which levels Smithing (level 1 -> 2 on 1,600 XP)', smith().level === 2 && smith().xp === 600 && r.payload.leveled === true
+    && r.payload.fromLevel === 1 && r.payload.newLevel === 2, { s: smith(), p: r && r.payload });
 }
 
 // ── 4. Refusals ──

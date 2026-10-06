@@ -723,7 +723,13 @@ remnant to migrate server-side, not a mode to preserve.
       it by about 50%": `PROG3.XP_PER_DMG` 0.4 -> 0.2 and every quest's xp
       halved on both sides (ceil); life skills untouched (the owner's 25x):
       docs/specs/pace-and-difficulty.md, `zones` / `mirror-audit` /
-      `dungeon` suites.
+      `dungeon` suites; and since v2.3.3081 LIFE SKILLS COME HALF AS FAST TOO
+      -- asked "Should life-skill XP slow down like combat XP?", the owner:
+      "Yes": every level costs twice the XP (`LIFE_SKILL_XP_BASE` 500 -> 1000,
+      gathering.js `_lifeSkillXpThreshold` and items.js, read by
+      `skillXpRequired` and `LIFE_SKILL_XP`), every action's pay and "+n XP"
+      unchanged, no level lost (the bar reads half as far along);
+      mirror-audit "life-skill curve": pace-and-difficulty.md "Life skills".
   - Since v2.3.3014 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
     stuns briefly; storm shocks nearby players; water slows stamina refill;
     venom poisons over time", the owner: "Yes continue working on those

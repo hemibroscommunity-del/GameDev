@@ -161,6 +161,19 @@ export function gatherReqLvl(nodeType, tierLvl) {
   return Math.max(1, Math.floor(Number(need) || 1));
 }
 
+/* ═══ v2.3.3081: LIFE SKILLS LEVEL HALF AS FAST, LIKE COMBAT ═══
+ * Asked "Should life-skill XP slow down like combat XP?" (combat levels came
+ * half as fast in v2.3.3054), the owner said "Yes".  Every level of every life
+ * skill now costs TWICE the XP it did: the curve's base 500 -> 1000, its
+ * 1.08 a level unchanged.  The price, not the pay: a dozen actions pay life
+ * XP on each side (harvests, cooks, smelts, forges, the amulet bench, gems,
+ * traps, furniture, the farm), each with its "+n XP" popup, and doubling what
+ * a level costs halves the pace of all of them at once with every number
+ * players see left true.  Levels already earned are kept; the XP toward the
+ * next one is kept too, and reads half as far along.  Client mirror:
+ * LIFE_SKILL_XP_BASE in src/data/items.js (mirror-audit pins the pair). */
+export const LIFE_SKILL_XP_BASE = 1000;
+
 export const gatheringMethods = {
   // ═══ Gather nodes (trees / fish spots / ore veins) ═══
   //
@@ -455,9 +468,10 @@ export const gatheringMethods = {
   },
 
   // lifeSkill level-up threshold curve.  Mirrors LIFE_SKILL_XP on the
-  // client (lifeSkills.js): ceil(500 * 1.08^(level - 1)).
+  // client (lifeSkills.js): ceil(LIFE_SKILL_XP_BASE * 1.08^(level - 1)) --
+  // 1000 since v2.3.3081 (was 500: the owner's "Yes" to slower life skills).
   _lifeSkillXpThreshold(level) {
-    return Math.ceil(500 * Math.pow(1.08, (level || 1) - 1));
+    return Math.ceil(LIFE_SKILL_XP_BASE * Math.pow(1.08, (level || 1) - 1));
   },
 
   // Apply XP to a lifeSkill, returns { leveled, newLevel }.  Mirrors

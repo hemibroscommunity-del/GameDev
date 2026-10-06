@@ -1,4 +1,4 @@
-# Levels come half as fast, and monsters grow with their level (v2.3.3054, v2.3.3055)
+# Levels come half as fast, and monsters grow with their level (v2.3.3054, v2.3.3055, life skills v2.3.3081)
 
 From the owner's notes of 2026-10-05:
 
@@ -26,11 +26,55 @@ also too quick").
   bar moves.
 - The quest windows show the new numbers, because both tables changed and
   mirror-audit §5 checks they agree.
-- **Life skills are not changed.** The owner raised harvest XP 25x on purpose
-  ("Lifeskills xp is far too slow", twice: v2.3.1435, v2.3.1765). If life
-  skills also feel too quick (the harvest is 4x faster since v2.3.3036),
-  halving them is one number on each side: the `* 25` in gathering.js
-  `_harvestXpForTier` and in lifeSkills.js `createGatherNode`.
+- **Life skills were not changed here.** The owner raised harvest XP 25x on
+  purpose ("Lifeskills xp is far too slow", twice: v2.3.1435, v2.3.1765).
+  Asked afterwards, they chose to slow them too: see the next section.
+
+## Life skills come half as fast too (v2.3.3081)
+
+Asked *"Should life-skill XP slow down like combat XP?"*, the owner said
+*"Yes"*.
+
+**Every level of every life skill now costs twice the XP it did.** The level
+curve's base goes from 500 to 1,000, and its 8% a level is unchanged:
+
+| Level | XP to the next level, before | Now |
+|---|---|---|
+| 1 → 2 | 500 | **1,000** |
+| 2 → 3 | 540 | **1,080** |
+| 4 → 5 | 630 | **1,260** |
+| 9 → 10 | 926 | **1,851** |
+| 19 → 20 | 1,999 | **3,997** |
+
+Reaching Mining 5 (black steel's level) took 2,254 XP and now takes 4,507.
+
+**Why the price and not the pay.** Life skills earn XP in a dozen places on
+each side:
+- harvests, cooks, smelts and forges;
+- the amulet bench, gem cutting, traps, furniture and the farm.
+
+Each of those shows its own "+n XP". Combat could halve its pay, because it has
+one source and one number (`PROG3.XP_PER_DMG`). Halving a dozen pays on both
+sides would touch every one of those popups. Doubling what a level costs halves
+the pace of all of them at once, and every number a player sees stays true.
+
+**What a player sees.** No level is lost. The XP already earned toward the next
+level is kept, and since that level now costs twice as much, the bar shows
+half as far along.
+
+**Where it lives:**
+- The worker: `LIFE_SKILL_XP_BASE` in `server/src/gathering.js`, read by
+  `_lifeSkillXpThreshold`.
+- The game: `LIFE_SKILL_XP_BASE` in `src/data/items.js`, read by both client
+  copies of the curve:
+  - `skillXpRequired`, which draws the bars and predicts the level-up banner;
+  - `LIFE_SKILL_XP` in `src/data/lifeSkills.js`.
+- `mirror-audit` pins the two bases, every level from 1 to 100 on all three,
+  and the owner's numbers (1,000 for level 2, 1,080 for 3).
+
+Nothing on the wire changes, so the worker and the game can deploy in either
+order. Until both are out, the game's bar can briefly disagree with the
+worker's level. The worker's `player_state` echo wins, as always.
 
 ## Monsters grow with their level (v2.3.3055)
 
@@ -90,6 +134,12 @@ fighting is `XP_PER_DMG x your DPS`, whatever the monster's HP, so fighting
 pays half what it did, as asked.
 
 ## Tests
+
+- Life skills (v2.3.3081):
+  - `mirror-audit`, "life-skill curve" (3 checks);
+  - `lifeskills-economy` and `smelting`, moved to the new prices (1,000 XP
+    for a first level; 1,600 smelting XP is level 2 now, not 3);
+  - `mp-smelt` reads the game's own curve.
 
 - `zones.test`:
   - the flat at every pinned level;
