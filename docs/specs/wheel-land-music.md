@@ -1,4 +1,4 @@
-# Each land of the Wheel, its own music (v2.3.3060)
+# Each land of the Wheel, its own music (v2.3.3064)
 
 > Owner, 2026-10-06, on the recommendations for finding your way round the
 > Wheel: *"Continue building recommended."* Music by land was one of them.
@@ -24,7 +24,7 @@ track played across the whole world. Which track depended on how you got there:
 | the Flame Fields | `fire.mp3` |
 | the Wind Dunes | `desert.mp3`, with the dunes' wind under it |
 | the Verdant Wilds | `forest.mp3` (the old meadow's *Floral*) |
-| the Hollows, Thunder, the Tidal coast, the Mist | the game's own theme (they have no track yet) |
+| the Stone Hollows, the Electric Foundry, the Water Caves, the Poison Forest | the game's own theme (they have no track yet) |
 | the sea, or anywhere unknown | whatever was playing |
 
 The four lands with music are the four you made tracks for, the same four you
@@ -107,7 +107,7 @@ The crossfade is the zones' own 600 ms.
   (`window.__btLandMusic`):
   - before and after;
   - Brotown, Frost Ridge, a step back, the Flame Fields, the Wind Dunes and
-    their wind, the Hollows, the Verdant Wilds;
+    their wind, the Stone Hollows, the Verdant Wilds;
   - a death and the way back.
 
   On the last run, a step back across Frost Ridge's line kept its music

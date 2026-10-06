@@ -1104,7 +1104,7 @@ remnant to migrate server-side, not a mode to preserve.
       spike over where it settles), the cache's 184 -> 172; mp-gpuaudit fails
       if either trip holds the map;
     - the bigger wins and what each costs: docs/specs/memory-in-the-wheel.md.
-  - Since v2.3.3060 EACH LAND HAS ITS OWN MUSIC -- the owner, on the
+  - Since v2.3.3064 EACH LAND HAS ITS OWN MUSIC -- the owner, on the
     recommendations for finding your way round: "Continue building
     recommended":
     - the Wheel is one zone, so one track played everywhere in it: the town's

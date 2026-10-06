@@ -3247,11 +3247,11 @@ console.log("the buildings' doors (v2.3.3032)");
     && /_farmOut = \(_leftZone === 'farm_home' && S\._farmBack && wheelIsHome\(\)\)/.test(zoneSrc) && /rememberFarmTrip\(S2\)/.test(townSrc), {});
 }
 
-/* ── v2.3.3060: the lands' music (src/game/wheelMusic.js) ──
+/* ── v2.3.3064: the lands' music (src/game/wheelMusic.js) ──
    The owner's "Continue building recommended": each land of the Wheel its own
    music as you cross into it, the town's on the safe ground, with a lean toward
    the land so a fight on the line does not flip it. */
-console.log('the lands\' music (v2.3.3060)');
+console.log('the lands\' music (v2.3.3064)');
 {
   const fs = await import('node:fs');
   const M = await import('../../src/game/wheelMusic.js');

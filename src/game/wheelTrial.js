@@ -329,7 +329,7 @@ export function wheelHere(x, y) {
   }
   if (!_here) return null;
   const c = info.catalog[_here.q];
-  /* v2.3.3060: `fresh` -- the answer is for the cell you are in, not the last
+  /* v2.3.3064: `fresh` -- the answer is for the cell you are in, not the last
      one asked (the land music's first word on a visit, game/wheelMusic.js:
      the worker lingers after you leave, so its last answer can be where you
      died) */

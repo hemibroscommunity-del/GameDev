@@ -1436,7 +1436,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        AND the only thing `trackUrl` is ever compared to (_zoneMusicUrl), so
        both sides move together. */
     sky: '/audio/music/desert.mp3?v=2.3.2614',
-    /* v2.3.3060: the Wheel's Verdant Wilds, the flora land, play the old
+    /* v2.3.3064: the Wheel's Verdant Wilds, the flora land, play the old
        meadow's Floral -- its banner is the owner's verdant one and its land
        the green one the meadow became.  The SAME url as meadow's, so the two
        share one decoded buffer (the cache is keyed by url).  The Wheel's
@@ -1463,7 +1463,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   ZONE_AMBIENT: {
     sky: '/audio/ambient/wind-dunes.mp3',
   },
-  /* v2.3.3060: the Wheel's music is its LANDS' (game/wheelMusic.js): the
+  /* v2.3.3064: the Wheel's music is its LANDS' (game/wheelMusic.js): the
      town's on the safe ground, each land's own as you cross into it.  On
      unless the address says `?nolandmusic`, which is the Wheel as it was --
      one track everywhere, the game's theme after any trip back. */
@@ -2510,7 +2510,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     return;
   }
 }, "_ambientOsc", null), "_ambientGain", null), "_ambientLfo", null), "_currentZoneAmbient", null), "_ambientOsc2", null), "_ambientGain2", null), "_ambientLfo2", null), "startZoneAmbient", function startZoneAmbient(zoneId) {
-  /* v2.3.3060: the last few asks, for the land-music probe (game/wheelMusic.js
+  /* v2.3.3064: the last few asks, for the land-music probe (game/wheelMusic.js
      __btLandMusic) -- what asked for which music, and what was playing.  The
      caller's frames only on a test page (window.__btProbe). */
   try {
@@ -2521,7 +2521,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     if (_asks.length > 16) _asks.shift();
   } catch (e) {}
   if (!this.ctx || this.muted) return;
-  /* v2.3.3060: THE WHEEL ASKS FOR NOTHING -- its music is its lands'
+  /* v2.3.3064: THE WHEEL ASKS FOR NOTHING -- its music is its lands'
      (game/wheelMusic.js), started by the land watch once it knows where you
      stand.  Arriving keeps what plays: the way in, a death's, a dungeon's and
      the farm's way back all come through today's town, whose track is the
@@ -2559,7 +2559,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   if (_prevAmb) {
     try { this.stopSfxLoop(_prevAmb); } catch (e) {}
     this._zoneAmbientKey = null;
-    /* v2.3.3060: and its decoded loop goes with it (the dunes' 28.8 s of wind
+    /* v2.3.3064: and its decoded loop goes with it (the dunes' 28.8 s of wind
        is ~11 MB of PCM).  The old Wind Dunes were left by a loading screen
        and seldom; the Wheel's are walked in and out of, and kept it for the
        session after the first visit.  A source still fading out holds its own
@@ -2579,7 +2579,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
          otherwise strand a wind loop playing in the next zone. */
       Promise.resolve(this.loadSample(_ambKey, _ambUrl)).then(function () {
         if (_self0._zoneAmbientKey === _ambKey) _self0.startSfxLoop(_ambKey, _self0.ZONE_AMBIENT_VOL, 'music');
-        /* v2.3.3060: landed after you left -- not kept either (above) */
+        /* v2.3.3064: landed after you left -- not kept either (above) */
         else if (!_self0._sampleLoading[_ambKey]) delete _self0._samples[_ambKey];
       }).catch(function () {});
     }

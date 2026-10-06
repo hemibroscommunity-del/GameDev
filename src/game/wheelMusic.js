@@ -1,4 +1,4 @@
-/* ═══ v2.3.3060: EACH LAND OF THE WHEEL, ITS OWN MUSIC ═══
+/* ═══ v2.3.3064: EACH LAND OF THE WHEEL, ITS OWN MUSIC ═══
  *
  * Asked how to make the Wheel easier to find your way round, the list the
  * owner said to go on building ("Continue building recommended") had music
@@ -15,7 +15,8 @@
  *     desert.mp3 with its wind (ZONE_AMBIENT), the Verdant Wilds forest.mp3
  *     (the old meadow's): the four lands the owner made music for, as they
  *     made banners for the same four;
- *   - the other four (hollows, thunder, tidal, mist) have no track yet and
+ *   - the other four (the Stone Hollows, the Electric Foundry, the Water
+ *     Caves, the Poison Forest: hollows, thunder, tidal, mist) have no track yet and
  *     play the game's theme.  A track under the land's id in ZONE_MUSIC makes
  *     it theirs, nothing else to change.
  *

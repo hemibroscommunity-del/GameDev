@@ -1,4 +1,4 @@
-/* ═══ EACH LAND OF THE WHEEL, ITS OWN MUSIC (v2.3.3060) ═══
+/* ═══ EACH LAND OF THE WHEEL, ITS OWN MUSIC (v2.3.3064) ═══
  *
  * The owner, on the recommendations for finding your way round the Wheel:
  * "Continue building recommended" -- music by land among them.
@@ -16,7 +16,7 @@
  *   4. the Flame Fields fire.mp3; on through the commons to the Wind Dunes
  *      without the town's in between (a short pass), desert.mp3 and the
  *      dunes' wind under it;
- *   5. the Hollows, with no track of its own: no zone track, the game's
+ *   5. the Stone Hollows, with no track of its own: no zone track, the game's
  *      theme up; the dunes' wind stopped and its decoded loop let go;
  *   6. the Verdant Wilds: forest.mp3 (the old meadow's Floral);
  *   7. a death out there: back in Brotown through today's town, the town's
@@ -220,7 +220,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the Wind Dunes: desert.mp3 (${s.v && s.v.url}) and the dunes' wind under it (${s.v && s.v.ambience}) (on the way: ${sLog.map((x) => x.key).join(' -> ')})`,
       s.ms !== null && /desert\.mp3/.test((s.v && s.v.url) || '') && s.v.ambience === 'zoneamb-sky', { music: s.v, changes: sLog });
 
-    /* ── 5. the Hollows: no track of its own ── */
+    /* ── 5. the Stone Hollows: no track of its own ── */
     await travel(P, wsPort, myId, spot('sky', COMMONS).x, spot('sky', COMMONS).y);
     await travel(P, wsPort, myId, spot('hollows', COMMONS).x, spot('hollows', COMMONS).y);
     const ho = spot('hollows', IN_LAND);
@@ -228,7 +228,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const hw = await waitMusic(P, (v) => v.playing === 'hollows', 15000);
     await P.page.waitForTimeout(1200);
     const hv = await lm(P);
-    rec.ok(`the Hollows, with no track of its own: no zone track, the game's theme up (playing "${hv && hv.playing}")`,
+    rec.ok(`the Stone Hollows, with no track of its own: no zone track, the game's theme up (playing "${hv && hv.playing}")`,
       hw.ms !== null && !!hv && hv.playing === 'hollows' && !hv.source && hv.themeDucked === false, hv);
     rec.ok('...the dunes\' wind stopped, and its decoded loop let go', !!hv && !hv.ambience && !hv.windKept, hv && { ambience: hv.ambience, windKept: hv.windKept });
 
