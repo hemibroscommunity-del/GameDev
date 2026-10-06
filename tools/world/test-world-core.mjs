@@ -2943,6 +2943,15 @@ console.log('the tap that jumps (v2.3.3087)');
         && /interactKind\(S, \{ npcFirst: true \}\)/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8'))
         && /_tjS\._interactNow\(\{ npcFirst: true \}\)/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8')));
   }
+  ok('while you ATTACK the stick wears the weapon, never the jump: a thumb held past the tap\'s window or dragging, a swing under way, and ATTACK_FACE_MS after the last swing or shot',
+    TJ.attackingNow({ _atkHoldUntil: now + 100 }, true, now) === false
+      && TJ.attackingNow({ _atkHoldUntil: now + 100, _aiming: true }, true, now)
+      && TJ.attackingNow({ _atkHoldUntil: now - 1 }, true, now) && TJ.attackingNow({}, true, now)
+      && TJ.attackingNow({ isSwinging: true }, false, now)
+      && TJ.attackingNow({ swingTimer: now - TJ.ATTACK_FACE_MS + 1 }, false, now)
+      && !TJ.attackingNow({ swingTimer: now - TJ.ATTACK_FACE_MS }, false, now)
+      && !TJ.attackingNow({}, false, now) && !TJ.attackingNow(null, true, now)
+      && /&& !attackingNow\(S, !!rJoyActive\.current, Date\.now\(\)\);/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8')));
   ok('the old button only with ?jumpbtn', TJ.jumpButtonWanted('?jumpbtn') && TJ.jumpButtonWanted('?a=1&jumpbtn=1')
     && !TJ.jumpButtonWanted('') && !TJ.jumpButtonWanted('?jumpbtnx'));
   const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');

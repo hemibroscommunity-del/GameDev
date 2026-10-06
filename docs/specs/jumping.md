@@ -228,7 +228,15 @@ joystick".
     picture. All ten pictures are in the disc from the start and warmed on
     the loading screen with the rest (controlsPreload), so a weapon swap never
     waits on a download.
-  - `mp-tapact` (18 checks): the door at the bank opens the bank, the bubble
+  - ...and WHILE YOU ATTACK the weapon wins over the JUMP arrow (tapJump.js
+    `attackingNow`): the owner, on the preview, "it just showed the new jump
+    ... even when attacking". The arrow was picked by the context alone, so
+    a hold or a drag at nothing, or a bow or staff shooting with no lock (a
+    ranged player is found no targets on purpose), attacked under it. Now a
+    thumb held past the tap's window or dragging, a swing or shot under way,
+    and `ATTACK_FACE_MS` 1.2 s after the last one all show the weapon; then
+    the arrow comes back.
+  - `mp-tapact` (22 checks, holding the stick with a sword and a bow among them): the door at the bank opens the bank, the bubble
     beside Ace opens his flip, the arrow on the open commons jumps, each slot's
     weapon on the disc, and the lit disc wearing an iron greatsword beside a
     real monster.

@@ -60,6 +60,32 @@ export function rightTapBusy(S, now) {
   return false;
 }
 
+/* ═══ v2.3.3087: WHILE YOU ATTACK, THE WEAPON -- NEVER THE JUMP ═══
+ * The owner, on the preview: "it just showed the new jump ... even when
+ * attacking ... the jump is showing on top of everything".  The JUMP arrow
+ * was decided by the CONTEXT alone (nothing to fight, harvest or hold), so a
+ * hold or a drag at nothing -- and a bow or staff loosing at a monster it has
+ * no lock on (a ranged player is found no targets on purpose) -- attacked
+ * under the jump picture.  The attack itself now wins the picture: a thumb
+ * held past the tap's window or dragging (aiming), a swing or shot under way,
+ * and ATTACK_FACE_MS after the last one, so a fight's beat between swings
+ * does not flick the arrow back. */
+export const ATTACK_FACE_MS = 1200;
+
+/**
+ * True while the player is attacking with the right stick, so it wears the
+ * weapon.  `held` is the right stick's thumb being down; `now` in ms.
+ */
+export function attackingNow(S, held, now) {
+  if (!S) return false;
+  /* a hold past the tap's window, or a drag (rM ends the window at once) */
+  if (held && (S._aiming || !((S._atkHoldUntil || 0) > now))) return true;
+  if (S.isSwinging) return true;
+  /* swingTimer is stamped by every swing, arrow, bolt and ability */
+  var t = S.swingTimer || 0;
+  return t > 0 && now - t < ATTACK_FACE_MS;
+}
+
 /**
  * v2.3.3087: the right stick's picture (and the tap's act) for what the E
  * key's chain would do here (desktopControls interactKind): a door, the bed,

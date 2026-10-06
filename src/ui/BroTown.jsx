@@ -369,7 +369,7 @@ import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a s
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3087: a tap on the right stick) */
-import { rightTapBusy, tapJumpMaxMs, tapActIcon } from '@/game/tapJump.js';   /* v2.3.3087: a tap jumps only when nothing else wants it */
+import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow } from '@/game/tapJump.js';   /* v2.3.3087: a tap jumps only when nothing else wants it */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3087: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
@@ -5627,7 +5627,9 @@ export var BroTown = function BroTown(_ref0) {
             && !!(S.rpg && !(typeof S.rpg.hp === 'number' && S.rpg.hp <= 0))
             /* the coach's ATTACK lesson holds the disc up as the button it
                teaches (and a press on a held disc swings): the weapon, then */
-            && !discHeld('R');
+            && !discHeld('R')
+            /* ...and never while you ATTACK: the weapon then (attackingNow) */
+            && !attackingNow(S, !!rJoyActive.current, Date.now());
           if (_lbl) {
             var _want;
             if (_ex) _want = (_ex.status === 'ready') ? ({ mining: 'PUMP', woodcutting: 'CHOP', fishing: 'REEL', cooking: 'FLIP' }[_ex.skill] || 'GO') : 'WAIT';

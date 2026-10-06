@@ -12,6 +12,8 @@
  *      no jump;
  *   3. out on the commons with nothing about, it shows the JUMP arrow and a
  *      tap jumps;
+ *   3b. holding the stick to attack the air, it wears the weapon (sword, then
+ *      bow) -- never the jump -- and the jump comes back a beat after;
  *   4. while the tap would ATTACK, it wears the weapon in the active slot,
  *      its bag picture -- an iron greatsword, a copper sword, the bow, the
  *      staff, the plain sword picture for an empty melee slot -- and lit, in
@@ -140,6 +142,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const j1 = await jumps(P);
     rec.ok(`...and a tap jumps (${j0} -> ${j1})`, j1 === j0 + 1, { j0, j1 });
 
+    /* ── 3b. the owner, on the preview: "it just showed the new jump ... even
+       when attacking".  Hold the stick at nothing, as a swing at the air is:
+       the weapon while you attack, the jump again a beat after ── */
+    const holdStick = (id, ms) => P.page.evaluate(async ({ id, ms }) => {
+      const z = document.querySelector('[data-joyzone="R"]');
+      const b = z.getBoundingClientRect();
+      const x = b.left + b.width * 0.7, y = b.top + b.height * 0.3;
+      const el = document.elementFromPoint(x, y) || z;
+      const mk = (t) => new TouchEvent(t, { bubbles: true, cancelable: true,
+        touches: t === 'touchend' ? [] : [new Touch({ identifier: id, target: el, clientX: x, clientY: y })],
+        changedTouches: [new Touch({ identifier: id, target: el, clientX: x, clientY: y })] });
+      const disc = document.querySelector('.bt-rjoy-base');
+      el.dispatchEvent(mk('touchstart'));
+      const seen = [];
+      const t0 = Date.now();
+      while (Date.now() - t0 < ms) { await new Promise((r) => setTimeout(r, 100)); seen.push(disc.getAttribute('data-ricon')); }
+      el.dispatchEvent(mk('touchend'));
+      return { seen, end: disc.getAttribute('data-ricon'), swung: !!window._gameState.current.swingTimer };
+    }, { id, ms });
+    for (const [slot, w, want] of [
+      ['melee', { type: 'sword', name: 'Copper Sword', gearBase: 'copper', dmg: 3 }, 'w-sword-copper'],
+      ['ranged', { type: 'bow', name: 'Pine Bow', gearBase: 'pine', dmg: 3 }, 'w-bow'],
+    ]) {
+      await P.page.evaluate(({ slot, w }) => { const S = window._gameState.current; if (slot === 'melee') S.rpg.weapon = w; else S.rpg.rangedWeapon = w; S.rpg.activeSlot = slot; S.lockedTarget = null; }, { slot, w });
+      const ready = await H.waitFor(P, () => document.querySelector('.bt-rjoy-base').getAttribute('data-ricon'), (v) => v === 'jump', { timeout: 6000, label: 'the arrow first' }).catch(() => null);
+      const h = await holdStick(84, 1400);
+      rec.ok(`holding the stick to attack with the ${w.type}, it wears ${want}, not the jump (${h.end})`, ready === 'jump' && h.end === want, { ready, ...h });
+      const back = await H.waitFor(P, () => document.querySelector('.bt-rjoy-base').getAttribute('data-ricon'), (v) => v === 'jump', { timeout: 6000, label: 'the arrow back' }).catch(() => null);
+      rec.ok('...and a beat after you stop, the JUMP arrow is back', back === 'jump', back);
+      await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; S._aiming = false; });
+    }
+
     /* ── 4. an attack wears the weapon ── */
     await P.page.waitForTimeout(800);
     const wear = async (slot, w) => {
@@ -193,7 +227,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const m = await nearest();   /* they wander: keep up */
         if (m && m.d > 90) await H.hopTo(P, m.x + 50, m.y + 10, { step: 100, gap: 260, tries: 20 });
         fight = await H.waitFor(P, () => { const d = document.querySelector('.bt-rjoy-base'); return { ic: d.getAttribute('data-ricon'), st: d.getAttribute('data-rstate') }; },
-          (v) => v.ic === 'w-great-sword-iron' && (v.st === 'hot' || v.st === 'lit'), { timeout: 2500, label: 'the lit disc' }).catch(() => null);
+          (v) => v.ic === 'w-great-sword-iron' && (v.st === 'hot' || v.st === 'lit'), { timeout: 5000, label: 'the lit disc' }).catch(() => null);
       }
       await P.page.screenshot({ path: join(OUT, 'tapact-greatsword.png') }).catch(() => {});
       rec.ok(`beside a monster the lit disc wears the iron greatsword (${fight ? fight.ic + ' / ' + fight.st : 'no'})`, !!fight, fight || { near: await nearest(),

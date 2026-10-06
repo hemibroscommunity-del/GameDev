@@ -886,7 +886,9 @@ remnant to migrate server-side, not a mode to preserve.
       bubble for speaking [to NPCs], door for entering door"): a bubble beside
       a character, a door at steps/halls/dungeon mouths, the moon at the
       farm's bed, the WEAPON IN YOUR HAND when it attacks (its bag picture
-      in its metal, controlSkin `weaponDiscIcon`), else JUMP -- the tap runs
+      in its metal, controlSkin `weaponDiscIcon`; and WHILE you attack --
+      a hold, a drag, a swing or shot and 1.2 s after, tapJump.js
+      `attackingNow`), else JUMP -- the tap runs
       the E key's own chain
       (desktopControls `runInteract` via `S._interactNow`, `interactKind`,
       the character first for the stick: `npcFirst`), SVGs in
