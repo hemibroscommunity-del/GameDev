@@ -145,6 +145,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
     for (const k of ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe']) await H.grant(wsPort, myId, 'item', { invKey: k, count: 1 }).catch(() => {});
     await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 30 });
+    /* past the Mayor's gate (wheelCommonsGate): a new character is held inside
+       the safe commons until tut_1, and the clownfish are out past it -- the
+       walk there stood at the commons' rim for 300 legs (mp-wheelseats) */
+    await H.devOp(wsPort, 'quests', myId);
     await H.waitFor(P, (S) => ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe'].filter((k) => ((S.rpg || {}).inventory || {})[k] > 0).length,
       (n) => n === 3, { timeout: 20000, label: 'the tools' }).catch(() => 0);
     await closeTalk(P);
@@ -196,30 +200,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok('a clownfish spot in a land\'s levels 1-10 (guard)', !!clown, clown);
     if (clown) {
-      await travel(P, wsPort, myId, clown.x + STAND.fishSpot[0], clown.y + STAND.fishSpot[1]);
-      await P.page.waitForTimeout(1200);
+      /* Walk to its seat and hold there while the camera comes round: the
+         label is drawn for what is near the VIEW, and the tap must land on the
+         spot, not off the screen's edge (the first cut tapped before the
+         camera had caught up -- off-screen, "Too far away!"). */
+      const seat = { x: clown.x + STAND.fishSpot[0], y: clown.y + STAND.fishSpot[1] };
+      /* walked, the worker agreeing every hop: a jump across the map is put
+         back by its anti-teleport check, and the camera chases the bounce */
+      await travel(P, wsPort, myId, seat.x, seat.y);
+      let onScreen = null;
+      for (let i = 0; i < 40 && !onScreen; i++) {
+        onScreen = await P.page.evaluate(({ seat: st, node }) => {
+          const S = window._gameState.current;
+          S.player.x = st.x; S.player.y = st.y; S.player.vx = 0; S.player.vy = 0;
+          const sx = (node.x - S.camera.x) * (S._worldScaleX || 1), sy = (node.y - S.camera.y) * (S._worldScaleY || 1);
+          return sx > 60 && sx < 330 && sy > 160 && sy < 560 ? { sx: Math.round(sx), sy: Math.round(sy) } : null;
+        }, { seat, node: clown });
+        if (!onScreen) await P.page.waitForTimeout(500);
+      }
+      rec.ok('...stood on its seat, the spot on screen (guard)', !!onScreen, { onScreen });
+      await P.page.waitForTimeout(800);
       const lab = (await labels(P)).find((l) => l.id === clown.id);
       const fishLv = await H.readState(P, (S) => (((S.rpg || {}).lifeSkills || {}).fishing || {}).level || 1);
       rec.ok(`its label says "Clownfish" and "Lv 5", in red for a Fishing ${fishLv} player`,
         !!lab && lab.visible && lab.text === 'Clownfish' && lab.lv === 'Lv 5' && /ff7a6e/i.test(lab.lvFill) && fishLv < 5, { lab, fishLv });
-      const scr = await P.page.evaluate((n) => {
-        const S = window._gameState.current;
-        const cv = document.querySelector('canvas').getBoundingClientRect();
-        return { x: cv.left + (n.x - S.camera.x) * (S._worldScaleX || 1), y: cv.top + (n.y - S.camera.y) * (S._worldScaleY || 1) };
-      }, clown);
-      /* the whole phone screen: the walk may leave the spot anywhere on it */
-      void scr;
       await P.page.screenshot({ path: join(OUT, 'nodelabels-clownfish.png') }).catch(() => {});
-      /* stand right on its seat, so the tap lands on the spot and not on the
-         dashboard: the refusal is the CLIENT's, before anything is sent, so
-         the worker's idea of where we are does not enter into it */
-      await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0; },
-        { x: clown.x + STAND.fishSpot[0], y: clown.y + STAND.fishSpot[1] });
-      await P.page.waitForTimeout(1500);
       const k0 = await H.readState(P, (S) => S.dmgNumbers.filter((p) => p.text === 'Need Fishing Lv 5').length);
+      await P.page.evaluate((st) => { const S = window._gameState.current; S.player.x = st.x; S.player.y = st.y; S.player.vx = 0; S.player.vy = 0; }, seat);
       const started = await tapNode(P, clown.id, (S) => !!S._extraction, 2);
       const said = await H.readState(P, (S) => S.dmgNumbers.filter((p) => p.text === 'Need Fishing Lv 5').length);
-      rec.ok('a tap on it is refused before anything is sent: "Need Fishing Lv 5", no harvest started', started === false && said > k0, { started, said, k0 });
+      const last = await H.readState(P, (S) => S.dmgNumbers.slice(-4).map((p) => p.text));
+      rec.ok('a tap on it is refused before anything is sent: "Need Fishing Lv 5", no harvest started', started === false && said > k0, { started, said, k0, last });
+      /* back to the commons for the copper vein, as the worker knows we are */
+      const home = await H.adminPlayer(wsPort, myId).catch(() => null);
+      if (home && home.live && typeof home.live.x === 'number') {
+        await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0; }, { x: home.live.x, y: home.live.y });
+        await P.page.waitForTimeout(1500);
+      }
     }
 
     /* ── 4. a copper vein, mined to the end: its label steps aside, it cracks ── */
