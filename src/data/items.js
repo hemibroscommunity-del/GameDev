@@ -240,8 +240,15 @@ export function createDefaultCompStats() {
   };
 }
 
+/* v2.3.3090: what a life skill's first level costs, the curve's base -- 1000,
+   was 500: asked "Should life-skill XP slow down like combat XP?", the owner
+   said "Yes", so every level costs twice the XP and life skills level half as
+   fast, every action's pay and popup unchanged.  The worker's
+   LIFE_SKILL_XP_BASE (server/src/gathering.js); mirror-audit pins the pair. */
+export const LIFE_SKILL_XP_BASE = 1000;
+
 export function skillXpRequired(level) {
-  if (level <= 100) return Math.ceil(500 * Math.pow(1.08, level - 1));
-  const at100 = Math.ceil(500 * Math.pow(1.08, 99));
+  if (level <= 100) return Math.ceil(LIFE_SKILL_XP_BASE * Math.pow(1.08, level - 1));
+  const at100 = Math.ceil(LIFE_SKILL_XP_BASE * Math.pow(1.08, 99));
   return Math.ceil(at100 * Math.pow(1.10, level - 100));
 }

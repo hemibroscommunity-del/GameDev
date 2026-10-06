@@ -739,7 +739,13 @@ remnant to migrate server-side, not a mode to preserve.
       it by about 50%": `PROG3.XP_PER_DMG` 0.4 -> 0.2 and every quest's xp
       halved on both sides (ceil); life skills untouched (the owner's 25x):
       docs/specs/pace-and-difficulty.md, `zones` / `mirror-audit` /
-      `dungeon` suites.
+      `dungeon` suites; and since v2.3.3090 LIFE SKILLS COME HALF AS FAST TOO
+      -- asked "Should life-skill XP slow down like combat XP?", the owner:
+      "Yes": every level costs twice the XP (`LIFE_SKILL_XP_BASE` 500 -> 1000,
+      gathering.js `_lifeSkillXpThreshold` and items.js, read by
+      `skillXpRequired` and `LIFE_SKILL_XP`), every action's pay and "+n XP"
+      unchanged, no level lost (the bar reads half as far along);
+      mirror-audit "life-skill curve": pace-and-difficulty.md "Life skills".
   - Since v2.3.3014 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
     stuns briefly; storm shocks nearby players; water slows stamina refill;
     venom poisons over time", the owner: "Yes continue working on those
@@ -1281,7 +1287,10 @@ remnant to migrate server-side, not a mode to preserve.
     (`WHEEL_GATE_ROADS`, src/data/wheelSignposts.js, checked against the
     plan's roads), an arrow the way it lies, its element icon and its name in
     its colour; world-sized, on monsterUi (src/rendering/wheelSignposts.js,
-    drawn by effectsRenderer); no levels (every land starts at 1); the eight
+    drawn by effectsRenderer); since v2.3.3089 each plate ends in the levels
+    its land holds, "Lv 1–20" (`WHEEL_LAND_LEVELS`; the owner's "Yes" to
+    levels though every land reads the same; mirror-audit holds it to the
+    deepest stretch baked in wheelspawns.js); the eight
     icons drawn down to 64 px behind the Wheel's loading screen and let go on
     leaving; `mp-signposts`, test-world-core "the gate signposts":
     docs/specs/gate-signposts.md.
@@ -1302,7 +1311,7 @@ remnant to migrate server-side, not a mode to preserve.
     - the dunes' wind is let go on leaving (it was kept for the session);
       `_zoneAsks` keeps the last 16 asks for `window.__btLandMusic`;
       `?nolandmusic` is the Wheel as it was; world.mp3 NOT used for the four
-      (~25 MB more, the owner's call);
+      (~25 MB more; asked, the owner said "No", 2026-10-06);
     - window.BT_AUDIO IS set -- BroTown's `Object.assign(globalThis, ...)` of
       the data index -- despite the effectsRenderer comment saying it never is;
     - test-world-core "the lands' music", `mp-landmusic`:

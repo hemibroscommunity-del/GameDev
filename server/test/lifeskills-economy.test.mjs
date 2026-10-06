@@ -503,8 +503,9 @@ check('harvest: strike with NO extraction state still harvests (legacy posture) 
   check('level 0: a first join\'s level-0 skills heal to 1, their XP kept, a real level untouched',
     !!pN && pN.lifeSkills.mining.level === 1 && pN.lifeSkills.mining.xp === 120 && pN.lifeSkills.cooking.level === 1 && pN.lifeSkills.fishing.level === 4,
     pN && pN.lifeSkills);
-  const r = room._addLifeSkillXp(pN, 'mining', 380);
-  check('level 0: ...and its first level-up is 1 -> 2 (500 XP)', r.leveled === true && r.newLevel === 2 && pN.lifeSkills.mining.xp === 0, { r, ls: pN.lifeSkills.mining });
+  /* v2.3.3090: the first level costs 1000 (was 500: life skills level half as fast) */
+  const r = room._addLifeSkillXp(pN, 'mining', 880);
+  check('level 0: ...and its first level-up is 1 -> 2 (1000 XP)', r.leveled === true && r.newLevel === 2 && pN.lifeSkills.mining.xp === 0, { r, ls: pN.lifeSkills.mining });
   /* a record already on file with a 0 heals on the next join too */
   room._saveRpg('bp_ls_lv0', pN);
   await new Promise((res) => setTimeout(res, 0));

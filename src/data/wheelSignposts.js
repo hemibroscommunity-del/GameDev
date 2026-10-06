@@ -25,6 +25,21 @@ export const WHEEL_GATE_ROADS = Object.freeze({
   west: Object.freeze(['verdant', 'mist']),     /* the West Road; the Bog Trail */
 });
 
+/* ═══ v2.3.3089: AND THE LEVELS THEIR LANDS HOLD ═══
+ * Asked "Show levels on the signposts?" -- every land starts at level 1 at its
+ * near end, so all eight plates read the same -- the owner said "Yes".  Each
+ * plate ends in the levels its land's monsters span: from the first stretch
+ * to the deepest the worker spawns.  The top is the worker's own: the last
+ * stretch baked into server/src/wheelspawns.js (WHEEL_SPAWNS[home].deeper),
+ * which mirror-audit holds this to -- so the stretch that takes a land past
+ * level 20 moves both, or that suite fails.  ([lo, hi], levels.) */
+export const WHEEL_LAND_LEVELS = Object.freeze([1, 20]);
+
+/** "Lv 1–20": a plate's level tag. */
+export function landLevelsText(levels = WHEEL_LAND_LEVELS) {
+  return `Lv ${levels[0]}\u2013${levels[1]}`;
+}
+
 /** Which gate a signpost `dx, dy` game px from the town's middle stands at. */
 export function gateOf(dx, dy) {
   if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'east' : 'west';

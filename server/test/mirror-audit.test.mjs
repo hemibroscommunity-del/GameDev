@@ -41,9 +41,14 @@ import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES,
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
+import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wheelSignposts.js'; /* v2.3.3089 */
+import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3089 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
 import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */ } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
 import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
+import { LIFE_SKILL_XP_BASE as SRV_LIFE_SKILL_XP_BASE } from '../src/gathering.js'; /* v2.3.3090 */
+import { LIFE_SKILL_XP_BASE as CLIENT_LIFE_SKILL_XP_BASE, skillXpRequired as clientSkillXpRequired } from '../../src/data/items.js'; /* v2.3.3090 */
+import { LIFE_SKILL_XP as CLIENT_LIFE_SKILL_XP } from '../../src/data/lifeSkills.js'; /* v2.3.3090 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058 */
 import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
@@ -1466,6 +1471,19 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     SRV_SPRINT.REGEN_PAUSE_MS === CLIENT_SPRINT_REGEN_PAUSE, { srv: SRV_SPRINT.REGEN_PAUSE_MS, cli: CLIENT_SPRINT_REGEN_PAUSE });
 }
 
+// ── v2.3.3089: the levels on Brotown's signposts (client
+// data/wheelSignposts.js WHEEL_LAND_LEVELS) are the levels the worker's
+// monsters span in every land: the first stretch to the deepest one baked
+// into wheelspawns.js.  A stretch that takes the lands past level 20 must move
+// the plates too, or every signpost undersells the road.
+{
+  const homes = Object.keys(SRV_WHEEL_SPAWNS);
+  const tops = homes.map((h) => Math.max(5, ...((SRV_WHEEL_SPAWNS[h].deeper || []).map((st) => Number(st.levels && st.levels[1]) || 0))));
+  check('signposts: every land\'s monsters reach the same top level', homes.length === 8 && new Set(tops).size === 1, { homes, tops });
+  check('signposts: the plates\' levels are the worker\'s, first stretch to deepest (WHEEL_LAND_LEVELS)',
+    CLIENT_WHEEL_LAND_LEVELS[0] === 1 && CLIENT_WHEEL_LAND_LEVELS[1] === tops[0], { cli: CLIENT_WHEEL_LAND_LEVELS, srv: [1, tops[0]] });
+}
+
 // ── v2.3.3016: the Wheel's dungeons (server wheeldungeon.js, client
 // data/wheelDungeons.js).  The client offers a mouth only for a land the
 // worker opens -- one more on the client is a button the worker refuses, one
@@ -1515,6 +1533,26 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     ['woodcutting', 'fishing', 'mining', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'farming', 'trapping'].every((k) => d[k] && d[k].level === 1), d);
   const old = clientMigrateLifeSkills({ mining: { level: 0, xp: 300 }, fishing: { level: 3, xp: 10 } });
   check('life-skill levels: a stored 0 heals to 1 (XP kept), a real level is left alone', old.mining.level === 1 && old.mining.xp === 300 && old.fishing.level === 3, { mining: old.mining, fishing: old.fishing });
+}
+
+// ── v2.3.3090: LIFE SKILLS LEVEL HALF AS FAST, on both sides ──
+// The owner's "Yes" to slower life skills doubled what every level costs (the
+// curve's base 500 -> 1000).  The worker's _lifeSkillXpThreshold decides the
+// level; the client's two copies of the curve draw the bar (skillXpRequired,
+// LIFE_SKILL_XP) and predict the level-up banner.  One base, every level.
+{
+  const room = Object.create(GameRoom.prototype);
+  check('life-skill curve: the same base on both sides (LIFE_SKILL_XP_BASE)', SRV_LIFE_SKILL_XP_BASE === CLIENT_LIFE_SKILL_XP_BASE,
+    { srv: SRV_LIFE_SKILL_XP_BASE, cli: CLIENT_LIFE_SKILL_XP_BASE });
+  let off = null;
+  for (let L = 1; L <= 100; L++) {
+    const srv = room._lifeSkillXpThreshold(L);
+    if (srv !== clientSkillXpRequired(L) || srv !== CLIENT_LIFE_SKILL_XP(L)) { off = { L, srv, items: clientSkillXpRequired(L), lifeSkills: CLIENT_LIFE_SKILL_XP(L) }; break; }
+  }
+  check('life-skill curve: every level 1-100 costs the same on the worker and in both client copies', off === null, off);
+  /* the owner's decision, pinned: a level costs twice what it did */
+  check('life-skill curve: twice the old price -- 1,000 XP for level 2, 1,080 for 3',
+    room._lifeSkillXpThreshold(1) === 1000 && room._lifeSkillXpThreshold(2) === 1080, [room._lifeSkillXpThreshold(1), room._lifeSkillXpThreshold(2)]);
 }
 
 // ── GATHER LEVELS: the level over a node is the level the worker asks ──
