@@ -81,7 +81,7 @@ import { threatMethods } from './threat.js';
 // v2.3.1200: PETS config also imported directly -- _handleLootPickup
 // reads PETS.VACUUM_RANGE for the pet loot vacuum (viaPet pickups).
 import { petMethods, PETS } from './pets.js';
-/* v2.3.3108: pet trapping -- arm a trap, then kill it (trapping.js) -- and the
+/* v2.3.3111: pet trapping -- arm a trap, then kill it (trapping.js) -- and the
    pets record, pets:<pid> (petbook.js).  docs/specs/trapping.md. */
 import { trappingMethods } from './trapping.js';
 import { petbookMethods } from './petbook.js';
@@ -501,7 +501,7 @@ export const PRIVILEGED_EVENTS = new Set([
   'threat_penalty', 'threat_expired', 'gear_locked',
   // v2.3.1130: pet-capture outcomes are server-rolled + private.
   'pet_capture_result',
-  /* v2.3.3108: pet trapping (trapping.js) and the pets record (petbook.js).
+  /* v2.3.3111: pet trapping (trapping.js) and the pets record (petbook.js).
      All four server-sent and private.  Forged, `trap_result` would show
      another player a catch the worker never rolled, `pets_state` would paint
      pets they do not own on their Pets page, `trap_armed` a mark and odds the
@@ -1928,7 +1928,7 @@ export class GameRoom {
                _burstUntil would explode on arrival, at full health. */
             m._burstUntil = 0; m._burstKiller = null; m._burstSlot = null;
             m._burstDone = false;
-            /* v2.3.3108: and its trap marks (trapping.js): a mark is on THIS
+            /* v2.3.3111: and its trap marks (trapping.js): a mark is on THIS
                life of the monster, and the kill path clears it -- this is the
                belt and braces dmgByPlayer has above. */
             m._armedBy = null; m._trapJudgeAt = 0;
@@ -4283,7 +4283,7 @@ export class GameRoom {
     // the wider vacuum radius is the pet's feature, not a free upgrade
     // any client can flip on with a payload flag.
     if (viaPet) {
-      /* v2.3.3108: the active pet is the record's (petbook.js) -- the old
+      /* v2.3.3111: the active pet is the record's (petbook.js) -- the old
          lifeSkills.pets / activePet pair is emptied at join once its pets
          have moved in. */
       if (!this._petbookActive(session.id)) return reject('no-pet');
@@ -5312,7 +5312,7 @@ export class GameRoom {
         break;
 
       case 'pet_capture':
-        // v2.3.1130: server-validated capture.  v2.3.3108: RETIRED -- it
+        // v2.3.1130: server-validated capture.  v2.3.3111: RETIRED -- it
         // answers 'retired' and touches nothing (pets.js); pets are caught
         // by arming a trap and killing the monster (trapping.js).
         if (session.id) {
@@ -5320,7 +5320,7 @@ export class GameRoom {
         }
         break;
 
-      /* ═══ v2.3.3108: PET TRAPPING (trapping.js) AND THE PETS RECORD
+      /* ═══ v2.3.3111: PET TRAPPING (trapping.js) AND THE PETS RECORD
          (petbook.js) ═══  Each an explicit case: the default branch below
          REBROADCASTS an unknown type to the room, which would relay a trap or
          a pet's new name to everyone and settle nothing. */
@@ -5641,7 +5641,7 @@ export class GameRoom {
 
   async webSocketClose(ws) {
     const session = this.sessions.get(ws);
-    let _petsLeft = null;   /* v2.3.3108: see below */
+    let _petsLeft = null;   /* v2.3.3111: see below */
     if (session?.id) {
       if (this.playerState[session.id]) this.playerState[session.id].disconnected = true;
       /* v2.3.1619: flush coalesced regen before the in-memory blob is
@@ -5660,7 +5660,7 @@ export class GameRoom {
          The record itself is durable in gear_prov:<pid> and reloads on the
          next join (gearprov.js); this is only the cache. */
       this._gearProvForget(session.id);
-      /* v2.3.3108: the pets record's cache goes with the session too
+      /* v2.3.3111: the pets record's cache goes with the session too
          (petbook.js).  A try counted only in memory is copied out here and
          written at the very END of this handler -- awaited, as the last
          chance to keep it, but after every synchronous step, because the AFK
@@ -5842,8 +5842,8 @@ Object.assign(GameRoom.prototype, guildMethods);
 Object.assign(GameRoom.prototype, threatMethods);
 // v2.3.1130 (PR14): pet capture -- see pets.js.
 Object.assign(GameRoom.prototype, petMethods);
-Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3108 */
-Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3108 */
+Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3111 */
+Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3111 */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.

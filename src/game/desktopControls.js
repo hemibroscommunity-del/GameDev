@@ -14,6 +14,8 @@
    the game loop. */
 import { BT_AUDIO, getNpcQuest } from '@/data/index.js';
 import { triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: X jumps */
+import { trapButtonView, armTrap } from '@/game/trapping.js';   /* v2.3.3111: T arms a trap */
+import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3111: the Pet House opens the Pets page */
 import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E at a Wheel dungeon's mouth */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace opens his coin flip */
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
@@ -125,7 +127,10 @@ export function setupDesktopControls(S, deps) {
       }
       /* 2c. Pet House */
       if (S._nearPetHouse) {
-        setShowPetHouse(true);
+        /* v2.3.3111: the Pets page when the worker keeps the pets record
+           (BroTown's Pet House prompt does the same) */
+        if (S._serverCaps && S._serverCaps.petbook) dashboardPanelBus.open('pets');
+        else setShowPetHouse(true);
         BT_AUDIO.enterBuilding();
         return true;
       }
@@ -182,6 +187,19 @@ export function setupDesktopControls(S, deps) {
         e.preventDefault();
         triggerJump(S);
         return;
+      }
+
+      /* ═══ v2.3.3111: T — TRAP ═══
+         The TRAP pop-up's key (ui/panels/TrapButton.jsx): arm a trap on the
+         monster you have targeted.  A free key under the left hand; with no
+         monster targeted, or a grey button, it does what a tap would --
+         nothing is sent (game/trapping.js armTrap). */
+      if (e.code === 'KeyT' && !e.repeat) {
+        if (trapButtonView(S)) {
+          e.preventDefault();
+          armTrap(S);
+          return;
+        }
       }
 
       /* v2.3.1733: R — Whirlwind (stamina ability, char 8).  A free key: R

@@ -1,4 +1,5 @@
 import React from 'react';
+import { PetPortrait } from '@/ui/petPortrait.jsx';   /* v2.3.3111 */
 import { PET_RARITY, compactCount } from './playerProfile.js';
 import { GHOST_SRC } from '../mobile/sheet/equipModel.js';
 
@@ -284,7 +285,9 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
             <div className="bt-pin-scene" data-preview="1">
               <img src={p.homestead.previewSrc} alt="" draggable={false} />
               <span className="bt-pin-home-t">Homestead</span>
-              {pet && <span className="bt-pin-petsprite" aria-hidden="true">{pet.emoji}</span>}
+              {pet && <span className="bt-pin-petsprite" aria-hidden="true">{pet.kind
+                ? <PetPortrait pet={{ kind: pet.kind, stage: pet.stage, gold: pet.gold }} size={30} />   /* v2.3.3111: drawn, from the pet sheet */
+                : pet.emoji}</span>}
             </div>
             {pet && (
               <div className="bt-pin-pet" data-preview={pet.preview ? '1' : undefined}>

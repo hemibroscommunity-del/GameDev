@@ -4225,34 +4225,21 @@ export function processGameEvent(type, payload, S, deps) {
           case 'pet_capture_result':
             {
               /* v2.3.1130: server-rolled capture outcome (private).
-                 On success the pet already sits in the authoritative
-                 lifeSkills echo (the per-key merge adopts it) -- this
-                 event only drives the feedback the legacy local roll
-                 drew (MenuBar). */
+                 v2.3.3111: the 20%-health capture is RETIRED (server pets.js
+                 answers 'retired' and touches nothing), and nothing in this
+                 client sends it any more -- this answers an old client's
+                 leftover request, or a worker from before the change.
+                 Pets are caught by arming a trap and killing the monster
+                 (game/trapping.js); "Need a trap! (Vendor sells them)" went
+                 with it -- nobody has sold a trap since v2.3.2069. */
               if (!payload) break;
-              if (payload.captured && payload.pet) {
-                var _pcPet = payload.pet;
-                S.lockedTarget = null;
-                pushDmgPopup(S, S.player.x, S.player.y - 35, 'Captured ' + _pcPet.name + '!', '#3dd497');
-                pushDmgPopup(S, S.player.x, S.player.y - 50, (_pcPet.emoji || '') + ' ' + _pcPet.archetype + ' Lv' + _pcPet.level, _pcPet.color || '#3dd497');
-                BT_AUDIO.collect();
-                setTimeout(function () { return BT_AUDIO.beep(523, 0.1, 0.08, 'sine'); }, 100);
-                setTimeout(function () { return BT_AUDIO.beep(659, 0.1, 0.08, 'sine'); }, 200);
+              if (payload.error === 'retired') {
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Target a monster and tap TRAP', '#D8AA58');
+              } else if (payload.captured && payload.pet) {
+                pushDmgPopup(S, S.player.x, S.player.y - 35, 'Captured ' + (payload.pet.name || 'a pet') + '!', '#3dd497');
                 if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
               } else if (payload.error) {
-                var _pcMsg = {
-                  'no-monster': 'Lock a weak monster first!',
-                  'too-healthy': 'Too healthy! (<20% HP)',
-                  'too-far': 'Too far away!',
-                  'slots-full': 'Pet slots full!',
-                  'no-trap': 'Need a trap! (Vendor sells them)',
-                  'not-now': 'Cannot trap right now'
-                }[payload.error] || 'Capture failed';
-                pushDmgPopup(S, S.player.x, S.player.y - 30, _pcMsg, '#ff5e6c');
-                BT_AUDIO.beep(200, 0.08, 0.12, 'square');
-              } else {
-                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Escaped!', '#ff5e6c');
-                BT_AUDIO.beep(200, 0.08, 0.12, 'square');
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Capture failed', '#ff5e6c');
               }
               break;
             }

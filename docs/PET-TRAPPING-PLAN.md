@@ -14,8 +14,10 @@
 This plan comes from a study of the game's code and of how other games let
 players catch creatures. The research report behind it is
 `docs/research/pet-trapping/other_games_report.md`. The notes behind both, with
-every source, are in that folder; start with its README. Nothing here is built
-yet. Every choice is now made; the full list is near the end.
+every source, are in that folder; start with its README. Every choice is now
+made; the full list is near the end.
+
+**Built:** Phase 1, v2.3.3111 (`docs/specs/trapping.md`).
 
 ## What you decided (2026-10-06)
 

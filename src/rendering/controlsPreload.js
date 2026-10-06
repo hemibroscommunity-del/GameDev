@@ -28,6 +28,8 @@
  * nothing to fetch.)
  */
 import { ICON_URL, RDISC_ICONS } from '../ui/panels/controlSkin.jsx';
+/* v2.3.3111: the TRAP pop-up's picture (TrapButton.jsx uses the same string) */
+export const TRAP_ICON_URL = '/icons/ui/skill-trapping.webp?v=2.3.1224';
 
 const _held = [];
 
@@ -51,6 +53,9 @@ function warm(url) {
 export function controlsPreloadUrls() {
   const urls = RDISC_ICONS.map((ic) => ic[1]);
   urls.push(ICON_URL.boot, ICON_URL.shield);
+  /* v2.3.3111: the TRAP pop-up's box trap (ui/panels/TrapButton.jsx) -- it
+     pops up the moment a monster is targeted, the same moment as the rest */
+  urls.push(TRAP_ICON_URL);
   return [...new Set(urls)];
 }
 

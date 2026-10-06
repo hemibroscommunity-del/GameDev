@@ -1560,7 +1560,7 @@ export const combatMethods = {
          into this function with the same killer once the blast lands, so
          credit, loot and XP are unchanged. `_burstDone` is what keeps that
          second call from deferring forever. */
-      /* v2.3.3108: a trap's mark is judged at the KILLING BLOW (trapping.js),
+      /* v2.3.3111: a trap's mark is judged at the KILLING BLOW (trapping.js),
          stamped before a slime's swell can defer the kill 1.6 s past it --
          and not again on the deferred call, which replays this blow. */
       if (!m._burstDone) m._trapJudgeAt = Date.now();
@@ -1800,7 +1800,7 @@ export const combatMethods = {
         }
       }
 
-      /* ═══ v2.3.3108: THE TRAPS SPRING (trapping.js) ═══
+      /* ═══ v2.3.3111: THE TRAPS SPRING (trapping.js) ═══
          After every payout above, which a capture never touches, and before
          the contributions are cleared: each player who armed this monster and
          did at least 5% of its damage (the gold rule's shares) rolls for

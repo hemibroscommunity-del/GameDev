@@ -101,6 +101,10 @@ import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.
 import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
+import { activePet } from '../../game/petBook.js'; /* v2.3.3111: the pet out with you is the record's */
+import { petFrames, petSideFaces, petArtHeight } from '../petSprites.js'; /* v2.3.3111: the pet sheet */
+import { PET_ART, petTint, petLevelScale, petDisplayName, petKindOfOld, worldSafeText } from '../../data/trapping.js'; /* v2.3.3111 */
+const PET_DRAW_K = 0.85;   /* v2.3.3111: see _updatePet */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
 import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2841: the staff kick + where its crystal is */
@@ -14935,10 +14939,26 @@ export class EntityRenderer {
      involved (Text falls back to the system emoji font), so this does not
      touch the preload manifest. */
   _updatePet(S, now) {
-    const _ls = S && S.rpg && S.rpg.lifeSkills;
-    const _idx = _ls ? _ls.activePet : null;
-    const pet = (_idx != null && _ls.pets) ? _ls.pets[_idx] : null;
+    /* ═══ v2.3.3111: DRAWN FROM THE PET SHEET ═══
+       The pet out with you is the pets RECORD's (game/petBook.js activePet:
+       the worker's pets_state; the old lifeSkills pair only against an old
+       worker), drawn from the pet sheet (petSprites.js) -- the monster it was
+       caught from, small, walking the way it goes, in its kind's colour, its
+       stage's or gold (data/trapping.js petTint), as big as its size and a
+       little bigger for its level.  It replaces the 15 px emoji in outlined
+       text (nine device px on a phone at the Wheel's zoom, and the iPhone
+       Safari crash nodeLabels.js records).  Nothing is loaded here: the sheet
+       is on the loading screen, and a pet whose frames are not in is simply
+       not drawn. */
+    const pet = S ? activePet(S) : null;
     if (!pet || !S.player) {
+      if (this.petDisplay) { this.petDisplay.visible = false; }
+      return;
+    }
+    const kind = (pet.kind && Object.prototype.hasOwnProperty.call(PET_ART, pet.kind)) ? pet.kind : petKindOfOld(pet);
+    const art = PET_ART[kind];
+    const front = petFrames(art.base, 'front');
+    if (!front.length) {
       if (this.petDisplay) { this.petDisplay.visible = false; }
       return;
     }
@@ -14946,49 +14966,64 @@ export class EntityRenderer {
     if (!this.petDisplay) {
       this.petDisplay = new Container();
       this.petDisplay.label = 'pet';
-      const petBody = new Graphics();
-      this.petDisplay.addChild(petBody);
-      this.petDisplay._body = petBody;
-      const petFace = new Text({ text: '', style: { fontSize: 15, align: 'center' } });
-      petFace.anchor.set(0.5, 0.5);
-      this.petDisplay.addChild(petFace);
-      this.petDisplay._faceText = petFace;
-      const petName = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 7 } });
+      const shadow = new Graphics();
+      shadow.ellipse(0, 0, 11, 4).fill({ color: 0x000000, alpha: 0.25 });
+      this.petDisplay.addChild(shadow);
+      this.petDisplay._shadow = shadow;
+      const body = new Sprite(front[0]);
+      body.anchor.set(0.5, 1);
+      this.petDisplay.addChild(body);
+      this.petDisplay._sprite = body;
+      const petName = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 22 } });   /* about the height of a nameplate's small type on the phone */
       petName.anchor.set(0.5, 1);
-      petName.y = -12;
       this.petDisplay.addChild(petName);
       this.petDisplay._nameText = petName;
       this.entityLayer.addChild(this.petDisplay);
+      this._petLastX = null;
     }
 
-    this.petDisplay.visible = true;
-    /* The simulated follow position, which is also where the coin popup is
-       floated -- so the two finally agree.  Falls back to the spot the old
-       code used if the simulation has not seeded itself yet (one frame). */
-    this.petDisplay.x = (typeof S._petX === 'number') ? S._petX : S.player.x + 20;
-    this.petDisplay.y = (typeof S._petY === 'number') ? S._petY : S.player.y + 15;
-
-    const bounce = Math.sin(now / 300) * 2;
-    const petBody = this.petDisplay._body;
-    petBody.clear();
-    /* A soft ground shadow under the emoji so it sits ON the world rather
-       than floating over it; the disc is only drawn as the pet itself when
-       the pet has no emoji to show. */
-    if (pet.emoji) {
-      petBody.ellipse(0, 7, 6, 2.5);
-      petBody.fill({ color: 0x000000, alpha: 0.25 });
-    } else {
-      petBody.circle(0, bounce, 6);
-      petBody.fill({ color: cssColorToHex(pet.color || '#f5c542') });
-      petBody.circle(0, bounce, 6);
-      petBody.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    const d = this.petDisplay;
+    d.visible = true;
+    /* The simulated follow position (BroTown's PET FOLLOW), which is also
+       where the loot vacuum's popups float -- so the two agree.  Falls back to
+       the spot beside you for the one frame before it seeds itself. */
+    const x = (typeof S._petX === 'number') ? S._petX : S.player.x + 20;
+    const y = (typeof S._petY === 'number') ? S._petY : S.player.y + 15;
+    const dx = this._petLastX == null ? 0 : x - this._petLastX;
+    const dy = this._petLastY == null ? 0 : y - this._petLastY;
+    this._petLastX = x; this._petLastY = y;
+    const moving = Math.abs(dx) + Math.abs(dy) > 0.25;
+    if (moving) {
+      /* which way it walks: side frames when it goes more across than up or
+         down, held while it stands */
+      this._petSide = Math.abs(dx) > Math.abs(dy) * 1.1;
+      if (Math.abs(dx) > 0.15) this._petGoesEast = dx > 0;
     }
-    this.petDisplay._faceText.text = pet.emoji || '';
-    this.petDisplay._faceText.visible = !!pet.emoji;
-    this.petDisplay._faceText.y = bounce;
-
-    this.petDisplay._nameText.text = pet.name || '🐾';
-    this.petDisplay._nameText.y = -10 + bounce;
+    const side = !!this._petSide && petFrames(art.base, 'side').length > 0;
+    const frames = side ? petFrames(art.base, 'side') : front;
+    /* slimes bounce standing still too; a walker steps only while it walks */
+    const bounces = art.base === 'slime' || art.base === 'blueSlime';
+    const fi = frames.length > 1 && (moving || bounces) ? Math.floor(now / (bounces ? 120 : 105)) % frames.length : 0;
+    const spr = d._sprite;
+    if (spr.texture !== frames[fi]) spr.texture = frames[fi];
+    /* PET_DRAW_K: the sheet is 2 px a game px (k 0.5 draws its 30 px art 30
+       game px tall); a bro stands ~105 game px on the phone, so 0.85 puts a
+       size-1 pet at ~50 -- about half of him, half a monster, readable at a
+       glance (mp-trapping's pictures: at 0.5 a slime pet was a speck) */
+    const k = PET_DRAW_K * Math.max(0.5, Math.min(1.6, Number(pet.size) || 1)) * petLevelScale(pet.lv || pet.level);
+    const faces = petSideFaces(art.base);
+    const flip = side && faces && ((faces === 'e') !== !!this._petGoesEast) ? -1 : 1;
+    spr.scale.set(k * flip, k);
+    spr.tint = petTint(pet);
+    /* a one-pose pet (the rock monster, the fishman) is carried by a hop */
+    const hop = frames.length === 1 && moving ? -Math.abs(Math.sin(now / 120)) * 3 : 0;
+    spr.y = hop;
+    d.x = x; d.y = y;
+    d._shadow.scale.set(Math.max(0.8, k * 2), 1.2);
+    const nm = worldSafeText(petDisplayName({ ...pet, kind }));
+    if (d._nameText.text !== nm) d._nameText.text = nm;
+    d._nameText.y = -petArtHeight(art.base) * k * 2 - 4 + hop;
+    d._kind = kind; d._frame = fi; d._side = side; d._flip = flip;
   }
 
   /* v2.3.2078: what the pet display is doing, for a scenario to read.  The
@@ -14998,7 +15033,11 @@ export class EntityRenderer {
     const d = this.petDisplay;
     if (!d) return null;
     return { visible: !!d.visible, x: d.x, y: d.y,
-      emoji: d._faceText ? d._faceText.text : null,
+      /* v2.3.3111: drawn from the pet sheet -- which kind, which frame */
+      kind: d._kind || null, frame: d._frame, side: !!d._side, flip: d._flip,
+      tint: d._sprite ? d._sprite.tint : null,
+      scale: d._sprite ? Math.abs(d._sprite.scale.x) : null,
+      tex: !!(d._sprite && d._sprite.texture && d._sprite.texture.source),
       name: d._nameText ? d._nameText.text : null };
   }
 

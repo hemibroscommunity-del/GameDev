@@ -122,15 +122,21 @@ const legacyBlob = () => ({
     rpgCoins: 50,
   });
   const ps = room.playerState['bp_mig_b'];
-  // activePet may legitimately be a NUMBER afterwards (the pet ingest
-  // defaults it to index 0 when pets exist); the corruption signature
-  // is an object-typed activePet, and that must be gone.
-  check('bootstrap ingest healed the corrupted join payload in place',
-    Array.isArray(ps.lifeSkills.pets) && ps.lifeSkills.pets.length === 1 && typeof ps.lifeSkills.activePet !== 'object',
+  /* v2.3.3111: a first connect brings NO pets from the browser at all now
+     (trapping.js trapBootstrapGuard; the pets record, petbook.js, is the only
+     list), which is stronger than the heal this section was written for: the
+     corrupt shapes -- pets as an object, activePet as {} -- cannot reach the
+     blob because nothing of the browser's pets does.  The other skills of the
+     payload are healed and kept as before. */
+  check('bootstrap ingest: the corrupt payload never reaches the blob (no browser pets at all since v2.3.3111)',
+    !(ps.lifeSkills.pets && !Array.isArray(ps.lifeSkills.pets)) && !((ps.lifeSkills.pets || []).length)
+      && (ps.lifeSkills.activePet == null || typeof ps.lifeSkills.activePet !== 'object')
+      && ps.lifeSkills.fishing && ps.lifeSkills.fishing.level === 2,
     ps.lifeSkills);
   await room._saveRpg('bp_mig_b', ps);
   const saved = state._store.get('rpg:bp_mig_b');
-  check('the saved fresh blob is clean AND stamped (never needs migration v1)', Array.isArray(saved.lifeSkills.pets) && saved._v === RPG_SCHEMA_VERSION, { _v: saved._v });
+  check('the saved fresh blob is clean AND stamped (never needs migration v1)',
+    !(saved.lifeSkills.pets && !Array.isArray(saved.lifeSkills.pets)) && saved._v === RPG_SCHEMA_VERSION, { _v: saved._v });
 }
 
 // ── 6. admin-restore path: an unversioned snapshot re-migrates on

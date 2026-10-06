@@ -338,6 +338,50 @@ export const devToolsMethods = {
     return { ok: true, zone: z, cleared };
   },
 
+  /* ═══ v2.3.3111: PET TRAPPING'S TEST LEVERS (trapping.js) ═══
+     At 1% at best, looking at a catch means a hundred kills -- so, for the
+     owner's test kit and the QA scenario (mp-trapping), the levers a catch
+     needs, on this same admin-key surface (no new socket message):
+       level   set the player's Trapping level (1-120);
+       traps   set the box traps in the bag; logs: pine logs, for the Traps tab;
+       next    'catch' or 'miss': the player's NEXT roll is that, whatever the
+               odds (in memory, one roll, gone on a deploy -- trapping.js
+               `_trapForced`); never stored, never on the wire;
+       kill    a monster id in the player's zone: killed with all of its damage
+               the player's, through the real kill path (_resolveMonsterKill), so
+               the trap springs exactly as a real kill springs it. */
+  _devTrapping(playerId, body) {
+    const t = this._devTarget(playerId);
+    if (!t) return { ok: false, error: 'player not online' };
+    const ps = t.ps;
+    const b = body || {};
+    const out = { ok: true };
+    const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(Number(v) || 0)));
+    if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
+    if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
+    if (b.level != null) { const L = clampInt(b.level, 1, 120); ps.lifeSkills.trapping = { level: L, xp: 0 }; out.level = L; }
+    if (b.traps != null) { const n = clampInt(b.traps, 0, 999); if (n > 0) ps.inventory.trap_box = n; else delete ps.inventory.trap_box; out.traps = n; }
+    if (b.logs != null) { const n = clampInt(b.logs, 0, 999); if (n > 0) ps.inventory.wood_pine_log = n; else delete ps.inventory.wood_pine_log; out.logs = n; }
+    if (b.next === 'catch' || b.next === 'miss') {
+      if (!(this._trapForced instanceof Map)) this._trapForced = new Map();
+      this._trapForced.set(playerId, b.next);
+      out.next = b.next;
+    }
+    if (typeof b.kill === 'string' && b.kill) {
+      const m = (this.monsters[ps.z] || []).find((x) => x && x.id === b.kill);
+      if (!m || !m.alive) { out.ok = false; out.error = 'no such live monster in your zone'; }
+      else {
+        m.dmgByPlayer = Object.create(null);
+        m.dmgByPlayer[playerId] = m.maxHp || 1;
+        m.hp = 0;
+        this._resolveMonsterKill(ps.z, m, playerId, ps, 'dev');
+        out.killed = m.id;
+      }
+    }
+    this._devPush(playerId, ps);
+    return out;
+  },
+
   /* Routed from _adminFetch, so auth, the fail-closed 404 and the audit log
      are all inherited rather than re-implemented.  Returns null when the
      path is not ours, so the caller falls through to its own 404. */
@@ -362,6 +406,7 @@ export const devToolsMethods = {
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId);   /* v2.3.2277 */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
+    else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3111 */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

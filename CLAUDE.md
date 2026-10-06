@@ -1430,7 +1430,34 @@ remnant to migrate server-side, not a mode to preserve.
       strips cropped, single pictures for the rest, behind the Wheel's loading
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
-      docs/specs/wheel-doors.md.)
+      docs/specs/wheel-doors.md.
+  - Since v2.3.3111 PET TRAPPING -- the owner: "your trapping level governs
+    what level monster you can capture ... The best success rate for the
+    lowest tier monster should be about 1%. And each trap should cost at least
+    1 wood", "leave the odds exactly the same for everyone", "let people name
+    their pets" (docs/PET-TRAPPING-PLAN.md, Phase 1):
+    - box traps (`trap_box`) at the Woodworker's Traps tab, one log of any kind
+      each (`make_traps`); a TRAP pop-up over a targeted Wheel monster with the
+      TRUE odds (`src/data/trapping.js`, held to `server/src/trapping.js` by
+      mirror-audit): 1% x 0.8 a stretch, half on reaching the monster's level,
+      the best 20 above; grey above your Trapping level ("Requires Trapping N"),
+      sending nothing; nothing else moves the odds, no bad-luck rule;
+    - `trap_arm` marks it 15 s; at the kill (`_trapRollOnKill`, combat.js, before
+      dmgByPlayer is cleared; a slime judged at the blow) each armer with 5% of
+      the damage rolls four checks at the fourth root (0-3 shakes drawn in code,
+      `src/rendering/trapFx.js`), one trap a roll, Trapping XP every roll; the
+      kill's payouts untouched; never in a dungeon or on safe ground;
+    - pets live in `pets:<pid>` (`server/src/petbook.js`): worker-made ids,
+      `pets_state`, the Pets page (More -> Pets, and the farm's Pet House:
+      take out, rename, release), old `lifeSkills.pets` moved in once as
+      `legacy`; the join no longer adopts a browser's pets, and a first
+      connect's Trapping level and pets are dropped (`trapBootstrapGuard`);
+    - a pet is drawn from the pet sheet (`tools/make_pet_sheet.py`, 1.31 MB,
+      on the loading screen), out of the trap to you; no more fake pet bites,
+      Evolve, Enchant, or sample "Frost Fox"; `pet_capture` answers 'retired';
+    - caps `trapping` / `trapcraft` / `petbook` (lower case, kill switches;
+      `caps.pets` gone); admin lever `/dev/trapping`; `trapping` suite,
+      `mp-trapping`: docs/specs/trapping.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

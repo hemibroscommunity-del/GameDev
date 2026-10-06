@@ -1,4 +1,4 @@
-/* Pet trapping -- v2.3.3108 (server/src/trapping.js, server/src/petbook.js).
+/* Pet trapping -- v2.3.3111 (server/src/trapping.js, server/src/petbook.js).
  * Plan: docs/PET-TRAPPING-PLAN.md.  Spec: docs/specs/trapping.md.
  *
  * The owner, 2026-10-06: "your trapping level governs what level monster you
@@ -604,6 +604,26 @@ const B = room.playerState['bp_trap_b'];
   check('kinds: every land\'s monsters become a kind', wheel.every((m) => !!petKindOf(m)) && new Set(wheel.map((m) => petKindOf(m))).size === Object.keys(PET_KINDS).length,
     [...new Set(wheel.map((m) => petKindOf(m)))]);
   check('kinds: a monster with no land becomes nothing', petKindOf({ arch: 'fodder' }) === null && petKindOf({ home: '__proto__' }) === null);
+}
+
+// ── 15. THE TEST KIT'S LEVER (devtools.js /dev/trapping) ─────────────────────
+{
+  const wsE = fakeWs('E');
+  await join(wsE, 'bp_trap_e');
+  const E = room.playerState['bp_trap_e'];
+  const g = firstStretch('thunder')[0];
+  revive(g); standBy(E, g);
+  const r1 = room._devTrapping('bp_trap_e', { level: 7, traps: 4, logs: 9, next: 'catch' });
+  check('dev: sets Trapping, traps and logs', r1.ok && E.lifeSkills.trapping.level === 7 && E.inventory.trap_box === 4 && E.inventory.wood_pine_log === 9, r1);
+  await send(wsE, 'trap_arm', { monsterId: g.id });
+  wsE.sent.length = 0;
+  const r2 = room._devTrapping('bp_trap_e', { kill: g.id });
+  const res = last(wsE, 'trap_result');
+  check('dev: `next: catch` + `kill` -- the real kill path springs the trap and it catches',
+    r2.ok && r2.killed === g.id && res && res.caught === true && res.pet && res.pet.kind === 'sparklet' && E.inventory.trap_box === 3, { r2, res });
+  check('dev: the forced roll is spent (one roll only)', !(room._trapForced && room._trapForced.has('bp_trap_e')));
+  check('dev: a dead or foreign monster id is refused', room._devTrapping('bp_trap_e', { kill: g.id }).ok === false
+    && room._devTrapping('bp_trap_e', { kill: '__proto__' }).ok === false);
 }
 
 Date.now = realNow;

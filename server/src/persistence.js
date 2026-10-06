@@ -398,7 +398,7 @@ export const persistenceMethods = {
        same belt-and-braces argument as the playerState delete below). */
     try { await this.state.storage.delete('gear_prov:' + pid); } catch (e) { /* best-effort, as above */ }
     this._gearProvForget(pid);
-    /* v2.3.3108: and the pets record (petbook.js), for the same reason: it is
+    /* v2.3.3111: and the pets record (petbook.js), for the same reason: it is
        keyed by player id, and a restarted character has caught nothing.  The
        cache goes WITHOUT a flush (a flush would write the old record straight
        back), and so do the trap marks' times (trapping.js). */

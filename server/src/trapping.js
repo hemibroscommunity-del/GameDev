@@ -1,4 +1,4 @@
-/* ═══ v2.3.3108: PET TRAPPING — ARM A TRAP, THEN KILL IT ═══
+/* ═══ v2.3.3111: PET TRAPPING — ARM A TRAP, THEN KILL IT ═══
  * Plan: docs/PET-TRAPPING-PLAN.md (every choice the owner's, 2026-10-06).
  * Spec: docs/specs/trapping.md.  The pets record is petbook.js.
  *
@@ -192,7 +192,7 @@ export function trapsIn(ps) {
   return Math.max(0, n);
 }
 
-/** v2.3.3108: what a FIRST connect may not bring from the browser.  The join
+/** v2.3.3111: what a FIRST connect may not bring from the browser.  The join
  *  bootstrap (join.js) takes the client's life skills on a player's very first
  *  join; a forged Trapping 99 would skip the rule that decides what can be
  *  caught, and forged pets would move into the record and, once pets trade,
@@ -390,9 +390,15 @@ export const trappingMethods = {
       /* One trap, caught or not. */
       ps.inventory[TRAPPING.TRAP] = trapsIn(ps) - 1;
       if (ps.inventory[TRAPPING.TRAP] <= 0) delete ps.inventory[TRAPPING.TRAP];
-      /* `_trapRng`: the dice, swappable only for the suites and the QA's
-         forced catch (devtools.js `trapforce`) -- never set in play. */
-      const { caught, shakes } = trapShakes(chance, typeof this._trapRng === 'function' ? this._trapRng : Math.random);
+      /* The dice.  `_trapForced` is the admin test kit's lever (devtools.js
+         /dev/trapping `next`): one roll forced to catch or miss, for the QA
+         scenario and the owner's own look at a catch, never set by play and
+         never stored.  `_trapRng` is the suites' seam. */
+      const forced = (this._trapForced instanceof Map) ? this._trapForced.get(pid) : null;
+      if (forced) this._trapForced.delete(pid);
+      const rng = forced === 'catch' ? () => 0 : forced === 'miss' ? () => 0.999999
+        : (typeof this._trapRng === 'function' ? this._trapRng : Math.random);
+      const { caught, shakes } = trapShakes(chance, rng);
       const stretch = trapStretch(M);
       let pet = null;
       if (caught) {

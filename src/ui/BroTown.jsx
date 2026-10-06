@@ -374,6 +374,9 @@ import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
+import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3111: the TRAP pop-up */
+import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3111: a new pet's card */
+import { activePet } from '@/game/petBook.js';   /* v2.3.3111: the pet out with you is the record's */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
@@ -6493,13 +6496,18 @@ export var BroTown = function BroTown(_ref0) {
         /* Collectible pickup removed */
 
         /* §18.1 PET FOLLOW + AUTO-LOOT — active pet follows player and vacuums loot */
-        if (((_S$rpg7 = S.rpg) === null || _S$rpg7 === void 0 || (_S$rpg7 = _S$rpg7.lifeSkills) === null || _S$rpg7 === void 0 ? void 0 : _S$rpg7.activePet) !== null && ((_S$rpg8 = S.rpg) === null || _S$rpg8 === void 0 || (_S$rpg8 = _S$rpg8.lifeSkills) === null || _S$rpg8 === void 0 ? void 0 : _S$rpg8.activePet) !== undefined) {
-          var pets = S.rpg.lifeSkills.pets || [];
-          var petIdx = S.rpg.lifeSkills.activePet;
-          var pet = pets[petIdx];
+        /* v2.3.3111: the pet out with you is the pets RECORD's (game/petBook.js
+           activePet: the worker's pets_state; the old lifeSkills pair only
+           against an old worker). */
+        {
+          var pet = activePet(S);
           if (pet) {
             /* Initialize pet position */
-            if (!S._petX) {
+            /* v2.3.3111: ...and put it back beside you after a teleport, a
+               zone change or a respawn: it walked back from where it was at
+               2 px a frame, which across the Wheel took minutes (the plan's
+               "things found in the code", 9). */
+            if (!S._petX || Math.abs(S._petX - P.x) + Math.abs(S._petY - P.y) > 900) {
               S._petX = P.x - 30;
               S._petY = P.y + 20;
             }
@@ -6641,7 +6649,7 @@ export var BroTown = function BroTown(_ref0) {
                   if (loot.shard && S.rpg.inventory) {
                     S.rpg.inventory[loot.shard] = (S.rpg.inventory[loot.shard] || 0) + 1;
                     var _petShard = shardByKey(loot.shard);
-                    pushDmgPopup(S, S._petX, S._petY - 28, pet.emoji + ' + ' + (_petShard ? _petShard.label : 'Shard'), (_petShard && _petShard.color) || '#cce6ff');
+                    pushDmgPopup(S, S._petX, S._petY - 28, '+ ' + (_petShard ? _petShard.label : 'Shard'), (_petShard && _petShard.color) || '#cce6ff');   /* v2.3.3111: no pet emoji: a pet is drawn now */
                   }
                   BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
                   if (!S.rpg._questFlags) S.rpg._questFlags = {};
@@ -6653,52 +6661,15 @@ export var BroTown = function BroTown(_ref0) {
               });
             }
 
-            /* ═══ PET COMBAT — pet auto-attacks nearest enemy ═══ */
-            if (S.monsters && !S._petAtkCd || Date.now() > (S._petAtkCd || 0)) {
-              /* Find nearest alive monster to pet */
-              var nearestM = null,
-                nearestD = 80; /* 80px aggro range */
-              S.monsters.forEach(function (m) {
-                if (!m.alive) return;
-                var d = Math.sqrt(Math.pow(S._petX - m.x, 2) + Math.pow(S._petY - m.y, 2));
-                if (d < nearestD) {
-                  nearestD = d;
-                  nearestM = m;
-                }
-              });
-              if (nearestM && nearestD < 40) {
-                /* attack at 40px range */
-                /* Pet deals 15% of player weapon damage, scales with pet level */
-                var petLvl = pet.level || 1;
-                var pDmgBase = S.rpg ? calcWeaponDmg((activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) || 'greatsword', S.rpg || {}, (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.tierMult) || 1, activeWpn) : 5;
-                var petDmg = Math.max(1, Math.ceil(pDmgBase * 0.15 * (1 + petLvl * 0.02)));
-                nearestM.curHp -= petDmg;
-                S._petAtkCd = Date.now() + 1500; /* pet attacks every 1.5s */
-                /* Visual feedback — small damage number from pet */
-                /* v2.3.2521: was full-size — missed by v2.3.2520, so the pet's
-                   number sat next to your own scaled ones and read five times
-                   harder-hitting than you. */
-                pushDmgPopup(S, nearestM.x, monsterPopupY(nearestM, -10), pet.emoji + ' -' + toDisplayDamage(petDmg), pet.color || '#59BF91');
-                /* Pet attack particles */
-                for (var pp = 0; pp < 3; pp++) {
-                  S.hitParticles.push({
-                    x: nearestM.x + (Math.random() - 0.5) * 8,
-                    y: nearestM.y + (Math.random() - 0.5) * 8,
-                    vx: (Math.random() - 0.5) * 2,
-                    vy: -1 - Math.random(),
-                    life: 0.3,
-                    color: pet.color || '#59BF91',
-                    size: 1.5
-                  });
-                }
-                /* Pet moves toward target when attacking */
-                var paDx = nearestM.x - S._petX,
-                  paDy = nearestM.y - S._petY;
-                var paDist = Math.sqrt(paDx * paDx + paDy * paDy) || 1;
-                S._petX += paDx / paDist * 3;
-                S._petY += paDy / paDist * 3;
-              }
-            }
+            /* ═══ v2.3.3111: NO MORE PET "COMBAT" ═══
+               Every 1.5 s the pet took a bite out of a nearby monster's health
+               ON THIS SCREEN ONLY, with damage numbers, and the worker never
+               heard of it -- so a monster's bar could read lower here than its
+               real health, and other players saw nothing.  Pets don't fight
+               (docs/PET-TRAPPING-PLAN.md, "What pets do"): a fighting pet is a
+               second monster for the worker to run and a must-have in PvP.  If
+               pets ever help in a fight, it will be as an extra on your own hit
+               that the worker works out (Phase 5, the owner's call). */
           }
         }
 
@@ -7545,7 +7516,7 @@ export var BroTown = function BroTown(_ref0) {
                   clanTag: ((_S$_clanData2 = S._clanData) === null || _S$_clanData2 === void 0 ? void 0 : _S$_clanData2.tag) || null,
                   clanName: ((_S$_clanData3 = S._clanData) === null || _S$_clanData3 === void 0 ? void 0 : _S$_clanData3.name) || null,
                   clanColor1: ((_S$_clanData4 = S._clanData) === null || _S$_clanData4 === void 0 ? void 0 : _S$_clanData4.color1) || null
-                }, profileRelayFields(_rpg))
+                }, profileRelayFields(_rpg, S))
               });
             }
           }
@@ -12517,7 +12488,10 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       color: 'rgba(255,255,255,.6)'
     }
-  }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */, function () {
+  }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */,
+  /* v2.3.3111: pet trapping -- the TRAP pop-up over a targeted monster and the
+     card for a new pet (each on its own clock; game/trapping.js) */
+  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), function () {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];
@@ -13619,14 +13593,19 @@ export var BroTown = function BroTown(_ref0) {
       bottom: mktMode !== 'orders' && (_stateRef$current55 = stateRef.current) !== null && _stateRef$current55 !== void 0 && _stateRef$current55._nearWorkshop ? 175 : 140,
       background: 'rgba(234,88,12,.85)'
     },
+    /* v2.3.3111: the Pet House opens the Pets page (dash/PetsPanel.jsx) when
+       the worker keeps the pets record -- one page for your pets, not two
+       that disagree; against an old worker, the old Pet House as before */
     onClick: function onClick(e) {
       e.preventDefault();
-      setShowPetHouse(true);
+      if (stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.petbook) dashboardPanelBus.open('pets');
+      else setShowPetHouse(true);
       BT_AUDIO.enterBuilding();
     },
     onTouchStart: function onTouchStart(e) {
       e.preventDefault();
-      setShowPetHouse(true);
+      if (stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.petbook) dashboardPanelBus.open('pets');
+      else setShowPetHouse(true);
       BT_AUDIO.enterBuilding();
     }
   }, stateRef.current._isDesktop && /*#__PURE__*/React.createElement("kbd", {

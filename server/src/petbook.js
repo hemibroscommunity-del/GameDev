@@ -1,4 +1,4 @@
-/* ═══ v2.3.3108: THE PETS RECORD — pets:<playerId> ═══
+/* ═══ v2.3.3111: THE PETS RECORD — pets:<playerId> ═══
  * Plan: docs/PET-TRAPPING-PLAN.md, "For the builder".  Spec:
  * docs/specs/trapping.md.  Catches come from trapping.js.
  *

@@ -52,7 +52,7 @@ import { LIFE_SKILL_XP as CLIENT_LIFE_SKILL_XP } from '../../src/data/lifeSkills
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058 */
 import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
-/* v2.3.3108: pet trapping -- the button's odds, the Traps tab, the kinds, the name rule */
+/* v2.3.3111: pet trapping -- the button's odds, the Traps tab, the kinds, the name rule */
 import { TRAPPING as SRV_TRAPPING, trapChance as srvTrapChance, trapRollXp as srvTrapRollXp, trapCatchXp as srvTrapCatchXp } from '../src/trapping.js';
 import { PET_KINDS as SRV_PET_KINDS, PET_NAME as SRV_PET_NAME, cleanPetName as srvCleanPetName, petKindOf as srvPetKindOf, PETBOOK as SRV_PETBOOK } from '../src/petbook.js';
 import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp as clientTrapRollXp, trapCatchXp as clientTrapCatchXp,
@@ -1603,7 +1603,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('no man\'s land: the same level at every spot out to the gates', off.length === 0, off.slice(0, 4));
 }
 
-// ── v2.3.3108: PET TRAPPING (server trapping.js / petbook.js, client
+// ── v2.3.3111: PET TRAPPING (server trapping.js / petbook.js, client
 // src/data/trapping.js).  The TRAP button shows the odds and greys itself
 // out from the client's copy, the Traps tab lists the logs, the Pets page
 // refuses a name before sending it; the worker decides all of it.  A drift
