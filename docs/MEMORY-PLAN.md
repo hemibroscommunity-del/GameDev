@@ -104,10 +104,10 @@ Memory spent on nothing:
 | A rebuild lets go of the old renderer: listeners, bakes, ground, Pixi's render-target listeners | cache flat over three rebuilds (was 172 -> 327 MB) | #802, v2.3.3060 |
 | A re-bake lets go of what it replaced (`releaseCanvasSource`, every site) | eight strokes +0.4 MB of cache (was +92) | #802, v2.3.3060 |
 | The ~5 MB-a-lap canvas growth on the land tour | flat after #802 (monster recolours released properly) | #802 |
-| A destroyed texture lets go of its picture even where Pixi still points at it (pooled batches, hidden sprites' draw data) | after a tour of four lands: 22-35 MB of freed object sheets, canvases and ground held -> 0 (`mp-zombietex`) | #810, v2.3.3065 |
-| Freed on close: the world map's canvas (11.3 MB an open at 3x, held until the next GC) | five opens: 3 dead canvases, 31.4 MB -> 0 (`mp-worldmapfree`) | #812, v2.3.3066 |
+| A destroyed texture lets go of its picture even where Pixi still points at it (pooled batches, hidden sprites' draw data) | after a tour of four lands: 22-35 MB of freed object sheets, canvases and ground held -> 0 (`mp-zombietex`) | #810, v2.3.3069 |
+| Freed on close: the world map's canvas (11.3 MB an open at 3x, held until the next GC) | five opens: 3 dead canvases, 31.4 MB -> 0 (`mp-worldmapfree`) | #812, v2.3.3070 |
 | Freed on close: the loading clip's warm-up copy | ~2-3 MB; rubble's scratch canvases are locals the GC takes | |
-| A snowball burst playing when the frost art is handed back (found on the way: app.render threw until the burst ended) | retired before the frame draws (`mp-burstfree`) | #813, v2.3.3067 |
+| A snowball burst playing when the frost art is handed back (found on the way: app.render threw until the burst ended) | retired before the frame draws (`mp-burstfree`) | #813, v2.3.3071 |
 
 **Phase 2 -- stop paying for what nobody sees or hears.**
 
@@ -117,23 +117,27 @@ Memory spent on nothing:
 | The ground's CPU copy dropped once uploaded (re-laid after a graphics reset) | 33 MB standing, 52 after a walk, 62 after a rebuild (page ArrayBuffers 53 -> 20 MB) | #806, v2.3.3063 |
 | The damage-number font's atlas trimmed | 5-10 MB | not a clean win: its letters draw words ("Blocked!", "+30 XP"), so a smaller set sends some to the slower canvas text; its canvases are what a rebuilt renderer uploads it from |
 | Wheel objects loaded by their own size, not the largest building's; their sheets cached for good | 4 MB, fewer downloads | |
-| Small: the chopper's spare copy, the worker's caches, sounds decoded twice, idle bake worker | 25-35 MB | |
+| Small: the chopper's spare copy, the worker's caches, sounds decoded twice, idle bake worker | measured much smaller than first thought: the ground worker 2 MB of heap + 18.6 MB of buffers (the swatches and fields it lays with, all in use), the bake worker 0.3 MB, sounds decoded twice ~1 MB, and the lumberjack's two key-intact crops (4.8 MB) are what a skin change re-bakes from | not worth a change: ~6 MB at most, and the crops' only replacement is a fetch on every skin change |
 
 **Phase 3 -- bigger, still pixel-identical** (each its own PR).
 
-| Item | Saves |
-|---|---|
-| Canvas art made purgeable (compressed images the iPhone can drop and re-decode) | up to ~70 MB |
-| Character art kept on the GPU only, re-baked after a black screen's rebuild (measured 2026-10-06: of 540 canvases, 127 are copies of a texture already uploaded -- 45.6 MB, mostly the gear sheets, the damage font's pages and the skill poses, all module caches a rebuilt renderer re-uploads FROM the canvas; the effects renderer's own big strips are not on the GPU until first drawn).  Pixel-identical by construction (the same bakes run again), but it changes the black-screen recovery path, so it is planned with the owner first | ~46 MB of page memory |
-| Skill figures baked for what you wear only, the other in the background | 16-19 MB |
-| Palette textures for the ground and the Wheel's objects | ~55 MB |
-| The unused depth buffer off | 8-19 MB (to check on a phone) |
+| Item | Saves | Status |
+|---|---|---|
+| Canvas art made purgeable (compressed images the iPhone can drop and re-decode) | up to ~70 MB | |
+| Character art kept on the GPU only, re-baked after a black screen's rebuild (measured 2026-10-06: of 540 canvases, 127 are copies of a texture already uploaded -- 45.6 MB, mostly the gear sheets, the damage font's pages and the skill poses, all module caches a rebuilt renderer re-uploads FROM the canvas; the effects renderer's own big strips are not on the GPU until first drawn).  Pixel-identical by construction (the same bakes run again), but it changes the black-screen recovery path, so it is planned with the owner first | ~46 MB of page memory | |
+| Skill figures baked for what you wear only, the other in the background | 16-19 MB | |
+| Palette textures for the ground and the Wheel's objects | ~55 MB | |
+| The unused depth buffer off: the screen asks for its stencil (the masks) alone | ~11 MB of GPU memory on a 3x iPhone (~20 if Metal pads the packed buffer to 8 bytes a pixel); none on Chrome, which allocates a packed buffer whatever is asked.  Per WebKit's `WebGLDefaultFramebuffer` (depth + stencil: `DEPTH24_STENCIL8`, on Metal 32-bit float + 8; stencil alone: `STENCIL_INDEX8`).  DEPTH_TEST is never turned on, so not a pixel changes (`mp-nodepth`) | #814, v2.3.3072 |
 
 **Phase 4 -- the owner's call** (each trades something a player might notice;
 none is done without a yes): a smaller ring of ground round the view (-10 MB),
 tighter object-loading margins (-15 MB), fewer rubble heaps (-15 MB), idle
 armour sheets off the GPU (-30 MB GPU, a tiny upload on the next swing), music
-streamed instead of decoded (-23 MB; the loop seam and the silent switch), and
+streamed instead of decoded (-23 MB; the loop seam and the silent switch), the
+gathering stand-ins -- the lumberjack, the cook and the fire-lighter, ~27 MB of
+canvases baked on the loading screen and not on the GPU until you gather --
+baked the first time you gather instead (-27 MB until then; the preloading law
+says no, a hitch the first time), and
 which song the Wheel plays: today the old town's after logging in on a quick
 phone, the session track on a slow one and after any death, dungeon or farm
 trip, with the old town's 40 MB held either way.  The session track always
@@ -150,7 +154,8 @@ switches.
 
 | Item | Measured | Status |
 |---|---|---|
-| The black-screen watchdog's 32 x 18 sample shrunk on the GPU and read back without waiting (it copied the whole canvas out, 11 MB on a 3x phone, and waited for the frame, every 5 s) | ~10% of the main thread in a CPU profile (phone-sized page, CPU x4), walking or fighting -> not in the profile; 2.5 ms against 25 ms + the frame's wait (`mp-wdsample`) | #808, v2.3.3064 |
+| The black-screen watchdog's 32 x 18 sample shrunk on the GPU and read back without waiting (it copied the whole canvas out, 11 MB on a 3x phone, and waited for the frame, every 5 s) | ~10% of the main thread in a CPU profile (phone-sized page, CPU x4), walking or fighting -> not in the profile; 2.5 ms against 25 ms + the frame's wait (`mp-wdsample`) | #808, v2.3.3068 |
+| Pixi's draw list rebuilt from the whole scene every frame.  Measured (a probe on every render group's `structureDidChange`, unminified main): EVERY frame rebuilds, standing in Brotown, walking and fighting -- ~25 places change the scene's structure each frame (effects added and removed, pooled sprites shown and hidden, shadows, ground pieces streaming in, the depth sort's moves between layers and its zIndex keys, the minimap's marks, the buildings' life, one Graphics in the ground that fails Pixi's check every frame) | 0.4-1.2 ms a frame on the test machine, ~600-900 containers walked (the HUD layer ~216 of them); ~5% of a fight's CPU profile at x4 | sized, not done.  Stopping the triggers one by one cannot win: any one left rebuilds everything.  Render groups would confine a rebuild to its own layer, but a group under the camera has the camera's move applied on the GPU in 32-bit floats -- the same picture, not the same bytes (an edge pixel can land on its neighbour's texel).  The safe part is the HUD layer as its own group (no camera, an identity transform: byte-identical) once the minimap stops toggling its marks every frame -- ~25-35% of each rebuild |
 
 ## All of it together (2026-10-06)
 
