@@ -226,7 +226,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot(P, 'diego-store');
   rec.ok(`Diego keeps the General Store: standing beside its steps (${dg.npc ? Math.round(dg.npc.x - store.x) : '?'}, ${dg.npc ? Math.round(dg.npc.y - store.y) : '?'} px from its door), drawn ${dg.drawn ? dg.drawn.h + ' px tall' : 'NOT DRAWN'}, still; his window stays shut while you stand at the door`,
     !!dg.npc && Math.abs(dg.npc.x - (store.x + sk.dx)) < 1 && Math.abs(dg.npc.y - (store.y + sk.dy)) < 1 && dg.npc.r === 0
-      && !!dg.drawn && dg.drawn.h > 100 && dg.drawn.h < 220 && dg.names.length === 2 && !dg.shop,
+      && !!dg.drawn && dg.drawn.h > 100 && dg.drawn.h < 220 && dg.names.length === 1 + WHEEL_TOWNSFOLK.length && !dg.shop,
     dg);
   await standAt(store.x + sk.dx + 30, store.y + sk.dy + 10);
   let shopOpen = false;
