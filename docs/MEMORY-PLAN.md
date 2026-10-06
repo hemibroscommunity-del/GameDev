@@ -50,9 +50,19 @@ Leaks, measured:
 
 Memory spent on nothing:
 
-- **The old town's music** (`village.mp3`, 40 MB decoded) is decoded for the
-  hidden stop in today's town on the way in, and kept: the Wheel has no track
-  of its own, so it never plays and is never let go of.
+- **The old town's music** (`village.mp3`, 40 MB decoded, 43 on an iPhone,
+  which decodes at 48 kHz) is decoded at the hidden stop in today's town on
+  the way in and kept for good.  What the Wheel then plays depends on the
+  phone (measured, scratch timing probe, CPU at 1x and 4x): on a quick one
+  the intro's hand-off (IntroVideo `beginTransition`, v2.3.831) lands after
+  the arrival and starts the old town's song IN the Wheel; on a slow one it
+  lands before, the song plays in today's town under the ocean clip, and the
+  Wheel gets the session track.  After a death, a dungeon or the farm the
+  Wheel plays the session track, and the 40 MB sits idle -- until a farm
+  visit, which plays the old town's song.  Letting it go was tried
+  (v2.3.3062, not shipped): every way to do it changes what you hear
+  somewhere -- a gap at the intro's end, or on the next farm visit, while the
+  song is decoded again -- so it is the owner's call (Phase 4).
 - **Every return from another app** after 2 s re-decodes every sound
   (`_rebuildContext`), a 50-90 MB spike while the old copies wait to be freed.
 - **The damage-number font** is 11 pages of 512 x 512: ~11 MB of canvases and
@@ -100,7 +110,6 @@ Memory spent on nothing:
 
 | Item | Saves | Status |
 |---|---|---|
-| The town's music not decoded for the hidden stop; tracks dropped where none plays | 40 MB (43 on an iPhone, which decodes at 48 kHz) | next |
 | Decoded sounds kept across the audio rebuild after an app switch | a 50-90 MB spike per return | |
 | The ground's CPU copy dropped once uploaded (re-laid after a graphics reset) | 34 MB, 56 sprinting | |
 | The damage-number font's atlas trimmed | 5-10 MB | |
@@ -120,7 +129,13 @@ Memory spent on nothing:
 none is done without a yes): a smaller ring of ground round the view (-10 MB),
 tighter object-loading margins (-15 MB), fewer rubble heaps (-15 MB), idle
 armour sheets off the GPU (-30 MB GPU, a tiny upload on the next swing), music
-streamed instead of decoded (-23 MB; the loop seam and the silent switch).
+streamed instead of decoded (-23 MB; the loop seam and the silent switch), and
+which song the Wheel plays: today the old town's after logging in on a quick
+phone, the session track on a slow one and after any death, dungeon or farm
+trip, with the old town's 40 MB held either way.  The session track always
+(the old town's song on the farm only, decoded there and let go of on
+leaving) frees the 40 MB for good; the old town's song always makes the
+40 MB worth holding.
 
 **Frame time, alongside** (measured first on a phone with `?perf=1`): the
 per-frame QA probes only when testing, a Graphics cleared only when it drew,
