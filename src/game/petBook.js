@@ -50,3 +50,12 @@ export function sendPetName(S, id, name) {
 }
 /** Release a pet for good (the page asks first; the worker wants `confirm`). */
 export function sendPetRelease(S, id) { return ask(S, 'pet_release', { id, confirm: true }); }
+/** v2.3.3123: 10 more places in the Pet House, at the price shown for the
+ *  collection's size `cap` now (server petbook.js _handlePetHouseBuy refuses a
+ *  stale size, so a double tap never buys twice).  Only against a worker that
+ *  sells it (caps.pethouse). */
+export function pethouseOn(S) { return !!(S && S._serverCaps && S._serverCaps.pethouse); }
+export function sendPetHouseBuy(S, cap) {
+  if (!pethouseOn(S)) return false;
+  return ask(S, 'pet_house_buy', { cap: Math.floor(Number(cap) || 0), confirm: true });
+}

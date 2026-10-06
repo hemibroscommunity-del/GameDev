@@ -76,7 +76,50 @@ export const PETBOOK = Object.freeze({
   /* v2.3.3122: TRADING (Phase 3).  At most this many pets a side in one
      trade window. */
   TRADE_MAX: 4,
+  /* v2.3.3123: THE LAND WARD (Phase 4).  The pet out with you takes
+     petWardOf(its level) off what its own land's element does to you
+     (monsterstatus.js _elemOnHit): 15% at Lv 1, a point more a level, never
+     more than half (Lv 36).  Its level for this is the one it works at, never
+     above your Trapping level -- the plan's "a traded pet above your Trapping
+     level works at your Trapping level".  Mirrored on the phone
+     (src/data/trapping.js PET_WARD), held to it by mirror-audit. */
+  WARD_BASE: 0.15,
+  WARD_PER_LV: 0.01,
+  WARD_MAX: 0.5,
+  /* v2.3.3123: MORE ROOM (Phase 4), the plan's "The Pet House holds more for
+     gold" -- a gold sink, as the plan says it is.  HOUSE_STEP more places at
+     a time, each step HOUSE_BASE more than the one before (petHousePrice):
+     30 -> 40 for 1,000, 40 -> 50 for 2,000 ... 110 -> 120 for 9,000; 45,000
+     gold for all ninety.  Mirrored on the phone (src/data/trapping.js
+     PET_HOUSE), held to it by mirror-audit. */
+  HOUSE_STEP: 10,
+  HOUSE_BASE: 1000,
 });
+
+/** The gold the next HOUSE_STEP places cost for a collection holding `cap`,
+ *  or 0 when it holds CAP_MAX already. */
+export function petHousePrice(cap) {
+  const C = Math.max(PETBOOK.CAP, Math.floor(Number(cap) || PETBOOK.CAP));
+  if (C >= PETBOOK.CAP_MAX) return 0;
+  return PETBOOK.HOUSE_BASE * (Math.floor((C - PETBOOK.CAP) / PETBOOK.HOUSE_STEP) + 1);
+}
+
+/** How much a pet working at level `lv` takes off its land's element: a
+ *  fraction, to the hundredth (0.15 at Lv 1 ... 0.5 from Lv 36). */
+export function petWardOf(lv) {
+  const L = Math.max(1, Math.floor(Number(lv) || 1));
+  return Math.round(Math.min(PETBOOK.WARD_MAX, PETBOOK.WARD_BASE + PETBOOK.WARD_PER_LV * (L - 1)) * 100) / 100;
+}
+
+/** v2.3.3123 (Phase 4): the pet out with a player, as everyone else's game
+ *  draws it -- tick.js playerWire `pw`: 'kind.stage.gold.size.lv'
+ *  ("snowling.1.0.105.4", the size in hundredths), or null.  Never its name:
+ *  the others draw a pet, not a label (src/data/trapping.js parsePetWire). */
+export function petWireOf(p) {
+  if (!p || typeof p !== 'object' || !has(PET_KINDS, p.kind)) return null;
+  return p.kind + '.' + Math.max(1, Math.floor(Number(p.stage) || 1)) + '.' + (p.gold === true ? 1 : 0)
+    + '.' + Math.round((Number(p.size) || 1) * 100) + '.' + Math.max(1, Math.floor(Number(p.lv) || 1));
+}
 
 /** What a buyer is shown of a pet (a trade window, a listing): never the
  *  record's whole object.  `owners` and `caughtBy` are its story. */
@@ -124,17 +167,20 @@ export function petGainXp(lv, xp, gain, cap) {
    as the game draws it (its archetype once its zone's variant is applied --
    src/data/wheelStageLooks.js's keys), `home` its land.  The names a kind goes
    by are the phone's (src/data/trapping.js PET_KINDS); mirror-audit holds the
-   two tables to the same kinds, lands and looks. */
+   two tables to the same kinds, lands and looks.  v2.3.3123: `el` is the
+   element its land's monsters hit with (monsterstatus.js ELEM_HITS), the one
+   its ward takes the edge off -- the eight lands and the eight effects match
+   one to one (the plan, "Ward"). */
 export const PET_KINDS = Object.freeze({
-  snowling: Object.freeze({ home: 'frost', look: 'snowman' }),
-  gobling: Object.freeze({ home: 'ember', look: 'fireGoblin' }),
-  mumling: Object.freeze({ home: 'sky', look: 'mummy' }),
-  pebbling: Object.freeze({ home: 'hollows', look: 'rockmonster' }),
-  sparklet: Object.freeze({ home: 'thunder', look: 'fodder' }),
-  finling: Object.freeze({ home: 'tidal', look: 'fishman' }),
-  wisplet: Object.freeze({ home: 'mist', look: 'mireWisp' }),
-  lurkling: Object.freeze({ home: 'mist', look: 'bogLurker' }),
-  dewdrop: Object.freeze({ home: 'verdant', look: 'blueSlime' }),
+  snowling: Object.freeze({ home: 'frost', look: 'snowman', el: 'frost' }),
+  gobling: Object.freeze({ home: 'ember', look: 'fireGoblin', el: 'flame' }),
+  mumling: Object.freeze({ home: 'sky', look: 'mummy', el: 'wind' }),
+  pebbling: Object.freeze({ home: 'hollows', look: 'rockmonster', el: 'stone' }),
+  sparklet: Object.freeze({ home: 'thunder', look: 'fodder', el: 'storm' }),
+  finling: Object.freeze({ home: 'tidal', look: 'fishman', el: 'water' }),
+  wisplet: Object.freeze({ home: 'mist', look: 'mireWisp', el: 'venom' }),
+  lurkling: Object.freeze({ home: 'mist', look: 'bogLurker', el: 'venom' }),
+  dewdrop: Object.freeze({ home: 'verdant', look: 'blueSlime', el: 'flora' }),
 });
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -401,6 +447,7 @@ export const petbookMethods = {
     return { v: r.v, cap: r.cap, active: r.active, list: r.list.map((p) => ({ ...p })), journal };
   },
   _petbookSend(pid, extra) {
+    this._petWireRefresh(pid);   /* v2.3.3123: every change to the record passes here */
     const book = this._petbookOf(pid);
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
@@ -408,6 +455,35 @@ export const petbookMethods = {
       ? { unavailable: true, ...(extra || {}) }
       : { ...this._petbookWire(book), ...(extra || {}) };
     try { ws.send(JSON.stringify({ type: 'pets_state', payload })); } catch (e) {}
+  },
+
+  /* ═══ v2.3.3123: WHAT THE OTHERS SEE (Phase 4) ═══
+     "Other players see your pet."  The pet out with player `pid`, as
+     petWireOf puts it, kept on their playerState as `_petWire` (memory only,
+     never in the rpg blob: persistence.js writes a fixed field list) for
+     tick.js playerWire to put on their record as `pw`.  Refreshed from every
+     change to the record (_petbookSend) and a level-up; when it changes the
+     player is marked dirty, so a pet taken out while standing still reaches
+     the others on the next tick, not only at the 1 Hz roster.
+     `petshow: false` in liveflags (lower case, TRAPS §117) takes `pw` off
+     every record (_petShowOff, read once a tick). */
+  _petShowOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'petshow') && !f.petshow);
+  },
+
+  _petWireRefresh(pid) {
+    const ps = this.playerState && this.playerState[pid];
+    if (!ps) return;
+    const book = this._petbookOf(pid);
+    let w = null;
+    if (book && !book.locked && book.rec && book.rec.active) {
+      w = petWireOf(book.rec.list.find((p) => p.id === book.rec.active));
+    }
+    if ((ps._petWire || null) !== w) {
+      ps._petWire = w;
+      if (this.dirtyPlayers && typeof this.dirtyPlayers.add === 'function') this.dirtyPlayers.add(pid);
+    }
   },
 
   /* The active pet, for the loot vacuum (index.js _handleLootPickup). */
@@ -428,12 +504,18 @@ export const petbookMethods = {
     const kind = petKindOf(m) || 'dewdrop';
     const lvl = Math.max(1, Math.floor(Number(m.level) || 1));
     const stage = petStageOf(lvl);
+    /* v2.3.3123: the admin test kit's `look` lever (devtools.js
+       /dev/trapping): the next pet made golden and/or a set size, once */
+    const lk = (this._petLookForced instanceof Map) ? this._petLookForced.get(pid) : null;
+    if (lk) this._petLookForced.delete(pid);
     const pet = {
       id: this._petbookMintId(),
       kind, look: PET_KINDS[kind].look, home: PET_KINDS[kind].home,
       stage,
-      gold: Math.random() < PETBOOK.GOLD_CHANCE,
-      size: petSizeFrom(Math.random(), Math.random()),
+      gold: lk && typeof lk.gold === 'boolean' ? lk.gold : Math.random() < PETBOOK.GOLD_CHANCE,
+      size: lk && Number.isFinite(lk.size)
+        ? Math.round(Math.max(PETBOOK.SIZE_MIN, Math.min(PETBOOK.SIZE_MAX, lk.size)) * 100) / 100
+        : petSizeFrom(Math.random(), Math.random()),
       name: null,
       lv: Math.max(1, Math.min(Math.max(1, Math.floor(Number(T) || 1)), lvl)),
       xp: 0,
@@ -498,6 +580,7 @@ export const petbookMethods = {
     book.dirty = true;
     const t = Number(now) || Date.now();
     if (g.leveled > 0 || t - (book.savedAt || 0) >= PETBOOK.SAVE_MS) this._petbookSave(pid, book);
+    if (g.leveled > 0) this._petWireRefresh(pid);   /* v2.3.3123: the others see it a little bigger */
     return { id: pet.id, lv: pet.lv, xp: pet.xp, gain: whole, leveled: g.leveled, cap: T };
   },
 
@@ -507,6 +590,31 @@ export const petbookMethods = {
     const key = journalKey(petKindOf(m) || 'dewdrop', petStageOf(m.level));
     const j = book.rec.journal[key];
     return j ? j.tries : 0;
+  },
+
+  /* ═══ v2.3.3123: THE LAND WARD (Phase 4, docs/PET-TRAPPING-PLAN.md) ═══
+     "An active pet from a land takes the edge off that land's monster hits on
+     you, more as it levels."  How much the pet out with player `pid` takes
+     off a hit carrying element `elem`: petWardOf(the level it works at) when
+     its kind's `el` is that element, else 0.  Read by monsterstatus.js on
+     every element hit that lands, so it only reads: the record in memory, the
+     active pet, its level -- nothing written, nothing sent.  It softens what
+     the element DOES (a chill's or a hold's length, a burn's or a poison's
+     ticks, a gust's shove, a soak's length, a storm arc's bite), never the
+     hit itself, and it never makes anyone hit harder.  `petwards: false` in
+     liveflags turns every ward off (lower case, TRAPS §117). */
+  _petWardsOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'petwards') && !f.petwards);
+  },
+
+  _petWard(pid, ps, elem) {
+    if (typeof elem !== 'string' || !ps || this._petWardsOff()) return 0;
+    const book = this._petbookOf(pid);
+    if (!book || book.locked || !book.rec || !book.rec.active) return 0;
+    const pet = book.rec.list.find((p) => p.id === book.rec.active);
+    if (!pet || !has(PET_KINDS, pet.kind) || PET_KINDS[pet.kind].el !== elem) return 0;
+    return petWardOf(Math.min(Math.max(1, Math.floor(Number(pet.lv) || 1)), trapLevelOf(ps)));
   },
 
   /* ═══ v2.3.3122: PETS CHANGE HANDS (Phase 3, docs/PET-TRAPPING-PLAN.md) ═══
@@ -626,6 +734,39 @@ export const petbookMethods = {
       const name = cleanPetName(payload && payload.name);
       if (!name) return 'bad-name';
       pet.name = name;
+      return null;
+    });
+  },
+
+  /* ═══ v2.3.3123: MORE ROOM IN THE PET HOUSE (Phase 4) ═══
+     pet_house_buy {cap, confirm: true}: HOUSE_STEP more places for
+     petHousePrice(cap) gold.  `cap` is the size the page showed: a send whose
+     cap is not the record's now -- a stale page, or the same tap arriving
+     twice -- is refused ('stale') and charges nothing, so a retry can never
+     buy twice and nobody pays a price they were not shown.  The gold comes
+     off ps.coins and the place goes on the record in one synchronous run:
+     _saveRpg's put and the record's (_petbookAct, straight after) are issued
+     with no await between them, one atomic batch of writes (the trade
+     window's rule).  `pethouse: false` in liveflags stops it ('off'). */
+  _petHouseOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'pethouse') && !f.pethouse);
+  },
+
+  _handlePetHouseBuy(session, payload) {
+    const pid = session && session.id;
+    const ps = pid ? this.playerState[pid] : null;
+    this._petbookAct(session, 'house', payload, (rec) => {
+      if (this._petHouseOff()) return 'off';
+      if (!payload || payload.confirm !== true) return 'confirm';
+      if (rec.cap >= PETBOOK.CAP_MAX) return 'house-full';
+      if (Math.floor(Number(payload.cap)) !== rec.cap) return 'stale';
+      const price = petHousePrice(rec.cap);
+      if (!ps || !(price > 0) || !(Math.floor(Number(ps.coins) || 0) >= price)) return 'no-gold';
+      ps.coins = Math.floor(Number(ps.coins) || 0) - price;
+      rec.cap = Math.min(PETBOOK.CAP_MAX, rec.cap + PETBOOK.HOUSE_STEP);
+      this._saveRpg(pid, ps);
+      if (this._queuePlayerStateFlush) this._queuePlayerStateFlush(pid);
       return null;
     });
   },

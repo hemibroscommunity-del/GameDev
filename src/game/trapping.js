@@ -32,6 +32,7 @@
  */
 import {
   TRAPPING, trapChance, trapStretch, fmtTrapChance, TRAP_WORDS, petDisplayName, petKindName, worldSafeText,
+  PET_BIG_AT,
 } from '@/data/trapping.js';
 import { ZONES } from '@/data/zones.js';
 import { NML_CENTRE } from '@/data/noMansLandRings.js';
@@ -232,6 +233,25 @@ export function onTrapResult(S, p) {
       if (p.caught) { BT_AUDIO.propHit('wood', { vol: 0.5, big: true }); setTimeout(() => { try { BT_AUDIO.play('quest-complete', { vol: 0.7 }); } catch (e) {} }, 180); }
       else BT_AUDIO.propBreak('wood', 'small', { vol: 0.42 });
     } catch (e) { /* sound only */ }
+    /* v2.3.3123: THE REVEAL (Phase 4) -- a golden one (about one catch in
+       fifty) or a Big one says so AT THE SNAP, over the trap, with the rays
+       and the ring trapFx.js draws then, and the coin flip's win for gold: the
+       card comes END_MS later and covers the middle of the screen */
+    if (p.caught && p.pet) {
+      const words = [];
+      try {
+        if (p.pet.gold === true) {
+          words.push('Golden!');
+          pushDmgPopup(S, x, y - 66, 'Golden!', '#EAC675');
+          try { BT_AUDIO.play('flip-win', { vol: 0.55 }); } catch (e) { /* sound only */ }
+        }
+        if (Number(p.pet.size) >= PET_BIG_AT) {
+          words.push('Big one!');
+          pushDmgPopup(S, x, y - (p.pet.gold === true ? 86 : 66), 'Big one!', '#7EE0A8');
+        }
+      } catch (e) { /* popups only */ }
+      if (words.length) S._trapReveal = { id: p.pet.id, gold: p.pet.gold === true, big: Number(p.pet.size) >= PET_BIG_AT, words, at: Date.now() };   /* QA (mp-petsmatter) */
+    }
   });
   at(springMs(shakes), () => {
     try {
@@ -288,6 +308,10 @@ export function onPetsState(S, p) {
   } else if (p.op === 'active') {
     const pet = S._petBook.active ? S._petBook.list.find((q) => q.id === S._petBook.active) : null;
     say(S, pet ? petDisplayName(pet) + ' is with you' : 'Pet put away', '#7EE0A8');
+  } else if (p.op === 'house') {
+    /* v2.3.3123: more room in the Pet House */
+    say(S, 'Your Pet House holds ' + (S._petBook.cap || 0) + ' now', '#7EE0A8');
+    try { BT_AUDIO.play('coin-pickup', { vol: 0.45 }); } catch (e) { /* sound only */ }
   }
   bump(S);
 }
@@ -323,6 +347,31 @@ export function onPetXp(S, g) {
   bump(S);
 }
 
+/* ═══ v2.3.3123: THE LAND WARD, SEEN (Phase 4) ═══
+ * A monster_attack the pet out with you softened carries `wd`, the percent
+ * (server monsterstatus.js); game/elemHits.js stamps S._wardAt / _wardPct /
+ * _wardElem and the renderer rings the pet in the element's colour for a
+ * moment (entityRenderer _updatePet).  The first softened hit in a while also
+ * says so over the pet ("Ward 24%"), at most every WARD_SAY_MS: a pack of
+ * snowmen hits often, and a word on every hit would bury the numbers. */
+export function petwardsOn(S) { return !!(S && S._serverCaps && S._serverCaps.petwards); }
+export const WARD_SAY_MS = 8000;
+export function noteWard(S, p, now) {
+  if (!S || !p || !(Number(p.wd) > 0)) return;
+  const t = typeof now === 'number' ? now : Date.now();
+  S._wardHits = (S._wardHits || 0) + 1;
+  if (S._wardSaidAt && t - S._wardSaidAt < WARD_SAY_MS) return;
+  S._wardSaidAt = t;
+  try {
+    const P = S.player;
+    const x = Number.isFinite(S._petX) ? S._petX : (P ? P.x : 0);
+    const y = Number.isFinite(S._petY) ? S._petY : (P ? P.y : 0);
+    const said = 'Ward ' + Math.min(50, Math.round(Number(p.wd))) + '%';
+    S._wardSaid = said;   /* for the QA scenario (mp-petwards) */
+    pushDmgPopup(S, x, y - 40, said, '#7EE0A8');
+  } catch (e) { /* popup only */ }
+}
+
 /** The stretch and kind words a card or row uses ("Gobling · Lv 4"). */
 export function petLine(pet) {
   if (!pet) return '';
@@ -340,6 +389,7 @@ export function trapProbe(S) {
     card: st && st.card ? st.card.pet : null,
     arms: (S && S._trapArms) || 0, rolls: (S && S._trapRolls) || 0, catches: (S && S._trapCatches) || 0,
     last: (S && S._trapLast) || null,
+    reveal: (S && S._trapReveal) || null,   /* v2.3.3123: a golden or Big catch's words */
     stretch: (() => { const m = trapTarget(S); return m ? trapStretch(m.level) : null; })(),
   };
 }

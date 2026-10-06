@@ -250,6 +250,66 @@ export function petXpView(pet, trapLvl) {
   return { capped: false, frac: need > 0 ? xp / need : 0, xp, need, words: xp + ' / ' + need + ' XP' };
 }
 
+/* ═══ v2.3.3123: THE LAND WARD (Phase 4) — the worker's rule exactly ═══
+ * The pet out with you takes petWardOf(the level it works at) off what its own
+ * land's element does to you (server/src/monsterstatus.js, petbook.js
+ * _petWard): a chill, a hold, a daze or a soak that much shorter, a burn's or
+ * a poison's ticks and a storm's arcs that much lighter, a gust's shove that
+ * much shorter.  The worker decides it; the phone says what each pet's ward is
+ * on the Pets page, and a hit it softened says so (`wd`).  mirror-audit holds
+ * PET_WARD and petWardOf to the worker's. */
+export const PET_WARD = Object.freeze({ BASE: 0.15, PER_LV: 0.01, MAX: 0.5 });
+export function petWardOf(lv) {
+  const L = Math.max(1, Math.floor(Number(lv) || 1));
+  return Math.round(Math.min(PET_WARD.MAX, PET_WARD.BASE + PET_WARD.PER_LV * (L - 1)) * 100) / 100;
+}
+/* what each element's ward softens, in a word (the status the element
+   carries: server monsterstatus.js ELEM_HITS) */
+export const PET_WARD_WHAT = Object.freeze({
+  frost: 'chills', flame: 'burns', wind: 'gusts', stone: 'dazes',
+  storm: 'shocks', water: 'soaks', venom: 'poison', flora: 'holds',
+});
+/** {el, pct, what, words}: the ward of `pet` working at `trapLvl` ("Softens
+ *  chills 24%"), or null for a kind with no element. */
+export function petWardView(pet, trapLvl) {
+  const kind = pet && typeof pet.kind === 'string' && Object.prototype.hasOwnProperty.call(PET_KINDS, pet.kind) ? pet.kind : null;
+  if (!kind) return null;
+  const el = PET_KINDS[kind].el;
+  const pct = Math.round(petWardOf(petEffectiveLevel(pet, trapLvl)) * 100);
+  const what = PET_WARD_WHAT[el] || 'its land';
+  return { el, pct, what, words: 'Softens ' + what + ' ' + pct + '%' };
+}
+
+/* ═══ v2.3.3123: MORE ROOM IN THE PET HOUSE (Phase 4) ═══
+ * The worker's numbers (server/src/petbook.js PETBOOK CAP, CAP_MAX,
+ * HOUSE_STEP, HOUSE_BASE; mirror-audit): 10 more places at a time, each step
+ * 1,000 gold more than the one before -- 1,000 for 30 -> 40 ... 9,000 for
+ * 110 -> 120.  The page shows this price and sends the size it showed; the
+ * worker charges exactly this or nothing. */
+export const PET_HOUSE = Object.freeze({ CAP: 30, CAP_MAX: 120, STEP: 10, BASE: 1000 });
+export function petHousePrice(cap) {
+  const C = Math.max(PET_HOUSE.CAP, Math.floor(Number(cap) || PET_HOUSE.CAP));
+  if (C >= PET_HOUSE.CAP_MAX) return 0;
+  return PET_HOUSE.BASE * (Math.floor((C - PET_HOUSE.CAP) / PET_HOUSE.STEP) + 1);
+}
+
+/* ═══ v2.3.3123: THE OTHERS' PETS (Phase 4) ═══
+ * The worker puts the pet out with each player on their tick record as
+ * `pw`, 'kind.stage.gold.size.lv' ("snowling.1.0.105.4": server petbook.js
+ * petWireOf -- a size in hundredths); this reads it back, refusing anything
+ * that is not exactly that, so a peer's pet is only ever one of the nine
+ * kinds in a size the worker can roll.  mirror-audit runs the two against
+ * each other. */
+export function parsePetWire(w) {
+  if (typeof w !== 'string' || w.length > 40) return null;
+  const a = w.split('.');
+  if (a.length !== 5 || !Object.prototype.hasOwnProperty.call(PET_KINDS, a[0])) return null;
+  const stage = Math.max(1, Math.min(9, Math.floor(Number(a[1]) || 1)));
+  const size = Math.round(Math.max(85, Math.min(125, Number(a[3]) || 100))) / 100;
+  const lv = Math.max(1, Math.min(999, Math.floor(Number(a[4]) || 1)));
+  return { kind: a[0], stage, gold: a[2] === '1', size, lv };
+}
+
 /* ═══ v2.3.3122: PETS CHANGE HANDS (Phase 3) ═══
  * The worker decides (server/src/petbook.js _petSellable); the phone says
  * which of your pets may go and why the others may not, so a button never
@@ -317,4 +377,8 @@ export const TRAP_WORDS = Object.freeze({
   'too-new': 'A new pet can be traded a day after its catch',
   'pets-max': 'At most 4 pets in one trade',
   'pet-gone': 'That pet can no longer be traded',
+  /* v2.3.3123: more room in the Pet House (petbook.js _handlePetHouseBuy) */
+  'house-full': 'Your Pet House is as big as it gets',
+  stale: 'The price changed: look again',
+  'no-gold': 'Not enough gold',
 });

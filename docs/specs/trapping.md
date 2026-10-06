@@ -1,4 +1,4 @@
-# Pet trapping: arm a trap, then kill it (v2.3.3120, Phase 2 v2.3.3121, Phase 3 v2.3.3122)
+# Pet trapping: arm a trap, then kill it (v2.3.3120, Phase 2 v2.3.3121, Phase 3 v2.3.3122, Phase 4 v2.3.3123)
 
 The plan, with every choice the owner made, is `docs/PET-TRAPPING-PLAN.md`.
 This spec says what is built and how it works. Code is the truth where the two
@@ -176,6 +176,66 @@ of value, and nothing writes a pet into a record but a catch and these:
 - Kill switch `pettrade: false` (`caps.pettrade`): no new trade or listing; a pet
   already on its way still arrives.
 
+## Pets that matter (Phase 4, v2.3.3123)
+
+The plan's "The land ward, stronger with level. Golden and Big pets with a
+reveal. Other players see your pet. More Pet House space."
+
+- **The land ward** (`server/src/petbook.js` `_petWard`, applied in
+  `monsterstatus.js` `_elemOnHit`). The pet out with you takes
+  `petWardOf(level)` off what its own land's element does to you: 15% at Lv 1,
+  a point more a level, never more than half (Lv 36). The level is the one it
+  works at, never above your Trapping level. Each kind's element is `el` in
+  `PET_KINDS` (both sides, mirror-audit): Snowling frost, Gobling flame,
+  Mumling wind, Pebbling stone, Sparklet storm, Finling water, Wisplet and
+  Lurkling venom, Dewdrop flora.
+
+  | Element | What the ward softens |
+  |---|---|
+  | frost (chill) | the chill's length |
+  | flora (hold) | the hold's length (the window after it unchanged) |
+  | stone (daze) | the daze's length (the window after it unchanged) |
+  | water (soak) | the soak's length |
+  | wind (gust) | the shove's length, and the speed allowance the worker grants for it |
+  | flame (burn) | each tick's damage |
+  | venom (poison) | each tick's damage |
+  | storm (shock) | the arc's damage on a warded player it reaches (the struck player's own crackle has nothing to soften) |
+
+  The hit itself is never touched, and nothing ever hits harder. A hit the
+  ward softened carries `wd` (the percent) on its `monster_attack`; the phone
+  rings the pet in the element's colour for half a second and says "Ward 34%"
+  over it at most every 8 s (`src/game/trapping.js` `noteWard`,
+  entityRenderer `_updatePet`). The Pets page shows each pet's ward ("Softens
+  chills 34%", "when out" on the others).
+- **Golden and Big, revealed.** Both were rolled since Phase 1 (1 catch in 50
+  golden; Big from size 1.18). Now the snap shows it: a golden catch throws up
+  turning rays of gold and twice the stars, a Big one sends a second, wider
+  ring (`src/rendering/trapFx.js`, Graphics only); "Golden!" (with the coin
+  flip's win) and "Big one!" pop over the trap; the card is headed "A golden
+  one!" / "A big one!" / "A big golden one!", a golden one's card glows and a
+  band of light sweeps its picture three times, a Big one's badge swells
+  (`game.css` `bt-pet-*`, transform and opacity only).
+- **Other players see your pet.** The pet out with you rides your tick record
+  as `pw`, `'kind.stage.gold.size.lv'` (`petWireOf`, e.g.
+  `"snowling.1.0.105.4"`) -- not `pt`, which in a player's data is the pants,
+  nor `pet`, the old client-relayed one the profile card reads -- kept on your playerState as `_petWire` (memory
+  only) and refreshed by every change to your record and a level-up, which
+  also mark you dirty so it goes out on the next tick. Absent with no pet.
+  Every other phone reads it (`src/data/trapping.js` `parsePetWire`, which
+  refuses anything but one of the nine kinds) and draws it beside you as you
+  see your own (`entityRenderer` `_posePet`, shared), following you by time
+  rather than by frames, with no name over it. Nothing is loaded; the
+  displays go with their player and on a zone change.
+- **More room in the Pet House** (`pet_house_buy {cap, confirm: true}`): 10
+  more places for `petHousePrice(cap)` gold -- 1,000 for 30 to 40, each step
+  1,000 more than the one before, 9,000 for 110 to 120, 45,000 for all
+  ninety. `cap` is the size the page showed: a send for any other size is
+  refused (`stale`) and charges nothing, so a retry never buys twice. The gold
+  comes off and the room goes on in one synchronous run, both records written
+  with no await between. Refusals: `confirm`, `stale`, `no-gold`,
+  `house-full`, `off`, plus the Pets page's `too-fast` and
+  `pets-unavailable`.
+
 ## Where you can trap
 
 Only the Wheel's own monsters (`home`, zone `wheel`): never in a dungeon, never
@@ -199,6 +259,9 @@ roll that happens stays honest).
 | phone → worker | `pet_release` | `{id, confirm: true}` |
 | worker → phone | `pets_state` | the record `{v, cap, active, list, journal}` (+ `op`, `id`, `error`), or `{unavailable: true}` |
 | phone → worker | `trade2_pets` | `{ids}` (v2.3.3122: the pets you offer in the trade window, at most 4) |
+| phone → worker | `pet_house_buy` | `{cap, confirm: true}` (v2.3.3123: 10 more places; answered by `pets_state` with `op: 'house'`) |
+| worker → phone | `monster_attack` | + `wd` (v2.3.3123: the percent the pet's ward took off it) |
+| worker → phone | `tick` | each player + `pw` (v2.3.3123: the pet out with them) |
 
 Every worker-sent type is in `PRIVILEGED_EVENTS`; every phone-sent type has an
 explicit router case and a channel-shim line. `pet_capture` (the old 20% capture)
@@ -219,6 +282,12 @@ All lower case; each read in the handler from `_liveFlags` (TRAPS §117):
   earned stay.
 - `caps.pettrade` (v2.3.3122): the trade window's pet lane, pet listings and
   the Pets page's Sell. `pettrade: false` refuses new ones; deliveries continue.
+- `caps.petwards` (v2.3.3123): the Pets page's ward words. `petwards: false`
+  turns every ward off.
+- `caps.petshow` (v2.3.3123): the others' pets are drawn. `petshow: false`
+  takes `pw` off every record, and the phones stop drawing them at once.
+- `caps.pethouse` (v2.3.3123): the Pets page's More room. `pethouse: false`
+  refuses `pet_house_buy`.
 - `caps.beastmaster` (v2.3.3121): Beastmaster Bro stands by the Woodworker.
   `beastmaster: false` un-advertises him (a joining phone does not spawn him);
   quests already active still count and hand in.
@@ -288,6 +357,20 @@ They are the admin key's, like every dev op: no socket message.
   trade window's lane, review and receipt, a listing bought at the auction
   house). The test kit's `/dev/trapping` takes `pet: {home, level, tradeable}`.
 
-## Not built yet (later phases of the plan)
+- Phase 4: `server/test/petsmatter.test.mjs` (51 checks: the ward's numbers,
+  each of the eight through the real hit, the hit unchanged, a pet above your
+  Trapping level, the wrong land's pet, the switch, a dodge; `pw` on the tick,
+  none with none, a level-up and a put-away changing it at once, the switch,
+  never saved; the Pet House's price, every refusal charging nothing, the same
+  send twice buying once, the gold and the room written together, the last
+  step; the `look` lever) and `tools/qa/mp/mp-petsmatter.mjs` (two phones: the
+  ward words and More room on the Pets page, the second phone drawing the
+  first player's pet and losing it when it is put away, 10 places bought, a
+  Frost Ridge snowman's chill shortened in a real fight, a golden Big catch's
+  reveal). The test kit's `/dev/trapping` takes `look: {gold, size}`: the next
+  pet made comes out that way, once.
 
-The land wards, other players seeing your pet, more Pet House space (Phase 4).
+## Not built yet
+
+Phase 5 of the plan is the owner's call and is not built: a featured monster
+day (it would bend the same-odds rule), and anything else listed there.

@@ -52,16 +52,23 @@ export function TrapCatchCard({ stateRef }) {
         width: 'min(300px, calc(100vw - 32px))', boxSizing: 'border-box', padding: '14px 14px 12px', borderRadius: 16,
         background: '#1E2E34', border: '1px solid ' + (pet.gold ? '#EAC675' : 'rgba(229,237,233,.2)'),
         boxShadow: '0 10px 30px rgba(0,0,0,.5)', color: '#F4F0E7', fontFamily: "'Source Sans 3',sans-serif", textAlign: 'center' }}>
-      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#7EE0A8' }}>Caught!</div>
-      <div style={{ display: 'grid', placeItems: 'center', margin: '6px auto 4px', width: 96, height: 96, borderRadius: 14,
+      {/* v2.3.3123: THE REVEAL (Phase 4) -- a golden one glows and a band of
+          light sweeps its picture; a Big one's badge swells (game.css
+          bt-pet-*); the header says which */}
+      {pet.gold ? <div className="bt-pet-glow" data-trap-card-glow="1" /> : null}
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: pet.gold ? '#EAC675' : '#7EE0A8' }}>
+        {pet.gold && big ? 'A big golden one!' : pet.gold ? 'A golden one!' : big ? 'A big one!' : 'Caught!'}
+      </div>
+      <div style={{ position: 'relative', overflow: 'hidden', display: 'grid', placeItems: 'center', margin: '6px auto 4px', width: 96, height: 96, borderRadius: 14,
         background: pet.gold ? 'radial-gradient(circle, rgba(234,198,117,.35), rgba(17,30,35,.9))' : '#111E23' }}>
         <PetPortrait pet={pet} size={88} />
+        {pet.gold ? <div key={card.at} className="bt-pet-shine" data-trap-card-shine="1" /> : null}
       </div>
       <div style={{ fontSize: 17, fontWeight: 800 }}>{kindName}</div>
       <div style={{ display: 'flex', gap: 6, justifyContent: 'center', margin: '5px 0 10px', flexWrap: 'wrap' }}>
         <span style={{ padding: '2px 8px', borderRadius: 999, background: '#111E23', fontSize: 12, fontWeight: 800, color: '#D8AA58' }}>Lv {pet.lv || 1}</span>
         {pet.gold ? <span data-trap-card-gold="1" style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(234,198,117,.18)', fontSize: 12, fontWeight: 800, color: '#EAC675' }}>Golden!</span> : null}
-        {big ? <span data-trap-card-big="1" style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(126,224,168,.14)', fontSize: 12, fontWeight: 800, color: '#7EE0A8' }}>Big</span> : null}
+        {big ? <span key={card.at} className="bt-pet-big" data-trap-card-big="1" style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(126,224,168,.14)', fontSize: 12, fontWeight: 800, color: '#7EE0A8' }}>Big</span> : null}
       </div>
       <input data-trap-card-name="1" value={name} maxLength={PET_NAME.MAX + 4} placeholder={'Name your ' + kindName}
         onChange={(e) => setName(e.target.value)}

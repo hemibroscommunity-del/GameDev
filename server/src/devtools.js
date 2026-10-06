@@ -366,6 +366,18 @@ export const devToolsMethods = {
     if (b.level != null) { const L = clampInt(b.level, 1, 120); ps.lifeSkills.trapping = { level: L, xp: 0 }; out.level = L; }
     if (b.traps != null) { const n = clampInt(b.traps, 0, 999); if (n > 0) ps.inventory.trap_box = n; else delete ps.inventory.trap_box; out.traps = n; }
     if (b.logs != null) { const n = clampInt(b.logs, 0, 999); if (n > 0) ps.inventory.wood_pine_log = n; else delete ps.inventory.wood_pine_log; out.logs = n; }
+    /* v2.3.3123: `look: {gold, size}` -- the NEXT pet made (a catch, or the
+       `pet` lever below) comes out golden and/or this size, for the reveal's
+       phone test (mp-petsmatter) and the owner's own look at one.  Never set
+       by play and never stored, like `next`. */
+    if (b.look && typeof b.look === 'object') {
+      if (!(this._petLookForced instanceof Map)) this._petLookForced = new Map();
+      const lk = {};
+      if (typeof b.look.gold === 'boolean') lk.gold = b.look.gold;
+      if (b.look.size != null && Number.isFinite(Number(b.look.size))) lk.size = Number(b.look.size);
+      this._petLookForced.set(playerId, lk);
+      out.look = lk;
+    }
     /* v2.3.3122: `pet: {home, level, tradeable}` -- a pet in the record as a
        catch makes one (petbook.js _petbookAddCatch), for the trading phone
        test (mp-pettrade); `tradeable` puts its catch a day back, past the

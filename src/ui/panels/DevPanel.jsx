@@ -170,6 +170,9 @@ const CAP_GATES = [
   'petlevels' /* v2.3.3121: pets earn XP while out with you -- lower case, a kill switch */,
   'beastmaster' /* v2.3.3121: Beastmaster Bro and his quests -- lower case, a kill switch */,
   'pettrade' /* v2.3.3122: pets in trades, the auction house and the mail -- lower case, a kill switch */,
+  'petwards' /* v2.3.3123: the land ward of the pet out with you -- lower case, a kill switch */,
+  'petshow' /* v2.3.3123: the others see your pet -- lower case, a kill switch */,
+  'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

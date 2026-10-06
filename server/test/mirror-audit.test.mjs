@@ -55,12 +55,15 @@ import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.j
 /* v2.3.3120: pet trapping -- the button's odds, the Traps tab, the kinds, the name rule */
 import { TRAPPING as SRV_TRAPPING, trapChance as srvTrapChance, trapRollXp as srvTrapRollXp, trapCatchXp as srvTrapCatchXp } from '../src/trapping.js';
 import { PET_KINDS as SRV_PET_KINDS, PET_NAME as SRV_PET_NAME, cleanPetName as srvCleanPetName, petKindOf as srvPetKindOf, PETBOOK as SRV_PETBOOK,
-  petXpToNext as srvPetXpToNext, petGainXp as srvPetGainXp } from '../src/petbook.js';
+  petXpToNext as srvPetXpToNext, petGainXp as srvPetGainXp,
+  petWardOf as srvPetWardOf, petHousePrice as srvPetHousePrice, petWireOf as srvPetWireOf } from '../src/petbook.js';
 import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp as clientTrapRollXp, trapCatchXp as clientTrapCatchXp,
   PET_KINDS as CLIENT_PET_KINDS, PET_NAME as CLIENT_PET_NAME, cleanPetName as clientCleanPetName, petKindOfMonster as clientPetKindOf,
   PET_BIG_AT as CLIENT_PET_BIG_AT, TRAP_WORDS as CLIENT_TRAP_WORDS,
   PET_XP as CLIENT_PET_XP, petXpToNext as clientPetXpToNext, petGainXp as clientPetGainXp,
-  PET_TRADE_MAX as CLIENT_PET_TRADE_MAX } from '../../src/data/trapping.js';
+  PET_TRADE_MAX as CLIENT_PET_TRADE_MAX,
+  PET_WARD as CLIENT_PET_WARD, petWardOf as clientPetWardOf, PET_WARD_WHAT as CLIENT_PET_WARD_WHAT,
+  PET_HOUSE as CLIENT_PET_HOUSE, petHousePrice as clientPetHousePrice, parsePetWire as clientParsePetWire } from '../../src/data/trapping.js';
 import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -1670,6 +1673,41 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const tradeCodes = ['legacy', 'active', 'too-new', 'pets-max', 'pet-gone', 'pets-full', 'no-pet', 'off', 'pets-unavailable'];
   check('pets: every trading refusal the worker sends has words on the phone', tradeCodes.every((c) => typeof CLIENT_TRAP_WORDS[c] === 'string' && CLIENT_TRAP_WORDS[c].length > 0),
     tradeCodes.filter((c) => !CLIENT_TRAP_WORDS[c]));
+  /* v2.3.3123 (Phase 4): THE LAND WARD -- each kind wards its own land's
+     element, every element has its pet, and the strength the Pets page shows
+     is the worker's at every level */
+  const elOff = Object.keys(SRV_PET_KINDS).filter((k) => !CLIENT_PET_KINDS[k] || SRV_PET_KINDS[k].el !== CLIENT_PET_KINDS[k].el || !Object.prototype.hasOwnProperty.call(SRV_ELEM_HITS, SRV_PET_KINDS[k].el));
+  check('pets: each kind\'s ward element is the same on both sides and one the monsters hit with', elOff.length === 0, elOff);
+  const wardEls = new Set(Object.values(SRV_PET_KINDS).map((k) => k.el));
+  check('pets: all eight elements have a pet to ward them', Object.keys(SRV_ELEM_HITS).every((e) => wardEls.has(e) && typeof CLIENT_PET_WARD_WHAT[e] === 'string'),
+    Object.keys(SRV_ELEM_HITS).filter((e) => !wardEls.has(e) || !CLIENT_PET_WARD_WHAT[e]));
+  check('pets: the same ward numbers (15% at Lv 1, a point a level, half at most)',
+    CLIENT_PET_WARD.BASE === SRV_PETBOOK.WARD_BASE && CLIENT_PET_WARD.PER_LV === SRV_PETBOOK.WARD_PER_LV && CLIENT_PET_WARD.MAX === SRV_PETBOOK.WARD_MAX,
+    { client: CLIENT_PET_WARD, server: { BASE: SRV_PETBOOK.WARD_BASE, PER_LV: SRV_PETBOOK.WARD_PER_LV, MAX: SRV_PETBOOK.WARD_MAX } });
+  const wOff = [];
+  for (let lv = 0; lv <= 130; lv++) if (srvPetWardOf(lv) !== clientPetWardOf(lv)) wOff.push(lv);
+  check('pets: the same ward at every level to 130', wOff.length === 0 && srvPetWardOf(1) === 0.15 && srvPetWardOf(36) === 0.5 && srvPetWardOf(99) === 0.5, wOff);
+  /* ...MORE ROOM: the price the page shows is the price the worker charges */
+  check('pets: the same Pet House numbers (30 to start, 120 at most, 10 a step, 1,000 more a step)',
+    CLIENT_PET_HOUSE.CAP === SRV_PETBOOK.CAP && CLIENT_PET_HOUSE.CAP_MAX === SRV_PETBOOK.CAP_MAX
+      && CLIENT_PET_HOUSE.STEP === SRV_PETBOOK.HOUSE_STEP && CLIENT_PET_HOUSE.BASE === SRV_PETBOOK.HOUSE_BASE,
+    { client: CLIENT_PET_HOUSE, server: { CAP: SRV_PETBOOK.CAP, CAP_MAX: SRV_PETBOOK.CAP_MAX, STEP: SRV_PETBOOK.HOUSE_STEP, BASE: SRV_PETBOOK.HOUSE_BASE } });
+  const hOff = [];
+  for (let c = 0; c <= 130; c++) if (srvPetHousePrice(c) !== clientPetHousePrice(c)) hOff.push(c);
+  check('pets: the same Pet House price at every size', hOff.length === 0 && srvPetHousePrice(30) === 1000 && srvPetHousePrice(110) === 9000 && srvPetHousePrice(120) === 0, hOff);
+  /* ...THE OTHERS' PETS: what the worker puts on the tick, the phone reads back */
+  const wireOff = [];
+  for (const kind of Object.keys(SRV_PET_KINDS)) {
+    for (const [stage, gold, size, lv] of [[1, false, 1.05, 1], [2, true, 1.25, 40], [1, false, 0.85, 7], [3, true, 1.18, 120]]) {
+      const back = clientParsePetWire(srvPetWireOf({ kind, stage, gold, size, lv }));
+      if (!back || back.kind !== kind || back.stage !== stage || back.gold !== gold || back.size !== size || back.lv !== lv) wireOff.push([kind, stage, gold, size, lv, back]);
+    }
+  }
+  check('pets: every pet the worker puts on a player\'s tick reads back the same on the phone', wireOff.length === 0, wireOff.slice(0, 3));
+  check('pets: a forged pet on the tick is no pet', ['__proto__.1.0.100.1', 'dragon.1.0.100.1', 'snowling.1.0.100', 'x'.repeat(50), null, 42, {}].every((w) => clientParsePetWire(w) === null));
+  const houseCodes = ['house-full', 'stale', 'no-gold', 'confirm'];
+  check('pets: every Pet House refusal the worker sends has words on the phone', houseCodes.every((c) => typeof CLIENT_TRAP_WORDS[c] === 'string' && CLIENT_TRAP_WORDS[c].length > 0),
+    houseCodes.filter((c) => !CLIENT_TRAP_WORDS[c]));
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

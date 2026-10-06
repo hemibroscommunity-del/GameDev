@@ -1494,7 +1494,22 @@ remnant to migrate server-side, not a mode to preserve.
       full; the join loads `pets:` BEFORE the mail drains); the gate is
       `_petSellable` -- not out with you, not `legacy`, a day past its catch;
       a new owner is one more `owners`; cap `pettrade`; `pettrade` suite,
-      `mp-pettrade`.)
+      `mp-pettrade`;
+    - since v2.3.3123 (Phase 4) PETS MATTER: the pet out with you WARDS its
+      land's element (`_petWard`, applied in monsterstatus.js `_elemOnHit`):
+      15% at Lv 1, +1 a level, at most 50% at the level it works at -- a
+      chill / hold / daze / soak shorter, a burn's or poison's ticks and a
+      storm arc on you lighter, a gust's shove (and its allowance) shorter,
+      never the hit itself; the hit says `wd`, the pet rings and says "Ward
+      n%"; GOLDEN and BIG catches are revealed (trapFx rays and ring, "Golden!"
+      / "Big one!", the card's glow, sweep and swelling badge, game.css
+      `bt-pet-*`); the OTHERS SEE YOUR PET: `pw` on your tick record (not `pt`, the pants)
+      ('kind.stage.gold.size.lv', `petWireOf` / `parsePetWire`, `_petWire` in
+      memory), drawn beside you with no name (`_updatePeerPets`, `_posePet`
+      shared with yours); MORE ROOM: `pet_house_buy {cap, confirm}` 10 places
+      for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
+      caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
+      `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

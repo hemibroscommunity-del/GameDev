@@ -5346,6 +5346,10 @@ export class GameRoom {
       case 'pet_release':
         if (session.id) this._handlePetRelease(session, msg.payload || msg);
         break;
+      /* v2.3.3123: more room in the Pet House (petbook.js) */
+      case 'pet_house_buy':
+        if (session.id) this._handlePetHouseBuy(session, msg.payload || msg);
+        break;
 
       case 'dungeon_start':
         // v2.3.1127: server-authoritative dungeon instances -- the

@@ -51,6 +51,7 @@ import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
+import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
 
 /* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
  *
@@ -2656,10 +2657,13 @@ export function processGameEvent(type, payload, S, deps) {
                  has said it did (game/elemHits.js, server monsterstatus.js). */
               var _elSt = applyElemHit(S, payload, Date.now());
               if (_elSt) { try { BT_AUDIO.elemHit(_elSt); } catch (e) { /* sound only */ } }
+              /* v2.3.3123: ...and the pet out with you took the edge off it (its land ward) */
+              if (_elSt && payload.wd > 0) { try { noteWard(S, payload); } catch (e) { /* words only */ } }
               if (window.__btProbe && (payload.elem || _elSt)) {   /* QA (mp-elemhits), armed by the harness only */
                 try {
                   var _eLog = window.__btElemLog || (window.__btElemLog = []);
-                  _eLog.push({ elem: payload.elem || null, st: _elSt, stMs: payload.stMs, kb: payload.kb || null, ability: payload.ability || null, dmgTaken: payload.dmgTaken, monsterId: payload.monsterId, at: Date.now() });
+                  _eLog.push({ elem: payload.elem || null, st: _elSt, stMs: payload.stMs, kb: payload.kb || null, ability: payload.ability || null, dmgTaken: payload.dmgTaken, monsterId: payload.monsterId, at: Date.now(),
+                    wd: payload.wd || null });   /* v2.3.3123: the land ward's percent (mp-petsmatter) */
                   if (_eLog.length > 60) _eLog.splice(0, _eLog.length - 60);
                 } catch (e) { /* a probe never breaks the game */ }
               }

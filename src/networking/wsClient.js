@@ -20,6 +20,7 @@ import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the 
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
+import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
@@ -728,6 +729,14 @@ export function setupWebSocket(ctx) {
                     /* v2.3.3058: No man's land's skull (tick.js `sk`): absent is
                        none, for the same reason as `spr` above */
                     nmlPeerSkull(S, pid, data.sk);
+                    /* v2.3.3123: the pet out with them (tick.js `pw`, pet
+                       trapping Phase 4), drawn beside them (entityRenderer
+                       _updatePeerPets): absent is none, for the same reason
+                       as `spr`.  Parsed only when it changes. */
+                    if (S.others[pid]._pwRaw !== data.pw) {
+                      S.others[pid]._pwRaw = data.pw;
+                      S.others[pid]._pet = data.pw ? parsePetWire(data.pw) : null;
+                    }
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */
@@ -4153,7 +4162,8 @@ export function setupWebSocket(ctx) {
            trapping.js / petbook.js.  TRAPS #18: a type with no line here is
            silently dropped, and the button would do nothing at all. */
         if (msg.type === 'make_traps' || msg.type === 'trap_arm' || msg.type === 'pet_active'
-            || msg.type === 'pet_name' || msg.type === 'pet_release') {
+            || msg.type === 'pet_name' || msg.type === 'pet_release'
+            || msg.type === 'pet_house_buy') {   /* v2.3.3123: more room in the Pet House */
           ws.send(JSON.stringify(msg));
           return;
         }

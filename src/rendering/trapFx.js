@@ -22,9 +22,17 @@
  * destroyed when it goes). */
 import { Container, Graphics } from 'pixi.js';
 import { SHAKE_MS, SHAKE_GAP, DROP_MS, END_MS, springMs } from '../game/trapping.js';
+import { PET_BIG_AT } from '../data/trapping.js';   /* v2.3.3123: the Big reveal */
 
 const WOOD = 0x8b5a2b, WOOD_DARK = 0x3b2512, WOOD_LIGHT = 0xb37a43, BRASS = 0xd8aa58, BRASS_HI = 0xeac675;
 const AFTER_MS = 900;            /* how long a snap's glow or a break's planks linger */
+/* v2.3.3123: THE REVEAL (Phase 4, "Golden and Big pets with a reveal").  A
+   golden catch's snap throws up rays of gold that turn and fade, and twice
+   the stars, lingering longer; a Big one's snap sends a second, wider ring.
+   Still Graphics only, redrawn each frame, nothing loaded or kept. */
+const GOLD_AFTER_MS = 1700;
+const GOLD = 0xffd86b, GOLD_HI = 0xfff2c4;
+const afterOf = (sp) => (sp && sp.pet && sp.pet.gold ? GOLD_AFTER_MS : AFTER_MS);
 /* Sized for the phone (mp-trapping's pictures): a bro is ~105 game px tall
    there, and a world px ~0.6 CSS px, so the springing box is ~50 game px
    across (~30 CSS px) and the mark's ring wider than a monster's feet. */
@@ -58,7 +66,7 @@ export class TrapFx {
   update(S, now) {
     const st = S && S._trap;
     const mark = st && st.mark && st.mark.until > now ? st.mark : null;
-    if (st && st.springs.length) st.springs = st.springs.filter((sp) => now - sp.t0 < springMs(sp.shakes) + AFTER_MS);
+    if (st && st.springs.length) st.springs = st.springs.filter((sp) => now - sp.t0 < springMs(sp.shakes) + afterOf(sp));
     const springs = st ? st.springs : [];
     if (!mark && !springs.length) { this.destroy(); return 0; }
     this._ensure();
@@ -117,17 +125,45 @@ export class TrapFx {
       const endK = ended ? Math.min(1, (t - shakeEnd) / END_MS) : 0;
       if (ended && sp.caught) {
         /* SNAP: the door shuts, a flash, stars */
-        const fade = t > shakeEnd + END_MS ? Math.max(0, 1 - (t - shakeEnd - END_MS) / AFTER_MS) : 1;
+        const gold = !!(sp.pet && sp.pet.gold);
+        const big = !!(sp.pet && Number(sp.pet.size) >= PET_BIG_AT);
+        const fade = t > shakeEnd + END_MS ? Math.max(0, 1 - (t - shakeEnd - END_MS) / afterOf(sp)) : 1;
+        if ((gold || big) && typeof window !== 'undefined' && window.__btProbe) {   /* QA (mp-petsmatter) */
+          const qd = window.__btTrapFxDrawn || (window.__btTrapFxDrawn = { gold: 0, big: 0 });
+          if (gold) qd.gold++;
+          if (big) qd.big++;
+        }
+        if (gold) {
+          /* v2.3.3123: rays of gold, turning, as long as the glow lasts */
+          const rk = Math.min(1, (t - shakeEnd) / (END_MS * 1.6));
+          const spin = (t - shakeEnd) / 900;
+          for (let i = 0; i < 10; i++) {
+            const a = spin + i / 10 * Math.PI * 2;
+            const r0 = 18, r1 = 30 + 90 * rk;
+            const w = 0.09;
+            const cx = sp.x, cy = sp.y - 22;
+            g.moveTo(cx + Math.cos(a - w) * r0, cy + Math.sin(a - w) * r0 * 0.8)
+              .lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1 * 0.8)
+              .lineTo(cx + Math.cos(a + w) * r0, cy + Math.sin(a + w) * r0 * 0.8)
+              .closePath().fill({ color: i % 2 ? GOLD : GOLD_HI, alpha: 0.55 * fade });
+          }
+          g.circle(sp.x, sp.y - 22, 26 + 10 * Math.sin(t / 120)).fill({ color: GOLD, alpha: 0.18 * fade });
+        }
+        if (big) {
+          /* v2.3.3123: a second, wider ring for a Big one */
+          const bk = Math.min(1, Math.max(0, (t - shakeEnd - 120) / END_MS));
+          if (bk > 0 && bk < 1) g.ellipse(sp.x, sp.y - 6, 30 + 120 * bk, 12 + 46 * bk).stroke({ color: 0x7ee0a8, width: 5 * (1 - bk) + 1, alpha: 0.8 * (1 - bk) });
+        }
         g.circle(sp.x, sp.y - 20, 16 + 70 * endK).stroke({ color: 0xfff2c4, width: 6 * (1 - endK) + 1.5, alpha: 0.85 * (1 - endK) });
-        for (let i = 0; i < 6; i++) {
-          const a = i / 6 * Math.PI * 2 + 0.3;
-          const r = 22 + 60 * endK;
+        for (let i = 0; i < (gold ? 12 : 6); i++) {
+          const a = i / (gold ? 12 : 6) * Math.PI * 2 + 0.3;
+          const r = 22 + (gold && i % 2 ? 90 : 60) * endK;
           const px = sp.x + Math.cos(a) * r, py = sp.y - 20 + Math.sin(a) * r * 0.7 - 14 * endK;
           const z = 7 * (1 - 0.5 * endK);
           g.moveTo(px, py - z).lineTo(px + z * 0.6, py).lineTo(px, py + z).lineTo(px - z * 0.6, py).closePath()
-            .fill({ color: BRASS_HI, alpha: fade });
+            .fill({ color: gold ? GOLD : BRASS_HI, alpha: fade });
         }
-        this._box(g, sp.x, sp.y, BOX_S * (1 + 0.14 * Math.sin(endK * Math.PI)), true, 0, 1, fade);
+        this._box(g, sp.x, sp.y, BOX_S * (1 + (big ? 0.26 : 0.14) * Math.sin(endK * Math.PI)), true, 0, 1, fade);
       } else if (ended && !sp.caught) {
         /* BREAK: planks fly apart and fall */
         const tt = (t - shakeEnd) / 1000;

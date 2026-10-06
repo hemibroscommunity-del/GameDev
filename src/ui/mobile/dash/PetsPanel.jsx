@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
-import { petDisplayName, petKindName, petEffectiveLevel, cleanPetName, PET_NAME, PET_BIG_AT, PET_KINDS, worldSafeText, petKindOfOld, petXpView, petTradeView, TRAP_WORDS } from '@/data/trapping.js';
+import { petDisplayName, petKindName, petEffectiveLevel, cleanPetName, PET_NAME, PET_BIG_AT, PET_KINDS, worldSafeText, petKindOfOld, petXpView, petTradeView, TRAP_WORDS, petWardView, petHousePrice, PET_HOUSE } from '@/data/trapping.js';
+import { ELEM_ICON_SRC } from '@/game/elemHits.js';   /* v2.3.3123: the ward's element */
 import { storePetsEnabled, storeListPet } from '@/ui/storeApi.js';   /* v2.3.3122: sell a pet at the auction house */
-import { petbookOn, petList, activePet, sendPetActive, sendPetName, sendPetRelease } from '@/game/petBook.js';
-import { trapLevel, petlevelsOn } from '@/game/trapping.js';
+import { petbookOn, petList, activePet, sendPetActive, sendPetName, sendPetRelease, pethouseOn, sendPetHouseBuy } from '@/game/petBook.js';
+import { trapLevel, petlevelsOn, petwardsOn } from '@/game/trapping.js';
 import { ZONES } from '@/data/zones.js';
 import { landLook } from '@/data/wheelLands.js';
 
@@ -97,11 +98,13 @@ export const PetsPanel = () => {
   const [price, setPrice] = useState('');
   const [sellMsg, setSellMsg] = useState(null);
   const [sellBusy, setSellBusy] = useState(false);
+  const [houseAsk, setHouseAsk] = useState(false);   /* v2.3.3123: "Buy 10 more places?" */
   useEffect(() => {
     let lastRev = -1;
     const id = setInterval(() => {
       const S = getState();
-      const rev = S ? (S._petBookRev || 0) * 7 + ((S._trap && S._trap.rev) || 0) : 0;
+      /* v2.3.3123: + your gold, so More room lights up the moment you can pay */
+      const rev = S ? ((S._petBookRev || 0) * 7 + ((S._trap && S._trap.rev) || 0)) + '|' + Math.floor(Number(S.rpg && S.rpg.coins) || 0) : '';
       if (rev !== lastRev) { lastRev = rev; force((v) => (v + 1) % 1e9); }
     }, POLL_MS);
     return () => clearInterval(id);
@@ -115,6 +118,7 @@ export const PetsPanel = () => {
   const cap = (book && book.cap) || 30;
   const unavailable = !!(book && book.unavailable);
   const levels = petlevelsOn(S);
+  const wards = petwardsOn(S);   /* v2.3.3123 */
   const journal = (book && book.journal && typeof book.journal === 'object') ? book.journal : {};
   const jOf = (kind, stage) => (Object.prototype.hasOwnProperty.call(journal, kind + '.' + stage) ? journal[kind + '.' + stage] : null);
   const kinds = Object.keys(PET_KINDS);
@@ -134,6 +138,35 @@ export const PetsPanel = () => {
           </div>
         </div>
       </div>
+      {/* ═══ v2.3.3123: MORE ROOM IN THE PET HOUSE (Phase 4) ═══
+          The plan's "The Pet House holds more for gold": 10 more places at the
+          price the worker charges (data/trapping.js petHousePrice, its rule),
+          asked once before the gold goes; the worker refuses a stale size, so
+          a double tap never buys twice. */}
+      {live && book && !unavailable && pethouseOn(S) && (() => {
+        const hp = petHousePrice(cap);
+        const coins = Math.floor(Number(S && S.rpg && S.rpg.coins) || 0);
+        if (!(hp > 0)) {
+          return <div data-pet-house="full" style={{ fontSize: 11, color: COL.muted, marginBottom: 8 }}>Your Pet House holds {PET_HOUSE.CAP_MAX}, as many as it can.</div>;
+        }
+        return (
+          <div data-pet-house={cap} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 10px', background: COL.well, borderRadius: 10 }}>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: COL.text2, lineHeight: 1.35 }}>
+              {houseAsk
+                ? <span>Buy {PET_HOUSE.STEP} more places for <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>?</span>
+                : <span>Pet House: {PET_HOUSE.STEP} more places for <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>{coins < hp ? <span style={{ color: COL.muted }}> (you have {coins.toLocaleString()})</span> : null}</span>}
+            </div>
+            {houseAsk ? (
+              <>
+                <Btn on={coins >= hp} primary data-pet-house-yes={cap} onClick={() => { sendPetHouseBuy(S, cap); setHouseAsk(false); }}>Buy</Btn>
+                <Btn on onClick={() => setHouseAsk(false)}>Keep</Btn>
+              </>
+            ) : (
+              <Btn on={coins >= hp} data-pet-house-buy={cap} onClick={() => { if (coins >= hp) setHouseAsk(true); }}>More room</Btn>
+            )}
+          </div>
+        );
+      })()}
       {sellMsg && sellMsg.ok && !selling ? (
         <div data-pet-listed="1" style={{ fontSize: 12, color: '#7EE0A8', padding: '6px 10px', background: COL.well, borderRadius: 10, marginBottom: 8 }}>
           {sellMsg.text}. It waits at the Auction House until it sells, and comes back if it does not.
@@ -173,6 +206,22 @@ export const PetsPanel = () => {
                   {big ? <Badge color="#7EE0A8" bg="rgba(126,224,168,.12)">Big</Badge> : null}
                 </div>
                 {levels && live && p.kind ? <XpBar view={petXpView(pp, T)} /> : null}
+                {/* v2.3.3123: THE LAND WARD -- what this pet softens, and how
+                    much at the level it works at (the worker's rule,
+                    data/trapping.js petWardView); only the pet out with you
+                    wards, so the others say "when out" */}
+                {wards && live && p.kind && (() => {
+                  const wv = petWardView(pp, T);
+                  if (!wv) return null;
+                  const icon = ELEM_ICON_SRC['elem-' + wv.el];
+                  return (
+                    <div data-pet-ward={wv.pct} style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11,
+                      color: isOut ? '#7EE0A8' : COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {icon ? <img src={icon} alt="" draggable={false} style={{ width: 14, height: 14, flex: 'none' }} /> : null}
+                      <span>{wv.words}{isOut ? '' : ' when out'}</span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             {isOpen && live && (
@@ -245,7 +294,7 @@ export const PetsPanel = () => {
       })}
       {live && list.length > 0 && (
         <div style={{ fontSize: 11, color: COL.muted, marginTop: 6, lineHeight: 1.4 }}>
-          The pet with you picks up loot from further away. Pets are never lost, not even in No man's land.
+          The pet with you picks up loot from further away{wards ? ', and softens what its own land\'s monsters do to you' : ''}. Pets are never lost, not even in No man's land.
         </div>
       )}
       {/* v2.3.3121: THE JOURNAL -- every kind at both stages */}
