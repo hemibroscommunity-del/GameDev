@@ -81,6 +81,8 @@ Every path in the tree that creates a piece of gear, and what it now does.
 | 5 | amulet forge craft | `_handleAmuletForge` op `'craft'`, amulet.js | ✅ `src:'forge'` | the only path in the game that mints an amulet |
 | 6 | amulet gem slot | `_handleAmuletForge` op `'gem'` | ↻ touches the row | a mutation, not a mint |
 | 7 | dev kit | `_devKit`, devtools.js | ✅ via 3/4 | weapons only today, but it passes its target id so a future gear entry records |
+| 8 | daily chest armour | `_handleChestOpen`, dailychest.js | ✅ `src:'chest'` | (v2.3.2820; listed here in v2.3.3083, where it had been missed) goes to the client's bag through `_applyLootCredit` |
+| 9 | the armor forge, chest and legs | `_handleForgeArmor`, armorforge.js | ✅ `src:'forge'` | v2.3.3083: bars into armor; to the client's bag the chest's way |
 
 Paths that **look** like mints and are not — each checked, each stated so
 the next reader does not have to re-derive it:

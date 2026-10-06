@@ -177,6 +177,8 @@ function resolveTarget(target) {
       const r = SMELT_RECIPES[SMELT_ORE_TO_BAR[key]];
       info = 'Smelt ' + r.oreCost + ' into a ' + r.name + ' at the Blacksmith';
     }
+    /* v2.3.3083: and where a bar goes -- the Blacksmith's Armor tab */
+    else if (SMELT_RECIPES[key] && SR && SR._serverCaps && SR._serverCaps.armorforge) info = 'Forge into armor at the Blacksmith';
     else if (SMELT_RECIPES[key]) info = 'Smelted from ' + SMELT_RECIPES[key].oreCost + ' ' + SMELT_RECIPES[key].oreName;
     else if (count > 0) info = 'Quantity: ' + count;
     return {

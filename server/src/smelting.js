@@ -35,9 +35,17 @@
 export const SMELT = {
   /* bar invKey -> recipe.  `ore` is the exact inventory key gathering.js
      _harvestInvKey mints for the tier's rock.  Higher metals join this table
-     as their ore becomes obtainable (gathering's node tier is still 1). */
+     as their ore becomes obtainable.
+     v2.3.3083: iron and black steel join it -- the Wheel has grown both since
+     v2.3.3012 (iron at its levels 1-10, black steel at 11-20) -- because the
+     owner said "Yes" to "Should smelted bars make armour?" and each metal's
+     armour is forged from its own bars (armorforge.js).  Smithing 5 and 10:
+     the owner's "levels of 5" (the ores' own Mining gates, gathering.js
+     GATHER_REQ_LVL), each bar paying more as its metal gets harder to reach. */
   RECIPES: {
     bar_copper: { ore: 'ore_copper_ore', oreCost: 5, minLvl: 1, xp: 400 },
+    bar_iron: { ore: 'ore_iron_ore', oreCost: 5, minLvl: 5, xp: 600 },
+    bar_black_steel: { ore: 'ore_black_steel_ore', oreCost: 5, minLvl: 10, xp: 800 },
   },
   /* One smelt pays `xp` Smithing XP.  400 for five ore: a cooked fish pays
      200 for one catch (cooking.js), and a bar is five trips to a rock.  At

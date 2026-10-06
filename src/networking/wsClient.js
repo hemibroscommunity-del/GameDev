@@ -1517,6 +1517,30 @@ export function setupWebSocket(ctx) {
               }
               break;
             }
+          case 'forge_armor_result':
+            {
+              /* v2.3.3083: the armor forge's receipt (armorforge.js).  The
+                 worker has ALREADY taken the bars, minted the piece and paid the
+                 Smithing XP.  The piece goes into the bag the way the daily
+                 chest's does (its id, metal and grade with it: "BAG: Copper
+                 Torso"), then the XP line and a crafting level's celebration. */
+              var _fa = msg.payload;
+              if (_fa && _fa.piece && typeof _fa.piece === 'object') {
+                try { _applyLootCredit({ armor: [_fa.piece] }, S); } catch (_fe) { /* the next join adopts it */ }
+                if (S.player) {
+                  try {
+                    pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + (Number(_fa.xp) || 0) + ' Smithing XP', '#D8A94D');
+                    BT_AUDIO.collect();
+                  } catch (_fp) { /* popup only */ }
+                }
+                if (_fa.leveled && _fa.newLevel > _fa.fromLevel) {
+                  try { celebrateLifeSkillLevel(S, 'blacksmithing', _fa.newLevel, _fa.fromLevel); } catch (_fc) {}
+                }
+                /* QA (mp-armorforge), armed by the harness only: the receipt */
+                if (typeof window !== 'undefined' && window.__btProbe) window.__btArmorForged = { at: Date.now(), recipe: _fa.recipe, piece: _fa.piece, xp: _fa.xp };
+              }
+              break;
+            }
           case 'lifesteal_credit':
             {
               /* Worker tells us a melee-kill heal landed -- render the +N HP
@@ -4085,6 +4109,12 @@ export function setupWebSocket(ctx) {
         }
         /* v2.3.2822: Smelt at the blacksmith (SmithyPanel) -> smelting.js. */
         if (msg.type === 'smelt_bar') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.3083: Forge armor from bars (SmithyPanel's Armor tab) ->
+           armorforge.js.  TRAPS #18: without this the request never leaves. */
+        if (msg.type === 'forge_armor') {
           ws.send(JSON.stringify(msg));
           return;
         }
