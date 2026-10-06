@@ -107,9 +107,10 @@ last 5 seconds):
 | the bag's items | the usual death pile, but the **killer's** for its owner window ("Raider's loot" to everyone else), then anyone's |
 | spare weapons | to the killer (mail if they are offline or full) |
 | spare **armour and legs** | to the killer, each with its provenance row, so it stays a provable piece in their hands |
+| spare **shields** (since v2.3.3091) | to the killer the same way, once your game has told the worker which shield is on your arm (see below) |
 | everything worn | **kept** |
 | the gathering tools, the quest's own items | kept (the death's usual carve-outs) |
-| shields, outfit pieces | kept (see below) |
+| outfit pieces | kept (see below) |
 | gold | kept |
 
 **A red-skulled player who dies** loses all of the above **and** everything
@@ -136,23 +137,78 @@ The worker only takes what it can tell apart from what you wear.
   your body, so it is never taken or forfeited. A copy with no id that matches
   what you wear is left alone too. Taking a real spare is a loss for you;
   giving a stale copy away would be a second piece for the killer.
-- **Shields.** There is no shield equip message, and `ps.shield` records
-  *ownership*, not what is on your arm (quests.js). A worn shield cannot be
-  told from a spare, so a bag loss takes none.
-- **Outfit pieces.** Nothing tells the worker which outfit pieces you wear.
+- **Shields, until your game says which one you wear.** See "The shield on
+  your arm" below. A game too old to say, or a report naming a shield the
+  worker does not hold for you, leaves every shield where it is.
+- **Outfit pieces.** Nothing tells the worker which outfit pieces you wear, and
+  today there is nothing in them to take:
+  - the wardrobe is the T-shirt, which every player can pick;
+  - and the plate's look, which follows the armour piece itself. The armour
+    piece is already taken as armour.
+
+  An outfit that can be *earned* would join the spares the same way, with its
+  own wear report.
 - **Armour granted during this session.** A quest's armour reward goes to your
   game's bag first, and the worker adopts it at your next join. Until then it is
   not in the worker's list, so a death does not take it.
 - **Gold nuggets and bars** (the amulet forge's ingredients). They have no credit
   kind to carry them to a killer, so they stay.
 
-Each of these closes when the worker learns the slot (an equip message for
-shields and outfits). That is its own change.
+Each of these closes when the worker learns the slot. Shields have closed
+(v2.3.3091).
+
+## The shield on your arm (v2.3.3091)
+
+> Asked *"Shields and outfits in no man's land?"*, the owner said *"Yes"*.
+
+Putting a shield on was a purely local move in the game, so the worker could not
+tell the shield on your arm from a spare. Now the game tells it:
+
+- **When.** Whenever the shield on your arm changes (the bag's equip and unequip,
+  the Shield picker), once on every join, and when a new shield lands in your
+  bag (a quest's).
+- **What it says.** `shield_wear` with one of:
+  - `{gid}`: a recorded piece, by its id;
+  - `{sig}`: a piece from before the ledger, by the signature both sides
+    already use (name | gearBase | tierMult | tier);
+  - `{none: true}`: nothing on the arm.
+- **What the worker keeps.** `ps.shield` is now the shield you **wear** and
+  `ps.shieldStash` the ones you carry, as for armour.
+  - The piece you put on leaves the bag list (one copy).
+  - The one you took off goes into it, unless a copy is already there. One
+    too few is made up at the next join's merge; one too many would be a
+    second shield for whoever takes your bag.
+  - Nothing is ever deleted or described: the named piece must be one the
+    worker already holds for you (on your arm, in its copy of your bag, or by
+    id in your ledger).
+- **A shield it does not hold** changes nothing, and marks the arm unknown for
+  the session.
+- **The loss.** An ordinary loss in No man's land takes the spare shields with
+  the armour's rule:
+  - a stash copy of the shield you wear (the same id, or the same signature for
+    a piece with none) is that shield, and stays;
+  - each spare goes to the killer with its provenance row, and its id is
+    forfeited;
+  - `nml_loss` names it, and your game takes it out of its bag.
+- **Only once the arm is known.** The worker holds `ps._shieldKnown` for the
+  session; it is never saved. Without a report every shield stays, as before.
+- **No gates.** Blocking is the game's own sum, and the worker never refused a
+  shield. Refusing one now would only make the two disagree about which shield
+  is the spare, the one thing this report settles.
+- **Side effects that are fixes.** Two things that read `ps.shield` now read
+  the shield you actually wear:
+  - the shield ability's "no shield" refusal;
+  - the auction house's "worn: take it off first".
+
+  Before, both read the shield you were first given.
 
 ## Wire, storage and switches
 
-- **Client → worker:** nothing new. Attacks are the existing `player_attack`;
+- **Client → worker:** attacks are the existing `player_attack`;
   `_pvpAllowed` asks `_nmlAllowed` before the `OPEN_PVP` master switch.
+  Since v2.3.3091, `shield_wear` `{gid | sig | none}` (server/src/shieldwear.js,
+  client src/game/shieldWear.js), sent only against a worker advertising
+  `caps.shieldwear`.
 - **Worker → client:** `nml_skull` `{red, white}` (ms left) and `nml_loss`
   `{by, red, weapons, gear: [{field, gid | sig}], worn, coins, bag}`. Both are in
   `PRIVILEGED_EVENTS`. The tick's player wire carries `sk`, absent with no skull.
@@ -167,12 +223,15 @@ shields and outfits). That is its own change.
 - **Kill switch:** `nomansland: false` (lower case) un-advertises it, refuses
   every hit, starts no skull and takes nothing on a death. That is the safe
   Wheel exactly.
+- **The shield's switch:** `shieldwear: false` (v2.3.3091) un-advertises
+  `caps.shieldwear`, ignores every report, and an ordinary loss takes no shield
+  again.
 - **Dev tool:** `/api/admin/dev/vitals` takes `hp` (at least 1, at most max), as
   it takes `stamina`. It makes a test's killing blow one hit.
 
 ## Tests
 
-- `server/test/nomansland.test.mjs` (51 checks):
+- `server/test/nomansland.test.mjs` (68 checks; 51 before v2.3.3091):
   - the rings against the plan;
   - the level rule from both sides, the party rule, and the master switch
     elsewhere;
@@ -181,18 +240,29 @@ shields and outfits). That is its own change.
   - back on join;
   - a death under the rule: the killer's pile, the carve-outs, the spare weapon
     and armour to the killer with the row, the worn plate's stash copy kept,
-    the shield and outfit kept, `nml_loss` exact, the forfeit refused on the
-    next join;
+    the shield and outfit kept (that game never said which shield it wears),
+    `nml_loss` exact, the forfeit refused on the next join;
   - a red skull's death, to a player and to a monster, with each piece once;
   - an ordinary death unchanged;
-  - the kill switch, and caps.
-- `mirror-audit`: the rings and the centre.
-- `mp-nomansland` (15 checks), two real players against a real worker:
+  - the kill switch, and caps;
+  - v2.3.3091, the shield on the arm (17 checks):
+    - caps;
+    - the moves: by id, by signature, none, a copy already in the bag;
+    - refusals: a shield it does not hold, junk names, another player's, and
+      a ledger piece no list holds;
+    - the loss with the arm known: both spares to the killer (one with its
+      row), the worn one and its stale copy kept, `nml_loss` naming both;
+    - `shieldwear: false`.
+- `mirror-audit`: the rings and the centre. Since v2.3.3091 they run: a merge
+  had left them after the suite's `process.exit`.
+- `mp-nomansland` (16 checks), two real players against a real worker:
+  - the wanderer's game tells the worker its arm is bare, and the worker
+    holds the quest's Pine Shield as a spare;
   - both told (banner, chat, the red top-bar line);
   - the tap aims and opens no card;
   - a hit lands, with the red and white skulls, each seen by the other;
-  - the killing blow: the wanderer told, their spare greatsword in the raider's
-    bag, the shield kept, the minnows in the raider's pile;
+  - the killing blow: the wanderer told, their spare greatsword and spare
+    shield in the raider's bag, the minnows in the raider's pile;
   - no page errors.
   - Pictures: `nomansland-*.png`.
 - `mp-wheelmap`: on Frost Ridge's Lv 6–10 ring the top bar's second line is the
@@ -202,8 +272,8 @@ shields and outfits). That is its own change.
 
 - **The level rule.** It is read as "within N levels, N being the lower of the
   two rings". Ring 1 is within 1 level; ring 5 is within 5.
-- **Shields and outfits** stay on an ordinary loss until the worker can tell
-  them from what is worn. Say if a shield equip message is worth building for
-  this.
+- **Shields and outfits** -- decided, *"Yes"* (2026-10-06): spare shields go
+  since v2.3.3091. Outfit pieces stay because there is nothing in them to take
+  yet (see "What the worker cannot take yet").
 - **Party members** cannot fight each other here, and the safe commons and
   Brotown stay safe.

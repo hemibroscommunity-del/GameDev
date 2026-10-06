@@ -2,10 +2,11 @@ import { TILE } from './constants.js';
 import { ZONES } from './zones.js';
 import { flavorName, flavorSpotName } from './elements.js';
 /* v2.3.1189: was an eslint-grandfathered global (globalThis-resolved). */
-import { ZONE_RESOURCES } from './items.js';
+import { ZONE_RESOURCES, LIFE_SKILL_XP_BASE } from './items.js';
 
 /* ═══ LIFE SKILLS — §18 ═══ */
-export const LIFE_SKILL_XP = (level) => Math.ceil(500 * Math.pow(1.08, level - 1));
+/* v2.3.3090: on LIFE_SKILL_XP_BASE (items.js), 1000 -- twice the old 500 */
+export const LIFE_SKILL_XP = (level) => Math.ceil(LIFE_SKILL_XP_BASE * Math.pow(1.08, level - 1));
 export const LIFE_SKILLS = ['woodcutting', 'fishing', 'mining', 'farming', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'trapping'];
 
 /* §18.2 Resource tiers by zone depth */
@@ -40,10 +41,11 @@ export const RESOURCE_TIERS = {
    not in a row needs level 1.  Mirror of server/src/gathering.js
    GATHER_REQ_LVL, pinned by mirror-audit.test.mjs; the worker enforces it
    (extraction_start, node_strike) only while it advertises caps.gatherreq. */
+/* v2.3.3094: + the second stage's two tiers (gathering.js) */
 export const GATHER_REQ_LVL = {
-  oreVein:  { 1: 1, 6: 1, 11: 5 },
-  fishSpot: { 1: 1, 6: 5, 11: 10 },
-  tree:     { 1: 1, 6: 5, 11: 10 },
+  oreVein:  { 1: 1, 6: 1, 11: 5, 16: 10, 21: 15 },
+  fishSpot: { 1: 1, 6: 5, 11: 10, 16: 15, 21: 20 },
+  tree:     { 1: 1, 6: 5, 11: 10, 16: 15, 21: 20 },
 };
 
 export function gatherReqLvl(nodeType, tierLvl) {
@@ -57,7 +59,7 @@ export function gatherReqLvl(nodeType, tierLvl) {
 /* v2.3.3038: the level to PRINT for a tier on a ladder (Skills' "next
    unlock", the Encyclopedia): its requirement where one is set, else the tier
    number as before -- the tiers past the third grow nowhere yet, and "Lv 1"
-   on a Crystal Ore nobody can find would be a promise the world can't keep. */
+   on a Mithril Ore nobody can find would be a promise the world can't keep. */
 export function gatherLadderLvl(nodeType, tierLvl) {
   const has = Object.prototype.hasOwnProperty;
   const row = has.call(GATHER_REQ_LVL, nodeType) ? GATHER_REQ_LVL[nodeType] : null;
@@ -87,6 +89,11 @@ export const FISHING_TIERS = [
   { lvl:  1, name: 'Minnow',    spot: 'Shallow Pool', size: 6,  waterColor: 'rgba(52,152,219,.35)',  hp: 2 },
   { lvl:  6, name: 'Clownfish', spot: 'Coral Patch',  size: 8,  waterColor: 'rgba(255,140, 60,.35)', hp: 3 },
   { lvl: 11, name: 'Trout',     spot: 'River Bend',   size: 10, waterColor: 'rgba(52,152,219,.4)',   hp: 3 },
+  /* v2.3.3094: the Wheel's second stage (levels 21-30, 31-40).  Mirrors
+     server/src/data.js FISH_TIERS (mirror-audit: the name lowercased) and
+     gathering.js _harvestNameForTier. */
+  { lvl: 16, name: 'Salmon',    spot: 'Cold Run',     size: 11, waterColor: 'rgba(240,138,120,.35)', hp: 4 },
+  { lvl: 21, name: 'Pike',      spot: 'Reed Bed',     size: 12, waterColor: 'rgba(122,154,74,.35)',  hp: 4 },
 ];
 
 export const WOODCUTTING_TIERS = [
@@ -124,11 +131,18 @@ export const MINING_TIERS = [
      Wheel's levels 11-20.  Mirrors gathering.js _harvestNameForTier (the
      worker names the item ore_black_steel_ore from this same string). */
   { lvl: 11, name: 'Black Steel Ore', vein: 'Black Steel Seam', size: 12, rockColor: '#3a3d48', streakColor: '#6f7a96', hp: 6 },
-  { lvl: 16, name: 'Crystal Ore', vein: 'Crystal Vein', size: 12, rockColor: '#4a5a6a', streakColor: '#60a0d0', hp: 7 },
-  { lvl: 21, name: 'Gold Ore', vein: 'Gold Vein', size: 14, rockColor: '#5a5a4a', streakColor: '#d4a030', hp: 9 },
+  /* v2.3.3094: TITANIUM and OBSIDIAN ORE (were Crystal Ore and Gold Ore, which
+     grew nowhere): the Wheel's levels 21-30 and 31-40 grow them, and they are
+     the forge's next two metals (BLACKSMITH_TIERS titanium / obsidian:
+     ore_titanium_ore, ore_obsidian_ore).  Mirrors gathering.js
+     _harvestNameForTier. */
+  { lvl: 16, name: 'Titanium Ore', vein: 'Titanium Seam', size: 12, rockColor: '#4a4e58', streakColor: '#c8d0dc', hp: 7 },
+  { lvl: 21, name: 'Obsidian Ore', vein: 'Obsidian Seam', size: 14, rockColor: '#1e1a2a', streakColor: '#7a55b5', hp: 9 },
   { lvl: 26, name: 'Mithril Ore', vein: 'Deep Vein', size: 14, rockColor: '#4a4a5a', streakColor: '#8060c0', hp: 11 },
   { lvl: 31, name: 'Gem Cluster', vein: 'Gem Deposit', size: 12, rockColor: '#5a4a5a', streakColor: '#c060a0', hp: 13 },
-  { lvl: 36, name: 'Obsidian', vein: 'Obsidian Shard', size: 14, rockColor: '#1a1a2a', streakColor: '#3a3a4a', hp: 15 },
+  /* v2.3.3094: was 'Obsidian', a second obsidian beside tier 21's; the forge's
+     tier at 36 is diamond */
+  { lvl: 36, name: 'Diamond Ore', vein: 'Diamond Seam', size: 14, rockColor: '#2a3040', streakColor: '#bfe8ff', hp: 15 },
   { lvl: 41, name: 'Ancient Ore', vein: 'Ancient Deposit', size: 16, rockColor: '#4a4a3a', streakColor: '#a0903a', hp: 18 },
   { lvl: 46, name: 'Prismatic Ore', vein: 'Prismatic Vein', size: 16, rockColor: '#5a5a5a', streakColor: '#ff80ff', hp: 20 },
   { lvl: 51, name: 'Abyssal Ore', vein: 'Abyssal Crack', size: 14, rockColor: '#2a2a3a', streakColor: '#4040a0', hp: 22 },

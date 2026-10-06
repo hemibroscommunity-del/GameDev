@@ -23,6 +23,7 @@
  * a canvas pass over images already in memory, not a network load.
  */
 import { Texture, Rectangle } from 'pixi.js';
+import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074 */
 import { skinTarget, retintSkinPixels, poseSkinTarget } from '../playerSkins.js';   /* v2.3.2861: + poseSkinTarget */
 import { SPECIES_CATALOG } from './speciesCatalog.js';
 
@@ -133,8 +134,9 @@ function _capBuilds() {
   /* deferred, so a texture still being drawn this frame is not pulled out */
   setTimeout(() => {
     try {
-      for (const d in b.tex) if (b.tex[d] && b.tex[d].source) b.tex[d].source.destroy();
-      for (const k2 in b.stripTex) if (b.stripTex[k2] && b.stripTex[k2].source) b.stripTex[k2].source.destroy();
+      /* v2.3.3074: the whole release, Cache entry and canvas too (TRAPS §139) */
+      for (const d in b.tex) if (b.tex[d] && b.tex[d].source) releaseCanvasSource(b.tex[d].source);
+      for (const k2 in b.stripTex) if (b.stripTex[k2] && b.stripTex[k2].source) releaseCanvasSource(b.stripTex[k2].source);
     } catch (e) { /* ignore */ }
   }, 30000);
 }

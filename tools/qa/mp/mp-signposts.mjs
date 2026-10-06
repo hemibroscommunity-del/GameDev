@@ -10,7 +10,8 @@
  *   3. at each gate, its two plates fade in over the signpost: the land
  *      straight on down that road first, then the land whose trail forks off
  *      it -- each named as the map names it, with its icon, its arrow
- *      pointing the way the land lies;
+ *      pointing the way the land lies, and (v2.3.3089) the levels its land
+ *      holds, "Lv 1–20";
  *   4. walking away, they fade out and go;
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/signposts-{north,east,south,west}.png.
@@ -19,6 +20,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { PLAN, SPOKES } from '../../../public/tools/world/plan.js';
+import { landLevelsText } from '../../../src/data/wheelSignposts.js';
 
 const PHONE = { width: 390, height: 844 };
 const WANT = { north: ['ember', 'frost'], east: ['hollows', 'sky'], south: ['tidal', 'thunder'], west: ['verdant', 'mist'] };
@@ -100,9 +102,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const want = WANT[gate];
       const names = d ? d.plates.map((pl) => pl.name) : [];
+      /* v2.3.3089: and each ends in the levels its land holds ("Lv 1–20") */
       const okPlates = !!d && d.plates.length === 2 && d.plates.every((pl, k) => pl.land === want[k] && pl.name === PLAN.regions[want[k]].name && pl.icon
-        && angDiff(pl.rot, DIR[want[k]]) < 0.02) && d.plates[0].y < d.plates[1].y;
-      rec.ok(`${gate} gate: its plates fade in -- "${names.join('" over "')}" -- each with its icon and its arrow the way the land lies`,
+        && angDiff(pl.rot, DIR[want[k]]) < 0.02 && pl.lv === landLevelsText()) && d.plates[0].y < d.plates[1].y;
+      rec.ok(`${gate} gate: its plates fade in -- "${names.join('" over "')}" -- each with its icon, its arrow the way the land lies and "${landLevelsText()}"`,
         !!d && d.visible && d.alpha >= 0.99 && okPlates, d);
       const scr = await P.page.evaluate(({ x, y }) => {
         const S = window._gameState.current;

@@ -8,7 +8,9 @@
  *
  * On a phone viewport, against a real worker, the game as a player gets it:
  *   1. the Wheel holds every land's monsters in its first four stretches: 192,
- *      24 a land, the first stretch's 48 at levels 1-2 as before;
+ *      24 a land, the first stretch's 48 at levels 1-2 as before (v2.3.3093:
+ *      and its next four, levels 21-40 -- 384, 48 a land; mp-wheelpast20 walks
+ *      out to them);
  *   2. each deeper one carries its stretch's level on the client too -- 6-10,
  *      11-15, 16-20 -- not clamped to its home's 1-2 (monsterVariants.js);
  *   3. out on Frost Ridge's third stretch (levels 11-15) the top bar says so,
@@ -24,7 +26,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
-const TIERS = { 2: [6, 10], 3: [11, 15], 4: [16, 20] };
+const TIERS = { 2: [6, 10], 3: [11, 15], 4: [16, 20], 5: [21, 25], 6: [26, 30], 7: [31, 35], 8: [36, 40] };   /* v2.3.3093: + the second stage */
 const tierOf = (id) => { const m = /-t(\d+)-\d+$/.exec(id); return m ? +m[1] : 1; };
 
 /* the monsters the client holds, with what the renderer drew for each */
@@ -75,14 +77,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const byLand = {};
   for (const m of all) (byLand[m.home] = byLand[m.home] || []).push(m);
   const first = all.filter((m) => tierOf(m.id) === 1);
-  rec.ok(`in the Wheel (${zone}) every land's monsters stand in its first four stretches: ${all.length} (${Object.entries(byLand).map(([h, a]) => `${h} ${a.length}`).join(', ')}), the first stretch's ${first.length} at levels ${[...new Set(first.map((m) => m.level))].sort().join(' and ')}`,
-    zone === 'wheel' && all.length === 192 && Object.keys(byLand).length === 8 && Object.values(byLand).every((a) => a.length === 24)
+  rec.ok(`in the Wheel (${zone}) every land's monsters stand in its first eight stretches, levels 1-40: ${all.length} (${Object.entries(byLand).map(([h, a]) => `${h} ${a.length}`).join(', ')}), the first stretch's ${first.length} at levels ${[...new Set(first.map((m) => m.level))].sort().join(' and ')}`,
+    zone === 'wheel' && all.length === 384 && Object.keys(byLand).length === 8 && Object.values(byLand).every((a) => a.length === 48)
       && first.length === 48 && first.every((m) => m.level >= 1 && m.level <= 2), { n: all.length, lands: Object.keys(byLand) });
   const deep = all.filter((m) => tierOf(m.id) > 1);
   const offLevel = deep.filter((m) => !TIERS[tierOf(m.id)] || m.level < TIERS[tierOf(m.id)][0] || m.level > TIERS[tierOf(m.id)][1]);
   const lv = (t) => deep.filter((m) => tierOf(m.id) === t).map((m) => m.level);
-  rec.ok(`...each deeper one at its own stretch's levels here too, not clamped to its home's 1-2 (6-10: ${Math.min(...lv(2))}-${Math.max(...lv(2))}, 11-15: ${Math.min(...lv(3))}-${Math.max(...lv(3))}, 16-20: ${Math.min(...lv(4))}-${Math.max(...lv(4))})`,
-    deep.length === 144 && offLevel.length === 0 && Math.max(...lv(4)) === 20 && Math.min(...lv(2)) === 6, offLevel.slice(0, 4));
+  rec.ok(`...each deeper one at its own stretch's levels here too, not clamped to its home's 1-2 (6-10: ${Math.min(...lv(2))}-${Math.max(...lv(2))}, 11-15: ${Math.min(...lv(3))}-${Math.max(...lv(3))}, 16-20: ${Math.min(...lv(4))}-${Math.max(...lv(4))}, ... 36-40: ${Math.min(...lv(8))}-${Math.max(...lv(8))})`,
+    deep.length === 336 && offLevel.length === 0 && Math.max(...lv(4)) === 20 && Math.min(...lv(2)) === 6 && Math.max(...lv(8)) === 40, offLevel.slice(0, 4));
 
   /* ── 3. out to Frost Ridge's third stretch ── */
   phase = 'the walk';

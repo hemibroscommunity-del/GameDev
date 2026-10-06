@@ -91,10 +91,15 @@ const SKELETON_REMNANTS_THUMB = `/icons/items/remnants-skeleton.webp${ITEMS_V}`;
 const FISH_THUMBS = {
   fish_clownfish: `/icons/items/fish-clownfish.webp${ITEMS_V}`,
   fish_trout: `/icons/items/fish-trout.webp${ITEMS_V}`, /* v2.3.1325: trout finally has its own art */
+  /* v2.3.3094: the Wheel's levels 21-40 (tools/make_tier_art.py past20) */
+  fish_salmon: `/icons/items/fish-salmon.webp${ITEMS_V}`,
+  fish_pike: `/icons/items/fish-pike.webp${ITEMS_V}`,
 };
 const COOKED_FISH_THUMBS = {
   cooked_fish_clownfish: `/icons/items/cooked-clownfish.webp${ITEMS_V}`,
   cooked_fish_trout: `/icons/items/cooked-trout.webp${ITEMS_V}`,
+  cooked_fish_salmon: `/icons/items/cooked-salmon.webp${ITEMS_V}`,   /* v2.3.3094 */
+  cooked_fish_pike: `/icons/items/cooked-pike.webp${ITEMS_V}`,
 };
 const FISH_THUMB_DEFAULT = `/icons/items/fish-minnow.webp${ITEMS_V}`;
 const COOKED_FISH_THUMB_DEFAULT = `/icons/items/cooked-minnow.webp${ITEMS_V}`;
@@ -105,12 +110,18 @@ export const ORE_THUMBS = {  /* v2.3.2822: exported for the Smelting rows */
      tools/make_tier_art.py */
   ore_iron_ore: `/icons/items/ore-iron.webp${ITEMS_V}`,
   ore_black_steel_ore: `/icons/items/ore-black-steel.webp${ITEMS_V}`,
+  /* v2.3.3094: and titanium (levels 21-30) and obsidian (31-40), the forge's
+     next two metals */
+  ore_titanium_ore: `/icons/items/ore-titanium.webp${ITEMS_V}`,
+  ore_obsidian_ore: `/icons/items/ore-obsidian.webp${ITEMS_V}`,
 };
 /* v2.3.3012: and softwood and hardwood, the log recoloured the same way; the
    pine log (and any wood not listed) keeps the one log picture */
 const WOOD_THUMBS = {
   wood_softwood: `/icons/items/wood-softwood.webp${ITEMS_V}`,
   wood_hardwood: `/icons/items/wood-hardwood.webp${ITEMS_V}`,
+  wood_cedar_wood: `/icons/items/wood-cedar.webp${ITEMS_V}`,   /* v2.3.3094 */
+  wood_maple_wood: `/icons/items/wood-maple.webp${ITEMS_V}`,
 };
 const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
 /* v2.3.2822: smelted bars (server smelting.js).  One painted grey ingot, the
@@ -118,6 +129,10 @@ const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
    is a line there and a line here. */
 export const BAR_THUMBS = {
   bar_copper: `/icons/items/bar-copper.webp${ITEMS_V}`,
+  /* v2.3.3092: the armour forge's two other metals (the file names are the
+     metal ids, as the armour's own icons are) */
+  bar_iron: `/icons/items/bar-iron.webp${ITEMS_V}`,
+  bar_black_steel: `/icons/items/bar-blacksteel.webp${ITEMS_V}`,
 };
 /* v2.3.1696 (owner: "the fishing pole sprite has some of the background that
    failed to get keyed out in the holes between the fishing line and the
@@ -250,6 +265,8 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   /* v2.3.3083: seeds, crops and compost (server farm.js) -- prettyName would
      say "Seed Carrot" and "Herb Firebloom" */
   ...FARM_ITEM_NAMES,
+  bar_iron: 'Iron Bar',         /* v2.3.3092 */
+  bar_black_steel: 'Black Steel Bar',   /* v2.3.3092: prettyName would say "Bar Black Steel" */
 });
 
 /* v2.3.2820: the daily chest -- opened from the bag, rolled by the worker. */

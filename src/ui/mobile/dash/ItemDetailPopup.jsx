@@ -24,6 +24,7 @@ import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: w
 import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason.js'; /* v2.3.2551: and WHY it cannot be sold */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
+import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { playVw } from '../playViewport.js';
 import {
   WEAPON_TYPES,
@@ -177,6 +178,8 @@ function resolveTarget(target) {
       const r = SMELT_RECIPES[SMELT_ORE_TO_BAR[key]];
       info = 'Smelt ' + r.oreCost + ' into a ' + r.name + ' at the Blacksmith';
     }
+    /* v2.3.3092: and where a bar goes -- the Blacksmith's Armor tab */
+    else if (SMELT_RECIPES[key] && SR && SR._serverCaps && SR._serverCaps.armorforge) info = 'Forge into armor at the Blacksmith';
     else if (SMELT_RECIPES[key]) info = 'Smelted from ' + SMELT_RECIPES[key].oreCost + ' ' + SMELT_RECIPES[key].oreName;
     else if (count > 0) info = 'Quantity: ' + count;
     return {
@@ -836,6 +839,7 @@ export const ItemDetailPopup = () => {
             R2.shield = sh;
           }
           persist(R2); refresh();
+          syncShieldWorn(getState());   /* v2.3.3091: the worker learns the arm (No man's land's spares) */
         },
       });
       if (R2.shield) rows.push(mkRow(R2.shield, true));
@@ -1383,6 +1387,7 @@ export const ItemDetailPopup = () => {
     R.shield = target.shield;
     BT_AUDIO.uiEquip();   /* v2.3.2877: the equip sample, not the generic click (see the SHIELD picker row) */
     persist(R);
+    syncShieldWorn(S);   /* v2.3.3091: the worker learns the arm (No man's land's spares) */
     itemDetailBus.close();
   };
   /* v2.3.236: armor swap is HP-neutral.  Recompute maxHp from the

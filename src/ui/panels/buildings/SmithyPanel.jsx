@@ -2,7 +2,9 @@ import React from 'react';
 import {
   AMULET_TIERS, BLACKSMITH_TIERS, WOODWORKING_TIERS, BT_AUDIO, LIFE_SKILL_XP, NUGGETS_PER_BAR,
   SMELT_RECIPES, WEAPON_STASH_MAX, gemExtractCost, getGearStatReq,
+  ARMOR_FORGE_RECIPES, getArmorPieceDr, armorDefReq, /* v2.3.3092: bars into armor */
 } from '@/data/index.js';
+import { armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.3092: each metal's plate and greaves */
 import { BAR_THUMBS, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { metalIconPath, weaponMaterial } from '@/rendering/traits/materialTints.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -20,8 +22,8 @@ import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
  *   - Pictures and numbers, not sentences.  Every cost is a chip: the thing's
  *     icon and HAVE/NEED, green when you have it, red when you don't.  A lock
  *     is a chip that names the one thing missing ("Smithing 6").
- *   - One job per tab: Smelt, Forge, Upgrade, Amulet.  The old panel stacked
- *     all of them in one scroll with a paragraph above each.
+ *   - One job per tab: Smelt, Forge, Armor (v2.3.3092), Upgrade, Amulet.  The
+ *     old panel stacked all of them in one scroll with a paragraph above each.
  *   - Only what the WORKER settles.  The old panel also offered Reforge, the
  *     legacy "Harden" affix, shield forging and Salvage -- all four ran only
  *     in the browser (they wrote localStorage; the server has no handler for
@@ -39,7 +41,7 @@ import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
  *     (game/smithing.js).
  *
  * Test hooks: data-smithy-tab, data-smelt-*, data-forge-row / data-forge-go,
- * data-harden-go, data-amulet-row. */
+ * data-armor-row / data-armor-go (v2.3.3092), data-harden-go, data-amulet-row. */
 
 const C = {
   sheet: '#1E2E34', well: '#111E23', raised: '#293B41', card: '#24363C',
@@ -136,6 +138,8 @@ export function SmithyPanel({ rpgState, stateRef }) {
   const tabs = [
     SC.smelting && { id: 'smelt', label: 'Smelt', icon: BAR_THUMBS.bar_copper },
     { id: 'forge', label: 'Forge', icon: '/icons/items/great-sword-copper.webp' + ITEMS_V },
+    /* v2.3.3092: bars into armor (server armorforge.js) */
+    (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: 'Armor', icon: '/icons/items/chest-plate-copper.webp' + ITEMS_V },
     (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: 'Upgrade', icon: GEM },
     (S._serverCaps && S._serverCaps.amuletForge) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
   ].filter(Boolean);
@@ -160,9 +164,10 @@ export function SmithyPanel({ rpgState, stateRef }) {
       try { BT_AUDIO.collect(); } catch (e) { /* sound only */ }
     }
     if (lvl > lvlSeen.current) {
-      /* Smelting celebrates from its own receipt (wsClient smelt_result);
+      /* Smelting celebrates from its own receipt (wsClient smelt_result), and
+         since v2.3.3092 the armor forge from its (forge_armor_result);
          everything else the panel does celebrates here. */
-      if (!(p && p.kind === 'smelt')) { try { celebrateLifeSkillLevel(S, 'blacksmithing', lvl, lvlSeen.current); } catch (e) { /* visual */ } }
+      if (!(p && (p.kind === 'smelt' || p.kind === 'armor'))) { try { celebrateLifeSkillLevel(S, 'blacksmithing', lvl, lvlSeen.current); } catch (e) { /* visual */ } }
     }
     lvlSeen.current = lvl;
   });
@@ -217,6 +222,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
       <div className="ls-scrollbody" style={{ overflowY: 'auto', touchAction: 'pan-y', flex: '1 1 auto', minHeight: 0, padding: '0 12px 12px' }}>
         {tab === 'smelt' && <SmeltTab {...{ S, inv, lvl, ask, busy }} />}
         {tab === 'forge' && <ForgeTab {...{ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }} />}
+        {tab === 'armor' && <ArmorTab {...{ S, inv, lvl, ask, busy }} />}
         {tab === 'upgrade' && <UpgradeTab {...{ S, R, coins, lvl, caps, ask, busy }} />}
         {tab === 'amulet' && <AmuletTab {...{ S, R, coins, lvl, ask, busy }} />}
       </div>
@@ -316,6 +322,48 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
             {skillOk && !meets && <Lock>{req.label} {req.value}</Lock>}
             <Cost icon={thumbFor(resKey)} have={have} need={bt.oreCost} />
             <Cost icon={COIN} have={coins} need={bt.goldCost} />
+          </Row>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Armor: bars into a torso or greaves (server armorforge.js) ──
+   v2.3.3092, the owner's "Yes" to "Should smelted bars make armour?".  Every
+   piece of each metal you can make now, plus the next metal's -- the goal --
+   as the Forge tab shows its next tier.  The piece lands in the BAG (the
+   receipt's "BAG: Copper Torso", wsClient forge_armor_result), to be worn from
+   there like any other; a chip says how much it stops and, for black steel,
+   the Defense it asks before it can be worn. */
+function ArmorTab({ S, inv, lvl, ask, busy }) {
+  const keys = Object.keys(ARMOR_FORGE_RECIPES);
+  const nextLvl = keys.map((k) => ARMOR_FORGE_RECIPES[k].minLvl).filter((m) => m > lvl).sort((a, b) => a - b)[0];
+  const shown = keys.filter((k) => ARMOR_FORGE_RECIPES[k].minLvl <= lvl || ARMOR_FORGE_RECIPES[k].minLvl === nextLvl);
+  return (
+    <div data-armor-section="1">
+      {shown.map((key) => {
+        const r = ARMOR_FORGE_RECIPES[key];
+        const have = Math.floor(inv[r.bar] || 0);
+        const locked = lvl < r.minLvl;
+        const on = !locked && have >= r.bars && !busy;
+        const legs = r.slot === 'legsArmor';
+        const piece = { name: r.name, mat: r.mat, slot: r.slot, tierMult: r.tierMult };
+        const dr = Math.round(getArmorPieceDr(piece, legs ? 'legs' : 'chest') * 1000) / 10;
+        const def = armorDefReq(piece);
+        const icon = armorIconFor(legs ? 'legs' : 'chest', r.mat);
+        return (
+          <Row key={key} data-armor-row={key} icon={icon + ITEMS_V} iconFallback={icon} title={r.name}
+            action={<Btn on={on} primary data-armor-go={key} onClick={() => ask('armor', { type: 'forge_armor', payload: { recipe: key } }, {
+              kind: 'armor', workMs: SMITH_STRIKE_MS * 4,
+              sig: () => String((S.rpg && S.rpg.inventory && S.rpg.inventory[r.bar]) || 0),
+              fail: 'Could not forge',
+            })}>{locked ? 'Locked' : 'Forge'}</Btn>}>
+            {locked && <Lock>Smithing {r.minLvl}</Lock>}
+            <Cost icon={BAR_THUMBS[r.bar]} have={have} need={r.bars} />
+            <Chip icon="/icons/ui/stat-defense.webp" color="#CFE3D8">-{dr}%</Chip>
+            <Chip icon={XP} color="#9FD3F0">+{r.xp}</Chip>
+            {def > 0 && <Chip>Defense {def} to wear</Chip>}
           </Row>
         );
       })}

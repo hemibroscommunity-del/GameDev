@@ -213,14 +213,19 @@ const C = FARM.CROPS;
   resetRate();
   const v = await act(ws, 'harvest', [4]);
   check('a firebloom harvest pays Firebloom (the Cookhouse\'s herb) and 50 XP', !!v && v.did.items.herb_firebloom === 2 && v.did.xp === 50 && farming().xp === 50, { v, farming: farming() });
-  /* Enough XP to level: six ripe Rock Vine beds pay 6 x 120 = 720 XP from
-     the 50 just earned -- 770, past the 500 that Farming 2 costs. */
+  /* Enough XP to level: six ripe Cloudpetal beds pay 6 x 180 = 1,080 XP
+     on top of the 50 just earned -- 1,130, past what Farming 2 costs (the
+     worker's own curve, read here, not copied: v2.3.3090 doubled it, and
+     this test's 770-XP Rock Vine harvest stopped levelling). */
+  const T2 = room._lifeSkillXpThreshold(1);
+  const total = 50 + 6 * C.cloudpetal.xp;
+  check('(the test\'s harvest is worth a level: ' + total + ' XP >= ' + T2 + ')', total >= T2 && total < T2 + room._lifeSkillXpThreshold(2));
   const st0 = stored();
-  st0.plots = st0.plots.map(() => ({ s: 'planted', crop: 'rock_vine', plantedAt: Date.now() - 6 * 3600000, readyAt: Date.now() - 1 }));
+  st0.plots = st0.plots.map(() => ({ s: 'planted', crop: 'cloudpetal', plantedAt: Date.now() - 12 * 3600000, readyAt: Date.now() - 1 }));
   await room.state.storage.put('farm:' + PID, st0);
   const lv = await act(ws, 'harvest', [0, 1, 2, 3, 4, 5]);
-  check('harvesting enough levels Farming, and says so (770 XP: Farming 2 with 270 over)', !!lv && lv.did.leveled === true && lv.did.fromLevel === 1
-    && lv.did.newLevel === 2 && farming().level === 2 && farming().xp === 270 && lv.did.items.herb_rock_vine === 12, { did: lv && lv.did, farming: farming() });
+  check('harvesting enough levels Farming, and says so (Farming 2, the rest carried over)', !!lv && lv.did.leveled === true && lv.did.fromLevel === 1
+    && lv.did.newLevel === 2 && farming().level === 2 && farming().xp === total - T2 && lv.did.items.herb_cloudpetal === 12, { did: lv && lv.did, farming: farming(), T2 });
 }
 
 // ── 7. growing while you are away ──
