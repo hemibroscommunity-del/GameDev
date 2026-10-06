@@ -1,4 +1,4 @@
-/* ═══ v2.3.3078: PICTURES KEPT ON THE GRAPHICS CHIP ONLY ═══
+/* ═══ v2.3.3088: PICTURES KEPT ON THE GRAPHICS CHIP ONLY ═══
  *
  * Owner, 2026-10-06, of the memory plan's trade-offs (docs/MEMORY-PLAN.md,
  * Phase 3): "Yes do all of them" -- among them "character art kept only on the

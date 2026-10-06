@@ -35,7 +35,7 @@ import { loadShieldSprites } from './shieldSprites.js';
 import { preloadStartZoneMap } from './tiledMaps.js';
 import { noteZoneEntered } from '../ui/zoneBannerOverlay.js'; /* v2.3.2596: the one place that sees EVERY zone change */
 import { preloadGear, drawGearFrame } from './gearSheets.js';
-import { Sprite } from 'pixi.js';   /* v2.3.3078: QA's drawnPixels (mp-gpuonly) */
+import { Sprite } from 'pixi.js';   /* v2.3.3088: QA's drawnPixels (mp-gpuonly) */
 import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
@@ -203,7 +203,7 @@ export async function initPixiRenderer(canvas) {
      rolls and jogs in frames photographed off your own figure. */
   effectsRenderer.setCaptureRenderer(app.renderer);
   entityRenderer.setCaptureRenderer(app.renderer);
-  /* v2.3.3078: a rebuilt renderer (a black screen's recovery) gets the damage
+  /* v2.3.3088: a rebuilt renderer (a black screen's recovery) gets the damage
      numbers' font afresh: the first renderer let go of its pages' canvases
      once they were on its GPU (gpuOnly.js), and this one has never drawn them.
      The first load does this at the end of the loading screen instead
@@ -1290,7 +1290,7 @@ export async function initPixiRenderer(canvas) {
       const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
       return (ent && ent.fire) ? { body: ent.fire, ink: ent.fireInk || null } : null;
     },
-    /* v2.3.3078 QA (mp-gpuonly): THIS renderer's combat strips, by key -- the
+    /* v2.3.3088 QA (mp-gpuonly): THIS renderer's combat strips, by key -- the
        module's __btCombatGearFrames names whichever effects renderer cut a
        strip last, and on main a dead one's listeners still cut (#802) */
     combatStrips: () => {

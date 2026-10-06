@@ -1,4 +1,4 @@
-/* ═══ PICTURES KEPT ON THE GRAPHICS CHIP ONLY (v2.3.3078) ═══
+/* ═══ PICTURES KEPT ON THE GRAPHICS CHIP ONLY (v2.3.3088) ═══
  *
  * The owner's yes to "character art kept only on the graphics chip".  Once on
  * the GPU, the canvases behind two kinds of picture are emptied (gpuOnly.js):

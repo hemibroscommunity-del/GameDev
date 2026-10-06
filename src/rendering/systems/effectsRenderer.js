@@ -6,7 +6,7 @@
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
-import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3078: pictures kept on the graphics chip only */
+import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
@@ -2002,7 +2002,7 @@ const DMG_BMP_FONT = 'bt-dmg-digits';
    its 14/100 ratio. */
 const DMG_BMP_BAKE_PX = 128;
 let _dmgBmpReady = false;
-/* v2.3.3078: the install is a function, run again for a rebuilt renderer once
+/* v2.3.3088: the install is a function, run again for a rebuilt renderer once
    the pages' canvases have been let go of (prewarmDmgFontPipe, gpuOnly.js). */
 const DMG_BMP_CHARS = [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'];
 function _installDmgFont(family) {
@@ -2020,7 +2020,7 @@ function _installDmgFont(family) {
   /* BitmapFont.install hands nothing back; the font is in Pixi's cache */
   return Cache.has(DMG_BMP_FONT + '-bitmap') ? Cache.get(DMG_BMP_FONT + '-bitmap') : null;
 }
-/* v2.3.3078: WHICH FACE THE ATLAS WAS DRAWN IN.  The install runs as this
+/* v2.3.3088: WHICH FACE THE ATLAS WAS DRAWN IN.  The install runs as this
    module loads -- before the page's web fonts have arrived (index.html loads
    them display=swap), so the glyphs are normally the browser's own sans-serif,
    the next family in the list.  A rebuilt renderer's install, later, could
@@ -2063,7 +2063,7 @@ function _reinstallDmgFont() {
   _installDmgFont();
   return false;
 }
-/* ═══ v2.3.3078: THE FONT'S PAGES ON THE GRAPHICS CHIP ONLY ═══
+/* ═══ v2.3.3088: THE FONT'S PAGES ON THE GRAPHICS CHIP ONLY ═══
    The owner's yes to "character art kept only on the graphics chip".  The
    eleven 512 x 512 pages (11 MB) are drawn once, at install, and never again:
    every number the atlas draws is made of the characters it was installed
@@ -2109,7 +2109,7 @@ export function prewarmDmgFontPipe(renderer) {
   _dmgLog('prewarm', renderer);
   if (!renderer) return;
   if (_dmgBmpReady) {
-    /* v2.3.3078: a rebuilt renderer gets the font afresh (its pages' canvases
+    /* v2.3.3088: a rebuilt renderer gets the font afresh (its pages' canvases
        were let go of once the first renderer had them).  The old font is not
        destroyed: a number made before the rebuild may still point at its pages,
        and their canvases are already empty.  Removed from the cache first, or
@@ -2133,7 +2133,7 @@ export function prewarmDmgFontPipe(renderer) {
       _dmgBmpReady = false; /* pipe is broken here — never touch it in combat */
     }
     if (bt) { try { bt.destroy(); } catch (e) { /* best-effort */ } }
-    /* v2.3.3078: on the GPU now -- its pages' canvases let go of (above) */
+    /* v2.3.3088: on the GPU now -- its pages' canvases let go of (above) */
     if (_dmgBmpReady) { try { _letGoOfDmgPages(renderer); } catch (e) { /* the canvases simply stay */ } }
   }
   /* v2.3.1363: also warm the CLASSIC Text popup pipe — owner still felt
@@ -11898,7 +11898,7 @@ export class EffectsRenderer {
         }
         registerGearSource(src);
         this._gearStrips[key] = arr;
-        /* ═══ v2.3.3078: ON THE GRAPHICS CHIP ONLY ═══
+        /* ═══ v2.3.3088: ON THE GRAPHICS CHIP ONLY ═══
            The owner's yes to "character art kept only on the graphics chip".
            These layers are only ever drawn, and each effects renderer cuts its
            own -- a rebuilt one starts with an empty _gearStrips -- so the
