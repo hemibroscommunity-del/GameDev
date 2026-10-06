@@ -10,8 +10,9 @@
  *
  * Two real players against a real worker, out on a land's Lv 6-10 ring:
  *   1. each is told: the banner ("No man's land 1"), a line in the chat, and
- *      (v2.3.3107) the skull badge centred just above the dashboard, the top
- *      bar naming the stage again;
+ *      (v2.3.3107) the skull badge centred just above the dashboard, and
+ *      (v2.3.3108) the minimap's name plate showing the level band, the badge
+ *      carrying No man's land;
  *   2. the raider taps the wanderer: the tap AIMS (S.lockedTarget, `nml`) and
  *      opens no card;
  *   3. a swing lands (the worker's HP for the wanderer drops): the raider wears
@@ -227,7 +228,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       t = await P.page.evaluate(() => {
         const S = window._gameState.current;
         const zb = window.__btZoneBanner;
-        const sub = document.querySelector('[data-zone-sub]');
+        /* v2.3.3108: the minimap's name plate (wheelMinimap.js _plate) */
+        const pl = window.__btMinimap && window.__btMinimap.plate;
+        const sub = pl ? { textContent: pl.sub, red: !!pl.red } : null;
         const b = document.querySelector('[data-nml-badge]');
         const r = b && b.getBoundingClientRect();
         const band = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-h')) || 0;
@@ -251,7 +254,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!t && t.lvl === 1 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && !!t.badge && t.badge.n === '1' && /^\s*1\s*$/.test(t.badge.text) && t.badge.w <= 90, t);
     rec.ok(`1. ...the badge centred on the play area's bottom edge (${t && t.badge && t.badge.mid} px off centre, ${t && t.badge && t.badge.gap} px above the dashboard), a 44 px target`,
       !!t && !!t.badge && Math.abs(t.badge.mid) <= 2 && t.badge.gap >= 0 && t.badge.gap <= 6 && t.badge.h >= 44, t && t.badge);
-    rec.ok(`1. ...and the top bar names the stage again ("${t && t.bar}")`, !!t && !/No man's land/.test(t.bar || ''), t && t.bar);
+    rec.ok(`1. ...and the minimap's name plate shows the level band, the badge saying No man's land ("${t && t.bar}")`, !!t && t.bar === 'Lv 6–10', t && t.bar);
   }
   await shot(A, '1-told');
 
