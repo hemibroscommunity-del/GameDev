@@ -362,7 +362,7 @@ import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a s
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3087: a tap on the right stick) */
-import { rightTapBusy } from '@/game/tapJump.js';   /* v2.3.3087: a tap jumps only when nothing else wants it */
+import { rightTapBusy, tapJumpMaxMs } from '@/game/tapJump.js';   /* v2.3.3087: a tap jumps only when nothing else wants it */
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -5604,6 +5604,20 @@ export var BroTown = function BroTown(_ref0) {
           }
           var _harvestCtx = !!(S._nearNode && !_lockHeld && !_monNear);
           S._btnHarvest = _harvestCtx;
+          /* ═══ v2.3.3087: WHEN A TAP WOULD JUMP, THE STICK SAYS SO ═══
+             The owner, with their JUMP button picture: shown "on the right
+             joystick" whenever a tap would jump.  Not while you harvest or
+             stand at a resource, not while the right side has a job
+             (rightTapBusy: a monster in the perimeter, a lock), not in the
+             water (no jumping there).  It also keeps the stick PAINTED at rest
+             (below): the jump is always there to be had, as v2.3.3017's button
+             always was -- painted only, never pressable, so a thumb on it still
+             reaches the stick's own zone, which is what jumps. */
+          var _tapJumps = !_ex && !_harvestCtx && !rightTapBusy(S, Date.now()) && !(S._wheelSwim && S._wheelSwim.on)
+            && !!(S.rpg && !(typeof S.rpg.hp === 'number' && S.rpg.hp <= 0))
+            /* the coach's ATTACK lesson holds the disc up as the button it
+               teaches (and a press on a held disc swings): the weapon, then */
+            && !discHeld('R');
           if (_lbl) {
             var _want;
             if (_ex) _want = (_ex.status === 'ready') ? ({ mining: 'PUMP', woodcutting: 'CHOP', fishing: 'REEL', cooking: 'FLIP' }[_ex.skill] || 'GO') : 'WAIT';
@@ -5623,6 +5637,9 @@ export var BroTown = function BroTown(_ref0) {
             var _icWant;
             if (_ex) _icWant = 'none';
             else if (_harvestCtx) _icWant = (S._nearNode === S._campfire) ? 'cooking' : gatherSkillForNodeType(S._nearNode.nodeType);
+            /* v2.3.3087: the owner's JUMP button while a tap would jump (the
+               same test the tap asks, game/tapJump.js) */
+            else if (_tapJumps) _icWant = 'jump';
             else {
               var _slotNow = (S.rpg && S.rpg.activeSlot) || 'melee';
               _icWant = (_slotNow === 'ranged' || _slotNow === 'staff') ? _slotNow : 'melee';
@@ -5842,7 +5859,7 @@ export var BroTown = function BroTown(_ref0) {
           var _rCtx = (S._rBtnLiveUntil || 0) > _now2;
           var _rPressCtx = (S._rBtnPressUntil || 0) > _now2;
           var _rRecent = (S._rJoyLiveUntil || 0) > _now2;
-          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R');
+          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R') || _tapJumps;   /* v2.3.3087: the JUMP face at rest */
           var _rPressable = _rPressCtx || discHeld('R');
           var _rLitCtx = _rCtx || discHeld('R');
           /* Two facts, ANDed, because either one alone can get stuck: the
@@ -5916,7 +5933,9 @@ export var BroTown = function BroTown(_ref0) {
           /* v2.3.2260: ...and so does the sprite's own step on the ladder.  A
              painted-but-unlit disc sits at its 0.5 rest value, which is what
              the joystick base it replaced always looked like. */
-          var _opWant = !_rLitCtx ? '0.5' : (rJoyActive.current ? '0.92' : '1');
+          /* v2.3.3087: the JUMP face reads at full strength at rest, as
+             v2.3.3017's jump button always did -- 0.92 with a thumb on it */
+          var _opWant = (!_rLitCtx && !_tapJumps) ? '0.5' : (rJoyActive.current ? '0.92' : '1');
           if (_rd && _rd.style.opacity !== _opWant) _rd.style.opacity = _opWant;
           /* ═══ v2.3.2263: SEE-THROUGH WHILE THERE IS SOMETHING TO FIGHT ═══
              Owner: "Attack button sometimes covers monster ... maybe 50%
@@ -9136,6 +9155,7 @@ export var BroTown = function BroTown(_ref0) {
        inside it is not a flick and never will be, so its shot is released
        here rather than made to serve out a delay it cannot use. */
     S._atkPressAt = 0;
+    S._atkHoldUntil = 0;   /* v2.3.3087 */
     S.autoAttack = false;
     setAutoAttack(false);
     S._aiming = false;
@@ -9693,6 +9713,15 @@ export var BroTown = function BroTown(_ref0) {
          perimeter, a resource in reach, a lock) is never a jump, even if the
          job is gone by the release (game/tapJump.js). */
       rts.busy = rightTapBusy(stateRef.current, rts.startAt);
+      /* ═══ v2.3.3087: ...AND WITH NO JOB, A PRESS WAITS TO SEE IF IT IS A TAP ═══
+         The owner: "it needs priority near props instead of attack. If players
+         want to attack props they can still hold the right joystick towards it
+         but a tap should jump."  A thumb's tap is often longer than the 200 ms
+         the first swing waits (ATK_PRESS_GRACE_MS), so beside a barrel a tap
+         swung and chopped it.  With no job on this side the first swing waits
+         TAP_JUMP_MAX_MS: a release inside it is a tap (a jump), a hold past it
+         or a drag (rM lets go of the wait) attacks as before. */
+      if (!rts.busy && stateRef.current) stateRef.current._atkHoldUntil = rts.startAt + tapJumpMaxMs();
       /* Same press the disc makes -- auto-attack on, and the automatic target
          promoted to a deliberate one (v2.3.2252's "first tap commits").  For a
          bow or staff the promotion is a no-op by construction: autoAcquires is
@@ -9723,6 +9752,8 @@ export var BroTown = function BroTown(_ref0) {
         var dys = t.clientY - rts2.startY;
         if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) {
           rts2.moved = true;
+          /* v2.3.3087: a drag aims and attacks now -- not a tap, so no wait */
+          if (stateRef.current) stateRef.current._atkHoldUntil = 0;
           /* v2.3.2542: v2.3.2271's "a DRAG is not half of a double tap" reset
              (`_rTapAt = 0`) stood here.  It has nothing left to protect -- this
              surface no longer classifies a pair of taps at all -- and the flag
@@ -9815,7 +9846,9 @@ export var BroTown = function BroTown(_ref0) {
          no pair to recognise (see handleRBtnPress) no press is ever eaten, so
          EVERY short tap forwards again, which is what it did before v2.3.2269
          and is what tap-to-lock wants. */
-      if (!rts3.moved && (endT - rts3.startAt) < TAP_MAX_DURATION_MS) {
+      /* v2.3.3087: with no job on this side a tap may last TAP_JUMP_MAX_MS
+         (a relaxed thumb's), the first swing waiting as long (rS) */
+      if (!rts3.moved && (endT - rts3.startAt) < (rts3.busy ? TAP_MAX_DURATION_MS : tapJumpMaxMs())) {
         /* v2.3.3087: whether a jump may have this tap (game/tapJump.js) is
            read BEFORE the forward -- the forward's empty-space branch drops
            the lock, and a tap that let go of a lock has had its use. */

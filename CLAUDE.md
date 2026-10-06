@@ -873,7 +873,14 @@ remnant to migrate server-side, not a mode to preserve.
       first if any apply"): only a tap the world's "empty space" line got
       (`S._tapEmptySeq`) with no job on the right side (`rightTapBusy` in
       src/game/tapJump.js: a harvest, the disc pressable, a lock) jumps;
-      `?jumpbtn` brings the button back; `mp-tapjump`.
+      `?jumpbtn` brings the button back; `mp-tapjump`; and beside a PROP a tap
+      jumps too (the owner: "a tap should jump" there, a hold attacks): with no
+      job the tap window and the first swing's wait are `TAP_JUMP_MAX_MS` 320
+      (`S._atkHoldUntil`, `?tapms=`), a swing meets a prop at the BOOTS
+      (propSwingHit + `playerGroundDy`; it never landed north of you), and the
+      stick wears the owner's JUMP button whenever a tap would jump
+      (`data-ricon="jump"`, `public/ui/controls/jump-disc.webp`, painted at
+      rest, never pressable); `mp-tapprop`.
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:

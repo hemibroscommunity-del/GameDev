@@ -165,6 +165,46 @@ contextual uses for the tap instead of jump first if any apply".
 - mp-jump's "jumping the fence" check fails on main too on this test box: the
   page draws so few frames that the bro barely moves in the air.
 
+### Then: beside a prop a tap jumps, and the stick wears the owner's JUMP button
+
+The owner, on #821: "it needs priority near props instead of attack. If
+players want to attack props they can still hold the right joystick towards
+it but a tap should jump", and with a picture of a JUMP button, "On the right
+joystick".
+
+- **A thumb's tap was swinging.** The first swing of a press waited 200 ms
+  (`ATK_PRESS_GRACE_MS`), and so did the tap window. A relaxed tap runs longer
+  than that, and beside a barrel it chopped the barrel.
+  - With no job on the right side (`rightTapBusy`), a tap may now last
+    `TAP_JUMP_MAX_MS` 320 ms.
+  - The first swing waits as long (`S._atkHoldUntil`, read by
+    monsterCombat's auto-attack loop).
+  - A drag ends the wait at once: it aims and attacks.
+  - A hold past the window attacks, toward the prop as before.
+  - `?tapms=` stretches the window for a slow test page.
+- **A swing never landed on a prop north of you.** propSwingHit asked from
+  the player's position, the body's centre, while a footprint is on the ground
+  52px lower. It now asks from the boots (`playerGroundDy`), as movement,
+  depth, prints and the doors already did. mp-propfx's sword stand moved 52px
+  closer to keep its 30px gap at the boots.
+- **The JUMP face.** The owner's picture is cut to
+  `public/ui/controls/jump-disc.webp` (324px, from their 1254px PNG). It is
+  the stick's whole face whenever a tap would jump (`data-ricon="jump"`,
+  `.bt-rjoy-jump`; game.css hides the skin under it).
+  - Its ring and red face are the picture's own, and it does not ride the
+    knob.
+  - It shows at full strength at rest: the stick is painted with it,
+    never lit, never pressable, so the thumb still lands on the stick's
+    zone, which is what jumps.
+  - The weapon or harvest picture is back whenever the stick has a job, and
+    while the coach's ATTACK lesson holds the disc.
+- mp-joyfade and mp-rbutton expected the right stick to vanish at rest; they
+  now expect its JUMP face.
+- Tests: `mp-tapprop` (12 checks: beside a bench, a quick tap, a slower one,
+  a tap on the disc and a tap on the bench jump with no swing; a hold lands
+  blows; the face shows JUMP, then the weapon with a job), test-world-core
+  "the tap that jumps".
+
 ## Not in this round
 
 - **Jumping over attacks.** A jump doesn't dodge anything: the worker decides

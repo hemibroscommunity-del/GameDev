@@ -20,6 +20,30 @@
  * No imports, so the rule can be read by node (test-world-core "jumping").
  */
 
+/* ═══ v2.3.3087: A RELAXED THUMB'S TAP ═══
+ * The owner: "it needs priority near props instead of attack ... a tap should
+ * jump."  BroTown's taps were 200 ms long at most and the first swing went at
+ * 200 (ATK_PRESS_GRACE_MS), so a tap a little slower than that swung --
+ * beside a barrel, at the barrel.  With no job on the right side a tap may now
+ * last this long, and the first swing waits as long (S._atkHoldUntil, read by
+ * monsterCombat's auto-attack; a drag ends the wait at once).  Taps measured on
+ * phones run ~80-250 ms. */
+export const TAP_JUMP_MAX_MS = 320;
+
+/* QA, the `?jumpms=` habit (jumpActions.js): `?tapms=` stretches that window
+   (200-3000 ms) -- a test page drawing a frame every ~200 ms cannot time a
+   250 ms press.  Read once. */
+var _tapMs;
+export function tapJumpMaxMs() {
+  if (_tapMs !== undefined) return _tapMs;
+  _tapMs = TAP_JUMP_MAX_MS;
+  try {
+    var m = /(?:^|[?&])tapms=(\d+)/.exec((typeof window !== 'undefined' && window.location && window.location.search) || '');
+    if (m) _tapMs = Math.max(200, Math.min(3000, +m[1]));
+  } catch (e) { /* no window */ }
+  return _tapMs;
+}
+
 /**
  * True when the right side has a contextual use for a tap right now, so a
  * tap there must not jump.  `now` in ms.

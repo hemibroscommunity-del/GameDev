@@ -2927,6 +2927,11 @@ console.log('the tap that jumps (v2.3.3087)');
     TJ.rightTapBusy({ _extraction: {} }, now) && TJ.rightTapBusy({ _rBtnPressUntil: now + 1 }, now)
       && TJ.rightTapBusy({ lockedTarget: { type: 'monster' } }, now) && !TJ.rightTapBusy({ _rBtnPressUntil: now }, now)
       && TJ.rightTapBusy(null, now));
+  ok('with no job on the right side a tap may last TAP_JUMP_MAX_MS (320, past the old 200), and the first swing waits as long',
+    TJ.TAP_JUMP_MAX_MS === 320 && TJ.tapJumpMaxMs() === 320
+      && /if \(S\._atkHoldUntil && Date\.now\(\) < S\._atkHoldUntil\) _flickWait = true;/.test(fs.readFileSync(new URL('../../src/game/monsterCombat.js', import.meta.url), 'utf8')));
+  ok('a swing meets a prop at the swinger\'s boots (playerGroundDy), not the chest',
+    /py = py \+ playerGroundDy\(S\.currentZone, px, py\);\s*var c = propSwingContact/.test(fs.readFileSync(new URL('../../src/game/combatHelpers.js', import.meta.url), 'utf8')));
   ok('the old button only with ?jumpbtn', TJ.jumpButtonWanted('?jumpbtn') && TJ.jumpButtonWanted('?a=1&jumpbtn=1')
     && !TJ.jumpButtonWanted('') && !TJ.jumpButtonWanted('?jumpbtnx'));
   const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');

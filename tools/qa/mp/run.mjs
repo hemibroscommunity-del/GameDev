@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  tapprop: () => import('./mp-tapprop.mjs'), /* v2.3.3087: beside a prop a tap on the right stick jumps (zone, disc, or on the prop) and a hold toward it swings and lands blows; the stick wears the JUMP picture while a tap would jump, the weapon under a lock */
   tapjump: () => import('./mp-tapjump.mjs'), /* v2.3.3087: a tap on the right stick jumps when nothing else wants it -- the old button gone; an empty tap jumps; a lock lets go, a busy disc, a drag and a tap on yourself do not jump */
   createflag: () => import('./mp-createflag.mjs'), /* v2.3.3046: a crash's reload never lands a player in the creator -- once in the world the address carries no ?create=1; reloaded from an old tab's ?create=1 with a character on the key, the flag reads stale and the ordinary road is taken; a new key with the flag still gets the creator */
   questguide: () => import('./mp-questguide.mjs'), /* v2.3.3047-v2.3.3049: the first quest's guidance on a phone in the Wheel -- Mayor Bro offers ('!'), waits on you (a grey '?') and is ready (a drawn green check); the quest card leads with the quest picture, then the painted check; the folded band's OPEN flashes, then the sword AND the shield tiles and nothing else, the shield alone once the sword is on; handed in, the bow AND the staff flash; pictures */
