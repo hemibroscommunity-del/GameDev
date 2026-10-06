@@ -173,6 +173,21 @@ export async function serveDist(port) {
     try {
       if (s.headersSent) return;
       if (body === null) { s.writeHead(404); s.end(); return; }
+      /* v2.3.3073: a byte range, as the real host (Cloudflare Pages) serves one.
+         Only a media element asks for ranges; answered with the whole file, it
+         takes the file for an endless stream it cannot seek in (duration
+         Infinity) -- not what a phone gets, and the streamed music
+         (mp-musicstream) seeks and loops on the real host's answers. */
+      const rm = q.headers.range && /^bytes=(\d*)-(\d*)$/.exec(String(q.headers.range).trim());
+      if (rm && body.length && (rm[1] !== '' || rm[2] !== '')) {
+        const n = body.length;
+        let a = rm[1] === '' ? Math.max(0, n - Number(rm[2])) : Number(rm[1]);
+        let b = rm[1] === '' || rm[2] === '' ? n - 1 : Math.min(n - 1, Number(rm[2]));
+        if (!(a <= b) || a >= n) { s.writeHead(416, { 'content-range': `bytes */${n}` }); s.end(); return; }
+        s.writeHead(206, { 'content-type': type, 'accept-ranges': 'bytes', 'content-range': `bytes ${a}-${b}/${n}`, 'content-length': b - a + 1 });
+        s.end(body.subarray(a, b + 1));
+        return;
+      }
       s.writeHead(200, { 'content-type': type });
       s.end(body);
     } catch { /* client vanished mid-write; nothing left to say */ }
