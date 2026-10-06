@@ -93,6 +93,8 @@ export const smeltingMethods = {
       if (res.leveled) leveled = true;
       newLevel = res.newLevel;
     }
+    /* v2.3.3109: every bar counts for "Smelt 2 bars" (dailyrewards.js) */
+    this._drSignal(session.id, 'smelt', barKey, count);
 
     this._saveRpg(session.id, ps);
     const result = { barKey, count, xp: r.xp * count, leveled, fromLevel, newLevel };

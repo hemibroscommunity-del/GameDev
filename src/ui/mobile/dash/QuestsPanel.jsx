@@ -7,6 +7,7 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2172: the sheet's width, not the shell's */
 import { TRAIL_STYLES, isTrailOff, getShownTrailStyle, setTrailShown, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2896; v2.3.2992 GROUND_PATH */
 import { useScrollTap } from '../sheet/scrollTap.js'; /* v2.3.2896: the switch sits in a scroller */
+import { DailyRewardsCard } from './DailyRewardsCard.jsx'; /* v2.3.3109: the way into the daily quests and the season */
 
 /* v2.3.1265: Quests — read-only quest log (accepting/turning-in stays
    with the NPCs; server-authoritative flow untouched).
@@ -167,6 +168,9 @@ export const QuestsPanel = () => {
 
   return (
     <div style={{ ...panelStyle, overflowY: 'auto' }}>
+      {/* v2.3.3109: the daily quests and the season, one line above the
+          story quests -- renders nothing against a worker without them */}
+      <DailyRewardsCard />
       {/* Sticky segmented control — content scrolls under it. */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 2,

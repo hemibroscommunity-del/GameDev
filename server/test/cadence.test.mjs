@@ -5,6 +5,8 @@
  *   1.  Period keys: UTC day boundaries; ISO week key shape + Monday
  *       rollover.
  *   2.  Daily reward: first join credits base gold with the streak
+ *       (v2.3.3109: NOT ANY MORE -- the login settles the streak, with
+ *       freezes, and pays nothing; see §2 below)
  *       note (inbox_delivered renders it client-side for free);
  *       same-day rejoin is silent (fast path AND the oplog wall);
  *       contiguous-day join scales by streak; the cap holds; a gap
@@ -79,7 +81,12 @@ check('weekly key rolls on Monday', room._cadencePeriodWeekly(Date.UTC(2026, 6, 
   && room._cadencePeriodWeekly(Date.UTC(2026, 6, 6, 1, 0)) === '2026-W28', // Monday
 room._cadencePeriodWeekly(Date.UTC(2026, 6, 6, 1, 0)));
 
-// ── 2. daily reward ──
+// ── 2. the login streak ──
+// v2.3.3109: a login PAYS NOTHING now (owner: "I find the login page with
+// the chest intrusive ... You can remove the daily chest and just do the
+// gambling spin").  The day's reward is the free spin at the Gambling Den
+// (dailyrewards.test.mjs); this consumer keeps the STREAK, now forgiving:
+// a freeze every 7 days of streak (2 held at most), spent on a missed day.
 // The join handler calls _cadenceLoginReward with the REAL clock; for
 // deterministic day simulation we drive the method directly with
 // injected `now` values on a player that joined once (live ps).
@@ -87,43 +94,57 @@ const ws = fakeWs('c');
 await join(ws, 'bp_cd_a');
 const ps = room.playerState['bp_cd_a'];
 {
-  // The join itself already settled "today" (real clock) -- verify.
   const real = await room._cadenceGet('login', 'bp_cd_a');
   const delivered = msgsOfType(ws, 'inbox_delivered');
-  check('join settles today: base gold + day-1 note via inbox_delivered',
-    real && real.streak === 1
-    && delivered.length === 1
-    && delivered[0].payload.entries[0].payload.amount === CADENCE.DAILY_BASE_GOLD
-    && /day 1/.test(delivered[0].payload.entries[0].note),
+  check('join settles today: a 1-day streak, and nothing is paid (no gold, no chest)',
+    real && real.streak === 1 && real.fz === 0
+    && !delivered.some((d) => d.payload.entries.some((e) => e.source === 'daily')),
     { real, delivered: delivered.map((d) => d.payload) });
   const coinsAfterJoin = ps.coins;
-  await room._cadenceLoginReward('bp_cd_a'); // same real day again
-  check('same-day settle is silent (no double pay)', ps.coins === coinsAfterJoin);
+  const again = await room._cadenceLoginReward('bp_cd_a'); // same real day again
+  check('same-day settle is silent (returns null, pays nothing)', again === null && ps.coins === coinsAfterJoin);
 }
 // Simulated day walk: reset the record, then drive with injected nows.
-// v2.3.1155: the walk anchors to W0 in the PAST, not T0 — the join
-// above settles the REAL day, and once the wall clock reached T0+1day
-// (2026-07-04) the simulated day-2 credit collided with the join's
-// idempotency opId (daily:<id>:<period>) and silently paid nothing.
-// Fixed future-ish timestamps the clock can catch up to are a time
-// bomb in an opId-deduped system; past ones never collide.
+// v2.3.1155: the walk anchors to W0 in the PAST, not T0 — fixed
+// future-ish timestamps the clock can catch up to are a time bomb.
 const W0 = Date.UTC(2026, 0, 5, 12, 0, 0); // Mon 2026-01-05 noon UTC
+const stk = async () => room._cadenceGet('login', 'bp_cd_a');
 await room._cadenceSet('login', 'bp_cd_a', { period: room._cadencePeriodDaily(W0), streak: 1 });
 ps.coins = 0;
-await room._cadenceLoginReward('bp_cd_a', W0 + DAY); // contiguous day 2
-check('contiguous day pays base + one streak step', ps.coins === CADENCE.DAILY_BASE_GOLD + CADENCE.DAILY_STREAK_GOLD, ps.coins);
-check('streak advanced to 2', (await room._cadenceGet('login', 'bp_cd_a')).streak === 2);
-// Jump the record to a deep streak and verify the cap.
-await room._cadenceSet('login', 'bp_cd_a', { period: room._cadencePeriodDaily(W0 + 20 * DAY), streak: 42 });
-ps.coins = 0;
-await room._cadenceLoginReward('bp_cd_a', W0 + 21 * DAY);
-check('streak reward caps at DAILY_STREAK_CAP',
-  ps.coins === CADENCE.DAILY_BASE_GOLD + CADENCE.DAILY_STREAK_GOLD * (CADENCE.DAILY_STREAK_CAP - 1), ps.coins);
-// Gap: last settle 21d in, next login 25d in -> reset to day 1.
-ps.coins = 0;
-await room._cadenceLoginReward('bp_cd_a', W0 + 25 * DAY);
-check('a missed day resets the streak to 1', ps.coins === CADENCE.DAILY_BASE_GOLD
-  && (await room._cadenceGet('login', 'bp_cd_a')).streak === 1, ps.coins);
+const r2 = await room._cadenceLoginReward('bp_cd_a', W0 + DAY); // contiguous day 2
+check('contiguous day advances the streak to 2 and pays nothing', r2 && r2.streak === 2 && (await stk()).streak === 2 && ps.coins === 0, { r2, coins: ps.coins });
+// Walk to day 7: the 7th day earns a freeze.
+for (let d = 2; d <= 6; d++) await room._cadenceLoginReward('bp_cd_a', W0 + d * DAY);
+{
+  const r = await stk();
+  check('a 7-day streak earns a freeze', r.streak === 7 && r.fz === 1, r);
+}
+// Miss ONE day (day 8), log in on day 9: the freeze is spent, the streak carries on.
+{
+  const r = await room._cadenceLoginReward('bp_cd_a', W0 + 8 * DAY);
+  check('a missed day spends the freeze and the streak carries on (the frozen day not counted)',
+    r && r.streak === 8 && r.fz === 0 && r.saved === 1, r);
+}
+// Miss again with no freeze left: reset to 1.
+{
+  const r = await room._cadenceLoginReward('bp_cd_a', W0 + 10 * DAY);
+  check('a missed day with no freeze resets the streak to 1', r && r.streak === 1 && r.saved === 0 && r.best === 8, r);
+}
+// Freezes cap at 2, and a 2-day gap with 2 freezes spends both.
+await room._cadenceSet('login', 'bp_cd_a', { period: room._cadencePeriodDaily(W0 + 20 * DAY), streak: 13, fz: 2 });
+{
+  const r = await room._cadenceLoginReward('bp_cd_a', W0 + 21 * DAY); // day 14 of the streak
+  check('freezes are held at most 2 (a 14th day earns none past the cap)', r && r.streak === 14 && r.fz === 2, r);
+  const r3 = await room._cadenceLoginReward('bp_cd_a', W0 + 24 * DAY); // missed 22, 23
+  check('a 2-day gap with 2 freezes spends both and keeps the streak', r3 && r3.streak === 15 && r3.fz === 0 && r3.saved === 2, r3);
+}
+// A deep record with no freeze field heals to 0 freezes; a long gap resets.
+await room._cadenceSet('login', 'bp_cd_a', { period: room._cadencePeriodDaily(W0 + 30 * DAY), streak: 42 });
+{
+  const r = await room._cadenceLoginReward('bp_cd_a', W0 + 35 * DAY);
+  check('an old record with no freezes resets on a gap', r && r.streak === 1 && r.fz === 0, r);
+  check('...and the login still paid nothing', ps.coins === 0, ps.coins);
+}
 
 // ── 3. jackpot deposit ──
 const session = room.sessions.get(ws);

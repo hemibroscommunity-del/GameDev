@@ -469,6 +469,17 @@ winnerName, amount, period}` (broadcast on the lazy weekly draw). The
 daily login reward reuses `inbox_delivered` — no new types. GamblePanel
 deposits are caps-gated; the legacy local stub remains for old workers.
 
+**Daily rewards (v2.3.3109, caps.dailyspin + caps.dailyquests):** the login
+pays nothing now (the daily chest and its gold fallback are gone; a chest
+still held opens as before). New c→s cases `rewards_get {}`, `daily_spin
+{opId}`, `daily_reroll {i}`, `season_claim {tier} | {all: true}`; new s→c
+types (both PRIVILEGED) `rewards_state {now, resetAt, spin, streak, dq,
+season, news}` (private: after `player_state` on join, and after every
+change) and `daily_progress {i, n, g}` (private, a quest's count). Quest and
+season payouts ride `_creditPlayer` → `inbox_delivered` with sources
+`dailyquest` / `season`, kept out of chat by the client. Full table:
+docs/specs/daily-rewards.md.
+
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/
 `state_sync.loot` via `_serializePile`) gains `hasWeapon`,

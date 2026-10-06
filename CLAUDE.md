@@ -1443,7 +1443,30 @@ remnant to migrate server-side, not a mode to preserve.
       strips cropped, single pictures for the rest, behind the Wheel's loading
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
-      docs/specs/wheel-doors.md.)
+      docs/specs/wheel-doors.md.
+  - Since v2.3.3109 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
+    brief ("a small reward just for logging in, daily quests ... feeding a
+    longer progression track"), then: "I find the login page with the chest
+    intrusive ... a free daily spin from the gambling building ... the first
+    win has a 50% chance and it continues further spins at a 50% win chance
+    and the rewards double each time" (server/src/dailyrewards.js):
+    - the login pays NOTHING (no daily chest, no window; a chest still held
+      opens from the bag) and settles a FORGIVING streak (cadence.js: a freeze
+      every 7 days, 2 held, spent on a missed day);
+    - the FREE DAILY SPIN tops the Gambling Den's window (DailySpin.jsx): a
+      50% coin a rung, ten rungs doubling from 25 (+5 a streak day, to 55),
+      paid as you climb and kept on the first miss; bonus spins start more;
+    - THREE DAILY QUESTS once tut_1 is in (fight, gather with a tool, one
+      more; one free reroll from ANY group; paid on completion; all three =
+      +1 star and a bonus spin), counted by `_drSignal` at the kill / gather /
+      cook / smelt choke points;
+    - a 28-day SEASON of 25 tiers (stars from quests, all-three, the spin;
+      claim or "Claim all"; unclaimed tiers mailed at the season's end);
+    - the Daily Rewards window (DailyRewardsWindow.jsx) opens only from the
+      Quests tab's card and the Gambling Den; the Quests dot lights for a
+      tier to claim; `daily_rewards:<pid>`, caps/kill switches `dailyspin`
+      and `dailyquests`; `dailyrewards` suite, `mp-dailyrewards`:
+      docs/specs/daily-rewards.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

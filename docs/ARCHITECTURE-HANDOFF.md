@@ -83,7 +83,8 @@ extended.
    | `rpgsnap:<pid>:prereset-<ts>` | parachute snapshot before a self-service character restart | character-restart.md |
    | `rpgsnap_at:<pid>` | snapshot throttle timestamp (20h) | admin.md |
    | `admin_log` | capped ring (100) of mutating admin ops | admin.md |
-   | `cadence:<scope>:<subject>` | `{period, streak, ts}` lazy daily/weekly settle | cadence.md |
+   | `cadence:<scope>:<subject>` | `{period, streak, ts}` lazy daily/weekly settle. v2.3.3109: the `login` scope pays nothing now and carries the forgiving streak, `{period, streak, fz, saved, best, ts}` -- `fz` streak freezes held (max 2), `saved` freezes spent at the last settle | cadence.md, daily-rewards.md |
+   | `daily_rewards:<pid>` | `{_v, sp: {day, free, open, k, base, run, extra}, dq: {day, list: [{t, p, g, n, d, c}], rr, all}, se: {s, st, cl, ov}}` — the free daily spin's run and banked bonus spins, the day's three daily quests, the season's stars and claimed tiers (v2.3.3109). Cached while online; value-bearing changes written at once, counted progress every 30 s and on close. One bounded key per player, never listed | daily-rewards.md |
    | `jackpot:draw` | `{period, pool, entries}` weekly pool (escrowed) | cadence.md |
    | `liveflags` | `{name: bool\|num}` live-ops flags (kill switches, xp_mult) | liveops.md |
    | `ace_board` | `{wins:[], losses:[]}` — Ace's hall of fame (v2.3.2619): the ten biggest single WINS and ten biggest single LOSSES at his coin flip, each `{pid, name, amount, kind, at, look}`. `look` is a snapshot of `char:<pid>`'s cosmetics so the client can draw the player's portrait with its own shared recipe — no image bytes here, and the face stays the one that took the bet. One entry per player per board (best only), so one rich player cannot fill all ten rows. A single bounded key, never a prefix | ace-coin-flip.md |

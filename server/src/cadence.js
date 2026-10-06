@@ -22,6 +22,10 @@
  *   1. Daily login reward (per-player, on join).  Zero client work:
  *      rides _creditPlayer -> inbox_delivered, which the client already
  *      renders as a "📫 You received ..." chat line.
+ *      v2.3.3109: the login itself PAYS NOTHING now (owner: the chest
+ *      window was intrusive; the day's reward is the free spin at the
+ *      Gambling Den, dailyrewards.js).  This consumer keeps the login
+ *      STREAK, with freezes, and the spin reads it.
  *   2. Weekly jackpot draw (global; handoff backlog item J).  The
  *      GamblePanel pool was a pure client stub that burned local coins
  *      into nothing.  Deposits are escrow-at-placement (rule 7 -- the
@@ -36,6 +40,11 @@
  *      atomic under the input gate; simpler than the two-key sketch in
  *      the handoff item J note.) */
 
+import { DAILY, dayOfPeriod } from './dailyrewards.js'; /* v2.3.3109: the streak's freezes */
+
+/* v2.3.3109: the three gold numbers below no longer pay a login (the login
+   pays nothing now -- see _cadenceLoginReward); they are still the coin
+   floor of a DAILY CHEST already in a bag (dailychest.js CHEST.COINS_*). */
 export const CADENCE = {
   DAILY_BASE_GOLD: 25,
   DAILY_STREAK_GOLD: 10,   // per extra consecutive day
@@ -72,45 +81,59 @@ export const cadenceMethods = {
     await this.state.storage.put('cadence:' + scope + ':' + subject, { ...record, ts: Date.now() });
   },
 
-  // ── Consumer 1: daily login reward ──
+  // ── Consumer 1: the login STREAK ──
   // Called from the join handler after the inbox drain.  One storage
-  // get per join; a put + credit only when a new UTC day started.
+  // get per join; a put only when a new UTC day started.
+  /* ═══ v2.3.3109: A LOGIN PAYS NOTHING NOW -- THE STREAK STAYS, FORGIVING ═══
+     Owner, 2026-10-06: "Personally I find the login page with the chest
+     intrusive.  I'd rather have it be something like a free daily spin from
+     the gambling building ... You can remove the daily chest and just do the
+     gambling spin like I said."  So the day's reward is the FREE SPIN at the
+     Gambling Den (dailyrewards.js), taken when the player chooses to walk in,
+     and nothing is credited here: no chest into the bag (v2.3.2820), no gold
+     (the pre-chest reward and the chest's kill-switch fallback).  Chests
+     already in a bag still open (dailychest.js) -- removing a reward from the
+     login must never take away something a player already holds.
+
+     What stays is the STREAK, which now raises the spin's first prize (the
+     old "25 + 10 a day, capped at 7" idea, dailyrewards.js spinBase), and it
+     is FORGIVING, per the owner's brief ("Streak 'freezes,' as in Duolingo,
+     keep the motivating fear of losing a streak without the rage-quit when
+     one breaks"): every DAILY.STREAK.FREEZE_EVERY days of streak earns a
+     freeze (at most FREEZE_MAX held), and a missed day spends one
+     automatically -- the streak carries on, the frozen day not counted.  A
+     gap longer than the freezes held resets to day 1, as before.
+
+     Returns what it settled ({period, streak, fz, saved, best}) on the first
+     login of a day, else null.  `saved` is the freezes spent THIS time, so
+     the game can say "a freeze saved your streak". */
   async _cadenceLoginReward(playerId, now) {
     try {
       const today = this._cadencePeriodDaily(now);
       const rec = await this._cadenceGet('login', playerId);
-      if (rec && rec.period === today) return; // already settled today
-      const yesterday = this._cadencePeriodDaily((now || Date.now()) - 86400000);
-      const streak = (rec && rec.period === yesterday) ? (rec.streak || 1) + 1 : 1;
-      const gold = CADENCE.DAILY_BASE_GOLD
-        + CADENCE.DAILY_STREAK_GOLD * (Math.min(streak, CADENCE.DAILY_STREAK_CAP) - 1);
-      // The opId is the idempotency wall; the record write after it is
-      // just the fast path (crash between them -> dup on retry).
-      /* v2.3.2820 (owner: "I'd rather have a loot box ... instead of daily
-         coin reward"): the day pays ONE daily chest into the bag, rolled
-         when it is opened (dailychest.js).  Same opId, same funnel, so the
-         once-a-day wall is unchanged.  `dailyChest: false` in liveflags is
-         the kill switch back to the plain gold above. */
-      const _streakNote = ' — day ' + streak + (streak >= CADENCE.DAILY_STREAK_CAP ? ' (max streak!)' : '');
-      if (this._chestOff && !this._chestOff()) {
-        await this._creditPlayer(playerId, {
-          opId: 'daily:' + playerId + ':' + today,
-          source: 'daily',
-          kind: 'item',
-          payload: { invKey: 'daily_chest', count: 1 },
-          note: 'Daily chest' + _streakNote,
-        });
-      } else {
-        await this._creditPlayer(playerId, {
-          opId: 'daily:' + playerId + ':' + today,
-          source: 'daily',
-          kind: 'gold',
-          payload: { amount: gold },
-          note: 'Daily reward' + _streakNote,
-        });
+      if (rec && rec.period === today) return null; // already settled today
+      const STK = DAILY.STREAK;
+      let fz = rec ? Math.max(0, Math.min(STK.FREEZE_MAX, Math.floor(Number(rec.fz) || 0))) : 0;
+      let streak = 1;
+      let saved = 0;
+      if (rec && rec.period) {
+        const gap = dayOfPeriod(today) - dayOfPeriod(rec.period);
+        if (gap === 1) {
+          streak = (rec.streak || 1) + 1;
+        } else if (gap > 1 && gap - 1 <= fz) {
+          saved = gap - 1;
+          fz -= saved;
+          streak = (rec.streak || 1) + 1;
+        }
+        /* else: a gap the freezes cannot cover (or a clock that went
+           backwards) starts again at day 1 */
       }
-      await this._cadenceSet('login', playerId, { period: today, streak });
-    } catch (e) { /* rewards must never block a join */ }
+      if (streak % STK.FREEZE_EVERY === 0) fz = Math.min(STK.FREEZE_MAX, fz + 1);
+      const best = Math.max(streak, Math.floor(Number(rec && rec.best) || 0));
+      const out = { period: today, streak, fz, saved, best };
+      await this._cadenceSet('login', playerId, out);
+      return out;
+    } catch (e) { return null; /* a streak must never block a join */ }
   },
 
   // ── Consumer 2: weekly jackpot ──

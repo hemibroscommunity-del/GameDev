@@ -1190,6 +1190,10 @@ export const gatheringMethods = {
     // writers were the kill sites, which wrongly advanced this quest
     // on kills.  The player_state send below carries the new counter.
     this._creditQuestObjective(session.id, 'gather', null);
+    /* v2.3.3109: the daily quests count what came out of the node -- by its
+       skill (mine / chop / fish) and the yield, so a perfect strike's two
+       ores are two (dailyrewards.js) */
+    this._drSignal(session.id, 'gather', skillName, yieldQty);
 
     this._saveRpg(session.id, ps);
 

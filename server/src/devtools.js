@@ -362,6 +362,7 @@ export const devToolsMethods = {
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId);   /* v2.3.2277 */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
+    else if (path === '/dev/daily') result = await this._drDev(playerId, body);   /* v2.3.3109: stars, bonus spins, a quest's count */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see
