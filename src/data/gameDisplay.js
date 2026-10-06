@@ -2070,6 +2070,12 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     this._zoneMusicStarting = false;
     this._zoneMusicBuffers = Object.create(null);
     this._zoneMusicLru = [];
+    /* v2.3.3073: and the music deck's <audio> with it -- an element can feed
+       ONE MediaElementSource for its whole life, and that one is in the dead
+       context; the next start makes a new deck */
+    try { this._deckDrop(); } catch (e) {}
+    this._zoneWant = null;
+    this._globalWant = null;
     this._samples = {};
     this._sampleLoading = {};
     this._sfxLoops = {};
@@ -2724,6 +2730,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
            flight after 8 s is not coming back"), not the wait for the gate,
            which is legitimately longer than that on a slow phone. */
         self._zoneMusicStartingAt = Date.now();
+        /* v2.3.3073: STREAMED, NOT DECODED -- the track plays from its file
+           through the music deck's <audio> (BT_AUDIO._deckSync), so nothing
+           is decoded.  The fetch-and-decode below stays for anywhere the
+           deck cannot run (_streamMusic). */
+        if (self._streamMusic() && self._deckEnsure()) { self._zoneStream(trackUrl); return; }
         try {
           fetch(trackUrl)
             .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(new Error('http ' + r.status)); })
@@ -2778,7 +2789,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        still holds them.  Used for the zone-transition crossfade. */
     if (this._zoneMusicSource) {
       var src = this._zoneMusicSource;
-      if (fadeMusic && this._zoneMusicGain && this.ctx) {
+      /* v2.3.3073: a streamed track has no source of its own to fade: the
+         deck fades it, and the session track back in if it is wanted */
+      if (src._stream) {
+        try { src.stop(); } catch (e) {}
+      } else if (fadeMusic && this._zoneMusicGain && this.ctx) {
         try {
           var oldGain = this._zoneMusicGain;
           var now = this.ctx.currentTime;
@@ -4026,6 +4041,9 @@ BT_AUDIO.startGlobalMusic = function () {
   var url = this.GLOBAL_MUSIC;
   if (!url || !this.ctx) return;
   if (this._globalMusicSource || this._globalMusicStarting) return;
+  /* v2.3.3073: streamed, not decoded (_deckSync) -- unless a fallback has
+     already decoded it, or the deck cannot run here */
+  if (!this._globalMusicBuffer && this._streamMusic() && this._deckEnsure()) { this._globalStream(url); return; }
   var self = this;
   var play = function (buf) {
     /* Re-check: the fetch is async and a background-resume may have started
@@ -4161,6 +4179,13 @@ if (typeof window !== 'undefined') {
   };
 }
 BT_AUDIO.duckGlobalMusic = function (down) {
+  /* v2.3.3073: streamed, the session track is not a gain of its own: the
+     deck plays the zone track, or this one when it is not ducked */
+  if (this._globalMusicSource && this._globalMusicSource._stream) {
+    this._globalMusicDucked = !!down;
+    this._deckSync();
+    return;
+  }
   var g = this._globalMusicGain;
   if (!g || !this.ctx) return;
   var target = down ? 0 : this.GLOBAL_MUSIC_VOL;
@@ -4172,6 +4197,349 @@ BT_AUDIO.duckGlobalMusic = function (down) {
   } catch (e) {}
   this._globalMusicDucked = !!down;
 };
+
+/* ═══ v2.3.3073: THE MUSIC IS STREAMED, NOT DECODED ═══
+   Owner, 2026-10-06, of the memory plan's trade-offs (docs/MEMORY-PLAN.md,
+   Phase 4): "Yes do all of them" -- among them the music streamed instead of
+   decoded, with its two costs named: the loop seam and the silent switch.
+
+   Every track used to be fetched and decoded whole into an AudioBuffer, raw
+   float32 PCM: the session track 23 MB, the town's 40 MB, a land's 26-32, held
+   for as long as they might be wanted -- the biggest single thing the phone
+   held after the textures (89 MB of decoded sound, 63 of it these two).  Now
+   ONE <audio> element plays whichever track is audible straight from its
+   file, through a MediaElementAudioSourceNode into the same music bus, so the
+   two ceilings (GLOBAL_MUSIC_VOL, ZONE_MUSIC_VOL), the Settings slider and
+   the mute are exactly what they were, and the browser holds the compressed
+   file and a little decoding, not the PCM.
+
+   ONE element, the DECK, because the session track and a zone track are never
+   audible together -- a zone track always ducked the session track under it --
+   so the deck plays the zone track if one is wanted, else the session track if
+   it is not ducked (_deckTarget).  One element also keeps clear of every
+   platform question about two media elements playing at once.  So a change of
+   track is a dip, the old faded out (0.35 s), the new faded in (0.6 s; the
+   session track's 1.2), where two decoded sources used to cross; and a track
+   comes back where it would have been (the wall-clock epochs of v2.3.1593 and
+   v2.3.1602), so the session track still "plays unbroken" across a zone with
+   music of its own.  The loop is the element's own: a small seam at the end
+   of each pass, the owner's first named cost.  The second, the silent switch:
+   the game has played a silent HTMLAudio on the first gesture since v2.3.130
+   to take the iOS audio session out of the ringer-silenced category, so a
+   playing <audio> changes nothing there.
+
+   iOS lets a media element play outside a user gesture only once a gesture
+   has played it, so the deck is made and first played inside one (unlock(),
+   the first tap: startGlobalMusic), and an element refused later (a fresh
+   deck after a context rebuild started outside a gesture) waits for the next
+   tap (_deckGesture, from GameApp's gesture handler) -- the same "needs a
+   touch after a rebuild" the context itself has always had.
+
+   It never leaves the game silent where decoding would have played: a play()
+   refused for any other reason, a media error, or a deck that plays without a
+   sound reaching its tap for five seconds while the context runs (_deckWatch)
+   turns streaming off for the session and starts both tracks the old way
+   (_deckFail).  `?musicdecode` in the address is the old way from the start,
+   and MUSIC_STREAM is the switch.  QA: window.__btMusicDeck; mp-musicstream. */
+BT_AUDIO.MUSIC_STREAM = true;
+BT_AUDIO._deck = null;
+BT_AUDIO._deckFailed = null;
+BT_AUDIO._zoneWant = null;
+BT_AUDIO._globalWant = null;
+BT_AUDIO._streamMusic = function () {
+  if (!this.MUSIC_STREAM || this._deckFailed || !this.ctx) return false;
+  if (typeof this.ctx.createMediaElementSource !== 'function' || typeof Audio === 'undefined') return false;
+  try { if (/(^|[?&])musicdecode(=|&|$)/.test(window.location.search || '')) return false; } catch (e) { /* no address */ }
+  return true;
+};
+/* The deck for the current context, made on first use: the element, its one
+   MediaElementSource, the gain the fades ride on, and a tap that hears the
+   element's own output (before the gain, so a fade, the slider or the mute
+   never reads as silence), pulled through a silent sink so WebKit processes
+   it (the v2.3.1602 lesson: an analyser nothing pulls is never written). */
+BT_AUDIO._deckEnsure = function () {
+  if (!this._streamMusic()) return null;
+  var d = this._deck;
+  if (d && d.ctx === this.ctx) return d;
+  if (d) this._deckDrop();
+  try {
+    var el = new Audio();
+    el.setAttribute('playsinline', '');
+    el.setAttribute('webkit-playsinline', '');
+    el.preload = 'auto';
+    el.loop = true;
+    var node = this.ctx.createMediaElementSource(el);
+    var gain = this.ctx.createGain();
+    gain.gain.value = 0;
+    node.connect(gain);
+    gain.connect(this._out('music'));
+    var tap = null, sink = null;
+    try {
+      tap = this.ctx.createAnalyser();
+      tap.fftSize = 512;
+      sink = this.ctx.createGain();
+      sink.gain.value = 0;
+      node.connect(tap);
+      tap.connect(sink);
+      sink.connect(this._master || this.ctx.destination);
+    } catch (e) { tap = null; sink = null; }
+    d = this._deck = { ctx: this.ctx, el: el, node: node, gain: gain, tap: tap, sink: sink, cur: null, pendingUrl: null,
+      stopping: false, token: 0, playTok: 0, needsGesture: false, proven: false, watching: false, plays: 0 };
+    var self = this;
+    el.addEventListener('error', function () {
+      if (self._deck !== d || !d.cur || d.pendingUrl) return;
+      self._deckFail('media error ' + (el.error ? el.error.code : '?'));
+    });
+    return d;
+  } catch (e) {
+    this._deckFailed = 'deck: ' + ((e && e.name) || 'failed');
+    return null;
+  }
+};
+BT_AUDIO._deckDrop = function () {
+  var d = this._deck;
+  this._deck = null;
+  if (!d) return;
+  d.token++;
+  try { d.el.pause(); } catch (e) { /* gone */ }
+  try { d.el.removeAttribute('src'); d.el.load(); } catch (e) { /* gone */ }
+  try { d.node.disconnect(); } catch (e) { /* gone */ }
+  try { d.gain.disconnect(); } catch (e) { /* gone */ }
+  try { if (d.tap) d.tap.disconnect(); if (d.sink) d.sink.disconnect(); } catch (e) { /* gone */ }
+};
+/* What the deck should play: the zone track if one is wanted, else the
+   session track unless a zone track ducked it (the decoded tracks' rule:
+   duckGlobalMusic, startZoneAmbient), else nothing. */
+BT_AUDIO._deckTarget = function () {
+  if (this._zoneWant) return this._zoneWant;
+  if (this._globalWant && !this._globalMusicDucked) return this._globalWant;
+  return null;
+};
+/* A fade on the deck's gain -- scheduled only once the clock is moving (the
+   frozen-clock fault v2.3.1594/1595 fixed for the decoded tracks). */
+BT_AUDIO._deckRamp = function (d, vol, sec) {
+  var self = this;
+  this._whenRunning(function () {
+    if (self._deck !== d) return;
+    try {
+      var t = self.ctx.currentTime, g = d.gain.gain;
+      g.cancelScheduledValues(t);
+      g.setValueAtTime(g.value, t);
+      g.linearRampToValueAtTime(vol, t + (sec || 0.6));
+    } catch (e) { try { d.gain.gain.value = vol; } catch (_e) { /* gone */ } }
+  });
+};
+/* Bring the deck to what should play.  Idempotent: every start, stop, duck
+   and rebuild of either track calls it, and a call that changes nothing
+   changes nothing (a track already playing keeps playing, one on its way is
+   left to arrive). */
+BT_AUDIO._deckSync = function () {
+  var d = this._deck;
+  if (!d) return;
+  var self = this;
+  var t = this._deckTarget();
+  if (!t) {
+    if ((!d.cur && !d.pendingUrl) || d.stopping) return;
+    var tok = ++d.token;
+    d.pendingUrl = null;
+    d.stopping = true;
+    this._deckRamp(d, 0, 0.6);
+    setTimeout(function () {
+      if (d.token !== tok || self._deck !== d) return;
+      d.stopping = false;
+      d.cur = null;
+      try { d.el.pause(); } catch (e) { /* gone */ }
+    }, 650);
+    return;
+  }
+  if (d.pendingUrl === t.url) return;            /* on its way */
+  d.stopping = false;
+  if (d.cur && d.cur.url === t.url && !d.el.error) {
+    /* the same track: keep it where it is (a stop that is called off, the
+       session track un-ducked, the watchdog's restart) and bring it up */
+    ++d.token;
+    d.pendingUrl = null;
+    d.cur = t;
+    if (d.el.paused && !d.needsGesture) this._deckPlay(d, t);
+    this._deckRamp(d, t.vol, t.fadeIn);
+    return;
+  }
+  var tok2 = ++d.token;
+  d.pendingUrl = t.url;
+  var audible = !!d.cur && !d.el.paused;
+  var go = function () {
+    if (d.token !== tok2 || self._deck !== d) return;
+    d.pendingUrl = null;
+    d.cur = t;
+    try { d.gain.gain.cancelScheduledValues(0); d.gain.gain.value = 0; } catch (e) { /* gone */ }
+    try { d.el.src = t.url; } catch (e) { /* gone */ }
+    self._deckPlay(d, t);
+    self._deckRamp(d, t.vol, t.fadeIn);
+  };
+  if (audible) { this._deckRamp(d, 0, 0.35); setTimeout(go, 360); }
+  else go();
+};
+/* play(), from where the track would have been (its epoch), and what a
+   refusal means: NotAllowedError waits for the next tap, AbortError is a
+   newer track taking over, anything else turns streaming off.  Its own count
+   (playTok), not the fades' token: a fade called off must not orphan the
+   play it came with -- the session track re-asked straight after the zone
+   track's start (_rebuildSources) left that play unwatched. */
+BT_AUDIO._deckPlay = function (d, t) {
+  var self = this, el = d.el, pt = ++d.playTok;
+  var seek = function () {
+    try {
+      var dur = el.duration;
+      if (t.epoch && dur > 0 && isFinite(dur)) {
+        var off = ((Date.now() - t.epoch) / 1000) % dur;
+        if (off >= 0 && off < dur) el.currentTime = off;
+      }
+    } catch (e) { /* from the top, then */ }
+  };
+  if (el.readyState >= 1) seek();
+  else {
+    var onMeta = function () { el.removeEventListener('loadedmetadata', onMeta); if (d.playTok === pt) seek(); };
+    el.addEventListener('loadedmetadata', onMeta);
+  }
+  var p;
+  try { p = el.play(); } catch (e) { p = Promise.reject(e); }
+  if (p && typeof p.then === 'function') {
+    p.then(function () {
+      if (d.playTok !== pt || self._deck !== d) return;
+      d.needsGesture = false;
+      d.plays++;
+      self._deckWatch(d);
+    }, function (err) {
+      if (d.playTok !== pt || self._deck !== d) return;
+      var n = err && err.name;
+      if (n === 'NotAllowedError') { d.needsGesture = true; return; }
+      if (n === 'AbortError') return;
+      self._deckFail('play: ' + (n || 'refused'));
+    });
+  }
+};
+/* A tap: play what a refusal held back (GameApp's gesture handler). */
+BT_AUDIO._deckGesture = function () {
+  var d = this._deck;
+  if (!d || !d.needsGesture || !d.cur) return;
+  d.needsGesture = false;
+  this._deckPlay(d, d.cur);
+};
+/* Does the element's sound reach the graph?  Float data where the browser
+   has it: any sample off zero is proof.  If the tap cannot be read at all,
+   that is never a reason to give up on streaming. */
+BT_AUDIO._deckHears = function (d) {
+  try {
+    if (typeof d.tap.getFloatTimeDomainData === 'function') {
+      var f = d.fbuf || (d.fbuf = new Float32Array(d.tap.fftSize));
+      f.fill(0);
+      d.tap.getFloatTimeDomainData(f);
+      for (var i = 0; i < f.length; i++) if (f[i] !== 0) return true;
+      return false;
+    }
+    var b = d.bbuf || (d.bbuf = new Uint8Array(d.tap.fftSize));
+    b.fill(128);
+    d.tap.getByteTimeDomainData(b);
+    for (var j = 0; j < b.length; j++) if (b[j] !== 128) return true;
+    return false;
+  } catch (e) { return true; }
+};
+/* Once per deck: while the context runs and the element plays, the music must
+   be heard at the tap within five seconds of its clock moving three, or the
+   way the element reaches the speaker is broken here and the decoded tracks
+   take over (_deckFail).  Music has no five-second digital silence (the
+   v2.3.2614 loop-seam measurements: none under 1 ms at either edge). */
+BT_AUDIO._deckWatch = function (d) {
+  if (d.proven || !d.tap || d.watching) return;
+  d.watching = true;
+  var self = this, since = 0, ct0 = 0, n = 0;
+  var tick = function () {
+    if (self._deck !== d || d.proven) { d.watching = false; return; }
+    n++;
+    var live = self._ctxLive() && !d.el.paused && !(typeof document !== 'undefined' && document.hidden);
+    if (live) {
+      if (self._deckHears(d)) { d.proven = true; d.watching = false; return; }
+      if (!since) { since = Date.now(); ct0 = d.el.currentTime; }
+      else if (Date.now() - since > 5000 && d.el.currentTime - ct0 > 3) { d.watching = false; self._deckFail('silent'); return; }
+    } else since = 0;
+    if (n < 480) setTimeout(tick, 250); else d.watching = false;
+  };
+  setTimeout(tick, 250);
+};
+/* Streaming off for the session: drop the deck and start whatever was
+   wanted the old way, decoded, out of the call stack that failed. */
+BT_AUDIO._deckFail = function (why) {
+  if (this._deckFailed) return;
+  this._deckFailed = String(why || 'failed');
+  try { console.warn('[music] streaming off for this session, decoding as before: ' + this._deckFailed); } catch (e) { /* no console */ }
+  var hadZone = !!this._zoneWant, hadGlobal = !!this._globalWant;
+  this._deckDrop();
+  this._zoneWant = null;
+  this._globalWant = null;
+  if (this._zoneMusicSource && this._zoneMusicSource._stream) { this._zoneMusicSource = null; this._zoneMusicGain = null; }
+  if (this._globalMusicSource && this._globalMusicSource._stream) { this._globalMusicSource = null; this._globalMusicGain = null; }
+  this._zoneMusicStarting = false;
+  this._globalMusicStarting = false;
+  var self = this;
+  setTimeout(function () {
+    try { if (hadGlobal) self.startGlobalMusic(); } catch (e) { /* sound only */ }
+    try {
+      var z = self._currentZoneAmbient;
+      if (hadZone && z) { self._currentZoneAmbient = null; self.startZoneAmbient(z); }
+    } catch (e) { /* sound only */ }
+  }, 0);
+};
+/* The stand-ins for a BufferSource that the rest of this file keeps in
+   _zoneMusicSource / _globalMusicSource: stop() withdraws the want and lets
+   the deck fade; `_stream` marks them for stopAmbient and duckGlobalMusic. */
+BT_AUDIO._zoneStream = function (trackUrl) {
+  var self = this;
+  var w = { _stream: true, url: trackUrl, onended: null, disconnect: function () {},
+    stop: function () {
+      if (self._zoneMusicSource === w) { self._zoneMusicSource = null; self._zoneMusicGain = null; }
+      if (self._zoneWant && self._zoneWant.w === w) { self._zoneWant = null; self._deckSync(); }
+    } };
+  /* v2.3.1597's last-ditch anti-stack, for a decoded source a fallback left */
+  var old = this._zoneMusicSource;
+  if (old && old !== w && !old._stream) { try { old.stop(); } catch (e) { /* gone */ } }
+  this._zoneWant = { kind: 'zone', url: trackUrl, epoch: this._zoneMusicEpoch, vol: this.ZONE_MUSIC_VOL, fadeIn: 0.6, w: w };
+  this._zoneMusicSource = w;
+  this._zoneMusicGain = null;
+  this._zoneMusicStarting = false;
+  this._deckSync();
+};
+BT_AUDIO._globalStream = function (url) {
+  var self = this;
+  if (!this._globalMusicEpoch) this._globalMusicEpoch = Date.now();
+  var w = { _stream: true, url: url, onended: null, disconnect: function () {},
+    stop: function () {
+      if (self._globalMusicSource === w) { self._globalMusicSource = null; self._globalMusicGain = null; }
+      if (self._globalWant && self._globalWant.w === w) { self._globalWant = null; self._deckSync(); }
+    } };
+  this._globalWant = { kind: 'global', url: url, epoch: this._globalMusicEpoch, vol: this.GLOBAL_MUSIC_VOL, fadeIn: 1.2, w: w };
+  this._globalMusicSource = w;
+  this._globalMusicGain = null;
+  this._globalMusicStarting = false;
+  this._deckSync();
+};
+/* QA (mp-musicstream): what the deck plays and why. */
+if (typeof window !== 'undefined') {
+  window.__btMusicDeck = function () {
+    var A = BT_AUDIO, d = A._deck, el = d && d.el;
+    var path = function (u) { return u ? String(u).replace(/^https?:\/\/[^/]+/, '') : null; };
+    return {
+      streaming: A._streamMusic(), failed: A._deckFailed || null,
+      ctx: A.ctx ? A.ctx.state : null,
+      el: el ? { src: path(el.currentSrc || el.src), paused: el.paused, t: +el.currentTime.toFixed(2), dur: isFinite(el.duration) ? +el.duration.toFixed(2) : null,
+        ready: el.readyState, loop: el.loop, error: el.error ? el.error.code : null } : null,
+      cur: d && d.cur ? { kind: d.cur.kind, url: path(d.cur.url) } : null,
+      pending: d ? path(d.pendingUrl) : null, stopping: d ? d.stopping : null,
+      gain: d ? +d.gain.gain.value.toFixed(4) : null, proven: d ? d.proven : null, needsGesture: d ? d.needsGesture : null, plays: d ? d.plays : 0,
+      zone: A._zoneWant ? path(A._zoneWant.url) : null, global: A._globalWant ? path(A._globalWant.url) : null, ducked: !!A._globalMusicDucked,
+      decoded: { global: !!A._globalMusicBuffer, zones: Object.keys(A._zoneMusicBuffers || {}).length },
+    };
+  };
+}
 
 BT_AUDIO.unlock = function () {
   if (!this.ctx) this.init();
