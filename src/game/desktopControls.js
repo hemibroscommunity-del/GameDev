@@ -105,8 +105,8 @@ export function setupDesktopControls(S, deps) {
           _desktopShieldBash();
           return;
         }
-        /* 1. Building */
-        if (S.nearBuilding !== null) {
+        /* 1. Building (v2.3.3066: or a Wheel hall's door) */
+        if (S.nearBuilding !== null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) {
           _desktopEnterBuilding();
           return;
         }

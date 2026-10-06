@@ -3,16 +3,17 @@
  * Owner, 2026-10-04: "Push to main. Then after that add doors."  One real
  * player against a real worker, in the Wheel's Brotown, on a phone:
  *   1. the client knows the town's seventeen doors from the worker's answer:
- *      twelve that open a building, four shut ones, and the Town Hall;
+ *      twelve that open a building, the Wheel's three halls (v2.3.3066:
+ *      mp-wheelhalls walks them), one shut one, and the Town Hall;
  *   2. walked to each of the twelve (boots at the foot of its steps), the
  *      Enter button comes up with the NAME ON ITS SIGN ("Enter SALOON"), and a
  *      tap opens that building's panel -- the forge's, the bank's, the
  *      market's and so on, the old town's own;
  *   3. not a step before: far off there is no button, and the reach is the
  *      reach (inside 120 px, out at 175);
- *   4. a shut door (the sheriff's, the hotel, the post office, the guild
- *      hall) shows its name and "Shut for now" and is not a button; the Town
- *      Hall shows nothing;
+ *   4. a shut door (the hotel; until v2.3.3066 the sheriff's, the post
+ *      office and the guild hall too) shows its name and "Shut for now" and
+ *      is not a button; the Town Hall shows nothing;
  *   5. twelve buildings visited are twelve visits (mayor_1's "visit 3");
  *   6. Diego keeps the General Store: drawn, beside its steps, his window shut
  *      while you stand at the door and open when you walk up to him;
@@ -141,9 +142,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (doors.length < 17) await P.page.waitForTimeout(500);
   }
   const byId = Object.fromEntries(doors.map((d) => [d.id, d]));
-  const open = doors.filter((d) => d.index >= 0), shut = doors.filter((d) => d.index < 0 && d.closed), plain = doors.filter((d) => d.index < 0 && !d.closed);
-  rec.ok(`the client knows the town's doors from the worker's answer: ${open.length} that open a building, ${shut.length} shut ones, and ${plain.map((d) => d.name).join(', ')}`,
-    z0 === 'wheel' && doors.length === 17 && open.length === 12 && shut.length === 4 && plain.length === 1 && plain[0].id === 'townhall'
+  const open = doors.filter((d) => d.index >= 0), shut = doors.filter((d) => d.index < 0 && d.closed), plain = doors.filter((d) => d.index < 0 && !d.closed && !d.hall);
+  const halls = doors.filter((d) => d.hall);   /* v2.3.3066: the Wheel's own (mp-wheelhalls) */
+  rec.ok(`the client knows the town's doors from the worker's answer: ${open.length} that open a building, ${halls.length} halls of the Wheel's own, ${shut.length} shut, and ${plain.map((d) => d.name).join(', ')}`,
+    z0 === 'wheel' && doors.length === 17 && open.length === 12 && halls.length === 3 && shut.length === 1 && plain.length === 1 && plain[0].id === 'townhall'
       && Object.keys(WHEEL_BUILDING_DOORS).every((k) => byId[k] && byId[k].index >= 0 && actionOf[byId[k].index] === TOWN_BUILDINGS.find((b) => b.id === WHEEL_BUILDING_DOORS[k]).action)
       && WHEEL_SHUT_DOORS.every((k) => byId[k] && byId[k].closed === true && byId[k].index < 0),
     { z0, doors: doors.map((d) => [d.id, d.index]) });
@@ -189,14 +191,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await standAt(d.x, d.y + 30);
     const r = await settle((q) => q.shut && q.shut.id === d.id, 3000);
     shutSeen.push({ id: d.id, r });
-    if (d.id === 'sheriff') await shot(P, 'shut-sheriff');
+    if (d.id === 'hotel') await shot(P, 'shut-hotel');
   }
   const hall = byId.townhall;
   await standAt(hall.x - 60, hall.y + 40);
   await P.page.waitForTimeout(1200);
   const hallR = await prompt();
   rec.ok(`a shut door says so and is not a button: ${shutSeen.map((s) => s.id).join(', ')} each show their name and "Shut for now", with no Enter; the Town Hall (Mayor Bro's) shows nothing`,
-    shutSeen.length === 4 && shutSeen.every((s) => {
+    shutSeen.length === 1 && shutSeen.every((s) => {
       const q = s.r, door = byId[s.id];
       return q && q.shut && q.shut.id === s.id && q.shut.tag === 'DIV' && q.shut.pe === 'none' && q.btn === null && q.nb === null
         && q.shut.text.includes(door.name) && q.shut.text.includes('Shut for now')

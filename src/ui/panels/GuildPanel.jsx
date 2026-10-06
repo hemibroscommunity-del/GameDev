@@ -29,6 +29,7 @@ export function GuildPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect-card",
+    "data-panel": "guild" /* v2.3.3066: opened from the Wheel's Guild Hall (mp-wheelhalls) */,
     onClick: function onClick(e) {
       return e.stopPropagation();
     },

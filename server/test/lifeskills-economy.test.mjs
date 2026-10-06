@@ -489,5 +489,37 @@ check('harvest: strike with NO extraction state still harvests (legacy posture) 
   n0.alive === false && (ps.inventory[invKey] || 0) === invBefore + 1 && session._extractionMissing === 1,
   { missing: session._extractionMissing, inv: ps.inventory[invKey] });
 
+// ── 7. a life skill is never level 0 (v2.3.3041) ──
+// The owner's "the level up notification shows the wrong skill level (shows
+// level 1 was you level up from 1 to 2)": a new client's skills started at 0,
+// which _addLifeSkillXp reads as 1 and levels to 2.  Both join paths heal a 0
+// to 1, so the echo says 1 and the first level-up is 1 -> 2.
+{
+  const wsN = fakeWs('lv0');
+  room.sessions.set(wsN, baseSession());
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'join', id: 'bp_ls_lv0', name: 'L0', phrase: 'p-bp_ls_lv0',
+    data: { x: -100000, y: -100000, z: 'town', rpgLifeSkills: { mining: { level: 0, xp: 120 }, fishing: { level: 4, xp: 7 }, cooking: { level: 0, xp: 0 } } } }));
+  const pN = room.playerState['bp_ls_lv0'];
+  check('level 0: a first join\'s level-0 skills heal to 1, their XP kept, a real level untouched',
+    !!pN && pN.lifeSkills.mining.level === 1 && pN.lifeSkills.mining.xp === 120 && pN.lifeSkills.cooking.level === 1 && pN.lifeSkills.fishing.level === 4,
+    pN && pN.lifeSkills);
+  const r = room._addLifeSkillXp(pN, 'mining', 380);
+  check('level 0: ...and its first level-up is 1 -> 2 (500 XP)', r.leveled === true && r.newLevel === 2 && pN.lifeSkills.mining.xp === 0, { r, ls: pN.lifeSkills.mining });
+  /* a record already on file with a 0 heals on the next join too */
+  room._saveRpg('bp_ls_lv0', pN);
+  await new Promise((res) => setTimeout(res, 0));
+  const key = 'rpg:bp_ls_lv0';
+  const stored = await state.storage.get(key);
+  if (stored) { stored.lifeSkills.woodcutting = { level: 0, xp: 50 }; await state.storage.put(key, stored); }
+  room.sessions.delete(wsN);
+  delete room.playerState['bp_ls_lv0'];
+  const wsR = fakeWs('lv0b');
+  room.sessions.set(wsR, baseSession());
+  await room.webSocketMessage(wsR, JSON.stringify({ type: 'join', id: 'bp_ls_lv0', name: 'L0', phrase: 'p-bp_ls_lv0', data: { x: -100000, y: -100000, z: 'town' } }));
+  const pR = room.playerState['bp_ls_lv0'];
+  check('level 0: a stored level 0 reads 1 on the next join (XP kept)', !!stored && !!pR && pR.lifeSkills.woodcutting && pR.lifeSkills.woodcutting.level === 1 && pR.lifeSkills.woodcutting.xp === 50,
+    pR && pR.lifeSkills && pR.lifeSkills.woodcutting);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

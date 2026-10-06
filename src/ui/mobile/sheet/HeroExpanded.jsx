@@ -22,6 +22,7 @@ import {
   prog3PowerMult, prog3RangeMult, prog3SpecialMult, prog3MoveMult, prog3EresPct, isProg3RelEnabled, PROG3_LINEAR,
   PROG3_FADE_NOTE /* v2.3.2680: the curve readers + the fade line */, prog3StatFrac /* v2.3.2696: the confirm window's bar */ } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
+import { heroStatPills, HERO_PILL_TONE } from './heroStatPills.js';      /* v2.3.3053: the stat pills */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
 import { StatDemo, STAT_DEMO_KEYS } from './StatDemo.jsx';                      /* v2.3.2222: the ℹ️ window's scene; v2.3.2592: only stats that HAVE one */
@@ -135,6 +136,8 @@ export const HeroExpanded = () => {
      Defaults to whatever you are actually holding, so opening Build
      mid-fight lands on the weapon you were just swinging. */
   const [buildCatState, setBuildCat] = useState(null);
+  /* v2.3.3051: the held weapon's lane last render, to notice a swap */
+  const heldCatRef = useRef(undefined);
   /* ═══ v2.3.2315: AN ACCORDION THAT CLOSES ═══
      Owner: "the stat allocation accordion menu doesn't collapse when I tap
      on it."  It did not, and the header said why: it called
@@ -308,94 +311,10 @@ export const HeroExpanded = () => {
      So the letter carries the colour the icon used to (VITAL_TINT, taken off
      the top stop of that resource's own bar gradient) — without it the three
      are three identical grey numbers and the glance is gone. */
-  const compactVital = (kind, cur, max) => (
-    /* ═══ v2.3.1922: THE NUMBER MOVES INSIDE THE BAR ═══
-       Owner: "Those numbers for the combat resources are too large: the
-       resource bars also need to be fatter.  Actually I think having the
-       numbers inside each resource bar would look better and save space."
-
-       All three asks are the same ask, and it is a good one: the row's width
-       was being split between a number and a bar that each wanted to be big,
-       so both were small.  Stacked in depth instead of side by side, the bar
-       gets the whole width AND the number stops competing for it — which is
-       what lets 7px of bar become 18px of bar in a row that did not grow.
-
-       WHY THE ROW DOES NOT GROW.  The height here is max(icon, bar, line
-       box), and the previous version's tallest member was the 19px number:
-       at the v2.3.1916 leading of 0.95 that is an 18.05px line box, against
-       an 18px icon.  So 18 was already the row's height, and an 18px bar is
-       exactly the largest one that is free.  The number inside it drops to
-       12px — smaller as asked, and about as large as an 18px trough can hold
-       with any air above and below.
-
-       THE COUPLING, restated because it has moved twice now (v2.3.1894 sized
-       the icon to the number, v2.3.1916 sized the leading to the icon): the
-       row height is now set by the ICON and the BAR together, both at 18, and
-       the number no longer participates.  That is the more stable of the two
-       arrangements — the number is the thing the owner keeps resizing.  Push
-       either 18 up and the three rows grow together and Crit Dmg goes off the
-       bottom of the sheet; mp-charfit is the gate that catches it. */
-    <div key={kind} title={VITAL_LABEL[kind]} style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
-      /* v2.3.1893: 1.12 -> 1.30 (owner: "increase the vertical padding just a
-         bit, looks like there's a little room above the divider").  There is,
-         and it is the ONLY room: measured, the column is 146px with 146px of
-         content in it and no slack below the stats — the single piece of air
-         is a 12px gap between the last resource row and the rule.  This
-         spends about eight of those twelve across the three rows and leaves
-         the rest, because a rule sitting flush against the text above it
-         reads as a mistake rather than as a divider. */
-      gap: 5, lineHeight: 1.30,
-    }}>
-      <span style={{
-        fontSize: 11.5, fontWeight: 800, color: VITAL_TINT[kind],
-        letterSpacing: '.06em',
-      }}>{VITAL_LABEL[kind]}</span>
-      {/* v2.3.1893: the icon comes back, AFTER the letter (owner).  It is the
-          colour cue at a glance; the letter is what you read.
-          v2.3.1894 took it 12 -> 18; v2.3.1922 leaves it there and makes the
-          bar match, so the two tallest things in the row are the same height
-          and the row reads as one band rather than as an icon beside a line.
-          v2.3.1922 also changed WHICH heart this is — see VITAL_ICONS. */}
-      <img src={VITAL_ICONS[kind]} alt="" draggable={false}
-        style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-      {/* v2.3.1922: the bar takes the rest of the row and carries the numbers.
-          VitalBar is flex:1, so no width is guessed here — it shrinks rather
-          than overflowing when a max HP reaches four digits. */}
-      <VitalBar
-        kind={kind} cur={cur} max={max} thick={18}
-        inset={(
-          <span style={{
-            /* 19 -> 12 (owner: "too large").  It is also no longer the thing
-               that sets the row height, so this number is now free to move
-               without the layout arguing back — see the note at the top.
-               No fontFamily, per v2.3.1922's earlier pass: it inherits the
-               same face as the offense/defense table below, because two
-               typefaces in one column read as two designs. */
-            fontSize: 12, fontWeight: 800, lineHeight: 1,
-            color: '#FFFFFF',
-            fontVariantNumeric: 'tabular-nums',
-            /* The halo, not a background plate: a plate would cover the fill
-               it sits on and undo the point of putting the number there. */
-            textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.7)',
-            display: 'flex', alignItems: 'center',
-          }}>
-            {Math.ceil(cur)}
-            {/* v2.3.1893: the slash gets air on both sides (owner: "increase
-                the space between the first and second number").  Rendered as
-                its own span rather than as spaces in the string: the numbers
-                are tabular and a literal space is not, so padding is the only
-                way to move the two apart without the gap jittering as the
-                values change.  The separator is dimmed — it is punctuation,
-                not data. */}
-            <span style={{ padding: '0 4px', opacity: 0.6, fontWeight: 700 }}>/</span>
-            {Math.ceil(max)}
-          </span>
-        )}
-      />
-    </div>
-  );
-
+  /* v2.3.3053: compactVital (v2.3.1922's number inside an 18px bar, the
+     letter and the icon beside it) is gone -- the vitals are pills now, their
+     picture, letters and numbers all inside the bar (vitalPill below).  The
+     bar is still VitalBar's trough, so it drains the same way. */
   /* Overview derived pills — v2.3.1311b (owner): ALL SIX on ONE ROW,
      no scrolling anywhere in the subtab.  ~55px per pill at 390w:
      centered 8.5px label over a 13px value.  Values stay neutral
@@ -432,9 +351,9 @@ export const HeroExpanded = () => {
      The labels get their words back in the same move.  DEF / C.DMG were
      abbreviations forced by a ~46px tile (v2.3.1878); a list row is as wide
      as its half of the column, so "Crit Dmg" and "Defense" simply fit. */
-  /* `sheetRow`, not `statRow`: that name is already taken by the item card's
-     own row renderer further down (v2.3.1846), and the two are different
-     shapes — this one takes (label, value), that one takes a { k, v }. */
+  /* `statPill` (v2.3.1890-v2.3.3052 `sheetRow`), not `statRow`: that name is
+     already taken by the item card's own row renderer further down
+     (v2.3.1846), and the two are different shapes. */
   /* ═══ v2.3.2131: A ROW YOU CAN ASK ABOUT ═══
      Owner: "more pop ups for things users want to learn more about on the
      character equip menu (labels tapped on and such)."
@@ -449,83 +368,127 @@ export const HeroExpanded = () => {
      the row renders exactly as it did before.  That also means adding a stat
      later cannot silently ship a dead affordance -- it just is not tappable
      until somebody writes its sentence. */
-  const sheetRow = (label, value) => {
-    const info = statInfo(label);
+  /* ═══ v2.3.3053: EVERY STAT IN ITS OWN PILL ═══
+     Owner, with a mockup of this tab: "Add pill design for hero equipment
+     menu stats."  An icon, the stat's name and its value in a rounded pill,
+     OFFENSE outlined in gold with the DPS pill beside its heading, PLAYER in
+     blue, and the three vitals as coloured pills of their own.
+
+     It undoes two earlier calls on purpose, both the owner's: v2.3.1890's
+     list rows ("every stat is being treated as its own card") and
+     v2.3.1883b's "no icons".  What those bought was ROOM -- the seven stats fit
+     a 146px column with no scrolling -- and the mockup asks for fourteen
+     stats, each with its picture.  At a phone's size that cannot fit any
+     column of this sheet (the mockup, drawn 1536 px wide, is the 390 px sheet
+     at ~4x: its words would be 6 px tall), so the tab scrolls now, and the
+     panel's bottom fade says so (v2.3.1815 kept it on for this tab).  What
+     the first screen still shows without a scroll: the character, the gear,
+     the vitals, and OFFENSE's heading with DPS and Damage.
+
+     The rows come from heroStatPills.js, which reads each stat through the
+     reader the Points tab prints it with.  Every pill can be asked about
+     (v2.3.2131): a tap opens its explainer with your own value. */
+  const PILL_H = 22;
+  const statPill = (p, tone) => {
+    const info = statInfo(p.info);
     return (
-    <div key={label}
-      data-statrow={info ? label : undefined}
-      role={info ? 'button' : undefined}
-      tabIndex={info ? 0 : undefined}
-      aria-label={info ? `${label} — what is this?` : undefined}
-      onPointerUp={info ? ((e) => {
-        e.stopPropagation();
-        infoPopupBus.open({ title: info.title, body: info.body, note: info.note, stat: String(value) });
-      }) : undefined}
-      style={{
-      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-      /* v2.3.1890b: the list left real vertical air where the boxes' chrome
-         used to be — spent on legibility, which is the point of dropping
-         them.  charfit is the ceiling. */
-      /* v2.3.1891: 1.5 -> 1.34.  Moving the resources onto rows of their
-         own (owner) needed 21px; the resources found most of it and this
-         is the rest.  Still well above the boxed layout it replaced. */
-      /* v2.3.1892: 1.34 -> 1.18.  Three centred resource rows at 14px are
-         what the owner asked for and they do not fit at 1.34 — this is the
-         6px they were short, and it is taken here rather than from the
-         resources because the resources are the thing being made larger. */
-      gap: 6, minWidth: 0, lineHeight: 1.18,
-      /* v2.3.2131: the only chrome a tappable row gets.  No underline, no
-         chevron -- seven of them down a narrow column would read as clutter,
-         and charfit is already the ceiling on this list's height. */
-      cursor: info ? 'pointer' : undefined,
-      touchAction: info ? 'manipulation' : undefined,
-    }}>
-      <span style={{
-        fontSize: 11, fontWeight: 600, color: COL.muted,
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      }}>{label}</span>
-      <span style={{
-        fontSize: 13, fontWeight: 800, color: COL.text,
-        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none',
-      }}>{value}</span>
-    </div>
+      <div key={p.key}
+        data-statrow={p.label}
+        data-pill={p.key}
+        role={info ? 'button' : undefined}
+        tabIndex={info ? 0 : undefined}
+        aria-label={info ? `${p.label} ${p.value} — what is this?` : `${p.label} ${p.value}`}
+        onPointerUp={info ? ((e) => {
+          e.stopPropagation();
+          infoPopupBus.open({ title: info.title, body: info.body, note: info.note, stat: String(p.value) });
+        }) : undefined}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          height: PILL_H, boxSizing: 'border-box', minWidth: 0, flex: 'none',
+          padding: '0 9px 0 5px', borderRadius: 999,
+          border: `1.5px solid ${tone.edge}`,
+          background: COL.well,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)',
+          cursor: info ? 'pointer' : undefined,
+          touchAction: info ? 'manipulation' : undefined,
+        }}>
+        <img src={p.icon} alt="" draggable={false}
+          style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+        <span style={{
+          flex: 1, minWidth: 0,
+          fontSize: 11.5, fontWeight: 600, color: COL.text2, lineHeight: 1,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{p.label}</span>
+        <span style={{
+          flex: 'none',
+          fontSize: 12.5, fontWeight: 800, color: COL.text, lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+        }}>{p.value}</span>
+      </div>
     );
   };
-
-  /* v2.3.1883: the same seven, split into the two groups the owner drew.
-     Nothing is added or dropped — OFFENSE is the four that decide what you
-     hit for and DEFENSE the three that decide what reaches you, which is the
-     reading the flat 4x2 grid gave no way to see.  Still ONE list per group
-     and no second copy anywhere, for the reason the v2.3.1878 note gives. */
-  const offenseCells = () => [
-    sheetRow('Damage', d.dmgText),
-    /* v2.3.2525: 2 dp, matching the ℹ️ explainer and the resting strip — the
-       same DPS shown three places must read the same in all three, and at
-       k = 5 one decimal could not tell two different weapons apart. */
-    sheetRow('DPS', d.dps.toFixed(2)),
-    sheetRow('Crit', `${pct1(d.crit)}%`),
-    /* v2.3.2199: % on a prog3x worker.  v2.3.2520: which is exactly why the
-       display scale is applied to the FLAT form only -- a percentage is not a
-       damage number and dividing it by k would be wrong. */
-    sheetRow('Crit Dmg', p3
-      ? `+${d.critDmgPct ? Math.round(d.critDmg) : toDisplayDamage(d.critDmg)}${d.critDmgPct ? '%' : ''}`
-      : '—'),
-  ];
-  const defenseCells = () => [
-    sheetRow('Defense', p3 ? `${pct1(d.defPct)}%` : '—'),
-    sheetRow('Dodge', `${pct1(d.dodge)}%`),
-    sheetRow('Armor', `${pct1(d.armorDr)}%`),
-  ];
-  /* Module header, 10/700 uppercase .12em — the Lantern Slate step for this
-     (11/600 uppercase .12em) taken one notch down, because these two sit
-     inside a 146px column rather than at the head of a panel and every pixel
-     here was already spoken for. */
-  const groupHead = (text) => (
+  /* The group's heading, in its colour -- 11/800 uppercase .12em, the
+     module-header step -- with OFFENSE's DPS pill beside it, as drawn. */
+  const pillHead = (text, tone, side) => (
     <div style={{
-      fontSize: 11, fontWeight: 700, letterSpacing: '.12em',
-      textTransform: 'uppercase', color: COL.muted,
-      lineHeight: 1, flex: 'none',
-    }}>{text}</div>
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: 6, minHeight: PILL_H, flex: 'none',
+    }}>
+      <span style={{
+        fontSize: 11, fontWeight: 800, letterSpacing: '.12em', lineHeight: 1,
+        textTransform: 'uppercase', color: tone.head, whiteSpace: 'nowrap',
+      }}>{text}</span>
+      {side}
+    </div>
+  );
+  const pills = heroStatPills(R, d);
+  const offenseBlock = () => (
+    <div data-pillgroup="offense" style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+      {pillHead('Offense', HERO_PILL_TONE.offense, statPill(pills.dps, HERO_PILL_TONE.offense))}
+      {pills.offense.map((p) => statPill(p, HERO_PILL_TONE.offense))}
+    </div>
+  );
+  const playerBlock = () => (
+    <div data-pillgroup="player" style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+      {pillHead('Player', HERO_PILL_TONE.player)}
+      {pills.player.map((p) => statPill(p, HERO_PILL_TONE.player))}
+    </div>
+  );
+  /* The three vitals as pills: the bar IS the pill (VitalBar's trough at the
+     pills' height), its picture, letters and numbers inside it, white on a
+     halo so they read over the fill and the empty trough alike. */
+  const vitalPill = (kind, cur, max) => (
+    <div key={kind} data-vital={kind} title={VITAL_LABEL[kind]} style={{ display: 'flex', flex: 'none' }}>
+      <VitalBar
+        kind={kind} cur={cur} max={max} thick={PILL_H}
+        inset={(
+          <div style={{
+            width: '100%', minWidth: 0, display: 'flex', alignItems: 'center', gap: 5,
+            padding: '0 9px 0 5px', boxSizing: 'border-box',
+            color: '#FFFFFF', lineHeight: 1,
+            textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.7)',
+          }}>
+            <img src={VITAL_ICONS[kind]} alt="" draggable={false}
+              style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+            <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '.06em' }}>{VITAL_LABEL[kind]}</span>
+            <span style={{ flex: 1 }} />
+            <span style={{ fontSize: 12.5, fontWeight: 800, fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'center' }}>
+              {Math.ceil(cur)}
+              <span style={{ padding: '0 3px', opacity: 0.7, fontWeight: 700 }}>/</span>
+              {Math.ceil(max)}
+            </span>
+          </div>
+        )}
+      />
+    </div>
+  );
+  const vitalPills = () => (
+    <div data-pillgroup="vitals" style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 'none' }}>
+      {/* v2.3.2520: HP is scaled (§5.8 D2); EN and MP are NOT. */}
+      {vitalPill('hp', toDisplayHp(R.hp || 0), toDisplayHp(R.maxHp || 100))}
+      {vitalPill('stamina', R.stamina || 0, R.maxStamina || 100)}
+      {vitalPill('mana', R.mana || 0, R.maxMana || 100)}
+    </div>
   );
 
   /* ═══ v2.3.2171: THE SIDEWAYS PANE STACKS ═══
@@ -585,7 +548,22 @@ export const HeroExpanded = () => {
      pool, so the tab badge and the points chip both show it. */
   const totalUnspent = unspentPointsTotal(R);
   const p3 = prog3Live(R);
-  const buildCat = buildCatState || prog3ActiveCat(R);
+  /* ═══ v2.3.3051: THE GRID SPEAKS FOR THE WEAPON IN YOUR HAND ═══
+     Owner: "Make the points allocation screen (with all the different point
+     types listed) show the point distribution based on your active equipped
+     weapon.  So if you have melee equipped show the points you've allocated
+     for melee.  If bow show for bow."  It defaulted to the held weapon, but a
+     lane picked in the spend window's tabs stuck for as long as the sheet was
+     open, and swapping weapons never moved it.  Now the window's tabs only aim
+     the WINDOW (onPick below), and a change of weapon brings the grid back to
+     it (heldCatRef) -- only the dashboard's own Melee/Bow/Magic pill, asking
+     for a lane by name, still shows that lane until you swap. */
+  const heldCat = prog3ActiveCat(R);
+  if (heldCatRef.current !== heldCat) {
+    if (heldCatRef.current !== undefined && buildCatState) setBuildCat(null);
+    heldCatRef.current = heldCat;
+  }
+  const buildCat = buildCatState || heldCat;
   /* ═══ v2.3.2512: OPENING A SECTION BRINGS ITS STATS INTO VIEW ═══
      The owner's Points accordion stacks three 44px headers above the open
      section's stats, and the sheet's scrolling window is ~191px on a phone
@@ -692,7 +670,7 @@ export const HeroExpanded = () => {
     if (!sl) return <div key={slotName} style={{ width: EQ_W, height: EQ_W }} />;
     const on = eqSel === slotName;
     return (
-      <div key={slotName}
+      <div key={slotName} data-eqslot={slotName}
         role="button" aria-label={sl.label} aria-pressed={on} title={sl.label}
         onPointerUp={(e) => { e.stopPropagation(); setEqSel(on ? null : slotName); }}
         style={{
@@ -967,12 +945,22 @@ export const HeroExpanded = () => {
               vitals/item-card column breaks below them at full width
               instead of squeezing beside them. */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: landPane ? 6 : 8, flexWrap: landPane ? 'wrap' : undefined, rowGap: landPane ? 8 : undefined }}>
+            {/* ═══ v2.3.3053: TWO COLUMNS THAT RUN ON DOWN ═══
+                Upright, the character and the gear head a LEFT column with
+                PLAYER's pills under them, and the vitals head a RIGHT column
+                with OFFENSE's under them: the mockup's two pill columns, each
+                under what it belongs with, so the first screen keeps the
+                character, the gear, the vitals and DPS and Damage.  Sideways
+                these wrappers step aside (`display: contents`) and the row
+                wraps as it did since v2.3.2172. */}
+            <div style={landPane ? { display: 'contents' } : { flex: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={landPane ? { display: 'contents' } : { display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             {/* HARD LEFT, and cropped to a rectangle around him.  `crop`
                 narrows the WELL over the canvas rather than shrinking the
                 canvas — the character stays the size the owner asked to keep,
                 and the ~70px of empty frame it was reserving is what pays for
                 the vitals column. */}
-            <div style={{
+            <div data-charview="1" style={{
               flex: 'none',
               width: Math.round((3 * EQ_W + 2 * DASH_GAP) * FIGURE_W_FRAC),
               height: 3 * EQ_W + 2 * DASH_GAP,
@@ -1005,6 +993,9 @@ export const HeroExpanded = () => {
             }}>
               {['weapon', 'shield', 'chest', 'legs', 'amulet', 'cape'].map(eqCell)}
             </div>
+            </div>
+            {!landPane && playerBlock()}
+            </div>
 
             {/* ═══ v2.3.1843: THE CARD OPENS OVER THE VITALS ═══
                 Owner: "It's fine if the card opens over where the vitals are."
@@ -1025,9 +1016,12 @@ export const HeroExpanded = () => {
                  full-width line under the figure (flex-basis 100%), auto
                  height — the card and the vitals size to their content
                  there instead of to the gear grid beside them. */
+              /* v2.3.3053: no fixed height upright any more -- the column
+                 runs on down with OFFENSE's pills; the item card keeps the
+                 figure row's height in a box of its own below. */
               ...(landPane
                 ? { flex: '1 1 100%', minWidth: 0 }
-                : { flex: 1, minWidth: 0, height: 3 * EQ_W + 2 * DASH_GAP }),
+                : { flex: 1, minWidth: 0 }),
               display: 'flex', flexDirection: 'column',
               /* v2.3.1893: 10 -> 6 on the stats branch.  That flex gap is
                  where the "room above the divider" actually lives — it sits
@@ -1037,10 +1031,14 @@ export const HeroExpanded = () => {
                  spends the same pixels on the thing being read instead of on
                  the space around a 1px line.  Column height is unchanged; the
                  item-card branch still gets 0. */
-              justifyContent: 'center', gap: selSlot ? 0 : 6,
+              justifyContent: 'flex-start', gap: 10, /* v2.3.3053: vitals or card, then OFFENSE */
             }}>
               {selSlot ? (
-                /* ═══ v2.3.1844: THE ITEM CARD IS A CARD ═══
+                <div data-cardwrap="1" style={{
+                  display: 'flex', flexDirection: 'column', flex: 'none',
+                  height: landPane ? undefined : 3 * EQ_W + 2 * DASH_GAP,
+                }}>
+                {/* ═══ v2.3.1844: THE ITEM CARD IS A CARD ═══
                    Owner: "put it on its own card.  Like the GREATSWORD and
                    CHANGE are the thick border of the card.  The inside of it
                    is where it lists the stats."
@@ -1056,7 +1054,7 @@ export const HeroExpanded = () => {
                    behind them was — wellSoft on well is the same colour twice
                    and the tiles vanished into the floor.  Depth order, from
                    docs/LANTERN-SLATE-SPEC.md: frame (accentFill) > well
-                   (COL.well) > tile (COL.raised). */
+                   (COL.well) > tile (COL.raised). */}
                 <div style={{
                   flex: 1, minWidth: 0,
                   display: 'flex', flexDirection: 'column', gap: 4,
@@ -1227,6 +1225,7 @@ export const HeroExpanded = () => {
                     </div>
                   )}
                 </div>
+                </div>
               ) : (
                 /* ═══ v2.3.1878: THE STATS MOVED UP HERE ═══
                     Owner: "Do a layout design change to make room for the
@@ -1257,53 +1256,12 @@ export const HeroExpanded = () => {
                     covers the stats as well as the vitals, which is the same
                     trade the owner already accepted for the vitals: both come
                     straight back when the slot is tapped closed. */
-                <>
-                  {/* Centred in its section, as asked. */}
-                  {/* v2.3.1922: STRETCH, not centre.  The rows carry a
-                      flex:1 bar now, and a column that shrink-wraps its
-                      children gives that bar nothing to fill — the bars came
-                      out hairlines on the first attempt.  The rows are
-                      left-aligned internally, so stretching is also what puts
-                      the three letters in a column. */}
-                  <div style={{
-                    flex: 'none', display: 'flex', flexDirection: 'column',
-                    alignItems: 'stretch', justifyContent: 'center',
-                  }}>
-                    {/* v2.3.2520: HP is scaled (§5.8 D2); EN and MP below are NOT. */}
-                    {compactVital('hp', toDisplayHp(R.hp || 0), toDisplayHp(R.maxHp || 100))}
-                    {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
-                    {compactVital('mana', R.mana || 0, R.maxMana || 100)}
-                  </div>
-                  {/* v2.3.2171: sideways the lists live BELOW the row (the
-                      owner's "put stats beneath that"), so the divider and
-                      the in-column copy render in portrait only — one copy
-                      of the numbers on screen, ever. */}
-                  {!landPane && <div style={{ height: 1, background: COL.tileBor, flex: 'none', margin: '2px 0' }} />}
-                  {/* ═══ v2.3.1890: TWO COLUMNS, NOT A GRID OF BOXES ═══
-                      Owner: "every stat is being treated as its own card...
-                      I'd switch to a character-sheet/list format".
-
-                      Side by side rather than stacked because offense has four
-                      rows and defense three: stacked they cost 7 rows plus two
-                      headings, and beside each other they cost 4 plus one. In
-                      a 146px column that difference is most of the budget. */}
-                  {!landPane && (
-                  <div style={{
-                    flex: 1, minHeight: 0, display: 'flex',
-                    alignItems: 'flex-start', gap: 12,
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {groupHead('Offense')}
-                      <div style={{ marginTop: 2 }}>{offenseCells()}</div>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {groupHead('Defense')}
-                      <div style={{ marginTop: 2 }}>{defenseCells()}</div>
-                    </div>
-                  </div>
-                  )}
-                </>
+                /* v2.3.3053: the three vitals as pills; the stats that shared
+                   this column since v2.3.1878 run on below it (OFFENSE) and
+                   under the figure (PLAYER). */
+                vitalPills()
               )}
+              {!landPane && offenseBlock()}
             </div>
           </div>
 
@@ -1312,16 +1270,13 @@ export const HeroExpanded = () => {
               at the pane's full width, in the vertical room the sideways
               column actually has.  Always rendered sideways, item card open
               or not: down here the card no longer needs their space. */}
+          {/* v2.3.3053: sideways the pill groups stack, one column at the
+              pane's full width -- two abreast, each would be ~95px and
+              "Attack Speed" alone wants ~70 of it. */}
           {landPane && (
-            <div style={{ flex: 'none', display: 'flex', alignItems: 'flex-start', gap: 14, paddingTop: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {groupHead('Offense')}
-                <div style={{ marginTop: 3 }}>{offenseCells()}</div>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {groupHead('Defense')}
-                <div style={{ marginTop: 3 }}>{defenseCells()}</div>
-              </div>
+            <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 10 }}>
+              {offenseBlock()}
+              {playerBlock()}
             </div>
           )}
 
@@ -1340,6 +1295,11 @@ export const HeroExpanded = () => {
               scroll pushed this row up behind the subtab bar and cut off the
               character's head and the HP bar.  The card moves into the row
               instead.  Nothing in this tab scrolls now. */}
+          {/* v2.3.3053: it scrolls again (the pills), and the panel's bottom
+              fade is 18px over a 10px padding -- this keeps the last pills
+              clear of it when you reach the end ("the last row is faded at
+              the bottom", v2.3.1311d). */}
+          <div aria-hidden="true" style={{ height: 10, flex: 'none' }} />
         </>
       )}
 
@@ -1523,7 +1483,10 @@ export const HeroExpanded = () => {
                      and Elemental rows off the card's right edge (390px
                      captures).  The label names the stat and the rate line
                      above the scene says the words, so the row need not. */
-                  const fmt = (v) => (st.pct ? n1(v * 100) + '%' : n1(v));
+                  /* v2.3.3050: a pool stat's pair is the pool's whole total in
+                     the units its bar shows (statPreview POOL_STAT) -- "28 -> 37",
+                     not the points' raw bonus "0.0 -> 48.0" */
+                  const fmt = (v) => (pv && pv.pool ? String(Math.round(v)) : st.pct ? n1(v * 100) + '%' : n1(v));
                   const rows = [];
                   if (pv) {
                     rows.push({ label: st.key === 'luck' ? 'Crit chance' : info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
@@ -1693,10 +1656,11 @@ export const HeroExpanded = () => {
                          of 'shared' just say 'Unspent Points'". */
                       : [{ key: 'shared', label: 'Unspent Points', icon: sharedIcon, pts: sharedAvail }],
                     onPick: st.atk ? ((k) => {
-                      /* the grid behind the window follows the tab, so closing
-                         it does not drop you back onto a different lane than
-                         the one you just spent into */
-                      try { setBuildCat(k); } catch (e) { /* never block a spend */ }
+                      /* v2.3.3051: the tab aims the WINDOW only; the grid behind
+                         it stays on the weapon in your hand (the owner's "show
+                         the point distribution based on your active equipped
+                         weapon").  It used to follow the tab -- and then sat on
+                         that lane until the sheet was closed. */
                       openStatInfo(st, k, spend ? spendFor(st, k) : null);
                     }) : null,
                   },
@@ -2383,7 +2347,10 @@ export const HeroExpanded = () => {
                  layout the owner approved from a capture, is all sprite. */
               if (c) {
                 return (
-                  <span data-prog3-head-badge={key} data-count={n} aria-hidden="true" style={{
+                  /* v2.3.3052: a bubble with points to spend breathes (game.css
+                     bt-pts-bubble) -- the owner's "glow and grow and shrink if
+                     there are still points that need to be allocated" */
+                  <span data-prog3-head-badge={key} data-count={n} aria-hidden="true" className={live ? 'bt-pts-bubble' : undefined} style={{
                     position: 'absolute', zIndex: 5, ...(pin || { top: -3, right: -3 }),
                     minWidth: 12, height: 12, padding: '0 1px', boxSizing: 'border-box',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -2401,7 +2368,15 @@ export const HeroExpanded = () => {
               const round = chars.length === 1;
               const cap = Math.round(bh * 0.42);       /* pill end drawn this wide */
               return (
-                <span data-prog3-head-badge={key} data-count={n} aria-hidden="true" style={{
+                /* ═══ v2.3.3052: A BUBBLE WITH POINTS TO SPEND BREATHES ═══
+                   Owner: "Make the bubble points for all 3 weapons and for the
+                   character glow and grow and shrink if there are still points
+                   that need to be allocated."  game.css bt-pts-bubble: a warm
+                   glow behind it and a gentle swell, transform and opacity
+                   only, from its top-right corner (the header clips, and the
+                   badges sit flush with its top and right edges).  An empty
+                   bubble stays still and grey, as before. */
+                <span data-prog3-head-badge={key} data-count={n} aria-hidden="true" className={live ? 'bt-pts-bubble' : undefined} style={{
                   position: 'absolute', zIndex: 5,
                   /* Off the icon's corner rather than on it: the first cut
                      sat 3px out and covered the TIP of every weapon -- the
@@ -2517,6 +2492,17 @@ export const HeroExpanded = () => {
                               width: LANE_ICON, height: LANE_ICON,
                               zIndex: on ? 2 : 1, pointerEvents: 'none',
                             }}>
+                            {/* v2.3.3051: the weapon in your hand -- whose six
+                                numbers the cells show (the owner's "based on your
+                                active equipped weapon") -- sits on a brass plate */}
+                            {on && (
+                              <span data-prog3-held={c.key} aria-hidden="true" style={{
+                                position: 'absolute', inset: 1, borderRadius: 999, pointerEvents: 'none',
+                                background: 'radial-gradient(circle, rgba(216,170,88,.38) 0%, rgba(216,170,88,.14) 58%, rgba(216,170,88,0) 72%)',
+                                boxShadow: `0 0 0 1.5px ${COL.accent}`,
+                                transform: `translate(${-LANE_NUDGE}px, ${LANE_NUDGE}px)`,
+                              }} />
+                            )}
                             <img src={c.iconSrc} alt="" draggable={false} style={{
                               width: '100%', height: '100%', objectFit: 'contain', display: 'block',
                               /* ═══ v2.3.2691: THE WEAPON STEPS OUT FROM UNDER ITS BADGE ═══

@@ -86,6 +86,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!reveal && /coins|Fish|Gem|Torso|Greaves/.test(reveal.text) && reveal.icon && reveal.frame === '8', reveal);
   await A.page.waitForTimeout(700);
   await shot(A, 'chest-reveal');
+  /* v2.3.3045, owner: "Daily chest not synced with noise" -- the sounds are
+     the window's, on its frames: the lid's knock on frame 4, then the prize's
+     (the coins' chime for coins, the win sting otherwise) as it rises -- and
+     no coin chime from the worker's answer while the chest is still shut */
+  const sfx = await A.page.evaluate(() => ({ cues: (window.__btChestSfx || []).slice(), coin: window.__btCoinSfx || 0 }));
+  const lid = sfx.cues.find((c) => c.cue === 'lid'), prize = sfx.cues.find((c) => c.cue === 'coins' || c.cue === 'win');
+  rec.ok(`the chest's sounds play on its own frames: the lid as it lifts (frame ${lid ? lid.frame : '?'}, 4 or the first drawn past it), then the prize's ${prize ? prize.cue : '?'} as it rises (${lid && prize ? prize.at - lid.at : '?'} ms later), no early coin chime`,
+    !!lid && lid.frame >= 4 && !!prize && prize.at >= lid.at && (reveal && reveal.kind === 'coins' ? prize.cue === 'coins' : prize.cue === 'win') && sfx.coin === 0, sfx);
   const left = await H.readState(A, (S) => (S.rpg && S.rpg.inventory && S.rpg.inventory.daily_chest) || 0);
   rec.ok('...and the worker took exactly one chest', left === 1, { left });
 
