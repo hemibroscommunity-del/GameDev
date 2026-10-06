@@ -917,6 +917,16 @@ remnant to migrate server-side, not a mode to preserve.
       `anyBuildingDoor` skips its doors, so mayor_1 ("Visit 3 buildings in
       town") hides itself and the Mayor offers mayor_2 -- counted, it was an
       errand nothing could finish, and it stopped his chain (tutorial §9).
+    - Since v2.3.3047-v2.3.3049 THE FIRST QUEST GUIDES YOU
+      (docs/specs/quest-guidance.md): a giver's badge is '❗' offer (gold "!"),
+      '❔' accepted and waiting (a GREY "?", still) or '❓' ready (a GREEN disc
+      with a DRAWN check, no glyph) -- all done wears nothing; the pinned quest
+      card leads with the quest picture, then the painted check
+      (`QUEST_ART.check`) when `questObjectiveDone`; and gearFlash.js lights
+      OPEN on a folded band, then the sword AND shield tiles (`data-gear`),
+      then the bow AND staff after the hand-in, each until its slot is filled,
+      tut_1 accepted to tut_2 handed in (`data-flash`, game.css
+      `bt-gear-flash`) -- `mp-questguide`.
   - Since v2.3.3026 A HIT ON YOU READS LIKE ONE YOU DEAL -- the owner: "damage
     numbers as large as they usually are and with the elemental icon after
     the damage number similar to how the sword has sword icon": spawned over
