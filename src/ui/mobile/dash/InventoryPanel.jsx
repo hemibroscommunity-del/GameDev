@@ -1312,7 +1312,11 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
        "gear up" coach mark points at once the bag is open (QuestCoach.jsx
        takes the first match, and the mark retires the moment the sword
        and shield are on). */
-    <div onPointerUp={handleTap} className={rarityClass} data-tut="coach-gear" data-bag-key={`${kind}-${index}`} style={{
+    /* v2.3.3049: data-gear names what it is (a weapon's type, or 'shield')
+       so the first quest's flashes (gearFlash.js) can light the sword and the
+       shield, then the bow and the staff, and nothing else in the bag */
+    <div onPointerUp={handleTap} className={rarityClass} data-tut="coach-gear" data-bag-key={`${kind}-${index}`}
+      data-gear={kind === 'stashShield' ? 'shield' : kind === 'stashWeapon' ? String((obj && obj.type) || '') : undefined} style={{
       width: '100%', aspectRatio: '1 / 1',
       background: COL.tile,
       border: `${edgeWidth}px solid ${color}`,

@@ -283,7 +283,7 @@ export const monsterStatusMethods = {
       if (typeof o.x !== 'number' || typeof o.y !== 'number') continue;
       const dx = o.x - ps.x, dy = o.y - ps.y, d2 = dx * dx + dy * dy;
       if (d2 > r2) continue;
-      if (zoneId === WHEEL_ZONE && this._wheelSafeAt && this._wheelSafeAt(o.x, o.y)) continue;
+      if (zoneId === WHEEL_ZONE && this._wheelSheltered && this._wheelSheltered(m, oid, o.x, o.y, now)) continue; /* v2.3.3056: unless it provoked m */
       if (this._extractionShielded && this._extractionShielded(oid, now)) continue;
       near.push({ oid, o, d2 });
     }
@@ -391,7 +391,8 @@ export const monsterStatusMethods = {
     for (const [pid, b] of dots) {
       const ps = this.playerState[pid];
       if (!ps || ps.dead || ps.dying || ps.disconnected || ps.z !== b.zone || !(ps.hp > 0)) { dots.delete(pid); continue; }
-      if (b.zone === WHEEL_ZONE && this._wheelSafeAt && this._wheelSafeAt(ps.x, ps.y)) { dots.delete(pid); continue; }
+      /* v2.3.3056: put out on the safe ground unless the player is still fighting from it */
+      if (b.zone === WHEEL_ZONE && this._wheelSheltered && this._wheelSheltered(null, pid, ps.x, ps.y, now)) { dots.delete(pid); continue; }
       if (now < b.next) continue;
       b.next = now + C.EVERY_MS;
       b.left--;

@@ -3,6 +3,7 @@ import { COL, QUALITY_COLOR, QUALITY_LABEL, getState } from './dash/common.js';
 import { thumbFor } from './dash/InventoryPanel.jsx';
 import { armorIconFor } from '@/rendering/gearVariants.js';
 import { DAILY_CHEST_STRIP, DAILY_CHEST_FRAMES } from '@/rendering/chestPreload.js';
+import { BT_AUDIO } from '@/data/index.js';   /* v2.3.3045: the chest's sounds, on its own frames */
 
 /* ═══ v2.3.2820: THE DAILY CHEST'S CLAIM WINDOW ═══
  * Owner, with the chest art: "You can make the daily reward this chest that
@@ -162,6 +163,46 @@ export const ChestReveal = () => {
       later(() => setStage('reveal'), (DAILY_CHEST_FRAMES - 3) * FRAME_MS + 60);
     }, wait);
   }, [bus.prize]);
+
+  /* ═══ v2.3.3045: THE SOUNDS ON THE CHEST'S OWN FRAMES ═══
+     Owner: "Daily chest not synced with noise."  The window had no sound of
+     its own; the only one was the coin chime, played by the loot-credit path
+     the moment the worker answered -- while the chest was still shaking shut,
+     ~0.25-0.55 s before the lid moved and ~1 s before the coins rose (and a
+     fish, gem or armour prize made no sound at all).  So the window plays
+     them, on its frames: a wooden knock and a shimmer on frame 4, the lid
+     lifting in its burst of light; then, as the prize rises out of it, the
+     coins' chime for coins and the win sting for anything else.  All
+     recordings already decoded at the loading gate (SFX_MANIFEST). */
+  /* ONCE per opening, on the first frame AT OR PAST 4: a busy phone runs
+     several of the frame timers before React draws, so frame 4 itself can be
+     skipped (mp-polish caught the knock never playing under load) -- and if
+     the whole opening was skipped, the reveal plays it first. */
+  const lidRef = useRef(false);
+  const playLid = (f) => {
+    if (lidRef.current) return;
+    lidRef.current = true;
+    try {
+      BT_AUDIO.play('wood-chop', { vol: 0.32, rate: 1.18 });
+      BT_AUDIO.play('magic-cast', { vol: 0.22, rate: 1.12 });
+    } catch (e) { /* a sound never breaks the window */ }
+    if (typeof window !== 'undefined' && window.__btProbe) (window.__btChestSfx || (window.__btChestSfx = [])).push({ at: Date.now(), cue: 'lid', frame: f });
+  };
+  useEffect(() => { if (stage === 'offer' || stage === 'shaking') lidRef.current = false; }, [stage]);
+  useEffect(() => {
+    if (stage !== 'opening' || frame < 4) return;
+    playLid(frame);
+  }, [stage, frame]);
+  useEffect(() => {
+    if (stage !== 'reveal') return;
+    playLid(frame);
+    const pz = prizeRef.current;
+    try {
+      if (pz && pz.kind === 'coins') BT_AUDIO.play('coin-pickup', { vol: 0.5 });
+      else BT_AUDIO.play('flip-win', { vol: 0.42 });
+    } catch (e) { /* a sound never breaks the window */ }
+    if (typeof window !== 'undefined' && window.__btProbe) (window.__btChestSfx || (window.__btChestSfx = [])).push({ at: Date.now(), cue: pz && pz.kind === 'coins' ? 'coins' : 'win' });
+  }, [stage]);
 
   /* The shake loop: 0, 1, 2, 1 ... */
   useEffect(() => {

@@ -1334,6 +1334,12 @@ console.log('wheel map');
     JSON.stringify(whereWords(m, 'frost', 2)) === JSON.stringify({ title: 'Frost Ridge', sub: 'the thaw line · Lv 6–10' }) &&
     whereWords(m, 'ember', 16).sub === 'the volcano flanks · Lv 76–80' && whereWords(m, 'town', 0).title === 'Brotown' && /safe/.test(whereWords(m, 'commons', 0).sub),
     [whereWords(m, 'frost', 2), whereWords(m, 'ember', 16)]);
+  /* v2.3.3057: the world map's level bands and Bro Pond */
+  ok(`...each land's level bands: a tick where every tier of five levels begins, from the commons' edge outward (${m.lands[0].ticks.length / 2} a land), the spoke ${m.spokeHalf * 2} px wide; and Bro Pond named`,
+    m.spokeHalf > 1000 && m.lands.every((l) => l.ticks.length === (m.tiers + 1) * 2 && l.ticks.every((v) => v >= 0 && v <= m.worldW)
+      && l.ticks.every((v, i) => i < 2 || i % 2 || Math.hypot(l.ticks[i] - c, l.ticks[i + 1] - c) > Math.hypot(l.ticks[i - 2] - c, l.ticks[i - 1] - c)))
+      && m.places.some((p) => p.kind === 'pond' && /Bro Pond/.test(p.name)),
+    { spokeHalf: m.spokeHalf, ticks: m.lands[0].ticks.slice(0, 6) });
   ok('...small enough to post to the game once (under 40 KB)', JSON.stringify(m).length < 40000, JSON.stringify(m).length);
 }
 
@@ -3245,6 +3251,52 @@ console.log("the buildings' doors (v2.3.3032)");
   ok('...the quests that need a door count the Wheel\'s while it is the world (worldTrial.js sets them with the zones it closes), and the farm\'s gate leads back out to the Wheel',
     /setWheelDoorsOpen\(mode === 'wheel' && wheelObjectsOn\(\)\)/.test(trialSrc2) && /_wheelDoorActions/.test(sysSrc)
     && /_farmOut = \(_leftZone === 'farm_home' && S\._farmBack && wheelIsHome\(\)\)/.test(zoneSrc) && /rememberFarmTrip\(S2\)/.test(townSrc), {});
+}
+
+/* ── v2.3.3062: the gate signposts (src/data/wheelSignposts.js) ──
+   The owner's "Continue building recommended": Brotown's four signposts (their
+   boards blank) say the lands their roads lead to.  The table against the
+   plan's own roads, and the signposts it reads against what placing puts in
+   the town. */
+console.log('the gate signposts (v2.3.3062)');
+{
+  const { placeObjects } = await import('../../public/tools/world/core/placing.js');
+  const { wheelMap } = await import('../../public/tools/world/core/wheelmap.js');
+  const SG = await import('../../src/data/wheelSignposts.js');
+  const sbp = buildBlueprint(PLAN);
+  const placed = placeObjects(PLAN, sbp);
+  const map = wheelMap(PLAN, sbp);
+  const T = map.hub.town;
+  const k = placed.kinds.indexOf('signpost');
+  const posts = [];
+  for (let i = 0; i < placed.n; i++) {
+    if (placed.kind[i] !== k) continue;
+    const dx = placed.x[i] - T.x, dy = placed.y[i] - T.y;
+    posts.push({ d: Math.round(Math.hypot(dx, dy)), gate: SG.gateOf(dx, dy) });
+  }
+  const town = posts.filter((p) => p.d <= SG.SIGNPOST_TOWN_R);
+  ok(`the town has four signposts, one at each gate (${town.map((p) => `${p.gate} ${p.d} px`).join(', ')}), and no other stands near SIGNPOST_TOWN_R`,
+    town.length === 4 && new Set(town.map((p) => p.gate)).size === 4 && posts.every((p) => p.d <= SG.SIGNPOST_TOWN_R - 300 || p.d > SG.SIGNPOST_TOWN_R + 300), posts);
+  const byLand = Object.fromEntries(map.lands.map((l) => [l.id, l]));
+  const cardinal = (l) => !!l && (l.ux === 0 || l.uy === 0);
+  const all = Object.values(SG.WHEEL_GATE_ROADS).flat();
+  ok('every land is named once, its own compass road\'s land first on that gate\'s signpost',
+    all.length === 8 && new Set(all).size === 8 && all.every((l) => !!byLand[l])
+      && Object.entries(SG.WHEEL_GATE_ROADS).every(([g, [c, d]]) => cardinal(byLand[c]) && SG.gateOf(byLand[c].ux, byLand[c].uy) === g && !cardinal(byLand[d])), SG.WHEEL_GATE_ROADS);
+  /* the second: the land whose road begins ON that compass road (plan.js: the
+     diagonal roads fork off the next compass road clockwise) */
+  const roads = (PLAN.roads || []).filter((r) => r.to);
+  const forkOn = (d) => {
+    const r = roads.find((x) => x.to === d);
+    if (!r) return null;
+    const [fx, fy] = r.pts[0];
+    return map.lands.filter(cardinal).find((c) => Math.abs(fx * c.uy - fy * c.ux) < 1e-6 && fx * c.ux + fy * c.uy > 0) || null;
+  };
+  const forks = Object.values(SG.WHEEL_GATE_ROADS).map(([c, d]) => `${d} off ${(forkOn(d) || {}).id}`);
+  ok(`...and the second, the land whose road forks off it (${forks.join(', ')})`,
+    Object.values(SG.WHEEL_GATE_ROADS).every(([c, d]) => { const f = forkOn(d); return !!f && f.id === c; }), forks);
+  ok('the gates are told apart by the larger offset from the town\'s middle',
+    SG.gateOf(0, -10) === 'north' && SG.gateOf(10, 2) === 'east' && SG.gateOf(-3, 9) === 'south' && SG.gateOf(-9, 3) === 'west');
 }
 
 /* ── v2.3.3064: the lands' music (src/game/wheelMusic.js) ──

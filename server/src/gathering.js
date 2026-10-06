@@ -112,6 +112,55 @@ export const HONEST_CYCLE_MIN_MS = HONEST_CYCLE.LEAD_MS + HONEST_CYCLE.SETTLE_MS
    honest beats 60000 / HONEST_CYCLE_MIN_MS = 39.7. */
 export const HARVEST_PERFECT_PER_MIN = 45;
 
+/* ═══ v2.3.3038: A RESOURCE'S SKILL LEVEL IS A REAL REQUIREMENT ═══
+ *
+ * Owner, 2026-10-05: "I'll change tier level requirements in levels of 5.
+ * So with the exception of copper and iron where you can mine both, black
+ * steel now requires a mining level of at least 5.  Fishing clownfish
+ * required fishing level 5.  I haven't thought the rest out yet, game is
+ * still a demo."
+ *
+ * Until now a node's tier (1 / 6 / 11) was only a SPEED knob: more HP to
+ * chip through, a longer legacy timer -- anyone with the tool could harvest
+ * anything (the client's own check had been switched off: BroTown.jsx's
+ * `if (false)` gathering gate).  This table is the requirement, keyed by the
+ * node's type and its tier, and it is deliberately NOT the tier: the tier
+ * names the item, its art, its HP, its XP and the baked places, none of
+ * which move.  The owner named three cells (copper 1, iron 1, black steel 5;
+ * clownfish 5); the rest follow the same "levels of 5" rule -- minnow, pine 1,
+ * softwood 5, trout and hardwood 10 -- and are the owner's to change here.
+ * A tier missing from a row needs nothing (level 1).
+ *
+ * ENFORCED HERE, on both halves of a harvest: extraction_start (no plan for a
+ * player below it) and node_strike (the paying call: refused BEFORE the node
+ * is spent, recorded as 'skill-too-low' for the admin view).  The client
+ * says why before it ever sends ("Need Mining Lv 5", lifeSkillRewards.js
+ * startExtraction) and draws the level over the node, so honest play never
+ * reaches these refusals; they are for a stale tab or a modified client.
+ * Client mirror: src/data/lifeSkills.js GATHER_REQ_LVL, pinned by
+ * mirror-audit.test.mjs.
+ *
+ * KILL SWITCH: `gatherreq: false` in liveflags (lower case, TRAPS §117)
+ * un-advertises caps.gatherreq -- the client stops refusing -- and lifts the
+ * worker's gate, so every resource is harvestable at level 1 again with no
+ * deploy. */
+export const GATHER_REQ_LVL = {
+  oreVein:  { 1: 1, 6: 1, 11: 5 },
+  fishSpot: { 1: 1, 6: 5, 11: 10 },
+  tree:     { 1: 1, 6: 5, 11: 10 },
+};
+
+/** v2.3.3038: the skill level a node of this type and tier asks for.  Own
+ *  properties only, so a forged type ('__proto__', 'constructor') reads as
+ *  "nothing required" rather than walking the prototype (TRAPS #6). */
+export function gatherReqLvl(nodeType, tierLvl) {
+  const has = Object.prototype.hasOwnProperty;
+  const row = has.call(GATHER_REQ_LVL, nodeType) ? GATHER_REQ_LVL[nodeType] : null;
+  const t = Math.max(1, Math.floor(Number(tierLvl) || 1));
+  const need = (row && has.call(row, t)) ? row[t] : 1;
+  return Math.max(1, Math.floor(Number(need) || 1));
+}
+
 export const gatheringMethods = {
   // ═══ Gather nodes (trees / fish spots / ore veins) ═══
   //
@@ -681,6 +730,26 @@ export const gatheringMethods = {
     return !!(ps && ps.inventory && (ps.inventory[key] || 0) > 0);
   },
 
+  /** v2.3.3038: the kill switch (GATHER_REQ_LVL above) -- `gatherreq: false`
+   *  in the liveflags key lifts the level requirement. */
+  _gatherReqOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'gatherreq') && !f.gatherreq);
+  },
+
+  /** v2.3.3038: is this player's level in the NODE's own skill enough for it?
+   *  The skill comes from the node's type, never from what the message claims,
+   *  so a mining request can't be dressed up as a level-30 fishing one. */
+  _gatherLevelOk(ps, n) {
+    if (!n || this._gatherReqOff()) return true;
+    const need = gatherReqLvl(n.nodeType, n.tierLvl);
+    if (need <= 1) return true;
+    const skill = this._harvestSkillName(n.nodeType);
+    const ls = ps && ps.lifeSkills && Object.prototype.hasOwnProperty.call(ps.lifeSkills, skill) ? ps.lifeSkills[skill] : null;
+    const lvl = (ls && Number(ls.level)) || 1;
+    return lvl >= need;
+  },
+
   _handleExtractionStart(session, payload) {
     if (!session || !session.id) return;
     const { nodeId, zone, skill, hitSeq } = payload || {};
@@ -701,6 +770,10 @@ export const gatheringMethods = {
        tool was spent or a modified client, and neither deserves a reply that
        tells it what it is missing. */
     if (!this._hasGatherTool(ps, skill)) return;
+    /* v2.3.3038: nor for a player below the node's level (GATHER_REQ_LVL) --
+       also silent: the client refuses with "Need Mining Lv 5" before sending,
+       so only a stale tab or a modified client arrives here. */
+    if (!this._gatherLevelOk(ps, n)) return;
     const skillLevel = (ps.lifeSkills && ps.lifeSkills[skill] && ps.lifeSkills[skill].level) || 0;
     const nodeTier = n.tierLvl || 1;
     const rec = {
@@ -922,6 +995,15 @@ export const gatheringMethods = {
        harvest.  Gate both or the gate is decorative. */
     if (!this._hasGatherTool(ps, this._harvestSkillName(n.nodeType))) {
       this._strikeRefused(session, 'no-tool', { skill: this._harvestSkillName(n.nodeType) });
+      return;
+    }
+    /* v2.3.3038: and the level gate on the paying path too, for the same
+       reason as the tool's -- a handcrafted node_strike skips the start.
+       Before the node is spent, so a refused strike costs the world nothing. */
+    if (!this._gatherLevelOk(ps, n)) {
+      const _sk = this._harvestSkillName(n.nodeType);
+      this._strikeRefused(session, 'skill-too-low', { skill: _sk, need: gatherReqLvl(n.nodeType, n.tierLvl),
+        have: (ps.lifeSkills && ps.lifeSkills[_sk] && ps.lifeSkills[_sk].level) || 1 });
       return;
     }
     const dx = ps.x - n.x;
