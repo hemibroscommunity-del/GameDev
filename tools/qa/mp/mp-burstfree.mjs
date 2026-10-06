@@ -1,4 +1,4 @@
-/* ═══ A SNOWBALL'S BURST, ITS PICTURE HANDED BACK WHILE IT PLAYS (v2.3.3067) ═══
+/* ═══ A SNOWBALL'S BURST, ITS PICTURE HANDED BACK WHILE IT PLAYS (v2.3.3071) ═══
  *
  * The snowball burst's frames are the frost's own (freeFrostImpactTex hands
  * them back on leaving the frost zone, and the Wheel's frost land:

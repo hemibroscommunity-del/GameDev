@@ -1510,7 +1510,7 @@ export function ensureSnowballBurstTex() {
 /* v2.3.2844: ONE sheet now -- the snowman's ice-burst plume is retired (see
    the tombstone where IMPACT_TEX was), so only the thrown ball's burst is left
    to hand back.  The name stays: it is the frost zone's exit hook. */
-/* v2.3.3067 QA (mp-burstfree): load and hand back the frost impact art on
+/* v2.3.3071 QA (mp-burstfree): load and hand back the frost impact art on
    demand, to free it in the middle of a burst as leaving the frost land can */
 if (typeof window !== 'undefined') {
   window.__btFrostImpactTex = { ensure: () => ensureSnowballBurstTex(), free: () => freeFrostImpactTex() };
@@ -9987,7 +9987,7 @@ export class EffectsRenderer {
     }
   }
 
-  /* v2.3.3067 QA probe (house style, see arrowBlastProbe): the snowball
+  /* v2.3.3071 QA probe (house style, see arrowBlastProbe): the snowball
      bursts playing, and whether their frames are loaded */
   snowballBurstProbe() {
     const l = this._snowballBursts || [];
@@ -10025,7 +10025,7 @@ export class EffectsRenderer {
     }
     const list = this._snowballBursts;
     if (!list || !list.length) return;
-    /* ═══ v2.3.3067: ITS PICTURE HANDED BACK WHILE IT PLAYED ═══
+    /* ═══ v2.3.3071: ITS PICTURE HANDED BACK WHILE IT PLAYED ═══
        freeFrostImpactTex (leaving the frost zone, or the Wheel's frost land:
        wheelMonsterArt) destroys these frames whether or not a burst is still
        on screen with one -- and the next frame drew a destroyed texture:
