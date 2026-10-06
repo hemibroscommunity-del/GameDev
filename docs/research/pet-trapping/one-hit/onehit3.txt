@@ -1,0 +1,33 @@
+monster max HP (fodder / brute / snowman): Lv2 59/71/69; Lv8 173/189/186; Lv15 330/353/348; Lv20 526/556/549; Lv30 1344/1394/1383; Lv40 2137/2207/2192
+
+greatsword (typical gear, ALL lane points in Power): mean BASIC hit / mean SPECIAL, as % of a FODDER's max HP
+skill L (gear, tierMult) | vs Lv2 | vs Lv8 | vs Lv15 | vs Lv20 | vs Lv30 | vs Lv40
+L1 (copper 1.12, pts 0, base hit 14) | 23% / 69% | 8% / 24% | 4% / 12% | 3% / 8% | 1% / 3% | 1% / 2%
+L5 (copper 1.12, pts 10, base hit 33) | 56% / 168% | 16% / 49% | 6% / 19% | 4% / 12% | 2% / 5% | 1% / 3%
+L10 (iron 1.25, pts 20, base hit 61) | 103% / 309% | 35% / 105% | 11% / 32% | 7% / 20% | 3% / 8% | 2% / 5%
+L15 (steel 1.4, pts 30, base hit 97) | 165% / 496% | 56% / 169% | 30% / 89% | 10% / 31% | 4% / 12% | 3% / 8%
+L20 (titanium 1.56, pts 40, base hit 144) | 245% / 734% | 83% / 250% | 44% / 131% | 27% / 82% | 6% / 17% | 4% / 11%
+L30 (mythril 1.94, pts 60, base hit 282) | 477% / 1432% | 163% / 489% | 85% / 256% | 54% / 161% | 21% / 63% | 7% / 21%
+L40 (abyssal 2.4, pts 80, base hit 500) | 847% / 2540% | 289% / 866% | 151% / 454% | 95% / 285% | 37% / 112% | 23% / 70%
+
+bow (typical gear, ALL lane points in Power): mean BASIC hit / mean SPECIAL, as % of a FODDER's max HP
+skill L (gear, tierMult) | vs Lv2 | vs Lv8 | vs Lv15 | vs Lv20 | vs Lv30 | vs Lv40
+L1 (pine 1, pts 0, base hit 10) | 17% / 102% | 6% / 35% | 3% / 18% | 2% / 11% | 1% / 4% | 0% / 3%
+L5 (softwood 1.12, pts 10, base hit 27) | 45% / 272% | 13% / 80% | 5% / 31% | 3% / 19% | 1% / 8% | 1% / 5%
+L10 (hardwood 1.25, pts 20, base hit 47) | 80% / 481% | 27% / 164% | 8% / 49% | 5% / 31% | 2% / 12% | 1% / 8%
+L15 (cedar 1.4, pts 30, base hit 74) | 126% / 754% | 43% / 257% | 22% / 135% | 8% / 47% | 3% / 18% | 2% / 11%
+L20 (maple 1.56, pts 40, base hit 108) | 183% / 1099% | 62% / 375% | 33% / 196% | 21% / 123% | 4% / 26% | 3% / 16%
+L30 (crystalwood 1.94, pts 60, base hit 207) | 351% / 2107% | 120% / 719% | 63% / 377% | 39% / 236% | 15% / 93% | 5% / 31%
+L40 (crystalwood 1.94, pts 80, base hit 264) | 448% / 2688% | 153% / 917% | 80% / 481% | 50% / 302% | 20% / 118% | 12% / 74%
+
+staff (typical gear, ALL lane points in Power): mean BASIC hit / mean SPECIAL, as % of a FODDER's max HP
+skill L (gear, tierMult) | vs Lv2 | vs Lv8 | vs Lv15 | vs Lv20 | vs Lv30 | vs Lv40
+L1 (pine 1, pts 0, base hit 16) | 28% / 217% | 9% / 74% | 5% / 39% | 3% / 24% | 1% / 10% | 1% / 6%
+L5 (softwood 1.12, pts 10, base hit 45) | 77% / 601% | 23% / 176% | 9% / 68% | 5% / 42% | 2% / 17% | 1% / 10%
+L10 (hardwood 1.25, pts 20, base hit 82) | 139% / 1089% | 48% / 371% | 14% / 112% | 9% / 70% | 4% / 27% | 2% / 17%
+L15 (cedar 1.4, pts 30, base hit 130) | 221% / 1727% | 75% / 589% | 40% / 309% | 14% / 107% | 5% / 42% | 3% / 26%
+L20 (maple 1.56, pts 40, base hit 192) | 325% / 2539% | 111% / 866% | 58% / 454% | 36% / 285% | 8% / 60% | 5% / 38%
+L30 (crystalwood 1.94, pts 60, base hit 371) | 629% / 4918% | 215% / 1677% | 113% / 879% | 71% / 552% | 28% / 216% | 9% / 72%
+L40 (crystalwood 1.94, pts 80, base hit 476) | 807% / 6309% | 275% / 2152% | 144% / 1128% | 91% / 708% | 35% / 277% | 22% / 174%
+
+fresh character, starter kit, no points: greatsword 13.6 (special 40.9), bow 10.0 (volley 60.1), staff 16.4 (big bolt 128.0)
