@@ -7,7 +7,7 @@ import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2770 */
 import { SHADE } from './formShade.js';
 import { Application, Cache, Container, TextureSource } from 'pixi.js';
 
-/* ═══ v2.3.3065: A DESTROYED TEXTURE LETS GO OF ITS PIXELS ═══
+/* ═══ v2.3.3069: A DESTROYED TEXTURE LETS GO OF ITS PIXELS ═══
    TextureSource.destroy() nulls its `resource` -- but Pixi also keeps the
    constructor's whole `options` object (this.options = options), resource and
    all, and nothing ever clears it.  That only matters if something still points

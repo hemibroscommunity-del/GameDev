@@ -1,4 +1,4 @@
-/* ═══ A DESTROYED TEXTURE LETS GO OF ITS PIXELS (v2.3.3065) ═══
+/* ═══ A DESTROYED TEXTURE LETS GO OF ITS PIXELS (v2.3.3069) ═══
  *
  * Pixi keeps destroyed texture sources reachable -- a pooled Batch remembers
  * the up to 32 sources of its last frame, a sprite drawn and then hidden keeps
