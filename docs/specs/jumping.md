@@ -136,6 +136,35 @@ non-privileged event, and an old client ignores it: it sees you glide a step.
   - no page errors.
   - Pictures: `jump-{layout,air,fence-stopped,fence-over,fence-over-landed}.png`.
 
+## v2.3.3073: a tap on the right stick jumps, and the button is put away
+
+The owner: "Do you think the right virtual joystick tap can be the jump
+button? I think this would work well instead of the smaller dedicated jump
+button", then "Try moving jump as tap on right joystick but prioritize other
+contextual uses for the tap instead of jump first if any apply".
+
+- A tap on the right stick (its zone, `[data-joyzone="R"]`) still does
+  everything it did first. In order: a flick is the special; a resource under
+  the thumb starts its harvest; a character talks; your own bro opens chat;
+  then the tap is forwarded to the world, where a monster locks on and
+  another player opens his card.
+- Only a tap that reaches the world's last line, "tap on empty space", can
+  jump (BroTown's canvas onClick counts it, `S._tapEmptySeq`).
+- And not then if the right side had a job when the tap began or ended
+  (`rightTapBusy` in `src/game/tapJump.js`): a harvest under way, the disc
+  pressable (a monster in the perimeter, a resource in reach), or a lock,
+  which an empty tap lets go of instead.
+- The jump is decided on the release (a tap, a drag and a flick are only told
+  apart there), so it costs the tap's own length, under 200 ms.
+- The old button is drawn only with `?jumpbtn` in the address
+  (`jumpButtonWanted`); `__btJumpBtn()` says `button` and counts `tapJumps`.
+  X still jumps on a keyboard.
+- mp-jump, mp-btnlayout, mp-btnskin and mp-firefight run with `?jumpbtn`.
+  Tests: test-world-core "the tap that jumps", `mp-tapjump` (an empty tap
+  jumps; a lock, a busy disc, a drag and a tap on yourself don't).
+- mp-jump's "jumping the fence" check fails on main too on this test box: the
+  page draws so few frames that the bro barely moves in the air.
+
 ## Not in this round
 
 - **Jumping over attacks.** A jump doesn't dodge anything: the worker decides

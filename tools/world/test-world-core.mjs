@@ -2914,6 +2914,34 @@ console.log('jumping (v2.3.3017)');
     pj.dur === 900 && pj.peak === J.JUMP_PEAK && pk.dur === J.JUMP_MS && pk.peak === 120 && pg.dur === 400 && pg.peak === 30 && pg.t0 === 7);
 }
 
+/* ── v2.3.3073: a tap on the right stick jumps, last (src/game/tapJump.js) ──
+   Owner: "Try moving jump as tap on right joystick but prioritize other
+   contextual uses for the tap instead of jump first if any apply." */
+console.log('the tap that jumps (v2.3.3073)');
+{
+  const fs = await import('node:fs');
+  const TJ = await import('../../src/game/tapJump.js');
+  const now = 100000;
+  ok('a tap with nothing to do on the right side may jump', TJ.rightTapBusy({}, now) === false);
+  ok('...not while a harvest owns the side, the disc has a job, or a lock waits for an empty tap to let it go',
+    TJ.rightTapBusy({ _extraction: {} }, now) && TJ.rightTapBusy({ _rBtnPressUntil: now + 1 }, now)
+      && TJ.rightTapBusy({ lockedTarget: { type: 'monster' } }, now) && !TJ.rightTapBusy({ _rBtnPressUntil: now }, now)
+      && TJ.rightTapBusy(null, now));
+  ok('the old button only with ?jumpbtn', TJ.jumpButtonWanted('?jumpbtn') && TJ.jumpButtonWanted('?a=1&jumpbtn=1')
+    && !TJ.jumpButtonWanted('') && !TJ.jumpButtonWanted('?jumpbtnx'));
+  const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+  const rE = bt.slice(bt.indexOf('var rE = function rE(e)'), bt.indexOf('THE BUTTON.  Press = engage'));
+  const at = (re) => { const m = re.exec(rE); return m ? m.index : -1; };
+  const flick = at(/doSpecialAttack\(\); return;/), res = at(/tapResourceAtClient\(t\.clientX/), npc = at(/tapNpcAtClient\(t\.clientX/),
+    self = at(/openSelfChat\(\)/), fwd = at(/dispatchEvent\(new MouseEvent\('click'/), jump = at(/triggerJump\(_tjS\)/);
+  ok(`the right stick's release tries the flick, a resource, a character, yourself and the forwarded tap BEFORE the jump (${[flick, res, npc, self, fwd, jump].join(' < ')})`,
+    [flick, res, npc, self, fwd, jump].every((v, k, a) => v > 0 && (k === 0 || v > a[k - 1])));
+  ok('...the jump only when the forwarded tap reached "empty space", read before it could drop the lock',
+    /rightTapBusy\(_tjS, endT\)[\s\S]*_tjSeq = [\s\S]*dispatchEvent[\s\S]*_tapEmptySeq \|\| 0\) > _tjSeq/.test(rE)
+      && /S\._tapEmptySeq = \(S\._tapEmptySeq \|\| 0\) \+ 1;\s*\/\* Tap on empty space = unlock \*\/\s*S\.lockedTarget = null;/.test(bt)
+      && /rts\.busy = rightTapBusy\(/.test(bt));
+}
+
 /* ── v2.3.3017: which land a Wheel point is on (src/data/zones.js wheelLandAt) ──
    Owner, 2026-10-04: "I was fighting fire goblins and my screen went black."
    The monsters' looks load for your own land as you walk toward them, and

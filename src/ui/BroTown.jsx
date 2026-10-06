@@ -361,7 +361,8 @@ import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2
 import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
-import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (the button under ATTACK, X on a keyboard) */
+import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3073: a tap on the right stick) */
+import { rightTapBusy } from '@/game/tapJump.js';   /* v2.3.3073: a tap jumps only when nothing else wants it */
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -8827,7 +8828,7 @@ export var BroTown = function BroTown(_ref0) {
      (taken back off it by the owner at v2.3.2542).  The right control's pair of
      taps is deliberately unbound -- see the note at handleRBtnPress. */
   var lJoyPreviewRef = useRef(null);
-  var rTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
+  var rTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false, busy: false /* v2.3.3073 */ });
   var lTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
   /* v2.3.2242: rShieldGesture / rPreviewTimer / rJoyPreviewRef / shieldJoyRef /
      shieldTouchId / shieldJoyActive are gone with the double-tap-hold gesture.
@@ -9688,6 +9689,10 @@ export var BroTown = function BroTown(_ref0) {
       rts.startX = t.clientX;
       rts.startY = t.clientY;
       rts.moved = false;
+      /* v2.3.3073: a tap that BEGAN with a job on this side (a monster in the
+         perimeter, a resource in reach, a lock) is never a jump, even if the
+         job is gone by the release (game/tapJump.js). */
+      rts.busy = rightTapBusy(stateRef.current, rts.startAt);
       /* Same press the disc makes -- auto-attack on, and the automatic target
          promoted to a deliberate one (v2.3.2252's "first tap commits").  For a
          bow or staff the promotion is a no-op by construction: autoAcquires is
@@ -9811,6 +9816,12 @@ export var BroTown = function BroTown(_ref0) {
          EVERY short tap forwards again, which is what it did before v2.3.2269
          and is what tap-to-lock wants. */
       if (!rts3.moved && (endT - rts3.startAt) < TAP_MAX_DURATION_MS) {
+        /* v2.3.3073: whether a jump may have this tap (game/tapJump.js) is
+           read BEFORE the forward -- the forward's empty-space branch drops
+           the lock, and a tap that let go of a lock has had its use. */
+        var _tjS = stateRef.current;
+        var _tjFree = !!_tjS && !rts3.busy && !rightTapBusy(_tjS, endT);
+        var _tjSeq = _tjS ? (_tjS._tapEmptySeq || 0) : 0;
         /* v2.3.816: a tap on the combat side forwards a synthetic click to
            the canvas so the existing tap-to-lock-on-target logic (monsters /
            NPCs / players / empty-space unlock) keeps working now that the
@@ -9820,6 +9831,18 @@ export var BroTown = function BroTown(_ref0) {
             canvasRef.current.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: t.clientX, clientY: t.clientY }));
           }
         } catch (err) {}
+        /* ═══ v2.3.3073: ...AND A TAP NOTHING ELSE WANTED IS A JUMP ═══
+           Owner: "Try moving jump as tap on right joystick but prioritize
+           other contextual uses for the tap instead of jump first if any
+           apply."  The click above runs synchronously and bumps _tapEmptySeq
+           only on its last line, "tap on empty space" -- so a monster, a
+           character, another player or a resource under the thumb has
+           already taken the tap, as have the harvest / NPC / self-chat
+           branches above, which return before this.  triggerJump keeps its
+           own refusals (swimming, rolling, in the air...). */
+        if (_tjFree && _tjS && (_tjS._tapEmptySeq || 0) > _tjSeq) {
+          try { if (triggerJump(_tjS)) _tjS._tapJumps = (_tjS._tapJumps || 0) + 1; } catch (err) { /* a jump is never worth a broken tap */ }
+        }
       }
     };
 
@@ -11497,6 +11520,9 @@ export var BroTown = function BroTown(_ref0) {
          click-to-harvest there alongside the E key -- welcome, and the reach
          and tool gates are the same ones the button uses. */
       if (_tapHarvestAtCss(cssX, cssY)) return;
+      /* v2.3.3073: counted, so the right stick's release knows its forwarded
+         tap reached here and nothing above took it -- a jump's cue (rE) */
+      S._tapEmptySeq = (S._tapEmptySeq || 0) + 1;
       /* Tap on empty space = unlock */
       S.lockedTarget = null;
     }
