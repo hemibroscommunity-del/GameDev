@@ -144,6 +144,10 @@ what they show changes, the black-screen check reading a 32 x 18 thumbnail;
 then Pixi render groups for the world and the sheen without mid-frame target
 switches.
 
+| Item | Measured | Status |
+|---|---|---|
+| The black-screen watchdog's 32 x 18 sample shrunk on the GPU and read back without waiting (it copied the whole canvas out, 11 MB on a 3x phone, and waited for the frame, every 5 s) | ~10% of the main thread in a CPU profile (phone-sized page, CPU x4), walking or fighting -> not in the profile; 2.5 ms against 25 ms + the frame's wait (`mp-wdsample`) | #808, v2.3.3064 |
+
 ## How we know it worked
 
 Per PR: the numbers above, before and after, and its scenario.  In the field:
