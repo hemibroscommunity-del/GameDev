@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  buildingrooms: () => import('./mp-buildingrooms.mjs'), /* v2.3.3109: the inside of each building on a phone -- standing at a door decodes its room (and none other), the fifteen windows each open with their own room at the top of the card (1152 x 768 loaded, flush, 3:2, the forge's a 4:1 band, the panel starting where it ends), the Auction House's clerk drawn into his, the Land Office's dialog with its room and a reachable Travel button, no room over the Market, a shorter phone holding it to 30vh, a sideways one dropping it, a failed picture leaving the window as it was, and walking away letting it go */
   tapact: () => import('./mp-tapact.mjs'), /* v2.3.3105: the right stick shows what a tap does and the tap does it -- a DOOR at the bank's steps (the bank opens), a speech BUBBLE beside Ace (his coin flip opens), the JUMP arrow with nothing about (a jump) */
   tapprop: () => import('./mp-tapprop.mjs'), /* v2.3.3105: beside a prop a tap on the right stick jumps (zone, disc, or on the prop) and a hold toward it swings and lands blows; the stick wears the JUMP picture while a tap would jump, the weapon under a lock */
   tapjump: () => import('./mp-tapjump.mjs'), /* v2.3.3105: a tap on the right stick jumps when nothing else wants it -- the old button gone; an empty tap jumps; a lock lets go, a busy disc, a drag and a tap on yourself do not jump */

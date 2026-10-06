@@ -1443,7 +1443,42 @@ remnant to migrate server-side, not a mode to preserve.
       strips cropped, single pictures for the rest, behind the Wheel's loading
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
-      docs/specs/wheel-doors.md.)
+      docs/specs/wheel-doors.md.
+  - Since v2.3.3109 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
+    pictures of them (made from docs/ART-WISHLIST.md's prompts) and said "Ok
+    wire these up":
+    - the top of every building's window is its room, edge to edge
+      (`src/ui/panels/buildings/BuildingRoom.jsx`, drawn once by BroTown.jsx
+      first inside the card, so no panel is touched): `BUILDING_ROOMS` in
+      src/data/buildingRooms.js maps the `buildingPanel` a door opens to its
+      plot's picture, `public/world/interiors/<plot id>.webp` (1152 x 768
+      lossy WebP, ~300 KB, from `tools/ui/make-room-pictures.py`); fifteen
+      windows show one, the Hotel's (shut) and the Town Hall's wait in
+      `SPARE_ROOMS` for a window of their own;
+    - it bleeds into the card's load-bearing 20 px padding the way every panel
+      does (-20 on its top and sides, +20 under it to cancel the panel's own
+      -20), so the panel starts where the picture ends; held to 30vh on a short
+      phone (the floor is cut), gone on a sideways one, a slim 4:1 band for the
+      forge (its card sits low so the smith shows above it); the Land Office's
+      window was a separate z-30 dialog UNDER an empty card (the picture would
+      have covered its Travel button) and is a panel in the card now
+      (`LandOfficePanel.jsx`);
+    - a tall window's ✕ lay under the world map's invisible z-45 "open" button
+      (WorldMapOverlay.jsx, fixed in the body over the minimap), so a finger on
+      it opened the map and left the window up -- already so for the
+      Marketplace and the Gambling Den; any `.bt-inspect` up now lets taps
+      through it (game.css, `body:has(.bt-inspect) [data-world-map-open]`);
+    - NONE ON THE LOADING GATE (the preloading law against the memory
+      budget): the door you stand at decodes its room, a cap of one
+      (game/buildingRooms.js `warmRoom`), and the first door starts the others'
+      bytes coming in idle moments, never decoded or held; `public/_headers`
+      caches them a year, asked for at `?v=` `ROOMS_V`;
+    - the Auction House's painting is replaced and its clerk kept, moved into
+      the shared component (`ROOM_KEEPERS`: his strip, painted box and three
+      fractions -- another room's keeper is a row, none yet); the old painting,
+      its gate preload and its measure tool are gone;
+    - test-world-core "the buildings' insides", `mp-buildingrooms`:
+      docs/specs/building-rooms.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

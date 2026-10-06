@@ -56,7 +56,6 @@ import { loadFootprints, freeFootprints } from './footprintSprites.js'; /* v2.3.
 import { loadNpcSprites, loadZoneDecor, freeZoneDecor, loadTownScenery } from './npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2651: + per-zone decor props */
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
-import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
 import { preloadQuestArt } from './questArtPreload.js'; /* v2.3.3030: the quest windows' painted art (the owner's sheets) */
@@ -404,7 +403,8 @@ export async function preloadWorldAnimations() {
        different query string, which is a different cache key).
        See statDemoPreload.js — it names both. */
     statDemo: preloadStatDemo(),
-    auctionInterior: preloadAuctionInterior(),
+    /* v2.3.3109: the auction house's room and clerk left the gate -- they load at the door
+       (game/buildingRooms.js), like the other sixteen rooms, and are let go after */
     /* ═══ v2.3.2760: the harvest cue's mini tools ═══
        DOM images on the right button (the bag's pickaxe / axe / rod icons and
        the pan strip), GLOBAL: every gathering zone and the town campfire use

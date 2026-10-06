@@ -19,3 +19,11 @@
 # every time (public/tools/world/core/ground-worker.js).
 /world/ground/*
   Cache-Control: public, max-age=31536000, immutable
+
+# v2.3.3109: the pictures of the inside of each building (public/world/
+# interiors/, ~300 KB each).  Asked for at ?v=<ROOMS_V> (src/data/
+# buildingRooms.js), so replacing one is a new address and a year of immutable
+# is safe; the game fetches the other rooms' bytes in idle moments after the
+# first door (src/game/buildingRooms.js), and a second visit costs nothing.
+/world/interiors/*
+  Cache-Control: public, max-age=31536000, immutable
