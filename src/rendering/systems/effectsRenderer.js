@@ -501,7 +501,7 @@ import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_IN
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
 import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar over a spot's school */ } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
-import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP } from '../nodeLabels.js';   /* v2.3.3040: the tool, the name and the level over a resource */
+import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNameNode } from '../nodeLabels.js';   /* v2.3.3040: the tool, the name and the level over a resource; v2.3.3059: words for the nearest only */
 import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
@@ -4896,8 +4896,14 @@ export class EffectsRenderer {
       const rise = (typeof dmg.rise === 'number') ? dmg.rise : 40 * (dmg._k || 1);
       text.y = dmg.y + (dmg._stackOffset || 0) - (dmg._lift || 0) - age * rise;   /* v2.3.3033: lifted by the bigger glyph's extra half height */
       /* Fade over 80% of ttl so longer-lived popups (kill messages with
-         ttl=2.5) actually stay visible, not invisible most of their life. */
-      text.alpha = Math.max(0, 1 - age / (ttl * 0.8));
+         ttl=2.5) actually stay visible, not invisible most of their life.
+         v2.3.3059: `hold` (s) -- full strength that long, then the fade over
+         what is left: a message that must read through a whole action (a
+         locked resource's "Requires Fishing Lv 5", lifeSkillRewards.js) was
+         half gone by its middle on the linear fade. */
+      text.alpha = (typeof dmg.hold === 'number' && dmg.hold > 0 && ttl > dmg.hold)
+        ? (age < dmg.hold ? 1 : Math.max(0, 1 - (age - dmg.hold) / (ttl - dmg.hold)))
+        : Math.max(0, 1 - age / (ttl * 0.8));
       /* Spawn pop: scale 1.6 -> 1.0 over 120ms (ease-out) so the number
          visibly punches in on the first hit, then settles. Crit wiggle
          layers on top after the pop has decayed. */
@@ -9522,6 +9528,11 @@ export class EffectsRenderer {
     /* Player position for proximity-tooltip distance test. */
     const px = S.player ? S.player.x : 0;
     const py = S.player ? S.player.y : 0;
+    /* v2.3.3059: the one resource whose label says its name and level -- the
+       nearest drawn to you (nodeLabels.js nodeNameNode); the rest show their
+       tool alone (owner: "I just don't want the screen to be too busy with
+       text") */
+    const _nameNode = nodeNameNode(S, nodes);
 
     for (const node of nodes) {
       if (!node.alive) {
@@ -9732,7 +9743,7 @@ export class EffectsRenderer {
          tier, not a level.  Hidden while the green harvest bar is up over
          this node -- yours, or a peer working it (the bar's place, and the
          miner seated over the rock). */
-      updateNodeLabel(this.nodeUiLayer, node, S, this._nodeLabelAt(S, node));
+      updateNodeLabel(this.nodeUiLayer, node, S, this._nodeLabelAt(S, node), node === _nameNode);
     }
 
     /* v2.3.3012: the Wheel's fish -- and, anywhere else, none (an empty list

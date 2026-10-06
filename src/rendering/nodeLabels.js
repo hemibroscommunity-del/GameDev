@@ -32,6 +32,22 @@
  * PRELOADED (CLAUDE.md's law): preloadNodeLabelIcons() is registered in
  * preloadWorldAnimations -- a resource is on screen the moment the intro
  * lifts.  A failed icon never fails the gate: that label is drawn without it.
+ *
+ * ═══ v2.3.3059: AN ICON EACH, WORDS FOR ONE, GREY WHEN NOT YET ═══
+ * Owner, 2026-10-06: "I also think a grayed out icon above whatever the
+ * resource is (like pickaxe for lvl 5 blacksteel ore) would be a good cue that
+ * it's harvestable but you're not high enough level yet.  I like the idea of
+ * listing the name of the resource and what level it requires next to it.  I
+ * just don't want the screen to be too busy with text though."  So:
+ *   - every resource drawn carries its tool's picture alone, on a small dark
+ *     disc (`full` false) -- in colour when your level works it, GREY (the
+ *     same picture, greyed once at load: NODE_LABEL_ICONS_GRAY) when it asks
+ *     more than you have;
+ *   - ONE resource says its name and level beside that picture: the nearest to
+ *     you within NODE_NAME_R (nodeNameNode) -- the one you are walking up to;
+ *   - the level still red while yours is below it.
+ * No filter (a greyed copy, not a ColorMatrixFilter per sprite), and nothing
+ * new is loaded: the grey copies are made from the same three pictures.
  */
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { gatherNeed } from '../data/lifeSkills.js';
@@ -47,6 +63,8 @@ const SRC = {
 };
 const SIZE = 64;
 export const NODE_LABEL_ICONS = Object.create(null);
+/* v2.3.3059: the same pictures greyed, for a resource your level cannot work */
+export const NODE_LABEL_ICONS_GRAY = Object.create(null);
 
 function shrink(img, box) {
   const [bx, by, bw, bh] = box;
@@ -59,7 +77,25 @@ function shrink(img, box) {
   const k = Math.min(SIZE / bw, SIZE / bh);
   const w = bw * k, h = bh * k;
   c.drawImage(img, bx, by, bw, bh, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
-  return Texture.from(cv);
+  return cv;
+}
+
+/* v2.3.3059: a flat mid grey of the picture -- its light kept, its colour
+   gone, pulled toward the middle so it reads as "off" on the dark disc rather
+   than as a darker tool -- its alpha untouched */
+function greyed(cv) {
+  const g = document.createElement('canvas');
+  g.width = cv.width; g.height = cv.height;
+  const c = g.getContext('2d');
+  c.drawImage(cv, 0, 0);
+  const d = c.getImageData(0, 0, g.width, g.height);
+  const a = d.data;
+  for (let i = 0; i < a.length; i += 4) {
+    const l = 0.299 * a[i] + 0.587 * a[i + 1] + 0.114 * a[i + 2];
+    a[i] = a[i + 1] = a[i + 2] = Math.round(56 + l * 0.6);
+  }
+  c.putImageData(d, 0, 0);
+  return g;
 }
 
 function load(key) {
@@ -69,7 +105,14 @@ function load(key) {
     const img = new Image();
     img.decoding = 'async';
     img.onload = () => {
-      const done = () => { try { NODE_LABEL_ICONS[key] = shrink(img, box); } catch (e) { /* the label shows without it */ } resolve(); };
+      const done = () => {
+        try {
+          const cv = shrink(img, box);
+          NODE_LABEL_ICONS[key] = Texture.from(cv);
+          try { NODE_LABEL_ICONS_GRAY[key] = Texture.from(greyed(cv)); } catch (e) { /* the colour one, dimmed, stands in */ }
+        } catch (e) { /* the label shows without it */ }
+        resolve();
+      };
       if (typeof img.decode === 'function') img.decode().then(done, done); else done();
     };
     img.onerror = () => resolve();
@@ -95,6 +138,17 @@ const BRASS = 0xD8AA58;
 const NAME_FILL = '#F4F0E7';
 const LV_OK = '#D8AA58';
 const LV_LOW = '#FF7A6E';   /* a little lighter than the plates' #D95C54 so it reads on the ink */
+const GREY_EDGE = 0x8B9695;  /* v2.3.3059: a locked icon's ring -- the grey of the waiting quest mark */
+/* v2.3.3059: how near (world px, to you) the one resource that says its name
+   and level must be; the rest show their tool alone */
+export const NODE_NAME_R = 260;
+/* v2.3.3059: your bro's box round S.player, world px (the body, and the name
+   plate over it) -- a pill with words slides sideways out of it: the one
+   resource that says its name is the one you stand at, and the labels' layer
+   is under your bro (monsterUi), so at a fishing seat the level was behind
+   your body */
+const BODY_HALF_W = 20, BODY_UP = 92, BODY_DOWN = 48;
+const CLEAR = 6;
 const SCALE_MIN = 0.25, SCALE_MAX = 4;
 /* how far over the art's top (or the school of fish) the pill's foot sits,
    world px */
@@ -131,28 +185,54 @@ function _build(node) {
   const lv = new Text({ text: '', style: { fontFamily: FONT, fontSize: 11.5, fontWeight: '800', fill: LV_OK } });
   lv.anchor.set(0, 0.5);
   root.addChild(lv);
-  root._nl = { bg, icon, name, lv, key: '', scale: 0, res: 0 };
+  root._nl = { bg, icon, name, lv, key: '', scale: 0, res: 0, type: node.nodeType, mode: '', gray: false };
   return root;
 }
 
-/* lay the pill out in CSS px around (0, -PILL_H/2): its foot at the origin */
-function _layout(root, nameStr, lvStr, low) {
+/* lay the label out in CSS px around (0, -PILL_H/2): its foot at the origin.
+   `full`: the pill with the name and the level; else the tool alone on a disc
+   (v2.3.3059).  `low`: your level is below the one it asks -- the picture
+   grey, the level red. */
+function _layout(root, nameStr, lvStr, low, full) {
   const p = root._nl;
-  const key = nameStr + '|' + lvStr + '|' + (low ? 1 : 0);
+  const key = nameStr + '|' + lvStr + '|' + (low ? 1 : 0) + '|' + (full ? 1 : 0);
   if (p.key === key) return;
   p.key = key;
+  p.mode = full ? 'full' : 'icon';
+  p.gray = !!low;
+  const cy = -PILL_H / 2;
+  if (p.icon) {
+    const t = (low && NODE_LABEL_ICONS_GRAY[p.type]) || NODE_LABEL_ICONS[p.type] || p.icon.texture;
+    if (t && p.icon.texture !== t) p.icon.texture = t;
+    p.icon.width = ICON_PX; p.icon.height = ICON_PX;
+    /* no grey copy (a canvas that would not read back): the colour one, dimmed */
+    p.icon.alpha = low && !NODE_LABEL_ICONS_GRAY[p.type] ? 0.45 : 1;
+  }
+  p.bg.clear();
+  if (!full) {
+    p.name.visible = false;
+    p.lv.visible = false;
+    p.bg.circle(0, cy, PILL_H / 2);
+    p.bg.fill({ color: INK, alpha: 0.72 });
+    p.bg.stroke({ color: low ? GREY_EDGE : BRASS, width: 1, alpha: 0.6 });
+    if (p.icon) { p.icon.anchor.set(0.5, 0.5); p.icon.x = 0; p.icon.y = cy; }
+    p.w = PILL_H;
+    return;
+  }
+  p.name.visible = true;
+  p.lv.visible = true;
   p.name.text = nameStr;
   p.lv.text = lvStr;
   p.lv.style.fill = low ? LV_LOW : LV_OK;
   const iconW = p.icon ? ICON_PX + GAP : 0;
   const w = PAD_X + iconW + p.name.width + GAP + p.lv.width + PAD_X;
-  const x0 = -w / 2, cy = -PILL_H / 2;
-  p.bg.clear();
+  const x0 = -w / 2;
+  p.w = w;
   p.bg.roundRect(x0, -PILL_H, w, PILL_H, PILL_H / 2);
   p.bg.fill({ color: INK, alpha: 0.82 });
   p.bg.stroke({ color: low ? 0xD95C54 : BRASS, width: 1, alpha: low ? 0.85 : 0.55 });
   let x = x0 + PAD_X;
-  if (p.icon) { p.icon.x = x; p.icon.y = cy; x += ICON_PX + GAP; }
+  if (p.icon) { p.icon.anchor.set(0, 0.5); p.icon.x = x; p.icon.y = cy; x += ICON_PX + GAP; }
   p.name.x = x; p.name.y = cy;
   x += p.name.width + GAP;
   p.lv.x = x; p.lv.y = cy;
@@ -171,9 +251,26 @@ export function nodeLabelText(S, node) {
   };
 }
 
+/** v2.3.3059: the ONE resource that says its name and level this frame: the
+ *  nearest of `nodes` (those drawn) to you, within NODE_NAME_R; or null. */
+export function nodeNameNode(S, nodes) {
+  const P = S && S.player;
+  if (!P || !nodes || typeof P.x !== 'number') return null;
+  let best = null, bd = NODE_NAME_R * NODE_NAME_R;
+  for (const n of nodes) {
+    if (!n || !n.alive) continue;
+    const dx = n.x - P.x, dy = n.y - P.y;
+    const d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = n; }
+  }
+  return best;
+}
+
 /** Draw, place or hide the label of one resource.  `at` is the world point
- *  its foot sits on ({x, y}), or null to hide it this frame. */
-export function updateNodeLabel(layer, node, S, at) {
+ *  its foot sits on ({x, y}), or null to hide it this frame.  `full`: say the
+ *  name and the level too (v2.3.3059: only nodeNameNode's), else the tool
+ *  alone. */
+export function updateNodeLabel(layer, node, S, at, full = true) {
   if (!layer || !node) return;
   let root = node._pixiLabel;
   if (!at) { if (root && !root.destroyed) root.visible = false; return; }
@@ -185,7 +282,7 @@ export function updateNodeLabel(layer, node, S, at) {
     layer.addChild(root);
   }
   const t = nodeLabelText(S, node);
-  _layout(root, t.name, 'Lv ' + t.lvl, t.low);
+  _layout(root, t.name, 'Lv ' + t.lvl, t.low, !!full);
   /* screen-sized: one CSS px of label is 1/worldScale world px */
   const ws = (S && S._worldScaleX) || 1;
   const s = Math.min(SCALE_MAX, Math.max(SCALE_MIN, 1 / ws));
@@ -193,7 +290,20 @@ export function updateNodeLabel(layer, node, S, at) {
   if (p.scale !== s) { p.scale = s; root.scale.set(s); }
   const res = Math.min(4, Math.max(1, _dpr() * s * ws));
   if (p.res !== res) { p.res = res; p.name.resolution = res; p.lv.resolution = res; }
-  root.x = at.x;
+  /* v2.3.3059: a pill with words that would lie over your bro slides out to
+     the side away from you, eased so walking past does not snap it */
+  let want = 0;
+  const P = S && S.player;
+  if (full && P && typeof P.x === 'number' && p.mode === 'full') {
+    const half = (p.w || 0) * s / 2, top = at.y - PILL_H * s, bot = at.y;
+    const bx0 = P.x - BODY_HALF_W, bx1 = P.x + BODY_HALF_W;
+    if (bot > P.y - BODY_UP && top < P.y + BODY_DOWN && at.x + half > bx0 && at.x - half < bx1) {
+      want = P.x >= at.x ? (bx0 - CLEAR - half) - at.x : (bx1 + CLEAR + half) - at.x;
+    }
+  }
+  p.dx = (p.dx || 0) + (want - (p.dx || 0)) * 0.35;
+  if (Math.abs(want - p.dx) < 0.5) p.dx = want;
+  root.x = at.x + p.dx;
   root.y = at.y;
   root.visible = true;
 }

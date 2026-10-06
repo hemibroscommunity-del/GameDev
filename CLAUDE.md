@@ -648,8 +648,8 @@ remnant to migrate server-side, not a mode to preserve.
       mirror-audit) -- copper/iron 1, black steel 5; minnow 1, clownfish 5,
       trout 10; pine 1, softwood 5, hardwood 10 -- keyed by type and TIER, not
       the tier itself; the worker refuses extraction_start and node_strike
-      below it ('skill-too-low'), the client refuses first in startExtraction
-      ("Need Mining Lv 5", `gatherNeed`), the quest's road skips locked nodes;
+      below it ('skill-too-low'), the client never asks for one (`gatherNeed`;
+      since v2.3.3059 a TRY, below), the quest's road skips locked nodes;
       `caps.gatherreq`, kill switch `gatherreq: false`;
     - since v2.3.3040 every resource you hold the tool for wears a LABEL
       (src/rendering/nodeLabels.js): the bag's hatchet/pickaxe/rod picture
@@ -657,7 +657,18 @@ remnant to migrate server-side, not a mode to preserve.
       below, 20 CSS px at any zoom, over the crown/rock/school, hidden while
       its harvest bar is up; the old emoji, tier dot and 7 px tips are gone;
       and a vein CRACKS on its split frame (`ore-crack`, cut from the unused
-      extract-success.mp4); `mp-nodelabels`.
+      extract-success.mp4); `mp-nodelabels`;
+    - since v2.3.3059 the labels are QUIETER and a locked node can be TRIED --
+      the owner: "show zeroes popping as they try to harvest ... a grayed out
+      icon ... I just don't want the screen to be too busy with text": every
+      node shows its tool alone on a dark disc, GREY when your level is short
+      (`NODE_LABEL_ICONS_GRAY`, greyed at load, no filter), and only the
+      nearest within 260 px (`nodeNameNode`) says its name and level; a tap,
+      the button or E on a locked node seats you and swings three times, a 0
+      off it on each blow and "Requires Fishing Lv 5" over it, then ends by
+      itself (lifeSkillRewards.js `_startLockedTry`, `ex.locked`) -- NOTHING
+      is sent to the worker; `__btLockedTries`; docs/specs/wheel-resources.md
+      "Quieter labels, a grey tool, and a try you can watch fail".
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":

@@ -7,20 +7,25 @@
  * of at least 5 ... Fishing clownfish required fishing level 5."
  *
  * On a phone (390 x 844, 3x) in the Wheel, against a real worker:
- *   1. with the tools in the bag, every resource drawn near you carries ONE
- *      label (nodeLabels.js): the tool's picture, what it gives (its name, as
- *      the bag names it) and "Lv 1" -- the commons' copper, pine and minnows
- *      ask nothing -- in gold; none of the old tier dot / emoji / tips;
+ *   1. with the tools in the bag, every resource drawn near you carries its
+ *      tool's picture (nodeLabels.js), and ONE -- the nearest, v2.3.3059's
+ *      "I just don't want the screen to be too busy with text" -- says what
+ *      it gives (its name, as the bag names it) and "Lv 1" beside it -- the
+ *      commons' copper, pine and minnows ask nothing -- in gold; the rest the
+ *      picture alone; none of the old tier dot / emoji / tips;
  *   2. it is over the art (above the crown, the rock, the school), screen-
  *      sized: about 20 CSS px tall at this zoom;
- *   3. a clownfish spot says "Lv 5", in RED for a Fishing 1 player, and a tap
- *      on it is refused, "Need Fishing Lv 5", no harvest started (the
+ *   3. a clownfish spot says "Lv 5", in RED for a Fishing 1 player, its rod
+ *      GREY; and a tap on it TRIES (v2.3.3059, the owner: "show zeroes popping
+ *      as they try to harvest the resource with the message that it requires
+ *      whatever level"): three blows, a 0 on each, "Requires Fishing Lv 5"
+ *      over it, nothing sent to the worker, and the try ends by itself (the
  *      worker's caps.gatherreq advertised);
  *   4. a copper vein mined to the end hides its label while its bar is up,
  *      CRACKS on the split frame (window.__btOreCracks: yours, full voice),
  *      and the worker pays the ore;
  *   5. no page errors.
- * Pictures: tools/qa/mp/out/nodelabels-{commons,clownfish}.png.
+ * Pictures: tools/qa/mp/out/nodelabels-{commons,clownfish,try}.png.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -111,6 +116,11 @@ const labels = (P) => P.page.evaluate(() => {
       id: n.id, type: n.nodeType, tier: n.gatherLvl, req: n.reqLvl, name: n.name,
       visible: !!L.visible, text: p.name.text, lv: p.lv.text, lvFill: String(p.lv.style.fill),
       icon: !!(p.icon && p.icon.texture && !p.icon.texture.destroyed),
+      /* v2.3.3059: 'full' (the name and the level) or 'icon' (the tool alone),
+         and greyed for a level you do not have */
+      mode: p.mode, gray: !!p.gray, words: !!(p.name.visible && p.lv.visible),
+      d: S.player ? Math.round(Math.hypot(n.x - S.player.x, n.y - S.player.y)) : null,
+      x: +L.x.toFixed(1), w: +(b.width * L.scale.x).toFixed(1),
       cssH: +(b.height * L.scale.y * ws).toFixed(1),
       footY: +L.y.toFixed(1), nodeY: n.y,
       legacy: !!(n._pixiTier || n._pixiEmoji || n._pixiTip1),
@@ -168,10 +178,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1200);
     const L1 = await labels(P);
     const shown = L1.filter((l) => l.visible);
-    rec.ok(`every resource drawn near you carries a label (${shown.length} shown)`, shown.length >= 1, L1.slice(0, 6));
-    const commons = shown.filter((l) => l.tier === 1);
-    rec.ok('...each says what it gives (its bag name) and "Lv 1" on the commons, in gold, with its tool\'s picture',
-      commons.length >= 1 && commons.every((l) => l.text === l.name && l.lv === 'Lv 1' && /d8aa58/i.test(l.lvFill) && l.icon),
+    rec.ok(`every resource drawn near you carries its tool's picture (${shown.length} shown)`, shown.length >= 1 && shown.every((l) => l.icon), L1.slice(0, 6));
+    /* v2.3.3059: words for ONE -- the nearest within 260 px -- the rest the
+       picture alone */
+    const full = shown.filter((l) => l.mode === 'full');
+    const nearest = shown.filter((l) => l.d != null).sort((a, b) => a.d - b.d)[0] || null;
+    rec.ok(`...and only the nearest says its name and level (${full.length} with words, ${shown.length - full.length} the picture alone)`,
+      full.length === 1 && !!nearest && full[0].id === nearest.id && nearest.d < 260
+        && shown.filter((l) => l.mode !== 'full').every((l) => l.mode === 'icon' && !l.words),
+      { full: full.map((l) => ({ id: l.id, d: l.d })), nearest: nearest && { id: nearest.id, d: nearest.d } });
+    const commons = full.filter((l) => l.tier === 1);
+    rec.ok('...it says what it gives (its bag name) and "Lv 1" on the commons, in gold, beside its tool\'s picture, in colour',
+      commons.length === 1 && commons.every((l) => l.words && l.text === l.name && l.lv === 'Lv 1' && /d8aa58/i.test(l.lvFill) && l.icon && !l.gray),
       commons.slice(0, 6));
     rec.ok('...and none of the old tier dot, emoji or 7 px tips is made any more', L1.every((l) => !l.legacy), L1.filter((l) => l.legacy).slice(0, 3));
     rec.ok('...screen-sized: about 20 CSS px tall at this zoom', shown.every((l) => l.cssH > 16 && l.cssH < 26), shown.map((l) => l.cssH));
@@ -223,14 +241,69 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const lab = (await labels(P)).find((l) => l.id === clown.id);
       const fishLv = await H.readState(P, (S) => (((S.rpg || {}).lifeSkills || {}).fishing || {}).level || 1);
       rec.ok(`its label says "Clownfish" and "Lv 5", in red for a Fishing ${fishLv} player`,
-        !!lab && lab.visible && lab.text === 'Clownfish' && lab.lv === 'Lv 5' && /ff7a6e/i.test(lab.lvFill) && fishLv < 5, { lab, fishLv });
+        !!lab && lab.visible && lab.mode === 'full' && lab.text === 'Clownfish' && lab.lv === 'Lv 5' && /ff7a6e/i.test(lab.lvFill) && fishLv < 5, { lab, fishLv });
+      rec.ok('...and its rod is GREY: there to be fished, not yet by you', !!lab && lab.icon && lab.gray === true, lab);
       await P.page.screenshot({ path: join(OUT, 'nodelabels-clownfish.png') }).catch(() => {});
-      const k0 = await H.readState(P, (S) => S.dmgNumbers.filter((p) => p.text === 'Need Fishing Lv 5').length);
+      /* ── v2.3.3059: the tap TRIES ── */
+      await H.instrumentWire(P);
+      const w0 = (await H.wireCounts(P)).extraction_start || 0;
       await P.page.evaluate((st) => { const S = window._gameState.current; S.player.x = st.x; S.player.y = st.y; S.player.vx = 0; S.player.vy = 0; }, seat);
-      const started = await tapNode(P, clown.id, (S) => !!S._extraction, 2);
-      const said = await H.readState(P, (S) => S.dmgNumbers.filter((p) => p.text === 'Need Fishing Lv 5').length);
-      const last = await H.readState(P, (S) => S.dmgNumbers.slice(-4).map((p) => p.text));
-      rec.ok('a tap on it is refused before anything is sent: "Need Fishing Lv 5", no harvest started', started === false && said > k0, { started, said, k0, last });
+      const started = await tapNode(P, clown.id, (S) => !!(S._extraction && S._extraction.locked), 2);
+      /* what pops, sampled through the try (a popup lives about a second);
+         the spot's own label while it runs; a picture on the first 0 */
+      const seen = new Set();
+      const labDuring = [];
+      let tr = null;
+      for (let i = 0; i < 40; i++) {
+        const st = await P.page.evaluate((id) => {
+          const S = window._gameState.current;
+          const n = (S.gatherNodes || []).find((g) => g.id === id);
+          return {
+            pops: (S.dmgNumbers || []).map((q) => String(q.text)),
+            active: !!(S._extraction && S._extraction.locked),
+            labVis: n && n._pixiLabel ? !!n._pixiLabel.visible : null,
+            tr: (window.__btLockedTries || []).slice(-1)[0] || null,
+          };
+        }, clown.id);
+        for (const t of st.pops) seen.add(t);
+        if (st.active) labDuring.push(st.labVis);
+        tr = st.tr;
+        if (tr && tr.endedAt > 0) break;
+        await P.page.waitForTimeout(120);
+      }
+      const w1 = (await H.wireCounts(P)).extraction_start || 0;
+      const after = await H.readState(P, (S) => ({ ex: !!S._extraction }));
+      rec.ok(`a tap on it TRIES: three blows, a 0 off the spot on each (${tr && tr.zeros}), and "${tr && tr.said}" over it`,
+        started && !!tr && tr.zeros === 3 && tr.said === 'Requires Fishing Lv 5' && seen.has('0') && seen.has('Requires Fishing Lv 5'),
+        { started, tr, seen: [...seen].slice(0, 12) });
+      rec.ok(`...its label steps aside while it tries (${labDuring.length} looks, none shown)`,
+        labDuring.length > 0 && labDuring.every((v) => v === false), labDuring);
+      rec.ok(`...nothing is sent to the worker for it (extraction_start ${w0} -> ${w1}), and it ends by itself a beat after the last 0`,
+        w1 === w0 && !!tr && tr.endedAt > 0 && !after.ex, { w0, w1, tr, after });
+      /* back, the pill with the words slides clear of you (it is drawn under
+         your bro, and at the seat you stand in it) */
+      let lab2 = null, me = null, clear = false;
+      for (let i = 0; i < 20 && !clear; i++) {
+        await P.page.waitForTimeout(300);
+        lab2 = (await labels(P)).find((l) => l.id === clown.id);
+        me = await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
+        clear = !!lab2 && lab2.visible && (lab2.x + lab2.w / 2 <= me.x - 19 || lab2.x - lab2.w / 2 >= me.x + 19);
+      }
+      rec.ok('...and back after it, the spot\'s name pill stands clear of you, slid aside rather than under your bro',
+        !!lab2 && lab2.mode === 'full' && clear, { lab2, me });
+      /* a picture of a try: a screenshot here takes longer than a try's two
+         seconds, so this one is held to twelve blows (QA's
+         window.__btLockedTryN) and caught in the middle */
+      await P.page.evaluate(() => { window.__btLockedTryN = 12; });
+      const t2 = await tapNode(P, clown.id, (S) => !!(S._extraction && S._extraction.locked), 2);
+      if (t2 && onScreen) {
+        await P.page.waitForTimeout(1400);
+        const W = 340, Hh = 360;
+        await P.page.screenshot({ path: join(OUT, 'nodelabels-try.png'),
+          clip: { x: Math.max(0, Math.min(PHONE.width - W, onScreen.sx - W / 2)), y: Math.max(0, Math.min(PHONE.height - Hh, onScreen.sy - 240)), width: W, height: Hh } }).catch(() => {});
+      }
+      await H.waitFor(P, () => (window.__btLockedTries || []).slice(-1)[0] || null, (t) => !!t && t.endedAt > 0, { timeout: 15000, label: 'the long try' }).catch(() => null);
+      await P.page.evaluate(() => { window.__btLockedTryN = 0; });
       /* back to the commons for the copper vein, as the worker knows we are */
       const home = await H.adminPlayer(wsPort, myId).catch(() => null);
       if (home && home.live && typeof home.live.x === 'number') {

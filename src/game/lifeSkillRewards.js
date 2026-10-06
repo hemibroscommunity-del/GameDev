@@ -117,14 +117,15 @@ export function startExtraction(S, node, skill, extra) {
        through this one door -- and only against a worker that enforces it
        (gatherNeed reads caps.gatherreq), so an old worker's level-1 rules
        are never stricter on this side than on its own. */
+    /* v2.3.3059: not refused on the spot any more -- TRIED (owner: "If the
+       user tries to harvest a resource they are too low level in you can
+       still show zeroes popping as they try to harvest the resource with the
+       message that it requires whatever level").  Seated as for any harvest
+       below, then _startLockedTry, which sends nothing. */
+    var _locked = null;
     if (skill !== 'cooking') {
       var _need = gatherNeed(S, node);
-      if (_need && !_need.ok) {
-        var _skLabel = _need.skill.charAt(0).toUpperCase() + _need.skill.slice(1);
-        pushDmgPopup(S, node.x, node.y - 15, 'Need ' + _skLabel + ' Lv ' + _need.need, '#D95C54');
-        try { BT_AUDIO.beep(200, 0.05, 0.08, 'square'); } catch (e) {}
-        return;
-      }
+      if (_need && !_need.ok) _locked = _need;
     }
     /* v2.3.854: mining lines the character up with the vein the same way
        fishing lines up with the pond.  Seat the player above the ore so the
@@ -161,6 +162,7 @@ export function startExtraction(S, node, skill, extra) {
     }
     /* One extraction at a time -- tapping a new node cancels the old. */
     if (S._extraction) S._extraction = null;
+    if (_locked) { _startLockedTry(S, node, skill, _locked); return; }
     var R = S.rpg;
     var skillLvl = (R && R.lifeSkills && R.lifeSkills[skill] && R.lifeSkills[skill].level) || 0;
     var nodeTier = node.gatherLvl || 1;
@@ -234,6 +236,78 @@ export function startExtraction(S, node, skill, extra) {
     try { BT_AUDIO.beep(440, 0.03, 0.04, 'sine'); } catch (e) {}
     /* v2.3.2761 (owner: sounds for the specific actions): the cast lands --
        the lure's plop, the moment the rod goes out. */
+    if (skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('lure-drop', { vol: 0.6 }); } catch (e) {} }
+}
+
+/* ═══ v2.3.3059: A TRY AT A RESOURCE YOUR LEVEL CANNOT WORK YET ═══
+   Owner, 2026-10-06: "If the user tries to harvest a resource they are too
+   low level in you can still show zeroes popping as they try to harvest the
+   resource with the message that it requires whatever level."
+   The harvest's own wind-up, played alone: seated as for any harvest (the
+   caller), the tool swings LOCKED_TRIES times on its loop's blows
+   (gatherHitTimes -- the times a real plan's hits land), each blow a 0 off
+   the resource where the tool meets it (_popGatherHit, the numbers a real
+   harvest pops), the bar over it staying full, and "Requires Fishing Lv 5"
+   over it in red from the start.  It ends by itself LOCKED_END_MS after the
+   last blow (tickGatherHits), or at once if you walk off, as any harvest.
+   NOTHING is sent: the worker refuses a start and a strike below the level
+   (gathering.js, 'skill-too-low') and nothing is paid, so this is the game's
+   own picture of a refusal -- an attempt you can see fail -- not a request. */
+var LOCKED_TRIES = 3;
+var LOCKED_END_MS = 450;
+export var LOCKED_TRY = { TRIES: LOCKED_TRIES, END_MS: LOCKED_END_MS };   /* for mp-nodelabels */
+function _startLockedTry(S, node, skill, need) {
+    var now = Date.now();
+    var hp = gatherNodeHp(node.gatherLvl || 1);
+    /* QA only: a longer try for a slow machine's picture (mp-nodelabels sets
+       window.__btLockedTryN; a screenshot there takes longer than a try) */
+    var n = LOCKED_TRIES;
+    try {
+      if (typeof window !== 'undefined' && window.__btProbe && window.__btLockedTryN > 0) n = Math.min(20, Math.floor(window.__btLockedTryN));
+    } catch (e) { /* the three */ }
+    var plan = [];
+    for (var i = 0; i < n; i++) plan.push(0);
+    S._extraction = {
+      nodeId: node.id,
+      nodeRef: node,
+      skill: skill,
+      startedAt: now,
+      windowOpensAt: Infinity,      /* never ready: nothing to gesture for */
+      windowClosesAt: Infinity,
+      status: 'waiting',
+      swipeSamples: [],
+      locked: { need: need.need, skill: need.skill },
+      hits: {
+        seq: 0,                      /* no worker plan answers a try */
+        plan: plan,
+        times: gatherHitTimes(skill, now, n),
+        shown: 0,
+        maxHp: hp,
+        hp: hp,
+        lastHitAt: 0,
+        waitUntil: Infinity,
+        planAt: now,
+      },
+    };
+    var label = need.skill.charAt(0).toUpperCase() + need.skill.slice(1);
+    var at = _gatherHitAt(S, skill, node, 0);
+    var said = 'Requires ' + label + ' Lv ' + need.need;
+    /* up for the whole try, rising slowly, so it is on screen with every 0
+       (a popup's own 1.5 s and 40 px a second left the last 0s without it) */
+    var _last = S._extraction.hits.times[n - 1] || now;
+    var _ttl = Math.max(1.5, (_last - now + LOCKED_END_MS) / 1000 + 0.4);
+    pushDmgPopup(S, at.x, at.y - 34, said, '#D95C54', { ttl: _ttl, hold: _ttl - 0.5, rise: 12 });
+    /* QA (mp-nodelabels): each try, its 0s and when it ended */
+    try {
+      if (typeof window !== 'undefined' && window.__btProbe) {
+        var tries = window.__btLockedTries || (window.__btLockedTries = []);
+        var rec = { id: node.id, skill: skill, need: need.need, said: said, planned: n, zeros: 0, at: now, endedAt: 0 };
+        tries.push(rec);
+        if (tries.length > 20) tries.shift();
+        S._extraction._probe = rec;
+      }
+    } catch (e) { /* probe only */ }
+    try { BT_AUDIO.beep(200, 0.05, 0.08, 'square'); } catch (e) {}
     if (skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('lure-drop', { vol: 0.6 }); } catch (e) {} }
 }
 
@@ -317,6 +391,13 @@ export function tickGatherHits(S, ex, node, now) {
     if (landed) {
       h.lastHitAt = now;
       _popGatherHit(S, ex, node, lastD, h.shown);
+      if (ex._probe) ex._probe.zeros++;
+    }
+    /* v2.3.3059: a try at a resource your level cannot work ends by itself a
+       beat after its last 0 (_startLockedTry) -- the window never opens */
+    if (ex.locked && h.shown >= h.plan.length && now >= h.times[h.times.length - 1] + LOCKED_END_MS) {
+      if (ex._probe) ex._probe.endedAt = now;
+      if (S._extraction === ex) S._extraction = null;
     }
 }
 /* = entityRenderer SELF_DEATH_HOLD_MS, the corpse hold selfCorpseUp bounds
@@ -364,24 +445,31 @@ function _gatherHitsToTimer(S, ex, resend) {
    with the zone's perspective instead, because a fire can be lit anywhere,
    vista maps included, and CampfireFx scales it there. */
 function _popGatherHit(S, ex, node, d, k) {
-    var side = (k % 2) ? 1 : -1;
+    var at = _gatherHitAt(S, ex.skill, node, k);
+    pushDmgPopup(S, at.x, at.y, String(d), '#ffffff');
+}
+/* v2.3.3059: where hit `k` pops for `skill` on `node` -- _popGatherHit's own
+   spot, shared with a locked try's message (k 0: the middle of the two sides
+   the numbers alternate between, for mining and fishing) */
+function _gatherHitAt(S, skill, node, k) {
+    var side = k === 0 ? 0 : (k % 2) ? 1 : -1;
     var step = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
     var g = 1 + (step - 1) * 0.15;
     var x = node.x, y = node.y;
-    if (ex.skill === 'mining') { x += side * 44 * g; y -= 70 * g; }
-    else if (ex.skill === 'woodcutting') {
+    if (skill === 'mining') { x += side * 44 * g; y -= 70 * g; }
+    else if (skill === 'woodcutting') {
       /* the far side of the trunk from the chopper, who stands on the
          player's side (effectsRenderer chopSign) */
       var _px = (S.player && typeof S.player.x === 'number') ? S.player.x : node.x;
       var chopSign = node.x >= _px ? 1 : -1;
       x += chopSign * (18 + 10 * (side > 0 ? 1 : 0)) * g; y -= 76 * g;
-    } else if (ex.skill === 'cooking') {
+    } else if (skill === 'cooking') {
       var zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
       x += (8 + side * 12) * zs; y -= 30 * zs;
     } else {
       x += side * 16 * g; y -= 8 * g;
     }
-    pushDmgPopup(S, x, y, String(d), '#ffffff');
+    return { x: x, y: y };
 }
 
 export function succeedExtraction(S, accuracy, deps) {

@@ -305,10 +305,12 @@ which moved.
   (the paying call, refused before the node is spent, recorded as
   `skill-too-low` with `need` and `have` for the operator view). The skill is
   the node's own, never the message's.
-- **The client** refuses in `startExtraction` before it seats you or sends a
-  byte: "Need Mining Lv 5" and the refusal beep. The tap, the harvest button
-  and the E key all come through there. The quest's gold road skips a node
-  you cannot work yet (`questRoute.js` `_wheelGatherPoint`).
+- **The client** never asks the worker for a node you cannot work yet. Since
+  v2.3.3059 a tap on one TRIES instead of being turned away on the spot (see
+  "A try at a resource you cannot work yet" below); before, it said "Need
+  Mining Lv 5" and beeped. The tap, the harvest button and the E key all come
+  through `startExtraction`. The quest's gold road skips a node you cannot
+  work yet (`questRoute.js` `_wheelGatherPoint`).
 - **The ladders** (Skills' "next unlock", the Encyclopedia) print the level a
   resource asks (`gatherLadderLvl`), not its tier number.
 - **Deploy order.** `caps.gatherreq`: the client refuses and draws a required
@@ -353,6 +355,63 @@ gesture."*
 
 Tests: `mp-wheelnodes` (a fishing spot's held display is its label now),
 `mp-harvestbar`.
+
+## Quieter labels, a grey tool, and a try you can watch fail (v2.3.3059)
+
+Owner, 2026-10-06, on the labels above:
+
+> *"If the user tries to harvest a resource they are too low level in you can
+> still show zeroes popping as they try to harvest the resource with the
+> message that it requires whatever level. I also think a grayed out icon
+> above whatever the resource is (like pickaxe for lvl 5 blacksteel ore) would
+> be a good cue that it's harvestable but you're not high enough level yet.
+> I like the idea of listing the name of the resource and what level it
+> requires next to it. I just don't want the screen to be too busy with text
+> though."*
+
+**The labels** (`src/rendering/nodeLabels.js`):
+
+- Every resource drawn shows its tool's picture alone, on a small dark disc
+  (20 CSS px, the pill's height).
+- The picture is in colour when your level works the resource, and **grey**
+  when it asks more than you have. The grey copy of each of the three
+  pictures is made once at load from the same file (`NODE_LABEL_ICONS_GRAY`),
+  so nothing new is loaded and no filter is used.
+- **One** resource says its name and level beside the picture: the nearest
+  to you within 260 px (`nodeNameNode`, `NODE_NAME_R`), the one you are
+  walking up to. The level is still red while yours is below it.
+- Everything else about the label is unchanged: the size, the place, and
+  stepping aside while a harvest bar is up.
+
+**A try at a resource you cannot work yet** (`lifeSkillRewards.js`
+`_startLockedTry`). A tap, the harvest button or the E key on a locked
+resource no longer just says no:
+
+1. You are seated as for any harvest.
+2. The tool swings three times on its loop's own blows (`gatherHitTimes`,
+   the times a real harvest's hits land).
+3. Each blow pops a **0** off the resource, where a real hit's number pops
+   (`_popGatherHit`). The bar over the resource stays full.
+4. **"Requires Fishing Lv 5"** (or Mining, or Woodcutting) is shown over the
+   resource in red from the start, with the refusal beep, and stays up for the
+   whole try, rising slowly, so it is on screen with every 0.
+5. The try ends by itself 450 ms after the last 0, or at once if you walk
+   off, like any harvest.
+
+**Nothing is sent to the worker for a try.** The worker refuses a start and
+a strike below the level (`skill-too-low`) and nothing is paid, so the try is
+the game's own picture of a refusal, not a request. Against an older worker
+(no `caps.gatherreq`) nothing is locked, so nothing is tried this way.
+
+Tests (`mp-nodelabels`):
+
+- On the commons, every resource near you shows its tool; only the nearest,
+  within 260 px, says its name and "Lv 1", in gold, its picture in colour.
+- At a clownfish spot (Fishing 1), its label says "Clownfish" and "Lv 5" in
+  red, and its rod is grey.
+- A tap on it tries: three 0s, "Requires Fishing Lv 5", no `extraction_start`
+  sent, and the try ends by itself.
+- Picture: `nodelabels-try.png`.
 
 ## Not in this round
 
