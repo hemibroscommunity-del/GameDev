@@ -3253,5 +3253,51 @@ console.log("the buildings' doors (v2.3.3032)");
     && /_farmOut = \(_leftZone === 'farm_home' && S\._farmBack && wheelIsHome\(\)\)/.test(zoneSrc) && /rememberFarmTrip\(S2\)/.test(townSrc), {});
 }
 
+/* ── v2.3.3062: the gate signposts (src/data/wheelSignposts.js) ──
+   The owner's "Continue building recommended": Brotown's four signposts (their
+   boards blank) say the lands their roads lead to.  The table against the
+   plan's own roads, and the signposts it reads against what placing puts in
+   the town. */
+console.log('the gate signposts (v2.3.3062)');
+{
+  const { placeObjects } = await import('../../public/tools/world/core/placing.js');
+  const { wheelMap } = await import('../../public/tools/world/core/wheelmap.js');
+  const SG = await import('../../src/data/wheelSignposts.js');
+  const sbp = buildBlueprint(PLAN);
+  const placed = placeObjects(PLAN, sbp);
+  const map = wheelMap(PLAN, sbp);
+  const T = map.hub.town;
+  const k = placed.kinds.indexOf('signpost');
+  const posts = [];
+  for (let i = 0; i < placed.n; i++) {
+    if (placed.kind[i] !== k) continue;
+    const dx = placed.x[i] - T.x, dy = placed.y[i] - T.y;
+    posts.push({ d: Math.round(Math.hypot(dx, dy)), gate: SG.gateOf(dx, dy) });
+  }
+  const town = posts.filter((p) => p.d <= SG.SIGNPOST_TOWN_R);
+  ok(`the town has four signposts, one at each gate (${town.map((p) => `${p.gate} ${p.d} px`).join(', ')}), and no other stands near SIGNPOST_TOWN_R`,
+    town.length === 4 && new Set(town.map((p) => p.gate)).size === 4 && posts.every((p) => p.d <= SG.SIGNPOST_TOWN_R - 300 || p.d > SG.SIGNPOST_TOWN_R + 300), posts);
+  const byLand = Object.fromEntries(map.lands.map((l) => [l.id, l]));
+  const cardinal = (l) => !!l && (l.ux === 0 || l.uy === 0);
+  const all = Object.values(SG.WHEEL_GATE_ROADS).flat();
+  ok('every land is named once, its own compass road\'s land first on that gate\'s signpost',
+    all.length === 8 && new Set(all).size === 8 && all.every((l) => !!byLand[l])
+      && Object.entries(SG.WHEEL_GATE_ROADS).every(([g, [c, d]]) => cardinal(byLand[c]) && SG.gateOf(byLand[c].ux, byLand[c].uy) === g && !cardinal(byLand[d])), SG.WHEEL_GATE_ROADS);
+  /* the second: the land whose road begins ON that compass road (plan.js: the
+     diagonal roads fork off the next compass road clockwise) */
+  const roads = (PLAN.roads || []).filter((r) => r.to);
+  const forkOn = (d) => {
+    const r = roads.find((x) => x.to === d);
+    if (!r) return null;
+    const [fx, fy] = r.pts[0];
+    return map.lands.filter(cardinal).find((c) => Math.abs(fx * c.uy - fy * c.ux) < 1e-6 && fx * c.ux + fy * c.uy > 0) || null;
+  };
+  const forks = Object.values(SG.WHEEL_GATE_ROADS).map(([c, d]) => `${d} off ${(forkOn(d) || {}).id}`);
+  ok(`...and the second, the land whose road forks off it (${forks.join(', ')})`,
+    Object.values(SG.WHEEL_GATE_ROADS).every(([c, d]) => { const f = forkOn(d); return !!f && f.id === c; }), forks);
+  ok('the gates are told apart by the larger offset from the town\'s middle',
+    SG.gateOf(0, -10) === 'north' && SG.gateOf(10, 2) === 'east' && SG.gateOf(-3, 9) === 'south' && SG.gateOf(-9, 3) === 'west');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

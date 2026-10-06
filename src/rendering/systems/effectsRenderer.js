@@ -503,6 +503,8 @@ import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on
 import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar over a spot's school */ } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
 import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNameNode } from '../nodeLabels.js';   /* v2.3.3040: the tool, the name and the level over a resource; v2.3.3059: words for the nearest only */
 import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
+import { WheelSignposts, findGateSignposts } from '../wheelSignposts.js';   /* v2.3.3062: Brotown's signposts, named */
+import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v2.3.3062: where they stand, and the lands */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
@@ -2340,6 +2342,9 @@ export class EffectsRenderer {
     this.lootLayer = layers.groundLoot;
     this.splatLayer = layers.groundSplatter;
     this.nodeLayer = layers.gatherNodes;
+    /* v2.3.3062: over the buildings and trees, under the player -- the
+       signposts' plates (wheelSignposts.js) */
+    this.monsterUiLayer = layers.monsterUi || layers.particles;
     /* v2.3.2635: node SPRITES live here now (see _wantLayer below) so they
        sort against the player, npcs, monsters and props by ground line. The
        node Graphics -- tier badges, proximity tips -- stay in nodeLayer,
@@ -9760,6 +9765,14 @@ export class EffectsRenderer {
       if (!this._wheelDoors) this._wheelDoors = new WheelDoors(this.lootLayer);
       this._wheelDoors.update(_doors || [], S, now);
     }
+    /* v2.3.3062: Brotown's four signposts say the lands their roads lead to
+       (wheelSignposts.js) -- and, anywhere else, none */
+    const _map = S.currentZone === 'wheel' ? wheelMapInfo() : null;
+    const _posts = _map && _map.hub ? findGateSignposts(wheelObjectsInfo(), _map.hub.town) : null;
+    if (_posts || (this._wheelSigns && this._wheelSigns.size)) {
+      if (!this._wheelSigns) this._wheelSigns = new WheelSignposts(this.monsterUiLayer);
+      this._wheelSigns.update(_posts || [], _map ? _map.lands : null, S.player);
+    }
     this._drawGatherHpBar(S, nodes, now);   /* v2.3.2956 */
     this._advanceOreBreaks(now, S);   /* v2.3.3040: + S, a peer's crack fades with your distance */
     this._advanceItemPops(now);
@@ -14539,6 +14552,7 @@ export class EffectsRenderer {
     this.nodeGfx.clear();
     if (this._wheelFish) this._wheelFish.clear();   /* v2.3.3012 */
     if (this._wheelDoors) this._wheelDoors.clear();   /* v2.3.3016 */
+    if (this._wheelSigns) this._wheelSigns.clear();   /* v2.3.3062 */
     this.flashOverlay.clear();
     this.atmosphereGfx.clear();
     for (const t of this.dmgTexts) t.destroy();

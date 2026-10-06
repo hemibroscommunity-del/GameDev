@@ -1244,7 +1244,19 @@ remnant to migrate server-side, not a mode to preserve.
       the roster is stale (`__btBootRoute` 'create-stale'); and the monster
       hit-chip cache no longer destroys textures a live burst draws (LRU,
       `BURST_MS` + 1 s), scratch canvases are released at once and the
-      arrow-pin cache is held to 6 MB -- `mp-createflag`.)
+      arrow-pin cache is held to 6 MB -- `mp-createflag`.
+  - Since v2.3.3062 BROTOWN'S SIGNPOSTS SAY WHERE THEIR ROADS GO -- the
+    owner, on the recommendations for finding your way round: "Continue
+    building recommended": the four gate signposts (placing.js, boards blank
+    by the catalog's word) each show two plates when you are within 640 px --
+    the land straight on and the land whose trail forks off that road
+    (`WHEEL_GATE_ROADS`, src/data/wheelSignposts.js, checked against the
+    plan's roads), an arrow the way it lies, its element icon and its name in
+    its colour; world-sized, on monsterUi (src/rendering/wheelSignposts.js,
+    drawn by effectsRenderer); no levels (every land starts at 1); the eight
+    icons drawn down to 64 px behind the Wheel's loading screen and let go on
+    leaving; `mp-signposts`, test-world-core "the gate signposts":
+    docs/specs/gate-signposts.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
