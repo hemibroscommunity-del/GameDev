@@ -548,7 +548,7 @@ const NPC_WALK_PX_PER_FRAME = 6.5;
 const QUEST_BADGE_R = 16;
 /** Three concentric rings, drawn outside in.  `fill` carries the state
  *  (gold = quest to offer, green = ready to turn in). */
-function _drawQuestBadge(g, fill) {
+function _drawQuestBadge(g, fill, check) {
   g.clear();
   /* Dark hairline first: without it the white ring dissolves into the town's
      pale cobblestones, which is the exact background the owner reported the
@@ -560,6 +560,16 @@ function _drawQuestBadge(g, fill) {
   g.fill({ color: 0xFFFFFF });
   g.circle(0, 0, QUEST_BADGE_R - 5.5);
   g.fill({ color: fill });
+  /* ═══ v2.3.3047: THE CHECK, DRAWN ═══
+     Owner: "a green checkmark above his head (not emoji)".  Two strokes of
+     the same path -- a dark one under, a white one over -- so it holds on the
+     green the way the glyphs' dark-on-gold does, at any size, with no font. */
+  if (check) {
+    g.moveTo(-5.5, 0.5).lineTo(-1.5, 4.5).lineTo(6, -4.5);
+    g.stroke({ width: 5, color: 0x1A1207, alpha: 0.85, cap: 'round', join: 'round' });
+    g.moveTo(-5.5, 0.5).lineTo(-1.5, 4.5).lineTo(6, -4.5);
+    g.stroke({ width: 3, color: 0xFFFFFF, cap: 'round', join: 'round' });
+  }
 }
 
 /* ═══ v2.3.2632: THE ELLIPSE GROUND SHADOWS ARE GONE ═══
@@ -15542,8 +15552,9 @@ export class EntityRenderer {
       }
       }
 
-      /* Quest marker — `npc._questMarker` is '❗' (available) or '❓'
-         (turn-in) or null.  Pulses vertically when visible. */
+      /* Quest marker — `npc._questMarker` is '❗' (available), '❔' (accepted,
+         waiting on you; v2.3.3047) or '❓' (turn-in) or null.  Pulses
+         vertically when visible, except while waiting. */
       const qm = display._questMarker;
       const qmStr = npc._questMarker || '';
       if (qmStr) {
@@ -15557,11 +15568,20 @@ export class EntityRenderer {
              would arrive in its own red/blue regardless of the badge under it.
              Drawing plain ASCII instead is what makes the dark-on-gold
              contrast actually happen. */
-          display._qmGlyph.text = qmStr === '❓' ? '?' : '!';
+          /* v2.3.3047 (owner: "gray question mark" while he waits for your
+             items, "a green checkmark ... (not emoji)" when you have them):
+             '❗' offer, gold "!"; '❔' waiting, a GREY disc with a white "?";
+             '❓' ready, a GREEN disc with a drawn check and no glyph. */
+          const _ready = qmStr === '❓', _wait = qmStr === '❔';
+          display._qmGlyph.text = _ready ? '' : _wait ? '?' : '!';
+          display._qmGlyph.style.fill = _wait ? '#FFFFFF' : '#2A1B06';
+          display._qmGlyph.visible = !_ready;
           _drawQuestBadge(display._qmBadge,
-            qmStr === '❗' ? 0xFFC93C : qmStr === '❓' ? 0xFFE58A : 0x4BD98A);
+            _ready ? 0x4BD98A : _wait ? 0x8B9695 : 0xFFC93C, _ready);
         }
-        const pulse = Math.sin(now / 300) * 3;
+        /* v2.3.3047: waiting holds still -- the bob says "come here", and
+           there is nothing to come for yet */
+        const pulse = qmStr === '❔' ? 0 : Math.sin(now / 300) * 3;
         qm.y = (qm._baseY !== undefined ? qm._baseY : -36) + pulse;
         qm.visible = true;
       } else if (qm.visible) {
