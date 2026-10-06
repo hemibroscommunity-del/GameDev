@@ -117,7 +117,7 @@ const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
    is a line there and a line here. */
 export const BAR_THUMBS = {
   bar_copper: `/icons/items/bar-copper.webp${ITEMS_V}`,
-  /* v2.3.3083: the armour forge's two other metals (the file names are the
+  /* v2.3.3092: the armour forge's two other metals (the file names are the
      metal ids, as the armour's own icons are) */
   bar_iron: `/icons/items/bar-iron.webp${ITEMS_V}`,
   bar_black_steel: `/icons/items/bar-blacksteel.webp${ITEMS_V}`,
@@ -250,8 +250,8 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   staminaSalts: 'Stamina Salts',
   daily_chest: 'Daily Chest',   /* v2.3.2820: the daily login reward (server dailychest.js) */
   bar_copper: 'Copper Bar',     /* v2.3.2822: prettyName would say "Bar Copper" (server smelting.js) */
-  bar_iron: 'Iron Bar',         /* v2.3.3083 */
-  bar_black_steel: 'Black Steel Bar',   /* v2.3.3083: prettyName would say "Bar Black Steel" */
+  bar_iron: 'Iron Bar',         /* v2.3.3092 */
+  bar_black_steel: 'Black Steel Bar',   /* v2.3.3092: prettyName would say "Bar Black Steel" */
 });
 
 /* v2.3.2820: the daily chest -- opened from the bag, rolled by the worker. */

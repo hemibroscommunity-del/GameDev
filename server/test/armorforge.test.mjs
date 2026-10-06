@@ -1,4 +1,4 @@
-/* The armor forge -- bars into armor (v2.3.3083, server/src/armorforge.js).
+/* The armor forge -- bars into armor (v2.3.3092, server/src/armorforge.js).
  *
  * Asked "Should smelted bars make armour?", the owner said "Yes".
  *

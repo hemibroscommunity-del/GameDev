@@ -344,7 +344,7 @@ const ps = (k) => room.playerState[ids[k]];
   check('caps.nomansland is advertised', !!sync && !!sync.caps && sync.caps.nomansland === true, sync && sync.caps && sync.caps.nomansland);
 }
 
-// ── 9. v2.3.3082: the shield on the arm (shieldwear.js), and the spares ─────
+// ── 9. v2.3.3091: the shield on the arm (shieldwear.js), and the spares ─────
 // The owner's "Yes" to "Shields and outfits in no man's land?": the game
 // says which shield it wears (shield_wear), ps.shield is the one WORN and
 // ps.shieldStash the spares -- and a loss under the rule takes the spares.

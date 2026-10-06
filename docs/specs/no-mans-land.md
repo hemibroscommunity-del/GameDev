@@ -107,7 +107,7 @@ last 5 seconds):
 | the bag's items | the usual death pile, but the **killer's** for its owner window ("Raider's loot" to everyone else), then anyone's |
 | spare weapons | to the killer (mail if they are offline or full) |
 | spare **armour and legs** | to the killer, each with its provenance row, so it stays a provable piece in their hands |
-| spare **shields** (since v2.3.3082) | to the killer the same way, once your game has told the worker which shield is on your arm (see below) |
+| spare **shields** (since v2.3.3091) | to the killer the same way, once your game has told the worker which shield is on your arm (see below) |
 | everything worn | **kept** |
 | the gathering tools, the quest's own items | kept (the death's usual carve-outs) |
 | outfit pieces | kept (see below) |
@@ -155,9 +155,9 @@ The worker only takes what it can tell apart from what you wear.
   kind to carry them to a killer, so they stay.
 
 Each of these closes when the worker learns the slot. Shields have closed
-(v2.3.3082).
+(v2.3.3091).
 
-## The shield on your arm (v2.3.3082)
+## The shield on your arm (v2.3.3091)
 
 > Asked *"Shields and outfits in no man's land?"*, the owner said *"Yes"*.
 
@@ -206,7 +206,7 @@ tell the shield on your arm from a spare. Now the game tells it:
 
 - **Client → worker:** attacks are the existing `player_attack`;
   `_pvpAllowed` asks `_nmlAllowed` before the `OPEN_PVP` master switch.
-  Since v2.3.3082, `shield_wear` `{gid | sig | none}` (server/src/shieldwear.js,
+  Since v2.3.3091, `shield_wear` `{gid | sig | none}` (server/src/shieldwear.js,
   client src/game/shieldWear.js), sent only against a worker advertising
   `caps.shieldwear`.
 - **Worker → client:** `nml_skull` `{red, white}` (ms left) and `nml_loss`
@@ -223,7 +223,7 @@ tell the shield on your arm from a spare. Now the game tells it:
 - **Kill switch:** `nomansland: false` (lower case) un-advertises it, refuses
   every hit, starts no skull and takes nothing on a death. That is the safe
   Wheel exactly.
-- **The shield's switch:** `shieldwear: false` (v2.3.3082) un-advertises
+- **The shield's switch:** `shieldwear: false` (v2.3.3091) un-advertises
   `caps.shieldwear`, ignores every report, and an ordinary loss takes no shield
   again.
 - **Dev tool:** `/api/admin/dev/vitals` takes `hp` (at least 1, at most max), as
@@ -231,7 +231,7 @@ tell the shield on your arm from a spare. Now the game tells it:
 
 ## Tests
 
-- `server/test/nomansland.test.mjs` (68 checks; 51 before v2.3.3082):
+- `server/test/nomansland.test.mjs` (68 checks; 51 before v2.3.3091):
   - the rings against the plan;
   - the level rule from both sides, the party rule, and the master switch
     elsewhere;
@@ -245,7 +245,7 @@ tell the shield on your arm from a spare. Now the game tells it:
   - a red skull's death, to a player and to a monster, with each piece once;
   - an ordinary death unchanged;
   - the kill switch, and caps;
-  - v2.3.3082, the shield on the arm (17 checks):
+  - v2.3.3091, the shield on the arm (17 checks):
     - caps;
     - the moves: by id, by signature, none, a copy already in the bag;
     - refusals: a shield it does not hold, junk names, another player's, and
@@ -253,7 +253,7 @@ tell the shield on your arm from a spare. Now the game tells it:
     - the loss with the arm known: both spares to the killer (one with its
       row), the worn one and its stale copy kept, `nml_loss` naming both;
     - `shieldwear: false`.
-- `mirror-audit`: the rings and the centre. Since v2.3.3082 they run: a merge
+- `mirror-audit`: the rings and the centre. Since v2.3.3091 they run: a merge
   had left them after the suite's `process.exit`.
 - `mp-nomansland` (16 checks), two real players against a real worker:
   - the wanderer's game tells the worker its arm is bare, and the worker
@@ -273,7 +273,7 @@ tell the shield on your arm from a spare. Now the game tells it:
 - **The level rule.** It is read as "within N levels, N being the lower of the
   two rings". Ring 1 is within 1 level; ring 5 is within 5.
 - **Shields and outfits** -- decided, *"Yes"* (2026-10-06): spare shields go
-  since v2.3.3082. Outfit pieces stay because there is nothing in them to take
+  since v2.3.3091. Outfit pieces stay because there is nothing in them to take
   yet (see "What the worker cannot take yet").
 - **Party members** cannot fight each other here, and the safe commons and
   Brotown stay safe.

@@ -2,9 +2,9 @@ import React from 'react';
 import {
   AMULET_TIERS, BLACKSMITH_TIERS, WOODWORKING_TIERS, BT_AUDIO, LIFE_SKILL_XP, NUGGETS_PER_BAR,
   SMELT_RECIPES, WEAPON_STASH_MAX, gemExtractCost, getGearStatReq,
-  ARMOR_FORGE_RECIPES, getArmorPieceDr, armorDefReq, /* v2.3.3083: bars into armor */
+  ARMOR_FORGE_RECIPES, getArmorPieceDr, armorDefReq, /* v2.3.3092: bars into armor */
 } from '@/data/index.js';
-import { armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.3083: each metal's plate and greaves */
+import { armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.3092: each metal's plate and greaves */
 import { BAR_THUMBS, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { metalIconPath, weaponMaterial } from '@/rendering/traits/materialTints.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -22,7 +22,7 @@ import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
  *   - Pictures and numbers, not sentences.  Every cost is a chip: the thing's
  *     icon and HAVE/NEED, green when you have it, red when you don't.  A lock
  *     is a chip that names the one thing missing ("Smithing 6").
- *   - One job per tab: Smelt, Forge, Armor (v2.3.3083), Upgrade, Amulet.  The
+ *   - One job per tab: Smelt, Forge, Armor (v2.3.3092), Upgrade, Amulet.  The
  *     old panel stacked all of them in one scroll with a paragraph above each.
  *   - Only what the WORKER settles.  The old panel also offered Reforge, the
  *     legacy "Harden" affix, shield forging and Salvage -- all four ran only
@@ -41,7 +41,7 @@ import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
  *     (game/smithing.js).
  *
  * Test hooks: data-smithy-tab, data-smelt-*, data-forge-row / data-forge-go,
- * data-armor-row / data-armor-go (v2.3.3083), data-harden-go, data-amulet-row. */
+ * data-armor-row / data-armor-go (v2.3.3092), data-harden-go, data-amulet-row. */
 
 const C = {
   sheet: '#1E2E34', well: '#111E23', raised: '#293B41', card: '#24363C',
@@ -138,7 +138,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
   const tabs = [
     SC.smelting && { id: 'smelt', label: 'Smelt', icon: BAR_THUMBS.bar_copper },
     { id: 'forge', label: 'Forge', icon: '/icons/items/great-sword-copper.webp' + ITEMS_V },
-    /* v2.3.3083: bars into armor (server armorforge.js) */
+    /* v2.3.3092: bars into armor (server armorforge.js) */
     (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: 'Armor', icon: '/icons/items/chest-plate-copper.webp' + ITEMS_V },
     (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: 'Upgrade', icon: GEM },
     (S._serverCaps && S._serverCaps.amuletForge) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
@@ -165,7 +165,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
     }
     if (lvl > lvlSeen.current) {
       /* Smelting celebrates from its own receipt (wsClient smelt_result), and
-         since v2.3.3083 the armor forge from its (forge_armor_result);
+         since v2.3.3092 the armor forge from its (forge_armor_result);
          everything else the panel does celebrates here. */
       if (!(p && (p.kind === 'smelt' || p.kind === 'armor'))) { try { celebrateLifeSkillLevel(S, 'blacksmithing', lvl, lvlSeen.current); } catch (e) { /* visual */ } }
     }
@@ -330,7 +330,7 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
 }
 
 /* ── Armor: bars into a torso or greaves (server armorforge.js) ──
-   v2.3.3083, the owner's "Yes" to "Should smelted bars make armour?".  Every
+   v2.3.3092, the owner's "Yes" to "Should smelted bars make armour?".  Every
    piece of each metal you can make now, plus the next metal's -- the goal --
    as the Forge tab shows its next tier.  The piece lands in the BAG (the
    receipt's "BAG: Copper Torso", wsClient forge_armor_result), to be worn from

@@ -36,7 +36,7 @@ export const SMELT = {
   /* bar invKey -> recipe.  `ore` is the exact inventory key gathering.js
      _harvestInvKey mints for the tier's rock.  Higher metals join this table
      as their ore becomes obtainable.
-     v2.3.3083: iron and black steel join it -- the Wheel has grown both since
+     v2.3.3092: iron and black steel join it -- the Wheel has grown both since
      v2.3.3012 (iron at its levels 1-10, black steel at 11-20) -- because the
      owner said "Yes" to "Should smelted bars make armour?" and each metal's
      armour is forged from its own bars (armorforge.js).  Smithing 5 and 10:

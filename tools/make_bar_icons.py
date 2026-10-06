@@ -35,7 +35,7 @@ METALS = {
         (0.78, (226, 146, 92)),
         (1.00, (255, 226, 190)),
     ],
-    # v2.3.3083: the bars armour is forged from (server/src/armorforge.js) --
+    # v2.3.3092: the bars armour is forged from (server/src/armorforge.js) --
     # iron a cool grey and black steel a blued near-black, the colours the
     # armour itself wears (src/rendering/traits/materialTints.js MATERIALS:
     # iron [198,206,218] at 0.80, blacksteel [73,78,97] at 0.38).  The file
@@ -74,7 +74,7 @@ def main():
     px = list(src.getdata())
     lums = [(0.299 * r + 0.587 * g + 0.114 * b) for r, g, b, a in px if a > 32]
     lo, hi = min(lums), max(lums)
-    # v2.3.3083: name metals on the command line to write only those (the
+    # v2.3.3092: name metals on the command line to write only those (the
     # copper bar already shipped and its file should not churn)
     only = set(sys.argv[1:])
     for name, stops in METALS.items():

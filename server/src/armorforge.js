@@ -1,4 +1,4 @@
-/* ═══ v2.3.3083: BARS INTO ARMOUR ═══
+/* ═══ v2.3.3092: BARS INTO ARMOUR ═══
  *
  * Asked "Should smelted bars make armour?", the owner said "Yes".  It is the
  * second half of the loop they asked for when smelting shipped ("Make ore

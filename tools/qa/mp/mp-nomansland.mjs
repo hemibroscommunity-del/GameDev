@@ -18,7 +18,7 @@
  *      `sk`), and the raider is told what the red skull means;
  *   4. the killing blow: the wanderer's game is told what went and says so;
  *      the spare greatsword leaves the wanderer's bag and arrives in the
- *      raider's -- and (v2.3.3082) so does the spare shield: the wanderer's
+ *      raider's -- and (v2.3.3091) so does the spare shield: the wanderer's
  *      game told the worker its arm is bare (shield_wear), so the quest's
  *      Pine Shield in its bag is a spare; the bag's minnows lie in a pile
  *      that is the raider's;
@@ -151,7 +151,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   const bagA0 = await bag(A), bagB0 = await bag(B);
   const aSwords0 = bagA0.swords, aShields0 = bagA0.shields;
-  /* v2.3.3082: the wanderer's game said what is on its arm -- nothing: the
+  /* v2.3.3091: the wanderer's game said what is on its arm -- nothing: the
      quest's shield went into its bag -- and the worker holds it as a spare */
   let armB = null;
   for (let i = 0; i < 12; i++) {

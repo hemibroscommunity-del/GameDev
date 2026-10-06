@@ -9,7 +9,7 @@ This is the first half of the loop the owner asked for ("Make ore smelt in to
 bars. Bars into armor."). Bars into armor is the next step and is NOT in this
 change: the forge's weapon rows still take ore directly, as before.
 
-**Since v2.3.3083 bars make armor** (the owner's "Yes"): iron and black steel
+**Since v2.3.3092 bars make armor** (the owner's "Yes"): iron and black steel
 bars smelt too (Smithing 5 and 10, 600 and 800 XP a bar), and the Blacksmith's
 Armor tab forges a torso or greaves in each metal. See
 docs/specs/armor-forge.md.

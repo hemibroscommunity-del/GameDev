@@ -1,4 +1,4 @@
-# Bars into armor at the Blacksmith (v2.3.3083)
+# Bars into armor at the Blacksmith (v2.3.3092)
 
 > Asked *"Should smelted bars make armour?"*, the owner said *"Yes"*.
 

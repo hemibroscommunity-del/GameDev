@@ -32,8 +32,8 @@ import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_AR
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
-import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3083 */
-import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3083 */
+import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
+import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
 import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
 import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl } from '../../src/data/lifeSkills.js'; /* v2.3.3038 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
@@ -1339,7 +1339,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   }
 }
 
-// ── v2.3.3083: THE ARMOR FORGE -- the Armor tab's rows are the worker's ──
+// ── v2.3.3092: THE ARMOR FORGE -- the Armor tab's rows are the worker's ──
 // A recipe the client draws with a different cost, level or metal is a row
 // that lies: "Forge" lit and refused, or a plate promised in copper and
 // minted in iron.  Every field, both ways, and every recipe's bar a bar the
@@ -1540,7 +1540,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     && clientGatherReqLvl('fishSpot', 6) === 5);
 }
 
-// v2.3.3082: this block sat AFTER the process.exit below (a merge put it
+// v2.3.3091: this block sat AFTER the process.exit below (a merge put it
 // there), so its three checks never ran -- moved back above it.
 // ── v2.3.3058: No man's land's rings (server nomansland.js, client
 // game/noMansLand.js).  The banner, the top bar and the tap's aim are the

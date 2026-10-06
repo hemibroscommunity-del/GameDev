@@ -1,4 +1,4 @@
-/* BARS INTO ARMOR AT THE BLACKSMITH (v2.3.3083)
+/* BARS INTO ARMOR AT THE BLACKSMITH (v2.3.3092)
  *
  * Asked "Should smelted bars make armour?", the owner said "Yes".
  *

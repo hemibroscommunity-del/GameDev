@@ -122,7 +122,7 @@ const smith = () => (ps().lifeSkills && ps().lifeSkills.blacksmithing) || { leve
   check('a bar is worth more to the vendor than the five ore it cost', bar > ore * R.oreCost, { bar, ore });
 }
 
-// ── 5b. v2.3.3083: iron and black steel, the armor forge's other metals ──
+// ── 5b. v2.3.3092: iron and black steel, the armor forge's other metals ──
 {
   const I = SMELT.RECIPES.bar_iron, B = SMELT.RECIPES.bar_black_steel;
   check('iron and black steel bars: five of their own ore each, Smithing 5 and 10',

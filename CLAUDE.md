@@ -662,7 +662,7 @@ remnant to migrate server-side, not a mode to preserve.
       `node`); the Wheel's nodes drop at the flip to town;
     - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,
       `mp-wheelnodes`: docs/specs/wheel-resources.md.
-    - since v2.3.3083 SMELTED BARS MAKE ARMOR -- asked "Should smelted bars
+    - since v2.3.3092 SMELTED BARS MAKE ARMOR -- asked "Should smelted bars
       make armour?", the owner: "Yes": iron and black steel bars smelt too
       (Smithing 5 and 10, `SMELT.RECIPES`, icons by `tools/make_bar_icons.py
       iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso (5
@@ -861,7 +861,7 @@ remnant to migrate server-side, not a mode to preserve.
       gold; `nml_loss` tells the game exactly what went;
     - `caps.nomansland`, kill switch `nomansland: false`; dev vitals take
       `hp`; `nomansland` suite (51), `mp-nomansland` (15, two screens);
-    - since v2.3.3082 SPARE SHIELDS GO TOO -- asked "Shields and outfits in no
+    - since v2.3.3091 SPARE SHIELDS GO TOO -- asked "Shields and outfits in no
       man's land?", the owner: "Yes": the game reports the shield on its arm
       (`shield_wear` {gid | sig | none}, src/game/shieldWear.js, on every
       change, every join and a new shield into the bag), and the worker keeps
