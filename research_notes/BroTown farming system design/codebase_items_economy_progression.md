@@ -59,7 +59,39 @@ Diego sells exactly five "staples" -- one heal food and four bottles -- all read
 
 ## Buffs / temporary stat boosts and the stat pipeline
 
-(pending)
+### Takeaway
+One timed-buff system exists and it is server-authoritative: `ps._buffs`, a persisted map of wall-clock end-times (`damage`, `spd`, `mana`, `resist`, `regen`, `hp`) plus magnitudes (`damageMul`, `spdMul`, `manaFlat`), written only by potions and cook recipes, with a strict "one timed effect at a time" rule. Only four of the six timers are read by the worker (damage dealt, damage taken, mana regen, the speed anticheat bound); `regen` and `hp` are written and never read server-side. There are no shrines, scrolls, elixirs, "well fed" or pet buffs; amulets and allocated points are permanent stats, not timed buffs. Farm buffs should reuse `ps._buffs`, adding a magnitude key per new effect.
+
+### Cited Findings
+**The record and its writers (exists and works).**
+- Writers: `_applyShopItem` (potions) -- `server/src/cooking.js:406-502`; `_handleCookRecipe` (recipes) -- `server/src/cooking.js:294-339`. Every timed writer first calls `_clearTimedBuffs`, which replaces the whole record with `{}` ("drinking replaces a meal, eating replaces a drink, and a second potion replaces the first") -- `server/src/cooking.js:381-398`, `server/src/cooking.js:305`.
+- NO STACKING by design: a second Fury Tonic "extend[s] from NOW rather than stacking" -- `server/src/cooking.js:497-499`; owner quote "Only 1 effect active at a time though" -- `server/src/cooking.js:381-383`.
+- Magnitudes ride beside timers and are pruned with their owner: `BUFF_MAGNITUDES = { damageMul: 'damage', spdMul: 'spd', manaFlat: 'mana' }` -- `server/src/persistence.js:35-45`, `_pruneBuffs` -- `server/src/persistence.js:76-100` (called from `_saveRpg`, `server/src/persistence.js:177`).
+**Readers on the worker (what a buff can actually change).**
+- Outgoing damage: `if (_buffActive(ps,'damage')) base *= damageMul in [1,4] else 1.20` -- `server/src/combat.js:903-911` (1.20 = the cooked-food magnitude; 2.0 = Fury Tonic).
+- Damage taken: `resist` multiplies by 0.95 (5% cut, floor 1) -- `server/src/combat.js:401-407`.
+- Mana regen: `mana` timer x1.3 regen, or the Mana Draught's flat per-tick floor (bounded 1..200) -- `server/src/index.js:3486-3520`.
+- Move speed: movement is CLIENT-owned; the worker only widens its anti-teleport bound by `spdMul` in [1,2] (else 1.15 food) while `spd` is live -- `server/src/movement.js:236-253`; the client multiplies the walk by the same number -- `src/ui/BroTown.jsx:4978-4990`.
+- `regen` and `hp` timers: written (`server/src/cooking.js:315`, `server/src/cooking.js:337`) but no server reader exists (grep of `_buffActive(` across server/src returns only `resist`, `damage`, `mana`, `spd`: `server/src/combat.js:405`, `server/src/combat.js:908`, `server/src/index.js:3488`, `server/src/movement.js:251`) -- dormant; the cooking.js header still claims regen is applied in `_tickPlayerRegen` (`server/src/cooking.js:213-220`), which is stale.
+- The client's own regen-buff math only runs when `!S._serverMonsters` (legacy offline path) -- `src/ui/BroTown.jsx:6834-6870`; client-side OOC HP regen is disabled ("melee-kill lifesteal is now the only HP recovery source per design", v2.3.149 comment) -- `src/ui/BroTown.jsx:6842-6847`; the legacy client monster AI predicts resist at 0.85 vs the server's 0.95 -- `src/game/monsterCombat.js:783-784` (drift in a legacy path).
+**Persistence, logout, death.**
+- `_buffs` is saved in the rpg blob (`server/src/persistence.js:221`, `server/src/persistence.js:496`) and restored on join (`server/src/join.js:735`); a fresh bootstrap starts `{}` (`server/src/join.js:880`). Timers are absolute `Date.now()` end-times, so a buff keeps counting down while you are logged out (it does not pause) -- `server/src/cooking.js:351-353`, `server/src/cooking.js:306-307`.
+- Death does not clear buffs: no `_buffs` writer exists in any death/respawn path (whole-server grep: writers only in cooking.js, persistence.js prune, join.js load/bootstrap). (Inference from absence -- see Gaps.)
+- Arena: healing items refused in an arena match -- `server/src/cooking.js:81`, `server/src/cooking.js:408-413`.
+**HUD.**
+- Timed buffs show as chips (icon, label, seconds left, magnitude) in a column at the top-left under the elemental status chips: Cursed, DoT, "Dmg+" (shows "x2" or "+20%"), "Mana" ("Surge"/"+30%"), "Regen", "Resist", speed -- `src/ui/BroTown.jsx:12230-12330`. The client mirrors the server's timers from every `player_state` and treats an absent key as OFF -- `src/networking/wsClient.js:1919-1963`.
+- Monster-inflicted statuses (chill, burn, gust, hold, daze, shock, soak, poison) are a separate worker system with their own chips -- CLAUDE.md v2.3.2996 / v2.3.3014 bullets (`server/src/monsterstatus.js`, `src/ui/ElemStatusChips.jsx`).
+**Permanent stat pipeline (for context, not timed).**
+- Damage, damage taken, max pools and regen are computed by the worker from allocated prog3 points, gear tier/grade, amulet and elemental terms; e.g. defense -0.4%/pt cap -40% -- `server/src/combat.js:408-413`; move speed stat +0.4%/pt -- `server/src/prog3.js:268-282`; flame-gem amulet elemental damage -- `server/src/combat.js:970-980`; amulet stamina regen -- `server/src/index.js:3468`. The client predicts the same numbers (prog3 mirrors pinned by `prog3.test.mjs` / mirror-audit per `server/src/prog3.js:275-282`).
+- No other timed boosts were found: zero code hits for shrine / blessing / wellFed / "well fed"; "elixir" appears only as a word in the potion-category regex (`src/ui/mobile/dash/InventoryPanel.jsx`, `server/src/store.js`); pets have no combat bonus (pets.js has only capture chance) -- `server/src/pets.js:45`.
+
+### Inferences
+- A farm "food buff" that changes damage, damage taken, mana regen or speed can be built entirely on the existing record: write `ps._buffs.<timer> = endsAt` (+ a magnitude key registered in `BUFF_MAGNITUDES`) in a server handler, and it will be persisted, mirrored to the client, drawn as a chip, and cancelled by the next potion/meal. A NEW kind of effect (e.g. +max HP, +XP gain, +gather yield, +crit) needs a new server reader at the right authority point (e.g. `_recomputeMaxes`, `_prog3AwardXp`, `_harvestYieldMult`) -- none of those read `_buffs` today.
+- The "one effect at a time" rule means food and potions compete for a single slot; if the owner wants food to coexist with potions (common in other games), `_clearTimedBuffs` must become per-category.
+- Because timers are wall-clock, a long farm buff (e.g. 30 min) drains while offline; if that is unwanted the timer needs pausing on logout (not supported today).
+
+### Gaps
+- I did not run the server to confirm buff survival through a death; the claim rests on the absence of any `_buffs` writer in death/respawn code.
 
 ## Cooking
 
