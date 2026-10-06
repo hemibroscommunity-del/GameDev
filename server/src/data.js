@@ -25,15 +25,46 @@
  * Consumed by _spawnZoneMonsters (index.js) and _dungeonMonster
  * (dungeon.js).  Damage/XP/gold curves stay inline at those call sites
  * (unchanged by BF-1; centralize them if they ever need tuning). */
-export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025, flat: 100, flatLow: 50, flatLowMaxLvl: 2 }; /* v2.3.1346: owner — every monster +100 HP flat.  v2.3.1364: owner — Lv1-2 monsters carry 50 LESS of it (flatLow) so starter fights don't feel spongy */
+export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025, flat: 100, flatLow: 50, flatLowMaxLvl: 2,
+  flatRamp: 1.10, flatPlateau: 1.035, flatEndgame: 1.025 }; /* v2.3.1346: owner — every monster +100 HP flat.  v2.3.1364: owner — Lv1-2 monsters carry 50 LESS of it (flatLow) so starter fights don't feel spongy.  v2.3.3055: the flat GROWS from Lv3 (flatRamp…), see monsterHpFlat */
+
+/* ═══ v2.3.3055: MONSTERS GROW WITH THEIR LEVEL ═══
+ * Owner, 2026-10-05: "I'm easily crushing higher level monsters right now.
+ * Difficulty doesn't seem to be scaling at all (lvl 7 killing lvl 17 slimes
+ * easily)."  Measured, it barely did: the +100 flat (v2.3.1346) was the same
+ * at every level and the curve under it is tiny at these levels (a fodder's
+ * curve part is 18 HP at Lv17), so a Lv17 slime had 118 HP against a Lv3's
+ * 109 -- +8% across fourteen levels -- and hit 4.5% harder a level.
+ *
+ * So the flat grows: 100 at Lv3, then +10% a level (flatRamp) through the
+ * monsterStat phases -- Lv5 122, Lv7 147, Lv10 195, Lv17 380, Lv20 506,
+ * Lv30 1,311 -- and the damage ramp's first phase is 1.065 (was 1.045,
+ * MONSTER_DMG_CURVE below).  Lv1-2 are UNCHANGED (flatLow, and 1.065 and
+ * 1.045 both round to 12 and 13), so the starter stretch plays as before.
+ * A fresh character met a Lv17 slime in 5.6 swings taking a third of its
+ * HP; now 19 swings, and it is the slime that wins.  Fought at your level
+ * with the points and gear of that level, a kill stays ~4 swings.
+ *
+ * Mirrored in src/data/gameSystems.js (monsterHpFlat, MONSTER_DMG_CURVE);
+ * mirror-audit and zones.test pin both. */
+export const MONSTER_DMG_CURVE = { base: 12, ramp: 1.065, plateau: 1.025, endgame: 1.018 };
 
 /* v2.3.1364: level-aware flat HP term.  Use this instead of reading
  * MONSTER_HP_CURVE.flat directly at spawn sites — Lv1-2 gets flatLow.
  * MIRRORED in src/data/gameSystems.js monsterHpFlat (keep in sync). */
 export function monsterHpFlat(level) {
-  return level <= (MONSTER_HP_CURVE.flatLowMaxLvl || 0)
-    ? (MONSTER_HP_CURVE.flatLow || 0)
-    : (MONSTER_HP_CURVE.flat || 0);
+  const low = MONSTER_HP_CURVE.flatLowMaxLvl || 0;
+  if (level <= low) return MONSTER_HP_CURVE.flatLow || 0;
+  const flat = MONSTER_HP_CURVE.flat || 0;
+  if (!MONSTER_HP_CURVE.flatRamp) return flat;
+  /* v2.3.3055: `flat` at the first level past flatLow, growing from there */
+  return monsterStat(flat, level - low, MONSTER_HP_CURVE.flatRamp, MONSTER_HP_CURVE.flatPlateau, MONSTER_HP_CURVE.flatEndgame);
+}
+
+/* v2.3.3055: the RETIRED T2 point table's yardstick keeps the flat it was
+ * tuned against (t2BenchStats below) -- a legacy reader must not move. */
+export function t2BenchFlat(level) {
+  return level <= (MONSTER_HP_CURVE.flatLowMaxLvl || 0) ? (MONSTER_HP_CURVE.flatLow || 0) : (MONSTER_HP_CURVE.flat || 0);
 }
 
 /* v2.3.1153: damage channel was repriced flat-in-tierMult -> a
@@ -127,8 +158,8 @@ export function t2BenchLevel(playerLevel) {
  * no archetype factor appears. */
 export function t2BenchStats(B) {
   return {
-    hp: Math.ceil(monsterStat(MONSTER_HP_CURVE.base, B, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame)) + monsterHpFlat(B),
-    dmg: Math.ceil(monsterStat(12, B, 1.045, 1.025, 1.018)),
+    hp: Math.ceil(monsterStat(MONSTER_HP_CURVE.base, B, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame)) + t2BenchFlat(B), /* v2.3.3055: frozen */
+    dmg: Math.ceil(monsterStat(12, B, 1.045, 1.025, 1.018)), /* the pre-v2.3.3055 ramp, frozen with it */
   };
 }
 
@@ -547,7 +578,7 @@ export const QUEST_REWARDS = {
          then refused at the equip check — a reward the player can see and not
          use is worse than no reward.  The sword+shield that come BEFORE these,
          on first contact, are the next slice. */
-      tut_1: {gold:25,  xp:30,  next:'tut_2',
+      tut_1: {gold:25,  xp:15,  next:'tut_2',
               objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'},
               /* v2.3.1676 (owner: "He'll give you the sword and shield").  Paid
                  on ACCEPT, not turn-in — you cannot do the quest without them,
@@ -605,11 +636,11 @@ export const QUEST_REWARDS = {
                 {kind:'weapon', weaponType:'staff', tierKey:'pine', name:"Pine Staff"},    /* v2.3.1772 */
               ]},
       /* v2.3.1692: tut_2 pays gold + xp only — its staff moved to tut_1. */
-      tut_2: {gold:60,  xp:70, next:'tut_3',
+      tut_2: {gold:60,  xp:35, next:'tut_3',
               objective:{type:'collect', invKey:'slime-remnants', count:6, consume:true, zone:'verdant'}},
-      tut_3: {gold:150, xp:105, next:'tut_4',
+      tut_3: {gold:150, xp:53, next:'tut_4',
               objective:{type:'collect', invKey:'skeleton-remnants', count:5, consume:true, zone:'sky'}},
-      tut_4: {gold:400, xp:210, next:null,
+      tut_4: {gold:400, xp:105, next:null,
               objective:{type:'collect', invKey:'fire-goblin-remnants', count:6, consume:true, zone:'ember'},
               /* v2.3.1687 (owner: "Change the reward for fire goblin quest from
                  'scouts vest' to Iron Torso"). */
@@ -645,14 +676,14 @@ export const QUEST_REWARDS = {
          to fish AND cook — two skills out of one quest, and the reason the
          axe rides along with the pole: firewood.  Counts are small on purpose;
          this is a tutorial, not a grind. */
-      life_1: {gold:60,  xp:55,  next:'life_2',
+      life_1: {gold:60,  xp:28,  next:'life_2',
                objective:{type:'collect', invPrefix:'cooked_fish_', count:2, consume:true},
                grantOnAccept:[
                  {kind:'inv', key:'woodcutting_axe', n:1},
                  {kind:'inv', key:'fishing_pole', n:1},
                ],
                item:{kind:'inv', key:'mining_pickaxe', n:1}},
-      life_2: {gold:200, xp:140, next:null,
+      life_2: {gold:200, xp:70, next:null,
                /* v2.3.1704 (owner: "Prospectors vest and prospectors greaves are
                   the wrong description of quest awards for iron torso and iron
                   legs for mining quest.  Also the legs were an earlier reward
@@ -677,31 +708,31 @@ export const QUEST_REWARDS = {
                objective:{type:'collect', invPrefix:'ore_', count:5, consume:true},
                item:{kind:'armor', name:"Copper Torso", mat:'copper', tierMult:1.0}},
 
-      mayor_1:    {gold:50,  xp:20,  next:'mayor_2'},
-      mayor_2:    {gold:100, xp:55,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
-      mayor_3:    {gold:300, xp:140, next:null},
-      trader_1:   {gold:25,  xp:15,  next:'trader_2'},
-      trader_2:   {gold:75,  xp:35,  next:'trader_3', objective:{type:'gather', count:3}},
-      trader_3:   {gold:150, xp:70, next:null},
-      enchant_1:  {gold:50,  xp:30,  next:'enchant_2'},
-      enchant_2:  {gold:200, xp:105, next:'enchant_3'},
-      enchant_3:  {gold:500, xp:210, next:null},
-      scout_1:    {gold:100, xp:55,  next:'scout_2'},
-      scout_2:    {gold:200, xp:105, next:null},
-      bron_1:     {gold:60,  xp:30,  next:'bron_2'},
-      bron_2:     {gold:120, xp:55,  next:'bron_3'},
-      bron_3:     {gold:200, xp:105, next:'bron_4'},
-      bron_4:     {gold:400, xp:175, next:null},
-      luna_1:     {gold:40,  xp:20,  next:'luna_2'},
-      luna_2:     {gold:100, xp:50,  next:'luna_3'},
-      luna_3:     {gold:250, xp:125, next:null},
-      kai_1:      {gold:80,  xp:40,  next:'kai_2'},
-      kai_2:      {gold:200, xp:85, next:'kai_3'},
-      kai_3:      {gold:350, xp:140, next:null},
-      ash_1:      {gold:100, xp:55,  next:'ash_2'},
-      ash_2:      {gold:250, xp:125, next:'ash_3'},
-      ash_3:      {gold:500, xp:245, next:'ash_4'},
-      ash_4:      {gold:800, xp:350, next:null},
+      mayor_1:    {gold:50,  xp:10,  next:'mayor_2'},
+      mayor_2:    {gold:100, xp:28,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
+      mayor_3:    {gold:300, xp:70, next:null},
+      trader_1:   {gold:25,  xp:8,  next:'trader_2'},
+      trader_2:   {gold:75,  xp:18,  next:'trader_3', objective:{type:'gather', count:3}},
+      trader_3:   {gold:150, xp:35, next:null},
+      enchant_1:  {gold:50,  xp:15,  next:'enchant_2'},
+      enchant_2:  {gold:200, xp:53, next:'enchant_3'},
+      enchant_3:  {gold:500, xp:105, next:null},
+      scout_1:    {gold:100, xp:28,  next:'scout_2'},
+      scout_2:    {gold:200, xp:53, next:null},
+      bron_1:     {gold:60,  xp:15,  next:'bron_2'},
+      bron_2:     {gold:120, xp:28,  next:'bron_3'},
+      bron_3:     {gold:200, xp:53, next:'bron_4'},
+      bron_4:     {gold:400, xp:88, next:null},
+      luna_1:     {gold:40,  xp:10,  next:'luna_2'},
+      luna_2:     {gold:100, xp:25,  next:'luna_3'},
+      luna_3:     {gold:250, xp:63, next:null},
+      kai_1:      {gold:80,  xp:20,  next:'kai_2'},
+      kai_2:      {gold:200, xp:43, next:'kai_3'},
+      kai_3:      {gold:350, xp:70, next:null},
+      ash_1:      {gold:100, xp:28,  next:'ash_2'},
+      ash_2:      {gold:250, xp:63, next:'ash_3'},
+      ash_3:      {gold:500, xp:123, next:'ash_4'},
+      ash_4:      {gold:800, xp:175, next:null},
     };
 
 export const BLACKSMITH_TIERS = {

@@ -44,6 +44,7 @@ import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gest
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
+  MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
   ARMOR_DR, /* v2.3.2664: the armour grades' ceiling lifts */
@@ -118,6 +119,15 @@ const room = Object.create(GameRoom.prototype);
 {
   const bad = Object.keys(SRV.MONSTER_HP_CURVE).filter((f) => SRV.MONSTER_HP_CURVE[f] !== MONSTER_HP_CURVE[f]);
   check('MONSTER_HP_CURVE identical (a drifted curve desyncs every kill-time expectation)', bad.length === 0, bad);
+}
+/* v2.3.3055: the damage curve and the GROWING flat -- the Points window's
+   scene fights the client's createMonster, so its numbers are these */
+{
+  const bad = Object.keys(SRV.MONSTER_DMG_CURVE).filter((f) => SRV.MONSTER_DMG_CURVE[f] !== MONSTER_DMG_CURVE[f]);
+  check('MONSTER_DMG_CURVE identical', bad.length === 0 && Object.keys(MONSTER_DMG_CURVE).length === Object.keys(SRV.MONSTER_DMG_CURVE).length, bad);
+  const flats = [];
+  for (let L = 1; L <= 100; L++) if (SRV.monsterHpFlat(L) !== clientMonsterHpFlat(L)) flats.push({ L, server: SRV.monsterHpFlat(L), client: clientMonsterHpFlat(L) });
+  check('monsterHpFlat identical at every level 1-100', flats.length === 0, flats.slice(0, 5));
 }
 
 // ── 3. FISH_TIERS: level gates + names (server name is the client
