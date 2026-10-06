@@ -1318,7 +1318,22 @@ remnant to migrate server-side, not a mode to preserve.
       with a prompt to paste (the buildings' insides, land banners, dungeon
       mouths, the four lands' music);
     - test-world-core "the buildings' doors", `mp-wheelhalls`, `mp-wheeldoors`:
-      docs/specs/wheel-halls.md.)
+      docs/specs/wheel-halls.md.
+  - Since v2.3.3067 THE REST OF TOWN'S CAST STANDS IN THE WHEEL'S BROTOWN --
+    the owner: "keep going with pragmatic enhancements":
+    - Ace west of the Gambling Den's steps, Blacksmith Bro east of the forge's,
+      Lil Bro on the square 260 px west of where you arrive (Mayor Bro east),
+      beside Diego (`WHEEL_TOWNSFOLK` in wheelBuildingDoors.js, spawned by
+      `_spawnWheelNpcs`, standing still, facing the street);
+    - ACE'S COIN FLIP (v2.3.2618) opens only on a tap on Ace, so while he stood
+      in today's town it could not be played at all; the worker's flip never
+      asks where you are, so no server change; E beside him opens it too, and
+      Diego's shop (desktopControls.js; a door in reach still comes first);
+    - the art follows the table (npcSprites.js `_wheelCast`): walkers' south
+      strips cropped, single pictures for the rest, behind the Wheel's loading
+      screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
+    - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
+      docs/specs/wheel-doors.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

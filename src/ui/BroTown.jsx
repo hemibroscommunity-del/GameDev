@@ -781,7 +781,9 @@ var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
    and takes his quests exactly as in today's town -- the server's quest
    hand-ins never ask which zone you are in (quests.js).  Only him: the
    shopkeeper, the blacksmith, Lil Bro and Ace stay in today's town until
-   their buildings have doors. */
+   their buildings have doors.  (v2.3.3032: Diego came; v2.3.3067: the other
+   three, WHEEL_TOWNSFOLK -- Ace's coin flip opens only on a tap on him, so
+   while he stayed behind it could not be played.) */
 function _spawnWheelNpcs() {
   var info = wheelObjectsInfo();
   var spot = info && info.mayor;

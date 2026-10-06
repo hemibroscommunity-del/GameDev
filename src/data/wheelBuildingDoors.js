@@ -100,4 +100,28 @@ export const WHEEL_SHUT_DOORS = ['hotel'];
    wheelWalkSources).  mp-wheeldoors checks the clearances. */
 export const WHEEL_TOWNSFOLK = [
   { name: 'Diego', door: 'store', dx: -105, dy: 34 },
+  /* ═══ v2.3.3067: THE REST OF TOWN'S CAST ═══
+     Asked to "keep going with pragmatic enhancements": the three townsfolk
+     v2.3.3032 left in today's town, which nobody walks any more -- and one of
+     them was a game.  Ace's coin flip (v2.3.2618, the owner's "triple your
+     money or lose 3x") opens only on a TAP ON ACE (BroTown.jsx tapNpcAtCss,
+     `flip`), so since the Wheel became the world it could not be played at
+     all.  The worker's flip asks nothing about where you are (gamble.js
+     _handleAceFlipRequest), so he only had to stand somewhere.
+
+     Ace: beside the Gambling Den, WEST of its steps, where Diego stands at
+          the store -- the den's barrel and trough are on its east;
+     Blacksmith Bro: EAST of the forge's steps (a barrel west, a crate east,
+          each 193 px out) -- scenery with a hammer, as in today's town;
+     Lil Bro: on the square, 260 px WEST of where you arrive (the Town Hall's
+          door + (0, 108)), on the side away from Mayor Bro, so a new player
+          meets him, as in today's town: 282 px from the hall's door (the
+          nearest), 410 from the Mayor, 110 clear of any footprint.
+     All stand still and face the street (their one strip loaded, south);
+     none opens anything by proximity (only Diego has a proximity window,
+     and only a tap opens Ace's flip).  test-world-core checks each spot's
+     ground; mp-wheelfolk walks to them on a phone. */
+  { name: 'Ace', door: 'gambling', dx: -105, dy: 34 },
+  { name: 'Blacksmith Bro', door: 'blacksmith', dx: 105, dy: 34 },
+  { name: 'Lil Bro', door: 'townhall', dx: -260, dy: 110 },
 ];

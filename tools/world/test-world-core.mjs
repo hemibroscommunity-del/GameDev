@@ -3251,17 +3251,45 @@ console.log("the buildings' doors (v2.3.3032)");
   const blocked = doors.filter((d) => hit(d.x, d.y + 30, 10).length > 0 || dbp.regionIds[dbp.reg[cellG(d.x, d.y + 30)]] !== 'town');
   ok('every door can be stood at: the boots 30 px below the steps (and a body\'s half width round them) are in no footprint, on the town\'s ground',
     blocked.length === 0, blocked.map((d) => [d.id, hit(d.x, d.y + 30, 10)]));
-  /* Diego keeps the General Store */
+  /* Diego keeps the General Store (v2.3.3067: and the rest of town's cast) */
   const sp = WHEEL_TOWNSFOLK.map((f) => ({ f, d: byDoor[f.door] })).map(({ f, d }) => ({ name: f.name, x: d.x + f.dx, y: d.y + f.dy, d }));
-  ok('Diego has a door to stand beside, in front of the porch, in no footprint with room round him, on the town\'s ground',
-    sp.length === 1 && sp[0].name === 'Diego' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
+  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro and Lil Bro',
+    sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
     sp.map((q) => [q.name, hit(q.x, q.y, 24)]));
   /* ...and standing at the General Store's door does not open his window by
      itself: it opens within 90 px of him from your middle, ~52 px above your boots */
-  const dg = sp[0];
+  const dg = sp.find((q) => q.name === 'Diego');
   const atDoor = Math.hypot(dg.d.x - dg.x, (dg.d.y - 52) - dg.y);
   ok(`...far enough off that standing at the door is ${Math.round(atDoor)} px from him, past the 90 px his window opens at, and near enough that he stays the store's (${Math.round(Math.hypot(dg.d.x - dg.x, dg.d.y - dg.y))} px)`,
     atDoor > 100 && Math.hypot(dg.d.x - dg.x, dg.d.y - dg.y) < 160, atDoor);
+  /* ═══ v2.3.3067: THE REST OF TOWN'S CAST ═══
+     Ace's coin flip opens only on a tap on him, so while he stood in today's
+     town it could not be played.  Each is a real NPC_DATA row (the spawn
+     copies it by name), stands by the building that is his, and is far
+     enough from the others that a tap finds the one meant. */
+  {
+    const { NPC_DATA } = await import('../../src/data/gameDisplay.js');
+    const { mayorSpot } = await import('../../public/tools/world/core/placing.js');
+    const row = (n) => NPC_DATA.find((r) => r.name === n);
+    const at = Object.fromEntries(sp.map((q) => [q.name, q]));
+    const ownDoor = (q, id) => q && q.d && q.d.id === id && Math.hypot(q.d.x - q.x, q.d.y - q.y) < 160 && Math.hypot(q.d.x - q.x, (q.d.y - 52) - q.y) > 100;
+    ok('Ace stands by the Gambling Den and his row opens the coin flip; Blacksmith Bro by the forge; every name is an NPC_DATA row',
+      sp.every((q) => row(q.name)) && !!row('Ace').flip && ownDoor(at.Ace, 'gambling') && ownDoor(at['Blacksmith Bro'], 'blacksmith'),
+      sp.map((q) => [q.name, q.d && q.d.id, !!row(q.name)]));
+    const ms2 = mayorSpot(PLAN, dbp), lb = at['Lil Bro'], hallDoor = byDoor.townhall;
+    const arrive = { x: hallDoor.x, y: hallDoor.y + 108 };
+    const toArrive = Math.hypot(lb.x - arrive.x, lb.y - arrive.y), toMayor = Math.hypot(lb.x - ms2.x, lb.y - ms2.y);
+    const toDoors = Math.min.apply(null, doors.map((d) => Math.hypot(d.x - lb.x, d.y - lb.y)));
+    ok(`Lil Bro is on the square, met on arrival (${Math.round(toArrive)} px from where you land), on the side away from Mayor Bro (${Math.round(toMayor)} px), beyond every door's reach (${Math.round(toDoors)} px from the nearest)`,
+      toArrive > 200 && toArrive < 320 && lb.x < arrive.x && ms2.x > arrive.x && toMayor > 300 && toDoors > 2 * WHEEL_DOOR_REACH, { toArrive, toMayor, toDoors });
+    let closest = Infinity;
+    for (const a of sp) for (const b of sp) if (a !== b) closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y));
+    ok(`no two of them within reach of one tap (${Math.round(closest)} px apart at the closest)`, closest > 300, closest);
+    const spriteSrc = fs.readFileSync(new URL('../../src/rendering/npcSprites.js', import.meta.url), 'utf8');
+    ok('...and the Wheel loads each one\'s picture behind its loading screen, read off the same table (npcSprites.js _wheelCast)',
+      /WHEEL_TOWNSFOLK\.map\(\(f\) => f\.name\)/.test(spriteSrc) && /export function wheelNpcSources\(\) \{\s*return _wheelCast\(\)/.test(spriteSrc)
+        && /export function wheelWalkSources\(\) \{\s*return _wheelCast\(\)/.test(spriteSrc), {});
+  }
   /* the worker ships them, the game reads them, the scan uses them */
   const readSrc = (u) => fs.readFileSync(new URL(u, import.meta.url), 'utf8');
   const workerSrc2 = readSrc('../../public/tools/world/core/ground-worker.js');

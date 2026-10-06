@@ -15,6 +15,8 @@
 import { BT_AUDIO, getNpcQuest } from '@/data/index.js';
 import { triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: X jumps */
 import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E at a Wheel dungeon's mouth */
+import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace opens his coin flip */
+import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 
 export function setupDesktopControls(S, deps) {
   var triggerContextualDodge = deps.triggerContextualDodge,
@@ -143,6 +145,19 @@ export function setupDesktopControls(S, deps) {
           var npcQ = typeof getNpcQuest === 'function' ? getNpcQuest(S.rpg, npc.name) : null;
           if (npcQ) {
             _desktopNpcQuest(npc, npcQ);
+            return;
+          }
+          /* v2.3.3067: the same answers a TAP gives (BroTown.jsx tapNpcAtCss):
+             Ace's coin flip and Diego's shop.  E said "has nothing for you"
+             to both, and Ace's flip has no other door -- he stands in the
+             Wheel's Brotown now (WHEEL_TOWNSFOLK), where a keyboard plays too. */
+          if (npc.flip) {
+            try { aceFlipBus.setStake(0); aceFlipBus.setOpen(true); } catch (_e) { /* display-only */ }
+            return;
+          }
+          if (npc.shop) {
+            S._npcProxLatch = { npc: npc, ready: false };   /* as the tap: closing it beside him does not reopen it */
+            try { shopBus.setOpen(true); } catch (_e) { /* display-only */ }
             return;
           }
           /* v2.3.1717: he is right there and has nothing left.  Say so — a
