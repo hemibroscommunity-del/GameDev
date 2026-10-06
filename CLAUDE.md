@@ -1256,7 +1256,7 @@ remnant to migrate server-side, not a mode to preserve.
     (`WHEEL_GATE_ROADS`, src/data/wheelSignposts.js, checked against the
     plan's roads), an arrow the way it lies, its element icon and its name in
     its colour; world-sized, on monsterUi (src/rendering/wheelSignposts.js,
-    drawn by effectsRenderer); since v2.3.3080 each plate ends in the levels
+    drawn by effectsRenderer); since v2.3.3089 each plate ends in the levels
     its land holds, "Lv 1–20" (`WHEEL_LAND_LEVELS`; the owner's "Yes" to
     levels though every land reads the same; mirror-audit holds it to the
     deepest stretch baked in wheelspawns.js); the eight

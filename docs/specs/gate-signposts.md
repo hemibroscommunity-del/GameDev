@@ -1,4 +1,4 @@
-# Brotown's signposts say where their roads go (v2.3.3062, levels v2.3.3080)
+# Brotown's signposts say where their roads go (v2.3.3062, levels v2.3.3089)
 
 > Owner, 2026-10-06, on the recommendations for finding your way round the
 > Wheel: *"Continue building recommended."* Signposts naming the lands were
@@ -29,7 +29,7 @@ road takes you there.
 - **Its name**, in the land's colour lifted toward white, as the top bar and
   the banner print it. The names come from the worker's map, so they never
   disagree with the minimap.
-- **The levels its land holds** (since v2.3.3080), after the name in the
+- **The levels its land holds** (since v2.3.3089), after the name in the
   plate's brass: **Lv 1–20**, from the first stretch past the commons to the
   last before the first pass.
   - Asked *"Show levels on the signposts?"*, the owner said *"Yes"*, though

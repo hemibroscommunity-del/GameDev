@@ -39,8 +39,8 @@ import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES,
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
-import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wheelSignposts.js'; /* v2.3.3080 */
-import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3080 */
+import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wheelSignposts.js'; /* v2.3.3089 */
+import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3089 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
 import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */ } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
 import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
@@ -1443,7 +1443,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     SRV_SPRINT.REGEN_PAUSE_MS === CLIENT_SPRINT_REGEN_PAUSE, { srv: SRV_SPRINT.REGEN_PAUSE_MS, cli: CLIENT_SPRINT_REGEN_PAUSE });
 }
 
-// ── v2.3.3080: the levels on Brotown's signposts (client
+// ── v2.3.3089: the levels on Brotown's signposts (client
 // data/wheelSignposts.js WHEEL_LAND_LEVELS) are the levels the worker's
 // monsters span in every land: the first stretch to the deepest one baked
 // into wheelspawns.js.  A stretch that takes the lands past level 20 must move

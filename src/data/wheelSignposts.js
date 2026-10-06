@@ -25,7 +25,7 @@ export const WHEEL_GATE_ROADS = Object.freeze({
   west: Object.freeze(['verdant', 'mist']),     /* the West Road; the Bog Trail */
 });
 
-/* ═══ v2.3.3080: AND THE LEVELS THEIR LANDS HOLD ═══
+/* ═══ v2.3.3089: AND THE LEVELS THEIR LANDS HOLD ═══
  * Asked "Show levels on the signposts?" -- every land starts at level 1 at its
  * near end, so all eight plates read the same -- the owner said "Yes".  Each
  * plate ends in the levels its land's monsters span: from the first stretch
