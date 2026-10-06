@@ -1,4 +1,4 @@
-/* ═══ THE WORLD MAP'S CANVAS IS EMPTIED AS IT CLOSES (v2.3.3066) ═══
+/* ═══ THE WORLD MAP'S CANVAS IS EMPTIED AS IT CLOSES (v2.3.3070) ═══
  *
  * The world map (src/ui/WorldMapOverlay.jsx) draws on a canvas the size of
  * the screen at the device's pixels -- 390 x 844 at 3x is 11.3 MB -- made when

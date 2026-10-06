@@ -142,7 +142,7 @@ function WorldMap({ stateRef, onClose }) {
       window.removeEventListener('resize', onResize);
       if (readout) readout.style.visibility = was;
       try { window.__btWorldMap = { open: false }; } catch (e) { /* no page */ }
-      /* v2.3.3066: the map's canvas is the whole screen at the device's
+      /* v2.3.3070: the map's canvas is the whole screen at the device's
          pixels (390 x 844 at 3x: 11.3 MB) and goes with the map -- but its
          pixels went only when the garbage collector came round to it, so
          opening and closing the map a few times held a few dead copies.
