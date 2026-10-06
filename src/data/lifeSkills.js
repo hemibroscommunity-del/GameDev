@@ -2,10 +2,11 @@ import { TILE } from './constants.js';
 import { ZONES } from './zones.js';
 import { flavorName, flavorSpotName } from './elements.js';
 /* v2.3.1189: was an eslint-grandfathered global (globalThis-resolved). */
-import { ZONE_RESOURCES } from './items.js';
+import { ZONE_RESOURCES, LIFE_SKILL_XP_BASE } from './items.js';
 
 /* ═══ LIFE SKILLS — §18 ═══ */
-export const LIFE_SKILL_XP = (level) => Math.ceil(500 * Math.pow(1.08, level - 1));
+/* v2.3.3090: on LIFE_SKILL_XP_BASE (items.js), 1000 -- twice the old 500 */
+export const LIFE_SKILL_XP = (level) => Math.ceil(LIFE_SKILL_XP_BASE * Math.pow(1.08, level - 1));
 export const LIFE_SKILLS = ['woodcutting', 'fishing', 'mining', 'farming', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'trapping'];
 
 /* §18.2 Resource tiers by zone depth */
