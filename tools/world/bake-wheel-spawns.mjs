@@ -68,7 +68,11 @@ export const SPAWN_RULES = Object.freeze({
      of walking, five levels).  The rest of the rules above hold there too
      (hazards, roads, objects, `apart`, `half`, `keep`); these are theirs. */
   deep: Object.freeze({
-    tiers: Object.freeze([2, 3, 4]),   /* levels 6-10, 11-15, 16-20: the first stage, up to the pass and camp at 20 */
+    /* levels 6-10, 11-15, 16-20: the first stage, up to the pass and camp at 20;
+       v2.3.3084: and 21-25 ... 36-40, the second stage, out to the camp at 40
+       (the owner: "build the world past level 20 (levels 21-40 in each land
+       with their own monsters and resources)") */
+    tiers: Object.freeze([2, 3, 4, 5, 6, 7, 8]),
     clearTier: 120,    /* from any land of another tier, the tier's wandering edge (tierWarp) included: a monster
                           stands, and wanders 180 px at most, among the levels its stretch says on the top bar */
     clearPlace: 360,   /* from a camp's plot (or any plot out in the country): no monster at a waystation's door */

@@ -711,6 +711,21 @@ remnant to migrate server-side, not a mode to preserve.
       checks them against the ground as drawn (docs/specs/wheel-resources.md);
     - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§9,
       `mp-wheeldeep`.
+    - since v2.3.3084 PAST LEVEL 20 TOO -- the owner: "build the world past
+      level 20 (levels 21-40 in each land with their own monsters and
+      resources) You can just recolor existing monsters for now":
+      `SPAWN_RULES.deep.tiers` 2..8, so every land's second stage (tiers 5-8,
+      levels 21-40, past the first pass) has its spawn list per tier -- 384
+      monsters, ~103 KB of `zone_state` on the way in; the game draws them in
+      the stage's colour and name (`src/data/wheelStageLooks.js`: Glacier
+      Snowman, Cinder Goblin, Gilded Mummy, Amethyst Golem, Storm Slime, Coral
+      Fishman, Spectral Wisp, Shade Lurker, Jade Slime), a SPRITE TINT that
+      REPLACES the look's own (no memory: a baked recolour would sit beside
+      the first stage's look, ~50 MB at the Flame Fields), through
+      entityRenderer's `wheelStageTint` / `wheelStageName`; a dungeon's
+      monsters past 20 wear it too; kill switch `wheelpast20: false`; the
+      signposts read "Lv 1–40"; `wheelzone` §1b/§4c, `mp-wheelpast20`:
+      wheel-monsters.md "Past level 20".
     - since v2.3.3055 a monster's level MEANS SOMETHING -- the owner: "lvl 7
       killing lvl 17 slimes easily": the +100 flat HP was the same at every
       level (a Lv17 slime 118 HP, a Lv3 109); it now GROWS 10% a level from

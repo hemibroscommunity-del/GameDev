@@ -33,7 +33,7 @@ export const WHEEL_GATE_ROADS = Object.freeze({
  * stretch baked into server/src/wheelspawns.js (WHEEL_SPAWNS[home].deeper),
  * which mirror-audit holds this to -- so the stretch that takes a land past
  * level 20 moves both, or that suite fails.  ([lo, hi], levels.) */
-export const WHEEL_LAND_LEVELS = Object.freeze([1, 20]);
+export const WHEEL_LAND_LEVELS = Object.freeze([1, 40]);   /* v2.3.3084: 20 -> 40, the second stage's monsters */
 
 /** "Lv 1–20": a plate's level tag. */
 export function landLevelsText(levels = WHEEL_LAND_LEVELS) {

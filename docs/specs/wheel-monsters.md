@@ -389,12 +389,72 @@ Tests: `wheelzone` §5d. A shot from the commons makes the monster:
 `wheelpursue: false` restores the shelter. §5b's "nobody in the commons is a
 target" checks are unchanged.
 
+## Past level 20: the second stage (v2.3.3084)
+
+> The owner: *"build the world past level 20 (levels 21–40 in each land with
+> their own monsters and resources) You can just recolor existing monsters for
+> now for placeholder monsters. No preference on colors"*.
+
+Every land's **second stage** has monsters now: tiers 5–8, levels 21–40, past
+the first pass and its camp at 20, out to the camp at 40.
+
+- **The server needed only the bake.** `SPAWN_RULES.deep.tiers` is `2..8`
+  (`tools/world/bake-wheel-spawns.mjs`), and the deeper loop in
+  `_wheelSpawnMonsters` was always one pass per baked tier. Each tier gets the
+  land's own spawn list again, at its levels, by depth in its band, with ids
+  `wm-<home>-t<tier>-<k>`.
+- **Counts:** 8 lands × 4 tiers × 6 = 192 more, **384** in all.
+  - Every new tier found 9–12 places (the fewest: the Stone Hollows' tier 8,
+    9 places).
+  - Nothing before tier 5 moved.
+- **Placeholders, recoloured.** The game draws them with the land's own look
+  in a colour of the stage's and a name to match (`src/data/wheelStageLooks.js`):
+
+  | Land | Look | Stage 2 | Colour |
+  |---|---|---|---|
+  | Frost Ridge | snowman | Glacier Snowman | icy blue `#8fc8ff` |
+  | the Flame Fields | fire goblin | Cinder Goblin | charred `#8c8c9c` |
+  | the Wind Dunes | mummy (and its skeleton) | Gilded Mummy / Skeleton | gold `#ffd27a` |
+  | the Stone Hollows | rock monster | Amethyst Golem | amethyst `#c8a0ff` |
+  | the Electric Foundry | slime | Storm Slime | teal `#60c0ff` |
+  | the Water Caves | fishman | Coral Fishman | coral `#ffb070` |
+  | the Poison Forest | mire wisp, bog lurker | Spectral Wisp, Shade Lurker | cyan `#70e8ff`, violet `#c090ff` |
+  | the Verdant Wilds | blue slime | Jade Slime | jade `#9cffb0` |
+
+  - **A sprite tint, so no memory.** It is the look's own sheets multiplied.
+    A tint can only darken a channel, so each colour was chosen on the real art
+    (a preview of all eight, on the art, picked them).
+  - **It replaces the look's own tint.** A mire wisp is a slime tinted violet;
+    its second-stage self is the same slime tinted cyan. Violet times cyan
+    would be black.
+  - **Why not a baked recolour:** it would sit in memory beside the first
+    stage's look. Looks load 2,600 px out, and a stage's edge is nearer than
+    that, so at the Flame Fields it would add about 50 MB, past iPhone Safari's
+    line (the looks-as-you-walk clause).
+  - **Why not a filter:** a filter per sprite is a render target per monster.
+  - **Where it is drawn:** every body tint in entityRenderer goes through
+    `wheelStageTint` (alive and dying, slime, sheet and snowman, and the hit
+    chips' `_btBaseTint`); the hit flash stays red. The plate reads
+    `wheelStageName`.
+  - **Dungeons too.** A dungeon's monsters carry `home` and their level, so
+    the Great Cave's level 26–30 rock monsters are Amethyst Golems as well.
+- **The wire.** `zone_state` on the way into the Wheel carries all 384, about
+  103 KB once (it was about half that). The ticks after it carry only the
+  monsters in reach, as before.
+- **The tick.** The monster tick with 384 measured about 0.43 ms here (about
+  0.26 ms with 192), on the separation sweep.
+- **Kill switch:** `wheelpast20: false` in liveflags leaves a Wheel spawned
+  after it with the first stage alone (192, levels 1–20).
+- **Signposts.** Brotown's plates read "Lv 1–40" now (`WHEEL_LAND_LEVELS`,
+  held to the bake by mirror-audit).
+
 ## Not in this round
 
-- Monsters past level 20 (levels 21–80, the land's next three stages): the
-  same bake and spawn, one more entry in `SPAWN_RULES.deep.tiers` each; first
-  the tick's cost above, and the owner's word on new kinds of monster deeper
-  in (today every stretch is its land's own one or two kinds).
+- Monsters past level 40 (levels 41–80): the same bake and spawn, more
+  entries in `SPAWN_RULES.deep.tiers`. The owner's word is still wanted on
+  new kinds of monster, rather than more recolours. Before that, the way-in
+  `zone_state` should send only the monsters in reach (it would be over
+  200 KB).
 - Fishing from the Wheel's water (planned: its own round, after this).
 - PvP, resource nodes, dungeons in the Wheel.
 
@@ -431,3 +491,23 @@ target" checks are unchanged.
   their own levels, the top bar on Frost Ridge's third stretch, its snowmen
   drawn with plates reading their levels on the danger border, a level-13
   snowman killed for its 17 XP (a first-stretch one pays 11).
+- **v2.3.3084, the second stage:**
+  - the `wheelzone` suite:
+    - §1b over all seven stretches (336 and 384, levels to 40, the outward
+      chain);
+    - every second-stage monster a named stage look as the game resolves it
+      (skin, else the home's map, else the archetype), none in the first
+      stage;
+    - §4c `wheelpast20: false`;
+    - §3's `zone_state` under 128 KB;
+    - §9's tick with 384.
+  - test-world-core's deeper places, driven by the bake's tiers.
+  - `mp-wheeldeep` counts 384.
+  - `tools/qa/mp/mp-wheelpast20.mjs` (6, phone viewport, real worker):
+    - all 192 of the second stage on the client at levels 21–40;
+    - out past the first pass, the top bar on Frost Ridge's 21–25;
+    - its six snowmen drawn from live art tinted `#8fc8ff`, named "Glacier
+      Snowman" with their own levels;
+    - a first-stage snowman still white and a "Snowman";
+    - no errors.
+    - Pictures: `wheelpast20-*.png`.

@@ -23,7 +23,8 @@
  *
  * v2.3.3013: the lands' next three stretches have monsters too (levels 6-20,
  * mp-wheeldeep), 192 in all; what this scenario says of "each land's six" is
- * said of the first stretch's, the ones at the inner end.
+ * said of the first stretch's, the ones at the inner end.  v2.3.3084: and the
+ * second stage's four (levels 21-40, mp-wheelpast20), 384 in all.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -144,7 +145,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const byHome = {};
   for (const m of all) (byHome[m.home] = byHome[m.home] || []).push(m);
   rec.ok(`every element zone's monsters are there, each saying its home (${all.length} at the inner ends: ${Object.entries(byHome).map(([h, a]) => `${h} ${a.length}`).join(', ')}; ${every.length} in all with the deeper stretches)`,
-    all.length === 48 && every.length === 192 && Object.keys(SKIN).every((h) => (byHome[h] || []).length === 6), Object.keys(byHome));
+    all.length === 48 && every.length === 384 && Object.keys(SKIN).every((h) => (byHome[h] || []).length === 6), Object.keys(byHome));
   const wrongSkin = every.filter((m) => !(SKIN[m.home] || []).includes(m.arch));
   rec.ok('...each skinned as at home: fire goblins, snowmen, fishmen, rock monsters, mummies, wisps and lurkers, blue slimes, slimes',
     wrongSkin.length === 0, wrongSkin.slice(0, 6).map((m) => ({ id: m.id, home: m.home, arch: m.arch })));
@@ -159,7 +160,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      undrawn in the Wheel (entityRenderer, FAR_MARGIN) */
   const farHidden = await H.readState(P, (S) => S._monstersFarHidden);
   rec.ok(`...and from Brotown's square, far off screen, none of them is drawn (${farHidden} of ${every.length} left undrawn)`,
-    farHidden === every.length && every.length === 192, farHidden);
+    farHidden === every.length && every.length === 384, farHidden);
   /* ── 3. at the inner end of their own spoke ── */
   const C = 21504;
   const misplaced = all.filter((m) => {
