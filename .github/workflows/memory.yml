@@ -1,0 +1,106 @@
+# Memory — the budget on every PR, and the eight-land tour on a button (v2.3.3101).
+#
+# The black screens are iPhone Safari running out of memory.  The memory work
+# of v2.3.3068-v2.3.3088 (docs/MEMORY-PLAN.md) halved what the page holds, and
+# the owner asked, 2026-10-06: "if I add new features going forward how do I
+# know I won't ruin the memory saving system?" -- then "Yes all 3": this
+# check on every PR, the rule in CLAUDE.md (Conventions, "Memory is
+# budgeted"), and the tour on a button.
+#
+# client-ci.yml keeps the PR path to `playable` alone for speed (its header,
+# v2.3.1333 / v2.3.1729: "re-adding it to the PR path is an owner call").
+# This is that call, made by the owner, for ONE more scenario -- in its own
+# workflow so it runs beside `playable` (not after it) and so art-only
+# changes (public/**) trigger it too: a bigger picture costs memory without
+# touching src/.
+#
+#   memory-budget   every PR, and the button: tools/qa/mp/mp-membudget.mjs --
+#                   a phone in the Wheel's BroTown, at a Flame Fields fight and
+#                   home again, three times; each kind of memory within its
+#                   line in tools/qa/mp/memory-budget.mjs, and the third trip
+#                   ending where the second did.  ~3 min of scenario.
+#   memory-tour     the button only (Actions -> Memory -> Run workflow):
+#                   tools/qa/mp/mp-memledger.mjs, all eight lands twice, ~6 min.
+#
+# BLOCKING, with the repo's retry-once shape (client-ci.yml's `playable`): a
+# real regression fails twice; a run that dies on the way in gets a second go.
+# A line over budget is fixed by finding what the change holds, or -- when the
+# feature really needs the memory -- by raising THAT line in the same PR and
+# saying in the PR how many MB and why.  Never by continue-on-error.
+name: Memory
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'server/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.js'
+      - 'tools/qa/mp/**'
+      - '.github/workflows/memory.yml'
+jobs:
+  memory-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: server
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Memory stays within its budget (one retry)
+        run: |
+          node tools/qa/mp/run.mjs membudget \
+            || { echo "first attempt failed, retrying"; node tools/qa/mp/run.mjs membudget; }
+      - name: Keep the readings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: membudget
+          path: tools/qa/mp/out/membudget.json
+          if-no-files-found: ignore
+
+  memory-tour:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: server
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: The eight lands, twice -- nothing keeps growing (one retry)
+        run: |
+          node tools/qa/mp/run.mjs memledger \
+            || { echo "first attempt failed, retrying"; node tools/qa/mp/run.mjs memledger; }
+      - name: Keep the readings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: memledger
+          path: tools/qa/mp/out/memledger.json
+          if-no-files-found: ignore

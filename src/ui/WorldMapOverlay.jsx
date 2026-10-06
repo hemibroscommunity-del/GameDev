@@ -60,10 +60,10 @@ const AT = { landSub: 1.5, stage: 2.2, commons: 1.8, gateName: 1.6, camp: 3, pas
   /* v2.3.3057: the details that come in as you zoom */
   others: 1.5, tier: 2.6, node: 3, monster: 3, bridge: 3.6, tierLv: 4.2, town: 6, otherName: 6 };
 /* v2.3.3057: the resources' tints, the minimap's (wheelMinimap.js C_NODE) */
-const NODE_TINT = {
-  oreVein: { 1: '#E08A45', 6: '#C65F45', 11: '#8E9AB8' },
-  tree: { 1: '#58B85A', 6: '#C6DC6C', 11: '#A08C52' },
-  fishSpot: { 1: '#D6E8F5', 6: '#FF8A3A', 11: '#C4B46A' },
+const NODE_TINT = {   /* v2.3.3094: + 16, 21, the second stage's */
+  oreVein: { 1: '#E08A45', 6: '#C65F45', 11: '#8E9AB8', 16: '#C8D0DC', 21: '#7A55B5' },
+  tree: { 1: '#58B85A', 6: '#C6DC6C', 11: '#A08C52', 16: '#C0786A', 21: '#F09A40' },
+  fishSpot: { 1: '#D6E8F5', 6: '#FF8A3A', 11: '#C4B46A', 16: '#F09080', 21: '#8AAA50' },
 };
 const C_STAR = '#F5CE3C', C_OTHER = '#58B97B', C_MONSTER = '#E35D5B';
 const INK = '#F4F0E7', BRASS = '#EAC675', HALO = 'rgba(11,22,27,0.92)';
@@ -174,6 +174,13 @@ function WorldMap({ stateRef, onClose }) {
       window.removeEventListener('resize', onResize);
       if (readout) readout.style.visibility = was;
       try { window.__btWorldMap = { open: false }; } catch (e) { /* no page */ }
+      /* v2.3.3070: the map's canvas is the whole screen at the device's
+         pixels (390 x 844 at 3x: 11.3 MB) and goes with the map -- but its
+         pixels went only when the garbage collector came round to it, so
+         opening and closing the map a few times held a few dead copies.
+         Emptied now, as it closes (docs/MEMORY-PLAN.md, freed on close;
+         mp-worldmapfree). */
+      try { cv.width = 0; cv.height = 0; } catch (e) { /* gone */ }
     };
   }, [stateRef]);
 
@@ -371,7 +378,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       if (!n || !n.alive || !NODE_TINT[n.nodeType]) continue;
       const x = X(n.x), y = Y(n.y);
       if (!onScreen(x, y)) continue;
-      const lvl = n.gatherLvl || 1, tier = lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1;
+      const lvl = n.gatherLvl || 1, tier = lvl >= 21 ? 21 : lvl >= 16 ? 16 : lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1;   /* v2.3.3094: + 16, 21 */
       let tool = true;
       try { tool = hasGatherTool(S.rpg || null, n.nodeType); } catch (e) { tool = true; }
       g.globalAlpha = tool ? 1 : 0.45;

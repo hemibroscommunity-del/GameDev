@@ -10,6 +10,8 @@ smelting ore into armor? Maybe you can add code effects for the flame part too."
 `ForgePanel.jsx` (1,488 lines) is deleted. The new panel:
 
 - **Four tabs:** Smelt, Forge, Upgrade, Amulet. Each has an icon and one word.
+  Since v2.3.3092 there are five: **Armor** sits beside Forge (bars into
+  armor, docs/specs/armor-forge.md).
 - **Costs are chips:** the item's icon and HAVE/NEED, green or red. A lock is a
   chip naming the one thing missing ("Smithing 6", "Melee 5").
 - **Forge** lists the tiers you can make plus the next one only. The old list
@@ -40,6 +42,7 @@ server handlers first.
 |---|---|---|
 | Smelt | `smelt_bar` | smelting.js |
 | Forge | `forge_weapon` | gear.js |
+| Armor (v2.3.3092) | `forge_armor {recipe}` | armorforge.js |
 | Upgrade | `harden_weapon` (H0–H5); `amulet_forge_request {op:'extract'}` | hardening.js; amulet.js |
 | Amulet | `amulet_forge_request {op:'smelt' \| 'craft'}` | amulet.js |
 

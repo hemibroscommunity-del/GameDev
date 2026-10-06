@@ -18,8 +18,10 @@
  *      `sk`), and the raider is told what the red skull means;
  *   4. the killing blow: the wanderer's game is told what went and says so;
  *      the spare greatsword leaves the wanderer's bag and arrives in the
- *      raider's; the shield stays (the worker cannot tell a worn shield from a
- *      spare); the bag's minnows lie in a pile that is the raider's;
+ *      raider's -- and (v2.3.3091) so does the spare shield: the wanderer's
+ *      game told the worker its arm is bare (shield_wear), so the quest's
+ *      Pine Shield in its bag is a spare; the bag's minnows lie in a pile
+ *      that is the raider's;
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/nomansland-*.png.
  *
@@ -145,10 +147,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const bag = (P) => P.page.evaluate(() => {
     const R = (window._gameState.current.rpg) || {};
     return { weapon: R.weapon ? R.weapon.type : null, swords: (R.weaponStash || []).filter((w) => w && w.type === 'greatsword').length,
-      minnows: (R.inventory || {}).fish_minnow || 0 };
+      minnows: (R.inventory || {}).fish_minnow || 0, shields: (R.shieldStash || []).length };
   });
   const bagA0 = await bag(A), bagB0 = await bag(B);
-  const aSwords0 = bagA0.swords;
+  const aSwords0 = bagA0.swords, aShields0 = bagA0.shields;
+  /* v2.3.3091: the wanderer's game said what is on its arm -- nothing: the
+     quest's shield went into its bag -- and the worker holds it as a spare */
+  let armB = null;
+  for (let i = 0; i < 12; i++) {
+    const said = await B.page.evaluate(() => window.__btShieldWear || null);
+    const saved = (await H.adminPlayer(wsPort, idB).catch(() => ({}))).rpg || {};
+    armB = { said: said && said.payload, worn: saved.shield || null, spares: (saved.shieldStash || []).map((p) => p && p.name) };
+    if (armB.said && armB.said.none && !armB.worn && armB.spares.length >= 1) break;
+    await B.page.waitForTimeout(500);
+  }
+  rec.ok(`setup: the wanderer's game told the worker its arm is bare (shield_wear), and the worker holds its ${armB && armB.spares[0]} as a spare`,
+    !!armB && !!armB.said && armB.said.none === true && !armB.worn && armB.spares.length >= 1 && bagB0.shields >= 1, { armB, bagB0 });
   rec.ok(`setup: the raider holds a greatsword, the wanderer a SPARE one in the bag (${bagB0.swords}) and ${bagB0.minnows} minnows`,
     bagA0.weapon === 'greatsword' && bagB0.swords >= 1 && bagB0.minnows >= 3, { bagA0, bagB0 });
 
@@ -305,22 +319,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return {
         told: (S.chatLog || []).filter((l) => /took your bag in No man's land/.test(l.text || '')).map((l) => l.text),
         swords: (R.weaponStash || []).filter((w) => w && w.type === 'greatsword').length,
-        shield: !!R.shield || (R.shieldStash || []).length > 0,
+        shields: (R.shield ? 1 : 0) + (R.shieldStash || []).length,
       };
     });
     if (lossB.told.length) break;
     await B.page.waitForTimeout(500);
   }
-  rec.ok(`4. the wanderer's game says what went ("${lossB && lossB.told[0]}"), the spare greatsword gone from their bag, the shield still theirs`,
-    !!lossB && lossB.told.length > 0 && lossB.swords === 0 && lossB.shield, lossB);
+  rec.ok(`4. the wanderer's game says what went ("${lossB && lossB.told[0]}"), the spare greatsword and the spare shield gone from their bag`,
+    !!lossB && lossB.told.length > 0 && lossB.swords === 0 && lossB.shields === 0, lossB);
   let bagA1 = null;
   for (let i = 0; i < 16; i++) {
     bagA1 = await bag(A);
-    if (bagA1.swords > aSwords0) break;
+    if (bagA1.swords > aSwords0 && bagA1.shields > aShields0) break;
     await A.page.waitForTimeout(500);
   }
-  rec.ok(`4. ...and arrives in the raider's bag: ${aSwords0} -> ${bagA1 && bagA1.swords} spare greatswords`,
-    !!bagA1 && bagA1.swords === aSwords0 + 1, { before: aSwords0, after: bagA1 });
+  rec.ok(`4. ...and arrives in the raider's bag: ${aSwords0} -> ${bagA1 && bagA1.swords} spare greatswords, ${aShields0} -> ${bagA1 && bagA1.shields} shields`,
+    !!bagA1 && bagA1.swords === aSwords0 + 1 && bagA1.shields === aShields0 + 1, { before: { swords: aSwords0, shields: aShields0 }, after: bagA1 });
   const pile = await A.page.evaluate((bid) => {
     const S = window._gameState.current;
     const p = (S.groundLoot || []).find((l) => l && String(l.lootId || '').startsWith('dd-' + bid));

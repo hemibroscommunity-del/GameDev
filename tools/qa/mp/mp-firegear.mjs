@@ -48,6 +48,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Sparky', wsPort, webPort });
   await H.enterWorld(P);
   await P.page.waitForTimeout(1200);
+  /* v2.3.3077: the fire-lighter is made the first time he can be wanted
+     (rendering/standIns.js) -- for a player, a log in the bag; this writes the
+     light's record straight, with no log, so he is asked for */
+  await P.page.evaluate(() => (window.__btStandInMake ? window.__btStandInMake('fire') : null)).catch(() => {});
   FRAME_MS = await P.page.evaluate(() => {
     const R = window._pixiRenderer;
     const p = R && R.fireGearProbe && R.fireGearProbe();

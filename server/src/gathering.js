@@ -144,10 +144,13 @@ export const HARVEST_PERFECT_PER_MIN = 45;
  * un-advertises caps.gatherreq -- the client stops refusing -- and lifts the
  * worker's gate, so every resource is harvestable at level 1 again with no
  * deploy. */
+/* v2.3.3094: + the second stage's two tiers, five levels a tier as the owner
+   set the first ("in levels of 5"): titanium Mining 10, obsidian 15; salmon
+   and cedar 15, pike and maple 20. */
 export const GATHER_REQ_LVL = {
-  oreVein:  { 1: 1, 6: 1, 11: 5 },
-  fishSpot: { 1: 1, 6: 5, 11: 10 },
-  tree:     { 1: 1, 6: 5, 11: 10 },
+  oreVein:  { 1: 1, 6: 1, 11: 5, 16: 10, 21: 15 },
+  fishSpot: { 1: 1, 6: 5, 11: 10, 16: 15, 21: 20 },
+  tree:     { 1: 1, 6: 5, 11: 10, 16: 15, 21: 20 },
 };
 
 /** v2.3.3038: the skill level a node of this type and tier asks for.  Own
@@ -160,6 +163,19 @@ export function gatherReqLvl(nodeType, tierLvl) {
   const need = (row && has.call(row, t)) ? row[t] : 1;
   return Math.max(1, Math.floor(Number(need) || 1));
 }
+
+/* ═══ v2.3.3090: LIFE SKILLS LEVEL HALF AS FAST, LIKE COMBAT ═══
+ * Asked "Should life-skill XP slow down like combat XP?" (combat levels came
+ * half as fast in v2.3.3054), the owner said "Yes".  Every level of every life
+ * skill now costs TWICE the XP it did: the curve's base 500 -> 1000, its
+ * 1.08 a level unchanged.  The price, not the pay: a dozen actions pay life
+ * XP on each side (harvests, cooks, smelts, forges, the amulet bench, gems,
+ * traps, furniture, the farm), each with its "+n XP" popup, and doubling what
+ * a level costs halves the pace of all of them at once with every number
+ * players see left true.  Levels already earned are kept; the XP toward the
+ * next one is kept too, and reads half as far along.  Client mirror:
+ * LIFE_SKILL_XP_BASE in src/data/items.js (mirror-audit pins the pair). */
+export const LIFE_SKILL_XP_BASE = 1000;
 
 export const gatheringMethods = {
   // ═══ Gather nodes (trees / fish spots / ore veins) ═══
@@ -323,9 +339,14 @@ export const gatheringMethods = {
        mine"), which BLACKSMITH_TIERS.steel consumes (data.js oreName
        'black_steel': ore_black_steel_ore).  Client mirror: src/data/
        lifeSkills.js FISHING_TIERS / WOODCUTTING_TIERS / MINING_TIERS. */
-    const TREE = { 1: 'Pine Log', 6: 'Softwood', 11: 'Hardwood' };
-    const FISH = { 1: 'Minnow',   6: 'Clownfish', 11: 'Trout' };
-    const ORE  = { 1: 'Copper Ore', 6: 'Iron Ore', 11: 'Black Steel Ore' };
+    /* v2.3.3094: and the fourth and fifth, which the Wheel's second stage
+       grows (levels 21-30 and 31-40): cedar and maple (WOODWORKING_TIERS
+       cedar / maple's wood), salmon and pike, and TITANIUM and OBSIDIAN ORE,
+       the forge's next two metals (BLACKSMITH_TIERS titanium / obsidian:
+       ore_titanium_ore, ore_obsidian_ore). */
+    const TREE = { 1: 'Pine Log', 6: 'Softwood', 11: 'Hardwood', 16: 'Cedar Wood', 21: 'Maple Wood' };
+    const FISH = { 1: 'Minnow',   6: 'Clownfish', 11: 'Trout', 16: 'Salmon', 21: 'Pike' };
+    const ORE  = { 1: 'Copper Ore', 6: 'Iron Ore', 11: 'Black Steel Ore', 16: 'Titanium Ore', 21: 'Obsidian Ore' };
     const t = tierLvl || 1;
     if (nodeType === 'tree') return TREE[t] || TREE[1];
     if (nodeType === 'fishSpot') return FISH[t] || FISH[1];
@@ -455,9 +476,10 @@ export const gatheringMethods = {
   },
 
   // lifeSkill level-up threshold curve.  Mirrors LIFE_SKILL_XP on the
-  // client (lifeSkills.js): ceil(500 * 1.08^(level - 1)).
+  // client (lifeSkills.js): ceil(LIFE_SKILL_XP_BASE * 1.08^(level - 1)) --
+  // 1000 since v2.3.3090 (was 500: the owner's "Yes" to slower life skills).
   _lifeSkillXpThreshold(level) {
-    return Math.ceil(500 * Math.pow(1.08, (level || 1) - 1));
+    return Math.ceil(LIFE_SKILL_XP_BASE * Math.pow(1.08, (level || 1) - 1));
   },
 
   // Apply XP to a lifeSkill, returns { leveled, newLevel }.  Mirrors

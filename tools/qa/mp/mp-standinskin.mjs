@@ -38,6 +38,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Tone', wsPort, webPort, viewport: { width: 390, height: 844 } });
   await H.enterWorld(P);
   await P.page.waitForTimeout(4000);
+  /* v2.3.3077: the gathering poses are made the first time each can be wanted
+     (rendering/standIns.js), no longer on the loading screen -- so ask for all
+     three before reading the skin they were made with */
+  await P.page.evaluate(() => Promise.all(['chop', 'cook', 'fire']
+    .map((k) => (window.__btStandInMake ? window.__btStandInMake(k) : null)))).catch(() => {});
 
   const baked = await P.page.evaluate(() => window.__btStandInSkin || null);
   rec.ok('the bake probe reported sheets at all', !!(baked && Object.keys(baked).length),

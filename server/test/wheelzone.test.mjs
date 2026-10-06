@@ -41,6 +41,9 @@
  *      by the one copy of the stat math, on the tier's baked places; the first
  *      tier's 48 exactly as they were, and first in the list.
  *  4b. `wheeldeep: false` leaves a Wheel spawned after it with those 48.
+ *  4c. v2.3.3093: `wheelpast20: false` leaves it with the first stage alone
+ *      (levels 1-20, 192): the second stage, tiers 5-8, levels 21-40, is the
+ *      bake's (SPAWN_RULES.deep.tiers) and §1b's.
  *   9. THE SEPARATION SWEEP: the Wheel keeps its monsters apart as every zone
  *      does, by a sweep instead of every pair (the tick's cost, measured).
  */
@@ -49,6 +52,8 @@ import { ZONES, VALID_ZONE_IDS, BLACKSMITH_TIERS, WOODWORKING_TIERS } from '../s
 import { WHEEL_ZONE, WHEEL } from '../src/wheelzone.js';
 import { gatherReqLvl } from '../src/gathering.js';   /* v2.3.3038 */
 import { WHEEL_SPAWNS, WHEEL_NODES, WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns.js';
+import { WHEEL_STAGE_LOOKS, wheelStageLook, wheelStageOf } from '../../src/data/wheelStageLooks.js';   /* v2.3.3093 */
+import { ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';   /* v2.3.3093: the look the game gives a monster */
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
 
 const mockState = {
@@ -125,15 +130,17 @@ const first = wheel.filter((m) => !m.tier);
 // ── 1b. THE DEEPER STRETCHES (v2.3.3013) ─────────────────────────────────
 const deep = wheel.filter((m) => m.tier);
 {
-  const TIERS = { 2: [6, 10], 3: [11, 15], 4: [16, 20] };
-  const want = WHEEL.HOMES.reduce((n, h) => n + 3 * ZONES[h].spawns.reduce((t, s) => t + s.count, 0), 0);
-  check(`deeper: each land's own monsters again in each of its next three stretches (${deep.length} of ${want}; ${wheel.length} in all)`,
-    want === 144 && deep.length === want && wheel.length === 192, { got: deep.length, want, all: wheel.length });
+  /* v2.3.3093: and the second stage, tiers 5-8 (levels 21-40) */
+  const TIERS = { 2: [6, 10], 3: [11, 15], 4: [16, 20], 5: [21, 25], 6: [26, 30], 7: [31, 35], 8: [36, 40] };
+  const TS = [2, 3, 4, 5, 6, 7, 8];
+  const want = WHEEL.HOMES.reduce((n, h) => n + TS.length * ZONES[h].spawns.reduce((t, s) => t + s.count, 0), 0);
+  check(`deeper: each land's own monsters again in each of its next seven stretches, out to level 40 (${deep.length} of ${want}; ${wheel.length} in all)`,
+    want === 336 && deep.length === want && wheel.length === 384, { got: deep.length, want, all: wheel.length });
   check('deeper: ids say whose they are and which stretch', deep.every((m) => m.id === `wm-${m.home}-t${m.tier}-${m.id.split('-').pop()}`),
-    deep.filter((m) => !/^wm-[a-z]+-t[234]-\d+$/.test(m.id)).slice(0, 3).map((m) => m.id));
+    deep.filter((m) => !/^wm-[a-z]+-t[2-8]-\d+$/.test(m.id)).slice(0, 3).map((m) => m.id));
   /* per land and tier: the home's spawn list exactly, its element and skin */
   let built = true, why = null;
-  for (const h of WHEEL.HOMES) for (const t of [2, 3, 4]) {
+  for (const h of WHEEL.HOMES) for (const t of TS) {
     const ms = deep.filter((m) => m.home === h && m.tier === t);
     const archs = {};
     for (const m of ms) archs[m.arch] = (archs[m.arch] || 0) + 1;
@@ -145,13 +152,26 @@ const deep = wheel.filter((m) => m.tier);
     }
   }
   check('deeper: per land and stretch, its home\'s spawn list -- archetypes, counts, element, skin', built, why);
+  /* v2.3.3093: the second stage's placeholders -- the game draws every one in
+     its stage's colour under its own name (src/data/wheelStageLooks.js), the
+     look the client gives it (its skin, else its archetype) a named row, never
+     the "Dire" stand-in */
+  /* the look as the game resolves it (monsterVariants.js applyZoneVariant):
+     the worker's skin, else the home's map, else the archetype */
+  const lookOf = (m) => m.variant || (ZONE_VARIANT_MAP[m.home] && ZONE_VARIANT_MAP[m.home][m.arch]) || m.arch;
+  const stage2 = deep.filter((m) => m.tier > WHEEL.FIRST_STAGE_TIERS);
+  const unnamed = stage2.filter((m) => { const s2 = wheelStageLook({ home: m.home, level: m.level, archetype: lookOf(m) }); return !s2 || !s2.name; });
+  check(`deeper: all ${stage2.length} of the second stage (levels 21-40) wear a named stage look -- ${[...new Set(stage2.map((m) => (WHEEL_STAGE_LOOKS[2][lookOf(m)] || {}).name))].join(', ')}`,
+    stage2.length === 192 && unnamed.length === 0 && stage2.every((m) => wheelStageOf(m.level) === 2), unnamed.slice(0, 3).map((m) => ({ id: m.id, look: lookOf(m) })));
+  check('deeper: ...and the first stage wears its own (no stage look up to level 20)',
+    wheel.filter((m) => !m.tier || m.tier <= WHEEL.FIRST_STAGE_TIERS).every((m) => wheelStageLook({ home: m.home, level: m.level, archetype: lookOf(m) }) === null));
   const offLevel = deep.filter((m) => m.level < TIERS[m.tier][0] || m.level > TIERS[m.tier][1]);
-  check('deeper: each at its stretch\'s levels -- 6-10, 11-15, 16-20, what the top bar says there', offLevel.length === 0,
+  check('deeper: each at its stretch\'s levels -- 6-10, 11-15, ... 36-40, what the top bar says there', offLevel.length === 0,
     offLevel.slice(0, 4).map((m) => ({ id: m.id, tier: m.tier, level: m.level })));
   const seen = {};
   for (const m of deep) (seen[m.tier] = seen[m.tier] || new Set()).add(m.level);
-  check('deeper: both ends of every stretch appear (6 and 10, 11 and 15, 16 and 20)',
-    [2, 3, 4].every((t) => seen[t] && seen[t].has(TIERS[t][0]) && seen[t].has(TIERS[t][1])), Object.fromEntries(Object.entries(seen).map(([t, v]) => [t, [...v].sort((a, b) => a - b)])));
+  check('deeper: both ends of every stretch appear (6 and 10, 11 and 15, ... 36 and 40)',
+    TS.every((t) => seen[t] && seen[t].has(TIERS[t][0]) && seen[t].has(TIERS[t][1])), Object.fromEntries(Object.entries(seen).map(([t, v]) => [t, [...v].sort((a, b) => a - b)])));
   /* the level is the place's depth in its band, and the band runs outward */
   let byDepth = true, why2 = null;
   for (const m of deep) {
@@ -165,8 +185,9 @@ const deep = wheel.filter((m) => m.tier);
   for (const h of WHEEL.HOMES) {
     const r = (t) => deep.filter((m) => m.home === h && m.tier === t).map((m) => Math.hypot(m.x - CENTRE[0], m.y - CENTRE[1]));
     const t1 = first.filter((m) => m.home === h).map((m) => Math.hypot(m.x - CENTRE[0], m.y - CENTRE[1]));
-    const [a, b, c] = [r(2), r(3), r(4)];
-    if (!(Math.max(...t1) < Math.min(...a) && Math.max(...a) < Math.min(...b) && Math.max(...b) < Math.min(...c))) outward = false;
+    /* v2.3.3093: the first stretch, then every one of the seven after it */
+    const chain = [t1].concat(TS.map(r));
+    for (let i = 1; i < chain.length; i++) if (!(Math.max(...chain[i - 1]) < Math.min(...chain[i]))) outward = false;
   }
   check('deeper: down every spoke the stretches follow one another outward, none overlapping the one before', outward);
   /* the one copy of the stat math: what its home zone would build at that level */
@@ -237,14 +258,19 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   const zs = msgsOfType(wsA, 'zone_state');
   check('wire: moving into the Wheel is accepted (a zone a client may name)', room.playerState.wa.z === WHEEL_ZONE && VALID_ZONE_IDS.has(WHEEL_ZONE), room.playerState.wa.z);
   /* v2.3.3013: all 192, the deeper ones each with its own level (the client
-     shows it: monsterVariants.js applyZoneVariant) and nothing new */
+     shows it: monsterVariants.js applyZoneVariant) and nothing new.
+     v2.3.3093: 384 with the second stage */
   check(`wire: one zone_state with all ${wheel.length}, each saying its home and its skin, and its own level`,
-    zs.length === 1 && zs[0].zone === WHEEL_ZONE && zs[0].monsters.length === wheel.length && wheel.length === 192
+    zs.length === 1 && zs[0].zone === WHEEL_ZONE && zs[0].monsters.length === wheel.length && wheel.length === 384
     && zs[0].monsters.every((m) => WHEEL.HOMES.includes(m.home) && 'variant' in m && typeof m.x === 'number')
     && zs[0].monsters.every((m) => m.level === wheel.find((q) => q.id === m.id).level && !('tier' in m)),
     zs.length && { n: zs[0].monsters.length, first: zs[0].monsters[0] });
   const bytes = zs.length ? JSON.stringify(zs[0]).length : 0;
-  check(`wire: ...in ${Math.round(bytes / 1024)} KB, once, on the way in (the ticks after carry only the monsters in reach)`, bytes > 0 && bytes < 64 * 1024, bytes);
+  /* v2.3.3093: ~103 KB with the second stage's 192 (about half that before):
+     sent once, on the way in.  The budget doubled with the monsters; the next stage should
+     send only the monsters in reach here too (tick.js _wheelInterest) rather
+     than double it again. */
+  check(`wire: ...in ${Math.round(bytes / 1024)} KB, once, on the way in (the ticks after carry only the monsters in reach)`, bytes > 0 && bytes < 128 * 1024, bytes);
   wsA.sent.length = 0;
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'town' }));
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 500, y: 500, z: 'tidal' }));
@@ -283,6 +309,12 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   const only = room._spawnZoneMonsters(WHEEL_ZONE);
   check('kill switch: `wheeldeep: false` leaves a Wheel spawned after it with the first stretch\'s 48, exactly',
     only.length === 48 && only.every((m, i) => !m.tier && m.id === first[i].id && m.level === first[i].level && m.x === first[i].x), only.length);
+  /* v2.3.3093: 4c. `wheelpast20: false` -- the first stage's alone (levels 1-20) */
+  room._liveFlags = { ...(keep || {}), wheelpast20: false };
+  const stage1 = room._spawnZoneMonsters(WHEEL_ZONE);
+  const want1 = wheel.filter((m) => !m.tier || m.tier <= WHEEL.FIRST_STAGE_TIERS);
+  check(`kill switch: \`wheelpast20: false\` leaves a Wheel spawned after it with the first stage alone (${stage1.length}, levels 1-20)`,
+    stage1.length === 192 && stage1.length === want1.length && stage1.every((m, i) => m.id === want1[i].id && m.level <= 20), stage1.length);
   room._liveFlags = keep;
 }
 
@@ -569,14 +601,20 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     && lands.every((n) => n.home === area(n) && WHEEL.HOMES.includes(n.home) && n.tierLvl !== 1 && R(n) >= WHEEL_SAFE_R));
   check('nodes: and catches fish in some land at each of its tiers (clownfish, trout)',
     [6, 11].every((t) => lands.some((n) => n.nodeType === 'fishSpot' && n.tierLvl === t)));
+  /* v2.3.3094: the second stage's (levels 21-40) */
+  check('nodes: every land grows titanium and obsidian ore, cedar and maple past level 20',
+    WHEEL.HOMES.every((h) => [16, 21].every((t) => ['oreVein', 'tree'].every((k) =>
+      lands.some((n) => n.home === h && n.nodeType === k && n.tierLvl === t)))));
+  check('nodes: and catches salmon and pike in some land',
+    [16, 21].every((t) => lands.some((n) => n.nodeType === 'fishSpot' && n.tierLvl === t)));
   /* the owner: "Make all 8 have fishing spots" */
   check('nodes: every one of the eight lands has fishing',
     WHEEL.HOMES.every((h) => lands.some((n) => n.home === h && n.nodeType === 'fishSpot')),
     Object.fromEntries(WHEEL.HOMES.map((h) => [h, lands.filter((n) => n.home === h && n.nodeType === 'fishSpot').length])));
   /* "the higher lvl resources will be progressively more distant" */
   const med = (t) => { const r = nodes.filter((n) => n.tierLvl === t).map(R).sort((a, b) => a - b); return r[r.length >> 1]; };
-  check('nodes: the richer the tier, the farther from town it grows', med(1) < med(6) && med(6) < med(11),
-    { 1: Math.round(med(1)), 6: Math.round(med(6)), 11: Math.round(med(11)) });
+  check('nodes: the richer the tier, the farther from town it grows', med(1) < med(6) && med(6) < med(11) && med(11) < med(16) && med(16) < med(21),
+    { 1: Math.round(med(1)), 6: Math.round(med(6)), 11: Math.round(med(11)), 16: Math.round(med(16)), 21: Math.round(med(21)) });
   /* the bake keeps nodes apart, across lands too (two lands' bands meet) */
   let close = Infinity;
   for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++)
@@ -591,6 +629,10 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     'oreVein 1': 'ore_copper_ore', 'oreVein 6': 'ore_iron_ore', 'oreVein 11': 'ore_black_steel_ore',
     'tree 1': 'wood_pine_log', 'tree 6': 'wood_softwood', 'tree 11': 'wood_hardwood',
     'fishSpot 1': 'fish_minnow', 'fishSpot 6': 'fish_clownfish', 'fishSpot 11': 'fish_trout',
+    /* v2.3.3094 */
+    'oreVein 16': 'ore_titanium_ore', 'oreVein 21': 'ore_obsidian_ore',
+    'tree 16': 'wood_cedar_wood', 'tree 21': 'wood_maple_wood',
+    'fishSpot 16': 'fish_salmon', 'fishSpot 21': 'fish_pike',
   };
   const got = Object.fromEntries(Object.keys(names).map((k) => { const [t, l] = k.split(' '); return [k, room._harvestInvKey(t, Number(l))]; }));
   check('nodes: each tier\'s harvest has its own name', Object.keys(names).every((k) => got[k] === names[k]), got);
@@ -600,7 +642,11 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     && 'ore_' + BLACKSMITH_TIERS.copper.oreName + '_ore' === room._harvestInvKey('oreVein', 1),
     BLACKSMITH_TIERS.steel);
   check('nodes: and each wood what its bow tier is made from',
-    ['pine', 'softwood', 'hardwood'].every((k, i) => 'wood_' + WOODWORKING_TIERS[k].wood === room._harvestInvKey('tree', [1, 6, 11][i])));
+    ['pine', 'softwood', 'hardwood', 'cedar', 'maple'].every((k, i) => 'wood_' + WOODWORKING_TIERS[k].wood === room._harvestInvKey('tree', [1, 6, 11, 16, 21][i])));
+  /* v2.3.3094: and the second stage's ores, the forge's next two metals */
+  check('nodes: titanium and obsidian ore are what the titanium and obsidian tiers forge from',
+    'ore_' + BLACKSMITH_TIERS.titanium.oreName + '_ore' === room._harvestInvKey('oreVein', 16)
+    && 'ore_' + BLACKSMITH_TIERS.obsidian.oreName + '_ore' === room._harvestInvKey('oreVein', 21));
 
   /* a harvest, end to end, in the Wheel */
   const ps = room.playerState.wa;
@@ -753,7 +799,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   const k0 = minD(knot()), kS = minD(swept), kL = minD(looped);
   check(`sweep: a knot of 12 opens in a second of ticks as the loop opens it (closest pair ${k0.toFixed(1)} px -> ${kS.toFixed(1)} swept, ${kL.toFixed(1)} looped)`,
     kS >= 20 && kL >= 20, { k0, kS, kL });
-  /* what it is for: the whole monster tick with the Wheel's 192 */
+  /* what it is for: the whole monster tick with the Wheel's 384 (v2.3.3093; 192 before) */
   const r2 = new GameRoom(mockState, mockEnv);
   const ms = r2._ensureZoneMonsters(WHEEL_ZONE);
   r2.playerState.bench = { id: 'bench', z: WHEEL_ZONE, x: CENTRE[0], y: CENTRE[1] + 300, hp: 100, maxHp: 100 };
@@ -765,7 +811,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   for (let i = 0; i < N; i++) r2._tickMonsters();
   const us = Number(process.hrtime.bigint() - t0) / 1e3 / N;
   check(`sweep: the Wheel's monster tick uses it, once a tick (${ms.length} monsters, ${us.toFixed(0)} µs a tick here; ~1,270 µs with every pair)`,
-    calls === N && ms.length === 192, { calls, us });
+    calls === N && ms.length === 384, { calls, us });
 }
 
 if (failures) { console.log(`\n${failures} TEST(S) FAILED`); process.exit(1); }

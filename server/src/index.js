@@ -63,6 +63,7 @@ import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
+import { armorForgeMethods } from './armorforge.js'; /* v2.3.3092: bars into armour */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
 import { sprintMethods } from './sprint.js'; /* v2.3.3006: sprint -- stamina for 1.33x the walk */
@@ -171,6 +172,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
+import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 
 /* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
@@ -388,6 +390,10 @@ export const PRIVILEGED_EVENTS = new Set([
   'ability_windup',
   /* v2.3.2822: the smelt's receipt (smelting.js) -- bars made and XP paid. */
   'smelt_result',
+  /* v2.3.3092: the armour forge's receipt (armorforge.js) -- it names a minted
+     piece with its id, so a forged one would put a fake plate in another
+     player's bag. */
+  'forge_armor_result',
   /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
      both carry money -- `shop_result` names coins paid and `shop_state` is
      the public pile every client prices against. Forgeable, they would let
@@ -5043,6 +5049,20 @@ export class GameRoom {
         if (session.id) this._handleSmeltBar(session, msg.payload || msg);
         break;
 
+      case 'forge_armor':
+        /* v2.3.3092: bars into armour at the blacksmith (armorforge.js).  The
+           worker takes the bars, mints the piece and pays the Smithing XP;
+           the client only names a recipe. */
+        if (session.id) this._handleForgeArmor(session, msg.payload || msg);
+        break;
+
+      case 'shield_wear':
+        /* v2.3.3091: the shield on the arm (shieldwear.js) -- one the worker
+           already holds for this player, named by id or signature; the arm's
+           and the bag's lists move, nothing is described or minted. */
+        if (session.id) this._handleShieldWear(session, msg.payload || msg);
+        break;
+
       case 'cape_redeem':
         /* v2.3.2026: the player tapped Open on a golden ticket in the bag.
            The client never consumes it or grants the cape -- see the
@@ -5764,6 +5784,7 @@ Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
+Object.assign(GameRoom.prototype, armorForgeMethods); /* v2.3.3092 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
 Object.assign(GameRoom.prototype, sprintMethods); /* v2.3.3006 */
@@ -5836,3 +5857,4 @@ Object.assign(GameRoom.prototype, arrowBlastMethods); /* v2.3.2279 */
 Object.assign(GameRoom.prototype, spawnScaleMethods);
 Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
 Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
+Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */

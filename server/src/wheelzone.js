@@ -68,6 +68,19 @@
  * list.  `wheeldeep: false` in liveflags leaves a Wheel spawned after it with
  * the first tier's 48 alone.  The client shows such a monster's own level
  * (monsterVariants.js applyZoneVariant clamped it to its home's 1-2).
+ *
+ * ═══ v2.3.3093: AND PAST LEVEL 20 ═══
+ * The owner: "build the world past level 20 (levels 21-40 in each land with
+ * their own monsters and resources) You can just recolor existing monsters for
+ * now for placeholder monsters".  A land's second stage -- tiers 5-8, levels
+ * 21-40, past the first pass and the camp at 20 -- has the land's spawn list
+ * again per tier, exactly as tiers 2-4 do: nothing here changed but the bake
+ * (tools/world/bake-wheel-spawns.mjs SPAWN_RULES.deep.tiers, 2..8), since
+ * this loop was always one per baked tier.  8 lands x 4 tiers x 6 = 192 more,
+ * 384 in all.  The game draws them in their stage's colour and name
+ * (src/data/wheelStageLooks.js), a sprite tint on the look the land already
+ * has, so nothing new loads.  `wheelpast20: false` in liveflags leaves a Wheel
+ * spawned after it with the first stage alone.
  */
 import { ZONES } from './data.js';
 import { WHEEL_SPAWNS, WHEEL_NODES, WHEEL_CENTRE, WHEEL_SAFE_R } from './wheelspawns.js';
@@ -118,7 +131,11 @@ export const WHEEL = Object.freeze({
   /* v2.3.3012: WHEEL_NODES' kind letters, and the only gathering tiers a baked
      node may carry -- the three gathering.js _harvestNameForTier names */
   NODE_TYPES: Object.freeze({ o: 'oreVein', t: 'tree', f: 'fishSpot' }),
-  NODE_TIERS: Object.freeze([1, 6, 11]),
+  /* v2.3.3093: the tiers of a land's first stage (levels 1-20); the
+     `wheelpast20` switch keeps the Wheel to them */
+  FIRST_STAGE_TIERS: 4,
+  /* v2.3.3094: + 16 and 21, the second stage's (levels 21-30, 31-40) */
+  NODE_TIERS: Object.freeze([1, 6, 11, 16, 21]),
 });
 
 export const wheelzoneMethods = {
@@ -152,6 +169,11 @@ export const wheelzoneMethods = {
     if (m) return !this._wheelProvokedBy(m, pid, now);
     const ps = pid ? this.playerState[pid] : null;
     return !(ps && now - (ps._lastDealtAt || 0) < WHEEL.PROVOKE_MS);
+  },
+  /* v2.3.3093: `wheelpast20: false` -- no monsters past level 20 */
+  _wheelPast20Off() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheelpast20') && !f.wheelpast20);
   },
   /* v2.3.3013: `wheeldeep: false` -- the first tier's monsters only */
   _wheelDeepOff() {
@@ -196,6 +218,9 @@ export const wheelzoneMethods = {
       const H = zone.h * this.TILE, W = zone.w * this.TILE;
       for (const st of at.deeper) {
         if (!st || !Array.isArray(st.points) || !st.points.length || !Array.isArray(st.levels)) continue;
+        /* v2.3.3093: `wheelpast20: false` -- the first stage's alone (levels
+           1-20), every land's second stage (tiers 5-8) left empty */
+        if (Number(st.tier) > WHEEL.FIRST_STAGE_TIERS && this._wheelPast20Off()) continue;
         const lo = Number(st.levels[0]) || 1, hi = Number(st.levels[1]) || lo;
         let k = 0;
         for (const spawn of zone.spawns) {
