@@ -1055,7 +1055,8 @@ input{font-family:inherit}
   font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;
   -webkit-tap-highlight-color:transparent}
 .bt-emote-btn:active{background:rgba(216,168,95,.4);transform:scale(.9)}
-.bt-interact-prompt{position:fixed;left:calc(50% + 10px);bottom:calc(var(--dash-h) + 24px);transform:translateX(-50%);z-index:35;
+/* v2.3.3107: + --nml-lift, set while No man's land's badge holds the band's middle (NmlBadge.jsx) */
+.bt-interact-prompt{position:fixed;left:calc(50% + 10px);bottom:calc(var(--dash-h) + 24px + var(--nml-lift, 0px));transform:translateX(-50%);z-index:35;
   padding:8px 18px;background:rgba(17,25,29,.94);border:1.5px solid var(--pop);border-radius:10px;
   color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
   animation:promptPulse 1.5s ease-in-out infinite;
