@@ -45,7 +45,11 @@ Every claim in these three files is cited as path:line, as read on 2026-10-06 at
 ## How other games do it
 
 - `other_games_report.md` is the report built from the four sets of notes below.
-  Start here.
+  Start here. Its answer: take capture off the health bar, and use two lanes:
+  - capture at the kill, with a trap armed beforehand;
+  - trapping as a skill of its own.
+
+  The plan adopts both, and gives the skill lane its form: dens.
 - `capture_moment.md`: how a capture is decided, and what makes it exciting:
   - Pokémon's formula and shake checks, and Pokémon GO's throws;
   - Palworld, Monster Hunter, Path of Exile, Ark, Black Desert, WoW;
