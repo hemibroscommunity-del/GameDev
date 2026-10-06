@@ -226,6 +226,9 @@ export const GameApp = () => {
        gesture is the only moment iOS reliably honours resume() (v2.3.780). */
     const onGesture = () => {
       if (!BT_AUDIO || !BT_AUDIO.ctx) return;
+      /* v2.3.3073: the streamed music's <audio> may be waiting for a tap (iOS
+         plays an element outside a gesture only once a gesture has) */
+      try { if (BT_AUDIO._deckGesture) BT_AUDIO._deckGesture(); } catch (e) {}
       /* v2.3.1604: FIRST, re-claim the iOS audio session if we came back from
          another app.  This has to run inside the gesture — it is the only
          moment iOS honours either the silent-WAV session claim or a fresh
