@@ -398,6 +398,9 @@ export const PRIVILEGED_EVENTS = new Set([
      is ready, and what an action paid.  A forged one would paint ripe crops
      and harvests the worker never settled on another player's screen. */
   'farm_state',
+  /* v2.3.3108: a bite held back by the one-bite rule (cooking.js
+     _pvpHealHeld) -- a forged one would tell another player to wait to eat. */
+  'eat_refused',
   /* v2.3.3092: the armour forge's receipt (armorforge.js) -- it names a minted
      piece with its id, so a forged one would put a fake plate in another
      player's bag. */

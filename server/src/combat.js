@@ -402,17 +402,8 @@ export const combatMethods = {
     // Resist buff (cooking recipe with buff:'resist', power 0.05 = 5%
     // reduction).  Cooking recipe power values are stored as the
     // fractional reduction; mirror the client's intent here.
-    /* ═══ v2.3.3108: THE ROOT STEW CUTS SMALL HITS TOO ═══
-       This was ceil(dmg x 0.95), and a ceil gives back the whole 5% on any
-       hit under 20: 19 x 0.95 = 18.05, ceil 19 -- the stew did nothing at all
-       against most monsters and every PvP hit (halved by DMG_SCALE).  Now the
-       fraction is a chance: 18.05 is 18, or 19 one time in twenty, so every
-       hit loses exactly 5% on average, at any size.  Floor 1 as before. */
-    if (this._buffActive(ps, 'resist')) {
-      const _cut = dmgTaken * (1 - 0.05);
-      const _whole = Math.floor(_cut);
-      dmgTaken = Math.max(1, _whole + (Math.random() < _cut - _whole ? 1 : 0));
-    }
+    /* v2.3.3108: the Root Stew's resist is applied AFTER the percentage cuts
+       below (Defense or Elem Resist, then armour) -- see there. */
     // v2.3.1659 (prog3): the allocated `defense` stat is the game's
     // first real mitigation dial — −0.4% damage taken per point, cap
     // −40% at 100 points (decision 9-B).  Applies to monster AND PvP
@@ -461,6 +452,23 @@ export const combatMethods = {
        enemy that literally cannot hurt you is a bug, not a build. */
     const _armorDr = this._armorDrMult(ps);
     if (_armorDr < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _armorDr));
+
+    /* ═══ v2.3.3108: THE ROOT STEW CUTS SMALL HITS TOO ═══
+       It was ceil(dmg x 0.95) at the top of the chain, and a ceil gives back
+       the whole 5% on any hit under 20: 19 x 0.95 = 18.05, ceil 19 -- the stew
+       did nothing against most monsters and every PvP hit (halved by
+       DMG_SCALE).  Now the fraction is a chance: 18.05 is 18, or 19 one time
+       in twenty, so the hit loses exactly 5% on average, at any size.
+       HERE, after the percentage cuts, not before (review): Defense and armour
+       each round again, and a torso's x0.7 turned both 18 and 19 into 13 --
+       the stew's 5% rounded away a second time for anyone wearing one.  Cuts
+       that multiply give the same expected hit in any order; only the
+       rounding moved.  Floor 1 as before; the flat soaks below still follow. */
+    if (this._buffActive(ps, 'resist')) {
+      const _cut = dmgTaken * (1 - 0.05);
+      const _whole = Math.floor(_cut);
+      dmgTaken = Math.max(1, _whole + (Math.random() < _cut - _whole ? 1 : 0));
+    }
 
     // v2.3.1113: Iron Skin (defense channel, -0.5%/pt, cap -25%) -- mirror
     // of applyIronSkin in src/data/gameSystems.js.  ps.defenseSpec is
@@ -2082,8 +2090,8 @@ export const combatMethods = {
       /* v2.3.3108: a fight between players, for the eating rule (cooking.js
          _pvpHealWait): both sides, on every exchange that sends a pvp_hit --
          the same event the page stamps its own copy from, so the two agree.
-         Memory only (rule 11): a deploy just lets one more bite through. */
-      attackerPs._pvpAt = targetPs._pvpAt = Date.now();
+         On the room's clock, not on playerState (a rejoin rebuilds that). */
+      if (this._notePvpExchange) this._notePvpExchange(attackerId, targetId, Date.now());
 
       // Build hit event — server-authoritative hp now mirrors via
       // player_state below, but dmgTaken in the payload drives the

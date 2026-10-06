@@ -61,6 +61,7 @@ import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js
 import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3108: the worker's word on a bite it held back */
 
 /* ═══ v2.3.2122: A PIECE THE WORKER TAKES OFF YOU GOES IN THE BAG ═══
  *
@@ -1547,6 +1548,17 @@ export function setupWebSocket(ctx) {
                 /* QA (mp-armorforge), armed by the harness only: the receipt */
                 if (typeof window !== 'undefined' && window.__btProbe) window.__btArmorForged = { at: Date.now(), recipe: _fa.recipe, piece: _fa.piece, xp: _fa.xp };
               }
+              break;
+            }
+          case 'eat_refused':
+            {
+              /* v2.3.3108: the worker held a bite back by the one-bite rule
+                 (cooking.js _pvpHealHeld) -- its clock becomes this page's,
+                 and the player is told how long.  The bag and HP come back on
+                 the resend that follows.  Here in the direct switch, for
+                 farm_state's reason: a relayed copy is never trusted. */
+              var _erw = noteEatRefused(S, msg.payload && msg.payload.wait);
+              try { if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, pvpHealWaitText(_erw), '#B9C1BF'); } catch (_ee) { /* words only */ }
               break;
             }
           case 'farm_state':

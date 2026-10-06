@@ -1472,16 +1472,20 @@ remnant to migrate server-side, not a mode to preserve.
       the worker multiplies the clamped claim by its own (`caps.pvpbrew`,
       kill switch `pvpbrew: false`; src/game/fightFood.js `pvpClaim`, every
       shot carrying the brew it was fired with as `brew`) -- the bow volley
-      and the staff special never had it, and a special SWING now says
-      `special: true`; the Element Burst's ceiling is x the brew (a Fury
-      Tonic was clipped up to a quarter); the Root Stew cuts 5% of a small hit
-      too (chance rounding, not a ceil); and ONE BITE AT A TIME -- a Garden
-      Stew, cooked fish or minnow bottle once per `PVP_HEAL.GAP_MS` 15 s in a
-      duel or within `WINDOW_MS` 10 s of a hit between players
-      (cooking.js `_pvpHealWait`, `_pvpAt` / `_healAt` in memory; the page
-      holds its own bite back, "Eat again in Ns", only on `caps.pvpheal`;
-      kill switch `pvpheal: false`); `fightfood` suite, `mp-fightfood`:
-      docs/specs/fight-food.md.)
+      and the staff special never had it; a melee special swing is NOT
+      marked `special` (its claim goes out every frame of the sweep and the
+      lanes count the hits: the special lane gave it three at the special's
+      ceiling); the Element Burst's ceiling is x the brew (a Fury Tonic was
+      clipped up to a quarter); the Root Stew cuts 5% of a small hit too
+      (chance rounding, not a ceil); and ONE BITE AT A TIME -- a Garden Stew,
+      cooked fish or minnow bottle once per `PVP_HEAL.GAP_MS` 15 s in a duel
+      or within `WINDOW_MS` 10 s of a hit between players (cooking.js
+      `_pvpHealWait`, every road to one incl. the old-style cook; the clock
+      on the ROOM, `_pvpHealClocks`, so a rejoin keeps it and no joiner is
+      sent it; a held bite answered `eat_refused {wait}`; the page holds its
+      own bite back, "Eat again in Ns", on `caps.pvpheal` from the hits it
+      saw, never the duel flag, which outlives duels; kill switch `pvpheal:
+      false`); `fightfood` suite, `mp-fightfood`: docs/specs/fight-food.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

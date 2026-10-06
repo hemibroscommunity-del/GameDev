@@ -2057,7 +2057,7 @@ export function updateMonsterCombat(S, deps) {
                    use pDmg (Power-based for melee).  Variance is rolled
                    per-hit so different monsters in a sweep can take
                    slightly different damage. */
-                var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult, _activeWpn) : pDmg;
+                var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult, _activeWpn) * (_brewK || 1) : pDmg;   /* v2.3.3108: x the brew, as pDmg and the worker's special roll carry it */
                 /* v2.3.1747: the `* _comboBurst` term (1.15 at combo 1+) is gone
                    with the chain.  The SERVER's cap is deliberately untouched:
                    its `comboBoost = 5` (combat.js _maxDmgForAttacker) is a
@@ -3045,13 +3045,17 @@ export function updateMonsterCombat(S, deps) {
                     inDuel: !!S._inDuel,
                     /* v2.3.1302: kind tags the attack for the server's
                        per-kind range clamp.  Old servers ignore it. */
-                    kind: 'melee',
-                    /* v2.3.3108: a special SWING says so, as a special arrow
-                       or bolt always did (projectiles.js).  Without it the
-                       worker held the swing to the ORDINARY ceiling -- a third
-                       of the special's -- and clipped it; every worker reads
-                       the field (combat.js _resolvePvPAttack). */
-                    special: S._specialAttack ? true : undefined
+                    kind: 'melee'
+                    /* v2.3.3108 (review): NO `special` here, on purpose.  This
+                       send runs on every frame of the 400 ms sweep, and the
+                       worker's lanes are what turn that into hits: an ordinary
+                       claim gets one hit per 300 ms (two a swing), a special
+                       one THREE per 1200 ms.  Marking the special swing put it
+                       in that lane -- three hits at the special's ceiling, up
+                       to 4.5x the swing before.  It stays held to the ordinary
+                       ceiling, as it always was: a PvP balance call for the
+                       owner (docs/specs/fight-food.md "Found, not changed"),
+                       not a side effect of the brew. */
                   }
                 });
               }

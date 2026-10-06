@@ -66,6 +66,8 @@ async function send(ws, type, payload) {
   await settle();
 }
 const now = () => Date.now();
+/* v2.3.3108 (review): the one-bite clock is the room's, keyed by player id. */
+const clk = (id) => room._pvpHealClock(id);
 
 const wsA = fakeWs(), wsB = fakeWs();
 await join(wsA, 'bp_ff_a');
@@ -166,10 +168,10 @@ const taken = (ev) => ev && ev.payload ? ev.payload.dmgTaken : -1;
   delete room._liveFlags.pvpbrew;
 
   /* The exchange starts a fight for both sides, for the eating rule. */
-  A._pvpAt = 0; B._pvpAt = 0;
+  clk('bp_ff_a').pvpAt = 0; clk('bp_ff_b').pvpAt = 0;
   hit({ dmgBase: CLAIM });
   check('a hit between players stamps BOTH as in a fight (the eating rule\'s clock)',
-    now() - A._pvpAt < 1000 && now() - B._pvpAt < 1000, { a: A._pvpAt, b: B._pvpAt });
+    now() - clk('bp_ff_a').pvpAt < 1000 && now() - clk('bp_ff_b').pvpAt < 1000, { a: clk('bp_ff_a').pvpAt, b: clk('bp_ff_b').pvpAt });
   A._buffs = {};
 }
 
@@ -189,10 +191,23 @@ const taken = (ev) => ev && ev.payload ? ev.payload.dmgTaken : -1;
   check('a 10-damage hit under the Root Stew is 9.5 on average (a ceil kept it at 10)',
     Math.abs(mean - 9.5) < 0.06, { mean });
   check('...always one of its two neighbours, 9 or 10', odd === 0, { odd });
-  let sum19 = 0;
-  for (let i = 0; i < N; i++) sum19 += room._applyDamage(p, 19, false).dmgTaken;
-  check('a 19-damage hit loses its 5% too (18.05 on average; the ceil gave back all of it)',
-    Math.abs(sum19 / N - 18.05) < 0.06, { mean: sum19 / N });
+  /* 19 x 0.95 = 18.05: 18 nineteen times in twenty, 19 the twentieth.
+     Counted, not averaged -- a floor (always 18) and a ceil (always 19)
+     must both fail here (review: an average within 0.06 let the floor by). */
+  const N19 = 20000;
+  let n18 = 0, n19 = 0;
+  for (let i = 0; i < N19; i++) { const d = room._applyDamage(p, 19, false).dmgTaken; if (d === 18) n18++; else if (d === 19) n19++; }
+  check('a 19-damage hit loses its 5% too: 18 nineteen times in twenty, 19 the twentieth (the ceil gave back all of it)',
+    n18 + n19 === N19 && n19 / N19 > 0.035 && n19 / N19 < 0.065, { n18, n19 });
+  /* ...and in armour (review): a torso's x0.7 rounds again, and with the
+     stew applied first both 18 and 19 became 13 -- the cut lost a second
+     time.  Applied after the percentage cuts, 19 -> 13 -> 12.35 on average. */
+  room._armorDrMult = () => 0.7;   /* a torso's first step (armorforge.js) */
+  let armoured = 0;
+  for (let i = 0; i < N19; i++) armoured += room._applyDamage(p, 19, false).dmgTaken;
+  delete room._armorDrMult;   /* the prototype's reader again */
+  check('in a 0.7 armour, a 19-damage hit still loses the stew\'s 5% (13 -> 12.35 on average, not 13 every time)',
+    Math.abs(armoured / N19 - 12.35) < 0.02, { mean: armoured / N19 });
   let ones = true;
   for (let i = 0; i < 200; i++) if (room._applyDamage(p, 1, false).dmgTaken !== 1) ones = false;
   check('...and a 1-damage hit stays 1 (the floor)', ones);
@@ -225,19 +240,19 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('the Garden Stew is a heal eaten at once (guard)', DISHES.meal_garden_stew.slot === 'now');
 
   /* Out of any fight with a player: eat as fast as you like. */
-  stock(); hurt(); C._pvpAt = 0; C._healAt = 0;
+  stock(); hurt(); clk('bp_ff_c').pvpAt = 0; clk('bp_ff_c').healAt = 0;
   for (let i = 0; i < 3; i++) await eat('meal_garden_stew');
   check('out of a fight with a player, three stews in a row all heal',
     C.inventory.meal_garden_stew === 7 && C.hp > 100 + 3 * 140, { left: C.inventory.meal_garden_stew, hp: C.hp });
 
   /* In one -- and the last bite counts wherever it was eaten. */
-  hurt(); C._pvpAt = now();
+  hurt(); clk('bp_ff_c').pvpAt = now();
   await eat('meal_garden_stew');
   check('a hit between players in the last 10 s: the next bite waits 15 s from the LAST one (eaten just now)',
     C.inventory.meal_garden_stew === 7 && C.hp === 100, { left: C.inventory.meal_garden_stew, hp: C.hp });
   check('...and the refusal sends the bag back to the phone (it took one already)', resent(wsC));
 
-  C._healAt = now() - PVP_HEAL.GAP_MS - 1;
+  clk('bp_ff_c').healAt = now() - PVP_HEAL.GAP_MS - 1;
   await eat('meal_garden_stew');
   check('15 s after the last bite, one stew goes down', C.inventory.meal_garden_stew === 6 && C.hp > 100, { hp: C.hp });
   hurt();
@@ -245,9 +260,10 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('...and the next one right after it does not', C.inventory.meal_garden_stew === 6 && C.hp === 100, { hp: C.hp });
   await eat('cooked_fish_minnow');
   check('a cooked fish is a bite too', C.inventory.cooked_fish_minnow === 10 && C.hp === 100, { hp: C.hp });
+  check('...its refusal resent (the phone took one already)', resent(wsC));
   await drink('cookedMinnow');
   check('...and so is the old minnow bottle', C.inventory.cookedMinnow === 10 && C.hp === 100, { hp: C.hp });
-  check('...each refusal resent', resent(wsC));
+  check('...its refusal resent too', resent(wsC));
 
   await eat('meal_root_stew');
   check('a half-hour MEAL is not a heal and is never held back', C.inventory.meal_root_stew === 2 && C._buffs.resist > now());
@@ -255,22 +271,22 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('nor is a BREW', C.inventory.brew_firebloom_tea === 2 && C._buffs.damage > now());
 
   /* The fight ends WINDOW_MS after the last exchange. */
-  C._pvpAt = now() - PVP_HEAL.WINDOW_MS - 1; C._healAt = now() - 5000;   /* a bite 5 s ago: inside the gap */
+  clk('bp_ff_c').pvpAt = now() - PVP_HEAL.WINDOW_MS - 1; clk('bp_ff_c').healAt = now() - 5000;   /* a bite 5 s ago: inside the gap */
   await eat('cooked_fish_minnow');
   check('10 s after the last hit between players the rule lets go', C.inventory.cooked_fish_minnow === 9 && C.hp > 100, { hp: C.hp });
   /* Every bite starts the clock, out of a fight too -- or a fish eaten just
      before the first blow would buy a second bite at once. */
-  check('...and that fish starts the clock (counted wherever it is eaten)', now() - C._healAt < 1000, C._healAt);
-  C._healAt = 0;
+  check('...and that fish starts the clock (counted wherever it is eaten)', now() - clk('bp_ff_c').healAt < 1000, clk('bp_ff_c').healAt);
+  clk('bp_ff_c').healAt = 0;
   hurt();
   await drink('cookedMinnow');
-  check('the minnow bottle starts it too', C.inventory.cookedMinnow === 9 && now() - C._healAt < 1000, { left: C.inventory.cookedMinnow, at: C._healAt });
-  C._healAt = 0;
+  check('the minnow bottle starts it too', C.inventory.cookedMinnow === 9 && now() - clk('bp_ff_c').healAt < 1000, { left: C.inventory.cookedMinnow, at: clk('bp_ff_c').healAt });
+  clk('bp_ff_c').healAt = 0;
   await drink('brew_firebloom_tea');
-  check('a brew does not (it is no heal)', C._healAt === 0, C._healAt);
+  check('a brew does not (it is no heal)', clk('bp_ff_c').healAt === 0, clk('bp_ff_c').healAt);
 
   /* A duel is a fight from its first second to its last, hit or no hit. */
-  hurt(); C._pvpAt = 0; C._healAt = now();
+  hurt(); clk('bp_ff_c').pvpAt = 0; clk('bp_ff_c').healAt = now();
   if (!room._duels) room._duels = new Map();
   room._duels.set('ff-duel', { id: 'ff-duel', status: 'active', a: 'bp_ff_c', b: 'bp_ff_a', away: Object.create(null) });
   await eat('cooked_fish_minnow');
@@ -281,19 +297,19 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   room._duels.delete('ff-duel');
 
   /* A monster fight is no fight with a player. */
-  hurt(); C._pvpAt = 0; C._healAt = now(); C.lastDamageAt = now();
+  hurt(); clk('bp_ff_c').pvpAt = 0; clk('bp_ff_c').healAt = now(); C.lastDamageAt = now();
   await eat('cooked_fish_minnow');
   check('a fight with MONSTERS is untouched: eat as you always could', C.inventory.cooked_fish_minnow === 7, C.inventory);
 
   /* The kill switch. */
-  hurt(); C._pvpAt = now(); C._healAt = now();
+  hurt(); clk('bp_ff_c').pvpAt = now(); clk('bp_ff_c').healAt = now();
   room._liveFlags = Object.assign({}, room._liveFlags || {}, { pvpheal: false });
   await eat('cooked_fish_minnow');
   check('pvpheal:false lifts the rule', C.inventory.cooked_fish_minnow === 6, C.inventory);
   delete room._liveFlags.pvpheal;
 
   /* An exchange really does start it: C hit by A (the stamp from combat.js). */
-  hurt(); C._pvpAt = 0; C._healAt = now();
+  hurt(); clk('bp_ff_c').pvpAt = 0; clk('bp_ff_c').healAt = now();
   if (!room._pvpConsent) room._pvpConsent = new Map();
   room._pvpConsent.set(room._pvpPairKey('bp_ff_a', 'bp_ff_c'), now() + 600000);
   room._pvpHitLanes = new Map();
@@ -306,6 +322,58 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
     C.inventory.cooked_fish_minnow === 6 && C.hp === hpAfterHit, { left: C.inventory.cooked_fish_minnow, hp: C.hp });
   check('...and _pvpHealWait says how long (just under 15 s)',
     room._pvpHealWait('bp_ff_c', C) > PVP_HEAL.GAP_MS - 2000, room._pvpHealWait('bp_ff_c', C));
+}
+
+// ── 4b. v2.3.3108 (review): the rule's roads, its reply, and its clock ──
+{
+  const COOK_IDX = (await import('../src/data.js')).COOKING_RECIPES.findIndex((r) => r.makes === 'meal_garden_stew');
+  check('the Garden Stew has a recipe row (guard)', COOK_IDX >= 0, COOK_IDX);
+
+  /* The reply: a held bite says so, with the wait -- the page's clock is the
+     worker's then, in a lull of a duel or after a reconnect. */
+  hurt(); stock(); clk('bp_ff_c').pvpAt = now(); clk('bp_ff_c').healAt = now() - 3000;
+  await eat('meal_garden_stew');
+  const reply = wsC.sent.find((m) => m.type === 'eat_refused');
+  check('a bite held back by the rule is told why: eat_refused with the wait (~12 s)',
+    !!reply && reply.payload.wait > 11000 && reply.payload.wait <= 12000, reply && reply.payload);
+  clk('bp_ff_c').pvpAt = 0;
+  C._arenaMatch = { id: 'x' };
+  await eat('meal_garden_stew');
+  check('...and only by the rule: an arena refusal says nothing of the kind', !wsC.sent.some((m) => m.type === 'eat_refused'));
+  C._arenaMatch = null;
+
+  /* The old-style cook (no `carry`), which only a forged message sends since
+     caps.meals: in a fight its stew is held back -- into the bag, uneaten. */
+  hurt(); C.lifeSkills = Object.assign(C.lifeSkills || {}, { cooking: { level: 10, xp: 0 } });
+  C.inventory = Object.assign(C.inventory || {}, { crop_carrot: 20, crop_potato: 10 });
+  clk('bp_ff_c').pvpAt = now(); clk('bp_ff_c').healAt = now();
+  const stews0 = C.inventory.meal_garden_stew || 0;
+  for (let i = 0; i < 3; i++) await send(wsC, 'cook_recipe', { recipeIdx: COOK_IDX });
+  check('a forged old-style cook of a Garden Stew in a fight heals NOTHING (it went past the rule, three times)',
+    C.hp === 100, { hp: C.hp });
+  check('...the stews it makes land in the bag instead, never lost', (C.inventory.meal_garden_stew || 0) === stews0 + 3, C.inventory.meal_garden_stew);
+  clk('bp_ff_c').pvpAt = 0; clk('bp_ff_c').healAt = 0;
+  await send(wsC, 'cook_recipe', { recipeIdx: COOK_IDX });
+  check('...out of a fight it is eaten at once, as an old client expects', C.hp > 100 && (C.inventory.meal_garden_stew || 0) === stews0 + 3, { hp: C.hp });
+  check('...and starts the clock like every bite', now() - clk('bp_ff_c').healAt < 1000, clk('bp_ff_c').healAt);
+
+  /* The clock survives a rejoin: a fresh playerState used to reset it. */
+  hurt(); clk('bp_ff_c').pvpAt = now(); clk('bp_ff_c').healAt = now();
+  const wsC2 = fakeWs();
+  await join(wsC2, 'bp_ff_c');
+  const C2 = room.playerState.bp_ff_c;
+  C2.maxHp = 5000; C2.hp = 100; C2.inventory = Object.assign(C2.inventory || {}, { cooked_fish_minnow: 5 });
+  await send(wsC2, 'eat_request', { invKey: 'cooked_fish_minnow' });
+  check('a reconnect does not hand out a bite: the rule holds across a rejoin', C2.hp === 100 && C2.inventory.cooked_fish_minnow === 5, { hp: C2.hp });
+  check('...the clock is not on playerState (a join rebuilds that)', !('_healAt' in C2) && !('_pvpAt' in C2) && !('healAt' in C2));
+  const all = room.getAllPlayerData ? JSON.stringify(room.getAllPlayerData()) : '';
+  check('...nor in what every joiner is sent about the room\'s players', !/healAt|pvpAt/.test(all));
+
+  /* Pruned, never unbounded. */
+  const stale = now() - 60000;
+  for (let i = 0; i < 600; i++) { const c = clk('bp_prune_' + i); c.pvpAt = stale; c.healAt = stale; }
+  check('the clocks are pruned of those that can hold nobody back', room._pvpHealClocks.size <= 520, room._pvpHealClocks.size);
+  check('...never the live ones', room._pvpHealClocks.has('bp_ff_c'));
 }
 
 // ── 5. the kill switches un-advertise ──
@@ -372,8 +440,15 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('page: in the fight, right after a bite: wait 15 s', FF.pvpHealWaitMs(S, t + 1) === PVP_HEAL.GAP_MS - 1, FF.pvpHealWaitMs(S, t + 1));
   check('page: 15 s on, no wait', FF.pvpHealWaitMs(S, t + PVP_HEAL.GAP_MS) === 0);
   check('page: the fight ends 10 s after the last hit', FF.pvpHealWaitMs(S, t + 1 + PVP_HEAL.WINDOW_MS) === 0);
+  /* v2.3.3108 (review): the duel flag alone holds nothing on the page -- it
+     can outlive its duel and held every bite back against monsters until a
+     reload.  A duel's lull is the worker's to call, and it says so. */
   const D = { myId: 'me', _serverCaps: capsOn, _inDuel: { opponent: 'x' }, _instantHealAt: t };
-  check('page: a duel is a fight with no hit at all', FF.pvpHealWaitMs(D, t + 1000) === PVP_HEAL.GAP_MS - 1000);
+  check('page: a stale duel flag alone holds no bite back (the worker calls a duel\'s lull)', FF.pvpHealWaitMs(D, t + 1000) === 0);
+  const W = { myId: 'me', _serverCaps: capsOn };
+  check('page: the worker\'s eat_refused sets the page\'s clock to its wait', FF.noteEatRefused(W, 9000, t) === 9000 && FF.pvpHealWaitMs(W, t) === 9000);
+  check('page: ...the next tap is held for that long, then let go', FF.pvpHealWaitMs(W, t + 8999) === 1 && FF.pvpHealWaitMs(W, t + 9000) === 0);
+  check('page: ...a wait past the gap or garbage is bounded', FF.noteEatRefused({}, 1e9, t) === PVP_HEAL.GAP_MS && FF.noteEatRefused({}, 'x', t) === 0);
   const O = { myId: 'me', _serverCaps: {}, _inDuel: { opponent: 'x' }, _instantHealAt: t };
   check('page: against a worker without pvpheal the page never holds a bite back', FF.pvpHealWaitMs(O, t + 1000) === 0);
   check('page: the words', FF.pvpHealWaitText(14001) === 'Eat again in 15s' && FF.pvpHealWaitText(1) === 'Eat again in 1s');
