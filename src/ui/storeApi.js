@@ -102,6 +102,19 @@ export function storeOfferEnabled() {
   return !!(s && s._serverCaps && s._serverCaps.storeOffer);
 }
 
+/* ═══ v2.3.3122: ...and does it sell PETS? ═══
+ * Narrow again: an older worker refuses `kind: 'pet'` ("Invalid kind"), so a
+ * Sell button on the Pets page must not exist against one.  Also the owner's
+ * kill switch (`pettrade: false`): no new pet listing, and a pet already
+ * listed still sells, comes back or arrives by mail. */
+export function storePetsEnabled() {
+  const s = S();
+  return !!(s && s._serverCaps && s._serverCaps.store && s._serverCaps.pettrade);
+}
+/* kind 'pet' -> { petId, price }: the worker takes the pet out of ITS OWN
+   record by id (petbook.js _petSellable / _petbookTake). */
+export const storeListPet = (petId, price) => post('/list', { kind: 'pet', petId, price });
+
 export function storeMyId() {
   const s = S();
   return (s && s.myId) || null;

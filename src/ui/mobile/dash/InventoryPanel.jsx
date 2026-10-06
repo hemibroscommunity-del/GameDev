@@ -30,6 +30,7 @@ import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the
 import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
 import { DAILY_CHEST_ICON } from '@/rendering/chestPreload.js';   /* v2.3.2820 */
 import { SALVAGE, essenceKey, essenceName, essenceIcon } from '@/data/salvage.js';   /* v2.3.3110: the essences */
+import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: the box trap's picture */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -222,6 +223,9 @@ export const thumbFor = (key) => {
      GEM stat row — one gem picture in the bag, not two that have to be told
      apart.  prettyName turns the key into "Rare Gem" with no table entry. */
   if (k === 'rare_gem')             return RARE_GEM_THUMB;
+  /* v2.3.3120: the box trap -- the Trapping skill's own picture, "a simple box
+     trap with its door propped on a stick" (TrapButton.jsx shows the same) */
+  if (k === 'trap_box')             return TRAP_ICON_URL;
   if (k === 'fishing_pole')         return FISHING_POLE_THUMB;
   /* v2.3.1689: the three gathering tools all have real art now.  These sit
      ABOVE no prefix rule on purpose — 'woodcutting_axe' does not match
@@ -267,6 +271,7 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   bar_copper: 'Copper Bar',     /* v2.3.2822: prettyName would say "Bar Copper" (server smelting.js) */
   bar_iron: 'Iron Bar',         /* v2.3.3092 */
   bar_black_steel: 'Black Steel Bar',   /* v2.3.3092: prettyName would say "Bar Black Steel" */
+  trap_box: 'Box Trap',         /* v2.3.3120: one log at the Woodworker (server trapping.js); prettyName would say "Trap Box" */
 });
 /* v2.3.3110: the nine essences salvage leaves (data/salvage.js): "Rare Iron
    Essence", not "Essence Rare Iron" out of the key.  Written from the table,
@@ -360,7 +365,7 @@ export const iconFor = (key) => {
      and the granted inventory key is basic_trap -- both resolve here, because
      a shelf slot and a bag slot showing different pictures of one item is the
      kind of thing nobody reports and everybody notices. */
-  if (k === 'basictrap' || k === 'basic_trap') return '🪤';
+  if (k === 'basictrap' || k === 'basic_trap' || k === 'trap_box') return '🪤';   /* v2.3.3120: + the box trap */
   if (/sword/.test(k))   return '⚔';
   if (/bow/.test(k))     return '🏹';
   if (/staff|wand/.test(k)) return '🪄';

@@ -2,12 +2,15 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
 import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* ITEM_NAMES v2.3.3110 */
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
-import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId } from '@/ui/storeApi.js';
+import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId, storePetsEnabled } from '@/ui/storeApi.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { PlayerIcon } from '@/ui/PlayerIcon.jsx';   /* v2.3.2620: the same icon the player list draws */
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { StoreChatPanel } from './StoreChatPanel.jsx';   /* v2.3.2621 */
 import { storeChatEnabled, storeChatSend } from '@/ui/storeApi.js';   /* v2.3.2618: "List an Item" opens the bag, which is where selling starts */
+/* v2.3.3122: pet listings (pet trading, docs/PET-TRAPPING-PLAN.md Phase 3) */
+import { PetPortrait } from '@/ui/petPortrait.jsx';
+import { petDisplayName, petKindName, worldSafeText } from '@/data/trapping.js';
 
 /* === StorePanel — buildingPanel === 'store' ===================== v2.3.2476
  *
@@ -106,6 +109,12 @@ function pill(label, tone, onTap, disabled) {
 
 /* The picture for a listing, from the server's derived fields only. */
 function listingArt(l) {
+  /* v2.3.3122: a pet, drawn as the Pets page draws it, from the listing's
+     server-derived `disp.pet` (petbook.js petPublic) */
+  if (l.kind === 'pet') {
+    const pt = (l.disp && l.disp.pet) || null;
+    return pt ? <PetPortrait pet={pt} size={34} /> : <span style={{ fontSize: 20, lineHeight: '38px' }}>{'\u{1F43E}'}</span>;
+  }
   if (l.kind === 'weapon') {
     const g = WEAPON_GLYPH[(l.disp && l.disp.type) || ''] || '⚔';
     return <span style={{ fontSize: 22, lineHeight: '38px' }}>{g}</span>;
@@ -149,6 +158,7 @@ function timeLeft(expiresAt) {
 
 function prettyName(l) {
   const n = (l.disp && l.disp.name) || 'Item';
+  if (l.kind === 'pet') return (l.disp && l.disp.pet) ? worldSafeText(petDisplayName(l.disp.pet)) : n;   /* v2.3.3122 */
   if (l.kind === 'weapon' || l.kind === 'gear') return n;
   /* v2.3.3110: the bag's own name when it has one ("Rare Iron Essence",
      "Copper Bar"), not the key spelled out */
@@ -157,6 +167,15 @@ function prettyName(l) {
 }
 
 function subtitle(l) {
+  /* v2.3.3122: a pet's kind, level and story, as the worker read them */
+  if (l.kind === 'pet') {
+    const pt = (l.disp && l.disp.pet) || {};
+    const bits = (pt.name ? [petKindName(pt.kind, pt.stage)] : []).concat(['Lv ' + (pt.lv || 1)]);   /* the kind only beside a name of its own */
+    if (pt.gold) bits.push('Golden');
+    if (pt.size >= 1.18) bits.push('Big');
+    if (pt.owners > 1) bits.push(pt.owners + ' owners');
+    return bits.join(' · ');
+  }
   if (l.kind === 'weapon') {
     const d = l.disp || {};
     const bits = [];
@@ -233,6 +252,9 @@ export function StorePanel(props) {
   const myId = storeMyId();
   const enabled = storeEnabled();
   const chatOn = storeChatEnabled();
+  /* v2.3.3122: pets are listed (and so a Pets chip) only against a worker
+     that sells them (caps.pettrade); selling one starts from the Pets page */
+  const petsListed = storePetsEnabled();
   /* Asking the worker for the thread is what OPENS it -- the bus only holds
      what the worker sends back (storechat.js `_handleStoreDmOpen`). */
   const onChatOpen = useCallback((listingId) => {
@@ -431,7 +453,8 @@ export function StorePanel(props) {
         {tab === 'shelf' && (
           <>
             <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 6, marginBottom: 6 }}>
-              {CATEGORIES.map((c) => chip(cat === c.id, c.label, () => setCat(c.id), c.id))}
+              {/* v2.3.3122: + Pets, the store's own chip (a bag has no pets) */}
+              {(petsListed ? CATEGORIES.concat([{ id: 'pet', label: 'Pets' }]) : CATEGORIES).map((c) => chip(cat === c.id, c.label, () => setCat(c.id), c.id))}
             </div>
             {shelf.length === 0
               ? emptyState(
