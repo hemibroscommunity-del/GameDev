@@ -10174,6 +10174,26 @@ export var BroTown = function BroTown(_ref0) {
          which would put the player back on the screen they just answered. */
       var _forceCreate = false;
       try { _forceCreate = /[?&]create=1\b/.test(window.location.search); } catch (e) { _forceCreate = false; }
+      /* ═══ v2.3.3046: A KEY THAT ALREADY HAS A CHARACTER IS NOT SENT TO THE CREATOR ═══
+         The flag is set by the door AFTER it mints a fresh key, so a key that
+         is already in this device's roster -- joinTown writes it there the
+         first time it enters the world -- means the flag is left over from
+         the tab's past (the owner's crash: the reload after an iOS memory
+         kill kept the address).  Take it out and go the ordinary road, which
+         sends a returning player to the door with their character on it. */
+      if (_forceCreate) {
+        var _stale = false;
+        try { var _fp = getBtPassphrase(); _stale = !!_fp && inRoster(_fp); } catch (e) { _stale = false; }
+        if (_stale) {
+          _forceCreate = false;
+          try {
+            var _u3 = new URL(window.location.href);
+            _u3.searchParams.delete('create');
+            window.history.replaceState(window.history.state, '', _u3.pathname + _u3.search + _u3.hash);
+          } catch (e) { /* the phase decision below is what matters */ }
+          try { window.__btBootRoute = 'create-stale'; window.__btCreateStale = true; } catch (e) {}
+        }
+      }
       if (_forceCreate) {
         if (alive) setBootPhase('create');
         try { window.__btBootRoute = 'create-forced'; } catch (e) {}
@@ -10489,6 +10509,21 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.init();
     BT_AUDIO.join();
     setShowWelcome(false);
+    /* ═══ v2.3.3046: IN THE WORLD, THE ADDRESS FORGETS HOW YOU GOT HERE ═══
+       Owner: "Game crashed and brought me to trait picker screen."  A page
+       iPhone Safari kills for memory is RELOADED from the address it had --
+       and the door's "Create new character" puts `?create=1` there (v2.3.1861),
+       which only backToMenu ever took away.  So a player who had made a
+       character in that tab and played on was sent, by the reload after a
+       crash, to the boot check's very first road: the creator, before it asks
+       anything.  The routing flags are spent once you are in the world, so
+       they go here: `create`, `login` and `noresume` (a ?guest=1 test tab
+       keeps its own).  history.replaceState, no navigation. */
+    try {
+      var _u2 = new URL(window.location.href), _ch2 = false;
+      ['create', 'login', 'noresume'].forEach(function (k) { if (_u2.searchParams.has(k)) { _u2.searchParams.delete(k); _ch2 = true; } });
+      if (_ch2) window.history.replaceState(window.history.state, '', _u2.pathname + _u2.search + _u2.hash);
+    } catch (e) { /* no URL/history (old webview): nothing to tidy */ }
     /* Skip the 4-second intro overlay when the debug console is open
        (URL `?debug=1`) — the intro at z-index 100 with background:#000
        still obscures most of the viewport and makes diagnostics hard to

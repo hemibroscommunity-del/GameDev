@@ -1068,48 +1068,48 @@ export function createDefaultLifeSkills() {
   return {
     /* Harvesting skills */
     woodcutting: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     fishing: {
       /* v2.3.224: back to 0 -- tier progression is now the canonical
          path. New players must train fishing to unlock higher-tier
          fish spots. */
-      level: 0,
+      level: 1,
       xp: 0
     },
     mining: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     /* Processing skills */
     cooking: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     blacksmithing: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     woodworking: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     gemCutting: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     enchanting: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     /* Utility skills */
     farming: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     trapping: {
-      level: 0,
+      level: 1,
       xp: 0
     },
     /* Inventories */
@@ -1147,29 +1147,29 @@ export function migrateLifeSkills(sk) {
     };
     sk.gathering = null;
   }
-  /* Ensure all new skills exist (start at 0 to match createDefaultLifeSkills). */
+  /* Ensure all new skills exist (v2.3.3041: at 1, as createDefaultLifeSkills -- the worker reads 0 as 1). */
   if (!sk.woodcutting) sk.woodcutting = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.fishing) sk.fishing = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.mining) sk.mining = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.blacksmithing) sk.blacksmithing = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.woodworking) sk.woodworking = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.gemCutting) sk.gemCutting = {
-    level: 0,
+    level: 1,
     xp: 0
   };
   if (!sk.gems) sk.gems = {};
@@ -1177,6 +1177,14 @@ export function migrateLifeSkills(sk) {
   if (!sk.farmPlots) sk.farmPlots = {};
   if (!sk.dungeonClears) sk.dungeonClears = {};
   if (!sk.pets) sk.pets = [];
+  /* v2.3.3041: heal a stored level 0 to 1 -- the worker already reads 0 as 1
+     (`level || 1`), so a skill that showed "Lv 0" and then levelled to 2 now
+     reads Lv 1 and levels to 2, the banner saying the level it really is */
+  var _ls = ['woodcutting', 'fishing', 'mining', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'farming', 'trapping'];
+  for (var _i = 0; _i < _ls.length; _i++) {
+    var _s = sk[_ls[_i]];
+    if (_s && typeof _s === 'object' && !(Number(_s.level) >= 1)) _s.level = 1;
+  }
   return sk;
 }
 
@@ -2192,9 +2200,20 @@ export function awardSkillXp(skills, skillName, amount) {
   if (!skill) return false;
   skill.xp += amount;
   var leveled = false;
-  while (skill.xp >= skillXpRequired(skill.level)) {
-    skill.xp -= skillXpRequired(skill.level);
-    skill.level++;
+  /* ═══ v2.3.3041: THE SAME ARITHMETIC AS THE WORKER, LEVEL 0 INCLUDED ═══
+     Owner: "The level up notification shows the wrong skill level (shows
+     level 1 was you level up from 1 to 2)."  A new skill starts at level 0
+     here (createDefaultLifeSkills) and the worker's _addLifeSkillXp reads it
+     as 1 (`level || 1`): its first level costs 500 there and lands on 2.  This
+     loop charged skillXpRequired(0) = 463 and landed on 1 -- so the banner,
+     which fires from THIS prediction, said "Level 1" while the worker made it
+     2, and the echo that followed could even roll the bar back and fire a
+     second "Level 1" on the next harvest.  `level || 1` on both sides now
+     (mirror-audit "life-skill levels" pins the pair), and migrateLifeSkills
+     heals a stored 0 to 1, so a new skill reads Lv 1 and first levels to 2. */
+  while (skill.xp >= skillXpRequired(skill.level || 1)) {
+    skill.xp -= skillXpRequired(skill.level || 1);
+    skill.level = (skill.level || 1) + 1;
     leveled = true;
   }
   return leveled;
@@ -2898,7 +2917,18 @@ export const STAFF_RANGE_PX = 675;
    number (combat.js), inside the same special lane that admitted the three
    orbs.  Gated on caps.bigorb: against an older worker the special stays the
    three-orb volley, because that worker would read one bolt as one orb. */
-export const STAFF_BIG_BOLT_SCALE = 1.7;
+/* ═══ v2.3.3043: 50% BIGGER ═══
+   Owner: "Increase the special magic projectile sprite size by 50%."  1.7 ->
+   2.55.  One number on purpose, as above: the bolt is drawn this much bigger
+   AND hit-tested this much bigger (projectiles.js PROJ_BODY.magicBig), so the
+   bolt you see is still the bolt that connects -- a bigger picture over the
+   old capsule would visibly pass through a monster's edge without touching
+   it.  Client-only either way: the worker never simulates a projectile, and
+   the burst's 90 px reach is its own.  Its halo, core and trail grow with it
+   (staffCastFx.js BIG_HALO, the core, the trail's spread), and its additive
+   glow is softer still (effectsRenderer), the 1.7x one having already washed
+   out to white on light ground. */
+export const STAFF_BIG_BOLT_SCALE = 2.55;
 export const STAFF_BIG_BOLT_ORBS = 3;
 /* ═══ v2.3.2849: ...AND IT IS ONE BIG ROLL, THEN IT EXPLODES ═══
    Owner, on rebalancing the specials: the staff should do the most damage to

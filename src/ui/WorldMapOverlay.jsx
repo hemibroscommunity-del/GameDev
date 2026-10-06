@@ -31,6 +31,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isWheelTrialZone } from '../game/worldTrial.js';
 import { wheelMapInfo, wheelOverviewLands, wheelHere } from '../game/wheelTrial.js';
+import { ZONES } from '../data/zones.js';   /* v2.3.3039: the world's name (BroTown) */
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 const ZOOM_MAX = 12;
@@ -215,7 +216,7 @@ function WorldMap({ stateRef, onClose }) {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 'calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px', background: '#111E23', borderBottom: '1px solid rgba(216,170,88,0.35)' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: BRASS, fontWeight: 800, fontSize: 16, letterSpacing: '.04em' }}>The Wheel</div>
+          <div style={{ color: BRASS, fontWeight: 800, fontSize: 16, letterSpacing: '.04em' }}>{(ZONES.wheel && ZONES.wheel.name) || 'BroTown' /* v2.3.3039: the name players see */}</div>
           <div data-world-map-where="" style={{ color: INK, fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{where ? `You are in ${where}` : 'Finding you…'}</div>
         </div>
         <button type="button" aria-label="Close the map" data-world-map-close="" onClick={onClose} style={{ ...btn, fontSize: 24 }}>×</button>

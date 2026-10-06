@@ -294,7 +294,7 @@ export const ZoneHeader = ({ onExit }) => {
                   ? <img className="bt-zone-header__elem" src={landLook(where.region).icon} alt="" width="16" height="16" draggable="false" />
                   : null}{where.title}</span>
               {where.sub ? <span className="bt-zone-header__sub" data-zone-sub="1">{where.sub}</span> : null}</>
-          : (S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'The Wheel') : zoneTitle(S))}</div>
+          : (S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'BroTown' /* v2.3.3039 */) : zoneTitle(S))}</div>
         </div>
         {/* ═══ v2.3.2320: THE PURSE LIVES HERE NOW ═══
             Owner: "Move gold amount display to very top right on the top bar

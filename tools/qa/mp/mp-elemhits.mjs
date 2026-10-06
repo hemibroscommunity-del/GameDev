@@ -303,8 +303,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(250);
   const i1 = await icons(P);
   const more = (k) => (i1[k] || 0) - (i0[k] || 0);
-  rec.ok(`icons: the snowflake (${more('elem-frost')}), the wind (${more('elem-wind')}) and the slime (${more('slime')}) on their numbers, the heart on a plain one (${more('heart')})`,
-    more('elem-frost') >= 1 && more('elem-wind') >= 1 && more('slime') >= 1 && more('heart') >= 1, { i0, i1 });
+  /* v2.3.3044: a slime's hold shows the LEAF (elem-flora), not the slime's splat */
+  rec.ok(`icons: the snowflake (${more('elem-frost')}), the wind (${more('elem-wind')}) and the leaf (${more('elem-flora')}) on their numbers, the heart on a plain one (${more('heart')})`,
+    more('elem-frost') >= 1 && more('elem-wind') >= 1 && more('elem-flora') >= 1 && more('heart') >= 1, { i0, i1 });
   rec.ok(`icons: ...and the stone (${more('elem-stone')}), the storm (${more('elem-storm')}), the water (${more('elem-water')}) and the venom (${more('elem-venom')}) on theirs (v2.3.3014)`,
     ['elem-stone', 'elem-storm', 'elem-water', 'elem-venom'].every((k) => more(k) >= 1), { i0, i1 });
   /* v2.3.3026, owner: "when monsters damage you I want the damage numbers as
@@ -317,16 +318,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      you deal is over the monster's bar -- not on your face (it was y - 20) */
   {
     const taken = await P.page.evaluate(() => (window.__btTakenPops ? JSON.parse(JSON.stringify(window.__btTakenPops)) : null)) || {};
-    const MARKS = ['elem-frost', 'elem-flame', 'elem-wind', 'elem-stone', 'elem-storm', 'elem-water', 'elem-venom', 'heart'];
+    const MARKS = ['elem-frost', 'elem-flame', 'elem-wind', 'elem-flora' /* v2.3.3044 */, 'elem-stone', 'elem-storm', 'elem-water', 'elem-venom', 'heart'];
     /* v2.3.3033: the cap on a mark is 22 px at the old size and scales with a damage number (the probe says it) */
     const capOf = (t) => (t && t.cap) || 22;
     const tall = (t) => !!t && !!t.tight && Math.abs(t.h - Math.min(t.font, capOf(t))) < 0.6;
-    const sl = taken.slime;
-    const slimeOk = !!sl && !!sl.tight && sl.w <= 1.5 * Math.min(sl.font, capOf(sl)) + 0.6;
+    /* v2.3.3044: the slime's splat is gone; the leaf is one of the MARKS */
     const overHead = MARKS.every((k) => taken[k] && taken[k].band != null && taken[k].y < taken[k].band);
     const fr = taken['elem-frost'] || {};
-    rec.ok(`numbers taken: every element's mark is cut to its own size and drawn as tall as the number (the snowflake ${fr.h} px for a ${fr.font} px number, the slime's splat ${sl ? sl.w : '?'} px wide), and each number spawned over your head (${fr.band != null ? Math.round(fr.band - fr.y) : '?'} world px over the band's top), not on your face`,
-      MARKS.every((k) => tall(taken[k])) && slimeOk && overHead, taken);
+    rec.ok(`numbers taken: every element's mark is cut to its own size and drawn as tall as the number (the snowflake ${fr.h} px for a ${fr.font} px number), and each number spawned over your head (${fr.band != null ? Math.round(fr.band - fr.y) : '?'} world px over the band's top), not on your face`,
+      MARKS.every((k) => tall(taken[k])) && overHead, taken);
   }
 
   /* 6. the chips */
@@ -341,7 +341,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* any player_state re-renders the HUD; nudge one */
   await walk(P, 120, 0, 1);
   await P.page.waitForTimeout(400);
-  const chips = await P.page.evaluate(() => Array.from(document.querySelectorAll('img')).filter((im) => /elem-frost|elem-flame|slime-remnants|elem-stone|elem-water|elem-venom/.test(im.getAttribute('src') || '')).map((im) => {
+  const chips = await P.page.evaluate(() => Array.from(document.querySelectorAll('img')).filter((im) => /elem-frost|elem-flame|elem-flora|elem-stone|elem-water|elem-venom/.test(im.getAttribute('src') || '')).map((im) => {
     const r = im.getBoundingClientRect();
     return { alt: im.alt, w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y), visible: r.width > 0 && r.height > 0 };
   }));

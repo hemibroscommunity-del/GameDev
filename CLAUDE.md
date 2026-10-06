@@ -1113,7 +1113,30 @@ remnant to migrate server-side, not a mode to preserve.
       lets go loads town as before; the way in's GPU peak 114 -> 88 MB (no
       spike over where it settles), the cache's 184 -> 172; mp-gpuaudit fails
       if either trip holds the map;
-    - the bigger wins and what each costs: docs/specs/memory-in-the-wheel.md.)
+    - the bigger wins and what each costs: docs/specs/memory-in-the-wheel.md.
+  - Since v2.3.3039-v2.3.3046 SEVEN FIXES FROM THE OWNER'S NOTES
+    (docs/specs/notes-2026-10-05-fixes.md):
+    - the Wheel's player-facing name is BROTOWN (`ZONES.wheel.name`; every
+      loading veil says "Entering BroTown"; `wheel` stays the id);
+    - a LIFE SKILL IS NEVER LEVEL 0: the client levels with the worker's
+      arithmetic (`awardSkillXp` `level || 1`), new skills start at 1 and a
+      stored 0 heals to 1 on both sides (`healLifeSkillLevels`) -- the banner
+      said "Level 1" for a level the worker made 2;
+    - a DEATH is heard and felt: `playerDeath()` from recordings (it was beeps,
+      silent since v2.3.1103), a shake of 18, the dark flash and a kick away
+      from the killer; the killing blow's number and clang are no longer
+      dropped;
+    - the staff special is 50% bigger, drawn and hit-tested
+      (`STAFF_BIG_BOLT_SCALE` 2.55);
+    - a floral hit shows the LEAF (`elem-flora`), not the slime's splat;
+    - the daily chest plays its own sounds on its own frames (the lid on
+      frame 4, the coins as they rise), the coin credit `quiet`;
+    - a crash's reload never opens the CREATOR: entering the world strips
+      `?create=1` / `login` / `noresume`, and a `?create=1` on a key already in
+      the roster is stale (`__btBootRoute` 'create-stale'); and the monster
+      hit-chip cache no longer destroys textures a live burst draws (LRU,
+      `BURST_MS` + 1 s), scratch canvases are released at once and the
+      arrow-pin cache is held to 6 MB -- `mp-createflag`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

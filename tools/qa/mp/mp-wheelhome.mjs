@@ -107,7 +107,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   {
     const w9 = await P.page.evaluate(() => ({ lifted: window._gameState.current.__introLiftedZone || null, veils: (window.__btVeilLog || []).slice() }));
     rec.ok(`...behind ONE loading screen: the ocean clip lifted with them already in the Wheel (${w9.lifted}), and the veils behind it said ${JSON.stringify(Array.from(new Set(w9.veils.map((v) => v.name))))}, never "Town"`,
-      w9.lifted === 'wheel' && w9.veils.every((v) => v.name === 'The Wheel' && v.underIntro), w9);
+      w9.lifted === 'wheel' && w9.veils.every((v) => v.name === 'BroTown' /* v2.3.3039: the name players see */ && v.underIntro), w9);
   }
   /* v2.3.3009: the owner: "Put the 'brotown safe' and other location
      indicators in place of the 'the wheel lvl 1-2' on the top bar" */
@@ -204,8 +204,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...and on the way through, today's town has its own townsfolk, not the Wheel's Mayor at the Wheel's coordinates (${townSeen.length} looks)`,
     townSeen.length > 0 && !townSeen.some((t) => t.npcFar), townSeen);
   /* v2.3.3025: ...and nobody sees it: "The Wheel" over it every look */
-  rec.ok(`...and today's town is never on screen on the way: the veil over it said "The Wheel" every time we looked (${townSeen.filter((t) => t.veil === 'The Wheel').length} of ${townSeen.length})`,
-    townSeen.length > 0 && townSeen.every((t) => t.veil === 'The Wheel'), townSeen);
+  rec.ok(`...and today's town is never on screen on the way: the veil over it said "BroTown" every time we looked (${townSeen.filter((t) => t.veil === 'BroTown').length} of ${townSeen.length})`,
+    townSeen.length > 0 && townSeen.every((t) => t.veil === 'BroTown'), townSeen);
 
   /* ── 5. no marker to today's town (v2.3.3025, the owner: "there still a
         portal to the old town. Disable that.") -- none on the Wheel's map,
