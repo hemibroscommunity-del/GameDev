@@ -69,7 +69,7 @@
 import { GameRoom } from '../src/index.js';
 import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
-import { MONSTER_HP_CURVE } from '../src/data.js';
+import { MONSTER_HP_CURVE, MONSTER_DMG_CURVE, monsterHpFlat } from '../src/data.js'; /* v2.3.3055: the dmg curve, the growing flat */
 
 function makeState() {
   const store = new Map();
@@ -208,9 +208,10 @@ check('boss spawned after final wave', !!boss && boss.alive && inst.bossSpawned 
 // Expected hp: fodder base at lvl cfg.monsterLevel+5, x mult 8, x 1.6 (two players inside)
 // v2.3.1140: HP curve imported (was a hardcoded copy of the pre-BF-1 ramp).
 const baseHp = Math.ceil(room._monsterStat(MONSTER_HP_CURVE.base, cfg.monsterLevel + 5, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame) * 0.6);
-const baseDmg = Math.ceil(room._monsterStat(12, cfg.monsterLevel + 5, 1.045, 1.025, 1.018) * 0.8);
-// v2.3.1346: +100 flat is added AFTER boss/party multipliers (exact +100 like all monsters).
-check('boss hp = base x mult x party scale 1.6 + flat', boss.hp === Math.ceil(baseHp * 8 * 1.6) + (MONSTER_HP_CURVE.flat || 0), { hp: boss.hp, expected: Math.ceil(baseHp * 8 * 1.6) + (MONSTER_HP_CURVE.flat || 0) });
+const baseDmg = Math.ceil(room._monsterStat(MONSTER_DMG_CURVE.base, cfg.monsterLevel + 5, MONSTER_DMG_CURVE.ramp, MONSTER_DMG_CURVE.plateau, MONSTER_DMG_CURVE.endgame) * 0.8);
+// v2.3.1346: the flat is added AFTER boss/party multipliers (exact, like all monsters); v2.3.3055: the level's own flat.
+const bossFlat = monsterHpFlat(cfg.monsterLevel + 5);
+check('boss hp = base x mult x party scale 1.6 + flat', boss.hp === Math.ceil(baseHp * 8 * 1.6) + bossFlat, { hp: boss.hp, expected: Math.ceil(baseHp * 8 * 1.6) + bossFlat });
 check('boss dmg = base x 1.5', boss.dmg === Math.ceil(baseDmg * 1.5), { dmg: boss.dmg, expected: Math.ceil(baseDmg * 1.5) });
 check('dungeon_boss emitted to both players', msgsOfType(wsA, 'dungeon_boss').length === 1 && msgsOfType(wsB, 'dungeon_boss').length === 1);
 
