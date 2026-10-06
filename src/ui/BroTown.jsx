@@ -7686,32 +7686,192 @@ export var BroTown = function BroTown(_ref0) {
       return r + g + b > 30 && Math.abs(r - _BG_R) + Math.abs(g - _BG_G) + Math.abs(b - _BG_B) > 24;
     }
     window.__btLitPx = _wdLitPx;   /* QA (mp-glrestore): the same rule */
-    function _sampleLit() {
-      try {
-        var cv = canvasRef.current;
-        if (!cv || !cv.width) return -1;
-        /* v2.3.1383 (owner: rejoin "blanks out"): a LOST WebGL context must
-           count as FULLY DARK.  drawImage from a dead GL canvas can throw or
-           yield nothing -> the old -1 "can't judge" skip meant the watchdog
-           never struck, so an iOS memory-pressure context kill left the
-           screen blank forever with no rebuild and no reload. */
-        try {
-          var _glWd = cv.getContext('webgl2') || cv.getContext('webgl');
-          if (_glWd && _glWd.isContextLost && _glWd.isContextLost()) return 0;
-        } catch (eWd) { /* fall through to the pixel sample */ }
-        var c2 = document.createElement('canvas');
-        c2.width = 32;
-        c2.height = 18;
-        var g2 = c2.getContext('2d');
-        g2.drawImage(cv, 0, 0, 32, 18);
-        var d2 = g2.getImageData(0, 0, 32, 18).data;
-        var lit = 0;
-        for (var i2 = 0; i2 < d2.length; i2 += 4) {
-          if (_wdLitPx(d2[i2], d2[i2 + 1], d2[i2 + 2])) lit++;
-        }
-        return Math.round(100 * lit / (32 * 18));
-      } catch (e) { return -1; }
+    /* ═══ v2.3.3064: THE GPU MAKES THE THUMBNAIL, AND NOTHING WAITS FOR IT ═══
+       The sample is a 32 x 18 thumbnail of the world canvas.  drawImage from a
+       WebGL canvas made it by copying the WHOLE drawing buffer out of the GPU
+       first (1170 x 2418 on a 3x phone, 11 MB) and shrinking it after -- and,
+       like any read of the canvas, by waiting for the GPU to finish the frame.
+       Every 5 s, a stall in the frame it landed in: profiled on a phone-sized
+       page with the CPU slowed 4x, the game's single biggest cost of its own,
+       ~10% of the main thread walking or fighting (docs/MEMORY-PLAN.md).
+       WebGL2 does it on the GPU instead: the drawing buffer blitted, LINEAR,
+       into a 32 x 18 renderbuffer of our own (the same buffer at the same
+       moment -- this runs in an animation frame after the world's, before the
+       frame is shown -- the same 576 points over it, each a blend of its
+       nearest pixels, which is what drawImage's shrink is), read into a pixel
+       buffer behind a fence, and collected a frame or two later when the
+       fence says the GPU is done: 2.3 KB, and no wait.  mp-wdsample takes it
+       both ways in one frame: the same reading, ~1 ms against ~26 ms.
+       Pixi's GL state is put back exactly: both framebuffer bindings, the pixel
+       pack buffer, the renderbuffer binding when ours is made, the scissor
+       test.  No WebGL2, any GL error, or a fence not done in WD_FENCE_FRAMES:
+       the sample is taken the old way, there and then -- a GPU that has hung
+       is read (or stalls) exactly as before, never skipped. */
+    var WD_FENCE_FRAMES = 30;
+    var _wdPendingAt = 0;   /* a sample asked for and not yet back (Date.now()) */
+    var _wdThumb = null;   /* { gl, fb, rb, pbo, px } -- this context's */
+    var _wdOffGl = null;   /* the context the GPU's way failed on once: the old way on it from then on (a rebuilt renderer's new context tries again) */
+    function _wdThumbSetUp(gl) {
+      if (_wdThumb && _wdThumb.gl === gl) return _wdThumb;
+      var rbWas = gl.getParameter(gl.RENDERBUFFER_BINDING);
+      var packWas = gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING);
+      var fbRead0 = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING), fbDraw0 = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING);
+      gl.getError();   /* drop an error that is not ours */
+      var rb = gl.createRenderbuffer(), fb = gl.createFramebuffer(), pbo = gl.createBuffer();
+      gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+      gl.renderbufferStorage(gl.RENDERBUFFER, gl.RGBA8, 32, 18);
+      gl.bindRenderbuffer(gl.RENDERBUFFER, rbWas);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fb);
+      gl.framebufferRenderbuffer(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, rb);
+      var okFb = gl.checkFramebufferStatus(gl.DRAW_FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fbRead0);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbDraw0);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+      gl.bufferData(gl.PIXEL_PACK_BUFFER, 32 * 18 * 4, gl.STREAM_READ);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, packWas);
+      if (!okFb || gl.getError() !== gl.NO_ERROR) {
+        try { gl.deleteFramebuffer(fb); gl.deleteRenderbuffer(rb); gl.deleteBuffer(pbo); } catch (eD) { /* gone */ }
+        return null;
+      }
+      _wdThumb = { gl: gl, fb: fb, rb: rb, pbo: pbo, px: new Uint8Array(32 * 18 * 4) };
+      return _wdThumb;
     }
+    /* Ask the GPU for the thumbnail: { T, sync } to collect, or null (do it
+       the old way).  Call it in the animation frame the world was drawn in. */
+    function _wdThumbAsk(cv) {
+      var gl = null;
+      try { gl = cv.getContext('webgl2'); } catch (eG) { gl = null; }
+      if (!gl || gl === _wdOffGl || typeof gl.fenceSync !== 'function' || gl.isContextLost()) return null;
+      var T = _wdThumbSetUp(gl);
+      if (!T) { _wdOffGl = gl; return null; }
+      var fbRead = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING), fbDraw = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING);
+      var packWas = gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING);
+      var scissor = gl.isEnabled(gl.SCISSOR_TEST);
+      gl.getError();
+      if (scissor) gl.disable(gl.SCISSOR_TEST);
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, T.fb);
+      gl.blitFramebuffer(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, 0, 0, 32, 18, gl.COLOR_BUFFER_BIT, gl.LINEAR);
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, T.fb);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, T.pbo);
+      gl.readPixels(0, 0, 32, 18, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, packWas);
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fbRead);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbDraw);
+      if (scissor) gl.enable(gl.SCISSOR_TEST);
+      var sync = gl.getError() === gl.NO_ERROR ? gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0) : null;
+      if (!sync) { _wdOffGl = gl; return null; }
+      gl.flush();
+      return { T: T, sync: sync };
+    }
+    /* The thumbnail's pixels once the GPU has them; null while it has not;
+       false if it failed (then the old way) */
+    function _wdThumbCollect(job) {
+      var gl = job.T.gl;
+      if (gl.isContextLost()) return false;
+      var st = gl.getSyncParameter(job.sync, gl.SYNC_STATUS);
+      if (st !== gl.SIGNALED) return null;
+      gl.deleteSync(job.sync);
+      var packWas = gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING);
+      gl.getError();
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, job.T.pbo);
+      gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, job.T.px);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, packWas);
+      if (gl.getError() !== gl.NO_ERROR) { _wdOffGl = gl; return false; }
+      return job.T.px;
+    }
+    function _wdThumbDrop(job) { try { job.T.gl.deleteSync(job.sync); } catch (eS) { /* gone */ } }
+    /* the old way: the whole canvas copied out, then shrunk (v2.3.777) */
+    function _wdThumbImage(cv) {
+      var c2 = document.createElement('canvas');
+      c2.width = 32;
+      c2.height = 18;
+      var g2 = c2.getContext('2d');
+      g2.drawImage(cv, 0, 0, 32, 18);
+      return g2.getImageData(0, 0, 32, 18).data;
+    }
+    function _litPct(d2) {
+      var lit = 0;
+      for (var i2 = 0; i2 < d2.length; i2 += 4) {
+        if (_wdLitPx(d2[i2], d2[i2 + 1], d2[i2 + 2])) lit++;
+      }
+      return Math.round(100 * lit / (32 * 18));
+    }
+    /* The % of the thumbnail lit, to `done` -- now, or a frame or two from
+       now (v2.3.3064); -1 when it cannot judge.  Called in an animation
+       frame after the world's. */
+    function _sampleLit(done) {
+      var cv = canvasRef.current;
+      if (!cv || !cv.width) { done(-1); return; }
+      /* v2.3.1383 (owner: rejoin "blanks out"): a LOST WebGL context must
+         count as FULLY DARK.  drawImage from a dead GL canvas can throw or
+         yield nothing -> the old -1 "can't judge" skip meant the watchdog
+         never struck, so an iOS memory-pressure context kill left the
+         screen blank forever with no rebuild and no reload. */
+      try {
+        var _glWd = cv.getContext('webgl2') || cv.getContext('webgl');
+        if (_glWd && _glWd.isContextLost && _glWd.isContextLost()) { done(0); return; }
+      } catch (eWd) { /* fall through to the pixel sample */ }
+      var oldWay = function () {
+        var p = -1;
+        try { p = _litPct(_wdThumbImage(cv)); } catch (eI) { p = -1; }
+        done(p);
+      };
+      var job = null;
+      try { job = _wdThumbAsk(cv); } catch (eA) { job = null; try { _wdOffGl = cv.getContext('webgl2'); } catch (eO) { /* none */ } }
+      if (!job) { oldWay(); return; }
+      var frames = 0;
+      var poll = function () {
+        var px = null;
+        try { px = _wdThumbCollect(job); } catch (eC) { px = false; _wdOffGl = job.T.gl; }
+        if (px) { done(_litPct(px)); return; }
+        /* failed, or not done in time: this frame, the old way (in an
+           animation frame after the world's, as it always was) */
+        if (px === false || ++frames > WD_FENCE_FRAMES) { if (px !== false) _wdThumbDrop(job); oldWay(); return; }
+        requestAnimationFrame(poll);
+      };
+      requestAnimationFrame(poll);
+    }
+    /* v2.3.3064 QA (mp-wdsample): both ways in one animation frame, as the
+       watchdog takes it -- what each reads, and what each costs.  The frame is
+       finished first (a 1 x 1 read waits for the GPU) so each is timed on its
+       own work; the GPU's way is then collected as the watchdog collects it. */
+    window.__btWdSample = function () {
+      return new Promise(function (res) {
+        requestAnimationFrame(function () {
+          var cv = canvasRef.current;
+          if (!cv) { res(null); return; }
+          var tw = performance.now();
+          try {
+            var glw = cv.getContext('webgl2') || cv.getContext('webgl');
+            if (glw) glw.readPixels(0, 0, 1, 1, glw.RGBA, glw.UNSIGNED_BYTE, new Uint8Array(4));
+          } catch (eW) { /* timed as it comes */ }
+          var waitMs = performance.now() - tw;
+          var t0 = performance.now();
+          var job = null;
+          try { job = _wdThumbAsk(cv); } catch (eQ) { job = null; }
+          var askMs = performance.now() - t0;
+          var t2 = performance.now();
+          var im = _litPct(_wdThumbImage(cv));
+          var imageMs = performance.now() - t2;
+          if (!job) { res({ gl: null, image: im, askMs: +askMs.toFixed(2), imageMs: +imageMs.toFixed(2), frameWaitMs: +waitMs.toFixed(2), off: !!_wdOffGl }); return; }
+          var frames = 0, collectMs = 0;
+          var poll = function () {
+            var t4 = performance.now();
+            var px = null;
+            try { px = _wdThumbCollect(job); } catch (eP) { px = false; }
+            collectMs += performance.now() - t4;
+            if (px || px === false || ++frames > WD_FENCE_FRAMES) {
+              res({ gl: px ? _litPct(px) : null, image: im, frames: frames, askMs: +askMs.toFixed(2), collectMs: +collectMs.toFixed(2),
+                glMs: +(askMs + collectMs).toFixed(2), imageMs: +imageMs.toFixed(2), frameWaitMs: +waitMs.toFixed(2), off: !!_wdOffGl });
+              return;
+            }
+            requestAnimationFrame(poll);
+          };
+          poll();
+        });
+      });
+    };
     /* ═══ v2.3.1722: THE RECOVERY RELOAD, EXTRACTED ═══
        Measured on a forced-black join: the in-place rebuild does NOT cure
        this failure (a second rebuild fired 8.8s later, still dark) — the
@@ -7853,10 +8013,19 @@ export var BroTown = function BroTown(_ref0) {
                show -- under the loading screen, or behind a zone's veil or the
                wait for the server (both .bt-zone-loading), while what is next
                is laid: it reads as dark now (_wdLitPx), and was always lit */
-            if (!S.__introLiftedAt || S._zoneLoading || S._netHold || S._townArtHold
-                || document.querySelector('.bt-zone-loading')) return;
-            var _pctWd = _sampleLit();
-            if (_pctWd < 0) return;
+            var _wdVeiled = function () {
+              return !S.__introLiftedAt || S._zoneLoading || S._netHold || S._townArtHold
+                || !!document.querySelector('.bt-zone-loading');
+            };
+            if (_wdVeiled()) return;
+            /* v2.3.3064: one sample at a time -- the GPU's comes back a frame
+               or two later (a stale one, 20 s, never blocks the next) */
+            if (_wdPendingAt && Date.now() - _wdPendingAt < 20000) return;
+            _wdPendingAt = Date.now();
+            _sampleLit(function (_pctWd) {
+            _wdPendingAt = 0;
+            /* ...and a veil that went up while it came back is judged as above */
+            if (_pctWd < 0 || _wdVeiled()) return;
             /* v2.3.1721: the world has rendered at least once — from here the
                conservative two-strike rule applies. */
             if (_pctWd >= 1) { S.__wdDark = 0; S.__wdEverLit = true; return; }
@@ -7890,6 +8059,7 @@ export var BroTown = function BroTown(_ref0) {
               S.__wdDark = 0;
               _recoveryReload('world dark 20s despite rebuild -- reloading into game');
             }
+            });
           });
         }
       }
