@@ -871,8 +871,12 @@ remnant to migrate server-side, not a mode to preserve.
     you ..." (docs/specs/no-mans-land.md):
     - each land's Lv 6-10 ring is No man's land 1, the next 2, out to 15
       (`server/src/nomansland.js`, `src/data/noMansLandRings.js`,
-      mirror-audit); the banner, a chat line, and the top bar's red "☠ No
-      man's land 1 · Lv 6–10" in the stage name's place;
+      mirror-audit); the banner, a chat line, and (since v2.3.3105, the
+      owner: "above the center of the dashboard ... instead of the top bar")
+      a red skull and the number centred just over the band, riding
+      `--sheet-h`, whose tap opens the rules in InfoPopup with your own
+      skull's minutes (`src/ui/mobile/NmlBadge.jsx`; `--nml-lift` steps the
+      interact prompts over it); the top bar names the stage again;
     - two players may fight when both stand in it, their `ps.level`s at most
       the LOWER of their two numbers apart, not one party -- `_nmlAllowed`,
       asked by `_pvpAllowed` before `OPEN_PVP`, which stays off elsewhere;

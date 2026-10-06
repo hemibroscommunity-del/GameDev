@@ -363,6 +363,7 @@ import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, S
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (the button under ATTACK, X on a keyboard) */
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
+import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3105: No man's land over the band's middle */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
@@ -13274,7 +13275,10 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
+  /* v2.3.3105: No man's land's skull and number over the middle of the band;
+     a tap says what it means (the owner: "instead of the top bar") */
+  React.createElement(NmlBadge, { stateRef: stateRef }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
      RETIRED -- both the "Open Shop" prompt and the ShopPanel it opened.
      Shopkeeper Bro does this job now, and does it server-side: the old
      panel credited coins and edited the bag in the CLIENT and then told
@@ -13480,7 +13484,7 @@ export var BroTown = function BroTown(_ref0) {
          the sprint button beside the left disc (v2.3.3006) -- riding the
          sheet as the controls do (ShieldButton.jsx ctlBottom), and nudged
          right of the bell beside the left disc */
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 24px)',
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 24px + var(--nml-lift, 0px))',   /* v2.3.3105: over No man's land's badge */
       left: 'calc(50% + 24px)',
       background: 'rgba(28,92,120,.9)',
       border: '1px solid rgba(160,230,255,.55)'
