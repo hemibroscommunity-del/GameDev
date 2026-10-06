@@ -1510,6 +1510,11 @@ export function ensureSnowballBurstTex() {
 /* v2.3.2844: ONE sheet now -- the snowman's ice-burst plume is retired (see
    the tombstone where IMPACT_TEX was), so only the thrown ball's burst is left
    to hand back.  The name stays: it is the frost zone's exit hook. */
+/* v2.3.3067 QA (mp-burstfree): load and hand back the frost impact art on
+   demand, to free it in the middle of a burst as leaving the frost land can */
+if (typeof window !== 'undefined') {
+  window.__btFrostImpactTex = { ensure: () => ensureSnowballBurstTex(), free: () => freeFrostImpactTex() };
+}
 export async function freeFrostImpactTex() {
   const { Assets } = await import('pixi.js');
   const drop = (arr) => {
@@ -9982,6 +9987,13 @@ export class EffectsRenderer {
     }
   }
 
+  /* v2.3.3067 QA probe (house style, see arrowBlastProbe): the snowball
+     bursts playing, and whether their frames are loaded */
+  snowballBurstProbe() {
+    const l = this._snowballBursts || [];
+    return { playing: l.length, loaded: SNOWBALL_BURST.frames.length, inLayer: l.filter((f) => f.sp && !f.sp.destroyed && !!f.sp.parent).length };
+  }
+
   /* QA probe (house style, see arrowBlastProbe). */
   slimeShockwaveProbe() {
     const l = this._slimeWaves || [];
@@ -10013,10 +10025,20 @@ export class EffectsRenderer {
     }
     const list = this._snowballBursts;
     if (!list || !list.length) return;
+    /* ═══ v2.3.3067: ITS PICTURE HANDED BACK WHILE IT PLAYED ═══
+       freeFrostImpactTex (leaving the frost zone, or the Wheel's frost land:
+       wheelMonsterArt) destroys these frames whether or not a burst is still
+       on screen with one -- and the next frame drew a destroyed texture:
+       app.render threw ("addressModeU" of null) every frame until the burst
+       ran out, up to 420 ms of frames not drawn.  Found by mp-zombietex's
+       render check on a tour of the Wheel's lands.  The frames are freed
+       between two frames (that function awaits), so retiring the bursts here,
+       before the render, is in time. */
+    const framesGone = !SNOWBALL_BURST.frames.length;
     for (let i = list.length - 1; i >= 0; i--) {
       const fx = list[i];
       const t = now - fx.startedAt;
-      if (t >= SNOWBALL_BURST_MS || fx.sp.destroyed) {
+      if (t >= SNOWBALL_BURST_MS || fx.sp.destroyed || framesGone || (fx.sp.texture && fx.sp.texture.destroyed)) {
         if (!fx.sp.destroyed) {
           if (fx.sp.parent) fx.sp.parent.removeChild(fx.sp);
           fx.sp.destroy();
