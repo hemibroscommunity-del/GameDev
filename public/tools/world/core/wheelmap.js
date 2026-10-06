@@ -55,9 +55,13 @@ export function wheelMap(plan, bp) {
     const rd = plan.regions[s.id];
     const [x, y] = fromSq(spokePoint(s, W.hub + (W.tiers / 2) * W.tierLen));
     const realm = rd.realm && realms[rd.realm];
+    /* v2.3.3057: where each tier (five levels) begins and ends along the
+       spoke, outward from the commons -- the world map's level bands */
+    const ticks = [];
+    for (let t = 0; t <= W.tiers; t++) ticks.push(...fromSq(spokePoint(s, W.hub + t * W.tierLen)));
     lands.push({
       id: s.id, name: rd.name, element: rd.element || null, dir: rd.dir, x, y,
-      ux: s.ux, uy: s.uy,
+      ux: s.ux, uy: s.uy, ticks,
       levels: [1, W.tiers * W.levelsPerTier],
       realm: realm ? { name: realm.name, levels: realm.level || null } : null,
     });
@@ -87,7 +91,7 @@ export function wheelMap(plan, bp) {
     } else if (p.kind === 'gate') {
       const rd = plan.regions[p.region], realm = rd && rd.realm && realms[rd.realm];
       places.push({ kind: 'gate', id: p.id, name: p.name, region: p.region, to: realm ? realm.name : null, x, y });
-    } else if (p.kind === 'landmark' || p.kind === 'place' || p.kind === 'falls' || p.kind === 'bridge') {
+    } else if (p.kind === 'landmark' || p.kind === 'place' || p.kind === 'falls' || p.kind === 'bridge' || p.kind === 'pond') { /* v2.3.3057: + the ponds (Bro Pond) */
       places.push({ kind: p.kind === 'place' ? 'site' : p.kind, id: p.id, name: p.name, region: p.region || null, x, y });
     }
   }
@@ -104,6 +108,8 @@ export function wheelMap(plan, bp) {
   return {
     worldW: r1(bp.w * bp.scale * WPA), worldH: r1(bp.h * bp.scale * WPA),
     levelsPerTier: W.levelsPerTier, stageTiers: W.stageTiers, tiers: W.tiers,
+    /* v2.3.3057: a spoke's half-width, game px (the level bands' ticks) */
+    spokeHalf: r1(W.half * g.P * WPA),
     regionIds: bp.regionIds.slice(),
     names: Object.fromEntries(Object.keys(plan.regions).map((id) => [id, plan.regions[id].name])),
     lands, stages, hub, places, routes,
