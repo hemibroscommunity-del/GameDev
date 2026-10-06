@@ -2079,6 +2079,12 @@ export const combatMethods = {
         }
       };
       this.eventBuffer.push(hitEvent);
+      /* v2.3.3058: a hit under No man's land's rule (not a duel's or an
+         arena's consent) skulls both (nomansland.js _nmlOnHit) */
+      if (this._nmlAllowed && attackerPs.z === 'wheel' && this._nmlAllowed(attackerId, targetId)
+          && !(this._pvpConsent && (this._pvpConsent.get(this._pvpPairKey(attackerId, targetId)) || 0) > Date.now())) {
+        this._nmlOnHit(attackerId, targetId, Date.now());
+      }
 
       // Echo authoritative hp + death check.
       this._saveRpgVitals(targetId, targetPs); // v2.3.1623: coalesced unless near death

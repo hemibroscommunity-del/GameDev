@@ -284,7 +284,7 @@ function _townArtReady() { return townSceneryReady() && isZoneMapResident('town'
    And no veil comes down here while a gate is loading somewhere else
    (S._zoneLoading): that race -- town's art finishing first and taking the
    gate's veil with it -- showed today's town, frozen on the stairs. */
-function _wheelVeilName() { return (ZONES.wheel && ZONES.wheel.name) || 'The Wheel'; }
+function _wheelVeilName() { return (ZONES.wheel && ZONES.wheel.name) || 'BroTown'; /* v2.3.3039 */ }
 /* The veil up NOW, for a way in that has just put you in today's town
    (respawn.js after a death, wheelDungeons.js out of a dungeon) -- before the
    frame that would otherwise paint town once before syncTownScenery ran. */
@@ -1268,7 +1268,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             S._enteredFromDir = null;
             S._enteredFromExit = null;
             if (_farmOut) { setWheelArrival(_farmOut); wantWheelSpawn(S); }   /* v2.3.3032 */
-            pushDmgPopup(S, P.x, P.y - 40, _farmOut ? 'The Wheel' : (isWorldViewZone(_retHub) ? 'World View' : 'Town'), '#5b52ff');
+            pushDmgPopup(S, P.x, P.y - 40, _farmOut ? ((ZONES.wheel && ZONES.wheel.name) || 'BroTown') /* v2.3.3039 */ : (isWorldViewZone(_retHub) ? 'World View' : 'Town'), '#5b52ff');
             S.npcs = null;
             S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];

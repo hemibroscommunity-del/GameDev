@@ -1334,6 +1334,12 @@ console.log('wheel map');
     JSON.stringify(whereWords(m, 'frost', 2)) === JSON.stringify({ title: 'Frost Ridge', sub: 'the thaw line · Lv 6–10' }) &&
     whereWords(m, 'ember', 16).sub === 'the volcano flanks · Lv 76–80' && whereWords(m, 'town', 0).title === 'Brotown' && /safe/.test(whereWords(m, 'commons', 0).sub),
     [whereWords(m, 'frost', 2), whereWords(m, 'ember', 16)]);
+  /* v2.3.3057: the world map's level bands and Bro Pond */
+  ok(`...each land's level bands: a tick where every tier of five levels begins, from the commons' edge outward (${m.lands[0].ticks.length / 2} a land), the spoke ${m.spokeHalf * 2} px wide; and Bro Pond named`,
+    m.spokeHalf > 1000 && m.lands.every((l) => l.ticks.length === (m.tiers + 1) * 2 && l.ticks.every((v) => v >= 0 && v <= m.worldW)
+      && l.ticks.every((v, i) => i < 2 || i % 2 || Math.hypot(l.ticks[i] - c, l.ticks[i + 1] - c) > Math.hypot(l.ticks[i - 2] - c, l.ticks[i - 1] - c)))
+      && m.places.some((p) => p.kind === 'pond' && /Bro Pond/.test(p.name)),
+    { spokeHalf: m.spokeHalf, ticks: m.lands[0].ticks.slice(0, 6) });
   ok('...small enough to post to the game once (under 40 KB)', JSON.stringify(m).length < 40000, JSON.stringify(m).length);
 }
 
@@ -3173,7 +3179,7 @@ console.log("the water's frozen web of light taken out (v2.3.3021)");
 console.log("the buildings' doors (v2.3.3032)");
 {
   const { placeObjects, doorSpots, objectFootprints } = await import('../../public/tools/world/core/placing.js');
-  const { WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_DOOR_REACH, WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js');
+  const { WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_DOOR_REACH, WHEEL_TOWNSFOLK, WHEEL_HALL_DOORS, WHEEL_HALLS } = await import('../../src/data/wheelBuildingDoors.js');
   const { TOWN_BUILDINGS } = await import('../../src/data/buildings.js');
   const fs = await import('node:fs');
   const WPA = PLAN.worldPxPerArtPx;
@@ -3198,15 +3204,40 @@ console.log("the buildings' doors (v2.3.3032)");
   const lotIds = new Set(lots.map((l) => l.id));
   const todayOf = Object.fromEntries(lots.map((l) => [l.id, l.today]));
   const tbIds = TOWN_BUILDINGS.map((b) => b.id);
-  const openIds = Object.keys(WHEEL_BUILDING_DOORS), closedIds = WHEEL_SHUT_DOORS.slice();
+  const openIds = Object.keys(WHEEL_BUILDING_DOORS), closedIds = WHEEL_SHUT_DOORS.slice(), hallIds = Object.keys(WHEEL_HALL_DOORS);
   ok('what opens at each door is the plan\'s own: every plot of the table is a plot of the town, and its value is what the plan says the plot is `today`, a building of today\'s town',
     openIds.length === 12 && openIds.every((k) => lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k])),
     openIds.filter((k) => !(lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k]))));
-  ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for: the Town Hall (Mayor Bro) and four shut ones that say so',
+  /* v2.3.3066: three of the four "(new: ...)" plots open halls of the
+     Wheel's own (the Guild Hall, the Post Office, the Sheriff's Office), the
+     Hotel stays shut */
+  const actions = TOWN_BUILDINGS.map((b) => b.action || b.id).concat(['farmhome']);
+  ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for: the Town Hall (Mayor Bro), three halls of the Wheel\'s own and one shut that says so',
     new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 12 && tbIds.every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
-    && closedIds.length === 4 && closedIds.every((k) => lotIds.has(k) && !openIds.includes(k) && /^\(new:/.test(todayOf[k]))
-    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id)).map((l) => l.id).join() === 'townhall',
-    { closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id)).map((l) => l.id) });
+    && hallIds.length === 3 && closedIds.length === 1
+    && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k) && /^\(new:/.test(todayOf[k]))
+    && !hallIds.some((k) => closedIds.includes(k))
+    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id).join() === 'townhall',
+    { halls: hallIds, closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id) });
+  ok('...each hall has its window\'s name and picture, and opens a panel of its own, never one of today\'s buildings\' (no `buildingPanel` value twice)',
+    hallIds.every((k) => { const h = WHEEL_HALLS[WHEEL_HALL_DOORS[k]]; return h && h.title && h.sub && /^\/icons\/ui\/.+\.webp$/.test(h.icon); })
+    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 3 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
+  {
+    const PO = await import('../../src/game/postOffice.js');
+    const S = {};
+    for (let i = 0; i < PO.MAIL_KEEP + 5; i++) PO.recordMail(S, { kind: 'gold', source: 'market', note: `sale ${i}`, payload: { amount: i } }, 1000 + i);
+    const daily = PO.mailLine({ kind: 'item', source: 'daily', payload: { invKey: 'chest_daily' } });
+    ok('the Post Office keeps a visit\'s mail: each delivery a line (gold, an item by its words, the daily chest), the newest first, MAIL_KEEP at most',
+      S._mail.length === PO.MAIL_KEEP && PO.mailList(S)[0].note === `sale ${PO.MAIL_KEEP + 4}` && PO.mailList(S)[0].what === `+${PO.MAIL_KEEP + 4} gold`
+        && PO.mailLine({ kind: 'item', payload: { invKey: 'ore_black_steel_ore', count: 3 } }).what === '3× Black steel ore'
+        && PO.itemWords('log_pine') === 'Pine log' && PO.itemWords('fish_minnow') === 'Minnow'
+        && daily.what === 'A daily chest' && daily.note === 'Daily reward'
+        && PO.mailLine({ kind: 'weapon', payload: { weapon: { name: 'Greatsword' } } }).what === 'Greatsword'
+        && PO.mailAge(0, 30000) === 'just now' && PO.mailAge(0, 5 * 60000) === '5 min ago' && PO.mailAge(0, 2 * 3600000) === '2 h ago', S._mail.slice(-2));
+    const evSrc = fs.readFileSync(new URL('../../src/networking/gameEvents.js', import.meta.url), 'utf8');
+    ok('...from every inbox_delivered entry, before the daily reward\'s quiet branch', evSrc.indexOf('recordMail(S, _e)') > 0
+      && evSrc.indexOf('recordMail(S, _e)') < evSrc.indexOf("if (_e.source === 'daily')"), {});
+  }
   /* the doors are far enough apart that the nearest simply wins */
   let minGap = Infinity;
   for (const a of doors) for (const b of doors) if (a !== b) minGap = Math.min(minGap, Math.hypot(a.x - b.x, a.y - b.y));
@@ -3220,17 +3251,45 @@ console.log("the buildings' doors (v2.3.3032)");
   const blocked = doors.filter((d) => hit(d.x, d.y + 30, 10).length > 0 || dbp.regionIds[dbp.reg[cellG(d.x, d.y + 30)]] !== 'town');
   ok('every door can be stood at: the boots 30 px below the steps (and a body\'s half width round them) are in no footprint, on the town\'s ground',
     blocked.length === 0, blocked.map((d) => [d.id, hit(d.x, d.y + 30, 10)]));
-  /* Diego keeps the General Store */
+  /* Diego keeps the General Store (v2.3.3067: and the rest of town's cast) */
   const sp = WHEEL_TOWNSFOLK.map((f) => ({ f, d: byDoor[f.door] })).map(({ f, d }) => ({ name: f.name, x: d.x + f.dx, y: d.y + f.dy, d }));
-  ok('Diego has a door to stand beside, in front of the porch, in no footprint with room round him, on the town\'s ground',
-    sp.length === 1 && sp[0].name === 'Diego' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
+  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro and Lil Bro',
+    sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
     sp.map((q) => [q.name, hit(q.x, q.y, 24)]));
   /* ...and standing at the General Store's door does not open his window by
      itself: it opens within 90 px of him from your middle, ~52 px above your boots */
-  const dg = sp[0];
+  const dg = sp.find((q) => q.name === 'Diego');
   const atDoor = Math.hypot(dg.d.x - dg.x, (dg.d.y - 52) - dg.y);
   ok(`...far enough off that standing at the door is ${Math.round(atDoor)} px from him, past the 90 px his window opens at, and near enough that he stays the store's (${Math.round(Math.hypot(dg.d.x - dg.x, dg.d.y - dg.y))} px)`,
     atDoor > 100 && Math.hypot(dg.d.x - dg.x, dg.d.y - dg.y) < 160, atDoor);
+  /* ═══ v2.3.3067: THE REST OF TOWN'S CAST ═══
+     Ace's coin flip opens only on a tap on him, so while he stood in today's
+     town it could not be played.  Each is a real NPC_DATA row (the spawn
+     copies it by name), stands by the building that is his, and is far
+     enough from the others that a tap finds the one meant. */
+  {
+    const { NPC_DATA } = await import('../../src/data/gameDisplay.js');
+    const { mayorSpot } = await import('../../public/tools/world/core/placing.js');
+    const row = (n) => NPC_DATA.find((r) => r.name === n);
+    const at = Object.fromEntries(sp.map((q) => [q.name, q]));
+    const ownDoor = (q, id) => q && q.d && q.d.id === id && Math.hypot(q.d.x - q.x, q.d.y - q.y) < 160 && Math.hypot(q.d.x - q.x, (q.d.y - 52) - q.y) > 100;
+    ok('Ace stands by the Gambling Den and his row opens the coin flip; Blacksmith Bro by the forge; every name is an NPC_DATA row',
+      sp.every((q) => row(q.name)) && !!row('Ace').flip && ownDoor(at.Ace, 'gambling') && ownDoor(at['Blacksmith Bro'], 'blacksmith'),
+      sp.map((q) => [q.name, q.d && q.d.id, !!row(q.name)]));
+    const ms2 = mayorSpot(PLAN, dbp), lb = at['Lil Bro'], hallDoor = byDoor.townhall;
+    const arrive = { x: hallDoor.x, y: hallDoor.y + 108 };
+    const toArrive = Math.hypot(lb.x - arrive.x, lb.y - arrive.y), toMayor = Math.hypot(lb.x - ms2.x, lb.y - ms2.y);
+    const toDoors = Math.min.apply(null, doors.map((d) => Math.hypot(d.x - lb.x, d.y - lb.y)));
+    ok(`Lil Bro is on the square, met on arrival (${Math.round(toArrive)} px from where you land), on the side away from Mayor Bro (${Math.round(toMayor)} px), beyond every door's reach (${Math.round(toDoors)} px from the nearest)`,
+      toArrive > 200 && toArrive < 320 && lb.x < arrive.x && ms2.x > arrive.x && toMayor > 300 && toDoors > 2 * WHEEL_DOOR_REACH, { toArrive, toMayor, toDoors });
+    let closest = Infinity;
+    for (const a of sp) for (const b of sp) if (a !== b) closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y));
+    ok(`no two of them within reach of one tap (${Math.round(closest)} px apart at the closest)`, closest > 300, closest);
+    const spriteSrc = fs.readFileSync(new URL('../../src/rendering/npcSprites.js', import.meta.url), 'utf8');
+    ok('...and the Wheel loads each one\'s picture behind its loading screen, read off the same table (npcSprites.js _wheelCast)',
+      /WHEEL_TOWNSFOLK\.map\(\(f\) => f\.name\)/.test(spriteSrc) && /export function wheelNpcSources\(\) \{\s*return _wheelCast\(\)/.test(spriteSrc)
+        && /export function wheelWalkSources\(\) \{\s*return _wheelCast\(\)/.test(spriteSrc), {});
+  }
   /* the worker ships them, the game reads them, the scan uses them */
   const readSrc = (u) => fs.readFileSync(new URL(u, import.meta.url), 'utf8');
   const workerSrc2 = readSrc('../../public/tools/world/core/ground-worker.js');
@@ -3245,6 +3304,113 @@ console.log("the buildings' doors (v2.3.3032)");
   ok('...the quests that need a door count the Wheel\'s while it is the world (worldTrial.js sets them with the zones it closes), and the farm\'s gate leads back out to the Wheel',
     /setWheelDoorsOpen\(mode === 'wheel' && wheelObjectsOn\(\)\)/.test(trialSrc2) && /_wheelDoorActions/.test(sysSrc)
     && /_farmOut = \(_leftZone === 'farm_home' && S\._farmBack && wheelIsHome\(\)\)/.test(zoneSrc) && /rememberFarmTrip\(S2\)/.test(townSrc), {});
+}
+
+/* ── v2.3.3062: the gate signposts (src/data/wheelSignposts.js) ──
+   The owner's "Continue building recommended": Brotown's four signposts (their
+   boards blank) say the lands their roads lead to.  The table against the
+   plan's own roads, and the signposts it reads against what placing puts in
+   the town. */
+console.log('the gate signposts (v2.3.3062)');
+{
+  const { placeObjects } = await import('../../public/tools/world/core/placing.js');
+  const { wheelMap } = await import('../../public/tools/world/core/wheelmap.js');
+  const SG = await import('../../src/data/wheelSignposts.js');
+  const sbp = buildBlueprint(PLAN);
+  const placed = placeObjects(PLAN, sbp);
+  const map = wheelMap(PLAN, sbp);
+  const T = map.hub.town;
+  const k = placed.kinds.indexOf('signpost');
+  const posts = [];
+  for (let i = 0; i < placed.n; i++) {
+    if (placed.kind[i] !== k) continue;
+    const dx = placed.x[i] - T.x, dy = placed.y[i] - T.y;
+    posts.push({ d: Math.round(Math.hypot(dx, dy)), gate: SG.gateOf(dx, dy) });
+  }
+  const town = posts.filter((p) => p.d <= SG.SIGNPOST_TOWN_R);
+  ok(`the town has four signposts, one at each gate (${town.map((p) => `${p.gate} ${p.d} px`).join(', ')}), and no other stands near SIGNPOST_TOWN_R`,
+    town.length === 4 && new Set(town.map((p) => p.gate)).size === 4 && posts.every((p) => p.d <= SG.SIGNPOST_TOWN_R - 300 || p.d > SG.SIGNPOST_TOWN_R + 300), posts);
+  const byLand = Object.fromEntries(map.lands.map((l) => [l.id, l]));
+  const cardinal = (l) => !!l && (l.ux === 0 || l.uy === 0);
+  const all = Object.values(SG.WHEEL_GATE_ROADS).flat();
+  ok('every land is named once, its own compass road\'s land first on that gate\'s signpost',
+    all.length === 8 && new Set(all).size === 8 && all.every((l) => !!byLand[l])
+      && Object.entries(SG.WHEEL_GATE_ROADS).every(([g, [c, d]]) => cardinal(byLand[c]) && SG.gateOf(byLand[c].ux, byLand[c].uy) === g && !cardinal(byLand[d])), SG.WHEEL_GATE_ROADS);
+  /* the second: the land whose road begins ON that compass road (plan.js: the
+     diagonal roads fork off the next compass road clockwise) */
+  const roads = (PLAN.roads || []).filter((r) => r.to);
+  const forkOn = (d) => {
+    const r = roads.find((x) => x.to === d);
+    if (!r) return null;
+    const [fx, fy] = r.pts[0];
+    return map.lands.filter(cardinal).find((c) => Math.abs(fx * c.uy - fy * c.ux) < 1e-6 && fx * c.ux + fy * c.uy > 0) || null;
+  };
+  const forks = Object.values(SG.WHEEL_GATE_ROADS).map(([c, d]) => `${d} off ${(forkOn(d) || {}).id}`);
+  ok(`...and the second, the land whose road forks off it (${forks.join(', ')})`,
+    Object.values(SG.WHEEL_GATE_ROADS).every(([c, d]) => { const f = forkOn(d); return !!f && f.id === c; }), forks);
+  ok('the gates are told apart by the larger offset from the town\'s middle',
+    SG.gateOf(0, -10) === 'north' && SG.gateOf(10, 2) === 'east' && SG.gateOf(-3, 9) === 'south' && SG.gateOf(-9, 3) === 'west');
+}
+
+/* ── v2.3.3064: the lands' music (src/game/wheelMusic.js) ──
+   The owner's "Continue building recommended": each land of the Wheel its own
+   music as you cross into it, the town's on the safe ground, with a lean toward
+   the land so a fight on the line does not flip it. */
+console.log('the lands\' music (v2.3.3064)');
+{
+  const fs = await import('node:fs');
+  const M = await import('../../src/game/wheelMusic.js');
+  const { WHEEL_LANDS, WHEEL_LAND_LOOK } = await import('../../src/data/wheelLands.js');
+  ok('the safe ground plays the town\'s, a land is its own id, the sea and anything unknown nothing',
+    M.wheelMusicKey('town') === 'town' && M.wheelMusicKey('commons') === 'town' && WHEEL_LANDS.every((l) => M.wheelMusicKey(l) === l)
+      && Object.keys(WHEEL_LAND_LOOK).every((k) => !!M.wheelMusicKey(k))
+      && M.wheelMusicKey('sea') === null && M.wheelMusicKey(null) === null && M.wheelMusicKey('__proto__') === null && M.wheelMusicKey('toString') === null);
+  const fakeAudio = (cur) => ({ wheelLandMusic: true, _currentZoneAmbient: cur, calls: [],
+    startZoneAmbient(k) { this.calls.push(k); this._currentZoneAmbient = k; } });
+  const S = { currentZone: 'wheel' };
+  const at = (region, fresh = true) => ({ region, fresh });
+  const step = (A, region, t, fresh) => M.noteWheelMusic(at(region, fresh), S, A, t);
+  M.resetWheelMusic();
+  const A = fakeAudio('town');
+  ok('arriving, an answer for another cell decides nothing (the worker lingers after you leave: its last answer can be where you died)',
+    step(A, 'frost', 1000, false) === null && A.calls.length === 0);
+  ok('...the first answer for where you stand decides at once', step(A, 'frost', 1010) === 'frost' && A.calls.join() === 'frost');
+  step(A, 'commons', 2000);
+  ok('a step back onto the commons keeps the land\'s music for MUSIC_HOME_MS', step(A, 'commons', 2000 + M.MUSIC_HOME_MS - 1) === null && A._currentZoneAmbient === 'frost');
+  step(A, 'frost', 7000);
+  step(A, 'commons', 8000);
+  ok('...a step back into the land starts that count again', step(A, 'commons', 8000 + M.MUSIC_HOME_MS - 1) === null);
+  ok('...and MUSIC_HOME_MS on the safe ground brings the town\'s back', step(A, 'commons', 8000 + M.MUSIC_HOME_MS) === 'town');
+  const t1 = 50000;
+  step(A, 'ember', t1);
+  ok('into a land: its music after MUSIC_INTO_LAND_MS, not before', step(A, 'ember', t1 + M.MUSIC_INTO_LAND_MS - 1) === null
+    && step(A, 'ember', t1 + M.MUSIC_INTO_LAND_MS) === 'ember' && M.MUSIC_INTO_LAND_MS < M.MUSIC_HOME_MS);
+  ok('...a visit once settled goes on an answer a cell behind (as you walk)', step(A, 'sky', t1 + 5000, false) === null
+    && step(A, 'sky', t1 + 5000 + M.MUSIC_INTO_LAND_MS, false) === 'sky');
+  ok('the sea keeps what plays', step(A, 'sea', t1 + 90000) === null && A._currentZoneAmbient === 'sky');
+  A._currentZoneAmbient = 'town';
+  ok('anything else changing the music while you stand in a land is put right on the next frame', step(A, 'sky', t1 + 100000) === 'sky');
+  ok('outside the Wheel nothing, and the next arrival decides at once',
+    M.noteWheelMusic(at('frost'), { currentZone: 'town' }, A, t1 + 100001) === null && step(A, 'frost', t1 + 100002) === 'frost');
+  M.resetWheelMusic();
+  const off = fakeAudio('wheel');
+  off.wheelLandMusic = false;
+  ok('`?nolandmusic` (BT_AUDIO.wheelLandMusic false): it does nothing', step(off, 'frost', 1) === null && off.calls.length === 0);
+  M.resetWheelMusic();
+  const gd = fs.readFileSync(new URL('../../src/data/gameDisplay.js', import.meta.url), 'utf8');
+  const music = (k) => (new RegExp(`\\n    ${k}: '/audio/music/([a-z-]+\\.mp3)`).exec(gd) || [])[1] || null;
+  ok(`the four lands the owner made music for play it -- frost ${music('frost')}, ember ${music('ember')}, sky ${music('sky')}, verdant ${music('verdant')} (the meadow's ${music('meadow')}) -- and Brotown ${music('town')}`,
+    music('frost') === 'frost.mp3' && music('ember') === 'fire.mp3' && music('sky') === 'desert.mp3' && music('verdant') === 'forest.mp3'
+      && music('verdant') === music('meadow') && music('town') === 'village.mp3');
+  ok('...the other four have no track of their own yet, so the game\'s theme plays there',
+    ['hollows', 'thunder', 'tidal', 'mist'].every((k) => music(k) === null));
+  ok('the Wheel itself asks for nothing while the lands choose, the address can turn it off, and a zone\'s ambience is let go when you leave it',
+    /if \(zoneId === 'wheel' && this\.wheelLandMusic\) return;/.test(gd) && /wheelLandMusic: !\(typeof location/.test(gd) && /nolandmusic/.test(gd)
+      && /delete this\._samples\[_prevAmb\]/.test(gd));
+  const mini = fs.readFileSync(new URL('../../src/rendering/systems/wheelMinimap.js', import.meta.url), 'utf8');
+  const trial = fs.readFileSync(new URL('../../src/game/wheelTrial.js', import.meta.url), 'utf8');
+  ok('the minimap\'s frame asks, with where you are, beside the banner; wheelHere says whether its answer is for the cell you are in',
+    /noteWheelMusic\(here, S, BT_AUDIO\)/.test(mini) && /fresh: _here\.x === cx && _here\.y === cy/.test(trial));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

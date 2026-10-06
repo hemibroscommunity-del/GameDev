@@ -138,7 +138,8 @@ const C_QUEST      = 0xd8aa58;   /* COL.accent — gold '!', same as the in-worl
    among without crowding them. */
 const C_QUEST_STAR = 0xf5ce3c;
 const STAR_ICON_PX = 18;
-const C_QUEST_DONE = 0x58b97b;   /* COL.xp — green '?', same as the in-world badge */
+const C_QUEST_DONE = 0x58b97b;   /* COL.xp — green, same as the in-world badge (v2.3.3047: a check) */
+const C_QUEST_WAIT = 0x8b9695;   /* v2.3.3047: the grey of the in-world waiting badge */
 /* v2.3.2992: the gold road to the quest's spot -- width and dark casing, CSS
    px; it starts clear of your chevron, is not drawn when the spot is this
    close, and stops this far in from the box's edge when the spot is off it */
@@ -430,13 +431,19 @@ export class MinimapRenderer {
       const g = new Graphics();
       g.circle(16, 16, 13).fill(0xffffff).stroke({ width: 3, color: 0x0b161b, alpha: 1 });
       c.addChild(g);
-      const t = new Text({
-        text: ch,
-        style: { fontFamily: 'Source Sans 3, sans-serif', fontSize: 21, fontWeight: '900', fill: '#0b161b' },
-      });
-      t.anchor.set(0.5);
-      t.x = 16; t.y = 15;
-      c.addChild(t);
+      if (ch === 'check') {
+        /* v2.3.3047: the ready pin is the in-world badge's drawn CHECK, not a
+           glyph (no font has to carry it, and no emoji can sneak in) */
+        g.moveTo(9.5, 16.5).lineTo(14, 21).lineTo(23, 11).stroke({ width: 4, color: 0x0b161b, cap: 'round', join: 'round' });
+      } else {
+        const t = new Text({
+          text: ch,
+          style: { fontFamily: 'Source Sans 3, sans-serif', fontSize: 21, fontWeight: '900', fill: '#0b161b' },
+        });
+        t.anchor.set(0.5);
+        t.x = 16; t.y = 15;
+        c.addChild(t);
+      }
       tex = this.app.renderer.generateTexture({ target: c, resolution: 2 });
       c.destroy({ children: true });
     } catch (e) {
@@ -608,7 +615,10 @@ export class MinimapRenderer {
        npc._questMarker to one of those two glyphs, and this reads it rather
        than re-deriving quest state — one source, so they cannot disagree). */
     this._mintPin('quest', '!');
-    this._mintPin('questDone', '?');
+    /* v2.3.3047: '❔' waiting on you is a grey '?', '❓' ready a green check --
+       the in-world badge's three states, one for one */
+    this._mintPin('questWait', '?');
+    this._mintPin('questDone', 'check');
   }
 
   /** Place one marker.  `icon` is a key into the minted set (or null for the
@@ -941,12 +951,15 @@ export class MinimapRenderer {
        whether a quest is waiting. */
     for (let i = 0; i < questPins.length; i++) {
       const n = questPins[i];
-      const ready = n._questMarker !== '❗';
+      /* v2.3.3047: three states now -- '❔' (accepted, waiting on you) is not
+         "ready", which the old `!== '❗'` would have called it */
+      const m = n._questMarker;
+      const ready = m === '❓', wait = m === '❔';
       /* Offset in BOX pixels, not world pixels.  A world offset shrinks with
          the map scale — the 26 world px this started at is 2.8 px in the box,
          so the pin sat inside the NPC glyph it was meant to flag. */
-      this._mark(n.x, n.y, ready ? 'questDone' : 'quest',
-        ready ? C_QUEST_DONE : C_QUEST, BIG_ICON_PX, 0, -9);
+      this._mark(n.x, n.y, ready ? 'questDone' : wait ? 'questWait' : 'quest',
+        ready ? C_QUEST_DONE : wait ? C_QUEST_WAIT : C_QUEST, BIG_ICON_PX, 0, -9);
     }
 
     /* Retire the tail of the pool rather than destroying it — monster counts

@@ -33,6 +33,7 @@ import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown 
 import { applyElemHit, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks */
 import { echoHitSfx, heroHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
+import { recordMail } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
@@ -1549,6 +1550,10 @@ export function processGameEvent(type, payload, S, deps) {
               for (var _ie = 0; _ie < _inbEntries.length; _ie++) {
                 var _e = _inbEntries[_ie] || {};
                 var _ep = _e.payload || {};
+                /* v2.3.3066: and the Wheel's Post Office keeps it -- every
+                   delivery of this visit, the daily reward and what drained
+                   at the join included (game/postOffice.js) */
+                try { recordMail(S, _e); } catch (_me) { /* the mail is paid either way */ }
                 /* v2.3.2037 (owner: "remove the 25 gold message").  The daily
                    login reward is 25 gold (CADENCE.DAILY_BASE_GOLD) and it
                    rides _creditPlayer like any other delivery, so it printed
@@ -2612,7 +2617,25 @@ export function processGameEvent(type, payload, S, deps) {
                 break;
               }
               var R2 = S.rpg;
-              if (!R2 || R2.hp <= 0) break;
+              if (!R2) break;
+              if (R2.hp <= 0) {
+                /* ═══ v2.3.3042: THE KILLING BLOW IS SEEN AND HEARD ═══
+                   The worker sends player_died and the hp-0 player_state the
+                   moment you die, and the blow that did it a beat later, in
+                   the tick -- which this line used to drop, as a hit on a
+                   corpse.  So the death had no number and no clang: quieter
+                   than any ordinary hit (the owner's "death sound effect ...
+                   didn't take effect").  Within a moment of the death, the
+                   blow still shows its number and plays its sound -- nothing
+                   else (no status, no flinch: the body is falling). */
+                var _kb = typeof payload.dmgTaken === 'number' ? payload.dmgTaken : 0;
+                if (S._dying && Date.now() - (S._deathStart || 0) < 1200 && Math.ceil(_kb) > 0 && !payload.blocked && !payload.dodged && !tickKind(payload)) {
+                  var _kLook = elemLook(payload.elem);
+                  pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + toDisplayDamage(Math.ceil(_kb)), '#ff5e6c', { iconKey: _kLook ? _kLook.icon : 'heart', taken: true });
+                  try { heroHitSfx(S, payload, isWearingArmor()); } catch (e) { /* audio is best-effort */ }
+                }
+                break;
+              }
               /* v2.3.2242 (post-review): "IN COMBAT" HAS TO BE TRUE OF A
                  SERVER-ZONE HIT.  The shield button's liveness rule
                  (shieldToggle.js shieldButtonLive) counts damage taken in
@@ -3172,7 +3195,10 @@ export function processGameEvent(type, payload, S, deps) {
                   clanTag: payload.clanTag || '?',
                   ts: Date.now()
                 };
-                pushDmgPopup(S, S.player.x, S.player.y - 40, '[' + S._pendingClanInvite.clanTag + '] clan invite! (open Clans)', '#a78bfa');
+                /* v2.3.3066: "(open Clans)" pointed at a panel nothing in play
+                   opened, so no invite could be taken up; the invite now raises
+                   its own card (ui/panels/ClanInviteCard.jsx, BroTown's sync). */
+                pushDmgPopup(S, S.player.x, S.player.y - 40, '[' + S._pendingClanInvite.clanTag + '] clan invite!', '#a78bfa');
                 BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
               }
               break;

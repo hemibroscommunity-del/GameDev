@@ -32,7 +32,9 @@
  *     WHEEL_SAFE_R of the centre, baked with the places): nobody standing on
  *     it is a target (index.js, target acquisition), a monster that steps on
  *     it gives up its chase, and no monster's hit lands on it
- *     (_monsterStrikePlayer).  An ordinary zone's monsters can never reach
+ *     (_monsterStrikePlayer).  Since v2.3.3056 it shelters no one from a monster
+ *     they PROVOKED -- hurt it, and still fighting (_wheelSheltered,
+ *     WHEEL.PROVOKE_MS / PURSUE_LEASH).  An ordinary zone's monsters can never reach
  *     town -- it is another zone; the Wheel's town is the same zone.
  *   - A chase also gives up WHEEL.CHASE_LEASH from home (index.js, the chase
  *     branch): an ordinary zone's edge ends a chase, and the Wheel has none.
@@ -81,6 +83,22 @@ export const WHEEL = Object.freeze({
      ran ~400 px into the commons (mp-wheelmonsters' fight picture);
      _wheelSafeAt does that */
   CHASE_LEASH: 720,
+  /* ═══ v2.3.3056: A MONSTER YOU HIT MAY FOLLOW YOU ONTO SAFE GROUND ═══
+     Owner, 2026-10-05: "make it so monsters can still chase you out of their
+     zones.  I was sitting in a safe zone just sniping mummies with magic and
+     they couldn't attack."  Safe ground (_wheelSafeAt) shelters a player from
+     every monster -- except one that player has hurt (m.dmgByPlayer) while
+     they are still fighting: they dealt damage within PROVOKE_MS (the sticky
+     aggro's own 10 s, combat.js).  Such a monster keeps its target on safe
+     ground, may step onto it, and its blows land there; its chase reaches
+     PURSUE_LEASH from home instead of CHASE_LEASH (the first stretch's places
+     stand 184-915 px outside the safe edge, so 720 could not even reach it).
+     Ten seconds without dealing any damage and the shelter is back, the
+     monster gives up and walks home.  Never provoked, never chased: the
+     commons stay safe for everyone who is not fighting from them.
+     `wheelpursue: false` in liveflags puts the old rule back (_wheelPursueOff). */
+  PROVOKE_MS: 10000,
+  PURSUE_LEASH: 1800,
   /* a ranged or staff hit lands only this close (px): a maxed bow plants at
      1,350 px and its stuck arrow chips for 4 s while you kite at up to
      ~441 px/s -- 3,600 covers both and still stops a shot from across the map */
@@ -107,6 +125,33 @@ export const wheelzoneMethods = {
   _wheelMonstersOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheelmonsters') && !f.wheelmonsters);
+  },
+  /* v2.3.3056: `wheelpursue: false` -- safe ground shelters everyone again */
+  _wheelPursueOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheelpursue') && !f.wheelpursue);
+  },
+  /* v2.3.3056: has player `pid` provoked monster `m` -- hurt it this life, and
+     dealt damage (to anything) within WHEEL.PROVOKE_MS?  (ps._lastDealtAt is
+     stamped by every player->monster damage path: combat, abilities, the
+     arrow blast, the burst.) */
+  _wheelProvokedBy(m, pid, now) {
+    if (!m || !pid || this._wheelPursueOff()) return false;
+    const ps = this.playerState[pid];
+    if (!ps || !(now - (ps._lastDealtAt || 0) < WHEEL.PROVOKE_MS)) return false;
+    const by = m.dmgByPlayer;
+    return !!(by && Object.prototype.hasOwnProperty.call(by, pid) && by[pid] > 0);
+  },
+  /* v2.3.3056: does the safe ground shelter player `pid` at (x, y) from
+     monster `m`?  Off safe ground: never.  On it: unless they provoked `m` --
+     or, with no monster in hand (a burn ticking, a fire trail), unless they
+     are still fighting at all. */
+  _wheelSheltered(m, pid, x, y, now) {
+    if (!this._wheelSafeAt(x, y)) return false;
+    if (this._wheelPursueOff()) return true;
+    if (m) return !this._wheelProvokedBy(m, pid, now);
+    const ps = pid ? this.playerState[pid] : null;
+    return !(ps && now - (ps._lastDealtAt || 0) < WHEEL.PROVOKE_MS);
   },
   /* v2.3.3013: `wheeldeep: false` -- the first tier's monsters only */
   _wheelDeepOff() {
