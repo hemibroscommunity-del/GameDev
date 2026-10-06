@@ -338,9 +338,9 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   put(m, at(WHEEL_SAFE_R + 40)); put(ps, at(WHEEL_SAFE_R - 60));
   calm(); room._tickMonsters();
   check('safe ground: nobody in the commons is a target, however near (100 px)', m.targetId == null, m.targetId);
-  m._aggroOverrideTarget = 'wa'; m._aggroOverrideUntil = Date.now() + 5000;   /* shot from the commons */
+  m._aggroOverrideTarget = 'wa'; m._aggroOverrideUntil = Date.now() + 5000;   /* aimed at, never hurt (v2.3.3056: §5d has the real shot) */
   room._tickMonsters();
-  check('safe ground: ...not even one who shot it from there', m.targetId == null, m.targetId);
+  check('safe ground: ...not even one it merely turned on, with no damage of theirs on it', m.targetId == null, m.targetId);
   put(m, at(WHEEL_SAFE_R + 40)); put(ps, at(WHEEL_SAFE_R + 140));
   calm(); room._tickMonsters();
   check('safe ground: ...where the same player a step outside it is', m.targetId === 'wa', m.targetId);
@@ -357,6 +357,89 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   room._monsterStrikePlayer(WHEEL_ZONE, m, 'wa', m.x, m.y);
   check('safe ground: ...where the same hit a step outside does', ps.hp < hp0, { hp0, hp: ps.hp });
   ps.hp = ps.maxHp || 100; ps._zoneEntryGraceUntil = Date.now() + 600000;
+  m.x = m.spawnX; m.y = m.spawnY; calm();
+}
+
+// ── 5d. PROVOKED FROM THE SAFE GROUND (v2.3.3056) ───────────────────────────
+// Owner: "make it so monsters can still chase you out of their zones.  I was
+// sitting in a safe zone just sniping mummies with magic and they couldn't
+// attack."  A monster you HURT, while you are still fighting (dealt damage
+// within WHEEL.PROVOKE_MS), follows you onto the safe ground and its blows
+// land there, out to WHEEL.PURSUE_LEASH from home; anyone who never hurt it
+// stays sheltered; ten quiet seconds and you are sheltered again.
+{
+  const ps = room.playerState.wa;
+  ps.z = WHEEL_ZONE; ps.dead = false; ps.disconnected = false; ps.dying = false;
+  ps._zoneEntryGraceUntil = Date.now() + 600000;
+  const m = wheel.find((q) => q.home === 'frost');
+  const calm = () => {
+    m._bwUntil = 0; m._bwTarget = null; m._attackingUntil = 0; m.atkCd = 0;
+    m.targetId = null; m._aggroOverrideTarget = null; m._aggroOverrideUntil = 0;
+  };
+  const ux = m.spawnX - WHEEL_CENTRE[0], uy = m.spawnY - WHEEL_CENTRE[1], ul = Math.hypot(ux, uy);
+  const at = (r) => ({ x: WHEEL_CENTRE[0] + (ux / ul) * r, y: WHEEL_CENTRE[1] + (uy / ul) * r });
+  const put = (o, p) => { o.x = p.x; o.y = p.y; };
+  const shoot = (pid) => {   /* what every player->monster damage path leaves behind */
+    if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null);
+    m.dmgByPlayer[pid] = (m.dmgByPlayer[pid] || 0) + 12;
+    room.playerState[pid]._lastDealtAt = Date.now();
+    m._aggroOverrideTarget = pid; m._aggroOverrideUntil = Date.now() + 10000;
+  };
+  m.dmgByPlayer = Object.create(null);
+  put(m, at(WHEEL_SAFE_R + 300)); put(ps, at(WHEEL_SAFE_R - 200));
+  calm(); shoot('wa'); room._tickMonsters();
+  check('pursuit: shot from the commons, the monster takes the shooter as its target', m.targetId === 'wa', m.targetId);
+  const d0 = Math.hypot(m.x - ps.x, m.y - ps.y);
+  for (let i = 0; i < 10; i++) room._tickMonsters();
+  check('...and comes for them, toward the safe ground', Math.hypot(m.x - ps.x, m.y - ps.y) < d0, { d0, d: Math.hypot(m.x - ps.x, m.y - ps.y) });
+  put(m, at(WHEEL_SAFE_R - 120)); put(ps, at(WHEEL_SAFE_R - 220));
+  m.targetId = null; room._tickMonsters();
+  check('...and keeps it standing ON the safe ground itself', m.targetId === 'wa', m.targetId);
+  /* a bystander in the commons, who never hurt it, stays sheltered */
+  room.playerState.wc = { z: WHEEL_ZONE, x: m.x + 40, y: m.y, hp: 100, maxHp: 100, dead: false, dying: false, disconnected: false, _zoneEntryGraceUntil: 0 };
+  const hpC = room.playerState.wc.hp;
+  room._monsterStrikePlayer(WHEEL_ZONE, m, 'wc', m.x, m.y);
+  check('...while a bystander on the safe ground, who never hurt it, takes nothing', room.playerState.wc.hp === hpC, room.playerState.wc.hp);
+  delete room.playerState.wc;
+  /* the blow lands on the provoker */
+  ps._zoneEntryGraceUntil = 0; ps.hp = ps.maxHp || 100;
+  const hp0 = ps.hp;
+  shoot('wa');
+  room._monsterStrikePlayer(WHEEL_ZONE, m, 'wa', m.x, m.y);
+  check('pursuit: its hit lands on the one who provoked it, on the safe ground', ps.hp < hp0, { hp0, hp: ps.hp });
+  /* a lunge or a slam (telegraph.js) is sheltered and lands by the same rule */
+  ps.hp = ps.maxHp || 100;
+  ps._lastDealtAt = Date.now() - WHEEL.PROVOKE_MS - 1;
+  const t0 = room._telegraphHitPlayer(WHEEL_ZONE, m, 'wa', { dmgMult: 1.5, kind: 'slam' });
+  check('...and a slam on the safe ground lands only while they fight (quiet 10 s: nothing)', t0 === 0 && ps.hp === (ps.maxHp || 100), { t0, hp: ps.hp });
+  shoot('wa');
+  const t1 = room._telegraphHitPlayer(WHEEL_ZONE, m, 'wa', { dmgMult: 1.5, kind: 'slam' });
+  check('...(fighting: it lands)', ps.hp < (ps.maxHp || 100), { t1, hp: ps.hp });
+  ps.hp = ps.maxHp || 100; ps._zoneEntryGraceUntil = Date.now() + 600000;
+  /* the pursuit leash: past CHASE_LEASH it keeps on, past PURSUE_LEASH it gives up */
+  const far = (k) => ({ x: m.spawnX - (ux / ul) * k, y: m.spawnY - (uy / ul) * k });
+  calm(); shoot('wa');
+  put(m, far(WHEEL.CHASE_LEASH + 60)); put(ps, far(WHEEL.CHASE_LEASH + 160));
+  room._tickMonsters();
+  check(`pursuit: past ${WHEEL.CHASE_LEASH} px from home it keeps after the one who provoked it`, m.targetId === 'wa', m.targetId);
+  calm(); shoot('wa');
+  put(m, far(WHEEL.PURSUE_LEASH + 60)); put(ps, far(WHEEL.PURSUE_LEASH + 160));
+  room._tickMonsters();
+  check(`...and gives up past ${WHEEL.PURSUE_LEASH}`, m.targetId == null, m.targetId);
+  /* ten quiet seconds: sheltered again */
+  calm(); shoot('wa');
+  put(m, at(WHEEL_SAFE_R + 60)); put(ps, at(WHEEL_SAFE_R - 60));
+  ps._lastDealtAt = Date.now() - WHEEL.PROVOKE_MS - 1;
+  m._aggroOverrideUntil = Date.now() - 1;
+  room._tickMonsters();
+  check(`pursuit: ${WHEEL.PROVOKE_MS / 1000} s without dealing damage, the safe ground shelters them again`, m.targetId == null, m.targetId);
+  /* the kill switch puts the old rule back */
+  const keep = room._liveFlags;
+  room._liveFlags = { ...(keep || {}), wheelpursue: false };
+  calm(); shoot('wa'); room._tickMonsters();
+  check('kill switch: wheelpursue:false -- even the shooter is sheltered on the safe ground', m.targetId == null, m.targetId);
+  room._liveFlags = keep;
+  m.dmgByPlayer = Object.create(null); ps._lastDealtAt = 0;
   m.x = m.spawnX; m.y = m.spawnY; calm();
 }
 

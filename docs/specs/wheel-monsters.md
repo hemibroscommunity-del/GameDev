@@ -25,7 +25,9 @@ unchanged**, to the **inner end of its own spoke**: the land's first stage
 - **The commons and Brotown are safe ground.** No monster goes after anyone
   standing there, however near, steps onto it, or lands a hit there — not even
   a swing it had started, or a ball already thrown. A chase also gives up
-  720 px from the monster's own spot.
+  720 px from the monster's own spot. **Since v2.3.3056 there is one
+  exception: a monster you hurt follows you onto it while you keep fighting**
+  (see "Provoked from the safe ground" below).
 - Dying in the Wheel brings you back in town, as dying anywhere does.
   **Since v2.3.2990** that town is the Wheel's Brotown: the Wheel is
   everyone's World View, a new session and a respawn both take you straight
@@ -98,7 +100,8 @@ the two disagree.
   did not do this: the places stand only ~180–320 px from the commons, and the
   first test's fight picture showed a goblin that had chased ~400 px into it.
 - Chase leash (index.js, the chase branch): past `WHEEL.CHASE_LEASH` (720 px)
-  from its spawn a monster drops its target.
+  from its spawn a monster drops its target; past `WHEEL.PURSUE_LEASH`
+  (1,800 px) when it is pursuing the one who provoked it (v2.3.3056).
 - **What a player hears** (tick.js, `_wheelInterest`): a v2 session in the
   Wheel gets the deltas of only the monsters within `WHEEL.INTEREST_R`
   (2,400 px) of the player, keeps them until `INTEREST_OUT` (2,800), and gets
@@ -320,6 +323,71 @@ Lv 11–15"). Only the first stretch had monsters. Now the next three do too.
   place. Their bake took only the first stretch's places until the two came
   together; it takes each land's `deeper` ones too now, which moved 84 of the
   nodes and added two fishing spots (142 in all).
+
+## Provoked from the safe ground (v2.3.3056)
+
+Owner, 2026-10-05:
+
+> make it so monsters can still chase you out of their zones. I was sitting in
+> a safe zone just sniping mummies with magic and they couldn't attack.
+
+They couldn't. The safe ground dropped a shooter from every monster's mind
+each tick, so a mage at its edge could empty a land's first stretch with no
+risk at all. Now the safe ground shelters everyone **except from a monster
+they provoked**.
+
+A player has provoked monster `m` (wheelzone.js `_wheelProvokedBy`) when:
+
+- they have hurt it this life (`m.dmgByPlayer[pid] > 0`); and
+- they are still fighting: they dealt damage to anything within
+  `WHEEL.PROVOKE_MS` (10 s, the sticky aggro's own window). `ps._lastDealtAt`
+  is stamped by every player→monster damage path (combat, abilities, the
+  arrow blast, the burst), and a respawn clears it.
+
+`_wheelSheltered(m, pid, x, y, now)`: off the safe ground, never sheltered. On
+it, sheltered unless provoked. With no monster in hand (a burn or poison
+ticking, burning ground), sheltered unless still fighting at all.
+
+Where it is asked, which is every place the safe ground was:
+
+| Where | What changes for a provoker |
+|---|---|
+| index.js, the sticky target and the aggro scan | they stay the monster's target on the safe ground |
+| index.js, the chase leash | `PURSUE_LEASH` 1,800 px from home (the first stretch's places stand 184–915 px outside the safe edge, so 720 could not even reach it), and the monster may step onto the safe ground |
+| `_monsterStrikePlayer` (the swing, a thrown ball, a burrow surfacing) | the hit lands |
+| telegraph.js `_telegraphHitPlayer` (lunge, slam, a blue slime's burst) and `_resolveBasicSwingHit` | gated **above** the block branch now, which was a hole: a lunge wound up before you stepped in landed, and a turtle was charged stamina for a sheltered swing |
+| monsterstatus.js, storm arcs and burns/poisons | an arc reaches only bystanders who provoked that monster; a DoT keeps ticking only while you fight |
+| firetrail.js burning ground | burns on the safe ground only while you fight (it was not gated at all: a goblin's last step over the edge could burn someone in the commons) |
+
+**How a pursuit ends:** ten seconds without dealing damage (the shelter comes
+back, the monster drops you and its wander leash walks it home), past
+`PURSUE_LEASH` from home, your death, or a zone change. **Who is never
+chased:** anyone who did not hurt that monster. A bystander in the commons
+beside a provoker takes nothing from it.
+
+**Kill switch** (lower case, TRAPS §117): `wheelpursue: false` in liveflags,
+the old rule exactly. Server only. No wire field, no caps flag, and no client
+change: the AI and the hits are the worker's, and a client draws what it is
+told.
+
+**Not done:**
+- The top bar still says "safe" on the safe ground while you are being chased.
+  A client follow-up could show a fight state there.
+- A monster dragged deep into the commons walks straight through buildings
+  and water: the Wheel has no server colliders (props.js has none for
+  `wheel`).
+
+Tests: `wheelzone` §5d. A shot from the commons makes the monster:
+
+- come for you, keep you as its target on the safe ground, and land its hit
+  there;
+- spare a bystander who never hurt it;
+- land a slam only while you fight;
+- keep on past 720 px and give up past 1,800;
+- let you go after ten quiet seconds.
+
+`wheelpursue: false` restores the shelter. §5b's "nobody in the commons is a
+target" checks are unchanged.
 
 ## Not in this round
 

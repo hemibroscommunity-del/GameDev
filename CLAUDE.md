@@ -700,6 +700,20 @@ remnant to migrate server-side, not a mode to preserve.
       (`_jogPlantCrossed`): a page drawing a few frames a second rarely
       landed on one, and lost its footsteps and dust;
     - `sprint` §10, `mp-sprintpeer`: docs/specs/sprint.md "Seen and heard".
+  - Since v2.3.3056 A MONSTER YOU HURT FOLLOWS YOU ONTO SAFE GROUND -- the
+    owner: "make it so monsters can still chase you out of their zones.  I was
+    sitting in a safe zone just sniping mummies with magic and they couldn't
+    attack": the safe ground shelters everyone except from a monster they
+    PROVOKED (wheelzone.js `_wheelProvokedBy`: hurt it this life,
+    `m.dmgByPlayer`, and dealt damage within `WHEEL.PROVOKE_MS` 10 s,
+    `ps._lastDealtAt`, cleared on respawn); `_wheelSheltered` replaces the bare
+    `_wheelSafeAt` at every gate -- the sticky target, the aggro scan, the hit
+    choke point, telegraph.js's lunge/slam/burst and basic swing (now ABOVE
+    the block branch), the storm arcs, burns/poisons, and burning ground (not
+    gated before); a pursuit reaches `WHEEL.PURSUE_LEASH` 1,800 from home;
+    bystanders who never hurt it take nothing; kill switch `wheelpursue:
+    false`; server only: docs/specs/wheel-monsters.md "Provoked from the safe
+    ground", `wheelzone` §5d.
   - Since v2.3.3016 DUNGEONS IN THE WHEEL -- offered "Dungeons in the Wheel
     ... the other big missing piece", the owner: "Yes continue working on
     those items":
