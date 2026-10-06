@@ -74,6 +74,29 @@ export function healLifeSkills(blob) {
   return changed;
 }
 
+/* ═══ v2.3.3041: A LIFE SKILL IS NEVER LEVEL 0 ═══
+ * Owner: "The level up notification shows the wrong skill level (shows level
+ * 1 was you level up from 1 to 2)."  A new client's skills started at level
+ * 0, which _addLifeSkillXp (gathering.js) has always READ as 1 (`level || 1`)
+ * and so levelled straight to 2 -- while the client, charging the level-0
+ * price, predicted 1 and announced it.  The client now does the worker's
+ * arithmetic and starts at 1; this heals the stored 0s at the join boundary,
+ * both for a record on file and a first join's payload, so the echo says 1
+ * and the first level-up is 1 -> 2 everywhere.  Pure, mutates in place, true
+ * when anything changed; XP is never touched (a level-0 skill's XP is already
+ * counted toward level 1 -> 2 by the `|| 1`). */
+export const LIFE_SKILL_KEYS = ['woodcutting', 'fishing', 'mining', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'farming', 'trapping'];
+export function healLifeSkillLevels(blob) {
+  const ls = blob && blob.lifeSkills;
+  if (!ls || typeof ls !== 'object') return false;
+  let changed = false;
+  for (const k of LIFE_SKILL_KEYS) {
+    const sk = Object.prototype.hasOwnProperty.call(ls, k) ? ls[k] : null;
+    if (sk && typeof sk === 'object' && !(Number(sk.level) >= 1)) { sk.level = 1; changed = true; }
+  }
+  return changed;
+}
+
 /* v2.3.1158: the canonical pool formula, extracted from migration v7 so
  * the live stats_update path can apply it too.  One source of truth for
  * "unspent = max(0, min(200, 2 × level-or-stat) − Σ spec)":

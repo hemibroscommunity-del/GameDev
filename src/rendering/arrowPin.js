@@ -32,6 +32,11 @@ import { Matrix } from 'pixi.js';
 import { relMatrix } from './arrowWound.js';
 
 const FRAME_CACHE = 160;
+/* v2.3.3046: and at most this many bytes (2 per texel, alpha + brightness): a
+   mummy's and its skeleton's big frames held 160 deep were ~20 MB on a phone
+   near iPhone Safari's memory edge (the owner's crash, "killing mummies") */
+const FRAME_CACHE_BYTES = 6 * 1024 * 1024;
+let _frameBytes = 0;
 const _frames = new Map();   /* texture uid -> { w, h, a: Uint8Array, l: Uint8Array } */
 const _M = new Matrix();
 
@@ -45,15 +50,26 @@ function frameData(tex) {
   const w = Math.round(fr.width), h = Math.round(fr.height);
   if (w < 2 || h < 2) return null;
   let px;
+  let c = null;
   try {
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c = document.createElement('canvas'); c.width = w; c.height = h;
     const g = c.getContext('2d', { willReadFrequently: true });
     g.drawImage(src, Math.round(fr.x), Math.round(fr.y), w, h, 0, 0, w, h);
     px = g.getImageData(0, 0, w, h).data;
-  } catch (e) { return null; }
+  } catch (e) { px = null; }
+  /* v2.3.3046: the scratch canvas's pixels go now, not when the collector
+     gets to it (iPhone Safari's canvas budget; wheelShatter freeCanvas) */
+  try { if (c) { c.width = 0; c.height = 0; } } catch (e) { /* gone */ }
+  if (!px) return null;
   fd = frameDataOf(w, h, px);
   _frames.set(key, fd);
-  if (_frames.size > FRAME_CACHE) _frames.delete(_frames.keys().next().value);
+  _frameBytes += 2 * w * h;
+  while (_frames.size > 1 && (_frames.size > FRAME_CACHE || _frameBytes > FRAME_CACHE_BYTES)) {
+    const k0 = _frames.keys().next().value;
+    const f0 = _frames.get(k0);
+    _frames.delete(k0);
+    _frameBytes -= f0 ? 2 * f0.w * f0.h : 0;
+  }
   return fd;
 }
 

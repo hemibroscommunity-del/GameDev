@@ -52,9 +52,12 @@ export const ELEM_LOOK = {
   frost: { icon: 'elem-frost', color: '#9fd8ff' },
   flame: { icon: 'elem-flame', color: '#ff9a3c' },
   wind: { icon: 'elem-wind', color: '#e6edf3' },
-  /* the owner's "slime for floral damage": the slime's own splat, not the
-     leaf of the element icons */
-  flora: { icon: 'slime', color: '#8be36a' },
+  /* v2.3.3044: the LEAF, the floral element's own icon.  v2.3.2996 read the
+     owner's "slime for floral damage" as "draw the slime" and used its loot
+     splat; the owner, seeing it: "Slime attack for combat messages should be
+     floral icon.  I think we're using leaf for that.  Right now it's just the
+     slime remnant sprite which is wrong." */
+  flora: { icon: 'elem-flora', color: '#8be36a' },
   /* v2.3.3014 */
   stone: { icon: 'elem-stone', color: '#c9b48a' },
   storm: { icon: 'elem-storm', color: '#f5e663' },
@@ -68,7 +71,7 @@ export const ELEM_ICON_SRC = {
   'elem-frost': '/icons/ui/elem-frost.webp',
   'elem-flame': '/icons/ui/elem-flame.webp',
   'elem-wind': '/icons/ui/elem-wind.webp',
-  slime: '/icons/monsters/slime-remnants.webp',
+  'elem-flora': '/icons/ui/elem-flora.webp',   /* v2.3.3044: was the slime's splat (slime-remnants.webp) */
   /* v2.3.3014 */
   'elem-stone': '/icons/ui/elem-stone.webp',
   'elem-storm': '/icons/ui/elem-storm.webp',

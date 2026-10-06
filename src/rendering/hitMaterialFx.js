@@ -260,7 +260,7 @@ function atlas() {
  * the first hit, and kept for the last 24 sheets. */
 const CHIP_SIZES = [0.034, 0.052, 0.078];    /* chip radius, x the frame's height */
 const CHIP_VARIANTS = 4;
-const _chipCache = new Map();               /* source uid -> { fx -> [size][variant] Texture } */
+const _chipCache = new Map();               /* source uid -> { by: { fx -> [size][variant] Texture }, used } (v2.3.3046: + used, least recently used first) */
 let _softPuff = null, _softShadow = null;
 function softPuff() {
   if (_softPuff) return _softPuff;
@@ -343,10 +343,13 @@ function bakeChips(tex, fx) {
   const fw = Math.round(fr.width), fh = Math.round(fr.height);
   const cv = document.createElement('canvas'); cv.width = fw; cv.height = fh;
   const g = cv.getContext('2d', { willReadFrequently: true });
-  try { g.drawImage(src, Math.round(fr.x), Math.round(fr.y), fw, fh, 0, 0, fw, fh); } catch (e) { return null; }
+  const free = () => { try { cv.width = 0; cv.height = 0; } catch (e) { /* gone */ } };   /* v2.3.3046: iPhone Safari's canvas budget */
+  try { g.drawImage(src, Math.round(fr.x), Math.round(fr.y), fw, fh, 0, 0, fw, fh); } catch (e) { free(); return null; }
   /* bone is thin: a splinter the size of a slime blob was a third of a leg */
   const sizeK = fx === 'bone' ? 0.5 : 1;
-  return bakeChipsFrom(cv, g, fw, fh, fx, CHIP_SIZES.map((k) => Math.max(2, fh * k * sizeK)), 0.78);
+  const out = bakeChipsFrom(cv, g, fw, fh, fx, CHIP_SIZES.map((k) => Math.max(2, fh * k * sizeK)), 0.78);
+  free();   /* the chips are their own canvases */
+  return out;
 }
 /* v2.3.2995: the cutting itself, on a canvas already holding the art --
    the monster's whole frame (above), or a window of a Wheel object's
@@ -451,23 +454,44 @@ function bakeChipsFrom(cv, g, fw, fh, fx, radii, strict) {
   }
   return out;
 }
+/* ═══ v2.3.3046: NEVER DESTROY A CHIP A BURST MAY STILL BE DRAWING ═══
+ * Owner: "Game crashed ... killing mummies and destroyed prop."  Past 24
+ * picture sheets this cache destroyed its OLDEST entry -- oldest by when it was
+ * first made, not last used -- with no look at whether a burst (which lives
+ * BURST_MS, 5.4 s) was still handing those textures to its sprites every
+ * frame.  A destroyed texture under a live sprite is the "reading
+ * 'alphaMode'" throw (CLAUDE.md), every frame; 90 in a row and the renderer is
+ * rebuilt, every texture uploaded again -- on a phone already near iPhone
+ * Safari's memory edge (a Wind Dunes fight holds mummies AND their
+ * skeletons), the likeliest last straw.  The prop-chip cache below always had
+ * this guard (v2.3.2995); this one never got it.  Now the same rule: least
+ * RECENTLY USED first, and never one used within BURST_MS + 1 s -- the cache
+ * may run a little over 24 for those few seconds, which costs a few small
+ * canvases, never a crash. */
+const CHIP_KEEP = 24;
 function chipsFor(sb, fx) {
   const tex = sb && sb.texture, src = tex && tex.source;
   if (!src) return null;
   const key = src.uid;
+  const now = performance.now();
   let ent = _chipCache.get(key);
-  if (!ent) {
-    ent = Object.create(null);
+  if (ent) {
+    _chipCache.delete(key);          /* LRU: re-insert at the young end */
     _chipCache.set(key, ent);
-    if (_chipCache.size > 24) {
-      const old = _chipCache.keys().next().value;
-      const e = _chipCache.get(old);
-      _chipCache.delete(old);
-      if (e) for (const k in e) for (const row of (e[k] || [])) for (const t of row) { try { t.destroy(true); } catch (err) { /* already gone */ } }
-    }
+  } else {
+    ent = { by: Object.create(null), used: now };
+    _chipCache.set(key, ent);
   }
-  if (!(fx in ent)) ent[fx] = bakeChips(tex, fx);
-  return ent[fx];
+  ent.used = now;
+  while (_chipCache.size > CHIP_KEEP) {
+    const old = _chipCache.keys().next().value;
+    const e = _chipCache.get(old);
+    if (e && now - e.used < BURST_MS + 1000) break;
+    _chipCache.delete(old);
+    if (e) for (const k in e.by) for (const row of (e.by[k] || [])) for (const t of row) { try { t.destroy(true); } catch (err) { /* already gone */ } }
+  }
+  if (!(fx in ent.by)) ent.by[fx] = bakeChips(tex, fx);
+  return ent.by[fx];
 }
 
 /* ═══ v2.3.2995: A PROP'S PIECES ARE CUT FROM ITS OWN PICTURE TOO ═══
@@ -510,6 +534,9 @@ function propChips(art, fx) {
       g.drawImage(src, FX + x0, FY + y0, w, h, 0, 0, w, h);
       out = bakeChipsFrom(cv, g, w, h, fx, radiiW.map((r) => Math.max(1.5, r / art.cs)), 0.6);
     } catch (e) { out = null; }
+    /* v2.3.3046: the window's scratch canvas goes now (the chips are their own
+       canvases) -- iPhone Safari's canvas budget, wheelShatter freeCanvas */
+    try { cv.width = 0; cv.height = 0; } catch (e) { /* gone */ }
   }
   _propChips.set(key, { chips: out, used: now });
   /* past the keep, the least recently used go -- but never one a burst may
