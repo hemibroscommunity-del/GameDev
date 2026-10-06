@@ -266,7 +266,7 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
      vendor's own shelf still said "Mana Shard" -- one item under two names,
      one screen apart. The vendor label now matches this one. */
   manaShard: 'Mana Draught',
-  staminaSalts: 'Stamina Tonic',   /* v2.3.3107: brewed at the Cookhouse from carrots, no longer Diego's salts */
+  staminaSalts: 'Stamina Tonic',   /* v2.3.3116: brewed at the Cookhouse from carrots, no longer Diego's salts */
   daily_chest: 'Daily Chest',   /* v2.3.2820: the daily login reward (server dailychest.js) */
   bar_copper: 'Copper Bar',     /* v2.3.2822: prettyName would say "Bar Copper" (server smelting.js) */
   /* v2.3.3111: seeds, crops and compost (server farm.js) -- prettyName would

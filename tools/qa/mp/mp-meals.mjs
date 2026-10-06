@@ -14,9 +14,9 @@
  *      the meal for half an hour, and the HUD counts it in minutes.
  *   4. A Firebloom Tea (as bought on the market) drinks from the bag: the
  *      brew runs BESIDE the meal, and the HUD shows both.
- *   5. Diego's shelf holds no food or drink (v2.3.3107: not even his two old
+ *   5. Diego's shelf holds no food or drink (v2.3.3116: not even his two old
  *      staples), and he says he won't buy a tonic back, nor a Herb Bread.
- *   6. v2.3.3106: the Cookhouse lists the Garden Stew (Cooking 4) and the
+ *   6. v2.3.3115: the Cookhouse lists the Garden Stew (Cooking 4) and the
  *      Pumpkin Pie (Cooking 8); a stew from the bag heals at once, the HUD
  *      unchanged; a pie runs +10% XP beside the brew, its chip in minutes.
  *   7. With the kill switch thrown, a bread in the bag still eats.
@@ -175,7 +175,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 5. Diego ── */
     await A.page.evaluate(() => window.__broShopBus.setOpen(true));
-    /* v2.3.3107: owner, "Remove all of Diego's potions. I want food and drink
+    /* v2.3.3116: owner, "Remove all of Diego's potions. I want food and drink
        to come exclusively from farming and recipes" -- his shelf holds nothing
        you eat or drink (a fresh world's is bare: "His shelf is bare"). */
     let shelf = null;
@@ -184,7 +184,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         ? Array.from(document.querySelectorAll('[data-shop-bro]')).map((e) => e.getAttribute('data-shop-bro')) : null);
       if (!shelf) await A.page.waitForTimeout(200);
     }
-    rec.ok('Diego\'s shelf has no food or drink: no staple, no tonic, no cooked fish (v2.3.3107)', Array.isArray(shelf)
+    rec.ok('Diego\'s shelf has no food or drink: no staple, no tonic, no cooked fish (v2.3.3116)', Array.isArray(shelf)
       && !shelf.some((k) => ['cookedMinnow', 'staminaSalts', 'whetstone', 'manaShard', 'swiftDraught'].includes(k) || /^cooked|^meal_|^brew_/.test(k)), shelf);
     await H.grant(wsPort, id, 'item', { invKey: 'whetstone', count: 1 });
     await A.page.waitForTimeout(1500);

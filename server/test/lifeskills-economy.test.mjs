@@ -27,7 +27,7 @@
  *       zero-held / non-wood / __proto__ keys are clean no-ops.
  *   4.  cook_recipe: dry-run-then-consume (a failed recipe consumes
  *       nothing), buff timer set on ps._buffs, tier*25 cooking XP.
- *   5.  shop_purchase: since v2.3.3107 nothing is on the shelf, so every
+ *   5.  shop_purchase: since v2.3.3116 nothing is on the shelf, so every
  *       item -- and the retired trap -- is a clean no-op (it was an exact
  *       debit, the influence discount, and a no-op when broke).
  *   6.  Harvest: extraction_start records the timing window; a strike
@@ -366,7 +366,7 @@ check('recipe: below its Cooking level consumes NOTHING, ingredients or not', ec
    so it is repointed at a live item rather than deleted. The vehicle is now
    the stamina salts, whose effect is observable on ps.stamina; the trap's own
    line stays below as a guard that the removal is real. */
-/* v2.3.3107: and the stamina salts are off the shelf too -- owner: "Remove
+/* v2.3.3116: and the stamina salts are off the shelf too -- owner: "Remove
    all of Diego's potions. I want food and drink to come exclusively from
    farming and recipes" (data.js DIEGO_SHELF is empty; the salts are brewed
    from carrots as the Stamina Tonic).  So the purchase path's property is now

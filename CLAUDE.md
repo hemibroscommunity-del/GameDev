@@ -1506,7 +1506,7 @@ remnant to migrate server-side, not a mode to preserve.
       HOLD (`_farmShape`: a potato or pumpkin makes it a 2), and
       `caps.farmCrops` (how many crops the worker grows, `FARM_CROP_IDS`
       append-only) gates the Feed & Seed's crops, as `cookRows` the recipes;
-    - since v2.3.3107 DIEGO SELLS NO FOOD OR DRINK -- the owner: "Remove all
+    - since v2.3.3116 DIEGO SELLS NO FOOD OR DRINK -- the owner: "Remove all
       of Diego's potions. I want food and drink to come exclusively from
       farming and recipes": `DIEGO_SHELF` is EMPTY (mirror-audit holds it),
       the Stamina Salts' key is brewed from two carrots (recipe row 8, the

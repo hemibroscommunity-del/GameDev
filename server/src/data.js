@@ -445,8 +445,8 @@ export const FISH_TIERS = [
  *
  * THE INDEX IS THE WIRE KEY (cook_recipe {recipeIdx}), so rows are APPENDED,
  * never reordered: 0-2 are the original three, 3-5 the tonics Diego no longer
- * sells (DIEGO_SHELF), 6-7 the potato's and pumpkin's dishes (v2.3.3106), 8 the
- * Stamina Tonic (v2.3.3107).  Rows 0-2 have no instant effect of their own any more
+ * sells (DIEGO_SHELF), 6-7 the potato's and pumpkin's dishes (v2.3.3115), 8 the
+ * Stamina Tonic (v2.3.3116).  Rows 0-2 have no instant effect of their own any more
  * -- an OLD client's cook (no `carry`) gets the dish applied at once, which is
  * what it predicted, only longer.  The client's mirror keeps its old
  * buff/power/duration for the one case it still needs them: a new client in
@@ -466,7 +466,7 @@ export const COOKING_RECIPES = [
       /* v2.3.3115: the two food crops' dishes (FARM.CROPS potato, pumpkin). */
       { ingredients: { crop_carrot: 2, crop_potato: 1 },             tier: 2, cookLvl: 4,  makes: 'meal_garden_stew' },
       { ingredients: { crop_pumpkin: 1, crop_potato: 2 },            tier: 3, cookLvl: 8,  makes: 'meal_pumpkin_pie' },
-      /* v2.3.3107: the STAMINA TONIC (the old Stamina Salts' key and effect,
+      /* v2.3.3116: the STAMINA TONIC (the old Stamina Salts' key and effect,
          +60 stamina at once), brewed from two carrots -- owner: "Remove all of
          Diego's potions. I want food and drink to come exclusively from
          farming and recipes."  The cheapest crop and Cooking 1, as the salts
@@ -599,7 +599,7 @@ export const SHOP_ITEMS = {
       swiftDraught:  { cost: 30, effect: 'spdBuff', duration: 180, mult: 1.5 },
     };
 
-/* ═══ v2.3.3107: DIEGO SELLS NO FOOD OR DRINK ═══
+/* ═══ v2.3.3116: DIEGO SELLS NO FOOD OR DRINK ═══
  * Owner, 2026-10-06: "Remove all of Diego's potions. I want food and drink to
  * come exclusively from farming and recipes."  So his shelf is EMPTY: the
  * Cooked Minnow and the Stamina Salts come off it as the tonics did.  The
@@ -607,10 +607,10 @@ export const SHOP_ITEMS = {
  * Stamina Tonic); a cooked minnow is what a fisher cooks.  Both stay in
  * SHOP_ITEMS -- a bottle or a fish already in a bag still drinks or eats --
  * and he still buys none of them back (shop.js heWontTrade, which since this
- * version takes in cooked fish too).  The note below is v2.3.3105's, when
+ * version takes in cooked fish too).  The note below is v2.3.3114's, when
  * the two instant items stayed.
  *
- * ═══ v2.3.3105: WHAT DIEGO SELLS IS NOT EVERYTHING HE STOCKS ═══
+ * ═══ v2.3.3114: WHAT DIEGO SELLS IS NOT EVERYTHING HE STOCKS ═══
  * The farming plan's "Diego keeps his staples and loses his tonics": under the
  * one-effect rule a 35-coin bottle of double damage beat anything a farm could
  * grow, so the three tonics come off his shelf the day the farm brews them

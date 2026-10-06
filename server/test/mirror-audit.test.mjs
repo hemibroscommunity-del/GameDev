@@ -208,7 +208,7 @@ const room = Object.create(GameRoom.prototype);
   /* Damage only in a brew: combat.js's cheat ceiling was sized at one x2 brew. */
   const mealDmg = Object.entries(SRV.DISHES).filter(([, d]) => d.slot === 'meal' && d.buff === 'damage');
   check('no meal raises damage (damage is only ever a brew)', mealDmg.length === 0, mealDmg);
-  /* v2.3.3107: and he sells NOTHING -- owner: "Remove all of Diego's
+  /* v2.3.3116: and he sells NOTHING -- owner: "Remove all of Diego's
      potions. I want food and drink to come exclusively from farming and
      recipes."  Re-adding a bottle to his shelf fails here, on purpose. */
   check('DIEGO_SHELF is empty: food and drink come only from farming and recipes', SRV.DIEGO_SHELF.length === 0, SRV.DIEGO_SHELF);

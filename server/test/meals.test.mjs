@@ -22,7 +22,7 @@
  *   8. Forged keys: '__proto__', unknown dishes, a brew through eat, a meal
  *      through drink, an empty bag -- nothing applies, nothing is used.
  *   9. The buffs survive a save; the dish is in the saved bag.
- *  13. v2.3.3107: the Stamina Tonic (the salts' key) is brewed from carrots.
+ *  13. v2.3.3116: the Stamina Tonic (the salts' key) is brewed from carrots.
  */
 import { GameRoom } from '../src/index.js';
 import { COOKING_RECIPES, DISHES, SHOP_ITEMS, DIEGO_SHELF } from '../src/data.js';
@@ -227,7 +227,7 @@ P._buffs = {};
 // ── 7. Diego ──
 {
   const list = await room._shopList(['whetstone', 'meal_herb_bread']);
-  /* v2.3.3107: and since the owner's "Remove all of Diego's potions", nothing
+  /* v2.3.3116: and since the owner's "Remove all of Diego's potions", nothing
      at all -- the stamina salts are brewed from carrots (§13). */
   check('his shelf is empty -- the tonics and the stamina salts are brewed, not sold',
     DIEGO_SHELF.length === 0 && !list.items.some((i) => i.staple), list.items.filter((i) => i.staple).map((i) => i.key));
@@ -469,7 +469,7 @@ P._buffs = {};
     && !room._buffActive(P, 'xp') && P._buffs.xpMul === undefined, P._buffs);
 }
 
-// ── 13. v2.3.3107: the Stamina Tonic is brewed from carrots ──
+// ── 13. v2.3.3116: the Stamina Tonic is brewed from carrots ──
 {
   /* Owner: "Remove all of Diego's potions. I want food and drink to come
      exclusively from farming and recipes."  The salts' key and effect, made

@@ -149,15 +149,15 @@ check('shop_result cannot be forged by a client', PRIVILEGED_EVENTS.has('shop_re
 /* ═══ v2.3.2053: WHAT HE STARTS WITH ═══
    Owner, then: the consumables go, and "his inventory can just start with a
    few cooked fish" -- a SEED of six cooked trout, ordinary decaying stock.
-   v2.3.3107: NOTHING.  Owner: "Remove all of Diego's potions. I want food and
+   v2.3.3116: NOTHING.  Owner: "Remove all of Diego's potions. I want food and
    drink to come exclusively from farming and recipes."  The trout came from
    nowhere, and his staple shelf (DIEGO_SHELF) is empty. */
 const fresh = makeState();
 const room3 = new GameRoom(fresh, mockEnv);
 const seeded = await room3._shopList();
-check('a brand-new world finds nothing on him: no seeded fish and no staples (v2.3.3107)',
+check('a brand-new world finds nothing on him: no seeded fish and no staples (v2.3.3116)',
   seeded.items.length === 0 && Object.keys(SHOP.SEED).length === 0, seeded.items);
-/* A world whose pile took its six trout before v2.3.3107 still has them
+/* A world whose pile took its six trout before v2.3.3116 still has them
    stored: they must neither show nor sell. */
 const oldPile = await room3._shopStock();
 oldPile.cooked_fish_trout = 6;
@@ -324,7 +324,7 @@ delete psM._buffs;
    is its only usable consumable)". _handleDrinkRequest is that way, so the
    bottle can be carried. The effect itself is unchanged -- it now runs on the
    drink instead of on the sale, through the same _applyShopItem. */
-/* v2.3.3107: there is no bottle to buy from him any more -- the last two,
+/* v2.3.3116: there is no bottle to buy from him any more -- the last two,
    the Cooked Minnow and the Stamina Salts, came off his shelf ("Remove all of
    Diego's potions"); the salts are brewed at the Cookhouse as the Stamina
    Tonic.  What stays true is the rest of this section: a bottle in a bag is
@@ -334,7 +334,7 @@ const buyer2 = { coins: 200, inventory: Object.create(null), maxMana: 100, mana:
 const beforeCoins = buyer2.coins;
 for (const k of ['staminaSalts', 'cookedMinnow']) {
   const rStaple = await room._shopBuy(buyer2, k, 1);
-  check('he no longer sells ' + k + ' (v2.3.3107): refused, no coins taken, nothing in the bag',
+  check('he no longer sells ' + k + ' (v2.3.3116): refused, no coins taken, nothing in the bag',
     !rStaple.ok && buyer2.coins === beforeCoins && !buyer2.inventory[k] && buyer2.stamina === 40, { rStaple, bag: buyer2.inventory });
   const qStaple = await room._shopQuote(k, 1, 'buy');
   check('...and quotes nothing for it', qStaple.qty === 0 && qStaple.total === 0, qStaple);
