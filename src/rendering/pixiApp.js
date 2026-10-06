@@ -190,6 +190,25 @@ function buildScene(app) {
   screenContainer.label = 'screen';
   app.stage.addChild(screenContainer);
 
+  /* ═══ v2.3.3079: THE WORLD AND THE SCREEN ARE RENDER GROUPS ═══
+     The owner's yes to "smoother frames (Pixi render groups) -- occasional
+     1-px shift, not byte-identical".  The camera is the world container's own
+     x / y / scale (pixiRenderer), so every frame it moves, Pixi used to work
+     out every world object's place on screen again on the CPU, and any of the
+     ~25 changes a frame makes to the scene (effects added, pooled sprites
+     shown and hidden, the depth sort's moves) rebuilt the draw list of the
+     WHOLE scene, the HUD's ~216 containers included (docs/MEMORY-PLAN.md,
+     frame time).  As render groups, a world object keeps its place in the
+     world and the camera is applied to it on the GPU, and a change in the
+     world rebuilds only the world's list, a change on the screen only the
+     screen's.  The camera on the GPU is in 32-bit floats, so an edge can land
+     a pixel over now and then -- the shift the owner accepted.
+     `?norendergroups` is the scene as it was, to compare. */
+  if (!(typeof location !== 'undefined' && /[?&]norendergroups\b/.test(location.search || ''))) {
+    worldContainer.isRenderGroup = true;
+    screenContainer.isRenderGroup = true;
+  }
+
   /* ═══ v2.3.2271: HOW MANY THINGS ARE IN THE SCENE ═══
    * Owner: "the game slows down after playing for a while (like an accumulated
    * frame rate drop)."
