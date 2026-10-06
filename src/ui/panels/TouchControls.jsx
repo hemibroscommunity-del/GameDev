@@ -3,8 +3,6 @@ import { RBTN, LBTN } from './ShieldButton.jsx'; /* v2.3.2472: LBTN -- the left 
 import { SprintButton } from './SprintButton.jsx'; /* v2.3.3006 */
 import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
 import { Skin, RDISC_ICONS } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control */
-/* v2.3.3087: the owner's JUMP button, cut from their picture (public/ui/controls) */
-export const JUMP_DISC_URL = '/ui/controls/jump-disc.webp?v=2.3.3087';
 
 /* ═══ v2.3.3018: THE ATTACK DISC IS A GOLD-RINGED BUTTON WITH A PICTURE ═══
  * Owner: "Make the on screen buttons look more like the improved mockup."
@@ -420,20 +418,6 @@ export function TouchControls(props) {
   }, /* v2.3.3018: the ring, the face (rBodyRef -- still the layer the resolver
      fades) and the glow, from the one skin every control wears. */
   React.createElement(Skin, { size: discW, tone: 'ember', faceRef: rBodyRef, faceProps: { 'data-rbody': '1' } }),
-  /* ═══ v2.3.3087: THE OWNER'S JUMP BUTTON IS THE STICK'S FACE WHEN A TAP JUMPS ═══
-     Owner, with the picture: "Here is a sprite sheet of a jump button", and of
-     where it goes: "On the right joystick" -- shown whenever a tap would jump
-     (BroTown's resolver stamps data-ricon="jump", game/tapJump.js), the
-     weapon or the harvest picture otherwise.  The picture is a whole button
-     (its own gold ring and red face), so it covers the skin rather than sitting
-     in the knob inside a second ring (game.css hides the skin under it); it
-     does not ride the knob, so the word JUMP never slides under the ring on a
-     drag. */
-  React.createElement('img', {
-    className: 'bt-rjoy-jump', 'data-ricon-img': 'jump',
-    src: JUMP_DISC_URL, alt: '', draggable: false, width: discW, height: discW,
-    style: { position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 },
-  }),
   /* ═══ v2.3.2263: THE BUTTON STOPS HIDING WHAT YOU ARE FIGHTING ═══
        Owner: "Attack button sometimes covers monster (not sure best way to
        deal with it maybe 50% transparency during active combat?)"

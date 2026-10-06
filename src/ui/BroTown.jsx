@@ -5610,9 +5610,11 @@ export var BroTown = function BroTown(_ref0) {
              stand at a resource, not while the right side has a job
              (rightTapBusy: a monster in the perimeter, a lock), not in the
              water (no jumping there).  It also keeps the stick PAINTED at rest
-             (below): the jump is always there to be had, as v2.3.3017's button
-             always was -- painted only, never pressable, so a thumb on it still
-             reaches the stick's own zone, which is what jumps. */
+             (below), at the disc's own 0.5 rest with the arrow over it (the
+             owner: "a semi transparent overlay on the existing disc"): the
+             jump is always there to be had, as v2.3.3017's button always was --
+             painted only, never pressable, so a thumb on it still reaches the
+             stick's own zone, which is what jumps. */
           var _tapJumps = !_ex && !_harvestCtx && !rightTapBusy(S, Date.now()) && !(S._wheelSwim && S._wheelSwim.on)
             && !!(S.rpg && !(typeof S.rpg.hp === 'number' && S.rpg.hp <= 0))
             /* the coach's ATTACK lesson holds the disc up as the button it
@@ -5933,9 +5935,7 @@ export var BroTown = function BroTown(_ref0) {
           /* v2.3.2260: ...and so does the sprite's own step on the ladder.  A
              painted-but-unlit disc sits at its 0.5 rest value, which is what
              the joystick base it replaced always looked like. */
-          /* v2.3.3087: the JUMP face reads at full strength at rest, as
-             v2.3.3017's jump button always did -- 0.92 with a thumb on it */
-          var _opWant = (!_rLitCtx && !_tapJumps) ? '0.5' : (rJoyActive.current ? '0.92' : '1');
+          var _opWant = !_rLitCtx ? '0.5' : (rJoyActive.current ? '0.92' : '1');
           if (_rd && _rd.style.opacity !== _opWant) _rd.style.opacity = _opWant;
           /* ═══ v2.3.2263: SEE-THROUGH WHILE THERE IS SOMETHING TO FIGHT ═══
              Owner: "Attack button sometimes covers monster ... maybe 50%

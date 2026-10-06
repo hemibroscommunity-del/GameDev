@@ -6022,11 +6022,9 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 .bt-rjoy-base[data-ricon="woodcutting"] .bt-rjoy-icon[data-ricon-img="woodcutting"],
 .bt-rjoy-base[data-ricon="fishing"] .bt-rjoy-icon[data-ricon-img="fishing"],
 .bt-rjoy-base[data-ricon="cooking"] .bt-rjoy-icon[data-ricon-img="cooking"]{display:block}
-/* v2.3.3087: the owner's JUMP button is the whole face while a tap would jump
-   (TouchControls' bt-rjoy-jump): the skin's ring and face go under it */
-.bt-rjoy-jump{display:none}
-.bt-rjoy-base[data-ricon="jump"] .bt-rjoy-jump{display:block}
-.bt-rjoy-base[data-ricon="jump"] .bt-skin{visibility:hidden}
+/* v2.3.3087: the JUMP arrow over the disc as it is, see-through -- the owner:
+   "a semi transparent overlay on the existing disc" (controlSkin RDISC_ICONS) */
+.bt-rjoy-base[data-ricon="jump"] .bt-rjoy-icon[data-ricon-img="jump"]{display:block;opacity:.7}
 /* the label is the button's name; a caption only while a gesture is asked for */
 .bt-rjoy-label{transition:opacity 120ms linear}
 .bt-rjoy-label[data-show="0"]{opacity:0}

@@ -290,6 +290,12 @@ export const RDISC_ICONS = [
   ['woodcutting', '/icons/ui/skill-woodcutting.webp?v=2.3.1224'],
   ['fishing', '/icons/ui/skill-fishing.webp?v=2.3.1224'],
   ['cooking', '/icons/ui/skill-cooking.webp?v=2.3.1224'],
+  /* v2.3.3087: while a tap would jump, the arrow and the word from the
+     owner's JUMP button, cut off its red face and gold ring
+     (public/ui/controls/jump-glyph.webp) and laid over the disc as it is --
+     the owner: the whole button on the stick was "way too intense ... it
+     should just be a semi transparent overlay on the existing disc" */
+  ['jump', '/ui/controls/jump-glyph.webp?v=2.3.3087'],
 ];
 
 var TORNADO = {

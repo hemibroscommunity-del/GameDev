@@ -878,9 +878,11 @@ remnant to migrate server-side, not a mode to preserve.
       job the tap window and the first swing's wait are `TAP_JUMP_MAX_MS` 320
       (`S._atkHoldUntil`, `?tapms=`), a swing meets a prop at the BOOTS
       (propSwingHit + `playerGroundDy`; it never landed north of you), and the
-      stick wears the owner's JUMP button whenever a tap would jump
-      (`data-ricon="jump"`, `public/ui/controls/jump-disc.webp`, painted at
-      rest, never pressable); `mp-tapprop`.
+      stick shows the owner's JUMP arrow, see-through over the disc as it is,
+      whenever a tap would jump (`data-ricon="jump"`,
+      `public/ui/controls/jump-glyph.webp` cut off their button -- the whole
+      button was "way too intense"; painted at rest, never pressable);
+      `mp-tapprop`.
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:

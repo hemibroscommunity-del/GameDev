@@ -187,15 +187,17 @@ joystick".
   52px lower. It now asks from the boots (`playerGroundDy`), as movement,
   depth, prints and the doors already did. mp-propfx's sword stand moved 52px
   closer to keep its 30px gap at the boots.
-- **The JUMP face.** The owner's picture is cut to
-  `public/ui/controls/jump-disc.webp` (324px, from their 1254px PNG). It is
-  the stick's whole face whenever a tap would jump (`data-ricon="jump"`,
-  `.bt-rjoy-jump`; game.css hides the skin under it).
-  - Its ring and red face are the picture's own, and it does not ride the
-    knob.
-  - It shows at full strength at rest: the stick is painted with it,
-    never lit, never pressable, so the thumb still lands on the stick's
-    zone, which is what jumps.
+- **The JUMP arrow.** The arrow and the word JUMP are cut off the owner's
+  picture's red face and gold ring (`public/ui/controls/jump-glyph.webp`,
+  192px). They show as the stick's picture (`RDISC_ICONS` 'jump',
+  `data-ricon="jump"`) at 0.7, over the disc as it is, whenever a tap would
+  jump.
+  - The first cut used the whole button as the stick's face at full strength.
+    The owner: "way too intense it should just be a semi transparent overlay
+    on the existing disc".
+  - The disc keeps its grey 0.5 rest. It stays painted, but is never lit and
+    never pressable, so the thumb still lands on the stick's zone, which is
+    what jumps.
   - The weapon or harvest picture is back whenever the stick has a job, and
     while the coach's ATTACK lesson holds the disc.
 - mp-joyfade and mp-rbutton expected the right stick to vanish at rest; they

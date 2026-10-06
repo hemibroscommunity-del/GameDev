@@ -12,8 +12,8 @@
  *   2. a tap on the right stick's DISC (the button over it) jumps too;
  *   3. a tap ON the barrel jumps (a prop is not a thing a tap picks);
  *   4. holding the stick toward the barrel swings at it and lands blows;
- *   5. the stick shows the JUMP picture while a tap would jump, and the sword
- *      while one would attack (a held lock);
+ *   5. the stick shows the owner's JUMP arrow, see-through over the disc, while
+ *      a tap would jump, and the weapon while one would attack;
  *   6. no page errors.
  * Pictures: tools/qa/mp/out/tapprop-{stick,air}.png.
  */
@@ -114,14 +114,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 5a. the picture while a tap would jump ── */
     const s0 = await state(P);
+    /* the owner's arrow over the disc as it is ("a semi transparent overlay on
+       the existing disc"): the disc's skin still drawn, at its 0.5 rest, the
+       arrow see-through over it */
     const paint = await P.page.evaluate(() => {
-      const d = document.querySelector('.bt-rjoy-base'), w = d && d.closest('[data-joywrap], .bt-rjoy-zone') ;
-      const j = d && d.querySelector('.bt-rjoy-jump');
+      const d = document.querySelector('.bt-rjoy-base');
+      const j = d && d.querySelector('.bt-rjoy-icon[data-ricon-img="jump"]');
+      const skin = d && d.querySelector('.bt-skin');
       let op = 1; for (let e = d; e; e = e.parentElement) op *= +getComputedStyle(e).opacity;
-      return { op: +op.toFixed(2), jump: j ? getComputedStyle(j).display : null, pe: d ? d.style.pointerEvents : null, w: !!w };
+      return { op: +op.toFixed(2), jump: j ? getComputedStyle(j).display : null, jumpOp: j ? +getComputedStyle(j).opacity : null,
+        skin: skin ? getComputedStyle(skin).visibility : null, pe: d ? d.style.pointerEvents : null };
     });
-    rec.ok(`the stick shows the JUMP picture while a tap would jump (data-ricon ${s0.icon}), painted at rest (opacity ${paint.op}) and not taking touches itself (${paint.pe})`,
-      s0.icon === 'jump' && paint.jump === 'block' && paint.op > 0.9 && paint.pe === 'none', { s0, paint });
+    rec.ok(`the stick shows the JUMP arrow while a tap would jump (data-ricon ${s0.icon}), see-through over the disc as it is (disc ${paint.op}, arrow ${paint.jumpOp}, skin ${paint.skin}), not taking touches itself (${paint.pe})`,
+      s0.icon === 'jump' && paint.jump === 'block' && paint.skin === 'visible' && paint.op > 0.4 && paint.op < 0.9
+        && paint.jumpOp > 0.4 && paint.jumpOp < 1 && paint.pe === 'none', { s0, paint });
     const disc = await P.page.evaluate(() => { const b = document.querySelector('.bt-rjoy-base').getBoundingClientRect(); return { x: b.left, y: Math.max(0, b.top - 40), width: b.width, height: b.height + 80 }; });
     await P.page.screenshot({ path: join(OUT, 'tapprop-stick.png'), clip: { x: Math.max(0, disc.x - 30), y: disc.y, width: Math.min(PHONE.width - Math.max(0, disc.x - 30), disc.width + 60), height: disc.height } }).catch(() => {});
 
