@@ -559,7 +559,7 @@ function ws2Ref() {
   check('no seed costs less than a coin per crop it yields', cheap.length === 0, cheap.map(([id]) => id));
 }
 
-// ── 17. v2.3.3110: sixteen crops, every one grown and paid ──
+// ── 17. v2.3.3119: sixteen crops, every one grown and paid ──
 {
   /* The owner: "The main focus is just getting a good variety of crops to
      grow."  Ten more, appended (caps.farmCrops counts them), each a 3 (an

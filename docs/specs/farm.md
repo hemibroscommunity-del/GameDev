@@ -48,18 +48,18 @@ Office's paid land, and visits from friends are Phases 3 and 4.
 | Firebloom (`herb_firebloom`) | 1 | 5 | 40 m / 30 m | 2 / 3 | 50 | 16 |
 | Rock Vine (`herb_rock_vine`) | 5 | 10 | 5 h 20 m / 4 h | 2 / 3 | 120 | 30 |
 | Cloudpetal (`herb_cloudpetal`) | 10 | 15 | 10 h 40 m / 8 h | 2 / 3 | 180 | 40 |
-| Potato (`crop_potato`), v2.3.3106 | 5 | 6 | 2 h 40 m / 2 h | 3 / 4 or 5 | 90 | 12 |
-| Pumpkin (`crop_pumpkin`), v2.3.3106 | 10 | 25 | 29 h 20 m / 22 h | 2 / 3 | 320 | 60 |
-| Wheat (`crop_wheat`), v2.3.3110 | 1 | 3 | 20 m / 15 m | 3 / 4 or 5 | 35 | 6 |
-| Strawberry (`crop_strawberry`), v2.3.3110 | 1 | 4 | 1 h / 45 m | 3 / 4 or 5 | 60 | 10 |
-| Tomato (`crop_tomato`), v2.3.3110 | 5 | 5 | 1 h 40 m / 1 h 15 m | 3 / 4 or 5 | 75 | 11 |
-| Frostberry (`herb_frostberry`), v2.3.3110 | 5 | 8 | 4 h / 3 h | 2 / 3 | 110 | 26 |
-| Corn (`crop_corn`), v2.3.3110 | 10 | 9 | 5 h / 3 h 45 m | 2 / 3 | 125 | 28 |
-| Cabbage (`crop_cabbage`), v2.3.3110 | 10 | 11 | 7 h / 5 h 15 m | 2 / 3 | 150 | 34 |
-| Dewmelon (`herb_dewmelon`), v2.3.3110 | 10 | 18 | 15 h / 11 h 15 m | 2 / 3 | 220 | 48 |
-| Thunder Pepper (`herb_thunder_pepper`), v2.3.3110 | 15 | 12 | 9 h / 6 h 45 m | 3 / 4 or 5 | 200 | 30 |
-| Gloomcap (`herb_gloomcap`), v2.3.3110 | 15 | 20 | 18 h / 13 h 30 m | 2 / 3 | 270 | 55 |
-| Heartroot (`herb_heartroot`), v2.3.3110 | 20 | 28 | 24 h / 18 h | 2 / 3 | 340 | 70 |
+| Potato (`crop_potato`), v2.3.3115 | 5 | 6 | 2 h 40 m / 2 h | 3 / 4 or 5 | 90 | 12 |
+| Pumpkin (`crop_pumpkin`), v2.3.3115 | 10 | 25 | 29 h 20 m / 22 h | 2 / 3 | 320 | 60 |
+| Wheat (`crop_wheat`), v2.3.3119 | 1 | 3 | 20 m / 15 m | 3 / 4 or 5 | 35 | 6 |
+| Strawberry (`crop_strawberry`), v2.3.3119 | 1 | 4 | 1 h / 45 m | 3 / 4 or 5 | 60 | 10 |
+| Tomato (`crop_tomato`), v2.3.3119 | 5 | 5 | 1 h 40 m / 1 h 15 m | 3 / 4 or 5 | 75 | 11 |
+| Frostberry (`herb_frostberry`), v2.3.3119 | 5 | 8 | 4 h / 3 h | 2 / 3 | 110 | 26 |
+| Corn (`crop_corn`), v2.3.3119 | 10 | 9 | 5 h / 3 h 45 m | 2 / 3 | 125 | 28 |
+| Cabbage (`crop_cabbage`), v2.3.3119 | 10 | 11 | 7 h / 5 h 15 m | 2 / 3 | 150 | 34 |
+| Dewmelon (`herb_dewmelon`), v2.3.3119 | 10 | 18 | 15 h / 11 h 15 m | 2 / 3 | 220 | 48 |
+| Thunder Pepper (`herb_thunder_pepper`), v2.3.3119 | 15 | 12 | 9 h / 6 h 45 m | 3 / 4 or 5 | 200 | 30 |
+| Gloomcap (`herb_gloomcap`), v2.3.3119 | 15 | 20 | 18 h / 13 h 30 m | 2 / 3 | 270 | 55 |
+| Heartroot (`herb_heartroot`), v2.3.3119 | 20 | 28 | 24 h / 18 h | 2 / 3 | 340 | 70 |
 
 - **Seeds** are `seed_<crop>`. **Compost** is `compost`.
 - **Where the table lives:** the worker's copy is `server/src/farm.js` `FARM`.
@@ -71,7 +71,7 @@ Office's paid land, and visits from friends are Phases 3 and 4.
 - **The three herbs are the exact keys the Cookhouse's recipes already asked
   for**, which nothing in the game made until now.
 
-### The sixteen crops (v2.3.3110)
+### The sixteen crops (v2.3.3119)
 
 The owner: *"The main focus is just getting a good variety of crops to grow.
 Then the next step is deciding what each one does."* So ten more, appended to
@@ -148,8 +148,8 @@ would have paid 10 coins for a 2-coin seed.
 `farm:<pid>` holds `{v, beds, plots}`. It is registered in
 ARCHITECTURE-HANDOFF's storage-key table.
 
-- **`v` is the record's shape** (`FARM.V`: 1, then 2 since v2.3.3106 added
-  the potato and the pumpkin, then 3 since v2.3.3110 added the ten new
+- **`v` is the record's shape** (`FARM.V`: 1, then 2 since v2.3.3115 added
+  the potato and the pumpkin, then 3 since v2.3.3119 added the ten new
   crops). A worker refuses a record
   newer than it knows whole: opening, any action and the dev op answer
   `err: 'newer'`, the join says nothing, and nothing is read into it or
@@ -301,7 +301,7 @@ The crops, seeds and compost are emoji until the art exists:
     the free deed;
   - §14: a newer worker's record (`v` past `FARM.V`) is refused by opening,
     every action, the join and the dev op, and storage keeps it exactly.
-  - §17 (v2.3.3110): sixteen crops, the ten new ones appended and each a 3;
+  - §17 (v2.3.3119): sixteen crops, the ten new ones appended and each a 3;
     levels of 5 up to 20 (heartroot not sold at Farming 19, sold at 20); and
     EVERY crop bought at its price, planted, stamped with its version, ripe
     at its time, harvested for its yield and XP, and valued by Diego.

@@ -222,7 +222,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   });
   const CROP_IDS = Object.keys(FARM.CROPS);
   const crops = FARM_CROP_ORDER.filter((id) => CROP_IDS.indexOf(id) < grownCount);
-  /* v2.3.3110: the Farming levels that still have crops to open, lowest first. */
+  /* v2.3.3119: the Farming levels that still have crops to open, lowest first. */
   const lockedLevels = Array.from(new Set(crops.filter((id) => !unlocked(id)).map((id) => FARM.CROPS[id].lvl))).sort((a, b) => a - b);
   const seedCount = (id) => Math.floor(inv[FARM.CROPS[id].seed] || 0);
   const seed = seedPick && unlocked(seedPick) ? seedPick
@@ -383,7 +383,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                   );
                 })}
               </div>
-              {/* which seed the Plant tool sows.  v2.3.3110: only the seeds you
+              {/* which seed the Plant tool sows.  v2.3.3119: only the seeds you
                   can plant -- open to your level and in the bag (and the one
                   chosen) -- as sixteen crops made a wall of chips, most of
                   them locked; the Seeds tab says what opens when. */}
@@ -450,7 +450,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
               coins={coins} pending={pending} onBuy={(n) => farmBus.buy(S, FARM.COMPOST, n)}>
               <Chip color={C.good}>+50% harvest</Chip>
             </ShopRow>
-            {/* v2.3.3110: the crops still to come, one line a level -- twelve
+            {/* v2.3.3119: the crops still to come, one line a level -- twelve
                 locked rows stood between a new farmer and the compost. */}
             {lockedLevels.map((l) => (
               <div key={l} data-farm-locked={l} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '8px 0',
@@ -463,7 +463,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                 ))}
               </div>
             ))}
-            {/* v2.3.3102: every answer to a buy -- and its silence: a timeout
+            {/* v2.3.3111: every answer to a buy -- and its silence: a timeout
                 said nothing here, so the buttons just woke up again and invited a
                 second purchase of something the worker may already have sold. */}
             {status && last && ((last.did && last.did.op === 'buy') || last.op === 'buy' || last.err === 'off') ? (

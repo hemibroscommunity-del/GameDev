@@ -1554,7 +1554,7 @@ remnant to migrate server-side, not a mode to preserve.
       more than Diego's opening price for its goods; ~150 gold a day new, 450
       at most; `caps.farmorders`, kill switch `farmorders: false`;
       `farmorders` suite, `mp-farmorders`: docs/specs/farm-orders.md;
-    - since v2.3.3110 SIXTEEN CROPS -- the owner: "The main focus is just
+    - since v2.3.3119 SIXTEEN CROPS -- the owner: "The main focus is just
       getting a good variety of crops to grow. Then the next step is deciding
       what each one does": ten appended to `FARM.CROPS` (both copies,
       `FARM_CROP_IDS` order, caps.farmCrops 16), each `v: 3` and `FARM.V` 3 --
