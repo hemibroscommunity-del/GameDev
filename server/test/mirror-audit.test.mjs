@@ -172,6 +172,24 @@ const room = Object.create(GameRoom.prototype);
   });
   if (COOKING_RECIPES.length !== SRV.COOKING_RECIPES.length) bad.push({ length: { server: SRV.COOKING_RECIPES.length, client: COOKING_RECIPES.length } });
   check('COOKING_RECIPES per-index mirror (order is the wire format)', bad.length === 0, bad);
+  /* v2.3.3105: ...and those old effect fields are pinned to the worker they
+     describe, frozen here as v2.3.3102's table said them (review: comparing
+     on what the new worker reads had left them pinned to nothing).  Only the
+     first three rows carry one: CookPanel and the campfire offer a row an old
+     worker can cook by `recipe.buff`, and that worker has no fourth row. */
+  const OLD_WORKER = [
+    { buff: 'regen', power: 0.02, duration: 60 },
+    { buff: 'resist', power: 0.05, duration: 60 },
+    { buff: 'damage', power: 0.20, duration: 90 },
+  ];
+  const legacy = [];
+  COOKING_RECIPES.forEach((c, i) => {
+    const o = OLD_WORKER[i];
+    if (o ? (c.buff !== o.buff || c.power !== o.power || c.duration !== o.duration) : c.buff !== undefined) {
+      legacy.push({ i, client: { buff: c.buff, power: c.power, duration: c.duration }, oldWorker: o || 'none (no buff)' });
+    }
+  });
+  check('the client\'s old-worker effects match v2.3.3102\'s, on its three rows only', legacy.length === 0, legacy);
 }
 
 // ── 4b. v2.3.3105: DISHES, both directions, and every recipe makes a thing

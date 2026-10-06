@@ -9,13 +9,14 @@
  *      Brews, the Herb Bread cookable at Cooking 1, the three tonics listed.
  *   2. Cook puts a Herb Bread in the bag -- the worker's own copy agrees --
  *      and runs nothing yet.
- *   3. In the bag it files under the Consumable chip, with an Eat button that
- *      says what it does; eating it runs the meal for half an hour, and the
- *      HUD counts it in minutes.
+ *   3. In the bag it files under the Consumable chip (its popup's caption
+ *      says so), with an Eat button that says what it does; eating it runs
+ *      the meal for half an hour, and the HUD counts it in minutes.
  *   4. A Firebloom Tea (as bought on the market) drinks from the bag: the
  *      brew runs BESIDE the meal, and the HUD shows both.
  *   5. Diego's shelf is his two staples -- no tonic -- and he says he won't
- *      buy a tonic back.
+ *      buy a tonic back, nor a Herb Bread.
+ *   6. With the kill switch thrown, a bread in the bag still eats.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -130,7 +131,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForTimeout(800);
       const pop = await A.page.evaluate((v) => {
         const btn = Array.from(document.querySelectorAll('button')).find((b) => (b.textContent || '').trim() === v);
-        return { btn: !!btn, text: (document.body.innerText || '').replace(/\s+/g, ' ') };
+        const cap = document.querySelector('[data-item-caption]');
+        return { btn: !!btn, text: (document.body.innerText || '').replace(/\s+/g, ' '),
+          caption: cap ? cap.getAttribute('data-item-caption') : null };
       }, verb);
       const info = /twice as fast|20% damage/i.exec(pop.text || '');
       const btn = await A.page.$(`button:text-is("${verb}")`);
@@ -140,12 +143,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         try { window.__broDashPanelBus.clear(); } catch (e) {}
       });
       await A.page.waitForTimeout(500);
-      return { tile: true, btn: pop.btn, info: info ? info[0] : null };
+      return { tile: true, btn: pop.btn, info: info ? info[0] : null, caption: pop.caption };
     };
     const ate = await useFromBag('meal_herb_bread', 'Eat');
     const fed = await H.readState(A, (S) => ({ bread: ((S.rpg && S.rpg.inventory) || {}).meal_herb_bread || 0,
       regenMs: S._regenBuff ? S._regenBuff - Date.now() : 0 }));
     rec.ok('its popup has an Eat button and says what it does', ate.tile && ate.btn && !!ate.info, ate);
+    /* v2.3.3105 review: the caption was the category's id, POTION, on a bread */
+    rec.ok('...and its caption is the chip\'s word, Consumable (not Potion)', ate.caption === 'Consumable', ate);
     rec.ok('...and eating it runs the meal for half an hour, the bread used up', fed.bread === 0 && fed.regenMs > 28 * 60000 && fed.regenMs <= 30 * 60000, fed);
     const hud1 = await A.page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
     /* The chip is its icon and its time -- the green heart, then "30m". */
@@ -182,8 +187,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForTimeout(250);
     }
     rec.ok('...and offered a Fury Tonic, he says he won\'t buy it (no Sell button to press)', !!act && act.disabled && /won.t buy/i.test(act.label), act);
+    /* v2.3.3105 review: nor a dish -- its own pile paid more than its herbs' */
+    await H.grant(wsPort, id, 'item', { invKey: 'meal_herb_bread', count: 1 });
+    await A.page.waitForTimeout(1500);
+    await A.page.evaluate(() => { try { window.__broShopBus.setSel('meal_herb_bread', 'bag'); } catch (e) {} });
+    let actDish = null;
+    for (let i = 0; i < 20; i++) {
+      actDish = await A.page.evaluate(() => { const b = document.querySelector('[data-shop-act]'); return b ? { label: (b.textContent || '').trim(), disabled: !!b.disabled } : null; });
+      if (actDish && /won.t buy/i.test(actDish.label)) break;
+      await A.page.waitForTimeout(250);
+    }
+    rec.ok('...nor a Herb Bread (food is for eating, giving and the auction house)', !!actDish && actDish.disabled && /won.t buy/i.test(actDish.label), actDish);
     await shot(A, 'diego');
     await A.page.evaluate(() => window.__broShopBus.setOpen(false));
+
+    /* ── 6. the kill switch keeps the food in bags edible ──
+       `meals: false` reaches a page as caps.meals FALSE at its next join (an
+       old worker sends none at all); the bag must keep Eat on a bread then.
+       The flag is thrown on the worker for real, and the page given the caps
+       that join would bring. */
+    const flag = (method, body) => fetch(`http://127.0.0.1:${wsPort}/api/admin/flags` + (method === 'DELETE' ? '?name=meals' : ''), {
+      method, headers: { Authorization: 'Bearer ' + H.ADMIN_KEY, 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    }).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }));
+    const thrown = await flag('POST', { name: 'meals', value: false });
+    await A.page.evaluate(() => { const S = window._gameState && window._gameState.current; if (S && S._serverCaps) S._serverCaps.meals = false; });
+    const offEat = await useFromBag('meal_herb_bread', 'Eat');
+    const srvOff = await H.adminPlayer(wsPort, id);
+    const rpgOff = (srvOff && srvOff.rpg) || {};
+    rec.ok('with the switch thrown (caps.meals false) a bread in the bag still has Eat, and the worker eats it',
+      !!(thrown && thrown.ok !== false) && offEat.tile && offEat.btn && !((rpgOff.inventory || {}).meal_herb_bread)
+      && Number((rpgOff._buffs || {}).rest) > Date.now() + 28 * 60000, { thrown, offEat, inv: rpgOff.inventory, buffs: rpgOff._buffs });
+    await flag('DELETE');
 
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 3));
   } finally {

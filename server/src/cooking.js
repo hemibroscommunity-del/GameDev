@@ -17,8 +17,10 @@ import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, manaSurge
 
 /* v2.3.3105: the timers -- and their magnitudes -- each slot owns
    (_clearBuffSlot).  A magnitude listed here goes with its timer, never
-   apart from it. */
-const MEAL_BUFF_KEYS = ['regen', 'resist'];
+   apart from it.  `rest` is the Herb Bread's; `regen` is the bread's timer
+   from before (v2.3.3102, 60 s), cleared with the meal slot and read by
+   nothing here (data.js DISHES says why the bread moved off it). */
+const MEAL_BUFF_KEYS = ['rest', 'regen', 'resist'];
 /* v2.3.3105: how many recipes a worker before caps.meals had (Herb Bread, Root
    Stew, Firebloom Tea) -- the only ones an old client can cook, the old
    (instant) way, and the only ones that still cook with `meals: false`. */
@@ -228,11 +230,15 @@ export const cookingMethods = {
     if (!dish && !item) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
+    /* v2.3.3105: the phone took the bottle out of its bag and drew its effect
+       already -- a refusal puts both back on its screen, as eating's does
+       (a plain echo of nothing that changed sends a v2 client nothing). */
+    const refuse = () => { const w = this._wsBySessionId(session.id); if (w) this._resendPlayerState(w, session.id, ['inventory', 'hp', '_buffs']); };
+    if (ps.dying || ps.dead || ps.disconnected) { refuse(); return; }
     if (!ps.inventory) ps.inventory = {};
-    if ((ps.inventory[invKey] || 0) <= 0) return;
+    if ((ps.inventory[invKey] || 0) <= 0) { refuse(); return; }
     /* Before the decrement -- see REFUSAL DOES NOT CONSUME above. */
-    if (!(dish ? this._applyDish(ps, dish) : this._applyShopItem(ps, item))) return;
+    if (!(dish ? this._applyDish(ps, dish) : this._applyShopItem(ps, item))) { refuse(); return; }
     ps.inventory[invKey] -= 1;
     if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
     this._saveRpg(session.id, ps);
@@ -456,8 +462,8 @@ export const cookingMethods = {
    * The rule above it was wholesale because every timed effect shared one
    * record and a magnitude cleared by name could outlive its timer -- so each
    * slot lists its timers WITH their magnitudes, and a slot is cleared whole:
-   * a brew never strands damageMul, a meal never leaves a stale regen.
-   * Damage, mana and speed are brews; regen and resist are meals.  `hp` was
+   * a brew never strands damageMul, a meal never leaves a stale rest.
+   * Damage, mana and speed are brews; rest and resist are meals.  `hp` was
    * only ever written by the retired 'all' recipe shape, a brew-like grab-bag;
    * it goes with the brews so nothing can keep it alive.  Anything else in
    * _buffs is pruned by _saveRpg (persistence.js _pruneBuffs). */
@@ -487,10 +493,10 @@ export const cookingMethods = {
      a dish it cannot apply (nothing is used up then). */
   _applyDish(ps, dish) {
     if (!ps || !dish || (dish.slot !== 'meal' && dish.slot !== 'brew')) return false;
-    if (dish.buff !== 'regen' && dish.buff !== 'resist' && dish.buff !== 'damage') return false;
+    if (dish.buff !== 'rest' && dish.buff !== 'resist' && dish.buff !== 'damage') return false;
     this._clearBuffSlot(ps, dish.slot);
     const endsAt = Date.now() + Math.max(1, Math.floor(Number(dish.duration) || 60)) * 1000;
-    if (dish.buff === 'regen') ps._buffs.regen = endsAt;
+    if (dish.buff === 'rest') ps._buffs.rest = endsAt;
     else if (dish.buff === 'resist') ps._buffs.resist = endsAt;
     else {
       /* The dish's own `power` is its magnitude (v2.3.3102); combat.js bounds

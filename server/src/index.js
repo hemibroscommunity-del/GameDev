@@ -3438,8 +3438,10 @@ export class GameRoom {
              2% of max HP a second in or out of a fight for 60 s (v2.3.3102,
              below until now); as a meal you carry for thirty minutes that would
              be a full bar every fifty seconds mid-fight, so it is the plan's
-             "out-of-combat healing twice as fast" instead. */
-          const _herb = this._buffActive(ps, 'regen') ? HERB_REGEN_MULT : 1;
+             "out-of-combat healing twice as fast" instead -- read off its own
+             timer, `rest`: v2.3.3102 reads `regen` the old way, so a rollback
+             to it must not find a half-hour one there (data.js DISHES). */
+          const _herb = this._buffActive(ps, 'rest') ? HERB_REGEN_MULT : 1;
           const heal = Math.max(1, Math.round(ps.maxHp * this.SPOKE_REGEN_PCT * _herb));
           const beforeHp = ps.hp;
           ps.hp = Math.min(ps.maxHp, ps.hp + heal);
@@ -3449,7 +3451,8 @@ export class GameRoom {
       /* v2.3.3102 made HERB BREAD heal at all: its recipe always wrote a
          `regen` timer that nothing on the worker read.  v2.3.3105 moved that
          reader into the out-of-combat trickle above (a meal now lasts half an
-         hour), so the timer is read in exactly one place. */
+         hour) under the bread's own `rest` timer, so it is read in exactly one
+         place and `regen` in none. */
 
       // Stamina: shield drain takes priority over regen.  When blocking,
       // drain ~5/tick and auto-release at 0 (mirrors client behavior at

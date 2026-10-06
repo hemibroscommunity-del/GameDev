@@ -13,19 +13,18 @@
  *      takes its magnitudes with its timers (nothing stranded).
  *   4. The three tonics brew from herbs, at their Cooking levels.
  *   5. The Herb Bread doubles the out-of-combat healing -- never mid-fight,
- *      never in a duel or an arena match.
+ *      never in a duel or an arena match -- under its own `rest` timer, never
+ *      `regen` (a rollback to v2.3.3102 reads `regen` as 2% a second).
  *   6. The kill switch (`meals: false`) un-advertises and refuses a carry
  *      cook before anything is used; dishes in bags still eat and drink.
- *   7. Diego sells his two staples, not the tonics, buys no tonic back, and
- *      pays no more for a dish than for the herbs it was made from.
+ *   7. Diego sells his two staples, not the tonics, and buys no tonic and no
+ *      dish -- a dish's own pile would pay more than its herbs' (review).
  *   8. Forged keys: '__proto__', unknown dishes, a brew through eat, a meal
  *      through drink, an empty bag -- nothing applies, nothing is used.
  *   9. The buffs survive a save; the dish is in the saved bag.
  */
 import { GameRoom } from '../src/index.js';
 import { COOKING_RECIPES, DISHES, SHOP_ITEMS, DIEGO_SHELF } from '../src/data.js';
-import { FARM_SHOP_BASE } from '../src/farm.js';
-import { DISH_SHOP_BASE } from '../src/shop.js';
 
 function makeState() {
   const store = new Map();
@@ -87,7 +86,7 @@ P._buffs = {};
   check('a carried cook makes a Herb Bread in the bag', P.inventory.meal_herb_bread === 1, P.inventory);
   check('...uses its Firebloom', P.inventory.herb_firebloom === 19, P.inventory.herb_firebloom);
   check('...pays the Cooking XP (tier x 25)', P.lifeSkills.cooking.xp === 25, P.lifeSkills.cooking);
-  check('...and runs NOTHING yet -- the bread waits in the bag', !room._buffActive(P, 'regen') && Object.keys(P._buffs || {}).length === 0, P._buffs);
+  check('...and runs NOTHING yet -- the bread waits in the bag', !room._buffActive(P, 'rest') && Object.keys(P._buffs || {}).length === 0, P._buffs);
   check('...and the bag is echoed', ws.sent.some((m) => m.type === 'player_state'));
   check('...and saved', ((st._store.get('rpg:' + PID) || {}).inventory || {}).meal_herb_bread === 1, (st._store.get('rpg:' + PID) || {}).inventory);
   for (const k of ['meal_root_stew', 'brew_firebloom_tea']) await send(ws, 'cook_recipe', { recipeIdx: idx(k), carry: true });
@@ -96,15 +95,19 @@ P._buffs = {};
   const before = P.inventory.meal_herb_bread;
   await send(ws, 'cook_recipe', { recipeIdx: idx('meal_herb_bread') });
   check('an old client\'s cook is the dish made and eaten at once -- nothing extra in the bag',
-    room._buffActive(P, 'regen') && P.inventory.meal_herb_bread === before, { buffs: P._buffs, bread: P.inventory.meal_herb_bread });
+    room._buffActive(P, 'rest') && P.inventory.meal_herb_bread === before, { buffs: P._buffs, bread: P.inventory.meal_herb_bread });
   P._buffs = {};
 }
 
 // ── 2. a meal is eaten, a brew drunk ──
 {
   await send(ws, 'eat_request', { invKey: 'meal_herb_bread' });
-  check('eating a Herb Bread runs it for half an hour', room._buffActive(P, 'regen')
-    && P._buffs.regen > now() + 29 * 60000 && P._buffs.regen <= now() + 30 * 60000, P._buffs);
+  check('eating a Herb Bread runs it for half an hour', room._buffActive(P, 'rest')
+    && P._buffs.rest > now() + 29 * 60000 && P._buffs.rest <= now() + 30 * 60000, P._buffs);
+  /* v2.3.3102's worker heals 2% of max HP a second, in or out of a fight,
+     while a `regen` timer runs -- its bread's, for 60 s.  A rollback to it
+     must not find a half-hour one there (review: three finders proved it). */
+  check('...on its OWN timer, `rest` -- no `regen` for an older worker to misread', P._buffs.regen === undefined, P._buffs);
   check('...and uses it up', !P.inventory.meal_herb_bread, P.inventory);
   await send(ws, 'potion_drink', { invKey: 'brew_firebloom_tea' });
   check('drinking a Firebloom Tea is +20% damage for half an hour', room._buffActive(P, 'damage')
@@ -122,7 +125,7 @@ P._buffs = {};
 // ── 3. one meal and one brew ──
 {
   await send(ws, 'eat_request', { invKey: 'meal_root_stew' });
-  check('a Root Stew REPLACES the Herb Bread (both meals)', room._buffActive(P, 'resist') && !room._buffActive(P, 'regen'), P._buffs);
+  check('a Root Stew REPLACES the Herb Bread (both meals)', room._buffActive(P, 'resist') && !room._buffActive(P, 'rest'), P._buffs);
   check('...and runs BESIDE the tea (a brew)', room._buffActive(P, 'damage') && P._buffs.damageMul === 1.2, P._buffs);
   P.inventory.whetstone = 1;
   await send(ws, 'potion_drink', { invKey: 'whetstone' });
@@ -176,6 +179,14 @@ P._buffs = {};
   P._arenaMatch = 't1';
   check('...never in an arena match', tick(10000) === 0, P.hp);
   delete P._arenaMatch;
+  /* duel.js _duelFor: an ACTIVE duel naming the player */
+  const duels0 = room._duels;
+  room._duels = new Map([['d1', { status: 'active', a: PID, b: 'bp_meals_rival' }]]);
+  check('...never in a duel', tick(10000) === 0, P.hp);
+  room._duels = duels0;
+  /* An older worker's 60 s `regen` timer (v2.3.3102) doubles nothing here. */
+  P._buffs = { regen: now() + 60000 };
+  check('...and an old `regen` timer is not the bread', tick(10000) === plain, P.hp);
   P._buffs = {};
   check('...and without it, the plain trickle', tick(10000) === plain, P.hp);
 }
@@ -205,7 +216,7 @@ P._buffs = {};
     !room._buffActive(P, 'damage') && P.inventory.herb_firebloom === fb2, { buffs: P._buffs, fb: P.inventory.herb_firebloom });
   await send(ws, 'cook_recipe', { recipeIdx: idx('meal_herb_bread') });
   check('...while the old three still cook the old way (an old client\'s Cookhouse keeps working)',
-    room._buffActive(P, 'regen') && P.inventory.herb_firebloom === fb2 - 1, { buffs: P._buffs, fb: P.inventory.herb_firebloom });
+    room._buffActive(P, 'rest') && P.inventory.herb_firebloom === fb2 - 1, { buffs: P._buffs, fb: P.inventory.herb_firebloom });
   room._liveFlags = { ...room._liveFlags, meals: true };
 }
 
@@ -238,15 +249,24 @@ P._buffs = {};
   check('...and an old pile of tonics is not back on sale: not listed, not sold, quoted at nothing',
     !relisted.items.some((i) => i.key === 'whetstone' || i.key === 'manaShard') && !rPile.ok && qPile.qty === 0,
     { listed: relisted.items.map((i) => i.key), rPile, qPile });
-  /* A dish is worth its herbs to him, never more: cooking pays in use and
-     Cooking XP, not in coins at his counter. */
-  for (const r of COOKING_RECIPES) {
-    if (!DISHES[r.makes]) continue;
-    let herbs = 0;
-    for (const [k, n] of Object.entries(r.ingredients)) herbs += (FARM_SHOP_BASE[k] || 0) * n;
-    check(r.makes + ' is worth exactly its herbs to him (' + herbs + ')', DISH_SHOP_BASE[r.makes] === herbs && room._shopBaseValue(r.makes) === herbs,
-      { dish: room._shopBaseValue(r.makes), herbs });
+  /* He buys no dish (review): a dish's pile of its own started at the top of
+     his curve while its herbs' piles sat low, so ten Root Stews paid ten times
+     what their herbs did once the herb piles had filled. */
+  for (const k of Object.keys(DISHES)) {
+    const cook = { coins: 0, inventory: Object.assign(Object.create(null), { [k]: 3 }) };
+    const sold = await room._shopSell(cook, k, 1);
+    const q = await room._shopQuote(k, 1, 'sell');
+    const offered = (await room._shopList([k])).items.some((i) => i.key === k);
+    check('he buys no ' + k + ': refused, quoted at nothing, offered no price', !sold.ok && cook.inventory[k] === 3 && cook.coins === 0
+      && q.qty === 0 && q.total === 0 && !offered, { sold, q, offered });
   }
+  /* ...and none comes out of a pile, should one ever hold a dish */
+  const pile2 = await room._shopStock();
+  pile2.meal_root_stew = 5;
+  await room._shopSaveStock(pile2);
+  const dishBuy = await room._shopBuy({ coins: 500, inventory: Object.create(null) }, 'meal_root_stew', 1);
+  check('...nor sells one out of a pile', !dishBuy.ok && !(await room._shopList([])).items.some((i) => i.key === 'meal_root_stew')
+    && (await room._shopQuote('meal_root_stew', 1, 'buy')).qty === 0, dishBuy);
   /* The auction house files food with the potions -- the bag's Consumable
      chip -- not under Crafting. */
   check('the auction house files a meal, a cooked fish and a brew with the potions (Consumable)',
@@ -291,6 +311,11 @@ P._buffs = {};
   const rec = st._store.get('rpg:' + PID) || {};
   check('...and the stored record holds them, and the stew still in the bag',
     rec._buffs && rec._buffs.resist > now() && rec._buffs.damageMul === 1.2 && rec.inventory && rec.inventory.meal_root_stew === 1, { buffs: rec._buffs, inv: rec.inventory });
+  P.inventory.meal_herb_bread = 1;
+  await send(ws, 'eat_request', { invKey: 'meal_herb_bread' });
+  const rec2 = st._store.get('rpg:' + PID) || {};
+  check('...a bread is stored as `rest`, never `regen` (what a rollback would read)',
+    rec2._buffs && rec2._buffs.rest > now() + 29 * 60000 && rec2._buffs.regen === undefined, rec2._buffs);
 }
 
 // ── 12. a refusal's echo reaches a v2 client (every live client is one) ──
@@ -325,6 +350,9 @@ P._buffs = {};
   check('...and a cook the worker finds the herbs short for', echoed(ws2).length === 1 && Q.inventory.herb_firebloom === 2 && !Q.inventory.whetstone, ws2.sent.map((m) => m.type));
   await send(ws2, 'eat_request', { invKey: 'meal_root_stew' });
   check('...and a meal it does not hold (the phone took one it drew)', echoed(ws2).length === 1, ws2.sent.map((m) => m.type));
+  await send(ws2, 'potion_drink', { invKey: 'brew_firebloom_tea' });
+  const drank = ws2.sent.filter((m) => m.type === 'player_state' && m.payload && m.payload.inventory && m.payload._buffs);
+  check('...and a brew it does not hold (the phone drew its effect too)', drank.length === 1, ws2.sent.map((m) => m.type));
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall meals checks passed');

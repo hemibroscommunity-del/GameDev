@@ -1434,12 +1434,17 @@ remnant to migrate server-side, not a mode to preserve.
       magnitudes with its timers; damage is only ever a brew (combat.js's
       ceiling was sized at one x2 brew); meals last 30 min;
     - Diego's tonics are BREWED (recipes 3-5), off his shelf (`DIEGO_SHELF`)
-      and still never bought back; a dish is worth its herbs to him;
+      and still never bought back; he buys NO dish either (`isCookhouseDish`:
+      a dish's own pile paid more than its herbs' fuller ones);
     - the Herb Bread doubles the out-of-combat healing (`HERB_REGEN_MULT`),
-      never mid-fight; meals and cooked fish file under the bag's Consumable
-      chip (no sixth chip: one per slot column);
-    - kill switch `meals: false`; `meals` suite, `mp-meals`:
-      docs/specs/meals.md.)
+      never mid-fight, on its own `_buffs.rest` timer -- NEVER `regen`, which
+      v2.3.3102 reads as 2% a second mid-fight (a rollback's trap); meals and
+      cooked fish file under the bag's Consumable chip (no sixth chip: one per
+      slot column);
+    - every refused cook, meal or drink is RESENT (`_resendPlayerState`: a v2
+      delta of nothing sends nothing);
+    - kill switch `meals: false` (caps.meals false, not absent: the bag keeps
+      Eat and Drink); `meals` suite, `mp-meals`: docs/specs/meals.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
