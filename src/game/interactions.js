@@ -31,7 +31,19 @@ export function sendEmote(S, emoji, deps) {
 export function enterBuilding(S, deps) {
   var setBuildingPanel = deps.setBuildingPanel;
     var nb = S.nearBuilding;
-    if (nb === null) return;
+    if (nb === null) {
+      /* v2.3.3066: a Wheel door that opens a hall of its own -- the Guild
+         Hall, the Post Office, the Sheriff's Office (data/wheelBuildingDoors.js
+         WHEEL_HALL_DOORS) -- rather than one of today's buildings.  Not counted
+         in visitedBuildings: those are BUILDINGS indexes, and mayor_1's "visit
+         3 buildings" counts the twelve. */
+      var _hall = S._nearWheelBuilding && S._nearWheelBuilding.hall;
+      if (_hall) {
+        BT_AUDIO.enterBuilding();
+        setBuildingPanel(_hall);
+      }
+      return;
+    }
     var b = BUILDINGS[nb];
     if (!b.action && !b.id) return;
     BT_AUDIO.enterBuilding();

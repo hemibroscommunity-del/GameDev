@@ -38,6 +38,9 @@ forge all work from anywhere — the server never asked which zone you were in).
   open yet. Standing at one shows its name and **"Shut for now"** in a small
   caption (not a button) so nobody takes the door for broken. The **Town
   Hall** shows nothing: Mayor Bro stands on its steps.
+  - **Since v2.3.3066** three of them open halls of their own: the Guild Hall,
+    the Post Office and the Sheriff's Office (docs/specs/wheel-halls.md).
+  - Only the Hotel is still shut.
 - **Diego keeps the General Store.** The shopkeeper who buys your loot stands
   west of its steps, facing the street. Walk up to him (within 90 px) or tap
   him and his window opens, as in the old town. Standing at the store's door

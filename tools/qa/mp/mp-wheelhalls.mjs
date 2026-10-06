@@ -1,0 +1,218 @@
+/* ═══ THE WHEEL'S HALLS, ON A PHONE (v2.3.3066) ═══
+ *
+ * Asked to "keep going with pragmatic enhancements": three of the plan's new
+ * buildings open onto systems the game already has (data/wheelBuildingDoors.js
+ * WHEEL_HALL_DOORS), and a clan invite can be taken up at last.
+ *
+ * Two real players against a real worker, in the Wheel's Brotown, on phones:
+ *   1. the client knows the halls -- the Guild Hall, the Post Office, the
+ *      Sheriff's Office -- and only the Hotel is still shut;
+ *   2. the Guild Hall: "Enter GUILD HALL" at its steps; inside, Clans and
+ *      Skill guilds; each opens its panel (the clan and guild panels nothing
+ *      in play opened before); a clan FOUNDED there (500 gold), the worker
+ *      echoing it;
+ *   3. a clan invite: the leader invites the other player, whose screen
+ *      raises the invite card wherever they are; Accept, and the worker puts
+ *      them in the clan;
+ *   4. the Sheriff's Office: "Duel a player" opens the player list (the other
+ *      player in it), "The arena" the arena's sign-up;
+ *   5. the Hotel still says "Shut for now";
+ *   6. the Post Office: your mail -- the gold granted this visit, as the
+ *      worker's mail delivered it -- and "Messages from friends" opens the
+ *      Social panel;
+ *   7. no page errors.
+ * Pictures: tools/qa/mp/out/wheelhalls-*.png.
+ */
+import * as H from './harness.mjs';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+const PHONE = { width: 390, height: 844 };
+
+export async function run({ browser, wsPort, webPort, rec }) {
+  const OUT = join(H.REPO, 'tools/qa/mp/out');
+  mkdirSync(OUT, { recursive: true });
+  const shot = (P, name) => P.page.screenshot({ path: join(OUT, `wheelhalls-${name}.png`) }).catch(() => {});
+  const { WHEEL_HALL_DOORS, WHEEL_SHUT_DOORS } = await import(H.REPO + '/src/data/wheelBuildingDoors.js');
+
+  const A = await H.newPlayer(browser, { name: 'Hallbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
+  const B = await H.newPlayer(browser, { name: 'Joinbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
+  const errors = [];
+  for (const P of [A, B]) P.page.on('pageerror', (e) => errors.push(`${P.name}: ${String((e && e.message) || e).slice(0, 200)}`));
+  let stopAlive = false;
+  for (const P of [A, B]) {
+    (async () => {
+      while (!stopAlive) {
+        await P.page.keyboard.press('Control').catch(() => {});
+        for (let i = 0; i < 40 && !stopAlive; i++) await P.page.waitForTimeout(500).catch(() => {});
+      }
+    })();
+  }
+  try {
+    await H.enterWorld(A);
+    await H.enterWorld(B);
+    const inWheel = async (P) => H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),
+      (v) => v.zone === 'wheel' && !v.loading, { timeout: 120000, label: `${P.name} in the Wheel` }).catch(() => null);
+    const wa = await inWheel(A), wb = await inWheel(B);
+    rec.ok('both players in the Wheel (guard)', !!wa && !!wb, { wa, wb });
+    if (!wa || !wb) return;
+    const aId = await H.readState(A, (S) => S.myId), bId = await H.readState(B, (S) => S.myId);
+    for (const id of [aId, bId]) {
+      await H.devOp(wsPort, 'quests', id);
+      await H.devOp(wsPort, 'vitals', id, { god: true, godMinutes: 30 });
+    }
+    /* a phone has no keyboard (mp-wheeldoors' note): no "E" hint */
+    for (const P of [A, B]) await P.page.evaluate(() => { setInterval(() => { const S = window._gameState && window._gameState.current; if (S) S._isDesktop = false; }, 120); });
+    await A.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
+
+    /* the boots at (x, bootsY): S.player is the body's middle (mp-wheeldoors) */
+    const standAt = async (P, x, bootsY) => {
+      for (let k = 0; k < 4; k++) {
+        const dy = await P.page.evaluate(() => { const S = window._gameState.current, g = window.__btPlayerGround(); return g.y - S.player.y; });
+        await H.hopTo(P, x, bootsY - dy, { step: 100, gap: 260, tries: 90 });
+        await P.page.waitForTimeout(800);
+        const g = await P.page.evaluate(() => window.__btPlayerGround());
+        if (Math.hypot(g.x - x, g.y - bootsY) < 12) return true;
+      }
+      return false;
+    };
+    const enterBtn = (P) => P.page.evaluate(() => {
+      const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || ''));
+      const shut = document.querySelector('[data-wheel-shut-door]');
+      return { btn: b ? (b.textContent || '').trim() : null, hall: b ? b.getAttribute('data-enter-hall') : null, shut: shut ? (shut.textContent || '').trim() : null };
+    });
+    const tapEnter = (P) => P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || '')); if (b) b.click(); });
+    const waitSel = async (P, sel, ms = 4000) => {
+      for (let t0 = Date.now(); Date.now() - t0 < ms;) {
+        const ok = await P.page.evaluate((s) => { const e = document.querySelector(s); if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 20 && r.height > 20; }, sel);
+        if (ok) return true;
+        await P.page.waitForTimeout(200);
+      }
+      return false;
+    };
+    const tap = (P, sel) => P.page.evaluate((s) => { const e = document.querySelector(s); if (e) e.click(); return !!e; }, sel);
+    const closeCard = async (P) => { await P.page.evaluate(() => { const b = document.querySelector('.bt-inspect-close'); if (b) b.click(); }); await P.page.waitForTimeout(400); };
+    const atDoor = async (P, d) => {
+      await standAt(P, d.x, d.y + 30);
+      let r = null;
+      for (let i = 0; i < 16; i++) { r = await enterBtn(P); if (r.btn || r.shut) break; await P.page.waitForTimeout(250); }
+      return r;
+    };
+    const enterHall = async (P, d) => {
+      const r = await atDoor(P, d);
+      await tapEnter(P);
+      const open = await waitSel(P, `[data-wheel-hall="${d.hall}"]`);
+      return { r, open };
+    };
+
+    /* ── 1. the halls ── */
+    let doors = [];
+    for (let i = 0; i < 40 && doors.length < 17; i++) {
+      doors = await A.page.evaluate(() => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []));
+      if (doors.length < 17) await A.page.waitForTimeout(500);
+    }
+    const byId = Object.fromEntries(doors.map((d) => [d.id, d]));
+    const halls = doors.filter((d) => d.hall), shut = doors.filter((d) => d.closed);
+    rec.ok(`the client knows the halls -- ${halls.map((d) => d.name).join(', ')} -- and only ${shut.map((d) => d.name).join(', ')} is still shut`,
+      halls.length === 3 && Object.keys(WHEEL_HALL_DOORS).every((k) => byId[k] && byId[k].hall === WHEEL_HALL_DOORS[k] && byId[k].index < 0 && !byId[k].closed)
+        && shut.length === 1 && WHEEL_SHUT_DOORS.every((k) => byId[k] && byId[k].closed), doors.map((d) => [d.id, d.index, d.hall, d.closed]));
+
+    /* ── 2. the Guild Hall ── */
+    const gh = byId.guildhall;
+    const g1 = await enterHall(A, gh);
+    const rows = await A.page.evaluate(() => Array.from(document.querySelectorAll('[data-wheel-hall] [data-hall-row]')).map((b) => b.getAttribute('data-hall-row')));
+    await shot(A, 'guildhall');
+    rec.ok(`the Guild Hall: "${g1.r && g1.r.btn}" at its steps, and inside, ${rows.join(' and ')}`,
+      !!g1.r && /Enter\s*GUILD HALL/.test(g1.r.btn || '') && g1.r.hall === 'guildhall' && g1.open && rows.join() === 'clan,guild', { g1, rows });
+    await tap(A, '[data-hall-row="clan"]');
+    const clanOpen = await waitSel(A, '[data-panel="clan"]');
+    const hallGone = await A.page.evaluate(() => !document.querySelector('[data-wheel-hall]'));
+    await shot(A, 'clan');
+    rec.ok('...Clans opens the clan panel (the hall closing behind it) -- a panel nothing in play opened before', clanOpen && hallGone, { clanOpen, hallGone });
+    /* found a clan there: 500 gold, through the panel's own form */
+    await H.grant(wsPort, aId, 'gold', { amount: 600 });
+    await A.page.waitForTimeout(1500);
+    await tap(A, '[data-panel="clan"] button.button-primary');   /* Create Clan (500g) */
+    await A.page.waitForTimeout(400);
+    await A.page.fill('[data-panel="clan"] input[placeholder="My Awesome Clan"]', 'Hall Bros').catch(() => {});
+    await A.page.fill('[data-panel="clan"] input[placeholder="CLAN"]', 'HALL').catch(() => {});
+    await tap(A, '[data-panel="clan"] button.button-primary');   /* found it */
+    const founded = await H.waitFor(A, (S) => (S._clanData ? { tag: S._clanData.tag, name: S._clanData.name } : null), (v) => !!v && v.tag === 'HALL', { timeout: 15000, label: 'the clan founded' }).catch(() => null);
+    rec.ok(`...and a clan founded there, the worker's echo naming it [${founded && founded.tag}] ${founded && founded.name}`, !!founded, founded);
+    await closeCard(A);
+    const g2 = await enterHall(A, gh);
+    const clanRow = await A.page.evaluate(() => { const r = document.querySelector('[data-hall-row="clan"]'); return r ? (r.textContent || '').trim() : null; });
+    await tap(A, '[data-hall-row="guild"]');
+    const guildOpen = await waitSel(A, '[data-panel="guild"]');
+    await shot(A, 'guild');
+    rec.ok(`...the hall now names your clan ("${clanRow}"), and Skill guilds opens the guild panel`, g2.open && /\[HALL\]/.test(clanRow || '') && guildOpen, { clanRow, guildOpen });
+    await closeCard(A);
+
+    /* ── 3. a clan invite, taken up ── */
+    await A.page.evaluate((target) => {
+      const S = window._gameState.current;
+      S.channel.send({ type: 'broadcast', event: 'clan_invite', payload: { target, from: S.myId, fromName: S.myName, clanName: S._clanData.name, clanTag: S._clanData.tag } });
+    }, bId);
+    const card = await waitSel(B, '[data-clan-invite] .bt-inspect-card', 8000);
+    const cardText = await B.page.evaluate(() => { const c = document.querySelector('[data-clan-invite] .bt-inspect-card'); return c ? (c.textContent || '').replace(/\s+/g, ' ').trim() : null; });
+    await shot(B, 'invite');
+    rec.ok(`the invited player's screen raises the invite card wherever they are: "${cardText}"`, card && /\[HALL\] Hall Bros/.test(cardText || '') && /Hallbro/.test(cardText || ''), cardText);
+    await tap(B, '[data-clan-invite-accept]');
+    const joined = await H.waitFor(B, (S) => (S._clanData ? S._clanData.tag : null), (v) => v === 'HALL', { timeout: 15000, label: 'joined the clan' }).catch(() => null);
+    const cardGone = await B.page.evaluate(() => !document.querySelector('[data-clan-invite]'));
+    rec.ok('...Accept, and the worker puts them in the clan (its echo on their screen), the card gone', joined === 'HALL' && cardGone, { joined, cardGone });
+
+    /* ── 4. the Sheriff's Office ── */
+    const sh = byId.sheriff;
+    const s1 = await enterHall(A, sh);
+    await shot(A, 'sheriff');
+    await tap(A, '[data-hall-row="duel"]');
+    const plist = await waitSel(A, '.bt-plist');
+    let names = [];
+    for (let i = 0; i < 12; i++) {
+      names = await A.page.evaluate(() => Array.from(document.querySelectorAll('.bt-plist-name')).map((n) => (n.textContent || '').trim()));
+      if (names.some((n) => /Joinbro/.test(n))) break;
+      await A.page.waitForTimeout(400);
+    }
+    await shot(A, 'players');
+    rec.ok(`the Sheriff's Office: "${s1.r && s1.r.btn}", and Duel a player opens the player list, the other player in it (${names.join(', ')})`,
+      !!s1.r && /Enter\s*SHERIFF'S OFFICE/.test(s1.r.btn || '') && s1.open && plist && names.some((n) => /Joinbro/.test(n)), { s1, names });
+    /* the list's own close is BroTown's setter (window._uiPanels, its QA hook) */
+    await A.page.evaluate(() => { if (window._uiPanels && window._uiPanels.playerList) window._uiPanels.playerList(false); });
+    await A.page.waitForTimeout(400);
+    await enterHall(A, sh);
+    await tap(A, '[data-hall-row="arena"]');
+    let arenaKey = null;
+    for (let i = 0; i < 12 && arenaKey !== 'party'; i++) { await A.page.waitForTimeout(250); arenaKey = await A.page.evaluate(() => { const c = document.querySelector('.bt-inspect-card[data-building-panel]'); return c ? c.getAttribute('data-building-panel') : null; }); }
+    rec.ok('...and The arena opens the arena\'s sign-up (the Saloon\'s panel)', arenaKey === 'party', { arenaKey });
+    await closeCard(A);
+
+    /* ── 5. the Hotel ── */
+    const ho = await atDoor(A, byId.hotel);
+    rec.ok(`the Hotel still says so: "${ho && ho.shut}", and no Enter`, !!ho && /Hotel/.test(ho.shut || '') && /Shut for now/.test(ho.shut || '') && !ho.btn, ho);
+
+    /* ── 6. the Post Office ── */
+    const po = byId.post;
+    const p1 = await enterHall(A, po);
+    const mail = await A.page.evaluate(() => {
+      const S = window._gameState.current;
+      const box = document.querySelector('[data-hall-mail]');
+      return { kept: (S._mail || []).length, shown: box ? +box.getAttribute('data-hall-mail') : -1,
+        lines: Array.from(document.querySelectorAll('[data-mail-line]')).map((l) => (l.textContent || '').replace(/\s+/g, ' ').trim()) };
+    });
+    await shot(A, 'post');
+    rec.ok(`the Post Office: "${p1.r && p1.r.btn}", and your mail -- ${mail.lines.slice(0, 3).join(' | ')}`,
+      !!p1.r && /Enter\s*POST OFFICE/.test(p1.r.btn || '') && p1.open && mail.kept >= 1 && mail.shown === Math.min(12, mail.kept)
+        && mail.lines.some((l) => /\+600 gold/.test(l) && /headless qa seed/.test(l)), mail);
+    await tap(A, '[data-hall-row="messages"]');
+    const social = await waitSel(A, '[data-dash-social]', 5000);
+    await shot(A, 'messages');
+    rec.ok('...and Messages from friends opens the Social panel (friends, and messages that wait for them)', social, { social });
+
+    rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
+  } finally {
+    stopAlive = true;
+    await A.ctx.close().catch(() => {});
+    await B.ctx.close().catch(() => {});
+  }
+}
