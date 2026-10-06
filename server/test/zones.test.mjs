@@ -17,7 +17,7 @@
  *   6. spawn levels stay inside the zone band
  */
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
-import { monsterStat, createMonster, MONSTER_HP_CURVE as CLIENT_CURVE } from '../../src/data/gameSystems.js';
+import { monsterStat, createMonster, MONSTER_HP_CURVE as CLIENT_CURVE, MONSTER_DMG_CURVE as CLIENT_DMG, monsterHpFlat as clientHpFlat } from '../../src/data/gameSystems.js';
 import { ZONES as SERVER_ZONES, MONSTER_HP_CURVE as SERVER_CURVE, VALID_ZONE_IDS, DUNGEON_ZONE_RE } from '../src/data.js';
 import { GameRoom } from '../src/index.js';
 
@@ -88,7 +88,7 @@ const room = new GameRoom(mockState, {});
 {
   const PARAMS = [
     ['hp',   CLIENT_CURVE.base, CLIENT_CURVE.ramp, CLIENT_CURVE.plateau, CLIENT_CURVE.endgame],
-    ['dmg',  12,   1.045, 1.025, 1.018],
+    ['dmg',  CLIENT_DMG.base, CLIENT_DMG.ramp, CLIENT_DMG.plateau, CLIENT_DMG.endgame], /* v2.3.3055: 1.065 */
     ['xp',   10,   1.045, 1.025, 1.018],
     ['gold', 5,    1.035, 1.020, 1.015],
   ];
@@ -109,8 +109,23 @@ const room = new GameRoom(mockState, {});
   const brute35 = createMonster('t', 'brute', 35, 0, 0);
   // v2.3.1346: +100 universal flat rides on top of the ramp; the lock
   // still pins the 1.052 curve itself (hp minus flat must stay 99).
-  check('curve lock: brute L35 HP === 99 + flat (1.052 ramp, ceil-at-breaks form)',
-    brute35.hp === 99 + (CLIENT_CURVE.flat || 0), brute35.hp);
+  check('curve lock: brute L35 HP === 99 + its flat (1.052 ramp, ceil-at-breaks form)',
+    brute35.hp === 99 + clientHpFlat(35), { hp: brute35.hp, flat: clientHpFlat(35) });
+}
+
+/* v2.3.3055 (owner: "Difficulty doesn't seem to be scaling at all"): the flat
+   GROWS -- 100 at Lv3, +10% a level -- and Lv1-2 keep flatLow.  Pinned at
+   the levels the Wheel spawns today (1-2, 6-20) and the dungeons' (26-45). */
+{
+  const want = { 1: 50, 2: 50, 3: 100, 4: 111, 5: 122, 7: 147, 10: 195, 17: 380, 20: 506, 30: 1311 }; /* monsterStat's own ceil: 100 x 1.1 is 110.00000000000001 */
+  const bad = Object.entries(want).filter(([L, v]) => clientHpFlat(Number(L)) !== v).map(([L, v]) => ({ L, want: v, got: clientHpFlat(Number(L)) }));
+  check('the flat grows: 50/50 at Lv1-2, 100 at Lv3, +10% a level (Lv17 380)', bad.length === 0, bad);
+  const f17 = createMonster('t', 'fodder', 17, 0, 0), f3 = createMonster('t', 'fodder', 3, 0, 0);
+  check('a Lv17 slime is a real step up from a Lv3 one (HP x3+, damage x2+)',
+    f17.maxHp >= 3 * f3.maxHp && f17.dmg >= 2 * f3.dmg, { f3: { hp: f3.maxHp, dmg: f3.dmg }, f17: { hp: f17.maxHp, dmg: f17.dmg } });
+  const f1 = createMonster('t', 'fodder', 1, 0, 0), f2 = createMonster('t', 'fodder', 2, 0, 0);
+  check('...and the starter levels are untouched (Lv1 58/10, Lv2 59/11)',
+    f1.maxHp === 58 && f1.dmg === 10 && f2.maxHp === 59 && f2.dmg === 11, { f1: [f1.maxHp, f1.dmg], f2: [f2.maxHp, f2.dmg] });
 }
 
 // v2.3.1364 (owner): Lv1-2 monsters carry flatLow (50 less than the

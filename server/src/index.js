@@ -27,7 +27,7 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
+  MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
   MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
   MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
@@ -1515,7 +1515,7 @@ export class GameRoom {
     const a = this._getArchetype(spawn.arch);
     // baseline-10 rescale: 60 ÷ 4.8; HP curve centralized v2.3.1140 (BF-1)
     const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
-    const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
+    const baseDmg = this._monsterStat(MONSTER_DMG_CURVE.base, lvl, MONSTER_DMG_CURVE.ramp, MONSTER_DMG_CURVE.plateau, MONSTER_DMG_CURVE.endgame); /* v2.3.3055: 1.065 ramp (data.js) */
     const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
     const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);
     /* v2.3.1535: a spawn entry may pin its own variant (verdant's single

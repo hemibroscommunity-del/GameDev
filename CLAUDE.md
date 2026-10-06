@@ -665,6 +665,19 @@ remnant to migrate server-side, not a mode to preserve.
       checks them against the ground as drawn (docs/specs/wheel-resources.md);
     - docs/specs/wheel-monsters.md "Past level 5", `wheelzone` §1b/§4b/§9,
       `mp-wheeldeep`.
+    - since v2.3.3055 a monster's level MEANS SOMETHING -- the owner: "lvl 7
+      killing lvl 17 slimes easily": the +100 flat HP was the same at every
+      level (a Lv17 slime 118 HP, a Lv3 109); it now GROWS 10% a level from
+      Lv3 (`MONSTER_HP_CURVE.flatRamp`, `monsterHpFlat`: Lv7 147, Lv17 380,
+      Lv30 1,311) and damage 6.5% a level (`MONSTER_DMG_CURVE`, was three
+      inline 1.045s); Lv1-2 unchanged; mirrored in gameSystems.js
+      (`createMonster`, the Points scene's monster); the retired T2
+      yardstick frozen (`t2BenchFlat`); a Lv7 now loses to a Lv17 slime;
+      and since v2.3.3054 COMBAT LEVELS COME HALF AS FAST -- the owner: "slow
+      it by about 50%": `PROG3.XP_PER_DMG` 0.4 -> 0.2 and every quest's xp
+      halved on both sides (ceil); life skills untouched (the owner's 25x):
+      docs/specs/pace-and-difficulty.md, `zones` / `mirror-audit` /
+      `dungeon` suites.
   - Since v2.3.3014 THE OTHER FOUR ELEMENTS DO SOMETHING TOO -- offered "stone
     stuns briefly; storm shocks nearby players; water slows stamina refill;
     venom poisons over time", the owner: "Yes continue working on those
