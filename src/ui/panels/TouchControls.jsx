@@ -83,31 +83,10 @@ export const RKNOB_TRAVEL = 0.6;
    ghost fade with the face (BroTown's resolver), or "the button is
    see-through now" would stop at the sword. */
 
-/* v2.3.3018: the orbit's two arcs, in clock degrees (0 = twelve o'clock,
-   clockwise): one down the left side between Block (~7:30) and Whirl (~11),
-   one round the right below Spec (~12:30).  PAD px outside the ring. */
-const ORBIT_PAD = 9;
-const ORBIT_ARCS = [[208, 302], [58, 128]];
-function OrbitArcs(props) {
-  var size = props.size;
-  var box = size + ORBIT_PAD * 4;
-  var c = box / 2;
-  var r = size / 2 + ORBIT_PAD;
-  var pt = function (deg) {
-    var a = deg * Math.PI / 180;
-    return (c + Math.sin(a) * r).toFixed(2) + ' ' + (c - Math.cos(a) * r).toFixed(2);
-  };
-  var d = ORBIT_ARCS.map(function (a) {
-    return 'M' + pt(a[0]) + ' A' + r + ' ' + r + ' 0 0 1 ' + pt(a[1]);
-  }).join(' ');
-  return React.createElement('svg', {
-    className: 'bt-rjoy-orbit', 'aria-hidden': 'true',
-    viewBox: '0 0 ' + box + ' ' + box, width: box, height: box,
-    style: { position: 'absolute', left: -ORBIT_PAD * 2, top: -ORBIT_PAD * 2, pointerEvents: 'none', overflow: 'visible' },
-  },
-  React.createElement('path', { d: d, fill: 'none', stroke: 'rgba(8,11,14,.5)', strokeWidth: 4, strokeLinecap: 'round' }),
-  React.createElement('path', { d: d, fill: 'none', stroke: 'rgba(240,200,120,.22)', strokeWidth: 1.4, strokeLinecap: 'round' }));
-}
+/* v2.3.3087: v2.3.3018's ORBIT -- two faint arcs round the attack button,
+   broken where Block, Whirl and Spec sit, from the owner's mockup -- is gone.
+   The owner, seeing them beside the see-through JUMP arrow: "remove the
+   strange lines to the left and right of the button". */
 
 /* === TouchControls — the left joystick + the contextual right BUTTON === */
 /* v2.3.890: extracted verbatim from the floating-joystick sibling run
@@ -349,13 +328,7 @@ export function TouchControls(props) {
       width: discW,
       height: discW
     }
-  }, /* ═══ v2.3.3018: THE ORBIT ═══
-     The mockup draws a faint track round the attack button, broken where the
-     buttons that orbit it sit -- Block low on the left, Whirl and Spec above
-     -- so the cluster reads as ONE control with satellites rather than five
-     loose circles.  Two arcs, behind the disc, in the wrap so they come and go
-     with it; never a touch target. */
-  React.createElement(OrbitArcs, { size: discW }), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     ref: rJoyRef,
     className: "bt-rjoy-base",
     'data-rbutton': '1',

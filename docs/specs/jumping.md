@@ -200,6 +200,10 @@ joystick".
     what jumps.
   - The weapon or harvest picture is back whenever the stick has a job, and
     while the coach's ATTACK lesson holds the disc.
+- **The orbit is gone.** v2.3.3018's two faint arcs round the attack button
+  (TouchControls `OrbitArcs`, from the mockup) went with the owner's "remove
+  the strange lines to the left and right of the button". mp-btnskin now
+  checks that none is drawn.
 - mp-joyfade and mp-rbutton expected the right stick to vanish at rest; they
   now expect its JUMP face.
 - Tests: `mp-tapprop` (12 checks: beside a bench, a quick tap, a slower one,

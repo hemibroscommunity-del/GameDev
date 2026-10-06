@@ -246,7 +246,9 @@ async function body(P, rec) {
   rec.ok('...the label still SAYS "ATTACK" for anything reading the page, and is not shown',
     A.disc && A.disc.label === 'ATTACK' && A.disc.labelOp === 0, A.disc && { label: A.disc.label, op: A.disc.labelOp });
   rec.ok('...the glow is lit round it', A.disc && A.disc.glowOp === 1, A.disc && A.disc.glowOp);
-  rec.ok('...and the orbit is drawn round it', A.disc && A.disc.orbit, A.disc);
+  /* v2.3.3087: the orbit is gone -- the owner: "remove the strange lines to
+     the left and right of the button" */
+  rec.ok('...and no orbit is drawn round it', A.disc && !A.disc.orbit, A.disc);
   rec.ok('Spec, Whirl, Block, Sprint, Jump are Normal when ready', ['special', 'whirl', 'block', 'sprint', 'jump'].every((k) => A[k] && A[k].state === 'normal'),
     ['special', 'whirl', 'block', 'sprint', 'jump'].map((k) => A[k] && A[k].state));
   rec.ok('Jump\'s picture is the mockup\'s blue arrow', A.jump && A.jump.svgs.join() === 'jump', A.jump && A.jump.svgs);
