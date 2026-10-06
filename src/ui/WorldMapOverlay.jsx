@@ -227,6 +227,14 @@ function WorldMap({ stateRef, onClose }) {
           onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onWheel={onWheel}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', touchAction: 'none' }}
         />
+        {/* v2.3.3061: north, as on the minimap's frame -- the map never turns */}
+        <svg data-world-map-north="" aria-label="North is up" role="img" viewBox="0 0 44 44" width="44" height="44"
+          style={{ position: 'absolute', left: 10, top: 10, pointerEvents: 'none' }}>
+          <circle cx="22" cy="22" r="20.5" fill="rgba(17,30,35,0.92)" stroke="rgba(216,170,88,0.55)" strokeWidth="1" />
+          <text x="22" y="15.5" textAnchor="middle" fill={BRASS} fontSize="11.5" fontWeight="900" fontFamily="Source Sans 3, sans-serif">N</text>
+          <path d="M22 18 L26 29 L22 27 L18 29 Z" fill={BRASS} />
+          <path d="M22 38 L26 29 L22 31 L18 29 Z" fill="#5E6B70" />
+        </svg>
         <div style={{ position: 'absolute', right: 12, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button type="button" aria-label="Zoom in" data-world-map-zoom-in="" onClick={() => zoomBtn(1.6)} style={btn}>+</button>
           <button type="button" aria-label="Zoom out" data-world-map-zoom-out="" onClick={() => zoomBtn(1 / 1.6)} style={btn}>−</button>
