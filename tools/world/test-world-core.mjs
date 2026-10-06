@@ -3265,16 +3265,19 @@ console.log("the buildings' doors (v2.3.3032)");
      Wheel's own (the Guild Hall, the Post Office, the Sheriff's Office), the
      Hotel stays shut */
   const actions = TOWN_BUILDINGS.map((b) => b.action || b.id).concat(['farmhome']);
-  ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for: the Town Hall (Mayor Bro), three halls of the Wheel\'s own and one shut that says so',
+  /* v2.3.3109: the Town Hall (the plan's `mayor (NPC)`, Mayor Bro on its steps) is a fourth hall,
+     so every plot of the town opens something or says it is shut */
+  ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for, none left over: four halls of the Wheel\'s own (three of the plan\'s "(new: ...)" buildings, and the Town Hall, Mayor Bro\'s) and one shut that says so',
     new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 12 && tbIds.every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
-    && hallIds.length === 3 && closedIds.length === 1
-    && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k) && /^\(new:/.test(todayOf[k]))
+    && hallIds.length === 4 && closedIds.length === 1
+    && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k))
+    && hallIds.concat(closedIds).filter((k) => k !== 'townhall').every((k) => /^\(new:/.test(todayOf[k])) && todayOf.townhall === 'mayor (NPC)'
     && !hallIds.some((k) => closedIds.includes(k))
-    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id).join() === 'townhall',
+    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).length === 0,
     { halls: hallIds, closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id) });
   ok('...each hall has its window\'s name and picture, and opens a panel of its own, never one of today\'s buildings\' (no `buildingPanel` value twice)',
     hallIds.every((k) => { const h = WHEEL_HALLS[WHEEL_HALL_DOORS[k]]; return h && h.title && h.sub && /^\/icons\/ui\/.+\.webp$/.test(h.icon); })
-    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 3 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
+    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 4 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
   {
     const PO = await import('../../src/game/postOffice.js');
     const S = {};
@@ -3473,7 +3476,7 @@ console.log("the buildings' insides (v2.3.3109)");
 {
   const fs = await import('node:fs');
   const R = await import('../../src/data/buildingRooms.js');
-  const { WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS, WHEEL_SHUT_DOORS } = await import('../../src/data/wheelBuildingDoors.js');
+  const { WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS, WHEEL_SHUT_DOORS, WHEEL_HALLS } = await import('../../src/data/wheelBuildingDoors.js');
   const { TOWN_BUILDINGS } = await import('../../src/data/buildings.js');
   const dbp = buildBlueprint(PLAN);
   const lotIds = dbp.lots.filter((l) => l.town && l.foot).map((l) => l.id);
@@ -3482,13 +3485,13 @@ console.log("the buildings' insides (v2.3.3109)");
   const wrong = [];
   for (const [plot, bid] of Object.entries(WHEEL_BUILDING_DOORS)) if (R.BUILDING_ROOMS[panelOf(bid)] !== plot) wrong.push([plot, panelOf(bid), R.BUILDING_ROOMS[panelOf(bid)]]);
   for (const [plot, panel] of Object.entries(WHEEL_HALL_DOORS)) if (R.BUILDING_ROOMS[panel] !== plot) wrong.push([plot, panel, R.BUILDING_ROOMS[panel]]);
-  ok('every door that opens a window opens the window of its own room: the twelve buildings (through their `action`) and the three halls, each picture named for the plot it shows',
-    Object.keys(WHEEL_BUILDING_DOORS).length === 12 && Object.keys(WHEEL_HALL_DOORS).length === 3 && wrong.length === 0, wrong);
+  ok('every door that opens a window opens the window of its own room: the twelve buildings (through their `action`) and the four halls, each picture named for the plot it shows',
+    Object.keys(WHEEL_BUILDING_DOORS).length === 12 && Object.keys(WHEEL_HALL_DOORS).length === 4 && wrong.length === 0, wrong);
   const rooms = Object.values(R.BUILDING_ROOMS);
-  ok('...fifteen windows, fifteen rooms (none shown twice), every one a plot of the town; the Hotel (shut) and the Town Hall (Mayor Bro) are the two with a picture and no window, so all seventeen plots are accounted for',
-    rooms.length === 15 && new Set(rooms).size === 15 && rooms.every((r) => lotIds.includes(r))
-      && R.SPARE_ROOMS.length === 2 && R.SPARE_ROOMS.every((r) => lotIds.includes(r) && !rooms.includes(r))
-      && WHEEL_SHUT_DOORS.every((r) => R.SPARE_ROOMS.includes(r)) && R.SPARE_ROOMS.includes('townhall')
+  ok('...sixteen windows, sixteen rooms (none shown twice), every one a plot of the town; the Hotel (shut) is the one with a picture and no window, so all seventeen plots are accounted for',
+    rooms.length === 16 && new Set(rooms).size === 16 && rooms.every((r) => lotIds.includes(r))
+      && R.SPARE_ROOMS.length === 1 && R.SPARE_ROOMS.every((r) => lotIds.includes(r) && !rooms.includes(r))
+      && WHEEL_SHUT_DOORS.every((r) => R.SPARE_ROOMS.includes(r)) && R.SPARE_ROOMS.join() === 'hotel'
       && rooms.concat(R.SPARE_ROOMS).slice().sort().join() === lotIds.slice().sort().join(),
     { rooms, spare: R.SPARE_ROOMS, lots: lotIds });
   ok('a panel that is no building has no room (the Market is a screen of its own), and a client-supplied name can never reach a prototype key',
@@ -3529,8 +3532,26 @@ console.log("the buildings' insides (v2.3.3109)");
     /buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\(LandOfficePanel, \{/.test(bt)
       && !/buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\("div"/.test(bt)
       && /Travel to Farm/.test(fs.readFileSync(new URL('../../src/ui/panels/buildings/LandOfficePanel.jsx', import.meta.url), 'utf8')), {});
-  ok('...the door you stand at decodes its room (a cap of one) and starts the rest coming in idle moments; none of the pictures rides the loading screen, and the Auction House\'s old painting and its gate preload are gone',
-    /warmRoom\(_panel \|\| null\);/.test(bt) && /prefetchRooms\(\)/.test(bt)
+  /* v2.3.3109: the Town Hall is a hall, its rows open things that exist */
+  {
+    const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
+    const th = WHEEL_HALLS.townhall;
+    const hallSrc = read('../../src/ui/panels/buildings/WheelHallPanel.jsx');
+    ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
+      !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
+        && /row\('leaderboard', '\/icons\/ui\/panel-leaderboard\.webp'/.test(hallSrc) && /row\('map', '\/icons\/ui\/nav-map\.webp'/.test(hallSrc)
+        && fs.existsSync(new URL('../../public/icons/ui/panel-leaderboard.webp', import.meta.url)) && fs.existsSync(new URL('../../public/icons/ui/nav-map.webp', import.meta.url))
+        && /leaderboard:\s+\{ title: 'Leaderboard', Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))
+        && /export function openWorldMap\(\)/.test(read('../../src/ui/WorldMapOverlay.jsx'))
+        && /onLeaderboard: function onLeaderboard\(\) \{ setBuildingPanel\(null\); dashboardPanelBus\.open\('more'\); dashboardPanelBus\.push\('leaderboard'\); \}/.test(bt)
+        && /onMap: function onMap\(\) \{ setBuildingPanel\(null\); openWorldMap\(\); \}/.test(bt)
+        && /Object\.prototype\.hasOwnProperty\.call\(WHEEL_HALLS, buildingPanel\) && \/\*#__PURE__\*\/React\.createElement\(WheelHallPanel/.test(bt), {});
+  }
+  ok('...the door you stand at decodes its room (a cap of one) and a shop\'s or hall\'s door -- not the Town Hall\'s, where everyone starts -- starts the rest coming in idle moments at low priority; none of the pictures rides the loading screen, and the Auction House\'s old painting and its gate preload are gone',
+    /warmRoom\(_panel \|\| null\);/.test(bt) && !/prefetchRooms/.test(bt)
+      && /const HUB_ROOMS = \['townhall'\];/.test(fs.readFileSync(new URL('../../src/game/buildingRooms.js', import.meta.url), 'utf8'))
+      && /if \(HUB_ROOMS\.indexOf\(id\) < 0\) prefetchRooms\(\);/.test(fs.readFileSync(new URL('../../src/game/buildingRooms.js', import.meta.url), 'utf8'))
+      && /fetchPriority = 'low'/.test(fs.readFileSync(new URL('../../src/game/buildingRooms.js', import.meta.url), 'utf8'))
       && !fs.existsSync(new URL('../../src/rendering/auctionInteriorPreload.js', import.meta.url))
       && !fs.existsSync(new URL('../../public/sprites/props/auction-house-interior.png', import.meta.url))
       && !/auctionInterior/.test(fs.readFileSync(new URL('../../src/rendering/preloadAnimations.js', import.meta.url), 'utf8'))

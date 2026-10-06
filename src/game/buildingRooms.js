@@ -19,8 +19,10 @@
  *                     the next door, or no door, lets it go).  By the time the
  *                     Enter button is tapped the picture is a bitmap, not a
  *                     fetch.
- *   prefetchRooms()   the first time you stand at any door, the other rooms'
- *                     BYTES are fetched one at a time, in idle moments, into
+ *   prefetchRooms()   the first time you stand at a shop's or a hall's door
+ *                     (not the Town Hall's: see HUB_ROOMS), the other rooms'
+ *                     BYTES are fetched one at a time, in idle moments, at low
+ *                     priority, into
  *                     the browser's own cache -- never decoded, never held
  *                     here (no reference is kept), and cached for a year
  *                     (public/_headers), so a second visit to the game costs
@@ -29,6 +31,14 @@
  *                     comes to it.
  */
 import { roomIdFor, roomUrl, BUILDING_ROOMS, ROOM_KEEPERS } from '@/data/buildingRooms.js';
+
+/* The doors everyone stands at in their first minute: the Town Hall is where a
+   character arrives and where Mayor Bro waits (v2.3.3109 made it a door), so
+   standing at it says nothing about wanting the other rooms.  It decodes its own
+   picture like any door, but it does not start the others' bytes coming -- that
+   waits for a shop's or another hall's door, after the first quest's walk has
+   the network to itself. */
+const HUB_ROOMS = ['townhall'];
 
 let _held = null;        /* { id, imgs }: the pictures decoded for the door you stand at */
 let _prefetchStarted = false;
@@ -56,6 +66,7 @@ export function warmRoom(panel) {
   const k = ROOM_KEEPERS[id];
   if (k) imgs.push(load(k.src, true));
   _held = { id, imgs };
+  if (HUB_ROOMS.indexOf(id) < 0) prefetchRooms();
 }
 
 /** Let go of the held pictures. */
@@ -85,6 +96,8 @@ export function prefetchRooms() {
        the Image: when it has loaded it is the cache's, not ours */
     const img = new Image();
     img.decoding = 'async';
+    /* behind everything the game itself is loading, where the browser can say so */
+    if ('fetchPriority' in img) img.fetchPriority = 'low';
     img.onload = img.onerror = function () { img.onload = img.onerror = null; idle(next); };
     img.src = urls[i++];
   };

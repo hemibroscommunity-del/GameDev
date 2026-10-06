@@ -8,7 +8,7 @@ What the game could use from the owner next, each with a prompt ready to paste.
 
 ## Inside the buildings
 
-**All seventeen are in the game (v2.3.3109)**, from the pictures you sent: fifteen at the top of their windows, the Hotel's and the Town Hall's held until those buildings have a window (docs/specs/building-rooms.md). The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
+**All seventeen are in the game (v2.3.3109)**, from the pictures you sent: sixteen at the top of their windows, the Hotel's held until it has a window (docs/specs/building-rooms.md). The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
 
 ### Blacksmith: inside
 
@@ -368,7 +368,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 *For later: nothing opens at the Town Hall yet.*
 
-- **In the game:** Done (v2.3.3109) as a picture, held: nothing shows it yet (Mayor Bro stands on its steps).
+- **In the game:** Done (v2.3.3109): at the top of the Town Hall's window (the leaderboard, its trophy case, and the world map, the map on its wall); Mayor Bro still stands on its steps.
 - **Attach:** your style key + the outside of the Town Hall (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 

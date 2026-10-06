@@ -137,12 +137,12 @@ import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
 import { WheelHallPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls */
 import { LandOfficePanel } from './panels/buildings/LandOfficePanel.jsx';   /* v2.3.3109: the Land Office's window, in the card like the others */
 import { BuildingRoom } from './panels/buildings/BuildingRoom.jsx';   /* v2.3.3109: the inside of each building, at the top of its window */
-import { warmRoom, prefetchRooms } from '@/game/buildingRooms.js';   /* v2.3.3109 */
+import { warmRoom } from '@/game/buildingRooms.js';   /* v2.3.3109 */
 import { roomIdFor } from '@/data/buildingRooms.js';   /* v2.3.3109 */
 import { ClanInviteCard } from './panels/ClanInviteCard.jsx';            /* v2.3.3066: a clan invite you can take up */
 import { StorePanel } from './panels/buildings/StorePanel.jsx';   /* v2.3.2476: the auction house */
 import { StoreToast } from './mobile/StoreToast.jsx';   /* v2.3.2476: "your thing sold" */
-import { WorldMapOverlay } from './WorldMapOverlay.jsx';  /* v2.3.2966: the Wheel's labelled world map */
+import { WorldMapOverlay, openWorldMap } from './WorldMapOverlay.jsx';  /* v2.3.2966: the Wheel's labelled world map */
 import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
 import { pageIsPinchZoomed } from '@/data/joinGate.js';   /* v2.3.2388 */
 /* v2.3.1189: LEGACY DEBT burn-down — these five resolved only via the
@@ -1638,13 +1638,13 @@ export var BroTown = function BroTown(_ref0) {
     setNearHall = _useStateWH[1];
   /* v2.3.3109: the picture of the room behind the door you stand at is decoded
      while you stand there (game/buildingRooms.js), so the window opens with it
-     and not a beat after; the first door you reach also starts the other rooms'
-     bytes coming in idle moments.  Walk away and it is let go (a cap of one). */
+     and not a beat after; the first shop or hall door you reach (not the Town
+     Hall's, where everyone starts) also starts the other rooms' bytes coming in
+     idle moments.  Walk away and it is let go (a cap of one). */
   useEffect(function () {
     var _b = nearBuilding !== null && BUILDINGS[nearBuilding] ? BUILDINGS[nearBuilding] : null;
     var _panel = _b ? (_b.action || _b.id) : nearHall;
     warmRoom(_panel || null);
-    if (_panel && roomIdFor(_panel)) prefetchRooms();
   }, [nearBuilding, nearHall]);
   var _useStateCI = useState(null),
     clanInvite = _useStateCI[0],
@@ -11913,14 +11913,17 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "\u2715"), /*#__PURE__*/React.createElement(BuildingRoom, { key: buildingPanel, panel: buildingPanel }) /* v2.3.3109: the inside of the building, first in its window */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
        opens the panel that does the work and closes the hall */
-  (buildingPanel === 'guildhall' || buildingPanel === 'post' || buildingPanel === 'sheriff') && /*#__PURE__*/React.createElement(WheelHallPanel, {
+  Object.prototype.hasOwnProperty.call(WHEEL_HALLS, buildingPanel) && /*#__PURE__*/React.createElement(WheelHallPanel, {   /* v2.3.3109: every hall in the table, the Town Hall's too */
     hall: buildingPanel,
     stateRef: stateRef,
     onClan: function onClan() { setBuildingPanel(null); setShowClanPanel(true); },
     onGuild: function onGuild() { setBuildingPanel(null); setShowGuildPanel(true); },
     onMessages: function onMessages() { setBuildingPanel(null); dashboardPanelBus.open('social'); },
     onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); },
-    onArena: function onArena() { setBuildingPanel('party'); }
+    onArena: function onArena() { setBuildingPanel('party'); },
+    /* v2.3.3109: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
+    onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('more'); dashboardPanelBus.push('leaderboard'); },
+    onMap: function onMap() { setBuildingPanel(null); openWorldMap(); }
   }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3109: the Land Office's window is a panel in the card now (it was a separate dialog under an empty card, panels/buildings/LandOfficePanel.jsx) */
   buildingPanel === 'farmhome' && /*#__PURE__*/React.createElement(LandOfficePanel, {
     onCancel: function onCancel() { return setBuildingPanel(null); },

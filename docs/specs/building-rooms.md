@@ -6,8 +6,10 @@
 
 Walk into a building and the top of its window is now the room you walked
 into: the owner's picture, edge to edge, with the building's own panel (the
-forge, the bank, the market…) starting right under it. Fifteen windows show
-one. Two of the seventeen pictures have no window yet and are shipped, waiting.
+forge, the bank, the market…) starting right under it. Sixteen windows show
+one. The seventeenth picture, the Hotel's, has no window yet and is shipped,
+waiting. (The Town Hall's was held too until the owner chose "a Town Hall
+window", below.)
 
 ## Which window shows which room
 
@@ -27,15 +29,47 @@ one. Two of the seventeen pictures have no window yet and are shipped, waiting.
 | Post Office | `post` | `post` |
 | Sheriff's Office | `sheriff` | `sheriff` |
 | Guild Hall | `guildhall` | `guildhall` |
+| Town Hall | `townhall` (a hall, below) | `townhall` |
 | Auction House | `auctionhouse` | `auction`, with its clerk |
 | Hotel | none: it is shut | `hotel` (held) |
-| Town Hall | none: Mayor Bro stands on its steps | `townhall` (held) |
 
 The table is `src/data/buildingRooms.js` (`BUILDING_ROOMS`). The Market itself
 (`store`, reached by a button inside the Auction House and the General Store)
-is a screen of its own and shows no room. The two held pictures
-(`SPARE_ROOMS`) cost nothing until a window asks for them; the day the Hotel
-opens, or the Mayor gets an office, it is one line in the table.
+is a screen of its own and shows no room. The held picture (`SPARE_ROOMS`)
+costs nothing until a window asks for it; the day the Hotel opens it is one
+line in the table.
+
+## The Town Hall window
+
+The Town Hall had no window: Mayor Bro stands on its steps, and the plan calls
+it `mayor (NPC)`. The owner sent its picture last and, asked what it should do,
+chose **a Town Hall window** over drawing the room behind Mayor Bro's dialogue
+or leaving it waiting. It is the fourth of the Wheel's halls
+(`WHEEL_HALL_DOORS.townhall`, v2.3.3066's `WheelHallPanel`), and the two rows
+are the two things its own picture shows:
+
+- **Leaderboard**: the trophy case. The dashboard's own Ranks page, a ranking
+  for every combat and life skill, opened as the More page's tile opens it
+  (`dashboardPanelBus.open('more')` then `push('leaderboard')`, so the back chip
+  goes to More).
+- **World map**: the painted map on the wall. The Wheel's labelled map, opened
+  from the minimap until now; `WorldMapOverlay.jsx` exports `openWorldMap()` for
+  it (the overlay hands its opener to the module while it is mounted).
+
+Standing at the door brings up "Enter TOWN HALL" like the other fifteen; a hall
+is not a building visit, so mayor_1's count is untouched. Mayor Bro's dialogue
+and quest offer are above the Enter button (z 44 against 35), so talking to him
+is not touched. A new character arrives 108 px south of the door's foot and the
+button comes up 140 px from the BOOTS (the body's middle is ~52 px above them),
+so a new character does not start with it showing; it comes as they walk up to
+the Mayor (`mp-wheelhalls` §7 measures both).
+
+Everyone stands at this door in their first minute, so it is the one door that
+does not start the other rooms' download (`HUB_ROOMS` in `game/buildingRooms.js`;
+it still decodes its own picture): the first quest's walk to Frost Ridge has the
+network to itself, and the download waits for the first shop or hall
+(`mp-buildingrooms` checks the Town Hall does not start it and the next door
+does).
 
 ## How it is drawn
 
@@ -114,8 +148,9 @@ pictures is on the gate**:
   `nearBuilding` / `nearHall`), and the clerk's strip at the Auction House. A
   cap of one: the next door, or no door, lets it go. By the time Enter is
   tapped the picture is a bitmap.
-- **The first door you reach starts the others' bytes coming**, one at a time
-  in idle moments (`prefetchRooms`), into the browser's own cache: never decoded,
+- **The first shop's or hall's door you reach starts the others' bytes
+  coming**, one at a time in idle moments at low priority (`prefetchRooms`),
+  into the browser's own cache: never decoded,
   never held (~6 MB of bytes, once, the clerk's strip included). Not on `saveData` or a 2G link, where each
   room loads as it comes to it.
 - `public/_headers` caches `/world/interiors/*` for a year; the pictures are
@@ -131,18 +166,20 @@ pictures is on the gate**:
   town's cast stands outside (v2.3.3067), and each room needs its own placement
   by looking (the Bank's vault, the Gem Cutter's case and the Sheriff's cell sit
   where a keeper would stand).
-- **The Hotel and the Town Hall have no window.** The Hotel's rest is the farm
-  bed's, on this device only, so it stays shut until the worker can pay for a
-  rest. The Town Hall has Mayor Bro on its steps; his quest window could be
-  drawn over its room, which is a design call for the owner.
+- **The Hotel has no window.** Its rest is the farm bed's, on this device only,
+  so it stays shut until the worker can pay for a rest.
+- **Mayor Bro's own windows have no room.** The owner chose a Town Hall window
+  over putting the room behind his dialogue; his dialogue and quest offer are as
+  they were.
 - **No picture on the Market.** It is a screen of its own, not a building.
 
 ## Tests
 
 - `tools/world/test-world-core.mjs` "the buildings' insides": every door opens
-  its own room; fifteen windows, fifteen rooms; all seventeen files on disk at
-  1152 x 768 under 450 KB; the clerk's strip and cell; the wiring and the CSS.
-- `node tools/qa/mp/run.mjs buildingrooms`: a phone walks to each of the fifteen
+  its own room; sixteen windows, sixteen rooms; all seventeen files on disk at
+  1152 x 768 under 450 KB; the clerk's strip and cell; the Town Hall's rows; the
+  wiring and the CSS.
+- `node tools/qa/mp/run.mjs buildingrooms`: a phone walks to each of the sixteen
   doors; the door decodes its room; the window opens with it flush, the right
   shape, the panel under it, the close button above it; the clerk; the Land
   Office; no room on the Market; a shorter and a sideways phone; a picture that

@@ -3,8 +3,9 @@
  * Owner, 2026-10-04: "Push to main. Then after that add doors."  One real
  * player against a real worker, in the Wheel's Brotown, on a phone:
  *   1. the client knows the town's seventeen doors from the worker's answer:
- *      twelve that open a building, the Wheel's three halls (v2.3.3066:
- *      mp-wheelhalls walks them), one shut one, and the Town Hall;
+ *      twelve that open a building, the Wheel's four halls (v2.3.3066:
+ *      mp-wheelhalls walks them; v2.3.3109: the Town Hall is the fourth) and
+ *      one shut one;
  *   2. walked to each of the twelve (boots at the foot of its steps), the
  *      Enter button comes up with the NAME ON ITS SIGN ("Enter SALOON"), and a
  *      tap opens that building's panel -- the forge's, the bank's, the
@@ -13,7 +14,7 @@
  *      reach (inside 120 px, out at 175);
  *   4. a shut door (the hotel; until v2.3.3066 the sheriff's, the post
  *      office and the guild hall too) shows its name and "Shut for now" and
- *      is not a button; the Town Hall shows nothing;
+ *      is not a button;
  *   5. twelve buildings visited are twelve visits (mayor_1's "visit 3");
  *   6. Diego keeps the General Store: drawn, beside its steps, his window shut
  *      while you stand at the door and open when you walk up to him;
@@ -145,7 +146,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const open = doors.filter((d) => d.index >= 0), shut = doors.filter((d) => d.index < 0 && d.closed), plain = doors.filter((d) => d.index < 0 && !d.closed && !d.hall);
   const halls = doors.filter((d) => d.hall);   /* v2.3.3066: the Wheel's own (mp-wheelhalls) */
   rec.ok(`the client knows the town's doors from the worker's answer: ${open.length} that open a building, ${halls.length} halls of the Wheel's own, ${shut.length} shut, and ${plain.map((d) => d.name).join(', ')}`,
-    z0 === 'wheel' && doors.length === 17 && open.length === 12 && halls.length === 3 && shut.length === 1 && plain.length === 1 && plain[0].id === 'townhall'
+    z0 === 'wheel' && doors.length === 17 && open.length === 12 && halls.length === 4 && shut.length === 1 && plain.length === 0 && halls.some((d) => d.id === 'townhall')
       && Object.keys(WHEEL_BUILDING_DOORS).every((k) => byId[k] && byId[k].index >= 0 && actionOf[byId[k].index] === TOWN_BUILDINGS.find((b) => b.id === WHEEL_BUILDING_DOORS[k]).action)
       && WHEEL_SHUT_DOORS.every((k) => byId[k] && byId[k].closed === true && byId[k].index < 0),
     { z0, doors: doors.map((d) => [d.id, d.index]) });
@@ -185,7 +186,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!far && !far.btn && far.nb === null && !!inside && /Enter BANK/.test(inside.btn || '') && !!outside && !outside.btn && outside.nb === null,
     { far, inside, outside });
 
-  /* ── 4. the shut ones, and the Town Hall ── */
+  /* ── 4. the shut ones (the Town Hall is a hall since v2.3.3109: mp-wheelhalls) ── */
   const shutSeen = [];
   for (const d of shut) {
     await standAt(d.x, d.y + 30);
@@ -193,18 +194,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     shutSeen.push({ id: d.id, r });
     if (d.id === 'hotel') await shot(P, 'shut-hotel');
   }
-  const hall = byId.townhall;
-  await standAt(hall.x - 60, hall.y + 40);
-  await P.page.waitForTimeout(1200);
-  const hallR = await prompt();
-  rec.ok(`a shut door says so and is not a button: ${shutSeen.map((s) => s.id).join(', ')} each show their name and "Shut for now", with no Enter; the Town Hall (Mayor Bro's) shows nothing`,
+  rec.ok(`a shut door says so and is not a button: ${shutSeen.map((s) => s.id).join(', ')} each show their name and "Shut for now", with no Enter`,
     shutSeen.length === 1 && shutSeen.every((s) => {
       const q = s.r, door = byId[s.id];
       return q && q.shut && q.shut.id === s.id && q.shut.tag === 'DIV' && q.shut.pe === 'none' && q.btn === null && q.nb === null
         && q.shut.text.includes(door.name) && q.shut.text.includes('Shut for now')
         && q.shut.over.length === 0 && q.shut.box.l >= 4 && q.shut.box.r <= q.vw - 4;
-    }) && !hallR.btn && !hallR.shut && hallR.nb === null,
-    { shutSeen: shutSeen.map((s) => [s.id, s.r && s.r.shut, s.r && s.r.btn]), hallR });
+    }),
+    { shutSeen: shutSeen.map((s) => [s.id, s.r && s.r.shut, s.r && s.r.btn]) });
   rec.ok('...and its caption lies over no button either', shutSeen.every((s) => s.r && s.r.shut && s.r.shut.over.length === 0), shutSeen.map((s) => [s.id, s.r && s.r.shut && s.r.shut.over]));
 
   /* ── 5. twelve visits ── */

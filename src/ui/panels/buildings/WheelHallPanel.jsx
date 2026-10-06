@@ -5,7 +5,8 @@ import { mailList, mailAge } from '@/game/postOffice.js';
 /* ═══ v2.3.3066: THE WHEEL'S HALLS — the Guild Hall, the Post Office, the Sheriff's Office ═══
  *
  * Three of the plan's "(new: ...)" buildings, opened onto systems the game
- * already has (data/wheelBuildingDoors.js WHEEL_HALL_DOORS says why each):
+ * already has (data/wheelBuildingDoors.js WHEEL_HALL_DOORS says why each;
+ * v2.3.3109 added a fourth, the Town Hall, below):
  *
  *   guildhall  your clan (ClanPanel: make one, run it, take up an invite)
  *              and the skill guilds (GuildPanel: ranks and their quests) --
@@ -112,6 +113,17 @@ function postOffice(props) {
   ];
 }
 
+/* v2.3.3109: the Town Hall -- asked what it should do, the owner chose a window
+   with the two things its picture shows: the trophy case is the leaderboard (a
+   ranking for every combat and life skill, the dashboard's Ranks page) and the
+   painted map on the wall is the Wheel's world map. */
+function townHall(props) {
+  return [
+    row('leaderboard', '/icons/ui/panel-leaderboard.webp', '🏆', 'Leaderboard', 'A ranking for every combat and life skill, and where you stand', props.onLeaderboard),
+    row('map', '/icons/ui/nav-map.webp', '🗺', 'World map', 'The whole Wheel: its lands and levels, camps, passes and gates, and where you are', props.onMap),
+  ];
+}
+
 function sheriff(props) {
   return [
     row('duel', '/icons/ui/soc-duel.webp', '⚔️', 'Duel a player', 'Pick a player, then tap Duel on their card', props.onPlayers),
@@ -122,7 +134,7 @@ function sheriff(props) {
 export function WheelHallPanel(props) {
   var hall = props.hall;
   if (!WHEEL_HALLS[hall]) return null;
-  var body = hall === 'guildhall' ? guildHall(props) : hall === 'post' ? postOffice(props) : sheriff(props);
+  var body = hall === 'guildhall' ? guildHall(props) : hall === 'post' ? postOffice(props) : hall === 'townhall' ? townHall(props) : sheriff(props);
   return (
     <div style={LS_WRAP} data-wheel-hall={hall}>
       {header(hall)}

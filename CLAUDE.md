@@ -1452,9 +1452,8 @@ remnant to migrate server-side, not a mode to preserve.
       first inside the card, so no panel is touched): `BUILDING_ROOMS` in
       src/data/buildingRooms.js maps the `buildingPanel` a door opens to its
       plot's picture, `public/world/interiors/<plot id>.webp` (1152 x 768
-      lossy WebP, ~300 KB, from `tools/ui/make-room-pictures.py`); fifteen
-      windows show one, the Hotel's (shut) and the Town Hall's wait in
-      `SPARE_ROOMS` for a window of their own;
+      lossy WebP, ~300 KB, from `tools/ui/make-room-pictures.py`); sixteen
+      windows show one, the Hotel's (shut) waits in `SPARE_ROOMS`;
     - it bleeds into the card's load-bearing 20 px padding the way every panel
       does (-20 on its top and sides, +20 under it to cancel the panel's own
       -20), so the panel starts where the picture ends; held to 30vh on a short
@@ -1470,15 +1469,27 @@ remnant to migrate server-side, not a mode to preserve.
       through it (game.css, `body:has(.bt-inspect) [data-world-map-open]`);
     - NONE ON THE LOADING GATE (the preloading law against the memory
       budget): the door you stand at decodes its room, a cap of one
-      (game/buildingRooms.js `warmRoom`), and the first door starts the others'
-      bytes coming in idle moments, never decoded or held; `public/_headers`
+      (game/buildingRooms.js `warmRoom`), and the first shop's or hall's door
+      (not the Town Hall's, where everyone starts: `HUB_ROOMS`) starts the
+      others' bytes coming in idle moments at low priority, never decoded or
+      held; `public/_headers`
       caches them a year, asked for at `?v=` `ROOMS_V`;
     - the Auction House's painting is replaced and its clerk kept, moved into
       the shared component (`ROOM_KEEPERS`: his strip, painted box and three
       fractions -- another room's keeper is a row, none yet); the old painting,
       its gate preload and its measure tool are gone;
-    - test-world-core "the buildings' insides", `mp-buildingrooms`:
-      docs/specs/building-rooms.md.)
+    - THE TOWN HALL IS THE FOURTH HALL -- the owner, asked what its picture
+      should do, chose "a Town Hall window": `WHEEL_HALL_DOORS.townhall`, a
+      `townHall()` in WheelHallPanel.jsx with the two things its own picture
+      shows -- the trophy case is the LEADERBOARD (the dashboard's Ranks page,
+      More -> Leaderboard) and the map on the wall the WORLD MAP
+      (`openWorldMap()`, exported by WorldMapOverlay.jsx); every plot of the
+      town now opens a building, opens a hall, or says it is shut (only the
+      Hotel); its Enter button is not showing at arrival (the arrival is 108 px
+      south of the door, the reach is 140 from the BOOTS, ~52 px below the
+      body's middle) and Mayor Bro's dialogue is above it (z 44 against 35);
+    - test-world-core "the buildings' insides", `mp-buildingrooms`,
+      `mp-wheelhalls` §7: docs/specs/building-rooms.md, wheel-halls.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

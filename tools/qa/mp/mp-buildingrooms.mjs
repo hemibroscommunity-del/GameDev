@@ -5,7 +5,7 @@
  * worker, in the Wheel's Brotown, on a phone (390 x 844, touch):
  *   1. standing at a door decodes THAT room's picture (and no other), and
  *      the first door starts the rest coming (src/game/buildingRooms.js);
- *   2. each of the fifteen windows -- the twelve buildings and the three
+ *   2. each of the sixteen windows -- the twelve buildings and the four
  *      halls -- opens with its own room at the top of the card: the picture
  *      loaded at 1152 x 768, flush with the card's edges, 3:2 (the forge's a
  *      slim 4:1 band), the panel starting exactly where it ends with square
@@ -18,7 +18,7 @@
  *   5. the Market (a screen of its own, reached from a window) has no room;
  *   6. a shorter phone holds the picture to 30vh, a sideways one drops it, and
  *      a picture that cannot be loaded leaves the window as it was;
- *   7. walking away lets the held picture go; all fifteen were asked for; no
+ *   7. walking away lets the held picture go; all sixteen were asked for; no
  *      page errors.
  * Pictures: tools/qa/mp/out/buildingrooms-*.png.
  */
@@ -145,19 +145,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const windows = doors.filter((d) => d.index >= 0 || d.hall);
   const warmBefore = await P.page.evaluate(() => ({ held: window.__btRoomWarm.held(), pre: window.__btRoomWarm.prefetched() }));
   rec.ok(`on a phone in the Wheel's Brotown: ${windows.length} doors open a window, and before the first door nothing is decoded or prefetched`,
-    z0 === 'wheel' && doors.length === 17 && windows.length === 15 && warmBefore.held === null && warmBefore.pre === false, { z0, n: doors.length, windows: windows.length, warmBefore });
+    z0 === 'wheel' && doors.length === 17 && windows.length === 16 && warmBefore.held === null && warmBefore.pre === false, { z0, n: doors.length, windows: windows.length, warmBefore });
 
   /* ── 1 + 2. each window ── */
   const bad = [], warmBad = [], seen = [];
   let roomOfAuction = null, landOffice = null;
   const only = (process.env.QA_ROOMS_ONLY || '').split(',').filter(Boolean);   /* e.g. QA_ROOMS_ONLY=gambling,bank for a fast look */
-  const order = only.length ? windows.filter((d) => only.includes(d.id)) : windows;
+  /* the Town Hall first: it is where everyone starts, and the first door that is not it is what starts the others coming */
+  const order = (only.length ? windows.filter((d) => only.includes(d.id)) : windows).slice().sort((a, b) => (a.id === 'townhall' ? 0 : 1) - (b.id === 'townhall' ? 0 : 1));
+  const preAt = {};
   for (const d of order) {
     const okStand = await standAt(d.x, d.y + 30);
     const r = await settle((q) => q.at === d.id && q.btn);
     const want = d.hall ? d.hall : actionOf[d.index];
     const warm = await P.page.evaluate(() => ({ held: window.__btRoomWarm.held(), pre: window.__btRoomWarm.prefetched() }));
     if (warm.held !== R.roomIdFor(want)) warmBad.push([d.id, warm]);
+    preAt[d.id] = warm.pre;
     await tapEnter();
     let key = null;
     for (let i = 0; i < 12 && !key; i++) { await P.page.waitForTimeout(250); key = await panelKey(); }
@@ -190,10 +193,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const gone = await P.page.evaluate(() => !document.querySelector('.bt-inspect-card'));
     if (!gone) bad.push({ id: d.id, closed: false });
   }
-  rec.ok(`standing at a door decodes its own room's picture and no other (${order.length} doors${warmBad.length ? ', WRONG: ' + JSON.stringify(warmBad) : ''}), and the first door starts the rest coming`,
-    order.length === (only.length || 15) && warmBad.length === 0 && (await P.page.evaluate(() => window.__btRoomWarm.prefetched())) === true, { warmBad });
+  if (!only.length) {
+    const second = order.find((d) => d.id !== 'townhall');
+    rec.ok(`the Town Hall's door, where every character starts, decodes its own picture but does not start the other rooms coming (${preAt.townhall}); the next door does (${second.id}: ${preAt[second.id]})`,
+      preAt.townhall === false && preAt[second.id] === true, preAt);
+  }
+  rec.ok(`standing at a door decodes its own room's picture and no other (${order.length} doors${warmBad.length ? ', WRONG: ' + JSON.stringify(warmBad) : ''}), and the first shop's or hall's door starts the rest coming`,
+    order.length === (only.length || 16) && warmBad.length === 0 && (await P.page.evaluate(() => window.__btRoomWarm.prefetched())) === true, { warmBad });
   rec.ok(`each window opens with its own room at the top of the card: ${seen.map((s) => s.id + ' ' + s.w + 'x' + s.h + (s.shape === 'band' ? ' band' : '')).join(', ')} -- 1152 x 768 loaded, flush with the card, 3:2 (the forge's 4:1 band), the panel starting where it ends with square top corners, the close button on top of it`,
-    bad.length === 0 && seen.length === (only.length || 15), bad);
+    bad.length === 0 && seen.length === (only.length || 16), bad);
 
   /* ── 3. the clerk ── */
   const kk = roomOfAuction && roomOfAuction.keeper;
@@ -265,7 +273,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await closePanel();
 
   /* ── 7. walking away, every room asked for, no errors ── */
-  await standAt(byId.townhall.x - 60, byId.townhall.y + 40);
+  await standAt(byId.townhall.x, byId.townhall.y + 330);   /* the square, 330 px south of the Town Hall's door: clear of every door (the Town Hall is one since v2.3.3109) */
   await P.page.waitForTimeout(1200);
   const away = await P.page.evaluate(() => window.__btRoomWarm.held());
   const wantAsked = [...new Set(Object.values(R.BUILDING_ROOMS))];
@@ -273,7 +281,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const missing = wantAsked.filter((r) => !askedIds.includes(r));
   const extra = askedIds.filter((r) => !wantAsked.includes(r));
   const wrongV = asked.filter((q) => q.v !== R.ROOMS_V);
-  if (!only.length) rec.ok(`away from every door nothing is held (${away === null ? 'let go' : away}), all ${wantAsked.length} rooms were asked for (${missing.length ? 'MISSING ' + missing.join() : 'none missing'}) and the two without a window (hotel, townhall) never${extra.length ? ' -- ASKED FOR ' + extra.join() : ''}, each at ?v=${R.ROOMS_V}`,
+  if (!only.length) rec.ok(`away from every door nothing is held (${away === null ? 'let go' : away}), all ${wantAsked.length} rooms were asked for (${missing.length ? 'MISSING ' + missing.join() : 'none missing'}) and the one without a window (the hotel) never${extra.length ? ' -- ASKED FOR ' + extra.join() : ''}, each at ?v=${R.ROOMS_V}`,
     away === null && missing.length === 0 && extra.length === 0 && wrongV.length === 0, { away, asked: askedIds, missing, extra, wrongV });
   stopAlive = true;
   const errs = (P.logs || []).filter((l) => /pageerror|app\.render threw/.test(l));

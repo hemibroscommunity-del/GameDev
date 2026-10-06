@@ -75,6 +75,16 @@ const KIND = {
   site: { color: '#9FE0C0', label: 'place' },
 };
 
+/* v2.3.3109: the Town Hall's "World map" row opens the map from outside the
+   minimap's button (BroTown.jsx onMap).  The overlay hands its opener to this
+   module while it is mounted; false when it is not (nothing to open). */
+let _openMap = null;
+export function openWorldMap() {
+  if (!_openMap) return false;
+  _openMap();
+  return true;
+}
+
 export function WorldMapOverlay({ stateRef }) {
   const [inWheel, setInWheel] = useState(false);
   const [rect, setRect] = useState(null);
@@ -93,7 +103,12 @@ export function WorldMapOverlay({ stateRef }) {
   useEffect(() => {
     /* QA: open and close it without a tap */
     window.__btWorldMapOpen = (v) => setOpen(v !== false);
-    return () => { try { delete window.__btWorldMapOpen; } catch (e) { /* gone */ } };
+    const opener = () => setOpen(true);
+    _openMap = opener;
+    return () => {
+      if (_openMap === opener) _openMap = null;
+      try { delete window.__btWorldMapOpen; } catch (e) { /* gone */ }
+    };
   }, []);
   if (!inWheel) return null;
   /* into the page's body, not the game's tree: the bottom dashboard (z 30)
