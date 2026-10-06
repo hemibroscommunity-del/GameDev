@@ -1278,7 +1278,14 @@ remnant to migrate server-side, not a mode to preserve.
     - window.BT_AUDIO IS set -- BroTown's `Object.assign(globalThis, ...)` of
       the data index -- despite the effectsRenderer comment saying it never is;
     - test-world-core "the lands' music", `mp-landmusic`:
-      docs/specs/wheel-land-music.md.)
+      docs/specs/wheel-land-music.md.
+  - Since v2.3.3065 NORTH IS MARKED ON BOTH MAPS -- the owner, on the
+    recommendations for finding your way round: "Continue building
+    recommended": neither map ever turns, and nothing said up is north;
+    the minimap's frame wears a brass N on a slate bead in the middle of its
+    top band (wheelMinimap.js NORTH, `__btMinimap.north`), and the world map a
+    44 px compass at its top left (`[data-world-map-north]`, no taps);
+    `mp-north`: docs/specs/wheel-north.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

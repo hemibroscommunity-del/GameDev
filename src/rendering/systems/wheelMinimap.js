@@ -49,7 +49,7 @@
  * before the Wheel opened (behind its loading screen); the lines and marks
  * are drawn once from numbers.
  */
-import { Container, Graphics, Sprite, Texture, CanvasSource } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture, CanvasSource, Text } from 'pixi.js';
 import { wheelOverviewLands, wheelMapInfo, wheelHere } from '@/game/wheelTrial.js';
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
@@ -101,6 +101,17 @@ const NODE_PX = 10;
    the quest's own way leads to Mayor Bro, in town, the star says it, and the
    badge stands aside. */
 const HOME_R = 10, HOME_ICON_PX = 13, C_HOME = 0xf4f0e7, C_HOME_BG = 0x0b161b, C_HOME_RING = 0xd8aa58;
+/* ═══ v2.3.3065: NORTH ═══
+   Asked how to make the Wheel easier to find your way round, the owner said to
+   go on building the list ("Continue building recommended"), and a north mark
+   was on it.  The box never turns -- up is always north -- and nothing said so;
+   the lands are named by where they lie (Frost Ridge north-west, the Water
+   Caves south).  A brass N on a slate bead, set in the middle of the frame's
+   top band, where a compass bezel has it.  Its middle is on the band: it
+   stands NORTH_UP above the box and reaches 3 px past the band into the map,
+   so the quest's star riding the top edge (QUEST_EDGE in) loses only its
+   tip under it. */
+const NORTH_R = 6.5, NORTH_Y = FRAME / 2, NORTH_FONT = 9, NORTH_UP = NORTH_R - NORTH_Y;
 
 export class WheelMinimap {
   constructor(hudLayer, icons, dotTex) {
@@ -157,6 +168,22 @@ export class WheelMinimap {
       .moveTo(ex + 2, ey + 2).lineTo(ex + 5, ey + 5).moveTo(ex + 10, ey + 10).lineTo(ex + 7, ey + 7)
       .stroke({ width: 1.5, color: C_FRAME, cap: 'round', join: 'round' });
     this.root.addChild(border, expand);
+    /* v2.3.3065: north (NORTH, above) -- fixed to the box, over the frame */
+    this.north = new Container();
+    this.north.label = 'wheel-minimap-north';
+    const nBead = new Graphics();
+    nBead.circle(0, 0, NORTH_R + 0.75).fill(C_KEYLINE)
+      .circle(0, 0, NORTH_R).fill(C_SLATE).stroke({ width: 1.4, color: C_FRAME });
+    const nRes = Math.min(4, Math.max(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1));
+    const nText = new Text({ text: 'N', resolution: nRes, style: {
+      fontFamily: 'Source Sans 3, sans-serif', fontSize: NORTH_FONT, fontWeight: '900', fill: C_FRAME,
+    } });
+    nText.anchor.set(0.5, 0.5);
+    nText.y = 0.25;
+    this.north.addChild(nBead, nText);
+    this.north.x = WHEEL_BOX / 2;
+    this.north.y = NORTH_Y;
+    this.root.addChild(this.north);
     /* v2.3.3023: the way home (THE WAY HOME, above) -- over the frame, as the
        badge rides its inner edge */
     this.home = new Container();
@@ -397,6 +424,8 @@ export class WheelMinimap {
            badge shows (and where, in the box), town's bearing from you
            (degrees, 0 east, 90 south) and how far, game px */
         home,
+        /* v2.3.3065: the north bead, in the box (its middle and radius) */
+        north: { x: this.north.x, y: this.north.y, r: NORTH_R, up: NORTH_UP, text: 'N', visible: !!this.north.visible },
       };
     } catch (e) { /* never breaks the frame */ }
   }
