@@ -123,6 +123,29 @@ const smith = () => (ps().lifeSkills && ps().lifeSkills.blacksmithing) || { leve
   check('a bar is worth more to the vendor than the five ore it cost', bar > ore * R.oreCost, { bar, ore });
 }
 
+// ── 5b. v2.3.3092: iron and black steel, the armor forge's other metals ──
+{
+  const I = SMELT.RECIPES.bar_iron, B = SMELT.RECIPES.bar_black_steel;
+  check('iron and black steel bars: five of their own ore each, Smithing 5 and 10',
+    !!I && !!B && I.ore === 'ore_iron_ore' && B.ore === 'ore_black_steel_ore' && I.oreCost === 5 && B.oreCost === 5
+    && I.minLvl === 5 && B.minLvl === 10, { I, B });
+  ps().lifeSkills.blacksmithing = { level: 4, xp: 0 };
+  ps().inventory.ore_iron_ore = 10;
+  let r = await smelt(ws, { barKey: 'bar_iron' });
+  check('...iron at Smithing 4: nothing smelts', r === null && ps().inventory.ore_iron_ore === 10);
+  ps().lifeSkills.blacksmithing = { level: 5, xp: 0 };
+  r = await smelt(ws, { barKey: 'bar_iron', count: 2 });
+  check('...at 5: two iron bars from ten ore, ' + I.xp + ' XP each', !!r && r.payload.count === 2 && r.payload.xp === 2 * I.xp
+    && ps().inventory.bar_iron === 2 && !(ps().inventory.ore_iron_ore > 0), r && r.payload);
+  ps().lifeSkills.blacksmithing = { level: 10, xp: 0 };
+  ps().inventory.ore_black_steel_ore = 6;
+  r = await smelt(ws, { barKey: 'bar_black_steel', count: 5 });
+  check('...black steel at 10: one bar from six ore (one ore left), ' + B.xp + ' XP', !!r && r.payload.count === 1 && r.payload.xp === B.xp
+    && ps().inventory.bar_black_steel === 1 && ps().inventory.ore_black_steel_ore === 1, r && r.payload);
+  check('...and both bars sell to the vendor as bars', room._shopBaseValue('bar_iron') === room._shopBaseValue('bar_copper')
+    && room._shopBaseValue('bar_black_steel') === room._shopBaseValue('bar_copper'));
+}
+
 // ── 6. Kill switch ──
 {
   room._liveFlags = { ...(room._liveFlags || {}), smelting: false };

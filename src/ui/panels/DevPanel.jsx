@@ -163,6 +163,7 @@ const CAP_GATES = [
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
+  'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

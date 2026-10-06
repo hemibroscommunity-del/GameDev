@@ -662,6 +662,19 @@ remnant to migrate server-side, not a mode to preserve.
       `node`); the Wheel's nodes drop at the flip to town;
     - `caps.wheelnodes`, kill switch `wheelnodes: false`; `wheelzone` §8,
       `mp-wheelnodes`: docs/specs/wheel-resources.md.
+    - since v2.3.3092 SMELTED BARS MAKE ARMOR -- asked "Should smelted bars
+      make armour?", the owner: "Yes": iron and black steel bars smelt too
+      (Smithing 5 and 10, `SMELT.RECIPES`, icons by `tools/make_bar_icons.py
+      iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso (5
+      bars) or greaves (3) in each metal -- copper Smithing 1, iron 5, black
+      steel 10 (`server/src/armorforge.js` `ARMOR_FORGE.RECIPES`, mirrored by
+      items.js `ARMOR_FORGE_RECIPES`): the drop's own piece `{name, mat, slot,
+      tierMult, quality}` on the armour ladder (1/2/3, no gearBase or type),
+      minted into the ledger (src 'forge'), into the bag by
+      `forge_armor_result` (wsClient `_applyLootCredit`); black steel's art
+      rows at last (gearVariants.js); `caps.armorforge`, kill switch
+      `armorforge: false`; `armorforge` suite, `mp-armorforge`:
+      docs/specs/armor-forge.md.
     - since v2.3.3038 a resource's LEVEL IS A REAL REQUIREMENT (owner: "black
       steel now requires a mining level of at least 5 ... Fishing clownfish
       required fishing level 5", "in levels of 5"): `GATHER_REQ_LVL`

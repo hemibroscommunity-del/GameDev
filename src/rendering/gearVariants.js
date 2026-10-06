@@ -27,6 +27,14 @@ export const GEAR_VARIANTS = {
      is one line" claim at the top of this file being cashed. */
   ironplate: { slot: 'chest', art: 'steelplate', material: 'iron', name: 'Iron Plate' },
   irongreaves: { slot: 'legs', art: 'steelgreaves', material: 'iron', name: 'Iron Greaves' },
+  /* v2.3.3092: black steel becomes obtainable -- forged from its bars at the
+     blacksmith (server/src/armorforge.js).  The metal has had its tint since
+     v2.3.3012 and its icons (chest-plate-blacksteel.webp,
+     greaves-blacksteel.webp) since then too; without these rows a black steel
+     piece drew as the bright steel art, and the full-set knight (which needs
+     both pieces in ONE material, entityRenderer _fullsetFrame) never formed. */
+  blacksteelplate: { slot: 'chest', art: 'steelplate', material: 'blacksteel', name: 'Black Steel Plate' },
+  blacksteelgreaves: { slot: 'legs', art: 'steelgreaves', material: 'blacksteel', name: 'Black Steel Greaves' },
 };
 
 /* ═══ v2.3.2303: THE ART SETS THAT ACTUALLY SHIP ═══
@@ -102,8 +110,8 @@ export function gearTint(item) {
    A piece with NO material is deliberately steel: that is every pre-v2.3.1758
    save, and it renders exactly as it always did. */
 const ART_BY_MATERIAL = {
-  chest: { copper: 'copperplate', iron: 'ironplate' },   /* v2.3.1924: iron */
-  legs: { copper: 'coppergreaves', iron: 'irongreaves' },
+  chest: { copper: 'copperplate', iron: 'ironplate', blacksteel: 'blacksteelplate' },   /* v2.3.1924: iron; v2.3.3092: black steel */
+  legs: { copper: 'coppergreaves', iron: 'irongreaves', blacksteel: 'blacksteelgreaves' },
 };
 const ART_DEFAULT = { chest: 'steelplate', legs: 'steelgreaves' };
 const ICON_DEFAULT = { chest: '/icons/items/chest-plate.webp', legs: '/icons/items/greaves.webp' };

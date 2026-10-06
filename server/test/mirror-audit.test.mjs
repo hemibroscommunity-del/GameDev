@@ -32,6 +32,8 @@ import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_AR
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
+import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
+import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
 import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
 import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl } from '../../src/data/lifeSkills.js'; /* v2.3.3038 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
@@ -1340,6 +1342,29 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     check('smelting: ' + k + ' ore / cost / level / xp match',
       a.ore === b.ore && a.oreCost === b.oreCost && a.minLvl === b.minLvl && a.xp === b.xp, { srv: a, cli: b });
   }
+}
+
+// ── v2.3.3092: THE ARMOR FORGE -- the Armor tab's rows are the worker's ──
+// A recipe the client draws with a different cost, level or metal is a row
+// that lies: "Forge" lit and refused, or a plate promised in copper and
+// minted in iron.  Every field, both ways, and every recipe's bar a bar the
+// smelter makes.
+{
+  const keys = (o) => Object.keys(o).sort().join(',');
+  check('armor forge: the same recipes on both sides', keys(SRV_ARMOR_FORGE.RECIPES) === keys(CLIENT_ARMOR_FORGE),
+    { srv: keys(SRV_ARMOR_FORGE.RECIPES), cli: keys(CLIENT_ARMOR_FORGE) });
+  const F = ['bar', 'bars', 'slot', 'mat', 'tierMult', 'minLvl', 'xp', 'name'];
+  const off = [];
+  for (const k of Object.keys(SRV_ARMOR_FORGE.RECIPES)) {
+    const a = SRV_ARMOR_FORGE.RECIPES[k], b = CLIENT_ARMOR_FORGE[k] || {};
+    for (const f of F) if (a[f] !== b[f]) off.push({ k, f, srv: a[f], cli: b[f] });
+  }
+  check('armor forge: every field of every recipe matches', off.length === 0, off);
+  check('armor forge: every recipe is forged from a bar the smelter makes',
+    Object.values(SRV_ARMOR_FORGE.RECIPES).every((r) => Object.prototype.hasOwnProperty.call(SRV_SMELT.RECIPES, r.bar)),
+    Object.values(SRV_ARMOR_FORGE.RECIPES).map((r) => r.bar));
+  check('armor forge: a metal\'s armor opens no earlier than its bar',
+    Object.values(SRV_ARMOR_FORGE.RECIPES).every((r) => r.minLvl >= SRV_SMELT.RECIPES[r.bar].minLvl));
 }
 
 // ── GATHERING HITS: one hit per swing, on the blow ──
