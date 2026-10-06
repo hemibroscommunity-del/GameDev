@@ -51,7 +51,7 @@
  */
 
 import { Rectangle, Texture } from 'pixi.js';
-import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3060 */
+import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 */
 
 const FRAME_W = 128;
 const FRAME_H = 128;
@@ -197,7 +197,7 @@ export function freeMonsterRecolor(variant) {
        a state shares one canvas-backed TextureSource. */
     const src = list && list[0] && list[0].source;
     for (let i = 0; i < (list ? list.length : 0); i++) { try { list[i].destroy(false); } catch (err) { /* gone */ } }
-    try { if (src) releaseCanvasSource(src); } catch (err) { /* gone */ }   /* v2.3.3060: Cache entry and canvas too -- every look let go of on the Wheel left its canvases behind (TRAPS §139) */
+    try { if (src) releaseCanvasSource(src); } catch (err) { /* gone */ }   /* v2.3.3074: Cache entry and canvas too -- every look let go of on the Wheel left its canvases behind (TRAPS §139) */
   }
   return true;
 }

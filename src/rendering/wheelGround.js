@@ -258,7 +258,7 @@ export class WheelGround {
     }
   }
 
-  /* v2.3.3060: `keepTrial` -- the RENDERER is going (a black screen's
+  /* v2.3.3074: `keepTrial` -- the RENDERER is going (a black screen's
      rebuild), not the player: the trial stays entered (worldTrialLeft would
      make the zone gate treat the Wheel as unloaded and raise its overlay). */
   destroy(opts) {

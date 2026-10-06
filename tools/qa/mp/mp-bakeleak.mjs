@@ -1,4 +1,4 @@
-/* ═══ A BLACK SCREEN'S RECOVERY, AND A STROKE IN THE DESIGNER, GIVE BACK WHAT THEY REPLACE (v2.3.3060) ═══
+/* ═══ A BLACK SCREEN'S RECOVERY, AND A STROKE IN THE DESIGNER, GIVE BACK WHAT THEY REPLACE (v2.3.3074) ═══
  *
  * Owner: "It happens too often that the screen goes black."  The game's own
  * way back from a black screen rebuilds the renderer (BroTown
@@ -101,7 +101,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     /* the stand-ins bake from images that load after the zone does: wait for
        the strips to be there before taking a reading */
-    /* (a build without the probe -- main, before v2.3.3060 -- waits a fixed
+    /* (a build without the probe -- main, before v2.3.3074 -- waits a fixed
        time instead, so the scenario still measures it) */
     const settled = async (atLeast) => {
       const has = await P.page.evaluate(() => !!window.__btFxBakes);

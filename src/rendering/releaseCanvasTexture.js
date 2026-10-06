@@ -1,4 +1,4 @@
-/* ═══ v2.3.3060: LETTING GO OF A TEXTURE THAT WAS MADE FROM A CANVAS ═══
+/* ═══ v2.3.3074: LETTING GO OF A TEXTURE THAT WAS MADE FROM A CANVAS ═══
  *
  * Owner: "It happens too often that the screen goes black" -- and a black
  * screen's own recovery (the renderer rebuilt, BroTown _rebuildRenderer) was

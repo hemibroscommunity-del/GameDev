@@ -1942,7 +1942,7 @@ export class TileRenderer {
 
   destroy() {
     _liveTileRenderers.delete(this);
-    /* v2.3.3060: and the Wheel's streamed ground.  A zone change freed it
+    /* v2.3.3074: and the Wheel's streamed ground.  A zone change freed it
        (rebuild, above); a renderer rebuilt after a black screen did not, and
        the module's 'got' listeners (wheelTrial _gotFns) kept the old one alive
        with every piece's pixels and its water: ~30 MB a rebuild (TRAPS §139).

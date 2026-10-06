@@ -38,7 +38,7 @@ import { preloadGear, drawGearFrame } from './gearSheets.js';
 import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
-import { Assets, TextureSource } from 'pixi.js';   /* v2.3.3060: + TextureSource (destroy, below) */
+import { Assets, TextureSource } from 'pixi.js';   /* v2.3.3074: + TextureSource (destroy, below) */
 import { markStandIns } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
 import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
 import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
@@ -600,7 +600,7 @@ export async function initPixiRenderer(canvas) {
     if (wheelObjects) { try { wheelObjects.destroy(); } catch (e) { /* ignore */ } wheelObjects = null; }
     tileRenderer.destroy();
     entityRenderer.clear();
-    /* v2.3.3060: destroy, not clear -- clear() is a zone change's; a renderer
+    /* v2.3.3074: destroy, not clear -- clear() is a zone change's; a renderer
        that is going (a black screen's rebuild) must let go of its bakes, its
        listeners and the WebGL renderer it held, or every rebuild left ~90 MB
        behind (TRAPS §139, mp-bakeleak) */
@@ -608,7 +608,7 @@ export async function initPixiRenderer(canvas) {
     lightFx.clear();   /* v2.3.2710 */
     try { minimap.destroy(); } catch (e) {}
     if (fpsOverlay) fpsOverlay.destroy();
-    /* ═══ v2.3.3060: CUT THE OLD RENDERER LOOSE FROM TEXTURES THAT OUTLIVE IT ═══
+    /* ═══ v2.3.3074: CUT THE OLD RENDERER LOOSE FROM TEXTURES THAT OUTLIVE IT ═══
        Pixi's render-target system subscribes to every texture it renders into
        (RenderTargetSystem._initRenderTarget: `renderSurface.once("destroy",
        ...)`, a closure over the system) and its own destroy() never takes

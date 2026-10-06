@@ -23,7 +23,7 @@ import { getFrame, SPRITE_VERSION, stripDetachedComponents } from './playerSprit
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { packTrimmed, sliceCropped } from './gearSheets.js';   /* v2.3.2775: the head sheets are cropped; v2.3.2791: + the body sheets */
-import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3060: a canvas-made texture let go of for good (TRAPS §139) */
+import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074: a canvas-made texture let go of for good (TRAPS §139) */
 import { recolorEnabled } from './traits/recolorOptions.js';
 import EYE_MASK from './eyeMask.json';                      /* v2.3.1928 */
 import EYE_BLANK from './eyeBlankMask.json';                /* v2.3.2643 */
@@ -1702,7 +1702,7 @@ function _pickupHeadCap() {
     if (!Array.isArray(e) || !e.length) continue;   // skip 'loading'/empty
     delete _pickupHeadSheets[k];
     const src = e[0] && e[0].source;
-    if (src) setTimeout(() => { try { releaseCanvasSource(src); } catch (err) { /* ignore */ } }, 30000);   /* v2.3.3060: Cache entry and canvas too (TRAPS §139) */
+    if (src) setTimeout(() => { try { releaseCanvasSource(src); } catch (err) { /* ignore */ } }, 30000);   /* v2.3.3074: Cache entry and canvas too (TRAPS §139) */
     break;
   }
 }
@@ -2090,7 +2090,7 @@ function _dropArtSheets() {
     if (key.indexOf('/#art') === -1) continue;   /* bodyArtSeg's marker */
     const entry = _bodySheets[key];
     if (Array.isArray(entry) && entry[0] && entry[0].source) {
-      try { releaseCanvasSource(entry[0].source); } catch (e) { /* already gone */ }   /* v2.3.3060: Cache entry and canvas too (TRAPS §139) */
+      try { releaseCanvasSource(entry[0].source); } catch (e) { /* already gone */ }   /* v2.3.3074: Cache entry and canvas too (TRAPS §139) */
     }
     delete _bodySheets[key];
   }
@@ -2102,7 +2102,7 @@ function _dropArtSheets() {
     const entry = _pickupHeadSheets[key];
     delete _pickupHeadSheets[key];
     const src = Array.isArray(entry) && entry[0] && entry[0].source;
-    if (src) setTimeout(() => { try { releaseCanvasSource(src); } catch (e) { /* already gone */ } }, 30000);   /* v2.3.3060 */
+    if (src) setTimeout(() => { try { releaseCanvasSource(src); } catch (e) { /* already gone */ } }, 30000);   /* v2.3.3074 */
   }
 }
 /* v2.3.2862: the local player's head overlays again, after a drawing edit

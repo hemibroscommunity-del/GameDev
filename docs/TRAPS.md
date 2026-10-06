@@ -5403,7 +5403,7 @@ keeps playing without a live socket is the bug, wherever the socket went:
 nothing the worker settles may be started, or silently dropped, while it cannot
 hear you (`offlineRefused`, `_holdForRejoin`).
 
-## 139. "Destroy the texture's source and its memory is gone" (v2.3.3060)
+## 139. "Destroy the texture's source and its memory is gone" (v2.3.3074)
 
 **The plausible move.** A baked strip -- a recoloured stand-in, a trait colour,
 a monster's look -- is made with `Texture.from(canvas)` and later replaced or
