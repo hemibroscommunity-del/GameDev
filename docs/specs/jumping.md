@@ -236,7 +236,15 @@ joystick".
     thumb held past the tap's window or dragging, a swing or shot under way,
     and `ATTACK_FACE_MS` 1.2 s after the last one all show the weapon; then
     the arrow comes back.
-  - `mp-tapact` (22 checks, holding the stick with a sword and a bow among them): the door at the bank opens the bank, the bubble
+  - ...and in a fight the PICTURE FOLLOWS THE THUMB on the disc too: the
+    owner, "when I'm in combat the icon doesn't move to the edge of the disc
+    like it does when I'm not in combat". In a fight the thumb presses the
+    DISC, which does not steer (v2.3.2258), so its picture sat still. The knob
+    and rod now follow the press from where it began (BroTown `rKnobFollow`,
+    split out of `rJoyAim`), the look only -- no aim, no autoAttack -- so the
+    flick for the special is judged as before; the release centres them.
+  - `mp-tapact` (23 checks, holding the stick with a sword and a bow, and a
+    drag on the lit disc in a real fight, among them): the door at the bank opens the bank, the bubble
     beside Ace opens his flip, the arrow on the open commons jumps, each slot's
     weapon on the disc, and the lit disc wearing an iron greatsword beside a
     real monster.

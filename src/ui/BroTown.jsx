@@ -9083,9 +9083,11 @@ export var BroTown = function BroTown(_ref0) {
      where its own press started).  One copy, because two would drift, and the
      4-way `_facing` quantisation in particular is the kind of thing that gets
      re-typed slightly differently and then disagrees with the renderer. */
-  var rJoyAim = useCallback(function (clientX, clientY, originX, originY) {
+  /* v2.3.3087: the knob and rod follow the thumb -- split out of rJoyAim so
+     the DISC's press can move its picture too (bM), without aiming. */
+  var rKnobFollow = useCallback(function (clientX, clientY, originX, originY) {
     var base = rJoyRef.current;
-    if (!base) return;
+    if (!base) return null;
     var rect = base.getBoundingClientRect();
     var bcx = (originX != null) ? originX : (rect.left + rect.width / 2);
     var bcy = (originY != null) ? originY : (rect.top + rect.height / 2);
@@ -9118,6 +9120,12 @@ export var BroTown = function BroTown(_ref0) {
       var _rodOp = (base && base.style && base.style.opacity) || '0.92';
       rStickRef.current.style.opacity = clampDist > 4 ? _rodOp : '0';
     }
+    return { dist: dist, angle: angle };
+  }, []);
+  var rJoyAim = useCallback(function (clientX, clientY, originX, originY) {
+    var f = rKnobFollow(clientX, clientY, originX, originY);
+    if (!f) return;
+    var dist = f.dist, angle = f.angle;
     var S = stateRef.current;
     if (!S || dist <= 8) return;
     var dirs = [['right', 0], ['down', Math.PI / 2], ['left', Math.PI], ['up', -Math.PI / 2]];
@@ -10032,6 +10040,16 @@ export var BroTown = function BroTown(_ref0) {
             }
           }
         }
+        /* ═══ v2.3.3087: ...AND ITS PICTURE FOLLOWS THE THUMB ═══
+           The owner: "when I'm in combat the icon doesn't move to the edge of
+           the disc like it does when I'm not in combat just attacking towards
+           something".  In a fight the thumb lands on the DISC, which does not
+           steer (below), so its weapon picture sat dead centre while the same
+           drag on the stick slid it to the rim.  The picture and the rod now
+           follow this press too, from where it started -- the look only: no
+           aim and no autoAttack, so the flick (the special) is judged exactly
+           as before.  handleRBtnRelease puts them back on the release. */
+        if (!bSwipe.toShield && !bSwipe.harvest) rKnobFollow(t.clientX, t.clientY, bSwipe.sx, bSwipe.sy);
         /* ═══ v2.3.2258: AND IT IS A JOYSTICK AGAIN ═══
            Owner: "I want both joysticks back and restore the previous behavior
            right joystick for auto attack and rotation.  BUT I also want the

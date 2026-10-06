@@ -232,6 +232,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.screenshot({ path: join(OUT, 'tapact-greatsword.png') }).catch(() => {});
       rec.ok(`beside a monster the lit disc wears the iron greatsword (${fight ? fight.ic + ' / ' + fight.st : 'no'})`, !!fight, fight || { near: await nearest(),
         disc: await P.page.evaluate(() => { const d = document.querySelector('.bt-rjoy-base'), S = window._gameState.current; return { ic: d.getAttribute('data-ricon'), st: d.getAttribute('data-rstate'), live: (S._rBtnLiveUntil || 0) - Date.now(), lock: !!S.lockedTarget, zone: S.currentZone }; }) });
+      /* the owner: "when I'm in combat the icon doesn't move to the edge of the
+         disc like it does when I'm not in combat" -- a press on the lit disc
+         dragged right slides its picture toward the rim, and the release puts
+         it back */
+      const slide = await P.page.evaluate(async () => {
+        const disc = document.querySelector('.bt-rjoy-base'), knob = document.querySelector('.bt-rjoy-knob');
+        const b = disc.getBoundingClientRect();
+        const x = b.left + b.width / 2, y = b.top + b.height / 2;
+        const el = document.elementFromPoint(x, y);
+        const onDisc = !!el && disc.contains(el);
+        const mk = (t, cx) => new TouchEvent(t, { bubbles: true, cancelable: true,
+          touches: t === 'touchend' ? [] : [new Touch({ identifier: 91, target: el, clientX: cx, clientY: y })],
+          changedTouches: [new Touch({ identifier: 91, target: el, clientX: cx, clientY: y })] });
+        const off = () => { const k = knob.getBoundingClientRect(); return Math.round((k.left + k.width / 2) - x); };
+        const c0 = off();
+        el.dispatchEvent(mk('touchstart', x));
+        for (let k = 1; k <= 4; k++) { await new Promise((r) => setTimeout(r, 120)); el.dispatchEvent(mk('touchmove', x + k * 12)); }
+        await new Promise((r) => requestAnimationFrame(() => r()));
+        const held = off();
+        el.dispatchEvent(mk('touchend', x + 48));
+        await new Promise((r) => setTimeout(r, 50));
+        const after = off();
+        const S = window._gameState.current; S.autoAttack = false; S._aiming = false;
+        return { onDisc, c0, held, after, max: Math.round(b.width / 2) };
+      });
+      rec.ok(`...and a press on it dragged right slides the weapon picture toward the rim (${slide.c0} -> ${slide.held} px of ${slide.max}), back to the middle on release (${slide.after})`,
+        slide.onDisc && Math.abs(slide.c0) <= 2 && slide.held >= 12 && Math.abs(slide.after) <= 2, slide);
     }
 
     rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
