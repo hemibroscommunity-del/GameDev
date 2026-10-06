@@ -19,6 +19,10 @@ import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, manaSurge
    (_clearBuffSlot).  A magnitude listed here goes with its timer, never
    apart from it. */
 const MEAL_BUFF_KEYS = ['regen', 'resist'];
+/* v2.3.3105: how many recipes a worker before caps.meals had (Herb Bread, Root
+   Stew, Firebloom Tea) -- the only ones an old client can cook, the old
+   (instant) way, and the only ones that still cook with `meals: false`. */
+const OLD_RECIPES = 3;
 const BREW_BUFF_KEYS = ['damage', 'damageMul', 'mana', 'manaFlat', 'spd', 'spdMul', 'hp'];
 import { PROG3 } from './prog3.js';        /* v2.3.2062: the special's mana cost */
 import { REGEN_TICKS } from './tick.js';   /* v2.3.2062: the regen cadence */
@@ -88,10 +92,13 @@ export const cookingMethods = {
       if (meal.slot !== 'meal') return;
       const ps = this.playerState[session.id];
       if (!ps) return;
-      if (ps.dying || ps.dead || ps.disconnected) return;
+      /* v2.3.3105: the phone took one out of its bag already -- a refusal
+         puts the bag (and the HP, the effects) back on its screen. */
+      const refuse = () => { const w = this._wsBySessionId(session.id); if (w) this._resendPlayerState(w, session.id, ['inventory', 'hp', '_buffs']); };
+      if (ps.dying || ps.dead || ps.disconnected) { refuse(); return; }
       if (!ps.inventory) ps.inventory = {};   // proto-ok: invKey is an own key of DISHES (_getDish)
-      if ((ps.inventory[invKey] || 0) <= 0) return;
-      if (!this._applyDish(ps, meal)) return;
+      if ((ps.inventory[invKey] || 0) <= 0) { refuse(); return; }
+      if (!this._applyDish(ps, meal)) { refuse(); return; }
       ps.inventory[invKey] -= 1;
       if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
       this._saveRpg(session.id, ps);
@@ -320,9 +327,16 @@ export const cookingMethods = {
        cook_request's refusals are, so a cook the client predicted snaps
        back.  An honest client never asks: it has always locked these. */
     const ck = ps.lifeSkills && Object.prototype.hasOwnProperty.call(ps.lifeSkills, 'cooking') ? ps.lifeSkills.cooking : null;
-    if (((ck && typeof ck === 'object' && Number(ck.level)) || 1) < (recipe.cookLvl || 1)) {
+    /* v2.3.3105: every refusal below that a client may have predicted
+       RESENDS the bag, skills and effects (persistence.js
+       _resendPlayerState) -- a plain echo of nothing that changed sends
+       nothing to a v2 client. */
+    const _refuse = () => {
       const ws = this._wsBySessionId(session.id);
-      if (ws) this._sendPlayerState(ws, session.id);
+      if (ws) this._resendPlayerState(ws, session.id, ['inventory', 'lifeSkills', '_buffs']);
+    };
+    if (((ck && typeof ck === 'object' && Number(ck.level)) || 1) < (recipe.cookLvl || 1)) {
+      _refuse();
       return;
     }
 
@@ -333,9 +347,12 @@ export const cookingMethods = {
        auction house.  The kill switch refuses it BEFORE anything is used, and
        the bag is echoed so nothing the client drew stays drawn. */
     const carry = !!(payload && payload.carry === true);
-    if (carry && this._mealsOff()) {
-      const ws = this._wsBySessionId(session.id);
-      if (ws) this._sendPlayerState(ws, session.id);
+    /* ...and with the switch off, a recipe an old worker never had (rows
+       OLD_RECIPES and up: the tonics, and every dish added since) is refused
+       even without `carry` -- a forged old-style cook must not brew a tonic
+       the switch is meant to stop (found by the review). */
+    if (this._mealsOff() && (carry || recipeIdx >= OLD_RECIPES)) {
+      _refuse();
       return;
     }
 
@@ -346,7 +363,10 @@ export const cookingMethods = {
       for (const [k, v] of Object.entries(ps.inventory)) {
         if (this._ingredientMatches(k, type) && v > 0) total += v;
       }
-      if (total < count) return;
+      /* v2.3.3105: refused, and resent -- the client counts ingredients more
+         loosely than this (CookPanel's k.includes(type)), so it can predict
+         a cook the worker refuses here. */
+      if (total < count) { _refuse(); return; }
     }
     // Second pass: actually consume.
     for (const [type, count] of Object.entries(recipe.ingredients)) {

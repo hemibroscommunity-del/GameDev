@@ -196,6 +196,16 @@ P._buffs = {};
   await join(ws2, 'bp_meals_off');
   const s2 = ws2.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('...and a joiner is told caps.meals is off', !!s2 && s2.caps.meals === false, s2 && s2.caps.meals);
+  /* A forged OLD-style cook (no `carry`) of a recipe an old worker never had
+     must not brew a tonic past the switch either (review finding). */
+  P._buffs = {};
+  const fb2 = P.inventory.herb_firebloom;
+  await send(ws, 'cook_recipe', { recipeIdx: idx('whetstone') });
+  check('...and an old-style cook of a tonic is refused too: no x2, the herbs kept',
+    !room._buffActive(P, 'damage') && P.inventory.herb_firebloom === fb2, { buffs: P._buffs, fb: P.inventory.herb_firebloom });
+  await send(ws, 'cook_recipe', { recipeIdx: idx('meal_herb_bread') });
+  check('...while the old three still cook the old way (an old client\'s Cookhouse keeps working)',
+    room._buffActive(P, 'regen') && P.inventory.herb_firebloom === fb2 - 1, { buffs: P._buffs, fb: P.inventory.herb_firebloom });
   room._liveFlags = { ...room._liveFlags, meals: true };
 }
 
@@ -217,6 +227,17 @@ P._buffs = {};
   const seller = { coins: 0, inventory: Object.assign(Object.create(null), { whetstone: 1 }) };
   const rs = await room._shopSell(seller, 'whetstone', 1);
   check('he buys no tonic back', !rs.ok && seller.inventory.whetstone === 1 && seller.coins === 0, rs);
+  /* A pile that took tonics in before his staples existed (review finding):
+     they must not come back on sale out of it. */
+  const pile = await room._shopStock();
+  pile.whetstone = 4; pile.manaShard = 2;
+  await room._shopSaveStock(pile);
+  const relisted = await room._shopList([]);
+  const rPile = await room._shopBuy({ coins: 500, inventory: Object.create(null) }, 'whetstone', 1);
+  const qPile = await room._shopQuote('whetstone', 1, 'buy');
+  check('...and an old pile of tonics is not back on sale: not listed, not sold, quoted at nothing',
+    !relisted.items.some((i) => i.key === 'whetstone' || i.key === 'manaShard') && !rPile.ok && qPile.qty === 0,
+    { listed: relisted.items.map((i) => i.key), rPile, qPile });
   /* A dish is worth its herbs to him, never more: cooking pays in use and
      Cooking XP, not in coins at his counter. */
   for (const r of COOKING_RECIPES) {
@@ -270,6 +291,40 @@ P._buffs = {};
   const rec = st._store.get('rpg:' + PID) || {};
   check('...and the stored record holds them, and the stew still in the bag',
     rec._buffs && rec._buffs.resist > now() && rec._buffs.damageMul === 1.2 && rec.inventory && rec.inventory.meal_root_stew === 1, { buffs: rec._buffs, inv: rec.inventory });
+}
+
+// ── 12. a refusal's echo reaches a v2 client (every live client is one) ──
+{
+  /* v2's player_state sends only the fields that changed, and a refusal
+     changes nothing -- so the echo meant to undo a client's prediction sent
+     nothing at all.  The review proved it on the kill switch; it is resent
+     now (persistence.js _resendPlayerState). */
+  const ws2 = fakeWs();
+  room.sessions.set(ws2, baseSession());
+  await room.webSocketMessage(ws2, JSON.stringify({ type: 'join', id: 'bp_meals_v2', name: 'V', phrase: 'p-v2', protocolVersion: 2, data: { x: 0, y: 0, z: 'town' } }));
+  await settle();
+  const Q = room.playerState['bp_meals_v2'];
+  Q.lifeSkills.cooking = { level: 10, xp: 0 };
+  Q.inventory = Object.assign(Q.inventory || {}, { herb_firebloom: 3 });
+  /* one ordinary emit first, so the v2 cache holds this bag */
+  await send(ws2, 'cook_recipe', { recipeIdx: idx('meal_herb_bread'), carry: true });
+  const echoed = (w) => w.sent.filter((m) => m.type === 'player_state' && m.payload && m.payload.inventory);
+  check('(guard) a v2 cook sends the changed bag', echoed(ws2).length === 1, ws2.sent.map((m) => m.type));
+  room._liveFlags = { ...(room._liveFlags || {}), meals: false };
+  await send(ws2, 'cook_recipe', { recipeIdx: idx('meal_herb_bread'), carry: true });
+  check('a v2 client\'s refused cook (the kill switch) is sent its bag back', echoed(ws2).length === 1
+    && echoed(ws2)[0].payload.inventory.meal_herb_bread === 1, ws2.sent.map((m) => m.type));
+  room._liveFlags = { ...room._liveFlags, meals: true };
+  Q.lifeSkills.cooking = { level: 1, xp: 0 };
+  await send(ws2, 'cook_recipe', { recipeIdx: idx('brew_firebloom_tea'), carry: true });
+  check('...and a refused cook below its level', echoed(ws2).length === 1, ws2.sent.map((m) => m.type));
+  Q.lifeSkills.cooking = { level: 10, xp: 0 };
+  /* Two Firebloom left, and the Fury Tonic asks three: the bag is not
+     touched here, so only a resend can carry it. */
+  await send(ws2, 'cook_recipe', { recipeIdx: idx('whetstone'), carry: true });
+  check('...and a cook the worker finds the herbs short for', echoed(ws2).length === 1 && Q.inventory.herb_firebloom === 2 && !Q.inventory.whetstone, ws2.sent.map((m) => m.type));
+  await send(ws2, 'eat_request', { invKey: 'meal_root_stew' });
+  check('...and a meal it does not hold (the phone took one it drew)', echoed(ws2).length === 1, ws2.sent.map((m) => m.type));
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall meals checks passed');

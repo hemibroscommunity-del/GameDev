@@ -335,6 +335,10 @@ export const shopMethods = {
       }
     }
     for (const k in stock) {
+      /* v2.3.3105: never a potion from the pile -- a tonic sold into it before
+         his staples existed would otherwise be back on the shelf he stopped
+         selling them from (found by the review). */
+      if (isShopPotion(k)) continue;
       items.push({
         key: k,
         qty: stock[k],
@@ -391,6 +395,9 @@ export const shopMethods = {
         return { ok: true, key, qty: 1, mode, staple: true,
           total: it ? Math.max(1, Math.floor(it.cost)) : 0, settled: true };
       }
+      /* v2.3.3105: a potion off his shelf is not for sale from the pile
+         either (_shopList skips it; _shopBuy refuses it). */
+      if (isShopPotion(key)) return { ok: true, key, qty: 0, mode, total: 0, settled: true };
       const held = stock[key] || 0;
       const take = Math.min(want, held);
       return { ok: true, key, qty: take, mode,
@@ -504,6 +511,10 @@ export const shopMethods = {
       return { ok: true, bought: want, cost, coins: ps.coins, staple: true, settled: true };
     }
 
+    /* v2.3.3105: the tonics are brewed at the Cookhouse now, so a potion that
+       is not one of his staples is not for sale -- not even out of a pile that
+       took some in before the staples existed. */
+    if (isShopPotion(key)) return { ok: false, error: "He doesn't sell tonics any more" };
     const stock = await this._shopStock();
     const held = stock[key] || 0;
     if (held <= 0) return { ok: false, error: "He hasn't got any" };
