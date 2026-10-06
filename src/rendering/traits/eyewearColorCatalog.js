@@ -43,6 +43,7 @@
  */
 
 import { Texture } from 'pixi.js';
+import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3060 */
 import { recolorHairToCanvas } from '../characterPortrait.js';
 import { HAT_COLOR_CATALOG } from './hatColorCatalog.js';
 import { recolorEnabled } from './recolorOptions.js';
@@ -187,7 +188,7 @@ function _capCache() {
     if (e === 'loading') continue;
     delete _cache[k];
     setTimeout(() => {
-      try { for (const dir in e) { const t = e[dir]; if (t && t.source) t.source.destroy(); } }
+      try { for (const dir in e) { const t = e[dir]; if (t && t.source) releaseCanvasSource(t.source); } }   /* v2.3.3060: Cache entry and canvas too (TRAPS §139) */
       catch (err) { /* ignore */ }
     }, 30000);
     break;

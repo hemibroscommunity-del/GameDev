@@ -965,7 +965,12 @@ export class MinimapRenderer {
     /* QA probe (tools/qa/mp) — the harness cannot read a WebGL canvas, so
        the numbers a scenario asserts on come from here. */
     try {
-      window.__btIconDump = () => this._dumpIcons();
+      /* v2.3.3060: one function per minimap (not a new closure a frame), so
+         destroy() can tell its own from a successor's and take it down: in
+         the Wheel this line never runs again, and the probe kept a rebuilt
+         renderer's old minimap alive for the rest of the page (TRAPS §139) */
+      if (!this._iconDumpFn) this._iconDumpFn = () => this._dumpIcons();
+      window.__btIconDump = this._iconDumpFn;
       window.__btMinimap = {
         /* v2.3.1817: what the quest star is pointing at (null = nothing
            starred).  A scenario cannot read a WebGL canvas, and "is there a
@@ -1035,5 +1040,7 @@ export class MinimapRenderer {
     try { this.wheel.destroy(); } catch (e) {}
     try { this.root.destroy({ children: true }); } catch (e) {}
     this._pool = [];
+    /* v2.3.3060: the QA probe above, if it is still this minimap's */
+    try { if (typeof window !== 'undefined' && this._iconDumpFn && window.__btIconDump === this._iconDumpFn) delete window.__btIconDump; } catch (e) { /* no window */ }
   }
 }

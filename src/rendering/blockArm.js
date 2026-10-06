@@ -159,6 +159,10 @@ export function blockArmTexture(sheet) {
   const frames = _sheets[sheet];
   if (!cut || !frames || !frames[cut.frame]) return null;
   const base = frames[cut.frame];
+  /* v2.3.3060: a renderer let go of (a black screen's rebuild) releases the
+     bake these frames came from; until the new one hands its own over, draw
+     no arm -- never a cut of a freed source (TRAPS §49) */
+  if (!base.source || base.source.destroyed) return null;
   const hit = _cache.get(sheet);
   if (hit && hit.src === base.source) return hit.tex;
   /* v2.3.2775: the bow body frames are cropped (effectsRenderer
