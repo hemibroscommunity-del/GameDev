@@ -97,9 +97,9 @@ forge all work from anywhere — the server never asked which zone you were in).
 
 ## Not yet
 
-- The Sheriff's Office, Hotel, Post Office and Guild Hall have nothing behind
-  them (duels and bounties, a bed, mail, clans). The Guild Hall could open the
-  clan panel and the Post Office a mail list; neither is built.
+- The Hotel has nothing behind it (a bed and a rest): its rest needs the
+  worker to pay for it. The Guild Hall, Post Office and Sheriff's Office open
+  since v2.3.3066 (docs/specs/wheel-halls.md).
 - The blacksmith, Ace and Lil Bro stay in today's town; only Mayor Bro and
   Diego are in the Wheel.
 - The buildings are doors, not rooms: there is no inside to walk into.
