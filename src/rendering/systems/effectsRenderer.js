@@ -3911,12 +3911,12 @@ export class EffectsRenderer {
     /* v2.3.3077: made when first wanted (rendering/standIns.js), not on the
        loading screen's gate -- the owner's yes to "gathering poses built the
        first time you gather".  The re-bakes below run only for a cook that
-       has been made (or is on its way): before that the first make bakes with
-       whatever skin and drawings are current. */
+       has been asked for (_fetchAndBakeCook says so): before that the first
+       make bakes with whatever skin and drawings are current. */
     this._makeCook = () => this._fetchAndBakeCook().then(() => this._cookFrames.length > 0);
     /* The character menu can change the skin mid-session, so rebake on it the
        way the sword/bow stand-ins do (_rebakeBodies, v2.3.975). */
-    onSkinChange(() => { if (standInStarted('cook')) this._fetchAndBakeCook(); });
+    onSkinChange(() => { this._fetchAndBakeCook(); });
     /* v2.3.2856: and the drawings' layer when one of the three drawings the
        cook carries changes -- once the strokes stop, as the lumberjack does
        (the designer commits every stroke; the cook is not on screen while you
@@ -3925,7 +3925,7 @@ export class EffectsRenderer {
     onArtChange((id) => {
       if (id !== 'tattoo' && id !== 'tattooFace' && id !== 'tattooArm') return;
       clearTimeout(_cookArtT);
-      _cookArtT = setTimeout(() => { if (standInStarted('cook')) this._fetchAndBakeCook(true); }, 400);
+      _cookArtT = setTimeout(() => { this._fetchAndBakeCook(true); }, 400);
     });
   }
 
@@ -3940,6 +3940,10 @@ export class EffectsRenderer {
      cache serves from disk, and it happens behind the character menu — never
      mid-play, so the preloading LAW is not in tension with it. */
   _fetchAndBakeCook(inkOnly) {
+    /* v2.3.3077: a skin or drawing change re-bakes the cook only once he has
+       been asked for (rendering/standIns.js) -- before that his first make
+       bakes with whatever is current */
+    if (!standInStarted('cook')) return Promise.resolve();
     return Promise.all([
       _loadStandInImg(COOK_URL.body),
       _loadStandInImg(COOK_URL.legless),
@@ -4124,14 +4128,14 @@ export class EffectsRenderer {
     this._makeFire = () => this._fetchAndBakeFire().then(() => this._fireFrames.length > 0);
     /* The character menu can change the skin mid-session; rebake exactly as the
        cook does (_loadCookStrips, v2.3.1710). */
-    onSkinChange(() => { if (standInStarted('fire')) this._fetchAndBakeFire(); });
+    onSkinChange(() => { this._fetchAndBakeFire(); });
     /* v2.3.2858: and the drawings' layer, once the strokes stop -- the cook's
        rule (_loadCookStrips); only the layer is rebuilt. */
     let _fireArtT = 0;
     onArtChange((id) => {
       if (id !== 'tattoo' && id !== 'tattooFace' && id !== 'tattooArm') return;
       clearTimeout(_fireArtT);
-      _fireArtT = setTimeout(() => { if (standInStarted('fire')) this._fetchAndBakeFire(true); }, 400);
+      _fireArtT = setTimeout(() => { this._fetchAndBakeFire(true); }, 400);
     });
   }
 
@@ -4141,6 +4145,8 @@ export class EffectsRenderer {
      spriteScale.js).  A rebake re-fetches from the HTTP cache and only ever
      happens behind the character menu, never mid-play. */
   _fetchAndBakeFire(inkOnly) {
+    /* v2.3.3077: the cook's rule (_fetchAndBakeCook) */
+    if (!standInStarted('fire')) return Promise.resolve();
     /* v2.3.1715: cache-bust.  The file KEPT its name through the 29-frame ->
        8-frame replacement (so every reference and the preload registration
        stay put), which means a browser holding the old 4669x220 image would
